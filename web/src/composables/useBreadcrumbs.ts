@@ -62,6 +62,7 @@ const ENTITY_MAP: Record<string, { label: string; singular: string; defaultSubPa
   allocations: { label: 'Allocations', singular: 'Allocation' },
   ledger: { label: 'Ledger', singular: 'Ledger' },
   tasks: { label: 'Tasks', singular: 'Task' },
+  tenants: { label: 'Company', singular: 'Company' },
 };
 
 const ACTION_MAP: Record<string, string> = {

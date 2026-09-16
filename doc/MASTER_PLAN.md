@@ -1,6 +1,6 @@
 # TradeFlow BD — Master Architectural Plan
 
-TradeFlow BD is an enterprise multi-tenant ERP and commerce platform designed for parent companies and sister concerns operating wholesale distribution, warehouse fulfillment, dropship networks, and specialized retail verticals.
+TradeFlow BD is an enterprise multi-tenant ERP and commerce platform designed for **companies** and their **brands** (child tenants) operating wholesale distribution, warehouse fulfillment, dropship networks, and specialized retail verticals.
 
 ---
 
@@ -16,10 +16,10 @@ flowchart LR
 ```
 
 ### Core Tenets of the Platform
-1. **Single Physical Stock Pool**: Physical inventory is owned exclusively at the **Parent** tenant level (`global_stocks`). Child sister concerns consume stock via virtual allocations without duplicating physical stock rows.
-2. **Atomic Single-Invoice Ownership**: Sales invoices (`global_invoices`) are owned by the parent company for consolidated ledger auditing, with `issued_by_tenant_id` preserving child sister-concern branding and customer relationships.
+1. **Single Physical Stock Pool**: Physical inventory is owned exclusively at the **company** (parent tenant) level (`global_stocks`). **Brands** consume stock via virtual allocations without duplicating physical stock rows.
+2. **Atomic Single-Invoice Ownership**: Sales invoices (`global_invoices`) are owned by the company for consolidated ledger auditing, with `issued_by_tenant_id` preserving brand desk identity and customer relationships.
 3. **No Shadow Accounting Ledgers**: Margins and P&L are derived dynamically from operational data — invoice lines snapshot `unit_cost_price` at issue time; shipment batch analytics use live `landed_cost_bdt` (via `calculate_landed_unit_cost`) until `costs_locked`.
-4. **The One-Wallet Principle**: Every entity has one ledger wallet keyed by `(parent_tenant_id, entity_type, entity_id)` on the **parent books**; `operating_tenant_id` records which child desk ran the transaction. See [`doc/wallet/WALLET.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/wallet/WALLET.md) and migration plan [`WALLET_PARENT_BOOKS_IMPLEMENTATION.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/wallet/WALLET_PARENT_BOOKS_IMPLEMENTATION.md).
+4. **The One-Wallet Principle**: Every entity has one ledger wallet keyed by `(parent_tenant_id, entity_type, entity_id)` on the **company books**; `operating_tenant_id` records which brand desk ran the transaction. See [`doc/wallet/WALLET.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/wallet/WALLET.md) and migration plan [`WALLET_PARENT_BOOKS_IMPLEMENTATION.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/wallet/WALLET_PARENT_BOOKS_IMPLEMENTATION.md).
 
 ---
 

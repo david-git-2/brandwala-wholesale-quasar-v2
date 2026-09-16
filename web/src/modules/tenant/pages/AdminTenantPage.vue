@@ -120,6 +120,12 @@
                 </button>
               </div>
             </div>
+
+            <CompanyBusinessSection
+              v-if="activeTenant && isCapitalHostTenant"
+              :company-id="activeTenant.id"
+              :company-slug="activeTenant.slug"
+            />
           </q-card-section>
         </q-card>
 
@@ -182,6 +188,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { getTenantSlugFromRoute } from 'src/modules/tenant/utils/tenantRouteContext';
 import { useAdminTenantSelection } from '../composables/useAdminTenantSelection';
 import { useTenantStore } from '../stores/tenantStore';
+import CompanyBusinessSection from '../components/CompanyBusinessSection.vue';
 import TenantTreeList from '../components/TenantTreeList.vue';
 import TenantDangerZoneCard from '../components/TenantDangerZoneCard.vue';
 import TenantPurgeModal from '../components/TenantPurgeModal.vue';

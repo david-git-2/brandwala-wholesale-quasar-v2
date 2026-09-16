@@ -219,10 +219,7 @@ const form = reactive<{
 const issuingTenantOptions = computed(() => {
   const parentId = props.parentTenantId;
   if (!parentId) return [];
-  const tenants =
-    tenantStore.availableAdminTenants.length > 0
-      ? tenantStore.availableAdminTenants
-      : tenantStore.items;
+  const tenants = tenantStore.items.length > 0 ? tenantStore.items : tenantStore.availableAdminTenants;
   return tenants
     .filter((t) => t.parent_id === parentId)
     .map((t) => ({ label: `${t.name} (Sister concern)`, value: t.id }));

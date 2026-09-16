@@ -115,8 +115,9 @@ export interface TenantServiceResult<T = void> {
 
 export interface TenantStoreState {
   items: Tenant[];
+  /** Parent companies only — used by the app header switcher. Full membership rows live in `items`. */
   availableAdminTenants: Tenant[];
-  /** Child ids used only to tell parent vs standalone. Not shown in the tenant picker. */
+  /** Child ids used only to tell parent vs standalone. Not shown in the company picker. */
   hierarchyChildRefs: Array<{ id: number; parent_id: number; name?: string }>;
   selectedTenantId: Tenant['id'] | null;
   selectedTenantSlug: Tenant['slug'] | null;

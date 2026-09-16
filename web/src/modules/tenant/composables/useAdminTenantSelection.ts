@@ -7,6 +7,7 @@ import { showWarningDialog } from 'src/utils/appFeedback';
 import { useTenantStore } from '../stores/tenantStore';
 import { useTenantPreferenceStore } from '../stores/tenantPreferenceStore';
 import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
+import { resolveCompanyTenant } from '../utils/tenantHierarchy';
 import type { Tenant } from '../types';
 
 export function useAdminTenantSelection() {
@@ -137,11 +138,17 @@ export function useAdminTenantSelection() {
       return false;
     }
 
-    if (authStore.tenant?.id === selectedTenant.id) {
+    const workspaceTenant =
+      resolveCompanyTenant(selectedTenant, [
+        ...tenantStore.items,
+        ...tenantStore.availableAdminTenants,
+      ]) ?? selectedTenant;
+
+    if (authStore.tenant?.id === workspaceTenant.id) {
       return true;
     }
 
-    return selectTenantWorkspace(selectedTenant, { navigate: false });
+    return selectTenantWorkspace(workspaceTenant, { navigate: false });
   };
 
   return {

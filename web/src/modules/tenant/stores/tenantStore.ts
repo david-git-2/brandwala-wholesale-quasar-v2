@@ -3,6 +3,10 @@ import { defineStore } from 'pinia';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { tenantRepository } from '../repositories/tenantRepository';
 import { tenantService } from '../services/tenantService';
+import {
+  filterCompanyTenants,
+  resolveCompanyTenant,
+} from '../utils/tenantHierarchy';
 import type {
   Tenant,
   TenantCreateInput,
@@ -66,7 +70,7 @@ const storedWorkspace = readStorage();
 export const useTenantStore = defineStore('tenant', {
   state: (): TenantStoreState => ({
     items: [],
-    availableAdminTenants: storedWorkspace?.availableAdminTenants ?? [],
+    availableAdminTenants: filterCompanyTenants(storedWorkspace?.availableAdminTenants ?? []),
     hierarchyChildRefs: [],
     selectedTenantId: storedWorkspace?.selectedTenantId ?? null,
     selectedTenantSlug: storedWorkspace?.selectedTenantSlug ?? null,
@@ -120,6 +124,8 @@ export const useTenantStore = defineStore('tenant', {
     },
 
     syncSelectedTenant() {
+      this.promoteSelectedTenantToCompany();
+
       if (this.selectedTenantId === null) {
         this.selectedTenantSlug = null;
         this.persistWorkspaceState();
@@ -150,8 +156,29 @@ export const useTenantStore = defineStore('tenant', {
       this.persistWorkspaceState();
     },
 
+    promoteSelectedTenantToCompany(membershipPool: readonly Tenant[] = this.items) {
+      if (this.selectedTenantId === null) {
+        return;
+      }
+
+      const selected =
+        membershipPool.find((tenant) => tenant.id === this.selectedTenantId) ??
+        this.availableAdminTenants.find((tenant) => tenant.id === this.selectedTenantId) ??
+        null;
+
+      const company = resolveCompanyTenant(selected, membershipPool);
+
+      if (!company || company.id === this.selectedTenantId) {
+        return;
+      }
+
+      this.selectedTenantId = company.id;
+      this.selectedTenantSlug = company.slug;
+    },
+
     setAvailableAdminTenants(tenants: Tenant[]) {
-      this.availableAdminTenants = tenants;
+      this.availableAdminTenants = filterCompanyTenants(tenants);
+      this.promoteSelectedTenantToCompany(tenants);
       this.syncSelectedTenant();
     },
 

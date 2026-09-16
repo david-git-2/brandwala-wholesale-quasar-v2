@@ -28,7 +28,7 @@
 
           <q-list style="min-width: 240px" class="q-py-xs">
             <q-item-label header class="text-uppercase text-weight-bold text-grey-7" style="font-size: 9px; letter-spacing: 0.1em">
-              Workspaces & Locations
+              Companies
             </q-item-label>
 
             <q-item
@@ -38,7 +38,6 @@
               v-close-popup
               :active="option.value === selectedTenantId"
               active-class="bg-blue-1 text-primary text-weight-bold"
-              :style="{ paddingLeft: 16 + option.depth * 12 + 'px' }"
               @click="onSelectTenant(option.value)"
             >
               <q-item-section avatar class="q-pr-none" style="min-width: 24px">
@@ -49,10 +48,7 @@
                 />
               </q-item-section>
               <q-item-section>
-                <q-item-label class="row items-center no-wrap">
-                  <span v-if="option.depth > 0" class="text-grey-5 q-mr-xs text-caption">↳</span>
-                  <span class="ellipsis text-caption">{{ option.label }}</span>
-                </q-item-label>
+                <q-item-label class="ellipsis text-caption">{{ option.label }}</q-item-label>
               </q-item-section>
               <q-item-section side v-if="option.value === selectedTenantId">
                 <q-icon name="ph ph-check" size="xs" color="primary" />
@@ -91,8 +87,6 @@ import { useAppearance } from 'src/composables/useAppearance';
 import TaskSearchDialog from 'src/modules/tasks/components/TaskSearchDialog.vue';
 import GlobalStockSearchDialog from 'src/modules/global/components/GlobalStockSearchDialog.vue';
 import NotificationBell from 'src/modules/notifications/components/NotificationBell.vue';
-import type { Tenant } from 'src/modules/tenant/types';
-
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
 const tenantPreferenceStore = useTenantPreferenceStore();
@@ -115,45 +109,18 @@ const logoutTo = computed(() =>
 );
 const selectedTenantId = computed(() => tenantStore.selectedTenantId);
 
-const tenantOptions = computed(() => {
-  const tenants = tenantStore.availableAdminTenants;
-
-  const map = new Map<number, { tenant: Tenant; children: Tenant[] }>();
-  tenants.forEach((t) => {
-    map.set(t.id, { tenant: t, children: [] });
-  });
-
-  const roots: Tenant[] = [];
-  tenants.forEach((t) => {
-    if (t.parent_id === null || !map.has(t.parent_id)) {
-      roots.push(t);
-    } else {
-      map.get(t.parent_id)?.children.push(t);
-    }
-  });
-
-  const result: Array<{ label: string; value: number; depth: number }> = [];
-  const traverse = (t: Tenant, depth: number) => {
-    result.push({
-      label: t.name,
-      value: t.id,
-      depth,
-    });
-    const entry = map.get(t.id);
-    if (entry) {
-      entry.children.forEach((child) => traverse(child, depth + 1));
-    }
-  };
-
-  roots.forEach((root) => traverse(root, 0));
-  return result;
-});
+const tenantOptions = computed(() =>
+  tenantStore.availableAdminTenants.map((tenant) => ({
+    label: tenant.name,
+    value: tenant.id,
+  })),
+);
 
 const selectedTenantLabel = computed(() => {
   const selectedOption =
     tenantOptions.value.find((option) => option.value === selectedTenantId.value) ?? null;
 
-  return selectedOption?.label ?? 'Select workspace';
+  return selectedOption?.label ?? 'Select company';
 });
 const { ensureSelectedTenantWorkspace, selectTenantWorkspace, selectingTenantId } =
   useAdminTenantSelection();

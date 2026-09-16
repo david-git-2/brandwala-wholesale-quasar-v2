@@ -62,8 +62,8 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     route: () => '/platform/dashboard',
   },
   {
-    title: 'Tenants',
-    caption: 'Create and govern businesses',
+    title: 'Company',
+    caption: 'Create and govern brands',
     icon: 'ph ph-buildings',
     navWeight: NAV_WEIGHT.tenants,
     scopes: ['platform'],
@@ -107,8 +107,8 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard'),
   },
   {
-    title: 'Tenants',
-    caption: 'Open tenant details and assignments',
+    title: 'Company',
+    caption: 'Open company details and brands',
     icon: 'ph ph-buildings',
     navWeight: NAV_WEIGHT.tenants,
     scopes: ['app'],

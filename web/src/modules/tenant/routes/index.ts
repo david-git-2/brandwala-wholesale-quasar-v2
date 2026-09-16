@@ -4,6 +4,7 @@ import {
   getAppRouteLocation,
   getTenantSlugFromRoute,
 } from 'src/modules/tenant/utils/tenantRouteContext';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 
 const tenantRoutes: RouteRecordRaw[] = [
   // SUPERADMIN ROUTES
@@ -81,10 +82,20 @@ const tenantRoutes: RouteRecordRaw[] = [
               return { name: 'admin-tenant-list' };
             }
 
+            const tenantStore = useTenantStore();
+            const routeTenant =
+              tenantStore.items.find((tenant) => tenant.id === routeTenantId) ?? null;
+            const isCompanyDetails = routeTenantId === selectedTenantId;
+            const isBrandUnderCompany =
+              routeTenant?.parent_id === selectedTenantId ||
+              tenantStore.hierarchyChildRefs.some(
+                (ref) => ref.id === routeTenantId && ref.parent_id === selectedTenantId,
+              );
+
             if (
               Number.isFinite(routeTenantId) &&
-              routeTenantId === selectedTenantId &&
-              routeTenantSlug === selectedTenantSlug
+              routeTenantSlug === selectedTenantSlug &&
+              (isCompanyDetails || isBrandUnderCompany)
             ) {
               return true;
             }

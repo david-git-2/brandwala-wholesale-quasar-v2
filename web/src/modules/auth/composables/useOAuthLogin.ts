@@ -348,6 +348,7 @@ export function useOAuthLogin(
       return false;
     }
 
+    tenantStore.items = availableTenants;
     tenantStore.setAvailableAdminTenants(availableTenants);
 
     const requestedTenant = requestedTenantSlug
@@ -400,7 +401,12 @@ export function useOAuthLogin(
       return true;
     }
 
-    const selectedTenantId = requestedTenant.id;
+    const workspaceTenant =
+      requestedTenant.parent_id != null
+        ? (availableTenants.find((tenant) => tenant.id === requestedTenant.parent_id) ??
+          requestedTenant)
+        : requestedTenant;
+    const selectedTenantId = workspaceTenant.id;
 
     const { data: bootstrapData, error: bootstrapError } = await supabase.rpc(
       'get_app_bootstrap_context',

@@ -167,10 +167,7 @@ const issuingTenantOptions = computed(() => {
   const parentId = props.parentTenantId;
   if (!parentId) return [];
 
-  const tenants =
-    tenantStore.availableAdminTenants.length > 0
-      ? tenantStore.availableAdminTenants
-      : tenantStore.items;
+  const tenants = tenantStore.items.length > 0 ? tenantStore.items : tenantStore.availableAdminTenants;
 
   return tenants
     .filter((tenant) => tenant.parent_id === parentId)

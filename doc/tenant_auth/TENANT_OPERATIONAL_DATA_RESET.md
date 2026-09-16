@@ -43,36 +43,36 @@ To ensure zero collateral damage to business configurations, the purge boundary 
 | Domain | ❌ Operational / Transactional Data (PURGED) | 🔒 Master & Configuration Data (STRICTLY PRESERVED) |
 | :--- | :--- | :--- |
 | **Procurement & Warehouse Stock** | • `global_shipment_items`<br>• `global_shipment_boxes`<br>• `global_shipment_sections`<br>• `global_shipment_cost_entries`<br>• `global_shipments`<br>• `global_stock_items`<br>• `global_stock_boxes`<br>• `global_stocks`<br>• `stock_movements`, `global_stock_movements`<br>• `costing_files`, `product_based_costing_files`, `product_based_costing_items`<br>• `shipment_investments` | • `stock_locations` (warehouses, bays, shelves, bins)<br>• `global_stock_types` (Grading presets, A/B/C conditions)<br>• `vendors` / Suppliers & cargo carriers<br>• `products`, `product_variants`, `product_categories`, `product_tags`, `product_attributes`<br>• `thrift_items` master catalog entries |
-| **Orders, POS & B2B Commerce** | • `shop_order_items`<br>• `shop_order_status_history`<br>• `shop_orders`<br>• `shop_cart_items`<br>• `shop_carts`<br>• `customer_group_backlog_bucket_items`<br>• `customer_demand_bucket_items` (interim — drop after migration)<br>• `dropship_order_settlements` | • `shops` (child tenant store configurations)<br>• `shop_categories`, `shop_pricing_rules`<br>• `shop_product_listings` (quantities reset to 0)<br>• Customer accounts & store memberships |
+| **Orders, POS & B2B Commerce** | • `shop_order_items`<br>• `shop_order_status_history`<br>• `shop_orders`<br>• `shop_cart_items`<br>• `shop_carts`<br>• `customer_group_backlog_bucket_items`<br>• `customer_demand_bucket_items` (interim — drop after migration)<br>• `dropship_order_settlements` | • `shops` (brand store configurations)<br>• `shop_categories`, `shop_pricing_rules`<br>• `shop_product_listings` (quantities reset to 0)<br>• Customer accounts & store memberships |
 | **Sales Invoices & Billing** | • `global_invoice_items`<br>• `global_invoices`<br>• `global_return_items`<br>• `global_returns`<br>• `sales_invoices`, `sales_invoice_items`<br>• **Reset `sales_invoice_counters` to 0** | • `billing_profiles`<br>• `recipient_profiles`<br>• `customers` / Customer groups<br>• `invoice_brands` |
 | **Financial Ledger & Wallets** | • `universal_ledger_transactions`<br>• `universal_wallet_transactions`<br>• `ledger_transactions`<br>• `wallet_transactions`<br>• `payouts`, `deposits`, `expenses`<br>• **Reset `universal_wallets.balance = 0.00`**<br>• **Reset `wallets.balance = 0.00`** | • `universal_wallets` rows (records preserved for FK stability)<br>• `wallets` rows<br>• `investors` profiles & capital entity configs |
 | **Trash & Activity Logs** | • `trash_entries` (operational entity references)<br>• `activity_logs` (transaction-related actions) | • Audit trail for master data<br>• `tenant_data_purge_logs` (permanent wipe audit record) |
-| **Tenant & Authentication** | *Nothing deleted* | • `tenants` (Parent and Child sister concerns)<br>• `users`, `profiles`, `user_tenants`<br>• `tenant_roles`, `role_module_grants`, `tenant_features` |
+| **Tenant & Authentication** | *Nothing deleted* | • `tenants` (companies and brands)<br>• `users`, `profiles`, `user_tenants`<br>• `tenant_roles`, `role_module_grants`, `tenant_features` |
 
 ---
 
 ## 3. Multi-Tenant Scope & Hierarchy Handling
 
-TradeFlow BD uses a strict single-tier hierarchy where a Parent Company (`parent_id = NULL`) owns the physical warehouse pool and cargo shipments, while Child Sister Concerns (`parent_id = parent.id`) operate sales desks and storefront commerce.
+TradeFlow BD uses a strict single-tier hierarchy where a **Company** (`parent_id = NULL`) owns the physical warehouse pool and cargo shipments, while **Brands** (`parent_id = company.id`) operate sales desks and storefront commerce. See [`TENANT_AUTH.md`](./TENANT_AUTH.md) for UI vocabulary.
 
 ```mermaid
 flowchart LR
     subgraph ScopeSelection ["Purge Scope Options"]
-        S1["Option A: Full Hierarchy Purge<br/>(parent_tenant_id = Parent ID)"]
-        S2["Option B: Child Desk Only Purge<br/>(tenant_id = Child ID)"]
+        S1["Option A: Full Hierarchy Purge<br/>(parent_tenant_id = Company ID)"]
+        S2["Option B: Brand Desk Only Purge<br/>(tenant_id = Brand ID)"]
     end
 
-    S1 -->|Deletes| P_ALL["Parent Shipments + Global Stocks + ALL Child Orders + Invoices + Wallets"]
-    S2 -->|Deletes| C_ONLY["Selected Child's Orders + Invoices + Carts only (Parent Stocks Intact)"]
+    S1 -->|Deletes| P_ALL["Company Shipments + Global Stocks + ALL Brand Orders + Invoices + Wallets"]
+    S2 -->|Deletes| C_ONLY["Selected Brand Orders + Invoices + Carts only (Company Stocks Intact)"]
 ```
 
 ### Scope Definitions:
 1. **`all_hierarchy` (Full Organization Wipe):**
-   * Target: Parent Tenant ID.
-   * Action: Wipes all global shipments, physical global stocks, and cascades across all sister concerns to wipe their shop orders, POS invoices, carts, and ledger lines. All tenant and child wallets are reset to zero balance.
-2. **`child_only` (Single Sister Concern Desk Wipe):**
-   * Target: Specific Child Tenant ID.
-   * Action: Wipes only local shop orders, local sales invoices, and local carts belonging to that child desk. Parent physical warehouse stock, supplier shipments, and other sister concerns remain completely untouched.
+   * Target: Company (parent tenant) ID.
+   * Action: Wipes all global shipments, physical global stocks, and cascades across all brands to wipe their shop orders, POS invoices, carts, and ledger lines. All company and brand wallets are reset to zero balance.
+2. **`child_only` (Single Brand Desk Wipe):**
+   * Target: Specific brand (child tenant) ID.
+   * Action: Wipes only local shop orders, local sales invoices, and local carts belonging to that brand desk. Company physical warehouse stock, supplier shipments, and other brands remain completely untouched.
 
 ---
 
