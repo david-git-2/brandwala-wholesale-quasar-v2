@@ -94,6 +94,14 @@ const isTenantModuleActive = (
     );
   }
 
+  if (moduleKey === 'invoice_brand') {
+    return (
+      activeModuleKeys.includes('invoice_brand') ||
+      activeModuleKeys.includes('global_invoice') ||
+      activeModuleKeys.includes('sales_invoice')
+    );
+  }
+
   if (moduleKey === 'procurement_stock') {
     return PROCUREMENT_HUB_MODULE_KEYS.some((key) => activeModuleKeys.includes(key));
   }
@@ -158,6 +166,16 @@ const hasModuleRoleGrant = ({
     );
   }
 
+  if (moduleKey === 'invoice_brand') {
+    return effectiveGrants.some(
+      (grant) =>
+        (grant.module_key === 'invoice_brand' ||
+          grant.module_key === 'global_invoice' ||
+          grant.module_key === 'sales_invoice') &&
+        grant.action === action,
+    );
+  }
+
   if (moduleKey === 'procurement_stock') {
     return effectiveGrants.some(
       (grant) => grant.module_key === 'global_shipment' && grant.action === action,
@@ -178,7 +196,6 @@ const NO_ACCESS: readonly ModuleAction[] = [];
 const SALES_CHILD_CATALOG_MODULES: ReadonlySet<ModuleKey> = new Set([
   'billing_profile',
   'recipient_profile',
-  'invoice_brand',
 ]);
 
 const isBlockedOnParentCompany = (
@@ -296,7 +313,8 @@ export const canAccessModule = ({
       moduleKey === 'investor_capital_ledger' ||
       moduleKey === 'investor_shipment_share' ||
       moduleKey === 'investor_portal' ||
-      moduleKey === 'universal_wallet';
+      moduleKey === 'universal_wallet' ||
+      moduleKey === 'invoice_brand';
     if (blockedOnChild) {
       return false;
     }
@@ -380,6 +398,20 @@ export const resolveModuleAccess = ({
         .filter((grant) => grant.module_key === 'global_shipment')
         .map((grant) => grant.action as ModuleAction);
     }
+    if (
+      moduleKey === 'invoice_brand' &&
+      allowedActions.length === 0 &&
+      effectiveGrants.some(
+        (grant) => grant.module_key === 'global_invoice' || grant.module_key === 'sales_invoice',
+      )
+    ) {
+      allowedActions = effectiveGrants
+        .filter(
+          (grant) =>
+            grant.module_key === 'global_invoice' || grant.module_key === 'sales_invoice',
+        )
+        .map((grant) => grant.action as ModuleAction);
+    }
   } else {
     allowedActions = NO_ACCESS;
     roleAllowed = false;
@@ -398,7 +430,8 @@ export const resolveModuleAccess = ({
       moduleKey === 'investor_capital_ledger' ||
       moduleKey === 'investor_shipment_share' ||
       moduleKey === 'investor_portal' ||
-      moduleKey === 'universal_wallet';
+      moduleKey === 'universal_wallet' ||
+      moduleKey === 'invoice_brand';
   }
 
   if (isChildTenant && moduleKey === 'global_stock') {

@@ -710,7 +710,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'invoice_brand',
     name: 'Invoice Brands',
     description: 'Print layout presets and company invoice brand headers.',
-    parentModuleKey: 'sales_invoice',
+    navIcon: 'ph ph-paint-brush',
     routes: [
       {
         scope: 'app',
