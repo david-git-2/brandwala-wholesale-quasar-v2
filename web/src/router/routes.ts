@@ -116,6 +116,22 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/dev/document',
+    name: 'dev-documentation-codex',
+    component: () => import('pages/DevDocumentPage.vue'),
+    meta: {
+      title: 'Documentation Codex',
+    },
+  },
+  {
+    path: '/dev/documents',
+    redirect: '/dev/document',
+  },
+  {
+    path: '/dev/doc',
+    redirect: '/dev/document',
+  },
 
   // Always leave this as last one
   {
