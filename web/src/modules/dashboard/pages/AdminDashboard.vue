@@ -212,16 +212,31 @@ const handleRefresh = async () => {
 
 <style scoped>
 .dashboard-page {
-  background: var(--bw-neutral-canvas, #F8FAFC);
+  --bw-neutral-canvas: #f4f6f8;
+  --bw-neutral-surface: #ffffff;
+  --bw-neutral-border: #e2e8f0;
+  --bw-neutral-ink: #0f172a;
+  --bw-neutral-muted: #64748b;
+  background: var(--bw-neutral-canvas, #f4f6f8) !important;
   min-height: calc(100vh - 55px);
-  padding: 0.75rem 1.25rem 2rem;
+  padding: 1rem 1.5rem 2.5rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+}
+
+body.body--dark .dashboard-page {
+  --bw-neutral-canvas: #09090b;
+  --bw-neutral-surface: #141417;
+  --bw-neutral-border: #27272a;
+  --bw-neutral-ink: #f8fafc;
+  --bw-neutral-muted: #94a3b8;
+  background: #09090b !important;
 }
 
 .dashboard-content-stack {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  max-width: 1400px;
+  max-width: 1440px;
   margin: 0 auto;
 }
 
@@ -244,13 +259,13 @@ const handleRefresh = async () => {
   gap: 0.75rem;
   margin-top: 0.5rem;
   padding-top: 1rem;
-  border-top: 1px dashed var(--bw-neutral-border, #e7e1d8);
+  border-top: 1px dashed var(--bw-neutral-border, #E2E8F0);
 }
 
 .dashboard-board {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 @media (max-width: 1080px) {

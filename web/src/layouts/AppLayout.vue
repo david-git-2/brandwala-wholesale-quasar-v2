@@ -6,9 +6,23 @@
 
     <template #header-extra>
       <div class="row items-center q-gutter-x-sm no-wrap">
+        <!-- Modern Quick-search trigger (⌘K) -->
+        <button
+          type="button"
+          class="header-quick-search gt-xs"
+          aria-label="Search pages"
+          @click="workspaceShellRef?.openCommandPalette()"
+        >
+          <q-icon name="ph ph-magnifying-glass" size="13px" class="q-mr-xs header-quick-search__icon" />
+          <span class="header-quick-search__text">Search pages...</span>
+          <kbd class="header-quick-search__kbd">⌘K</kbd>
+        </button>
+
+        <div class="header-divider gt-xs" />
+
         <NotificationBell />
 
-        <q-separator vertical inset class="q-mx-xs text-grey-4 gt-xs" />
+        <div class="header-divider gt-xs" />
 
         <!-- Modernized Workspace / Tenant Switcher Badge -->
         <q-btn-dropdown
@@ -17,6 +31,7 @@
           no-caps
           dense
           class="tenant-switcher-pill q-px-sm"
+          menu-class="tenant-switcher-menu"
           :loading="selectingTenantId !== null"
         >
           <template #label>
@@ -27,7 +42,7 @@
           </template>
 
           <q-list style="min-width: 240px" class="q-py-xs">
-            <q-item-label header class="text-uppercase text-weight-bold text-grey-7" style="font-size: 9px; letter-spacing: 0.1em">
+            <q-item-label header class="dropdown-header">
               Companies
             </q-item-label>
 
@@ -36,8 +51,9 @@
               :key="option.value"
               clickable
               v-close-popup
+              class="tenant-item"
               :active="option.value === selectedTenantId"
-              active-class="bg-blue-1 text-primary text-weight-bold"
+              active-class="tenant-item--active"
               @click="onSelectTenant(option.value)"
             >
               <q-item-section avatar class="q-pr-none" style="min-width: 24px">
@@ -57,7 +73,7 @@
           </q-list>
         </q-btn-dropdown>
 
-        <q-separator vertical inset class="q-mx-xs text-grey-4 gt-xs" />
+        <div class="header-divider gt-xs" />
 
         <!-- User Profile Avatar & Menu (Includes Appearance, Language, Help, Logout) -->
         <UserProfileMenu @sign-out="onMobileSignOut" />
@@ -152,11 +168,7 @@ onMounted(() => {
       await tenantPreferenceStore.ensureLoaded(
         authStore.tenantId,
         authStore.user?.email ?? null,
-        role === 'owner' ||
-          role === 'manager' ||
-          role === 'admin' ||
-          role === 'staff' ||
-          role === 'viewer'
+        role === 'superadmin' || role === 'admin' || role === 'staff' || role === 'viewer'
           ? role
           : null,
       );
@@ -175,51 +187,108 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.header-quick-search {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 8px 0 10px;
+  border-radius: 8px;
+  background: var(--bw-neutral-canvas);
+  border: 1px solid var(--bw-neutral-border);
+  color: var(--bw-neutral-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+}
+
+.header-quick-search:hover {
+  border-color: color-mix(in srgb, var(--bw-brand-accent) 40%, var(--bw-neutral-border));
+  color: var(--bw-neutral-ink);
+  background: var(--bw-neutral-surface);
+}
+
+.header-quick-search__icon {
+  color: var(--bw-neutral-chrome);
+}
+
+.header-quick-search__kbd {
+  margin-left: 8px;
+  font-size: 10px;
+  font-family: var(--bw-font-mono);
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bw-neutral-surface);
+  border: 1px solid var(--bw-neutral-border);
+  color: var(--bw-neutral-chrome);
+}
+
+.header-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--bw-neutral-border);
+  margin: 0 4px;
+}
+
 .tenant-switcher-pill {
   font-weight: 600;
   font-size: 0.8125rem;
   height: 30px;
   border-radius: 8px;
-  color: #1e293b !important;
-  background: color-mix(in srgb, var(--q-primary, #047857) 10%, #f8fafc);
-  border: 1px solid color-mix(in srgb, var(--q-primary, #047857) 25%, #e2e8f0);
+  color: var(--bw-neutral-ink) !important;
+  background: var(--bw-neutral-surface);
+  border: 1px solid var(--bw-neutral-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s ease-in-out;
 }
 
 .tenant-switcher-pill:hover {
-  background: color-mix(in srgb, var(--q-primary, #047857) 15%, #f1f5f9);
+  background: color-mix(in srgb, var(--bw-neutral-ink) 4%, var(--bw-neutral-surface));
+  border-color: color-mix(in srgb, var(--bw-brand-accent) 30%, var(--bw-neutral-border));
 }
 
 .tenant-switcher-pill :deep(.q-btn__content) {
-  color: #1e293b;
+  color: var(--bw-neutral-ink);
 }
 
 .tenant-switcher-pill :deep(.q-btn-dropdown__arrow) {
-  color: #64748b;
+  color: var(--bw-neutral-chrome);
   margin-left: 2px;
 }
 
 .tenant-switcher-pill__label {
-  color: #1e293b;
+  color: var(--bw-neutral-ink);
   max-width: 140px;
 }
 
-body.body--dark .tenant-switcher-pill {
-  background: #1e293b;
-  border-color: #334155;
-  color: #f8fafc !important;
+.dropdown-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bw-neutral-chrome);
+  padding: 8px 14px 2px;
 }
 
-body.body--dark .tenant-switcher-pill :deep(.q-btn__content),
-body.body--dark .tenant-switcher-pill__label {
-  color: #f8fafc;
+.tenant-item {
+  min-height: 34px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  margin: 1px 6px;
+  font-size: 13px;
+  color: var(--bw-neutral-ink);
+  transition: background-color 0.15s ease;
 }
 
-body.body--dark .tenant-switcher-pill :deep(.q-btn-dropdown__arrow) {
-  color: #94a3b8;
+.tenant-item:hover {
+  background: color-mix(in srgb, var(--bw-neutral-ink) 4%, transparent);
 }
 
-body.body--dark .bg-blue-1 {
-  background: #1e3a8a !important;
+.tenant-item--active {
+  background: var(--bw-theme-primary-soft) !important;
+  color: var(--bw-brand-accent) !important;
+  font-weight: 600;
 }
 
 @media (max-width: 600px) {

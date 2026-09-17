@@ -160,21 +160,26 @@ const formatNumberOnly = (value: unknown): string => {
 .dashboard-scorecard {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.85rem;
+  gap: 1rem;
   width: 100%;
 }
 
 .scorecard-tile {
   background: var(--bw-neutral-surface, #FFFFFF);
-  border: 1px solid var(--bw-neutral-border, #F1F5F9);
-  border-radius: var(--bw-radius-md, 12px);
-  padding: 0.85rem 1rem;
+  border: 1px solid var(--bw-neutral-border, #E2E8F0);
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-  transition: all 0.15s ease;
-  min-height: 105px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 110px;
+}
+
+body.body--dark .scorecard-tile {
+  background: #18181B;
+  border-color: #27272A;
 }
 
 .scorecard-tile--link {
@@ -182,8 +187,14 @@ const formatNumberOnly = (value: unknown): string => {
 }
 
 .scorecard-tile--link:hover {
+  transform: translateY(-2px);
   border-color: #CBD5E1;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+body.body--dark .scorecard-tile--link:hover {
+  border-color: #3F3F46;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 .scorecard-tile__header {
@@ -194,9 +205,13 @@ const formatNumberOnly = (value: unknown): string => {
 }
 
 .scorecard-tile__label {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   color: #64748B;
+}
+
+body.body--dark .scorecard-tile__label {
+  color: #A1A1AA;
 }
 
 .trend-indicator {
@@ -205,29 +220,55 @@ const formatNumberOnly = (value: unknown): string => {
   gap: 2px;
   font-size: 11px;
   font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
 }
 
 .trend-indicator--positive {
-  color: #10B981;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #16A34A;
 }
 
 .trend-indicator--warning {
-  color: #F59E0B;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  color: #B45309;
+}
+
+body.body--dark .trend-indicator--positive {
+  background: rgba(22, 163, 74, 0.15);
+  border-color: rgba(22, 163, 74, 0.3);
+  color: #86EFAC;
+}
+
+body.body--dark .trend-indicator--warning {
+  background: rgba(217, 119, 6, 0.15);
+  border-color: rgba(217, 119, 6, 0.3);
+  color: #FCD34D;
 }
 
 .stat-pill-neutral {
   font-size: 11px;
+  font-weight: 500;
   color: #64748B;
-  background: #F8FAFC;
-  padding: 1px 6px;
-  border-radius: var(--bw-radius-sm, 8px);
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
+body.body--dark .stat-pill-neutral {
+  background: #27272A;
+  border-color: #3F3F46;
+  color: #A1A1AA;
 }
 
 .scorecard-tile__value-row {
   display: flex;
   align-items: baseline;
-  gap: 3px;
-  margin-top: 0.25rem;
+  gap: 4px;
+  margin-top: 0.35rem;
 }
 
 .currency-symbol {
@@ -238,22 +279,26 @@ const formatNumberOnly = (value: unknown): string => {
 
 .main-number {
   font-family: var(--bw-font-mono, 'IBM Plex Mono', monospace);
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: -0.03em;
-  color: var(--bw-neutral-ink, #0F172A);
+  letter-spacing: -0.035em;
+  color: #0F172A;
   line-height: 1.1;
+}
+
+body.body--dark .main-number {
+  color: #F4F4F5;
 }
 
 .scorecard-tile__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 0.35rem;
+  margin-top: 0.4rem;
 }
 
 .footer-caption {
-  font-size: 11px;
+  font-size: 11.5px;
   color: #94A3B8;
 }
 

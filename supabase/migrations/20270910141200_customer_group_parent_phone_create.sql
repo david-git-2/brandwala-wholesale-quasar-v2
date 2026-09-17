@@ -115,23 +115,10 @@ create trigger trg_billing_profiles_sync_parent_tenant
   for each row
   execute function public.trg_billing_profiles_sync_parent_tenant();
 
--- Unique per group when data is already 1:1. Skip if historical duplicates remain.
-do $$
-begin
-  if not exists (
-    select 1
-    from public.billing_profiles
-    where customer_group_id is not null
-    group by customer_group_id
-    having count(*) > 1
-  ) then
-    create unique index if not exists billing_profiles_customer_group_id_uidx
-      on public.billing_profiles using btree (customer_group_id)
-      where customer_group_id is not null;
-  else
-    raise notice 'Skipped billing_profiles_customer_group_id_uidx: duplicate profiles per group exist';
-  end if;
-end $$;
+-- Non-unique index for customer_group_id on billing_profiles (historical data contains multiple profiles per group)
+drop index if exists public.billing_profiles_customer_group_id_uidx;
+create index if not exists billing_profiles_customer_group_id_idx
+  on public.billing_profiles using btree (customer_group_id);
 
 -- Duplicate phones under the same books tenant: keep first, suffix the rest.
 update public.billing_profiles bp

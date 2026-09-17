@@ -186,22 +186,6 @@
             </q-menu>
           </q-btn>
 
-          <!-- Settings Gear Button (Opens Side Drawer) -->
-          <q-btn
-            flat
-            dense
-            no-caps
-            color="grey-8"
-            icon="ph ph-chart-pie-slice"
-            :label="$t('product_based_costing.summary_title')"
-            size="sm"
-            class="rounded-sq-btn q-px-sm border-grey"
-            style="border-radius: 8px"
-            @click="summaryExpanded = !summaryExpanded"
-          >
-            <q-tooltip>{{ $t('product_based_costing.summary_toggle') }}</q-tooltip>
-          </q-btn>
-
           <q-btn
             flat
             round
@@ -280,22 +264,7 @@
       </div>
     </div>
 
-    <!-- Expandable full costing summary -->
-    <div
-      v-if="summaryExpanded && !isLoading"
-      class="pbc-v2-summary-section bg-white border-bottom shrink-0 q-px-md q-py-sm"
-      style="max-height: 42vh; overflow-y: auto"
-    >
-      <q-inner-loading :showing="isLoadingSummary" />
-      <ProductBasedCostingFileSummaryPanel
-        :summary-metrics="summaryMetrics"
-        :conversion-rate="conversionRateValue"
-        :cargo-rate="cargoRateValue"
-        :profit-rate="profitRateValue"
-        :file-meta="summaryFileMeta"
-        show-file-meta
-      />
-    </div>
+
 
     <!-- Active Selection Action Banner Row -->
     <div
@@ -1114,7 +1083,6 @@ import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingI
 import ProductBasedCostingSettingsDrawer, {
   type PbcSettingsDrawerAction,
 } from '../components/ProductBasedCostingSettingsDrawer.vue';
-import ProductBasedCostingFileSummaryPanel from '../components/ProductBasedCostingFileSummaryPanel.vue';
 import { usePbcFileSummaryQuery } from '../composables/usePbcFileSummaryQuery';
 import ProductBasedCostingStatusOverrideDialog from '../components/ProductBasedCostingStatusOverrideDialog.vue';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
@@ -1228,7 +1196,6 @@ const { data: customerAccountsResult } = useQuery({
 const customerAccounts = computed(() => customerAccountsResult.value ?? []);
 
 const ratesExpanded = ref(false);
-const summaryExpanded = ref(false);
 const savingRates = ref(false);
 const localRates = reactive({
   conversion_rate: 140,
@@ -1272,7 +1239,7 @@ const summaryRates = computed(() => ({
   profitRate: profitRateValue.value || 0,
 }));
 
-const { summaryMetrics, isLoading: isLoadingSummary } = usePbcFileSummaryQuery(fileId, summaryRates);
+const { summaryMetrics } = usePbcFileSummaryQuery(fileId, summaryRates);
 
 const summaryFileMeta = computed(() => {
   const customer = customerAccounts.value.find(

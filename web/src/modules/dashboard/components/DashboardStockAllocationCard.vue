@@ -177,23 +177,33 @@ const navigateTo = (to: RouteLocationRaw) => {
 <style scoped>
 .stock-card {
   background: var(--bw-neutral-surface, #FFFFFF);
-  border: 1px solid var(--bw-neutral-border, #F1F5F9);
-  border-radius: var(--bw-radius-md, 12px);
-  padding: 0.85rem 1rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--bw-neutral-border, #E2E8F0);
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+body.body--dark .stock-card {
+  background: #18181B;
+  border-color: #27272A;
 }
 
 .stock-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.85rem;
 }
 
 .stock-title {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   color: #0F172A;
+  letter-spacing: -0.01em;
+}
+
+body.body--dark .stock-title {
+  color: #F4F4F5;
 }
 
 .stock-view-all {
@@ -204,10 +214,15 @@ const navigateTo = (to: RouteLocationRaw) => {
   display: flex;
   align-items: center;
   gap: 3px;
+  transition: color 0.15s ease;
 }
 
 .stock-view-all:hover {
-  color: #0F172A;
+  color: var(--bw-brand-accent, #0d6b5c);
+}
+
+body.body--dark .stock-view-all:hover {
+  color: var(--bw-brand-accent, #4db8a4);
 }
 
 .stock-body {
@@ -232,10 +247,17 @@ const navigateTo = (to: RouteLocationRaw) => {
 .sellable-status-pill {
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 4px;
-  background: #DCFCE7;
-  color: #166534;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #16A34A;
+}
+
+body.body--dark .sellable-status-pill {
+  background: rgba(22, 163, 74, 0.15);
+  border-color: rgba(22, 163, 74, 0.3);
+  color: #86EFAC;
 }
 
 .segmented-stock-bar {
@@ -340,22 +362,84 @@ const navigateTo = (to: RouteLocationRaw) => {
 .status-badge {
   font-size: 10px;
   font-weight: 600;
-  padding: 2px 6px;
+  padding: 2px 7px;
   border-radius: 4px;
+  border: 1px solid transparent;
 }
 
 .status-badge--warn {
-  background: #FEF3C7;
-  color: #92400E;
+  background: #FFFBEB;
+  border-color: #FDE68A;
+  color: #B45309;
 }
 
 .status-badge--info {
-  background: #E0F2FE;
-  color: #075985;
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+  color: #2563EB;
+}
+
+.status-badge--received,
+.status-badge--success {
+  background: #F0FDF4;
+  border-color: #BBF7D0;
+  color: #16A34A;
+}
+
+body.body--dark .status-badge--warn {
+  background: rgba(217, 119, 6, 0.15);
+  border-color: rgba(217, 119, 6, 0.3);
+  color: #FCD34D;
+}
+
+body.body--dark .status-badge--info {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(37, 99, 235, 0.3);
+  color: #93C5FD;
+}
+
+body.body--dark .status-badge--received,
+body.body--dark .status-badge--success {
+  background: rgba(22, 163, 74, 0.15);
+  border-color: rgba(22, 163, 74, 0.3);
+  color: #86EFAC;
 }
 
 .text-slate-400 { color: #94A3B8; }
 .text-slate-900 { color: #0F172A; }
+
+body.body--dark .shipments-title {
+  color: #A1A1AA;
+}
+
+body.body--dark .shipment-item {
+  background: #27272A;
+  border: 1px solid #3F3F46;
+}
+
+body.body--dark .shipment-item:hover {
+  background: #3F3F46;
+}
+
+body.body--dark .shipment-name {
+  color: #F4F4F5;
+}
+
+body.body--dark .legend-name {
+  color: #A1A1AA;
+}
+
+body.body--dark .legend-val {
+  color: #F4F4F5;
+}
+
+body.body--dark .text-slate-900 {
+  color: #F4F4F5 !important;
+}
+
+body.body--dark .segmented-stock-bar {
+  background: #27272A;
+}
 
 @media (max-width: 800px) {
   .stock-body {

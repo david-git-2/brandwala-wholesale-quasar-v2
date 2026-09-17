@@ -1131,9 +1131,9 @@ function formatCurrency(val: number) {
   z-index: 2;
   font-weight: 700;
   font-size: 11px;
-  background: #fbfaf7;
-  color: #44403c;
-  border-bottom: 1px solid #e7e5e4;
+  background: var(--bw-neutral-canvas, #f8fafc);
+  color: var(--bw-neutral-muted, #64748b);
+  border-bottom: 1px solid var(--bw-neutral-border, #e2e8f0);
 }
 
 .treasury-ops-table :deep(.q-table__middle) {

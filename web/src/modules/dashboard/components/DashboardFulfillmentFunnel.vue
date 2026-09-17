@@ -101,23 +101,33 @@ const navigateTo = (to: RouteLocationRaw) => {
 <style scoped>
 .fulfillment-card {
   background: var(--bw-neutral-surface, #FFFFFF);
-  border: 1px solid var(--bw-neutral-border, #F1F5F9);
-  border-radius: var(--bw-radius-md, 12px);
-  padding: 0.85rem 1rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--bw-neutral-border, #E2E8F0);
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+body.body--dark .fulfillment-card {
+  background: #18181B;
+  border-color: #27272A;
 }
 
 .fulfillment-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.85rem;
 }
 
 .fulfillment-title {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   color: #0F172A;
+  letter-spacing: -0.01em;
+}
+
+body.body--dark .fulfillment-title {
+  color: #F4F4F5;
 }
 
 .fulfillment-view-all {
@@ -128,28 +138,46 @@ const navigateTo = (to: RouteLocationRaw) => {
   display: flex;
   align-items: center;
   gap: 3px;
+  transition: color 0.15s ease;
 }
 
 .fulfillment-view-all:hover {
-  color: #0F172A;
+  color: var(--bw-brand-accent, #0d6b5c);
+}
+
+body.body--dark .fulfillment-view-all:hover {
+  color: var(--bw-brand-accent, #4db8a4);
 }
 
 .stepper-track {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .step-item {
   display: flex;
   flex-direction: column;
   cursor: pointer;
-  padding: 0.25rem 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
   transition: all 0.15s ease;
+}
+
+.step-item:hover {
+  background: #F8FAFC;
+}
+
+body.body--dark .step-item:hover {
+  background: #27272A;
 }
 
 .step-item:hover .step-name {
   color: #0F172A;
+}
+
+body.body--dark .step-item:hover .step-name {
+  color: #F4F4F5;
 }
 
 .step-progress-bar {
@@ -157,6 +185,10 @@ const navigateTo = (to: RouteLocationRaw) => {
   border-radius: 2px;
   margin-bottom: 0.5rem;
   background: #E2E8F0;
+}
+
+body.body--dark .step-progress-bar {
+  background: #3F3F46;
 }
 
 .step-progress-bar--pending { background: #3B82F6; }
@@ -184,6 +216,14 @@ const navigateTo = (to: RouteLocationRaw) => {
   font-size: 15px;
   font-weight: 700;
   color: #0F172A;
+}
+
+body.body--dark .step-count {
+  color: #F4F4F5;
+}
+
+body.body--dark .step-name {
+  color: #A1A1AA;
 }
 
 .step-sub {

@@ -46,14 +46,20 @@ ALTER FUNCTION "public"."get_active_module_keys_for_tenant"("p_tenant_id" bigint
 
 -- Ensure modules are activated for parent tenant 15 if present
 INSERT INTO public.tenant_modules (tenant_id, module_key, is_active)
-VALUES 
-  (15, 'shop_order', true),
-  (15, 'shop_order_mgmt', true),
-  (15, 'shop_config', true),
-  (15, 'shop_pricing', true),
-  (15, 'shop_category', true),
-  (15, 'shop_shipping', true),
-  (15, 'shop_permissions', true)
+SELECT 15, m.module_key, true
+FROM (
+  VALUES 
+    ('shop_order'),
+    ('shop_order_mgmt'),
+    ('shop_config'),
+    ('shop_pricing'),
+    ('shop_category'),
+    ('shop_shipping'),
+    ('shop_permissions')
+) AS m(module_key)
+WHERE EXISTS (
+  SELECT 1 FROM public.tenants WHERE id = 15
+)
 ON CONFLICT (tenant_id, module_key) 
 DO UPDATE SET is_active = true, updated_at = now();
 

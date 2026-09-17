@@ -162,7 +162,7 @@ const onSelect = async (item: NotificationItem) => {
 
 const onSeeAll = () => {
   const routeName = props.scope === 'shop' ? 'shop-notifications-inbox' : 'notifications-inbox';
-  router.push(
+  void router.push(
     getAppRouteLocation(
       { name: routeName, params: {}, query: {} },
       authStore.tenantSlug,
@@ -171,7 +171,7 @@ const onSeeAll = () => {
 };
 
 const onBrowserAlerts = () => {
-  router.push(
+  void router.push(
     getAppRouteLocation(
       { name: 'notifications-preferences', params: {}, query: {} },
       authStore.tenantSlug,
@@ -182,12 +182,17 @@ const onBrowserAlerts = () => {
 
 <style scoped>
 .notification-bell {
-  color: var(--shell-ink, var(--bw-theme-ink, #171412));
-  background: var(--shell-accent-soft, color-mix(in srgb, var(--q-primary, #488b8f) 10%, transparent));
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  color: var(--bw-neutral-muted);
+  background: transparent;
+  transition: all 0.15s ease-in-out;
 }
 
 .notification-bell:hover {
-  background: color-mix(in srgb, var(--q-primary, #488b8f) 16%, transparent);
+  color: var(--bw-neutral-ink);
+  background: color-mix(in srgb, var(--bw-neutral-ink) 5%, transparent);
 }
 
 .notification-bell :deep(.q-icon),
@@ -195,11 +200,34 @@ const onBrowserAlerts = () => {
   color: inherit;
 }
 
+.notification-bell :deep(.q-badge) {
+  top: 4px;
+  right: 4px;
+  min-height: 15px;
+  height: 15px;
+  padding: 0 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1.5px solid var(--bw-neutral-surface);
+}
+
 .notification-bell__menu {
   width: min(360px, calc(100vw - 24px));
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bw-neutral-surface);
+  border: 1px solid var(--bw-neutral-border);
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.18);
 }
 
 .notification-bell__header {
-  border-bottom: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-bottom: 1px solid var(--bw-neutral-border);
+  background: var(--bw-neutral-canvas);
+}
+
+.notification-bell__footer {
+  border-top: 1px solid var(--bw-neutral-border);
+  background: var(--bw-neutral-canvas);
 }
 </style>

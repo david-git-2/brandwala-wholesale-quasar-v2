@@ -13,7 +13,8 @@
         dense
         outlined
         class="brand-select-input"
-        bg-color="white"
+        :dark="isDark"
+        :popup-content-class="isDark ? 'bg-dark text-white' : ''"
         @update:model-value="$emit('update:selectedBrandId', $event)"
       >
         <template #prepend>
@@ -88,9 +89,13 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useQuasar } from 'quasar';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import { useAppDashboardRoutes } from '../composables/useAppDashboardRoutes';
+
+const $q = useQuasar();
+const isDark = computed(() => $q.dark.isActive);
 
 export type BrandOption = {
   id: number | null;
@@ -204,8 +209,14 @@ const brandOptions = computed<BrandOption[]>(() => {
   height: 32px;
   min-height: 32px;
   padding: 0 10px;
-  border-radius: var(--bw-radius-sm, 8px);
-  border-color: var(--bw-neutral-border, #E2E8F0);
+  border-radius: 8px;
+  border-color: #E2E8F0;
+  background: #FFFFFF;
+}
+
+body.body--dark .brand-select-input :deep(.q-field__control) {
+  background: #18181B;
+  border-color: #27272A;
 }
 
 .brand-select-input :deep(.q-field__native) {
@@ -221,9 +232,13 @@ const brandOptions = computed<BrandOption[]>(() => {
   display: flex;
   align-items: center;
   background: #F1F5F9;
-  border-radius: var(--bw-radius-sm, 8px);
+  border-radius: 8px;
   padding: 2px;
   gap: 2px;
+}
+
+body.body--dark .segmented-date-control {
+  background: #18181B;
 }
 
 .segmented-date-btn {
@@ -242,32 +257,68 @@ const brandOptions = computed<BrandOption[]>(() => {
   color: #0F172A;
 }
 
+body.body--dark .segmented-date-btn {
+  color: #A1A1AA;
+}
+
+body.body--dark .segmented-date-btn:hover {
+  color: #F4F4F5;
+}
+
 .segmented-date-btn--active {
-  background: var(--bw-neutral-surface, #FFFFFF);
+  background: #FFFFFF;
   color: #0F172A;
   font-weight: 600;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
+body.body--dark .segmented-date-btn--active {
+  background: #27272A;
+  color: #F4F4F5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
 .btn-primary {
-  background: #0F172A !important;
+  background: var(--bw-brand-accent, #0d6b5c) !important;
   color: #FFFFFF !important;
   font-size: 12px;
   font-weight: 600;
   padding: 5px 12px;
-  border-radius: var(--bw-radius-sm, 8px) !important;
+  border-radius: 8px !important;
   height: 32px;
+  transition: all 0.15s ease;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+body.body--dark .btn-primary {
+  background: var(--bw-brand-accent, #4db8a4) !important;
+  color: #09090B !important;
 }
 
 .btn-secondary {
-  background: var(--bw-neutral-surface, #FFFFFF) !important;
-  border: 1px solid var(--bw-neutral-border, #E2E8F0);
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0;
   color: #334155 !important;
   font-size: 12px;
   font-weight: 500;
   padding: 5px 12px;
-  border-radius: var(--bw-radius-sm, 8px) !important;
+  border-radius: 8px !important;
   height: 32px;
+  transition: all 0.15s ease;
+}
+
+.btn-secondary:hover {
+  background: #F8FAFC !important;
+  border-color: #CBD5E1;
+}
+
+body.body--dark .btn-secondary {
+  background: #18181B !important;
+  border-color: #27272A !important;
+  color: #D4D4D8 !important;
 }
 
 .text-caption-xs {
@@ -276,4 +327,17 @@ const brandOptions = computed<BrandOption[]>(() => {
 .text-slate-400 { color: #94A3B8; }
 .text-slate-500 { color: #64748B; }
 .text-slate-800 { color: #1E293B; }
+
+body.body--dark .text-slate-800 {
+  color: #F4F4F5 !important;
+}
+
+body.body--dark .brand-select-input :deep(.q-field__control) {
+  background: #18181B !important;
+  border-color: #27272A !important;
+}
+
+body.body--dark .brand-select-input :deep(.text-slate-800) {
+  color: #F4F4F5 !important;
+}
 </style>

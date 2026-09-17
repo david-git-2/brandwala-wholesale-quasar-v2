@@ -28,8 +28,8 @@ export const SCOPE_THEME_PRIMARY_DARK: Record<BrandLogoScope, string> = {
   investor: '#f2765e',
 };
 
-export const SCOPE_THEME_CANVAS_LIGHT = '#fbfaf7';
-export const SCOPE_THEME_CANVAS_DARK = '#141210';
+export const SCOPE_THEME_CANVAS_LIGHT = '#f4f6f8';
+export const SCOPE_THEME_CANVAS_DARK = '#09090b';
 
 export const BRAND_LOGO_MARK_BY_SCOPE: Record<BrandLogoScope, string> = {
   platform: BRAND_LOGO_MARK_PLATFORM_SRC,

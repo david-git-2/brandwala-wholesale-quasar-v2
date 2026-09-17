@@ -1,6 +1,6 @@
 <template>
   <div class="user-profile-menu row items-center no-wrap">
-    <q-btn flat dense no-caps class="user-profile-btn q-px-xs rounded-borders" aria-label="User profile">
+    <q-btn flat dense no-caps class="user-profile-btn" aria-label="User profile">
       <div class="row items-center no-wrap q-gutter-x-xs">
         <q-avatar size="28px" class="user-profile-btn__avatar">
           <img
@@ -12,14 +12,14 @@
           <span v-else class="user-profile-btn__initials">{{ userInitials }}</span>
         </q-avatar>
 
-        <q-icon name="ph ph-caret-down" size="12px" class="text-grey-6" />
+        <q-icon name="ph ph-caret-down" size="12px" class="user-profile-btn__caret" />
       </div>
 
       <!-- Profile Dropdown Menu -->
       <q-menu anchor="bottom end" self="top end" class="user-profile-dropdown" style="min-width: 250px">
-        <div class="q-pa-md bg-grey-1 border-bottom">
+        <div class="user-profile-dropdown__header q-pa-md">
           <div class="row items-center no-wrap q-gutter-x-sm">
-            <q-avatar size="36px" class="user-profile-btn__avatar">
+            <q-avatar size="34px" class="user-profile-btn__avatar">
               <img
                 v-if="userAvatarUrl"
                 :src="userAvatarUrl"
@@ -30,27 +30,27 @@
             </q-avatar>
 
             <div class="col min-width-0">
-              <div class="text-subtitle2 text-weight-bold text-grey-9 ellipsis">{{ userName }}</div>
-              <div class="text-caption text-grey-6 ellipsis">{{ userEmail }}</div>
+              <div class="user-profile-dropdown__name ellipsis">{{ userName }}</div>
+              <div class="user-profile-dropdown__email ellipsis">{{ userEmail }}</div>
             </div>
           </div>
 
           <div v-if="currentRoleLabel" class="q-mt-sm">
-            <q-badge color="primary" class="text-uppercase text-bold" style="font-size: 9px; padding: 2px 6px">
+            <span class="user-profile-dropdown__badge">
               {{ currentRoleLabel }}
-            </q-badge>
+            </span>
           </div>
         </div>
 
-        <q-list dense class="q-py-xs">
+        <q-list dense class="q-py-xs user-profile-dropdown__list">
           <!-- Workspace Info -->
           <template v-if="contextValue">
-            <q-item-label header class="text-uppercase text-weight-bold text-grey-7 dropdown-header">
+            <q-item-label header class="dropdown-header">
               Workspace
             </q-item-label>
-            <q-item>
+            <q-item class="dropdown-item">
               <q-item-section avatar class="q-pr-none" style="min-width: 28px">
-                <q-icon name="ph ph-buildings" size="xs" color="grey-6" />
+                <q-icon name="ph ph-buildings" size="xs" class="dropdown-item__icon" />
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-caption text-weight-medium">{{ contextValue }}</q-item-label>
@@ -60,51 +60,58 @@
               v-if="isShopScope && canSwitchCompany"
               clickable
               v-close-popup
+              class="dropdown-item"
               data-test="shop-profile-switch-company"
               @click="goSwitchCompany"
             >
               <q-item-section avatar class="q-pr-none" style="min-width: 28px">
-                <q-icon name="ph ph-arrows-left-right" size="xs" color="grey-6" />
+                <q-icon name="ph ph-arrows-left-right" size="xs" class="dropdown-item__icon" />
               </q-item-section>
               <q-item-section>{{ $t('shop.switch_company') }}</q-item-section>
             </q-item>
-            <q-separator class="q-my-xs" />
+            <q-separator class="q-my-xs dropdown-sep" />
           </template>
 
           <!-- Appearance -->
-          <q-item-label header class="text-uppercase text-weight-bold text-grey-7 dropdown-header">
+          <q-item-label header class="dropdown-header">
             Appearance
           </q-item-label>
 
-          <q-item clickable @click="toggleDarkMode">
+          <q-item clickable class="dropdown-item" @click="toggleDarkMode">
             <q-item-section avatar class="q-pr-none" style="min-width: 28px">
-              <q-icon :name="darkMode ? 'ph ph-moon' : 'ph ph-sun'" size="xs" color="grey-7" />
+              <q-icon :name="darkMode ? 'ph ph-moon' : 'ph ph-sun'" size="xs" class="dropdown-item__icon" />
             </q-item-section>
             <q-item-section>Dark Mode</q-item-section>
             <q-item-section side>
-              <q-toggle :model-value="darkMode" dense @update:model-value="toggleDarkMode" />
+              <q-toggle :model-value="darkMode" dense color="primary" @update:model-value="toggleDarkMode" />
             </q-item-section>
           </q-item>
 
-          <q-item v-if="!isShopScope" clickable @click="toggleDensity">
+          <q-item v-if="!isShopScope" clickable class="dropdown-item" @click="toggleDensity">
             <q-item-section avatar class="q-pr-none" style="min-width: 28px">
-              <q-icon name="ph ph-rows" size="xs" color="grey-7" />
+              <q-icon name="ph ph-rows" size="xs" class="dropdown-item__icon" />
             </q-item-section>
             <q-item-section>Compact Rows</q-item-section>
             <q-item-section side>
-              <q-toggle :model-value="density === 'compact'" dense @update:model-value="toggleDensity" />
+              <q-toggle :model-value="density === 'compact'" dense color="primary" @update:model-value="toggleDensity" />
             </q-item-section>
           </q-item>
 
           <!-- Language -->
-          <q-separator class="q-my-xs" />
-          <q-item-label header class="text-uppercase text-weight-bold text-grey-7 dropdown-header">
+          <q-separator class="q-my-xs dropdown-sep" />
+          <q-item-label header class="dropdown-header">
             Language
           </q-item-label>
 
-          <q-item clickable :active="locale === 'en-US'" active-class="bg-blue-1 text-primary text-weight-bold" @click="setLocale('en-US')">
+          <q-item
+            clickable
+            class="dropdown-item"
+            :active="locale === 'en-US'"
+            active-class="dropdown-item--active"
+            @click="setLocale('en-US')"
+          >
             <q-item-section avatar class="q-pr-none" style="min-width: 28px">
-              <q-icon name="ph ph-translate" size="xs" :color="locale === 'en-US' ? 'primary' : 'grey-6'" />
+              <q-icon name="ph ph-translate" size="xs" :class="locale === 'en-US' ? 'text-primary' : 'dropdown-item__icon'" />
             </q-item-section>
             <q-item-section>English</q-item-section>
             <q-item-section side v-if="locale === 'en-US'">
@@ -112,9 +119,15 @@
             </q-item-section>
           </q-item>
 
-          <q-item clickable :active="locale === 'bn'" active-class="bg-blue-1 text-primary text-weight-bold" @click="setLocale('bn')">
+          <q-item
+            clickable
+            class="dropdown-item"
+            :active="locale === 'bn'"
+            active-class="dropdown-item--active"
+            @click="setLocale('bn')"
+          >
             <q-item-section avatar class="q-pr-none" style="min-width: 28px">
-              <q-icon name="ph ph-translate" size="xs" :color="locale === 'bn' ? 'primary' : 'grey-6'" />
+              <q-icon name="ph ph-translate" size="xs" :class="locale === 'bn' ? 'text-primary' : 'dropdown-item__icon'" />
             </q-item-section>
             <q-item-section class="locale-bn">বাংলা</q-item-section>
             <q-item-section side v-if="locale === 'bn'">
@@ -124,10 +137,10 @@
 
           <!-- Notifications (app scope) -->
           <template v-if="authStore.scope === 'app'">
-            <q-separator class="q-my-xs" />
-            <q-item clickable v-close-popup data-test="profile-notifications-settings" @click="goNotificationPreferences">
+            <q-separator class="q-my-xs dropdown-sep" />
+            <q-item clickable v-close-popup class="dropdown-item" data-test="profile-notifications-settings" @click="goNotificationPreferences">
               <q-item-section avatar class="q-pr-none" style="min-width: 28px">
-                <q-icon name="ph ph-bell" size="xs" color="grey-6" />
+                <q-icon name="ph ph-bell" size="xs" class="dropdown-item__icon" />
               </q-item-section>
               <q-item-section>Browser alerts</q-item-section>
             </q-item>
@@ -135,8 +148,8 @@
 
           <!-- About System -->
           <template v-if="!isShopScope">
-            <q-separator class="q-my-xs" />
-            <q-item clickable v-close-popup @click="showAboutDialog = true">
+            <q-separator class="q-my-xs dropdown-sep" />
+            <q-item clickable v-close-popup class="dropdown-item" @click="showAboutDialog = true">
               <q-item-section avatar class="q-pr-none" style="min-width: 28px">
                 <q-icon name="ph ph-info" size="xs" color="primary" />
               </q-item-section>
@@ -145,8 +158,8 @@
           </template>
 
           <!-- Sign Out -->
-          <q-separator class="q-my-xs" />
-          <q-item clickable v-close-popup class="text-negative" @click="onSignOut">
+          <q-separator class="q-my-xs dropdown-sep" />
+          <q-item clickable v-close-popup class="dropdown-item text-negative" @click="onSignOut">
             <q-item-section avatar class="q-pr-none" style="min-width: 28px">
               <q-icon name="ph ph-sign-out" size="xs" color="negative" />
             </q-item-section>
@@ -266,46 +279,104 @@ onMounted(async () => {
 
 <style scoped>
 .user-profile-btn {
+  border-radius: 8px;
+  padding: 3px 6px;
   border: 1px solid transparent;
   transition: all 0.15s ease-in-out;
 }
 
 .user-profile-btn:hover {
-  background: color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 40%, transparent);
+  background: color-mix(in srgb, var(--bw-neutral-ink) 5%, transparent);
 }
 
 .user-profile-btn__avatar {
-  background: color-mix(in srgb, var(--q-primary, #2563eb) 12%, #e2e8f0 88%);
-  color: var(--q-primary, #2563eb);
+  background: var(--bw-theme-primary-soft);
+  color: var(--bw-brand-accent);
   font-weight: 700;
   font-size: 11px;
+  border: 1px solid color-mix(in srgb, var(--bw-brand-accent) 20%, transparent);
+}
+
+.user-profile-btn__caret {
+  color: var(--bw-neutral-chrome);
+  margin-left: 2px;
 }
 
 .user-profile-dropdown {
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  background: var(--bw-neutral-surface);
+  border: 1px solid var(--bw-neutral-border);
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.18);
+}
+
+.user-profile-dropdown__header {
+  background: var(--bw-neutral-canvas);
+  border-bottom: 1px solid var(--bw-neutral-border);
+}
+
+.user-profile-dropdown__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bw-neutral-ink);
+  line-height: 1.3;
+}
+
+.user-profile-dropdown__email {
+  font-size: 11.5px;
+  color: var(--bw-neutral-muted);
+  line-height: 1.3;
+}
+
+.user-profile-dropdown__badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1.5px 7px;
+  border-radius: 999px;
+  background: var(--bw-theme-primary-soft);
+  color: var(--bw-brand-accent);
+  border: 1px solid color-mix(in srgb, var(--bw-brand-accent) 22%, transparent);
 }
 
 .dropdown-header {
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  padding: 4px 16px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bw-neutral-chrome);
+  padding: 8px 14px 2px;
 }
 
-.border-bottom {
-  border-bottom: 1px solid #e2e8f0;
+.dropdown-item {
+  min-height: 34px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  margin: 1px 6px;
+  font-size: 13px;
+  color: var(--bw-neutral-ink);
+  transition: background-color 0.15s ease;
 }
 
-body.body--dark .border-bottom {
-  border-color: #334155;
+.dropdown-item:hover {
+  background: color-mix(in srgb, var(--bw-neutral-ink) 4%, transparent);
 }
 
-body.body--dark .bg-grey-1 {
-  background: #1e293b !important;
+.dropdown-item__icon {
+  color: var(--bw-neutral-chrome);
 }
 
-body.body--dark .bg-blue-1 {
-  background: #1e3a8a !important;
+.dropdown-item--active {
+  background: var(--bw-theme-primary-soft) !important;
+  color: var(--bw-brand-accent) !important;
+  font-weight: 600;
+}
+
+.dropdown-sep {
+  background: var(--bw-neutral-border);
+  opacity: 0.7;
 }
 </style>

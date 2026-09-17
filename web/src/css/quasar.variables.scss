@@ -3,22 +3,22 @@ $primary: #b85c38; // terracotta accent
 $secondary: #6d6258; // muted warm tone
 $accent: #d9a441; // warm highlight
 
-/* Dark (keep neutral) */
-$dark: #1d1d1d;
-$dark-page: #121212;
+/* Dark (keep neutral - modern obsidian/zinc standard) */
+$dark: #18181b;
+$dark-page: #09090b;
 
 /* Semantic colors — aligned with --bw-* tokens in app.scss */
-$positive: #1a7f4b;
-$negative: #b83a3a;
+$positive: #16a34a;
+$negative: #dc2626;
 $info: #2563eb;
 $warning: #b45309;
 
 /* Radius */
-$generic-border-radius: 12px;
-$card-border-radius: 12px;
+$generic-border-radius: 8px;
+$card-border-radius: 10px;
 $button-border-radius: 8px;
 
 /* Shadows (soft + modern) */
-$shadow-1: 0 2px 8px rgba(0, 0, 0, 0.05);
-$shadow-2: 0 6px 16px rgba(0, 0, 0, 0.07);
-$shadow-3: 0 12px 28px rgba(0, 0, 0, 0.1);
+$shadow-1: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+$shadow-2: 0 4px 12px rgba(0, 0, 0, 0.05);
+$shadow-3: 0 10px 24px rgba(0, 0, 0, 0.08);

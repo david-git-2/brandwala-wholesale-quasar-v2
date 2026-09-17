@@ -106,7 +106,7 @@
           </q-menu>
         </q-btn>
 
-        <q-separator vertical inset class="gt-xs q-mx-xs text-grey-4" />
+        <div class="workspace-shell__header-divider gt-xs" />
 
         <div class="workspace-shell__context">
           <slot name="header-left" />
@@ -141,16 +141,13 @@
       class="workspace-shell__drawer"
     >
       <div class="workspace-shell__drawer-inner column full-height">
-        <div class="workspace-shell__drawer-top row items-center justify-between q-px-sm q-py-xs">
+        <div class="workspace-shell__drawer-top row items-center justify-between">
           <div
             v-show="!isMini"
             class="workspace-shell__drawer-brand row items-center no-wrap"
           >
             <AppLogoMark :scope="theme" class="workspace-shell__app-mark" />
-            <div
-              class="text-caption text-weight-bold text-grey-7 text-uppercase"
-              style="font-size: 10px; letter-spacing: 0.05em"
-            >
+            <div class="workspace-shell__drawer-title ellipsis">
               {{ theme === 'app' ? 'Desk' : 'Navigation' }}
             </div>
           </div>
@@ -166,12 +163,8 @@
             dense
             icon="ph ph-push-pin"
             size="sm"
-            :color="navPinned ? 'primary' : 'grey-7'"
-            :style="
-              !navPinned
-                ? 'transform: rotate(45deg); transition: transform 0.2s;'
-                : 'transition: transform 0.2s;'
-            "
+            class="workspace-shell__pin-btn"
+            :class="{ 'workspace-shell__pin-btn--pinned': navPinned }"
             @click="togglePin"
           >
             <q-tooltip>{{ navPinned ? 'Collapse sidebar' : 'Pin sidebar' }}</q-tooltip>
@@ -395,22 +388,22 @@
       @hide="onPaletteHide"
     >
       <q-card
-        style="width: 600px; max-width: 90vw; margin-top: 10vh"
-        class="floating-surface shadow-5 command-palette-card"
+        style="width: 580px; max-width: 90vw; margin-top: 10vh"
+        class="command-palette-card shadow-5"
       >
-        <q-card-section class="q-pa-sm">
+        <div class="command-palette-search-row q-px-md q-py-xs">
           <q-input
             ref="searchInputRef"
             v-model="searchQuery"
-            placeholder="Type a page name to navigate..."
-            outlined
+            placeholder="Search pages or type to filter..."
+            borderless
             dense
             autofocus
-            class="soft-input command-palette-input"
+            class="command-palette-input full-width"
             @keydown="onInputKeydown"
           >
             <template #prepend>
-              <q-icon name="ph ph-magnifying-glass" />
+              <q-icon name="ph ph-magnifying-glass" size="18px" class="command-palette-search-icon" />
             </template>
             <template #append>
               <q-btn
@@ -422,12 +415,12 @@
                 size="sm"
                 @click="searchQuery = ''"
               />
-              <q-badge color="grey-4" text-color="grey-8" class="q-ml-xs">ESC</q-badge>
+              <kbd class="command-palette-esc-kbd q-ml-xs">ESC</kbd>
             </template>
           </q-input>
-        </q-card-section>
+        </div>
 
-        <q-separator />
+        <div class="command-palette-sep" />
 
         <q-scroll-area style="height: 300px">
           <q-list v-if="filteredLinks.length" class="q-py-xs">
@@ -986,32 +979,52 @@ const confirmLogout = async () => {
 <style scoped>
 .workspace-shell {
   min-height: 100vh;
-  --workspace-header-offset: 58px;
-  --shell-base: var(--bw-theme-base, #eef2f5);
-  --shell-surface: var(--bw-theme-surface, rgb(255 255 255 / 0.92));
-  --shell-border: var(--bw-theme-border, rgb(40 56 74 / 0.12));
-  --shell-shadow: var(--bw-theme-shadow, rgb(25 35 47 / 0.08));
-  --shell-ink: var(--bw-theme-ink, #1f2937);
-  --shell-muted: var(--bw-theme-muted, #6b7280);
-  --shell-accent: var(--bw-theme-primary, #2563eb);
-  --shell-accent-soft: var(--bw-theme-primary-soft, rgb(37 99 235 / 0.12));
+  --workspace-header-offset: 54px;
+  --shell-base: var(--bw-neutral-canvas);
+  --shell-surface: var(--bw-neutral-surface);
+  --shell-border: var(--bw-neutral-border);
+  --shell-shadow: var(--bw-theme-shadow);
+  --shell-ink: var(--bw-neutral-ink);
+  --shell-muted: var(--bw-neutral-muted);
+  --shell-accent: var(--bw-brand-accent);
+  --shell-accent-soft: var(--bw-theme-primary-soft);
   background: var(--shell-base);
   color: var(--shell-ink);
 }
 
 .workspace-shell__header {
-  background: color-mix(in srgb, var(--shell-surface) 90%, var(--color-mix-tint, white) 10%);
+  background: color-mix(in srgb, var(--shell-surface) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--shell-border);
 }
 
 .workspace-shell__toolbar {
-  gap: 0.6rem;
-  padding: 0.55rem 0.75rem;
+  min-height: 54px;
+  height: 54px;
+  gap: 0.5rem;
+  padding: 0 1rem;
 }
 
 .workspace-shell__menu {
-  color: var(--shell-ink);
-  background: var(--shell-accent-soft);
+  color: var(--bw-neutral-muted);
+  background: transparent;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  transition: all 0.15s ease-in-out;
+}
+
+.workspace-shell__menu:hover {
+  color: var(--bw-neutral-ink);
+  background: color-mix(in srgb, var(--bw-neutral-ink) 5%, transparent);
+}
+
+.workspace-shell__header-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--shell-border);
+  margin: 0 4px;
 }
 
 .workspace-shell__context {
@@ -1040,44 +1053,6 @@ const confirmLogout = async () => {
   gap: 0.5rem;
 }
 
-.locale-selector-btn {
-  border-width: 1.5px !important;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  background: color-mix(in srgb, var(--q-primary) 12%, transparent);
-}
-
-.locale-selector-btn__label {
-  margin-left: 0.15rem;
-  margin-right: 0.05rem;
-  font-size: 0.9rem;
-  line-height: 1.2;
-}
-
-.locale-bn {
-  font-size: 1.05rem;
-  letter-spacing: 0.01em;
-}
-
-.workspace-shell__summary-label,
-.workspace-shell__nav-label {
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--shell-muted);
-}
-
-.workspace-shell__summary-value {
-  margin-top: 0.22rem;
-  font-weight: 600;
-}
-
-.workspace-shell__summary-meta {
-  margin-top: 0.28rem;
-  color: var(--shell-muted);
-  word-break: break-word;
-}
-
 .workspace-shell__drawer {
   background: transparent;
 }
@@ -1098,18 +1073,27 @@ const confirmLogout = async () => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: color-mix(in srgb, var(--shell-surface) 94%, var(--color-mix-tint, white) 6%);
+  background: var(--shell-surface);
   border-right: 1px solid var(--shell-border);
 }
 
-.workspace-shell__drawer-top,
-.workspace-shell__drawer-bottom {
-  padding: 0.75rem;
+.workspace-shell__drawer-top {
+  height: 54px;
+  padding: 0 0.85rem;
+  border-bottom: 1px solid var(--shell-border);
 }
 
 .workspace-shell__drawer-brand {
-  gap: 0.45rem;
+  gap: 0.5rem;
   min-width: 0;
+}
+
+.workspace-shell__drawer-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bw-neutral-muted);
 }
 
 .workspace-shell__app-mark {
@@ -1124,37 +1108,21 @@ const confirmLogout = async () => {
   margin-bottom: 0.15rem;
 }
 
-.profile-card {
-  background: color-mix(in srgb, var(--shell-surface) 50%, transparent);
-  border: 1px solid var(--shell-border);
-  transition: background-color 0.2s ease;
+.workspace-shell__pin-btn {
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  color: var(--bw-neutral-chrome);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.profile-card:hover {
-  background: color-mix(in srgb, var(--shell-surface) 85%, transparent);
+.workspace-shell__pin-btn:hover {
+  color: var(--bw-neutral-ink);
+  background: color-mix(in srgb, var(--bw-neutral-ink) 5%, transparent);
 }
 
-.leading-tight {
-  line-height: 1.25;
-}
-
-.workspace-shell__avatar {
-  overflow: hidden;
-  border: 1px solid var(--shell-border);
-  background: var(--shell-surface);
-}
-
-.workspace-shell__avatar-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.workspace-shell__avatar-fallback {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--shell-ink);
+.workspace-shell__pin-btn--pinned {
+  color: var(--shell-accent) !important;
 }
 
 .workspace-shell__drawer-scroll {
@@ -1163,225 +1131,114 @@ const confirmLogout = async () => {
 }
 
 .workspace-shell__drawer-scroll :deep(.q-scrollarea__content) {
-  padding-bottom: 88px;
+  padding-bottom: 80px;
 }
 
 .workspace-shell__nav {
-  padding: 0 0.6rem 0.75rem;
+  padding: 0.5rem 0.5rem 0.75rem;
 }
 
 .workspace-shell__nav-list {
-  margin-top: 0.45rem;
-  display: grid;
-  gap: 0.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .workspace-shell__nav-item {
-  border-radius: 0.65rem;
-  color: var(--shell-ink);
+  min-height: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--bw-neutral-muted);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+}
+
+.workspace-shell__nav-item:hover {
+  color: var(--bw-neutral-ink);
+  background: color-mix(in srgb, var(--bw-neutral-ink) 4%, transparent);
+}
+
+.workspace-shell__nav-item--active {
+  background: var(--shell-accent-soft) !important;
+  color: var(--shell-accent) !important;
+  font-weight: 600;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 .workspace-shell__nav-group {
   overflow: visible;
-  border: 1px solid transparent;
-  margin-bottom: 0.45rem;
+  border: none;
+  margin-bottom: 2px;
 }
 
 .workspace-shell__nav-group :deep(.q-expansion-item__container) {
-  border-radius: 0.65rem;
-}
-
-.workspace-shell__nav-group :deep(.q-expansion-item__content) {
-  overflow: visible;
-  padding-bottom: 0.35rem;
+  border-radius: 8px;
 }
 
 .workspace-shell__nav-group :deep(.q-item) {
-  min-height: 44px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
 }
 
 .workspace-shell__nav-sub-list {
-  margin: 0.2rem 0.35rem 0.45rem 2.05rem;
-  padding-left: 0.6rem;
+  margin: 2px 0 4px 18px;
+  padding-left: 8px;
   border-left: 1px solid var(--shell-border);
-  display: grid;
-  gap: 0.18rem;
-}
-
-.workspace-shell__nav-item--active {
-  background: var(--shell-accent-soft);
-  color: var(--shell-ink);
-}
-
-.workspace-shell__page-container {
-  padding: 8px 12px;
-  background: var(--bw-theme-base, rgb(238, 240, 244));
-}
-
-body.body--dark .workspace-shell__page-container {
-  background: var(--bw-neutral-canvas, #141210);
-}
-
-.workspace-shell__bottom-nav {
-  background: color-mix(in srgb, var(--shell-surface) 94%, var(--color-mix-tint, white) 6%);
-  border-top: 1px solid var(--shell-border);
-  color: var(--shell-ink);
-}
-
-.workspace-shell__bottom-nav-inner {
   display: flex;
-  align-items: stretch;
-  justify-content: space-around;
-  gap: 0.15rem;
-  padding: 0.2rem 0.25rem calc(0.2rem + env(safe-area-inset-bottom, 0px));
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.workspace-shell__bottom-nav-item {
-  flex: 1 1 0;
-  min-width: 3.5rem;
-  max-width: 6.5rem;
-  min-height: 3.4rem;
-  padding: 0.28rem 0.2rem;
-  border-radius: 0.65rem;
-  color: var(--shell-muted);
-  font-size: 0.62rem;
-  font-weight: 600;
-  line-height: 1.15;
-}
-
-.workspace-shell__bottom-nav-item :deep(.q-icon) {
-  font-size: 1.35rem;
-  margin-bottom: 0.1rem;
-}
-
-.workspace-shell__bottom-nav-item :deep(.q-btn__content) {
-  width: 100%;
-}
-
-.workspace-shell__bottom-nav-item :deep(.block) {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.workspace-shell__bottom-nav-item--active {
-  color: var(--shell-ink);
-  background: var(--shell-accent-soft);
-  border-radius: 999px;
-}
-
-@media (max-width: 599px) {
-  .workspace-shell {
-    --workspace-header-offset: 54px;
-  }
-
-  .workspace-shell__toolbar {
-    padding: 0.4rem 0.5rem;
-    gap: 0.3rem;
-  }
-
-  .workspace-shell__actions {
-    gap: 0.25rem;
-  }
+  flex-direction: column;
+  gap: 2px;
 }
 
 .workspace-shell__nav-sub-item {
-  border-radius: 0.5rem;
-  min-height: 38px;
-  padding-left: 0.55rem;
-  margin-left: 0.15rem;
+  border-radius: 6px;
+  min-height: 32px;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 12.5px;
+  color: var(--bw-neutral-muted);
+  transition: all 0.15s ease-in-out;
+}
+
+.workspace-shell__nav-sub-item:hover {
+  color: var(--bw-neutral-ink);
+  background: color-mix(in srgb, var(--bw-neutral-ink) 4%, transparent);
+}
+
+.workspace-shell__nav-sub-item.workspace-shell__nav-item--active {
+  background: var(--shell-accent-soft) !important;
+  color: var(--shell-accent) !important;
+  font-weight: 600;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 .workspace-shell__nav-sub-header {
-  font-size: 0.62rem;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--shell-muted);
+  color: var(--bw-neutral-chrome);
   text-transform: uppercase;
-  padding: 0.75rem 0.5rem 0.25rem 0.55rem;
+  padding: 8px 8px 3px;
   display: flex;
   align-items: center;
 }
 
 .workspace-shell__nav-group-label {
-  padding-top: 1rem;
+  padding-top: 12px;
 }
 
 .workspace-shell__nav-group-label:first-child {
-  padding-top: 0.5rem;
+  padding-top: 4px;
 }
 
-.workspace-shell__nav-group-child {
-  margin-bottom: 0.1rem;
-}
-
-.workspace-shell__drawer-search {
-  cursor: pointer;
-}
-
-.workspace-shell__drawer-search :deep(.q-field__control) {
-  cursor: pointer;
-}
-
-.workspace-shell__drawer-search :deep(input) {
-  cursor: pointer;
-}
-
-.shortcut-badge {
-  font-size: 10px;
-  padding: 2px 6px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
-  color: var(--shell-muted);
-  font-weight: 600;
-}
-
-.command-palette-card {
-  --bw-theme-surface: var(--bw-brand-surface);
-  --bw-theme-base: var(--bw-brand-base);
-  --bw-theme-border: var(--bw-brand-border);
-  --shell-surface: var(--bw-brand-surface);
-  --shell-border: var(--bw-brand-border);
-  border: 1px solid var(--shell-border);
-  background: var(--shell-surface);
-  border-radius: 12px !important;
-}
-
-.command-palette-item {
-  transition: all 0.2s ease;
-}
-
-.command-palette-item--active {
-  background: var(--shell-accent-soft) !important;
-  color: var(--shell-ink) !important;
-}
-
-:deep(.command-palette-match) {
-  background: transparent;
-  color: var(--q-primary) !important;
-  border-radius: 2px;
-  padding: 0 1px;
-  font-weight: 700;
-}
-
-.command-palette-input :deep(.q-field__control) {
-  border-radius: 8px;
-  background: var(--bw-brand-base) !important;
-}
-
-.workspace-shell__logout {
-  width: 100%;
-  padding: 0.45rem 0.6rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-}
-
-.workspace-shell__logout :deep(.q-btn__content) {
-  justify-content: center;
-  width: 100%;
+.workspace-shell__page-container {
+  padding: 0;
+  background: var(--bw-neutral-canvas);
 }
 
 .workspace-shell__drawer-bottom {
@@ -1390,41 +1247,104 @@ body.body--dark .workspace-shell__page-container {
   position: sticky;
   bottom: 0;
   z-index: 1;
-  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
-  background: color-mix(in srgb, var(--shell-surface) 94%, var(--color-mix-tint, white) 6%);
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--shell-surface);
   border-top: 1px solid var(--shell-border);
 }
 
-/* ══════════════════════════════════════════════════════
-   SIGN-OUT DIALOG
-   ══════════════════════════════════════════════════════ */
+.workspace-shell__logout {
+  width: 100%;
+  height: 36px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--bw-neutral-muted);
+  transition: all 0.15s ease-in-out;
+}
 
-/* Kill Quasar dialog backdrop default bg so our blur shines */
+.workspace-shell__logout:hover {
+  color: var(--bw-neutral-ink);
+  background: color-mix(in srgb, var(--bw-neutral-ink) 4%, transparent);
+}
+
+.command-palette-card {
+  --shell-surface: var(--bw-neutral-surface);
+  --shell-border: var(--bw-neutral-border);
+  border: 1px solid var(--shell-border);
+  background: var(--shell-surface);
+  border-radius: 12px !important;
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.command-palette-search-row {
+  background: var(--bw-neutral-surface);
+}
+
+.command-palette-search-icon {
+  color: var(--bw-neutral-chrome);
+}
+
+.command-palette-input :deep(.q-field__control) {
+  background: transparent !important;
+  padding: 0;
+}
+
+.command-palette-esc-kbd {
+  font-size: 10px;
+  font-family: var(--bw-font-mono);
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bw-neutral-canvas);
+  border: 1px solid var(--bw-neutral-border);
+  color: var(--bw-neutral-chrome);
+}
+
+.command-palette-sep {
+  height: 1px;
+  background: var(--shell-border);
+}
+
+.command-palette-item {
+  border-radius: 8px;
+  transition: all 0.15s ease-in-out;
+  padding: 6px 10px;
+  margin: 2px 8px;
+  font-size: 13px;
+}
+
+.command-palette-item--active {
+  background: var(--shell-accent-soft) !important;
+  color: var(--bw-neutral-ink) !important;
+}
+
+:deep(.command-palette-match) {
+  background: transparent;
+  color: var(--shell-accent) !important;
+  border-radius: 2px;
+  padding: 0 1px;
+  font-weight: 700;
+}
+
+/* Sign-out Dialog */
 .signout-dialog :deep(.q-dialog__backdrop) {
-  background: rgb(0 0 0 / 0.35);
-  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
 }
 
 .signout-card {
-  width: min(92vw, 26rem);
-  border-radius: 1.5rem;
-  padding: 1.75rem;
-  --shell-surface: var(--bw-theme-surface, #ffffff);
-  --shell-muted: var(--bw-theme-muted, #6b7280);
-  --shell-ink: var(--bw-theme-ink, #1f2937);
-  --shell-border: var(--bw-theme-border, rgb(40 56 74 / 0.12));
-  background: var(--shell-surface);
-  border: 1px solid color-mix(in srgb, var(--color-mix-tint, white) 30%, transparent);
-  box-shadow:
-    0 2px 0 color-mix(in srgb, var(--color-mix-tint, white) 60%, transparent) inset,
-    0 20px 60px rgb(0 0 0 / 0.14),
-    0 4px 16px rgb(0 0 0 / 0.08);
+  width: min(92vw, 24rem);
+  border-radius: 14px;
+  padding: 1.5rem;
+  background: var(--bw-neutral-surface);
+  border: 1px solid var(--bw-neutral-border);
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
+  gap: 1rem;
 }
 
-/* Identity row */
 .signout-card__identity {
   display: flex;
   align-items: center;
@@ -1432,20 +1352,19 @@ body.body--dark .workspace-shell__page-container {
 }
 
 .signout-card__avatar {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
   background: var(--shell-accent-soft);
-  border: 2px solid rgb(255 255 255 / 0.8);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+  border: 1px solid color-mix(in srgb, var(--shell-accent) 20%, transparent);
+  color: var(--shell-accent);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.85rem;
   font-weight: 700;
-  color: var(--shell-accent);
 }
 
 .signout-card__avatar img {
@@ -1457,30 +1376,22 @@ body.body--dark .workspace-shell__page-container {
 
 .signout-card__name {
   font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--shell-ink);
+  font-weight: 600;
+  color: var(--bw-neutral-ink);
   line-height: 1.2;
 }
 
 .signout-card__email {
-  font-size: 0.78rem;
-  color: var(--shell-muted);
+  font-size: 0.8rem;
+  color: var(--bw-neutral-muted);
   margin-top: 0.15rem;
 }
 
-/* Separator */
 .signout-card__sep {
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--shell-border) 30%,
-    var(--shell-border) 70%,
-    transparent
-  );
+  background: var(--bw-neutral-border);
 }
 
-/* Meta pills */
 .signout-card__meta {
   display: flex;
   flex-wrap: wrap;
@@ -1491,25 +1402,22 @@ body.body--dark .workspace-shell__page-container {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.25rem 0.65rem;
+  padding: 0.2rem 0.6rem;
   border-radius: 999px;
   background: var(--shell-accent-soft);
   color: var(--shell-accent);
   font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  border: 1px solid rgb(var(--bw-theme-primary-rgb, 100 100 100) / 0.15);
+  border: 1px solid color-mix(in srgb, var(--shell-accent) 20%, transparent);
 }
 
-/* Message */
 .signout-card__message {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--shell-muted);
-  line-height: 1.55;
+  color: var(--bw-neutral-muted);
+  line-height: 1.5;
 }
 
-/* Buttons */
 .signout-card__actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1518,9 +1426,8 @@ body.body--dark .workspace-shell__page-container {
 }
 
 .signout-card__btn {
-  padding: 0.6rem 0;
-  border-radius: 0.65rem;
-  border: none;
+  padding: 0.55rem 0;
+  border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -1528,28 +1435,28 @@ body.body--dark .workspace-shell__page-container {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  transition: all 0.18s ease;
+  transition: all 0.15s ease-in-out;
 }
 
 .signout-card__btn--cancel {
-  background: rgb(0 0 0 / 0.06);
-  color: var(--shell-ink);
-  border: 1px solid var(--shell-border);
+  background: var(--bw-neutral-canvas);
+  color: var(--bw-neutral-ink);
+  border: 1px solid var(--bw-neutral-border);
 }
 
 .signout-card__btn--cancel:hover {
-  background: rgb(0 0 0 / 0.1);
+  background: color-mix(in srgb, var(--bw-neutral-ink) 5%, transparent);
 }
 
 .signout-card__btn--confirm {
-  background: var(--q-primary, #7c3aed);
+  background: var(--bw-brand-accent);
   color: #ffffff;
+  border: none;
 }
 
 .signout-card__btn--confirm:hover {
-  background: color-mix(in srgb, var(--q-primary, #7c3aed) 85%, black);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgb(var(--bw-brand-accent-rgb, 124 58 237) / 0.35);
+  background: color-mix(in srgb, var(--bw-brand-accent) 85%, black);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--bw-brand-accent) 30%, transparent);
 }
 
 /* Mini Mode Specific Styles */
@@ -1562,26 +1469,11 @@ body.body--dark .workspace-shell__page-container {
   justify-content: center;
 }
 
-.workspace-shell--mini .workspace-shell__drawer-top {
-  flex-direction: column !important;
-  justify-content: center !important;
-  align-items: center !important;
-}
-
 .workspace-shell--mini .workspace-shell__nav {
-  padding: 0 0 0.75rem;
+  padding: 0.5rem 0.25rem 0.75rem;
 }
 
 .workspace-shell--mini .workspace-shell__nav-list {
-  align-items: center;
-}
-
-.workspace-shell--mini .profile-card {
-  border: 1px solid transparent;
-  background: transparent;
-  padding: 0;
-  display: flex;
-  justify-content: center;
   align-items: center;
 }
 
@@ -1623,19 +1515,5 @@ body.body--dark .workspace-shell__page-container {
   min-width: 0;
   padding-left: 0;
   padding-right: 0;
-}
-
-.workspace-shell__flyout-sub-item {
-  border-radius: 6px;
-}
-
-.workspace-shell__flyout-menu {
-  background: color-mix(
-    in srgb,
-    var(--shell-surface) 95%,
-    var(--color-mix-tint, white) 5%
-  ) !important;
-  border: 1px solid var(--shell-border);
-  box-shadow: var(--shell-shadow);
 }
 </style>

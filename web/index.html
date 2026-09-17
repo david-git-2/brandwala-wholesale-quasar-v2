@@ -20,14 +20,14 @@
 
     <style>
       #app-splash {
-        --splash-bg: #fbfaf7;
+        --splash-bg: #f4f6f8;
         --splash-surface: #ffffff;
-        --splash-accent: #488b8f;
-        --splash-accent-rgb: 72 139 143;
-        --splash-ink: #171412;
-        --splash-muted: #736a61;
+        --splash-accent: #0d6b5c;
+        --splash-accent-rgb: 13 107 92;
+        --splash-ink: #0f172a;
+        --splash-muted: #64748b;
         --splash-glow: rgb(var(--splash-accent-rgb) / 0.14);
-        --splash-gradient-end: #f5f3ee;
+        --splash-gradient-end: #eef2f6;
         --splash-accent-soft: rgb(var(--splash-accent-rgb) / 0.1);
 
         position: fixed;
@@ -383,11 +383,11 @@
 
         splash.dataset.scope = scope;
         if (splashDark) {
-          splash.style.setProperty('--splash-bg', '#141210');
-          splash.style.setProperty('--splash-surface', '#1c1917');
-          splash.style.setProperty('--splash-gradient-end', '#0f0e0c');
-          splash.style.setProperty('--splash-ink', '#f5f5f4');
-          splash.style.setProperty('--splash-muted', '#a8a29e');
+          splash.style.setProperty('--splash-bg', '#09090b');
+          splash.style.setProperty('--splash-surface', '#18181b');
+          splash.style.setProperty('--splash-gradient-end', '#09090b');
+          splash.style.setProperty('--splash-ink', '#f4f4f5');
+          splash.style.setProperty('--splash-muted', '#a1a1aa');
           splash.style.setProperty('--splash-glow', 'rgb(' + theme.accentRgb + ' / 0.1)');
           splash.style.setProperty(
             '--splash-accent',
@@ -451,7 +451,7 @@
 
         if (splashDark) {
           var themeColor = document.querySelector('meta[name="theme-color"]');
-          if (themeColor) themeColor.setAttribute('content', '#141210');
+          if (themeColor) themeColor.setAttribute('content', '#09090b');
         }
 
         var metaTheme = document.querySelector('meta[name="theme-color"]');
@@ -460,7 +460,7 @@
           metaTheme.name = 'theme-color';
           document.head.appendChild(metaTheme);
         }
-        metaTheme.content = splashDark ? '#141210' : '#fbfaf7';
+        metaTheme.content = splashDark ? '#09090b' : '#f4f6f8';
       })();
     </script>
     <!-- quasar:entry-point -->
