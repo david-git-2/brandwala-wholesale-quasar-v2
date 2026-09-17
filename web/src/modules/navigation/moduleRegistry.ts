@@ -164,6 +164,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'product_based_costing',
     name: 'Product Based Costing',
     description: 'Support product-based costing files for internal workflows.',
+    parentModuleKey: 'procurement_stock',
+    navIcon: 'ph ph-receipt',
     routes: [
       {
         scope: 'app',

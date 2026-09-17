@@ -1479,7 +1479,7 @@ function toggleRowSelection(id: number, checked: boolean) {
 }
 
 function onSlPositionChange(currentIndex: number, newPosition: string | number | null) {
-  moveItemToPosition(currentIndex, newPosition);
+  void moveItemToPosition(currentIndex, newPosition);
 }
 
 async function moveItemToPosition(currentIndex: number, newPosition: string | number | null) {
@@ -1735,9 +1735,13 @@ function handleDownloadExcel() {
 
 function openPreviewAndPrint() {
   if (!fileId.value) return;
+  const cols = visibleColumns.value.filter((col) => col !== 'select' && col !== 'actions');
   const previewRoute = router.resolve({
     name: 'product-based-costing-file-preview-page',
     params: { id: fileId.value },
+    query: {
+      cols: cols.join(','),
+    },
   });
   window.open(previewRoute.href, '_blank', 'noopener');
 }

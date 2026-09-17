@@ -16,6 +16,7 @@ export const SHOP_ORDER_HUB_MODULE_KEYS: readonly ModuleKey[] = [
 
 export const PROCUREMENT_HUB_MODULE_KEYS: readonly ModuleKey[] = [
   'procurement_demand',
+  'product_based_costing',
   'procurement_fulfill',
   'global_shipment',
   'global_stock',
@@ -111,6 +112,14 @@ const PROCUREMENT_STOCK_HUB = {
       routeSegment: 'procurement/demand',
     },
     {
+      navWeight: 30.2,
+      moduleKey: 'product_based_costing' as ModuleKey,
+      title: 'Product Based Costing',
+      caption: 'Manage product based costing files',
+      icon: 'ph ph-receipt',
+      routeSegment: 'product-based-costing',
+    },
+    {
       navWeight: 30.5,
       moduleKey: 'procurement_fulfill' as ModuleKey,
       title: 'Fulfill',
@@ -144,6 +153,7 @@ const PROCUREMENT_STOCK_HUB = {
     hubModuleKeys: PROCUREMENT_HUB_MODULE_KEYS,
     primaryRouteSegments: [
       'procurement/demand',
+      'product-based-costing',
       'procurement/fulfill',
       'procurement/shipment/list',
       'procurement/stock',
@@ -349,5 +359,9 @@ export function mergeNavLinksByWeight(...linkGroups: WeightedWorkspaceLink[][]):
       }
       return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
     })
-    .map(({ navWeight: _navWeight, ...link }) => link);
+    .map((item) => {
+      const { navWeight: _, ...link } = item;
+      void _;
+      return link;
+    });
 }

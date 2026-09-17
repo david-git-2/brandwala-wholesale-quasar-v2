@@ -38,6 +38,55 @@
               @click="mode = 'pdf'"
             />
           </q-btn-group>
+
+          <q-btn
+            size="sm"
+            flat
+            dense
+            color="primary"
+            icon="ph ph-columns"
+            :label="$t('product_based_costing.columns')"
+            class="preview-page__action-btn"
+          >
+            <q-menu anchor="bottom left" self="top left" class="q-pa-sm" style="min-width: 240px; max-height: 400px">
+              <div class="row items-center justify-between q-px-xs q-mb-xs">
+                <span class="text-caption text-weight-bold text-primary">
+                  {{ $t('product_based_costing.show_columns') }} ({{ selectedColumnKeys.length }})
+                </span>
+                <q-btn
+                  size="xs"
+                  flat
+                  dense
+                  color="primary"
+                  :label="selectedColumnKeys.length === previewColumnOptions.length ? 'Reset' : 'Select All'"
+                  @click="onColumnToggle(
+                    selectedColumnKeys.length === previewColumnOptions.length
+                      ? defaultPreviewColumns
+                      : previewColumnOptions.map((o) => o.value)
+                  )"
+                />
+              </div>
+              <q-separator class="q-mb-xs" />
+              <q-scroll-area style="height: 280px; width: 220px">
+                <div class="column q-gutter-y-xs">
+                  <q-checkbox
+                    v-for="opt in previewColumnOptions"
+                    :key="opt.value"
+                    :model-value="selectedColumnKeys.includes(opt.value)"
+                    :label="opt.label"
+                    dense
+                    class="text-caption"
+                    @update:model-value="(checked) => {
+                      const next = checked
+                        ? [...selectedColumnKeys, opt.value]
+                        : selectedColumnKeys.filter((k) => k !== opt.value);
+                      onColumnToggle(next);
+                    }"
+                  />
+                </div>
+              </q-scroll-area>
+            </q-menu>
+          </q-btn>
         </div>
 
         <q-btn
@@ -178,9 +227,9 @@
                   </div>
                 </template>
 
-                <!-- Qty -->
-                <template v-else-if="col.name === 'qty'">
-                  <span class="text-weight-bold">{{ slotProps.row.qty ?? slotProps.row.quantity ?? '-' }}</span>
+                <!-- Qty & Confirmed Qty -->
+                <template v-else-if="col.name === 'qty' || col.name === 'confirmedQty'">
+                  <span class="text-weight-bold">{{ slotProps.row[col.name] ?? slotProps.row.quantity ?? '-' }}</span>
                 </template>
 
                 <!-- Website -->
@@ -197,6 +246,16 @@
                   <span v-else>-</span>
                 </template>
 
+                <!-- Cargo Rate -->
+                <template v-else-if="col.name === 'cargoRate'">
+                  £{{ formatNumber(slotProps.row.cargoRate) }}
+                </template>
+
+                <!-- Status -->
+                <template v-else-if="col.name === 'status'">
+                  <span class="text-caption text-capitalize">{{ slotProps.row.status }}</span>
+                </template>
+
                 <!-- Numeric GBP fields -->
                 <template
                   v-else-if="
@@ -205,6 +264,7 @@
                       'totalPurchasePriceGbp',
                       'cargoCostGbp',
                       'totalCostGbp',
+                      'rowTotalCostGbp',
                     ].includes(col.name)
                   "
                 >
@@ -216,9 +276,11 @@
                   v-else-if="
                     [
                       'costBdt',
+                      'totalCostBdt',
                       'offerPriceBdt',
                       'totalBdt',
                       'profitPerUnitBdt',
+                      'profitBdt',
                     ].includes(col.name)
                   "
                 >
@@ -410,6 +472,12 @@ const ALL_PREVIEW_COLUMN_DEFS: Record<string, PreviewColumnDef> = {
   brand: { key: 'brand', label: t('product_based_costing.table_col_brand'), align: 'center', field: 'brand' },
   note: { key: 'note', label: t('product_based_costing.note'), align: 'center', field: 'note' },
   qty: { key: 'qty', label: t('product_based_costing.table_col_qty'), align: 'center', field: 'quantity' },
+  confirmedQty: {
+    key: 'confirmedQty',
+    label: t('product_based_costing.table_col_confirmedQty'),
+    align: 'center',
+    field: 'confirmedQty',
+  },
   barcodeText: {
     key: 'barcodeText',
     label: t('product_based_costing.preview_barcode_code'),
@@ -455,7 +523,19 @@ const ALL_PREVIEW_COLUMN_DEFS: Record<string, PreviewColumnDef> = {
     align: 'center',
     field: 'totalCostGbp',
   },
+  rowTotalCostGbp: {
+    key: 'rowTotalCostGbp',
+    label: t('product_based_costing.table_col_rowTotalCostGbp'),
+    align: 'center',
+    field: 'rowTotalCostGbp',
+  },
   costBdt: { key: 'costBdt', label: t('product_based_costing.preview_cost_bdt'), align: 'center', field: 'costBdt' },
+  totalCostBdt: {
+    key: 'totalCostBdt',
+    label: t('product_based_costing.preview_total_cost_bdt'),
+    align: 'center',
+    field: 'totalCostBdt',
+  },
   offerPriceBdt: {
     key: 'offerPriceBdt',
     label: t('product_based_costing.preview_offer_price_bdt'),
@@ -469,33 +549,73 @@ const ALL_PREVIEW_COLUMN_DEFS: Record<string, PreviewColumnDef> = {
     align: 'center',
     field: 'profitPerUnitBdt',
   },
+  profitBdt: {
+    key: 'profitBdt',
+    label: t('product_based_costing.preview_total_profit_bdt'),
+    align: 'center',
+    field: 'profitBdt',
+  },
   profitRate: { key: 'profitRate', label: t('product_based_costing.table_col_profitRate'), align: 'center', field: 'profitRate' },
   status: { key: 'status', label: t('product_based_costing.col_status'), align: 'center', field: 'status' },
 };
 
-const requestedColumnKeys = computed<string[]>(() => {
-  const queryCols = route.query.cols;
-  if (typeof queryCols === 'string' && queryCols.trim()) {
-    const parsed = queryCols
+const defaultPreviewColumns = [
+  'sl',
+  'image',
+  'name',
+  'brand',
+  'qty',
+  'priceGbp',
+  'productWeight',
+  'offerPriceBdt',
+  'totalBdt',
+];
+
+const parseQueryCols = (query: unknown): string[] | null => {
+  if (typeof query === 'string' && query.trim()) {
+    const parsed = query
       .split(',')
       .map((c) => c.trim())
-      .filter(Boolean);
+      .filter((c) => Boolean(ALL_PREVIEW_COLUMN_DEFS[c]));
     if (parsed.length) {
       return parsed;
     }
   }
-  return [
-    'sl',
-    'image',
-    'name',
-    'brand',
-    'qty',
-    'priceGbp',
-    'productWeight',
-    'offerPriceBdt',
-    'totalBdt',
-  ];
+  return null;
+};
+
+const selectedColumnKeys = ref<string[]>(
+  parseQueryCols(route.query.cols) ?? defaultPreviewColumns,
+);
+
+watch(
+  () => route.query.cols,
+  (newCols) => {
+    const parsed = parseQueryCols(newCols);
+    if (parsed) {
+      selectedColumnKeys.value = parsed;
+    }
+  },
+);
+
+const onColumnToggle = (val: string[]) => {
+  selectedColumnKeys.value = val;
+  void router.replace({
+    query: {
+      ...route.query,
+      cols: val.join(','),
+    },
+  });
+};
+
+const previewColumnOptions = computed(() => {
+  return Object.values(ALL_PREVIEW_COLUMN_DEFS).map((def) => ({
+    label: def.label,
+    value: def.key,
+  }));
 });
+
+const requestedColumnKeys = computed<string[]>(() => selectedColumnKeys.value);
 
 const columns = computed<QTableColumn[]>(() => {
   return requestedColumnKeys.value
@@ -631,12 +751,18 @@ const tableRows = computed(() => {
     const totalBdt = offerPriceBdt * qty;
     const profitPerUnitBdt = offerPriceBdt - costBdt;
 
+    const confirmedQty = toNumberSafe(item.confirmed_qty ?? item.quantity);
+    const rowTotalCostGbp = unitTotalCostGbp * qty;
+    const totalCostBdt = costBdt * qty;
+    const profitBdt = profitPerUnitBdt * qty;
+
     return {
       ...item,
       sl: slNum,
       imageUrl: item.image_url || '',
       qty,
       quantity: qty,
+      confirmedQty,
       barcodeText: item.barcode || item.product_code || '-',
       website: item.web_link || '',
       priceGbp,
@@ -647,11 +773,15 @@ const tableRows = computed(() => {
       cargoRate,
       cargoCostGbp: unitCargoCostGbp,
       totalCostGbp: unitTotalCostGbp,
+      rowTotalCostGbp,
       costBdt,
+      totalCostBdt,
       offerPriceBdt,
       totalBdt,
       profitPerUnitBdt,
+      profitBdt,
       profitRate,
+      status: item.status || 'pending',
     };
   };
 

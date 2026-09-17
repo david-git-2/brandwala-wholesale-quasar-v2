@@ -85,6 +85,15 @@ const isTenantModuleActive = (
     return activeModuleKeys.includes('global_shipment');
   }
 
+  if (moduleKey === 'product_based_costing') {
+    return (
+      activeModuleKeys.includes('product_based_costing') ||
+      activeModuleKeys.includes('global_shipment') ||
+      activeModuleKeys.includes('procurement_stock') ||
+      activeModuleKeys.includes('procurement_demand')
+    );
+  }
+
   if (moduleKey === 'procurement_stock') {
     return PROCUREMENT_HUB_MODULE_KEYS.some((key) => activeModuleKeys.includes(key));
   }
@@ -136,6 +145,16 @@ const hasModuleRoleGrant = ({
   if (moduleKey === 'procurement_fulfill') {
     return effectiveGrants.some(
       (grant) => grant.module_key === 'global_shipment' && grant.action === action,
+    );
+  }
+
+  if (moduleKey === 'product_based_costing') {
+    return effectiveGrants.some(
+      (grant) =>
+        (grant.module_key === 'product_based_costing' ||
+          grant.module_key === 'global_shipment' ||
+          grant.module_key === 'procurement_demand') &&
+        grant.action === action,
     );
   }
 
@@ -351,7 +370,9 @@ export const resolveModuleAccess = ({
       isAdmin,
     });
     if (
-      (moduleKey === 'procurement_demand' || moduleKey === 'procurement_fulfill') &&
+      (moduleKey === 'procurement_demand' ||
+        moduleKey === 'procurement_fulfill' ||
+        moduleKey === 'product_based_costing') &&
       allowedActions.length === 0 &&
       effectiveGrants.some((grant) => grant.module_key === 'global_shipment')
     ) {
@@ -473,7 +494,7 @@ export const getAccessibleModuleRoutes = ({
     isAdmin,
   };
 
-  let routes = [...accessibleRoutes];
+  const routes = [...accessibleRoutes];
 
   for (const hubConfig of MODULE_HUB_CONFIGS) {
     const hubPath = buildModuleRoutePath({
