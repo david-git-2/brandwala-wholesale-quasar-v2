@@ -79,7 +79,7 @@ export const useInvoiceStore = defineStore('salesInvoice', {
       }
     },
 
-    async fetchInvoiceBrands(payload: { tenant_id?: number } = {}) {
+    async fetchInvoiceBrands(payload: { parent_tenant_id?: number; tenant_id?: number } = {}) {
       this.loading = true;
       this.error = null;
       try {
@@ -115,7 +115,7 @@ export const useInvoiceStore = defineStore('salesInvoice', {
 
     async updateInvoiceBrand(payload: {
       id: number;
-      patch: Partial<Omit<InvoiceBrand, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>>;
+      patch: Partial<Omit<InvoiceBrand, 'id' | 'parent_tenant_id' | 'created_at' | 'updated_at'>>;
     }) {
       this.saving = true;
       this.error = null;

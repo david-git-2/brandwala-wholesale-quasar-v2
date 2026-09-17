@@ -66,7 +66,7 @@
             <tr>
               <th class="text-left" style="width: 280px">Brand Name</th>
               <th class="text-left">Address</th>
-              <th class="text-left" style="width: 220px">Tenant Workspace</th>
+              <th class="text-left" style="width: 220px">Company</th>
               <th class="text-right" style="width: 100px">Actions</th>
             </tr>
           </thead>
@@ -105,7 +105,7 @@
               </td>
               <td>
                 <q-chip dense square color="purple-1" text-color="purple-9" class="text-weight-bold text-xxs q-ma-none">
-                  {{ row.tenants?.name || 'Workspace' }}
+                  {{ row.tenants?.name || 'Company' }}
                 </q-chip>
               </td>
               <td class="text-right">
@@ -146,16 +146,16 @@
 
           <q-card-section class="q-gutter-md q-pt-md">
             <q-select
-              v-model="form.tenant_id"
+              v-model="form.parent_tenant_id"
               :options="tenantOptions"
               option-value="id"
               option-label="name"
               emit-value
               map-options
-              label="Tenant Workspace *"
+              label="Company *"
               outlined
               dense
-              :rules="[(val) => !!val || 'Tenant is required']"
+              :rules="[(val) => !!val || 'Company is required']"
               :disable="isEdit"
               class="soft-input"
             />
@@ -235,13 +235,12 @@ const authStore = useAuthStore();
 const tenantStore = useTenantStore();
 const queryClient = useQueryClient();
 
-const effectiveTenantId = computed(() => {
+const effectiveParentTenantId = computed(() => {
   const current =
     tenantStore.selectedTenant ??
     tenantStore.items.find((tenant) => tenant.id === authStore.tenantId) ??
     null;
-  if (!current) return authStore.tenantId;
-  return current.id;
+  return current?.parent_id ?? current?.id ?? authStore.tenantId;
 });
 
 const searchText = ref('');
@@ -259,20 +258,20 @@ const tenantOptions = ref<TenantOption[]>([]);
 
 const form = ref({
   id: 0,
-  tenant_id: 0,
+  parent_tenant_id: 0,
   name: '',
   address: '',
 });
 
 // 1. TanStack Query for Brands
 const brandsQuery = useQuery({
-  queryKey: computed(() => salesInvoiceQueryKeys.brands(effectiveTenantId.value)),
+  queryKey: computed(() => salesInvoiceQueryKeys.brands(effectiveParentTenantId.value)),
   queryFn: async () => {
     return invoiceRepository.listInvoiceBrands(
-      effectiveTenantId.value ? { tenant_id: effectiveTenantId.value } : {},
+      effectiveParentTenantId.value ? { parent_tenant_id: effectiveParentTenantId.value } : {},
     );
   },
-  enabled: computed(() => !!effectiveTenantId.value),
+  enabled: computed(() => !!effectiveParentTenantId.value),
   placeholderData: (prev) => prev,
 });
 
@@ -289,17 +288,16 @@ const filteredBrands = computed(() => {
 
 // 2. TanStack Mutations
 const createMutation = useMutation({
-  mutationFn: async (payload: { tenant_id: number; name: string; address: string }) => {
+  mutationFn: async (payload: { parent_tenant_id: number; name: string; address: string }) => {
     return invoiceRepository.createInvoiceBrand(payload);
   },
   onSuccess: (newBrand) => {
-    // Optimistic / Cache-first update
     queryClient.setQueryData(
-      salesInvoiceQueryKeys.brands(effectiveTenantId.value),
+      salesInvoiceQueryKeys.brands(effectiveParentTenantId.value),
       (old: any[] = []) => [...old, newBrand],
     );
     void queryClient.invalidateQueries({
-      queryKey: salesInvoiceQueryKeys.brands(effectiveTenantId.value),
+      queryKey: salesInvoiceQueryKeys.brands(effectiveParentTenantId.value),
     });
     dialogOpen.value = false;
     showSuccessNotification('Brand created successfully.');
@@ -321,11 +319,11 @@ const updateMutation = useMutation({
   },
   onSuccess: (updatedBrand) => {
     queryClient.setQueryData(
-      salesInvoiceQueryKeys.brands(effectiveTenantId.value),
+      salesInvoiceQueryKeys.brands(effectiveParentTenantId.value),
       (old: any[] = []) => old.map((b) => (b.id === updatedBrand.id ? { ...b, ...updatedBrand } : b)),
     );
     void queryClient.invalidateQueries({
-      queryKey: salesInvoiceQueryKeys.brands(effectiveTenantId.value),
+      queryKey: salesInvoiceQueryKeys.brands(effectiveParentTenantId.value),
     });
     dialogOpen.value = false;
     showSuccessNotification('Brand updated successfully.');
@@ -341,11 +339,11 @@ const deleteMutation = useMutation({
   },
   onSuccess: (_, id) => {
     queryClient.setQueryData(
-      salesInvoiceQueryKeys.brands(effectiveTenantId.value),
+      salesInvoiceQueryKeys.brands(effectiveParentTenantId.value),
       (old: any[] = []) => old.filter((b) => b.id !== id),
     );
     void queryClient.invalidateQueries({
-      queryKey: salesInvoiceQueryKeys.brands(effectiveTenantId.value),
+      queryKey: salesInvoiceQueryKeys.brands(effectiveParentTenantId.value),
     });
     deleteOpen.value = false;
     selectedBrand.value = null;
@@ -370,7 +368,7 @@ const openCreateDialog = () => {
   isEdit.value = false;
   form.value = {
     id: 0,
-    tenant_id: effectiveTenantId.value ?? 0,
+    parent_tenant_id: effectiveParentTenantId.value ?? 0,
     name: '',
     address: '',
   };
@@ -382,7 +380,7 @@ const openEditDialog = (brand: InvoiceBrand) => {
   selectedBrand.value = brand;
   form.value = {
     id: brand.id,
-    tenant_id: brand.tenant_id,
+    parent_tenant_id: brand.parent_tenant_id,
     name: brand.name,
     address: brand.address,
   };
@@ -394,7 +392,7 @@ const openDeleteDialog = (brand: InvoiceBrand) => {
   deleteOpen.value = true;
 };
 
-const handleSubmit = async () => {
+const handleSubmit = () => {
   if (!form.value.name.trim() || !form.value.address.trim()) {
     showWarningDialog('Please fill in all required fields.');
     return;
@@ -408,14 +406,14 @@ const handleSubmit = async () => {
     });
   } else {
     createMutation.mutate({
-      tenant_id: form.value.tenant_id,
+      parent_tenant_id: form.value.parent_tenant_id,
       name: form.value.name.trim(),
       address: form.value.address.trim(),
     });
   }
 };
 
-const handleDelete = async () => {
+const handleDelete = () => {
   if (!selectedBrand.value) return;
   deleteMutation.mutate(selectedBrand.value.id);
 };

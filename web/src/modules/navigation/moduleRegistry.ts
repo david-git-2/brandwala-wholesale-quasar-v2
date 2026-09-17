@@ -707,9 +707,18 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'invoice_brand',
     name: 'Invoice Brands',
-    description: 'Print layout presets for the issuing child. Config only — no sidebar.',
+    description: 'Print layout presets and company invoice brand headers.',
     parentModuleKey: 'sales_invoice',
-    routes: [],
+    routes: [
+      {
+        scope: 'app',
+        title: 'Invoice Brands',
+        caption: 'Invoice brand headers and print layout presets',
+        icon: 'ph ph-paint-brush',
+        routeSegment: 'sales/invoices/brands',
+        requiredAction: 'view',
+      },
+    ],
   },
   {
     key: 'reporting_treasury',

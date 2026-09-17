@@ -98,7 +98,7 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const invoiceStore = useInvoiceStore();
-const { isParentTenant, isDeskView } = useInvoiceWorkspace();
+const { isDeskView } = useInvoiceWorkspace();
 
 const loading = ref(true);
 const invoice = ref<GlobalInvoiceDetail | null>(null);
@@ -254,11 +254,9 @@ onMounted(async () => {
 
     clientName.value = inv.billing_profiles?.name ?? '';
 
-    const brandTenantId = isParentTenant.value
-      ? inv.tenant_id
-      : (inv.issued_by_tenant_id ?? inv.tenant_id);
-    if (brandTenantId) {
-      await invoiceStore.fetchInvoiceBrands({ tenant_id: brandTenantId });
+    const brandParentTenantId = inv.parent_tenant_id ?? inv.issued_by_tenant_id;
+    if (brandParentTenantId) {
+      await invoiceStore.fetchInvoiceBrands({ parent_tenant_id: brandParentTenantId });
     }
 
     if (invoiceStore.brands.length > 0) {

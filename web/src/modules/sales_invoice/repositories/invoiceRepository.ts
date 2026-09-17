@@ -612,7 +612,7 @@ const updateInvoiceItemsBulk = async (
 
 export type InvoiceBrand = {
   id: number;
-  tenant_id: number;
+  parent_tenant_id: number;
   name: string;
   address: string;
   created_at?: string;
@@ -622,15 +622,16 @@ export type InvoiceBrand = {
 export type CreateInvoiceBrandInput = Omit<InvoiceBrand, 'id' | 'created_at' | 'updated_at'>;
 
 const listInvoiceBrands = async (
-  payload: { tenant_id?: number } = {},
+  payload: { parent_tenant_id?: number; tenant_id?: number } = {},
 ): Promise<(InvoiceBrand & { tenants?: { name: string } })[]> => {
   let query = supabase.from('invoice_brands').select('*, tenants(name)');
-  if (typeof payload.tenant_id === 'number') {
-    query = query.eq('tenant_id', payload.tenant_id);
+  const targetParentTenantId = payload.parent_tenant_id ?? payload.tenant_id;
+  if (typeof targetParentTenantId === 'number') {
+    query = query.eq('parent_tenant_id', targetParentTenantId);
   }
   const { data, error } = await query.order('name', { ascending: true });
   if (error) throw error;
-  return data || [];
+  return (data || []) as (InvoiceBrand & { tenants?: { name: string } })[];
 };
 
 const createInvoiceBrand = async (payload: CreateInvoiceBrandInput): Promise<InvoiceBrand> => {
@@ -645,7 +646,7 @@ const createInvoiceBrand = async (payload: CreateInvoiceBrandInput): Promise<Inv
 
 const updateInvoiceBrand = async (payload: {
   id: number;
-  patch: Partial<Omit<InvoiceBrand, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>>;
+  patch: Partial<Omit<InvoiceBrand, 'id' | 'parent_tenant_id' | 'created_at' | 'updated_at'>>;
 }): Promise<InvoiceBrand> => {
   const { data, error } = await supabase
     .from('invoice_brands')

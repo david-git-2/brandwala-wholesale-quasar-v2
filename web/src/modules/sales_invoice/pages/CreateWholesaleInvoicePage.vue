@@ -394,7 +394,7 @@ const brandsQuery = useQuery({
     }
 
     const lists = await Promise.all(
-      [...tenantIds].map((id) => invoiceRepository.listInvoiceBrands({ tenant_id: id })),
+      [...tenantIds].map((id) => invoiceRepository.listInvoiceBrands({ parent_tenant_id: id })),
     );
 
     const merged = new Map<number, InvoiceBrand>();

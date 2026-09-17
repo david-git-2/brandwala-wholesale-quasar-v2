@@ -61,7 +61,7 @@ ALTER SEQUENCE "public"."recipient_profiles_id_seq" OWNED BY "public"."recipient
 
 CREATE TABLE IF NOT EXISTS "public"."invoice_brands" (
     "id" bigint NOT NULL,
-    "tenant_id" bigint NOT NULL,
+    "parent_tenant_id" bigint NOT NULL,
     "name" "text" NOT NULL,
     "address" "text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -331,7 +331,7 @@ ALTER TABLE ONLY "public"."invoice_brands"
     ADD CONSTRAINT "invoice_brands_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."invoice_brands"
-    ADD CONSTRAINT "invoice_brands_tenant_id_name_key" UNIQUE ("tenant_id", "name");
+    ADD CONSTRAINT "invoice_brands_parent_tenant_id_name_key" UNIQUE ("parent_tenant_id", "name");
 
 
 
@@ -407,7 +407,7 @@ ALTER TABLE ONLY "public"."sales_return_items"
     ADD CONSTRAINT "global_return_items_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."invoice_brands"
-    ADD CONSTRAINT "invoice_brands_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "invoice_brands_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."recipient_profiles"
     ADD CONSTRAINT "recipient_profiles_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE SET NULL;
