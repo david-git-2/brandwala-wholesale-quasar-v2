@@ -1,0 +1,22 @@
+---
+description: Docs-first. Thin load. DOC_GAP. Always active.
+alwaysApply: true
+---
+
+# Docs first
+
+1. Read `docs/README.md`. Then that module’s `01-prd.md` and `00-gaps.md`. Then files you will edit.
+2. Do not read other modules, `doc/brand-theme.md`, or `supabase/migrations/` for current SQL.
+3. Load that folder’s `02`–`05` only when you need tables, RPCs, or button wiring.
+4. Copy the pattern in the module. Do not guess RPCs, statuses, grants, or stock tables.
+5. Missing or conflicting fact → stop, no code:
+
+```text
+DOC_GAP
+Need: <one sentence>
+Looked: <files>
+Please add it to: <one docs path>
+Say continue when updated.
+```
+
+6. New docs: follow `docs/STRUCTURE.md`.

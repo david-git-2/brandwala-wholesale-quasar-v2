@@ -9,7 +9,7 @@ Guide for designing, building, styling, and optimizing Vue 3 components using th
 
 ## Core Principles
 
-1. **Aesthetic Polish & Tokens:** Maintain visual excellence using exact CSS theme tokens (`--bw-theme-*`) from [UI_CONSISTENCY.md](file:///Users/daviditc/Documents/Personal%20Project/brandwala-wholesale-quasar-v2/docs/UI_CONSISTENCY.md). Avoid hardcoded hex/RGB colors.
+1. **Aesthetic Polish & Tokens:** Use CSS tokens from [docs/guides/ui-standards.md](../../../docs/guides/ui-standards.md). Avoid hardcoded hex/RGB.
 2. **High Performance:** Optimize list virtualization, asset loading, reactivity overhead, and input debouncing.
 3. **Responsive & Mobile-First:** Fluid layouts, adaptive dialogs/sheets, touch gesture support, and safe-area compliance.
 4. **Accessibility & Testability:** Include ARIA labels on icon buttons, keyboard shortcuts, high contrast ratios, and explicit `data-test` attributes.
@@ -117,7 +117,7 @@ Guide for designing, building, styling, and optimizing Vue 3 components using th
 
 ## 5. Centralized Feedback & Dialogs
 
-**NEVER** call `Notify.create` or `Dialog.create` directly. Use standardized wrappers from [appFeedback.ts](file:///Users/daviditc/Documents/Personal%20Project/brandwala-wholesale-quasar-v2/web/src/utils/appFeedback.ts):
+**NEVER** call `Notify.create` or `Dialog.create` directly. Use wrappers in `web/src/utils/appFeedback.ts`:
 
 ```typescript
 import {

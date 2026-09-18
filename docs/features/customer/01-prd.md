@@ -5,6 +5,27 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: Account Managers, Sales Operations Staff, Desk Clerks, Customer Admins
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/customer/` |
+| UI | `web/src/modules/customer/` |
+| SQL | Still `public.sql` (customer stub not split) |
+| Access | `app` + `shop`. Grants: `customer` and child `recipient_profile` (not a second feature pack). |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `app` hub; `shop` as **group members** (not recipients) |
+| In | Customer group (who pays), billing profile, members, dues. **Recipient profiles** (who gets the parcel) live in the same hub; `parentModuleKey: customer`; no own sidebar pack |
+| Out | Placing shop orders; ledger posting (wallet); do **not** split Recipient into `docs/features/recipient/` |
+
+Customer ≠ recipient: group/wallet vs delivery name/phone/address (`recipient_profiles`). Invoice/dropship dialogs pick a recipient; they do not create a second customer.
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

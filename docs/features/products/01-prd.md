@@ -5,6 +5,25 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: Catalog Managers, Sourcing Specialists, Inventory Clerks, Storefront Admins
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/products/` |
+| UI | `web/src/modules/products/` |
+| SQL | `public.sql` |
+| Access | `app` |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `app` catalog; shop **reads** products via shop_order |
+| In | Products, brands, categories, tags, PC import |
+| Out | Stock qty, shop listings, Koba products, thrift garments |
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

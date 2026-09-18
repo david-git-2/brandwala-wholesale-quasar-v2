@@ -1,3 +1,5 @@
+> **Keep.** Understand RPCs. Signatures + payload. Bodies stay in `03_rpcs.sql`.
+
 # [Feature Name] — API Contract & RPC Signatures
 
 > **RPC Functions Target**: `supabase/schemas/<domain>/03_rpcs.sql`  

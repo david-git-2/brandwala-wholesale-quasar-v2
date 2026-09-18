@@ -1,39 +1,64 @@
-# Supabase Schema Guide
+# Supabase Schema & Domain Split Guide
 
-## Overview
+This document is the operational developer guide for managing declarative database schemas in `supabase/schemas/` and tracking modular domain extractions.
 
-The declarative database schema is located in `supabase/schemas/`:
-* `_extensions.sql`: Database extensions.
-* `public.sql`: Master active declarative public schema for un-split modules (including `universal_wallet_ledger`, `get_tenant_cash_in_report`, `global_payments`, etc.).
-* Split domain modules:
-  * `procurement/`: `01_types.sql`, `02_tables.sql`, `03_rpcs.sql`, `04_rls.sql`
-  * `shop_order/`: `01_types.sql`, `02_tables.sql`, `03_rpcs.sql`, `04_rls.sql`
-  * `notifications/`: `01_types.sql`, `02_tables.sql`, `03_rls.sql`, `04_rpcs.sql` — in-app inbox (`notifications`, `notification_recipients`), `enqueue_notification` plugin RPC
-  * **Notifications RPCs**: `list_my_notifications_paginated`, `get_my_notification_unread_count`, `mark_notification_read`, `mark_all_my_notifications_read`, `get_my_notification_preferences`, `upsert_my_notification_preferences`, `save_my_push_subscription`, `delete_my_push_subscription` (client); `enqueue_notification` (internal plugin)
-  * **Migrations**: `20270910120000_notifications_core.sql`, `20270912180000_notifications_realtime_recipients.sql`, `20270912190000_notifications_firebase_push.sql`
+---
 
-## Reports & Treasury Schema References
+## 📁 Declarative Schema Structure
 
-* **Cash In Report RPC**: `get_tenant_cash_in_report(p_tenant_id, p_start_date, p_end_date)`
-  * **Source**: `supabase/schemas/public.sql`
-  * **Migration**: `supabase/migrations/20270831000220_get_tenant_cash_in_report.sql`
-  * **TypeScript types**: `web/src/types/database.types.ts`
-  * **Documentation**: [`doc/reporting_treasury/CASH_IN.md`](./reporting_treasury/CASH_IN.md)
+Live declarative SQL definitions reside in `supabase/schemas/`:
 
-* **Shipment Profit Report RPC**: `get_tenant_shipment_profit_report(p_tenant_id, p_shipment_id, p_search, p_start_date, p_end_date, p_page, p_page_size)`
-  * **Source**: `supabase/schemas/public.sql`
-  * **Migration**: `supabase/migrations/20270832000210_fix_sales_invoices_status_column.sql`
-  * **TypeScript types**: `web/src/types/database.types.ts`
-  * **Documentation**: [`doc/reporting_treasury/SHIPMENT_PROFIT.md`](./reporting_treasury/SHIPMENT_PROFIT.md)
+* `_extensions.sql`: Database extensions (`uuid-ossp`, `pgcrypto`, etc.).
+* `public.sql`: Master active declarative public schema for un-split modules.
+* **Modular Domain Folders** (`supabase/schemas/<domain>/`):
+  * `01_types.sql`: Custom Postgres ENUMs and composite types.
+  * `02_tables.sql`: Table DDL, column defaults, constraints, foreign keys, and indexes.
+  * `03_rpcs.sql`: Stored procedures, business logic functions, and transactional RPCs.
+  * `04_rls.sql`: Row Level Security policies.
 
-* **Finance report RPCs (2–4, 6–8)**: `get_customer_dues_report`, `get_tenant_invoice_book_report`, `get_tenant_invoice_profit_report`, `get_tenant_wallet_liability_report`, `get_tenant_courier_cod_report`, `get_tenant_month_snapshot_report`
-  * **Source**: `supabase/schemas/public.sql`
-  * **Migration**: `supabase/migrations/20270913000000_finance_reports_rpcs.sql`
-  * **Documentation**: [`REPORTS_PLAN.md`](../REPORTS_PLAN.md), [`doc/reporting_treasury/REPORTING_TREASURY.md`](./reporting_treasury/REPORTING_TREASURY.md)
+---
 
-## Useful Commands
+## 🗺️ Domain Schema Split Tracker
 
-* **Deploy changes**: `pnpm run deploy:backend` (pushes migrations and updates TypeScript types).
-* **Reset local DB**: `pnpm run backend:reset`
-* **Generate types only**: `pnpm run backend:types`
+Move one domain per change; delete moved objects from `public.sql` in the same change. Always run `pnpm run backend:schema:diff` before merge.
 
+| Domain | Schema Folder | Status | Included Objects / Notes |
+| :--- | :--- | :--- | :--- |
+| **procurement** | `supabase/schemas/procurement/` | **Split** | Shipments, items, suppliers, purchase tracking |
+| **shop_order** | `supabase/schemas/shop_order/` | **Split** | Shop orders, dropship order items, catalog orders |
+| **notifications** | `supabase/schemas/notifications/` | **Split** | Inbox, preferences, push (`03_rls.sql`, `04_rpcs.sql`) |
+| **tenants** | `supabase/schemas/tenants/` | Stub | Move from `public.sql` when changing that domain |
+| **permissions** | `supabase/schemas/permissions/` | Stub | Grants / `has_module_action` |
+| **shop** | `supabase/schemas/shop/` | Stub | Shop config tables still overlapping shop_order split |
+| **tag** | `supabase/schemas/tag/` | Stub | Taxonomy |
+| **sales_invoice** | `supabase/schemas/sales_invoice/` | **Split** | Sales invoices, line items, billing RPCs |
+| **wallet** | `supabase/schemas/wallet/` | Pending | `universal_wallet_ledger`, customer/vendor balance books |
+| **customer** | `supabase/schemas/customer/` | Pending | Customer accounts, addresses, credit profiles |
+| **products** | `supabase/schemas/products/` | Pending | Products catalog, variations, tags, categories |
+| **reporting** | `supabase/schemas/reporting/` | Pending | Treasury, profit reports, COD reconciliation RPCs |
+| **thrift** | `supabase/schemas/thrift/` | Pending | Thrift vertical lots, processing, items |
+| **investor** | `supabase/schemas/investor/` | Pending | Investor portal, capital accounts, profit payouts |
+| **global_reference** | `supabase/schemas/global_reference/` | Pending | App settings, courier configs, soft-delete recovery |
+
+---
+
+## ⚡ Core Rules for Schema Changes
+
+1. **Declarative Source of Truth**: Always modify `supabase/schemas/` first, then generate migrations using:
+   ```bash
+   pnpm exec supabase db diff -f <migration_name>
+   ```
+2. **RPC Migrations**: When creating RPC migrations in `supabase/migrations/`, **ALWAYS** copy the function body directly from `supabase/schemas/<domain>/03_rpcs.sql`, never from older historical migrations.
+3. **Double-Entry Ledger Integrity**: Every financial transaction must be posted through `record_ledger_transaction(...)`. Never manipulate ledger balance rows directly.
+4. **Local Verification**:
+   ```bash
+   pnpm run backend:local
+   pnpm run backend:types:local
+   ```
+
+---
+
+## Related docs
+- [Documentation index](../docs/README.md)
+- [How to write docs](../docs/STRUCTURE.md)
+- [Database conventions](../docs/architecture/database.md)

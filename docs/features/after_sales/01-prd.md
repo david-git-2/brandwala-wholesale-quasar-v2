@@ -5,6 +5,26 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: Customer Support Staff, Warehouse Inspection Teams, Wholesale Account Managers, Resellers
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/after_sales/` |
+| UI | `web/src/modules/after_sales/` |
+| SQL | Invoice + shop_order RPCs (`process_wholesale_invoice_return`, `finalize_dropship_return`) |
+| State | Follow files in the module |
+| Access | `app` scope; `effectiveGrants` |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `app` (policies, cases, intake) |
+| In | RMA cases, return policy, wholesale + dropship return execution |
+| Out | Creating original invoices; warehouse bin layout |
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

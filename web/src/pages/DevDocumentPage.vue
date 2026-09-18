@@ -65,7 +65,7 @@
     <q-drawer
       v-model="leftDrawerOpen"
       show-if-above
-      :width="290"
+      :width="305"
       class="doc-slate-sidebar"
     >
       <div class="column fit no-wrap justify-between">
@@ -165,7 +165,7 @@
                         class="doc-tag-micro"
                         :class="`doc-tag-micro--${getBadgeClass(doc.badge)}`"
                       >
-                        {{ doc.badge }}
+                        {{ getShortBadge(doc.badge) }}
                       </span>
                     </div>
                   </div>
@@ -180,13 +180,13 @@
                     :class="{ 'doc-tree-item--active': activeDoc?.id === doc.id }"
                     @click="selectDoc(doc)"
                   >
-                    <span class="doc-item-title ellipsis">{{ cleanDocTitle(doc.title) }}</span>
+                    <span class="doc-item-title ellipsis">{{ getDocTreeSlug(doc) }}</span>
                     <span
                       v-if="doc.badge"
                       class="doc-tag-micro"
                       :class="`doc-tag-micro--${getBadgeClass(doc.badge)}`"
                     >
-                      {{ doc.badge }}
+                      {{ getShortBadge(doc.badge) }}
                     </span>
                   </div>
                 </template>
@@ -366,21 +366,39 @@ function toggleFolder(folder: string) {
   expandedFolders.value[folder] = !isFolderExpanded(folder);
 }
 
+function getShortBadge(badge?: string): string {
+  if (!badge) return '';
+  const lower = badge.toLowerCase();
+  if (lower.includes('prd')) return 'PRD';
+  if (lower.includes('schema') || lower.includes('data')) return 'SCHEMA';
+  if (lower.includes('api') || lower.includes('contract')) return 'API';
+  if (lower.includes('tdd')) return 'TDD';
+  if (lower.includes('matrix')) return 'MATRIX';
+  if (lower.includes('architecture')) return 'ARCH';
+  if (lower.includes('fix')) return 'FIX';
+  if (lower.includes('guide')) return 'GUIDE';
+  if (lower.includes('plan')) return 'PLAN';
+  return badge.toUpperCase();
+}
+
 function cleanDocTitle(title: string): string {
   let cleaned = title.replace(/^#+\s*/, '').trim();
-  if (cleaned.startsWith('[Feature Name] — ')) {
-    cleaned = cleaned.replace('[Feature Name] — ', '');
-  }
+  cleaned = cleaned
+    .replace(/^Architecture:\s*/i, '')
+    .replace(/^TradeFlow BD\s*—\s*/i, '')
+    .replace(/\s*—\s*Project Documentation.*$/i, '')
+    .replace(/^\[Feature Name\]\s*—\s*/i, '')
+    .trim();
   return cleaned || title;
 }
 
-// Generate short tree slug (e.g. "01-prd", "02-data-model") for folder children
+// Generate short, clean tree slug for folder children
 function getDocTreeSlug(doc: DocItem): string {
   const fileName = doc.path.split('/').pop()?.replace(/\.md$/, '') || '';
   if (/^0\d-/.test(fileName)) {
     return fileName;
   }
-  if (doc.badge) {
+  if (doc.path.startsWith('docs/features/')) {
     if (doc.badge === 'PRD') return '01-prd';
     if (doc.badge === 'Data Model' || doc.badge === 'Schema') return '02-data-model';
     if (doc.badge === 'API Contract') return '03-api-contract';
@@ -388,7 +406,8 @@ function getDocTreeSlug(doc: DocItem): string {
     if (doc.badge === 'Matrix') return '05-matrix';
     if (doc.badge === 'Fix Plan') return 'fix-plan';
   }
-  return fileName || cleanDocTitle(doc.title);
+  if (fileName === 'README') return 'Overview';
+  return fileName.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // Filtered category groups for sidebar navigation
@@ -877,13 +896,15 @@ body.body--dark .doc-tree-children {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 8px;
+  gap: 6px;
+  padding: 3px 6px;
   border-radius: 5px;
   cursor: pointer;
   color: #64748b;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   transition: all 0.1s ease;
+  min-width: 0;
 
   &:hover {
     background-color: #f8fafc;
@@ -914,14 +935,16 @@ body.body--dark .doc-tree-child-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 5px 10px;
+  gap: 6px;
+  padding: 4px 8px;
   border-radius: 6px;
   cursor: pointer;
   color: #334155;
-  font-size: 12.5px;
+  font-size: 11.5px;
   font-weight: 500;
   margin-bottom: 2px;
   transition: all 0.1s ease;
+  min-width: 0;
 
   &:hover {
     background-color: #f8fafc;
@@ -948,14 +971,28 @@ body.body--dark .doc-tree-item {
   }
 }
 
+.doc-child-title,
+.doc-item-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
 /* Color-coded micro badges matching Next.js */
 .doc-tag-micro {
-  font-size: 9px;
-  font-weight: 600;
-  padding: 1px 5px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 1px 4px;
   border-radius: 4px;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  line-height: 1.2;
 
   &--blue {
     background-color: #eff6ff;

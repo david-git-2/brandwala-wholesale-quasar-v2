@@ -4,7 +4,7 @@ Plan to unify **theme**, **color**, **font**, **splash screen**, and **brand log
 
 **Status:** **Complete** — P0–P5 shipped (color, fonts, logo, splash, theme polish, doc sync).
 
-**Canonical token reference:** [`docs/UI_CONSISTENCY.md`](./../docs/UI_CONSISTENCY.md)
+**Canonical token reference:** [`docs/guides/ui-standards.md`](../docs/guides/ui-standards.md)
 
 ---
 

@@ -5,6 +5,26 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: Treasury Accountants, Finance Directors, Storefront Resellers, Cashiers, Operational Staff
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/wallet/` |
+| UI | `web/src/modules/wallet/` |
+| SQL | Stub `supabase/schemas/wallet/`; live in `public.sql` |
+| Ledger | Only `record_ledger_transaction` |
+| Access | Parent books; `operating_tenant_id` for desk |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `app` books; `shop` merchant statement |
+| In | `record_ledger_transaction`, entity wallets, staff reverse |
+| Out | Investor withdraw; inventing a second ledger |
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

@@ -1,7 +1,9 @@
+> **Keep.** Understand tables. Max ~80 lines. Do not paste live SQL — link `schemas/`. Files: `01_types`, `02_tables`, `03_rpcs`, `04_rls`.
+
 # [Feature Name] — Data Model & Schema Specification
 
-> **Module Schema Target**: `supabase/schemas/<domain>/01_tables.sql`  
-> **RLS Policies Target**: `supabase/schemas/<domain>/02_rls.sql`  
+> **Module Schema Target**: `supabase/schemas/<domain>/02_tables.sql`  
+> **RLS Policies Target**: `supabase/schemas/<domain>/04_rls.sql`  
 
 ---
 

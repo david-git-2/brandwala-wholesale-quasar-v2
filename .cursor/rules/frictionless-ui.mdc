@@ -22,7 +22,7 @@ Screens must feel fast and obvious: fewest steps to complete the task, clear pri
 
 ## Page explains itself
 
-The page is the teacher. Happy path never requires Help or `doc/`. Audiences: [docs/UI_CONSISTENCY.md](../../docs/UI_CONSISTENCY.md) Guidance layers.
+The page is the teacher. Happy path never requires Help or `doc/`. Audiences: [docs/guides/ui-standards.md](../../docs/guides/ui-standards.md).
 
 - **What:** header subtitle or caption in shop-floor English. No RPC, table, ATP, or entity jargon.
 - **Next:** exactly one next step visible. List pages: subtitle + one primary CTA (empty-state vs header rule above). Detail/workflow pages: `q-banner` under the header when the next step is status-gated.
@@ -48,4 +48,4 @@ Do not dump Help-drawer copy on the page. Do not add product tours. Do not send 
 
 - Invent a parallel layout/color system.
 - Add extra clicks, confirmations, or page navigations without a clear safety need.
-- Fight `docs/UI_CONSISTENCY.md` / `.ui-consistency.mdc` patterns — extend them, don’t replace them.
+- Fight `docs/guides/ui-standards.md` / `.ui-consistency.mdc` patterns — extend them, don’t replace them.

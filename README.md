@@ -135,7 +135,7 @@ Requires: linked project (`pnpm run backend:link`), `psql` on your PATH. Dumps a
 2. `pnpm run env:local` and restart `pnpm run dev`
 3. **Prove migrations on empty DB (ordering fixes):** `pnpm run backend:reset` — no prod data. Fix until green.
 4. **Load prod rows once:** `pnpm run backend:pull-prod-data`
-5. **Schema/RPC change (after prod data loaded):** edit `supabase/schemas/` → `pnpm run backend:schema:diff` → `pnpm exec supabase db diff -f <name>` → review → `pnpm run backend:local` → `pnpm run backend:types:local` → when ready `pnpm run deploy:backend`. Do **not** run reset/restore-dumps for every migration. See [doc/SUPABASE_SCHEMA.md](doc/SUPABASE_SCHEMA.md).
+5. **Schema/RPC change (after prod data loaded):** edit `supabase/schemas/` → `pnpm run backend:schema:diff` → `pnpm exec supabase db diff -f <name>` → review → `pnpm run backend:local` → `pnpm run backend:types:local` → when ready `pnpm run deploy:backend`. Do **not** run reset/restore-dumps for every migration. See [doc/supabase-schema.md](doc/supabase-schema.md).
 
 **Useful scripts**
 
@@ -156,7 +156,7 @@ Requires: linked project (`pnpm run backend:link`), `psql` on your PATH. Dumps a
 
 Do not run experimental SQL against the linked remote while iterating locally.
 
-For the **combined platform reference** (feature matrix, all module details, permissions, redesign entities), see **[doc/MASTER_PLAN.md](doc/MASTER_PLAN.md)** §14–§18.
+For the **platform map**, see **[docs/README.md](docs/README.md)**. How to add docs: **[docs/STRUCTURE.md](docs/STRUCTURE.md)**.
 
 Other docs: `doc/` (domain specs), `docs/` (UI + AI workflow).
 

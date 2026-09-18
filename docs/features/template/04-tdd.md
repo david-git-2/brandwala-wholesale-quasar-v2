@@ -1,3 +1,5 @@
+> **Keep.** Understand UI tree. Copy the module’s Pinia or Query pattern.
+
 # [Feature Name] — Technical Design Document (TDD)
 
 > **Frontend Module Target**: `web/src/modules/<domain>/`  

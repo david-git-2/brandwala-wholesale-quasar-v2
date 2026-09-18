@@ -8,7 +8,7 @@ alwaysApply: false
 
 `supabase/schemas/` is the **current** public schema (tables, RPCs, RLS, views, triggers). `supabase/migrations/` is history plus what production runs.
 
-How-to: [doc/SUPABASE_SCHEMA.md](../../doc/SUPABASE_SCHEMA.md)
+How-to: [doc/supabase-schema.md](../../doc/supabase-schema.md)
 
 ## Edit
 

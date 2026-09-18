@@ -5,6 +5,27 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: Thrift Shop Managers, Tagging Clerks, POS Cashiers, Store Operators
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/thrift/` |
+| UI | `web/src/modules/thrift/` |
+| SQL | Stub `supabase/schemas/thrift/`; live in `public.sql` |
+| State | Vue Query; do not copy this tree into wholesale modules |
+| Access | Tenant-scoped; not on global entity model |
+| Model | **Thrift** vertical. [business models](../../architecture/business-models.md). |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `app` only |
+| In | Thrift boxes, garments, POS, barcodes, reports |
+| Out | `global_stocks`, Koba, BW shop allocations |
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

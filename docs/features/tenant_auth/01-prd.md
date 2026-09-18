@@ -5,6 +5,25 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: Platform Superadmins, Company Owners, IT Security Leads, Staff Administrators
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/tenant_auth/` |
+| UI | `web/src/modules/auth/`, `tenant/`, `membership/`, `access_control/` |
+| SQL | Stubs `tenants/`, `permissions/`; live mostly `public.sql` |
+| Access | Scopes `platform` \| `app` \| `shop` \| `investor`; grants via `effectiveGrants` |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | All four logins |
+| In | OAuth, memberships, grants, tenant hierarchy, workspace switch |
+| Out | Domain ERP screens (those packs own their pages) |
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

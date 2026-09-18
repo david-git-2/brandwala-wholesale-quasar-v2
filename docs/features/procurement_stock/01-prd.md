@@ -5,6 +5,27 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: Procurement Staff, Warehouse Managers, Operations Admins, Auditors
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/procurement_stock/` |
+| UI | `web/src/modules/procurement_stock/`, `vendor/` |
+| SQL | **Split** `supabase/schemas/procurement/` (`01_types` … `04_rls`) |
+| State | Mix of Pinia and Vue Query — copy neighbors |
+| Model | **BW** warehouse. See [business models](../../architecture/business-models.md). |
+| Access | `app`; parent owns stock |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `app` only |
+| In | Shipments, landed cost, bins, `global_stocks`, movements, vendors, allocations |
+| Out | Shop cart, Koba, thrift boxes, PBC quote formulas |
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

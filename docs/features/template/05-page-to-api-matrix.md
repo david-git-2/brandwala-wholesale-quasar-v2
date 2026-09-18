@@ -1,3 +1,5 @@
+> **Keep.** Understand screens: button → RPC. Do not duplicate `03`.
+
 # [Feature Name] — Page-to-API Matrix
 
 Mapping of all UI controls, interactive buttons, modal triggers, and form submissions to their corresponding Supabase RPCs, database operations, and TanStack Vue Query cache keys.

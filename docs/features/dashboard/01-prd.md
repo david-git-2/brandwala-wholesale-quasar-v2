@@ -5,6 +5,25 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: Company Owners, Operations Staff, Storefront Customers, Superadmins
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/dashboard/` |
+| UI | `web/src/modules/dashboard/` |
+| SQL | Widget registry in app; no dedicated schema folder |
+| Access | All scopes; widgets gated by grants |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `platform` / `app` / `shop` homes |
+| In | Slot registry, attention list, customer summary |
+| Out | Owning domain tables; finance report pages |
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

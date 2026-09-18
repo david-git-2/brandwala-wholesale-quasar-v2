@@ -5,6 +5,26 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: Sourcing Managers, Procurement Officers, Wholesale Sales Desk, B2B Clients
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/product_based_costing/` |
+| UI | `web/src/modules/product_based_costing/`, `costingFile/` |
+| SQL | `public.sql` |
+| State | Vue Query keys under the module `shared/queryKeys/` |
+| Model | **Pre-order** costing. Not on-hand stock. [business models](../../architecture/business-models.md). |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `app` |
+| In | Costing files, line formulas, backlog, demand handoff |
+| Out | `global_stocks` until shipment received; shop cart |
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

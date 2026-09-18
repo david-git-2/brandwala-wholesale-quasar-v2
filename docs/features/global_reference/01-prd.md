@@ -1,5 +1,25 @@
 # Global Reference, Koba Vertical & Central Trash — PRD
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/global_reference/` |
+| UI | `web/src/modules/global_reference/`, `global/`, `tag/`, `koba/` |
+| SQL | Mostly `public.sql`; stubs `global_reference/`, `tag/` |
+| K-beauty | Code name **Koba** — `web/src/modules/koba/`, tables `koba_*`. Not `global_stocks`. |
+| Access | Superadmin for catalogs; `app`/`shop` for Koba (`koba_retail` / `koba_wholesale`) |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `platform` catalogs; `app` + `shop` Koba; `app` trash |
+| In | Currencies, markets, payment methods, units; `koba_*`; `trash_entries` |
+| Out | `global_stocks`, thrift SKUs, wholesale invoices |
+
+See [scopes](../../architecture/scopes.md).
+
 ## 1. Executive Summary & Vision
 The **Global Reference, Koba Sourcing Vertical & Central Trash Management** domain provides foundational reference catalogs, vertical cross-border sourcing capabilities, and cross-platform soft-delete recovery mechanisms for TradeFlow BD. It unifies:
 1. **Global Reference Catalogs**: System-wide reference master data (currencies, geographic markets, payment methods, and units of measure) shared across all tenant environments without domain cross-pollution.

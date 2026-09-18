@@ -5,6 +5,25 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: Tenant Staff, Operations Coordinators, Storefront Buyers, Platform Administrators
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/notifications/` |
+| UI | `web/src/modules/notifications/`, `tasks/` |
+| SQL | **Split** `supabase/schemas/notifications/` (`03_rls.sql`, `04_rpcs.sql`) |
+| Access | `app` (and shop where inbox exists) |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `app` tasks + inbox; shop inbox if enabled |
+| In | `enqueue_notification`, in-app inbox, tasks |
+| Out | Building ERP pages; Telegram unless already shipped |
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

@@ -5,6 +5,25 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: Desk Sales Operators, Wholesale Account Managers, Store Clerks, Cashiers, Finance Auditors
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/sales_invoice/` |
+| UI | `web/src/modules/sales_invoice/`, `invoice_shared/` |
+| SQL | **Split** `supabase/schemas/sales_invoice/` |
+| Access | `app`; invoices owned at company |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `app` desk |
+| In | `global_invoices`, FIFO search, collections, wholesale returns RPC. Retail/dropship may attach `recipient_profile_id` (owned by customer hub) |
+| Out | Dropship packing slip; shop cart; thrift POS; Recipient as its own feature pack |
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

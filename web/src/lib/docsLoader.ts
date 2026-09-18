@@ -76,7 +76,9 @@ function parseMarkdownMetadata(rawPath: string, content: string): DocItem {
   const lowerPath = cleanPath.toLowerCase();
   const lowerTitle = title.toLowerCase();
 
-  if (lowerPath.includes('prd') || lowerTitle.includes('prd') || lowerTitle.includes('product requirement')) {
+  if (lowerPath.includes('gaps') || lowerTitle.includes('gaps')) {
+    badge = 'Gaps';
+  } else if (lowerPath.includes('prd') || lowerTitle.includes('prd') || lowerTitle.includes('product requirement')) {
     badge = 'PRD';
   } else if (lowerPath.includes('data-model') || lowerTitle.includes('data model') || lowerTitle.includes('schema')) {
     badge = 'Data Model';
@@ -98,9 +100,15 @@ function parseMarkdownMetadata(rawPath: string, content: string): DocItem {
   let category = 'Operations & Modules';
   let subgroup: string | undefined = undefined;
 
-  if (cleanPath.startsWith('docs/architecture') || cleanPath === 'docs/README.md' || cleanPath === 'doc/MASTER_PLAN.md' || cleanPath === 'doc/BRAND_THEME_PLAN.md') {
+  if (cleanPath === 'docs/STRUCTURE.md' || cleanPath === 'docs/README.md' || cleanPath.startsWith('docs/architecture/')) {
     category = 'Architecture & Standards';
-    subgroup = 'Core Standards';
+    subgroup = 'Core Architecture';
+  } else if (cleanPath.startsWith('docs/guides/')) {
+    category = 'Architecture & Standards';
+    subgroup = 'Engineering Guides';
+  } else if (cleanPath === 'doc/supabase-schema.md' || cleanPath === 'doc/SUPABASE_SCHEMA.md') {
+    category = 'Architecture & Standards';
+    subgroup = 'Database & Schemas';
   } else if (cleanPath.startsWith('docs/features/')) {
     category = 'Features & Specifications';
     const parts = cleanPath.split('/');
@@ -117,8 +125,8 @@ function parseMarkdownMetadata(rawPath: string, content: string): DocItem {
       subgroup = folder.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
       category = 'Operations & Modules';
     } else {
-      category = 'Architecture & Standards';
-      subgroup = 'System Architecture';
+      category = 'System, Schemas & Fixes';
+      subgroup = 'System Guides';
     }
   }
 
@@ -148,19 +156,26 @@ function parseMarkdownMetadata(rawPath: string, content: string): DocItem {
   };
 }
 
+function shouldIndexDoc(cleanPath: string): boolean {
+  if (cleanPath === 'doc/brand-theme.md' || cleanPath === 'doc/BRAND_THEME_PLAN.md') return false;
+  return true;
+}
+
 export function getAllDocs(): DocItem[] {
   const docs: DocItem[] = [];
 
   for (const [rawPath, content] of Object.entries(rawDocFiles)) {
-    if (typeof content === 'string') {
-      docs.push(parseMarkdownMetadata(rawPath, content));
-    }
+    if (typeof content !== 'string') continue;
+    const cleanPath = rawPath.replace(/^\.\.\/\.\.\//, '').replace(/^\.\.\//, '');
+    if (!shouldIndexDoc(cleanPath)) continue;
+    docs.push(parseMarkdownMetadata(rawPath, content));
   }
 
-  // Sort order: Architecture & Standards first, docs/README.md at the very top, then alphabetized
   return docs.sort((a, b) => {
     if (a.path === 'docs/README.md') return -1;
     if (b.path === 'docs/README.md') return 1;
+    if (a.path.includes('STRUCTURE')) return -1;
+    if (b.path.includes('STRUCTURE')) return 1;
     if (a.category !== b.category) {
       const order = ['Architecture & Standards', 'Features & Specifications', 'Operations & Modules', 'System, Schemas & Fixes'];
       return order.indexOf(a.category) - order.indexOf(b.category);

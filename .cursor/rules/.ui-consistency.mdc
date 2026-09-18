@@ -16,7 +16,7 @@ alwaysApply: false
 - Primary button: max one `color="primary" unelevated` visible at a time (header **or** empty-state CTA — never both).
 - Page explains itself: shop-floor subtitle (what this screen is); exactly one next step; disabled primary actions say why (`q-tooltip` or banner); hide cards that do not apply to the current status.
 - Detail/workflow next step: `q-banner class="bg-primary-soft text-primary rounded-borders" dense` under the header when the action is status-gated.
-- Do not put Help-drawer essays on the page, add product tours, or link staff to `/app/documentation` / `doc/*.md`. See `docs/UI_CONSISTENCY.md` Guidance layers.
+- Do not put Help-drawer essays on the page, add product tours, or link staff to `/app/documentation` / `doc/*.md`. See `docs/guides/ui-standards.md`.
 - Secondary: `flat` or `outline`; danger: `color="negative"`.
 - No default refresh buttons on app management pages.
 - No FABs when header action is sufficient.
@@ -34,8 +34,8 @@ alwaysApply: false
 - Dense ops detail: follow `docs/PAGE_HEADER.md` DETAIL + status workflow strip (not chip menus); rates/secondary editors collapsed by default; table full width.
 - Page headers (list/detail): prefer `docs/PAGE_HEADER.md` over `AppPageHeader` for new app management pages.
 - High-density table column pastels: `.bw-ops-col-tint--weight|price|cost|qty` (6% hue + inset left accent).
-- Elevation: flat tables/toolbars; raised dialogs, drawers, clickable cards, empty-state CTAs (see `docs/UI_CONSISTENCY.md`).
-- Scope identity: nav/bottom-nav active states use `--bw-theme-primary-soft`; prefer tokens from `docs/UI_CONSISTENCY.md`.
+- Elevation: flat tables/toolbars; raised dialogs, drawers, clickable cards, empty-state CTAs (see `docs/guides/ui-standards.md`).
+- Scope identity: nav/bottom-nav active states use `--bw-theme-primary-soft`; prefer tokens from `docs/guides/ui-standards.md`.
 - No `backdrop-filter` on static headers/cards/toolbars.
 - New shared component only if used on 2+ pages; place in `web/src/components/ui/`.
 - Reference implementations: `TenantPage.vue`, `AdminTenantPage.vue`, `ModulesPage.vue`.

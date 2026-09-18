@@ -5,6 +5,25 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: Business Owners, CFOs, Financial Auditors, Treasury Controllers, Operational Staff
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/reporting_treasury/` |
+| UI | `web/src/modules/reporting_treasury/` |
+| SQL | `public.sql` |
+| Access | `app`; parent books |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `app` |
+| In | Eight finance reports, payments allocation |
+| Out | Operational edit of shipments/invoices (read-side) |
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

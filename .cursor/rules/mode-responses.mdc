@@ -26,6 +26,8 @@ Every reply uses short, easy English.
 
 ## Agent mode
 
+If blocked because the docs do not state a needed fact, do **not** reply `Done`. Reply with the `DOC_GAP` block from `.cursor/rules/docs-first.mdc` and stop.
+
 When the task is finished, reply with exactly:
 
 Done

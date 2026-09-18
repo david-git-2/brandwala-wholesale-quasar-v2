@@ -5,6 +5,25 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: External Capital Investors, Company Managing Partners, CFOs
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/investor_capital/` |
+| UI | `web/src/modules/investor_capital/`, `investor_portal/` |
+| SQL | Stub `supabase/schemas/investor/`; live in `public.sql` |
+| Access | `investor` scope read-only; staff manage capital in `app` |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `app` staff capital; `investor` portal |
+| In | Profiles, deposits, shipment shares, read-side yield |
+| Out | Withdrawal requests; selling stock |
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

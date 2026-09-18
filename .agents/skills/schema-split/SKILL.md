@@ -7,15 +7,15 @@ description: >-
   domain folder to extract (tag, thrift, procurement, wallet, shop, …).
 ---
 
-Read **[doc/SUPABASE_SCHEMA_SPLIT.md](../../../doc/SUPABASE_SCHEMA_SPLIT.md)** and **[doc/SUPABASE_SCHEMA.md](../../../doc/SUPABASE_SCHEMA.md)** first.
+Read **[doc/supabase-schema.md](../../../doc/supabase-schema.md)** first.
 
 ## Which module
 
 1. If the user named a domain, use that.
-2. Else use the first **Stub** row in `doc/SUPABASE_SCHEMA_SPLIT.md`.
+2. Else use the first **Pending** row in `doc/supabase-schema.md`.
 3. **One domain per session.** Stop when that row is updated.
 
-Name prefixes (grep `supabase/schemas/public.sql`; also read that domain’s `doc/**/schema.md` if it exists):
+Name prefixes (grep `supabase/schemas/public.sql`; also read `docs/features/<module>/02-data-model.md` if it exists):
 
 | Domain | Typical objects |
 |--------|-----------------|
@@ -34,12 +34,12 @@ Name prefixes (grep `supabase/schemas/public.sql`; also read that domain’s `do
 ## Do
 
 1. Find `CREATE` for tables, types, functions, views, triggers, indexes, policies for **this domain only**.
-2. Write them under `supabase/schemas/<domain>/` (`tables.sql`, `rpcs.sql`, `rls.sql` as needed).
+2. Write them under `supabase/schemas/<domain>/` (`01_types.sql`, `02_tables.sql`, `03_rpcs.sql`, `04_rls.sql` as needed).
 3. **Delete the same objects from `public.sql` in the same change.** No duplicates.
 4. Keep `_extensions.sql`. Do not dump into `supabase/.dumps/`.
 5. Run `pnpm run backend:schema:diff`. Allowed leftover: grant/`OWNER TO`/CHECK recast noise already known from first dump. **Not allowed:** `DROP` of other modules’ tables or functions — that means you deleted too much or left a partial schema. Fix and re-diff.
 6. Move-only: **do not** `db diff -f` / do not add a migration / do not `db push`.
-7. Mark the domain **Split** in `doc/SUPABASE_SCHEMA_SPLIT.md`.
+7. Mark the domain **Split** in `doc/supabase-schema.md`.
 
 ## Do not
 

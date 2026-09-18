@@ -8,7 +8,7 @@ description: Automatically detect, analyze, and fix vue-tsc type errors and ESLi
 This skill guides the automated detection and resolution of TypeScript (`vue-tsc`) and ESLint errors in `web/`.
 
 ## Reference Protocol
-Refer to [OPTIMIZE_ERRORS.md](file:///Users/daviditc/Documents/Personal%20Project/brandwala-wholesale-quasar-v2/docs/OPTIMIZE_ERRORS.md) for full error resolution strategies and common patterns.
+Refer to [docs/architecture/state.md](../../../docs/architecture/state.md) for toasts. Then targeted `pnpm --dir web type-check` / `lint`.
 
 ## Execution Workflow
 

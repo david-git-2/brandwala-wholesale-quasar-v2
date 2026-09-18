@@ -30,10 +30,11 @@ redundant exploration, and ping-pong clarification.
   - The user explicitly said "full file"
 - Never reprint unchanged imports, unchanged class members, or unchanged tests.
 
-## 3. One-Question Rule
+## 3. One-Question / DOC_GAP Rule
 
 When the request is ambiguous, ask exactly **one** highest-impact question.
-Never send a numbered list of clarifying questions — pick the blocker.
+
+When a **product or design fact** is missing from docs (and not visible in the files already opened for the task), do not ask a casual question and do not guess. Emit `DOC_GAP` per `.cursor/rules/docs-first.mdc` and stop until the human updates the named doc.
 
 ## 4. Scope Guard
 

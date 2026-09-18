@@ -1,33 +1,27 @@
-# Architecture: State Management & Data Fetching
+# State — Vue Query, Pinia, toasts
 
-TradeFlow BD uses a dual-layer state management model: **TanStack Vue Query (v5)** for server state and **Pinia (v3)** for client UI state.
+**Copy the module you edit.** Do not migrate Pinia ↔ Query unless the task says so.
 
----
+## Vue Query
 
-## 🔄 Server State: TanStack Vue Query
+Used in `shop_order`, `procurement_stock`, `product_based_costing`, `thrift`, parts of `sales_invoice`.
 
-### Key Principles
-1. **Cache-First Mutations**: On update or delete, do not refetch the entire table. Manually update the Vue Query cache entry or splice out the deleted item.
-2. **Partial Payloads (PATCH Style)**: Only transmit modified fields when submitting an edit form.
-3. **Query Key Factories**: Group query keys by module:
-   ```typescript
-   export const invoiceKeys = {
-     all: ['sales_invoices'] as const,
-     lists: () => [...invoiceKeys.all, 'list'] as const,
-     list: (filters: InvoiceFilterState) => [...invoiceKeys.lists(), filters] as const,
-     details: () => [...invoiceKeys.all, 'detail'] as const,
-     detail: (id: string) => [...invoiceKeys.details(), id] as const,
-   };
-   ```
-4. **Optimistic Updates**: Immediately apply changes to local UI cache before the network round-trip finishes, rolling back if the request fails.
+- Keys: `web/src/modules/<module>/shared/queryKeys/` (or existing `*QueryKeys.ts`). Not a repo-root `shared/` folder.
+- Edit/delete: patch or splice cache. No full list refetch.
+- PATCH payloads. Optimistic update + rollback.
 
----
+## Pinia
 
-## 🗃️ Client State: Pinia Stores
+`page → store → service → repository`. Use for session/grants, filters, drawers, and lists that already use `*Store.ts`.
 
-Pinia stores are reserved strictly for:
-- Ephemeral UI filters (e.g. date range pickers, multi-select rows)
-- Active tenant/user session state
-- Drawer/sidebar visibility and user preferences
+## Toasts (`src/utils/appFeedback.ts`)
 
-Do not duplicate remote database tables into persistent Pinia state; rely on TanStack Vue Query caching instead.
+| | Success toast | Error |
+| :--- | :--- | :--- |
+| Fetch | never | toast or banner |
+| Mutation | always | `parseSupabaseError` — never raw SQL |
+| Field validation | — | on the field |
+
+```ts
+showErrorNotification(parseSupabaseError(err, 'Failed to update record.'));
+```

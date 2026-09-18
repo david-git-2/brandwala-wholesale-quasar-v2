@@ -5,6 +5,27 @@
 > **Target Release**: v2.4.0  
 > **Target Audience**: B2B Storefront Customers, Dropship Resellers, Procurement Officers, Fulfillment Operators, Finance Managers
 
+## As-built
+
+| | |
+| :--- | :--- |
+| Spec | `docs/features/shop_order/` |
+| UI | `web/src/modules/shop_order/` |
+| SQL | **Split** `supabase/schemas/shop_order/` |
+| State | Vue Query composables + `shopOrderQueryKeys` |
+| Access | `shop` storefront + `app` dropship desk. Shops sell from `global_stock_allocations`. |
+| Model | **BW** shop + dropship; catalog quotes are **pre-order**. [business models](../../architecture/business-models.md). |
+
+## Scope
+
+| | |
+| :--- | :--- |
+| Surfaces | `shop` storefront; `app` shop config + dropship desk |
+| In | Shops, carts, catalog/dropship orders, pricing, stock pick, reseller payout trigger |
+| Out | Warehouse receive, Koba carts, thrift POS, parent invoice engine (call it, don’t own it) |
+
+See [scopes](../../architecture/scopes.md).
+
 ---
 
 ## 1. Executive Summary

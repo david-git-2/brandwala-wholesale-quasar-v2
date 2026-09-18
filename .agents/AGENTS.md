@@ -1,7 +1,11 @@
 # Workspace Agent Rules
 
+## Docs first — no guess
+- Map: `docs/README.md`. New docs: `docs/STRUCTURE.md`. Models: `docs/architecture/business-models.md`. Rule: `.cursor/rules/docs-first.mdc`.
+- If a needed fact is missing or two docs disagree: **stop**, emit `DOC_GAP`, wait for the human to edit the named doc. Do not invent RPCs, statuses, permissions, or stock models.
+
 ## Supabase Database Schema Rule (Token Optimization)
-- **Current SQL**: `supabase/schemas/` (`public.sql` until a module is split). How-to: `doc/SUPABASE_SCHEMA.md`. Split one domain: `doc/SUPABASE_SCHEMA_SPLIT.md` (user says `split schema <domain>`).
+- **Current SQL**: `supabase/schemas/` (`public.sql` until a module is split). How-to & tracker: `doc/supabase-schema.md` (user says `split schema <domain>`). Module map: `docs/README.md`.
 - **TypeScript shapes**: `web/src/types/database.types.ts` (tables, columns, enums, RPC signatures — not function bodies or RLS).
 - **Do NOT Scan Migrations**: Do NOT read through all files in `supabase/migrations/*.sql` to determine active database state.
 - **New Migrations Only**: Only inspect or edit `supabase/migrations/*.sql` when writing/reviewing a generated or DML migration.
@@ -9,7 +13,7 @@
 - **Local backend commands**: Follow `.cursor/rules/supabase-local-backend.mdc`. Default after a migration: `pnpm run backend:local` + `backend:types:local`. Do **not** auto-run `backend:reset` or `backend:restore-dumps` when local already has prod data.
 - **Migration order / fresh reset**: Before adding or fixing `supabase/migrations/*.sql`, follow `.agents/skills/supabase-migration-order/SKILL.md`. Run `backend:reset` only to prove empty-DB replay (ordering fixes) or when the user asks — not after every feature.
 
-## Procurement module — `doc/procurement_stock/IMPLEMENTATION_ORDER.md`
+## Procurement module — `docs/features/procurement_stock/`
 Shipment track (7A–14B) and warehouse W1–W9 are complete.
 When a phase adds SQL migrations:
 - **Read** the migration files you add or replace.
@@ -32,7 +36,7 @@ When a phase adds SQL migrations:
 - **Non-Scrolling Page Container**: Lock `q-page` height to `calc(100vh - 55px)` with `overflow: hidden`.
 - **Internal Table Scroll**: Use sticky headers (`thead tr th`) and let table middle scroll internally (`.q-table__middle { overflow-y: auto }`).
 - **Status Row Hues**: Apply soft status background hues and inset left accent borders (`boxShadow: inset 3px 0 0 ...`).
-- **Flat table surfaces**: Ops list tables use global flat `.q-table__container` styling — not heavy `.floating-surface.shadow-1` stacks (see `docs/UI_CONSISTENCY.md` elevation rules).
+- **Flat table surfaces**: Ops list tables use global flat `.q-table__container` styling — not heavy `.floating-surface.shadow-1` stacks (see `docs/guides/ui-standards.md`).
 - **Rounded Square Buttons**: Primary action buttons MUST use rounded square corners (`border-radius: 8px`), NOT pill shapes.
 - **Outlined Search Input**: Search inputs MUST use `outlined rounded dense`.
 - **Neutral Avatars**: Entity/vendor avatars MUST use neutral grey tones (`color="grey-3" text-color="grey-9"`).
