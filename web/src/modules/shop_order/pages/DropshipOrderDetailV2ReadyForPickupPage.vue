@@ -23,6 +23,7 @@ import { dropshipMerchantRepository } from '../repositories/dropshipMerchantRepo
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
+import { shopOrderService } from '../services/shopOrderService';
 import {
   showErrorNotification,
   showSuccessNotification,
@@ -193,9 +194,29 @@ const advanceToShipped = async () => {
       throw new Error((data as { error?: string }).error || 'Failed to update status');
     }
 
-    showSuccessNotification('Status updated to shipped');
+    let billIssued = false;
+    if (tenantId.value > 0) {
+      const invoiceRes = await shopOrderService.issueDropshipTenantB2bInvoice(
+        tenantId.value,
+        order.value.id,
+      );
+      if (!invoiceRes.success) {
+        showErrorNotification(
+          invoiceRes.error ?? 'Order is shipped, but the merchant bill failed. Retry from order details.',
+        );
+      } else {
+        billIssued = (invoiceRes.data as { created?: boolean })?.created === true;
+      }
+    }
+
+    showSuccessNotification(
+      billIssued ? 'Shipped and merchant bill issued.' : 'Status updated to shipped.',
+    );
     await queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.dropshipDetailV2(authStore.tenantId ?? 0, orderId.value),
+    });
+    await queryClient.invalidateQueries({
+      queryKey: shopOrderQueryKeys.orderDetail(authStore.tenantId ?? null, orderId.value),
     });
     await orderDetailQuery.refetch();
   } catch (err) {
@@ -224,8 +245,8 @@ const onOrderCancelled = () => {
               : displayStatus === 'delivered'
                   ? 'Delivered — reconcile settlement on the dropship management desk.'
                   : displayStatus === 'shipped'
-                    ? 'Shipped — order is locked. Print the customer resell invoice for the recipient.'
-                    : 'Ready for pickup — order is locked. Print the customer resell invoice for the recipient.'
+                    ? 'Shipped — order is locked. Print the packing slip for the recipient.'
+                    : 'Ready for pickup — order is locked. Print the packing slip for the recipient.'
           }}
         </span>
       </q-banner>
@@ -267,7 +288,7 @@ const onOrderCancelled = () => {
             unelevated
             no-caps
             icon="ph ph-printer"
-            label="Print customer invoice"
+            label="Print packing slip"
             class="text-weight-bold"
             style="border-radius: 8px; min-width: 220px"
             @click="openCustomerInvoicePreview"
@@ -306,21 +327,24 @@ const onOrderCancelled = () => {
 
 <style scoped>
 .dropship-order-detail-v2 {
-  background: #eef1f4;
+  min-height: 100%;
 }
 
 .dropship-order-detail-v2__info-banner {
   border: 1px solid rgba(59, 130, 246, 0.25);
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .dropship-order-detail-v2__paper-skeleton {
-  max-width: 920px;
+  max-width: 1100px;
   margin: 0 auto;
-  border-radius: 2px;
+  border-radius: 12px;
 }
 
 .dropship-order-detail-v2__ready-actions {
-  max-width: 920px;
+  max-width: 1100px;
   margin: 0 auto;
   width: 100%;
   display: flex;

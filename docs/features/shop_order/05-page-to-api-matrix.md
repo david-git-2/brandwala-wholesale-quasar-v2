@@ -8,7 +8,7 @@ Mapping of all UI controls, stage actions, dialog triggers, and form submissions
 
 | Page / Component | UI Control / Action | Triggered Hook / Method | Backend RPC / Operation | Cache Invalidation / Optimistic Strategy |
 | :--- | :--- | :--- | :--- | :--- |
-| **`DropshipOrdersPage`** | Tab Switch / Filter Change | `useDropshipOrdersQuery` | `Table: shop_orders` (by status) | Cached on `shopOrderQueryKeys.orders` (`staleTime: 30s`) |
+| **`ShopOrderDetailHostPage`** | Open `/app/shop/orders/:id` | Loads catalog desk or dropship V2 by `shop_type_snapshot` | Same RPCs as before | Status change stays on this URL |
 | **`ShopSettingsPage`** | Update Shop Permissions | `useUpdateShopAccessMutation` | `Table: shop_customer_group_access` | Invalidates shop permissions cache |
 | **`DropshipProcessingPage`** | Confirm Line Stock Pick | `useAssignStockPickMutation` | `RPC: assign_dropship_order_stock_pick` | Binds `global_stock_id`, updates order status |
 | **`DropshipReadyForPickupPage`**| Issue B2B Invoice | `useIssueB2BInvoiceMutation` | `RPC: create_sales_invoice_from_payload` | Links `global_invoice_id`, freezes stock |

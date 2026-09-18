@@ -102,6 +102,15 @@ const isTenantModuleActive = (
     );
   }
 
+  if (moduleKey === 'recipient_profile') {
+    return (
+      activeModuleKeys.includes('recipient_profile') ||
+      activeModuleKeys.includes('customer') ||
+      activeModuleKeys.includes('global_invoice') ||
+      activeModuleKeys.includes('sales_invoice')
+    );
+  }
+
   if (moduleKey === 'procurement_stock') {
     return PROCUREMENT_HUB_MODULE_KEYS.some((key) => activeModuleKeys.includes(key));
   }
@@ -176,6 +185,17 @@ const hasModuleRoleGrant = ({
     );
   }
 
+  if (moduleKey === 'recipient_profile') {
+    return effectiveGrants.some(
+      (grant) =>
+        (grant.module_key === 'recipient_profile' ||
+          grant.module_key === 'customer' ||
+          grant.module_key === 'global_invoice' ||
+          grant.module_key === 'sales_invoice') &&
+        grant.action === action,
+    );
+  }
+
   if (moduleKey === 'procurement_stock') {
     return effectiveGrants.some(
       (grant) => grant.module_key === 'global_shipment' && grant.action === action,
@@ -195,7 +215,6 @@ const NO_ACCESS: readonly ModuleAction[] = [];
 
 const SALES_CHILD_CATALOG_MODULES: ReadonlySet<ModuleKey> = new Set([
   'billing_profile',
-  'recipient_profile',
 ]);
 
 const isBlockedOnParentCompany = (
@@ -409,6 +428,27 @@ export const resolveModuleAccess = ({
         .filter(
           (grant) =>
             grant.module_key === 'global_invoice' || grant.module_key === 'sales_invoice',
+        )
+        .map((grant) => grant.action as ModuleAction);
+    }
+    if (
+      moduleKey === 'recipient_profile' &&
+      allowedActions.length === 0 &&
+      effectiveGrants.some(
+        (grant) =>
+          grant.module_key === 'recipient_profile' ||
+          grant.module_key === 'customer' ||
+          grant.module_key === 'global_invoice' ||
+          grant.module_key === 'sales_invoice',
+      )
+    ) {
+      allowedActions = effectiveGrants
+        .filter(
+          (grant) =>
+            grant.module_key === 'recipient_profile' ||
+            grant.module_key === 'customer' ||
+            grant.module_key === 'global_invoice' ||
+            grant.module_key === 'sales_invoice',
         )
         .map((grant) => grant.action as ModuleAction);
     }

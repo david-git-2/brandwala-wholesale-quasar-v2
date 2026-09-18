@@ -1,9 +1,8 @@
-# Universal Wallet & Ledger — API Contract & RPC Signatures
+# Wallet & receipts — API contract
 
-> **RPC Functions Target**: `supabase/schemas/wallet/03_rpcs.sql`  
-> **Security Level**: `SECURITY DEFINER` with parent tenant resolution
+Target: **one receipt RPC** (source = cash / bank / store credit / courier remittance) then allocations + ledger. Live collect/remittance RPCs still differ — [00-gaps](00-gaps.md) WA4.
 
----
+Ledger list/detail below. Bodies: `public.sql` until wallet schema split. Payments live: `create_billing_profile_payment_with_allocations` (wholesale); dropship remittance RPCs in `supabase/schemas/shop_order/03_rpcs.sql`.
 
 ## 1. Directory Listing RPC: `list_wallet_entities_for_staff`
 

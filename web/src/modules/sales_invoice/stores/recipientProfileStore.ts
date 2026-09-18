@@ -15,11 +15,11 @@ export const useRecipientProfileStore = defineStore('recipientProfile', {
     error: null as string | null,
   }),
   actions: {
-    async fetchRecipientProfiles(tenantId: number) {
+    async fetchRecipientProfiles(tenantId: number, isParent?: boolean) {
       this.loading = true;
       this.error = null;
       try {
-        const data = await recipientProfileRepository.list(tenantId);
+        const data = await recipientProfileRepository.list(tenantId, isParent);
         this.items = data;
       } catch (err: any) {
         const errorMsg = err.message || 'Failed to fetch recipient profiles';
@@ -39,7 +39,8 @@ export const useRecipientProfileStore = defineStore('recipientProfile', {
     },
 
     async upsertByPhone(payload: {
-      tenant_id: number;
+      tenant_id?: number | null;
+      parent_tenant_id?: number | null;
       name: string;
       phone: string;
       secondary_phone?: string | null;

@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
-import { DROPSHIP_ORDER_DETAIL_PROCESSING_ROUTE } from '../composables/dropshipOrderDetailRoutes';
 import { useDropshipOrderDetailV2Query } from '../composables/useDropshipOrderDetailV2Query';
 import { useDropshipOrderStatusRedirect } from '../composables/useDropshipOrderStatusRedirect';
 import DropshipOrderConfirmedInvoicePaper from '../components/DropshipOrderConfirmedInvoicePaper.vue';
@@ -17,7 +16,6 @@ import {
 } from 'src/utils/appFeedback';
 
 const route = useRoute();
-const router = useRouter();
 const authStore = useAuthStore();
 const queryClient = useQueryClient();
 const advancingStatus = ref(false);
@@ -42,16 +40,6 @@ useDropshipOrderStatusRedirect({
   tenantSlug,
   enabled: computed(() => !isLoading.value && !!order.value),
 });
-
-const goToProcessingPage = () => {
-  void router.push({
-    name: DROPSHIP_ORDER_DETAIL_PROCESSING_ROUTE,
-    params: {
-      id: orderId.value,
-      tenantSlug: route.params.tenantSlug,
-    },
-  });
-};
 
 const advanceToProcessing = async () => {
   if (!order.value || order.value.status !== 'confirmed') return;
@@ -78,7 +66,9 @@ const advanceToProcessing = async () => {
     await queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.dropshipDetailV2(authStore.tenantId ?? 0, orderId.value),
     });
-    goToProcessingPage();
+    await queryClient.invalidateQueries({
+      queryKey: shopOrderQueryKeys.orderDetail(authStore.tenantId ?? null, orderId.value),
+    });
   } catch (err) {
     showErrorNotification(parseSupabaseError(err, 'Failed to update status'));
   } finally {
@@ -143,20 +133,20 @@ const advanceToProcessing = async () => {
 
 <style scoped>
 .dropship-order-detail-v2 {
-  background: #eef1f4;
+  min-height: 100%;
 }
 
 .dropship-order-detail-v2__paper-skeleton {
-  max-width: 920px;
+  max-width: 1100px;
   margin: 0 auto;
-  border-radius: 2px;
+  border-radius: 12px;
 }
 
 .dropship-order-detail-v2__footer-actions {
-  max-width: 920px;
+  max-width: 1100px;
   margin: 0 auto;
   display: flex;
   justify-content: center;
-  padding-top: 0.25rem;
+  padding-top: 0.5rem;
 }
 </style>

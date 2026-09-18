@@ -5,6 +5,8 @@ CREATE OR REPLACE TRIGGER "trg_billing_profiles_set_updated_at" BEFORE UPDATE ON
 
 CREATE OR REPLACE TRIGGER "trg_recipient_profiles_set_updated_at" BEFORE UPDATE ON "public"."recipient_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
+CREATE OR REPLACE TRIGGER "trg_recipient_profiles_set_parent_tenant_id" BEFORE INSERT OR UPDATE OF "tenant_id" ON "public"."recipient_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_parent_tenant_id_from_tenant"();
+
 CREATE OR REPLACE TRIGGER "trg_invoice_brands_set_updated_at" BEFORE UPDATE ON "public"."invoice_brands" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 CREATE OR REPLACE TRIGGER "trg_global_invoices_default_issued_by" BEFORE INSERT ON "public"."sales_invoices" FOR EACH ROW EXECUTE FUNCTION "public"."global_invoices_default_issued_by_tenant_id"();
@@ -34,6 +36,8 @@ ALTER TABLE "public"."invoice_brands" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."sales_invoices" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."sales_invoice_items" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."sales_return_items" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."sales_invoice_item_costs" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."sales_invoice_charges" ENABLE ROW LEVEL SECURITY;
 
 
 
@@ -46,11 +50,9 @@ CREATE POLICY "billing_profiles_select" ON "public"."billing_profiles" FOR SELEC
 CREATE POLICY "billing_profiles_write" ON "public"."billing_profiles" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'billing_profile'::"text", 'edit'::"text")) WITH CHECK ("public"."membership_has_module_action"("tenant_id", 'billing_profile'::"text", 'edit'::"text"));
 
 
-CREATE POLICY "recipient_profiles_select" ON "public"."recipient_profiles" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "recipient_profiles"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
+CREATE POLICY "recipient_profiles_select" ON "public"."recipient_profiles" FOR SELECT TO "authenticated" USING (("public"."has_active_tenant_membership"("tenant_id") OR (("parent_tenant_id" IS NOT NULL) AND ("public"."has_active_tenant_membership"("parent_tenant_id") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")))));
 
-CREATE POLICY "recipient_profiles_write" ON "public"."recipient_profiles" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'recipient_profile'::"text", 'edit'::"text")) WITH CHECK ("public"."membership_has_module_action"("tenant_id", 'recipient_profile'::"text", 'edit'::"text"));
+CREATE POLICY "recipient_profiles_write" ON "public"."recipient_profiles" TO "authenticated" USING (("public"."membership_has_module_action"("tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'customer'::"text", 'edit'::"text") OR (("parent_tenant_id" IS NOT NULL) AND ("public"."membership_has_module_action"("parent_tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("parent_tenant_id", 'customer'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id"))))) WITH CHECK (("public"."membership_has_module_action"("tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'customer'::"text", 'edit'::"text") OR (("parent_tenant_id" IS NOT NULL) AND ("public"."membership_has_module_action"("parent_tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("parent_tenant_id", 'customer'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")))));
 
 
 CREATE POLICY "invoice_brands_delete" ON "public"."invoice_brands" FOR DELETE TO "authenticated" USING (("public"."membership_has_module_action"("parent_tenant_id", 'invoice_brand'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")));
@@ -83,6 +85,20 @@ CREATE POLICY "global_return_items_all" ON "public"."sales_return_items" TO "aut
   WHERE ("gi"."id" = "sales_return_items"."invoice_id"))));
 
 
+CREATE POLICY "sales_invoice_item_costs_all" ON "public"."sales_invoice_item_costs" TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."sales_invoice_items" "sii"
+  WHERE ("sii"."id" = "sales_invoice_item_costs"."invoice_item_id")))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."sales_invoice_items" "sii"
+  WHERE ("sii"."id" = "sales_invoice_item_costs"."invoice_item_id"))));
+
+
+CREATE POLICY "sales_invoice_charges_all" ON "public"."sales_invoice_charges" TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."sales_invoices" "gi"
+  WHERE ("gi"."id" = "sales_invoice_charges"."invoice_id")))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."sales_invoices" "gi"
+  WHERE ("gi"."id" = "sales_invoice_charges"."invoice_id"))));
+
+
 
 -- Grants on Tables and Views
 
@@ -109,6 +125,14 @@ GRANT ALL ON TABLE "public"."sales_invoice_items" TO "service_role";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."sales_return_items" TO "anon";
 GRANT ALL ON TABLE "public"."sales_return_items" TO "authenticated";
 GRANT ALL ON TABLE "public"."sales_return_items" TO "service_role";
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."sales_invoice_item_costs" TO "anon";
+GRANT ALL ON TABLE "public"."sales_invoice_item_costs" TO "authenticated";
+GRANT ALL ON TABLE "public"."sales_invoice_item_costs" TO "service_role";
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."sales_invoice_charges" TO "anon";
+GRANT ALL ON TABLE "public"."sales_invoice_charges" TO "authenticated";
+GRANT ALL ON TABLE "public"."sales_invoice_charges" TO "service_role";
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_invoices" TO "service_role";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_invoice_items" TO "service_role";
@@ -141,6 +165,10 @@ GRANT UPDATE ON SEQUENCE "public"."global_invoice_items_id_seq" TO "service_role
 GRANT UPDATE ON SEQUENCE "public"."global_return_items_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."global_return_items_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."global_return_items_id_seq" TO "service_role";
+
+GRANT UPDATE ON SEQUENCE "public"."sales_invoice_charges_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."sales_invoice_charges_id_seq" TO "authenticated";
+GRANT UPDATE ON SEQUENCE "public"."sales_invoice_charges_id_seq" TO "service_role";
 
 
 

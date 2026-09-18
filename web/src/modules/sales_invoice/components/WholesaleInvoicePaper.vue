@@ -392,7 +392,6 @@ const formatDate = (dateStr: string) => (dateStr ? dateStr.slice(0, 10) : '');
               <th class="col-thumb"></th>
               <th class="col-item">Item</th>
               <th class="col-qty">ATP</th>
-              <th class="col-money">Cost</th>
               <th class="col-money">Rate</th>
               <th class="col-qty">Qty</th>
               <th v-if="hasReturnedItems" class="col-qty">Returned</th>
@@ -422,7 +421,6 @@ const formatDate = (dateStr: string) => (dateStr ? dateStr.slice(0, 10) : '');
                 </div>
               </td>
               <td class="col-qty">{{ item.available_atp }}</td>
-              <td class="col-money">{{ formatMoney(item.unit_cost_price || 0) }}</td>
               <td class="col-money">
                 <q-input
                   v-model.number="item.sell_price_amount"

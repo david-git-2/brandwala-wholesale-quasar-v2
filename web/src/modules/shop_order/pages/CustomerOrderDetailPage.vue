@@ -528,12 +528,10 @@ export default {
 .customer-dropship-detail {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   width: 100%;
-  max-width: 920px;
+  max-width: 1100px;
   margin: 0 auto;
-  background: #eef1f4;
-  border-radius: 4px;
 }
 
 .customer-dropship-detail--negotiating {
@@ -541,7 +539,7 @@ export default {
 }
 
 .customer-dropship-detail__actions {
-  max-width: 920px;
+  max-width: 1100px;
   margin: 0 auto;
   width: 100%;
 }

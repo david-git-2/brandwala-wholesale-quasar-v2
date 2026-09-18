@@ -378,21 +378,24 @@ const onOrderCancelled = () => {
 
 <style scoped>
 .dropship-order-detail-v2 {
-  background: #eef1f4;
+  min-height: 100%;
 }
 
 .dropship-order-detail-v2__info-banner {
   border: 1px solid rgba(249, 115, 22, 0.25);
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .dropship-order-detail-v2__paper-skeleton {
-  max-width: 920px;
+  max-width: 1100px;
   margin: 0 auto;
-  border-radius: 2px;
+  border-radius: 12px;
 }
 
 .dropship-order-detail-v2__status-actions {
-  max-width: 920px;
+  max-width: 1100px;
   margin: 0 auto;
   width: 100%;
   display: flex;

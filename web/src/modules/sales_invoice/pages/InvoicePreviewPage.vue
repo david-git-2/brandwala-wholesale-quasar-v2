@@ -85,13 +85,11 @@ import { useRoute, useRouter } from 'vue-router';
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
 import InvoicePrintSheet from 'src/modules/invoice_shared/components/InvoicePrintSheet.vue';
 import type { InvoicePrintModel } from 'src/modules/invoice_shared/types/invoicePrintModel';
-import { invoiceGrossProfit } from 'src/modules/reporting_treasury/utils/margin';
 import { useInvoiceStore } from 'src/modules/sales_invoice/stores/invoiceStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useInvoiceWorkspace } from '../composables/useInvoiceWorkspace';
 
 import { invoiceRepository } from '../repositories/invoiceRepository';
-import { useInvoiceItemUnitCosts } from '../composables/useInvoiceItemUnitCosts';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types';
 
 const route = useRoute();
@@ -103,7 +101,6 @@ const { isDeskView } = useInvoiceWorkspace();
 const loading = ref(true);
 const invoice = ref<GlobalInvoiceDetail | null>(null);
 const items = ref<GlobalInvoiceItemRow[]>([]);
-const { resolveItemUnitCosts, getItemUnitCost } = useInvoiceItemUnitCosts();
 
 const selectedBrandId = ref<number | null>(null);
 const brandName = ref('');
@@ -181,37 +178,17 @@ const combineInvoiceItemsForPreview = (itemList: GlobalInvoiceItemRow[]) => {
 const printModel = computed<InvoicePrintModel>(() => {
   const inv = invoice.value;
   const isWholesale = inv?.invoice_type === 'wholesale';
+  const isDropship = inv?.invoice_type === 'dropship';
   const subtotal = inv?.subtotal_amount ?? 0;
 
-  // Construct charges array from inline header columns
   const inlineCharges = [
     { type: 'delivery', label: 'Delivery', amount: Number(inv?.shipping_charge ?? 0) },
-    { type: 'cod', label: 'COD', amount: Number(inv?.cod_charge_amount ?? 0) },
+    { type: 'cod', label: 'COD fee', amount: Number(inv?.cod_charge_amount ?? 0) },
     { type: 'print', label: 'Print', amount: Number(inv?.print_charge ?? 0) },
     { type: 'packing', label: 'Wrapping', amount: Number(inv?.wrapping_charge ?? 0) },
-  ].filter((c) => c.amount > 0);
-
-  const totalCost = items.value.reduce(
-    (sum, row) => sum + (getItemUnitCost(row) ?? 0) * Number(row.quantity),
-    0,
-  );
-  const profit = invoiceGrossProfit(
-    {
-      invoice_type: inv?.invoice_type as 'wholesale' | 'retail' | 'dropship',
-      shipping_charge: inv?.shipping_charge,
-      print_charge: inv?.print_charge,
-      wrapping_charge: inv?.wrapping_charge,
-      discount_amount: inv?.discount_amount,
-      invoice_status: 'issued', // bypass check
-    },
-    items.value.map((row) => ({
-      ...row,
-      id: row.id,
-      unit_cost_price: getItemUnitCost(row) ?? 0,
-    })),
-  );
-  const rate = totalCost > 0 ? (profit / totalCost) * 100 : 0;
-  const averageProfitRate = totalCost > 0 ? `${rate.toFixed(2)}%` : '-';
+  ]
+    .filter((c) => c.amount > 0)
+    .filter((c) => !(isDropship && c.type === 'cod'));
 
   return {
     id: inv?.id ?? 0,
@@ -233,9 +210,6 @@ const printModel = computed<InvoicePrintModel>(() => {
     due: Number(inv?.due_amount ?? 0),
     thankYouMessage: thankYouMessage.value,
     isWholesale,
-    totalCost,
-    profit,
-    averageProfitRate,
   };
 });
 
@@ -250,7 +224,6 @@ onMounted(async () => {
     ]);
     invoice.value = inv;
     items.value = invItems;
-    await resolveItemUnitCosts(invItems);
 
     clientName.value = inv.billing_profiles?.name ?? '';
 

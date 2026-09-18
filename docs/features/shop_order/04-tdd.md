@@ -14,9 +14,10 @@ web/src/modules/shop_order/
 │   ├── ShopSetupHubPage.vue              # Admin hub: Shops, Categories, Customer Groups
 │   ├── ShopsPage.vue                     # Storefront list with status chips
 │   ├── ShopSettingsPage.vue              # Setup, Access & Listings tabs
-│   ├── DropshipOrdersPage.vue            # Multi-stage fulfillment desk
+│   ├── ShopOrdersPage.vue                # Combined order list
+│   ├── ShopOrderDetailHostPage.vue       # /orders/:id — catalog or dropship UI by type
 │   ├── DropshipOrderDetailV2ProcessingPage.vue # Picking stock & charges desk
-│   ├── DropshipOrderDetailV2ReadyForPickupPage.vue # Courier & B2B invoice preview
+│   ├── DropshipOrderDetailV2ReadyForPickupPage.vue # Packing slip + mark shipped
 │   └── DropshipFinanceHubPage.vue        # Courier reconciliation & margin payouts
 ├── components/
 │   ├── ShopFormDialog.vue                # Create/edit shop modal

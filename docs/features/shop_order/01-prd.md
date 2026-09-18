@@ -13,7 +13,7 @@
 | UI | `web/src/modules/shop_order/` |
 | SQL | **Split** `supabase/schemas/shop_order/` |
 | State | Vue Query composables + `shopOrderQueryKeys` |
-| Access | `shop` storefront + `app` dropship desk. Shops sell from `global_stock_allocations`. |
+| Access | `shop` storefront + `app` desks. Admin order URL is `/:slug/app/shop/orders/:id`; catalog vs dropship UI is chosen from `shop_type_snapshot`. |
 | Model | **BW** shop + dropship; catalog quotes are **pre-order**. [business models](../../architecture/business-models.md). |
 
 ## Scope
@@ -24,7 +24,7 @@
 | In | Shops, carts, catalog/dropship orders, pricing, stock pick, reseller payout trigger |
 | Out | Warehouse receive, Koba carts, thrift POS, parent invoice engine (call it, don’t own it) |
 
-See [scopes](../../architecture/scopes.md).
+See [scopes](../../architecture/scopes.md). Merchant bill + remittance numbers: [money-story](../sales_invoice/money-story.md).
 
 ---
 

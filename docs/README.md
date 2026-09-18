@@ -14,6 +14,8 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | :--- | :--- |
 | Who logs in where, which features? | [scopes](architecture/scopes.md) |
 | How this company sells (BW, pre-order, K-beauty, thrift) | [business-models](architecture/business-models.md) |
+| Wholesale vs dropship invoice → payment (numbers) | [money-story](features/sales_invoice/money-story.md) |
+| What numbers go on reports (sales vs cash vs COD) | [reporting 01](features/reporting_treasury/01-prd.md) |
 | What is unfinished / wrong in a module? | That module’s `00-gaps.md` |
 | Where is the code / SQL? | [Module map](#module-map) |
 | Tables / RPCs / button wiring | Same folder `02` `03` `05` |
@@ -41,7 +43,7 @@ UI under `web/src/modules/` unless noted. Agent: `01-prd.md` + `00-gaps.md`. Sam
 | After-sales | [01](features/after_sales/01-prd.md) | [gaps](features/after_sales/00-gaps.md) | `after_sales/` | invoice + shop_order RPCs |
 | Shop / dropship | [01](features/shop_order/01-prd.md) | [gaps](features/shop_order/00-gaps.md) | `shop_order/` | **split** `shop_order/` |
 | Customer | [01](features/customer/01-prd.md) | [gaps](features/customer/00-gaps.md) | `customer/` | `public.sql` |
-| Wallet | [01](features/wallet/01-prd.md) | [gaps](features/wallet/00-gaps.md) | `wallet/` | stub; live `public.sql` |
+| Wallet / receipts | [01](features/wallet/01-prd.md) | [gaps](features/wallet/00-gaps.md) | `wallet/` (+ invoice collect, dropship remittance UIs) | stub; live `public.sql` |
 | Reporting | [01](features/reporting_treasury/01-prd.md) | [gaps](features/reporting_treasury/00-gaps.md) | `reporting_treasury/` | `public.sql` |
 | Notifications | [01](features/notifications/01-prd.md) | [gaps](features/notifications/00-gaps.md) | `notifications/`, `tasks/` | **split** `notifications/` |
 | Dashboard | [01](features/dashboard/01-prd.md) | [gaps](features/dashboard/00-gaps.md) | `dashboard/` | n/a |
@@ -60,6 +62,7 @@ Also in code, no pack: `settings/`, `navigation/`, `featureCatalog/`.
 - Scopes: `platform` \| `app` \| `shop` \| `investor`. Grants: `effectiveGrants` + `has_module_action()`.
 - Invoices: company-owned `global_invoices`; `issued_by_tenant_id` is the desk.
 - Ledger: only `record_ledger_transaction`. No fake `wallet_posted`.
+- Money in: **one receipts path** (cash, bank, store credit, courier remittance). COD face stays on the order until remittance. Do not add a second payments product per channel.
 - Investor portal v1 read-only.
 - Copy the **module’s** Pinia or Vue Query pattern. Do not convert it.
 

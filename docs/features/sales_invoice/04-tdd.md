@@ -11,7 +11,6 @@
 ```text
 web/src/modules/sales_invoice/
 ├── pages/
-│   ├── InvoiceOverviewPage.vue           # Central hub cards & quick KPI summary
 │   ├── InvoicesListPage.vue              # Ops table with filters and payment status badges
 │   ├── CreateWholesaleInvoicePage.vue    # Full desk with FIFO stock picker & bulk paste
 │   ├── InvoiceDetailsPage.vue            # Invoice breakdown, payment history & return activity

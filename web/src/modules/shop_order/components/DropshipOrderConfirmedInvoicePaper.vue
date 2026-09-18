@@ -133,10 +133,6 @@ const totals = computed(() =>
   ),
 );
 
-const customerRecipientTotal = computed(() =>
-  computeRecipientGrandTotal(totals.value.deliveredResell, summaryState.value),
-);
-
 const editableDeliveredQuantities = computed(
   () =>
     props.showFulfillmentBlocks &&
@@ -212,16 +208,17 @@ const syncCodCollectToRecipientTotal = () => {
   summary.value.cod_collect_amount = recipientGrandTotal.value;
 };
 
-type EditableChargeKey = 'delivery' | 'cod' | 'print' | 'packing';
+type NumericChargeKey = 'delivery_charge_amount' | 'cod_charge_amount' | 'print_charge_amount' | 'packing_charge_amount';
+type BooleanChargeKey = 'deduct_delivery_from_margin' | 'deduct_cod_from_margin' | 'deduct_print_from_margin' | 'deduct_packing_from_margin';
 
-const chargeAmountField: Record<EditableChargeKey, keyof DropshipInvoiceSummaryState> = {
+const chargeAmountField: Record<EditableChargeKey, NumericChargeKey> = {
   delivery: 'delivery_charge_amount',
   cod: 'cod_charge_amount',
   print: 'print_charge_amount',
   packing: 'packing_charge_amount',
 };
 
-const chargeDeductField: Record<EditableChargeKey, keyof DropshipInvoiceSummaryState> = {
+const chargeDeductField: Record<EditableChargeKey, BooleanChargeKey> = {
   delivery: 'deduct_delivery_from_margin',
   cod: 'deduct_cod_from_margin',
   print: 'deduct_print_from_margin',
@@ -231,12 +228,14 @@ const chargeDeductField: Record<EditableChargeKey, keyof DropshipInvoiceSummaryS
 const updateChargeAmount = (key: EditableChargeKey, value: string | number | null) => {
   if (!summary.value) return;
   const parsed = Number(value);
-  summary.value[chargeAmountField[key]] = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+  const field = chargeAmountField[key];
+  summary.value[field] = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 };
 
 const updateChargeDeduct = (key: EditableChargeKey, deductFromMargin: boolean) => {
   if (!summary.value) return;
-  summary.value[chargeDeductField[key]] = deductFromMargin;
+  const field = chargeDeductField[key];
+  summary.value[field] = deductFromMargin;
 };
 
 const updateDiscountAmount = (value: string | number | null) => {
@@ -301,433 +300,299 @@ const copyDetail = (text: string | null | undefined, label: string) => {
 </script>
 
 <template>
-  <article class="dropship-invoice-paper">
+  <article class="dropship-invoice-paper dropship-magazine-spread">
+    <!-- Editorial Hero Header -->
     <header class="dropship-invoice-paper__header">
       <div class="dropship-invoice-paper__brand">
-        <div class="dropship-invoice-paper__doc-type">Dropship order</div>
+        <div class="dropship-invoice-paper__doc-type">Dropship Operations Dossier</div>
         <div class="dropship-invoice-paper__order-no">{{ order.order_no }}</div>
         <div v-if="order.customer_group_name" class="dropship-invoice-paper__merchant">
+          <q-icon name="ph ph-users" size="14px" class="q-mr-xs text-grey-6" />
           {{ order.customer_group_name }}
         </div>
       </div>
       <div class="dropship-invoice-paper__meta">
         <div v-if="orderDateLabel" class="dropship-invoice-paper__meta-row">
           <span class="dropship-invoice-paper__meta-label">Date</span>
-          <span>{{ orderDateLabel }}</span>
+          <span class="text-weight-bold">{{ orderDateLabel }}</span>
         </div>
         <div class="dropship-invoice-paper__meta-row">
           <span class="dropship-invoice-paper__meta-label">Status</span>
-          <span class="text-capitalize">{{ order.status.replace(/_/g, ' ') }}</span>
+          <q-badge color="primary" class="text-capitalize text-weight-bold">
+            {{ order.status.replace(/_/g, ' ') }}
+          </q-badge>
         </div>
         <div v-if="order.shop_name" class="dropship-invoice-paper__meta-row">
           <span class="dropship-invoice-paper__meta-label">Shop</span>
-          <span>{{ order.shop_name }}</span>
+          <span class="text-weight-medium">{{ order.shop_name }}</span>
         </div>
       </div>
     </header>
 
     <div class="dropship-invoice-paper__divider" />
 
-    <section class="dropship-invoice-paper__addresses">
-      <div class="dropship-invoice-paper__address-block">
-        <div class="dropship-invoice-paper__section-label">Deliver to</div>
-        <div class="dropship-invoice-paper__copy-row dropship-invoice-paper__recipient-name">
-          <q-btn
-            flat
-            dense
-            round
-            size="xs"
-            icon="ph ph-copy"
-            color="grey-7"
-            class="dropship-invoice-paper__copy-btn"
-            aria-label="Copy recipient name"
-            @click="copyDetail(order.recipient_name, 'Recipient name')"
-          >
-            <q-tooltip>Copy name</q-tooltip>
-          </q-btn>
-          <span>{{ order.recipient_name || '—' }}</span>
-        </div>
-        <div
-          v-for="(phone, idx) in phoneLines"
-          :key="`phone-${idx}`"
-          class="dropship-invoice-paper__line dropship-invoice-paper__copy-row"
-        >
-          <q-btn
-            flat
-            dense
-            round
-            size="xs"
-            icon="ph ph-copy"
-            color="grey-7"
-            class="dropship-invoice-paper__copy-btn"
-            :aria-label="idx === 0 ? 'Copy phone' : 'Copy secondary phone'"
-            @click="copyDetail(phone, idx === 0 ? 'Phone' : 'Secondary phone')"
-          >
-            <q-tooltip>{{ idx === 0 ? 'Copy phone' : 'Copy secondary phone' }}</q-tooltip>
-          </q-btn>
-          <span class="dropship-invoice-paper__phone-line">
-            <span>{{ phone }}</span>
-            <span v-if="idx === 0" class="dropship-invoice-paper__field-tag">Primary</span>
-          </span>
-        </div>
-        <div
-          v-for="(line, idx) in recipientAddressLines"
-          :key="`addr-${idx}`"
-          class="dropship-invoice-paper__line dropship-invoice-paper__line--wrap dropship-invoice-paper__copy-row"
-        >
-          <q-btn
-            flat
-            dense
-            round
-            size="xs"
-            icon="ph ph-copy"
-            color="grey-7"
-            class="dropship-invoice-paper__copy-btn"
-            :aria-label="idx === 0 ? 'Copy address line' : 'Copy locality'"
-            @click="copyDetail(line, idx === 0 ? 'Address' : 'Locality')"
-          >
-            <q-tooltip>{{ idx === 0 ? 'Copy address' : 'Copy locality' }}</q-tooltip>
-          </q-btn>
-          <span>{{ line }}</span>
-        </div>
-        <div
-          v-if="order.delivery_instructions?.trim()"
-          class="dropship-invoice-paper__note dropship-invoice-paper__copy-row q-mt-sm"
-        >
-          <q-btn
-            flat
-            dense
-            round
-            size="xs"
-            icon="ph ph-copy"
-            color="grey-7"
-            class="dropship-invoice-paper__copy-btn"
-            aria-label="Copy delivery note"
-            @click="copyDetail(order.delivery_instructions, 'Delivery note')"
-          >
-            <q-tooltip>Copy note</q-tooltip>
-          </q-btn>
-          <div class="dropship-invoice-paper__note-content">
-            <span class="dropship-invoice-paper__meta-label">Note</span>
-            {{ order.delivery_instructions.trim() }}
+    <!-- 2-Column Responsive Spread -->
+    <div class="row q-col-gutter-lg">
+      <!-- Left / Main Operations Column -->
+      <div class="col-12 col-lg-8 column q-gutter-y-md">
+        <!-- Recipient & Dispatch Address Dossier -->
+        <section class="dropship-invoice-paper__address-block">
+          <div class="dropship-invoice-paper__section-label q-mb-sm">
+            <q-icon name="ph ph-map-pin" size="14px" />
+            <span>Deliver to Recipient</span>
           </div>
-        </div>
-      </div>
-    </section>
 
-    <div class="dropship-invoice-paper__divider" />
-
-    <section>
-      <div class="dropship-invoice-paper__section-label q-mb-sm">Ordered items</div>
-      <div class="dropship-invoice-paper__table-wrap">
-        <table class="dropship-invoice-paper__table">
-          <thead>
-            <tr>
-              <th class="col-thumb"></th>
-              <th class="col-item">Item</th>
-              <th class="col-qty dropship-invoice-paper__internal-col">Ordered qty</th>
-              <th v-if="showDeliveredQuantities" class="col-qty">Delivered qty</th>
-              <th class="col-money dropship-invoice-paper__internal-col">Cost</th>
-              <th class="col-money dropship-invoice-paper__internal-col">Sell</th>
-              <th class="col-money">Resell</th>
-              <th class="col-money">Line resell</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in itemRows" :key="row.id">
-              <td class="col-thumb">
-                <div class="dropship-invoice-paper__thumb">
-                  <SmartImage
-                    :src="row.imageUrl"
-                    :alt="row.name"
-                    :product-id="row.productId"
-                    img-class="dropship-invoice-paper__thumb-img"
-                    fallback-class="dropship-invoice-paper__thumb-fallback"
-                  />
-                </div>
-              </td>
-              <td class="col-item">
-                <div class="dropship-invoice-paper__item-name row items-center q-gutter-x-xs">
-                  <span>{{ row.name }}</span>
-                  <q-badge v-if="row.isUnavailable" color="negative" label="Unavailable" />
-                  <q-badge
-                    v-else-if="props.showStockPickActions && row.fulfillmentResolved && row.deliveredQuantity === row.orderedQuantity"
-                    color="positive"
-                    label="Picked"
-                  />
-                  <q-badge
-                    v-else-if="props.showStockPickActions && row.fulfillmentResolved"
-                    color="orange-8"
-                    label="Resolved"
-                  />
-                </div>
-                <div v-if="row.code || row.barcode || row.stockId" class="dropship-invoice-paper__item-meta dropship-invoice-paper__internal-col">
-                  <span v-if="row.code">Code {{ row.code }}</span>
-                  <span v-if="row.barcode"> · Barcode {{ row.barcode }}</span>
-                  <span v-if="row.stockId != null"> · Stock {{ row.stockId }}</span>
-                </div>
-                <div v-if="row.isUnavailable && row.unavailableReason" class="text-caption text-grey-7 q-mt-xs">
-                  {{ row.unavailableReason }}
-                </div>
-                <ul v-if="row.stockPicks.length" class="dropship-invoice-paper__pick-list q-mt-xs q-pl-md">
-                  <li v-for="pick in row.stockPicks" :key="pick.id" class="text-caption text-grey-8 row items-center q-gutter-x-sm">
-                    <span>{{ pick.shipment_name || 'Shipment' }} · stock {{ pick.global_stock_id }} · qty {{ pick.quantity }}</span>
-                    <q-btn
-                      v-if="showStockPickActions && !readonly"
-                      flat
-                      dense
-                      round
-                      size="xs"
-                      icon="ph ph-x"
-                      color="grey-7"
-                      aria-label="Remove pick"
-                      @click="emit('remove-pick', pick.id)"
-                    />
-                  </li>
-                </ul>
-                <div v-if="showStockPickActions && !readonly && !row.isUnavailable" class="row q-gutter-sm q-mt-sm">
-                  <q-btn
-                    outline
-                    dense
-                    no-caps
-                    color="primary"
-                    icon="ph ph-package"
-                    label="Pick stock"
-                    @click="emit('pick-stock', row.id)"
-                  />
-                  <q-btn
-                    v-if="row.stockPicks.length === 0"
-                    outline
-                    dense
-                    no-caps
-                    color="negative"
-                    icon="ph ph-prohibit"
-                    label="Mark unavailable"
-                    @click="emit('mark-unavailable', row.id)"
-                  />
-                </div>
-                <div v-if="showStockPickActions && !readonly && row.isUnavailable" class="q-mt-sm">
-                  <q-btn
-                    flat
-                    dense
-                    no-caps
-                    color="primary"
-                    label="Undo unavailable"
-                    @click="emit('clear-unavailable', row.id)"
-                  />
-                </div>
-              </td>
-              <td class="col-qty dropship-invoice-paper__internal-col">{{ row.orderedQuantity }}</td>
-              <td v-if="showDeliveredQuantities" class="col-qty">
-                <q-input
-                  v-if="editableDeliveredQuantities"
-                  :model-value="row.deliveredQuantity"
-                  type="number"
-                  min="0"
-                  :max="row.orderedQuantity"
-                  step="1"
-                  dense
-                  outlined
-                  hide-bottom-space
-                  class="dropship-invoice-paper__qty-input"
-                  input-class="text-center"
-                  @update:model-value="(val) => updateDeliveredQuantity(row.id, val)"
-                />
-                <span v-else>{{ row.deliveredQuantity }}</span>
-              </td>
-              <td class="col-money dropship-invoice-paper__internal-col">{{ formatMoney(row.cost) }}</td>
-              <td class="col-money dropship-invoice-paper__internal-col">{{ formatMoney(row.sell) }}</td>
-              <td class="col-money">{{ formatMoney(row.resell) }}</td>
-              <td class="col-money text-weight-bold">
-                <span class="dropship-invoice-paper__screen-value">{{ formatMoney(row.lineResell) }}</span>
-                <span class="dropship-invoice-paper__print-customer-value">{{ formatMoney(row.lineResellDelivered) }}</span>
-              </td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr class="dropship-invoice-paper__totals-row">
-              <td class="col-thumb" />
-              <td class="col-item text-weight-bold">Totals</td>
-              <td class="col-qty text-weight-bold dropship-invoice-paper__internal-col">{{ totals.orderedQty }}</td>
-              <td v-if="showDeliveredQuantities" class="col-qty text-weight-bold">{{ totals.deliveredQty }}</td>
-              <td class="col-money text-weight-bold dropship-invoice-paper__internal-col">{{ formatMoney(totals.cost) }}</td>
-              <td class="col-money text-weight-bold dropship-invoice-paper__internal-col">{{ formatMoney(totals.sell) }}</td>
-              <td class="col-money text-weight-bold">{{ formatMoney(totals.resell) }}</td>
-              <td class="col-money text-weight-bold">
-                <span class="dropship-invoice-paper__screen-value">{{ formatMoney(totals.resell) }}</span>
-                <span class="dropship-invoice-paper__print-customer-value">{{ formatMoney(totals.deliveredResell) }}</span>
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </section>
-
-    <div class="dropship-invoice-paper__divider" />
-
-    <section
-      class="dropship-invoice-paper__summary"
-      :class="{ 'dropship-invoice-paper__summary--editable': isEditableSummary }"
-    >
-      <div class="dropship-invoice-paper__summary-grid">
-        <div class="dropship-invoice-paper__summary-row">
-          <div class="dropship-invoice-paper__summary-label">
-            <span>Items (resell)</span>
-            <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--recipient">
-              Recipient pays
-            </span>
-          </div>
-          <span>
-            <span class="dropship-invoice-paper__screen-value">{{ formatMoney(totals.resell) }}</span>
-            <span class="dropship-invoice-paper__print-customer-value">{{ formatMoney(totals.deliveredResell) }}</span>
-          </span>
-        </div>
-
-        <div
-          v-for="row in summaryChargeRows"
-          :key="row.key"
-          class="dropship-invoice-paper__summary-row"
-          :class="{
-            'dropship-invoice-paper__summary-row--editable': isEditableSummary,
-            'dropship-invoice-paper__internal-col': !row.countsTowardRecipientTotal,
-          }"
-        >
-          <div class="dropship-invoice-paper__summary-label">
-            <span>{{ row.label }}</span>
-            <template v-if="isEditableSummary">
-              <q-btn-toggle
-                :model-value="row.payer === 'merchant'"
-                dense
-                no-caps
-                unelevated
-                toggle-color="primary"
-                color="grey-3"
-                text-color="grey-8"
-                class="dropship-invoice-paper__payer-toggle"
-                :options="[
-                  { label: 'Recipient pays', value: false },
-                  { label: 'Merchant pays', value: true },
-                ]"
-                @update:model-value="(val) => updateChargeDeduct(row.key, val)"
-              />
-            </template>
-            <span
-              v-else
-              class="dropship-invoice-paper__paid-by"
-              :class="{
-                'dropship-invoice-paper__paid-by--recipient': row.payer === 'recipient',
-                'dropship-invoice-paper__paid-by--merchant': row.payer === 'merchant',
-              }"
-            >
-              {{ row.payerLabel }}
-            </span>
-          </div>
-          <q-input
-            v-if="isEditableSummary"
-            :model-value="row.amount"
-            type="number"
-            min="0"
-            step="0.01"
-            dense
-            outlined
-            hide-bottom-space
-            class="dropship-invoice-paper__amount-input"
-            input-class="text-right"
-            @update:model-value="(val) => updateChargeAmount(row.key, val)"
-          />
-          <span v-else>{{ formatMoney(row.amount) }}</span>
-        </div>
-
-        <div
-          v-if="isEditableSummary || summaryState.discount_amount > 0"
-          class="dropship-invoice-paper__summary-row"
-          :class="{ 'dropship-invoice-paper__summary-row--editable': isEditableSummary }"
-        >
-          <div class="dropship-invoice-paper__summary-label">
-            <span>Discount</span>
-            <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--merchant">
-              Merchant discount
-            </span>
-          </div>
-          <q-input
-            v-if="isEditableSummary"
-            :model-value="summaryState.discount_amount"
-            type="number"
-            min="0"
-            step="0.01"
-            dense
-            outlined
-            hide-bottom-space
-            class="dropship-invoice-paper__amount-input"
-            input-class="text-right"
-            @update:model-value="updateDiscountAmount"
-          />
-          <span v-else>-{{ formatMoney(summaryState.discount_amount) }}</span>
-        </div>
-
-        <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--grand">
-          <div class="dropship-invoice-paper__summary-label">
-            <span>Recipient total</span>
-            <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--muted">
-              Amount due from recipient
-            </span>
-          </div>
-          <span>
-            <span class="dropship-invoice-paper__screen-value">{{ formatMoney(recipientGrandTotal) }}</span>
-            <span class="dropship-invoice-paper__print-customer-value">{{ formatMoney(customerRecipientTotal) }}</span>
-          </span>
-        </div>
-
-        <div
-          v-if="!showFulfillmentBlocks && (isEditableSummary || summaryState.cod_collect_amount > 0)"
-          class="dropship-invoice-paper__summary-row"
-          :class="{ 'dropship-invoice-paper__summary-row--editable': isEditableSummary }"
-        >
-          <div class="dropship-invoice-paper__summary-label">
-            <span>COD collect</span>
+          <div class="dropship-invoice-paper__copy-row dropship-invoice-paper__recipient-name">
             <q-btn
-              v-if="isEditableSummary"
               flat
               dense
-              no-caps
-              size="sm"
-              color="primary"
-              class="dropship-invoice-paper__sync-btn"
-              label="Match recipient total"
-              @click="syncCodCollectToRecipientTotal"
-            />
+              round
+              size="xs"
+              icon="ph ph-copy"
+              color="grey-7"
+              class="dropship-invoice-paper__copy-btn"
+              aria-label="Copy recipient name"
+              @click="copyDetail(order.recipient_name, 'Recipient name')"
+            >
+              <q-tooltip>Copy name</q-tooltip>
+            </q-btn>
+            <span>{{ order.recipient_name || '—' }}</span>
           </div>
-          <q-input
-            v-if="isEditableSummary"
-            :model-value="summaryState.cod_collect_amount"
-            type="number"
-            min="0"
-            step="0.01"
-            dense
-            outlined
-            hide-bottom-space
-            class="dropship-invoice-paper__amount-input"
-            input-class="text-right"
-            @update:model-value="updateCodCollectAmount"
-          />
-          <span v-else>{{ formatMoney(summaryState.cod_collect_amount) }}</span>
-        </div>
-      </div>
-    </section>
 
-    <template v-if="showFulfillmentBlocks && pickup && courier">
-      <div class="dropship-invoice-paper__divider" />
+          <div
+            v-for="(phone, idx) in phoneLines"
+            :key="`phone-${idx}`"
+            class="dropship-invoice-paper__line dropship-invoice-paper__copy-row"
+          >
+            <q-btn
+              flat
+              dense
+              round
+              size="xs"
+              icon="ph ph-copy"
+              color="grey-7"
+              class="dropship-invoice-paper__copy-btn"
+              :aria-label="idx === 0 ? 'Copy phone' : 'Copy secondary phone'"
+              @click="copyDetail(phone, idx === 0 ? 'Phone' : 'Secondary phone')"
+            >
+              <q-tooltip>{{ idx === 0 ? 'Copy phone' : 'Copy secondary phone' }}</q-tooltip>
+            </q-btn>
+            <span class="dropship-invoice-paper__phone-line">
+              <span class="text-weight-medium">{{ phone }}</span>
+              <span v-if="idx === 0" class="dropship-invoice-paper__field-tag">Primary</span>
+            </span>
+          </div>
 
-      <section
-        class="dropship-invoice-paper__addresses dropship-invoice-paper__addresses--two-col dropship-invoice-paper__fulfillment"
-      >
-        <div class="dropship-invoice-paper__address-block">
-          <div class="dropship-invoice-paper__section-label">Sender pickup location</div>
+          <div
+            v-for="(line, idx) in recipientAddressLines"
+            :key="`addr-${idx}`"
+            class="dropship-invoice-paper__line dropship-invoice-paper__line--wrap dropship-invoice-paper__copy-row"
+          >
+            <q-btn
+              flat
+              dense
+              round
+              size="xs"
+              icon="ph ph-copy"
+              color="grey-7"
+              class="dropship-invoice-paper__copy-btn"
+              :aria-label="idx === 0 ? 'Copy address line' : 'Copy locality'"
+              @click="copyDetail(line, idx === 0 ? 'Address' : 'Locality')"
+            >
+              <q-tooltip>{{ idx === 0 ? 'Copy address' : 'Copy locality' }}</q-tooltip>
+            </q-btn>
+            <span>{{ line }}</span>
+          </div>
+
+          <div
+            v-if="order.delivery_instructions?.trim()"
+            class="dropship-invoice-paper__note dropship-invoice-paper__copy-row q-mt-sm"
+          >
+            <q-btn
+              flat
+              dense
+              round
+              size="xs"
+              icon="ph ph-copy"
+              color="grey-7"
+              class="dropship-invoice-paper__copy-btn"
+              aria-label="Copy delivery note"
+              @click="copyDetail(order.delivery_instructions, 'Delivery note')"
+            >
+              <q-tooltip>Copy note</q-tooltip>
+            </q-btn>
+            <div class="dropship-invoice-paper__note-content">
+              <span class="text-weight-bold text-caption text-grey-7 q-mr-xs">Note:</span>
+              {{ order.delivery_instructions.trim() }}
+            </div>
+          </div>
+        </section>
+
+        <!-- Ordered Items Fulfillment Table -->
+        <section>
+          <div class="dropship-invoice-paper__section-label q-mb-sm">
+            <q-icon name="ph ph-package" size="14px" />
+            <span>Ordered Items ({{ totals.orderedQty }})</span>
+          </div>
+
+          <div class="dropship-invoice-paper__table-wrap">
+            <table class="dropship-invoice-paper__table">
+              <thead>
+                <tr>
+                  <th class="col-thumb"></th>
+                  <th class="col-item">Item</th>
+                  <th class="col-qty dropship-invoice-paper__internal-col">Ordered</th>
+                  <th v-if="showDeliveredQuantities" class="col-qty">Delivered</th>
+                  <th class="col-money dropship-invoice-paper__internal-col">Cost</th>
+                  <th class="col-money dropship-invoice-paper__internal-col">Sell</th>
+                  <th class="col-money">Resell</th>
+                  <th class="col-money">Line Resell</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in itemRows" :key="row.id">
+                  <td class="col-thumb">
+                    <div class="dropship-invoice-paper__thumb">
+                      <SmartImage
+                        :src="row.imageUrl"
+                        :alt="row.name"
+                        :product-id="row.productId"
+                        img-class="dropship-invoice-paper__thumb-img"
+                        fallback-class="dropship-invoice-paper__thumb-fallback"
+                      />
+                    </div>
+                  </td>
+                  <td class="col-item">
+                    <div class="dropship-invoice-paper__item-name row items-center q-gutter-x-xs">
+                      <span>{{ row.name }}</span>
+                      <q-badge v-if="row.isUnavailable" color="negative" label="Unavailable" />
+                      <q-badge
+                        v-else-if="props.showStockPickActions && row.fulfillmentResolved && row.deliveredQuantity === row.orderedQuantity"
+                        color="positive"
+                        label="Picked"
+                      />
+                      <q-badge
+                        v-else-if="props.showStockPickActions && row.fulfillmentResolved"
+                        color="orange-8"
+                        label="Resolved"
+                      />
+                    </div>
+                    <div v-if="row.code || row.barcode || row.stockId" class="dropship-invoice-paper__item-meta dropship-invoice-paper__internal-col">
+                      <span v-if="row.code">SKU: {{ row.code }}</span>
+                      <span v-if="row.barcode"> · Barcode: {{ row.barcode }}</span>
+                      <span v-if="row.stockId != null"> · Stock: #{{ row.stockId }}</span>
+                    </div>
+                    <div v-if="row.isUnavailable && row.unavailableReason" class="text-caption text-negative q-mt-xs">
+                      {{ row.unavailableReason }}
+                    </div>
+                    <ul v-if="row.stockPicks.length" class="dropship-invoice-paper__pick-list q-mt-xs q-pl-md">
+                      <li v-for="pick in row.stockPicks" :key="pick.id" class="text-caption text-grey-8 row items-center q-gutter-x-sm">
+                        <span>{{ pick.shipment_name || 'Shipment' }} · stock {{ pick.global_stock_id }} · qty {{ pick.quantity }}</span>
+                        <q-btn
+                          v-if="showStockPickActions && !readonly"
+                          flat
+                          dense
+                          round
+                          size="xs"
+                          icon="ph ph-x"
+                          color="grey-7"
+                          aria-label="Remove pick"
+                          @click="emit('remove-pick', pick.id)"
+                        />
+                      </li>
+                    </ul>
+                    <div v-if="showStockPickActions && !readonly && !row.isUnavailable" class="row q-gutter-sm q-mt-sm">
+                      <q-btn
+                        unelevated
+                        dense
+                        no-caps
+                        color="primary"
+                        icon="ph ph-package"
+                        label="Pick stock"
+                        style="border-radius: 6px; padding: 2px 8px;"
+                        @click="emit('pick-stock', row.id)"
+                      />
+                      <q-btn
+                        v-if="row.stockPicks.length === 0"
+                        outline
+                        dense
+                        no-caps
+                        color="negative"
+                        icon="ph ph-prohibit"
+                        label="Mark unavailable"
+                        style="border-radius: 6px; padding: 2px 8px;"
+                        @click="emit('mark-unavailable', row.id)"
+                      />
+                    </div>
+                    <div v-if="showStockPickActions && !readonly && row.isUnavailable" class="q-mt-sm">
+                      <q-btn
+                        flat
+                        dense
+                        no-caps
+                        color="primary"
+                        label="Undo unavailable"
+                        @click="emit('clear-unavailable', row.id)"
+                      />
+                    </div>
+                  </td>
+                  <td class="col-qty dropship-invoice-paper__internal-col text-weight-medium">{{ row.orderedQuantity }}</td>
+                  <td v-if="showDeliveredQuantities" class="col-qty">
+                    <q-input
+                      v-if="editableDeliveredQuantities"
+                      :model-value="row.deliveredQuantity"
+                      type="number"
+                      min="0"
+                      :max="row.orderedQuantity"
+                      step="1"
+                      dense
+                      outlined
+                      hide-bottom-space
+                      class="dropship-invoice-paper__qty-input"
+                      input-class="text-center"
+                      @update:model-value="(val) => updateDeliveredQuantity(row.id, val)"
+                    />
+                    <span v-else class="text-weight-bold">{{ row.deliveredQuantity }}</span>
+                  </td>
+                  <td class="col-money dropship-invoice-paper__internal-col">{{ formatMoney(row.cost) }}</td>
+                  <td class="col-money dropship-invoice-paper__internal-col">{{ formatMoney(row.sell) }}</td>
+                  <td class="col-money">{{ formatMoney(row.resell) }}</td>
+                  <td class="col-money text-weight-bold">
+                    {{ formatMoney(row.lineResell) }}
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="dropship-invoice-paper__totals-row">
+                  <td class="col-thumb" />
+                  <td class="col-item text-weight-bold">Totals</td>
+                  <td class="col-qty text-weight-bold dropship-invoice-paper__internal-col">{{ totals.orderedQty }}</td>
+                  <td v-if="showDeliveredQuantities" class="col-qty text-weight-bold">{{ totals.deliveredQty }}</td>
+                  <td class="col-money text-weight-bold dropship-invoice-paper__internal-col">{{ formatMoney(totals.cost) }}</td>
+                  <td class="col-money text-weight-bold dropship-invoice-paper__internal-col">{{ formatMoney(totals.sell) }}</td>
+                  <td class="col-money text-weight-bold">{{ formatMoney(totals.resell) }}</td>
+                  <td class="col-money text-weight-bold text-primary">
+                    {{ formatMoney(totals.resell) }}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
+
+        <!-- Sender Pickup Location Block (Fulfillment Phase) -->
+        <section
+          v-if="showFulfillmentBlocks && pickup"
+          class="dropship-invoice-paper__address-block"
+        >
+          <div class="dropship-invoice-paper__section-label q-mb-sm">
+            <q-icon name="ph ph-buildings" size="14px" />
+            <span>Sender Pickup Location</span>
+          </div>
 
           <template v-if="readonly">
             <div v-if="merchantProfileLabel" class="dropship-invoice-paper__readonly-field">
-              <span class="dropship-invoice-paper__meta-label">Merchant profile</span>
-              {{ merchantProfileLabel }}
+              <span class="dropship-invoice-paper__meta-label">Merchant profile:</span>
+              <span class="text-weight-bold q-ml-xs">{{ merchantProfileLabel }}</span>
             </div>
             <div class="dropship-invoice-paper__recipient-name q-mt-sm">{{ pickup.sender_name || '—' }}</div>
             <div class="dropship-invoice-paper__line">{{ pickup.pickup_phone || '—' }}</div>
@@ -737,62 +602,233 @@ const copyDetail = (text: string | null | undefined, label: string) => {
           </template>
 
           <template v-else>
-            <q-select
-              :model-value="pickup.merchant_id"
-              :options="merchantOptions"
-              emit-value
-              map-options
-              clearable
-              dense
-              outlined
-              hide-bottom-space
-              label="Merchant profile"
-              class="dropship-invoice-paper__field-input q-mt-sm"
-              @update:model-value="onMerchantProfileChange"
-            />
-
-            <q-input
-              :model-value="pickup.sender_name"
-              dense
-              outlined
-              hide-bottom-space
-              label="Sender name"
-              class="dropship-invoice-paper__field-input q-mt-sm"
-              @update:model-value="(val) => updatePickupField('sender_name', String(val ?? ''))"
-            />
-
-            <q-input
-              :model-value="pickup.pickup_phone"
-              dense
-              outlined
-              hide-bottom-space
-              label="Pickup phone"
-              class="dropship-invoice-paper__field-input q-mt-sm"
-              @update:model-value="(val) => updatePickupField('pickup_phone', String(val ?? ''))"
-            />
-
-            <q-input
-              :model-value="pickup.pickup_address"
-              dense
-              outlined
-              hide-bottom-space
-              type="textarea"
-              autogrow
-              label="Pickup address"
-              class="dropship-invoice-paper__field-input q-mt-sm"
-              @update:model-value="(val) => updatePickupField('pickup_address', String(val ?? ''))"
-            />
+            <div class="row q-col-gutter-sm q-mt-xs">
+              <div class="col-12 col-sm-6">
+                <q-select
+                  :model-value="pickup.merchant_id"
+                  :options="merchantOptions"
+                  emit-value
+                  map-options
+                  clearable
+                  dense
+                  outlined
+                  hide-bottom-space
+                  label="Merchant profile"
+                  class="dropship-invoice-paper__field-input full-width"
+                  @update:model-value="onMerchantProfileChange"
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <q-input
+                  :model-value="pickup.sender_name"
+                  dense
+                  outlined
+                  hide-bottom-space
+                  label="Sender name"
+                  class="dropship-invoice-paper__field-input full-width"
+                  @update:model-value="(val) => updatePickupField('sender_name', String(val ?? ''))"
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <q-input
+                  :model-value="pickup.pickup_phone"
+                  dense
+                  outlined
+                  hide-bottom-space
+                  label="Pickup phone"
+                  class="dropship-invoice-paper__field-input full-width"
+                  @update:model-value="(val) => updatePickupField('pickup_phone', String(val ?? ''))"
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <q-input
+                  :model-value="pickup.pickup_address"
+                  dense
+                  outlined
+                  hide-bottom-space
+                  type="textarea"
+                  autogrow
+                  label="Pickup address"
+                  class="dropship-invoice-paper__field-input full-width"
+                  @update:model-value="(val) => updatePickupField('pickup_address', String(val ?? ''))"
+                />
+              </div>
+            </div>
           </template>
-        </div>
+        </section>
+      </div>
 
-        <div class="dropship-invoice-paper__address-block">
-          <div class="dropship-invoice-paper__section-label">Courier</div>
+      <!-- Right Column: Financial Breakdown & Courier Assignment -->
+      <div class="col-12 col-lg-4 column q-gutter-y-md">
+        <!-- Financial Statement Card -->
+        <section
+          class="dropship-invoice-paper__summary-grid full-width"
+          :class="{ 'dropship-invoice-paper__summary--editable': isEditableSummary }"
+        >
+          <div class="dropship-invoice-paper__section-label q-mb-md">
+            <q-icon name="ph ph-receipt" size="14px" />
+            <span>Financial Statement</span>
+          </div>
+
+          <div class="dropship-invoice-paper__summary-row">
+            <div class="dropship-invoice-paper__summary-label">
+              <span>Items (Resell)</span>
+              <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--recipient">
+                Recipient
+              </span>
+            </div>
+            <span class="text-weight-bold">
+              {{ formatMoney(totals.resell) }}
+            </span>
+          </div>
+
+          <div
+            v-for="row in summaryChargeRows"
+            :key="row.key"
+            class="dropship-invoice-paper__summary-row"
+            :class="{
+              'dropship-invoice-paper__summary-row--editable': isEditableSummary,
+              'dropship-invoice-paper__internal-col': !row.countsTowardRecipientTotal,
+            }"
+          >
+            <div class="dropship-invoice-paper__summary-label">
+              <span>{{ row.label }}</span>
+              <template v-if="isEditableSummary">
+                <q-btn-toggle
+                  :model-value="row.payer === 'merchant'"
+                  dense
+                  no-caps
+                  unelevated
+                  toggle-color="primary"
+                  color="grey-3"
+                  text-color="grey-8"
+                  class="dropship-invoice-paper__payer-toggle"
+                  :options="[
+                    { label: 'Recipient', value: false },
+                    { label: 'Merchant', value: true },
+                  ]"
+                  @update:model-value="(val) => updateChargeDeduct(row.key, val)"
+                />
+              </template>
+              <span
+                v-else
+                class="dropship-invoice-paper__paid-by"
+                :class="{
+                  'dropship-invoice-paper__paid-by--recipient': row.payer === 'recipient',
+                  'dropship-invoice-paper__paid-by--merchant': row.payer === 'merchant',
+                }"
+              >
+                {{ row.payerLabel }}
+              </span>
+            </div>
+            <q-input
+              v-if="isEditableSummary"
+              :model-value="row.amount"
+              type="number"
+              min="0"
+              step="0.01"
+              dense
+              outlined
+              hide-bottom-space
+              class="dropship-invoice-paper__amount-input"
+              input-class="text-right"
+              @update:model-value="(val) => updateChargeAmount(row.key, val)"
+            />
+            <span v-else class="text-weight-medium">{{ formatMoney(row.amount) }}</span>
+          </div>
+
+          <div
+            v-if="isEditableSummary || summaryState.discount_amount > 0"
+            class="dropship-invoice-paper__summary-row"
+            :class="{ 'dropship-invoice-paper__summary-row--editable': isEditableSummary }"
+          >
+            <div class="dropship-invoice-paper__summary-label">
+              <span>Discount</span>
+              <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--merchant">
+                Merchant
+              </span>
+            </div>
+            <q-input
+              v-if="isEditableSummary"
+              :model-value="summaryState.discount_amount"
+              type="number"
+              min="0"
+              step="0.01"
+              dense
+              outlined
+              hide-bottom-space
+              class="dropship-invoice-paper__amount-input"
+              input-class="text-right"
+              @update:model-value="updateDiscountAmount"
+            />
+            <span v-else class="text-negative text-weight-medium">-{{ formatMoney(summaryState.discount_amount) }}</span>
+          </div>
+
+          <!-- Recipient Total -->
+          <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--grand">
+            <div class="dropship-invoice-paper__summary-label">
+              <span>Recipient Total</span>
+              <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--muted">
+                Due from Recipient
+              </span>
+            </div>
+            <span class="text-primary text-h6 text-weight-bolder">
+              {{ formatMoney(recipientGrandTotal) }}
+            </span>
+          </div>
+
+          <!-- COD Collect Field -->
+          <div
+            v-if="!showFulfillmentBlocks && (isEditableSummary || summaryState.cod_collect_amount > 0)"
+            class="dropship-invoice-paper__summary-row"
+            :class="{ 'dropship-invoice-paper__summary-row--editable': isEditableSummary }"
+          >
+            <div class="dropship-invoice-paper__summary-label">
+              <span>COD Collect</span>
+              <q-btn
+                v-if="isEditableSummary"
+                flat
+                dense
+                no-caps
+                size="xs"
+                color="primary"
+                class="dropship-invoice-paper__sync-btn"
+                label="Match Recipient Total"
+                @click="syncCodCollectToRecipientTotal"
+              />
+            </div>
+            <q-input
+              v-if="isEditableSummary"
+              :model-value="summaryState.cod_collect_amount"
+              type="number"
+              min="0"
+              step="0.01"
+              dense
+              outlined
+              hide-bottom-space
+              class="dropship-invoice-paper__amount-input"
+              input-class="text-right"
+              @update:model-value="updateCodCollectAmount"
+            />
+            <span v-else class="text-weight-bold">{{ formatMoney(summaryState.cod_collect_amount) }}</span>
+          </div>
+        </section>
+
+        <!-- Courier Partner & Consignment Dossier (Fulfillment Phase) -->
+        <section
+          v-if="showFulfillmentBlocks && courier"
+          class="dropship-invoice-paper__address-block full-width"
+        >
+          <div class="dropship-invoice-paper__section-label q-mb-sm">
+            <q-icon name="ph ph-truck" size="14px" />
+            <span>Courier Partner</span>
+          </div>
 
           <template v-if="readonly">
-            <div class="dropship-invoice-paper__recipient-name q-mt-sm">
+            <div class="dropship-invoice-paper__recipient-name">
               {{ selectedCourierName || '—' }}
             </div>
-            <div v-if="courier.courier_awb_number" class="dropship-invoice-paper__line">
+            <div v-if="courier.courier_awb_number" class="dropship-invoice-paper__line font-mono text-weight-bold text-primary">
               AWB {{ courier.courier_awb_number }}
             </div>
             <div v-if="courier.tracking_url" class="dropship-invoice-paper__line dropship-invoice-paper__line--wrap">
@@ -815,502 +851,95 @@ const copyDetail = (text: string | null | undefined, label: string) => {
           </template>
 
           <template v-else>
-            <q-select
-              :model-value="courier.courier_service_id"
-              :options="courierOptions"
-              emit-value
-              map-options
-              dense
-              outlined
-              hide-bottom-space
-              label="Courier partner"
-              class="dropship-invoice-paper__field-input q-mt-sm"
-              @update:model-value="onCourierPartnerChange"
-            />
+            <div class="column q-gutter-y-xs q-mt-xs">
+              <q-select
+                :model-value="courier.courier_service_id"
+                :options="courierOptions"
+                emit-value
+                map-options
+                dense
+                outlined
+                hide-bottom-space
+                label="Courier partner"
+                class="dropship-invoice-paper__field-input full-width"
+                @update:model-value="onCourierPartnerChange"
+              />
 
-            <q-input
-              :model-value="courier.courier_awb_number"
-              dense
-              outlined
-              hide-bottom-space
-              label="Consignment / AWB"
-              class="dropship-invoice-paper__field-input q-mt-sm"
-              @update:model-value="(val) => updateCourierField('courier_awb_number', String(val ?? ''))"
-            />
+              <q-input
+                :model-value="courier.courier_awb_number"
+                dense
+                outlined
+                hide-bottom-space
+                label="Consignment / AWB"
+                class="dropship-invoice-paper__field-input full-width"
+                @update:model-value="(val) => updateCourierField('courier_awb_number', String(val ?? ''))"
+              />
 
-            <q-input
-              :model-value="courier.tracking_url"
-              dense
-              outlined
-              hide-bottom-space
-              label="Tracking URL"
-              class="dropship-invoice-paper__field-input q-mt-sm"
-              @update:model-value="(val) => updateCourierField('tracking_url', String(val ?? ''))"
-            />
+              <q-input
+                :model-value="courier.tracking_url"
+                dense
+                outlined
+                hide-bottom-space
+                label="Tracking URL"
+                class="dropship-invoice-paper__field-input full-width"
+                @update:model-value="(val) => updateCourierField('tracking_url', String(val ?? ''))"
+              />
 
-            <div
-              v-if="selectedCourierName"
-              class="dropship-invoice-paper__note dropship-invoice-paper__courier-note q-mt-sm"
-            >
-              <div class="dropship-invoice-paper__recipient-name dropship-invoice-paper__courier-name">
-                {{ selectedCourierName }}
+              <div
+                v-if="selectedCourierName"
+                class="dropship-invoice-paper__note dropship-invoice-paper__courier-note q-mt-xs"
+              >
+                <div class="dropship-invoice-paper__recipient-name dropship-invoice-paper__courier-name">
+                  {{ selectedCourierName }}
+                </div>
+                <div class="dropship-invoice-paper__line">
+                  Zone: {{ deliveryZoneLabel }} · Delivery: {{ formatMoney(suggestedDeliveryFee) }}
+                </div>
+                <div class="dropship-invoice-paper__line">
+                  COD rate: {{ codRateLabel }} · Suggested COD fee: {{ formatMoney(courier.cod_charge) }}
+                </div>
+                <div class="dropship-invoice-paper__line">
+                  Open box: {{ courier.allow_open_box ? 'Yes' : 'No' }}
+                </div>
               </div>
-              <div class="dropship-invoice-paper__line">
-                Zone: {{ deliveryZoneLabel }} · Delivery: {{ formatMoney(suggestedDeliveryFee) }}
-              </div>
-              <div class="dropship-invoice-paper__line">
-                COD rate: {{ codRateLabel }} · Suggested COD fee: {{ formatMoney(courier.cod_charge) }}
-              </div>
-              <div class="dropship-invoice-paper__line">
-                Open box: {{ courier.allow_open_box ? 'Yes' : 'No' }}
-              </div>
+
+              <q-btn
+                v-if="courier.tracking_url"
+                flat
+                dense
+                no-caps
+                color="primary"
+                icon="ph ph-arrow-square-out"
+                label="Open tracking link"
+                type="a"
+                :href="courier.tracking_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="dropship-invoice-paper__track-btn q-mt-xs"
+              />
             </div>
-
-            <q-btn
-              v-if="courier.tracking_url"
-              flat
-              dense
-              no-caps
-              color="primary"
-              icon="ph ph-arrow-square-out"
-              label="Open tracking link"
-              type="a"
-              :href="courier.tracking_url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="dropship-invoice-paper__track-btn q-mt-sm"
-            />
           </template>
-        </div>
-      </section>
-    </template>
+        </section>
+      </div>
+    </div>
   </article>
 </template>
 
-<style scoped>
-.dropship-invoice-paper {
-  max-width: 920px;
-  margin: 0 auto;
-  padding: 1.5rem 1.75rem 1.75rem;
-  background: #fffdf8;
-  color: #1f2937;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 2px;
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.06),
-    0 12px 28px rgba(15, 23, 42, 0.08);
-  font-family: Georgia, 'Times New Roman', Times, serif;
-}
-
-.dropship-invoice-paper__header {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.dropship-invoice-paper__doc-type {
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #6b7280;
-}
-
-.dropship-invoice-paper__order-no {
-  margin-top: 0.25rem;
-  font-size: 1.45rem;
-  font-weight: 700;
-  line-height: 1.2;
-  color: #111827;
-}
-
-.dropship-invoice-paper__merchant {
-  margin-top: 0.35rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.85rem;
-  color: #4b5563;
-}
-
-.dropship-invoice-paper__meta {
-  min-width: 160px;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.78rem;
-}
-
-.dropship-invoice-paper__meta-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.15rem 0;
-}
-
-.dropship-invoice-paper__meta-label {
-  color: #6b7280;
-  font-weight: 600;
-}
-
-.dropship-invoice-paper__divider {
-  margin: 1rem 0;
-  border-top: 1px dashed rgba(15, 23, 42, 0.18);
-}
-
-.dropship-invoice-paper__section-label {
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #6b7280;
-}
-
-.dropship-invoice-paper__recipient-name {
-  margin-top: 0.35rem;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #111827;
-}
-
-.dropship-invoice-paper__copy-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-}
-
-.dropship-invoice-paper__copy-row > span,
-.dropship-invoice-paper__note-content {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.dropship-invoice-paper__copy-btn {
-  flex: 0 0 auto;
-  opacity: 0.55;
-}
-
-.dropship-invoice-paper__copy-row:hover .dropship-invoice-paper__copy-btn,
-.dropship-invoice-paper__copy-btn:focus-visible {
-  opacity: 1;
-}
-
-.dropship-invoice-paper__line {
-  margin-top: 0.2rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.82rem;
-  color: #374151;
-}
-
-.dropship-invoice-paper__phone-line {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-.dropship-invoice-paper__field-tag {
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #6b7280;
-}
-
-.dropship-invoice-paper__line--wrap {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.dropship-invoice-paper__note {
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.78rem;
-  color: #4b5563;
-}
-
-.dropship-invoice-paper__table-wrap {
-  overflow-x: auto;
-}
-
-.dropship-invoice-paper__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.78rem;
-}
-
-.dropship-invoice-paper__table th,
-.dropship-invoice-paper__table td {
-  padding: 0.45rem 0.5rem;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
-  vertical-align: top;
-}
-
-.dropship-invoice-paper__table th {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #6b7280;
-  background: rgba(15, 23, 42, 0.03);
-}
-
-.dropship-invoice-paper__table tfoot td {
-  border-top: 2px solid rgba(15, 23, 42, 0.16);
-  border-bottom: none;
-}
-
-.col-thumb {
-  width: 1.15in;
-  text-align: center;
-  vertical-align: top;
-}
-
-.dropship-invoice-paper__thumb {
-  width: 1in;
-  height: 1in;
-  margin: 0 auto;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 6px;
-  overflow: hidden;
-  background: #fff;
-}
-
-.dropship-invoice-paper__thumb :deep(.dropship-invoice-paper__thumb-img),
-.dropship-invoice-paper__thumb :deep(.dropship-invoice-paper__thumb-fallback) {
-  width: 1in;
-  height: 1in;
-  display: block;
-  object-fit: contain;
-}
-
-.dropship-invoice-paper__thumb :deep(.dropship-invoice-paper__thumb-fallback) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f3f4f6;
-  color: #9ca3af;
-  font-size: 0.65rem;
-}
-
-.col-item {
-  width: 34%;
-  text-align: left;
-}
-
-.col-qty {
-  width: 7%;
-}
-
-.dropship-invoice-paper__table th.col-qty,
-.dropship-invoice-paper__table td.col-qty {
-  text-align: center;
-  vertical-align: middle;
-}
-
-.dropship-invoice-paper__qty-input {
-  width: 3.25rem;
-  display: inline-flex;
-  vertical-align: middle;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-}
-
-.dropship-invoice-paper__qty-input :deep(.q-field__control) {
-  min-height: 30px;
-}
-
-.dropship-invoice-paper__qty-input :deep(.q-field__native) {
-  text-align: center;
-}
-
-.col-money {
-  width: 13%;
-  white-space: nowrap;
-}
-
-.dropship-invoice-paper__table th.col-money,
-.dropship-invoice-paper__table td.col-money {
-  text-align: center;
-  vertical-align: middle;
-}
-
-.dropship-invoice-paper__item-name {
-  font-weight: 600;
-  color: #111827;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  line-height: 1.3;
-}
-
-.dropship-invoice-paper__item-meta {
-  margin-top: 0.2rem;
-  font-size: 0.68rem;
-  color: #6b7280;
-  overflow-wrap: anywhere;
-}
-
-.dropship-invoice-paper__summary {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.dropship-invoice-paper__summary-grid {
-  width: min(100%, 320px);
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.8rem;
-}
-
-.dropship-invoice-paper__summary--editable .dropship-invoice-paper__summary-grid {
-  width: min(100%, 440px);
-}
-
-.dropship-invoice-paper__summary-row--editable {
-  align-items: center;
-}
-
-.dropship-invoice-paper__amount-input {
-  width: 7.5rem;
-  flex: 0 0 auto;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-}
-
-.dropship-invoice-paper__amount-input :deep(.q-field__control) {
-  min-height: 32px;
-}
-
-.dropship-invoice-paper__payer-toggle {
-  margin-top: 0.15rem;
-  font-size: 0.58rem;
-}
-
-.dropship-invoice-paper__payer-toggle :deep(.q-btn) {
-  min-height: 1.35rem;
-  padding: 0 0.35rem;
-  font-size: 0.58rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.dropship-invoice-paper__sync-btn {
-  align-self: flex-start;
-  margin-top: 0.05rem;
-  padding: 0;
-  min-height: 1.25rem;
-  font-size: 0.62rem;
-  font-weight: 600;
-}
-
-.dropship-invoice-paper__addresses--two-col {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.5rem;
-}
-
-.dropship-invoice-paper__field-input {
-  font-family: ui-sans-serif, system-ui, sans-serif;
-}
-
-.dropship-invoice-paper__field-input :deep(.q-field__control) {
-  min-height: 34px;
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.dropship-invoice-paper__field-input :deep(.q-field__label) {
-  font-size: 0.72rem;
-  color: #6b7280;
-}
-
-.dropship-invoice-paper__courier-note {
-  padding: 0.55rem 0.65rem;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.dropship-invoice-paper__courier-name {
-  margin-top: 0;
-  margin-bottom: 0.15rem;
-  font-size: 0.92rem;
-}
-
-.dropship-invoice-paper__track-btn {
-  padding: 0.15rem 0.35rem;
-  min-height: 1.6rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.dropship-invoice-paper__print-customer-value {
-  display: none;
-}
-
-.dropship-invoice-paper__readonly-field {
-  margin-top: 0.35rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.82rem;
-  color: #374151;
-}
-
-.dropship-invoice-paper__summary-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 0.25rem 0;
-  color: #374151;
-}
-
-.dropship-invoice-paper__summary-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-
-.dropship-invoice-paper__paid-by {
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.dropship-invoice-paper__paid-by--recipient {
-  color: #1d4ed8;
-}
-
-.dropship-invoice-paper__paid-by--merchant {
-  color: #b45309;
-}
-
-.dropship-invoice-paper__paid-by--muted {
-  color: #6b7280;
-  text-transform: none;
-  font-weight: 500;
-  font-size: 0.65rem;
-}
+<style scoped lang="scss">
+@import '../styles/dropship-invoice-paper.scss';
 
-.dropship-invoice-paper__summary-row--grand {
-  margin-top: 0.35rem;
-  padding-top: 0.45rem;
-  border-top: 1px solid rgba(15, 23, 42, 0.14);
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: #111827;
+.dropship-magazine-spread {
+  animation: fadeIn 0.25s ease-in-out;
 }
 
-@media (max-width: 767px) {
-  .dropship-invoice-paper {
-    padding: 1rem;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
   }
-
-  .dropship-invoice-paper__addresses--two-col {
-    grid-template-columns: 1fr;
-  }
-
-  .dropship-invoice-paper__table {
-    min-width: 700px;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>

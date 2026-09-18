@@ -82,7 +82,6 @@ const emit = defineEmits<{
   (e: 'step-click', stepId: string): void;
   (e: 'open-recipient-invoice'): void;
   (e: 'update-status', status: string): void;
-  (e: 'open-dual-invoice'): void;
 }>();
 
 export interface ProcessStep {
@@ -114,9 +113,6 @@ const steps = computed<ProcessStep[]>(() => {
   // 5. Ready for pickup status
   const isReady = ['ready_for_pickup', 'shipped', 'delivered', 'returned'].includes(st);
 
-  // 6. Accounting Invoice created
-  const accountingInvoiceCreated = !!props.order?.global_invoice_id;
-
   const currentStepId = !recipientComplete
     ? 'recipient'
     : !courierComplete
@@ -125,9 +121,7 @@ const steps = computed<ProcessStep[]>(() => {
     ? 'parcel'
     : !invoicePrinted
     ? 'print_invoice'
-    : !isReady
-    ? 'ready_for_pickup'
-    : 'accounting_invoice';
+    : 'ready_for_pickup';
 
   return [
     {
@@ -150,8 +144,8 @@ const steps = computed<ProcessStep[]>(() => {
     },
     {
       id: 'print_invoice',
-      label: 'Print Recipient Invoice',
-      shortLabel: 'Recipient Slip',
+      label: 'Print Packing Slip',
+      shortLabel: 'Packing slip',
       status: invoicePrinted ? 'completed' : currentStepId === 'print_invoice' ? 'current' : 'upcoming',
     },
     {
@@ -159,12 +153,6 @@ const steps = computed<ProcessStep[]>(() => {
       label: 'Mark Ready for Pickup',
       shortLabel: 'Ready Pickup',
       status: isReady ? 'completed' : currentStepId === 'ready_for_pickup' ? 'current' : 'upcoming',
-    },
-    {
-      id: 'accounting_invoice',
-      label: 'Create Accounting Invoice',
-      shortLabel: 'Accounting Inv',
-      status: accountingInvoiceCreated ? 'completed' : currentStepId === 'accounting_invoice' ? 'current' : 'upcoming',
     },
   ];
 });
@@ -205,7 +193,7 @@ const currentStepAction = computed(() => {
   if (stepId === 'print_invoice') {
     return {
       instruction: 'Print recipient slip/invoice before handing off consignment.',
-      btnLabel: 'Print Invoice',
+      btnLabel: 'Print packing slip',
       btnIcon: 'ph ph-receipt',
       action: () => emit('open-recipient-invoice'),
     };
@@ -216,14 +204,6 @@ const currentStepAction = computed(() => {
       btnLabel: 'Mark Ready for Pickup',
       btnIcon: 'ph ph-check-circle',
       action: () => emit('update-status', 'ready_for_pickup'),
-    };
-  }
-  if (stepId === 'accounting_invoice') {
-    return {
-      instruction: 'Generate B2B accounting invoice for customer billing & profit booking.',
-      btnLabel: 'Create Accounting Invoice',
-      btnIcon: 'ph ph-receipt',
-      action: () => emit('open-dual-invoice'),
     };
   }
   return null;

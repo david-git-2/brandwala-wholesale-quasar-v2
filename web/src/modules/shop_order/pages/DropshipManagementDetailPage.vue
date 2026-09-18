@@ -37,13 +37,23 @@
         <div v-if="orderData.order.status !== 'returned'" class="dropship-order-detail-v2__footer-actions">
           <div class="dropship-order-detail-v2__outcome-actions">
             <q-btn
+              v-if="orderData.invoice?.id"
+              outline
+              color="primary"
+              no-caps
+              icon="ph ph-receipt"
+              label="View merchant invoice"
+              class="text-weight-bold dropship-order-detail-v2__action-btn"
+              @click="openMerchantInvoice"
+            />
+            <q-btn
               color="primary"
               unelevated
               no-caps
               icon="ph ph-package"
               label="Mark as delivered"
               class="text-weight-bold dropship-order-detail-v2__action-btn"
-              :disable="!orderData.step_state.can_mark_delivered && !orderData.step_state.can_issue_invoice"
+              :disable="!orderData.step_state.can_mark_delivered"
               :loading="actionKind === 'delivered'"
               @click="onMarkDelivered"
             />
@@ -130,6 +140,9 @@ import type { DropshipManagementOrderView } from '../types/dropshipManagementOrd
 
 const route = useRoute();
 const router = useRouter();
+const tenantSlug = computed(() =>
+  typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : '',
+);
 const authStore = useAuthStore();
 const queryClient = useQueryClient();
 
@@ -228,88 +241,42 @@ async function onSaveDraft() {
   }
 }
 
+function openMerchantInvoice() {
+  const invoiceId = orderData.value?.invoice?.id;
+  if (!invoiceId) return;
+  void router.push({
+    name: 'app-global-invoice-details-page',
+    params: { tenantSlug: tenantSlug.value, id: String(invoiceId) },
+  });
+}
+
 async function onMarkDelivered() {
   if (!authStore.tenantId) return;
   const payload = getPayload();
   if (!payload) return;
 
-  const canDeliver = orderData.value?.step_state.can_mark_delivered === true;
-  const canIssueInvoice = orderData.value?.step_state.can_issue_invoice === true;
+  if (!orderData.value?.step_state.can_mark_delivered) return;
 
   const confirmed = await requestConfirmation(
-    canDeliver
-      ? 'Mark this parcel as delivered? This saves the settlement, books courier COD, then issues the tenant invoice.'
-      : 'Issue the tenant B2B invoice for this delivered order?',
-    canDeliver ? 'Mark as delivered' : 'Issue invoice',
-    canDeliver ? 'Mark delivered' : 'Issue invoice',
+    'Mark this parcel as delivered? This saves the settlement and books courier COD.',
+    'Mark as delivered',
+    'Mark delivered',
   );
   if (!confirmed) return;
 
   actionKind.value = 'delivered';
   try {
-    if (canDeliver) {
-      const res = await shopOrderService.markDropshipOrderDelivered(
-        authStore.tenantId,
-        orderId.value,
-        payload,
-      );
-      if (!res.success) {
-        showErrorNotification(res.error ?? 'Failed to mark as delivered.');
-        return;
-      }
-    } else if (!canIssueInvoice) {
-      return;
-    }
-
-    const invoiceRes = await shopOrderService.issueDropshipTenantB2bInvoice(
+    const res = await shopOrderService.markDropshipOrderDelivered(
       authStore.tenantId,
       orderId.value,
+      payload,
     );
-    if (!invoiceRes.success) {
-      showErrorNotification(invoiceRes.error ?? 'Order is delivered, but the tenant invoice failed. Try the button again.');
-      queryClient.setQueryData<DropshipManagementOrderView | null>(detailQueryKey.value, (prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          order: { ...prev.order, status: 'delivered' },
-          settlement: {
-            ...prev.settlement,
-            courier_cod_booked_at: prev.settlement.courier_cod_booked_at ?? new Date().toISOString(),
-          },
-          step_state: {
-            can_mark_returned: false,
-            can_mark_delivered: false,
-            can_issue_invoice: true,
-            can_record_bank_transfer: true,
-            can_transfer_to_reseller: false,
-          },
-        };
-      });
-      await invalidateDetail();
+    if (!res.success) {
+      showErrorNotification(res.error ?? 'Failed to mark as delivered.');
       return;
     }
 
-    showSuccessNotification(canDeliver ? 'Order marked as delivered.' : 'Tenant invoice issued.');
-    queryClient.setQueryData<DropshipManagementOrderView | null>(detailQueryKey.value, (prev) => {
-      if (!prev) return prev;
-      const invoicePayload = (invoiceRes.data ?? {}) as { invoice?: DropshipManagementOrderView['invoice'] };
-      return {
-        ...prev,
-        order: { ...prev.order, status: 'delivered' },
-        invoice: invoicePayload.invoice ?? prev.invoice,
-        settlement: {
-          ...prev.settlement,
-          courier_cod_booked_at: prev.settlement.courier_cod_booked_at ?? new Date().toISOString(),
-        },
-        step_state: {
-          can_mark_returned: false,
-          can_mark_delivered: false,
-          can_issue_invoice: false,
-          can_record_bank_transfer: true,
-          can_transfer_to_reseller: false,
-        },
-      };
-    });
+    showSuccessNotification('Order marked as delivered.');
     await invalidateDetail();
   } finally {
     actionKind.value = null;

@@ -17,14 +17,21 @@ const READY_STATUSES = new Set<ShopOrderStatus>([
   'reseller_paid',
 ]);
 
+export function resolveDropshipOrderDetailView(
+  status: ShopOrderStatus | null | undefined,
+): DropshipOrderDetailView | null {
+  if (!status) return null;
+  if (status === 'confirmed') return 'confirmed';
+  if (status === 'processing') return 'processing';
+  if (READY_STATUSES.has(status)) return 'ready';
+  return null;
+}
+
 export function resolveDropshipOrderDetailRouteName(
   status: ShopOrderStatus | null | undefined,
 ): string | null {
-  if (!status) return null;
-  if (status === 'confirmed') return DROPSHIP_ORDER_DETAIL_ROUTE;
-  if (status === 'processing') return DROPSHIP_ORDER_DETAIL_PROCESSING_ROUTE;
-  if (READY_STATUSES.has(status)) return DROPSHIP_ORDER_DETAIL_READY_FOR_PICKUP_ROUTE;
-  return null;
+  if (!resolveDropshipOrderDetailView(status)) return null;
+  return DROPSHIP_ORDER_DETAIL_ROUTE;
 }
 
 export function useDropshipOrderStatusRedirect(options: {

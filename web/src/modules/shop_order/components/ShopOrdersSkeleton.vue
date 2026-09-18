@@ -1,5 +1,6 @@
 <template>
   <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
+    <!-- Filters Skeleton -->
     <q-card flat bordered class="q-pa-xs flex-shrink-0">
       <div class="row items-center q-gutter-x-xs">
         <q-skeleton type="QInput" height="36px" style="min-width: 220px" class="col-grow col-sm-auto" />
@@ -9,39 +10,86 @@
       </div>
     </q-card>
 
-    <q-card flat bordered class="col overflow-hidden">
-      <q-markup-table flat>
-        <thead>
-          <tr>
-            <th><q-skeleton type="text" width="90px" /></th>
-            <th><q-skeleton type="text" width="100px" /></th>
-            <th><q-skeleton type="text" width="120px" /></th>
-            <th><q-skeleton type="text" width="110px" /></th>
-            <th><q-skeleton type="text" width="90px" /></th>
-            <th class="text-right"><q-skeleton type="text" width="40px" class="q-ml-auto" /></th>
-            <th class="text-center"><q-skeleton type="text" width="70px" class="q-mx-auto" /></th>
-            <th class="text-center"><q-skeleton type="text" width="90px" class="q-mx-auto" /></th>
-            <th class="text-right"><q-skeleton type="text" width="30px" class="q-ml-auto" /></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="n in 8" :key="n">
-            <td><q-skeleton type="text" width="110px" /></td>
-            <td><q-skeleton type="text" width="90px" /></td>
-            <td><q-skeleton type="text" width="120px" /></td>
-            <td><q-skeleton type="text" width="100px" /></td>
-            <td><q-skeleton type="text" width="80px" /></td>
-            <td class="text-right"><q-skeleton type="text" width="30px" class="q-ml-auto" /></td>
-            <td class="text-center"><q-skeleton type="text" width="60px" class="q-mx-auto" /></td>
-            <td class="text-center"><q-skeleton type="QBadge" width="85px" height="22px" class="q-mx-auto" /></td>
-            <td class="text-right"><q-skeleton type="QBtn" width="28px" height="28px" class="q-ml-auto" /></td>
-          </tr>
-        </tbody>
-      </q-markup-table>
-    </q-card>
+    <!-- Orders List Card Skeleton -->
+    <div class="orders-skeleton-list-card col column no-wrap overflow-hidden">
+      <!-- Top meta bar skeleton -->
+      <div class="skeleton-meta-bar row items-center justify-between q-px-md q-py-xs flex-shrink-0">
+        <div class="row items-center q-gutter-x-sm">
+          <q-skeleton type="text" width="70px" height="18px" />
+          <q-skeleton type="rect" width="90px" height="18px" class="rounded-borders" />
+          <q-skeleton type="rect" width="80px" height="18px" class="rounded-borders" />
+        </div>
+        <q-skeleton type="text" width="140px" height="14px" />
+      </div>
+
+      <!-- List Rows Skeleton -->
+      <div class="skeleton-rows-container col overflow-hidden">
+        <div
+          v-for="n in 7"
+          :key="n"
+          class="skeleton-row row items-center justify-between no-wrap q-px-md q-py-sm"
+        >
+          <div class="row items-center no-wrap q-gutter-x-md col">
+            <div class="column q-mr-sm" style="min-width: 140px">
+              <q-skeleton type="text" width="100px" height="18px" class="q-mb-xs" />
+              <q-skeleton type="text" width="80px" height="12px" />
+            </div>
+            <div class="column col">
+              <q-skeleton type="text" width="160px" height="16px" class="q-mb-xs" />
+              <div class="row items-center q-gutter-x-xs">
+                <q-skeleton type="rect" width="75px" height="20px" class="rounded-borders" />
+                <q-skeleton type="rect" width="60px" height="20px" class="rounded-borders" />
+                <q-skeleton type="rect" width="85px" height="20px" class="rounded-borders" />
+              </div>
+            </div>
+          </div>
+
+          <div class="row items-center no-wrap q-gutter-x-sm flex-shrink-0">
+            <q-skeleton type="QBadge" width="90px" height="24px" class="rounded-borders" />
+            <q-skeleton type="QBtn" width="28px" height="28px" class="rounded-borders" />
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-// Skeleton loader component for Shop Orders page
+// Skeleton loader component for redesigned Shop Orders list page
 </script>
+
+<style scoped>
+.orders-skeleton-list-card {
+  background: var(--bw-theme-surface, #ffffff);
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-radius: 10px;
+}
+
+.skeleton-meta-bar {
+  background: var(--bw-neutral-surface, #f8fafc);
+  border-bottom: 1px solid var(--bw-theme-border, #e2e8f0);
+  min-height: 34px;
+}
+
+.skeleton-row {
+  border-bottom: 1px solid var(--bw-theme-border, #f1f5f9);
+}
+
+.skeleton-row:last-child {
+  border-bottom: none;
+}
+
+body.body--dark .orders-skeleton-list-card {
+  background: #1c1917;
+  border-color: #2a2622;
+}
+
+body.body--dark .skeleton-meta-bar {
+  background: #24201d;
+  border-color: #2a2622;
+}
+
+body.body--dark .skeleton-row {
+  border-color: #2a2622;
+}
+</style>

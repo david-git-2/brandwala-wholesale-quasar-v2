@@ -4,9 +4,6 @@ import type { ShopOrder } from '../types';
 const props = defineProps<{
   order: ShopOrder | null;
 
-  dualInvoiceDialogOpen: boolean;
-  creatingInvoice: boolean;
-
   confirmB2bInvoiceDialogOpen: boolean;
   confirmDeleteInvoiceDialogOpen: boolean;
   updatingStatus: boolean;
@@ -24,43 +21,14 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:dualInvoiceDialogOpen', val: boolean): void;
   (e: 'update:confirmB2bInvoiceDialogOpen', val: boolean): void;
   (e: 'update:confirmDeleteInvoiceDialogOpen', val: boolean): void;
-  (e: 'confirm-dual-invoice'): void;
   (e: 'execute-status-update', status: string): void;
 }>();
 </script>
 
 <template>
   <div>
-
-    <!-- Create Dual Invoice Dialog -->
-    <q-dialog
-      :model-value="props.dualInvoiceDialogOpen"
-      @update:model-value="(v) => emit('update:dualInvoiceDialogOpen', v)"
-    >
-      <q-card style="min-width: 440px; border-radius: 12px">
-        <q-card-section class="row items-center justify-between">
-          <div class="text-h6 text-weight-bold">Create Dual Invoice</div>
-          <q-btn flat round dense icon="ph ph-x" v-close-popup />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm text-body2 text-grey-8">
-          <p>Generate dual invoices for order <strong>{{ props.order?.order_no }}</strong>:</p>
-          <div class="q-pa-sm bg-grey-2 rounded-borders">
-            <div>1. <strong>Accounting Invoice</strong> (Merchant Cost + Margin Split)</div>
-            <div>2. <strong>Recipient Invoice</strong> (Customer Face Prices: {{ props.codCollectAmount }} BDT)</div>
-          </div>
-          <p class="q-mt-sm text-caption text-grey-6">
-            Posting dual invoice will commit books and stamp global_invoice_id on order.
-          </p>
-        </q-card-section>
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="Cancel" v-close-popup />
-          <q-btn color="positive" label="Post Dual Invoice" :loading="props.creatingInvoice" @click="emit('confirm-dual-invoice')" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
 
     <!-- Confirm B2B Invoice Dialog -->
     <q-dialog

@@ -226,7 +226,7 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: ':id',
         name: 'app-shop-order-detail-page',
-        component: () => import('src/modules/shop_order/pages/StaffOrderDetailPage.vue'),
+        component: () => import('src/modules/shop_order/pages/ShopOrderDetailHostPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
     ],
@@ -281,7 +281,8 @@ const adminRoutes: RouteRecordRaw[] = [
     }),
   },
 
-  // Dropship process-order pages stay on these URLs; list redirects to Orders.
+  // Dropship list/tools stay under /dropship; order detail is /orders/:id.
+
   {
     path: '/:tenantSlug?/app/shop/dropship',
     component: () => import('layouts/AppLayout.vue'),
@@ -360,77 +361,98 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: ':id/v2/ready-for-pickup',
         redirect: (to) => ({
-          name: 'app-shop-dropship-order-detail-ready-for-pickup-page',
+          name: 'app-shop-order-detail-page',
           params: { tenantSlug: to.params.tenantSlug, id: to.params.id },
         }),
       },
       {
         path: ':id/v2/processing',
         redirect: (to) => ({
-          name: 'app-shop-dropship-order-detail-processing-page',
+          name: 'app-shop-order-detail-page',
           params: { tenantSlug: to.params.tenantSlug, id: to.params.id },
         }),
       },
       {
         path: ':id/v2',
         redirect: (to) => ({
-          name: 'app-shop-dropship-order-detail-page',
+          name: 'app-shop-order-detail-page',
           params: { tenantSlug: to.params.tenantSlug, id: to.params.id },
         }),
       },
       {
         path: ':id/ready-for-pickup',
         name: 'app-shop-dropship-order-detail-ready-for-pickup-page',
-        component: () =>
-          import('src/modules/shop_order/pages/DropshipOrderDetailV2ReadyForPickupPage.vue'),
-        beforeEnter: guard('shop_order_mgmt'),
+        redirect: (to) => ({
+          name: 'app-shop-order-detail-page',
+          params: { tenantSlug: to.params.tenantSlug, id: to.params.id },
+        }),
       },
       {
         path: ':id/processing',
         name: 'app-shop-dropship-order-detail-processing-page',
-        component: () =>
-          import('src/modules/shop_order/pages/DropshipOrderDetailV2ProcessingPage.vue'),
-        beforeEnter: guard('shop_order_mgmt'),
+        redirect: (to) => ({
+          name: 'app-shop-order-detail-page',
+          params: { tenantSlug: to.params.tenantSlug, id: to.params.id },
+        }),
       },
       {
         path: ':id',
         name: 'app-shop-dropship-order-detail-page',
-        component: () => import('src/modules/shop_order/pages/DropshipOrderDetailV2Page.vue'),
-        beforeEnter: guard('shop_order_mgmt'),
+        redirect: (to) => ({
+          name: 'app-shop-order-detail-page',
+          params: { tenantSlug: to.params.tenantSlug, id: to.params.id },
+        }),
       },
     ],
   },
   {
-    path: '/:tenantSlug?/app/shop/dropship/:id/v2/customer-invoice-preview',
-    redirect: (to) => ({
-      name: 'app-shop-dropship-order-customer-invoice-preview',
-      params: { tenantSlug: to.params.tenantSlug, id: to.params.id },
-    }),
-  },
-  {
-    path: '/:tenantSlug?/app/shop/dropship/:id/customer-invoice-preview',
+    path: '/:tenantSlug?/app/shop/orders/:id/packing-slip',
     component: () => import('layouts/ExternalLayout.vue'),
     beforeEnter: guard('shop_order_mgmt'),
     children: [
       {
         path: '',
-        name: 'app-shop-dropship-order-customer-invoice-preview',
+        name: 'app-shop-order-packing-slip-page',
         component: () =>
           import('src/modules/shop_order/pages/DropshipOrderDetailV2CustomerInvoicePreviewPage.vue'),
       },
     ],
   },
   {
-    path: '/:tenantSlug?/app/shop/dropship/:id/recipient-invoice-preview',
+    path: '/:tenantSlug?/app/shop/orders/:id/recipient-slip',
     component: () => import('layouts/ExternalLayout.vue'),
     beforeEnter: guard('shop_order_mgmt'),
     children: [
       {
         path: '',
-        name: 'app-shop-dropship-recipient-invoice-preview',
-        component: () => import('src/modules/shop_order/pages/DropshipOrderRecipientInvoicePreviewPage.vue'),
+        name: 'app-shop-order-recipient-slip-page',
+        component: () =>
+          import('src/modules/shop_order/pages/DropshipOrderRecipientInvoicePreviewPage.vue'),
       },
     ],
+  },
+  {
+    path: '/:tenantSlug?/app/shop/dropship/:id/v2/customer-invoice-preview',
+    redirect: (to) => ({
+      name: 'app-shop-order-packing-slip-page',
+      params: { tenantSlug: to.params.tenantSlug, id: to.params.id },
+    }),
+  },
+  {
+    path: '/:tenantSlug?/app/shop/dropship/:id/customer-invoice-preview',
+    name: 'app-shop-dropship-order-customer-invoice-preview',
+    redirect: (to) => ({
+      name: 'app-shop-order-packing-slip-page',
+      params: { tenantSlug: to.params.tenantSlug, id: to.params.id },
+    }),
+  },
+  {
+    path: '/:tenantSlug?/app/shop/dropship/:id/recipient-invoice-preview',
+    name: 'app-shop-dropship-recipient-invoice-preview',
+    redirect: (to) => ({
+      name: 'app-shop-order-recipient-slip-page',
+      params: { tenantSlug: to.params.tenantSlug, id: to.params.id },
+    }),
   },
 
   // Legacy redirects (Phase 9)

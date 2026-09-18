@@ -1,19 +1,27 @@
+// ============================================================================
+// DROPSHIP EDITORIAL / MAGAZINE DESIGN SYSTEM
+// Modern high-contrast editorial spread replacing legacy skeuomorphic paper invoice
+// ============================================================================
+
 .dropship-invoice-paper {
-  max-width: 920px;
   width: 100%;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 0 1.75rem 1.75rem;
-  background: #fffdf8;
-  color: #1f2937;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 2px;
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.06),
-    0 12px 28px rgba(15, 23, 42, 0.08);
-  font-family: Georgia, 'Times New Roman', Times, serif;
+  padding: 1.5rem 1.75rem;
+  background: var(--bw-theme-surface, #ffffff);
+  color: var(--bw-theme-ink, #0f172a);
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 8px 24px rgba(0, 0, 0, 0.04);
+  font-family: inherit;
   overflow: hidden;
   box-sizing: border-box;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
+
+// ---------------------------------------------------------------------------
+// EDITORIAL MASTHEAD & STATUS
+// ---------------------------------------------------------------------------
 
 .dropship-invoice-paper__status-strip {
   display: flex;
@@ -21,22 +29,23 @@
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  margin: 0 -1.75rem 1.25rem;
-  padding: 0.9rem 1.75rem;
-  color: #fff;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  margin: -1.5rem -1.75rem 1.5rem;
+  padding: 1rem 1.75rem;
+  background: var(--bw-neutral-surface, #f8fafc);
+  border-bottom: 1px solid var(--bw-theme-border, #e2e8f0);
+  color: var(--bw-theme-ink, #0f172a);
 }
 
 .dropship-invoice-paper__status-main {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.85rem;
   min-width: 0;
 }
 
 .dropship-invoice-paper__status-icon {
   flex: 0 0 auto;
-  opacity: 0.95;
+  opacity: 0.9;
 }
 
 .dropship-invoice-paper__status-copy {
@@ -47,137 +56,206 @@
 }
 
 .dropship-invoice-paper__status-kicker {
-  font-size: 0.62rem;
-  font-weight: 700;
+  font-size: 0.65rem;
+  font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  opacity: 0.88;
+  color: var(--bw-neutral-secondary, #64748b);
 }
 
 .dropship-invoice-paper__status-value {
   font-size: 1.15rem;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.2;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
+  color: var(--bw-neutral-chrome, #0f172a);
 }
 
 .dropship-invoice-paper__status-next {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.1rem;
-  padding: 0.35rem 0.65rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  background: var(--bw-theme-surface, #ffffff);
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
 }
 
 .dropship-invoice-paper__status-next-label {
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.85;
+  color: var(--bw-neutral-secondary, #64748b);
 }
 
 .dropship-invoice-paper__status-next-value {
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.2;
-  text-align: right;
+  color: var(--q-primary);
 }
 
-.dropship-invoice-paper__status-strip--grey-7 { background: #616161; }
-.dropship-invoice-paper__status-strip--blue-7 { background: #1976d2; }
-.dropship-invoice-paper__status-strip--deep-orange-7 { background: #e64a19; }
-.dropship-invoice-paper__status-strip--amber-9 { background: #ff8f00; }
-.dropship-invoice-paper__status-strip--cyan-8 { background: #00838f; }
-.dropship-invoice-paper__status-strip--purple-7 { background: #7b1fa2; }
-.dropship-invoice-paper__status-strip--green-7 { background: #388e3c; }
-.dropship-invoice-paper__status-strip--blue-9 { background: #0d47a1; }
-.dropship-invoice-paper__status-strip--indigo-7 { background: #303f9f; }
-.dropship-invoice-paper__status-strip--teal-7 { background: #00796b; }
-.dropship-invoice-paper__status-strip--light-blue-7 { background: #0288d1; }
-.dropship-invoice-paper__status-strip--green-8 { background: #2e7d32; }
-.dropship-invoice-paper__status-strip--deep-orange-8 { background: #d84315; }
-.dropship-invoice-paper__status-strip--emerald-7 { background: #059669; }
-.dropship-invoice-paper__status-strip--red-7 { background: #d32f2f; }
+// Status Hue Variants for the Masthead Strip
+.dropship-invoice-paper__status-strip--green-7,
+.dropship-invoice-paper__status-strip--green-8,
+.dropship-invoice-paper__status-strip--emerald-7 {
+  background: color-mix(in srgb, #22c55e 10%, var(--bw-theme-surface, #ffffff));
+  border-bottom-color: rgba(34, 197, 94, 0.25);
+  .dropship-invoice-paper__status-icon { color: #16a34a; }
+}
+
+.dropship-invoice-paper__status-strip--blue-7,
+.dropship-invoice-paper__status-strip--blue-9,
+.dropship-invoice-paper__status-strip--light-blue-7,
+.dropship-invoice-paper__status-strip--indigo-7 {
+  background: color-mix(in srgb, #3b82f6 10%, var(--bw-theme-surface, #ffffff));
+  border-bottom-color: rgba(59, 130, 246, 0.25);
+  .dropship-invoice-paper__status-icon { color: #2563eb; }
+}
+
+.dropship-invoice-paper__status-strip--deep-orange-7,
+.dropship-invoice-paper__status-strip--deep-orange-8,
+.dropship-invoice-paper__status-strip--amber-9 {
+  background: color-mix(in srgb, #f59e0b 10%, var(--bw-theme-surface, #ffffff));
+  border-bottom-color: rgba(245, 158, 11, 0.25);
+  .dropship-invoice-paper__status-icon { color: #d97706; }
+}
+
+.dropship-invoice-paper__status-strip--purple-7 {
+  background: color-mix(in srgb, #8b5cf6 10%, var(--bw-theme-surface, #ffffff));
+  border-bottom-color: rgba(139, 92, 246, 0.25);
+  .dropship-invoice-paper__status-icon { color: #7c3aed; }
+}
+
+.dropship-invoice-paper__status-strip--red-7 {
+  background: color-mix(in srgb, #ef4444 10%, var(--bw-theme-surface, #ffffff));
+  border-bottom-color: rgba(239, 68, 68, 0.25);
+  .dropship-invoice-paper__status-icon { color: #dc2626; }
+}
+
+.dropship-invoice-paper__status-strip--grey-7 {
+  background: var(--bw-neutral-surface, #f8fafc);
+  border-bottom-color: var(--bw-theme-border, #e2e8f0);
+  .dropship-invoice-paper__status-icon { color: #64748b; }
+}
+
+// ---------------------------------------------------------------------------
+// EDITORIAL HEADER / HERO
+// ---------------------------------------------------------------------------
 
 .dropship-invoice-paper__header {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  align-items: flex-start;
+  gap: 1.5rem;
   flex-wrap: wrap;
-  padding-top: 0.25rem;
+  padding-bottom: 0.5rem;
 }
 
 .dropship-invoice-paper__doc-type {
-  font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 800;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #6b7280;
+  color: var(--q-primary);
 }
 
 .dropship-invoice-paper__order-no {
-  margin-top: 0.25rem;
-  font-size: 1.45rem;
-  font-weight: 700;
-  line-height: 1.2;
-  color: #111827;
+  margin-top: 0.2rem;
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--bw-neutral-chrome, #0f172a);
 }
 
 .dropship-invoice-paper__merchant {
   margin-top: 0.35rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.85rem;
-  color: #4b5563;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--bw-neutral-secondary, #64748b);
 }
 
 .dropship-invoice-paper__meta {
-  min-width: 160px;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 180px;
+  font-size: 0.82rem;
+  background: var(--bw-neutral-surface, #f8fafc);
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
 }
 
 .dropship-invoice-paper__meta-row {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.15rem 0;
+  align-items: center;
 }
 
 .dropship-invoice-paper__meta-label {
-  color: #6b7280;
+  color: var(--bw-neutral-secondary, #64748b);
   font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
+// ---------------------------------------------------------------------------
+// EDITORIAL DIVIDERS & SECTION HEADERS
+// ---------------------------------------------------------------------------
+
 .dropship-invoice-paper__divider {
-  margin: 1rem 0;
-  border-top: 1px dashed rgba(15, 23, 42, 0.18);
+  margin: 1.25rem 0;
+  border-top: 1px solid var(--bw-theme-border, #f1f5f9);
 }
 
 .dropship-invoice-paper__section-label {
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #6b7280;
+  color: var(--bw-neutral-secondary, #64748b);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+// ---------------------------------------------------------------------------
+// ADDRESSES & LOGISTICS DOSSIER
+// ---------------------------------------------------------------------------
+
+.dropship-invoice-paper__addresses {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+.dropship-invoice-paper__addresses--two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dropship-invoice-paper__address-block {
+  background: var(--bw-neutral-surface, #f8fafc);
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
 }
 
 .dropship-invoice-paper__recipient-name {
   margin-top: 0.35rem;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--bw-neutral-chrome, #0f172a);
 }
 
 .dropship-invoice-paper__copy-row {
   display: flex;
   align-items: flex-start;
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
 .dropship-invoice-paper__copy-row > span,
@@ -188,34 +266,41 @@
 
 .dropship-invoice-paper__copy-btn {
   flex: 0 0 auto;
-  opacity: 0.55;
+  opacity: 0.6;
+  border-radius: 6px;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .dropship-invoice-paper__copy-row:hover .dropship-invoice-paper__copy-btn,
 .dropship-invoice-paper__copy-btn:focus-visible {
   opacity: 1;
+  transform: scale(1.05);
 }
 
 .dropship-invoice-paper__line {
-  margin-top: 0.2rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.82rem;
-  color: #374151;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--bw-theme-ink, #334155);
+  line-height: 1.45;
 }
 
 .dropship-invoice-paper__phone-line {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   flex-wrap: wrap;
 }
 
 .dropship-invoice-paper__field-tag {
-  font-size: 0.62rem;
-  font-weight: 600;
+  font-size: 0.65rem;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #6b7280;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--bw-theme-surface, #ffffff);
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  color: var(--bw-neutral-secondary, #64748b);
 }
 
 .dropship-invoice-paper__line--wrap {
@@ -225,123 +310,73 @@
 }
 
 .dropship-invoice-paper__note {
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.78rem;
-  color: #4b5563;
+  font-size: 0.82rem;
+  color: var(--bw-theme-ink, #475569);
+  background: var(--bw-theme-surface, #ffffff);
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
 }
+
+// ---------------------------------------------------------------------------
+// EDITORIAL CATALOG TABLE & ITEMS
+// ---------------------------------------------------------------------------
 
 .dropship-invoice-paper__table-wrap {
   overflow-x: auto;
-}
-
-.dropship-invoice-paper__mobile-items {
-  display: none;
-}
-
-.dropship-invoice-paper__mobile-item {
-  padding: 0.75rem 0;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
-  font-family: ui-sans-serif, system-ui, sans-serif;
-}
-
-.dropship-invoice-paper__mobile-item-top {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-}
-
-.dropship-invoice-paper__mobile-item-body {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.dropship-invoice-paper__mobile-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.75rem;
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-.dropship-invoice-paper__mobile-counter {
-  margin-top: 0.65rem;
-}
-
-.dropship-invoice-paper__mobile-line-total {
-  margin-top: 0.55rem;
-  padding-top: 0.45rem;
-  border-top: 1px dashed rgba(15, 23, 42, 0.1);
-}
-
-.dropship-invoice-paper__mobile-total {
-  margin-top: 0.75rem;
-  padding-top: 0.65rem;
-  border-top: 2px solid rgba(15, 23, 42, 0.14);
-  font-family: ui-sans-serif, system-ui, sans-serif;
-}
-
-.dropship-invoice-paper__thumb--sm {
-  width: 3.25rem;
-  height: 3.25rem;
-  flex: 0 0 auto;
-  margin: 0;
-}
-
-.dropship-invoice-paper__thumb--sm :deep(.dropship-invoice-paper__thumb-img),
-.dropship-invoice-paper__thumb--sm :deep(.dropship-invoice-paper__thumb-fallback) {
-  width: 3.25rem;
-  height: 3.25rem;
+  background: var(--bw-theme-surface, #ffffff);
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-radius: 10px;
 }
 
 .dropship-invoice-paper__table {
   width: 100%;
   border-collapse: collapse;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
 }
 
 .dropship-invoice-paper__table th,
 .dropship-invoice-paper__table td {
-  padding: 0.45rem 0.5rem;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
-  vertical-align: top;
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid var(--bw-theme-border, #f1f5f9);
+  vertical-align: middle;
 }
 
 .dropship-invoice-paper__table th {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #6b7280;
-  background: rgba(15, 23, 42, 0.03);
+  color: var(--bw-neutral-secondary, #64748b);
+  background: var(--bw-neutral-surface, #f8fafc);
 }
 
 .dropship-invoice-paper__table tfoot td {
-  border-top: 2px solid rgba(15, 23, 42, 0.16);
+  border-top: 2px solid var(--bw-theme-border, #e2e8f0);
   border-bottom: none;
+  background: var(--bw-neutral-surface, #f8fafc);
 }
 
 .col-thumb {
-  width: 1.15in;
+  width: 56px;
   text-align: center;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .dropship-invoice-paper__thumb {
-  width: 1in;
-  height: 1in;
+  width: 48px;
+  height: 48px;
   margin: 0 auto;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 6px;
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: #ffffff;
 }
 
 .dropship-invoice-paper__thumb :deep(.dropship-invoice-paper__thumb-img),
 .dropship-invoice-paper__thumb :deep(.dropship-invoice-paper__thumb-fallback) {
-  width: 1in;
-  height: 1in;
+  width: 48px;
+  height: 48px;
   display: block;
   object-fit: contain;
 }
@@ -350,18 +385,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
-  color: #9ca3af;
+  background: #f1f5f9;
+  color: #94a3b8;
   font-size: 0.65rem;
 }
 
 .col-item {
-  width: 34%;
+  width: 40%;
   text-align: left;
 }
 
 .col-qty {
-  width: 7%;
+  width: 10%;
+  text-align: center;
 }
 
 .dropship-invoice-paper__table th.col-qty,
@@ -371,137 +407,183 @@
 }
 
 .col-money {
-  width: 13%;
+  width: 16%;
   white-space: nowrap;
+  text-align: right;
 }
 
 .dropship-invoice-paper__table th.col-money,
 .dropship-invoice-paper__table td.col-money {
-  text-align: center;
+  text-align: right;
   vertical-align: middle;
+  font-variant-numeric: tabular-nums;
 }
 
 .dropship-invoice-paper__item-name {
-  font-weight: 600;
-  color: #111827;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  line-height: 1.3;
+  font-weight: 700;
+  color: var(--bw-neutral-chrome, #0f172a);
+  line-height: 1.35;
+}
+
+.dropship-invoice-paper__item-meta {
+  font-size: 0.72rem;
+  color: var(--bw-neutral-secondary, #64748b);
+  margin-top: 0.2rem;
 }
 
 .dropship-invoice-paper__counter-input {
-  width: 6.5rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  width: 7.5rem;
 }
 
 .dropship-invoice-paper__counter-input :deep(.q-field__control) {
-  min-height: 30px;
+  min-height: 32px;
+  border-radius: 6px;
 }
+
+.dropship-invoice-paper__print-customer-value {
+  display: none !important;
+}
+
+// ---------------------------------------------------------------------------
+// EDITORIAL FINANCIAL LEDGER / SUMMARY
+// ---------------------------------------------------------------------------
 
 .dropship-invoice-paper__summary {
   display: flex;
   justify-content: flex-end;
+  margin-top: 0.5rem;
 }
 
 .dropship-invoice-paper__summary-grid {
-  width: min(100%, 320px);
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.8rem;
+  width: min(100%, 380px);
+  background: var(--bw-neutral-surface, #f8fafc);
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.15rem 1.25rem;
+  font-size: 0.85rem;
 }
 
 .dropship-invoice-paper__summary-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 1rem;
-  padding: 0.25rem 0;
-  color: #374151;
+  padding: 0.35rem 0;
+  color: var(--bw-theme-ink, #334155);
+  font-variant-numeric: tabular-nums;
 }
 
 .dropship-invoice-paper__summary-label {
   display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
+  align-items: center;
+  gap: 0.5rem;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .dropship-invoice-paper__paid-by {
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 5px;
+  line-height: 1.2;
 }
 
 .dropship-invoice-paper__paid-by--recipient {
-  color: #1d4ed8;
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
 }
 
 .dropship-invoice-paper__paid-by--merchant {
-  color: #b45309;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.dropship-invoice-paper__paid-by--company {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
 }
 
 .dropship-invoice-paper__paid-by--muted {
-  color: #6b7280;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
   text-transform: none;
-  font-weight: 500;
-  font-size: 0.65rem;
+  font-weight: 600;
 }
 
 .dropship-invoice-paper__summary-row--grand {
-  margin-top: 0.35rem;
-  padding-top: 0.45rem;
-  border-top: 1px solid rgba(15, 23, 42, 0.14);
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: #111827;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 2px solid var(--bw-theme-border, #e2e8f0);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--bw-neutral-chrome, #0f172a);
 }
 
 .dropship-invoice-paper__summary-row--profit {
-  color: #15803d;
-  font-weight: 600;
+  margin-top: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.dropship-invoice-paper__amount-input {
+  width: 8.5rem;
+  flex: 0 0 auto;
+}
+
+.dropship-invoice-paper__amount-input :deep(.q-field__control) {
+  min-height: 32px;
+  border-radius: 6px;
+}
+
+.dropship-invoice-paper__payer-toggle {
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .dropship-invoice-paper__track-btn {
-  padding: 0.15rem 0.35rem;
-  min-height: 1.6rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.72rem;
-  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.25rem 0.75rem;
+  font-weight: 700;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
 }
 
-.dropship-invoice-paper__footnote {
-  margin-top: 0.75rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.72rem;
-  color: #6b7280;
-  line-height: 1.45;
+// ---------------------------------------------------------------------------
+// MOBILE / NARROW LAYOUT
+// ---------------------------------------------------------------------------
+
+.dropship-invoice-paper__mobile-items {
+  display: none;
 }
 
 @media (max-width: 767px) {
   .dropship-invoice-paper {
-    padding: 0 0.85rem 1rem;
-    border-left: none;
-    border-right: none;
-    border-radius: 0;
-    box-shadow: none;
+    padding: 1rem;
+    border-radius: 8px;
   }
 
   .dropship-invoice-paper__status-strip {
-    margin: 0 -0.85rem 0.85rem;
-    padding: 0.8rem 0.85rem;
+    margin: -1rem -1rem 1rem;
+    padding: 0.85rem 1rem;
     flex-direction: column;
     align-items: stretch;
   }
 
-  .dropship-invoice-paper__status-value {
-    font-size: 1.05rem;
-  }
-
   .dropship-invoice-paper__status-next {
     width: 100%;
-    align-items: flex-start;
-    border-radius: 8px;
+    justify-content: space-between;
   }
 
   .dropship-invoice-paper__header {
@@ -511,19 +593,10 @@
 
   .dropship-invoice-paper__meta {
     width: 100%;
-    min-width: 0;
-    margin-top: 0.5rem;
-    padding-top: 0.65rem;
-    border-top: 1px dashed rgba(15, 23, 42, 0.12);
   }
 
-  .dropship-invoice-paper__order-no {
-    font-size: 1.2rem;
-    overflow-wrap: anywhere;
-  }
-
-  .dropship-invoice-paper__copy-btn {
-    opacity: 1;
+  .dropship-invoice-paper__addresses--two-col {
+    grid-template-columns: 1fr;
   }
 
   .dropship-invoice-paper__table-wrap--desktop {
@@ -532,22 +605,139 @@
 
   .dropship-invoice-paper__mobile-items {
     display: block;
+    background: var(--bw-theme-surface, #ffffff);
+    border: 1px solid var(--bw-theme-border, #e2e8f0);
+    border-radius: 10px;
+    padding: 0.75rem;
   }
 
-  .dropship-invoice-paper__summary {
-    justify-content: stretch;
+  .dropship-invoice-paper__mobile-item {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--bw-theme-border, #f1f5f9);
+  }
+
+  .dropship-invoice-paper__mobile-item:last-child {
+    border-bottom: none;
+  }
+
+  .dropship-invoice-paper__mobile-item-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .dropship-invoice-paper__thumb--sm {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--bw-theme-border, #e2e8f0);
   }
 
   .dropship-invoice-paper__summary-grid {
     width: 100%;
-    max-width: none;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// DARK MODE SUPPORT
+// ---------------------------------------------------------------------------
+
+body.body--dark {
+  .dropship-invoice-paper {
+    background: #1c1917;
+    border-color: #2a2622;
+    color: #f5f5f4;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   }
 
-  .dropship-invoice-paper__summary-row {
-    gap: 0.65rem;
+  .dropship-invoice-paper__status-strip {
+    background: #24201d;
+    border-color: #2a2622;
   }
 
-  .dropship-invoice-paper__paid-by {
-    font-size: 0.58rem;
+  .dropship-invoice-paper__status-value {
+    color: #fafaf9;
+  }
+
+  .dropship-invoice-paper__status-next {
+    background: #1c1917;
+    border-color: #38332e;
+  }
+
+  .dropship-invoice-paper__meta,
+  .dropship-invoice-paper__address-block,
+  .dropship-invoice-paper__table-wrap,
+  .dropship-invoice-paper__summary-grid,
+  .dropship-invoice-paper__mobile-items {
+    background: #24201d;
+    border-color: #2a2622;
+  }
+
+  .dropship-invoice-paper__table th {
+    background: #1e1b18;
+    border-color: #2a2622;
+  }
+
+  .dropship-invoice-paper__table td {
+    border-color: #2a2622;
+  }
+
+  .dropship-invoice-paper__table tfoot td {
+    background: #1e1b18;
+    border-color: #38332e;
+  }
+
+  .dropship-invoice-paper__item-name,
+  .dropship-invoice-paper__order-no,
+  .dropship-invoice-paper__recipient-name,
+  .dropship-invoice-paper__summary-row--grand {
+    color: #f5f5f4;
+  }
+
+  .dropship-invoice-paper__line {
+    color: #d6d3d1;
+  }
+
+  .dropship-invoice-paper__thumb {
+    background: #262626;
+    border-color: #38332e;
+  }
+
+  .dropship-invoice-paper__paid-by--recipient {
+    background: rgba(59, 130, 246, 0.18);
+    color: #93c5fd;
+    border-color: rgba(59, 130, 246, 0.35);
+  }
+
+  .dropship-invoice-paper__paid-by--merchant {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fcd34d;
+    border-color: rgba(245, 158, 11, 0.35);
+  }
+
+  .dropship-invoice-paper__paid-by--company {
+    background: rgba(16, 185, 129, 0.18);
+    color: #6ee7b7;
+    border-color: rgba(16, 185, 129, 0.35);
+  }
+
+  .dropship-invoice-paper__paid-by--muted {
+    background: rgba(255, 255, 255, 0.08);
+    color: #d6d3d1;
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .dropship-invoice-paper__summary-row--profit {
+    background: rgba(34, 197, 94, 0.15);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #86efac;
+  }
+
+  .dropship-invoice-paper__track-btn {
+    background: rgba(59, 130, 246, 0.15);
+    color: #93c5fd;
+    border-color: rgba(59, 130, 246, 0.3);
   }
 }

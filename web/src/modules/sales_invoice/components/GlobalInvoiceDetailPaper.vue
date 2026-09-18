@@ -357,10 +357,10 @@ onMounted(() => {
               <th class="col-thumb" />
               <th class="col-item">Product</th>
               <th class="col-qty">Qty</th>
-              <th v-if="isParentTenant" class="col-money">Cost</th>
+              <th v-if="isParentTenant && !isDropship" class="col-money">Cost</th>
               <th class="col-money">{{ isParentTenant ? 'Sell' : 'Price' }}</th>
               <th class="col-money">Total</th>
-              <th v-if="isParentTenant && invoice.invoice_status === 'issued'" class="col-money">Margin</th>
+              <th v-if="isParentTenant && !isDropship && invoice.invoice_status === 'issued'" class="col-money">Margin</th>
               <th v-if="canEditDraft" class="col-action" />
             </tr>
           </thead>
@@ -416,7 +416,7 @@ onMounted(() => {
                   />
                 </q-popup-edit>
               </td>
-              <td v-if="isParentTenant" class="col-money text-grey-7">{{ formatItemUnitCost(row) }}</td>
+              <td v-if="isParentTenant && !isDropship" class="col-money text-grey-7">{{ formatItemUnitCost(row) }}</td>
               <td class="col-money">
                 <span :class="{ 'cursor-pointer text-primary': canEditDraft }">
                   {{ formatAmount(row.sell_price_amount) }}
@@ -453,7 +453,10 @@ onMounted(() => {
                 </template>
                 <template v-else>{{ formatAmount(row.line_total_amount) }}</template>
               </td>
-              <td v-if="isParentTenant && invoice.invoice_status === 'issued'" class="col-money text-positive">
+              <td
+                v-if="isParentTenant && !isDropship && invoice.invoice_status === 'issued'"
+                class="col-money text-positive"
+              >
                 {{ formatAmount(lineMarginForRow(row)) }}
               </td>
               <td v-if="canEditDraft" class="col-action">
@@ -549,7 +552,10 @@ onMounted(() => {
         </div>
 
         <template v-if="showCharges">
-          <div class="invoice-paper__summary-row invoice-paper__summary-row--editable">
+          <div
+            v-if="!isDropship"
+            class="invoice-paper__summary-row invoice-paper__summary-row--editable"
+          >
             <span>COD charge</span>
             <q-input
               v-if="canEditDraft"
@@ -638,16 +644,18 @@ onMounted(() => {
           <span>{{ formatAmount(invoice.due_amount) }}</span>
         </div>
 
-        <div class="invoice-paper__summary-row">
-          <span>{{ invoice.invoice_status === 'issued' ? 'Gross profit' : 'Est. gross profit' }}</span>
-          <span :class="estimatedProfit >= 0 ? 'text-positive' : 'text-negative'">
-            {{ formatAmount(estimatedProfit) }}
-          </span>
-        </div>
-        <div class="invoice-paper__summary-row text-grey-7">
-          <span>Total cost · {{ totalQuantity }} qty</span>
-          <span>{{ formatAmount(totalCost) }} · {{ averageProfitRate }}</span>
-        </div>
+        <template v-if="!isDropship">
+          <div class="invoice-paper__summary-row">
+            <span>{{ invoice.invoice_status === 'issued' ? 'Gross profit' : 'Est. gross profit' }}</span>
+            <span :class="estimatedProfit >= 0 ? 'text-positive' : 'text-negative'">
+              {{ formatAmount(estimatedProfit) }}
+            </span>
+          </div>
+          <div class="invoice-paper__summary-row text-grey-7">
+            <span>Total cost · {{ totalQuantity }} qty</span>
+            <span>{{ formatAmount(totalCost) }} · {{ averageProfitRate }}</span>
+          </div>
+        </template>
       </div>
     </section>
 
@@ -724,7 +732,7 @@ onMounted(() => {
         <router-link
           class="text-primary text-weight-medium"
           :to="{
-            name: 'app-shop-dropship-order-detail-page',
+            name: 'app-shop-order-detail-page',
             params: { tenantSlug, id: linkedOrderRemittance.id },
           }"
         >

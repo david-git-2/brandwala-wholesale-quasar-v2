@@ -606,8 +606,14 @@ CREATE OR REPLACE FUNCTION "public"."create_dropship_invoice"("p_order_id" bigin
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
+declare
+  v_tenant_id bigint;
 begin
-  return public.create_dual_invoice_from_dropship_order(p_order_id, p_invoice_no, p_billing_profile_id, p_note);
+  select tenant_id into v_tenant_id from public.shop_orders where id = p_order_id;
+  if v_tenant_id is null then
+    return jsonb_build_object('success', false, 'error', 'order not found');
+  end if;
+  return public.issue_dropship_tenant_b2b_invoice(v_tenant_id, p_order_id);
 end;
 $$;
 
@@ -619,212 +625,13 @@ CREATE OR REPLACE FUNCTION "public"."create_dual_invoice_from_dropship_order"("p
     SET "search_path" TO 'public'
     AS $$
 declare
-  v_order record;
-  v_billing_profile_id bigint;
-  v_profile record;
-  v_parent_tenant_id bigint;
-  v_invoice_no text;
-  v_invoice public.global_invoices;
-  v_invoice_id bigint;
-  v_orphan_invoice_id bigint;
-  v_item record;
-  v_subtotal numeric(12,2) := 0;
-  v_charges_total numeric(12,2) := 0;
-  v_item_sell_price numeric(12,2);
-  v_item_line_total numeric(12,2);
-  v_assigned_child bigint;
-  v_total numeric(12,2);
+  v_tenant_id bigint;
 begin
-  select * into v_order from public.shop_orders where id = p_order_id;
-  if v_order.id is null then
-    raise exception 'Order not found';
+  select tenant_id into v_tenant_id from public.shop_orders where id = p_order_id;
+  if v_tenant_id is null then
+    return jsonb_build_object('success', false, 'error', 'order not found');
   end if;
-
-  if v_order.shop_type_snapshot <> 'dropship' then
-    raise exception 'Order is not a dropship order';
-  end if;
-
-  if v_order.status not in ('delivered', 'payment_received') then
-    raise exception 'Tenant B2B invoice can only be created at delivered (current status: %)', v_order.status;
-  end if;
-
-  if v_order.global_invoice_id is not null then
-    raise exception 'Invoice already created for this order (invoice_id: %)', v_order.global_invoice_id;
-  end if;
-
-  perform public.canonicalize_dropship_order_wallet_source_ids(p_order_id);
-
-  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
-  if not (
-    public.user_can_manage_parent_tenant(v_parent_tenant_id)
-    or exists (
-      select 1 from public.memberships m
-      where m.tenant_id = v_order.tenant_id
-        and lower(trim(m.email)) = public.current_user_email()
-        and m.is_active = true
-        and m.role in ('admin', 'staff')
-    )
-  ) then
-    raise exception 'Permission denied: Staff or Admin role required';
-  end if;
-
-  v_billing_profile_id := coalesce(p_billing_profile_id, v_order.billing_profile_id);
-  if v_billing_profile_id is null then
-    select id into v_billing_profile_id
-    from public.billing_profiles
-    where tenant_id = v_order.tenant_id
-      and customer_group_id = v_order.customer_group_id
-    order by created_at asc
-    limit 1;
-  end if;
-
-  if v_billing_profile_id is null then
-    raise exception 'Billing profile is required for creating invoice';
-  end if;
-
-  select * into v_profile from public.billing_profiles where id = v_billing_profile_id;
-  if v_profile.id is null then
-    raise exception 'Billing profile not found';
-  end if;
-
-  if p_invoice_no is null or trim(p_invoice_no) = '' then
-    v_invoice_no := 'INV-DS-' || v_order.order_no;
-  else
-    v_invoice_no := trim(p_invoice_no);
-  end if;
-
-  select i.id into v_orphan_invoice_id
-  from public.global_invoices i
-  where i.invoice_no = v_invoice_no
-    and i.invoice_type = 'dropship'::public.global_invoice_type
-    and (
-      i.issued_by_tenant_id = v_order.tenant_id
-      or i.parent_tenant_id = v_parent_tenant_id
-    )
-    and not exists (
-      select 1 from public.shop_orders o2 where o2.global_invoice_id = i.id
-    )
-  limit 1;
-
-  if v_orphan_invoice_id is not null then
-    delete from public.global_return_items where invoice_id = v_orphan_invoice_id;
-    delete from public.global_invoice_items where invoice_id = v_orphan_invoice_id;
-    delete from public.global_invoices where id = v_orphan_invoice_id;
-  end if;
-
-  select ci.id into v_invoice_id
-  from public.create_global_invoice(
-    p_tenant_id => v_order.tenant_id,
-    p_invoice_no => v_invoice_no,
-    p_invoice_type => 'dropship'::public.global_invoice_type,
-    p_billing_profile_id => v_billing_profile_id,
-    p_recipient_profile_id => v_order.recipient_profile_id,
-    p_recipient_name => coalesce(v_order.recipient_name, v_order.name),
-    p_recipient_phone => v_order.recipient_phone,
-    p_recipient_address => v_order.shipping_address,
-    p_note => coalesce(p_note, 'B2B Wholesale invoice created from dropship order #' || v_order.order_no)
-  ) ci;
-
-  select * into v_invoice
-  from public.global_invoices
-  where id = v_invoice_id;
-
-  for v_item in (
-    select
-      soi.*,
-      gs.shipment_item_id as stock_shipment_item_id,
-      coalesce(public.calculate_landed_unit_cost(gs.shipment_item_id), 0) as stock_cost,
-      gsi.name as stock_name,
-      gsi.barcode as stock_barcode,
-      gsi.product_code as stock_product_code,
-      sh.assigned_child_tenant_id as stock_assigned_child
-    from public.shop_order_items soi
-    left join public.global_stocks gs on gs.id = soi.global_stock_id
-    left join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
-    left join public.global_shipments sh on sh.id = gsi.shipment_id
-    where soi.order_id = v_order.id
-  ) loop
-    v_item_sell_price := coalesce(v_item.unit_sell_price_amount, v_item.final_price_amount, 0);
-    v_item_line_total := v_item.quantity * v_item_sell_price;
-    v_assigned_child := v_item.stock_assigned_child;
-
-    insert into public.global_invoice_items (
-      tenant_id,
-      parent_tenant_id,
-      invoice_id,
-      global_stock_id,
-      shipment_item_id,
-      product_id,
-      name_snapshot,
-      barcode_snapshot,
-      product_code_snapshot,
-      quantity,
-      unit_cost_price,
-      sell_price_amount,
-      line_discount_amount,
-      line_total_amount,
-      assigned_child_tenant_id
-    )
-    values (
-      v_invoice.tenant_id,
-      v_invoice.parent_tenant_id,
-      v_invoice.id,
-      v_item.global_stock_id,
-      v_item.stock_shipment_item_id,
-      v_item.product_id,
-      coalesce(v_item.stock_name, v_item.name),
-      v_item.stock_barcode,
-      v_item.stock_product_code,
-      v_item.quantity,
-      coalesce(v_item.stock_cost, 0),
-      v_item_sell_price,
-      0,
-      v_item_line_total,
-      v_assigned_child
-    );
-
-    v_subtotal := v_subtotal + v_item_line_total;
-  end loop;
-
-  v_charges_total := coalesce(v_order.print_charge_amount, 0) + coalesce(v_order.packing_charge_amount, 0);
-  v_total := greatest(v_subtotal + v_charges_total - coalesce(v_order.discount_amount, 0), 0);
-
-  update public.global_invoices
-  set
-    subtotal_amount = v_subtotal,
-    shipping_charge = 0,
-    print_charge = coalesce(v_order.print_charge_amount, 0),
-    wrapping_charge = coalesce(v_order.packing_charge_amount, 0),
-    discount_amount = coalesce(v_order.discount_amount, 0),
-    total_amount = v_total,
-    paid_amount = 0,
-    due_amount = v_total,
-    payment_status = 'due',
-    collection_source = case
-      when coalesce(v_order.is_prepaid_snapshot, false) then 'billing_profile'::public.collection_source_type
-      else 'recipient'::public.collection_source_type
-    end,
-    invoice_status = 'issued'::public.global_invoice_status,
-    updated_at = now()
-  where id = v_invoice.id;
-
-  update public.shop_orders
-  set
-    global_invoice_id = v_invoice.id,
-    updated_at = now()
-  where id = v_order.id;
-
-  perform public.ensure_dropship_invoice_billed_entry(v_invoice.id);
-
-  return jsonb_build_object(
-    'success', true,
-    'invoice_id', v_invoice.id,
-    'invoice_no', v_invoice_no,
-    'invoice_status', 'issued',
-    'payment_status', 'due',
-    'subtotal_amount', v_subtotal,
-    'total_amount', v_total
-  );
+  return public.issue_dropship_tenant_b2b_invoice(v_tenant_id, p_order_id);
 end;
 $$;
 
@@ -1522,12 +1329,17 @@ begin
   end if;
 
   if v_order.status not in (
+    'ready_for_pickup'::public.shop_order_status,
+    'shipped'::public.shop_order_status,
     'delivered'::public.shop_order_status,
     'payment_received'::public.shop_order_status
   ) then
     return jsonb_build_object(
       'success', false,
-      'error', format('tenant B2B invoice requires delivered status (current: %s)', v_order.status)
+      'error', format(
+        'tenant B2B invoice requires ready_for_pickup, shipped, or delivered (current: %s)',
+        v_order.status
+      )
     );
   end if;
 
@@ -1535,59 +1347,69 @@ begin
 
   v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
 
-  if v_order.global_invoice_id is null then
-    v_build := public.build_dropship_tenant_b2b_invoice_payload(p_order_id);
-    if coalesce(v_build->>'success', 'false') <> 'true' then
-      return v_build;
-    end if;
-
-    v_payload := v_build->'payload';
-    v_payload := v_payload || jsonb_build_object(
-      'issue', true,
-      'shop_order_id', p_order_id
-    );
-
-    select i.id into v_orphan_invoice_id
-    from public.global_invoices i
-    where i.invoice_no = v_payload->'invoice'->>'invoice_no'
-      and i.invoice_type = 'dropship'::public.global_invoice_type
-      and (
-        i.issued_by_tenant_id = v_order.tenant_id
-        or i.parent_tenant_id = v_parent_tenant_id
+  if v_order.global_invoice_id is not null then
+    select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id;
+    return jsonb_build_object(
+      'success', true,
+      'already_issued', true,
+      'created', false,
+      'order_id', p_order_id,
+      'invoice', jsonb_build_object(
+        'id', v_invoice.id,
+        'invoice_no', v_invoice.invoice_no,
+        'invoice_type', v_invoice.invoice_type,
+        'invoice_status', v_invoice.invoice_status,
+        'payment_status', v_invoice.payment_status,
+        'subtotal_amount', v_invoice.subtotal_amount,
+        'print_charge', v_invoice.print_charge,
+        'wrapping_charge', v_invoice.wrapping_charge,
+        'discount_amount', v_invoice.discount_amount,
+        'total_amount', v_invoice.total_amount,
+        'paid_amount', v_invoice.paid_amount,
+        'due_amount', v_invoice.due_amount,
+        'billing_profile_id', v_invoice.billing_profile_id,
+        'collection_source', v_invoice.collection_source
       )
-      and not exists (
-        select 1 from public.shop_orders o2 where o2.global_invoice_id = i.id
-      )
-    limit 1;
-
-    if v_orphan_invoice_id is not null then
-      delete from public.global_return_items where invoice_id = v_orphan_invoice_id;
-      delete from public.sales_invoice_items where invoice_id = v_orphan_invoice_id;
-      delete from public.sales_invoices where id = v_orphan_invoice_id;
-    end if;
-
-    v_result := public.create_sales_invoice_from_payload(p_tenant_id, v_payload);
-    v_created := true;
-  else
-    v_build := public.build_dropship_tenant_b2b_invoice_payload(
-      p_order_id,
-      v_order.global_invoice_id
     );
-    if coalesce(v_build->>'success', 'false') <> 'true' then
-      return v_build;
-    end if;
-
-    v_payload := (v_build->'payload') || jsonb_build_object(
-      'options', jsonb_build_object('dropship_sync', true, 'recompute_totals', true)
-    );
-
-    v_result := public.update_sales_invoice_from_payload(
-      p_tenant_id,
-      v_order.global_invoice_id,
-      v_payload
-    );
-    v_created := false;
   end if;
+
+  v_build := public.build_dropship_tenant_b2b_invoice_payload(p_order_id);
+  if coalesce(v_build->>'success', 'false') <> 'true' then
+    return v_build;
+  end if;
+
+  v_payload := v_build->'payload';
+  v_payload := v_payload || jsonb_build_object(
+    'issue', true,
+    'shop_order_id', p_order_id
+  );
+
+  select i.id into v_orphan_invoice_id
+  from public.global_invoices i
+  where i.invoice_no = v_payload->'invoice'->>'invoice_no'
+    and i.invoice_type = 'dropship'::public.global_invoice_type
+    and (
+      i.issued_by_tenant_id = v_order.tenant_id
+      or i.parent_tenant_id = v_parent_tenant_id
+    )
+    and not exists (
+      select 1 from public.shop_orders o2 where o2.global_invoice_id = i.id
+    )
+  limit 1;
+
+  if v_orphan_invoice_id is not null then
+    delete from public.global_return_items where invoice_id = v_orphan_invoice_id;
+    delete from public.sales_invoice_item_costs
+    where invoice_item_id in (
+      select id from public.sales_invoice_items where invoice_id = v_orphan_invoice_id
+    );
+    delete from public.sales_invoice_charges where invoice_id = v_orphan_invoice_id;
+    delete from public.sales_invoice_items where invoice_id = v_orphan_invoice_id;
+    delete from public.sales_invoices where id = v_orphan_invoice_id;
+  end if;
+
+  v_result := public.create_sales_invoice_from_payload(p_tenant_id, v_payload);
+  v_created := true;
 
   if coalesce(v_result->>'success', 'false') <> 'true' then
     return coalesce(
@@ -1598,7 +1420,7 @@ begin
 
   update public.shop_orders
   set
-    global_invoice_id = coalesce(v_order.global_invoice_id, (v_result->>'invoice_id')::bigint),
+    global_invoice_id = (v_result->>'invoice_id')::bigint,
     updated_at = now()
   where id = p_order_id
     and global_invoice_id is null;
@@ -1609,6 +1431,18 @@ begin
   if v_invoice.id is null then
     return jsonb_build_object('success', false, 'error', 'invoice was not created');
   end if;
+
+  perform public.snapshot_sales_invoice_item_costs(v_invoice.id);
+  perform public.sync_sales_invoice_charges_from_header(v_invoice.id);
+
+  update public.sales_invoices
+  set
+    shop_order_id = p_order_id,
+    channel_meta = coalesce(v_payload->'invoice'->'channel_meta', '{}'::jsonb),
+    updated_at = now()
+  where id = v_invoice.id;
+
+  perform public.ensure_dropship_invoice_billed_entry(v_invoice.id);
 
   v_courier_cod_booked := exists (
     select 1 from public.universal_wallet_ledger
@@ -1622,6 +1456,7 @@ begin
   return jsonb_build_object(
     'success', true,
     'created', v_created,
+    'already_issued', false,
     'order_id', p_order_id,
     'invoice', jsonb_build_object(
       'id', v_invoice.id,
@@ -1681,13 +1516,16 @@ declare
   v_phone text;
   v_row public.recipient_profiles%rowtype;
   v_can_access boolean;
+  v_parent_id bigint;
 begin
   if auth.uid() is null then
     raise exception 'Not authenticated';
   end if;
 
   v_can_access := public.is_tenant_staff(p_tenant_id)
-    or public.current_customer_group_id(p_tenant_id) is not null;
+    or public.current_customer_group_id(p_tenant_id) is not null
+    or public.user_can_manage_parent_tenant(p_tenant_id)
+    or public.has_active_tenant_membership(p_tenant_id);
 
   if not v_can_access then
     raise exception 'access denied';
@@ -1699,10 +1537,14 @@ begin
     return null;
   end;
 
+  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+
   select * into v_row
   from public.recipient_profiles
-  where coalesce(parent_tenant_id, tenant_id) = public.resolve_parent_tenant_id(p_tenant_id)
-    and phone = v_phone;
+  where (parent_tenant_id = v_parent_id or (parent_tenant_id is null and tenant_id = v_parent_id) or tenant_id = p_tenant_id)
+    and phone = v_phone
+  order by (parent_tenant_id = v_parent_id) desc, updated_at desc
+  limit 1;
 
   if v_row.id is null then
     return null;
@@ -1718,6 +1560,7 @@ begin
     'thana', v_row.thana,
     'addresses', v_row.addresses,
     'tenant_id', v_row.tenant_id,
+    'parent_tenant_id', v_row.parent_tenant_id,
     'created_at', v_row.created_at,
     'updated_at', v_row.updated_at
   );
@@ -1776,8 +1619,8 @@ begin
     gii.name_snapshot,
     gii.quantity,
     gii.sell_price_amount,
-    gii.sell_price_amount as recipient_price_amount,
-    gii.line_total_amount as line_face_total_amount,
+    nullif(gii.line_meta->>'resell_price_amount', '')::numeric as recipient_price_amount,
+    (gii.quantity * nullif(gii.line_meta->>'resell_price_amount', '')::numeric) as line_face_total_amount,
     gii.line_discount_amount,
     gii.line_total_amount,
     gii.return_quantity,

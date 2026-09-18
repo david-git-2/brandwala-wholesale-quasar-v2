@@ -32,9 +32,6 @@ export function useDropshipOrderActions(
   const updatingStatus = ref(false);
   const targetUpdatingStatus = ref<string | null>(null);
 
-  const dualInvoiceDialogOpen = ref(false);
-  const creatingInvoice = ref(false);
-
   const returnDialogOpen = ref(false);
 
   const confirmB2bInvoiceDialogOpen = ref(false);
@@ -124,18 +121,6 @@ export function useDropshipOrderActions(
     if (!order.value) return null;
     const status = order.value.status;
 
-    if (
-      !order.value.global_invoice_id &&
-      ['ready_for_pickup', 'shipped', 'delivered', 'payment_received'].includes(status ?? '')
-    ) {
-      return {
-        label: 'Create Accounting Invoice',
-        icon: 'ph ph-receipt',
-        loading: false,
-        action: openDualInvoiceDialog,
-      };
-    }
-
     if (canRecordRemittance.value) {
       return {
         label: 'Record Courier Remittance',
@@ -160,42 +145,13 @@ export function useDropshipOrderActions(
   const openRecipientInvoicePreview = () => {
     if (!order.value) return;
     const routeData = router.resolve({
-      name: 'app-shop-dropship-recipient-invoice-preview',
+      name: 'app-shop-order-recipient-slip-page',
       params: {
         id: order.value.id,
         tenantSlug: tenantSlug.value || undefined,
       },
     });
     window.open(routeData.href, '_blank');
-  };
-
-  const openDualInvoiceDialog = () => {
-    dualInvoiceDialogOpen.value = true;
-  };
-
-  const confirmDualInvoice = async () => {
-    if (!order.value) return;
-
-    creatingInvoice.value = true;
-    try {
-      const { data, error } = await supabase.rpc('create_dropship_invoice', {
-        p_order_id: order.value.id,
-        p_invoice_no: null,
-        p_billing_profile_id: null,
-        p_note: `Accounting invoice created from dropship order #${order.value.order_no}`,
-      });
-
-      if (error) throw error;
-
-      const res = data as any;
-      showSuccessNotification(`Accounting invoice #${res.invoice_no || ''} created successfully!`);
-      dualInvoiceDialogOpen.value = false;
-      await refetchOrderDetail();
-    } catch (err: any) {
-      showErrorNotification(err.message || 'Failed to create accounting invoice');
-    } finally {
-      creatingInvoice.value = false;
-    }
   };
 
   const openReturnFinalizeDialog = () => {
@@ -380,8 +336,6 @@ export function useDropshipOrderActions(
     returnDialogOpen,
     suggestedReturnFee,
     totalReturnableQty,
-    dualInvoiceDialogOpen,
-    creatingInvoice,
     confirmB2bInvoiceDialogOpen,
     confirmDeleteInvoiceDialogOpen,
     saveChanges,
@@ -390,7 +344,5 @@ export function useDropshipOrderActions(
     submitReturnFinalize,
     performHandoff,
     openRecipientInvoicePreview,
-    openDualInvoiceDialog,
-    confirmDualInvoice,
   };
 }

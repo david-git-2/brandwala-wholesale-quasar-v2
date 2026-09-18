@@ -1,10 +1,5 @@
 # Sales Invoice — Product Requirements Document (PRD)
 
-> **Module**: Sales & Multi-Channel Invoice Issuance  
-> **Status**: Approved & Active  
-> **Target Release**: v2.4.0  
-> **Target Audience**: Desk Sales Operators, Wholesale Account Managers, Store Clerks, Cashiers, Finance Auditors
-
 ## As-built
 
 | | |
@@ -13,95 +8,84 @@
 | UI | `web/src/modules/sales_invoice/`, `invoice_shared/` |
 | SQL | **Split** `supabase/schemas/sales_invoice/` |
 | Access | `app`; invoices owned at company |
+| Money | Invoice = **bill**. Payments = cash applied later. Cost = internal snapshot, not the bill. |
 
 ## Scope
 
 | | |
 | :--- | :--- |
 | Surfaces | `app` desk |
-| In | `global_invoices`, FIFO search, collections, wholesale returns RPC. Retail/dropship may attach `recipient_profile_id` (owned by customer hub) |
-| Out | Dropship packing slip; shop cart; thrift POS; Recipient as its own feature pack |
+| In | Company sales bill (`sales_invoices`): freeze tenant sell, issue/void, print voucher. Wholesale desk create. Dropship merchant bill (same table). Link `shop_order_id` when from dropship. |
+| Out | Recording payment (collections / remittance). Dropship **packing slip** (COD face). Shop cart. Parcel status. Reseller wallet payout. Recipient as its own pack. |
 
-See [scopes](../../architecture/scopes.md).
-
----
-
-## 1. Executive Summary
-
-The **Sales Invoice** module handles multi-channel sales execution across B2B Wholesale credit buyers, walk-in Retail direct customers, and Dropship reseller orders.
-
-It provides an atomic invoice creation and patching engine (`create_sales_invoice_from_payload`, `update_sales_invoice_from_payload`), strict FIFO inventory allocation, customer AR dues management, credit-backed returns with restock charges, and receipt voucher printing.
+See [scopes](../../architecture/scopes.md). Target columns: [02-data-model](02-data-model.md). Gaps vs code: [00-gaps](00-gaps.md). Receipts plan: [wallet 01](../wallet/01-prd.md). Worked numbers: [money-story](money-story.md).
 
 ---
 
-## 2. User Personas & Permissions
+## Locked money rules
 
-| Role | Access Level | Permitted Actions |
+| Field | Meaning | Sales report |
 | :--- | :--- | :--- |
-| **Desk Sales Staff** | Operational | Create draft/proforma quotes, search stock with live ATP, issue invoices, print vouchers. |
-| **Cashier / Collector** | Operational | Record cash/bank collections, apply customer store credit, execute settlement write-offs. |
-| **Wholesale Manager** | Operational | Approve special invoice discounts, assign customer billing profiles, issue credit returns. |
-| **Tenant Admin** | Full Access | Void unpaid invoices, configure invoice print brand templates, manage billing profiles. |
-| **Auditor** | Read Only | View invoice margin reports, payment allocation audit trails, and itemized return logs. |
+| `sell_price_amount` / `total_amount` | **Tenant sell** — wholesale buyer price, or dropship **merchant** price | Yes |
+| Merchant-owed charges | Print/packing/delivery **the billed party owes** | Yes (in total) |
+| COD collect, reseller face / resell | Channel extra (`channel_meta` / `line_meta` or the shop order) | **Never** |
+| `unit_cost_price` | Internal snapshot at issue | Margin only; **not on print** |
+
+Issue does not post cash. `payment_status` changes only via **receipts** (wallet module), including courier remittance as a source.
 
 ---
 
-## 3. User Stories & Acceptance Criteria
+## Channels (same invoice)
 
-### US-1: Multi-Channel Invoice Creation & FIFO Stock Search
-- **As a** Sales Desk Operator  
-- **I want to** search warehouse products by barcode or title and view real-time Available-to-Promise (ATP) stock  
-- **So that** I can generate Wholesale, Retail, or Dropship invoices without stockouts or over-selling.
+| | Wholesale | Dropship |
+| :--- | :--- | :--- |
+| Billed | Buyer (`billing_profile`) | Reseller (`billing_profile`) |
+| When to issue | Staff Issue on desk | When stock leaves (ready/ship), one idempotent issue |
+| Print | Invoice voucher (sell, no cost) | Merchant invoice + separate packing slip (COD) |
+| Who pays later | Buyer cash / bank / store credit | Courier remittance (or prepaid) — **payment**, not issue |
 
-#### Acceptance Criteria
-- [ ] Stock search ranks allocated sister-concern stock first (Rank 0), then unallocated warehouse stock (Rank 1).
-- [ ] Results within each tier are ordered strictly by oldest inbound batch first (FIFO: `created_at ASC`).
-- [ ] Invoice creation is executed atomically through `create_sales_invoice_from_payload`.
-
-### US-2: Transparent Wholesale Returns with Restock Fees
-- **As a** Wholesale Manager  
-- **I want to** credit returned invoice lines without rewriting historical invoiced sales quantities  
-- **So that** sales audits remain immutable and return credit is accurately deducted from outstanding dues or paid excess.
-
-#### Acceptance Criteria
-- [ ] Sold `quantity` on invoice line items never changes; returns increment `return_quantity` and update net line totals.
-- [ ] Restocking charges are deducted directly from the return credit on the invoice.
-- [ ] Leftover paid excess becomes customer wallet store credit (`refund_method = wallet_credit`).
-
-### US-3: Atomic Payment Collection & Settlement Write-Offs
-- **As a** Cashier  
-- **I want to** collect invoice dues using a combination of Cash/Bank, Customer Store Credit, and commercial settlement write-offs  
-- **So that** full or partial invoice payments are recorded in a single transaction.
-
-#### Acceptance Criteria
-- [ ] Total collection satisfies: $\text{Cash} + \text{Store Credit Apply} + \text{Settlement} \le \text{Invoice Due}$.
-- [ ] Cash collections credit the Tenant operating wallet; Store Credit applications debit the Customer wallet without affecting Tenant cash.
-- [ ] Settlement discounts are recorded distinctly from commercial header discounts.
+Do not bill dropship `total_amount` as recipient COD.
 
 ---
 
-## 4. UI Layout & Wireframe
+## Personas
 
-### Wholesale Invoice Creation Desk
+| Role | Actions |
+| :--- | :--- |
+| Desk staff | Draft/proforma, FIFO search, issue wholesale, print voucher (no cost) |
+| Cashier | Collect / write-off (**payments**, not this module’s issue) |
+| Wholesale manager | Discounts, returns against issued lines |
+| Admin | Void unpaid, invoice brand |
+| Auditor | Issued totals + allocated payments; margin from cost snapshot |
+
+---
+
+## Stories
+
+### US-1: FIFO stock search and issue
+- [ ] Search ranks sister allocation then warehouse FIFO.
+- [ ] Create/issue via `create_sales_invoice_from_payload` (`issue: true` freezes the bill + stock).
+- [ ] Print shows qty, tenant sell, charges owed, total — not cost, not COD.
+
+### US-2: Wholesale returns
+- [ ] Sold `quantity` never decreases; `return_quantity` grows.
+- [ ] Restock fee off return credit; excess paid → wallet credit.
+
+### US-3: Payments stay off issue
+- [ ] Collect cash + store credit + write-off ≤ due — **payments** RPCs.
+- [ ] Dropship remittance allocates to **issued** merchant `total_amount` only; leftover vs COD is wallet, not extra sales.
+
+### US-4: Dropship merchant bill
+- [ ] One issue path; packing slip is not a `sales_invoices` row.
+- [ ] `sell_price_amount` = `unit_sell_price` (merchant). Resell/COD in meta or order.
+- [ ] Invoice may stay `issued` + `due` while the parcel is delivered.
+
+---
+
+## Wholesale desk (print)
 
 ```text
-+----------------------------------------------------------------------------------------------------+
-| Breadcrumbs: App > Sales > Invoices > Create Wholesale                                             |
-+----------------------------------------------------------------------------------------------------+
-| [ Brand: Brandwala v ]  [ Customer: ABC Traders (01700000000) v ]  [ Date: 2026-09-17 ]            |
-+----------------------------------------------------------------------------------------------------+
-| [ Quick Stock Search (Barcode / Name) / Bulk Paste...                                            ] |
-+----------------------------------------------------------------------------------------------------+
-| PRODUCT / SKU          | WAREHOUSE ATP | INVOICE QTY | UNIT SELL (BDT) | LINE DISCOUNT | LINE TOTAL|
-|------------------------+---------------+-------------+-----------------+---------------+-----------|
-| Denim Jacket (DJ-001)  | 45 pcs        | 10 pcs      | 1,200.00        | 0.00          | 12,000.00 |
-| Cotton Polo (CP-004)   | 120 pcs       | 25 pcs      | 450.00          | 250.00        | 11,000.00 |
-+----------------------------------------------------------------------------------------------------+
-| NOTES & TERMS: Net 15 days credit terms              | Gross Subtotal:         23,000.00 BDT       |
-|                                                      | Commercial Discount:    -1,000.00 BDT       |
-|                                                      | Shipping Charge:          +500.00 BDT       |
-|                                                      | NET INVOICE TOTAL:      22,500.00 BDT       |
-+----------------------------------------------------------------------------------------------------+
-| [ Save as Draft ]        [ Save as Proforma (PF) ]             [ SAVE & ISSUE INVOICE (Stock Out) ]|
-+----------------------------------------------------------------------------------------------------+
+Qty | Tenant sell | Discount | Line total
+Subtotal − discount + merchant-owed charges = NET (sales)
+[ Draft ] [ Proforma ] [ Issue ]
 ```

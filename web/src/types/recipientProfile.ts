@@ -4,6 +4,7 @@ type DbRow = Database['public']['Tables']['recipient_profiles']['Row'];
 
 export interface RecipientProfile extends Omit<DbRow, 'addresses'> {
   addresses: any;
+  tenant_name?: string | null;
 }
 
 export type CreateRecipientProfileInput =

@@ -230,9 +230,6 @@ const { t } = useI18n();
 const $q = useQuasar();
 
 const orderId = computed(() => Number(route.params.id || 0));
-const tenantSlug = computed(() =>
-  typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : '',
-);
 
 const skeletonVariant = computed<'catalog' | 'dropship'>(() => {
   const state = history.state as { shopTypeSnapshot?: string } | null;
@@ -640,13 +637,6 @@ watch(
   () => orderDetailsData.value,
   (newData) => {
     if (newData) {
-      if (newData.order?.shop_type_snapshot === 'dropship') {
-        void router.replace({
-          name: 'app-shop-dropship-order-detail-page',
-          params: { tenantSlug: tenantSlug.value, id: orderId.value },
-        });
-        return;
-      }
       const fetchedItems = newData.items || [];
       const currentItemsMap = new Map(orderItems.value.map((i) => [i.id, i]));
 
@@ -806,19 +796,7 @@ const handleFulfillToInvoice = () => {
 
 const addToDropshipDesk = () => {
   if (orderId.value) {
-    processDropshipOrder(orderId.value, {
-      onSuccess: (res) => {
-        if (res.success) {
-          void router.push({
-            name: 'app-shop-dropship-order-detail-page',
-            params: {
-              tenantSlug: route.params.tenantSlug,
-              id: orderId.value,
-            },
-          });
-        }
-      },
-    });
+    processDropshipOrder(orderId.value);
   }
 };
 

@@ -1,16 +1,19 @@
 <template>
   <q-page class="shops-page q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
-    <div class="column no-wrap full-height q-gutter-y-sm overflow-hidden">
-      <q-card flat class="shops-toolbar floating-surface flex-shrink-0">
-        <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col-12 col-md row items-center q-gutter-sm">
+    <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
+      <!-- Toolbar -->
+      <q-card flat bordered class="shops-toolbar q-pa-xs flex-shrink-0">
+        <div class="row items-center justify-between q-col-gutter-xs">
+          <div class="col-12 col-md row items-center q-gutter-x-xs wrap">
             <q-input
               v-model="search"
               clearable
               debounce="350"
               dense
               outlined
-              class="shops-search col"
+              rounded
+              class="shops-search col-grow col-sm-auto"
+              style="min-width: 240px"
               :placeholder="$t('shop_admin.search_shops_placeholder')"
               data-test="shops-search"
             >
@@ -48,213 +51,221 @@
         </div>
       </q-card>
 
-      <div class="col scroll shops-content">
-        <q-banner v-if="isError" class="text-white bg-negative q-mb-sm" rounded>
+      <!-- Content Area -->
+      <div class="col column no-wrap min-height-0 overflow-hidden">
+        <q-banner v-if="isError" class="text-white bg-negative q-mb-sm flex-shrink-0" rounded>
           {{ error?.message || 'An error occurred while fetching shops.' }}
         </q-banner>
 
-        <q-card flat class="floating-surface shops-table-card column no-wrap">
-          <q-table
+        <!-- Skeleton Loading State -->
+        <div v-if="isLoading && !shops.length" class="clean-list-card col column no-wrap overflow-hidden">
+          <div class="shops-list-meta-bar row items-center justify-between q-px-md q-py-xs flex-shrink-0">
+            <q-skeleton type="text" width="80px" height="18px" />
+            <q-skeleton type="text" width="140px" height="14px" />
+          </div>
+          <div class="clean-list-scroll col">
+            <div
+              v-for="n in 6"
+              :key="n"
+              class="clean-list-item clean-list-item--skeleton"
+            >
+              <div class="item-main-info row items-center no-wrap">
+                <q-skeleton type="QAvatar" size="36px" class="rounded-borders q-mr-sm" />
+                <div class="item-info">
+                  <q-skeleton type="text" width="160px" height="16px" class="q-mb-xs" />
+                  <div class="row items-center q-gutter-x-xs">
+                    <q-skeleton type="rect" width="60px" height="18px" class="rounded-borders" />
+                    <q-skeleton type="rect" width="70px" height="18px" class="rounded-borders" />
+                  </div>
+                </div>
+              </div>
+              <div class="item-aside row items-center q-gutter-x-sm">
+                <q-skeleton type="QBadge" width="65px" height="22px" class="rounded-borders" />
+                <q-skeleton type="QBtn" width="32px" height="32px" class="rounded-borders" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State (No Shops Found) -->
+        <div
+          v-else-if="!shops.length"
+          class="clean-list-card col column items-center justify-center text-center q-pa-xl"
+        >
+          <q-avatar size="56px" color="grey-3" text-color="grey-9" class="q-mb-md">
+            <q-icon name="ph ph-storefront" size="28px" />
+          </q-avatar>
+          <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-xs">
+            {{ isFiltered ? $t('shop_admin.no_shops_found') : $t('shop_admin.no_shops_found') }}
+          </div>
+          <p class="text-caption text-grey-6 q-mb-md" style="max-width: 360px">
+            {{ isFiltered ? 'Try adjusting your search query or status filter.' : $t('shop_admin.shops_subtitle') }}
+          </p>
+          <q-btn
+            v-if="isFiltered"
             flat
-            class="shops-table"
-            :rows="shops ?? []"
-            :columns="columns"
-            row-key="id"
-            :loading="isLoading"
-            :grid="$q.screen.lt.md"
-            :no-data-label="$t('shop_admin.no_shops_found')"
-            :pagination="{ rowsPerPage: 20 }"
-            hide-pagination
-          >
-            <template #body="props">
-              <q-tr
-                :props="props"
-                class="shops-table__row cursor-pointer"
-                @click="goToSetup(props.row.id)"
-              >
-                <q-td key="shop" :props="props">
-                  <div class="row items-center no-wrap q-gutter-sm min-width-0">
-                    <q-avatar
-                      size="40px"
-                      class="shops-table__avatar"
-                      icon="ph ph-storefront"
-                    />
-                    <div class="min-width-0">
-                      <div class="shops-table__title-row ellipsis items-center">
-                        <span class="text-weight-bold text-grey-9">{{ props.row.name }}</span>
-                        <span class="shops-table__dot" aria-hidden="true">·</span>
-                        <span class="text-grey-6">{{ props.row.slug }}</span>
-                        <span
-                          v-if="isParentTenant && props.row.tenant_name"
-                          class="tenant-badge"
-                        >
-                          <q-icon name="ph ph-buildings" size="11px" class="q-mr-xs text-grey-6" />
-                          {{ props.row.tenant_name }}
-                        </span>
-                      </div>
-                      <div
-                        v-if="props.row.description"
-                        class="text-caption text-grey-6 ellipsis q-mt-xs"
-                        :title="props.row.description"
-                      >
-                        {{ props.row.description }}
-                      </div>
-                    </div>
-                  </div>
-                </q-td>
+            no-caps
+            color="primary"
+            icon="ph ph-arrow-counter-clockwise"
+            label="Clear filters"
+            class="clear-filters-btn"
+            @click="clearFilters"
+          />
+          <q-btn
+            v-else
+            unelevated
+            no-caps
+            color="primary"
+            icon="ph ph-plus"
+            :label="$t('shop_admin.create_first_shop')"
+            class="shops-create-btn text-weight-bold"
+            @click="openCreate"
+          />
+        </div>
 
-                <q-td v-if="isParentTenant" key="tenant" :props="props">
-                  <div class="row items-center no-wrap q-gutter-xs">
-                    <q-icon name="ph ph-buildings" size="14px" class="text-grey-6" />
-                    <span class="text-weight-medium text-grey-9">{{ props.row.tenant_name || '—' }}</span>
-                  </div>
-                </q-td>
+        <!-- Linear List -->
+        <div v-else class="clean-list-card col column no-wrap overflow-hidden">
+          <!-- List Summary / Meta Bar -->
+          <div class="shops-list-meta-bar row items-center justify-between q-px-md q-py-xs flex-shrink-0">
+            <div class="row items-center q-gutter-x-sm">
+              <span class="text-caption text-weight-bold text-grey-8 font-mono">
+                {{ totalShops }} {{ totalShops === 1 ? 'shop' : 'shops' }}
+              </span>
+              <span v-if="activeCount > 0" class="meta-count-chip meta-count-chip--public">
+                <span class="meta-dot-indicator bg-positive" />
+                {{ activeCount }} {{ $t('shop_admin.public') }}
+              </span>
+              <span v-if="draftCount > 0" class="meta-count-chip meta-count-chip--draft">
+                <span class="meta-dot-indicator bg-grey-6" />
+                {{ draftCount }} {{ $t('shop_admin.draft') }}
+              </span>
+            </div>
+            <div class="text-caption text-grey-5 text-xxs">
+              Click any shop to manage storefront
+            </div>
+          </div>
 
-                <q-td key="status" :props="props">
-                  <span
-                    class="shops-status"
-                    :class="props.row.is_active ? 'shops-status--public' : 'shops-status--draft'"
-                  >
-                    <span class="shops-status__dot" aria-hidden="true" />
-                    {{ props.row.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
-                  </span>
-                </q-td>
+          <!-- Scrollable List Container -->
+          <div class="clean-list-scroll col">
+            <div
+              v-for="shop in shops"
+              :key="shop.id"
+              class="clean-list-item row items-center justify-between no-wrap cursor-pointer"
+              :class="shop.is_active ? 'shop-row--public' : 'shop-row--draft'"
+              :data-test="`shop-item-${shop.id}`"
+              tabindex="0"
+              role="button"
+              @click="goToSetup(shop.id)"
+              @keydown.enter="goToSetup(shop.id)"
+              @keydown.space.prevent="goToSetup(shop.id)"
+            >
+              <!-- Left Section: Avatar, Title, Slug & Metadata -->
+              <div class="item-main-info row items-center no-wrap min-width-0 col">
+                <q-avatar
+                  size="36px"
+                  class="shop-avatar flex-shrink-0 q-mr-sm"
+                  icon="ph ph-storefront"
+                />
 
-                <q-td key="type" :props="props">
-                  <span class="shops-tag">{{ shopTypeLabel(props.row.shop_type) }}</span>
-                </q-td>
-
-                <q-td key="vendors" :props="props">
-                  <div v-if="shopVendorLabels(props.row).length" class="row items-center q-gutter-xs">
+                <div class="item-info column min-width-0 col">
+                  <!-- Title Row -->
+                  <div class="row items-center no-wrap q-gutter-x-xs ellipsis q-mb-xs">
+                    <span class="shop-name text-weight-bold text-grey-9 ellipsis">
+                      {{ shop.name }}
+                    </span>
+                    <span class="shop-dot" aria-hidden="true">·</span>
+                    <span class="shop-slug text-grey-6 font-mono ellipsis">
+                      {{ shop.slug }}
+                    </span>
                     <span
-                      v-for="vendor in shopVendorLabels(props.row)"
-                      :key="vendor"
-                      class="shops-tag"
+                      v-if="isParentTenant && shop.tenant_name"
+                      class="tenant-tag q-ml-xs flex-shrink-0"
                     >
-                      {{ vendor }}
+                      <q-icon name="ph ph-buildings" size="11px" class="q-mr-xs text-grey-6" />
+                      {{ shop.tenant_name }}
                     </span>
                   </div>
-                  <span v-else class="text-grey-5">—</span>
-                </q-td>
 
-                <q-td key="created_at" :props="props">
-                  <span class="text-grey-7">{{ formatCreatedAt(props.row.created_at) }}</span>
-                </q-td>
+                  <!-- Description / Meta Strip -->
+                  <div class="row items-center wrap q-gutter-xs text-caption">
+                    <!-- Shop Type Pill -->
+                    <span class="meta-pill meta-pill--type">
+                      {{ shopTypeLabel(shop.shop_type) }}
+                    </span>
 
-                <q-td key="actions" :props="props" class="text-right">
-                  <q-btn
-                    flat
-                    dense
-                    no-caps
-                    color="primary"
-                    class="shops-open-btn"
-                    icon-right="ph ph-arrow-right"
-                    :label="$t('shop_admin.manage')"
-                    :aria-label="$t('shop_admin.manage')"
-                    @click.stop="goToSetup(props.row.id)"
-                  />
-                </q-td>
-              </q-tr>
-            </template>
-
-            <template #item="props">
-              <div class="col-12 q-pa-xs">
-                <q-card
-                  flat
-                  bordered
-                  class="shops-grid-card cursor-pointer"
-                  @click="goToSetup(props.row.id)"
-                >
-                  <q-card-section class="q-pb-sm">
-                    <div class="row items-start justify-between q-col-gutter-sm">
-                      <div class="row items-center q-gutter-sm min-width-0 col">
-                        <q-avatar
-                          size="40px"
-                          class="shops-table__avatar"
-                          icon="ph ph-storefront"
-                        />
-                        <div class="min-width-0">
-                          <div class="text-subtitle2 text-weight-bold ellipsis">{{ props.row.name }}</div>
-                          <div class="text-caption text-grey-6 ellipsis">{{ props.row.slug }}</div>
-                        </div>
-                      </div>
+                    <!-- Vendor Filters Pill -->
+                    <template v-if="shopVendorLabels(shop).length">
                       <span
-                        class="shops-status"
-                        :class="props.row.is_active ? 'shops-status--public' : 'shops-status--draft'"
-                      >
-                        <span class="shops-status__dot" aria-hidden="true" />
-                        {{ props.row.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
-                      </span>
-                    </div>
-
-                    <div v-if="isParentTenant && props.row.tenant_name" class="row items-center q-gutter-xs text-caption text-grey-8 q-mt-xs">
-                      <q-icon name="ph ph-buildings" size="14px" class="text-grey-6" />
-                      <span class="text-weight-medium">{{ props.row.tenant_name }}</span>
-                    </div>
-
-                    <p
-                      v-if="props.row.description"
-                      class="text-body2 text-grey-7 q-mt-sm q-mb-none ellipsis-2-lines"
-                    >
-                      {{ props.row.description }}
-                    </p>
-
-                    <div class="row items-center q-gutter-xs q-mt-sm">
-                      <span class="shops-tag">{{ shopTypeLabel(props.row.shop_type) }}</span>
-                      <span
-                        v-for="vendor in shopVendorLabels(props.row)"
+                        v-for="vendor in shopVendorLabels(shop)"
                         :key="vendor"
-                        class="shops-tag"
+                        class="meta-pill meta-pill--vendor"
                       >
+                        <q-icon name="ph ph-tag" size="11px" class="q-mr-xs text-grey-6" />
                         {{ vendor }}
                       </span>
-                    </div>
+                    </template>
 
-                    <div class="text-caption text-grey-6 q-mt-sm">
-                      {{ formatCreatedAt(props.row.created_at) }}
-                    </div>
-                  </q-card-section>
+                    <!-- Created Date -->
+                    <span class="text-grey-5 meta-date">
+                      {{ formatCreatedAt(shop.created_at) }}
+                    </span>
 
-                  <q-separator />
-
-                  <q-card-actions align="right">
-                    <q-btn
-                      flat
-                      dense
-                      no-caps
-                      color="primary"
-                      icon-right="ph ph-arrow-right"
-                      :label="$t('shop_admin.manage')"
-                      @click.stop="goToSetup(props.row.id)"
-                    />
-                  </q-card-actions>
-                </q-card>
+                    <!-- Description Preview if present -->
+                    <span
+                      v-if="shop.description"
+                      class="text-grey-6 shop-desc-preview ellipsis"
+                      :title="shop.description"
+                    >
+                      · {{ shop.description }}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </template>
 
-            <template #no-data>
-              <div class="column items-center justify-center text-center text-grey-6 q-pa-xl full-width">
-                <q-icon name="ph ph-storefront" size="48px" class="q-mb-sm block text-grey-4" />
-                <div class="text-subtitle1 text-weight-medium">{{ $t('shop_admin.no_shops_found') }}</div>
-                <p class="text-caption text-grey-6 q-mt-xs q-mb-none">
-                  {{ $t('shop_admin.shops_subtitle') }}
-                </p>
+              <!-- Right Section: Status Pill + Manage Action -->
+              <div class="item-aside row items-center no-wrap flex-shrink-0 q-gutter-x-sm">
+                <!-- Status Badge -->
+                <span
+                  class="shops-status"
+                  :class="shop.is_active ? 'shops-status--public' : 'shops-status--draft'"
+                >
+                  <span class="shops-status__dot" aria-hidden="true" />
+                  {{ shop.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
+                </span>
+
+                <!-- Manage Button -->
                 <q-btn
-                  class="q-mt-md shops-create-btn text-weight-bold"
-                  color="primary"
-                  :label="$t('shop_admin.create_first_shop')"
-                  unelevated
+                  flat
+                  dense
                   no-caps
-                  icon="ph ph-plus"
-                  @click="openCreate"
+                  color="primary"
+                  class="shop-manage-btn"
+                  :label="$t('shop_admin.manage')"
+                  :aria-label="$t('shop_admin.manage')"
+                  @click.stop="goToSetup(shop.id)"
                 />
               </div>
-            </template>
-          </q-table>
-        </q-card>
+            </div>
+
+            <!-- Load More Button -->
+            <div v-if="hasNextPage" class="row justify-center q-py-sm">
+              <q-btn
+                flat
+                dense
+                no-caps
+                :loading="isFetchingNextPage"
+                class="load-more-btn text-weight-medium q-px-md"
+                label="Load more"
+                icon="ph ph-arrow-down"
+                @click="fetchNextPage()"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
+    <!-- Create Shop Dialog -->
     <ShopFormDialog
       v-model="dialogOpen"
       :tenant-id="tenantId"
@@ -269,16 +280,13 @@
 import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import { useQuasar, date } from 'quasar';
-import type { QTableColumn } from 'quasar';
+import { date } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue';
-import { useShopListQuery } from '../composables/useShopQuery';
+import { useInfiniteShopListQuery } from '../composables/useShopQuery';
 import { useSaveShopMutation } from '../composables/useShopMutations';
-import { showErrorNotification } from 'src/utils/appFeedback';
 import type { Shop, ShopType, CreateShopPayload } from 'src/modules/shop_order/types';
 
-const $q = useQuasar();
 const authStore = useAuthStore();
 const router = useRouter();
 const { t } = useI18n();
@@ -297,7 +305,17 @@ const queryParams = computed(() => ({
   active: activeFilter.value,
 }));
 
-const { data: shops, isLoading, isError, error } = useShopListQuery(queryParams);
+const {
+  shops,
+  totalShops,
+  isLoading,
+  isError,
+  error,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+} = useInfiniteShopListQuery(queryParams, 20);
+
 const { mutate: saveShopMutation, isPending: isSaving } = useSaveShopMutation();
 
 const isParentTenant = computed(() => {
@@ -306,70 +324,27 @@ const isParentTenant = computed(() => {
   return Number(pId) === Number(tenantId.value);
 });
 
+const isFiltered = computed(() => {
+  return Boolean(search.value.trim() || activeFilter.value !== null);
+});
+
+const clearFilters = () => {
+  search.value = '';
+  activeFilter.value = null;
+};
+
 const filterOptions = computed(() => [
   { value: null, label: t('shop_admin.all') },
   { value: true, label: t('shop_admin.public') },
   { value: false, label: t('shop_admin.draft') },
 ]);
 
-const columns = computed<QTableColumn[]>(() => {
-  const cols: QTableColumn[] = [
-    {
-      name: 'shop',
-      label: t('shop_admin.col_name'),
-      field: 'name',
-      align: 'left',
-      sortable: true,
-    },
-  ];
+const activeCount = computed(() => {
+  return shops.value.filter((s) => s.is_active).length;
+});
 
-  if (isParentTenant.value) {
-    cols.push({
-      name: 'tenant',
-      label: 'Tenant',
-      field: 'tenant_name',
-      align: 'left',
-      sortable: true,
-    });
-  }
-
-  cols.push(
-    {
-      name: 'status',
-      label: t('shop_admin.status'),
-      field: 'is_active',
-      align: 'left',
-      sortable: true,
-    },
-    {
-      name: 'type',
-      label: t('shop_admin.col_type'),
-      field: 'shop_type',
-      align: 'left',
-      sortable: true,
-    },
-    {
-      name: 'vendors',
-      label: t('shop_admin.col_vendor'),
-      field: (row: Shop) => shopVendorLabels(row).join(', '),
-      align: 'left',
-    },
-    {
-      name: 'created_at',
-      label: t('shop_admin.col_created'),
-      field: 'created_at',
-      align: 'left',
-      sortable: true,
-    },
-    {
-      name: 'actions',
-      label: '',
-      field: 'id',
-      align: 'right',
-    },
-  );
-
-  return cols;
+const draftCount = computed(() => {
+  return shops.value.filter((s) => !s.is_active).length;
 });
 
 const dialogOpen = ref(false);
@@ -429,33 +404,18 @@ const formatCreatedAt = (value?: string | null) => {
 </script>
 
 <style scoped>
-.shops-content {
+.min-height-0 {
   min-height: 0;
 }
 
-.floating-surface {
-  background: var(--bw-theme-surface, #ffffff);
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 80%, transparent);
-  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
-}
-
-body.body--dark .floating-surface {
-  background: #1c1c1c;
-  border-color: rgb(255 255 255 / 0.08);
-}
-
 .shops-toolbar {
-  padding: 10px 12px;
+  background: var(--bw-theme-surface, #ffffff);
+  border-radius: var(--bw-radius-md, 10px);
+  border-color: var(--bw-theme-border, #e2e8f0);
 }
 
 .shops-search :deep(.q-field__control) {
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 92%, #f8fafc 8%);
-}
-
-.shops-search :deep(.q-field__control:before) {
-  border-color: color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 90%, transparent);
+  border-radius: 9999px;
 }
 
 .shops-segmented {
@@ -464,7 +424,7 @@ body.body--dark .floating-surface {
   gap: 2px;
   padding: 3px;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 35%, #f8fafc 65%);
+  background: color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 40%, #f8fafc 60%);
 }
 
 .shops-segmented__item {
@@ -474,7 +434,7 @@ body.body--dark .floating-surface {
   font-size: 13px;
   font-weight: 500;
   line-height: 1.2;
-  padding: 7px 12px;
+  padding: 6px 12px;
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
@@ -488,60 +448,161 @@ body.body--dark .floating-surface {
 }
 
 .shops-create-btn {
-  border-radius: 10px;
-  min-height: 40px;
+  border-radius: var(--bw-radius-sm, 8px);
+  min-height: 36px;
 }
 
-.shops-table-card {
-  min-height: 0;
-  overflow: hidden;
+/* Linear List Card & Scroll Structure */
+.clean-list-card {
+  background: var(--bw-theme-surface, #ffffff);
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-radius: var(--bw-radius-md, 10px);
 }
 
-.shops-table :deep(.q-table__top),
-.shops-table :deep(.q-table__bottom) {
-  display: none;
+.shops-list-meta-bar {
+  background: var(--bw-neutral-surface, #f8fafc);
+  border-bottom: 1px solid var(--bw-theme-border, #e2e8f0);
+  min-height: 34px;
 }
 
-.shops-table :deep(thead tr th) {
-  font-size: 12px;
+.meta-count-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1.5px 7px;
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+}
+
+.meta-dot-indicator {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.meta-count-chip--public {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.meta-count-chip--draft {
+  background: #f1f5f9;
   color: #64748b;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 88%, #f8fafc 12%);
-  border-bottom: 1px solid color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 85%, transparent);
 }
 
-.shops-table__row:hover {
-  background: color-mix(in srgb, #f8fafc 70%, transparent);
+.clean-list-scroll {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
 }
 
-body.body--dark .shops-table__row:hover {
-  background: rgb(255 255 255 / 0.04);
+.clean-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--bw-theme-border, #f1f5f9);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 54px;
 }
 
-.shops-table__avatar {
-  background: color-mix(in srgb, var(--bw-theme-primary-soft, #eef2ff) 70%, #fff 30%);
+.clean-list-item:last-child {
+  border-bottom: none;
+}
+
+.clean-list-item:hover {
+  background: color-mix(in srgb, #f8fafc 80%, transparent);
+}
+
+.clean-list-item:hover .shop-name {
   color: var(--bw-theme-primary, #4f46e5);
 }
 
-.shops-table__title-row {
-  font-size: 14px;
-  line-height: 1.35;
+/* Status Row Accents */
+.shop-row--public {
+  background: #ffffff;
 }
 
-.shops-table__dot {
-  margin: 0 6px;
+.shop-row--draft {
+  background: #ffffff;
+}
+
+.shop-avatar {
+  background: color-mix(in srgb, var(--bw-theme-primary-soft, #eef2ff) 70%, #fff 30%);
+  color: var(--bw-theme-primary, #4f46e5);
+  border-radius: var(--bw-radius-sm, 8px);
+}
+
+.shop-name {
+  font-size: 13.5px;
+  line-height: 1.3;
+}
+
+.shop-slug {
+  font-size: 12px;
+}
+
+.shop-dot {
   color: #cbd5e1;
+}
+
+.tenant-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  line-height: 1.2;
+}
+
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 6px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.meta-pill--type {
+  background: color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 28%, #f4f4f5 72%);
+  color: #3f3f46;
+}
+
+.meta-pill--vendor {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #dbeafe;
+}
+
+.meta-date {
+  font-size: 11px;
+}
+
+.shop-desc-preview {
+  max-width: 260px;
+  font-size: 11.5px;
+}
+
+.item-aside {
+  margin-left: 1rem;
 }
 
 .shops-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 5px;
+  padding: 3px 8px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
@@ -564,7 +625,7 @@ body.body--dark .shops-table__row:hover {
 }
 
 .shops-status--draft {
-  background: #f8fafc;
+  background: #f1f5f9;
   color: #64748b;
 }
 
@@ -572,62 +633,76 @@ body.body--dark .shops-table__row:hover {
   background: #94a3b8;
 }
 
-.shops-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 28%, #f4f4f5 72%);
-  color: #3f3f46;
+.shop-manage-btn {
+  border-radius: var(--bw-radius-sm, 8px);
   font-size: 12px;
-  font-weight: 500;
-  line-height: 1.2;
-  white-space: nowrap;
 }
 
-.tenant-badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
+.load-more-btn {
   background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #e2e8f0;
-  line-height: 1.2;
+  color: #334155;
+  border-radius: var(--bw-radius-sm, 8px);
+  font-size: 12px;
+  transition: all 0.15s ease;
 }
 
-body.body--dark .tenant-badge {
+.load-more-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.clear-filters-btn {
+  border-radius: var(--bw-radius-sm, 8px);
+  font-size: 12px;
+}
+
+.clean-list-item--skeleton {
+  cursor: default;
+}
+
+.clean-list-item--skeleton:hover {
+  background: transparent;
+}
+
+.text-xxs {
+  font-size: 11px;
+}
+
+/* Dark mode support */
+body.body--dark .shops-toolbar {
+  background: #1c1917;
+  border-color: #2a2622;
+}
+
+body.body--dark .clean-list-card {
+  background: #1c1917;
+  border-color: #2a2622;
+}
+
+body.body--dark .shops-list-meta-bar {
+  background: #24201d;
+  border-color: #2a2622;
+}
+
+body.body--dark .clean-list-item {
+  border-color: #2a2622;
+}
+
+body.body--dark .clean-list-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+body.body--dark .shop-row--public {
+  background: #1c1917;
+}
+
+body.body--dark .shop-row--draft {
+  background: #1c1917;
+}
+
+body.body--dark .shop-avatar {
   background: rgba(255, 255, 255, 0.08);
-  color: #cbd5e1;
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
-body.body--dark .shops-tag {
-  background: rgb(255 255 255 / 0.08);
-  color: #e4e4e7;
-}
-
-.shops-open-btn {
-  border-radius: 8px;
-}
-
-.shops-grid-card {
-  border-radius: 12px;
-  border-color: color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 85%, transparent);
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.shops-grid-card:hover {
-  background: color-mix(in srgb, #f8fafc 65%, transparent);
-}
-
-.ellipsis-2-lines {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  color: #a5b4fc;
 }
 
 body.body--dark .shops-segmented {
@@ -643,6 +718,23 @@ body.body--dark .shops-segmented__item--active {
   color: #f8fafc;
 }
 
+body.body--dark .tenant-tag {
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+body.body--dark .meta-pill--type {
+  background: rgb(255 255 255 / 0.08);
+  color: #e4e4e7;
+}
+
+body.body--dark .meta-pill--vendor {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
 body.body--dark .shops-status--public {
   background: rgb(16 185 129 / 0.14);
   color: #6ee7b7;
@@ -651,5 +743,14 @@ body.body--dark .shops-status--public {
 body.body--dark .shops-status--draft {
   background: rgb(148 163 184 / 0.12);
   color: #cbd5e1;
+}
+
+body.body--dark .load-more-btn {
+  background: #262626;
+  color: #f1f5f9;
+}
+
+body.body--dark .load-more-btn:hover {
+  background: #333333;
 }
 </style>

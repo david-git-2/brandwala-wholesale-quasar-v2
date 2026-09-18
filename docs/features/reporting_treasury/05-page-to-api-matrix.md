@@ -1,10 +1,8 @@
 # Reporting & Treasury — Page-to-API Matrix
 
-Mapping of all financial dashboards, treasury reports, payment desks, and CSV exports to their corresponding Supabase RPCs, database operations, and TanStack Vue Query cache keys.
+As-built wiring. **Target:** report pages read only. `BillingBalancesPage` collect is wallet ([01-prd](01-prd.md) US-3). Snapshot/profit RPCs must follow money layers ([00-gaps](00-gaps.md)).
 
----
-
-## 📊 Interaction & Endpoint Matrix
+## Interaction matrix
 
 | Page / Component | UI Control / Action | Triggered Hook / Method | Backend RPC / Operation | Cache Invalidation / Optimistic Strategy |
 | :--- | :--- | :--- | :--- | :--- |

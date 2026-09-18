@@ -78,31 +78,45 @@ create table if not exists public.customer_group_members (
 
 -- 4. Recipient Delivery Profiles
 create table if not exists public.recipient_profiles (
-  id uuid primary key default gen_random_uuid(),
-  tenant_id uuid not null references public.tenants(id) on delete cascade,
+  id bigint primary key generated always as identity,
+  tenant_id bigint references public.tenants(id) on delete set null,
+  parent_tenant_id bigint references public.tenants(id) on delete set null,
   name text not null,
   phone text not null,
+  secondary_phone text,
   address text not null,
-  city text,
-  zone text,
-  created_at timestamptz not null default now()
+  district text,
+  thana text,
+  addresses jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
+
+-- Trigger: auto-set parent_tenant_id from tenants.parent_id or tenant_id
+create trigger trg_recipient_profiles_set_parent_tenant_id
+  before insert or update of tenant_id on public.recipient_profiles
+  for each row execute function public.set_parent_tenant_id_from_tenant();
 ```
 
 ---
 
-## 3. Row Level Security (RLS) Policies
+## 3. Row Level Security (RLS) & Parent Tenant Rules
+
+- **Child Tenant Mode**: Queries and payloads use `tenant_id = active_tenant_id`.
+- **Parent Tenant Mode**:
+  - **Queries**: Filter strictly by `parent_tenant_id = parent_tenant_id` (do not send `tenant_id`).
+  - **Payloads / Upserts**: Omit `tenant_id` and send `parent_tenant_id` only (`tenant_id` is stored as `null`).
+- **Tenant Name Resolution**: When viewed by a parent workspace, `tenants:tenant_id(name)` is joined so each recipient profile shows the issuing child tenant name (`tenant_name`), with interactive child tenant dropdown filtering in the UI.
 
 ```sql
-alter table public.customer_groups enable row level security;
-alter table public.billing_profiles enable row level security;
-alter table public.customer_group_members enable row level security;
+alter table public.recipient_profiles enable row level security;
 
-create policy "Staff can view parent tenant customer groups"
-  on public.customer_groups for select
-  using (
-    parent_tenant_id in (
-      select tm.tenant_id from public.tenant_members tm where tm.user_id = auth.uid()
-    )
+create policy "recipient_profiles_select" on public.recipient_profiles
+  for select to authenticated using (
+    public.has_active_tenant_membership(tenant_id)
+    or (parent_tenant_id is not null and (
+      public.has_active_tenant_membership(parent_tenant_id)
+      or public.user_can_manage_parent_tenant(parent_tenant_id)
+    ))
   );
 ```

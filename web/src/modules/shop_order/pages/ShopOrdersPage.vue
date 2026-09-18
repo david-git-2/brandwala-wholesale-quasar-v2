@@ -13,14 +13,16 @@
       />
 
       <div class="col" style="min-height: 0">
-        <ShopOrdersTable
+        <ShopOrdersList
           :orders="orders"
           :is-loading-orders="isLoadingOrders"
           :is-processing-dropship="isProcessingDropship"
           :is-dropship-shop="isDropshipShop"
           :is-parent-tenant="isParentTenant"
+          :is-filtered="isFiltered"
           @row-click="goToOrderDetails"
           @add-to-dropship="addToDropshipDesk"
+          @clear-filters="clearAllFilters"
         />
       </div>
     </div>
@@ -35,7 +37,7 @@ import { useShopListQuery } from '../composables/useShopQuery';
 import { useStaffOrdersQuery } from '../composables/useStaffOrdersQuery';
 import { useProcessDropshipOrderMutation } from '../composables/useShopOrderMutations';
 import ShopOrdersFilters from '../components/ShopOrdersFilters.vue';
-import ShopOrdersTable from '../components/ShopOrdersTable.vue';
+import ShopOrdersList from '../components/ShopOrdersList.vue';
 import ShopOrdersSkeleton from '../components/ShopOrdersSkeleton.vue';
 import type { ShopType } from '../types';
 
@@ -75,6 +77,22 @@ watch(
   },
 );
 
+const isFiltered = computed(() => {
+  return Boolean(
+    search.value.trim() ||
+      statusFilter.value ||
+      selectedShopId.value !== null ||
+      shopTypeFilter.value !== null,
+  );
+});
+
+const clearAllFilters = () => {
+  search.value = '';
+  statusFilter.value = null;
+  selectedShopId.value = null;
+  shopTypeFilter.value = null;
+};
+
 const orderParams = computed(() => ({
   tenantId: tenantId.value,
   parentTenantId: parentTenantId.value,
@@ -108,21 +126,17 @@ const goToOrderDetails = (orderId: number) => {
   const order = orders.value.find((o) => o.id === orderId);
   const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
   const shopType = order ? shopTypeById.value.get(order.shop_id) : null;
-  if (shopType === 'dropship') {
-    void router.push(`${slug}/app/shop/dropship/${orderId}`);
-  } else {
-    void router.push({
-      path: `${slug}/app/shop/orders/${orderId}`,
-      state: { shopTypeSnapshot: shopType ?? undefined },
-    });
-  }
+  void router.push({
+    path: `${slug}/app/shop/orders/${orderId}`,
+    state: { shopTypeSnapshot: shopType ?? undefined },
+  });
 };
 
 const addToDropshipDesk = async (orderId: number) => {
   const res = await processDropship(orderId);
   if (res?.success) {
     const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
-    void router.push(`${slug}/app/shop/dropship/${orderId}`);
+    void router.push(`${slug}/app/shop/orders/${orderId}`);
   }
 };
 </script>

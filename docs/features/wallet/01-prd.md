@@ -1,17 +1,12 @@
-# Universal Wallet & Ledger — Product Requirements Document (PRD)
-
-> **Module**: Universal Multi-Currency Financial Ledger & Entity Wallets  
-> **Status**: Approved & Active  
-> **Target Release**: v2.4.0  
-> **Target Audience**: Treasury Accountants, Finance Directors, Storefront Resellers, Cashiers, Operational Staff
+# Universal Wallet, Receipts & Ledger — PRD
 
 ## As-built
 
 | | |
 | :--- | :--- |
 | Spec | `docs/features/wallet/` |
-| UI | `web/src/modules/wallet/` |
-| SQL | Stub `supabase/schemas/wallet/`; live in `public.sql` |
+| UI | `web/src/modules/wallet/` (ledger). Collect UI still on invoices; remittance still on dropship desks |
+| SQL | Stub `supabase/schemas/wallet/`; live ledger in `public.sql`. Receipts: `global_payments` + `invoice_payments` |
 | Ledger | Only `record_ledger_transaction` |
 | Access | Parent books; `operating_tenant_id` for desk |
 
@@ -20,82 +15,72 @@
 | | |
 | :--- | :--- |
 | Surfaces | `app` books; `shop` merchant statement |
-| In | `record_ledger_transaction`, entity wallets, staff reverse |
-| Out | Investor withdraw; inventing a second ledger |
+| In | **Receipts** (money in, all channels). **Ledger** (balances). **Payouts** (money out vs wallet). |
+| Out | Inventing a second ledger. Investor withdraw. Invoice **issue**. Parcel / COD **face** (order). Tenant **sales** (invoice totals). |
 
-See [scopes](../../architecture/scopes.md).
-
----
-
-## 1. Executive Summary
-
-The **Universal Wallet & Ledger** module provides a centralized, append-only, double-entry financial ledger across all business counterparties (Tenants, Vendors, Couriers, Merchants/Customers, Cargo Companies, and Investors).
-
-It enforces the **Parent Books Rule** (all financial accounts and ledgers are consolidated under the Parent Tenant books with `operating_tenant_id` tracking operational desks) and eliminates fragmented sub-ledgers.
+See [scopes](../../architecture/scopes.md). Bills: [sales_invoice](../sales_invoice/01-prd.md). Target receipts: [02-data-model](02-data-model.md). Gaps: [00-gaps](00-gaps.md). Worked numbers: [money-story](../sales_invoice/money-story.md).
 
 ---
 
-## 2. User Personas & Permissions
+## Locked: one money-in system
 
-| Role | Access Level | Permitted Actions |
+Industry: one receipts engine. Cash, bank, store credit, **courier remittance** are **sources**, not extra products.
+
+| Layer | Job |
+| :--- | :--- |
+| Receipt | Cash that **hit you**. Source: `customer_cash` \| `bank` \| `store_credit` \| `courier_remittance` |
+| Allocate | Apply up to invoice `total_amount` (tenant sell). Updates `payment_status` |
+| Ledger | Remainder / payables: courier clearing, merchant profit, store credit, tenant cash |
+| Payout | Money **out** (merchant withdraw). Opposite of a receipt |
+
+**COD collect** stays on the shop order until the courier remits. Then it is a receipt for **net bank in**, not for the face COD.
+
+---
+
+## Channels (same receipts)
+
+| | Wholesale | Dropship |
 | :--- | :--- | :--- |
-| **Finance Director / Owner** | Full Access | View company cash positions, audit parent books, perform manual ledger adjustments, execute inter-wallet transfers. |
-| **Treasury Cashier** | Operational | Record cash deposits/payouts, reconcile bank remittances, post courier settlements. |
-| **Storefront Reseller** | External Portal | View earnings statement on merchant wallet, submit cash withdrawal requests. |
-| **Auditor** | Read Only | View immutable ledger audit trails, inspect reverse transaction logs, verify running balances. |
+| Receipt source | Buyer cash / bank / store credit | Courier remittance (or prepaid merchant) |
+| Allocate to | Buyer invoice | Merchant invoice (`total` = wholesale to reseller) |
+| Remainder | Store credit / unallocated | Ledger: merchant payable (COD net − invoice) |
+| Not a receipt | — | Recipient COD face; packing slip |
+
+Example: invoice 1,500; COD 2,200; courier fee 80; remittance 2,120 → receipt 2,120; pay invoice 1,500; ~620 merchant wallet. Sales stay 1,500.
+
+Do **not** credit courier wallet with full COD as “delivered costing” plus a second remittance path.
 
 ---
 
-## 3. User Stories & Acceptance Criteria
+## Personas
 
-### US-1: One Consolidated Wallet Per Business Counterparty
-- **As a** Finance Manager  
-- **I want to** maintain exactly one balance and ledger account per entity (`parent_tenant_id`, `entity_type`, `entity_id`, `currency_code`)  
-- **So that** customer store credit, vendor payables, courier COD, and tenant operating cash are never mixed or fragmented.
-
-#### Acceptance Criteria
-- [ ] Ledger lines are permanent and append-only (`universal_wallet_ledger` rows are never deleted).
-- [ ] Running balances are calculated deterministically via `record_ledger_transaction`.
-- [ ] Adjustments are recorded as explicit reversing transactions (`reverse_wallet_ledger_entry_for_staff`).
-
-### US-2: Parent Books Consolidation & Sister Concern Attribution
-- **As an** Accountant  
-- **I want to** attribute transactions to the parent books (`parent_tenant_id`) while preserving the child operational desk (`operating_tenant_id`)  
-- **So that** consolidated financial reports and child-level drill-downs are always consistent.
-
-#### Acceptance Criteria
-- [ ] Operating cash (`entity_type = 'tenant'`) is pooled at `entity_id = parent_tenant_id`.
-- [ ] UI lists and RPCs resolve the parent books ID using `resolve_parent_tenant_id(p_tenant_id)`.
-
-### US-3: Storefront Merchant Margin Payouts
-- **As a** Dropship Reseller  
-- **I want to** view my credited profit statement and withdraw available funds  
-- **So that** earnings from delivered orders can be deposited directly to my bank or mobile wallet.
-
-#### Acceptance Criteria
-- [ ] Delivered dropship orders credit profit spread to the merchant wallet.
-- [ ] Cash payouts debit the merchant wallet and tenant cash pool via `dispense_middleman_payout_from_tenant`.
+| Role | Actions |
+| :--- | :--- |
+| Cashier | Post receipts; allocate to invoices |
+| Treasury | Courier remittance inbox (batch later); merchant payouts |
+| Reseller | Statement + withdraw (merchant only; not investor) |
+| Auditor | Receipt → allocation → ledger; reverse via reversing entries |
 
 ---
 
-## 4. UI Layout & Wireframe
+## Stories
 
-### Universal Wallet Directory & Detail
+### US-1: One ledger per counterparty
+- [ ] Append-only `universal_wallet_ledger` via `record_ledger_transaction`.
+- [ ] Reverse with `reverse_wallet_ledger_entry_for_staff`.
+- [ ] Parent books + `operating_tenant_id`. Tenant cash pooled at parent.
 
-```text
-+----------------------------------------------------------------------------------------------------+
-| Breadcrumbs: App > Finance > Universal Wallets > Customers                                         |
-+----------------------------------------------------------------------------------------------------+
-| [ Filter: All Entities v ] [ Search entity name... ]            [ + Record Manual Transaction ]    |
-+----------------------------------------------------------------------------------------------------+
-| ENTITY NAME            | TYPE       | CURRENCY | CURRENT BALANCE | UNSETTLED / PENDING | LAST ACTIVE |
-|------------------------+------------+----------+-----------------+---------------------+-------------|
-| ABC Traders (Dhanmondi)| Customer   | BDT      | 45,000.00 BDT   | 0.00 BDT            | Today 14:20 |
-| Steadfast Logistics    | Courier    | BDT      | 124,500.00 BDT  | 18,200.00 BDT       | Today 11:05 |
-| Guangzhou Direct       | Vendor     | CNY      | 24,000.00 CNY   | 0.00 CNY            | Yesterday   |
-+----------------------------------------------------------------------------------------------------+
-| LEDGER AUDIT TRAIL (ABC Traders)                                                                   |
-| - 2026-09-17: Credit (+5,000 BDT) | Overpayment Refund from INV-WS-001 | Bal After: 45,000 BDT      |
-| - 2026-09-15: Debit  (-10,000 BDT)| Store Credit Applied to INV-WS-004 | Bal After: 40,000 BDT      |
-+----------------------------------------------------------------------------------------------------+
-```
+### US-2: One receipt posts cash and (optional) allocation
+- [ ] Wholesale collect and dropship remittance call the **same** receipt RPC (source differs).
+- [ ] Allocation ≤ remaining invoice due. Never rewrite `sell_price`.
+- [ ] Remittance does not require a human “create invoice” step if the merchant bill was issued at ship.
+
+### US-3: Merchant payable then payout
+- [ ] Profit / remainder credits merchant wallet from the **receipt remainder**, not from order status `delivered` alone.
+- [ ] Withdraw via `dispense_middleman_payout_from_tenant` (or successor). No investor withdraw.
+
+---
+
+## Desk (target)
+
+Receipts list: source, amount, ref → allocate invoices. Entity ledger: balances. Payout is a separate action on the merchant wallet.

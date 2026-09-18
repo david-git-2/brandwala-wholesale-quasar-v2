@@ -7,7 +7,7 @@
 
 ## 1. Unified Creation RPC: `create_sales_invoice_from_payload`
 
-Creates any sales invoice (wholesale, retail, or dropship) with header, line items, cross-module links, and optional immediate issuance in a single atomic transaction.
+Creates a **bill** (wholesale, retail, or dropship) with header, lines, and optional `issue`. `sell_price_amount` is **tenant sell** only (dropship = merchant price, not COD). Issue does not record payment. Channel extras (COD, resell) are not this payload’s totals — see `01-prd` / `02-data-model`. Live RPC bodies: `supabase/schemas/sales_invoice/03_rpcs.sql`.
 
 ### Input Payload Schema
 ```json

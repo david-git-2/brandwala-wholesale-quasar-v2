@@ -1,5 +1,4 @@
 import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -20,7 +19,6 @@ import {
   parseSupabaseError,
   requestConfirmation,
 } from 'src/utils/appFeedback';
-import { DROPSHIP_ORDER_DETAIL_READY_FOR_PICKUP_ROUTE } from './dropshipOrderDetailRoutes';
 
 export function useDropshipOrderProcessingDesk(options: {
   tenantSlug: Ref<string | null>;
@@ -37,7 +35,6 @@ export function useDropshipOrderProcessingDesk(options: {
   refetchOrderDetail: () => Promise<unknown>;
   formReady?: Ref<boolean>;
 }) {
-  const router = useRouter();
   const authStore = useAuthStore();
   const queryClient = useQueryClient();
 
@@ -84,6 +81,9 @@ export function useDropshipOrderProcessingDesk(options: {
   const invalidateDetail = async () => {
     await queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.dropshipDetailV2(tenantId.value, options.orderId.value),
+    });
+    await queryClient.invalidateQueries({
+      queryKey: shopOrderQueryKeys.orderDetail(authStore.tenantId ?? null, options.orderId.value),
     });
     await options.refetchOrderDetail();
   };
@@ -223,10 +223,6 @@ export function useDropshipOrderProcessingDesk(options: {
 
       showSuccessNotification('Status updated to ready for pickup');
       await invalidateDetail();
-      void router.push({
-        name: DROPSHIP_ORDER_DETAIL_READY_FOR_PICKUP_ROUTE,
-        params: { id: order.id, tenantSlug: options.tenantSlug.value ?? undefined },
-      });
     } catch (err) {
       showErrorNotification(parseSupabaseError(err, 'Failed to mark ready for pickup'));
     } finally {

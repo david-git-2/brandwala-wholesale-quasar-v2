@@ -106,7 +106,7 @@
               <td>
                 <router-link
                   class="text-weight-bold text-primary text-decoration-none"
-                  :to="{ name: 'app-shop-dropship-order-detail-page', params: { id: c.id } }"
+                  :to="{ name: 'app-shop-order-detail-page', params: { id: c.id } }"
                   @click.stop
                 >
                   {{ c.order_no }}
@@ -281,7 +281,7 @@ const getCountForStatus = (val: string) => {
 };
 
 const goToOrderDetail = (id: number) => {
-  void router.push({ name: 'app-shop-dropship-order-detail-page', params: { id } });
+  void router.push({ name: 'app-shop-order-detail-page', params: { id } });
 };
 
 const cancelOrderFromList = async (c: ShopOrder) => {

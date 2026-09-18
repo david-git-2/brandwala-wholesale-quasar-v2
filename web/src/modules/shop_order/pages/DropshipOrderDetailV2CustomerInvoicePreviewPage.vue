@@ -67,7 +67,7 @@
               unelevated
               no-caps
               icon="ph ph-printer"
-              label="Print customer invoice"
+              label="Print packing slip"
               class="full-width text-weight-bold"
               @click="printInvoice"
             />
@@ -208,7 +208,7 @@ const goBack = () => {
     if (window.history.length > 1) {
       router.back();
     } else {
-      void router.push({ name: 'dropship-orders' });
+      void router.push({ name: 'app-shop-orders-page' });
     }
   }
 };

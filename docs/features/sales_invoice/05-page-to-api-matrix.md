@@ -17,3 +17,6 @@ Mapping of all UI controls, interactive buttons, modal triggers, and form submis
 | **`InvoiceDetailsPage`** | Apply Settlement Write-off | `useApplySettlementMutation` | `RPC: apply_global_invoice_settlement_discount` | Updates `due_amount` only; invalidates detail |
 | **`InvoicePaymentCollectDialog`** | Submit Payment Allocation | `useCollectPaymentMutation` | `RPC: create_billing_profile_payment_with_allocations` | Updates `paid_amount`, credits tenant cash |
 | **`WholesaleInvoiceReturnPage`** | Submit Credit Return | `useWholesaleReturnMutation`| `RPC: process_wholesale_invoice_return` | Updates `return_quantity`, restocks to `held` |
+| **`DropshipOrderDetailV2ReadyForPickupPage`** | Mark as shipped | `advance_dropship_order_status` then `issueDropshipTenantB2bInvoice` | `RPC: advance_dropship_order_status`, `RPC: issue_dropship_tenant_b2b_invoice` | Merchant bill at ship; idempotent if already issued |
+| **`DropshipManagementDetailPage`** | Mark as delivered | `markDropshipOrderDelivered` only | `RPC: mark_dropship_order_delivered` | Does **not** issue invoice (bill issued at ship) |
+| **`shop_order` packing slip preview** | Print packing slip | local snapshot + preview route | No `sales_invoices` row | Recipient COD face lives on order / `channel_meta`, not the merchant bill |

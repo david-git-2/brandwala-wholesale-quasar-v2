@@ -15,6 +15,10 @@ export function useProcessDropshipOrderMutation() {
         showSuccessNotification('Order opened for processing.');
         void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
         void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
+        const tenantId = useAuthStore().tenantId ?? 0;
+        void queryClient.invalidateQueries({
+          queryKey: shopOrderQueryKeys.dropshipDetailV2(tenantId, orderId),
+        });
       } else {
         handleApiFailure(res as any, res.error || 'Failed to process dropship order');
       }

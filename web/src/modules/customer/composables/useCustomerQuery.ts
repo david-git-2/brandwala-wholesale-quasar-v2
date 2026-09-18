@@ -1,13 +1,75 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { customerRepository } from '../repositories/customerRepository';
 import { customerQueryKeys } from '../services/customerQueryKeys';
 import type {
   CreateCustomerInput,
   UpdateCustomerInput,
+  CustomerAccount,
   CustomerGroupMemberCreateInput,
   CustomerGroupMemberUpdateInput,
 } from '../types/customer';
+
+export function useInfiniteCustomerListQuery(
+  tenantId: Ref<number | null | undefined>,
+  search?: Ref<string | undefined>,
+  pageSize = 20,
+) {
+  const query = useInfiniteQuery({
+    queryKey: computed(() => [
+      ...customerQueryKeys.root,
+      'infinite',
+      tenantId.value ?? null,
+      search?.value ?? '',
+      pageSize,
+    ]),
+    queryFn: async ({ pageParam = 1 }) => {
+      if (!tenantId.value) {
+        return {
+          data: [],
+          meta: { total: 0, page: 1, pageSize, totalPages: 0 },
+        };
+      }
+      return customerRepository.listCustomersPaginated(tenantId.value, {
+        search: search?.value,
+        page: pageParam as number,
+        pageSize,
+      });
+    },
+    getNextPageParam: (lastPage) => {
+      const { page, totalPages } = lastPage.meta;
+      return page < totalPages ? page + 1 : undefined;
+    },
+    initialPageParam: 1,
+    enabled: computed(() => !!tenantId.value),
+    staleTime: 30 * 1000,
+  });
+
+  const customers = computed<CustomerAccount[]>(() => {
+    const pages = query.data.value?.pages ?? [];
+    const seen = new Set<number>();
+    const items: CustomerAccount[] = [];
+    for (const p of pages) {
+      for (const c of p.data) {
+        if (!seen.has(c.customer_group_id)) {
+          seen.add(c.customer_group_id);
+          items.push(c);
+        }
+      }
+    }
+    return items;
+  });
+
+  const totalCustomers = computed(() => query.data.value?.pages?.[0]?.meta.total ?? 0);
+  const hasMore = computed(() => query.hasNextPage.value ?? false);
+
+  return {
+    ...query,
+    customers,
+    totalCustomers,
+    hasMore,
+  };
+}
 
 export function useCustomerListQuery(
   tenantId: Ref<number | null | undefined>,
@@ -91,7 +153,7 @@ export function useCustomerMutations() {
 
   const updateCustomerMutation = useMutation({
     mutationFn: (input: UpdateCustomerInput) => customerRepository.updateCustomer(input),
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: customerQueryKeys.root,
       });

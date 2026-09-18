@@ -32,7 +32,7 @@ ALTER SEQUENCE "public"."billing_profiles_id_seq" OWNED BY "public"."billing_pro
 
 CREATE TABLE IF NOT EXISTS "public"."recipient_profiles" (
     "id" bigint NOT NULL,
-    "tenant_id" bigint NOT NULL,
+    "tenant_id" bigint,
     "parent_tenant_id" bigint,
     "name" "text" NOT NULL,
     "address" "text" NOT NULL,
@@ -108,6 +108,9 @@ CREATE TABLE IF NOT EXISTS "public"."sales_invoices" (
     "cod_charge_amount" numeric(12,2) DEFAULT 0 NOT NULL,
     "wrapping_charge" numeric(12,2) DEFAULT 0 NOT NULL,
     "print_charge" numeric(12,2) DEFAULT 0 NOT NULL,
+    "shop_order_id" bigint,
+    "charges_amount" numeric(12,2) DEFAULT 0 NOT NULL,
+    "channel_meta" jsonb DEFAULT '{}'::jsonb NOT NULL,
     "note" "text",
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -124,7 +127,8 @@ CREATE TABLE IF NOT EXISTS "public"."sales_invoices" (
     CONSTRAINT "global_invoices_shipping_charge_check" CHECK (("shipping_charge" >= (0)::numeric)),
     CONSTRAINT "global_invoices_subtotal_amount_check" CHECK (("subtotal_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_total_amount_check" CHECK (("total_amount" >= (0)::numeric)),
-    CONSTRAINT "global_invoices_wrapping_charge_check" CHECK (("wrapping_charge" >= (0)::numeric))
+    CONSTRAINT "global_invoices_wrapping_charge_check" CHECK (("wrapping_charge" >= (0)::numeric)),
+    CONSTRAINT "global_invoices_charges_amount_check" CHECK (("charges_amount" >= (0)::numeric))
 );
 
 ALTER TABLE "public"."sales_invoices" OWNER TO "postgres";
@@ -161,6 +165,7 @@ CREATE TABLE IF NOT EXISTS "public"."sales_invoice_items" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "assigned_child_tenant_id" bigint,
+    "line_meta" jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT "global_invoice_items_line_discount_amount_check" CHECK (("line_discount_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoice_items_line_total_amount_check" CHECK (("line_total_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoice_items_quantity_check" CHECK (("quantity" > (0)::numeric)),
@@ -181,6 +186,43 @@ CREATE SEQUENCE IF NOT EXISTS "public"."global_invoice_items_id_seq"
 
 ALTER SEQUENCE "public"."global_invoice_items_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."global_invoice_items_id_seq" OWNED BY "public"."sales_invoice_items"."id";
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."sales_invoice_item_costs" (
+    "invoice_item_id" bigint NOT NULL,
+    "unit_cost_price" numeric(12,2) DEFAULT 0 NOT NULL,
+    "costing_locked_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "sales_invoice_item_costs_unit_cost_price_check" CHECK (("unit_cost_price" >= (0)::numeric)),
+    CONSTRAINT "sales_invoice_item_costs_pkey" PRIMARY KEY ("invoice_item_id")
+);
+
+ALTER TABLE "public"."sales_invoice_item_costs" OWNER TO "postgres";
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."sales_invoice_charges" (
+    "id" bigint NOT NULL,
+    "invoice_id" bigint NOT NULL,
+    "parent_tenant_id" bigint NOT NULL,
+    "charge_type" "public"."invoice_charge_type" NOT NULL,
+    "amount" numeric(12,2) DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "sales_invoice_charges_amount_check" CHECK (("amount" >= (0)::numeric)),
+    CONSTRAINT "sales_invoice_charges_pkey" PRIMARY KEY ("id")
+);
+
+ALTER TABLE "public"."sales_invoice_charges" OWNER TO "postgres";
+
+CREATE SEQUENCE IF NOT EXISTS "public"."sales_invoice_charges_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE "public"."sales_invoice_charges_id_seq" OWNER TO "postgres";
+ALTER SEQUENCE "public"."sales_invoice_charges_id_seq" OWNED BY "public"."sales_invoice_charges"."id";
 
 
 
@@ -215,7 +257,9 @@ ALTER SEQUENCE "public"."global_return_items_id_seq" OWNED BY "public"."sales_re
 
 -- Compatibility Views
 
-CREATE OR REPLACE VIEW "public"."global_invoices" WITH ("security_invoker"='false') AS
+DROP VIEW IF EXISTS "public"."global_invoices";
+
+CREATE VIEW "public"."global_invoices" WITH ("security_invoker"='false') AS
  SELECT "id",
     "parent_tenant_id",
     "parent_tenant_id" AS "tenant_id",
@@ -247,13 +291,18 @@ CREATE OR REPLACE VIEW "public"."global_invoices" WITH ("security_invoker"='fals
     "created_by",
     "created_at",
     "updated_at",
-    "cod_charge_amount"
+    "cod_charge_amount",
+    "shop_order_id",
+    "charges_amount",
+    "channel_meta"
    FROM "public"."sales_invoices";
 
 ALTER VIEW "public"."global_invoices" OWNER TO "postgres";
 
 
-CREATE OR REPLACE VIEW "public"."global_invoice_items" WITH ("security_invoker"='false') AS
+DROP VIEW IF EXISTS "public"."global_invoice_items";
+
+CREATE VIEW "public"."global_invoice_items" WITH ("security_invoker"='false') AS
  SELECT "id",
     "parent_tenant_id" AS "tenant_id",
     "parent_tenant_id",
@@ -272,7 +321,8 @@ CREATE OR REPLACE VIEW "public"."global_invoice_items" WITH ("security_invoker"=
     "return_quantity",
     "created_at",
     "updated_at",
-    "assigned_child_tenant_id"
+    "assigned_child_tenant_id",
+    "line_meta"
    FROM "public"."sales_invoice_items";
 
 ALTER VIEW "public"."global_invoice_items" OWNER TO "postgres";
@@ -302,6 +352,7 @@ ALTER TABLE ONLY "public"."billing_profiles" ALTER COLUMN "id" SET DEFAULT "next
 ALTER TABLE ONLY "public"."invoice_brands" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."invoice_brands_id_seq"'::"regclass");
 ALTER TABLE ONLY "public"."recipient_profiles" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."recipient_profiles_id_seq"'::"regclass");
 ALTER TABLE ONLY "public"."sales_invoice_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_invoice_items_id_seq"'::"regclass");
+ALTER TABLE ONLY "public"."sales_invoice_charges" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."sales_invoice_charges_id_seq"'::"regclass");
 ALTER TABLE ONLY "public"."sales_invoices" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_invoices_id_seq"'::"regclass");
 ALTER TABLE ONLY "public"."sales_return_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_return_items_id_seq"'::"regclass");
 
@@ -353,6 +404,8 @@ CREATE INDEX "global_return_items_invoice_id_idx" ON "public"."sales_return_item
 CREATE INDEX "global_return_items_invoice_item_id_idx" ON "public"."sales_return_items" USING "btree" ("invoice_item_id");
 CREATE INDEX "idx_global_invoice_items_shipment" ON "public"."sales_invoice_items" USING "btree" ("shipment_item_id");
 CREATE INDEX "idx_global_invoices_billing_profile" ON "public"."sales_invoices" USING "btree" ("billing_profile_id");
+CREATE INDEX "idx_sales_invoices_shop_order_id" ON "public"."sales_invoices" USING "btree" ("shop_order_id");
+CREATE INDEX "idx_sales_invoice_charges_invoice_id" ON "public"."sales_invoice_charges" USING "btree" ("invoice_id");
 CREATE INDEX "idx_sales_invoices_scoping" ON "public"."sales_invoices" USING "btree" ("parent_tenant_id", "issued_by_tenant_id", "invoice_status", "invoice_date");
 CREATE INDEX "recipient_profiles_name_idx" ON "public"."recipient_profiles" USING "btree" ("name");
 CREATE INDEX "recipient_profiles_parent_tenant_id_idx" ON "public"."recipient_profiles" USING "btree" ("parent_tenant_id");
@@ -395,6 +448,18 @@ ALTER TABLE ONLY "public"."sales_invoices"
 
 ALTER TABLE ONLY "public"."sales_invoices"
     ADD CONSTRAINT "global_invoices_recipient_profile_id_fkey" FOREIGN KEY ("recipient_profile_id") REFERENCES "public"."recipient_profiles"("id") ON DELETE RESTRICT;
+
+ALTER TABLE ONLY "public"."sales_invoices"
+    ADD CONSTRAINT "sales_invoices_shop_order_id_fkey" FOREIGN KEY ("shop_order_id") REFERENCES "public"."shop_orders"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."sales_invoice_item_costs"
+    ADD CONSTRAINT "sales_invoice_item_costs_invoice_item_id_fkey" FOREIGN KEY ("invoice_item_id") REFERENCES "public"."sales_invoice_items"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."sales_invoice_charges"
+    ADD CONSTRAINT "sales_invoice_charges_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."sales_invoices"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."sales_invoice_charges"
+    ADD CONSTRAINT "sales_invoice_charges_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."sales_return_items"
     ADD CONSTRAINT "global_return_items_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."sales_invoices"("id") ON DELETE CASCADE;

@@ -221,6 +221,30 @@
                   />
                 </div>
               </div>
+
+              <!-- Danger Zone -->
+              <div
+                v-if="canAdministerCustomerGroup"
+                class="form-section form-section--divider column q-gutter-y-sm"
+              >
+                <div class="section-heading text-negative">Danger zone</div>
+                <div class="danger-zone-card q-pa-md row items-center justify-between no-wrap">
+                  <div>
+                    <div class="text-weight-bold text-grey-9">Delete this customer group</div>
+                    <div class="text-caption text-grey-7">
+                      Permanently remove this customer account, memberships, and billing profile.
+                    </div>
+                  </div>
+                  <q-btn
+                    unelevated
+                    color="negative"
+                    no-caps
+                    label="Delete customer"
+                    class="action-btn text-weight-bold q-px-md flex-shrink-0"
+                    @click="openDeleteDialog"
+                  />
+                </div>
+              </div>
             </q-form>
           </q-tab-panel>
 
@@ -454,6 +478,55 @@
         </q-form>
       </q-card>
     </q-dialog>
+
+    <!-- Delete Customer Confirmation Dialog with Typed Confirmation -->
+    <q-dialog v-model="deleteConfirmOpen" persistent>
+      <q-card style="min-width: 400px; max-width: 480px; border-radius: 12px">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="row items-center text-negative">
+            <q-icon name="ph ph-warning-octagon" size="22px" class="q-mr-xs" />
+            <div class="text-subtitle1 text-weight-bold">Delete Customer Group</div>
+          </div>
+          <q-space />
+          <q-btn v-close-popup icon="ph ph-x" flat round dense />
+        </q-card-section>
+
+        <q-card-section class="q-pt-md column q-gutter-y-sm">
+          <div class="text-body2 text-grey-8">
+            This action <strong>cannot be undone</strong>. This will permanently delete the customer group
+            <strong>{{ form.group_name }}</strong>, its members, and associated access settings.
+          </div>
+
+          <div class="text-caption text-grey-7 q-mt-sm">
+            Please type <strong>{{ form.group_name }}</strong> to confirm:
+          </div>
+
+          <q-input
+            v-model="deleteConfirmationInput"
+            outlined
+            dense
+            autofocus
+            :placeholder="form.group_name"
+            class="soft-input"
+            @keyup.enter="isDeleteMatching && onConfirmDeleteCustomer()"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md q-pt-none">
+          <q-btn flat no-caps label="Cancel" v-close-popup class="action-btn" />
+          <q-btn
+            unelevated
+            color="negative"
+            no-caps
+            label="I understand, delete"
+            :disable="!isDeleteMatching"
+            :loading="isDeletingCustomer"
+            class="action-btn text-weight-bold"
+            @click="onConfirmDeleteCustomer"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-drawer>
 </template>
 
@@ -486,8 +559,9 @@ const props = defineProps<{
   tenantId: number;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'update:modelValue', val: boolean): void;
+  (e: 'deleted', id: number): void;
 }>();
 
 const canAdministerCustomerGroup = useCanAdministerCustomerGroup();
@@ -500,8 +574,46 @@ const drawerTabs = [
   { name: 'wallet' as const, label: 'Wallet', icon: 'ph ph-wallet' },
 ];
 const queryClient = useQueryClient();
-const { updateCustomerMutation, createMemberMutation, updateMemberMutation, deleteMemberMutation } =
-  useCustomerMutations();
+const {
+  updateCustomerMutation,
+  deleteCustomerGroupMutation,
+  createMemberMutation,
+  updateMemberMutation,
+  deleteMemberMutation,
+} = useCustomerMutations();
+
+const deleteConfirmOpen = ref(false);
+const deleteConfirmationInput = ref('');
+const isDeletingCustomer = ref(false);
+
+const isDeleteMatching = computed(
+  () => deleteConfirmationInput.value.trim() === form.group_name.trim(),
+);
+
+const openDeleteDialog = () => {
+  deleteConfirmationInput.value = '';
+  deleteConfirmOpen.value = true;
+};
+
+const onConfirmDeleteCustomer = async () => {
+  if (!isDeleteMatching.value || !customerGroupId.value) return;
+  isDeletingCustomer.value = true;
+  try {
+    await deleteCustomerGroupMutation.mutateAsync({
+      id: customerGroupId.value,
+      tenant_id: props.tenantId,
+    });
+    deleteConfirmOpen.value = false;
+    emit('update:modelValue', false);
+    emit('deleted', customerGroupId.value);
+    showSuccessNotification('Customer group deleted.');
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to delete customer group.';
+    showErrorNotification(message);
+  } finally {
+    isDeletingCustomer.value = false;
+  }
+};
 
 const customerGroupId = computed(() => props.customer?.customer_group_id ?? null);
 const billingProfileId = computed(() => props.customer?.billing_profile_id ?? 0);
@@ -1113,5 +1225,16 @@ body.body--dark .soft-input :deep(.q-field--outlined .q-field__control:before) {
 
 body.body--dark .color-swatch {
   border-color: #334155;
+}
+
+.danger-zone-card {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  border-radius: 8px;
+}
+
+body.body--dark .danger-zone-card {
+  border-color: #7f1d1d;
+  background: rgba(127, 29, 29, 0.15);
 }
 </style>

@@ -520,7 +520,7 @@
             </th>
 
             <!-- Offer Price BDT -->
-            <th v-if="visibleColumnMap.offerPriceBdt" class="text-center bw-ops-col-tint--price" style="width: 64px; min-width: 64px">
+            <th v-if="visibleColumnMap.offerPriceBdt" class="text-center bw-ops-col-tint--price" style="width: 84px; min-width: 84px">
               Offer (৳)
             </th>
 
@@ -824,8 +824,17 @@
               </td>
 
               <!-- Offer Price BDT (Inline Edit) -->
-              <td v-if="visibleColumnMap.offerPriceBdt" class="text-center bw-ops-col-tint--price" style="width: 64px; min-width: 64px">
-                <div class="row justify-center">
+              <td v-if="visibleColumnMap.offerPriceBdt" class="text-center bw-ops-col-tint--price" style="width: 84px; min-width: 84px">
+                <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
+                  <q-icon
+                    v-if="row.isOfferPriceManual"
+                    name="ph ph-lock-key"
+                    color="amber-8"
+                    size="14px"
+                  >
+                    <q-tooltip>{{ $t('product_based_costing.offer_locked_tooltip') }}</q-tooltip>
+                  </q-icon>
+
                   <q-input
                     :model-value="getDraftValue(row, 'offer_price')"
                     type="number"
@@ -840,6 +849,20 @@
                     @blur="saveDraftValue(row, 'offer_price', { decimals: 0 })"
                     @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
                   />
+
+                  <q-btn
+                    v-if="row.isOfferPriceManual"
+                    flat
+                    round
+                    dense
+                    size="xs"
+                    icon="ph ph-arrows-clockwise"
+                    color="grey-7"
+                    :aria-label="$t('product_based_costing.unlock_offer_price')"
+                    @click.stop="unlockOfferPrice(row)"
+                  >
+                    <q-tooltip>{{ $t('product_based_costing.unlock_offer_price_tooltip') }}</q-tooltip>
+                  </q-btn>
                 </div>
               </td>
 
@@ -1329,7 +1352,12 @@ const tableRows = computed(() => {
 
     const itemProfitRate = item.profit_rate ?? fileProfitRate;
     const calculatedOfferPriceBdt = costBdt * (1 + itemProfitRate / 100);
-    const offerPriceBdt = item.is_offer_price_manual && item.offer_price != null
+    const isOfferPriceManual =
+      item.is_offer_price_manual === true ||
+      (item.is_offer_price_manual == null &&
+        item.offer_price != null &&
+        Math.round(item.offer_price) !== Math.round(calculatedOfferPriceBdt));
+    const offerPriceBdt = isOfferPriceManual && item.offer_price != null
       ? item.offer_price
       : calculatedOfferPriceBdt;
 
@@ -1362,6 +1390,7 @@ const tableRows = computed(() => {
       costBdt,
       totalCostBdt,
       offer_price: offerPriceBdt,
+      isOfferPriceManual,
       totalBdt,
       profitPerUnitBdt,
       profitBdt,
@@ -1375,9 +1404,18 @@ const tableRows = computed(() => {
 // Draft Values for Inline Editing
 const draftValues = reactive<Record<string, Record<string, unknown>>>({});
 
-function getDraftValue(row: { id: number; raw: ProductBasedCostingItem }, field: keyof ProductBasedCostingItem) {
+function getDraftValue(
+  row: { id: number; raw: ProductBasedCostingItem; offer_price?: number; isOfferPriceManual?: boolean },
+  field: keyof ProductBasedCostingItem,
+) {
   if (draftValues[row.id]?.[field] !== undefined) {
     return draftValues[row.id][field];
+  }
+  if (field === 'offer_price') {
+    if (row.isOfferPriceManual && row.raw.offer_price != null) {
+      return Math.round(Number(row.raw.offer_price));
+    }
+    return Math.round(Number(row.offer_price ?? 0));
   }
   return row.raw[field] ?? '';
 }
@@ -1390,7 +1428,7 @@ function setDraftValue(row: { id: number }, field: string, val: unknown) {
 }
 
 async function saveDraftValue(
-  row: { id: number; raw: ProductBasedCostingItem },
+  row: { id: number; raw: ProductBasedCostingItem; isOfferPriceManual?: boolean; offer_price?: number },
   field: keyof ProductBasedCostingItem,
   opts?: { decimals?: number },
 ) {
@@ -1408,7 +1446,14 @@ async function saveDraftValue(
     parsedVal = null;
   }
 
-  if (row.raw[field] === parsedVal) return;
+  if (field === 'offer_price') {
+    const currentPrice = row.isOfferPriceManual && row.raw.offer_price != null
+      ? Math.round(Number(row.raw.offer_price))
+      : Math.round(Number(row.offer_price ?? 0));
+    if (parsedVal === currentPrice) return;
+  } else if (row.raw[field] === parsedVal) {
+    return;
+  }
 
   try {
     const payload: Partial<ProductBasedCostingItem> & { id: number } = {
@@ -1417,10 +1462,33 @@ async function saveDraftValue(
     };
     if (field === 'offer_price') {
       payload.is_offer_price_manual = true;
+      payload.offer_price = parsedVal != null ? Number(parsedVal) : null;
     }
     await updateItemMutation.mutateAsync(payload);
   } catch {
     $q.notify({ type: 'negative', message: 'Failed to update item' });
+  }
+}
+
+async function unlockOfferPrice(row: { id: number }) {
+  if (draftValues[row.id]) {
+    delete draftValues[row.id]['offer_price'];
+  }
+  try {
+    await updateItemMutation.mutateAsync({
+      id: row.id,
+      is_offer_price_manual: false,
+      offer_price: null,
+    });
+    $q.notify({
+      type: 'positive',
+      message: 'Offer price reset to auto-calculated rate',
+    });
+  } catch {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to reset offer price',
+    });
   }
 }
 
