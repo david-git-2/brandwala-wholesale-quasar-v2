@@ -44,9 +44,8 @@
             </div>
           </div>
 
-          <div class="row items-center no-wrap q-gutter-x-sm flex-shrink-0">
+          <div class="row items-center no-wrap flex-shrink-0">
             <q-skeleton type="QBadge" width="90px" height="24px" class="rounded-borders" />
-            <q-skeleton type="QBtn" width="28px" height="28px" class="rounded-borders" />
           </div>
         </div>
       </div>

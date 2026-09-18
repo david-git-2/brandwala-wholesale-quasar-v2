@@ -431,6 +431,20 @@
   margin-top: 0.2rem;
 }
 
+.col-actions {
+  white-space: nowrap;
+  text-align: right;
+  vertical-align: middle;
+  min-width: 140px;
+}
+
+.dropship-invoice-paper__action-btn {
+  border-radius: 6px;
+  font-size: 0.78rem;
+  padding: 3px 10px;
+  font-weight: 600;
+}
+
 .dropship-invoice-paper__counter-input {
   width: 7.5rem;
 }

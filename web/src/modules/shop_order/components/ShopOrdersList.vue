@@ -33,7 +33,7 @@
     />
   </div>
 
-  <div v-else class="orders-list-wrapper column no-wrap full-height">
+  <div v-else class="orders-list-wrapper column no-wrap">
     <!-- List Summary Bar -->
     <div class="orders-list-meta-bar row items-center justify-between q-px-md q-py-xs flex-shrink-0">
       <div class="row items-center q-gutter-x-sm">
@@ -151,8 +151,8 @@
             </div>
           </div>
 
-          <!-- Right Section: Status Pill + Dropship Desk Action + Navigation Chevron -->
-          <div class="order-aside-actions row items-center no-wrap flex-shrink-0 q-gutter-x-sm">
+          <!-- Right Section: Status Pill -->
+          <div class="order-aside-actions row items-center no-wrap flex-shrink-0">
             <!-- Order Status Badge -->
             <span
               class="order-status-badge"
@@ -161,34 +161,6 @@
               <q-icon :name="getStatusBadgeInfo(order.status).icon" size="13px" class="q-mr-xs" />
               <span>{{ getStatusBadgeInfo(order.status).label }}</span>
             </span>
-
-            <!-- Quick Dropship Desk Processing Action -->
-            <q-btn
-              v-if="isDropshipShop?.(order.shop_id) && order.status === 'confirmed'"
-              flat
-              dense
-              no-caps
-              color="primary"
-              class="dropship-desk-btn"
-              :loading="isProcessingDropship"
-              @click.stop="emit('add-to-dropship', order.id)"
-            >
-              <q-icon name="ph ph-truck" size="14px" class="q-mr-xs" />
-              <span>{{ $t('shop_admin.dropship_desk_btn', 'Desk') }}</span>
-              <q-tooltip>{{ $t('shop_admin.add_to_dropship_desk', 'Add to Dropship Desk') }}</q-tooltip>
-            </q-btn>
-
-            <!-- Navigation Chevron -->
-            <q-btn
-              flat
-              round
-              dense
-              size="sm"
-              color="grey-6"
-              icon="ph ph-caret-right"
-              class="order-chevron-btn"
-              @click.stop="emit('row-click', order.id)"
-            />
           </div>
         </div>
       </div>
@@ -420,6 +392,7 @@ const getStatusBadgeInfo = (status: string) => {
   border: 1px solid var(--bw-theme-border, #e2e8f0);
   border-radius: 10px;
   overflow: hidden;
+  max-height: 100%;
 }
 
 .orders-list-meta-bar {
@@ -456,31 +429,6 @@ const getStatusBadgeInfo = (status: string) => {
 .order-list-row:focus-visible {
   outline: 2px solid var(--q-primary);
   outline-offset: -2px;
-}
-
-/* Status Accents (left inset bar) */
-.order-row--success {
-  box-shadow: inset 3px 0 0 #22c55e;
-}
-
-.order-row--info {
-  box-shadow: inset 3px 0 0 #3b82f6;
-}
-
-.order-row--purple {
-  box-shadow: inset 3px 0 0 #7c3aed;
-}
-
-.order-row--warning {
-  box-shadow: inset 3px 0 0 #f59e0b;
-}
-
-.order-row--danger {
-  box-shadow: inset 3px 0 0 #ef4444;
-}
-
-.order-row--neutral {
-  box-shadow: inset 3px 0 0 #94a3b8;
 }
 
 /* Typography & ID block */
@@ -560,15 +508,6 @@ const getStatusBadgeInfo = (status: string) => {
 
 .dropship-desk-btn:hover {
   background: #dbeafe;
-}
-
-.order-chevron-btn {
-  transition: transform 0.15s ease;
-}
-
-.order-list-row:hover .order-chevron-btn {
-  transform: translateX(2px);
-  color: var(--q-primary);
 }
 
 /* Status Badges */

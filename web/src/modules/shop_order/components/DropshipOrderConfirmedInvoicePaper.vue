@@ -447,6 +447,7 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                   <th class="col-money dropship-invoice-paper__internal-col">Sell</th>
                   <th class="col-money">Resell</th>
                   <th class="col-money">Line Resell</th>
+                  <th v-if="showStockPickActions && !readonly" class="col-actions text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -501,39 +502,6 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                         />
                       </li>
                     </ul>
-                    <div v-if="showStockPickActions && !readonly && !row.isUnavailable" class="row q-gutter-sm q-mt-sm">
-                      <q-btn
-                        unelevated
-                        dense
-                        no-caps
-                        color="primary"
-                        icon="ph ph-package"
-                        label="Pick stock"
-                        style="border-radius: 6px; padding: 2px 8px;"
-                        @click="emit('pick-stock', row.id)"
-                      />
-                      <q-btn
-                        v-if="row.stockPicks.length === 0"
-                        outline
-                        dense
-                        no-caps
-                        color="negative"
-                        icon="ph ph-prohibit"
-                        label="Mark unavailable"
-                        style="border-radius: 6px; padding: 2px 8px;"
-                        @click="emit('mark-unavailable', row.id)"
-                      />
-                    </div>
-                    <div v-if="showStockPickActions && !readonly && row.isUnavailable" class="q-mt-sm">
-                      <q-btn
-                        flat
-                        dense
-                        no-caps
-                        color="primary"
-                        label="Undo unavailable"
-                        @click="emit('clear-unavailable', row.id)"
-                      />
-                    </div>
                   </td>
                   <td class="col-qty dropship-invoice-paper__internal-col text-weight-medium">{{ row.orderedQuantity }}</td>
                   <td v-if="showDeliveredQuantities" class="col-qty">
@@ -559,6 +527,44 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                   <td class="col-money text-weight-bold">
                     {{ formatMoney(row.lineResell) }}
                   </td>
+                  <td v-if="showStockPickActions && !readonly" class="col-actions text-right">
+                    <div v-if="!row.isUnavailable" class="row items-center justify-end no-wrap q-gutter-xs">
+                      <q-btn
+                        unelevated
+                        dense
+                        no-caps
+                        color="primary"
+                        icon="ph ph-package"
+                        label="Pick stock"
+                        class="dropship-invoice-paper__action-btn"
+                        @click="emit('pick-stock', row.id)"
+                      />
+                      <q-btn
+                        v-if="row.stockPicks.length === 0"
+                        flat
+                        dense
+                        round
+                        color="negative"
+                        icon="ph ph-prohibit"
+                        aria-label="Mark unavailable"
+                        @click="emit('mark-unavailable', row.id)"
+                      >
+                        <q-tooltip>Mark unavailable</q-tooltip>
+                      </q-btn>
+                    </div>
+                    <div v-else class="row items-center justify-end no-wrap">
+                      <q-btn
+                        flat
+                        dense
+                        no-caps
+                        color="primary"
+                        icon="ph ph-arrow-counter-clockwise"
+                        label="Undo"
+                        class="dropship-invoice-paper__action-btn"
+                        @click="emit('clear-unavailable', row.id)"
+                      />
+                    </div>
+                  </td>
                 </tr>
               </tbody>
               <tfoot>
@@ -573,6 +579,7 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                   <td class="col-money text-weight-bold text-primary">
                     {{ formatMoney(totals.resell) }}
                   </td>
+                  <td v-if="showStockPickActions && !readonly" class="col-actions" />
                 </tr>
               </tfoot>
             </table>

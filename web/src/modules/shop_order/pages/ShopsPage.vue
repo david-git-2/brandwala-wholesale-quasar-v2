@@ -22,6 +22,30 @@
               </template>
             </q-input>
 
+            <q-select
+              v-if="isParentTenant && childTenantOptions.length > 0"
+              v-model="selectedChildTenantId"
+              :options="childTenantOptions"
+              option-value="value"
+              option-label="label"
+              emit-value
+              map-options
+              dense
+              outlined
+              rounded
+              clearable
+              options-dense
+              class="shops-business-select col-grow col-sm-auto"
+              style="min-width: 190px"
+              placeholder="Filter by business"
+              :loading="childTenantsLoading"
+              data-test="shops-business-filter"
+            >
+              <template #prepend>
+                <q-icon name="ph ph-buildings" size="16px" class="text-grey-6" />
+              </template>
+            </q-select>
+
             <div class="shops-segmented col-auto" role="tablist" :aria-label="$t('shop_admin.status')">
               <button
                 v-for="option in filterOptions"
@@ -79,9 +103,8 @@
                   </div>
                 </div>
               </div>
-              <div class="item-aside row items-center q-gutter-x-sm">
+              <div class="item-aside row items-center">
                 <q-skeleton type="QBadge" width="65px" height="22px" class="rounded-borders" />
-                <q-skeleton type="QBtn" width="32px" height="32px" class="rounded-borders" />
               </div>
             </div>
           </div>
@@ -124,7 +147,7 @@
         </div>
 
         <!-- Linear List -->
-        <div v-else class="clean-list-card col column no-wrap overflow-hidden">
+        <div v-else class="clean-list-card column no-wrap overflow-hidden">
           <!-- List Summary / Meta Bar -->
           <div class="shops-list-meta-bar row items-center justify-between q-px-md q-py-xs flex-shrink-0">
             <div class="row items-center q-gutter-x-sm">
@@ -222,8 +245,8 @@
                 </div>
               </div>
 
-              <!-- Right Section: Status Pill + Manage Action -->
-              <div class="item-aside row items-center no-wrap flex-shrink-0 q-gutter-x-sm">
+              <!-- Right Section: Status Pill -->
+              <div class="item-aside row items-center no-wrap flex-shrink-0">
                 <!-- Status Badge -->
                 <span
                   class="shops-status"
@@ -232,18 +255,6 @@
                   <span class="shops-status__dot" aria-hidden="true" />
                   {{ shop.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
                 </span>
-
-                <!-- Manage Button -->
-                <q-btn
-                  flat
-                  dense
-                  no-caps
-                  color="primary"
-                  class="shop-manage-btn"
-                  :label="$t('shop_admin.manage')"
-                  :aria-label="$t('shop_admin.manage')"
-                  @click.stop="goToSetup(shop.id)"
-                />
               </div>
             </div>
 
@@ -283,7 +294,8 @@ import { useRouter } from 'vue-router';
 import { date } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue';
-import { useInfiniteShopListQuery } from '../composables/useShopQuery';
+import { useChildTenantsQuery } from 'src/modules/procurement_stock/composables/useProcurementStockQuery';
+import { useInfiniteShopListQuery, type ShopListQueryParams } from '../composables/useShopQuery';
 import { useSaveShopMutation } from '../composables/useShopMutations';
 import type { Shop, ShopType, CreateShopPayload } from 'src/modules/shop_order/types';
 
@@ -295,15 +307,27 @@ const tenantId = computed(() => authStore.tenantId as number);
 const parentTenantId = computed(() => authStore.selectedTenant?.parent_id ?? authStore.tenantId);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
+const isParentTenant = computed(() => {
+  if (!tenantId.value) return false;
+  const pId = authStore.selectedTenant?.parent_id ?? tenantId.value;
+  return Number(pId) === Number(tenantId.value);
+});
+
+const { data: childTenants, isLoading: childTenantsLoading } = useChildTenantsQuery(parentTenantId);
+
 const search = ref<string>('');
 const activeFilter = ref<boolean | null>(null);
+const selectedChildTenantId = ref<number | null>(null);
 
-const queryParams = computed(() => ({
-  tenantId: tenantId.value,
-  parentTenantId: parentTenantId.value,
-  search: search.value || null,
-  active: activeFilter.value,
-}));
+const queryParams = computed<ShopListQueryParams>(() => {
+  const isChildSelected = selectedChildTenantId.value !== null;
+  return {
+    tenantId: isChildSelected ? (selectedChildTenantId.value as number) : tenantId.value,
+    parentTenantId: isChildSelected ? null : parentTenantId.value,
+    search: search.value || null,
+    active: activeFilter.value,
+  };
+});
 
 const {
   shops,
@@ -316,21 +340,38 @@ const {
   fetchNextPage,
 } = useInfiniteShopListQuery(queryParams, 20);
 
-const { mutate: saveShopMutation, isPending: isSaving } = useSaveShopMutation();
-
-const isParentTenant = computed(() => {
-  if (!tenantId.value) return false;
-  const pId = authStore.selectedTenant?.parent_id ?? tenantId.value;
-  return Number(pId) === Number(tenantId.value);
+const childTenantOptions = computed(() => {
+  const map = new Map<number, string>();
+  for (const t of childTenants.value ?? []) {
+    if (t.parent_id === parentTenantId.value) {
+      map.set(t.id, t.name);
+    }
+  }
+  for (const s of shops.value) {
+    if (s.tenant_id && s.tenant_name && s.tenant_id !== parentTenantId.value) {
+      map.set(s.tenant_id, s.tenant_name);
+    }
+  }
+  return Array.from(map.entries()).map(([value, label]) => ({
+    label,
+    value,
+  }));
 });
 
+const { mutate: saveShopMutation, isPending: isSaving } = useSaveShopMutation();
+
 const isFiltered = computed(() => {
-  return Boolean(search.value.trim() || activeFilter.value !== null);
+  return Boolean(
+    search.value.trim() ||
+    activeFilter.value !== null ||
+    selectedChildTenantId.value !== null,
+  );
 });
 
 const clearFilters = () => {
   search.value = '';
   activeFilter.value = null;
+  selectedChildTenantId.value = null;
 };
 
 const filterOptions = computed(() => [
@@ -414,7 +455,8 @@ const formatCreatedAt = (value?: string | null) => {
   border-color: var(--bw-theme-border, #e2e8f0);
 }
 
-.shops-search :deep(.q-field__control) {
+.shops-search :deep(.q-field__control),
+.shops-business-select :deep(.q-field__control) {
   border-radius: 9999px;
 }
 
@@ -457,6 +499,7 @@ const formatCreatedAt = (value?: string | null) => {
   background: var(--bw-theme-surface, #ffffff);
   border: 1px solid var(--bw-theme-border, #e2e8f0);
   border-radius: var(--bw-radius-md, 10px);
+  max-height: 100%;
 }
 
 .shops-list-meta-bar {
