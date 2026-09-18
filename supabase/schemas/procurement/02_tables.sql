@@ -1893,7 +1893,6 @@ CREATE TABLE IF NOT EXISTS "public"."preorder_demand" (
     "updated_by_user_id" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "preorder_demand_delivered_lte_placed_check" CHECK (("delivered_quantity" <= "placed_quantity")),
     CONSTRAINT "preorder_demand_delivered_quantity_check" CHECK (("delivered_quantity" >= 0)),
     CONSTRAINT "preorder_demand_placed_quantity_check" CHECK (("placed_quantity" >= 0)),
     CONSTRAINT "preorder_demand_stock_picks_is_array" CHECK (("jsonb_typeof"("stock_picks") = 'array'::"text")),

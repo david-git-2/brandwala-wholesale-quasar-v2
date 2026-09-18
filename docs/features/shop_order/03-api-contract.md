@@ -64,6 +64,10 @@ Cash-in: [wallet 01](../wallet/01-prd.md). Remittance allocates to merchant `tot
 
 `fulfill_shop_order_to_invoice`: confirmed **catalog** orders only (`wholesale` / `retail`). Dropship must raise. Builds `create_sales_invoice_from_payload` with `issue: true`, `collection_source=billing_profile`, tenant sell from order lines (not customer/resell face), merchant-owed charges only. Links `shop_orders.global_invoice_id`. Wholesale desk create remains the main walk-in path.
 
+### 2.5 Catalog procurement mark ready: `staff_set_catalog_ordered_qty`
+
+Fulfill desk **Mark ready for shipment**. Creates proforma via `create_invoice_from_preorder_demand_document` (lines from `preorder_demand.stock_picks`; sets `sales_invoices.shop_order_id` after create, not on payload). Backlog shortfall per line = `confirmed_quantity - delivered_quantity` (picks), not vendor `placed_quantity`. `p_items` is legacy; server reads all order lines.
+
 ---
 
 ## 3. Storefront Permissions RPC: `get_shop_permissions_for_customer`

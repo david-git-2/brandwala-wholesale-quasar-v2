@@ -62,6 +62,8 @@ const getSubmoduleSectionAndWeight = (
         return { section: '', weight: 10 };
       case 'shop_order_mgmt':
         return { section: '', weight: 20 };
+      case 'product_based_costing':
+        return { section: '', weight: 25 };
       case 'shop_shipping':
         return { section: '', weight: 30 };
       default:

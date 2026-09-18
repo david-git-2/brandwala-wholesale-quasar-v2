@@ -88,6 +88,8 @@ const isTenantModuleActive = (
   if (moduleKey === 'product_based_costing') {
     return (
       activeModuleKeys.includes('product_based_costing') ||
+      activeModuleKeys.includes('shop_order') ||
+      activeModuleKeys.includes('shop_order_mgmt') ||
       activeModuleKeys.includes('global_shipment') ||
       activeModuleKeys.includes('procurement_stock') ||
       activeModuleKeys.includes('procurement_demand')
@@ -169,6 +171,8 @@ const hasModuleRoleGrant = ({
     return effectiveGrants.some(
       (grant) =>
         (grant.module_key === 'product_based_costing' ||
+          grant.module_key === 'shop_order' ||
+          grant.module_key === 'shop_order_mgmt' ||
           grant.module_key === 'global_shipment' ||
           grant.module_key === 'procurement_demand') &&
         grant.action === action,

@@ -126,7 +126,26 @@ language plpgsql security definer;
 
 ---
 
-## 5. Stock Movement RPC: `create_and_post_stock_movement`
+## 5. Pre-order demand RPCs
+
+### 5.1 `upsert_preorder_demand`
+
+Updates vendor PO (`placed_quantity`), warehouse picks (`stock_picks` → `delivered_quantity`), or both.
+
+- `placed_quantity` = vendor PO qty (Demand desk). May be 0.
+- `delivered_quantity` / picks = warehouse allocation (Fulfill desk). Capped at confirmed need (`get_procurement_demand_open_qty.open_qty`), **not** placed qty.
+
+### 5.2 `create_invoice_from_preorder_demand_document`
+
+Builds proforma (`issue: false`) from stock picks only. Requires at least one pick. Catalog orders pass `shop_order_id` on the payload so `sales_invoices.shop_order_id` links both ways.
+
+### 5.3 `list_procurement_demand_groups`
+
+`remaining_to_deliver` = `greatest(quantity - delivered_quantity, 0)`.
+
+---
+
+## 6. Stock Movement RPC: `create_and_post_stock_movement`
 
 ```sql
 create or replace function public.create_and_post_stock_movement(

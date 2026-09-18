@@ -1,9 +1,9 @@
 import type { WorkspaceLink } from 'src/components/WorkspaceShell.vue';
 import { buildModuleRoutePath, MODULE_REGISTRY, type ModuleKey } from './moduleRegistry';
 
-export const SHOP_ORDER_PRIMARY_KEYS = ['orders', 'dropship_management', 'shops'] as const;
+export const SHOP_ORDER_PRIMARY_KEYS = ['orders', 'dropship_management', 'shops', 'product_based_costing'] as const;
 
-export const PROCUREMENT_PRIMARY_KEYS = ['demand', 'shipment', 'warehouse'] as const;
+export const PROCUREMENT_PRIMARY_KEYS = ['demand', 'fulfill', 'shipment', 'warehouse'] as const;
 
 export const SHOP_ORDER_HUB_MODULE_KEYS: readonly ModuleKey[] = [
   'shop_config',
@@ -12,11 +12,11 @@ export const SHOP_ORDER_HUB_MODULE_KEYS: readonly ModuleKey[] = [
   'shop_pricing',
   'shop_order_mgmt',
   'shop_shipping',
+  'product_based_costing',
 ];
 
 export const PROCUREMENT_HUB_MODULE_KEYS: readonly ModuleKey[] = [
   'procurement_demand',
-  'product_based_costing',
   'procurement_fulfill',
   'global_shipment',
   'global_stock',
@@ -89,6 +89,14 @@ const SHOP_ORDER_HUB = {
       icon: 'ph ph-storefront',
       routeSegment: 'shop/shops/list',
     },
+    {
+      navWeight: 23,
+      moduleKey: 'product_based_costing' as ModuleKey,
+      title: 'Product Based Costing',
+      caption: 'Manage product based costing files',
+      icon: 'ph ph-receipt',
+      routeSegment: 'product-based-costing',
+    },
   ] satisfies HubPrimaryLinkDef[],
   moreLink: {
     navWeight: 24,
@@ -97,7 +105,12 @@ const SHOP_ORDER_HUB = {
     icon: 'ph ph-dots-three-outline',
     routeSegment: 'shop',
     hubModuleKeys: SHOP_ORDER_HUB_MODULE_KEYS,
-    primaryRouteSegments: ['shop/orders', 'shop/dropship-management', 'shop/shops/list'],
+    primaryRouteSegments: [
+      'shop/orders',
+      'shop/dropship-management',
+      'shop/shops/list',
+      'product-based-costing',
+    ],
   } satisfies HubMoreLinkDef,
 };
 
@@ -110,14 +123,6 @@ const PROCUREMENT_STOCK_HUB = {
       caption: 'Items to source from shop orders and costing files',
       icon: 'ph ph-list-checks',
       routeSegment: 'procurement/demand',
-    },
-    {
-      navWeight: 30.2,
-      moduleKey: 'product_based_costing' as ModuleKey,
-      title: 'Product Based Costing',
-      caption: 'Manage product based costing files',
-      icon: 'ph ph-receipt',
-      routeSegment: 'product-based-costing',
     },
     {
       navWeight: 30.5,
@@ -153,7 +158,6 @@ const PROCUREMENT_STOCK_HUB = {
     hubModuleKeys: PROCUREMENT_HUB_MODULE_KEYS,
     primaryRouteSegments: [
       'procurement/demand',
-      'product-based-costing',
       'procurement/fulfill',
       'procurement/shipment/list',
       'procurement/stock',

@@ -22,3 +22,5 @@ Mapping of all UI views, buttons, dialog triggers, and user actions to correspon
 | **`StockMoveLocationDialog`** | Submit Location Transfer | `useStockMovementMutation` | `RPC: create_and_post_stock_movement` | Updates physical location; invalidates stock & movement lists |
 | **`StockMoveGradeDialog`** | Submit Grade Transition | `useStockMovementMutation` | `RPC: create_and_post_stock_movement` | Updates `availability`; invalidates stock & movement lists |
 | **`StockLocationsPage`** | Create / Edit Tree Location | `useLocationMutation` | `Table: stock_locations` (leaf/nesting validation) | Invalidates `stockLocations` key |
+| **`ProcurementDemandPage`** | Save vendor PO qty | `useUpsertPreorderDemandMutation` | `RPC: upsert_preorder_demand` (`p_placed_quantity`) | Invalidates `demandGroups` |
+| **`ProcurementFulfillPage`** | Pick stock / Mark ready | `useUpsertPreorderDemandMutation`, `useMarkDemandGroupReadyMutation` | `RPC: upsert_preorder_demand` (`p_stock_picks`); mark ready → `staff_set_catalog_ordered_qty` or `staff_mark_pbc_ready_for_shipment` → `create_invoice_from_preorder_demand_document` | Invalidates `demandGroups`; proforma from picks only |

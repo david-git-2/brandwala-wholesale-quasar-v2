@@ -8444,6 +8444,7 @@ begin
   update public.sales_invoices
   set
     invoice_status = 'proforma_generated'::public.global_invoice_status,
+    shop_order_id = case when v_doc_type = 'shop_order' then p_document_id else shop_order_id end,
     updated_at = now()
   where id = v_invoice_id
     and invoice_status = 'draft'::public.global_invoice_status;
@@ -28480,7 +28481,7 @@ begin
           'placed_quantity', el.placed_quantity,
           'delivered_quantity', el.delivered_quantity,
           'remaining_quantity', el.quantity - el.placed_quantity,
-          'remaining_to_deliver', greatest(el.placed_quantity - el.delivered_quantity, 0),
+          'remaining_to_deliver', greatest(el.quantity - el.delivered_quantity, 0),
           'stock_picks', el.stock_picks
         )
         order by el.source_id
@@ -41151,11 +41152,9 @@ CREATE OR REPLACE FUNCTION "public"."staff_set_catalog_ordered_qty"("p_order_id"
 declare
   v_order record;
   v_desk_tenant_id bigint;
-  v_elem jsonb;
-  v_item_id bigint;
-  v_ordered_qty integer;
   v_item_row record;
   v_target_qty integer;
+  v_allocated integer;
   v_shortfall integer;
   v_product record;
   v_invoice_result jsonb;
@@ -41185,17 +41184,22 @@ begin
     p_order_id
   );
 
-  for v_elem in select * from jsonb_array_elements(p_items) loop
-    v_item_id := (v_elem->>'id')::bigint;
-    v_ordered_qty := (v_elem->>'ordered_quantity')::integer;
+  for v_item_row in
+    select oi.*
+    from public.shop_order_items oi
+    where oi.order_id = p_order_id
+  loop
+    v_target_qty := coalesce(v_item_row.confirmed_quantity, v_item_row.quantity, 0);
 
-    select * into v_item_row from public.shop_order_items where id = v_item_id and order_id = p_order_id;
+    select coalesce(pd.delivered_quantity, 0)
+    into v_allocated
+    from public.preorder_demand pd
+    where pd.source_type = 'shop_order_item'
+      and pd.source_id = v_item_row.id;
 
-    if v_item_row.id is not null then
-      v_target_qty := coalesce(v_item_row.confirmed_quantity, v_item_row.quantity, 0);
-      v_shortfall := v_target_qty - coalesce(v_ordered_qty, 0);
+    v_shortfall := greatest(v_target_qty - coalesce(v_allocated, 0), 0);
 
-      if v_shortfall > 0 and v_order.billing_profile_id is not null then
+    if v_shortfall > 0 and v_order.billing_profile_id is not null then
         select p.barcode, p.product_code
         into v_product
         from public.products p
@@ -41207,7 +41211,7 @@ begin
           p_billing_profile_id => v_order.billing_profile_id,
           p_product_id => v_item_row.product_id,
           p_source_type => 'shop_order_item',
-          p_source_id => v_item_id,
+          p_source_id => v_item_row.id,
           p_snapshot => jsonb_build_object(
             'name', coalesce(v_item_row.name, ''),
             'image_url', v_item_row.image_url,
@@ -41232,7 +41236,7 @@ begin
           v_order.billing_profile_id,
           v_item_row.product_id,
           p_order_id,
-          v_item_id,
+          v_item_row.id,
           v_shortfall,
           0,
           'open'
@@ -41242,7 +41246,6 @@ begin
           requested_quantity = customer_order_backlog_items.requested_quantity + excluded.requested_quantity,
           backlog_status = 'open',
           updated_at = now();
-      end if;
     end if;
   end loop;
 
@@ -46790,7 +46793,6 @@ CREATE TABLE IF NOT EXISTS "public"."preorder_demand" (
     "updated_by_user_id" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "preorder_demand_delivered_lte_placed_check" CHECK (("delivered_quantity" <= "placed_quantity")),
     CONSTRAINT "preorder_demand_delivered_quantity_check" CHECK (("delivered_quantity" >= 0)),
     CONSTRAINT "preorder_demand_placed_quantity_check" CHECK (("placed_quantity" >= 0)),
     CONSTRAINT "preorder_demand_stock_picks_is_array" CHECK (("jsonb_typeof"("stock_picks") = 'array'::"text"))
@@ -46808,6 +46810,7 @@ declare
   v_row public.preorder_demand;
   v_line_tenant_id bigint;
   v_doc_status text;
+  v_open_qty integer;
   v_delivered integer;
   v_placed integer;
 begin
@@ -46818,8 +46821,8 @@ begin
     raise exception 'source_id is required';
   end if;
 
-  select g.tenant_id, g.document_status
-  into v_line_tenant_id, v_doc_status
+  select g.tenant_id, g.open_qty, g.document_status
+  into v_line_tenant_id, v_open_qty, v_doc_status
   from public.get_procurement_demand_open_qty(p_source_type, p_source_id) g;
 
   if v_line_tenant_id is null then
@@ -46878,8 +46881,8 @@ begin
     v_placed := coalesce(p_placed_quantity, 0);
   end if;
 
-  if v_delivered is not null and v_delivered > v_placed then
-    raise exception 'delivered_quantity cannot exceed placed_quantity';
+  if v_delivered is not null and v_delivered > coalesce(v_open_qty, 0) then
+    raise exception 'delivered_quantity cannot exceed need quantity';
   end if;
 
   insert into public.preorder_demand (

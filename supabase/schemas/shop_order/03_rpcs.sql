@@ -9194,11 +9194,9 @@ as $$
 declare
   v_order record;
   v_desk_tenant_id bigint;
-  v_elem jsonb;
-  v_item_id bigint;
-  v_ordered_qty integer;
   v_item_row record;
   v_target_qty integer;
+  v_allocated integer;
   v_shortfall integer;
   v_product record;
   v_invoice_result jsonb;
@@ -9228,17 +9226,22 @@ begin
     p_order_id
   );
 
-  for v_elem in select * from jsonb_array_elements(p_items) loop
-    v_item_id := (v_elem->>'id')::bigint;
-    v_ordered_qty := (v_elem->>'ordered_quantity')::integer;
+  for v_item_row in
+    select oi.*
+    from public.shop_order_items oi
+    where oi.order_id = p_order_id
+  loop
+    v_target_qty := coalesce(v_item_row.confirmed_quantity, v_item_row.quantity, 0);
 
-    select * into v_item_row from public.shop_order_items where id = v_item_id and order_id = p_order_id;
+    select coalesce(pd.delivered_quantity, 0)
+    into v_allocated
+    from public.preorder_demand pd
+    where pd.source_type = 'shop_order_item'
+      and pd.source_id = v_item_row.id;
 
-    if v_item_row.id is not null then
-      v_target_qty := coalesce(v_item_row.confirmed_quantity, v_item_row.quantity, 0);
-      v_shortfall := v_target_qty - coalesce(v_ordered_qty, 0);
+    v_shortfall := greatest(v_target_qty - coalesce(v_allocated, 0), 0);
 
-      if v_shortfall > 0 and v_order.billing_profile_id is not null then
+    if v_shortfall > 0 and v_order.billing_profile_id is not null then
         select p.barcode, p.product_code
         into v_product
         from public.products p
@@ -9250,7 +9253,7 @@ begin
           p_billing_profile_id => v_order.billing_profile_id,
           p_product_id => v_item_row.product_id,
           p_source_type => 'shop_order_item',
-          p_source_id => v_item_id,
+          p_source_id => v_item_row.id,
           p_snapshot => jsonb_build_object(
             'name', coalesce(v_item_row.name, ''),
             'image_url', v_item_row.image_url,
@@ -9275,7 +9278,7 @@ begin
           v_order.billing_profile_id,
           v_item_row.product_id,
           p_order_id,
-          v_item_id,
+          v_item_row.id,
           v_shortfall,
           0,
           'open'
@@ -9285,7 +9288,6 @@ begin
           requested_quantity = customer_order_backlog_items.requested_quantity + excluded.requested_quantity,
           backlog_status = 'open',
           updated_at = now();
-      end if;
     end if;
   end loop;
 

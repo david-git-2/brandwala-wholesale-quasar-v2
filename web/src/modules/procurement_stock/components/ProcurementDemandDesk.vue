@@ -611,7 +611,7 @@ const openStockPickDialog = (group: ProcurementDemandGroup, item: ProcurementDem
     item,
     productId: item.product_id,
     productName: item.name,
-    needQuantity: getItemPlacedQuantity(item) || getItemRemainingQuantity(item) || item.quantity,
+    needQuantity: item.quantity,
     initialPicks: [...draft.stockPicks],
   };
   stockPickDialogOpen.value = true;
@@ -657,6 +657,14 @@ const groupStatusLabel = (group: ProcurementDemandGroup) => {
 const groupStatusColor = (status: string) => getCustomerOrderStatusColor(status);
 
 const lineStatusStyle = (item: ProcurementDemandItem) => {
+  const need = item.quantity;
+  const allocated = getItemDeliveredQuantity(item);
+  if (need > 0 && allocated >= need) {
+    return { boxShadow: 'inset 3px 0 0 #22c55e' };
+  }
+  if (allocated > 0) {
+    return { boxShadow: 'inset 3px 0 0 #f59e0b' };
+  }
   const left = getItemRemainingQuantity(item);
   const placed = getItemPlacedQuantity(item);
   if (left <= 0 && placed > 0) {
@@ -677,11 +685,7 @@ const getItemAllocatedQuantity = (
   return getItemDeliveredQuantity(item);
 };
 
-const getItemAllocationTarget = (item: ProcurementDemandItem): number => {
-  const placed = getItemPlacedQuantity(item);
-  if (placed > 0) return placed;
-  return item.quantity;
-};
+const getItemAllocationTarget = (item: ProcurementDemandItem): number => item.quantity;
 
 type UnallocatedDemandItem = {
   item: ProcurementDemandItem;

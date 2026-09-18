@@ -145,16 +145,9 @@ const markDemandGroupReadyForShipment = async (
   group: ProcurementDemandGroup,
 ): Promise<MarkDemandGroupReadyResult> => {
   if (group.document_type === 'shop_order') {
-    const items = group.items
-      .filter((item) => item.source_type === 'shop_order_item')
-      .map((item) => ({
-        id: item.source_id,
-        ordered_quantity: item.placed_quantity ?? 0,
-      }));
-
     const response = await shopOrderRepository.staffSetCatalogOrderedQty(
       group.document_id,
-      items,
+      [],
     );
 
     return { invoiceId: response.order.global_invoice_id ?? null };
@@ -192,4 +185,4 @@ export const getItemRemainingQuantity = (item: ProcurementDemandItem): number =>
 
 export const getItemRemainingToDeliver = (item: ProcurementDemandItem): number =>
   item.remaining_to_deliver ??
-  Math.max(getItemPlacedQuantity(item) - getItemDeliveredQuantity(item), 0);
+  Math.max(getItemNeedQuantity(item) - getItemDeliveredQuantity(item), 0);

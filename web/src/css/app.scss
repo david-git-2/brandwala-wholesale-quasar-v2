@@ -350,8 +350,15 @@ html[lang='bn'] body {
 
 .bw-entity-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 1rem;
+}
+
+@media (max-width: 599px) {
+  .bw-entity-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
 }
 
 .bw-inline-actions {

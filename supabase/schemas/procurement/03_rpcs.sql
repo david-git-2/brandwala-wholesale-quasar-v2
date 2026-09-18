@@ -10777,6 +10777,7 @@ declare
   v_row public.preorder_demand;
   v_line_tenant_id bigint;
   v_doc_status text;
+  v_open_qty integer;
   v_delivered integer;
   v_placed integer;
 begin
@@ -10787,8 +10788,8 @@ begin
     raise exception 'source_id is required';
   end if;
 
-  select g.tenant_id, g.document_status
-  into v_line_tenant_id, v_doc_status
+  select g.tenant_id, g.open_qty, g.document_status
+  into v_line_tenant_id, v_open_qty, v_doc_status
   from public.get_procurement_demand_open_qty(p_source_type, p_source_id) g;
 
   if v_line_tenant_id is null then
@@ -10847,8 +10848,8 @@ begin
     v_placed := coalesce(p_placed_quantity, 0);
   end if;
 
-  if v_delivered is not null and v_delivered > v_placed then
-    raise exception 'delivered_quantity cannot exceed placed_quantity';
+  if v_delivered is not null and v_delivered > coalesce(v_open_qty, 0) then
+    raise exception 'delivered_quantity cannot exceed need quantity';
   end if;
 
   insert into public.preorder_demand (
@@ -11046,6 +11047,7 @@ begin
   update public.sales_invoices
   set
     invoice_status = 'proforma_generated'::public.global_invoice_status,
+    shop_order_id = case when v_doc_type = 'shop_order' then p_document_id else shop_order_id end,
     updated_at = now()
   where id = v_invoice_id
     and invoice_status = 'draft'::public.global_invoice_status;
@@ -11305,7 +11307,7 @@ begin
           'placed_quantity', el.placed_quantity,
           'delivered_quantity', el.delivered_quantity,
           'remaining_quantity', el.quantity - el.placed_quantity,
-          'remaining_to_deliver', greatest(el.placed_quantity - el.delivered_quantity, 0),
+          'remaining_to_deliver', greatest(el.quantity - el.delivered_quantity, 0),
           'stock_picks', el.stock_picks
         )
         order by el.source_id

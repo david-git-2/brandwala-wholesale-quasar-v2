@@ -78,7 +78,17 @@ Physical stock is owned strictly at the **Parent Tenant** level. Sister concerns
 - [ ] Stock items can only reside in leaf-level locations (`bin`).
 - [ ] Location transfers and condition grade transitions (`sellable`, `held`, `unsellable`) create immutable `stock_movements` audit logs.
 
-### US-4: Archive-First Shipment Governance
+### US-4: Pre-order Demand & Fulfill desks
+- **As a** Procurement Officer  
+- **I want to** log vendor PO qty on Demand when buying abroad, or skip straight to Fulfill when stock is already in the warehouse  
+- **So that** in-stock pre-orders can be picked and invoiced without a fake vendor placement.
+
+#### Acceptance Criteria
+- [ ] Demand **Place order** (`placed_quantity`) is optional per line.
+- [ ] Fulfill **Pick stock** may run with `placed_quantity = 0`; picks cap at confirmed customer need.
+- [ ] **Mark ready for shipment** creates a proforma from picks; backlog = confirmed − allocated picks.
+
+### US-5: Archive-First Shipment Governance
 - **As an** Operations Admin  
 - **I want to** archive completed, draft, or cancelled shipments without permanently deleting financial records  
 - **So that** active tables remain clutter-free while preserving auditability.

@@ -65,7 +65,7 @@ Once a quotation is confirmed by a customer group, the file transitions seamless
 
 #### Acceptance Criteria
 - [ ] Stays in `procuring` status through vendor PO, proforma, and inbound cargo arrival.
-- [ ] Delivers fulfilled quantities from warehouse stock and issues customer invoices at `ready_for_shipment`.
+- [ ] Delivers fulfilled quantities from warehouse stock and issues customer invoices at `ready_for_shipment`. Vendor PO on Demand is optional when stock is already on hand (same Fulfill pick path as catalog orders).
 
 ### US-3: Automated Demand Backlog Capture
 - **As a** Sourcing Lead  
