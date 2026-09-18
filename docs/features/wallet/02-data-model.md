@@ -36,7 +36,7 @@ Do not store `cod_collect_amount` as `amount`.
 
 Existing `invoice_payments`: receipt → invoice, `amount` ≤ due. Sum of allocations ≤ receipt `amount`. Updates invoice `paid_amount` / `due_amount` / `payment_status` only.
 
-Dropship: allocate **min(net remittance, merchant invoice due)**. Remainder → merchant (and courier fee already netted out of receipt, or a fee line on the receipt — not extra sales).
+Wholesale: allocate collect to the **buyer** bill. Dropship: allocate **min(net remittance, merchant invoice due)**. Remainder → merchant (courier fee already netted out of receipt, or a fee line — not extra sales).
 
 ---
 

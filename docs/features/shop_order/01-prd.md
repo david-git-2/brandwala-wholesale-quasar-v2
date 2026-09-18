@@ -21,10 +21,12 @@
 | | |
 | :--- | :--- |
 | Surfaces | `shop` storefront; `app` shop config + dropship desk |
-| In | Shops, carts, catalog/dropship orders, pricing, stock pick, reseller payout trigger |
-| Out | Warehouse receive, Koba carts, thrift POS, parent invoice engine (call it, don’t own it) |
+| In | Shops, carts, catalog/dropship orders, pricing, stock pick, **pickup locations** (warehouse sender address for courier), reseller payout trigger |
+| Out | Physical warehouse receive, Koba carts, thrift POS. **Wholesale invoice desk** (create/issue/collect). Parent invoice engine for dropship (call it, don’t own it). Reseller identity is billing profiles, not pickup locations. |
 
-See [scopes](../../architecture/scopes.md). Merchant bill + remittance numbers: [money-story](../sales_invoice/money-story.md).
+Dropship money path (target): pick → **one** ship+issue RPC → deliver (parcel only) → remittance **receipt**. Packing slip is not a `sales_invoices` row.
+
+Wholesale money path lives on the **invoice desk**, not this fulfillment desk. Catalog `fulfill_shop_order_to_invoice` is not dropship. Numbers: [money-story](../sales_invoice/money-story.md). Gaps: [00-gaps](00-gaps.md) SO10–SO11.
 
 ---
 
@@ -32,7 +34,7 @@ See [scopes](../../architecture/scopes.md). Merchant bill + remittance numbers: 
 
 The **Shop Order & Dropship** module powers B2B storefront commerce (`shop` scope), storefront catalog administration (`shop_config`), supplier preorder negotiation, demand aggregation, and the 5-stage Dropship fulfillment desk (`app` scope).
 
-It provides dual-invoice orchestration for dropship resellers (packing slips for end-recipients and B2B accounting invoices for merchants), automated courier dispatch integration, customer group price tiering, and reseller margin payouts.
+It orchestrates packing slips for end-recipients and a **merchant** B2B bill (`sales_invoices`, issued at ship), courier dispatch, customer group price tiering, and reseller payouts (from remittance remainder, not from deliver).
 
 ---
 
@@ -71,12 +73,14 @@ It provides dual-invoice orchestration for dropship resellers (packing slips for
 
 ### US-3: Dropship 5-Stage Fulfillment & Reseller Margin Settlement
 - **As a** Dropship Operator  
-- **I want to** pick stock at `processing`, issue customer packing slips and B2B accounting invoices at `ready_for_pickup`, and credit reseller margins upon courier COD delivery  
+- **I want to** pick stock at `processing`, print a packing slip and issue the merchant bill when the parcel ships, and settle reseller leftover when the courier remits  
 - **So that** dropship operations are fully automated and financially auditable.
 
 #### Acceptance Criteria
-- [ ] Picking stock occurs at `processing` stage via `assign_dropship_order_stock_pick`.
-- [ ] Reseller margin spread ($\text{End-Customer Sell Price} - \text{Wholesale Base} - \text{Courier Charge}$) is credited to merchant wallet via `transfer_dropship_reseller_profit`.
+- [ ] Picking at `processing` writes `shop_order_item_stock_picks` (held lots). Live: `add_shop_order_item_stock_pick`.
+- [ ] **Mark as shipped** is one RPC `ship_dropship_order_and_issue_merchant_bill` (bill from picks, then `shipped`). No ship without `billing_profile_id` and a linked issued bill.
+- [ ] Deliver does not issue a bill and does not post cash.
+- [ ] Reseller leftover is the remittance remainder (wallet), not a required extra profit click after deliver.
 
 ---
 

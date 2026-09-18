@@ -331,12 +331,22 @@ begin
     return jsonb_build_object('success', true, 'message', 'Status unchanged', 'new_status', p_target_status);
   end if;
 
+  if p_target_status in ('shipped'::public.shop_order_status, 'delivered'::public.shop_order_status) then
+    return jsonb_build_object(
+      'success', false,
+      'error', format(
+        'Use ship_dropship_order_and_issue_merchant_bill or mark_dropship_order_delivered instead of advance to %s',
+        p_target_status
+      )
+    );
+  end if;
+
   if v_current_status in ('submitted', 'draft', 'placed', 'confirmed')
      and p_target_status in ('processing', 'cancelled') then
     v_is_valid := true;
   elsif v_current_status in ('processing', 'ready_for_pickup', 'shipped', 'delivered', 'returned', 'payment_received') then
     if p_target_status in (
-      'processing', 'ready_for_pickup', 'shipped', 'delivered', 'returned', 'payment_received', 'cancelled'
+      'processing', 'ready_for_pickup', 'returned', 'payment_received', 'cancelled'
     ) then
       v_is_valid := true;
     end if;
@@ -353,10 +363,19 @@ begin
     );
   end if;
 
+  if p_target_status = 'processing' and v_order.global_invoice_id is not null then
+    select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id;
+    if v_invoice.payment_status in ('paid', 'partially_paid') then
+      return jsonb_build_object(
+        'success', false,
+        'error', 'Cannot rollback: merchant bill has payments allocated'
+      );
+    end if;
+  end if;
+
   update public.shop_orders
   set
     status = p_target_status,
-    delivered_at = case when p_target_status = 'delivered' then now() else delivered_at end,
     courier_remittance_ref = coalesce(p_remittance_ref, courier_remittance_ref),
     courier_bank_trx_id = coalesce(p_bank_trx_id, courier_bank_trx_id),
     updated_at = now()
@@ -491,10 +510,17 @@ begin
     raise exception 'access denied';
   end if;
 
-  select * into v_order from public.shop_orders
-  where id = p_order_id and tenant_id = p_tenant_id for update;
+  select * into v_order
+  from public.shop_orders
+  where id = p_order_id
+  for update;
 
   if not found then
+    raise exception 'order not found';
+  end if;
+
+  if v_order.tenant_id is distinct from p_tenant_id
+     and v_order.parent_tenant_id is distinct from p_tenant_id then
     raise exception 'order not found';
   end if;
 
@@ -551,7 +577,7 @@ begin
     );
   end if;
 
-  v_parent_tenant_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
 
   if exists (
     select 1
@@ -575,7 +601,7 @@ begin
 
   perform public.record_ledger_transaction(
     p_parent_tenant_id => v_parent_tenant_id,
-    p_operating_tenant_id => p_tenant_id,
+    p_operating_tenant_id => v_order.tenant_id,
     p_entity_type => 'customer',
     p_entity_id => v_billing_profile_id,
     p_type => 'credit',
@@ -3286,75 +3312,144 @@ CREATE OR REPLACE FUNCTION "public"."fulfill_shop_order_to_invoice"("p_order_id"
     AS $$
 declare
   v_order public.shop_orders;
+  v_invoice_type public.global_invoice_type;
   v_retail_billing_mode public.retail_billing_mode;
+  v_invoice_no text;
+  v_item record;
+  v_items jsonb := '[]'::jsonb;
+  v_payload jsonb;
+  v_result jsonb;
+  v_invoice_id bigint;
+begin
+  select * into v_order from public.shop_orders where id = p_order_id;
+
   if v_order.id is null then
     raise exception 'order not found';
+  end if;
+
   if not public.is_tenant_staff(v_order.tenant_id) then
     raise exception 'access denied';
+  end if;
+
+  if v_order.status = 'fulfilled' and v_order.global_invoice_id is not null then
+    return;
+  end if;
+
   if v_order.status <> 'confirmed' then
     raise exception 'only confirmed orders can be fulfilled to an invoice';
+  end if;
+
   if v_order.shop_type_snapshot = 'vendor_catalog' then
     raise exception 'vendor catalog orders cannot be fulfilled to an invoice directly';
+  end if;
+
   if v_order.shop_type_snapshot = 'dropship' then
-    v_invoice_type := 'dropship'::public.global_invoice_type;
+    raise exception 'dropship orders must use ship_dropship_order_and_issue_merchant_bill';
+  end if;
+
+  if exists (
+    select 1
+    from public.sales_invoices si
+    where si.shop_order_id = p_order_id
+  ) then
+    raise exception 'order already has a linked sales invoice';
+  end if;
+
+  if v_order.order_mode_snapshot = 'checkout_wholesale' then
+    v_invoice_type := 'wholesale'::public.global_invoice_type;
     v_retail_billing_mode := null;
+    if v_order.billing_profile_id is null then
+      raise exception 'billing profile is required for wholesale shop orders';
+    end if;
   else
-    if v_order.order_mode_snapshot = 'checkout_wholesale' then
-      v_invoice_type := 'wholesale'::public.global_invoice_type;
-      v_retail_billing_mode := null;
+    v_invoice_type := 'retail'::public.global_invoice_type;
+    if v_order.billing_profile_id is not null then
+      v_retail_billing_mode := 'account'::public.retail_billing_mode;
     else
-      v_invoice_type := 'retail'::public.global_invoice_type;
-      if v_order.billing_profile_id is not null then
-        v_retail_billing_mode := 'account'::public.retail_billing_mode;
-      else
-        v_retail_billing_mode := 'direct'::public.retail_billing_mode;
-      v_invoice_no := 'INV-SO-' || v_order.order_no;
+      v_retail_billing_mode := 'direct'::public.retail_billing_mode;
+    end if;
+  end if;
 
-  select * into v_invoice from public.create_global_invoice(
-    p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
-      p_operating_tenant_id => v_order.tenant_id,
-    p_invoice_no => v_invoice_no,
-    p_invoice_type => v_invoice_type,
-    p_billing_profile_id => v_order.billing_profile_id,
-    p_recipient_profile_id => null,
-    p_recipient_name => v_order.recipient_name,
-    p_recipient_phone => v_order.recipient_phone,
-    p_recipient_address => v_order.shipping_address,
-    p_retail_billing_mode => v_retail_billing_mode,
-    p_due_date => null,
-    p_note => coalesce(v_order.delivery_instructions, 'Fulfillment of Shop Order: ' || v_order.order_no)
-  );
+  v_invoice_no := 'INV-SO-' || v_order.order_no;
 
-  update public.global_invoices
-  set
-    shipping_charge = coalesce(v_order.delivery_charge_amount, 0),
-    cod_charge = coalesce(v_order.cod_charge_amount, 0),
-    print_charge = coalesce(v_order.print_charge_amount, 0),
-    wrapping_charge = coalesce(v_order.packing_charge_amount, 0),
-    discount_amount = coalesce(v_order.discount_amount, 0),
-    collection_source = case when v_order.is_prepaid_snapshot then 'billing_profile'::public.collection_source_type else 'recipient'::public.collection_source_type end
-  where id = v_invoice.id;
-
-  for v_item in select * from public.shop_order_items where order_id = p_order_id loop
+  for v_item in
+    select *
+    from public.shop_order_items
+    where order_id = p_order_id
+      and coalesce(is_fulfillment_unavailable, false) = false
+      and quantity > 0
+  loop
     if v_item.global_stock_id is null then
       raise exception 'item % is missing global_stock_id association', v_item.name;
-    perform public.add_global_invoice_item(
-      p_invoice_id => v_invoice.id,
-      p_global_stock_id => v_item.global_stock_id,
-      p_quantity => v_item.quantity::numeric,
-      p_sell_price_amount => coalesce(v_item.final_price_amount, v_item.unit_sell_price_amount, v_item.unit_list_price_amount),
-      p_recipient_price_amount => coalesce(v_item.customer_sell_price_amount, v_item.final_price_amount, v_item.unit_sell_price_amount, v_item.unit_list_price_amount),
-      p_line_discount_amount => 0.00
-    );
+    end if;
 
-    perform public.post_global_invoice(v_invoice.id);
+    v_items := v_items || jsonb_build_array(
+      jsonb_build_object(
+        'global_stock_id', v_item.global_stock_id,
+        'quantity', v_item.quantity::numeric,
+        'sell_price_amount', coalesce(
+          v_item.final_price_amount,
+          v_item.unit_sell_price_amount,
+          v_item.unit_list_price_amount
+        ),
+        'line_discount_amount', 0,
+        'line_meta', case
+          when v_item.customer_sell_price_amount is not null then
+            jsonb_build_object('resell_price_amount', v_item.customer_sell_price_amount)
+          else '{}'::jsonb
+        end
+      )
+    );
+  end loop;
+
+  if jsonb_array_length(v_items) = 0 then
+    raise exception 'order has no fulfillable line items';
+  end if;
+
+  v_payload := jsonb_build_object(
+    'invoice', jsonb_build_object(
+      'invoice_no', v_invoice_no,
+      'invoice_type', v_invoice_type,
+      'billing_profile_id', v_order.billing_profile_id,
+      'recipient_name', v_order.recipient_name,
+      'recipient_phone', v_order.recipient_phone,
+      'recipient_address', v_order.shipping_address,
+      'retail_billing_mode', v_retail_billing_mode,
+      'discount_amount', coalesce(v_order.discount_amount, 0),
+      'shipping_charge', coalesce(v_order.delivery_charge_amount, 0),
+      'print_charge', coalesce(v_order.print_charge_amount, 0),
+      'wrapping_charge', coalesce(v_order.packing_charge_amount, 0),
+      'note', coalesce(v_order.delivery_instructions, 'Fulfillment of Shop Order: ' || v_order.order_no)
+    ),
+    'items', v_items,
+    'issue', true
+  );
+
+  v_result := public.create_sales_invoice_from_payload(v_order.tenant_id, v_payload);
+
+  if coalesce(v_result->>'success', 'false') <> 'true' then
+    raise exception '%', coalesce(v_result->>'error', 'failed to fulfill shop order to invoice');
+  end if;
+
+  v_invoice_id := (v_result->>'invoice_id')::bigint;
+
+  update public.sales_invoices
+  set
+    shop_order_id = p_order_id,
+    collection_source = 'billing_profile'::public.collection_source_type,
+    updated_at = now()
+  where id = v_invoice_id;
 
   update public.shop_orders
-  set status = 'fulfilled',
-      global_invoice_id = v_invoice.id,
-      fulfilled_at = now(),
-      updated_at = now()
+  set
+    status = 'fulfilled',
+    global_invoice_id = v_invoice_id,
+    fulfilled_at = now(),
+    updated_at = now()
   where id = p_order_id;
+end;
+$$;
+
 ALTER FUNCTION "public"."fulfill_shop_order_to_invoice"("p_order_id" bigint) OWNER TO "postgres";
 
 
@@ -4017,6 +4112,8 @@ declare
   v_items_resell_total numeric := 0;
   v_recipient_charge_total numeric := 0;
   v_recipient_grand_total numeric := 0;
+  v_all_lines_resolved boolean := false;
+  v_total_delivered_qty numeric := 0;
 begin
   if p_tenant_id is null or p_order_id is null then
     raise exception 'tenant required';
@@ -4081,6 +4178,12 @@ begin
         'final_price_currency_id', soi.final_price_currency_id,
         'returned_quantity', coalesce(soi.returned_quantity, 0),
         'confirmed_quantity', soi.confirmed_quantity,
+        'is_fulfillment_unavailable', coalesce(soi.is_fulfillment_unavailable, false),
+        'unavailable_reason', soi.unavailable_reason,
+        'fulfillment_resolved', (
+          coalesce(soi.is_fulfillment_unavailable, false)
+          or coalesce(soi.confirmed_quantity, 0) > 0
+        ),
         'sku', p.product_code,
         'barcode', p.barcode,
         'brand', p.brand,
@@ -4119,6 +4222,19 @@ begin
 
   v_recipient_grand_total :=
     v_items_resell_total + v_recipient_charge_total - coalesce(v_order.discount_amount, 0);
+
+  select coalesce(bool_and(
+    coalesce(soi.is_fulfillment_unavailable, false)
+    or coalesce(soi.confirmed_quantity, 0) > 0
+  ), true)
+  into v_all_lines_resolved
+  from public.shop_order_items soi
+  where soi.order_id = v_order.id and soi.quantity > 0;
+
+  select coalesce(sum(coalesce(soi.confirmed_quantity, 0)), 0)
+  into v_total_delivered_qty
+  from public.shop_order_items soi
+  where soi.order_id = v_order.id;
 
   select coalesce(
     jsonb_agg(
@@ -4200,6 +4316,8 @@ begin
       'items_resell_total', v_items_resell_total,
       'recipient_charge_total', v_recipient_charge_total,
       'recipient_grand_total', v_recipient_grand_total,
+      'all_lines_resolved', v_all_lines_resolved,
+      'total_delivered_qty', v_total_delivered_qty,
       'delivery_zone_label',
         case v_order.delivery_zone
           when 'inside_dhaka' then 'Inside Dhaka'
@@ -8742,7 +8860,9 @@ begin
   end if;
 
   select * into v_order from public.shop_orders where id = p_order_id;
-  if not found or v_order.tenant_id is distinct from p_tenant_id then
+  if not found
+     or (v_order.tenant_id is distinct from p_tenant_id
+         and v_order.parent_tenant_id is distinct from p_tenant_id) then
     raise exception 'order not found';
   end if;
 
@@ -8816,7 +8936,9 @@ begin
   end if;
 
   select * into v_order from public.shop_orders where id = p_order_id;
-  if not found or v_order.tenant_id is distinct from p_tenant_id then
+  if not found
+     or (v_order.tenant_id is distinct from p_tenant_id
+         and v_order.parent_tenant_id is distinct from p_tenant_id) then
     raise exception 'order not found';
   end if;
 
@@ -8948,6 +9070,7 @@ set search_path = public
 as $$
 declare
   v_order record;
+  v_desk_tenant_id bigint;
   v_elem jsonb;
   v_item_id bigint;
   v_final_amount numeric;
@@ -8958,7 +9081,9 @@ begin
     raise exception 'Order not found: %', p_order_id;
   end if;
 
-  if not public.is_tenant_staff(v_order.tenant_id) then
+  v_desk_tenant_id := coalesce(v_order.parent_tenant_id, v_order.tenant_id);
+
+  if not public.is_tenant_staff(v_desk_tenant_id) then
     raise exception 'access denied';
   end if;
 
@@ -9001,7 +9126,7 @@ begin
     p_body := 'Check price and quantity, then confirm.'
   );
 
-  return public.get_shop_order_for_staff(v_order.tenant_id, p_order_id);
+  return public.get_shop_order_for_staff(v_desk_tenant_id, p_order_id);
 end;
 $$;
 
@@ -9020,13 +9145,16 @@ set search_path = public
 as $$
 declare
   v_order record;
+  v_desk_tenant_id bigint;
 begin
   select * into v_order from public.shop_orders where id = p_order_id;
   if not found then
     raise exception 'Order not found: %', p_order_id;
   end if;
 
-  if not public.is_tenant_staff(v_order.tenant_id) then
+  v_desk_tenant_id := coalesce(v_order.parent_tenant_id, v_order.tenant_id);
+
+  if not public.is_tenant_staff(v_desk_tenant_id) then
     raise exception 'access denied';
   end if;
 
@@ -9050,7 +9178,7 @@ begin
     updated_at = now()
   where id = p_order_id;
 
-  return public.get_shop_order_for_staff(v_order.tenant_id, p_order_id);
+  return public.get_shop_order_for_staff(v_desk_tenant_id, p_order_id);
 end;
 $$;
 
@@ -9065,6 +9193,7 @@ set search_path = public
 as $$
 declare
   v_order record;
+  v_desk_tenant_id bigint;
   v_elem jsonb;
   v_item_id bigint;
   v_ordered_qty integer;
@@ -9079,7 +9208,9 @@ begin
     raise exception 'Order not found: %', p_order_id;
   end if;
 
-  if not public.is_tenant_staff(v_order.tenant_id) then
+  v_desk_tenant_id := coalesce(v_order.parent_tenant_id, v_order.tenant_id);
+
+  if not public.is_tenant_staff(v_desk_tenant_id) then
     raise exception 'access denied';
   end if;
 
@@ -9092,7 +9223,7 @@ begin
   end if;
 
   v_invoice_result := public.create_invoice_from_preorder_demand_document(
-    v_order.tenant_id,
+    v_desk_tenant_id,
     'shop_order',
     p_order_id
   );
@@ -9174,7 +9305,7 @@ begin
     p_body := 'We will mark it on the way when it ships.'
   );
 
-  return public.get_shop_order_for_staff(v_order.tenant_id, p_order_id);
+  return public.get_shop_order_for_staff(v_desk_tenant_id, p_order_id);
 end;
 $$;
 
@@ -9189,13 +9320,16 @@ set search_path = public
 as $$
 declare
   v_order record;
+  v_desk_tenant_id bigint;
 begin
   select * into v_order from public.shop_orders where id = p_order_id;
   if not found then
     raise exception 'Order not found: %', p_order_id;
   end if;
 
-  if not public.is_tenant_staff(v_order.tenant_id) then
+  v_desk_tenant_id := coalesce(v_order.parent_tenant_id, v_order.tenant_id);
+
+  if not public.is_tenant_staff(v_desk_tenant_id) then
     raise exception 'access denied';
   end if;
 
@@ -9219,7 +9353,7 @@ begin
     p_body := 'Open the order for details.'
   );
 
-  return public.get_shop_order_for_staff(v_order.tenant_id, p_order_id);
+  return public.get_shop_order_for_staff(v_desk_tenant_id, p_order_id);
 end;
 $$;
 
@@ -11212,3 +11346,373 @@ END;
 $$;
 
 ALTER FUNCTION public.get_shop_order_dashboard_metrics(bigint) OWNER TO postgres;
+
+-- ---------------------------------------------------------------------------
+-- Dropship Stock Pick RPCs
+-- ---------------------------------------------------------------------------
+
+create or replace function public.list_stock_for_order_item_pick(
+  p_order_item_id bigint,
+  p_search text default null,
+  p_limit integer default 50,
+  p_offset integer default 0
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_item public.shop_order_items%rowtype;
+  v_order public.shop_orders%rowtype;
+  v_shop_id bigint;
+  v_shop_tenant_id bigint;
+  v_total_count bigint;
+  v_data jsonb;
+  v_limit integer;
+  v_offset integer;
+  v_grade_tag_id bigint;
+begin
+  select * into v_item from public.shop_order_items where id = p_order_item_id;
+  if v_item.id is null then
+    raise exception 'order item not found';
+  end if;
+
+  select * into v_order from public.shop_orders where id = v_item.order_id;
+  if v_order.id is null then
+    raise exception 'order not found';
+  end if;
+
+  if not public.is_tenant_staff(v_order.tenant_id) then
+    raise exception 'access denied';
+  end if;
+
+  if v_order.status <> 'processing'::public.shop_order_status then
+    raise exception 'stock pick is only allowed while order is processing';
+  end if;
+
+  if coalesce(v_item.is_fulfillment_unavailable, false) then
+    raise exception 'line is marked unavailable';
+  end if;
+
+  v_shop_id := v_order.shop_id;
+  v_shop_tenant_id := v_order.tenant_id;
+  v_grade_tag_id := coalesce(v_item.grade_tag_id, public.default_stock_grade_tag_id());
+  v_limit := greatest(1, least(coalesce(p_limit, 50), 200));
+  v_offset := greatest(0, coalesce(p_offset, 0));
+
+  select count(distinct gs.id)
+  into v_total_count
+  from public.global_stocks gs
+  join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+  join public.global_shipments gship on gship.id = gsi.shipment_id
+  left join public.stock_locations sl on sl.id = gs.location_id
+  left join public.tags tg on tg.id = gs.grade_tag_id
+  where gs.parent_tenant_id = public.resolve_parent_tenant_id(v_shop_tenant_id)
+    and gsi.product_id = v_item.product_id
+    and coalesce(gs.grade_tag_id, public.default_stock_grade_tag_id()) = v_grade_tag_id
+    and public.shop_shipment_alloc_visible_to_tenant(gship.assigned_child_tenant_id, v_shop_tenant_id)
+    and gship.status = 'received'
+    and gs.availability = 'sellable'::public.stock_availability
+    and (gs.location_id is null or sl.is_pickable = true)
+    and (
+      p_search is null or p_search = ''
+      or gsi.name ilike '%' || p_search || '%'
+      or gsi.product_code ilike '%' || p_search || '%'
+      or gsi.barcode ilike '%' || p_search || '%'
+      or gship.name ilike '%' || p_search || '%'
+      or tg.name ilike '%' || p_search || '%'
+    );
+
+  select coalesce(jsonb_agg(row_json order by sort_id desc), '[]'::jsonb)
+  into v_data
+  from (
+    select
+      gs.id as sort_id,
+      jsonb_build_object(
+        'global_stock_id', gs.id,
+        'shipment_item_id', gsi.id,
+        'shipment_id', gship.id,
+        'shipment_name', gship.name,
+        'item_name', gsi.name,
+        'product_id', gsi.product_id,
+        'product_code', gsi.product_code,
+        'barcode', gsi.barcode,
+        'available_atp', public.global_stock_atp_qty(gs.id),
+        'unit_cost_amount', coalesce(public.calculate_landed_unit_cost(gsi.id), 0.00),
+        'already_picked', coalesce((
+          select sp.quantity from public.shop_order_item_stock_picks sp
+          where sp.order_item_id = p_order_item_id and sp.global_stock_id = gs.id
+        ), 0),
+        'pick_id', (
+          select sp.id from public.shop_order_item_stock_picks sp
+          where sp.order_item_id = p_order_item_id and sp.global_stock_id = gs.id
+          limit 1
+        ),
+        'stock_grade', case
+          when tg.slug is not null then jsonb_build_object('slug', tg.slug, 'label', tg.name, 'color', tg.color)
+          else null
+        end
+      ) as row_json
+    from public.global_stocks gs
+    join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+    join public.global_shipments gship on gship.id = gsi.shipment_id
+    left join public.stock_locations sl on sl.id = gs.location_id
+    left join public.tags tg on tg.id = gs.grade_tag_id
+    where gs.parent_tenant_id = public.resolve_parent_tenant_id(v_shop_tenant_id)
+      and gsi.product_id = v_item.product_id
+      and coalesce(gs.grade_tag_id, public.default_stock_grade_tag_id()) = v_grade_tag_id
+      and public.shop_shipment_alloc_visible_to_tenant(gship.assigned_child_tenant_id, v_shop_tenant_id)
+      and gship.status = 'received'
+      and gs.availability = 'sellable'::public.stock_availability
+      and (gs.location_id is null or sl.is_pickable = true)
+      and (
+        p_search is null or p_search = ''
+        or gsi.name ilike '%' || p_search || '%'
+        or gsi.product_code ilike '%' || p_search || '%'
+        or gsi.barcode ilike '%' || p_search || '%'
+        or gship.name ilike '%' || p_search || '%'
+        or tg.name ilike '%' || p_search || '%'
+      )
+    order by gs.id desc
+    limit v_limit offset v_offset
+  ) q;
+
+  return jsonb_build_object(
+    'data', v_data,
+    'meta', jsonb_build_object(
+      'total', v_total_count,
+      'page', (v_offset / v_limit) + 1,
+      'page_size', v_limit,
+      'total_pages', greatest(1, ceil(v_total_count::numeric / v_limit::numeric)),
+      'already_picked_total', coalesce((
+        select sum(sp.quantity) from public.shop_order_item_stock_picks sp
+        where sp.order_item_id = p_order_item_id
+      ), 0),
+      'ordered_quantity', v_item.quantity,
+      'remaining_to_pick', greatest(
+        v_item.quantity - coalesce((
+          select sum(sp.quantity) from public.shop_order_item_stock_picks sp
+          where sp.order_item_id = p_order_item_id
+        ), 0),
+        0
+      ),
+      'active_picks', coalesce((
+        select jsonb_agg(
+          jsonb_build_object(
+            'id', sp.id,
+            'global_stock_id', sp.global_stock_id,
+            'shipment_id', sp.shipment_id,
+            'shipment_name', gship.name,
+            'item_name', gsi.name,
+            'product_code', gsi.product_code,
+            'barcode', gsi.barcode,
+            'quantity', sp.quantity,
+            'unit_cost_amount', coalesce(public.calculate_landed_unit_cost(gsi.id), 0.00),
+            'created_at', sp.created_at
+          )
+          order by sp.id asc
+        )
+        from public.shop_order_item_stock_picks sp
+        join public.global_shipments gship on gship.id = sp.shipment_id
+        join public.global_shipment_items gsi on gsi.id = sp.shipment_item_id
+        where sp.order_item_id = p_order_item_id
+      ), '[]'::jsonb)
+    )
+  );
+end;
+$$;
+
+create or replace function public.add_shop_order_item_stock_pick(
+  p_order_item_id bigint,
+  p_global_stock_id bigint,
+  p_quantity integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_item public.shop_order_items%rowtype;
+  v_order public.shop_orders%rowtype;
+  v_stock public.global_stocks%rowtype;
+  v_held_stock_id bigint;
+  v_parent_tenant_id bigint;
+  v_existing_qty integer := 0;
+  v_total_picked integer := 0;
+  v_pick_id bigint;
+  v_grade_tag_id bigint;
+begin
+  if p_quantity is null or p_quantity <= 0 then
+    raise exception 'quantity must be positive';
+  end if;
+
+  select * into v_item from public.shop_order_items where id = p_order_item_id for update;
+  if v_item.id is null then
+    raise exception 'order item not found';
+  end if;
+
+  select * into v_order from public.shop_orders where id = v_item.order_id for update;
+  if not public.is_tenant_staff(v_order.tenant_id) then
+    raise exception 'access denied';
+  end if;
+
+  if v_order.status <> 'processing'::public.shop_order_status then
+    raise exception 'stock pick is only allowed while order is processing';
+  end if;
+
+  if coalesce(v_item.is_fulfillment_unavailable, false) then
+    raise exception 'line is marked unavailable';
+  end if;
+
+  v_grade_tag_id := coalesce(v_item.grade_tag_id, public.default_stock_grade_tag_id());
+
+  select * into v_stock
+  from public.global_stocks gs
+  join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+  where gs.id = p_global_stock_id
+    and gsi.product_id = v_item.product_id
+    and coalesce(gs.grade_tag_id, public.default_stock_grade_tag_id()) = v_grade_tag_id
+  for update of gs;
+
+  if v_stock.id is null then
+    raise exception 'stock not found or does not match line product/grade';
+  end if;
+
+  if v_stock.availability <> 'sellable'::public.stock_availability then
+    raise exception 'stock is not sellable';
+  end if;
+
+  if public.global_stock_atp_qty(v_stock.id) < p_quantity then
+    raise exception 'insufficient ATP (requested %, available %)', p_quantity, public.global_stock_atp_qty(v_stock.id);
+  end if;
+
+  select coalesce(sum(sp.quantity), 0)
+  into v_total_picked
+  from public.shop_order_item_stock_picks sp
+  where sp.order_item_id = p_order_item_id;
+
+  select coalesce(sp.quantity, 0)
+  into v_existing_qty
+  from public.shop_order_item_stock_picks sp
+  where sp.order_item_id = p_order_item_id
+    and sp.global_stock_id = p_global_stock_id;
+
+  if v_total_picked - v_existing_qty + p_quantity > v_item.quantity then
+    raise exception 'pick quantity exceeds ordered qty (ordered %, would pick %)',
+      v_item.quantity, v_total_picked - v_existing_qty + p_quantity;
+  end if;
+
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
+
+  perform public.create_and_post_stock_movement(
+    p_tenant_id => v_parent_tenant_id,
+    p_stock_id => v_stock.id,
+    p_quantity => p_quantity,
+    p_to_location_id => v_stock.location_id,
+    p_to_availability => 'held'::public.stock_availability,
+    p_to_grade_tag_id => v_stock.grade_tag_id,
+    p_movement_type => 'availability_transfer'::public.stock_movement_type,
+    p_notes => 'Dropship processing pick',
+    p_reference_type => 'shop_order',
+    p_reference_id => v_order.id::text
+  );
+
+  select gs.id into v_held_stock_id
+  from public.global_stocks gs
+  where gs.shipment_item_id = v_stock.shipment_item_id
+    and gs.parent_tenant_id = v_parent_tenant_id
+    and gs.availability = 'held'::public.stock_availability
+    and gs.location_id is not distinct from v_stock.location_id
+    and coalesce(gs.grade_tag_id, public.default_stock_grade_tag_id())
+      = coalesce(v_stock.grade_tag_id, public.default_stock_grade_tag_id())
+  order by gs.id desc
+  limit 1;
+
+  insert into public.shop_order_item_stock_picks (
+    tenant_id, order_id, order_item_id, global_stock_id,
+    shipment_item_id, shipment_id, quantity, held_stock_id, created_by_email
+  )
+  values (
+    v_order.tenant_id, v_order.id, v_item.id, v_stock.id,
+    v_stock.shipment_item_id,
+    (select shipment_id from public.global_shipment_items where id = v_stock.shipment_item_id),
+    p_quantity, v_held_stock_id, public.current_user_email()
+  )
+  on conflict (order_item_id, global_stock_id) do update
+  set
+    quantity = public.shop_order_item_stock_picks.quantity + excluded.quantity,
+    held_stock_id = excluded.held_stock_id,
+    updated_at = now()
+  returning id into v_pick_id;
+
+  perform public._recompute_shop_order_item_fulfillment(p_order_item_id);
+  perform public.recompute_dropship_cod_collect_amount(v_order.id);
+
+  return jsonb_build_object(
+    'success', true,
+    'pick_id', v_pick_id,
+    'confirmed_quantity', (select confirmed_quantity from public.shop_order_items where id = p_order_item_id),
+    'cod_collect_amount', (select cod_collect_amount from public.shop_orders where id = v_order.id)
+  );
+end;
+$$;
+
+create or replace function public.remove_shop_order_item_stock_pick(p_pick_id bigint)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_pick public.shop_order_item_stock_picks%rowtype;
+  v_order public.shop_orders%rowtype;
+  v_stock public.global_stocks%rowtype;
+  v_parent_tenant_id bigint;
+begin
+  select * into v_pick from public.shop_order_item_stock_picks where id = p_pick_id for update;
+  if v_pick.id is null then
+    raise exception 'pick not found';
+  end if;
+
+  select * into v_order from public.shop_orders where id = v_pick.order_id for update;
+  if not public.is_tenant_staff(v_order.tenant_id) then
+    raise exception 'access denied';
+  end if;
+
+  if v_order.status <> 'processing'::public.shop_order_status then
+    raise exception 'pick removal is only allowed while order is processing';
+  end if;
+
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
+
+  if v_pick.held_stock_id is not null then
+    select * into v_stock from public.global_stocks where id = v_pick.held_stock_id for update;
+    if found
+       and v_stock.availability = 'held'::public.stock_availability
+       and v_stock.quantity >= v_pick.quantity then
+      perform public.create_and_post_stock_movement(
+        p_tenant_id => v_parent_tenant_id,
+        p_stock_id => v_stock.id,
+        p_quantity => v_pick.quantity,
+        p_to_location_id => v_stock.location_id,
+        p_to_availability => 'sellable'::public.stock_availability,
+        p_to_grade_tag_id => v_stock.grade_tag_id,
+        p_movement_type => 'availability_transfer'::public.stock_movement_type,
+        p_notes => 'Undo dropship processing pick',
+        p_reference_type => 'shop_order',
+        p_reference_id => v_order.id::text
+      );
+    end if;
+  end if;
+
+  delete from public.shop_order_item_stock_picks where id = p_pick_id;
+
+  perform public._recompute_shop_order_item_fulfillment(v_pick.order_item_id);
+  perform public.recompute_dropship_cod_collect_amount(v_order.id);
+
+  return jsonb_build_object('success', true);
+end;
+$$;

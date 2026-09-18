@@ -19,7 +19,12 @@ erDiagram
     SHOP_ORDER_ITEMS ||--o{ GLOBAL_STOCKS : allocates_picked_stock
     SHOP_ORDERS ||--o{ SALES_INVOICES : links_b2b_accounting
     COURIER_SERVICES ||--o{ SHOP_ORDERS : delivers_via
+    TENANTS ||--o{ PICKUP_LOCATIONS : warehouse_sender
 ```
+
+`pickup_locations` (live SQL: `public.sql`): warehouse / courier **pickup** points (`location_name`, phone, `pickup_address`). Not the reseller. Order snapshot: `shop_orders.sender_name`, `pickup_phone`, `pickup_address`. Reseller money: billing profiles.
+
+Merchant bill stock: `shop_order_item_stock_picks.held_stock_id` + pick `quantity`. Not `shop_order_items.global_stock_id`. One `sales_invoices` row per order (`shop_order_id`); order also stores `global_invoice_id`.
 
 ---
 

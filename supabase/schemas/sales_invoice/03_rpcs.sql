@@ -1163,6 +1163,17 @@ ALTER FUNCTION "public"."ensure_dropship_invoice_billed_entry"("p_invoice_id" bi
 
 
 
+CREATE OR REPLACE FUNCTION "public"."build_dropship_tenant_b2b_invoice_payload"("p_order_id" bigint, "p_invoice_id" bigint DEFAULT NULL::bigint, "p_invoice_no" "text" DEFAULT NULL::"text", "p_billing_profile_id" bigint DEFAULT NULL::bigint, "p_note" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+-- Live body: supabase/migrations/20270918240000_dropship_order_bill_pay_flow.sql
+$$;
+
+ALTER FUNCTION "public"."build_dropship_tenant_b2b_invoice_payload"("p_order_id" bigint, "p_invoice_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_note" "text") OWNER TO "postgres";
+
+
+
 CREATE OR REPLACE FUNCTION "public"."sync_dropship_tenant_b2b_invoice_from_order"("p_order_id" bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -1317,11 +1328,16 @@ begin
 
   select * into v_order
   from public.shop_orders
-  where id = p_order_id and tenant_id = p_tenant_id
+  where id = p_order_id
   for update;
 
   if not found then
     return jsonb_build_object('success', false, 'error', 'order not found');
+  end if;
+
+  if v_order.tenant_id is distinct from p_tenant_id
+     and v_order.parent_tenant_id is distinct from p_tenant_id then
+    return jsonb_build_object('success', false, 'error', 'tenant mismatch');
   end if;
 
   if v_order.shop_type_snapshot <> 'dropship' then
@@ -1408,7 +1424,7 @@ begin
     delete from public.sales_invoices where id = v_orphan_invoice_id;
   end if;
 
-  v_result := public.create_sales_invoice_from_payload(p_tenant_id, v_payload);
+  v_result := public.create_sales_invoice_from_payload(v_order.tenant_id, v_payload);
   v_created := true;
 
   if coalesce(v_result->>'success', 'false') <> 'true' then
@@ -1446,7 +1462,7 @@ begin
 
   v_courier_cod_booked := exists (
     select 1 from public.universal_wallet_ledger
-    where tenant_id = p_tenant_id
+    where tenant_id = v_order.tenant_id
       and entity_type = 'courier'
       and source_type = 'shop_order'
       and source_id = p_order_id::text

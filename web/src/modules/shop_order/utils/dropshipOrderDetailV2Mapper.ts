@@ -179,7 +179,7 @@ export function mapDropshipOrderDetailV2Response(raw: unknown): DropshipOrderDet
     },
     fulfillment: {
       pickup: {
-        merchant_id: (pickupRaw.merchant_id as string | null) ?? null,
+        pickup_location_id: (pickupRaw.pickup_location_id as string | null) ?? (pickupRaw.merchant_id as string | null) ?? null,
         sender_name: String(pickupRaw.sender_name ?? ''),
         pickup_phone: String(pickupRaw.pickup_phone ?? ''),
         pickup_address: String(pickupRaw.pickup_address ?? ''),

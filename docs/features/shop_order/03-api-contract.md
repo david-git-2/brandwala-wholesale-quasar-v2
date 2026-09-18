@@ -42,28 +42,27 @@ language plpgsql security definer;
 
 ## 2. Dropship Fulfillment & Stock Pick RPCs
 
-### 2.1 Stock Assignment at Processing: `assign_dropship_order_stock_pick`
-```sql
-create or replace function public.assign_dropship_order_stock_pick(
-  p_order_id uuid,
-  p_picked_lines jsonb -- [{ "order_item_id": "...", "global_stock_id": "...", "picked_qty": 2 }]
-)
-returns jsonb
-language plpgsql security definer;
-```
+### 2.1 Stock pick at processing: `add_shop_order_item_stock_pick`
 
-### 2.2 Ready for Pickup & B2B Accounting Invoice Issue
-Calls `create_sales_invoice_from_payload` with `options.issue = true` and links `shop_orders.global_invoice_id`.
+Moves sellable qty to **held**. Writes `shop_order_item_stock_picks` (`global_stock_id` = source lot, `held_stock_id` = held lot, `quantity`). Do not bind held lots on `shop_order_items.global_stock_id` for the merchant bill.
 
-### 2.3 Reseller Margin Credit: `transfer_dropship_reseller_profit`
-```sql
-create or replace function public.transfer_dropship_reseller_profit(
-  p_order_id uuid
-)
-returns jsonb
-language plpgsql security definer;
-```
-*(Credits profit spread to the merchant billing profile wallet upon delivery).*
+### 2.2 Ship + merchant bill: `ship_dropship_order_and_issue_merchant_bill` (target)
+
+One call. Status must be `ready_for_pickup`. Requires courier, pickup snapshot, every line picked or unavailable, `billing_profile_id`.
+
+Inner issue: `issue_dropship_tenant_b2b_invoice` → `create_sales_invoice_from_payload` (`issue: true`). **Lines from picks** (`held_stock_id`, pick qty); skip unavailable. `collection_source` = `billing_profile`. COD/resell in `channel_meta` / order. Links `shop_orders.global_invoice_id`. Then sets `shipped`. Failure keeps `ready_for_pickup`.
+
+Idempotent if already issued. Unique: one `sales_invoices.shop_order_id`. Dropship must not use `fulfill_shop_order_to_invoice`. Do not call `advance_dropship_order_status` → `shipped` from the UI.
+
+### 2.3 Deliver and remittance (not this module’s cash)
+
+`mark_dropship_order_delivered`: parcel only; require linked issued bill; no cash.
+
+Cash-in: [wallet 01](../wallet/01-prd.md). Remittance allocates to merchant `total_amount`; leftover → merchant wallet. `transfer_dropship_reseller_profit` is not the happy-path cash step.
+
+### 2.4 Catalog shop order → bill (not dropship)
+
+`fulfill_shop_order_to_invoice`: confirmed **catalog** orders only (`wholesale` / `retail`). Dropship must raise. Builds `create_sales_invoice_from_payload` with `issue: true`, `collection_source=billing_profile`, tenant sell from order lines (not customer/resell face), merchant-owed charges only. Links `shop_orders.global_invoice_id`. Wholesale desk create remains the main walk-in path.
 
 ---
 

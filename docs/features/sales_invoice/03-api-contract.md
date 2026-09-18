@@ -7,7 +7,14 @@
 
 ## 1. Unified Creation RPC: `create_sales_invoice_from_payload`
 
-Creates a **bill** (wholesale, retail, or dropship) with header, lines, and optional `issue`. `sell_price_amount` is **tenant sell** only (dropship = merchant price, not COD). Issue does not record payment. Channel extras (COD, resell) are not this payload’s totals — see `01-prd` / `02-data-model`. Live RPC bodies: `supabase/schemas/sales_invoice/03_rpcs.sql`.
+Creates a **bill** with header, lines, and optional `issue`. `sell_price_amount` is **tenant sell** only. Issue does not record payment. Live SQL: `supabase/schemas/sales_invoice/03_rpcs.sql`.
+
+| Who | Calls this RPC? |
+| :--- | :--- |
+| **Wholesale / retail desk** | Yes — `CreateWholesaleInvoicePage` Save / Save & Issue. Lines = FIFO sellable stock. `invoice_type=wholesale` (or retail). |
+| **Dropship desk** | **No.** Use `ship_dropship_order_and_issue_merchant_bill` → `issue_dropship_tenant_b2b_invoice` → this RPC internally. Lines = held picks. `invoice_type=dropship`. |
+
+COD/resell are never payload totals. [01-prd](01-prd.md) / [money-story](money-story.md).
 
 ### Input Payload Schema
 ```json

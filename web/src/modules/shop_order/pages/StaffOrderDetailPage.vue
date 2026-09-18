@@ -190,7 +190,6 @@ import {
   useStaffPriceCatalogOrderMutation,
   useStaffFinalizeCatalogPricesMutation,
   useStaffStartCatalogProcurementMutation,
-  useStaffSetCatalogOrderedQtyMutation,
   useStaffSetCatalogDeliveredQtyMutation,
 } from '../composables/useCatalogOrderMutations';
 import {
@@ -260,8 +259,6 @@ const { mutate: staffFinalizeCatalog, isPending: isStaffFinalizingCatalog } =
   useStaffFinalizeCatalogPricesMutation();
 const { mutate: staffStartProcurement, isPending: isStaffStartingProcurement } =
   useStaffStartCatalogProcurementMutation();
-const { mutate: staffSetOrderedQty, isPending: isStaffMarkingOrdered } =
-  useStaffSetCatalogOrderedQtyMutation();
 const { mutate: staffSetDeliveredQty, isPending: isStaffMarkingDelivered } =
   useStaffSetCatalogDeliveredQtyMutation();
 
@@ -475,7 +472,6 @@ const isCatalogPrimaryLoading = computed(
     isStaffPricingCatalog.value ||
     isStaffFinalizingCatalog.value ||
     isStaffStartingProcurement.value ||
-    isStaffMarkingOrdered.value ||
     isStaffMarkingDelivered.value,
 );
 
@@ -550,13 +546,6 @@ function buildFinalOfferPayload() {
   }));
 }
 
-function buildProcuredQtyPayload() {
-  return orderItems.value.map((item) => ({
-    id: item.id,
-    ordered_quantity: Number(item.confirmed_quantity ?? item.quantity ?? 0),
-  }));
-}
-
 const handleStatusOverride = ({
   status,
   reason,
@@ -613,14 +602,6 @@ const handleCatalogPrimaryAction = async (action: StaffCatalogPrimaryAction) => 
 
   if (action === 'start_procurement') {
     staffStartProcurement(orderId.value);
-    return;
-  }
-
-  if (action === 'mark_ready_for_shipment') {
-    staffSetOrderedQty({
-      orderId: orderId.value,
-      items: buildProcuredQtyPayload(),
-    });
     return;
   }
 

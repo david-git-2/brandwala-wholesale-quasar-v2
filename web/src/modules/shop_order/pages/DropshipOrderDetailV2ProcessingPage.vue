@@ -46,7 +46,7 @@ const { couriers, courierOptions } = useDropshipCourierOptions({
 });
 
 const pickupForm = reactive<DropshipInvoicePickupState>({
-  merchant_id: null,
+  pickup_location_id: null,
   sender_name: '',
   pickup_phone: '',
   pickup_address: '',
@@ -120,11 +120,16 @@ const {
   saving,
   advancingStatus,
   autoSaveState,
-  merchantOptions,
+  pickupLocationOptions,
   pendingLineNames,
+  hasCourier,
+  hasPickupLocation,
+  allLinesResolvedLocal,
+  canAdvanceToReadyForPickup,
+  readyForPickupBlockReason,
   showNothingToShipBanner,
   advanceToReadyForPickup,
-  onMerchantSelect,
+  onPickupLocationSelect,
   invalidateDetail,
 } = processingDesk;
 
@@ -146,29 +151,6 @@ const deliveryZoneLabel = computed(
     (order.value?.shipping_district?.trim().toLowerCase() === 'dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'),
 );
 
-const suggestedDeliveryFee = computed(() => {
-  const courier = selectedCourier.value;
-  if (!courier) return 0;
-  return deliveryZoneLabel.value === 'Inside Dhaka'
-    ? courier.inside_dhaka_fee
-    : courier.outside_dhaka_fee;
-});
-
-const codRateLabel = computed(() => {
-  const courier = selectedCourier.value;
-  if (!courier) return '—';
-  if (courier.cod_fee_mode === 'percent_of_collect') {
-    return `${courier.cod_fee_percent}% of collect`;
-  }
-  if (courier.cod_fee_mode === 'flat') {
-    return `Flat ৳${courier.cod_fee_flat_amount.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-  }
-  return courier.cod_fee_mode.replace(/_/g, ' ');
-});
-
 const autoSaveLabel = computed(() => {
   if (autoSaveState.value === 'pending' || saving.value) return 'Saving…';
   if (autoSaveState.value === 'error') return 'Save failed';
@@ -181,13 +163,6 @@ const onCourierChange = () => {
   if (!courier) return;
 
   courierForm.allow_open_box = courier.open_box_default_allowed;
-  if (courier.cod_fee_mode === 'flat') {
-    courierForm.cod_charge = courier.cod_fee_flat_amount;
-  } else if (courier.cod_fee_mode === 'percent_of_collect') {
-    courierForm.cod_charge = Math.round(
-      summaryForm.value.cod_collect_amount * (courier.cod_fee_percent / 100),
-    );
-  }
 
   if (courier.tracking_url_template && courierForm.courier_awb_number.trim()) {
     courierForm.tracking_url = courier.tracking_url_template.replace(
@@ -256,23 +231,6 @@ const onOrderCancelled = () => {
 <template>
   <q-page class="bw-page dropship-order-detail-v2">
     <div class="bw-page__stack">
-      <q-banner dense rounded class="bg-orange-1 text-orange-10 dropship-order-detail-v2__info-banner">
-        <template #avatar>
-          <q-icon name="ph ph-package" color="orange-9" />
-        </template>
-        <span class="text-caption">
-          Processing desk — pick stock per line or mark unavailable. Delivered qty is computed from picks.
-        </span>
-        <template v-if="autoSaveLabel" #action>
-          <span
-            class="text-caption text-weight-medium"
-            :class="autoSaveState === 'error' ? 'text-negative' : 'text-grey-7'"
-          >
-            {{ autoSaveLabel }}
-          </span>
-        </template>
-      </q-banner>
-
       <q-banner
         v-if="showNothingToShipBanner"
         dense
@@ -292,15 +250,6 @@ const onOrderCancelled = () => {
         </template>
       </q-banner>
 
-      <q-banner
-        v-else-if="pendingLineNames.length"
-        dense
-        rounded
-        class="bg-blue-1 text-blue-10"
-      >
-        Still pending: {{ pendingLineNames.join(', ') }}
-      </q-banner>
-
       <section v-if="isLoading" class="dropship-order-detail-v2__loading">
         <q-skeleton type="rect" height="520px" class="dropship-order-detail-v2__paper-skeleton" />
       </section>
@@ -310,28 +259,72 @@ const onOrderCancelled = () => {
       </section>
 
       <template v-else-if="order">
-        <div class="dropship-order-detail-v2__status-actions">
-          <q-btn
-            v-if="canCancelOrder"
-            outline
-            color="negative"
-            no-caps
-            icon="ph ph-x-circle"
-            label="Cancel order"
-            @click="cancelDialogOpen = true"
-          />
-          <q-btn
-            v-if="canMarkReadyForPickup"
-            color="primary"
-            unelevated
-            no-caps
-            icon="ph ph-check-circle"
-            label="Ready for pickup"
-            class="text-weight-bold"
-            style="border-radius: 8px; min-width: 220px"
-            :loading="advancingStatus"
-            @click="advanceToReadyForPickup()"
-          />
+        <div class="dropship-order-detail-v2__status-actions row items-center justify-between">
+          <div class="row items-center q-gutter-x-sm">
+            <q-chip
+              dense
+              :color="allLinesResolvedLocal ? 'positive' : 'orange-9'"
+              text-color="white"
+              icon="ph ph-package"
+              class="text-weight-bold"
+            >
+              {{ allLinesResolvedLocal ? 'All lines picked or cancelled' : `${pendingLineNames.length} line(s) pending` }}
+            </q-chip>
+            <q-chip
+              dense
+              :color="hasPickupLocation ? 'positive' : 'grey-6'"
+              text-color="white"
+              icon="ph ph-map-pin"
+              class="text-weight-bold"
+            >
+              {{ hasPickupLocation ? 'Pickup location set' : 'Pickup location needed' }}
+            </q-chip>
+            <q-chip
+              dense
+              :color="hasCourier ? 'positive' : 'grey-6'"
+              text-color="white"
+              icon="ph ph-truck"
+              class="text-weight-bold"
+            >
+              {{ hasCourier ? (courierForm.courier_awb_number ? `AWB: ${courierForm.courier_awb_number}` : 'Courier selected') : 'Courier needed' }}
+            </q-chip>
+            <span
+              v-if="autoSaveLabel"
+              class="text-caption text-weight-medium q-ml-xs"
+              :class="autoSaveState === 'error' ? 'text-negative' : 'text-grey-6'"
+            >
+              {{ autoSaveLabel }}
+            </span>
+          </div>
+
+          <div class="row items-center q-gutter-x-sm">
+            <q-btn
+              v-if="canCancelOrder"
+              outline
+              color="negative"
+              no-caps
+              icon="ph ph-x-circle"
+              label="Cancel order"
+              @click="cancelDialogOpen = true"
+            />
+            <q-btn
+              v-if="canMarkReadyForPickup"
+              color="primary"
+              unelevated
+              no-caps
+              icon="ph ph-check-circle"
+              label="Ready for pickup"
+              class="text-weight-bold"
+              style="border-radius: 8px; min-width: 200px"
+              :loading="advancingStatus"
+              :disable="!canAdvanceToReadyForPickup || advancingStatus"
+              @click="advanceToReadyForPickup()"
+            >
+              <q-tooltip v-if="readyForPickupBlockReason">
+                {{ readyForPickupBlockReason }}
+              </q-tooltip>
+            </q-btn>
+          </div>
         </div>
 
         <DropshipOrderConfirmedInvoicePaper
@@ -344,12 +337,10 @@ const onOrderCancelled = () => {
           v-model:summary="summaryForm"
           v-model:pickup="pickupForm"
           v-model:courier="courierForm"
-          :merchant-options="merchantOptions"
+          :pickup-location-options="pickupLocationOptions"
           :courier-options="courierOptions"
           :delivery-zone-label="deliveryZoneLabel"
-          :suggested-delivery-fee="suggestedDeliveryFee"
-          :cod-rate-label="codRateLabel"
-          @merchant-select="onMerchantSelect"
+          @pickup-select="onPickupLocationSelect"
           @courier-change="onCourierChange"
           @pick-stock="openPickDialog"
           @mark-unavailable="markUnavailable"

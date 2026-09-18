@@ -40,11 +40,13 @@ Issue does not post cash. `payment_status` changes only via **receipts** (wallet
 | | Wholesale | Dropship |
 | :--- | :--- | :--- |
 | Billed | Buyer (`billing_profile`) | Reseller (`billing_profile`) |
-| When to issue | Staff Issue on desk | When stock leaves (ready/ship), one idempotent issue |
-| Print | Invoice voucher (sell, no cost) | Merchant invoice + separate packing slip (COD) |
-| Who pays later | Buyer cash / bank / store credit | Courier remittance (or prepaid) — **payment**, not issue |
+| Stock | FIFO sellable at Issue | Held picks; deduct those lots at ship |
+| When to issue | Staff **Issue** on invoice desk (`create_sales_invoice_from_payload`) | **Mark as shipped** (`ship_dropship_order_and_issue_merchant_bill`) |
+| Print | Invoice voucher (sell, no cost) | Merchant voucher + packing slip (COD, not a bill) |
+| Cash-in | Collect on invoice detail | Courier remittance after delivered |
+| Leftover | Unallocated / store credit | Merchant wallet |
 
-Do not bill dropship `total_amount` as recipient COD.
+Do not bill dropship `total_amount` as recipient COD. Do not issue dropship from the wholesale create page. Numbers: [money-story](money-story.md).
 
 ---
 
@@ -64,7 +66,7 @@ Do not bill dropship `total_amount` as recipient COD.
 
 ### US-1: FIFO stock search and issue
 - [ ] Search ranks sister allocation then warehouse FIFO.
-- [ ] Create/issue via `create_sales_invoice_from_payload` (`issue: true` freezes the bill + stock).
+- [ ] Create/issue via `create_sales_invoice_from_payload` (`issue: true` freezes the bill + sellable stock). Wholesale/retail desk only.
 - [ ] Print shows qty, tenant sell, charges owed, total — not cost, not COD.
 
 ### US-2: Wholesale returns
@@ -72,12 +74,13 @@ Do not bill dropship `total_amount` as recipient COD.
 - [ ] Restock fee off return credit; excess paid → wallet credit.
 
 ### US-3: Payments stay off issue
-- [ ] Collect cash + store credit + write-off ≤ due — **payments** RPCs.
-- [ ] Dropship remittance allocates to **issued** merchant `total_amount` only; leftover vs COD is wallet, not extra sales.
+- [ ] Wholesale collect: cash / bank / store credit + write-off ≤ due — `create_billing_profile_payment_with_allocations`.
+- [ ] Dropship remittance: net bank in; allocate ≤ merchant `total_amount`; leftover is wallet, not extra sales.
 
 ### US-4: Dropship merchant bill
-- [ ] One issue path; packing slip is not a `sales_invoices` row.
-- [ ] `sell_price_amount` = `unit_sell_price` (merchant). Resell/COD in meta or order.
+- [ ] One issue path (`issue_dropship_tenant_b2b_invoice` inside the ship RPC); packing slip is not a `sales_invoices` row.
+- [ ] Lines from `shop_order_item_stock_picks` (`held_stock_id`, pick qty). `sell_price_amount` = merchant `unit_sell_price`. Resell/COD in meta or order.
+- [ ] `collection_source` = `billing_profile`. One invoice per `shop_order_id`.
 - [ ] Invoice may stay `issued` + `due` while the parcel is delivered.
 
 ---

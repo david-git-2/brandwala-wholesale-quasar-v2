@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { copyToClipboard } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
@@ -25,11 +25,9 @@ const props = withDefaults(
     showDeliveredQuantities?: boolean;
     showStockPickActions?: boolean;
     showFulfillmentBlocks?: boolean;
-    merchantOptions?: { label: string; value: string }[];
+    pickupLocationOptions?: { label: string; value: string }[];
     courierOptions?: { label: string; value: string }[];
     deliveryZoneLabel?: string;
-    suggestedDeliveryFee?: number;
-    codRateLabel?: string;
   }>(),
   {
     editableSummary: false,
@@ -37,11 +35,9 @@ const props = withDefaults(
     showDeliveredQuantities: false,
     showStockPickActions: false,
     showFulfillmentBlocks: false,
-    merchantOptions: () => [],
+    pickupLocationOptions: () => [],
     courierOptions: () => [],
     deliveryZoneLabel: '—',
-    suggestedDeliveryFee: 0,
-    codRateLabel: '—',
   },
 );
 
@@ -54,7 +50,7 @@ const deliveredQuantities = defineModel<DropshipInvoiceDeliveredQuantitiesState>
 );
 
 const emit = defineEmits<{
-  (e: 'merchant-select', merchantId: string | null): void;
+  (e: 'pickup-select', pickupLocationId: string | null): void;
   (e: 'courier-change'): void;
   (e: 'pick-stock', itemId: number): void;
   (e: 'mark-unavailable', itemId: number): void;
@@ -141,9 +137,12 @@ const editableDeliveredQuantities = computed(
     !props.showStockPickActions,
 );
 
-const merchantProfileLabel = computed(() => {
-  if (!pickup.value?.merchant_id) return null;
-  return props.merchantOptions.find((option) => option.value === pickup.value?.merchant_id)?.label ?? null;
+const pickupLocationLabel = computed(() => {
+  if (!pickup.value?.pickup_location_id) return null;
+  return (
+    props.pickupLocationOptions.find((option) => option.value === pickup.value?.pickup_location_id)?.label ??
+    null
+  );
 });
 
 const updateDeliveredQuantity = (itemId: number, value: string | number | null) => {
@@ -271,10 +270,10 @@ const updateCourierField = <K extends keyof NonNullable<typeof courier.value>>(
   courier.value[key] = value;
 };
 
-const onMerchantProfileChange = (merchantId: string | null) => {
+const onPickupLocationChange = (pickupLocationId: string | null) => {
   if (!pickup.value) return;
-  pickup.value.merchant_id = merchantId;
-  emit('merchant-select', merchantId);
+  pickup.value.pickup_location_id = pickupLocationId;
+  emit('pickup-select', pickupLocationId);
 };
 
 const onCourierPartnerChange = (courierServiceId: string | null) => {
@@ -282,6 +281,8 @@ const onCourierPartnerChange = (courierServiceId: string | null) => {
   courier.value.courier_service_id = courierServiceId;
   emit('courier-change');
 };
+
+const showInternalFinancials = ref(false);
 
 const copyDetail = (text: string | null | undefined, label: string) => {
   const value = text?.trim();
@@ -295,6 +296,38 @@ const copyDetail = (text: string | null | undefined, label: string) => {
     })
     .catch(() => {
       showErrorNotification(`Failed to copy ${label.toLowerCase()}`);
+    });
+};
+
+const copyFullCourierSnippet = () => {
+  const lines: string[] = [];
+  if (props.order.recipient_name?.trim()) {
+    lines.push(`Name: ${props.order.recipient_name.trim()}`);
+  }
+  if (phoneLines.value.length > 0) {
+    lines.push(`Phone: ${phoneLines.value.join(' / ')}`);
+  }
+  if (recipientAddressLines.value.length > 0) {
+    lines.push(`Address: ${recipientAddressLines.value.join(', ')}`);
+  }
+  const codAmount = summaryState.value.cod_collect_amount || recipientGrandTotal.value;
+  lines.push(`COD Amount: ${formatMoney(codAmount)}`);
+  if (props.order.delivery_instructions?.trim()) {
+    lines.push(`Note: ${props.order.delivery_instructions.trim()}`);
+  }
+
+  const snippet = lines.join('\n');
+  if (!snippet.trim()) {
+    showErrorNotification('No recipient dispatch details available');
+    return;
+  }
+
+  void copyToClipboard(snippet)
+    .then(() => {
+      showSuccessNotification('Full courier dispatch info copied to clipboard');
+    })
+    .catch(() => {
+      showErrorNotification('Failed to copy courier info');
     });
 };
 </script>
@@ -337,9 +370,24 @@ const copyDetail = (text: string | null | undefined, label: string) => {
       <div class="col-12 col-lg-8 column q-gutter-y-md">
         <!-- Recipient & Dispatch Address Dossier -->
         <section class="dropship-invoice-paper__address-block">
-          <div class="dropship-invoice-paper__section-label q-mb-sm">
-            <q-icon name="ph ph-map-pin" size="14px" />
-            <span>Deliver to Recipient</span>
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="dropship-invoice-paper__section-label">
+              <q-icon name="ph ph-map-pin" size="14px" />
+              <span>Deliver to Recipient</span>
+            </div>
+            <q-btn
+              flat
+              dense
+              no-caps
+              size="xs"
+              color="primary"
+              icon="ph ph-copy"
+              label="Copy for Courier"
+              class="text-weight-bold"
+              @click="copyFullCourierSnippet"
+            >
+              <q-tooltip>Copy formatted text (Name, Phone, Address, COD, Notes)</q-tooltip>
+            </q-btn>
           </div>
 
           <div class="dropship-invoice-paper__copy-row dropship-invoice-paper__recipient-name">
@@ -430,9 +478,22 @@ const copyDetail = (text: string | null | undefined, label: string) => {
 
         <!-- Ordered Items Fulfillment Table -->
         <section>
-          <div class="dropship-invoice-paper__section-label q-mb-sm">
-            <q-icon name="ph ph-package" size="14px" />
-            <span>Ordered Items ({{ totals.orderedQty }})</span>
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="dropship-invoice-paper__section-label">
+              <q-icon name="ph ph-package" size="14px" />
+              <span>Ordered Items ({{ totals.orderedQty }})</span>
+            </div>
+            <q-btn
+              flat
+              dense
+              no-caps
+              size="xs"
+              :color="showInternalFinancials ? 'primary' : 'grey-7'"
+              :icon="showInternalFinancials ? 'ph ph-eye-slash' : 'ph ph-eye'"
+              :label="showInternalFinancials ? 'Hide Cost Columns' : 'Show Cost / Margins'"
+              class="text-weight-medium"
+              @click="showInternalFinancials = !showInternalFinancials"
+            />
           </div>
 
           <div class="dropship-invoice-paper__table-wrap">
@@ -441,10 +502,10 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                 <tr>
                   <th class="col-thumb"></th>
                   <th class="col-item">Item</th>
-                  <th class="col-qty dropship-invoice-paper__internal-col">Ordered</th>
+                  <th class="col-qty">Ordered</th>
                   <th v-if="showDeliveredQuantities" class="col-qty">Delivered</th>
-                  <th class="col-money dropship-invoice-paper__internal-col">Cost</th>
-                  <th class="col-money dropship-invoice-paper__internal-col">Sell</th>
+                  <th v-if="showInternalFinancials" class="col-money">Cost</th>
+                  <th v-if="showInternalFinancials" class="col-money">Sell</th>
                   <th class="col-money">Resell</th>
                   <th class="col-money">Line Resell</th>
                   <th v-if="showStockPickActions && !readonly" class="col-actions text-right">Actions</th>
@@ -478,7 +539,7 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                         label="Resolved"
                       />
                     </div>
-                    <div v-if="row.code || row.barcode || row.stockId" class="dropship-invoice-paper__item-meta dropship-invoice-paper__internal-col">
+                    <div v-if="row.code || row.barcode || row.stockId" class="dropship-invoice-paper__item-meta">
                       <span v-if="row.code">SKU: {{ row.code }}</span>
                       <span v-if="row.barcode"> · Barcode: {{ row.barcode }}</span>
                       <span v-if="row.stockId != null"> · Stock: #{{ row.stockId }}</span>
@@ -486,24 +547,36 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                     <div v-if="row.isUnavailable && row.unavailableReason" class="text-caption text-negative q-mt-xs">
                       {{ row.unavailableReason }}
                     </div>
-                    <ul v-if="row.stockPicks.length" class="dropship-invoice-paper__pick-list q-mt-xs q-pl-md">
-                      <li v-for="pick in row.stockPicks" :key="pick.id" class="text-caption text-grey-8 row items-center q-gutter-x-sm">
-                        <span>{{ pick.shipment_name || 'Shipment' }} · stock {{ pick.global_stock_id }} · qty {{ pick.quantity }}</span>
+                    <div v-if="row.stockPicks.length" class="dropship-invoice-paper__picked-cards q-mt-xs column q-gutter-y-xs">
+                      <div
+                        v-for="pick in row.stockPicks"
+                        :key="pick.id"
+                        class="dropship-invoice-paper__picked-chip row items-center justify-between no-wrap q-px-sm q-py-xs"
+                      >
+                        <div class="row items-center q-gutter-x-xs no-wrap ellipsis text-caption">
+                          <q-icon name="ph ph-check-circle" color="positive" size="14px" />
+                          <span class="text-weight-bold text-grey-9 ellipsis">{{ pick.shipment_name || 'Shipment' }}</span>
+                          <span class="text-grey-6 font-mono">#{{ pick.global_stock_id }}</span>
+                          <q-badge color="positive" text-color="white" :label="`Qty: ${pick.quantity}`" class="q-ml-xs text-weight-bold" />
+                        </div>
                         <q-btn
                           v-if="showStockPickActions && !readonly"
                           flat
                           dense
                           round
                           size="xs"
-                          icon="ph ph-x"
-                          color="grey-7"
+                          icon="ph ph-trash"
+                          color="negative"
+                          class="q-ml-sm"
                           aria-label="Remove pick"
                           @click="emit('remove-pick', pick.id)"
-                        />
-                      </li>
-                    </ul>
+                        >
+                          <q-tooltip>Remove picked stock (release hold)</q-tooltip>
+                        </q-btn>
+                      </div>
+                    </div>
                   </td>
-                  <td class="col-qty dropship-invoice-paper__internal-col text-weight-medium">{{ row.orderedQuantity }}</td>
+                  <td class="col-qty text-weight-medium">{{ row.orderedQuantity }}</td>
                   <td v-if="showDeliveredQuantities" class="col-qty">
                     <q-input
                       v-if="editableDeliveredQuantities"
@@ -521,8 +594,8 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                     />
                     <span v-else class="text-weight-bold">{{ row.deliveredQuantity }}</span>
                   </td>
-                  <td class="col-money dropship-invoice-paper__internal-col">{{ formatMoney(row.cost) }}</td>
-                  <td class="col-money dropship-invoice-paper__internal-col">{{ formatMoney(row.sell) }}</td>
+                  <td v-if="showInternalFinancials" class="col-money">{{ formatMoney(row.cost) }}</td>
+                  <td v-if="showInternalFinancials" class="col-money">{{ formatMoney(row.sell) }}</td>
                   <td class="col-money">{{ formatMoney(row.resell) }}</td>
                   <td class="col-money text-weight-bold">
                     {{ formatMoney(row.lineResell) }}
@@ -571,10 +644,10 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                 <tr class="dropship-invoice-paper__totals-row">
                   <td class="col-thumb" />
                   <td class="col-item text-weight-bold">Totals</td>
-                  <td class="col-qty text-weight-bold dropship-invoice-paper__internal-col">{{ totals.orderedQty }}</td>
+                  <td class="col-qty text-weight-bold">{{ totals.orderedQty }}</td>
                   <td v-if="showDeliveredQuantities" class="col-qty text-weight-bold">{{ totals.deliveredQty }}</td>
-                  <td class="col-money text-weight-bold dropship-invoice-paper__internal-col">{{ formatMoney(totals.cost) }}</td>
-                  <td class="col-money text-weight-bold dropship-invoice-paper__internal-col">{{ formatMoney(totals.sell) }}</td>
+                  <td v-if="showInternalFinancials" class="col-money text-weight-bold">{{ formatMoney(totals.cost) }}</td>
+                  <td v-if="showInternalFinancials" class="col-money text-weight-bold">{{ formatMoney(totals.sell) }}</td>
                   <td class="col-money text-weight-bold">{{ formatMoney(totals.resell) }}</td>
                   <td class="col-money text-weight-bold text-primary">
                     {{ formatMoney(totals.resell) }}
@@ -597,9 +670,9 @@ const copyDetail = (text: string | null | undefined, label: string) => {
           </div>
 
           <template v-if="readonly">
-            <div v-if="merchantProfileLabel" class="dropship-invoice-paper__readonly-field">
-              <span class="dropship-invoice-paper__meta-label">Merchant profile:</span>
-              <span class="text-weight-bold q-ml-xs">{{ merchantProfileLabel }}</span>
+            <div v-if="pickupLocationLabel" class="dropship-invoice-paper__readonly-field">
+              <span class="dropship-invoice-paper__meta-label">Pickup location:</span>
+              <span class="text-weight-bold q-ml-xs">{{ pickupLocationLabel }}</span>
             </div>
             <div class="dropship-invoice-paper__recipient-name q-mt-sm">{{ pickup.sender_name || '—' }}</div>
             <div class="dropship-invoice-paper__line">{{ pickup.pickup_phone || '—' }}</div>
@@ -612,17 +685,17 @@ const copyDetail = (text: string | null | undefined, label: string) => {
             <div class="row q-col-gutter-sm q-mt-xs">
               <div class="col-12 col-sm-6">
                 <q-select
-                  :model-value="pickup.merchant_id"
-                  :options="merchantOptions"
+                  :model-value="pickup.pickup_location_id"
+                  :options="pickupLocationOptions"
                   emit-value
                   map-options
                   clearable
                   dense
                   outlined
                   hide-bottom-space
-                  label="Merchant profile"
+                  label="Pickup location"
                   class="dropship-invoice-paper__field-input full-width"
-                  @update:model-value="onMerchantProfileChange"
+                  @update:model-value="onPickupLocationChange"
                 />
               </div>
               <div class="col-12 col-sm-6">
@@ -846,10 +919,7 @@ const copyDetail = (text: string | null | undefined, label: string) => {
               class="dropship-invoice-paper__note dropship-invoice-paper__courier-note q-mt-sm"
             >
               <div class="dropship-invoice-paper__line">
-                Zone: {{ deliveryZoneLabel }} · Delivery: {{ formatMoney(suggestedDeliveryFee) }}
-              </div>
-              <div class="dropship-invoice-paper__line">
-                COD rate: {{ codRateLabel }} · COD fee: {{ formatMoney(courier.cod_charge) }}
+                Zone: {{ deliveryZoneLabel }}
               </div>
               <div class="dropship-invoice-paper__line">
                 Open box: {{ courier.allow_open_box ? 'Yes' : 'No' }}
@@ -900,10 +970,7 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                   {{ selectedCourierName }}
                 </div>
                 <div class="dropship-invoice-paper__line">
-                  Zone: {{ deliveryZoneLabel }} · Delivery: {{ formatMoney(suggestedDeliveryFee) }}
-                </div>
-                <div class="dropship-invoice-paper__line">
-                  COD rate: {{ codRateLabel }} · Suggested COD fee: {{ formatMoney(courier.cod_charge) }}
+                  Zone: {{ deliveryZoneLabel }}
                 </div>
                 <div class="dropship-invoice-paper__line">
                   Open box: {{ courier.allow_open_box ? 'Yes' : 'No' }}

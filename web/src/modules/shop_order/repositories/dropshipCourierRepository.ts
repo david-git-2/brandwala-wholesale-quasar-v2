@@ -26,7 +26,12 @@ export interface CourierServiceRow {
   updated_at: string;
 }
 
-export type CreateCourierServicePayload = Omit<CourierServiceRow, 'id' | 'created_at' | 'updated_at'>;
+export type CreateCourierServicePayload = {
+  name: string;
+  code: string;
+  tenant_id?: number | null;
+  is_active?: boolean;
+};
 export type UpdateCourierServicePayload = Partial<CreateCourierServicePayload>;
 
 export const dropshipCourierRepository = {

@@ -325,6 +325,25 @@ const issueDropshipTenantB2bInvoice = async (
   }
 };
 
+const shipDropshipOrderAndIssueMerchantBill = async (
+  tenantId: number,
+  orderId: number,
+): Promise<ShopServiceResult<unknown>> => {
+  try {
+    const data = await shopOrderRepository.shipDropshipOrderAndIssueMerchantBill(tenantId, orderId);
+    const row = (data ?? {}) as { success?: boolean; error?: string };
+    if (row.success === false) {
+      return { success: false, error: row.error ?? 'Failed to ship order and issue merchant bill.' };
+    }
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to ship order and issue merchant bill.'),
+    };
+  }
+};
+
 const recordDropshipCourierBankTransfer = async (
   tenantId: number,
   orderId: number,
@@ -611,6 +630,7 @@ export const shopOrderService = {
   markDropshipOrderDelivered,
   markDropshipOrderReturnedFromSettlement,
   issueDropshipTenantB2bInvoice,
+  shipDropshipOrderAndIssueMerchantBill,
   recordDropshipCourierBankTransfer,
   transferDropshipResellerProfit,
   placeOrderForProcurement,

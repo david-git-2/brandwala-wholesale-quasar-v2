@@ -2,7 +2,7 @@ import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { dropshipMerchantRepository } from '../repositories/dropshipMerchantRepository';
+import { pickupLocationRepository } from '../repositories/pickupLocationRepository';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import type { ShopOrder, ShopOrderItem } from '../types';
@@ -12,6 +12,7 @@ import type {
   DropshipInvoiceCourierState,
   DropshipInvoicePickupState,
 } from '../utils/dropshipInvoiceFulfillment';
+import { isDropshipLineResolved } from '../utils/dropshipInvoiceFulfillment';
 import { resolveDeliveryZone } from '../services/courierChargeEstimate';
 import {
   showErrorNotification,
@@ -47,35 +48,67 @@ export function useDropshipOrderProcessingDesk(options: {
 
   const tenantId = computed(() => authStore.tenantId ?? 0);
 
-  const merchantsQuery = useQuery({
-    queryKey: computed(() => shopOrderQueryKeys.merchants(options.tenantSlug.value)),
+  const locationsQuery = useQuery({
+    queryKey: computed(() => shopOrderQueryKeys.pickupLocations(options.tenantSlug.value)),
     enabled: computed(() => tenantId.value > 0),
     staleTime: 60_000,
-    queryFn: () => dropshipMerchantRepository.listMerchants(),
+    queryFn: () => pickupLocationRepository.listLocations(),
   });
 
-  const merchantOptions = computed(() =>
-    (merchantsQuery.data.value ?? [])
-      .filter((merchant) => merchant.is_active)
-      .map((merchant) => ({
-        label: `${merchant.merchant_name}${merchant.store_name ? ` (${merchant.store_name})` : ''} — ${merchant.phone_primary}`,
-        value: merchant.id,
+  const pickupLocationOptions = computed(() =>
+    (locationsQuery.data.value ?? [])
+      .filter((location) => location.is_active)
+      .map((location) => ({
+        label: `${location.location_name}${location.store_name ? ` (${location.store_name})` : ''} — ${location.phone_primary}`,
+        value: location.id,
       })),
   );
 
   const pendingLineNames = computed(() =>
     options.orderItems.value
-      .filter(
-        (item) =>
-          item.quantity > 0 &&
-          !item.is_fulfillment_unavailable &&
-          item.fulfillment_resolved !== true,
-      )
+      .filter((item) => item.quantity > 0 && !isDropshipLineResolved(item))
       .map((item) => item.name),
   );
 
+  const hasCourier = computed(() => Boolean(options.courierForm.courier_service_id));
+
+  const hasPickupLocation = computed(() => {
+    const pickup = options.pickupForm;
+    return (
+      Boolean(pickup.sender_name?.trim()) &&
+      Boolean(pickup.pickup_phone?.trim()) &&
+      Boolean(pickup.pickup_address?.trim())
+    );
+  });
+
+  const allLinesResolvedLocal = computed(() => {
+    const lines = options.orderItems.value.filter((item) => item.quantity > 0);
+    if (lines.length === 0) return false;
+    return lines.every((item) => isDropshipLineResolved(item));
+  });
+
+  const canAdvanceToReadyForPickup = computed(
+    () =>
+      options.canMarkReadyForPickup.value &&
+      hasCourier.value &&
+      hasPickupLocation.value &&
+      allLinesResolvedLocal.value,
+  );
+
+  const readyForPickupBlockReason = computed(() => {
+    if (!options.canMarkReadyForPickup.value) return null;
+    if (!allLinesResolvedLocal.value) {
+      return pendingLineNames.value.length
+        ? `Pick stock or cancel: ${pendingLineNames.value.join(', ')}`
+        : 'Pick stock or cancel every product.';
+    }
+    if (!hasPickupLocation.value) return 'Choose a pickup location (name, phone, and address).';
+    if (!hasCourier.value) return 'Choose a courier.';
+    return null;
+  });
+
   const showNothingToShipBanner = computed(
-    () => options.allLinesResolved.value && options.totalDeliveredQty.value <= 0,
+    () => allLinesResolvedLocal.value && options.totalDeliveredQty.value <= 0,
   );
 
   const invalidateDetail = async () => {
@@ -192,14 +225,8 @@ export function useDropshipOrderProcessingDesk(options: {
     const order = options.order.value;
     if (!order) return;
 
-    if (!options.canMarkReadyForPickup.value) {
-      if (showNothingToShipBanner.value) {
-        showErrorNotification('Nothing to ship — cancel the order or pick stock on at least one line.');
-      } else if (pendingLineNames.value.length) {
-        showErrorNotification(`Finish picking or mark unavailable: ${pendingLineNames.value.join(', ')}`);
-      } else {
-        showErrorNotification('Ready for pickup is not available yet.');
-      }
+    if (!canAdvanceToReadyForPickup.value) {
+      showErrorNotification(readyForPickupBlockReason.value || 'Ready for pickup is not available yet.');
       return;
     }
 
@@ -230,25 +257,30 @@ export function useDropshipOrderProcessingDesk(options: {
     }
   };
 
-  const onMerchantSelect = (merchantId: string | null) => {
-    if (!merchantId) return;
-    const merchant = (merchantsQuery.data.value ?? []).find((row) => row.id === merchantId);
-    if (!merchant) return;
-    options.pickupForm.merchant_id = merchantId;
-    options.pickupForm.sender_name = merchant.merchant_name;
-    options.pickupForm.pickup_phone = merchant.phone_primary;
-    options.pickupForm.pickup_address = merchant.pickup_address;
+  const onPickupLocationSelect = (pickupLocationId: string | null) => {
+    if (!pickupLocationId) return;
+    const location = (locationsQuery.data.value ?? []).find((row) => row.id === pickupLocationId);
+    if (!location) return;
+    options.pickupForm.pickup_location_id = pickupLocationId;
+    options.pickupForm.sender_name = location.location_name;
+    options.pickupForm.pickup_phone = location.phone_primary;
+    options.pickupForm.pickup_address = location.pickup_address;
   };
 
   return {
     saving,
     advancingStatus,
     autoSaveState,
-    merchantOptions,
+    pickupLocationOptions,
     pendingLineNames,
+    hasCourier,
+    hasPickupLocation,
+    allLinesResolvedLocal,
+    canAdvanceToReadyForPickup,
+    readyForPickupBlockReason,
     showNothingToShipBanner,
     advanceToReadyForPickup,
-    onMerchantSelect,
+    onPickupLocationSelect,
     invalidateDetail,
   };
 }

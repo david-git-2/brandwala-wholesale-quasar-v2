@@ -568,6 +568,15 @@ const issueDropshipTenantB2bInvoice = async (tenantId: number, orderId: number) 
   return data;
 };
 
+const shipDropshipOrderAndIssueMerchantBill = async (tenantId: number, orderId: number) => {
+  const { data, error } = await supabase.rpc('ship_dropship_order_and_issue_merchant_bill', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+  return data;
+};
+
 const recordDropshipCourierBankTransfer = async (
   tenantId: number,
   orderId: number,
@@ -662,8 +671,7 @@ const saveDropshipProcessingDesk = async (input: SaveDropshipProcessingDeskInput
       cod_collect_amount: summary.cod_collect_amount,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', orderId)
-    .eq('tenant_id', tenantId);
+    .eq('id', orderId);
   if (orderError) throw orderError;
 
   const { error: consignmentError } = await supabase.rpc('update_dropship_consignment', {
@@ -693,6 +701,19 @@ const saveDropshipProcessingDesk = async (input: SaveDropshipProcessingDeskInput
   if (consignmentError) throw consignmentError;
 };
 
+export type ActiveStockPick = {
+  id: number;
+  global_stock_id: number;
+  shipment_id: number;
+  shipment_name: string;
+  item_name?: string;
+  product_code?: string | null;
+  barcode?: string | null;
+  quantity: number;
+  unit_cost_amount?: number;
+  created_at: string;
+};
+
 export type OrderItemPickStockRow = {
   global_stock_id: number;
   shipment_item_id: number;
@@ -705,12 +726,30 @@ export type OrderItemPickStockRow = {
   available_atp: number;
   unit_cost_amount: number;
   already_picked: number;
+  pick_id?: number | null;
+  stock_grade?: {
+    slug: string;
+    label: string;
+    color?: string;
+  } | null;
+};
+
+export type ListStockForOrderItemPickMeta = {
+  total?: number;
+  page?: number;
+  page_size?: number;
+  total_pages?: number;
+  already_picked_total?: number;
+  ordered_quantity?: number;
+  remaining_to_pick?: number;
+  active_picks?: ActiveStockPick[];
+  [key: string]: unknown;
 };
 
 const listStockForOrderItemPick = async (
   orderItemId: number,
   opts: { search?: string | null; limit?: number; offset?: number } = {},
-): Promise<{ data: OrderItemPickStockRow[]; meta: Record<string, unknown> }> => {
+): Promise<{ data: OrderItemPickStockRow[]; meta: ListStockForOrderItemPickMeta }> => {
   const { data, error } = await supabase.rpc('list_stock_for_order_item_pick', {
     p_order_item_id: orderItemId,
     p_search: opts.search?.trim() || null,
@@ -718,7 +757,7 @@ const listStockForOrderItemPick = async (
     p_offset: opts.offset ?? 0,
   });
   if (error) throw error;
-  const payload = (data ?? {}) as { data?: OrderItemPickStockRow[]; meta?: Record<string, unknown> };
+  const payload = (data ?? {}) as { data?: OrderItemPickStockRow[]; meta?: ListStockForOrderItemPickMeta };
   return { data: payload.data ?? [], meta: payload.meta ?? {} };
 };
 
@@ -1125,6 +1164,7 @@ export const shopOrderRepository = {
   markDropshipOrderDelivered,
   markDropshipOrderReturnedFromSettlement,
   issueDropshipTenantB2bInvoice,
+  shipDropshipOrderAndIssueMerchantBill,
   recordDropshipCourierBankTransfer,
   transferDropshipResellerProfit,
   saveDropshipProcessingDesk,

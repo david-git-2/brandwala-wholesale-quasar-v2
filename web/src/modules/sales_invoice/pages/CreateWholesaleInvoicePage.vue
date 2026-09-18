@@ -222,6 +222,8 @@ import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedbac
 import {
   invoiceRepository,
   type InvoiceBrand,
+  type SalesInvoiceFromPayloadInput,
+  type SalesInvoicePayloadItem,
   type SalesInvoiceStockItem,
 } from '../repositories/invoiceRepository';
 import type { BillingProfile } from '../repositories/billingProfileRepository';
@@ -284,6 +286,7 @@ const loadedInvoiceStatus = ref('');
 const loadedPaymentStatus = ref('due');
 const loadedDueAmount = ref(0);
 const loadedPaidAmount = ref(0);
+const loadedItemIds = ref<number[]>([]);
 const collectDialogOpen = ref(false);
 const collectSaving = ref(false);
 const storeCreditBalance = ref(0);
@@ -319,6 +322,8 @@ const loadExistingInvoice = async () => {
         selectedSaveStatus.value = 'issued';
       }
     }
+
+    loadedItemIds.value = (invItems ?? []).map((item) => item.id);
 
     if (invItems && invItems.length > 0) {
       invoiceItems.value = invItems.map((item) => ({
@@ -683,6 +688,156 @@ const openPreview = () => {
   window.open(routeData.href, '_blank');
 };
 
+const buildPayloadItems = (): SalesInvoicePayloadItem[] =>
+  invoiceItems.value.map((item) => ({
+    ...(item.id ? { id: item.id } : {}),
+    global_stock_id: item.global_stock_id,
+    quantity: item.quantity,
+    sell_price_amount: item.sell_price_amount,
+    line_discount_amount: item.line_discount_amount || 0,
+  }));
+
+const buildWholesalePayload = (issue: boolean, invoiceNo?: string): SalesInvoiceFromPayloadInput => ({
+  invoice: {
+    ...(invoiceNo ? { invoice_no: invoiceNo } : {}),
+    invoice_type: 'wholesale',
+    billing_profile_id: selectedBillingProfileId.value!,
+    invoice_date: new Date().toISOString().slice(0, 10),
+    discount_amount: totalDiscountAmount.value,
+  },
+  items: buildPayloadItems(),
+  issue,
+});
+
+const syncExistingDraft = async (invoiceId: number, tenantId: number) => {
+  const currentIds = new Set(
+    invoiceItems.value.map((item) => item.id).filter((id): id is number => typeof id === 'number'),
+  );
+  const removeItemIds = loadedItemIds.value.filter((id) => !currentIds.has(id));
+
+  await invoiceRepository.updateSalesInvoiceFromPayload(tenantId, invoiceId, {
+    invoice: {
+      billing_profile_id: selectedBillingProfileId.value!,
+      discount_amount: totalDiscountAmount.value,
+    },
+    items: buildPayloadItems(),
+    remove_item_ids: removeItemIds,
+    options: { recompute_totals: true },
+  });
+
+  loadedItemIds.value = invoiceItems.value
+    .map((item) => item.id)
+    .filter((id): id is number => typeof id === 'number');
+};
+
+const persistInvoiceResult = async (
+  invoiceId: number,
+  invoiceNo?: string | null,
+  invoiceStatus?: string | null,
+  paymentStatus?: string | null,
+  dueAmount?: number | null,
+  paidAmount?: number | null,
+) => {
+  if (invoiceNo) loadedInvoiceNo.value = invoiceNo;
+  if (invoiceStatus) loadedInvoiceStatus.value = invoiceStatus;
+  if (paymentStatus) loadedPaymentStatus.value = paymentStatus;
+  if (dueAmount != null) loadedDueAmount.value = Number(dueAmount);
+  if (paidAmount != null) loadedPaidAmount.value = Number(paidAmount);
+  void router.replace({
+    query: { ...route.query, id: String(invoiceId) },
+  });
+};
+
+const issueWholesaleFromDialog = async (
+  targetInvoiceId: number | null,
+  tenantId: number,
+  isNewInvoice: boolean,
+) => {
+  const stockIds = invoiceItems.value.map((i) => i.global_stock_id);
+  const { data: stocksData, error: stocksError } = await supabase
+    .from('global_stocks')
+    .select('id, quantity')
+    .in('id', stockIds);
+
+  if (stocksError) {
+    console.error('Error fetching stock availability:', stocksError);
+  }
+
+  const stockMap = new Map((stocksData || []).map((s) => [s.id, Number(s.quantity)]));
+
+  $q.dialog({
+    component: WholesaleIssueConfirmDialog,
+    componentProps: {
+      invoiceId: targetInvoiceId,
+      invoiceNo: loadedInvoiceNo.value || (targetInvoiceId ? String(targetInvoiceId) : 'New'),
+      items: invoiceItems.value.map((i) => ({
+        id: i.id,
+        global_stock_id: i.global_stock_id,
+        name: i.name,
+        image_url: i.image_url,
+        shipment_name: i.shipment_name,
+        available_stock: stockMap.has(i.global_stock_id)
+          ? (stockMap.get(i.global_stock_id) ?? 0)
+          : i.available_atp,
+        quantity: i.quantity,
+      })),
+    },
+  }).onOk((data: { items: WholesaleIssueDialogItem[] }) => {
+    void (async () => {
+      isSaving.value = true;
+      try {
+        for (const updatedItem of data.items) {
+          const existing = invoiceItems.value.find(
+            (i) => i.global_stock_id === updatedItem.global_stock_id,
+          );
+          if (existing) {
+            existing.quantity = updatedItem.quantity;
+          }
+        }
+
+        if (isNewInvoice) {
+          const invoiceNo =
+            loadedInvoiceNo.value ||
+            (await invoiceRepository.generateInvoiceNumber(tenantId, 'wholesale'));
+          const result = await invoiceRepository.createSalesInvoiceFromPayload(
+            tenantId,
+            buildWholesalePayload(true, invoiceNo),
+          );
+          if (!result.invoice_id) throw new Error('Invoice was not created');
+          await persistInvoiceResult(
+            result.invoice_id,
+            result.invoice_no,
+            result.invoice_status,
+            result.payment_status,
+            result.due_amount,
+            result.paid_amount,
+          );
+        } else if (targetInvoiceId) {
+          await invoiceRepository.issueWholesaleInvoice(
+            targetInvoiceId,
+            data.items.map((i) => ({
+              ...(i.id ? { id: i.id } : {}),
+              global_stock_id: i.global_stock_id,
+              quantity: i.quantity,
+            })),
+          );
+          await persistInvoiceResult(targetInvoiceId, loadedInvoiceNo.value, 'issued', 'due', null, null);
+          await loadExistingInvoice();
+        }
+
+        showSuccessNotification('Wholesale invoice issued and stock deducted successfully.');
+      } catch (err) {
+        console.error('Error issuing wholesale invoice:', err);
+        showWarningDialog(err instanceof Error ? err.message : 'Error issuing wholesale invoice');
+      } finally {
+        isSaving.value = false;
+      }
+    })();
+  }).onDismiss(() => {
+    isSaving.value = false;
+  });
+};
+
 const handleSaveInvoice = async (status: WholesaleInvoiceSaveStatus) => {
   selectedSaveStatus.value = status;
   if (!canSaveDraft.value || isSaving.value) return;
@@ -691,139 +846,74 @@ const handleSaveInvoice = async (status: WholesaleInvoiceSaveStatus) => {
   const parentTenantId = effectiveParentTenantId.value;
   if (!tenantId || !parentTenantId || !selectedBillingProfileId.value) return;
 
+  if (status === 'issued') {
+    isSaving.value = true;
+    try {
+      const currentId = existingInvoiceId.value;
+      if (currentId) {
+        await syncExistingDraft(currentId, tenantId);
+      }
+      await issueWholesaleFromDialog(currentId, tenantId, !currentId);
+    } catch (err) {
+      console.error('Error preparing wholesale invoice issue:', err);
+      showWarningDialog(err instanceof Error ? err.message : 'Error issuing wholesale invoice');
+      isSaving.value = false;
+    }
+    return;
+  }
+
   isSaving.value = true;
   try {
     let targetInvoiceId = existingInvoiceId.value;
 
-    if (!targetInvoiceId) {
-      // Generate invoice number
-      const invoiceNo = await invoiceRepository.generateInvoiceNumber(
-        tenantId,
-        'wholesale',
-      );
-
-      // Create the global invoice record
-      const createdInvoice = await invoiceRepository.createGlobalInvoice({
-        tenant_id: tenantId,
-        invoice_no: invoiceNo,
-        invoice_type: 'wholesale',
-        invoice_date: new Date().toISOString().slice(0, 10),
-        billing_profile_id: selectedBillingProfileId.value,
-      });
-      targetInvoiceId = createdInvoice?.id ?? null;
-      if (createdInvoice?.invoice_no) {
-        loadedInvoiceNo.value = createdInvoice.invoice_no;
+    if (targetInvoiceId) {
+      await syncExistingDraft(targetInvoiceId, tenantId);
+      if (status === 'proforma_generated') {
+        await invoiceRepository.markInvoiceProformaGenerated(targetInvoiceId);
+        await persistInvoiceResult(targetInvoiceId, loadedInvoiceNo.value, 'proforma_generated');
+        showSuccessNotification('Proforma invoice generated. Preview is now available.');
+        return;
       }
 
-      if (targetInvoiceId) {
-        // Add invoice line items
-        for (const item of invoiceItems.value) {
-          await invoiceRepository.addGlobalInvoiceItem({
-            invoice_id: targetInvoiceId,
-            global_stock_id: item.global_stock_id,
-            quantity: item.quantity,
-            sell_price_amount: item.sell_price_amount,
-            line_discount_amount: item.line_discount_amount || 0,
-          });
-        }
-      }
+      await persistInvoiceResult(targetInvoiceId, loadedInvoiceNo.value, 'draft');
+      showSuccessNotification('Invoice saved as draft.');
+      return;
     }
 
+    const invoiceNo = await invoiceRepository.generateInvoiceNumber(tenantId, 'wholesale');
+    const result = await invoiceRepository.createSalesInvoiceFromPayload(
+      tenantId,
+      buildWholesalePayload(false, invoiceNo),
+    );
+    targetInvoiceId = result.invoice_id ?? null;
+    if (!targetInvoiceId) throw new Error('Invoice was not created');
+
+    loadedItemIds.value = invoiceItems.value
+      .map((item) => item.id)
+      .filter((id): id is number => typeof id === 'number');
+
     if (status === 'proforma_generated') {
-      loadedInvoiceStatus.value = 'proforma_generated';
-      if (targetInvoiceId) {
-        void router.replace({
-          query: { ...route.query, id: String(targetInvoiceId) },
-        });
-      }
+      await invoiceRepository.markInvoiceProformaGenerated(targetInvoiceId);
+      await persistInvoiceResult(
+        targetInvoiceId,
+        result.invoice_no,
+        'proforma_generated',
+        result.payment_status,
+        result.due_amount,
+        result.paid_amount,
+      );
       showSuccessNotification('Proforma invoice generated. Preview is now available.');
       return;
     }
 
-    if (status === 'issued') {
-      if (!targetInvoiceId) return;
-
-      // 1. Fetch live available quantities from global_stocks for all line items
-      const stockIds = invoiceItems.value.map((i) => i.global_stock_id);
-      const { data: stocksData, error: stocksError } = await supabase
-        .from('global_stocks')
-        .select('id, quantity')
-        .in('id', stockIds);
-
-      if (stocksError) {
-        console.error('Error fetching stock availability:', stocksError);
-      }
-
-      const stockMap = new Map((stocksData || []).map((s) => [s.id, Number(s.quantity)]));
-
-      // 2. Open WholesaleIssueConfirmDialog
-      $q.dialog({
-        component: WholesaleIssueConfirmDialog,
-        componentProps: {
-          invoiceId: targetInvoiceId,
-          invoiceNo: loadedInvoiceNo.value || String(targetInvoiceId),
-          items: invoiceItems.value.map((i) => ({
-            id: i.id,
-            global_stock_id: i.global_stock_id,
-            name: i.name,
-            image_url: i.image_url,
-            shipment_name: i.shipment_name,
-            available_stock: stockMap.has(i.global_stock_id)
-              ? (stockMap.get(i.global_stock_id) ?? 0)
-              : i.available_atp,
-            quantity: i.quantity,
-          })),
-        },
-      }).onOk((data: { items: WholesaleIssueDialogItem[] }) => {
-        void (async () => {
-          isSaving.value = true;
-          try {
-            // 3. Update local line item quantities
-            for (const updatedItem of data.items) {
-              const existing = invoiceItems.value.find(
-                (i) => i.global_stock_id === updatedItem.global_stock_id,
-              );
-              if (existing) {
-                existing.quantity = updatedItem.quantity;
-              }
-            }
-
-            // 4. Single atomic RPC: updates items in batch, deducts stock, creates movements, and issues invoice
-            await invoiceRepository.issueWholesaleInvoice(
-              targetInvoiceId,
-              data.items.map((i) => ({
-                ...(i.id ? { id: i.id } : {}),
-                global_stock_id: i.global_stock_id,
-                quantity: i.quantity,
-              })),
-            );
-
-            loadedInvoiceStatus.value = 'issued';
-            loadedPaymentStatus.value = 'due';
-            if (targetInvoiceId) {
-              void router.replace({
-                query: { ...route.query, id: String(targetInvoiceId) },
-              });
-            }
-            showSuccessNotification('Wholesale invoice issued and stock deducted successfully.');
-          } catch (err) {
-            console.error('Error issuing wholesale invoice:', err);
-            showWarningDialog(err instanceof Error ? err.message : 'Error issuing wholesale invoice');
-          } finally {
-            isSaving.value = false;
-          }
-        })();
-      });
-      return;
-    }
-
-    // Default: Save as draft
-    loadedInvoiceStatus.value = 'draft';
-    if (targetInvoiceId) {
-      void router.replace({
-        query: { ...route.query, id: String(targetInvoiceId) },
-      });
-    }
+    await persistInvoiceResult(
+      targetInvoiceId,
+      result.invoice_no,
+      result.invoice_status,
+      result.payment_status,
+      result.due_amount,
+      result.paid_amount,
+    );
     showSuccessNotification('Invoice saved as draft.');
   } catch (err) {
     console.error('Error saving wholesale invoice:', err);

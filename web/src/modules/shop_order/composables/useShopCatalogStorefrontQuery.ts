@@ -51,7 +51,13 @@ export function useShopCatalogStorefrontInfiniteQuery(
   showAllProducts?: Ref<boolean>,
 ) {
   const vendorFilters = computed(() => shop.value?.vendor_filters ?? null);
-  const hasVendorFilters = computed(() => (vendorFilters.value?.length ?? 0) > 0);
+  const hasVendorFilters = computed(() => {
+    const filters = vendorFilters.value;
+    if (Array.isArray(filters) && filters.length > 0) {
+      return filters.some((f) => Boolean(f.vendor_code?.trim()));
+    }
+    return Boolean(shop.value?.vendor_code?.trim());
+  });
   const minAvailableUnits = computed(() => shop.value?.min_available_units ?? 0);
   const applyMinAvailableUnits = computed(
     () => !showAllProducts?.value && (minAvailableUnits.value ?? 0) > 0,

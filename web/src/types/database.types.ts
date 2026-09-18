@@ -3084,62 +3084,6 @@ export type Database = {
           },
         ]
       }
-      merchant_profiles: {
-        Row: {
-          created_at: string
-          district: string
-          id: string
-          is_active: boolean
-          merchant_name: string
-          notes: string | null
-          phone_primary: string
-          phone_secondary: string | null
-          pickup_address: string
-          store_name: string | null
-          tenant_id: number
-          thana: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          district?: string
-          id?: string
-          is_active?: boolean
-          merchant_name: string
-          notes?: string | null
-          phone_primary: string
-          phone_secondary?: string | null
-          pickup_address: string
-          store_name?: string | null
-          tenant_id: number
-          thana: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          district?: string
-          id?: string
-          is_active?: boolean
-          merchant_name?: string
-          notes?: string | null
-          phone_primary?: string
-          phone_secondary?: string | null
-          pickup_address?: string
-          store_name?: string | null
-          tenant_id?: number
-          thana?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "merchant_profiles_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       module_actions: {
         Row: {
           action: string
@@ -3405,6 +3349,62 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      pickup_locations: {
+        Row: {
+          created_at: string
+          district: string
+          id: string
+          is_active: boolean
+          location_name: string
+          notes: string | null
+          phone_primary: string
+          phone_secondary: string | null
+          pickup_address: string
+          store_name: string | null
+          tenant_id: number
+          thana: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          district?: string
+          id?: string
+          is_active?: boolean
+          location_name: string
+          notes?: string | null
+          phone_primary: string
+          phone_secondary?: string | null
+          pickup_address: string
+          store_name?: string | null
+          tenant_id: number
+          thana: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          district?: string
+          id?: string
+          is_active?: boolean
+          location_name?: string
+          notes?: string | null
+          phone_primary?: string
+          phone_secondary?: string | null
+          pickup_address?: string
+          store_name?: string | null
+          tenant_id?: number
+          thana?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pickup_locations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       preorder_demand: {
         Row: {
@@ -14663,6 +14663,10 @@ export type Database = {
           p_exchange_rate?: number
           p_shipment_id: number
         }
+        Returns: Json
+      }
+      ship_dropship_order_and_issue_merchant_bill: {
+        Args: { p_order_id: number; p_tenant_id: number }
         Returns: Json
       }
       shop_catalog_meets_min_available_units: {

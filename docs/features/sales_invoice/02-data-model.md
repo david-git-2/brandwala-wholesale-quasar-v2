@@ -62,7 +62,9 @@ One row per item at **issue**: `invoice_item_id`, `unit_cost_price`, `costing_lo
 
 ## Payments (out of invoice schema)
 
-Receipts + allocations: [wallet 02](../wallet/02-data-model.md). Invoice rows only store `paid_amount` / `due_amount` / `payment_status` after a receipt allocates. Remittance allocates **up to** dropship `total_amount`. COD − invoice total → ledger, not extra `sell`.
+Receipts + allocations: [wallet 02](../wallet/02-data-model.md). Invoice rows only store `paid_amount` / `due_amount` / `payment_status` after a receipt allocates.
+
+Wholesale: allocate the collect amount to that buyer bill. Dropship remittance: allocate **min(net remittance, merchant `total_amount`)**. COD − invoice total → ledger, not extra `sell`.
 
 ---
 
@@ -71,7 +73,7 @@ Receipts + allocations: [wallet 02](../wallet/02-data-model.md). Invoice rows on
 | Sum | Source |
 | :--- | :--- |
 | Tenant revenue / bill margin | Issued `total_amount`; cost from `sales_invoice_item_costs` |
-| Courier cash | Remittance / COD on **order** or `channel_meta` — not invoice sales |
+| Courier cash | Remittance / COD on **order** or `channel_meta` — not invoice sales (wholesale has no COD face) |
 | Reseller profit | Wallet |
 
 Never `SUM(channel_meta)` or `SUM(line_meta)` for sales.

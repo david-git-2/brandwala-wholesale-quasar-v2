@@ -18,7 +18,8 @@ web/src/modules/shop_order/
 │   ├── ShopOrderDetailHostPage.vue       # /orders/:id — catalog or dropship UI by type
 │   ├── DropshipOrderDetailV2ProcessingPage.vue # Picking stock & charges desk
 │   ├── DropshipOrderDetailV2ReadyForPickupPage.vue # Packing slip + mark shipped
-│   └── DropshipFinanceHubPage.vue        # Courier reconciliation & margin payouts
+│   ├── DropshipFinanceHubPage.vue        # Courier reconciliation & margin payouts
+│   └── DropshipPickupLocationsPage.vue  # Warehouse sender pickup catalog
 ├── components/
 │   ├── ShopFormDialog.vue                # Create/edit shop modal
 │   ├── ShopOrdersTable.vue               # Ops data table with fulfillment chips
@@ -55,4 +56,4 @@ export const shopOrderQueryKeys = {
 
 1. **Multi-Stage Desk**: Use status tabs (`placed`, `processing`, `ready_for_pickup`, `in_transit`, `delivered`) rather than dropdown menus.
 2. **Stock Picking Isolation**: Never link physical stock at order creation; bind stock exclusively inside `DropshipOrderDetailV2ProcessingPage.vue`.
-3. **Dual Invoice Delivery**: Customer-facing packing slip is rendered without wholesale costs; B2B merchant invoice includes landed cost and margin breakdown.
+3. **Packing slip vs bill**: Packing slip has COD / resell, no wholesale cost. Merchant bill is tenant sell only (no cost on print). Issue at **ship**, one RPC, lines from picks.

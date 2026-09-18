@@ -445,6 +445,22 @@
   font-weight: 600;
 }
 
+.dropship-invoice-paper__picked-cards {
+  max-width: 380px;
+}
+
+.dropship-invoice-paper__picked-chip {
+  background: var(--bw-neutral-surface, #f8fafc);
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-left: 3px solid var(--q-positive);
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: #f1f5f9;
+  }
+}
+
 .dropship-invoice-paper__counter-input {
   width: 7.5rem;
 }

@@ -2,7 +2,7 @@ import { ref, reactive, computed, watch, type Ref } from 'vue';
 import { copyToClipboard } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
-import type { MerchantProfileRow } from '../repositories/dropshipMerchantRepository';
+import type { PickupLocationRow } from '../repositories/pickupLocationRepository';
 import type { ShopOrder, ShopOrderItem } from '../types';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
@@ -12,7 +12,7 @@ export function useDropshipOrderForm(
   order: Ref<ShopOrder | null>,
   orderItems: Ref<ShopOrderItem[]>,
   couriers: Ref<CourierServiceRow[]>,
-  merchants: Ref<MerchantProfileRow[]>,
+  pickupLocations: Ref<PickupLocationRow[]>,
   updateThanaList: (distName: string, currentPostCode?: string) => Promise<void>,
   updatePostcodeList: (distName: string, thanaName: string, currentPostCode?: string) => Promise<void>,
 ) {
@@ -70,7 +70,7 @@ export function useDropshipOrderForm(
     sender_name: '',
     pickup_phone: '',
     pickup_address: '',
-    merchant_id: null as string | null,
+    pickup_location_id: null as string | null,
   });
 
   const originalBlockD = reactive({
@@ -105,7 +105,7 @@ export function useDropshipOrderForm(
     return form.sender_name !== originalBlockC.sender_name ||
            form.pickup_phone !== originalBlockC.pickup_phone ||
            form.pickup_address !== originalBlockC.pickup_address ||
-           selectedMerchantId.value !== originalBlockC.merchant_id;
+           selectedMerchantId.value !== originalBlockC.pickup_location_id;
   });
 
   const isBlockDDirty = computed(() => {
@@ -141,7 +141,7 @@ export function useDropshipOrderForm(
     form.cod_fee_percent = originalBlockB.cod_fee_percent;
     form.cod_charge = originalBlockB.cod_charge;
 
-    selectedMerchantId.value = originalBlockC.merchant_id;
+    selectedMerchantId.value = originalBlockC.pickup_location_id;
     form.sender_name = originalBlockC.sender_name;
     form.pickup_phone = originalBlockC.pickup_phone;
     form.pickup_address = originalBlockC.pickup_address;
@@ -302,17 +302,17 @@ export function useDropshipOrderForm(
   );
 
   const merchantOptions = computed(() =>
-    merchants.value.map((m) => ({
-      label: `${m.merchant_name}${m.store_name ? ' (' + m.store_name + ')' : ''} - ${m.phone_primary}`,
+    pickupLocations.value.map((m) => ({
+      label: `${m.location_name}${m.store_name ? ' (' + m.store_name + ')' : ''} - ${m.phone_primary}`,
       value: m.id,
     }))
   );
 
   const onMerchantSelect = (merchantId: string | null) => {
     if (!merchantId) return;
-    const merchant = merchants.value.find((m) => m.id === merchantId);
+    const merchant = pickupLocations.value.find((m) => m.id === merchantId);
     if (merchant) {
-      form.sender_name = merchant.merchant_name;
+      form.sender_name = merchant.location_name;
       form.pickup_phone = merchant.phone_primary;
       form.pickup_address = merchant.pickup_address;
     }
@@ -440,7 +440,7 @@ export function useDropshipOrderForm(
       originalBlockC.sender_name = form.sender_name;
       originalBlockC.pickup_phone = form.pickup_phone;
       originalBlockC.pickup_address = form.pickup_address;
-      originalBlockC.merchant_id = selectedMerchantId.value;
+      originalBlockC.pickup_location_id = selectedMerchantId.value;
 
       originalBlockD.allow_open_box = form.allow_open_box;
       originalBlockD.delivery_instruction_notes = form.delivery_instruction_notes;

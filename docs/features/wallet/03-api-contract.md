@@ -2,7 +2,11 @@
 
 Target: **one receipt RPC** (source = cash / bank / store credit / courier remittance) then allocations + ledger. Live collect/remittance RPCs still differ — [00-gaps](00-gaps.md) WA4.
 
-Ledger list/detail below. Bodies: `public.sql` until wallet schema split. Payments live: `create_billing_profile_payment_with_allocations` (wholesale); dropship remittance RPCs in `supabase/schemas/shop_order/03_rpcs.sql`.
+Ledger list/detail below. Bodies: `public.sql` until wallet schema split. Payments live: `collect_wholesale_invoice_payment` (wholesale/retail collect on invoice detail); dropship remittance RPCs in `supabase/schemas/shop_order/03_rpcs.sql`. Unify later — [00-gaps](00-gaps.md) WA4.
+
+Wholesale collect **live**: `collect_wholesale_invoice_payment` on issued buyer bill (cash / store credit / settlement). Receipt amount = money received; allocates to that invoice. Do not use remittance RPCs or `create_billing_profile_payment_with_allocations` on the invoice desk.
+
+Dropship remittance **target**: order `delivered` + linked issued merchant bill; receipt amount = net bank in; allocate `min(net, invoice.due)`; leftover → merchant ledger. Do not rewrite sell. Do not issue a bill here. Require `global_invoice_id` (shop_order SO11).
 
 ## 1. Directory Listing RPC: `list_wallet_entities_for_staff`
 

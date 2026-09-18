@@ -38,12 +38,12 @@ const emit = defineEmits<{
     >
       <q-card style="min-width: 440px; border-radius: 12px">
         <q-card-section class="row items-center justify-between q-pb-none">
-          <div class="text-h6 text-weight-bold">Confirm B2B Invoice</div>
+          <div class="text-h6 text-weight-bold">Ready for pickup</div>
           <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
         <q-card-section class="q-pt-sm text-body2">
           <p class="text-grey-8 q-mb-md">
-            Advancing to <strong>Ready for Pickup</strong> will automatically create the B2B Accounting Invoice for the merchant. Please review the financial breakdown before confirming.
+            Advancing to <strong>Ready for Pickup</strong> locks picking and summary edits. The merchant bill is issued when you mark the order as shipped.
           </p>
 
           <div class="row q-col-gutter-sm">
@@ -84,7 +84,7 @@ const emit = defineEmits<{
           <q-btn flat label="Cancel" color="grey-8" no-caps v-close-popup />
           <q-btn
             color="primary"
-            label="Confirm & Create Invoice"
+            label="Mark ready for pickup"
             unelevated
             no-caps
             :loading="props.updatingStatus"

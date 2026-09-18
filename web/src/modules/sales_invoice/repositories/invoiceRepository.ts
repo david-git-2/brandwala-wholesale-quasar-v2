@@ -576,6 +576,89 @@ const issueWholesaleInvoice = async (
   if (error) throw error;
 };
 
+export type SalesInvoicePayloadItem = {
+  id?: number;
+  global_stock_id: number;
+  quantity: number;
+  sell_price_amount: number;
+  line_discount_amount?: number;
+};
+
+export type SalesInvoiceFromPayloadInput = {
+  invoice: {
+    invoice_no?: string;
+    invoice_type: 'wholesale';
+    billing_profile_id: number;
+    invoice_date?: string;
+    discount_amount?: number;
+    note?: string;
+  };
+  items: SalesInvoicePayloadItem[];
+  issue: boolean;
+};
+
+export type SalesInvoiceFromPayloadResult = {
+  success: boolean;
+  error?: string;
+  invoice_id?: number;
+  invoice_no?: string;
+  invoice_status?: string;
+  payment_status?: string;
+  total_amount?: number;
+  due_amount?: number;
+  paid_amount?: number;
+};
+
+export type SalesInvoiceUpdatePayloadInput = {
+  invoice?: Partial<SalesInvoiceFromPayloadInput['invoice']>;
+  items?: SalesInvoicePayloadItem[];
+  remove_item_ids?: number[];
+  options?: { recompute_totals?: boolean };
+};
+
+const parsePayloadRpcResult = (data: unknown): SalesInvoiceFromPayloadResult => {
+  const result = (data ?? {}) as SalesInvoiceFromPayloadResult;
+  if (!result.success) {
+    throw new Error(result.error || 'Invoice payload RPC failed');
+  }
+  return result;
+};
+
+const createSalesInvoiceFromPayload = async (
+  tenantId: number,
+  payload: SalesInvoiceFromPayloadInput,
+): Promise<SalesInvoiceFromPayloadResult> => {
+  const { data, error } = await supabase.rpc('create_sales_invoice_from_payload', {
+    p_tenant_id: tenantId,
+    p_payload: payload as unknown as Record<string, unknown>,
+  });
+  if (error) throw error;
+  return parsePayloadRpcResult(data);
+};
+
+const updateSalesInvoiceFromPayload = async (
+  tenantId: number,
+  invoiceId: number,
+  payload: SalesInvoiceUpdatePayloadInput,
+): Promise<SalesInvoiceFromPayloadResult> => {
+  const { data, error } = await supabase.rpc('update_sales_invoice_from_payload', {
+    p_tenant_id: tenantId,
+    p_invoice_id: invoiceId,
+    p_payload: payload as unknown as Record<string, unknown>,
+  });
+  if (error) throw error;
+  return parsePayloadRpcResult(data);
+};
+
+const markInvoiceProformaGenerated = async (invoiceId: number): Promise<void> => {
+  const { error } = await supabase
+    .from('sales_invoices')
+    .update({ invoice_status: 'proforma_generated' })
+    .eq('id', invoiceId)
+    .eq('invoice_status', 'draft');
+  if (error) throw error;
+};
+
 const voidGlobalInvoice = async (invoiceId: number): Promise<void> => {
   const { error } = await supabase.rpc('void_sales_invoice', {
     p_invoice_id: invoiceId,
@@ -799,6 +882,9 @@ export const invoiceRepository = {
   updateGlobalInvoiceHeader,
   postGlobalInvoice,
   issueWholesaleInvoice,
+  createSalesInvoiceFromPayload,
+  updateSalesInvoiceFromPayload,
+  markInvoiceProformaGenerated,
   voidGlobalInvoice,
   unpostGlobalInvoice,
   deleteGlobalInvoice,

@@ -192,14 +192,28 @@
             />
             <template v-if="invoice.due_amount > 0">
               <q-btn
+                v-if="isDropship"
+                color="primary"
+                unelevated
+                no-caps
+                class="full-width text-weight-bold global-invoice-details-page__action-btn q-mb-sm"
+                icon="ph ph-bank"
+                label="Record courier remittance"
+                @click="goToDropshipRemittanceDesk"
+              />
+              <q-btn
+                v-else
                 color="primary"
                 unelevated
                 no-caps
                 class="full-width text-weight-bold global-invoice-details-page__action-btn q-mb-sm"
                 icon="ph ph-credit-card"
-                :label="isDropship ? 'Record COD' : 'Record payment'"
-                @click="isDropship ? openCodDialog() : openPaymentDialog()"
+                label="Record payment"
+                @click="openPaymentDialog"
               />
+              <div v-if="isDropship" class="text-caption text-grey-7 q-mb-sm">
+                Cash-in for dropship bills is recorded on the finance desk after delivery, not as COD on this invoice.
+              </div>
               <div v-if="showPayments && !isDropship" class="row q-col-gutter-sm">
                 <div class="col">
                   <q-btn
@@ -430,58 +444,6 @@
       @submit="onCollectPayment"
     />
 
-    <!-- Record COD Dialog -->
-    <q-dialog v-model="codDialog" persistent>
-      <q-card class="q-pa-md" style="min-width: 360px; border-radius: 16px">
-        <q-card-section class="text-h6 text-weight-bold">Record COD Collection</q-card-section>
-        <q-card-section class="q-gutter-md">
-          <q-input
-            v-model.number="codAmount"
-            type="number"
-            label="Amount collected"
-            outlined
-            dense
-            min="0"
-            class="soft-input"
-          />
-          <q-input
-            v-model="codDate"
-            label="Collection Date"
-            outlined
-            dense
-            readonly
-            class="soft-input"
-          >
-            <template #append>
-              <q-icon name="ph ph-calendar" class="cursor-pointer">
-                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                  <q-date v-model="codDate" mask="YYYY-MM-DD" />
-                </q-popup-proxy>
-              </q-icon>
-            </template>
-          </q-input>
-          <q-select
-            v-model="codMethod"
-            :options="paymentMethodOptions"
-            label="Method"
-            outlined
-            dense
-            class="soft-input"
-          />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" v-close-popup class="pill-btn" />
-          <q-btn
-            color="primary"
-            label="Save"
-            :loading="paymentSaving"
-            @click="onRecordCod"
-            class="pill-btn"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
     <!-- Settlement / Write-off Dialog -->
     <q-dialog v-model="settleDialog" persistent>
       <q-card class="q-pa-md" style="min-width: 360px; border-radius: 16px">
@@ -706,10 +668,8 @@ interface StockCartItem {
 const stockCart = ref<StockCartItem[]>([]);
 
 const paymentDialog = ref(false);
-const codDialog = ref(false);
 const settleDialog = ref(false);
 const payoutDialog = ref(false);
-const codAmount = ref(0);
 const settleAmount = ref(0);
 const payoutAmount = ref(0);
 const paymentSaving = ref(false);
@@ -746,16 +706,6 @@ const goToLinkedCase = () => {
   });
 };
 
-const localToday = (): string => {
-  const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${m}-${day}`;
-};
-const paymentMethodOptions = ['cash', 'bkash', 'bank_transfer', 'nagad'];
-const codDate = ref(localToday());
-const codMethod = ref('cash');
-
 const openPaymentDialog = async () => {
   paymentDialog.value = true;
   const profileId = invoice.value?.billing_profile_id;
@@ -774,11 +724,11 @@ const openPaymentDialog = async () => {
     storeCreditBalance.value = 0;
   }
 };
-const openCodDialog = () => {
-  codAmount.value = 0;
-  codDate.value = localToday();
-  codMethod.value = 'cash';
-  codDialog.value = true;
+const goToDropshipRemittanceDesk = () => {
+  void router.push({
+    name: 'app-shop-dropship-finance-hub-page',
+    params: { tenantSlug: route.params.tenantSlug },
+  });
 };
 
 const onToggleEditRecipient = () => {
@@ -1472,24 +1422,6 @@ const onCollectPayment = async (payload: {
     showSuccessNotification('Payment recorded.');
   } catch (e) {
     showWarningDialog(e instanceof Error ? e.message : 'Payment failed.');
-  } finally {
-    paymentSaving.value = false;
-  }
-};
-
-const onRecordCod = async () => {
-  if (!invoice.value) return;
-  paymentSaving.value = true;
-  try {
-    await invoiceRepository.recordRecipientInvoiceCollection(invoice.value.id, codAmount.value, {
-      payment_date: codDate.value,
-      method: codMethod.value,
-    });
-    codDialog.value = false;
-    await refreshInvoiceHeader();
-    showSuccessNotification('COD recorded.');
-  } catch (e) {
-    showWarningDialog(e instanceof Error ? e.message : 'COD recording failed.');
   } finally {
     paymentSaving.value = false;
   }

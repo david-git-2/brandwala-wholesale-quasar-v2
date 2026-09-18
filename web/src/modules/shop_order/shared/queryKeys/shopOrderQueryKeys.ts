@@ -75,8 +75,8 @@ export const shopOrderQueryKeys = {
     [...shopOrderQueryKeys.root, 'dropshipManagementDetail', { tenantId, orderId }] as const,
   couriers: (tenantSlug: string | null) =>
     [...shopOrderQueryKeys.root, 'couriers', tenantSlug ?? 'no-tenant'] as const,
-  merchants: (tenantSlug: string | null) =>
-    [...shopOrderQueryKeys.root, 'merchants', tenantSlug ?? 'no-tenant'] as const,
+  pickupLocations: (tenantSlug: string | null) =>
+    [...shopOrderQueryKeys.root, 'pickup-locations', tenantSlug ?? 'no-tenant'] as const,
   ledger: (
     tenantSlug: string | null,
     filters: { memberId?: number | null; from?: string | null; to?: string | null } = {},

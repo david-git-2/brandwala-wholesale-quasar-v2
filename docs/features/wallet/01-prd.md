@@ -28,7 +28,7 @@ Industry: one receipts engine. Cash, bank, store credit, **courier remittance** 
 
 | Layer | Job |
 | :--- | :--- |
-| Receipt | Cash that **hit you**. Source: `customer_cash` \| `bank` \| `store_credit` \| `courier_remittance` |
+| Receipt | Cash that **hit you**. Wholesale: buyer cash/bank/store credit. Dropship: courier remittance (net). |
 | Allocate | Apply up to invoice `total_amount` (tenant sell). Updates `payment_status` |
 | Ledger | Remainder / payables: courier clearing, merchant profit, store credit, tenant cash |
 | Payout | Money **out** (merchant withdraw). Opposite of a receipt |
@@ -46,7 +46,9 @@ Industry: one receipts engine. Cash, bank, store credit, **courier remittance** 
 | Remainder | Store credit / unallocated | Ledger: merchant payable (COD net − invoice) |
 | Not a receipt | — | Recipient COD face; packing slip |
 
-Example: invoice 1,500; COD 2,200; courier fee 80; remittance 2,120 → receipt 2,120; pay invoice 1,500; ~620 merchant wallet. Sales stay 1,500.
+Wholesale example: bill 1,500; bank 1,500 → receipt 1,500; invoice `paid`; sales 1,500; no merchant leftover.
+
+Dropship example: invoice 1,500; COD 2,200; courier fee 80; remittance 2,120 → receipt 2,120; pay invoice 1,500; ~620 merchant wallet. Sales stay 1,500.
 
 Do **not** credit courier wallet with full COD as “delivered costing” plus a second remittance path.
 
@@ -71,9 +73,9 @@ Do **not** credit courier wallet with full COD as “delivered costing” plus a
 - [ ] Parent books + `operating_tenant_id`. Tenant cash pooled at parent.
 
 ### US-2: One receipt posts cash and (optional) allocation
-- [ ] Wholesale collect and dropship remittance call the **same** receipt RPC (source differs).
-- [ ] Allocation ≤ remaining invoice due. Never rewrite `sell_price`.
-- [ ] Remittance does not require a human “create invoice” step if the merchant bill was issued at ship.
+- [ ] Wholesale collect: `create_billing_profile_payment_with_allocations` (or the unified successor). Source ≠ courier remittance.
+- [ ] Dropship remittance: same allocations table; source = remittance; billed to **merchant** profile. Refuses without issued `global_invoice_id`.
+- [ ] Allocation ≤ remaining invoice due. Never rewrite `sell_price`. Never issue a bill from a receipt.
 
 ### US-3: Merchant payable then payout
 - [ ] Profit / remainder credits merchant wallet from the **receipt remainder**, not from order status `delivered` alone.

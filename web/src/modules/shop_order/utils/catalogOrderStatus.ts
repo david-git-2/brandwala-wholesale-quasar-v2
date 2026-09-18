@@ -15,7 +15,6 @@ export type StaffCatalogPrimaryAction =
   | 'send_first_offer'
   | 'send_final_offer'
   | 'start_procurement'
-  | 'mark_ready_for_shipment'
   | 'mark_delivered';
 
 /** Map legacy statuses onto the catalog negotiation model. */
@@ -121,8 +120,6 @@ export function getStaffCatalogPrimaryAction(
       return 'send_final_offer';
     case 'confirmed':
       return 'start_procurement';
-    case 'procuring':
-      return 'mark_ready_for_shipment';
     case 'ready_for_shipment':
       return 'mark_delivered';
     default:
@@ -138,8 +135,6 @@ export function getStaffCatalogPrimaryActionLabel(action: StaffCatalogPrimaryAct
       return 'Send final offer';
     case 'start_procurement':
       return 'Start procurement';
-    case 'mark_ready_for_shipment':
-      return 'Mark ready for shipment';
     case 'mark_delivered':
       return 'Mark delivered';
     default:
@@ -211,10 +206,9 @@ export function isCatalogFinalOfferEditable(status: string | null | undefined): 
   return normalizeCatalogOrderStatus(status) === 'countered';
 }
 
-/** Procured qty is entered when marking ready for shipment (not stored on the line). */
+/** Procured qty is managed on the procurement demand desk, not on the order page. */
 export function isCatalogProcuredQtyEditable(status: string | null | undefined): boolean {
-  const st = normalizeCatalogOrderStatus(status);
-  return st === 'confirmed' || st === 'procuring';
+  return false;
 }
 
 /** @deprecated use isCatalogProcuredQtyEditable */

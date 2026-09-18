@@ -29,6 +29,13 @@ export const SHOP_ORDER_HUB_TREE: ShopHubTreeNodeDef[] = [
         routeName: 'app-shop-categories-page',
         moduleKey: 'shop_category',
       },
+      {
+        key: 'pickup_locations_store',
+        labelKey: 'shop_admin.shipping_pickup_locations',
+        icon: 'ph ph-map-pin',
+        routeName: 'app-shop-dropship-pickup-locations-page',
+        moduleKey: 'shop_shipping',
+      },
     ],
   },
   {
@@ -55,6 +62,13 @@ export const SHOP_ORDER_HUB_TREE: ShopHubTreeNodeDef[] = [
         labelKey: 'shop_admin.shipping_couriers',
         icon: 'ph ph-truck',
         routeName: 'app-shop-dropship-couriers-page',
+        moduleKey: 'shop_shipping',
+      },
+      {
+        key: 'pickup_locations',
+        labelKey: 'shop_admin.shipping_pickup_locations',
+        icon: 'ph ph-map-pin',
+        routeName: 'app-shop-dropship-pickup-locations-page',
         moduleKey: 'shop_shipping',
       },
       {
@@ -180,6 +194,15 @@ export const SHOP_ORDER_MORE_LINKS: ShopHubCardLinkDef[] = [
     weight: 30,
   },
   {
+    key: 'pickup_locations',
+    labelKey: 'shop_admin.shipping_pickup_locations',
+    captionKey: 'shop_admin.shipping_pickup_locations_caption',
+    icon: 'ph ph-map-pin',
+    routeName: 'app-shop-dropship-pickup-locations-page',
+    moduleKey: 'shop_shipping',
+    weight: 35,
+  },
+  {
     key: 'remittance',
     labelKey: 'shop_admin.shipping_remittance',
     captionKey: 'shop_admin.shipping_remittance_caption',
@@ -213,6 +236,14 @@ export const SHOP_ORDER_HUB_CARDS: ShopHubCardDef[] = [
         icon: 'ph ph-squares-four',
         routeName: 'app-shop-categories-page',
         moduleKey: 'shop_category',
+      },
+      {
+        key: 'pickup_locations',
+        labelKey: 'shop_admin.shipping_pickup_locations',
+        captionKey: 'shop_admin.shipping_pickup_locations_caption',
+        icon: 'ph ph-map-pin',
+        routeName: 'app-shop-dropship-pickup-locations-page',
+        moduleKey: 'shop_shipping',
       },
     ],
   },
@@ -252,6 +283,14 @@ export const SHOP_ORDER_HUB_CARDS: ShopHubCardDef[] = [
         captionKey: 'shop_admin.shipping_couriers_caption',
         icon: 'ph ph-truck',
         routeName: 'app-shop-dropship-couriers-page',
+        moduleKey: 'shop_shipping',
+      },
+      {
+        key: 'pickup_locations',
+        labelKey: 'shop_admin.shipping_pickup_locations',
+        captionKey: 'shop_admin.shipping_pickup_locations_caption',
+        icon: 'ph ph-map-pin',
+        routeName: 'app-shop-dropship-pickup-locations-page',
         moduleKey: 'shop_shipping',
       },
       {

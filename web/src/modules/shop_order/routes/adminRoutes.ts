@@ -303,6 +303,12 @@ const adminRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('shop_shipping'),
       },
       {
+        path: 'pickup-locations',
+        name: 'app-shop-dropship-pickup-locations-page',
+        component: () => import('src/modules/shop_order/pages/DropshipPickupLocationsPage.vue'),
+        beforeEnter: guard('shop_shipping'),
+      },
+      {
         path: 'ledger',
         name: 'app-shop-dropship-ledger-page',
         redirect: (to) => ({

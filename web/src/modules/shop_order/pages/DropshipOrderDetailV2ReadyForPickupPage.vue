@@ -19,8 +19,7 @@ import { useDropshipOrderDetailV2Query } from '../composables/useDropshipOrderDe
 import { useDropshipCourierOptions } from '../composables/useDropshipCourierOptions';
 import { useDropshipOrderStatusRedirect } from '../composables/useDropshipOrderStatusRedirect';
 import { saveDropshipV2CustomerInvoiceSnapshot } from '../utils/dropshipV2CustomerInvoiceStorage';
-import { dropshipMerchantRepository } from '../repositories/dropshipMerchantRepository';
-import { supabase } from 'src/boot/supabase';
+import { pickupLocationRepository } from '../repositories/pickupLocationRepository';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderService } from '../services/shopOrderService';
@@ -46,11 +45,11 @@ const tenantId = computed(() => authStore.tenantId ?? 0);
 
 const orderDetailQuery = useDropshipOrderDetailV2Query({ tenantSlug, orderId });
 
-const merchantsQuery = useQuery({
-  queryKey: computed(() => shopOrderQueryKeys.merchants(tenantSlug.value)),
+const locationsQuery = useQuery({
+  queryKey: computed(() => shopOrderQueryKeys.pickupLocations(tenantSlug.value)),
   enabled: computed(() => tenantId.value > 0),
   staleTime: 60_000,
-  queryFn: () => dropshipMerchantRepository.listMerchants(),
+  queryFn: () => pickupLocationRepository.listLocations(),
 });
 
 const order = computed(() => orderDetailQuery.data.value?.order ?? null);
@@ -74,7 +73,7 @@ const summaryForm = ref<DropshipInvoiceSummaryState>(createEmptyDropshipInvoiceS
 const deliveredQuantitiesForm = ref<DropshipInvoiceDeliveredQuantitiesState>({});
 
 const pickupForm = reactive<DropshipInvoicePickupState>({
-  merchant_id: null,
+  pickup_location_id: null,
   sender_name: '',
   pickup_phone: '',
   pickup_address: '',
@@ -111,12 +110,12 @@ useDropshipOrderStatusRedirect({
   enabled: computed(() => !isLoading.value && !!order.value),
 });
 
-const merchantOptions = computed(() =>
-  (merchantsQuery.data.value ?? [])
-    .filter((merchant) => merchant.is_active)
-    .map((merchant) => ({
-      label: `${merchant.merchant_name}${merchant.store_name ? ` (${merchant.store_name})` : ''} — ${merchant.phone_primary}`,
-      value: merchant.id,
+const pickupLocationOptions = computed(() =>
+  (locationsQuery.data.value ?? [])
+    .filter((location) => location.is_active)
+    .map((location) => ({
+      label: `${location.location_name}${location.store_name ? ` (${location.store_name})` : ''} — ${location.phone_primary}`,
+      value: location.id,
     })),
 );
 
@@ -129,29 +128,6 @@ const deliveryZoneLabel = computed(
     orderDetailQuery.data.value?.computed.delivery_zone_label ??
     (order.value?.shipping_district?.trim().toLowerCase() === 'dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'),
 );
-
-const suggestedDeliveryFee = computed(() => {
-  const courier = selectedCourier.value;
-  if (!courier) return 0;
-  return deliveryZoneLabel.value === 'Inside Dhaka'
-    ? courier.inside_dhaka_fee
-    : courier.outside_dhaka_fee;
-});
-
-const codRateLabel = computed(() => {
-  const courier = selectedCourier.value;
-  if (!courier) return '—';
-  if (courier.cod_fee_mode === 'percent_of_collect') {
-    return `${courier.cod_fee_percent}% of collect`;
-  }
-  if (courier.cod_fee_mode === 'flat') {
-    return `Flat ৳${courier.cod_fee_flat_amount.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-  }
-  return courier.cod_fee_mode.replace(/_/g, ' ');
-});
 
 const displayStatus = computed(() => order.value?.status ?? 'ready_for_pickup');
 
@@ -177,40 +153,30 @@ const advanceToShipped = async () => {
   if (!order.value || !canMarkShipped.value) return;
 
   const confirmed = await requestConfirmation(
-    'Mark this order as shipped? The order stays locked after this step.',
+    'Mark this order as shipped and issue the merchant bill? The order stays locked after this step.',
     'Mark as shipped',
     'Mark as shipped',
   );
   if (!confirmed) return;
 
+  if (tenantId.value <= 0) {
+    showErrorNotification('Tenant context is missing. Reload the page and try again.');
+    return;
+  }
+
   advancingStatus.value = true;
   try {
-    const { data, error } = await supabase.rpc('advance_dropship_order_status', {
-      p_order_id: order.value.id,
-      p_target_status: 'shipped',
-    });
-    if (error) throw error;
-    if (data && typeof data === 'object' && (data as { success?: boolean }).success === false) {
-      throw new Error((data as { error?: string }).error || 'Failed to update status');
+    const shipRes = await shopOrderService.shipDropshipOrderAndIssueMerchantBill(
+      tenantId.value,
+      order.value.id,
+    );
+    if (!shipRes.success) {
+      throw new Error(shipRes.error ?? 'Failed to ship order and issue merchant bill.');
     }
 
-    let billIssued = false;
-    if (tenantId.value > 0) {
-      const invoiceRes = await shopOrderService.issueDropshipTenantB2bInvoice(
-        tenantId.value,
-        order.value.id,
-      );
-      if (!invoiceRes.success) {
-        showErrorNotification(
-          invoiceRes.error ?? 'Order is shipped, but the merchant bill failed. Retry from order details.',
-        );
-      } else {
-        billIssued = (invoiceRes.data as { created?: boolean })?.created === true;
-      }
-    }
-
+    const billIssued = (shipRes.data as { created?: boolean })?.created === true;
     showSuccessNotification(
-      billIssued ? 'Shipped and merchant bill issued.' : 'Status updated to shipped.',
+      billIssued ? 'Shipped and merchant bill issued.' : 'Shipped. Merchant bill was already on file.',
     );
     await queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.dropshipDetailV2(authStore.tenantId ?? 0, orderId.value),
@@ -305,11 +271,9 @@ const onOrderCancelled = () => {
           v-model:pickup="pickupForm"
           v-model:courier="courierForm"
           v-model:delivered-quantities="deliveredQuantitiesForm"
-          :merchant-options="merchantOptions"
+          :pickup-location-options="pickupLocationOptions"
           :courier-options="courierOptions"
           :delivery-zone-label="deliveryZoneLabel"
-          :suggested-delivery-fee="suggestedDeliveryFee"
-          :cod-rate-label="codRateLabel"
         />
       </template>
     </div>

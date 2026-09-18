@@ -405,6 +405,7 @@ CREATE INDEX "global_return_items_invoice_item_id_idx" ON "public"."sales_return
 CREATE INDEX "idx_global_invoice_items_shipment" ON "public"."sales_invoice_items" USING "btree" ("shipment_item_id");
 CREATE INDEX "idx_global_invoices_billing_profile" ON "public"."sales_invoices" USING "btree" ("billing_profile_id");
 CREATE INDEX "idx_sales_invoices_shop_order_id" ON "public"."sales_invoices" USING "btree" ("shop_order_id");
+CREATE UNIQUE INDEX "sales_invoices_shop_order_id_uidx" ON "public"."sales_invoices" USING "btree" ("shop_order_id") WHERE ("shop_order_id" IS NOT NULL);
 CREATE INDEX "idx_sales_invoice_charges_invoice_id" ON "public"."sales_invoice_charges" USING "btree" ("invoice_id");
 CREATE INDEX "idx_sales_invoices_scoping" ON "public"."sales_invoices" USING "btree" ("parent_tenant_id", "issued_by_tenant_id", "invoice_status", "invoice_date");
 CREATE INDEX "recipient_profiles_name_idx" ON "public"."recipient_profiles" USING "btree" ("name");

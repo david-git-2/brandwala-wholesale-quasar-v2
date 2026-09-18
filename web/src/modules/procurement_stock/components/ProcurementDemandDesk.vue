@@ -4,6 +4,7 @@
       <q-card flat class="floating-surface shadow-1 q-pa-xs flex-shrink-0">
         <div class="row items-center q-col-gutter-xs">
           <q-tabs
+            v-if="!isBuyMode"
             v-model="procurementStatus"
             dense
             no-caps

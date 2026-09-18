@@ -258,7 +258,7 @@ async function onMarkDelivered() {
   if (!orderData.value?.step_state.can_mark_delivered) return;
 
   const confirmed = await requestConfirmation(
-    'Mark this parcel as delivered? This saves the settlement and books courier COD.',
+    'Mark this parcel as delivered? The merchant bill was already issued at ship. Cash comes when the courier remits.',
     'Mark as delivered',
     'Mark delivered',
   );
