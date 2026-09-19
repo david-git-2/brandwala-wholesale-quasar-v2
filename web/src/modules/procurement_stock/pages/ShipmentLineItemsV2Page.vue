@@ -185,6 +185,21 @@
             </q-btn>
           </template>
 
+          <q-btn
+            outline
+            dense
+            no-caps
+            color="primary"
+            class="rounded-sq-btn text-weight-bold q-px-sm"
+            icon="ph ph-clipboard-text"
+            label="Bulk Paste"
+            size="sm"
+            :disable="!canEditLineCostFields && !canEditLineStructure"
+            @click="openBulkPaste(activeSectionDbId)"
+          >
+            <q-tooltip>Paste barcode or product code plus values from Excel</q-tooltip>
+          </q-btn>
+
           <!-- Add Items Button (Disabled on 'All Items' tab) -->
           <q-btn
             outline
@@ -490,7 +505,7 @@
                 <td class="text-center text-weight-medium text-grey-7 q-pa-none" style="width: 36px; min-width: 36px; max-width: 36px" @click.stop>
                   <div class="row items-center justify-center no-wrap">
                     <input
-                      :value="item.sort_order ?? item.sl"
+                      :value="item.sl"
                       type="number"
                       min="1"
                       class="sl-input font-mono"
@@ -501,13 +516,13 @@
                 </td>
 
                 <!-- Image (1 inch size) -->
-                <td style="width: 1.1in; min-width: 1.1in; padding: 4px 6px" class="text-center">
+                <td class="item-img-cell text-center">
                   <div class="item-img-container">
                     <SmartImage
                       :src="item.image_url"
                       :alt="item.name"
                       img-class="item-img-element"
-                      class="full-width full-height rounded-borders"
+                      class="item-img-smart"
                       fallback-icon="ph ph-t-shirt"
                     />
                     <!-- Expand Image Hover Button -->
@@ -804,33 +819,65 @@
       @add-column="onAddCustomColumn"
     />
 
-    <!-- Bulk Paste Dialog (UI-only for pasting column values) -->
+    <!-- Bulk Paste Dialog -->
     <q-dialog v-model="showBulkPasteDialog" persistent>
-      <q-card style="width: 520px; max-width: 95vw; border-radius: 12px">
+      <q-card style="width: 640px; max-width: 95vw; border-radius: 12px">
         <q-card-section class="row items-center justify-between q-pb-none">
           <div class="row items-center q-gutter-x-sm">
             <q-avatar color="primary" text-color="white" icon="ph ph-clipboard-text" size="32px" />
             <div>
               <div class="text-subtitle1 text-weight-bold text-grey-9">Bulk Paste {{ bulkPasteFieldLabel }}</div>
-              <div class="text-caption text-grey-6">Paste tab-separated or newline-separated values from Excel/Sheets</div>
+              <div class="text-caption text-grey-6">
+                Click a cell, then paste. Data fills from that cell, like Excel.
+              </div>
             </div>
           </div>
           <q-btn v-close-popup icon="ph ph-x" flat round dense color="grey-6" />
         </q-card-section>
 
         <q-card-section class="q-py-md">
-          <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Paste Area</div>
-          <q-input
-            v-model="bulkPasteText"
-            type="textarea"
-            outlined
-            dense
-            rows="8"
-            placeholder="Paste your copied column values here (e.g. from Excel)..."
-            class="bg-white font-mono"
-            style="font-size: 13px"
-            autofocus
-          />
+          <div class="bulk-paste-grid-wrap" @paste.capture="onBulkPasteGridPaste">
+            <table class="bulk-paste-grid">
+              <thead>
+                <tr>
+                  <th>Barcode</th>
+                  <th>Product code</th>
+                  <th>{{ bulkPasteFieldLabel }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, rowIdx) in bulkPasteRows" :key="row.rowKey">
+                  <td>
+                    <input
+                      v-model="row.barcode"
+                      class="bulk-paste-cell"
+                      :data-row="rowIdx"
+                      data-col="0"
+                      @focus="onBulkPasteCellFocus(rowIdx, 0)"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      v-model="row.product_code"
+                      class="bulk-paste-cell"
+                      :data-row="rowIdx"
+                      data-col="1"
+                      @focus="onBulkPasteCellFocus(rowIdx, 1)"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      v-model="row.value"
+                      class="bulk-paste-cell bulk-paste-cell--value"
+                      :data-row="rowIdx"
+                      data-col="2"
+                      @focus="onBulkPasteCellFocus(rowIdx, 2)"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </q-card-section>
 
         <q-separator />
@@ -953,6 +1000,7 @@ const {
   clearAssignChild,
   confirmLockShipmentCosts,
   downloadExcel,
+  openBulkPaste,
 } = actions;
 
 // In-Place Shipment Name Edit State
@@ -1041,8 +1089,17 @@ const excelBottomBarRef = ref<InstanceType<typeof ShipmentExcelBottomBar> | null
 const showBulkPasteDialog = ref(false);
 const bulkPasteField = ref<'purchase_price' | 'ordered_quantity' | 'product_weight' | 'package_weight'>('purchase_price');
 const bulkPasteStartItem = ref<any>(null);
-const bulkPasteText = ref('');
 const bulkPasteSaving = ref(false);
+type BulkPasteGridRow = {
+  rowKey: string;
+  itemId: number | null;
+  barcode: string;
+  product_code: string;
+  value: string;
+};
+const bulkPasteRows = ref<BulkPasteGridRow[]>([]);
+const bulkPasteFocus = ref({ row: 0, col: 0 });
+const bulkPasteCols = ['barcode', 'product_code', 'value'] as const;
 
 const bulkPasteFieldLabel = computed(() => {
   switch (bulkPasteField.value) {
@@ -1059,6 +1116,25 @@ const bulkPasteFieldLabel = computed(() => {
   }
 });
 
+const emptyBulkPasteRow = (index: number): BulkPasteGridRow => ({
+  rowKey: `empty-${index}`,
+  itemId: null,
+  barcode: '',
+  product_code: '',
+  value: '',
+});
+
+const looksLikePasteHeader = (cols: string[]): boolean => {
+  const joined = cols.join(' ').toLowerCase();
+  return (
+    joined.includes('barcode') ||
+    joined.includes('product code') ||
+    joined.includes('product_code') ||
+    joined.includes('actualweight') ||
+    joined.includes('actual weight')
+  );
+};
+
 const openBulkPasteDialog = (
   field: 'purchase_price' | 'ordered_quantity' | 'product_weight' | 'package_weight',
   startItem?: any,
@@ -1067,73 +1143,157 @@ const openBulkPasteDialog = (
   if (field !== 'ordered_quantity' && !canEditLineCostFields.value) return;
   bulkPasteField.value = field;
   bulkPasteStartItem.value = startItem || null;
-  bulkPasteText.value = '';
   bulkPasteSaving.value = false;
+  bulkPasteRows.value = Array.from({ length: 16 }, (_, i) => emptyBulkPasteRow(i));
+  bulkPasteFocus.value = { row: 0, col: 0 };
   showBulkPasteDialog.value = true;
+  void nextTick(() => {
+    const el = document.querySelector(
+      `.bulk-paste-cell[data-row="0"][data-col="0"]`,
+    ) as HTMLInputElement | null;
+    el?.focus();
+  });
+};
+
+const onBulkPasteCellFocus = (row: number, col: number) => {
+  bulkPasteFocus.value = { row, col };
+};
+
+const onBulkPasteGridPaste = (event: ClipboardEvent) => {
+  const text = event.clipboardData?.getData('text/plain');
+  if (!text) return;
+  event.preventDefault();
+
+  let pasted = text
+    .split(/\r?\n/)
+    .map((line) => line.split('\t').map((cell) => cell.trim()))
+    .filter((cols) => cols.some((cell) => cell !== ''));
+  if (pasted.length === 0) return;
+  if (pasted[0] && looksLikePasteHeader(pasted[0])) {
+    pasted = pasted.slice(1);
+  }
+  if (pasted.length === 0) return;
+
+  const startRow = bulkPasteFocus.value.row;
+  const startCol = bulkPasteFocus.value.col;
+  const rows = [...bulkPasteRows.value];
+
+  pasted.forEach((cols, rOffset) => {
+    const rowIdx = startRow + rOffset;
+    while (rowIdx >= rows.length) {
+      rows.push(emptyBulkPasteRow(rows.length));
+    }
+    const row = rows[rowIdx];
+    if (!row) return;
+    cols.forEach((cell, cOffset) => {
+      const colIdx = startCol + cOffset;
+      const key = bulkPasteCols[colIdx];
+      if (!key) return;
+      row[key] = cell;
+    });
+  });
+
+  bulkPasteRows.value = rows;
 };
 
 const applyBulkPaste = async () => {
-  const text = bulkPasteText.value.trim();
-  if (!text) {
-    showBulkPasteDialog.value = false;
-    return;
-  }
-
-  // Parse lines or tab-separated entries
-  const tokens = text
-    .split(/[\r\n\t]+/)
-    .map((t) => t.trim())
-    .filter((t) => t.length > 0);
-
-  if (tokens.length === 0) {
-    showBulkPasteDialog.value = false;
-    return;
-  }
-
   const items = displayedItems.value;
-  let startIndex = 0;
-  if (bulkPasteStartItem.value) {
-    const foundIdx = items.findIndex((it) => it.id === bulkPasteStartItem.value.id);
-    if (foundIdx !== -1) {
-      startIndex = foundIdx;
-    }
-  }
-
-  let count = 0;
   const field = bulkPasteField.value;
   const updates: Array<{ id: number; payload: Record<string, any> }> = [];
+  let count = 0;
+  let skipped = 0;
+  const usedIds = new Set<number>();
 
-  for (let i = 0; i < tokens.length; i++) {
-    const targetItem = items[startIndex + i];
-    if (!targetItem) break;
+  const normalizeKey = (value: string | null | undefined) =>
+    (value || '').trim().replace(/^['`]+/, '').replace(/\s+/g, '').toLowerCase();
 
-    const val = Number(tokens[i]);
-    if (!isNaN(val)) {
-      let normalized = val;
-      if (field === 'purchase_price') {
-        normalized = Number(val.toFixed(2));
-        targetItem.price = normalized;
-      } else if (field === 'ordered_quantity') {
-        normalized = Math.max(1, Math.round(val));
-        targetItem.quantity = normalized;
-      } else if (field === 'product_weight' || field === 'package_weight') {
-        normalized = Number(val.toFixed(3));
+  const normalizePasteNumber = (raw: string): number | null => {
+    if (!raw.trim()) return null;
+    const val = Number(raw.replace(/[^0-9.-]/g, ''));
+    if (Number.isNaN(val)) return null;
+    if (field === 'purchase_price') return Number(val.toFixed(2));
+    if (field === 'ordered_quantity') return Math.max(1, Math.round(val));
+    if (field === 'product_weight' || field === 'package_weight') return Number(val.toFixed(3));
+    return val;
+  };
+
+  const itemCodes = (it: (typeof items)[number]) => {
+    const raw = it.rawItem as { barcode?: string | null; product_code?: string | null } | undefined;
+    return {
+      barcode: normalizeKey(String(raw?.barcode ?? it.barcode ?? '')),
+      product_code: normalizeKey(String(raw?.product_code ?? '')),
+    };
+  };
+
+  const findMatches = (rowBarcode: string, rowCode: string) => {
+    return items.filter((it) => {
+      const codes = itemCodes(it);
+      if (rowBarcode && rowCode) {
+        return codes.barcode === rowBarcode && codes.product_code === rowCode;
       }
+      if (rowBarcode) return codes.barcode === rowBarcode;
+      if (rowCode) return codes.product_code === rowCode;
+      return false;
+    });
+  };
 
-      onCellDirectInput(targetItem, field, normalized);
-      if (targetItem.rawItem) {
-        targetItem.rawItem[field] = normalized;
-      }
-
-      const itemId = targetItem.rawItem?.id || targetItem.id;
-      if (itemId) {
-        updates.push({
-          id: itemId,
-          payload: { [field]: normalized },
-        });
-      }
-      count++;
+  const pushUpdate = (targetItem: (typeof items)[number], normalized: number) => {
+    if (usedIds.has(targetItem.id)) return false;
+    usedIds.add(targetItem.id);
+    if (field === 'purchase_price') targetItem.price = normalized;
+    if (field === 'ordered_quantity') targetItem.quantity = normalized;
+    onCellDirectInput(targetItem, field, normalized);
+    if (targetItem.rawItem) {
+      targetItem.rawItem[field] = normalized;
     }
+    const itemId = targetItem.rawItem?.id || targetItem.id;
+    if (itemId) {
+      updates.push({
+        id: itemId,
+        payload: { [field]: normalized },
+      });
+    }
+    count++;
+    return true;
+  };
+
+  const dataRows = bulkPasteRows.value.filter((row) => normalizePasteNumber(row.value) !== null);
+  const pasteHasKeys = dataRows.some(
+    (row) => normalizeKey(row.barcode) || normalizeKey(row.product_code),
+  );
+
+  if (pasteHasKeys) {
+    for (const row of dataRows) {
+      const normalized = normalizePasteNumber(row.value);
+      if (normalized === null) continue;
+      const barcode = normalizeKey(row.barcode);
+      const productCode = normalizeKey(row.product_code);
+      if (!barcode && !productCode) {
+        skipped++;
+        continue;
+      }
+      const hits = findMatches(barcode, productCode).filter((it) => !usedIds.has(it.id));
+      if (hits.length !== 1) {
+        skipped++;
+        continue;
+      }
+      pushUpdate(hits[0]!, normalized);
+    }
+  } else {
+    let startIndex = 0;
+    if (bulkPasteStartItem.value) {
+      const foundIdx = items.findIndex((it) => it.id === bulkPasteStartItem.value.id);
+      if (foundIdx !== -1) startIndex = foundIdx;
+    }
+    dataRows.forEach((row, i) => {
+      const normalized = normalizePasteNumber(row.value);
+      const targetItem = items[startIndex + i];
+      if (!targetItem || normalized === null) {
+        skipped++;
+        return;
+      }
+      if (!pushUpdate(targetItem, normalized)) skipped++;
+    });
   }
 
   try {
@@ -1142,7 +1302,9 @@ const applyBulkPaste = async () => {
       try {
         await shipmentStore.updateShipmentItemsBulk(shipmentId, updates);
         $q.notify({
-          message: `Successfully pasted and saved ${count} ${bulkPasteFieldLabel.value} value(s)`,
+          message: `Successfully pasted and saved ${count} ${bulkPasteFieldLabel.value} value(s)${
+            skipped ? ` (${skipped} unmatched)` : ''
+          }`,
           color: 'positive',
           icon: 'ph ph-check-circle',
           position: 'bottom',
@@ -1160,6 +1322,14 @@ const applyBulkPaste = async () => {
       } finally {
         bulkPasteSaving.value = false;
       }
+    } else if (skipped > 0) {
+      $q.notify({
+        message: `No rows updated (${skipped} unmatched)`,
+        color: 'warning',
+        icon: 'ph ph-warning-circle',
+        position: 'bottom',
+        timeout: 2000,
+      });
     } else {
       $q.notify({
         message: `Pasted ${count} value(s) into ${bulkPasteFieldLabel.value}`,
@@ -1624,6 +1794,11 @@ const activeSheetId = ref('sheet_all');
 const sheets = ref<SheetTabItem[]>([
   { id: 'sheet_all', name: 'All Items' },
 ]);
+
+const activeSectionDbId = computed(() => {
+  const activeSection = sheets.value.find((s) => s.id === activeSheetId.value);
+  return activeSection?.dbId ?? null;
+});
 
 const firstSectionSheetId = (sections: typeof shipmentStore.currentShipmentSections) =>
   sections?.length ? `section_${sections[0].id}` : null;
@@ -2112,10 +2287,20 @@ const removeSheet = async (id: string) => {
 }
 
 /* Item Image Cell & Expand Button (1 inch) */
+.item-img-cell {
+  width: 1.1in;
+  min-width: 1.1in;
+  max-width: 1.1in;
+  padding: 4px 6px;
+  overflow: hidden;
+}
+
 .item-img-container {
   position: relative;
   width: 1in;
   height: 1in;
+  max-width: 1in;
+  max-height: 1in;
   border-radius: 8px;
   overflow: hidden;
   background: var(--bw-neutral-surface-subtle, #F1F5F9);
@@ -2126,11 +2311,25 @@ const removeSheet = async (id: string) => {
   margin: 0 auto;
 }
 
-:deep(.item-img-element) {
-  width: 1in !important;
-  height: 1in !important;
-  object-fit: cover !important;
-  border-radius: 8px !important;
+.item-img-container :deep(.item-img-smart),
+.item-img-container :deep(.item-img-element),
+.item-img-container :deep(.smart-image-wrapper) {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.item-img-container :deep(.smart-image__img) {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  object-position: center;
 }
 
 .img-expand-btn {
@@ -2146,6 +2345,62 @@ const removeSheet = async (id: string) => {
 
 .item-img-container:hover .img-expand-btn {
   opacity: 1;
+}
+
+.bulk-paste-grid-wrap {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.bulk-paste-grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.bulk-paste-grid th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.bulk-paste-grid td {
+  padding: 0;
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+}
+
+.bulk-paste-grid td:last-child {
+  border-right: none;
+}
+
+.bulk-paste-cell {
+  width: 100%;
+  height: 28px;
+  border: none;
+  outline: none;
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: #fff;
+  color: #0f172a;
+}
+
+.bulk-paste-cell:focus {
+  box-shadow: inset 0 0 0 2px var(--q-primary, #2563eb);
+}
+
+.bulk-paste-cell--value {
+  font-weight: 700;
 }
 
 /* SL In-Place Editable Input */

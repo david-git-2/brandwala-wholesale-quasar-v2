@@ -20,7 +20,7 @@
         <div class="instruction-box q-pa-md row items-start no-wrap q-gutter-x-md">
           <q-icon name="ph ph-info" size="20px" class="q-mt-xs text-dark" style="color: #0f172a" />
           <div class="text-body2 text-dark" style="color: #1e293b; line-height: 1.5">
-            Copy cells from Excel or Google Sheets (columns containing <strong>Quantity</strong>, <strong>Price</strong>, <strong>Product Weight</strong>, or <strong>Package Weight</strong>) and paste them below. Values will be applied to items sequentially from top to bottom.
+            Paste from Excel or Sheets. Map a <strong>Barcode</strong> or <strong>Product code</strong> column to update the matching line, even if rows are out of order. With no key column, values apply from top to bottom.
           </div>
         </div>
 
@@ -80,7 +80,7 @@
             </div>
 
             <div class="text-caption text-weight-bold text-dark q-mt-xs" style="color: #0f172a">
-              Map Columns to Fields:
+              Map columns. Use Barcode or Product code when rows are not in sheet order.
             </div>
             <div class="row q-col-gutter-sm">
               <div v-for="colIdx in maxColumns" :key="colIdx" class="col-12 col-sm-3">
@@ -109,27 +109,32 @@
               <tr>
                 <th class="text-left" style="width: 50px">SL</th>
                 <th class="text-left">Shipment Product</th>
+                <th class="text-left" style="width: 88px">Match</th>
                 <th v-for="colIdx in maxColumns" :key="colIdx" class="text-center">
                   {{ getColumnLabel(colMappings[colIdx - 1]) }}
                 </th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(item, index) in previewRows" :key="item.id">
-                <td class="text-left text-dark text-weight-medium" style="color: #475569">{{ index + 1 }}</td>
+              <tr v-for="row in previewRows" :key="row.rowKey">
+                <td class="text-left text-dark text-weight-medium" style="color: #475569">{{ row.sl }}</td>
                 <td class="text-left text-weight-medium ellipsis text-dark" style="max-width: 260px; color: #0f172a">
-                  <div>{{ item.name }}</div>
-                  <div class="text-caption text-grey-7">
-                    Current: Qty {{ item.ordered_quantity }} · Price £{{ item.purchase_price }} · Wt
-                    {{ item.product_weight }}g · Pkg Wt {{ item.package_weight }}g
+                  <div>{{ row.item?.name || 'No match' }}</div>
+                  <div v-if="row.item" class="text-caption text-grey-7">
+                    Current: Qty {{ row.item.ordered_quantity }} · Price £{{ row.item.purchase_price }} · Wt
+                    {{ row.item.product_weight }}g · Pkg Wt {{ row.item.package_weight }}g
                   </div>
+                  <div v-else class="text-caption text-grey-7">{{ row.matchHint }}</div>
+                </td>
+                <td class="text-left text-caption text-weight-bold" :class="row.matchClass">
+                  {{ row.matchLabel }}
                 </td>
                 <td v-for="colIdx in maxColumns" :key="colIdx" class="text-center font-mono">
-                  <template v-if="getPastedValueForCell(index, colIdx - 1) !== null">
+                  <template v-if="getPastedValueForCell(row.pasteIndex, colIdx - 1) !== null">
                     <span class="text-weight-bolder text-dark" style="color: #0f172a; font-size: 13px">
                       {{
                         formatPreviewValue(
-                          getPastedValueForCell(index, colIdx - 1),
+                          getPastedValueForCell(row.pasteIndex, colIdx - 1),
                           colMappings[colIdx - 1],
                         )
                       }}
@@ -140,19 +145,14 @@
                   </template>
                 </td>
               </tr>
-              <!-- Warning if pasted rows count doesn't match table items count -->
-              <tr v-if="parsedRows.length !== currentItems.length" class="bg-amber-1">
+              <tr v-if="previewFooter" class="bg-amber-1">
                 <td
-                  :colspan="maxColumns + 2"
+                  :colspan="maxColumns + 3"
                   class="text-center text-amber-10 text-caption text-weight-bold q-py-sm"
                   style="color: #78350f"
                 >
                   <q-icon name="ph ph-warning" size="16px" class="q-mr-xs" />
-                  {{
-                    parsedRows.length > currentItems.length
-                      ? `You pasted ${parsedRows.length} rows, but this shipment only has ${currentItems.length} items. Extra rows will be ignored.`
-                      : `You pasted ${parsedRows.length} rows, but this shipment has ${currentItems.length} items. Remaining items will not be updated.`
-                  }}
+                  {{ previewFooter }}
                 </td>
               </tr>
             </tbody>
@@ -167,7 +167,7 @@
           color="primary"
           unelevated
           label="Apply Updates"
-          :disable="!parsedRows.length || !hasActiveMappings"
+          :disable="!parsedRows.length || !hasValueMappings || applyCount === 0"
           :loading="submitting"
           no-caps
           class="rounded-sq-btn"
@@ -224,14 +224,24 @@ const currentItems = computed(() => {
   );
 });
 
-const previewRows = computed(() => {
-  // Only show as many preview rows as we have shipment items
-  const len = Math.max(parsedRows.value.length, currentItems.value.length);
-  return currentItems.value.slice(0, len);
-});
+const KEY_FIELDS = ['barcode', 'product_code'] as const;
+const VALUE_FIELDS = ['ordered_quantity', 'purchase_price', 'product_weight', 'package_weight'] as const;
+
+type PreviewRow = {
+  rowKey: string;
+  pasteIndex: number;
+  sl: number;
+  item: GlobalShipmentItem | null;
+  matchLabel: string;
+  matchClass: string;
+  matchHint: string;
+  canApply: boolean;
+};
 
 const mappingOptions = [
   { label: 'Ignore', value: 'ignore' },
+  { label: 'Barcode (match)', value: 'barcode' },
+  { label: 'Product code (match)', value: 'product_code' },
   { label: 'Quantity', value: 'ordered_quantity' },
   { label: 'Price (£)', value: 'purchase_price' },
   { label: 'Product Weight (g)', value: 'product_weight' },
@@ -242,8 +252,201 @@ const getColumnLabel = (mapping?: string) => {
   return mappingOptions.find((opt) => opt.value === mapping)?.label || 'Ignore';
 };
 
-const hasActiveMappings = computed(() => {
-  return colMappings.value.some((mapping) => mapping && mapping !== 'ignore');
+const hasValueMappings = computed(() =>
+  colMappings.value.some((mapping) => VALUE_FIELDS.includes(mapping as (typeof VALUE_FIELDS)[number])),
+);
+
+const usesKeyMatch = computed(() =>
+  colMappings.value.some((mapping) => KEY_FIELDS.includes(mapping as (typeof KEY_FIELDS)[number])),
+);
+
+const normalizeKey = (value: string | null | undefined): string => {
+  if (!value) return '';
+  return value.trim().replace(/^['`]+/, '').replace(/\s+/g, '').toLowerCase();
+};
+
+const looksNumeric = (value: string): boolean => {
+  const cleaned = value.replace(/[^0-9.-]/g, '');
+  if (cleaned === '' || cleaned === '-' || cleaned === '.') return false;
+  return !Number.isNaN(Number(cleaned));
+};
+
+const guessHeaderMapping = (cell: string): string | null => {
+  const n = cell.trim().toLowerCase().replace(/[_-]+/g, ' ');
+  if (['barcode', 'bar code', 'ean', 'upc'].includes(n)) return 'barcode';
+  if (['product code', 'productcode', 'sku', 'code', 'style', 'style code'].includes(n)) {
+    return 'product_code';
+  }
+  if (['qty', 'quantity', 'pcs', 'ordered quantity'].includes(n)) return 'ordered_quantity';
+  if (['price', 'gbp', 'cost', 'unit price', 'purchase price'].includes(n)) return 'purchase_price';
+  if (['product weight', 'weight', 'wt', 'item weight'].includes(n)) return 'product_weight';
+  if (['package weight', 'pkg weight', 'pkg', 'carton weight'].includes(n)) return 'package_weight';
+  return null;
+};
+
+const guessColumnMappings = (rows: string[][], colCount: number): string[] => {
+  const first = rows[0] ?? [];
+  const headerGuess = first.map((cell) => guessHeaderMapping(cell));
+  if (headerGuess.some((g) => g != null)) {
+    return Array.from({ length: colCount }, (_, idx) => headerGuess[idx] || 'ignore');
+  }
+
+  const valueQueue = [...VALUE_FIELDS];
+  let usedBarcode = false;
+  let usedProductCode = false;
+
+  return Array.from({ length: colCount }, (_, idx) => {
+    const samples = rows
+      .slice(0, 8)
+      .map((row) => row[idx] ?? '')
+      .filter((cell) => cell !== '');
+    const numericCount = samples.filter((cell) => looksNumeric(cell)).length;
+    const isKeyish = samples.length > 0 && numericCount < samples.length / 2;
+
+    if (isKeyish && !usedBarcode) {
+      usedBarcode = true;
+      return 'barcode';
+    }
+    if (isKeyish && !usedProductCode) {
+      usedProductCode = true;
+      return 'product_code';
+    }
+    return valueQueue.shift() || 'ignore';
+  });
+};
+
+const buildKeyIndex = (field: 'barcode' | 'product_code') => {
+  const map = new Map<string, GlobalShipmentItem[]>();
+  for (const item of currentItems.value) {
+    const key = normalizeKey(item[field]);
+    if (!key) continue;
+    const list = map.get(key) ?? [];
+    list.push(item);
+    map.set(key, list);
+  }
+  return map;
+};
+
+const payloadFromRow = (row: string[]): Record<string, number> => {
+  const payload: Record<string, number> = {};
+  colMappings.value.forEach((mapping, colIdx) => {
+    if (!VALUE_FIELDS.includes(mapping as (typeof VALUE_FIELDS)[number]) || colIdx >= row.length) return;
+    const cellVal = row[colIdx];
+    if (cellVal === undefined || cellVal === '') return;
+    const cleaned = cellVal.replace(/[^0-9.-]/g, '');
+    if (cleaned === '') return;
+    const numVal = Number(cleaned);
+    if (Number.isNaN(numVal)) return;
+    if (mapping === 'ordered_quantity') {
+      payload[mapping] = Math.max(1, Math.floor(numVal));
+    } else if (mapping === 'purchase_price' || mapping === 'product_weight' || mapping === 'package_weight') {
+      payload[mapping] = Math.max(0, numVal);
+    }
+  });
+  return payload;
+};
+
+const resolveRowItem = (
+  row: string[],
+  barcodeIndex: Map<string, GlobalShipmentItem[]>,
+  productCodeIndex: Map<string, GlobalShipmentItem[]>,
+): { item: GlobalShipmentItem | null; status: 'matched' | 'unmatched' | 'duplicate' } => {
+  const barcodeCol = colMappings.value.indexOf('barcode');
+  const productCodeCol = colMappings.value.indexOf('product_code');
+
+  const lookup = (field: 'barcode' | 'product_code', col: number) => {
+    if (col < 0) return null;
+    const key = normalizeKey(row[col] ?? '');
+    if (!key) return null;
+    const hits = field === 'barcode' ? barcodeIndex.get(key) : productCodeIndex.get(key);
+    if (!hits || hits.length === 0) return { item: null, status: 'unmatched' as const };
+    if (hits.length > 1) return { item: null, status: 'duplicate' as const };
+    return { item: hits[0] ?? null, status: 'matched' as const };
+  };
+
+  const byBarcode = lookup('barcode', barcodeCol);
+  if (byBarcode) return byBarcode;
+  const byCode = lookup('product_code', productCodeCol);
+  if (byCode) return byCode;
+  return { item: null, status: 'unmatched' };
+};
+
+const previewRows = computed((): PreviewRow[] => {
+  const barcodeIndex = buildKeyIndex('barcode');
+  const productCodeIndex = buildKeyIndex('product_code');
+  const usedIds = new Set<number>();
+
+  if (usesKeyMatch.value) {
+    return parsedRows.value.map((row, index) => {
+      const resolved = resolveRowItem(row, barcodeIndex, productCodeIndex);
+      let status = resolved.status;
+      let item = resolved.item;
+      if (item && usedIds.has(item.id)) {
+        status = 'duplicate';
+        item = null;
+      } else if (item) {
+        usedIds.add(item.id);
+      }
+
+      const canApply = status === 'matched' && item != null && Object.keys(payloadFromRow(row)).length > 0;
+      const matchLabel =
+        status === 'matched' ? 'Matched' : status === 'duplicate' ? 'Duplicate' : 'Unmatched';
+      const matchClass =
+        status === 'matched' ? 'text-positive' : status === 'duplicate' ? 'text-amber-9' : 'text-negative';
+
+      return {
+        rowKey: `paste-${index}`,
+        pasteIndex: index,
+        sl: index + 1,
+        item,
+        matchLabel,
+        matchClass,
+        matchHint:
+          status === 'duplicate'
+            ? 'This code matches more than one line, or was already used in this paste.'
+            : 'No shipment line has this barcode or product code.',
+        canApply,
+      };
+    });
+  }
+
+  const limit = Math.max(parsedRows.value.length, currentItems.value.length);
+  const rows: PreviewRow[] = [];
+  for (let i = 0; i < limit; i++) {
+    const item = currentItems.value[i] ?? null;
+    const row = parsedRows.value[i];
+    const canApply = !!item && !!row && Object.keys(payloadFromRow(row)).length > 0;
+    rows.push({
+      rowKey: `order-${item?.id ?? 'x'}-${i}`,
+      pasteIndex: i,
+      sl: i + 1,
+      item,
+      matchLabel: item && row ? 'In order' : item ? 'No paste' : 'Extra paste',
+      matchClass: item && row ? 'text-grey-7' : 'text-amber-9',
+      matchHint: item ? '' : 'No shipment line at this position.',
+      canApply,
+    });
+  }
+  return rows;
+});
+
+const applyCount = computed(() => previewRows.value.filter((row) => row.canApply).length);
+
+const previewFooter = computed(() => {
+  if (usesKeyMatch.value) {
+    const unmatched = previewRows.value.filter((row) => row.matchLabel === 'Unmatched').length;
+    const duplicate = previewRows.value.filter((row) => row.matchLabel === 'Duplicate').length;
+    const parts: string[] = [];
+    if (unmatched) parts.push(`${unmatched} unmatched`);
+    if (duplicate) parts.push(`${duplicate} duplicate`);
+    if (parts.length === 0) return '';
+    return `${parts.join(', ')}. Those rows will not be updated.`;
+  }
+  if (parsedRows.value.length === currentItems.value.length) return '';
+  if (parsedRows.value.length > currentItems.value.length) {
+    return `You pasted ${parsedRows.value.length} rows, but this list has ${currentItems.value.length} items. Extra rows will be ignored.`;
+  }
+  return `You pasted ${parsedRows.value.length} rows, but this list has ${currentItems.value.length} items. Remaining items will not be updated.`;
 });
 
 const onPasteUpdate = (val: string | number | null) => {
@@ -254,7 +457,6 @@ const onPasteUpdate = (val: string | number | null) => {
   }
 
   const valStr = String(val);
-  // Parse clipboard TSV format (Excel/Google Sheets copy paste)
   const rows = valStr.split(/\r?\n/);
   const data: Array<string[]> = [];
   let maxCols = 0;
@@ -268,19 +470,14 @@ const onPasteUpdate = (val: string | number | null) => {
     }
   }
 
-  parsedRows.value = data;
+  const headerGuess = (data[0] ?? []).map((cell) => guessHeaderMapping(cell));
+  const hasHeaderRow = headerGuess.some((g) => g != null);
+  const body = hasHeaderRow ? data.slice(1) : data;
+  parsedRows.value = body;
   maxColumns.value = maxCols;
-
-  // Set default column mappings sequentially
-  const defaultMappings = [
-    'ordered_quantity',
-    'purchase_price',
-    'product_weight',
-    'package_weight',
-  ];
-  colMappings.value = Array.from({ length: maxCols }, (_, idx) => {
-    return defaultMappings[idx] || 'ignore';
-  });
+  colMappings.value = hasHeaderRow
+    ? Array.from({ length: maxCols }, (_, idx) => headerGuess[idx] || 'ignore')
+    : guessColumnMappings(body, maxCols);
 };
 
 const resetPaste = () => {
@@ -298,9 +495,12 @@ const getPastedValueForCell = (rowIdx: number, colIdx: number): string | null =>
 };
 
 const formatPreviewValue = (val: string | null, mapping?: string): string => {
-  if (!mapping || mapping === 'ignore' || val === null || val === '') return val || '';
+  if (!mapping || mapping === 'ignore' || KEY_FIELDS.includes(mapping as (typeof KEY_FIELDS)[number])) {
+    return val || '';
+  }
+  if (val === null || val === '') return val || '';
   const num = Number(val.replace(/[^0-9.-]/g, ''));
-  if (isNaN(num)) return val;
+  if (Number.isNaN(num)) return val;
 
   if (mapping === 'ordered_quantity') {
     return `${Math.floor(num)} pcs`;
@@ -315,15 +515,7 @@ const formatPreviewValue = (val: string | null, mapping?: string): string => {
 };
 
 const onApply = async () => {
-  console.log('onApply clicked!');
-  console.log('parsedRows:', parsedRows.value);
-  console.log('currentItems:', currentItems.value);
-  console.log('colMappings:', colMappings.value);
-
-  if (!parsedRows.value.length || !hasActiveMappings.value) {
-    console.log('Early return: parsedRows empty or no active mappings');
-    return;
-  }
+  if (!parsedRows.value.length || !hasValueMappings.value || applyCount.value === 0) return;
   submitting.value = true;
 
   const updates: Array<{
@@ -331,62 +523,24 @@ const onApply = async () => {
     payload: Partial<Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at' | 'shipment_id'>>;
   }> = [];
 
-  // Iterate over both arrays, capping at the length of shipment items
-  const limit = Math.min(parsedRows.value.length, currentItems.value.length);
-  console.log('limit:', limit);
-
-  for (let i = 0; i < limit; i++) {
-    const item = currentItems.value[i];
-    const row = parsedRows.value[i];
-    if (!item || !row) continue;
-    const payload: any = {};
-
-    colMappings.value.forEach((mapping, colIdx) => {
-      if (!mapping || mapping === 'ignore' || colIdx >= row.length) return;
-      const cellVal = row[colIdx];
-      if (cellVal === undefined || cellVal === '') return; // skip empty cells
-
-      // Strip symbols like £, $, g, etc.
-      const cleaned = cellVal.replace(/[^0-9.-]/g, '');
-      if (cleaned === '') {
-        console.log(`Row ${i}, Col ${colIdx}: Value '${cellVal}' has no numeric content, skipping`);
-        return;
-      }
-      const numVal = Number(cleaned);
-      if (isNaN(numVal)) {
-        console.log(`Row ${i}, Col ${colIdx}: Value '${cellVal}' parsed as NaN`);
-        return;
-      }
-
-      if (mapping === 'ordered_quantity') {
-        payload[mapping] = Math.max(1, Math.floor(numVal));
-      } else if (mapping === 'purchase_price') {
-        payload[mapping] = Math.max(0, numVal);
-      } else if (mapping === 'product_weight' || mapping === 'package_weight') {
-        payload[mapping] = Math.max(0, numVal);
-      }
+  for (const preview of previewRows.value) {
+    if (!preview.canApply || !preview.item) continue;
+    const row = parsedRows.value[preview.pasteIndex];
+    if (!row) continue;
+    const payload = payloadFromRow(row);
+    if (Object.keys(payload).length === 0) continue;
+    updates.push({
+      id: preview.item.id,
+      payload,
     });
-
-    if (Object.keys(payload).length > 0) {
-      updates.push({
-        id: item.id,
-        payload,
-      });
-    }
   }
-
-  console.log('Updates payload to send:', updates);
 
   try {
     if (updates.length > 0 && shipmentStore.currentShipment?.id) {
-      console.log('Calling shipmentStore.updateShipmentItemsBulk...');
       await shipmentStore.updateShipmentItemsBulk(shipmentStore.currentShipment.id, updates);
-      console.log('Bulk update completed successfully');
-    } else {
-      console.log('No updates compiled to send!');
     }
     onDialogOK();
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Bulk update failed', err);
   } finally {
     submitting.value = false;
