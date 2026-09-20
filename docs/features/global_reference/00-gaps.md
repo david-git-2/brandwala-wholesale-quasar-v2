@@ -5,3 +5,4 @@
 | GR1 | doc_wrong | One PRD covers reference + Koba + trash | Three code trees (`global_reference`, `koba`, trash in app) | Split Koba `01-prd`/`00-gaps` when you next edit Koba |
 | GR2 | sql_split | Stub folders `global_reference/`, `tag/` | Live in `public.sql` | Split on next schema change |
 | GR3 | not_built | Confirm `koba_wholesale` desk vs retail cart | Module key + routes exist; treat as verify vs PRD “dual surface” | User: tick GR3 if wholesale UI matches the PRD, else list missing screens |
+| GR4 | ~~not_built~~ | `bd_banks` catalog for cheque instrument lines ([02-data-model](02-data-model.md#24-bd_banks)) | ~~No table~~ | **Done (2026-09):** `20270918310000_bd_banks_catalog_and_seed.sql` + `list_bd_banks()` |

@@ -92,14 +92,6 @@ const columns: QTableColumn<InvoiceBookRow>[] = [
 ];
 
 function openInvoice(row: InvoiceBookRow) {
-  if (row.invoice_type === 'wholesale') {
-    void router.push({
-      name: 'app-global-invoices-create-wholesale',
-      params: { tenantSlug: tenantSlug.value || 'tenant' },
-      query: { id: String(row.id) },
-    });
-    return;
-  }
   void router.push({
     name: 'app-global-invoice-details-page',
     params: { tenantSlug: tenantSlug.value || 'tenant', id: row.id },

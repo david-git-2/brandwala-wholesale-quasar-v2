@@ -1,0 +1,184 @@
+.invoice-list-stack {
+  flex: 1;
+  min-height: 0;
+  max-width: 960px;
+  width: 100%;
+  margin-inline: auto;
+}
+
+.invoice-list-card {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bw-neutral-surface, #ffffff);
+  border: 1px solid var(--bw-neutral-border, #e2e8f0);
+  border-radius: var(--bw-radius-sm, 8px);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.invoice-list-scroll {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.invoice-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--bw-neutral-border, #f1f5f9);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 50px;
+}
+
+.invoice-list-item:hover {
+  background: #f8fafc;
+}
+
+.invoice-list-item:hover .invoice-name {
+  color: #0f172a;
+}
+
+.invoice-list-item:hover .invoice-chevron {
+  color: #0f172a;
+  transform: translateX(2px);
+}
+
+.invoice-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.invoice-title-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.invoice-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.invoice-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta-item {
+  font-weight: 400;
+}
+
+.meta-id {
+  color: #475569;
+  font-weight: 500;
+}
+
+.meta-type {
+  font-weight: 500;
+}
+
+.meta-due {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.meta-dot {
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.invoice-aside {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  margin-left: 1rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 2.5px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.status-icon {
+  flex-shrink: 0;
+}
+
+.status-pill--paid {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-pill--partial {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.status-pill--due {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-pill--draft {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-pill--voided {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-pill--default {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.invoice-chevron {
+  color: #94a3b8;
+  transition: all 0.15s ease;
+}
+
+.invoice-list-item--skeleton {
+  cursor: default;
+}
+
+.invoice-list-item--skeleton:hover {
+  background: transparent;
+}
+
+.load-more-btn {
+  background: #f1f5f9;
+  border-radius: var(--bw-radius-sm, 8px);
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.load-more-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}

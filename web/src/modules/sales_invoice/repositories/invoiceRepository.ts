@@ -8,6 +8,8 @@ import type {
   GlobalInvoiceItemRow,
   GlobalInvoiceRow,
   GlobalInvoiceType,
+  InvoicePaymentHistoryEntry,
+  WholesalePaymentInstrumentInput,
 } from '../types';
 
 
@@ -361,17 +363,19 @@ const applySettlementDiscount = async (invoiceId: number, amount: number, note?:
 
 const collectWholesaleInvoicePayment = async (payload: {
   invoice_id: number;
-  cash_amount?: number;
-  cash_method?: string;
+  instruments?: WholesalePaymentInstrumentInput[];
   wallet_amount?: number;
   settlement_amount?: number;
+  note?: string | null;
+  received_on?: string | null;
 }) => {
   const { data, error } = await supabase.rpc('collect_wholesale_invoice_payment', {
     p_invoice_id: payload.invoice_id,
-    p_cash_amount: payload.cash_amount ?? 0,
-    p_cash_method: payload.cash_method ?? 'cash',
+    p_instruments: (payload.instruments ?? []).filter((line) => (Number(line.amount) || 0) > 0),
     p_wallet_amount: payload.wallet_amount ?? 0,
     p_settlement_amount: payload.settlement_amount ?? 0,
+    p_note: payload.note ?? null,
+    p_received_on: payload.received_on ?? null,
   });
   if (error) throw error;
   return data;
@@ -384,6 +388,18 @@ export type InvoiceCollectionHistoryRow = {
   method: string | null;
   amount: number;
   note: string | null;
+};
+
+const listInvoicePaymentHistory = async (params: {
+  tenantId: number;
+  invoiceId: number;
+}): Promise<InvoicePaymentHistoryEntry[]> => {
+  const { data, error } = await supabase.rpc('list_invoice_payment_history', {
+    p_tenant_id: params.tenantId,
+    p_invoice_id: params.invoiceId,
+  });
+  if (error) throw error;
+  return (data as unknown as InvoicePaymentHistoryEntry[]) ?? [];
 };
 
 const listInvoiceCollectionHistory = async (
@@ -587,11 +603,12 @@ export type SalesInvoicePayloadItem = {
 export type SalesInvoiceFromPayloadInput = {
   invoice: {
     invoice_no?: string;
-    invoice_type: 'wholesale';
+    invoice_type: 'wholesale' | 'retail';
     billing_profile_id: number;
     invoice_date?: string;
     discount_amount?: number;
     note?: string;
+    retail_billing_mode?: 'account' | null;
   };
   items: SalesInvoicePayloadItem[];
   issue: boolean;
@@ -873,6 +890,7 @@ export const invoiceRepository = {
   applySettlementDiscount,
   collectWholesaleInvoicePayment,
   listInvoiceCollectionHistory,
+  listInvoicePaymentHistory,
   createMiddleManPayout,
   addGlobalReturnItem,
   listSalesReturnItems,

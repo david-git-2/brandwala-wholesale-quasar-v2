@@ -11,18 +11,23 @@
 ```text
 web/src/modules/sales_invoice/
 ├── pages/
-│   ├── InvoicesListPage.vue              # Ops table with filters and payment status badges
-│   ├── CreateWholesaleInvoicePage.vue    # Full desk with FIFO stock picker & bulk paste
-│   ├── InvoiceDetailsPage.vue            # Invoice breakdown, payment history & return activity
+│   ├── InvoicesListPage.vue              # Row list browse + filters (not q-table)
+│   ├── CreateWholesaleInvoicePage.vue    # Trade/retail composer desk
+│   ├── InvoiceDetailsPage.vue            # Issued/read desk + walk-in draft edit
 │   ├── WholesaleInvoiceReturnPage.vue    # Return line items with restocking fee deduction
 │   ├── InvoicePreviewPage.vue            # Clean print voucher preview with barcode
 │   └── InvoiceBrandsPage.vue             # Invoice branding & print template settings
 ├── components/
-│   ├── NetworkStockSearchPanel.vue       # Live FIFO stock selector with ATP badges
-│   ├── InvoiceBulkPasteDialog.vue        # Fast tab-delimited batch item paste
-│   ├── WholesaleIssueConfirmDialog.vue   # Stock commitment & AR confirmation
-│   ├── InvoicePaymentCollectDialog.vue   # Atomic cash + wallet credit collection
-│   └── InvoiceStatusBadge.vue            # Lifecycle & payment status chip
+│   ├── InvoiceListRow.vue                # Browse list row (customer, money, status)
+│   ├── InvoiceDeskChrome.vue             # Shared sticky chrome (create + details)
+│   ├── InvoicePartiesStrip.vue           # Brand + bill-to cards
+│   ├── InvoiceStockSearchBar.vue         # FIFO search + inline results list
+│   ├── InvoiceLinesTable.vue             # Dense line grid (edit + read modes)
+│   ├── InvoiceTotalsPanel.vue            # Sticky totals sidebar
+│   ├── NetworkStockSearchPanel.vue       # Walk-in draft stock dialog (shows cost)
+│   ├── InvoiceBulkPasteDialog.vue        # Walk-in bulk paste
+│   ├── WholesaleCollectPaymentDialog.vue # Multi-instrument collect
+│   └── WholesaleIssueConfirmDialog.vue   # Stock commitment confirm
 └── services/
     ├── salesInvoiceRepository.ts         # Supabase RPC invocation layer
     └── salesInvoiceQueryKeys.ts          # TanStack query keys

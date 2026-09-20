@@ -1,5 +1,5 @@
 import { supabase } from 'src/boot/supabase';
-import type { GlobalCurrency, Market, PaymentMethod, UnitOfMeasure } from '../types';
+import type { BdBank, GlobalCurrency, Market, PaymentMethod, UnitOfMeasure } from '../types';
 
 // Currencies
 const listCurrencies = async (): Promise<GlobalCurrency[]> => {
@@ -69,13 +69,18 @@ const getMarketByCode = async (code: string): Promise<Market | null> => {
 
 // Payment Methods
 const listPaymentMethods = async (): Promise<PaymentMethod[]> => {
-  const { data, error } = await supabase
-    .from('payment_methods')
-    .select('*')
-    .order('sort_order', { ascending: true });
-
+  const { data, error } = await supabase.rpc('list_payment_methods');
   if (error) throw error;
-  return (data as PaymentMethod[] | null) ?? [];
+  return ((data as PaymentMethod[] | null) ?? []).map((row) => ({
+    id: 0,
+    code: String(row.code),
+    name: String(row.name),
+    category: String(row.category),
+    scope: String(row.scope),
+    sort_order: Number(row.sort_order ?? 0),
+    is_active: true,
+    is_system: true,
+  }));
 };
 
 const getPaymentMethodById = async (id: number): Promise<PaymentMethod | null> => {
@@ -111,6 +116,18 @@ const getUnitOfMeasureById = async (id: number): Promise<UnitOfMeasure | null> =
   return data as UnitOfMeasure | null;
 };
 
+const listBdBanks = async (): Promise<BdBank[]> => {
+  const { data, error } = await supabase.rpc('list_bd_banks');
+  if (error) throw error;
+  return ((data as BdBank[] | null) ?? []).map((row) => ({
+    id: Number(row.id),
+    code: String(row.code),
+    name: String(row.name),
+    swift_code: row.swift_code ?? null,
+    sort_order: Number(row.sort_order ?? 0),
+  }));
+};
+
 export const globalReferenceRepository = {
   listCurrencies,
   getCurrencyById,
@@ -122,4 +139,5 @@ export const globalReferenceRepository = {
   getPaymentMethodById,
   listUnitsOfMeasure,
   getUnitOfMeasureById,
+  listBdBanks,
 };

@@ -231,6 +231,7 @@ import { computed, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import WholesaleCollectPaymentDialog from 'src/modules/sales_invoice/components/WholesaleCollectPaymentDialog.vue';
 import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import type { WholesaleCollectPaymentPayload } from 'src/modules/sales_invoice/types';
 import WalletActionModal, {
   type WalletActionPayload,
   type WalletModalActionType,
@@ -361,21 +362,17 @@ const onOpenFullWallet = () => {
   });
 };
 
-const onCollectSubmit = async (payload: {
-  cashAmount: number;
-  cashMethod: string;
-  walletAmount: number;
-  settlementAmount: number;
-}) => {
+const onCollectSubmit = async (payload: WholesaleCollectPaymentPayload) => {
   if (!selectedInvoice.value) return;
   isCollecting.value = true;
   try {
     await invoiceRepository.collectWholesaleInvoicePayment({
       invoice_id: selectedInvoice.value.id,
-      cash_amount: payload.cashAmount,
-      cash_method: payload.cashMethod,
+      instruments: payload.instruments,
       wallet_amount: payload.walletAmount,
       settlement_amount: payload.settlementAmount,
+      note: payload.note,
+      received_on: payload.receivedOn,
     });
     showSuccessNotification('Payment recorded successfully.');
     collectDialogOpen.value = false;

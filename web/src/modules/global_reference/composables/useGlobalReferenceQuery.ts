@@ -96,3 +96,11 @@ export function useUnitOfMeasureByIdQuery(id: Ref<number | null | undefined> | C
     staleTime: STALE_TIME,
   });
 }
+
+export function useBdBanksQuery() {
+  return useQuery({
+    queryKey: globalReferenceQueryKeys.bdBanks(),
+    queryFn: () => globalReferenceRepository.listBdBanks(),
+    staleTime: STALE_TIME,
+  });
+}

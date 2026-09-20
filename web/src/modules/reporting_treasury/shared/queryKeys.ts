@@ -16,4 +16,6 @@ export const financeReportQueryKeys = {
     ['finance', 'customerGroupsSummary', tenantId, search] as const,
   openInvoicesPayment: (tenantId: number, customerGroupId?: number | null, search?: string | null) =>
     ['finance', 'openInvoicesPayment', tenantId, customerGroupId, search] as const,
+  customerGroupReceipts: (tenantId: number, customerGroupId: number) =>
+    ['finance', 'customerGroupReceipts', tenantId, customerGroupId] as const,
 };

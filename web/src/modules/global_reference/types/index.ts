@@ -47,6 +47,14 @@ export type UnitOfMeasure = {
   updated_at?: string;
 };
 
+export type BdBank = {
+  id: number;
+  code: string;
+  name: string;
+  swift_code: string | null;
+  sort_order: number;
+};
+
 export const PAYMENT_METHOD_CATEGORIES = [
   { value: 'bd_mobile_wallet', label: 'BD Mobile Wallet' },
   { value: 'bd_bank', label: 'BD Bank' },

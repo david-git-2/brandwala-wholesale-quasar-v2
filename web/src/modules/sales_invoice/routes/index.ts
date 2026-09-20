@@ -114,10 +114,18 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('invoice_brand'),
       },
       {
-        path: 'create-wholesale',
+        path: 'create',
         name: 'app-global-invoices-create-wholesale',
         component: () => import('../pages/CreateWholesaleInvoicePage.vue'),
         beforeEnter: guard('global_invoice'),
+      },
+      {
+        path: 'create-wholesale',
+        redirect: (to) => ({
+          name: 'app-global-invoices-create-wholesale',
+          params: to.params,
+          query: to.query,
+        }),
       },
       {
         path: ':id/return',

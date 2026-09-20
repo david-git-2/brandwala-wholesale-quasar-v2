@@ -15,7 +15,7 @@
 | | |
 | :--- | :--- |
 | Surfaces | `platform` catalogs; `app` + `shop` Koba; `app` trash |
-| In | Currencies, markets, payment methods, units; `koba_*`; `trash_entries` |
+| In | Currencies, markets, payment methods, **BD banks**, units; `koba_*`; `trash_entries` |
 | Out | `global_stocks`, thrift SKUs, wholesale invoices |
 
 See [scopes](../../architecture/scopes.md).
@@ -33,7 +33,7 @@ The **Global Reference, Koba Sourcing Vertical & Central Trash Management** doma
 ### 2.1 Global Reference Data
 - **Platform Scope Superadmin Control**: Superadmins maintain authoritative global currency rates, geographic market boundaries, payment method scopes, and standard measurement units.
 - **Tenant Scope Read-Only Consumption**: Tenants consume global reference data seamlessly in drop-downs and pricing calculation engines without direct schema modification permissions.
-- **Module Gating**: Granular submodule permissions (`global_reference_currency`, `global_reference_market`, `global_reference_payment_method`, `global_reference_unit_of_measure`) dictate sidebar link visibility and tenant views.
+- **Module Gating**: Granular submodule permissions (`global_reference_currency`, `global_reference_market`, `global_reference_payment_method`, `global_reference_bd_bank`, `global_reference_unit_of_measure`) dictate sidebar link visibility and tenant views.
 
 ### 2.2 Koba Cross-Border Vertical
 - **UK Product Scraping Pipeline**: External Python automation scrapes UK retail catalogs into `koba_products` with rich media, exchange rates, and base GBP list pricing.
@@ -52,7 +52,7 @@ The **Global Reference, Koba Sourcing Vertical & Central Trash Management** doma
 
 | Persona | Scope | Key Capabilities |
 | :--- | :--- | :--- |
-| **Platform Superadmin** | Global (`/platform/*`) | Manage currency rates, create markets, configure payment methods, define units of measure. |
+| **Platform Superadmin** | Global (`/platform/*`) | Manage currency rates, create markets, configure payment methods, maintain BD bank list, define units of measure. |
 | **Tenant Admin** | Tenant (`/app/*`) | Configure Koba retail commission settings, restore trashed catalog items, manage staff orders. |
 | **Sales & Operations Staff** | Tenant (`/app/*`) | Search Koba catalog, build staff cart orders, verify customer delivery addresses, view global references. |
 | **Storefront Customer** | Public Shop (`/shop/*`)| Browse Koba products, build cart, place COD/online orders, track fulfillment status. |

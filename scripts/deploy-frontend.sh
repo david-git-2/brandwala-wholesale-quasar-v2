@@ -50,9 +50,9 @@ find web/dist/spa -name ".DS_Store" -type f -delete
 echo "Using wrangler@${WRANGLER_VERSION}"
 wrangler_cmd --version
 
-if ! wrangler_cmd whoami >/dev/null 2>&1; then
-  wrangler_cmd login
-fi
+echo "Logging out of Cloudflare so you can pick the right account..."
+wrangler_cmd logout || true
+wrangler_cmd login
 
 attempt=1
 while [[ "${attempt}" -le "${RETRY_ATTEMPTS}" ]]; do

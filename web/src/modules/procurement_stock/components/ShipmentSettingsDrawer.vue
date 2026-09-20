@@ -212,114 +212,115 @@
         <!-- 2. Summary Tab Panel -->
         <q-tab-panel name="summary" class="q-pa-md bg-white">
           <div class="column q-gutter-y-md">
-            <div class="row items-center justify-between">
-              <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
-                <q-icon name="ph ph-receipt" size="18px" color="primary" />
-                <span>Landed Cost Summary</span>
-              </div>
-              <q-chip dense square color="blue-1" text-color="primary" class="text-weight-bold text-xxs q-ma-none">
-                Live Calculations
-              </q-chip>
-            </div>
+            <q-banner v-if="isCostsLocked" dense rounded class="bg-grey-2 text-grey-9">
+              Shipment costs are locked. These figures are a snapshot.
+            </q-banner>
+            <q-banner v-else-if="isStockPosted && canEditCosts" dense rounded class="bg-orange-1 text-orange-10">
+              Stock is in. Changing rates on the Rates tab updates landed cost. Issued invoices keep their snapshot.
+            </q-banner>
+            <q-banner v-else-if="!hasSummaryCosts" dense rounded class="bg-grey-2 text-grey-8">
+              No rates yet. Set freight and product rates on the Rates tab.
+            </q-banner>
 
-            <!-- Physical Totals -->
-            <div class="bg-grey-1 q-pa-sm rounded-borders border-grey">
-              <div class="text-xxs text-weight-bold text-grey-6 uppercase q-mb-xs" style="letter-spacing: 0.5px">
-                Physical Quantities & Weight
-              </div>
-              <div class="row justify-between q-py-xs text-caption">
-                <span class="text-grey-7">Total Units:</span>
-                <span class="text-weight-bold font-mono text-grey-9">
-                  {{ totals.quantity.toLocaleString() }} pcs
-                </span>
-              </div>
-              <div class="row justify-between q-py-xs text-caption">
-                <span class="text-grey-7">Packaging Weight:</span>
-                <span class="text-weight-bold font-mono text-grey-9">
-                  {{ totals.packagingWeightKg.toFixed(2) }} kg
-                </span>
-              </div>
-              <div class="row justify-between q-py-xs text-caption">
-                <span class="text-grey-7">Invoice Cargo Weight:</span>
-                <span class="text-weight-bold font-mono text-primary">
-                  {{ (totals.cargoWeightKg || 0).toFixed(2) }} kg
-                </span>
-              </div>
-              <div class="row justify-between q-py-xs text-caption">
-                <span class="text-grey-7">Box Weight Sum:</span>
-                <span class="text-weight-bold font-mono text-grey-9">
-                  {{ currentShipmentBoxesTotal.toFixed(2) }} kg
-                </span>
-              </div>
-            </div>
-
-            <!-- Purchase Currency Breakdown -->
-            <div class="q-gutter-y-xs">
+            <div class="summary-hero q-pa-md rounded-borders">
               <div class="text-xxs text-weight-bold text-grey-6 uppercase" style="letter-spacing: 0.5px">
-                Purchase Currency ({{ currentPurchaseCurrencySymbol }} {{ currentPurchaseCurrency?.code || 'GBP' }})
+                Total landed cost
               </div>
-              <div class="row justify-between q-py-xs text-caption">
-                <span class="text-grey-7">Product Purchase Cost:</span>
-                <span class="text-weight-bold font-mono text-grey-9">
-                  {{ currentPurchaseCurrencySymbol }}{{ totals.goodsPurchase.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-                </span>
+              <div class="text-h5 text-weight-bolder font-mono text-primary q-mt-xs">
+                {{ formatMoney(currentCostCurrencySymbol, totals.totalCost) }}
               </div>
-              <div class="row justify-between q-py-xs text-caption">
-                <span class="text-grey-7">Cargo Freight Cost:</span>
-                <span class="text-weight-bold font-mono text-grey-9">
-                  {{ currentPurchaseCurrencySymbol }}{{ totals.cargoPurchase.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-                </span>
-              </div>
-              <div class="row justify-between q-py-xs bg-grey-1 q-px-sm rounded-borders text-caption">
-                <span class="text-weight-bold text-grey-8">Total Purchase Cost:</span>
-                <span class="text-weight-bold font-mono text-primary">
-                  {{ currentPurchaseCurrencySymbol }}{{ totals.totalPurchase.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-                </span>
-              </div>
-            </div>
-
-            <q-separator />
-
-            <!-- Landed Cost Breakdown -->
-            <div class="q-gutter-y-xs">
-              <div class="text-xxs text-weight-bold text-grey-6 uppercase" style="letter-spacing: 0.5px">
-                Cost Currency ({{ currentCostCurrencySymbol }} {{ currentCostCurrency?.code || 'BDT' }})
-              </div>
-              <div class="row justify-between q-py-xs text-caption">
-                <span class="text-grey-7">Product Landed Cost:</span>
-                <span class="text-weight-bold font-mono text-grey-9">
-                  {{ currentCostCurrencySymbol }}{{ totals.goodsCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-                </span>
-              </div>
-              <div class="row justify-between q-py-xs text-caption">
-                <span class="text-grey-7">Cargo Landed Cost:</span>
-                <span class="text-weight-bold font-mono text-grey-9">
-                  {{ currentCostCurrencySymbol }}{{ totals.cargoCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-                </span>
-              </div>
-              <div class="row justify-between items-center q-pa-sm bg-primary text-white rounded-borders">
-                <span class="text-subtitle2 text-weight-bold">Total Landed Cost:</span>
-                <span class="text-subtitle1 text-weight-bolder font-mono">
-                  {{ currentCostCurrencySymbol }}{{ totals.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Live Blended Rate -->
-            <div class="bg-blue-1 text-blue-10 q-pa-sm rounded-borders text-center border-grey">
-              <div class="text-xxs text-weight-bold uppercase" style="letter-spacing: 0.5px">
-                Live Blended Transaction Rate
-              </div>
-              <div class="text-h6 text-weight-bolder font-mono q-my-xs text-primary">
+              <div class="text-caption text-grey-7 q-mt-xs">
                 <template v-if="totals.transactionRate != null">
-                  {{ currentCostCurrencySymbol }}{{ totals.transactionRate.toFixed(4) }} / {{ currentPurchaseCurrencySymbol }}
+                  Transaction Rate {{ currentCostCurrencySymbol }}{{ totals.transactionRate.toFixed(4) }}
+                  / {{ currentPurchaseCurrencySymbol }}
                 </template>
-                <template v-else>
-                  —
-                </template>
+                <template v-else>Transaction Rate needs line prices</template>
               </div>
-              <div class="text-caption text-blue-9 text-xxs">
-                Weighted by product exchange & cargo conversion
+            </div>
+
+            <div class="bg-white q-pa-sm rounded-borders border-grey">
+              <div class="text-xxs text-weight-bold text-grey-6 uppercase q-mb-sm" style="letter-spacing: 0.5px">
+                Weight
+              </div>
+              <div class="row q-col-gutter-sm">
+                <div class="col-6">
+                  <div class="text-xxs text-grey-6">Units</div>
+                  <div class="text-caption text-weight-bold font-mono text-grey-9">
+                    {{ totals.quantity.toLocaleString() }} pcs
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="text-xxs text-grey-6">Packaging</div>
+                  <div class="text-caption text-weight-bold font-mono text-grey-9">
+                    {{ totals.packagingWeightKg.toFixed(2) }} kg
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="text-xxs text-grey-6">Invoice cargo</div>
+                  <div class="text-caption text-weight-bold font-mono text-grey-9">
+                    {{ (totals.cargoWeightKg || 0).toFixed(2) }} kg
+                  </div>
+                  <div class="text-xxs text-grey-5">Used for freight</div>
+                </div>
+                <div class="col-6">
+                  <div class="text-xxs text-grey-6">Boxes</div>
+                  <div class="text-caption text-weight-bold font-mono text-grey-9">
+                    {{ currentShipmentBoxesTotal.toFixed(2) }} kg
+                  </div>
+                </div>
+              </div>
+              <div
+                v-if="weightNeedsAttention"
+                class="q-mt-sm text-caption text-orange-9"
+              >
+                Packaging and invoice cargo weight do not match. Check the Rates tab.
+              </div>
+            </div>
+
+            <div class="bg-white rounded-borders border-grey overflow-hidden">
+              <div class="summary-cost-row summary-cost-row--head text-xxs text-weight-bold text-grey-6 uppercase">
+                <span>Cost</span>
+                <span class="text-right">Buy ({{ currentPurchaseCurrencySymbol }})</span>
+                <span class="text-right">Landed ({{ currentCostCurrencySymbol }})</span>
+              </div>
+              <div class="summary-cost-row">
+                <span class="text-grey-7">Product</span>
+                <span class="text-right font-mono text-weight-medium text-grey-9">
+                  {{ formatMoney(currentPurchaseCurrencySymbol, totals.goodsPurchase) }}
+                </span>
+                <span class="text-right font-mono text-weight-medium text-grey-9">
+                  {{ formatMoney(currentCostCurrencySymbol, totals.goodsCost) }}
+                </span>
+              </div>
+              <div class="summary-cost-row">
+                <span class="text-grey-7">Cargo</span>
+                <span class="text-right font-mono text-weight-medium text-grey-9">
+                  {{ formatMoney(currentPurchaseCurrencySymbol, totals.cargoPurchase) }}
+                </span>
+                <span class="text-right font-mono text-weight-medium text-grey-9">
+                  {{ formatMoney(currentCostCurrencySymbol, totals.cargoCost) }}
+                </span>
+              </div>
+              <div class="summary-courier-row">
+                <div class="text-xxs text-weight-bold uppercase" style="letter-spacing: 0.4px">
+                  Courier cost in GBP/kg
+                </div>
+                <div class="text-subtitle1 text-weight-bolder font-mono">
+                  <template v-if="courierCostPerKg != null">
+                    {{ currentPurchaseCurrencySymbol }}{{ courierCostPerKg.toFixed(4) }}
+                    <span class="text-caption text-weight-medium">/ kg</span>
+                  </template>
+                  <template v-else>—</template>
+                </div>
+              </div>
+              <div class="summary-cost-row summary-cost-row--total">
+                <span>Total</span>
+                <span class="text-right font-mono">
+                  {{ formatMoney(currentPurchaseCurrencySymbol, totals.totalPurchase) }}
+                </span>
+                <span class="text-right font-mono text-primary">
+                  {{ formatMoney(currentCostCurrencySymbol, totals.totalCost) }}
+                </span>
               </div>
             </div>
           </div>
@@ -837,14 +838,31 @@ const confirmDeleteFromDrawer = () => {
 const {
   totals,
   currentShipmentBoxesTotal,
-  currentPurchaseCurrency,
   currentPurchaseCurrencySymbol,
-  currentCostCurrency,
   currentCostCurrencySymbol,
   isStockPosted,
   isCostsLocked,
   canEditCosts,
+  weightNeedsAttention,
 } = props.calculations;
+
+const formatMoney = (symbol: string, value: number | null | undefined) => {
+  const n = Number(value) || 0;
+  return `${symbol}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const hasSummaryCosts = computed(() => {
+  const t = totals?.value ?? totals;
+  return (Number(t?.totalPurchase) || 0) > 0 || (Number(t?.totalCost) || 0) > 0;
+});
+
+const courierCostPerKg = computed(() => {
+  const t = totals?.value ?? totals;
+  const kg = t?.cargoWeightKg ?? 0;
+  const purchase = t?.cargoPurchase ?? 0;
+  if (kg <= 0 || purchase <= 0) return null;
+  return Math.round((purchase / kg) * 10000) / 10000;
+});
 
 const drawerTypeOptions = [
   { label: 'International Inbound', value: 'international' },
@@ -1174,5 +1192,38 @@ const saveRates = async () => {
 }
 .font-mono {
   font-family: monospace;
+}
+.summary-hero {
+  background: color-mix(in srgb, var(--q-primary) 8%, #fff);
+  border: 1px solid #e2e8f0;
+}
+.summary-cost-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 13px;
+}
+.summary-cost-row--head {
+  border-top: none;
+  background: #f8fafc;
+  padding: 8px 12px;
+}
+.summary-cost-row--total {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #1e293b;
+}
+.summary-courier-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #e6f4f1;
+  border-top: 1px solid #b8ddd6;
+  color: #0f766e;
 }
 </style>

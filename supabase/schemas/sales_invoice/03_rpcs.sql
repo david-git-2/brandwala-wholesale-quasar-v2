@@ -573,27 +573,29 @@ begin
     )
   );
 
-  -- Universal Wallet 2: Credit Customer Available (reduces Accounts Receivable)
-  perform public.record_ledger_transaction(
-    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
-    p_operating_tenant_id => p_tenant_id,
-    p_entity_type => 'customer',
-    p_entity_id => p_billing_profile_id,
-    p_type => 'credit',
-    p_amount => p_amount,
-    p_currency_code => 'BDT',
-    p_exchange_rate => 1.000000,
-    p_source_type => 'sales_invoice',
-    p_source_id => v_payment.id::text,
-    p_metadata => jsonb_build_object(
-      'section', 'payments',
-      'purpose', 'customer_ar_reduction',
-      'transaction_type', 'payment_received',
-      'label', 'Payment Applied',
-      'payment_id', v_payment.id,
-      'reference', p_reference
-    )
-  );
+  -- Customer wallet is store credit only (unallocated leftover).
+  if (p_amount - v_total_alloc) > 0 then
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+      p_operating_tenant_id => p_tenant_id,
+      p_entity_type => 'customer',
+      p_entity_id => p_billing_profile_id,
+      p_type => 'credit',
+      p_amount => p_amount - v_total_alloc,
+      p_currency_code => 'BDT',
+      p_exchange_rate => 1.000000,
+      p_source_type => 'sales_invoice',
+      p_source_id => v_payment.id::text,
+      p_metadata => jsonb_build_object(
+        'section', 'payments',
+        'purpose', 'store_credit',
+        'transaction_type', 'payment_received',
+        'label', 'Store credit leftover',
+        'payment_id', v_payment.id,
+        'reference', p_reference
+      )
+    );
+  end if;
 
   return v_payment;
 end;
@@ -3727,9 +3729,8 @@ begin
   set unallocated_amount = coalesce(p_amount, 0.00) - v_total_alloc
   where id = v_payment.id;
 
-  -- Universal Wallet Entries (if amount > 0)
+  -- Universal Wallet: tenant cash for money received. Customer wallet only for leftover store credit.
   if coalesce(p_amount, 0.00) > 0.00 then
-    -- 1. Tenant Cash Receipt
     perform public.record_ledger_transaction(
       p_parent_tenant_id => v_parent_id,
       p_operating_tenant_id => p_tenant_id,
@@ -3750,22 +3751,21 @@ begin
       )
     );
 
-    -- 2. Customer AR Reduction (if billing profile linked)
-    if v_primary_bp_id is not null then
+    if v_primary_bp_id is not null and (coalesce(p_amount, 0.00) - v_total_alloc) > 0.00 then
       perform public.record_ledger_transaction(
         p_parent_tenant_id => v_parent_id,
         p_operating_tenant_id => p_tenant_id,
         p_entity_type => 'customer',
         p_entity_id => v_primary_bp_id,
         p_type => 'credit',
-        p_amount => p_amount,
+        p_amount => coalesce(p_amount, 0.00) - v_total_alloc,
         p_currency_code => 'BDT',
         p_exchange_rate => 1.000000,
         p_source_type => 'sales_invoice',
         p_source_id => v_payment.id::text,
         p_metadata => jsonb_build_object(
           'section', 'payments',
-          'purpose', 'customer_ar_reduction',
+          'purpose', 'store_credit',
           'payment_id', v_payment.id,
           'reference', p_reference
         )

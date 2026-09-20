@@ -1,47 +1,187 @@
 <template>
-  <q-page class="global-invoice-details-page">
-    <div class="global-invoice-details-page__inner">
-      <div v-if="loading" class="global-invoice-details-page__paper-wrap">
-        <q-card flat class="invoice-paper-skeleton q-pa-lg">
-          <q-skeleton type="text" width="40%" class="q-mb-md" />
-          <q-skeleton type="rect" height="120px" class="q-mb-md" />
-          <q-skeleton type="rect" height="240px" />
-        </q-card>
+  <q-page class="invoice-desk-page theme-app">
+    <div class="invoice-desk-page__stack">
+      <div v-if="loading" class="invoice-desk-skeleton q-pa-lg">
+        <q-skeleton type="text" width="40%" class="q-mb-md" />
+        <q-skeleton type="rect" height="120px" class="q-mb-md" />
+        <q-skeleton type="rect" height="240px" />
       </div>
 
       <div v-else-if="error" class="text-center q-pa-xl text-negative">{{ error }}</div>
 
       <template v-else-if="invoice">
-        <header class="global-invoice-details-page__toolbar row items-center justify-between q-mb-md">
-          <div class="row items-center q-gutter-x-sm">
-            <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
-            <div class="text-subtitle1 text-weight-bold">Invoice details</div>
-          </div>
-          <div class="row items-center q-gutter-x-xs">
+        <InvoiceDeskChrome
+          :invoice-no="invoice.invoice_no"
+          :type-chip-label="typeChipLabel"
+          :status-chip-label="statusChipLabel"
+          :status-chip-color="statusChipStyle.color"
+          :status-chip-text-color="statusChipStyle.textColor"
+          :payment-chip-label="paymentChipLabel"
+          :payment-chip-color="paymentChipStyle.color"
+          :payment-chip-text-color="paymentChipStyle.textColor"
+          :show-payment-chip="invoice.invoice_status === 'issued'"
+          :due-label="
+            invoice.invoice_status === 'issued' && invoice.due_amount > 0
+              ? `Due ${formatAmount(invoice.due_amount)}`
+              : null
+          "
+        >
+          <template #secondary>
             <q-btn
-              v-if="showPreview"
+              v-if="isParentTenant && !isDropship"
               flat
               dense
-              color="secondary"
-              icon="ph ph-eye"
-              @click="openPreview"
-            >
-              <q-tooltip>Preview</q-tooltip>
-            </q-btn>
+              no-caps
+              color="grey-8"
+              :label="showMargin ? 'Hide margin' : 'Margin'"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              @click="showMargin = !showMargin"
+            />
             <q-btn
-              v-if="
-                canMutateInvoice &&
-                (invoice.invoice_status === 'draft' ||
-                  invoice.invoice_status === 'voided' ||
-                  (invoice.invoice_status === 'issued' && canUnpostOrVoid))
-              "
+              v-if="showPreview"
+              outline
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-eye"
+              label="Preview"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              @click="openPreview"
+            />
+            <q-btn
+              v-if="invoice.invoice_status === 'issued'"
+              outline
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-clock-counter-clockwise"
+              label="Payment history"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              @click="paymentHistoryOpen = true"
+            />
+            <q-btn
+              v-if="linkedOrderRemittance"
+              outline
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-package"
+              label="Order"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              @click="goToLinkedOrder"
+            />
+          </template>
+
+          <template #primary>
+            <q-btn
+              v-if="isTradeComposerDraft"
+              unelevated
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-pencil-simple"
+              label="Continue in composer"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              @click="goToTradeComposer"
+            />
+            <q-btn
+              v-else-if="canIssueFromChrome"
+              unelevated
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-paper-plane-right"
+              label="Issue"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              :loading="postingInvoice"
+              data-test="post-invoice-btn"
+              @click="changeInvoiceStatus('issued')"
+            />
+            <q-btn
+              v-else-if="canRecordRemittance"
+              unelevated
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-bank"
+              label="Record remittance"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              @click="goToDropshipRemittanceDesk"
+            />
+            <q-btn
+              v-else-if="canRecordPayment"
+              unelevated
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-credit-card"
+              label="Record payment"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              @click="openPaymentDialog"
+            />
+          </template>
+
+          <template #overflow>
+            <q-btn
+              v-if="showChromeMenu"
               flat
               dense
               icon="ph ph-dots-three-vertical"
               aria-label="Actions"
             >
               <q-menu auto-close>
-                <q-list style="min-width: 150px">
+                <q-list style="min-width: 180px">
+                  <q-item
+                    v-if="invoice.invoice_status === 'draft' && isWholesale"
+                    clickable
+                    :disable="convertingInvoice"
+                    @click="onConvertWholesaleToRetail"
+                  >
+                    <q-item-section avatar>
+                      <q-icon name="ph ph-arrows-left-right" color="primary" />
+                    </q-item-section>
+                    <q-item-section>Convert to retail</q-item-section>
+                  </q-item>
+                  <q-item
+                    v-if="isWholesale && invoice.invoice_status === 'issued' && canMutateInvoice"
+                    clickable
+                    @click="openReturnCaseDialog = true"
+                  >
+                    <q-item-section avatar>
+                      <q-icon name="ph ph-arrow-u-up-left" color="purple" />
+                    </q-item-section>
+                    <q-item-section>Open return case</q-item-section>
+                  </q-item>
+                  <q-item
+                    v-if="linkedAfterSalesCase && canMutateInvoice"
+                    clickable
+                    @click="goToLinkedCase"
+                  >
+                    <q-item-section avatar>
+                      <q-icon name="ph ph-tray" color="primary" />
+                    </q-item-section>
+                    <q-item-section>View case</q-item-section>
+                  </q-item>
+                  <q-item
+                    v-if="canSettleWriteOff"
+                    clickable
+                    @click="openSettleDialog"
+                  >
+                    <q-item-section avatar>
+                      <q-icon name="ph ph-minus-circle" color="orange" />
+                    </q-item-section>
+                    <q-item-section>Settle / write-off</q-item-section>
+                  </q-item>
+                  <q-item
+                    v-if="isDropship && canMutateInvoice && invoice.invoice_status === 'issued' && invoice.due_amount > 0"
+                    clickable
+                    @click="payoutDialog = true"
+                  >
+                    <q-item-section avatar>
+                      <q-icon name="ph ph-hand-coins" color="secondary" />
+                    </q-item-section>
+                    <q-item-section>Pay middle man</q-item-section>
+                  </q-item>
                   <q-item
                     v-if="invoice.invoice_status === 'draft' || invoice.invoice_status === 'voided'"
                     clickable
@@ -49,71 +189,30 @@
                     :disable="deletingInvoice"
                     @click="onDeleteInvoice"
                   >
-                    <q-item-section avatar class="q-pr-none" style="min-width: 32px">
+                    <q-item-section avatar>
                       <q-icon name="ph ph-trash" />
                     </q-item-section>
-                    <q-item-section>{{ invoice.invoice_status === 'voided' ? 'Delete Voided Invoice' : 'Delete Draft' }}</q-item-section>
-                  </q-item>
-
-                  <q-item
-                    v-if="invoice.invoice_status === 'draft' && invoice.invoice_type === 'wholesale'"
-                    clickable
-                    class="text-primary"
-                    :disable="convertingInvoice"
-                    @click="onConvertWholesaleToRetail"
-                  >
-                    <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                      <q-icon name="ph ph-arrows-left-right" />
+                    <q-item-section>
+                      {{ invoice.invoice_status === 'voided' ? 'Delete voided invoice' : 'Delete draft' }}
                     </q-item-section>
-                    <q-item-section>Convert to Retail</q-item-section>
-                  </q-item>
-
-                  <q-item
-                    v-if="invoice.invoice_status === 'issued' && canUnpostOrVoid"
-                    clickable
-                    class="text-negative"
-                    :disable="voidingInvoice"
-                    @click="changeInvoiceStatus('voided')"
-                  >
-                    <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                      <q-icon name="ph ph-x-circle" />
-                    </q-item-section>
-                    <q-item-section>Void Invoice</q-item-section>
-                  </q-item>
-
-                  <q-item
-                    v-if="invoice.invoice_status === 'issued' && canUnpostOrVoid"
-                    clickable
-                    class="text-warning"
-                    :disable="unpostingInvoice"
-                    @click="changeInvoiceStatus('draft')"
-                  >
-                    <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                      <q-icon name="ph ph-arrow-u-up-left" />
-                    </q-item-section>
-                    <q-item-section>Undo Post (Draft)</q-item-section>
                   </q-item>
                 </q-list>
               </q-menu>
             </q-btn>
-          </div>
-        </header>
+          </template>
+        </InvoiceDeskChrome>
 
-        <div class="global-invoice-details-page__paper-wrap">
+        <div class="col overflow-hidden">
           <GlobalInvoiceDetailPaper
             :invoice="invoice"
             :items="items"
             :form="form"
             :tenant-slug="String(route.params.tenantSlug ?? '')"
             :can-edit-draft="canEditDraft"
-            :can-mutate-invoice="canMutateInvoice"
-            :is-parent-tenant="isParentTenant"
             :is-dropship="isDropship"
-            :is-wholesale="isWholesale"
             :show-charges="showCharges"
-            :show-returns="showReturns"
+            :show-margin="showMargin"
             :linked-order-remittance="linkedOrderRemittance"
-            :collection-history="collectionHistoryDisplay"
             :return-history="returnHistory"
             :total-return-quantity="totalReturnQuantity"
             :original-gross-subtotal="originalGrossSubtotal"
@@ -126,10 +225,6 @@
             :line-margin-for-row="lineMarginForRow"
             :get-item-name-for-return="getItemNameForReturn"
             :format-return-date="formatReturnDate"
-            :posting-invoice="postingInvoice"
-            :voiding-invoice="voidingInvoice"
-            :unposting-invoice="unpostingInvoice"
-            :is-transition-disabled="isTransitionDisabled"
             :target-total="targetTotal"
             :target-preview="targetPreview"
             :target-error="targetError"
@@ -138,7 +233,6 @@
             :editing-recipient="editingRecipient"
             @header-blur="onHeaderUpdate"
             @date-change="onDateChange"
-            @status-change="changeInvoiceStatus"
             @update-item="onUpdateItemField"
             @remove-item="onRemoveItem"
             @open-bulk-paste="openBulkPaste"
@@ -151,114 +245,6 @@
             @apply-target-total="onApplyTargetTotal"
           />
         </div>
-
-        <footer v-if="canMutateInvoice" class="global-invoice-details-page__actions">
-          <template
-            v-if="invoice.invoice_status === 'draft' || invoice.invoice_status === 'proforma_generated'"
-          >
-            <q-btn
-              color="primary"
-              unelevated
-              no-caps
-              class="full-width text-weight-bold global-invoice-details-page__action-btn"
-              icon="ph ph-paper-plane-right"
-              :label="invoice.invoice_status === 'proforma_generated' ? 'Issue invoice' : 'Post invoice'"
-              :loading="postingInvoice"
-              data-test="post-invoice-btn"
-              @click="changeInvoiceStatus('issued')"
-            />
-          </template>
-
-          <template v-else-if="invoice.invoice_status === 'issued'">
-            <q-btn
-              v-if="isWholesale"
-              color="purple"
-              outline
-              no-caps
-              class="full-width global-invoice-details-page__action-btn q-mt-sm"
-              icon="ph ph-arrow-u-up-left"
-              label="Open return case"
-              @click="openReturnCaseDialog = true"
-            />
-            <q-btn
-              v-if="linkedAfterSalesCase"
-              flat
-              color="primary"
-              no-caps
-              class="full-width global-invoice-details-page__action-btn q-mt-xs"
-              icon="ph ph-tray"
-              label="View case"
-              @click="goToLinkedCase"
-            />
-            <template v-if="invoice.due_amount > 0">
-              <q-btn
-                v-if="isDropship"
-                color="primary"
-                unelevated
-                no-caps
-                class="full-width text-weight-bold global-invoice-details-page__action-btn q-mb-sm"
-                icon="ph ph-bank"
-                label="Record courier remittance"
-                @click="goToDropshipRemittanceDesk"
-              />
-              <q-btn
-                v-else
-                color="primary"
-                unelevated
-                no-caps
-                class="full-width text-weight-bold global-invoice-details-page__action-btn q-mb-sm"
-                icon="ph ph-credit-card"
-                label="Record payment"
-                @click="openPaymentDialog"
-              />
-              <div v-if="isDropship" class="text-caption text-grey-7 q-mb-sm">
-                Cash-in for dropship bills is recorded on the finance desk after delivery, not as COD on this invoice.
-              </div>
-              <div v-if="showPayments && !isDropship" class="row q-col-gutter-sm">
-                <div class="col">
-                  <q-btn
-                    color="orange"
-                    outline
-                    no-caps
-                    class="full-width global-invoice-details-page__action-btn"
-                    label="Settle / write-off"
-                    @click="openSettleDialog"
-                  />
-                </div>
-              </div>
-              <q-btn
-                v-if="isDropship"
-                color="secondary"
-                outline
-                no-caps
-                class="full-width global-invoice-details-page__action-btn q-mt-sm"
-                label="Pay middle man"
-                @click="payoutDialog = true"
-              />
-            </template>
-            <q-btn
-              v-else
-              color="positive"
-              unelevated
-              disable
-              no-caps
-              class="full-width text-weight-bold global-invoice-details-page__action-btn"
-              icon="ph ph-check-circle"
-              label="Invoice settled"
-            />
-          </template>
-
-          <q-btn
-            v-else-if="invoice.invoice_status === 'voided'"
-            color="grey-6"
-            unelevated
-            disable
-            no-caps
-            class="full-width text-weight-bold global-invoice-details-page__action-btn"
-            icon="ph ph-x-circle"
-            label="Invoice voided"
-          />
-        </footer>
       </template>
     </div>
 
@@ -548,6 +534,13 @@
       v-model="openReturnCaseDialog"
       :invoice-context="wholesaleCaseDialogContext"
     />
+
+    <InvoicePaymentHistoryDrawer
+      v-model="paymentHistoryOpen"
+      :tenant-id="invoiceTenantId"
+      :invoice-id="invoiceId"
+      :invoice-no="invoice?.invoice_no ?? ''"
+    />
   </q-page>
 </template>
 
@@ -558,7 +551,9 @@ import { useQuasar } from 'quasar';
 import { useQueryClient } from '@tanstack/vue-query';
 
 import RichTextEditor from 'src/components/ui/RichTextEditor.vue';
+import InvoiceDeskChrome from '../components/InvoiceDeskChrome.vue';
 import GlobalInvoiceDetailPaper from '../components/GlobalInvoiceDetailPaper.vue';
+import InvoicePaymentHistoryDrawer from '../components/InvoicePaymentHistoryDrawer.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useInvoiceWorkspace } from '../composables/useInvoiceWorkspace';
 import { supabase } from 'src/boot/supabase';
@@ -576,6 +571,7 @@ import type { TargetTotalSummary } from '../repositories/invoiceRepository';
 import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
 import NetworkStockSearchPanel from '../components/NetworkStockSearchPanel.vue';
 import InvoiceBulkPasteDialog from '../components/InvoiceBulkPasteDialog.vue';
+import type { WholesaleCollectPaymentPayload } from '../types';
 import WholesaleCollectPaymentDialog from '../components/WholesaleCollectPaymentDialog.vue';
 import { walletRepository } from 'src/modules/wallet/repositories/walletRepository';
 import type { InvoiceCollectionHistoryRow } from '../repositories/invoiceRepository';
@@ -596,15 +592,45 @@ const $q = useQuasar();
 const authStore = useAuthStore();
 const { isParentTenant } = useInvoiceWorkspace();
 const queryClient = useQueryClient();
+const isInvoiceLocked = computed(
+  () =>
+    invoice.value?.invoice_status === 'issued' || invoice.value?.invoice_status === 'voided',
+);
 const canEditDraft = computed(
-  () => invoice.value?.invoice_status === 'draft' && !isParentTenant.value,
+  () =>
+    invoice.value?.invoice_status === 'draft' &&
+    !isParentTenant.value &&
+    invoice.value?.invoice_type === 'retail' &&
+    invoice.value?.retail_billing_mode === 'direct',
 );
 const canMutateInvoice = computed(() => !isParentTenant.value);
 
-const goBack = () => {
+function assertInvoiceEditable(): boolean {
+  if (isInvoiceLocked.value) {
+    showWarningNotification('Issued invoices are locked and cannot be edited.');
+    return false;
+  }
+  return true;
+}
+
+const goToTradeComposer = () => {
+  if (!invoice.value) return;
   void router.push({
-    name: 'app-global-invoices-page',
+    name: 'app-global-invoices-create-wholesale',
     params: { tenantSlug: route.params.tenantSlug },
+    query: { id: String(invoice.value.id) },
+  });
+};
+
+const goToLinkedOrder = () => {
+  const linked = linkedOrderRemittance.value;
+  if (!linked) return;
+  void router.push({
+    name: 'app-shop-order-detail-page',
+    params: {
+      tenantSlug: route.params.tenantSlug,
+      id: linked.id,
+    },
   });
 };
 
@@ -732,6 +758,7 @@ const goToDropshipRemittanceDesk = () => {
 };
 
 const onToggleEditRecipient = () => {
+  if (!assertInvoiceEditable()) return;
   if (editingRecipient.value) {
     void onHeaderUpdate();
     editingRecipient.value = false;
@@ -755,11 +782,9 @@ let targetDebounce: ReturnType<typeof setTimeout> | null = null;
 
 const showPreview = computed(() => {
   if (!invoice.value) return false;
-  // Proforma or Issued invoices can be previewed/printed
   return invoice.value.invoice_status === 'proforma_generated' || invoice.value.invoice_status === 'issued';
 });
-const showPayments = true;
-const showReturns = true;
+const showMargin = ref(false);
 const editingRecipient = ref(false);
 
 // Reactive form representing currently saved values on header
@@ -778,6 +803,10 @@ const form = reactive({
 });
 
 const invoiceId = computed(() => Number(route.params.id));
+const invoiceTenantId = computed(
+  () => invoice.value?.issued_by_tenant_id ?? authStore.selectedTenant?.id ?? null,
+);
+const paymentHistoryOpen = ref(false);
 
 const isDropship = computed(() => invoice.value?.invoice_type === 'dropship');
 
@@ -799,6 +828,102 @@ const loadLinkedOrderRemittance = async (inv: GlobalInvoiceDetail | null) => {
 };
 const isWholesale = computed(() => invoice.value?.invoice_type === 'wholesale');
 const showCharges = computed(() => !isWholesale.value);
+
+const typeChipLabel = computed(() => {
+  const inv = invoice.value;
+  if (!inv) return 'Invoice';
+  if (inv.invoice_type === 'wholesale') return 'Trade';
+  if (inv.invoice_type === 'dropship') return 'Dropship';
+  if (inv.retail_billing_mode === 'direct') return 'Walk-in';
+  return 'Retail';
+});
+
+const statusChipLabel = computed(() => {
+  const status = invoice.value?.invoice_status;
+  if (status === 'proforma_generated') return 'Proforma';
+  if (status === 'issued') return 'Issued';
+  if (status === 'draft') return 'Draft';
+  if (status === 'voided') return 'Voided';
+  return status ? status.replace(/_/g, ' ') : 'New';
+});
+
+const statusChipStyle = computed(() => {
+  const status = invoice.value?.invoice_status;
+  if (status === 'issued') return { color: 'green-1', textColor: 'green-9' };
+  if (status === 'proforma_generated') return { color: 'blue-1', textColor: 'blue-9' };
+  if (status === 'voided') return { color: 'red-1', textColor: 'red-9' };
+  if (status === 'draft') return { color: 'grey-2', textColor: 'grey-9' };
+  return { color: 'amber-1', textColor: 'amber-10' };
+});
+
+const paymentChipLabel = computed(() => {
+  const ps = invoice.value?.payment_status || 'due';
+  if (ps === 'paid') return 'Paid';
+  if (ps === 'partial') return 'Partial';
+  if (ps === 'due' || ps === 'unpaid') return 'Due';
+  return ps.replace(/_/g, ' ');
+});
+
+const paymentChipStyle = computed(() => {
+  const ps = invoice.value?.payment_status || 'due';
+  if (ps === 'paid') return { color: 'green-1', textColor: 'green-9' };
+  if (ps === 'partial') return { color: 'blue-1', textColor: 'blue-9' };
+  return { color: 'red-1', textColor: 'red-9' };
+});
+
+const isTradeComposerDraft = computed(() => {
+  const status = invoice.value?.invoice_status;
+  const isAccountRetail =
+    invoice.value?.invoice_type === 'retail' && invoice.value?.retail_billing_mode !== 'direct';
+  return (
+    (isWholesale.value || isAccountRetail) &&
+    (status === 'draft' || status === 'proforma_generated') &&
+    canMutateInvoice.value
+  );
+});
+
+const canIssueFromChrome = computed(() => {
+  const status = invoice.value?.invoice_status;
+  return (
+    canMutateInvoice.value &&
+    !isDropship.value &&
+    !isTradeComposerDraft.value &&
+    (status === 'draft' || status === 'proforma_generated')
+  );
+});
+
+const canRecordPayment = computed(() => {
+  return (
+    canMutateInvoice.value &&
+    invoice.value?.invoice_status === 'issued' &&
+    (invoice.value?.due_amount ?? 0) > 0 &&
+    !isDropship.value
+  );
+});
+
+const canRecordRemittance = computed(() => {
+  return (
+    canMutateInvoice.value &&
+    isDropship.value &&
+    invoice.value?.invoice_status === 'issued' &&
+    (invoice.value?.due_amount ?? 0) > 0
+  );
+});
+
+const canSettleWriteOff = computed(() => {
+  return canRecordPayment.value;
+});
+
+const showChromeMenu = computed(() => {
+  if (!invoice.value || !canMutateInvoice.value) return false;
+  const status = invoice.value.invoice_status;
+  if (status === 'draft' || status === 'voided') return true;
+  if (status === 'issued' && isWholesale.value) return true;
+  if (linkedAfterSalesCase.value) return true;
+  if (canSettleWriteOff.value) return true;
+  if (isDropship.value && status === 'issued' && invoice.value.due_amount > 0) return true;
+  return false;
+});
 
 
 const formatAmount = (value: number) => formatAmountBdt(value);
@@ -834,27 +959,6 @@ const lineMarginForRow = (row: GlobalInvoiceItemRow) =>
 const returnHistory = ref<any[]>([]);
 const collectionHistory = ref<InvoiceCollectionHistoryRow[]>([]);
 const storeCreditBalance = ref(0);
-
-const collectionHistoryDisplay = computed(() => {
-  const rows = collectionHistory.value.map((row) => ({
-    id: `p-${row.id}`,
-    created_at: row.created_at,
-    kindLabel: row.kind === 'wallet_credit' ? 'Store credit' : 'Cash / bank',
-    method: row.method,
-    amount: row.amount,
-  }));
-  const settle = Number(invoice.value?.settlement_discount_amount ?? 0);
-  if (settle > 0) {
-    rows.push({
-      id: 'settlement',
-      created_at: invoice.value?.created_at || '',
-      kindLabel: 'Settlement',
-      method: 'write-off',
-      amount: settle,
-    });
-  }
-  return rows;
-});
 
 const totalReturnQuantity = computed(() => {
   return items.value.reduce((sum, row) => sum + (row.return_quantity || 0), 0);
@@ -1004,7 +1108,7 @@ const onSelectStockRow = (row: StockNetworkRow) => {
 };
 
 const onAddCartItems = async () => {
-  if (!invoice.value || stockCart.value.length === 0) return;
+  if (!invoice.value || stockCart.value.length === 0 || !assertInvoiceEditable()) return;
   addingItem.value = true;
   try {
     // Process items in opposite order of the stack display (oldest first)
@@ -1031,7 +1135,7 @@ const onAddCartItems = async () => {
 };
 
 const onRemoveItem = async (itemId: number) => {
-  if (!invoice.value) return;
+  if (!invoice.value || !assertInvoiceEditable()) return;
   try {
     await invoiceRepository.removeGlobalInvoiceItem(itemId);
     items.value = items.value.filter((item) => item.id !== itemId);
@@ -1047,7 +1151,7 @@ const onUpdateItemField = async (
   field: 'quantity' | 'sell_price_amount',
   value: any,
 ) => {
-  if (!invoice.value) return;
+  if (!invoice.value || !assertInvoiceEditable()) return;
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) {
     showWarningNotification('Value must be 0 or greater.');
@@ -1081,6 +1185,7 @@ const onUpdateItemField = async (
 };
 
 const openBulkPaste = () => {
+  if (!assertInvoiceEditable()) return;
   $q.dialog({
     component: InvoiceBulkPasteDialog,
     componentProps: { items: items.value, isDropship: isDropship.value },
@@ -1128,7 +1233,7 @@ const onTargetTotalInput = () => {
 };
 
 const onApplyTargetTotal = async () => {
-  if (!invoice.value || targetTotal.value === null) return;
+  if (!invoice.value || targetTotal.value === null || !assertInvoiceEditable()) return;
   applyingTarget.value = true;
   try {
     await invoiceRepository.applyGlobalInvoiceTargetTotal({
@@ -1156,7 +1261,7 @@ const getMonthYear = (dateStr: string) => {
 };
 
 const onDateChange = async (val: string) => {
-  if (!invoice.value) return;
+  if (!invoice.value || !assertInvoiceEditable()) return;
 
   const monthYear = getMonthYear(val);
   const isWholesale = invoice.value.invoice_type === 'wholesale';
@@ -1183,7 +1288,7 @@ const onDateChange = async (val: string) => {
 };
 
 const onHeaderUpdate = async () => {
-  if (!invoice.value) return;
+  if (!invoice.value || !assertInvoiceEditable()) return;
   try {
     await invoiceRepository.updateGlobalInvoiceHeader({
       id: invoice.value.id,
@@ -1206,12 +1311,13 @@ const onHeaderUpdate = async () => {
 };
 
 const openEditNoteDialog = () => {
+  if (!assertInvoiceEditable()) return;
   noteEditValue.value = invoice.value?.note || '';
   editNoteDialog.value = true;
 };
 
 const saveNote = async () => {
-  if (!invoice.value) return;
+  if (!invoice.value || !assertInvoiceEditable()) return;
   savingNote.value = true;
   try {
     await invoiceRepository.updateGlobalInvoiceHeader({
@@ -1311,12 +1417,16 @@ const changeInvoiceStatus = (newStatus: string) => {
   if (!invoice.value) return;
   const current = invoice.value.invoice_status;
   if (current === newStatus) return;
+  if (current === 'issued' && (newStatus === 'draft' || newStatus === 'voided')) {
+    showWarningNotification('Issued invoices are locked. Undo post and void are disabled here.');
+    return;
+  }
 
   if (newStatus === 'issued') {
     $q.dialog({
-      title: 'Post Invoice',
+      title: 'Issue invoice',
       message:
-        'Are you sure you want to post this invoice? This will lock the invoice and deduct the items from stock.',
+        'Issue this invoice? This locks the bill and deducts items from stock. It does not record cash.',
       cancel: true,
       persistent: true,
     }).onOk(() => {
@@ -1401,21 +1511,17 @@ const openPreview = () => {
   });
 };
 
-const onCollectPayment = async (payload: {
-  cashAmount: number;
-  cashMethod: string;
-  walletAmount: number;
-  settlementAmount: number;
-}) => {
+const onCollectPayment = async (payload: WholesaleCollectPaymentPayload) => {
   if (!invoice.value) return;
   paymentSaving.value = true;
   try {
     await invoiceRepository.collectWholesaleInvoicePayment({
       invoice_id: invoice.value.id,
-      cash_amount: payload.cashAmount,
-      cash_method: payload.cashMethod,
+      instruments: payload.instruments,
       wallet_amount: payload.walletAmount,
       settlement_amount: payload.settlementAmount,
+      note: payload.note,
+      received_on: payload.receivedOn,
     });
     paymentDialog.value = false;
     await loadInvoice();
@@ -1479,46 +1585,11 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
-.global-invoice-details-page {
-  background: #eef1f4;
-  min-height: 100%;
-}
-
-.global-invoice-details-page__inner {
-  max-width: 880px;
-  margin: 0 auto;
-  padding: 1rem 1rem 2rem;
-}
-
-.global-invoice-details-page__toolbar {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.global-invoice-details-page__paper-wrap {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.global-invoice-details-page__actions {
-  max-width: 800px;
-  margin: 0.75rem auto 0;
-}
-
-.global-invoice-details-page__action-btn {
-  min-height: 44px;
-  border-radius: 8px;
-}
-
-.invoice-paper-skeleton {
-  background: #fffdf8;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 2px;
-}
+<style scoped lang="scss">
+@import '../styles/invoice-desk.scss';
 
 .pill-btn {
-  border-radius: 8px;
+  border-radius: var(--bw-radius-sm, 8px);
 }
 
 .soft-input :deep(.q-field__control) {

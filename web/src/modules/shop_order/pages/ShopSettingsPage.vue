@@ -619,8 +619,9 @@ watch(
 
 const copyShopUrl = async () => {
   if (!shop.value?.slug) return;
+  const catalogTenantSlug = shop.value.tenant_slug ?? tenantSlug.value;
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
-  const url = `${origin}${shopCatalogPath(tenantSlug.value, shop.value.slug).path}`;
+  const url = `${origin}${shopCatalogPath(catalogTenantSlug, shop.value.slug).path}`;
   try {
     await copyToClipboard(url);
     showSuccessNotification(t('shop_admin.shop_catalog_url_copied'));

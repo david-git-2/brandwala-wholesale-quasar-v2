@@ -46,7 +46,13 @@ Issue does not post cash. `payment_status` changes only via **receipts** (wallet
 | Cash-in | Collect on invoice detail | Courier remittance after delivered |
 | Leftover | Unallocated / store credit | Merchant wallet |
 
-Do not bill dropship `total_amount` as recipient COD. Do not issue dropship from the wholesale create page. Numbers: [money-story](money-story.md).
+Do not bill dropship `total_amount` as recipient COD. Do not issue dropship from the trade-bill composer (`CreateWholesaleInvoicePage`, route `/app/sales/invoices/create`). Numbers: [money-story](money-story.md).
+
+**Trade desk UI:** Staff see **Invoice**. Type chip **Trade** or **Retail** on the same composer (`/app/sales/invoices/create`, `?type=retail` for new retail). Storage: Trade = `invoice_type = wholesale`; Retail on account = `retail` + `retail_billing_mode = account`. Walk-in stays the list dialog (`direct`). Dropship stays on ship.
+
+**Invoice browse UI:** `InvoicesListPage` is a **row list** (customer + money per row), not the ops spreadsheet `q-table`. Exception to [ui-standards](../../guides/ui-standards.md) table rule for this page only.
+
+**Invoice desk UI (create / details):** Shared emerald desk workspace — sticky chrome, parties strip, dense line grid, sticky totals panel. Theme tokens (`--bw-theme-*`), not cream Georgia paper. Heading **Invoice** + type chip (Trade / Retail / Walk-in / Dropship). Status and payment are chips in chrome, not a stepper. Issue / collect / remittance live in chrome. List/report open **issued/voided** bills at `/app/sales/invoices/:id`. Trade and retail-on-account **draft/proforma** stay on `/create?id=`. Cost and margin are off the bill unless staff open **Margin**. **Print** = preview sheet only (`InvoicePreviewPage` / `InvoicePrintSheet`).
 
 ---
 
@@ -85,10 +91,13 @@ Do not bill dropship `total_amount` as recipient COD. Do not issue dropship from
 
 ---
 
-## Wholesale desk (print)
+## Trade desk (compose)
+
+Route: `/app/sales/invoices/create` (legacy `/create-wholesale` redirects). Sticky chrome + desk body — not a three-step status wizard. Print voucher is separate preview route.
 
 ```text
-Qty | Tenant sell | Discount | Line total
-Subtotal − discount + merchant-owed charges = NET (sales)
-[ Draft ] [ Proforma ] [ Issue ]
+Parties: brand | bill-to
+Lines: Qty | Tenant sell | Discount | Line total
+Totals panel: Subtotal − discount + merchant-owed charges = NET (sales)
+Chrome actions: Save draft | Save | Make proforma | Issue (by status)
 ```

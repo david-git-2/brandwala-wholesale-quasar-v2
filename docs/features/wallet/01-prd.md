@@ -15,8 +15,8 @@
 | | |
 | :--- | :--- |
 | Surfaces | `app` books; `shop` merchant statement |
-| In | **Receipts** (money in, all channels). **Ledger** (balances). **Payouts** (money out vs wallet). |
-| Out | Inventing a second ledger. Investor withdraw. Invoice **issue**. Parcel / COD **face** (order). Tenant **sales** (invoice totals). |
+| In | **Receipts** (money in, all channels). **Split tender** (cash + cheques + bKash in one visit). **Ledger** (balances). **Payouts** (money out vs wallet). |
+| Out | Inventing a second ledger. Investor withdraw. Invoice **issue**. Parcel / COD **face** (order). Tenant **sales** (invoice totals). Cheque **bounce** workflow (v2). |
 
 See [scopes](../../architecture/scopes.md). Bills: [sales_invoice](../sales_invoice/01-prd.md). Target receipts: [02-data-model](02-data-model.md). Gaps: [00-gaps](00-gaps.md). Worked numbers: [money-story](../sales_invoice/money-story.md).
 
@@ -28,8 +28,9 @@ Industry: one receipts engine. Cash, bank, store credit, **courier remittance** 
 
 | Layer | Job |
 | :--- | :--- |
-| Receipt | Cash that **hit you**. Wholesale: buyer cash/bank/store credit. Dropship: courier remittance (net). |
-| Allocate | Apply up to invoice `total_amount` (tenant sell). Updates `payment_status` |
+| Receipt | Cash that **hit you** in one posting. Header total + optional note. Wholesale: buyer cash/bank/store credit. Dropship: courier remittance (net). |
+| Instrument line | **How** they paid: cash row, cheque row (bank + date + number), bKash row (trx ref). Sum of lines = receipt total. |
+| Allocate | Apply receipt total to open bills (`invoice_payments`). Updates `payment_status`. Not stored on the invoice header. |
 | Ledger | Remainder / payables: courier clearing, merchant profit, store credit, tenant cash |
 | Payout | Money **out** (merchant withdraw). Opposite of a receipt |
 
@@ -73,9 +74,17 @@ Do **not** credit courier wallet with full COD as “delivered costing” plus a
 - [ ] Parent books + `operating_tenant_id`. Tenant cash pooled at parent.
 
 ### US-2: One receipt posts cash and (optional) allocation
-- [ ] Wholesale collect: `create_billing_profile_payment_with_allocations` (or the unified successor). Source ≠ courier remittance.
+- [ ] Wholesale collect: unified receipt RPC (successor to `create_billing_profile_payment_with_allocations` / `collect_wholesale_invoice_payment`). Source ≠ courier remittance.
 - [ ] Dropship remittance: same allocations table; source = remittance; billed to **merchant** profile. Refuses without issued `global_invoice_id`.
 - [ ] Allocation ≤ remaining invoice due. Never rewrite `sell_price`. Never issue a bill from a receipt.
+
+### US-2b: Split tender at collect (wholesale / billing-profile)
+- [ ] Cashier can add **multiple instrument lines** in one visit: cash, one or more cheques, bKash/bank transfer.
+- [ ] Each cheque line: pick [BD bank](../global_reference/02-data-model.md#24-bd_banks), cheque number, cheque date, amount.
+- [ ] bKash line: amount + trx reference. Cash line: amount + optional till note.
+- [ ] Receipt header: total = sum of lines; one optional note for the whole visit.
+- [ ] Same receipt can allocate to one invoice (invoice collect) or many (billing-profile collect).
+- [ ] Cheque accepted at desk counts toward cash-in; bounce handling is v2 ([WA13](00-gaps.md)).
 
 ### US-3: Merchant payable then payout
 - [ ] Profit / remainder credits merchant wallet from the **receipt remainder**, not from order status `delivered` alone.
@@ -85,4 +94,4 @@ Do **not** credit courier wallet with full COD as “delivered costing” plus a
 
 ## Desk (target)
 
-Receipts list: source, amount, ref → allocate invoices. Entity ledger: balances. Payout is a separate action on the merchant wallet.
+Receipts list: source, amount, methods breakdown, ref → allocate invoices. Collect **page** (`CollectCustomerPaymentPage`): left pane = this visit (instrument lines); right pane = open bills + allocation; sticky footer = received / applied / store-credit leftover / post. **History drawer** (`CustomerPaymentHistoryDrawer`): past receipts read-only; fix cheque/trx typos; void + re-enter for wrong amount/split (append-only ledger). Entity ledger: balances. Payout is a separate action on the merchant wallet.

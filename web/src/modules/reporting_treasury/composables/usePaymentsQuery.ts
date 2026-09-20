@@ -1,9 +1,13 @@
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, unref, type MaybeRef } from 'vue';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { paymentsRepository } from '../repositories/paymentsRepository';
 import { financeReportQueryKeys } from '../shared/queryKeys';
-import type { BatchPaymentPayload } from '../types/paymentsTypes';
+import type {
+  BatchPaymentPayload,
+  UpdateInstrumentDetailsPayload,
+  VoidCustomerReceiptPayload,
+} from '../types/paymentsTypes';
 
 export function usePayments() {
   const authStore = useAuthStore();
@@ -67,7 +71,40 @@ export function usePayments() {
     mutationFn: (payload: BatchPaymentPayload) =>
       paymentsRepository.recordBatchCustomerPayment(payload),
     onSuccess: () => {
-      // Invalidate treasury queries
+      void queryClient.invalidateQueries({ queryKey: financeReportQueryKeys.root });
+    },
+  });
+
+  function useCustomerGroupReceipts(customerGroupId: MaybeRef<number | null>) {
+    const groupId = computed(() => unref(customerGroupId));
+    return useQuery({
+      queryKey: computed(() =>
+        tenantId.value && groupId.value
+          ? financeReportQueryKeys.customerGroupReceipts(tenantId.value, groupId.value)
+          : financeReportQueryKeys.root,
+      ),
+      queryFn: () =>
+        paymentsRepository.listCustomerGroupReceipts({
+          tenantId: tenantId.value || 0,
+          customerGroupId: groupId.value || 0,
+        }),
+      enabled: computed(() => Boolean(tenantId.value && groupId.value && groupId.value > 0)),
+      staleTime: 10_000,
+    });
+  }
+
+  const updateInstrumentMutation = useMutation({
+    mutationFn: (payload: UpdateInstrumentDetailsPayload) =>
+      paymentsRepository.updatePaymentInstrumentDetails(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: financeReportQueryKeys.root });
+    },
+  });
+
+  const voidReceiptMutation = useMutation({
+    mutationFn: (payload: VoidCustomerReceiptPayload) =>
+      paymentsRepository.voidCustomerReceipt(payload),
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: financeReportQueryKeys.root });
     },
   });
@@ -87,6 +124,11 @@ export function usePayments() {
     fetchGroupInvoices,
     recordPayment: recordPaymentMutation.mutateAsync,
     isSubmittingPayment: recordPaymentMutation.isPending,
+    useCustomerGroupReceipts,
+    updateInstrumentDetails: updateInstrumentMutation.mutateAsync,
+    isUpdatingInstrument: updateInstrumentMutation.isPending,
+    voidCustomerReceipt: voidReceiptMutation.mutateAsync,
+    isVoidingReceipt: voidReceiptMutation.isPending,
 
     refetchAll: () => {
       void customerGroupsQuery.refetch();

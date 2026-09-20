@@ -53,7 +53,11 @@ const listShops = async (
 };
 
 const SHOP_DETAIL_SELECT =
-  'id, tenant_id, name, slug, shop_type, vendor_code, order_mode, is_negotiable, show_stock_quantity, default_currency_id, global_stock_type_id, is_active, allow_delivery, buy_currency_id, sell_currency_id, pricing_method, markup_percentage, quantity_display_mode, default_print_charge_amount, default_packing_charge_amount, deduct_charges_from_margin, vendor_filters, deduct_print_from_margin, deduct_packing_from_margin, description, category_ids, min_available_units, created_at, updated_at';
+  'id, tenant_id, name, slug, shop_type, vendor_code, order_mode, is_negotiable, show_stock_quantity, default_currency_id, global_stock_type_id, is_active, allow_delivery, buy_currency_id, sell_currency_id, pricing_method, markup_percentage, quantity_display_mode, default_print_charge_amount, default_packing_charge_amount, deduct_charges_from_margin, vendor_filters, deduct_print_from_margin, deduct_packing_from_margin, description, category_ids, min_available_units, created_at, updated_at, tenant:tenant_id(slug)';
+
+type ShopDetailRow = Shop & {
+  tenant?: { slug: string | null } | null;
+};
 
 const getShop = async (shopId: number, tenantId: number): Promise<Shop> => {
   const { data, error } = await supabase
@@ -65,7 +69,12 @@ const getShop = async (shopId: number, tenantId: number): Promise<Shop> => {
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error('Shop not found.');
-  return data as Shop;
+  const row = data as ShopDetailRow;
+  const { tenant, ...shop } = row;
+  return {
+    ...shop,
+    tenant_slug: tenant?.slug ?? null,
+  };
 };
 
 const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promise<Shop> => {

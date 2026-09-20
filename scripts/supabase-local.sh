@@ -189,6 +189,7 @@ cmd_migrate() {
   echo "Applying pending migrations to local DB (include-all for out-of-order files)…"
   supabase_cli migration up --local --include-all
   cmd_configure_notification_dispatch
+  cmd_types_local
 }
 
 cmd_configure_notification_dispatch() {
@@ -647,7 +648,7 @@ Commands:
   stop             Stop local Supabase
   status           Show local status / URLs / keys
   reset            db reset — migrations only, empty business data
-  migrate          Apply pending migrations to local (migration up --include-all)
+  migrate          Apply pending migrations to local (migration up --include-all) + regenerate types
   configure-dispatch
                    Set Postgres dispatch GUCs + sync FIREBASE_SERVICE_ACCOUNT from web/.env
   env:print        Print VITE_* / service key snippet for web/.env

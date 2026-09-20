@@ -1,5 +1,31 @@
 import type { GlobalStockCostingInput } from 'src/modules/global/types';
 
+export type InvoicePaymentHistoryInstrument = {
+  id: number;
+  payment_method_code: string;
+  amount: number;
+  reference: string | null;
+  bd_bank_id: number | null;
+  bank_name: string | null;
+  cheque_number: string | null;
+  cheque_date: string | null;
+  sort_order: number;
+};
+
+export type InvoicePaymentHistoryEntry = {
+  entry_type: 'allocation' | 'write_off';
+  entry_id: number;
+  payment_id: number | null;
+  payment_date: string;
+  amount: number;
+  receipt_amount: number;
+  voided_at: string | null;
+  method: string | null;
+  note: string | null;
+  write_off_reason: string | null;
+  instruments: InvoicePaymentHistoryInstrument[];
+};
+
 export type GlobalInvoiceRow = {
   id: number;
   tenant_id?: number;
@@ -152,4 +178,21 @@ export interface WholesaleReturnPreviewSummary {
     new_line_total: number;
   }>;
 }
+
+export type WholesalePaymentInstrumentInput = {
+  payment_method_code: string;
+  amount: number;
+  reference?: string | null;
+  bd_bank_id?: number | null;
+  cheque_number?: string | null;
+  cheque_date?: string | null;
+};
+
+export type WholesaleCollectPaymentPayload = {
+  instruments: WholesalePaymentInstrumentInput[];
+  walletAmount: number;
+  settlementAmount: number;
+  note?: string | null;
+  receivedOn?: string | null;
+};
 

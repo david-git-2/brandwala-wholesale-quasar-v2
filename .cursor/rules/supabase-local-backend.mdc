@@ -14,10 +14,9 @@ After adding or editing a migration file, or when the user says "update local", 
 
 ```bash
 pnpm run backend:local
-pnpm run backend:types:local
 ```
 
-`backend:local` runs `migration up --include-all` on the **existing** DB. Prod snapshot rows stay.
+`backend:local` runs `migration up --include-all` on the **existing** DB, then `backend:types:local`. Prod snapshot rows stay.
 
 ## Destructive — only when explicitly requested
 
@@ -35,7 +34,7 @@ pnpm run backend:types:local
 
 **Feature work (prod data already loaded once):**
 1. Edit `supabase/schemas/` → generate migration
-2. `pnpm run backend:local` → `pnpm run backend:types:local`
+2. `pnpm run backend:local`
 3. Do **not** run reset or restore-dumps
 
 **First-time local setup or migration-order fix:**
@@ -51,7 +50,7 @@ pnpm run backend:types:local
 
 | Situation | Command |
 |-----------|---------|
-| Local DB changed | `pnpm run backend:types:local` |
+| Local DB changed | `pnpm run backend:types:local` (also runs at end of `backend:local`) |
 | After `deploy:backend` / remote push | `pnpm run backend:types` (linked project) |
 
 ## Anti-patterns (caused real data loss)

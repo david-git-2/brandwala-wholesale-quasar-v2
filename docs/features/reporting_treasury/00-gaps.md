@@ -12,3 +12,4 @@
 | RT8 | design | Month snapshot four tiles + payable caption | KPI “TOTAL REVENUE” next to cash | Separate tiles; cash may exceed sales |
 | RT9 | design | Collect is wallet, not reporting | US-3 / Billing Balances posts `create_billing_profile_payment_with_allocations` | Move ownership to [wallet](../wallet/01-prd.md); report pages stay read-only |
 | RT10 | design | Shipment P&L revenue = invoice sell | May use resell/COD | Same sell rule as invoice profit |
+| RT11 | not_built | Cash-in report breakdown by instrument (cash / cheque / bKash) | Report may filter by header method only | After [wallet WA9](../wallet/00-gaps.md): join `global_payment_instruments` + `payment_methods`; cheque detail via `bd_banks` |

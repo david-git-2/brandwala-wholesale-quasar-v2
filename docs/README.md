@@ -74,5 +74,5 @@ Also in code, no pack: `settings/`, `navigation/`, `featureCatalog/`.
 | :--- | :--- |
 | Web | `pnpm --dir web dev` |
 | Types/lint | `pnpm --dir web type-check` / `lint` |
-| SQL on existing local DB | `pnpm run backend:local` then `backend:types:local` |
+| SQL on existing local DB | `pnpm run backend:local` |
 | Schema split check | `pnpm run backend:schema:diff` |

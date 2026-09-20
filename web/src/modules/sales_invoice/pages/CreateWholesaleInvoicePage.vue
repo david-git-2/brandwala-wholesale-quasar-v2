@@ -1,144 +1,173 @@
 <template>
-  <q-page class="create-wholesale-invoice-page bw-page-fill q-py-md">
-    <div class="column no-wrap create-wholesale-invoice-page__stack">
-      <div
-        v-if="existingInvoiceId"
-        class="row items-center justify-between bg-white q-pa-xs q-px-sm rounded-borders-8 border-light shadow-1 create-wholesale-invoice-page__workflow"
+  <q-page class="invoice-desk-page theme-app">
+    <div class="invoice-desk-page__stack">
+      <InvoiceDeskChrome
+        :invoice-no="loadedInvoiceNo"
+        :type-chip-label="isExistingInvoice ? typeChipLabel : undefined"
+        :status-chip-label="statusChipLabel"
+        :status-chip-color="statusChipStyle.color"
+        :status-chip-text-color="statusChipStyle.textColor"
+        :payment-chip-label="paymentChipLabel"
+        :payment-chip-color="paymentChipStyle.color"
+        :payment-chip-text-color="paymentChipStyle.textColor"
+        :show-payment-chip="loadedInvoiceStatus === 'issued'"
+        :validation-reasons="!canSaveDraft ? validationReasons : []"
       >
-        <div class="row items-center q-gutter-xs">
-          <!-- Draft Status -->
-          <q-btn
-            :color="loadedInvoiceStatus === 'draft' ? 'grey-8' : 'grey-4'"
-            :text-color="loadedInvoiceStatus === 'draft' ? 'white' : 'grey-8'"
-            :unelevated="loadedInvoiceStatus === 'draft'"
-            :outline="loadedInvoiceStatus !== 'draft'"
+        <template v-if="!isExistingInvoice" #type>
+          <q-btn-toggle
+            :model-value="composerBillType"
+            unelevated
             dense
             no-caps
-            class="q-px-sm text-caption text-weight-bold"
-            :loading="isSaving && selectedSaveStatus === 'draft'"
-            :disable="isSaving"
-            @click="handleSaveInvoice('draft')"
-          >
-            <q-icon
-              v-if="loadedInvoiceStatus === 'draft'"
-              name="ph ph-check-circle"
-              size="13px"
-              class="q-mr-xs"
-            />
-            Saved as Draft
-          </q-btn>
+            toggle-color="primary"
+            :options="billTypeToggleOptions"
+            class="composer-type-toggle"
+            @update:model-value="onComposerBillTypeChange"
+          />
+        </template>
 
-          <q-icon name="ph ph-caret-right" color="grey-5" size="14px" />
-
-          <!-- Proforma Status -->
-          <q-btn
-            :color="loadedInvoiceStatus === 'proforma_generated' ? 'primary' : 'grey-4'"
-            :text-color="loadedInvoiceStatus === 'proforma_generated' ? 'white' : 'primary'"
-            :unelevated="loadedInvoiceStatus === 'proforma_generated'"
-            :outline="loadedInvoiceStatus !== 'proforma_generated'"
-            dense
-            no-caps
-            class="q-px-sm text-caption text-weight-bold"
-            :loading="isSaving && selectedSaveStatus === 'proforma_generated'"
-            :disable="isSaving"
-            @click="handleSaveInvoice('proforma_generated')"
-          >
-            <q-icon
-              v-if="loadedInvoiceStatus === 'proforma_generated'"
-              name="ph ph-check-circle"
-              size="13px"
-              class="q-mr-xs"
-            />
-            {{ loadedInvoiceStatus === 'proforma_generated' ? 'PF Generated' : 'Save as PF' }}
-          </q-btn>
-
-          <q-icon name="ph ph-caret-right" color="grey-5" size="14px" />
-
-          <!-- Issued Status -->
-          <q-btn
-            :color="loadedInvoiceStatus === 'issued' ? 'positive' : 'grey-4'"
-            :text-color="loadedInvoiceStatus === 'issued' ? 'white' : 'positive'"
-            :unelevated="loadedInvoiceStatus === 'issued'"
-            :outline="loadedInvoiceStatus !== 'issued'"
-            dense
-            no-caps
-            class="q-px-sm text-caption text-weight-bold"
-            :loading="isSaving && selectedSaveStatus === 'issued'"
-            :disable="isSaving || loadedInvoiceStatus === 'issued'"
-            @click="handleSaveInvoice('issued')"
-          >
-            <q-icon
-              v-if="loadedInvoiceStatus === 'issued'"
-              name="ph ph-check-circle"
-              size="13px"
-              class="q-mr-xs"
-            />
-            {{ loadedInvoiceStatus === 'issued' ? 'ISSUED' : 'Save as ISSUED' }}
-          </q-btn>
-
-          <!-- Payment Status Button-like badge when Issued -->
+        <template #secondary>
           <template v-if="loadedInvoiceStatus === 'issued'">
-            <q-separator vertical class="q-mx-xs" />
-            <q-badge
-              :color="
-                effectivePaymentStatus === 'paid'
-                  ? 'green-1'
-                  : effectivePaymentStatus === 'partial'
-                    ? 'blue-1'
-                    : 'red-1'
-              "
-              :text-color="
-                effectivePaymentStatus === 'paid'
-                  ? 'green-9'
-                  : effectivePaymentStatus === 'partial'
-                    ? 'blue-9'
-                    : 'red-9'
-              "
-              class="text-weight-bolder text-uppercase q-px-sm q-py-xs rounded-borders"
-              style="font-size: 11px; height: 28px; line-height: 20px"
-            >
-              <q-icon
-                :name="
-                  effectivePaymentStatus === 'paid'
-                    ? 'ph ph-check-circle'
-                    : effectivePaymentStatus === 'partial'
-                      ? 'ph ph-chart-pie'
-                      : 'ph ph-clock'
-                "
-                size="13px"
-                class="q-mr-xs"
-              />
-              PAYMENT: {{ effectivePaymentStatus }}
-            </q-badge>
+            <q-btn
+              outline
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-clock-counter-clockwise"
+              label="Payment history"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              @click="paymentHistoryOpen = true"
+            />
           </template>
-        </div>
+          <template v-else-if="loadedInvoiceStatus === 'proforma_generated'">
+            <q-btn
+              outline
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-printer"
+              label="Preview"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              @click="openPreview"
+            />
+          </template>
+        </template>
 
-        <!-- Right Side: Process Return Button -->
-        <div class="row items-center q-gutter-xs">
+        <template #primary>
+          <template v-if="loadedInvoiceStatus === 'issued'">
+            <q-btn
+              v-if="canRecordPayment"
+              unelevated
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-money"
+              label="Record payment"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              @click="openCollectDialog"
+            />
+          </template>
+          <template v-else-if="loadedInvoiceStatus === 'proforma_generated'">
+            <q-btn
+              outline
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-floppy-disk"
+              label="Save"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              :disable="!canSaveDraft || isSaving"
+              :loading="isSaving && selectedSaveStatus === 'draft'"
+              @click="handleSyncSave"
+            />
+            <q-btn
+              unelevated
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-check-circle"
+              label="Issue"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              :disable="!canSaveDraft || isSaving"
+              :loading="isSaving && selectedSaveStatus === 'issued'"
+              @click="handleSaveInvoice('issued')"
+            />
+          </template>
+          <template v-else-if="existingInvoiceId && loadedInvoiceStatus === 'draft'">
+            <q-btn
+              outline
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-floppy-disk"
+              label="Save"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              :disable="!canSaveDraft || isSaving"
+              :loading="isSaving && selectedSaveStatus === 'draft'"
+              @click="handleSaveInvoice('draft')"
+            />
+            <q-btn
+              unelevated
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-check-circle"
+              label="Issue"
+              class="invoice-desk-chrome__btn text-weight-bold"
+              :disable="!canSaveDraft || isSaving"
+              :loading="isSaving && selectedSaveStatus === 'issued'"
+              @click="handleSaveInvoice('issued')"
+            />
+          </template>
           <q-btn
-            v-if="canRecordPayment"
-            flat
+            v-else
+            unelevated
             dense
             no-caps
             color="primary"
-            icon="ph ph-money"
-            label="Record Payment"
-            class="q-px-sm text-caption text-weight-bold"
-            @click="openCollectDialog"
+            icon="ph ph-floppy-disk"
+            label="Save draft"
+            class="invoice-desk-chrome__btn text-weight-bold"
+            :disable="!canSaveDraft || isSaving"
+            :loading="isSaving && selectedSaveStatus === 'draft'"
+            @click="handleSaveInvoice('draft')"
           />
-        </div>
-      </div>
+        </template>
+
+        <template #overflow>
+          <q-btn-dropdown
+            v-if="existingInvoiceId && loadedInvoiceStatus === 'draft'"
+            flat
+            dense
+            no-caps
+            color="grey-8"
+            icon="ph ph-dots-three-vertical"
+            label="More"
+            class="invoice-desk-chrome__btn"
+            :disable="!canSaveDraft || isSaving"
+          >
+            <q-list dense>
+              <q-item
+                v-close-popup
+                clickable
+                :disable="isSaving"
+                @click="handleSaveInvoice('proforma_generated')"
+              >
+                <q-item-section avatar>
+                  <q-icon name="ph ph-file-text" color="primary" />
+                </q-item-section>
+                <q-item-section>Make proforma</q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
+        </template>
+      </InvoiceDeskChrome>
 
       <WholesaleInvoicePaper
         v-model:selected-brand-id="selectedBrandId"
         v-model:selected-billing-profile-id="selectedBillingProfileId"
         v-model:overall-discount-input="overallDiscountInput"
         v-model:stock-search-text="stockSearchText"
-        v-model:stock-menu-open="stockMenuOpen"
-        :is-existing-invoice="isExistingInvoice"
-        :loaded-invoice-no="loadedInvoiceNo"
-        :loaded-invoice-status="loadedInvoiceStatus"
-        :effective-payment-status="effectivePaymentStatus"
         :brand-options="brandOptions"
         :brands-loading="brandsLoading"
         :billing-profile-options="billingProfileOptions"
@@ -162,41 +191,6 @@
         @remove-item="removeInvoiceItem"
         @apply-overall-discount="applyOverallDiscountEqually"
       />
-
-      <div class="row items-center justify-end q-gutter-sm create-wholesale-invoice-page__footer">
-        <q-btn
-          v-if="existingInvoiceId && loadedInvoiceStatus === 'proforma_generated'"
-          outline
-          color="primary"
-          icon="ph ph-printer"
-          label="Preview Proforma"
-          no-caps
-          class="action-btn text-weight-bold"
-          @click="openPreview"
-        >
-          <q-tooltip>Preview and print proforma invoice</q-tooltip>
-        </q-btn>
-
-        <q-btn
-          v-if="!existingInvoiceId"
-          unelevated
-          color="primary"
-          icon="ph ph-floppy-disk"
-          label="Save as Draft"
-          no-caps
-          class="action-btn text-weight-bold"
-          :disable="!canSaveDraft || isSaving"
-          :loading="isSaving"
-          @click="handleSaveInvoice('draft')"
-        >
-          <q-tooltip v-if="!canSaveDraft" anchor="top middle" self="bottom middle" class="bg-grey-9 text-caption shadow-4">
-            <div class="text-weight-bold q-mb-xs text-amber-3">Complete required fields to save:</div>
-            <div v-for="(reason, rIdx) in validationReasons" :key="rIdx" class="q-py-xxs text-white">
-              • {{ reason }}
-            </div>
-          </q-tooltip>
-        </q-btn>
-      </div>
     </div>
 
     <WholesaleCollectPaymentDialog
@@ -206,6 +200,13 @@
       :store-credit="storeCreditBalance"
       :saving="collectSaving"
       @submit="onCollectPayment"
+    />
+
+    <InvoicePaymentHistoryDrawer
+      v-model="paymentHistoryOpen"
+      :tenant-id="effectiveTenantId"
+      :invoice-id="existingInvoiceId"
+      :invoice-no="loadedInvoiceNo"
     />
   </q-page>
 </template>
@@ -229,8 +230,11 @@ import {
 import type { BillingProfile } from '../repositories/billingProfileRepository';
 import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
 import WholesaleCollectPaymentDialog from '../components/WholesaleCollectPaymentDialog.vue';
+import InvoicePaymentHistoryDrawer from '../components/InvoicePaymentHistoryDrawer.vue';
+import InvoiceDeskChrome from '../components/InvoiceDeskChrome.vue';
 import WholesaleInvoicePaper from '../components/WholesaleInvoicePaper.vue';
 import type { InvoiceLineDraftItem } from '../types/wholesaleInvoiceDraft';
+import type { WholesaleCollectPaymentPayload } from '../types';
 import { walletRepository } from 'src/modules/wallet/repositories/walletRepository';
 import WholesaleIssueConfirmDialog, {
   type WholesaleIssueDialogItem,
@@ -259,6 +263,24 @@ const existingInvoiceId = computed(() => {
 const isExistingInvoice = computed(() => Boolean(existingInvoiceId.value));
 const loadedInvoiceNo = ref('');
 
+type ComposerBillType = 'wholesale' | 'retail';
+const parseComposerBillType = (raw: unknown): ComposerBillType =>
+  raw === 'retail' ? 'retail' : 'wholesale';
+const composerBillType = ref<ComposerBillType>(parseComposerBillType(route.query.type));
+const billTypeToggleOptions = [
+  { label: 'Trade', value: 'wholesale' },
+  { label: 'Retail', value: 'retail' },
+];
+const typeChipLabel = computed(() => (composerBillType.value === 'retail' ? 'Retail' : 'Trade'));
+const onComposerBillTypeChange = (value: string | number | boolean | null) => {
+  const next: ComposerBillType = value === 'retail' ? 'retail' : 'wholesale';
+  composerBillType.value = next;
+  const nextQuery = { ...route.query };
+  if (next === 'retail') nextQuery.type = 'retail';
+  else delete nextQuery.type;
+  void router.replace({ query: nextQuery });
+};
+
 usePageBreadcrumbs(() => {
   const tenantSlug =
     (typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : '') ||
@@ -274,11 +296,7 @@ usePageBreadcrumbs(() => {
       to: { name: 'app-global-invoices-page', params: tenantSlug ? { tenantSlug } : {} },
     },
     {
-      label: loadedInvoiceNo.value
-        ? `#${loadedInvoiceNo.value}`
-        : isExistingInvoice.value
-          ? 'Wholesale invoice'
-          : 'New wholesale',
+      label: loadedInvoiceNo.value ? `#${loadedInvoiceNo.value}` : 'New bill',
     },
   ];
 });
@@ -290,7 +308,41 @@ const loadedItemIds = ref<number[]>([]);
 const collectDialogOpen = ref(false);
 const collectSaving = ref(false);
 const storeCreditBalance = ref(0);
+const paymentHistoryOpen = ref(false);
 const effectivePaymentStatus = computed(() => loadedPaymentStatus.value || 'due');
+
+const statusChipLabel = computed(() => {
+  if (!existingInvoiceId.value) return 'New';
+  const status = loadedInvoiceStatus.value;
+  if (status === 'proforma_generated') return 'Proforma';
+  if (status === 'issued') return 'Issued';
+  if (status === 'draft') return 'Draft';
+  return status ? status.replace(/_/g, ' ') : 'New';
+});
+
+const statusChipStyle = computed(() => {
+  const status = loadedInvoiceStatus.value;
+  if (status === 'issued') return { color: 'green-1', textColor: 'green-9' };
+  if (status === 'proforma_generated') return { color: 'blue-1', textColor: 'blue-9' };
+  if (status === 'draft') return { color: 'grey-2', textColor: 'grey-9' };
+  return { color: 'amber-1', textColor: 'amber-10' };
+});
+
+const paymentChipLabel = computed(() => {
+  const ps = effectivePaymentStatus.value;
+  if (ps === 'paid') return 'Paid';
+  if (ps === 'partial') return 'Partial';
+  if (ps === 'due' || ps === 'unpaid') return 'Due';
+  return ps.replace(/_/g, ' ');
+});
+
+const paymentChipStyle = computed(() => {
+  const ps = effectivePaymentStatus.value;
+  if (ps === 'paid') return { color: 'green-1', textColor: 'green-9' };
+  if (ps === 'partial') return { color: 'blue-1', textColor: 'blue-9' };
+  return { color: 'red-1', textColor: 'red-9' };
+});
+
 const canRecordPayment = computed(() => {
   if (loadedInvoiceStatus.value !== 'issued') return false;
   if ((loadedDueAmount.value || 0) <= 0) return false;
@@ -318,8 +370,17 @@ const loadExistingInvoice = async () => {
       loadedPaidAmount.value = Number(inv.paid_amount ?? 0);
       selectedBillingProfileId.value = inv.billing_profile_id ?? null;
       overallDiscountInput.value = inv.discount_amount ?? 0;
-      if (inv.invoice_status === 'issued') {
-        selectedSaveStatus.value = 'issued';
+      if (inv.invoice_type === 'retail') composerBillType.value = 'retail';
+      else composerBillType.value = 'wholesale';
+      if (inv.invoice_status === 'issued' || inv.invoice_status === 'voided') {
+        void router.replace({
+          name: 'app-global-invoice-details-page',
+          params: {
+            tenantSlug: route.params.tenantSlug,
+            id: String(invId),
+          },
+        });
+        return;
       }
     }
 
@@ -488,7 +549,6 @@ const hasReturnedItems = computed(() =>
   invoiceItems.value.some((item) => (item.return_quantity || 0) > 0),
 );
 const stockSearchText = ref('');
-const stockMenuOpen = ref(false);
 const isSearchingStock = ref(false);
 const stockSearchResults = ref<SalesInvoiceStockItem[]>([]);
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -505,7 +565,6 @@ const performStockSearch = async () => {
       limit: 30,
     });
     stockSearchResults.value = results;
-    stockMenuOpen.value = true;
   } catch (err) {
     console.error('Error searching stock:', err);
     stockSearchResults.value = [];
@@ -524,8 +583,6 @@ const onStockSearchInput = () => {
 const onSearchFocus = () => {
   if (!stockSearchResults.value.length) {
     void performStockSearch();
-  } else {
-    stockMenuOpen.value = true;
   }
 };
 
@@ -647,22 +704,18 @@ const openCollectDialog = async () => {
   }
 };
 
-const onCollectPayment = async (payload: {
-  cashAmount: number;
-  cashMethod: string;
-  walletAmount: number;
-  settlementAmount: number;
-}) => {
+const onCollectPayment = async (payload: WholesaleCollectPaymentPayload) => {
   const invId = existingInvoiceId.value;
   if (!invId) return;
   collectSaving.value = true;
   try {
     await invoiceRepository.collectWholesaleInvoicePayment({
       invoice_id: invId,
-      cash_amount: payload.cashAmount,
-      cash_method: payload.cashMethod,
+      instruments: payload.instruments,
       wallet_amount: payload.walletAmount,
       settlement_amount: payload.settlementAmount,
+      note: payload.note,
+      received_on: payload.receivedOn,
     });
     collectDialogOpen.value = false;
     await loadExistingInvoice();
@@ -697,13 +750,14 @@ const buildPayloadItems = (): SalesInvoicePayloadItem[] =>
     line_discount_amount: item.line_discount_amount || 0,
   }));
 
-const buildWholesalePayload = (issue: boolean, invoiceNo?: string): SalesInvoiceFromPayloadInput => ({
+const buildComposerPayload = (issue: boolean, invoiceNo?: string): SalesInvoiceFromPayloadInput => ({
   invoice: {
     ...(invoiceNo ? { invoice_no: invoiceNo } : {}),
-    invoice_type: 'wholesale',
+    invoice_type: composerBillType.value,
     billing_profile_id: selectedBillingProfileId.value!,
     invoice_date: new Date().toISOString().slice(0, 10),
     discount_amount: totalDiscountAmount.value,
+    ...(composerBillType.value === 'retail' ? { retail_billing_mode: 'account' as const } : {}),
   },
   items: buildPayloadItems(),
   issue,
@@ -798,20 +852,19 @@ const issueWholesaleFromDialog = async (
         if (isNewInvoice) {
           const invoiceNo =
             loadedInvoiceNo.value ||
-            (await invoiceRepository.generateInvoiceNumber(tenantId, 'wholesale'));
+            (await invoiceRepository.generateInvoiceNumber(tenantId, composerBillType.value));
           const result = await invoiceRepository.createSalesInvoiceFromPayload(
             tenantId,
-            buildWholesalePayload(true, invoiceNo),
+            buildComposerPayload(true, invoiceNo),
           );
           if (!result.invoice_id) throw new Error('Invoice was not created');
-          await persistInvoiceResult(
-            result.invoice_id,
-            result.invoice_no,
-            result.invoice_status,
-            result.payment_status,
-            result.due_amount,
-            result.paid_amount,
-          );
+          void router.replace({
+            name: 'app-global-invoice-details-page',
+            params: {
+              tenantSlug: route.params.tenantSlug,
+              id: String(result.invoice_id),
+            },
+          });
         } else if (targetInvoiceId) {
           await invoiceRepository.issueWholesaleInvoice(
             targetInvoiceId,
@@ -821,14 +874,19 @@ const issueWholesaleFromDialog = async (
               quantity: i.quantity,
             })),
           );
-          await persistInvoiceResult(targetInvoiceId, loadedInvoiceNo.value, 'issued', 'due', null, null);
-          await loadExistingInvoice();
+          void router.replace({
+            name: 'app-global-invoice-details-page',
+            params: {
+              tenantSlug: route.params.tenantSlug,
+              id: String(targetInvoiceId),
+            },
+          });
         }
 
-        showSuccessNotification('Wholesale invoice issued and stock deducted successfully.');
+        showSuccessNotification('Invoice issued and stock deducted successfully.');
       } catch (err) {
-        console.error('Error issuing wholesale invoice:', err);
-        showWarningDialog(err instanceof Error ? err.message : 'Error issuing wholesale invoice');
+        console.error('Error issuing invoice:', err);
+        showWarningDialog(err instanceof Error ? err.message : 'Error issuing invoice');
       } finally {
         isSaving.value = false;
       }
@@ -836,6 +894,26 @@ const issueWholesaleFromDialog = async (
   }).onDismiss(() => {
     isSaving.value = false;
   });
+};
+
+const handleSyncSave = async () => {
+  selectedSaveStatus.value = 'draft';
+  if (!canSaveDraft.value || isSaving.value) return;
+
+  const tenantId = effectiveTenantId.value;
+  const targetInvoiceId = existingInvoiceId.value;
+  if (!tenantId || !targetInvoiceId) return;
+
+  isSaving.value = true;
+  try {
+    await syncExistingDraft(targetInvoiceId, tenantId);
+    showSuccessNotification('Invoice saved.');
+  } catch (err) {
+    console.error('Error saving invoice:', err);
+    showWarningDialog(err instanceof Error ? err.message : 'Error saving invoice');
+  } finally {
+    isSaving.value = false;
+  }
 };
 
 const handleSaveInvoice = async (status: WholesaleInvoiceSaveStatus) => {
@@ -856,7 +934,7 @@ const handleSaveInvoice = async (status: WholesaleInvoiceSaveStatus) => {
       await issueWholesaleFromDialog(currentId, tenantId, !currentId);
     } catch (err) {
       console.error('Error preparing wholesale invoice issue:', err);
-      showWarningDialog(err instanceof Error ? err.message : 'Error issuing wholesale invoice');
+      showWarningDialog(err instanceof Error ? err.message : 'Error issuing invoice');
       isSaving.value = false;
     }
     return;
@@ -871,19 +949,19 @@ const handleSaveInvoice = async (status: WholesaleInvoiceSaveStatus) => {
       if (status === 'proforma_generated') {
         await invoiceRepository.markInvoiceProformaGenerated(targetInvoiceId);
         await persistInvoiceResult(targetInvoiceId, loadedInvoiceNo.value, 'proforma_generated');
-        showSuccessNotification('Proforma invoice generated. Preview is now available.');
+        showSuccessNotification('Proforma saved. Preview is now available.');
         return;
       }
 
       await persistInvoiceResult(targetInvoiceId, loadedInvoiceNo.value, 'draft');
-      showSuccessNotification('Invoice saved as draft.');
+      showSuccessNotification('Invoice saved.');
       return;
     }
 
-    const invoiceNo = await invoiceRepository.generateInvoiceNumber(tenantId, 'wholesale');
+    const invoiceNo = await invoiceRepository.generateInvoiceNumber(tenantId, composerBillType.value);
     const result = await invoiceRepository.createSalesInvoiceFromPayload(
       tenantId,
-      buildWholesalePayload(false, invoiceNo),
+      buildComposerPayload(false, invoiceNo),
     );
     targetInvoiceId = result.invoice_id ?? null;
     if (!targetInvoiceId) throw new Error('Invoice was not created');
@@ -902,7 +980,7 @@ const handleSaveInvoice = async (status: WholesaleInvoiceSaveStatus) => {
         result.due_amount,
         result.paid_amount,
       );
-      showSuccessNotification('Proforma invoice generated. Preview is now available.');
+      showSuccessNotification('Proforma saved. Preview is now available.');
       return;
     }
 
@@ -916,8 +994,8 @@ const handleSaveInvoice = async (status: WholesaleInvoiceSaveStatus) => {
     );
     showSuccessNotification('Invoice saved as draft.');
   } catch (err) {
-    console.error('Error saving wholesale invoice:', err);
-    showWarningDialog(err instanceof Error ? err.message : 'Error saving wholesale invoice');
+    console.error('Error saving invoice:', err);
+    showWarningDialog(err instanceof Error ? err.message : 'Error saving invoice');
   } finally {
     isSaving.value = false;
   }
@@ -934,43 +1012,10 @@ const validationReasons = computed(() => {
 const canSaveDraft = computed(() => validationReasons.value.length === 0);
 </script>
 
-<style scoped>
-.create-wholesale-invoice-page {
-  max-width: none;
-  margin: 0;
-  background-color: #e8ecf1;
-  min-height: calc(100vh - 55px);
-  width: 100%;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: center;
-  padding-inline: clamp(0.75rem, 2vw, 1.25rem);
-}
+<style scoped lang="scss">
+@import '../styles/invoice-desk.scss';
 
-.create-wholesale-invoice-page__stack {
-  width: min(100%, 1200px);
-  max-width: 1200px;
-  margin-inline: auto;
-  gap: 0.75rem;
-}
-
-.create-wholesale-invoice-page__workflow,
-.create-wholesale-invoice-page__footer {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.rounded-borders-8 {
-  border-radius: 8px;
-}
-
-.border-light {
-  border: 1px solid #e2e8f0;
-}
-
-.action-btn {
-  border-radius: 8px;
-  min-height: 38px;
-  padding: 0 16px;
+.composer-type-toggle {
+  border-radius: var(--bw-radius-sm, 8px);
 }
 </style>

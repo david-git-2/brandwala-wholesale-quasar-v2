@@ -249,6 +249,7 @@ export interface Shop {
   id: number;
   tenant_id: number;
   tenant_name?: string | null;
+  tenant_slug?: string | null;
   name: string;
   slug: string;
   shop_type: ShopType;

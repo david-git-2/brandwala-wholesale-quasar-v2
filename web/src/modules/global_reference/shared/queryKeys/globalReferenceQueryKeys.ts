@@ -12,4 +12,6 @@ export const globalReferenceQueryKeys = {
 
   unitsOfMeasure: () => ['globalReference', 'unitsOfMeasure'] as const,
   unitOfMeasureDetail: (id: number) => ['globalReference', 'unitOfMeasure', { id }] as const,
+
+  bdBanks: () => ['globalReference', 'bdBanks'] as const,
 };

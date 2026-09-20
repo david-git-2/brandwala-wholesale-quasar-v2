@@ -23,6 +23,14 @@ erDiagram
         boolean is_active
     }
 
+    bd_banks {
+        bigint id PK
+        text code
+        text name
+        text swift_code
+        boolean is_active
+    }
+
     payment_methods {
         bigint id PK
         text code
@@ -141,7 +149,20 @@ Platform-wide payment channels and checkout options.
 | `category` | `text` | `NOT NULL` | Category grouping (`cash`, `mfs`, `bank`, `card`, `credit`). |
 | `is_active` | `boolean` | `NOT NULL, DEFAULT true` | Active toggle. |
 
-### 2.4 `units_of_measure`
+### 2.4 `bd_banks`
+Platform-wide Bangladesh bank catalog for cheque receipt lines. Consumed read-only by tenant desks ([wallet instrument lines](../wallet/02-data-model.md)). Not the same as `payment_methods` (cash / cheque / bKash channel).
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `bigint` | `PRIMARY KEY GENERATED ALWAYS AS IDENTITY` | Internal bank ID. |
+| `code` | `text` | `NOT NULL, UNIQUE` | Short code (e.g. `SONALI`, `BRAC`, `CITY`). |
+| `name` | `text` | `NOT NULL` | Display name (e.g. Sonali Bank, BRAC Bank). |
+| `swift_code` | `text` | `NULL` | Optional SWIFT/BIC for exports. |
+| `is_active` | `boolean` | `NOT NULL, DEFAULT true` | Active toggle for collect dropdowns. |
+
+Seed: platform superadmin loads standard BD banks once; tenants pick from list when posting cheque instrument lines.
+
+### 2.5 `units_of_measure`
 Standard measurement units for inventory, shipping, and costing.
 
 | Column | Type | Constraints | Description |
@@ -153,7 +174,7 @@ Standard measurement units for inventory, shipping, and costing.
 | `symbol` | `text` | `NOT NULL` | Short symbol display. |
 | `is_active` | `boolean` | `NOT NULL, DEFAULT true` | Active toggle. |
 
-### 2.5 `koba_products`
+### 2.6 `koba_products`
 UK cross-border merchandise scraped catalog items.
 
 | Column | Type | Constraints | Description |
@@ -170,7 +191,7 @@ UK cross-border merchandise scraped catalog items.
 | `is_active` | `boolean` | `NOT NULL, DEFAULT true` | Active catalog visibility. |
 | `created_at` | `timestamptz` | `DEFAULT now()` | Ingestion timestamp. |
 
-### 2.6 `koba_orders`
+### 2.7 `koba_orders`
 Customer and agent orders placed for Koba merchandise.
 
 | Column | Type | Constraints | Description |
@@ -190,7 +211,7 @@ Customer and agent orders placed for Koba merchandise.
 | `status` | `text` | `NOT NULL, DEFAULT 'pending'` | Lifecycle: `pending`, `confirmed`, `processing`, `shipped`, `delivered`, `cancelled`. |
 | `created_at` | `timestamptz` | `DEFAULT now()` | Order timestamp. |
 
-### 2.7 `koba_retail_settings`
+### 2.8 `koba_retail_settings`
 Tenant commission, profit share, and delivery fee configurations.
 
 | Column | Type | Constraints | Description |
@@ -205,7 +226,7 @@ Tenant commission, profit share, and delivery fee configurations.
 | `gateway_fee_flat`| `numeric(10,2)` | `DEFAULT 0.00` | Fixed digital gateway surcharge in BDT. |
 | `delivery_rates`| `jsonb` | `DEFAULT '{}'::jsonb` | Tiered delivery rate matrix by district/weight. |
 
-### 2.8 `trash_entries`
+### 2.9 `trash_entries`
 Centralized directory index for soft-deleted tenant entities.
 
 | Column | Type | Constraints | Description |
