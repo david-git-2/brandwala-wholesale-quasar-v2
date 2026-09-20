@@ -301,7 +301,6 @@ const onTargetTotalUpdate = (value: number | null) => {
         :target-previewing="targetPreviewing"
         :applying-target="applyingTarget"
         :charge-form="form"
-        :target-total="targetTotal"
         @charge-blur="emit('header-blur')"
         @target-total-input="emit('target-total-input')"
         @apply-target-total="emit('apply-target-total')"
