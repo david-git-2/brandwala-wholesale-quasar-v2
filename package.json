@@ -30,7 +30,7 @@
     "env:status": "bash scripts/env-switch.sh status",
     "backend:init": "pnpm exec supabase init",
     "backend:login": "pnpm exec supabase login",
-    "backend:link": "pnpm exec supabase link --project-ref \"$SUPABASE_PROJECT_REF\"",
+    "backend:link": "bash scripts/supabase-link.sh",
     "backend:link:push:types": "sh -c 'pnpm run backend:link && pnpm exec supabase db push --linked --include-all && mkdir -p web/src/types && pnpm exec supabase gen types typescript --linked --schema public > web/src/types/database.types.ts'",
     "backend:new-migration": "pnpm exec supabase migration new",
     "backend:push": "pnpm exec supabase db push --linked --include-all",
@@ -49,7 +49,7 @@
     "backend:schema:dump": "bash scripts/supabase-local.sh schema:dump",
     "backend:schema:diff": "bash scripts/supabase-local.sh schema:diff",
     "db:schema": "pnpm run backend:types",
-    "deploy:backend": "pnpm run backend:push && pnpm run db:schema",
+    "deploy:backend": "bash scripts/deploy-backend.sh",
     "backend:all": "pnpm run backend:push:all && pnpm run db:schema"
   },
   "devDependencies": {

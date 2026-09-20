@@ -12,6 +12,7 @@ web/.env
 web/.env.*
 !web/.env.example
 !web/.env.local.example
+!web/.env.profile.prod.example
 supabase/.temp
 supabase/.dumps/
 supabase/.env

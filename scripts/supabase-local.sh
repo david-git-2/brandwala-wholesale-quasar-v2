@@ -44,11 +44,14 @@ require_local_running() {
 }
 
 require_linked() {
+  # shellcheck source=scripts/load-supabase-deploy-env.sh
+  source "${ROOT_DIR}/scripts/load-supabase-deploy-env.sh"
+
   if [[ -f "${ROOT_DIR}/supabase/.temp/project-ref" ]]; then
     return 0
   fi
   echo "Error: no linked project (missing supabase/.temp/project-ref)." >&2
-  echo "Run: pnpm run backend:login && SUPABASE_PROJECT_REF=... pnpm run backend:link" >&2
+  echo "Set SUPABASE_ACCESS_TOKEN + SUPABASE_PROJECT_REF in web/.env.profile.prod, then pnpm run backend:link" >&2
   exit 1
 }
 
