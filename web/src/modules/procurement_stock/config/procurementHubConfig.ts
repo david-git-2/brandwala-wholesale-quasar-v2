@@ -58,6 +58,15 @@ export const PROCUREMENT_MORE_LINKS: ProcurementMoreLinkDef[] = [
     icon: 'ph ph-airplane-tilt',
     weight: 50,
   },
+  {
+    key: 'batch-code',
+    moduleKey: 'global_shipment',
+    path: 'batch-code',
+    title: 'Batch Code Analyze',
+    caption: 'Batch IDs, manufacturing dates, and expiry by shipment.',
+    icon: 'ph ph-barcode',
+    weight: 55,
+  },
 ];
 
 export function filterProcurementMoreLinks(

@@ -8,7 +8,7 @@ alwaysApply: true
 1. Read `docs/README.md`. Then that module’s `01-prd.md` and `00-gaps.md`. Then files you will edit.
 2. Do not read other modules, `doc/brand-theme.md`, or `supabase/migrations/` for current SQL.
 3. Load that folder’s `02`–`05` only when you need tables, RPCs, or button wiring.
-4. Copy the pattern in the module. Do not guess RPCs, statuses, grants, or stock tables.
+4. Copy the pattern in the module for **data** (RPCs, statuses, grants, stock tables). For **page chrome**, copy ops list layout (`InboundShipmentListPage.vue` / `docs/guides/ui-standards.md`), not hub pages with `AppPageHeader`.
 5. Missing or conflicting fact → stop, no code:
 
 ```text

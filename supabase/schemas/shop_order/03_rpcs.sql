@@ -2333,13 +2333,19 @@ BEGIN
         customer_offer_currency_id bigint
       )
     LOOP
-      UPDATE public.shop_order_items
+      UPDATE public.shop_order_items soi
       SET
         customer_offer_amount = v_item.customer_offer_amount,
-        customer_offer_currency_id = v_item.customer_offer_currency_id,
+        customer_offer_currency_id = coalesce(
+          nullif(v_item.customer_offer_currency_id, 0),
+          soi.staff_offer_currency_id,
+          soi.unit_sell_price_currency_id,
+          soi.unit_list_price_currency_id,
+          soi.customer_offer_currency_id
+        ),
         customer_counter_at = now(),
         updated_at = now()
-      WHERE id = v_item.id AND order_id = p_order_id;
+      WHERE soi.id = v_item.id AND soi.order_id = p_order_id;
     END LOOP;
 
     SELECT EXISTS (
@@ -2402,12 +2408,18 @@ BEGIN
         customer_offer_currency_id bigint
       )
     LOOP
-      UPDATE public.shop_order_items
+      UPDATE public.shop_order_items soi
       SET
         customer_offer_amount = v_item.customer_offer_amount,
-        customer_offer_currency_id = v_item.customer_offer_currency_id,
+        customer_offer_currency_id = coalesce(
+          nullif(v_item.customer_offer_currency_id, 0),
+          soi.staff_offer_currency_id,
+          soi.unit_sell_price_currency_id,
+          soi.unit_list_price_currency_id,
+          soi.customer_offer_currency_id
+        ),
         updated_at = now()
-      WHERE id = v_item.id AND order_id = p_order_id;
+      WHERE soi.id = v_item.id AND soi.order_id = p_order_id;
     END LOOP;
 
     UPDATE public.shop_orders
@@ -3482,12 +3494,18 @@ declare
   v_total_amount numeric;
   v_items jsonb;
   v_order_json jsonb;
+  v_can_see_buy_price boolean;
+  v_can_see_sell_price boolean;
 begin
   if p_tenant_id is null or p_order_id is null then
     raise exception 'tenant required';
+  end if;
+
   v_group_id := public.current_customer_group_id(p_tenant_id);
   if v_group_id is null then
     raise exception 'access denied';
+  end if;
+
   select *
   into v_order
   from public.shop_orders o
@@ -3495,10 +3513,16 @@ begin
 
   if not found then
     raise exception 'order not found';
+  end if;
+
   if v_order.tenant_id is distinct from p_tenant_id then
     raise exception 'tenant mismatch';
+  end if;
+
   if v_order.customer_group_id is distinct from v_group_id then
     raise exception 'order not found';
+  end if;
+
   select
     s.name,
     s.slug,
@@ -3518,6 +3542,27 @@ begin
   left join public.global_currencies buy_gc on buy_gc.id = s.buy_currency_id
   where s.id = v_order.shop_id;
 
+  if v_order.shop_type_snapshot = 'dropship'::public.shop_type_enum then
+    v_can_see_buy_price := true;
+    v_can_see_sell_price := true;
+  else
+    select
+      case
+        when v_order.cart_id is not null then coalesce(c.can_see_buy_price_snapshot, perm.can_see_buy_price, false)
+        else coalesce(perm.can_see_buy_price, false)
+      end,
+      case
+        when v_order.cart_id is not null then coalesce(c.can_see_sell_price_snapshot, perm.can_see_sell_price, false)
+        else coalesce(perm.can_see_sell_price, false)
+      end
+    into v_can_see_buy_price, v_can_see_sell_price
+    from public.get_shop_permissions_for_customer(v_order.shop_id) perm
+    left join public.shop_carts c on c.id = v_order.cart_id;
+  end if;
+
+  v_can_see_buy_price := coalesce(v_can_see_buy_price, false);
+  v_can_see_sell_price := coalesce(v_can_see_sell_price, false);
+
   select count(*)::bigint
   into v_item_count
   from public.shop_order_items soi
@@ -3529,7 +3574,10 @@ begin
         soi.final_price_amount,
         soi.customer_offer_amount,
         soi.unit_sell_price_amount,
-        soi.unit_list_price_amount
+        case
+          when v_order.shop_type_snapshot = 'vendor_catalog'::public.shop_type_enum and not v_can_see_buy_price then null
+          else soi.unit_list_price_amount
+        end
       ) * soi.quantity
     ),
     0
@@ -3549,8 +3597,8 @@ begin
         'name', soi.name,
         'image_url', soi.image_url,
         'quantity', soi.quantity,
-        'unit_list_price_amount', soi.unit_list_price_amount,
-        'unit_list_price_currency_id', soi.unit_list_price_currency_id,
+        'unit_list_price_amount', case when v_order.shop_type_snapshot = 'vendor_catalog'::public.shop_type_enum and not v_can_see_buy_price then null else soi.unit_list_price_amount end,
+        'unit_list_price_currency_id', case when v_order.shop_type_snapshot = 'vendor_catalog'::public.shop_type_enum and not v_can_see_buy_price then null else soi.unit_list_price_currency_id end,
         'unit_sell_price_amount', soi.unit_sell_price_amount,
         'unit_sell_price_currency_id', soi.unit_sell_price_currency_id,
         'unit_minimum_sell_price_amount', soi.unit_minimum_sell_price_amount,
@@ -3564,6 +3612,7 @@ begin
         'is_first_offer_manual', soi.is_first_offer_manual,
         'final_price_amount', soi.final_price_amount,
         'final_price_currency_id', soi.final_price_currency_id,
+        'final_offer_amount', soi.final_price_amount,
         'is_final_offer_manual', soi.is_final_offer_manual,
         'confirmed_quantity', soi.confirmed_quantity,
         'weight_kg', soi.weight_kg,
@@ -3626,7 +3675,9 @@ begin
       'shop_sell_currency_id', v_sell_currency_id,
       'shop_buy_currency_id', v_buy_currency_id,
       'shop_sell_currency_symbol', v_sell_symbol,
-      'shop_buy_currency_symbol', v_buy_symbol
+      'shop_buy_currency_symbol', v_buy_symbol,
+      'can_see_buy_price', v_can_see_buy_price,
+      'can_see_sell_price', v_can_see_sell_price
     )
     || jsonb_build_object(
       'created_at', v_order.created_at,
@@ -3644,7 +3695,15 @@ begin
       'deduct_print_from_margin', v_order.deduct_print_from_margin,
       'deduct_packing_from_margin', v_order.deduct_packing_from_margin,
       'item_count', v_item_count,
-      'total_amount', v_total_amount,
+      'total_amount', case
+        when v_order.shop_type_snapshot = 'vendor_catalog'::public.shop_type_enum
+          and not v_can_see_buy_price
+          and not v_can_see_sell_price then null
+        when v_order.shop_type_snapshot = 'vendor_catalog'::public.shop_type_enum
+          and not v_can_see_buy_price
+          and v_total_amount = 0 then null
+        else v_total_amount
+      end,
       'cod_collect_amount', v_order.cod_collect_amount,
       'courier_name', v_order.courier_name,
       'courier_awb_number', v_order.courier_awb_number,
@@ -3656,6 +3715,9 @@ begin
     'order', v_order_json,
     'items', v_items
   );
+end;
+$$;
+
 ALTER FUNCTION "public"."get_customer_shop_order"("p_tenant_id" bigint, "p_order_id" bigint) OWNER TO "postgres";
 
 
@@ -6089,11 +6151,35 @@ ALTER FUNCTION "public"."get_shop_permissions_for_customer"("p_shop_id" bigint) 
 
 CREATE OR REPLACE FUNCTION "public"."is_cart_owner"("p_customer_group_id" bigint, "p_tenant_id" bigint) RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'auth'
     AS $$
-  select
-    p_customer_group_id is not null
-    and public.current_customer_group_id(p_tenant_id) = p_customer_group_id;
+  select exists (
+    select 1
+    from public.customer_groups cg
+    join public.customer_group_members cgm on cgm.customer_group_id = cg.id
+    where p_customer_group_id is not null
+      and p_tenant_id is not null
+      and cg.id = p_customer_group_id
+      and cg.is_active = true
+      and cg.deleted_at is null
+      and cgm.is_active = true
+      and lower(trim(cgm.email)) = public.current_user_email()
+      and coalesce(cg.parent_tenant_id, cg.tenant_id) = public.resolve_parent_tenant_id(p_tenant_id)
+      and (
+        p_tenant_id = coalesce(cg.parent_tenant_id, cg.tenant_id)
+        or exists (
+          select 1
+          from public.shop_customer_group_access scga
+          inner join public.shops s on s.id = scga.shop_id
+          where scga.customer_group_id = cg.id
+            and scga.status = true
+            and s.tenant_id = p_tenant_id
+            and s.is_active = true
+            and s.deleted_at is null
+        )
+      )
+  );
+$$;
 ALTER FUNCTION "public"."is_cart_owner"("p_customer_group_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
 
 

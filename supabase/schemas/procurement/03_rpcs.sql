@@ -11485,3 +11485,143 @@ $$;
 ALTER FUNCTION public.get_procurement_dashboard_metrics(bigint) OWNER TO postgres;
 
 
+CREATE OR REPLACE FUNCTION public.paste_batch_code_items(
+  p_list_id bigint,
+  p_start_row_index integer,
+  p_rows jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+DECLARE
+  v_parent_tenant_id bigint;
+  v_existing_count integer;
+  v_needed_count integer;
+  v_row_count integer;
+  v_missing integer;
+  v_row jsonb;
+  v_offset integer;
+  v_barcode text;
+  v_product_code text;
+  v_batch_id text;
+  v_mfg date;
+  v_exp date;
+  v_cur public.batch_code_items%rowtype;
+BEGIN
+  IF p_rows IS NULL OR jsonb_typeof(p_rows) <> 'array' OR jsonb_array_length(p_rows) = 0 THEN
+    RETURN jsonb_build_object('created', 0, 'updated', 0);
+  END IF;
+
+  IF p_start_row_index IS NULL OR p_start_row_index < 0 THEN
+    RAISE EXCEPTION 'start_row_index must be >= 0';
+  END IF;
+
+  SELECT l.parent_tenant_id
+  INTO v_parent_tenant_id
+  FROM public.batch_code_lists l
+  WHERE l.id = p_list_id;
+
+  IF v_parent_tenant_id IS NULL THEN
+    RAISE EXCEPTION 'Batch list not found';
+  END IF;
+
+  IF NOT public.user_can_manage_parent_tenant(v_parent_tenant_id) THEN
+    RAISE EXCEPTION 'Access denied';
+  END IF;
+
+  v_row_count := jsonb_array_length(p_rows);
+  v_needed_count := p_start_row_index + v_row_count;
+
+  SELECT count(*)::integer
+  INTO v_existing_count
+  FROM public.batch_code_items
+  WHERE list_id = p_list_id;
+
+  v_missing := greatest(0, v_needed_count - v_existing_count);
+
+  IF v_missing > 0 THEN
+    INSERT INTO public.batch_code_items (list_id)
+    SELECT p_list_id
+    FROM generate_series(1, v_missing);
+  END IF;
+
+  FOR v_offset IN 0..(v_row_count - 1) LOOP
+    v_row := p_rows -> v_offset;
+
+    SELECT i.*
+    INTO v_cur
+    FROM public.batch_code_items i
+    WHERE i.list_id = p_list_id
+    ORDER BY i.id
+    OFFSET p_start_row_index + v_offset
+    LIMIT 1;
+
+    IF v_cur.id IS NULL THEN
+      CONTINUE;
+    END IF;
+
+    v_barcode := v_cur.barcode;
+    v_product_code := v_cur.product_code;
+    v_batch_id := v_cur.batch_id;
+    v_mfg := v_cur.manufacturing_date;
+    v_exp := v_cur.expire_date;
+
+    IF v_row ? 'barcode' THEN
+      v_barcode := nullif(trim(v_row ->> 'barcode'), '');
+    END IF;
+
+    IF v_row ? 'product_code' THEN
+      v_product_code := nullif(trim(v_row ->> 'product_code'), '');
+    END IF;
+
+    IF v_row ? 'batch_id' THEN
+      v_batch_id := nullif(trim(v_row ->> 'batch_id'), '');
+    END IF;
+
+    IF v_row ? 'manufacturing_date' THEN
+      BEGIN
+        v_mfg := nullif(trim(v_row ->> 'manufacturing_date'), '')::date;
+      EXCEPTION
+        WHEN others THEN
+          v_mfg := v_cur.manufacturing_date;
+      END;
+    END IF;
+
+    IF v_row ? 'expire_date' THEN
+      BEGIN
+        v_exp := nullif(trim(v_row ->> 'expire_date'), '')::date;
+      EXCEPTION
+        WHEN others THEN
+          v_exp := v_cur.expire_date;
+      END;
+    END IF;
+
+    IF v_mfg IS NOT NULL AND v_exp IS NULL THEN
+      v_exp := (v_mfg + interval '36 months')::date;
+    END IF;
+
+    UPDATE public.batch_code_items
+    SET
+      barcode = v_barcode,
+      product_code = v_product_code,
+      batch_id = v_batch_id,
+      manufacturing_date = v_mfg,
+      expire_date = v_exp,
+      updated_at = now()
+    WHERE id = v_cur.id;
+  END LOOP;
+
+  UPDATE public.batch_code_lists
+  SET updated_at = now()
+  WHERE id = p_list_id;
+
+  RETURN jsonb_build_object('created', v_missing, 'updated', v_row_count);
+END;
+$$;
+
+
+ALTER FUNCTION public.paste_batch_code_items(bigint, integer, jsonb) OWNER TO postgres;
+
+

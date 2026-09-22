@@ -21,8 +21,8 @@
 | | |
 | :--- | :--- |
 | Surfaces | `app` only |
-| In | Shipments, landed cost, bins, `global_stocks`, movements, vendors, allocations |
-| Out | Shop cart, Koba, thrift boxes, PBC quote formulas |
+| In | Shipments, landed cost, bins, `global_stocks`, movements, vendors, allocations, batch code analyze |
+| Out | Shop cart, Koba, thrift boxes, PBC quote formulas, product catalog `batch_code_manufacture_date` |
 
 See [scopes](../../architecture/scopes.md).
 
@@ -98,6 +98,19 @@ Physical stock is owned strictly at the **Parent Tenant** level. Sister concerns
 - [ ] Dedicated toolbar `Archived` hub displays count and opens modal listing all archived shipments.
 - [ ] Permanent deletion (`purge_archived_shipment`) is restricted strictly to `draft` and `cancelled` records; `in_transit` and `received` shipments cannot be purged.
 
+### US-6: Batch Code Analyze
+- **As a** Procurement Officer  
+- **I want** to store batch id, barcode, product code, manufacturing date, and expire date for a shipment’s vendor  
+- **So that** I can see how many days are left until each batch expires.
+
+#### Acceptance Criteria
+- [ ] Gear → More → **Batch Code** opens `/:slug/app/procurement/shipment/:id/batch-code`. Grant: `global_shipment`.
+- [ ] `batch_code_lists.name` is required. `shipment_id` is optional; when set, at most one list per shipment and vendor comes from the shipment. No vendor on shipment → “Set a vendor on the shipment first”.
+- [ ] Lines on `batch_code_items` (`list_id` required). Empty expire + mfg → expire = mfg + **36 calendar months**. Hand-edited expire is kept until expire is cleared.
+- [ ] **Expires in** is UI-only (`expire_date − today` whole days; negative = expired). Not stored.
+- [ ] Excel grid; auto-save on blur when a line has at least one of barcode / product code / batch id plus mfg or expire.
+- [ ] `shipment_id` null is for later vendor-only lists, not v1. No write to `global_stocks`.
+
 ---
 
 ## 4. UI Layout & Wireframe
@@ -134,4 +147,13 @@ Physical stock is owned strictly at the **Parent Tenant** level. Sister concerns
 | - SKU-003: Bomber Jacket (Qty: 100, Landed: 950 BDT)| - Customs Tariff & Port Charges: 45,000 BDT  |
 |                                                     | - Local Trucking: 8,000 BDT                  |
 +----------------------------------------------------------------------------------------------------+
+```
+
+### Batch Code Analyze Screen
+
+```text
+Shipment gear → More → Batch Code
+[ Back ] Batch Code — vendor name
+BARCODE | PRODUCT CODE | BATCH ID | MFG DATE | EXPIRE DATE | EXPIRES IN (days, read-only)
++ new row (auto-save)
 ```

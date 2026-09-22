@@ -7,8 +7,9 @@ alwaysApply: false
 # UI Consistency Rules
 
 - Use Quasar defaults first; no custom layout shells when `q-page` + `q-card` + `q-table` fit.
-- Page wrapper: `q-page.bw-page` > `.bw-page__stack` > content.
-- Page header: `AppPageHeader` from `components/ui/AppPageHeader.vue` with `action` slot.
+- **Ops lists / grids (default for new app pages):** copy `InboundShipmentListPage.vue`. `q-page.page-fixed-layout` height `calc(100vh - 55px)`, compact toolbar, no in-page H1. Follow `docs/guides/ui-standards.md` and `.agents/rules/table_list_design_system.md`.
+- **Do not** copy `AppPageHeader`, `text-overline`, `text-h5`, or standalone back buttons onto list/grid pages. Title lives in the top breadcrumb.
+- **Hub / overview / investor / treasury only:** `q-page.bw-page` > `.bw-page__stack` and `AppPageHeader` is allowed. Do not use that shell for shipment, stock, batch, invoice, or order lists.
 - Section container: `q-card flat bordered`.
 - List data: `q-table`; card grids: `.bw-entity-grid` with plain `q-card`.
 - Colors: use `var(--bw-theme-*)` and `var(--bw-success|warning|error|info*)` tokens from `web/src/css/app.scss`; never hardcode except `--bw-ops-hue-*` anchors in global tint utilities.
@@ -31,11 +32,11 @@ alwaysApply: false
 - Border radius: buttons `8px`, surfaces `14px` (`.floating-surface`), hero `16px` (`.hero-surface`).
 - `q-page` max-width `1200px`; treasury/report pages need `min-width: 0` on flex/grid parents.
 - Treasury pages: `TreasuryPageShell` > `TreasuryStatGrid` > `TreasuryTableWrap` > `q-table` with explicit `min-width`.
-- Dense ops detail: follow `docs/PAGE_HEADER.md` DETAIL + status workflow strip (not chip menus); rates/secondary editors collapsed by default; table full width.
-- Page headers (list/detail): prefer `docs/PAGE_HEADER.md` over `AppPageHeader` for new app management pages.
+- Dense ops detail: status workflow strip (not chip menus); rates/secondary editors collapsed by default; table full width. No second title banner.
+- Page headers: ops list/detail = toolbar only. `AppPageHeader` only on hub/overview/investor/treasury.
 - High-density table column pastels: `.bw-ops-col-tint--weight|price|cost|qty` (6% hue + inset left accent).
 - Elevation: flat tables/toolbars; raised dialogs, drawers, clickable cards, empty-state CTAs (see `docs/guides/ui-standards.md`).
 - Scope identity: nav/bottom-nav active states use `--bw-theme-primary-soft`; prefer tokens from `docs/guides/ui-standards.md`.
 - No `backdrop-filter` on static headers/cards/toolbars.
 - New shared component only if used on 2+ pages; place in `web/src/components/ui/`.
-- Reference implementations: `TenantPage.vue`, `AdminTenantPage.vue`, `ModulesPage.vue`.
+- Reference implementations: ops = `InboundShipmentListPage.vue`; hub = `ProcurementOverviewPage.vue`. Do not copy `TenantPage.vue` for new ops screens.

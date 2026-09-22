@@ -160,3 +160,16 @@ create or replace function public.create_and_post_stock_movement(
 returns jsonb
 language plpgsql security definer;
 ```
+
+---
+
+## 7. Batch Code Analyze
+
+Client CRUD on `batch_code_lists` / `batch_code_items` under RLS. Bulk paste uses one RPC.
+
+| Action | Operation |
+| :--- | :--- |
+| Open page | Select list by `shipment_id`; if none, insert list (`parent_tenant_id`, `shipment_id`, shipment `vendor_id`) |
+| Grid cell blur | Insert / update / delete `batch_code_items` by `list_id` |
+| Paste grid / column | `paste_batch_code_items(p_list_id, p_start_row_index, p_rows jsonb)` — creates missing rows, merges fields, default expire server-side |
+| Default expire | RPC + client: if mfg set and expire empty, expire = mfg + 36 calendar months |

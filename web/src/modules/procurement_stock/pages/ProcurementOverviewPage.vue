@@ -3,7 +3,7 @@
     <div v-if="hubItems.length" class="overview-shell column no-wrap full-height">
       <app-page-header
         title="More — warehouse operations"
-        subtitle="Movements, locations, cargo companies, and shop stock."
+        subtitle="Batch codes, movements, locations, cargo companies, and shop stock."
         eyebrow="PROCUREMENT & STOCK"
       />
 

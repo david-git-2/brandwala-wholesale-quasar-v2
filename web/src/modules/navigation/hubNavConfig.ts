@@ -215,6 +215,7 @@ export const getShopOrderMoreModuleKeys = (): readonly ModuleKey[] => [
 ];
 
 export const getProcurementMoreModuleKeys = (): readonly ModuleKey[] => [
+  'global_shipment',
   'inventory',
   'global_stock_movement',
   'global_stock_location',

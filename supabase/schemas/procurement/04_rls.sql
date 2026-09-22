@@ -48,6 +48,14 @@ CREATE OR REPLACE TRIGGER "trg_global_shipment_boxes_updated_at" BEFORE UPDATE O
 
 
 
+CREATE OR REPLACE TRIGGER "trg_batch_code_lists_updated_at" BEFORE UPDATE ON "public"."batch_code_lists" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_batch_code_items_updated_at" BEFORE UPDATE ON "public"."batch_code_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_global_shipment_cost_entries_updated_at" BEFORE UPDATE ON "public"."global_shipment_cost_entries" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
@@ -277,6 +285,38 @@ CREATE POLICY "global_shipment_boxes_all" ON "public"."global_shipment_boxes" TO
 CREATE POLICY "global_shipment_boxes_select" ON "public"."global_shipment_boxes" FOR SELECT TO "authenticated" USING (("public"."user_can_manage_parent_tenant"("parent_tenant_id") OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "global_shipment_boxes"."parent_tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
+
+
+
+ALTER TABLE "public"."batch_code_lists" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "batch_code_lists_all" ON "public"."batch_code_lists" TO "authenticated" USING ("public"."user_can_manage_parent_tenant"("parent_tenant_id")) WITH CHECK ("public"."user_can_manage_parent_tenant"("parent_tenant_id"));
+
+
+
+CREATE POLICY "batch_code_lists_select" ON "public"."batch_code_lists" FOR SELECT TO "authenticated" USING (("public"."user_can_manage_parent_tenant"("parent_tenant_id") OR (EXISTS ( SELECT 1
+   FROM "public"."memberships" "m"
+  WHERE (("m"."tenant_id" = "batch_code_lists"."parent_tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
+
+
+
+ALTER TABLE "public"."batch_code_items" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "batch_code_items_all" ON "public"."batch_code_items" TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."batch_code_lists" "l"
+  WHERE (("l"."id" = "batch_code_items"."list_id") AND "public"."user_can_manage_parent_tenant"("l"."parent_tenant_id"))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."batch_code_lists" "l"
+  WHERE (("l"."id" = "batch_code_items"."list_id") AND "public"."user_can_manage_parent_tenant"("l"."parent_tenant_id")))));
+
+
+
+CREATE POLICY "batch_code_items_select" ON "public"."batch_code_items" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."batch_code_lists" "l"
+  WHERE (("l"."id" = "batch_code_items"."list_id") AND ("public"."user_can_manage_parent_tenant"("l"."parent_tenant_id") OR (EXISTS ( SELECT 1
+           FROM "public"."memberships" "m"
+          WHERE (("m"."tenant_id" = "l"."parent_tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))))))));
 
 
 
@@ -948,6 +988,9 @@ GRANT ALL ON FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" b
 REVOKE ALL ON FUNCTION public.get_procurement_dashboard_metrics(bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_procurement_dashboard_metrics(bigint) TO authenticated;
 
+REVOKE ALL ON FUNCTION public.paste_batch_code_items(bigint, integer, jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.paste_batch_code_items(bigint, integer, jsonb) TO authenticated;
+
 
 
 GRANT ALL ON FUNCTION "public"."list_global_stock_allocations_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_child_tenant_id" bigint, "p_stock_type_id" bigint) TO "authenticated";
@@ -1288,6 +1331,30 @@ GRANT UPDATE ON SEQUENCE "public"."global_shipment_boxes_id_seq" TO "service_rol
 
 
 
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."batch_code_lists" TO "anon";
+GRANT ALL ON TABLE "public"."batch_code_lists" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."batch_code_lists" TO "service_role";
+
+
+
+GRANT UPDATE ON SEQUENCE "public"."batch_code_lists_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."batch_code_lists_id_seq" TO "authenticated";
+GRANT UPDATE ON SEQUENCE "public"."batch_code_lists_id_seq" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."batch_code_items" TO "anon";
+GRANT ALL ON TABLE "public"."batch_code_items" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."batch_code_items" TO "service_role";
+
+
+
+GRANT UPDATE ON SEQUENCE "public"."batch_code_items_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."batch_code_items_id_seq" TO "authenticated";
+GRANT UPDATE ON SEQUENCE "public"."batch_code_items_id_seq" TO "service_role";
+
+
+
 GRANT UPDATE ON SEQUENCE "public"."global_shipment_cost_entries_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."global_shipment_cost_entries_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."global_shipment_cost_entries_id_seq" TO "service_role";
@@ -1450,22 +1517,6 @@ GRANT ALL ON FUNCTION "public"."get_shipment_overview_details"("p_shipment_id" b
 GRANT ALL ON FUNCTION "public"."bulk_delete_global_shipment_items"("p_shipment_id" bigint, "p_item_ids" bigint[]) TO "authenticated";
 
 
-
-
-
-CREATE POLICY "batch_code_pc_delete" ON "public"."batch_code_pc" FOR DELETE TO "authenticated" USING ("public"."can_manage_shipment_by_id"("shipment_id"));
-
-
-
-CREATE POLICY "batch_code_pc_insert" ON "public"."batch_code_pc" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_manage_shipment_by_id"("shipment_id"));
-
-
-
-CREATE POLICY "batch_code_pc_select" ON "public"."batch_code_pc" FOR SELECT TO "authenticated" USING ("public"."can_manage_shipment_by_id"("shipment_id"));
-
-
-
-CREATE POLICY "batch_code_pc_update" ON "public"."batch_code_pc" FOR UPDATE TO "authenticated" USING ("public"."can_manage_shipment_by_id"("shipment_id")) WITH CHECK ("public"."can_manage_shipment_by_id"("shipment_id"));
 
 
 

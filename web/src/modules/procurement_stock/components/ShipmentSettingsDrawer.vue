@@ -8,7 +8,7 @@
   >
     <q-card
       class="column no-wrap bg-white q-ma-md rounded-borders-lg overflow-hidden shadow-10"
-      style="width: 520px; max-width: 95vw; height: calc(100vh - 32px); border-radius: 16px"
+      style="width: 680px; max-width: 95vw; height: calc(100vh - 32px); border-radius: 16px"
     >
       <!-- Top Tabs Bar -->
       <div class="bg-grey-1 border-bottom q-px-sm">
@@ -25,6 +25,7 @@
           <q-tab name="summary" label="Summary" />
           <q-tab name="rates" label="Rates" />
           <q-tab name="progress" label="Progress" />
+          <q-tab name="more" label="More" />
         </q-tabs>
       </div>
 
@@ -667,6 +668,39 @@
             </div>
           </div>
         </q-tab-panel>
+
+        <!-- 5. More Tab Panel -->
+        <q-tab-panel name="more" class="q-pa-md bg-white">
+          <div class="column q-gutter-y-md">
+            <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
+              <q-icon name="ph ph-dots-three-circle" size="18px" color="primary" />
+              <span>More tools</span>
+            </div>
+            <div class="text-caption text-grey-6 text-xxs">
+              Open shipment tools on dedicated pages.
+            </div>
+            <div class="column q-gutter-y-sm">
+              <q-btn
+                outline
+                no-caps
+                color="grey-8"
+                icon="ph ph-package"
+                label="Box Weight"
+                class="full-width rounded-sq-btn text-weight-bold"
+                @click="goToBoxWeight"
+              />
+              <q-btn
+                outline
+                no-caps
+                color="grey-8"
+                icon="ph ph-barcode"
+                label="Batch Code"
+                class="full-width rounded-sq-btn text-weight-bold"
+                @click="goToBatchCode"
+              />
+            </div>
+          </div>
+        </q-tab-panel>
       </q-tab-panels>
     </q-card>
   </q-dialog>
@@ -748,6 +782,30 @@ watch(
     }
   },
 );
+
+const navigateToShipmentPage = (routeName: string) => {
+  emit('update:modelValue', false);
+  const tenantSlug = authStore.tenantSlug;
+  if (tenantSlug) {
+    void router.push({
+      name: routeName,
+      params: { tenantSlug, id: props.shipmentId },
+    });
+    return;
+  }
+  void router.push({
+    name: routeName,
+    params: { id: props.shipmentId },
+  });
+};
+
+const goToBoxWeight = () => {
+  navigateToShipmentPage('app-procurement-shipment-box');
+};
+
+const goToBatchCode = () => {
+  navigateToShipmentPage('app-procurement-shipment-batch-code');
+};
 
 const confirmArchiveFromDrawer = () => {
   const shipment = shipmentStore.currentShipment;

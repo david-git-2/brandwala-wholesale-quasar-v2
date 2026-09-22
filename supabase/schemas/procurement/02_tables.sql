@@ -488,6 +488,66 @@ ALTER SEQUENCE "public"."global_shipment_boxes_id_seq" OWNED BY "public"."global
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."batch_code_lists" (
+    "id" bigint NOT NULL,
+    "parent_tenant_id" bigint NOT NULL,
+    "shipment_id" bigint,
+    "vendor_id" bigint NOT NULL,
+    "name" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."batch_code_lists" OWNER TO "postgres";
+
+
+CREATE SEQUENCE IF NOT EXISTS "public"."batch_code_lists_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE "public"."batch_code_lists_id_seq" OWNER TO "postgres";
+
+
+ALTER SEQUENCE "public"."batch_code_lists_id_seq" OWNED BY "public"."batch_code_lists"."id";
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."batch_code_items" (
+    "id" bigint NOT NULL,
+    "list_id" bigint NOT NULL,
+    "barcode" "text",
+    "product_code" "text",
+    "batch_id" "text",
+    "manufacturing_date" "date",
+    "expire_date" "date",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."batch_code_items" OWNER TO "postgres";
+
+
+CREATE SEQUENCE IF NOT EXISTS "public"."batch_code_items_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE "public"."batch_code_items_id_seq" OWNER TO "postgres";
+
+
+ALTER SEQUENCE "public"."batch_code_items_id_seq" OWNED BY "public"."batch_code_items"."id";
+
+
+
 ALTER TABLE "public"."global_shipment_cost_entries" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME "public"."global_shipment_cost_entries_id_seq"
     START WITH 1
@@ -913,6 +973,14 @@ ALTER TABLE ONLY "public"."global_shipment_boxes" ALTER COLUMN "id" SET DEFAULT 
 
 
 
+ALTER TABLE ONLY "public"."batch_code_lists" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."batch_code_lists_id_seq"'::"regclass");
+
+
+
+ALTER TABLE ONLY "public"."batch_code_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."batch_code_items_id_seq"'::"regclass");
+
+
+
 ALTER TABLE ONLY "public"."global_shipment_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_shipment_items_id_seq"'::"regclass");
 
 
@@ -1000,6 +1068,16 @@ ALTER TABLE ONLY "public"."global_shipment_boxes"
 
 ALTER TABLE ONLY "public"."global_shipment_boxes"
     ADD CONSTRAINT "global_shipment_boxes_shipment_id_box_number_key" UNIQUE ("shipment_id", "box_number");
+
+
+
+ALTER TABLE ONLY "public"."batch_code_lists"
+    ADD CONSTRAINT "batch_code_lists_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."batch_code_items"
+    ADD CONSTRAINT "batch_code_items_pkey" PRIMARY KEY ("id");
 
 
 
@@ -1141,6 +1219,30 @@ CREATE INDEX "global_shipment_boxes_parent_tenant_idx" ON "public"."global_shipm
 
 
 CREATE INDEX "global_shipment_boxes_shipment_idx" ON "public"."global_shipment_boxes" USING "btree" ("shipment_id");
+
+
+
+CREATE UNIQUE INDEX "batch_code_lists_shipment_id_key" ON "public"."batch_code_lists" USING "btree" ("shipment_id") WHERE ("shipment_id" IS NOT NULL);
+
+
+
+CREATE INDEX "batch_code_lists_parent_tenant_idx" ON "public"."batch_code_lists" USING "btree" ("parent_tenant_id");
+
+
+
+CREATE INDEX "batch_code_lists_vendor_idx" ON "public"."batch_code_lists" USING "btree" ("vendor_id");
+
+
+
+CREATE INDEX "batch_code_items_list_idx" ON "public"."batch_code_items" USING "btree" ("list_id");
+
+
+
+CREATE INDEX "batch_code_items_barcode_idx" ON "public"."batch_code_items" USING "btree" ("barcode") WHERE ("barcode" IS NOT NULL);
+
+
+
+CREATE INDEX "batch_code_items_product_code_idx" ON "public"."batch_code_items" USING "btree" ("product_code") WHERE ("product_code" IS NOT NULL);
 
 
 
@@ -1428,17 +1530,6 @@ CREATE INDEX "vendors_tenant_id_idx" ON "public"."vendors" USING "btree" ("tenan
 
 
 
-ALTER TABLE ONLY "public"."batch_code_pc"
-    ADD CONSTRAINT "batch_code_pc_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."shipments"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."batch_code_pc"
-    ADD CONSTRAINT "batch_code_pc_shipment_item_id_fkey" FOREIGN KEY ("shipment_item_id") REFERENCES "public"."shipment_items"("id") ON DELETE CASCADE;
-
-
-
-
 
 
 ALTER TABLE ONLY "public"."costing_file_items"
@@ -1503,6 +1594,26 @@ ALTER TABLE ONLY "public"."global_shipment_boxes"
 
 ALTER TABLE ONLY "public"."global_shipment_boxes"
     ADD CONSTRAINT "global_shipment_boxes_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."global_shipments"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."batch_code_lists"
+    ADD CONSTRAINT "batch_code_lists_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."batch_code_lists"
+    ADD CONSTRAINT "batch_code_lists_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."global_shipments"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."batch_code_lists"
+    ADD CONSTRAINT "batch_code_lists_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."batch_code_items"
+    ADD CONSTRAINT "batch_code_items_list_id_fkey" FOREIGN KEY ("list_id") REFERENCES "public"."batch_code_lists"("id") ON DELETE CASCADE;
 
 
 

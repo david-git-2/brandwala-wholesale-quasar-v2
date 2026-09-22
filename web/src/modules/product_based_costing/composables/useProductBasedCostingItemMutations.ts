@@ -98,6 +98,73 @@ function removePbcItemFromCache(queryClient: QueryClient, fileId: number, itemId
   );
 }
 
+export function reorderPbcItemsInCache(
+  queryClient: QueryClient,
+  fileId: number,
+  orderedIds: number[],
+) {
+  const sortByOrder = (items: ProductBasedCostingItem[]): ProductBasedCostingItem[] => {
+    const used = new Set<number>();
+    const reordered: ProductBasedCostingItem[] = [];
+
+    for (const id of orderedIds) {
+      const item = items.find((row) => row.id === id);
+      if (item) {
+        reordered.push(item);
+        used.add(id);
+      }
+    }
+
+    for (const item of items) {
+      if (!used.has(item.id)) {
+        reordered.push(item);
+      }
+    }
+
+    return reordered;
+  };
+
+  queryClient.setQueryData<ProductBasedCostingItem[]>(
+    productBasedCostingQueryKeys.itemsList(fileId),
+    (oldItems) => (oldItems ? sortByOrder(oldItems) : oldItems),
+  );
+
+  queryClient.setQueriesData<InfiniteItemsData | ProductBasedCostingItem[]>(
+    { queryKey: productBasedCostingQueryKeys.itemsRoot(fileId) },
+    (oldData) => {
+      if (Array.isArray(oldData)) {
+        return sortByOrder(oldData);
+      }
+
+      if (!isInfiniteItemsData(oldData) || oldData.pages.length === 0) {
+        return oldData;
+      }
+
+      const seen = new Set<number>();
+      const allItems: ProductBasedCostingItem[] = [];
+      for (const page of oldData.pages) {
+        for (const item of page.data) {
+          if (!seen.has(item.id)) {
+            seen.add(item.id);
+            allItems.push(item);
+          }
+        }
+      }
+
+      const reordered = sortByOrder(allItems);
+      let offset = 0;
+      const pages = oldData.pages.map((page) => {
+        const pageSize = page.data.length;
+        const data = reordered.slice(offset, offset + pageSize);
+        offset += pageSize;
+        return { ...page, data };
+      });
+
+      return { ...oldData, pages };
+    },
+  );
+}
+
 function addPbcItemToCache(queryClient: QueryClient, fileId: number, item: ProductBasedCostingItem) {
   queryClient.setQueryData<ProductBasedCostingItem[]>(
     productBasedCostingQueryKeys.itemsList(fileId),

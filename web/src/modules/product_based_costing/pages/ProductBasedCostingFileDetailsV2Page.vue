@@ -521,7 +521,21 @@
 
             <!-- Offer Price BDT -->
             <th v-if="visibleColumnMap.offerPriceBdt" class="text-center bw-ops-col-tint--price" style="width: 84px; min-width: 84px">
-              Offer (৳)
+              <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
+                <span>Offer (৳)</span>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-clipboard-text"
+                  color="grey-7"
+                  class="bulk-paste-header-btn"
+                  @click.stop="openBulkPasteDialog('offer_price')"
+                >
+                  <q-tooltip>Bulk Paste Offer Price (manual)</q-tooltip>
+                </q-btn>
+              </div>
             </th>
 
             <!-- Total Offer BDT -->
@@ -602,7 +616,7 @@
                     class="inline-edit-input excel-cell-input"
                     style="max-width: 32px"
                     input-class="text-center text-weight-bold font-mono"
-                    @change="(val: string | number | null) => onSlPositionChange(idx, val)"
+                    @change="(e: Event) => onSlPositionChange(idx, e)"
                     @keyup.enter="(e: Event) => (e.target as HTMLElement)?.blur()"
                   />
                 </div>
@@ -1041,31 +1055,63 @@
       />
 
       <q-dialog v-model="showBulkPasteDialog" persistent>
-        <q-card style="width: 520px; max-width: 95vw; border-radius: 12px">
+        <q-card style="width: 640px; max-width: 95vw; border-radius: 12px">
           <q-card-section class="row items-center justify-between q-pb-none">
             <div class="row items-center q-gutter-x-sm">
               <q-avatar color="primary" text-color="white" icon="ph ph-clipboard-text" size="32px" />
               <div>
                 <div class="text-subtitle1 text-weight-bold text-grey-9">Bulk Paste {{ bulkPasteFieldLabel }}</div>
-                <div class="text-caption text-grey-6">Paste tab-separated or newline-separated values from Excel/Sheets</div>
+                <div class="text-caption text-grey-6">
+                  Click a cell, then paste. Columns: Barcode, Product code, {{ bulkPasteFieldLabel }}.
+                </div>
               </div>
             </div>
             <q-btn v-close-popup icon="ph ph-x" flat round dense color="grey-6" />
           </q-card-section>
 
           <q-card-section class="q-py-md">
-            <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Paste Area</div>
-            <q-input
-              v-model="bulkPasteText"
-              type="textarea"
-              outlined
-              dense
-              rows="8"
-              placeholder="Paste your copied column values here (e.g. from Excel)..."
-              class="bg-white font-mono"
-              style="font-size: 13px"
-              autofocus
-            />
+            <div class="bulk-paste-grid-wrap" @paste.capture="onBulkPasteGridPaste">
+              <table class="bulk-paste-grid">
+                <thead>
+                  <tr>
+                    <th>Barcode</th>
+                    <th>Product code</th>
+                    <th>{{ bulkPasteFieldLabel }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, rowIdx) in bulkPasteRows" :key="row.rowKey">
+                    <td>
+                      <input
+                        v-model="row.barcode"
+                        class="bulk-paste-cell"
+                        :data-row="rowIdx"
+                        data-col="0"
+                        @focus="onBulkPasteCellFocus(rowIdx, 0)"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        v-model="row.product_code"
+                        class="bulk-paste-cell"
+                        :data-row="rowIdx"
+                        data-col="1"
+                        @focus="onBulkPasteCellFocus(rowIdx, 1)"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        v-model="row.value"
+                        class="bulk-paste-cell bulk-paste-cell--value"
+                        :data-row="rowIdx"
+                        data-col="2"
+                        @focus="onBulkPasteCellFocus(rowIdx, 2)"
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </q-card-section>
 
           <q-separator />
@@ -1091,7 +1137,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
@@ -1116,6 +1162,7 @@ import { useProductBasedCostingFileDetailQuery } from '../composables/useProduct
 import { useProductBasedCostingItemsInfiniteQuery } from '../composables/useProductBasedCostingItemsInfiniteQuery';
 import { useUpdateProductBasedCostingFileMutation } from '../composables/useProductBasedCostingFileMutations';
 import {
+  reorderPbcItemsInCache,
   useDeleteProductBasedCostingItemMutation,
   useDeleteProductBasedCostingItemsBulkMutation,
   useUpdateProductBasedCostingItemMutation,
@@ -1184,12 +1231,25 @@ const selectedItem = ref<ProductBasedCostingItem | null>(null);
 const updatingStatus = ref(false);
 const targetUpdatingStatus = ref<string | null>(null);
 
-type PbcBulkPasteField = 'quantity' | 'price_gbp' | 'product_weight' | 'package_weight';
+type PbcBulkPasteField =
+  | 'quantity'
+  | 'price_gbp'
+  | 'product_weight'
+  | 'package_weight'
+  | 'offer_price';
 
 const showBulkPasteDialog = ref(false);
 const bulkPasteField = ref<PbcBulkPasteField>('quantity');
-const bulkPasteText = ref('');
 const bulkPasteSaving = ref(false);
+type BulkPasteGridRow = {
+  rowKey: string;
+  barcode: string;
+  product_code: string;
+  value: string;
+};
+const bulkPasteRows = ref<BulkPasteGridRow[]>([]);
+const bulkPasteFocus = ref({ row: 0, col: 0 });
+const bulkPasteCols = ['barcode', 'product_code', 'value'] as const;
 
 const bulkPasteFieldLabel = computed(() => {
   switch (bulkPasteField.value) {
@@ -1201,6 +1261,8 @@ const bulkPasteFieldLabel = computed(() => {
       return 'Product Weight';
     case 'package_weight':
       return 'Package Weight';
+    case 'offer_price':
+      return 'Offer Price';
     default:
       return 'Values';
   }
@@ -1513,8 +1575,10 @@ function toggleRowSelection(id: number, checked: boolean) {
   }
 }
 
-function onSlPositionChange(currentIndex: number, newPosition: string | number | null) {
-  void moveItemToPosition(currentIndex, newPosition);
+function onSlPositionChange(currentIndex: number, event: Event) {
+  const target = event.target as HTMLInputElement | null;
+  const raw = target?.value ?? '';
+  void moveItemToPosition(currentIndex, raw);
 }
 
 async function moveItemToPosition(currentIndex: number, newPosition: string | number | null) {
@@ -1535,13 +1599,20 @@ async function moveItemToPosition(currentIndex: number, newPosition: string | nu
 
   if (parsed - 1 === currentIndex) return;
 
+  const ordered = [...costingItems.value];
+  const [removed] = ordered.splice(currentIndex, 1);
+  if (!removed) return;
+  ordered.splice(parsed - 1, 0, removed);
+  const orderedIds = ordered.map((item) => item.id);
+
   try {
     await productBasedCostingRepository.reorderProductBasedCostingItemToPosition(
       fileId.value,
       currentItem.id,
       parsed,
     );
-    await queryClient.invalidateQueries({
+    reorderPbcItemsInCache(queryClient, fileId.value, orderedIds);
+    await queryClient.resetQueries({
       queryKey: productBasedCostingQueryKeys.itemsRoot(fileId.value),
     });
     $q.notify({
@@ -1664,69 +1735,185 @@ function openAddProductCartPage() {
   });
 }
 
+const emptyBulkPasteRow = (index: number): BulkPasteGridRow => ({
+  rowKey: `empty-${index}`,
+  barcode: '',
+  product_code: '',
+  value: '',
+});
+
+const looksLikePasteHeader = (cols: string[]): boolean => {
+  const joined = cols.join(' ').toLowerCase();
+  return (
+    joined.includes('barcode') ||
+    joined.includes('product code') ||
+    joined.includes('product_code') ||
+    joined.includes('actualweight') ||
+    joined.includes('actual weight')
+  );
+};
+
 function openBulkPasteDialog(field: PbcBulkPasteField) {
   if (!costingItems.value.length) {
     $q.notify({ type: 'warning', message: t('product_based_costing.no_items_to_update') });
     return;
   }
   bulkPasteField.value = field;
-  bulkPasteText.value = '';
   bulkPasteSaving.value = false;
+  bulkPasteRows.value = Array.from({ length: 16 }, (_, i) => emptyBulkPasteRow(i));
+  bulkPasteFocus.value = { row: 0, col: 0 };
   showBulkPasteDialog.value = true;
+  void nextTick(() => {
+    const el = document.querySelector(
+      '.bulk-paste-cell[data-row="0"][data-col="0"]',
+    ) as HTMLInputElement | null;
+    el?.focus();
+  });
 }
 
+const onBulkPasteCellFocus = (row: number, col: number) => {
+  bulkPasteFocus.value = { row, col };
+};
+
+const onBulkPasteGridPaste = (event: ClipboardEvent) => {
+  const text = event.clipboardData?.getData('text/plain');
+  if (!text) return;
+  event.preventDefault();
+
+  let pasted = text
+    .split(/\r?\n/)
+    .map((line) => line.split('\t').map((cell) => cell.trim()))
+    .filter((cols) => cols.some((cell) => cell !== ''));
+  if (pasted.length === 0) return;
+  if (pasted[0] && looksLikePasteHeader(pasted[0])) {
+    pasted = pasted.slice(1);
+  }
+  if (pasted.length === 0) return;
+
+  const startRow = bulkPasteFocus.value.row;
+  const startCol = bulkPasteFocus.value.col;
+  const rows = [...bulkPasteRows.value];
+
+  pasted.forEach((cols, rOffset) => {
+    const rowIdx = startRow + rOffset;
+    while (rowIdx >= rows.length) {
+      rows.push(emptyBulkPasteRow(rows.length));
+    }
+    const row = rows[rowIdx];
+    if (!row) return;
+    cols.forEach((cell, cOffset) => {
+      const colIdx = startCol + cOffset;
+      const key = bulkPasteCols[colIdx];
+      if (!key) return;
+      row[key] = cell;
+    });
+  });
+
+  bulkPasteRows.value = rows;
+};
+
 async function applyBulkPaste() {
-  const text = bulkPasteText.value.trim();
-  if (!text) {
-    showBulkPasteDialog.value = false;
-    return;
-  }
+  if (!fileId.value) return;
 
-  const tokens = text
-    .split(/[\r\n\t]+/)
-    .map((token) => token.trim())
-    .filter((token) => token.length > 0);
-
-  if (tokens.length === 0) {
-    showBulkPasteDialog.value = false;
-    return;
-  }
-
-  const items = costingItems.value;
   const field = bulkPasteField.value;
   const updates: ProductBasedCostingItemUpdateInput[] = [];
   let count = 0;
+  let skipped = 0;
+  const usedIds = new Set<number>();
 
-  for (let i = 0; i < tokens.length; i++) {
-    const targetItem = items[i];
-    if (!targetItem) break;
+  const normalizeKey = (value: string | null | undefined) =>
+    (value || '').trim().replace(/^['`]+/, '').replace(/\s+/g, '').toLowerCase();
 
-    const cleaned = tokens[i].replace(/[^0-9.-]/g, '');
-    if (cleaned === '') continue;
+  const normalizePasteNumber = (raw: string): number | null => {
+    if (!raw.trim()) return null;
+    const val = Number(raw.replace(/[^0-9.-]/g, ''));
+    if (Number.isNaN(val)) return null;
+    if (field === 'price_gbp') return Number(val.toFixed(2));
+    if (field === 'quantity') return Math.max(1, Math.round(val));
+    if (field === 'offer_price') return Math.round(val);
+    if (field === 'product_weight' || field === 'package_weight') return Number(val.toFixed(3));
+    return val;
+  };
 
-    const val = Number(cleaned);
-    if (isNaN(val)) continue;
+  let itemsForMatch: ProductBasedCostingItem[] = costingItems.value;
+  if (hasMoreItems.value) {
+    itemsForMatch = await productBasedCostingRepository.listProductBasedCostingItems(fileId.value);
+  }
 
-    let normalized: number;
-    if (field === 'price_gbp') {
-      normalized = Number(val.toFixed(2));
-    } else if (field === 'quantity') {
-      normalized = Math.max(1, Math.round(val));
-    } else {
-      normalized = Number(val.toFixed(3));
-    }
+  const itemCodes = (item: ProductBasedCostingItem) => ({
+    barcode: normalizeKey(item.barcode),
+    product_code: normalizeKey(item.product_code),
+  });
 
-    updates.push({
-      id: targetItem.id,
-      [field]: normalized,
+  const findMatches = (rowBarcode: string, rowCode: string) =>
+    itemsForMatch.filter((item) => {
+      const codes = itemCodes(item);
+      if (rowBarcode && rowCode) {
+        return codes.barcode === rowBarcode && codes.product_code === rowCode;
+      }
+      if (rowBarcode) return codes.barcode === rowBarcode;
+      if (rowCode) return codes.product_code === rowCode;
+      return false;
     });
+
+  const pushUpdate = (targetItem: ProductBasedCostingItem, normalized: number) => {
+    if (usedIds.has(targetItem.id)) return false;
+    usedIds.add(targetItem.id);
+    if (field === 'offer_price') {
+      updates.push({
+        id: targetItem.id,
+        offer_price: normalized,
+        is_offer_price_manual: true,
+      });
+    } else {
+      updates.push({
+        id: targetItem.id,
+        [field]: normalized,
+      });
+    }
     count++;
+    return true;
+  };
+
+  const dataRows = bulkPasteRows.value.filter((row) => normalizePasteNumber(row.value) !== null);
+  const pasteHasKeys = dataRows.some(
+    (row) => normalizeKey(row.barcode) || normalizeKey(row.product_code),
+  );
+
+  if (pasteHasKeys) {
+    for (const row of dataRows) {
+      const normalized = normalizePasteNumber(row.value);
+      if (normalized === null) continue;
+      const barcode = normalizeKey(row.barcode);
+      const productCode = normalizeKey(row.product_code);
+      if (!barcode && !productCode) {
+        skipped++;
+        continue;
+      }
+      const hits = findMatches(barcode, productCode).filter((item) => !usedIds.has(item.id));
+      if (hits.length !== 1) {
+        skipped++;
+        continue;
+      }
+      pushUpdate(hits[0]!, normalized);
+    }
+  } else {
+    const positionalItems = costingItems.value;
+    dataRows.forEach((row, i) => {
+      const normalized = normalizePasteNumber(row.value);
+      const targetItem = positionalItems[i];
+      if (!targetItem || normalized === null) {
+        skipped++;
+        return;
+      }
+      if (!pushUpdate(targetItem, normalized)) skipped++;
+    });
   }
 
   if (updates.length === 0) {
     $q.notify({
       type: 'warning',
-      message: 'No valid numeric values found in pasted text.',
+      message: skipped > 0 ? `No rows updated (${skipped} unmatched)` : 'No valid numeric values found.',
     });
     return;
   }
@@ -1742,15 +1929,17 @@ async function applyBulkPaste() {
       return;
     }
 
-    if (result.data?.length && fileId.value) {
-      await queryClient.invalidateQueries({
+    if (result.data?.length) {
+      await queryClient.resetQueries({
         queryKey: productBasedCostingQueryKeys.itemsRoot(fileId.value),
       });
     }
 
     $q.notify({
       type: 'positive',
-      message: `Successfully pasted and saved ${count} ${bulkPasteFieldLabel.value} value(s)`,
+      message: `Successfully pasted and saved ${count} ${bulkPasteFieldLabel.value} value(s)${
+        skipped ? ` (${skipped} unmatched)` : ''
+      }`,
       icon: 'ph ph-check-circle',
     });
     showBulkPasteDialog.value = false;
@@ -2404,6 +2593,62 @@ function goBackToList() {
 
 .sl-reorder-cell {
   background-color: #f8f9fa;
+}
+
+.bulk-paste-grid-wrap {
+  overflow: auto;
+  max-height: 360px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.bulk-paste-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.bulk-paste-grid th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 700;
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+}
+
+.bulk-paste-grid td {
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  padding: 0;
+}
+
+.bulk-paste-grid td:last-child {
+  border-right: none;
+}
+
+.bulk-paste-cell {
+  width: 100%;
+  height: 28px;
+  border: none;
+  outline: none;
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: #fff;
+  color: #0f172a;
+}
+
+.bulk-paste-cell:focus {
+  box-shadow: inset 0 0 0 2px var(--q-primary, #2563eb);
+}
+
+.bulk-paste-cell--value {
+  font-weight: 700;
 }
 
 .bulk-paste-header-btn {

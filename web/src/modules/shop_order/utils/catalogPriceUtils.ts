@@ -290,7 +290,7 @@ export function customerCanSeeOrderLineTotal(
     'delivered',
   ].includes(normalized);
   if (offerPhase) {
-    return !!permissions?.can_see_sell_price;
+    return true;
   }
   return customerCanSeeCatalogPrice(shopType as ShopType | null | undefined, permissions);
 }

@@ -14,11 +14,19 @@ web/src/modules/procurement_stock/
 │   ├── InboundShipmentListPage.vue       # Flat QTable with direct archive actions
 │   ├── ShipmentLineItemsV2Page.vue       # Canonical detail: workflow bar, lines & costs
 │   ├── ReceiveShipmentPage.vue           # Physical receiving checklist & stock posting
+│   ├── ShipmentBoxWeightPage.vue         # Box weights Excel grid
+│   ├── ShipmentBatchCodePage.vue         # Shipment-scoped batch code analyze
+│   ├── BatchCodeListPage.vue             # Parent-owned batch file list
+│   ├── BatchCodeDetailsPage.vue          # Standalone batch file details
 │   ├── WarehouseStockListPage.vue        # Searchable inventory pool with ATP badges
 │   ├── StockLocationsPage.vue            # Interactive 4-tier tree location builder
 │   ├── StockMovementsPage.vue            # Immutable movement & transfer audit log
 │   └── CargoCompaniesPage.vue            # Freight carrier list & wallet links
 ├── components/
+│   ├── ShipmentBoxWeightGrid.vue         # Box Excel grid
+│   ├── ShipmentBatchCodeGrid.vue         # Batch code Excel grid (q-markup-table)
+│   ├── BatchCodeRowPasteDialog.vue       # Column paste (one value per line)
+│   ├── ShipmentSettingsDrawer.vue        # Gear sidebar; More → Box Weight / Batch Code
 │   ├── ArchivedShipmentsModal.vue        # Dedicated dialog for archived records
 │   ├── ShipmentFormDialog.vue            # Draft shipment creator modal
 │   ├── ShipmentStatusWorkflowBar.vue     # Visual status & progress tag tracker
@@ -54,6 +62,8 @@ export const procurementStockQueryKeys = {
     [...procurementStockQueryKeys.all, 'cargoCompanies', { tenantId }] as const,
   childStockAtp: (params?: Record<string, unknown>) =>
     [...procurementStockQueryKeys.all, 'childStockAtp', params] as const,
+  batchCodeList: (shipmentId: number) =>
+    [...procurementStockQueryKeys.all, 'batchCodeList', { shipmentId }] as const,
 };
 ```
 

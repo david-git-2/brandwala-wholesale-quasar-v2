@@ -59,4 +59,16 @@ export const procurementStockQueryKeys = {
   }) => ['procurementStock', 'demandGroups', params] as const,
 
   dashboard: (tenantId: number) => ['procurementStock', 'dashboard', tenantId] as const,
+
+  batchCodeLists: (parentTenantId: number) =>
+    ['procurementStock', 'batchCodeLists', { parentTenantId }] as const,
+
+  batchCodeList: (listId: number) =>
+    ['procurementStock', 'batchCodeList', { listId }] as const,
+
+  batchCodeListByShipment: (shipmentId: number) =>
+    ['procurementStock', 'batchCodeListByShipment', { shipmentId }] as const,
+
+  batchCodeItems: (listId: number) =>
+    ['procurementStock', 'batchCodeItems', { listId }] as const,
 };

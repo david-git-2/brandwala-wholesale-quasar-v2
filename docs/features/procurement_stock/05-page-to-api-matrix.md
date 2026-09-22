@@ -24,3 +24,6 @@ Mapping of all UI views, buttons, dialog triggers, and user actions to correspon
 | **`StockLocationsPage`** | Create / Edit Tree Location | `useLocationMutation` | `Table: stock_locations` (leaf/nesting validation) | Invalidates `stockLocations` key |
 | **`ProcurementDemandPage`** | Save vendor PO qty | `useUpsertPreorderDemandMutation` | `RPC: upsert_preorder_demand` (`p_placed_quantity`) | Invalidates `demandGroups` |
 | **`ProcurementFulfillPage`** | Pick stock / Mark ready | `useUpsertPreorderDemandMutation`, `useMarkDemandGroupReadyMutation` | `RPC: upsert_preorder_demand` (`p_stock_picks`); mark ready → `staff_set_catalog_ordered_qty` or `staff_mark_pbc_ready_for_shipment` → `create_invoice_from_preorder_demand_document` | Invalidates `demandGroups`; proforma from picks only |
+| **`ShipmentSettingsDrawer` More** | Batch Code | Router | `app-procurement-shipment-batch-code` | — |
+| **`ShipmentBatchCodePage`** | Mount / ensure list | planned composable | `Table: batch_code_lists` select/insert by `shipment_id` | `procurementStockQueryKeys.batchCodeList` |
+| **`ShipmentBatchCodePage`** | Grid blur save / delete | planned composable | `Table: batch_code_items` insert/update/delete | Patch list cache; no full refetch required |

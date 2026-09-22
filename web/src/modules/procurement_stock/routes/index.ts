@@ -193,6 +193,36 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/ReceiveShipmentPage.vue'),
         beforeEnter: guard('global_shipment'),
       },
+      {
+        path: ':id/box',
+        name: 'app-procurement-shipment-box',
+        component: () => import('../pages/ShipmentBoxWeightPage.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
+      {
+        path: ':id/batch-code',
+        name: 'app-procurement-shipment-batch-code',
+        component: () => import('../pages/ShipmentBatchCodePage.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
+    ],
+  },
+  {
+    path: '/:tenantSlug?/app/procurement/batch-code',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-procurement-batch-code-list',
+        component: () => import('../pages/BatchCodeListPage.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
+      {
+        path: ':listId',
+        name: 'app-procurement-batch-code-details',
+        component: () => import('../pages/BatchCodeDetailsPage.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
     ],
   },
   {

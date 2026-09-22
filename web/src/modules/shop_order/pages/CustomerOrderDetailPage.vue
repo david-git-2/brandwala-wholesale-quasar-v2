@@ -227,11 +227,20 @@ const canSeeCatalogPrices = computed(() =>
   customerCanSeeCatalogPrice(currentOrder.value?.shop_type_snapshot, orderPricePermissions.value),
 );
 
-const canSeeOfferPrices = computed(() => !!orderPricePermissions.value.can_see_sell_price);
+const canSeeOfferPrices = computed(() => true);
 
-const canShowOrderTotal = computed(() =>
-  customerCanSeeCartLinePrices(currentOrder.value?.shop_type_snapshot, orderPricePermissions.value),
-);
+const canShowOrderTotal = computed(() => {
+  if (
+    ['priced', 'countered', 'final_offered', 'confirmed', 'procuring', 'ready_for_shipment', 'delivered']
+      .includes(normalizedStatus.value)
+  ) {
+    return true;
+  }
+  return customerCanSeeCartLinePrices(
+    currentOrder.value?.shop_type_snapshot,
+    orderPricePermissions.value,
+  );
+});
 
 const isDropshipOrder = computed(() => currentOrder.value?.shop_type_snapshot === 'dropship');
 
@@ -376,6 +385,17 @@ const codFeePctLabel = computed(() => {
   return Number(((codChargeVal.value / sub) * 100).toFixed(1));
 });
 
+const resolveCustomerOfferCurrencyId = (item: ShopOrderItem): number => {
+  return Number(
+    item.customer_offer_currency_id ||
+      item.staff_offer_currency_id ||
+      item.unit_sell_price_currency_id ||
+      item.unit_list_price_currency_id ||
+      currentOrder.value?.shop_sell_currency_id ||
+      0,
+  );
+};
+
 const submitCounterOffer = async () => {
   if (!orderId.value) return;
 
@@ -390,12 +410,7 @@ const submitCounterOffer = async () => {
   const payload = orderItems.value.map((item) => ({
     id: item.id,
     customer_offer_amount: Number(item.customer_offer_amount || 0),
-    customer_offer_currency_id: Number(
-      item.customer_offer_currency_id ||
-      item.unit_sell_price_currency_id ||
-      item.unit_list_price_currency_id ||
-      0
-    ),
+    customer_offer_currency_id: resolveCustomerOfferCurrencyId(item),
   }));
 
   sendCustomerCounter({ orderId: orderId.value, items: payload });
@@ -453,12 +468,7 @@ const handleSaveItemCounter = ({ itemId, amount }: { itemId: number; amount: num
   const targetItem = orderItems.value.find((i) => i.id === itemId);
   if (!targetItem) return;
 
-  const currencyId = Number(
-    targetItem.customer_offer_currency_id ||
-      targetItem.unit_sell_price_currency_id ||
-      targetItem.unit_list_price_currency_id ||
-      0,
-  );
+  const currencyId = resolveCustomerOfferCurrencyId(targetItem);
 
   updateCatalogOrderItem({
     orderId: orderId.value,

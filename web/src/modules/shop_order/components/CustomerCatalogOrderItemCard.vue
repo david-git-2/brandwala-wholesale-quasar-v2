@@ -46,7 +46,7 @@
 
       <!-- Pricing Summary (table-style colored cells) -->
       <div
-        v-if="canSeeOfferPrices && (status === 'priced' || status === 'countered' || status === 'final_offered' || isConfirmedOrBeyond)"
+        v-if="showOfferPriceCells"
         class="price-cells-row row no-wrap q-col-gutter-xs item-card__full-width"
       >
         <div class="col price-cell price-cell--first-offer">
@@ -54,12 +54,12 @@
           <span class="price-cell__value">{{ currencySymbol }}{{ staffOfferAmount.toFixed(2) }}</span>
         </div>
 
-        <div v-if="hasCustomerCounter" class="col price-cell price-cell--counter">
+        <div v-if="showCounterPriceCell" class="col price-cell price-cell--counter">
           <span class="price-cell__label">Your Counter</span>
-          <span class="price-cell__value">{{ currencySymbol }}{{ Number(item.customer_offer_amount).toFixed(2) }}</span>
+          <span class="price-cell__value">{{ counterPriceDisplay }}</span>
         </div>
 
-        <div v-if="status === 'final_offered' || isConfirmedOrBeyond" class="col price-cell price-cell--final">
+        <div v-if="showFinalPriceCell" class="col price-cell price-cell--final">
           <span class="price-cell__label">Final Offer</span>
           <span class="price-cell__value">{{ currencySymbol }}{{ Number(item.final_offer_amount || item.staff_offer_amount || 0).toFixed(2) }}</span>
         </div>
@@ -260,7 +260,6 @@ const props = defineProps<{
 }>();
 
 const canSeeCatalogPrice = computed(() => props.canSeeCatalogPrice === true);
-const canSeeOfferPrices = computed(() => props.canSeeOfferPrices === true);
 
 const canSeeLineTotal = computed(() =>
   customerCanSeeOrderLineTotal(props.order?.shop_type_snapshot, props.status, {
@@ -353,6 +352,30 @@ const quantityStepperLabel = computed(() =>
 
 const hasCustomerCounter = computed(() => {
   return props.item.customer_offer_amount != null && Number(props.item.customer_offer_amount) > 0;
+});
+
+const isOfferPhase = computed(
+  () =>
+    ['priced', 'countered', 'final_offered'].includes(normalizedStatus.value)
+    || isConfirmedOrBeyond.value,
+);
+
+const showOfferPriceCells = computed(() => isOfferPhase.value);
+
+const showCounterPriceCell = computed(
+  () =>
+    hasCustomerCounter.value
+    || (props.isNegotiable
+      && (normalizedStatus.value === 'final_offered' || isConfirmedOrBeyond.value)),
+);
+
+const showFinalPriceCell = computed(
+  () => normalizedStatus.value === 'final_offered' || isConfirmedOrBeyond.value,
+);
+
+const counterPriceDisplay = computed(() => {
+  if (!hasCustomerCounter.value) return '—';
+  return `${props.currencySymbol}${Number(props.item.customer_offer_amount).toFixed(2)}`;
 });
 
 const isOfferAccepted = computed(() => {

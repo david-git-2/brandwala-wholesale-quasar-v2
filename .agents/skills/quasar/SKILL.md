@@ -36,39 +36,46 @@ Guide for designing, building, styling, and optimizing Vue 3 components using th
 
 ## 2. Page Structure & Layout Patterns
 
+**Default for new app pages (lists and grids):** no in-page H1. Breadcrumbs own the title. Copy `InboundShipmentListPage.vue`. Law: `docs/guides/ui-standards.md`.
+
 ```vue
 <template>
-  <q-page class="bw-page">
-    <div class="bw-page__stack">
-      <!-- Header -->
-      <app-page-header title="Page Title" subtitle="Subtitle description" eyebrow="SECTION">
-        <template #actions>
-          <q-btn
-            label="Create New"
-            icon="add"
-            color="primary"
-            unelevated
-            :loading="isSaving"
-            @click="handleCreate"
-            data-test="create-btn"
-          />
-        </template>
-      </app-page-header>
-
-      <!-- Main Card -->
-      <q-card flat bordered class="form-card">
-        <q-card-section>
-          <!-- Content -->
-        </q-card-section>
-      </q-card>
+  <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
+    <q-card flat bordered class="q-pa-xs flex-shrink-0 list-toolbar-card">
+      <div class="row items-center justify-between q-gutter-xs">
+        <q-input
+          v-model="search"
+          outlined
+          rounded
+          dense
+          debounce="300"
+          placeholder="Search…"
+          class="col-grow"
+        />
+        <q-btn
+          v-if="rows.length"
+          unelevated
+          dense
+          no-caps
+          color="primary"
+          label="New Record"
+          style="border-radius: 8px"
+          @click="handleCreate"
+        />
+      </div>
+    </q-card>
+    <div class="col overflow-hidden">
+      <q-table flat class="sticky-header-table full-width" />
     </div>
   </q-page>
 </template>
 ```
 
+**Hub / overview / investor / treasury only:** `q-page.bw-page` + `AppPageHeader`. Never use that shell for ops lists.
+
 ### Core Utility Classes
-- `.bw-page`: Responsive padding (`clamp(1rem, 2.4vw, 2rem)`).
-- `.bw-page__stack`: Vertical grid stack (`gap: 1.25rem`).
+- `.page-fixed-layout`: height `calc(100vh - 55px)`, `overflow: hidden`.
+- `.bw-page` / `.bw-page__stack`: hub/overview padding only, not ops tables.
 - `.bw-entity-grid`: Grid listing (`repeat(auto-fit, minmax(240px, 1fr))`, `gap: 1rem`).
 - `.bw-inline-actions`: Action button row (`gap: 0.65rem`).
 

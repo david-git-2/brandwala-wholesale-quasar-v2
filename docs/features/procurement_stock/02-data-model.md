@@ -21,6 +21,9 @@ erDiagram
     GLOBAL_STOCKS ||--o{ STOCK_MOVEMENTS : logs_history
     GLOBAL_STOCKS ||--o{ GLOBAL_STOCK_ALLOCATIONS : allocates_to_child
     TENANTS ||--o{ GLOBAL_STOCK_ALLOCATIONS : allocated_sister_concern
+    GLOBAL_SHIPMENTS ||--o| BATCH_CODE_LISTS : optional_list
+    VENDORS ||--o{ BATCH_CODE_LISTS : vendor
+    BATCH_CODE_LISTS ||--o{ BATCH_CODE_ITEMS : lines
 ```
 
 ---
@@ -210,3 +213,17 @@ create policy "Staff can view warehouse stocks"
     )
   );
 ```
+
+---
+
+## 4. Batch Code Analyze (live SQL in `supabase/schemas/procurement/`)
+
+Not `batch_code_pc`. Parent-owned like `global_shipment_boxes`.
+
+**`batch_code_lists`:** `id`, `parent_tenant_id`, `name` (required), `shipment_id` (optional → `global_shipments`), `vendor_id` (`vendors`), `created_at`, `updated_at`. At most one row per non-null `shipment_id`.
+
+**`batch_code_items`:** `id`, `list_id` (required), `barcode`, `product_code`, `batch_id`, `manufacturing_date`, `expire_date`, timestamps. Duplicates allowed. No unique on barcode/batch.
+
+**Expiry:** empty expire + mfg → mfg + 36 calendar months. Hand-edited expire is kept until cleared. **Expires in** is not a column.
+
+**RLS:** parent staff who can manage the tenant (same pattern as shipment boxes).

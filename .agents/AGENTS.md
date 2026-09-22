@@ -31,7 +31,7 @@ When a phase adds SQL migrations:
 - **Batch Operations**: When performing the same action on multiple items (e.g., bulk delete), use a single bulk API call rather than iterating and sending individual requests.
 
 ## List Table UI & Layout Design System Rule
-- **Canonical Design Rule**: Follow `.agents/rules/table_list_design_system.md` for all list table pages.
+- **Copy source**: `InboundShipmentListPage.vue`. Do not copy hub/overview pages (`AppPageHeader`, `bw-page__stack`) for new ops screens.
 - **Zero In-Page Headers**: Never render redundant in-page `<h1>` or `text-overline` header banners. Global breadcrumbs in the top header provide page title and hierarchy. Move primary action buttons and search controls directly into the compact table toolbar.
 - **Non-Scrolling Page Container**: Lock `q-page` height to `calc(100vh - 55px)` with `overflow: hidden`.
 - **Internal Table Scroll**: Use sticky headers (`thead tr th`) and let table middle scroll internally (`.q-table__middle { overflow-y: auto }`).

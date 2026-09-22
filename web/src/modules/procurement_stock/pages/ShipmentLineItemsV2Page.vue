@@ -553,16 +553,22 @@
                   </div>
                 </td>
 
-                <!-- Codes: SKU & Barcode -->
+                <!-- Codes: barcode, product code, product id -->
                 <td v-if="visibleColumnMap.product_codes" style="min-width: 105px; width: 115px" class="q-py-xs">
                   <div class="column justify-center q-gutter-y-2xs font-mono" style="font-size: 11.5px">
-                    <div v-if="item.sku" class="text-weight-medium text-slate-700 ellipsis">
-                      SKU: {{ item.sku }}
-                    </div>
-                    <div v-if="item.barcode" class="text-caption text-slate-500 ellipsis">
+                    <div v-if="item.barcode" class="text-weight-medium text-slate-700 ellipsis">
                       BAR: {{ item.barcode }}
                     </div>
-                    <div v-if="!item.sku && !item.barcode" class="text-caption text-slate-400">
+                    <div v-if="item.product_code" class="text-caption text-slate-600 ellipsis">
+                      CODE: {{ item.product_code }}
+                    </div>
+                    <div v-if="item.product_id != null" class="text-caption text-slate-500 ellipsis">
+                      ID: {{ item.product_id }}
+                    </div>
+                    <div
+                      v-if="!item.barcode && !item.product_code && item.product_id == null"
+                      class="text-caption text-slate-400"
+                    >
                       —
                     </div>
                   </div>
@@ -1573,6 +1579,8 @@ const displayedItems = computed(() => {
         style_code: item.style_code,
         sku: item.sku,
         barcode: item.barcode,
+        product_code: item.product_code,
+        product_id: item.product_id,
         purchase_price: item.purchase_price,
         ordered_quantity: oQty,
         received_quantity: item.received_quantity ?? null,

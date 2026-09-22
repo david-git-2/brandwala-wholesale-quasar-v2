@@ -61,6 +61,8 @@ All operational dashboard and list pages must adhere to the **Non-Scrolling Page
 </template>
 ```
 
+Copy **`InboundShipmentListPage.vue`**, not overview pages with `AppPageHeader`.
+
 ### Layout Rules:
 1. **Zero In-Page Headers**: Never render redundant in-page `<h1>` or `text-overline` banner blocks. Top breadcrumbs provide context and page titles.
 2. **Fixed Viewport**: Page height locked to `calc(100vh - 55px)` with `overflow: hidden`.
