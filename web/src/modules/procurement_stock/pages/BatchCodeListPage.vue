@@ -18,24 +18,12 @@
             debounce="300"
             clearable
             class="col-grow dense-search-input"
-            placeholder="Search name, vendor, or shipment"
+            placeholder="Search shipment name or #"
           >
             <template #prepend>
               <q-icon name="ph ph-magnifying-glass" size="16px" />
             </template>
           </q-input>
-          <q-btn
-            v-if="filteredRows.length"
-            color="primary"
-            unelevated
-            no-caps
-            dense
-            icon="ph ph-plus"
-            label="Add batch file"
-            class="rounded-sq-btn"
-            style="border-radius: 8px"
-            @click="createDialogOpen = true"
-          />
         </div>
       </q-card>
 
@@ -50,18 +38,8 @@
             <q-icon name="ph ph-barcode" size="48px" class="q-mb-sm text-grey-4" />
             <div class="text-subtitle1 text-weight-medium">No batch files yet</div>
             <div class="text-body2 q-mt-xs text-center" style="max-width: 360px">
-              Add a batch file with a name, or open one from shipment gear → More → Batch Code.
+              Open shipment gear → More → Batch Code to create one for a shipment.
             </div>
-            <q-btn
-              class="q-mt-md"
-              color="primary"
-              unelevated
-              no-caps
-              icon="ph ph-plus"
-              label="Add batch file"
-              style="border-radius: 8px"
-              @click="createDialogOpen = true"
-            />
           </div>
 
           <q-table
@@ -74,20 +52,10 @@
             :loading="loading"
             hide-pagination
             :pagination="{ rowsPerPage: 0 }"
-            @row-click="(_, row) => openDetails(row.id)"
+            @row-click="(_, row) => openShipmentBatchCode(row)"
           >
-            <template #body-cell-name="props">
-              <q-td :props="props" class="cursor-pointer text-weight-medium text-grey-9">
-                {{ props.row.name }}
-              </q-td>
-            </template>
-            <template #body-cell-vendor="props">
-              <q-td :props="props" class="cursor-pointer">
-                {{ props.row.vendor?.name ?? '—' }}
-              </q-td>
-            </template>
             <template #body-cell-shipment="props">
-              <q-td :props="props" class="cursor-pointer">
+              <q-td :props="props" class="cursor-pointer text-weight-medium text-grey-9">
                 <span v-if="props.row.shipment">
                   {{ props.row.shipment.name }}
                   <span v-if="props.row.shipment.tenant_shipment_id" class="text-grey-6">
@@ -111,43 +79,22 @@
         </q-card>
       </div>
     </section>
-
-    <BatchCodeCreateDialog
-      v-if="parentTenantId"
-      v-model="createDialogOpen"
-      :parent-tenant-id="parentTenantId"
-      :shipment-ids-with-list="shipmentIdsWithList"
-      @created="onBatchFileCreated"
-    />
   </q-page>
 </template>
 
 <script setup lang="ts">
 import type { QTableColumn } from 'quasar';
-import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
-import BatchCodeCreateDialog from '../components/BatchCodeCreateDialog.vue';
+import type { BatchCodeListRow } from '../repositories/batchCodeRepository';
 import { useBatchCodeListPage } from '../composables/useBatchCodeListPage';
 
 const route = useRoute();
 const router = useRouter();
-const createDialogOpen = ref(false);
 
-const {
-  loading,
-  error,
-  searchText,
-  filteredRows,
-  load,
-  itemCountFor,
-  shipmentIdsWithList,
-  parentTenantId,
-} = useBatchCodeListPage();
+const { loading, error, searchText, filteredRows, load, itemCountFor } = useBatchCodeListPage();
 
 const columns: QTableColumn[] = [
-  { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
-  { name: 'vendor', label: 'Vendor', field: 'vendor_id', align: 'left', sortable: true },
   { name: 'shipment', label: 'Shipment', field: 'shipment_id', align: 'left', sortable: true },
   { name: 'lines', label: 'Lines', field: 'id', align: 'center' },
   { name: 'updated', label: 'Updated', field: 'updated_at', align: 'left', sortable: true },
@@ -159,26 +106,19 @@ const formatDate = (value: string) => {
   return date.toLocaleDateString();
 };
 
-const openDetails = (listId: number, fromCreate = false) => {
+const openShipmentBatchCode = (row: BatchCodeListRow) => {
   const tenantSlug = route.params.tenantSlug;
-  const query = fromCreate ? undefined : { from: 'list' };
   if (tenantSlug) {
     void router.push({
-      name: 'app-procurement-batch-code-details',
-      params: { tenantSlug, listId },
-      query,
+      name: 'app-procurement-shipment-batch-code',
+      params: { tenantSlug, id: row.shipment_id },
     });
     return;
   }
   void router.push({
-    name: 'app-procurement-batch-code-details',
-    params: { listId },
-    query,
+    name: 'app-procurement-shipment-batch-code',
+    params: { id: row.shipment_id },
   });
-};
-
-const onBatchFileCreated = (listId: number) => {
-  openDetails(listId, true);
 };
 </script>
 

@@ -1,4 +1,4 @@
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { showErrorNotification } from 'src/utils/appFeedback';
@@ -7,15 +7,24 @@ import {
   type GlobalShipmentBox,
 } from '../repositories/globalShipmentBoxRepository';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import { getCargoWeightKg } from 'src/shared/shipment-engine';
+import {
+  boxWeightDiffKg,
+  boxWeightVarianceStatus,
+  describeBoxVsInvoiceCargo,
+  type BoxWeightVarianceStatus,
+} from '../utils/boxWeightVariance';
+import { sumBoxReceivedWeightKg, sumBoxShippingWeightKg } from '../utils/weightBalance';
 
-export type BoxGridRowRef =
-  | { kind: 'saved'; id: number }
-  | { kind: 'draft' };
+export type BoxGridRowRef = { kind: 'saved'; id: number };
 
 type SavedRowDraft = {
   box_number?: string;
-  weight_kg?: number | null;
+  received_weight?: number | null;
+  shipping_weight?: number | null;
 };
+
+type WeightField = 'received_weight' | 'shipping_weight';
 
 const getNextBoxNumber = (boxes: GlobalShipmentBox[]): string => {
   if (!boxes.length) return '1';
@@ -36,23 +45,47 @@ const getNextBoxNumber = (boxes: GlobalShipmentBox[]): string => {
   return `${lastNum}-2`;
 };
 
+const toWeight = (value: number | null | undefined): number => {
+  if (value === null || value === undefined || Number.isNaN(value)) return 0;
+  return value;
+};
+
 export function useShipmentBoxWeightGrid(shipmentId: number) {
   const shipmentStore = useGlobalShipmentStore();
   const authStore = useAuthStore();
   const tenantStore = useTenantStore();
 
   const loading = ref(true);
+  const showAddDialog = ref(false);
+  const savingAdd = ref(false);
   const savingRowKey = ref<string | null>(null);
-  const draftRow = reactive<{ box_number: string; weight_kg: number | null }>({
+  const addForm = reactive<{
+    box_number: string;
+    received_weight: number | null;
+    shipping_weight: number | null;
+  }>({
     box_number: '',
-    weight_kg: null,
+    received_weight: null,
+    shipping_weight: null,
   });
   const savedRowDrafts = reactive<Record<number, SavedRowDraft>>({});
 
   const savedRows = computed(() => shipmentStore.currentShipmentBoxes);
 
-  const totalWeightKg = computed(() =>
-    savedRows.value.reduce((sum, box) => sum + (box.weight_kg || 0), 0),
+  const totalReceivedKg = computed(() => sumBoxReceivedWeightKg(savedRows.value));
+  const totalShippingKg = computed(() => sumBoxShippingWeightKg(savedRows.value));
+  const invoiceCargoKg = computed(() => {
+    const shipment = shipmentStore.currentShipment;
+    if (!shipment) return 0;
+    return getCargoWeightKg(shipment, shipmentStore.currentShipmentItems);
+  });
+
+  const boxShippingVsInvoice = computed(() =>
+    describeBoxVsInvoiceCargo('Box shipping', totalShippingKg.value, invoiceCargoKg.value),
+  );
+
+  const boxReceivedVsInvoice = computed(() =>
+    describeBoxVsInvoiceCargo('Box received', totalReceivedKg.value, invoiceCargoKg.value),
   );
 
   const resolveParentTenantId = (): number => {
@@ -63,16 +96,20 @@ export function useShipmentBoxWeightGrid(shipmentId: number) {
     return parentTenantId;
   };
 
-  const resetDraftRow = () => {
-    draftRow.box_number = getNextBoxNumber(savedRows.value);
-    draftRow.weight_kg = null;
+  const resetAddForm = () => {
+    addForm.box_number = getNextBoxNumber(savedRows.value);
+    addForm.received_weight = null;
+    addForm.shipping_weight = null;
   };
 
   const loadBoxes = async () => {
     loading.value = true;
     try {
-      await shipmentStore.fetchShipmentBoxes(shipmentId);
-      resetDraftRow();
+      if (!shipmentStore.currentShipment || shipmentStore.currentShipment.id !== shipmentId) {
+        await shipmentStore.fetchShipmentDetails(shipmentId);
+      } else {
+        await shipmentStore.fetchShipmentBoxes(shipmentId);
+      }
     } finally {
       loading.value = false;
     }
@@ -82,85 +119,79 @@ export function useShipmentBoxWeightGrid(shipmentId: number) {
     void loadBoxes();
   });
 
-  watch(savedRows, () => {
-    if (!draftRow.box_number.trim()) {
-      draftRow.box_number = getNextBoxNumber(savedRows.value);
-    }
-  });
+  const openAddDialog = () => {
+    resetAddForm();
+    showAddDialog.value = true;
+  };
+
+  const closeAddDialog = () => {
+    showAddDialog.value = false;
+  };
 
   const getSavedBox = (id: number): GlobalShipmentBox | undefined =>
     savedRows.value.find((box) => box.id === id);
 
   const getBoxNumber = (row: BoxGridRowRef): string => {
-    if (row.kind === 'draft') return draftRow.box_number;
     const draft = savedRowDrafts[row.id]?.box_number;
     if (draft !== undefined) return draft;
     return getSavedBox(row.id)?.box_number ?? '';
   };
 
-  const getWeightKg = (row: BoxGridRowRef): number | null => {
-    if (row.kind === 'draft') return draftRow.weight_kg;
-    const draft = savedRowDrafts[row.id]?.weight_kg;
+  const getWeight = (row: BoxGridRowRef, field: WeightField): number | null => {
+    const draft = savedRowDrafts[row.id]?.[field];
     if (draft !== undefined) return draft;
-    const saved = getSavedBox(row.id)?.weight_kg;
+    const saved = getSavedBox(row.id)?.[field];
     return saved ?? null;
   };
 
   const setBoxNumber = (row: BoxGridRowRef, value: string | number | null) => {
     const next = value === null || value === undefined ? '' : String(value);
-    if (row.kind === 'draft') {
-      draftRow.box_number = next;
-      return;
-    }
     if (!savedRowDrafts[row.id]) savedRowDrafts[row.id] = {};
     savedRowDrafts[row.id].box_number = next;
   };
 
-  const setWeightKg = (row: BoxGridRowRef, value: string | number | null) => {
+  const setWeight = (row: BoxGridRowRef, field: WeightField, value: string | number | null) => {
     let parsed: number | null = null;
     if (value !== null && value !== '' && value !== undefined) {
       const num = Number(value);
       if (!Number.isNaN(num)) parsed = num;
     }
-    if (row.kind === 'draft') {
-      draftRow.weight_kg = parsed;
-      return;
-    }
     if (!savedRowDrafts[row.id]) savedRowDrafts[row.id] = {};
-    savedRowDrafts[row.id].weight_kg = parsed;
+    savedRowDrafts[row.id][field] = parsed;
+  };
+
+  const rowVariance = (
+    row: BoxGridRowRef,
+  ): { diff: number | null; status: BoxWeightVarianceStatus | null } => {
+    const received = getWeight(row, 'received_weight');
+    const shipping = getWeight(row, 'shipping_weight');
+    if (received === null || shipping === null) return { diff: null, status: null };
+    return {
+      diff: boxWeightDiffKg(received, shipping),
+      status: boxWeightVarianceStatus(received, shipping),
+    };
   };
 
   const clearSavedRowDraft = (id: number) => {
     delete savedRowDrafts[id];
   };
 
-  const commitRow = async (row: BoxGridRowRef) => {
-    if (row.kind === 'draft') {
-      await commitDraftRow();
-      return;
-    }
-    await commitSavedRow(row.id);
-  };
-
-  const commitDraftRow = async () => {
-    const boxNumber = draftRow.box_number.trim();
-    const weightKg = draftRow.weight_kg;
-    if (!boxNumber || weightKg === null || weightKg <= 0) return;
-
-    savingRowKey.value = 'draft';
+  const saveAddBox = async () => {
+    savingAdd.value = true;
     try {
       await globalShipmentBoxRepository.create({
         parent_tenant_id: resolveParentTenantId(),
         shipment_id: shipmentId,
-        box_number: boxNumber,
-        weight_kg: weightKg,
+        box_number: addForm.box_number.trim(),
+        received_weight: toWeight(addForm.received_weight),
+        shipping_weight: toWeight(addForm.shipping_weight),
       });
       await shipmentStore.fetchShipmentBoxes(shipmentId);
-      resetDraftRow();
+      showAddDialog.value = false;
     } catch (error: unknown) {
       showErrorNotification((error as Error).message || 'Failed to add box.');
     } finally {
-      savingRowKey.value = null;
+      savingAdd.value = false;
     }
   };
 
@@ -169,30 +200,32 @@ export function useShipmentBoxWeightGrid(shipmentId: number) {
     if (!saved) return;
 
     const draft = savedRowDrafts[id];
-    const nextBoxNumber = draft?.box_number !== undefined ? draft.box_number.trim() : saved.box_number;
-    const nextWeightKg = draft?.weight_kg !== undefined ? draft.weight_kg : saved.weight_kg;
+    const nextBoxNumber =
+      draft?.box_number !== undefined ? draft.box_number.trim() : saved.box_number;
+    const nextReceived =
+      draft?.received_weight !== undefined ? draft.received_weight : saved.received_weight;
+    const nextShipping =
+      draft?.shipping_weight !== undefined ? draft.shipping_weight : saved.shipping_weight;
 
-    if (!nextBoxNumber) {
-      showErrorNotification('Box number cannot be empty.');
-      return;
-    }
-    if (nextWeightKg === null || nextWeightKg <= 0) {
-      showErrorNotification('Weight must be greater than 0.');
-      return;
-    }
+    const receivedNorm = toWeight(nextReceived);
+    const shippingNorm = toWeight(nextShipping);
 
     const boxNumberChanged = nextBoxNumber !== saved.box_number;
-    const weightChanged = nextWeightKg !== saved.weight_kg;
-    if (!boxNumberChanged && !weightChanged) {
+    const receivedChanged = receivedNorm !== saved.received_weight;
+    const shippingChanged = shippingNorm !== saved.shipping_weight;
+    if (!boxNumberChanged && !receivedChanged && !shippingChanged) {
       clearSavedRowDraft(id);
       return;
     }
 
     savingRowKey.value = `saved-${id}`;
     try {
-      const patch: Partial<Pick<GlobalShipmentBox, 'box_number' | 'weight_kg'>> = {};
+      const patch: Partial<
+        Pick<GlobalShipmentBox, 'box_number' | 'received_weight' | 'shipping_weight'>
+      > = {};
       if (boxNumberChanged) patch.box_number = nextBoxNumber;
-      if (weightChanged) patch.weight_kg = nextWeightKg;
+      if (receivedChanged) patch.received_weight = receivedNorm;
+      if (shippingChanged) patch.shipping_weight = shippingNorm;
       await globalShipmentBoxRepository.update(id, patch);
       await shipmentStore.fetchShipmentBoxes(shipmentId);
       clearSavedRowDraft(id);
@@ -209,9 +242,6 @@ export function useShipmentBoxWeightGrid(shipmentId: number) {
       await globalShipmentBoxRepository.delete(id);
       clearSavedRowDraft(id);
       await shipmentStore.fetchShipmentBoxes(shipmentId);
-      if (!draftRow.box_number.trim()) {
-        resetDraftRow();
-      }
     } catch (error: unknown) {
       showErrorNotification((error as Error).message || 'Failed to delete box.');
     } finally {
@@ -219,22 +249,28 @@ export function useShipmentBoxWeightGrid(shipmentId: number) {
     }
   };
 
-  const isRowSaving = (row: BoxGridRowRef): boolean => {
-    if (row.kind === 'draft') return savingRowKey.value === 'draft';
-    return savingRowKey.value === `saved-${row.id}`;
-  };
+  const isRowSaving = (row: BoxGridRowRef): boolean => savingRowKey.value === `saved-${row.id}`;
 
   return {
     loading,
-    savingRowKey,
+    showAddDialog,
+    savingAdd,
+    addForm,
     savedRows,
-    draftRow,
-    totalWeightKg,
+    totalReceivedKg,
+    totalShippingKg,
+    invoiceCargoKg,
+    boxShippingVsInvoice,
+    boxReceivedVsInvoice,
     getBoxNumber,
-    getWeightKg,
+    getWeight,
     setBoxNumber,
-    setWeightKg,
-    commitRow,
+    setWeight,
+    rowVariance,
+    openAddDialog,
+    closeAddDialog,
+    saveAddBox,
+    commitSavedRow,
     deleteRow,
     isRowSaving,
   };

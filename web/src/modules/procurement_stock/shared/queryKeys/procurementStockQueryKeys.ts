@@ -71,4 +71,7 @@ export const procurementStockQueryKeys = {
 
   batchCodeItems: (listId: number) =>
     ['procurementStock', 'batchCodeItems', { listId }] as const,
+
+  batchCodeItemsByShipment: (shipmentId: number) =>
+    ['procurementStock', 'batchCodeItemsByShipment', { shipmentId }] as const,
 };

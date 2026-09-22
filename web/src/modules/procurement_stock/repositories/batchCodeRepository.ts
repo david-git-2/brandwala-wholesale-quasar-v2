@@ -5,7 +5,6 @@ export type BatchCodeList = Tables<'batch_code_lists'>;
 export type BatchCodeItem = Tables<'batch_code_items'>;
 
 export type BatchCodeListRow = BatchCodeList & {
-  vendor: { id: number; name: string } | null;
   shipment: { id: number; name: string; tenant_shipment_id: number | null } | null;
   batch_code_items: Array<{ count: number }>;
 };
@@ -16,7 +15,7 @@ const listByParentTenantId = async (parentTenantId: number): Promise<BatchCodeLi
   const { data, error } = await db
     .from('batch_code_lists')
     .select(
-      '*, vendor:vendors(id, name), shipment:global_shipments(id, name, tenant_shipment_id), batch_code_items(count)',
+      '*, shipment:global_shipments(id, name, tenant_shipment_id), batch_code_items(count)',
     )
     .eq('parent_tenant_id', parentTenantId)
     .order('updated_at', { ascending: false });
@@ -29,7 +28,7 @@ const getById = async (id: number): Promise<BatchCodeListRow | null> => {
   const { data, error } = await db
     .from('batch_code_lists')
     .select(
-      '*, vendor:vendors(id, name), shipment:global_shipments(id, name, tenant_shipment_id), batch_code_items(count)',
+      '*, shipment:global_shipments(id, name, tenant_shipment_id), batch_code_items(count)',
     )
     .eq('id', id)
     .maybeSingle();
@@ -53,21 +52,6 @@ const createList = async (
   payload: Omit<BatchCodeList, 'id' | 'created_at' | 'updated_at'>,
 ): Promise<BatchCodeList> => {
   const { data, error } = await db.from('batch_code_lists').insert([payload]).select().single();
-  if (error) throw error;
-  return data as BatchCodeList;
-};
-
-const updateList = async (
-  id: number,
-  payload: Partial<Pick<BatchCodeList, 'name' | 'vendor_id' | 'shipment_id'>>,
-): Promise<BatchCodeList> => {
-  const { data, error } = await db
-    .from('batch_code_lists')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-
   if (error) throw error;
   return data as BatchCodeList;
 };
@@ -96,7 +80,12 @@ const updateItem = async (
   payload: Partial<
     Pick<
       BatchCodeItem,
-      'barcode' | 'product_code' | 'batch_id' | 'manufacturing_date' | 'expire_date'
+      | 'barcode'
+      | 'product_code'
+      | 'batch_id'
+      | 'manufacturing_date'
+      | 'expire_date'
+      | 'is_arrived'
     >
   >,
 ): Promise<BatchCodeItem> => {
@@ -113,6 +102,16 @@ const updateItem = async (
 
 const deleteItem = async (id: number): Promise<void> => {
   const { error } = await db.from('batch_code_items').delete().eq('id', id);
+  if (error) throw error;
+};
+
+const deleteItems = async (listId: number, ids: number[]): Promise<void> => {
+  if (ids.length === 0) return;
+  const { error } = await db
+    .from('batch_code_items')
+    .delete()
+    .eq('list_id', listId)
+    .in('id', ids);
   if (error) throw error;
 };
 
@@ -155,11 +154,11 @@ export const batchCodeRepository = {
   getById,
   getByShipmentId,
   createList,
-  updateList,
   deleteList,
   pasteItems,
   listItemsByListId,
   createItem,
   updateItem,
   deleteItem,
+  deleteItems,
 };

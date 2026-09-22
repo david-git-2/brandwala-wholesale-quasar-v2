@@ -12,7 +12,9 @@
       <BatchCodeListHeaderBar
         :list-id="listId"
         :parent-tenant-id="parentTenantId"
+        show-back
         class="q-mb-xs"
+        @back="goBack"
         @updated="onHeaderUpdated"
       />
       <ShipmentBatchCodeGrid class="col" :list-id="listId" />
@@ -23,7 +25,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useQueryClient } from '@tanstack/vue-query';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import BatchCodeListHeaderBar from '../components/BatchCodeListHeaderBar.vue';
@@ -34,6 +36,7 @@ import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQ
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
 const shipmentStore = useGlobalShipmentStore();
@@ -77,11 +80,6 @@ const ensureList = async () => {
       error.value = 'Shipment not found.';
       return;
     }
-    if (!shipment.vendor_id) {
-      error.value = 'Set a vendor on the shipment first.';
-      return;
-    }
-
     const existing = await batchCodeRepository.getByShipmentId(shipmentId.value);
     if (existing) {
       const full = await batchCodeRepository.getById(existing.id);
@@ -97,14 +95,9 @@ const ensureList = async () => {
       parentTenantId: parentTenantId.value,
       payload: {
         parent_tenant_id: parentTenantId.value,
-        name: shipment.name,
         shipment_id: shipmentId.value,
-        vendor_id: shipment.vendor_id,
       },
       relations: {
-        vendor: shipment.vendor_id
-          ? { id: shipment.vendor_id, name: shipment.vendor_name ?? 'Vendor' }
-          : null,
         shipment: {
           id: shipment.id,
           name: shipment.name,
@@ -113,11 +106,35 @@ const ensureList = async () => {
       },
     });
     listId.value = created.id;
+    seedListCache({
+      ...created,
+      shipment: {
+        id: shipment.id,
+        name: shipment.name,
+        tenant_shipment_id: shipment.tenant_shipment_id ?? null,
+      },
+      batch_code_items: [{ count: 0 }],
+    });
   } catch (err: unknown) {
     error.value = (err as Error).message || 'Failed to open batch code list.';
   } finally {
     loading.value = false;
   }
+};
+
+const goBack = () => {
+  const tenantSlug = route.params.tenantSlug;
+  if (tenantSlug) {
+    void router.push({
+      name: 'app-procurement-shipment-details',
+      params: { tenantSlug, id: shipmentId.value },
+    });
+    return;
+  }
+  void router.push({
+    name: 'app-procurement-shipment-details',
+    params: { id: shipmentId.value },
+  });
 };
 
 onMounted(() => {

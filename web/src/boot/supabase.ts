@@ -4,6 +4,48 @@ import { beginGlobalRequest, endGlobalRequest } from 'src/composables/useGlobalN
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const ENV_URL_STORAGE_KEY = 'brandwala.env.supabaseUrl';
+const AUTH_STORAGE_KEYS = [
+  'brandwala.auth.access.v4',
+  'brandwala.tenant.workspace.v1',
+  'brandwala.tenant.preference.v1',
+  'brandwala.membership.preference.v1',
+  'brandwala.shop.selected-group.v1',
+];
+
+const wipeAuthStorageForEnvSwitch = () => {
+  if (typeof window === 'undefined' || !supabaseUrl) {
+    return;
+  }
+
+  const previousUrl = window.localStorage.getItem(ENV_URL_STORAGE_KEY);
+  if (previousUrl === supabaseUrl) {
+    return;
+  }
+
+  if (previousUrl) {
+    for (const key of AUTH_STORAGE_KEYS) {
+      window.localStorage.removeItem(key);
+    }
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key && (key.startsWith('sb-') || key.startsWith('supabase.'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((key) => window.localStorage.removeItem(key));
+    window.sessionStorage.removeItem('brandwala.auth.freshness.timestamp');
+  }
+
+  window.localStorage.setItem(ENV_URL_STORAGE_KEY, supabaseUrl);
+  if (previousUrl) {
+    window.location.reload();
+  }
+};
+
+wipeAuthStorageForEnvSwitch();
+
 const defaultFetch: typeof fetch = globalThis.fetch.bind(globalThis);
 const AUTH_RETRY_HEADER = 'x-brandwala-auth-retry';
 

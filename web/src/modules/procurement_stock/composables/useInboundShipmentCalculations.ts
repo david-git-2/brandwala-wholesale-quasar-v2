@@ -35,9 +35,30 @@ export function useInboundShipmentCalculations() {
     return currentCostCurrency.value?.symbol || '৳';
   });
 
-  const currentShipmentBoxesTotal = computed(() => {
-    return shipmentStore.currentShipmentBoxes.reduce((sum, box) => sum + (box.weight_kg || 0), 0);
-  });
+  const currentShipmentBoxesReceivedTotal = computed(() =>
+    shipmentStore.currentShipmentBoxes.reduce(
+      (sum, box) => sum + (Number(box.received_weight) || 0),
+      0,
+    ),
+  );
+
+  const currentShipmentBoxesShippingTotal = computed(() =>
+    shipmentStore.currentShipmentBoxes.reduce(
+      (sum, box) => sum + (Number(box.shipping_weight) || 0),
+      0,
+    ),
+  );
+
+  const currentShipmentBoxesCount = computed(() => shipmentStore.currentShipmentBoxes.length);
+
+  const currentShipmentBoxesNetDiffKg = computed(() =>
+    Math.round(
+      (currentShipmentBoxesShippingTotal.value - currentShipmentBoxesReceivedTotal.value) * 100,
+    ) / 100,
+  );
+
+  /** @deprecated Use currentShipmentBoxesShippingTotal */
+  const currentShipmentBoxesTotal = currentShipmentBoxesShippingTotal;
 
   const shipmentCargoWeightKg = computed(
     () =>
@@ -167,6 +188,10 @@ export function useInboundShipmentCalculations() {
     cargoCostWeightLabel,
     transactionRateWeightLabel,
     shipmentForLiveCosting,
+    currentShipmentBoxesReceivedTotal,
+    currentShipmentBoxesShippingTotal,
+    currentShipmentBoxesCount,
+    currentShipmentBoxesNetDiffKg,
     currentShipmentBoxesTotal,
     hasCargoInvoiceWeight,
     isStockPosted,

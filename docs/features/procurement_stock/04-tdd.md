@@ -26,6 +26,7 @@ web/src/modules/procurement_stock/
 │   ├── ShipmentBoxWeightGrid.vue         # Box Excel grid
 │   ├── ShipmentBatchCodeGrid.vue         # Batch code Excel grid (q-markup-table)
 │   ├── BatchCodeRowPasteDialog.vue       # Column paste (one value per line)
+│   ├── BatchCodeCsvImportDialog.vue      # Sample CSV download + file import (append)
 │   ├── ShipmentSettingsDrawer.vue        # Gear sidebar; More → Box Weight / Batch Code
 │   ├── ArchivedShipmentsModal.vue        # Dedicated dialog for archived records
 │   ├── ShipmentFormDialog.vue            # Draft shipment creator modal

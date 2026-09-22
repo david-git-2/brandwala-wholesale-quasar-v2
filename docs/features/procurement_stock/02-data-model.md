@@ -216,13 +216,33 @@ create policy "Staff can view warehouse stocks"
 
 ---
 
+## 3b. `global_shipment_boxes` (live SQL in `supabase/schemas/procurement/02_tables.sql`)
+
+Parent-owned physical box weights for inbound shipments (optional; does not drive landed-cost RPCs).
+
+| Column | Type | Notes |
+|--------|------|--------|
+| `id` | bigint | PK |
+| `parent_tenant_id` | bigint | FK `tenants` |
+| `shipment_id` | bigint | FK `global_shipments` |
+| `box_number` | text | Unique per `(shipment_id, box_number)` |
+| `received_weight` | numeric | kg, ≥ 0 |
+| `shipping_weight` | numeric | kg, ≥ 0 |
+| `created_at`, `updated_at` | timestamptz | |
+
+**RLS:** same pattern as other parent-scoped procurement tables (`user_can_manage_parent_tenant`).
+
+**`vendors` write RLS:** superadmin may insert/update/delete **global** rows (`tenant_id` null). Company **owner** (`is_network_owner(tenant_id)`) and tenant **admin** memberships may write rows for that company.
+
+---
+
 ## 4. Batch Code Analyze (live SQL in `supabase/schemas/procurement/`)
 
 Not `batch_code_pc`. Parent-owned like `global_shipment_boxes`.
 
-**`batch_code_lists`:** `id`, `parent_tenant_id`, `name` (required), `shipment_id` (optional → `global_shipments`), `vendor_id` (`vendors`), `created_at`, `updated_at`. At most one row per non-null `shipment_id`.
+**`batch_code_lists`:** `id`, `parent_tenant_id`, `shipment_id` (required → `global_shipments`, unique), `created_at`, `updated_at`. One list per shipment. No `name` or `vendor_id` on the list.
 
-**`batch_code_items`:** `id`, `list_id` (required), `barcode`, `product_code`, `batch_id`, `manufacturing_date`, `expire_date`, timestamps. Duplicates allowed. No unique on barcode/batch.
+**`batch_code_items`:** `id`, `list_id` (required), `barcode`, `product_code`, `batch_id`, `manufacturing_date`, `expire_date`, `is_arrived` (boolean, default false), timestamps. Duplicates allowed. No unique on barcode/batch.
 
 **Expiry:** empty expire + mfg → mfg + 36 calendar months. Hand-edited expire is kept until cleared. **Expires in** is not a column.
 

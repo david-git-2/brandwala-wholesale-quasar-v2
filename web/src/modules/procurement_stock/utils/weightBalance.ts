@@ -7,7 +7,8 @@ export interface WeightBalanceItemInput {
 }
 
 export interface WeightBalanceBoxInput {
-  weight_kg: number;
+  received_weight: number;
+  shipping_weight: number;
 }
 
 export interface WeightAdjustmentResult {
@@ -28,11 +29,17 @@ export function calculateEstimatedWeightKg(items: WeightBalanceItemInput[]): num
   return totalGm / 1000;
 }
 
-/**
- * Calculates actual weight in kg from physical boxes.
- */
+export function sumBoxReceivedWeightKg(boxes: WeightBalanceBoxInput[]): number {
+  return boxes.reduce((sum, box) => sum + (Number(box.received_weight) || 0), 0);
+}
+
+export function sumBoxShippingWeightKg(boxes: WeightBalanceBoxInput[]): number {
+  return boxes.reduce((sum, box) => sum + (Number(box.shipping_weight) || 0), 0);
+}
+
+/** @deprecated Use sumBoxShippingWeightKg */
 export function calculateActualWeightKg(boxes: WeightBalanceBoxInput[]): number {
-  return boxes.reduce((sum, box) => sum + (box.weight_kg || 0), 0);
+  return sumBoxShippingWeightKg(boxes);
 }
 
 /**

@@ -7,6 +7,7 @@ import argparse
 import json
 import mimetypes
 import os
+import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
@@ -31,7 +32,7 @@ PC_VENDOR_CODE = "PC"
 PC_VENDOR_ID = 3
 
 
-def load_env_file(path: Path) -> None:
+def load_env_file(path: Path, overwrite: bool = False) -> None:
     if not path.exists():
         return
 
@@ -51,8 +52,20 @@ def load_env_file(path: Path) -> None:
             or (value.startswith("'") and value.endswith("'"))
         ):
             value = value[1:-1]
-        if key:
+        if not key:
+            continue
+        if overwrite:
+            os.environ[key] = value
+        else:
             os.environ.setdefault(key, value)
+
+
+def switch_web_env_to_prod() -> None:
+    script = ROOT_DIR / "scripts" / "env-switch.sh"
+    print("Switching web/.env to prod...", flush=True)
+    subprocess.run(["bash", str(script), "prod"], check=True, cwd=str(ROOT_DIR))
+    load_env_file(WEB_ENV_FILE, overwrite=True)
+    load_env_file(ROOT_ENV_FILE, overwrite=True)
 
 
 load_env_file(WEB_ENV_FILE)
@@ -570,6 +583,39 @@ def chunked(items: list[dict[str, Any]], size: int) -> list[list[dict[str, Any]]
     return [items[i : i + size] for i in range(0, len(items), size)]
 
 
+def chunked_ids(items: list[int], size: int) -> list[list[int]]:
+    return [items[i : i + size] for i in range(0, len(items), size)]
+
+
+def apply_scope_reset(
+    client: SupabaseRestClient,
+    scope_params: dict[str, Any],
+    product_ids: list[int],
+    chunk_size: int,
+    write_retries: int,
+) -> None:
+    payload = {"is_available": False, "hazardous": False}
+    if not product_ids:
+        print("Scope reset skipped (no existing scoped products).", flush=True)
+        return
+    batches = chunked_ids(product_ids, max(1, chunk_size))
+    start = time.perf_counter()
+    total = len(batches)
+    print(
+        f"Applying scope reset in {total} batch(es) of up to {max(1, chunk_size)}...",
+        flush=True,
+    )
+    for idx, batch in enumerate(batches, start=1):
+        params = dict(scope_params)
+        params["id"] = f"in.({','.join(str(item_id) for item_id in batch)})"
+        run_with_retries(
+            lambda p=params: client.update_rows("products", p, payload),
+            retries=max(1, write_retries),
+        )
+        if idx % 5 == 0 or idx == total:
+            print_progress("Scope reset batches", idx, total, start)
+
+
 def normalize_lookup_name(value: Any) -> str | None:
     text = to_text(value)
     return text or None
@@ -741,6 +787,7 @@ def utc_now() -> datetime:
 
 def main() -> int:
     args = parse_args()
+    switch_web_env_to_prod()
 
     parent_raw = to_text(args.parent_tenant_id) or "15"
     if not (parent_raw.isdigit() and int(parent_raw) > 0):
@@ -1023,7 +1070,14 @@ def main() -> int:
     # 2) Products in current JSON are updated/inserted with is_available=true
     #    and hazardous=true only when marked yes in Excel.
     print("Applying scope reset (is_available=false, hazardous=false)...", flush=True)
-    client.update_rows("products", scope_params, {"is_available": False, "hazardous": False})
+    reset_ids = [int(item["id"]) for item in existing_rows if item.get("id") is not None]
+    apply_scope_reset(
+        client=client,
+        scope_params=scope_params,
+        product_ids=reset_ids,
+        chunk_size=max(1, args.chunk_size),
+        write_retries=max(1, args.write_retries),
+    )
     print("Scope reset complete.", flush=True)
 
     ensure_lookup_rows_for_new_inserts(

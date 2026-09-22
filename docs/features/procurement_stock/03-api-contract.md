@@ -169,7 +169,11 @@ Client CRUD on `batch_code_lists` / `batch_code_items` under RLS. Bulk paste use
 
 | Action | Operation |
 | :--- | :--- |
-| Open page | Select list by `shipment_id`; if none, insert list (`parent_tenant_id`, `shipment_id`, shipment `vendor_id`) |
-| Grid cell blur | Insert / update / delete `batch_code_items` by `list_id` |
-| Paste grid / column | `paste_batch_code_items(p_list_id, p_start_row_index, p_rows jsonb)` — creates missing rows, merges fields, default expire server-side |
+| Open page | Select list by `shipment_id`; if none, insert list (`parent_tenant_id`, `shipment_id`) |
+| Add line dialog | Insert one `batch_code_items` row by `list_id` |
+| Grid cell blur | Update / delete `batch_code_items` by `list_id` |
+| Grid **Arrived** checkbox | Update `is_arrived` on `batch_code_items` (not part of paste/CSV payload) |
+| Paste grid / column | `paste_batch_code_items(p_list_id, p_start_row_index, p_rows jsonb)` — creates missing rows, merges fields, default expire server-side; **does not** change `is_arrived` |
+| Import CSV dialog | Parse client-side; append with `paste_batch_code_items` at `p_start_row_index = current line count` |
+| Shipment line batch dialog — add missing | Ensure `batch_code_lists` by `shipment_id`; insert `batch_code_items` with line barcode/product code |
 | Default expire | RPC + client: if mfg set and expire empty, expire = mfg + 36 calendar months |

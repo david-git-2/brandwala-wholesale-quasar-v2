@@ -322,6 +322,7 @@
             <th class="text-center" style="width: 1.1in; min-width: 1.1in">Image</th>
             <th v-if="visibleColumnMap.name" class="text-left" style="min-width: 120px; width: 120px; max-width: 120px; white-space: normal">Name</th>
             <th v-if="visibleColumnMap.product_codes" class="text-left" style="min-width: 105px; width: 115px">Codes</th>
+            <th v-if="visibleColumnMap.batch_code" class="text-center" style="min-width: 44px; width: 48px">Batch</th>
             <th v-if="visibleColumnMap.purchase_price" class="text-center bw-ops-col-tint--price" style="min-width: 56px; width: 56px">
               <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
                 <span>Price {{ currentPurchaseCurrencySymbol }}</span>
@@ -433,6 +434,9 @@
               <td v-if="visibleColumnMap.product_codes">
                 <q-skeleton type="text" width="60px" height="13px" class="q-mb-2xs" />
                 <q-skeleton type="text" width="40px" height="11px" />
+              </td>
+              <td v-if="visibleColumnMap.batch_code">
+                <q-skeleton type="text" width="72px" height="13px" />
               </td>
               <td v-if="visibleColumnMap.purchase_price" class="text-center">
                 <q-skeleton type="text" width="44px" height="14px" class="q-mx-auto" />
@@ -572,6 +576,32 @@
                       —
                     </div>
                   </div>
+                </td>
+
+                <td
+                  v-if="visibleColumnMap.batch_code"
+                  class="text-center q-pa-xs batch-code-cell"
+                  :class="[
+                    batchSummaryForItem(item).toneClass,
+                    {
+                      'batch-code-cell--active':
+                        batchSummaryForItem(item).lineCount > 0 || shipmentLineHasBatchCodes(item),
+                    },
+                  ]"
+                  style="min-width: 44px; width: 48px"
+                  @click.stop="openBatchCodeDialog(item)"
+                >
+                  <span
+                    v-if="batchSummaryForItem(item).lineCount > 0"
+                    class="font-mono text-weight-bold"
+                    style="font-size: 12px"
+                  >
+                    {{ batchSummaryForItem(item).compactLabel }}
+                  </span>
+                  <span v-else class="text-grey-5 text-caption">—</span>
+                  <q-tooltip v-if="shipmentLineHasBatchCodes(item)">
+                    Tap for batch codes, expiry, and add missing batch
+                  </q-tooltip>
                 </td>
 
                 <!-- Purchase Price (Excel cell style inline input) -->
@@ -928,15 +958,29 @@
         </div>
       </q-card>
     </q-dialog>
+
+    <ShipmentLineBatchCodeDialog
+      v-model="batchCodeDialogOpen"
+      :product-name="batchCodeDialogProductName"
+      :rows="batchCodeDialogRows"
+      :can-add="batchCodeDialogCanAdd"
+      :adding="batchCodeDialogAdding"
+      :toggling-item-id="batchCodeDialogTogglingId"
+      @add="onAddBatchFromDialog"
+      @toggle-arrived="onToggleBatchArrivedFromDialog"
+    />
     </template>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { useQueryClient } from '@tanstack/vue-query';
 import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { useCargoCompaniesQuery } from '../composables/useProcurementStockQuery';
@@ -957,6 +1001,19 @@ import {
 } from 'src/shared/shipment-engine';
 import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
 import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
+import { useBatchCodeItemsByShipmentQuery } from '../composables/useBatchCodeQueries';
+import { useCreateBatchCodeListMutation } from '../composables/useBatchCodeMutations';
+import { batchCodeRepository, type BatchCodeItem } from '../repositories/batchCodeRepository';
+import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
+import { toIsoDate } from '../utils/batchCodeExpiry';
+import ShipmentLineBatchCodeDialog from '../components/ShipmentLineBatchCodeDialog.vue';
+import {
+  batchMatchTableRows,
+  buildBatchSummaryMapForLines,
+  matchBatchItemsForShipmentLine,
+  type BatchCodeLineSummary,
+  type BatchCodeMatchTableRow,
+} from '../utils/batchCodeShipmentMatch';
 
 const $q = useQuasar();
 const route = useRoute();
@@ -1391,6 +1448,7 @@ const vendorOptions = computed(() =>
 const baseTableColumns = [
   { name: 'name', label: 'Name' },
   { name: 'product_codes', label: 'Codes' },
+  { name: 'batch_code', label: 'Batch code' },
   { name: 'purchase_price', label: 'Price' },
   { name: 'cost_bdt', label: 'Cost' },
   { name: 'ordered_quantity', label: 'Qty' },
@@ -1401,6 +1459,7 @@ const baseTableColumns = [
 const visibleColumnMap = reactive<Record<string, boolean>>({
   name: true,
   product_codes: true,
+  batch_code: true,
   purchase_price: true,
   cost_bdt: true,
   ordered_quantity: true,
@@ -1465,6 +1524,7 @@ const totalVisibleColumnsCount = computed(() => {
   let count = 3; // checkbox, SL, image
   if (visibleColumnMap.name) count++;
   if (visibleColumnMap.product_codes) count++;
+  if (visibleColumnMap.batch_code) count++;
   if (visibleColumnMap.purchase_price) count++;
   if (visibleColumnMap.cost_bdt) count++;
   if (visibleColumnMap.ordered_quantity) count++;
@@ -1604,6 +1664,162 @@ const displayedItems = computed(() => {
 
   return [];
 });
+
+const batchCodeItemsQuery = useBatchCodeItemsByShipmentQuery(shipmentId);
+
+const emptyBatchSummary: BatchCodeLineSummary = {
+  compactLabel: '—',
+  summaryLabel: '—',
+  subLabel: null,
+  lineCount: 0,
+  toneClass: 'text-grey-5',
+};
+
+const queryClient = useQueryClient();
+const tenantStore = useTenantStore();
+const createBatchListMutation = useCreateBatchCodeListMutation();
+
+type BatchDialogLine = {
+  name: string;
+  barcode?: string | null;
+  product_code?: string | null;
+};
+
+const batchCodeDialogOpen = ref(false);
+const batchCodeDialogProductName = ref('');
+const batchCodeDialogLine = ref<BatchDialogLine | null>(null);
+const batchCodeDialogAdding = ref(false);
+const batchCodeDialogTogglingId = ref<number | null>(null);
+
+const shipmentLineHasBatchCodes = (item: { barcode?: string | null; product_code?: string | null }) =>
+  Boolean(item.barcode?.trim() || item.product_code?.trim());
+
+const batchCodeDialogRows = computed<BatchCodeMatchTableRow[]>(() => {
+  if (!batchCodeDialogLine.value) return [];
+  const matches = matchBatchItemsForShipmentLine(
+    batchCodeDialogLine.value,
+    batchCodeItemsQuery.data.value ?? [],
+  );
+  return batchMatchTableRows(matches);
+});
+
+const batchCodeDialogCanAdd = computed(
+  () => batchCodeDialogLine.value !== null && shipmentLineHasBatchCodes(batchCodeDialogLine.value),
+);
+
+const resolveBatchParentTenantId = (): number => {
+  const currentTenant =
+    tenantStore.selectedTenant ?? tenantStore.items.find((t) => t.id === authStore.tenantId);
+  const tenantId = currentTenant?.parent_id ?? authStore.tenantId;
+  if (!tenantId) throw new Error('No tenant found');
+  return tenantId;
+};
+
+const ensureBatchCodeListForShipment = async (): Promise<number> => {
+  const existing = await batchCodeRepository.getByShipmentId(shipmentId);
+  if (existing) return existing.id;
+
+  const parentTenantId = resolveBatchParentTenantId();
+  const shipment = shipmentStore.currentShipment;
+  if (!shipment) throw new Error('Shipment not found');
+
+  const created = await createBatchListMutation.mutateAsync({
+    parentTenantId,
+    payload: {
+      parent_tenant_id: parentTenantId,
+      shipment_id: shipmentId,
+    },
+    relations: {
+      shipment: {
+        id: shipment.id,
+        name: shipment.name,
+        tenant_shipment_id: shipment.tenant_shipment_id ?? null,
+      },
+    },
+  });
+  return created.id;
+};
+
+const patchBatchItemsByShipment = (updater: (items: BatchCodeItem[]) => BatchCodeItem[]) => {
+  const key = procurementStockQueryKeys.batchCodeItemsByShipment(shipmentId);
+  queryClient.setQueryData<BatchCodeItem[]>(key, (old) => updater(old ?? []));
+};
+
+const patchBatchItemInListCache = (updated: BatchCodeItem) => {
+  const listItemsKey = procurementStockQueryKeys.batchCodeItems(updated.list_id);
+  queryClient.setQueryData<BatchCodeItem[]>(listItemsKey, (old) =>
+    old ? old.map((row) => (row.id === updated.id ? updated : row)) : old,
+  );
+};
+
+const onToggleBatchArrivedFromDialog = async (itemId: number, value: boolean) => {
+  const current = (batchCodeItemsQuery.data.value ?? []).find((row) => row.id === itemId);
+  if (!current || current.is_arrived === value || batchCodeDialogTogglingId.value !== null) return;
+
+  batchCodeDialogTogglingId.value = itemId;
+  try {
+    const updated = await batchCodeRepository.updateItem(itemId, { is_arrived: value });
+    patchBatchItemsByShipment((items) =>
+      items.map((row) => (row.id === updated.id ? updated : row)),
+    );
+    patchBatchItemInListCache(updated);
+  } catch (error: unknown) {
+    showErrorNotification((error as Error).message || 'Failed to update arrived.');
+  } finally {
+    batchCodeDialogTogglingId.value = null;
+  }
+};
+
+const onAddBatchFromDialog = async (payload: { batch_id: string; expire_date: string }) => {
+  const line = batchCodeDialogLine.value;
+  if (!line || batchCodeDialogAdding.value) return;
+
+  batchCodeDialogAdding.value = true;
+  try {
+    const listId = await ensureBatchCodeListForShipment();
+    const expireIso = payload.expire_date ? toIsoDate(payload.expire_date) : null;
+
+    const created = await batchCodeRepository.createItem({
+      list_id: listId,
+      barcode: line.barcode?.trim() || null,
+      product_code: line.product_code?.trim() || null,
+      batch_id: payload.batch_id.trim() || null,
+      manufacturing_date: null,
+      expire_date: expireIso,
+      is_arrived: true,
+    });
+
+    patchBatchItemsByShipment((items) => [...items, created]);
+    queryClient.setQueryData<BatchCodeItem[]>(procurementStockQueryKeys.batchCodeItems(listId), (old) => [
+      ...(old ?? []),
+      created,
+    ]);
+
+    showSuccessNotification('Batch line added.');
+  } catch (error: unknown) {
+    showErrorNotification((error as Error).message || 'Failed to add batch line.');
+  } finally {
+    batchCodeDialogAdding.value = false;
+  }
+};
+
+const openBatchCodeDialog = (item: {
+  name: string;
+  barcode?: string | null;
+  product_code?: string | null;
+}) => {
+  if (!shipmentLineHasBatchCodes(item)) return;
+  batchCodeDialogLine.value = item;
+  batchCodeDialogProductName.value = item.name;
+  batchCodeDialogOpen.value = true;
+};
+
+const batchSummaryByItemId = computed(() =>
+  buildBatchSummaryMapForLines(displayedItems.value, batchCodeItemsQuery.data.value ?? []),
+);
+
+const batchSummaryForItem = (item: { id: number }) =>
+  batchSummaryByItemId.value.get(item.id) ?? emptyBatchSummary;
 
 const allSelected = computed({
   get: () => displayedItems.value.length > 0 && displayedItems.value.every((i) => i.selected),
@@ -2436,7 +2652,26 @@ const removeSheet = async (id: string) => {
   background: #FFFFFF;
   border-color: var(--q-primary, #2563EB);
   box-shadow: 0 0 0 1.5px rgba(37, 99, 235, 0.2);
-  color: #0F172A;
+}
+
+.batch-code-tone--warn {
+  color: #b42318;
+}
+
+.batch-code-tone--ok {
+  color: #047857;
+}
+
+.batch-code-tone--unset {
+  color: #1d4ed8;
+}
+
+.batch-code-cell--active {
+  cursor: pointer;
+}
+
+.batch-code-cell--active:hover {
+  background: rgba(15, 23, 42, 0.04);
 }
 
 /* Hide number spin buttons on SL input */

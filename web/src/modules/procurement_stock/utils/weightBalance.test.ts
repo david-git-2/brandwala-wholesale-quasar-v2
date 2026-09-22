@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import {
   calculateEstimatedWeightKg,
-  calculateActualWeightKg,
+  sumBoxShippingWeightKg,
   computePackageWeightAdjustments,
 } from './weightBalance';
 
@@ -16,10 +16,12 @@ describe('Weight Balance Utility', () => {
     expect(est).toBe(2.2); // (110 * 10 + 220 * 5) / 1000 = (1100 + 1100) / 1000 = 2.2 kg
   });
 
-  test('calculateActualWeightKg correctly sums boxes', () => {
-    const boxes = [{ weight_kg: 1.5 }, { weight_kg: 2.5 }];
-    const actual = calculateActualWeightKg(boxes);
-    expect(actual).toBe(4.0);
+  test('sumBoxShippingWeightKg correctly sums boxes', () => {
+    const boxes = [
+      { received_weight: 1, shipping_weight: 1.5 },
+      { received_weight: 2, shipping_weight: 2.5 },
+    ];
+    expect(sumBoxShippingWeightKg(boxes)).toBe(4.0);
   });
 
   test('computePackageWeightAdjustments distributes delta proportionally', () => {

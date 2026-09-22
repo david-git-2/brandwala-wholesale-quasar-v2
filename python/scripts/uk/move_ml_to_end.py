@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Move ML quantity tokens to the end of product name fields in JSON product data."""
+"""Move size tokens (ml, g, gm) to the end of names and title-case each word."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ from typing import Any
 ROOT_DIR = Path(__file__).resolve().parents[3]
 DEFAULT_INPUT = ROOT_DIR / "web" / "public" / "uk" / "pc_data.json"
 
-ML_TOKEN_RE = re.compile(
-    r"\b(\d+(?:\.\d+)?)\s*ml(?:\s*/\s*(\d+(?:\.\d+)?)\s*oz)?\b",
+SIZE_TOKEN_RE = re.compile(
+    r"\b(\d+(?:\.\d+)?)\s*(ml|gm|g)(?:\s*/\s*(\d+(?:\.\d+)?)\s*oz)?\b",
     re.IGNORECASE,
 )
 MULTISPACE_RE = re.compile(r"\s{2,}")
@@ -25,7 +25,7 @@ SPACE_AFTER_OPEN_PAREN_RE = re.compile(r"(\()\s+")
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Move ML quantity tokens to the end of product names in JSON data.",
+        description="Move ml/g/gm tokens to the end of product names and title-case words.",
     )
     parser.add_argument(
         "--input",
@@ -57,32 +57,32 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def normalize_ml_token(match_text: str) -> str:
-    found = ML_TOKEN_RE.search(match_text)
-    if not found:
-        return match_text.strip()
-    quantity_ml = found.group(1)
-    quantity_oz = found.group(2)
-    if quantity_oz:
-        return f"{quantity_ml}ML/{quantity_oz}OZ"
-    return f"{quantity_ml}ML"
+def normalize_size_token(match: re.Match[str]) -> str:
+    quantity = match.group(1)
+    unit = (match.group(2) or "").upper()
+    quantity_oz = match.group(3)
+    if unit == "ML" and quantity_oz:
+        return f"{quantity}ML/{quantity_oz}OZ"
+    return f"{quantity}{unit}"
+
+
+def title_each_word(value: str) -> str:
+    return " ".join(part.capitalize() for part in value.split())
 
 
 def move_ml_tokens_to_end(value: Any) -> tuple[Any, bool]:
     if not isinstance(value, str):
         return value, False
 
-    matches = list(ML_TOKEN_RE.finditer(value))
-    if not matches:
-        return value, False
-
-    ml_tokens: list[str] = []
+    original = value
+    matches = list(SIZE_TOKEN_RE.finditer(value))
+    size_tokens: list[str] = []
     parts: list[str] = []
     cursor = 0
 
     for match in matches:
         parts.append(value[cursor : match.start()])
-        ml_tokens.append(normalize_ml_token(match.group(0)))
+        size_tokens.append(normalize_size_token(match))
         cursor = match.end()
     parts.append(value[cursor:])
 
@@ -90,20 +90,20 @@ def move_ml_tokens_to_end(value: Any) -> tuple[Any, bool]:
     core = SPACE_BEFORE_PUNCT_RE.sub(r"\1", core)
     core = SPACE_AFTER_OPEN_PAREN_RE.sub(r"\1", core)
     core = MULTISPACE_RE.sub(" ", core).strip(" -_/")
-    ml_suffix = " ".join(token for token in ml_tokens if token)
+    core = title_each_word(core)
+    size_suffix = " ".join(token for token in size_tokens if token)
 
-    if core and ml_suffix:
-        updated = f"{core} {ml_suffix}"
+    if core and size_suffix:
+        updated = f"{core} {size_suffix}"
     else:
-        updated = core or ml_suffix
+        updated = core or size_suffix
 
     updated = MULTISPACE_RE.sub(" ", updated).strip()
 
-    # Safety: never collapse a non-empty value to empty.
-    if value.strip() and not updated:
-        return value, False
+    if original.strip() and not updated:
+        return original, False
 
-    return updated, updated != value
+    return updated, updated != original
 
 
 def load_products(payload: Any) -> list[dict[str, Any]]:

@@ -6,6 +6,46 @@
     </div>
 
     <template v-else>
+      <div class="row items-center q-gutter-x-sm q-px-xs q-pb-xs shrink-0">
+        <q-btn
+          color="primary"
+          unelevated
+          no-caps
+          dense
+          icon="ph ph-plus"
+          label="Add line"
+          class="rounded-sq-btn"
+          style="border-radius: 8px"
+          :loading="isAddingRow"
+          @click="addDialogOpen = true"
+        />
+        <q-btn
+          outline
+          color="primary"
+          no-caps
+          dense
+          icon="ph ph-upload-simple"
+          label="Import"
+          class="rounded-sq-btn"
+          style="border-radius: 8px"
+          :disable="isPasting"
+          @click="importDialogOpen = true"
+        />
+        <q-btn
+          v-if="selectedCount >= 2"
+          flat
+          no-caps
+          dense
+          color="negative"
+          icon="ph ph-trash"
+          :label="`Delete selected (${selectedCount})`"
+          class="rounded-sq-btn"
+          style="border-radius: 8px"
+          :loading="isBulkDeleting"
+          @click="onDeleteSelected"
+        />
+      </div>
+
       <div
         class="col batch-table-scroll hide-native-scrollbar batch-grid-wrap"
         @paste.capture="onGridPaste"
@@ -15,7 +55,15 @@
         <q-markup-table flat class="shipment-items-markup-table bg-white batch-table">
           <thead class="batch-table-head">
             <tr>
-              <th class="batch-col-add text-center" />
+              <th class="batch-col-select text-center">
+                <q-checkbox
+                  :model-value="allRowsSelected"
+                  :disable="savedRows.length === 0"
+                  dense
+                  color="primary"
+                  @update:model-value="onToggleSelectAll"
+                />
+              </th>
               <th class="batch-col-sl text-center">SL</th>
               <th
                 v-for="col in EDITABLE_COLUMNS"
@@ -41,48 +89,33 @@
                 </div>
               </th>
               <th class="batch-col-expires text-center bw-ops-col-tint--qty">Expires in</th>
+              <th class="batch-col-arrived text-center">Arrived</th>
               <th class="batch-col-actions text-center" />
             </tr>
           </thead>
           <tbody>
             <tr v-if="savedRows.length === 0" class="batch-empty-row">
-              <td class="text-center">
-                <q-btn
-                  round
-                  dense
-                  unelevated
-                  color="primary"
-                  icon="ph ph-plus"
-                  size="sm"
-                  :loading="isAddingRow"
-                  @click="addEmptyRow"
-                >
-                  <q-tooltip>Add row</q-tooltip>
-                </q-btn>
-              </td>
               <td class="text-center text-grey-5">—</td>
-              <td :colspan="EDITABLE_COLUMNS.length + 2" class="text-grey-6 text-body2">
-                No lines yet — tap + or use a column Paste button in the header
+              <td class="text-center text-grey-5">—</td>
+              <td :colspan="EDITABLE_COLUMNS.length + 3" class="text-grey-6 text-body2">
+                No lines yet — Add line, Import CSV, or use a column Paste button in the header
               </td>
             </tr>
 
-            <tr v-for="(item, index) in savedRows" :key="item.id">
-              <td class="text-center batch-col-add">
-                <q-btn
-                  v-if="index === savedRows.length - 1"
-                  round
+            <tr
+              v-for="(item, index) in savedRows"
+              :key="item.id"
+              :class="batchExpiryRowClass(displayExpireDate(item.id, item.expire_date))"
+            >
+              <td class="text-center batch-col-select" @click.stop>
+                <q-checkbox
+                  :model-value="selectedIds.has(item.id)"
                   dense
-                  unelevated
                   color="primary"
-                  icon="ph ph-plus"
-                  size="sm"
-                  :loading="isAddingRow"
-                  @click="addEmptyRow"
-                >
-                  <q-tooltip>Add row</q-tooltip>
-                </q-btn>
+                  @update:model-value="(val) => onToggleRow(item.id, val)"
+                />
               </td>
-              <td class="text-center text-grey-7 font-mono text-weight-medium batch-col-sl">
+              <td class="text-center font-mono text-weight-medium batch-col-sl">
                 {{ index + 1 }}
               </td>
               <td
@@ -99,13 +132,16 @@
                     :model-value="getField({ kind: 'saved', id: item.id }, col.field)"
                     dense
                     borderless
-                    readonly
                     clearable
-                    placeholder="YYYY-MM-DD"
+                    mask="##-##-####"
+                    placeholder="DD-MM-YYYY"
                     :input-class="col.inputClass"
                     class="excel-cell-input batch-date-input"
                     :loading="isRowSaving({ kind: 'saved', id: item.id })"
                     @focus="onCellFocus(index, col.field)"
+                    @update:model-value="(val) => setField({ kind: 'saved', id: item.id }, col.field, val)"
+                    @blur="() => commitRow({ kind: 'saved', id: item.id })"
+                    @keydown.enter="(e: Event) => (e.target as HTMLInputElement).blur()"
                     @clear="onDateClear(item.id, col.field)"
                   >
                     <template #append>
@@ -113,7 +149,9 @@
                         <q-popup-proxy transition-show="scale" transition-hide="scale">
                           <q-date
                             :model-value="getField({ kind: 'saved', id: item.id }, col.field) || null"
-                            mask="YYYY-MM-DD"
+                            mask="DD-MM-YYYY"
+                            default-view="Years"
+                            years-in-month-view
                             @update:model-value="(val) => onDateChange(item.id, col.field, val)"
                           >
                             <div class="row items-center justify-end q-pa-sm">
@@ -139,12 +177,22 @@
                   />
                 </div>
               </td>
-              <td class="text-center bw-ops-col-tint--qty font-mono text-weight-bold batch-col-expires">
+              <td class="text-center font-mono text-weight-bold batch-col-expires">
                 <div class="batch-cell">
                   <div class="batch-cell__label">Expires in</div>
-                  <span :class="expiresInClass(displayExpireDate(item.id, item.expire_date))">
-                    {{ formatExpiresIn(displayExpireDate(item.id, item.expire_date)) }}
-                  </span>
+                  <span>{{ formatExpiresIn(displayExpireDate(item.id, item.expire_date)) }}</span>
+                </div>
+              </td>
+              <td class="text-center batch-col-arrived" @click.stop>
+                <div class="batch-cell">
+                  <div class="batch-cell__label">Arrived</div>
+                  <q-checkbox
+                    :model-value="getIsArrived(item.id)"
+                    dense
+                    color="primary"
+                    :disable="isRowSaving({ kind: 'saved', id: item.id })"
+                    @update:model-value="(val) => toggleArrived(item.id, val)"
+                  />
                 </div>
               </td>
               <td class="text-center batch-col-actions">
@@ -183,13 +231,30 @@
       :field-locked="pasteFieldLocked"
       @apply="onColumnPasteApply"
     />
+
+    <BatchCodeAddItemDialog
+      v-model="addDialogOpen"
+      :saving="isAddingRow"
+      @submit="onAddLineSubmit"
+    />
+
+    <BatchCodeCsvImportDialog
+      v-model="importDialogOpen"
+      :saving="isPasting"
+      @apply="onCsvImportApply"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, toRef } from 'vue';
-import { daysUntilExpire } from '../utils/batchCodeExpiry';
+import { computed, ref, toRef, watch } from 'vue';
+import { requestConfirmation, showSuccessNotification } from 'src/utils/appFeedback';
+import { batchExpiryRowClass, formatExpiresIn } from '../utils/batchCodeExpiry';
+import BatchCodeAddItemDialog from './BatchCodeAddItemDialog.vue';
+import BatchCodeCsvImportDialog from './BatchCodeCsvImportDialog.vue';
 import BatchCodeRowPasteDialog from './BatchCodeRowPasteDialog.vue';
+import type { BatchCodePasteRow } from '../repositories/batchCodeRepository';
+import { batchCodePasteRowsToMatrix } from '../utils/batchCodeCsv';
 import {
   BATCH_CODE_FIELD_LABELS,
   BATCH_CODE_PASTE_FIELDS,
@@ -254,14 +319,76 @@ const {
   commitRow,
   pasteGrid,
   pasteColumn,
-  addEmptyRow,
+  addLineFromDialog,
   deleteRow,
+  deleteRows,
+  getIsArrived,
+  toggleArrived,
   isRowSaving,
   isAddingRow,
   isPasting,
+  isBulkDeleting,
 } = useShipmentBatchCodeGrid(toRef(props, 'listId'));
 
+const selectedIds = ref<Set<number>>(new Set());
+
+watch(
+  savedRows,
+  (rows) => {
+    const valid = new Set(rows.map((row) => row.id));
+    const next = new Set<number>();
+    selectedIds.value.forEach((id) => {
+      if (valid.has(id)) next.add(id);
+    });
+    selectedIds.value = next;
+  },
+  { deep: true },
+);
+
+const selectedCount = computed(() => selectedIds.value.size);
+
+const allRowsSelected = computed(
+  () => savedRows.value.length > 0 && savedRows.value.every((row) => selectedIds.value.has(row.id)),
+);
+
+const onToggleSelectAll = (checked: boolean) => {
+  if (checked) {
+    selectedIds.value = new Set(savedRows.value.map((row) => row.id));
+  } else {
+    selectedIds.value = new Set();
+  }
+};
+
+const onToggleRow = (id: number, checked: boolean) => {
+  const next = new Set(selectedIds.value);
+  if (checked) next.add(id);
+  else next.delete(id);
+  selectedIds.value = next;
+};
+
+const onDeleteSelected = async () => {
+  const ids = [...selectedIds.value];
+  if (ids.length < 2 || isBulkDeleting.value) return;
+
+  const ok = await requestConfirmation(
+    `Delete ${ids.length} batch lines? This cannot be undone.`,
+    'Delete selected lines',
+    'Delete',
+  );
+  if (!ok) return;
+
+  try {
+    await deleteRows(ids);
+    selectedIds.value = new Set();
+    showSuccessNotification(`Deleted ${ids.length} lines.`);
+  } catch {
+    // toast from composable
+  }
+};
+
 const focusedCell = ref({ rowIndex: 0, colIndex: 0 });
+const addDialogOpen = ref(false);
+const importDialogOpen = ref(false);
 const pasteDialogOpen = ref(false);
 const pasteStartRowIndex = ref(0);
 const pasteField = ref<BatchCodePasteField>('product_code');
@@ -285,6 +412,23 @@ const onColumnPasteApply = async (payload: { field: BatchCodePasteField; lines: 
   if (isPasting.value) return;
   await pasteColumn(pasteStartRowIndex.value, payload.field, payload.lines);
   pasteDialogOpen.value = false;
+};
+
+const onAddLineSubmit = async (payload: BatchCodePasteRow) => {
+  if (isAddingRow.value) return;
+  try {
+    await addLineFromDialog(payload);
+    addDialogOpen.value = false;
+  } catch {
+    // error toast handled in composable
+  }
+};
+
+const onCsvImportApply = async (rows: BatchCodePasteRow[]) => {
+  if (isPasting.value || rows.length === 0) return;
+  const matrix = batchCodePasteRowsToMatrix(rows);
+  await pasteGrid(savedRows.value.length, 0, matrix);
+  importDialogOpen.value = false;
 };
 
 const onDateChange = async (itemId: number, field: BatchCodePasteField, value: string | null) => {
@@ -316,21 +460,6 @@ const displayExpireDate = (itemId: number, savedExpire: string | null): string |
   return draft || savedExpire;
 };
 
-const formatExpiresIn = (expireDate: string | null): string => {
-  const days = daysUntilExpire(expireDate);
-  if (days === null) return '—';
-  if (days === 0) return 'Today';
-  if (days < 0) return `${Math.abs(days)}d ago`;
-  return `${days}d`;
-};
-
-const expiresInClass = (expireDate: string | null): string => {
-  const days = daysUntilExpire(expireDate);
-  if (days === null) return 'text-grey-6';
-  if (days < 0) return 'text-negative';
-  if (days <= 30) return 'text-orange-9';
-  return 'text-grey-9';
-};
 </script>
 
 <style scoped>
@@ -372,16 +501,26 @@ const expiresInClass = (expireDate: string | null): string => {
   box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.08);
 }
 
-.batch-col-add {
-  width: 44px;
-  min-width: 44px;
+.batch-col-select {
+  width: 40px;
+  min-width: 40px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fff;
+  box-shadow: 1px 0 0 rgba(15, 23, 42, 0.06);
+}
+
+.batch-table-head .batch-col-select {
+  z-index: 4;
+  background: #f8fafc !important;
 }
 
 .batch-col-sl {
   width: 48px;
   min-width: 48px;
   position: sticky;
-  left: 0;
+  left: 40px;
   z-index: 2;
   background: #fff;
   box-shadow: 1px 0 0 rgba(15, 23, 42, 0.06);
@@ -398,6 +537,11 @@ const expiresInClass = (expireDate: string | null): string => {
 
 .batch-col-expires {
   min-width: 96px;
+}
+
+.batch-col-arrived {
+  width: 72px;
+  min-width: 72px;
 }
 
 .batch-col-actions {
@@ -433,13 +577,40 @@ const expiresInClass = (expireDate: string | null): string => {
   height: 52px;
 }
 
-.shipment-items-markup-table th.bw-ops-col-tint--qty,
-.shipment-items-markup-table td.bw-ops-col-tint--qty {
+.shipment-items-markup-table th.bw-ops-col-tint--qty {
   background-color: #d0e6ff !important;
   box-shadow: inset 2px 0 0 #2563eb;
 }
 
-.shipment-items-markup-table tr:hover td {
+.batch-row--warn td {
+  color: #b42318;
+}
+
+.batch-row--ok td {
+  color: #047857;
+}
+
+.batch-row--unset td {
+  color: #1d4ed8;
+}
+
+:deep(.batch-row--warn .q-field__native),
+:deep(.batch-row--warn .excel-cell-input-native),
+:deep(.batch-row--ok .q-field__native),
+:deep(.batch-row--ok .excel-cell-input-native),
+:deep(.batch-row--unset .q-field__native),
+:deep(.batch-row--unset .excel-cell-input-native) {
+  color: inherit !important;
+}
+
+:deep(.batch-row--warn .batch-date-icon),
+:deep(.batch-row--ok .batch-date-icon),
+:deep(.batch-row--unset .batch-date-icon) {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.shipment-items-markup-table tbody tr:hover td {
   filter: brightness(0.98);
 }
 

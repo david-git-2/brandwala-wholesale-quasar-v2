@@ -497,7 +497,8 @@ export interface ShipmentSummaryKPIs {
   total_received_quantity: number;
   packaging_weight_kg: number;
   cargo_weight_kg: number;
-  boxes_weight_kg: number;
+  boxes_received_weight_kg: number;
+  boxes_shipping_weight_kg: number;
   boxes_count: number;
   purchase_currency_symbol: string;
   cost_currency_symbol: string;
@@ -550,7 +551,8 @@ const getShipmentSummary = async (
     (sum, it) => sum + (Number(it.ordered_quantity) || 0) * (Number(it.package_weight) || 0),
     0,
   );
-  const boxesWeightKg = boxes.reduce((sum, b) => sum + (Number(b.weight_kg) || 0), 0);
+  const boxesReceivedKg = boxes.reduce((sum, b) => sum + (Number(b.received_weight) || 0), 0);
+  const boxesShippingKg = boxes.reduce((sum, b) => sum + (Number(b.shipping_weight) || 0), 0);
   const cargoWeightKg = Number(shipment.total_weight_kg ?? shipment.received_weight) || 0;
   const hasCargoWeight = cargoWeightKg > 0;
 
@@ -579,7 +581,8 @@ const getShipmentSummary = async (
     total_received_quantity: totalReceivedQty,
     packaging_weight_kg: Math.round(packagingWeightKg * 100) / 100,
     cargo_weight_kg: Math.round(cargoWeightKg * 100) / 100,
-    boxes_weight_kg: Math.round(boxesWeightKg * 100) / 100,
+    boxes_received_weight_kg: Math.round(boxesReceivedKg * 100) / 100,
+    boxes_shipping_weight_kg: Math.round(boxesShippingKg * 100) / 100,
     boxes_count: boxes.length,
     purchase_currency_symbol: '£',
     cost_currency_symbol: '৳',

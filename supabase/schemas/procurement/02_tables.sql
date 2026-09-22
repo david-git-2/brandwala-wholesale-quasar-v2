@@ -463,10 +463,12 @@ CREATE TABLE IF NOT EXISTS "public"."global_shipment_boxes" (
     "parent_tenant_id" bigint NOT NULL,
     "shipment_id" bigint NOT NULL,
     "box_number" "text" NOT NULL,
-    "weight_kg" numeric NOT NULL,
+    "received_weight" numeric NOT NULL,
+    "shipping_weight" numeric NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "global_shipment_boxes_weight_kg_check" CHECK (("weight_kg" >= (0)::numeric))
+    CONSTRAINT "global_shipment_boxes_received_weight_check" CHECK (("received_weight" >= (0)::numeric)),
+    CONSTRAINT "global_shipment_boxes_shipping_weight_check" CHECK (("shipping_weight" >= (0)::numeric))
 );
 
 
@@ -491,9 +493,7 @@ ALTER SEQUENCE "public"."global_shipment_boxes_id_seq" OWNED BY "public"."global
 CREATE TABLE IF NOT EXISTS "public"."batch_code_lists" (
     "id" bigint NOT NULL,
     "parent_tenant_id" bigint NOT NULL,
-    "shipment_id" bigint,
-    "vendor_id" bigint NOT NULL,
-    "name" "text" NOT NULL,
+    "shipment_id" bigint NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
@@ -525,6 +525,7 @@ CREATE TABLE IF NOT EXISTS "public"."batch_code_items" (
     "batch_id" "text",
     "manufacturing_date" "date",
     "expire_date" "date",
+    "is_arrived" boolean DEFAULT false NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
@@ -1222,15 +1223,12 @@ CREATE INDEX "global_shipment_boxes_shipment_idx" ON "public"."global_shipment_b
 
 
 
-CREATE UNIQUE INDEX "batch_code_lists_shipment_id_key" ON "public"."batch_code_lists" USING "btree" ("shipment_id") WHERE ("shipment_id" IS NOT NULL);
+CREATE UNIQUE INDEX "batch_code_lists_shipment_id_key" ON "public"."batch_code_lists" USING "btree" ("shipment_id");
 
 
 
 CREATE INDEX "batch_code_lists_parent_tenant_idx" ON "public"."batch_code_lists" USING "btree" ("parent_tenant_id");
 
-
-
-CREATE INDEX "batch_code_lists_vendor_idx" ON "public"."batch_code_lists" USING "btree" ("vendor_id");
 
 
 
@@ -1604,11 +1602,6 @@ ALTER TABLE ONLY "public"."batch_code_lists"
 
 ALTER TABLE ONLY "public"."batch_code_lists"
     ADD CONSTRAINT "batch_code_lists_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."global_shipments"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."batch_code_lists"
-    ADD CONSTRAINT "batch_code_lists_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE RESTRICT;
 
 
 

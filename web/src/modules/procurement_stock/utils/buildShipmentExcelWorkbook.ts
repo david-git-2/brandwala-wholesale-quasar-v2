@@ -11,6 +11,9 @@ export interface BuildShipmentExcelInput {
   items: GlobalShipmentItem[];
   totals: ShipmentCostSummary;
   boxWeightSum: number;
+  boxReceivedWeightKg?: number;
+  boxShippingWeightKg?: number;
+  boxCount?: number;
   purchaseCurrencySymbol: string;
   costCurrencySymbol: string;
   worksheetName?: string;
@@ -484,6 +487,26 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
     { label: 'Status', val: input.shipment.status },
     { label: 'Stock Ready', val: input.shipment.stock_ready ? 'Ready' : 'Not Ready' },
     { label: 'Received Date', val: input.shipment.received_date || '—' },
+    {
+      label: 'Box weight received (kg)',
+      val:
+        input.boxReceivedWeightKg != null
+          ? Number(input.boxReceivedWeightKg).toFixed(2)
+          : '—',
+    },
+    {
+      label: 'Box weight shipping (kg)',
+      val:
+        input.boxShippingWeightKg != null
+          ? Number(input.boxShippingWeightKg).toFixed(2)
+          : input.boxWeightSum != null
+            ? Number(input.boxWeightSum).toFixed(2)
+            : '—',
+    },
+    {
+      label: 'Boxes counted',
+      val: input.boxCount != null ? String(input.boxCount) : '—',
+    },
   ];
 
   overviewData.forEach((row, i) => {

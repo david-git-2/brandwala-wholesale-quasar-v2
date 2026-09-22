@@ -59,6 +59,26 @@ export function useBatchCodeListByShipmentQuery(
   });
 }
 
+export function useBatchCodeItemsByShipmentQuery(
+  shipmentId: MaybeRefOrGetter<number | null | undefined>,
+) {
+  const resolvedShipmentId = computed(() => resolveId(shipmentId));
+
+  return useQuery({
+    queryKey: computed(() =>
+      resolvedShipmentId.value != null
+        ? procurementStockQueryKeys.batchCodeItemsByShipment(resolvedShipmentId.value)
+        : ['procurementStock', 'batchCodeItemsByShipment', 'disabled'],
+    ),
+    queryFn: async () => {
+      const list = await batchCodeRepository.getByShipmentId(resolvedShipmentId.value!);
+      if (!list) return [];
+      return batchCodeRepository.listItemsByListId(list.id);
+    },
+    enabled: computed(() => resolvedShipmentId.value !== null),
+  });
+}
+
 export function useBatchCodeItemsQuery(listId: MaybeRefOrGetter<number | null | undefined>) {
   const resolvedListId = computed(() => resolveId(listId));
 

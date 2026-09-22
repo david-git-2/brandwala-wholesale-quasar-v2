@@ -100,16 +100,20 @@ Physical stock is owned strictly at the **Parent Tenant** level. Sister concerns
 
 ### US-6: Batch Code Analyze
 - **As a** Procurement Officer  
-- **I want** to store batch id, barcode, product code, manufacturing date, and expire date for a shipment’s vendor  
+- **I want** to store batch id, barcode, product code, manufacturing date, and expire date for a shipment  
 - **So that** I can see how many days are left until each batch expires.
 
 #### Acceptance Criteria
 - [ ] Gear → More → **Batch Code** opens `/:slug/app/procurement/shipment/:id/batch-code`. Grant: `global_shipment`.
-- [ ] `batch_code_lists.name` is required. `shipment_id` is optional; when set, at most one list per shipment and vendor comes from the shipment. No vendor on shipment → “Set a vendor on the shipment first”.
+- [ ] Each `batch_code_lists` row is tied to exactly one shipment (`shipment_id` required, unique). If a list exists for the shipment, open it; otherwise create `{ parent_tenant_id, shipment_id }`. No list name or vendor on the list.
 - [ ] Lines on `batch_code_items` (`list_id` required). Empty expire + mfg → expire = mfg + **36 calendar months**. Hand-edited expire is kept until expire is cleared.
-- [ ] **Expires in** is UI-only (`expire_date − today` whole days; negative = expired). Not stored.
-- [ ] Excel grid; auto-save on blur when a line has at least one of barcode / product code / batch id plus mfg or expire.
-- [ ] `shipment_id` null is for later vendor-only lists, not v1. No write to `global_stocks`.
+- [ ] **Expires in** is UI-only (`expire_date − today` whole days; shown as months + days, e.g. `2mo 5d`, or **Expired** when due today or past). Whole row **text** color: **red** under **14 months** or expired; **green** when safely past that; **blue** when no expire date. Not stored.
+- [ ] Add one line via **Add** dialog. Bulk add / bulk update via column paste and grid paste (`paste_batch_code_items`). Grid cell blur still saves edits. Mfg / expire dates are typed or picked as `DD-MM-YYYY` (stored as date). Calendar starts on year.
+- [ ] **Import CSV** on the batch grid: download sample file, fill rows, upload — appends new lines via `paste_batch_code_items` starting at the next row (does not overwrite existing lines). Date columns accept Excel-style `M/D/YYYY` (e.g. `6/27/2026`) as well as `DD-MM-YYYY`.
+- [ ] **`is_arrived`** on each `batch_code_items` line (default **false**). Staff tick/untick on the batch grid (saved like other edits). New lines, CSV import, and paste do **not** set arrived.
+- [ ] Row checkboxes on the batch grid; when **two or more** lines are selected, **Delete selected** removes them in one action.
+- [ ] Procurement hub **Batch Code** lists shipment-linked files only (search by shipment); create only from shipment gear. No write to `global_stocks`.
+- [ ] **Shipment line items** table shows a compact **Batch** column (count of matched batch analyze lines, same as rows in the dialog). Tap opens a dialog table of batch ID, expire date, **Expires in**, and **Arrived** (Yes / —) per matched line (same red / green / blue text rules). Bottom form **adds a missing batch** for that line (batch ID, expire `DD-MM-YYYY`, arrived checkbox); creates the shipment batch list if needed and inserts a row with the line’s barcode / product code.
 
 ---
 
@@ -153,7 +157,7 @@ Physical stock is owned strictly at the **Parent Tenant** level. Sister concerns
 
 ```text
 Shipment gear → More → Batch Code
-[ Back ] Batch Code — vendor name
+[ Back ] Batch Code — shipment name / #
+[ Add line ]  (column paste + grid paste for bulk)
 BARCODE | PRODUCT CODE | BATCH ID | MFG DATE | EXPIRE DATE | EXPIRES IN (days, read-only)
-+ new row (auto-save)
 ```

@@ -31,7 +31,7 @@ const create = async (
 
 const update = async (
   id: number,
-  payload: Partial<Pick<GlobalShipmentBox, 'box_number' | 'weight_kg'>>,
+  payload: Partial<Pick<GlobalShipmentBox, 'box_number' | 'received_weight' | 'shipping_weight'>>,
 ): Promise<GlobalShipmentBox> => {
   const { data, error } = await db
     .from('global_shipment_boxes')

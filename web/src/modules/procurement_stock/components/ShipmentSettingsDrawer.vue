@@ -264,10 +264,58 @@
                   <div class="text-xxs text-grey-5">Used for freight</div>
                 </div>
                 <div class="col-6">
-                  <div class="text-xxs text-grey-6">Boxes</div>
+                  <div class="text-xxs text-grey-6">Box received</div>
                   <div class="text-caption text-weight-bold font-mono text-grey-9">
-                    {{ currentShipmentBoxesTotal.toFixed(2) }} kg
+                    {{ currentShipmentBoxesReceivedTotal.toFixed(2) }} kg
                   </div>
+                  <div class="text-xxs text-grey-5">
+                    {{ currentShipmentBoxesCount }}
+                    {{ currentShipmentBoxesCount === 1 ? 'box' : 'boxes' }}
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="text-xxs text-grey-6">Box shipping</div>
+                  <div class="text-caption text-weight-bold font-mono text-grey-9">
+                    {{ currentShipmentBoxesShippingTotal.toFixed(2) }} kg
+                  </div>
+                </div>
+                <div
+                  v-if="currentShipmentBoxesCount > 0"
+                  class="col-12 q-mt-xs q-pa-sm rounded-borders bg-grey-1 column q-gutter-y-sm"
+                >
+                  <div>
+                    <div class="text-caption text-weight-bold font-mono text-grey-9">
+                      {{ boxTotalsNetDiff.formulaLabel }} =
+                      {{ boxTotalsNetDiff.signedKgLabel }}
+                    </div>
+                    <div class="text-xxs text-grey-7 q-mt-2xs">
+                      {{ boxTotalsNetDiff.explanation }}
+                    </div>
+                  </div>
+                  <template v-if="invoiceCargoKg > 0">
+                    <q-separator />
+                    <div class="text-xxs text-weight-bold text-grey-6 uppercase">
+                      vs invoice cargo ({{ invoiceCargoKg.toFixed(2) }} kg)
+                    </div>
+                    <div>
+                      <div class="text-caption text-weight-bold font-mono text-grey-9">
+                        {{ boxShippingVsInvoice.formulaLabel }} =
+                        {{ boxShippingVsInvoice.signedKgLabel }}
+                      </div>
+                      <div class="text-xxs text-grey-7 q-mt-2xs">
+                        {{ boxShippingVsInvoice.explanation }}
+                      </div>
+                    </div>
+                    <div>
+                      <div class="text-caption text-weight-bold font-mono text-grey-9">
+                        {{ boxReceivedVsInvoice.formulaLabel }} =
+                        {{ boxReceivedVsInvoice.signedKgLabel }}
+                      </div>
+                      <div class="text-xxs text-grey-7 q-mt-2xs">
+                        {{ boxReceivedVsInvoice.explanation }}
+                      </div>
+                    </div>
+                  </template>
                 </div>
               </div>
               <div
@@ -358,8 +406,18 @@
                 <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
                   Total Weight
                 </div>
-                <div v-if="productTotalWeightKg > 0" class="text-caption text-grey-7 font-mono" style="font-size: 11px">
-                  Lines Total: <span class="text-weight-bold text-grey-9">{{ productTotalWeightKg.toFixed(2) }} kg</span>
+                <div class="text-caption text-grey-7 font-mono column items-end" style="font-size: 11px">
+                  <div v-if="productTotalWeightKg > 0">
+                    Lines:
+                    <span class="text-weight-bold text-grey-9">{{ productTotalWeightKg.toFixed(2) }} kg</span>
+                  </div>
+                  <div v-if="currentShipmentBoxesCount > 0">
+                    Boxes:
+                    <span class="text-weight-bold text-grey-9">
+                      {{ currentShipmentBoxesReceivedTotal.toFixed(2) }} recv /
+                      {{ currentShipmentBoxesShippingTotal.toFixed(2) }} ship kg
+                    </span>
+                  </div>
                 </div>
               </div>
               <q-input
@@ -712,6 +770,7 @@ import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import { describeBoxTotalsNetDiff, describeBoxVsInvoiceCargo } from '../utils/boxWeightVariance';
 import type {
   ShipmentProgressFlow,
   ShipmentProgressTag,
@@ -895,7 +954,9 @@ const confirmDeleteFromDrawer = () => {
 
 const {
   totals,
-  currentShipmentBoxesTotal,
+  currentShipmentBoxesReceivedTotal,
+  currentShipmentBoxesShippingTotal,
+  currentShipmentBoxesCount,
   currentPurchaseCurrencySymbol,
   currentCostCurrencySymbol,
   isStockPosted,
@@ -903,6 +964,34 @@ const {
   canEditCosts,
   weightNeedsAttention,
 } = props.calculations;
+
+const boxTotalsNetDiff = computed(() =>
+  describeBoxTotalsNetDiff(
+    currentShipmentBoxesReceivedTotal.value,
+    currentShipmentBoxesShippingTotal.value,
+  ),
+);
+
+const invoiceCargoKg = computed(() => {
+  const t = totals?.value ?? totals;
+  return Number(t?.cargoWeightKg) || 0;
+});
+
+const boxShippingVsInvoice = computed(() =>
+  describeBoxVsInvoiceCargo(
+    'Box shipping',
+    currentShipmentBoxesShippingTotal.value,
+    invoiceCargoKg.value,
+  ),
+);
+
+const boxReceivedVsInvoice = computed(() =>
+  describeBoxVsInvoiceCargo(
+    'Box received',
+    currentShipmentBoxesReceivedTotal.value,
+    invoiceCargoKg.value,
+  ),
+);
 
 const formatMoney = (symbol: string, value: number | null | undefined) => {
   const n = Number(value) || 0;

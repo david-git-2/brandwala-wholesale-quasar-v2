@@ -1,7 +1,7 @@
 import { computed, reactive, ref, type MaybeRefOrGetter } from 'vue';
 import { showErrorNotification } from 'src/utils/appFeedback';
-import type { BatchCodePasteRow } from '../repositories/batchCodeRepository';
-import { defaultExpireFromManufacturing } from '../utils/batchCodeExpiry';
+import type { BatchCodeItem, BatchCodePasteRow } from '../repositories/batchCodeRepository';
+import { defaultExpireFromManufacturing, toDisplayDate, toIsoDate } from '../utils/batchCodeExpiry';
 import { useBatchCodeItemMutations } from './useBatchCodeMutations';
 import { useBatchCodeItemsQuery } from './useBatchCodeQueries';
 
@@ -74,11 +74,13 @@ const hasAnyContent = (row: DraftRow | SavedRowDraft): boolean =>
       row.expire_date?.trim(),
   );
 
+const DATE_FIELDS: (keyof DraftRow)[] = ['manufacturing_date', 'expire_date'];
+
 const normalizePayload = (row: DraftRow | SavedRowDraft) => {
-  const manufacturingDate = row.manufacturing_date?.trim() || null;
-  let expireDate = row.expire_date?.trim() || null;
+  const manufacturingDate = toIsoDate(row.manufacturing_date);
+  let expireDate = toIsoDate(row.expire_date);
   if (manufacturingDate && !expireDate) {
-    expireDate = defaultExpireFromManufacturing(manufacturingDate);
+    expireDate = defaultExpireFromManufacturing(manufacturingDate) || null;
   }
   return {
     barcode: row.barcode?.trim() || null,
@@ -102,6 +104,7 @@ export function useShipmentBatchCodeGrid(listId: MaybeRefOrGetter<number>) {
     createItemMutation,
     updateItemMutation,
     deleteItemMutation,
+    deleteItemsMutation,
     pasteItemsMutation,
   } = useBatchCodeItemMutations(listId);
 
@@ -116,6 +119,7 @@ export function useShipmentBatchCodeGrid(listId: MaybeRefOrGetter<number>) {
     if (draft !== undefined) return draft;
     const saved = getSavedItem(row.id);
     const value = saved?.[field];
+    if (DATE_FIELDS.includes(field)) return toDisplayDate(value ?? '');
     return value ?? '';
   };
 
@@ -202,7 +206,7 @@ export function useShipmentBatchCodeGrid(listId: MaybeRefOrGetter<number>) {
       rowCells.forEach((cell, colOffset) => {
         const field = BATCH_CODE_PASTE_FIELDS[startFieldIndex + colOffset];
         if (field) {
-          row[field] = cell;
+          row[field] = DATE_FIELDS.includes(field) ? toIsoDate(cell) : cell;
         }
       });
       return row;
@@ -239,18 +243,15 @@ export function useShipmentBatchCodeGrid(listId: MaybeRefOrGetter<number>) {
     }
   };
 
-  const addEmptyRow = async () => {
+  const addLineFromDialog = async (
+    payload: Omit<BatchCodeItem, 'id' | 'list_id' | 'created_at' | 'updated_at'>,
+  ) => {
     savingRowKey.value = 'add';
     try {
-      await createItemMutation.mutateAsync({
-        barcode: null,
-        product_code: null,
-        batch_id: null,
-        manufacturing_date: null,
-        expire_date: null,
-      });
+      await createItemMutation.mutateAsync(payload);
     } catch (error: unknown) {
       showErrorNotification((error as Error).message || 'Failed to add batch line.');
+      throw error;
     } finally {
       savingRowKey.value = null;
     }
@@ -268,6 +269,36 @@ export function useShipmentBatchCodeGrid(listId: MaybeRefOrGetter<number>) {
     }
   };
 
+  const getIsArrived = (id: number): boolean => getSavedItem(id)?.is_arrived ?? false;
+
+  const toggleArrived = async (id: number, value: boolean) => {
+    const saved = getSavedItem(id);
+    if (!saved || saved.is_arrived === value) return;
+
+    savingRowKey.value = `saved-${id}`;
+    try {
+      await updateItemMutation.mutateAsync({ id, payload: { is_arrived: value } });
+    } catch (error: unknown) {
+      showErrorNotification((error as Error).message || 'Failed to update arrived.');
+    } finally {
+      savingRowKey.value = null;
+    }
+  };
+
+  const deleteRows = async (ids: number[]) => {
+    if (ids.length === 0) return;
+    savingRowKey.value = 'bulk-delete';
+    try {
+      await deleteItemsMutation.mutateAsync(ids);
+      ids.forEach((id) => clearSavedRowDraft(id));
+    } catch (error: unknown) {
+      showErrorNotification((error as Error).message || 'Failed to delete batch lines.');
+      throw error;
+    } finally {
+      savingRowKey.value = null;
+    }
+  };
+
   const isRowSaving = (row: BatchGridRowRef): boolean => {
     if (row.kind === 'draft') return savingRowKey.value === 'draft';
     return savingRowKey.value === `saved-${row.id}`;
@@ -279,6 +310,9 @@ export function useShipmentBatchCodeGrid(listId: MaybeRefOrGetter<number>) {
   const isPasting = computed(
     () => savingRowKey.value === 'paste' || pasteItemsMutation.isPending.value,
   );
+  const isBulkDeleting = computed(
+    () => savingRowKey.value === 'bulk-delete' || deleteItemsMutation.isPending.value,
+  );
 
   return {
     loading,
@@ -289,10 +323,14 @@ export function useShipmentBatchCodeGrid(listId: MaybeRefOrGetter<number>) {
     commitRow,
     pasteGrid,
     pasteColumn,
-    addEmptyRow,
+    addLineFromDialog,
     deleteRow,
+    deleteRows,
+    getIsArrived,
+    toggleArrived,
     isRowSaving,
     isAddingRow,
     isPasting,
+    isBulkDeleting,
   };
 }

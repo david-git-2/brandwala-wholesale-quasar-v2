@@ -49530,10 +49530,12 @@ CREATE TABLE IF NOT EXISTS "public"."global_shipment_boxes" (
     "parent_tenant_id" bigint NOT NULL,
     "shipment_id" bigint NOT NULL,
     "box_number" "text" NOT NULL,
-    "weight_kg" numeric NOT NULL,
+    "received_weight" numeric NOT NULL,
+    "shipping_weight" numeric NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "global_shipment_boxes_weight_kg_check" CHECK (("weight_kg" >= (0)::numeric))
+    CONSTRAINT "global_shipment_boxes_received_weight_check" CHECK (("received_weight" >= (0)::numeric)),
+    CONSTRAINT "global_shipment_boxes_shipping_weight_check" CHECK (("shipping_weight" >= (0)::numeric))
 );
 
 

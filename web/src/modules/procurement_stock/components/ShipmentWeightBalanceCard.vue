@@ -66,7 +66,9 @@
       <template #header>
         <div class="row items-center justify-between full-width q-pr-sm">
           <span>Box weights — optional check only (does not change cost)</span>
-          <span class="text-grey-6 text-weight-medium">Total: {{ boxTotalKg.toFixed(2) }} kg</span>
+          <span class="text-grey-6 text-weight-medium">
+            Recv {{ boxTotalReceivedKg.toFixed(2) }} · Ship {{ boxTotalShippingKg.toFixed(2) }} kg
+          </span>
         </div>
       </template>
       <div class="q-pa-sm">
@@ -86,9 +88,24 @@
         </div>
         <div class="col-4">
           <q-input
-            v-model.number="newBoxWeight"
+            v-model.number="newBoxReceivedWeight"
             type="number"
-            label="Weight (kg)"
+            label="Received (kg)"
+            placeholder="e.g. 15.0"
+            outlined
+            dense
+            stack-label
+            bg-color="white"
+            class="soft-input"
+            step="0.01"
+            @keyup.enter="submitBoxForm"
+          />
+        </div>
+        <div class="col-4">
+          <q-input
+            v-model.number="newBoxShippingWeight"
+            type="number"
+            label="Shipping (kg)"
             placeholder="e.g. 15.5"
             outlined
             dense
@@ -99,14 +116,13 @@
             @keyup.enter="submitBoxForm"
           />
         </div>
-        <div class="col-4 row items-center justify-center q-gutter-x-xs no-wrap">
+        <div class="col-12 row items-center justify-center q-gutter-x-xs no-wrap q-mt-xs">
           <q-btn
             :color="editingBoxId !== null ? 'green-7' : 'primary'"
             :icon="editingBoxId !== null ? 'check' : 'add'"
             dense
             flat
             round
-            :disable="!newBoxNumber.trim() || newBoxWeight === null || newBoxWeight <= 0"
             @click="submitBoxForm"
           >
             <q-tooltip>{{ editingBoxId !== null ? 'Update Box' : 'Add Box' }}</q-tooltip>
@@ -155,30 +171,10 @@
                 />
               </q-popup-edit> </strong
             >:
-            <span class="cursor-pointer text-underline-dashed">
-              {{ box.weight_kg }}
-              <q-popup-edit
-                :model-value="box.weight_kg"
-                buttons
-                persistent
-                label-set="Save"
-                label-cancel="Cancel"
-                v-slot="scope"
-                @save="(val) => updateBox(box.id, { weight_kg: Number(val) })"
-              >
-                <q-input
-                  :model-value="scope.value ?? ''"
-                  type="number"
-                  step="0.01"
-                  dense
-                  outlined
-                  autofocus
-                  label="Weight (kg)"
-                  @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
-                  @keyup.enter="scope.set"
-                />
-              </q-popup-edit>
-            </span>
+            recv
+            <strong>{{ box.received_weight }}</strong>
+            kg · ship
+            <strong>{{ box.shipping_weight }}</strong>
             kg
           </div>
           <div class="row items-center q-gutter-x-xs">
@@ -212,27 +208,46 @@
       </div>
 
       <!-- Box vs invoice verification -->
-      <div v-if="boxes.length && savedInvoiceWeightKg > 0" class="q-mt-sm">
+      <div v-if="boxes.length && savedInvoiceWeightKg > 0" class="q-mt-sm q-gutter-y-xs">
         <q-banner
           dense
-          :class="boxVerificationMatch ? 'bg-green-1 text-green-9' : 'bg-amber-1 text-amber-10'"
+          :class="boxShippingVerificationMatch ? 'bg-green-1 text-green-9' : 'bg-amber-1 text-amber-10'"
           rounded
           style="font-size: 11px"
         >
           <template v-slot:avatar>
-            <q-icon :name="boxVerificationMatch ? 'check_circle' : 'warning'" />
+            <q-icon :name="boxShippingVerificationMatch ? 'check_circle' : 'warning'" />
           </template>
-          <span v-if="boxVerificationMatch">
-            Box total ({{ boxTotalKg.toFixed(2) }} kg) matches cargo invoice weight ({{
+          <span v-if="boxShippingVerificationMatch">
+            Box shipping total ({{ boxTotalShippingKg.toFixed(2) }} kg) matches cargo invoice ({{
               savedInvoiceWeightKg.toFixed(2)
             }}
             kg).
           </span>
           <span v-else>
-            Box total ({{ boxTotalKg.toFixed(2) }} kg) differs from cargo invoice ({{
+            Box shipping ({{ boxTotalShippingKg.toFixed(2) }} kg) differs from cargo invoice ({{
               savedInvoiceWeightKg.toFixed(2)
             }}
-            kg) by {{ Math.abs(boxTotalKg - savedInvoiceWeightKg).toFixed(2) }} kg.
+            kg) by {{ Math.abs(boxTotalShippingKg - savedInvoiceWeightKg).toFixed(2) }} kg.
+          </span>
+        </q-banner>
+        <q-banner
+          dense
+          :class="boxReceivedVerificationMatch ? 'bg-green-1 text-green-9' : 'bg-amber-1 text-amber-10'"
+          rounded
+          style="font-size: 11px"
+        >
+          <template v-slot:avatar>
+            <q-icon :name="boxReceivedVerificationMatch ? 'check_circle' : 'warning'" />
+          </template>
+          <span v-if="boxReceivedVerificationMatch">
+            Box received total ({{ boxTotalReceivedKg.toFixed(2) }} kg) matches saved invoice weight.
+          </span>
+          <span v-else>
+            Box received ({{ boxTotalReceivedKg.toFixed(2) }} kg) differs from saved invoice ({{
+              savedInvoiceWeightKg.toFixed(2)
+            }}
+            kg) by {{ Math.abs(boxTotalReceivedKg - savedInvoiceWeightKg).toFixed(2) }} kg.
           </span>
         </q-banner>
       </div>
@@ -256,9 +271,12 @@
       </div>
       <div class="col-3">
         <div class="bg-grey-2 q-pa-xs rounded-borders">
-          <div class="text-caption text-grey-7" style="font-size: 10px">Box Total</div>
+          <div class="text-caption text-grey-7" style="font-size: 10px">Boxes (ship)</div>
           <div class="text-subtitle2 text-weight-bold text-mono" style="font-size: 12px">
-            {{ boxTotalKg.toFixed(2) }} kg
+            {{ boxTotalShippingKg.toFixed(2) }} kg
+          </div>
+          <div class="text-caption text-grey-6" style="font-size: 9px">
+            recv {{ boxTotalReceivedKg.toFixed(2) }}
           </div>
         </div>
       </div>
@@ -445,7 +463,9 @@ const showPreviewDialog = ref(false);
 
 // Local state for box additions
 const newBoxNumber = ref('');
-const newBoxWeight = ref<number | null>(null);
+const newBoxReceivedWeight = ref<number | null>(null);
+const newBoxShippingWeight = ref<number | null>(null);
+
 const editingBoxId = ref<number | null>(null);
 const applying = ref(false);
 const savingCargoInvoiceWeight = ref(false);
@@ -494,14 +514,24 @@ const saveCargoInvoiceWeight = async (): Promise<boolean> => {
   }
 };
 
-const boxTotalKg = computed(() => {
-  return boxes.value.reduce((sum, box) => sum + (box.weight_kg || 0), 0);
-});
+const boxTotalReceivedKg = computed(() =>
+  boxes.value.reduce((sum, box) => sum + (Number(box.received_weight) || 0), 0),
+);
 
-const boxVerificationMatch = computed(() => {
+const boxTotalShippingKg = computed(() =>
+  boxes.value.reduce((sum, box) => sum + (Number(box.shipping_weight) || 0), 0),
+);
+
+const boxShippingVerificationMatch = computed(() => {
   const invoice = savedInvoiceWeightKg.value;
   if (invoice <= 0 || boxes.value.length === 0) return false;
-  return Math.abs(boxTotalKg.value - invoice) <= 0.1;
+  return Math.abs(boxTotalShippingKg.value - invoice) <= 0.1;
+});
+
+const boxReceivedVerificationMatch = computed(() => {
+  const invoice = savedInvoiceWeightKg.value;
+  if (invoice <= 0 || boxes.value.length === 0) return false;
+  return Math.abs(boxTotalReceivedKg.value - invoice) <= 0.1;
 });
 
 const savedInvoiceWeightKg = computed(() => {
@@ -690,13 +720,15 @@ watch(
 const startEditBox = (box: (typeof boxes.value)[number]) => {
   editingBoxId.value = box.id;
   newBoxNumber.value = box.box_number;
-  newBoxWeight.value = box.weight_kg;
+  newBoxReceivedWeight.value = box.received_weight;
+  newBoxShippingWeight.value = box.shipping_weight;
 };
 
 const cancelEditBox = () => {
   editingBoxId.value = null;
   newBoxNumber.value = '';
-  newBoxWeight.value = null;
+  newBoxReceivedWeight.value = null;
+  newBoxShippingWeight.value = null;
   autoFillNextBoxNumber();
 };
 
@@ -710,8 +742,8 @@ const submitBoxForm = async () => {
 
 const addBox = async () => {
   const num = newBoxNumber.value.trim();
-  const wt = newBoxWeight.value;
-  if (!num || wt === null || wt <= 0) return;
+  const recv = newBoxReceivedWeight.value;
+  const ship = newBoxShippingWeight.value;
 
   try {
     const tenantStore = useTenantStore();
@@ -724,10 +756,12 @@ const addBox = async () => {
       parent_tenant_id: parentTenantId,
       shipment_id: props.shipmentId,
       box_number: num,
-      weight_kg: wt,
+      received_weight: recv ?? 0,
+      shipping_weight: ship ?? 0,
     });
 
-    newBoxWeight.value = null;
+    newBoxReceivedWeight.value = null;
+    newBoxShippingWeight.value = null;
     showSuccessNotification(`Added box ${num} successfully.`);
     await shipmentStore.fetchShipmentBoxes(props.shipmentId);
     // Clear and autofill next box number
@@ -741,13 +775,15 @@ const addBox = async () => {
 const updateBoxFromForm = async () => {
   const id = editingBoxId.value;
   const num = newBoxNumber.value.trim();
-  const wt = newBoxWeight.value;
-  if (id === null || !num || wt === null || wt <= 0) return;
+  const recv = newBoxReceivedWeight.value;
+  const ship = newBoxShippingWeight.value;
+  if (id === null) return;
 
   try {
     await globalShipmentBoxRepository.update(id, {
       box_number: num,
-      weight_kg: wt,
+      received_weight: recv ?? 0,
+      shipping_weight: ship ?? 0,
     });
     showSuccessNotification('Box updated successfully.');
     await shipmentStore.fetchShipmentBoxes(props.shipmentId);
@@ -757,16 +793,10 @@ const updateBoxFromForm = async () => {
   }
 };
 
-const updateBox = async (boxId: number, patch: { box_number?: string; weight_kg?: number }) => {
-  if (patch.box_number !== undefined && !patch.box_number.trim()) {
-    showWarningNotification('Box number cannot be empty.');
-    return;
-  }
-  if (patch.weight_kg !== undefined && (Number.isNaN(patch.weight_kg) || patch.weight_kg <= 0)) {
-    showWarningNotification('Weight must be greater than 0.');
-    return;
-  }
-
+const updateBox = async (
+  boxId: number,
+  patch: { box_number?: string; received_weight?: number; shipping_weight?: number },
+) => {
   try {
     await globalShipmentBoxRepository.update(boxId, patch);
     showSuccessNotification('Box updated successfully.');

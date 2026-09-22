@@ -535,13 +535,13 @@ CREATE POLICY "stock_locations_select" ON "public"."stock_locations" FOR SELECT 
 ALTER TABLE "public"."vendors" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "vendors_delete" ON "public"."vendors" FOR DELETE TO "authenticated" USING ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (EXISTS ( SELECT 1
+CREATE POLICY "vendors_delete" ON "public"."vendors" FOR DELETE TO "authenticated" USING ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (("tenant_id" IS NOT NULL) AND "public"."is_network_owner"("tenant_id")) OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'admin'::"public"."app_role") AND ("m"."is_active" = true) AND ("m"."tenant_id" IS NOT NULL) AND ("vendors"."tenant_id" = "m"."tenant_id"))))));
 
 
 
-CREATE POLICY "vendors_insert" ON "public"."vendors" FOR INSERT TO "authenticated" WITH CHECK ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (EXISTS ( SELECT 1
+CREATE POLICY "vendors_insert" ON "public"."vendors" FOR INSERT TO "authenticated" WITH CHECK ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (("tenant_id" IS NOT NULL) AND "public"."is_network_owner"("tenant_id")) OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'admin'::"public"."app_role") AND ("m"."is_active" = true) AND ("m"."tenant_id" IS NOT NULL) AND ("vendors"."tenant_id" = "m"."tenant_id"))))));
 
@@ -553,9 +553,9 @@ CREATE POLICY "vendors_select" ON "public"."vendors" FOR SELECT TO "authenticate
 
 
 
-CREATE POLICY "vendors_update" ON "public"."vendors" FOR UPDATE TO "authenticated" USING ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (EXISTS ( SELECT 1
+CREATE POLICY "vendors_update" ON "public"."vendors" FOR UPDATE TO "authenticated" USING ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (("tenant_id" IS NOT NULL) AND "public"."is_network_owner"("tenant_id")) OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
-  WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'admin'::"public"."app_role") AND ("m"."is_active" = true) AND ("m"."tenant_id" IS NOT NULL) AND ("vendors"."tenant_id" = "m"."tenant_id")))))) WITH CHECK ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (EXISTS ( SELECT 1
+  WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'admin'::"public"."app_role") AND ("m"."is_active" = true) AND ("m"."tenant_id" IS NOT NULL) AND ("vendors"."tenant_id" = "m"."tenant_id")))))) WITH CHECK ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (("tenant_id" IS NOT NULL) AND "public"."is_network_owner"("tenant_id")) OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'admin'::"public"."app_role") AND ("m"."is_active" = true) AND ("m"."tenant_id" IS NOT NULL) AND ("vendors"."tenant_id" = "m"."tenant_id"))))));
 
