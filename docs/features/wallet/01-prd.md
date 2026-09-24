@@ -15,8 +15,8 @@
 | | |
 | :--- | :--- |
 | Surfaces | `app` books; `shop` merchant statement |
-| In | **Receipts** (money in, all channels). **Split tender** (cash + cheques + bKash in one visit). **Ledger** (balances). **Payouts** (money out vs wallet). |
-| Out | Inventing a second ledger. Investor withdraw. Invoice **issue**. Parcel / COD **face** (order). Tenant **sales** (invoice totals). Cheque **bounce** workflow (v2). |
+| In | **Receipts** (money in, all channels). **Split tender** (cash + cheques + bKash in one visit). **Ledger** (balances). **Payouts** (money out vs wallet). **Investor capital** (staff deposit/payout posts tenant + `entity_type = investor` — not a receipt; desks in [investor_capital](../investor_capital/01-prd.md)). |
+| Out | Inventing a second ledger. Investor **portal** withdraw. Invoice **issue**. Parcel / COD **face** (order). Tenant **sales** (invoice totals). Cheque **bounce** workflow (v2). |
 
 See [scopes](../../architecture/scopes.md). Bills: [sales_invoice](../sales_invoice/01-prd.md). Target receipts: [02-data-model](02-data-model.md). Gaps: [00-gaps](00-gaps.md). Worked numbers: [money-story](../sales_invoice/money-story.md).
 

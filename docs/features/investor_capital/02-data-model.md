@@ -1,104 +1,67 @@
-# Investor Portal & Capital — Data Model & Schema Specification
+# Investor capital — data model
 
-> **Module Schema Target**: `supabase/schemas/investor/`  
-> **Source Tables**: `investors`, `investor_capital_ledger`, `shipment_investments`
+Live SQL: `investors`, `investor_transactions` (as-built journal — target removal IC4), `shipment_investments` in `supabase/schemas/` (procurement tables). Wallet lines: [wallet 02](../wallet/02-data-model.md). Staff app UI and investor portal read the same tables (no UI-only tables). Do not paste full `CREATE` here.
 
----
+## Three entities + wallet
 
-## 1. Entity Relationship Diagram
+| Table / account | Owns | Does not own |
+| :--- | :--- | :--- |
+| `investors` | Name, address, phone, email, notes, `is_active`, `currency_code` | Cash balances, login secrets |
+| `memberships` | `role = investor`, `investor_id`, email, tenant | Capital math |
+| `shipment_investments` | `investor_id`, `global_shipment_id`, `invested_amount`, `cost_share_pct`, profit fields, `status` | Ledger lines |
+| Wallet `entity_type = investor` | Available / pending buckets per `investor_id` | Shipment % |
 
-```mermaid
-erDiagram
-    TENANTS ||--o{ INVESTORS : parent_company
-    AUTH_USERS ||--o{ INVESTORS : user_login
-    INVESTORS ||--o{ INVESTOR_CAPITAL_LEDGER : tracks_capital
-    INVESTORS ||--o{ SHIPMENT_INVESTMENTS : funds_batch
-    GLOBAL_SHIPMENTS ||--o{ SHIPMENT_INVESTMENTS : funded_by
+```text
+tenants
+  └── investors (identity)
+        ├── memberships (portal login)
+        ├── universal_wallet_ledger (cash book)
+        └── shipment_investments → global_shipments
 ```
 
----
+## `investors` (identity)
 
-## 2. Declarative SQL Schema & Types
+| Column (concept) | Notes |
+| :--- | :--- |
+| `tenant_id` | Parent company |
+| `name`, `phone`, `email`, `address`, `notes` | Contact |
+| `is_active`, `currency_code` | Desk flags |
 
-### 2.1 Domain Enums
+No `total_deposited` / `current_balance` on the row in the target model.
 
-```sql
--- Capital transaction types
-create type public.investor_transaction_type as enum (
-  'capital_in',
-  'withdrawal_paid',
-  'profit_credit',
-  'adjustment'
-);
-```
+## `shipment_investments` (batch share)
 
-### 2.2 Primary Database Tables
+| Column (concept) | Notes |
+| :--- | :--- |
+| `investor_id`, `global_shipment_id` | One row per partner per shipment |
+| `invested_amount` | Capital attributed to this batch |
+| `cost_share_pct` | Share of cost/profit (0–100 in live schema) |
+| `allocated_cost`, `computed_profit`, `profit_status` | Filled by refresh / P&amp;L RPCs |
+| `status` | e.g. active |
 
-```sql
--- 1. Investor Partner Profiles
-create table if not exists public.investors (
-  id uuid primary key default gen_random_uuid(),
-  parent_tenant_id uuid not null references public.tenants(id) on delete cascade,
-  user_id uuid references auth.users(id) on delete set null,
-  name text not null,
-  email text,
-  phone text,
-  total_deposited numeric(16, 2) not null default 0,
-  current_balance numeric(16, 2) not null default 0,
-  is_active boolean not null default true,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint uq_investor_name unique (parent_tenant_id, name)
-);
+Unique: one investor per shipment.
 
--- 2. Capital Partner Ledger
-create table if not exists public.investor_capital_ledger (
-  id uuid primary key default gen_random_uuid(),
-  parent_tenant_id uuid not null references public.tenants(id) on delete cascade,
-  investor_id uuid not null references public.investors(id) on delete cascade,
-  transaction_type public.investor_transaction_type not null,
-  amount numeric(16, 2) not null check (amount > 0),
-  balance_before numeric(16, 2) not null,
-  balance_after numeric(16, 2) not null,
-  reference_no text,
-  notes text,
-  created_by uuid references auth.users(id),
-  created_at timestamptz not null default now()
-);
+## Money (wallet)
 
--- 3. Shipment Batch Cost-Share Allocations
-create table if not exists public.shipment_investments (
-  id uuid primary key default gen_random_uuid(),
-  parent_tenant_id uuid not null references public.tenants(id) on delete cascade,
-  shipment_id uuid not null references public.global_shipments(id) on delete cascade,
-  investor_id uuid not null references public.investors(id) on delete cascade,
-  cost_share_pct numeric(6, 4) not null check (cost_share_pct > 0 and cost_share_pct <= 1.0),
-  allocated_capital_amount numeric(16, 2) default 0,
-  realized_profit_share numeric(16, 2) default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint uq_investor_shipment unique (shipment_id, investor_id)
-);
-```
+One ledger account per `(parent_tenant_id, entity_type = investor, entity_id = investor_id, currency)`.
 
----
+| Event | Tenant wallet | Investor wallet |
+| :--- | :--- | :--- |
+| Capital in | Credit (cash received) | Credit (liability to partner) |
+| Payout paid | Debit (cash out) | Debit (reduce liability) |
+| Realized profit (once) | — | Credit `pending` (idempotent per shipment) |
 
-## 3. Row Level Security (RLS) Policies
+Only `record_ledger_transaction`. Not a receipt (`global_payments`).
 
-```sql
-alter table public.investors enable row level security;
-alter table public.investor_capital_ledger enable row level security;
-alter table public.shipment_investments enable row level security;
+## RLS (intent)
 
-create policy "Investors can view their own profile"
-  on public.investors for select
-  using (user_id = auth.uid());
+| Actor | `investors` | `shipment_investments` | Wallet |
+| :--- | :--- | :--- | :--- |
+| Staff | Manage parent tenant | Manage parent tenant | Staff treasury rules |
+| Partner | `auth_investor_id() = id` | Same investor id | Own investor entity only |
 
-create policy "Staff can manage tenant investors"
-  on public.investors for all
-  using (
-    parent_tenant_id in (
-      select tm.tenant_id from public.tenant_members tm where tm.user_id = auth.uid()
-    )
-  );
-```
+Helper: `auth_investor_id()` from active membership `role = investor` + matching email.
+
+## As-built note (IC4)
+
+`investor_transactions` still exists and mirrors desk deposits/payouts. Spec target: wallet lines are source of truth; journal table retired in a later slice.

@@ -1,17 +1,37 @@
-# Investor Portal & Capital — Page-to-API Matrix
+# Investor capital — page-to-API matrix
 
-Mapping of all capital partner profiles, ledger records, shipment batch allocations, and investor portal views to their corresponding Supabase RPCs, database operations, and Pinia stores.
+## App scope (target)
 
----
+| Page / component | Action | Client | Backend |
+| :--- | :--- | :--- | :--- |
+| Investor list | Load | `store.fetchInvestorsByTenant` | `list_investor_profiles` (or balance list RPC) |
+| Add / edit profile | Save | `InvestorProfileDialog` | `upsert_investor_profile` |
+| Detail | Capital in | `recordCapitalIn` | `record_investor_capital_in` |
+| Detail | Withdraw | `recordWithdrawalPaid` | `record_investor_withdrawal_paid` |
+| Detail | Load shipments | list action | `list_investor_allocations` (`p_investor_id`) |
+| Detail | Save shipment row | `saveShipmentInvestment` | `upsert_shipment_investment` |
+| Detail | Refresh batch profit | optional | `refresh_shipment_investor_profits` |
 
-## 📊 Interaction & Endpoint Matrix
+Portal membership: `investor_id` on membership — [tenant_auth](../tenant_auth/01-prd.md).
 
-| Page / Component | UI Control / Action | Triggered Hook / Method | Backend RPC / Operation | Cache Invalidation / State Strategy |
-| :--- | :--- | :--- | :--- | :--- |
-| **`InvestorProfilesPage`** | Mount / Refresh | `store.fetchInvestorsByTenant` | `RPC: list_investor_profiles` | Pinia `investors` list update |
-| **`InvestorProfileDialog`** | Save Partner Profile | `store.createInvestor` | `RPC: upsert_investor_profile` | Refetches profile list on success |
-| **`CapitalLedgerPage`** | Mount / Filter by Type | `store.fetchTransactions` | `RPC: list_investor_transactions` | Pinia `transactions` state update |
-| **`InvestorTransactionDialog`**| Submit Capital Deposit | `store.recordCapitalIn` | `RPC: record_investor_capital_in` | Refetches transactions & balance chips |
-| **`InvestorTransactionDialog`**| Submit Withdrawal Payout | `store.recordWithdrawalPaid` | `RPC: record_investor_withdrawal_paid` | Debits investor & tenant liquid wallet |
-| **`ShipmentAllocationDetails`**| Save Share Percentage | `store.saveShipmentInvestment`| `RPC: upsert_shipment_investment` | Refetches batch investment allocations |
-| **`InvestorPortalOverview`** | Mount / Inspect Portfolio | `useInvestorPortalQuery` | `RPC: get_investor_portal_summary` | Cached on `['investorPortal', 'summary']` |
+## App scope (as-built only — IC7)
+
+| Page | Backend |
+| :--- | :--- |
+| `InvestorProfilesPage` | same list RPC |
+| `CapitalLedgerPage` | `list_investor_transactions` |
+| `ShipmentAllocationsPage` / `ShipmentAllocationDetailsPage` | `upsert_shipment_investment`, refresh RPC |
+
+## Investor scope (target)
+
+| Page | Action | Backend |
+| :--- | :--- | :--- |
+| Login | Bootstrap | `get_investor_bootstrap_context` |
+| Dashboard | Load | `get_investor_dashboard_summary` |
+| Shipments | Load | `list_investor_allocations` |
+
+## Investor scope (as-built only — IC6)
+
+| Page | Notes |
+| :--- | :--- |
+| `InvestorPortfolioPage`, `InvestorAllocationsPage`, `InvestorProfitReportPage`, `InvestorActivityPage` | Consolidate to dashboard + shipments |

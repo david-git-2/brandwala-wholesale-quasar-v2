@@ -1,6 +1,5 @@
 /**
- * Investor Portal & Capital Stubs & Mock Data Provider
- * Used for isolated capital partner testing and investor portal verification.
+ * Investor capital stubs — identity on profile; cash and batch separate.
  */
 
 export interface InvestorProfileStub {
@@ -8,11 +7,25 @@ export interface InvestorProfileStub {
   name: string;
   email?: string;
   phone?: string;
-  total_deposited: number;
-  current_balance: number;
-  active_investments_count: number;
-  lifetime_roi_percent: number;
+  address?: string;
   is_active: boolean;
+  currency_code: string;
+}
+
+export interface InvestorWalletStub {
+  investor_id: string;
+  available_balance: number;
+  pending_balance: number;
+  total_capital_in: number;
+  total_withdrawn: number;
+}
+
+export interface ShipmentInvestmentStub {
+  investor_id: string;
+  global_shipment_id: string;
+  invested_amount: number;
+  cost_share_pct: number;
+  profit_status: 'open' | 'partial' | 'realized';
 }
 
 export const mockInvestors: InvestorProfileStub[] = [
@@ -21,22 +34,26 @@ export const mockInvestors: InvestorProfileStub[] = [
     name: 'Kabir Capital Holdings Ltd.',
     email: 'invest@kabircapital.com',
     phone: '+880 1711-556677',
-    total_deposited: 2500000.0,
-    current_balance: 2980000.0,
-    active_investments_count: 4,
-    lifetime_roi_percent: 19.2,
     is_active: true,
+    currency_code: 'BDT',
   },
   {
     id: 'inv-002',
     name: 'Nexus Angel Syndicate Alpha',
     email: 'syndicate@nexusbd.com',
     phone: '+880 1822-667788',
-    total_deposited: 1200000.0,
-    current_balance: 1410000.0,
-    active_investments_count: 2,
-    lifetime_roi_percent: 17.5,
     is_active: true,
+    currency_code: 'BDT',
+  },
+];
+
+export const mockInvestorWallets: InvestorWalletStub[] = [
+  {
+    investor_id: 'inv-001',
+    available_balance: 650000,
+    pending_balance: 120000,
+    total_capital_in: 2500000,
+    total_withdrawn: 0,
   },
 ];
 

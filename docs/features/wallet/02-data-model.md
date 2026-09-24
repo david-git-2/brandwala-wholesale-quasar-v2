@@ -106,7 +106,8 @@ One account per `(parent_tenant_id, entity_type, entity_id, currency)`. Lines on
 | `tenant` | Operating cash (parent pool) |
 | `customer` | Store credit; dropship merchant payable (`billing_profile`) |
 | `courier` | Optional in-transit / fee clearing — **not** a second COD sales book |
-| `vendor` / `cargo` / `investor` | Other books; investor **no** withdraw |
+| `investor` | Capital liability to external partners (deposit in, payout out, profit pending). Staff desks in `investor_capital/` — not merchant payable, not `global_payments` |
+| `vendor` / `cargo` | Other books |
 
 `source_type` on a ledger line should point at the **receipt** (or payout), not a parallel “delivered_costing” purpose for the same cash.
 

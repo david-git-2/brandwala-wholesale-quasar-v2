@@ -1,9 +1,4 @@
-# Investor Portal & Capital — Product Requirements Document (PRD)
-
-> **Module**: Capital Partner Profiles, Batch Investments & Profit Share Yields  
-> **Status**: Approved & Active  
-> **Target Release**: v2.4.0  
-> **Target Audience**: External Capital Investors, Company Managing Partners, CFOs
+# Investor Portal & Capital — PRD
 
 ## As-built
 
@@ -11,76 +6,75 @@
 | :--- | :--- |
 | Spec | `docs/features/investor_capital/` |
 | UI | `web/src/modules/investor_capital/`, `investor_portal/` |
-| SQL | Stub `supabase/schemas/investor/`; live in `public.sql` |
-| Access | `investor` scope read-only; staff manage capital in `app` |
+| SQL | Stub `supabase/schemas/investor/`; live `investors`, `shipment_investments` in `public.sql` / [procurement schema](../../../supabase/schemas/procurement/02_tables.sql) |
+| Cash | [wallet](../wallet/01-prd.md) — `entity_type = investor` via `record_ledger_transaction` |
+| Access | `investor` scope read-only portal; staff capital in `app` |
 
 ## Scope
 
 | | |
 | :--- | :--- |
-| Surfaces | `app` staff capital; `investor` portal |
-| In | Profiles, deposits, shipment shares, read-side yield |
-| Out | Withdrawal requests; selling stock |
+| Surfaces | `app` investor management; `investor` portal (dashboard + shipments) |
+| In | Partner identity; staff list/detail with capital in/out and per-partner shipment table; portal summary + shipment profit list |
+| Out | Receipts / collect UI; merchant wallet; **portal** self-withdraw; **app** standalone ledger hub and shipment-first desk as primary nav (see [00-gaps](00-gaps.md) IC7) |
 
-See [scopes](../../architecture/scopes.md).
+See [scopes](../../architecture/scopes.md). Login: [tenant_auth](../tenant_auth/01-prd.md) — membership `role = investor` + `investor_id`.
 
----
+## What / who
 
-## 1. Executive Summary
-
-The **Investor Portal & Capital** module manages external capital partners, cash deposits, batch investment shares in inbound shipments, and read-side profit yield distribution without shadow ledgers.
-
-Investors receive real-time visibility into their invested capital, shipment batch performance, and realized yields through a dedicated, read-only investor portal (`/:slug/investor/*`), while staff administrators manage capital transactions and shipment share percentages in the backoffice.
-
----
-
-## 2. User Personas & Permissions
-
-| Role | Access Level | Permitted Actions |
+| Role | Surface | May do |
 | :--- | :--- | :--- |
-| **Managing Partner / Owner** | Full Access | Create investor profiles, record capital deposits/withdrawals, allocate shipment cost-share percentages, refresh profit sync. |
-| **External Investor** | Investor Portal | Read-only view of invested capital, active shipment batches, realized gross profit shares, and yield history. |
-| **Auditor** | Read Only | Audit shipment cost allocations and verify capital ledger transaction logs. |
+| Staff | `app` | Investor list + add; open detail; record investment in / withdraw; manage shipment rows (amount, %, profit view) for that partner |
+| Capital partner | `investor` | Read dashboard totals and shipment list (investment + profit); no write |
+| Auditor | `app` | Same read paths as staff where grants allow |
 
----
-
-## 3. User Stories & Acceptance Criteria
-
-### US-1: Read-Side Profit Derivation & Remainder Rule
-- **As a** Managing Partner  
-- **I want** investor profit shares derived on-demand directly from live shipment batch gross profit  
-- **So that** calculations remain completely aligned with true sales margins without duplicate accounting ledgers.
-
-#### Acceptance Criteria
-- [ ] Formula computes: $\text{Investor Profit Share} = \text{Shipment Batch Gross Profit} \times \text{cost\_share\_pct}$.
-- [ ] If total investor shares are $< 100\%$, the parent company automatically absorbs the remainder.
-
-### US-2: Dedicated Investor Portal Scope (`/investor/*`)
-- **As an** External Capital Investor  
-- **I want to** log in to a dedicated, streamlined portal to review my active portfolio  
-- **So that** I can track shipment progress, annualized return on investment (ROI), and available capital balance.
-
-#### Acceptance Criteria
-- [ ] Investor layout (`InvestorLayout.vue`) restricts navigation exclusively to capital statements and shipment yields.
-- [ ] Realized profits default to active reinvestment until an explicit cash withdrawal is recorded.
-
----
-
-## 4. UI Layout & Wireframe
-
-### Investor Capital Dashboard & Allocations Desk
+## App scope UI (target)
 
 ```text
-+----------------------------------------------------------------------------------------------------+
-| Breadcrumbs: App > Capital > Investor Profiles                                                     |
-+----------------------------------------------------------------------------------------------------+
-| [ Search investor name... ] [ Status: Active v ]                                  [ + New Partner ]|
-+----------------------------------------------------------------------------------------------------+
-| INVESTOR NAME          | TOTAL CAPITAL   | ALLOCATED TO BATCHES | REALIZED PROFIT | LIFETIME ROI % |
-|------------------------+-----------------+----------------------+-----------------+----------------|
-| Kabir Capital Holdings | 2,500,000 BDT   | 1,850,000 BDT (74%)  | 480,000 BDT     | 19.2%          |
-| Nexus Syndicate Alpha  | 1,200,000 BDT   | 900,000 BDT (75%)    | 210,000 BDT     | 17.5%          |
-+----------------------------------------------------------------------------------------------------+
-| [ Record Capital Deposit ]      [ Record Withdrawal Payout ]     [ Manage Batch Allocations ]      |
-+----------------------------------------------------------------------------------------------------+
+/:slug/app/capital/investors       List + [Add investor]
+/:slug/app/capital/investors/:id   Detail hub for one partner
 ```
+
+| Page | Content |
+| :--- | :--- |
+| List | Name, contact, active; optional summary from wallet + batches (not on profile row). Row click → detail. Add → identity dialog (+ link membership for portal). |
+| Detail | Edit profile; **investment in** and **withdraw** (wallet RPCs); table of this partner’s shipments: ref, `invested_amount`, `cost_share_pct`, `computed_profit`, `profit_status`; optional compact capital history on same page |
+
+As-built routes may still use `/capital/profiles`, `/capital/ledger`, `/capital/shipments` — converge on list + detail (IC7).
+
+## Investor scope UI (target)
+
+```text
+/:slug/investor/login
+/:slug/investor              Dashboard (wallet summary)
+/:slug/investor/shipments    Shipment list: investment + profit per batch
+```
+
+Nav: **Dashboard** | **Shipments** only. No activity, profit report, or allocations pages (IC6).
+
+## Rules (module-specific)
+
+```text
+investors              → identity only
+memberships            → portal login (role investor + investor_id)
+wallet (investor)      → cash in, payout, profit credit
+shipment_investments   → batch amount + cost_share_pct
+```
+
+| Rule | Detail |
+| :--- | :--- |
+| Profit share | Shipment gross profit × `cost_share_pct`; investor % sum ≤ 100% per shipment |
+| Free cash (v1) | Wallet available minus active `invested_amount` (computed) |
+| No shadow ledger | No `investor_capital_ledger`; wallet is cash book |
+| Portal v1 | Read-only; staff withdraw on app detail only |
+
+## Stories
+
+- **As staff**, I open the investor list and add a partner, **so that** I can fund batches under a clear record.
+  - [ ] List shows identity; summaries are derived.
+- **As staff**, I open a partner detail and post investment or withdraw, **so that** tenant cash and investor liability match.
+  - [ ] Wallet RPCs on post (see [03-api-contract](03-api-contract.md)).
+- **As staff**, I see and edit shipment rows on that partner’s detail, **so that** amount, share %, and profit are visible in one place.
+  - [ ] Sum of % on a shipment ≤ 100%.
+- **As a partner**, I use dashboard and shipment list in the investor portal, **so that** I see my totals and batch performance without editing.
+  - [ ] RLS via `auth_investor_id()`; no portal withdraw.

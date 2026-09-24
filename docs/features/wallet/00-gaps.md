@@ -3,7 +3,7 @@
 | ID | Type | Plan / doc | Code today | Fix |
 | :--- | :--- | :--- | :--- | :--- |
 | WA1 | sql_split | Stub `supabase/schemas/wallet/` | Live ledger in `public.sql` | Split on next wallet change |
-| WA2 | doc_wrong | Persona “reseller withdrawal” vs investor | Dropship payout RPCs exist; **investor** portal has no withdraw | Keep merchant payout only |
+| WA2 | doc_wrong | Persona “reseller withdrawal” vs investor | Dropship payout RPCs exist; **investor** portal has no withdraw | Keep merchant payout only; investor staff capital posts: [investor_capital 01-prd](../investor_capital/01-prd.md) |
 | WA3 | doc_wrong | ACs `[ ]` | `record_ledger_transaction` is locked | Tick ledger ACs that match |
 | WA4 | design | One receipt RPC; sources include `courier_remittance` | Wholesale collect RPC vs dropship remittance RPCs (payment often `collection_source=recipient`, null billing profile) | Keep **two screens**. Same allocations table. Wholesale receipt = buyer. Dropship receipt = merchant + remittance source |
 | WA5 | ~~design~~ | COD face on order; receipt = net bank in | ~~`confirm_dropship_delivered_costing` credited courier COD~~ | **Done (2026-09):** deliver costing saves fields only; cash at remittance |

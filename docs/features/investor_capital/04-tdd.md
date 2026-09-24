@@ -1,61 +1,46 @@
-# Investor Portal & Capital — Technical Design Document (TDD)
+# Investor capital — TDD
 
-> **Frontend Module Target**: `web/src/modules/investor_capital/` and `web/src/modules/investor_portal/`  
-> **Repository Target**: `web/src/modules/investor_capital/repositories/investorCapitalRepository.ts`  
-> **Store Target**: `web/src/modules/investor_capital/stores/investorCapitalStore.ts`
+UI: `web/src/modules/investor_capital/`, `investor_portal/`. State: Pinia `investorCapitalStore` + portal store/repo.
 
----
-
-## 1. Component Architecture & Hierarchy
+## App scope (target)
 
 ```text
-web/src/modules/investor_capital/
-├── pages/admin/
-│   ├── InvestorProfilesPage.vue          # Managing partners & active balances list
-│   ├── CapitalLedgerPage.vue             # Financial ledger of all deposits and payouts
-│   ├── ShipmentAllocationsPage.vue       # Inbound shipment batch allocation desk
-│   └── ShipmentAllocationDetailsPage.vue # Per-shipment investor share editor & yield tracker
-├── components/
-│   ├── InvestorProfileDialog.vue         # Create/edit partner profile modal
-│   ├── InvestorTransactionDialog.vue     # Deposit/withdrawal recording modal
-│   └── ShipmentShareEditor.vue           # Percentage allocation sliders
-└── stores/
-    └── investorCapitalStore.ts           # Client state for profiles and investments
-
-web/src/modules/investor_portal/
-└── pages/
-    └── InvestorPortalOverviewPage.vue    # External partner portfolio glance
+investor_capital/pages/admin/
+  InvestorManagementListPage.vue   # target; as-built InvestorProfilesPage.vue
+  InvestorDetailPage.vue           # target hub — not built
+  InvestorProfileDialog.vue
+  InvestorTransactionDialog.vue    # capital in / withdraw on detail
+investor_capital/components/
+  ShipmentShareEditor.vue          # add/edit row on detail shipment table
 ```
 
----
+**As-built (legacy nav, IC7):** `CapitalLedgerPage.vue`, `ShipmentAllocationsPage.vue`, `ShipmentAllocationDetailsPage.vue`.
 
-## 2. Server State Management & Store Design
+Routes target: `/:tenantSlug/app/capital/investors`, `.../investors/:id`.
 
-```typescript
-export const useInvestorCapitalStore = defineStore('investorCapital', {
-  state: () => ({
-    investors: [] as InvestorProfile[],
-    transactions: [] as InvestorTransaction[],
-    shipmentInvestments: [] as ShipmentInvestment[],
-    isLoading: false,
-  }),
-  actions: {
-    async fetchInvestorsByTenant(parentTenantId: string) {
-      this.isLoading = true;
-      try {
-        this.investors = await investorCapitalRepository.listInvestors(parentTenantId);
-      } finally {
-        this.isLoading = false;
-      }
-    },
-  },
-});
+## Investor scope (target)
+
+```text
+investor_portal/
+  InvestorLoginPage.vue
+  InvestorDashboardPage.vue        # as-built InvestorPortfolioPage.vue
+  InvestorShipmentsPage.vue        # as-built may be InvestorAllocationsPage.vue
 ```
 
----
+`InvestorLayout.vue`: two nav items — Dashboard, Shipments.
 
-## 3. UI Implementation Patterns & Governance Invariants
+**As-built (IC6):** routes `portfolio`, `allocations`, `profit`, `activity`.
 
-1. **Strict 100% Allocation Limit**: Total `cost_share_pct` across all investors for a shipment cannot exceed 1.0 (100%).
-2. **Read-Side Profit Derivation**: Yields update dynamically based on live shipment sales margins without posting synthetic accounting entries.
-3. **Portal Route Scoping**: External investors are routed strictly to `/:slug/investor/*` under `InvestorLayout.vue`.
+## Invariants
+
+| # | Rule |
+| :--- | :--- |
+| 1 | Sum of `cost_share_pct` on one shipment ≤ 100% |
+| 2 | Yield from shipment P&amp;L × share |
+| 3 | Portal `scope = investor`, module `investor_portal`, read-only |
+| 4 | Staff capital actions only on app detail (or dialog from detail) |
+| 5 | Wallet is cash source of truth (IC4 for journal cleanup) |
+
+## Store
+
+Pinia `investorCapitalStore` for app list/detail; `investorPortalStore` / repository for portal dashboard + `list_investor_allocations`.

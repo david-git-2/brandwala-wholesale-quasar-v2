@@ -1,58 +1,36 @@
-# Investor Portal & Capital — API Contract & RPC Signatures
+# Investor capital — API contract
 
-> **RPC Functions Target**: Capital Inflow, Withdrawal Payouts, Batch Allocation & Profit Sync  
-> **Security Level**: `SECURITY DEFINER`
+`SECURITY DEFINER` RPCs. Signatures in `supabase/schemas/` / migrations — intent only here.
 
----
+## App — profile
 
-## 1. Capital Deposit RPC: `record_investor_capital_in`
+| RPC | Purpose |
+| :--- | :--- |
+| `list_investor_profiles` | Staff investor list (aggregates from wallet + batches **target**) |
+| `upsert_investor_profile` | Create/update identity |
 
-Records capital injected into the investor's balance and posts immutable ledger entries.
+## App — detail (capital + shipments)
 
-### Signature
-```sql
-create or replace function public.record_investor_capital_in(
-  p_parent_tenant_id uuid,
-  p_investor_id uuid,
-  p_amount numeric,
-  p_reference_no text default null,
-  p_notes text default null
-)
-returns jsonb
-language plpgsql security definer;
-```
+| RPC | Purpose |
+| :--- | :--- |
+| `record_investor_capital_in` | Investment in → tenant + investor UWL (+ `investor_transactions` as-built IC4) |
+| `record_investor_withdrawal_paid` | Withdraw paid → debit investor + tenant cash |
+| `record_investor_capital_adjustment` | Staff correction |
+| `list_investor_allocations` | Shipment table for one investor (`p_tenant_id`, `p_investor_id`) |
+| `upsert_shipment_investment` | Amount + `cost_share_pct` on a shipment |
+| `update_shipment_investment_cost_share` | Adjust % |
+| `refresh_shipment_investor_profits` | Recompute profit; post pending credit when realized |
+| `get_investor_capital_report` | Optional detail history / report range |
 
----
+## Investor scope — read
 
-## 2. Withdrawal Payout RPC: `record_investor_withdrawal_paid`
+| RPC | Purpose |
+| :--- | :--- |
+| `get_investor_bootstrap_context` | Login session + tenant + investor id |
+| `get_investor_dashboard_summary` | Dashboard totals |
+| `list_investor_allocations` | Shipment list (investment + profit) |
+| `get_investor_portfolio_summary` | As-built bootstrap helper; prefer dashboard summary in UI target |
 
-Debits investor balance upon payout and debits the tenant liquid operating wallet.
+## Not in this module
 
-### Signature
-```sql
-create or replace function public.record_investor_withdrawal_paid(
-  p_parent_tenant_id uuid,
-  p_investor_id uuid,
-  p_amount numeric,
-  p_payment_method text default 'bank_transfer',
-  p_reference_no text default null,
-  p_notes text default null
-)
-returns jsonb
-language plpgsql security definer;
-```
-
----
-
-## 3. Batch Investment Allocation RPC: `upsert_shipment_investment`
-
-```sql
-create or replace function public.upsert_shipment_investment(
-  p_parent_tenant_id uuid,
-  p_shipment_id uuid,
-  p_investor_id uuid,
-  p_cost_share_pct numeric
-)
-returns jsonb
-language plpgsql security definer;
-```
+Receipts → [wallet](../wallet/03-api-contract.md). Membership → [tenant_auth](../tenant_auth/03-api-contract.md).

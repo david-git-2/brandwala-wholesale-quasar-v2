@@ -42,7 +42,7 @@ It ensures complete data isolation across multi-tenant boundaries while providin
 | **Company Owner / Admin** | Company Superuser | Full access to company workspace, manage staff memberships, invite users, assign granular action grants. |
 | **Staff Member** | Granular RBAC | Access permitted modules (`view`, `create`, `edit`, `delete`, `manage`) as defined in `module_actions`. |
 | **Storefront Customer** | Shop Scope | Log in to buyer portal, browse authorized storefronts, submit cart orders. |
-| **Investor** | Investor Scope | View capital accounts and yield performance. |
+| **Investor** | Investor Scope (`/:slug/investor/*`) | View capital accounts and yield performance. Login via `memberships.role = investor` and `memberships.investor_id` → partner profile; not staff RBAC. See [investor_capital](../investor_capital/01-prd.md). |
 
 ---
 
