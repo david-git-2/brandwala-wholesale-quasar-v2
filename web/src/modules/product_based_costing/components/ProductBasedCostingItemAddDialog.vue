@@ -99,46 +99,23 @@
 
             <!-- Right Column (Metadata, Parameters & Note) -->
             <div class="col-12 col-md-7 q-gutter-y-md">
-              <div class="row q-col-gutter-sm">
-                <div class="col-12 col-sm-6">
-                  <q-select
-                    v-model="form.vendor_code"
-                    :options="vendorOptions"
-                    emit-value
-                    map-options
-                    :label="$t('product_based_costing.vendor')"
-                    outlined
-                    dense
-                    clearable
-                    :disable="isProductListInputType"
-                    :loading="store.saving"
-                    @update:model-value="onVendorOrMarketChange"
-                  >
-                    <template #prepend>
-                      <q-icon name="ph ph-storefront" />
-                    </template>
-                  </q-select>
-                </div>
-                <div class="col-12 col-sm-6">
-                  <q-select
-                    v-model="form.market_code"
-                    :options="marketOptions"
-                    emit-value
-                    map-options
-                    :label="$t('product_based_costing.market')"
-                    outlined
-                    dense
-                    clearable
-                    :disable="isProductListInputType"
-                    :loading="store.saving"
-                    @update:model-value="onVendorOrMarketChange"
-                  >
-                    <template #prepend>
-                      <q-icon name="ph ph-globe" />
-                    </template>
-                  </q-select>
-                </div>
-              </div>
+              <q-select
+                v-model="form.vendor_code"
+                :options="vendorOptions"
+                emit-value
+                map-options
+                :label="$t('product_based_costing.vendor')"
+                outlined
+                dense
+                clearable
+                :disable="isProductListInputType"
+                :loading="store.saving"
+                @update:model-value="onVendorChange"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-storefront" />
+                </template>
+              </q-select>
 
               <div class="row q-col-gutter-sm">
                 <div class="col-12 col-sm-6">
@@ -351,7 +328,7 @@ import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
 import SmartImage from 'src/components/SmartImage.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
-import { useGlobalMarketsQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
+import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { productService } from 'src/modules/products/services/productService';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
@@ -386,7 +363,6 @@ const props = defineProps<{
   productBasedCostingFileId: number;
   itemData?: ProductBasedCostingItemFormData | null;
   defaultVendorCode?: string | null;
-  defaultMarketCode?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -398,7 +374,7 @@ const emit = defineEmits<{
 const store = useProductBasedCostingStore();
 const productStore = useProductStore();
 const vendorStore = useVendorStore();
-const { data: marketsData } = useGlobalMarketsQuery();
+const { data: currenciesData } = useGlobalCurrenciesQuery();
 const authStore = useAuthStore();
 const $q = useQuasar();
 const { t } = useI18n();
@@ -511,7 +487,6 @@ const getInitialForm = () => ({
   brand: null as string | null,
   category: null as string | null,
   vendor_code: props.defaultVendorCode ?? null,
-  market_code: props.defaultMarketCode ?? null,
   quantity: null as number | null,
   confirmed_quantity: null as number | null,
   web_link: '',
@@ -536,7 +511,6 @@ const fillForm = () => {
       brand: props.itemData.brand ?? null,
       category: props.itemData.category ?? null,
       vendor_code: props.itemData.vendor_code ?? null,
-      market_code: props.itemData.market_code ?? null,
       quantity: props.itemData.quantity ?? null,
       confirmed_quantity: props.itemData.confirmed_quantity ?? null,
       web_link: props.itemData.web_link ?? '',
@@ -565,13 +539,16 @@ const vendorOptions = computed(() => [
   })),
 ]);
 
-const marketOptions = computed(() => [
-  { label: 'Other', value: null as string | null },
-  ...(marketsData.value ?? []).map((market) => ({
-    label: `${market.name} (${market.code})`,
-    value: market.code,
-  })),
-]);
+const gbpCurrencyId = computed(
+  () => (currenciesData.value ?? []).find((c) => c.code === 'GBP')?.id ?? null,
+);
+
+const resolvedMarketCode = computed(() => {
+  if (!form.vendor_code) return null;
+  const vendor = vendorStore.items.find((v) => v.code === form.vendor_code);
+  const code = vendor?.market_code?.trim();
+  return code ? code.toUpperCase() : null;
+});
 
 const brandNames = ref<string[]>([]);
 const categoryNames = ref<string[]>([]);
@@ -620,7 +597,9 @@ const filteredCategoryOptions = computed(() => {
   return [{ label: 'Other', value: null as string | null }, ...options];
 });
 
-const canPickBrandCategory = computed(() => Boolean(form.vendor_code) && Boolean(form.market_code));
+const canPickBrandCategory = computed(
+  () => Boolean(form.vendor_code) && Boolean(resolvedMarketCode.value),
+);
 
 const normalized = (value: string | null | undefined) => (value ?? '').trim();
 
@@ -646,7 +625,7 @@ const canAddCategory = computed(() => {
 });
 
 const loadBrandCategoryOptions = async () => {
-  if (!form.vendor_code || !form.market_code) {
+  if (!form.vendor_code || !resolvedMarketCode.value) {
     brandNames.value = [];
     categoryNames.value = [];
     filteredBrandNames.value = [];
@@ -772,14 +751,30 @@ const addCategoryOption = async () => {
   lastTypedCategory.value = '';
 };
 
+const cleanListPrice = (val: number | null | undefined): number | null => {
+  if (val == null) return null;
+  const parsed = Number(val);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 const submitForm = async () => {
-  if (!form.vendor_code || !form.market_code) {
+  if (!form.vendor_code) {
     handleApiFailure(
-      { success: false, error: 'Please select vendor and market first.' },
-      'Please select vendor and market first.',
+      { success: false, error: 'Please select a vendor first.' },
+      'Please select a vendor first.',
     );
     return;
   }
+
+  if (!resolvedMarketCode.value) {
+    handleApiFailure(
+      { success: false, error: 'Selected vendor has no market configured.' },
+      'Selected vendor has no market configured.',
+    );
+    return;
+  }
+
+  const marketCode = resolvedMarketCode.value;
 
   if (isEditMode.value && props.itemData?.id) {
     const result = await store.updateProductBasedCostingItem({
@@ -792,7 +787,7 @@ const submitForm = async () => {
       product_code: form.product_code,
       brand: form.brand,
       vendor_code: form.vendor_code,
-      market_code: form.market_code,
+      market_code: marketCode,
       quantity: form.quantity,
       web_link: form.web_link,
       price_gbp: form.price_gbp,
@@ -818,13 +813,23 @@ const submitForm = async () => {
     return;
   }
 
+  const listPriceAmount = cleanListPrice(form.price_gbp);
+  if (listPriceAmount != null && gbpCurrencyId.value == null) {
+    handleApiFailure(
+      { success: false, error: 'GBP currency is not configured. Cannot save list price.' },
+      'GBP currency is not configured. Cannot save list price.',
+    );
+    return;
+  }
+
   const createProductResult = await productStore.createProduct({
     inserted_by_tenant_id: authStore.tenantId ?? null,
     name: form.name || null,
     image_url: form.image_url || null,
     barcode: form.barcode || null,
     product_code: form.product_code || null,
-    list_price_amount: form.price_gbp,
+    list_price_amount: listPriceAmount,
+    list_price_currency_id: listPriceAmount != null ? gbpCurrencyId.value : null,
     country_of_origin: null,
     brand: form.brand || null,
     category: form.category || null,
@@ -836,7 +841,7 @@ const submitForm = async () => {
     product_weight: form.product_weight,
     package_weight: form.package_weight,
     vendor_code: form.vendor_code,
-    market_code: form.market_code,
+    market_code: marketCode,
     is_available: true,
   });
 
@@ -855,7 +860,7 @@ const submitForm = async () => {
     product_code: form.product_code,
     brand: form.brand,
     vendor_code: form.vendor_code,
-    market_code: form.market_code,
+    market_code: marketCode,
     quantity: form.quantity,
     web_link: form.web_link,
     price_gbp: form.price_gbp,
@@ -887,12 +892,11 @@ watch(
 );
 
 watch(
-  () => [props.defaultVendorCode, props.defaultMarketCode, props.modelValue, props.itemData],
+  () => [props.defaultVendorCode, props.modelValue, props.itemData],
   (values) => {
     const vendorCode = (values[0] ?? null) as string | null;
-    const marketCode = (values[1] ?? null) as string | null;
-    const isOpen = Boolean(values[2]);
-    const itemData = (values[3] ?? null) as ProductBasedCostingItemFormData | null;
+    const isOpen = Boolean(values[1]);
+    const itemData = (values[2] ?? null) as ProductBasedCostingItemFormData | null;
 
     if (!isOpen) {
       return;
@@ -901,12 +905,11 @@ watch(
       return;
     }
     form.vendor_code = vendorCode ?? null;
-    form.market_code = marketCode ?? null;
     void loadBrandCategoryOptions();
   },
 );
 
-const onVendorOrMarketChange = async () => {
+const onVendorChange = async () => {
   if (!isEditMode.value) {
     form.brand = null;
     form.category = null;
@@ -916,7 +919,7 @@ const onVendorOrMarketChange = async () => {
   const result = await store.updateProductBasedCostingFile({
     id: props.productBasedCostingFileId,
     vendor_code: form.vendor_code,
-    market_code: form.market_code,
+    market_code: resolvedMarketCode.value,
   });
 
   if (!result.success) {

@@ -166,17 +166,34 @@
                 </q-item-label>
               </q-item-section>
               <q-item-section side>
-                <q-btn
-                  unelevated
-                  dense
-                  no-caps
-                  color="primary"
-                  icon="ph ph-plus"
-                  :label="$t('product_based_costing.add')"
-                  :loading="addingProductId === product.id"
-                  :disable="isAlreadyOnFile(product) || submitting"
-                  @click="addProductToFile(product)"
-                />
+                <div class="row items-center no-wrap q-gutter-x-xs">
+                  <q-input
+                    v-if="!isAlreadyOnFile(product)"
+                    :model-value="getBrowseRowQty(product.id)"
+                    type="number"
+                    outlined
+                    dense
+                    hide-bottom-space
+                    :label="$t('product_based_costing.table_col_qty')"
+                    class="browse-row-qty"
+                    min="1"
+                    step="1"
+                    :disable="submitting"
+                    @update:model-value="(val) => setBrowseRowQty(product.id, val)"
+                    @wheel.prevent
+                  />
+                  <q-btn
+                    unelevated
+                    dense
+                    no-caps
+                    color="primary"
+                    icon="ph ph-plus"
+                    :label="$t('product_based_costing.add')"
+                    :loading="addingProductId === product.id"
+                    :disable="isAlreadyOnFile(product) || submitting"
+                    @click="addProductToFile(product)"
+                  />
+                </div>
               </q-item-section>
             </q-item>
             <q-item v-if="!browseLoading && browseList.length === 0 && !browseSearchQuery">
@@ -379,6 +396,7 @@ const bulkCodesText = ref('');
 const bulkSearchField = ref<'auto' | 'product_code' | 'barcode' | 'id'>('auto');
 const bulkDefaultQty = ref(1);
 const bulkLoading = ref(false);
+const browseRowQty = ref<Record<number, number>>({});
 
 const bulkSearchFieldLabel = computed(() => {
   if (bulkSearchField.value === 'product_code') {
@@ -493,10 +511,16 @@ const toProductItem = (p: {
   minimum_order_quantity: p.minimum_order_quantity ?? null,
 });
 
-const defaultQtyForProduct = (product: ProductItem) => {
-  const moq = product.minimum_order_quantity;
-  if (moq != null && !isNaN(moq) && moq >= 1) return Math.floor(moq);
-  return 1;
+const clampAddQty = (raw: unknown) => {
+  const n = Math.floor(Number(raw));
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return n;
+};
+
+const getBrowseRowQty = (productId: number) => browseRowQty.value[productId] ?? 1;
+
+const setBrowseRowQty = (productId: number, val: string | number | null) => {
+  browseRowQty.value[productId] = clampAddQty(val);
 };
 
 const persistProductToFile = async (product: ProductItem, qty: number) => {
@@ -559,7 +583,7 @@ const addProductToFile = async (product: ProductItem) => {
   addingProductId.value = product.id;
   submitting.value = true;
   try {
-    await persistProductToFile(product, defaultQtyForProduct(product));
+    await persistProductToFile(product, clampAddQty(getBrowseRowQty(product.id)));
   } finally {
     addingProductId.value = null;
     submitting.value = false;
@@ -929,6 +953,10 @@ onMounted(async () => {
 
 .browse-section {
   min-height: 0;
+}
+
+.browse-row-qty {
+  width: 72px;
 }
 
 .browse-list-container {

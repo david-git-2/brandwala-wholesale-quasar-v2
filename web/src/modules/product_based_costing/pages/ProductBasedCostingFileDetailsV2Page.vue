@@ -705,17 +705,41 @@
               <!-- Barcode / Code / ID -->
               <td v-if="visibleColumnMap.barcodeText" class="font-mono text-caption" style="width: 115px; min-width: 115px">
                 <div class="column q-gutter-y-2xs" style="line-height: 1.1">
-                  <div v-if="row.product_code" class="row items-center justify-between no-wrap">
-                    <div class="ellipsis">
+                  <div v-if="row.product_code" class="row items-center no-wrap q-gutter-x-2xs">
+                    <div class="ellipsis col min-width-0">
                       <span class="text-grey-6 text-uppercase" style="font-size: 8px">C: </span>
                       <b class="text-dark" style="font-size: 10px">{{ row.product_code }}</b>
                     </div>
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      size="xs"
+                      icon="ph ph-copy"
+                      color="grey-6"
+                      class="shrink-0"
+                      @click="handleCopyCode(row.product_code, $t('product_based_costing.code'))"
+                    >
+                      <q-tooltip>{{ $t('product_based_costing.copy_code') }}</q-tooltip>
+                    </q-btn>
                   </div>
-                  <div v-if="row.barcode" class="row items-center justify-between no-wrap">
-                    <div class="ellipsis">
+                  <div v-if="row.barcode" class="row items-center no-wrap q-gutter-x-2xs">
+                    <div class="ellipsis col min-width-0">
                       <span class="text-grey-6 text-uppercase" style="font-size: 8px">B: </span>
                       <span class="text-grey-9" style="font-size: 10px">{{ row.barcode }}</span>
                     </div>
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      size="xs"
+                      icon="ph ph-copy"
+                      color="grey-6"
+                      class="shrink-0"
+                      @click="handleCopyCode(row.barcode, $t('product_based_costing.barcode'))"
+                    >
+                      <q-tooltip>{{ $t('product_based_costing.copy_barcode') }}</q-tooltip>
+                    </q-btn>
                   </div>
                 </div>
               </td>
@@ -1049,7 +1073,6 @@
         :product-based-costing-file-id="fileId"
         :item-data="selectedItem"
         :default-vendor-code="file?.vendor_code ?? null"
-        :default-market-code="file?.market_code ?? null"
         @created="handleCreated"
         @updated="handleUpdated"
       />
@@ -1139,7 +1162,7 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
+import { useQuasar, copyToClipboard } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import SmartImage from 'src/components/SmartImage.vue';
@@ -1187,6 +1210,10 @@ import {
   getStaffPbcPrimaryActionTargetStatus,
   type StaffPbcPrimaryAction,
 } from '../utils/pbcFileStatus';
+import {
+  calculateOfferPriceBdt,
+  normalizeOfferPriceBdt,
+} from '../utils/pricing';
 
 const props = defineProps<{
   id?: string | number;
@@ -1194,6 +1221,25 @@ const props = defineProps<{
 
 const $q = useQuasar();
 const { t } = useI18n();
+
+const handleCopyCode = (text: string, label: string) => {
+  void copyToClipboard(text)
+    .then(() => {
+      $q.notify({
+        type: 'positive',
+        message: t('product_based_costing.copied_to_clipboard', { label }),
+        timeout: 1000,
+      });
+    })
+    .catch(() => {
+      $q.notify({
+        type: 'negative',
+        message: t('product_based_costing.failed_to_copy', { label }),
+        timeout: 1000,
+      });
+    });
+};
+
 const route = useRoute();
 const router = useRouter();
 const tenantStore = useTenantStore();
@@ -1413,14 +1459,21 @@ const tableRows = computed(() => {
     const totalCostBdt = rowTotalCostGbp * fx;
 
     const itemProfitRate = item.profit_rate ?? fileProfitRate;
-    const calculatedOfferPriceBdt = costBdt * (1 + itemProfitRate / 100);
+    const calculatedOfferPriceBdt = calculateOfferPriceBdt({
+      priceGbp,
+      productWeight: prodWt,
+      packageWeight: pkgWt,
+      cargoRate,
+      conversionRate: fx,
+      profitRate: itemProfitRate,
+    });
     const isOfferPriceManual =
       item.is_offer_price_manual === true ||
       (item.is_offer_price_manual == null &&
         item.offer_price != null &&
-        Math.round(item.offer_price) !== Math.round(calculatedOfferPriceBdt));
+        normalizeOfferPriceBdt(item.offer_price) !== calculatedOfferPriceBdt);
     const offerPriceBdt = isOfferPriceManual && item.offer_price != null
-      ? item.offer_price
+      ? normalizeOfferPriceBdt(item.offer_price)
       : calculatedOfferPriceBdt;
 
     const totalBdt = offerPriceBdt * qty;
@@ -1475,9 +1528,9 @@ function getDraftValue(
   }
   if (field === 'offer_price') {
     if (row.isOfferPriceManual && row.raw.offer_price != null) {
-      return Math.round(Number(row.raw.offer_price));
+      return normalizeOfferPriceBdt(row.raw.offer_price);
     }
-    return Math.round(Number(row.offer_price ?? 0));
+    return normalizeOfferPriceBdt(row.offer_price ?? 0);
   }
   return row.raw[field] ?? '';
 }
@@ -1509,9 +1562,12 @@ async function saveDraftValue(
   }
 
   if (field === 'offer_price') {
+    if (parsedVal != null && parsedVal !== '') {
+      parsedVal = normalizeOfferPriceBdt(parsedVal);
+    }
     const currentPrice = row.isOfferPriceManual && row.raw.offer_price != null
-      ? Math.round(Number(row.raw.offer_price))
-      : Math.round(Number(row.offer_price ?? 0));
+      ? normalizeOfferPriceBdt(row.raw.offer_price)
+      : normalizeOfferPriceBdt(row.offer_price ?? 0);
     if (parsedVal === currentPrice) return;
   } else if (row.raw[field] === parsedVal) {
     return;
@@ -1830,7 +1886,7 @@ async function applyBulkPaste() {
     if (Number.isNaN(val)) return null;
     if (field === 'price_gbp') return Number(val.toFixed(2));
     if (field === 'quantity') return Math.max(1, Math.round(val));
-    if (field === 'offer_price') return Math.round(val);
+    if (field === 'offer_price') return normalizeOfferPriceBdt(val);
     if (field === 'product_weight' || field === 'package_weight') return Number(val.toFixed(3));
     return val;
   };
@@ -1953,8 +2009,10 @@ async function applyBulkPaste() {
   }
 }
 
-function handleDownloadExcel() {
-  void downloadExcel(file.value?.name ?? `PBC_${fileId.value}`);
+async function handleDownloadExcel() {
+  if (!fileId.value) return;
+  const items = await productBasedCostingRepository.listProductBasedCostingItems(fileId.value);
+  void downloadExcel($q, file.value, items);
 }
 
 function openPreviewAndPrint() {
