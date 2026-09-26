@@ -7,5 +7,5 @@
 | IC3 | code_wrong | Profile = identity | `InvestorBalance` on list UI | Derive on list/detail from wallet + shipments |
 | IC4 | **Done** | Cash = wallet only | ~~`investor_transactions`~~ dropped; UWL + `list_investor_wallet_activity` | — |
 | IC5 | doc_wrong | No `investor_capital_ledger` | Old spec | **Done** |
-| IC6 | code_wrong | Portal: dashboard + shipments only | Routes `portfolio`, `allocations`, `profit`, `activity` | Two nav items; drop extra pages |
+| IC6 | **Done** | Portal: dashboard + shipments only | `/:slug/investor`, `/shipments`; legacy `/portfolio`, `/allocations`, `/profit`, `/activity` redirect | — |
 | IC7 | code_wrong | App: list + detail hub | `/capital/profiles`, `/ledger`, `/capital/shipments` | `/capital/investors` + `/:id` detail with capital + shipment table |

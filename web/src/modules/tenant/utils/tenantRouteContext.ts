@@ -182,6 +182,35 @@ export const getShopDashboardRouteLocation = (
   };
 };
 
+export const getInvestorLoginRouteLocation = (
+  route: RouteLike,
+  extraQuery?: Record<string, string>,
+  tenantSlugOverride?: string | null,
+): RouteLocationRaw => {
+  const tenantSlug = getTenantSlugFromRoute(route, tenantSlugOverride) ?? undefined;
+
+  return {
+    name: 'investor-login-page',
+    params: tenantSlug ? { tenantSlug } : {},
+    query: {
+      ...extraQuery,
+    },
+  };
+};
+
+export const getInvestorDashboardRouteLocation = (
+  route: RouteLike,
+  tenantSlugOverride?: string | null,
+): RouteLocationRaw => {
+  const tenantSlug =
+    normalizeRouteToken(tenantSlugOverride) ?? getTenantSlugFromRoute(route) ?? undefined;
+
+  return {
+    name: 'investor-dashboard-page',
+    params: tenantSlug ? { tenantSlug } : {},
+  };
+};
+
 export const getAppRouteLocation = (
   route: RouteLike,
   selectedTenantSlug: string | null | undefined,

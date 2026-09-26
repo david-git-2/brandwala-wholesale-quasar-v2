@@ -7,6 +7,8 @@ import {
   getAppRouteLocation,
   getShopDashboardRouteLocation,
   getTenantHostnameForEntry,
+  getInvestorDashboardRouteLocation,
+  getInvestorLoginRouteLocation,
   getShopLoginRouteLocation,
   getShopSelectCompanyRouteLocation,
   getTenantSlugFromRoute,
@@ -50,7 +52,7 @@ const scopeConfig: Record<
     loginRouteName: 'customer-login-page',
   },
   investor: {
-    homeRouteName: 'investor-portfolio-page',
+    homeRouteName: 'investor-dashboard-page',
     loginRouteName: 'investor-login-page',
   },
 };
@@ -138,6 +140,13 @@ export function useOAuthLogin(
           : loginRouteLocation),
         query: extraQuery,
       });
+      return;
+    }
+
+    if (resolvedScope === 'investor') {
+      await router.replace(
+        getInvestorLoginRouteLocation(route, extraQuery, options?.tenantSlug ?? null),
+      );
       return;
     }
 
@@ -240,6 +249,11 @@ export function useOAuthLogin(
 
     if (resolvedScope === 'shop') {
       await router.replace(getShopDashboardRouteLocation(route, payload.tenant?.slug));
+      return;
+    }
+
+    if (resolvedScope === 'investor') {
+      await router.replace(getInvestorDashboardRouteLocation(route, payload.tenant?.slug));
       return;
     }
 

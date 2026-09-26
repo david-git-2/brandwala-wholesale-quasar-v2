@@ -28,31 +28,31 @@ const investorPortalRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
-        redirect: { name: 'investor-portfolio-page' },
-      },
-      {
-        path: 'portfolio',
-        name: 'investor-portfolio-page',
+        name: 'investor-dashboard-page',
         component: () => import('../pages/InvestorPortfolioPage.vue'),
         meta: { authScope: 'investor' },
       },
       {
-        path: 'allocations',
-        name: 'investor-allocations-page',
+        path: 'shipments',
+        name: 'investor-shipments-page',
         component: () => import('../pages/InvestorAllocationsPage.vue'),
         meta: { authScope: 'investor' },
       },
       {
+        path: 'portfolio',
+        redirect: { name: 'investor-dashboard-page' },
+      },
+      {
+        path: 'allocations',
+        redirect: { name: 'investor-shipments-page' },
+      },
+      {
         path: 'profit',
-        name: 'investor-profit-report-page',
-        component: () => import('../pages/InvestorProfitReportPage.vue'),
-        meta: { authScope: 'investor' },
+        redirect: { name: 'investor-dashboard-page' },
       },
       {
         path: 'activity',
-        name: 'investor-activity-page',
-        component: () => import('../pages/InvestorActivityPage.vue'),
-        meta: { authScope: 'investor' },
+        redirect: { name: 'investor-dashboard-page' },
       },
     ],
   },

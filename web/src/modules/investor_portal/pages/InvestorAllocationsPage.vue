@@ -2,12 +2,12 @@
   <q-page class="q-pa-md costing-list-page">
     <q-card flat class="q-mb-md floating-surface hero-surface shadow-1 q-pa-md">
       <AppPageHeader
-        title="Capital Deployment"
-        subtitle="Detailed record of capital allocation across shipment batches"
+        title="Shipments"
+        subtitle="Investment and profit for each shipment batch"
       />
     </q-card>
 
-    <PageInitialLoader v-if="loading" message="Loading allocations..." />
+    <PageInitialLoader v-if="loading" message="Loading shipments..." />
 
     <q-banner v-else-if="error" class="bg-negative text-white q-mb-md" rounded>
       {{ error }}

@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/authStore';
 import { clearShopOrderQueryCache } from 'src/query/queryClient';
 import {
   getAppRouteLocation,
+  getInvestorLoginRouteLocation,
   getScopeFromPath,
   getShopLoginRouteLocation,
   getTenantSlugFromPath,
@@ -67,6 +68,16 @@ export async function handleUnauthorizedResponse() {
     };
 
     if (isLoginOrAuthRoute(currentRoute.path, routeName)) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        const authStore = useAuthStore();
+        if (authStore.hasAccess) {
+          authStore.clearAccess();
+          await supabase.auth.signOut();
+        }
+      }
       isLoggingOut = false;
       return;
     }
@@ -119,11 +130,7 @@ export async function handleUnauthorizedResponse() {
       const loginRouteLocation = getShopLoginRouteLocation(currentRoute, extraQuery, tenantSlug);
       await router.replace(loginRouteLocation);
     } else if (scope === 'investor') {
-      await router.replace({
-        name: 'investor-login-page',
-        params: tenantSlug ? { tenantSlug } : {},
-        query: extraQuery,
-      });
+      await router.replace(getInvestorLoginRouteLocation(currentRoute, extraQuery, tenantSlug));
     } else {
       const loginRouteLocation = getAppRouteLocation(
         {

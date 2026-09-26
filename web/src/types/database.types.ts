@@ -13866,6 +13866,10 @@ export type Database = {
         }
         Returns: number
       }
+      membership_email_matches_current_user: {
+        Args: { p_membership_email: string }
+        Returns: boolean
+      }
       membership_has_module_action: {
         Args: { p_action: string; p_module_key: string; p_tenant_id: number }
         Returns: boolean
@@ -14855,6 +14859,15 @@ export type Database = {
       sync_dropship_tenant_b2b_invoice_from_order: {
         Args: { p_order_id: number }
         Returns: Json
+      }
+      sync_investor_profile_membership: {
+        Args: {
+          p_email: string
+          p_investor_id: number
+          p_is_active: boolean
+          p_tenant_id: number
+        }
+        Returns: undefined
       }
       sync_sales_invoice_charges_from_header: {
         Args: { p_invoice_id: number }

@@ -23,7 +23,7 @@ export default defineConfig((ctx) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: ['supabase', 'vue-query', 'appearance', 'currency', 'global-components', 'splash', 'i18n', 'phosphor'],
+    boot: ['splash', 'supabase', 'vue-query', 'appearance', 'currency', 'global-components', 'i18n', 'phosphor'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['~@phosphor-icons/web/regular', 'app.scss'],

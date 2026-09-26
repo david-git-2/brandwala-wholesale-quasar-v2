@@ -215,27 +215,46 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-export default defineBoot(async ({ app, router }) => {
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const { useAuthStore } = await import('src/modules/auth/stores/authStore');
-    const authStore = useAuthStore();
+const SESSION_REFRESH_BOOT_TIMEOUT_MS = 8_000;
 
-    if (authStore.hasAccess && !session) {
-      await router.isReady();
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> =>
+  Promise.race([
+    promise,
+    new Promise<T>((resolve) => {
+      window.setTimeout(() => resolve(fallback), timeoutMs);
+    }),
+  ]);
+
+export default defineBoot(({ app, router }) => {
+  const recoverStaleAccess = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const { useAuthStore } = await import('src/modules/auth/stores/authStore');
+      const authStore = useAuthStore();
+
+      if (!authStore.hasAccess || session) {
+        return;
+      }
+
+      await withTimeout(router.isReady(), SESSION_REFRESH_BOOT_TIMEOUT_MS, undefined);
       const { tryRefreshSession, handleUnauthorizedResponse } =
         await import('src/modules/auth/utils/forceAuthLogout');
-      const refreshed = await tryRefreshSession();
+      const refreshed = await withTimeout(
+        tryRefreshSession(),
+        SESSION_REFRESH_BOOT_TIMEOUT_MS,
+        false,
+      );
       if (!refreshed) {
         await handleUnauthorizedResponse();
       }
-      return;
+    } catch (error) {
+      console.error('[supabase boot] session recovery error:', error);
     }
-  } catch (error) {
-    console.error('[supabase boot] session check error:', error);
-  }
+  };
+
+  void recoverStaleAccess();
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {

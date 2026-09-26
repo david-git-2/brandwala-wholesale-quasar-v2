@@ -129,7 +129,8 @@ begin
   end if;
 
   perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'tenant',
     p_entity_id => p_tenant_id,
     p_type => 'credit',
@@ -151,7 +152,8 @@ begin
   );
 
   perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'investor',
     p_entity_id => p_investor_id,
     p_type => 'credit',
@@ -219,7 +221,8 @@ begin
   end if;
 
   perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'investor',
     p_entity_id => p_investor_id,
     p_type => 'debit',
@@ -240,7 +243,8 @@ begin
   );
 
   perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'tenant',
     p_entity_id => p_tenant_id,
     p_type => 'debit',
@@ -313,7 +317,8 @@ begin
 
   if p_amount > 0 then
     perform public.record_ledger_transaction(
-      p_tenant_id => p_tenant_id,
+      p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+      p_operating_tenant_id => p_tenant_id,
       p_entity_type => 'investor',
       p_entity_id => p_investor_id,
       p_type => 'credit',
@@ -332,7 +337,8 @@ begin
     );
   else
     perform public.record_ledger_transaction(
-      p_tenant_id => p_tenant_id,
+      p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+      p_operating_tenant_id => p_tenant_id,
       p_entity_type => 'investor',
       p_entity_id => p_investor_id,
       p_type => 'debit',

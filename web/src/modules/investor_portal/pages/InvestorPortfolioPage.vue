@@ -2,8 +2,8 @@
   <q-page class="q-pa-md costing-list-page">
     <q-card flat class="q-mb-md floating-surface hero-surface shadow-1 q-pa-md">
       <AppPageHeader
-        title="Portfolio Dashboard"
-        subtitle="Manage your capital balances and track shipment earnings"
+        title="Dashboard"
+        subtitle="Read-only view of your wallet totals"
       />
     </q-card>
 
@@ -32,30 +32,24 @@
       </q-banner>
 
       <q-card flat class="floating-surface shadow-1 q-pa-md">
-        <div class="text-subtitle1 text-weight-bold q-mb-md">Active shipment allocations</div>
-        <q-markup-table v-if="portfolio.active_investments?.length" flat bordered wrap-cells>
-          <thead>
-            <tr>
-              <th class="text-left">Shipment</th>
-              <th class="text-right">Invested amount</th>
-              <th class="text-right">Cost share %</th>
-              <th class="text-right">Allocated cost</th>
-              <th class="text-right">Computed profit</th>
-              <th class="text-left">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in portfolio.active_investments" :key="item.id">
-              <td class="text-left">#{{ item.shipment_id }}</td>
-              <td class="text-right">{{ formatCurrency(item.invested_amount) }}</td>
-              <td class="text-right">{{ item.cost_share_pct ?? '0.00' }}%</td>
-              <td class="text-right">{{ formatCurrency(item.allocated_cost) }}</td>
-              <td class="text-right">{{ formatCurrency(item.computed_profit) }}</td>
-              <td class="text-left text-capitalize">{{ item.profit_status || 'open' }}</td>
-            </tr>
-          </tbody>
-        </q-markup-table>
-        <div v-else class="text-grey-7">No active shipment allocations found.</div>
+        <div class="row items-center justify-between q-mb-sm">
+          <div class="text-subtitle1 text-weight-bold">Shipments</div>
+          <q-btn
+            v-if="portfolio.active_investments?.length"
+            flat
+            dense
+            no-caps
+            color="primary"
+            label="View all shipments"
+            :to="shipmentsRoute"
+          />
+        </div>
+        <div v-if="portfolio.active_investments?.length" class="text-body2 text-grey-8">
+          You have {{ portfolio.active_investments.length }} active shipment
+          {{ portfolio.active_investments.length === 1 ? 'allocation' : 'allocations' }}.
+          Open Shipments for investment and profit by batch.
+        </div>
+        <div v-else class="text-grey-7">No active shipment allocations yet.</div>
       </q-card>
     </template>
   </q-page>
@@ -76,6 +70,11 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 
 const portfolio = computed(() => investorPortalStore.portfolio);
+
+const shipmentsRoute = computed(() => {
+  const slug = authStore.tenantSlug;
+  return slug ? `/${slug}/investor/shipments` : '/investor/shipments';
+});
 
 const balanceCards = computed(() => {
   const balances = portfolio.value?.balances;

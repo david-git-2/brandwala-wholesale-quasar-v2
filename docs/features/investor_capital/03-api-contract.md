@@ -7,7 +7,7 @@
 | RPC | Purpose |
 | :--- | :--- |
 | `list_investor_profiles` | Staff investor list (aggregates from wallet + batches **target**) |
-| `upsert_investor_profile` | Create/update identity |
+| `upsert_investor_profile` | Create/update identity; syncs portal `memberships` (`role = investor` or links `investor_id` on existing email) |
 
 ## App — detail (capital + shipments)
 
@@ -31,7 +31,7 @@
 | `get_investor_dashboard_summary` | Dashboard totals |
 | `list_investor_allocations` | Shipment list (investment + profit) |
 | `list_investor_wallet_activity` | Activity ledger (chronological UWL) |
-| `get_investor_portfolio_summary` | As-built bootstrap helper; prefer dashboard summary in UI target |
+| `get_investor_portfolio_summary` | Bootstrap + portal dashboard cards; totals from UWL + wallet + `shipment_investments` (not legacy journal) |
 
 ## Not in this module
 

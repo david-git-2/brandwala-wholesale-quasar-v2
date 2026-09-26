@@ -29,34 +29,16 @@ const links = computed(() => {
 
   return [
     {
-      title: 'Portfolio Dashboard',
-      caption: 'Balances and overview',
+      title: 'Dashboard',
+      caption: 'Wallet totals',
       icon: 'ph ph-piggy-bank',
-      to: `/${slug}/investor/portfolio`,
+      to: `/${slug}/investor`,
     },
     {
-      title: 'Capital Deployment',
-      caption: 'Shipment allocations',
+      title: 'Shipments',
+      caption: 'Investment and profit by batch',
       icon: 'ph ph-truck',
-      to: `/${slug}/investor/allocations`,
-    },
-    {
-      title: 'Profit Report',
-      caption: 'Earnings status',
-      icon: 'ph ph-trend-up',
-      to: `/${slug}/investor/profit`,
-    },
-    {
-      title: 'Activity Ledger',
-      caption: 'Transaction history',
-      icon: 'ph ph-clock-counter-clockwise',
-      to: `/${slug}/investor/activity`,
-    },
-    {
-      title: 'Help Center',
-      caption: 'Guides for this portal',
-      icon: 'ph ph-question',
-      to: `/${slug}/investor/help`,
+      to: `/${slug}/investor/shipments`,
     },
   ];
 });
