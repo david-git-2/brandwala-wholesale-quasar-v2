@@ -66,7 +66,7 @@ const listInvestorTransactions = async (
   limit = 50,
   offset = 0,
 ) => {
-  const { data, error } = await supabase.rpc('list_investor_transactions', {
+  const { data, error } = await supabase.rpc('list_investor_wallet_activity', {
     p_tenant_id: tenantId,
     p_investor_id: investorId,
     p_limit: limit,
@@ -77,7 +77,14 @@ const listInvestorTransactions = async (
     throw error;
   }
 
-  return data;
+  return ((data as Array<Record<string, unknown>> | null) ?? []).map((row) => ({
+    id: String(row.id),
+    date: String(row.activity_date),
+    type: String(row.transaction_type),
+    method: row.method,
+    amount: Number(row.amount),
+    note: (row.note as string | null) ?? null,
+  }));
 };
 
 const getInvestorCapitalReport = async (

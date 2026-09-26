@@ -113,6 +113,13 @@ const isTenantModuleActive = (
     );
   }
 
+  if (moduleKey === 'investor_profiles') {
+    return (
+      activeModuleKeys.includes('investor_profiles') ||
+      activeModuleKeys.includes('investor_capital')
+    );
+  }
+
   if (moduleKey === 'procurement_stock') {
     return PROCUREMENT_HUB_MODULE_KEYS.some((key) => activeModuleKeys.includes(key));
   }

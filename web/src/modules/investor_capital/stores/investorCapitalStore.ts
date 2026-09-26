@@ -67,7 +67,7 @@ export const useInvestorCapitalStore = defineStore('investorCapital', {
       }
     },
 
-    async updateInvestor(payload: InvestorUpdateInput) {
+    async updateInvestor(payload: InvestorUpdateInput, options?: { notify?: boolean }) {
       this.saving = true;
       this.error = null;
 
@@ -81,7 +81,9 @@ export const useInvestorCapitalStore = defineStore('investorCapital', {
         }
 
         await this.fetchInvestorsByTenant(payload.tenant_id);
-        showSuccessNotification('Investor profile updated successfully.');
+        if (options?.notify !== false) {
+          showSuccessNotification('Investor profile updated successfully.');
+        }
         return result;
       } finally {
         this.saving = false;

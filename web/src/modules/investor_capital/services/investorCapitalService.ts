@@ -1,6 +1,7 @@
 import { investorCapitalRepository } from '../repositories/investorCapitalRepository';
 import type {
   CapitalServiceResult,
+  InvestorAllocationRow,
   InvestorBalance,
   Investor,
   InvestorTransaction,
@@ -180,6 +181,28 @@ const getInvestorCapitalReport = async (
   }
 };
 
+const listInvestorAllocations = async (
+  tenantId: number,
+  investorId: number,
+  limit = 100,
+  offset = 0,
+): Promise<CapitalServiceResult<InvestorAllocationRow[]>> => {
+  try {
+    const data = await investorCapitalRepository.listInvestorAllocations(
+      tenantId,
+      investorId,
+      limit,
+      offset,
+    );
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load shipment allocations.',
+    };
+  }
+};
+
 export const investorCapitalService = {
   listInvestorProfiles,
   upsertInvestorProfile,
@@ -191,4 +214,5 @@ export const investorCapitalService = {
   deleteShipmentInvestment,
   refreshShipmentInvestorProfits,
   getInvestorCapitalReport,
+  listInvestorAllocations,
 };

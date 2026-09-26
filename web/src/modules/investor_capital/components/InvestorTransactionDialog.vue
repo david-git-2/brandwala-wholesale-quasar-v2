@@ -7,6 +7,7 @@
 
       <q-card-section class="q-gutter-md">
         <q-select
+          v-if="!fixedInvestorId"
           v-model="form.investor_id"
           outlined
           dense
@@ -90,6 +91,7 @@ const props = defineProps<{
   modelValue: boolean;
   tenantId: number;
   investors: Investor[];
+  fixedInvestorId?: number;
 }>();
 
 const emit = defineEmits<{
@@ -146,14 +148,17 @@ const canSave = computed(
 );
 
 watch(
-  [() => props.modelValue, () => props.tenantId],
-  ([opened, tenantId]) => {
+  [() => props.modelValue, () => props.tenantId, () => props.fixedInvestorId],
+  ([opened, tenantId, fixedInvestorId]) => {
     if (!opened) {
       return;
     }
 
     form.tenant_id = tenantId;
-    form.investor_id = props.investors[0]?.id ?? 0;
+    form.investor_id =
+      fixedInvestorId && fixedInvestorId > 0
+        ? fixedInvestorId
+        : (props.investors[0]?.id ?? 0);
     form.amount = null;
     form.date = today();
     form.method = 'cash';

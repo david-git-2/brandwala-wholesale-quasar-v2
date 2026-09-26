@@ -6,7 +6,7 @@
           <div class="text-overline">Tenant</div>
           <h1 class="text-h5 q-my-none">Capital Ledger</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Manage capital transactions, deposits, withdrawals, and adjustments.
+            Wallet-backed capital activity: deposits, withdrawals, and adjustments.
           </p>
         </div>
         <div class="col-auto">

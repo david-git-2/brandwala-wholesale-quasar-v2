@@ -31,17 +31,55 @@ const guard = (requiredModule: ModuleKey) =>
 
 const investorCapitalAdminRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/capital/profiles',
+    path: '/:tenantSlug?/app/capital/investors',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
         path: '',
-        name: 'app-capital-profiles-page',
+        name: 'app-capital-investors-page',
         component: () =>
-          import('src/modules/investor_capital/pages/admin/InvestorProfilesPage.vue'),
+          import('src/modules/investor_capital/pages/admin/InvestorsListPage.vue'),
         beforeEnter: guard('investor_profiles'),
       },
+      {
+        path: ':id',
+        component: () =>
+          import('src/modules/investor_capital/pages/admin/InvestorDetailPage.vue'),
+        beforeEnter: guard('investor_profiles'),
+        redirect: (to) => ({
+          name: 'app-capital-investor-general',
+          params: to.params,
+        }),
+        children: [
+          {
+            path: 'general',
+            name: 'app-capital-investor-general',
+            component: () =>
+              import('src/modules/investor_capital/pages/admin/InvestorDetailGeneralPage.vue'),
+          },
+          {
+            path: 'investment',
+            name: 'app-capital-investor-investment',
+            component: () =>
+              import('src/modules/investor_capital/pages/admin/InvestorDetailInvestmentPage.vue'),
+          },
+          {
+            path: 'shipments',
+            name: 'app-capital-investor-shipments',
+            component: () =>
+              import('src/modules/investor_capital/pages/admin/InvestorDetailShipmentsPage.vue'),
+          },
+        ],
+      },
     ],
+  },
+  {
+    path: '/:tenantSlug?/app/capital/profiles',
+    redirect: (to) => ({
+      name: 'app-capital-investors-page',
+      params: { tenantSlug: to.params.tenantSlug },
+    }),
+    beforeEnter: guard('investor_profiles'),
   },
   {
     path: '/:tenantSlug?/app/capital/ledger',
@@ -78,7 +116,7 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/app/investors/profile',
     redirect: (to) => ({
-      name: 'app-capital-profiles-page',
+      name: 'app-capital-investors-page',
       params: { tenantSlug: to.params.tenantSlug },
     }),
     beforeEnter: guard('investor_profiles'),

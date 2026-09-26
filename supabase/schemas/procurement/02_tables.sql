@@ -277,8 +277,8 @@ ALTER TABLE "public"."stock_locations" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."shipment_investments" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
-    "shipment_id" bigint,
     "investor_id" bigint NOT NULL,
+    "global_shipment_id" bigint NOT NULL,
     "invested_amount" numeric(12,2) DEFAULT 0 NOT NULL,
     "actual_profit" numeric(12,2) DEFAULT 0 NOT NULL,
     "status" "public"."shipment_investment_status" DEFAULT 'active'::"public"."shipment_investment_status" NOT NULL,
@@ -288,7 +288,6 @@ CREATE TABLE IF NOT EXISTS "public"."shipment_investments" (
     "allocated_cost" numeric(12,2) DEFAULT 0 NOT NULL,
     "computed_profit" numeric(12,2) DEFAULT 0 NOT NULL,
     "profit_status" "text" DEFAULT 'open'::"text" NOT NULL,
-    "global_shipment_id" bigint,
     CONSTRAINT "shipment_investments_cost_share_pct_check" CHECK ((("cost_share_pct" IS NULL) OR (("cost_share_pct" >= (0)::numeric) AND ("cost_share_pct" <= (100)::numeric)))),
     CONSTRAINT "shipment_investments_invested_amount_check" CHECK (("invested_amount" >= (0)::numeric)),
     CONSTRAINT "shipment_investments_profit_status_check" CHECK (("profit_status" = ANY (ARRAY['open'::"text", 'partial'::"text", 'realized'::"text"])))
@@ -1416,7 +1415,7 @@ CREATE INDEX "shipment_investments_investor_id_idx" ON "public"."shipment_invest
 
 
 
-CREATE INDEX "shipment_investments_shipment_id_idx" ON "public"."shipment_investments" USING "btree" ("shipment_id");
+CREATE UNIQUE INDEX "shipment_investments_tenant_investor_global_shipment_key" ON "public"."shipment_investments" USING "btree" ("tenant_id", "investor_id", "global_shipment_id");
 
 
 
@@ -1845,11 +1844,6 @@ ALTER TABLE ONLY "public"."shipment_investments"
 
 ALTER TABLE ONLY "public"."shipment_investments"
     ADD CONSTRAINT "shipment_investments_investor_id_fkey" FOREIGN KEY ("investor_id") REFERENCES "public"."investors"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."shipment_investments"
-    ADD CONSTRAINT "shipment_investments_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."shipments"("id") ON DELETE CASCADE;
 
 
 

@@ -89,7 +89,6 @@ export type ShipmentInvestmentStatus = 'active' | 'closed' | 'cancelled';
 export type ShipmentInvestment = {
   id: number;
   tenant_id: number;
-  shipment_id: number;
   global_shipment_id: number;
   investor_id: number;
   invested_amount: number;
@@ -105,7 +104,7 @@ export type ShipmentInvestment = {
 
 export type ShipmentInvestmentCreateInput = {
   tenant_id: number;
-  shipment_id: number;
+  global_shipment_id: number;
   investor_id: number;
   invested_amount: number;
   actual_profit?: number;
@@ -115,7 +114,7 @@ export type ShipmentInvestmentCreateInput = {
 export type ShipmentInvestmentUpdateInput = {
   id: number;
   tenant_id: number;
-  shipment_id: number;
+  global_shipment_id: number;
   investor_id: number;
   invested_amount: number;
   actual_profit?: number;
@@ -145,4 +144,16 @@ export type InvestorCapitalState = {
   loadingTransactions: boolean;
   saving: boolean;
   error: string | null;
+};
+
+export type InvestorAllocationRow = {
+  id: number;
+  global_shipment_id: number;
+  shipment_name: string;
+  shipment_status: string;
+  cost_share_pct: number;
+  allocated_cost: number;
+  computed_profit: number;
+  profit_status: string;
+  created_at: string;
 };

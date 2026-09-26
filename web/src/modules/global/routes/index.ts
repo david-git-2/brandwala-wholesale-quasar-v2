@@ -83,7 +83,7 @@ const globalRoutes: RouteRecordRaw[] = [
     path: '/:tenantSlug?/app/global/investors',
     redirect: (to) => {
       const prefix = getTenantSlugPrefix(to.params);
-      return `${prefix}/app/capital/profiles`;
+      return `${prefix}/app/capital/investors`;
     },
   },
   {

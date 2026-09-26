@@ -66,13 +66,14 @@ async function run() {
     console.log('Profiles list:', profiles);
   }
 
-  console.log('\n=== CALLING list_investor_transactions ===');
-  const { data: txs, error: txErr } = await supabase.rpc('list_investor_transactions', {
+  console.log('\n=== CALLING list_investor_wallet_activity ===');
+  const { data: txs, error: txErr } = await supabase.rpc('list_investor_wallet_activity', {
     p_tenant_id: tid,
+    p_investor_id: null,
     p_limit: 5,
   });
   if (txErr) {
-    console.error('list_investor_transactions error:', txErr.message);
+    console.error('list_investor_wallet_activity error:', txErr.message);
   } else {
     console.log('Transactions list:', txs);
   }

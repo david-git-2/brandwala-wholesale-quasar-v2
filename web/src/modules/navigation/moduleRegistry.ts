@@ -787,16 +787,15 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'investor_profiles',
-    name: 'Investor Profiles',
-    description: 'Manage investor profiles and client contact details.',
-    parentModuleKey: 'investor_capital',
+    name: 'Investors',
+    description: 'Manage capital partners.',
     routes: [
       {
         scope: 'app',
-        title: 'Profiles',
-        caption: 'Manage investor profiles',
+        title: 'Investors',
+        caption: 'Manage capital partners',
         icon: 'ph ph-users-three',
-        routeSegment: 'capital/profiles',
+        routeSegment: 'capital/investors',
         requiredAction: 'view',
       },
     ],
@@ -806,32 +805,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Capital Ledger',
     description: 'Manage capital deposits, adjustments, and withdrawal transactions.',
     parentModuleKey: 'investor_capital',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Capital Ledger',
-        caption: 'Manage capital transactions and records',
-        icon: 'ph ph-arrows-left-right',
-        routeSegment: 'capital/ledger',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'investor_shipment_share',
     name: 'Shipment Share Allocations',
     description: 'Assign investor cost-share percentage and track shipment profit allocations.',
     parentModuleKey: 'investor_capital',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Shipment Allocations',
-        caption: 'Track shipment allocations and cost share',
-        icon: 'ph ph-truck',
-        routeSegment: 'capital/shipments',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   // -----------------------------------------------------------
   // shop_order parent + submodules

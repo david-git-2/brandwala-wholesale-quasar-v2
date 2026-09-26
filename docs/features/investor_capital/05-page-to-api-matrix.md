@@ -19,7 +19,7 @@ Portal membership: `investor_id` on membership — [tenant_auth](../tenant_auth/
 | Page | Backend |
 | :--- | :--- |
 | `InvestorProfilesPage` | same list RPC |
-| `CapitalLedgerPage` | `list_investor_transactions` |
+| `CapitalLedgerPage` | `list_investor_wallet_activity`, `record_investor_*` |
 | `ShipmentAllocationsPage` / `ShipmentAllocationDetailsPage` | `upsert_shipment_investment`, refresh RPC |
 
 ## Investor scope (target)

@@ -1,6 +1,6 @@
 # Investor capital — data model
 
-Live SQL: `investors`, `investor_transactions` (as-built journal — target removal IC4), `shipment_investments` in `supabase/schemas/` (procurement tables). Wallet lines: [wallet 02](../wallet/02-data-model.md). Staff app UI and investor portal read the same tables (no UI-only tables). Do not paste full `CREATE` here.
+Live SQL: `investors`, `shipment_investments` in `supabase/schemas/` (procurement tables + investor RPCs). Cash lines: `universal_wallet_ledger` with `metadata.section = investor_capital` ([wallet 02](../wallet/02-data-model.md)). Staff app UI and investor portal read the same tables (no UI-only tables). Do not paste full `CREATE` here.
 
 ## Three entities + wallet
 
@@ -64,4 +64,4 @@ Helper: `auth_investor_id()` from active membership `role = investor` + matching
 
 ## As-built note (IC4)
 
-`investor_transactions` still exists and mirrors desk deposits/payouts. Spec target: wallet lines are source of truth; journal table retired in a later slice.
+**Done:** `investor_transactions` and `investor_balances` removed. Capital in/out/adjustment RPCs return `jsonb` and post only via `record_ledger_transaction`. History: `list_investor_wallet_activity`.
