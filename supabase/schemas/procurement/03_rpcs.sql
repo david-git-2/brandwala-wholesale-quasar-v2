@@ -4104,7 +4104,7 @@ begin
         ii.sell_price_amount * (ii.quantity - coalesce(ii.return_quantity, 0))
         - case
           when inv.invoice_type = 'dropship'::public.global_invoice_type then 0.00
-          else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.settlement_discount_amount, 0.00))
+          else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.written_off_amount, 0.00))
             * (ii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
         end
       ), 0) as revenue,
@@ -4173,7 +4173,7 @@ begin
         ii.sell_price_amount * (ii.quantity - coalesce(ii.return_quantity, 0))
         - case
           when inv.invoice_type = 'dropship'::public.global_invoice_type then 0.00
-          else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.settlement_discount_amount, 0.00))
+          else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.written_off_amount, 0.00))
             * (ii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
         end
       ), 0) as revenue,

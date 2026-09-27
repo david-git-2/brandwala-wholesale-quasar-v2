@@ -65,6 +65,10 @@
             :loading="capitalStore.loadingInvestors"
             :disable="capitalStore.saving"
           />
+          <div v-if="selectedInvestor" class="text-body2">
+            <span class="text-grey-7">Available balance:</span>
+            <span class="text-weight-medium q-ml-xs">BDT {{ formatAmount(selectedInvestor.available_balance) }}</span>
+          </div>
           <q-input
             v-model.number="amount"
             outlined
@@ -152,6 +156,11 @@ const investorOptions = computed(() =>
       label: item.name,
       value: item.investor_id,
     })),
+);
+
+const selectedInvestor = computed(
+  () =>
+    capitalStore.investors.find((item) => item.investor_id === selectedInvestorId.value) ?? null,
 );
 
 const canAdd = computed(() => {

@@ -10503,17 +10503,28 @@ export type Database = {
         Args: { p_order_item_id: number }
         Returns: Json
       }
-      collect_wholesale_invoice_payment: {
-        Args: {
-          p_instruments?: Json
-          p_invoice_id: number
-          p_note?: string
-          p_received_on?: string
-          p_settlement_amount?: number
-          p_wallet_amount?: number
-        }
-        Returns: Json
-      }
+      collect_wholesale_invoice_payment:
+        | {
+            Args: {
+              p_cash_amount?: number
+              p_cash_method?: string
+              p_invoice_id: number
+              p_settlement_amount?: number
+              p_wallet_amount?: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_instruments?: Json
+              p_invoice_id: number
+              p_note?: string
+              p_received_on?: string
+              p_settlement_amount?: number
+              p_wallet_amount?: number
+            }
+            Returns: Json
+          }
       compute_dropship_order_reseller_purchase: {
         Args: { p_order_id: number }
         Returns: {

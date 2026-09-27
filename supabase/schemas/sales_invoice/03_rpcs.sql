@@ -263,6 +263,8 @@ CREATE OR REPLACE FUNCTION "public"."apply_global_invoice_settlement_discount"("
     AS $$
 declare
   v_invoice public.global_invoices;
+  v_parent_id bigint;
+  v_operating_tenant_id bigint;
 begin
   select * into v_invoice from public.global_invoices where id = p_invoice_id for update;
   if v_invoice.id is null then raise exception 'invoice not found'; end if;
@@ -276,14 +278,41 @@ begin
     raise exception 'settlement amount exceeds outstanding due';
   end if;
 
-  update public.global_invoices
-  set
-    settlement_discount_amount = coalesce(settlement_discount_amount, 0.00) + p_amount,
-    note = coalesce(nullif(trim(p_note), ''), note),
-    updated_at = now()
-  where id = p_invoice_id;
+  v_parent_id := coalesce(v_invoice.parent_tenant_id, v_invoice.tenant_id);
+  v_operating_tenant_id := coalesce(v_invoice.issued_by_tenant_id, v_invoice.tenant_id);
 
-  perform public.recompute_global_invoice_totals(p_invoice_id);
+  if coalesce(p_amount, 0.00) > 0.00 then
+    insert into public.invoice_write_offs (
+      tenant_id,
+      parent_tenant_id,
+      invoice_id,
+      payment_id,
+      amount,
+      reason,
+      note,
+      approved_by
+    )
+    values (
+      v_operating_tenant_id,
+      v_parent_id,
+      p_invoice_id,
+      null,
+      p_amount,
+      'management_concession',
+      p_note,
+      auth.uid()
+    );
+  end if;
+
+  if nullif(trim(p_note), '') is not null then
+    update public.sales_invoices
+    set
+      note = coalesce(nullif(trim(p_note), ''), note),
+      updated_at = now()
+    where id = p_invoice_id;
+  end if;
+
+  perform public.recompute_global_invoice_payment_status(p_invoice_id);
 
   select * into v_invoice from public.global_invoices where id = p_invoice_id;
 
@@ -3340,7 +3369,7 @@ begin
     'paid_amount', v_invoice.paid_amount,
     'due_amount', v_invoice.due_amount,
     'payment_status', v_invoice.payment_status,
-    'settlement_discount_amount', v_invoice.settlement_discount_amount
+    'written_off_amount', v_invoice.written_off_amount
   );
 end;
 $$;
