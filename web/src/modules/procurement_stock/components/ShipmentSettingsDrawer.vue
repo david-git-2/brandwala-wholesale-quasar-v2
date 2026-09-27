@@ -756,6 +756,16 @@
                 class="full-width rounded-sq-btn text-weight-bold"
                 @click="goToBatchCode"
               />
+              <q-btn
+                v-if="canViewInvestorShipmentShare"
+                outline
+                no-caps
+                color="grey-8"
+                icon="ph ph-hand-coins"
+                label="Investor investment"
+                class="full-width rounded-sq-btn text-weight-bold"
+                @click="goToInvestorInvestment"
+              />
             </div>
           </div>
         </q-tab-panel>
@@ -769,6 +779,7 @@ import { ref, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { describeBoxTotalsNetDiff, describeBoxVsInvoiceCargo } from '../utils/boxWeightVariance';
 import type {
@@ -827,6 +838,10 @@ const emit = defineEmits<{
 }>();
 
 const authStore = useAuthStore();
+const { hasModuleAccess } = useModulePermissions();
+const canViewInvestorShipmentShare = computed(() =>
+  hasModuleAccess('investor_shipment_share', 'view'),
+);
 const router = useRouter();
 const $q = useQuasar();
 const shipmentStore = useGlobalShipmentStore();
@@ -864,6 +879,10 @@ const goToBoxWeight = () => {
 
 const goToBatchCode = () => {
   navigateToShipmentPage('app-procurement-shipment-batch-code');
+};
+
+const goToInvestorInvestment = () => {
+  navigateToShipmentPage('app-procurement-shipment-investor-investment');
 };
 
 const confirmArchiveFromDrawer = () => {

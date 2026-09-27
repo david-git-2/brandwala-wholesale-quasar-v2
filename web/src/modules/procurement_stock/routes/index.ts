@@ -205,6 +205,12 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/ShipmentBatchCodePage.vue'),
         beforeEnter: guard('global_shipment'),
       },
+      {
+        path: ':id/investor-investment',
+        name: 'app-procurement-shipment-investor-investment',
+        component: () => import('../pages/ShipmentInvestorInvestmentPage.vue'),
+        beforeEnter: guard('investor_shipment_share'),
+      },
     ],
   },
   {

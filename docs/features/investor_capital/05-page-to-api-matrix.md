@@ -21,6 +21,7 @@ Portal membership: `investor_id` on membership — [tenant_auth](../tenant_auth/
 | `InvestorProfilesPage` | same list RPC |
 | `CapitalLedgerPage` | `list_investor_wallet_activity`, `record_investor_*` |
 | `ShipmentAllocationsPage` / `ShipmentAllocationDetailsPage` | `upsert_shipment_investment`, refresh RPC |
+| Shipment gear → More → **Investor investment** (`ShipmentInvestorInvestmentPage`) | `list_investor_profiles`, `shipment_investments` by shipment, `upsert_shipment_investment` (amount → cost share %) |
 
 ## Investor scope (as-built)
 

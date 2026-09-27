@@ -4100,15 +4100,14 @@ begin
       public.calculate_landed_unit_cost(si.id) as landed_unit_cost,
       coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_qty,
       coalesce(sum(ii.unit_cost_price * (ii.quantity - ii.return_quantity)), 0) as sold_cost,
-      coalesce(sum(ii.sell_price_amount * ii.quantity - coalesce((
-        select sum(ri.return_accounting_amount)
-        from public.global_return_items ri
-        where ri.invoice_item_id = ii.id
-      ), 0.00) - case
-        when inv.invoice_type = 'dropship'::public.global_invoice_type then 0.00
-        else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.settlement_discount_amount, 0.00))
-          * (ii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
-      end), 0) as revenue,
+      coalesce(sum(
+        ii.sell_price_amount * (ii.quantity - coalesce(ii.return_quantity, 0))
+        - case
+          when inv.invoice_type = 'dropship'::public.global_invoice_type then 0.00
+          else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.settlement_discount_amount, 0.00))
+            * (ii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
+        end
+      ), 0) as revenue,
       coalesce(disp.sellable_qty, 0) as sellable_qty,
       coalesce(disp.stolen_qty, 0) as stolen_qty,
       coalesce(disp.box_damage_qty, 0) as box_damage_qty,
@@ -4170,15 +4169,14 @@ begin
       si.ordered_quantity as received_qty,
       coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_qty,
       coalesce(sum(ii.unit_cost_price * (ii.quantity - ii.return_quantity)), 0) as sold_cost,
-      coalesce(sum(ii.sell_price_amount * ii.quantity - coalesce((
-        select sum(ri.return_accounting_amount)
-        from public.global_return_items ri
-        where ri.invoice_item_id = ii.id
-      ), 0.00) - case
-        when inv.invoice_type = 'dropship'::public.global_invoice_type then 0.00
-        else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.settlement_discount_amount, 0.00))
-          * (ii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
-      end), 0) as revenue,
+      coalesce(sum(
+        ii.sell_price_amount * (ii.quantity - coalesce(ii.return_quantity, 0))
+        - case
+          when inv.invoice_type = 'dropship'::public.global_invoice_type then 0.00
+          else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.settlement_discount_amount, 0.00))
+            * (ii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
+        end
+      ), 0) as revenue,
       coalesce(disp.sellable_qty, 0) as sellable_qty,
       coalesce(disp.stolen_qty, 0) as stolen_qty,
       coalesce(disp.box_damage_qty, 0) as box_damage_qty,
