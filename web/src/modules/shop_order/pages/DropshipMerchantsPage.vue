@@ -126,13 +126,22 @@
                   <q-btn
                     color="primary"
                     icon="ph ph-bank"
-                    label="Dispense in Finance Hub"
+                    label="Payout in Payments"
                     no-caps
                     unelevated
                     size="sm"
                     class="rounded-btn"
                     :disable="m.available_balance <= 0"
-                    :to="{ name: 'app-shop-dropship-finance-hub-page', query: { merchantId: m.billing_profile_id, step: 'middleman_payout' } }"
+                    :to="{
+                      name: 'app-finance-payments-page',
+                      query: {
+                        side: 'out',
+                        ...(m.customer_group_id
+                          ? { customerGroupId: m.customer_group_id }
+                          : {}),
+                        merchantId: m.billing_profile_id,
+                      },
+                    }"
                   >
                     <q-tooltip v-if="m.available_balance <= 0">
                       No available balance for payout

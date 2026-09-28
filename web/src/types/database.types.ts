@@ -12698,6 +12698,15 @@ export type Database = {
         }
         Returns: Json
       }
+      list_customer_groups_payout_summary: {
+        Args: {
+          p_customer_group_id?: number
+          p_limit?: number
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       list_customer_order_backlog_items: {
         Args: { p_billing_profile_id: number; p_tenant_id: number }
         Returns: {

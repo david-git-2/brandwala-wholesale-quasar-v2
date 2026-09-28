@@ -94,4 +94,13 @@ Do **not** credit courier wallet with full COD as “delivered costing” plus a
 
 ## Desk (target)
 
-Receipts list: source, amount, methods breakdown, ref → allocate invoices. Collect **page** (`CollectCustomerPaymentPage`): left pane = this visit (instrument lines); right pane = open bills + allocation; sticky footer = received / applied / store-credit leftover / post. **History drawer** (`CustomerPaymentHistoryDrawer`): past receipts read-only; fix cheque/trx typos; void + re-enter for wrong amount/split (append-only ledger). Entity ledger: balances. Payout is a separate action on the merchant wallet.
+**Payments** (`PaymentsPage`, `/:slug/app/finance/payments`) is the money desk: two tabs **Cash in** | **Cash out** (`?side=in|out`).
+
+| Tab | Meaning | UI entry |
+| :--- | :--- | :--- |
+| Cash in | Receipts (money that hit tenant cash) | **Customer** → billing-profile collect (`CollectCustomerPaymentPage`). **Invoice** → same collect page with `invoiceId` pre-selected. **Courier remittance** → dropship order queue + remittance step (same RPC as finance hub). Direct cash in = customer collect with no invoice pre-select (leftover → store credit). |
+| Cash out | Payouts (money out, not `global_payments`) | **Merchant payout** → `dispense_middleman_payout_from_tenant`. **Other** (vendor, drawings) — later; not investor capital. |
+
+Collect **page** layout unchanged: left = instrument lines; right = open bills + allocation; sticky footer = received / applied / leftover / post. **History drawer** (`CustomerPaymentHistoryDrawer`): void + re-enter. **Universal wallet** (`app/wallet`) stays ledger audit; not the primary collect desk.
+
+Dropship **finance hub** remains for order queue + delivered costing; remittance and payout are also reachable from Payments.

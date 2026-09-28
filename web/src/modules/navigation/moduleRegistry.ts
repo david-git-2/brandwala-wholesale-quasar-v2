@@ -741,13 +741,13 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'payments',
     name: 'Payments & Collection',
-    description: 'Record payments and allocate to invoices.',
+    description: 'Cash in (collect, courier remittance) and cash out (merchant payout).',
     navIcon: 'ph ph-credit-card',
     routes: [
       {
         scope: 'app',
         title: 'Payments',
-        caption: 'Record payments and batch settlement',
+        caption: 'Cash in and cash out',
         icon: 'ph ph-credit-card',
         routeSegment: 'finance/payments',
         requiredAction: 'view',

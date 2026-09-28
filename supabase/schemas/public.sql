@@ -17145,18 +17145,60 @@ DECLARE
   v_merchant_available numeric(18,4) := 0.0000;
   v_vendor_payables numeric(18,4) := 0.0000;
   v_customer_deposits numeric(18,4) := 0.0000;
+  v_ledger_cash numeric(18,4);
 BEGIN
   v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
 
+  IF NOT (
+    public.wallet_staff_can_view(p_tenant_id)
+    OR public.membership_has_module_action(v_books_id, 'payments', 'view')
+    OR public.membership_has_module_action(p_tenant_id, 'payments', 'view')
+    OR public.is_tenant_staff(p_tenant_id)
+  ) THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'access denied',
+      'tenant_id', v_books_id,
+      'parent_tenant_id', v_books_id,
+      'tenant_cash_total', 0,
+      'courier_cod_holding_total', 0,
+      'merchant_pending_total', 0,
+      'merchant_available_total', 0,
+      'vendor_payables_total', 0,
+      'customer_deposits_total', 0
+    );
+  END IF;
+
+  SELECT coalesce(w.available_balance, 0.0000)
+  INTO v_tenant_cash
+  FROM public.wallet_accounts w
+  WHERE w.parent_tenant_id = v_books_id
+    AND w.entity_type = 'tenant'
+    AND w.entity_id = v_books_id
+    AND w.currency_code = 'BDT'
+  LIMIT 1;
+
+  SELECT l.balance_after
+  INTO v_ledger_cash
+  FROM public.universal_wallet_ledger l
+  WHERE l.parent_tenant_id = v_books_id
+    AND l.entity_type = 'tenant'
+    AND l.entity_id = v_books_id
+    AND coalesce(l.currency_code, 'BDT') = 'BDT'
+  ORDER BY l.id DESC
+  LIMIT 1;
+
+  IF coalesce(v_tenant_cash, 0) = 0 AND coalesce(v_ledger_cash, 0) <> 0 THEN
+    v_tenant_cash := v_ledger_cash;
+  END IF;
+
   SELECT
-    coalesce(sum(CASE WHEN entity_type = 'tenant' THEN available_balance ELSE 0 END), 0),
     coalesce(sum(CASE WHEN entity_type = 'courier' THEN pending_balance + available_balance ELSE 0 END), 0),
     coalesce(sum(CASE WHEN entity_type IN ('customer', 'middleman') THEN pending_balance ELSE 0 END), 0),
     coalesce(sum(CASE WHEN entity_type IN ('customer', 'middleman') THEN available_balance ELSE 0 END), 0),
     coalesce(sum(CASE WHEN entity_type = 'vendor' THEN available_balance ELSE 0 END), 0),
     coalesce(sum(CASE WHEN entity_type = 'customer' THEN available_balance ELSE 0 END), 0)
   INTO
-    v_tenant_cash,
     v_courier_cod_holding,
     v_merchant_pending,
     v_merchant_available,
@@ -17166,9 +17208,10 @@ BEGIN
   WHERE parent_tenant_id = v_books_id;
 
   RETURN jsonb_build_object(
+    'success', true,
     'tenant_id', v_books_id,
     'parent_tenant_id', v_books_id,
-    'tenant_cash_total', v_tenant_cash,
+    'tenant_cash_total', coalesce(v_tenant_cash, 0),
     'courier_cod_holding_total', v_courier_cod_holding,
     'merchant_pending_total', v_merchant_pending,
     'merchant_available_total', v_merchant_available,

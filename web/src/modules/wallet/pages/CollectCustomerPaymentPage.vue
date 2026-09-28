@@ -15,6 +15,7 @@
           <q-icon name="ph ph-buildings" size="22px" />
         </q-avatar>
         <div>
+          <div class="text-overline text-primary q-mb-none">Cash in</div>
           <div class="text-subtitle1 text-weight-bold text-grey-9 leading-tight">{{ headerName }}</div>
           <div class="text-caption text-grey-6 flex items-center q-gutter-x-xs">
             <span>{{ headerCode }}</span>

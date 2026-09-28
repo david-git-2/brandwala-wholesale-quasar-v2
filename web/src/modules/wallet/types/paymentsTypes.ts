@@ -1,3 +1,17 @@
+export interface CustomerGroupPayoutBillingProfile {
+  billing_profile_id: number;
+  name: string;
+  payable_balance: number;
+}
+
+export interface CustomerGroupPayoutSummary {
+  customer_group_id: number;
+  name: string;
+  account_code: string;
+  payable_balance: number;
+  billing_profiles: CustomerGroupPayoutBillingProfile[];
+}
+
 export interface CustomerGroupPaymentSummary {
   id: number;
   name: string;

@@ -2,6 +2,7 @@ import { supabase } from 'src/boot/supabase';
 import type { Json } from 'src/types/database.types';
 import type {
   CustomerGroupPaymentSummary,
+  CustomerGroupPayoutSummary,
   OpenInvoicePaymentItem,
   BatchPaymentPayload,
   BatchPaymentResult,
@@ -26,6 +27,22 @@ export const paymentsRepository = {
     });
     if (error) throw error;
     return (data as unknown as CustomerGroupPaymentSummary[]) ?? [];
+  },
+
+  async listCustomerGroupsPayoutSummary(params: {
+    tenantId: number;
+    search?: string | null;
+    limit?: number;
+    customerGroupId?: number | null;
+  }): Promise<CustomerGroupPayoutSummary[]> {
+    const { data, error } = await supabase.rpc('list_customer_groups_payout_summary', {
+      p_tenant_id: params.tenantId,
+      p_search: params.search?.trim() || undefined,
+      p_limit: params.limit ?? 50,
+      p_customer_group_id: params.customerGroupId ?? undefined,
+    });
+    if (error) throw error;
+    return (data as unknown as CustomerGroupPayoutSummary[]) ?? [];
   },
 
   async listOpenInvoicesForPayment(params: {
