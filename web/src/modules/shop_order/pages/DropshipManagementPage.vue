@@ -31,6 +31,20 @@
               @update:model-value="onStatusChange"
             />
           </div>
+
+          <div v-if="isParentTenant" class="col-12 col-sm-6 col-md-3">
+            <q-select
+              v-model="selectedChildTenantId"
+              dense
+              outlined
+              emit-value
+              map-options
+              clearable
+              :loading="childTenantsLoading"
+              :options="childTenantOptions"
+              label="Business"
+            />
+          </div>
         </div>
       </q-card>
 
@@ -39,14 +53,14 @@
           <q-spinner color="primary" size="3em" />
         </div>
         <q-list v-else separator>
-          <q-item v-if="orders.length === 0" class="justify-center">
+          <q-item v-if="displayOrders.length === 0" class="justify-center">
             <q-item-section class="text-center text-grey-6">
               No orders match your search or filter.
             </q-item-section>
           </q-item>
 
           <q-item
-            v-for="order in orders"
+            v-for="order in displayOrders"
             :key="order.id"
             v-ripple
             clickable
@@ -54,6 +68,10 @@
           >
             <q-item-section>
               <q-item-label class="text-weight-medium">{{ order.order_no }}</q-item-label>
+              <q-item-label v-if="isParentTenant && order.tenant_name" caption>
+                <q-icon name="ph ph-buildings" size="12px" class="q-mr-xs" />
+                {{ order.tenant_name }}
+              </q-item-label>
               <q-item-label caption>
                 {{ order.customer_group_name || '—' }} · {{ order.recipient_name || '—' }} ·
                 {{ order.courier_name || '—' }}
@@ -70,9 +88,10 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useChildTenantsQuery } from 'src/modules/procurement_stock/composables/useProcurementStockQuery';
 import { showErrorNotification } from 'src/utils/appFeedback';
 import { shopOrderService } from '../services/shopOrderService';
 import type { ShopOrder, ShopOrderStatus } from '../types';
@@ -94,6 +113,42 @@ const loading = ref(false);
 const orders = ref<ShopOrder[]>([]);
 const searchQuery = ref('');
 const statusFilter = ref<DropshipManagementStatusFilter>('all');
+const selectedChildTenantId = ref<number | null>(null);
+
+const tenantId = computed(() => authStore.tenantId as number | undefined);
+const parentTenantId = computed(
+  () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
+);
+
+const isParentTenant = computed(() => {
+  if (!tenantId.value) return false;
+  return Number(parentTenantId.value) === Number(tenantId.value);
+});
+
+const { data: childTenants, isLoading: childTenantsLoading } = useChildTenantsQuery(parentTenantId);
+
+const childTenantOptions = computed(() => {
+  const map = new Map<number, string>();
+  for (const t of childTenants.value ?? []) {
+    if (t.parent_id === parentTenantId.value) {
+      map.set(t.id, t.name);
+    }
+  }
+  for (const o of orders.value) {
+    if (o.tenant_id && o.tenant_name && o.tenant_id !== parentTenantId.value) {
+      map.set(o.tenant_id, o.tenant_name);
+    }
+  }
+  return Array.from(map.entries()).map(([value, label]) => ({ label, value }));
+});
+
+const displayOrders = computed(() => {
+  let list = orders.value;
+  if (selectedChildTenantId.value != null) {
+    list = list.filter((o) => o.tenant_id === selectedChildTenantId.value);
+  }
+  return list;
+});
 
 const statusOptions = [
   { label: 'All statuses', value: 'all' },
@@ -114,6 +169,7 @@ const loadOrders = async () => {
   loading.value = true;
   try {
     const res = await shopOrderService.fetchDropshipStaffOrders(authStore.tenantId, {
+      parentTenantId: parentTenantId.value ?? null,
       limit: 200,
       statuses: resolveStatusPayload(statusFilter.value),
       search: searchQuery.value.trim() || null,
