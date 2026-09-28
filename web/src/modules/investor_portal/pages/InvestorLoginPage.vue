@@ -1,6 +1,10 @@
 <template>
   <div>
-    <PageInitialLoader v-if="loading && !tenantSlugFromRoute" message="Loading…" />
+    <PageInitialLoader
+      v-if="loading && !tenantSlugFromRoute"
+      compact
+      message="Loading…"
+    />
 
     <q-banner v-else-if="entryError" class="bg-orange-1 text-orange-10 q-mb-md" rounded dense>
       {{ entryError }}

@@ -12,7 +12,7 @@
       <span>{{ errorMessage }}</span>
     </div>
 
-    <PageInitialLoader v-if="loading" />
+    <PageInitialLoader v-if="loading" embedded />
 
     <div v-else class="company-list" role="list">
       <button
@@ -165,6 +165,9 @@ onMounted(() => {
 
 <style scoped>
 .auth-card {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   background: #ffffff;
   border-radius: 8px;
   border: 1px solid color-mix(in srgb, #6b6560 22%, #ffffff);
@@ -184,7 +187,7 @@ onMounted(() => {
 }
 
 .auth-card__header {
-  padding: 1.35rem 1.5rem 0;
+  padding: 1.35rem clamp(1rem, 4vw, 1.5rem) 0;
 }
 
 .auth-card__title {
@@ -202,7 +205,7 @@ onMounted(() => {
 }
 
 .auth-card__error {
-  margin: 0 1.5rem;
+  margin: 0 clamp(1rem, 4vw, 1.5rem);
   display: flex;
   gap: 0.4rem;
   align-items: flex-start;
@@ -214,7 +217,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 0 1.25rem;
+  padding: 0 clamp(0.85rem, 3.5vw, 1.25rem);
 }
 
 .company-card {

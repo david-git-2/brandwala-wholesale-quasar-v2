@@ -137,6 +137,10 @@ const loginErrorMessage = computed(() => {
   --card-soft: var(--bw-theme-primary-soft);
   --card-ink: var(--bw-theme-ink);
   --card-muted: var(--bw-theme-muted);
+  --card-pad-x: clamp(1rem, 4vw, 1.75rem);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   background: var(--bw-theme-surface);
   border-radius: 8px;
   border: 1px solid var(--bw-theme-border);
@@ -156,7 +160,7 @@ const loginErrorMessage = computed(() => {
 }
 
 .auth-card__header {
-  padding: 1.5rem 1.75rem 0;
+  padding: 1.5rem var(--card-pad-x) 0;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -179,7 +183,7 @@ const loginErrorMessage = computed(() => {
 }
 
 .auth-card__error {
-  margin: 0 1.75rem;
+  margin: 0 var(--card-pad-x);
   padding: 0.75rem 1rem;
   border-radius: 8px;
   background: rgb(220 38 38 / 0.06);
@@ -199,7 +203,7 @@ const loginErrorMessage = computed(() => {
 }
 
 .auth-card__divider {
-  margin: 0 1.75rem;
+  margin: 0 var(--card-pad-x);
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -223,8 +227,11 @@ const loginErrorMessage = computed(() => {
   border: none;
   background: var(--card-accent);
   border-radius: 8px;
-  margin: 0 1.75rem;
+  margin: 0 var(--card-pad-x);
   padding: 0.7rem 1rem;
+  width: calc(100% - 2 * var(--card-pad-x));
+  max-width: 100%;
+  box-sizing: border-box;
   transition:
     background 0.18s ease,
     box-shadow 0.18s ease,
@@ -279,10 +286,12 @@ const loginErrorMessage = computed(() => {
 }
 
 .auth-card__cta-label {
-  font-size: 0.93rem;
+  font-size: clamp(0.85rem, 2.8vw, 0.93rem);
   font-weight: 600;
   color: #ffffff;
   letter-spacing: 0.01em;
+  text-align: center;
+  line-height: 1.25;
 }
 
 .auth-card__spinner {
@@ -307,10 +316,21 @@ const loginErrorMessage = computed(() => {
 }
 
 .auth-card__secure-note {
-  margin: 0 1.75rem;
+  margin: 0 var(--card-pad-x);
   font-size: 0.72rem;
   color: var(--card-muted);
   line-height: 1.45;
   text-align: center;
+}
+
+@media (max-width: 380px) {
+  .auth-card__cta-inner {
+    gap: 0.5rem;
+  }
+
+  .auth-card__google-disc {
+    width: 24px;
+    height: 24px;
+  }
 }
 </style>

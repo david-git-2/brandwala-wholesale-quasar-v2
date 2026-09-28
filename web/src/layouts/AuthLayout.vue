@@ -8,8 +8,11 @@
           <div class="auth-bg__blob auth-bg__blob--3" />
         </div>
 
-        <div class="auth-layout__inner">
-          <div class="auth-canvas">
+        <div
+          class="auth-layout__inner"
+          :class="{ 'auth-layout__inner--panel-only': isPanelOnlyRoute }"
+        >
+          <div v-if="!isPanelOnlyRoute" class="auth-canvas">
             <div
               class="auth-canvas__brand"
               aria-label="TradeFlow BD — B2B commerce platform"
@@ -52,6 +55,10 @@ import AppLogoMark from 'src/components/brand/AppLogoMark.vue';
 type AuthLayoutScope = 'platform' | 'app' | 'shop' | 'investor';
 
 const route = useRoute();
+
+const isPanelOnlyRoute = computed(
+  () => route.name === 'auth-callback-page',
+);
 
 const panelTitle = ref('');
 provide('authPanelTitle', panelTitle);
@@ -101,17 +108,20 @@ const tagline = computed(() => {
   --auth-mid: color-mix(in srgb, var(--bw-theme-primary) 72%, var(--bw-theme-ink));
   --auth-glow: rgb(var(--bw-theme-primary-rgb) / 0.28);
   --auth-ghost: color-mix(in srgb, var(--bw-theme-ink) 10%, transparent);
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--auth-bg);
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .auth-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 0 !important;
   background: transparent !important;
   max-width: none !important;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .auth-bg {
@@ -157,15 +167,23 @@ const tagline = computed(() => {
 .auth-layout__inner {
   position: relative;
   z-index: 1;
-  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+}
+
+.auth-layout__inner--panel-only {
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  padding: clamp(1rem, 4vw, 2rem);
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
 .auth-canvas {
   position: relative;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   padding: clamp(1.75rem, 3.5vw, 2.75rem);
   overflow: hidden;
   background-image:
@@ -252,6 +270,8 @@ const tagline = computed(() => {
   margin-left: -0.05em;
   pointer-events: none;
   user-select: none;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .auth-canvas__ghost-word {
@@ -296,14 +316,36 @@ const tagline = computed(() => {
 .auth-panel {
   display: grid;
   align-content: center;
+  justify-items: stretch;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   background: var(--auth-bg);
-  padding: clamp(1.75rem, 4vw, 3rem) clamp(1.5rem, 3.5vw, 2.5rem);
+  padding: clamp(1.25rem, 4vw, 3rem) clamp(1rem, 3.5vw, 2.5rem);
+  padding-bottom: max(clamp(1.25rem, 4vw, 3rem), env(safe-area-inset-bottom));
+}
+
+.auth-panel > :deep(*) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.auth-layout__inner--panel-only .auth-panel {
+  max-width: 28rem;
+  padding: 0;
 }
 
 @media (max-width: 860px) {
   .auth-layout__inner {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .auth-layout__inner--panel-only {
+    grid-template-rows: 1fr;
+    min-height: 100dvh;
   }
 
   .auth-canvas {

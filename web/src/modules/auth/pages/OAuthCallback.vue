@@ -84,14 +84,22 @@ onMounted(() => {
   --callback-ink: var(--bw-theme-ink, #281f17);
   --callback-muted: var(--bw-theme-muted, #6d5a48);
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   display: flex;
   justify-content: center;
+  align-items: center;
+  min-height: min(70dvh, 28rem);
+  padding: 0.25rem;
 }
 
 .callback-stage__card {
   width: min(100%, 28rem);
-  padding: 2rem;
-  border-radius: 1.75rem;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: clamp(1.25rem, 5vw, 2rem);
+  border-radius: clamp(1rem, 4vw, 1.75rem);
   border: 1px solid var(--callback-border);
   background: linear-gradient(180deg, var(--callback-surface), var(--bw-theme-base, #f5ece2));
   text-align: center;
@@ -99,14 +107,17 @@ onMounted(() => {
 
 .callback-stage__title {
   margin-top: 1rem;
-  font-size: 1.35rem;
+  font-size: clamp(1.1rem, 4.5vw, 1.35rem);
   font-weight: 700;
   color: var(--callback-ink);
+  line-height: 1.25;
 }
 
 .callback-stage__copy {
   margin-top: 0.55rem;
   color: var(--callback-muted);
   line-height: 1.6;
+  font-size: clamp(0.875rem, 3.5vw, 1rem);
+  padding-inline: 0.25rem;
 }
 </style>
