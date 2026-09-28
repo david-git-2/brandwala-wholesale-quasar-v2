@@ -2,7 +2,7 @@ import { ref, computed, watch, unref, type MaybeRef } from 'vue';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { paymentsRepository } from '../repositories/paymentsRepository';
-import { financeReportQueryKeys } from '../shared/queryKeys';
+import { financeReportQueryKeys } from 'src/modules/reporting_treasury/shared/queryKeys';
 import type {
   BatchPaymentPayload,
   UpdateInstrumentDetailsPayload,

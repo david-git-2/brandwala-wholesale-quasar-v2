@@ -52,12 +52,11 @@ const {
 } = useMonthSnapshotReport();
 
 const tiles = computed(() => [
-  { label: 'Net sales', value: formatAmountBdt(kpis.value?.net_sales ?? 0), caption: 'Issued minus returns', to: `${base.value}/invoice-book` },
-  { label: 'Gross profit', value: formatAmountBdt(kpis.value?.gross_profit ?? 0), caption: 'Revenue minus COGS', to: `${base.value}/invoice-profit` },
-  { label: 'Cash collected', value: formatAmountBdt(kpis.value?.cash_collected ?? 0), caption: 'Tenant wallet credits', to: `${base.value}/cash-in` },
-  { label: 'AR outstanding', value: formatAmountBdt(kpis.value?.ar_outstanding ?? 0), caption: 'Live wholesale dues', to: `${base.value}/customer-dues` },
-  { label: 'Wallet liability', value: formatAmountBdt(kpis.value?.wallet_liability ?? 0), caption: 'Store credit owed', to: `${base.value}/wallet` },
-  { label: 'Unsold stock', value: formatAmountBdt(kpis.value?.unsold_stock_value ?? 0), caption: 'At landed cost', to: `${base.value}/shipment-profit` },
+  { label: 'Sales', value: formatAmountBdt(kpis.value?.net_sales ?? 0), caption: 'Issued bills (not COD face)', to: `${base.value}/invoice-book` },
+  { label: 'Gross profit', value: formatAmountBdt(kpis.value?.gross_profit ?? 0), caption: 'Sales minus COGS', to: `${base.value}/invoice-profit` },
+  { label: 'Cash in', value: formatAmountBdt(kpis.value?.cash_collected ?? 0), caption: 'Receipts — may exceed sales when courier remits', to: `${base.value}/cash-in` },
+  { label: 'AR due', value: formatAmountBdt(kpis.value?.ar_outstanding ?? 0), caption: 'Open bills by billed party', to: `${base.value}/customer-dues` },
+  { label: 'Merchant payable', value: formatAmountBdt(kpis.value?.merchant_payable ?? 0), caption: 'Reseller profit owed', to: `${base.value}/wallet` },
 ]);
 
 function go(path: string) {

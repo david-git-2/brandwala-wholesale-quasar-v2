@@ -87,6 +87,7 @@ export const financeReportsRepository = {
     endDate?: string | null;
     search?: string | null;
     issuedByTenantId?: number | null;
+    invoiceType?: string | null;
     invoiceId?: number | null;
     page?: number;
     pageSize?: number;
@@ -98,6 +99,7 @@ export const financeReportsRepository = {
       p_end_date: params.endDate ?? undefined,
       p_search: params.search?.trim() || undefined,
       p_issued_by_tenant_id: params.issuedByTenantId ?? undefined,
+      p_invoice_type: params.invoiceType ?? undefined,
       p_invoice_id: params.invoiceId ?? undefined,
       p_page: params.page ?? 1,
       p_page_size: params.pageSize ?? 50,
@@ -280,9 +282,8 @@ export const financeReportsRepository = {
         ['COGS', payload.kpis.cogs],
         ['Gross Profit', payload.kpis.gross_profit],
         ['Cash Collected', payload.kpis.cash_collected],
-        ['AR Outstanding', payload.kpis.ar_outstanding],
-        ['Wallet Liability', payload.kpis.wallet_liability],
-        ['Unsold Stock Value', payload.kpis.unsold_stock_value],
+        ['AR Due', payload.kpis.ar_outstanding],
+        ['Merchant Payable', payload.kpis.merchant_payable ?? 0],
       ],
     );
   },

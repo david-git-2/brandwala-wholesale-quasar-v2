@@ -13,6 +13,14 @@
         <span class="text-caption text-grey-6">to</span>
         <q-input v-model="endDate" dense outlined type="date" class="compact-date-input bg-white" />
       </template>
+      <q-chip
+        v-for="opt in typeOptions"
+        :key="opt.value ?? 'all-type'"
+        clickable dense size="sm"
+        :color="invoiceType === opt.value ? 'primary' : 'grey-2'"
+        :text-color="invoiceType === opt.value ? 'white' : 'grey-9'"
+        @click="invoiceType = opt.value"
+      >{{ opt.label }}</q-chip>
       <q-input
         v-model="searchText"
         outlined rounded dense clearable
@@ -26,7 +34,7 @@
 
     <template #kpi>
       <div class="row items-center q-gutter-x-md wrap q-gutter-y-xs">
-        <ReportKpiStrip label="Revenue" :value="totals?.net_revenue" />
+        <ReportKpiStrip label="Sales" :value="totals?.net_revenue" />
         <ReportKpiStrip label="COGS" :value="totals?.cogs" />
         <ReportKpiStrip label="Gross profit" :value="totals?.realized_gp" highlight />
         <div class="row items-baseline q-gutter-x-xs">
@@ -68,8 +76,15 @@ import { formatAmountBdt } from 'src/utils/currency';
 
 const {
   totals, rows, detailLines, detailLoading, isLoading, error,
-  preset, startDate, endDate, searchText, selectedInvoiceId, setPreset, exportCsv, refetch,
+  preset, startDate, endDate, searchText, invoiceType, selectedInvoiceId, setPreset, exportCsv, refetch,
 } = useInvoiceProfitReport();
+
+const typeOptions = [
+  { label: 'All types', value: null },
+  { label: 'Wholesale', value: 'wholesale' },
+  { label: 'Retail', value: 'retail' },
+  { label: 'Dropship', value: 'dropship' },
+];
 
 const detailOpen = ref(false);
 const detailTitle = ref('Invoice lines');
@@ -82,7 +97,7 @@ const columns: QTableColumn<InvoiceProfitRow>[] = [
   { name: 'invoice_no', label: 'Invoice', field: 'invoice_no', align: 'left', sortable: true },
   { name: 'invoice_date', label: 'Date', field: 'invoice_date', align: 'left' },
   { name: 'customer_name', label: 'Customer', field: 'customer_name', align: 'left' },
-  { name: 'net_revenue', label: 'Revenue', field: 'net_revenue', align: 'right', format: (v) => formatAmountBdt(Number(v)) },
+  { name: 'net_revenue', label: 'Sales', field: 'net_revenue', align: 'right', format: (v) => formatAmountBdt(Number(v)) },
   { name: 'cogs', label: 'COGS', field: 'cogs', align: 'right', format: (v) => formatAmountBdt(Number(v)) },
   { name: 'realized_gp', label: 'GP', field: 'realized_gp', align: 'right', format: (v) => formatAmountBdt(Number(v)) },
   { name: 'gp_margin_pct', label: 'Margin %', field: 'gp_margin_pct', align: 'right', format: (v) => `${Number(v).toFixed(1)}%` },

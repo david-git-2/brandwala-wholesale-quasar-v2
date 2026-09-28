@@ -12,6 +12,7 @@ export function useInvoiceProfitReport() {
   const startDate = ref<string | null>(null);
   const endDate = ref<string | null>(null);
   const searchText = ref('');
+  const invoiceType = ref<string | null>(null);
   const debouncedSearch = ref('');
   const selectedInvoiceId = ref<number | null>(null);
   const page = ref(1);
@@ -36,11 +37,16 @@ export function useInvoiceProfitReport() {
     }, 300);
   });
 
+  watch(invoiceType, () => {
+    page.value = 1;
+  });
+
   const listParams = computed(() => ({
     tenantId: tenantId.value || 0,
     startDate: startDate.value,
     endDate: endDate.value,
     search: debouncedSearch.value || null,
+    invoiceType: invoiceType.value,
     invoiceId: null as number | null,
     page: page.value,
     pageSize: pageSize.value,
@@ -88,6 +94,7 @@ export function useInvoiceProfitReport() {
     startDate,
     endDate,
     searchText,
+    invoiceType,
     selectedInvoiceId,
     setPreset: applyPreset,
     exportCsv: () => {

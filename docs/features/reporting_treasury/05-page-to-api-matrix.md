@@ -11,9 +11,8 @@ As-built wiring. **Target:** report pages read only. `BillingBalancesPage` colle
 | **`InvoiceMarginDetailPage`** | Mount / Detail Inspect | `useInvoiceMarginDetailQuery` | `RPC: get_invoice_margin_detail` | Cached on invoice margin key |
 | **`ShipmentPnLDetailsPage`** | Mount / Shipment Select | `useShipmentPnLQuery` | `RPC: get_tenant_shipment_profit_report` | Cached on `treasuryQueryKeys.shipmentPnL` |
 | **`CashInReportPage`** | Mount / Payment Method Filter | `useCashInReportQuery` | `RPC: get_tenant_cash_in_report` | Cached on `walletQueryKeys.cashIn` |
-| **`BillingBalancesPage`** | Settle Customer Invoices | `useAllocatePaymentMutation` | `RPC: create_billing_profile_payment_with_allocations` | Invalidates balances & invoice caches |
-| **`PaymentsPage`** | Settle Dues / Pay | Navigate collect page | — | — |
+| **`PaymentsPage`** (`wallet/`) | Settle Dues / Pay | Navigate collect page | — | — |
 | **`PaymentsPage`** | History | Open `CustomerPaymentHistoryDrawer` | `RPC: list_customer_group_receipts` | `financeReportQueryKeys.customerGroupReceipts` |
-| **`CollectCustomerPaymentPage`** | Post Payment | `usePayments.recordPayment` | `RPC: record_batch_customer_payment` | Invalidates `financeReportQueryKeys` |
-| **`CustomerPaymentHistoryDrawer`** | Fix instrument details | `usePayments.updateInstrumentDetails` | `RPC: update_payment_instrument_details` | Invalidates receipt history + finance root |
+| **`CollectCustomerPaymentPage`** (`wallet/`) | Post Payment | `usePayments.recordPayment` | `RPC: record_batch_customer_payment` | Invalidates `financeReportQueryKeys` |
+| **`CustomerPaymentHistoryDrawer`** (`wallet/`) | Fix instrument details | `usePayments.updateInstrumentDetails` | `RPC: update_payment_instrument_details` | Invalidates receipt history + finance root |
 | **`CustomerPaymentHistoryDrawer`** | Void & re-enter | `usePayments.voidCustomerReceipt` | `RPC: void_customer_receipt` | Invalidates finance root; parent navigates to collect |

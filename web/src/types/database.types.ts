@@ -12089,6 +12089,7 @@ export type Database = {
         Args: {
           p_end_date?: string
           p_invoice_id?: number
+          p_invoice_type?: string
           p_issued_by_tenant_id?: number
           p_page?: number
           p_page_size?: number

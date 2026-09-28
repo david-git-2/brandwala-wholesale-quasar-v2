@@ -5,7 +5,7 @@
 | | |
 | :--- | :--- |
 | Spec | `docs/features/reporting_treasury/` |
-| UI | `web/src/modules/reporting_treasury/` |
+| UI | `web/src/modules/reporting_treasury/` (reports); collect at `web/src/modules/wallet/` |
 | SQL | Report RPCs in `public.sql` |
 | Access | `app`; parent books |
 | Role | **Read** sales, cash, COD ops, wallets. Do not post receipts (wallet). |
@@ -53,8 +53,8 @@ Sales reports filter `invoice_type` (wholesale / dropship / retail).
 ## Stories
 
 ### US-1: Margin from issued bills + cost snapshot
-- [ ] Invoice profit uses cost at issue (`sales_invoice_item_costs` when built; today `unit_cost_price` on the line).
-- [ ] Shipment P&L realized revenue = **invoice sell** on that stock, not COD.
+- [x] Invoice profit uses cost at issue (`sales_invoice_item_costs` when built; today `unit_cost_price` on the line).
+- [x] Shipment P&L realized revenue = **invoice sell** on that stock, not COD.
 
 ### US-2: Eight views, one question each
 
@@ -72,7 +72,7 @@ Sales reports filter `invoice_type` (wholesale / dropship / retail).
 Month tiles: **Sales** \| **Gross profit** \| **Cash in** \| **AR due**. Optional fifth: **Merchant payable**. Caption: cash may exceed sales when courier remits reseller money.
 
 ### US-3: Reporting does not collect
-- [ ] `create_billing_profile_payment_with_allocations` is **wallet**. Billing Balances page may stay; it is not a report.
+- [x] Collect desk lives in **wallet** (`PaymentsPage` / `CollectCustomerPaymentPage`). Report routes are read-only.
 
 ---
 

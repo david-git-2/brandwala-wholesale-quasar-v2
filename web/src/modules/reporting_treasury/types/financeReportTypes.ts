@@ -85,6 +85,7 @@ export type InvoiceProfitRow = {
   id: number;
   invoice_no: string;
   invoice_date: string;
+  invoice_type?: string;
   customer_name: string;
   net_qty: number;
   net_revenue: number;
@@ -139,6 +140,9 @@ export type WalletLiabilityTotals = {
   credit_applied: number;
   outstanding: number;
   customer_count: number;
+  customer_store_credit?: number;
+  merchant_payable?: number;
+  courier?: number;
 };
 
 export type WalletLiabilityReportPayload = {
@@ -191,8 +195,7 @@ export type MonthSnapshotKpis = {
   gross_profit: number;
   cash_collected: number;
   ar_outstanding: number;
-  wallet_liability: number;
-  unsold_stock_value: number;
+  merchant_payable?: number;
 };
 
 export type MonthSnapshotReportPayload = {
@@ -200,5 +203,6 @@ export type MonthSnapshotReportPayload = {
   month: string;
   start_date: string;
   end_date: string;
+  sales_by_invoice_type?: Record<string, number>;
   kpis: MonthSnapshotKpis;
 };

@@ -26,9 +26,9 @@
 
     <template #kpi>
       <div class="row items-center q-gutter-x-md wrap q-gutter-y-xs">
-        <ReportKpiStrip label="Outstanding now" :value="totals?.outstanding" highlight />
-        <ReportKpiStrip label="Credit issued" :value="totals?.credit_issued" />
-        <ReportKpiStrip label="Credit applied" :value="totals?.credit_applied" />
+        <ReportKpiStrip label="Store credit" :value="totals?.customer_store_credit ?? totals?.outstanding" highlight />
+        <ReportKpiStrip label="Merchant payable" :value="totals?.merchant_payable" />
+        <ReportKpiStrip label="Courier" :value="totals?.courier" />
         <ReportKpiStrip label="Customers" :value="totals?.customer_count" number />
       </div>
     </template>

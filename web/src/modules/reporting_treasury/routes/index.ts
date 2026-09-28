@@ -117,14 +117,14 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
       {
         path: 'payments',
         name: 'app-finance-payments-page',
-        component: () => import('../pages/PaymentsPage.vue'),
+        component: () => import('src/modules/wallet/pages/PaymentsPage.vue'),
         beforeEnter: guard('payments'),
         meta: { title: 'Payments', headerTitle: 'Payments' },
       },
       {
         path: 'payments/collect/:customerGroupId',
         name: 'app-finance-payments-collect-page',
-        component: () => import('../pages/CollectCustomerPaymentPage.vue'),
+        component: () => import('src/modules/wallet/pages/CollectCustomerPaymentPage.vue'),
         beforeEnter: guard('payments'),
         meta: { title: 'Collect payment', headerTitle: 'Collect payment' },
       },

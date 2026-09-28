@@ -3119,7 +3119,7 @@ CREATE TABLE IF NOT EXISTS "public"."sales_invoices" (
     CONSTRAINT "global_invoices_discount_amount_check" CHECK (("discount_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_due_amount_check" CHECK (("due_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_paid_amount_check" CHECK (("paid_amount" >= (0)::numeric)),
-    CONSTRAINT "global_invoices_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['due'::"text", 'partially_paid'::"text", 'paid'::"text"]))),
+    CONSTRAINT "global_invoices_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['due'::"text", 'partially_paid'::"text", 'paid'::"text", 'settled_with_write_off'::"text"]))),
     CONSTRAINT "global_invoices_print_charge_check" CHECK (("print_charge" >= (0)::numeric)),
     CONSTRAINT "global_invoices_shipping_charge_check" CHECK (("shipping_charge" >= (0)::numeric)),
     CONSTRAINT "global_invoices_subtotal_amount_check" CHECK (("subtotal_amount" >= (0)::numeric)),
@@ -3142,10 +3142,12 @@ CREATE OR REPLACE FUNCTION "public"."apply_global_invoice_settlement_discount"("
     AS $$
 declare
   v_invoice public.global_invoices;
+  v_parent_id bigint;
+  v_operating_tenant_id bigint;
 begin
   select * into v_invoice from public.global_invoices where id = p_invoice_id for update;
   if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.invoice_status <> 'posted'::public.global_invoice_status then
+  if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
     raise exception 'cannot settle a non-posted invoice';
   end if;
   if coalesce(p_amount, 0.00) < 0.00 then
@@ -3155,23 +3157,51 @@ begin
     raise exception 'settlement amount exceeds outstanding due';
   end if;
 
-  update public.global_invoices
-  set
-    settlement_discount_amount = coalesce(settlement_discount_amount, 0.00) + p_amount,
-    note = coalesce(nullif(trim(p_note), ''), note),
-    updated_at = now()
-  where id = p_invoice_id;
+  v_parent_id := coalesce(v_invoice.parent_tenant_id, v_invoice.tenant_id);
+  v_operating_tenant_id := coalesce(v_invoice.issued_by_tenant_id, v_invoice.tenant_id);
 
-  perform public.recompute_global_invoice_totals(p_invoice_id);
+  if coalesce(p_amount, 0.00) > 0.00 then
+    insert into public.invoice_write_offs (
+      tenant_id,
+      parent_tenant_id,
+      invoice_id,
+      payment_id,
+      amount,
+      reason,
+      note,
+      approved_by
+    )
+    values (
+      v_operating_tenant_id,
+      v_parent_id,
+      p_invoice_id,
+      null,
+      p_amount,
+      'management_concession',
+      p_note,
+      auth.uid()
+    );
+  end if;
+
+  if nullif(trim(p_note), '') is not null then
+    update public.sales_invoices
+    set
+      note = coalesce(nullif(trim(p_note), ''), note),
+      updated_at = now()
+    where id = p_invoice_id;
+  end if;
+
+  perform public.recompute_global_invoice_payment_status(p_invoice_id);
 
   select * into v_invoice from public.global_invoices where id = p_invoice_id;
 
   -- Record Tenant Revenue Write-Off for settlement discount
   if p_amount > 0 then
     perform public.record_ledger_transaction(
-      p_tenant_id => v_invoice.tenant_id,
+      p_parent_tenant_id => coalesce(v_invoice.parent_tenant_id, v_invoice.tenant_id),
+      p_operating_tenant_id => coalesce(v_invoice.issued_by_tenant_id, v_invoice.parent_tenant_id, v_invoice.tenant_id),
       p_entity_type => 'tenant',
-      p_entity_id => v_invoice.tenant_id,
+      p_entity_id => coalesce(v_invoice.parent_tenant_id, v_invoice.tenant_id),
       p_type => 'debit',
       p_amount => p_amount,
       p_currency_code => 'BDT',
@@ -4062,11 +4092,14 @@ CREATE OR REPLACE FUNCTION "public"."auth_investor_id"() RETURNS bigint
 declare
   v_investor_id bigint;
 begin
-  select investor_id into v_investor_id
-  from public.memberships
-  where lower(trim(email)) = public.current_user_email()
-    and is_active = true
-    and role = 'investor'::public.app_role
+  select m.investor_id into v_investor_id
+  from public.memberships m
+  inner join public.investors i
+    on i.id = m.investor_id
+    and i.is_active = true
+  where public.membership_email_matches_current_user(m.email)
+    and m.is_active = true
+  order by case when m.role = 'investor'::public.app_role then 0 else 1 end
   limit 1;
 
   return v_investor_id;
@@ -4091,6 +4124,27 @@ $$;
 
 
 ALTER FUNCTION "public"."auto_enable_customer_module_for_new_tenant"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."auto_enable_investor_capital_for_root_tenant"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if NEW.parent_id is null then
+    insert into public.tenant_modules (tenant_id, module_key, is_active)
+    values (NEW.id, 'investor_capital', true)
+    on conflict (tenant_id, module_key) do update set is_active = true;
+
+    perform public.seed_tenant_roles_and_grants(NEW.id);
+  end if;
+
+  return NEW;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."auto_enable_investor_capital_for_root_tenant"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."auto_enable_universal_wallet_for_new_tenant"() RETURNS "trigger"
@@ -6981,7 +7035,8 @@ begin
     perform public.recompute_global_invoice_payment_status(p_invoice_id);
 
     perform public.record_ledger_transaction(
-      p_tenant_id => v_tenant_id,
+      p_parent_tenant_id => v_tenant_id,
+      p_operating_tenant_id => coalesce(v_invoice.issued_by_tenant_id, v_tenant_id),
       p_entity_type => 'tenant',
       p_entity_id => v_tenant_id,
       p_type => 'credit',
@@ -7030,7 +7085,8 @@ begin
     perform public.recompute_global_invoice_payment_status(p_invoice_id);
 
     perform public.record_ledger_transaction(
-      p_tenant_id => v_tenant_id,
+      p_parent_tenant_id => v_tenant_id,
+      p_operating_tenant_id => coalesce(v_invoice.issued_by_tenant_id, v_tenant_id),
       p_entity_type => 'customer',
       p_entity_id => v_invoice.billing_profile_id,
       p_type => 'debit',
@@ -7063,13 +7119,268 @@ begin
     'paid_amount', v_invoice.paid_amount,
     'due_amount', v_invoice.due_amount,
     'payment_status', v_invoice.payment_status,
-    'settlement_discount_amount', v_invoice.settlement_discount_amount
+    'written_off_amount', v_invoice.written_off_amount
   );
 end;
 $$;
 
 
 ALTER FUNCTION "public"."collect_wholesale_invoice_payment"("p_invoice_id" bigint, "p_cash_amount" numeric, "p_cash_method" "text", "p_wallet_amount" numeric, "p_settlement_amount" numeric) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."collect_wholesale_invoice_payment"("p_invoice_id" bigint, "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_wallet_amount" numeric DEFAULT 0, "p_settlement_amount" numeric DEFAULT 0, "p_note" "text" DEFAULT NULL::"text", "p_received_on" "date" DEFAULT NULL::"date") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_invoice public.sales_invoices;
+  v_wallet numeric(12, 2);
+  v_settle numeric(12, 2);
+  v_cash numeric(12, 2);
+  v_due numeric(12, 2);
+  v_tenant_id bigint;
+  v_operating_tenant_id bigint;
+  v_payment_id bigint;
+  v_line record;
+  v_method_code text;
+  v_line_amount numeric(12, 2);
+  v_line_count int;
+  v_header_method text;
+  v_sort int := 0;
+  v_received_on date := coalesce(p_received_on, current_date);
+begin
+  if p_invoice_id is null then
+    raise exception 'Invoice ID is required';
+  end if;
+
+  v_wallet := greatest(coalesce(p_wallet_amount, 0.00), 0.00);
+  v_settle := greatest(coalesce(p_settlement_amount, 0.00), 0.00);
+  v_cash := 0.00;
+  v_line_count := 0;
+
+  if coalesce(jsonb_typeof(p_instruments), 'null') = 'array' then
+    for v_line in
+      select value, ordinality - 1 as idx
+      from jsonb_array_elements(p_instruments) with ordinality
+    loop
+      v_method_code := upper(trim(coalesce(v_line.value ->> 'payment_method_code', '')));
+      v_line_amount := round(coalesce((v_line.value ->> 'amount')::numeric, 0.00), 2);
+
+      if v_line_amount <= 0 then
+        continue;
+      end if;
+
+      if not exists (
+        select 1 from public.payment_methods pm
+        where pm.code = v_method_code and pm.is_active = true
+      ) then
+        raise exception 'Invalid payment method: %', v_method_code;
+      end if;
+
+      if v_method_code = 'CHEQUE' then
+        if (v_line.value ->> 'bd_bank_id') is null then
+          raise exception 'Cheque line requires a bank';
+        end if;
+        if nullif(trim(coalesce(v_line.value ->> 'cheque_number', '')), '') is null then
+          raise exception 'Cheque line requires a cheque number';
+        end if;
+        if (v_line.value ->> 'cheque_date') is null then
+          raise exception 'Cheque line requires a cheque date';
+        end if;
+      end if;
+
+      if v_method_code = 'BANK_TRANSFER' and (v_line.value ->> 'bd_bank_id') is null then
+        raise exception 'Bank transfer line requires a bank';
+      end if;
+
+      if v_method_code in ('CHEQUE', 'BANK_TRANSFER') and not exists (
+        select 1 from public.bd_banks b
+        where b.id = (v_line.value ->> 'bd_bank_id')::bigint and b.is_active = true
+      ) then
+        raise exception 'Invalid bank on payment line';
+      end if;
+
+      v_cash := v_cash + v_line_amount;
+      v_line_count := v_line_count + 1;
+    end loop;
+  end if;
+
+  if v_cash <= 0 and v_wallet <= 0 and v_settle <= 0 then
+    raise exception 'Enter at least one payment line, store credit, or settlement';
+  end if;
+
+  select * into v_invoice from public.sales_invoices where id = p_invoice_id for update;
+
+  if v_invoice.id is null then
+    raise exception 'Invoice not found';
+  end if;
+
+  if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
+    raise exception 'Payments can only be recorded on issued invoices';
+  end if;
+
+  if v_invoice.billing_profile_id is null then
+    raise exception 'Billing profile is required';
+  end if;
+
+  v_due := coalesce(v_invoice.due_amount, 0.00);
+  if (v_cash + v_wallet + v_settle) > v_due then
+    raise exception 'Payment total cannot exceed due';
+  end if;
+
+  v_tenant_id := coalesce(v_invoice.parent_tenant_id, v_invoice.tenant_id);
+  v_operating_tenant_id := coalesce(v_invoice.issued_by_tenant_id, v_tenant_id);
+
+  if v_cash > 0 then
+    if v_line_count = 1 then
+      select upper(trim(coalesce(value ->> 'payment_method_code', 'CASH')))
+      into v_header_method
+      from jsonb_array_elements(p_instruments) as t(value)
+      where round(coalesce((value ->> 'amount')::numeric, 0.00), 2) > 0
+      limit 1;
+      v_header_method := lower(v_header_method);
+    else
+      v_header_method := 'split';
+    end if;
+
+    insert into public.global_payments (
+      tenant_id, billing_profile_id, amount, unallocated_amount,
+      payment_date, method, note
+    ) values (
+      v_tenant_id, v_invoice.billing_profile_id, v_cash, 0.00,
+      v_received_on, v_header_method, nullif(trim(p_note), '')
+    ) returning id into v_payment_id;
+
+    for v_line in
+      select value from jsonb_array_elements(p_instruments)
+    loop
+      v_method_code := upper(trim(coalesce(v_line.value ->> 'payment_method_code', '')));
+      v_line_amount := round(coalesce((v_line.value ->> 'amount')::numeric, 0.00), 2);
+      if v_line_amount <= 0 then continue; end if;
+
+      v_sort := v_sort + 1;
+      insert into public.global_payment_instruments (
+        payment_id, payment_method_code, amount, reference,
+        bd_bank_id, cheque_number, cheque_date, sort_order
+      ) values (
+        v_payment_id,
+        v_method_code,
+        v_line_amount,
+        nullif(trim(coalesce(v_line.value ->> 'reference', '')), ''),
+        case when v_method_code in ('CHEQUE', 'BANK_TRANSFER') then (v_line.value ->> 'bd_bank_id')::bigint else null end,
+        case when v_method_code = 'CHEQUE' then nullif(trim(v_line.value ->> 'cheque_number'), '') else null end,
+        case
+          when v_method_code in ('CHEQUE', 'BANK_TRANSFER') then (v_line.value ->> 'cheque_date')::date
+          else null
+        end,
+        v_sort
+      );
+    end loop;
+
+    insert into public.invoice_payments (tenant_id, payment_id, global_invoice_id, amount)
+    values (v_tenant_id, v_payment_id, p_invoice_id, v_cash);
+
+    update public.sales_invoices
+    set paid_amount = coalesce(paid_amount, 0.00) + v_cash, updated_at = now()
+    where id = p_invoice_id;
+
+    perform public.recompute_global_invoice_payment_status(p_invoice_id);
+
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => v_tenant_id,
+      p_operating_tenant_id => v_operating_tenant_id,
+      p_entity_type => 'tenant',
+      p_entity_id => v_tenant_id,
+      p_type => 'credit',
+      p_amount => v_cash,
+      p_currency_code => 'BDT',
+      p_exchange_rate => 1.000000,
+      p_source_type => 'sales_invoice',
+      p_source_id => v_payment_id::text,
+      p_metadata => jsonb_build_object(
+        'section', 'payments',
+        'purpose', 'tenant_payment_received',
+        'transaction_type', 'payment_received',
+        'label', 'Payment Received',
+        'invoice_id', p_invoice_id,
+        'payment_id', v_payment_id,
+        'method', v_header_method,
+        'instrument_count', v_line_count
+      )
+    );
+  end if;
+
+  if v_wallet > 0 then
+    insert into public.wallet_accounts (
+      tenant_id, entity_type, entity_id, currency_code,
+      available_balance, locked_balance, pending_balance
+    ) values (
+      v_tenant_id, 'customer', v_invoice.billing_profile_id, 'BDT',
+      0.0000, 0.0000, 0.0000
+    ) on conflict (tenant_id, entity_type, entity_id, currency_code) do nothing;
+
+    insert into public.global_payments (
+      tenant_id, billing_profile_id, amount, unallocated_amount,
+      payment_date, method, note
+    ) values (
+      v_tenant_id, v_invoice.billing_profile_id, v_wallet, 0.00,
+      v_received_on, 'wallet_credit',
+      coalesce(nullif(trim(p_note), ''), 'Wholesale invoice collect (store credit)')
+    ) returning id into v_payment_id;
+
+    insert into public.invoice_payments (tenant_id, payment_id, global_invoice_id, amount)
+    values (v_tenant_id, v_payment_id, p_invoice_id, v_wallet);
+
+    update public.sales_invoices
+    set paid_amount = coalesce(paid_amount, 0.00) + v_wallet, updated_at = now()
+    where id = p_invoice_id;
+
+    perform public.recompute_global_invoice_payment_status(p_invoice_id);
+
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => v_tenant_id,
+      p_operating_tenant_id => v_operating_tenant_id,
+      p_entity_type => 'customer',
+      p_entity_id => v_invoice.billing_profile_id,
+      p_type => 'debit',
+      p_amount => v_wallet,
+      p_currency_code => 'BDT',
+      p_exchange_rate => 1.000000,
+      p_source_type => 'sales_invoice',
+      p_source_id => v_payment_id::text,
+      p_allow_overdraft => false,
+      p_metadata => jsonb_build_object(
+        'section', 'payments',
+        'purpose', 'apply_store_credit',
+        'transaction_type', 'wallet_credit',
+        'label', 'Applied store credit',
+        'invoice_id', p_invoice_id,
+        'payment_id', v_payment_id
+      )
+    );
+  end if;
+
+  if v_settle > 0 then
+    perform public.apply_global_invoice_settlement_discount(
+      p_invoice_id, v_settle, coalesce(nullif(trim(p_note), ''), 'Wholesale collect settlement')
+    );
+  end if;
+
+  select * into v_invoice from public.sales_invoices where id = p_invoice_id;
+
+  return jsonb_build_object(
+    'success', true,
+    'invoice_id', v_invoice.id,
+    'paid_amount', v_invoice.paid_amount,
+    'due_amount', v_invoice.due_amount,
+    'payment_status', v_invoice.payment_status,
+    'settlement_discount_amount', v_invoice.settlement_discount_amount
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."collect_wholesale_invoice_payment"("p_invoice_id" bigint, "p_instruments" "jsonb", "p_wallet_amount" numeric, "p_settlement_amount" numeric, "p_note" "text", "p_received_on" "date") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."compute_dropship_order_reseller_purchase"("p_order_id" bigint) RETURNS TABLE("reseller_unit_purchase_cost" numeric, "reseller_purchase_cost" numeric, "order_item_quantity" integer)
@@ -7649,8 +7960,9 @@ CREATE TABLE IF NOT EXISTS "public"."global_payments" (
     "unallocated_amount" numeric(12,2) DEFAULT 0.00 NOT NULL,
     "collection_source" "public"."collection_source_type" DEFAULT 'billing_profile'::"public"."collection_source_type" NOT NULL,
     "customer_group_id" bigint,
-    CONSTRAINT "payments_amount_check" CHECK (("amount" > (0)::numeric)),
-    CONSTRAINT "payments_method_check" CHECK ((("method" = ANY (ARRAY['cash'::"text", 'bank'::"text", 'bank_transfer'::"text", 'mobile_banking'::"text", 'bkash'::"text", 'nagad'::"text", 'other'::"text"])) OR ("method" IS NULL)))
+    "voided_at" timestamp with time zone,
+    CONSTRAINT "payments_amount_check" CHECK (("amount" >= (0)::numeric)),
+    CONSTRAINT "payments_method_check" CHECK ((("method" IS NULL) OR ("method" = ANY (ARRAY['cash'::"text", 'bank'::"text", 'bank_transfer'::"text", 'mobile_banking'::"text", 'bkash'::"text", 'nagad'::"text", 'other'::"text", 'cheque'::"text", 'rocket'::"text", 'upay'::"text", 'tap'::"text", 'card_pos'::"text", 'wire_transfer'::"text", 'paypal'::"text", 'stripe'::"text", 'letter_of_credit'::"text", 'cod'::"text", 'split'::"text"]))))
 );
 
 
@@ -8515,11 +8827,10 @@ begin
       and invoice_id is null;
   end if;
 
-  return v_result
-    || jsonb_build_object(
-      'created', true,
-      'invoice_status', 'proforma_generated'
-    );
+  return v_result || jsonb_build_object(
+    'created', true,
+    'invoice_status', 'proforma_generated'
+  );
 end;
 $$;
 
@@ -9223,11 +9534,8 @@ begin
     if not exists (
       select 1 from public.shop_orders o
       where o.id = v_shop_order_id
+        and o.tenant_id = p_tenant_id
         and o.shop_type_snapshot = 'dropship'
-        and (
-          o.tenant_id = p_tenant_id
-          or o.parent_tenant_id = p_tenant_id
-        )
     ) then
       return jsonb_build_object('success', false, 'error', 'shop_order_id must be a dropship order for this tenant');
     end if;
@@ -9237,6 +9545,7 @@ begin
       global_invoice_id = v_invoice_id,
       updated_at = now()
     where id = v_shop_order_id
+      and tenant_id = p_tenant_id
       and global_invoice_id is null;
   end if;
 
@@ -11404,13 +11713,19 @@ BEGIN
         customer_offer_currency_id bigint
       )
     LOOP
-      UPDATE public.shop_order_items
+      UPDATE public.shop_order_items soi
       SET
         customer_offer_amount = v_item.customer_offer_amount,
-        customer_offer_currency_id = v_item.customer_offer_currency_id,
+        customer_offer_currency_id = coalesce(
+          nullif(v_item.customer_offer_currency_id, 0),
+          soi.staff_offer_currency_id,
+          soi.unit_sell_price_currency_id,
+          soi.unit_list_price_currency_id,
+          soi.customer_offer_currency_id
+        ),
         customer_counter_at = now(),
         updated_at = now()
-      WHERE id = v_item.id AND order_id = p_order_id;
+      WHERE soi.id = v_item.id AND soi.order_id = p_order_id;
     END LOOP;
 
     SELECT EXISTS (
@@ -11473,12 +11788,18 @@ BEGIN
         customer_offer_currency_id bigint
       )
     LOOP
-      UPDATE public.shop_order_items
+      UPDATE public.shop_order_items soi
       SET
         customer_offer_amount = v_item.customer_offer_amount,
-        customer_offer_currency_id = v_item.customer_offer_currency_id,
+        customer_offer_currency_id = coalesce(
+          nullif(v_item.customer_offer_currency_id, 0),
+          soi.staff_offer_currency_id,
+          soi.unit_sell_price_currency_id,
+          soi.unit_list_price_currency_id,
+          soi.customer_offer_currency_id
+        ),
         updated_at = now()
-      WHERE id = v_item.id AND order_id = p_order_id;
+      WHERE soi.id = v_item.id AND soi.order_id = p_order_id;
     END LOOP;
 
     UPDATE public.shop_orders
@@ -15507,6 +15828,7 @@ BEGIN
     FROM public.invoice_payments ip
     JOIN public.global_payments gp ON gp.id = ip.payment_id
     WHERE ip.global_invoice_id IS NOT NULL
+      AND gp.voided_at IS NULL
     GROUP BY ip.global_invoice_id
   ),
   per_invoice AS (
@@ -15517,7 +15839,7 @@ BEGIN
       coalesce(ir.returned, 0)::numeric(12,2) AS returned,
       coalesce(ipa.collected_cash, 0)::numeric(12,2) AS collected_cash,
       coalesce(ipa.wallet_applied, 0)::numeric(12,2) AS wallet_applied,
-      coalesce(si.settlement_discount_amount, 0)::numeric(12,2) AS settlement,
+      coalesce(si.written_off_amount, 0)::numeric(12,2) AS settlement,
       coalesce(si.due_date, si.invoice_date) AS aging_date,
       CASE
         WHEN si.due_amount <= 0 THEN NULL
@@ -15532,7 +15854,6 @@ BEGIN
     LEFT JOIN invoice_payments_agg ipa ON ipa.invoice_id = si.id
     WHERE si.parent_tenant_id = v_books_id
       AND si.invoice_status = 'issued'::public.global_invoice_status
-      AND si.invoice_type = 'wholesale'::public.global_invoice_type
       AND si.billing_profile_id IS NOT NULL
       AND (p_issued_by_tenant_id IS NULL OR si.issued_by_tenant_id = p_issued_by_tenant_id)
   ),
@@ -15604,54 +15925,28 @@ BEGIN
     FROM customer_rows
   ),
   paged AS (
-    SELECT *
-    FROM customer_rows
-    ORDER BY still_due DESC, name ASC
-    OFFSET v_offset
-    LIMIT v_page_size
+    SELECT * FROM customer_rows ORDER BY still_due DESC, name ASC OFFSET v_offset LIMIT v_page_size
   )
-  SELECT
-    (SELECT count(*) FROM customer_rows),
+  SELECT (SELECT count(*) FROM customer_rows),
     (SELECT jsonb_build_object(
-      'billed', billed,
-      'returned', returned,
-      'collected_cash', collected_cash,
-      'wallet_applied', wallet_applied,
-      'settlement', settlement,
-      'still_due', still_due,
+      'billed', billed, 'returned', returned, 'collected_cash', collected_cash,
+      'wallet_applied', wallet_applied, 'settlement', settlement, 'still_due', still_due,
       'customer_count', customer_count
     ) FROM totals_calc),
-    coalesce(
-      (SELECT jsonb_agg(jsonb_build_object(
-        'billing_profile_id', billing_profile_id,
-        'name', name,
-        'phone', phone,
-        'credit_limit', credit_limit,
-        'billed', billed,
-        'returned', returned,
-        'collected_cash', collected_cash,
-        'wallet_applied', wallet_applied,
-        'settlement', settlement,
-        'still_due', still_due,
-        'oldest_due_date', oldest_due_date,
-        'aging', jsonb_build_object(
-          'current', aging_current,
-          'd1_30', aging_d1_30,
-          'd31_60', aging_d31_60,
-          'd61_90', aging_d61_90,
-          'd90_plus', aging_d90_plus
-        ),
-        'open_invoice_count', open_invoice_count
-      ) ORDER BY still_due DESC, name ASC) FROM paged),
-      '[]'::jsonb
-    )
+    coalesce((SELECT jsonb_agg(jsonb_build_object(
+      'billing_profile_id', billing_profile_id, 'name', name, 'phone', phone, 'credit_limit', credit_limit,
+      'billed', billed, 'returned', returned, 'collected_cash', collected_cash, 'wallet_applied', wallet_applied,
+      'settlement', settlement, 'still_due', still_due, 'oldest_due_date', oldest_due_date,
+      'open_invoice_count', open_invoice_count,
+      'aging', jsonb_build_object(
+        'current', aging_current, 'd1_30', aging_d1_30, 'd31_60', aging_d31_60,
+        'd61_90', aging_d61_90, 'd90_plus', aging_d90_plus
+      )
+    ) ORDER BY still_due DESC, name ASC) FROM paged), '[]'::jsonb)
   INTO v_total_count, v_totals, v_rows;
 
   RETURN jsonb_build_object(
-    'totals', coalesce(v_totals, jsonb_build_object(
-      'billed', 0, 'returned', 0, 'collected_cash', 0, 'wallet_applied', 0,
-      'settlement', 0, 'still_due', 0, 'customer_count', 0
-    )),
+    'totals', coalesce(v_totals, '{}'::jsonb),
     'rows', coalesce(v_rows, '[]'::jsonb),
     'page', v_page,
     'page_size', v_page_size,
@@ -15729,18 +16024,26 @@ begin
   left join public.global_currencies buy_gc on buy_gc.id = s.buy_currency_id
   where s.id = v_order.shop_id;
 
-  select
-    case
-      when v_order.cart_id is not null then coalesce(c.can_see_buy_price_snapshot, perm.can_see_buy_price, false)
-      else coalesce(perm.can_see_buy_price, false)
-    end,
-    case
-      when v_order.cart_id is not null then coalesce(c.can_see_sell_price_snapshot, perm.can_see_sell_price, false)
-      else coalesce(perm.can_see_sell_price, false)
-    end
-  into v_can_see_buy_price, v_can_see_sell_price
-  from public.get_shop_permissions_for_customer(v_order.shop_id) perm
-  left join public.shop_carts c on c.id = v_order.cart_id;
+  if v_order.shop_type_snapshot = 'dropship'::public.shop_type_enum then
+    v_can_see_buy_price := true;
+    v_can_see_sell_price := true;
+  else
+    select
+      case
+        when v_order.cart_id is not null then coalesce(c.can_see_buy_price_snapshot, perm.can_see_buy_price, false)
+        else coalesce(perm.can_see_buy_price, false)
+      end,
+      case
+        when v_order.cart_id is not null then coalesce(c.can_see_sell_price_snapshot, perm.can_see_sell_price, false)
+        else coalesce(perm.can_see_sell_price, false)
+      end
+    into v_can_see_buy_price, v_can_see_sell_price
+    from public.get_shop_permissions_for_customer(v_order.shop_id) perm
+    left join public.shop_carts c on c.id = v_order.cart_id;
+  end if;
+
+  v_can_see_buy_price := coalesce(v_can_see_buy_price, false);
+  v_can_see_sell_price := coalesce(v_can_see_sell_price, false);
 
   select count(*)::bigint
   into v_item_count
@@ -15791,6 +16094,7 @@ begin
         'is_first_offer_manual', soi.is_first_offer_manual,
         'final_price_amount', soi.final_price_amount,
         'final_price_currency_id', soi.final_price_currency_id,
+        'final_offer_amount', soi.final_price_amount,
         'is_final_offer_manual', soi.is_final_offer_manual,
         'confirmed_quantity', soi.confirmed_quantity,
         'weight_kg', soi.weight_kg,
@@ -17188,7 +17492,7 @@ begin
   from public.memberships m
   left join public.tenant_roles tr on tr.id = m.tenant_role_id
   where m.tenant_id = p_tenant_id
-    and lower(trim(m.email)) = public.current_user_email()
+    and public.membership_email_matches_current_user(m.email)
     and m.is_active = true;
 
   if public.is_superadmin()
@@ -17464,15 +17768,18 @@ begin
   select * into v_tenant from public.tenants where id = p_tenant_id;
   if v_tenant.id is null then raise exception 'tenant not found'; end if;
 
-  select * into v_membership
+  select m.* into v_membership
   from public.memberships m
+  inner join public.investors i
+    on i.id = m.investor_id
+    and i.tenant_id = p_tenant_id
+    and i.is_active = true
   where m.tenant_id = p_tenant_id
-    and lower(trim(m.email)) = public.current_user_email()
+    and public.membership_email_matches_current_user(m.email)
     and m.is_active = true
-    and m.role = 'investor'::public.app_role
   limit 1;
 
-  if v_membership.id is null then
+  if v_membership.id is null or v_membership.investor_id is null then
     return jsonb_build_object('authenticated', false, 'tenant', row_to_json(v_tenant));
   end if;
 
@@ -17527,43 +17834,29 @@ begin
     raise exception 'not allowed';
   end if;
 
-  select coalesce(sum(amount), 0) into v_deposits
-  from public.investor_transactions
-  where investor_id = p_investor_id
-    and type in ('deposit', 'capital_in', 'capital_adjustment', 'manual_adjustment')
-    and date >= p_start_date and date <= p_end_date;
+  v_deposits := public.investor_uwl_flow_total_range(p_tenant_id, p_investor_id, 'in', p_start_date, p_end_date);
+  v_withdrawals := public.investor_uwl_flow_total_range(p_tenant_id, p_investor_id, 'out', p_start_date, p_end_date);
 
-  select coalesce(sum(amount), 0) into v_withdrawals
-  from public.investor_transactions
-  where investor_id = p_investor_id
-    and type in ('withdrawal', 'withdrawal_paid', 'profit_payout')
-    and date >= p_start_date and date <= p_end_date;
+  select coalesce(sum(si.computed_profit), 0) into v_profit
+  from public.shipment_investments si
+  where si.investor_id = p_investor_id
+    and si.status = 'active'
+    and si.profit_status = 'realized'
+    and si.updated_at::date >= p_start_date and si.updated_at::date <= p_end_date;
 
-  select coalesce(sum(computed_profit), 0) into v_profit
-  from public.shipment_investments
-  where investor_id = p_investor_id
-    and status = 'active'
-    and profit_status = 'realized'
-    and updated_at::date >= p_start_date and updated_at::date <= p_end_date;
+  v_starting_deposits := public.investor_uwl_flow_total_range(
+    p_tenant_id, p_investor_id, 'in', '1970-01-01'::date, p_start_date - 1
+  );
+  v_starting_withdrawals := public.investor_uwl_flow_total_range(
+    p_tenant_id, p_investor_id, 'out', '1970-01-01'::date, p_start_date - 1
+  );
 
-  select coalesce(sum(amount), 0) into v_starting_deposits
-  from public.investor_transactions
-  where investor_id = p_investor_id
-    and type in ('deposit', 'capital_in', 'capital_adjustment', 'manual_adjustment')
-    and date < p_start_date;
-
-  select coalesce(sum(amount), 0) into v_starting_withdrawals
-  from public.investor_transactions
-  where investor_id = p_investor_id
-    and type in ('withdrawal', 'withdrawal_paid', 'profit_payout')
-    and date < p_start_date;
-
-  select coalesce(sum(computed_profit), 0) into v_starting_profit
-  from public.shipment_investments
-  where investor_id = p_investor_id
-    and status = 'active'
-    and profit_status = 'realized'
-    and updated_at::date < p_start_date;
+  select coalesce(sum(si.computed_profit), 0) into v_starting_profit
+  from public.shipment_investments si
+  where si.investor_id = p_investor_id
+    and si.status = 'active'
+    and si.profit_status = 'realized'
+    and si.updated_at::date < p_start_date;
 
   v_starting_balance := v_starting_deposits + v_starting_profit - v_starting_withdrawals;
   v_ending_balance := v_starting_balance + v_deposits + v_profit - v_withdrawals;
@@ -17595,7 +17888,7 @@ declare
   v_deployed_capital numeric(12,2) := 0;
   v_realized_profit numeric(12,2) := 0;
   v_unrealized_profit numeric(12,2) := 0;
-  v_withdrawable_balance numeric(12,2) := 0;
+  v_wallet_available numeric(12,2) := 0;
 begin
   if not (
     public.user_can_manage_parent_tenant(p_tenant_id)
@@ -17604,38 +17897,32 @@ begin
     raise exception 'not allowed';
   end if;
 
-  select coalesce(sum(amount), 0) into v_total_capital_in
-  from public.investor_transactions
-  where investor_id = p_investor_id
-    and type in ('deposit', 'capital_in', 'capital_adjustment', 'manual_adjustment');
+  v_total_capital_in := public.investor_uwl_flow_total(p_tenant_id, p_investor_id, 'in');
+  v_total_withdrawn := public.investor_uwl_flow_total(p_tenant_id, p_investor_id, 'out');
 
-  select coalesce(sum(amount), 0) into v_total_withdrawn
-  from public.investor_transactions
-  where investor_id = p_investor_id
-    and type in ('withdrawal', 'withdrawal_paid', 'profit_payout');
-
-  select coalesce(sum(allocated_cost), 0) into v_deployed_capital
-  from public.shipment_investments
-  where investor_id = p_investor_id
-    and status = 'active';
+  select coalesce(sum(si.allocated_cost), 0) into v_deployed_capital
+  from public.shipment_investments si
+  where si.investor_id = p_investor_id and si.status = 'active';
 
   select
-    coalesce(sum(case when profit_status = 'realized' then computed_profit else 0 end), 0),
-    coalesce(sum(case when profit_status in ('open', 'partial') then computed_profit else 0 end), 0)
+    coalesce(sum(case when si.profit_status = 'realized' then si.computed_profit else 0 end), 0),
+    coalesce(sum(case when si.profit_status in ('open', 'partial') then si.computed_profit else 0 end), 0)
   into v_realized_profit, v_unrealized_profit
-  from public.shipment_investments
-  where investor_id = p_investor_id
-    and status = 'active';
+  from public.shipment_investments si
+  where si.investor_id = p_investor_id and si.status = 'active';
 
-  v_withdrawable_balance := v_realized_profit - v_total_withdrawn;
+  select coalesce((
+    public.get_wallet_account_balances(p_tenant_id, 'investor', p_investor_id, 'BDT')
+      ->> 'available_balance'
+  )::numeric, 0) into v_wallet_available;
 
   return jsonb_build_object(
     'total_capital_in', v_total_capital_in,
     'deployed_capital', v_deployed_capital,
-    'unallocated_cash', v_total_capital_in - v_total_withdrawn - v_deployed_capital,
+    'unallocated_cash', v_wallet_available - v_deployed_capital,
     'realized_profit', v_realized_profit,
     'unrealized_profit', v_unrealized_profit,
-    'withdrawable_balance', v_withdrawable_balance,
+    'withdrawable_balance', v_realized_profit - v_total_withdrawn,
     'total_withdrawn', v_total_withdrawn
   );
 end;
@@ -17651,15 +17938,19 @@ CREATE OR REPLACE FUNCTION "public"."get_investor_portfolio_summary"("p_investor
     AS $$
 declare
   v_investor public.investors;
-  v_deposits numeric(12,2);
-  v_withdrawals numeric(12,2);
-  v_deployed numeric(12,2);
-  v_payouts numeric(12,2);
-  v_realized_profit numeric(12,2);
-  v_unrealized_profit numeric(12,2);
+  v_deposits numeric(12,2) := 0;
+  v_withdrawals numeric(12,2) := 0;
+  v_deployed numeric(12,2) := 0;
+  v_payouts numeric(12,2) := 0;
+  v_realized_profit numeric(12,2) := 0;
+  v_unrealized_profit numeric(12,2) := 0;
+  v_wallet_available numeric(12,2) := 0;
+  v_currency text := 'BDT';
 begin
   select * into v_investor from public.investors where id = p_investor_id;
-  if v_investor.id is null then raise exception 'investor not found'; end if;
+  if v_investor.id is null then
+    raise exception 'investor not found';
+  end if;
 
   if not (
     public.user_can_manage_parent_tenant(v_investor.tenant_id)
@@ -17668,36 +17959,26 @@ begin
     raise exception 'not allowed';
   end if;
 
-  -- Total capital in including adjustments
-  select coalesce(sum(amount), 0) into v_deposits
-  from public.investor_transactions
-  where investor_id = p_investor_id
-    and type in ('deposit', 'capital_in', 'capital_adjustment', 'manual_adjustment');
+  v_currency := coalesce(nullif(trim(v_investor.currency_code), ''), 'BDT');
 
-  -- Total withdrawals
-  select coalesce(sum(amount), 0) into v_withdrawals
-  from public.investor_transactions
-  where investor_id = p_investor_id
-    and type in ('withdrawal', 'withdrawal_paid', 'profit_payout');
+  v_deposits := public.investor_uwl_flow_total(v_investor.tenant_id, p_investor_id, 'in');
+  v_withdrawals := public.investor_uwl_flow_total(v_investor.tenant_id, p_investor_id, 'out');
 
-  -- Legacy payouts field (for compatibility if needed)
-  select coalesce(sum(amount), 0) into v_payouts
-  from public.investor_transactions
-  where investor_id = p_investor_id
-    and type = 'profit_payout';
+  select coalesce(sum(si.allocated_cost), 0) into v_deployed
+  from public.shipment_investments si
+  where si.investor_id = p_investor_id and si.status = 'active';
 
-  -- Deployed capital
-  select coalesce(sum(allocated_cost), 0) into v_deployed
-  from public.shipment_investments
-  where investor_id = p_investor_id and status = 'active';
-
-  -- Realized & Unrealized profits
   select
-    coalesce(sum(case when profit_status = 'realized' then computed_profit else 0 end), 0),
-    coalesce(sum(case when profit_status in ('open', 'partial') then computed_profit else 0 end), 0)
+    coalesce(sum(case when si.profit_status = 'realized' then si.computed_profit else 0 end), 0),
+    coalesce(sum(case when si.profit_status in ('open', 'partial') then si.computed_profit else 0 end), 0)
   into v_realized_profit, v_unrealized_profit
-  from public.shipment_investments
-  where investor_id = p_investor_id and status = 'active';
+  from public.shipment_investments si
+  where si.investor_id = p_investor_id and si.status = 'active';
+
+  select coalesce((
+    public.get_wallet_account_balances(v_investor.tenant_id, 'investor', p_investor_id, v_currency)
+      ->> 'available_balance'
+  )::numeric, 0) into v_wallet_available;
 
   return jsonb_build_object(
     'investor', row_to_json(v_investor),
@@ -17705,7 +17986,7 @@ begin
       'deposits', v_deposits,
       'withdrawals', v_withdrawals,
       'deployed', v_deployed,
-      'available', v_deposits - v_withdrawals - v_deployed,
+      'available', v_wallet_available - v_deployed,
       'payouts', v_payouts,
       'realized_profit', v_realized_profit,
       'unrealized_profit', v_unrealized_profit,
@@ -19273,15 +19554,14 @@ begin
       public.calculate_landed_unit_cost(si.id) as landed_unit_cost,
       coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_qty,
       coalesce(sum(ii.unit_cost_price * (ii.quantity - ii.return_quantity)), 0) as sold_cost,
-      coalesce(sum(ii.sell_price_amount * ii.quantity - coalesce((
-        select sum(ri.return_accounting_amount)
-        from public.global_return_items ri
-        where ri.invoice_item_id = ii.id
-      ), 0.00) - case
-        when inv.invoice_type = 'dropship'::public.global_invoice_type then 0.00
-        else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.settlement_discount_amount, 0.00))
-          * (ii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
-      end), 0) as revenue,
+      coalesce(sum(
+        ii.sell_price_amount * (ii.quantity - coalesce(ii.return_quantity, 0))
+        - case
+          when inv.invoice_type = 'dropship'::public.global_invoice_type then 0.00
+          else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.written_off_amount, 0.00))
+            * (ii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
+        end
+      ), 0) as revenue,
       coalesce(disp.sellable_qty, 0) as sellable_qty,
       coalesce(disp.stolen_qty, 0) as stolen_qty,
       coalesce(disp.box_damage_qty, 0) as box_damage_qty,
@@ -19295,7 +19575,7 @@ begin
       (si.ordered_quantity - coalesce(sum(ii.quantity - ii.return_quantity), 0) - coalesce(disp.sellable_qty, 0) - coalesce(disp.stolen_qty, 0) - coalesce(disp.box_damage_qty, 0) - coalesce(disp.expired_qty, 0) - coalesce(disp.reserved_qty, 0)) as reconciliation_gap
     from public.global_shipment_items si
     left join public.global_invoice_items ii on ii.shipment_item_id = si.id
-    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'posted'::public.global_invoice_status
+    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
     left join lateral (
       select coalesce(sum(x.line_total_amount), 0.00) as inv_line_subtotal
       from public.global_invoice_items x
@@ -19343,15 +19623,14 @@ begin
       si.ordered_quantity as received_qty,
       coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_qty,
       coalesce(sum(ii.unit_cost_price * (ii.quantity - ii.return_quantity)), 0) as sold_cost,
-      coalesce(sum(ii.sell_price_amount * ii.quantity - coalesce((
-        select sum(ri.return_accounting_amount)
-        from public.global_return_items ri
-        where ri.invoice_item_id = ii.id
-      ), 0.00) - case
-        when inv.invoice_type = 'dropship'::public.global_invoice_type then 0.00
-        else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.settlement_discount_amount, 0.00))
-          * (ii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
-      end), 0) as revenue,
+      coalesce(sum(
+        ii.sell_price_amount * (ii.quantity - coalesce(ii.return_quantity, 0))
+        - case
+          when inv.invoice_type = 'dropship'::public.global_invoice_type then 0.00
+          else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.written_off_amount, 0.00))
+            * (ii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
+        end
+      ), 0) as revenue,
       coalesce(disp.sellable_qty, 0) as sellable_qty,
       coalesce(disp.stolen_qty, 0) as stolen_qty,
       coalesce(disp.box_damage_qty, 0) as box_damage_qty,
@@ -19359,7 +19638,7 @@ begin
       (si.ordered_quantity - coalesce(sum(ii.quantity - ii.return_quantity), 0) - coalesce(disp.sellable_qty, 0) - coalesce(disp.stolen_qty, 0) - coalesce(disp.box_damage_qty, 0) - coalesce(disp.expired_qty, 0) - coalesce(disp.reserved_qty, 0)) as reconciliation_gap
     from public.global_shipment_items si
     left join public.global_invoice_items ii on ii.shipment_item_id = si.id
-    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'posted'::public.global_invoice_status
+    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
     left join lateral (
       select coalesce(sum(x.line_total_amount), 0.00) as inv_line_subtotal
       from public.global_invoice_items x
@@ -21178,7 +21457,7 @@ CREATE OR REPLACE FUNCTION "public"."get_staff_investor_capital_metrics"("p_tena
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-DECLARE
+declare
   v_books_id bigint;
   v_month_start timestamptz;
   v_capital_in numeric := 0;
@@ -21188,55 +21467,44 @@ DECLARE
   v_realized numeric := 0;
   v_open_count bigint := 0;
   v_containers jsonb := '[]'::jsonb;
-BEGIN
-  IF NOT public.membership_has_module_action(p_tenant_id, 'investor_capital_ledger', 'view') THEN
-    RAISE EXCEPTION 'not allowed';
-  END IF;
+begin
+  if not public.membership_has_module_action(p_tenant_id, 'investor_capital_ledger', 'view') then
+    raise exception 'not allowed';
+  end if;
 
   v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
   v_month_start := date_trunc('month', timezone('Asia/Dhaka', now()));
 
-  SELECT coalesce(sum(tx.amount), 0)
-  INTO v_capital_in
-  FROM public.investor_transactions tx
-  JOIN public.investors i ON i.id = tx.investor_id
-  WHERE i.tenant_id = v_books_id
-    AND tx.type IN ('deposit', 'capital_in', 'capital_adjustment', 'manual_adjustment');
+  v_capital_in := public.investor_uwl_flow_total(v_books_id, null, 'in');
+  v_withdrawn := public.investor_uwl_flow_total(v_books_id, null, 'out');
 
-  SELECT coalesce(sum(tx.amount), 0)
-  INTO v_withdrawn
-  FROM public.investor_transactions tx
-  JOIN public.investors i ON i.id = tx.investor_id
-  WHERE i.tenant_id = v_books_id
-    AND tx.type IN ('withdrawal', 'withdrawal_paid', 'profit_payout');
-
-  SELECT
+  select
     coalesce(sum(si.allocated_cost), 0),
-    coalesce(sum(si.allocated_cost) FILTER (WHERE si.created_at >= v_month_start), 0),
-    coalesce(sum(si.computed_profit) FILTER (WHERE si.profit_status = 'realized'), 0),
-    count(DISTINCT coalesce(si.global_shipment_id, si.shipment_id))
-      FILTER (WHERE si.status = 'active'::public.shipment_investment_status)
-  INTO v_deployed, v_deployed_month, v_realized, v_open_count
-  FROM public.shipment_investments si
-  WHERE si.tenant_id = v_books_id
-    AND si.status = 'active'::public.shipment_investment_status;
+    coalesce(sum(si.allocated_cost) filter (where si.created_at >= v_month_start), 0),
+    coalesce(sum(si.computed_profit) filter (where si.profit_status = 'realized'), 0),
+    count(distinct si.global_shipment_id)
+      filter (where si.status = 'active'::public.shipment_investment_status)
+  into v_deployed, v_deployed_month, v_realized, v_open_count
+  from public.shipment_investments si
+  where si.tenant_id = v_books_id
+    and si.status = 'active'::public.shipment_investment_status;
 
-  SELECT coalesce(jsonb_agg(row_to_json(c)), '[]'::jsonb)
-  INTO v_containers
-  FROM (
-    SELECT
-      coalesce(gs.name, 'Unnamed batch') AS name,
-      round(sum(si.allocated_cost), 2) AS allocated_cost
-    FROM public.shipment_investments si
-    LEFT JOIN public.global_shipments gs ON gs.id = coalesce(si.global_shipment_id, si.shipment_id)
-    WHERE si.tenant_id = v_books_id
-      AND si.status = 'active'::public.shipment_investment_status
-    GROUP BY coalesce(gs.name, 'Unnamed batch')
-    ORDER BY sum(si.allocated_cost) DESC
-    LIMIT 5
+  select coalesce(jsonb_agg(row_to_json(c)), '[]'::jsonb)
+  into v_containers
+  from (
+    select
+      coalesce(gs.name, 'Unnamed batch') as name,
+      round(sum(si.allocated_cost), 2) as allocated_cost
+    from public.shipment_investments si
+    left join public.global_shipments gs on gs.id = si.global_shipment_id
+    where si.tenant_id = v_books_id
+      and si.status = 'active'::public.shipment_investment_status
+    group by coalesce(gs.name, 'Unnamed batch')
+    order by sum(si.allocated_cost) desc
+    limit 5
   ) c;
 
-  RETURN jsonb_build_object(
+  return jsonb_build_object(
     'tenant_id', v_books_id,
     'active_pool_amount', round(v_capital_in - v_withdrawn, 2),
     'deployed_amount', round(v_deployed, 2),
@@ -21246,7 +21514,7 @@ BEGIN
     'open_container_count', v_open_count,
     'open_containers', v_containers
   );
-END;
+end;
 $$;
 
 
@@ -21425,7 +21693,7 @@ ALTER FUNCTION "public"."get_tasks_dashboard_metrics"("p_tenant_id" bigint) OWNE
 CREATE OR REPLACE FUNCTION "public"."get_tenant_cash_in_report"("p_tenant_id" bigint, "p_start_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_end_date" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
-    AS $_$
+    AS $$
 declare
   v_books_id bigint;
   v_cash_in numeric(18,4) := 0.0000;
@@ -21453,36 +21721,57 @@ begin
     raise exception 'Not authorized';
   end if;
 
-  with lined as (
+  with receipt_invoice as (
     select
-      l.id,
-      l.amount,
-      l.source_type,
-      l.source_id,
-      l.metadata,
-      l.created_at,
-      coalesce(
-        nullif(trim(l.metadata->>'method'), ''),
-        nullif(trim(gp.method), ''),
-        'other'
-      ) as method,
-      nullif(l.metadata->>'label', '') as label,
+      ip.payment_id,
+      min(ip.global_invoice_id) as invoice_id
+    from public.invoice_payments ip
+    group by ip.payment_id
+  ),
+  receipt_lines as (
+    select
+      gp.id as payment_id,
+      gp.id::text || '-' || coalesce(gpi.id::text, 'h') as line_id,
+      coalesce(gpi.amount, gp.amount) as amount,
       case
-        when (l.metadata->>'invoice_id') ~ '^[0-9]+$' then (l.metadata->>'invoice_id')::bigint
-        else null
-      end as invoice_id
-    from public.universal_wallet_ledger l
-    left join public.global_payments gp
-      on l.source_id ~ '^[0-9]+$'
-     and gp.id = l.source_id::bigint
-     and gp.tenant_id = v_books_id
-    where l.tenant_id = v_books_id
-      and l.entity_type = 'tenant'
-      and l.entity_id = v_books_id
-      and l.type = 'credit'
-      and coalesce(l.metadata->>'purpose', '') <> 'apply_store_credit'
-      and (p_start_date is null or l.created_at >= p_start_date)
-      and (p_end_date is null or l.created_at <= p_end_date)
+        when gp.collection_source = 'recipient'::public.collection_source_type then 'courier_remittance'
+        else 'buyer_receipt'
+      end as source_type,
+      gp.id::text as source_id,
+      nullif(trim(gp.note), '') as label,
+      ri.invoice_id,
+      gp.created_at,
+      coalesce(gpi.payment_method_code, nullif(trim(gp.method::text), ''), 'other') as method,
+      gpi.reference as instrument_reference,
+      gpi.cheque_number,
+      bb.name as bank_name
+    from public.global_payments gp
+    left join public.global_payment_instruments gpi on gpi.payment_id = gp.id
+    left join public.bd_banks bb on bb.id = gpi.bd_bank_id
+    left join receipt_invoice ri on ri.payment_id = gp.id
+    where gp.tenant_id = v_books_id
+      and gp.voided_at is null
+      and coalesce(gp.method::text, '') <> 'wallet_credit'
+      and (p_start_date is null or coalesce(gp.payment_date::timestamptz, gp.created_at) >= p_start_date)
+      and (p_end_date is null or coalesce(gp.payment_date::timestamptz, gp.created_at) <= p_end_date)
+  ),
+  lined as (
+    select distinct on (line_id)
+      line_id as id,
+      amount,
+      source_type,
+      source_id,
+      case
+        when bank_name is not null and cheque_number is not null then
+          coalesce(label, '') || ' Cheque ' || cheque_number || ' @ ' || bank_name
+        when instrument_reference is not null then coalesce(label, instrument_reference)
+        else label
+      end as label,
+      invoice_id,
+      created_at,
+      method
+    from receipt_lines
+    order by line_id, amount desc
   )
   select
     coalesce(sum(amount), 0.0000),
@@ -21531,7 +21820,7 @@ begin
     'entries', v_entries
   );
 end;
-$_$;
+$$;
 
 
 ALTER FUNCTION "public"."get_tenant_cash_in_report"("p_tenant_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) OWNER TO "postgres";
@@ -21570,28 +21859,43 @@ BEGIN
       so.delivered_at,
       so.courier_service_id,
       coalesce(cs.name, so.courier_name, 'Unassigned') AS courier_name,
-      CASE WHEN so.courier_remittance_ref IS NOT NULL THEN coalesce(so.cod_collect_amount, 0) ELSE 0 END::numeric(12,2) AS remitted_amount,
-      CASE WHEN so.courier_remittance_ref IS NULL THEN coalesce(so.cod_collect_amount, 0) ELSE 0 END::numeric(12,2) AS unremitted_amount
+      round(coalesce((
+        SELECT l.amount
+        FROM public.universal_wallet_ledger l
+        WHERE l.parent_tenant_id = v_books_id
+          AND l.entity_type = 'tenant'
+          AND l.source_type = 'shop_order'
+          AND l.source_id = so.id::text
+          AND coalesce(l.metadata->>'purpose', '') = 'tenant_remittance_received'
+        LIMIT 1
+      ), 0), 2) AS remitted_amount
     FROM public.shop_orders so
     LEFT JOIN public.courier_services cs ON cs.id = so.courier_service_id
     WHERE public.resolve_parent_tenant_id(so.tenant_id) = v_books_id
-      AND so.status = 'delivered'::public.shop_order_status
+      AND so.status IN ('delivered'::public.shop_order_status, 'payment_received'::public.shop_order_status)
       AND so.shop_type_snapshot = 'dropship'::public.shop_type_enum
       AND coalesce(so.cod_collect_amount, 0) > 0
       AND (v_start_ts IS NULL OR so.delivered_at >= v_start_ts)
       AND (v_end_ts IS NULL OR so.delivered_at <= v_end_ts)
       AND (p_courier_service_id IS NULL OR so.courier_service_id = p_courier_service_id)
   ),
+  order_amounts AS (
+    SELECT *,
+      remitted_amount AS remitted,
+      round(greatest(cod_collect_amount - remitted_amount, 0), 2) AS unremitted,
+      round(remitted_amount - cod_collect_amount, 2) AS short_over
+    FROM delivered_orders
+  ),
   courier_rows AS (
     SELECT
       courier_service_id,
       courier_name,
       round(coalesce(sum(cod_collect_amount), 0), 2) AS delivered_cod,
-      round(coalesce(sum(remitted_amount), 0), 2) AS remitted,
-      round(coalesce(sum(unremitted_amount), 0), 2) AS unremitted,
-      round(coalesce(sum(remitted_amount), 0) - coalesce(sum(cod_collect_amount), 0), 2) AS short_over,
+      round(coalesce(sum(remitted), 0), 2) AS remitted,
+      round(coalesce(sum(unremitted), 0), 2) AS unremitted,
+      round(coalesce(sum(short_over), 0), 2) AS short_over,
       count(*)::bigint AS order_count
-    FROM delivered_orders
+    FROM order_amounts
     GROUP BY courier_service_id, courier_name
   ),
   totals_calc AS (
@@ -21618,10 +21922,11 @@ BEGIN
   IF p_courier_service_id IS NOT NULL THEN
     SELECT coalesce(jsonb_agg(jsonb_build_object(
       'order_id', order_id, 'order_no', order_no, 'awb', awb,
-      'cod_collect_amount', cod_collect_amount, 'remittance_ref', remittance_ref, 'delivered_at', delivered_at
+      'cod_collect_amount', cod_collect_amount, 'remittance_ref', remittance_ref, 'delivered_at', delivered_at,
+      'remitted', remitted
     ) ORDER BY delivered_at DESC NULLS LAST, order_id DESC), '[]'::jsonb)
     INTO v_orders
-    FROM delivered_orders;
+    FROM order_amounts;
   END IF;
 
   RETURN jsonb_build_object('totals', coalesce(v_totals, '{}'::jsonb), 'rows', coalesce(v_rows, '[]'::jsonb),
@@ -21695,7 +22000,9 @@ BEGIN
       coalesce(sum(CASE WHEN gp.method = 'wallet_credit' THEN ip.amount ELSE 0 END), 0)::numeric(12,2) AS wallet_applied
     FROM public.invoice_payments ip
     JOIN public.global_payments gp ON gp.id = ip.payment_id
-    WHERE ip.global_invoice_id IS NOT NULL GROUP BY ip.global_invoice_id
+    WHERE ip.global_invoice_id IS NOT NULL
+      AND gp.voided_at IS NULL
+    GROUP BY ip.global_invoice_id
   ),
   base AS (
     SELECT
@@ -21707,7 +22014,7 @@ BEGIN
       round(coalesce(ir.returned, 0), 2) AS returned,
       round(coalesce(ipa.collected_cash, 0), 2) AS collected_cash,
       round(coalesce(ipa.wallet_applied, 0), 2) AS wallet_applied,
-      round(coalesce(si.settlement_discount_amount, 0), 2) AS settlement,
+      round(coalesce(si.written_off_amount, 0), 2) AS settlement,
       round(coalesce(si.due_amount, 0), 2) AS still_due
     FROM public.sales_invoices si
     LEFT JOIN public.billing_profiles bp ON bp.id = si.billing_profile_id
@@ -21759,7 +22066,7 @@ $$;
 ALTER FUNCTION "public"."get_tenant_invoice_book_report"("p_tenant_id" bigint, "p_start_date" "date", "p_end_date" "date", "p_search" "text", "p_invoice_type" "text", "p_payment_status" "text", "p_issued_by_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_skip_count" boolean) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_tenant_invoice_profit_report"("p_tenant_id" bigint, "p_start_date" "date" DEFAULT NULL::"date", "p_end_date" "date" DEFAULT NULL::"date", "p_search" "text" DEFAULT NULL::"text", "p_issued_by_tenant_id" bigint DEFAULT NULL::bigint, "p_invoice_id" bigint DEFAULT NULL::bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 50, "p_skip_count" boolean DEFAULT true) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_tenant_invoice_profit_report"("p_tenant_id" bigint, "p_start_date" "date" DEFAULT NULL::"date", "p_end_date" "date" DEFAULT NULL::"date", "p_search" "text" DEFAULT NULL::"text", "p_invoice_type" "text" DEFAULT NULL::"text", "p_issued_by_tenant_id" bigint DEFAULT NULL::bigint, "p_invoice_id" bigint DEFAULT NULL::bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 50, "p_skip_count" boolean DEFAULT true) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -21803,12 +22110,14 @@ BEGIN
       AND (p_start_date IS NULL OR si.invoice_date >= p_start_date)
       AND (p_end_date IS NULL OR si.invoice_date <= p_end_date)
       AND (p_issued_by_tenant_id IS NULL OR si.issued_by_tenant_id = p_issued_by_tenant_id)
+      AND (p_invoice_type IS NULL OR btrim(p_invoice_type) = '' OR si.invoice_type::text = p_invoice_type)
   ),
   invoice_metrics AS (
     SELECT
       si.id,
       si.invoice_no,
       si.invoice_date,
+      si.invoice_type::text AS invoice_type,
       coalesce(nullif(trim(bp.name), ''), nullif(trim(si.recipient_name), ''), 'Unknown') AS customer_name,
       round(coalesce(sum(lm.net_qty), 0), 3) AS net_qty,
       round(coalesce(sum(lm.net_revenue), 0), 2) AS net_revenue,
@@ -21823,13 +22132,14 @@ BEGIN
       AND (p_start_date IS NULL OR si.invoice_date >= p_start_date)
       AND (p_end_date IS NULL OR si.invoice_date <= p_end_date)
       AND (p_issued_by_tenant_id IS NULL OR si.issued_by_tenant_id = p_issued_by_tenant_id)
+      AND (p_invoice_type IS NULL OR btrim(p_invoice_type) = '' OR si.invoice_type::text = p_invoice_type)
       AND (
         p_search IS NULL OR btrim(p_search) = ''
         OR si.invoice_no ILIKE ('%' || btrim(p_search) || '%')
         OR bp.name ILIKE ('%' || btrim(p_search) || '%')
         OR si.recipient_name ILIKE ('%' || btrim(p_search) || '%')
       )
-    GROUP BY si.id, si.invoice_no, si.invoice_date, bp.name, si.recipient_name
+    GROUP BY si.id, si.invoice_no, si.invoice_date, si.invoice_type, bp.name, si.recipient_name
   ),
   enriched AS (
     SELECT *,
@@ -21853,12 +22163,31 @@ BEGIN
     (SELECT jsonb_build_object('net_sold_qty', net_sold_qty, 'net_revenue', net_revenue, 'cogs', cogs,
       'realized_gp', realized_gp, 'gp_margin_pct', gp_margin_pct, 'invoice_count', invoice_count) FROM totals_calc),
     coalesce((SELECT jsonb_agg(jsonb_build_object(
-      'id', id, 'invoice_no', invoice_no, 'invoice_date', invoice_date, 'customer_name', customer_name,
+      'id', id, 'invoice_no', invoice_no, 'invoice_date', invoice_date, 'invoice_type', invoice_type,
+      'customer_name', customer_name,
       'net_qty', net_qty, 'net_revenue', net_revenue, 'cogs', cogs, 'realized_gp', realized_gp, 'gp_margin_pct', gp_margin_pct
     ) ORDER BY invoice_date DESC, id DESC) FROM paged), '[]'::jsonb)
   INTO v_total_count, v_totals, v_rows;
 
   IF p_invoice_id IS NOT NULL THEN
+    WITH line_metrics AS (
+      SELECT
+        sii.invoice_id,
+        sii.id AS item_id,
+        sii.name_snapshot AS name,
+        sii.barcode_snapshot AS barcode,
+        sii.quantity,
+        sii.return_quantity,
+        greatest(sii.quantity - sii.return_quantity, 0) AS net_qty,
+        round(
+          greatest(sii.quantity - sii.return_quantity, 0) * sii.sell_price_amount
+          - coalesce(sii.line_discount_amount, 0) * (greatest(sii.quantity - sii.return_quantity, 0) / nullif(sii.quantity, 0)),
+          2
+        ) AS net_revenue,
+        round(greatest(sii.quantity - sii.return_quantity, 0) * coalesce(sii.unit_cost_price, 0), 2) AS cogs
+      FROM public.sales_invoice_items sii
+      WHERE sii.invoice_id = p_invoice_id
+    )
     SELECT coalesce(jsonb_agg(jsonb_build_object(
       'item_id', lm.item_id, 'name', lm.name, 'barcode', lm.barcode,
       'quantity', lm.quantity, 'return_quantity', lm.return_quantity, 'net_qty', lm.net_qty,
@@ -21867,8 +22196,7 @@ BEGIN
       'net_revenue', lm.net_revenue, 'cogs', lm.cogs, 'line_gp', round(lm.net_revenue - lm.cogs, 2)
     ) ORDER BY lm.item_id), '[]'::jsonb)
     INTO v_lines
-    FROM line_metrics lm
-    WHERE lm.invoice_id = p_invoice_id;
+    FROM line_metrics lm;
   END IF;
 
   RETURN jsonb_build_object(
@@ -21883,7 +22211,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."get_tenant_invoice_profit_report"("p_tenant_id" bigint, "p_start_date" "date", "p_end_date" "date", "p_search" "text", "p_issued_by_tenant_id" bigint, "p_invoice_id" bigint, "p_page" integer, "p_page_size" integer, "p_skip_count" boolean) OWNER TO "postgres";
+ALTER FUNCTION "public"."get_tenant_invoice_profit_report"("p_tenant_id" bigint, "p_start_date" "date", "p_end_date" "date", "p_search" "text", "p_invoice_type" "text", "p_issued_by_tenant_id" bigint, "p_invoice_id" bigint, "p_page" integer, "p_page_size" integer, "p_skip_count" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_tenant_module_by_id"("p_id" bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "module_key" "text", "is_active" boolean, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
@@ -21922,8 +22250,8 @@ DECLARE
   v_gross_profit numeric(18,4) := 0;
   v_cash_collected numeric(18,4) := 0;
   v_ar_outstanding numeric(18,4) := 0;
-  v_wallet_liability numeric(18,4) := 0;
-  v_unsold_stock_value numeric(18,4) := 0;
+  v_merchant_payable numeric(18,4) := 0;
+  v_sales_by_invoice_type jsonb := '{}'::jsonb;
 BEGIN
   IF p_tenant_id IS NULL OR p_month IS NULL THEN
     RAISE EXCEPTION 'Tenant ID and month are required';
@@ -21945,7 +22273,7 @@ BEGIN
     FROM public.sales_invoice_items sii GROUP BY sii.invoice_id
   ),
   month_invoices AS (
-    SELECT si.id, si.total_amount, coalesce(ir.returned, 0) AS returned
+    SELECT si.id, si.invoice_type::text AS invoice_type, si.total_amount, coalesce(ir.returned, 0) AS returned
     FROM public.sales_invoices si
     LEFT JOIN invoice_returned ir ON ir.invoice_id = si.id
     WHERE si.parent_tenant_id = v_books_id
@@ -21964,63 +22292,58 @@ BEGIN
     WHERE si.parent_tenant_id = v_books_id
       AND si.invoice_status = 'issued'::public.global_invoice_status
       AND si.invoice_date BETWEEN v_start AND v_end
+  ),
+  sales_by_type AS (
+    SELECT invoice_type, round(coalesce(sum(total_amount), 0), 2) AS sales
+    FROM month_invoices
+    GROUP BY invoice_type
   )
   SELECT
-    round(coalesce((SELECT sum(total_amount + returned) FROM month_invoices), 0)
-      - coalesce((SELECT sum(returned) FROM month_invoices), 0), 2),
-    round(coalesce((SELECT cogs FROM line_metrics), 0), 2)
-  INTO v_net_sales, v_cogs;
+    round(coalesce((SELECT sum(total_amount) FROM month_invoices), 0), 2),
+    round(coalesce((SELECT cogs FROM line_metrics), 0), 2),
+    coalesce((SELECT jsonb_object_agg(invoice_type, sales) FROM sales_by_type), '{}'::jsonb)
+  INTO v_net_sales, v_cogs, v_sales_by_invoice_type;
 
   v_gross_profit := round(v_net_sales - v_cogs, 2);
 
-  SELECT round(coalesce(sum(l.amount), 0), 2)
+  SELECT round(coalesce(sum(gp.amount), 0), 2)
   INTO v_cash_collected
-  FROM public.universal_wallet_ledger l
-  WHERE l.tenant_id = v_books_id
-    AND l.entity_type = 'tenant'
-    AND l.entity_id = v_books_id
-    AND l.type = 'credit'
-    AND coalesce(l.metadata->>'purpose', '') <> 'apply_store_credit'
-    AND l.created_at BETWEEN v_start_ts AND v_end_ts;
+  FROM public.global_payments gp
+  WHERE gp.tenant_id = v_books_id
+    AND gp.voided_at IS NULL
+    AND coalesce(gp.method::text, '') <> 'wallet_credit'
+    AND coalesce(gp.payment_date::timestamptz, gp.created_at) BETWEEN v_start_ts AND v_end_ts;
 
   SELECT round(coalesce(sum(si.due_amount), 0), 2)
   INTO v_ar_outstanding
   FROM public.sales_invoices si
   WHERE si.parent_tenant_id = v_books_id
     AND si.invoice_status = 'issued'::public.global_invoice_status
-    AND si.invoice_type = 'wholesale'::public.global_invoice_type
+    AND si.billing_profile_id IS NOT NULL
     AND si.due_amount > 0;
 
-  SELECT round(coalesce(sum(wa.available_balance), 0), 2)
-  INTO v_wallet_liability
-  FROM public.wallet_accounts wa
-  WHERE wa.parent_tenant_id = v_books_id
-    AND wa.entity_type = 'customer';
-
-  SELECT round(coalesce(sum(inv.sellable_qty * coalesce(gsi.landed_cost_bdt, 0)), 0), 2)
-  INTO v_unsold_stock_value
-  FROM public.global_shipments s
-  JOIN public.global_shipment_items gsi ON gsi.shipment_id = s.id
-  LEFT JOIN LATERAL (
-    SELECT coalesce(sum(CASE WHEN gs.availability = 'sellable' THEN gs.quantity ELSE 0 END), 0) AS sellable_qty
-    FROM public.global_stocks gs
-    WHERE gs.shipment_item_id = gsi.id
-  ) inv ON true
-  WHERE s.parent_tenant_id = v_books_id;
+  SELECT round(
+    coalesce(sum(CASE WHEN entity_type IN ('customer', 'middleman') THEN pending_balance ELSE 0 END), 0)
+    + coalesce(sum(CASE WHEN entity_type IN ('customer', 'middleman') THEN available_balance ELSE 0 END), 0),
+    2
+  )
+  INTO v_merchant_payable
+  FROM public.wallet_accounts
+  WHERE parent_tenant_id = v_books_id;
 
   RETURN jsonb_build_object(
     'tenant_id', v_books_id,
     'month', v_start,
     'start_date', v_start,
     'end_date', v_end,
+    'sales_by_invoice_type', v_sales_by_invoice_type,
     'kpis', jsonb_build_object(
       'net_sales', v_net_sales,
       'cogs', v_cogs,
       'gross_profit', v_gross_profit,
       'cash_collected', v_cash_collected,
       'ar_outstanding', v_ar_outstanding,
-      'wallet_liability', v_wallet_liability,
-      'unsold_stock_value', v_unsold_stock_value
+      'merchant_payable', v_merchant_payable
     )
   );
 END;
@@ -22118,9 +22441,9 @@ BEGIN
       s.created_at,
       s.shipment_cost_currency_id AS currency_id,
       
-      -- Inbound Quantities & Landed Cost
-      coalesce(sum(coalesce(gsi.received_quantity, gsi.ordered_quantity, 0)), 0)::int AS inbound_quantity,
-      coalesce(sum(coalesce(gsi.received_quantity, gsi.ordered_quantity, 0) * coalesce(gsi.landed_cost_bdt, 0)), 0)::numeric(18,4) AS total_landed_cost,
+      -- Inbound Quantities & Landed Cost (ordered manifest, not sold-only received)
+      coalesce(sum(gsi.ordered_quantity), 0)::int AS inbound_quantity,
+      coalesce(sum(gsi.ordered_quantity * coalesce(gsi.landed_cost_bdt, 0)), 0)::numeric(18,4) AS total_landed_cost,
       
       -- Sales & Returns from Issued Sales Invoices (invoice_status = 'issued')
       coalesce(sum(sales.sold_qty), 0)::int AS sold_quantity,
@@ -22134,7 +22457,10 @@ BEGIN
       coalesce(sum(inv.sellable_qty), 0)::int AS sellable_stock_qty,
       coalesce(sum(inv.held_qty), 0)::int AS held_stock_qty,
       coalesce(sum(inv.unsellable_qty), 0)::int AS damaged_stock_qty,
-      coalesce(sum(inv.sellable_qty * coalesce(gsi.landed_cost_bdt, 0)), 0)::numeric(18,4) AS unsold_stock_value,
+      coalesce(sum(
+        greatest(gsi.ordered_quantity - coalesce(sales.net_sold_qty, 0), coalesce(inv.sellable_qty, 0))
+        * coalesce(gsi.landed_cost_bdt, 0)
+      ), 0)::numeric(18,4) AS unsold_stock_value,
       coalesce(sum(inv.unsellable_qty * coalesce(gsi.landed_cost_bdt, 0)), 0)::numeric(18,4) AS damage_loss_value,
 
       -- Item details array if single shipment requested
@@ -22145,15 +22471,19 @@ BEGIN
               'item_id', gsi.id,
               'product_name', coalesce(gsi.name, 'Item #' || gsi.id),
               'barcode', gsi.barcode,
-              'inbound_qty', coalesce(gsi.received_quantity, gsi.ordered_quantity, 0),
+              'inbound_qty', gsi.ordered_quantity,
               'unit_cost_bdt', gsi.landed_cost_bdt,
-              'total_cost_bdt', (coalesce(gsi.received_quantity, gsi.ordered_quantity, 0) * coalesce(gsi.landed_cost_bdt, 0)),
+              'total_cost_bdt', (gsi.ordered_quantity * coalesce(gsi.landed_cost_bdt, 0)),
               'sold_qty', coalesce(sales.net_sold_qty, 0),
               'sold_revenue', coalesce(sales.sold_revenue, 0),
               'cogs', coalesce(sales.cogs, 0),
               'gross_profit', coalesce(sales.sold_revenue - sales.cogs, 0),
               'sellable_qty', coalesce(inv.sellable_qty, 0),
-              'unsold_stock_value', coalesce(inv.sellable_qty * coalesce(gsi.landed_cost_bdt, 0), 0),
+              'unsold_stock_value', coalesce(
+                greatest(gsi.ordered_quantity - coalesce(sales.net_sold_qty, 0), coalesce(inv.sellable_qty, 0))
+                * coalesce(gsi.landed_cost_bdt, 0),
+                0
+              ),
               'damaged_qty', coalesce(inv.unsellable_qty, 0),
               'damage_loss_value', coalesce(inv.unsellable_qty * coalesce(gsi.landed_cost_bdt, 0), 0)
             )
@@ -22171,10 +22501,23 @@ BEGIN
         coalesce(sum(gii.quantity), 0) AS sold_qty,
         coalesce(sum(gii.return_quantity), 0) AS returned_qty,
         coalesce(sum(gii.quantity - gii.return_quantity), 0) AS net_sold_qty,
-        coalesce(sum((gii.quantity - gii.return_quantity) * gii.sell_price_amount - coalesce(gii.line_discount_amount, 0)), 0) AS sold_revenue,
+        coalesce(sum(
+          gii.sell_price_amount * (gii.quantity - coalesce(gii.return_quantity, 0))
+          - coalesce(gii.line_discount_amount, 0) * (greatest(gii.quantity - gii.return_quantity, 0) / nullif(gii.quantity, 0))
+          - CASE
+            WHEN si.invoice_type = 'dropship'::public.global_invoice_type THEN 0.00
+            ELSE (coalesce(si.discount_amount, 0.00) + coalesce(si.written_off_amount, 0.00))
+              * (gii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
+          END
+        ), 0) AS sold_revenue,
         coalesce(sum((gii.quantity - gii.return_quantity) * coalesce(gii.unit_cost_price, gsi.landed_cost_bdt, 0)), 0) AS cogs
       FROM public.global_invoice_items gii
       JOIN public.sales_invoices si ON si.id = gii.invoice_id
+      LEFT JOIN LATERAL (
+        SELECT coalesce(sum(x.line_total_amount), 0.00) AS inv_line_subtotal
+        FROM public.global_invoice_items x
+        WHERE x.invoice_id = gii.invoice_id
+      ) invagg ON true
       WHERE gii.shipment_item_id = gsi.id
         AND si.invoice_status = 'issued'
     ) sales ON true
@@ -22295,6 +22638,9 @@ DECLARE
   v_offset integer := (greatest(coalesce(p_page, 1), 1) - 1) * greatest(least(coalesce(p_page_size, 50), 200), 1);
   v_start_ts timestamptz := CASE WHEN p_start_date IS NULL THEN NULL ELSE p_start_date::timestamptz END;
   v_end_ts timestamptz := CASE WHEN p_end_date IS NULL THEN NULL ELSE (p_end_date + interval '1 day' - interval '1 microsecond') END;
+  v_customer_store_credit numeric(18,4) := 0;
+  v_merchant_payable numeric(18,4) := 0;
+  v_courier numeric(18,4) := 0;
 BEGIN
   IF p_tenant_id IS NULL THEN RAISE EXCEPTION 'Tenant ID is required'; END IF;
   v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
@@ -22303,10 +22649,33 @@ BEGIN
     OR public.membership_has_module_action(v_books_id, 'reporting_treasury', 'view')
   ) THEN RAISE EXCEPTION 'Not authorized'; END IF;
 
+  SELECT
+    round(coalesce(sum(CASE WHEN entity_type = 'customer' THEN available_balance ELSE 0 END), 0), 2),
+    round(coalesce(sum(CASE WHEN entity_type IN ('customer', 'middleman') THEN pending_balance + available_balance ELSE 0 END), 0), 2),
+    round(coalesce(sum(CASE WHEN entity_type = 'courier' THEN pending_balance + available_balance ELSE 0 END), 0), 2)
+  INTO v_customer_store_credit, v_merchant_payable, v_courier
+  FROM public.wallet_accounts
+  WHERE parent_tenant_id = v_books_id;
+
   WITH ledger_agg AS (
     SELECT
       l.entity_id AS billing_profile_id,
-      round(coalesce(sum(CASE WHEN l.type = 'credit' THEN l.amount ELSE 0 END), 0), 4) AS credit_issued,
+      round(
+        coalesce(sum(CASE
+          WHEN l.type = 'credit'
+            AND coalesce(l.metadata->>'reversed_by', '') = ''
+            AND coalesce(l.metadata->>'purpose', '') IN ('customer_ar_reduction', 'store_credit')
+          THEN l.amount
+          ELSE 0
+        END), 0)
+        - coalesce(sum(CASE
+          WHEN l.type = 'debit'
+            AND coalesce(l.metadata->>'purpose', '') IN ('reverse_customer_ar_reduction', 'void_store_credit')
+          THEN l.amount
+          ELSE 0
+        END), 0),
+        4
+      ) AS credit_issued,
       round(coalesce(sum(CASE
         WHEN l.type = 'debit' AND coalesce(l.metadata->>'purpose', '') = 'apply_store_credit' THEN l.amount
         ELSE 0 END), 0), 4) AS credit_applied
@@ -22352,8 +22721,13 @@ BEGIN
     SELECT * FROM base ORDER BY outstanding DESC, name ASC OFFSET v_offset LIMIT v_page_size
   )
   SELECT (SELECT count(*) FROM base),
-    (SELECT jsonb_build_object('credit_issued', credit_issued, 'credit_applied', credit_applied,
-      'outstanding', outstanding, 'customer_count', customer_count) FROM totals_calc),
+    (SELECT jsonb_build_object(
+      'credit_issued', credit_issued, 'credit_applied', credit_applied,
+      'outstanding', outstanding, 'customer_count', customer_count,
+      'customer_store_credit', v_customer_store_credit,
+      'merchant_payable', v_merchant_payable,
+      'courier', v_courier
+    ) FROM totals_calc),
     coalesce((SELECT jsonb_agg(jsonb_build_object(
       'billing_profile_id', billing_profile_id, 'name', name, 'phone', phone,
       'credit_issued', credit_issued, 'credit_applied', credit_applied, 'outstanding', outstanding
@@ -23698,6 +24072,10 @@ begin
     return new;
   end if;
 
+  if coalesce(current_setting('app.sync_investor_profile_membership', true), '') = '1' then
+    return new;
+  end if;
+
   if old.tenant_id is distinct from new.tenant_id then
     raise exception 'Only superadmin can move memberships across tenants';
   end if;
@@ -23806,7 +24184,7 @@ CREATE OR REPLACE FUNCTION "public"."has_active_tenant_membership"("p_tenant_id"
     or exists (
       select 1
       from public.memberships m
-      where lower(trim(m.email)) = public.current_user_email()
+      where public.membership_email_matches_current_user(m.email)
         and m.tenant_id = p_tenant_id
         and m.is_active = true
     );
@@ -24159,6 +24537,74 @@ $$;
 ALTER FUNCTION "public"."investor_tenant_can_view"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."investor_uwl_flow_total"("p_tenant_id" bigint, "p_investor_id" bigint, "p_flow" "text") RETURNS numeric
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select coalesce(sum(abs(uwl.amount)), 0)::numeric(12,2)
+  from public.universal_wallet_ledger uwl
+  inner join public.investors i on i.id = uwl.entity_id
+  where i.tenant_id = p_tenant_id
+    and uwl.entity_type = 'investor'
+    and (p_investor_id is null or uwl.entity_id = p_investor_id)
+    and coalesce(uwl.metadata->>'section', '') = 'investor_capital'
+    and (
+      (
+        p_flow = 'in'
+        and uwl.type = 'credit'
+        and coalesce(uwl.metadata->>'transaction_type', '') in (
+          'capital_in', 'capital_adjustment', 'manual_adjustment', 'deposit'
+        )
+      )
+      or (
+        p_flow = 'out'
+        and uwl.type = 'debit'
+        and coalesce(uwl.metadata->>'transaction_type', '') in (
+          'withdrawal_paid', 'withdrawal', 'profit_payout'
+        )
+      )
+    );
+$$;
+
+
+ALTER FUNCTION "public"."investor_uwl_flow_total"("p_tenant_id" bigint, "p_investor_id" bigint, "p_flow" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."investor_uwl_flow_total_range"("p_tenant_id" bigint, "p_investor_id" bigint, "p_flow" "text", "p_start_date" "date", "p_end_date" "date") RETURNS numeric
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select coalesce(sum(abs(uwl.amount)), 0)::numeric(12,2)
+  from public.universal_wallet_ledger uwl
+  inner join public.investors i on i.id = uwl.entity_id
+  where i.tenant_id = p_tenant_id
+    and uwl.entity_id = p_investor_id
+    and uwl.entity_type = 'investor'
+    and coalesce(uwl.metadata->>'section', '') = 'investor_capital'
+    and uwl.created_at::date >= p_start_date
+    and uwl.created_at::date <= p_end_date
+    and (
+      (
+        p_flow = 'in'
+        and uwl.type = 'credit'
+        and coalesce(uwl.metadata->>'transaction_type', '') in (
+          'capital_in', 'capital_adjustment', 'manual_adjustment', 'deposit'
+        )
+      )
+      or (
+        p_flow = 'out'
+        and uwl.type = 'debit'
+        and coalesce(uwl.metadata->>'transaction_type', '') in (
+          'withdrawal_paid', 'withdrawal', 'profit_payout'
+        )
+      )
+    );
+$$;
+
+
+ALTER FUNCTION "public"."investor_uwl_flow_total_range"("p_tenant_id" bigint, "p_investor_id" bigint, "p_flow" "text", "p_start_date" "date", "p_end_date" "date") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."is_assigned_costing_file_viewer"("p_costing_file_id" bigint) RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -24292,7 +24738,7 @@ CREATE OR REPLACE FUNCTION "public"."is_network_owner"("p_tenant_id" bigint) RET
     select 1
     from public.memberships m
     where m.tenant_id = public.resolve_parent_tenant_id(p_tenant_id)
-      and lower(trim(m.email)) = public.current_user_email()
+      and public.membership_email_matches_current_user(m.email)
       and m.role = 'owner'::public.app_role
       and m.is_active = true
   );
@@ -24373,7 +24819,7 @@ CREATE OR REPLACE FUNCTION "public"."is_tenant_manager"("p_tenant_id" bigint) RE
     select 1
     from public.memberships m
     where m.tenant_id = p_tenant_id
-      and lower(trim(m.email)) = public.current_user_email()
+      and public.membership_email_matches_current_user(m.email)
       and m.role = 'manager'::public.app_role
       and m.is_active = true
   );
@@ -24474,6 +24920,7 @@ begin
   end if;
 
   perform public.canonicalize_dropship_order_wallet_source_ids(p_order_id);
+
   v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
 
   if v_order.global_invoice_id is not null then
@@ -25121,6 +25568,20 @@ $$;
 
 
 ALTER FUNCTION "public"."list_allocations_for_shop_pick"("p_shop_id" bigint, "p_search" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_bd_banks"() RETURNS TABLE("id" bigint, "code" "text", "name" "text", "swift_code" "text", "sort_order" integer)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select b.id, b.code, b.name, b.swift_code, b.sort_order
+  from public.bd_banks b
+  where b.is_active = true
+  order by b.sort_order asc, b.name asc;
+$$;
+
+
+ALTER FUNCTION "public"."list_bd_banks"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_cgm_ids_with_overrides"("p_customer_group_id" bigint) RETURNS TABLE("customer_group_member_id" bigint)
@@ -25833,6 +26294,91 @@ $$;
 
 
 ALTER FUNCTION "public"."list_customer_group_member_grants"("p_cgm_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_customer_group_receipts"("p_tenant_id" bigint, "p_customer_group_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_parent_id bigint;
+  v_result jsonb;
+begin
+  if p_tenant_id is null or p_customer_group_id is null then
+    raise exception 'Tenant and customer group are required.';
+  end if;
+
+  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+
+  select coalesce(jsonb_agg(row_to_json(r)), '[]'::jsonb)
+  into v_result
+  from (
+    select
+      gp.id,
+      gp.payment_date,
+      gp.amount,
+      gp.unallocated_amount,
+      gp.method,
+      gp.reference,
+      gp.note,
+      gp.voided_at,
+      gp.billing_profile_id,
+      coalesce(
+        (
+          select jsonb_agg(
+            jsonb_build_object(
+              'id', gpi.id,
+              'payment_method_code', gpi.payment_method_code,
+              'amount', gpi.amount,
+              'reference', gpi.reference,
+              'bd_bank_id', gpi.bd_bank_id,
+              'bank_name', b.name,
+              'cheque_number', gpi.cheque_number,
+              'cheque_date', gpi.cheque_date,
+              'sort_order', gpi.sort_order
+            )
+            order by gpi.sort_order, gpi.id
+          )
+          from public.global_payment_instruments gpi
+          left join public.bd_banks b on b.id = gpi.bd_bank_id
+          where gpi.payment_id = gp.id
+        ),
+        '[]'::jsonb
+      ) as instruments,
+      coalesce(
+        (
+          select jsonb_agg(
+            jsonb_build_object(
+              'invoice_id', ip.global_invoice_id,
+              'invoice_no', si.invoice_no,
+              'amount', ip.amount
+            )
+            order by si.invoice_no
+          )
+          from public.invoice_payments ip
+          join public.sales_invoices si on si.id = ip.global_invoice_id
+          where ip.payment_id = gp.id
+        ),
+        '[]'::jsonb
+      ) as allocations
+    from public.global_payments gp
+    where gp.tenant_id = p_tenant_id
+      and (
+        gp.customer_group_id = p_customer_group_id
+        or gp.billing_profile_id in (
+          select bp.id from public.billing_profiles bp where bp.customer_group_id = p_customer_group_id
+        )
+      )
+      and coalesce(gp.method, '') <> 'wallet_credit'
+    order by gp.voided_at nulls first, gp.payment_date desc, gp.id desc
+  ) r;
+
+  return v_result;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."list_customer_group_receipts"("p_tenant_id" bigint, "p_customer_group_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_customer_groups_payment_summary"("p_tenant_id" bigint, "p_search" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
@@ -27342,24 +27888,23 @@ begin
     i.notes,
     i.created_at,
     i.updated_at,
+    public.investor_uwl_flow_total(p_tenant_id, i.id, 'in') as total_capital_in,
+    public.investor_uwl_flow_total(p_tenant_id, i.id, 'out') as total_withdrawn,
     coalesce((
-      select sum(amount) from public.investor_transactions tx
-      where tx.investor_id = i.id
-        and tx.type in ('deposit', 'capital_in', 'capital_adjustment', 'manual_adjustment')
-    ), 0.00)::numeric as total_capital_in,
-    coalesce((
-      select sum(amount) from public.investor_transactions tx
-      where tx.investor_id = i.id
-        and tx.type in ('withdrawal', 'withdrawal_paid', 'profit_payout')
-    ), 0.00)::numeric as total_withdrawn,
-    coalesce((
-      select sum(allocated_cost) from public.shipment_investments si
+      select sum(si.allocated_cost)
+      from public.shipment_investments si
       where si.investor_id = i.id and si.status = 'active'
     ), 0.00)::numeric as deployed_capital,
     (
-      coalesce((select sum(amount) from public.investor_transactions tx where tx.investor_id = i.id and tx.type in ('deposit', 'capital_in', 'capital_adjustment', 'manual_adjustment')), 0.00) -
-      coalesce((select sum(amount) from public.investor_transactions tx where tx.investor_id = i.id and tx.type in ('withdrawal', 'withdrawal_paid', 'profit_payout')), 0.00) -
-      coalesce((select sum(allocated_cost) from public.shipment_investments si where si.investor_id = i.id and si.status = 'active'), 0.00)
+      coalesce((
+        public.get_wallet_account_balances(p_tenant_id, 'investor', i.id, i.currency_code)
+          ->> 'available_balance'
+      )::numeric, 0.00)
+      - coalesce((
+        select sum(si.allocated_cost)
+        from public.shipment_investments si
+        where si.investor_id = i.id and si.status = 'active'
+      ), 0.00)
     )::numeric as available_balance,
     v_total_count
   from public.investors i
@@ -27375,7 +27920,7 @@ $$;
 ALTER FUNCTION "public"."list_investor_profiles"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_investor_transactions"("p_tenant_id" bigint, "p_investor_id" bigint, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" bigint, "amount" numeric, "date" "date", "method" "public"."investor_payment_method", "type" "public"."investor_transaction_type", "note" "text", "created_at" timestamp with time zone, "total_count" bigint)
+CREATE OR REPLACE FUNCTION "public"."list_investor_wallet_activity"("p_tenant_id" bigint, "p_investor_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" "text", "investor_id" bigint, "amount" numeric, "activity_date" "date", "method" "public"."investor_payment_method", "transaction_type" "text", "note" "text", "created_at" timestamp with time zone, "total_count" bigint)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -27384,35 +27929,160 @@ declare
 begin
   if not (
     public.user_can_manage_parent_tenant(p_tenant_id)
-    or (public.auth_investor_id() = p_investor_id)
+    or (p_investor_id is not null and public.auth_investor_id() = p_investor_id)
   ) then
     raise exception 'not allowed';
   end if;
 
   select count(*) into v_total_count
-  from public.investor_transactions tx
-  where tx.investor_id = p_investor_id;
+  from public.universal_wallet_ledger uwl
+  inner join public.investors i on i.id = uwl.entity_id
+  where i.tenant_id = p_tenant_id
+    and uwl.entity_type = 'investor'
+    and (p_investor_id is null or uwl.entity_id = p_investor_id)
+    and coalesce(uwl.metadata->>'section', '') = 'investor_capital';
 
   return query
   select
-    tx.id,
-    tx.amount::numeric,
-    tx.date,
-    tx.method,
-    tx.type,
-    tx.note,
-    tx.created_at,
+    uwl.id::text,
+    uwl.entity_id as investor_id,
+    abs(uwl.amount)::numeric,
+    uwl.created_at::date as activity_date,
+    coalesce(nullif(uwl.metadata->>'method', ''), 'other')::public.investor_payment_method,
+    coalesce(uwl.metadata->>'transaction_type', 'manual_adjustment'),
+    coalesce(uwl.metadata->>'notes', uwl.metadata->>'note'),
+    uwl.created_at,
     v_total_count
-  from public.investor_transactions tx
-  where tx.investor_id = p_investor_id
-  order by tx.date desc, tx.created_at desc
+  from public.universal_wallet_ledger uwl
+  inner join public.investors i on i.id = uwl.entity_id
+  where i.tenant_id = p_tenant_id
+    and uwl.entity_type = 'investor'
+    and (p_investor_id is null or uwl.entity_id = p_investor_id)
+    and coalesce(uwl.metadata->>'section', '') = 'investor_capital'
+  order by uwl.created_at desc
   limit p_limit
   offset p_offset;
 end;
 $$;
 
 
-ALTER FUNCTION "public"."list_investor_transactions"("p_tenant_id" bigint, "p_investor_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_investor_wallet_activity"("p_tenant_id" bigint, "p_investor_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_invoice_payment_history"("p_tenant_id" bigint, "p_invoice_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_parent_id bigint;
+  v_result jsonb;
+begin
+  if p_tenant_id is null or p_invoice_id is null then
+    raise exception 'Tenant and invoice are required.';
+  end if;
+
+  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+
+  if not exists (
+    select 1
+    from public.sales_invoices si
+    where si.id = p_invoice_id
+      and (si.parent_tenant_id = v_parent_id or si.issued_by_tenant_id = p_tenant_id)
+  ) then
+    raise exception 'Invoice not found for this tenant.';
+  end if;
+
+  select coalesce(jsonb_agg(row_to_json(r) order by r.sort_at desc, r.entry_id desc), '[]'::jsonb)
+  into v_result
+  from (
+    select
+      'allocation'::text as entry_type,
+      ip.id as entry_id,
+      gp.id as payment_id,
+      gp.payment_date,
+      gp.payment_date::timestamptz as sort_at,
+      ip.amount as amount,
+      gp.amount as receipt_amount,
+      gp.voided_at,
+      gp.method,
+      gp.note,
+      null::text as write_off_reason,
+      coalesce(
+        (
+          select jsonb_agg(
+            jsonb_build_object(
+              'id', gpi.id,
+              'payment_method_code', gpi.payment_method_code,
+              'amount', gpi.amount,
+              'reference', gpi.reference,
+              'bd_bank_id', gpi.bd_bank_id,
+              'bank_name', b.name,
+              'cheque_number', gpi.cheque_number,
+              'cheque_date', gpi.cheque_date,
+              'sort_order', gpi.sort_order
+            )
+            order by gpi.sort_order, gpi.id
+          )
+          from public.global_payment_instruments gpi
+          left join public.bd_banks b on b.id = gpi.bd_bank_id
+          where gpi.payment_id = gp.id
+        ),
+        '[]'::jsonb
+      ) as instruments
+    from public.invoice_payments ip
+    join public.global_payments gp on gp.id = ip.payment_id
+    where ip.global_invoice_id = p_invoice_id
+
+    union all
+
+    select
+      'write_off'::text as entry_type,
+      iwo.id as entry_id,
+      iwo.payment_id,
+      coalesce(gp.payment_date, iwo.created_at::date) as payment_date,
+      coalesce(gp.payment_date::timestamptz, iwo.created_at) as sort_at,
+      iwo.amount as amount,
+      coalesce(gp.amount, 0.00) as receipt_amount,
+      gp.voided_at,
+      coalesce(gp.method, 'write_off') as method,
+      iwo.note,
+      iwo.reason as write_off_reason,
+      case
+        when gp.id is null then '[]'::jsonb
+        else coalesce(
+          (
+            select jsonb_agg(
+              jsonb_build_object(
+                'id', gpi.id,
+                'payment_method_code', gpi.payment_method_code,
+                'amount', gpi.amount,
+                'reference', gpi.reference,
+                'bd_bank_id', gpi.bd_bank_id,
+                'bank_name', b.name,
+                'cheque_number', gpi.cheque_number,
+                'cheque_date', gpi.cheque_date,
+                'sort_order', gpi.sort_order
+              )
+              order by gpi.sort_order, gpi.id
+            )
+            from public.global_payment_instruments gpi
+            left join public.bd_banks b on b.id = gpi.bd_bank_id
+            where gpi.payment_id = gp.id
+          ),
+          '[]'::jsonb
+        )
+      end as instruments
+    from public.invoice_write_offs iwo
+    left join public.global_payments gp on gp.id = iwo.payment_id
+    where iwo.invoice_id = p_invoice_id
+  ) r;
+
+  return v_result;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."list_invoice_payment_history"("p_tenant_id" bigint, "p_invoice_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_items_paginated"("p_tenant_id" bigint DEFAULT NULL::bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_type" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_priority" "text" DEFAULT NULL::"text", "p_assignee" "text" DEFAULT NULL::"text", "p_my_tasks_email" "text" DEFAULT NULL::"text", "p_include_parents" boolean DEFAULT false, "p_tag_id" bigint DEFAULT NULL::bigint, "p_date_field" "text" DEFAULT NULL::"text", "p_date_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_date_to" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS "jsonb"
@@ -32252,6 +32922,30 @@ COMMENT ON FUNCTION "public"."mark_thrift_items_as_sold"("p_tenant_id" bigint, "
 
 
 
+CREATE OR REPLACE FUNCTION "public"."membership_email_matches_current_user"("p_membership_email" "text") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+  select case
+    when p_membership_email is null or trim(p_membership_email) = '' then false
+    else lower(trim(p_membership_email)) = public.current_user_email()
+      or (
+        auth.uid() is not null
+        and exists (
+          select 1
+          from auth.users u
+          where u.id = auth.uid()
+            and lower(trim(u.email)) = public.current_user_email()
+            and lower(trim(u.email)) like lower(trim(p_membership_email)) || '%'
+        )
+      )
+  end;
+$$;
+
+
+ALTER FUNCTION "public"."membership_email_matches_current_user"("p_membership_email" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."membership_has_module_action"("p_tenant_id" bigint, "p_module_key" "text", "p_action" "text") RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -32260,7 +32954,7 @@ CREATE OR REPLACE FUNCTION "public"."membership_has_module_action"("p_tenant_id"
     select 1
     from public.memberships m
     where m.tenant_id = p_tenant_id
-      and lower(trim(m.email)) = public.current_user_email()
+      and public.membership_email_matches_current_user(m.email)
       and m.is_active = true
       and (
         m.role in ('owner'::public.app_role, 'manager'::public.app_role)
@@ -32764,6 +33458,140 @@ $$;
 
 
 ALTER FUNCTION "public"."parent_tenant_has_module_action"("p_parent_tenant_id" bigint, "p_module_key" "text", "p_action" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."paste_batch_code_items"("p_list_id" bigint, "p_start_row_index" integer, "p_rows" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_parent_tenant_id bigint;
+  v_existing_count integer;
+  v_needed_count integer;
+  v_row_count integer;
+  v_missing integer;
+  v_row jsonb;
+  v_offset integer;
+  v_barcode text;
+  v_product_code text;
+  v_batch_id text;
+  v_mfg date;
+  v_exp date;
+  v_cur public.batch_code_items%rowtype;
+begin
+  if p_rows is null or jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) = 0 then
+    return jsonb_build_object('created', 0, 'updated', 0);
+  end if;
+
+  if p_start_row_index is null or p_start_row_index < 0 then
+    raise exception 'start_row_index must be >= 0';
+  end if;
+
+  select l.parent_tenant_id
+  into v_parent_tenant_id
+  from public.batch_code_lists l
+  where l.id = p_list_id;
+
+  if v_parent_tenant_id is null then
+    raise exception 'Batch list not found';
+  end if;
+
+  if not public.user_can_manage_parent_tenant(v_parent_tenant_id) then
+    raise exception 'Access denied';
+  end if;
+
+  v_row_count := jsonb_array_length(p_rows);
+  v_needed_count := p_start_row_index + v_row_count;
+
+  select count(*)::integer
+  into v_existing_count
+  from public.batch_code_items
+  where list_id = p_list_id;
+
+  v_missing := greatest(0, v_needed_count - v_existing_count);
+
+  if v_missing > 0 then
+    insert into public.batch_code_items (list_id)
+    select p_list_id
+    from generate_series(1, v_missing);
+  end if;
+
+  for v_offset in 0..(v_row_count - 1) loop
+    v_row := p_rows -> v_offset;
+
+    select i.*
+    into v_cur
+    from public.batch_code_items i
+    where i.list_id = p_list_id
+    order by i.id
+    offset p_start_row_index + v_offset
+    limit 1;
+
+    if v_cur.id is null then
+      continue;
+    end if;
+
+    v_barcode := v_cur.barcode;
+    v_product_code := v_cur.product_code;
+    v_batch_id := v_cur.batch_id;
+    v_mfg := v_cur.manufacturing_date;
+    v_exp := v_cur.expire_date;
+
+    if v_row ? 'barcode' then
+      v_barcode := nullif(trim(v_row ->> 'barcode'), '');
+    end if;
+
+    if v_row ? 'product_code' then
+      v_product_code := nullif(trim(v_row ->> 'product_code'), '');
+    end if;
+
+    if v_row ? 'batch_id' then
+      v_batch_id := nullif(trim(v_row ->> 'batch_id'), '');
+    end if;
+
+    if v_row ? 'manufacturing_date' then
+      begin
+        v_mfg := nullif(trim(v_row ->> 'manufacturing_date'), '')::date;
+      exception
+        when others then
+          v_mfg := v_cur.manufacturing_date;
+      end;
+    end if;
+
+    if v_row ? 'expire_date' then
+      begin
+        v_exp := nullif(trim(v_row ->> 'expire_date'), '')::date;
+      exception
+        when others then
+          v_exp := v_cur.expire_date;
+      end;
+    end if;
+
+    if v_mfg is not null and v_exp is null then
+      v_exp := (v_mfg + interval '36 months')::date;
+    end if;
+
+    update public.batch_code_items
+    set
+      barcode = v_barcode,
+      product_code = v_product_code,
+      batch_id = v_batch_id,
+      manufacturing_date = v_mfg,
+      expire_date = v_exp,
+      updated_at = now()
+    where id = v_cur.id;
+  end loop;
+
+  update public.batch_code_lists
+  set updated_at = now()
+  where id = p_list_id;
+
+  return jsonb_build_object('created', v_missing, 'updated', v_row_count);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."paste_batch_code_items"("p_list_id" bigint, "p_start_row_index" integer, "p_rows" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."pay_settle_shipment_costs"("p_shipment_id" bigint, "p_cost_entry_ids" bigint[] DEFAULT NULL::bigint[]) RETURNS "jsonb"
@@ -33646,6 +34474,33 @@ $$;
 
 
 ALTER FUNCTION "public"."prevent_item_parent_cycles"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."prevent_system_bd_bank_mutation"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+begin
+  if tg_op = 'DELETE' then
+    if old.is_system then
+      raise exception 'System BD banks cannot be deleted.';
+    end if;
+    return old;
+  end if;
+
+  if tg_op = 'UPDATE' and old.is_system and (
+    row(new.code, new.name, new.swift_code, new.sort_order, new.is_active, new.is_system)
+    is distinct from
+    row(old.code, old.name, old.swift_code, old.sort_order, old.is_active, old.is_system)
+  ) then
+    raise exception 'System BD banks cannot be edited.';
+  end if;
+
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."prevent_system_bd_bank_mutation"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."prevent_system_global_currency_mutation"() RETURNS "trigger"
@@ -35256,7 +36111,7 @@ $$;
 ALTER FUNCTION "public"."reconcile_single_order_remittance"("p_order_id" bigint, "p_courier_charge" numeric) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."record_batch_customer_payment"("p_tenant_id" bigint, "p_customer_group_id" bigint DEFAULT NULL::bigint, "p_billing_profile_id" bigint DEFAULT NULL::bigint, "p_amount" numeric DEFAULT 0, "p_payment_date" "date" DEFAULT CURRENT_DATE, "p_method" "text" DEFAULT 'bank_transfer'::"text", "p_reference" "text" DEFAULT NULL::"text", "p_note" "text" DEFAULT NULL::"text", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_write_offs" "jsonb" DEFAULT '[]'::"jsonb") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."record_batch_customer_payment"("p_tenant_id" bigint, "p_customer_group_id" bigint DEFAULT NULL::bigint, "p_billing_profile_id" bigint DEFAULT NULL::bigint, "p_amount" numeric DEFAULT 0, "p_payment_date" "date" DEFAULT CURRENT_DATE, "p_method" "text" DEFAULT 'bank_transfer'::"text", "p_reference" "text" DEFAULT NULL::"text", "p_note" "text" DEFAULT NULL::"text", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_write_offs" "jsonb" DEFAULT '[]'::"jsonb", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -35273,17 +36128,89 @@ declare
   v_total_alloc numeric(12,2) := 0.00;
   v_total_wo numeric(12,2) := 0.00;
   v_primary_bp_id bigint := p_billing_profile_id;
+  v_amount numeric(12,2) := coalesce(p_amount, 0.00);
+  v_leftover numeric(12,2) := 0.00;
+  v_line record;
+  v_method_code text;
+  v_line_amount numeric(12,2);
+  v_line_count int := 0;
+  v_header_method text := lower(coalesce(p_method, 'bank_transfer'));
+  v_sort int := 0;
+  v_invoice_due numeric(12,2);
+  v_alloc_on_invoice numeric(12,2);
+  v_wo_on_invoice numeric(12,2);
+  v_has_allocations boolean := false;
+  v_has_write_offs boolean := false;
 begin
   if p_tenant_id is null then
     raise exception 'Tenant is required.';
   end if;
-  if coalesce(p_amount, 0) < 0 then
+
+  if coalesce(jsonb_typeof(p_instruments), 'null') = 'array' then
+    v_amount := 0.00;
+    for v_line in select value from jsonb_array_elements(p_instruments)
+    loop
+      v_method_code := upper(trim(coalesce(v_line.value ->> 'payment_method_code', '')));
+      v_line_amount := round(coalesce((v_line.value ->> 'amount')::numeric, 0.00), 2);
+      if v_line_amount <= 0 then continue; end if;
+
+      if not exists (select 1 from public.payment_methods pm where pm.code = v_method_code and pm.is_active = true) then
+        raise exception 'Invalid payment method: %', v_method_code;
+      end if;
+      if v_method_code = 'CHEQUE' and (
+        (v_line.value ->> 'bd_bank_id') is null
+        or nullif(trim(coalesce(v_line.value ->> 'cheque_number', '')), '') is null
+        or (v_line.value ->> 'cheque_date') is null
+      ) then
+        raise exception 'Cheque line requires bank, cheque number, and date';
+      end if;
+      if v_method_code = 'BANK_TRANSFER' and (v_line.value ->> 'bd_bank_id') is null then
+        raise exception 'Bank transfer line requires a bank';
+      end if;
+
+      v_amount := v_amount + v_line_amount;
+      v_line_count := v_line_count + 1;
+    end loop;
+
+    if v_line_count = 1 then
+      select lower(upper(trim(coalesce(value ->> 'payment_method_code', 'CASH'))))
+      into v_header_method
+      from jsonb_array_elements(p_instruments) as t(value)
+      where round(coalesce((value ->> 'amount')::numeric, 0.00), 2) > 0
+      limit 1;
+    elsif v_line_count > 1 then
+      v_header_method := 'split';
+    end if;
+  end if;
+
+  if v_amount < 0 then
     raise exception 'Payment amount cannot be negative.';
+  end if;
+
+  v_has_allocations := jsonb_typeof(coalesce(p_allocations, '[]'::jsonb)) = 'array'
+    and exists (
+      select 1
+      from jsonb_array_elements(p_allocations) as a(value)
+      where coalesce((value ->> 'amount')::numeric, 0.00) > 0.00
+    );
+
+  v_has_write_offs := jsonb_typeof(coalesce(p_write_offs, '[]'::jsonb)) = 'array'
+    and exists (
+      select 1
+      from jsonb_array_elements(p_write_offs) as w(value)
+      where coalesce((value ->> 'amount')::numeric, 0.00) > 0.00
+    );
+
+  if v_amount <= 0.00 and not v_has_allocations and not v_has_write_offs then
+    raise exception 'Enter money received, an allocation, or a concession / write-off.';
+  end if;
+
+  if v_amount <= 0.00 and v_has_write_offs and not v_has_allocations then
+    v_header_method := 'other';
   end if;
 
   v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
 
-  -- If customer group provided but no billing profile, resolve first billing profile
   if v_primary_bp_id is null and p_customer_group_id is not null then
     select id into v_primary_bp_id
     from public.billing_profiles
@@ -35291,59 +36218,62 @@ begin
     limit 1;
   end if;
 
-  -- Create Payment record
   insert into public.global_payments (
-    tenant_id,
-    customer_group_id,
-    billing_profile_id,
-    amount,
-    unallocated_amount,
-    payment_date,
-    method,
-    reference,
-    note
-  )
-  values (
-    p_tenant_id,
-    p_customer_group_id,
-    v_primary_bp_id,
-    coalesce(p_amount, 0.00),
-    coalesce(p_amount, 0.00),
-    coalesce(p_payment_date, current_date),
-    coalesce(p_method, 'bank_transfer'),
-    p_reference,
-    p_note
-  )
-  returning * into v_payment;
+    tenant_id, customer_group_id, billing_profile_id, amount, unallocated_amount,
+    payment_date, method, reference, note
+  ) values (
+    p_tenant_id, p_customer_group_id, v_primary_bp_id, v_amount, v_amount,
+    coalesce(p_payment_date, current_date), v_header_method, p_reference, p_note
+  ) returning * into v_payment;
 
-  -- Process Allocations
+  if v_line_count > 0 then
+    for v_line in select value from jsonb_array_elements(p_instruments)
+    loop
+      v_method_code := upper(trim(coalesce(v_line.value ->> 'payment_method_code', '')));
+      v_line_amount := round(coalesce((v_line.value ->> 'amount')::numeric, 0.00), 2);
+      if v_line_amount <= 0 then continue; end if;
+      v_sort := v_sort + 1;
+      insert into public.global_payment_instruments (
+        payment_id, payment_method_code, amount, reference,
+        bd_bank_id, cheque_number, cheque_date, sort_order
+      ) values (
+        v_payment.id, v_method_code, v_line_amount,
+        nullif(trim(coalesce(v_line.value ->> 'reference', '')), ''),
+        case when v_method_code in ('CHEQUE', 'BANK_TRANSFER') then (v_line.value ->> 'bd_bank_id')::bigint else null end,
+        case when v_method_code = 'CHEQUE' then nullif(trim(v_line.value ->> 'cheque_number'), '') else null end,
+        case when v_method_code in ('CHEQUE', 'BANK_TRANSFER') then (v_line.value ->> 'cheque_date')::date else null end,
+        v_sort
+      );
+    end loop;
+  end if;
+
   if jsonb_typeof(coalesce(p_allocations, '[]'::jsonb)) = 'array' then
     for v_alloc in select * from jsonb_array_elements(p_allocations)
     loop
       v_invoice_id := (v_alloc->>'invoice_id')::bigint;
       v_alloc_amount := coalesce((v_alloc->>'amount')::numeric, 0.00);
-
       if v_invoice_id is not null and v_alloc_amount > 0.00 then
-        insert into public.invoice_payments (
-          tenant_id,
-          payment_id,
-          global_invoice_id,
-          amount
-        )
-        values (
-          p_tenant_id,
-          v_payment.id,
-          v_invoice_id,
-          v_alloc_amount
-        );
+        select si.due_amount into v_invoice_due
+        from public.sales_invoices si
+        where si.id = v_invoice_id
+          and si.invoice_status = 'issued';
 
+        if v_invoice_due is null then
+          raise exception 'Invoice % is not open for payment.', v_invoice_id;
+        end if;
+
+        if v_alloc_amount > v_invoice_due then
+          raise exception 'Allocation % exceeds invoice due %.', v_alloc_amount, v_invoice_due;
+        end if;
+
+        insert into public.invoice_payments (tenant_id, payment_id, global_invoice_id, amount)
+        values (p_tenant_id, v_payment.id, v_invoice_id, v_alloc_amount);
         perform public.recompute_global_invoice_payment_status(v_invoice_id);
         v_total_alloc := v_total_alloc + v_alloc_amount;
       end if;
     end loop;
   end if;
 
-  -- Process Write-Offs
   if jsonb_typeof(coalesce(p_write_offs, '[]'::jsonb)) = 'array' then
     for v_wo in select * from jsonb_array_elements(p_write_offs)
     loop
@@ -35353,52 +36283,65 @@ begin
       v_wo_note := v_wo->>'note';
 
       if v_invoice_id is not null and v_wo_amount > 0.00 then
-        insert into public.invoice_write_offs (
-          tenant_id,
-          parent_tenant_id,
-          invoice_id,
-          payment_id,
-          amount,
-          reason,
-          note,
-          approved_by
-        )
-        values (
-          p_tenant_id,
-          v_parent_id,
-          v_invoice_id,
-          v_payment.id,
-          v_wo_amount,
-          v_wo_reason,
-          v_wo_note,
-          auth.uid()
-        );
+        if v_wo_reason not in (
+          'dispute_settlement',
+          'bad_debt',
+          'currency_rounding',
+          'management_concession'
+        ) then
+          raise exception 'Invalid write-off reason: %', v_wo_reason;
+        end if;
 
+        select si.due_amount into v_invoice_due
+        from public.sales_invoices si
+        where si.id = v_invoice_id
+          and si.invoice_status = 'issued';
+
+        if v_invoice_due is null then
+          raise exception 'Invoice % is not open for write-off.', v_invoice_id;
+        end if;
+
+        select coalesce(sum(ip.amount), 0.00)
+        into v_alloc_on_invoice
+        from public.invoice_payments ip
+        where ip.payment_id = v_payment.id
+          and ip.global_invoice_id = v_invoice_id;
+
+        if v_wo_amount + v_alloc_on_invoice > v_invoice_due then
+          raise exception
+            'Write-off % plus allocation % exceeds invoice due %.',
+            v_wo_amount, v_alloc_on_invoice, v_invoice_due;
+        end if;
+
+        insert into public.invoice_write_offs (
+          tenant_id, parent_tenant_id, invoice_id, payment_id, amount, reason, note, approved_by
+        ) values (
+          p_tenant_id, v_parent_id, v_invoice_id, v_payment.id, v_wo_amount, v_wo_reason, v_wo_note, auth.uid()
+        );
         perform public.recompute_global_invoice_payment_status(v_invoice_id);
         v_total_wo := v_total_wo + v_wo_amount;
       end if;
     end loop;
   end if;
 
-  if v_total_alloc > coalesce(p_amount, 0.00) then
-    raise exception 'Total allocations (% BDT) exceed payment received (% BDT).', v_total_alloc, p_amount;
+  if v_total_alloc > v_amount then
+    raise exception 'Total allocations (% BDT) exceed payment received (% BDT).', v_total_alloc, v_amount;
   end if;
 
-  -- Update unallocated amount
+  v_leftover := v_amount - v_total_alloc;
+
   update public.global_payments
-  set unallocated_amount = coalesce(p_amount, 0.00) - v_total_alloc
+  set unallocated_amount = v_leftover
   where id = v_payment.id;
 
-  -- Universal Wallet Entries (if amount > 0)
-  if coalesce(p_amount, 0.00) > 0.00 then
-    -- 1. Tenant Cash Receipt
+  if v_amount > 0.00 then
     perform public.record_ledger_transaction(
       p_parent_tenant_id => v_parent_id,
       p_operating_tenant_id => p_tenant_id,
       p_entity_type => 'tenant',
       p_entity_id => v_parent_id,
       p_type => 'credit',
-      p_amount => p_amount,
+      p_amount => v_amount,
       p_currency_code => 'BDT',
       p_exchange_rate => 1.000000,
       p_source_type => 'sales_invoice',
@@ -35411,36 +36354,35 @@ begin
         'reference', p_reference
       )
     );
+  end if;
 
-    -- 2. Customer AR Reduction (if billing profile linked)
-    if v_primary_bp_id is not null then
-      perform public.record_ledger_transaction(
-        p_parent_tenant_id => v_parent_id,
-        p_operating_tenant_id => p_tenant_id,
-        p_entity_type => 'customer',
-        p_entity_id => v_primary_bp_id,
-        p_type => 'credit',
-        p_amount => p_amount,
-        p_currency_code => 'BDT',
-        p_exchange_rate => 1.000000,
-        p_source_type => 'sales_invoice',
-        p_source_id => v_payment.id::text,
-        p_metadata => jsonb_build_object(
-          'section', 'payments',
-          'purpose', 'customer_ar_reduction',
-          'payment_id', v_payment.id,
-          'reference', p_reference
-        )
-      );
-    end if;
+  if v_leftover > 0.00 and v_primary_bp_id is not null then
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => v_parent_id,
+      p_operating_tenant_id => p_tenant_id,
+      p_entity_type => 'customer',
+      p_entity_id => v_primary_bp_id,
+      p_type => 'credit',
+      p_amount => v_leftover,
+      p_currency_code => 'BDT',
+      p_exchange_rate => 1.000000,
+      p_source_type => 'sales_invoice',
+      p_source_id => v_payment.id::text,
+      p_metadata => jsonb_build_object(
+        'section', 'payments',
+        'purpose', 'store_credit',
+        'payment_id', v_payment.id,
+        'reference', p_reference
+      )
+    );
   end if;
 
   return jsonb_build_object(
     'payment_id', v_payment.id,
-    'total_amount', p_amount,
+    'total_amount', v_amount,
     'total_allocated', v_total_alloc,
     'total_written_off', v_total_wo,
-    'unallocated_amount', coalesce(p_amount, 0.00) - v_total_alloc,
+    'unallocated_amount', v_leftover,
     'payment_date', v_payment.payment_date,
     'reference', v_payment.reference
   );
@@ -35448,7 +36390,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."record_batch_customer_payment"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payment_date" "date", "p_method" "text", "p_reference" "text", "p_note" "text", "p_allocations" "jsonb", "p_write_offs" "jsonb") OWNER TO "postgres";
+ALTER FUNCTION "public"."record_batch_customer_payment"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payment_date" "date", "p_method" "text", "p_reference" "text", "p_note" "text", "p_allocations" "jsonb", "p_write_offs" "jsonb", "p_instruments" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."record_dropship_courier_bank_transfer"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") RETURNS "jsonb"
@@ -35844,43 +36786,86 @@ $$;
 ALTER FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text", "p_courier_charge" numeric) OWNER TO "postgres";
 
 
-CREATE TABLE IF NOT EXISTS "public"."investor_transactions" (
-    "id" bigint NOT NULL,
-    "tenant_id" bigint NOT NULL,
-    "investor_id" bigint NOT NULL,
-    "amount" numeric(12,2) NOT NULL,
-    "date" "date" DEFAULT CURRENT_DATE NOT NULL,
-    "method" "public"."investor_payment_method" NOT NULL,
-    "type" "public"."investor_transaction_type" NOT NULL,
-    "note" "text",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "investor_transactions_amount_check" CHECK (("amount" > (0)::numeric))
-);
-
-
-ALTER TABLE "public"."investor_transactions" OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."record_investor_capital_adjustment"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") RETURNS "public"."investor_transactions"
+CREATE OR REPLACE FUNCTION "public"."record_investor_capital_adjustment"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
-  v_row public.investor_transactions;
+  v_source_id text := gen_random_uuid()::text;
+  v_currency text := 'BDT';
+  v_abs numeric(12,2);
 begin
   if not public.membership_has_module_action(p_tenant_id, 'investor_capital_ledger', 'edit') then
     raise exception 'not allowed';
   end if;
 
-  insert into public.investor_transactions (
-    tenant_id, investor_id, amount, date, method, type, note
-  ) values (
-    p_tenant_id, p_investor_id, p_amount, p_date, p_method, 'capital_adjustment'::public.investor_transaction_type, p_note
-  )
-  returning * into v_row;
+  if p_amount is null or p_amount = 0 then
+    raise exception 'amount must be non-zero';
+  end if;
 
-  return v_row;
+  v_abs := abs(p_amount);
+
+  select coalesce(i.currency_code, 'BDT') into v_currency
+  from public.investors i
+  where i.id = p_investor_id and i.tenant_id = p_tenant_id;
+
+  if not found then
+    raise exception 'investor not found';
+  end if;
+
+  if p_amount > 0 then
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+      p_operating_tenant_id => p_tenant_id,
+      p_entity_type => 'investor',
+      p_entity_id => p_investor_id,
+      p_type => 'credit',
+      p_amount => v_abs,
+      p_currency_code => v_currency,
+      p_exchange_rate => 1.000000,
+      p_source_type => 'adjustment',
+      p_source_id => v_source_id,
+      p_metadata => jsonb_build_object(
+        'section', 'investor_capital',
+        'transaction_type', 'capital_adjustment',
+        'method', p_method,
+        'date', p_date,
+        'notes', p_note
+      )
+    );
+  else
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+      p_operating_tenant_id => p_tenant_id,
+      p_entity_type => 'investor',
+      p_entity_id => p_investor_id,
+      p_type => 'debit',
+      p_amount => v_abs,
+      p_currency_code => v_currency,
+      p_exchange_rate => 1.000000,
+      p_source_type => 'adjustment',
+      p_source_id => v_source_id,
+      p_metadata => jsonb_build_object(
+        'section', 'investor_capital',
+        'transaction_type', 'capital_adjustment',
+        'method', p_method,
+        'date', p_date,
+        'notes', p_note
+      )
+    );
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'source_id', v_source_id,
+    'tenant_id', p_tenant_id,
+    'investor_id', p_investor_id,
+    'amount', p_amount,
+    'date', p_date,
+    'method', p_method,
+    'transaction_type', 'capital_adjustment',
+    'note', p_note
+  );
 end;
 $$;
 
@@ -35888,66 +36873,86 @@ $$;
 ALTER FUNCTION "public"."record_investor_capital_adjustment"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."record_investor_capital_in"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") RETURNS "public"."investor_transactions"
+CREATE OR REPLACE FUNCTION "public"."record_investor_capital_in"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
-  v_row public.investor_transactions;
+  v_source_id text := gen_random_uuid()::text;
+  v_currency text := 'BDT';
 begin
-  if not public.user_can_manage_parent_tenant(p_tenant_id) then
+  if not public.membership_has_module_action(p_tenant_id, 'investor_capital_ledger', 'create') then
     raise exception 'not allowed';
   end if;
 
-  insert into public.investor_transactions (
-    tenant_id, investor_id, amount, date, method, type, note
-  ) values (
-    p_tenant_id, p_investor_id, p_amount, p_date, p_method, 'capital_in'::public.investor_transaction_type, p_note
-  )
-  returning * into v_row;
+  if p_amount is null or p_amount <= 0 then
+    raise exception 'amount must be positive';
+  end if;
 
-  -- 1. Credit Tenant Cash Available (money received into platform)
+  select coalesce(i.currency_code, 'BDT') into v_currency
+  from public.investors i
+  where i.id = p_investor_id and i.tenant_id = p_tenant_id;
+
+  if not found then
+    raise exception 'investor not found';
+  end if;
+
   perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'tenant',
     p_entity_id => p_tenant_id,
     p_type => 'credit',
     p_amount => p_amount,
-    p_currency_code => 'BDT',
+    p_currency_code => v_currency,
     p_exchange_rate => 1.000000,
     p_source_type => 'adjustment',
-    p_source_id => v_row.id::text,
+    p_source_id => v_source_id,
     p_metadata => jsonb_build_object(
       'section', 'investor_capital',
       'purpose', 'capital_in_tenant_cash',
       'transaction_type', 'capital_in',
       'label', 'Capital In Deposit',
       'investor_id', p_investor_id,
+      'method', p_method,
+      'date', p_date,
       'notes', p_note
     )
   );
 
-  -- 2. Credit Investor Available (capital liability owed to investor)
   perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'investor',
     p_entity_id => p_investor_id,
     p_type => 'credit',
     p_amount => p_amount,
-    p_currency_code => 'BDT',
+    p_currency_code => v_currency,
     p_exchange_rate => 1.000000,
     p_source_type => 'adjustment',
-    p_source_id => v_row.id::text,
+    p_source_id => v_source_id,
     p_metadata => jsonb_build_object(
       'section', 'investor_capital',
       'purpose', 'capital_in_investor_liability',
       'transaction_type', 'capital_in',
       'label', 'Capital Injected',
+      'method', p_method,
+      'date', p_date,
       'notes', p_note
     )
   );
 
-  return v_row;
+  return jsonb_build_object(
+    'ok', true,
+    'source_id', v_source_id,
+    'tenant_id', p_tenant_id,
+    'investor_id', p_investor_id,
+    'amount', p_amount,
+    'date', p_date,
+    'method', p_method,
+    'transaction_type', 'capital_in',
+    'note', p_note
+  );
 end;
 $$;
 
@@ -35955,66 +36960,86 @@ $$;
 ALTER FUNCTION "public"."record_investor_capital_in"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."record_investor_withdrawal_paid"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") RETURNS "public"."investor_transactions"
+CREATE OR REPLACE FUNCTION "public"."record_investor_withdrawal_paid"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
-  v_row public.investor_transactions;
+  v_source_id text := gen_random_uuid()::text;
+  v_currency text := 'BDT';
 begin
-  if not public.user_can_manage_parent_tenant(p_tenant_id) then
+  if not public.membership_has_module_action(p_tenant_id, 'investor_capital_ledger', 'create') then
     raise exception 'not allowed';
   end if;
 
-  insert into public.investor_transactions (
-    tenant_id, investor_id, amount, date, method, type, note
-  ) values (
-    p_tenant_id, p_investor_id, p_amount, p_date, p_method, 'withdrawal_paid'::public.investor_transaction_type, p_note
-  )
-  returning * into v_row;
+  if p_amount is null or p_amount <= 0 then
+    raise exception 'amount must be positive';
+  end if;
 
-  -- 1. Debit Investor Available (reduces capital liability)
+  select coalesce(i.currency_code, 'BDT') into v_currency
+  from public.investors i
+  where i.id = p_investor_id and i.tenant_id = p_tenant_id;
+
+  if not found then
+    raise exception 'investor not found';
+  end if;
+
   perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'investor',
     p_entity_id => p_investor_id,
     p_type => 'debit',
     p_amount => p_amount,
-    p_currency_code => 'BDT',
+    p_currency_code => v_currency,
     p_exchange_rate => 1.000000,
     p_source_type => 'payout',
-    p_source_id => v_row.id::text,
+    p_source_id => v_source_id,
     p_metadata => jsonb_build_object(
       'section', 'investor_capital',
       'purpose', 'investor_withdrawal_debit',
       'transaction_type', 'withdrawal_paid',
       'label', 'Capital Withdrawal Paid',
+      'method', p_method,
+      'date', p_date,
       'notes', p_note
     )
   );
 
-  -- 2. Debit Tenant Cash (cash outflow from platform)
   perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'tenant',
     p_entity_id => p_tenant_id,
     p_type => 'debit',
     p_amount => p_amount,
-    p_currency_code => 'BDT',
+    p_currency_code => v_currency,
     p_exchange_rate => 1.000000,
     p_source_type => 'payout',
-    p_source_id => v_row.id::text,
+    p_source_id => v_source_id,
     p_metadata => jsonb_build_object(
       'section', 'investor_capital',
       'purpose', 'tenant_investor_cash_outflow',
       'transaction_type', 'withdrawal_paid',
       'label', 'Investor Withdrawal Outflow',
       'investor_id', p_investor_id,
+      'method', p_method,
+      'date', p_date,
       'notes', p_note
     )
   );
 
-  return v_row;
+  return jsonb_build_object(
+    'ok', true,
+    'source_id', v_source_id,
+    'tenant_id', p_tenant_id,
+    'investor_id', p_investor_id,
+    'amount', p_amount,
+    'date', p_date,
+    'method', p_method,
+    'transaction_type', 'withdrawal_paid',
+    'note', p_note
+  );
 end;
 $$;
 
@@ -36788,7 +37813,7 @@ begin
       coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_qty
     from public.global_shipment_items si
     left join public.global_invoice_items ii on ii.shipment_item_id = si.id
-    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'posted'::public.global_invoice_status
+    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
     where si.shipment_id = p_global_shipment_id
     group by si.id, si.ordered_quantity
   ) t;
@@ -36830,7 +37855,7 @@ begin
           and metadata->>'purpose' = 'shipment_investor_profit'
       ) then
         perform public.record_ledger_transaction(
-          p_tenant_id => v_shipment.parent_tenant_id,
+          p_parent_tenant_id => v_shipment.parent_tenant_id, p_operating_tenant_id => coalesce(v_shipment.assigned_child_tenant_id, v_shipment.parent_tenant_id),
           p_entity_type => 'investor',
           p_entity_id => v_inv.investor_id,
           p_type => 'credit',
@@ -41280,7 +42305,7 @@ begin
 
         perform public.add_demand_bucket_item_internal(
           p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
-          p_operating_tenant_id => v_order.tenant_id,
+      p_operating_tenant_id => v_order.tenant_id,
           p_billing_profile_id => v_order.billing_profile_id,
           p_product_id => v_item_row.product_id,
           p_source_type => 'shop_order_item',
@@ -42145,6 +43170,88 @@ $$;
 
 
 ALTER FUNCTION "public"."sync_global_shipment_header_aliases"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."sync_investor_profile_membership"("p_tenant_id" bigint, "p_investor_id" bigint, "p_email" "text", "p_is_active" boolean) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_email text;
+  v_linked public.memberships;
+  v_by_email public.memberships;
+begin
+  perform set_config('app.sync_investor_profile_membership', '1', true);
+
+  v_email := lower(trim(coalesce(p_email, '')));
+
+  if v_email = '' then
+    update public.memberships
+    set
+      investor_id = null,
+      updated_at = now()
+    where tenant_id = p_tenant_id
+      and investor_id = p_investor_id;
+    perform set_config('app.sync_investor_profile_membership', '0', true);
+    return;
+  end if;
+
+  select * into v_linked
+  from public.memberships m
+  where m.tenant_id = p_tenant_id
+    and m.investor_id = p_investor_id
+  limit 1;
+
+  if v_linked.id is not null then
+    update public.memberships
+    set
+      email = v_email,
+      investor_id = p_investor_id,
+      is_active = case
+        when role = 'investor'::public.app_role then coalesce(p_is_active, true)
+        else is_active
+      end,
+      updated_at = now()
+    where id = v_linked.id;
+    perform set_config('app.sync_investor_profile_membership', '0', true);
+    return;
+  end if;
+
+  select * into v_by_email
+  from public.memberships m
+  where m.tenant_id = p_tenant_id
+    and lower(trim(m.email)) = v_email
+  limit 1;
+
+  if v_by_email.id is not null then
+    update public.memberships
+    set
+      investor_id = p_investor_id,
+      is_active = case
+        when v_by_email.role = 'investor'::public.app_role then coalesce(p_is_active, true)
+        else is_active
+      end,
+      updated_at = now()
+    where id = v_by_email.id;
+    perform set_config('app.sync_investor_profile_membership', '0', true);
+    return;
+  end if;
+
+  insert into public.memberships (tenant_id, email, role, is_active, investor_id)
+  values (
+    p_tenant_id,
+    v_email,
+    'investor'::public.app_role,
+    coalesce(p_is_active, true),
+    p_investor_id
+  );
+
+  perform set_config('app.sync_investor_profile_membership', '0', true);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."sync_investor_profile_membership"("p_tenant_id" bigint, "p_investor_id" bigint, "p_email" "text", "p_is_active" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."sync_lookup_tenant_id"() RETURNS "trigger"
@@ -44800,6 +45907,91 @@ $$;
 ALTER FUNCTION "public"."update_membership_preference_for_self"("p_membership_id" bigint, "p_preference" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."update_payment_instrument_details"("p_tenant_id" bigint, "p_instrument_id" bigint, "p_reference" "text" DEFAULT NULL::"text", "p_bd_bank_id" bigint DEFAULT NULL::bigint, "p_cheque_number" "text" DEFAULT NULL::"text", "p_cheque_date" "date" DEFAULT NULL::"date") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_line public.global_payment_instruments;
+  v_payment public.global_payments;
+  v_method text;
+begin
+  if p_tenant_id is null or p_instrument_id is null then
+    raise exception 'Tenant and instrument are required.';
+  end if;
+
+  select gpi.* into v_line
+  from public.global_payment_instruments gpi
+  where gpi.id = p_instrument_id;
+
+  if v_line.id is null then
+    raise exception 'Instrument line not found.';
+  end if;
+
+  select * into v_payment
+  from public.global_payments gp
+  where gp.id = v_line.payment_id
+    and gp.tenant_id = p_tenant_id;
+
+  if v_payment.id is null then
+    raise exception 'Payment not found for tenant.';
+  end if;
+
+  if v_payment.voided_at is not null then
+    raise exception 'Cannot edit a voided receipt.';
+  end if;
+
+  v_method := upper(trim(v_line.payment_method_code));
+
+  if v_method = 'CHEQUE' then
+    if p_bd_bank_id is null then
+      raise exception 'Cheque line requires a bank.';
+    end if;
+    if nullif(trim(coalesce(p_cheque_number, '')), '') is null then
+      raise exception 'Cheque line requires a cheque number.';
+    end if;
+    if p_cheque_date is null then
+      raise exception 'Cheque line requires a cheque date.';
+    end if;
+    if not exists (
+      select 1 from public.bd_banks b
+      where b.id = p_bd_bank_id and b.is_active = true
+    ) then
+      raise exception 'Invalid bank for cheque line.';
+    end if;
+  elsif v_method = 'BANK_TRANSFER' then
+    if p_bd_bank_id is null then
+      raise exception 'Bank transfer line requires a bank.';
+    end if;
+    if not exists (
+      select 1 from public.bd_banks b
+      where b.id = p_bd_bank_id and b.is_active = true
+    ) then
+      raise exception 'Invalid bank for bank transfer line.';
+    end if;
+  end if;
+
+  update public.global_payment_instruments
+  set
+    reference = nullif(trim(coalesce(p_reference, '')), ''),
+    bd_bank_id = case when v_method in ('CHEQUE', 'BANK_TRANSFER') then p_bd_bank_id else null end,
+    cheque_number = case when v_method = 'CHEQUE' then nullif(trim(coalesce(p_cheque_number, '')), '') else null end,
+    cheque_date = case when v_method in ('CHEQUE', 'BANK_TRANSFER') then p_cheque_date else null end
+  where id = p_instrument_id
+  returning * into v_line;
+
+  return jsonb_build_object(
+    'success', true,
+    'instrument_id', v_line.id,
+    'payment_id', v_line.payment_id
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."update_payment_instrument_details"("p_tenant_id" bigint, "p_instrument_id" bigint, "p_reference" "text", "p_bd_bank_id" bigint, "p_cheque_number" "text", "p_cheque_date" "date") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."update_product_based_costing_items_order"("p_items" "jsonb") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -45341,7 +46533,6 @@ ALTER FUNCTION "public"."update_shipment"("p_id" bigint, "p_field" "text", "p_va
 CREATE TABLE IF NOT EXISTS "public"."shipment_investments" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
-    "shipment_id" bigint,
     "investor_id" bigint NOT NULL,
     "invested_amount" numeric(12,2) DEFAULT 0 NOT NULL,
     "actual_profit" numeric(12,2) DEFAULT 0 NOT NULL,
@@ -45352,7 +46543,7 @@ CREATE TABLE IF NOT EXISTS "public"."shipment_investments" (
     "allocated_cost" numeric(12,2) DEFAULT 0 NOT NULL,
     "computed_profit" numeric(12,2) DEFAULT 0 NOT NULL,
     "profit_status" "text" DEFAULT 'open'::"text" NOT NULL,
-    "global_shipment_id" bigint,
+    "global_shipment_id" bigint NOT NULL,
     CONSTRAINT "shipment_investments_cost_share_pct_check" CHECK ((("cost_share_pct" IS NULL) OR (("cost_share_pct" >= (0)::numeric) AND ("cost_share_pct" <= (100)::numeric)))),
     CONSTRAINT "shipment_investments_invested_amount_check" CHECK (("invested_amount" >= (0)::numeric)),
     CONSTRAINT "shipment_investments_profit_status_check" CHECK (("profit_status" = ANY (ARRAY['open'::"text", 'partial'::"text", 'realized'::"text"])))
@@ -46554,6 +47745,10 @@ begin
       updated_at = now()
     where id = p_id and tenant_id = p_tenant_id
     returning * into v_row;
+
+    if v_row.id is null then
+      raise exception 'investor not found';
+    end if;
   else
     insert into public.investors (
       tenant_id, name, phone, email, address, is_active, currency_code, notes
@@ -46562,6 +47757,13 @@ begin
     )
     returning * into v_row;
   end if;
+
+  perform public.sync_investor_profile_membership(
+    p_tenant_id,
+    v_row.id,
+    v_row.email,
+    v_row.is_active
+  );
 
   return v_row;
 end;
@@ -48525,7 +49727,7 @@ CREATE OR REPLACE FUNCTION "public"."user_can_manage_parent_tenant"("p_parent_te
     select 1
     from public.memberships m
     where m.tenant_id = p_parent_tenant_id
-      and lower(trim(m.email)) = public.current_user_email()
+      and public.membership_email_matches_current_user(m.email)
       and m.is_active = true
       and (
         m.role = 'owner'::public.app_role
@@ -48648,6 +49850,123 @@ $$;
 ALTER FUNCTION "public"."validate_preorder_stock_picks"("p_stock_picks" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."void_customer_receipt"("p_tenant_id" bigint, "p_payment_id" bigint, "p_reason" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_payment public.global_payments;
+  v_parent_id bigint;
+  v_invoice_id bigint;
+  v_leftover numeric(12,2);
+begin
+  if p_tenant_id is null or p_payment_id is null then
+    raise exception 'Tenant and payment are required.';
+  end if;
+
+  if nullif(trim(coalesce(p_reason, '')), '') is null then
+    raise exception 'A reason is required to void a receipt.';
+  end if;
+
+  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+
+  select * into v_payment
+  from public.global_payments
+  where id = p_payment_id
+    and tenant_id = p_tenant_id
+  for update;
+
+  if v_payment.id is null then
+    raise exception 'Payment not found.';
+  end if;
+
+  if v_payment.voided_at is not null then
+    raise exception 'Payment is already voided.';
+  end if;
+
+  if coalesce(v_payment.method, '') = 'wallet_credit' then
+    raise exception 'Store-credit application receipts cannot be voided from this screen.';
+  end if;
+
+  for v_invoice_id in
+    select distinct ip.global_invoice_id
+    from public.invoice_payments ip
+    where ip.payment_id = v_payment.id
+  loop
+    delete from public.invoice_payments
+    where payment_id = v_payment.id
+      and global_invoice_id = v_invoice_id;
+    perform public.recompute_global_invoice_payment_status(v_invoice_id);
+  end loop;
+
+  v_leftover := coalesce(v_payment.unallocated_amount, 0.00);
+
+  if coalesce(v_payment.amount, 0.00) > 0.00 then
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => v_parent_id,
+      p_operating_tenant_id => p_tenant_id,
+      p_entity_type => 'tenant',
+      p_entity_id => v_parent_id,
+      p_type => 'debit',
+      p_amount => v_payment.amount,
+      p_currency_code => 'BDT',
+      p_exchange_rate => 1.000000,
+      p_source_type => 'sales_invoice',
+      p_source_id => v_payment.id::text,
+      p_metadata => jsonb_build_object(
+        'section', 'payments',
+        'purpose', 'void_batch_payment_received',
+        'payment_id', v_payment.id,
+        'reason', p_reason
+      ),
+      p_allow_overdraft => true
+    );
+  end if;
+
+  if v_leftover > 0.00 and v_payment.billing_profile_id is not null then
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => v_parent_id,
+      p_operating_tenant_id => p_tenant_id,
+      p_entity_type => 'customer',
+      p_entity_id => v_payment.billing_profile_id,
+      p_type => 'debit',
+      p_amount => v_leftover,
+      p_currency_code => 'BDT',
+      p_exchange_rate => 1.000000,
+      p_source_type => 'sales_invoice',
+      p_source_id => v_payment.id::text,
+      p_metadata => jsonb_build_object(
+        'section', 'payments',
+        'purpose', 'void_store_credit',
+        'payment_id', v_payment.id,
+        'reason', p_reason
+      ),
+      p_allow_overdraft => true
+    );
+  end if;
+
+  update public.global_payments
+  set
+    voided_at = now(),
+    note = trim(
+      coalesce(note, '')
+      || case when coalesce(note, '') = '' then '' else E'\n' end
+      || '[VOIDED] ' || trim(p_reason)
+    )
+  where id = v_payment.id;
+
+  return jsonb_build_object(
+    'success', true,
+    'payment_id', v_payment.id,
+    'customer_group_id', v_payment.customer_group_id
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."void_customer_receipt"("p_tenant_id" bigint, "p_payment_id" bigint, "p_reason" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."void_global_invoice"("p_invoice_id" bigint) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -48760,23 +50079,24 @@ ALTER SEQUENCE "public"."activity_logs_id_seq" OWNED BY "public"."activity_logs"
 
 
 
-CREATE TABLE IF NOT EXISTS "public"."batch_code_pc" (
+CREATE TABLE IF NOT EXISTS "public"."batch_code_items" (
     "id" bigint NOT NULL,
-    "shipment_id" bigint NOT NULL,
-    "shipment_item_id" bigint,
+    "list_id" bigint NOT NULL,
+    "barcode" "text",
     "product_code" "text",
     "batch_id" "text",
     "manufacturing_date" "date",
     "expire_date" "date",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "is_arrived" boolean DEFAULT false NOT NULL
 );
 
 
-ALTER TABLE "public"."batch_code_pc" OWNER TO "postgres";
+ALTER TABLE "public"."batch_code_items" OWNER TO "postgres";
 
 
-CREATE SEQUENCE IF NOT EXISTS "public"."batch_code_pc_id_seq"
+CREATE SEQUENCE IF NOT EXISTS "public"."batch_code_items_id_seq"
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -48784,10 +50104,69 @@ CREATE SEQUENCE IF NOT EXISTS "public"."batch_code_pc_id_seq"
     CACHE 1;
 
 
-ALTER SEQUENCE "public"."batch_code_pc_id_seq" OWNER TO "postgres";
+ALTER SEQUENCE "public"."batch_code_items_id_seq" OWNER TO "postgres";
 
 
-ALTER SEQUENCE "public"."batch_code_pc_id_seq" OWNED BY "public"."batch_code_pc"."id";
+ALTER SEQUENCE "public"."batch_code_items_id_seq" OWNED BY "public"."batch_code_items"."id";
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."batch_code_lists" (
+    "id" bigint NOT NULL,
+    "parent_tenant_id" bigint NOT NULL,
+    "shipment_id" bigint NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."batch_code_lists" OWNER TO "postgres";
+
+
+CREATE SEQUENCE IF NOT EXISTS "public"."batch_code_lists_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE "public"."batch_code_lists_id_seq" OWNER TO "postgres";
+
+
+ALTER SEQUENCE "public"."batch_code_lists_id_seq" OWNED BY "public"."batch_code_lists"."id";
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."bd_banks" (
+    "id" bigint NOT NULL,
+    "code" "text" NOT NULL,
+    "name" "text" NOT NULL,
+    "swift_code" "text",
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "is_system" boolean DEFAULT false NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "bd_banks_code_uppercase_check" CHECK (("code" = "upper"("code")))
+);
+
+
+ALTER TABLE "public"."bd_banks" OWNER TO "postgres";
+
+
+CREATE SEQUENCE IF NOT EXISTS "public"."bd_banks_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE "public"."bd_banks_id_seq" OWNER TO "postgres";
+
+
+ALTER SEQUENCE "public"."bd_banks_id_seq" OWNED BY "public"."bd_banks"."id";
 
 
 
@@ -49492,6 +50871,40 @@ ALTER SEQUENCE "public"."global_invoices_id_seq" OWNED BY "public"."sales_invoic
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."global_payment_instruments" (
+    "id" bigint NOT NULL,
+    "payment_id" bigint NOT NULL,
+    "payment_method_code" "text" NOT NULL,
+    "amount" numeric(12,2) NOT NULL,
+    "reference" "text",
+    "bd_bank_id" bigint,
+    "cheque_number" "text",
+    "cheque_date" "date",
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "global_payment_instruments_amount_positive" CHECK (("amount" > (0)::numeric)),
+    CONSTRAINT "global_payment_instruments_cheque_fields" CHECK ((("payment_method_code" <> 'CHEQUE'::"text") OR (("bd_bank_id" IS NOT NULL) AND (NULLIF(TRIM(BOTH FROM "cheque_number"), ''::"text") IS NOT NULL) AND ("cheque_date" IS NOT NULL))))
+);
+
+
+ALTER TABLE "public"."global_payment_instruments" OWNER TO "postgres";
+
+
+CREATE SEQUENCE IF NOT EXISTS "public"."global_payment_instruments_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE "public"."global_payment_instruments_id_seq" OWNER TO "postgres";
+
+
+ALTER SEQUENCE "public"."global_payment_instruments_id_seq" OWNED BY "public"."global_payment_instruments"."id";
+
+
+
 CREATE OR REPLACE VIEW "public"."global_return_items" WITH ("security_invoker"='false') AS
  SELECT "id",
     "parent_tenant_id",
@@ -49530,10 +50943,10 @@ CREATE TABLE IF NOT EXISTS "public"."global_shipment_boxes" (
     "parent_tenant_id" bigint NOT NULL,
     "shipment_id" bigint NOT NULL,
     "box_number" "text" NOT NULL,
-    "received_weight" numeric NOT NULL,
-    "shipping_weight" numeric NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "received_weight" numeric NOT NULL,
+    "shipping_weight" numeric NOT NULL,
     CONSTRAINT "global_shipment_boxes_received_weight_check" CHECK (("received_weight" >= (0)::numeric)),
     CONSTRAINT "global_shipment_boxes_shipping_weight_check" CHECK (("shipping_weight" >= (0)::numeric))
 );
@@ -49699,21 +51112,6 @@ ALTER SEQUENCE "public"."global_stocks_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."global_stocks_id_seq" OWNED BY "public"."global_stocks"."id";
-
-
-
-CREATE SEQUENCE IF NOT EXISTS "public"."investor_transactions_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "public"."investor_transactions_id_seq" OWNER TO "postgres";
-
-
-ALTER SEQUENCE "public"."investor_transactions_id_seq" OWNED BY "public"."investor_transactions"."id";
 
 
 
@@ -52551,7 +53949,15 @@ ALTER TABLE ONLY "public"."activity_logs" ALTER COLUMN "id" SET DEFAULT "nextval
 
 
 
-ALTER TABLE ONLY "public"."batch_code_pc" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."batch_code_pc_id_seq"'::"regclass");
+ALTER TABLE ONLY "public"."batch_code_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."batch_code_items_id_seq"'::"regclass");
+
+
+
+ALTER TABLE ONLY "public"."batch_code_lists" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."batch_code_lists_id_seq"'::"regclass");
+
+
+
+ALTER TABLE ONLY "public"."bd_banks" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."bd_banks_id_seq"'::"regclass");
 
 
 
@@ -52599,6 +54005,10 @@ ALTER TABLE ONLY "public"."global_currencies" ALTER COLUMN "id" SET DEFAULT "nex
 
 
 
+ALTER TABLE ONLY "public"."global_payment_instruments" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_payment_instruments_id_seq"'::"regclass");
+
+
+
 ALTER TABLE ONLY "public"."global_payments" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."payments_id_seq"'::"regclass");
 
 
@@ -52624,10 +54034,6 @@ ALTER TABLE ONLY "public"."global_stock_types" ALTER COLUMN "id" SET DEFAULT "ne
 
 
 ALTER TABLE ONLY "public"."global_stocks" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_stocks_id_seq"'::"regclass");
-
-
-
-ALTER TABLE ONLY "public"."investor_transactions" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."investor_transactions_id_seq"'::"regclass");
 
 
 
@@ -52900,8 +54306,23 @@ ALTER TABLE ONLY "public"."activity_logs"
 
 
 
-ALTER TABLE ONLY "public"."batch_code_pc"
-    ADD CONSTRAINT "batch_code_pc_pkey" PRIMARY KEY ("id");
+ALTER TABLE ONLY "public"."batch_code_items"
+    ADD CONSTRAINT "batch_code_items_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."batch_code_lists"
+    ADD CONSTRAINT "batch_code_lists_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."bd_banks"
+    ADD CONSTRAINT "bd_banks_code_key" UNIQUE ("code");
+
+
+
+ALTER TABLE ONLY "public"."bd_banks"
+    ADD CONSTRAINT "bd_banks_pkey" PRIMARY KEY ("id");
 
 
 
@@ -53040,6 +54461,11 @@ ALTER TABLE ONLY "public"."sales_invoices"
 
 
 
+ALTER TABLE ONLY "public"."global_payment_instruments"
+    ADD CONSTRAINT "global_payment_instruments_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."sales_return_items"
     ADD CONSTRAINT "global_return_items_pkey" PRIMARY KEY ("id");
 
@@ -53087,11 +54513,6 @@ ALTER TABLE ONLY "public"."global_stocks"
 
 ALTER TABLE ONLY "public"."global_stocks"
     ADD CONSTRAINT "global_stocks_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."investor_transactions"
-    ADD CONSTRAINT "investor_transactions_pkey" PRIMARY KEY ("id");
 
 
 
@@ -53849,19 +55270,31 @@ CREATE INDEX "activity_logs_item_id_idx" ON "public"."activity_logs" USING "btre
 
 
 
-CREATE INDEX "batch_code_pc_batch_id_idx" ON "public"."batch_code_pc" USING "btree" ("batch_id");
+CREATE INDEX "batch_code_items_barcode_idx" ON "public"."batch_code_items" USING "btree" ("barcode") WHERE ("barcode" IS NOT NULL);
 
 
 
-CREATE INDEX "batch_code_pc_product_code_idx" ON "public"."batch_code_pc" USING "btree" ("product_code");
+CREATE INDEX "batch_code_items_list_idx" ON "public"."batch_code_items" USING "btree" ("list_id");
 
 
 
-CREATE INDEX "batch_code_pc_shipment_id_idx" ON "public"."batch_code_pc" USING "btree" ("shipment_id");
+CREATE INDEX "batch_code_items_product_code_idx" ON "public"."batch_code_items" USING "btree" ("product_code") WHERE ("product_code" IS NOT NULL);
 
 
 
-CREATE INDEX "batch_code_pc_shipment_item_id_idx" ON "public"."batch_code_pc" USING "btree" ("shipment_item_id");
+CREATE INDEX "batch_code_lists_parent_tenant_idx" ON "public"."batch_code_lists" USING "btree" ("parent_tenant_id");
+
+
+
+CREATE UNIQUE INDEX "batch_code_lists_shipment_id_key" ON "public"."batch_code_lists" USING "btree" ("shipment_id");
+
+
+
+CREATE INDEX "bd_banks_code_idx" ON "public"."bd_banks" USING "btree" ("code");
+
+
+
+CREATE INDEX "bd_banks_sort_order_idx" ON "public"."bd_banks" USING "btree" ("sort_order");
 
 
 
@@ -54002,6 +55435,18 @@ CREATE INDEX "global_invoices_parent_tenant_id_idx" ON "public"."sales_invoices"
 
 
 CREATE INDEX "global_invoices_recipient_profile_id_idx" ON "public"."sales_invoices" USING "btree" ("recipient_profile_id");
+
+
+
+CREATE INDEX "global_payment_instruments_method_code_idx" ON "public"."global_payment_instruments" USING "btree" ("payment_method_code");
+
+
+
+CREATE INDEX "global_payment_instruments_payment_id_idx" ON "public"."global_payment_instruments" USING "btree" ("payment_id");
+
+
+
+CREATE INDEX "global_payments_voided_at_idx" ON "public"."global_payments" USING "btree" ("voided_at") WHERE ("voided_at" IS NOT NULL);
 
 
 
@@ -54378,14 +55823,6 @@ CREATE INDEX "idx_uwl_parent_operating_created" ON "public"."universal_wallet_le
 
 
 CREATE INDEX "idx_wallet_accounts_tenant_entity" ON "public"."wallet_accounts" USING "btree" ("tenant_id", "entity_type", "entity_id");
-
-
-
-CREATE INDEX "investor_transactions_investor_id_idx" ON "public"."investor_transactions" USING "btree" ("investor_id");
-
-
-
-CREATE INDEX "investor_transactions_tenant_id_idx" ON "public"."investor_transactions" USING "btree" ("tenant_id");
 
 
 
@@ -54837,11 +56274,11 @@ CREATE INDEX "shipment_investments_investor_id_idx" ON "public"."shipment_invest
 
 
 
-CREATE INDEX "shipment_investments_shipment_id_idx" ON "public"."shipment_investments" USING "btree" ("shipment_id");
-
-
-
 CREATE INDEX "shipment_investments_tenant_id_idx" ON "public"."shipment_investments" USING "btree" ("tenant_id");
+
+
+
+CREATE UNIQUE INDEX "shipment_investments_tenant_investor_global_shipment_key" ON "public"."shipment_investments" USING "btree" ("tenant_id", "investor_id", "global_shipment_id");
 
 
 
@@ -55137,11 +56574,27 @@ CREATE OR REPLACE TRIGGER "trg_auto_enable_customer_module" AFTER INSERT ON "pub
 
 
 
+CREATE OR REPLACE TRIGGER "trg_auto_enable_investor_capital" AFTER INSERT ON "public"."tenants" FOR EACH ROW EXECUTE FUNCTION "public"."auto_enable_investor_capital_for_root_tenant"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_auto_enable_universal_wallet" AFTER INSERT ON "public"."tenants" FOR EACH ROW EXECUTE FUNCTION "public"."auto_enable_universal_wallet_for_new_tenant"();
 
 
 
-CREATE OR REPLACE TRIGGER "trg_batch_code_pc_set_updated_at" BEFORE UPDATE ON "public"."batch_code_pc" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+CREATE OR REPLACE TRIGGER "trg_batch_code_items_updated_at" BEFORE UPDATE ON "public"."batch_code_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_batch_code_lists_updated_at" BEFORE UPDATE ON "public"."batch_code_lists" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_bd_banks_protect_system_rows" BEFORE DELETE OR UPDATE ON "public"."bd_banks" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_system_bd_bank_mutation"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_bd_banks_updated_at" BEFORE UPDATE ON "public"."bd_banks" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
 
@@ -55350,10 +56803,6 @@ CREATE OR REPLACE TRIGGER "trg_global_stock_types_updated_at" BEFORE UPDATE ON "
 
 
 CREATE OR REPLACE TRIGGER "trg_global_stocks_updated_at" BEFORE UPDATE ON "public"."global_stocks" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_investor_transactions_set_updated_at" BEFORE UPDATE ON "public"."investor_transactions" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
 
@@ -55834,13 +57283,18 @@ ALTER TABLE ONLY "public"."activity_logs"
 
 
 
-ALTER TABLE ONLY "public"."batch_code_pc"
-    ADD CONSTRAINT "batch_code_pc_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."shipments"("id") ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."batch_code_items"
+    ADD CONSTRAINT "batch_code_items_list_id_fkey" FOREIGN KEY ("list_id") REFERENCES "public"."batch_code_lists"("id") ON DELETE CASCADE;
 
 
 
-ALTER TABLE ONLY "public"."batch_code_pc"
-    ADD CONSTRAINT "batch_code_pc_shipment_item_id_fkey" FOREIGN KEY ("shipment_item_id") REFERENCES "public"."shipment_items"("id") ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."batch_code_lists"
+    ADD CONSTRAINT "batch_code_lists_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."batch_code_lists"
+    ADD CONSTRAINT "batch_code_lists_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."global_shipments"("id") ON DELETE CASCADE;
 
 
 
@@ -56134,6 +57588,21 @@ ALTER TABLE ONLY "public"."sales_invoices"
 
 
 
+ALTER TABLE ONLY "public"."global_payment_instruments"
+    ADD CONSTRAINT "global_payment_instruments_bd_bank_id_fkey" FOREIGN KEY ("bd_bank_id") REFERENCES "public"."bd_banks"("id");
+
+
+
+ALTER TABLE ONLY "public"."global_payment_instruments"
+    ADD CONSTRAINT "global_payment_instruments_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "public"."global_payments"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."global_payment_instruments"
+    ADD CONSTRAINT "global_payment_instruments_payment_method_code_fkey" FOREIGN KEY ("payment_method_code") REFERENCES "public"."payment_methods"("code");
+
+
+
 ALTER TABLE ONLY "public"."global_payments"
     ADD CONSTRAINT "global_payments_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE SET NULL;
 
@@ -56301,16 +57770,6 @@ ALTER TABLE ONLY "public"."global_stocks"
 
 ALTER TABLE ONLY "public"."global_stocks"
     ADD CONSTRAINT "global_stocks_stock_type_id_fkey" FOREIGN KEY ("stock_type_id") REFERENCES "public"."global_stock_types"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."investor_transactions"
-    ADD CONSTRAINT "investor_transactions_investor_id_fkey" FOREIGN KEY ("investor_id") REFERENCES "public"."investors"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."investor_transactions"
-    ADD CONSTRAINT "investor_transactions_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
 
@@ -56726,11 +58185,6 @@ ALTER TABLE ONLY "public"."shipment_investments"
 
 ALTER TABLE ONLY "public"."shipment_investments"
     ADD CONSTRAINT "shipment_investments_investor_id_fkey" FOREIGN KEY ("investor_id") REFERENCES "public"."investors"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."shipment_investments"
-    ADD CONSTRAINT "shipment_investments_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."shipments"("id") ON DELETE CASCADE;
 
 
 
@@ -57610,23 +59064,39 @@ CREATE POLICY "activity_logs_select" ON "public"."activity_logs" FOR SELECT TO "
 
 
 
-ALTER TABLE "public"."batch_code_pc" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."batch_code_items" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "batch_code_pc_delete" ON "public"."batch_code_pc" FOR DELETE TO "authenticated" USING ("public"."can_manage_shipment_by_id"("shipment_id"));
-
-
-
-CREATE POLICY "batch_code_pc_insert" ON "public"."batch_code_pc" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_manage_shipment_by_id"("shipment_id"));
-
-
-
-CREATE POLICY "batch_code_pc_select" ON "public"."batch_code_pc" FOR SELECT TO "authenticated" USING ("public"."can_manage_shipment_by_id"("shipment_id"));
+CREATE POLICY "batch_code_items_all" ON "public"."batch_code_items" TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."batch_code_lists" "l"
+  WHERE (("l"."id" = "batch_code_items"."list_id") AND "public"."user_can_manage_parent_tenant"("l"."parent_tenant_id"))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."batch_code_lists" "l"
+  WHERE (("l"."id" = "batch_code_items"."list_id") AND "public"."user_can_manage_parent_tenant"("l"."parent_tenant_id")))));
 
 
 
-CREATE POLICY "batch_code_pc_update" ON "public"."batch_code_pc" FOR UPDATE TO "authenticated" USING ("public"."can_manage_shipment_by_id"("shipment_id")) WITH CHECK ("public"."can_manage_shipment_by_id"("shipment_id"));
+CREATE POLICY "batch_code_items_select" ON "public"."batch_code_items" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."batch_code_lists" "l"
+  WHERE (("l"."id" = "batch_code_items"."list_id") AND ("public"."user_can_manage_parent_tenant"("l"."parent_tenant_id") OR (EXISTS ( SELECT 1
+           FROM "public"."memberships" "m"
+          WHERE (("m"."tenant_id" = "l"."parent_tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))))))));
 
+
+
+ALTER TABLE "public"."batch_code_lists" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "batch_code_lists_all" ON "public"."batch_code_lists" TO "authenticated" USING ("public"."user_can_manage_parent_tenant"("parent_tenant_id")) WITH CHECK ("public"."user_can_manage_parent_tenant"("parent_tenant_id"));
+
+
+
+CREATE POLICY "batch_code_lists_select" ON "public"."batch_code_lists" FOR SELECT TO "authenticated" USING (("public"."user_can_manage_parent_tenant"("parent_tenant_id") OR (EXISTS ( SELECT 1
+   FROM "public"."memberships" "m"
+  WHERE (("m"."tenant_id" = "batch_code_lists"."parent_tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
+
+
+
+ALTER TABLE "public"."bd_banks" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."billing_profiles" ENABLE ROW LEVEL SECURITY;
@@ -57918,6 +59388,9 @@ CREATE POLICY "global_invoices_write" ON "public"."sales_invoices" TO "authentic
 
 
 
+ALTER TABLE "public"."global_payment_instruments" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."global_payments" ENABLE ROW LEVEL SECURITY;
 
 
@@ -58013,33 +59486,6 @@ ALTER TABLE "public"."global_stocks" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "global_stocks_all" ON "public"."global_stocks" TO "authenticated" USING ("public"."user_can_manage_parent_tenant"("parent_tenant_id")) WITH CHECK ("public"."user_can_manage_parent_tenant"("parent_tenant_id"));
-
-
-
-ALTER TABLE "public"."investor_transactions" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "investor_transactions_delete" ON "public"."investor_transactions" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "investor_transactions"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
-
-
-
-CREATE POLICY "investor_transactions_insert" ON "public"."investor_transactions" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "investor_transactions"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
-
-
-
-CREATE POLICY "investor_transactions_select" ON "public"."investor_transactions" FOR SELECT TO "authenticated" USING (("public"."investor_tenant_can_view"("tenant_id") OR ("public"."auth_investor_id"() = "investor_id")));
-
-
-
-CREATE POLICY "investor_transactions_update" ON "public"."investor_transactions" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "investor_transactions"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"])))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "investor_transactions"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
 
 
 
@@ -58949,6 +60395,14 @@ CREATE POLICY "stock_locations_select" ON "public"."stock_locations" FOR SELECT 
 
 
 
+CREATE POLICY "superadmin_can_manage_bd_banks" ON "public"."bd_banks" TO "authenticated" USING ("public"."is_superadmin"()) WITH CHECK ("public"."is_superadmin"());
+
+
+
+CREATE POLICY "superadmin_can_manage_global_payment_instruments" ON "public"."global_payment_instruments" TO "authenticated" USING ("public"."is_superadmin"()) WITH CHECK ("public"."is_superadmin"());
+
+
+
 CREATE POLICY "superadmin_can_manage_markets" ON "public"."markets" TO "authenticated" USING ("public"."is_superadmin"()) WITH CHECK ("public"."is_superadmin"());
 
 
@@ -59227,13 +60681,13 @@ CREATE POLICY "user_push_subscriptions_update_own" ON "public"."user_push_subscr
 ALTER TABLE "public"."vendors" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "vendors_delete" ON "public"."vendors" FOR DELETE TO "authenticated" USING ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (EXISTS ( SELECT 1
+CREATE POLICY "vendors_delete" ON "public"."vendors" FOR DELETE TO "authenticated" USING ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (("tenant_id" IS NOT NULL) AND "public"."is_network_owner"("tenant_id")) OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'admin'::"public"."app_role") AND ("m"."is_active" = true) AND ("m"."tenant_id" IS NOT NULL) AND ("vendors"."tenant_id" = "m"."tenant_id"))))));
 
 
 
-CREATE POLICY "vendors_insert" ON "public"."vendors" FOR INSERT TO "authenticated" WITH CHECK ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (EXISTS ( SELECT 1
+CREATE POLICY "vendors_insert" ON "public"."vendors" FOR INSERT TO "authenticated" WITH CHECK ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (("tenant_id" IS NOT NULL) AND "public"."is_network_owner"("tenant_id")) OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'admin'::"public"."app_role") AND ("m"."is_active" = true) AND ("m"."tenant_id" IS NOT NULL) AND ("vendors"."tenant_id" = "m"."tenant_id"))))));
 
@@ -59245,9 +60699,9 @@ CREATE POLICY "vendors_select" ON "public"."vendors" FOR SELECT TO "authenticate
 
 
 
-CREATE POLICY "vendors_update" ON "public"."vendors" FOR UPDATE TO "authenticated" USING ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (EXISTS ( SELECT 1
+CREATE POLICY "vendors_update" ON "public"."vendors" FOR UPDATE TO "authenticated" USING ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (("tenant_id" IS NOT NULL) AND "public"."is_network_owner"("tenant_id")) OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
-  WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'admin'::"public"."app_role") AND ("m"."is_active" = true) AND ("m"."tenant_id" IS NOT NULL) AND ("vendors"."tenant_id" = "m"."tenant_id")))))) WITH CHECK ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (EXISTS ( SELECT 1
+  WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'admin'::"public"."app_role") AND ("m"."is_active" = true) AND ("m"."tenant_id" IS NOT NULL) AND ("vendors"."tenant_id" = "m"."tenant_id")))))) WITH CHECK ((("public"."is_superadmin"() AND ("tenant_id" IS NULL)) OR (("tenant_id" IS NOT NULL) AND "public"."is_network_owner"("tenant_id")) OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'admin'::"public"."app_role") AND ("m"."is_active" = true) AND ("m"."tenant_id" IS NOT NULL) AND ("vendors"."tenant_id" = "m"."tenant_id"))))));
 
@@ -59504,6 +60958,11 @@ GRANT ALL ON FUNCTION "public"."archive_shipment_progress_flow"("p_flow_id" bigi
 
 
 GRANT ALL ON FUNCTION "public"."archive_shipment_progress_flow_stage"("p_flow_stage_id" bigint, "p_archive" boolean) TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."current_user_email"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."current_user_email"() TO "authenticated";
 
 
 
@@ -59774,8 +61233,8 @@ GRANT ALL ON FUNCTION "public"."clear_shop_order_item_unavailable"("p_order_item
 
 
 
-GRANT ALL ON FUNCTION "public"."collect_wholesale_invoice_payment"("p_invoice_id" bigint, "p_cash_amount" numeric, "p_cash_method" "text", "p_wallet_amount" numeric, "p_settlement_amount" numeric) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."collect_wholesale_invoice_payment"("p_invoice_id" bigint, "p_cash_amount" numeric, "p_cash_method" "text", "p_wallet_amount" numeric, "p_settlement_amount" numeric) TO "service_role";
+GRANT ALL ON FUNCTION "public"."collect_wholesale_invoice_payment"("p_invoice_id" bigint, "p_instruments" "jsonb", "p_wallet_amount" numeric, "p_settlement_amount" numeric, "p_note" "text", "p_received_on" "date") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."collect_wholesale_invoice_payment"("p_invoice_id" bigint, "p_instruments" "jsonb", "p_wallet_amount" numeric, "p_settlement_amount" numeric, "p_note" "text", "p_received_on" "date") TO "service_role";
 
 
 
@@ -60471,7 +61930,7 @@ GRANT ALL ON FUNCTION "public"."get_tenant_invoice_book_report"("p_tenant_id" bi
 
 
 
-GRANT ALL ON FUNCTION "public"."get_tenant_invoice_profit_report"("p_tenant_id" bigint, "p_start_date" "date", "p_end_date" "date", "p_search" "text", "p_issued_by_tenant_id" bigint, "p_invoice_id" bigint, "p_page" integer, "p_page_size" integer, "p_skip_count" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_tenant_invoice_profit_report"("p_tenant_id" bigint, "p_start_date" "date", "p_end_date" "date", "p_search" "text", "p_invoice_type" "text", "p_issued_by_tenant_id" bigint, "p_invoice_id" bigint, "p_page" integer, "p_page_size" integer, "p_skip_count" boolean) TO "authenticated";
 
 
 
@@ -60592,6 +62051,11 @@ GRANT ALL ON FUNCTION "public"."is_assigned_costing_file_viewer"("p_costing_file
 
 
 
+REVOKE ALL ON FUNCTION "public"."is_cart_owner"("p_customer_group_id" bigint, "p_tenant_id" bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_cart_owner"("p_customer_group_id" bigint, "p_tenant_id" bigint) TO "authenticated";
+
+
+
 GRANT ALL ON FUNCTION "public"."is_child_tenant"("p_tenant_id" bigint) TO "authenticated";
 
 
@@ -60652,6 +62116,10 @@ GRANT ALL ON FUNCTION "public"."list_allocations_for_shop_pick"("p_tenant_id" bi
 
 
 
+GRANT ALL ON FUNCTION "public"."list_bd_banks"() TO "authenticated";
+
+
+
 GRANT ALL ON FUNCTION "public"."list_cgm_ids_with_overrides"("p_customer_group_id" bigint) TO "authenticated";
 
 
@@ -60706,6 +62174,11 @@ GRANT ALL ON FUNCTION "public"."list_customer_accounts_paginated"("p_tenant_id" 
 
 
 GRANT ALL ON FUNCTION "public"."list_customer_group_member_grants"("p_cgm_id" bigint) TO "authenticated";
+
+
+
+GRANT ALL ON FUNCTION "public"."list_customer_group_receipts"("p_tenant_id" bigint, "p_customer_group_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_customer_group_receipts"("p_tenant_id" bigint, "p_customer_group_id" bigint) TO "service_role";
 
 
 
@@ -60779,7 +62252,12 @@ GRANT ALL ON FUNCTION "public"."list_investor_profiles"("p_tenant_id" bigint, "p
 
 
 
-GRANT ALL ON FUNCTION "public"."list_investor_transactions"("p_tenant_id" bigint, "p_investor_id" bigint, "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_investor_wallet_activity"("p_tenant_id" bigint, "p_investor_id" bigint, "p_limit" integer, "p_offset" integer) TO "authenticated";
+
+
+
+GRANT ALL ON FUNCTION "public"."list_invoice_payment_history"("p_tenant_id" bigint, "p_invoice_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_invoice_payment_history"("p_tenant_id" bigint, "p_invoice_id" bigint) TO "service_role";
 
 
 
@@ -61065,6 +62543,10 @@ REVOKE ALL ON FUNCTION "public"."mark_thrift_items_as_sold"("p_tenant_id" bigint
 
 
 
+GRANT ALL ON FUNCTION "public"."membership_email_matches_current_user"("p_membership_email" "text") TO "authenticated";
+
+
+
 GRANT ALL ON FUNCTION "public"."membership_has_module_action"("p_tenant_id" bigint, "p_module_key" "text", "p_action" "text") TO "authenticated";
 
 
@@ -61100,6 +62582,11 @@ REVOKE ALL ON FUNCTION "public"."notify_catalog_shop_order"("p_order_id" bigint,
 
 
 GRANT ALL ON FUNCTION "public"."parent_tenant_has_module_action"("p_parent_tenant_id" bigint, "p_module_key" "text", "p_action" "text") TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."paste_batch_code_items"("p_list_id" bigint, "p_start_row_index" integer, "p_rows" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."paste_batch_code_items"("p_list_id" bigint, "p_start_row_index" integer, "p_rows" "jsonb") TO "authenticated";
 
 
 
@@ -61195,6 +62682,11 @@ GRANT ALL ON FUNCTION "public"."reconcile_single_order_remittance"("p_order_id" 
 
 
 
+GRANT ALL ON FUNCTION "public"."record_batch_customer_payment"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payment_date" "date", "p_method" "text", "p_reference" "text", "p_note" "text", "p_allocations" "jsonb", "p_write_offs" "jsonb", "p_instruments" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."record_batch_customer_payment"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payment_date" "date", "p_method" "text", "p_reference" "text", "p_note" "text", "p_allocations" "jsonb", "p_write_offs" "jsonb", "p_instruments" "jsonb") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."record_dropship_courier_bank_transfer"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") TO "authenticated";
 
 
@@ -61207,13 +62699,8 @@ GRANT ALL ON FUNCTION "public"."record_dropship_courier_remittance"("p_order_id"
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."investor_transactions" TO "anon";
-GRANT ALL ON TABLE "public"."investor_transactions" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."investor_transactions" TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."record_investor_capital_adjustment"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."record_investor_capital_adjustment"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") TO "service_role";
 
 
 
@@ -61519,6 +63006,10 @@ GRANT ALL ON FUNCTION "public"."sync_dropship_tenant_b2b_invoice_from_order"("p_
 
 
 
+GRANT ALL ON FUNCTION "public"."sync_investor_profile_membership"("p_tenant_id" bigint, "p_investor_id" bigint, "p_email" "text", "p_is_active" boolean) TO "authenticated";
+
+
+
 GRANT ALL ON FUNCTION "public"."sync_sales_invoice_charges_from_header"("p_invoice_id" bigint) TO "authenticated";
 
 
@@ -61614,6 +63105,11 @@ GRANT ALL ON FUNCTION "public"."update_global_shipment_items_order"("p_items" "j
 
 
 GRANT ALL ON FUNCTION "public"."update_membership_preference_for_self"("p_membership_id" bigint, "p_preference" "jsonb") TO "authenticated";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_payment_instrument_details"("p_tenant_id" bigint, "p_instrument_id" bigint, "p_reference" "text", "p_bd_bank_id" bigint, "p_cheque_number" "text", "p_cheque_date" "date") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_payment_instrument_details"("p_tenant_id" bigint, "p_instrument_id" bigint, "p_reference" "text", "p_bd_bank_id" bigint, "p_cheque_number" "text", "p_cheque_date" "date") TO "service_role";
 
 
 
@@ -61863,6 +63359,11 @@ GRANT ALL ON FUNCTION "public"."user_is_tenant_admin"("p_tenant_id" bigint) TO "
 
 
 
+GRANT ALL ON FUNCTION "public"."void_customer_receipt"("p_tenant_id" bigint, "p_payment_id" bigint, "p_reason" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."void_customer_receipt"("p_tenant_id" bigint, "p_payment_id" bigint, "p_reason" "text") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."void_global_invoice"("p_invoice_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."void_global_invoice"("p_invoice_id" bigint) TO "service_role";
 
@@ -61885,15 +63386,39 @@ GRANT UPDATE ON SEQUENCE "public"."activity_logs_id_seq" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."batch_code_pc" TO "anon";
-GRANT ALL ON TABLE "public"."batch_code_pc" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."batch_code_pc" TO "service_role";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."batch_code_items" TO "anon";
+GRANT ALL ON TABLE "public"."batch_code_items" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."batch_code_items" TO "service_role";
 
 
 
-GRANT UPDATE ON SEQUENCE "public"."batch_code_pc_id_seq" TO "anon";
-GRANT ALL ON SEQUENCE "public"."batch_code_pc_id_seq" TO "authenticated";
-GRANT UPDATE ON SEQUENCE "public"."batch_code_pc_id_seq" TO "service_role";
+GRANT UPDATE ON SEQUENCE "public"."batch_code_items_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."batch_code_items_id_seq" TO "authenticated";
+GRANT UPDATE ON SEQUENCE "public"."batch_code_items_id_seq" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."batch_code_lists" TO "anon";
+GRANT ALL ON TABLE "public"."batch_code_lists" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."batch_code_lists" TO "service_role";
+
+
+
+GRANT UPDATE ON SEQUENCE "public"."batch_code_lists_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."batch_code_lists_id_seq" TO "authenticated";
+GRANT UPDATE ON SEQUENCE "public"."batch_code_lists_id_seq" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."bd_banks" TO "anon";
+GRANT ALL ON TABLE "public"."bd_banks" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."bd_banks" TO "service_role";
+
+
+
+GRANT UPDATE ON SEQUENCE "public"."bd_banks_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."bd_banks_id_seq" TO "authenticated";
+GRANT UPDATE ON SEQUENCE "public"."bd_banks_id_seq" TO "service_role";
 
 
 
@@ -62123,6 +63648,18 @@ GRANT UPDATE ON SEQUENCE "public"."global_invoices_id_seq" TO "service_role";
 
 
 
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_payment_instruments" TO "anon";
+GRANT ALL ON TABLE "public"."global_payment_instruments" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_payment_instruments" TO "service_role";
+
+
+
+GRANT UPDATE ON SEQUENCE "public"."global_payment_instruments_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."global_payment_instruments_id_seq" TO "authenticated";
+GRANT UPDATE ON SEQUENCE "public"."global_payment_instruments_id_seq" TO "service_role";
+
+
+
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_return_items" TO "anon";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_return_items" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_return_items" TO "service_role";
@@ -62198,12 +63735,6 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_stocks" TO 
 GRANT UPDATE ON SEQUENCE "public"."global_stocks_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."global_stocks_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."global_stocks_id_seq" TO "service_role";
-
-
-
-GRANT UPDATE ON SEQUENCE "public"."investor_transactions_id_seq" TO "anon";
-GRANT ALL ON SEQUENCE "public"."investor_transactions_id_seq" TO "authenticated";
-GRANT UPDATE ON SEQUENCE "public"."investor_transactions_id_seq" TO "service_role";
 
 
 
