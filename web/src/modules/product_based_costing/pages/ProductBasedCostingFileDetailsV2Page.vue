@@ -1212,6 +1212,7 @@ import {
 } from '../utils/pbcFileStatus';
 import {
   calculateOfferPriceBdt,
+  computeProfitRatePercentOnCost,
   normalizeOfferPriceBdt,
 } from '../utils/pricing';
 
@@ -1509,7 +1510,7 @@ const tableRows = computed(() => {
       totalBdt,
       profitPerUnitBdt,
       profitBdt,
-      profitRate: itemProfitRate,
+      profitRate: computeProfitRatePercentOnCost(costBdt, profitPerUnitBdt),
       status: item.status ?? 'pending',
       raw: item,
     };

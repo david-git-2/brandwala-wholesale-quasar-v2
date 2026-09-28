@@ -52,3 +52,12 @@ export const normalizeOfferPriceBdt = (value: unknown) => {
   const num = toNumberSafe(value);
   return num > 0 ? roundBdtUpToZeroOrFive(num) : 0;
 };
+
+/** Markup on unit cost from achieved profit (offer − cost), not the file profit input. */
+export const computeProfitRatePercentOnCost = (
+  costBdt: number,
+  profitPerUnitBdt: number,
+) => {
+  if (costBdt <= 0) return 0;
+  return (profitPerUnitBdt / costBdt) * 100;
+};

@@ -415,6 +415,7 @@ import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
 import type { ProductBasedCostingFile, ProductBasedCostingItem } from '../types';
 import {
   calculateOfferPriceBdt,
+  computeProfitRatePercentOnCost,
   getUnitCostBdt,
   getUnitTotalCostGbp,
   normalizeOfferPriceBdt,
@@ -780,7 +781,7 @@ const tableRows = computed(() => {
       totalBdt,
       profitPerUnitBdt,
       profitBdt,
-      profitRate,
+      profitRate: computeProfitRatePercentOnCost(costBdt, profitPerUnitBdt),
       status: item.status || 'pending',
     };
   };

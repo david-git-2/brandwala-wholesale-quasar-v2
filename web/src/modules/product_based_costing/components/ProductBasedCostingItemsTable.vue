@@ -1101,6 +1101,7 @@ import { useI18n } from 'vue-i18n';
 import SmartImage from 'src/components/SmartImage.vue';
 import {
   calculateOfferPriceBdt,
+  computeProfitRatePercentOnCost,
   getUnitCostBdt as calculateUnitCostBdt,
   getUnitTotalCostGbp as calculateUnitTotalCostGbp,
   normalizeOfferPriceBdt,
@@ -1749,11 +1750,7 @@ const getProfitBdt = (row: ProductBasedCostingTableRow) => {
 };
 
 const getProfitRate = (row: ProductBasedCostingTableRow) => {
-  const costBdt = getCostBdt(row);
-
-  if (costBdt <= 0) return 0;
-
-  return (getProfitPerUnit(row) / costBdt) * 100;
+  return computeProfitRatePercentOnCost(getCostBdt(row), getProfitPerUnit(row));
 };
 
 
