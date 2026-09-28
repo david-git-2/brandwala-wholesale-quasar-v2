@@ -129,267 +129,203 @@
         </div>
       </q-card>
 
-      <div v-if="paymentMode === 'customer'" class="table-container col column no-wrap overflow-hidden">
-        <q-table
-          flat
-          bordered
-          dense
-          :rows="customerGroups"
-          :columns="customerColumns"
-          row-key="id"
-          :loading="isCustomerGroupsLoading"
-          class="treasury-ops-table full-height"
-          :pagination="{ rowsPerPage: 25 }"
+      <div v-if="paymentMode === 'customer'" class="col column no-wrap overflow-hidden payments-desk-panel">
+        <q-inner-loading :showing="isCustomerGroupsLoading" color="primary">
+          <q-spinner-dots size="32px" />
+        </q-inner-loading>
+
+        <div
+          v-if="!isCustomerGroupsLoading && customerGroups.length === 0"
+          class="payments-desk-panel__empty text-grey-6 row flex-center q-gutter-xs"
         >
-          <template #loading>
-            <q-inner-loading showing color="primary">
-              <q-spinner-dots size="32px" />
-            </q-inner-loading>
-          </template>
+          <q-icon name="ph ph-users-three" size="28px" />
+          <span>{{ customerGroupsEmptyMessage }}</span>
+        </div>
 
-          <template #no-data>
-            <div class="full-width row flex-center text-grey-6 q-py-lg">
-              <q-icon name="ph ph-users-three" size="28px" class="q-mr-xs" />
-              <span>No customer groups found with outstanding dues.</span>
-            </div>
-          </template>
-
-          <template #body-cell-customer="props">
-            <q-td :props="props">
-              <div class="row items-center q-gutter-xs no-wrap">
-                <q-avatar size="24px" color="grey-3" text-color="grey-9" square class="rounded-avatar">
-                  <q-icon name="ph ph-buildings" size="13px" />
-                </q-avatar>
-                <div>
-                  <div class="text-weight-bold text-primary">{{ props.row.name }}</div>
-                  <div class="text-2xs text-grey-6 font-mono">{{ props.row.account_code }}</div>
-                </div>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-branches="props">
-            <q-td :props="props" class="text-grey-8">
-              {{ props.row.branches?.length ? props.row.branches.join(' • ') : '—' }}
-            </q-td>
-          </template>
-
-          <template #body-cell-invoices="props">
-            <q-td :props="props" class="text-center font-mono">
-              <q-badge color="grey-2" text-color="grey-9" class="text-weight-bold status-chip">
-                {{ props.row.open_invoice_count }} Open
-              </q-badge>
-            </q-td>
-          </template>
-
-          <template #body-cell-total="props">
-            <q-td :props="props" class="text-right font-mono text-grey-7">
-              ৳{{ formatCurrency(props.row.total_invoiced) }}
-            </q-td>
-          </template>
-
-          <template #body-cell-paid="props">
-            <q-td :props="props" class="text-right font-mono text-positive">
-              {{ props.row.total_paid > 0 ? '৳' + formatCurrency(props.row.total_paid) : '—' }}
-            </q-td>
-          </template>
-
-          <template #body-cell-due="props">
-            <q-td :props="props" class="text-right font-mono text-weight-bold text-negative">
-              ৳{{ formatCurrency(props.row.total_due) }}
-            </q-td>
-          </template>
-
-          <template #body-cell-actions="props">
-            <q-td :props="props" class="text-right">
-              <div class="row items-center justify-end q-gutter-x-xs no-wrap">
-                <q-btn
-                  flat
-                  size="sm"
-                  color="grey-7"
-                  icon="ph ph-clock-counter-clockwise"
-                  label="History"
-                  no-caps
-                  class="rounded-btn"
-                  @click="openHistory(props.row)"
-                />
-                <q-btn
-                  unelevated
-                  size="sm"
-                  color="primary"
-                  icon="ph ph-credit-card"
-                  label="Collect"
-                  no-caps
-                  class="rounded-btn text-weight-medium"
-                  @click="goCollectGroup(props.row)"
-                />
-              </div>
-            </q-td>
-          </template>
-        </q-table>
-      </div>
-
-      <div v-else-if="paymentMode === 'invoice'" class="table-container col column no-wrap overflow-hidden">
-        <q-table
-          flat
-          bordered
-          dense
-          :rows="filteredInvoices"
-          :columns="invoiceColumns"
-          row-key="id"
-          :loading="isOpenInvoicesLoading"
-          class="treasury-ops-table full-height"
-          :pagination="{ rowsPerPage: 25 }"
-        >
-          <template #loading>
-            <q-inner-loading showing color="primary">
-              <q-spinner-dots size="32px" />
-            </q-inner-loading>
-          </template>
-
-          <template #no-data>
-            <div class="full-width row flex-center text-grey-6 q-py-lg">
-              <q-icon name="ph ph-receipt" size="28px" class="q-mr-xs" />
-              <span>No open due invoices found.</span>
-            </div>
-          </template>
-
-          <template #body-cell-invoice_no="props">
-            <q-td :props="props" :class="getRowStatusClass(props.row)">
-              <div class="row items-center q-gutter-2xs no-wrap">
-                <span class="font-mono text-weight-bold text-primary">{{ props.row.invoice_no }}</span>
-                <q-badge color="grey-2" text-color="grey-8" class="text-2xs text-uppercase" style="border-radius: 4px">
-                  {{ props.row.invoice_type }}
-                </q-badge>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-outlet="props">
-            <q-td :props="props">
-              <div class="text-weight-medium text-grey-9">{{ props.row.customer_group_name }}</div>
-              <div class="text-2xs text-grey-6">{{ props.row.branch_name }}</div>
-            </q-td>
-          </template>
-
-          <template #body-cell-date="props">
-            <q-td :props="props" class="font-mono text-grey-7">
-              {{ props.row.invoice_date }}
-            </q-td>
-          </template>
-
-          <template #body-cell-due_date="props">
-            <q-td
-              :props="props"
-              class="font-mono"
-              :class="isOverdue(props.row.due_date) ? 'text-negative text-weight-bold' : 'text-grey-7'"
+        <q-scroll-area v-else class="col">
+          <div class="payments-desk-cards">
+            <q-card
+              v-for="grp in customerGroups"
+              :key="grp.id"
+              v-ripple
+              flat
+              bordered
+              clickable
+              class="payments-desk-card"
+              @click="goCollectGroup(grp)"
             >
-              {{ props.row.due_date || '—' }}
-            </q-td>
-          </template>
-
-          <template #body-cell-total="props">
-            <q-td :props="props" class="text-right font-mono text-grey-8">
-              ৳{{ formatCurrency(props.row.total_amount) }}
-            </q-td>
-          </template>
-
-          <template #body-cell-paid="props">
-            <q-td :props="props" class="text-right font-mono text-positive">
-              {{ props.row.paid_amount > 0 ? '৳' + formatCurrency(props.row.paid_amount) : '—' }}
-            </q-td>
-          </template>
-
-          <template #body-cell-due="props">
-            <q-td :props="props" class="text-right font-mono text-weight-bold text-negative">
-              ৳{{ formatCurrency(props.row.due_amount) }}
-            </q-td>
-          </template>
-
-          <template #body-cell-status="props">
-            <q-td :props="props" class="text-center">
-              <q-badge
-                :color="props.row.paid_amount > 0 ? 'amber-1' : 'grey-2'"
-                :text-color="props.row.paid_amount > 0 ? 'amber-9' : 'grey-8'"
-                class="text-uppercase text-weight-bold status-chip"
-              >
-                {{ props.row.paid_amount > 0 ? 'Partial' : 'Due' }}
-              </q-badge>
-            </q-td>
-          </template>
-
-          <template #body-cell-actions="props">
-            <q-td :props="props" class="text-right">
-              <q-btn
-                unelevated
-                size="sm"
-                color="primary"
-                label="Collect"
-                no-caps
-                class="rounded-btn text-weight-medium"
-                @click="goCollectInvoice(props.row)"
-              />
-            </q-td>
-          </template>
-        </q-table>
+              <q-card-section class="row items-start no-wrap q-pa-sm q-gutter-sm">
+                <q-avatar color="primary" text-color="white" size="40px" font-size="14px">
+                  {{ groupInitials(grp.name) }}
+                </q-avatar>
+                <div class="col min-width-0">
+                  <div class="text-weight-medium text-primary">{{ grp.name }}</div>
+                  <div class="text-caption font-mono text-grey-6">{{ grp.account_code }}</div>
+                  <div v-if="grp.branches?.length" class="text-caption text-grey-7 q-mt-2xs">
+                    {{ grp.branches.join(' · ') }}
+                  </div>
+                  <div class="row items-center q-gutter-xs q-mt-xs">
+                    <q-badge color="grey-2" text-color="grey-9" class="text-weight-bold status-chip">
+                      {{ grp.open_invoice_count }} open invoice{{ grp.open_invoice_count === 1 ? '' : 's' }}
+                    </q-badge>
+                    <span v-if="grp.total_paid > 0" class="text-caption text-positive">
+                      Paid ৳{{ formatCurrency(grp.total_paid) }}
+                    </span>
+                  </div>
+                </div>
+                <div class="column items-end q-gutter-y-xs flex-shrink-0">
+                  <div class="text-right">
+                    <div class="text-2xs text-grey-6 text-uppercase">Due</div>
+                    <div class="text-subtitle2 text-weight-bold text-negative font-mono">
+                      ৳{{ formatCurrency(grp.total_due) }}
+                    </div>
+                  </div>
+                  <div class="row items-center no-wrap q-gutter-x-xs">
+                    <q-btn
+                      flat
+                      dense
+                      round
+                      size="sm"
+                      color="grey-7"
+                      icon="ph ph-clock-counter-clockwise"
+                      aria-label="Payment history"
+                      @click.stop="openHistory(grp)"
+                    >
+                      <q-tooltip>History</q-tooltip>
+                    </q-btn>
+                    <q-icon name="ph ph-caret-right" size="18px" class="text-grey-5" />
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </q-scroll-area>
       </div>
 
-      <div v-else class="table-container col column no-wrap overflow-hidden">
-        <q-table
-          flat
-          bordered
-          dense
-          :rows="remittanceOrders"
-          :columns="courierColumns"
-          row-key="id"
-          :loading="isHubLoading"
-          :pagination="{ rowsPerPage: 25 }"
-          class="treasury-ops-table full-height"
+      <div v-else-if="paymentMode === 'invoice'" class="col column no-wrap overflow-hidden payments-desk-panel">
+        <q-inner-loading :showing="isOpenInvoicesLoading" color="primary">
+          <q-spinner-dots size="32px" />
+        </q-inner-loading>
+
+        <div
+          v-if="!isOpenInvoicesLoading && filteredInvoices.length === 0"
+          class="payments-desk-panel__empty text-grey-6 row flex-center q-gutter-xs"
         >
-            <template #no-data>
-              <div class="full-width row flex-center text-grey-6 q-py-md">
-                <q-icon name="ph ph-truck" size="24px" class="q-mr-xs" />
-                <span>No delivered orders awaiting courier remittance.</span>
-              </div>
-            </template>
+          <q-icon name="ph ph-receipt" size="28px" />
+          <span>No open due invoices found.</span>
+        </div>
 
-            <template #body-cell-orderNo="props">
-              <q-td :props="props">
-                <span
-                  class="text-weight-bold text-primary cursor-pointer"
-                  @click="selectRemittanceOrder(props.row)"
-                >
-                  {{ props.row.orderNo }}
-                </span>
-              </q-td>
-            </template>
+        <q-scroll-area v-else class="col">
+          <div class="payments-desk-cards">
+            <q-card
+              v-for="inv in filteredInvoices"
+              :key="inv.id"
+              v-ripple
+              flat
+              bordered
+              clickable
+              class="payments-desk-card"
+              :class="getRowStatusClass(inv)"
+              @click="goCollectInvoice(inv)"
+            >
+              <q-card-section class="q-pa-sm">
+                <div class="row items-start justify-between no-wrap q-gutter-sm">
+                  <div class="col min-width-0">
+                    <div class="row items-center q-gutter-xs no-wrap">
+                      <span class="font-mono text-weight-bold text-primary">{{ inv.invoice_no }}</span>
+                      <q-badge color="grey-2" text-color="grey-8" class="text-2xs text-uppercase status-chip">
+                        {{ inv.invoice_type }}
+                      </q-badge>
+                      <q-badge
+                        :color="inv.paid_amount > 0 ? 'amber-1' : 'grey-2'"
+                        :text-color="inv.paid_amount > 0 ? 'amber-9' : 'grey-8'"
+                        class="text-uppercase text-weight-bold status-chip"
+                      >
+                        {{ inv.paid_amount > 0 ? 'Partial' : 'Due' }}
+                      </q-badge>
+                    </div>
+                    <div class="text-weight-medium text-grey-9 q-mt-xs">{{ inv.customer_group_name }}</div>
+                    <div v-if="inv.branch_name" class="text-caption text-grey-6">{{ inv.branch_name }}</div>
+                    <div class="row q-gutter-md q-mt-sm text-caption text-grey-7 font-mono">
+                      <span>Issued {{ inv.invoice_date }}</span>
+                      <span
+                        :class="isOverdue(inv.due_date) ? 'text-negative text-weight-bold' : ''"
+                      >
+                        Due {{ inv.due_date || '—' }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="column items-end flex-shrink-0">
+                    <div class="text-2xs text-grey-6 text-uppercase">Balance due</div>
+                    <div class="text-subtitle2 text-weight-bold text-negative font-mono">
+                      ৳{{ formatCurrency(inv.due_amount) }}
+                    </div>
+                    <div class="text-caption text-grey-7 font-mono q-mt-xs">
+                      Total ৳{{ formatCurrency(inv.total_amount) }}
+                      <span v-if="inv.paid_amount > 0" class="text-positive">
+                        · Paid ৳{{ formatCurrency(inv.paid_amount) }}
+                      </span>
+                    </div>
+                    <q-icon name="ph ph-caret-right" size="18px" class="text-grey-5 q-mt-sm" />
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </q-scroll-area>
+      </div>
 
-            <template #body-cell-cod="props">
-              <q-td :props="props" class="text-right font-mono">
-                ৳{{ formatCurrency(props.row.codCollectAmount) }}
-              </q-td>
-            </template>
+      <div v-else class="col column no-wrap overflow-hidden payments-desk-panel">
+        <q-inner-loading :showing="isHubLoading" color="primary">
+          <q-spinner-dots size="32px" />
+        </q-inner-loading>
 
-            <template #body-cell-expectedNet="props">
-              <q-td :props="props" class="text-right font-mono text-positive text-weight-medium">
-                ৳{{ formatCurrency(expectedCourierRemittanceNet(props.row)) }}
-              </q-td>
-            </template>
+        <div
+          v-if="!isHubLoading && remittanceOrders.length === 0"
+          class="payments-desk-panel__empty text-grey-6 row flex-center q-gutter-xs"
+        >
+          <q-icon name="ph ph-truck" size="28px" />
+          <span>No delivered orders awaiting courier remittance.</span>
+        </div>
 
-            <template #body-cell-actions="props">
-              <q-td :props="props" class="text-right">
-                <q-btn
-                  unelevated
-                  dense
-                  size="sm"
-                  color="primary"
-                  label="Record"
-                  no-caps
-                  @click="selectRemittanceOrder(props.row)"
-                />
-              </q-td>
-            </template>
-        </q-table>
+        <q-scroll-area v-else class="col">
+          <div class="payments-desk-cards">
+            <q-card
+              v-for="order in remittanceOrders"
+              :key="order.id"
+              v-ripple
+              flat
+              bordered
+              clickable
+              class="payments-desk-card"
+              @click="selectRemittanceOrder(order)"
+            >
+              <q-card-section class="row items-center no-wrap q-pa-sm q-gutter-sm">
+                <q-avatar color="primary" text-color="white" icon="ph ph-package" size="40px" />
+                <div class="col min-width-0">
+                  <div class="text-weight-bold text-primary">{{ order.orderNo }}</div>
+                  <div v-if="order.shopName" class="text-caption text-grey-8">{{ order.shopName }}</div>
+                  <div v-if="order.courierName" class="text-caption text-grey-6">
+                    {{ order.courierName }}
+                  </div>
+                </div>
+                <div class="column items-end flex-shrink-0 q-gutter-y-2xs">
+                  <div class="text-right">
+                    <div class="text-2xs text-grey-6 text-uppercase">COD face</div>
+                    <div class="font-mono text-grey-8">৳{{ formatCurrency(order.codCollectAmount) }}</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-2xs text-grey-6 text-uppercase">Expected in</div>
+                    <div class="text-subtitle2 text-weight-bold text-positive font-mono">
+                      ৳{{ formatCurrency(expectedCourierRemittanceNet(order)) }}
+                    </div>
+                  </div>
+                  <q-icon name="ph ph-caret-right" size="18px" class="text-grey-5" />
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </q-scroll-area>
       </div>
     </template>
 
@@ -452,7 +388,7 @@
         </div>
       </q-card>
 
-      <div class="table-container col column no-wrap overflow-hidden">
+      <div class="col column no-wrap overflow-hidden">
         <payments-merchant-payout-panel
           ref="merchantPayoutPanelRef"
           :tenant-id="tenantId"
@@ -522,7 +458,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { type QTableProps } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { usePayments } from '../composables/usePaymentsQuery';
 import type { CustomerGroupPaymentSummary, OpenInvoicePaymentItem } from '../types/paymentsTypes';
@@ -596,36 +531,11 @@ const statusOptions = [
 
 const remittanceOrders = computed(() => orders.value.filter(isAwaitingCourierRemittance));
 
-const customerColumns: QTableProps['columns'] = [
-  { name: 'customer', label: 'Customer Group / Account', field: 'name', align: 'left' },
-  { name: 'branches', label: 'Outlets', field: 'branches', align: 'left' },
-  { name: 'invoices', label: 'Open Invoices', field: 'open_invoice_count', align: 'center' },
-  { name: 'total', label: 'Total Invoiced', field: 'total_invoiced', align: 'right' },
-  { name: 'paid', label: 'Paid So Far', field: 'total_paid', align: 'right' },
-  { name: 'due', label: 'Total Outstanding Due', field: 'total_due', align: 'right' },
-  { name: 'actions', label: '', field: 'id', align: 'right' },
-];
-
-const invoiceColumns: QTableProps['columns'] = [
-  { name: 'invoice_no', label: 'Invoice No', field: 'invoice_no', align: 'left' },
-  { name: 'outlet', label: 'Customer / Outlet', field: 'customer_group_name', align: 'left' },
-  { name: 'date', label: 'Issue Date', field: 'invoice_date', align: 'left' },
-  { name: 'due_date', label: 'Due Date', field: 'due_date', align: 'left' },
-  { name: 'total', label: 'Total', field: 'total_amount', align: 'right' },
-  { name: 'paid', label: 'Paid', field: 'paid_amount', align: 'right' },
-  { name: 'due', label: 'Due Balance', field: 'due_amount', align: 'right' },
-  { name: 'status', label: 'Status', field: 'payment_status', align: 'center' },
-  { name: 'actions', label: '', field: 'id', align: 'right' },
-];
-
-const courierColumns: QTableProps['columns'] = [
-  { name: 'orderNo', label: 'Order', field: 'orderNo', align: 'left' },
-  { name: 'shopName', label: 'Shop', field: 'shopName', align: 'left' },
-  { name: 'courierName', label: 'Courier', field: 'courierName', align: 'left' },
-  { name: 'cod', label: 'COD face', field: 'codCollectAmount', align: 'right' },
-  { name: 'expectedNet', label: 'Expected in', field: 'id', align: 'right' },
-  { name: 'actions', label: '', field: 'id', align: 'right' },
-];
+const customerGroupsEmptyMessage = computed(() =>
+  customerGroupDueFilter.value === 'with_due'
+    ? 'No customer groups with outstanding dues.'
+    : 'No customer groups match your search.',
+);
 
 function syncFromRoute() {
   const side = route.query.side;
@@ -769,6 +679,13 @@ function formatCurrency(val: number) {
     maximumFractionDigits: 2,
   });
 }
+
+function groupInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 </script>
 
 <style scoped>
@@ -827,22 +744,31 @@ function formatCurrency(val: number) {
   box-shadow: inset 3px 0 0 #9ca3af;
 }
 
-.treasury-ops-table {
-  background: white;
+.payments-desk-panel {
+  min-height: 0;
+  position: relative;
 }
 
-.treasury-ops-table :deep(thead tr th) {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  font-weight: 700;
-  font-size: 11px;
-  background: var(--bw-neutral-canvas, #f8fafc);
-  color: var(--bw-neutral-muted, #64748b);
-  border-bottom: 1px solid var(--bw-neutral-border, #e2e8f0);
+.payments-desk-panel__empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  border: 1px dashed var(--bw-neutral-border, #e2e8f0);
+  border-radius: 8px;
 }
 
-.treasury-ops-table :deep(.q-table__middle) {
-  overflow-y: auto;
+.payments-desk-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
+}
+
+.payments-desk-card {
+  border-radius: 8px;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.min-width-0 {
+  min-width: 0;
 }
 </style>

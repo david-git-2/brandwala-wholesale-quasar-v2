@@ -6,7 +6,7 @@
         <span>Groups owed (merchant wallet)</span>
       </div>
       <div class="text-caption text-grey-7">
-        Tap a row to pay out from tenant cash.
+        Tap a card to pay out from tenant cash.
       </div>
     </div>
 
@@ -23,35 +23,37 @@
       </div>
 
       <q-scroll-area v-else class="col">
-        <q-list bordered separator class="payout-group-list">
-          <q-item
+        <div class="payout-group-cards">
+          <q-card
             v-for="group in payableGroups"
             :key="group.customer_group_id"
             v-ripple
+            flat
+            bordered
             clickable
-            class="payout-group-list__item"
+            class="payout-group-card"
             @click="openGroup(group)"
           >
-            <q-item-section avatar>
+            <q-card-section class="row items-center no-wrap q-pa-sm q-gutter-sm">
               <q-avatar color="primary" text-color="white" size="40px" font-size="14px">
                 {{ groupInitials(group.name) }}
               </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <q-item-label class="text-weight-medium">{{ group.name }}</q-item-label>
-              <q-item-label caption>{{ group.account_code }}</q-item-label>
-            </q-item-section>
-            <q-item-section side>
-              <div class="text-right">
-                <div class="text-2xs text-grey-6 text-uppercase">Tenant owes</div>
-                <div class="text-subtitle2 text-weight-bold text-positive font-mono">
-                  ৳{{ formatCurrency(group.payable_balance) }}
-                </div>
+              <div class="col min-width-0">
+                <div class="text-weight-medium">{{ group.name }}</div>
+                <div class="text-caption text-grey-6">{{ group.account_code }}</div>
               </div>
-              <q-icon name="ph ph-caret-right" size="18px" class="text-grey-5 q-ml-sm" />
-            </q-item-section>
-          </q-item>
-        </q-list>
+              <div class="row items-center no-wrap flex-shrink-0 q-gutter-sm">
+                <div class="text-right">
+                  <div class="text-2xs text-grey-6 text-uppercase">Tenant owes</div>
+                  <div class="text-subtitle2 text-weight-bold text-positive font-mono">
+                    ৳{{ formatCurrency(group.payable_balance) }}
+                  </div>
+                </div>
+                <q-icon name="ph ph-caret-right" size="18px" class="text-grey-5" />
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
       </q-scroll-area>
     </div>
 
@@ -389,13 +391,20 @@ function handleSubmit() {
   background: transparent;
 }
 
-.payout-group-list {
-  background: var(--bw-theme-surface, #fff);
-  border-radius: 8px;
+.payout-group-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
 }
 
-.payout-group-list__item {
-  min-height: 64px;
+.payout-group-card {
+  border-radius: 8px;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.min-width-0 {
+  min-width: 0;
 }
 
 .border-bottom {
