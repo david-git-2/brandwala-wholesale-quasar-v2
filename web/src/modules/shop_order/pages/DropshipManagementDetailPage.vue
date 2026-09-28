@@ -22,9 +22,6 @@
           </template>
           <div class="column q-gutter-y-xs">
             <span class="text-caption">{{ deskBannerText }}</span>
-            <span v-if="deskStep === 'remit' && remittanceHint" class="text-caption text-blue-grey-9">
-              {{ remittanceHint }}
-            </span>
           </div>
         </q-banner>
 
@@ -94,20 +91,6 @@
           </template>
 
           <q-btn
-            v-else-if="deskStep === 'remit'"
-            color="primary"
-            unelevated
-            no-caps
-            icon="ph ph-bank"
-            label="Bank transfer from courier"
-            class="text-weight-bold"
-            style="border-radius: 8px; min-width: 240px"
-            :disable="!orderData.step_state.can_record_bank_transfer"
-            :loading="actionKind === 'remittance'"
-            @click="showRemittanceDialog = true"
-          />
-
-          <q-btn
             v-else-if="deskStep === 'done' && orderData.invoice?.id"
             outline
             color="primary"
@@ -129,52 +112,11 @@
       </template>
     </div>
 
-    <q-dialog v-model="showRemittanceDialog" persistent>
-      <q-card style="min-width: 360px; max-width: 480px">
-        <q-card-section>
-          <div class="text-h6">Bank transfer from courier</div>
-        </q-card-section>
-        <q-card-section class="q-gutter-md q-pt-none">
-          <q-input
-            v-model="remittanceForm.remittance_ref"
-            dense
-            outlined
-            label="Remittance reference *"
-          />
-          <q-input
-            v-model="remittanceForm.bank_trx_id"
-            dense
-            outlined
-            label="Bank transaction ID"
-          />
-          <q-input
-            v-model.number="remittanceForm.net_amount"
-            dense
-            outlined
-            type="number"
-            min="0"
-            step="0.01"
-            label="Net amount received *"
-          />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat no-caps label="Cancel" v-close-popup />
-          <q-btn
-            color="primary"
-            unelevated
-            no-caps
-            label="Confirm transfer"
-            :loading="actionKind === 'remittance'"
-            @click="onRecordBankTransfer"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -194,33 +136,10 @@ const queryClient = useQueryClient();
 
 const paperRef = ref<InstanceType<typeof DropshipManagementSettlementPaper> | null>(null);
 const savingDraft = ref(false);
-const actionKind = ref<'delivered' | 'remittance' | null>(null);
-const showRemittanceDialog = ref(false);
+const actionKind = ref<'delivered' | null>(null);
 const adjustFeesOpen = ref(false);
 
 type ManagementDeskStep = 'outcome' | 'remit' | 'done';
-
-function formatMoney(amount: number): string {
-  return `৳${Number(amount || 0).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
-const remittanceForm = reactive({
-  remittance_ref: '',
-  bank_trx_id: '',
-  net_amount: 0,
-});
-
-function resolveDefaultNetRemittance(data: DropshipManagementOrderView): number {
-  const collected = data.settlement.collected_cod_amount;
-  const deliveryLine = data.settlement.charge_lines.find((l) => l.charge_type === 'delivery');
-  const codLine = data.settlement.charge_lines.find((l) => l.charge_type === 'cod');
-  const deliveryFee = deliveryLine?.amount ?? 0;
-  const codFee = codLine?.amount ?? data.order.cod_charge_amount ?? 0;
-  return Math.max(collected - deliveryFee - codFee, 0);
-}
 
 const orderId = computed(() => Number(route.params.id));
 
@@ -274,7 +193,7 @@ const deskBannerText = computed(() => {
     case 'outcome':
       return 'Parcel is in transit. Confirm delivery or mark a return — cash is recorded when the courier remits.';
     case 'remit':
-      return 'Parcel delivered. Record the courier bank transfer to pay the merchant bill and credit reseller profit.';
+      return 'Parcel delivered. Record courier remittance on Payments (Cash in) to pay the merchant bill and credit reseller profit.';
     default:
       if (orderData.value?.order.status === 'returned') {
         return 'Return finalized — settlement is read-only.';
@@ -301,18 +220,7 @@ const showFooterActions = computed(() => {
   return deskStep.value !== 'done' || !!orderData.value?.invoice?.id;
 });
 
-const remittanceHint = computed(() => {
-  const data = orderData.value;
-  if (!data?.invoice || deskStep.value !== 'remit') return null;
-  const net = resolveDefaultNetRemittance(data);
-  const due = data.invoice.due_amount;
-  const leftover = Math.max(net - due, 0);
-  return `Suggested net from COD ৳${net.toLocaleString()} · Bill due ${formatMoney(due)}${leftover > 0 ? ` · ~${formatMoney(leftover)} to merchant wallet after pay` : ''}.`;
-});
-
-watch(orderData, (data) => {
-  if (!data) return;
-  remittanceForm.net_amount = resolveDefaultNetRemittance(data);
+watch(orderData, () => {
   if (deskStep.value !== 'outcome') {
     adjustFeesOpen.value = false;
   }
@@ -407,36 +315,6 @@ async function onMarkReturned() {
   });
 }
 
-async function onRecordBankTransfer() {
-  if (!authStore.tenantId) return;
-
-  if (!remittanceForm.remittance_ref.trim()) {
-    showErrorNotification('Remittance reference is required.');
-    return;
-  }
-  if (!remittanceForm.net_amount || remittanceForm.net_amount <= 0) {
-    showErrorNotification('Net amount must be greater than zero.');
-    return;
-  }
-
-  actionKind.value = 'remittance';
-  try {
-    const res = await shopOrderService.recordDropshipCourierBankTransfer(authStore.tenantId, orderId.value, {
-      remittance_ref: remittanceForm.remittance_ref.trim(),
-      bank_trx_id: remittanceForm.bank_trx_id.trim() || null,
-      net_amount: remittanceForm.net_amount,
-    });
-    if (!res.success) {
-      showErrorNotification(res.error ?? 'Failed to record bank transfer.');
-      return;
-    }
-    showSuccessNotification('Courier bank transfer recorded. Bill paid; merchant wallet credited from remittance remainder.');
-    showRemittanceDialog.value = false;
-    await invalidateDetail();
-  } finally {
-    actionKind.value = null;
-  }
-}
 </script>
 
 <style scoped>

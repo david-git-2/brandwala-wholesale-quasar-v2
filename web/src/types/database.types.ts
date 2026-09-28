@@ -12693,6 +12693,7 @@ export type Database = {
         Args: {
           p_limit?: number
           p_offset?: number
+          p_only_with_due?: boolean
           p_search?: string
           p_tenant_id: number
         }
@@ -12702,6 +12703,7 @@ export type Database = {
         Args: {
           p_customer_group_id?: number
           p_limit?: number
+          p_only_with_payable?: boolean
           p_search?: string
           p_tenant_id: number
         }

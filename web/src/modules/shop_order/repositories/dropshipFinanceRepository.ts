@@ -25,6 +25,7 @@ export interface FinanceHubOrderQueueItem {
   createdAt: string;
   nextStep: 'delivered_costing' | 'courier_remittance' | 'middleman_payout' | 'completed';
   collectionSource?: string | null;
+  isPrepaidSnapshot?: boolean;
   payoutSettlementStatus?: string | null;
   /** B2B invoice outstanding (total - paid); used for remittance allocation preview */
   invoiceOutstanding?: number | null;

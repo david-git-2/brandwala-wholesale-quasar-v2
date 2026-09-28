@@ -35,7 +35,7 @@ const emit = defineEmits<{
     </div>
     <div class="col-auto row q-gutter-sm items-center wrap">
       <q-btn
-        v-if="order?.status === 'delivered' && order?.collection_source !== 'billing_profile' && !order?.courier_remittance_ref"
+        v-if="order?.status === 'delivered' && !order?.is_prepaid_snapshot && (Number(order?.cod_collect_amount) || 0) > 0 && !order?.courier_remittance_ref"
         color="primary"
         unelevated
         icon="ph ph-bank"

@@ -18,12 +18,14 @@ export const paymentsRepository = {
     search?: string | null;
     limit?: number;
     offset?: number;
+    onlyWithDue?: boolean;
   }): Promise<CustomerGroupPaymentSummary[]> {
     const { data, error } = await supabase.rpc('list_customer_groups_payment_summary', {
       p_tenant_id: params.tenantId,
       p_search: params.search?.trim() || undefined,
       p_limit: params.limit ?? 50,
       p_offset: params.offset ?? 0,
+      p_only_with_due: params.onlyWithDue ?? false,
     });
     if (error) throw error;
     return (data as unknown as CustomerGroupPaymentSummary[]) ?? [];
@@ -34,12 +36,14 @@ export const paymentsRepository = {
     search?: string | null;
     limit?: number;
     customerGroupId?: number | null;
+    onlyWithPayable?: boolean;
   }): Promise<CustomerGroupPayoutSummary[]> {
     const { data, error } = await supabase.rpc('list_customer_groups_payout_summary', {
       p_tenant_id: params.tenantId,
       p_search: params.search?.trim() || undefined,
       p_limit: params.limit ?? 50,
       p_customer_group_id: params.customerGroupId ?? undefined,
+      p_only_with_payable: params.onlyWithPayable ?? true,
     });
     if (error) throw error;
     return (data as unknown as CustomerGroupPayoutSummary[]) ?? [];

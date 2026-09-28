@@ -223,7 +223,12 @@ defineExpose({ getDraftPayload });
         <div v-if="data.invoice" class="dropship-invoice-paper__meta-row">
           <span class="dropship-invoice-paper__meta-label">Merchant bill</span>
           <span class="text-weight-medium">
-            {{ data.invoice.invoice_no }} · Due {{ formatMoney(data.invoice.due_amount) }}
+            {{ data.invoice.invoice_no }} ·
+            {{
+              data.invoice.payment_status === 'paid' && Number(data.invoice.due_amount) <= 0
+                ? 'Paid'
+                : `Due ${formatMoney(data.invoice.due_amount)}`
+            }}
           </span>
         </div>
       </div>

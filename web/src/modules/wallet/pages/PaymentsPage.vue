@@ -45,7 +45,33 @@
               </q-btn>
             </div>
 
-            <q-separator vertical class="q-mx-2xs" />
+            <q-separator v-if="paymentMode === 'customer' || paymentMode === 'invoice'" vertical class="q-mx-2xs" />
+
+            <div
+              v-if="paymentMode === 'customer'"
+              class="row items-center q-gutter-x-2xs no-wrap"
+            >
+              <q-chip
+                clickable
+                dense
+                :outline="customerGroupDueFilter !== 'with_due'"
+                :color="customerGroupDueFilter === 'with_due' ? 'primary' : 'grey-4'"
+                :text-color="customerGroupDueFilter === 'with_due' ? 'white' : 'grey-9'"
+                @click="customerGroupDueFilter = 'with_due'"
+              >
+                With due
+              </q-chip>
+              <q-chip
+                clickable
+                dense
+                :outline="customerGroupDueFilter !== 'all'"
+                :color="customerGroupDueFilter === 'all' ? 'primary' : 'grey-4'"
+                :text-color="customerGroupDueFilter === 'all' ? 'white' : 'grey-9'"
+                @click="customerGroupDueFilter = 'all'"
+              >
+                All groups
+              </q-chip>
+            </div>
 
             <q-select
               v-if="paymentMode === 'invoice'"
@@ -308,18 +334,18 @@
         </q-table>
       </div>
 
-      <div v-else class="col column no-wrap overflow-hidden q-gutter-y-xs">
-        <q-card flat bordered class="col-shrink-0">
-          <q-table
-            flat
-            dense
-            :rows="remittanceOrders"
-            :columns="courierColumns"
-            row-key="id"
-            :loading="isHubLoading"
-            :pagination="{ rowsPerPage: 8 }"
-            class="treasury-ops-table"
-          >
+      <div v-else class="table-container col column no-wrap overflow-hidden">
+        <q-table
+          flat
+          bordered
+          dense
+          :rows="remittanceOrders"
+          :columns="courierColumns"
+          row-key="id"
+          :loading="isHubLoading"
+          :pagination="{ rowsPerPage: 25 }"
+          class="treasury-ops-table full-height"
+        >
             <template #no-data>
               <div class="full-width row flex-center text-grey-6 q-py-md">
                 <q-icon name="ph ph-truck" size="24px" class="q-mr-xs" />
@@ -344,6 +370,12 @@
               </q-td>
             </template>
 
+            <template #body-cell-expectedNet="props">
+              <q-td :props="props" class="text-right font-mono text-positive text-weight-medium">
+                ৳{{ formatCurrency(expectedCourierRemittanceNet(props.row)) }}
+              </q-td>
+            </template>
+
             <template #body-cell-actions="props">
               <q-td :props="props" class="text-right">
                 <q-btn
@@ -357,16 +389,7 @@
                 />
               </q-td>
             </template>
-          </q-table>
-        </q-card>
-
-        <div class="col-shrink-0 overflow-auto">
-          <finance-hub-step-remittance
-            :selected-order="selectedRemittanceOrder"
-            :loading="confirmCourierRemittanceMutation.isPending.value"
-            @submit="handleConfirmRemittance"
-          />
-        </div>
+        </q-table>
       </div>
     </template>
 
@@ -374,7 +397,8 @@
     <template v-else>
       <q-card flat bordered class="q-pa-xs flex-shrink-0 q-mb-xs">
         <div class="row items-center justify-between q-col-gutter-xs no-wrap">
-          <div class="col-auto row items-center q-gutter-x-2xs quick-filter-toggle">
+          <div class="col-auto row items-center q-gutter-x-xs no-wrap">
+            <div class="row items-center q-gutter-x-2xs quick-filter-toggle">
             <q-btn
               dense
               unelevated
@@ -390,6 +414,28 @@
               <q-icon name="ph ph-dots-three" size="14px" class="q-mr-xs" />
               <span>Other (later)</span>
             </q-btn>
+            </div>
+            <q-separator vertical class="q-mx-2xs" style="height: 28px" />
+            <q-chip
+              clickable
+              dense
+              :outline="payoutBalanceFilter !== 'with_payable'"
+              :color="payoutBalanceFilter === 'with_payable' ? 'positive' : 'grey-4'"
+              :text-color="payoutBalanceFilter === 'with_payable' ? 'white' : 'grey-9'"
+              @click="payoutBalanceFilter = 'with_payable'"
+            >
+              With wallet balance
+            </q-chip>
+            <q-chip
+              clickable
+              dense
+              :outline="payoutBalanceFilter !== 'all'"
+              :color="payoutBalanceFilter === 'all' ? 'positive' : 'grey-4'"
+              :text-color="payoutBalanceFilter === 'all' ? 'white' : 'grey-9'"
+              @click="payoutBalanceFilter = 'all'"
+            >
+              All groups
+            </q-chip>
           </div>
           <div class="col-grow row items-center justify-end q-gutter-x-xs no-wrap">
             <div class="text-right q-mr-sm">
@@ -406,10 +452,12 @@
         </div>
       </q-card>
 
-      <div class="col overflow-auto">
+      <div class="table-container col column no-wrap overflow-hidden">
         <payments-merchant-payout-panel
+          ref="merchantPayoutPanelRef"
           :tenant-id="tenantId"
           :tenant-cash-balance="tenantCashBalance"
+          :only-with-payable="payoutBalanceFilter === 'with_payable'"
           :preselected-customer-group-id="preselectedCustomerGroupId"
           :preselected-billing-profile-id="preselectedMerchantId"
           :loading="dispenseMiddlemanPayoutMutation.isPending.value"
@@ -417,6 +465,48 @@
         />
       </div>
     </template>
+
+    <q-drawer
+      v-model="remittanceDrawerOpen"
+      side="right"
+      overlay
+      elevated
+      :width="520"
+      class="courier-remittance-drawer bg-white"
+    >
+      <div class="column full-height">
+        <div class="row items-center justify-between q-pa-md bg-grey-1 border-bottom">
+          <div>
+            <div class="text-subtitle1 text-weight-bold row items-center">
+              <q-icon name="ph ph-truck" class="q-mr-xs text-primary" size="20px" />
+              Courier remittance
+            </div>
+            <div v-if="selectedRemittanceOrder" class="text-caption text-grey-7">
+              {{ selectedRemittanceOrder.orderNo }}
+              <span v-if="selectedRemittanceOrder.shopName"> · {{ selectedRemittanceOrder.shopName }}</span>
+            </div>
+          </div>
+          <q-btn
+            icon="ph ph-x"
+            flat
+            round
+            dense
+            aria-label="Close remittance panel"
+            @click="remittanceDrawerOpen = false"
+          />
+        </div>
+
+        <div class="col scroll q-pa-md">
+          <finance-hub-step-remittance
+            v-if="selectedRemittanceOrder"
+            variant="panel"
+            :selected-order="selectedRemittanceOrder"
+            :loading="confirmCourierRemittanceMutation.isPending.value"
+            @submit="handleConfirmRemittance"
+          />
+        </div>
+      </div>
+    </q-drawer>
 
     <customer-payment-history-drawer
       v-if="historyGroup"
@@ -440,6 +530,8 @@ import CustomerPaymentHistoryDrawer from '../components/CustomerPaymentHistoryDr
 import { useDropshipFinanceHubQuery } from 'src/modules/shop_order/composables/useDropshipFinanceHubQuery';
 import { useDropshipFinanceHubMutations } from 'src/modules/shop_order/composables/useDropshipFinanceHubMutations';
 import type { FinanceHubOrderQueueItem } from 'src/modules/shop_order/repositories/dropshipFinanceRepository';
+import { expectedCourierRemittanceNet } from 'src/modules/shop_order/utils/expectedCourierRemittanceNet';
+import { isAwaitingCourierRemittance } from 'src/modules/shop_order/utils/isAwaitingCourierRemittance';
 import FinanceHubStepRemittance from 'src/modules/shop_order/components/finance_hub/FinanceHubStepRemittance.vue';
 import { useWalletAccounts } from '../composables/useWalletAccounts';
 import PaymentsMerchantPayoutPanel from '../components/PaymentsMerchantPayoutPanel.vue';
@@ -454,6 +546,7 @@ const tenantId = computed(() => authStore.selectedTenant?.id ?? null);
 
 const {
   searchQuery,
+  customerGroupDueFilter,
   customerGroups,
   isCustomerGroupsLoading,
   openInvoices,
@@ -475,8 +568,14 @@ const invoiceStatusFilter = ref('all');
 const historyOpen = ref(false);
 const historyGroup = ref<CustomerGroupPaymentSummary | null>(null);
 const selectedRemittanceOrder = ref<FinanceHubOrderQueueItem | null>(null);
+const remittanceDrawerOpen = ref(false);
+const merchantPayoutPanelRef = ref<{
+  closePayoutDrawer?: () => void;
+  refreshGroups?: () => Promise<void>;
+} | null>(null);
 const preselectedMerchantId = ref<number | null>(null);
 const preselectedCustomerGroupId = ref<number | null>(null);
+const payoutBalanceFilter = ref<'with_payable' | 'all'>('with_payable');
 
 const deskSideTabs = [
   { label: 'Cash in', value: 'in' as DeskSide, icon: 'ph ph-arrow-down-left' },
@@ -495,9 +594,7 @@ const statusOptions = [
   { label: 'Partial Only', value: 'partial' },
 ];
 
-const remittanceOrders = computed(() =>
-  orders.value.filter((o) => o.nextStep === 'courier_remittance'),
-);
+const remittanceOrders = computed(() => orders.value.filter(isAwaitingCourierRemittance));
 
 const customerColumns: QTableProps['columns'] = [
   { name: 'customer', label: 'Customer Group / Account', field: 'name', align: 'left' },
@@ -526,6 +623,7 @@ const courierColumns: QTableProps['columns'] = [
   { name: 'shopName', label: 'Shop', field: 'shopName', align: 'left' },
   { name: 'courierName', label: 'Courier', field: 'courierName', align: 'left' },
   { name: 'cod', label: 'COD face', field: 'codCollectAmount', align: 'right' },
+  { name: 'expectedNet', label: 'Expected in', field: 'id', align: 'right' },
   { name: 'actions', label: '', field: 'id', align: 'right' },
 ];
 
@@ -601,7 +699,14 @@ async function refetchAll() {
 
 function selectRemittanceOrder(order: FinanceHubOrderQueueItem) {
   selectedRemittanceOrder.value = order;
+  remittanceDrawerOpen.value = true;
 }
+
+watch(remittanceDrawerOpen, (open) => {
+  if (!open) {
+    selectedRemittanceOrder.value = null;
+  }
+});
 
 async function handleConfirmRemittance(payload: {
   orderId: number;
@@ -612,9 +717,8 @@ async function handleConfirmRemittance(payload: {
 }) {
   await confirmCourierRemittanceMutation.mutateAsync(payload);
   await refetchDashboard();
-  if (selectedRemittanceOrder.value?.id === payload.orderId) {
-    selectedRemittanceOrder.value = null;
-  }
+  await refetchHub();
+  remittanceDrawerOpen.value = false;
 }
 
 async function handleDispensePayout(payload: {
@@ -630,6 +734,8 @@ async function handleDispensePayout(payload: {
   });
   await refetchDashboard();
   await refetchHub();
+  merchantPayoutPanelRef.value?.closePayoutDrawer?.();
+  await merchantPayoutPanelRef.value?.refreshGroups?.();
 }
 
 function onVoidAndReenter(groupId: number) {

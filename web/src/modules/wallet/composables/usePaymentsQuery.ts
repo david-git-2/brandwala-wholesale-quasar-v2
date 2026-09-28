@@ -16,6 +16,7 @@ export function usePayments() {
 
   const searchQuery = ref('');
   const debouncedSearch = ref('');
+  const customerGroupDueFilter = ref<'with_due' | 'all'>('with_due');
 
   let searchTimer: ReturnType<typeof setTimeout> | undefined;
   watch(searchQuery, (val) => {
@@ -29,13 +30,18 @@ export function usePayments() {
   const customerGroupsQuery = useQuery({
     queryKey: computed(() =>
       tenantId.value
-        ? financeReportQueryKeys.customerGroupsSummary(tenantId.value, debouncedSearch.value)
+        ? financeReportQueryKeys.customerGroupsSummary(
+            tenantId.value,
+            debouncedSearch.value,
+            customerGroupDueFilter.value === 'with_due',
+          )
         : financeReportQueryKeys.root,
     ),
     queryFn: () =>
       paymentsRepository.listCustomerGroupsPaymentSummary({
         tenantId: tenantId.value || 0,
         search: debouncedSearch.value || null,
+        onlyWithDue: customerGroupDueFilter.value === 'with_due',
       }),
     enabled: computed(() => Boolean(tenantId.value && tenantId.value > 0)),
     staleTime: 15_000,
@@ -113,6 +119,7 @@ export function usePayments() {
     tenantId,
     searchQuery,
     debouncedSearch,
+    customerGroupDueFilter,
     customerGroups: computed(() => customerGroupsQuery.data.value ?? []),
     isCustomerGroupsLoading: customerGroupsQuery.isLoading,
     customerGroupsError: computed(() => (customerGroupsQuery.error.value as Error | null)?.message ?? null),

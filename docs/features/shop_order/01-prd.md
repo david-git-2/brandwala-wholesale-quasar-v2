@@ -125,6 +125,7 @@ Detail — status `shipped` (one job: parcel outcome)
 Detail — status `delivered` (one job: remittance)
   Banner: record courier bank in
   [ Bank transfer from courier ]  → receipt pays merchant bill; remainder → merchant wallet
+  `record_dropship_courier_remittance` (Payments / finance hub) is the single writer: receipt + ledger + `dropship_order_settlements.remittance_at`. `payout_settlement_status` changes only on merchant payout (cash out), not on remittance remainder.
 
 Detail — `payment_received` / `reseller_paid` / `returned`: read-only recap; view merchant bill only
 ```

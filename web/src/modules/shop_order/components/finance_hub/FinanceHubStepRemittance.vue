@@ -1,6 +1,9 @@
 <template>
-  <q-card flat bordered class="q-pa-md">
-    <div class="text-subtitle1 text-weight-bold text-primary q-mb-md row items-center gap-xs">
+  <component :is="rootTag" v-bind="rootProps">
+    <div
+      v-if="variant === 'card'"
+      class="text-subtitle1 text-weight-bold text-primary q-mb-md row items-center gap-xs"
+    >
       <q-icon name="ph ph-bank" size="20px" />
       <span>Step 2: Confirm Courier Remittance</span>
     </div>
@@ -10,7 +13,7 @@
     </div>
 
     <q-banner
-      v-else-if="selectedOrder.collectionSource === 'billing_profile'"
+      v-else-if="selectedOrder.isPrepaidSnapshot"
       class="bg-amber-1 text-amber-10 rounded-borders q-mb-md"
       dense
     >
@@ -22,29 +25,94 @@
       class="q-gutter-y-sm"
       @submit.prevent="handleConfirm"
     >
-      <div class="text-subtitle2 text-weight-bold">
+      <div v-if="variant === 'card'" class="text-subtitle2 text-weight-bold q-mb-xs">
         Order #{{ selectedOrder.orderNo }}
-        <span class="text-grey-7 text-body2 text-weight-regular">
-          (COD collect: {{ formatAmt(selectedOrder.codCollectAmount) }} BDT)
+        <span v-if="selectedOrder.courierName" class="text-grey-7 text-body2 text-weight-regular">
+          · {{ selectedOrder.courierName }}
         </span>
       </div>
+      <div v-else-if="selectedOrder.courierName" class="text-caption text-grey-7 q-mb-sm">
+        Courier: {{ selectedOrder.courierName }}
+      </div>
+
+      <q-card flat bordered class="bg-blue-grey-1 q-pa-sm q-mb-sm">
+        <div class="text-caption text-weight-medium text-blue-grey-9 q-mb-sm">
+          Charges &amp; expected from courier
+        </div>
+        <div class="row q-col-gutter-sm">
+          <div class="col-6 col-sm-4">
+            <div class="text-caption text-grey-7 q-mb-xs">COD face (collect)</div>
+            <div class="text-weight-medium font-mono q-mb-sm">{{ formatAmt(codFace()) }}</div>
+          </div>
+          <div class="col-6 col-sm-4">
+            <q-input
+              v-model.number="form.deliveryCharge"
+              type="number"
+              label="Delivery fee (BDT)"
+              outlined
+              dense
+              step="0.01"
+              class="soft-input bg-white"
+              :rules="[val => val >= 0 || 'Must be >= 0']"
+              @update:model-value="onDeliveryOrCodFeeEdited"
+            />
+          </div>
+          <div class="col-6 col-sm-4">
+            <q-input
+              v-model.number="form.codCharge"
+              type="number"
+              label="COD fee (BDT)"
+              outlined
+              dense
+              step="0.01"
+              class="soft-input bg-white"
+              :rules="[val => val >= 0 || 'Must be >= 0']"
+              @update:model-value="onDeliveryOrCodFeeEdited"
+            />
+          </div>
+          <div class="col-6 col-sm-4">
+            <div class="text-caption text-grey-7 q-mb-xs">Total courier charge</div>
+            <div class="text-weight-medium font-mono">{{ formatAmt(totalCourierCharge) }}</div>
+            <div class="text-2xs text-grey-6">Delivery + COD fee</div>
+          </div>
+          <div class="col-12">
+            <div class="row items-center justify-between">
+              <span class="text-caption text-grey-8">Expected bank in</span>
+              <span class="text-subtitle2 text-weight-bold text-positive font-mono">
+                {{ formatAmt(expectedFromCourier) }} BDT
+              </span>
+            </div>
+            <div class="row justify-end q-mt-xs">
+              <q-btn
+                flat
+                dense
+                no-caps
+                size="sm"
+                color="primary"
+                label="Use expected amount"
+                @click="applyExpectedNet"
+              />
+            </div>
+          </div>
+        </div>
+      </q-card>
 
       <div class="row q-col-gutter-sm">
-        <div class="col-12 col-md-4">
+        <div class="col-12">
           <q-input
-            v-model.number="form.courierCharge"
+            v-model.number="form.netAmount"
             type="number"
-            label="Courier Charge / Fee (BDT)"
+            label="Amount from courier (BDT) *"
             outlined
             dense
             step="0.01"
             class="soft-input"
-            hint="Delivery + COD fee when deducted from margin"
-            :rules="[val => val >= 0 || 'Must be >= 0']"
+            hint="Actual bank in for this order"
+            :rules="[val => val > 0 || 'Must be greater than 0']"
           />
         </div>
 
-        <div class="col-12 col-md-4">
+        <div class="col-12">
           <q-input
             v-model="form.remittanceRef"
             label="Remittance Ref / Statement ID"
@@ -55,7 +123,7 @@
           />
         </div>
 
-        <div class="col-12 col-md-4">
+        <div class="col-12">
           <q-input
             v-model="form.bankTrxId"
             label="Bank Transaction ID"
@@ -82,13 +150,13 @@
         </div>
         <div class="row items-center justify-between text-caption text-grey-8">
           <span>Courier fee (tenant cost)</span>
-          <span>{{ formatAmt(form.courierCharge || 0) }} BDT</span>
+          <span>{{ formatAmt(totalCourierCharge) }} BDT</span>
         </div>
         <div
           v-if="overCod"
           class="text-negative text-caption q-mt-xs"
         >
-          Net + charge exceeds COD collect ({{ formatAmt(selectedOrder.codCollectAmount) }}).
+          Amount from courier + courier charges exceeds COD collect ({{ formatAmt(codFace()) }}).
         </div>
       </div>
 
@@ -99,24 +167,30 @@
           unelevated
           no-caps
           :loading="loading"
-          :disable="netRemitted <= 0 || overCod || !form.remittanceRef"
+          :disable="netRemitted <= 0 || overCod || !form.remittanceRef || form.netAmount <= 0"
           label="Confirm Remittance"
         />
       </div>
     </q-form>
-  </q-card>
+  </component>
 </template>
 
 <script setup lang="ts">
 import { reactive, computed, watch } from 'vue';
+import { QCard } from 'quasar';
 import type { FinanceHubOrderQueueItem } from '../../repositories/dropshipFinanceRepository';
+import { expectedCourierRemittanceNet } from '../../utils/expectedCourierRemittanceNet';
 
-const props = defineProps<{
-  selectedOrder: FinanceHubOrderQueueItem | null;
-  loading: boolean;
-  /** Optional B2B invoice outstanding; defaults to order totalAmount when unknown */
-  invoiceOutstanding?: number | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    selectedOrder: FinanceHubOrderQueueItem | null;
+    loading: boolean;
+    /** Optional B2B invoice outstanding; defaults to order totalAmount when unknown */
+    invoiceOutstanding?: number | null;
+    variant?: 'card' | 'panel';
+  }>(),
+  { variant: 'card' },
+);
 
 const emit = defineEmits<{
   (
@@ -131,21 +205,57 @@ const emit = defineEmits<{
   ): void;
 }>();
 
+const rootTag = computed(() => (props.variant === 'card' ? QCard : 'div'));
+const rootProps = computed(() =>
+  props.variant === 'card' ? { flat: true, bordered: true, class: 'q-pa-md' } : {},
+);
+
 const form = reactive({
-  courierCharge: 0,
+  netAmount: 0,
+  deliveryCharge: 0,
+  codCharge: 0,
   remittanceRef: '',
   bankTrxId: '',
 });
+
+const totalCourierCharge = computed(
+  () => Math.max(0, (Number(form.deliveryCharge) || 0) + (Number(form.codCharge) || 0)),
+);
+
+const expectedFromCourier = computed(() => {
+  if (!props.selectedOrder) return 0;
+  return expectedCourierRemittanceNet({
+    codCollectAmount: props.selectedOrder.codCollectAmount,
+    deliveryChargeAmount: form.deliveryCharge,
+    codChargeAmount: form.codCharge,
+  });
+});
+
+function codFace(): number {
+  return props.selectedOrder?.codCollectAmount || 0;
+}
+
+function resetFeesFromOrder(order: FinanceHubOrderQueueItem) {
+  form.deliveryCharge = Number(order.deliveryChargeAmount) || 0;
+  form.codCharge = Number(order.codChargeAmount) || 0;
+}
+
+function applyExpectedNet() {
+  form.netAmount = expectedFromCourier.value;
+}
+
+function onDeliveryOrCodFeeEdited() {
+  applyExpectedNet();
+}
 
 watch(
   () => props.selectedOrder,
   (order) => {
     if (order) {
-      const suggested =
-        (order.deliveryChargeAmount || 0) + (order.codChargeAmount || 0);
-      form.courierCharge = suggested;
       form.remittanceRef = order.courierRemittanceRef || '';
       form.bankTrxId = order.courierBankTrxId || '';
+      resetFeesFromOrder(order);
+      applyExpectedNet();
     }
   },
   { immediate: true },
@@ -157,12 +267,7 @@ const formatAmt = (n: number) =>
     maximumFractionDigits: 2,
   });
 
-const netRemitted = computed(() => {
-  if (!props.selectedOrder) return 0;
-  const cod = props.selectedOrder.codCollectAmount || 0;
-  const charge = form.courierCharge || 0;
-  return Math.max(0, cod - charge);
-});
+const netRemitted = computed(() => Math.max(0, form.netAmount || 0));
 
 const invoiceDue = computed(() => {
   if (props.selectedOrder?.invoiceOutstanding != null) {
@@ -184,9 +289,9 @@ const merchantHeld = computed(() =>
 
 const overCod = computed(() => {
   if (!props.selectedOrder) return false;
-  const cod = props.selectedOrder.codCollectAmount || 0;
+  const cod = codFace();
   if (cod <= 0) return false;
-  return (netRemitted.value + (form.courierCharge || 0)) > cod + 0.01;
+  return (netRemitted.value + totalCourierCharge.value) > cod + 0.01;
 });
 
 function handleConfirm() {
@@ -194,7 +299,7 @@ function handleConfirm() {
   emit('submit', {
     orderId: props.selectedOrder.id,
     netAmount: netRemitted.value,
-    courierCharge: form.courierCharge,
+    courierCharge: totalCourierCharge.value,
     remittanceRef: form.remittanceRef,
     bankTrxId: form.bankTrxId,
   });

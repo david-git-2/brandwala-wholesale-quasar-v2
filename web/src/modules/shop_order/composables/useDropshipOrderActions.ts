@@ -1,4 +1,4 @@
-import { ref, computed, watch, type Ref } from 'vue';
+import { ref, computed, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
 import { useShopOrderStore } from '../stores/shopOrderStore';
@@ -37,57 +37,12 @@ export function useDropshipOrderActions(
   const confirmB2bInvoiceDialogOpen = ref(false);
   const confirmDeleteInvoiceDialogOpen = ref(false);
 
-  const invoicePayout = ref<{
-    id: number;
-    billing_profile_id: number | null;
-    collection_source: string | null;
-  } | null>(null);
-
   const suggestedReturnFee = computed(
     () => Number(selectedCourier.value?.inside_dhaka_return_fee ?? 30),
   );
 
   const totalReturnableQty = computed(() =>
     sumReturnableQty(orderItems.value),
-  );
-
-  const effectiveCollectionSource = computed(
-    () =>
-      order.value?.collection_source
-      ?? invoicePayout.value?.collection_source
-      ?? (order.value?.is_prepaid_snapshot ? 'billing_profile' : null),
-  );
-
-  const loadInvoicePayoutContext = async () => {
-    const invoiceId = order.value?.global_invoice_id;
-    if (!invoiceId) {
-      invoicePayout.value = null;
-      return;
-    }
-    try {
-      const { data } = await supabase
-        .from('sales_invoices')
-        .select('id, billing_profile_id, collection_source')
-        .eq('id', invoiceId)
-        .maybeSingle();
-      invoicePayout.value = data
-        ? {
-            id: data.id,
-            billing_profile_id: data.billing_profile_id,
-            collection_source: data.collection_source ?? null,
-          }
-        : null;
-    } catch {
-      invoicePayout.value = null;
-    }
-  };
-
-  watch(
-    () => [order.value?.global_invoice_id, order.value?.status] as const,
-    () => {
-      void loadInvoicePayoutContext();
-    },
-    { immediate: true },
   );
 
   const showSettlementCard = computed(
@@ -101,7 +56,8 @@ export function useDropshipOrderActions(
       order.value?.status === 'delivered' &&
       !!order.value?.global_invoice_id &&
       !order.value?.courier_remittance_ref &&
-      effectiveCollectionSource.value !== 'billing_profile',
+      !order.value?.is_prepaid_snapshot &&
+      (Number(order.value?.cod_collect_amount) || 0) > 0,
   );
 
   const performHandoff = async () => {

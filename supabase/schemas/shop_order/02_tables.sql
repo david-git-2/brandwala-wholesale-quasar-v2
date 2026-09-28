@@ -450,7 +450,7 @@ CREATE TABLE IF NOT EXISTS "public"."shop_orders" (
 ALTER TABLE "public"."shop_orders" OWNER TO "postgres";
 
 
-COMMENT ON COLUMN "public"."shop_orders"."collection_source" IS 'Copied from linked global_invoices.collection_source for dropship COD vs prepaid gates';
+COMMENT ON COLUMN "public"."shop_orders"."collection_source" IS 'Dropship: recipient = courier COD remittance; billing_profile = merchant prepaid. Not the merchant invoice collection_source.';
 
 
 COMMENT ON COLUMN "public"."shop_orders"."payout_settlement_status" IS 'Merchant profit settlement: unpaid | partial | paid (order-level)';
