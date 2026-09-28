@@ -26,7 +26,7 @@
 
 Dropship money path (target): pick → **one** ship+issue RPC → deliver (parcel only) → remittance **receipt**. Packing slip is not a `sales_invoices` row.
 
-Wholesale money path lives on the **invoice desk**, not this fulfillment desk. Catalog `fulfill_shop_order_to_invoice` is not dropship. Numbers: [money-story](../sales_invoice/money-story.md). Gaps: [00-gaps](00-gaps.md) SO10–SO11.
+Wholesale money path lives on the **invoice desk**, not this fulfillment desk. Catalog `fulfill_shop_order_to_invoice` is not dropship. Numbers: [money-story](../sales_invoice/money-story.md). Open gaps: [00-gaps](00-gaps.md).
 
 ---
 
@@ -58,8 +58,9 @@ It orchestrates packing slips for end-recipients and a **merchant** B2B bill (`s
 - **So that** distinct wholesale and reseller groups see appropriate buy/sell/resell prices.
 
 #### Acceptance Criteria
-- [ ] Catalog shops display `unit_price` when customer group has `can_see_buy_price` or `can_see_sell_price`.
-- [ ] Dropship storefronts enforce floor pricing (`minimum_sell_price_amount`).
+- [x] `vendor_catalog`: storefront shows list/`unit_price` when the customer group has `can_see_buy_price`.
+- [x] `fixed_price`: storefront shows sell/`unit_price` when the customer group has `can_see_sell_price`.
+- [x] `dropship`: cart/checkout enforces `minimum_sell_price_amount` (resell cannot go below floor); floor amount is shown when `can_see_sell_price`.
 
 ### US-2: 5-Phase Catalog Order Negotiation
 - **As a** B2B Buyer and Procurement Manager  
@@ -67,9 +68,9 @@ It orchestrates packing slips for end-recipients and a **merchant** B2B bill (`s
 - **So that** custom import quotes can be agreed before committing to supplier purchases.
 
 #### Acceptance Criteria
-- [ ] Staff prepares first-offer margin (`staff_price_shop_order` $\rightarrow$ `priced`).
-- [ ] Customer can accept all lines (transitions directly to `confirmed`) or submit counter offers (`countered`).
-- [ ] Final confirmed quantities lock the order for procurement demand aggregation.
+- [x] Staff prepares first-offer margin (`staff_price_shop_order` $\rightarrow$ `priced`).
+- [x] Customer can accept all lines (transitions directly to `confirmed`) or submit counter offers (`countered`).
+- [x] Final confirmed quantities lock the order for procurement demand aggregation.
 
 ### US-3: Dropship 5-Stage Fulfillment & Reseller Margin Settlement
 - **As a** Dropship Operator  
@@ -77,10 +78,10 @@ It orchestrates packing slips for end-recipients and a **merchant** B2B bill (`s
 - **So that** dropship operations are fully automated and financially auditable.
 
 #### Acceptance Criteria
-- [ ] Picking at `processing` writes `shop_order_item_stock_picks` (held lots). Live: `add_shop_order_item_stock_pick`.
-- [ ] **Mark as shipped** is one RPC `ship_dropship_order_and_issue_merchant_bill` (bill from picks, then `shipped`). No ship without `billing_profile_id` and a linked issued bill.
-- [ ] Deliver does not issue a bill and does not post cash.
-- [ ] Reseller leftover is the remittance remainder (wallet), not a required extra profit click after deliver.
+- [x] Picking at `processing` writes `shop_order_item_stock_picks` (held lots). Live: `add_shop_order_item_stock_pick`.
+- [x] **Mark as shipped** is one RPC `ship_dropship_order_and_issue_merchant_bill` (bill from picks, then `shipped`). No ship without `billing_profile_id` and a linked issued bill.
+- [x] Deliver does not issue a bill and does not post cash.
+- [x] Reseller leftover is the remittance remainder (wallet), not a required extra profit click after deliver.
 
 ---
 
@@ -99,4 +100,31 @@ It orchestrates packing slips for end-recipients and a **merchant** B2B bill (`s
 | DS-ORD-10021 | Glamour Closet   | Karim (Chittag)  | Steadfast-881 | 3,200 BDT    | 650 BDT| [Pick]|
 | DS-ORD-10022 | Trendy Reseller  | Nusrat (Sylhet)  | Pathao-4412   | 1,850 BDT    | 400 BDT| [Pick]|
 +----------------------------------------------------------------------------------------------------+
+```
+
+Fulfillment stages live on `/:slug/app/shop/orders/:id` (confirmed → processing → ready → ship). After ship, staff open **Dropship settlement** at `/:slug/app/shop/dropship-management/:id`.
+
+### Dropship settlement desk (post-ship)
+
+```text
++----------------------------------------------------------------------------------------------------+
+| Breadcrumbs: App > Shop > Dropship settlement                                                      |
++----------------------------------------------------------------------------------------------------+
+| [ Search ] [ Status: Shipped | Delivered | … ]                                                     |
++----------------------------------------------------------------------------------------------------+
+| ORDER #   | MERCHANT      | RECIPIENT     | COURIER        | STATUS                              |
+|-----------+---------------+---------------+----------------+-------------------------------------|
+| DS-10021  | Glamour Closet| Karim         | Steadfast-881  | Shipped                             |
++----------------------------------------------------------------------------------------------------+
+
+Detail — status `shipped` (one job: parcel outcome)
+  Banner: parcel in transit
+  Recap: bill due, settlement numbers (read-only; Adjust fees → save draft)
+  [ Mark as delivered ]  [ Mark as returned ]
+
+Detail — status `delivered` (one job: remittance)
+  Banner: record courier bank in
+  [ Bank transfer from courier ]  → receipt pays merchant bill; remainder → merchant wallet
+
+Detail — `payment_received` / `reseller_paid` / `returned`: read-only recap; view merchant bill only
 ```

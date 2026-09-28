@@ -2109,16 +2109,136 @@ $$;
 ALTER FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."confirm_dropship_delivered_costing"("p_order_id" bigint, "p_cod_amount" numeric DEFAULT NULL::numeric, "p_delivery_charge" numeric DEFAULT NULL::numeric, "p_courier_notes" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."ensure_dropship_courier_cod_receivable"("p_order_id" bigint) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
   v_order public.shop_orders;
+  v_parent_tenant_id bigint;
   v_courier_id bigint;
+  v_cod numeric(12,2) := 0.00;
+  v_delivery_charge numeric(12,2) := 0.00;
+begin
+  select * into v_order
+  from public.shop_orders
+  where id = p_order_id
+  for update;
+
+  if v_order.id is null then
+    raise exception 'Shop order #% not found', p_order_id;
+  end if;
+
+  if v_order.shop_type_snapshot <> 'dropship' then
+    return;
+  end if;
+
+  if v_order.status not in (
+    'delivered'::public.shop_order_status,
+    'payment_received'::public.shop_order_status
+  ) then
+    return;
+  end if;
+
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
+
+  if exists (
+    select 1
+    from public.universal_wallet_ledger
+    where parent_tenant_id = v_parent_tenant_id
+      and entity_type = 'tenant'
+      and source_type = 'shop_order'
+      and source_id = p_order_id::text
+      and metadata->>'purpose' = 'tenant_remittance_received'
+  ) then
+    return;
+  end if;
+
+  select coalesce(s.collected_cod_amount, v_order.cod_collect_amount, 0.00)
+  into v_cod
+  from public.dropship_order_settlements s
+  where s.shop_order_id = p_order_id;
+
+  if not found then
+    v_cod := coalesce(v_order.cod_collect_amount, 0.00);
+  end if;
+
+  if v_cod <= 0.00 then
+    return;
+  end if;
+
+  if v_order.courier_service_id is null then
+    raise exception 'Courier service is required before booking COD receivable on order #%', v_order.order_no;
+  end if;
+
+  select cs.wallet_entity_id
+  into v_courier_id
+  from public.courier_services cs
+  where cs.id = v_order.courier_service_id;
+
+  if v_courier_id is null or v_courier_id <= 0 then
+    raise exception 'Courier wallet is not configured for order #%', v_order.order_no;
+  end if;
+
+  if exists (
+    select 1
+    from public.universal_wallet_ledger
+    where parent_tenant_id = v_parent_tenant_id
+      and entity_type = 'courier'
+      and entity_id = v_courier_id
+      and source_type = 'shop_order'
+      and source_id = p_order_id::text
+      and coalesce(metadata->>'purpose', '') in ('courier_cod_receivable', 'delivered_costing')
+  ) then
+    return;
+  end if;
+
+  v_delivery_charge := coalesce(v_order.delivery_charge_amount, 0.00);
+
+  perform public.record_ledger_transaction(
+    p_parent_tenant_id => v_parent_tenant_id,
+    p_operating_tenant_id => v_order.tenant_id,
+    p_entity_type => 'courier',
+    p_entity_id => v_courier_id,
+    p_type => 'credit',
+    p_amount => v_cod,
+    p_currency_code => 'BDT',
+    p_exchange_rate => 1.000000,
+    p_source_type => 'shop_order',
+    p_source_id => p_order_id::text,
+    p_metadata => jsonb_build_object(
+      'section', 'cod_pending',
+      'purpose', 'courier_cod_receivable',
+      'transaction_type', 'courier_cod_receivable',
+      'label', 'Courier COD receivable',
+      'order_no', v_order.order_no,
+      'order_id', p_order_id,
+      'gross_cod', v_cod,
+      'delivery_charge', v_delivery_charge,
+      'courier_service_id', v_order.courier_service_id
+    )
+  );
+
+  update public.dropship_order_settlements
+  set
+    courier_cod_booked_at = coalesce(courier_cod_booked_at, now()),
+    updated_at = now()
+  where shop_order_id = p_order_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."ensure_dropship_courier_cod_receivable"("p_order_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."confirm_dropship_delivered_costing"("p_order_id" bigint, "p_cod_amount" numeric DEFAULT NULL::numeric, "p_delivery_charge" numeric DEFAULT NULL::numeric, "p_courier_notes" "text" DEFAULT NULL::"text") RETURNS jsonb
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_order public.shop_orders;
   v_cod numeric(15,4) := 0.0000;
   v_delivery_charge numeric(15,4) := 0.0000;
-  v_existing_ledger public.universal_wallet_ledger;
 begin
   select * into v_order
   from public.shop_orders
@@ -2126,7 +2246,8 @@ begin
 
   if v_order.id is null then
     return jsonb_build_object('success', false, 'error', format('Shop order #%s not found', p_order_id));
-  -- Permission check
+  end if;
+
   if not (
     public.is_superadmin()
     or exists (
@@ -2138,15 +2259,18 @@ begin
     )
   ) then
     return jsonb_build_object('success', false, 'error', format('Permission denied for tenant %s', v_order.tenant_id));
-  if v_order.status <> 'delivered' and v_order.status <> 'payment_received' then
+  end if;
+
+  if v_order.status not in ('delivered', 'payment_received') then
     return jsonb_build_object(
       'success', false,
-      'error', format('Order #%s status is "%s" (must be "delivered" or "payment_received" to confirm costing)', v_order.order_no, v_order.status)
+      'error', format('Order #%s status is "%s" (must be delivered or payment_received)', v_order.order_no, v_order.status)
     );
+  end if;
+
   v_cod := coalesce(p_cod_amount, v_order.cod_collect_amount, 0.0000);
   v_delivery_charge := coalesce(p_delivery_charge, v_order.delivery_charge_amount, 0.0000);
 
-  -- Update order costing fields
   update public.shop_orders
   set
     cod_collect_amount = v_cod,
@@ -2155,52 +2279,19 @@ begin
     updated_at = now()
   where id = p_order_id;
 
-  -- Resolve courier wallet entity from courier_services (no public.couriers table)
-  v_courier_id := 0;
-  if v_order.courier_service_id is not null then
-    select coalesce(cs.wallet_entity_id, 0)
-    into v_courier_id
-    from public.courier_services cs
-    where cs.id = v_order.courier_service_id;
-  end if;
-  v_courier_id := coalesce(v_courier_id, 0);
+  perform public.ensure_dropship_courier_cod_receivable(p_order_id);
 
-  -- Idempotency check on universal_wallet_ledger
-  select * into v_existing_ledger
-  from public.universal_wallet_ledger
-  where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
-    and entity_type = 'courier'
-    and source_type = 'shop_order'
-    and source_id = p_order_id::text
-    and metadata->>'purpose' = 'delivered_costing'
-  limit 1;
-
-  if v_existing_ledger.id is null and v_cod > 0 then
-    perform public.record_ledger_transaction(
-      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
-      p_operating_tenant_id => v_order.tenant_id,
-      p_entity_type => 'courier',
-      p_entity_id => v_courier_id,
-      p_type => 'credit',
-      p_amount => v_cod,
-      p_currency_code => 'BDT',
-      p_exchange_rate => 1.000000,
-      p_source_type => 'shop_order',
-      p_source_id => p_order_id::text,
-      p_metadata => jsonb_build_object(
-        'purpose', 'delivered_costing',
-        'order_no', v_order.order_no,
-        'delivery_charge', v_delivery_charge,
-        'courier_service_id', v_order.courier_service_id
-      )
-    );
   return jsonb_build_object(
     'success', true,
-    'message', 'Delivered costing confirmed and courier wallet credited',
+    'message', 'Delivered costing fields saved; courier COD receivable booked when applicable',
     'order_id', p_order_id,
     'cod_amount', v_cod,
     'delivery_charge', v_delivery_charge
   );
+end;
+$$;
+
+
 ALTER FUNCTION "public"."confirm_dropship_delivered_costing"("p_order_id" bigint, "p_cod_amount" numeric, "p_delivery_charge" numeric, "p_courier_notes" "text") OWNER TO "postgres";
 
 
@@ -4558,7 +4649,7 @@ begin
   ledger_flags as (
     select
       l.source_id,
-      max(case when coalesce(l.metadata->>'purpose', '') = 'delivered_costing' then 1 else 0 end) as has_delivered_costing,
+      max(case when coalesce(l.metadata->>'purpose', '') in ('delivered_costing', 'courier_cod_receivable') then 1 else 0 end) as has_delivered_costing,
       max(case when coalesce(l.metadata->>'purpose', '') = 'courier_remittance' then 1 else 0 end) as has_remittance
     from public.universal_wallet_ledger l
     where l.parent_tenant_id = public.resolve_parent_tenant_id(p_tenant_id)
@@ -8276,92 +8367,159 @@ begin
 ALTER FUNCTION "public"."place_shop_order_for_procurement"("p_order_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."process_dropship_courier_remittance_uwl"("p_order_id" bigint, "p_net_amount" numeric, "p_courier_charge" numeric DEFAULT 0.00, "p_remittance_ref" "text" DEFAULT NULL::"text") RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."process_dropship_courier_remittance_uwl"("p_order_id" bigint, "p_net_amount" numeric, "p_courier_charge" numeric DEFAULT 0.00, "p_remittance_ref" "text" DEFAULT NULL::"text") RETURNS void
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
   v_order record;
+  v_parent_tenant_id bigint;
   v_courier_id bigint := 0;
   v_cod numeric(12,2) := 0.00;
   v_charge numeric(12,2) := 0.00;
+  v_net numeric(12,2) := 0.00;
   v_currency text;
 begin
   select * into v_order from public.shop_orders where id = p_order_id for update;
   if v_order.id is null then
     raise exception 'Shop order #% not found', p_order_id;
-  v_currency := 'BDT';
-  v_cod := coalesce(v_order.cod_collect_amount, 0.00);
-  v_charge := coalesce(p_courier_charge, 0.00);
+  end if;
 
-  -- Resolve courier entity ID from courier_services if available
-  if v_order.courier_service_id is not null then
-    select coalesce(wallet_entity_id, 0) into v_courier_id
-    from public.courier_services
-    where id = v_order.courier_service_id;
-    
-    if v_courier_id is null then
-      v_courier_id := 0;
-    else
-    v_courier_id := 0;
-  -- Leg 1: Courier Debit (reduces courier liability)
-  if not exists (
+  perform public.ensure_dropship_courier_cod_receivable(p_order_id);
+
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
+  v_currency := 'BDT';
+
+  select coalesce(s.collected_cod_amount, v_order.cod_collect_amount, 0.00)
+  into v_cod
+  from public.dropship_order_settlements s
+  where s.shop_order_id = p_order_id;
+
+  if not found then
+    v_cod := coalesce(v_order.cod_collect_amount, 0.00);
+  end if;
+
+  v_charge := greatest(coalesce(p_courier_charge, 0.00), 0.00);
+  v_net := greatest(coalesce(p_net_amount, 0.00), 0.00);
+
+  if v_order.courier_service_id is null then
+    raise exception 'Courier service is required before recording remittance';
+  end if;
+
+  select cs.wallet_entity_id
+  into v_courier_id
+  from public.courier_services cs
+  where cs.id = v_order.courier_service_id;
+
+  if v_courier_id is null or v_courier_id <= 0 then
+    raise exception 'Courier wallet is not configured for order #%', v_order.order_no;
+  end if;
+
+  if v_net > 0 and not exists (
     select 1 from public.universal_wallet_ledger
-    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
+    where parent_tenant_id = v_parent_tenant_id
       and entity_type = 'courier'
       and source_type = 'shop_order'
       and source_id = p_order_id::text
       and metadata->>'purpose' = 'courier_remittance'
   ) then
     perform public.record_ledger_transaction(
-      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_parent_tenant_id => v_parent_tenant_id,
       p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'courier',
       p_entity_id => v_courier_id,
       p_type => 'debit',
-      p_amount => greatest(v_cod, p_net_amount + v_charge),
+      p_amount => v_net,
       p_currency_code => v_currency,
       p_exchange_rate => 1.000000,
       p_source_type => 'shop_order',
       p_source_id => p_order_id::text,
       p_metadata => jsonb_build_object(
+        'section', 'cod_pending',
         'purpose', 'courier_remittance',
+        'transaction_type', 'courier_remittance',
+        'label', 'COD Remittance to Tenant',
         'order_no', v_order.order_no,
         'courier_charge', v_charge,
-        'net_remitted', p_net_amount,
+        'net_remitted', v_net,
+        'gross_cod', v_cod,
         'remittance_ref', p_remittance_ref,
         'courier_service_id', v_order.courier_service_id
       )
     );
-  -- Leg 2: Tenant Credit (tenant received net remitted cash)
+  end if;
+
+  if v_charge > 0 and not exists (
+    select 1 from public.universal_wallet_ledger
+    where parent_tenant_id = v_parent_tenant_id
+      and entity_type = 'courier'
+      and source_type = 'shop_order'
+      and source_id = p_order_id::text
+      and metadata->>'purpose' = 'courier_fee_retained'
+  ) then
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => v_parent_tenant_id,
+      p_operating_tenant_id => v_order.tenant_id,
+      p_entity_type => 'courier',
+      p_entity_id => v_courier_id,
+      p_type => 'debit',
+      p_amount => v_charge,
+      p_currency_code => v_currency,
+      p_exchange_rate => 1.000000,
+      p_source_type => 'shop_order',
+      p_source_id => p_order_id::text,
+      p_metadata => jsonb_build_object(
+        'section', 'cod_pending',
+        'purpose', 'courier_fee_retained',
+        'transaction_type', 'courier_fee_retained',
+        'label', 'Courier COD / Delivery Fee Retained',
+        'order_no', v_order.order_no,
+        'courier_charge', v_charge,
+        'net_remitted', v_net,
+        'gross_cod', v_cod,
+        'remittance_ref', p_remittance_ref,
+        'courier_service_id', v_order.courier_service_id
+      )
+    );
+  end if;
+
   if not exists (
     select 1 from public.universal_wallet_ledger
-    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
+    where parent_tenant_id = v_parent_tenant_id
       and entity_type = 'tenant'
       and source_type = 'shop_order'
       and source_id = p_order_id::text
       and metadata->>'purpose' = 'tenant_remittance_received'
   ) then
     perform public.record_ledger_transaction(
-      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_parent_tenant_id => v_parent_tenant_id,
       p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'tenant',
-      p_entity_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_entity_id => v_parent_tenant_id,
       p_type => 'credit',
-      p_amount => p_net_amount,
+      p_amount => v_net,
       p_currency_code => v_currency,
       p_exchange_rate => 1.000000,
       p_source_type => 'shop_order',
       p_source_id => p_order_id::text,
       p_metadata => jsonb_build_object(
+        'section', 'payment_received',
         'purpose', 'tenant_remittance_received',
+        'transaction_type', 'courier_remittance_received',
+        'label', 'Courier Remittance Received',
         'order_no', v_order.order_no,
         'gross_cod', v_cod,
         'courier_charge', v_charge,
+        'net_remitted', v_net,
         'remittance_ref', p_remittance_ref
       )
     );
-  ALTER FUNCTION "public"."process_dropship_courier_remittance_uwl"("p_order_id" bigint, "p_net_amount" numeric, "p_courier_charge" numeric, "p_remittance_ref" "text") OWNER TO "postgres";
+  end if;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."process_dropship_courier_remittance_uwl"("p_order_id" bigint, "p_net_amount" numeric, "p_courier_charge" numeric, "p_remittance_ref" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."process_dropship_shop_order"("p_order_id" bigint) RETURNS "jsonb"
@@ -8659,6 +8817,291 @@ end;
 $$;
 
 ALTER FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text", "p_courier_charge" numeric) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text" DEFAULT NULL::"text", "p_payment_date" "date" DEFAULT NULL::"date", "p_method" "text" DEFAULT 'cash'::"text", "p_note" "text" DEFAULT NULL::"text", "p_courier_charge" numeric DEFAULT 0.00) RETURNS jsonb
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_order record;
+  v_invoice public.global_invoices;
+  v_parent_tenant_id bigint;
+  v_payment_id bigint;
+  v_ref text;
+  v_cod numeric(12,2);
+  v_charge numeric(12,2);
+  v_net numeric(12,2);
+  v_invoice_due numeric(12,2);
+  v_invoice_pay numeric(12,2);
+  v_remainder numeric(12,2);
+  v_already_remitted boolean := false;
+begin
+  select * into v_order from public.shop_orders where id = p_order_id for update;
+  if v_order.id is null then
+    raise exception 'Order not found';
+  end if;
+
+  if v_order.shop_type_snapshot <> 'dropship' then
+    raise exception 'Order is not a dropship order';
+  end if;
+
+  if v_order.status not in ('delivered', 'payment_received') then
+    raise exception 'Courier remittance requires order status delivered or payment_received (current: %)', v_order.status;
+  end if;
+
+  if v_order.global_invoice_id is null then
+    raise exception 'Accounting invoice is required before recording courier remittance';
+  end if;
+
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
+
+  select exists (
+    select 1 from public.universal_wallet_ledger
+    where parent_tenant_id = v_parent_tenant_id
+      and entity_type = 'tenant'
+      and source_type = 'shop_order'
+      and source_id = p_order_id::text
+      and metadata->>'purpose' = 'tenant_remittance_received'
+  ) into v_already_remitted;
+
+  if v_already_remitted then
+    return jsonb_build_object(
+      'success', true,
+      'already_recorded', true,
+      'invoice_id', v_order.global_invoice_id,
+      'order_id', p_order_id,
+      'status', v_order.status
+    );
+  end if;
+
+  v_ref := nullif(trim(coalesce(p_remittance_ref, '')), '');
+  if v_ref is null then
+    raise exception 'Remittance reference is required';
+  end if;
+
+  v_net := coalesce(p_net_amount, 0.00);
+  v_charge := coalesce(p_courier_charge, 0.00);
+
+  select coalesce(s.collected_cod_amount, v_order.cod_collect_amount, 0.00)
+  into v_cod
+  from public.dropship_order_settlements s
+  where s.shop_order_id = p_order_id;
+
+  if not found then
+    v_cod := coalesce(v_order.cod_collect_amount, 0.00);
+  end if;
+
+  if v_net <= 0.00 then
+    raise exception 'Net remittance amount must be positive';
+  end if;
+
+  if v_charge < 0.00 then
+    raise exception 'Courier charge cannot be negative';
+  end if;
+
+  if v_cod > 0 and (v_net + v_charge) > (v_cod + 0.01) then
+    raise exception 'Remittance net (%) + charge (%) exceeds COD collect (%)', v_net, v_charge, v_cod;
+  end if;
+
+  if not (
+    public.user_can_manage_parent_tenant(v_parent_tenant_id)
+    or exists (
+      select 1 from public.memberships m
+      where m.tenant_id = v_order.tenant_id
+        and lower(trim(m.email)) = public.current_user_email()
+        and m.is_active = true
+        and m.role in ('admin', 'staff')
+    )
+  ) then
+    raise exception 'Permission denied: Staff or Admin role required';
+  end if;
+
+  select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id for update;
+  if v_invoice.id is null then
+    raise exception 'Invoice not found';
+  end if;
+
+  if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
+    raise exception 'Merchant bill must be issued before remittance (current: %)', v_invoice.invoice_status;
+  end if;
+
+  if v_invoice.invoice_type <> 'dropship'::public.global_invoice_type then
+    raise exception 'Remittance applies to dropship merchant bills only';
+  end if;
+
+  if v_invoice.billing_profile_id is null then
+    raise exception 'Merchant billing profile is required on the invoice';
+  end if;
+
+  v_invoice_due := greatest(coalesce(v_invoice.total_amount, 0.00) - coalesce(v_invoice.paid_amount, 0.00), 0.00);
+  v_invoice_pay := least(v_net, v_invoice_due);
+  v_remainder := greatest(v_net - v_invoice_pay, 0.00);
+
+  perform public.process_dropship_courier_remittance_uwl(
+    p_order_id => p_order_id,
+    p_net_amount => v_net,
+    p_courier_charge => v_charge,
+    p_remittance_ref => v_ref
+  );
+
+  update public.universal_wallet_ledger
+  set metadata = metadata || jsonb_build_object(
+    'invoice_allocated', v_invoice_pay,
+    'merchant_funds_held', v_remainder
+  )
+  where parent_tenant_id = v_parent_tenant_id
+    and entity_type = 'tenant'
+    and source_type = 'shop_order'
+    and source_id = p_order_id::text
+    and metadata->>'purpose' = 'tenant_remittance_received';
+
+  insert into public.global_payments (
+    tenant_id,
+    billing_profile_id,
+    collection_source,
+    amount,
+    unallocated_amount,
+    payment_date,
+    method,
+    reference,
+    note,
+    shop_order_id
+  )
+  values (
+    v_invoice.tenant_id,
+    v_invoice.billing_profile_id,
+    'billing_profile'::public.collection_source_type,
+    v_net,
+    v_remainder,
+    coalesce(p_payment_date, current_date),
+    coalesce(nullif(trim(p_method), ''), 'cash'),
+    v_ref,
+    coalesce(
+      nullif(trim(p_note), ''),
+      'Courier remittance order #' || v_order.order_no
+        || coalesce(' bank:' || nullif(trim(p_bank_trx_id), ''), '')
+    ),
+    p_order_id
+  )
+  returning id into v_payment_id;
+
+  perform public.insert_global_payment_instruments(
+    v_payment_id,
+    jsonb_build_array(
+      jsonb_strip_nulls(
+        jsonb_build_object(
+          'payment_method_code',
+            case upper(coalesce(nullif(trim(p_method), ''), 'CASH'))
+              when 'BANK_TRANSFER' then 'BANK_TRANSFER'
+              when 'BKASH' then 'BKASH'
+              else 'CASH'
+            end,
+          'amount', v_net,
+          'reference', nullif(trim(coalesce(p_bank_trx_id, '')), '')
+        )
+      )
+    )
+  );
+
+  if v_invoice_pay > 0 then
+    insert into public.invoice_payments (tenant_id, payment_id, global_invoice_id, amount)
+    values (v_invoice.tenant_id, v_payment_id, v_order.global_invoice_id, v_invoice_pay);
+
+    update public.global_invoices
+    set
+      paid_amount = coalesce(paid_amount, 0.00) + v_invoice_pay,
+      note = coalesce(nullif(trim(p_note), ''), note),
+      updated_at = now()
+    where id = v_order.global_invoice_id;
+
+    perform public.recompute_global_invoice_payment_status(v_order.global_invoice_id);
+  end if;
+
+  if v_remainder > 0 and not exists (
+    select 1
+    from public.universal_wallet_ledger u
+    where u.parent_tenant_id = v_parent_tenant_id
+      and u.source_type = 'shop_order'
+      and u.source_id = p_order_id::text
+      and u.entity_type in ('middleman', 'customer')
+      and u.entity_id = v_invoice.billing_profile_id
+      and u.type = 'credit'
+      and coalesce(u.metadata->>'transaction_type', '') = 'dropship_profit'
+  ) then
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => v_parent_tenant_id,
+      p_operating_tenant_id => v_order.tenant_id,
+      p_entity_type => 'customer',
+      p_entity_id => v_invoice.billing_profile_id,
+      p_type => 'credit',
+      p_amount => v_remainder,
+      p_currency_code => 'BDT',
+      p_exchange_rate => 1.000000,
+      p_source_type => 'shop_order',
+      p_source_id => p_order_id::text,
+      p_metadata => jsonb_build_object(
+        'section', 'payout_earned',
+        'transaction_type', 'dropship_profit',
+        'label', 'Dropship profit from remittance remainder',
+        'order_no', v_order.order_no,
+        'order_id', p_order_id,
+        'shop_order_id', p_order_id::text,
+        'invoice_id', v_order.global_invoice_id,
+        'remittance_ref', v_ref,
+        'net_remitted', v_net,
+        'invoice_allocated', v_invoice_pay
+      )
+    );
+  end if;
+
+  update public.shop_orders
+  set
+    status = 'payment_received'::public.shop_order_status,
+    courier_remittance_ref = v_ref,
+    courier_bank_trx_id = coalesce(nullif(trim(p_bank_trx_id), ''), courier_bank_trx_id),
+    payout_settlement_status = case when v_remainder > 0 then 'paid' else payout_settlement_status end,
+    updated_at = now()
+  where id = p_order_id;
+
+  return jsonb_build_object(
+    'success', true,
+    'invoice_id', v_order.global_invoice_id,
+    'payment_id', v_payment_id,
+    'order_id', p_order_id,
+    'status', 'payment_received',
+    'net_amount', v_net,
+    'courier_charge', v_charge,
+    'invoice_allocated', v_invoice_pay,
+    'merchant_remainder', v_remainder
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text", "p_courier_charge" numeric) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text" DEFAULT NULL::"text", "p_payment_date" "date" DEFAULT NULL::"date", "p_method" "text" DEFAULT 'cash'::"text", "p_note" "text" DEFAULT NULL::"text") RETURNS jsonb
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  return public.record_dropship_courier_remittance(
+    p_order_id,
+    p_net_amount,
+    p_remittance_ref,
+    p_bank_trx_id,
+    p_payment_date,
+    p_method,
+    p_note,
+    0.00
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."remove_shop_cart_item"("p_cart_item_id" bigint) RETURNS "jsonb"

@@ -8,6 +8,7 @@
               v-model="searchQuery"
               dense
               outlined
+              rounded
               clearable
               debounce="300"
               placeholder="Search order no, merchant, recipient..."
@@ -52,36 +53,44 @@
         <div v-if="loading" class="row justify-center q-py-xl">
           <q-spinner color="primary" size="3em" />
         </div>
-        <q-list v-else separator>
-          <q-item v-if="displayOrders.length === 0" class="justify-center">
-            <q-item-section class="text-center text-grey-6">
-              No orders match your search or filter.
-            </q-item-section>
-          </q-item>
 
-          <q-item
-            v-for="order in displayOrders"
-            :key="order.id"
-            v-ripple
-            clickable
-            @click="goToDetail(order.id)"
-          >
-            <q-item-section>
-              <q-item-label class="text-weight-medium">{{ order.order_no }}</q-item-label>
-              <q-item-label v-if="isParentTenant && order.tenant_name" caption>
-                <q-icon name="ph ph-buildings" size="12px" class="q-mr-xs" />
-                {{ order.tenant_name }}
-              </q-item-label>
-              <q-item-label caption>
-                {{ order.customer_group_name || '—' }} · {{ order.recipient_name || '—' }} ·
-                {{ order.courier_name || '—' }}
-              </q-item-label>
-            </q-item-section>
-            <q-item-section side>
-              <q-badge :color="statusColor(order.status)" :label="statusLabel(order.status)" />
-            </q-item-section>
-          </q-item>
-        </q-list>
+        <div v-else class="dropship-mgmt-list-scroll">
+          <q-markup-table flat class="full-width">
+            <thead>
+              <tr>
+                <th class="text-left">Order</th>
+                <th v-if="isParentTenant" class="text-left">Business</th>
+                <th class="text-left">Merchant</th>
+                <th class="text-left">Recipient</th>
+                <th class="text-left">Courier</th>
+                <th class="text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="displayOrders.length === 0">
+                <td :colspan="isParentTenant ? 6 : 5" class="text-center text-grey-6 q-py-lg">
+                  No orders match your search or filter.
+                </td>
+              </tr>
+              <tr
+                v-for="order in displayOrders"
+                :key="order.id"
+                class="dropship-mgmt-list-row cursor-pointer"
+                :style="rowAccentStyle(order.status)"
+                @click="goToDetail(order.id)"
+              >
+                <td class="text-weight-medium">{{ order.order_no }}</td>
+                <td v-if="isParentTenant">{{ order.tenant_name || '—' }}</td>
+                <td>{{ order.customer_group_name || '—' }}</td>
+                <td>{{ order.recipient_name || '—' }}</td>
+                <td>{{ order.courier_name || '—' }}</td>
+                <td class="text-right">
+                  <q-badge :color="statusColor(order.status)" :label="statusLabel(order.status)" />
+                </td>
+              </tr>
+            </tbody>
+          </q-markup-table>
+        </div>
       </q-card>
     </section>
   </q-page>
@@ -192,8 +201,8 @@ onMounted(() => {
 
 watch(
   () => authStore.tenantId,
-  (tenantId) => {
-    if (tenantId) void loadOrders();
+  (nextTenantId) => {
+    if (nextTenantId) void loadOrders();
   },
 );
 
@@ -222,6 +231,25 @@ function statusColor(status: ShopOrderStatus): string {
   return colors[status] ?? 'grey-7';
 }
 
+function rowAccentColor(status: ShopOrderStatus): string {
+  const map: Partial<Record<ShopOrderStatus, string>> = {
+    shipped: '#b45309',
+    delivered: '#1a7f4b',
+    payment_received: '#2563eb',
+    reseller_paid: '#0d6b5c',
+    returned: '#b83a3a',
+  };
+  return map[status] ?? '#64748b';
+}
+
+function rowAccentStyle(status: ShopOrderStatus) {
+  const color = rowAccentColor(status);
+  return {
+    boxShadow: `inset 3px 0 0 ${color}`,
+    background: `color-mix(in srgb, ${color} 8%, var(--bw-neutral-surface, #fff))`,
+  };
+}
+
 function goToDetail(id: number) {
   router.push({ name: 'app-shop-dropship-management-detail-page', params: { id } });
 }
@@ -232,3 +260,21 @@ export default {
   name: 'DropshipManagementPage',
 };
 </script>
+
+<style scoped>
+.dropship-mgmt-list-scroll {
+  overflow-x: auto;
+}
+
+.dropship-mgmt-list-row:hover {
+  filter: brightness(0.98);
+}
+
+.dropship-mgmt-list-scroll thead tr th {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bw-neutral-chrome, #64748b);
+}
+</style>

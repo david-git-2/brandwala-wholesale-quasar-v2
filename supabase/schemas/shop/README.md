@@ -1,1 +1,1 @@
-Objects for this module still live in `../public.sql`. When you change this module, move the live SQL here and delete the same objects from `public.sql` in the same PR.
+Shop storefront config (shops, listings, carts, orders, access, dropship settlement) lives in **`../shop_order/`** (`01_types.sql` … `04_rls.sql`). Do not re-add those objects to `public.sql`. This `shop/` folder is a label only until a separate config split is needed.

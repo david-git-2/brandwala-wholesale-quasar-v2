@@ -6,7 +6,7 @@ Ledger list/detail below. Bodies: `public.sql` until wallet schema split. Paymen
 
 Wholesale collect **live**: `collect_wholesale_invoice_payment` on issued buyer bill (cash / store credit / settlement). Receipt amount = money received; allocates to that invoice. Do not use remittance RPCs or `create_billing_profile_payment_with_allocations` on the invoice desk.
 
-Dropship remittance **target**: order `delivered` + linked issued merchant bill; receipt amount = net bank in; allocate `min(net, invoice.due)`; leftover → merchant ledger. Do not rewrite sell. Do not issue a bill here. Require `global_invoice_id` (shop_order SO11).
+Dropship remittance **target**: order `delivered` + linked issued merchant bill; receipt amount = net bank in; allocate `min(net, invoice.due)`; leftover → merchant ledger. Do not rewrite sell. Do not issue a bill here. Require `global_invoice_id` ([shop_order 01-prd](../shop_order/01-prd.md) US-3).
 
 ---
 

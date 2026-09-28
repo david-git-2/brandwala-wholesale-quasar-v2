@@ -49,8 +49,8 @@ Reseller **Glamour Closet**. Merchant price **1,500**. Recipient **Karim** COD *
 | Order | Pick / ship. Packing slip for Karim | Collect **2,200**. **Not** a `sales_invoices` row. COD/resell on order (and invoice `channel_meta`). |
 | Issue bill | Same **Mark as shipped** RPC as the order. Lines = held picks. `invoice_type=dropship`, billed to Glamour | `sell` 1,500 (merchant price) → `total_amount` **1,500**. `issued` / `due`. Not 2,200. |
 | Print merchant | Invoice voucher | 1,500. No cost. No COD as total. |
-| Deliver | Order status only | No cash. Invoice may still be `due`. |
-| Receipt | `source=courier_remittance` | **2,120** (net, not COD face) |
+| Deliver | Order status + courier ledger | Credit courier wallet **2,200** COD face (`courier_cod_receivable`). Not tenant cash. Not sales. Invoice may still be `due`. |
+| Receipt | `source=courier_remittance` | **2,120** (net, not COD face). Debit courier **2,120** + fee **80**; credit tenant **+2,120**. |
 | Allocate | To `INV-DS-001` | **1,500** → invoice `paid` |
 | Remainder | Ledger merchant payable | **620** Glamour wallet |
 | Tenant cash | Receipt | **+2,120** |
@@ -74,5 +74,5 @@ One line: billed reseller 1,500; Karim paid courier 2,200; you received 2,120; 1
 | Receipt amount = 2,200 face | Dropship receipt = 2,120 remitted |
 | Sales = remittance or COD | Sales = issued `total_amount` (both channels) |
 | Cost on print | Cost on `sales_invoice_item_costs` |
-| Deliver posts cash | Deliver = parcel; remittance = receipt |
+| Deliver posts tenant cash | Deliver = parcel + courier COD receivable; remittance = tenant cash + receipt |
 | Second payments product for dropship | Same receipt table; `source` differs |

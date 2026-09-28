@@ -1508,6 +1508,7 @@ export type Database = {
           note: string | null
           payment_date: string
           reference: string | null
+          shop_order_id: number | null
           tenant_id: number
           unallocated_amount: number
           voided_at: string | null
@@ -1523,6 +1524,7 @@ export type Database = {
           note?: string | null
           payment_date?: string
           reference?: string | null
+          shop_order_id?: number | null
           tenant_id: number
           unallocated_amount?: number
           voided_at?: string | null
@@ -1538,6 +1540,7 @@ export type Database = {
           note?: string | null
           payment_date?: string
           reference?: string | null
+          shop_order_id?: number | null
           tenant_id?: number
           unallocated_amount?: number
           voided_at?: string | null
@@ -1548,6 +1551,13 @@ export type Database = {
             columns: ["customer_group_id"]
             isOneToOne: false
             referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_payments_shop_order_id_fkey"
+            columns: ["shop_order_id"]
+            isOneToOne: false
+            referencedRelation: "shop_orders"
             referencedColumns: ["id"]
           },
           {
@@ -10645,6 +10655,7 @@ export type Database = {
           note: string | null
           payment_date: string
           reference: string | null
+          shop_order_id: number | null
           tenant_id: number
           unallocated_amount: number
           voided_at: string | null
@@ -11491,6 +11502,10 @@ export type Database = {
         Returns: number
       }
       ensure_default_vendor: { Args: { p_tenant_id: number }; Returns: number }
+      ensure_dropship_courier_cod_receivable: {
+        Args: { p_order_id: number }
+        Returns: undefined
+      }
       ensure_dropship_invoice_billed_entry: {
         Args: { p_invoice_id: number }
         Returns: undefined
@@ -12310,6 +12325,10 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: Json
+      }
+      insert_global_payment_instruments: {
+        Args: { p_instruments: Json; p_payment_id: number }
+        Returns: undefined
       }
       investor_tenant_can_view: {
         Args: { p_tenant_id: number }

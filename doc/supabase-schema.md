@@ -25,11 +25,11 @@ Move one domain per change; delete moved objects from `public.sql` in the same c
 | Domain | Schema Folder | Status | Included Objects / Notes |
 | :--- | :--- | :--- | :--- |
 | **procurement** | `supabase/schemas/procurement/` | **Split** | Shipments, items, suppliers, purchase tracking |
-| **shop_order** | `supabase/schemas/shop_order/` | **Split** | Shop orders, dropship order items, catalog orders |
+| **shop_order** | `supabase/schemas/shop_order/` | **Split** | Shops, carts, listings, orders, dropship settlement, demand buckets; deduped from `public.sql` |
 | **notifications** | `supabase/schemas/notifications/` | **Split** | Inbox, preferences, push (`03_rls.sql`, `04_rpcs.sql`) |
 | **tenants** | `supabase/schemas/tenants/` | Stub | Move from `public.sql` when changing that domain |
 | **permissions** | `supabase/schemas/permissions/` | Stub | Grants / `has_module_action` |
-| **shop** | `supabase/schemas/shop/` | Stub | Shop config tables still overlapping shop_order split |
+| **shop** | `supabase/schemas/shop/` | Absorbed | Config + orders live in **split** `shop_order/`; no separate `public.sql` copy |
 | **tag** | `supabase/schemas/tag/` | Stub | Taxonomy |
 | **sales_invoice** | `supabase/schemas/sales_invoice/` | **Split** | Sales invoices, line items, billing RPCs |
 | **wallet** | `supabase/schemas/wallet/` | Pending | `universal_wallet_ledger`, customer/vendor balance books |

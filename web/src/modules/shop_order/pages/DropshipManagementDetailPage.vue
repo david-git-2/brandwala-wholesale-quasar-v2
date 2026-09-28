@@ -1,58 +1,81 @@
 <template>
   <q-page class="bw-page dropship-order-detail-v2">
     <div class="bw-page__stack">
-      <div v-if="isLoading" class="row justify-center q-py-xl">
-        <q-spinner color="primary" size="3em" />
-      </div>
+      <template v-if="isLoading">
+        <section class="dropship-order-detail-v2__loading">
+          <q-skeleton type="rect" height="520px" class="dropship-order-detail-v2__paper-skeleton" />
+        </section>
+      </template>
 
-      <div v-else-if="loadError" class="text-center text-negative q-pa-xl">
+      <section v-else-if="loadError" class="text-caption text-negative">
         {{ loadError }}
-      </div>
+      </section>
 
       <div v-else-if="!orderData" class="text-center text-grey-6 q-pa-xl">
         Order not found.
       </div>
 
       <template v-else>
-        <DropshipManagementSettlementPaper
-          ref="paperRef"
-          :data="orderData"
-          :readonly="isSettlementReadonly"
-          :return-section-mode="returnSectionMode"
-        />
+        <q-banner dense rounded class="bg-blue-1 text-blue-10 dropship-order-detail-v2__info-banner no-print">
+          <template #avatar>
+            <q-icon name="ph ph-info" color="blue-8" />
+          </template>
+          <div class="column q-gutter-y-xs">
+            <span class="text-caption">{{ deskBannerText }}</span>
+            <span v-if="deskStep === 'remit' && remittanceHint" class="text-caption text-blue-grey-9">
+              {{ remittanceHint }}
+            </span>
+          </div>
+        </q-banner>
 
-        <div v-if="orderData.order.status !== 'returned'" class="dropship-order-detail-v2__toolbar">
+        <div v-if="showFooterActions" class="dropship-order-detail-v2__ready-actions no-print">
           <q-btn
-            v-if="!isSettlementReadonly"
+            v-if="orderData.invoice?.id && deskStep !== 'done'"
             outline
             color="primary"
             no-caps
-            icon="ph ph-floppy-disk"
-            label="Save draft"
-            :loading="savingDraft"
-            @click="onSaveDraft"
+            icon="ph ph-receipt"
+            label="View merchant bill"
+            class="text-weight-bold"
+            style="border-radius: 8px"
+            @click="openMerchantInvoice"
           />
-        </div>
 
-        <div v-if="orderData.order.status !== 'returned'" class="dropship-order-detail-v2__footer-actions">
-          <div class="dropship-order-detail-v2__outcome-actions">
+          <template v-if="deskStep === 'outcome' && !isSettlementReadonly">
             <q-btn
-              v-if="orderData.invoice?.id"
+              v-if="!adjustFeesOpen"
               outline
               color="primary"
               no-caps
-              icon="ph ph-receipt"
-              label="View merchant invoice"
-              class="text-weight-bold dropship-order-detail-v2__action-btn"
-              @click="openMerchantInvoice"
+              icon="ph ph-sliders-horizontal"
+              label="Adjust fees"
+              style="border-radius: 8px"
+              @click="adjustFeesOpen = true"
             />
+            <template v-else>
+              <q-btn flat no-caps color="grey-8" label="Done adjusting" @click="adjustFeesOpen = false" />
+              <q-btn
+                outline
+                color="primary"
+                no-caps
+                icon="ph ph-floppy-disk"
+                label="Save draft"
+                style="border-radius: 8px"
+                :loading="savingDraft"
+                @click="onSaveDraft"
+              />
+            </template>
+          </template>
+
+          <template v-if="deskStep === 'outcome'">
             <q-btn
               color="primary"
               unelevated
               no-caps
               icon="ph ph-package"
               label="Mark as delivered"
-              class="text-weight-bold dropship-order-detail-v2__action-btn"
+              class="text-weight-bold"
+              style="border-radius: 8px; min-width: 200px"
               :disable="!orderData.step_state.can_mark_delivered"
               :loading="actionKind === 'delivered'"
               @click="onMarkDelivered"
@@ -63,23 +86,46 @@
               no-caps
               icon="ph ph-arrow-u-up-left"
               label="Mark as returned"
-              class="text-weight-bold dropship-order-detail-v2__action-btn"
+              class="text-weight-bold"
+              style="border-radius: 8px"
               :disable="!orderData.step_state.can_mark_returned"
               @click="onMarkReturned"
             />
-          </div>
+          </template>
+
           <q-btn
+            v-else-if="deskStep === 'remit'"
             color="primary"
             unelevated
             no-caps
             icon="ph ph-bank"
             label="Bank transfer from courier"
-            class="text-weight-bold dropship-order-detail-v2__action-btn"
+            class="text-weight-bold"
+            style="border-radius: 8px; min-width: 240px"
             :disable="!orderData.step_state.can_record_bank_transfer"
             :loading="actionKind === 'remittance'"
             @click="showRemittanceDialog = true"
           />
+
+          <q-btn
+            v-else-if="deskStep === 'done' && orderData.invoice?.id"
+            outline
+            color="primary"
+            no-caps
+            icon="ph ph-receipt"
+            label="View merchant invoice"
+            class="text-weight-bold"
+            style="border-radius: 8px; min-width: 200px"
+            @click="openMerchantInvoice"
+          />
         </div>
+
+        <DropshipManagementSettlementPaper
+          ref="paperRef"
+          :data="orderData"
+          :readonly="paperReadonly"
+          :return-section-mode="returnSectionMode"
+        />
       </template>
     </div>
 
@@ -150,6 +196,16 @@ const paperRef = ref<InstanceType<typeof DropshipManagementSettlementPaper> | nu
 const savingDraft = ref(false);
 const actionKind = ref<'delivered' | 'remittance' | null>(null);
 const showRemittanceDialog = ref(false);
+const adjustFeesOpen = ref(false);
+
+type ManagementDeskStep = 'outcome' | 'remit' | 'done';
+
+function formatMoney(amount: number): string {
+  return `৳${Number(amount || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
 
 const remittanceForm = reactive({
   remittance_ref: '',
@@ -205,9 +261,61 @@ const returnSectionMode = computed(() =>
   orderData.value?.order.status === 'returned' ? 'readonly' : 'hidden',
 );
 
+const deskStep = computed((): ManagementDeskStep => {
+  const status = orderData.value?.order.status;
+  if (!status) return 'done';
+  if (status === 'shipped') return 'outcome';
+  if (status === 'delivered') return 'remit';
+  return 'done';
+});
+
+const deskBannerText = computed(() => {
+  switch (deskStep.value) {
+    case 'outcome':
+      return 'Parcel is in transit. Confirm delivery or mark a return — cash is recorded when the courier remits.';
+    case 'remit':
+      return 'Parcel delivered. Record the courier bank transfer to pay the merchant bill and credit reseller profit.';
+    default:
+      if (orderData.value?.order.status === 'returned') {
+        return 'Return finalized — settlement is read-only.';
+      }
+      if (
+        orderData.value?.order.status === 'payment_received'
+        || orderData.value?.order.status === 'reseller_paid'
+      ) {
+        return 'Settlement complete — remittance posted and merchant profit credited.';
+      }
+      return 'Settlement desk — read-only recap.';
+  }
+});
+
+const paperReadonly = computed(() => {
+  if (isSettlementReadonly.value) return true;
+  if (deskStep.value !== 'outcome') return true;
+  return !adjustFeesOpen.value;
+});
+
+const showFooterActions = computed(() => {
+  const status = orderData.value?.order.status;
+  if (!status || status === 'returned') return deskStep.value === 'done' && !!orderData.value?.invoice?.id;
+  return deskStep.value !== 'done' || !!orderData.value?.invoice?.id;
+});
+
+const remittanceHint = computed(() => {
+  const data = orderData.value;
+  if (!data?.invoice || deskStep.value !== 'remit') return null;
+  const net = resolveDefaultNetRemittance(data);
+  const due = data.invoice.due_amount;
+  const leftover = Math.max(net - due, 0);
+  return `Suggested net from COD ৳${net.toLocaleString()} · Bill due ${formatMoney(due)}${leftover > 0 ? ` · ~${formatMoney(leftover)} to merchant wallet after pay` : ''}.`;
+});
+
 watch(orderData, (data) => {
   if (!data) return;
   remittanceForm.net_amount = resolveDefaultNetRemittance(data);
+  if (deskStep.value !== 'outcome') {
+    adjustFeesOpen.value = false;
+  }
 });
 
 function getPayload() {
@@ -322,7 +430,7 @@ async function onRecordBankTransfer() {
       showErrorNotification(res.error ?? 'Failed to record bank transfer.');
       return;
     }
-    showSuccessNotification('Courier bank transfer recorded. Invoice paid and merchant profit credited.');
+    showSuccessNotification('Courier bank transfer recorded. Bill paid; merchant wallet credited from remittance remainder.');
     showRemittanceDialog.value = false;
     await invalidateDetail();
   } finally {
@@ -333,43 +441,30 @@ async function onRecordBankTransfer() {
 
 <style scoped>
 .dropship-order-detail-v2 {
-  background: #eef1f4;
+  min-height: 100%;
 }
 
-.dropship-order-detail-v2__toolbar {
-  width: 100%;
-  max-width: 800px;
+.dropship-order-detail-v2__info-banner {
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  max-width: 1100px;
   margin: 0 auto;
+  width: 100%;
+}
+
+.dropship-order-detail-v2__paper-skeleton {
+  max-width: 1100px;
+  margin: 0 auto;
+  border-radius: 12px;
+}
+
+.dropship-order-detail-v2__ready-actions {
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
   display: flex;
   justify-content: flex-end;
-}
-
-.dropship-order-detail-v2__footer-actions {
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  padding-top: 0.25rem;
-}
-
-.dropship-order-detail-v2__outcome-actions {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 0.5rem;
-}
-
-.dropship-order-detail-v2__outcome-actions .dropship-order-detail-v2__action-btn {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.dropship-order-detail-v2__action-btn {
-  border-radius: 8px;
-  min-height: 44px;
 }
 </style>
 

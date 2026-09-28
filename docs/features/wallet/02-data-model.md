@@ -105,11 +105,11 @@ One account per `(parent_tenant_id, entity_type, entity_id, currency)`. Lines on
 | :--- | :--- |
 | `tenant` | Operating cash (parent pool) |
 | `customer` | Store credit; dropship merchant payable (`billing_profile`) |
-| `courier` | Optional in-transit / fee clearing — **not** a second COD sales book |
+| `courier` | Dropship COD **receivable** after `delivered` (credit = face COD courier holds; debits on remittance). Not tenant cash. Not sales. |
 | `investor` | Capital liability to external partners (deposit in, payout out, profit pending). Staff desks in `investor_capital/` — not merchant payable, not `global_payments` |
 | `vendor` / `cargo` | Other books |
 
-`source_type` on a ledger line should point at the **receipt** (or payout), not a parallel “delivered_costing” purpose for the same cash.
+Dropship courier lines use `source_type = shop_order` with purpose `courier_cod_receivable` (deliver) then `courier_remittance` / `courier_fee_retained` (bank transfer). Tenant cash lines for the same order align with the **receipt** (`tenant_remittance_received`), not the COD face credit.
 
 ---
 

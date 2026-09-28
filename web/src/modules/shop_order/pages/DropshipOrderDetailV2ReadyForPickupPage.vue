@@ -195,6 +195,21 @@ const advanceToShipped = async () => {
 const onOrderCancelled = () => {
   void router.push({ name: 'app-shop-dropship-orders-page' });
 };
+
+const showSettlementDeskLink = computed(
+  () => displayStatus.value === 'shipped' || displayStatus.value === 'delivered',
+);
+
+const openSettlementDesk = () => {
+  if (!order.value) return;
+  void router.push({
+    name: 'app-shop-dropship-management-detail-page',
+    params: {
+      id: order.value.id,
+      tenantSlug: route.params.tenantSlug,
+    },
+  });
+};
 </script>
 
 <template>
@@ -227,6 +242,17 @@ const onOrderCancelled = () => {
 
       <template v-else-if="order">
         <div class="dropship-order-detail-v2__ready-actions no-print">
+          <q-btn
+            v-if="showSettlementDeskLink"
+            unelevated
+            color="primary"
+            no-caps
+            icon="ph ph-clipboard-text"
+            label="Open settlement desk"
+            class="text-weight-bold"
+            style="border-radius: 8px; min-width: 200px"
+            @click="openSettlementDesk"
+          />
           <q-btn
             v-if="canCancelOrder"
             outline
