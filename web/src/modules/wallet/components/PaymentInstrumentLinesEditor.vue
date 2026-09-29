@@ -2,7 +2,7 @@
   <div class="column q-gutter-sm">
     <div class="row items-center justify-between">
       <div class="text-subtitle2 text-weight-bold">{{ title }}</div>
-      <q-btn flat dense color="primary" icon="add" label="Add another payment" class="q-px-none" @click="addLine" />
+      <q-btn flat dense color="primary" icon="ph ph-plus" label="Add another payment" class="q-px-none" @click="addLine" />
     </div>
 
     <div
@@ -22,7 +22,7 @@
           flat
           dense
           round
-          icon="close"
+          icon="ph ph-x"
           color="grey-7"
           aria-label="Remove payment"
           @click="removeLine(line.key)"

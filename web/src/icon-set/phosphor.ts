@@ -1,0 +1,132 @@
+/**
+ * Quasar internal component icons — Phosphor regular (`ph ph-*`).
+ * Loaded via framework.iconSet; rendered through boot/phosphor.ts iconMapFn.
+ */
+export default {
+  name: 'phosphor',
+  type: {
+    positive: 'ph ph-check-circle',
+    negative: 'ph ph-warning-circle',
+    info: 'ph ph-info',
+    warning: 'ph ph-warning',
+  },
+  arrow: {
+    up: 'ph ph-arrow-up',
+    right: 'ph ph-arrow-right',
+    down: 'ph ph-arrow-down',
+    left: 'ph ph-arrow-left',
+    dropdown: 'ph ph-caret-down',
+  },
+  chevron: {
+    left: 'ph ph-caret-left',
+    right: 'ph ph-caret-right',
+  },
+  colorPicker: {
+    spectrum: 'ph ph-gradient',
+    tune: 'ph ph-sliders-horizontal',
+    palette: 'ph ph-palette',
+  },
+  pullToRefresh: {
+    icon: 'ph ph-arrows-clockwise',
+  },
+  carousel: {
+    left: 'ph ph-caret-left',
+    right: 'ph ph-caret-right',
+    up: 'ph ph-caret-up',
+    down: 'ph ph-caret-down',
+    navigationIcon: 'ph ph-circle',
+  },
+  chip: {
+    remove: 'ph ph-x',
+    selected: 'ph ph-check',
+  },
+  datetime: {
+    arrowLeft: 'ph ph-caret-left',
+    arrowRight: 'ph ph-caret-right',
+    now: 'ph ph-clock',
+    today: 'ph ph-calendar-blank',
+  },
+  editor: {
+    bold: 'ph ph-text-b',
+    italic: 'ph ph-text-italic',
+    strikethrough: 'ph ph-text-strikethrough',
+    underline: 'ph ph-text-underline',
+    unorderedList: 'ph ph-list-bullets',
+    orderedList: 'ph ph-list-numbers',
+    subscript: 'ph ph-text-subscript',
+    superscript: 'ph ph-text-superscript',
+    hyperlink: 'ph ph-link',
+    toggleFullscreen: 'ph ph-arrows-out',
+    quote: 'ph ph-quotes',
+    left: 'ph ph-text-align-left',
+    center: 'ph ph-text-align-center',
+    right: 'ph ph-text-align-right',
+    justify: 'ph ph-text-align-justify',
+    print: 'ph ph-printer',
+    outdent: 'ph ph-text-outdent',
+    indent: 'ph ph-text-indent',
+    removeFormat: 'ph ph-text-t',
+    formatting: 'ph ph-text-aa',
+    fontSize: 'ph ph-text-a-underline',
+    align: 'ph ph-text-align-left',
+    hr: 'ph ph-minus',
+    undo: 'ph ph-arrow-u-up-left',
+    redo: 'ph ph-arrow-u-up-right',
+    heading: 'ph ph-text-h',
+    code: 'ph ph-code',
+    size: 'ph ph-text-aa',
+    font: 'ph ph-text-t',
+    viewSource: 'ph ph-code',
+  },
+  expansionItem: {
+    icon: 'ph ph-caret-down',
+    denseIcon: 'ph ph-caret-down',
+  },
+  fab: {
+    icon: 'ph ph-plus',
+    activeIcon: 'ph ph-x',
+  },
+  field: {
+    clear: 'ph ph-x',
+    error: 'ph ph-warning-circle',
+  },
+  pagination: {
+    first: 'ph ph-caret-double-left',
+    prev: 'ph ph-caret-left',
+    next: 'ph ph-caret-right',
+    last: 'ph ph-caret-double-right',
+  },
+  rating: {
+    icon: 'ph ph-star',
+  },
+  stepper: {
+    done: 'ph ph-check',
+    active: 'ph ph-pencil-simple',
+    error: 'ph ph-warning',
+  },
+  tabs: {
+    left: 'ph ph-caret-left',
+    right: 'ph ph-caret-right',
+    up: 'ph ph-caret-up',
+    down: 'ph ph-caret-down',
+  },
+  table: {
+    arrowUp: 'ph ph-arrow-up',
+    warning: 'ph ph-warning',
+    firstPage: 'ph ph-caret-double-left',
+    prevPage: 'ph ph-caret-left',
+    nextPage: 'ph ph-caret-right',
+    lastPage: 'ph ph-caret-double-right',
+  },
+  tree: {
+    icon: 'ph ph-caret-right',
+  },
+  uploader: {
+    done: 'ph ph-check',
+    clear: 'ph ph-x',
+    add: 'ph ph-plus-square',
+    upload: 'ph ph-cloud-arrow-up',
+    removeQueue: 'ph ph-trash',
+    removeUploaded: 'ph ph-checks',
+  },
+};

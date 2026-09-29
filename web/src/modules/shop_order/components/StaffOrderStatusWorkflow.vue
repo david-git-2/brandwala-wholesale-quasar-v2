@@ -88,7 +88,7 @@ const isPassedStatus = (st: string) => {
           </q-btn>
           <q-icon
             v-if="idx < workflowStatuses.length - 1"
-            name="chevron_right"
+            name="ph ph-caret-right"
             color="grey-5"
             size="18px"
             class="status-workflow-chevron"

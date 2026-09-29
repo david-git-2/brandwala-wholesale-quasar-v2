@@ -70,7 +70,7 @@
             <q-skeleton type="rect" width="96px" height="28px" class="rounded-borders" />
             <q-icon
               v-if="n < 4"
-              name="chevron_right"
+              name="ph ph-caret-right"
               color="grey-3"
               size="18px"
             />

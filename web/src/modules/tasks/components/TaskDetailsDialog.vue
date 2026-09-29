@@ -188,7 +188,7 @@
               <div class="text-overline text-grey-8 text-weight-bold">Discussions & Comments</div>
               <q-btn
                 :label="showDiscussion ? 'Hide Discussions' : 'Show Discussions'"
-                :icon="showDiscussion ? 'forum' : 'chat_bubble_outline'"
+                :icon="showDiscussion ? 'ph ph-chats' : 'ph ph-chat-circle'"
                 color="primary"
                 outline
                 no-caps
@@ -1388,13 +1388,13 @@ const accessibilityChipStyle = (acc: string | undefined) => {
 const accessibilityIcon = (acc: string | undefined) => {
   switch (acc || 'public') {
     case 'public':
-      return 'lock_open';
+      return 'ph ph-lock-open';
     case 'private':
-      return 'lock';
+      return 'ph ph-lock';
     case 'restricted':
-      return 'lock_person';
+      return 'ph ph-lock-key';
     default:
-      return 'help_outline';
+      return 'ph ph-question';
   }
 };
 
@@ -1439,23 +1439,23 @@ const getActionDescription = (log: ActivityLog) => {
 const getTypeIcon = (type: string) => {
   switch (type) {
     case 'project':
-      return 'folder';
+      return 'ph ph-folder';
     case 'module':
-      return 'view_module';
+      return 'ph ph-squares-four';
     case 'submodule':
-      return 'layers';
+      return 'ph ph-stack';
     case 'task':
-      return 'assignment';
+      return 'ph ph-clipboard-text';
     case 'note':
-      return 'note';
+      return 'ph ph-note';
     case 'discussion':
-      return 'forum';
+      return 'ph ph-chats';
     case 'bug':
-      return 'bug_report';
+      return 'ph ph-bug';
     case 'feature':
-      return 'star';
+      return 'ph ph-star';
     default:
-      return 'help_outline';
+      return 'ph ph-question';
   }
 };
 

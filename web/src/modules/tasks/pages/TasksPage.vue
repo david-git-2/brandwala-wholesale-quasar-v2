@@ -211,7 +211,7 @@
                       </span>
                       <q-icon
                         v-if="project.accessibility && project.accessibility !== 'public'"
-                        :name="project.accessibility === 'private' ? 'lock' : 'lock_person'"
+                        :name="project.accessibility === 'private' ? 'ph ph-lock' : 'ph ph-lock-key'"
                         :color="project.accessibility === 'private' ? 'negative' : 'primary'"
                         size="14px"
                         class="q-ml-xs"
@@ -330,7 +330,7 @@
                             >
                             <q-icon
                               v-if="mod.accessibility && mod.accessibility !== 'public'"
-                              :name="mod.accessibility === 'private' ? 'lock' : 'lock_person'"
+                              :name="mod.accessibility === 'private' ? 'ph ph-lock' : 'ph ph-lock-key'"
                               :color="mod.accessibility === 'private' ? 'negative' : 'primary'"
                               size="12px"
                             >
@@ -413,7 +413,7 @@
                                   >
                                   <q-icon
                                     v-if="sub.accessibility && sub.accessibility !== 'public'"
-                                    :name="sub.accessibility === 'private' ? 'lock' : 'lock_person'"
+                                    :name="sub.accessibility === 'private' ? 'ph ph-lock' : 'ph ph-lock-key'"
                                     :color="
                                       sub.accessibility === 'private' ? 'negative' : 'primary'
                                     "
@@ -508,7 +508,7 @@
                                         ticket.accessibility && ticket.accessibility !== 'public'
                                       "
                                       :name="
-                                        ticket.accessibility === 'private' ? 'lock' : 'lock_person'
+                                        ticket.accessibility === 'private' ? 'ph ph-lock' : 'ph ph-lock-key'
                                       "
                                       :color="
                                         ticket.accessibility === 'private' ? 'negative' : 'primary'
@@ -651,7 +651,7 @@
                                 </span>
                                 <q-icon
                                   v-if="sub.accessibility && sub.accessibility !== 'public'"
-                                  :name="sub.accessibility === 'private' ? 'lock' : 'lock_person'"
+                                  :name="sub.accessibility === 'private' ? 'ph ph-lock' : 'ph ph-lock-key'"
                                   :color="sub.accessibility === 'private' ? 'negative' : 'primary'"
                                   size="12px"
                                 >
@@ -780,7 +780,7 @@
                           >
                           <q-icon
                             v-if="mod.accessibility && mod.accessibility !== 'public'"
-                            :name="mod.accessibility === 'private' ? 'lock' : 'lock_person'"
+                            :name="mod.accessibility === 'private' ? 'ph ph-lock' : 'ph ph-lock-key'"
                             :color="mod.accessibility === 'private' ? 'negative' : 'primary'"
                             size="12px"
                           >
@@ -919,7 +919,7 @@
                         </span>
                         <q-icon
                           v-if="child.accessibility && child.accessibility !== 'public'"
-                          :name="child.accessibility === 'private' ? 'lock' : 'lock_person'"
+                          :name="child.accessibility === 'private' ? 'ph ph-lock' : 'ph ph-lock-key'"
                           :color="child.accessibility === 'private' ? 'negative' : 'primary'"
                           size="12px"
                         >
@@ -1052,7 +1052,7 @@
                           v-if="
                             cellProps.row.accessibility && cellProps.row.accessibility !== 'public'
                           "
-                          :name="cellProps.row.accessibility === 'private' ? 'lock' : 'lock_person'"
+                          :name="cellProps.row.accessibility === 'private' ? 'ph ph-lock' : 'ph ph-lock-key'"
                           :color="
                             cellProps.row.accessibility === 'private' ? 'negative' : 'primary'
                           "
@@ -1198,7 +1198,7 @@
                     <div class="row items-center q-gutter-x-xs">
                       <q-icon
                         v-if="n.accessibility && n.accessibility !== 'public'"
-                        :name="n.accessibility === 'private' ? 'lock' : 'lock_person'"
+                        :name="n.accessibility === 'private' ? 'ph ph-lock' : 'ph ph-lock-key'"
                         :color="n.accessibility === 'private' ? 'negative' : 'primary'"
                         size="14px"
                       >
@@ -1312,7 +1312,7 @@
                           v-if="
                             cellProps.row.accessibility && cellProps.row.accessibility !== 'public'
                           "
-                          :name="cellProps.row.accessibility === 'private' ? 'lock' : 'lock_person'"
+                          :name="cellProps.row.accessibility === 'private' ? 'ph ph-lock' : 'ph ph-lock-key'"
                           :color="
                             cellProps.row.accessibility === 'private' ? 'negative' : 'primary'
                           "
@@ -2224,23 +2224,23 @@ const myTasksList = computed(() => {
 const getTicketIcon = (type: string) => {
   switch (type) {
     case 'project':
-      return 'folder';
+      return 'ph ph-folder';
     case 'module':
-      return 'view_module';
+      return 'ph ph-squares-four';
     case 'submodule':
-      return 'layers';
+      return 'ph ph-stack';
     case 'task':
-      return 'assignment';
+      return 'ph ph-clipboard-text';
     case 'note':
-      return 'note';
+      return 'ph ph-note';
     case 'discussion':
-      return 'forum';
+      return 'ph ph-chats';
     case 'bug':
-      return 'bug_report';
+      return 'ph ph-bug';
     case 'feature':
-      return 'star';
+      return 'ph ph-star';
     default:
-      return 'help_outline';
+      return 'ph ph-question';
   }
 };
 

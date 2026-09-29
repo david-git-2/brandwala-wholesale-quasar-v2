@@ -28,6 +28,15 @@ Canonical UI file. New UI notes go here or in a module `01-prd`, not a second gu
 
 - **Row & Badge Soft Tints**: Apply soft background tints (`10% - 15%` color-mix on surface) with inset left accent borders (`box-shadow: inset 3px 0 0 var(--color)`).
 
+### 1.3 Typography & icons
+
+| Role | Token / pattern | Notes |
+| :--- | :--- | :--- |
+| **UI text** | `--bw-font-ui` → IBM Plex Sans | Loaded in `web/index.html`; do not add Plus Jakarta or Roboto bundles |
+| **Numbers / codes** | `--bw-font-mono` → IBM Plex Mono | Tables, KPIs, copyable IDs |
+| **Bangla** | `--bw-font-bn` → Noto Sans Bengali | `html[lang='bn']` in `app.scss` |
+| **Icons** | `ph ph-*` (Phosphor regular) | Quasar set: `web/src/icon-set/phosphor.ts`. No `@quasar/extras` Material icon fonts or Material ligature names |
+
 ---
 
 ## 📐 2. Page Container & Layout Standard

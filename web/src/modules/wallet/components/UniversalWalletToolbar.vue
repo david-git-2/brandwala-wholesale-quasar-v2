@@ -13,7 +13,7 @@
             clearable
           >
             <template #prepend>
-              <q-icon name="search" size="xs" />
+              <q-icon name="ph ph-magnifying-glass" size="xs" />
             </template>
           </q-input>
         </div>
@@ -36,7 +36,7 @@
             flat
             round
             dense
-            icon="refresh"
+            icon="ph ph-arrows-clockwise"
             color="primary"
             @click="$emit('refresh')"
           >

@@ -186,23 +186,23 @@ const onTaskCreated = () => {
 const getTypeIcon = (type: string) => {
   switch (type) {
     case 'project':
-      return 'folder';
+      return 'ph ph-folder';
     case 'module':
-      return 'view_module';
+      return 'ph ph-squares-four';
     case 'submodule':
-      return 'layers';
+      return 'ph ph-stack';
     case 'task':
-      return 'assignment';
+      return 'ph ph-clipboard-text';
     case 'note':
-      return 'note';
+      return 'ph ph-note';
     case 'discussion':
-      return 'forum';
+      return 'ph ph-chats';
     case 'bug':
-      return 'bug_report';
+      return 'ph ph-bug';
     case 'feature':
-      return 'star';
+      return 'ph ph-star';
     default:
-      return 'help_outline';
+      return 'ph ph-question';
   }
 };
 

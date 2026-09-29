@@ -64,7 +64,7 @@
             <q-btn
               type="submit"
               :color="editingTagId !== null ? 'secondary' : 'primary'"
-              :icon="editingTagId !== null ? 'check' : 'add'"
+              :icon="editingTagId !== null ? 'ph ph-check' : 'ph ph-plus'"
               unelevated
               round
               dense

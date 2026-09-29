@@ -101,7 +101,7 @@
     <section class="ds-section">
       <h2 class="ds-section__title">Typography</h2>
       <p class="ds-note">
-        Ops scale: meta 11 / body 14 / title 22 / KPI 22 Plex. Shop extras: product 18, shop name 28–32.
+        Ops scale: meta 11 / body 14 / title 22 / KPI 22. UI: IBM Plex Sans; numbers: IBM Plex Mono. Shop extras: product 18, shop name 28–32.
         Caprasimo is removed.
       </p>
       <div class="ds-type-stack">
@@ -175,10 +175,10 @@
           <div class="ds-component-row">
             <q-btn color="primary" unelevated no-caps class="slim-btn" label="Slim" />
             <q-btn color="primary" unelevated no-caps class="pill-btn" label="Pill CTA" />
-            <q-btn flat round icon="add" aria-label="Add">
+            <q-btn flat round icon="ph ph-plus" aria-label="Add">
               <q-tooltip>Add</q-tooltip>
             </q-btn>
-            <q-btn flat round icon="more_vert" aria-label="More">
+            <q-btn flat round icon="ph ph-dots-three-vertical" aria-label="More">
               <q-tooltip>More</q-tooltip>
             </q-btn>
             <q-chip dense color="positive" text-color="white" label="Posted" />
@@ -212,7 +212,7 @@
             hide-bottom-space
           >
             <template #prepend>
-              <q-icon name="search" />
+              <q-icon name="ph ph-magnifying-glass" />
             </template>
           </q-input>
           <q-select
@@ -1205,7 +1205,7 @@
     <q-dialog v-model="confirmDialogOpen" class="theme-app">
       <q-card class="ds-dialog-card">
         <q-card-section class="row items-center">
-          <q-icon name="warning" color="warning" size="28px" />
+          <q-icon name="ph ph-warning" color="warning" size="28px" />
           <span class="q-ml-sm text-subtitle1 text-weight-bold">Delete item?</span>
         </q-card-section>
         <q-card-section class="q-pt-none">

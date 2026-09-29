@@ -119,7 +119,7 @@
         <div class="col-12 row items-center justify-center q-gutter-x-xs no-wrap q-mt-xs">
           <q-btn
             :color="editingBoxId !== null ? 'green-7' : 'primary'"
-            :icon="editingBoxId !== null ? 'check' : 'add'"
+            :icon="editingBoxId !== null ? 'ph ph-check' : 'ph ph-plus'"
             dense
             flat
             round

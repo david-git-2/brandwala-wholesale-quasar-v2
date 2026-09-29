@@ -220,7 +220,7 @@ const handleRefresh = async () => {
   background: var(--bw-neutral-canvas, #f4f6f8) !important;
   min-height: calc(100vh - 55px);
   padding: 1rem 1.5rem 2.5rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+  font-family: var(--bw-font-ui);
 }
 
 body.body--dark .dashboard-page {

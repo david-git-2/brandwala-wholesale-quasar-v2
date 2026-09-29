@@ -830,7 +830,7 @@
           >
             <div class="row items-center q-gutter-md">
               <q-avatar
-                :icon="editingItemId ? 'o_edit' : 'add_shopping_cart'"
+                :icon="editingItemId ? 'ph ph-pencil-simple' : 'ph ph-cart-plus'"
                 color="primary"
                 text-color="white"
               />

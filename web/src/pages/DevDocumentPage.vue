@@ -7,7 +7,7 @@
           flat
           dense
           round
-          icon="menu"
+          icon="ph ph-list"
           aria-label="Toggle Navigation"
           class="q-mr-sm lt-md doc-nav-toggle"
           @click="leftDrawerOpen = !leftDrawerOpen"
@@ -42,7 +42,7 @@
           <!-- Return to App Link with Arrow -->
           <router-link to="/app/dashboard" class="doc-header-link row items-center">
             <span>App</span>
-            <q-icon name="open_in_new" size="13px" class="q-ml-xs" />
+            <q-icon name="ph ph-arrow-square-out" size="13px" class="q-ml-xs" />
           </router-link>
 
           <!-- TOC Toggle on smaller screens -->
@@ -51,7 +51,7 @@
             flat
             round
             dense
-            icon="format_list_bulleted"
+            icon="ph ph-list-bullets"
             :color="rightDrawerOpen ? 'primary' : ''"
             class="lt-lg doc-icon-btn"
             title="Toggle Table of Contents"
@@ -73,7 +73,7 @@
         <div class="q-pa-md doc-sidebar-header">
           <!-- Big comfortable search input -->
           <div class="doc-search-wrapper">
-            <q-icon name="search" size="17px" class="doc-search-icon" />
+            <q-icon name="ph ph-magnifying-glass" size="17px" class="doc-search-icon" />
             <input
               v-model="searchQuery"
               type="text"
@@ -137,14 +137,14 @@
                   >
                     <div class="row items-center q-gutter-x-xs ellipsis">
                       <q-icon
-                        :name="isFolderExpanded(subName) ? 'folder_open' : 'folder'"
+                        :name="isFolderExpanded(subName) ? 'ph ph-folder-open' : 'ph ph-folder'"
                         size="15px"
                         class="doc-folder-icon"
                       />
                       <span class="doc-folder-label ellipsis">{{ subName }}</span>
                     </div>
                     <q-icon
-                      :name="isFolderExpanded(subName) ? 'expand_more' : 'chevron_right'"
+                      :name="isFolderExpanded(subName) ? 'ph ph-caret-down' : 'ph ph-caret-right'"
                       size="14px"
                       class="doc-chevron-icon"
                     />
@@ -239,7 +239,7 @@
         <!-- Back to Top Link -->
         <div class="doc-back-top-wrapper">
           <button class="doc-back-top-btn" @click="scrollToTop">
-            <q-icon name="arrow_upward" size="13px" class="q-mr-xs" />
+            <q-icon name="ph ph-arrow-up" size="13px" class="q-mr-xs" />
             <span>Back to top</span>
           </button>
         </div>
@@ -469,25 +469,25 @@ const renderedHtml = computed(() => {
     /<blockquote>\s*<p>\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:\s*<br\s*\/?>)?([\s\S]*?)<\/p>\s*<\/blockquote>/gi,
     (_match, type, content) => {
       const upperType = type.toUpperCase();
-      let icon = 'info';
+      let icon = 'ph-info';
       let label = 'NOTE';
       if (upperType === 'TIP') {
-        icon = 'tips_and_updates';
+        icon = 'ph-lightbulb';
         label = 'TIP';
       } else if (upperType === 'IMPORTANT') {
-        icon = 'priority_high';
+        icon = 'ph-warning-circle';
         label = 'IMPORTANT';
       } else if (upperType === 'WARNING') {
-        icon = 'warning';
+        icon = 'ph-warning';
         label = 'WARNING';
       } else if (upperType === 'CAUTION') {
-        icon = 'dangerous';
+        icon = 'ph-skull';
         label = 'CAUTION';
       }
 
       return `<div class="doc-slate-alert doc-slate-alert--${upperType.toLowerCase()}">
         <div class="doc-slate-alert__header">
-          <span class="material-icons doc-slate-alert__icon">${icon}</span>
+          <span class="ph ${icon} doc-slate-alert__icon" aria-hidden="true"></span>
           <span class="doc-slate-alert__title">${label}</span>
         </div>
         <div class="doc-slate-alert__body">${content}</div>

@@ -23,23 +23,24 @@ export default defineConfig((ctx) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: ['splash', 'supabase', 'vue-query', 'appearance', 'currency', 'global-components', 'i18n', 'phosphor'],
+    boot: [
+      'quasar-icon-set',
+      'splash',
+      'supabase',
+      'vue-query',
+      'appearance',
+      'currency',
+      'global-components',
+      'i18n',
+      'phosphor',
+    ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['~@phosphor-icons/web/regular', 'app.scss'],
 
     // https://github.com/quasarframework/quasar/tree/dev/extras
     extras: [
-      // 'ionicons-v4',
-      // 'mdi-v7',
-      // 'fontawesome-v6',
-      // 'eva-icons',
-      // 'themify',
-      // 'line-awesome',
-      // 'roboto-font-latin-ext', // this or either 'roboto-font', NEVER both!
-
-      'material-icons', // optional, you are not bound to it
-      'material-icons-outlined',
+      // Icons: Phosphor webfont only (see boot/phosphor.ts + src/icon-set/phosphor.ts)
     ],
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#build
@@ -134,7 +135,8 @@ export default defineConfig((ctx) => {
         },
       },
 
-      iconSet: 'material-icons', // Quasar icon set
+      // Replaced at runtime by boot/quasar-icon-set.ts (Phosphor mapping)
+      iconSet: 'material-icons',
       // lang: 'en-US', // Quasar language pack
 
       // For special cases outside of where the auto-import strategy can have an impact

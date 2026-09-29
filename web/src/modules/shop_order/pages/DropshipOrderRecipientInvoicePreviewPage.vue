@@ -5,7 +5,7 @@
       <section class="row items-center justify-between q-col-gutter-md no-print">
         <div class="col">
           <div class="row items-center q-gutter-x-sm">
-            <q-btn flat dense icon="arrow_back" color="grey-7" @click="goBack" />
+            <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
             <div>
               <div class="text-overline text-primary">Dropship Orders</div>
               <h1 class="text-h5 text-weight-bold q-my-none">Recipient Invoice Preview</h1>

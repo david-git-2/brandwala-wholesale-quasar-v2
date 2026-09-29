@@ -8,7 +8,7 @@ export default defineBoot(({ app }) => {
         cls: iconName,
       };
     }
-    // Return void to let Quasar fall back to its default behavior for other icons
+    return undefined;
   };
 
   Notify.setDefaults({
