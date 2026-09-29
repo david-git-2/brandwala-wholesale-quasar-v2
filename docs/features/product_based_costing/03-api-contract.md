@@ -1,63 +1,63 @@
-# Product-Based Costing (PBC) — API Contract & RPC Signatures
+# Product-Based Costing (PBC) — API Contract (as-built)
 
-> **RPC Functions Target**: Costing File Generation, Formula Recalculation & Backlog Sync  
-> **Security Level**: `SECURITY DEFINER`
+> Cursor lists avoid `COUNT(*)` and offset paging. Full line loads for export/copy still use direct table reads or unpaginated helpers in the web repository.
 
 ---
 
-## 1. File Creation RPC: `create_costing_file`
+## `list_product_based_costing_files`
 
-Initializes a new costing file with customer group binding, FX parameters, and line items.
+Keyset list of costing files (newest first).
 
-### Signature
 ```sql
-create or replace function public.create_costing_file(
-  p_tenant_id uuid,
-  p_customer_group_id uuid,
-  p_title text,
-  p_base_currency text default 'GBP',
-  p_fx_rate numeric default 154.50,
-  p_markup_percentage numeric default 0.18,
-  p_items jsonb default '[]'::jsonb
-)
-returns jsonb
-language plpgsql security definer;
+list_product_based_costing_files(
+  p_search text default null,
+  p_status text default null,
+  p_tenant_id bigint default null,
+  p_limit integer default 20,
+  p_cursor_created_at timestamptz default null,
+  p_cursor_id bigint default null
+) returns jsonb
+```
+
+Response:
+
+```json
+{
+  "data": [ /* file rows + customer_group_name */ ],
+  "meta": {
+    "has_more": true,
+    "next_cursor": { "created_at": "...", "id": 123 },
+    "limit": 20
+  }
+}
 ```
 
 ---
 
-## 2. Backlog Listing RPC: `list_pbc_backlog_items`
+## `list_product_based_costing_items`
 
-Retrieves unconsumed backlog shortfall items for a specific customer billing profile.
+Keyset list of lines for one file (`sort_order`, then `id`). Requires `can_view_costing_item(p_file_id)`.
 
-### Signature
 ```sql
-create or replace function public.list_pbc_backlog_items(
-  p_billing_profile_id uuid
-)
-returns table (
-  id uuid,
-  product_id uuid,
-  product_name text,
-  backlog_quantity numeric,
-  source_file_id uuid,
-  created_at timestamptz
-)
-language plpgsql security definer;
+list_product_based_costing_items(
+  p_file_id bigint,
+  p_limit integer default 25,
+  p_cursor_sort_order integer default null,
+  p_cursor_id bigint default null
+) returns jsonb
 ```
+
+Response shape matches files list (`data` + `meta.has_more` + `meta.next_cursor` with `sort_order` and `id`).
 
 ---
 
-## 3. Backlog Import RPC: `add_pbc_backlog_to_file`
+## `get_product_based_costing_file_summary`
 
-Consumes backlog items into an active costing file draft and marks them as consumed.
+Unchanged: full-file aggregates (including `line_count`), not a page of items.
 
-### Signature
-```sql
-create or replace function public.add_pbc_backlog_to_file(
-  p_costing_file_id uuid,
-  p_backlog_item_ids uuid[]
-)
-returns jsonb
-language plpgsql security definer;
-```
+---
+
+## Backlog (unchanged)
+
+- `list_pbc_backlog_items`
+- `add_pbc_backlog_to_file`

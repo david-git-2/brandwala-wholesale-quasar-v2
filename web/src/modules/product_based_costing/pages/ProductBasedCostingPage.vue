@@ -93,33 +93,17 @@
       </FilterSidebar>
 
       <!-- Skeleton -->
-      <q-markup-table
-        v-if="isLoading"
-        flat
-        bordered
-        class="pbc-list-table treasury-table-wrap col"
-      >
-        <thead>
-          <tr>
-            <th><q-skeleton type="text" width="48px" /></th>
-            <th><q-skeleton type="text" width="140px" /></th>
-            <th><q-skeleton type="text" width="100px" /></th>
-            <th><q-skeleton type="text" width="80px" /></th>
-            <th class="text-right"><q-skeleton type="text" width="32px" class="q-ml-auto" /></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="n in 8" :key="n">
-            <td><q-skeleton type="text" width="40px" height="14px" /></td>
-            <td><q-skeleton type="text" width="80%" height="14px" /></td>
-            <td><q-skeleton type="text" width="60%" height="14px" /></td>
-            <td><q-skeleton type="QBadge" width="72px" height="18px" /></td>
-            <td class="text-right">
-              <q-skeleton type="QBtn" size="sm" width="24px" height="24px" class="q-ml-auto" />
-            </td>
-          </tr>
-        </tbody>
-      </q-markup-table>
+      <div v-if="isLoading" class="col overflow-auto q-pa-sm">
+        <div class="row q-col-gutter-md">
+          <div v-for="n in 4" :key="n" class="col-12">
+            <q-card flat bordered class="q-pa-md">
+              <q-skeleton type="text" width="70%" class="q-mb-sm" />
+              <q-skeleton type="text" width="50%" />
+              <q-skeleton type="QBadge" width="88px" class="q-mt-md" />
+            </q-card>
+          </div>
+        </div>
+      </div>
 
       <!-- Empty -->
       <div
@@ -151,103 +135,33 @@
         <div class="text-subtitle2 text-weight-medium">{{ $t('product_based_costing.no_matches') }}</div>
       </div>
 
-      <!-- Table -->
-      <div v-else class="treasury-table-wrap col">
-        <q-card flat bordered class="q-pa-none full-height column no-wrap">
-          <q-table
-            flat
-            :rows="items"
-            :columns="tableColumns"
-            row-key="id"
-            :loading="isFetching"
-            :pagination="tablePagination"
-            :rows-per-page-options="[10, 20, 50]"
-            class="pbc-list-table cursor-pointer col"
-            @request="onTableRequest"
-            @row-click="(_, row) => onSelect(row)"
-          >
-            <template #body="slotProps">
-              <q-tr
-                :props="slotProps"
-                class="pbc-list-row cursor-pointer"
-                :style="statusRowStyle(slotProps.row.status)"
-                @click="onSelect(slotProps.row)"
-              >
-                <q-td key="id" :props="slotProps">
-                  <span class="text-weight-bold text-primary font-mono">PBC-{{ slotProps.row.id }}</span>
-                </q-td>
-
-                <q-td key="name" :props="slotProps">
-                  <div class="text-weight-bold line-clamp-1">
-                    {{ slotProps.row.name ?? $t('product_based_costing.untitled') }}
-                  </div>
-                  <div v-if="slotProps.row.created_at" class="text-caption text-grey-6 text-xxs row items-center">
-                    <q-icon name="ph ph-calendar-blank" size="10px" class="q-mr-xs" />
-                    {{ formatAppDate(slotProps.row.created_at) }}
-                  </div>
-                </q-td>
-
-                <q-td key="order_for" :props="slotProps">
-                  <div class="text-weight-medium line-clamp-1">
-                    {{ slotProps.row.order_for ?? '-' }}
-                  </div>
-                </q-td>
-
-                <q-td key="status" :props="slotProps">
-                  <div
-                    class="pbc-status-badge row inline items-center no-wrap"
-                    :style="statusBadgeStyle(slotProps.row.status)"
-                  >
-                    <q-icon :name="getStatusIcon(slotProps.row.status)" size="13px" class="q-mr-xs" />
-                    <span class="text-weight-bolder text-uppercase text-xxs" style="letter-spacing: 0.04em">
-                      {{ statusLabel(slotProps.row.status) }}
-                    </span>
-                  </div>
-                </q-td>
-
-                <q-td key="actions" :props="slotProps" class="text-right" @click.stop>
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    icon="ph ph-dots-three-vertical"
-                    :aria-label="$t('product_based_costing.file_actions')"
-                  >
-                    <q-menu auto-close>
-                      <q-list dense style="min-width: 140px">
-                        <q-item clickable v-ripple @click="onSelect(slotProps.row)">
-                          <q-item-section avatar style="min-width: 28px">
-                            <q-icon name="ph ph-arrow-square-out" size="18px" />
-                          </q-item-section>
-                          <q-item-section>{{ $t('product_based_costing.open_file') }}</q-item-section>
-                        </q-item>
-                        <q-item clickable v-ripple @click="onCopy(slotProps.row)">
-                          <q-item-section avatar style="min-width: 28px">
-                            <q-icon name="ph ph-copy" size="18px" />
-                          </q-item-section>
-                          <q-item-section>{{ $t('product_based_costing.copy') }}</q-item-section>
-                        </q-item>
-                        <q-item clickable v-ripple @click="openEditDialog(slotProps.row)">
-                          <q-item-section avatar style="min-width: 28px">
-                            <q-icon name="ph ph-pencil-simple" size="18px" />
-                          </q-item-section>
-                          <q-item-section>{{ $t('product_based_costing.edit') }}</q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item clickable v-ripple @click="onDelete(slotProps.row)">
-                          <q-item-section avatar style="min-width: 28px">
-                            <q-icon name="ph ph-trash" size="18px" color="negative" />
-                          </q-item-section>
-                          <q-item-section class="text-negative">{{ $t('product_based_costing.delete') }}</q-item-section>
-                        </q-item>
-                      </q-list>
-                    </q-menu>
-                  </q-btn>
-                </q-td>
-              </q-tr>
-            </template>
-          </q-table>
-        </q-card>
+      <!-- Card list -->
+      <div v-else class="col overflow-auto q-pa-sm">
+        <CostingFileCard
+          :items="items"
+          @select="onSelect"
+          @copy="onCopy"
+          @edit="openEditDialog"
+          @delete="onDelete"
+        />
+        <q-infinite-scroll
+          v-if="items.length"
+          ref="infiniteScrollRef"
+          :offset="200"
+          @load="onLoadMoreFiles"
+        >
+          <template #loading>
+            <div class="row justify-center q-py-md">
+              <q-spinner-dots color="primary" size="32px" />
+            </div>
+          </template>
+        </q-infinite-scroll>
+        <div
+          v-if="isFetching && !isFetchingNextPage && items.length"
+          class="row justify-center q-py-sm"
+        >
+          <q-spinner-dots color="grey-6" size="24px" />
+        </div>
       </div>
     </div>
 
@@ -262,11 +176,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useQuasar, type QTableColumn } from 'quasar';
+import { useQuasar, type QInfiniteScroll } from 'quasar';
 import { useRouter, useRoute } from 'vue-router';
 import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFileDialog.vue';
+import CostingFileCard from '../components/CostingFileCard.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
-import { formatAppDate } from 'src/utils/dateTime';
 import type { ProductBasedCostingFile, ProductBasedCostingFileListInput } from '../types';
 import { useProductBasedCostingFilesQuery } from '../composables/useProductBasedCostingFilesQuery';
 import {
@@ -275,15 +189,13 @@ import {
   useDeleteProductBasedCostingFileMutation,
   useCopyProductBasedCostingFileMutation,
 } from '../composables/useProductBasedCostingFileMutations';
-import { normalizePbcFileStatus } from '../composables/useProductBasedCostingFileDetailsState';
-
 const $q = useQuasar();
-const { t, te } = useI18n();
+const { t } = useI18n();
 const router = useRouter();
 const route = useRoute();
 
-const page = ref(1);
-const pageSize = ref(20);
+const listLimit = 20;
+const infiniteScrollRef = ref<QInfiniteScroll | null>(null);
 const searchText = ref('');
 const statusFilter = ref<string>('__all__');
 const draftStatusFilter = ref<string>('__all__');
@@ -292,8 +204,7 @@ const quickFilter = ref('__all__');
 
 const queryParams = computed<ProductBasedCostingFileListInput>(() => {
   const payload: ProductBasedCostingFileListInput = {
-    page: page.value,
-    page_size: pageSize.value,
+    limit: listLimit,
   };
 
   const searchValue = searchText.value.trim();
@@ -311,40 +222,28 @@ const queryParams = computed<ProductBasedCostingFileListInput>(() => {
 });
 
 const {
-  data: filesPageData,
+  files: items,
   isLoading,
   isFetching,
   isError,
   error,
+  fetchNextPage,
+  isFetchingNextPage,
+  hasMoreFiles,
 } = useProductBasedCostingFilesQuery(queryParams);
 
-const items = computed(() => filesPageData.value?.data ?? []);
-const total = computed(() => filesPageData.value?.meta.total ?? 0);
-
-const tablePagination = computed(() => ({
-  page: page.value,
-  rowsPerPage: pageSize.value,
-  rowsNumber: total.value,
-}));
+watch(queryParams, () => {
+  if (infiniteScrollRef.value) {
+    infiniteScrollRef.value.reset();
+    infiniteScrollRef.value.resume();
+  }
+});
 
 const { mutateAsync: createCostingFile, isPending: isCreating } =
   useCreateProductBasedCostingFileMutation();
 const { mutateAsync: updateCostingFile } = useUpdateProductBasedCostingFileMutation();
 const { mutateAsync: deleteCostingFile } = useDeleteProductBasedCostingFileMutation();
 const { mutateAsync: copyCostingFile } = useCopyProductBasedCostingFileMutation();
-
-const tableColumns = computed<QTableColumn[]>(() => [
-  { name: 'id', label: t('product_based_costing.col_id'), field: 'id', align: 'left', style: 'width: 88px' },
-  { name: 'name', label: t('product_based_costing.col_name'), field: 'name', align: 'left' },
-  {
-    name: 'order_for',
-    label: t('product_based_costing.col_created_for'),
-    field: 'order_for',
-    align: 'left',
-  },
-  { name: 'status', label: t('product_based_costing.col_status'), field: 'status', align: 'left', style: 'width: 150px' },
-  { name: 'actions', label: '', field: 'actions', align: 'right', style: 'width: 48px' },
-]);
 
 const statusFilterOptions = computed(() => [
   { label: t('product_based_costing.filter_all'), value: '__all__' },
@@ -370,12 +269,6 @@ const filterTabs = computed(() => [
 watch(statusFilter, (value) => {
   quickFilter.value = value;
 });
-
-const statusLabel = (status: string | null | undefined) => {
-  const value = normalizePbcFileStatus((status ?? 'pending').trim().toLowerCase() || 'pending');
-  const key = `product_based_costing.status_${value}`;
-  return te(key) ? t(key) : value.replaceAll('_', ' ');
-};
 
 const activeFilterCount = computed(() => (statusFilter.value !== '__all__' ? 1 : 0));
 
@@ -469,135 +362,33 @@ const onCopy = (item: ProductBasedCostingFile) => {
   void copyCostingFile(item);
 };
 
+const onLoadMoreFiles = async (_index: number, done: (stop?: boolean) => void) => {
+  if (!hasMoreFiles.value) {
+    done(true);
+    return;
+  }
+  try {
+    await fetchNextPage();
+    done(!hasMoreFiles.value);
+  } catch {
+    done(true);
+  }
+};
+
 const onApplyFilters = () => {
-  page.value = 1;
+  if (infiniteScrollRef.value) {
+    infiniteScrollRef.value.reset();
+    infiniteScrollRef.value.resume();
+  }
 };
-
-const normalizeStatus = (status: string | null | undefined) =>
-  normalizePbcFileStatus((status ?? '').trim().toLowerCase() || 'pending');
-
-type StatusVisual = {
-  rowBackground: string;
-  rowAccent: string;
-  chipBackground: string;
-  chipText: string;
-  chipBorder: string;
-  chipShadow: string;
-  icon: string;
-};
-
-const getStatusVisual = (status: string | null | undefined): StatusVisual => {
-  const value = normalizeStatus(status);
-  const map: Record<string, StatusVisual> = {
-    pending: {
-      rowBackground: '#fffbf2',
-      rowAccent: '#d8a54a',
-      chipBackground: '#efd399',
-      chipText: '#6a4a14',
-      chipBorder: '#d8b672',
-      chipShadow: '0 1px 2px rgba(106, 74, 20, 0.18)',
-      icon: 'ph ph-hourglass',
-    },
-    offered: {
-      rowBackground: '#f3f7ff',
-      rowAccent: '#6f93d8',
-      chipBackground: '#c8d8f8',
-      chipText: '#27487a',
-      chipBorder: '#a9c4f3',
-      chipShadow: '0 1px 2px rgba(39, 72, 122, 0.18)',
-      icon: 'ph ph-paper-plane-tilt',
-    },
-    confirmed: {
-      rowBackground: '#e6f7ff',
-      rowAccent: '#1890ff',
-      chipBackground: '#bae7ff',
-      chipText: '#0050b3',
-      chipBorder: '#91d5ff',
-      chipShadow: '0 1px 2px rgba(0, 80, 179, 0.18)',
-      icon: 'ph ph-check-circle',
-    },
-    procuring: {
-      rowBackground: '#f0f5ff',
-      rowAccent: '#2f54eb',
-      chipBackground: '#d6e4ff',
-      chipText: '#10239e',
-      chipBorder: '#adc6ff',
-      chipShadow: '0 1px 2px rgba(16, 35, 158, 0.18)',
-      icon: 'ph ph-shopping-cart',
-    },
-    ready_for_shipment: {
-      rowBackground: '#f6ffed',
-      rowAccent: '#52c41a',
-      chipBackground: '#d9f7be',
-      chipText: '#237804',
-      chipBorder: '#b7eb8f',
-      chipShadow: '0 1px 2px rgba(35, 120, 4, 0.18)',
-      icon: 'ph ph-package',
-    },
-    delivered: {
-      rowBackground: '#e6fffb',
-      rowAccent: '#13c2c2',
-      chipBackground: '#b5f5ec',
-      chipText: '#00474f',
-      chipBorder: '#87e8de',
-      chipShadow: '0 1px 2px rgba(0, 71, 79, 0.18)',
-      icon: 'ph ph-truck',
-    },
-    cancelled: {
-      rowBackground: '#fff4f6',
-      rowAccent: '#c97586',
-      chipBackground: '#f2c7d0',
-      chipText: '#6f2b3a',
-      chipBorder: '#e3a6b3',
-      chipShadow: '0 1px 2px rgba(111, 43, 58, 0.18)',
-      icon: 'ph ph-x-circle',
-    },
-  };
-  return map[value] ?? {
-    rowBackground: '#f8f9fb',
-    rowAccent: '#8ea0b8',
-    chipBackground: '#dbe5f3',
-    chipText: '#3b4b66',
-    chipBorder: '#b9c8dd',
-    chipShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
-    icon: 'ph ph-circle',
-  };
-};
-
-const statusRowStyle = (status: string | null | undefined) => {
-  const visual = getStatusVisual(status);
-  return {
-    backgroundColor: visual.rowBackground,
-    boxShadow: `inset 3px 0 0 ${visual.rowAccent}`,
-  };
-};
-
-const statusBadgeStyle = (status: string | null | undefined) => {
-  const visual = getStatusVisual(status);
-  return {
-    backgroundColor: visual.chipBackground,
-    color: visual.chipText,
-    border: `1px solid ${visual.chipBorder}`,
-    boxShadow: visual.chipShadow,
-  };
-};
-
-const getStatusIcon = (status: string | null | undefined) => getStatusVisual(status).icon;
 
 const onResetFilters = () => {
   searchText.value = '';
   statusFilter.value = '__all__';
   draftStatusFilter.value = '__all__';
   quickFilter.value = '__all__';
-  page.value = 1;
   filterDrawerOpen.value = false;
-};
-
-const onTableRequest = (payload: {
-  pagination: { page: number; rowsPerPage: number; rowsNumber?: number };
-}) => {
-  page.value = payload.pagination.page;
-  pageSize.value = payload.pagination.rowsPerPage;
+  onApplyFilters();
 };
 
 const openFilterDrawer = () => {
@@ -608,14 +399,14 @@ const openFilterDrawer = () => {
 const onDrawerStatusChange = () => {
   statusFilter.value = draftStatusFilter.value;
   quickFilter.value = draftStatusFilter.value;
-  page.value = 1;
+  onApplyFilters();
 };
 
 const setQuickFilter = (value: string) => {
   quickFilter.value = value;
   statusFilter.value = value;
   draftStatusFilter.value = value;
-  page.value = 1;
+  onApplyFilters();
 };
 </script>
 

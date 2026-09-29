@@ -1017,7 +1017,9 @@ GRANT ALL ON FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p
 
 
 
-GRANT ALL ON FUNCTION "public"."list_product_based_costing_files"("p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text", "p_tenant_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_product_based_costing_files"("p_search" "text", "p_status" "text", "p_tenant_id" bigint, "p_limit" integer, "p_cursor_created_at" timestamp with time zone, "p_cursor_id" bigint) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."list_product_based_costing_items"("p_file_id" bigint, "p_limit" integer, "p_cursor_sort_order" integer, "p_cursor_id" bigint) TO "authenticated";
 
 
 

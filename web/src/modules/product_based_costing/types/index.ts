@@ -28,35 +28,43 @@ export type ProductBasedCostingServiceResult<T> = {
   error?: string;
 };
 
+export type ProductBasedCostingFilesListCursor = {
+  created_at: string;
+  id: number;
+} | null;
+
 export type ProductBasedCostingFileListInput = {
-  page?: number;
-  page_size?: number;
+  limit?: number;
   search?: string;
   status?: string | null;
+  cursor?: ProductBasedCostingFilesListCursor;
 };
 
 export type ProductBasedCostingFileListPage = {
   data: ProductBasedCostingFile[];
   meta: {
-    total: number;
-    page: number;
-    page_size: number;
-    total_pages: number;
+    has_more: boolean;
+    next_cursor: ProductBasedCostingFilesListCursor;
+    limit: number;
   };
 };
 
+export type ProductBasedCostingItemsListCursor = {
+  sort_order: number;
+  id: number;
+} | null;
+
 export type ProductBasedCostingItemListInput = {
-  page?: number;
-  page_size?: number;
+  limit?: number;
+  cursor?: ProductBasedCostingItemsListCursor;
 };
 
 export type ProductBasedCostingItemListPage = {
   data: ProductBasedCostingItem[];
   meta: {
-    total: number;
-    page: number;
-    page_size: number;
-    total_pages: number;
+    has_more: boolean;
+    next_cursor: ProductBasedCostingItemsListCursor;
+    limit: number;
   };
 };
 

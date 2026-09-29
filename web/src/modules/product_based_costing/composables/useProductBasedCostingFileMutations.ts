@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/vue-query';
+import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/vue-query';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import { parseSupabaseError, showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
@@ -48,15 +48,18 @@ export function useUpdateProductBasedCostingFileMutation() {
       );
 
       // 2. Update the item in any cached files list queries
-      queryClient.setQueriesData<ProductBasedCostingFileListPage>(
+      queryClient.setQueriesData<InfiniteData<ProductBasedCostingFileListPage>>(
         { queryKey: ['productBasedCosting', 'files', 'list'] },
         (oldData) => {
-          if (!oldData || !oldData.data) return oldData;
+          if (!oldData?.pages?.length) return oldData;
           return {
             ...oldData,
-            data: oldData.data.map((item) =>
-              item.id === updatedFile.id ? { ...item, ...updatedFile } : item,
-            ),
+            pages: oldData.pages.map((page) => ({
+              ...page,
+              data: page.data.map((item) =>
+                item.id === updatedFile.id ? { ...item, ...updatedFile } : item,
+              ),
+            })),
           };
         },
       );
@@ -77,17 +80,16 @@ export function useDeleteProductBasedCostingFileMutation() {
       queryClient.removeQueries({
         queryKey: productBasedCostingQueryKeys.fileDetail(id),
       });
-      queryClient.setQueriesData<ProductBasedCostingFileListPage>(
+      queryClient.setQueriesData<InfiniteData<ProductBasedCostingFileListPage>>(
         { queryKey: ['productBasedCosting', 'files', 'list'] },
         (oldData) => {
-          if (!oldData || !oldData.data) return oldData;
+          if (!oldData?.pages?.length) return oldData;
           return {
             ...oldData,
-            data: oldData.data.filter((item) => item.id !== id),
-            meta: {
-              ...oldData.meta,
-              total: Math.max(0, oldData.meta.total - 1),
-            },
+            pages: oldData.pages.map((page) => ({
+              ...page,
+              data: page.data.filter((item) => item.id !== id),
+            })),
           };
         },
       );

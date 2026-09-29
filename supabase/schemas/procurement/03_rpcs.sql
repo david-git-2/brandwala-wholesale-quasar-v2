@@ -5704,15 +5704,28 @@ $$;
 ALTER FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_product_based_costing_files"("p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_tenant_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
-    LANGUAGE "sql" STABLE
+CREATE OR REPLACE FUNCTION "public"."list_product_based_costing_files"("p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 20, "p_cursor_created_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_cursor_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE
     SET "search_path" TO 'public'
-    AS $$
-  with filtered as (
+    AS $_$
+declare
+  v_limit integer;
+  v_rows jsonb;
+  v_n integer;
+  v_has_more boolean := false;
+  v_next_cursor jsonb := null;
+  v_last_created_at timestamptz;
+  v_last_id bigint;
+begin
+  v_limit := greatest(1, least(coalesce(p_limit, 20), 100));
+
+  select coalesce(jsonb_agg(q.row_json order by q.created_at desc, q.id desc), '[]'::jsonb)
+  into v_rows
+  from (
     select
-      f.*,
-      cg.name as customer_group_name,
-      count(*) over() as total_count
+      f.created_at,
+      f.id,
+      to_jsonb(f) || jsonb_build_object('customer_group_name', cg.name) as row_json
     from public.product_based_costing_files f
     left join public.customer_groups cg on cg.id = f.customer_group_id
     where
@@ -5729,34 +5742,121 @@ CREATE OR REPLACE FUNCTION "public"."list_product_based_costing_files"("p_page" 
         or (trim(p_status) = 'procuring' and f.status = 'placing_order')
         or (trim(p_status) = 'delivered' and f.status = 'invoicing')
       )
-  ),
-  paged as (
-    select *
-    from filtered
-    order by created_at desc, id desc
-    offset (greatest(coalesce(p_page, 1), 1) - 1) * greatest(coalesce(p_page_size, 20), 1)
-    limit greatest(coalesce(p_page_size, 20), 1)
-  )
-  select jsonb_build_object(
-    'data',
-    coalesce(jsonb_agg(to_jsonb(paged) - 'total_count'), '[]'::jsonb),
-    'meta',
-    jsonb_build_object(
-      'total', coalesce(max(paged.total_count), 0),
-      'page', greatest(coalesce(p_page, 1), 1),
-      'page_size', greatest(coalesce(p_page_size, 20), 1),
-      'total_pages',
-      case
-        when coalesce(max(paged.total_count), 0) = 0 then 1
-        else ceil(coalesce(max(paged.total_count), 0)::numeric / greatest(coalesce(p_page_size, 20), 1))::int
-      end
+      and (
+        p_cursor_created_at is null
+        or p_cursor_id is null
+        or (f.created_at, f.id) < (p_cursor_created_at, p_cursor_id)
+      )
+    order by f.created_at desc, f.id desc
+    limit v_limit + 1
+  ) q;
+
+  v_n := jsonb_array_length(v_rows);
+  if v_n > v_limit then
+    v_has_more := true;
+    select elem->>'created_at', (elem->>'id')::bigint
+    into v_last_created_at, v_last_id
+    from jsonb_array_elements(v_rows) with ordinality as t(elem, ord)
+    where ord = v_limit;
+
+    v_next_cursor := jsonb_build_object(
+      'created_at', v_last_created_at,
+      'id', v_last_id
+    );
+
+    select coalesce(jsonb_agg(elem order by ord), '[]'::jsonb)
+    into v_rows
+    from (
+      select elem, ord
+      from jsonb_array_elements(v_rows) with ordinality as t(elem, ord)
+      where ord <= v_limit
+    ) trimmed;
+  end if;
+
+  return jsonb_build_object(
+    'data', v_rows,
+    'meta', jsonb_build_object(
+      'has_more', v_has_more,
+      'next_cursor', v_next_cursor,
+      'limit', v_limit
     )
-  )
-  from paged;
-$$;
+  );
+end;
+$_$;
 
 
-ALTER FUNCTION "public"."list_product_based_costing_files"("p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text", "p_tenant_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_product_based_costing_files"("p_search" "text", "p_status" "text", "p_tenant_id" bigint, "p_limit" integer, "p_cursor_created_at" timestamp with time zone, "p_cursor_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_product_based_costing_items"("p_file_id" bigint, "p_limit" integer DEFAULT 25, "p_cursor_sort_order" integer DEFAULT NULL::integer, "p_cursor_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $_$
+declare
+  v_limit integer;
+  v_rows jsonb;
+  v_n integer;
+  v_has_more boolean := false;
+  v_next_cursor jsonb := null;
+  v_last_sort_order integer;
+  v_last_id bigint;
+begin
+  if not public.can_view_costing_item(p_file_id) then
+    raise exception 'not authorized';
+  end if;
+
+  v_limit := greatest(1, least(coalesce(p_limit, 25), 100));
+
+  select coalesce(jsonb_agg(to_jsonb(i) order by i.sort_order asc, i.id asc), '[]'::jsonb)
+  into v_rows
+  from (
+    select i.*
+    from public.product_based_costing_items i
+    where i.product_based_costing_file_id = p_file_id
+      and (
+        p_cursor_sort_order is null
+        or p_cursor_id is null
+        or (i.sort_order, i.id) > (p_cursor_sort_order, p_cursor_id)
+      )
+    order by i.sort_order asc, i.id asc
+    limit v_limit + 1
+  ) i;
+
+  v_n := jsonb_array_length(v_rows);
+  if v_n > v_limit then
+    v_has_more := true;
+    select (elem->>'sort_order')::integer, (elem->>'id')::bigint
+    into v_last_sort_order, v_last_id
+    from jsonb_array_elements(v_rows) with ordinality as t(elem, ord)
+    where ord = v_limit;
+
+    v_next_cursor := jsonb_build_object(
+      'sort_order', v_last_sort_order,
+      'id', v_last_id
+    );
+
+    select coalesce(jsonb_agg(elem order by ord), '[]'::jsonb)
+    into v_rows
+    from (
+      select elem, ord
+      from jsonb_array_elements(v_rows) with ordinality as t(elem, ord)
+      where ord <= v_limit
+    ) trimmed;
+  end if;
+
+  return jsonb_build_object(
+    'data', v_rows,
+    'meta', jsonb_build_object(
+      'has_more', v_has_more,
+      'next_cursor', v_next_cursor,
+      'limit', v_limit
+    )
+  );
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."list_product_based_costing_items"("p_file_id" bigint, "p_limit" integer, "p_cursor_sort_order" integer, "p_cursor_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_shipment_items_for_shipments"("p_shipment_ids" bigint[]) RETURNS TABLE("shipment_id" bigint, "purchase_price" numeric, "product_weight" numeric, "package_weight" numeric, "ordered_quantity" integer)

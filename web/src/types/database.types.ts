@@ -13321,11 +13321,21 @@ export type Database = {
       }
       list_product_based_costing_files: {
         Args: {
-          p_page?: number
-          p_page_size?: number
+          p_cursor_created_at?: string
+          p_cursor_id?: number
+          p_limit?: number
           p_search?: string
           p_status?: string
           p_tenant_id?: number
+        }
+        Returns: Json
+      }
+      list_product_based_costing_items: {
+        Args: {
+          p_cursor_id?: number
+          p_cursor_sort_order?: number
+          p_file_id: number
+          p_limit?: number
         }
         Returns: Json
       }

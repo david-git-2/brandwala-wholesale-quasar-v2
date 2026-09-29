@@ -5,7 +5,7 @@ import {
   productBasedCostingQueryKeys,
 } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
-import type { ProductBasedCostingItem } from '../types';
+import type { ProductBasedCostingItem, ProductBasedCostingItemsListCursor } from '../types';
 
 export function useProductBasedCostingItemsInfiniteQuery(
   fileId: Ref<number>,
@@ -13,16 +13,16 @@ export function useProductBasedCostingItemsInfiniteQuery(
 ) {
   const query = useInfiniteQuery({
     queryKey: computed(() => productBasedCostingQueryKeys.itemsInfinite(fileId.value, pageSize)),
-    queryFn: async ({ pageParam = 1 }) =>
+    queryFn: async ({ pageParam }) =>
       productBasedCostingRepository.listProductBasedCostingItemsPaginated(fileId.value, {
-        page: pageParam as number,
-        page_size: pageSize,
+        limit: pageSize,
+        cursor: (pageParam as ProductBasedCostingItemsListCursor | null) ?? null,
       }),
-    getNextPageParam: (lastPage) => {
-      const { page, total_pages } = lastPage.meta;
-      return page < total_pages ? page + 1 : undefined;
-    },
-    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.has_more && lastPage.meta.next_cursor
+        ? lastPage.meta.next_cursor
+        : undefined,
+    initialPageParam: null as ProductBasedCostingItemsListCursor,
     staleTime: 2 * 60 * 1000,
     placeholderData: keepPreviousData,
     enabled: computed(() => fileId.value > 0),
@@ -43,14 +43,11 @@ export function useProductBasedCostingItemsInfiniteQuery(
     return items;
   });
 
-  const totalItemsCount = computed(() => query.data.value?.pages?.[0]?.meta.total ?? 0);
-
   const hasMoreItems = computed(() => query.hasNextPage.value ?? false);
 
   return {
     ...query,
     costingItems,
-    totalItemsCount,
     hasMoreItems,
   };
 }

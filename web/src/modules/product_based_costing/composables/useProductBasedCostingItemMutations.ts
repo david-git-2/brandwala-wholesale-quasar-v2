@@ -82,17 +82,7 @@ function removePbcItemFromCache(queryClient: QueryClient, fileId: number, itemId
 
       return {
         ...oldData,
-        pages: pages.map((page, index) =>
-          index === 0
-            ? {
-                ...page,
-                meta: {
-                  ...page.meta,
-                  total: Math.max(0, page.meta.total - 1),
-                },
-              }
-            : page,
-        ),
+        pages,
       };
     },
   );
@@ -200,10 +190,6 @@ function addPbcItemToCache(queryClient: QueryClient, fileId: number, item: Produ
           {
             ...firstPage,
             data: [...firstPage.data, item],
-            meta: {
-              ...firstPage.meta,
-              total: firstPage.meta.total + 1,
-            },
           },
           ...restPages,
         ],

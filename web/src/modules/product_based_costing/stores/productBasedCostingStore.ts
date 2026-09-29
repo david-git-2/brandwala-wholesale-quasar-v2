@@ -66,10 +66,10 @@ export const useProductBasedCostingStore = defineStore('productBasedCosting', {
         }
 
         this.items = result.data?.data ?? [];
-        this.total = result.data?.meta.total ?? 0;
-        this.page = result.data?.meta.page ?? payload.page ?? 1;
-        this.page_size = result.data?.meta.page_size ?? payload.page_size ?? 20;
-        this.total_pages = result.data?.meta.total_pages ?? 1;
+        this.total = result.data?.data?.length ?? 0;
+        this.page = 1;
+        this.page_size = result.data?.meta.limit ?? payload.limit ?? 20;
+        this.total_pages = result.data?.meta.has_more ? 2 : 1;
         return result;
       } finally {
         this.loading = false;

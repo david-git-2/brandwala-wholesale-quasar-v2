@@ -21952,61 +21952,6 @@ $$;
 ALTER FUNCTION "public"."list_procurement_demand_groups"("p_tenant_id" bigint, "p_procurement_status" "text", "p_search" "text", "p_child_tenant_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_product_based_costing_files"("p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_tenant_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
-    LANGUAGE "sql" STABLE
-    SET "search_path" TO 'public'
-    AS $$
-  with filtered as (
-    select
-      f.*,
-      cg.name as customer_group_name,
-      count(*) over() as total_count
-    from public.product_based_costing_files f
-    left join public.customer_groups cg on cg.id = f.customer_group_id
-    where
-      (p_tenant_id is null or f.tenant_id = p_tenant_id)
-      and (
-        coalesce(trim(p_search), '') = ''
-        or coalesce(f.name, '') ilike ('%' || trim(p_search) || '%')
-        or coalesce(f.order_for, '') ilike ('%' || trim(p_search) || '%')
-        or coalesce(f.note, '') ilike ('%' || trim(p_search) || '%')
-      )
-      and (
-        coalesce(trim(p_status), '') = ''
-        or f.status = trim(p_status)
-        or (trim(p_status) = 'procuring' and f.status = 'placing_order')
-        or (trim(p_status) = 'delivered' and f.status = 'invoicing')
-      )
-  ),
-  paged as (
-    select *
-    from filtered
-    order by created_at desc, id desc
-    offset (greatest(coalesce(p_page, 1), 1) - 1) * greatest(coalesce(p_page_size, 20), 1)
-    limit greatest(coalesce(p_page_size, 20), 1)
-  )
-  select jsonb_build_object(
-    'data',
-    coalesce(jsonb_agg(to_jsonb(paged) - 'total_count'), '[]'::jsonb),
-    'meta',
-    jsonb_build_object(
-      'total', coalesce(max(paged.total_count), 0),
-      'page', greatest(coalesce(p_page, 1), 1),
-      'page_size', greatest(coalesce(p_page_size, 20), 1),
-      'total_pages',
-      case
-        when coalesce(max(paged.total_count), 0) = 0 then 1
-        else ceil(coalesce(max(paged.total_count), 0)::numeric / greatest(coalesce(p_page_size, 20), 1))::int
-      end
-    )
-  )
-  from paged;
-$$;
-
-
-ALTER FUNCTION "public"."list_product_based_costing_files"("p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text", "p_tenant_id" bigint) OWNER TO "postgres";
-
-
 CREATE TABLE IF NOT EXISTS "public"."product_brands" (
     "id" bigint NOT NULL,
     "name" "text" NOT NULL,
@@ -47426,7 +47371,6 @@ GRANT ALL ON FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p
 GRANT ALL ON FUNCTION "public"."list_procurement_demand_groups"("p_tenant_id" bigint, "p_procurement_status" "text", "p_search" "text", "p_child_tenant_id" bigint, "p_limit" integer, "p_offset" integer) TO "authenticated";
 
 
-GRANT ALL ON FUNCTION "public"."list_product_based_costing_files"("p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text", "p_tenant_id" bigint) TO "authenticated";
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."product_brands" TO "anon";

@@ -1344,7 +1344,6 @@ const fileId = computed(() => {
 const { data: file, isLoading: isLoadingFile } = useProductBasedCostingFileDetailQuery(fileId);
 const {
   costingItems,
-  totalItemsCount,
   hasMoreItems,
   isLoading: isLoadingItems,
   isFetchingNextPage: isFetchingMoreItems,
@@ -1497,6 +1496,10 @@ const summaryRates = computed(() => ({
 }));
 
 const { summaryMetrics } = usePbcFileSummaryQuery(fileId, summaryRates);
+
+const totalItemsCount = computed(
+  () => summaryMetrics.value.lineCount || costingItems.value.length,
+);
 
 const summaryFileMeta = computed(() => {
   const customer = customerAccounts.value.find(

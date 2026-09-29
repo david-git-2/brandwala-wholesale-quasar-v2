@@ -8,6 +8,7 @@ import type {
   ProductBasedCostingFileUpdateInput,
   ProductBasedCostingItem,
   ProductBasedCostingItemCreateInput,
+  ProductBasedCostingItemListInput,
   ProductBasedCostingItemListPage,
   ProductBasedCostingItemUpdateInput,
 } from '../types';
@@ -229,17 +230,30 @@ const buildProductBasedCostingItemUpdatePayload = (
   return updatePayload;
 };
 
+const parseFilesListCursor = (
+  raw: unknown,
+): ProductBasedCostingFileListPage['meta']['next_cursor'] => {
+  if (!raw || typeof raw !== 'object') return null;
+  const cursor = raw as { created_at?: unknown; id?: unknown };
+  const id = Number(cursor.id);
+  if (!cursor.created_at || typeof cursor.created_at !== 'string' || !Number.isFinite(id)) {
+    return null;
+  }
+  return { created_at: cursor.created_at, id };
+};
+
 const listProductBasedCostingFiles = async (
   payload: ProductBasedCostingFileListInput = {},
 ): Promise<ProductBasedCostingFileListPage> => {
-  const page = Math.max(1, Number(payload.page ?? 1) || 1);
-  const pageSize = Math.max(1, Number(payload.page_size ?? 20) || 20);
+  const limit = Math.max(1, Number(payload.limit ?? 20) || 20);
+  const cursor = payload.cursor ?? null;
   const { data, error } = await supabase.rpc('list_product_based_costing_files', {
-    p_page: page,
-    p_page_size: pageSize,
     p_search: payload.search?.trim() || null,
     p_status: payload.status?.trim() || null,
     p_tenant_id: null,
+    p_limit: limit,
+    p_cursor_created_at: cursor?.created_at ?? undefined,
+    p_cursor_id: cursor?.id ?? undefined,
   });
 
   if (error) {
@@ -248,23 +262,15 @@ const listProductBasedCostingFiles = async (
 
   const envelope =
     (data as { data?: ProductBasedCostingFile[]; meta?: Record<string, unknown> } | null) ?? {};
-  const rows = envelope.data ?? [];
+  const rows = (envelope.data ?? []) as ProductBasedCostingFile[];
   const meta = envelope.meta ?? {};
-  const total = Number(meta.total ?? rows.length ?? 0);
-  const metaPage = Number(meta.page ?? page);
-  const metaPageSize = Number(meta.page_size ?? pageSize);
-  const metaTotalPages = Number(meta.total_pages ?? Math.max(1, Math.ceil(total / pageSize)));
 
   return {
     data: rows,
     meta: {
-      total,
-      page: Number.isFinite(metaPage) && metaPage > 0 ? metaPage : page,
-      page_size: Number.isFinite(metaPageSize) && metaPageSize > 0 ? metaPageSize : pageSize,
-      total_pages:
-        Number.isFinite(metaTotalPages) && metaTotalPages > 0
-          ? metaTotalPages
-          : Math.max(1, Math.ceil(total / pageSize)),
+      has_more: Boolean(meta.has_more),
+      next_cursor: parseFilesListCursor(meta.next_cursor),
+      limit: Number(meta.limit ?? limit) || limit,
     },
   };
 };
@@ -392,38 +398,47 @@ const listProductBasedCostingItems = async (
   return (data as ProductBasedCostingItem[] | null) ?? [];
 };
 
+const parseItemsListCursor = (
+  raw: unknown,
+): ProductBasedCostingItemListPage['meta']['next_cursor'] => {
+  if (!raw || typeof raw !== 'object') return null;
+  const cursor = raw as { sort_order?: unknown; id?: unknown };
+  const sortOrder = Number(cursor.sort_order);
+  const id = Number(cursor.id);
+  if (!Number.isFinite(sortOrder) || !Number.isFinite(id)) {
+    return null;
+  }
+  return { sort_order: sortOrder, id };
+};
+
 const listProductBasedCostingItemsPaginated = async (
   productBasedCostingFileId: number,
-  payload: { page?: number; page_size?: number } = {},
+  payload: ProductBasedCostingItemListInput = {},
 ): Promise<ProductBasedCostingItemListPage> => {
-  const page = Math.max(1, Number(payload.page ?? 1) || 1);
-  const pageSize = Math.max(1, Number(payload.page_size ?? 25) || 25);
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-
-  const { data, error, count } = await supabase
-    .from('product_based_costing_items')
-    .select('*', { count: 'exact' })
-    .eq('product_based_costing_file_id', productBasedCostingFileId)
-    .order('sort_order', { ascending: true })
-    .order('id', { ascending: true })
-    .range(from, to);
+  const limit = Math.max(1, Number(payload.limit ?? 25) || 25);
+  const cursor = payload.cursor ?? null;
+  const { data, error } = await supabase.rpc('list_product_based_costing_items', {
+    p_file_id: productBasedCostingFileId,
+    p_limit: limit,
+    p_cursor_sort_order: cursor?.sort_order ?? undefined,
+    p_cursor_id: cursor?.id ?? undefined,
+  });
 
   if (error) {
     throw error;
   }
 
-  const rows = (data as ProductBasedCostingItem[] | null) ?? [];
-  const total = Number(count ?? rows.length ?? 0);
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const envelope =
+    (data as { data?: ProductBasedCostingItem[]; meta?: Record<string, unknown> } | null) ?? {};
+  const rows = (envelope.data ?? []) as ProductBasedCostingItem[];
+  const meta = envelope.meta ?? {};
 
   return {
     data: rows,
     meta: {
-      total,
-      page,
-      page_size: pageSize,
-      total_pages: totalPages,
+      has_more: Boolean(meta.has_more),
+      next_cursor: parseItemsListCursor(meta.next_cursor),
+      limit: Number(meta.limit ?? limit) || limit,
     },
   };
 };

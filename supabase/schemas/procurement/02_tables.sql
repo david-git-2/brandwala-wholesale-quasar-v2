@@ -1364,6 +1364,9 @@ CREATE INDEX "product_based_costing_files_status_idx" ON "public"."product_based
 CREATE INDEX "product_based_costing_files_tenant_id_idx" ON "public"."product_based_costing_files" USING "btree" ("tenant_id");
 
 
+CREATE INDEX "product_based_costing_files_tenant_created_at_id_idx" ON "public"."product_based_costing_files" USING "btree" ("tenant_id", "created_at" DESC, "id" DESC);
+
+
 
 CREATE INDEX "product_based_costing_files_vendor_code_idx" ON "public"."product_based_costing_files" USING "btree" ("vendor_code");
 
@@ -1386,6 +1389,9 @@ CREATE INDEX "product_based_costing_items_brand_idx" ON "public"."product_based_
 
 
 CREATE INDEX "product_based_costing_items_file_id_idx" ON "public"."product_based_costing_items" USING "btree" ("product_based_costing_file_id");
+
+
+CREATE INDEX "product_based_costing_items_file_sort_order_id_idx" ON "public"."product_based_costing_items" USING "btree" ("product_based_costing_file_id", "sort_order", "id");
 
 
 

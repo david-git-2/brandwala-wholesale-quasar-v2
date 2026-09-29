@@ -2,7 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
-import type { ProductBasedCostingFileListPage } from '../types';
+import type { InfiniteData } from '@tanstack/vue-query';
+import type { ProductBasedCostingFile, ProductBasedCostingFileListPage } from '../types';
 
 export function useProductBasedCostingFileDetailQuery(fileId: Ref<number>) {
   const queryClient = useQueryClient();
@@ -14,12 +15,17 @@ export function useProductBasedCostingFileDetailQuery(fileId: Ref<number>) {
     enabled: computed(() => fileId.value > 0),
     initialData: () => {
       if (!fileId.value) return undefined;
-      const listQueries = queryClient.getQueriesData<ProductBasedCostingFileListPage>({
+      const listQueries = queryClient.getQueriesData<
+        InfiniteData<ProductBasedCostingFileListPage>
+      >({
         queryKey: ['productBasedCosting', 'files', 'list'],
       });
       for (const [, data] of listQueries) {
-        const found = data?.data?.find((file) => file.id === fileId.value);
-        if (found) return found;
+        const pages = data?.pages ?? [];
+        for (const page of pages) {
+          const found = page.data.find((file: ProductBasedCostingFile) => file.id === fileId.value);
+          if (found) return found;
+        }
       }
       return undefined;
     },
