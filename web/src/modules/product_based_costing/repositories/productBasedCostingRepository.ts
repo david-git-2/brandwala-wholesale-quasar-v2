@@ -11,6 +11,7 @@ import type {
   ProductBasedCostingItemListInput,
   ProductBasedCostingItemListPage,
   ProductBasedCostingItemUpdateInput,
+  PbcItemProductCatalog,
 } from '../types';
 
 const normalizeText = (value: string | null | undefined) => {
@@ -657,6 +658,39 @@ const markPbcReadyForShipment = async (fileId: number) => {
   return data;
 };
 
+const listProductCatalogByIds = async (ids: number[]): Promise<Map<number, PbcItemProductCatalog>> => {
+  const unique = [...new Set(ids.filter((id) => Number.isFinite(id) && id > 0))];
+  const map = new Map<number, PbcItemProductCatalog>();
+  if (unique.length === 0) {
+    return map;
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select(
+      'id, languages, country_of_origin, available_units, batch_code_manufacture_date, expire_date',
+    )
+    .in('id', unique);
+
+  if (error) {
+    throw error;
+  }
+
+  for (const row of data ?? []) {
+    const id = Number(row.id);
+    if (!Number.isFinite(id)) continue;
+    map.set(id, {
+      languages: row.languages ?? null,
+      country_of_origin: row.country_of_origin ?? null,
+      available_units: row.available_units ?? null,
+      batch_code_manufacture_date: row.batch_code_manufacture_date ?? null,
+      expire_date: row.expire_date ?? null,
+    });
+  }
+
+  return map;
+};
+
 export const productBasedCostingRepository = {
   listProductBasedCostingFiles,
   createProductBasedCostingFile,
@@ -678,4 +712,5 @@ export const productBasedCostingRepository = {
   recalculateProductBasedCostingFileOfferPrices,
   addCostingItemToShipment,
   markPbcReadyForShipment,
+  listProductCatalogByIds,
 };

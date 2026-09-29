@@ -130,6 +130,22 @@
             <q-tooltip>Review open unfulfilled demand backlog for this customer</q-tooltip>
           </q-btn>
 
+          <q-btn-toggle
+            v-model="itemsView"
+            dense
+            unelevated
+            no-caps
+            size="sm"
+            toggle-color="primary"
+            color="white"
+            text-color="primary"
+            class="pbc-items-view-toggle border-grey rounded-sq-btn"
+            :options="[
+              { icon: 'ph ph-rows', value: 'table' },
+              { icon: 'ph ph-squares-four', value: 'card' },
+            ]"
+          />
+
           <!-- Columns Menu -->
           <q-btn
             flat
@@ -417,11 +433,16 @@
     <!-- Middle Scrollable Table Section -->
     <div
       ref="tableScrollContainerRef"
-      class="pbc-v2-middle-section col overflow-auto q-pa-none bg-white hide-native-scrollbar"
+      class="pbc-v2-middle-section col overflow-auto q-pa-none hide-native-scrollbar"
+      :class="itemsView === 'table' ? 'bg-white' : 'bg-grey-1'"
       style="overflow-x: auto !important; overflow-y: auto !important; flex: 1 1 0%; min-height: 0"
       @scroll="onTableScroll"
     >
-      <table class="pbc-v2-markup-table bg-white" style="min-width: 1080px; width: 100%">
+      <table
+        v-if="itemsView === 'table'"
+        class="pbc-v2-markup-table bg-white"
+        style="min-width: 1080px; width: 100%"
+      >
         <thead>
           <tr class="bg-grey-2 text-grey-9 text-weight-bold" style="font-size: 11px">
             <!-- Row Selection Header -->
@@ -1071,10 +1092,56 @@
           </tr>
         </tbody>
       </table>
+
+      <div v-else-if="isLoading" class="column items-center justify-center q-py-xl">
+        <q-spinner-dots color="primary" size="40px" />
+        <div class="text-caption text-grey-6 q-mt-xs">Loading costing line items...</div>
+      </div>
+
+      <div v-else-if="!tableRows.length" class="column items-center justify-center q-py-xl text-grey-6">
+        <q-icon name="ph ph-package" size="48px" class="q-mb-sm" />
+        <div class="text-body2">No line items yet.</div>
+      </div>
+
+      <div v-else class="q-pa-md">
+        <div class="row q-col-gutter-sm">
+          <div
+            v-for="row in tableRows"
+            :key="row.id"
+            class="col-12 col-md-6"
+          >
+            <ProductBasedCostingItemCard
+              :row="row"
+              :catalog="catalogForRow(row.product_id)"
+              :buy-mark="buyMark"
+              :sell-mark="sellMark"
+              :currency-i18n="currencyI18n"
+              :selected="selectedRowIds.includes(row.id)"
+              @toggle-select="(checked) => toggleRowSelection(row.id, checked)"
+            />
+          </div>
+        </div>
+        <div v-if="isFetchingMoreItems" class="row justify-center q-py-md">
+          <q-spinner-dots color="primary" size="32px" />
+        </div>
+        <div v-else-if="hasMoreItems" class="row justify-center q-py-md">
+          <q-btn
+            outline
+            dense
+            no-caps
+            color="primary"
+            label="Load more"
+            @click="fetchNextPage()"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- Bottom Sticky Footer Section: Scrollbar Only -->
-    <div class="pbc-v2-footer-section bg-white border-top q-px-md q-py-xs shrink-0 shadow-xs row items-center justify-end">
+    <div
+      v-if="itemsView === 'table'"
+      class="pbc-v2-footer-section bg-white border-top q-px-md q-py-xs shrink-0 shadow-xs row items-center justify-end"
+    >
       <div class="excel-scrollbar-wrapper row items-center no-wrap">
         <button class="excel-scroll-arrow-btn" @click="scrollTableByStep(-150)">
           <q-icon name="ph ph-caret-left" size="13px" />
@@ -1246,6 +1313,7 @@ import { useQuasar, copyToClipboard } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import SmartImage from 'src/components/SmartImage.vue';
+import ProductBasedCostingItemCard from '../components/ProductBasedCostingItemCard.vue';
 import AddCostingItemsDrawer from '../components/AddCostingItemsDrawer.vue';
 import { productBasedCostingService } from '../services/productBasedCostingService';
 import type { ProductBasedCostingItemUpdateInput } from '../types';
@@ -1263,6 +1331,7 @@ import { customerRepository } from 'src/modules/customer/repositories/customerRe
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { useProductBasedCostingFileDetailQuery } from '../composables/useProductBasedCostingFileDetailQuery';
 import { useProductBasedCostingItemsInfiniteQuery } from '../composables/useProductBasedCostingItemsInfiniteQuery';
+import { usePbcItemProductCatalogMap } from '../composables/usePbcItemProductCatalogMap';
 import { useUpdateProductBasedCostingFileMutation } from '../composables/useProductBasedCostingFileMutations';
 import {
   reorderPbcItemsInCache,
@@ -1349,6 +1418,29 @@ const {
   isFetchingNextPage: isFetchingMoreItems,
   fetchNextPage,
 } = useProductBasedCostingItemsInfiniteQuery(fileId);
+
+const PBC_ITEMS_VIEW_STORAGE_KEY = 'pbc-file-items-view';
+type PbcItemsViewMode = 'table' | 'card';
+
+const readStoredItemsView = (): PbcItemsViewMode => {
+  if (typeof localStorage === 'undefined') return 'table';
+  return localStorage.getItem(PBC_ITEMS_VIEW_STORAGE_KEY) === 'card' ? 'card' : 'table';
+};
+
+const itemsView = ref<PbcItemsViewMode>(readStoredItemsView());
+
+watch(itemsView, (mode) => {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(PBC_ITEMS_VIEW_STORAGE_KEY, mode);
+  }
+});
+
+const { catalogByProductId } = usePbcItemProductCatalogMap(fileId, costingItems);
+
+const catalogForRow = (productId: number | null) => {
+  if (productId == null) return null;
+  return catalogByProductId.value.get(productId) ?? null;
+};
 
 const isLoading = computed(() => isLoadingFile.value || isLoadingItems.value);
 
@@ -2677,6 +2769,18 @@ function goBackToList() {
 
 .rounded-sq-btn {
   border-radius: 8px !important;
+}
+
+.pbc-items-view-toggle {
+  height: 28px;
+  overflow: hidden;
+}
+
+.pbc-items-view-toggle :deep(.q-btn) {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 14px;
 }
 
 .pbc-v2-markup-table {

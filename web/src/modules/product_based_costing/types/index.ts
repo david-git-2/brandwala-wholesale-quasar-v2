@@ -123,6 +123,15 @@ export interface ProductBasedCostingItemUpdateInput extends ProductBasedCostingI
   id: number;
 }
 
+/** Live catalog fields for PBC line cards (from `products`). */
+export type PbcItemProductCatalog = {
+  languages: string | null;
+  country_of_origin: string | null;
+  available_units: number | null;
+  batch_code_manufacture_date: string | null;
+  expire_date: string | null;
+};
+
 export interface ProductBasedCostingStoreState {
   items: ProductBasedCostingFile[];
   item: ProductBasedCostingFile | null;

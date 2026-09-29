@@ -13,3 +13,6 @@ Mapping of all costing pages, modals, formula calculators, and backlog drawers t
 | **`PbcBacklogSuggestDrawer`** | Drawer Open / Refresh | `useBacklogItemsQuery` | `RPC: list_pbc_backlog_items` | Cached on `productBasedCostingQueryKeys.backlog` |
 | **`PbcBacklogSuggestDrawer`** | Click "Add Selected to File" | `useImportBacklogMutation` | `RPC: add_pbc_backlog_to_file` | Consumes backlog rows; refetches file items |
 | **`ProductBasedCostingFileDetails`** | Update FX / Markup Rates | `useUpdateFileHeaderMutation` | `Table: product_based_costing_files` | Recalculates quoted totals across line items |
+| **`ProductBasedCostingFileDetailsV2Page`** | Table / card toggle | `itemsView` (localStorage) | No RPC | Same item query cache |
+| **`ProductBasedCostingFileDetailsV2Page`** | Load lines (both views) | `useProductBasedCostingItemsInfiniteQuery` | `RPC: list_product_based_costing_items` | `productBasedCostingQueryKeys.itemsInfinite` |
+| **`ProductBasedCostingFileDetailsV2Page`** | Card catalog meta | `usePbcItemProductCatalogMap` | `Table: products` (select by ids from loaded lines) | Keyed by sorted `product_id` list |

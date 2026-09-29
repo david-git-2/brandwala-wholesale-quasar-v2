@@ -12,6 +12,12 @@ export const productBasedCostingQueryKeys = {
     [...productBasedCostingQueryKeys.itemsRoot(fileId), 'list'] as const,
   itemsInfinite: (fileId: number, pageSize = PBC_ITEMS_PAGE_SIZE) =>
     [...productBasedCostingQueryKeys.itemsRoot(fileId), 'infinite', pageSize] as const,
+  itemProductCatalog: (fileId: number, productIds: number[]) =>
+    [
+      ...productBasedCostingQueryKeys.itemsRoot(fileId),
+      'productCatalog',
+      [...productIds].sort((a, b) => a - b).join(','),
+    ] as const,
   fileSummaryRoot: (fileId: number) =>
     ['productBasedCosting', 'files', 'summary', fileId] as const,
   fileSummary: (

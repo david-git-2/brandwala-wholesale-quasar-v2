@@ -101,3 +101,10 @@ Once a quotation is confirmed by a customer group, the file transitions seamless
 | [ + Add Product Items ]     [ Open Demand Backlog (4 items) ]             [ Send Quote to Client ] |
 +----------------------------------------------------------------------------------------------------+
 ```
+
+**Line items view (as-built on `ProductBasedCostingFileDetailsV2Page`):**
+
+- Toolbar toggle: table (`ph-rows`) vs card grid (`ph-squares-four`). Preference stored in `localStorage` (`pbc-file-items-view`).
+- **Table view:** editable markup grid (qty, offer, notes, bulk actions).
+- **Card view:** browse-only. Layout mirrors shop catalog storefront cards (image, brand, name, barcode, vendor, origin, batch, expire, language, available units) plus read-only costing figures (qty, web £, landed cost ৳, offer ৳, status). Edits require switching back to table.
+- Catalog-only fields (`languages`, `country_of_origin`, `available_units`, batch, expire) come from linked `products` rows when `product_id` is set; manual lines show em dash.
