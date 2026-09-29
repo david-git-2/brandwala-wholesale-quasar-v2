@@ -22052,20 +22052,23 @@ $$;
 ALTER FUNCTION "public"."list_product_categories_for_tenant"("p_tenant_id" bigint, "p_vendor_code" "text", "p_vendor_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_products_paginated"("p_tenant_id" bigint DEFAULT NULL::bigint, "p_search" "text" DEFAULT NULL::"text", "p_search_field" "text" DEFAULT 'name'::"text", "p_category" "text" DEFAULT NULL::"text", "p_brand" "text" DEFAULT NULL::"text", "p_vendor_code" "text" DEFAULT NULL::"text", "p_market_code" "text" DEFAULT NULL::"text", "p_is_available" boolean DEFAULT NULL::boolean, "p_sort_by" "text" DEFAULT 'name'::"text", "p_sort_dir" "text" DEFAULT 'asc'::"text", "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."list_products_paginated"("p_tenant_id" bigint DEFAULT NULL::bigint, "p_search" "text" DEFAULT NULL::"text", "p_search_field" "text" DEFAULT 'name'::"text", "p_category" "text" DEFAULT NULL::"text", "p_brand" "text" DEFAULT NULL::"text", "p_vendor_code" "text" DEFAULT NULL::"text", "p_market_code" "text" DEFAULT NULL::"text", "p_is_available" boolean DEFAULT NULL::boolean, "p_sort_dir" "text" DEFAULT 'asc'::"text", "p_limit" integer DEFAULT 20, "p_cursor_name" "text" DEFAULT NULL::"text", "p_cursor_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $_$
 declare
   v_limit integer;
-  v_offset integer;
-  v_sort_by text;
   v_sort_dir text;
   v_search_field text;
   v_scope_tenant_id bigint;
-  v_result jsonb;
+  v_rows jsonb;
+  v_n integer;
+  v_has_more boolean := false;
+  v_next_cursor jsonb := null;
+  v_last_name text;
+  v_last_id bigint;
   v_tokens text[] := '{}'::text[];
-  v_phrase_escaped text;
+  v_cursor_name text;
 begin
   if p_tenant_id is not null and not public.user_can_access_tenant_fetch(p_tenant_id) then
     raise exception 'not allowed';
@@ -22077,23 +22080,6 @@ begin
   end;
 
   v_limit := greatest(1, least(coalesce(p_limit, 20), 200));
-  v_offset := greatest(0, coalesce(p_offset, 0));
-
-  v_sort_by := lower(trim(coalesce(p_sort_by, 'name')));
-  if not (v_sort_by = any (array[
-    'id',
-    'name',
-    'product_code',
-    'barcode',
-    'brand',
-    'category',
-    'list_price_amount',
-    'available_units',
-    'created_at',
-    'updated_at'
-  ])) then
-    v_sort_by := 'name';
-  end if;
 
   v_sort_dir := lower(trim(coalesce(p_sort_dir, 'asc')));
   if v_sort_dir not in ('asc', 'desc') then
@@ -22106,8 +22092,6 @@ begin
   end if;
 
   if v_search_field = 'name' and p_search is not null and trim(p_search) <> '' then
-    v_phrase_escaped := replace(replace(replace(trim(p_search), E'\\', E'\\\\'), '%', E'\\%'), '_', E'\\_');
-
     select coalesce(array_agg(tok), '{}'::text[])
     into v_tokens
     from unnest(regexp_split_to_array(trim(p_search), E'[^[:alnum:]]+')) as tok
@@ -22119,106 +22103,124 @@ begin
     end if;
   end if;
 
-  execute format(
-    $sql$
-      with filtered as (
-        select p.*
-        from public.products p
-        where
-          ($1 is null or p.parent_tenant_id = $1)
-          and ($2 is null or trim($2) = '' or (
-            ($3 = 'name' and (
-              cardinality($11) = 0
-              or (
-                select coalesce(bool_and(
-                  concat_ws(' ', p.name, p.brand) ~* ('(^|[^[:alnum:]])' || t || '([^[:alnum:]]|$)')
-                ), true)
-                from unnest($11) t
-              )
-            ))
-            or ($3 = 'barcode' and p.barcode ilike ('%%' || trim($2) || '%%'))
-            or ($3 = 'product_code' and p.product_code ilike ('%%' || trim($2) || '%%'))
-            or ($3 = 'id' and trim($2) ~ '^[0-9]+$' and p.id = trim($2)::bigint)
-          ))
-          and ($4 is null or trim($4) = '' or lower(coalesce(p.category, '')) = lower(trim($4)))
-          and ($5 is null or trim($5) = '' or lower(coalesce(p.brand, '')) = lower(trim($5)))
-          and ($6 is null or trim($6) = '' or upper(coalesce(p.vendor_code, '')) = upper(trim($6)))
-          and ($7 is null or trim($7) = '' or upper(coalesce(p.market_code, '')) = upper(trim($7)))
-          and ($8 is null or p.is_available = $8)
-      ),
-      paged as (
-        select
-          f.*,
-          row_number() over (
-            order by
-              (
-                select count(*)
-                from unnest($11) t
-                where concat_ws(' ', f.name, f.brand) ~* ('(^|[^[:alnum:]])' || t || '([^[:alnum:]]|$)')
-              ) desc,
-              case
-                when $12 is not null
-                  and concat_ws(' ', f.name, f.brand) ilike ('%%' || $12 || '%%') escape E'\\' then 0
-                else 1
-              end,
-              %I %s nulls last,
-              f.id asc
-          ) as _search_rank
-        from filtered f
-        order by _search_rank
-        limit $9
-        offset $10
-      )
-      select jsonb_build_object(
-        'data',
-        coalesce((
-          select jsonb_agg((to_jsonb(p) - '_search_rank') order by p._search_rank)
-          from paged p
-        ), '[]'::jsonb),
-        'meta',
-        jsonb_build_object(
-          'total', (select count(*) from filtered),
-          'page', (($10 / $9) + 1),
-          'page_size', $9,
-          'total_pages', greatest(1, ceil((select count(*)::numeric from filtered) / $9::numeric))
-        )
-      )
-    $sql$,
-    v_sort_by,
-    v_sort_dir
-  )
-  into v_result
-  using
-    v_scope_tenant_id,
-    p_search,
-    v_search_field,
-    p_category,
-    p_brand,
-    p_vendor_code,
-    p_market_code,
-    p_is_available,
-    v_limit,
-    v_offset,
-    v_tokens,
-    v_phrase_escaped;
+  v_cursor_name := coalesce(p_cursor_name, '');
 
-  return coalesce(
-    v_result,
-    jsonb_build_object(
-      'data', '[]'::jsonb,
-      'meta', jsonb_build_object(
-        'total', 0,
-        'page', ((v_offset / v_limit) + 1),
-        'page_size', v_limit,
-        'total_pages', 1
-      )
+  if v_sort_dir = 'asc' then
+    select coalesce(jsonb_agg(to_jsonb(q) ORDER BY q._sort_name ASC, q.id ASC), '[]'::jsonb)
+    into v_rows
+    from (
+      select
+        p.*,
+        coalesce(p.name, '') as _sort_name
+      from public.products p
+      where
+        (v_scope_tenant_id is null or p.parent_tenant_id = v_scope_tenant_id)
+        and (p_search is null or trim(p_search) = '' or (
+          (v_search_field = 'name' and (
+            cardinality(v_tokens) = 0
+            or (
+              select coalesce(bool_and(
+                concat_ws(' ', p.name, p.brand) ~* ('(^|[^[:alnum:]])' || t || '([^[:alnum:]]|$)')
+              ), true)
+              from unnest(v_tokens) t
+            )
+          ))
+          or (v_search_field = 'barcode' and p.barcode ilike ('%' || trim(p_search) || '%'))
+          or (v_search_field = 'product_code' and p.product_code ilike ('%' || trim(p_search) || '%'))
+          or (v_search_field = 'id' and trim(p_search) ~ '^[0-9]+$' and p.id = trim(p_search)::bigint)
+        ))
+        and (p_category is null or trim(p_category) = '' or lower(coalesce(p.category, '')) = lower(trim(p_category)))
+        and (p_brand is null or trim(p_brand) = '' or lower(coalesce(p.brand, '')) = lower(trim(p_brand)))
+        and (p_vendor_code is null or trim(p_vendor_code) = '' or upper(coalesce(p.vendor_code, '')) = upper(trim(p_vendor_code)))
+        and (p_market_code is null or trim(p_market_code) = '' or upper(coalesce(p.market_code, '')) = upper(trim(p_market_code)))
+        and (p_is_available is null or p.is_available = p_is_available)
+        and (
+          p_cursor_id is null
+          or (coalesce(p.name, ''), p.id) > (v_cursor_name, p_cursor_id)
+        )
+      order by coalesce(p.name, '') asc, p.id asc
+      limit v_limit + 1
+    ) q;
+  else
+    select coalesce(jsonb_agg(to_jsonb(q) ORDER BY q._sort_name DESC, q.id DESC), '[]'::jsonb)
+    into v_rows
+    from (
+      select
+        p.*,
+        coalesce(p.name, '') as _sort_name
+      from public.products p
+      where
+        (v_scope_tenant_id is null or p.parent_tenant_id = v_scope_tenant_id)
+        and (p_search is null or trim(p_search) = '' or (
+          (v_search_field = 'name' and (
+            cardinality(v_tokens) = 0
+            or (
+              select coalesce(bool_and(
+                concat_ws(' ', p.name, p.brand) ~* ('(^|[^[:alnum:]])' || t || '([^[:alnum:]]|$)')
+              ), true)
+              from unnest(v_tokens) t
+            )
+          ))
+          or (v_search_field = 'barcode' and p.barcode ilike ('%' || trim(p_search) || '%'))
+          or (v_search_field = 'product_code' and p.product_code ilike ('%' || trim(p_search) || '%'))
+          or (v_search_field = 'id' and trim(p_search) ~ '^[0-9]+$' and p.id = trim(p_search)::bigint)
+        ))
+        and (p_category is null or trim(p_category) = '' or lower(coalesce(p.category, '')) = lower(trim(p_category)))
+        and (p_brand is null or trim(p_brand) = '' or lower(coalesce(p.brand, '')) = lower(trim(p_brand)))
+        and (p_vendor_code is null or trim(p_vendor_code) = '' or upper(coalesce(p.vendor_code, '')) = upper(trim(p_vendor_code)))
+        and (p_market_code is null or trim(p_market_code) = '' or upper(coalesce(p.market_code, '')) = upper(trim(p_market_code)))
+        and (p_is_available is null or p.is_available = p_is_available)
+        and (
+          p_cursor_id is null
+          or (coalesce(p.name, ''), p.id) < (v_cursor_name, p_cursor_id)
+        )
+      order by coalesce(p.name, '') desc, p.id desc
+      limit v_limit + 1
+    ) q;
+  end if;
+
+  v_n := jsonb_array_length(v_rows);
+  if v_n > v_limit then
+    v_has_more := true;
+    select elem->>'name', (elem->>'id')::bigint
+    into v_last_name, v_last_id
+    from jsonb_array_elements(v_rows) with ordinality as t(elem, ord)
+    where ord = v_limit;
+
+    v_next_cursor := jsonb_build_object(
+      'name', coalesce(v_last_name, ''),
+      'id', v_last_id
+    );
+
+    select coalesce(jsonb_agg(elem - '_sort_name' order by ord), '[]'::jsonb)
+    into v_rows
+    from (
+      select (elem - '_sort_name') as elem, ord
+      from jsonb_array_elements(v_rows) with ordinality as t(elem, ord)
+      where ord <= v_limit
+    ) trimmed;
+  else
+    select coalesce(jsonb_agg(elem - '_sort_name' order by ord), '[]'::jsonb)
+    into v_rows
+    from (
+      select (elem - '_sort_name') as elem, ord
+      from jsonb_array_elements(v_rows) with ordinality as t(elem, ord)
+    ) trimmed;
+  end if;
+
+  return jsonb_build_object(
+    'data', coalesce(v_rows, '[]'::jsonb),
+    'meta', jsonb_build_object(
+      'has_more', v_has_more,
+      'next_cursor', v_next_cursor,
+      'limit', v_limit
     )
   );
 end;
 $_$;
 
 
-ALTER FUNCTION "public"."list_products_paginated"("p_tenant_id" bigint, "p_search" "text", "p_search_field" "text", "p_category" "text", "p_brand" "text", "p_vendor_code" "text", "p_market_code" "text", "p_is_available" boolean, "p_sort_by" "text", "p_sort_dir" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_products_paginated"("p_tenant_id" bigint, "p_search" "text", "p_search_field" "text", "p_category" "text", "p_brand" "text", "p_vendor_code" "text", "p_market_code" "text", "p_is_available" boolean, "p_sort_dir" "text", "p_limit" integer, "p_cursor_name" "text", "p_cursor_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_shipment_items_for_shipments"("p_shipment_ids" bigint[]) RETURNS TABLE("shipment_id" bigint, "purchase_price" numeric, "product_weight" numeric, "package_weight" numeric, "ordered_quantity" integer)
@@ -43204,6 +43206,9 @@ CREATE INDEX "products_name_idx" ON "public"."products" USING "btree" ("name");
 CREATE INDEX "products_parent_tenant_id_idx" ON "public"."products" USING "btree" ("parent_tenant_id");
 
 
+CREATE INDEX "products_parent_tenant_name_id_idx" ON "public"."products" USING "btree" ("parent_tenant_id", "name", "id");
+
+
 CREATE INDEX "products_product_code_idx" ON "public"."products" USING "btree" ("product_code");
 
 
@@ -47389,7 +47394,7 @@ GRANT ALL ON TABLE "public"."product_categories" TO "service_role";
 GRANT ALL ON FUNCTION "public"."list_product_categories_for_tenant"("p_tenant_id" bigint, "p_vendor_code" "text", "p_vendor_id" bigint) TO "authenticated";
 
 
-GRANT ALL ON FUNCTION "public"."list_products_paginated"("p_tenant_id" bigint, "p_search" "text", "p_search_field" "text", "p_category" "text", "p_brand" "text", "p_vendor_code" "text", "p_market_code" "text", "p_is_available" boolean, "p_sort_by" "text", "p_sort_dir" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_products_paginated"("p_tenant_id" bigint, "p_search" "text", "p_search_field" "text", "p_category" "text", "p_brand" "text", "p_vendor_code" "text", "p_market_code" "text", "p_is_available" boolean, "p_sort_dir" "text", "p_limit" integer, "p_cursor_name" "text", "p_cursor_id" bigint) TO "authenticated";
 
 
 REVOKE ALL ON FUNCTION "public"."list_related_shop_catalog_products_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_product_id" bigint, "p_limit" integer) FROM PUBLIC;

@@ -208,7 +208,7 @@
               </q-item-section>
             </q-item>
           </q-list>
-          <div v-if="browseTotal > browseList.length" class="text-center q-mt-sm">
+          <div v-if="browseHasMore" class="text-center q-mt-sm">
             <q-btn
               flat
               dense
@@ -224,7 +224,7 @@
             dense
             bordered
             class="rounded-borders browse-list"
-            :class="{ 'q-mt-sm': browseList.length > 0 || browseTotal > browseList.length }"
+            :class="{ 'q-mt-sm': browseList.length > 0 || browseHasMore }"
           >
             <q-item clickable @click="onCreateMissingProduct">
               <q-item-section avatar>
@@ -389,8 +389,8 @@ const browseSearchQuery = computed(() => (browseSearch.value ?? '').trim());
 const browseSearchField = ref<'name' | 'barcode' | 'product_code'>('name');
 const browseList = ref<ProductItem[]>([]);
 const browseLoading = ref(false);
-const browsePage = ref(1);
-const browseTotal = ref(0);
+const browseNextCursor = ref<{ name: string; id: number } | null>(null);
+const browseHasMore = ref(false);
 const showBulkCodes = ref(false);
 const bulkCodesText = ref('');
 const bulkSearchField = ref<'auto' | 'product_code' | 'barcode' | 'id'>('auto');
@@ -741,7 +741,8 @@ const loadBrowse = async (append = false) => {
     !filterVendorId.value
   ) {
     browseList.value = [];
-    browseTotal.value = 0;
+    browseHasMore.value = false;
+    browseNextCursor.value = null;
     return;
   }
 
@@ -754,8 +755,8 @@ const loadBrowse = async (append = false) => {
       : undefined;
 
     const res = await productRepository.listProducts({
-      page: browsePage.value,
       pageSize: 15,
+      cursor: append ? browseNextCursor.value : null,
       search: browseSearchQuery.value || undefined,
       searchField: browseSearchField.value,
       vendorCode,
@@ -768,7 +769,8 @@ const loadBrowse = async (append = false) => {
 
     const items = (res.data as ProductItem[]).map((p) => toProductItem(p));
     browseList.value = append ? [...browseList.value, ...items] : items;
-    browseTotal.value = res.meta.total;
+    browseHasMore.value = res.meta.has_more;
+    browseNextCursor.value = res.meta.next_cursor;
   } finally {
     if (seq === currentQuerySeq) {
       browseLoading.value = false;
@@ -777,7 +779,6 @@ const loadBrowse = async (append = false) => {
 };
 
 const loadMoreBrowse = () => {
-  browsePage.value += 1;
   void loadBrowse(true);
 };
 
@@ -789,7 +790,7 @@ const debouncedLoadBrowse = () => {
 
 const onClearSearch = () => {
   browseSearch.value = '';
-  browsePage.value = 1;
+  browseNextCursor.value = null;
   if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
   void loadBrowse();
 };
@@ -806,17 +807,17 @@ watch(browseSearch, (newVal) => {
 
     if (detectedField && browseSearchField.value !== detectedField) {
       browseSearchField.value = detectedField;
-      browsePage.value = 1;
+      browseNextCursor.value = null;
       return;
     }
   }
 
-  browsePage.value = 1;
+  browseNextCursor.value = null;
   debouncedLoadBrowse();
 });
 
 watch(browseSearchField, () => {
-  browsePage.value = 1;
+  browseNextCursor.value = null;
   void loadBrowse();
 });
 
@@ -875,7 +876,7 @@ const onApplyFilters = () => {
   filterBrand.value = draftBrand.value;
   filterCategory.value = draftCategory.value;
   filterDrawerOpen.value = false;
-  browsePage.value = 1;
+  browseNextCursor.value = null;
   void loadBrowse();
 };
 
@@ -887,7 +888,7 @@ const onResetFilters = () => {
   filterBrand.value = '';
   filterCategory.value = '';
   filterDrawerOpen.value = false;
-  browsePage.value = 1;
+  browseNextCursor.value = null;
   void loadBrowse();
 };
 

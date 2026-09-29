@@ -11,13 +11,14 @@ import type {
   Product,
   ProductCreateInput,
   ProductDeleteInput,
+  ProductListCursor,
   ProductListPage,
   ProductUpdateInput,
 } from '../types';
 
 type ListProductsParams = {
-  page?: number;
   pageSize?: number;
+  cursor?: ProductListCursor | null;
   search?: string | null | undefined;
   searchField?: 'name' | 'barcode' | 'product_code' | 'id';
   category?: string | null | undefined;

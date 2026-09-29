@@ -2,11 +2,17 @@ import { defineStore } from 'pinia';
 
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { productService } from '../services/productService';
-import type { Product, ProductCreateInput, ProductDeleteInput, ProductUpdateInput } from '../types';
+import type {
+  Product,
+  ProductCreateInput,
+  ProductDeleteInput,
+  ProductListCursor,
+  ProductUpdateInput,
+} from '../types';
 
 type FetchProductsParams = {
-  page?: number;
   pageSize?: number;
+  cursor?: ProductListCursor | null;
   search?: string;
   searchField?: 'name' | 'barcode' | 'product_code' | 'id';
   category?: string | null | undefined;
@@ -29,8 +35,8 @@ type ProductStoreState = {
   loading: boolean;
   saving: boolean;
   error: string | null;
-  total: number;
-  page: number;
+  hasMore: boolean;
+  listCursor: ProductListCursor | null;
   pageSize: number;
   search: string;
   searchField: 'name' | 'barcode' | 'product_code' | 'id';
@@ -51,8 +57,8 @@ export const useProductStore = defineStore('product', {
     loading: false,
     saving: false,
     error: null,
-    total: 0,
-    page: 1,
+    hasMore: false,
+    listCursor: null,
     pageSize: 20,
     search: '',
     searchField: 'name',
@@ -73,7 +79,7 @@ export const useProductStore = defineStore('product', {
     },
 
     setFilters(params: FetchProductsParams) {
-      if (params.page !== undefined) this.page = params.page;
+      if (params.cursor !== undefined) this.listCursor = params.cursor;
       if (params.pageSize !== undefined) this.pageSize = params.pageSize;
       if (params.search !== undefined) this.search = params.search;
       if (params.searchField !== undefined) this.searchField = params.searchField;
@@ -87,7 +93,7 @@ export const useProductStore = defineStore('product', {
     },
 
     resetFilters() {
-      this.page = 1;
+      this.listCursor = null;
       this.pageSize = 20;
       this.search = '';
       this.searchField = 'name';
@@ -110,8 +116,8 @@ export const useProductStore = defineStore('product', {
         }
 
         const result = await productService.listProducts({
-          page: this.page,
           pageSize: this.pageSize,
+          cursor: params?.append ? this.listCursor : (params?.cursor ?? null),
           search: this.search,
           searchField: this.searchField,
           category: this.category || null,
@@ -145,9 +151,9 @@ export const useProductStore = defineStore('product', {
         } else {
           this.items = incomingItems;
         }
-        this.total = result.meta?.total ?? 0;
-        this.page = result.meta?.page ?? this.page;
-        this.pageSize = result.meta?.page_size ?? this.pageSize;
+        this.hasMore = result.meta?.has_more ?? false;
+        this.listCursor = result.meta?.next_cursor ?? null;
+        this.pageSize = result.meta?.limit ?? this.pageSize;
 
         return result;
       } finally {
@@ -170,7 +176,6 @@ export const useProductStore = defineStore('product', {
 
         if (result.data) {
           this.items.unshift(result.data);
-          this.total += 1;
         }
 
         showSuccessNotification('Product created successfully.');
@@ -196,7 +201,6 @@ export const useProductStore = defineStore('product', {
 
         if (result.data && result.data.length) {
           this.items.unshift(...result.data);
-          this.total += result.data.length;
         }
 
         showSuccessNotification(`Successfully imported ${payloads.length} products.`);
@@ -297,7 +301,6 @@ export const useProductStore = defineStore('product', {
         }
 
         this.items = this.items.filter((item) => item.id !== payload.id);
-        this.total = Math.max(0, this.total - 1);
 
         showSuccessNotification('Product deleted successfully.');
         return result;

@@ -42,7 +42,6 @@ export function useShopStorefrontCatalogSearchQuery(
         tenantId: tenantId.value!,
         search: debouncedSearch.value,
         searchField: 'name',
-        page: 1,
         pageSize: 20,
       }),
     enabled: computed(

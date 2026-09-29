@@ -378,7 +378,7 @@
           </q-item>
         </q-list>
 
-        <div v-if="browseTotal > browseList.length" class="text-center q-mt-sm">
+        <div v-if="browseHasMore" class="text-center q-mt-sm">
           <q-btn
             flat
             dense
@@ -555,8 +555,8 @@ const browseSearch = ref('');
 const browseSearchField = ref<'name' | 'barcode' | 'product_code' | 'id'>('name');
 const browseList = ref<ProductItem[]>([]);
 const browseLoading = ref(false);
-const browsePage = ref(1);
-const browseTotal = ref(0);
+const browseNextCursor = ref<{ name: string; id: number } | null>(null);
+const browseHasMore = ref(false);
 const browseQtyById = ref<Record<number, number | null>>({});
 const showBulkCodes = ref(false);
 const bulkCodesText = ref('');
@@ -902,7 +902,8 @@ const loadBrowse = async (append = false) => {
   // Don't search or show catalog list when there is no search query or active filter
   if (!cleanSearch && !activeFilterCount.value) {
     browseList.value = [];
-    browseTotal.value = 0;
+    browseHasMore.value = false;
+    browseNextCursor.value = null;
     browseLoading.value = false;
     return;
   }
@@ -912,8 +913,8 @@ const loadBrowse = async (append = false) => {
     if (authStore.tenantId) {
       const vendorCode = getVendorCode(shipmentVendorId.value) ?? undefined;
       const res = await productRepository.listProducts({
-        page: browsePage.value,
         pageSize: 15,
+        cursor: append ? browseNextCursor.value : null,
         search: cleanSearch || undefined,
         searchField: browseSearchField.value,
         vendorCode,
@@ -927,7 +928,8 @@ const loadBrowse = async (append = false) => {
       const items = res.data as ProductItem[];
       if (items.length > 0) {
         browseList.value = append ? [...browseList.value, ...items] : items;
-        browseTotal.value = res.meta.total;
+        browseHasMore.value = res.meta.has_more;
+        browseNextCursor.value = res.meta.next_cursor;
         return;
       }
     }
@@ -946,7 +948,8 @@ const loadBrowse = async (append = false) => {
       );
     }
     browseList.value = append ? [...browseList.value, ...filtered] : filtered;
-    browseTotal.value = filtered.length;
+    browseHasMore.value = false;
+    browseNextCursor.value = null;
   } catch (err) {
     console.error('Failed to load browse products:', err);
   } finally {
@@ -957,7 +960,6 @@ const loadBrowse = async (append = false) => {
 };
 
 const loadMoreBrowse = () => {
-  browsePage.value += 1;
   void loadBrowse(true);
 };
 
@@ -971,26 +973,28 @@ watch(browseSearch, (newVal) => {
   const query = (newVal || '').trim();
   if (!query) {
     browseList.value = [];
-    browseTotal.value = 0;
+    browseHasMore.value = false;
+    browseNextCursor.value = null;
     browseLoading.value = false;
     if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
     return;
   }
 
-  browsePage.value = 1;
+  browseNextCursor.value = null;
   debouncedLoadBrowse();
 });
 
 const onClearSearch = () => {
   browseSearch.value = '';
   browseList.value = [];
-  browseTotal.value = 0;
+  browseHasMore.value = false;
+  browseNextCursor.value = null;
   browseLoading.value = false;
   if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
 };
 
 watch(browseSearchField, () => {
-  browsePage.value = 1;
+  browseNextCursor.value = null;
   void loadBrowse();
 });
 
@@ -1097,7 +1101,7 @@ const onApplyFilters = () => {
   filterBrand.value = draftBrand.value;
   filterCategory.value = draftCategory.value;
   filterDrawerOpen.value = false;
-  browsePage.value = 1;
+  browseNextCursor.value = null;
   void loadBrowse();
 };
 
@@ -1107,7 +1111,7 @@ const onResetFilters = () => {
   filterBrand.value = '';
   filterCategory.value = '';
   filterDrawerOpen.value = false;
-  browsePage.value = 1;
+  browseNextCursor.value = null;
   void loadBrowse();
 };
 
@@ -1116,7 +1120,6 @@ const findExistingProductId = async (item: ShipmentCartItem): Promise<number | n
   const barcode = item.barcode?.trim();
   if (barcode) {
     const res = await productRepository.listProducts({
-      page: 1,
       pageSize: 1,
       search: barcode,
       searchField: 'barcode',
@@ -1128,7 +1131,6 @@ const findExistingProductId = async (item: ShipmentCartItem): Promise<number | n
   const productCode = item.product_code?.trim();
   if (productCode) {
     const res = await productRepository.listProducts({
-      page: 1,
       pageSize: 1,
       search: productCode,
       searchField: 'product_code',

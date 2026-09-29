@@ -94,12 +94,11 @@
 
       <!-- Skeleton -->
       <div v-if="isLoading" class="col overflow-auto q-pa-sm">
-        <div class="row q-col-gutter-md">
-          <div v-for="n in 4" :key="n" class="col-12">
-            <q-card flat bordered class="q-pa-md">
-              <q-skeleton type="text" width="70%" class="q-mb-sm" />
-              <q-skeleton type="text" width="50%" />
-              <q-skeleton type="QBadge" width="88px" class="q-mt-md" />
+        <div class="row q-col-gutter-sm">
+          <div v-for="n in 6" :key="n" class="col-12">
+            <q-card flat bordered class="q-px-sm q-py-xs">
+              <q-skeleton type="text" width="70%" />
+              <q-skeleton type="text" width="40%" class="q-mt-xs" />
             </q-card>
           </div>
         </div>

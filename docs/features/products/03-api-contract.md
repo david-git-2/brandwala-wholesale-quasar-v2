@@ -7,34 +7,39 @@
 
 ## 1. Catalog Listing RPC: `list_products_paginated`
 
-Returns master products with brand details, category names, list pricing, and total count.
+Keyset list of master products (sort by `name`, then `id`). No total count.
 
 ### Signature
 ```sql
-create or replace function public.list_products_paginated(
-  p_tenant_id uuid,
+list_products_paginated(
+  p_tenant_id bigint default null,
   p_search text default null,
-  p_brand_id uuid default null,
-  p_category_id uuid default null,
-  p_limit int default 50,
-  p_offset int default 0
-)
-returns table (
-  id uuid,
-  name text,
-  product_code text,
-  barcode text,
-  brand_name text,
-  category_name text,
-  list_price_amount numeric,
-  list_price_currency text,
-  unit_weight_kg numeric,
-  image_url text,
-  is_active boolean,
-  total_count bigint
-)
-language plpgsql security definer;
+  p_search_field text default 'name',
+  p_category text default null,
+  p_brand text default null,
+  p_vendor_code text default null,
+  p_market_code text default null,
+  p_is_available boolean default null,
+  p_sort_dir text default 'asc',
+  p_limit integer default 20,
+  p_cursor_name text default null,
+  p_cursor_id bigint default null
+) returns jsonb
 ```
+
+### Response
+```json
+{
+  "data": [ /* product rows */ ],
+  "meta": {
+    "has_more": true,
+    "next_cursor": { "name": "Widget", "id": 123 },
+    "limit": 20
+  }
+}
+```
+
+Pass `p_cursor_name` and `p_cursor_id` from the previous page’s `next_cursor` for the next page.
 
 ---
 

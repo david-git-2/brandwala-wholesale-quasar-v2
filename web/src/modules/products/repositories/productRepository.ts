@@ -12,6 +12,7 @@ import type {
   Product,
   ProductCreateInput,
   ProductDeleteInput,
+  ProductListCursor,
   ProductListPage,
   ProductUpdateInput,
 } from '../types';
@@ -173,9 +174,9 @@ const buildProductUpdatePayload = (payload: Omit<ProductUpdateInput, 'id'>) => {
   return updateData;
 };
 
-type ListProductsParams = {
-  page?: number;
+export type ListProductsParams = {
   pageSize?: number;
+  cursor?: ProductListCursor | null;
   search?: string | null | undefined;
   searchField?: 'name' | 'barcode' | 'product_code' | 'id';
   category?: string | null | undefined;
@@ -195,15 +196,23 @@ type ListProductLookupParams = {
 
 let isListProductsPaginatedRpcAvailable = true;
 
-const buildEmptyProductPage = (page: number, pageSize: number): ProductListPage => ({
+const buildEmptyProductPage = (pageSize: number): ProductListPage => ({
   data: [],
   meta: {
-    total: 0,
-    page,
-    page_size: pageSize,
-    total_pages: 1,
+    has_more: false,
+    next_cursor: null,
+    limit: pageSize,
   },
 });
+
+const parseProductListCursor = (raw: unknown): ProductListCursor | null => {
+  if (!raw || typeof raw !== 'object') return null;
+  const cursor = raw as { name?: unknown; id?: unknown };
+  const id = Number(cursor.id);
+  if (!Number.isFinite(id)) return null;
+  const name = typeof cursor.name === 'string' ? cursor.name : '';
+  return { name, id };
+};
 
 const isMissingListProductsRpcError = (error: any): boolean => {
   if (!error) return false;
@@ -235,9 +244,22 @@ const resolveProductScopeTenantId = async (tenantId: number): Promise<number> =>
   return resolved;
 };
 
+const applyKeysetCursorFilter = (
+  query: ReturnType<typeof supabase.from>,
+  cursor: ProductListCursor,
+  ascending: boolean,
+) => {
+  const cursorName = cursor.name.replace(/"/g, '\\"');
+  const op = ascending ? 'gt' : 'lt';
+  const idOp = ascending ? 'gt' : 'lt';
+  return query.or(
+    `name.${op}."${cursorName}",and(name.eq."${cursorName}",id.${idOp}.${cursor.id})`,
+  );
+};
+
 const listProductsFallback = async ({
-  page = 1,
   pageSize = 20,
+  cursor = null,
   search = '',
   searchField = 'name',
   category,
@@ -248,14 +270,15 @@ const listProductsFallback = async ({
   isAvailable,
   sortPrice,
 }: ListProductsParams): Promise<ProductListPage> => {
-  const offset = (page - 1) * pageSize;
+  const limit = Math.max(1, pageSize);
+  const ascending = sortPrice !== 'desc';
   const normalizedSearch = normalizeText(search);
   const normalizedCategory = normalizeText(category ?? null);
   const normalizedBrand = normalizeText(brand ?? null);
   const normalizedVendorCode = normalizeText(vendorCode ?? null)?.toUpperCase() ?? null;
   const normalizedMarketCode = normalizeText(marketCode ?? null)?.toUpperCase() ?? null;
 
-  let query = supabase.from('products').select('*', { count: 'exact' });
+  let query = supabase.from('products').select('*');
 
   if (tenantId !== null && tenantId !== undefined) {
     const scopeTenantId = await resolveProductScopeTenantId(tenantId);
@@ -288,31 +311,40 @@ const listProductsFallback = async ({
       if (!Number.isNaN(maybeId) && Number.isFinite(maybeId)) {
         query = query.eq('id', maybeId);
       } else {
-        return buildEmptyProductPage(page, pageSize);
+        return buildEmptyProductPage(limit);
       }
     } else {
       query = query.ilike(searchField, `%${normalizedSearch}%`);
     }
   }
 
-  const { data, error, count } = await query
-    .order('name', { ascending: sortPrice !== 'desc', nullsFirst: false })
-    .order('id', { ascending: true })
-    .range(offset, offset + pageSize - 1);
+  if (cursor) {
+    query = applyKeysetCursorFilter(query, cursor, ascending);
+  }
+
+  const { data, error } = await query
+    .order('name', { ascending, nullsFirst: false })
+    .order('id', { ascending })
+    .limit(limit + 1);
 
   if (error) {
     throw error;
   }
 
-  const total = count ?? 0;
+  const rows = (data as Product[] | null) ?? [];
+  const hasMore = rows.length > limit;
+  const pageRows = hasMore ? rows.slice(0, limit) : rows;
+  const last = pageRows[pageRows.length - 1];
 
   return {
-    data: (data as Product[] | null) ?? [],
+    data: pageRows,
     meta: {
-      total,
-      page,
-      page_size: pageSize,
-      total_pages: Math.max(1, Math.ceil(total / pageSize)),
+      has_more: hasMore,
+      next_cursor:
+        hasMore && last
+          ? { name: last.name ?? '', id: last.id }
+          : null,
+      limit,
     },
   };
 };
@@ -363,8 +395,8 @@ const listCategories = async ({ vendorCode, tenantId }: ListProductLookupParams 
     .filter((category) => category.length > 0);
 };
 const listProducts = async ({
-  page = 1,
   pageSize = 20,
+  cursor = null,
   search = '',
   searchField = 'name',
   category,
@@ -375,10 +407,12 @@ const listProducts = async ({
   isAvailable,
   sortPrice,
 }: ListProductsParams): Promise<ProductListPage> => {
-  if (!isListProductsPaginatedRpcAvailable) {
-    const fallbackParams: ListProductsParams = {
-      page,
-      pageSize,
+  const limit = Math.max(1, pageSize);
+
+  const runFallback = () =>
+    listProductsFallback({
+      pageSize: limit,
+      cursor,
       search,
       searchField,
       category,
@@ -387,76 +421,50 @@ const listProducts = async ({
       vendorCode,
       marketCode,
       isAvailable,
-    };
-
-    if (sortPrice) {
-      fallbackParams.sortPrice = sortPrice;
-    }
-
-    return listProductsFallback({
-      ...fallbackParams,
+      sortPrice,
     });
+
+  if (!isListProductsPaginatedRpcAvailable) {
+    return runFallback();
   }
 
-  const offset = (page - 1) * pageSize;
-  const { data, error } = await supabase.rpc(
-    'list_products_paginated' as never,
-    {
-      p_tenant_id: tenantId ?? null,
-      p_search: search ?? null,
-      p_search_field: searchField ?? 'name',
-      p_category: category ?? null,
-      p_brand: brand ?? null,
-      p_vendor_code: vendorCode ?? null,
-      p_market_code: marketCode ?? null,
-      p_is_available: typeof isAvailable === 'boolean' ? isAvailable : null,
-      p_sort_by: 'name',
-      p_sort_dir: sortPrice ?? 'asc',
-      p_limit: pageSize,
-      p_offset: offset,
-    } as never,
-  );
+  const { data, error } = await supabase.rpc('list_products_paginated', {
+    p_tenant_id: tenantId ?? undefined,
+    p_search: search ?? undefined,
+    p_search_field: searchField ?? 'name',
+    p_category: category ?? undefined,
+    p_brand: brand ?? undefined,
+    p_vendor_code: vendorCode ?? undefined,
+    p_market_code: marketCode ?? undefined,
+    p_is_available: typeof isAvailable === 'boolean' ? isAvailable : undefined,
+    p_sort_dir: sortPrice ?? 'asc',
+    p_limit: limit,
+    p_cursor_name: cursor?.name ?? undefined,
+    p_cursor_id: cursor?.id ?? undefined,
+  });
 
   if (error) {
     if (isMissingListProductsRpcError(error)) {
       isListProductsPaginatedRpcAvailable = false;
-
-      const fallbackParams: ListProductsParams = {
-        page,
-        pageSize,
-        search,
-        searchField,
-        category,
-        brand,
-        tenantId,
-        vendorCode,
-        marketCode,
-        isAvailable,
-      };
-
-      if (sortPrice) {
-        fallbackParams.sortPrice = sortPrice;
-      }
-
-      return listProductsFallback({
-        ...fallbackParams,
-      });
+      return runFallback();
     }
     throw error;
   }
 
-  const response = (data as ProductListPage | null) ?? null;
-  if (!response) {
-    return buildEmptyProductPage(page, pageSize);
+  const envelope =
+    (data as { data?: Product[]; meta?: Record<string, unknown> } | null) ?? null;
+  if (!envelope) {
+    return buildEmptyProductPage(limit);
   }
 
+  const meta = envelope.meta ?? {};
+
   return {
-    data: response.data ?? [],
+    data: envelope.data ?? [],
     meta: {
-      total: response.meta?.total ?? 0,
-      page: response.meta?.page ?? page,
-      page_size: response.meta?.page_size ?? pageSize,
-      total_pages: response.meta?.total_pages ?? 1,
+      has_more: Boolean(meta.has_more),
+      next_cursor: parseProductListCursor(meta.next_cursor),
+      limit: Number(meta.limit ?? limit) || limit,
     },
   };
 };

@@ -8,7 +8,7 @@ Mapping of all product views, brand pages, batch uploaders, and universal tag lo
 
 | Page / Component | UI Control / Action | Triggered Hook / Method | Backend RPC / Operation | Cache Invalidation / Optimistic Strategy |
 | :--- | :--- | :--- | :--- | :--- |
-| **`ProductsPage`** | Mount / Search / Filter | `useProductListQuery` | `RPC: list_products_paginated` | Cached on `productsQueryKeys.list` (`staleTime: 60s`) |
+| **`ProductsPage`** | Mount / Search / Filter / scroll load more | `useProductsInfiniteListQuery` | `RPC: list_products_paginated` (cursor; no total) | Cached on `productsQueryKeys.list` (`staleTime: 2m`) |
 | **`ProductCreateDialog`** | Submit "Create Product" | `useCreateProductMutation` | `Table: products` | Invalidates `productsQueryKeys.lists()` |
 | **`ProductDetailsPage`** | Update Specs / Weights | `useUpdateProductMutation` | `Table: products` | Invalidates `productsQueryKeys.detail` |
 | **`ProductBrandsPage`** | Create / Edit Brand | `useBrandMutations` | `Table: product_brands` | Invalidates `productsQueryKeys.brands` |

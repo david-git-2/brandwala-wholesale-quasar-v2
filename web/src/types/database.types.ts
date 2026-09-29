@@ -13391,13 +13391,13 @@ export type Database = {
         Args: {
           p_brand?: string
           p_category?: string
+          p_cursor_id?: number
+          p_cursor_name?: string
           p_is_available?: boolean
           p_limit?: number
           p_market_code?: string
-          p_offset?: number
           p_search?: string
           p_search_field?: string
-          p_sort_by?: string
           p_sort_dir?: string
           p_tenant_id?: number
           p_vendor_code?: string

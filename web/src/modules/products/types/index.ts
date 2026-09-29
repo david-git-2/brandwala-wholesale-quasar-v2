@@ -15,13 +15,17 @@ export type ProductServiceResult<T> = {
   error?: string;
 };
 
+export type ProductListCursor = {
+  name: string;
+  id: number;
+};
+
 export type ProductListPage = {
   data: Product[];
   meta: {
-    total: number;
-    page: number;
-    page_size: number;
-    total_pages: number;
+    has_more: boolean;
+    next_cursor: ProductListCursor | null;
+    limit: number;
   };
 };
 

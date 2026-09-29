@@ -38,38 +38,56 @@
       </div>
     </div>
 
-    <div v-if="totalPages > 1" class="row justify-center q-mt-md">
-      <q-pagination
-        :model-value="page"
-        :max="totalPages"
-        :max-pages="$q.screen.xs ? 4 : 8"
-        boundary-numbers
-        direction-links
-        @update:model-value="(val) => emit('update:page', val)"
-      />
-    </div>
+    <q-infinite-scroll
+      v-if="products.length"
+      ref="infiniteScrollRef"
+      :offset="200"
+      @load="onLoadMore"
+    >
+      <template #loading>
+        <div class="row justify-center q-py-md">
+          <q-spinner-dots color="primary" size="32px" />
+        </div>
+      </template>
+    </q-infinite-scroll>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useQuasar } from 'quasar';
+import { ref } from 'vue';
+import type { QInfiniteScroll } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { Product } from '../types';
 
-defineProps<{
+const props = defineProps<{
   products: Product[];
   isLoading: boolean;
   error: Error | null;
-  page: number;
-  totalPages: number;
+  hasMore: boolean;
+  isFetchingNextPage: boolean;
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:page', page: number): void;
+  (e: 'loadMore', done: (stop?: boolean) => void): void;
   (e: 'selectProduct', productId: number): void;
 }>();
 
-const $q = useQuasar();
+const infiniteScrollRef = ref<QInfiniteScroll | null>(null);
+
+const onLoadMore = (_index: number, done: (stop?: boolean) => void) => {
+  if (!props.hasMore || props.isFetchingNextPage) {
+    done(!props.hasMore);
+    return;
+  }
+  emit('loadMore', done);
+};
+
+const resetScroll = () => {
+  infiniteScrollRef.value?.reset();
+  infiniteScrollRef.value?.resume();
+};
+
+defineExpose({ resetScroll });
 </script>
 
 <style scoped>

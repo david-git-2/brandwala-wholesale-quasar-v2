@@ -56,17 +56,18 @@
       </q-card>
 
       <!-- Skeleton Loader -->
-      <ProductSkeleton v-if="isProductsLoading" />
+      <ProductSkeleton v-if="isInitialLoading" />
 
       <!-- Loaded Product Grid -->
       <ProductGrid
         v-else
+        ref="productGridRef"
         :products="productItems"
-        :is-loading="false"
+        :is-loading="isProductsLoading"
         :error="productsError"
-        :page="page"
-        :total-pages="totalPages"
-        @update:page="onPageChange"
+        :has-more="hasMore"
+        :is-fetching-next-page="isFetchingNextPage"
+        @load-more="onLoadMore"
         @select-product="openDetails"
       />
 
@@ -103,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch, type ComponentPublicInstance } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import BulkImportDialog from '../components/BulkImportDialog.vue';
 import ProductHeader from '../components/ProductHeader.vue';
@@ -115,7 +116,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalMarketsQuery, useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import {
-  useProductsListQuery,
+  useProductsInfiniteListQuery,
   useProductBrandsQuery,
   useProductCategoriesQuery,
 } from '../composables/useProductQuery';
@@ -127,8 +128,8 @@ const vendorStore = useVendorStore();
 const { data: marketsData } = useGlobalMarketsQuery();
 const { data: currenciesData } = useGlobalCurrenciesQuery();
 
-const page = ref(1);
 const pageSize = ref(20);
+const productGridRef = ref<ComponentPublicInstance<{ resetScroll: () => void }> | null>(null);
 const showSearchInput = ref(false);
 const filterDrawerOpen = ref(false);
 const bulkImportDialogOpen = ref(false);
@@ -143,7 +144,6 @@ const availability = ref<'all' | 'available' | 'unavailable'>('all');
 
 // --- Query parameters for products list ---
 const queryParams = computed(() => ({
-  page: page.value,
   pageSize: pageSize.value,
   search: search.value || null,
   searchField: searchField.value,
@@ -157,15 +157,16 @@ const queryParams = computed(() => ({
 
 // --- TanStack Query for product listing ---
 const {
-  data: productsResult,
+  products: productItems,
+  hasMore,
   isLoading: isProductsLoading,
+  isFetchingNextPage,
   error: productsError,
-} = useProductsListQuery(queryParams);
+  fetchNextPage,
+} = useProductsInfiniteListQuery(queryParams);
 
-const productItems = computed(() => productsResult.value?.data ?? []);
-const totalProducts = computed(() => productsResult.value?.meta?.total ?? 0);
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(totalProducts.value / pageSize.value)),
+const isInitialLoading = computed(
+  () => isProductsLoading.value && productItems.value.length === 0,
 );
 
 // --- Filter lookups via TanStack Query ---
@@ -221,10 +222,13 @@ const activeFilterCount = computed(() => {
   return count;
 });
 
+const resetInfiniteScroll = () => {
+  productGridRef.value?.resetScroll();
+};
+
 const updateUrlQuery = () => {
   void router.replace({
     query: {
-      page: page.value > 1 ? String(page.value) : undefined,
       search: search.value || undefined,
       searchField: searchField.value !== 'name' ? searchField.value : undefined,
       brand: brand.value || undefined,
@@ -241,7 +245,7 @@ watch(queryParams, () => {
 });
 
 const onApplyFilters = () => {
-  page.value = 1;
+  resetInfiniteScroll();
 };
 
 const onFilterVendorChange = () => {
@@ -257,7 +261,7 @@ const onResetFilters = () => {
   vendorCode.value = null;
   marketCode.value = null;
   availability.value = 'all';
-  page.value = 1;
+  resetInfiniteScroll();
 };
 
 const onApplyDrawerFilters = () => {
@@ -271,8 +275,17 @@ const onCloseSearch = () => {
   onApplyFilters();
 };
 
-const onPageChange = (nextPage: number) => {
-  page.value = nextPage;
+const onLoadMore = async (done: (stop?: boolean) => void) => {
+  if (!hasMore.value) {
+    done(true);
+    return;
+  }
+  try {
+    await fetchNextPage();
+    done(!hasMore.value);
+  } catch {
+    done(true);
+  }
 };
 
 const openDetails = async (productId: number) => {
@@ -286,13 +299,6 @@ const openCreateDialog = () => {
 
 const initializeFiltersFromQuery = () => {
   const query = route.query;
-
-  if (query.page) {
-    const parsedPage = Number(query.page);
-    if (!isNaN(parsedPage) && parsedPage > 0) {
-      page.value = parsedPage;
-    }
-  }
 
   if (query.search) {
     search.value = String(query.search);
