@@ -8,6 +8,8 @@ Mapping of all UI controls, stage actions, dialog triggers, and form submissions
 
 | Page / Component | UI Control / Action | Triggered Hook / Method | Backend RPC / Operation | Cache Invalidation / Optimistic Strategy |
 | :--- | :--- | :--- | :--- | :--- |
+| **`StorefrontPage`** | Mount / search / filter / infinite scroll | `useShopStorefrontInfiniteQuery` | `RPC: browse_shop_catalog_for_customer` (cursor; no total) | `shopOrderQueryKeys.storefrontCatalog` (`staleTime: 30s`) |
+| **`ShopCatalogStorefrontPage`** | Search / load more (app catalog preview) | `useShopCatalogStorefrontInfiniteQuery` | `RPC: browse_shop_catalog_for_admin` (cursor; no total) | Vue Query key `shopOrder` / `catalogStorefront` |
 | **`ShopOrderDetailHostPage`** | Open `/app/shop/orders/:id` | Loads catalog desk or dropship V2 by `shop_type_snapshot` | Same RPCs as before | Status change stays on this URL |
 | **`ShopSettingsPage`** | Update Shop Permissions | `useUpdateShopAccessMutation` | `Table: shop_customer_group_access` | Invalidates shop permissions cache |
 | **`DropshipOrderDetailV2ProcessingPage`** | Confirm line stock pick | Pick dialog | `RPC: add_shop_order_item_stock_pick` | Held lot + pick row; COD recompute |

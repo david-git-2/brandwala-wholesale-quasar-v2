@@ -118,8 +118,12 @@ export function useCopyProductBasedCostingFileMutation() {
         market_code: item.market_code ?? null,
         cargo_rate_kg_gbp: item.cargo_rate_kg_gbp ?? null,
         profit_rate: item.profit_rate ?? null,
+        vat_rate: item.vat_rate ?? null,
+        offer_pricing_mode: item.offer_pricing_mode ?? 'landed_cost_plus',
         conversion_rate: item.conversion_rate ?? null,
         status: 'pending',
+        buy_currency_id: item.buy_currency_id,
+        sell_currency_id: item.sell_currency_id,
       });
 
       if (!fileCreateResult?.id) {

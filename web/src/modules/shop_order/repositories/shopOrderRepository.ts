@@ -129,7 +129,7 @@ const browseShopCatalogForAdmin = async (
   opts: {
     search?: string | null;
     limit?: number;
-    offset?: number;
+    cursor?: { name: string; id: number } | null;
     includeBelowMinUnits?: boolean;
   } = {},
 ): Promise<ShopCatalogBrowseResult> => {
@@ -138,7 +138,8 @@ const browseShopCatalogForAdmin = async (
     p_shop_id: shopId,
     p_search: opts.search ?? null,
     p_limit: opts.limit ?? 24,
-    p_offset: opts.offset ?? 0,
+    p_cursor_name: opts.cursor?.name ?? null,
+    p_cursor_id: opts.cursor?.id ?? null,
     p_include_below_min_units: opts.includeBelowMinUnits ?? false,
   });
 
@@ -147,13 +148,13 @@ const browseShopCatalogForAdmin = async (
   }
 
   const payload = (data ?? {}) as ShopCatalogBrowseResult;
+  const meta = payload.meta ?? {};
   return {
     data: payload.data ?? [],
-    meta: payload.meta ?? {
-      total: 0,
-      page: 1,
-      page_size: opts.limit ?? 24,
-      total_pages: 1,
+    meta: {
+      has_more: meta.has_more ?? false,
+      next_cursor: meta.next_cursor ?? null,
+      limit: meta.limit ?? opts.limit ?? 24,
     },
   };
 };
@@ -166,7 +167,7 @@ const browseShopCatalog = async (
     category?: string | null;
     brand?: string | null;
     limit?: number;
-    offset?: number;
+    cursor?: { name: string; id: number } | null;
   } = {},
 ): Promise<ShopCatalogBrowseResult> => {
   const { data, error } = await supabase.rpc('browse_shop_catalog_for_customer', {
@@ -176,7 +177,8 @@ const browseShopCatalog = async (
     p_category: opts.category ?? null,
     p_brand: opts.brand ?? null,
     p_limit: opts.limit ?? 20,
-    p_offset: opts.offset ?? 0,
+    p_cursor_name: opts.cursor?.name ?? null,
+    p_cursor_id: opts.cursor?.id ?? null,
   });
 
   if (error) {
@@ -184,13 +186,15 @@ const browseShopCatalog = async (
   }
 
   const payload = (data ?? {}) as ShopCatalogBrowseResult;
+  const meta = payload.meta ?? {};
   return {
     data: payload.data ?? [],
-    meta: payload.meta ?? {
-      total: 0,
-      page: 1,
-      page_size: opts.limit ?? 20,
-      total_pages: 1,
+    meta: {
+      has_more: meta.has_more ?? false,
+      next_cursor: meta.next_cursor ?? null,
+      limit: meta.limit ?? opts.limit ?? 20,
+      shop: meta.shop ?? null,
+      permissions: meta.permissions ?? null,
     },
   };
 };

@@ -80,3 +80,42 @@ create or replace function public.get_shop_permissions_for_customer(
 returns jsonb
 language plpgsql security definer;
 ```
+
+---
+
+## 4. Storefront catalog browse (cursor)
+
+Keyset list. Sort: `name asc`, `id asc` (vendor catalog uses product `id`; fixed_price/dropship listings use `listing_id` as cursor `id`). No total count.
+
+### 4.1 Customer: `browse_shop_catalog_for_customer`
+
+```sql
+browse_shop_catalog_for_customer(
+  p_tenant_id bigint,
+  p_shop_slug text,
+  p_search text default null,
+  p_category text default null,
+  p_brand text default null,
+  p_limit integer default 20,
+  p_cursor_name text default null,
+  p_cursor_id bigint default null
+) returns jsonb
+```
+
+Response `data`: catalog rows. `meta`: `has_more`, `next_cursor` (`{ name, id }`), `limit`, plus `shop` and `permissions` on the first page.
+
+### 4.2 Admin preview: `browse_shop_catalog_for_admin`
+
+```sql
+browse_shop_catalog_for_admin(
+  p_tenant_id bigint,
+  p_shop_id bigint,
+  p_search text default null,
+  p_limit integer default 24,
+  p_cursor_name text default null,
+  p_cursor_id bigint default null,
+  p_include_below_min_units boolean default false
+) returns jsonb
+```
+
+`vendor_catalog` shops only. Same `meta` shape (`has_more`, `next_cursor`, `limit`).

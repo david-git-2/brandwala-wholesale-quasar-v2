@@ -36,7 +36,7 @@ const buildProductBasedCostingFileCreatePayload = (
   cargo_rate_kg_gbp: payload.cargo_rate_kg_gbp ?? null,
   profit_rate: payload.profit_rate ?? null,
   vat_rate: payload.vat_rate ?? null,
-  offer_pricing_mode: payload.offer_pricing_mode ?? null,
+  offer_pricing_mode: payload.offer_pricing_mode ?? 'landed_cost_plus',
   conversion_rate: payload.conversion_rate ?? null,
   status: normalizeText(payload.status),
   default_shipment_id: payload.default_shipment_id ?? null,

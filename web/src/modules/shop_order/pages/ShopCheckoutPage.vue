@@ -668,7 +668,7 @@ onMounted(async () => {
   if (!storefrontStore.shopDetails) {
     const lastSlug = getLastVisitedShopSlug(authStore.tenantId);
     if (lastSlug) {
-      await storefrontStore.fetchCatalog(lastSlug, { limit: 1, offset: 0 });
+      await storefrontStore.fetchCatalog(lastSlug, { limit: 1 });
     }
   }
 });

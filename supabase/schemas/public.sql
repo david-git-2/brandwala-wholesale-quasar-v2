@@ -46486,7 +46486,7 @@ GRANT ALL ON FUNCTION "public"."auth_investor_id"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."billing_profile_valid_for_issuer"("p_billing_profile_id" bigint, "p_issued_by_tenant_id" bigint) TO "authenticated";
 
 
-REVOKE ALL ON FUNCTION "public"."browse_shop_catalog_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_search" "text", "p_category" "text", "p_brand" "text", "p_limit" integer, "p_offset" integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."browse_shop_catalog_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_search" "text", "p_category" "text", "p_brand" "text", "p_limit" integer, "p_cursor_name" "text", "p_cursor_id" bigint) FROM PUBLIC;
 
 
 GRANT ALL ON FUNCTION "public"."build_dropship_tenant_b2b_invoice_payload"("p_order_id" bigint, "p_invoice_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_note" "text") TO "authenticated";

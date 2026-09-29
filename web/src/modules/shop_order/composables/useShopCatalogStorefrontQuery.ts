@@ -1,7 +1,7 @@
 import { useInfiniteQuery, keepPreviousData } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
-import type { Shop, ShopCatalogStorefrontProduct } from '../types';
+import type { Shop, ShopCatalogListCursor, ShopCatalogStorefrontProduct } from '../types';
 
 const PAGE_SIZE = 24;
 
@@ -76,37 +76,29 @@ export function useShopCatalogStorefrontInfiniteQuery(
         showAllProducts: showAllProducts?.value ?? false,
       },
     ]),
-    queryFn: async ({ pageParam = 0 }) => {
-      const offset = pageParam as number;
+    queryFn: async ({ pageParam }) => {
       const result = await shopOrderRepository.browseShopCatalogForAdmin(
         tenantId.value!,
         shop.value!.id,
         {
           search: searchParam.value,
           limit: PAGE_SIZE,
-          offset,
+          cursor: (pageParam as ShopCatalogListCursor | null) ?? null,
           includeBelowMinUnits: showAllProducts?.value ?? false,
         },
       );
 
       const rows = (result.data ?? []) as AdminCatalogRow[];
 
-      const total = Number(result.meta?.total ?? 0);
-
       return {
         items: rows.map(rowToCatalogStorefrontProduct),
-        total: Number.isFinite(total) ? total : 0,
-        pageSize: result.meta?.page_size ?? PAGE_SIZE,
-        nextOffset: offset + rows.length,
+        hasMore: result.meta?.has_more ?? false,
+        nextCursor: result.meta?.next_cursor ?? null,
       };
     },
-    getNextPageParam: (lastPage) => {
-      if (lastPage.nextOffset < lastPage.total && lastPage.items.length > 0) {
-        return lastPage.nextOffset;
-      }
-      return undefined;
-    },
-    initialPageParam: 0,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
+    initialPageParam: null as ShopCatalogListCursor | null,
     staleTime: 30 * 1000,
     placeholderData: keepPreviousData,
     enabled: computed(
@@ -135,12 +127,9 @@ export function useShopCatalogStorefrontInfiniteQuery(
     return items;
   });
 
-  const totalItems = computed(() => query.data.value?.pages?.[0]?.total ?? 0);
-
   return {
     ...query,
     catalogItems,
-    totalItems,
     hasVendorFilters,
     minAvailableUnits,
     applyMinAvailableUnits,

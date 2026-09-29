@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden bg-grey-1">
+  <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
       <q-banner
         v-if="isError"
@@ -327,6 +327,7 @@ async function handleDialogSubmit(payload: CostingFileForm) {
       note: payload.note,
       vendor_code: payload.vendor_code,
       market_code: payload.market_code,
+      offer_pricing_mode: 'landed_cost_plus',
       buy_currency_id: payload.buy_currency_id ?? undefined,
       sell_currency_id: payload.sell_currency_id ?? undefined,
     });

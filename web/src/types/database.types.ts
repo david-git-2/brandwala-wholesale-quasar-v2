@@ -10155,9 +10155,10 @@ export type Database = {
       }
       browse_shop_catalog_for_admin: {
         Args: {
+          p_cursor_id?: number
+          p_cursor_name?: string
           p_include_below_min_units?: boolean
           p_limit?: number
-          p_offset?: number
           p_search?: string
           p_shop_id: number
           p_tenant_id: number
@@ -10168,8 +10169,9 @@ export type Database = {
         Args: {
           p_brand?: string
           p_category?: string
+          p_cursor_id?: number
+          p_cursor_name?: string
           p_limit?: number
-          p_offset?: number
           p_search?: string
           p_shop_slug: string
           p_tenant_id: number

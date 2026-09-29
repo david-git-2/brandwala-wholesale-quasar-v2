@@ -428,7 +428,7 @@ const browseShopCatalog = async (
     category?: string | null;
     brand?: string | null;
     limit?: number;
-    offset?: number;
+    cursor?: { name: string; id: number } | null;
   },
 ): Promise<ShopServiceResult<ShopCatalogBrowseResult>> => {
   try {

@@ -3,7 +3,7 @@ import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderService } from '../services/shopOrderService';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import type { ShopCatalogItem, Shop } from '../types';
+import type { ShopCatalogItem, Shop, ShopCatalogListCursor } from '../types';
 import {
   seedCustomerShopPermissions,
   type CustomerShopPermissions,
@@ -31,7 +31,7 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
         limit: params.value.pageSize ?? 24,
       }),
     ),
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async ({ pageParam }) => {
       const limit = params.value.pageSize ?? 24;
 
       const result = await shopOrderService.browseShopCatalog(tenantId.value, params.value.shopSlug, {
@@ -39,7 +39,7 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
         category: params.value.category || null,
         brand: params.value.brand || null,
         limit,
-        offset: pageParam as number,
+        cursor: (pageParam as ShopCatalogListCursor | null) ?? null,
       });
 
       if (!result.success) {
@@ -58,18 +58,13 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
         items: (data as ShopCatalogItem[]).map((item) => normalizeShopCatalogItem(item)),
         shopDetails,
         permissions: (meta.permissions ?? null) as CustomerShopPermissions | null,
-        total: meta.total ?? 0,
-        pageSize: meta.page_size ?? limit,
-        nextOffset: (pageParam as number) + data.length,
+        hasMore: meta.has_more ?? false,
+        nextCursor: meta.next_cursor ?? null,
       };
     },
-    getNextPageParam: (lastPage) => {
-      if (lastPage.nextOffset < lastPage.total && lastPage.items.length > 0) {
-        return lastPage.nextOffset;
-      }
-      return undefined;
-    },
-    initialPageParam: 0,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
+    initialPageParam: null as ShopCatalogListCursor | null,
     staleTime: 30 * 1000,
     refetchOnMount: 'always',
     placeholderData: keepPreviousData,
@@ -80,12 +75,6 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
     const dataVal = query.data?.value;
     const pages = dataVal?.pages;
     return pages && pages.length > 0 ? pages[0]?.shopDetails ?? null : null;
-  });
-
-  const totalItems = computed(() => {
-    const dataVal = query.data?.value;
-    const pages = dataVal?.pages;
-    return pages && pages.length > 0 ? pages[0]?.total ?? 0 : 0;
   });
 
   const catalogItems = computed(() => {
@@ -119,7 +108,6 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
   return {
     ...query,
     shopDetails,
-    totalItems,
     catalogItems,
     catalogPermissions,
   };

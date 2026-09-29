@@ -194,9 +194,27 @@ export interface ShopCatalogProductDetail extends ShopCatalogItem {
   minimum_sell_price_currency_symbol?: string | null;
 }
 
+export type ShopCatalogListCursor = {
+  name: string;
+  id: number;
+};
+
+export type ShopCatalogBrowseMeta = {
+  has_more: boolean;
+  next_cursor: ShopCatalogListCursor | null;
+  limit: number;
+  shop?: Shop | null;
+  permissions?: Record<string, unknown> | null;
+};
+
 export interface ShopCatalogProductDetailResult {
   data: ShopCatalogProductDetail;
-  meta: ShopCatalogBrowseResult['meta'];
+  meta: Pick<ShopCatalogBrowseMeta, 'shop' | 'permissions'> & {
+    total?: number;
+    page?: number;
+    page_size?: number;
+    total_pages?: number;
+  };
 }
 
 export interface ShopCatalogRelatedResult {
@@ -208,14 +226,7 @@ export interface ShopCatalogRelatedResult {
 
 export interface ShopCatalogBrowseResult {
   data: ShopCatalogItem[];
-  meta: {
-    total: number;
-    page: number;
-    page_size: number;
-    total_pages: number;
-    shop?: Shop | null;
-    permissions?: any | null;
-  };
+  meta: ShopCatalogBrowseMeta;
 }
 
 /** Row from `search_shop_catalog_for_customer` RPC. */

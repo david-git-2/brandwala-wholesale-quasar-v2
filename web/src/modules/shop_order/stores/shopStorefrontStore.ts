@@ -10,9 +10,7 @@ export const useShopStorefrontStore = defineStore('shopStorefront', {
     permissions: null as any,
     loading: false,
     error: null as string | null,
-    totalItems: 0,
     pageSize: 20,
-    currentPage: 1,
   }),
 
   actions: {
@@ -27,7 +25,7 @@ export const useShopStorefrontStore = defineStore('shopStorefront', {
         category?: string | null;
         brand?: string | null;
         limit?: number;
-        offset?: number;
+        cursor?: { name: string; id: number } | null;
         append?: boolean;
       } = {},
     ) {
@@ -46,7 +44,7 @@ export const useShopStorefrontStore = defineStore('shopStorefront', {
           category: opts.category ?? null,
           brand: opts.brand ?? null,
           limit: opts.limit ?? this.pageSize,
-          offset: opts.offset ?? 0,
+          cursor: opts.cursor ?? null,
         });
 
         if (!result.success) {
@@ -60,9 +58,7 @@ export const useShopStorefrontStore = defineStore('shopStorefront', {
 
         this.shopDetails = meta.shop ?? null;
         this.permissions = meta.permissions ?? null;
-        this.totalItems = meta.total ?? 0;
-        this.pageSize = meta.page_size ?? this.pageSize;
-        this.currentPage = meta.page ?? 1;
+        this.pageSize = meta.limit ?? this.pageSize;
 
         if (opts.append) {
           // Prevent duplicates by checking product_id + global_stock_id

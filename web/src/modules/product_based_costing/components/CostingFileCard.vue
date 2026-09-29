@@ -5,6 +5,7 @@
         class="q-px-sm q-py-xs cursor-pointer"
         bordered
         flat
+        :style="statusSurfaceStyle(item.status)"
         @click="handleSelect(item)"
       >
         <div class="row items-center justify-between no-wrap">
@@ -45,7 +46,6 @@
 </template>
 
 <script setup lang="ts">
-import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import type { ProductBasedCostingFile } from '../types';
 import { normalizePbcFileStatus } from '../composables/useProductBasedCostingFileDetailsState';
@@ -61,7 +61,6 @@ const emit = defineEmits<{
   (event: 'delete', item: ProductBasedCostingFile): void;
 }>();
 
-const $q = useQuasar();
 const { t, te } = useI18n();
 
 const statusLabel = (status: string | null | undefined) => {
@@ -83,21 +82,61 @@ const handleCopy = (item: ProductBasedCostingFile) => {
 };
 
 const handleDelete = (item: ProductBasedCostingFile) => {
-  $q.dialog({
-    title: t('product_based_costing.confirm_delete_title'),
-    message: t('product_based_costing.confirm_delete_message', {
-      id: item.id,
-      name: item.name || t('product_based_costing.untitled'),
-    }),
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    emit('delete', item);
-  });
+  emit('delete', item);
 };
 
 const normalizeStatus = (status: string | null | undefined) =>
   normalizePbcFileStatus((status ?? '').trim().toLowerCase() || 'pending');
+
+const statusSurfaceStyle = (status: string | null | undefined) => {
+  const value = normalizeStatus(status);
+  if (value === 'pending') {
+    return {
+      backgroundColor: '#fffbf2',
+      boxShadow: 'inset 6px 0 0 #d8a54a',
+    };
+  }
+  if (value === 'offered') {
+    return {
+      backgroundColor: '#f3f7ff',
+      boxShadow: 'inset 6px 0 0 #6f93d8',
+    };
+  }
+  if (value === 'confirmed') {
+    return {
+      backgroundColor: '#e6f7ff',
+      boxShadow: 'inset 6px 0 0 #1890ff',
+    };
+  }
+  if (value === 'procuring') {
+    return {
+      backgroundColor: '#f0f5ff',
+      boxShadow: 'inset 6px 0 0 #2f54eb',
+    };
+  }
+  if (value === 'ready_for_shipment') {
+    return {
+      backgroundColor: '#f6ffed',
+      boxShadow: 'inset 6px 0 0 #52c41a',
+    };
+  }
+  if (value === 'delivered') {
+    return {
+      backgroundColor: '#e6fffb',
+      boxShadow: 'inset 6px 0 0 #13c2c2',
+    };
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#fff4f6',
+      boxShadow: 'inset 6px 0 0 #c97586',
+    };
+  }
+  return {
+    backgroundColor: '#f8f9fb',
+    boxShadow: 'inset 6px 0 0 #8ea0b8',
+  };
+};
 
 const statusChipStyle = (status: string | null | undefined) => {
   const value = normalizeStatus(status);

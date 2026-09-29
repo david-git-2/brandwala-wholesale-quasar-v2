@@ -224,9 +224,9 @@ GRANT ALL ON FUNCTION "public"."add_to_shop_cart"("p_shop_id" bigint, "p_product
 GRANT ALL ON FUNCTION "public"."advance_dropship_order_status"("p_order_id" bigint, "p_target_status" "public"."shop_order_status", "p_remittance_ref" "text", "p_bank_trx_id" "text") TO "authenticated";
 
 
-REVOKE ALL ON FUNCTION "public"."browse_shop_catalog_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_search" "text", "p_category" "text", "p_brand" "text", "p_limit" integer, "p_offset" integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."browse_shop_catalog_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_search" "text", "p_category" "text", "p_brand" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."browse_shop_catalog_for_admin"("p_tenant_id" bigint, "p_shop_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer, "p_include_below_min_units" boolean) TO "authenticated";
+REVOKE ALL ON FUNCTION "public"."browse_shop_catalog_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_search" "text", "p_category" "text", "p_brand" "text", "p_limit" integer, "p_cursor_name" "text", "p_cursor_id" bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."browse_shop_catalog_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_search" "text", "p_category" "text", "p_brand" "text", "p_limit" integer, "p_cursor_name" "text", "p_cursor_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."browse_shop_catalog_for_admin"("p_tenant_id" bigint, "p_shop_id" bigint, "p_search" "text", "p_limit" integer, "p_cursor_name" "text", "p_cursor_id" bigint, "p_include_below_min_units" boolean) TO "authenticated";
 REVOKE ALL ON FUNCTION "public"."search_shop_catalog_for_customer"("p_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."search_shop_catalog_for_customer"("p_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 REVOKE ALL ON FUNCTION "public"."get_shop_catalog_product_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_product_id" bigint) FROM PUBLIC;
