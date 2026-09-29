@@ -124,6 +124,8 @@
             :conversion-rate="conversionRate"
             :cargo-rate="cargoRate"
             :profit-rate="profitRate"
+            :vat-rate="vatRate"
+            :offer-pricing-mode="offerPricingMode"
             :file-meta="summaryFileMeta"
             show-file-meta
           />
@@ -169,6 +171,31 @@
               <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Default Profit Markup (%)</div>
               <q-input
                 v-model.number="drawerProfitRate"
+                type="number"
+                suffix="%"
+                outlined
+                dense
+                class="bg-white font-mono"
+              />
+            </div>
+
+            <div>
+              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Offer price mode</div>
+              <q-select
+                v-model="drawerOfferPricingMode"
+                :options="offerPricingModeOptions"
+                emit-value
+                map-options
+                outlined
+                dense
+                class="bg-white"
+              />
+            </div>
+
+            <div v-if="drawerOfferPricingMode === 'gbp_vat_then_profit'">
+              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">VAT on £ price (%)</div>
+              <q-input
+                v-model.number="drawerVatRate"
                 type="number"
                 suffix="%"
                 outlined
@@ -313,6 +340,8 @@ const props = defineProps<{
   conversionRate: number;
   cargoRate: number;
   profitRate: number;
+  vatRate: number;
+  offerPricingMode: string;
   summaryFileMeta?: PbcSummaryFileMeta | null;
   customers?: Array<{ customer_group_id: number; group_name: string }>;
   status?: string;
@@ -328,7 +357,13 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', val: boolean): void;
   (e: 'update-file', payload: Record<string, any>): void;
-  (e: 'update-rates', payload: { conversion_rate: number; cargo_rate_kg_gbp: number; profit_rate: number }): void;
+  (e: 'update-rates', payload: {
+    conversion_rate: number;
+    cargo_rate_kg_gbp: number;
+    profit_rate: number;
+    vat_rate: number;
+    offer_pricing_mode: string;
+  }): void;
   (e: 'primary-action', action: StaffPbcPrimaryAction): void;
   (e: 'cancel-file'): void;
   (e: 'override-status'): void;
@@ -346,6 +381,13 @@ const drawerNote = ref('');
 const drawerConversionRate = ref(140);
 const drawerCargoRate = ref(0);
 const drawerProfitRate = ref(25);
+const drawerVatRate = ref(0);
+const drawerOfferPricingMode = ref('landed_cost_plus');
+
+const offerPricingModeOptions = [
+  { label: 'Cost + profit', value: 'landed_cost_plus' },
+  { label: 'VAT then profit on £', value: 'gbp_vat_then_profit' },
+];
 
 const updatingFile = ref(false);
 const updatingRates = ref(false);
@@ -379,6 +421,11 @@ watch(
       drawerConversionRate.value = newFile.conversion_rate ?? 140;
       drawerCargoRate.value = newFile.cargo_rate_kg_gbp ?? 0;
       drawerProfitRate.value = newFile.profit_rate ?? 25;
+      drawerVatRate.value = newFile.vat_rate ?? 0;
+      drawerOfferPricingMode.value =
+        newFile.offer_pricing_mode === 'gbp_vat_then_profit'
+          ? 'gbp_vat_then_profit'
+          : 'landed_cost_plus';
     }
   },
   { immediate: true },
@@ -432,6 +479,8 @@ function saveRates() {
     conversion_rate: Number(drawerConversionRate.value) || 140,
     cargo_rate_kg_gbp: Number(drawerCargoRate.value) || 0,
     profit_rate: Number(drawerProfitRate.value) || 0,
+    vat_rate: Number(drawerVatRate.value) || 0,
+    offer_pricing_mode: drawerOfferPricingMode.value,
   });
 }
 

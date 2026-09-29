@@ -29,6 +29,8 @@ type RatesInput = {
   cargoRate: number;
   conversionRate: number;
   profitRate: number;
+  vatRate?: number;
+  offerPricingMode?: string | null;
 };
 
 function resolveOfferPriceBdt(
@@ -51,6 +53,8 @@ function resolveOfferPriceBdt(
       cargoRate: rates.cargoRate,
       conversionRate: rates.conversionRate,
       profitRate: rates.profitRate,
+      vatRate: rates.vatRate,
+      offerPricingMode: rates.offerPricingMode,
     });
     const stored = normalizeOfferPriceBdt(item.offer_price);
     if (stored !== calculated) {
@@ -65,6 +69,8 @@ function resolveOfferPriceBdt(
     cargoRate: rates.cargoRate,
     conversionRate: rates.conversionRate,
     profitRate: rates.profitRate,
+    vatRate: rates.vatRate,
+    offerPricingMode: rates.offerPricingMode,
   });
 }
 

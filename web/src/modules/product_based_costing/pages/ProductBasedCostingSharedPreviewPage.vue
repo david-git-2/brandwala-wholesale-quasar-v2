@@ -428,6 +428,7 @@ import {
   getUnitCostBdt,
   getUnitTotalCostGbp,
   normalizeOfferPriceBdt,
+  normalizeOfferPricingMode,
   toNumberSafe,
 } from '../utils/pricing';
 
@@ -718,6 +719,8 @@ const tableRows = computed(() => {
   const cargoRate = costingFile.value?.cargo_rate_kg_gbp ?? 0;
   const conversionRate = costingFile.value?.conversion_rate ?? 140;
   const profitRate = costingFile.value?.profit_rate ?? 0;
+  const vatRate = costingFile.value?.vat_rate ?? 0;
+  const offerPricingMode = normalizeOfferPricingMode(costingFile.value?.offer_pricing_mode);
 
   const mapItem = (item: ProductBasedCostingItem, slNum: number) => {
     const qty = toNumberSafe(item.quantity);
@@ -751,6 +754,8 @@ const tableRows = computed(() => {
       cargoRate,
       conversionRate,
       profitRate,
+      vatRate,
+      offerPricingMode,
     });
 
     const isManual =
@@ -826,6 +831,8 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
   const cargoRate = costingFile.value?.cargo_rate_kg_gbp ?? 0;
   const conversionRate = costingFile.value?.conversion_rate ?? 140;
   const profitRate = costingFile.value?.profit_rate ?? 0;
+  const vatRate = costingFile.value?.vat_rate ?? 0;
+  const offerPricingMode = normalizeOfferPricingMode(costingFile.value?.offer_pricing_mode);
 
   metrics.push({
     label: t('product_based_costing.preview_total_items'),
@@ -906,6 +913,8 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
         cargoRate,
         conversionRate,
         profitRate,
+        vatRate,
+        offerPricingMode,
       });
       const isManual =
         item.is_offer_price_manual === true ||
@@ -945,6 +954,8 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
         cargoRate,
         conversionRate,
         profitRate,
+        vatRate,
+        offerPricingMode,
       });
       const isManual =
         item.is_offer_price_manual === true ||

@@ -34,6 +34,8 @@ const buildProductBasedCostingFileCreatePayload = (
   market_code: normalizeText(payload.market_code),
   cargo_rate_kg_gbp: payload.cargo_rate_kg_gbp ?? null,
   profit_rate: payload.profit_rate ?? null,
+  vat_rate: payload.vat_rate ?? null,
+  offer_pricing_mode: payload.offer_pricing_mode ?? null,
   conversion_rate: payload.conversion_rate ?? null,
   status: normalizeText(payload.status),
   default_shipment_id: payload.default_shipment_id ?? null,
@@ -78,6 +80,14 @@ const buildProductBasedCostingFileUpdatePayload = (
 
   if (payload.profit_rate !== undefined) {
     updatePayload.profit_rate = payload.profit_rate;
+  }
+
+  if (payload.vat_rate !== undefined) {
+    updatePayload.vat_rate = payload.vat_rate;
+  }
+
+  if (payload.offer_pricing_mode !== undefined) {
+    updatePayload.offer_pricing_mode = payload.offer_pricing_mode;
   }
 
   if (payload.conversion_rate !== undefined) {
@@ -335,6 +345,8 @@ const getProductBasedCostingFileSummary = async (
     conversion_rate?: number | null;
     cargo_rate_kg_gbp?: number | null;
     profit_rate?: number | null;
+    vat_rate?: number | null;
+    offer_pricing_mode?: string | null;
   } = {},
 ) => {
   const { data, error } = await supabase.rpc('get_product_based_costing_file_summary', {
@@ -342,6 +354,8 @@ const getProductBasedCostingFileSummary = async (
     p_conversion_rate: rates.conversion_rate ?? null,
     p_cargo_rate_kg_gbp: rates.cargo_rate_kg_gbp ?? null,
     p_profit_rate: rates.profit_rate ?? null,
+    p_vat_rate: rates.vat_rate ?? null,
+    p_offer_pricing_mode: rates.offer_pricing_mode ?? null,
   });
 
   if (error) {

@@ -76,6 +76,12 @@
             <span><strong>Cargo:</strong> £{{ cargoRateValue }}/kg</span>
             <span class="text-grey-4">|</span>
             <span><strong>Profit:</strong> {{ profitRateValue }}%</span>
+            <span class="text-grey-4">|</span>
+            <span><strong>Offer:</strong> {{ offerPricingModeValue === 'gbp_vat_then_profit' ? 'VAT then £' : 'On cost' }}</span>
+            <template v-if="offerPricingModeValue === 'gbp_vat_then_profit'">
+              <span class="text-grey-4">|</span>
+              <span><strong>VAT:</strong> {{ vatRateValue }}%</span>
+            </template>
             <q-btn
               flat
               round
@@ -202,43 +208,83 @@
       </div>
 
       <!-- Expandable Inline Rates Editor Bar -->
-      <div v-if="ratesExpanded" class="q-pt-sm q-pb-xs border-top q-mt-xs">
-        <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col-12 col-md-3">
-            <q-input
-              v-model.number="localRates.conversion_rate"
-              dense
-              outlined
-              type="number"
-              prefix="৳"
-              label="FX Rate (GBP → BDT)"
-              hide-bottom-space
-            />
+      <div v-if="ratesExpanded" class="pbc-rates-editor">
+        <div class="pbc-rates-editor__grid">
+          <div class="pbc-rates-group">
+            <div class="pbc-rates-group__title">Landed cost</div>
+            <div class="row q-col-gutter-sm">
+              <div class="col-6">
+                <q-input
+                  v-model.number="localRates.conversion_rate"
+                  dense
+                  outlined
+                  type="number"
+                  prefix="৳"
+                  label="FX (৳ per £)"
+                  hide-bottom-space
+                />
+              </div>
+              <div class="col-6">
+                <q-input
+                  v-model.number="localRates.cargo_rate_kg_gbp"
+                  dense
+                  outlined
+                  type="number"
+                  prefix="£"
+                  suffix="/kg"
+                  label="Cargo"
+                  hide-bottom-space
+                />
+              </div>
+            </div>
           </div>
-          <div class="col-12 col-md-3">
-            <q-input
-              v-model.number="localRates.cargo_rate_kg_gbp"
+
+          <div class="pbc-rates-group">
+            <div class="pbc-rates-group__title">Offer price</div>
+            <q-btn-toggle
+              v-model="localRates.offer_pricing_mode"
+              unelevated
+              no-caps
               dense
-              outlined
-              type="number"
-              prefix="£"
-              suffix="/kg"
-              label="Cargo Rate (GBP/kg)"
-              hide-bottom-space
+              spread
+              toggle-color="primary"
+              class="pbc-rates-mode-toggle q-mb-xs"
+              :options="offerPricingModeOptions"
             />
+            <div class="text-caption text-grey-7 q-mb-sm">
+              {{
+                localRates.offer_pricing_mode === 'gbp_vat_then_profit'
+                  ? 'VAT, then profit, on the £ web price. Cargo stays in cost only.'
+                  : 'Profit is added on landed cost in ৳.'
+              }}
+            </div>
+            <div class="row q-col-gutter-sm">
+              <div :class="localRates.offer_pricing_mode === 'gbp_vat_then_profit' ? 'col-6' : 'col-12'">
+                <q-input
+                  v-model.number="localRates.profit_rate"
+                  dense
+                  outlined
+                  type="number"
+                  suffix="%"
+                  label="Profit"
+                  hide-bottom-space
+                />
+              </div>
+              <div v-if="localRates.offer_pricing_mode === 'gbp_vat_then_profit'" class="col-6">
+                <q-input
+                  v-model.number="localRates.vat_rate"
+                  dense
+                  outlined
+                  type="number"
+                  suffix="%"
+                  label="VAT"
+                  hide-bottom-space
+                />
+              </div>
+            </div>
           </div>
-          <div class="col-12 col-md-3">
-            <q-input
-              v-model.number="localRates.profit_rate"
-              dense
-              outlined
-              type="number"
-              suffix="%"
-              label="Markup / Profit %"
-              hide-bottom-space
-            />
-          </div>
-          <div class="col-12 col-md-3 row justify-end q-gutter-xs">
+
+          <div class="pbc-rates-editor__actions">
             <q-btn
               flat
               dense
@@ -253,8 +299,8 @@
               dense
               no-caps
               color="primary"
-              label="Save Rates"
-              class="rounded-sq-btn q-px-sm"
+              label="Save"
+              class="rounded-sq-btn q-px-md"
               style="border-radius: 8px"
               :loading="savingRates"
               @click="handleSaveRates"
@@ -1042,6 +1088,8 @@
         :conversion-rate="conversionRateValue"
         :cargo-rate="cargoRateValue"
         :profit-rate="profitRateValue"
+        :vat-rate="vatRateValue"
+        :offer-pricing-mode="offerPricingModeValue"
         :summary-file-meta="summaryFileMeta"
         :customers="customerAccounts"
         :status="status"
@@ -1214,6 +1262,7 @@ import {
   calculateOfferPriceBdt,
   computeProfitRatePercentOnCost,
   normalizeOfferPriceBdt,
+  normalizeOfferPricingMode,
 } from '../utils/pricing';
 
 const props = defineProps<{
@@ -1333,7 +1382,14 @@ const localRates = reactive({
   conversion_rate: 140,
   cargo_rate_kg_gbp: 0,
   profit_rate: 25,
+  vat_rate: 0,
+  offer_pricing_mode: 'landed_cost_plus' as 'landed_cost_plus' | 'gbp_vat_then_profit',
 });
+
+const offerPricingModeOptions = [
+  { label: 'On cost', value: 'landed_cost_plus' },
+  { label: 'VAT then £', value: 'gbp_vat_then_profit' },
+];
 
 // Inline title editing
 const isEditingName = ref(false);
@@ -1352,6 +1408,10 @@ const recalculateOfferPricesMutation = useRecalculateOfferPricesMutation();
 const cargoRateValue = computed(() => file.value?.cargo_rate_kg_gbp ?? localRates.cargo_rate_kg_gbp);
 const conversionRateValue = computed(() => file.value?.conversion_rate ?? localRates.conversion_rate);
 const profitRateValue = computed(() => file.value?.profit_rate ?? localRates.profit_rate);
+const vatRateValue = computed(() => file.value?.vat_rate ?? localRates.vat_rate);
+const offerPricingModeValue = computed(() =>
+  normalizeOfferPricingMode(file.value?.offer_pricing_mode ?? localRates.offer_pricing_mode),
+);
 
 watch(
   file,
@@ -1360,6 +1420,8 @@ watch(
       localRates.conversion_rate = newFile.conversion_rate ?? 140;
       localRates.cargo_rate_kg_gbp = newFile.cargo_rate_kg_gbp ?? 0;
       localRates.profit_rate = newFile.profit_rate ?? 25;
+      localRates.vat_rate = newFile.vat_rate ?? 0;
+      localRates.offer_pricing_mode = normalizeOfferPricingMode(newFile.offer_pricing_mode);
     }
   },
   { immediate: true },
@@ -1369,6 +1431,8 @@ const summaryRates = computed(() => ({
   cargoRate: cargoRateValue.value || 0,
   conversionRate: conversionRateValue.value || 140,
   profitRate: profitRateValue.value || 0,
+  vatRate: vatRateValue.value || 0,
+  offerPricingMode: offerPricingModeValue.value,
 }));
 
 const { summaryMetrics } = usePbcFileSummaryQuery(fileId, summaryRates);
@@ -1467,6 +1531,8 @@ const tableRows = computed(() => {
       cargoRate,
       conversionRate: fx,
       profitRate: itemProfitRate,
+      vatRate: vatRateValue.value || 0,
+      offerPricingMode: offerPricingModeValue.value,
     });
     const isOfferPriceManual =
       item.is_offer_price_manual === true ||
@@ -2154,6 +2220,8 @@ async function handleSaveRates() {
       conversion_rate: localRates.conversion_rate || 0,
       cargo_rate_kg_gbp: localRates.cargo_rate_kg_gbp || 0,
       profit_rate: localRates.profit_rate || 0,
+      vat_rate: localRates.vat_rate || 0,
+      offer_pricing_mode: localRates.offer_pricing_mode,
     });
     await recalculateOfferPricesMutation.mutateAsync(fileId.value);
     ratesExpanded.value = false;
@@ -2209,13 +2277,21 @@ async function handleUpdateFileDirect(payload: Record<string, any>) {
   $q.notify({ type: 'positive', message: 'File details updated' });
 }
 
-async function handleUpdateRatesDirect(payload: { conversion_rate: number; cargo_rate_kg_gbp: number; profit_rate: number }) {
+async function handleUpdateRatesDirect(payload: {
+  conversion_rate: number;
+  cargo_rate_kg_gbp: number;
+  profit_rate: number;
+  vat_rate: number;
+  offer_pricing_mode: string;
+}) {
   if (!fileId.value) return;
   await updateFileMutation.mutateAsync({
     id: fileId.value,
     conversion_rate: payload.conversion_rate,
     cargo_rate_kg_gbp: payload.cargo_rate_kg_gbp,
     profit_rate: payload.profit_rate,
+    vat_rate: payload.vat_rate,
+    offer_pricing_mode: payload.offer_pricing_mode,
   });
   await recalculateOfferPricesMutation.mutateAsync(fileId.value);
   $q.notify({ type: 'positive', message: 'Rates updated and prices recalculated' });
@@ -2755,6 +2831,67 @@ function goBackToList() {
 
 .rates-pill {
   border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.pbc-rates-editor {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  margin-top: 6px;
+  padding-top: 10px;
+  padding-bottom: 4px;
+}
+
+.pbc-rates-editor__grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(320px, 1.4fr) auto;
+  gap: 10px 12px;
+  align-items: stretch;
+}
+
+.pbc-rates-group {
+  background: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 8px 10px 10px;
+}
+
+.pbc-rates-group__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.pbc-rates-mode-toggle {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.pbc-rates-mode-toggle :deep(.q-btn) {
+  border-radius: 0;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.pbc-rates-editor__actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 96px;
+}
+
+@media (max-width: 1023px) {
+  .pbc-rates-editor__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pbc-rates-editor__actions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
 }
 
 .name-inline-title:hover .edit-icon {

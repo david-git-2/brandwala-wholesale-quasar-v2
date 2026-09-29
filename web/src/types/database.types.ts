@@ -3669,11 +3669,13 @@ export type Database = {
           market_code: string | null
           name: string | null
           note: string | null
+          offer_pricing_mode: Database["public"]["Enums"]["pbc_offer_pricing_mode"]
           order_for: string | null
           profit_rate: number | null
           status: string | null
           tenant_id: number | null
           updated_at: string
+          vat_rate: number | null
           vendor_code: string | null
           vendor_id: number | null
         }
@@ -3689,11 +3691,13 @@ export type Database = {
           market_code?: string | null
           name?: string | null
           note?: string | null
+          offer_pricing_mode?: Database["public"]["Enums"]["pbc_offer_pricing_mode"]
           order_for?: string | null
           profit_rate?: number | null
           status?: string | null
           tenant_id?: number | null
           updated_at?: string
+          vat_rate?: number | null
           vendor_code?: string | null
           vendor_id?: number | null
         }
@@ -3709,11 +3713,13 @@ export type Database = {
           market_code?: string | null
           name?: string | null
           note?: string | null
+          offer_pricing_mode?: Database["public"]["Enums"]["pbc_offer_pricing_mode"]
           order_for?: string | null
           profit_rate?: number | null
           status?: string | null
           tenant_id?: number | null
           updated_at?: string
+          vat_rate?: number | null
           vendor_code?: string | null
           vendor_id?: number | null
         }
@@ -11891,7 +11897,9 @@ export type Database = {
           p_cargo_rate_kg_gbp?: number
           p_conversion_rate?: number
           p_file_id: number
+          p_offer_pricing_mode?: string
           p_profit_rate?: number
+          p_vat_rate?: number
         }
         Returns: Json
       }
@@ -13981,6 +13989,19 @@ export type Database = {
       pay_settle_shipment_costs: {
         Args: { p_cost_entry_ids?: number[]; p_shipment_id: number }
         Returns: Json
+      }
+      pbc_calculated_offer_price_bdt: {
+        Args: {
+          p_cargo_rate: number
+          p_conversion_rate: number
+          p_offer_pricing_mode: string
+          p_package_weight: number
+          p_price_gbp: number
+          p_product_weight: number
+          p_profit_rate: number
+          p_vat_rate: number
+        }
+        Returns: number
       }
       place_koba_order: {
         Args: {
@@ -16349,6 +16370,7 @@ export type Database = {
         | "parent_only"
         | "child_and_parent"
         | "assignee_only"
+      pbc_offer_pricing_mode: "landed_cost_plus" | "gbp_vat_then_profit"
       preorder_demand_source_type: "shop_order_item" | "pbc_costing_item"
       retail_billing_mode: "account" | "direct"
       shipment_investment_status: "active" | "closed" | "cancelled"
@@ -16626,6 +16648,7 @@ export const Constants = {
         "child_and_parent",
         "assignee_only",
       ],
+      pbc_offer_pricing_mode: ["landed_cost_plus", "gbp_vat_then_profit"],
       preorder_demand_source_type: ["shop_order_item", "pbc_costing_item"],
       retail_billing_mode: ["account", "direct"],
       shipment_investment_status: ["active", "closed", "cancelled"],

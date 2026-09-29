@@ -66,6 +66,8 @@ create table if not exists public.product_based_costing_files (
   target_currency text not null default 'BDT',
   fx_rate numeric(12, 6) not null default 154.50,
   markup_percentage numeric(8, 4) not null default 0.18, -- 18%
+  -- Live columns (as-built): conversion_rate, cargo_rate_kg_gbp, profit_rate,
+  -- vat_rate, offer_pricing_mode ('landed_cost_plus' | 'gbp_vat_then_profit')
   
   -- Totals
   total_base_cost numeric(14, 2) default 0,

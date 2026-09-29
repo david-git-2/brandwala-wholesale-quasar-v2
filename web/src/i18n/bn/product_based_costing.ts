@@ -143,6 +143,8 @@ export default {
   conversion_rate_label: 'কনভার্সন রেট (৳ প্রতি £)',
   cargo_rate_label: 'কার্গো (£ প্রতি kg)',
   profit_rate_label: 'লাভ (%)',
+  vat_rate_label: 'ভ্যাট (%)',
+  offer_pricing_mode_label: 'অফার মোড',
   save_rates: 'রেট সংরক্ষণ',
   cargo_zero_inline: 'কার্গো ০ — ফ্রেইট অফারে নেই।',
   status_hint_pending_when: 'আপনি প্রাইস লিস্ট তৈরি করছেন',

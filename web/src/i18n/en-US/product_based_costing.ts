@@ -144,6 +144,8 @@ export default {
   conversion_rate_label: 'Conversion rate (৳ per £)',
   cargo_rate_label: 'Cargo (£ per kg)',
   profit_rate_label: 'Profit (%)',
+  vat_rate_label: 'VAT (%)',
+  offer_pricing_mode_label: 'Offer mode',
   save_rates: 'Save Rates',
   cargo_zero_inline: 'Cargo is 0 — freight is not in the offer.',
   status_hint_pending_when: 'You are making the price list',

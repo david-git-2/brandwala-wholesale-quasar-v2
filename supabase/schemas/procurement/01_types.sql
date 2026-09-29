@@ -117,3 +117,12 @@ CREATE TYPE "public"."preorder_demand_source_type" AS ENUM (
 ALTER TYPE "public"."preorder_demand_source_type" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."pbc_offer_pricing_mode" AS ENUM (
+    'landed_cost_plus',
+    'gbp_vat_then_profit'
+);
+
+
+ALTER TYPE "public"."pbc_offer_pricing_mode" OWNER TO "postgres";
+
+

@@ -54,9 +54,11 @@ Once a quotation is confirmed by a customer group, the file transitions seamless
 - **So that** accurate quoted unit prices and gross profit margins are generated automatically.
 
 #### Acceptance Criteria
-- [ ] Formula calculates: $\text{Unit Cost GBP} = \text{Web Base Price} + \text{Delivery Surcharge} + \text{Item Type Surcharge}$.
-- [ ] Quoted BDT price computes: $(\text{Unit Cost GBP} \times \text{FX Rate}) \times (1 + \text{Customer Markup Rate})$.
-- [ ] Line totals and profit margins update dynamically on the costing sheet.
+- [x] Landed unit cost (GBP) = web £ price + cargo from product + package weight. Convert with FX to BDT. This **cost** does not change with offer mode.
+- [x] Each file has `offer_pricing_mode`:
+  - `landed_cost_plus` (default): offer ৳ = landed cost ৳ + `profit_rate` % on that cost.
+  - `gbp_vat_then_profit`: VAT % then profit % on the **web £ price only** (not cargo), then convert with FX. Example: £10, VAT 15%, profit 8% → £11.50 → £12.42 → ৳ offer.
+- [x] `vat_rate` is used only in `gbp_vat_then_profit`. Unlocked lines recalc when rates or mode are saved.
 
 ### US-2: Shared Procurement Lifecycle & Demand Desk Alignment
 - **As a** Procurement Officer  

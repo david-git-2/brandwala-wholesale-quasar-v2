@@ -40,6 +40,12 @@
               <span class="rate-chip__value">{{ profitRate }}%</span>
             </div>
           </div>
+          <div v-if="offerPricingMode === 'gbp_vat_then_profit'" class="col-4">
+            <div class="rate-chip">
+              <span class="rate-chip__label">{{ $t('product_based_costing.vat_rate_label') }}</span>
+              <span class="rate-chip__value">{{ vatRate }}%</span>
+            </div>
+          </div>
         </div>
       </q-card-section>
     </q-card>
@@ -218,6 +224,8 @@ const props = defineProps<{
   conversionRate: number;
   cargoRate: number;
   profitRate: number;
+  vatRate?: number;
+  offerPricingMode?: string;
   fileMeta?: PbcSummaryFileMeta | null;
   showFileMeta?: boolean;
 }>();

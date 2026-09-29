@@ -1,5 +1,12 @@
 import { roundBdtUpToZeroOrFive } from 'src/modules/costingFile/utils/costingCalculations';
 
+export type OfferPricingMode = 'landed_cost_plus' | 'gbp_vat_then_profit';
+
+export const DEFAULT_OFFER_PRICING_MODE: OfferPricingMode = 'landed_cost_plus';
+
+export const normalizeOfferPricingMode = (value: unknown): OfferPricingMode =>
+  value === 'gbp_vat_then_profit' ? 'gbp_vat_then_profit' : 'landed_cost_plus';
+
 type OfferPriceInput = {
   priceGbp: number;
   productWeight: number;
@@ -7,6 +14,8 @@ type OfferPriceInput = {
   cargoRate: number;
   conversionRate: number;
   profitRate: number;
+  vatRate?: number;
+  offerPricingMode?: OfferPricingMode | string | null;
 };
 
 export const toNumberSafe = (value: unknown) => {
@@ -44,8 +53,15 @@ export const getUnitCostBdt = (
 };
 
 export const calculateOfferPriceBdt = (input: OfferPriceInput) => {
+  const profitRate = input.profitRate;
+  if (normalizeOfferPricingMode(input.offerPricingMode) === 'gbp_vat_then_profit') {
+    const vatRate = toNumberSafe(input.vatRate);
+    const markedGbp =
+      Math.round(input.priceGbp * (1 + vatRate / 100) * (1 + profitRate / 100) * 100) / 100;
+    return roundBdtUpToZeroOrFive(Math.ceil(markedGbp * input.conversionRate - 1e-9));
+  }
   const costBdt = getUnitCostBdt(input);
-  return roundBdtUpToZeroOrFive(costBdt + (costBdt * input.profitRate) / 100);
+  return roundBdtUpToZeroOrFive(costBdt + (costBdt * profitRate) / 100);
 };
 
 export const normalizeOfferPriceBdt = (value: unknown) => {

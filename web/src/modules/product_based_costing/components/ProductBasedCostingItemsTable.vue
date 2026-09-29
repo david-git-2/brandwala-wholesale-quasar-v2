@@ -1165,6 +1165,8 @@ const props = withDefaults(
     cargoRate?: number;
     conversionRate?: number;
     profitRate?: number;
+    vatRate?: number;
+    offerPricingMode?: string;
     status?: string | undefined;
     shippedItemIds?: number[];
     visibleColumns?: string[];
@@ -1173,6 +1175,8 @@ const props = withDefaults(
     cargoRate: 0,
     conversionRate: 0,
     profitRate: 0,
+    vatRate: 0,
+    offerPricingMode: 'landed_cost_plus',
     status: 'pending',
     shippedItemIds: () => [],
   },
@@ -1337,6 +1341,8 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
       cargoRate,
       conversionRate,
       profitRate,
+      vatRate: toNumber(props.vatRate),
+      offerPricingMode: props.offerPricingMode,
     });
 
     return {
@@ -1421,7 +1427,15 @@ const isAllSelected = computed({
 });
 
 watch(
-  () => [props.items, props.cargoRate, props.conversionRate, props.profitRate, props.status],
+  () => [
+    props.items,
+    props.cargoRate,
+    props.conversionRate,
+    props.profitRate,
+    props.vatRate,
+    props.offerPricingMode,
+    props.status,
+  ],
   () => {
     tableRows.value = buildRows();
     const allowedIds = new Set(tableRows.value.map((row) => row.id));
@@ -1863,10 +1877,12 @@ const onOfferPriceBlur = (row: ProductBasedCostingTableRow) => {
     priceGbp: row.priceGbp,
     productWeight: row.productWeight,
     packageWeight: row.packageWeight,
-    cargoRate: row.cargoRate,
-    conversionRate: row.conversionRate,
-    profitRate: row.profitRate,
-  });
+      cargoRate: row.cargoRate,
+      conversionRate: row.conversionRate,
+      profitRate: row.profitRate,
+      vatRate: toNumber(props.vatRate),
+      offerPricingMode: props.offerPricingMode,
+    });
   const prev = row.isOfferPriceManual
     ? normalizeOfferPriceBdt(row.raw.offer_price)
     : autoPrice;
@@ -1889,6 +1905,8 @@ const onUnlockOfferPrice = (row: ProductBasedCostingTableRow) => {
     cargoRate,
     conversionRate,
     profitRate,
+    vatRate: toNumber(props.vatRate),
+    offerPricingMode: props.offerPricingMode,
   });
 
   emitRowChange(row, 'offer_price');
@@ -1927,10 +1945,12 @@ const applyOfferFromInputs = (row: ProductBasedCostingTableRow) => {
     priceGbp: row.priceGbp,
     productWeight: row.productWeight,
     packageWeight: row.packageWeight,
-    cargoRate: row.cargoRate,
-    conversionRate: row.conversionRate,
-    profitRate: row.profitRate,
-  });
+      cargoRate: row.cargoRate,
+      conversionRate: row.conversionRate,
+      profitRate: row.profitRate,
+      vatRate: toNumber(props.vatRate),
+      offerPricingMode: props.offerPricingMode,
+    });
 };
 
 const onPriceGbpBlur = (row: ProductBasedCostingTableRow) => {
@@ -1958,10 +1978,12 @@ const onProductWeightSave = (row: ProductBasedCostingTableRow) => {
     priceGbp: row.priceGbp,
     productWeight: row.productWeight,
     packageWeight: row.packageWeight,
-    cargoRate: row.cargoRate,
-    conversionRate: row.conversionRate,
-    profitRate: row.profitRate,
-  });
+      cargoRate: row.cargoRate,
+      conversionRate: row.conversionRate,
+      profitRate: row.profitRate,
+      vatRate: toNumber(props.vatRate),
+      offerPricingMode: props.offerPricingMode,
+    });
   emitProductWeightChange(row);
 };
 
@@ -1971,10 +1993,12 @@ const onPackageWeightSave = (row: ProductBasedCostingTableRow) => {
     priceGbp: row.priceGbp,
     productWeight: row.productWeight,
     packageWeight: row.packageWeight,
-    cargoRate: row.cargoRate,
-    conversionRate: row.conversionRate,
-    profitRate: row.profitRate,
-  });
+      cargoRate: row.cargoRate,
+      conversionRate: row.conversionRate,
+      profitRate: row.profitRate,
+      vatRate: toNumber(props.vatRate),
+      offerPricingMode: props.offerPricingMode,
+    });
   emitPackageWeightChange(row);
 };
 

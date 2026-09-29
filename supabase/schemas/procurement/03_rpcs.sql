@@ -6689,6 +6689,48 @@ $$;
 ALTER FUNCTION "public"."post_stock_movement"("p_movement_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."pbc_calculated_offer_price_bdt"(
+    "p_price_gbp" numeric,
+    "p_product_weight" numeric,
+    "p_package_weight" numeric,
+    "p_cargo_rate" numeric,
+    "p_conversion_rate" numeric,
+    "p_profit_rate" numeric,
+    "p_vat_rate" numeric,
+    "p_offer_pricing_mode" "text"
+) RETURNS numeric
+    LANGUAGE "plpgsql" IMMUTABLE
+    AS $$
+declare
+  v_mode text := coalesce(p_offer_pricing_mode, 'landed_cost_plus');
+  v_fx numeric := coalesce(p_conversion_rate, 140);
+  v_profit numeric := coalesce(p_profit_rate, 0);
+  v_vat numeric := coalesce(p_vat_rate, 0);
+  v_unit_cost_bdt numeric;
+  v_marked_gbp numeric;
+begin
+  if v_mode = 'gbp_vat_then_profit' then
+    v_marked_gbp := round(
+      coalesce(p_price_gbp, 0) * (1 + v_vat / 100.0) * (1 + v_profit / 100.0),
+      2
+    );
+    return public.round_bdt_up_to_zero_or_five(ceil(v_marked_gbp * v_fx - 1e-9));
+  end if;
+
+  v_unit_cost_bdt := ceil(
+    round(
+      (coalesce(p_price_gbp, 0) + ((coalesce(p_product_weight, 0) + coalesce(p_package_weight, 0)) / 1000.0) * coalesce(p_cargo_rate, 0)),
+      2
+    ) * v_fx - 1e-9
+  );
+  return public.round_bdt_up_to_zero_or_five(v_unit_cost_bdt + (v_unit_cost_bdt * v_profit / 100.0));
+end;
+$$;
+
+
+ALTER FUNCTION "public"."pbc_calculated_offer_price_bdt"("p_price_gbp" numeric, "p_product_weight" numeric, "p_package_weight" numeric, "p_cargo_rate" numeric, "p_conversion_rate" numeric, "p_profit_rate" numeric, "p_vat_rate" numeric, "p_offer_pricing_mode" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."recalculate_product_based_costing_file_offer_prices"("p_file_id" bigint) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -6696,27 +6738,24 @@ declare
   v_conversion_rate numeric;
   v_cargo_rate numeric;
   v_profit_rate numeric;
+  v_vat_rate numeric;
+  v_offer_pricing_mode text;
 begin
-  select conversion_rate, cargo_rate_kg_gbp, profit_rate
-    into v_conversion_rate, v_cargo_rate, v_profit_rate
+  select conversion_rate, cargo_rate_kg_gbp, profit_rate, vat_rate, offer_pricing_mode::text
+    into v_conversion_rate, v_cargo_rate, v_profit_rate, v_vat_rate, v_offer_pricing_mode
     from public.product_based_costing_files
    where id = p_file_id;
 
   update public.product_based_costing_items
-     set offer_price = public.round_bdt_up_to_zero_or_five(
-           ceil(
-             round(
-               (coalesce(price_gbp, 0) + ((coalesce(product_weight, 0) + coalesce(package_weight, 0)) / 1000.0) * coalesce(v_cargo_rate, 0)),
-               2
-             ) * coalesce(v_conversion_rate, 140) - 1e-9
-           ) + (
-             ceil(
-               round(
-                 (coalesce(price_gbp, 0) + ((coalesce(product_weight, 0) + coalesce(package_weight, 0)) / 1000.0) * coalesce(v_cargo_rate, 0)),
-                 2
-               ) * coalesce(v_conversion_rate, 140) - 1e-9
-             ) * coalesce(v_profit_rate, 25) / 100.0
-           )
+     set offer_price = public.pbc_calculated_offer_price_bdt(
+           coalesce(price_gbp, 0),
+           coalesce(product_weight, 0),
+           coalesce(package_weight, 0),
+           coalesce(v_cargo_rate, 0),
+           coalesce(v_conversion_rate, 140),
+           coalesce(v_profit_rate, 25),
+           coalesce(v_vat_rate, 0),
+           coalesce(v_offer_pricing_mode, 'landed_cost_plus')
          ),
          is_offer_price_manual = false
    where product_based_costing_file_id = p_file_id
@@ -6728,7 +6767,7 @@ $$;
 ALTER FUNCTION "public"."recalculate_product_based_costing_file_offer_prices"("p_file_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_product_based_costing_file_summary"("p_file_id" bigint, "p_conversion_rate" numeric DEFAULT NULL::numeric, "p_cargo_rate_kg_gbp" numeric DEFAULT NULL::numeric, "p_profit_rate" numeric DEFAULT NULL::numeric) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_product_based_costing_file_summary"("p_file_id" bigint, "p_conversion_rate" numeric DEFAULT NULL::numeric, "p_cargo_rate_kg_gbp" numeric DEFAULT NULL::numeric, "p_profit_rate" numeric DEFAULT NULL::numeric, "p_vat_rate" numeric DEFAULT NULL::numeric, "p_offer_pricing_mode" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -6737,7 +6776,9 @@ CREATE OR REPLACE FUNCTION "public"."get_product_based_costing_file_summary"("p_
       f.id,
       coalesce(p_conversion_rate, f.conversion_rate, 140)::numeric as conversion_rate,
       coalesce(p_cargo_rate_kg_gbp, f.cargo_rate_kg_gbp, 0)::numeric as cargo_rate,
-      coalesce(p_profit_rate, f.profit_rate, 25)::numeric as profit_rate
+      coalesce(p_profit_rate, f.profit_rate, 25)::numeric as profit_rate,
+      coalesce(p_vat_rate, f.vat_rate, 0)::numeric as vat_rate,
+      coalesce(p_offer_pricing_mode, f.offer_pricing_mode::text, 'landed_cost_plus') as offer_pricing_mode
     from public.product_based_costing_files f
     where f.id = p_file_id
       and public.can_view_costing_item(p_file_id)
@@ -6754,7 +6795,9 @@ CREATE OR REPLACE FUNCTION "public"."get_product_based_costing_file_summary"("p_
       i.offer_price,
       fc.conversion_rate,
       fc.cargo_rate,
-      fc.profit_rate
+      fc.profit_rate,
+      fc.vat_rate,
+      fc.offer_pricing_mode
     from public.product_based_costing_items i
     inner join file_ctx fc on true
     where i.product_based_costing_file_id = p_file_id
@@ -6766,15 +6809,15 @@ CREATE OR REPLACE FUNCTION "public"."get_product_based_costing_file_summary"("p_
       ceil(
         round((l.price_gbp_n + (l.weight_g / 1000.0) * l.cargo_rate)::numeric, 2) * l.conversion_rate - 1e-9
       )::numeric as unit_cost_bdt,
-      public.round_bdt_up_to_zero_or_five(
-        ceil(
-          round((l.price_gbp_n + (l.weight_g / 1000.0) * l.cargo_rate)::numeric, 2) * l.conversion_rate - 1e-9
-        )
-        + (
-          ceil(
-            round((l.price_gbp_n + (l.weight_g / 1000.0) * l.cargo_rate)::numeric, 2) * l.conversion_rate - 1e-9
-          ) * l.profit_rate / 100.0
-        )
+      public.pbc_calculated_offer_price_bdt(
+        l.price_gbp_n,
+        l.product_weight_n,
+        l.package_weight_n,
+        l.cargo_rate,
+        l.conversion_rate,
+        l.profit_rate,
+        l.vat_rate,
+        l.offer_pricing_mode
       )::numeric as calculated_offer_bdt
     from lines l
   ),
@@ -6864,7 +6907,7 @@ CREATE OR REPLACE FUNCTION "public"."get_product_based_costing_file_summary"("p_
 $$;
 
 
-ALTER FUNCTION "public"."get_product_based_costing_file_summary"("p_file_id" bigint, "p_conversion_rate" numeric, "p_cargo_rate_kg_gbp" numeric, "p_profit_rate" numeric) OWNER TO "postgres";
+ALTER FUNCTION "public"."get_product_based_costing_file_summary"("p_file_id" bigint, "p_conversion_rate" numeric, "p_cargo_rate_kg_gbp" numeric, "p_profit_rate" numeric, "p_vat_rate" numeric, "p_offer_pricing_mode" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."recalculate_shipment_transaction_rate"("p_shipment_id" bigint) RETURNS numeric

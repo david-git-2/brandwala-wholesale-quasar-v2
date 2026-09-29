@@ -16,12 +16,20 @@ export const productBasedCostingQueryKeys = {
     ['productBasedCosting', 'files', 'summary', fileId] as const,
   fileSummary: (
     fileId: number,
-    rates: { conversionRate: number; cargoRate: number; profitRate: number },
+    rates: {
+      conversionRate: number;
+      cargoRate: number;
+      profitRate: number;
+      vatRate: number;
+      offerPricingMode: string;
+    },
   ) =>
     [
       ...productBasedCostingQueryKeys.fileSummaryRoot(fileId),
       rates.conversionRate,
       rates.cargoRate,
       rates.profitRate,
+      rates.vatRate,
+      rates.offerPricingMode,
     ] as const,
 };

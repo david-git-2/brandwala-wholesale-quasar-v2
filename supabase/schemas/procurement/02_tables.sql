@@ -695,6 +695,8 @@ CREATE TABLE IF NOT EXISTS "public"."product_based_costing_files" (
     "note" "text",
     "cargo_rate_kg_gbp" numeric(12,4),
     "profit_rate" numeric(12,4),
+    "vat_rate" numeric(12,4) DEFAULT 0,
+    "offer_pricing_mode" "public"."pbc_offer_pricing_mode" DEFAULT 'landed_cost_plus'::"public"."pbc_offer_pricing_mode" NOT NULL,
     "conversion_rate" numeric(12,6),
     "status" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
