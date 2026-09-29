@@ -48,8 +48,16 @@
             :label="$t('product_based_costing.columns')"
             class="preview-page__action-btn"
           >
-            <q-menu anchor="bottom left" self="top left" class="q-pa-sm" style="min-width: 240px; max-height: 400px">
-              <div class="row items-center justify-between q-px-xs q-mb-xs">
+            <q-menu
+              v-model="columnsMenuOpen"
+              :auto-close="false"
+              anchor="bottom left"
+              self="top left"
+              class="q-pa-sm"
+              style="min-width: 240px; max-height: 400px"
+              @hide="syncColumnKeysToQuery"
+            >
+              <div class="row items-center justify-between q-px-xs q-mb-xs" @click.stop>
                 <span class="text-caption text-weight-bold text-primary">
                   {{ $t('product_based_costing.show_columns') }} ({{ selectedColumnKeys.length }})
                 </span>
@@ -59,7 +67,7 @@
                   dense
                   color="primary"
                   :label="selectedColumnKeys.length === previewColumnOptions.length ? 'Reset' : 'Select All'"
-                  @click="onColumnToggle(
+                  @click.stop="onColumnToggle(
                     selectedColumnKeys.length === previewColumnOptions.length
                       ? defaultPreviewColumns
                       : previewColumnOptions.map((o) => o.value)
@@ -67,8 +75,8 @@
                 />
               </div>
               <q-separator class="q-mb-xs" />
-              <q-scroll-area style="height: 280px; width: 220px">
-                <div class="column q-gutter-y-xs">
+              <q-scroll-area style="height: 280px; width: 220px" @click.stop>
+                <div class="column q-gutter-y-xs q-pa-xs">
                   <q-checkbox
                     v-for="opt in previewColumnOptions"
                     :key="opt.value"
@@ -76,6 +84,7 @@
                     :label="opt.label"
                     dense
                     class="text-caption"
+                    @click.stop
                     @update:model-value="(checked) => {
                       const next = checked
                         ? [...selectedColumnKeys, opt.value]
@@ -307,7 +316,7 @@
 
                 <!-- Profit rate -->
                 <template v-else-if="col.name === 'profitRate'">
-                  {{ slotProps.row.profitRate != null ? `${slotProps.row.profitRate}%` : '-' }}
+                  {{ slotProps.row.profitRate != null ? `${Number(slotProps.row.profitRate).toFixed(2)}%` : '-' }}
                 </template>
 
                 <!-- Default fallback -->
@@ -585,6 +594,8 @@ const parseQueryCols = (query: unknown): string[] | null => {
   return null;
 };
 
+const columnsMenuOpen = ref(false);
+
 const selectedColumnKeys = ref<string[]>(
   parseQueryCols(route.query.cols) ?? defaultPreviewColumns,
 );
@@ -592,6 +603,7 @@ const selectedColumnKeys = ref<string[]>(
 watch(
   () => route.query.cols,
   (newCols) => {
+    if (columnsMenuOpen.value) return;
     const parsed = parseQueryCols(newCols);
     if (parsed) {
       selectedColumnKeys.value = parsed;
@@ -601,13 +613,16 @@ watch(
 
 const onColumnToggle = (val: string[]) => {
   selectedColumnKeys.value = val;
+};
+
+function syncColumnKeysToQuery() {
   void router.replace({
     query: {
       ...route.query,
-      cols: val.join(','),
+      cols: selectedColumnKeys.value.join(','),
     },
   });
-};
+}
 
 const previewColumnOptions = computed(() => {
   return Object.values(ALL_PREVIEW_COLUMN_DEFS).map((def) => ({

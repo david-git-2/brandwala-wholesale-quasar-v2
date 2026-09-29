@@ -921,7 +921,7 @@
 
               <!-- Profit Rate % -->
               <td v-if="visibleColumnMap.profitRate" class="text-center font-mono text-caption text-grey-8" style="width: 50px; min-width: 50px">
-                {{ row.profitRate.toFixed(1) }}%
+                {{ row.profitRate.toFixed(2) }}%
               </td>
 
               <!-- Status -->
