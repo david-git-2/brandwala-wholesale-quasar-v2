@@ -257,7 +257,7 @@
 
                 <!-- Cargo Rate -->
                 <template v-else-if="col.name === 'cargoRate'">
-                  £{{ formatNumber(slotProps.row.cargoRate) }}
+                  {{ buyMark }}{{ formatNumber(slotProps.row.cargoRate) }}
                 </template>
 
                 <!-- Status -->
@@ -277,7 +277,7 @@
                     ].includes(col.name)
                   "
                 >
-                  £{{ formatNumber(slotProps.row[col.name]) }}
+                  {{ buyMark }}{{ formatNumber(slotProps.row[col.name]) }}
                 </template>
 
                 <!-- Numeric BDT fields -->
@@ -299,7 +299,7 @@
                         col.name === 'offerPriceBdt' || col.name === 'totalBdt',
                     }"
                   >
-                    ৳{{ formatNumber(slotProps.row[col.name]) }}
+                    {{ sellMark }}{{ formatNumber(slotProps.row[col.name]) }}
                   </span>
                 </template>
 
@@ -431,6 +431,11 @@ import {
   normalizeOfferPricingMode,
   toNumberSafe,
 } from '../utils/pricing';
+import {
+  pbcCurrencyMark,
+  pbcFileBuyCurrencyCode,
+  pbcFileSellCurrencyCode,
+} from '../utils/pbcFileCurrencies';
 
 const props = defineProps<{
   id: string;
@@ -469,6 +474,13 @@ const loading = ref(false);
 const costingFile = ref<ProductBasedCostingFile | null>(null);
 const rawItems = ref<ProductBasedCostingItem[]>([]);
 
+const currencyI18n = computed(() => ({
+  buy: pbcFileBuyCurrencyCode(costingFile.value),
+  sell: pbcFileSellCurrencyCode(costingFile.value),
+}));
+const buyMark = computed(() => pbcCurrencyMark(currencyI18n.value.buy));
+const sellMark = computed(() => pbcCurrencyMark(currencyI18n.value.sell));
+
 interface PreviewColumnDef {
   key: string;
   label: string;
@@ -476,7 +488,9 @@ interface PreviewColumnDef {
   field: string | ((row: any) => any);
 }
 
-const ALL_PREVIEW_COLUMN_DEFS: Record<string, PreviewColumnDef> = {
+const ALL_PREVIEW_COLUMN_DEFS = computed<Record<string, PreviewColumnDef>>(() => {
+  const c = currencyI18n.value;
+  return {
   sl: { key: 'sl', label: 'SL', align: 'center', field: 'sl' },
   image: { key: 'image', label: t('product_based_costing.table_image'), align: 'center', field: 'imageUrl' },
   name: { key: 'name', label: t('product_based_costing.col_name'), align: 'center', field: 'name' },
@@ -496,10 +510,10 @@ const ALL_PREVIEW_COLUMN_DEFS: Record<string, PreviewColumnDef> = {
     field: 'barcodeText',
   },
   website: { key: 'website', label: t('product_based_costing.table_col_website'), align: 'center', field: 'website' },
-  priceGbp: { key: 'priceGbp', label: t('product_based_costing.preview_price_gbp'), align: 'center', field: 'priceGbp' },
+  priceGbp: { key: 'priceGbp', label: t('product_based_costing.preview_price_gbp', c), align: 'center', field: 'priceGbp' },
   totalPurchasePriceGbp: {
     key: 'totalPurchasePriceGbp',
-    label: t('product_based_costing.preview_total_purchase_gbp'),
+    label: t('product_based_costing.preview_total_purchase_gbp', c),
     align: 'center',
     field: 'totalPurchasePriceGbp',
   },
@@ -524,51 +538,52 @@ const ALL_PREVIEW_COLUMN_DEFS: Record<string, PreviewColumnDef> = {
   cargoRate: { key: 'cargoRate', label: t('product_based_costing.table_col_cargoRate'), align: 'center', field: 'cargoRate' },
   cargoCostGbp: {
     key: 'cargoCostGbp',
-    label: t('product_based_costing.preview_cargo_cost_gbp'),
+    label: t('product_based_costing.preview_cargo_cost_gbp', c),
     align: 'center',
     field: 'cargoCostGbp',
   },
   totalCostGbp: {
     key: 'totalCostGbp',
-    label: t('product_based_costing.preview_total_cost_gbp'),
+    label: t('product_based_costing.preview_total_cost_gbp', c),
     align: 'center',
     field: 'totalCostGbp',
   },
   rowTotalCostGbp: {
     key: 'rowTotalCostGbp',
-    label: t('product_based_costing.table_col_rowTotalCostGbp'),
+    label: t('product_based_costing.table_col_rowTotalCostGbp', c),
     align: 'center',
     field: 'rowTotalCostGbp',
   },
-  costBdt: { key: 'costBdt', label: t('product_based_costing.preview_cost_bdt'), align: 'center', field: 'costBdt' },
+  costBdt: { key: 'costBdt', label: t('product_based_costing.preview_cost_bdt', c), align: 'center', field: 'costBdt' },
   totalCostBdt: {
     key: 'totalCostBdt',
-    label: t('product_based_costing.preview_total_cost_bdt'),
+    label: t('product_based_costing.preview_total_cost_bdt', c),
     align: 'center',
     field: 'totalCostBdt',
   },
   offerPriceBdt: {
     key: 'offerPriceBdt',
-    label: t('product_based_costing.preview_offer_price_bdt'),
+    label: t('product_based_costing.preview_offer_price_bdt', c),
     align: 'center',
     field: 'offerPriceBdt',
   },
-  totalBdt: { key: 'totalBdt', label: t('product_based_costing.preview_total_offer_bdt'), align: 'center', field: 'totalBdt' },
+  totalBdt: { key: 'totalBdt', label: t('product_based_costing.preview_total_offer_bdt', c), align: 'center', field: 'totalBdt' },
   profitPerUnitBdt: {
     key: 'profitPerUnitBdt',
-    label: t('product_based_costing.preview_profit_bdt'),
+    label: t('product_based_costing.preview_profit_bdt', c),
     align: 'center',
     field: 'profitPerUnitBdt',
   },
   profitBdt: {
     key: 'profitBdt',
-    label: t('product_based_costing.preview_total_profit_bdt'),
+    label: t('product_based_costing.preview_total_profit_bdt', c),
     align: 'center',
     field: 'profitBdt',
   },
   profitRate: { key: 'profitRate', label: t('product_based_costing.table_col_profitRate'), align: 'center', field: 'profitRate' },
   status: { key: 'status', label: t('product_based_costing.col_status'), align: 'center', field: 'status' },
 };
+});
 
 const defaultPreviewColumns = [
   'sl',
@@ -587,7 +602,7 @@ const parseQueryCols = (query: unknown): string[] | null => {
     const parsed = query
       .split(',')
       .map((c) => c.trim())
-      .filter((c) => Boolean(ALL_PREVIEW_COLUMN_DEFS[c]));
+      .filter((c) => Boolean(ALL_PREVIEW_COLUMN_DEFS.value[c]));
     if (parsed.length) {
       return parsed;
     }
@@ -626,7 +641,7 @@ function syncColumnKeysToQuery() {
 }
 
 const previewColumnOptions = computed(() => {
-  return Object.values(ALL_PREVIEW_COLUMN_DEFS).map((def) => ({
+  return Object.values(ALL_PREVIEW_COLUMN_DEFS.value).map((def) => ({
     label: def.label,
     value: def.key,
   }));
@@ -636,7 +651,7 @@ const requestedColumnKeys = computed<string[]>(() => selectedColumnKeys.value);
 
 const columns = computed<QTableColumn[]>(() => {
   return requestedColumnKeys.value
-    .map((key) => ALL_PREVIEW_COLUMN_DEFS[key])
+    .map((key) => ALL_PREVIEW_COLUMN_DEFS.value[key])
     .filter((def): def is PreviewColumnDef => Boolean(def))
     .map((def) => ({
       name: def.key,

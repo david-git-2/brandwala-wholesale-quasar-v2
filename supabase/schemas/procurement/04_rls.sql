@@ -104,6 +104,10 @@ CREATE OR REPLACE TRIGGER "trg_pbc_files_0_stamp_billing_profile" BEFORE INSERT 
 
 
 
+CREATE OR REPLACE TRIGGER "trg_pbc_files_stamp_currency_codes" BEFORE INSERT OR UPDATE OF "buy_currency_id", "sell_currency_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_stamp_currency_codes"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_pbc_files_auto_tenant_id" BEFORE INSERT OR UPDATE OF "billing_profile_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"();
 
 

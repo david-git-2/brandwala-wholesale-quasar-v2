@@ -71,9 +71,9 @@
         <!-- Center / Rates Bar Quick Summary -->
         <div class="row items-center q-gutter-x-sm no-wrap q-mx-sm">
           <div class="rates-pill row items-center q-gutter-x-xs q-px-sm q-py-2xs bg-grey-2 rounded-borders text-caption text-grey-8 font-mono">
-            <span><strong>FX:</strong> ৳{{ conversionRateValue }}</span>
+            <span><strong>FX:</strong> {{ sellMark }}{{ conversionRateValue }}</span>
             <span class="text-grey-4">|</span>
-            <span><strong>Cargo:</strong> £{{ cargoRateValue }}/kg</span>
+            <span><strong>Cargo:</strong> {{ buyMark }}{{ cargoRateValue }}/kg</span>
             <span class="text-grey-4">|</span>
             <span><strong>Profit:</strong> {{ profitRateValue }}%</span>
             <span class="text-grey-4">|</span>
@@ -211,6 +211,38 @@
       <div v-if="ratesExpanded" class="pbc-rates-editor">
         <div class="pbc-rates-editor__grid">
           <div class="pbc-rates-group">
+            <div class="pbc-rates-group__title">{{ $t('product_based_costing.currencies_section') }}</div>
+            <div class="row q-col-gutter-sm q-mb-sm">
+              <div class="col-6">
+                <q-select
+                  v-model="localRates.buy_currency_id"
+                  :options="currencyOptions"
+                  dense
+                  outlined
+                  emit-value
+                  map-options
+                  :loading="loadingCurrencies"
+                  :label="$t('product_based_costing.buy_currency_label')"
+                  hide-bottom-space
+                />
+              </div>
+              <div class="col-6">
+                <q-select
+                  v-model="localRates.sell_currency_id"
+                  :options="currencyOptions"
+                  dense
+                  outlined
+                  emit-value
+                  map-options
+                  :loading="loadingCurrencies"
+                  :label="$t('product_based_costing.sell_currency_label')"
+                  hide-bottom-space
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="pbc-rates-group">
             <div class="pbc-rates-group__title">Landed cost</div>
             <div class="row q-col-gutter-sm">
               <div class="col-6">
@@ -219,8 +251,8 @@
                   dense
                   outlined
                   type="number"
-                  prefix="৳"
-                  label="FX (৳ per £)"
+                  :prefix="sellMark"
+                  :label="$t('product_based_costing.conversion_rate_fx_short', currencyI18n)"
                   hide-bottom-space
                 />
               </div>
@@ -230,9 +262,9 @@
                   dense
                   outlined
                   type="number"
-                  prefix="£"
+                  :prefix="buyMark"
                   suffix="/kg"
-                  label="Cargo"
+                  :label="$t('product_based_costing.cargo_rate_label')"
                   hide-bottom-space
                 />
               </div>
@@ -464,7 +496,7 @@
             <!-- Purchase Price GBP -->
             <th v-if="visibleColumnMap.priceGbp" class="text-center bw-ops-col-tint--price" style="width: 56px; min-width: 56px">
               <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
-                <span>Price (£)</span>
+                <span>{{ $t('product_based_costing.table_col_priceGbp', currencyI18n) }}</span>
                 <q-btn
                   flat
                   round
@@ -482,7 +514,7 @@
 
             <!-- Total Purchase GBP -->
             <th v-if="visibleColumnMap.totalPurchasePriceGbp" class="text-center bw-ops-col-tint--price" style="width: 56px; min-width: 56px">
-              Tot (£)
+              {{ $t('product_based_costing.table_col_totalPurchasePriceGbp', currencyI18n) }}
             </th>
 
             <!-- Product Wt (g) -->
@@ -542,33 +574,33 @@
 
             <!-- Cargo Cost GBP -->
             <th v-if="visibleColumnMap.cargoCostGbp" class="text-center" style="width: 56px; min-width: 56px">
-              Cargo (£)
+              {{ $t('product_based_costing.table_col_cargoCostGbp', currencyI18n) }}
             </th>
 
             <!-- Total Cost GBP/Unit -->
             <th v-if="visibleColumnMap.totalCostGbp" class="text-center bw-ops-col-tint--cost" style="width: 56px; min-width: 56px">
-              Cost (£)
+              {{ $t('product_based_costing.table_col_totalCostGbp', currencyI18n) }}
             </th>
 
             <!-- Row Total Cost GBP -->
             <th v-if="visibleColumnMap.rowTotalCostGbp" class="text-center bw-ops-col-tint--cost" style="width: 56px; min-width: 56px">
-              Row (£)
+              {{ $t('product_based_costing.table_col_rowTotalCostGbp', currencyI18n) }}
             </th>
 
             <!-- Cost BDT -->
             <th v-if="visibleColumnMap.costBdt" class="text-center bw-ops-col-tint--cost" style="width: 60px; min-width: 60px">
-              Cost (৳)
+              {{ $t('product_based_costing.table_col_costBdt', currencyI18n) }}
             </th>
 
             <!-- Row Total Cost BDT -->
             <th v-if="visibleColumnMap.totalCostBdt" class="text-center bw-ops-col-tint--cost" style="width: 60px; min-width: 60px">
-              Row (৳)
+              {{ $t('product_based_costing.table_col_totalCostBdt', currencyI18n) }}
             </th>
 
             <!-- Offer Price BDT -->
             <th v-if="visibleColumnMap.offerPriceBdt" class="text-center bw-ops-col-tint--price" style="width: 84px; min-width: 84px">
               <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
-                <span>Offer (৳)</span>
+                <span>{{ $t('product_based_costing.table_col_offerPriceBdt', currencyI18n) }}</span>
                 <q-btn
                   flat
                   round
@@ -823,13 +855,13 @@
                   />
                 </div>
                 <div class="text-caption text-grey-7 text-weight-normal q-mt-2xs" style="font-size: 9px">
-                  T: £{{ formatMoney(row.totalPurchasePriceGbp) }}
+                  T: {{ buyMark }}{{ formatMoney(row.totalPurchasePriceGbp) }}
                 </div>
               </td>
 
               <!-- Total Purchase Price GBP -->
               <td v-if="visibleColumnMap.totalPurchasePriceGbp" class="text-center bw-ops-col-tint--price font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
-                £{{ formatMoney(row.totalPurchasePriceGbp) }}
+                {{ buyMark }}{{ formatMoney(row.totalPurchasePriceGbp) }}
               </td>
 
               <!-- Product Wt (g) (Inline Edit) -->
@@ -879,32 +911,32 @@
 
               <!-- Cargo Rate -->
               <td v-if="visibleColumnMap.cargoRate" class="text-center font-mono text-caption text-grey-8" style="width: 56px; min-width: 56px">
-                £{{ formatMoney(row.cargoRate) }}
+                {{ buyMark }}{{ formatMoney(row.cargoRate) }}
               </td>
 
               <!-- Cargo Cost GBP -->
               <td v-if="visibleColumnMap.cargoCostGbp" class="text-center font-mono text-caption text-grey-8" style="width: 56px; min-width: 56px">
-                £{{ formatMoney(row.cargoCostGbp) }}
+                {{ buyMark }}{{ formatMoney(row.cargoCostGbp) }}
               </td>
 
               <!-- Total Cost GBP -->
               <td v-if="visibleColumnMap.totalCostGbp" class="text-center bw-ops-col-tint--cost font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
-                £{{ formatMoney(row.totalCostGbp) }}
+                {{ buyMark }}{{ formatMoney(row.totalCostGbp) }}
               </td>
 
               <!-- Row Total Cost GBP -->
               <td v-if="visibleColumnMap.rowTotalCostGbp" class="text-center bw-ops-col-tint--cost font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
-                £{{ formatMoney(row.rowTotalCostGbp) }}
+                {{ buyMark }}{{ formatMoney(row.rowTotalCostGbp) }}
               </td>
 
               <!-- Cost BDT -->
               <td v-if="visibleColumnMap.costBdt" class="text-center bw-ops-col-tint--cost font-mono text-weight-bold text-grey-9" style="width: 60px; min-width: 60px">
-                ৳{{ formatMoney(row.costBdt) }}
+                {{ sellMark }}{{ formatMoney(row.costBdt) }}
               </td>
 
               <!-- Row Total Cost BDT -->
               <td v-if="visibleColumnMap.totalCostBdt" class="text-center bw-ops-col-tint--cost font-mono text-caption text-grey-9" style="width: 60px; min-width: 60px">
-                ৳{{ formatMoney(row.totalCostBdt) }}
+                {{ sellMark }}{{ formatMoney(row.totalCostBdt) }}
               </td>
 
               <!-- Offer Price BDT (Inline Edit) -->
@@ -952,17 +984,17 @@
 
               <!-- Total Offer BDT -->
               <td v-if="visibleColumnMap.totalBdt" class="text-center bw-ops-col-tint--price font-mono text-weight-bold text-positive" style="width: 64px; min-width: 64px">
-                ৳{{ formatMoney(row.totalBdt) }}
+                {{ sellMark }}{{ formatMoney(row.totalBdt) }}
               </td>
 
               <!-- Profit Per Unit BDT -->
               <td v-if="visibleColumnMap.profitPerUnitBdt" class="text-center font-mono text-caption text-teal-9 text-weight-bold" style="width: 56px; min-width: 56px">
-                ৳{{ formatMoney(row.profitPerUnitBdt) }}
+                {{ sellMark }}{{ formatMoney(row.profitPerUnitBdt) }}
               </td>
 
               <!-- Row Total Profit BDT -->
               <td v-if="visibleColumnMap.profitBdt" class="text-center font-mono text-caption text-teal-9 text-weight-bold" style="width: 56px; min-width: 56px">
-                ৳{{ formatMoney(row.profitBdt) }}
+                {{ sellMark }}{{ formatMoney(row.profitBdt) }}
               </td>
 
               <!-- Profit Rate % -->
@@ -1264,6 +1296,12 @@ import {
   normalizeOfferPriceBdt,
   normalizeOfferPricingMode,
 } from '../utils/pricing';
+import {
+  pbcCurrencyMark,
+  pbcFileBuyCurrencyCode,
+  pbcFileSellCurrencyCode,
+} from '../utils/pbcFileCurrencies';
+import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 
 const props = defineProps<{
   id?: string | number;
@@ -1384,6 +1422,8 @@ const localRates = reactive({
   profit_rate: 25,
   vat_rate: 0,
   offer_pricing_mode: 'landed_cost_plus' as 'landed_cost_plus' | 'gbp_vat_then_profit',
+  buy_currency_id: null as number | null,
+  sell_currency_id: null as number | null,
 });
 
 const offerPricingModeOptions = [
@@ -1413,6 +1453,25 @@ const offerPricingModeValue = computed(() =>
   normalizeOfferPricingMode(file.value?.offer_pricing_mode ?? localRates.offer_pricing_mode),
 );
 
+const { data: currenciesData, isLoading: loadingCurrencies } = useGlobalCurrenciesQuery();
+
+const currencyOptions = computed(() =>
+  (currenciesData.value ?? []).map((c) => ({
+    label: `${c.code} (${c.symbol})`,
+    value: c.id,
+  })),
+);
+
+const fileBuyCurrencyCode = computed(() => pbcFileBuyCurrencyCode(file.value ?? localRates));
+const fileSellCurrencyCode = computed(() => pbcFileSellCurrencyCode(file.value ?? localRates));
+const buyMark = computed(() => pbcCurrencyMark(fileBuyCurrencyCode.value));
+const sellMark = computed(() => pbcCurrencyMark(fileSellCurrencyCode.value));
+
+const currencyI18n = computed(() => ({
+  buy: fileBuyCurrencyCode.value,
+  sell: fileSellCurrencyCode.value,
+}));
+
 watch(
   file,
   (newFile) => {
@@ -1422,6 +1481,8 @@ watch(
       localRates.profit_rate = newFile.profit_rate ?? 25;
       localRates.vat_rate = newFile.vat_rate ?? 0;
       localRates.offer_pricing_mode = normalizeOfferPricingMode(newFile.offer_pricing_mode);
+      localRates.buy_currency_id = newFile.buy_currency_id ?? null;
+      localRates.sell_currency_id = newFile.sell_currency_id ?? null;
     }
   },
   { immediate: true },
@@ -2222,6 +2283,8 @@ async function handleSaveRates() {
       profit_rate: localRates.profit_rate || 0,
       vat_rate: localRates.vat_rate || 0,
       offer_pricing_mode: localRates.offer_pricing_mode,
+      buy_currency_id: localRates.buy_currency_id ?? undefined,
+      sell_currency_id: localRates.sell_currency_id ?? undefined,
     });
     await recalculateOfferPricesMutation.mutateAsync(fileId.value);
     ratesExpanded.value = false;
@@ -2242,6 +2305,8 @@ const editFormData = computed(() => {
     note: file.value.note ?? '',
     vendor_code: file.value.vendor_code ?? null,
     market_code: file.value.market_code ?? null,
+    buy_currency_id: file.value.buy_currency_id ?? null,
+    sell_currency_id: file.value.sell_currency_id ?? null,
   };
 });
 
@@ -2253,6 +2318,8 @@ async function handleUpdateFileDialog(payload: {
   note: string;
   vendor_code: string | null;
   market_code: string | null;
+  buy_currency_id: number | null;
+  sell_currency_id: number | null;
 }) {
   if (!payload.id) return;
   await updateFileMutation.mutateAsync({
@@ -2263,6 +2330,8 @@ async function handleUpdateFileDialog(payload: {
     note: payload.note,
     vendor_code: payload.vendor_code,
     market_code: payload.market_code,
+    buy_currency_id: payload.buy_currency_id ?? undefined,
+    sell_currency_id: payload.sell_currency_id ?? undefined,
   });
   showFileDialog.value = false;
   refreshBacklog();
@@ -2283,6 +2352,8 @@ async function handleUpdateRatesDirect(payload: {
   profit_rate: number;
   vat_rate: number;
   offer_pricing_mode: string;
+  buy_currency_id: number;
+  sell_currency_id: number;
 }) {
   if (!fileId.value) return;
   await updateFileMutation.mutateAsync({
@@ -2292,6 +2363,8 @@ async function handleUpdateRatesDirect(payload: {
     profit_rate: payload.profit_rate,
     vat_rate: payload.vat_rate,
     offer_pricing_mode: payload.offer_pricing_mode,
+    buy_currency_id: payload.buy_currency_id,
+    sell_currency_id: payload.sell_currency_id,
   });
   await recalculateOfferPricesMutation.mutateAsync(fileId.value);
   $q.notify({ type: 'positive', message: 'Rates updated and prices recalculated' });

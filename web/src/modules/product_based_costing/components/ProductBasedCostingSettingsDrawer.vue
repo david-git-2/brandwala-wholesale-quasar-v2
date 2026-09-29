@@ -114,6 +114,41 @@
                 @blur="saveNote"
               />
             </div>
+
+            <div class="row q-col-gutter-sm">
+              <div class="col-12 col-sm-6">
+                <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">
+                  {{ $t('product_based_costing.buy_currency_label') }}
+                </div>
+                <q-select
+                  v-model="drawerBuyCurrencyId"
+                  :options="currencyOptions"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  :loading="loadingCurrencies"
+                  class="bg-white"
+                  @update:model-value="saveCurrencies"
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">
+                  {{ $t('product_based_costing.sell_currency_label') }}
+                </div>
+                <q-select
+                  v-model="drawerSellCurrencyId"
+                  :options="currencyOptions"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  :loading="loadingCurrencies"
+                  class="bg-white"
+                  @update:model-value="saveCurrencies"
+                />
+              </div>
+            </div>
           </div>
         </q-tab-panel>
 
@@ -126,6 +161,8 @@
             :profit-rate="profitRate"
             :vat-rate="vatRate"
             :offer-pricing-mode="offerPricingMode"
+            :buy-currency-code="drawerBuyCurrencyCode"
+            :sell-currency-code="drawerSellCurrencyCode"
             :file-meta="summaryFileMeta"
             show-file-meta
           />
@@ -139,13 +176,48 @@
               <span>Conversion & Rate Settings</span>
             </div>
 
+            <div class="row q-col-gutter-sm">
+              <div class="col-12 col-sm-6">
+                <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">
+                  {{ $t('product_based_costing.buy_currency_label') }}
+                </div>
+                <q-select
+                  v-model="drawerBuyCurrencyId"
+                  :options="currencyOptions"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  :loading="loadingCurrencies"
+                  class="bg-white"
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">
+                  {{ $t('product_based_costing.sell_currency_label') }}
+                </div>
+                <q-select
+                  v-model="drawerSellCurrencyId"
+                  :options="currencyOptions"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  :loading="loadingCurrencies"
+                  class="bg-white"
+                />
+              </div>
+            </div>
+
             <!-- FX Rate -->
             <div>
-              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Conversion Rate (GBP → BDT)</div>
+              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">
+                {{ $t('product_based_costing.conversion_rate_fx_label', { sell: sellMark, buy: buyMark }) }}
+              </div>
               <q-input
                 v-model.number="drawerConversionRate"
                 type="number"
-                prefix="৳"
+                :prefix="sellMark"
                 outlined
                 dense
                 class="bg-white font-mono"
@@ -154,11 +226,13 @@
 
             <!-- Cargo Rate -->
             <div>
-              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Cargo Rate (GBP/kg)</div>
+              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">
+                {{ $t('product_based_costing.cargo_rate_per_kg_label', { buy: buyMark }) }}
+              </div>
               <q-input
                 v-model.number="drawerCargoRate"
                 type="number"
-                prefix="£"
+                :prefix="buyMark"
                 suffix="/kg"
                 outlined
                 dense
@@ -319,7 +393,13 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { normalizePbcFileStatus } from '../composables/useProductBasedCostingFileDetailsState';
+import {
+  pbcCurrencyMark,
+  pbcFileBuyCurrencyCode,
+  pbcFileSellCurrencyCode,
+} from '../utils/pbcFileCurrencies';
 import type { PbcFileSummaryMetrics } from '../composables/usePbcFileSummaryMetrics';
 import ProductBasedCostingFileSummaryPanel, {
   type PbcSummaryFileMeta,
@@ -363,6 +443,8 @@ const emit = defineEmits<{
     profit_rate: number;
     vat_rate: number;
     offer_pricing_mode: string;
+    buy_currency_id: number;
+    sell_currency_id: number;
   }): void;
   (e: 'primary-action', action: StaffPbcPrimaryAction): void;
   (e: 'cancel-file'): void;
@@ -383,6 +465,36 @@ const drawerCargoRate = ref(0);
 const drawerProfitRate = ref(25);
 const drawerVatRate = ref(0);
 const drawerOfferPricingMode = ref('landed_cost_plus');
+const drawerBuyCurrencyId = ref<number | null>(null);
+const drawerSellCurrencyId = ref<number | null>(null);
+
+const { data: currenciesData, isLoading: loadingCurrencies } = useGlobalCurrenciesQuery();
+
+const currencyOptions = computed(() =>
+  (currenciesData.value ?? []).map((c) => ({
+    label: `${c.code} (${c.symbol}) - ${c.name}`,
+    value: c.id,
+  })),
+);
+
+const drawerBuyCurrencyCode = computed(() =>
+  pbcFileBuyCurrencyCode({
+    buy_currency_id: drawerBuyCurrencyId.value,
+    buy_currency_code:
+      currenciesData.value?.find((c) => c.id === drawerBuyCurrencyId.value)?.code ?? null,
+  }),
+);
+
+const drawerSellCurrencyCode = computed(() =>
+  pbcFileSellCurrencyCode({
+    sell_currency_id: drawerSellCurrencyId.value,
+    sell_currency_code:
+      currenciesData.value?.find((c) => c.id === drawerSellCurrencyId.value)?.code ?? null,
+  }),
+);
+
+const buyMark = computed(() => pbcCurrencyMark(drawerBuyCurrencyCode.value));
+const sellMark = computed(() => pbcCurrencyMark(drawerSellCurrencyCode.value));
 
 const offerPricingModeOptions = [
   { label: 'Cost + profit', value: 'landed_cost_plus' },
@@ -426,6 +538,8 @@ watch(
         newFile.offer_pricing_mode === 'gbp_vat_then_profit'
           ? 'gbp_vat_then_profit'
           : 'landed_cost_plus';
+      drawerBuyCurrencyId.value = newFile.buy_currency_id ?? null;
+      drawerSellCurrencyId.value = newFile.sell_currency_id ?? null;
     }
   },
   { immediate: true },
@@ -474,13 +588,33 @@ function saveNote() {
   }
 }
 
+function saveCurrencies() {
+  if (drawerBuyCurrencyId.value == null || drawerSellCurrencyId.value == null) {
+    return;
+  }
+  const buyChanged = drawerBuyCurrencyId.value !== (props.file?.buy_currency_id ?? null);
+  const sellChanged = drawerSellCurrencyId.value !== (props.file?.sell_currency_id ?? null);
+  if (!buyChanged && !sellChanged) {
+    return;
+  }
+  emit('update-file', {
+    buy_currency_id: drawerBuyCurrencyId.value,
+    sell_currency_id: drawerSellCurrencyId.value,
+  });
+}
+
 function saveRates() {
+  if (drawerBuyCurrencyId.value == null || drawerSellCurrencyId.value == null) {
+    return;
+  }
   emit('update-rates', {
     conversion_rate: Number(drawerConversionRate.value) || 140,
     cargo_rate_kg_gbp: Number(drawerCargoRate.value) || 0,
     profit_rate: Number(drawerProfitRate.value) || 0,
     vat_rate: Number(drawerVatRate.value) || 0,
     offer_pricing_mode: drawerOfferPricingMode.value,
+    buy_currency_id: drawerBuyCurrencyId.value,
+    sell_currency_id: drawerSellCurrencyId.value,
   });
 }
 

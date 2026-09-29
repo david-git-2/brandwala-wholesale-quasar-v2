@@ -61,13 +61,17 @@ create table if not exists public.product_based_costing_files (
   customer_group_id uuid not null references public.customer_groups(id) on delete cascade,
   billing_profile_id uuid not null references public.billing_profiles(id) on delete cascade,
   
-  -- Currency & FX Configuration
-  base_currency text not null default 'GBP',
-  target_currency text not null default 'BDT',
-  fx_rate numeric(12, 6) not null default 154.50,
-  markup_percentage numeric(8, 4) not null default 0.18, -- 18%
-  -- Live columns (as-built): conversion_rate, cargo_rate_kg_gbp, profit_rate,
-  -- vat_rate, offer_pricing_mode ('landed_cost_plus' | 'gbp_vat_then_profit')
+  -- Currency & FX Configuration (as-built on product_based_costing_files)
+  buy_currency_id bigint not null references public.global_currencies(id),
+  buy_currency_code text not null,
+  sell_currency_id bigint not null references public.global_currencies(id),
+  sell_currency_code text not null,
+  conversion_rate numeric(12, 6),
+  cargo_rate_kg_gbp numeric(12, 4),
+  profit_rate numeric(12, 4),
+  vat_rate numeric(12, 4) default 0,
+  offer_pricing_mode public.pbc_offer_pricing_mode default 'landed_cost_plus',
+  -- Defaults: buy GBP, sell BDT (trigger trg_fn_pbc_files_stamp_currency_codes on insert/update)
   
   -- Totals
   total_base_cost numeric(14, 2) default 0,

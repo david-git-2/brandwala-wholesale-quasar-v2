@@ -250,6 +250,10 @@ import {
   alwaysVisibleColumns,
   columnSelectorOptions,
 } from '../composables/useProductBasedCostingFileDetailsState';
+import {
+  pbcFileBuyCurrencyCode,
+  pbcFileSellCurrencyCode,
+} from '../utils/pbcFileCurrencies';
 
 const props = withDefaults(
   defineProps<{
@@ -304,12 +308,16 @@ const filteredColumnSelectorOptions = computed(() => {
   );
 });
 
-const localizedColumnSelectorOptions = computed(() =>
-  columnSelectorOptions.map((option) => ({
+const localizedColumnSelectorOptions = computed(() => {
+  const currencyI18n = {
+    buy: pbcFileBuyCurrencyCode(props.file),
+    sell: pbcFileSellCurrencyCode(props.file),
+  };
+  return columnSelectorOptions.map((option) => ({
     ...option,
-    label: t(`product_based_costing.table_col_${option.value}`),
-  })),
-);
+    label: t(`product_based_costing.table_col_${option.value}`, currencyI18n),
+  }));
+});
 
 const selectableColumnValues = localizedColumnSelectorOptions.value.map((option) => option.value);
 

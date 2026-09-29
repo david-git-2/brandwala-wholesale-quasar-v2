@@ -39,6 +39,8 @@ const buildProductBasedCostingFileCreatePayload = (
   conversion_rate: payload.conversion_rate ?? null,
   status: normalizeText(payload.status),
   default_shipment_id: payload.default_shipment_id ?? null,
+  buy_currency_id: payload.buy_currency_id ?? null,
+  sell_currency_id: payload.sell_currency_id ?? null,
 });
 
 const buildProductBasedCostingFileUpdatePayload = (
@@ -100,6 +102,14 @@ const buildProductBasedCostingFileUpdatePayload = (
 
   if (payload.default_shipment_id !== undefined) {
     updatePayload.default_shipment_id = payload.default_shipment_id;
+  }
+
+  if (payload.buy_currency_id !== undefined) {
+    updatePayload.buy_currency_id = payload.buy_currency_id;
+  }
+
+  if (payload.sell_currency_id !== undefined) {
+    updatePayload.sell_currency_id = payload.sell_currency_id;
   }
 
   return updatePayload;

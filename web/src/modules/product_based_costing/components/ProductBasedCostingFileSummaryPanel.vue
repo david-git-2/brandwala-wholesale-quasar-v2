@@ -25,13 +25,13 @@
           <div class="col-4">
             <div class="rate-chip">
               <span class="rate-chip__label">{{ $t('product_based_costing.conversion_rate') }}</span>
-              <span class="rate-chip__value">৳{{ formatMoney(conversionRate) }}</span>
+              <span class="rate-chip__value">{{ sellMark }}{{ formatMoney(conversionRate) }}</span>
             </div>
           </div>
           <div class="col-4">
             <div class="rate-chip">
               <span class="rate-chip__label">{{ $t('product_based_costing.cargo_rate_label') }}</span>
-              <span class="rate-chip__value">£{{ formatMoney(cargoRate) }}/kg</span>
+              <span class="rate-chip__value">{{ buyMark }}{{ formatMoney(cargoRate) }}/kg</span>
             </div>
           </div>
           <div class="col-4">
@@ -83,7 +83,7 @@
       rounded
       class="bg-orange-1 text-grey-9"
     >
-      {{ $t('product_based_costing.summary_incomplete_hint', { count: summaryMetrics.incompleteLineCount }) }}
+      {{ $t('product_based_costing.summary_incomplete_hint', { count: summaryMetrics.incompleteLineCount, buy: buyCurrencyCode }) }}
     </q-banner>
 
     <q-card flat bordered class="metric-card bg-surface-subtle">
@@ -98,12 +98,12 @@
         </div>
         <div class="metric-rows">
           <div class="metric-row row justify-between items-center">
-            <span class="text-caption text-grey-7">{{ $t('product_based_costing.total_purchase_price_gbp') }}</span>
-            <span class="text-body2 text-weight-bold text-grey-9">£ {{ formatMoney(summaryMetrics.goodsCostGbp) }}</span>
+            <span class="text-caption text-grey-7">{{ $t('product_based_costing.total_purchase_price_gbp', currencyI18n) }}</span>
+            <span class="text-body2 text-weight-bold text-grey-9">{{ buyMark }} {{ formatMoney(summaryMetrics.goodsCostGbp) }}</span>
           </div>
           <div class="metric-row row justify-between items-center">
-            <span class="text-caption text-grey-7">{{ $t('product_based_costing.goods_cost_bdt') }}</span>
-            <span class="text-subtitle2 text-weight-bold text-primary">৳ {{ formatMoney(summaryMetrics.goodsCostBdt) }}</span>
+            <span class="text-caption text-grey-7">{{ $t('product_based_costing.goods_cost_bdt', currencyI18n) }}</span>
+            <span class="text-subtitle2 text-weight-bold text-primary">{{ sellMark }} {{ formatMoney(summaryMetrics.goodsCostBdt) }}</span>
           </div>
         </div>
       </q-card-section>
@@ -125,12 +125,12 @@
             <span class="text-body2 text-weight-bold text-grey-9">{{ summaryMetrics.cargoWeightKg.toFixed(2) }} kg</span>
           </div>
           <div class="metric-row row justify-between items-center">
-            <span class="text-caption text-grey-7">{{ $t('product_based_costing.cargo_cost_gbp') }}</span>
-            <span class="text-body2 text-weight-bold text-grey-9">£ {{ formatMoney(summaryMetrics.cargoCostGbp) }}</span>
+            <span class="text-caption text-grey-7">{{ $t('product_based_costing.cargo_cost_gbp', currencyI18n) }}</span>
+            <span class="text-body2 text-weight-bold text-grey-9">{{ buyMark }} {{ formatMoney(summaryMetrics.cargoCostGbp) }}</span>
           </div>
           <div class="metric-row row justify-between items-center">
-            <span class="text-caption text-grey-7">{{ $t('product_based_costing.cargo_cost_bdt') }}</span>
-            <span class="text-subtitle2 text-weight-bold text-teal-9">৳ {{ formatMoney(summaryMetrics.cargoCostBdt) }}</span>
+            <span class="text-caption text-grey-7">{{ $t('product_based_costing.cargo_cost_bdt', currencyI18n) }}</span>
+            <span class="text-subtitle2 text-weight-bold text-teal-9">{{ sellMark }} {{ formatMoney(summaryMetrics.cargoCostBdt) }}</span>
           </div>
         </div>
       </q-card-section>
@@ -143,14 +143,14 @@
             <div class="text-caption text-uppercase text-weight-bold text-grey-7">
               {{ $t('product_based_costing.total_landed_cost') }}
             </div>
-            <div class="text-caption text-grey-6">{{ $t('product_based_costing.total_landed_formula') }}</div>
+            <div class="text-caption text-grey-6">{{ $t('product_based_costing.total_landed_formula', currencyI18n) }}</div>
             <div class="text-caption text-grey-6 q-mt-xs">
-              {{ $t('product_based_costing.summary_total_cost_gbp') }}:
-              £ {{ formatMoney(summaryMetrics.totalCostGbp) }}
+              {{ $t('product_based_costing.summary_total_cost_gbp', currencyI18n) }}:
+              {{ buyMark }} {{ formatMoney(summaryMetrics.totalCostGbp) }}
             </div>
           </div>
           <div class="text-h5 text-weight-bolder text-primary">
-            ৳ {{ formatMoney(summaryMetrics.totalCostBdt) }}
+            {{ sellMark }} {{ formatMoney(summaryMetrics.totalCostBdt) }}
           </div>
         </div>
       </q-card-section>
@@ -168,16 +168,16 @@
         </div>
         <div class="metric-rows">
           <div class="metric-row row justify-between items-center">
-            <span class="text-caption text-grey-7">{{ $t('product_based_costing.preview_total_offer_bdt') }}</span>
-            <span class="text-subtitle2 text-weight-bold text-positive">৳ {{ formatMoney(summaryMetrics.totalOfferPriceBdt) }}</span>
+            <span class="text-caption text-grey-7">{{ $t('product_based_costing.preview_total_offer_bdt', currencyI18n) }}</span>
+            <span class="text-subtitle2 text-weight-bold text-positive">{{ sellMark }} {{ formatMoney(summaryMetrics.totalOfferPriceBdt) }}</span>
           </div>
           <div class="metric-row row justify-between items-center">
-            <span class="text-caption text-grey-7">{{ $t('product_based_costing.preview_profit_bdt') }}</span>
+            <span class="text-caption text-grey-7">{{ $t('product_based_costing.preview_profit_bdt', currencyI18n) }}</span>
             <span
               class="text-body2 text-weight-bold"
               :class="summaryMetrics.totalProfitBdt >= 0 ? 'text-positive' : 'text-negative'"
             >
-              ৳ {{ formatMoney(summaryMetrics.totalProfitBdt) }}
+              {{ sellMark }} {{ formatMoney(summaryMetrics.totalProfitBdt) }}
             </span>
           </div>
           <div class="metric-row row justify-between items-center">
@@ -186,11 +186,11 @@
           </div>
           <div class="metric-row row justify-between items-center">
             <span class="text-caption text-grey-7">{{ $t('product_based_costing.summary_avg_offer_unit') }}</span>
-            <span class="text-body2 text-weight-bold text-grey-9">৳ {{ formatMoney(summaryMetrics.avgOfferPerUnitBdt) }}</span>
+            <span class="text-body2 text-weight-bold text-grey-9">{{ sellMark }} {{ formatMoney(summaryMetrics.avgOfferPerUnitBdt) }}</span>
           </div>
           <div class="metric-row row justify-between items-center">
             <span class="text-caption text-grey-7">{{ $t('product_based_costing.summary_avg_cost_unit') }}</span>
-            <span class="text-body2 text-weight-bold text-grey-9">৳ {{ formatMoney(summaryMetrics.avgCostPerUnitBdt) }}</span>
+            <span class="text-body2 text-weight-bold text-grey-9">{{ sellMark }} {{ formatMoney(summaryMetrics.avgCostPerUnitBdt) }}</span>
           </div>
         </div>
       </q-card-section>
@@ -199,7 +199,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
   formatMoney,
@@ -207,6 +207,11 @@ import {
   normalizePbcFileStatus,
 } from '../composables/useProductBasedCostingFileDetailsState';
 import type { PbcFileSummaryMetrics } from '../composables/usePbcFileSummaryMetrics';
+import {
+  PBC_FALLBACK_BUY_CURRENCY_CODE,
+  PBC_FALLBACK_SELL_CURRENCY_CODE,
+  pbcCurrencyMark,
+} from '../utils/pbcFileCurrencies';
 
 export type PbcSummaryFileMeta = {
   name?: string | null;
@@ -219,16 +224,35 @@ export type PbcSummaryFileMeta = {
 
 const { t } = useI18n();
 
-const props = defineProps<{
-  summaryMetrics: PbcFileSummaryMetrics;
-  conversionRate: number;
-  cargoRate: number;
-  profitRate: number;
-  vatRate?: number;
-  offerPricingMode?: string;
-  fileMeta?: PbcSummaryFileMeta | null;
-  showFileMeta?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    summaryMetrics: PbcFileSummaryMetrics;
+    conversionRate: number;
+    cargoRate: number;
+    profitRate: number;
+    vatRate?: number;
+    offerPricingMode?: string;
+    buyCurrencyCode?: string;
+    sellCurrencyCode?: string;
+    fileMeta?: PbcSummaryFileMeta | null;
+    showFileMeta?: boolean;
+  }>(),
+  {
+    vatRate: 0,
+    offerPricingMode: 'landed_cost_plus',
+    buyCurrencyCode: PBC_FALLBACK_BUY_CURRENCY_CODE,
+    sellCurrencyCode: PBC_FALLBACK_SELL_CURRENCY_CODE,
+  },
+);
+
+const buyCurrencyCode = computed(() => props.buyCurrencyCode);
+const sellCurrencyCode = computed(() => props.sellCurrencyCode);
+const buyMark = computed(() => pbcCurrencyMark(buyCurrencyCode.value));
+const sellMark = computed(() => pbcCurrencyMark(sellCurrencyCode.value));
+const currencyI18n = computed(() => ({
+  buy: buyCurrencyCode.value,
+  sell: sellCurrencyCode.value,
+}));
 
 const fileMetaRows = computed(() => {
   if (!props.fileMeta) return [];

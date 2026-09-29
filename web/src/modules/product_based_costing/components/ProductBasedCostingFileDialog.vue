@@ -73,6 +73,35 @@
             :rules="[(val) => !!val || $t('product_based_costing.created_for_required')]"
           />
 
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-6">
+              <q-select
+                v-model="form.buy_currency_id"
+                :options="currencyOptions"
+                :label="$t('product_based_costing.buy_currency_label')"
+                outlined
+                dense
+                emit-value
+                map-options
+                :loading="loadingCurrencies"
+                :rules="[(val) => val != null || $t('product_based_costing.buy_currency_label')]"
+              />
+            </div>
+            <div class="col-12 col-sm-6">
+              <q-select
+                v-model="form.sell_currency_id"
+                :options="currencyOptions"
+                :label="$t('product_based_costing.sell_currency_label')"
+                outlined
+                dense
+                emit-value
+                map-options
+                :loading="loadingCurrencies"
+                :rules="[(val) => val != null || $t('product_based_costing.sell_currency_label')]"
+              />
+            </div>
+          </div>
+
           <q-input
             v-model="form.note"
             :label="$t('product_based_costing.note')"
@@ -118,6 +147,7 @@ import { useCustomerMutations } from 'src/modules/customer/composables/useCustom
 import CreateCustomerDialog from 'src/modules/customer/components/CreateCustomerDialog.vue';
 import type { CustomerAccount } from 'src/modules/customer/types/customer';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
+import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 
 interface CostingFileForm {
   id: number | null;
@@ -127,6 +157,8 @@ interface CostingFileForm {
   note: string;
   vendor_code: string | null;
   market_code: string | null;
+  buy_currency_id: number | null;
+  sell_currency_id: number | null;
 }
 
 const props = defineProps<{
@@ -154,6 +186,8 @@ const emptyForm = (): CostingFileForm => ({
   note: '',
   vendor_code: null,
   market_code: null,
+  buy_currency_id: null,
+  sell_currency_id: null,
 });
 
 const form = reactive(emptyForm());
@@ -173,6 +207,32 @@ const localOpen = computed({
 const tenantStore = useTenantStore();
 const tenantId = computed(() => tenantStore.selectedTenant?.id ?? null);
 const { createCustomerMutation } = useCustomerMutations();
+const { data: currenciesData, isLoading: loadingCurrencies } = useGlobalCurrenciesQuery();
+
+const currencyOptions = computed(() =>
+  (currenciesData.value ?? []).map((c) => ({
+    label: `${c.code} (${c.symbol}) - ${c.name}`,
+    value: c.id,
+  })),
+);
+
+function defaultCurrencyIds() {
+  const list = currenciesData.value ?? [];
+  const gbp = list.find((c) => c.code === 'GBP')?.id ?? null;
+  const bdt = list.find((c) => c.code === 'BDT')?.id ?? null;
+  return { gbp, bdt };
+}
+
+function applyDefaultCurrenciesIfCreate() {
+  if (isEditMode.value) return;
+  const { gbp, bdt } = defaultCurrencyIds();
+  if (form.buy_currency_id == null && gbp != null) {
+    form.buy_currency_id = gbp;
+  }
+  if (form.sell_currency_id == null && bdt != null) {
+    form.sell_currency_id = bdt;
+  }
+}
 
 async function loadCustomers(search?: string) {
   const id = tenantId.value;
@@ -275,7 +335,10 @@ function fillForm(source: CostingFileForm | null) {
   form.note = values.note ?? '';
   form.vendor_code = values.vendor_code ?? null;
   form.market_code = values.market_code ?? null;
+  form.buy_currency_id = values.buy_currency_id ?? null;
+  form.sell_currency_id = values.sell_currency_id ?? null;
   syncSelectedCustomer();
+  applyDefaultCurrenciesIfCreate();
 }
 
 watch(
@@ -290,9 +353,16 @@ watch(
     if (isOpen) {
       fillForm(props.data);
       void loadCustomers();
+      applyDefaultCurrenciesIfCreate();
     }
   },
 );
+
+watch(currenciesData, () => {
+  if (props.modelValue) {
+    applyDefaultCurrenciesIfCreate();
+  }
+});
 
 async function handleSubmit() {
   const isValid = await formRef.value?.validate();
@@ -307,6 +377,8 @@ async function handleSubmit() {
     note: form.note,
     vendor_code: form.vendor_code,
     market_code: form.market_code,
+    buy_currency_id: form.buy_currency_id,
+    sell_currency_id: form.sell_currency_id,
   });
 
   emit('update:modelValue', false);

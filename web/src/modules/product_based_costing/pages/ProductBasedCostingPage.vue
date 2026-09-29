@@ -387,6 +387,8 @@ type CostingFileForm = {
   note: string;
   vendor_code: string | null;
   market_code: string | null;
+  buy_currency_id: number | null;
+  sell_currency_id: number | null;
 };
 
 const dialogOpen = ref(false);
@@ -406,6 +408,8 @@ function openEditDialog(row: ProductBasedCostingFile) {
     note: row.note ?? '',
     vendor_code: row.vendor_code ?? null,
     market_code: row.market_code ?? null,
+    buy_currency_id: row.buy_currency_id ?? null,
+    sell_currency_id: row.sell_currency_id ?? null,
   };
   dialogOpen.value = true;
 }
@@ -420,6 +424,8 @@ async function handleDialogSubmit(payload: CostingFileForm) {
       note: payload.note,
       vendor_code: payload.vendor_code,
       market_code: payload.market_code,
+      buy_currency_id: payload.buy_currency_id ?? undefined,
+      sell_currency_id: payload.sell_currency_id ?? undefined,
     });
   } else {
     await createCostingFile({
@@ -429,6 +435,8 @@ async function handleDialogSubmit(payload: CostingFileForm) {
       note: payload.note,
       vendor_code: payload.vendor_code,
       market_code: payload.market_code,
+      buy_currency_id: payload.buy_currency_id ?? undefined,
+      sell_currency_id: payload.sell_currency_id ?? undefined,
     });
   }
 }

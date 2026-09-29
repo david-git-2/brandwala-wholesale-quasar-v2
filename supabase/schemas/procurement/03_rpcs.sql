@@ -8813,6 +8813,55 @@ $$;
 ALTER FUNCTION "public"."trg_fn_pbc_files_stamp_billing_profile"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."trg_fn_pbc_files_stamp_currency_codes"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_gbp_id bigint;
+  v_bdt_id bigint;
+BEGIN
+  SELECT id INTO v_gbp_id FROM public.global_currencies WHERE code = 'GBP' LIMIT 1;
+  SELECT id INTO v_bdt_id FROM public.global_currencies WHERE code = 'BDT' LIMIT 1;
+
+  IF v_gbp_id IS NULL THEN
+    RAISE EXCEPTION 'global_currencies must include GBP for product_based_costing_files defaults';
+  END IF;
+  IF v_bdt_id IS NULL THEN
+    RAISE EXCEPTION 'global_currencies must include BDT for product_based_costing_files defaults';
+  END IF;
+
+  IF NEW.buy_currency_id IS NULL THEN
+    NEW.buy_currency_id := v_gbp_id;
+  END IF;
+  IF NEW.sell_currency_id IS NULL THEN
+    NEW.sell_currency_id := v_bdt_id;
+  END IF;
+
+  SELECT gc.code INTO NEW.buy_currency_code
+    FROM public.global_currencies gc
+   WHERE gc.id = NEW.buy_currency_id;
+
+  IF NEW.buy_currency_code IS NULL THEN
+    RAISE EXCEPTION 'unknown buy_currency_id %', NEW.buy_currency_id;
+  END IF;
+
+  SELECT gc.code INTO NEW.sell_currency_code
+    FROM public.global_currencies gc
+   WHERE gc.id = NEW.sell_currency_id;
+
+  IF NEW.sell_currency_code IS NULL THEN
+    RAISE EXCEPTION 'unknown sell_currency_id %', NEW.sell_currency_id;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trg_fn_pbc_files_stamp_currency_codes"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."trg_global_shipment_items_restamp_landed_cost"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'

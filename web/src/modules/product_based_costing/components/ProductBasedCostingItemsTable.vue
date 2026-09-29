@@ -1167,6 +1167,8 @@ const props = withDefaults(
     profitRate?: number;
     vatRate?: number;
     offerPricingMode?: string;
+    buyCurrencyCode?: string;
+    sellCurrencyCode?: string;
     status?: string | undefined;
     shippedItemIds?: number[];
     visibleColumns?: string[];
@@ -1177,12 +1179,19 @@ const props = withDefaults(
     profitRate: 0,
     vatRate: 0,
     offerPricingMode: 'landed_cost_plus',
+    buyCurrencyCode: 'GBP',
+    sellCurrencyCode: 'BDT',
     status: 'pending',
     shippedItemIds: () => [],
   },
 );
 
 const normalizedFileStatus = computed(() => normalizePbcFileStatus(props.status ?? 'pending'));
+
+const currencyI18n = computed(() => ({
+  buy: props.buyCurrencyCode ?? 'GBP',
+  sell: props.sellCurrencyCode ?? 'BDT',
+}));
 
 const focusConfirmedQty = computed(() => normalizedFileStatus.value === 'confirmed');
 
@@ -1452,7 +1461,9 @@ defineExpose({
   resetRows,
 });
 
-const columns = computed<QTableColumn[]>(() => [
+const columns = computed<QTableColumn[]>(() => {
+  const c = currencyI18n.value;
+  return [
   {
     name: 'select',
     label: '',
@@ -1528,7 +1539,7 @@ const columns = computed<QTableColumn[]>(() => [
 
   {
     name: 'priceGbp',
-    label: t('product_based_costing.table_col_priceGbp'),
+    label: t('product_based_costing.table_col_priceGbp', c),
     field: 'priceGbp',
     align: 'center',
     classes: 'bg-gbp',
@@ -1537,7 +1548,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'totalPurchasePriceGbp',
-    label: t('product_based_costing.table_col_totalPurchasePriceGbp'),
+    label: t('product_based_costing.table_col_totalPurchasePriceGbp', c),
     field: 'totalPurchasePriceGbp',
     align: 'center',
     classes: 'bg-gbp',
@@ -1574,7 +1585,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'cargoCostGbp',
-    label: t('product_based_costing.table_col_cargoCostGbp'),
+    label: t('product_based_costing.table_col_cargoCostGbp', c),
     field: 'cargoCostGbp',
     align: 'center',
     classes: 'bg-gbp',
@@ -1583,7 +1594,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'totalCostGbp',
-    label: t('product_based_costing.table_col_totalCostGbp'),
+    label: t('product_based_costing.table_col_totalCostGbp', c),
     field: 'totalCostGbp',
     align: 'center',
     classes: 'bg-gbp',
@@ -1592,7 +1603,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'rowTotalCostGbp',
-    label: t('product_based_costing.table_col_rowTotalCostGbp'),
+    label: t('product_based_costing.table_col_rowTotalCostGbp', c),
     field: 'rowTotalCostGbp',
     align: 'center',
     classes: 'bg-gbp',
@@ -1602,7 +1613,7 @@ const columns = computed<QTableColumn[]>(() => [
 
   {
     name: 'costBdt',
-    label: t('product_based_costing.table_col_costBdt'),
+    label: t('product_based_costing.table_col_costBdt', c),
     field: 'costBdt',
     align: 'center',
     classes: 'bg-bdt',
@@ -1611,7 +1622,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'totalCostBdt',
-    label: t('product_based_costing.table_col_totalCostBdt'),
+    label: t('product_based_costing.table_col_totalCostBdt', c),
     field: 'totalCostBdt',
     align: 'center',
     classes: 'bg-bdt',
@@ -1620,7 +1631,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'offerPriceBdt',
-    label: t('product_based_costing.table_col_offerPriceBdt'),
+    label: t('product_based_costing.table_col_offerPriceBdt', c),
     field: 'offerPriceBdt',
     align: 'center',
     classes: 'bg-offer',
@@ -1629,7 +1640,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'totalBdt',
-    label: t('product_based_costing.table_col_totalBdt'),
+    label: t('product_based_costing.table_col_totalBdt', c),
     field: 'totalBdt',
     align: 'center',
     classes: 'bg-offer',
@@ -1638,7 +1649,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'profitPerUnitBdt',
-    label: t('product_based_costing.table_col_profitPerUnitBdt'),
+    label: t('product_based_costing.table_col_profitPerUnitBdt', c),
     field: 'profitPerUnitBdt',
     align: 'center',
     classes: 'bg-bdt',
@@ -1647,7 +1658,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'profitBdt',
-    label: t('product_based_costing.table_col_profitBdt'),
+    label: t('product_based_costing.table_col_profitBdt', c),
     field: 'profitBdt',
     align: 'center',
     classes: 'bg-bdt',
@@ -1667,9 +1678,10 @@ const columns = computed<QTableColumn[]>(() => [
     label: t('product_based_costing.col_status'),
     field: 'status',
     align: 'center',
-    style: 'text-align： center;',
+    style: 'text-align: center;',
   },
-]);
+];
+});
 
 type ColumnName = string;
 const allColumnNames = computed<ColumnName[]>(() =>

@@ -1,5 +1,9 @@
 import type { ProductBasedCostingFile, ProductBasedCostingItem } from '../types';
 import {
+  pbcFileBuyCurrencyCode,
+  pbcFileSellCurrencyCode,
+} from './pbcFileCurrencies';
+import {
   EXCEL_IMAGE_HEIGHT_PX,
   fetchImageForExcel,
   getExcelImageWidthPx,
@@ -27,31 +31,32 @@ const DATA_ROW_HEIGHT = 100;
 const FOOTER_ROW_HEIGHT = 30;
 const FIRST_DATA_ROW_NUMBER = 3;
 
-const HEADERS = [
-  'SL',
-  'PICTURE',
-  'PRODUCT',
-  'Order Quantity',
-  'Received Quantity',
-  'ACTUALWEIGHT/PC IN G/ML',
-  'Extra Weight / Pc for Carton',
-  'WEIGHT/PC IN G/ML with Extra Weight',
-  'TOTAL GOODS WEIGHT IN KG',
-  'GOODS COST IN GBP',
-  'TOTAL GOODS COST IN GBP',
-  'COURIER COST IN GBP/KG',
-  'TOTAL COST IN GBP/PC WITH COURIER',
-  'TOTAL COST IN BDT/PC WITH COURIER',
-  'TOTAL COST IN BDT',
-  'SELL PX/PC IN BDT',
-  'PROFIT/PCS',
-  'TOTAL SELL PX IN BDT',
-  'TOTAL PROFIT IN BDT',
-  '% Profit',
-  'REMARKS',
-  'Barcode',
-  'Product code',
-] as const;
+const buildHeaders = (buyCode: string, sellCode: string) =>
+  [
+    'SL',
+    'PICTURE',
+    'PRODUCT',
+    'Order Quantity',
+    'Received Quantity',
+    'ACTUALWEIGHT/PC IN G/ML',
+    'Extra Weight / Pc for Carton',
+    'WEIGHT/PC IN G/ML with Extra Weight',
+    'TOTAL GOODS WEIGHT IN KG',
+    `GOODS COST IN ${buyCode}`,
+    `TOTAL GOODS COST IN ${buyCode}`,
+    `COURIER COST IN ${buyCode}/KG`,
+    `TOTAL COST IN ${buyCode}/PC WITH COURIER`,
+    `TOTAL COST IN ${sellCode}/PC WITH COURIER`,
+    `TOTAL COST IN ${sellCode}`,
+    `SELL PX/PC IN ${sellCode}`,
+    'PROFIT/PCS',
+    `TOTAL SELL PX IN ${sellCode}`,
+    `TOTAL PROFIT IN ${sellCode}`,
+    '% Profit',
+    'REMARKS',
+    'Barcode',
+    'Product code',
+  ] as const;
 
 const COLUMN_LETTERS = [
   'A',
@@ -242,6 +247,10 @@ export async function buildCostingExcelWorkbook(input: BuildCostingExcelInput) {
   const ExcelJS = await import('exceljs');
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Costing Items');
+
+  const buyCode = pbcFileBuyCurrencyCode(input.file);
+  const sellCode = pbcFileSellCurrencyCode(input.file);
+  const HEADERS = buildHeaders(buyCode, sellCode);
 
   const conversionRate = input.file.conversion_rate ?? 140;
   const cargoRate = input.file.cargo_rate_kg_gbp ?? 0;

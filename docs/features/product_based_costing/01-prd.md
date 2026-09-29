@@ -59,6 +59,7 @@ Once a quotation is confirmed by a customer group, the file transitions seamless
   - `landed_cost_plus` (default): offer ৳ = landed cost ৳ + `profit_rate` % on that cost.
   - `gbp_vat_then_profit`: VAT % then profit % on the **web £ price only** (not cargo), then convert with FX. Example: £10, VAT 15%, profit 8% → £11.50 → £12.42 → ৳ offer.
 - [x] `vat_rate` is used only in `gbp_vat_then_profit`. Unlocked lines recalc when rates or mode are saved.
+- [x] Each file stores **buy** currency (default GBP) and **sell** currency (default BDT) via `buy_currency_id` / `buy_currency_code` and `sell_currency_id` / `sell_currency_code` on `global_currencies`. Editable in Rates. UI labels and money marks follow those codes.
 
 ### US-2: Shared Procurement Lifecycle & Demand Desk Alignment
 - **As a** Procurement Officer  

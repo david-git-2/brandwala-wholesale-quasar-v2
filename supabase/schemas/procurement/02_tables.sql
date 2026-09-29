@@ -707,7 +707,11 @@ CREATE TABLE IF NOT EXISTS "public"."product_based_costing_files" (
     "default_shipment_id" bigint,
     "vendor_id" bigint,
     "billing_profile_id" bigint,
-    "customer_group_id" bigint
+    "customer_group_id" bigint,
+    "buy_currency_id" bigint NOT NULL,
+    "buy_currency_code" "text" NOT NULL,
+    "sell_currency_id" bigint NOT NULL,
+    "sell_currency_code" "text" NOT NULL
 );
 
 
@@ -1801,6 +1805,16 @@ ALTER TABLE ONLY "public"."product_based_costing_files"
 
 ALTER TABLE ONLY "public"."product_based_costing_files"
     ADD CONSTRAINT "product_based_costing_files_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."product_based_costing_files"
+    ADD CONSTRAINT "product_based_costing_files_buy_currency_id_fkey" FOREIGN KEY ("buy_currency_id") REFERENCES "public"."global_currencies"("id");
+
+
+
+ALTER TABLE ONLY "public"."product_based_costing_files"
+    ADD CONSTRAINT "product_based_costing_files_sell_currency_id_fkey" FOREIGN KEY ("sell_currency_id") REFERENCES "public"."global_currencies"("id");
 
 
 
