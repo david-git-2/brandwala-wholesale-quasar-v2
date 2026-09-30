@@ -89,6 +89,7 @@ Physical stock is owned strictly at the **Parent Tenant** level. Sister concerns
 - [ ] **Fill place qty** and **Set vendor** apply to the whole document server-side (not only loaded rows).
 - [ ] Fulfill **Pick stock** may run with `placed_quantity = 0`; picks cap at confirmed customer need.
 - [ ] **Mark ready for shipment** creates a proforma from picks; backlog = confirmed − allocated picks.
+- [ ] Demand group **Change status** (procuring only) asks for confirm, then sets the document to `ready_for_shipment` (status only; does not create a proforma).
 
 ### US-5: Archive-First Shipment Governance
 - **As an** Operations Admin  

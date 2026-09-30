@@ -11799,7 +11799,8 @@ begin
       coalesce(pd.placed_quantity, 0) as placed_quantity,
       coalesce(pd.delivered_quantity, 0) as delivered_quantity,
       coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks,
-      o.global_invoice_id as invoice_id
+      o.global_invoice_id as invoice_id,
+      nullif(trim(coalesce(o.name, o.order_no, '')), '') as document_name
     from public.shop_order_items oi
     inner join public.shop_orders o on o.id = oi.order_id
     inner join tenant_scope ts on ts.tenant_id = o.tenant_id
@@ -11858,7 +11859,8 @@ begin
       coalesce(pd.placed_quantity, 0) as placed_quantity,
       coalesce(pd.delivered_quantity, 0) as delivered_quantity,
       coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks,
-      f.invoice_id
+      f.invoice_id,
+      nullif(trim(coalesce(f.name, '')), '') as document_name
     from public.product_based_costing_items pci
     inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
     inner join tenant_scope ts on ts.tenant_id = f.tenant_id
@@ -11900,6 +11902,7 @@ begin
       max(el.customer_group_name) as customer_group_name,
       (array_agg(el.vendor) filter (where el.vendor is not null))[1] as vendor,
       max(el.invoice_id) as invoice_id,
+      max(el.document_name) as document_name,
       count(*)::integer as item_count,
       count(*) filter (where el.quantity > el.delivered_quantity)::integer as unallocated_item_count
     from eligible_lines el
@@ -11917,6 +11920,7 @@ begin
         jsonb_build_object(
           'document_type', p.document_type,
           'document_id', p.document_id,
+          'document_name', p.document_name,
           'document_status', p.document_status,
           'customer_group_id', p.customer_group_id,
           'customer_group_name', p.customer_group_name,
@@ -12012,6 +12016,13 @@ begin
       oi.image_url,
       coalesce(p.barcode, '') as barcode,
       coalesce(p.product_code, '') as product_code,
+      nullif(trim(coalesce(p.vendor_code, '')), '') as vendor_code,
+      nullif(trim(coalesce(p.market_code, '')), '') as market_code,
+      nullif(trim(coalesce(p.brand, '')), '') as brand,
+      nullif(trim(coalesce(p.category, '')), '') as category,
+      p.available_units,
+      nullif(trim(coalesce(p.languages, '')), '') as languages,
+      nullif(trim(coalesce(p.country_of_origin, '')), '') as country_of_origin,
       greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer as quantity,
       pd.id as preorder_demand_id,
       pd.vendor_id,
@@ -12041,6 +12052,22 @@ begin
       coalesce(pci.image_url, p.image_url) as image_url,
       coalesce(pci.barcode, p.barcode, '') as barcode,
       coalesce(pci.product_code, p.product_code, '') as product_code,
+      coalesce(
+        nullif(trim(coalesce(pci.vendor_code, '')), ''),
+        nullif(trim(coalesce(p.vendor_code, '')), '')
+      ) as vendor_code,
+      coalesce(
+        nullif(trim(coalesce(pci.market_code, '')), ''),
+        nullif(trim(coalesce(p.market_code, '')), '')
+      ) as market_code,
+      coalesce(
+        nullif(trim(coalesce(pci.brand, '')), ''),
+        nullif(trim(coalesce(p.brand, '')), '')
+      ) as brand,
+      nullif(trim(coalesce(p.category, '')), '') as category,
+      p.available_units,
+      nullif(trim(coalesce(p.languages, '')), '') as languages,
+      nullif(trim(coalesce(p.country_of_origin, '')), '') as country_of_origin,
       greatest(
         case when pci.assigned_shipment_id is not null then 0
           else coalesce(pci.confirmed_quantity, pci.quantity::integer, 0)
@@ -12093,49 +12120,68 @@ begin
     from eligible_lines el
     order by el.source_id
     limit v_limit + 1
-  )
-  select coalesce(
-    jsonb_agg(
-      jsonb_build_object(
-        'source_type', row.source_type,
-        'source_id', row.source_id,
-        'product_id', row.product_id,
-        'name', row.name,
-        'image_url', row.image_url,
-        'barcode', nullif(row.barcode, ''),
-        'product_code', nullif(row.product_code, ''),
-        'quantity', row.quantity,
-        'need_quantity', row.quantity,
-        'preorder_demand_id', row.preorder_demand_id,
-        'vendor_id', row.vendor_id,
-        'placed_quantity', row.placed_quantity,
-        'delivered_quantity', row.delivered_quantity,
-        'remaining_quantity', row.quantity - row.placed_quantity,
-        'remaining_to_deliver', greatest(row.quantity - row.delivered_quantity, 0),
-        'stock_picks', row.stock_picks
-      )
-      order by row.source_id
-    ),
-    '[]'::jsonb
-  )
-  into v_items
-  from (
+  ),
+  page_count as (
+    select count(*)::integer as n from paged
+  ),
+  page_rows as (
     select p.*
     from paged p
     order by p.source_id
     limit v_limit
-  ) row;
-
-  select count(*)::integer into v_n from paged;
-
-  if v_n > v_limit then
-    v_has_more := true;
-    select p.source_id into v_last_source_id
+  ),
+  item_json as (
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'source_type', row.source_type,
+          'source_id', row.source_id,
+          'product_id', row.product_id,
+          'name', row.name,
+          'image_url', row.image_url,
+          'barcode', nullif(row.barcode, ''),
+          'product_code', nullif(row.product_code, ''),
+          'vendor_code', row.vendor_code,
+          'market_code', row.market_code,
+          'brand', row.brand,
+          'category', row.category,
+          'available_units', row.available_units,
+          'languages', row.languages,
+          'country_of_origin', row.country_of_origin,
+          'quantity', row.quantity,
+          'need_quantity', row.quantity,
+          'preorder_demand_id', row.preorder_demand_id,
+          'vendor_id', row.vendor_id,
+          'placed_quantity', row.placed_quantity,
+          'delivered_quantity', row.delivered_quantity,
+          'remaining_quantity', row.quantity - row.placed_quantity,
+          'remaining_to_deliver', greatest(row.quantity - row.delivered_quantity, 0),
+          'stock_picks', row.stock_picks
+        )
+        order by row.source_id
+      ),
+      '[]'::jsonb
+    ) as items
+    from page_rows row
+  ),
+  cursor_row as (
+    select p.source_id
     from paged p
     order by p.source_id
     offset v_limit
-    limit 1;
+    limit 1
+  )
+  select
+    ij.items,
+    pc.n,
+    cr.source_id
+  into v_items, v_n, v_last_source_id
+  from item_json ij
+  cross join page_count pc
+  left join cursor_row cr on true;
 
+  if v_n > v_limit then
+    v_has_more := true;
     v_next_cursor := jsonb_build_object('source_id', v_last_source_id);
   end if;
 

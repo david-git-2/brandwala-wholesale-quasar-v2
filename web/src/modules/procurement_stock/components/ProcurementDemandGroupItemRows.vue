@@ -22,9 +22,73 @@
       </div>
     </td>
     <td class="demand-product-col shipment-item-name-cell">
-      <div class="text-weight-bold text-grey-9">{{ item.name }}</div>
-      <div class="text-caption text-grey-7">
-        {{ item.product_code || item.barcode || '—' }}
+      <div class="demand-product-identity">
+        <div class="demand-product-name">{{ item.name }}</div>
+        <div v-if="item.brand" class="demand-product-brand">{{ item.brand }}</div>
+        <div class="demand-code-chips">
+          <button
+            v-if="item.barcode"
+            type="button"
+            class="demand-code-chip"
+            aria-label="Copy barcode"
+            @click.stop="copyCode(item.barcode, 'Barcode')"
+          >
+            <span class="demand-code-k">BAR</span>
+            <span class="demand-code-v">{{ item.barcode }}</span>
+            <q-icon name="ph ph-copy" size="12px" class="demand-code-copy" />
+            <q-tooltip>Copy barcode</q-tooltip>
+          </button>
+          <button
+            v-if="item.product_code"
+            type="button"
+            class="demand-code-chip demand-code-chip--primary"
+            aria-label="Copy product code"
+            @click.stop="copyCode(item.product_code, 'Product code')"
+          >
+            <span class="demand-code-k">CODE</span>
+            <span class="demand-code-v">{{ item.product_code }}</span>
+            <q-icon name="ph ph-copy" size="12px" class="demand-code-copy" />
+            <q-tooltip>Copy product code</q-tooltip>
+          </button>
+          <button
+            v-if="item.vendor_code"
+            type="button"
+            class="demand-code-chip"
+            aria-label="Copy vendor code"
+            @click.stop="copyCode(item.vendor_code, 'Vendor code')"
+          >
+            <span class="demand-code-k">VEN</span>
+            <span class="demand-code-v">{{ item.vendor_code }}</span>
+            <q-icon name="ph ph-copy" size="12px" class="demand-code-copy" />
+            <q-tooltip>Copy vendor code</q-tooltip>
+          </button>
+          <button
+            v-if="item.market_code"
+            type="button"
+            class="demand-code-chip"
+            aria-label="Copy market code"
+            @click.stop="copyCode(item.market_code, 'Market code')"
+          >
+            <span class="demand-code-k">MKT</span>
+            <span class="demand-code-v">{{ item.market_code }}</span>
+            <q-icon name="ph ph-copy" size="12px" class="demand-code-copy" />
+            <q-tooltip>Copy market</q-tooltip>
+          </button>
+        </div>
+        <div
+          v-if="item.available_units != null || item.languages || item.country_of_origin"
+          class="demand-product-facts"
+        >
+          <span
+            v-if="item.available_units != null"
+            class="demand-fact"
+            :class="item.available_units > 0 ? 'demand-fact--ok' : 'demand-fact--muted'"
+          >
+            {{ item.available_units }} avail
+          </span>
+          <span v-if="item.languages" class="demand-fact">{{ item.languages }}</span>
+          <span v-if="item.country_of_origin" class="demand-fact">{{ item.country_of_origin }}</span>
+        </div>
       </div>
     </td>
     <td class="text-center demand-qty-col text-weight-medium">
@@ -114,24 +178,23 @@
       </ul>
     </td>
   </tr>
-  <tr v-if="hasMoreItems" class="demand-item-row">
-    <td :colspan="tableColCount" class="text-center q-py-sm">
-      <q-btn
-        flat
-        dense
-        no-caps
-        color="primary"
-        label="Load more"
-        :loading="isFetchingNextPage"
-        @click="fetchNextPage()"
-      />
+  <tr
+    v-if="hasMoreItems || isFetchingNextPage"
+    class="demand-item-row demand-scroll-sentinel-row"
+  >
+    <td :colspan="tableColCount" class="text-center q-py-xs">
+      <div ref="scrollSentinelRef" class="demand-scroll-sentinel" aria-hidden="true" />
+      <q-spinner-dots v-if="isFetchingNextPage" size="20px" color="primary" class="q-mt-xs" />
     </td>
   </tr>
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, inject, onUnmounted, ref, watch } from 'vue';
+import { copyToClipboard } from 'quasar';
+import { PROCUREMENT_DEMAND_TABLE_SCROLL_KEY } from '../shared/procurementDemandScroll';
 import SmartImage from 'src/components/SmartImage.vue';
+import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import type { DemandStockPickSelection } from './ProcurementDemandStockPickDialog.vue';
 import { useProcurementDemandGroupItemsInfiniteQuery } from '../composables/useProcurementDemandGroupItemsInfiniteQuery';
 import {
@@ -200,6 +263,57 @@ watch(
   { immediate: true },
 );
 
+const demandTableScrollRef = inject(PROCUREMENT_DEMAND_TABLE_SCROLL_KEY, ref(null));
+const scrollSentinelRef = ref<HTMLElement | null>(null);
+let scrollObserver: IntersectionObserver | null = null;
+
+const disconnectScrollObserver = () => {
+  scrollObserver?.disconnect();
+  scrollObserver = null;
+};
+
+const setupScrollObserver = () => {
+  disconnectScrollObserver();
+  const root = demandTableScrollRef.value;
+  const target = scrollSentinelRef.value;
+  if (!props.enabled || !root || !target) return;
+
+  scrollObserver = new IntersectionObserver(
+    (entries) => {
+      if (!entries[0]?.isIntersecting) return;
+      if (!hasMoreItems.value || isFetchingNextPage.value) return;
+      void fetchNextPage();
+    },
+    { root, rootMargin: '120px 0px', threshold: 0 },
+  );
+  scrollObserver.observe(target);
+};
+
+watch(
+  [demandTableScrollRef, scrollSentinelRef, listEnabled, hasMoreItems],
+  () => setupScrollObserver(),
+  { flush: 'post' },
+);
+
+watch(isFetchingNextPage, (fetching, wasFetching) => {
+  if (!wasFetching || fetching || !hasMoreItems.value) return;
+  requestAnimationFrame(() => {
+    if (!hasMoreItems.value || isFetchingNextPage.value) return;
+    const root = demandTableScrollRef.value;
+    const target = scrollSentinelRef.value;
+    if (!root || !target) return;
+    const rootRect = root.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    if (targetRect.top <= rootRect.bottom + 120) {
+      void fetchNextPage();
+    }
+  });
+});
+
+onUnmounted(() => {
+  disconnectScrollObserver();
+});
+
 const groupKey = () => `${props.group.document_type}-${props.group.document_id}`;
 
 const itemRowKey = (item: ProcurementDemandItem) =>
@@ -235,6 +349,16 @@ const onVendorChange = (item: ProcurementDemandItem, value: number | null) => {
 
 const flushProcuringSave = (item: ProcurementDemandItem) => {
   emit('flush-save', item);
+};
+
+const copyCode = (value: string, label: string) => {
+  void copyToClipboard(value)
+    .then(() => {
+      showSuccessNotification(`${label} copied`);
+    })
+    .catch(() => {
+      showErrorNotification(`Could not copy ${label.toLowerCase()}`);
+    });
 };
 
 const lineStatusStyle = (item: ProcurementDemandItem) => {

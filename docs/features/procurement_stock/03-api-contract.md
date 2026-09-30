@@ -149,13 +149,13 @@ Builds proforma (`issue: false`) from stock picks only. Requires at least one pi
 
 ### 5.3 `list_procurement_demand_groups`
 
-Paginated **group headers** only (no nested `items`). Each group includes `item_count` and `unallocated_item_count` (lines where `quantity > delivered_quantity`).
+Paginated **group headers** only (no nested `items`). Each group includes `document_name` (PBC file name or shop order title), `item_count`, and `unallocated_item_count` (lines where `quantity > delivered_quantity`).
 
 ### 5.4 `list_procurement_demand_group_items`
 
 Cursor-paginated lines for one group (`p_document_type`, `p_document_id`). Keyset on `source_id` (`p_cursor_source_id`). Response: `items` (same shape as former nested group items) + `meta.has_more` + `meta.next_cursor: { source_id }`.
 
-Line fields: `remaining_to_deliver` = `greatest(quantity - delivered_quantity, 0)`.
+Line fields include `barcode`, `product_code`, `vendor_code`, `market_code`, `brand`, `category`, `available_units`, `languages`, `country_of_origin`, `product_id`, qty/placement fields, and `stock_picks`. `remaining_to_deliver` = `greatest(quantity - delivered_quantity, 0)`. Catalog meta (`available_units`, `languages`, `country_of_origin`) comes from `products`.
 
 ---
 

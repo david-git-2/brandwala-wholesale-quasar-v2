@@ -3,35 +3,7 @@
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
       <q-card flat class="floating-surface shadow-1 q-pa-xs flex-shrink-0">
         <div class="row items-center q-col-gutter-xs">
-          <q-tabs
-            v-if="!isBuyMode"
-            v-model="procurementStatus"
-            dense
-            no-caps
-            class="demand-status-tabs col-grow"
-            active-color="primary"
-            indicator-color="primary"
-          >
-            <q-tab name="procuring" label="Procuring" />
-            <q-tab name="ready_for_shipment" label="Ready for shipment" />
-          </q-tabs>
           <div class="col-12 col-md-auto row items-center justify-end q-gutter-x-xs">
-            <q-select
-              v-if="showChildFilter"
-              v-model="childTenantFilter"
-              :options="childTenantOptions"
-              option-value="value"
-              option-label="label"
-              emit-value
-              map-options
-              dense
-              outlined
-              clearable
-              label="Shop"
-              style="min-width: 180px"
-              class="col-grow col-sm-auto"
-              :loading="childTenantsLoading"
-            />
             <q-input
               v-model="searchText"
               outlined
@@ -58,7 +30,7 @@
           <q-spinner-dots size="40px" color="primary" />
         </q-inner-loading>
 
-        <div class="col treasury-table-wrap q-px-sm q-pb-sm">
+        <div ref="demandTableScrollRef" class="col treasury-table-wrap q-px-sm q-pb-sm">
           <div
             v-if="!isLoading && groups.length === 0"
             class="column items-center justify-center full-height text-grey-7 q-pa-lg"
@@ -105,6 +77,39 @@
                         :label="groupStatusLabel(group)"
                       />
                       <q-badge color="grey-3" text-color="grey-9" :label="`${group.item_count} items`" />
+                      <q-btn
+                        flat
+                        dense
+                        no-caps
+                        color="primary"
+                        icon="ph ph-arrow-square-out"
+                        :label="group.document_type === 'shop_order' ? 'Open order' : 'Open file'"
+                        class="demand-group-invoice-btn q-ml-xs"
+                        @click.stop="openGroupSource(group)"
+                      >
+                        <q-tooltip>
+                          {{
+                            group.document_type === 'shop_order'
+                              ? 'Open order details'
+                              : 'Open costing file details'
+                          }}
+                        </q-tooltip>
+                      </q-btn>
+                      <q-btn
+                        v-if="isBuyMode && isProcuringGroup(group)"
+                        flat
+                        dense
+                        no-caps
+                        color="primary"
+                        icon="ph ph-arrows-clockwise"
+                        label="Change status"
+                        class="demand-group-invoice-btn q-ml-xs"
+                        :loading="isGroupSaving(group)"
+                        :disable="isGroupSaving(group)"
+                        @click.stop="onChangeGroupStatus(group)"
+                      >
+                        <q-tooltip>Set status to ready for shipment</q-tooltip>
+                      </q-btn>
                       <q-btn
                         v-if="isBuyMode && isProcuringGroup(group)"
                         flat
@@ -248,7 +253,8 @@
 <script setup lang="ts">
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { Dialog } from 'quasar';
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, provide, reactive, ref, watch } from 'vue';
+import { PROCUREMENT_DEMAND_TABLE_SCROLL_KEY } from '../shared/procurementDemandScroll';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import ProcurementDemandGroupItemRows from './ProcurementDemandGroupItemRows.vue';
@@ -259,20 +265,20 @@ import { getStaffCatalogStatusLabel } from 'src/modules/shop_order/utils/catalog
 import { getCustomerOrderStatusColor } from 'src/modules/shop_order/utils/customerOrderStatusUi';
 import {
   parseSupabaseError,
+  requestConfirmation,
   showErrorNotification,
   showSuccessNotification,
 } from 'src/utils/appFeedback';
 import ProcurementDemandStockPickDialog, {
   type DemandStockPickSelection,
 } from './ProcurementDemandStockPickDialog.vue';
-import { useMarkDemandGroupReadyMutation } from '../composables/useMarkDemandGroupReadyMutation';
+import { useMarkDemandGroupReadyMutation, useSetDemandGroupStatusMutation } from '../composables/useMarkDemandGroupReadyMutation';
 import { useProcurementDemandGroupsQuery } from '../composables/useProcurementDemandGroupsQuery';
 import {
   useFillPreorderDemandPlacedQuantitiesMutation,
   useSetPreorderDemandVendorMutation,
   useUpsertPreorderDemandMutation,
 } from '../composables/useProcurementPlacementMutations';
-import { useChildTenantsQuery } from '../composables/useProcurementStockQuery';
 import {
   getItemDeliveredQuantity,
   type PreorderDemandStockPick,
@@ -319,19 +325,20 @@ const props = defineProps<{
 const authStore = useAuthStore();
 const queryClient = useQueryClient();
 const router = useRouter();
+const demandTableScrollRef = ref<HTMLElement | null>(null);
+
+provide(PROCUREMENT_DEMAND_TABLE_SCROLL_KEY, demandTableScrollRef);
 const { t, te } = useI18n();
 
 const isBuyMode = computed(() => props.mode === 'buy');
 const isFulfillMode = computed(() => props.mode === 'fulfill');
 const isChildWorkspace = computed(() => authStore.selectedTenant?.parent_id != null);
 const tableColCount = computed(() => (isBuyMode.value ? 5 : 6));
-const showChildFilter = computed(() => isFulfillMode.value && !isChildWorkspace.value);
 const emptyMessage = computed(() =>
   isBuyMode.value ? 'No demand lines.' : 'No fulfill lines.',
 );
 
 const searchText = ref('');
-const childTenantFilter = ref<number | null>(null);
 const debouncedSearch = ref('');
 const expandedGroupKeys = ref<Set<string>>(new Set());
 const drafts = reactive<Record<string, ItemDraft>>({});
@@ -364,9 +371,7 @@ const mutationTenantId = computed(() => {
   return parentTenantId.value;
 });
 
-const listChildTenantId = computed(() =>
-  showChildFilter.value ? childTenantFilter.value : null,
-);
+const listChildTenantId = computed(() => null);
 
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 watch(searchText, (value) => {
@@ -421,6 +426,7 @@ const setVendorMutation = useSetPreorderDemandVendorMutation({
 });
 
 const markReadyMutation = useMarkDemandGroupReadyMutation();
+const setStatusMutation = useSetDemandGroupStatusMutation();
 
 const refreshDemandDesk = async () => {
   await refetch();
@@ -433,19 +439,6 @@ const { data: vendors = [], isLoading: vendorsLoading } = useQuery({
   enabled: computed(() => parentTenantId.value !== null),
   staleTime: 60_000,
 });
-
-const { data: childTenants = [], isLoading: childTenantsLoading } = useChildTenantsQuery(
-  parentTenantId,
-);
-
-const childTenantOptions = computed(() =>
-  (childTenants.value ?? [])
-    .filter((tenant) => tenant.parent_id === parentTenantId.value)
-    .map((tenant) => ({
-      label: tenant.name,
-      value: tenant.id,
-    })),
-);
 
 const vendorOptions = computed(() => {
   const needle = vendorFilter.value.trim().toLowerCase();
@@ -532,8 +525,12 @@ const groupIcon = (documentType: ProcurementDemandDocumentType) =>
   documentType === 'shop_order' ? 'ph ph-receipt' : 'ph ph-file-text';
 
 const groupTitle = (group: ProcurementDemandGroup) => {
+  const name = group.document_name?.trim();
   if (group.document_type === 'shop_order') {
-    return `Order #${group.document_id}`;
+    return name || `Order #${group.document_id}`;
+  }
+  if (name) {
+    return `${name} (#${group.document_id})`;
   }
   return `Costing file #${group.document_id}`;
 };
@@ -594,6 +591,12 @@ const saveProcuringLine = async (
 
 const onFillPlaceQtyForGroup = async (group: ProcurementDemandGroup) => {
   if (!isProcuringGroup(group)) return;
+  const ok = await requestConfirmation(
+    `Set place order qty to demand qty on all ${group.item_count} line(s) in ${groupTitle(group)}? Existing place qty values will be overwritten.`,
+    'Fill place qty',
+    'Fill qty',
+  );
+  if (!ok) return;
   const gk = groupKey(group);
   savingGroupKeys.value = new Set(savingGroupKeys.value).add(gk);
   try {
@@ -775,10 +778,35 @@ const onMarkGroupReady = async (group: ProcurementDemandGroup) => {
   try {
     await markReadyMutation.mutateAsync(group);
     showSuccessNotification('Marked ready. Proforma invoice created — open it to review and issue.');
-    procurementStatus.value = 'ready_for_shipment';
     await refetch();
   } catch (err) {
     showErrorNotification(parseSupabaseError(err, 'Failed to mark ready for shipment'));
+  } finally {
+    const next = new Set(savingGroupKeys.value);
+    next.delete(key);
+    savingGroupKeys.value = next;
+  }
+};
+
+const onChangeGroupStatus = async (group: ProcurementDemandGroup) => {
+  const tenantId = listTenantId.value;
+  if (!tenantId || !isProcuringGroup(group)) return;
+
+  const ok = await requestConfirmation(
+    `Set ${groupTitle(group)} to ready for shipment?`,
+    'Change status',
+    'Set ready',
+  );
+  if (!ok) return;
+
+  const key = groupKey(group);
+  savingGroupKeys.value = new Set(savingGroupKeys.value).add(key);
+  try {
+    await setStatusMutation.mutateAsync({ group, tenantId });
+    showSuccessNotification('Status set to ready for shipment.');
+    await refetch();
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to change status'));
   } finally {
     const next = new Set(savingGroupKeys.value);
     next.delete(key);
@@ -798,6 +826,21 @@ const openGroupInvoiceDetails = (group: ProcurementDemandGroup) => {
     },
   });
 };
+
+const openGroupSource = (group: ProcurementDemandGroup) => {
+  const tenantSlug = authStore.tenantSlug || '';
+  if (group.document_type === 'shop_order') {
+    void router.push({
+      name: 'app-shop-order-detail-page',
+      params: { tenantSlug, id: String(group.document_id) },
+    });
+    return;
+  }
+  void router.push({
+    name: 'product-based-costing-file-details-page',
+    params: { tenantSlug, id: String(group.document_id) },
+  });
+};
 </script>
 
 <style scoped lang="scss">
@@ -809,6 +852,11 @@ const openGroupInvoiceDetails = (group: ProcurementDemandGroup) => {
 
 .demand-table {
   min-width: 820px;
+}
+
+.demand-table :deep(.demand-scroll-sentinel) {
+  height: 1px;
+  width: 100%;
 }
 
 .demand-table :deep(thead tr th) {
@@ -857,26 +905,170 @@ body.body--dark .demand-group-row td {
   border-bottom-color: #2e2e2e;
 }
 
-.demand-image-col {
+.demand-table :deep(.demand-image-col) {
   width: 1.2in;
   min-width: 1.2in;
   max-width: 1.2in;
 }
 
-.demand-product-col {
-  min-width: 140px;
-  max-width: 220px;
-}
-
-.shipment-item-name-cell {
-  white-space: normal;
+.demand-table :deep(.demand-product-col) {
+  min-width: 220px;
+  max-width: 360px;
+  white-space: normal !important;
   word-break: break-word;
+  overflow-wrap: anywhere;
   line-height: 1.25;
 }
 
-.shipment-item-image-box {
+.demand-table :deep(.demand-product-identity) {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.demand-table :deep(.demand-product-name) {
+  font-weight: 650;
+  color: var(--bw-theme-ink, #0f172a);
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.demand-table :deep(.demand-product-brand) {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: var(--bw-radius-sm, 8px);
+  background: var(--bw-theme-primary-soft, #ecfdf5);
+  color: var(--bw-theme-primary, #047857);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.demand-table :deep(.demand-code-chips) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.demand-table :deep(.demand-code-chip) {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  margin: 0;
+  font: inherit;
+  padding: 2px 6px 2px 5px;
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-radius: var(--bw-radius-sm, 8px);
+  background: var(--bw-theme-surface, #fff);
+  color: var(--bw-theme-ink, #0f172a);
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.2;
+}
+
+.demand-table :deep(.demand-code-chip:hover),
+.demand-table :deep(.demand-code-chip:focus-visible) {
+  border-color: var(--bw-theme-primary, #047857);
+  background: var(--bw-theme-primary-soft, #ecfdf5);
+  outline: none;
+}
+
+.demand-table :deep(.demand-code-chip--primary) {
+  border-color: color-mix(in srgb, var(--bw-theme-primary, #047857) 28%, var(--bw-theme-border, #e2e8f0));
+}
+
+.demand-table :deep(.demand-code-k) {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--bw-theme-muted, #64748b);
+}
+
+.demand-table :deep(.demand-code-v) {
+  min-width: 0;
+  font-family: var(--bw-font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+
+.demand-table :deep(.demand-code-copy) {
+  flex: 0 0 auto;
+  opacity: 0.35;
+}
+
+.demand-table :deep(.demand-code-chip:hover .demand-code-copy),
+.demand-table :deep(.demand-code-chip:focus-visible .demand-code-copy) {
+  opacity: 1;
+  color: var(--bw-theme-primary, #047857);
+}
+
+body.body--dark .demand-table :deep(.demand-product-name) {
+  color: #f4f4f5;
+}
+
+body.body--dark .demand-table :deep(.demand-code-chip) {
+  background: #1c1c1c;
+  border-color: #2e2e2e;
+  color: #e4e4e7;
+}
+
+body.body--dark .demand-table :deep(.demand-code-chip:hover),
+body.body--dark .demand-table :deep(.demand-code-chip:focus-visible) {
+  background: #242424;
+}
+
+.demand-table :deep(.demand-product-facts) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.demand-table :deep(.demand-fact) {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: var(--bw-radius-sm, 8px);
+  background: #f1f5f9;
+  color: var(--bw-theme-muted, #64748b);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.demand-table :deep(.demand-fact--ok) {
+  background: var(--bw-theme-primary-soft, #ecfdf5);
+  color: var(--bw-theme-primary, #047857);
+}
+
+.demand-table :deep(.demand-fact--muted) {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+body.body--dark .demand-table :deep(.demand-fact) {
+  background: #242424;
+  color: #a1a1aa;
+}
+
+body.body--dark .demand-table :deep(.demand-fact--ok) {
+  background: #052e1f;
+  color: #6ee7b7;
+}
+
+.demand-table :deep(.shipment-item-image-box) {
   width: 1in;
   height: 1in;
+  max-width: 1in;
+  max-height: 1in;
+  flex-shrink: 0;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.08);
@@ -895,6 +1087,8 @@ body.body--dark .demand-group-row td {
 .demand-table :deep(.shipment-item-image-box .smart-image__img) {
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
 }
 

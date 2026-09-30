@@ -29,6 +29,13 @@ export interface ProcurementDemandItem {
   image_url: string | null;
   barcode: string | null;
   product_code: string | null;
+  vendor_code?: string | null;
+  market_code?: string | null;
+  brand?: string | null;
+  category?: string | null;
+  available_units?: number | null;
+  languages?: string | null;
+  country_of_origin?: string | null;
   quantity: number;
   need_quantity?: number;
   preorder_demand_id?: number | null;
@@ -43,6 +50,7 @@ export interface ProcurementDemandItem {
 export interface ProcurementDemandGroup {
   document_type: ProcurementDemandDocumentType;
   document_id: number;
+  document_name?: string | null;
   document_status: string;
   customer_group_id?: number | null;
   customer_group_name?: string | null;
@@ -176,6 +184,7 @@ const listProcurementDemandGroups = async (
   const payload = (data ?? { meta: {}, groups: [] }) as ProcurementDemandGroupsResponse;
   payload.groups = (payload.groups ?? []).map((group) => ({
     ...group,
+    document_name: group.document_name?.trim() || null,
     item_count: group.item_count ?? 0,
     unallocated_item_count: group.unallocated_item_count ?? 0,
   }));
@@ -292,6 +301,28 @@ const markDemandGroupReadyForShipment = async (
   return { invoiceId };
 };
 
+const setDemandGroupStatusReadyForShipment = async (params: {
+  group: ProcurementDemandGroup;
+  tenantId: number;
+}): Promise<void> => {
+  const { group, tenantId } = params;
+  if (group.document_status === 'ready_for_shipment') return;
+
+  if (group.document_type === 'shop_order') {
+    await shopOrderRepository.updateOrderStatus(
+      tenantId,
+      group.document_id,
+      'ready_for_shipment',
+    );
+    return;
+  }
+
+  await productBasedCostingRepository.updateProductBasedCostingFile({
+    id: group.document_id,
+    status: 'ready_for_shipment',
+  });
+};
+
 export const procurementDemandRepository = {
   listProcurementDemandGroups,
   listProcurementDemandGroupItems,
@@ -299,6 +330,7 @@ export const procurementDemandRepository = {
   fillPreorderDemandPlacedQuantitiesForDocument,
   setPreorderDemandVendorForDocument,
   markDemandGroupReadyForShipment,
+  setDemandGroupStatusReadyForShipment,
 };
 
 export const getItemNeedQuantity = (item: ProcurementDemandItem): number =>
