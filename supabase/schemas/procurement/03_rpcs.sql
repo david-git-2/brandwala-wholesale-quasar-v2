@@ -8874,10 +8874,17 @@ CREATE OR REPLACE FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"() RETURNS 
     SET "search_path" TO 'public'
     AS $$
 BEGIN
-  IF NEW.tenant_id IS NULL AND NEW.billing_profile_id IS NOT NULL THEN
-    SELECT tenant_id INTO NEW.tenant_id
-    FROM public.billing_profiles
-    WHERE id = NEW.billing_profile_id;
+  IF NEW.tenant_id IS NOT NULL THEN
+    SELECT coalesce(t.parent_id, t.id)
+    INTO NEW.tenant_id
+    FROM public.tenants t
+    WHERE t.id = NEW.tenant_id;
+  ELSIF NEW.billing_profile_id IS NOT NULL THEN
+    SELECT coalesce(t.parent_id, t.id)
+    INTO NEW.tenant_id
+    FROM public.billing_profiles bp
+    inner join public.tenants t on t.id = bp.tenant_id
+    WHERE bp.id = NEW.billing_profile_id;
   END IF;
   RETURN NEW;
 END;
@@ -9419,6 +9426,69 @@ $$;
 
 
 ALTER FUNCTION "public"."update_product_based_costing_items_order"("p_items" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_product_based_costing_items"("p_items" "jsonb") RETURNS SETOF "public"."product_based_costing_items"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_elem jsonb;
+  v_id bigint;
+  v_row public.product_based_costing_items;
+begin
+  if p_items is null or jsonb_typeof(p_items) is distinct from 'array' then
+    raise exception 'p_items must be a json array';
+  end if;
+
+  for v_elem in select value from jsonb_array_elements(p_items)
+  loop
+    v_id := (v_elem->>'id')::bigint;
+    if v_id is null then
+      raise exception 'each item must include id';
+    end if;
+
+    update public.product_based_costing_items pci
+    set
+      product_based_costing_file_id = case
+        when v_elem ? 'product_based_costing_file_id' then (v_elem->>'product_based_costing_file_id')::bigint
+        else pci.product_based_costing_file_id
+      end,
+      name = case when v_elem ? 'name' then nullif(v_elem->>'name', '') else pci.name end,
+      image_url = case when v_elem ? 'image_url' then nullif(v_elem->>'image_url', '') else pci.image_url end,
+      note = case when v_elem ? 'note' then nullif(v_elem->>'note', '') else pci.note end,
+      quantity = case when v_elem ? 'quantity' then (v_elem->>'quantity')::numeric else pci.quantity end,
+      barcode = case when v_elem ? 'barcode' then nullif(v_elem->>'barcode', '') else pci.barcode end,
+      product_code = case when v_elem ? 'product_code' then nullif(v_elem->>'product_code', '') else pci.product_code end,
+      brand = case when v_elem ? 'brand' then nullif(v_elem->>'brand', '') else pci.brand end,
+      vendor_code = case when v_elem ? 'vendor_code' then nullif(v_elem->>'vendor_code', '') else pci.vendor_code end,
+      market_code = case when v_elem ? 'market_code' then nullif(v_elem->>'market_code', '') else pci.market_code end,
+      web_link = case when v_elem ? 'web_link' then nullif(v_elem->>'web_link', '') else pci.web_link end,
+      price_gbp = case when v_elem ? 'price_gbp' then (v_elem->>'price_gbp')::numeric else pci.price_gbp end,
+      product_weight = case when v_elem ? 'product_weight' then (v_elem->>'product_weight')::numeric else pci.product_weight end,
+      package_weight = case when v_elem ? 'package_weight' then (v_elem->>'package_weight')::numeric else pci.package_weight end,
+      confirmed_quantity = case when v_elem ? 'confirmed_quantity' then (v_elem->>'confirmed_quantity')::integer else pci.confirmed_quantity end,
+      offer_price = case when v_elem ? 'offer_price' then (v_elem->>'offer_price')::numeric else pci.offer_price end,
+      is_offer_price_manual = case when v_elem ? 'is_offer_price_manual' then (v_elem->>'is_offer_price_manual')::boolean else pci.is_offer_price_manual end,
+      input_type = case when v_elem ? 'input_type' then nullif(v_elem->>'input_type', '') else pci.input_type end,
+      assigned_shipment_id = case when v_elem ? 'assigned_shipment_id' then (v_elem->>'assigned_shipment_id')::bigint else pci.assigned_shipment_id end,
+      product_id = case when v_elem ? 'product_id' then (v_elem->>'product_id')::bigint else pci.product_id end
+    where pci.id = v_id
+    returning * into v_row;
+
+    if not found then
+      raise exception 'costing item % was not updated', v_id;
+    end if;
+
+    return next v_row;
+  end loop;
+
+  return;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."update_product_based_costing_items"("p_items" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_shipment"("p_id" bigint, "p_field" "text", "p_value" "text") RETURNS "public"."shipments"
@@ -11081,6 +11151,352 @@ $$;
 ALTER FUNCTION "public"."upsert_preorder_demand"("p_tenant_id" bigint, "p_source_type" "public"."preorder_demand_source_type", "p_source_id" bigint, "p_vendor_id" bigint, "p_placed_quantity" integer, "p_stock_picks" "jsonb", "p_notes" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."fill_preorder_demand_placed_quantities_for_document"("p_tenant_id" bigint, "p_document_type" "text", "p_document_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_doc_type text := lower(trim(coalesce(p_document_type, '')));
+  v_is_parent boolean;
+  v_allowed boolean := false;
+  v_line_tenant_id bigint;
+  v_doc_status text;
+  v_updated integer := 0;
+begin
+  if p_tenant_id is null or p_document_id is null then
+    raise exception 'tenant_id and document_id are required';
+  end if;
+
+  select (t.parent_id is null) into v_is_parent from public.tenants t where t.id = p_tenant_id;
+  if not found then
+    raise exception 'tenant not found: %', p_tenant_id;
+  end if;
+
+  if v_is_parent then
+    v_allowed := public.user_can_manage_parent_tenant(p_tenant_id);
+  else
+    v_allowed := public.is_tenant_staff(p_tenant_id);
+  end if;
+  if not coalesce(v_allowed, false) then
+    raise exception 'access denied';
+  end if;
+
+  if v_doc_type = 'shop_order' then
+    select
+      o.tenant_id,
+      public.normalize_shop_order_procurement_status(o.status)
+    into v_line_tenant_id, v_doc_status
+    from public.shop_orders o
+    where o.id = p_document_id
+      and o.shop_type_snapshot = 'vendor_catalog';
+
+    if v_line_tenant_id is null then
+      raise exception 'shop order not found or not vendor catalog';
+    end if;
+  elsif v_doc_type = 'pbc_costing_file' then
+    select
+      f.tenant_id,
+      public.normalize_pbc_procurement_status(f.status)
+    into v_line_tenant_id, v_doc_status
+    from public.product_based_costing_files f
+    where f.id = p_document_id
+      and f.billing_profile_id is not null;
+
+    if v_line_tenant_id is null then
+      raise exception 'costing file not found';
+    end if;
+  else
+    raise exception 'invalid document_type: %', p_document_type;
+  end if;
+
+  if not public.can_access_preorder_demand_tenant(p_tenant_id)
+    and not public.can_access_preorder_demand_tenant(v_line_tenant_id) then
+    raise exception 'access denied';
+  end if;
+
+  if v_line_tenant_id <> p_tenant_id then
+    if not exists (
+      select 1
+      from public.tenants t
+      where t.id = v_line_tenant_id
+        and t.parent_id = p_tenant_id
+        and public.user_can_manage_parent_tenant(p_tenant_id)
+    ) then
+      raise exception 'tenant mismatch for demand document';
+    end if;
+  end if;
+
+  if v_doc_status <> 'procuring' then
+    raise exception 'document is not open for placed quantity updates';
+  end if;
+
+  if v_doc_type = 'shop_order' then
+    with lines as (
+      select
+        o.tenant_id,
+        oi.id as source_id,
+        greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer as need_qty
+      from public.shop_order_items oi
+      inner join public.shop_orders o on o.id = oi.order_id
+      where o.id = p_document_id
+        and o.shop_type_snapshot = 'vendor_catalog'
+    ),
+    upserted as (
+      insert into public.preorder_demand (
+        tenant_id,
+        source_type,
+        source_id,
+        placed_quantity,
+        delivered_quantity,
+        stock_picks,
+        updated_by_user_id
+      )
+      select
+        l.tenant_id,
+        'shop_order_item'::public.preorder_demand_source_type,
+        l.source_id,
+        l.need_qty,
+        0,
+        '[]'::jsonb,
+        auth.uid()
+      from lines l
+      on conflict (source_type, source_id) do update set
+        placed_quantity = excluded.placed_quantity,
+        updated_by_user_id = auth.uid(),
+        updated_at = now()
+      returning 1
+    )
+    select count(*)::integer into v_updated from upserted;
+  else
+    with lines as (
+      select
+        f.tenant_id,
+        pci.id as source_id,
+        greatest(
+          case
+            when pci.assigned_shipment_id is not null then 0
+            else coalesce(pci.confirmed_quantity, pci.quantity::integer, 0)
+          end,
+          0
+        )::integer as need_qty
+      from public.product_based_costing_items pci
+      inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
+      where f.id = p_document_id
+        and f.billing_profile_id is not null
+    ),
+    upserted as (
+      insert into public.preorder_demand (
+        tenant_id,
+        source_type,
+        source_id,
+        placed_quantity,
+        delivered_quantity,
+        stock_picks,
+        updated_by_user_id
+      )
+      select
+        l.tenant_id,
+        'pbc_costing_item'::public.preorder_demand_source_type,
+        l.source_id,
+        l.need_qty,
+        0,
+        '[]'::jsonb,
+        auth.uid()
+      from lines l
+      on conflict (source_type, source_id) do update set
+        placed_quantity = excluded.placed_quantity,
+        updated_by_user_id = auth.uid(),
+        updated_at = now()
+      returning 1
+    )
+    select count(*)::integer into v_updated from upserted;
+  end if;
+
+  return jsonb_build_object(
+    'document_type', v_doc_type,
+    'document_id', p_document_id,
+    'updated_count', v_updated
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."fill_preorder_demand_placed_quantities_for_document"(bigint, text, bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."set_preorder_demand_vendor_for_document"("p_tenant_id" bigint, "p_document_type" "text", "p_document_id" bigint, "p_vendor_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_doc_type text := lower(trim(coalesce(p_document_type, '')));
+  v_is_parent boolean;
+  v_allowed boolean := false;
+  v_line_tenant_id bigint;
+  v_doc_status text;
+  v_updated integer := 0;
+begin
+  if p_tenant_id is null or p_document_id is null then
+    raise exception 'tenant_id and document_id are required';
+  end if;
+  if p_vendor_id is null then
+    raise exception 'vendor_id is required';
+  end if;
+
+  select (t.parent_id is null) into v_is_parent from public.tenants t where t.id = p_tenant_id;
+  if not found then
+    raise exception 'tenant not found: %', p_tenant_id;
+  end if;
+
+  if v_is_parent then
+    v_allowed := public.user_can_manage_parent_tenant(p_tenant_id);
+  else
+    v_allowed := public.is_tenant_staff(p_tenant_id);
+  end if;
+  if not coalesce(v_allowed, false) then
+    raise exception 'access denied';
+  end if;
+
+  if v_doc_type = 'shop_order' then
+    select
+      o.tenant_id,
+      public.normalize_shop_order_procurement_status(o.status)
+    into v_line_tenant_id, v_doc_status
+    from public.shop_orders o
+    where o.id = p_document_id
+      and o.shop_type_snapshot = 'vendor_catalog';
+
+    if v_line_tenant_id is null then
+      raise exception 'shop order not found or not vendor catalog';
+    end if;
+  elsif v_doc_type = 'pbc_costing_file' then
+    select
+      f.tenant_id,
+      public.normalize_pbc_procurement_status(f.status)
+    into v_line_tenant_id, v_doc_status
+    from public.product_based_costing_files f
+    where f.id = p_document_id
+      and f.billing_profile_id is not null;
+
+    if v_line_tenant_id is null then
+      raise exception 'costing file not found';
+    end if;
+  else
+    raise exception 'invalid document_type: %', p_document_type;
+  end if;
+
+  if not public.can_access_preorder_demand_tenant(p_tenant_id)
+    and not public.can_access_preorder_demand_tenant(v_line_tenant_id) then
+    raise exception 'access denied';
+  end if;
+
+  if v_line_tenant_id <> p_tenant_id then
+    if not exists (
+      select 1
+      from public.tenants t
+      where t.id = v_line_tenant_id
+        and t.parent_id = p_tenant_id
+        and public.user_can_manage_parent_tenant(p_tenant_id)
+    ) then
+      raise exception 'tenant mismatch for demand document';
+    end if;
+  end if;
+
+  if v_doc_status <> 'procuring' then
+    raise exception 'document is not open for vendor updates';
+  end if;
+
+  if v_doc_type = 'shop_order' then
+    with lines as (
+      select
+        o.tenant_id,
+        oi.id as source_id
+      from public.shop_order_items oi
+      inner join public.shop_orders o on o.id = oi.order_id
+      where o.id = p_document_id
+        and o.shop_type_snapshot = 'vendor_catalog'
+    ),
+    upserted as (
+      insert into public.preorder_demand (
+        tenant_id,
+        source_type,
+        source_id,
+        vendor_id,
+        placed_quantity,
+        delivered_quantity,
+        stock_picks,
+        updated_by_user_id
+      )
+      select
+        l.tenant_id,
+        'shop_order_item'::public.preorder_demand_source_type,
+        l.source_id,
+        p_vendor_id,
+        0,
+        0,
+        '[]'::jsonb,
+        auth.uid()
+      from lines l
+      on conflict (source_type, source_id) do update set
+        vendor_id = excluded.vendor_id,
+        updated_by_user_id = auth.uid(),
+        updated_at = now()
+      returning 1
+    )
+    select count(*)::integer into v_updated from upserted;
+  else
+    with lines as (
+      select
+        f.tenant_id,
+        pci.id as source_id
+      from public.product_based_costing_items pci
+      inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
+      where f.id = p_document_id
+        and f.billing_profile_id is not null
+    ),
+    upserted as (
+      insert into public.preorder_demand (
+        tenant_id,
+        source_type,
+        source_id,
+        vendor_id,
+        placed_quantity,
+        delivered_quantity,
+        stock_picks,
+        updated_by_user_id
+      )
+      select
+        l.tenant_id,
+        'pbc_costing_item'::public.preorder_demand_source_type,
+        l.source_id,
+        p_vendor_id,
+        0,
+        0,
+        '[]'::jsonb,
+        auth.uid()
+      from lines l
+      on conflict (source_type, source_id) do update set
+        vendor_id = excluded.vendor_id,
+        updated_by_user_id = auth.uid(),
+        updated_at = now()
+      returning 1
+    )
+    select count(*)::integer into v_updated from upserted;
+  end if;
+
+  return jsonb_build_object(
+    'document_type', v_doc_type,
+    'document_id', p_document_id,
+    'vendor_id', p_vendor_id,
+    'updated_count', v_updated
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_preorder_demand_vendor_for_document"(bigint, text, bigint, bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."create_invoice_from_preorder_demand_document"("p_tenant_id" bigint, "p_document_type" "text", "p_document_id" bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -11356,7 +11772,10 @@ begin
 
   with tenant_scope as (
     select t.id as tenant_id from public.tenants t
-    where ((v_is_parent and t.parent_id = p_tenant_id) or (not v_is_parent and t.id = p_tenant_id))
+    where (
+      (v_is_parent and (t.parent_id = p_tenant_id or t.id = p_tenant_id))
+      or (not v_is_parent and t.id = p_tenant_id)
+    )
       and (p_child_tenant_id is null or t.id = p_child_tenant_id)
   ),
   shop_lines as (
@@ -11481,28 +11900,8 @@ begin
       max(el.customer_group_name) as customer_group_name,
       (array_agg(el.vendor) filter (where el.vendor is not null))[1] as vendor,
       max(el.invoice_id) as invoice_id,
-      jsonb_agg(
-        jsonb_build_object(
-          'source_type', el.source_type,
-          'source_id', el.source_id,
-          'product_id', el.product_id,
-          'name', el.name,
-          'image_url', el.image_url,
-          'barcode', nullif(el.barcode, ''),
-          'product_code', nullif(el.product_code, ''),
-          'quantity', el.quantity,
-          'need_quantity', el.quantity,
-          'preorder_demand_id', el.preorder_demand_id,
-          'vendor_id', el.vendor_id,
-          'placed_quantity', el.placed_quantity,
-          'delivered_quantity', el.delivered_quantity,
-          'remaining_quantity', el.quantity - el.placed_quantity,
-          'remaining_to_deliver', greatest(el.quantity - el.delivered_quantity, 0),
-          'stock_picks', el.stock_picks
-        )
-        order by el.source_id
-      ) as items,
-      count(*)::integer as item_count
+      count(*)::integer as item_count,
+      count(*) filter (where el.quantity > el.delivered_quantity)::integer as unallocated_item_count
     from eligible_lines el
     group by el.document_type, el.document_id
   ),
@@ -11523,7 +11922,8 @@ begin
           'customer_group_name', p.customer_group_name,
           'vendor', p.vendor,
           'invoice_id', p.invoice_id,
-          'items', p.items
+          'item_count', p.item_count,
+          'unallocated_item_count', p.unallocated_item_count
         )
         order by p.document_type, p.document_id
       ),
@@ -11558,6 +11958,202 @@ $$;
 
 
 ALTER FUNCTION "public"."list_procurement_demand_groups"("p_tenant_id" bigint, "p_procurement_status" "text", "p_search" "text", "p_child_tenant_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_procurement_demand_group_items"("p_tenant_id" bigint, "p_document_type" "text", "p_document_id" bigint, "p_search" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 50, "p_cursor_source_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_doc_type text := lower(trim(coalesce(p_document_type, '')));
+  v_is_parent boolean;
+  v_allowed boolean := false;
+  v_search text := nullif(trim(coalesce(p_search, '')), '');
+  v_limit integer := greatest(1, least(coalesce(p_limit, 50), 100));
+  v_items jsonb := '[]'::jsonb;
+  v_n integer := 0;
+  v_has_more boolean := false;
+  v_next_cursor jsonb := null;
+  v_last_source_id bigint;
+begin
+  if p_tenant_id is null or p_document_id is null then
+    raise exception 'tenant_id and document_id are required';
+  end if;
+
+  select (t.parent_id is null) into v_is_parent from public.tenants t where t.id = p_tenant_id;
+  if not found then raise exception 'tenant not found: %', p_tenant_id; end if;
+
+  if v_is_parent then
+    v_allowed := public.user_can_manage_parent_tenant(p_tenant_id);
+  else
+    v_allowed := public.is_tenant_staff(p_tenant_id);
+  end if;
+  if not coalesce(v_allowed, false) then raise exception 'access denied'; end if;
+
+  if v_doc_type not in ('shop_order', 'pbc_costing_file') then
+    raise exception 'invalid document_type: %', p_document_type;
+  end if;
+
+  with tenant_scope as (
+    select t.id as tenant_id from public.tenants t
+    where (
+      (v_is_parent and (t.parent_id = p_tenant_id or t.id = p_tenant_id))
+      or (not v_is_parent and t.id = p_tenant_id)
+    )
+  ),
+  shop_lines as (
+    select
+      'shop_order'::text as document_type,
+      o.id as document_id,
+      'shop_order_item'::text as source_type,
+      oi.id as source_id,
+      oi.product_id,
+      oi.name,
+      oi.image_url,
+      coalesce(p.barcode, '') as barcode,
+      coalesce(p.product_code, '') as product_code,
+      greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer as quantity,
+      pd.id as preorder_demand_id,
+      pd.vendor_id,
+      coalesce(pd.placed_quantity, 0) as placed_quantity,
+      coalesce(pd.delivered_quantity, 0) as delivered_quantity,
+      coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks
+    from public.shop_order_items oi
+    inner join public.shop_orders o on o.id = oi.order_id
+    inner join tenant_scope ts on ts.tenant_id = o.tenant_id
+    left join public.products p on p.id = oi.product_id
+    left join public.preorder_demand pd
+      on pd.source_type = 'shop_order_item'
+      and pd.source_id = oi.id
+      and pd.tenant_id = o.tenant_id
+    where v_doc_type = 'shop_order'
+      and o.id = p_document_id
+      and o.shop_type_snapshot = 'vendor_catalog'
+  ),
+  pbc_lines as (
+    select
+      'pbc_costing_file'::text as document_type,
+      f.id as document_id,
+      'pbc_costing_item'::text as source_type,
+      pci.id as source_id,
+      pci.product_id,
+      coalesce(pci.name, p.name, 'Item') as name,
+      coalesce(pci.image_url, p.image_url) as image_url,
+      coalesce(pci.barcode, p.barcode, '') as barcode,
+      coalesce(pci.product_code, p.product_code, '') as product_code,
+      greatest(
+        case when pci.assigned_shipment_id is not null then 0
+          else coalesce(pci.confirmed_quantity, pci.quantity::integer, 0)
+        end,
+        0
+      )::integer as quantity,
+      pd.id as preorder_demand_id,
+      pd.vendor_id,
+      coalesce(pd.placed_quantity, 0) as placed_quantity,
+      coalesce(pd.delivered_quantity, 0) as delivered_quantity,
+      coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks
+    from public.product_based_costing_items pci
+    inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
+    inner join tenant_scope ts on ts.tenant_id = f.tenant_id
+    left join public.products p on p.id = pci.product_id
+    left join public.preorder_demand pd
+      on pd.source_type = 'pbc_costing_item'
+      and pd.source_id = pci.id
+      and pd.tenant_id = f.tenant_id
+    where v_doc_type = 'pbc_costing_file'
+      and f.id = p_document_id
+      and f.billing_profile_id is not null
+  ),
+  demand_lines as (
+    select * from shop_lines
+    union all
+    select * from pbc_lines
+  ),
+  eligible_lines as (
+    select dl.*
+    from demand_lines dl
+    where (
+      dl.quantity > 0
+      or dl.placed_quantity > 0
+      or dl.delivered_quantity > 0
+    )
+      and (
+        v_search is null
+        or dl.name ilike '%' || v_search || '%'
+        or coalesce(dl.barcode, '') ilike '%' || v_search || '%'
+        or coalesce(dl.product_code, '') ilike '%' || v_search || '%'
+      )
+      and (
+        p_cursor_source_id is null
+        or dl.source_id > p_cursor_source_id
+      )
+  ),
+  paged as (
+    select el.*
+    from eligible_lines el
+    order by el.source_id
+    limit v_limit + 1
+  )
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'source_type', row.source_type,
+        'source_id', row.source_id,
+        'product_id', row.product_id,
+        'name', row.name,
+        'image_url', row.image_url,
+        'barcode', nullif(row.barcode, ''),
+        'product_code', nullif(row.product_code, ''),
+        'quantity', row.quantity,
+        'need_quantity', row.quantity,
+        'preorder_demand_id', row.preorder_demand_id,
+        'vendor_id', row.vendor_id,
+        'placed_quantity', row.placed_quantity,
+        'delivered_quantity', row.delivered_quantity,
+        'remaining_quantity', row.quantity - row.placed_quantity,
+        'remaining_to_deliver', greatest(row.quantity - row.delivered_quantity, 0),
+        'stock_picks', row.stock_picks
+      )
+      order by row.source_id
+    ),
+    '[]'::jsonb
+  )
+  into v_items
+  from (
+    select p.*
+    from paged p
+    order by p.source_id
+    limit v_limit
+  ) row;
+
+  select count(*)::integer into v_n from paged;
+
+  if v_n > v_limit then
+    v_has_more := true;
+    select p.source_id into v_last_source_id
+    from paged p
+    order by p.source_id
+    offset v_limit
+    limit 1;
+
+    v_next_cursor := jsonb_build_object('source_id', v_last_source_id);
+  end if;
+
+  return jsonb_build_object(
+    'meta', jsonb_build_object(
+      'document_type', v_doc_type,
+      'document_id', p_document_id,
+      'limit', v_limit,
+      'has_more', v_has_more,
+      'next_cursor', v_next_cursor
+    ),
+    'items', v_items
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."list_procurement_demand_group_items"(bigint, text, bigint, text, integer, bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION public.get_procurement_dashboard_metrics(p_tenant_id bigint)

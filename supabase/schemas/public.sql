@@ -21748,7 +21748,10 @@ begin
 
   with tenant_scope as (
     select t.id as tenant_id from public.tenants t
-    where ((v_is_parent and t.parent_id = p_tenant_id) or (not v_is_parent and t.id = p_tenant_id))
+    where (
+      (v_is_parent and (t.parent_id = p_tenant_id or t.id = p_tenant_id))
+      or (not v_is_parent and t.id = p_tenant_id)
+    )
       and (p_child_tenant_id is null or t.id = p_child_tenant_id)
   ),
   shop_lines as (
@@ -33787,7 +33790,6 @@ DECLARE
   v_file public.product_based_costing_files%ROWTYPE;
   v_tenant_id bigint;
   v_other_id bigint;
-  v_ordered_qty numeric;
   v_open_qty numeric;
   v_prod RECORD;
   v_price_gbp numeric;
@@ -33819,11 +33821,9 @@ BEGIN
         IF v_other_id IS NOT NULL THEN
           PERFORM public.upsert_pbc_backlog_from_item(v_other_id);
         ELSIF v_tenant_id IS NOT NULL AND v_file.billing_profile_id IS NOT NULL THEN
-          v_ordered_qty := coalesce(OLD.ordered_quantity, 0);
-          v_open_qty := coalesce(OLD.confirmed_quantity, OLD.quantity, 0) - v_ordered_qty;
+          v_open_qty := coalesce(OLD.confirmed_quantity, OLD.quantity, 0);
 
           IF coalesce(v_file.status, 'pending') IN ('pending', 'offered')
-             AND v_ordered_qty <= 0
              AND v_open_qty > 0
           THEN
             SELECT
@@ -34213,10 +34213,17 @@ CREATE OR REPLACE FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"() RETURNS 
     SET "search_path" TO 'public'
     AS $$
 BEGIN
-  IF NEW.tenant_id IS NULL AND NEW.billing_profile_id IS NOT NULL THEN
-    SELECT tenant_id INTO NEW.tenant_id
-    FROM public.billing_profiles
-    WHERE id = NEW.billing_profile_id;
+  IF NEW.tenant_id IS NOT NULL THEN
+    SELECT coalesce(t.parent_id, t.id)
+    INTO NEW.tenant_id
+    FROM public.tenants t
+    WHERE t.id = NEW.tenant_id;
+  ELSIF NEW.billing_profile_id IS NOT NULL THEN
+    SELECT coalesce(t.parent_id, t.id)
+    INTO NEW.tenant_id
+    FROM public.billing_profiles bp
+    inner join public.tenants t on t.id = bp.tenant_id
+    WHERE bp.id = NEW.billing_profile_id;
   END IF;
   RETURN NEW;
 END;
@@ -35444,6 +35451,69 @@ $$;
 
 
 ALTER FUNCTION "public"."update_product_based_costing_items_order"("p_items" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_product_based_costing_items"("p_items" "jsonb") RETURNS SETOF "public"."product_based_costing_items"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_elem jsonb;
+  v_id bigint;
+  v_row public.product_based_costing_items;
+begin
+  if p_items is null or jsonb_typeof(p_items) is distinct from 'array' then
+    raise exception 'p_items must be a json array';
+  end if;
+
+  for v_elem in select value from jsonb_array_elements(p_items)
+  loop
+    v_id := (v_elem->>'id')::bigint;
+    if v_id is null then
+      raise exception 'each item must include id';
+    end if;
+
+    update public.product_based_costing_items pci
+    set
+      product_based_costing_file_id = case
+        when v_elem ? 'product_based_costing_file_id' then (v_elem->>'product_based_costing_file_id')::bigint
+        else pci.product_based_costing_file_id
+      end,
+      name = case when v_elem ? 'name' then nullif(v_elem->>'name', '') else pci.name end,
+      image_url = case when v_elem ? 'image_url' then nullif(v_elem->>'image_url', '') else pci.image_url end,
+      note = case when v_elem ? 'note' then nullif(v_elem->>'note', '') else pci.note end,
+      quantity = case when v_elem ? 'quantity' then (v_elem->>'quantity')::numeric else pci.quantity end,
+      barcode = case when v_elem ? 'barcode' then nullif(v_elem->>'barcode', '') else pci.barcode end,
+      product_code = case when v_elem ? 'product_code' then nullif(v_elem->>'product_code', '') else pci.product_code end,
+      brand = case when v_elem ? 'brand' then nullif(v_elem->>'brand', '') else pci.brand end,
+      vendor_code = case when v_elem ? 'vendor_code' then nullif(v_elem->>'vendor_code', '') else pci.vendor_code end,
+      market_code = case when v_elem ? 'market_code' then nullif(v_elem->>'market_code', '') else pci.market_code end,
+      web_link = case when v_elem ? 'web_link' then nullif(v_elem->>'web_link', '') else pci.web_link end,
+      price_gbp = case when v_elem ? 'price_gbp' then (v_elem->>'price_gbp')::numeric else pci.price_gbp end,
+      product_weight = case when v_elem ? 'product_weight' then (v_elem->>'product_weight')::numeric else pci.product_weight end,
+      package_weight = case when v_elem ? 'package_weight' then (v_elem->>'package_weight')::numeric else pci.package_weight end,
+      confirmed_quantity = case when v_elem ? 'confirmed_quantity' then (v_elem->>'confirmed_quantity')::integer else pci.confirmed_quantity end,
+      offer_price = case when v_elem ? 'offer_price' then (v_elem->>'offer_price')::numeric else pci.offer_price end,
+      is_offer_price_manual = case when v_elem ? 'is_offer_price_manual' then (v_elem->>'is_offer_price_manual')::boolean else pci.is_offer_price_manual end,
+      input_type = case when v_elem ? 'input_type' then nullif(v_elem->>'input_type', '') else pci.input_type end,
+      assigned_shipment_id = case when v_elem ? 'assigned_shipment_id' then (v_elem->>'assigned_shipment_id')::bigint else pci.assigned_shipment_id end,
+      product_id = case when v_elem ? 'product_id' then (v_elem->>'product_id')::bigint else pci.product_id end
+    where pci.id = v_id
+    returning * into v_row;
+
+    if not found then
+      raise exception 'costing item % was not updated', v_id;
+    end if;
+
+    return next v_row;
+  end loop;
+
+  return;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."update_product_based_costing_items"("p_items" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_sales_invoice_from_payload"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_payload" "jsonb") RETURNS "jsonb"
@@ -37150,7 +37220,6 @@ DECLARE
   v_file public.product_based_costing_files%ROWTYPE;
   v_prod RECORD;
   v_confirmed_qty numeric;
-  v_ordered_qty numeric;
   v_open_qty numeric;
   v_backlog_row public.product_based_costing_backlog_items;
   v_tenant_id bigint;
@@ -37191,8 +37260,11 @@ BEGIN
   END IF;
 
   v_confirmed_qty := coalesce(v_item.confirmed_quantity, v_item.quantity, 0);
-  v_ordered_qty := coalesce(v_item.ordered_quantity, 0);
-  v_open_qty := v_confirmed_qty - v_ordered_qty;
+  v_open_qty := case
+    when v_item.assigned_shipment_id is not null then 0
+    when coalesce(v_file.status, 'pending') in ('pending', 'offered') then v_confirmed_qty
+    else 0
+  end;
 
   IF v_confirmed_qty <= 0 OR v_open_qty <= 0 THEN
     DELETE FROM public.product_based_costing_backlog_items
@@ -43701,7 +43773,7 @@ CREATE OR REPLACE TRIGGER "trg_payment_methods_updated_at" BEFORE UPDATE ON "pub
 CREATE OR REPLACE TRIGGER "trg_pbc_files_0_stamp_billing_profile" BEFORE INSERT OR UPDATE OF "customer_group_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_stamp_billing_profile"();
 
 
-CREATE OR REPLACE TRIGGER "trg_pbc_files_auto_tenant_id" BEFORE INSERT OR UPDATE OF "billing_profile_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"();
+CREATE OR REPLACE TRIGGER "trg_pbc_files_auto_tenant_id" BEFORE INSERT OR UPDATE OF "billing_profile_id", "tenant_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"();
 
 
 CREATE OR REPLACE TRIGGER "trg_pbc_items_auto_backlog" AFTER INSERT OR DELETE OR UPDATE OF "quantity", "confirmed_quantity", "product_id", "price_gbp" ON "public"."product_based_costing_items" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_auto_upsert_pbc_backlog"();
@@ -47917,6 +47989,9 @@ GRANT ALL ON FUNCTION "public"."update_membership_preference_for_self"("p_member
 
 GRANT ALL ON FUNCTION "public"."update_payment_instrument_details"("p_tenant_id" bigint, "p_instrument_id" bigint, "p_reference" "text", "p_bd_bank_id" bigint, "p_cheque_number" "text", "p_cheque_date" "date") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_payment_instrument_details"("p_tenant_id" bigint, "p_instrument_id" bigint, "p_reference" "text", "p_bd_bank_id" bigint, "p_cheque_number" "text", "p_cheque_date" "date") TO "service_role";
+
+
+GRANT ALL ON FUNCTION "public"."update_product_based_costing_items"("p_items" "jsonb") TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."update_product_based_costing_items_order"("p_items" "jsonb") TO "authenticated";

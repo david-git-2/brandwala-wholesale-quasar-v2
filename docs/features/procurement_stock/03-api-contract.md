@@ -135,13 +135,27 @@ Updates vendor PO (`placed_quantity`), warehouse picks (`stock_picks` → `deliv
 - `placed_quantity` = vendor PO qty (Demand desk). May be 0.
 - `delivered_quantity` / picks = warehouse allocation (Fulfill desk). Capped at confirmed need (`get_procurement_demand_open_qty.open_qty`), **not** placed qty.
 
+### 5.1b `fill_preorder_demand_placed_quantities_for_document`
+
+Sets `placed_quantity` on **every** demand line for one document group (`p_document_type` + `p_document_id`) to that line’s need qty (same rules as item list). Document must be `procuring`. Existing `vendor_id`, picks, and delivered qty on conflict are unchanged. Returns `{ updated_count }`.
+
+### 5.1c `set_preorder_demand_vendor_for_document`
+
+Sets `vendor_id` on **every** demand line for one document (`p_document_type` + `p_document_id` + `p_vendor_id`). Document must be `procuring`. Does not change `placed_quantity`, picks, or delivered qty on existing rows. Returns `{ updated_count, vendor_id }`.
+
 ### 5.2 `create_invoice_from_preorder_demand_document`
 
 Builds proforma (`issue: false`) from stock picks only. Requires at least one pick. Catalog orders pass `shop_order_id` on the payload so `sales_invoices.shop_order_id` links both ways.
 
 ### 5.3 `list_procurement_demand_groups`
 
-`remaining_to_deliver` = `greatest(quantity - delivered_quantity, 0)`.
+Paginated **group headers** only (no nested `items`). Each group includes `item_count` and `unallocated_item_count` (lines where `quantity > delivered_quantity`).
+
+### 5.4 `list_procurement_demand_group_items`
+
+Cursor-paginated lines for one group (`p_document_type`, `p_document_id`). Keyset on `source_id` (`p_cursor_source_id`). Response: `items` (same shape as former nested group items) + `meta.has_more` + `meta.next_cursor: { source_id }`.
+
+Line fields: `remaining_to_deliver` = `greatest(quantity - delivered_quantity, 0)`.
 
 ---
 

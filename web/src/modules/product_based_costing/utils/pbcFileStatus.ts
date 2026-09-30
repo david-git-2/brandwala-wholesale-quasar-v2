@@ -88,3 +88,25 @@ export function isPbcRatesEditable(status: string | null | undefined): boolean {
   const st = normalizePbcFileStatus(status);
   return st === 'pending';
 }
+
+/** Quasar button color token for header workflow chips */
+export function pbcFileStatusWorkflowColor(status: string): string {
+  switch (normalizePbcFileStatus(status)) {
+    case 'pending':
+      return 'orange-8';
+    case 'offered':
+      return 'blue-7';
+    case 'confirmed':
+      return 'teal-7';
+    case 'procuring':
+      return 'indigo-7';
+    case 'ready_for_shipment':
+      return 'purple-7';
+    case 'delivered':
+      return 'green-7';
+    case 'cancelled':
+      return 'negative';
+    default:
+      return 'grey-7';
+  }
+}

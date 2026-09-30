@@ -24,6 +24,9 @@ alter table public.product_based_costing_files
   alter column offer_pricing_mode set default 'landed_cost_plus'::public.pbc_offer_pricing_mode,
   alter column offer_pricing_mode set not null;
 
+alter table public.product_based_costing_items
+  add column if not exists is_offer_price_manual boolean not null default false;
+
 create or replace function public.pbc_calculated_offer_price_bdt(
     p_price_gbp numeric,
     p_product_weight numeric,

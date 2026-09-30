@@ -186,6 +186,7 @@ create table if not exists public.shop_orders (
 alter table public.shop_orders add column if not exists delivered_at timestamptz;
 alter table public.shop_orders add column if not exists courier_remittance_ref text;
 alter table public.shop_orders add column if not exists courier_bank_trx_id text;
+alter table public.shop_orders add column if not exists is_prepaid_snapshot boolean not null default false;
 
 create unique index if not exists shop_orders_order_no_unique_idx on public.shop_orders(tenant_id, order_no);
 

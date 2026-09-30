@@ -2,11 +2,18 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { computed, type ComputedRef, type Ref, unref } from 'vue';
 import {
   procurementDemandRepository,
+  type FillPreorderDemandPlacedQuantitiesParams,
   type ProcurementDemandSourceType,
   type ProcurementDemandStatus,
+  type SetPreorderDemandVendorParams,
   type UpsertPreorderDemandParams,
 } from '../repositories/procurementDemandRepository';
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
+
+function invalidateDemandDeskQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroups'] });
+  void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroupItems'] });
+}
 
 function useDemandGroupsQueryKey(options: {
   tenantId: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
@@ -53,7 +60,57 @@ export function useUpsertPreorderDemandMutation(options: {
       });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroups'] });
+      invalidateDemandDeskQueries(queryClient);
+    },
+  });
+}
+
+export function useFillPreorderDemandPlacedQuantitiesMutation(options: {
+  tenantId: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
+  procurementStatus: Ref<ProcurementDemandStatus> | ComputedRef<ProcurementDemandStatus>;
+  search?: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
+  childTenantId?: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
+  limit?: number;
+  offset?: Ref<number> | ComputedRef<number>;
+}) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: Omit<FillPreorderDemandPlacedQuantitiesParams, 'tenantId'>) => {
+      const tenantId = unref(options.tenantId);
+      if (!tenantId) throw new Error('Tenant is required');
+      return procurementDemandRepository.fillPreorderDemandPlacedQuantitiesForDocument({
+        tenantId,
+        ...payload,
+      });
+    },
+    onSuccess: () => {
+      invalidateDemandDeskQueries(queryClient);
+    },
+  });
+}
+
+export function useSetPreorderDemandVendorMutation(options: {
+  tenantId: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
+  procurementStatus: Ref<ProcurementDemandStatus> | ComputedRef<ProcurementDemandStatus>;
+  search?: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
+  childTenantId?: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
+  limit?: number;
+  offset?: Ref<number> | ComputedRef<number>;
+}) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: Omit<SetPreorderDemandVendorParams, 'tenantId'>) => {
+      const tenantId = unref(options.tenantId);
+      if (!tenantId) throw new Error('Tenant is required');
+      return procurementDemandRepository.setPreorderDemandVendorForDocument({
+        tenantId,
+        ...payload,
+      });
+    },
+    onSuccess: () => {
+      invalidateDemandDeskQueries(queryClient);
     },
   });
 }

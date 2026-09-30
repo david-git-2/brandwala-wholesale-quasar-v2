@@ -46,7 +46,7 @@
                 <q-icon name="ph ph-magnifying-glass" size="16px" />
               </template>
             </q-input>
-            <q-btn flat round dense icon="ph ph-arrow-clockwise" :loading="isFetching" @click="refetch">
+            <q-btn flat round dense icon="ph ph-arrow-clockwise" :loading="isFetching" @click="refreshDemandDesk">
               <q-tooltip>Refresh</q-tooltip>
             </q-btn>
           </div>
@@ -104,7 +104,37 @@
                         class="text-weight-medium"
                         :label="groupStatusLabel(group)"
                       />
-                      <q-badge color="grey-3" text-color="grey-9" :label="`${group.items.length} items`" />
+                      <q-badge color="grey-3" text-color="grey-9" :label="`${group.item_count} items`" />
+                      <q-btn
+                        v-if="isBuyMode && isProcuringGroup(group)"
+                        flat
+                        dense
+                        no-caps
+                        color="primary"
+                        icon="ph ph-copy"
+                        label="Fill place qty"
+                        class="demand-group-invoice-btn q-ml-xs"
+                        :loading="isGroupSaving(group)"
+                        :disable="isGroupSaving(group)"
+                        @click.stop="onFillPlaceQtyForGroup(group)"
+                      >
+                        <q-tooltip>Set place order qty to demand qty on every line</q-tooltip>
+                      </q-btn>
+                      <q-btn
+                        v-if="isBuyMode && isProcuringGroup(group)"
+                        flat
+                        dense
+                        no-caps
+                        color="primary"
+                        icon="ph ph-storefront"
+                        label="Set vendor"
+                        class="demand-group-invoice-btn q-ml-xs"
+                        :loading="isGroupSaving(group)"
+                        :disable="isGroupSaving(group)"
+                        @click.stop="openBulkVendorDialog(group)"
+                      >
+                        <q-tooltip>Apply one vendor to all lines in this group</q-tooltip>
+                      </q-btn>
                       <q-btn
                         v-if="isFulfillMode && canMarkGroupReady(group)"
                         unelevated
@@ -133,124 +163,74 @@
                   </td>
                 </tr>
 
-                <template v-if="isGroupExpanded(groupKey(group))">
-                  <tr
-                    v-for="item in group.items"
-                    :key="itemRowKey(group, item)"
-                    class="demand-item-row"
-                    :style="lineStatusStyle(item)"
-                  >
-                    <td class="text-center demand-image-col">
-                      <div class="shipment-item-image-box mx-auto">
-                        <SmartImage
-                          :src="item.image_url"
-                          :alt="item.name"
-                          img-class="shipment-item-image"
-                          fallback-class="shipment-item-image-fallback"
-                          :enable-edit="false"
-                        />
-                      </div>
-                    </td>
-                    <td class="demand-product-col shipment-item-name-cell">
-                      <div class="text-weight-bold text-grey-9">{{ item.name }}</div>
-                      <div class="text-caption text-grey-7">
-                        {{ item.product_code || item.barcode || '—' }}
-                      </div>
-                    </td>
-                    <td class="text-center demand-qty-col text-weight-medium">
-                      {{ item.quantity }}
-                    </td>
-                    <td class="text-center demand-place-col">
-                      <q-input
-                        v-if="isBuyMode"
-                        :model-value="getDraft(group, item).quantity"
-                        type="number"
-                        min="0"
-                        dense
-                        outlined
-                        hide-bottom-space
-                        :disable="!isProcuringGroup(group) || isRowSaving(group, item)"
-                        class="demand-field demand-field--qty"
-                        @update:model-value="(v) => onPlacedQuantityInput(group, item, v)"
-                        @blur="() => flushProcuringSave(group, item)"
-                      />
-                      <span v-else class="text-weight-medium">
-                        {{ getItemPlacedQuantity(item) || '—' }}
-                      </span>
-                    </td>
-                    <td class="demand-vendor-col">
-                      <q-select
-                        v-if="isBuyMode"
-                        :model-value="getDraft(group, item).vendorId"
-                        :options="vendorOptions"
-                        option-value="id"
-                        option-label="label"
-                        emit-value
-                        map-options
-                        dense
-                        outlined
-                        hide-bottom-space
-                        clearable
-                        use-input
-                        input-debounce="200"
-                        placeholder="Vendor"
-                        :disable="!isProcuringGroup(group) || isRowSaving(group, item)"
-                        :loading="vendorsLoading"
-                        class="demand-field"
-                        @filter="filterVendors"
-                        @update:model-value="(v) => onVendorChange(group, item, v)"
-                        @blur="() => flushProcuringSave(group, item)"
-                      />
-                      <span v-else class="text-grey-9">
-                        {{ vendorLabel(getDraft(group, item).vendorId) }}
-                      </span>
-                    </td>
-                    <td v-if="isFulfillMode" class="text-center demand-delivered-col">
-                      <div class="row items-center justify-center no-wrap demand-delivered-cell">
-                        <q-input
-                          :model-value="getDraft(group, item).deliveredQuantity"
-                          type="number"
-                          dense
-                          outlined
-                          readonly
-                          hide-bottom-space
-                          class="demand-field demand-field--qty"
-                        />
-                        <q-btn
-                          flat
-                          round
-                          dense
-                          color="primary"
-                          icon="ph ph-package"
-                          class="demand-pick-stock-btn"
-                          :disable="!isProcuringGroup(group) || !item.product_id || isRowSaving(group, item)"
-                          :loading="isRowSaving(group, item)"
-                          @click="openStockPickDialog(group, item)"
-                        >
-                          <q-tooltip>Pick stock</q-tooltip>
-                        </q-btn>
-                      </div>
-                      <ul
-                        v-if="getDraft(group, item).stockPicks.length"
-                        class="demand-pick-list q-mt-xs q-pl-md q-ma-none"
-                      >
-                        <li
-                          v-for="pick in getDraft(group, item).stockPicks"
-                          :key="pick.globalStockId"
-                          class="text-caption text-grey-7"
-                        >
-                          {{ pick.shipmentName || pick.globalStockId }} · {{ pick.quantity }}
-                        </li>
-                      </ul>
-                    </td>
-                  </tr>
-                </template>
+                <ProcurementDemandGroupItemRows
+                  v-if="isGroupExpanded(groupKey(group)) && listTenantId"
+                  :group="group"
+                  :tenant-id="listTenantId"
+                  :search="debouncedSearch"
+                  :enabled="isGroupExpanded(groupKey(group))"
+                  :is-buy-mode="isBuyMode"
+                  :is-fulfill-mode="isFulfillMode"
+                  :can-edit-procuring="isProcuringGroup(group)"
+                  :table-col-count="tableColCount"
+                  :vendor-options="vendorOptions"
+                  :vendors-loading="vendorsLoading"
+                  :drafts="drafts"
+                  :saving-row-keys="savingRowKeys"
+                  :vendor-label="vendorLabel"
+                  @sync-items="(items) => syncDraftsFromGroupItems(group, items)"
+                  @filter-vendors="filterVendors"
+                  @placed-quantity-input="(item, v) => onPlacedQuantityInput(group, item, v)"
+                  @vendor-change="(item, v) => onVendorChange(group, item, v)"
+                  @flush-save="(item) => flushProcuringSave(group, item)"
+                  @pick-stock="(item) => openStockPickDialog(group, item)"
+                />
               </template>
             </tbody>
           </q-markup-table>
         </div>
       </q-card>
     </div>
+
+    <q-dialog v-if="isBuyMode" v-model="bulkVendorDialogOpen" persistent>
+      <q-card class="demand-bulk-vendor-card">
+        <q-card-section>
+          <div class="text-subtitle1 text-weight-bold text-grey-9">Set vendor for all lines</div>
+          <div class="text-caption text-grey-7 q-mt-xs">
+            Applies to every line in this group. You can edit individual rows afterward.
+          </div>
+        </q-card-section>
+        <q-card-section>
+          <q-select
+            v-model="bulkVendorId"
+            :options="vendorOptions"
+            option-value="id"
+            option-label="label"
+            emit-value
+            map-options
+            dense
+            outlined
+            use-input
+            input-debounce="200"
+            label="Vendor"
+            :loading="vendorsLoading"
+            @filter="filterVendors"
+          />
+        </q-card-section>
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn v-close-popup flat no-caps label="Cancel" color="grey-7" :disable="bulkVendorApplying" />
+          <q-btn
+            unelevated
+            no-caps
+            color="primary"
+            label="Apply"
+            :loading="bulkVendorApplying"
+            :disable="bulkVendorApplying || bulkVendorId == null"
+            @click="onApplyBulkVendor"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <ProcurementDemandStockPickDialog
       v-if="isFulfillMode"
@@ -266,12 +246,12 @@
 </template>
 
 <script setup lang="ts">
-import { useQuery } from '@tanstack/vue-query';
+import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { Dialog } from 'quasar';
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import SmartImage from 'src/components/SmartImage.vue';
+import ProcurementDemandGroupItemRows from './ProcurementDemandGroupItemRows.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { vendorRepository } from 'src/modules/vendor/repositories/vendorRepository';
 import type { Vendor } from 'src/modules/vendor/types';
@@ -287,12 +267,14 @@ import ProcurementDemandStockPickDialog, {
 } from './ProcurementDemandStockPickDialog.vue';
 import { useMarkDemandGroupReadyMutation } from '../composables/useMarkDemandGroupReadyMutation';
 import { useProcurementDemandGroupsQuery } from '../composables/useProcurementDemandGroupsQuery';
-import { useUpsertPreorderDemandMutation } from '../composables/useProcurementPlacementMutations';
+import {
+  useFillPreorderDemandPlacedQuantitiesMutation,
+  useSetPreorderDemandVendorMutation,
+  useUpsertPreorderDemandMutation,
+} from '../composables/useProcurementPlacementMutations';
 import { useChildTenantsQuery } from '../composables/useProcurementStockQuery';
 import {
   getItemDeliveredQuantity,
-  getItemPlacedQuantity,
-  getItemRemainingQuantity,
   type PreorderDemandStockPick,
   type ProcurementDemandDocumentType,
   type ProcurementDemandGroup,
@@ -335,6 +317,7 @@ const props = defineProps<{
 }>();
 
 const authStore = useAuthStore();
+const queryClient = useQueryClient();
 const router = useRouter();
 const { t, te } = useI18n();
 
@@ -357,6 +340,10 @@ const stockPickTarget = ref<StockPickTarget | null>(null);
 const savingRowKeys = ref<Set<string>>(new Set());
 const savingGroupKeys = ref<Set<string>>(new Set());
 const vendorFilter = ref('');
+const bulkVendorDialogOpen = ref(false);
+const bulkVendorApplying = ref(false);
+const bulkVendorId = ref<number | null>(null);
+const bulkVendorTargetGroup = ref<ProcurementDemandGroup | null>(null);
 
 const parentTenantId = computed(
   () => authStore.selectedTenant?.parent_id ?? authStore.tenantId ?? null,
@@ -419,7 +406,26 @@ const upsertMutation = useUpsertPreorderDemandMutation({
   childTenantId: listChildTenantId,
 });
 
+const fillPlacedQtyMutation = useFillPreorderDemandPlacedQuantitiesMutation({
+  tenantId: mutationTenantId,
+  procurementStatus,
+  search: debouncedSearch,
+  childTenantId: listChildTenantId,
+});
+
+const setVendorMutation = useSetPreorderDemandVendorMutation({
+  tenantId: mutationTenantId,
+  procurementStatus,
+  search: debouncedSearch,
+  childTenantId: listChildTenantId,
+});
+
 const markReadyMutation = useMarkDemandGroupReadyMutation();
+
+const refreshDemandDesk = async () => {
+  await refetch();
+  void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroupItems'] });
+};
 
 const { data: vendors = [], isLoading: vendorsLoading } = useQuery({
   queryKey: computed(() => ['vendors', 'forDemand', parentTenantId.value]),
@@ -485,22 +491,21 @@ const mapStockPicksToApi = (picks: DemandStockPickSelection[]): PreorderDemandSt
     location_name: pick.locationName || null,
   }));
 
-const syncDraftsFromGroups = (nextGroups: ProcurementDemandGroup[]) => {
-  for (const group of nextGroups) {
-    for (const item of group.items) {
-      const key = itemRowKey(group, item);
-      if (savingRowKeys.value.has(key)) continue;
-      drafts[key] = {
-        vendorId: item.vendor_id ?? null,
-        quantity: normalizeDraftQuantity(item.placed_quantity),
-        deliveredQuantity: normalizeDraftQuantity(item.delivered_quantity),
-        stockPicks: mapStockPicksFromApi(item.stock_picks),
-      };
-    }
+const syncDraftsFromGroupItems = (
+  group: ProcurementDemandGroup,
+  items: ProcurementDemandItem[],
+) => {
+  for (const item of items) {
+    const key = itemRowKey(group, item);
+    if (savingRowKeys.value.has(key)) continue;
+    drafts[key] = {
+      vendorId: item.vendor_id ?? null,
+      quantity: normalizeDraftQuantity(item.placed_quantity),
+      deliveredQuantity: normalizeDraftQuantity(item.delivered_quantity),
+      stockPicks: mapStockPicksFromApi(item.stock_picks),
+    };
   }
 };
-
-watch(groups, (nextGroups) => syncDraftsFromGroups(nextGroups), { immediate: true });
 
 const groupKey = (group: ProcurementDemandGroup) =>
   `${group.document_type}-${group.document_id}`;
@@ -562,7 +567,10 @@ const flushProcuringSave = (group: ProcurementDemandGroup, item: ProcurementDema
   void saveProcuringLine(group, item);
 };
 
-const saveProcuringLine = async (group: ProcurementDemandGroup, item: ProcurementDemandItem) => {
+const saveProcuringLine = async (
+  group: ProcurementDemandGroup,
+  item: ProcurementDemandItem,
+): Promise<boolean> => {
   const key = itemRowKey(group, item);
   const draft = getDraft(group, item);
   savingRowKeys.value = new Set(savingRowKeys.value).add(key);
@@ -573,12 +581,69 @@ const saveProcuringLine = async (group: ProcurementDemandGroup, item: Procuremen
       vendorId: draft.vendorId,
       placedQuantity: resolvePlacedQuantityForSave(draft, item),
     });
+    return true;
   } catch (err) {
     showErrorNotification(parseSupabaseError(err, 'Failed to save demand line'));
+    return false;
   } finally {
     const next = new Set(savingRowKeys.value);
     next.delete(key);
     savingRowKeys.value = next;
+  }
+};
+
+const onFillPlaceQtyForGroup = async (group: ProcurementDemandGroup) => {
+  if (!isProcuringGroup(group)) return;
+  const gk = groupKey(group);
+  savingGroupKeys.value = new Set(savingGroupKeys.value).add(gk);
+  try {
+    const result = await fillPlacedQtyMutation.mutateAsync({
+      documentType: group.document_type,
+      documentId: group.document_id,
+    });
+    showSuccessNotification(
+      `Place order quantities updated for ${result.updated_count} line(s).`,
+    );
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to fill place order quantities'));
+  } finally {
+    const next = new Set(savingGroupKeys.value);
+    next.delete(gk);
+    savingGroupKeys.value = next;
+  }
+};
+
+const openBulkVendorDialog = (group: ProcurementDemandGroup) => {
+  bulkVendorTargetGroup.value = group;
+  const defaultVendor = (vendors.value as Vendor[]).find((vendor) => vendor.is_default);
+  bulkVendorId.value = defaultVendor?.id ?? null;
+  bulkVendorDialogOpen.value = true;
+};
+
+const onApplyBulkVendor = async () => {
+  const group = bulkVendorTargetGroup.value;
+  if (!group || bulkVendorId.value == null) {
+    showErrorNotification('Select a vendor.');
+    return;
+  }
+  const gk = groupKey(group);
+  bulkVendorApplying.value = true;
+  savingGroupKeys.value = new Set(savingGroupKeys.value).add(gk);
+  try {
+    const result = await setVendorMutation.mutateAsync({
+      documentType: group.document_type,
+      documentId: group.document_id,
+      vendorId: bulkVendorId.value,
+    });
+    showSuccessNotification(`Vendor applied to ${result.updated_count} line(s).`);
+    bulkVendorDialogOpen.value = false;
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to set vendor on demand lines'));
+  } finally {
+    bulkVendorApplying.value = false;
+    const next = new Set(savingGroupKeys.value);
+    next.delete(gk);
+    savingGroupKeys.value = next;
   }
 };
 
@@ -656,57 +721,11 @@ const groupStatusLabel = (group: ProcurementDemandGroup) => {
 
 const groupStatusColor = (status: string) => getCustomerOrderStatusColor(status);
 
-const lineStatusStyle = (item: ProcurementDemandItem) => {
-  const need = item.quantity;
-  const allocated = getItemDeliveredQuantity(item);
-  if (need > 0 && allocated >= need) {
-    return { boxShadow: 'inset 3px 0 0 #22c55e' };
-  }
-  if (allocated > 0) {
-    return { boxShadow: 'inset 3px 0 0 #f59e0b' };
-  }
-  const left = getItemRemainingQuantity(item);
-  const placed = getItemPlacedQuantity(item);
-  if (left <= 0 && placed > 0) {
-    return { boxShadow: 'inset 3px 0 0 #22c55e' };
-  }
-  if (placed > 0) {
-    return { boxShadow: 'inset 3px 0 0 #f59e0b' };
-  }
-  return { boxShadow: 'inset 3px 0 0 #94a3b8' };
-};
-
-const getItemAllocatedQuantity = (
-  group: ProcurementDemandGroup,
-  item: ProcurementDemandItem,
-): number => {
-  const draft = getDraft(group, item);
-  if (draft.deliveredQuantity != null) return draft.deliveredQuantity;
-  return getItemDeliveredQuantity(item);
-};
-
-const getItemAllocationTarget = (item: ProcurementDemandItem): number => item.quantity;
-
-type UnallocatedDemandItem = {
-  item: ProcurementDemandItem;
-  allocated: number;
-  target: number;
-};
-
-const getUnallocatedItems = (group: ProcurementDemandGroup): UnallocatedDemandItem[] =>
-  group.items
-    .map((item) => ({
-      item,
-      allocated: getItemAllocatedQuantity(group, item),
-      target: getItemAllocationTarget(item),
-    }))
-    .filter(({ allocated, target }) => target > 0 && allocated < target);
-
 const confirmMarkGroupReady = (group: ProcurementDemandGroup): Promise<boolean> =>
   new Promise((resolve) => {
-    const unallocated = getUnallocatedItems(group);
+    const unallocatedCount = group.unallocated_item_count ?? 0;
 
-    if (unallocated.length === 0) {
+    if (unallocatedCount === 0) {
       Dialog.create({
         title: 'Mark ready for shipment',
         message: 'Mark this document ready for shipment and create a proforma invoice?',
@@ -720,18 +739,10 @@ const confirmMarkGroupReady = (group: ProcurementDemandGroup): Promise<boolean> 
       return;
     }
 
-    const lines = unallocated
-      .map(
-        ({ item, allocated, target }) =>
-          `• ${item.name} — ${allocated} of ${target} allocated`,
-      )
-      .join('<br>');
-
     Dialog.create({
       title: 'Stock not fully allocated',
       message: `
-        <p class="q-mb-sm">These lines are not fully allocated from stock:</p>
-        <p class="text-body2 text-grey-9 q-mb-sm">${lines}</p>
+        <p class="q-mb-sm">${unallocatedCount} line(s) are not fully allocated from stock.</p>
         <p class="text-caption text-grey-7 q-ma-none">
           Mark ready anyway? The invoice will include allocated stock only.
         </p>
@@ -924,6 +935,11 @@ body.body--dark .demand-group-row td {
   max-width: 150px;
   margin-inline: auto;
   text-align: left;
+}
+
+.demand-bulk-vendor-card {
+  min-width: 320px;
+  max-width: 420px;
 }
 
 .demand-vendor-col {

@@ -48,7 +48,34 @@ export interface ProcurementDemandGroup {
   customer_group_name?: string | null;
   vendor: ProcurementDemandVendor | null;
   invoice_id?: number | null;
+  item_count: number;
+  unallocated_item_count: number;
+}
+
+export interface ProcurementDemandGroupItemsCursor {
+  source_id: number;
+}
+
+export interface ProcurementDemandGroupItemsMeta {
+  document_type: ProcurementDemandDocumentType;
+  document_id: number;
+  limit: number;
+  has_more: boolean;
+  next_cursor: ProcurementDemandGroupItemsCursor | null;
+}
+
+export interface ProcurementDemandGroupItemsResponse {
+  meta: ProcurementDemandGroupItemsMeta;
   items: ProcurementDemandItem[];
+}
+
+export interface ListProcurementDemandGroupItemsParams {
+  tenantId: number;
+  documentType: ProcurementDemandDocumentType;
+  documentId: number;
+  search?: string | null;
+  limit?: number;
+  cursor?: ProcurementDemandGroupItemsCursor | null;
 }
 
 export interface MarkDemandGroupReadyResult {
@@ -91,6 +118,32 @@ export interface UpsertPreorderDemandParams {
   notes?: string | null;
 }
 
+export interface FillPreorderDemandPlacedQuantitiesParams {
+  tenantId: number;
+  documentType: ProcurementDemandDocumentType;
+  documentId: number;
+}
+
+export interface FillPreorderDemandPlacedQuantitiesResult {
+  document_type: ProcurementDemandDocumentType;
+  document_id: number;
+  updated_count: number;
+}
+
+export interface SetPreorderDemandVendorParams {
+  tenantId: number;
+  documentType: ProcurementDemandDocumentType;
+  documentId: number;
+  vendorId: number;
+}
+
+export interface SetPreorderDemandVendorResult {
+  document_type: ProcurementDemandDocumentType;
+  document_id: number;
+  vendor_id: number;
+  updated_count: number;
+}
+
 export interface PreorderDemandRow {
   id: number;
   tenant_id: number;
@@ -120,7 +173,49 @@ const listProcurementDemandGroups = async (
 
   if (error) throw error;
 
-  return (data ?? { meta: {}, groups: [] }) as ProcurementDemandGroupsResponse;
+  const payload = (data ?? { meta: {}, groups: [] }) as ProcurementDemandGroupsResponse;
+  payload.groups = (payload.groups ?? []).map((group) => ({
+    ...group,
+    item_count: group.item_count ?? 0,
+    unallocated_item_count: group.unallocated_item_count ?? 0,
+  }));
+  return payload;
+};
+
+const parseDemandGroupItemsCursor = (
+  raw: unknown,
+): ProcurementDemandGroupItemsCursor | null => {
+  if (!raw || typeof raw !== 'object') return null;
+  const cursor = raw as { source_id?: unknown };
+  const sourceId = Number(cursor.source_id);
+  if (!Number.isFinite(sourceId)) return null;
+  return { source_id: sourceId };
+};
+
+const listProcurementDemandGroupItems = async (
+  params: ListProcurementDemandGroupItemsParams,
+): Promise<ProcurementDemandGroupItemsResponse> => {
+  const { data, error } = await supabase.rpc('list_procurement_demand_group_items', {
+    p_tenant_id: params.tenantId,
+    p_document_type: params.documentType,
+    p_document_id: params.documentId,
+    p_search: params.search ?? null,
+    p_limit: params.limit ?? 50,
+    p_cursor_source_id: params.cursor?.source_id ?? null,
+  });
+
+  if (error) throw error;
+
+  const payload = (data ?? { meta: {}, items: [] }) as ProcurementDemandGroupItemsResponse;
+  const meta = payload.meta ?? ({} as ProcurementDemandGroupItemsMeta);
+  return {
+    items: payload.items ?? [],
+    meta: {
+      ...meta,
+      next_cursor: parseDemandGroupItemsCursor(meta.next_cursor),
+      has_more: Boolean(meta.has_more),
+    },
+  };
 };
 
 const upsertPreorderDemand = async (
@@ -139,6 +234,38 @@ const upsertPreorderDemand = async (
   if (error) throw error;
 
   return data as PreorderDemandRow;
+};
+
+const fillPreorderDemandPlacedQuantitiesForDocument = async (
+  params: FillPreorderDemandPlacedQuantitiesParams,
+): Promise<FillPreorderDemandPlacedQuantitiesResult> => {
+  const { data, error } = await supabase.rpc(
+    'fill_preorder_demand_placed_quantities_for_document',
+    {
+      p_tenant_id: params.tenantId,
+      p_document_type: params.documentType,
+      p_document_id: params.documentId,
+    },
+  );
+
+  if (error) throw error;
+
+  return data as FillPreorderDemandPlacedQuantitiesResult;
+};
+
+const setPreorderDemandVendorForDocument = async (
+  params: SetPreorderDemandVendorParams,
+): Promise<SetPreorderDemandVendorResult> => {
+  const { data, error } = await supabase.rpc('set_preorder_demand_vendor_for_document', {
+    p_tenant_id: params.tenantId,
+    p_document_type: params.documentType,
+    p_document_id: params.documentId,
+    p_vendor_id: params.vendorId,
+  });
+
+  if (error) throw error;
+
+  return data as SetPreorderDemandVendorResult;
 };
 
 const markDemandGroupReadyForShipment = async (
@@ -167,7 +294,10 @@ const markDemandGroupReadyForShipment = async (
 
 export const procurementDemandRepository = {
   listProcurementDemandGroups,
+  listProcurementDemandGroupItems,
   upsertPreorderDemand,
+  fillPreorderDemandPlacedQuantitiesForDocument,
+  setPreorderDemandVendorForDocument,
   markDemandGroupReadyForShipment,
 };
 

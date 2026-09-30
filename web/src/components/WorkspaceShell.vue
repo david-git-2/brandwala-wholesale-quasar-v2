@@ -17,7 +17,7 @@
         />
 
         <q-btn v-else-if="!useHeaderProfile" flat round dense class="workspace-shell__menu" padding="none">
-          <q-avatar size="32px" class="workspace-shell__avatar">
+          <q-avatar size="26px" class="workspace-shell__avatar">
             <img
               v-if="userAvatarUrl"
               :src="userAvatarUrl"
@@ -979,7 +979,7 @@ const confirmLogout = async () => {
 <style scoped>
 .workspace-shell {
   min-height: 100vh;
-  --workspace-header-offset: 54px;
+  --workspace-header-offset: 44px;
   --shell-base: var(--bw-neutral-canvas);
   --shell-surface: var(--bw-neutral-surface);
   --shell-border: var(--bw-neutral-border);
@@ -1000,18 +1000,18 @@ const confirmLogout = async () => {
 }
 
 .workspace-shell__toolbar {
-  min-height: 54px;
-  height: 54px;
+  min-height: var(--workspace-header-offset);
+  height: var(--workspace-header-offset);
   gap: 0.5rem;
-  padding: 0 1rem;
+  padding: 0 0.65rem;
 }
 
 .workspace-shell__menu {
   color: var(--bw-neutral-muted);
   background: transparent;
   border-radius: 8px;
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   transition: all 0.15s ease-in-out;
 }
 
@@ -1078,7 +1078,7 @@ const confirmLogout = async () => {
 }
 
 .workspace-shell__drawer-top {
-  height: 54px;
+  height: var(--workspace-header-offset);
   padding: 0 0.85rem;
   border-bottom: 1px solid var(--shell-border);
 }
@@ -1110,8 +1110,8 @@ const confirmLogout = async () => {
 
 .workspace-shell__pin-btn {
   border-radius: 8px;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   color: var(--bw-neutral-chrome);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }

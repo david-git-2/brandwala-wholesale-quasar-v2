@@ -57,6 +57,18 @@ Unchanged: full-file aggregates (including `line_count`), not a page of items.
 
 ---
 
+## `update_product_based_costing_items`
+
+One call to PATCH many quote lines. Each object must have `id`. Other keys are optional; missing keys stay as they are.
+
+```sql
+update_product_based_costing_items(p_items jsonb) returns setof product_based_costing_items
+```
+
+Row-level rules still apply (`can_manage_costing_item`).
+
+---
+
 ## Backlog (unchanged)
 
 - `list_pbc_backlog_items`

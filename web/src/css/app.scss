@@ -1,4 +1,6 @@
 :root {
+  --workspace-header-offset: 44px;
+
   /* Neutral foundation (Modern Balanced Crisp Slate - vibrant clarity, soft on eyes) */
   --bw-neutral-canvas: #f4f6f8;
   --bw-neutral-surface: #ffffff;
@@ -1007,7 +1009,7 @@ body.theme-shop {
 /* ── Shared compact/sticky page toolbar ── */
 .bw-page-toolbar {
   position: sticky;
-  top: var(--workspace-header-offset, 54px);
+  top: var(--workspace-header-offset, 44px);
   z-index: 10;
   min-height: 48px;
   background: color-mix(in srgb, var(--bw-theme-surface) 92%, var(--bw-theme-base) 8%);

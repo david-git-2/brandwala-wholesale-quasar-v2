@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/vue-query';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
+import { resolveProductBasedCostingStorageTenantId } from '../utils/pbcStorageTenantId';
 import { parseSupabaseError, showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
 import type {
   ProductBasedCostingFile,
@@ -15,10 +17,19 @@ const showMutationWarning = (error: unknown, fallback: string) => {
 
 export function useCreateProductBasedCostingFileMutation() {
   const queryClient = useQueryClient();
+  const authStore = useAuthStore();
 
   return useMutation({
-    mutationFn: (payload: ProductBasedCostingFileCreateInput) =>
-      productBasedCostingRepository.createProductBasedCostingFile(payload),
+    mutationFn: (payload: ProductBasedCostingFileCreateInput) => {
+      const storageTenantId = resolveProductBasedCostingStorageTenantId(
+        authStore.selectedTenant,
+        authStore.tenantId,
+      );
+      return productBasedCostingRepository.createProductBasedCostingFile({
+        ...payload,
+        tenant_id: storageTenantId ?? payload.tenant_id ?? null,
+      });
+    },
     onSuccess: (newFile) => {
       showSuccessNotification('Product based costing file created successfully.');
       queryClient.setQueryData(
@@ -102,14 +113,19 @@ export function useDeleteProductBasedCostingFileMutation() {
 
 export function useCopyProductBasedCostingFileMutation() {
   const queryClient = useQueryClient();
+  const authStore = useAuthStore();
 
   return useMutation({
     mutationFn: async (item: ProductBasedCostingFile) => {
       const fileName = (item.name ?? '').trim();
       const nextName = fileName.length > 0 ? `${fileName} Copy` : `File #${item.id} Copy`;
+      const storageTenantId = resolveProductBasedCostingStorageTenantId(
+        authStore.selectedTenant,
+        item.tenant_id ?? authStore.tenantId,
+      );
 
       const fileCreateResult = await productBasedCostingRepository.createProductBasedCostingFile({
-        tenant_id: item.tenant_id ?? null,
+        tenant_id: storageTenantId,
         name: nextName,
         order_for: item.order_for ?? null,
         customer_group_id: item.customer_group_id ?? null,

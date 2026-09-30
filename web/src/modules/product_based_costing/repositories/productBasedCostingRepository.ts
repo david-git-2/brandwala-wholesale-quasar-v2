@@ -531,6 +531,29 @@ const updateProductBasedCostingItem = async (
   return data as ProductBasedCostingItem;
 };
 
+const updateProductBasedCostingItemsBulk = async (
+  payloads: ProductBasedCostingItemUpdateInput[],
+): Promise<ProductBasedCostingItem[]> => {
+  if (payloads.length === 0) {
+    return [];
+  }
+
+  const items = payloads.map((payload) => {
+    const { id, ...rest } = payload;
+    return { id, ...buildProductBasedCostingItemUpdatePayload(rest) };
+  });
+
+  const { data, error } = await supabase.rpc('update_product_based_costing_items', {
+    p_items: items,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []) as ProductBasedCostingItem[];
+};
+
 const deleteProductBasedCostingItem = async (id: number): Promise<ProductBasedCostingItem> => {
   const { data, error } = await supabase
     .from('product_based_costing_items')
@@ -704,6 +727,7 @@ export const productBasedCostingRepository = {
   reorderProductBasedCostingItemToPosition,
   createProductBasedCostingItem,
   updateProductBasedCostingItem,
+  updateProductBasedCostingItemsBulk,
   updateProductBasedCostingItemsByFileId,
   deleteProductBasedCostingItem,
   deleteProductBasedCostingItemsBulk,

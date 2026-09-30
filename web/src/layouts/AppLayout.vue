@@ -190,8 +190,8 @@ onMounted(() => {
 .header-quick-search {
   display: inline-flex;
   align-items: center;
-  height: 30px;
-  padding: 0 8px 0 10px;
+  height: 26px;
+  padding: 0 6px 0 8px;
   border-radius: 8px;
   background: var(--bw-neutral-canvas);
   border: 1px solid var(--bw-neutral-border);
@@ -234,7 +234,7 @@ onMounted(() => {
 .tenant-switcher-pill {
   font-weight: 600;
   font-size: 0.8125rem;
-  height: 30px;
+  height: 26px;
   border-radius: 8px;
   color: var(--bw-neutral-ink) !important;
   background: var(--bw-neutral-surface);

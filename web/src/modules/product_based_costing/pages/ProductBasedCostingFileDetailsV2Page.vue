@@ -1,9 +1,9 @@
 <template>
-  <q-page class="pbc-file-details-v2-page bg-grey-1 column no-wrap" style="height: calc(100vh - 55px); overflow: hidden">
+  <q-page class="pbc-file-details-v2-page bg-grey-1 column no-wrap">
     <!-- Top Sticky Header Section: Compact Title, Status Badge, Rates Summary & Actions -->
-    <div class="pbc-v2-top-section bg-white border-bottom q-px-md q-py-xs shrink-0 shadow-xs" style="min-height: 48px">
-      <div class="row items-center justify-between no-wrap">
-        <!-- Left: Back Button, Code, Name, Status Badge -->
+    <div class="pbc-v2-top-section bg-white border-bottom shrink-0 shadow-xs column no-wrap">
+      <div class="pbc-v2-top-section__main row items-center justify-between no-wrap">
+        <!-- Left: Back Button, Code, Name -->
         <div class="row items-center q-gutter-x-xs no-wrap ellipsis min-width-0 col-auto">
           <q-btn
             flat
@@ -17,7 +17,7 @@
             <q-tooltip>{{ $t('product_based_costing.go_back') }}</q-tooltip>
           </q-btn>
 
-          <span class="text-subtitle2 text-weight-bolder text-grey-8 font-mono bg-grey-2 q-px-xs rounded-borders" style="font-size: 12px">
+          <span class="pbc-v2-top-section__code text-subtitle2 text-weight-bolder text-grey-8 font-mono bg-grey-2 q-px-xs rounded-borders">
             PBC-{{ fileId }}
           </span>
 
@@ -42,29 +42,13 @@
           </div>
           <div
             v-else
-            class="text-subtitle1 text-weight-bolder text-grey-9 ellipsis cursor-pointer name-inline-title row items-center q-gutter-x-2xs no-wrap"
-            style="font-size: 14px"
+            class="pbc-v2-top-section__title text-subtitle1 text-weight-bolder text-grey-9 ellipsis cursor-pointer name-inline-title row items-center q-gutter-x-2xs no-wrap"
             :title="$t('product_based_costing.click_to_edit_name')"
             @click="startInlineNameEdit"
           >
             <span class="ellipsis">{{ file?.name || $t('product_based_costing.costing_file_default') }}</span>
             <q-icon name="ph ph-pencil-simple" size="12px" class="text-grey-6 edit-icon" />
           </div>
-
-          <!-- Customer / Order For Chip -->
-          <span v-if="file?.order_for" class="text-caption text-grey-6 ellipsis text-weight-medium">
-            ({{ file.order_for }})
-          </span>
-
-          <!-- Status Badge -->
-          <q-badge
-            rounded
-            class="text-weight-bold text-capitalize q-ml-xs text-caption q-px-xs q-py-2xs"
-            :color="statusBadgeColor.color"
-            :text-color="statusBadgeColor.textColor"
-          >
-            {{ formatStatusLabel(file?.status || 'pending') }}
-          </q-badge>
 
         </div>
 
@@ -221,6 +205,22 @@
           </q-btn>
 
         </div>
+      </div>
+
+      <div class="pbc-v2-top-section__sub row items-center q-gutter-x-sm no-wrap wrap">
+        <ProductBasedCostingStatusWorkflowBar
+          class="pbc-v2-header-workflow col-grow"
+          :status="status"
+          :updating="updatingStatus"
+          :target-status="targetUpdatingStatus"
+          @update-status="onWorkflowStatusClick"
+        />
+        <span
+          v-if="file?.order_for"
+          class="text-caption text-grey-6 ellipsis text-weight-medium col-auto"
+        >
+          {{ file.order_for }}
+        </span>
       </div>
 
       <!-- Expandable Inline Rates Editor Bar -->
@@ -1325,6 +1325,7 @@ import ProductBasedCostingSettingsDrawer, {
 } from '../components/ProductBasedCostingSettingsDrawer.vue';
 import { usePbcFileSummaryQuery } from '../composables/usePbcFileSummaryQuery';
 import ProductBasedCostingStatusOverrideDialog from '../components/ProductBasedCostingStatusOverrideDialog.vue';
+import ProductBasedCostingStatusWorkflowBar from '../components/ProductBasedCostingStatusWorkflowBar.vue';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { customerRepository } from 'src/modules/customer/repositories/customerRepository';
@@ -1754,6 +1755,12 @@ function getDraftValue(
       return normalizeOfferPriceBdt(row.raw.offer_price);
     }
     return normalizeOfferPriceBdt(row.offer_price ?? 0);
+  }
+  if (field === 'confirmed_quantity') {
+    if (row.raw.confirmed_quantity != null) {
+      return row.raw.confirmed_quantity;
+    }
+    return row.raw.quantity ?? '';
   }
   return row.raw[field] ?? '';
 }
@@ -2313,20 +2320,6 @@ watch(
   { immediate: true },
 );
 
-const statusBadgeColor = computed(() => {
-  const st = status.value;
-  if (st === 'confirmed' || st === 'ready_for_shipment' || st === 'delivered') {
-    return { color: 'green-1', textColor: 'green-9' };
-  }
-  if (st === 'offered' || st === 'procuring') {
-    return { color: 'blue-1', textColor: 'blue-9' };
-  }
-  if (st === 'cancelled') {
-    return { color: 'red-1', textColor: 'red-9' };
-  }
-  return { color: 'orange-1', textColor: 'orange-9' };
-});
-
 function getItemStatusBadge(st: string) {
   const s = (st || '').toLowerCase();
   if (s === 'accepted') return { color: 'green-1', textColor: 'green-9' };
@@ -2477,17 +2470,16 @@ async function onStatusChange(nextStatus: string) {
 
   if (nextStatus === 'confirmed') {
     const allItems = await productBasedCostingRepository.listProductBasedCostingItems(fileId.value);
-    if (allItems.length > 0) {
-      await Promise.all(
-        allItems.map((item) =>
-          productBasedCostingRepository.updateProductBasedCostingItem({
-            id: item.id,
-            confirmed_quantity: item.quantity ?? 0,
-          }),
-        ),
-      );
+    const prefill = allItems
+      .filter((item) => item.confirmed_quantity == null)
+      .map((item) => ({
+        id: item.id,
+        confirmed_quantity: Math.round(Number(item.quantity ?? 0)),
+      }));
+    if (prefill.length > 0) {
+      await productBasedCostingRepository.updateProductBasedCostingItemsBulk(prefill);
     }
-    await queryClient.invalidateQueries({
+    await queryClient.resetQueries({
       queryKey: productBasedCostingQueryKeys.itemsRoot(fileId.value),
     });
   }
@@ -2563,6 +2555,44 @@ function handlePbcPrimaryAction(action: StaffPbcPrimaryAction) {
     return;
   }
   void applyStatus(nextStatus);
+}
+
+function onWorkflowStatusClick(nextStatus: string) {
+  const normalized = normalizePbcFileStatus(nextStatus);
+  if (status.value === normalized || updatingStatus.value) return;
+
+  if (status.value === 'cancelled' && normalized !== 'cancelled') {
+    showStatusOverrideDialog.value = true;
+    return;
+  }
+
+  if (normalized === 'cancelled') {
+    onCancelFile();
+    return;
+  }
+
+  const primaryAction = getStaffPbcPrimaryAction(status.value);
+  const primaryTarget = primaryAction
+    ? normalizePbcFileStatus(getStaffPbcPrimaryActionTargetStatus(primaryAction))
+    : null;
+
+  if (primaryAction && primaryTarget === normalized) {
+    handlePbcPrimaryAction(primaryAction);
+    return;
+  }
+
+  $q.dialog({
+    title: 'Confirm status change',
+    message: `Change this costing file to "${formatStatusLabel(normalized)}"?`,
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    if (normalized === 'ready_for_shipment' && status.value === 'procuring') {
+      void markReadyForShipment();
+    } else {
+      void applyStatus(normalized);
+    }
+  });
 }
 
 function onCancelFile() {
@@ -2751,8 +2781,58 @@ function goBackToList() {
 
 <style scoped>
 .pbc-file-details-v2-page {
-  height: calc(100vh - 55px);
+  height: calc(100vh - var(--workspace-header-offset, 44px));
   overflow: hidden;
+}
+
+.pbc-v2-top-section {
+  padding: 4px 10px 5px;
+  gap: 2px;
+}
+
+.pbc-v2-top-section__sub {
+  padding-left: 36px;
+  min-height: 24px;
+  row-gap: 4px;
+}
+
+.pbc-v2-header-workflow {
+  min-width: 0;
+}
+
+.pbc-v2-top-section__code {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.pbc-v2-top-section__title {
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.pbc-v2-top-section :deep(.name-inline-input .q-field__control) {
+  min-height: 26px;
+  height: 26px;
+}
+
+.pbc-v2-top-section :deep(.name-inline-input .q-field__native) {
+  font-size: 13px;
+  line-height: 1.25;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.pbc-v2-top-section :deep(.q-btn.q-btn--round) {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  font-size: 16px;
+}
+
+.pbc-v2-top-section :deep(.rounded-sq-btn.q-btn--dense) {
+  min-height: 26px;
+  font-size: 12px;
 }
 
 .border-bottom {
@@ -2772,15 +2852,15 @@ function goBackToList() {
 }
 
 .pbc-items-view-toggle {
-  height: 28px;
+  height: 24px;
   overflow: hidden;
 }
 
 .pbc-items-view-toggle :deep(.q-btn) {
-  min-height: 28px;
-  height: 28px;
-  padding: 0 8px;
-  font-size: 14px;
+  min-height: 24px;
+  height: 24px;
+  padding: 0 6px;
+  font-size: 13px;
 }
 
 .pbc-v2-markup-table {
@@ -3011,6 +3091,10 @@ function goBackToList() {
 
 .rates-pill {
   border: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 11px;
+  line-height: 1.2;
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 
 .pbc-rates-editor {

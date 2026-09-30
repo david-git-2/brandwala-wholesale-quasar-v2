@@ -108,7 +108,7 @@ CREATE OR REPLACE TRIGGER "trg_pbc_files_stamp_currency_codes" BEFORE INSERT OR 
 
 
 
-CREATE OR REPLACE TRIGGER "trg_pbc_files_auto_tenant_id" BEFORE INSERT OR UPDATE OF "billing_profile_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"();
+CREATE OR REPLACE TRIGGER "trg_pbc_files_auto_tenant_id" BEFORE INSERT OR UPDATE OF "billing_profile_id", "tenant_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"();
 
 
 
@@ -1225,6 +1225,10 @@ GRANT ALL ON FUNCTION "public"."update_global_shipment_items_order"("p_items" "j
 
 
 
+GRANT ALL ON FUNCTION "public"."update_product_based_costing_items"("p_items" "jsonb") TO "authenticated";
+
+
+
 GRANT ALL ON FUNCTION "public"."update_product_based_costing_items_order"("p_items" "jsonb") TO "authenticated";
 
 
@@ -1549,6 +1553,9 @@ GRANT ALL ON SEQUENCE "public"."preorder_demand_id_seq" TO "service_role";
 GRANT ALL ON FUNCTION "public"."can_access_preorder_demand_tenant"(bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_procurement_demand_open_qty"("public"."preorder_demand_source_type", bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."upsert_preorder_demand"(bigint, "public"."preorder_demand_source_type", bigint, bigint, integer, jsonb, text) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."fill_preorder_demand_placed_quantities_for_document"(bigint, text, bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_preorder_demand_vendor_for_document"(bigint, text, bigint, bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_procurement_demand_group_items"(bigint, text, bigint, text, integer, bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_invoice_from_preorder_demand_document"(bigint, text, bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."staff_mark_pbc_ready_for_shipment"(bigint) TO "authenticated";
 

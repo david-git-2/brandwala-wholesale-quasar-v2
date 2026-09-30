@@ -12,6 +12,7 @@ export function useMarkDemandGroupReadyMutation() {
       procurementDemandRepository.markDemandGroupReadyForShipment(group),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroups'] });
+      void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroupItems'] });
     },
   });
 }

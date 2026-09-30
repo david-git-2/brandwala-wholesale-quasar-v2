@@ -85,6 +85,8 @@ Physical stock is owned strictly at the **Parent Tenant** level. Sister concerns
 
 #### Acceptance Criteria
 - [ ] Demand **Place order** (`placed_quantity`) is optional per line.
+- [ ] Demand group list returns headers only; lines load via cursor-paginated `list_procurement_demand_group_items`.
+- [ ] **Fill place qty** and **Set vendor** apply to the whole document server-side (not only loaded rows).
 - [ ] Fulfill **Pick stock** may run with `placed_quantity = 0`; picks cap at confirmed customer need.
 - [ ] **Mark ready for shipment** creates a proforma from picks; backlog = confirmed − allocated picks.
 

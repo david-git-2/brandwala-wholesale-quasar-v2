@@ -165,9 +165,7 @@ const updateProductBasedCostingItemsBulk = async (
   payloads: ProductBasedCostingItemUpdateInput[],
 ): Promise<ProductBasedCostingServiceResult<ProductBasedCostingItem[]>> => {
   try {
-    const data = await Promise.all(
-      payloads.map((payload) => productBasedCostingRepository.updateProductBasedCostingItem(payload)),
-    );
+    const data = await productBasedCostingRepository.updateProductBasedCostingItemsBulk(payloads);
 
     return {
       success: true,
