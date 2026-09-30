@@ -86,10 +86,14 @@ Physical stock is owned strictly at the **Parent Tenant** level. Sister concerns
 #### Acceptance Criteria
 - [ ] Demand **Place order** (`placed_quantity`) is optional per line.
 - [ ] Demand group list returns headers only; lines load via cursor-paginated `list_procurement_demand_group_items`.
+- [ ] Fulfill desk lists documents via `list_procurement_fulfill_groups` with status **Procuring** or **Ready for shipment**; expanded lines via `list_procurement_fulfill_group_items` (no shop filter on Fulfill).
+- [ ] Fulfill **Fill oldest stock** (group) assigns FIFO pickable stock per line server-side; lines without full ATP coverage or existing picks are skipped.
 - [ ] **Fill place qty** and **Set vendor** apply to the whole document server-side (not only loaded rows).
 - [ ] Fulfill **Pick stock** may run with `placed_quantity = 0`; picks cap at confirmed customer need.
-- [ ] **Mark ready for shipment** creates a proforma from picks; backlog = confirmed − allocated picks.
-- [ ] Demand group **Change status** (procuring only) asks for confirm, then sets the document to `ready_for_shipment` (status only; does not create a proforma).
+- [ ] Fulfill **Change status** (procuring only) asks for confirm, then sets the document to `ready_for_shipment` (status only; does not create a proforma).
+- [ ] Fulfill **Create invoice** (ready, no linked bill) builds proforma from picks and links `invoice_id` on the costing file or `global_invoice_id` on the catalog order.
+- [ ] Fulfill **Update invoice** (ready, linked draft/proforma, picks differ from bill lines) replaces lines via `sync_invoice_from_preorder_demand_document`.
+- [ ] Fulfill **Open invoice** when a bill is linked.
 
 ### US-5: Archive-First Shipment Governance
 - **As an** Operations Admin  

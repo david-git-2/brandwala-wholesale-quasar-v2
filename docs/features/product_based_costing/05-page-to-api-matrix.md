@@ -16,3 +16,4 @@ Mapping of all costing pages, modals, formula calculators, and backlog drawers t
 | **`ProductBasedCostingFileDetailsV2Page`** | Table / card toggle | `itemsView` (localStorage) | No RPC | Same item query cache |
 | **`ProductBasedCostingFileDetailsV2Page`** | Load lines (both views) | `useProductBasedCostingItemsInfiniteQuery` | `RPC: list_product_based_costing_items` | `productBasedCostingQueryKeys.itemsInfinite` |
 | **`ProductBasedCostingFileDetailsV2Page`** | Card catalog meta | `usePbcItemProductCatalogMap` | `Table: products` (select by ids from loaded lines) | Keyed by sorted `product_id` list |
+| **`ProductBasedCostingFileDetailsV2Page`** | Open invoice (when `invoice_id` set) | `openLinkedInvoice` | `Table: sales_invoices` by id | Draft/proforma → `/app/sales/invoices/create?id=`; issued/voided → details |

@@ -56,6 +56,8 @@ export interface ProcurementDemandGroup {
   customer_group_name?: string | null;
   vendor: ProcurementDemandVendor | null;
   invoice_id?: number | null;
+  invoice_status?: string | null;
+  invoice_stale?: boolean;
   item_count: number;
   unallocated_item_count: number;
 }
@@ -90,6 +92,10 @@ export interface MarkDemandGroupReadyResult {
   invoiceId: number | null;
 }
 
+export interface DemandDocumentInvoiceResult {
+  invoiceId: number | null;
+}
+
 export interface ProcurementDemandGroupsMeta {
   tenant_id: number;
   procurement_status: ProcurementDemandStatus;
@@ -116,6 +122,14 @@ export interface ListProcurementDemandGroupsParams {
   offset?: number;
 }
 
+export interface ListProcurementFulfillGroupsParams {
+  tenantId: number;
+  procurementStatus?: ProcurementDemandStatus;
+  search?: string | null;
+  limit?: number;
+  offset?: number;
+}
+
 export interface UpsertPreorderDemandParams {
   tenantId: number;
   sourceType: ProcurementDemandSourceType;
@@ -136,6 +150,19 @@ export interface FillPreorderDemandPlacedQuantitiesResult {
   document_type: ProcurementDemandDocumentType;
   document_id: number;
   updated_count: number;
+}
+
+export interface FillPreorderDemandOldestStockParams {
+  tenantId: number;
+  documentType: ProcurementDemandDocumentType;
+  documentId: number;
+}
+
+export interface FillPreorderDemandOldestStockResult {
+  document_type: ProcurementDemandDocumentType;
+  document_id: number;
+  updated_count: number;
+  skipped_count: number;
 }
 
 export interface SetPreorderDemandVendorParams {
@@ -191,6 +218,29 @@ const listProcurementDemandGroups = async (
   return payload;
 };
 
+const listProcurementFulfillGroups = async (
+  params: ListProcurementFulfillGroupsParams,
+): Promise<ProcurementDemandGroupsResponse> => {
+  const { data, error } = await supabase.rpc('list_procurement_fulfill_groups', {
+    p_tenant_id: params.tenantId,
+    p_procurement_status: params.procurementStatus ?? 'procuring',
+    p_search: params.search ?? null,
+    p_limit: params.limit ?? 50,
+    p_offset: params.offset ?? 0,
+  });
+
+  if (error) throw error;
+
+  const payload = (data ?? { meta: {}, groups: [] }) as ProcurementDemandGroupsResponse;
+  payload.groups = (payload.groups ?? []).map((group) => ({
+    ...group,
+    document_name: group.document_name?.trim() || null,
+    item_count: group.item_count ?? 0,
+    unallocated_item_count: group.unallocated_item_count ?? 0,
+  }));
+  return payload;
+};
+
 const parseDemandGroupItemsCursor = (
   raw: unknown,
 ): ProcurementDemandGroupItemsCursor | null => {
@@ -205,6 +255,32 @@ const listProcurementDemandGroupItems = async (
   params: ListProcurementDemandGroupItemsParams,
 ): Promise<ProcurementDemandGroupItemsResponse> => {
   const { data, error } = await supabase.rpc('list_procurement_demand_group_items', {
+    p_tenant_id: params.tenantId,
+    p_document_type: params.documentType,
+    p_document_id: params.documentId,
+    p_search: params.search ?? null,
+    p_limit: params.limit ?? 50,
+    p_cursor_source_id: params.cursor?.source_id ?? null,
+  });
+
+  if (error) throw error;
+
+  const payload = (data ?? { meta: {}, items: [] }) as ProcurementDemandGroupItemsResponse;
+  const meta = payload.meta ?? ({} as ProcurementDemandGroupItemsMeta);
+  return {
+    items: payload.items ?? [],
+    meta: {
+      ...meta,
+      next_cursor: parseDemandGroupItemsCursor(meta.next_cursor),
+      has_more: Boolean(meta.has_more),
+    },
+  };
+};
+
+const listProcurementFulfillGroupItems = async (
+  params: ListProcurementDemandGroupItemsParams,
+): Promise<ProcurementDemandGroupItemsResponse> => {
+  const { data, error } = await supabase.rpc('list_procurement_fulfill_group_items', {
     p_tenant_id: params.tenantId,
     p_document_type: params.documentType,
     p_document_id: params.documentId,
@@ -262,6 +338,23 @@ const fillPreorderDemandPlacedQuantitiesForDocument = async (
   return data as FillPreorderDemandPlacedQuantitiesResult;
 };
 
+const fillPreorderDemandOldestStockForDocument = async (
+  params: FillPreorderDemandOldestStockParams,
+): Promise<FillPreorderDemandOldestStockResult> => {
+  const { data, error } = await supabase.rpc(
+    'fill_preorder_demand_oldest_stock_for_document',
+    {
+      p_tenant_id: params.tenantId,
+      p_document_type: params.documentType,
+      p_document_id: params.documentId,
+    },
+  );
+
+  if (error) throw error;
+
+  return data as FillPreorderDemandOldestStockResult;
+};
+
 const setPreorderDemandVendorForDocument = async (
   params: SetPreorderDemandVendorParams,
 ): Promise<SetPreorderDemandVendorResult> => {
@@ -301,6 +394,48 @@ const markDemandGroupReadyForShipment = async (
   return { invoiceId };
 };
 
+const createDemandDocumentInvoice = async (params: {
+  tenantId: number;
+  group: ProcurementDemandGroup;
+}): Promise<DemandDocumentInvoiceResult> => {
+  const { data, error } = await supabase.rpc('create_invoice_from_preorder_demand_document', {
+    p_tenant_id: params.tenantId,
+    p_document_type: params.group.document_type,
+    p_document_id: params.group.document_id,
+  });
+
+  if (error) throw error;
+
+  const result = data as { invoice_id?: string | number } | null;
+  const invoiceId =
+    result && typeof result === 'object' && 'invoice_id' in result
+      ? Number(result.invoice_id) || null
+      : null;
+
+  return { invoiceId };
+};
+
+const syncDemandDocumentInvoice = async (params: {
+  tenantId: number;
+  group: ProcurementDemandGroup;
+}): Promise<DemandDocumentInvoiceResult> => {
+  const { data, error } = await supabase.rpc('sync_invoice_from_preorder_demand_document', {
+    p_tenant_id: params.tenantId,
+    p_document_type: params.group.document_type,
+    p_document_id: params.group.document_id,
+  });
+
+  if (error) throw error;
+
+  const result = data as { invoice_id?: string | number } | null;
+  const invoiceId =
+    result && typeof result === 'object' && 'invoice_id' in result
+      ? Number(result.invoice_id) || null
+      : null;
+
+  return { invoiceId };
+};
+
 const setDemandGroupStatusReadyForShipment = async (params: {
   group: ProcurementDemandGroup;
   tenantId: number;
@@ -326,10 +461,15 @@ const setDemandGroupStatusReadyForShipment = async (params: {
 export const procurementDemandRepository = {
   listProcurementDemandGroups,
   listProcurementDemandGroupItems,
+  listProcurementFulfillGroups,
+  listProcurementFulfillGroupItems,
   upsertPreorderDemand,
   fillPreorderDemandPlacedQuantitiesForDocument,
+  fillPreorderDemandOldestStockForDocument,
   setPreorderDemandVendorForDocument,
   markDemandGroupReadyForShipment,
+  createDemandDocumentInvoice,
+  syncDemandDocumentInvoice,
   setDemandGroupStatusReadyForShipment,
 };
 

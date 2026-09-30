@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { computed, type ComputedRef, type Ref, unref } from 'vue';
 import {
   procurementDemandRepository,
+  type FillPreorderDemandOldestStockParams,
   type FillPreorderDemandPlacedQuantitiesParams,
   type ProcurementDemandSourceType,
   type ProcurementDemandStatus,
@@ -13,6 +14,8 @@ import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQ
 function invalidateDemandDeskQueries(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroups'] });
   void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroupItems'] });
+  void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'fulfillGroups'] });
+  void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'fulfillGroupItems'] });
 }
 
 function useDemandGroupsQueryKey(options: {
@@ -80,6 +83,26 @@ export function useFillPreorderDemandPlacedQuantitiesMutation(options: {
       const tenantId = unref(options.tenantId);
       if (!tenantId) throw new Error('Tenant is required');
       return procurementDemandRepository.fillPreorderDemandPlacedQuantitiesForDocument({
+        tenantId,
+        ...payload,
+      });
+    },
+    onSuccess: () => {
+      invalidateDemandDeskQueries(queryClient);
+    },
+  });
+}
+
+export function useFillPreorderDemandOldestStockMutation(options: {
+  tenantId: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
+}) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: Omit<FillPreorderDemandOldestStockParams, 'tenantId'>) => {
+      const tenantId = unref(options.tenantId);
+      if (!tenantId) throw new Error('Tenant is required');
+      return procurementDemandRepository.fillPreorderDemandOldestStockForDocument({
         tenantId,
         ...payload,
       });

@@ -157,7 +157,7 @@
           color="primary"
           icon="ph ph-package"
           class="demand-pick-stock-btn"
-          :disable="!canEditProcuring || !item.product_id || isRowSaving(item)"
+          :disable="!canPickStock || !item.product_id || isRowSaving(item)"
           :loading="isRowSaving(item)"
           @click="emit('pick-stock', item)"
         >
@@ -197,6 +197,7 @@ import SmartImage from 'src/components/SmartImage.vue';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import type { DemandStockPickSelection } from './ProcurementDemandStockPickDialog.vue';
 import { useProcurementDemandGroupItemsInfiniteQuery } from '../composables/useProcurementDemandGroupItemsInfiniteQuery';
+import { useProcurementFulfillGroupItemsInfiniteQuery } from '../composables/useProcurementFulfillGroupItemsInfiniteQuery';
 import {
   getItemDeliveredQuantity,
   getItemPlacedQuantity,
@@ -220,6 +221,7 @@ const props = defineProps<{
   isBuyMode: boolean;
   isFulfillMode: boolean;
   canEditProcuring: boolean;
+  canPickStock: boolean;
   tableColCount: number;
   vendorOptions: Array<{ id: number; label: string }>;
   vendorsLoading: boolean;
@@ -241,19 +243,32 @@ const documentType = computed(() => props.group.document_type);
 const documentId = computed(() => props.group.document_id);
 const listEnabled = computed(() => props.enabled);
 
-const {
-  demandItems,
-  hasMoreItems,
-  fetchNextPage,
-  isFetchingNextPage,
-  isLoading,
-} = useProcurementDemandGroupItemsInfiniteQuery({
+const demandItemsQuery = useProcurementDemandGroupItemsInfiniteQuery({
   tenantId: computed(() => props.tenantId),
   documentType,
   documentId,
   search: computed(() => props.search),
-  enabled: listEnabled,
+  enabled: computed(() => listEnabled.value && props.isBuyMode),
 });
+
+const fulfillItemsQuery = useProcurementFulfillGroupItemsInfiniteQuery({
+  tenantId: computed(() => props.tenantId),
+  documentType,
+  documentId,
+  search: computed(() => props.search),
+  enabled: computed(() => listEnabled.value && props.isFulfillMode),
+});
+
+const activeItemsQuery = computed(() =>
+  props.isFulfillMode ? fulfillItemsQuery : demandItemsQuery,
+);
+
+const demandItems = computed(() => activeItemsQuery.value.demandItems.value);
+const hasMoreItems = computed(() => activeItemsQuery.value.hasMoreItems.value);
+const fetchNextPage = (...args: Parameters<typeof demandItemsQuery.fetchNextPage>) =>
+  activeItemsQuery.value.fetchNextPage(...args);
+const isFetchingNextPage = computed(() => activeItemsQuery.value.isFetchingNextPage.value);
+const isLoading = computed(() => activeItemsQuery.value.isLoading.value);
 
 watch(
   demandItems,
@@ -363,7 +378,16 @@ const copyCode = (value: string, label: string) => {
 
 const lineStatusStyle = (item: ProcurementDemandItem) => {
   const need = item.quantity;
-  const allocated = getItemDeliveredQuantity(item);
+  const allocated = getDraft(item).deliveredQuantity ?? getItemDeliveredQuantity(item);
+  if (props.isFulfillMode) {
+    if (need > 0 && allocated >= need) {
+      return { boxShadow: 'inset 3px 0 0 #22c55e' };
+    }
+    return {
+      boxShadow: 'inset 3px 0 0 var(--bw-warning, #b45309)',
+      backgroundColor: 'color-mix(in srgb, var(--bw-warning, #f59e0b) 12%, transparent)',
+    };
+  }
   if (need > 0 && allocated >= need) {
     return { boxShadow: 'inset 3px 0 0 #22c55e' };
   }

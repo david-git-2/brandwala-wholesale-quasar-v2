@@ -10167,6 +10167,10 @@ export type Database = {
         }
         Returns: Json
       }
+      build_preorder_demand_invoice_items: {
+        Args: { p_document_id: number; p_document_type: string }
+        Returns: Json
+      }
       bulk_add_global_shipment_items: {
         Args: { p_items: Json; p_shipment_id: number }
         Returns: {
@@ -11583,6 +11587,14 @@ export type Database = {
           count: number
           name: string
         }[]
+      }
+      fill_preorder_demand_oldest_stock_for_document: {
+        Args: {
+          p_document_id: number
+          p_document_type: string
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       fill_preorder_demand_placed_quantities_for_document: {
         Args: {
@@ -13289,6 +13301,27 @@ export type Database = {
         }
         Returns: Json
       }
+      list_procurement_fulfill_group_items: {
+        Args: {
+          p_cursor_source_id?: number
+          p_document_id: number
+          p_document_type: string
+          p_limit?: number
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      list_procurement_fulfill_groups: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_procurement_status?: string
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       list_procurement_shop_order_lines: {
         Args: {
           p_child_tenant_id?: number
@@ -14141,6 +14174,14 @@ export type Database = {
       }
       post_sales_invoice: { Args: { p_invoice_id: number }; Returns: undefined }
       post_stock_movement: { Args: { p_movement_id: number }; Returns: Json }
+      preorder_demand_invoice_items_stale: {
+        Args: {
+          p_document_id: number
+          p_document_type: string
+          p_invoice_id: number
+        }
+        Returns: boolean
+      }
       preview_tenant_data_purge: {
         Args: {
           p_parent_tenant_id: number
@@ -15007,6 +15048,14 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: undefined
+      }
+      sync_invoice_from_preorder_demand_document: {
+        Args: {
+          p_document_id: number
+          p_document_type: string
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       sync_sales_invoice_charges_from_header: {
         Args: { p_invoice_id: number }

@@ -1554,9 +1554,13 @@ GRANT ALL ON FUNCTION "public"."can_access_preorder_demand_tenant"(bigint) TO "a
 GRANT ALL ON FUNCTION "public"."get_procurement_demand_open_qty"("public"."preorder_demand_source_type", bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."upsert_preorder_demand"(bigint, "public"."preorder_demand_source_type", bigint, bigint, integer, jsonb, text) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."fill_preorder_demand_placed_quantities_for_document"(bigint, text, bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."fill_preorder_demand_oldest_stock_for_document"(bigint, text, bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_preorder_demand_vendor_for_document"(bigint, text, bigint, bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_procurement_demand_group_items"(bigint, text, bigint, text, integer, bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_procurement_fulfill_groups"(bigint, text, text, integer, integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_procurement_fulfill_group_items"(bigint, text, bigint, text, integer, bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_invoice_from_preorder_demand_document"(bigint, text, bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."sync_invoice_from_preorder_demand_document"(bigint, text, bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."staff_mark_pbc_ready_for_shipment"(bigint) TO "authenticated";
 
 

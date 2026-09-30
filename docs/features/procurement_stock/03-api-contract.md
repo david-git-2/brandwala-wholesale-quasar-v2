@@ -139,23 +139,39 @@ Updates vendor PO (`placed_quantity`), warehouse picks (`stock_picks` → `deliv
 
 Sets `placed_quantity` on **every** demand line for one document group (`p_document_type` + `p_document_id`) to that line’s need qty (same rules as item list). Document must be `procuring`. Existing `vendor_id`, picks, and delivered qty on conflict are unchanged. Returns `{ updated_count }`.
 
+### 5.1d `fill_preorder_demand_oldest_stock_for_document`
+
+FIFO warehouse picks for **every line** on one document (`p_document_type` + `p_document_id`). Document must be `procuring` or `ready_for_shipment`. For each line with `product_id` and need qty &gt; 0: skip if picks already exist; skip if pickable ATP (minus existing `preorder_demand` picks and picks assigned earlier in this run) cannot cover the **full** need; otherwise write `stock_picks` and `delivered_quantity`. Returns `{ updated_count, skipped_count }`.
+
 ### 5.1c `set_preorder_demand_vendor_for_document`
 
 Sets `vendor_id` on **every** demand line for one document (`p_document_type` + `p_document_id` + `p_vendor_id`). Document must be `procuring`. Does not change `placed_quantity`, picks, or delivered qty on existing rows. Returns `{ updated_count, vendor_id }`.
 
 ### 5.2 `create_invoice_from_preorder_demand_document`
 
-Builds proforma (`issue: false`) from stock picks only. Requires at least one pick. Catalog orders pass `shop_order_id` on the payload so `sales_invoices.shop_order_id` links both ways.
+Builds proforma (`issue: false`) from stock picks only. Document must be `ready_for_shipment`. Requires at least one pick. Idempotent if document already has a linked invoice (returns existing `invoice_id`). Catalog orders set `sales_invoices.shop_order_id` after create.
+
+### 5.2b `sync_invoice_from_preorder_demand_document`
+
+Rebuilds bill lines on an existing linked invoice from current `preorder_demand.stock_picks`. Document must be `ready_for_shipment` and have `invoice_id`. Invoice must be `draft` or `proforma_generated`. Replaces all invoice lines with pick-derived lines (same sell prices as create).
 
 ### 5.3 `list_procurement_demand_groups`
 
-Paginated **group headers** only (no nested `items`). Each group includes `document_name` (PBC file name or shop order title), `item_count`, and `unallocated_item_count` (lines where `quantity > delivered_quantity`).
+Paginated **group headers** only (no nested `items`). Each group includes `document_name` (PBC file name or shop order title), `item_count`, `unallocated_item_count` (lines where `quantity > delivered_quantity`), `invoice_id`, `invoice_status`, and `invoice_stale` (picks differ from linked bill lines).
 
 ### 5.4 `list_procurement_demand_group_items`
 
 Cursor-paginated lines for one group (`p_document_type`, `p_document_id`). Keyset on `source_id` (`p_cursor_source_id`). Response: `items` (same shape as former nested group items) + `meta.has_more` + `meta.next_cursor: { source_id }`.
 
 Line fields include `barcode`, `product_code`, `vendor_code`, `market_code`, `brand`, `category`, `available_units`, `languages`, `country_of_origin`, `product_id`, qty/placement fields, and `stock_picks`. `remaining_to_deliver` = `greatest(quantity - delivered_quantity, 0)`. Catalog meta (`available_units`, `languages`, `country_of_origin`) comes from `products`.
+
+### 5.5 `list_procurement_fulfill_groups`
+
+Fulfill desk group headers. Same JSON shape as `list_procurement_demand_groups`, but **no** `p_child_tenant_id`. Default `p_procurement_status` = `procuring` (also accepts `ready_for_shipment`, `delivered`).
+
+### 5.6 `list_procurement_fulfill_group_items`
+
+Fulfill desk lines for one expanded group. Same request/response contract as `list_procurement_demand_group_items` (implementation delegates to that RPC).
 
 ---
 

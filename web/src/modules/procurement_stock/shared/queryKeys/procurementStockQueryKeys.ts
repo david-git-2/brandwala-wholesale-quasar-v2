@@ -66,6 +66,22 @@ export const procurementStockQueryKeys = {
     limit?: number;
   }) => ['procurementStock', 'demandGroupItems', params] as const,
 
+  fulfillGroups: (params: {
+    tenantId: number;
+    procurementStatus: string;
+    search?: string | null;
+    limit?: number;
+    offset?: number;
+  }) => ['procurementStock', 'fulfillGroups', params] as const,
+
+  fulfillGroupItems: (params: {
+    tenantId: number;
+    documentType: string;
+    documentId: number;
+    search?: string | null;
+    limit?: number;
+  }) => ['procurementStock', 'fulfillGroupItems', params] as const,
+
   dashboard: (tenantId: number) => ['procurementStock', 'dashboard', tenantId] as const,
 
   batchCodeLists: (parentTenantId: number) =>

@@ -8,11 +8,10 @@ import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQ
 
 const THIRTY_SECONDS = 30 * 1000;
 
-export function useProcurementDemandGroupsQuery(options: {
+export function useProcurementFulfillGroupsQuery(options: {
   tenantId: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
   procurementStatus: Ref<ProcurementDemandStatus> | ComputedRef<ProcurementDemandStatus>;
   search?: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
-  childTenantId?: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
   limit?: number;
   offset?: Ref<number> | ComputedRef<number>;
   enabled?: Ref<boolean> | ComputedRef<boolean>;
@@ -28,19 +27,13 @@ export function useProcurementDemandGroupsQuery(options: {
     return trimmed.length ? trimmed : null;
   });
 
-  const resolvedChildTenantId = computed(() => {
-    const raw = unref(options.childTenantId);
-    return raw && !Number.isNaN(Number(raw)) ? Number(raw) : null;
-  });
-
   const resolvedOffset = computed(() => unref(options.offset) ?? 0);
 
   const queryKey = computed(() =>
-    procurementStockQueryKeys.demandGroups({
+    procurementStockQueryKeys.fulfillGroups({
       tenantId: resolvedTenantId.value ?? 0,
       procurementStatus: unref(options.procurementStatus),
       search: resolvedSearch.value,
-      childTenantId: resolvedChildTenantId.value,
       limit: options.limit ?? 50,
       offset: resolvedOffset.value,
     }),
@@ -49,11 +42,10 @@ export function useProcurementDemandGroupsQuery(options: {
   return useQuery({
     queryKey,
     queryFn: () =>
-      procurementDemandRepository.listProcurementDemandGroups({
+      procurementDemandRepository.listProcurementFulfillGroups({
         tenantId: resolvedTenantId.value!,
         procurementStatus: unref(options.procurementStatus),
         search: resolvedSearch.value,
-        childTenantId: resolvedChildTenantId.value,
         limit: options.limit ?? 50,
         offset: resolvedOffset.value,
       }),

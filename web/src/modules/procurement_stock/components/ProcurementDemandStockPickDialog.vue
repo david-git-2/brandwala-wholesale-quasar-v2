@@ -177,20 +177,24 @@ const addPick = (row: DemandStockPickRow) => {
   addingStockId.value = null;
 };
 
-const removePick = (stockId: number) => {
-  committedPicks.value = committedPicks.value.filter((pick) => pick.globalStockId !== stockId);
-};
-
-const apply = () => {
-  if (committedPicks.value.length === 0) {
-    showErrorNotification('Add at least one stock row.');
-    return;
-  }
-
+const emitCurrentPicks = () => {
   emit('apply', {
     picks: committedPicks.value.map((pick) => ({ ...pick })),
     totalQuantity: selectedTotal.value,
   });
+};
+
+const removePick = (stockId: number) => {
+  const id = Number(stockId);
+  committedPicks.value = committedPicks.value.filter(
+    (pick) => Number(pick.globalStockId) !== id,
+  );
+  qtyByStockId.value = { ...qtyByStockId.value, [id]: null };
+  emitCurrentPicks();
+};
+
+const apply = () => {
+  emitCurrentPicks();
   close();
 };
 </script>
@@ -338,8 +342,7 @@ const apply = () => {
           unelevated
           no-caps
           color="primary"
-          :label="`Apply (${selectedTotal})`"
-          :disable="committedPicks.length === 0"
+          :label="committedPicks.length ? `Apply (${selectedTotal})` : 'Clear picks'"
           @click="apply"
         />
       </q-card-actions>

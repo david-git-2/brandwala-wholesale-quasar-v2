@@ -85,6 +85,21 @@
         <div class="row items-center q-gutter-x-xs no-wrap col-auto">
           <!-- Add Products Button -->
           <q-btn
+            v-if="file?.invoice_id"
+            outline
+            dense
+            no-caps
+            size="sm"
+            color="primary"
+            icon="ph ph-file-text"
+            label="Open invoice"
+            class="q-px-sm rounded-sq-btn text-weight-bold"
+            style="border-radius: 8px"
+            @click="openLinkedInvoice"
+          >
+            <q-tooltip>Open the invoice linked to this costing file</q-tooltip>
+          </q-btn>
+          <q-btn
             color="primary"
             unelevated
             dense
@@ -1328,6 +1343,7 @@ import ProductBasedCostingStatusOverrideDialog from '../components/ProductBasedC
 import ProductBasedCostingStatusWorkflowBar from '../components/ProductBasedCostingStatusWorkflowBar.vue';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
 import { customerRepository } from 'src/modules/customer/repositories/customerRepository';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { useProductBasedCostingFileDetailQuery } from '../composables/useProductBasedCostingFileDetailQuery';
@@ -1990,6 +2006,40 @@ async function handleConsumeBacklog(backlogIds: number[]) {
     refreshBacklog();
     showBacklogDrawer.value = false;
   }
+}
+
+function openLinkedInvoice() {
+  const invoiceId = file.value?.invoice_id;
+  if (!invoiceId) return;
+  const tenantSlug = String(tenantStore.selectedTenant?.slug ?? route.params.tenantSlug ?? '');
+  void invoiceRepository
+    .getGlobalInvoiceById(invoiceId)
+    .then((invoice) => {
+      const status = invoice.invoice_status;
+      const isComposerDraft = status === 'draft' || status === 'proforma_generated';
+      if (isComposerDraft) {
+        void router.push({
+          name: 'app-global-invoices-create-wholesale',
+          params: tenantSlug ? { tenantSlug } : {},
+          query: { id: String(invoiceId) },
+        });
+        return;
+      }
+      void router.push({
+        name: 'app-global-invoice-details-page',
+        params: {
+          ...(tenantSlug ? { tenantSlug } : {}),
+          id: String(invoiceId),
+        },
+      });
+    })
+    .catch(() => {
+      void router.push({
+        name: 'app-global-invoices-create-wholesale',
+        params: tenantSlug ? { tenantSlug } : {},
+        query: { id: String(invoiceId) },
+      });
+    });
 }
 
 function openCatalogDialog() {

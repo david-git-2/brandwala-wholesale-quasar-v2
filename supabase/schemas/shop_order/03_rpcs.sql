@@ -10129,6 +10129,13 @@ begin
     raise exception 'order must be procuring to mark ready for shipment';
   end if;
 
+  update public.shop_orders
+  set
+    status = 'ready_for_shipment'::public.shop_order_status,
+    placed_at = coalesce(placed_at, now()),
+    updated_at = now()
+  where id = p_order_id;
+
   v_invoice_result := public.create_invoice_from_preorder_demand_document(
     v_desk_tenant_id,
     'shop_order',
@@ -10199,13 +10206,6 @@ begin
           updated_at = now();
     end if;
   end loop;
-
-  update public.shop_orders
-  set
-    status = 'ready_for_shipment'::public.shop_order_status,
-    placed_at = coalesce(placed_at, now()),
-    updated_at = now()
-  where id = p_order_id;
 
   perform public.notify_catalog_shop_order(
     p_order_id := p_order_id,
