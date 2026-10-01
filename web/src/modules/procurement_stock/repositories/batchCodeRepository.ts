@@ -120,6 +120,51 @@ const deleteList = async (id: number): Promise<void> => {
   if (error) throw error;
 };
 
+export type CatalogBrandHint = {
+  id: number;
+  brand: string | null;
+  barcode: string | null;
+  product_code: string | null;
+};
+
+const listProductBrandHints = async (input: {
+  productIds: number[];
+  barcodes: string[];
+  productCodes: string[];
+}): Promise<CatalogBrandHint[]> => {
+  const ids = [...new Set(input.productIds.filter((id) => Number.isFinite(id) && id > 0))];
+  const barcodes = [...new Set(input.barcodes.map((value) => value.trim()).filter(Boolean))];
+  const productCodes = [...new Set(input.productCodes.map((value) => value.trim()).filter(Boolean))];
+  if (ids.length === 0 && barcodes.length === 0 && productCodes.length === 0) return [];
+
+  const queries: Array<Promise<{ data: CatalogBrandHint[] | null; error: { message: string } | null }>> = [];
+  if (ids.length > 0) {
+    queries.push(
+      db.from('products').select('id, brand, barcode, product_code').in('id', ids),
+    );
+  }
+  if (barcodes.length > 0) {
+    queries.push(
+      db.from('products').select('id, brand, barcode, product_code').in('barcode', barcodes),
+    );
+  }
+  if (productCodes.length > 0) {
+    queries.push(
+      db.from('products').select('id, brand, barcode, product_code').in('product_code', productCodes),
+    );
+  }
+
+  const results = await Promise.all(queries);
+  const byId = new Map<number, CatalogBrandHint>();
+  for (const result of results) {
+    if (result.error) throw result.error;
+    for (const row of result.data ?? []) {
+      byId.set(row.id, row);
+    }
+  }
+  return [...byId.values()];
+};
+
 export type BatchCodePasteRow = Partial<
   Pick<BatchCodeItem, 'barcode' | 'product_code' | 'batch_id' | 'manufacturing_date' | 'expire_date'>
 >;
@@ -161,4 +206,5 @@ export const batchCodeRepository = {
   updateItem,
   deleteItem,
   deleteItems,
+  listProductBrandHints,
 };

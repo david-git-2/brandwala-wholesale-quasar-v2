@@ -65,29 +65,32 @@
                 />
               </th>
               <th class="batch-col-sl text-center">SL</th>
-              <th
-                v-for="col in EDITABLE_COLUMNS"
-                :key="col.field"
-                :class="col.align === 'center' ? 'text-center' : 'text-left'"
-                class="batch-col-data"
-              >
-                <div class="batch-header-cell" :class="{ 'justify-center': col.align === 'center' }">
-                  <span class="batch-header-label">{{ col.label }}</span>
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    size="xs"
-                    icon="ph ph-clipboard-text"
-                    color="primary"
-                    class="batch-header-paste-btn"
-                    :aria-label="`Paste ${col.label}`"
-                    @click="openColumnPaste(col.field)"
-                  >
-                    <q-tooltip>Paste {{ col.label }}</q-tooltip>
-                  </q-btn>
-                </div>
-              </th>
+              <template v-for="col in EDITABLE_COLUMNS" :key="col.field">
+                <th
+                  :class="col.align === 'center' ? 'text-center' : 'text-left'"
+                  class="batch-col-data"
+                >
+                  <div class="batch-header-cell" :class="{ 'justify-center': col.align === 'center' }">
+                    <span class="batch-header-label">{{ col.label }}</span>
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      size="xs"
+                      icon="ph ph-clipboard-text"
+                      color="primary"
+                      class="batch-header-paste-btn"
+                      :aria-label="`Paste ${col.label}`"
+                      @click="openColumnPaste(col.field)"
+                    >
+                      <q-tooltip>Paste {{ col.label }}</q-tooltip>
+                    </q-btn>
+                  </div>
+                </th>
+                <th v-if="col.field === 'product_code'" class="batch-col-brand text-left">
+                  <span class="batch-header-label">Brand</span>
+                </th>
+              </template>
               <th class="batch-col-expires text-center bw-ops-col-tint--qty">Expires in</th>
               <th class="batch-col-arrived text-center">Arrived</th>
               <th class="batch-col-actions text-center" />
@@ -97,7 +100,7 @@
             <tr v-if="savedRows.length === 0" class="batch-empty-row">
               <td class="text-center text-grey-5">—</td>
               <td class="text-center text-grey-5">—</td>
-              <td :colspan="EDITABLE_COLUMNS.length + 3" class="text-grey-6 text-body2">
+              <td :colspan="EDITABLE_COLUMNS.length + 4" class="text-grey-6 text-body2">
                 No lines yet — Add line, Import CSV, or use a column Paste button in the header
               </td>
             </tr>
@@ -118,65 +121,71 @@
               <td class="text-center font-mono text-weight-medium batch-col-sl">
                 {{ index + 1 }}
               </td>
-              <td
-                v-for="col in EDITABLE_COLUMNS"
-                :key="`${item.id}-${col.field}`"
-                class="q-pa-none batch-col-data"
-                :class="col.align === 'center' ? 'text-center' : 'text-left'"
-                @click.stop
-              >
-                <div class="batch-cell">
-                  <div class="batch-cell__label">{{ col.label }}</div>
-                  <q-input
-                    v-if="col.inputType === 'date'"
-                    :model-value="getField({ kind: 'saved', id: item.id }, col.field)"
-                    dense
-                    borderless
-                    clearable
-                    mask="##-##-####"
-                    placeholder="DD-MM-YYYY"
-                    :input-class="col.inputClass"
-                    class="excel-cell-input batch-date-input"
-                    :loading="isRowSaving({ kind: 'saved', id: item.id })"
-                    @focus="onCellFocus(index, col.field)"
-                    @update:model-value="(val) => setField({ kind: 'saved', id: item.id }, col.field, val)"
-                    @blur="() => commitRow({ kind: 'saved', id: item.id })"
-                    @keydown.enter="(e: Event) => (e.target as HTMLInputElement).blur()"
-                    @clear="onDateClear(item.id, col.field)"
-                  >
-                    <template #append>
-                      <q-icon name="ph ph-calendar" class="cursor-pointer batch-date-icon">
-                        <q-popup-proxy transition-show="scale" transition-hide="scale">
-                          <q-date
-                            :model-value="getField({ kind: 'saved', id: item.id }, col.field) || null"
-                            mask="DD-MM-YYYY"
-                            default-view="Years"
-                            years-in-month-view
-                            @update:model-value="(val) => onDateChange(item.id, col.field, val)"
-                          >
-                            <div class="row items-center justify-end q-pa-sm">
-                              <q-btn v-close-popup label="Close" color="primary" flat dense />
-                            </div>
-                          </q-date>
-                        </q-popup-proxy>
-                      </q-icon>
-                    </template>
-                  </q-input>
-                  <q-input
-                    v-else
-                    :model-value="getField({ kind: 'saved', id: item.id }, col.field)"
-                    dense
-                    borderless
-                    :input-class="col.inputClass"
-                    class="excel-cell-input"
-                    :loading="isRowSaving({ kind: 'saved', id: item.id })"
-                    @focus="onCellFocus(index, col.field)"
-                    @update:model-value="(val) => setField({ kind: 'saved', id: item.id }, col.field, val)"
-                    @blur="() => commitRow({ kind: 'saved', id: item.id })"
-                    @keydown.enter="(e: Event) => (e.target as HTMLInputElement).blur()"
-                  />
-                </div>
-              </td>
+              <template v-for="col in EDITABLE_COLUMNS" :key="`${item.id}-${col.field}`">
+                <td
+                  class="q-pa-none batch-col-data"
+                  :class="col.align === 'center' ? 'text-center' : 'text-left'"
+                  @click.stop
+                >
+                  <div class="batch-cell">
+                    <div class="batch-cell__label">{{ col.label }}</div>
+                    <q-input
+                      v-if="col.inputType === 'date'"
+                      :model-value="getField({ kind: 'saved', id: item.id }, col.field)"
+                      dense
+                      borderless
+                      clearable
+                      mask="##-##-####"
+                      placeholder="DD-MM-YYYY"
+                      :input-class="col.inputClass"
+                      class="excel-cell-input batch-date-input"
+                      :loading="isRowSaving({ kind: 'saved', id: item.id })"
+                      @focus="onCellFocus(index, col.field)"
+                      @update:model-value="(val) => setField({ kind: 'saved', id: item.id }, col.field, val)"
+                      @blur="() => commitRow({ kind: 'saved', id: item.id })"
+                      @keydown.enter="(e: Event) => (e.target as HTMLInputElement).blur()"
+                      @clear="onDateClear(item.id, col.field)"
+                    >
+                      <template #append>
+                        <q-icon name="ph ph-calendar" class="cursor-pointer batch-date-icon">
+                          <q-popup-proxy transition-show="scale" transition-hide="scale">
+                            <q-date
+                              :model-value="getField({ kind: 'saved', id: item.id }, col.field) || null"
+                              mask="DD-MM-YYYY"
+                              default-view="Years"
+                              years-in-month-view
+                              @update:model-value="(val) => onDateChange(item.id, col.field, val)"
+                            >
+                              <div class="row items-center justify-end q-pa-sm">
+                                <q-btn v-close-popup label="Close" color="primary" flat dense />
+                              </div>
+                            </q-date>
+                          </q-popup-proxy>
+                        </q-icon>
+                      </template>
+                    </q-input>
+                    <q-input
+                      v-else
+                      :model-value="getField({ kind: 'saved', id: item.id }, col.field)"
+                      dense
+                      borderless
+                      :input-class="col.inputClass"
+                      class="excel-cell-input"
+                      :loading="isRowSaving({ kind: 'saved', id: item.id })"
+                      @focus="onCellFocus(index, col.field)"
+                      @update:model-value="(val) => setField({ kind: 'saved', id: item.id }, col.field, val)"
+                      @blur="() => commitRow({ kind: 'saved', id: item.id })"
+                      @keydown.enter="(e: Event) => (e.target as HTMLInputElement).blur()"
+                    />
+                  </div>
+                </td>
+                <td v-if="col.field === 'product_code'" class="batch-col-brand text-left">
+                  <div class="batch-cell">
+                    <div class="batch-cell__label">Brand</div>
+                    <span>{{ brandByItemId.get(item.id) || '—' }}</span>
+                  </div>
+                </td>
+              </template>
               <td class="text-center font-mono text-weight-bold batch-col-expires">
                 <div class="batch-cell">
                   <div class="batch-cell__label">Expires in</div>
@@ -196,6 +205,22 @@
                 </div>
               </td>
               <td class="text-center batch-col-actions">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="sm"
+                  icon="ph ph-arrow-square-out"
+                  color="primary"
+                  aria-label="Open CheckFresh in a new tab"
+                  @click="openCheckFreshTab(brandByItemId.get(item.id))"
+                >
+                  <q-tooltip>{{
+                    brandByItemId.get(item.id)
+                      ? `CheckFresh · ${brandByItemId.get(item.id)}`
+                      : 'CheckFresh'
+                  }}</q-tooltip>
+                </q-btn>
                 <q-btn
                   flat
                   round
@@ -248,8 +273,12 @@
 
 <script setup lang="ts">
 import { computed, ref, toRef, watch } from 'vue';
+import { useQuery } from '@tanstack/vue-query';
 import { requestConfirmation, showSuccessNotification } from 'src/utils/appFeedback';
 import { batchExpiryRowClass, formatExpiresIn } from '../utils/batchCodeExpiry';
+import { openCheckFreshTab, resolveCheckFreshBrand } from '../utils/checkFresh';
+import { batchCodeRepository } from '../repositories/batchCodeRepository';
+import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import BatchCodeAddItemDialog from './BatchCodeAddItemDialog.vue';
 import BatchCodeCsvImportDialog from './BatchCodeCsvImportDialog.vue';
 import BatchCodeRowPasteDialog from './BatchCodeRowPasteDialog.vue';
@@ -329,6 +358,49 @@ const {
   isPasting,
   isBulkDeleting,
 } = useShipmentBatchCodeGrid(toRef(props, 'listId'));
+
+const shipmentStore = useGlobalShipmentStore();
+
+const brandHintInput = computed(() => {
+  const productIds = shipmentStore.currentShipmentItems
+    .map((line) => line.product_id)
+    .filter((id): id is number => id != null);
+  const barcodes = savedRows.value.map((row) => row.barcode ?? '').filter(Boolean);
+  const productCodes = savedRows.value.map((row) => row.product_code ?? '').filter(Boolean);
+  const lineBarcodes = shipmentStore.currentShipmentItems
+    .map((line) => line.barcode ?? '')
+    .filter(Boolean);
+  const lineCodes = shipmentStore.currentShipmentItems
+    .map((line) => line.product_code ?? '')
+    .filter(Boolean);
+  return {
+    productIds,
+    barcodes: [...barcodes, ...lineBarcodes],
+    productCodes: [...productCodes, ...lineCodes],
+  };
+});
+
+const brandHintsQuery = useQuery({
+  queryKey: computed(() => [
+    'procurementStock',
+    'batchCodeCatalogBrands',
+    brandHintInput.value.productIds.slice().sort((a, b) => a - b),
+    brandHintInput.value.barcodes.slice().sort(),
+    brandHintInput.value.productCodes.slice().sort(),
+  ]),
+  queryFn: () => batchCodeRepository.listProductBrandHints(brandHintInput.value),
+});
+
+const brandByItemId = computed(() => {
+  const map = new Map<number, string>();
+  const hints = brandHintsQuery.data.value ?? [];
+  const lines = shipmentStore.currentShipmentItems;
+  for (const row of savedRows.value) {
+    const brand = resolveCheckFreshBrand(row, lines, hints);
+    if (brand) map.set(row.id, brand);
+  }
+  return map;
+});
 
 const selectedIds = ref<Set<number>>(new Set());
 
@@ -535,6 +607,10 @@ const displayExpireDate = (itemId: number, savedExpire: string | null): string |
   min-width: 112px;
 }
 
+.batch-col-brand {
+  min-width: 96px;
+}
+
 .batch-col-expires {
   min-width: 96px;
 }
@@ -545,8 +621,8 @@ const displayExpireDate = (itemId: number, savedExpire: string | null): string |
 }
 
 .batch-col-actions {
-  width: 52px;
-  min-width: 52px;
+  width: 88px;
+  min-width: 88px;
 }
 
 .batch-header-cell {

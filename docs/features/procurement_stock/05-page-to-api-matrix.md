@@ -41,4 +41,5 @@ Mapping of all UI views, buttons, dialog triggers, and user actions to correspon
 | **`ShipmentBatchCodePage`** | Add line dialog | `createItem` | `Table: batch_code_items` insert | Patch items cache |
 | **`ShipmentBatchCodePage`** | Grid blur save / delete / paste | composable | `batch_code_items` + `paste_batch_code_items` | Patch list cache; no full refetch required |
 | **`ShipmentBatchCodeGrid`** | Import CSV dialog | `pasteGrid(itemCount, 0, matrix)` | `RPC: paste_batch_code_items` (append) | Same as paste; clears row drafts |
+| **`ShipmentBatchCodeGrid`** | CheckFresh (row) | `openCheckFreshTab(brand)` | `products.brand` via barcode / product code / `product_id` | New tab to brand page |
 | **`BatchCodeListPage`** | Row open | Router | `app-procurement-shipment-batch-code` | Hub directory only; no create |
