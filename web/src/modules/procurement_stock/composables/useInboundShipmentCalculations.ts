@@ -162,6 +162,14 @@ export function useInboundShipmentCalculations() {
 
   const canEditLineCostFields = computed(() => canEditCosts.value);
 
+  /** US-8: local costs until shipment close; not blocked by costs_locked. */
+  const canEditLocalCosts = computed(() => {
+    const shipment = shipmentStore.currentShipment;
+    if (!shipment) return false;
+    if (shipment.status === 'cancelled' || shipment.is_closed === true) return false;
+    return true;
+  });
+
   const hasLineItems = computed(() => (shipmentStore.currentShipmentItems?.length ?? 0) > 0);
 
   const weightNeedsAttention = computed(() => {
@@ -201,6 +209,7 @@ export function useInboundShipmentCalculations() {
     canEditCosts,
     canEditLineStructure,
     canEditLineCostFields,
+    canEditLocalCosts,
     hasLineItems,
     weightNeedsAttention,
     purchaseNeedsAttention,

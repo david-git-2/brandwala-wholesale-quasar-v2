@@ -62,6 +62,28 @@ CREATE TYPE "public"."global_shipment_type" AS ENUM (
 ALTER TYPE "public"."global_shipment_type" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."global_shipment_outcome_kind" AS ENUM (
+    'sellable',
+    'unsellable'
+);
+
+
+ALTER TYPE "public"."global_shipment_outcome_kind" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."global_shipment_outcome_reason" AS ENUM (
+    'general',
+    'vendor_discount',
+    'missing',
+    'damaged',
+    'other',
+    'ordered'
+);
+
+
+ALTER TYPE "public"."global_shipment_outcome_reason" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."shipment_investment_status" AS ENUM (
     'active',
     'closed',

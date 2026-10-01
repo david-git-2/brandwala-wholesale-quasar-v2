@@ -50,7 +50,7 @@ Executes the physical receiving checklist, stamps landed unit costs, and creates
 
 **Live today:** one `received_quantity` + one `landed_cost_bdt` + `condition_grade` + `purchase_price` on `global_shipment_items`.
 
-**Target:** extra **outcome** rows ([US-7](01-prd.md), [PS7](00-gaps.md)): `quantity`, `kind` (`sellable` \| `unsellable`), `reason`, `purchase_price`, stamped `cost`. **General** is history only — do not post lots from it. `sellable` → lot with `outcome_id`; `unsellable` → loss. Cargo rows unchanged. Restamp **on-hand** only. Return inbound before changing qty that already left. Abort if on-hand is short. Staff must not PATCH line money/qty as the receive form. **Closed** shipments reject writes ([PS10](00-gaps.md)).
+**Target:** extra **outcome** rows ([US-7](01-prd.md), [PS7](00-gaps.md)): `quantity`, `kind` (`sellable` \| `unsellable`), `reason`, `purchase_price`, stamped `cost`. **Ordered** is paper only — do not post lots from it. `general` is the default received split. `sellable` extras → lot with `outcome_id`; `unsellable` → loss. Cargo rows unchanged. Restamp **on-hand** only. Return inbound before changing qty that already left. Abort if on-hand is short. Staff must not PATCH line money/qty as the receive form. **Closed** shipments reject writes ([PS10](00-gaps.md)).
 
 ### Input Payload Schema
 ```json

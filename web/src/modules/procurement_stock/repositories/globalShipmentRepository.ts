@@ -81,6 +81,7 @@ export interface GlobalShipment {
   costs_locked?: boolean;
   costs_locked_at?: string | null;
   costs_locked_by?: string | null;
+  is_closed?: boolean;
   public_tracking_token?: string | null;
   created_at: string;
   updated_at: string;
@@ -346,7 +347,7 @@ const listCargoCompaniesForTenant = async (
   const { data, error } = await db
     .from('cargo_companies')
     .select('id, name, code, is_default')
-    .or(`parent_tenant_id.eq.${tenantId},tenant_id.eq.${tenantId}`)
+    .eq('parent_tenant_id', tenantId)
     .eq('is_active', true)
     .order('is_default', { ascending: false })
     .order('name', { ascending: true });
@@ -631,6 +632,54 @@ const applyPurchaseBalance = async (
   return data as ApplyPurchaseBalanceRpcResult;
 };
 
+const insertOrderedOutcomesForItems = async (items: GlobalShipmentItem[]): Promise<void> => {
+  if (items.length === 0) return;
+  const shipmentId = items[0]?.shipment_id;
+  if (!shipmentId) return;
+  const { data: shipment, error: shipErr } = await db
+    .from('global_shipments')
+    .select('parent_tenant_id')
+    .eq('id', shipmentId)
+    .single();
+  if (shipErr) throw shipErr;
+  const parentTenantId = Number(shipment?.parent_tenant_id);
+  if (!parentTenantId) throw new Error('Shipment parent tenant missing');
+  const rows = items.map((item) => ({
+    parent_tenant_id: parentTenantId,
+    shipment_item_id: item.id,
+    quantity: item.ordered_quantity,
+    kind: 'sellable' as const,
+    reason: 'ordered' as const,
+    purchase_price: Number(item.purchase_price) || 0,
+    cost: item.landed_cost_bdt ?? null,
+  }));
+  const { error } = await db.from('global_shipment_item_outcomes').insert(rows);
+  if (error) throw error;
+};
+
+const syncOrderedOutcomeFromLine = async (
+  item: GlobalShipmentItem,
+  payload: Partial<Pick<GlobalShipmentItem, 'ordered_quantity' | 'purchase_price' | 'landed_cost_bdt'>>,
+): Promise<void> => {
+  if (
+    payload.ordered_quantity === undefined &&
+    payload.purchase_price === undefined &&
+    payload.landed_cost_bdt === undefined
+  ) {
+    return;
+  }
+  const patch: Record<string, number | null> = {};
+  if (payload.ordered_quantity !== undefined) patch.quantity = payload.ordered_quantity;
+  if (payload.purchase_price !== undefined) patch.purchase_price = payload.purchase_price;
+  if (payload.landed_cost_bdt !== undefined) patch.cost = payload.landed_cost_bdt ?? null;
+  const { error } = await db
+    .from('global_shipment_item_outcomes')
+    .update(patch)
+    .eq('shipment_item_id', item.id)
+    .eq('reason', 'ordered');
+  if (error) throw error;
+};
+
 const createShipmentItem = async (
   payload: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at'>,
 ): Promise<GlobalShipmentItem> => {
@@ -641,7 +690,9 @@ const createShipmentItem = async (
     .single();
 
   if (error) throw error;
-  return data as GlobalShipmentItem;
+  const item = data as GlobalShipmentItem;
+  await insertOrderedOutcomesForItems([item]);
+  return item;
 };
 
 const updateShipmentItem = async (
@@ -656,7 +707,9 @@ const updateShipmentItem = async (
     .single();
 
   if (error) throw error;
-  return data as GlobalShipmentItem;
+  const item = data as GlobalShipmentItem;
+  await syncOrderedOutcomeFromLine(item, payload);
+  return item;
 };
 
 const createShipmentItemsBulk = async (
@@ -670,7 +723,9 @@ const createShipmentItemsBulk = async (
   });
 
   if (error) throw error;
-  return (data as GlobalShipmentItem[] | null) ?? [];
+  const created = (data as GlobalShipmentItem[] | null) ?? [];
+  await insertOrderedOutcomesForItems(created);
+  return created;
 };
 
 const updateShipmentItemsBulk = async (
@@ -1189,6 +1244,123 @@ const archiveShipmentProgressTag = async (
   return normalizeProgressTag(data as Record<string, unknown>);
 };
 
+export type ShipmentOutcomeKind = 'sellable' | 'unsellable';
+export type ShipmentOutcomeReason =
+  | 'ordered'
+  | 'general'
+  | 'vendor_discount'
+  | 'missing'
+  | 'damaged'
+  | 'other';
+
+export interface ShipmentItemOutcome {
+  id: number;
+  parent_tenant_id: number;
+  shipment_item_id: number;
+  quantity: number;
+  kind: ShipmentOutcomeKind;
+  reason: ShipmentOutcomeReason;
+  purchase_price: number;
+  cost: number | null;
+  description: string | null;
+  batch_label: string | null;
+}
+
+const listShipmentItemOutcomes = async (
+  shipmentItemIds: number[],
+): Promise<ShipmentItemOutcome[]> => {
+  if (shipmentItemIds.length === 0) return [];
+  const { data, error } = await db
+    .from('global_shipment_item_outcomes')
+    .select('*')
+    .in('shipment_item_id', shipmentItemIds)
+    .order('id', { ascending: true });
+  if (error) throw error;
+  return (data as ShipmentItemOutcome[] | null) ?? [];
+};
+
+const createShipmentItemOutcomesBulk = async (
+  rows: Array<{
+    parent_tenant_id: number;
+    shipment_item_id: number;
+    quantity: number;
+    kind: ShipmentOutcomeKind;
+    reason: ShipmentOutcomeReason;
+    purchase_price: number;
+    cost?: number | null;
+  }>,
+): Promise<ShipmentItemOutcome[]> => {
+  if (rows.length === 0) return [];
+  const { data, error } = await db
+    .from('global_shipment_item_outcomes')
+    .insert(rows)
+    .select();
+  if (error) throw error;
+  return (data as ShipmentItemOutcome[] | null) ?? [];
+};
+
+const createShipmentItemOutcome = async (payload: {
+  parent_tenant_id: number;
+  shipment_item_id: number;
+  quantity: number;
+  kind: ShipmentOutcomeKind;
+  reason: ShipmentOutcomeReason;
+  purchase_price: number;
+  cost?: number | null;
+}): Promise<ShipmentItemOutcome> => {
+  const rows = await createShipmentItemOutcomesBulk([payload]);
+  const created = rows[0];
+  if (!created) throw new Error('Could not add outcome');
+  return created;
+};
+
+const ensureReceivedGeneralOutcomes = async (
+  parentTenantId: number,
+  items: Array<{
+    id: number;
+    ordered_quantity: number;
+    purchase_price: number;
+    landed_cost_bdt?: number | null;
+  }>,
+): Promise<ShipmentItemOutcome[]> => {
+  if (items.length === 0) return [];
+  const existing = await listShipmentItemOutcomes(items.map((item) => item.id));
+  const hasGeneral = new Set(
+    existing.filter((row) => row.reason === 'general').map((row) => row.shipment_item_id),
+  );
+  const toInsert = items
+    .filter((item) => !hasGeneral.has(item.id))
+    .map((item) => ({
+      parent_tenant_id: parentTenantId,
+      shipment_item_id: item.id,
+      quantity: item.ordered_quantity,
+      kind: 'sellable' as const,
+      reason: 'general' as const,
+      purchase_price: Number(item.purchase_price) || 0,
+      cost: item.landed_cost_bdt ?? null,
+    }));
+  return createShipmentItemOutcomesBulk(toInsert);
+};
+
+const updateShipmentItemOutcome = async (
+  id: number,
+  payload: Partial<Pick<ShipmentItemOutcome, 'quantity' | 'kind' | 'reason' | 'purchase_price' | 'cost' | 'description'>>,
+): Promise<ShipmentItemOutcome> => {
+  const { data, error } = await db
+    .from('global_shipment_item_outcomes')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as ShipmentItemOutcome;
+};
+
+const deleteShipmentItemOutcome = async (id: number): Promise<void> => {
+  const { error } = await db.from('global_shipment_item_outcomes').delete().eq('id', id);
+  if (error) throw error;
+};
+
 const reorderShipmentProgressTags = async (
   tenantId: number,
   tagIds: number[],
@@ -1214,6 +1386,12 @@ export const globalShipmentRepository = {
   purgeArchivedShipment,
   deleteShipment,
   listShipmentItems,
+  listShipmentItemOutcomes,
+  createShipmentItemOutcome,
+  createShipmentItemOutcomesBulk,
+  ensureReceivedGeneralOutcomes,
+  updateShipmentItemOutcome,
+  deleteShipmentItemOutcome,
   listShipmentItemsBatch,
   createShipmentItem,
   createShipmentItemsBulk,

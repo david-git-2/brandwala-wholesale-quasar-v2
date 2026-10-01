@@ -1,9 +1,12 @@
 <template>
-  <q-page class="shipment-items-v2-page column no-wrap" style="height: calc(100vh - 55px); overflow: hidden">
+  <q-page
+    class="shipment-items-v2-page column no-wrap"
+    style="height: calc(100vh - var(--workspace-header-offset, 44px)); overflow: hidden"
+  >
     <!-- Full Page Initial Skeleton Loader -->
     <div
       v-if="pageInitialLoading"
-      class="column no-wrap full-height full-width overflow-hidden bg-slate-50"
+      class="column no-wrap full-height full-width overflow-hidden bg-white"
     >
       <!-- Top Sticky Header Skeleton -->
       <div class="shipment-items-top-section border-bottom q-px-lg q-py-md shrink-0 bg-white shadow-xs">
@@ -84,7 +87,7 @@
     <!-- Live Content (When Loaded) -->
     <template v-else>
       <!-- Top Sticky Section: Shipment Name, Status Workflow & Actions -->
-      <div class="shipment-items-top-section border-bottom q-px-lg q-py-md shrink-0 shadow-xs">
+      <div class="shipment-items-top-section border-bottom q-px-lg q-py-md shrink-0 bg-white">
       <div class="row items-center justify-between q-gutter-y-sm wrap">
         <!-- Left: Name + Status Workflow -->
         <div class="col-grow row items-center q-gutter-md wrap" style="min-width: 0">
@@ -195,9 +198,9 @@
             label="Bulk Paste"
             size="sm"
             :disable="!canEditLineCostFields && !canEditLineStructure"
-            @click="openBulkPaste(activeSectionDbId)"
+            @click="openBulkPasteDialog('purchase_price')"
           >
-            <q-tooltip>Paste barcode or product code plus values from Excel</q-tooltip>
+            <q-tooltip>Paste barcode, product code, and one column from Excel</q-tooltip>
           </q-btn>
 
           <!-- Add Items Button (Disabled on 'All Items' tab) -->
@@ -216,48 +219,6 @@
             <q-tooltip>
               {{ activeSheetId === 'sheet_all' ? 'Select a specific section tab below to add items' : 'Add Items to current Section' }}
             </q-tooltip>
-          </q-btn>
-
-          <!-- Column Settings Dropdown Menu -->
-          <q-btn
-            flat
-            dense
-            no-caps
-            color="grey-8"
-            class="rounded-sq-btn text-weight-bold q-px-sm border-grey"
-            icon="ph ph-sliders-horizontal"
-            label="Columns"
-            size="sm"
-          >
-            <q-menu>
-              <q-list style="min-width: 220px" class="q-py-xs">
-                <q-item>
-                  <q-item-section>
-                    <div class="text-subtitle2 text-weight-bold text-primary">Table Columns</div>
-                  </q-item-section>
-                </q-item>
-                <q-item clickable @click="toggleSelectAllColumns">
-                  <q-item-section>
-                    <q-checkbox :model-value="allColumnsVisible" label="Select / Deselect All" />
-                  </q-item-section>
-                </q-item>
-                <q-separator class="q-my-xs" />
-                <q-item v-for="col in baseTableColumns" :key="col.name" clickable @click="visibleColumnMap[col.name] = !visibleColumnMap[col.name]">
-                  <q-item-section>
-                    <q-checkbox v-model="visibleColumnMap[col.name]" :label="col.label" />
-                  </q-item-section>
-                </q-item>
-                <template v-if="customColumns.length">
-                  <q-separator class="q-my-xs" />
-                  <q-item-label header class="text-caption text-weight-bold text-grey-8 q-py-2xs">Custom Columns</q-item-label>
-                  <q-item v-for="col in customColumns" :key="col.name" clickable @click="visibleColumnMap[col.name] = !visibleColumnMap[col.name]">
-                    <q-item-section>
-                      <q-checkbox v-model="visibleColumnMap[col.name]" :label="col.label" />
-                    </q-item-section>
-                  </q-item>
-                </template>
-              </q-list>
-            </q-menu>
           </q-btn>
 
           <q-btn
@@ -289,14 +250,15 @@
             <q-tooltip>Freeze cost entries and landed costs for books</q-tooltip>
           </q-btn>
 
-          <!-- Settings Gear Button (Opens Side Popup) -->
           <q-btn
-            flat
+            :outline="!settingsDrawerOpen"
+            :unelevated="settingsDrawerOpen"
             round
-            dense
-            color="grey-8"
-            icon="ph ph-gear"
-            size="sm"
+            color="primary"
+            class="shipment-settings-trigger"
+            icon="ph ph-gear-six"
+            size="md"
+            aria-label="Settings"
             @click="openSettingsDrawer('details')"
           >
             <q-tooltip>Settings</q-tooltip>
@@ -305,489 +267,80 @@
       </div>
     </div>
 
-    <!-- Middle Scrollable Section: Clean Full-width V2 Table with Internal Horizontal Scroll -->
+    <!-- Middle Scrollable Section: product cards -->
     <div
       ref="tableScrollContainerRef"
-      class="shipment-items-middle-section col overflow-auto q-pa-none hide-native-scrollbar"
+      class="shipment-items-middle-section col overflow-auto q-pa-md hide-native-scrollbar"
       style="overflow-x: auto; overflow-y: auto"
       @scroll="onTableScroll"
     >
-      <q-markup-table flat class="shipment-items-markup-table" style="min-width: 1080px; width: 100%">
-        <thead>
-          <tr>
-            <th class="text-center q-pa-none" style="width: 18px; min-width: 18px">
-              <q-checkbox :model-value="allSelected" dense size="xs" @update:model-value="(val) => allSelected = !!val" />
-            </th>
-            <th class="text-center q-pa-none" style="width: 36px; min-width: 36px; max-width: 36px">SL</th>
-            <th class="text-center" style="width: 1.1in; min-width: 1.1in">Image</th>
-            <th v-if="visibleColumnMap.name" class="text-left" style="min-width: 120px; width: 120px; max-width: 120px; white-space: normal">Name</th>
-            <th v-if="visibleColumnMap.product_codes" class="text-left" style="min-width: 105px; width: 115px">Codes</th>
-            <th v-if="visibleColumnMap.batch_code" class="text-center" style="min-width: 44px; width: 48px">Batch</th>
-            <th v-if="visibleColumnMap.purchase_price" class="text-center bw-ops-col-tint--price" style="min-width: 56px; width: 56px">
-              <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
-                <span>Price {{ currentPurchaseCurrencySymbol }}</span>
-                <q-btn
-                  flat
-                  round
-                  dense
-                  size="xs"
-                  icon="ph ph-clipboard-text"
-                  color="grey-7"
-                  class="bulk-paste-header-btn"
-                  @click.stop="openBulkPasteDialog('purchase_price')"
-                >
-                  <q-tooltip>Bulk Paste Price</q-tooltip>
-                </q-btn>
-              </div>
-            </th>
-            <th v-if="visibleColumnMap.cost_bdt" class="text-center bw-ops-col-tint--cost" style="min-width: 56px; width: 56px">
-              Cost
-            </th>
-            <th
-              v-if="visibleColumnMap.ordered_quantity"
-              class="text-center bw-ops-col-tint--qty"
-              :style="{
-                minWidth: isShipmentReceived ? '90px' : '56px',
-                width: isShipmentReceived ? '90px' : '56px',
-                lineHeight: isShipmentReceived ? '1.2' : undefined,
-                paddingTop: isShipmentReceived ? '4px' : undefined,
-                paddingBottom: isShipmentReceived ? '4px' : undefined,
-              }"
+      <div v-if="shipmentStore.loading" class="column q-gutter-sm">
+        <q-skeleton v-for="n in 5" :key="`skel-${n}`" type="rect" height="120px" class="rounded-borders" />
+      </div>
+      <template v-else-if="displayedItems.length > 0">
+        <div class="column q-gutter-sm">
+          <template v-for="(item, index) in displayedItems" :key="item.id">
+            <div
+              v-if="isFirstItemOfSection(item, index)"
+              class="section-break-card row items-center justify-between q-px-sm q-py-xs"
             >
-              <div v-if="isShipmentReceived" class="column items-center justify-center">
-                <div class="text-weight-bolder">Ord / Rec</div>
-                <div class="text-xxs text-grey-6 font-mono">Qty Variance</div>
+              <div class="row items-center q-gutter-x-sm">
+                <q-icon name="ph ph-folder-open" size="16px" color="primary" />
+                <span class="text-subtitle2 text-weight-bolder">{{ getSectionTitle(item.sectionId) }}</span>
+                <span class="text-caption text-grey-6 font-mono">• {{ getSectionVendor(item.sectionId) }}</span>
+                <q-badge color="grey-3" text-color="grey-8" class="text-weight-bold text-xxs">
+                  {{ getSectionItemCount(item.sectionId) }} item<span v-if="getSectionItemCount(item.sectionId) > 1">s</span>
+                </q-badge>
               </div>
-              <div v-else class="row items-center justify-center no-wrap q-gutter-x-2xs">
-                <span>Qty</span>
-                <q-btn
-                  flat
-                  round
-                  dense
-                  size="xs"
-                  icon="ph ph-clipboard-text"
-                  color="grey-7"
-                  class="bulk-paste-header-btn"
-                  @click.stop="openBulkPasteDialog('ordered_quantity')"
-                >
-                  <q-tooltip>Bulk Paste Quantity</q-tooltip>
-                </q-btn>
+              <div class="row items-center q-gutter-x-md text-caption text-grey-7 font-mono">
+                <span>Units: <b>{{ getSectionTotalQty(item.sectionId) }}</b></span>
+                <span>Total: <b>{{ currentPurchaseCurrencySymbol }}{{ getSectionTotalPurchase(item.sectionId).toFixed(2) }}</b></span>
               </div>
-            </th>
-            <th v-if="visibleColumnMap.product_weight" class="text-center" style="min-width: 56px; width: 56px; line-height: 1.2; padding-top: 4px; padding-bottom: 4px">
-              <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
-                <div>
-                  <div>Product</div>
-                  <div>Weight</div>
-                </div>
-                <q-btn
-                  flat
-                  round
-                  dense
-                  size="xs"
-                  icon="ph ph-clipboard-text"
-                  color="grey-7"
-                  class="bulk-paste-header-btn"
-                  @click.stop="openBulkPasteDialog('product_weight')"
-                >
-                  <q-tooltip>Bulk Paste Product Weight</q-tooltip>
-                </q-btn>
-              </div>
-            </th>
-            <th v-if="visibleColumnMap.package_weight" class="text-center bw-ops-col-tint--weight" style="min-width: 56px; width: 56px; line-height: 1.2; padding-top: 4px; padding-bottom: 4px">
-              <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
-                <div>
-                  <div>Package</div>
-                  <div>Weight</div>
-                </div>
-                <q-btn
-                  flat
-                  round
-                  dense
-                  size="xs"
-                  icon="ph ph-clipboard-text"
-                  color="grey-7"
-                  class="bulk-paste-header-btn"
-                  @click.stop="openBulkPasteDialog('package_weight')"
-                >
-                  <q-tooltip>Bulk Paste Package Weight</q-tooltip>
-                </q-btn>
-              </div>
-            </th>
-            <!-- Dynamically added custom columns -->
-            <template v-for="col in customColumns" :key="col.name">
-              <th v-if="visibleColumnMap[col.name]" class="text-left" style="min-width: 90px">{{ col.label }}</th>
-            </template>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Skeleton Loading Rows -->
-          <template v-if="shipmentStore.loading">
-            <tr v-for="n in 8" :key="`skel-${n}`" class="shipment-skeleton-row">
-              <td class="text-center"><q-skeleton type="QCheckbox" size="xs" /></td>
-              <td class="text-center"><q-skeleton type="text" width="16px" class="q-mx-auto" /></td>
-              <td class="text-center"><q-skeleton type="rect" width="1in" height="1in" class="rounded-borders q-mx-auto" /></td>
-              <td v-if="visibleColumnMap.name">
-                <q-skeleton type="text" width="85%" height="16px" class="q-mb-2xs" />
-                <q-skeleton type="text" width="50%" height="12px" />
-              </td>
-              <td v-if="visibleColumnMap.product_codes">
-                <q-skeleton type="text" width="60px" height="13px" class="q-mb-2xs" />
-                <q-skeleton type="text" width="40px" height="11px" />
-              </td>
-              <td v-if="visibleColumnMap.batch_code">
-                <q-skeleton type="text" width="72px" height="13px" />
-              </td>
-              <td v-if="visibleColumnMap.purchase_price" class="text-center">
-                <q-skeleton type="text" width="44px" height="14px" class="q-mx-auto" />
-              </td>
-              <td v-if="visibleColumnMap.cost_bdt" class="text-center">
-                <q-skeleton type="text" width="44px" height="14px" class="q-mx-auto" />
-              </td>
-              <td v-if="visibleColumnMap.ordered_quantity" class="text-center" :style="{ minWidth: isShipmentReceived ? '90px' : '56px', width: isShipmentReceived ? '90px' : '56px' }">
-                <q-skeleton type="text" :width="isShipmentReceived ? '70px' : '36px'" height="14px" class="q-mx-auto" />
-              </td>
-              <td v-if="visibleColumnMap.product_weight" class="text-center">
-                <q-skeleton type="text" width="40px" height="14px" class="q-mx-auto" />
-              </td>
-              <td v-if="visibleColumnMap.package_weight" class="text-center">
-                <q-skeleton type="text" width="40px" height="14px" class="q-mx-auto" />
-              </td>
-              <template v-for="col in customColumns" :key="col.name">
-                <td v-if="visibleColumnMap[col.name]">
-                  <q-skeleton type="text" width="50px" />
-                </td>
-              </template>
-            </tr>
+            </div>
+            <ShipmentLineItemCard
+              :item="item"
+              :extra-outcomes="extraOutcomesForItem(item.id)"
+              :currency-symbol="currentPurchaseCurrencySymbol"
+              :can-edit-costs="canEditLineCostFields"
+              :can-edit-structure="canEditLineStructure"
+              :is-received="isShipmentReceived"
+              :can-add-split="canAddSplit"
+              :show-batch="true"
+              :batch-summary="batchSummaryForItem(item)"
+              :adding-extra="addingExtraItemId === item.id"
+              :get-draft="(field) => getCellDraftValue(item, field)"
+              @toggle-select="toggleRowSelection"
+              @sl-change="onSlInputChange"
+              @preview-image="openImagePreview"
+              @cell-input="onCellDirectInput"
+              @cell-blur="onCellDirectBlur"
+              @open-batch="openBatchCodeDialog"
+              @add-extra="addExtraOutcome"
+              @update-extra="updateExtraOutcome"
+              @delete-extra="deleteExtraOutcome"
+            />
           </template>
-
-          <!-- Rendered Items -->
-          <template v-else-if="displayedItems.length > 0">
-            <template
-              v-for="(item, index) in displayedItems"
-              :key="item.id"
-            >
-              <!-- Section Header Break Row in All Items View -->
-              <tr
-                v-if="isFirstItemOfSection(item, index)"
-                class="section-break-row"
-              >
-                <td :colspan="totalVisibleColumnsCount" class="q-py-xs q-px-md text-weight-bold">
-                  <div class="row items-center justify-between">
-                    <div class="row items-center q-gutter-x-sm">
-                      <q-icon name="ph ph-folder-open" size="16px" color="primary" />
-                      <span class="text-subtitle2 text-weight-bolder">{{ getSectionTitle(item.sectionId) }}</span>
-                      <span class="text-caption text-grey-6 font-mono">• {{ getSectionVendor(item.sectionId) }}</span>
-                      <q-badge color="grey-3" text-color="grey-8" class="text-weight-bold text-xxs">
-                        {{ getSectionItemCount(item.sectionId) }} item<span v-if="getSectionItemCount(item.sectionId) > 1">s</span>
-                      </q-badge>
-                    </div>
-                    <div class="row items-center q-gutter-x-md text-caption text-grey-7 font-mono">
-                      <span>Units: <b>{{ getSectionTotalQty(item.sectionId) }}</b></span>
-                      <span>Total: <b>{{ currentPurchaseCurrencySymbol }}{{ getSectionTotalPurchase(item.sectionId).toFixed(2) }}</b></span>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-
-              <!-- Line Item Row -->
-              <tr
-                class="shipment-item-row cursor-pointer"
-                :class="{ 'row-selected': item.selected }"
-              >
-                <!-- Select -->
-                <td class="text-center q-pa-none" style="width: 18px; min-width: 18px" @click.stop>
-                  <q-checkbox
-                    :model-value="item.selected"
-                    dense
-                    size="xs"
-                    @update:model-value="(val) => toggleRowSelection(item.id, !!val)"
-                  />
-                </td>
-
-                <!-- SL with In-Place Editable Input -->
-                <td class="text-center text-weight-medium text-grey-7 q-pa-none" style="width: 36px; min-width: 36px; max-width: 36px" @click.stop>
-                  <div class="row items-center justify-center no-wrap">
-                    <input
-                      :value="item.sl"
-                      type="number"
-                      min="1"
-                      class="sl-input font-mono"
-                      @change="(e) => onSlInputChange(item, (e.target as HTMLInputElement).value)"
-                      @keydown.enter="(e) => (e.target as HTMLInputElement).blur()"
-                    />
-                  </div>
-                </td>
-
-                <!-- Image (1 inch size) -->
-                <td class="item-img-cell text-center">
-                  <div class="item-img-container">
-                    <SmartImage
-                      :src="item.image_url"
-                      :alt="item.name"
-                      img-class="item-img-element"
-                      class="item-img-smart"
-                      fallback-icon="ph ph-t-shirt"
-                    />
-                    <!-- Expand Image Hover Button -->
-                    <q-btn
-                      v-if="item.image_url"
-                      flat
-                      round
-                      dense
-                      size="xs"
-                      icon="ph ph-magnifying-glass-plus"
-                      class="img-expand-btn"
-                      @click.stop="openImagePreview(item.image_url)"
-                    >
-                      <q-tooltip>View large photo</q-tooltip>
-                    </q-btn>
-                  </div>
-                </td>
-
-                <!-- Name & Style Codes -->
-                <td v-if="visibleColumnMap.name" style="min-width: 120px; width: 120px; max-width: 120px; white-space: normal" class="q-py-xs">
-                  <div class="column justify-center q-gutter-y-2xs" style="min-width: 0; max-width: 100%">
-                    <div class="text-weight-bold text-slate-900" style="font-size: 13px; line-height: 1.25; word-break: break-word">
-                      {{ item.name }}
-                    </div>
-                    <div class="text-caption text-slate-500 ellipsis" style="font-size: 11px">
-                      {{ item.style_code }}
-                    </div>
-                  </div>
-                </td>
-
-                <!-- Codes: barcode, product code, product id -->
-                <td v-if="visibleColumnMap.product_codes" style="min-width: 105px; width: 115px" class="q-py-xs">
-                  <div class="column justify-center q-gutter-y-2xs font-mono" style="font-size: 11.5px">
-                    <div v-if="item.barcode" class="text-weight-medium text-slate-700 ellipsis">
-                      BAR: {{ item.barcode }}
-                    </div>
-                    <div v-if="item.product_code" class="text-caption text-slate-600 ellipsis">
-                      CODE: {{ item.product_code }}
-                    </div>
-                    <div v-if="item.product_id != null" class="text-caption text-slate-500 ellipsis">
-                      ID: {{ item.product_id }}
-                    </div>
-                    <div
-                      v-if="!item.barcode && !item.product_code && item.product_id == null"
-                      class="text-caption text-slate-400"
-                    >
-                      —
-                    </div>
-                  </div>
-                </td>
-
-                <td
-                  v-if="visibleColumnMap.batch_code"
-                  class="text-center q-pa-xs batch-code-cell"
-                  :class="[
-                    batchSummaryForItem(item).toneClass,
-                    {
-                      'batch-code-cell--active':
-                        batchSummaryForItem(item).lineCount > 0 || shipmentLineHasBatchCodes(item),
-                    },
-                  ]"
-                  style="min-width: 44px; width: 48px"
-                  @click.stop="openBatchCodeDialog(item)"
-                >
-                  <span
-                    v-if="batchSummaryForItem(item).lineCount > 0"
-                    class="font-mono text-weight-bold"
-                    style="font-size: 12px"
-                  >
-                    {{ batchSummaryForItem(item).compactLabel }}
-                  </span>
-                  <span v-else class="text-grey-5 text-caption">—</span>
-                  <q-tooltip v-if="shipmentLineHasBatchCodes(item)">
-                    Tap for batch codes, expiry, and add missing batch
-                  </q-tooltip>
-                </td>
-
-                <!-- Purchase Price (Excel cell style inline input) -->
-                <td v-if="visibleColumnMap.purchase_price" class="text-center bw-ops-col-tint--price" style="min-width: 56px; width: 56px; padding: 2px" @click.stop>
-                  <q-input
-                    :model-value="getCellDraftValue(item, 'purchase_price')"
-                    type="number"
-                    step="0.01"
-                    dense
-                    borderless
-                    input-class="text-center font-mono text-weight-bold text-slate-800 excel-cell-input-native"
-                    class="excel-cell-input"
-                    :disable="!canEditLineCostFields"
-                    @update:model-value="(val) => onCellDirectInput(item, 'purchase_price', val)"
-                    @blur="onCellDirectBlur(item, 'purchase_price')"
-                    @keydown.enter="(e: Event) => (e.target as HTMLInputElement).blur()"
-                  />
-                </td>
-
-                <!-- Landed Cost BDT -->
-                <td v-if="visibleColumnMap.cost_bdt" class="text-center bw-ops-col-tint--cost" style="min-width: 56px; width: 56px; padding: 2px">
-                  <div class="text-weight-bold text-slate-900 font-mono" style="font-size: 13px">
-                    {{ (item.landed_cost_bdt ?? item.unitCost ?? 0).toFixed(2) }}
-                  </div>
-                </td>
-
-                <!-- Ordered & Received Quantity -->
-                <td
-                  v-if="visibleColumnMap.ordered_quantity"
-                  class="text-center bw-ops-col-tint--qty"
-                  :style="{
-                    minWidth: isShipmentReceived ? '90px' : '56px',
-                    width: isShipmentReceived ? '90px' : '56px',
-                    padding: '2px',
-                  }"
-                  @click.stop
-                >
-                  <!-- Dual Display When Shipment is Received -->
-                  <div v-if="isShipmentReceived" class="column items-center justify-center q-gutter-y-2xs q-py-2xs">
-                    <div class="row items-center justify-center no-wrap q-gutter-x-xs font-mono" style="font-size: 11.5px">
-                      <span class="text-weight-bold text-slate-700" title="Ordered Quantity">{{ item.ordered_quantity }}</span>
-                      <span class="text-slate-400">/</span>
-                      <span class="text-weight-bolder text-primary" title="Received Quantity">{{ item.received_quantity ?? 0 }}</span>
-                    </div>
-
-                    <!-- Variance Badge -->
-                    <q-badge
-                      v-if="(item.received_quantity ?? 0) === item.ordered_quantity"
-                      color="positive"
-                      text-color="white"
-                      class="text-weight-bold font-mono"
-                      style="font-size: 9.5px; padding: 1px 4px; border-radius: 4px"
-                    >
-                      Exact
-                    </q-badge>
-                    <q-badge
-                      v-else-if="(item.received_quantity ?? 0) < item.ordered_quantity"
-                      color="orange-8"
-                      text-color="white"
-                      class="text-weight-bold font-mono"
-                      style="font-size: 9.5px; padding: 1px 4px; border-radius: 4px"
-                    >
-                      -{{ item.ordered_quantity - (item.received_quantity ?? 0) }}
-                    </q-badge>
-                    <q-badge
-                      v-else
-                      color="blue-8"
-                      text-color="white"
-                      class="text-weight-bold font-mono"
-                      style="font-size: 9.5px; padding: 1px 4px; border-radius: 4px"
-                    >
-                      +{{ (item.received_quantity ?? 0) - item.ordered_quantity }}
-                    </q-badge>
-                  </div>
-
-                  <!-- Editable Single Ordered Quantity Input When Draft / Processing -->
-                  <q-input
-                    v-else
-                    :model-value="getCellDraftValue(item, 'ordered_quantity')"
-                    type="number"
-                    min="1"
-                    step="1"
-                    dense
-                    borderless
-                    input-class="text-center font-mono text-weight-bold text-slate-800 excel-cell-input-native"
-                    class="excel-cell-input"
-                    :disable="!canEditLineStructure"
-                    @update:model-value="(val) => onCellDirectInput(item, 'ordered_quantity', val)"
-                    @blur="onCellDirectBlur(item, 'ordered_quantity')"
-                    @keydown.enter="(e: Event) => (e.target as HTMLInputElement).blur()"
-                  />
-                </td>
-
-                <!-- Product Weight (Excel cell style inline input) -->
-                <td v-if="visibleColumnMap.product_weight" class="text-center" style="min-width: 56px; width: 56px; padding: 2px" @click.stop>
-                  <q-input
-                    :model-value="getCellDraftValue(item, 'product_weight')"
-                    type="number"
-                    step="0.001"
-                    dense
-                    borderless
-                    input-class="text-center font-mono text-weight-medium text-slate-700 excel-cell-input-native"
-                    class="excel-cell-input"
-                    :disable="!canEditLineCostFields"
-                    @update:model-value="(val) => onCellDirectInput(item, 'product_weight', val)"
-                    @blur="onCellDirectBlur(item, 'product_weight')"
-                    @keydown.enter="(e: Event) => (e.target as HTMLInputElement).blur()"
-                  />
-                </td>
-
-                <!-- Package Weight (Excel cell style inline input) -->
-                <td v-if="visibleColumnMap.package_weight" class="text-center bw-ops-col-tint--weight" style="min-width: 56px; width: 56px; padding: 2px" @click.stop>
-                  <q-input
-                    :model-value="getCellDraftValue(item, 'package_weight')"
-                    type="number"
-                    step="0.001"
-                    dense
-                    borderless
-                    input-class="text-center font-mono text-weight-bold text-slate-800 excel-cell-input-native"
-                    class="excel-cell-input"
-                    :disable="!canEditLineCostFields"
-                    @update:model-value="(val) => onCellDirectInput(item, 'package_weight', val)"
-                    @blur="onCellDirectBlur(item, 'package_weight')"
-                    @keydown.enter="(e: Event) => (e.target as HTMLInputElement).blur()"
-                  />
-                </td>
-
-                <!-- Dynamically added custom column cells -->
-                <template v-for="col in customColumns" :key="col.name">
-                  <td v-if="visibleColumnMap[col.name]" class="text-slate-600 font-mono text-caption">
-                    {{ (item as any)[col.name] || '-' }}
-                  </td>
-                </template>
-              </tr>
-            </template>
-          </template>
-
-          <!-- Empty State Row with Modern SVG when shipment has 0 items -->
-          <tr v-else class="empty-state-table-row">
-            <td :colspan="totalVisibleColumnsCount" class="text-center q-py-xl">
-              <div class="empty-placeholder-wrapper column items-center justify-center q-py-xl">
-                <!-- Clean Modern Cargo Box & Document Vector Illustration -->
-                <svg width="140" height="120" viewBox="0 0 140 120" fill="none" xmlns="http://www.w3.org/2000/svg" class="empty-illustration-svg q-mb-md">
-                  <ellipse cx="70" cy="104" rx="48" ry="7" fill="#E2E8F0" />
-                  <rect x="36" y="38" width="68" height="56" rx="8" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5" />
-                  <path d="M36 56H104" stroke="#E2E8F0" stroke-width="1.5" />
-                  <rect x="44" y="45" width="22" height="4" rx="2" fill="#E2E8F0" />
-                  <path d="M64 38V56H76V38H64Z" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1" />
-                  <g filter="drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.06))">
-                    <rect x="74" y="16" width="38" height="26" rx="6" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.5" />
-                    <path d="M84 28H100" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" />
-                    <path d="M84 34H94" stroke="#93C5FD" stroke-width="2" stroke-linecap="round" />
-                    <circle cx="80" cy="28" r="2" fill="#3B82F6" />
-                  </g>
-                  <g filter="drop-shadow(0px 4px 6px rgba(37, 99, 235, 0.2))">
-                    <circle cx="92" cy="76" r="16" fill="#2563EB" />
-                    <path d="M92 70V82M86 76H98" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
-                  </g>
-                </svg>
-
-                <div class="text-subtitle1 text-weight-bolder text-slate-800 q-mb-2xs">
-                  No line items in this {{ activeSheetId === 'sheet_all' ? 'shipment' : 'section' }}
-                </div>
-                <div class="text-caption text-slate-500 q-mb-md empty-state-subtitle" style="max-width: 440px; line-height: 1.4">
-                  {{ activeSheetId === 'sheet_all' ? 'Select a section tab from the bottom sheet bar or add items to begin.' : 'Add line items to track products, quantities, purchase costs, and weights for this section.' }}
-                </div>
-                <q-btn
-                  color="primary"
-                  icon="ph ph-plus"
-                  label="Add First Item"
-                  unelevated
-                  no-caps
-                  class="rounded-sq-btn text-weight-bold q-px-md"
-                  style="border-radius: 8px"
-                  :disable="activeSheetId === 'sheet_all' || !canEditLineStructure"
-                  @click="triggerAddItems"
-                >
-                  <q-tooltip v-if="activeSheetId === 'sheet_all'">
-                    Select a section tab at the bottom first
-                  </q-tooltip>
-                </q-btn>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </q-markup-table>
+        </div>
+      </template>
+      <div v-else class="empty-placeholder-wrapper column items-center justify-center q-py-xl">
+        <div class="text-subtitle1 text-weight-bolder text-slate-800 q-mb-2xs">
+          No line items in this {{ activeSheetId === 'sheet_all' ? 'shipment' : 'section' }}
+        </div>
+        <div class="text-caption text-slate-500 q-mb-md" style="max-width: 440px; line-height: 1.4">
+          {{ activeSheetId === 'sheet_all' ? 'Select a section tab from the bottom sheet bar or add items to begin.' : 'Add line items to track products, quantities, purchase costs, and weights for this section.' }}
+        </div>
+        <q-btn
+          color="primary"
+          icon="ph ph-plus"
+          label="Add First Item"
+          unelevated
+          no-caps
+          class="rounded-sq-btn text-weight-bold q-px-md"
+          style="border-radius: 8px"
+          :disable="activeSheetId === 'sheet_all' || !canEditLineStructure"
+          @click="triggerAddItems"
+        />
+      </div>
     </div>
 
     <!-- Bottom Sticky Section: Excel-style Bar with Sheet Tabs & Right Horizontal Scrollbar -->
@@ -808,7 +361,6 @@
       @thumb-drag-start="startThumbDrag"
     />
 
-    <!-- Right Side Settings Popup with Tabs -->
     <ShipmentSettingsDrawer
       v-model="settingsDrawerOpen"
       :shipment-id="shipmentId"
@@ -822,16 +374,8 @@
       :progress-tag-id="shipmentStore.currentShipment?.progress_tag_id ?? null"
       :progress-updating="progressUpdating"
       :progress-target-id="progressTargetId"
-      :child-tenant-options="childTenantOptions"
-      :child-tenants-loading="childTenantsLoading"
-      :selected-child-tenant-id="selectedChildTenantId"
-      :assigning-child="assigningChild"
-      :assigned-child-tenant-id="shipmentStore.currentShipment?.assigned_child_tenant_id ?? null"
       @update-flow="changeProgressFlow"
       @update-progress="changeProgress"
-      @update:selected-child-tenant-id="onSelectedChildTenantIdUpdate"
-      @save-assign-child="saveAssignChild"
-      @clear-assign-child="clearAssignChild"
     />
 
     <!-- Add / Edit Section Sheet Dialog -->
@@ -849,12 +393,6 @@
       @edit="switchToEditFromView"
     />
 
-    <!-- Add Custom Column Dialog -->
-    <AddCustomColumnDialog
-      v-model="showAddColumnDialog"
-      @add-column="onAddCustomColumn"
-    />
-
     <!-- Bulk Paste Dialog -->
     <q-dialog v-model="showBulkPasteDialog" persistent>
       <q-card style="width: 640px; max-width: 95vw; border-radius: 12px">
@@ -869,6 +407,19 @@
             </div>
           </div>
           <q-btn v-close-popup icon="ph ph-x" flat round dense color="grey-6" />
+        </q-card-section>
+
+        <q-card-section class="q-pt-sm q-pb-none">
+          <q-select
+            v-model="bulkPasteField"
+            :options="bulkPasteFieldOptions"
+            outlined
+            dense
+            emit-value
+            map-options
+            label="Column to update"
+            class="full-width"
+          />
         </q-card-section>
 
         <q-card-section class="q-py-md">
@@ -984,14 +535,13 @@ import { showErrorNotification, showSuccessNotification } from 'src/utils/appFee
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { useCargoCompaniesQuery } from '../composables/useProcurementStockQuery';
-import SmartImage from 'src/components/SmartImage.vue';
 import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';
+import ShipmentLineItemCard from '../components/ShipmentLineItemCard.vue';
 import ShipmentExcelBottomBar, { type SheetTabItem } from '../components/ShipmentExcelBottomBar.vue';
 import ShipmentSettingsDrawer from '../components/ShipmentSettingsDrawer.vue';
 import ShipmentSectionSheetDialog from '../components/ShipmentSectionSheetDialog.vue';
 import ShipmentSectionViewDialog from '../components/ShipmentSectionViewDialog.vue';
 import type { SectionFormData, SectionViewData } from '../types/shipmentSection';
-import AddCustomColumnDialog from '../components/AddCustomColumnDialog.vue';
 import ShipmentStatusWorkflowBar from '../components/ShipmentStatusWorkflowBar.vue';
 import { useInboundShipmentCalculations } from '../composables/useInboundShipmentCalculations';
 import { useInboundShipmentActions } from '../composables/useInboundShipmentActions';
@@ -999,7 +549,11 @@ import {
   calculateLineLandedCostBdt,
   costingShipmentFromEntries,
 } from 'src/shared/shipment-engine';
-import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
+import {
+  globalShipmentRepository,
+  type GlobalShipmentItem,
+  type ShipmentItemOutcome,
+} from '../repositories/globalShipmentRepository';
 import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
 import { useBatchCodeItemsByShipmentQuery } from '../composables/useBatchCodeQueries';
 import { useCreateBatchCodeListMutation } from '../composables/useBatchCodeMutations';
@@ -1043,6 +597,11 @@ const isShipmentReceived = computed(
   () => shipmentStore.currentShipment?.status === 'received' || isStockPosted.value,
 );
 
+const canAddSplit = computed(() => {
+  const status = shipmentStore.currentShipment?.status;
+  return status === 'in_transit' || status === 'received';
+});
+
 const {
   openEditItem,
   confirmDeleteItem,
@@ -1055,15 +614,8 @@ const {
   progressFlowOptions,
   progressTagOptions,
   progressUpdating,
-  childTenantOptions,
-  childTenantsLoading,
-  selectedChildTenantId,
-  assigningChild,
-  saveAssignChild,
-  clearAssignChild,
   confirmLockShipmentCosts,
   downloadExcel,
-  openBulkPaste,
 } = actions;
 
 // In-Place Shipment Name Edit State
@@ -1130,15 +682,14 @@ const settingsDrawerOpen = ref(false);
 const settingsDrawerTab = ref('details');
 
 const openSettingsDrawer = (tab = 'details') => {
+  if (settingsDrawerOpen.value && settingsDrawerTab.value === tab) {
+    settingsDrawerOpen.value = false;
+    return;
+  }
   settingsDrawerTab.value = tab;
   settingsDrawerOpen.value = true;
 };
 
-const onSelectedChildTenantIdUpdate = (val: number | null) => {
-  selectedChildTenantId.value = val;
-};
-
-const showAddColumnDialog = ref(false);
 const showAddSectionDialog = ref(false);
 const showViewSectionDialog = ref(false);
 const showImagePreviewDialog = ref(false);
@@ -1179,6 +730,21 @@ const bulkPasteFieldLabel = computed(() => {
   }
 });
 
+const bulkPasteFieldOptions = computed(() => {
+  const options: { label: string; value: typeof bulkPasteField.value }[] = [];
+  if (canEditLineCostFields.value) {
+    options.push(
+      { label: 'Price', value: 'purchase_price' },
+      { label: 'Product Weight', value: 'product_weight' },
+      { label: 'Package Weight', value: 'package_weight' },
+    );
+  }
+  if (canEditLineStructure.value) {
+    options.push({ label: 'Quantity', value: 'ordered_quantity' });
+  }
+  return options;
+});
+
 const emptyBulkPasteRow = (index: number): BulkPasteGridRow => ({
   rowKey: `empty-${index}`,
   itemId: null,
@@ -1199,12 +765,13 @@ const looksLikePasteHeader = (cols: string[]): boolean => {
 };
 
 const openBulkPasteDialog = (
-  field: 'purchase_price' | 'ordered_quantity' | 'product_weight' | 'package_weight',
+  field: 'purchase_price' | 'ordered_quantity' | 'product_weight' | 'package_weight' = 'purchase_price',
   startItem?: any,
 ) => {
-  if (field === 'ordered_quantity' && !canEditLineStructure.value) return;
-  if (field !== 'ordered_quantity' && !canEditLineCostFields.value) return;
-  bulkPasteField.value = field;
+  const allowed = bulkPasteFieldOptions.value.map((opt) => opt.value);
+  if (allowed.length === 0) return;
+  const nextField = allowed.includes(field) ? field : allowed[0];
+  bulkPasteField.value = nextField;
   bulkPasteStartItem.value = startItem || null;
   bulkPasteSaving.value = false;
   bulkPasteRows.value = Array.from({ length: 16 }, (_, i) => emptyBulkPasteRow(i));
@@ -1425,7 +992,9 @@ const triggerAddItems = () => {
 
 const authStore = useAuthStore();
 const vendorStore = useVendorStore();
-const currentTenantId = computed(() => authStore.tenantId);
+const currentTenantId = computed(
+  () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
+);
 const { data: cargoData } = useCargoCompaniesQuery(currentTenantId);
 
 const cargoCompanies = computed(() => cargoData.value ?? []);
@@ -1443,52 +1012,6 @@ const vendorOptions = computed(() =>
     value: v.id,
   })),
 );
-
-// Table column definitions
-const baseTableColumns = [
-  { name: 'name', label: 'Name' },
-  { name: 'product_codes', label: 'Codes' },
-  { name: 'batch_code', label: 'Batch code' },
-  { name: 'purchase_price', label: 'Price' },
-  { name: 'cost_bdt', label: 'Cost' },
-  { name: 'ordered_quantity', label: 'Qty' },
-  { name: 'product_weight', label: 'Product Weight' },
-  { name: 'package_weight', label: 'Package Weight' },
-];
-
-const visibleColumnMap = reactive<Record<string, boolean>>({
-  name: true,
-  product_codes: true,
-  batch_code: true,
-  purchase_price: true,
-  cost_bdt: true,
-  ordered_quantity: true,
-  product_weight: true,
-  package_weight: true,
-});
-
-const customColumns = ref<Array<{ name: string; label: string; type: string }>>([]);
-
-const onAddCustomColumn = (col: { name: string; label: string; type: string }) => {
-  customColumns.value.push(col);
-  visibleColumnMap[col.name] = true;
-};
-
-const allColumnsVisible = computed(() => {
-  const baseAll = baseTableColumns.every((c) => visibleColumnMap[c.name]);
-  const customAll = customColumns.value.every((c) => visibleColumnMap[c.name]);
-  return baseAll && customAll;
-});
-
-const toggleSelectAllColumns = () => {
-  const willShow = !allColumnsVisible.value;
-  baseTableColumns.forEach((c) => {
-    visibleColumnMap[c.name] = willShow;
-  });
-  customColumns.value.forEach((c) => {
-    visibleColumnMap[c.name] = willShow;
-  });
-};
 
 const selectedItemIds = ref<number[]>([]);
 
@@ -1519,22 +1042,6 @@ const getSectionVendor = (sectionId?: number | null) => {
   const found = shipmentStore.currentShipmentSections.find((s) => s.id === sectionId);
   return found?.vendor?.name || 'Primary Vendor';
 };
-
-const totalVisibleColumnsCount = computed(() => {
-  let count = 3; // checkbox, SL, image
-  if (visibleColumnMap.name) count++;
-  if (visibleColumnMap.product_codes) count++;
-  if (visibleColumnMap.batch_code) count++;
-  if (visibleColumnMap.purchase_price) count++;
-  if (visibleColumnMap.cost_bdt) count++;
-  if (visibleColumnMap.ordered_quantity) count++;
-  if (visibleColumnMap.product_weight) count++;
-  if (visibleColumnMap.package_weight) count++;
-  for (const col of customColumns.value) {
-    if (visibleColumnMap[col.name]) count++;
-  }
-  return count;
-});
 
 const isFirstItemOfSection = (item: any, index: number) => {
   if (activeSheetId.value !== 'sheet_all') return false;
@@ -1713,6 +1220,89 @@ const resolveBatchParentTenantId = (): number => {
   const tenantId = currentTenant?.parent_id ?? authStore.tenantId;
   if (!tenantId) throw new Error('No tenant found');
   return tenantId;
+};
+
+const extraOutcomesByItemId = ref<Record<number, ShipmentItemOutcome[]>>({});
+const addingExtraItemId = ref<number | null>(null);
+
+const extraOutcomesForItem = (itemId: number) =>
+  (extraOutcomesByItemId.value[itemId] ?? []).filter((row) => row.reason !== 'ordered');
+
+watch(
+  () => shipmentStore.currentShipmentItems.map((i) => i.id).join(','),
+  async (key) => {
+    const ids = key ? key.split(',').map(Number) : [];
+    if (ids.length === 0) {
+      extraOutcomesByItemId.value = {};
+      return;
+    }
+    try {
+      const rows = await globalShipmentRepository.listShipmentItemOutcomes(ids);
+      const map: Record<number, ShipmentItemOutcome[]> = {};
+      for (const row of rows) {
+        (map[row.shipment_item_id] ??= []).push(row);
+      }
+      extraOutcomesByItemId.value = map;
+    } catch (err) {
+      extraOutcomesByItemId.value = {};
+      console.error(err);
+    }
+  },
+  { immediate: true },
+);
+
+const addExtraOutcome = async (item: {
+  id: number;
+  purchase_price: number;
+  landed_cost_bdt?: number | null;
+  unitCost?: number;
+}) => {
+  addingExtraItemId.value = item.id;
+  try {
+    const created = await globalShipmentRepository.createShipmentItemOutcome({
+      parent_tenant_id: resolveBatchParentTenantId(),
+      shipment_item_id: item.id,
+      quantity: 0,
+      kind: 'sellable',
+      reason: 'general',
+      purchase_price: Number(item.purchase_price) || 0,
+      cost: item.landed_cost_bdt ?? item.unitCost ?? null,
+    });
+    extraOutcomesByItemId.value = {
+      ...extraOutcomesByItemId.value,
+      [item.id]: [...(extraOutcomesByItemId.value[item.id] ?? []), created],
+    };
+  } catch (err) {
+    showErrorNotification((err as Error).message || 'Could not add price');
+  } finally {
+    addingExtraItemId.value = null;
+  }
+};
+
+const updateExtraOutcome = async (id: number, patch: Partial<ShipmentItemOutcome>) => {
+  try {
+    const updated = await globalShipmentRepository.updateShipmentItemOutcome(id, patch);
+    const list = extraOutcomesByItemId.value[updated.shipment_item_id] ?? [];
+    extraOutcomesByItemId.value = {
+      ...extraOutcomesByItemId.value,
+      [updated.shipment_item_id]: list.map((row) => (row.id === updated.id ? updated : row)),
+    };
+  } catch (err) {
+    showErrorNotification((err as Error).message || 'Could not update price');
+  }
+};
+
+const deleteExtraOutcome = async (id: number) => {
+  try {
+    await globalShipmentRepository.deleteShipmentItemOutcome(id);
+    const next: Record<number, ShipmentItemOutcome[]> = {};
+    for (const [itemId, rows] of Object.entries(extraOutcomesByItemId.value)) {
+      next[Number(itemId)] = rows.filter((row) => row.id !== id);
+    }
+    extraOutcomesByItemId.value = next;
+  } catch (err) {
+    showErrorNotification((err as Error).message || 'Could not remove price');
+  }
 };
 
 const ensureBatchCodeListForShipment = async (): Promise<number> => {
@@ -2298,14 +1888,26 @@ const removeSheet = async (id: string) => {
 
 <style scoped>
 .shipment-items-v2-page {
-  background: var(--bw-theme-base);
+  background: #fff;
   color: var(--bw-theme-ink);
 }
 
-.shipment-items-top-section,
+.shipment-items-top-section {
+  background: #fff;
+}
+
+.shipment-settings-trigger {
+  width: 40px;
+  height: 40px;
+}
+
+.shipment-settings-trigger :deep(.q-icon) {
+  font-size: 22px;
+}
+
 .shipment-items-middle-section,
 .shipment-items-markup-table {
-  background: var(--bw-theme-surface);
+  background: #fff;
   color: var(--bw-theme-ink);
 }
 
@@ -2315,6 +1917,12 @@ const removeSheet = async (id: string) => {
   padding-right: 0;
 }
 
+.section-break-card {
+  background: #fff;
+  border: 1px solid var(--bw-theme-border);
+  border-radius: 8px;
+  user-select: none;
+}
 .section-break-row {
   background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%) !important;
   border-top: 2px solid var(--bw-theme-border) !important;
@@ -2424,6 +2032,34 @@ const removeSheet = async (id: string) => {
   background-color: var(--bw-theme-surface) !important;
   border: 1.5px solid var(--bw-theme-primary) !important;
   box-shadow: 0 0 0 1px var(--bw-theme-primary) !important;
+}
+
+:deep(.excel-cell-input--weight-tint .q-field__control) {
+  border-radius: 6px !important;
+  background-color: color-mix(in srgb, var(--bw-ops-hue-weight) 78%, var(--bw-theme-surface)) !important;
+  box-shadow: none !important;
+}
+:deep(.excel-cell-input--weight-tint:hover .q-field__control) {
+  background-color: color-mix(in srgb, var(--bw-ops-hue-weight) 88%, var(--bw-theme-surface)) !important;
+}
+:deep(.excel-cell-input--weight-tint.q-field--focused .q-field__control) {
+  background-color: color-mix(in srgb, var(--bw-ops-hue-weight) 88%, var(--bw-theme-surface)) !important;
+  border: 1.5px solid var(--bw-ops-accent-weight) !important;
+  box-shadow: none !important;
+}
+
+:deep(.excel-cell-input--price-tint .q-field__control) {
+  border-radius: 6px !important;
+  background-color: color-mix(in srgb, var(--bw-ops-hue-price) 78%, var(--bw-theme-surface)) !important;
+  box-shadow: none !important;
+}
+:deep(.excel-cell-input--price-tint:hover .q-field__control) {
+  background-color: color-mix(in srgb, var(--bw-ops-hue-price) 88%, var(--bw-theme-surface)) !important;
+}
+:deep(.excel-cell-input--price-tint.q-field--focused .q-field__control) {
+  background-color: color-mix(in srgb, var(--bw-ops-hue-price) 88%, var(--bw-theme-surface)) !important;
+  border: 1.5px solid var(--bw-ops-accent-price) !important;
+  box-shadow: none !important;
 }
 
 .hover-bright {

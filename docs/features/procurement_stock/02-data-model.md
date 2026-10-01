@@ -395,12 +395,12 @@ create type public.stock_movement_type as enum (
 
 **Wholesale delivery (target):** pack-out is not `sale_outbound`. Units go `sellable` → `held` on the delivery paper. After close: **take** → `sale_outbound` with the take invoice; **condition** stays `held` (condition invoice may be unpaid); goods on condition may return → `sellable` and that bill is voided/credited; **return** at close → `sellable`, no bill. Dropship picks already use `held` until ship.
 
-**Receive outcomes (target):** [US-7](01-prd.md). Child table `global_shipment_item_outcomes`. Paste → first row **kind `sellable`**, **reason `general`** (what was coming). After land, **add** rows beside it. Do not shrink general. Do not require sum of qtys = `ordered_quantity`. Optional `description`, batch **text** (no FK). No `stock_id`.
+**Receive outcomes (target):** [US-7](01-prd.md). Child table `global_shipment_item_outcomes`. Paste → first row **kind `sellable`**, **reason `ordered`** (paper qty). After land, **add** rows beside it (`general` = default received). Do not shrink ordered. Do not require sum of qtys = `ordered_quantity`. Optional `description`, batch **text** (no FK). No `stock_id`.
 
 - **`kind`:** `sellable` \| `unsellable` — lot vs loss.
-- **`reason`:** `general` \| `vendor_discount` \| `missing` \| `damaged` \| `other`. `other` → `description`.
+- **`reason`:** `ordered` \| `general` \| `vendor_discount` \| `missing` \| `damaged` \| `other`. `other` → `description`.
 
-**Stock:** only **non-general** rows. `sellable` → lot (`outcome_id`). `unsellable` → loss (no sellable lot). Damaged may still be sellable. Warehouse later damage/expire → `stock_movements`, not a rewrite of general. Leftover vs general is **not** auto-filled ([PS11](00-gaps.md)).
+**Stock:** only **non-ordered** rows. `sellable` → lot (`outcome_id`). `unsellable` → loss (no sellable lot). Damaged may still be sellable. Warehouse later damage/expire → `stock_movements`, not a rewrite of ordered. Leftover vs ordered is **not** auto-filled ([PS11](00-gaps.md)).
 
 **Ownership**
 

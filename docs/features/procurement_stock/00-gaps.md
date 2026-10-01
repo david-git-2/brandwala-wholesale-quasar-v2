@@ -8,10 +8,10 @@
 | PS4 | ~~not_built~~ | Fulfill picks without vendor PO | Done (2026-09) | — |
 | PS5 | ~~not_built~~ | Batch Code Analyze | Shipped (2026-09) | Optional / independent ([01-prd](01-prd.md) US-6) |
 | PS6 | not_built | Fulfill pack → delivery paper; take + condition bills | Create invoice / one proforma from picks | [SI19](../bills_pays/00-gaps.md) |
-| PS7 | not_built | Outcomes: `general` snapshot + extra rows; kind sellable/unsellable; lots `outcome_id` | Table `global_shipment_item_outcomes` + nullable `global_stocks.outcome_id` (`20271001150000`); RPC/UI still on line qty | [US-7](01-prd.md). Paste → general/sellable. Extra rows post stock. No sum-to-ordered. |
-| PS8 | not_built | Local costs + optional `section_id`; profit minus sum; not in landed | Table `global_shipment_local_costs` (`20271001150000`); no UI/RPC | Profit RPC later |
+| PS7 | not_built | Outcomes: `ordered` snapshot + extra rows; kind sellable/unsellable; lots `outcome_id` | Table `global_shipment_item_outcomes`; UI Ordered row; extras; enum `ordered` pending apply | [US-7](01-prd.md). Paste → ordered/sellable. Extra rows post stock. No sum-to-ordered. |
+| PS8 | partial | Local costs + optional `section_id`; profit minus sum; not in landed | Table + **Local costs** tab in settings drawer; profit RPC not wired | Profit RPC later |
 | PS9 | not_built | **Retire** `global_stock_allocations` (no child quota UI) | Shop listings/cart/orders + invoice + procurement RPCs still use the table | Wean to `global_stock_id`, then drop table. Do not drop while FKs live. |
 | PS10 | not_built | Close button + `is_closed`; shipment UI read-only | Column `global_shipments.is_closed` (`20271001150000`); no close RPC/UI guard yet | `costs_locked` / archive unchanged |
-| PS11 | design | Leftover vs general (e.g. 100 − 92 − 5) | n/a | **Do not auto-fill.** Staff add a missing/unsellable row if they want it on the book. Stock posts only extra rows. |
+| PS11 | design | Leftover vs ordered (e.g. 100 − 92 − 5) | n/a | **Do not auto-fill.** Staff add a missing/unsellable row if they want it on the book. Stock posts only extra (non-ordered) rows. |
 | PS12 | not_built | Cost entries = record only (no settle/pay) | Columns `settled_at`, `settlement_ledger_id` | Ignore in UI; do not build pay-from-entry in this module |
 | PS16 | ~~doc_wrong~~ | Demand/Fulfill in `02` + `04` + expanded US-4 | Data model only in RPC matrix | **Done (2026-10):** [02 §1b ERD](02-data-model.md#1b-demand--fulfill-erd), [01 US-4](01-prd.md), [04-tdd](04-tdd.md) |

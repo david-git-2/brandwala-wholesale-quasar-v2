@@ -6,7 +6,6 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { globalShipmentRepository } from '../repositories/globalShipmentRepository';
-import { tenantRepository } from 'src/modules/tenant/repositories/tenantRepository';
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
 import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
 import type { CostEntriesSavePayload } from '../types/shipmentCostEntry';
@@ -36,7 +35,6 @@ export function useInboundShipmentActions(options: {
   shipmentId: number;
   activeTab: Ref<'lines' | 'balance' | 'cost' | 'receive'>;
   calculations: ReturnType<typeof useInboundShipmentCalculations>;
-  assignShopCard?: Ref<HTMLElement | null>;
   paySettleCard?: Ref<HTMLElement | null>;
 }) {
   const { shipmentId, activeTab, calculations } = options;
@@ -79,7 +77,9 @@ export function useInboundShipmentActions(options: {
     return found ? found.name : `Vendor #${vId}`;
   });
 
-  const parentTenantId = computed(() => authStore.tenantId);
+  const parentTenantId = computed(
+    () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
+  );
 
   const { data: cargoCompaniesData, isLoading: loadingCargo } = useQuery({
     queryKey: computed(() =>
@@ -169,30 +169,6 @@ export function useInboundShipmentActions(options: {
     }
   };
 
-  const { data: childTenants, isLoading: childTenantsLoading } = useQuery({
-    queryKey: computed(() => procurementStockQueryKeys.childTenants(parentTenantId.value ?? 0)),
-    queryFn: async () => {
-      const tenants = await tenantRepository.listTenants();
-      return tenants.filter((t) => t.parent_id === parentTenantId.value);
-    },
-    staleTime: 5 * 60 * 1000,
-    enabled: computed(() => !!parentTenantId.value),
-  });
-
-  const childTenantOptions = computed(() => {
-    const current = authStore.selectedTenant;
-    const opts: Array<{ label: string; value: number }> = [];
-    if (current?.id) {
-      opts.push({ label: `${current.name} (this company)`, value: current.id });
-    }
-    for (const t of childTenants.value ?? []) {
-      if (t.id === current?.id) continue;
-      opts.push({ label: t.name, value: t.id });
-    }
-    return opts;
-  });
-  const selectedChildTenantId = ref<number | null>(null);
-  const assigningChild = ref(false);
   const paySettling = ref(false);
   const returnSubmitting = ref(false);
   const returnOutcome = ref<'cash_refund' | 'store_credit'>('store_credit');
@@ -211,14 +187,6 @@ export function useInboundShipmentActions(options: {
   ];
 
   watch(
-    () => shipmentStore.currentShipment?.assigned_child_tenant_id,
-    (id) => {
-      selectedChildTenantId.value = id ?? null;
-    },
-    { immediate: true },
-  );
-
-  watch(
     () => shipmentStore.currentShipmentItems,
     (items) => {
       returnLines.value = (items ?? []).map((item) => ({
@@ -232,29 +200,6 @@ export function useInboundShipmentActions(options: {
   );
 
   const hasReturnQty = computed(() => returnLines.value.some((l) => l.return_qty > 0));
-
-  const saveAssignChild = async () => {
-    if (!authStore.tenantId) return;
-    assigningChild.value = true;
-    try {
-      await shipmentStore.assignShipmentToChild(
-        authStore.tenantId,
-        selectedChildTenantId.value,
-        shipmentId,
-      );
-      showSuccessNotification('Shop assignment updated');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      showErrorNotification(msg || 'Failed to update assignment');
-    } finally {
-      assigningChild.value = false;
-    }
-  };
-
-  const clearAssignChild = async () => {
-    selectedChildTenantId.value = null;
-    await saveAssignChild();
-  };
 
   const confirmSettlePayee = async (payload: {
     entityType: 'vendor' | 'cargo_company';
@@ -393,19 +338,36 @@ export function useInboundShipmentActions(options: {
     }
 
     if (newStatus === 'received') {
-      const currentRoute = router.currentRoute.value;
-      const tenantSlug = currentRoute.params.tenantSlug;
-      if (tenantSlug) {
-        void router.push({
-          name: 'app-procurement-shipment-receive',
-          params: { tenantSlug, id: shipmentId },
-        });
-      } else {
-        void router.push({
-          name: 'app-procurement-shipment-receive',
-          params: { id: shipmentId },
-        });
-      }
+      $q.dialog({
+        title: 'Mark received',
+        message:
+          'This sets the shipment to Received and adds a sellable / general split on every line, filled with the ordered qty. You can edit splits on this page. Stock is not posted yet.',
+        cancel: true,
+        persistent: true,
+      }).onOk(() => {
+        void (async () => {
+          updatingStatus.value = true;
+          targetUpdatingStatus.value = 'received';
+          try {
+            await shipmentStore.updateShipment(shipmentId, { status: 'received' });
+            const shipment = shipmentStore.currentShipment;
+            const parentTenantId = shipment?.parent_tenant_id;
+            if (!parentTenantId) throw new Error('Shipment parent tenant missing');
+            await globalShipmentRepository.ensureReceivedGeneralOutcomes(
+              parentTenantId,
+              shipmentStore.currentShipmentItems,
+            );
+            showSuccessNotification('Shipment marked received. Splits added from ordered qty.');
+            await loadShipmentDetails();
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            showErrorNotification(message || 'Failed to mark received');
+          } finally {
+            updatingStatus.value = false;
+            targetUpdatingStatus.value = null;
+          }
+        })();
+      });
       return;
     }
 
@@ -514,12 +476,8 @@ export function useInboundShipmentActions(options: {
       };
     }
     if (status === 'received') {
-      const assigned = shipmentStore.currentShipment?.assigned_child_tenant_id;
-      const childText = !assigned && childTenantOptions.value.length > 0
-        ? ' Assign listing permission to a child tenant below if needed.'
-        : '';
       return {
-        message: `Goods received in warehouse. Organize bin locations and condition grades.${childText}`,
+        message: 'Goods received in warehouse. Organize bin locations and condition grades.',
         label: 'Organize Stock',
         disabled: false,
         reason: '',
@@ -575,8 +533,8 @@ export function useInboundShipmentActions(options: {
     }
     if (status === 'in_transit') {
       return {
-        message: 'Shipment is in transit. Click Receive & Post Stock to receive items at the warehouse.',
-        label: 'Receive & Post Stock',
+        message: 'Shipment is in transit. Mark received to add sellable splits from ordered qty.',
+        label: 'Mark received',
         disabled: false,
         reason: '',
         action: () => changeStatus('received'),
@@ -787,10 +745,6 @@ export function useInboundShipmentActions(options: {
     saveInlineType,
     saveInlineVendor,
     saveInlineCargo,
-    childTenantOptions,
-    childTenantsLoading,
-    selectedChildTenantId,
-    assigningChild,
     paySettling,
     returnSubmitting,
     returnOutcome,
@@ -798,8 +752,6 @@ export function useInboundShipmentActions(options: {
     returnLines,
     returnLineColumns,
     hasReturnQty,
-    saveAssignChild,
-    clearAssignChild,
     confirmSettlePayee,
     confirmVendorReturn,
     loadShipmentDetails,

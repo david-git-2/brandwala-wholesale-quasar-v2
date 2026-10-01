@@ -16,16 +16,16 @@ Mapping of all UI views, buttons, dialog triggers, and user actions to correspon
 | **`ShipmentFormDialog`** | Submit "Create Shipment" | `useCreateShipmentMutation` | `RPC: create_shipment_draft` | Invalidates active shipments list, navigates to detail |
 | **`ShipmentLineItemsV2Page`** | Mount / refresh shipment | `useShipmentOverviewDetailsQuery` | `RPC: get_shipment_overview_details` (`sections`, `items`, …) | `procurementStockQueryKeys.shipmentOverview` |
 | **`ShipmentLineItemsV2Page`** | Section tab bar (add / edit / delete / reorder) | `globalShipmentStore` → `shipmentSectionRepository` | `Table: global_shipment_sections`; `RPC: reorder_shipment_sections` | Reload sections + items; `currentShipmentSections` |
-| **`ShipmentLineItemsV2Page`** | Add Catalog Item / Bulk Paste (active section) | `useAddShipmentItemMutation` | `RPC: add_shipment_item_from_product` (optional `section_id`) | Target: also insert outcome **sellable/general** ([PS7](00-gaps.md)). Refetch overview |
+| **`ShipmentLineItemsV2Page`** | Add Catalog Item / Bulk Paste (active section) | `useAddShipmentItemMutation` | `RPC: add_shipment_item_from_product` (optional `section_id`) | Target: also insert outcome **sellable/ordered** ([PS7](00-gaps.md)). Refetch overview |
 | **`ShipmentLineItemsV2Page`** | Batch code column | `useBatchCodeItemsByShipmentQuery` | `batch_code_lists` by `shipment_id` → `batch_code_items` | Client match on barcode / product code |
 | **`ShipmentLineBatchCodeDialog`** | Add missing batch | `ensureList` + `batch_code_items` insert | Table insert; patch `batchCodeItemsByShipment` | Compact batch count updates |
 | **`ShipmentBatchCodeGrid`** | Arrived checkbox | `updateItem` (`is_arrived`) | `Table: batch_code_items` update | Patch items cache |
 | **`ShipmentLineItemsV2Page`** | Save Cost Entries | `useSaveCostEntriesMutation` | `Table: global_shipment_cost_entries` | Recalculates and restamps landed cost BDT |
-| **`ShipmentLineItemsV2Page`** (target) | Add / edit / delete local costs | TBD | `Table: global_shipment_local_costs` (optional `section_id`) | **No** landed stamp; profit uses sum ([PS8](00-gaps.md)) |
+| **`ShipmentSettingsDrawer`** → Local costs tab | Add / edit / delete local costs | `globalShipmentStore.saveShipmentLocalCost` / `deleteShipmentLocalCost` | `Table: global_shipment_local_costs` (optional `section_id`) | **No** landed stamp; profit uses sum ([PS8](00-gaps.md)) |
 | **`ShipmentLineItemsV2Page`** | Click "Lock Shipment Costs" | `useLockCostsMutation` | `RPC: lock_global_shipment_costs` | Sets `costs_locked = true`; invalidates `shipmentOverview` |
 | **Shipment** (target) | Close | TBD | `is_closed = true`; block writes | UI read-only ([PS10](00-gaps.md)) |
 | **`ReceiveShipmentPage`** | Confirm inbound qty (today) | `useFinalizeShipmentMutation` | `RPC: finalize_global_shipment` (line `received_quantity` + `landed_cost_bdt`) | Stamps line cost, creates `global_stocks` |
-| **`ReceiveShipmentPage`** (target) | Add extra outcomes; post stock | TBD | Extra rows `kind` sellable/unsellable; lots from sellable only ([PS7](00-gaps.md)) | General does not create lots |
+| **`ReceiveShipmentPage`** (target) | Add extra outcomes; post stock | TBD | Extra rows `kind` sellable/unsellable; lots from sellable only ([PS7](00-gaps.md)) | Ordered does not create lots |
 | **Shipment restamp** (target) | After delivery return + vendor better price | TBD | Return inbound movement, then restamp **on-hand** lots from outcomes | Do not rewrite sold/out qty; abort if on-hand short; not a hand stock patch |
 | **`WarehouseStockListPage`** | Table Mount / Search Filter | `useWarehouseStockQuery` | `Table: global_stocks` | Cached on `procurementStockQueryKeys.allocatableStockList` |
 | **`StockMoveLocationDialog`** | Submit Location Transfer | `useStockMovementMutation` | `RPC: create_and_post_stock_movement` | Updates physical location; invalidates stock & movement lists |

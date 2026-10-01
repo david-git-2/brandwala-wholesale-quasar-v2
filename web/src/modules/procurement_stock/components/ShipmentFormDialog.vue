@@ -348,7 +348,8 @@ onMounted(async () => {
   } else if (authStore.tenantId) {
     loadingCargo.value = true;
     try {
-      const cargo = await globalShipmentRepository.listCargoCompaniesForTenant(authStore.tenantId);
+      const parentTenantId = authStore.selectedTenant?.parent_id ?? authStore.tenantId;
+      const cargo = await globalShipmentRepository.listCargoCompaniesForTenant(parentTenantId);
       cargoOptions.value = cargo.map((c) => ({
         label: `${c.name} (${c.code})`,
         value: c.id,

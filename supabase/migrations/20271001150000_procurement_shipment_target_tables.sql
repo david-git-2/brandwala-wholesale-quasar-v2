@@ -116,3 +116,8 @@ end $$;
 create index if not exists global_stocks_outcome_id_idx
   on public.global_stocks (outcome_id)
   where outcome_id is not null;
+
+grant all on table public.global_shipment_item_outcomes to authenticated;
+grant all on sequence public.global_shipment_item_outcomes_id_seq to authenticated;
+grant all on table public.global_shipment_local_costs to authenticated;
+grant all on sequence public.global_shipment_local_costs_id_seq to authenticated;

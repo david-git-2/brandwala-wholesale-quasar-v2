@@ -24,11 +24,11 @@
 ## Inbound flow (target)
 
 1. Create shipment. **Batch code** list is optional and independent (not required before lines).
-2. After pro forma: add / bulk-paste lines (qty, price, product weight, package weight, rough FX on costs). Paste creates the first **outcome**: **kind `sellable`**, **reason `general`**. That row is the record of **what was coming**. It does **not** post stock.
-3. After goods land: **add** more outcome rows beside general (received, damaged, missing, …). Do **not** shrink or replace general. Do **not** auto-fill leftover vs general ([PS11](00-gaps.md)).
-4. **Stock** comes only from non-general outcomes (or later restamp of those rows): **`sellable` → lot**; **`unsellable` → loss** (no sellable lot). Damaged qty **can** go to stock if that row is sellable.
+2. After pro forma: add / bulk-paste lines (qty, price, product weight, package weight, rough FX on costs). Paste creates the first **outcome**: **kind `sellable`**, **reason `ordered`**. That row is the paper qty. It does **not** post stock.
+3. After goods land: **add** more outcome rows beside ordered (sellable/`general`, damaged, missing, …). Do **not** shrink or replace ordered. Do **not** auto-fill leftover vs ordered ([PS11](00-gaps.md)).
+4. **Stock** comes only from non-ordered outcomes (or later restamp of those rows): **`sellable` → lot**; **`unsellable` → loss** (no sellable lot). Damaged qty **can** go to stock if that row is sellable.
 5. Lock / restamp rates **before or after** stock. Landed rows: goods / cargo / duty. Optional `section_id` (whole shipment if null). Local labor/van/packing: other table, optional section, **not** in landed unit cost.
-6. Change kind/reason on those extra rows → restamp **on-hand** lots. Warehouse later damage/expire → **movement / write-off**, not inbound general.
+6. Change kind/reason on those extra rows → restamp **on-hand** lots. Warehouse later damage/expire → **movement / write-off**, not inbound ordered.
 7. Extra batch lines anytime until close. New local costs until close.
 8. **Close** is a button + `is_closed`. UI for that shipment becomes **read-only**. Not auto when sold out. No edits after close.
 
@@ -41,9 +41,9 @@ Live today: price/qty on the **line**; finalize from `received_quantity`; outcom
 | Field | Values | Use |
 | :--- | :--- | :--- |
 | **kind** | `sellable` \| `unsellable` | Stock or loss. Not warehouse grade. |
-| **reason** | `general` \| `vendor_discount` \| `missing` \| `damaged` \| `other` | Why this row. `other` → `description`. |
+| **reason** | `ordered` \| `general` \| `vendor_discount` \| `missing` \| `damaged` \| `other` | Why this row. `other` → `description`. |
 
-`general` = inbound ordered/pro forma snapshot only. `short_dated` is **not** a kind (warehouse later).
+`ordered` = paper / pro forma snapshot. `general` = default received split. `short_dated` is **not** a kind (warehouse later).
 
 ---
 
@@ -60,13 +60,13 @@ Live today: price/qty on the **line**; finalize from `received_quantity`; outcom
 - Ignore for stamp / stock value. Subtract from shipment profit.
 
 ### US-7 Outcomes + stock
-- One table `global_shipment_item_outcomes`. Line keeps product, ordered qty, weights, `section_id`.
-- Each extra row: qty, kind, reason, purchase price, stamped `cost`, optional note / batch **text** (no FK). No `stock_id` on the outcome.
+- One table `global_shipment_item_outcomes`. Line keeps product, ordered qty (mirrored on the `ordered` outcome), weights, `section_id`.
+- First row: qty, **reason `ordered`**, kind `sellable`, purchase price, stamped `cost`. Extra rows: qty, kind, reason (`general` or other), purchase price, stamped `cost`, optional note / batch **text** (no FK). No `stock_id` on the outcome.
 - Lots FK **`outcome_id`**. Cargo/duty rows never shrink when vendor price drops.
 - Restamp on-hand only. Qty still out/sold: return inbound first, or **stop**.
 
 ### US-2 Receive → stock
-- Post lots from **sellable** extra outcomes. Unsellable = loss. General does not create lots.
+- Post lots from **sellable** extra outcomes (not `ordered`). Unsellable = loss. Ordered does not create lots.
 
 ### US-9 Close
 - Staff click Close → `is_closed = true`. All shipment screens for that id read-only (lines, outcomes, costs, batch, rates).

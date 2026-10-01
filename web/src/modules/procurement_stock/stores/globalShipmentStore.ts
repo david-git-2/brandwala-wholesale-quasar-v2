@@ -14,6 +14,8 @@ import {
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository';
 import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxRepository';
 import { globalShipmentCostEntryRepository } from '../repositories/globalShipmentCostEntryRepository';
+import { globalShipmentLocalCostRepository } from '../repositories/globalShipmentLocalCostRepository';
+import type { GlobalShipmentLocalCost } from '../types/shipmentLocalCost';
 import { shipmentSectionRepository } from '../repositories/shipmentSectionRepository';
 import type {
   CostEntryDraft,
@@ -105,9 +107,12 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     currentShipmentBoxes: [] as GlobalShipmentBox[],
     currentShipmentStocks: [] as any[],
     currentCostEntries: [] as GlobalShipmentCostEntry[],
+    currentLocalCosts: [] as GlobalShipmentLocalCost[],
     currentShipmentSummary: null as ShipmentSummaryKPIs | null,
     costEntriesLoading: false,
     costEntriesSaving: false,
+    localCostsLoading: false,
+    localCostsSaving: false,
     progressTags: [] as ShipmentProgressTag[],
     progressFlows: [] as ShipmentProgressFlow[],
     progressStagesByFlow: {} as Record<number, ShipmentProgressFlowStage[]>,
@@ -219,6 +224,11 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.currentShipmentBoxes = overview.boxes;
         this.currentShipmentSections = overview.sections;
         this.currentCostEntries = overview.cost_entries as any;
+        try {
+          await this.fetchLocalCosts(shipmentId);
+        } catch {
+          // Local costs are optional; do not block shipment overview.
+        }
 
         if (overview.shipment.progress_flow_id && overview.flow_stages?.length) {
           this.progressStagesByFlow[overview.shipment.progress_flow_id] = overview.flow_stages;
@@ -265,6 +275,93 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         throw err;
       } finally {
         this.costEntriesLoading = false;
+      }
+    },
+
+    async fetchLocalCosts(shipmentId: number) {
+      this.localCostsLoading = true;
+      try {
+        this.currentLocalCosts = await globalShipmentLocalCostRepository.listByShipmentId(shipmentId);
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to load local costs';
+        this.currentLocalCosts = [];
+        throw err;
+      } finally {
+        this.localCostsLoading = false;
+      }
+    },
+
+    async saveShipmentLocalCost(
+      shipmentId: number,
+      payload: {
+        id?: number | null;
+        description: string;
+        amount: number;
+        section_id?: number | null;
+        currency_id?: number | null;
+      },
+    ) {
+      const shipment = this.currentShipment;
+      if (!shipment || shipment.id !== shipmentId) {
+        throw new Error('Shipment not loaded');
+      }
+      if (shipment.status === 'cancelled' || shipment.is_closed === true) {
+        throw new Error('Shipment is read-only');
+      }
+
+      this.localCostsSaving = true;
+      this.error = null;
+      try {
+        const trimmed = payload.description.trim();
+        if (!trimmed) throw new Error('Description is required');
+        if (payload.amount < 0) throw new Error('Amount must be ≥ 0');
+
+        let saved: GlobalShipmentLocalCost;
+        if (payload.id) {
+          saved = await globalShipmentLocalCostRepository.update(payload.id, {
+            description: trimmed,
+            amount: payload.amount,
+            section_id: payload.section_id ?? null,
+            currency_id: payload.currency_id ?? null,
+          });
+          const idx = this.currentLocalCosts.findIndex((r) => r.id === saved.id);
+          if (idx >= 0) this.currentLocalCosts[idx] = saved;
+          else this.currentLocalCosts.push(saved);
+        } else {
+          saved = await globalShipmentLocalCostRepository.create({
+            parent_tenant_id: shipment.parent_tenant_id,
+            shipment_id: shipmentId,
+            description: trimmed,
+            amount: payload.amount,
+            section_id: payload.section_id ?? null,
+            currency_id: payload.currency_id ?? null,
+          });
+          this.currentLocalCosts.push(saved);
+        }
+        return saved;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to save local cost';
+        throw err;
+      } finally {
+        this.localCostsSaving = false;
+      }
+    },
+
+    async deleteShipmentLocalCost(id: number) {
+      const shipment = this.currentShipment;
+      if (shipment?.status === 'cancelled' || shipment?.is_closed === true) {
+        throw new Error('Shipment is read-only');
+      }
+      this.localCostsSaving = true;
+      this.error = null;
+      try {
+        await globalShipmentLocalCostRepository.remove(id);
+        this.currentLocalCosts = this.currentLocalCosts.filter((r) => r.id !== id);
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to delete local cost';
+        throw err;
+      } finally {
+        this.localCostsSaving = false;
       }
     },
 
@@ -602,6 +699,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           this.currentShipmentBoxes = [];
           this.currentShipmentStocks = [];
           this.currentCostEntries = [];
+          this.currentLocalCosts = [];
         }
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to permanently delete archived shipment';
@@ -632,6 +730,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           this.currentShipmentBoxes = [];
           this.currentShipmentStocks = [];
           this.currentCostEntries = [];
+          this.currentLocalCosts = [];
         }
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to delete shipment';

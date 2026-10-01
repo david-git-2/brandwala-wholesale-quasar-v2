@@ -1,38 +1,49 @@
 <template>
-  <q-dialog
+  <q-drawer
     :model-value="modelValue"
-    position="right"
-    transition-show="jump-left"
-    transition-hide="jump-right"
+    side="right"
+    overlay
+    bordered
+    :width="680"
+    class="shipment-settings-drawer bg-white"
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
-    <q-card
-      class="column no-wrap bg-white q-ma-md rounded-borders-lg overflow-hidden shadow-10"
-      style="width: 680px; max-width: 95vw; height: calc(100vh - 32px); border-radius: 16px"
-    >
-      <!-- Top Tabs Bar -->
-      <div class="bg-grey-1 border-bottom q-px-sm">
-        <q-tabs
-          v-model="activeTab"
+    <div class="column full-height no-wrap overflow-hidden" aria-label="Shipment settings">
+      <!-- Segmented tabs -->
+      <div class="shipment-drawer-header border-bottom row items-center no-wrap q-gutter-x-xs q-px-sm q-py-sm">
+        <div class="shipment-drawer-tabs__scroll col min-width-0">
+          <div class="shipment-drawer-tabs__track" role="tablist" aria-label="Shipment settings sections">
+            <button
+              v-for="tab in settingsTabs"
+              :key="tab.name"
+              type="button"
+              role="tab"
+              class="shipment-drawer-tabs__item"
+              :class="{ 'shipment-drawer-tabs__item--active': activeTab === tab.name }"
+              :aria-selected="activeTab === tab.name"
+              @click="activeTab = tab.name"
+            >
+              <q-icon :name="tab.icon" size="15px" class="shipment-drawer-tabs__icon" />
+              <span>{{ tab.label }}</span>
+            </button>
+          </div>
+        </div>
+        <q-btn
+          flat
+          round
           dense
-          no-caps
-          active-color="primary"
-          indicator-color="primary"
-          align="justify"
-          class="text-grey-7 text-weight-medium"
-        >
-          <q-tab name="details" label="Details" />
-          <q-tab name="summary" label="Summary" />
-          <q-tab name="rates" label="Rates" />
-          <q-tab name="progress" label="Progress" />
-          <q-tab name="more" label="More" />
-        </q-tabs>
+          icon="ph ph-x"
+          color="grey-7"
+          aria-label="Close settings"
+          class="shipment-settings-drawer__close shrink-0"
+          @click="emit('update:modelValue', false)"
+        />
       </div>
 
       <!-- Tab Panels -->
-      <q-tab-panels v-model="activeTab" animated class="col bg-white">
+      <q-tab-panels v-model="activeTab" animated class="col bg-white shipment-settings-drawer-panels">
         <!-- 1. Details Tab Panel -->
-        <q-tab-panel name="details" class="q-pa-md bg-white">
+        <q-tab-panel name="details" class="bg-white">
           <div class="column q-gutter-y-md">
             <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
               <q-icon name="ph ph-identification-badge" size="18px" color="primary" />
@@ -119,58 +130,6 @@
               </q-select>
             </div>
 
-            <q-separator />
-
-            <!-- Tenant Allocation -->
-            <div class="column q-gutter-y-sm">
-              <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
-                <q-icon name="ph ph-buildings" size="18px" color="primary" />
-                <span>Tenant Allocation</span>
-              </div>
-              <div class="text-caption text-grey-6 text-xxs">
-                Which company can list and sell stock from this shipment. Leave empty for the parent warehouse pool.
-              </div>
-              <q-select
-                :model-value="selectedChildTenantId"
-                :options="childTenantOptions"
-                emit-value
-                map-options
-                outlined
-                dense
-                clearable
-                placeholder="All companies (parent pool)"
-                class="bg-white"
-                :loading="childTenantsLoading"
-                @update:model-value="(val) => emit('update:selectedChildTenantId', val ?? null)"
-              >
-                <template #prepend>
-                  <q-icon name="ph ph-storefront" size="18px" color="grey-6" />
-                </template>
-              </q-select>
-              <div class="row q-gutter-sm">
-                <q-btn
-                  color="primary"
-                  unelevated
-                  no-caps
-                  dense
-                  label="Save allocation"
-                  class="col"
-                  :loading="assigningChild"
-                  @click="emit('save-assign-child')"
-                />
-                <q-btn
-                  flat
-                  no-caps
-                  dense
-                  label="Clear"
-                  class="col"
-                  :disable="!assignedChildTenantId || assigningChild"
-                  :loading="assigningChild"
-                  @click="emit('clear-assign-child')"
-                />
-              </div>
-            </div>
-
             <q-separator class="q-my-sm" />
 
             <!-- Danger Zone / Shipment Actions -->
@@ -211,7 +170,7 @@
         </q-tab-panel>
 
         <!-- 2. Summary Tab Panel -->
-        <q-tab-panel name="summary" class="q-pa-md bg-white">
+        <q-tab-panel name="summary" class="bg-white">
           <div class="column q-gutter-y-md">
             <q-banner v-if="isCostsLocked" dense rounded class="bg-grey-2 text-grey-9">
               Shipment costs are locked. These figures are a snapshot.
@@ -376,7 +335,7 @@
         </q-tab-panel>
 
         <!-- 3. Rates Tab Panel -->
-        <q-tab-panel name="rates" class="q-pa-md bg-white">
+        <q-tab-panel name="rates" class="bg-white">
           <div class="column q-gutter-y-lg">
             <q-banner v-if="isStockPosted && canEditCosts" dense rounded class="bg-orange-1 text-orange-10">
               Stock is in. Saving updates landed costs. Invoices already issued keep their cost snapshot.
@@ -482,56 +441,94 @@
 
             <!-- Cargo Rates -->
             <div class="column q-gutter-y-sm">
-              <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
-                Cargo
+              <div class="row items-center justify-between">
+                <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
+                  Cargo
+                </div>
+                <q-btn
+                  outline
+                  dense
+                  no-caps
+                  size="xs"
+                  color="primary"
+                  icon="ph ph-plus"
+                  label="Add Rate"
+                  class="q-px-sm rounded-btn text-weight-bold"
+                  :disable="!canEditCosts"
+                  @click="addCargoRateRow"
+                />
               </div>
 
-              <div class="q-pa-sm bg-grey-1 rounded-borders border-grey column q-gutter-y-sm">
-                <div class="row q-col-gutter-sm">
-                  <div class="col-6">
+              <div class="column q-gutter-y-sm">
+                <div
+                  v-for="(cargoRate, idx) in cargoRatesList"
+                  :key="cargoRate.id"
+                  class="q-pa-sm bg-grey-1 rounded-borders border-grey column q-gutter-y-sm"
+                >
+                  <div class="row items-center justify-between">
+                    <span class="text-caption text-weight-bold text-grey-8">Rate #{{ idx + 1 }}</span>
+                    <q-btn
+                      v-if="cargoRatesList.length > 1"
+                      flat
+                      round
+                      dense
+                      size="xs"
+                      icon="ph ph-trash"
+                      color="negative"
+                      :disable="!canEditCosts"
+                      @click="removeCargoRateRow(idx)"
+                    >
+                      <q-tooltip>Remove Rate</q-tooltip>
+                    </q-btn>
+                  </div>
+
+                  <div class="row q-col-gutter-sm">
+                    <div class="col-6">
+                      <q-input
+                        v-model.number="cargoRate.amount"
+                        label="Amount"
+                        type="number"
+                        dense
+                        outlined
+                        placeholder="0.00"
+                        :prefix="currentPurchaseCurrencySymbol"
+                        class="bg-white font-mono"
+                        :loading="savingRates"
+                        :disable="!canEditCosts"
+                        @blur="onRatesBlur"
+                        @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                      />
+                    </div>
+                    <div class="col-6">
+                      <q-input
+                        v-model.number="cargoRate.rate"
+                        label="Rate"
+                        type="number"
+                        dense
+                        outlined
+                        placeholder="0.00"
+                        :prefix="currentCostCurrencySymbol"
+                        class="bg-white font-mono"
+                        :loading="savingRates"
+                        :disable="!canEditCosts"
+                        @blur="onRatesBlur"
+                        @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                      />
+                    </div>
+                  </div>
+                  <div>
                     <q-input
-                      v-model.number="cargoAmountInput"
-                      label="Amount"
-                      type="number"
+                      v-model="cargoRate.note"
+                      label="Note"
                       dense
                       outlined
-                      placeholder="0.00"
-                      :prefix="currentPurchaseCurrencySymbol"
-                      class="bg-white font-mono"
-                      :loading="savingRates"
+                      placeholder="e.g. Air freight per kg rate & handling charges"
+                      class="bg-white"
                       :disable="!canEditCosts"
                       @blur="onRatesBlur"
                       @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
                     />
                   </div>
-                  <div class="col-6">
-                    <q-input
-                      v-model.number="cargoRateInput"
-                      label="Rate"
-                      type="number"
-                      dense
-                      outlined
-                      placeholder="0.00"
-                      :prefix="currentCostCurrencySymbol"
-                      class="bg-white font-mono"
-                      :loading="savingRates"
-                      :disable="!canEditCosts"
-                      @blur="onRatesBlur"
-                      @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <q-input
-                    v-model="cargoNoteInput"
-                    label="Note"
-                    dense
-                    outlined
-                    placeholder="e.g. Air freight per kg rate & handling charges"
-                    class="bg-white"
-                    @blur="onRatesBlur"
-                    @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
-                  />
                 </div>
               </div>
             </div>
@@ -553,6 +550,7 @@
                   icon="ph ph-plus"
                   label="Add Rate"
                   class="q-px-sm rounded-btn text-weight-bold"
+                  :disable="!canEditCosts"
                   @click="addProductRateRow"
                 />
               </div>
@@ -631,8 +629,17 @@
           </div>
         </q-tab-panel>
 
-        <!-- 4. Progress Tab Panel -->
-        <q-tab-panel name="progress" class="q-pa-md bg-white">
+        <!-- 4. Local costs Tab Panel -->
+        <q-tab-panel name="local-costs" class="bg-white">
+          <ShipmentLocalCostsPanel
+            :shipment-id="shipmentId"
+            :default-cost-currency-id="shipmentStore.currentShipment?.shipment_cost_currency_id ?? null"
+            :default-cost-symbol="currentCostCurrencySymbol"
+          />
+        </q-tab-panel>
+
+        <!-- 5. Progress Tab Panel -->
+        <q-tab-panel name="progress" class="bg-white">
           <div class="column q-gutter-y-lg">
             <div class="column q-gutter-y-sm">
               <div class="row items-center justify-between">
@@ -727,8 +734,8 @@
           </div>
         </q-tab-panel>
 
-        <!-- 5. More Tab Panel -->
-        <q-tab-panel name="more" class="q-pa-md bg-white">
+        <!-- 6. More Tab Panel -->
+        <q-tab-panel name="more" class="bg-white">
           <div class="column q-gutter-y-md">
             <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
               <q-icon name="ph ph-dots-three-circle" size="18px" color="primary" />
@@ -770,8 +777,8 @@
           </div>
         </q-tab-panel>
       </q-tab-panels>
-    </q-card>
-  </q-dialog>
+    </div>
+  </q-drawer>
 </template>
 
 <script setup lang="ts">
@@ -791,6 +798,7 @@ import {
   formatGlobalShipmentStatus,
   globalShipmentStatusChipStyle,
 } from '../constants/shipmentStatus';
+import ShipmentLocalCostsPanel from './ShipmentLocalCostsPanel.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -806,11 +814,6 @@ const props = withDefaults(
     progressTagId?: number | null;
     progressUpdating?: boolean;
     progressTargetId?: number | null;
-    childTenantOptions?: Array<{ label: string; value: number }>;
-    childTenantsLoading?: boolean;
-    selectedChildTenantId?: number | null;
-    assigningChild?: boolean;
-    assignedChildTenantId?: number | null;
   }>(),
   {
     initialTab: 'details',
@@ -820,11 +823,6 @@ const props = withDefaults(
     progressTagId: null,
     progressUpdating: false,
     progressTargetId: null,
-    childTenantOptions: () => [],
-    childTenantsLoading: false,
-    selectedChildTenantId: null,
-    assigningChild: false,
-    assignedChildTenantId: null,
   },
 );
 
@@ -832,9 +830,6 @@ const emit = defineEmits<{
   (e: 'update:modelValue', val: boolean): void;
   (e: 'update-flow', flowId: number): void;
   (e: 'update-progress', tagId: number | null): void;
-  (e: 'update:selectedChildTenantId', val: number | null): void;
-  (e: 'save-assign-child'): void;
-  (e: 'clear-assign-child'): void;
 }>();
 
 const authStore = useAuthStore();
@@ -846,6 +841,14 @@ const router = useRouter();
 const $q = useQuasar();
 const shipmentStore = useGlobalShipmentStore();
 const activeTab = ref(props.initialTab || 'details');
+const settingsTabs = [
+  { name: 'details', label: 'Details', icon: 'ph ph-identification-badge' },
+  { name: 'summary', label: 'Summary', icon: 'ph ph-chart-pie-slice' },
+  { name: 'rates', label: 'Rates', icon: 'ph ph-percent' },
+  { name: 'local-costs', label: 'Local', icon: 'ph ph-coins' },
+  { name: 'progress', label: 'Progress', icon: 'ph ph-traffic-signal' },
+  { name: 'more', label: 'More', icon: 'ph ph-dots-three-outline' },
+] as const;
 const archivingLoading = ref(false);
 
 watch(
@@ -1044,10 +1047,25 @@ const drawerShipmentStatus = ref('draft');
 const updatingName = ref(false);
 
 const totalWeightInput = ref<number | null>(null);
-const cargoAmountInput = ref<number | null>(null);
-const cargoRateInput = ref<number | null>(null);
-const cargoNoteInput = ref('');
-const productRatesList = ref<Array<{ id: string; dbId: number | null; amount: number | null; rate: number | null; note: string }>>([]);
+
+type ShipmentRateRowDraft = {
+  id: string;
+  dbId: number | null;
+  amount: number | null;
+  rate: number | null;
+  note: string;
+};
+
+const emptyRateRow = (idPrefix: string): ShipmentRateRowDraft => ({
+  id: `${idPrefix}_${Date.now()}`,
+  dbId: null,
+  amount: null,
+  rate: null,
+  note: '',
+});
+
+const cargoRatesList = ref<ShipmentRateRowDraft[]>([emptyRateRow('cargo_default')]);
+const productRatesList = ref<ShipmentRateRowDraft[]>([emptyRateRow('rate_default')]);
 const savingRates = ref(false);
 
 const productTotalWeightKg = computed(() => {
@@ -1140,47 +1158,34 @@ watch(
   { immediate: true },
 );
 
+const mapCostEntriesToRateRows = (entries: Array<{ id: number; amount?: unknown; exchange_rate?: unknown; metadata?: unknown }>) =>
+  entries.map((pe) => {
+    const meta = (pe.metadata as Record<string, unknown> | null) ?? {};
+    return {
+      id: `db_${pe.id}`,
+      dbId: pe.id,
+      amount: pe.amount != null ? Number(pe.amount) : null,
+      rate: pe.exchange_rate != null ? Number(pe.exchange_rate) : null,
+      note: typeof meta.note === 'string' ? meta.note : '',
+    };
+  });
+
+const isCargoCostEntry = (e: { cost_type?: string }) =>
+  e.cost_type === 'cargo' || e.cost_type === 'cargo_cost' || e.cost_type === 'freight';
+
+const isProductCostEntry = (e: { cost_type?: string }) =>
+  e.cost_type === 'product' || e.cost_type === 'purchase_order' || e.cost_type === 'product_purchase';
+
 const syncRatesFromStore = () => {
   const entries = shipmentStore.currentCostEntries || [];
-  const cargoEntry = entries.find(
-    (e: any) => e.cost_type === 'cargo' || e.cost_type === 'cargo_cost' || e.cost_type === 'freight',
-  );
-  if (cargoEntry) {
-    cargoAmountInput.value = cargoEntry.amount != null ? Number(cargoEntry.amount) : null;
-    cargoRateInput.value = cargoEntry.exchange_rate != null ? Number(cargoEntry.exchange_rate) : null;
-    const meta = (cargoEntry.metadata as Record<string, unknown> | null) ?? {};
-    cargoNoteInput.value = typeof meta.note === 'string' ? meta.note : '';
-  } else {
-    cargoAmountInput.value = null;
-    cargoRateInput.value = null;
-    cargoNoteInput.value = '';
-  }
 
-  const prodEntries = entries.filter(
-    (e: any) => e.cost_type === 'product' || e.cost_type === 'purchase_order' || e.cost_type === 'product_purchase',
-  );
-  if (prodEntries.length > 0) {
-    productRatesList.value = prodEntries.map((pe: any) => {
-      const meta = (pe.metadata as Record<string, unknown> | null) ?? {};
-      return {
-        id: `db_${pe.id}`,
-        dbId: pe.id,
-        amount: pe.amount != null ? Number(pe.amount) : null,
-        rate: pe.exchange_rate != null ? Number(pe.exchange_rate) : null,
-        note: typeof meta.note === 'string' ? meta.note : '',
-      };
-    });
-  } else {
-    productRatesList.value = [
-      {
-        id: 'rate_default',
-        dbId: null,
-        amount: null,
-        rate: null,
-        note: '',
-      },
-    ];
-  }
+  const cargoEntries = entries.filter(isCargoCostEntry);
+  cargoRatesList.value =
+    cargoEntries.length > 0 ? mapCostEntriesToRateRows(cargoEntries) : [emptyRateRow('cargo_default')];
+
+  const prodEntries = entries.filter(isProductCostEntry);
+  productRatesList.value =
+    prodEntries.length > 0 ? mapCostEntriesToRateRows(prodEntries) : [emptyRateRow('rate_default')];
 };
 
 watch(
@@ -1242,28 +1247,29 @@ const onProgressSelect = (value: number | null | undefined) => {
 };
 
 const addProductRateRow = () => {
-  productRatesList.value.push({
-    id: `rate_${Date.now()}`,
-    dbId: null,
-    amount: null,
-    rate: null,
-    note: '',
-  });
+  productRatesList.value.push(emptyRateRow('rate'));
 };
 
-const removeProductRateRow = async (index: number) => {
-  if (productRatesList.value.length > 1) {
-    const removed = productRatesList.value.splice(index, 1)[0];
-    if (removed && removed.dbId) {
-      try {
-        await shipmentStore.deleteShipmentCostEntry(removed.dbId);
-      } catch (err) {
-        console.error('Failed to delete cost entry:', err);
-      }
-    }
-    await saveRates();
-  }
+const addCargoRateRow = () => {
+  cargoRatesList.value.push(emptyRateRow('cargo'));
 };
+
+const removeRateRow = async (list: ShipmentRateRowDraft[], index: number) => {
+  if (list.length <= 1) return;
+  const removed = list.splice(index, 1)[0];
+  if (removed?.dbId) {
+    try {
+      await shipmentStore.deleteShipmentCostEntry(removed.dbId);
+    } catch (err) {
+      console.error('Failed to delete cost entry:', err);
+    }
+  }
+  await saveRates();
+};
+
+const removeProductRateRow = (index: number) => void removeRateRow(productRatesList.value, index);
+
+const removeCargoRateRow = (index: number) => void removeRateRow(cargoRatesList.value, index);
 
 const onRatesBlur = () => {
   void saveRates();
@@ -1282,38 +1288,26 @@ const saveRates = async () => {
       totalWeightInput.value != null ? Number(totalWeightInput.value) : null;
     const weightChanged = totalWeightInput.value !== currentWeight;
 
-    const entries = shipmentStore.currentCostEntries || [];
-    const cargoEntry = entries.find(
-      (e: any) => e.cost_type === 'cargo' || e.cost_type === 'cargo_cost' || e.cost_type === 'freight',
-    );
-
     const batchEntries: UpsertShipmentCostEntryPayload[] = [];
 
-    if (cargoAmountInput.value != null || cargoRateInput.value != null || cargoNoteInput.value) {
-      batchEntries.push({
-        shipment_id: props.shipmentId,
-        id: cargoEntry?.id ?? null,
-        cost_type: 'cargo',
-        currency_id: purchaseCurrencyId,
-        amount: cargoAmountInput.value != null ? Number(cargoAmountInput.value) : 0,
-        exchange_rate: cargoRateInput.value != null ? Number(cargoRateInput.value) : 1,
-        metadata: { note: cargoNoteInput.value },
-      });
-    }
-
-    for (const pr of productRatesList.value) {
-      if (pr.amount != null || pr.rate != null || pr.note) {
-        batchEntries.push({
-          shipment_id: props.shipmentId,
-          id: pr.dbId ?? null,
-          cost_type: 'product',
-          currency_id: purchaseCurrencyId,
-          amount: pr.amount != null ? Number(pr.amount) : 0,
-          exchange_rate: pr.rate != null ? Number(pr.rate) : 1,
-          metadata: { note: pr.note },
-        });
+    const pushRateRows = (rows: ShipmentRateRowDraft[], costType: 'cargo' | 'product') => {
+      for (const row of rows) {
+        if (row.amount != null || row.rate != null || row.note) {
+          batchEntries.push({
+            shipment_id: props.shipmentId,
+            id: row.dbId ?? null,
+            cost_type: costType,
+            currency_id: purchaseCurrencyId,
+            amount: row.amount != null ? Number(row.amount) : 0,
+            exchange_rate: row.rate != null ? Number(row.rate) : 1,
+            metadata: { note: row.note },
+          });
+        }
       }
-    }
+    };
+
+    pushRateRows(cargoRatesList.value, 'cargo');
+    pushRateRows(productRatesList.value, 'product');
 
     await shipmentStore.saveCostEntriesBatch(props.shipmentId, batchEntries, {
       receivedWeight: weightChanged ? nextWeight : undefined,
@@ -1342,6 +1336,82 @@ const saveRates = async () => {
 </script>
 
 <style scoped>
+.shipment-settings-drawer {
+  background: #fff;
+}
+
+.shipment-settings-drawer :deep(.q-drawer__content) {
+  background: #fff;
+}
+
+.shipment-settings-drawer__close {
+  margin-left: 2px;
+}
+
+.shipment-drawer-header {
+  background: #fff;
+}
+
+.shipment-drawer-tabs__scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.shipment-drawer-tabs__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.shipment-drawer-tabs__track {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  min-width: min-content;
+}
+
+.shipment-drawer-tabs__item {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.shipment-drawer-tabs__item:hover {
+  color: #0f172a;
+}
+
+.shipment-drawer-tabs__item--active {
+  background: #fff;
+  color: var(--q-primary);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.shipment-drawer-tabs__item--active .shipment-drawer-tabs__icon {
+  color: var(--q-primary);
+}
+
+.shipment-settings-drawer-panels :deep(.q-tab-panel) {
+  padding: 12px 14px;
+}
+
 .border-bottom {
   border-bottom: 1px solid #e2e8f0;
 }

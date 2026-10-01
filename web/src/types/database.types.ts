@@ -16712,6 +16712,7 @@ export type Database = {
         | "missing"
         | "damaged"
         | "other"
+        | "ordered"
       global_shipment_type: "local" | "international" | "transfer" | "thrift"
       global_source_module: "wholesale" | "retail" | "commerce"
       investor_payment_method: "cash" | "bank" | "mobile_banking" | "other"
@@ -17002,6 +17003,7 @@ export const Constants = {
         "missing",
         "damaged",
         "other",
+        "ordered",
       ],
       global_shipment_type: ["local", "international", "transfer", "thrift"],
       global_source_module: ["wholesale", "retail", "commerce"],
