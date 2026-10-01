@@ -7,9 +7,9 @@ As-built wiring. **Target:** report pages read only. `BillingBalancesPage` colle
 | Page / Component | UI Control / Action | Triggered Hook / Method | Backend RPC / Operation | Cache Invalidation / Optimistic Strategy |
 | :--- | :--- | :--- | :--- | :--- |
 | **`ParentDashboardPage`** | Mount / Month Change | `useDashboardKpisQuery` | `RPC: get_tenant_month_snapshot_report` | Cached on `treasuryQueryKeys.reports('monthSnapshot')` |
-| **`InvoiceMarginReportPage`** | Mount / Date Range Filter | `useInvoiceMarginReportQuery` | `RPC: list_invoice_margin_report` | Cached on `treasuryQueryKeys.invoicesMargin` |
-| **`InvoiceMarginDetailPage`** | Mount / Detail Inspect | `useInvoiceMarginDetailQuery` | `RPC: get_invoice_margin_detail` | Cached on invoice margin key |
-| **`ShipmentPnLDetailsPage`** | Mount / Shipment Select | `useShipmentPnLQuery` | `RPC: get_tenant_shipment_profit_report` | Cached on `treasuryQueryKeys.shipmentPnL` |
+| **`InvoiceMarginReportPage`** | Mount / Date Range Filter | `useInvoiceMarginReportQuery` | Live: `RPC: list_invoice_margin_report` (line COGS). **Target:** shipment P&L / invoice lines by `shipment_id` ([RT19](00-gaps.md)) | Cached on `treasuryQueryKeys.invoicesMargin` |
+| **`InvoiceMarginDetailPage`** | Mount / Detail Inspect | `useInvoiceMarginDetailQuery` | Live: `RPC: get_invoice_margin_detail`. **Target:** same as shipment P&L ([RT19](00-gaps.md)) | Cached on invoice margin key |
+| **`ShipmentPnLDetailsPage`** | Mount / Shipment Select | `useShipmentPnLQuery` | `RPC: get_tenant_shipment_profit_report` — **target** also minus local costs ([RT18](00-gaps.md)) | Cached on `treasuryQueryKeys.shipmentPnL` |
 | **`CashInReportPage`** | Mount / Payment Method Filter | `useCashInReportQuery` | `RPC: get_tenant_cash_in_report` | Cached on `walletQueryKeys.cashIn` |
 | **`PaymentsPage`** (`wallet/`) | Settle Dues / Pay | Navigate collect page | — | — |
 | **`PaymentsPage`** | History | Open `CustomerPaymentHistoryDrawer` | `RPC: list_customer_group_receipts` | `financeReportQueryKeys.customerGroupReceipts` |

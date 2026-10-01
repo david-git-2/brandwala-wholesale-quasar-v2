@@ -16,7 +16,7 @@ web/src/modules/customer/
 ├── components/
 │   ├── CustomerCreateDialog.vue          # Atomic 2-field create popup (name + phone)
 │   ├── CustomerDetailDrawer.vue          # 4-tab right inspection & edit drawer
-│   ├── CustomerGeneralTab.vue            # Group info & billing profile contact details
+│   ├── CustomerGeneralTab.vue            # Group info & profile contact details
 │   ├── CustomerMembersTab.vue            # Storefront login users table & invitation modal
 │   ├── CustomerAccountTab.vue            # Dual pot comparison (Invoice Due vs Store Credit)
 │   └── CustomerWalletTab.vue             # Universal wallet transaction history

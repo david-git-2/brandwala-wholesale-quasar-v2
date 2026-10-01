@@ -1,7 +1,7 @@
 # Wholesale order → invoice → payment fix
 
 **Date:** 2026-09-18  
-**Target:** [money-story](../docs/features/sales_invoice/money-story.md)
+**Target:** [money-story](../docs/features/bills_pays/money-story.md)
 
 ## Broken (as-built before fix)
 

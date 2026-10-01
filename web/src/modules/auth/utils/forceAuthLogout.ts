@@ -55,6 +55,8 @@ export async function handleUnauthorizedResponse() {
     const isLoginOrAuthRoute = (path: string, name?: string) => {
       if (!path) return true;
       if (path.includes('/login') || path.includes('/auth/callback')) return true;
+      if (path.startsWith('/dev/document') || path.startsWith('/dev/doc')) return true;
+      if (currentRoute.meta.public === true) return true;
       const loginRouteNames = [
         'admin-login-page',
         'customer-login-page',
@@ -62,6 +64,7 @@ export async function handleUnauthorizedResponse() {
         'investor-login-page',
         'auth-callback-page',
         'auth-callback',
+        'dev-documentation-codex',
       ];
       if (name && loginRouteNames.includes(name)) return true;
       return false;

@@ -46,7 +46,11 @@ language plpgsql security definer;
 
 ## 2. Inbound Finalization RPC: `finalize_global_shipment`
 
-Executes the physical receiving checklist, stamps final landed unit costs on line items, and creates `global_stocks` rows in the warehouse pool.
+Executes the physical receiving checklist, stamps landed unit costs, and creates `global_stocks` rows in the warehouse pool.
+
+**Live today:** one `received_quantity` + one `landed_cost_bdt` + `condition_grade` + `purchase_price` on `global_shipment_items`.
+
+**Target:** extra **outcome** rows ([US-7](01-prd.md), [PS7](00-gaps.md)): `quantity`, `kind` (`sellable` \| `unsellable`), `reason`, `purchase_price`, stamped `cost`. **General** is history only — do not post lots from it. `sellable` → lot with `outcome_id`; `unsellable` → loss. Cargo rows unchanged. Restamp **on-hand** only. Return inbound before changing qty that already left. Abort if on-hand is short. Staff must not PATCH line money/qty as the receive form. **Closed** shipments reject writes ([PS10](00-gaps.md)).
 
 ### Input Payload Schema
 ```json
@@ -76,6 +80,19 @@ Executes the physical receiving checklist, stamps final landed unit costs on lin
   }
 }
 ```
+
+---
+
+## 2b. Local costs (target, [US-8](01-prd.md) / [PS8](00-gaps.md))
+
+Procurement only. Does **not** call `stamp_global_shipment_landed_costs`.
+
+| Op | Intent |
+| :--- | :--- |
+| List by `shipment_id` | Rows for the shipment |
+| Upsert row | `description`, `amount`, `currency_id` (null → shipment cost currency) |
+| Delete row | Staff remove one cost |
+| Profit | Subtract sum from shipment GP (treasury P&L when that report is next edited) |
 
 ---
 
@@ -128,6 +145,10 @@ language plpgsql security definer;
 
 ## 5. Pre-order demand RPCs
 
+**Table:** `preorder_demand` — one row per `shop_order_item` or `pbc_costing_item`. **Groups:** `document_type` + `document_id` in list RPCs. ERD: [02-data-model §1b](02-data-model.md#1b-demand--fulfill-erd).
+
+**Helper:** `get_procurement_demand_open_qty(p_source_type, p_source_id)` — confirmed need still open for picks / placement caps.
+
 ### 5.1 `upsert_preorder_demand`
 
 Updates vendor PO (`placed_quantity`), warehouse picks (`stock_picks` → `delivered_quantity`), or both.
@@ -149,7 +170,9 @@ Sets `vendor_id` on **every** demand line for one document (`p_document_type` + 
 
 ### 5.2 `create_invoice_from_preorder_demand_document`
 
-Builds proforma (`issue: false`) from stock picks only. Document must be `ready_for_shipment`. Requires at least one pick. Idempotent if document already has a linked invoice (returns existing `invoice_id`). Catalog orders set `sales_invoices.shop_order_id` after create.
+**Live today:** builds proforma (`issue: false`) from stock picks. Document must be `ready_for_shipment`. Idempotent if a linked invoice exists.
+
+**Target:** Fulfill pack creates a **delivery paper**, not this bill. See [01-prd US-4](01-prd.md) and [bills_pays US-5](../bills_pays/01-prd.md). Gap [PS6](00-gaps.md).
 
 ### 5.2b `sync_invoice_from_preorder_demand_document`
 
@@ -207,3 +230,19 @@ Client CRUD on `batch_code_lists` / `batch_code_items` under RLS. Bulk paste use
 | Import CSV dialog | Parse client-side; append with `paste_batch_code_items` at `p_start_row_index = current line count` |
 | Shipment line batch dialog — add missing | Ensure `batch_code_lists` by `shipment_id`; insert `batch_code_items` with line barcode/product code |
 | Default expire | RPC + client: if mfg set and expire empty, expire = mfg + 36 calendar months |
+
+---
+
+## 8. Shipment sections (line-item tabs)
+
+Table: `global_shipment_sections`. See [02-data-model §3c](02-data-model.md#3c-global_shipment_sections-shipment-line-item-tabs).
+
+| Action | Operation |
+| :--- | :--- |
+| Create draft shipment | `create_shipment_draft` also inserts **Section 1** for the new `global_shipments` row |
+| Load line-items page | `get_shipment_overview_details(p_shipment_id)` → JSON `sections` + `items` (and boxes, cost entries, flow stages) |
+| List / add / update / delete tab | Direct `global_shipment_sections` CRUD via client (`shipmentSectionRepository`) under RLS |
+| Reorder tabs after drag | `reorder_shipment_sections(p_shipment_id, p_section_ids bigint[])` — sets `sort_order` 0…n−1 |
+| Add line to active tab | Item RPCs / inserts accept optional `section_id` on `global_shipment_items` |
+| Scoped landed cost row | Optional `section_id` on `global_shipment_cost_entries` |
+| Scoped local cost row | Optional `section_id` on `global_shipment_local_costs` ([PS8](00-gaps.md)) |

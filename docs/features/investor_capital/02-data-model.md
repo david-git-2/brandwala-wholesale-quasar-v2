@@ -1,6 +1,6 @@
 # Investor capital — data model
 
-Live SQL: `investors`, `shipment_investments` in `supabase/schemas/` (procurement tables + investor RPCs). Cash lines: `universal_wallet_ledger` with `metadata.section = investor_capital` ([wallet 02](../wallet/02-data-model.md)). Staff app UI and investor portal read the same tables (no UI-only tables). Do not paste full `CREATE` here.
+Live SQL: `investors`, `shipment_investments` in `supabase/schemas/` (procurement tables + investor RPCs). Cash lines: `universal_wallet_ledger` with `metadata.section = investor_capital` ([bills_pays 02](../bills_pays/02-data-model.md)). Staff app UI and investor portal read the same tables (no UI-only tables). Do not paste full `CREATE` here.
 
 ## Three entities + wallet
 

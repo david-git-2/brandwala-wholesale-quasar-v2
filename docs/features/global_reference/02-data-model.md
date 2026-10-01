@@ -150,7 +150,7 @@ Platform-wide payment channels and checkout options.
 | `is_active` | `boolean` | `NOT NULL, DEFAULT true` | Active toggle. |
 
 ### 2.4 `bd_banks`
-Platform-wide Bangladesh bank catalog for cheque receipt lines. Consumed read-only by tenant desks ([wallet instrument lines](../wallet/02-data-model.md)). Not the same as `payment_methods` (cash / cheque / bKash channel).
+Platform-wide Bangladesh bank catalog for cheque receipt lines. Consumed read-only by tenant desks ([pay instrument lines](../bills_pays/02-data-model.md)). Not the same as `payment_methods` (cash / cheque / bKash channel).
 
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |

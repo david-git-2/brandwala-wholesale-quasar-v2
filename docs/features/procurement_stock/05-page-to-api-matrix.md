@@ -14,13 +14,19 @@ Mapping of all UI views, buttons, dialog triggers, and user actions to correspon
 | **`ArchivedShipmentsModal`** | Click Restore / Unarchive | `useUnarchiveShipmentMutation` | `RPC: unarchive_shipment` | Invalidates active & archived shipment caches |
 | **`ArchivedShipmentsModal`** | Click Purge (Draft/Cancelled) | `usePurgeArchivedShipmentMutation`| `RPC: purge_archived_shipment` | Optimistic item removal; invalidates `archivedShipments` |
 | **`ShipmentFormDialog`** | Submit "Create Shipment" | `useCreateShipmentMutation` | `RPC: create_shipment_draft` | Invalidates active shipments list, navigates to detail |
+| **`ShipmentLineItemsV2Page`** | Mount / refresh shipment | `useShipmentOverviewDetailsQuery` | `RPC: get_shipment_overview_details` (`sections`, `items`, …) | `procurementStockQueryKeys.shipmentOverview` |
+| **`ShipmentLineItemsV2Page`** | Section tab bar (add / edit / delete / reorder) | `globalShipmentStore` → `shipmentSectionRepository` | `Table: global_shipment_sections`; `RPC: reorder_shipment_sections` | Reload sections + items; `currentShipmentSections` |
+| **`ShipmentLineItemsV2Page`** | Add Catalog Item / Bulk Paste (active section) | `useAddShipmentItemMutation` | `RPC: add_shipment_item_from_product` (optional `section_id`) | Target: also insert outcome **sellable/general** ([PS7](00-gaps.md)). Refetch overview |
 | **`ShipmentLineItemsV2Page`** | Batch code column | `useBatchCodeItemsByShipmentQuery` | `batch_code_lists` by `shipment_id` → `batch_code_items` | Client match on barcode / product code |
 | **`ShipmentLineBatchCodeDialog`** | Add missing batch | `ensureList` + `batch_code_items` insert | Table insert; patch `batchCodeItemsByShipment` | Compact batch count updates |
 | **`ShipmentBatchCodeGrid`** | Arrived checkbox | `updateItem` (`is_arrived`) | `Table: batch_code_items` update | Patch items cache |
-| **`ShipmentLineItemsV2Page`** | Add Catalog Item / Bulk Paste | `useAddShipmentItemMutation` | `RPC: add_shipment_item_from_product` | Refetches `shipmentOverview` details |
 | **`ShipmentLineItemsV2Page`** | Save Cost Entries | `useSaveCostEntriesMutation` | `Table: global_shipment_cost_entries` | Recalculates and restamps landed cost BDT |
+| **`ShipmentLineItemsV2Page`** (target) | Add / edit / delete local costs | TBD | `Table: global_shipment_local_costs` (optional `section_id`) | **No** landed stamp; profit uses sum ([PS8](00-gaps.md)) |
 | **`ShipmentLineItemsV2Page`** | Click "Lock Shipment Costs" | `useLockCostsMutation` | `RPC: lock_global_shipment_costs` | Sets `costs_locked = true`; invalidates `shipmentOverview` |
-| **`ReceiveShipmentPage`** | Confirm Inbound Physical Qty | `useFinalizeShipmentMutation` | `RPC: finalize_global_shipment` | Stamps final landed cost, creates `global_stocks`, routes to detail |
+| **Shipment** (target) | Close | TBD | `is_closed = true`; block writes | UI read-only ([PS10](00-gaps.md)) |
+| **`ReceiveShipmentPage`** | Confirm inbound qty (today) | `useFinalizeShipmentMutation` | `RPC: finalize_global_shipment` (line `received_quantity` + `landed_cost_bdt`) | Stamps line cost, creates `global_stocks` |
+| **`ReceiveShipmentPage`** (target) | Add extra outcomes; post stock | TBD | Extra rows `kind` sellable/unsellable; lots from sellable only ([PS7](00-gaps.md)) | General does not create lots |
+| **Shipment restamp** (target) | After delivery return + vendor better price | TBD | Return inbound movement, then restamp **on-hand** lots from outcomes | Do not rewrite sold/out qty; abort if on-hand short; not a hand stock patch |
 | **`WarehouseStockListPage`** | Table Mount / Search Filter | `useWarehouseStockQuery` | `Table: global_stocks` | Cached on `procurementStockQueryKeys.allocatableStockList` |
 | **`StockMoveLocationDialog`** | Submit Location Transfer | `useStockMovementMutation` | `RPC: create_and_post_stock_movement` | Updates physical location; invalidates stock & movement lists |
 | **`StockMoveGradeDialog`** | Submit Grade Transition | `useStockMovementMutation` | `RPC: create_and_post_stock_movement` | Updates `availability`; invalidates stock & movement lists |
@@ -33,9 +39,9 @@ Mapping of all UI views, buttons, dialog triggers, and user actions to correspon
 | **`ProcurementFulfillPage`** | Fill oldest stock (group) | `useFillPreorderDemandOldestStockMutation` | `RPC: fill_preorder_demand_oldest_stock_for_document` | Invalidates demand + fulfill caches |
 | **`ProcurementFulfillPage`** | Pick stock | `useUpsertPreorderDemandMutation` | `RPC: upsert_preorder_demand` (`p_stock_picks`) | Invalidates demand + fulfill caches |
 | **`ProcurementFulfillPage`** | Change status → ready for shipment | `useSetDemandGroupStatusMutation` | Shop: `RPC: update_shop_order_status_for_staff` (`ready_for_shipment`). PBC: `product_based_costing_files.status` | Status only; no invoice |
-| **`ProcurementFulfillPage`** | Create invoice | `useCreateDemandDocumentInvoiceMutation` | `RPC: create_invoice_from_preorder_demand_document` | Ready + no `invoice_id`; links bill to document |
-| **`ProcurementFulfillPage`** | Update invoice | `useSyncDemandDocumentInvoiceMutation` | `RPC: sync_invoice_from_preorder_demand_document` | Ready + `invoice_stale` + editable status |
-| **`ProcurementFulfillPage`** | Open invoice | `router.push` | none | Draft/proforma → `/app/sales/invoices/create?id=`; issued/voided → `app-global-invoice-details-page` |
+| **`ProcurementFulfillPage`** | Create invoice | `useCreateDemandDocumentInvoiceMutation` | `RPC: create_invoice_from_preorder_demand_document` | **Live:** proforma from picks. **Target:** delivery paper ([PS6](00-gaps.md)) |
+| **`ProcurementFulfillPage`** | Update invoice | `useSyncDemandDocumentInvoiceMutation` | `RPC: sync_invoice_from_preorder_demand_document` | Live: ready + stale draft/proforma. Target: delivery paper, not bill |
+| **`ProcurementFulfillPage`** | Open invoice | `router.push` | none | Live: linked bill. Target: delivery paper, then take / condition bills |
 | **`ShipmentSettingsDrawer` More** | Batch Code | Router | `app-procurement-shipment-batch-code` | — |
 | **`ShipmentBatchCodePage`** | Mount / ensure list | `ensureList` | `Table: batch_code_lists` select/insert by `shipment_id` | `procurementStockQueryKeys.batchCodeList` |
 | **`ShipmentBatchCodePage`** | Add line dialog | `createItem` | `Table: batch_code_items` insert | Patch items cache |

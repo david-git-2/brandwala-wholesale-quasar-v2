@@ -1,20 +1,84 @@
 # Customer Hub — Data Model & Schema Specification
 
 > **Module Schema Target**: `supabase/schemas/customer/` or `supabase/schemas/tenants/`  
-> **Source Tables**: `customer_groups`, `billing_profiles`, `customer_group_members`, `recipient_profiles`
+> **Source Tables**: `customer_groups`, `profiles` (as-built `billing_profiles`), `customer_group_members`, `recipient_profiles`  
+> **Money party:** [bills_pays § Profile](../bills_pays/02-data-model.md#profile) — one `profiles` row per party (`tenant`, `customer`, …); [BP3](../bills_pays/00-gaps.md). Bills / pays / leftover ERD: [bills_pays 02](../bills_pays/02-data-model.md#1-erd).
 
 ---
 
-## 1. Entity Relationship Diagram
+## 1. ERD
+
+Hub identity only. **PROFILE** is the money party. Bills, pays, cashbook live in [bills_pays](../bills_pays/02-data-model.md). Recipient is delivery, not AR.
+
+### Overview
 
 ```mermaid
+%%{init: {"er": {"useMaxWidth": true, "layoutDirection": "TB", "minEntityWidth": 220, "minEntityHeight": 90, "entityPadding": 24, "fontSize": 16, "diagramPadding": 32}}}%%
 erDiagram
-    TENANTS ||--o{ CUSTOMER_GROUPS : owns_parent_books
-    CUSTOMER_GROUPS ||--|| BILLING_PROFILES : linked_billing_account
-    CUSTOMER_GROUPS ||--o{ CUSTOMER_GROUP_MEMBERS : login_users
-    BILLING_PROFILES ||--|| WALLET_ACCOUNTS : store_credit_wallet
-    TENANTS ||--o{ RECIPIENT_PROFILES : delivery_address_book
+    direction TB
+    TENANTS ||--o{ CUSTOMER_GROUPS : owns_books
+    CUSTOMER_GROUPS ||--o| PROFILE : subject_until_merge
+    CUSTOMER_GROUPS ||--o{ MEMBERS : login_users
+    PROFILE ||--|| CASHBOOK_ACCOUNT : leftover
+    TENANTS ||--o{ RECIPIENT : delivery_book
 ```
+
+### Details
+
+```mermaid
+%%{init: {"er": {"useMaxWidth": true, "layoutDirection": "TB", "minEntityWidth": 220, "minEntityHeight": 90, "entityPadding": 24, "fontSize": 16, "diagramPadding": 32}}}%%
+erDiagram
+    direction TB
+    TENANTS ||--o{ CUSTOMER_GROUPS : owns_books
+    CUSTOMER_GROUPS ||--o| PROFILE : subject_until_merge
+    CUSTOMER_GROUPS ||--o{ MEMBERS : login_users
+    PROFILE ||--|| CASHBOOK_ACCOUNT : leftover
+    TENANTS ||--o{ RECIPIENT : delivery_book
+
+    CUSTOMER_GROUPS {
+        bigint id PK
+        bigint parent_tenant_id FK
+        text name
+        text accent_color
+        bool is_active
+        timestamptz deleted_at
+    }
+    PROFILE {
+        bigint id PK
+        bigint parent_tenant_id FK
+        text profile_type
+        bigint subject_id
+        text name
+        text phone
+        text phone_country_code
+        text address
+    }
+    MEMBERS {
+        bigint id PK
+        bigint customer_group_id FK
+        uuid user_id
+        text email
+        text name
+        text role
+        bool is_active
+    }
+    CASHBOOK_ACCOUNT {
+        bigint id PK
+        bigint parent_tenant_id
+        bigint profile_id FK
+        text currency
+        numeric available_balance
+    }
+    RECIPIENT {
+        bigint id PK
+        bigint parent_tenant_id FK
+        text name
+        text phone
+        text address
+    }
+```
+
+**As-built:** hub is **group-first**; each group gets a **profile** (`customer_group_id` on table `billing_profiles`). **Target (BP3):** buyer `profiles.profile_type = customer`; group fields fold into profile or `subject_id` points at group until members use `profile_id`.
 
 ---
 
@@ -47,8 +111,8 @@ create table if not exists public.customer_groups (
   constraint uq_group_name_per_parent unique (parent_tenant_id, name)
 );
 
--- 2. Billing Profiles (Financial Counterparty)
-create table if not exists public.billing_profiles (
+-- 2. Profiles (financial counterparty; as-built table name billing_profiles)
+create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
   parent_tenant_id uuid not null references public.tenants(id) on delete cascade,
   customer_group_id uuid unique references public.customer_groups(id) on delete set null,

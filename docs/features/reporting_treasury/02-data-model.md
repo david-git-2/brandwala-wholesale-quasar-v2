@@ -1,18 +1,18 @@
 # Reporting — data (read model)
 
-No extra books. Reports **read** invoices, receipts, orders, ledger. Live RPCs: `public.sql`. Receipts shape: [wallet 02](../wallet/02-data-model.md). Bills: [sales_invoice 02](../sales_invoice/02-data-model.md).
+No extra books. Reports **read** invoices, receipts, orders, ledger. Live RPCs: `public.sql`. Money tables: [bills_pays 02](../bills_pays/02-data-model.md).
 
 | Report | Reads | Grain |
 | :--- | :--- | :--- |
-| Invoice book / profit | Issued `sales_invoices` + items + cost snapshot | Invoice / line |
-| Customer dues | Invoice `due_amount` by `billing_profile_id` | Billed party |
-| Cash in | Receipts (`global_payments`) by `source` / method | Receipt date |
-| Courier COD | `shop_orders` COD face + remittance receipts | Order |
-| Wallet liability | `universal_wallet_ledger` balances by `entity_type` | Entity |
-| Shipment P&L | Shipment landed cost + invoice **sell** on those stocks + unsold qty | Shipment |
+| Invoice book / profit | Issued `bills` (live `sales_invoices`) + lines + cost snapshot | Bill / line |
+| Customer dues | Bill `due_amount` by `profile_id` (live `billing_profile_id`) | Profile |
+| Cash in | `pays` (live `global_payments`) by `source` / method | Pay date |
+| Courier COD | `shop_orders` COD face + remittance pays | Order |
+| Cashbook we owe | `cashbook_entries` (live `universal_wallet_ledger`) by party | Profile / entity |
+| Shipment P&L | Shipment landed cost + bill **sell** on those stocks + unsold qty | Shipment |
 | Month snapshot | Sums of the above for the month — **separate tiles** | Month |
 
-Payments tables belong to **wallet**. Reporting must not own `INSERT` into them.
+Pay tables belong to **bills_pays**. Reporting must not `INSERT` them.
 
 ---
 

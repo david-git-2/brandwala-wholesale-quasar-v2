@@ -114,6 +114,9 @@ export default defineConfig((ctx) => {
             cssCodeSplit: false,
             assetsInlineLimit: 8192,
           },
+          optimizeDeps: {
+            include: ['mermaid'],
+          },
         };
       },
     },

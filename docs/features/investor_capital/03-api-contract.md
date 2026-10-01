@@ -35,4 +35,4 @@
 
 ## Not in this module
 
-Receipts → [wallet](../wallet/03-api-contract.md). Membership → [tenant_auth](../tenant_auth/03-api-contract.md).
+Receipts → [bills_pays](../bills_pays/03-api-contract.md). Membership → [tenant_auth](../tenant_auth/03-api-contract.md).

@@ -19,7 +19,7 @@
 | | |
 | :--- | :--- |
 | Surfaces | `app` hub; `shop` as **group members** (not recipients) |
-| In | Customer group (who pays), billing profile, members, dues. **Recipient profiles** (who gets the parcel) live in the same hub; `parentModuleKey: customer`; no own sidebar pack |
+| In | Customer group (who pays), **profile** (bill-to party), members, dues. **Recipient profiles** (who gets the parcel) live in the same hub; `parentModuleKey: customer`; no own sidebar pack |
 | Out | Placing shop orders; ledger posting (wallet); do **not** split Recipient into `docs/features/recipient/` |
 
 Customer ≠ recipient: group/wallet vs delivery name/phone/address (`recipient_profiles`). Invoice/dropship dialogs pick a recipient; they do not create a second customer.
@@ -32,7 +32,7 @@ See [scopes](../../architecture/scopes.md).
 
 The **Customer Hub** module provides centralized identity, customer grouping, billing accounts, storefront buyer login management, and credit ledgers for B2B buyer organizations.
 
-Customer accounts are consolidated under the **Parent Books Tenant** (`customer_groups.parent_tenant_id`). When a new customer account is created, the system executes an atomic transaction creating the customer group, linking a billing profile, and initializing a universal wallet account.
+Customer accounts are consolidated under the **Parent Books Tenant** (`customer_groups.parent_tenant_id`). When a new customer account is created, the system executes an atomic transaction creating the customer group, linking a **profile** (as-built `billing_profiles`), and initializing a universal wallet account.
 
 ---
 
@@ -55,7 +55,7 @@ Customer accounts are consolidated under the **Parent Books Tenant** (`customer_
 - **So that** a Customer Group, Billing Profile, and Customer Universal Wallet are provisioned in a single atomic transaction.
 
 #### Acceptance Criteria
-- [ ] Submitting the modal invokes `create_customer_account` creating `customer_groups`, `billing_profiles`, and `wallet_accounts`.
+- [ ] Submitting the modal invokes `create_customer_account` creating `customer_groups`, profile row (`billing_profiles` until [BP3](../bills_pays/00-gaps.md)), and `wallet_accounts`.
 - [ ] Phone numbers are strictly unique per books parent tenant (`parent_tenant_id + phone_country_code + phone`).
 - [ ] No initial member login row is required on create (added optionally via the Members drawer).
 

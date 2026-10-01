@@ -21,7 +21,9 @@ web/src/modules/procurement_stock/
 │   ├── WarehouseStockListPage.vue        # Searchable inventory pool with ATP badges
 │   ├── StockLocationsPage.vue            # Interactive 4-tier tree location builder
 │   ├── StockMovementsPage.vue            # Immutable movement & transfer audit log
-│   └── CargoCompaniesPage.vue            # Freight carrier list & wallet links
+│   ├── CargoCompaniesPage.vue            # Freight carrier list & wallet links
+│   ├── ProcurementDemandPage.vue         # mode=buy → ProcurementDemandDesk
+│   └── ProcurementFulfillPage.vue        # mode=fulfill → ProcurementDemandDesk
 ├── components/
 │   ├── ShipmentBoxWeightGrid.vue         # Box Excel grid
 │   ├── ShipmentBatchCodeGrid.vue         # Batch code Excel grid (q-markup-table)
@@ -31,12 +33,24 @@ web/src/modules/procurement_stock/
 │   ├── ArchivedShipmentsModal.vue        # Dedicated dialog for archived records
 │   ├── ShipmentFormDialog.vue            # Draft shipment creator modal
 │   ├── ShipmentStatusWorkflowBar.vue     # Visual status & progress tag tracker
-│   ├── ShipmentCostEntriesPanel.vue      # Apportioned cost entry manager
+│   ├── ShipmentCostEntriesPanel.vue      # Apportioned cost entry manager (landed only)
+│   ├── ShipmentLocalCostsPanel.vue       # Target: local opex rows (not landed)
 │   ├── StockMoveLocationDialog.vue       # Location transfer dialog
 │   └── StockMoveGradeDialog.vue          # Condition grade transition modal
+│   ├── ProcurementDemandDesk.vue           # Shared ops table: Demand vs Fulfill mode
+│   ├── ProcurementDemandGroupItemRows.vue  # Expandable group lines + inline save
+│   └── ProcurementDemandStockPickDialog.vue # Lot picker for fulfill picks
 ├── repositories/
 │   ├── shipmentRepository.ts             # Supabase RPC invocation client
-│   └── warehouseStockRepository.ts       # Location, movement & pool queries
+│   ├── warehouseStockRepository.ts       # Location, movement & pool queries
+│   └── procurementDemandRepository.ts    # Demand/Fulfill list + upsert + invoice RPCs
+├── composables/
+│   ├── useProcurementDemandGroupsQuery.ts
+│   ├── useProcurementDemandGroupItemsInfiniteQuery.ts
+│   ├── useProcurementFulfillGroupsQuery.ts
+│   ├── useProcurementFulfillGroupItemsInfiniteQuery.ts
+│   ├── useProcurementPlacementMutations.ts
+│   └── useMarkDemandGroupReadyMutation.ts  # ready_for_shipment + invoice helpers
 └── shared/
     └── queryKeys/
         └── procurementStockQueryKeys.ts  # TanStack query key definitions
@@ -65,8 +79,18 @@ export const procurementStockQueryKeys = {
     [...procurementStockQueryKeys.all, 'childStockAtp', params] as const,
   batchCodeList: (shipmentId: number) =>
     [...procurementStockQueryKeys.all, 'batchCodeList', { shipmentId }] as const,
+  demandGroups: (params: Record<string, unknown>) =>
+    [...procurementStockQueryKeys.all, 'demandGroups', params] as const,
+  demandGroupItems: (params: Record<string, unknown>) =>
+    [...procurementStockQueryKeys.all, 'demandGroupItems', params] as const,
+  fulfillGroups: (params: Record<string, unknown>) =>
+    [...procurementStockQueryKeys.all, 'fulfillGroups', params] as const,
+  fulfillGroupItems: (params: Record<string, unknown>) =>
+    [...procurementStockQueryKeys.all, 'fulfillGroupItems', params] as const,
 };
 ```
+
+**Routes:** `app-procurement-demand` (`procurement_demand` grant), `app-procurement-fulfill` (`procurement_fulfill` grant). Data model: [02-data-model §1b](02-data-model.md#1b-demand--fulfill-erd).
 
 ---
 

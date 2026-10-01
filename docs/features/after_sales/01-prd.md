@@ -21,7 +21,7 @@
 | :--- | :--- |
 | Surfaces | `app` (policies, cases, intake) |
 | In | RMA cases, return policy, wholesale + dropship return execution |
-| Out | Creating original invoices; warehouse bin layout |
+| Out | Creating original invoices; warehouse bin layout; **delivery-paper close**; **inbound** unsellable / vendor credit ([procurement US-7](../procurement_stock/01-prd.md)) |
 
 See [scopes](../../architecture/scopes.md).
 

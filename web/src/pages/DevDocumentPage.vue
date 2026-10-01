@@ -7,9 +7,11 @@
           flat
           dense
           round
-          icon="ph ph-list"
-          aria-label="Toggle Navigation"
-          class="q-mr-sm lt-md doc-nav-toggle"
+          :icon="leftDrawerOpen ? 'ph ph-sidebar-simple' : 'ph ph-list'"
+          aria-label="Toggle sidebar"
+          class="q-mr-sm doc-nav-toggle"
+          :color="leftDrawerOpen ? 'primary' : undefined"
+          title="Show or hide navigation"
           @click="leftDrawerOpen = !leftDrawerOpen"
         />
 
@@ -64,8 +66,8 @@
     <!-- Left Navigation Drawer -->
     <q-drawer
       v-model="leftDrawerOpen"
-      show-if-above
       :width="305"
+      :breakpoint="1024"
       class="doc-slate-sidebar"
     >
       <div class="column fit no-wrap justify-between">
@@ -248,7 +250,7 @@
 
     <!-- Main Content Canvas -->
     <q-page-container class="doc-main-container">
-      <q-page class="q-pa-md q-pa-xl-lg doc-prose-page" v-if="activeDoc">
+      <q-page class="doc-prose-page" v-if="activeDoc">
         <div class="doc-prose-wrapper">
           <!-- Rendered Prose View -->
           <article
@@ -359,7 +361,7 @@ function resetFilters() {
 }
 
 function isFolderExpanded(folder: string): boolean {
-  return expandedFolders.value[folder] ?? true;
+  return expandedFolders.value[folder] ?? false;
 }
 
 function toggleFolder(folder: string) {
@@ -447,11 +449,33 @@ const nextDoc = computed<DocItem | null>(() => {
   return idx >= 0 && idx < allDocs.value.length - 1 ? (allDocs.value[idx + 1] ?? null) : null;
 });
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function unescapeHtml(text: string): string {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
 // Render markdown to HTML formatted to match Next.js typography & tables
 const renderedHtml = computed(() => {
   if (!activeDoc.value) return '';
 
-  const raw = activeDoc.value.rawContent;
+  const mermaidBlocks: string[] = [];
+  const fenceRe = new RegExp('```mermaid[^\\n]*\\n([\\s\\S]*?)```', 'g');
+  const raw = activeDoc.value.rawContent.replace(fenceRe, (_match, src: string) => {
+    const i = mermaidBlocks.length;
+    mermaidBlocks.push(String(src).trim());
+    return `\n\nMERMAID_PLACEHOLDER_${i}\n\n`;
+  });
 
   const parsed = marked.parse(raw, {
     gfm: true,
@@ -463,6 +487,12 @@ const renderedHtml = computed(() => {
     /<td>\s*<code>([^<]+)<\/code>\s*<\/td>/gi,
     '<td><span class="doc-table-command">$1</span></td>'
   );
+
+  mermaidBlocks.forEach((src, i) => {
+    const figure = `<div class="doc-mermaid-wrap"><pre class="doc-mermaid">${escapeHtml(src)}</pre></div>`;
+    enhanced = enhanced.replace(`<p>MERMAID_PLACEHOLDER_${i}</p>`, figure);
+    enhanced = enhanced.replace(`MERMAID_PLACEHOLDER_${i}`, figure);
+  });
 
   // Post-process GitHub alerts
   enhanced = enhanced.replace(
@@ -549,21 +579,76 @@ function handleWindowScroll() {
   }
 }
 
-// Inject heading IDs
-watch(renderedHtml, () => {
-  void nextTick(() => {
-    const headings = document.querySelectorAll<HTMLElement>('.doc-slate-prose h2, .doc-slate-prose h3');
-    headings.forEach((h) => {
-      const text = h.textContent?.trim() || '';
-      const slug = text
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .trim()
-        .replace(/\s+/g, '-');
-      h.setAttribute('id', slug);
+async function paintMermaidDiagrams() {
+  const nodes = document.querySelectorAll<HTMLElement>('.doc-slate-prose .doc-mermaid');
+  if (!nodes.length) return;
+
+  try {
+    const mermaidMod = await import('mermaid');
+    const mermaid = mermaidMod.default;
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'loose',
+      theme: $q.dark.isActive ? 'dark' : 'neutral',
+      themeVariables: {
+        fontSize: '18px',
+      },
     });
+
+    let index = 0;
+    for (const el of nodes) {
+      const stored = el.getAttribute('data-src');
+      const src = (stored ?? unescapeHtml(el.textContent ?? '')).trim();
+      if (!stored) {
+        el.setAttribute('data-src', src);
+      }
+      if (!src) continue;
+      try {
+        const id = `doc-mermaid-${index++}-${Date.now()}`;
+        const { svg } = await mermaid.render(id, src);
+        el.innerHTML = svg;
+        const svgEl = el.querySelector('svg');
+        if (svgEl) {
+          svgEl.removeAttribute('width');
+          svgEl.removeAttribute('height');
+          svgEl.style.width = '100%';
+          svgEl.style.height = 'auto';
+          svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        }
+      } catch (err) {
+        console.error(err);
+        el.textContent = src;
+      }
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function injectHeadingIds() {
+  const headings = document.querySelectorAll<HTMLElement>('.doc-slate-prose h2, .doc-slate-prose h3');
+  headings.forEach((h) => {
+    const text = h.textContent?.trim() || '';
+    const slug = text
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-');
+    h.setAttribute('id', slug);
   });
-});
+}
+
+watch(
+  [renderedHtml, isDark],
+  () => {
+    void nextTick(async () => {
+      await nextTick();
+      injectHeadingIds();
+      await paintMermaidDiagrams();
+    });
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   window.addEventListener('scroll', handleWindowScroll, { passive: true });
@@ -1143,13 +1228,37 @@ body.body--dark .doc-main-container {
 }
 
 .doc-prose-page {
-  display: flex;
-  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
 }
 
 .doc-prose-wrapper {
-  max-width: 860px;
   width: 100%;
+  max-width: 100%;
+  padding: 16px 20px 24px;
+  box-sizing: border-box;
+}
+
+/* Mermaid: edge-to-edge in main column (cancel prose wrapper padding) */
+.doc-mermaid-wrap {
+  width: calc(100% + 40px);
+  max-width: calc(100% + 40px);
+  margin: 0 -20px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.doc-mermaid-wrap .doc-mermaid {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 /* Prose Typography matching Next.js / Tailwind Typography */
@@ -1229,6 +1338,29 @@ body.body--dark .doc-main-container {
     }
   }
 
+  pre.doc-mermaid,
+  .doc-mermaid {
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background-color: transparent;
+    color: #0f172a;
+    white-space: pre-wrap;
+
+    svg {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+    }
+  }
+
+  .doc-mermaid-wrap + * {
+    margin-top: 1.2em;
+  }
+
   /* Tables matching Next.js Table in Image 1 */
   table {
     width: 100%;
@@ -1300,6 +1432,11 @@ body.body--dark .doc-slate-prose {
     background-color: #18181b;
     border-color: #27272a;
     color: #f4f4f5;
+  }
+
+  .doc-mermaid {
+    background-color: #18181b;
+    border-color: #27272a;
   }
 
   table {

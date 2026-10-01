@@ -1,6 +1,6 @@
 # TradeFlow BD — docs index
 
-Load **this file first**. Then **one** module `01-prd.md`. Then code. See [STRUCTURE.md](STRUCTURE.md).
+Load **this file first**. Then **one** pack `01-prd.md`. Money → [bills_pays](features/bills_pays/01-prd.md) (`02`–`05` in that folder). Then code. See [STRUCTURE.md](STRUCTURE.md).
 
 Missing fact → `DOC_GAP` (`.cursor/rules/docs-first.mdc`). Do not guess.
 
@@ -14,7 +14,8 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | :--- | :--- |
 | Who logs in where, which features? | [scopes](architecture/scopes.md) |
 | How this company sells (BW, pre-order, K-beauty, thrift) | [business-models](architecture/business-models.md) |
-| Wholesale vs dropship invoice → payment (numbers) | [money-story](features/sales_invoice/money-story.md) |
+| Wholesale vs dropship bill → pay (numbers) | [money-story](features/bills_pays/money-story.md) |
+| Bills vs pays vs cashbook | [bills_pays 01](features/bills_pays/01-prd.md) |
 | What numbers go on reports (sales vs cash vs COD) | [reporting 01](features/reporting_treasury/01-prd.md) |
 | What is unfinished / wrong in a module? | That module’s `00-gaps.md` |
 | Where is the code / SQL? | [Module map](#module-map) |
@@ -39,11 +40,10 @@ UI under `web/src/modules/` unless noted. Agent: `01-prd.md` + `00-gaps.md`. Sam
 | Procurement | [01](features/procurement_stock/01-prd.md) | [gaps](features/procurement_stock/00-gaps.md) | `procurement_stock/`, `vendor/` | **split** `procurement/` |
 | Products | [01](features/products/01-prd.md) | [gaps](features/products/00-gaps.md) | `products/` | `public.sql` |
 | Pre-order (PBC) | [01](features/product_based_costing/01-prd.md) | [gaps](features/product_based_costing/00-gaps.md) | `product_based_costing/`, `costingFile/` | `public.sql` |
-| Sales invoices | [01](features/sales_invoice/01-prd.md) | [gaps](features/sales_invoice/00-gaps.md) | `sales_invoice/`, `invoice_shared/` | **split** `sales_invoice/` |
+| **Bills & pays** | [01](features/bills_pays/01-prd.md) | [gaps](features/bills_pays/00-gaps.md) | desks: `sales_invoice/`, `wallet/` (code names) | invoice split; pays in `public.sql` |
 | After-sales | [01](features/after_sales/01-prd.md) | [gaps](features/after_sales/00-gaps.md) | `after_sales/` | invoice + shop_order RPCs |
 | Shop / dropship | [01](features/shop_order/01-prd.md) | [gaps](features/shop_order/00-gaps.md) | `shop_order/` | **split** `shop_order/` |
 | Customer | [01](features/customer/01-prd.md) | [gaps](features/customer/00-gaps.md) | `customer/` | `public.sql` |
-| Wallet / receipts | [01](features/wallet/01-prd.md) | [gaps](features/wallet/00-gaps.md) | `wallet/` (+ invoice collect, dropship remittance UIs) | stub; live `public.sql` |
 | Reporting | [01](features/reporting_treasury/01-prd.md) | [gaps](features/reporting_treasury/00-gaps.md) | `reporting_treasury/` | `public.sql` |
 | Notifications | [01](features/notifications/01-prd.md) | [gaps](features/notifications/00-gaps.md) | `notifications/`, `tasks/` | **split** `notifications/` |
 | Dashboard | [01](features/dashboard/01-prd.md) | [gaps](features/dashboard/00-gaps.md) | `dashboard/` | n/a |
@@ -56,13 +56,15 @@ Also in code, no pack: `settings/`, `navigation/`, `featureCatalog/`.
 
 ## Locked (do not reinvent)
 
-- BW stock: parent `global_stocks`; children = allocations; shop sells `global_stock_allocations`.
+- BW stock: parent `global_stocks`. **Retire** child-quota `global_stock_allocations` (no sister stock UI). Shop/invoice still have live FKs until [PS9](features/procurement_stock/00-gaps.md). Target shop sell = listings on `global_stock_id`.
 - Pre-order is demand until received on a shipment.
 - K-beauty = `koba_*`. Thrift = `thrift_*`. Never mix into `global_stocks`.
 - Scopes: `platform` \| `app` \| `shop` \| `investor`. Grants: `effectiveGrants` + `has_module_action()`.
-- Invoices: company-owned `global_invoices`; `issued_by_tenant_id` is the desk.
-- Ledger: only `record_ledger_transaction`. No fake `wallet_posted`.
-- Money in: **one receipts path** (cash, bank, store credit, courier remittance). COD face stays on the order until remittance. Do not add a second payments product per channel.
+- **Bills & pays** is one pack ([bills_pays](features/bills_pays/01-prd.md)). **Profile** = party. **Bill** = issued paper (take / condition / dropship merchant; AP later). **Proforma** = maybe-bill. **Pay** = cash in or out. **Alloc** = pay → open bill only. **Cashbook** = leftover we owe them (and tenant/courier cash). No wallet product. Spec table names in [02](features/bills_pays/02-data-model.md). Code folders `sales_invoice/` + `wallet/` are desks. No fake `wallet_posted`.
+- Invoices (AR): company-owned `global_invoices`; `issued_by_tenant_id` is the desk.
+- Wholesale **pack-out** is a **delivery paper** (+ optional proforma), not an issued bill. Stock on that paper is `held`. After take / condition / return: **take** bill (firm; sale out) and/or **condition** bill (pay if sold; stock may return). **Return** qty has no bill. Dropship bill-at-ship and walk-in issue-now are unchanged.
+- Inbound **vendor better price** is on **outcome** rows. Lots FK `outcome_id`. Cargo never reduces. After a **delivery return** (e.g. short-dated): return inbound first, then restamp **on-hand** lots from outcomes — not a hand stock edit; do not rewrite qty still out. Same SKU other lots unchanged. Not a customer pay. Vendor/cargo **AP bill + pay out** later ([WA15](features/bills_pays/00-gaps.md)).
+- Money: **one pay-in path** (cash, bank, store credit, courier remittance). COD face stays on the order until remittance. Do not add a second payments product per channel.
 - Investor portal v1 read-only.
 - Copy the **module’s** Pinia or Vue Query pattern. Do not convert it.
 

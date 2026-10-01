@@ -23,11 +23,10 @@ Nav modules in code use `app` | `shop` only (`moduleRegistry`). Platform and inv
 | procurement_stock / vendor | — | yes | — | — |
 | products / tags | — | yes | browse via shop | — |
 | product_based_costing | — | yes | — | — |
-| sales_invoice | — | yes | — | — |
+| bills_pays | — | bills + payments + cashbook | merchant statement | — |
 | after_sales | — | yes | complaints via shop order | — |
 | shop_order | — | config, dropship, pricing | catalog, cart, orders | — |
 | customer | — | hub (groups + recipients) | group members | — |
-| wallet | — | books | merchant statement | — |
 | reporting_treasury | — | yes | — | — |
 | notifications / tasks | — | yes | optional inbox | — |
 | dashboard | yes (platform home) | staff home | customer home | — |
@@ -36,4 +35,4 @@ Nav modules in code use `app` | `shop` only (`moduleRegistry`). Platform and inv
 
 **Out of all shop/investor:** warehouse bins, landed-cost lock, schema split, platform tenant provision.
 
-Module **in/out** detail lives on that pack’s `01-prd.md` → Scope. SQL/API/UI wiring: `02`–`05` in the same folder.
+Module **in/out** detail lives on that pack’s `01-prd.md` → Scope. SQL/API/UI wiring: `02`–`05` in the same folder. **Bills & pays:** `docs/features/bills_pays/`. App code: `sales_invoice/` + `wallet/`.

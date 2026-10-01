@@ -1,6 +1,6 @@
 # Reporting & Treasury — API contract
 
-**Read-only.** Each RPC must declare its layer (sales / cash / AR / COD ops / payable). Live bodies: `public.sql`. Target rules: [01-prd](01-prd.md). Collect/remittance RPCs: [wallet](../wallet/03-api-contract.md), not this file.
+**Read-only.** Each RPC must declare its layer (sales / cash / AR / COD ops / payable). Live bodies: `public.sql`. Target rules: [01-prd](01-prd.md). Collect/remittance RPCs: [bills_pays 03](../bills_pays/03-api-contract.md), not this file.
 
 Signatures below are as-built names. Fix behaviour per [00-gaps](00-gaps.md) RT3–RT10; do not invent a ninth “revenue” RPC that sums layers.
 

@@ -64,3 +64,5 @@ If a needed product fact is missing: stop. No code. See `.cursor/rules/docs-firs
 3. Add a row to `docs/README.md` module map.
 4. Keep `02`–`05` as the understand pack for that module (thin). Do not delete them.
 5. Code follows `01-prd` + existing files in `web/src/modules/<snake_name>/`.
+
+**Desks of a pack:** [bills_pays](features/bills_pays/01-prd.md) is the money spec (`02`–`05` in that folder). App code still lives in `web/src/modules/sales_invoice/` and `wallet/`.

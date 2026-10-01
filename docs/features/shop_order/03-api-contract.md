@@ -58,11 +58,13 @@ Idempotent if already issued. Unique: one `sales_invoices.shop_order_id`. Dropsh
 
 `mark_dropship_order_delivered`: parcel only; require linked issued bill; no cash.
 
-Cash-in: [wallet 01](../wallet/01-prd.md). Remittance allocates to merchant `total_amount`; leftover → merchant wallet. `transfer_dropship_reseller_profit` is not the happy-path cash step.
+Cash-in: [bills_pays 01](../bills_pays/01-prd.md). Remittance allocates to merchant `total_amount`; leftover → merchant cashbook. `transfer_dropship_reseller_profit` is not the happy-path cash step.
 
 ### 2.4 Catalog shop order → bill (not dropship)
 
-`fulfill_shop_order_to_invoice`: confirmed **catalog** orders only (`wholesale` / `retail`). Dropship must raise. Builds `create_sales_invoice_from_payload` with `issue: true`, `collection_source=billing_profile`, tenant sell from order lines (not customer/resell face), merchant-owed charges only. Links `shop_orders.global_invoice_id`. Wholesale desk create remains the main walk-in path.
+**Live today:** `fulfill_shop_order_to_invoice` issues (`issue: true`) from confirmed catalog orders. Links `shop_orders.global_invoice_id`.
+
+**Target:** catalog pack-out is a **delivery paper** on procurement Fulfill. Then create **take** and/or **condition** bills. [SI19](../bills_pays/00-gaps.md). Dropship must not use this RPC. Walk-in remains invoice desk create.
 
 ### 2.5 Catalog procurement mark ready: `staff_set_catalog_ordered_qty`
 

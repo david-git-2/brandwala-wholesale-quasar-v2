@@ -1,171 +1,111 @@
 # Procurement & Stock — Product Requirements Document (PRD)
 
-> **Module**: Procurement & Inbound Stock Management  
-> **Status**: Approved & Active  
-> **Target Release**: v2.4.0  
-> **Target Audience**: Procurement Staff, Warehouse Managers, Operations Admins, Auditors
-
 ## As-built
 
 | | |
 | :--- | :--- |
 | Spec | `docs/features/procurement_stock/` |
 | UI | `web/src/modules/procurement_stock/`, `vendor/` |
-| SQL | **Split** `supabase/schemas/procurement/` (`01_types` … `04_rls`) |
+| SQL | **Split** `supabase/schemas/procurement/` |
 | State | Mix of Pinia and Vue Query — copy neighbors |
-| Model | **BW** warehouse. See [business models](../../architecture/business-models.md). |
-| Access | `app`; parent owns stock |
+| Model | **BW** warehouse. [business models](../../architecture/business-models.md). |
+| Access | `app`; company owns stock |
 
 ## Scope
 
 | | |
 | :--- | :--- |
 | Surfaces | `app` only |
-| In | Shipments, landed cost, bins, `global_stocks`, movements, vendors, allocations, batch code analyze |
-| Out | Shop cart, Koba, thrift boxes, PBC quote formulas, product catalog `batch_code_manufacture_date` |
-
-See [scopes](../../architecture/scopes.md).
+| In | Shipments, sections, landed cost entries (optional section), **local costs** (optional section, not in unit cost), bins, `global_stocks`, movements, vendors, batch analyze (optional), **receive outcomes**, **close shipment**, Demand / Fulfill / delivery paper |
+| Out | Shop cart, Koba, thrift, PBC formulas. Final sales invoice issue. Cost entries are **not** wallet pay/settle. **Child quota allocations** — retire ([PS9](00-gaps.md)). Warehouse damage/expiry after stock is **stock movement**, not a new inbound “general” row. |
 
 ---
 
-## 1. Executive Summary
+## Inbound flow (target)
 
-The **Procurement & Stock** module manages end-to-end inbound international logistics, supplier purchase orders, customs clearance charges, freight cargo apportioning, multi-tier warehouse bin inventory, and virtual stock allocations to sister concerns (child tenants).
+1. Create shipment. **Batch code** list is optional and independent (not required before lines).
+2. After pro forma: add / bulk-paste lines (qty, price, product weight, package weight, rough FX on costs). Paste creates the first **outcome**: **kind `sellable`**, **reason `general`**. That row is the record of **what was coming**. It does **not** post stock.
+3. After goods land: **add** more outcome rows beside general (received, damaged, missing, …). Do **not** shrink or replace general. Do **not** auto-fill leftover vs general ([PS11](00-gaps.md)).
+4. **Stock** comes only from non-general outcomes (or later restamp of those rows): **`sellable` → lot**; **`unsellable` → loss** (no sellable lot). Damaged qty **can** go to stock if that row is sellable.
+5. Lock / restamp rates **before or after** stock. Landed rows: goods / cargo / duty. Optional `section_id` (whole shipment if null). Local labor/van/packing: other table, optional section, **not** in landed unit cost.
+6. Change kind/reason on those extra rows → restamp **on-hand** lots. Warehouse later damage/expire → **movement / write-off**, not inbound general.
+7. Extra batch lines anytime until close. New local costs until close.
+8. **Close** is a button + `is_closed`. UI for that shipment becomes **read-only**. Not auto when sold out. No edits after close.
 
-Physical stock is owned strictly at the **Parent Tenant** level. Sister concerns receive virtual allocation quotas for sales execution without duplicating inventory records or fragmenting landed-cost accounting.
+Live today: price/qty on the **line**; finalize from `received_quantity`; no outcomes table; no local-costs table; no `is_closed`; allocations table still in shop/invoice SQL.
 
 ---
 
-## 2. User Personas & Permissions
+## Kind and reason
 
-| Role | Access Level | Permitted Actions |
+| Field | Values | Use |
 | :--- | :--- | :--- |
-| **Tenant Admin / Owner** | Full Access | Create & edit shipments, lock landed costs, delete draft/cancelled shipments, manage stock locations & cargo companies. |
-| **Warehouse Manager** | Operational | Receive shipments, inspect goods, post stock to warehouse bins, execute bin-to-bin movements, change stock condition grades. |
-| **Procurement Staff** | Operational | Create shipment drafts, add catalog/manual line items, enter freight & customs cost entries, track transit milestones. |
-| **Sister Concern Staff** | Restricted Read | View virtual allocated stock (`child-stock`), request replenishment quotas. |
-| **Auditor / Accountant** | Read Only | View locked shipment books, audit landed cost calculations, inspect stock movement history logs. |
+| **kind** | `sellable` \| `unsellable` | Stock or loss. Not warehouse grade. |
+| **reason** | `general` \| `vendor_discount` \| `missing` \| `damaged` \| `other` | Why this row. `other` → `description`. |
+
+`general` = inbound ordered/pro forma snapshot only. `short_dated` is **not** a kind (warehouse later).
 
 ---
 
-## 3. User Stories & Acceptance Criteria
+## User stories
 
-### US-1: Inbound Shipment & Cost Tracking
-- **As a** Procurement Officer  
-- **I want to** create inbound international shipments, associate suppliers and cargo freight agents, and enter itemized cost entries (goods, freight, customs, local carriage)  
-- **So that** landed unit costs are accurately calculated in BDT and apportioned across individual line items.
+### US-1 Shipment, sections, landed costs
+- Create draft, sections (tabs; **All** is UI-only), lines, cost entries (optional `section_id`).
+- Cost entries are a **record**. No settlement / ledger pay in this module. Drop `settled_at` from the product story ([PS12](00-gaps.md)).
+- Status: `draft` \| `in_transit` \| `received` \| `cancelled`. Progress tags are extra, not extra statuses.
+- Stamp landed BDT from FX, weight, duty until `costs_locked` or until **closed**.
 
-#### Acceptance Criteria
-- [ ] Stamped BDT landed unit cost dynamically accounts for foreign exchange (FX) rates, packaging weight, and custom duty surcharges.
-- [ ] Shipments maintain 4 lifecycle states: `draft`, `in_transit`, `received`, and `cancelled`.
-- [ ] Cost revisions restamp `landed_cost_bdt` dynamically until books are frozen via `costs_locked = true`.
+### US-8 Local costs
+- Many rows: description, amount, currency, optional `section_id`.
+- Ignore for stamp / stock value. Subtract from shipment profit.
 
-### US-2: Physical Receiving & Variance Check
-- **As a** Warehouse Receiving Staff  
-- **I want to** physically verify arrived quantities against shipment manifests on a dedicated receive checklist page  
-- **So that** actual received inventory is committed to warehouse pool bins and variance is audited.
+### US-7 Outcomes + stock
+- One table `global_shipment_item_outcomes`. Line keeps product, ordered qty, weights, `section_id`.
+- Each extra row: qty, kind, reason, purchase price, stamped `cost`, optional note / batch **text** (no FK). No `stock_id` on the outcome.
+- Lots FK **`outcome_id`**. Cargo/duty rows never shrink when vendor price drops.
+- Restamp on-hand only. Qty still out/sold: return inbound first, or **stop**.
 
-#### Acceptance Criteria
-- [ ] Setting shipment status to `received` mandatory routes to `ReceiveShipmentPage.vue`.
-- [ ] Calling `finalize_global_shipment` commits line items into `global_stocks` rows and stamps initial landed cost.
+### US-2 Receive → stock
+- Post lots from **sellable** extra outcomes. Unsellable = loss. General does not create lots.
 
-### US-3: Multi-Tier Warehouse Locations & Movements
-- **As a** Warehouse Operator  
-- **I want to** organize physical stock into a 4-tier tree (`Warehouse` $\rightarrow$ `Room` $\rightarrow$ `Shelf` $\rightarrow$ `Bin`)  
-- **So that** items can be quickly located for order fulfillment and stock audits.
+### US-9 Close
+- Staff click Close → `is_closed = true`. All shipment screens for that id read-only (lines, outcomes, costs, batch, rates).
 
-#### Acceptance Criteria
-- [ ] Stock items can only reside in leaf-level locations (`bin`).
-- [ ] Location transfers and condition grade transitions (`sellable`, `held`, `unsellable`) create immutable `stock_movements` audit logs.
+### US-5 Archive
+- Archive from the list. Purge only `draft` / `cancelled`.
 
-### US-4: Pre-order Demand & Fulfill desks
-- **As a** Procurement Officer  
-- **I want to** log vendor PO qty on Demand when buying abroad, or skip straight to Fulfill when stock is already in the warehouse  
-- **So that** in-stock pre-orders can be picked and invoiced without a fake vendor placement.
+### US-6 Batch code
+- Optional. One list per shipment when used. Gear → Batch Code. Independent of paste.
 
-#### Acceptance Criteria
-- [ ] Demand **Place order** (`placed_quantity`) is optional per line.
-- [ ] Demand group list returns headers only; lines load via cursor-paginated `list_procurement_demand_group_items`.
-- [ ] Fulfill desk lists documents via `list_procurement_fulfill_groups` with status **Procuring** or **Ready for shipment**; expanded lines via `list_procurement_fulfill_group_items` (no shop filter on Fulfill).
-- [ ] Fulfill **Fill oldest stock** (group) assigns FIFO pickable stock per line server-side; lines without full ATP coverage or existing picks are skipped.
-- [ ] **Fill place qty** and **Set vendor** apply to the whole document server-side (not only loaded rows).
-- [ ] Fulfill **Pick stock** may run with `placed_quantity = 0`; picks cap at confirmed customer need.
-- [ ] Fulfill **Change status** (procuring only) asks for confirm, then sets the document to `ready_for_shipment` (status only; does not create a proforma).
-- [ ] Fulfill **Create invoice** (ready, no linked bill) builds proforma from picks and links `invoice_id` on the costing file or `global_invoice_id` on the catalog order.
-- [ ] Fulfill **Update invoice** (ready, linked draft/proforma, picks differ from bill lines) replaces lines via `sync_invoice_from_preorder_demand_document`.
-- [ ] Fulfill **Open invoice** when a bill is linked.
+### US-3 Warehouse
+- Stock only in **bin**. Location / grade changes → `stock_movements`.
 
-### US-5: Archive-First Shipment Governance
-- **As an** Operations Admin  
-- **I want to** archive completed, draft, or cancelled shipments without permanently deleting financial records  
-- **So that** active tables remain clutter-free while preserving auditability.
+### US-4 Demand & Fulfill (shared desk)
 
-#### Acceptance Criteria
-- [ ] Active shipment table has no three-dots dropdown menu; each row provides a direct `Archive` button with a confirmation modal.
-- [ ] Dedicated toolbar `Archived` hub displays count and opens modal listing all archived shipments.
-- [ ] Permanent deletion (`purge_archived_shipment`) is restricted strictly to `draft` and `cancelled` records; `in_transit` and `received` shipments cannot be purged.
+Two **app** routes, one data model (`preorder_demand`). Not a separate module. Not dropship order fulfillment ([shop_order](../shop_order/01-prd.md) US-3).
 
-### US-6: Batch Code Analyze
-- **As a** Procurement Officer  
-- **I want** to store batch id, barcode, product code, manufacturing date, and expire date for a shipment  
-- **So that** I can see how many days are left until each batch expires.
+| Desk | Route | Job |
+| :--- | :--- | :--- |
+| **Demand** | `/:slug/app/procurement/demand` | See confirmed need. Optional vendor + **placed** qty (PO). Filter by child tenant. |
+| **Fulfill** | `/:slug/app/procurement/fulfill` | **Stock picks** from warehouse (`global_stocks`). Mark **ready for shipment**. Pack / bill handoff. |
 
-#### Acceptance Criteria
-- [ ] Gear → More → **Batch Code** opens `/:slug/app/procurement/shipment/:id/batch-code`. Grant: `global_shipment`.
-- [ ] Each `batch_code_lists` row is tied to exactly one shipment (`shipment_id` required, unique). If a list exists for the shipment, open it; otherwise create `{ parent_tenant_id, shipment_id }`. No list name or vendor on the list.
-- [ ] Lines on `batch_code_items` (`list_id` required). Empty expire + mfg → expire = mfg + **36 calendar months**. Hand-edited expire is kept until expire is cleared.
-- [ ] **Expires in** is UI-only (`expire_date − today` whole days; shown as months + days, e.g. `2mo 5d`, or **Expired** when due today or past). Whole row **text** color: **red** under **14 months** or expired; **green** when safely past that; **blue** when no expire date. Not stored.
-- [ ] Add one line via **Add** dialog. Bulk add / bulk update via column paste and grid paste (`paste_batch_code_items`). Grid cell blur still saves edits. Mfg / expire dates are typed or picked as `DD-MM-YYYY` (stored as date). Calendar starts on year.
-- [ ] **Import CSV** on the batch grid: download sample file, fill rows, upload — appends new lines via `paste_batch_code_items` starting at the next row (does not overwrite existing lines). Date columns accept Excel-style `M/D/YYYY` (e.g. `6/27/2026`) as well as `DD-MM-YYYY`.
-- [ ] **`is_arrived`** on each `batch_code_items` line (default **false**). Staff tick/untick on the batch grid (saved like other edits). New lines, CSV import, and paste do **not** set arrived.
-- [ ] Row checkboxes on the batch grid; when **two or more** lines are selected, **Delete selected** removes them in one action.
-- [ ] Batch grid **CheckFresh** on each row opens that product’s CheckFresh brand page in a **new tab** (`noopener`). Brand is read from catalog (`products.brand`) via shipment line / barcode / product code. Home page when brand is unknown. No iframe. No scrape.
-- [ ] Procurement hub **Batch Code** lists shipment-linked files only (search by shipment); create only from shipment gear. No write to `global_stocks`.
-- [ ] **Shipment line items** table shows a compact **Batch** column (count of matched batch analyze lines, same as rows in the dialog). Tap opens a dialog table of batch ID, expire date, **Expires in**, and **Arrived** (Yes / —) per matched line (same red / green / blue text rules). Bottom form **adds a missing batch** for that line (batch ID, expire `DD-MM-YYYY`, arrived checkbox); creates the shipment batch list if needed and inserts a row with the line’s barcode / product code.
+**Sources (same list):** catalog **shop order** lines (`shop_order_item`) and **PBC** file lines (`pbc_costing_item`) after customer confirm. Pre-order quotes enter via [product_based_costing](../product_based_costing/01-prd.md) → same Demand desk.
+
+**Document status** (on the shop order or PBC file, not on `preorder_demand`): `procuring` → `ready_for_shipment` → `delivered`. Both desks filter by this status tab.
+
+| Field on `preorder_demand` | Demand desk | Fulfill desk |
+| :--- | :--- | :--- |
+| `vendor_id` | Set per line or bulk for document | Read |
+| `placed_quantity` | Vendor PO qty (may be 0 if stock on hand) | Read |
+| `stock_picks` / `delivered_quantity` | Read | Write; sum of picks ≤ open need |
+| `notes` | Optional | Optional |
+
+**Fulfill → sales:** **Live:** `create_invoice_from_preorder_demand_document` / `sync_…` builds **proforma** from picks when `ready_for_shipment` (not a final take bill). **Target:** **delivery paper** (`held`) + optional proforma; then **take** / **condition** bills — not issue-from-Fulfill ([PS6](00-gaps.md), [bills_pays US-5](../bills_pays/01-prd.md)). Dropship ship+issue stays on the order.
+
+**Out of scope here:** inbound shipment receive, invoice collect, dropship 5-stage desk.
 
 ---
 
-## 4. UI Layout & Wireframe
+## Allocations (retire)
 
-### Inbound Shipment List Screen
-
-```text
-+----------------------------------------------------------------------------------------------------+
-| Breadcrumbs: App > Operations > Procurement & Stock > Inbound Shipments                            |
-+----------------------------------------------------------------------------------------------------+
-| [ Search shipments... ] [ Filter: Status v ] [ Vendor v ]   [ Archive Hub (12) ] [ + New Shipment ]|
-+----------------------------------------------------------------------------------------------------+
-| SHIPMENT #    | VENDOR         | STATUS      | PROGRESS TAG | TOTAL WEIGHT | LANDED TOTAL | ACTION |
-|---------------+----------------+-------------+--------------+--------------+--------------+--------|
-| SHP-2026-001  | Yiwu Direct    | Received    | Customs Clr  | 420.50 KG    | 540,200 BDT  | [Arch] |
-| SHP-2026-002  | Guangzhou Tex  | In Transit  | Air Freight  | 110.00 KG    | 185,000 BDT  | [Arch] |
-| SHP-2026-003  | Shenzhen Elec  | Draft       | Order Placed | 85.00 KG     | 92,400 BDT   | [Arch] |
-+----------------------------------------------------------------------------------------------------+
-| Pagination: Showing 1 - 25 of 148 shipments                                                        |
-+----------------------------------------------------------------------------------------------------+
-```
-
-### Shipment Detail & Landed Cost Breakdown Screen
-
-```text
-+----------------------------------------------------------------------------------------------------+
-| Breadcrumbs: Procurement > Shipments > SHP-2026-001                                                |
-+----------------------------------------------------------------------------------------------------+
-| [ Workflow Bar: Draft > In Transit > [RECEIVED] ]  [ Costs Locked: YES/NO ]  [ Actions / Settings ]|
-+----------------------------------------------------------------------------------------------------+
-| LINE ITEMS (38)                                     | COST ENTRIES & APPORTIONMENT                 |
-| - SKU-001: Cotton Tee (Qty: 500, Landed: 245 BDT)   | - Supplier Goods: 3,500 USD (FX: 122.50)     |
-| - SKU-002: Denim Jeans (Qty: 200, Landed: 680 BDT)  | - Air Cargo: 850 USD (Apportioned by Weight) |
-| - SKU-003: Bomber Jacket (Qty: 100, Landed: 950 BDT)| - Customs Tariff & Port Charges: 45,000 BDT  |
-|                                                     | - Local Trucking: 8,000 BDT                  |
-+----------------------------------------------------------------------------------------------------+
-```
-
-### Batch Code Analyze Screen
-
-```text
-Shipment gear → More → Batch Code
-[ Back ] Batch Code — shipment name / #
-[ Add line ]  (column paste + grid paste for bulk)
-BARCODE | PRODUCT CODE | BATCH ID | MFG DATE | EXPIRE DATE | EXPIRES IN (days, read-only)
-```
+No sister-company quota UI. Target: drop `global_stock_allocations` after shop listings / cart / invoice RPCs use `global_stock_id` only. Live SQL still depends on the table ([PS9](00-gaps.md)).

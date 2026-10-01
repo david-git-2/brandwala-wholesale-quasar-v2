@@ -26,7 +26,7 @@ Optional later: partner capital report (not one of the eight views).
 | RT6 | **Done** | COD report is ops, not sales | Remitted = ledger net; `payment_received` included | `20270928160000_*` + `20270928161000_courier_cod_include_payment_received.sql` |
 | RT7 | **Done** | Wallet liability split | Totals: `customer_store_credit`, `merchant_payable`, `courier` | `20270928160000_*` |
 | RT8 | **Done** | Month snapshot tiles | Five tiles + cash caption | same migration + `MonthSnapshotReportPage.vue` |
-| RT9 | **Done** | Collect is wallet | Payments/collect under `web/src/modules/wallet/` | routes still `finance/payments` |
+| RT9 | **Done** | Collect is pays module | Payments/collect under `web/src/modules/wallet/` | routes still `finance/payments` |
 | RT10 | **Done** | Shipment P&L revenue = invoice sell | `get_tenant_shipment_profit_report` uses issued line sell (RT17) | no COD change needed |
 | RT11 | **Done** | Cash-in by instrument | `global_payment_instruments` + `bd_banks` on entries / `by_method` | `20270928160000_*` |
 | RT12 | **Done** | Invoice book + customer dues | Was `settlement_discount_amount`; voided receipts counted | `written_off_amount`; `gp.voided_at IS NULL` — `20270928120000_fix_report_rpcs_rt12.sql` |
@@ -35,3 +35,5 @@ Optional later: partner capital report (not one of the eight views).
 | RT15 | **Done** | Month snapshot cash tile | UWL cash | Same receipt rule as RT14 — `20270928140000_fix_report_rpcs_rt14_15.sql` |
 | RT16 | **Done** | Wallet liability | Gross customer credits | Net of reversal/void purposes — `20270928150000_fix_report_rpcs_rt16_17.sql`; entity split still RT7 |
 | RT17 | **Done** | Shipment profit | Sold-only inbound | Ordered inbound; sold % **99.8**; revenue **1,237,000** on fixture — `20270928150000_fix_report_rpcs_rt16_17.sql` |
+| RT18 | not_built | Shipment P&L minus **local costs** ([procurement US-8](../procurement_stock/01-prd.md)) | Landed / line COGS only | Subtract `global_shipment_local_costs` sum in `get_tenant_shipment_profit_report` |
+| RT19 | not_built | GP = lines **by `shipment_id`** vs shipment landed + local. No bill cost table | Margin RPCs + `sales_invoice_item_costs` / line `unit_cost_price` | Drop cost table ([SI5](../bills_pays/00-gaps.md)); shipment P&L UI ([01-prd](01-prd.md) US-1) |

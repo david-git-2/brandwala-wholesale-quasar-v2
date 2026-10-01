@@ -7,24 +7,351 @@
 
 ---
 
-## 1. Entity Relationship Diagram
+## 1. ERD
+
+Short names = `global_*`. `OUTCOMES` is target. Live SQL: `supabase/schemas/procurement/02_tables.sql`. **Demand / Fulfill** has its own ERD in [§1b](#1b-demand--fulfill-erd) (not mixed with inbound).
+
+### Inbound & warehouse — overview
 
 ```mermaid
+%%{init: {"er": {"useMaxWidth": true, "layoutDirection": "TB", "minEntityWidth": 220, "minEntityHeight": 90, "entityPadding": 24, "fontSize": 16, "diagramPadding": 32}}}%%
 erDiagram
-    TENANTS ||--o{ GLOBAL_SHIPMENTS : owns_parent
-    VENDORS ||--o{ GLOBAL_SHIPMENTS : supplies
-    CARGO_COMPANIES ||--o{ GLOBAL_SHIPMENTS : transports
-    GLOBAL_SHIPMENTS ||--o{ GLOBAL_SHIPMENT_ITEMS : contains
-    GLOBAL_SHIPMENTS ||--o{ GLOBAL_SHIPMENT_COST_ENTRIES : itemizes
-    GLOBAL_SHIPMENT_ITEMS ||--o{ GLOBAL_STOCKS : converts_to_physical
-    STOCK_LOCATIONS ||--o{ GLOBAL_STOCKS : houses
-    GLOBAL_STOCKS ||--o{ STOCK_MOVEMENTS : logs_history
-    GLOBAL_STOCKS ||--o{ GLOBAL_STOCK_ALLOCATIONS : allocates_to_child
-    TENANTS ||--o{ GLOBAL_STOCK_ALLOCATIONS : allocated_sister_concern
-    GLOBAL_SHIPMENTS ||--o| BATCH_CODE_LISTS : optional_list
-    VENDORS ||--o{ BATCH_CODE_LISTS : vendor
-    BATCH_CODE_LISTS ||--o{ BATCH_CODE_ITEMS : lines
+    direction TB
+    VENDORS ||--o{ SHIPMENTS : supplies
+    CARGO ||--o{ SHIPMENTS : hauls
+    SHIPMENTS ||--o{ SECTIONS : tabs
+    SHIPMENTS ||--o{ ITEMS : lines
+    SECTIONS ||--o{ ITEMS : scoped
+    SHIPMENTS ||--o{ BOXES : boxes
+    SHIPMENTS ||--o{ COST_ENTRIES : landed
+    SHIPMENTS ||--o{ LOCAL_COSTS : opex
+    SHIPMENTS ||--o| BATCH_LISTS : batch
+    BATCH_LISTS ||--o{ BATCH_ITEMS : rows
+    ITEMS ||--o{ OUTCOMES : buckets
+    OUTCOMES ||--o{ STOCKS : lots
+    LOCATIONS ||--o{ STOCKS : bin
+    STOCKS ||--o{ MOVEMENTS : header
+    MOVEMENTS ||--o{ MOVE_LINES : lines
+    STOCKS ||--o{ ALLOCATIONS : quota
 ```
+
+### Inbound & warehouse — details
+
+Columns on the box (no `created_at` / `updated_at`). Same links as overview.
+
+```mermaid
+%%{init: {"er": {"useMaxWidth": true, "layoutDirection": "TB", "minEntityWidth": 220, "minEntityHeight": 90, "entityPadding": 24, "fontSize": 16, "diagramPadding": 32}}}%%
+erDiagram
+    direction TB
+    VENDORS ||--o{ SHIPMENTS : supplies
+    CARGO ||--o{ SHIPMENTS : hauls
+    SHIPMENTS ||--o{ SECTIONS : tabs
+    SHIPMENTS ||--o{ ITEMS : lines
+    SECTIONS ||--o{ ITEMS : scoped
+    SHIPMENTS ||--o{ BOXES : boxes
+    SHIPMENTS ||--o{ COST_ENTRIES : landed
+    SHIPMENTS ||--o{ LOCAL_COSTS : opex
+    SHIPMENTS ||--o| BATCH_LISTS : batch
+    BATCH_LISTS ||--o{ BATCH_ITEMS : rows
+    ITEMS ||--o{ OUTCOMES : buckets
+    OUTCOMES ||--o{ STOCKS : lots
+    LOCATIONS ||--o{ STOCKS : bin
+    STOCKS ||--o{ MOVEMENTS : header
+    MOVEMENTS ||--o{ MOVE_LINES : lines
+    STOCKS ||--o{ ALLOCATIONS : quota
+
+    VENDORS {
+        bigint id PK
+        text name
+        text code
+        text market_code
+        bigint tenant_id
+        bigint parent_tenant_id
+        text email
+        text phone
+        text address
+        text website
+        bool is_default
+    }
+    CARGO {
+        bigint id PK
+        bigint tenant_id
+        bigint parent_tenant_id
+        text name
+        text code
+        text phone
+        text email
+        text address
+        text notes
+        bigint wallet_entity_id
+        bool is_active
+        bool is_default
+    }
+    SHIPMENTS {
+        bigint id PK
+        bigint parent_tenant_id FK
+        text name
+        int tenant_shipment_id
+        enum type
+        text status
+        bigint purchase_currency_id
+        bigint cost_currency_id
+        numeric received_weight
+        numeric total_weight_kg
+        bool stock_ready
+        date received_date
+        numeric cargo_invoice_total
+        numeric purchase_invoice_total
+        bigint assigned_child_tenant_id
+        bigint vendor_id FK
+        bigint cargo_company_id FK
+        bigint progress_tag_id
+        bigint progress_flow_id
+        text public_tracking_token
+        bool is_archived
+        timestamptz archived_at
+        bool costs_locked
+        timestamptz costs_locked_at
+        uuid costs_locked_by
+        bool is_closed
+    }
+    SECTIONS {
+        bigint id PK
+        bigint parent_tenant_id FK
+        bigint shipment_id FK
+        bigint vendor_id FK
+        text title
+        int sort_order
+        jsonb metadata
+    }
+    BOXES {
+        bigint id PK
+        bigint parent_tenant_id
+        bigint shipment_id FK
+        text box_number
+        numeric received_weight
+        numeric shipping_weight
+    }
+    ITEMS {
+        bigint id PK
+        bigint shipment_id FK
+        bigint product_id
+        text name
+        int ordered_quantity
+        int received_quantity
+        text image_url
+        enum add_method
+        numeric purchase_price
+        numeric product_weight
+        numeric package_weight
+        text barcode
+        text product_code
+        bigint source_child_tenant_id
+        bigint vendor_id
+        int sort_order
+        numeric landed_cost_bdt
+        bigint section_id
+    }
+    OUTCOMES {
+        bigint id PK
+        bigint shipment_item_id FK
+        int quantity
+        text kind
+        text reason
+        numeric purchase_price
+        numeric cost
+        text description
+        text batch_id
+    }
+    COST_ENTRIES {
+        bigint id PK
+        bigint parent_tenant_id
+        bigint shipment_id FK
+        enum cost_type
+        numeric amount
+        bigint currency_id
+        numeric exchange_rate
+        text payment_source
+        text entity_type
+        bigint entity_id
+        text allocation
+        jsonb metadata
+        timestamptz settled_at
+        uuid settlement_ledger_id
+        bigint section_id
+    }
+    LOCAL_COSTS {
+        bigint id PK
+        bigint parent_tenant_id
+        bigint shipment_id FK
+        bigint section_id FK
+        text description
+        numeric amount
+        bigint currency_id FK
+    }
+    BATCH_LISTS {
+        bigint id PK
+        bigint parent_tenant_id
+        bigint shipment_id FK
+    }
+    BATCH_ITEMS {
+        bigint id PK
+        bigint list_id FK
+        text barcode
+        text product_code
+        text batch_id
+        date manufacturing_date
+        date expire_date
+        bool is_arrived
+    }
+    STOCKS {
+        bigint id PK
+        bigint parent_tenant_id
+        bigint outcome_id FK
+        bigint stock_type_id
+        int quantity
+        bool is_usable
+        enum availability
+        bigint location_id FK
+        bigint grade_tag_id
+    }
+    LOCATIONS {
+        bigint id PK
+        bigint parent_tenant_id
+        text code
+        text name
+        enum kind
+        bool is_default
+        bool is_pickable
+        int sort_order
+        bool is_active
+        bigint parent_location_id FK
+    }
+    MOVEMENTS {
+        bigint id PK
+        bigint tenant_id
+        text movement_no
+        enum movement_type
+        text reference_type
+        text reference_id
+        text notes
+        text created_by_email
+        bool is_posted
+        timestamptz posted_at
+    }
+    MOVE_LINES {
+        bigint id PK
+        bigint movement_id FK
+        bigint stock_id FK
+        bigint from_location_id
+        bigint to_location_id
+        enum from_availability
+        enum to_availability
+        numeric quantity
+        bigint from_grade_tag_id
+        bigint to_grade_tag_id
+    }
+    ALLOCATIONS {
+        bigint id PK
+        bigint parent_tenant_id
+        bigint child_tenant_id FK
+        bigint stock_id FK
+        int quantity
+    }
+```
+
+Map (inbound): `VENDORS` · `CARGO` · `SHIPMENTS` · `SECTIONS` · `ITEMS` · `BOXES` · `OUTCOMES` · `COST_ENTRIES` · `LOCAL_COSTS` · `BATCH_LISTS` · `BATCH_ITEMS` · `STOCKS` · `LOCATIONS` · `MOVEMENTS` · `MOVE_LINES`. **Retire** `ALLOCATIONS` / `global_stock_allocations` ([PS9](00-gaps.md)).
+
+---
+
+## 1b. Demand & Fulfill ERD
+
+One table `preorder_demand`, two desks ([01 US-4](01-prd.md)). Live SQL: `public.preorder_demand` in `supabase/schemas/public.sql`. Touches warehouse **STOCKS** (§1) via `stock_picks` jsonb, not shipment receive.
+
+Map: `SHOP_ORDER` shop_orders · `ORDER_LINE` shop_order_items · `PBC_FILE` product_based_costing_files · `PBC_LINE` product_based_costing_items · `PREORDER_DEMAND` preorder_demand · `VENDORS` vendors · `STOCKS` global_stocks · `INVOICE` sales_invoices (handoff from Fulfill; live proforma, target delivery paper).
+
+### Demand & Fulfill — overview
+
+```mermaid
+%%{init: {"er": {"useMaxWidth": true, "layoutDirection": "TB", "minEntityWidth": 220, "minEntityHeight": 90, "entityPadding": 24, "fontSize": 16, "diagramPadding": 32}}}%%
+erDiagram
+    direction TB
+    SHOP_ORDER ||--o{ ORDER_LINE : lines
+    PBC_FILE ||--o{ PBC_LINE : lines
+    ORDER_LINE ||--o| PREORDER_DEMAND : shop_order_item
+    PBC_LINE ||--o| PREORDER_DEMAND : pbc_costing_item
+    VENDORS ||--o{ PREORDER_DEMAND : vendor_po
+    STOCKS ||--o{ PREORDER_DEMAND : fulfill_picks
+    SHOP_ORDER ||--o| INVOICE : global_invoice_id
+```
+
+### Demand & Fulfill — details
+
+```mermaid
+%%{init: {"er": {"useMaxWidth": true, "layoutDirection": "TB", "minEntityWidth": 220, "minEntityHeight": 90, "entityPadding": 24, "fontSize": 16, "diagramPadding": 32}}}%%
+erDiagram
+    direction TB
+    SHOP_ORDER ||--o{ ORDER_LINE : lines
+    PBC_FILE ||--o{ PBC_LINE : lines
+    ORDER_LINE ||--o| PREORDER_DEMAND : shop_order_item
+    PBC_LINE ||--o| PREORDER_DEMAND : pbc_costing_item
+    VENDORS ||--o{ PREORDER_DEMAND : vendor_po
+    STOCKS ||--o{ PREORDER_DEMAND : fulfill_picks
+    SHOP_ORDER ||--o| INVOICE : global_invoice_id
+
+    SHOP_ORDER {
+        bigint id PK
+        text status
+        bigint global_invoice_id FK
+    }
+    PBC_FILE {
+        bigint id PK
+        text status
+    }
+    ORDER_LINE {
+        bigint id PK
+        bigint shop_order_id FK
+        int confirmed_quantity
+    }
+    PBC_LINE {
+        bigint id PK
+        bigint costing_file_id FK
+        int quantity
+    }
+    PREORDER_DEMAND {
+        bigint id PK
+        bigint tenant_id FK
+        enum source_type
+        bigint source_id
+        bigint vendor_id FK
+        int placed_quantity
+        int delivered_quantity
+        jsonb stock_picks
+        text notes
+    }
+    VENDORS {
+        bigint id PK
+        text name
+        text code
+    }
+    STOCKS {
+        bigint id PK
+        enum availability
+        bigint location_id FK
+    }
+    INVOICE {
+        bigint id PK
+        text invoice_status
+        text payment_status
+    }
+```
+
+| Desk | Writes on `preorder_demand` | Parent document status |
+| :--- | :--- | :--- |
+| **Demand** | `vendor_id`, `placed_quantity` | `procuring` on shop order / PBC file |
+| **Fulfill** | `stock_picks` → `delivered_quantity` | → `ready_for_shipment` → `delivered` |
+
+Unique `(source_type, source_id)`. Open need: `get_procurement_demand_open_qty`. `stock_picks[]`: `global_stock_id`, `quantity` (→ **STOCKS**). List RPCs group by shop order or PBC file ([03 §5](03-api-contract.md)). Dropship merchant bill at ship: [shop_order](../shop_order/01-prd.md), not this diagram.
 
 ---
 
@@ -68,125 +395,35 @@ create type public.stock_movement_type as enum (
 );
 ```
 
-### 2.2 Primary Database Tables
+**Wholesale delivery (target):** pack-out is not `sale_outbound`. Units go `sellable` → `held` on the delivery paper. After close: **take** → `sale_outbound` with the take invoice; **condition** stays `held` (condition invoice may be unpaid); goods on condition may return → `sellable` and that bill is voided/credited; **return** at close → `sellable`, no bill. Dropship picks already use `held` until ship.
 
-```sql
--- 1. Inbound International Shipments
-create table if not exists public.global_shipments (
-  id uuid primary key default gen_random_uuid(),
-  tenant_id uuid not null references public.tenants(id) on delete cascade,
-  vendor_id uuid references public.vendors(id) on delete set null,
-  cargo_company_id uuid references public.cargo_companies(id) on delete set null,
-  shipment_no text not null,
-  status public.global_shipment_status not null default 'draft',
-  progress_tag_id uuid references public.tags(id) on delete set null,
-  
-  -- Financial & Book Locking
-  costs_locked boolean not null default false,
-  costs_locked_at timestamptz,
-  costs_locked_by uuid references auth.users(id),
-  
-  -- Archiving Governance
-  is_archived boolean not null default false,
-  archived_at timestamptz,
-  archived_by uuid references auth.users(id),
-  
-  -- Totals & Logistics
-  total_weight_kg numeric(12, 3) default 0,
-  goods_total_bdt numeric(14, 2) default 0,
-  freight_total_bdt numeric(14, 2) default 0,
-  customs_total_bdt numeric(14, 2) default 0,
-  landed_cost_total_bdt numeric(14, 2) default 0,
-  
-  assigned_child_tenant_id uuid references public.tenants(id) on delete set null,
-  note text,
-  metadata jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  
-  constraint uq_shipment_no_per_tenant unique (tenant_id, shipment_no)
-);
+**Receive outcomes (target):** [US-7](01-prd.md). Child table `global_shipment_item_outcomes`. Paste → first row **kind `sellable`**, **reason `general`** (what was coming). After land, **add** rows beside it. Do not shrink general. Do not require sum of qtys = `ordered_quantity`. Optional `description`, batch **text** (no FK). No `stock_id`.
 
--- 2. Line Items inside Shipment
-create table if not exists public.global_shipment_items (
-  id uuid primary key default gen_random_uuid(),
-  shipment_id uuid not null references public.global_shipments(id) on delete cascade,
-  product_id uuid references public.products(id) on delete set null,
-  sku text,
-  name text not null,
-  quantity numeric(12, 3) not null check (quantity > 0),
-  purchase_price numeric(14, 2) not null check (purchase_price >= 0),
-  purchase_currency text not null default 'BDT',
-  purchase_fx_rate numeric(12, 6) not null default 1.0,
-  unit_weight_kg numeric(12, 3) default 0,
-  landed_cost_bdt numeric(14, 2), -- Stamped by Landed Cost Engine
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+- **`kind`:** `sellable` \| `unsellable` — lot vs loss.
+- **`reason`:** `general` \| `vendor_discount` \| `missing` \| `damaged` \| `other`. `other` → `description`.
 
--- 3. Itemized Cost Entries for Apportionment
-create table if not exists public.global_shipment_cost_entries (
-  id uuid primary key default gen_random_uuid(),
-  shipment_id uuid not null references public.global_shipments(id) on delete cascade,
-  cost_type text not null, -- 'goods', 'freight', 'customs', 'handling', 'insurance'
-  amount numeric(14, 2) not null check (amount >= 0),
-  currency text not null default 'BDT',
-  fx_rate numeric(12, 6) not null default 1.0,
-  amount_bdt numeric(14, 2) not null check (amount_bdt >= 0),
-  apportionment_method text not null default 'by_weight', -- 'by_weight', 'by_value', 'manual'
-  notes text,
-  created_at timestamptz not null default now()
-);
+**Stock:** only **non-general** rows. `sellable` → lot (`outcome_id`). `unsellable` → loss (no sellable lot). Damaged may still be sellable. Warehouse later damage/expire → `stock_movements`, not a rewrite of general. Leftover vs general is **not** auto-filled ([PS11](00-gaps.md)).
 
--- 4. Warehouse Physical Stock Pool
-create table if not exists public.global_stocks (
-  id uuid primary key default gen_random_uuid(),
-  tenant_id uuid not null references public.tenants(id) on delete cascade,
-  shipment_item_id uuid not null references public.global_shipment_items(id) on delete cascade,
-  product_id uuid references public.products(id) on delete set null,
-  location_id uuid references public.stock_locations(id) on delete set null,
-  quantity numeric(12, 3) not null check (quantity >= 0),
-  available_atp numeric(12, 3) not null check (available_atp >= 0),
-  availability public.stock_availability not null default 'sellable',
-  landed_unit_cost_bdt numeric(14, 2) not null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+**Ownership**
 
--- 5. Warehouse Tree Locations
-create table if not exists public.stock_locations (
-  id uuid primary key default gen_random_uuid(),
-  tenant_id uuid not null references public.tenants(id) on delete cascade,
-  parent_id uuid references public.stock_locations(id) on delete cascade,
-  name text not null,
-  code text not null,
-  location_type public.stock_location_type not null,
-  is_leaf boolean not null default false,
-  is_active boolean not null default true,
-  created_at timestamptz not null default now(),
-  constraint uq_location_code_per_tenant unique (tenant_id, code)
-);
+| Live today (`global_shipment_items`) | After US-7 |
+| :--- | :--- |
+| One `purchase_price` + `received_quantity` + `landed_cost_bdt` per line | **Outcomes** hold qty, purchase price, landed `cost`, kind/reason. Line is product + ordered qty + weights + section. |
 
--- 6. Stock Movements Audit Ledger
-create table if not exists public.stock_movements (
-  id uuid primary key default gen_random_uuid(),
-  tenant_id uuid not null references public.tenants(id) on delete cascade,
-  stock_id uuid not null references public.global_stocks(id) on delete cascade,
-  movement_type public.stock_movement_type not null,
-  quantity numeric(12, 3) not null,
-  from_location_id uuid references public.stock_locations(id) on delete set null,
-  to_location_id uuid references public.stock_locations(id) on delete set null,
-  from_availability public.stock_availability,
-  to_availability public.stock_availability,
-  reference_type text, -- 'shipment', 'invoice', 'transfer', 'manual'
-  reference_id uuid,
-  notes text,
-  created_by uuid references auth.users(id),
-  created_at timestamptz not null default now()
-);
-```
+Live lots use `shipment_item_id`. **Target:** `global_stocks.outcome_id`. Drop lot `shipment_item_id`. Grain `(outcome_id, availability, location_id, grade_tag_id)`.
 
----
+**Cargo:** never reduce cargo/duty on `global_shipment_cost_entries`. Better vendor price on extra-row `purchase_price` / restamped `cost`. Cost entries: optional `section_id`; **no** pay/settle in this module ([PS12](00-gaps.md)).
+
+**Restamp:** extra outcomes → on-hand lots only. Qty still out: return inbound first, or **stop**.
+
+**Close:** `global_shipments.is_closed` ([US-9](01-prd.md)). Writes blocked.
+
+**Local costs (target):** [US-8](01-prd.md). `global_shipment_local_costs`: `shipment_id`, optional `section_id`, `description`, `amount` ≥ 0, `currency_id`. Stamp ignores. Profit subtracts. Not wallet.
+
+**Allocations:** live `ALLOCATIONS` box below is **retire** ([PS9](00-gaps.md)). Not a product feature.
+
+Vendor AP ledger = later, not this cut.
+
 
 ## 3. Row Level Security (RLS) Policies
 
@@ -236,14 +473,37 @@ Parent-owned physical box weights for inbound shipments (optional; does not driv
 
 ---
 
-## 4. Batch Code Analyze (live SQL in `supabase/schemas/procurement/`)
+## 3c. `global_shipment_sections` (shipment line-item tabs)
 
-Not `batch_code_pc`. Parent-owned like `global_shipment_boxes`.
+On **`ShipmentLineItemsV2Page`**, the bottom **section tabs** (sheet bar) are persisted rows — not a separate “tab” table. UI label **All** (`sheet_all`) is client-only and shows every line; it has no row.
 
-**`batch_code_lists`:** `id`, `parent_tenant_id`, `shipment_id` (required → `global_shipments`, unique), `created_at`, `updated_at`. One list per shipment. No `name` or `vendor_id` on the list.
+| Column | Type | Notes |
+|--------|------|--------|
+| `id` | bigint | PK |
+| `parent_tenant_id` | bigint | FK `tenants` (stock parent) |
+| `shipment_id` | bigint | FK `global_shipments` (CASCADE delete) |
+| `vendor_id` | bigint | FK `vendors` — supplier for this section / invoice slice |
+| `title` | text | Tab label; non-blank |
+| `sort_order` | int | Tab order (0-based); updated by `reorder_shipment_sections` |
+| `metadata` | jsonb | Invoice slice: `invoice_number`, `invoice_date`, `notes`, `carton_ids`, … (`ShipmentSectionMetadata` in UI) |
+| `created_at`, `updated_at` | timestamptz | |
 
-**`batch_code_items`:** `id`, `list_id` (required), `barcode`, `product_code`, `batch_id`, `manufacturing_date`, `expire_date`, `is_arrived` (boolean, default false), timestamps. Duplicates allowed. No unique on barcode/batch.
+**Relations**
 
-**Expiry:** empty expire + mfg → mfg + 36 calendar months. Hand-edited expire is kept until cleared. **Expires in** is not a column.
+- **`global_shipment_items.section_id`** → optional FK to a section. Lines with `section_id` null behave as belonging to the **first** section in tab order when the UI filters by tab. New catalog / paste / manual adds target the **active** section tab.
+- **`global_shipment_cost_entries.section_id`** → optional; scopes a landed-cost row to one section when set.
+- **`global_shipment_local_costs.section_id`** → optional; same for local opex ([US-8](01-prd.md)).
 
-**RLS:** parent staff who can manage the tenant (same pattern as shipment boxes).
+**Lifecycle**
+
+- `create_shipment_draft` inserts **Section 1** (`sort_order` 0, shipment header `vendor_id`, empty `metadata`).
+- Staff add / rename / delete sections and drag-reorder tabs via `shipmentSectionRepository` → table CRUD + `RPC: reorder_shipment_sections`.
+- Overview load: `get_shipment_overview_details` returns `sections[]` with items; Pinia `currentShipmentSections`.
+
+**RLS:** same parent-scoped procurement pattern as `global_shipment_items` (`user_can_manage_parent_tenant` on `parent_tenant_id`).
+
+---
+
+## 4. Batch Code Analyze
+
+See **Details** ERD (`BATCH_LISTS` / `BATCH_ITEMS`). One list per shipment. Empty expire + mfg → mfg + 36 months. **Expires in** is UI-only. Demand / Fulfill: [§1b](#1b-demand--fulfill-erd).

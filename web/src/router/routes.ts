@@ -122,6 +122,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('pages/DevDocumentPage.vue'),
     meta: {
       title: 'Documentation Codex',
+      public: true,
     },
   },
   {
