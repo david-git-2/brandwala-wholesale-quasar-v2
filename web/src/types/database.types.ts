@@ -252,7 +252,6 @@ export type Database = {
           notes: string | null
           parent_tenant_id: number | null
           phone: string | null
-          tenant_id: number | null
           updated_at: string
           wallet_entity_id: number | null
         }
@@ -268,7 +267,6 @@ export type Database = {
           notes?: string | null
           parent_tenant_id?: number | null
           phone?: string | null
-          tenant_id?: number | null
           updated_at?: string
           wallet_entity_id?: number | null
         }
@@ -284,7 +282,6 @@ export type Database = {
           notes?: string | null
           parent_tenant_id?: number | null
           phone?: string | null
-          tenant_id?: number | null
           updated_at?: string
           wallet_entity_id?: number | null
         }
@@ -292,13 +289,6 @@ export type Database = {
           {
             foreignKeyName: "cargo_companies_parent_tenant_id_fkey"
             columns: ["parent_tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cargo_companies_tenant_id_fkey"
-            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
@@ -1713,6 +1703,66 @@ export type Database = {
           },
         ]
       }
+      global_shipment_item_outcomes: {
+        Row: {
+          batch_label: string | null
+          cost: number | null
+          created_at: string
+          description: string | null
+          id: number
+          kind: Database["public"]["Enums"]["global_shipment_outcome_kind"]
+          parent_tenant_id: number
+          purchase_price: number
+          quantity: number
+          reason: Database["public"]["Enums"]["global_shipment_outcome_reason"]
+          shipment_item_id: number
+          updated_at: string
+        }
+        Insert: {
+          batch_label?: string | null
+          cost?: number | null
+          created_at?: string
+          description?: string | null
+          id?: number
+          kind: Database["public"]["Enums"]["global_shipment_outcome_kind"]
+          parent_tenant_id: number
+          purchase_price?: number
+          quantity: number
+          reason: Database["public"]["Enums"]["global_shipment_outcome_reason"]
+          shipment_item_id: number
+          updated_at?: string
+        }
+        Update: {
+          batch_label?: string | null
+          cost?: number | null
+          created_at?: string
+          description?: string | null
+          id?: number
+          kind?: Database["public"]["Enums"]["global_shipment_outcome_kind"]
+          parent_tenant_id?: number
+          purchase_price?: number
+          quantity?: number
+          reason?: Database["public"]["Enums"]["global_shipment_outcome_reason"]
+          shipment_item_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_shipment_item_outcomes_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipment_item_outcomes_shipment_item_id_fkey"
+            columns: ["shipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipment_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       global_shipment_items: {
         Row: {
           add_method: Database["public"]["Enums"]["global_shipment_item_add_method"]
@@ -1824,6 +1874,71 @@ export type Database = {
           },
         ]
       }
+      global_shipment_local_costs: {
+        Row: {
+          amount: number
+          created_at: string
+          currency_id: number | null
+          description: string
+          id: number
+          parent_tenant_id: number
+          section_id: number | null
+          shipment_id: number
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency_id?: number | null
+          description: string
+          id?: number
+          parent_tenant_id: number
+          section_id?: number | null
+          shipment_id: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency_id?: number | null
+          description?: string
+          id?: number
+          parent_tenant_id?: number
+          section_id?: number | null
+          shipment_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_shipment_local_costs_currency_id_fkey"
+            columns: ["currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipment_local_costs_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipment_local_costs_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipment_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipment_local_costs_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       global_shipment_sections: {
         Row: {
           created_at: string
@@ -1895,6 +2010,7 @@ export type Database = {
           id: number
           inventory_added: boolean
           is_archived: boolean
+          is_closed: boolean
           name: string
           parent_tenant_id: number
           progress_flow_id: number | null
@@ -1925,6 +2041,7 @@ export type Database = {
           id?: number
           inventory_added?: boolean
           is_archived?: boolean
+          is_closed?: boolean
           name: string
           parent_tenant_id: number
           progress_flow_id?: number | null
@@ -1955,6 +2072,7 @@ export type Database = {
           id?: number
           inventory_added?: boolean
           is_archived?: boolean
+          is_closed?: boolean
           name?: string
           parent_tenant_id?: number
           progress_flow_id?: number | null
@@ -2078,6 +2196,7 @@ export type Database = {
           id: number
           is_usable: boolean
           location_id: number | null
+          outcome_id: number | null
           parent_tenant_id: number
           quantity: number
           shipment_item_id: number
@@ -2091,6 +2210,7 @@ export type Database = {
           id?: number
           is_usable?: boolean
           location_id?: number | null
+          outcome_id?: number | null
           parent_tenant_id: number
           quantity?: number
           shipment_item_id: number
@@ -2104,6 +2224,7 @@ export type Database = {
           id?: number
           is_usable?: boolean
           location_id?: number | null
+          outcome_id?: number | null
           parent_tenant_id?: number
           quantity?: number
           shipment_item_id?: number
@@ -2123,6 +2244,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_stocks_outcome_id_fkey"
+            columns: ["outcome_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipment_item_outcomes"
             referencedColumns: ["id"]
           },
           {
@@ -8955,7 +9083,6 @@ export type Database = {
           name: string
           parent_tenant_id: number | null
           phone: string | null
-          tenant_id: number | null
           updated_at: string
           website: string | null
         }
@@ -8970,7 +9097,6 @@ export type Database = {
           name: string
           parent_tenant_id?: number | null
           phone?: string | null
-          tenant_id?: number | null
           updated_at?: string
           website?: string | null
         }
@@ -8985,7 +9111,6 @@ export type Database = {
           name?: string
           parent_tenant_id?: number | null
           phone?: string | null
-          tenant_id?: number | null
           updated_at?: string
           website?: string | null
         }
@@ -9000,13 +9125,6 @@ export type Database = {
           {
             foreignKeyName: "vendors_parent_tenant_id_fkey"
             columns: ["parent_tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendors_tenant_id_fkey"
-            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
@@ -10046,6 +10164,7 @@ export type Database = {
           id: number
           inventory_added: boolean
           is_archived: boolean
+          is_closed: boolean
           name: string
           parent_tenant_id: number
           progress_flow_id: number | null
@@ -11202,6 +11321,7 @@ export type Database = {
           id: number
           inventory_added: boolean
           is_archived: boolean
+          is_closed: boolean
           name: string
           parent_tenant_id: number
           progress_flow_id: number | null
@@ -12322,7 +12442,6 @@ export type Database = {
           name: string
           parent_tenant_id: number | null
           phone: string | null
-          tenant_id: number | null
           updated_at: string
           website: string | null
         }
@@ -13915,7 +14034,6 @@ export type Database = {
           name: string
           parent_tenant_id: number | null
           phone: string | null
-          tenant_id: number | null
           updated_at: string
           website: string | null
         }[]
@@ -13994,6 +14112,7 @@ export type Database = {
           id: number
           inventory_added: boolean
           is_archived: boolean
+          is_closed: boolean
           name: string
           parent_tenant_id: number
           progress_flow_id: number | null
@@ -15167,6 +15286,7 @@ export type Database = {
           id: number
           inventory_added: boolean
           is_archived: boolean
+          is_closed: boolean
           name: string
           parent_tenant_id: number
           progress_flow_id: number | null
@@ -15968,6 +16088,23 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      upsert_profile_for_party: {
+        Args: {
+          p_accent_color?: string
+          p_address?: string
+          p_deleted_at?: string
+          p_email?: string
+          p_is_active?: boolean
+          p_is_phone_unique?: boolean
+          p_name: string
+          p_parent_tenant_id: number
+          p_phone?: string
+          p_phone_country_code?: string
+          p_profile_type: Database["public"]["Enums"]["profile_party_type"]
+          p_subject_id: number
+        }
+        Returns: number
+      }
       upsert_recipient_profile_and_address: {
         Args: {
           p_address?: string
@@ -16568,6 +16705,13 @@ export type Database = {
         | "transport"
         | "handling"
       global_shipment_item_add_method: "order" | "costing" | "manual"
+      global_shipment_outcome_kind: "sellable" | "unsellable"
+      global_shipment_outcome_reason:
+        | "general"
+        | "vendor_discount"
+        | "missing"
+        | "damaged"
+        | "other"
       global_shipment_type: "local" | "international" | "transfer" | "thrift"
       global_source_module: "wholesale" | "retail" | "commerce"
       investor_payment_method: "cash" | "bank" | "mobile_banking" | "other"
@@ -16851,6 +16995,14 @@ export const Constants = {
         "handling",
       ],
       global_shipment_item_add_method: ["order", "costing", "manual"],
+      global_shipment_outcome_kind: ["sellable", "unsellable"],
+      global_shipment_outcome_reason: [
+        "general",
+        "vendor_discount",
+        "missing",
+        "damaged",
+        "other",
+      ],
       global_shipment_type: ["local", "international", "transfer", "thrift"],
       global_source_module: ["wholesale", "retail", "commerce"],
       investor_payment_method: ["cash", "bank", "mobile_banking", "other"],

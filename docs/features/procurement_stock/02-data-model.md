@@ -65,7 +65,6 @@ erDiagram
         text name
         text code
         text market_code
-        bigint tenant_id
         bigint parent_tenant_id
         text email
         text phone
@@ -75,7 +74,6 @@ erDiagram
     }
     CARGO {
         bigint id PK
-        bigint tenant_id
         bigint parent_tenant_id
         text name
         text code
@@ -161,7 +159,7 @@ erDiagram
         numeric purchase_price
         numeric cost
         text description
-        text batch_id
+        text batch_label
     }
     COST_ENTRIES {
         bigint id PK
@@ -469,7 +467,7 @@ Parent-owned physical box weights for inbound shipments (optional; does not driv
 
 **RLS:** same pattern as other parent-scoped procurement tables (`user_can_manage_parent_tenant`).
 
-**`vendors` write RLS:** superadmin may insert/update/delete **global** rows (`tenant_id` null). Company **owner** (`is_network_owner(tenant_id)`) and tenant **admin** memberships may write rows for that company.
+**`vendors` / `cargo_companies` scope:** parent books only (`parent_tenant_id`; no per-row `tenant_id`). **Global vendors:** `parent_tenant_id` null (superadmin). **Tenant vendors / cargo:** `parent_tenant_id` = stock parent. Write RLS: superadmin on globals; `is_network_owner(parent_tenant_id)` or parent **admin** membership on scoped rows.
 
 ---
 

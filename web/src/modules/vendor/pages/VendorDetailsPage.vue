@@ -325,7 +325,7 @@ type VendorForm = {
   name: string;
   code: string;
   market_code: string;
-  tenant_id: number | null;
+  parent_tenant_id: number | null;
   email: string | null;
   phone: string | null;
   address: string | null;
@@ -335,7 +335,7 @@ const form = reactive<VendorForm>({
   name: '',
   code: '',
   market_code: '',
-  tenant_id: resolvedTenantId.value,
+  parent_tenant_id: resolvedTenantId.value,
   email: null,
   phone: null,
   address: null,
@@ -442,7 +442,7 @@ const loadData = async () => {
     name: result.data.name,
     code: normalizeCode(result.data.code),
     market_code: result.data.market_code,
-    tenant_id: result.data.tenant_id,
+    parent_tenant_id: result.data.parent_tenant_id,
     email: result.data.email,
     phone: result.data.phone,
     address: result.data.address,
@@ -477,7 +477,7 @@ const addBrand = async () => {
     name,
     vendor_code: vendorData.value.code,
     vendor_id: vendorData.value.id,
-    tenant_id: vendorData.value.tenant_id,
+    parent_tenant_id: vendorData.value.parent_tenant_id,
   });
   if (res.success && res.data) {
     brands.value.push(res.data);
@@ -518,7 +518,7 @@ const addCategory = async () => {
     name,
     vendor_code: vendorData.value.code,
     vendor_id: vendorData.value.id,
-    tenant_id: vendorData.value.tenant_id,
+    parent_tenant_id: vendorData.value.parent_tenant_id,
   });
   if (res.success && res.data) {
     categories.value.push(res.data);
@@ -548,7 +548,7 @@ const onSave = async () => {
     name: form.name.trim(),
     code: normalizedCode.value,
     market_code: form.market_code.trim().toUpperCase(),
-    tenant_id: form.tenant_id,
+    parent_tenant_id: form.parent_tenant_id,
     email: form.email?.trim() || null,
     phone: form.phone?.trim() || null,
     address: form.address?.trim() || null,
@@ -571,7 +571,7 @@ const confirmDeleteVendor = async () => {
   isDeletingVendor.value = true;
   const payload: VendorDeleteInput = {
     id: vendorId,
-    tenant_id: resolvedTenantId.value,
+    parent_tenant_id: resolvedTenantId.value,
   };
 
   const result = await vendorStore.deleteVendor(payload);

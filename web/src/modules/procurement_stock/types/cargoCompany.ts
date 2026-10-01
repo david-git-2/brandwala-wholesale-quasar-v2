@@ -1,6 +1,5 @@
 export type CargoCompany = {
   id: number;
-  tenant_id: number | null;
   parent_tenant_id: number | null;
   name: string;
   code: string;
@@ -16,7 +15,7 @@ export type CargoCompany = {
 };
 
 export type CargoCompanyCreateInput = {
-  tenant_id: number;
+  parent_tenant_id: number;
   name: string;
   code: string;
   email?: string | null;
@@ -27,7 +26,7 @@ export type CargoCompanyCreateInput = {
 
 export type CargoCompanyUpdateInput = {
   id: number;
-  tenant_id: number;
+  parent_tenant_id: number;
   name: string;
   code: string;
   email?: string | null;

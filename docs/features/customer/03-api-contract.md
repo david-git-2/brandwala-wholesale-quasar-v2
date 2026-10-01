@@ -7,7 +7,7 @@
 
 ## 1. Unified Provisioning RPC: `create_customer_account`
 
-Creates a Customer Group, links its Billing Profile, and initializes a Universal Wallet account in a single atomic transaction.
+Creates a Customer Group, links its Billing Profile (syncs **`profiles`** via trigger), and initializes store-credit cashbook. Updates to `billing_profiles` or hub fields on `customer_groups` keep **`profiles`** aligned (`20271001130000_profile_party_sync_triggers.sql`).
 
 ### Input Payload Schema
 ```json

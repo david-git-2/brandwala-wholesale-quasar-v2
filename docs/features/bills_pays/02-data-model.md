@@ -168,10 +168,10 @@ One party row. Bills, pays, cashbook hang off **`profile_id`**. Not `customer_gr
 | `tenant` | `tenants.id` | Our letterhead / “us” |
 | `customer` | group id today; later self | AR buyer **and** dropship shop (reseller) |
 | `vendor` / `cargo` | vendor or cargo id | AP later ([WA15](00-gaps.md)) |
-| `courier` | courier id | COD hold on cashbook (may stay entity until profile exists) |
+| `courier` | `courier_services.wallet_entity_id` | COD cashbook entity id (not UUID `id`) |
 | `company` | — | Only if product needs a split from `customer`. Prefer `customer`. |
 
-**Live:** `profiles` exists (`20271001120000_profiles_table.sql`); backfilled from `billing_profiles` (same `id`, sync trigger). Bills/pays still FK `billing_profile_id` until cutover. Legacy `billing_profiles` kept for now.
+**Live:** `profiles` + party sync (`20271001120000_profiles_table.sql`, `20271001130000_profile_party_sync_triggers.sql`, `20271001140000_drop_vendor_cargo_tenant_id.sql`). **Customer:** `billing_profiles` → `profiles` (same `id`). **Vendor / cargo:** party row keyed by `parent_tenant_id` + `subject_id` (vendors/cargo tables no longer carry `tenant_id`). **Courier / tenant:** `upsert_profile_for_party` via triggers. **Customer hub fields:** `customer_groups` update → `profiles` via `billing_profiles` link. Bills/pays still FK `billing_profile_id` until cutover.
 
 **Target:** `parent_tenant_id` only; `unique (parent_tenant_id, profile_type, subject_id)`; phone unique per books when `is_phone_unique`. Recipient stays its own table.
 

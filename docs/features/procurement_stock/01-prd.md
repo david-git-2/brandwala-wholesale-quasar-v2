@@ -32,7 +32,7 @@
 7. Extra batch lines anytime until close. New local costs until close.
 8. **Close** is a button + `is_closed`. UI for that shipment becomes **read-only**. Not auto when sold out. No edits after close.
 
-Live today: price/qty on the **line**; finalize from `received_quantity`; no outcomes table; no local-costs table; no `is_closed`; allocations table still in shop/invoice SQL.
+Live today: price/qty on the **line**; finalize from `received_quantity`; outcomes/local-costs/**`is_closed`** columns exist (`20271001150000_procurement_shipment_target_tables.sql`) but receive/close UI and RPCs still use line fields; allocations table still in shop/invoice SQL.
 
 ---
 
