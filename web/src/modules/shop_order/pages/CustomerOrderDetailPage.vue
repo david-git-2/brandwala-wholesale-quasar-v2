@@ -231,7 +231,7 @@ const canSeeOfferPrices = computed(() => true);
 
 const canShowOrderTotal = computed(() => {
   if (
-    ['priced', 'countered', 'final_offered', 'confirmed', 'procuring', 'ready_for_shipment', 'delivered']
+    ['priced', 'countered', 'final_offered', 'confirmed', 'procuring', 'packed', 'delivered']
       .includes(normalizedStatus.value)
   ) {
     return true;
@@ -281,7 +281,7 @@ const isDropshipNegotiationOpen = computed(
 );
 
 const getDisplayUnitPrice = (item: any) => {
-  if (normalizedStatus.value === 'final_offered' || ['confirmed', 'procuring', 'ready_for_shipment', 'delivered'].includes(normalizedStatus.value)) {
+  if (normalizedStatus.value === 'final_offered' || ['confirmed', 'procuring', 'packed', 'delivered'].includes(normalizedStatus.value)) {
     if (item.final_price_amount != null && item.final_price_amount > 0) {
       return Number(item.final_price_amount);
     }
@@ -289,7 +289,7 @@ const getDisplayUnitPrice = (item: any) => {
       return Number(item.final_offer_amount);
     }
   }
-  if (['priced', 'countered', 'final_offered', 'confirmed', 'procuring', 'ready_for_shipment', 'delivered'].includes(normalizedStatus.value)) {
+  if (['priced', 'countered', 'final_offered', 'confirmed', 'procuring', 'packed', 'delivered'].includes(normalizedStatus.value)) {
     if (item.staff_offer_amount != null && item.staff_offer_amount > 0) {
       return Number(item.staff_offer_amount);
     }

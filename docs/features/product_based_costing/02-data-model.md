@@ -30,7 +30,7 @@ create type public.product_based_costing_file_status as enum (
   'offered',
   'confirmed',
   'procuring',
-  'ready_for_shipment',
+  'packed',
   'delivered',
   'cancelled'
 );

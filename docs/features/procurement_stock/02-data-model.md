@@ -362,7 +362,7 @@ erDiagram
 | Desk | Writes on `preorder_demand` | Parent document status |
 | :--- | :--- | :--- |
 | **Demand** | `vendor_id`, `placed_quantity` | `procuring` on shop order / PBC file |
-| **Delivery paper** | `stock_picks` → `delivered_quantity` | → `ready_for_shipment` → close (take / condition / return) → `delivered` |
+| **Delivery paper** | `stock_picks` → `delivered_quantity` | → `packed` → close (take / condition / return) → `delivered` |
 
 Unique `(source_type, source_id)`. Open need: `get_procurement_demand_open_qty`. `stock_picks[]`: `global_stock_id`, `quantity` (→ **STOCKS**). List RPCs group by shop order or PBC file ([03 §5](03-api-contract.md)). Dropship merchant bill at ship: [shop_order](../shop_order/01-prd.md), not this diagram.
 

@@ -303,7 +303,7 @@ watch(
 );
 
 const isConfirmedOrBeyond = computed(() => {
-  return ['confirmed', 'procuring', 'ready_for_shipment', 'delivered'].includes(
+  return ['confirmed', 'procuring', 'packed', 'delivered'].includes(
     normalizeCatalogOrderStatus(props.status),
   );
 });

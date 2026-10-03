@@ -45,7 +45,7 @@ It orchestrates packing slips for end-recipients and a **merchant** B2B bill (`s
 | **Storefront Customer** | B2B Customer | Browse accessible shops, submit cart preorders, accept/counter first-offer price quotes, set final quantities. |
 | **Dropship Reseller** | Reseller Partner | Place dropship orders for end recipients with custom resell prices, track courier deliveries, withdraw wallet profits. |
 | **Fulfillment Staff** | Operational | Pick stock for dropship orders, generate packing slips, assign couriers. Catalog pack-out: **Delivery paper** desk (not an issued bill). |
-| **Procurement Staff** | Operational | Review preorder demand list, log vendor PO placements, advance orders to `ready_for_shipment`. |
+| **Procurement Staff** | Operational | Review preorder demand list, log vendor PO placements, advance orders to `packed`. |
 | **Shop Admin / Manager**| Full Access | Create and configure shops (`vendor_catalog`, `fixed_price`, `dropship`), set price visibility permissions, configure categories. |
 
 ---

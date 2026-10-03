@@ -250,7 +250,7 @@ const statusFilterOptions = computed(() => [
   { label: t('product_based_costing.status_offered'), value: 'offered' },
   { label: t('product_based_costing.status_confirmed'), value: 'confirmed' },
   { label: t('product_based_costing.status_procuring'), value: 'procuring' },
-  { label: t('product_based_costing.status_ready_for_shipment'), value: 'ready_for_shipment' },
+  { label: t('product_based_costing.status_packed'), value: 'packed' },
   { label: t('product_based_costing.status_delivered'), value: 'delivered' },
   { label: t('product_based_costing.status_cancelled'), value: 'cancelled' },
 ]);
@@ -261,7 +261,7 @@ const filterTabs = computed(() => [
   { label: t('product_based_costing.status_offered'), value: 'offered' },
   { label: t('product_based_costing.status_confirmed'), value: 'confirmed' },
   { label: t('product_based_costing.status_procuring'), value: 'procuring' },
-  { label: t('product_based_costing.status_ready_for_shipment'), value: 'ready_for_shipment' },
+  { label: t('product_based_costing.status_packed'), value: 'packed' },
   { label: t('product_based_costing.status_delivered'), value: 'delivered' },
 ]);
 

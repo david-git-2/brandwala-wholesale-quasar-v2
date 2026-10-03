@@ -47,4 +47,4 @@ export const productBasedCostingQueryKeys = {
 
 1. **Client-Side Live Preview**: Modifying FX rate or customer markup recalculates line prices and total quote in real-time before saving.
 2. **Backlog Auto-Clearing**: When backlog items are inserted into a draft file, their state is updated to `is_consumed = true` to prevent duplicate quoting.
-3. **Demand Desk Alignment**: Procurement stages (`procuring` $\rightarrow$ `ready_for_shipment` $\rightarrow$ `delivered`) share identical backend models with catalog shop orders.
+3. **Demand Desk Alignment**: Procurement stages (`procuring` $\rightarrow$ `packed` $\rightarrow$ `delivered`) share identical backend models with catalog shop orders.

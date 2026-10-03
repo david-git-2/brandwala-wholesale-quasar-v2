@@ -434,7 +434,7 @@ const fulfillProcurementStatus = ref<ProcurementDemandStatus>('procuring');
 
 const fulfillStatusTabOptions = [
   { label: 'Procuring', value: 'procuring' as ProcurementDemandStatus },
-  { label: 'Ready for shipment', value: 'ready_for_shipment' as ProcurementDemandStatus },
+  { label: 'Packed', value: 'packed' as ProcurementDemandStatus },
 ];
 
 const procurementStatus = computed<ProcurementDemandStatus>(() =>
@@ -446,7 +446,7 @@ const isProcuringGroup = (group: ProcurementDemandGroup) =>
 
 const canPickStockForGroup = (group: ProcurementDemandGroup) =>
   isFulfillMode.value &&
-  (group.document_status === 'procuring' || group.document_status === 'ready_for_shipment');
+  (group.document_status === 'procuring' || group.document_status === 'packed');
 
 const allocatedColumnLabel = computed(() =>
   procurementStatus.value === 'procuring' ? 'Allocated' : 'Allocated qty',
@@ -860,8 +860,8 @@ const canChangeFulfillStatus = (group: ProcurementDemandGroup) =>
 
 const canCreateGroupInvoice = (group: ProcurementDemandGroup) =>
   isFulfillMode.value &&
-  procurementStatus.value === 'ready_for_shipment' &&
-  group.document_status === 'ready_for_shipment' &&
+  procurementStatus.value === 'packed' &&
+  group.document_status === 'packed' &&
   !group.invoice_id;
 
 const canUpdateGroupInvoice = (group: ProcurementDemandGroup) =>
@@ -889,7 +889,7 @@ const onChangeGroupStatus = async (group: ProcurementDemandGroup) => {
   try {
     await setStatusMutation.mutateAsync({ group, tenantId });
     showSuccessNotification('Status set to ready for shipment.');
-    fulfillProcurementStatus.value = 'ready_for_shipment';
+    fulfillProcurementStatus.value = 'packed';
     await refreshDemandDesk();
   } catch (err) {
     showErrorNotification(parseSupabaseError(err, 'Failed to change status'));

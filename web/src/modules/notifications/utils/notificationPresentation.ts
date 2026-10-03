@@ -15,10 +15,10 @@ const EVENT_PRESENTATION: Record<string, NotificationPresentation> = {
     kindLabel: 'Order confirmed',
     fallbackAction: 'Start buying when ready',
   },
-  'catalog.order.ready_for_shipment': {
+  'catalog.order.packed': {
     icon: 'ph ph-package',
-    kindLabel: 'Packing',
-    fallbackAction: 'We will mark it on the way when it ships',
+    kindLabel: 'Packed',
+    fallbackAction: 'Confirm take, condition, or return on the delivery paper',
   },
   'catalog.order.delivered': {
     icon: 'ph ph-truck',

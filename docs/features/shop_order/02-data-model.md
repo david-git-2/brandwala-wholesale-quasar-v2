@@ -48,7 +48,7 @@ create type public.shop_order_status as enum (
   'final_offered',
   'confirmed',
   'procuring',
-  'ready_for_shipment',
+  'packed',
   'ready_for_pickup',
   'processing',
   'in_transit',

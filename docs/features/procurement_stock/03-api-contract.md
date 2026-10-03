@@ -185,7 +185,7 @@ Sets `placed_quantity` on **every** demand line for one document group (`p_docum
 
 ### 5.1d `fill_preorder_demand_oldest_stock_for_document`
 
-FIFO warehouse picks for **every line** on one document (`p_document_type` + `p_document_id`). Document must be `procuring` or `ready_for_shipment`. For each line with `product_id` and need qty &gt; 0: skip if picks already exist; skip if pickable ATP (minus existing `preorder_demand` picks and picks assigned earlier in this run) cannot cover the **full** need; otherwise write `stock_picks` and `delivered_quantity`. Returns `{ updated_count, skipped_count }`.
+FIFO warehouse picks for **every line** on one document (`p_document_type` + `p_document_id`). Document must be `procuring` or `packed`. For each line with `product_id` and need qty &gt; 0: skip if picks already exist; skip if pickable ATP (minus existing `preorder_demand` picks and picks assigned earlier in this run) cannot cover the **full** need; otherwise write `stock_picks` and `delivered_quantity`. Returns `{ updated_count, skipped_count }`.
 
 ### 5.1c `set_preorder_demand_vendor_for_document`
 
@@ -193,13 +193,13 @@ Sets `vendor_id` on **every** demand line for one document (`p_document_type` + 
 
 ### 5.2 `create_invoice_from_preorder_demand_document`
 
-**Live today:** builds proforma (`issue: false`) from stock picks. Document must be `ready_for_shipment`. Idempotent if a linked invoice exists.
+**Live today:** builds proforma (`issue: false`) from stock picks. Document must be `packed`. Idempotent if a linked invoice exists.
 
 **Target:** this desk **is** the delivery paper. Close writes take / condition / return; then take and/or condition bills. See [01-prd US-4](01-prd.md) and [bills_pays US-5](../bills_pays/01-prd.md). Gap [PS6](00-gaps.md).
 
 ### 5.2b `sync_invoice_from_preorder_demand_document`
 
-Rebuilds bill lines on an existing linked invoice from current `preorder_demand.stock_picks`. Document must be `ready_for_shipment` and have `invoice_id`. Invoice must be `draft` or `proforma_generated`. Replaces all invoice lines with pick-derived lines (same sell prices as create).
+Rebuilds bill lines on an existing linked invoice from current `preorder_demand.stock_picks`. Document must be `packed` and have `invoice_id`. Invoice must be `draft` or `proforma_generated`. Replaces all invoice lines with pick-derived lines (same sell prices as create).
 
 ### 5.3 `list_procurement_demand_groups`
 
@@ -213,7 +213,7 @@ Line fields include `barcode`, `product_code`, `vendor_code`, `market_code`, `br
 
 ### 5.5 `list_procurement_fulfill_groups`
 
-Delivery paper desk group headers. Same JSON shape as `list_procurement_demand_groups`, but **no** `p_child_tenant_id`. Default `p_procurement_status` = `procuring` (also accepts `ready_for_shipment`, `delivered`). RPC name stays `list_procurement_fulfill_groups`.
+Delivery paper desk group headers. Same JSON shape as `list_procurement_demand_groups`, but **no** `p_child_tenant_id`. Default `p_procurement_status` = `procuring` (also accepts `packed`, `delivered`). RPC name stays `list_procurement_fulfill_groups`.
 
 ### 5.6 `list_procurement_fulfill_group_items`
 

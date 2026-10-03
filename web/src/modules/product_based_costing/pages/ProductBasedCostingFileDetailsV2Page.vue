@@ -2564,16 +2564,16 @@ async function applyStatus(nextStatus: string) {
 async function markReadyForShipment() {
   if (!fileId.value || updatingStatus.value) return;
   updatingStatus.value = true;
-  targetUpdatingStatus.value = 'ready_for_shipment';
+  targetUpdatingStatus.value = 'packed';
   try {
     await productBasedCostingRepository.markPbcReadyForShipment(fileId.value);
-    visibleColumns.value = getDefaultVisibleColumnsForStatus('ready_for_shipment');
+    visibleColumns.value = getDefaultVisibleColumnsForStatus('packed');
     await queryClient.invalidateQueries({
       queryKey: productBasedCostingQueryKeys.fileDetail(fileId.value),
     });
     $q.notify({
       type: 'positive',
-      message: t('product_based_costing.action_mark_ready_for_shipment'),
+      message: t('product_based_costing.action_mark_packed'),
     });
   } catch (error) {
     $q.notify({
@@ -2600,7 +2600,7 @@ function handlePbcPrimaryAction(action: StaffPbcPrimaryAction) {
     });
     return;
   }
-  if (action === 'mark_ready_for_shipment') {
+  if (action === 'mark_packed') {
     void markReadyForShipment();
     return;
   }
@@ -2637,7 +2637,7 @@ function onWorkflowStatusClick(nextStatus: string) {
     cancel: true,
     persistent: true,
   }).onOk(() => {
-    if (normalized === 'ready_for_shipment' && status.value === 'procuring') {
+    if (normalized === 'packed' && status.value === 'procuring') {
       void markReadyForShipment();
     } else {
       void applyStatus(normalized);

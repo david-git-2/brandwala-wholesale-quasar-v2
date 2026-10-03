@@ -9,7 +9,7 @@ export const workflowStatuses = [
   'offered',
   'confirmed',
   'procuring',
-  'ready_for_shipment',
+  'packed',
   'delivered',
 ] as const;
 
@@ -17,7 +17,7 @@ export const quoteStatuses = ['pending', 'offered'] as const;
 export const fulfillmentStatuses = [
   'confirmed',
   'procuring',
-  'ready_for_shipment',
+  'packed',
   'delivered',
 ] as const;
 
@@ -114,7 +114,7 @@ export function formatStatusLabel(value: string): string {
       return 'Confirmed';
     case 'procuring':
       return 'Procuring';
-    case 'ready_for_shipment':
+    case 'packed':
       return 'Ready for Shipment';
     case 'delivered':
       return 'Delivered';
@@ -152,7 +152,7 @@ export function getFileStatusHint(value: string): StatusHint | null {
         when: 'You are buying the goods',
         does: 'Type how many you got for each item.',
       };
-    case 'ready_for_shipment':
+    case 'packed':
       return {
         when: 'You know how many you got',
         does: 'Put those items on a shipment.',
@@ -233,7 +233,7 @@ export function getStatusColor(st: string): string {
       return 'blue-9';
     case 'procuring':
       return 'indigo-8';
-    case 'ready_for_shipment':
+    case 'packed':
       return 'green-8';
     case 'delivered':
       return 'teal-9';
@@ -265,7 +265,7 @@ export function getDefaultVisibleColumnsForStatus(fileStatus: string): string[] 
         'status',
       ];
     case 'procuring':
-    case 'ready_for_shipment':
+    case 'packed':
       return [...baseCols, 'confirmedQty', 'barcodeText', 'status'];
     case 'delivered':
       return [...allColumnNames];

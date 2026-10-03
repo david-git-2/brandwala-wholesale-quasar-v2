@@ -207,7 +207,7 @@ const inProgressCount = computed(() => {
     return (
       norm === 'submitted' ||
       norm === 'procuring' ||
-      norm === 'ready_for_shipment' ||
+      norm === 'packed' ||
       norm === 'processing' ||
       norm === 'shipped' ||
       norm === 'negotiating' ||
@@ -246,7 +246,7 @@ const getOrderRowClass = (status: string) => {
     case 'procuring':
       return 'order-row--info';
     case 'placed':
-    case 'ready_for_shipment':
+    case 'packed':
     case 'shipped':
     case 'processing':
       return 'order-row--purple';
@@ -322,9 +322,9 @@ const getStatusBadgeInfo = (status: string) => {
         icon: 'ph ph-package',
         className: 'status-procuring',
       };
-    case 'ready_for_shipment':
+    case 'packed':
       return {
-        label: t('shop_admin.status_ready_for_shipment', 'Ready for Shipment'),
+        label: t('shop_admin.status_packed', 'Packed'),
         icon: 'ph ph-box-arrow-up',
         className: 'status-ready',
       };

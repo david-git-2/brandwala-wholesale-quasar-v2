@@ -670,7 +670,7 @@ const addCostingItemToShipment = async (
 };
 
 const markPbcReadyForShipment = async (fileId: number) => {
-  const { data, error } = await supabase.rpc('staff_mark_pbc_ready_for_shipment', {
+  const { data, error } = await supabase.rpc('staff_mark_pbc_packed', {
     p_file_id: fileId,
   });
 

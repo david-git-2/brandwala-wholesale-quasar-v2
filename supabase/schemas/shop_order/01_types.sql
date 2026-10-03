@@ -40,7 +40,7 @@ CREATE TYPE "public"."shop_order_status" AS ENUM (
     'countered',
     'final_offered',
     'procuring',
-    'ready_for_shipment',
+    'packed',
     'ordered'
 );
 

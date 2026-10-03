@@ -167,7 +167,7 @@ const isWaitingOnStaff = computed(() =>
 const waitLabel = computed(() => getCustomerCatalogStatusLabel(normalizedStatus.value));
 
 const isConfirmedOrBeyond = computed(() =>
-  ['confirmed', 'procuring', 'ready_for_shipment', 'delivered'].includes(normalizedStatus.value),
+  ['confirmed', 'procuring', 'packed', 'delivered'].includes(normalizedStatus.value),
 );
 
 const statusChipLabel = computed(() => getCustomerCatalogStatusLabel(normalizedStatus.value));

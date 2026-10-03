@@ -14810,7 +14810,7 @@ BEGIN
         'processing'::public.shop_order_status,
         'confirmed'::public.shop_order_status,
         'procuring'::public.shop_order_status,
-        'ready_for_shipment'::public.shop_order_status,
+        'packed'::public.shop_order_status,
         'placed'::public.shop_order_status,
         'ordered'::public.shop_order_status
       )
@@ -14860,7 +14860,7 @@ BEGIN
             'processing'::public.shop_order_status,
             'confirmed'::public.shop_order_status,
             'procuring'::public.shop_order_status,
-            'ready_for_shipment'::public.shop_order_status,
+            'packed'::public.shop_order_status,
             'placed'::public.shop_order_status,
             'ordered'::public.shop_order_status
           ) THEN 'processing'
@@ -14882,7 +14882,7 @@ BEGIN
             'processing'::public.shop_order_status,
             'confirmed'::public.shop_order_status,
             'procuring'::public.shop_order_status,
-            'ready_for_shipment'::public.shop_order_status,
+            'packed'::public.shop_order_status,
             'placed'::public.shop_order_status,
             'ordered'::public.shop_order_status
           ) THEN 3
@@ -18865,7 +18865,7 @@ BEGIN
     INNER JOIN public.tenants t ON t.id = pcf.tenant_id
     WHERE t.parent_id = p_parent_tenant_id
       AND (p_child_tenant_id IS NULL OR pcf.tenant_id = p_child_tenant_id)
-      AND pcf.status = 'ready_for_shipment'
+      AND pcf.status = 'packed'
       AND pci.assigned_shipment_id IS NULL
       AND pci.product_id IS NOT NULL
       AND coalesce(pci.confirmed_quantity, pci.quantity::integer, 0) > 0
@@ -21742,7 +21742,7 @@ begin
     v_allowed := public.is_tenant_staff(p_tenant_id);
   end if;
   if not coalesce(v_allowed, false) then raise exception 'access denied'; end if;
-  if v_status not in ('procuring', 'ready_for_shipment', 'delivered') then
+  if v_status not in ('procuring', 'packed', 'delivered') then
     raise exception 'invalid procurement status: %', v_status;
   end if;
 
@@ -25027,6 +25027,7 @@ CREATE OR REPLACE FUNCTION "public"."normalize_pbc_procurement_status"("p_status
   select case lower(trim(coalesce(p_status, '')))
     when 'placing_order' then 'procuring'
     when 'invoicing' then 'delivered'
+    when 'ready_for_shipment' then 'packed'
     else lower(trim(coalesce(p_status, '')))
   end;
 $$;
@@ -25039,7 +25040,7 @@ CREATE OR REPLACE FUNCTION "public"."normalize_shop_order_procurement_status"("p
     LANGUAGE "sql" IMMUTABLE
     AS $$
   select case
-    when p_status = 'ordered'::public.shop_order_status then 'ready_for_shipment'
+    when p_status = 'ordered'::public.shop_order_status then 'packed'
     else p_status::text
   end;
 $$;
@@ -32397,7 +32398,7 @@ $$;
 ALTER FUNCTION "public"."staff_finalize_catalog_prices"("p_order_id" bigint, "p_items" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."staff_mark_pbc_ready_for_shipment"("p_file_id" bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."staff_mark_pbc_packed"("p_file_id" bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -32429,14 +32430,14 @@ begin
 
   update public.product_based_costing_files
   set
-    status = 'ready_for_shipment',
+    status = 'packed',
     updated_at = now()
   where id = p_file_id;
 
   return jsonb_build_object(
     'success', true,
     'file_id', p_file_id,
-    'status', 'ready_for_shipment',
+    'status', 'packed',
     'invoice_id', v_result->>'invoice_id',
     'invoice_created', coalesce(v_result->>'created', 'false')::boolean
   );
@@ -32444,7 +32445,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."staff_mark_pbc_ready_for_shipment"("p_file_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."staff_mark_pbc_packed"("p_file_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."staff_set_catalog_delivered_qty"("p_order_id" bigint, "p_items" "jsonb" DEFAULT '[]'::"jsonb") RETURNS "jsonb"
@@ -32600,7 +32601,7 @@ begin
 
   update public.shop_orders
   set
-    status = 'ready_for_shipment'::public.shop_order_status,
+    status = 'packed'::public.shop_order_status,
     placed_at = coalesce(placed_at, now()),
     updated_at = now()
   where id = p_order_id;
@@ -32609,7 +32610,7 @@ begin
     p_order_id := p_order_id,
     p_notify_staff := false,
     p_notify_customer := true,
-    p_event_type := 'catalog.order.ready_for_shipment',
+    p_event_type := 'catalog.order.packed',
     p_title := format('%s is packing', v_order.order_no),
     p_body := 'We will mark it on the way when it ships.'
   );
@@ -37418,7 +37419,7 @@ begin
     end if;
   end if;
 
-  if v_doc_status not in ('procuring', 'ready_for_shipment') then
+  if v_doc_status not in ('procuring', 'packed') then
     raise exception 'document is not open for preorder demand updates';
   end if;
 
@@ -47885,7 +47886,7 @@ REVOKE ALL ON FUNCTION "public"."staff_finalize_catalog_prices"("p_order_id" big
 GRANT ALL ON FUNCTION "public"."staff_finalize_catalog_prices"("p_order_id" bigint, "p_items" "jsonb") TO "authenticated";
 
 
-GRANT ALL ON FUNCTION "public"."staff_mark_pbc_ready_for_shipment"("p_file_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."staff_mark_pbc_packed"("p_file_id" bigint) TO "authenticated";
 
 
 REVOKE ALL ON FUNCTION "public"."staff_price_shop_order"("p_order_id" bigint, "p_items" "jsonb", "p_profit_basis" "text", "p_fx_rate" numeric, "p_cargo_rate" numeric, "p_profit_pct" numeric) FROM PUBLIC;

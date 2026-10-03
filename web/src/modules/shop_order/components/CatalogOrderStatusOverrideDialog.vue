@@ -86,7 +86,7 @@ const CATALOG_OVERRIDE_STATUSES = [
   'final_offered',
   'confirmed',
   'procuring',
-  'ready_for_shipment',
+  'packed',
   'delivered',
   'cancelled',
 ] as const;

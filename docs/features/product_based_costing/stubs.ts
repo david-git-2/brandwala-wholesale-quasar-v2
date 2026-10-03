@@ -7,7 +7,7 @@ export interface CostingFileStub {
   id: string;
   file_no: string;
   title: string;
-  status: 'pending' | 'offered' | 'confirmed' | 'procuring' | 'ready_for_shipment' | 'delivered' | 'cancelled';
+  status: 'pending' | 'offered' | 'confirmed' | 'procuring' | 'packed' | 'delivered' | 'cancelled';
   customer_name: string;
   base_currency: string;
   fx_rate: number;

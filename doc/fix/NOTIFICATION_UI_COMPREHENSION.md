@@ -28,7 +28,7 @@ No table changes. Copy updates only in existing enqueue call sites:
 | `catalog.offer.countered` | staff | `{order_no} needs a final price` | `Open the order and send the last offer` |
 | `catalog.offer.sent` | shop | `Offer ready for {order_no}` | `Open the order to review prices` |
 | `catalog.offer.final` | shop | `Confirm {order_no}` | `Check price and quantity, then confirm` |
-| `catalog.order.ready_for_shipment` | shop | `{order_no} is packing` | `We will mark it on the way when it ships` |
+| `catalog.order.packed` | shop | `{order_no} is packing` | `We will mark it on the way when it ships` |
 | `catalog.order.delivered` | shop | `Order {order_no} delivered` | `Open the order for details` |
 | `catalog.order.cancelled` | shop | `Order {order_no} cancelled` | (unchanged body) |
 | `task.assigned` | assignee | `Task: {title}` | `Open this task` |

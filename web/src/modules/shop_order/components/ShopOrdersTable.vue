@@ -199,7 +199,7 @@ const getOrderRowStyle = (status: string) => {
         boxShadow: 'inset 3px 0 0 #3b82f6',
       };
     case 'placed':
-    case 'ready_for_shipment':
+    case 'packed':
     case 'shipped':
     case 'processing':
       return {
@@ -287,9 +287,9 @@ const getStatusBadgeInfo = (status: string) => {
         icon: 'ph ph-package',
         className: 'status-procuring',
       };
-    case 'ready_for_shipment':
+    case 'packed':
       return {
-        label: t('shop_admin.status_ready_for_shipment', 'Ready for Shipment'),
+        label: t('shop_admin.status_packed', 'Packed'),
         icon: 'ph ph-box-arrow-up',
         className: 'status-ready',
       };

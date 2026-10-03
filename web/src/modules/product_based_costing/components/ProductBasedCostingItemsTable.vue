@@ -37,7 +37,7 @@
     </div>
 
     <div
-      v-if="normalizedFileStatus === 'procuring' || normalizedFileStatus === 'ready_for_shipment'"
+      v-if="normalizedFileStatus === 'procuring' || normalizedFileStatus === 'packed'"
       class="row items-center justify-between q-pa-sm q-mb-sm bg-grey-1 rounded-borders border-grey-3"
     >
       <div class="row items-center q-gutter-xs">
@@ -59,7 +59,7 @@
           color="teal-8"
           icon="ph ph-funnel"
           :label="
-            status === 'ready_for_shipment'
+            status === 'packed'
               ? $t('product_based_costing.hide_rejected_unavailable')
               : $t('product_based_costing.hide_rejected')
           "
@@ -1401,7 +1401,7 @@ const tableRows = ref<ProductBasedCostingTableRow[]>([]);
 const statusFilter = ref<'all' | 'active'>('active');
 
 const displayRows = computed(() => {
-  if (normalizedFileStatus.value === 'ready_for_shipment') {
+  if (normalizedFileStatus.value === 'packed') {
     if (statusFilter.value === 'all') {
       return tableRows.value;
     }

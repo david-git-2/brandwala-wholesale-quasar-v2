@@ -6523,7 +6523,7 @@ CREATE OR REPLACE FUNCTION "public"."customer_shop_order_glance_segment"("p_stat
       'ordered'::public.shop_order_status,
       'processing'::public.shop_order_status,
       'shipped'::public.shop_order_status,
-      'ready_for_shipment'::public.shop_order_status,
+      'packed'::public.shop_order_status,
       'ready_for_pickup'::public.shop_order_status
     ) then 'in_progress'
     when p_status = 'delivered'::public.shop_order_status then 'delivered'
@@ -10131,7 +10131,7 @@ begin
 
   update public.shop_orders
   set
-    status = 'ready_for_shipment'::public.shop_order_status,
+    status = 'packed'::public.shop_order_status,
     placed_at = coalesce(placed_at, now()),
     updated_at = now()
   where id = p_order_id;
@@ -10211,7 +10211,7 @@ begin
     p_order_id := p_order_id,
     p_notify_staff := false,
     p_notify_customer := true,
-    p_event_type := 'catalog.order.ready_for_shipment',
+    p_event_type := 'catalog.order.packed',
     p_title := format('%s is packing', v_order.order_no),
     p_body := 'We will mark it on the way when it ships.'
   );
@@ -12121,7 +12121,7 @@ BEGIN
         'processing'::public.shop_order_status,
         'confirmed'::public.shop_order_status,
         'procuring'::public.shop_order_status,
-        'ready_for_shipment'::public.shop_order_status,
+        'packed'::public.shop_order_status,
         'placed'::public.shop_order_status,
         'ordered'::public.shop_order_status
       )
@@ -12171,7 +12171,7 @@ BEGIN
             'processing'::public.shop_order_status,
             'confirmed'::public.shop_order_status,
             'procuring'::public.shop_order_status,
-            'ready_for_shipment'::public.shop_order_status,
+            'packed'::public.shop_order_status,
             'placed'::public.shop_order_status,
             'ordered'::public.shop_order_status
           ) THEN 'processing'
@@ -12193,7 +12193,7 @@ BEGIN
             'processing'::public.shop_order_status,
             'confirmed'::public.shop_order_status,
             'procuring'::public.shop_order_status,
-            'ready_for_shipment'::public.shop_order_status,
+            'packed'::public.shop_order_status,
             'placed'::public.shop_order_status,
             'ordered'::public.shop_order_status
           ) THEN 3

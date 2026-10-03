@@ -437,7 +437,7 @@ const catalogVisibleColumns = computed<string[]>({
     if (catalogOrderStatus.value === 'procuring') {
       return procuringModeColumns;
     }
-    if (catalogOrderStatus.value === 'ready_for_shipment') {
+    if (catalogOrderStatus.value === 'packed') {
       return readyForShipmentModeColumns;
     }
     if (catalogOrderStatus.value === 'priced') {

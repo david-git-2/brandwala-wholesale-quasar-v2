@@ -15284,10 +15284,7 @@ export type Database = {
         Args: { p_items: Json; p_order_id: number }
         Returns: Json
       }
-      staff_mark_pbc_ready_for_shipment: {
-        Args: { p_file_id: number }
-        Returns: Json
-      }
+      staff_mark_pbc_packed: { Args: { p_file_id: number }; Returns: Json }
       staff_price_shop_order: {
         Args: {
           p_cargo_rate?: number
@@ -16925,7 +16922,7 @@ export type Database = {
         | "countered"
         | "final_offered"
         | "procuring"
-        | "ready_for_shipment"
+        | "packed"
         | "ordered"
       shop_type_enum: "vendor_catalog" | "fixed_price" | "dropship"
       stock_availability: "sellable" | "held" | "unsellable"
@@ -17228,7 +17225,7 @@ export const Constants = {
         "countered",
         "final_offered",
         "procuring",
-        "ready_for_shipment",
+        "packed",
         "ordered",
       ],
       shop_type_enum: ["vendor_catalog", "fixed_price", "dropship"],

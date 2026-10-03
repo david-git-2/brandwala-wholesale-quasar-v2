@@ -2,7 +2,7 @@ import { supabase } from 'src/boot/supabase';
 import { productBasedCostingRepository } from 'src/modules/product_based_costing/repositories/productBasedCostingRepository';
 import { shopOrderRepository } from 'src/modules/shop_order/repositories/shopOrderRepository';
 
-export type ProcurementDemandStatus = 'procuring' | 'ready_for_shipment' | 'delivered';
+export type ProcurementDemandStatus = 'procuring' | 'packed' | 'delivered';
 
 export type ProcurementDemandDocumentType = 'shop_order' | 'pbc_costing_file';
 
@@ -441,20 +441,20 @@ const setDemandGroupStatusReadyForShipment = async (params: {
   tenantId: number;
 }): Promise<void> => {
   const { group, tenantId } = params;
-  if (group.document_status === 'ready_for_shipment') return;
+  if (group.document_status === 'packed') return;
 
   if (group.document_type === 'shop_order') {
     await shopOrderRepository.updateOrderStatus(
       tenantId,
       group.document_id,
-      'ready_for_shipment',
+      'packed',
     );
     return;
   }
 
   await productBasedCostingRepository.updateProductBasedCostingFile({
     id: group.document_id,
-    status: 'ready_for_shipment',
+    status: 'packed',
   });
 };
 

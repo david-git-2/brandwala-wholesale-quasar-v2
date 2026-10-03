@@ -31,7 +31,7 @@ See [scopes](../../architecture/scopes.md).
 
 The **Product-Based Costing (PBC)** module enables sister concerns to assemble custom pre-order quotation sheets for international merchandise, calculate dynamic unit costs and retail prices via formula-driven surcharges, and aggregate customer demand into downstream procurement workflows.
 
-Once a quotation is confirmed by a customer group, the file transitions seamlessly into the shared Procurement Demand desk (`procuring` $\rightarrow$ `ready_for_shipment` $\rightarrow$ `delivered`), capturing unfulfilled quantities into the Customer Demand Backlog.
+Once a quotation is confirmed by a customer group, the file transitions seamlessly into the shared Procurement Demand desk (`procuring` $\rightarrow$ `packed` $\rightarrow$ `delivered`), capturing unfulfilled quantities into the Customer Demand Backlog.
 
 ---
 
@@ -63,12 +63,12 @@ Once a quotation is confirmed by a customer group, the file transitions seamless
 
 ### US-2: Shared Procurement Lifecycle & Demand Desk Alignment
 - **As a** Procurement Officer  
-- **I want to** manage confirmed costing files through the standard procurement lifecycle (`pending` $\rightarrow$ `offered` $\rightarrow$ `confirmed` $\rightarrow$ `procuring` $\rightarrow$ `ready_for_shipment` $\rightarrow$ `delivered`)  
+- **I want to** manage confirmed costing files through the standard procurement lifecycle (`pending` $\rightarrow$ `offered` $\rightarrow$ `confirmed` $\rightarrow$ `procuring` $\rightarrow$ `packed` $\rightarrow$ `delivered`)  
 - **So that** PBC pre-orders share the same operational Demand desk as catalog shop orders.
 
 #### Acceptance Criteria
 - [ ] Stays in `procuring` status through vendor PO, proforma, and inbound cargo arrival.
-- [ ] Delivers packed quantities from warehouse stock on the **Delivery paper** desk. Close as take / condition / return — do not issue the customer bill at `ready_for_shipment`. Vendor PO on Demand is optional when stock is already on hand (same pick path as catalog orders).
+- [ ] Delivers packed quantities from warehouse stock on the **Delivery paper** desk. Close as take / condition / return — do not issue the customer bill at `packed`. Vendor PO on Demand is optional when stock is already on hand (same pick path as catalog orders).
 
 ### US-3: Automated Demand Backlog Capture
 - **As a** Sourcing Lead  

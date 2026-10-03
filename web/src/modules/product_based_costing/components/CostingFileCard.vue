@@ -114,7 +114,7 @@ const statusSurfaceStyle = (status: string | null | undefined) => {
       boxShadow: 'inset 6px 0 0 #2f54eb',
     };
   }
-  if (value === 'ready_for_shipment') {
+  if (value === 'packed') {
     return {
       backgroundColor: '#f6ffed',
       boxShadow: 'inset 6px 0 0 #52c41a',
@@ -172,7 +172,7 @@ const statusChipStyle = (status: string | null | undefined) => {
       boxShadow: '0 1px 2px rgba(16, 35, 158, 0.18)',
     };
   }
-  if (value === 'ready_for_shipment') {
+  if (value === 'packed') {
     return {
       backgroundColor: '#d9f7be',
       color: '#237804',
@@ -210,7 +210,7 @@ const statusDotColor = (status: string | null | undefined) => {
   if (value === 'offered') return '#3f67b3';
   if (value === 'confirmed') return '#1890ff';
   if (value === 'procuring') return '#2f54eb';
-  if (value === 'ready_for_shipment') return '#52c41a';
+  if (value === 'packed') return '#52c41a';
   if (value === 'delivered') return '#13c2c2';
   if (value === 'cancelled') return '#a64c62';
   return '#66758c';

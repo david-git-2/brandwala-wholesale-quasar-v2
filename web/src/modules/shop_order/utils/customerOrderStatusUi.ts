@@ -23,9 +23,9 @@ export function formatCustomerOrderStatusLabel(
       return 'Confirmed';
     case 'procuring':
       return 'Procuring';
-    case 'ready_for_shipment':
+    case 'packed':
     case 'ordered':
-      return 'Ready for shipment';
+      return 'Packed';
     case 'negotiating':
       return 'Negotiating';
     case 'placed':
@@ -70,7 +70,7 @@ export function getCustomerOrderStatusColor(status: string): string {
       return 'green-7';
     case 'procuring':
       return 'blue-9';
-    case 'ready_for_shipment':
+    case 'packed':
     case 'ordered':
       return 'indigo-7';
     case 'placed':

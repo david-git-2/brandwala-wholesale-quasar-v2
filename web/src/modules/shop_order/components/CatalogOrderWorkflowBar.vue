@@ -67,7 +67,7 @@ const statusLabel = computed(() => getStaffCatalogStatusLabel(props.order?.statu
 
 const statusBadge = computed(() => {
   const st = normalizeCatalogOrderStatus(props.order?.status);
-  if (st === 'confirmed' || st === 'ready_for_shipment' || st === 'delivered') {
+  if (st === 'confirmed' || st === 'packed' || st === 'delivered') {
     return { color: 'green-1', textColor: 'green-9' };
   }
   if (st === 'priced' || st === 'final_offered' || st === 'procuring') {

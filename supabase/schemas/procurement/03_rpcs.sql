@@ -181,8 +181,8 @@ BEGIN
       RAISE EXCEPTION 'costing file % not found', v_costing_item.product_based_costing_file_id;
     END IF;
 
-    IF v_costing_file.status <> 'ready_for_shipment' THEN
-      RAISE EXCEPTION 'costing file must be in ready_for_shipment status to pull items';
+    IF v_costing_file.status <> 'packed' THEN
+      RAISE EXCEPTION 'costing file must be in packed status to pull items';
     END IF;
 
     IF coalesce(v_costing_item.confirmed_quantity, v_costing_item.quantity::integer, 0) <= 0 THEN
@@ -11448,7 +11448,7 @@ BEGIN
     INNER JOIN public.tenants t ON t.id = pcf.tenant_id
     WHERE t.parent_id = p_parent_tenant_id
       AND (p_child_tenant_id IS NULL OR pcf.tenant_id = p_child_tenant_id)
-      AND pcf.status = 'ready_for_shipment'
+      AND pcf.status = 'packed'
       AND pci.assigned_shipment_id IS NULL
       AND pci.product_id IS NOT NULL
       AND coalesce(pci.confirmed_quantity, pci.quantity::integer, 0) > 0
@@ -11735,7 +11735,7 @@ CREATE OR REPLACE FUNCTION "public"."normalize_shop_order_procurement_status"("p
     LANGUAGE "sql" IMMUTABLE
     AS $$
   select case
-    when p_status = 'ordered'::public.shop_order_status then 'ready_for_shipment'
+    when p_status = 'ordered'::public.shop_order_status then 'packed'
     else p_status::text
   end;
 $$;
@@ -11750,6 +11750,7 @@ CREATE OR REPLACE FUNCTION "public"."normalize_pbc_procurement_status"("p_status
   select case lower(trim(coalesce(p_status, '')))
     when 'placing_order' then 'procuring'
     when 'invoicing' then 'delivered'
+    when 'ready_for_shipment' then 'packed'
     else lower(trim(coalesce(p_status, '')))
   end;
 $$;
@@ -11906,7 +11907,7 @@ begin
     end if;
   end if;
 
-  if v_doc_status not in ('procuring', 'ready_for_shipment') then
+  if v_doc_status not in ('procuring', 'packed') then
     raise exception 'document is not open for preorder demand updates';
   end if;
 
@@ -11914,7 +11915,7 @@ begin
     raise exception 'placed_quantity can only be updated while procuring';
   end if;
 
-  if p_stock_picks is not null and v_doc_status not in ('procuring', 'ready_for_shipment') then
+  if p_stock_picks is not null and v_doc_status not in ('procuring', 'packed') then
     raise exception 'stock_picks can only be updated while procuring or ready for shipment';
   end if;
 
@@ -12251,7 +12252,7 @@ begin
     end if;
   end if;
 
-  if v_doc_status not in ('procuring', 'ready_for_shipment') then
+  if v_doc_status not in ('procuring', 'packed') then
     raise exception 'document is not open for stock pick updates';
   end if;
 
@@ -12804,8 +12805,8 @@ begin
     raise exception 'access denied';
   end if;
 
-  if v_doc_status <> 'ready_for_shipment' then
-    raise exception 'document must be ready_for_shipment to create invoice from demand';
+  if v_doc_status <> 'packed' then
+    raise exception 'document must be packed to create invoice from demand';
   end if;
 
   if v_billing_profile_id is null then
@@ -12931,8 +12932,8 @@ begin
     raise exception 'access denied';
   end if;
 
-  if v_doc_status <> 'ready_for_shipment' then
-    raise exception 'document must be ready_for_shipment to sync invoice from demand';
+  if v_doc_status <> 'packed' then
+    raise exception 'document must be packed to sync invoice from demand';
   end if;
 
   if v_invoice_id is null then
@@ -12992,7 +12993,7 @@ $$;
 ALTER FUNCTION "public"."sync_invoice_from_preorder_demand_document"("p_tenant_id" bigint, "p_document_type" "text", "p_document_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."staff_mark_pbc_ready_for_shipment"("p_file_id" bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."staff_mark_pbc_packed"("p_file_id" bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -13018,7 +13019,7 @@ begin
 
   update public.product_based_costing_files
   set
-    status = 'ready_for_shipment',
+    status = 'packed',
     updated_at = now()
   where id = p_file_id;
 
@@ -13031,7 +13032,7 @@ begin
   return jsonb_build_object(
     'success', true,
     'file_id', p_file_id,
-    'status', 'ready_for_shipment',
+    'status', 'packed',
     'invoice_id', v_result->>'invoice_id',
     'invoice_created', coalesce(v_result->>'created', 'false')::boolean
   );
@@ -13039,7 +13040,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."staff_mark_pbc_ready_for_shipment"("p_file_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."staff_mark_pbc_packed"("p_file_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_procurement_demand_groups"("p_tenant_id" bigint, "p_procurement_status" "text" DEFAULT 'procuring'::"text", "p_search" "text" DEFAULT NULL::"text", "p_child_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
@@ -13073,7 +13074,7 @@ begin
     v_allowed := public.is_tenant_staff(p_tenant_id);
   end if;
   if not coalesce(v_allowed, false) then raise exception 'access denied'; end if;
-  if v_status not in ('procuring', 'ready_for_shipment', 'delivered') then
+  if v_status not in ('procuring', 'packed', 'delivered') then
     raise exception 'invalid procurement status: %', v_status;
   end if;
 
@@ -13553,7 +13554,7 @@ begin
     v_allowed := public.is_tenant_staff(p_tenant_id);
   end if;
   if not coalesce(v_allowed, false) then raise exception 'access denied'; end if;
-  if v_status not in ('procuring', 'ready_for_shipment', 'delivered') then
+  if v_status not in ('procuring', 'packed', 'delivered') then
     raise exception 'invalid procurement status: %', v_status;
   end if;
 

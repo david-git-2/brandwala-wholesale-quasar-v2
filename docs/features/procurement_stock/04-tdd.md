@@ -50,7 +50,7 @@ web/src/modules/procurement_stock/
 │   ├── useProcurementFulfillGroupsQuery.ts
 │   ├── useProcurementFulfillGroupItemsInfiniteQuery.ts
 │   ├── useProcurementPlacementMutations.ts
-│   └── useMarkDemandGroupReadyMutation.ts  # ready_for_shipment + invoice helpers
+│   └── useMarkDemandGroupReadyMutation.ts  # packed + invoice helpers
 └── shared/
     └── queryKeys/
         └── procurementStockQueryKeys.ts  # TanStack query key definitions

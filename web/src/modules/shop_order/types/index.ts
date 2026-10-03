@@ -403,7 +403,7 @@ export type ShopOrderStatus =
   | 'final_offered'
   | 'confirmed'
   | 'procuring'
-  | 'ready_for_shipment'
+  | 'packed'
   | 'ordered'
   | 'cancelled'
   | 'negotiating'

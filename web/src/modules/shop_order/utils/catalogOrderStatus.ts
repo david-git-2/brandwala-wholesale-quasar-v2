@@ -22,7 +22,7 @@ export function normalizeCatalogOrderStatus(status: string | null | undefined): 
   const st = String(status || 'submitted');
   if (st === 'costing_pending') return 'submitted';
   if (st === 'negotiating') return 'priced';
-  if (st === 'ordered') return 'ready_for_shipment';
+  if (st === 'ordered') return 'packed';
   return st;
 }
 
@@ -31,7 +31,7 @@ export function mapStatusToProgressKey(
   isNegotiable: boolean,
 ): CatalogProgressKey {
   const st = normalizeCatalogOrderStatus(status);
-  if (st === 'procuring' || st === 'ready_for_shipment' || st === 'delivered') return 'fulfillment';
+  if (st === 'procuring' || st === 'packed' || st === 'delivered') return 'fulfillment';
   if (!isNegotiable && st === 'countered') return 'priced';
   if (!isNegotiable && st === 'final_offered') return 'priced';
   if (CATALOG_NEGOTIATION_PROGRESS_KEYS.includes(st as CatalogProgressKey)) {
@@ -48,7 +48,7 @@ const STAFF_STATUS_LABELS: Record<string, string> = {
   final_offered: 'Final offer sent — awaiting confirmation',
   confirmed: 'Confirmed — start procurement',
   procuring: 'Procuring',
-  ready_for_shipment: 'Ready for shipment',
+  packed: 'Packed',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
 };
@@ -60,7 +60,7 @@ const CUSTOMER_STATUS_LABELS: Record<string, string> = {
   final_offered: 'Confirm price & quantity',
   confirmed: 'Order confirmed',
   procuring: "We're sourcing your items",
-  ready_for_shipment: 'Ready to ship',
+  packed: 'Ready to ship',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
 };
@@ -120,7 +120,7 @@ export function getStaffCatalogPrimaryAction(
       return 'send_final_offer';
     case 'confirmed':
       return 'start_procurement';
-    case 'ready_for_shipment':
+    case 'packed':
       return 'mark_delivered';
     default:
       return null;
@@ -151,11 +151,11 @@ export function getCustomerCatalogStatusSequence(isNegotiable: boolean): string[
       'final_offered',
       'confirmed',
       'procuring',
-      'ready_for_shipment',
+      'packed',
       'delivered',
     ];
   }
-  return ['submitted', 'priced', 'confirmed', 'procuring', 'ready_for_shipment', 'delivered'];
+  return ['submitted', 'priced', 'confirmed', 'procuring', 'packed', 'delivered'];
 }
 
 /** Lock purchase price, rates, and 1st offer once an offer is sent or negotiation advances. */
@@ -167,7 +167,7 @@ export function isCatalogFirstOfferLocked(status: string | null | undefined): bo
 /** Customer-facing "On the way" step (procuring through delivered). */
 export function isCatalogCustomerFulfillmentPhase(status: string | null | undefined): boolean {
   const st = normalizeCatalogOrderStatus(status);
-  return st === 'procuring' || st === 'ready_for_shipment' || st === 'delivered';
+  return st === 'procuring' || st === 'packed' || st === 'delivered';
 }
 
 /** Effective qty shown to the customer after confirm (0 = line rejected). */

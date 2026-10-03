@@ -10,7 +10,7 @@ export type StaffPbcPrimaryAction =
   | 'send_offer'
   | 'confirm_order'
   | 'start_procurement'
-  | 'mark_ready_for_shipment'
+  | 'mark_packed'
   | 'mark_delivered';
 
 export function mapPbcStatusToProgressKey(status: string | null | undefined): PbcProgressStepKey {
@@ -54,8 +54,8 @@ export function getStaffPbcPrimaryAction(
     case 'confirmed':
       return 'start_procurement';
     case 'procuring':
-      return 'mark_ready_for_shipment';
-    case 'ready_for_shipment':
+      return 'mark_packed';
+    case 'packed':
       return 'mark_delivered';
     default:
       return null;
@@ -70,8 +70,8 @@ export function getStaffPbcPrimaryActionTargetStatus(action: StaffPbcPrimaryActi
       return 'confirmed';
     case 'start_procurement':
       return 'procuring';
-    case 'mark_ready_for_shipment':
-      return 'ready_for_shipment';
+    case 'mark_packed':
+      return 'packed';
     case 'mark_delivered':
       return 'delivered';
     default:
@@ -100,7 +100,7 @@ export function pbcFileStatusWorkflowColor(status: string): string {
       return 'teal-7';
     case 'procuring':
       return 'indigo-7';
-    case 'ready_for_shipment':
+    case 'packed':
       return 'purple-7';
     case 'delivered':
       return 'green-7';

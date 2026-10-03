@@ -286,7 +286,7 @@ export function customerCanSeeOrderLineTotal(
     'final_offered',
     'confirmed',
     'procuring',
-    'ready_for_shipment',
+    'packed',
     'delivered',
   ].includes(normalized);
   if (offerPhase) {
