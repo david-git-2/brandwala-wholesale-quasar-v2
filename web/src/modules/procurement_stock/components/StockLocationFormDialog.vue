@@ -18,9 +18,18 @@
             emit-value
             map-options
             class="soft-input"
-            :disable="kindLocked"
+            :disable="kindLocked || kindLockedOnEdit"
             :rules="[(v) => !!v || 'Type is required']"
+            :hint="kindHint"
           />
+
+          <div v-if="isEdit && props.location" class="q-mb-sm">
+            <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Current place</div>
+            <StockLocationHierarchyFields
+              :locations="props.locations"
+              :location-id="props.location.id"
+            />
+          </div>
 
           <q-select
             v-if="needsParent"
@@ -42,7 +51,7 @@
             outlined
             class="soft-input"
             :rules="[(v) => !!String(v || '').trim() || 'Code is required']"
-            hint="Unique code (e.g. S1, S1-03, S1-03-B2)"
+            hint="Unique code (e.g. WH1, Z-A, S3-L2-B4)"
           />
           <q-input
             v-model="form.name"
@@ -77,7 +86,7 @@
             :disable="!form.is_active"
           />
           <div v-else class="text-caption bw-text-muted">
-            Default put-away is only set on leaf places (no slots/boxes under them).
+            Default put-away is only set on leaf bins (no children under them).
           </div>
         </q-card-section>
 
@@ -100,6 +109,15 @@
 
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue';
+import {
+  STOCK_LOCATION_KIND_HINTS,
+  STOCK_LOCATION_KIND_LABELS,
+  STOCK_LOCATION_KIND_ORDER,
+  STOCK_LOCATION_PARENT_KINDS,
+  isRootStockLocationKind,
+} from '../constants/stockLocationHierarchy';
+import StockLocationHierarchyFields from './StockLocationHierarchyFields.vue';
+import { collectDescendantLocationIds, formatStockLocationPath } from '../utils/stockLocationOptions';
 import type {
   StockLocation,
   StockLocationKind,
@@ -110,7 +128,6 @@ const props = defineProps<{
   modelValue: boolean;
   location: StockLocation | null;
   locations: StockLocation[];
-  /** Prefill when adding a child (Add slot / Add box) */
   presetKind?: StockLocationKind | null;
   presetParentId?: number | null;
   saving?: boolean;
@@ -121,17 +138,15 @@ const emit = defineEmits<{
   save: [payload: UpsertStockLocationPayload];
 }>();
 
-const kindOptions: { label: string; value: StockLocationKind }[] = [
-  { label: 'Shelf', value: 'shelf' },
-  { label: 'Slot', value: 'slot' },
-  { label: 'Box', value: 'box' },
-  { label: 'Returns area', value: 'returns' },
-];
+const kindOptions = STOCK_LOCATION_KIND_ORDER.map((value) => ({
+  label: STOCK_LOCATION_KIND_LABELS[value],
+  value,
+}));
 
 const form = reactive({
   code: '',
   name: '',
-  kind: 'shelf' as StockLocationKind,
+  kind: 'warehouse' as StockLocationKind,
   parent_location_id: null as number | null,
   sort_order: 10,
   is_pickable: true,
@@ -143,7 +158,13 @@ const isEdit = computed(() => props.location != null);
 
 const kindLocked = computed(() => Boolean(props.presetKind) && !isEdit.value);
 
-const needsParent = computed(() => form.kind === 'slot' || form.kind === 'box');
+const kindLockedOnEdit = computed(
+  () => isEdit.value && childIds.value.has(props.location!.id),
+);
+
+const kindHint = computed(() => STOCK_LOCATION_KIND_HINTS[form.kind] ?? '');
+
+const needsParent = computed(() => !isRootStockLocationKind(form.kind));
 
 const childIds = computed(() => {
   const set = new Set<number>();
@@ -160,27 +181,29 @@ const isLeafCandidate = computed(() => {
 
 const showDefaultToggle = computed(() => isLeafCandidate.value);
 
+const invalidParentIds = computed(() => {
+  if (!isEdit.value || !props.location) return new Set<number>();
+  return collectDescendantLocationIds(props.locations, props.location.id);
+});
+
 const parentOptions = computed(() => {
-  if (form.kind === 'slot') {
-    return props.locations
-      .filter((l) => (l.kind === 'shelf' || l.kind === 'returns') && l.is_active)
-      .map((l) => ({ label: `${l.code} — ${l.name}`, value: l.id }));
-  }
-  if (form.kind === 'box') {
-    return props.locations
-      .filter((l) => l.kind === 'slot' && l.is_active)
-      .map((l) => ({ label: `${l.code} — ${l.name}`, value: l.id }));
-  }
-  return [];
+  const allowed = STOCK_LOCATION_PARENT_KINDS[form.kind] ?? [];
+  const blocked = invalidParentIds.value;
+  return props.locations
+    .filter(
+      (l) => l.is_active && allowed.includes(l.kind) && !blocked.has(l.id),
+    )
+    .map((l) => {
+      const path = formatStockLocationPath(props.locations, l.id);
+      const suffix = path !== '—' ? ` · ${path}` : '';
+      return { label: `${l.code} — ${l.name}${suffix}`, value: l.id };
+    });
 });
 
 const dialogTitle = computed(() => {
   if (isEdit.value) return 'Edit place';
-  if (form.kind === 'shelf') return 'Add shelf';
-  if (form.kind === 'slot') return 'Add slot';
-  if (form.kind === 'box') return 'Add box';
-  if (form.kind === 'returns') return 'Add returns area';
-  return 'Add place';
+  const label = STOCK_LOCATION_KIND_LABELS[form.kind];
+  return `Add ${label.toLowerCase()}`;
 });
 
 const canSubmit = computed(() => {
@@ -192,7 +215,7 @@ const canSubmit = computed(() => {
 const resetForm = () => {
   form.code = '';
   form.name = '';
-  form.kind = props.presetKind ?? 'shelf';
+  form.kind = props.presetKind ?? 'warehouse';
   form.parent_location_id = props.presetParentId ?? null;
   form.sort_order = 10;
   form.is_pickable = form.kind !== 'returns';
@@ -222,7 +245,7 @@ watch(
 watch(
   () => form.kind,
   (kind) => {
-    if (kind === 'shelf' || kind === 'returns') {
+    if (isRootStockLocationKind(kind)) {
       form.parent_location_id = null;
     }
     if (kind === 'returns') {

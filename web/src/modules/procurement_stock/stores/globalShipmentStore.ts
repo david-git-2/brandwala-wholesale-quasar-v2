@@ -985,31 +985,19 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     },
 
     /**
-     * Receive: stamp landed_cost_bdt + post stock via finalize_global_shipment.
-     * No wallet / ledger posts. Cost-entry mutation after this uses revise only.
+     * Post sellable extras to warehouse bins (repeatable).
      */
-    async finalizeShipment(
+    async postOutcomeStock(
       shipmentId: number,
-      stockRows: FinalizeShipmentStockRow[],
-    ): Promise<FinalizeShipmentResult> {
+      stockRows?: import('../repositories/globalShipmentRepository').PostShipmentOutcomeStockRow[] | null,
+    ) {
       this.loading = true;
       this.error = null;
       try {
-        if (!stockRows.length) {
-          throw new Error('No quantities received to stock.');
-        }
-
-        const result = await globalShipmentRepository.finalizeShipment(shipmentId, stockRows);
-
-        if (
-          typeof result?.items_stamped !== 'number' ||
-          typeof result?.stock_rows_posted !== 'number'
-        ) {
-          throw new Error('Invalid finalize response: missing stamp counts');
-        }
-        if (result.wallet_posted === true) {
-          throw new Error('Finalize unexpectedly posted wallet ledger rows');
-        }
+        const result = await globalShipmentRepository.postShipmentOutcomeStock(
+          shipmentId,
+          stockRows ?? null,
+        );
 
         if (this.currentShipment?.id === shipmentId) {
           this.currentShipment = {
@@ -1022,6 +1010,56 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
 
         await this.fetchShipmentDetails(shipmentId);
         return result;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to post stock';
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    /**
+     * Receive: stamp landed_cost_bdt + post stock via post_shipment_outcome_stock.
+     */
+    async finalizeShipment(
+      shipmentId: number,
+      stockRows: FinalizeShipmentStockRow[],
+    ): Promise<FinalizeShipmentResult> {
+      this.loading = true;
+      this.error = null;
+      try {
+        const mapped = stockRows.map((row) => ({
+          shipment_item_id: row.shipment_item_id,
+          location_id: row.location_id ?? null,
+        }));
+
+        const result = await globalShipmentRepository.postShipmentOutcomeStock(shipmentId, mapped);
+
+        if (
+          typeof result?.items_stamped !== 'number' ||
+          typeof result?.stock_rows_posted !== 'number'
+        ) {
+          throw new Error('Invalid post response: missing stamp counts');
+        }
+
+        if (this.currentShipment?.id === shipmentId) {
+          this.currentShipment = {
+            ...this.currentShipment,
+            status: 'received',
+            stock_ready: result.stock_ready === true,
+            inventory_added: result.stock_ready === true,
+          };
+        }
+
+        await this.fetchShipmentDetails(shipmentId);
+        return {
+          shipment_id: result.shipment_id,
+          items_stamped: result.items_stamped,
+          stock_rows_posted: result.stock_rows_posted,
+          stock_ready: result.stock_ready === true,
+          wallet_posted: false,
+          movement_id: result.movement_id,
+        };
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to finalize shipment';
         throw err;

@@ -93,9 +93,9 @@ CREATE OR REPLACE FUNCTION "public"."_validate_stock_location_nesting"("p_kind" 
 declare
   v_parent public.stock_locations%rowtype;
 begin
-  if p_kind in ('shelf', 'returns') then
+  if p_kind in ('warehouse', 'returns') then
     if p_parent_location_id is not null then
-      raise exception 'shelf and returns must be top-level (no parent)';
+      raise exception 'warehouse and returns must be top-level (no parent)';
     end if;
     return;
   end if;
@@ -116,13 +116,21 @@ begin
     raise exception 'parent location belongs to another tenant';
   end if;
 
-  if p_kind = 'slot' then
-    if v_parent.kind not in ('shelf', 'returns') then
-      raise exception 'slot parent must be a shelf or returns area';
+  if p_kind = 'zone' then
+    if v_parent.kind not in ('warehouse', 'returns') then
+      raise exception 'zone parent must be a warehouse or returns area';
     end if;
-  elsif p_kind = 'box' then
-    if v_parent.kind <> 'slot' then
-      raise exception 'box parent must be a slot';
+  elsif p_kind = 'shelf' then
+    if v_parent.kind <> 'zone' then
+      raise exception 'shelf parent must be a zone';
+    end if;
+  elsif p_kind = 'level' then
+    if v_parent.kind <> 'shelf' then
+      raise exception 'level parent must be a shelf';
+    end if;
+  elsif p_kind = 'bin' then
+    if v_parent.kind <> 'level' then
+      raise exception 'bin parent must be a level';
     end if;
   end if;
 end;
@@ -2824,6 +2832,27 @@ $$;
 ALTER FUNCTION "public"."default_stock_grade_tag_id"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."default_sellable_global_stock_type_id"("p_tenant_id" bigint) RETURNS bigint
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select gst.id
+  from public.global_stock_types gst
+  where (gst.parent_tenant_id is null or gst.parent_tenant_id = p_tenant_id)
+    and gst.is_sellable = true
+    and (
+      lower(trim(gst.description)) = 'standard sellable'
+      or gst.description ilike '%Standard%Sellable%'
+      or gst.description ilike 'Standard%'
+    )
+  order by gst.parent_tenant_id nulls first, gst.sort_order, gst.id
+  limit 1;
+$$;
+
+
+ALTER FUNCTION "public"."default_sellable_global_stock_type_id"("p_tenant_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."delete_global_shipment_cost_entry"("p_id" bigint) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -3326,6 +3355,10 @@ CREATE OR REPLACE FUNCTION "public"."ensure_default_stock_location"("p_tenant_id
 declare
   v_tenant public.tenants%rowtype;
   v_loc_id bigint;
+  v_wh bigint;
+  v_zone bigint;
+  v_shelf bigint;
+  v_level bigint;
 begin
   if p_tenant_id is null then
     raise exception 'p_tenant_id is required';
@@ -3357,29 +3390,98 @@ begin
     return v_loc_id;
   end if;
 
-  -- Create default leaf stock location for tenant
+  -- Bootstrap: warehouse → zone → shelf → level → bin (default put-away on bin)
   insert into public.stock_locations (
-    parent_tenant_id,
-    name,
-    code,
-    kind,
-    parent_location_id,
-    is_pickable,
-    is_default,
-    is_active,
-    sort_order
+    parent_tenant_id, parent_location_id, code, name, kind,
+    is_pickable, is_default, is_active, sort_order
   ) values (
-    p_tenant_id,
-    'Main Warehouse',
-    'MAIN',
-    'shelf',
-    null,
-    true,
-    true,
-    true,
-    10
+    p_tenant_id, null, 'MAIN', 'Main warehouse', 'warehouse',
+    false, false, true, 10
   )
+  on conflict (parent_tenant_id, code) do update
+    set kind = 'warehouse'::public.stock_location_kind,
+        name = excluded.name,
+        is_active = true
+  returning id into v_wh;
+
+  if v_wh is null then
+    select id into v_wh from public.stock_locations
+    where parent_tenant_id = p_tenant_id and code = 'MAIN';
+  end if;
+
+  insert into public.stock_locations (
+    parent_tenant_id, parent_location_id, code, name, kind,
+    is_pickable, is_default, is_active, sort_order
+  ) values (
+    p_tenant_id, v_wh, 'MAIN-ZONE', 'Default zone', 'zone',
+    false, false, true, 20
+  )
+  on conflict (parent_tenant_id, code) do update
+    set parent_location_id = v_wh,
+        kind = 'zone'::public.stock_location_kind,
+        is_active = true
+  returning id into v_zone;
+
+  if v_zone is null then
+    select id into v_zone from public.stock_locations
+    where parent_tenant_id = p_tenant_id and code = 'MAIN-ZONE';
+  end if;
+
+  insert into public.stock_locations (
+    parent_tenant_id, parent_location_id, code, name, kind,
+    is_pickable, is_default, is_active, sort_order
+  ) values (
+    p_tenant_id, v_zone, 'MAIN-SHELF', 'Default shelf', 'shelf',
+    false, false, true, 30
+  )
+  on conflict (parent_tenant_id, code) do update
+    set parent_location_id = v_zone,
+        kind = 'shelf'::public.stock_location_kind,
+        is_active = true
+  returning id into v_shelf;
+
+  if v_shelf is null then
+    select id into v_shelf from public.stock_locations
+    where parent_tenant_id = p_tenant_id and code = 'MAIN-SHELF';
+  end if;
+
+  insert into public.stock_locations (
+    parent_tenant_id, parent_location_id, code, name, kind,
+    is_pickable, is_default, is_active, sort_order
+  ) values (
+    p_tenant_id, v_shelf, 'MAIN-LEVEL', 'Default level', 'level',
+    false, false, true, 40
+  )
+  on conflict (parent_tenant_id, code) do update
+    set parent_location_id = v_shelf,
+        kind = 'level'::public.stock_location_kind,
+        is_active = true
+  returning id into v_level;
+
+  if v_level is null then
+    select id into v_level from public.stock_locations
+    where parent_tenant_id = p_tenant_id and code = 'MAIN-LEVEL';
+  end if;
+
+  insert into public.stock_locations (
+    parent_tenant_id, parent_location_id, code, name, kind,
+    is_pickable, is_default, is_active, sort_order
+  ) values (
+    p_tenant_id, v_level, 'MAIN-BIN', 'Default bin', 'bin',
+    true, true, true, 50
+  )
+  on conflict (parent_tenant_id, code) do update
+    set parent_location_id = v_level,
+        kind = 'bin'::public.stock_location_kind,
+        is_pickable = true,
+        is_default = true,
+        is_active = true
   returning id into v_loc_id;
+
+  if v_loc_id is null then
+    select id into v_loc_id from public.stock_locations
+    where parent_tenant_id = p_tenant_id and code = 'MAIN-BIN';
+  end if;
 
   return v_loc_id;
 end;
@@ -3665,7 +3767,101 @@ $$;
 ALTER FUNCTION "public"."ensure_shipment_progress_tags"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."finalize_global_shipment"("p_shipment_id" bigint, "p_stock_rows" "jsonb" DEFAULT NULL::"jsonb") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."_stamp_global_shipment_outcome_costs"("p_shipment_id" bigint) RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ship public.global_shipments%rowtype;
+  v_product_amount numeric := 0;
+  v_cargo_amount numeric := 0;
+  v_goods_bdt numeric := 0;
+  v_cargo_bdt numeric := 0;
+  v_blended numeric := 1;
+  v_pack_kg numeric := 0;
+  v_updated integer := 0;
+  r_out record;
+  r_line record;
+  v_line_gross numeric;
+  v_line_cargo_share numeric;
+  v_unit_base numeric;
+  v_landed numeric;
+begin
+  select * into v_ship from public.global_shipments where id = p_shipment_id;
+  if not found then
+    return 0;
+  end if;
+
+  select
+    coalesce(sum(amount) filter (where cost_type = 'product'), 0),
+    coalesce(sum(amount * exchange_rate) filter (where cost_type = 'product'), 0),
+    coalesce(sum(amount) filter (where cost_type != 'product'), 0),
+    coalesce(sum(amount * exchange_rate) filter (where cost_type != 'product'), 0)
+  into v_product_amount, v_goods_bdt, v_cargo_amount, v_cargo_bdt
+  from public.global_shipment_cost_entries
+  where shipment_id = p_shipment_id;
+
+  if (v_product_amount + v_cargo_amount) > 0 then
+    v_blended := (v_goods_bdt + v_cargo_bdt) / (v_product_amount + v_cargo_amount);
+  else
+    v_blended := 1;
+  end if;
+
+  select coalesce(sum(
+    ((coalesce(gsi.product_weight, 0) + coalesce(gsi.package_weight, 0)) * gsi.ordered_quantity) / 1000.0
+  ), 0)
+  into v_pack_kg
+  from public.global_shipment_items gsi
+  where gsi.shipment_id = p_shipment_id;
+
+  for r_out in
+    select o.*
+    from public.global_shipment_item_outcomes o
+    inner join public.global_shipment_items gsi on gsi.id = o.shipment_item_id
+    where gsi.shipment_id = p_shipment_id
+      and o.reason <> 'ordered'::public.global_shipment_outcome_reason
+  loop
+    select * into r_line from public.global_shipment_items where id = r_out.shipment_item_id;
+
+    v_line_gross := (
+      (coalesce(r_line.product_weight, 0) + coalesce(r_line.package_weight, 0)) * r_line.ordered_quantity
+    ) / 1000.0;
+
+    if v_pack_kg > 0 then
+      v_line_cargo_share := (v_line_gross / v_pack_kg) * v_cargo_amount;
+    elsif (select coalesce(sum(ordered_quantity), 0) from public.global_shipment_items where shipment_id = p_shipment_id) > 0 then
+      v_line_cargo_share := (r_line.ordered_quantity::numeric
+        / (select sum(ordered_quantity) from public.global_shipment_items where shipment_id = p_shipment_id)
+      ) * v_cargo_amount;
+    else
+      v_line_cargo_share := 0;
+    end if;
+
+    if r_line.ordered_quantity > 0 then
+      v_unit_base := coalesce(r_out.purchase_price, 0) + (v_line_cargo_share / r_line.ordered_quantity);
+    else
+      v_unit_base := coalesce(r_out.purchase_price, 0);
+    end if;
+
+    if v_ship.type::text in ('local', 'domestic') then
+      v_landed := v_unit_base;
+    else
+      v_landed := v_unit_base * v_blended;
+    end if;
+
+    update public.global_shipment_item_outcomes
+    set cost = round(v_landed::numeric, 4)
+    where id = r_out.id;
+
+    v_updated := v_updated + 1;
+  end loop;
+
+  return v_updated;
+end;
+$$;
+
+
+CREATE OR REPLACE FUNCTION "public"."post_shipment_outcome_stock"("p_shipment_id" bigint, "p_stock_rows" "jsonb" DEFAULT NULL::"jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -3673,7 +3869,6 @@ declare
   v_ship public.global_shipments%rowtype;
   v_stamped integer;
   v_stock_count integer := 0;
-  v_row jsonb;
   v_parent bigint;
   v_loc bigint;
   v_grade_tag bigint;
@@ -3681,7 +3876,10 @@ declare
   v_stock_id bigint;
   v_mov_id bigint;
   v_mov_no text;
-  v_qty int;
+  v_posted int;
+  v_delta int;
+  r_out record;
+  v_stock_type bigint;
 begin
   select * into v_ship from public.global_shipments where id = p_shipment_id for update;
   if not found then
@@ -3694,14 +3892,12 @@ begin
     raise exception 'not allowed';
   end if;
 
-  if v_ship.stock_ready = true or v_ship.status = 'received' then
-    raise exception 'shipment already finalized; use revise_global_shipment_costs';
+  if v_ship.status = 'cancelled' then
+    raise exception 'shipment is cancelled';
   end if;
 
-  if not exists (
-    select 1 from public.global_shipment_items where shipment_id = p_shipment_id
-  ) then
-    raise exception 'shipment has no items';
+  if coalesce(v_ship.is_closed, false) then
+    raise exception 'shipment is closed';
   end if;
 
   perform public.ensure_global_shipment_cost_entries_from_header(p_shipment_id);
@@ -3713,137 +3909,153 @@ begin
   end if;
 
   v_stamped := public.stamp_global_shipment_landed_costs(p_shipment_id);
+  perform public._stamp_global_shipment_outcome_costs(p_shipment_id);
 
-  if p_stock_rows is not null and jsonb_typeof(p_stock_rows) = 'array' then
-    v_mov_no := 'RP-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('public.stock_movements_id_seq')::text, 6, '0');
+  v_mov_no := 'RP-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('public.stock_movements_id_seq')::text, 6, '0');
 
-    insert into public.stock_movements (
-      tenant_id,
-      movement_no,
-      movement_type,
-      reference_type,
-      reference_id,
-      notes,
-      created_by_email,
-      is_posted,
-      posted_at
-    ) values (
-      v_parent,
-      v_mov_no,
-      'receive_putaway',
-      'global_shipment',
-      p_shipment_id::text,
-      'Receive put-away audit for shipment ' || p_shipment_id::text,
-      public.current_user_email(),
-      true,
-      now()
-    )
-    returning id into v_mov_id;
+  insert into public.stock_movements (
+    tenant_id,
+    movement_no,
+    movement_type,
+    reference_type,
+    reference_id,
+    notes,
+    created_by_email,
+    is_posted,
+    posted_at
+  ) values (
+    v_parent,
+    v_mov_no,
+    'receive_putaway',
+    'global_shipment',
+    p_shipment_id::text,
+    'Outcome receive put-away for shipment ' || p_shipment_id::text,
+    public.current_user_email(),
+    true,
+    now()
+  )
+  returning id into v_mov_id;
 
-    for v_row in select value from jsonb_array_elements(p_stock_rows)
-    loop
-      v_qty := coalesce((v_row->>'quantity')::int, 0);
-      if v_qty <= 0 then
-        continue;
-      end if;
-
-      if (v_row->>'shipment_item_id')::bigint is null then
-        raise exception 'stock row requires shipment_item_id';
-      end if;
-
-      if not exists (
-        select 1
-        from public.global_shipment_items gsi
-        where gsi.id = (v_row->>'shipment_item_id')::bigint
-          and gsi.shipment_id = p_shipment_id
-      ) then
-        raise exception 'stock row shipment_item_id % not on shipment', v_row->>'shipment_item_id';
-      end if;
-
-      v_loc := coalesce((v_row->>'location_id')::bigint, public.default_putaway_stock_location_id(v_parent));
-
-      if v_loc is null then
-        raise exception 'no put-away location configured';
-      end if;
-
-      if not exists (
-        select 1
-        from public.stock_locations sl
-        where sl.id = v_loc
-          and sl.parent_tenant_id = v_parent
-          and sl.is_active = true
-          and public._stock_location_is_leaf(v_loc)
-      ) then
-        raise exception 'invalid put-away location';
-      end if;
-
-      v_avail := coalesce((v_row->>'availability')::public.stock_availability, 'sellable'::public.stock_availability);
-      v_grade_tag := coalesce((v_row->>'grade_tag_id')::bigint, public.default_stock_grade_tag_id());
-
-      insert into public.global_stocks (
-        parent_tenant_id,
-        shipment_item_id,
-        stock_type_id,
-        quantity,
-        is_usable,
-        availability,
-        location_id,
-        grade_tag_id
-      ) values (
-        v_parent,
-        (v_row->>'shipment_item_id')::bigint,
-        (v_row->>'stock_type_id')::bigint,
-        v_qty,
-        coalesce((v_row->>'is_usable')::boolean, v_avail = 'sellable'::public.stock_availability),
-        v_avail,
-        v_loc,
-        v_grade_tag
-      )
-      on conflict (shipment_item_id, availability, location_id, grade_tag_id)
-      do update set
-        quantity = excluded.quantity,
-        updated_at = now()
-      returning id into v_stock_id;
-
-      insert into public.stock_movement_lines (
-        movement_id,
-        stock_id,
-        quantity,
-        to_location_id,
-        to_availability
-      ) values (
-        v_mov_id,
-        v_stock_id,
-        v_qty,
-        v_loc,
-        v_avail
-      );
-
-      v_stock_count := v_stock_count + 1;
-    end loop;
-
-    if v_stock_count = 0 then
-      raise exception 'p_stock_rows provided but no quantities to post';
+  for r_out in
+    select o.*
+    from public.global_shipment_item_outcomes o
+    inner join public.global_shipment_items gsi on gsi.id = o.shipment_item_id
+    where gsi.shipment_id = p_shipment_id
+      and o.reason <> 'ordered'::public.global_shipment_outcome_reason
+    order by o.id
+  loop
+    if r_out.kind = 'unsellable'::public.global_shipment_outcome_kind then
+      continue;
     end if;
 
-    update public.global_shipment_items gsi
-    set
-      received_quantity = coalesce(agg.total_qty, 0),
-      updated_at = now()
-    from (
-      select (r->>'shipment_item_id')::bigint as item_id, sum(coalesce((r->>'quantity')::int, 0)) as total_qty
-      from jsonb_array_elements(p_stock_rows) r
-      where (r->>'shipment_item_id')::bigint is not null
-      group by (r->>'shipment_item_id')::bigint
-    ) agg
-    where gsi.id = agg.item_id and gsi.shipment_id = p_shipment_id;
+    select coalesce(sum(gs.quantity), 0)::int into v_posted
+    from public.global_stocks gs where gs.outcome_id = r_out.id;
 
+    v_delta := r_out.quantity - v_posted;
+    if v_delta <= 0 then
+      continue;
+    end if;
+
+    v_loc := null;
+    if p_stock_rows is not null and jsonb_typeof(p_stock_rows) = 'array' then
+      select (elem->>'location_id')::bigint into v_loc
+      from jsonb_array_elements(p_stock_rows) elem
+      where (elem->>'outcome_id')::bigint = r_out.id
+      limit 1;
+    end if;
+
+    if v_loc is null and p_stock_rows is not null and jsonb_typeof(p_stock_rows) = 'array' then
+      select (elem->>'location_id')::bigint into v_loc
+      from jsonb_array_elements(p_stock_rows) elem
+      where (elem->>'shipment_item_id')::bigint = r_out.shipment_item_id
+      limit 1;
+    end if;
+
+    v_loc := coalesce(v_loc, public.default_putaway_stock_location_id(v_parent));
+
+    if v_loc is null then
+      raise exception 'no put-away location configured';
+    end if;
+
+    if not exists (
+      select 1 from public.stock_locations sl
+      where sl.id = v_loc and sl.parent_tenant_id = v_parent and sl.is_active = true
+        and public._stock_location_is_leaf(v_loc)
+    ) then
+      raise exception 'invalid put-away location';
+    end if;
+
+    v_avail := 'sellable'::public.stock_availability;
+    v_grade_tag := public.default_stock_grade_tag_id();
+
+    v_stock_type := null;
+    if p_stock_rows is not null and jsonb_typeof(p_stock_rows) = 'array' then
+      select (elem->>'stock_type_id')::bigint into v_stock_type
+      from jsonb_array_elements(p_stock_rows) elem
+      where (elem->>'outcome_id')::bigint = r_out.id
+        and nullif(elem->>'stock_type_id', '') is not null
+      limit 1;
+    end if;
+
+    if v_stock_type is null and p_stock_rows is not null and jsonb_typeof(p_stock_rows) = 'array' then
+      select (elem->>'stock_type_id')::bigint into v_stock_type
+      from jsonb_array_elements(p_stock_rows) elem
+      where (elem->>'shipment_item_id')::bigint = r_out.shipment_item_id
+        and nullif(elem->>'stock_type_id', '') is not null
+      limit 1;
+    end if;
+
+    if v_stock_type is null then
+      select gs.stock_type_id into v_stock_type
+      from public.global_stocks gs
+      where gs.shipment_item_id = r_out.shipment_item_id
+        and gs.stock_type_id is not null
+      order by gs.quantity desc, gs.id
+      limit 1;
+    end if;
+
+    if v_stock_type is null then
+      v_stock_type := public.default_sellable_global_stock_type_id(v_parent);
+    end if;
+
+    if v_stock_type is null then
+      raise exception 'no sellable stock type configured';
+    end if;
+
+    insert into public.global_stocks (
+      parent_tenant_id, shipment_item_id, outcome_id, stock_type_id, quantity,
+      is_usable, availability, location_id, grade_tag_id
+    ) values (
+      v_parent, r_out.shipment_item_id, r_out.id, v_stock_type, v_delta,
+      true, v_avail, v_loc, v_grade_tag
+    )
+    on conflict (outcome_id, availability, location_id, grade_tag_id)
+    do update set quantity = public.global_stocks.quantity + excluded.quantity, updated_at = now()
+    returning id into v_stock_id;
+
+    insert into public.stock_movement_lines (
+      movement_id, stock_id, quantity, to_location_id, to_availability
+    ) values (v_mov_id, v_stock_id, v_delta, v_loc, v_avail);
+
+    v_stock_count := v_stock_count + 1;
+  end loop;
+
+  update public.global_shipment_items gsi
+  set received_quantity = coalesce(extra_totals.total_qty, 0), updated_at = now()
+  from (
+    select o.shipment_item_id as item_id, sum(o.quantity)::int as total_qty
+    from public.global_shipment_item_outcomes o
+    inner join public.global_shipment_items gsi2 on gsi2.id = o.shipment_item_id
+    where gsi2.shipment_id = p_shipment_id
+      and o.reason <> 'ordered'::public.global_shipment_outcome_reason
+    group by o.shipment_item_id
+  ) extra_totals
+  where gsi.id = extra_totals.item_id and gsi.shipment_id = p_shipment_id;
+
+  if v_stock_count > 0 then
     update public.global_shipments
-    set
-      status = 'received',
-      stock_ready = true,
-      inventory_added = true,
-      updated_at = now()
+    set status = 'received',
+        stock_ready = true, inventory_added = true, updated_at = now()
     where id = p_shipment_id;
   end if;
 
@@ -3852,9 +4064,236 @@ begin
     'items_stamped', v_stamped,
     'stock_rows_posted', v_stock_count,
     'stock_ready', (select stock_ready from public.global_shipments where id = p_shipment_id),
-    'wallet_posted', false,
     'movement_id', v_mov_id
   );
+end;
+$$;
+
+
+CREATE OR REPLACE FUNCTION "public"."restamp_global_shipment_on_hand"("p_shipment_id" bigint DEFAULT NULL::bigint, "p_outcome_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ship public.global_shipments%rowtype;
+  v_parent bigint;
+  v_on_hand int;
+  r_out record;
+  v_updated int := 0;
+begin
+  if p_outcome_id is not null then
+    select gsi.shipment_id into p_shipment_id
+    from public.global_shipment_item_outcomes o
+    inner join public.global_shipment_items gsi on gsi.id = o.shipment_item_id
+    where o.id = p_outcome_id;
+  end if;
+
+  if p_shipment_id is null then
+    raise exception 'shipment_id or outcome_id required';
+  end if;
+
+  select * into v_ship from public.global_shipments where id = p_shipment_id for update;
+  if not found then
+    raise exception 'shipment not found';
+  end if;
+
+  v_parent := v_ship.parent_tenant_id;
+  if not public.user_can_manage_parent_tenant(v_parent) then
+    raise exception 'not allowed';
+  end if;
+
+  if coalesce(v_ship.is_closed, false) then
+    raise exception 'shipment is closed';
+  end if;
+
+  perform public.stamp_global_shipment_landed_costs(p_shipment_id);
+  perform public._stamp_global_shipment_outcome_costs(p_shipment_id);
+
+  for r_out in
+    select o.*
+    from public.global_shipment_item_outcomes o
+    inner join public.global_shipment_items gsi on gsi.id = o.shipment_item_id
+    where gsi.shipment_id = p_shipment_id
+      and o.reason <> 'ordered'::public.global_shipment_outcome_reason
+      and (p_outcome_id is null or o.id = p_outcome_id)
+  loop
+    select coalesce(sum(gs.quantity), 0)::int into v_on_hand
+    from public.global_stocks gs where gs.outcome_id = r_out.id;
+
+    if v_on_hand > r_out.quantity then
+      raise exception 'outcome qty % below on-hand % for outcome %', r_out.quantity, v_on_hand, r_out.id;
+    end if;
+
+    v_updated := v_updated + 1;
+  end loop;
+
+  return jsonb_build_object('shipment_id', p_shipment_id, 'outcomes_checked', v_updated);
+end;
+$$;
+
+
+CREATE OR REPLACE FUNCTION "public"."apply_shipment_outcome_vendor_discount"("p_shipment_id" bigint, "p_source_outcome_id" bigint, "p_quantity" integer, "p_new_purchase_price" numeric) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ship public.global_shipments%rowtype;
+  v_src public.global_shipment_item_outcomes%rowtype;
+  v_parent bigint;
+  v_prev_price numeric;
+  v_credit numeric;
+  v_row_id bigint;
+begin
+  if p_quantity is null or p_quantity < 1 then
+    raise exception 'quantity must be at least 1';
+  end if;
+
+  if p_new_purchase_price is null or p_new_purchase_price < 0 then
+    raise exception 'purchase price must be >= 0';
+  end if;
+
+  select * into v_ship from public.global_shipments where id = p_shipment_id for update;
+  if not found then
+    raise exception 'shipment not found';
+  end if;
+
+  v_parent := v_ship.parent_tenant_id;
+  if not public.user_can_manage_parent_tenant(v_parent) then
+    raise exception 'not allowed';
+  end if;
+
+  if v_ship.status = 'cancelled' then
+    raise exception 'shipment is cancelled';
+  end if;
+
+  if coalesce(v_ship.is_closed, false) then
+    raise exception 'shipment is closed';
+  end if;
+
+  if v_ship.status <> 'received' then
+    raise exception 'shipment must be received to record vendor credit';
+  end if;
+
+  select o.* into v_src
+  from public.global_shipment_item_outcomes o
+  inner join public.global_shipment_items gsi on gsi.id = o.shipment_item_id
+  where o.id = p_source_outcome_id
+    and gsi.shipment_id = p_shipment_id;
+
+  if not found then
+    raise exception 'outcome not found on shipment';
+  end if;
+
+  if v_src.reason = 'ordered'::public.global_shipment_outcome_reason then
+    raise exception 'cannot credit ordered row';
+  end if;
+
+  if v_src.kind <> 'sellable'::public.global_shipment_outcome_kind then
+    raise exception 'outcome must be sellable';
+  end if;
+
+  if p_quantity > v_src.quantity then
+    raise exception 'quantity % exceeds split qty %', p_quantity, v_src.quantity;
+  end if;
+
+  v_prev_price := coalesce(v_src.purchase_price, 0);
+  v_credit := round((v_prev_price - p_new_purchase_price) * p_quantity, 4);
+
+  insert into public.global_shipment_outcome_vendor_credits (
+    parent_tenant_id,
+    shipment_id,
+    shipment_item_id,
+    outcome_id,
+    quantity,
+    previous_purchase_price,
+    new_purchase_price,
+    credit_amount,
+    created_by_email
+  ) values (
+    v_parent,
+    p_shipment_id,
+    v_src.shipment_item_id,
+    v_src.id,
+    p_quantity,
+    v_prev_price,
+    p_new_purchase_price,
+    v_credit,
+    public.current_user_email()
+  )
+  returning id into v_row_id;
+
+  return jsonb_build_object(
+    'mode', 'record',
+    'id', v_row_id,
+    'shipment_id', p_shipment_id,
+    'outcome_id', v_src.id,
+    'quantity', p_quantity,
+    'previous_purchase_price', v_prev_price,
+    'new_purchase_price', p_new_purchase_price,
+    'credit_amount', v_credit
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."apply_shipment_outcome_vendor_discount"("p_shipment_id" bigint, "p_source_outcome_id" bigint, "p_quantity" integer, "p_new_purchase_price" numeric) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_shipment_outcome_vendor_credits"("p_shipment_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_parent bigint;
+begin
+  select parent_tenant_id into v_parent
+  from public.global_shipments
+  where id = p_shipment_id;
+
+  if v_parent is null then
+    raise exception 'shipment not found';
+  end if;
+
+  if not public.user_can_manage_parent_tenant(v_parent) then
+    raise exception 'not allowed';
+  end if;
+
+  return coalesce(
+    (
+      select jsonb_agg(row_to_json(r) order by r.created_at desc)
+      from (
+        select
+          c.id,
+          c.shipment_id,
+          c.shipment_item_id,
+          c.outcome_id,
+          c.quantity,
+          c.previous_purchase_price,
+          c.new_purchase_price,
+          c.credit_amount,
+          c.created_by_email,
+          c.created_at,
+          gsi.name as item_name
+        from public.global_shipment_outcome_vendor_credits c
+        inner join public.global_shipment_items gsi on gsi.id = c.shipment_item_id
+        where c.shipment_id = p_shipment_id
+      ) r
+    ),
+    '[]'::jsonb
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."list_shipment_outcome_vendor_credits"("p_shipment_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."finalize_global_shipment"("p_shipment_id" bigint, "p_stock_rows" "jsonb" DEFAULT NULL::"jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  return public.post_shipment_outcome_stock(p_shipment_id, p_stock_rows);
 end;
 $$;
 
@@ -5346,6 +5785,7 @@ begin
     inner join public.global_shipments gship on gship.id = gsi.shipment_id
     left join public.global_stock_types gst on gst.id = gs.stock_type_id
     left join public.stock_locations sl on sl.id = gs.location_id
+    left join public.global_shipment_item_outcomes o on o.id = gs.outcome_id
     where gs.parent_tenant_id = p_tenant_id
       and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
       and (p_availability is null or gs.availability = p_availability)
@@ -5392,7 +5832,30 @@ $$;
 ALTER FUNCTION "public"."list_global_stocks_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_stock_type_id" bigint, "p_is_sellable" boolean, "p_shipment_status" "text", "p_hide_zero_stock" boolean, "p_location_id" bigint, "p_availability" "public"."stock_availability") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_global_stocks_paginated"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_stock_type_id" bigint DEFAULT NULL::bigint, "p_is_sellable" boolean DEFAULT NULL::boolean, "p_shipment_status" "text" DEFAULT NULL::"text", "p_hide_zero_stock" boolean DEFAULT true, "p_location_id" bigint DEFAULT NULL::bigint, "p_availability" "public"."stock_availability" DEFAULT NULL::"public"."stock_availability", "p_shipment_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."stock_location_matches_filter"("p_location_id" bigint, "p_filter_id" bigint) RETURNS boolean
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
+    AS $$
+  select
+    p_filter_id is null
+    or p_location_id is null
+    or p_location_id = p_filter_id
+    or exists (
+      with recursive descendants as (
+        select id from public.stock_locations where id = p_filter_id
+        union all
+        select sl.id from public.stock_locations sl
+        inner join descendants d on sl.parent_location_id = d.id
+      )
+      select 1 from descendants where id = p_location_id
+    );
+$$;
+
+
+ALTER FUNCTION "public"."stock_location_matches_filter"("p_location_id" bigint, "p_filter_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_global_stocks_paginated"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_stock_type_id" bigint DEFAULT NULL::bigint, "p_is_sellable" boolean DEFAULT NULL::boolean, "p_shipment_status" "text" DEFAULT NULL::"text", "p_hide_zero_stock" boolean DEFAULT true, "p_location_id" bigint DEFAULT NULL::bigint, "p_availability" "public"."stock_availability" DEFAULT NULL::"public"."stock_availability", "p_shipment_id" bigint DEFAULT NULL::bigint, "p_grade_tag_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -5420,9 +5883,10 @@ begin
     )
     and (p_shipment_status is null or p_shipment_status = '' or p_shipment_status = '__all__' or gship.status = p_shipment_status)
     and (not coalesce(p_hide_zero_stock, true) or gs.quantity > 0)
-    and (p_location_id is null or gs.location_id = p_location_id)
+    and public.stock_location_matches_filter(gs.location_id, p_location_id)
     and (p_availability is null or gs.availability = p_availability)
     and (p_shipment_id is null or gsi.shipment_id = p_shipment_id)
+    and (p_grade_tag_id is null or gs.grade_tag_id = p_grade_tag_id)
     and (
       p_search is null or p_search = '' or (
         gsi.name ilike '%' || p_search || '%'
@@ -5445,7 +5909,10 @@ begin
       gs.availability,
       gs.location_id,
       gs.grade_tag_id,
+      gs.outcome_id,
       sl.name as location_name,
+      o.kind as outcome_kind,
+      o.reason as outcome_reason,
       gsi.shipment_id,
       gsi.ordered_quantity,
       gsi.name as item_name,
@@ -5469,6 +5936,7 @@ begin
     inner join public.global_shipments gship on gship.id = gsi.shipment_id
     left join public.global_stock_types gst on gst.id = gs.stock_type_id
     left join public.stock_locations sl on sl.id = gs.location_id
+    left join public.global_shipment_item_outcomes o on o.id = gs.outcome_id
     where gs.parent_tenant_id = p_tenant_id
       and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
       and (
@@ -5478,9 +5946,10 @@ begin
       )
       and (p_shipment_status is null or p_shipment_status = '' or p_shipment_status = '__all__' or gship.status = p_shipment_status)
       and (not coalesce(p_hide_zero_stock, true) or gs.quantity > 0)
-      and (p_location_id is null or gs.location_id = p_location_id)
+      and public.stock_location_matches_filter(gs.location_id, p_location_id)
       and (p_availability is null or gs.availability = p_availability)
       and (p_shipment_id is null or gsi.shipment_id = p_shipment_id)
+      and (p_grade_tag_id is null or gs.grade_tag_id = p_grade_tag_id)
       and (
         p_search is null or p_search = '' or (
           gsi.name ilike '%' || p_search || '%'
@@ -5513,7 +5982,316 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."list_global_stocks_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_stock_type_id" bigint, "p_is_sellable" boolean, "p_shipment_status" "text", "p_hide_zero_stock" boolean, "p_location_id" bigint, "p_availability" "public"."stock_availability", "p_shipment_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_global_stocks_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_stock_type_id" bigint, "p_is_sellable" boolean, "p_shipment_status" "text", "p_hide_zero_stock" boolean, "p_location_id" bigint, "p_availability" "public"."stock_availability", "p_shipment_id" bigint, "p_grade_tag_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_global_stocks_cursor"("p_tenant_id" bigint, "p_limit" integer DEFAULT 20, "p_cursor_id" bigint DEFAULT NULL::bigint, "p_search" "text" DEFAULT NULL::"text", "p_stock_type_id" bigint DEFAULT NULL::bigint, "p_is_sellable" boolean DEFAULT NULL::boolean, "p_shipment_status" "text" DEFAULT NULL::"text", "p_hide_zero_stock" boolean DEFAULT true, "p_location_id" bigint DEFAULT NULL::bigint, "p_availability" "public"."stock_availability" DEFAULT NULL::"public"."stock_availability", "p_shipment_id" bigint DEFAULT NULL::bigint, "p_include_total" boolean DEFAULT false, "p_grade_tag_id" bigint DEFAULT NULL::bigint, "p_group_by" "text" DEFAULT NULL::"text", "p_group_key" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_limit integer := greatest(1, least(coalesce(p_limit, 20), 100));
+  v_fetch integer := v_limit + 1;
+  v_data jsonb := '[]'::jsonb;
+  v_n integer := 0;
+  v_has_more boolean := false;
+  v_next_cursor jsonb := null;
+  v_last_id bigint;
+  v_total bigint := null;
+begin
+  if not public._can_view_parent_warehouse_stock(p_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
+  if coalesce(p_include_total, false) and p_cursor_id is null then
+    select count(*)
+    into v_total
+    from public.global_stocks gs
+    inner join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+    inner join public.global_shipments gship on gship.id = gsi.shipment_id
+    where gs.parent_tenant_id = p_tenant_id
+      and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
+      and (
+        p_is_sellable is null
+        or (p_is_sellable = true and gs.availability = 'sellable'::public.stock_availability)
+        or (p_is_sellable = false and gs.availability <> 'sellable'::public.stock_availability)
+      )
+      and (p_shipment_status is null or p_shipment_status = '' or p_shipment_status = '__all__' or gship.status = p_shipment_status)
+      and (not coalesce(p_hide_zero_stock, true) or gs.quantity > 0)
+      and public.stock_location_matches_filter(gs.location_id, p_location_id)
+      and (p_availability is null or gs.availability = p_availability)
+      and (p_shipment_id is null or gsi.shipment_id = p_shipment_id)
+      and (p_grade_tag_id is null or gs.grade_tag_id = p_grade_tag_id)
+      and (
+        p_search is null or p_search = '' or (
+          gsi.name ilike '%' || p_search || '%'
+          or gsi.product_code ilike '%' || p_search || '%'
+          or gsi.barcode ilike '%' || p_search || '%'
+          or gship.name ilike '%' || p_search || '%'
+        )
+      )
+      and (
+        p_group_by is null or p_group_key is null or p_group_key = ''
+        or case p_group_by
+          when 'shipment' then gsi.shipment_id::text = p_group_key
+          when 'product' then coalesce(nullif(trim(gsi.product_code), ''), 'si:' || gsi.id::text) = p_group_key
+          when 'location' then gs.location_id::text = p_group_key
+          when 'grade' then coalesce(gs.grade_tag_id::text, '') = p_group_key
+          when 'availability' then gs.availability::text = p_group_key
+          else true
+        end
+      );
+  end if;
+
+  select coalesce(jsonb_agg(row_to_json(r)), '[]'::jsonb)
+  into v_data
+  from (
+    select
+      gs.id,
+      gs.parent_tenant_id,
+      gs.shipment_item_id,
+      gs.stock_type_id,
+      gs.quantity,
+      gs.is_usable,
+      gs.availability,
+      gs.location_id,
+      gs.grade_tag_id,
+      gs.outcome_id,
+      sl.name as location_name,
+      o.kind as outcome_kind,
+      o.reason as outcome_reason,
+      gsi.shipment_id,
+      gsi.ordered_quantity,
+      gsi.name as item_name,
+      gsi.product_code,
+      gsi.barcode,
+      gsi.image_url,
+      gsi.purchase_price,
+      gsi.product_weight,
+      gsi.package_weight,
+      gsi.landed_cost_bdt,
+      coalesce(gsi.landed_cost_bdt, public.calculate_landed_unit_cost(gsi.id)) as resolved_landed_cost_bdt,
+      gship.name as shipment_name,
+      gship.type as shipment_type,
+      gship.status as shipment_status,
+      gship.received_weight,
+      coalesce(gst.description, gs.availability::text) as stock_type_description,
+      (gs.availability = 'sellable'::public.stock_availability) as is_sellable,
+      public.global_stock_atp_qty(gs.id) as available_atp
+    from public.global_stocks gs
+    inner join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+    inner join public.global_shipments gship on gship.id = gsi.shipment_id
+    left join public.global_stock_types gst on gst.id = gs.stock_type_id
+    left join public.stock_locations sl on sl.id = gs.location_id
+    left join public.global_shipment_item_outcomes o on o.id = gs.outcome_id
+    where gs.parent_tenant_id = p_tenant_id
+      and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
+      and (
+        p_is_sellable is null
+        or (p_is_sellable = true and gs.availability = 'sellable'::public.stock_availability)
+        or (p_is_sellable = false and gs.availability <> 'sellable'::public.stock_availability)
+      )
+      and (p_shipment_status is null or p_shipment_status = '' or p_shipment_status = '__all__' or gship.status = p_shipment_status)
+      and (not coalesce(p_hide_zero_stock, true) or gs.quantity > 0)
+      and public.stock_location_matches_filter(gs.location_id, p_location_id)
+      and (p_availability is null or gs.availability = p_availability)
+      and (p_shipment_id is null or gsi.shipment_id = p_shipment_id)
+      and (p_grade_tag_id is null or gs.grade_tag_id = p_grade_tag_id)
+      and (
+        p_search is null or p_search = '' or (
+          gsi.name ilike '%' || p_search || '%'
+          or gsi.product_code ilike '%' || p_search || '%'
+          or gsi.barcode ilike '%' || p_search || '%'
+          or gship.name ilike '%' || p_search || '%'
+        )
+      )
+      and (
+        p_group_by is null or p_group_key is null or p_group_key = ''
+        or case p_group_by
+          when 'shipment' then gsi.shipment_id::text = p_group_key
+          when 'product' then coalesce(nullif(trim(gsi.product_code), ''), 'si:' || gsi.id::text) = p_group_key
+          when 'location' then gs.location_id::text = p_group_key
+          when 'grade' then coalesce(gs.grade_tag_id::text, '') = p_group_key
+          when 'availability' then gs.availability::text = p_group_key
+          else true
+        end
+      )
+      and (p_cursor_id is null or gs.id < p_cursor_id)
+    order by gs.id desc
+    limit v_fetch
+  ) r;
+
+  v_n := coalesce(jsonb_array_length(v_data), 0);
+
+  if v_n > v_limit then
+    v_has_more := true;
+    v_data := (
+      select coalesce(jsonb_agg(elem), '[]'::jsonb)
+      from (
+        select elem
+        from jsonb_array_elements(v_data) with ordinality as t(elem, ord)
+        where ord <= v_limit
+      ) s
+    );
+  end if;
+
+  if coalesce(jsonb_array_length(v_data), 0) > 0 then
+    v_last_id := (v_data->(jsonb_array_length(v_data) - 1)->>'id')::bigint;
+    if v_has_more then
+      v_next_cursor := jsonb_build_object('id', v_last_id);
+    end if;
+  end if;
+
+  return jsonb_build_object(
+    'data', v_data,
+    'meta', jsonb_build_object(
+      'has_more', v_has_more,
+      'next_cursor', v_next_cursor,
+      'total', v_total
+    )
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."list_global_stocks_cursor"("p_tenant_id" bigint, "p_limit" integer, "p_cursor_id" bigint, "p_search" "text", "p_stock_type_id" bigint, "p_is_sellable" boolean, "p_shipment_status" "text", "p_hide_zero_stock" boolean, "p_location_id" bigint, "p_availability" "public"."stock_availability", "p_shipment_id" bigint, "p_include_total" boolean, "p_grade_tag_id" bigint, "p_group_by" "text", "p_group_key" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_global_stocks_groups"("p_tenant_id" bigint, "p_group_by" "text", "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0, "p_search" "text" DEFAULT NULL::"text", "p_stock_type_id" bigint DEFAULT NULL::bigint, "p_is_sellable" boolean DEFAULT NULL::boolean, "p_shipment_status" "text" DEFAULT NULL::"text", "p_hide_zero_stock" boolean DEFAULT true, "p_location_id" bigint DEFAULT NULL::bigint, "p_availability" "public"."stock_availability" DEFAULT NULL::"public"."stock_availability", "p_shipment_id" bigint DEFAULT NULL::bigint, "p_grade_tag_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_limit integer := greatest(1, least(coalesce(p_limit, 50), 200));
+  v_offset integer := greatest(coalesce(p_offset, 0), 0);
+  v_groups jsonb;
+  v_total bigint;
+  v_has_more boolean;
+begin
+  if not public._can_view_parent_warehouse_stock(p_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
+  if p_group_by is null or p_group_by not in ('shipment', 'product', 'location', 'grade', 'availability') then
+    raise exception 'invalid p_group_by';
+  end if;
+
+  with filtered as (
+    select
+      gs.id,
+      gs.quantity,
+      gs.availability,
+      gs.location_id,
+      gs.grade_tag_id,
+      gsi.id as shipment_item_id,
+      gsi.shipment_id,
+      gsi.name as item_name,
+      gsi.product_code,
+      gship.name as shipment_name,
+      sl.name as location_name,
+      tg.name as grade_name
+    from public.global_stocks gs
+    inner join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+    inner join public.global_shipments gship on gship.id = gsi.shipment_id
+    left join public.stock_locations sl on sl.id = gs.location_id
+    left join public.tags tg on tg.id = gs.grade_tag_id
+    where gs.parent_tenant_id = p_tenant_id
+      and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
+      and (
+        p_is_sellable is null
+        or (p_is_sellable = true and gs.availability = 'sellable'::public.stock_availability)
+        or (p_is_sellable = false and gs.availability <> 'sellable'::public.stock_availability)
+      )
+      and (p_shipment_status is null or p_shipment_status = '' or p_shipment_status = '__all__' or gship.status = p_shipment_status)
+      and (not coalesce(p_hide_zero_stock, true) or gs.quantity > 0)
+      and public.stock_location_matches_filter(gs.location_id, p_location_id)
+      and (p_availability is null or gs.availability = p_availability)
+      and (p_shipment_id is null or gsi.shipment_id = p_shipment_id)
+      and (p_grade_tag_id is null or gs.grade_tag_id = p_grade_tag_id)
+      and (
+        p_search is null or p_search = '' or (
+          gsi.name ilike '%' || p_search || '%'
+          or gsi.product_code ilike '%' || p_search || '%'
+          or gsi.barcode ilike '%' || p_search || '%'
+          or gship.name ilike '%' || p_search || '%'
+        )
+      )
+  ),
+  keyed as (
+    select
+      case p_group_by
+        when 'shipment' then f.shipment_id::text
+        when 'product' then coalesce(nullif(trim(f.product_code), ''), 'si:' || f.shipment_item_id::text)
+        when 'location' then coalesce(f.location_id::text, '')
+        when 'grade' then coalesce(f.grade_tag_id::text, '')
+        when 'availability' then f.availability::text
+      end as key,
+      case p_group_by
+        when 'shipment' then coalesce(f.shipment_name, 'Shipment')
+        when 'product' then coalesce(nullif(trim(f.product_code), ''), f.item_name, 'Product')
+        when 'location' then coalesce(f.location_name, 'No location')
+        when 'grade' then coalesce(f.grade_name, 'Standard')
+        when 'availability' then initcap(f.availability::text)
+      end as label,
+      f.quantity
+    from filtered f
+  ),
+  agg as (
+    select
+      key,
+      max(label) as label,
+      sum(quantity)::bigint as quantity,
+      count(*)::bigint as lot_count
+    from keyed
+    where key is not null and key <> ''
+    group by key
+  ),
+  counted as (
+    select count(*)::bigint as total from agg
+  )
+  select
+    (select total from counted),
+    coalesce(
+      (
+        select jsonb_agg(row_to_json(g))
+        from (
+          select key, label, quantity, lot_count
+          from agg
+          order by quantity desc, label asc
+          limit v_limit + 1
+          offset v_offset
+        ) g
+      ),
+      '[]'::jsonb
+    )
+  into v_total, v_groups;
+
+  if coalesce(jsonb_array_length(v_groups), 0) > v_limit then
+    v_has_more := true;
+    v_groups := (
+      select coalesce(jsonb_agg(elem), '[]'::jsonb)
+      from (
+        select elem
+        from jsonb_array_elements(v_groups) with ordinality as t(elem, ord)
+        where ord <= v_limit
+      ) s
+    );
+  else
+    v_has_more := false;
+  end if;
+
+  return jsonb_build_object(
+    'groups', v_groups,
+    'meta', jsonb_build_object(
+      'total', v_total,
+      'has_more', v_has_more
+    )
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."list_global_stocks_groups"("p_tenant_id" bigint, "p_group_by" "text", "p_limit" integer, "p_offset" integer, "p_search" "text", "p_stock_type_id" bigint, "p_is_sellable" boolean, "p_shipment_status" "text", "p_hide_zero_stock" boolean, "p_location_id" bigint, "p_availability" "public"."stock_availability", "p_shipment_id" bigint, "p_grade_tag_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_inventory_items_with_stock"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_sort_by" "text" DEFAULT 'id'::"text", "p_sort_order" "text" DEFAULT 'desc'::"text", "p_filters" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "jsonb"
@@ -8516,6 +9294,8 @@ begin
     v_updated := v_updated + 1;
   end loop;
 
+  perform public._stamp_global_shipment_outcome_costs(p_shipment_id);
+
   return v_updated;
 end;
 $$;
@@ -10228,7 +11008,7 @@ $$;
 ALTER FUNCTION "public"."upsert_shipment_investment"("p_id" bigint, "p_tenant_id" bigint, "p_global_shipment_id" bigint, "p_investor_id" bigint, "p_cost_share_pct" numeric) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."upsert_stock_location"("p_parent_tenant_id" bigint, "p_code" "text", "p_name" "text", "p_kind" "public"."stock_location_kind" DEFAULT 'box'::"public"."stock_location_kind", "p_is_pickable" boolean DEFAULT true, "p_sort_order" integer DEFAULT 0, "p_is_active" boolean DEFAULT true, "p_is_default" boolean DEFAULT false, "p_id" bigint DEFAULT NULL::bigint, "p_parent_location_id" bigint DEFAULT NULL::bigint) RETURNS "public"."stock_locations"
+CREATE OR REPLACE FUNCTION "public"."upsert_stock_location"("p_parent_tenant_id" bigint, "p_code" "text", "p_name" "text", "p_kind" "public"."stock_location_kind" DEFAULT 'bin'::"public"."stock_location_kind", "p_is_pickable" boolean DEFAULT true, "p_sort_order" integer DEFAULT 0, "p_is_active" boolean DEFAULT true, "p_is_default" boolean DEFAULT false, "p_id" bigint DEFAULT NULL::bigint, "p_parent_location_id" bigint DEFAULT NULL::bigint) RETURNS "public"."stock_locations"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$

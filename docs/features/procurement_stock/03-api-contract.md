@@ -44,42 +44,63 @@ language plpgsql security definer;
 
 ---
 
-## 2. Inbound Finalization RPC: `finalize_global_shipment`
+## 1b. Warehouse stock cursor: `list_global_stocks_cursor`
 
-Executes the physical receiving checklist, stamps landed unit costs, and creates `global_stocks` rows in the warehouse pool.
+Infinite scroll on **Warehouse stock**. Order: `global_stocks.id desc`. Pass `p_cursor_id` from prior page `meta.next_cursor.id`. First request only: `p_include_total true` (optional count for empty state; no count on later pages).
 
-**Live today:** one `received_quantity` + one `landed_cost_bdt` + `condition_grade` + `purchase_price` on `global_shipment_items`.
+**Shared filters** (also used by `list_global_stocks_groups` and aligned with `list_global_stocks_paginated` where noted):
 
-**Target:** extra **outcome** rows ([US-7](01-prd.md), [PS7](00-gaps.md)): `quantity`, `kind` (`sellable` \| `unsellable`), `reason`, `purchase_price`, stamped `cost`. **Ordered** is paper only — do not post lots from it. `general` is the default received split. `sellable` extras → lot with `outcome_id`; `unsellable` → loss. Cargo rows unchanged. Restamp **on-hand** only. Return inbound before changing qty that already left. Abort if on-hand is short. Staff must not PATCH line money/qty as the receive form. **Closed** shipments reject writes ([PS10](00-gaps.md)).
+| Arg | Notes |
+| :--- | :--- |
+| `p_search` | Item name, product code, barcode, shipment name |
+| `p_shipment_id` | Shipment FK |
+| `p_shipment_status` | `global_shipments.status` |
+| `p_availability` | `stock_availability` |
+| `p_grade_tag_id` | Warehouse grade tag |
+| `p_location_id` | Stock row location matches this node **or any descendant** in `stock_locations` |
+| `p_hide_zero_stock` | Default true |
+| `p_is_sellable` | Legacy boolean; prefer `p_availability` in UI |
+| `p_stock_type_id` | Optional type filter |
 
-### Input Payload Schema
-```json
-{
-  "shipment_id": "7fa85f64-5717-4562-b3fc-2c963f66af10",
-  "default_location_id": "9ca85f64-5717-4562-b3fc-2c963f66af22",
-  "received_items": [
-    {
-      "shipment_item_id": "3ba85f64-5717-4562-b3fc-2c963f66af33",
-      "received_quantity": 500,
-      "location_id": "9ca85f64-5717-4562-b3fc-2c963f66af22",
-      "condition_grade": "sellable"
-    }
-  ]
-}
-```
+**Group slice** (optional): `p_group_by` + `p_group_key` — when both set, only lots in that group. `p_group_by`: `shipment` \| `product` \| `location` \| `grade` \| `availability`. Product key: `trim(product_code)` or `si:{shipment_item_id}`.
 
-### Success Response (`200 OK`)
-```json
-{
-  "success": true,
-  "data": {
-    "shipment_id": "7fa85f64-5717-4562-b3fc-2c963f66af10",
-    "status": "received",
-    "stocks_created_count": 38,
-    "total_landed_cost_bdt": 540200.00
-  }
-}
-```
+Returns `jsonb`: `{ data: GlobalStockRow[], meta: { has_more, next_cursor: { id } | null, total: number | null } }`.
+
+### 1c. Warehouse stock groups: `list_global_stocks_groups`
+
+Group headers for **Warehouse stock** with server `sum(quantity)` and `count(*)` per group. Same filter args as §1b (no cursor). `p_group_by` required (`shipment` \| `product` \| `location` \| `grade` \| `availability`). `p_limit` / `p_offset` paginate groups (default limit 50).
+
+Returns `jsonb`: `{ groups: [{ key, label, quantity, lot_count }], meta: { total, has_more } }`. Expand a group → `list_global_stocks_cursor` with matching `p_group_by` + `p_group_key`.
+
+---
+
+## 2. Post stock: `post_shipment_outcome_stock` (live)
+
+Stamps line + extra outcome costs, posts **delta** sellable extras to lots (`outcome_id` grain). Repeatable after `stock_ready`. `finalize_global_shipment` delegates here.
+
+**Payload:** `{ "outcome_id": 1, "location_id": null }` or `{ "shipment_item_id": 1, "location_id": 2 }` per bin override. Omit array → default put-away for all unposted sellable extras.
+
+**Rules:** `reason <> ordered`; unsellable → no lot; qty down below on-hand → `restamp_global_shipment_on_hand` aborts; cargo unchanged.
+
+## 2a. Vendor credit: `apply_shipment_outcome_vendor_discount` + `list_shipment_outcome_vendor_credits` (live)
+
+When shipment is **`received`**, staff use **Record vendor credit** on line items. Financial record only — **no** outcome peel, **no** stock lot moves, **no** landed restamp.
+
+**Table:** `global_shipment_outcome_vendor_credits` (qty, previous/new purchase price, `credit_amount`, links to shipment / item / outcome).
+
+**Apply args:** `p_shipment_id`, `p_source_outcome_id`, `p_quantity`, `p_new_purchase_price`
+
+**Guards:** `received`; not cancelled / not `is_closed`; source extra sellable, `reason <> ordered`; `1 <= p_quantity <=` split qty.
+
+**Returns:** `{ mode: 'record', id, credit_amount, ... }`
+
+**List:** `list_shipment_outcome_vendor_credits(p_shipment_id)` → jsonb array (newest first).
+
+Cargo/duty and land splits unchanged. Shipment profit / AP may consume credits later ([PS8](00-gaps.md)).
+
+## 2b. Legacy alias: `finalize_global_shipment`
+
+Same as `post_shipment_outcome_stock`.
 
 ---
 

@@ -105,9 +105,11 @@ ALTER TYPE "public"."stock_availability" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."stock_location_kind" AS ENUM (
+    'warehouse',
+    'zone',
     'shelf',
-    'slot',
-    'box',
+    'level',
+    'bin',
     'returns'
 );
 

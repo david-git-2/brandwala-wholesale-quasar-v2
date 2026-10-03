@@ -35,6 +35,7 @@ export const useGlobalStockStore = defineStore('global_stock', {
         locationId?: number | null;
         availability?: StockAvailability | null;
         shipmentId?: number | null;
+        append?: boolean;
       },
     ) {
       this.loading = true;
@@ -74,7 +75,11 @@ export const useGlobalStockStore = defineStore('global_stock', {
           shipmentId,
         );
 
-        this.rows = result.data;
+        if (options?.append) {
+          this.rows = [...this.rows, ...result.data];
+        } else {
+          this.rows = result.data;
+        }
         this.page = result.meta.page;
         this.pageSize = result.meta.pageSize;
         this.total = result.meta.total;

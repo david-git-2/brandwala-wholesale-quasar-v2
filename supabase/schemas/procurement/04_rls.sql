@@ -622,6 +622,9 @@ GRANT ALL ON FUNCTION "public"."add_stock_movement_line"("p_movement_id" bigint,
 
 
 GRANT ALL ON FUNCTION "public"."apply_global_shipment_purchase_balance"("p_shipment_id" bigint, "p_adjustments" "jsonb", "p_transaction_rate" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."apply_shipment_outcome_vendor_discount"("p_shipment_id" bigint, "p_source_outcome_id" bigint, "p_quantity" integer, "p_new_purchase_price" numeric) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."list_shipment_outcome_vendor_credits"("p_shipment_id" bigint) TO "authenticated";
 
 
 
@@ -833,6 +836,9 @@ GRANT ALL ON FUNCTION "public"."default_returns_stock_location_id"("p_tenant_id"
 GRANT ALL ON FUNCTION "public"."default_stock_grade_tag_id"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."default_stock_grade_tag_id"() TO "service_role";
 
+GRANT ALL ON FUNCTION "public"."default_sellable_global_stock_type_id"("p_tenant_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."default_sellable_global_stock_type_id"("p_tenant_id" bigint) TO "service_role";
+
 
 
 REVOKE ALL ON FUNCTION "public"."delete_global_shipment_cost_entry"("p_id" bigint) FROM PUBLIC;
@@ -1006,6 +1012,13 @@ GRANT ALL ON FUNCTION "public"."list_global_stocks_paginated"("p_tenant_id" bigi
 
 
 GRANT ALL ON FUNCTION "public"."list_global_stocks_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_stock_type_id" bigint, "p_is_sellable" boolean, "p_shipment_status" "text", "p_hide_zero_stock" boolean, "p_location_id" bigint, "p_availability" "public"."stock_availability", "p_shipment_id" bigint) TO "authenticated";
+
+
+
+GRANT ALL ON FUNCTION "public"."list_global_stocks_cursor"("p_tenant_id" bigint, "p_limit" integer, "p_cursor_id" bigint, "p_search" "text", "p_stock_type_id" bigint, "p_is_sellable" boolean, "p_shipment_status" "text", "p_hide_zero_stock" boolean, "p_location_id" bigint, "p_availability" "public"."stock_availability", "p_shipment_id" bigint, "p_include_total" boolean, "p_grade_tag_id" bigint, "p_group_by" "text", "p_group_key" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_global_stocks_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_stock_type_id" bigint, "p_is_sellable" boolean, "p_shipment_status" "text", "p_hide_zero_stock" boolean, "p_location_id" bigint, "p_availability" "public"."stock_availability", "p_shipment_id" bigint, "p_grade_tag_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_global_stocks_groups"("p_tenant_id" bigint, "p_group_by" "text", "p_limit" integer, "p_offset" integer, "p_search" "text", "p_stock_type_id" bigint, "p_is_sellable" boolean, "p_shipment_status" "text", "p_hide_zero_stock" boolean, "p_location_id" bigint, "p_availability" "public"."stock_availability", "p_shipment_id" bigint, "p_grade_tag_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."stock_location_matches_filter"("p_location_id" bigint, "p_filter_id" bigint) TO "authenticated";
 
 
 

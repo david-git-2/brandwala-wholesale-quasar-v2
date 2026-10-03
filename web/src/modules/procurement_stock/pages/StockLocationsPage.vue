@@ -4,9 +4,9 @@
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline text-primary">Procurement & Stock</div>
-          <h1 class="text-h5 text-weight-bold q-my-none">Shelves & boxes</h1>
+          <h1 class="text-h5 text-weight-bold q-my-none">Warehouse locations</h1>
           <div class="text-body2 text-grey-7 q-mt-xs">
-            Shelves and boxes where warehouse stock sits.
+            Warehouse → zone → shelf → level → bin. Stock sits in bins.
           </div>
         </div>
         <div class="col-auto">
@@ -15,8 +15,8 @@
             color="primary"
             unelevated
             no-caps
-            label="Add shelf"
-            @click="openCreate('shelf')"
+            label="Add warehouse"
+            @click="openCreate('warehouse')"
           />
         </div>
       </section>
@@ -95,9 +95,9 @@
             stroke-linecap="round"
           />
         </svg>
-        <div class="text-subtitle1 text-weight-medium q-mb-xs">No shelves yet</div>
+        <div class="text-subtitle1 text-weight-medium q-mb-xs">No locations yet</div>
         <div class="text-body2 bw-text-muted q-mb-md" style="max-width: 320px">
-          Add a shelf to start organizing stock into slots and boxes.
+          Add a warehouse, then zones, shelves, levels, and bins for put-away.
         </div>
         <q-btn
           v-if="canCreate"
@@ -105,8 +105,8 @@
           unelevated
           no-caps
           icon="ph ph-plus"
-          label="Add shelf"
-          @click="openCreate('shelf')"
+          label="Add warehouse"
+          @click="openCreate('warehouse')"
         />
       </div>
 
@@ -221,37 +221,15 @@
             <template #body-cell-actions="props">
               <q-td :props="props" class="text-right">
                 <q-btn
-                  v-if="canCreate && props.row.kind === 'shelf'"
+                  v-if="canCreate && childKindFor(props.row.kind)"
                   flat
                   dense
                   round
                   icon="ph ph-plus"
                   color="primary"
-                  @click="openCreate('slot', props.row.id)"
+                  @click="openCreate(childKindFor(props.row.kind)!, props.row.id)"
                 >
-                  <q-tooltip>Add slot</q-tooltip>
-                </q-btn>
-                <q-btn
-                  v-if="canCreate && props.row.kind === 'slot'"
-                  flat
-                  dense
-                  round
-                  icon="ph ph-plus"
-                  color="primary"
-                  @click="openCreate('box', props.row.id)"
-                >
-                  <q-tooltip>Add box</q-tooltip>
-                </q-btn>
-                <q-btn
-                  v-if="canCreate && props.row.kind === 'returns'"
-                  flat
-                  dense
-                  round
-                  icon="ph ph-plus"
-                  color="primary"
-                  @click="openCreate('slot', props.row.id)"
-                >
-                  <q-tooltip>Add slot</q-tooltip>
+                  <q-tooltip>Add {{ childKindLabel(props.row.kind) }}</q-tooltip>
                 </q-btn>
                 <q-btn
                   v-if="canEdit && props.row.isLeaf && !props.row.is_default && props.row.is_active"
@@ -337,6 +315,11 @@ import {
 import StockLocationFormDialog from '../components/StockLocationFormDialog.vue';
 import StockLocationsSkeleton from '../components/StockLocationsSkeleton.vue';
 import { useStockLocationStore } from '../stores/stockLocationStore';
+import {
+  STOCK_LOCATION_CHILD_KIND,
+  STOCK_LOCATION_KIND_LABELS,
+  STOCK_LOCATION_KIND_ORDER,
+} from '../constants/stockLocationHierarchy';
 import type {
   StockLocation,
   StockLocationKind,
@@ -365,16 +348,20 @@ const presetKind = ref<StockLocationKind | null>(null);
 const presetParentId = ref<number | null>(null);
 const expanded = ref(new Set<number>());
 
-const kindFilterOptions: { label: string; value: StockLocationKind }[] = [
-  { label: 'Shelf', value: 'shelf' },
-  { label: 'Slot', value: 'slot' },
-  { label: 'Box', value: 'box' },
-  { label: 'Returns', value: 'returns' },
-];
+const kindFilterOptions: { label: string; value: StockLocationKind }[] =
+  STOCK_LOCATION_KIND_ORDER.map((value) => ({
+    label: STOCK_LOCATION_KIND_LABELS[value],
+    value,
+  }));
 
-const kindLabel = (kind: StockLocationKind) => {
-  if (kind === 'returns') return 'Returns';
-  return kind.charAt(0).toUpperCase() + kind.slice(1);
+const kindLabel = (kind: StockLocationKind) => STOCK_LOCATION_KIND_LABELS[kind];
+
+const childKindFor = (parentKind: StockLocationKind): StockLocationKind | null =>
+  STOCK_LOCATION_CHILD_KIND[parentKind] ?? null;
+
+const childKindLabel = (parentKind: StockLocationKind): string => {
+  const child = childKindFor(parentKind);
+  return child ? STOCK_LOCATION_KIND_LABELS[child].toLowerCase() : '';
 };
 
 const columns: QTableColumn[] = [
@@ -528,7 +515,7 @@ const reload = async () => {
   }
 };
 
-const openCreate = (kind: StockLocationKind = 'shelf', parentId: number | null = null) => {
+const openCreate = (kind: StockLocationKind = 'warehouse', parentId: number | null = null) => {
   editingLocation.value = null;
   presetKind.value = kind;
   presetParentId.value = parentId;
@@ -572,10 +559,9 @@ const onSetDefault = async (row: StockLocation) => {
 };
 
 const onDelete = async (row: StockLocation) => {
-  const childHint =
-    row.kind === 'shelf' || row.kind === 'returns' || row.kind === 'slot'
-      ? ' Any slots/boxes under it will be deleted too.'
-      : '';
+  const childHint = childKindFor(row.kind)
+    ? ' Any locations under it will be deleted too.'
+    : '';
   const ok = await requestConfirmation(
     `Delete "${row.code}"?${childHint}`,
     'Delete place',

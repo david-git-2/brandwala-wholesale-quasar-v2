@@ -234,6 +234,22 @@
             <q-tooltip>Download Excel for the current tab</q-tooltip>
           </q-btn>
 
+          <q-btn
+            v-if="showReceivePostStock"
+            color="primary"
+            unelevated
+            dense
+            no-caps
+            size="sm"
+            class="q-px-sm rounded-sq-btn text-weight-bold"
+            style="border-radius: 8px"
+            icon="ph ph-package"
+            label="Receive & post stock"
+            @click="startReceiveFlow()"
+          >
+            <q-tooltip>Review splits and add sellable qty to the warehouse</q-tooltip>
+          </q-btn>
+
           <!-- Lock costs (after receive, before books freeze) -->
           <q-btn
             v-if="isStockPosted && !isCostsLocked"
@@ -302,9 +318,12 @@
               :extra-outcomes="extraOutcomesForItem(item.id)"
               :currency-symbol="currentPurchaseCurrencySymbol"
               :can-edit-costs="canEditLineCostFields"
+              :can-edit-line-cost-fields="canEditLineCostFields"
               :can-edit-structure="canEditLineStructure"
               :is-received="isShipmentReceived"
               :can-add-split="canAddSplit"
+              :can-edit-splits="canEditSplits"
+              :can-show-vendor-discount="canShowVendorDiscountForItem(item.id)"
               :show-batch="true"
               :batch-summary="batchSummaryForItem(item)"
               :adding-extra="addingExtraItemId === item.id"
@@ -316,6 +335,7 @@
               @cell-blur="onCellDirectBlur"
               @open-batch="openBatchCodeDialog"
               @add-extra="addExtraOutcome"
+              @open-vendor-discount="openVendorDiscount"
               @update-extra="updateExtraOutcome"
               @delete-extra="deleteExtraOutcome"
             />
@@ -510,6 +530,17 @@
       </q-card>
     </q-dialog>
 
+    <ShipmentVendorDiscountDialog
+      ref="vendorDiscountDialogRef"
+      v-model="vendorDiscountDialogOpen"
+      :shipment-id="shipmentId"
+      :line-label="vendorDiscountLineLabel"
+      :currency-symbol="currentPurchaseCurrencySymbol"
+      :extras="vendorDiscountExtras"
+      :submitting="vendorDiscountSubmitting"
+      @submit="onVendorDiscountSubmit"
+    />
+
     <ShipmentLineBatchCodeDialog
       v-model="batchCodeDialogOpen"
       :product-name="batchCodeDialogProductName"
@@ -561,6 +592,7 @@ import { batchCodeRepository, type BatchCodeItem } from '../repositories/batchCo
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
 import { toIsoDate } from '../utils/batchCodeExpiry';
 import ShipmentLineBatchCodeDialog from '../components/ShipmentLineBatchCodeDialog.vue';
+import ShipmentVendorDiscountDialog from '../components/ShipmentVendorDiscountDialog.vue';
 import {
   batchMatchTableRows,
   buildBatchSummaryMapForLines,
@@ -597,10 +629,11 @@ const isShipmentReceived = computed(
   () => shipmentStore.currentShipment?.status === 'received' || isStockPosted.value,
 );
 
-const canAddSplit = computed(() => {
-  const status = shipmentStore.currentShipment?.status;
-  return status === 'in_transit' || status === 'received';
-});
+const canAddSplit = computed(() => shipmentStore.currentShipment?.status === 'in_transit');
+
+const canEditSplits = computed(
+  () => !isShipmentReceived.value && canEditLineCostFields.value,
+);
 
 const {
   openEditItem,
@@ -616,6 +649,7 @@ const {
   progressUpdating,
   confirmLockShipmentCosts,
   downloadExcel,
+  startReceiveFlow,
 } = actions;
 
 // In-Place Shipment Name Edit State
@@ -1251,6 +1285,117 @@ watch(
   { immediate: true },
 );
 
+const outcomeOnHandById = ref<Record<number, number>>({});
+const lineStockOnHandByItemId = ref<Record<number, number>>({});
+
+const refreshOutcomeOnHand = async () => {
+  if (!isShipmentReceived.value) {
+    outcomeOnHandById.value = {};
+    lineStockOnHandByItemId.value = {};
+    return;
+  }
+  const ids = shipmentStore.currentShipmentItems.map((i) => i.id);
+  try {
+    const snapshot = await globalShipmentRepository.sumOutcomeOnHandByShipmentItemIds(ids);
+    outcomeOnHandById.value = snapshot.byOutcomeId;
+    lineStockOnHandByItemId.value = snapshot.byShipmentItemId;
+  } catch (err) {
+    outcomeOnHandById.value = {};
+    lineStockOnHandByItemId.value = {};
+    console.error(err);
+  }
+};
+
+const onHandForOutcome = (itemId: number, outcomeId: number, outcomeQty: number) => {
+  const direct = outcomeOnHandById.value[outcomeId] ?? 0;
+  if (direct > 0) return direct;
+  const lineTotal = lineStockOnHandByItemId.value[itemId] ?? 0;
+  if (lineTotal <= 0) return 0;
+  const sellableExtras = extraOutcomesForItem(itemId).filter((r) => r.kind === 'sellable');
+  if (sellableExtras.length === 1 && sellableExtras[0]?.id === outcomeId) {
+    return lineTotal;
+  }
+  return direct;
+};
+
+watch(
+  () =>
+    [
+      shipmentStore.currentShipmentItems.map((i) => i.id).join(','),
+      isShipmentReceived.value,
+      shipmentStore.currentShipment?.stock_ready,
+    ] as const,
+  () => {
+    void refreshOutcomeOnHand();
+  },
+  { immediate: true },
+);
+
+const canShowVendorDiscountForItem = (itemId: number) => {
+  if (!isShipmentReceived.value || !canEditLineCostFields.value) return false;
+  return extraOutcomesForItem(itemId).some(
+    (row) => row.kind === 'sellable' && Number(row.quantity) > 0,
+  );
+};
+
+const vendorDiscountDialogOpen = ref(false);
+const vendorDiscountDialogRef = ref<InstanceType<typeof ShipmentVendorDiscountDialog> | null>(null);
+const vendorDiscountLine = ref<GlobalShipmentItem | null>(null);
+const vendorDiscountSubmitting = ref(false);
+
+const vendorDiscountLineLabel = computed(() => {
+  const line = vendorDiscountLine.value;
+  if (!line) return '';
+  const name = (line as { product_name?: string; name?: string }).product_name
+    ?? (line as { name?: string }).name;
+  return name ? String(name) : `Line #${line.id}`;
+});
+
+const vendorDiscountExtras = computed(() => {
+  const line = vendorDiscountLine.value;
+  if (!line) return [];
+  return extraOutcomesForItem(line.id);
+});
+
+const openVendorDiscount = (item: Record<string, unknown>) => {
+  vendorDiscountLine.value = item as GlobalShipmentItem;
+  vendorDiscountDialogOpen.value = true;
+};
+
+const reloadExtrasForItems = async (itemIds: number[]) => {
+  if (itemIds.length === 0) return;
+  const rows = await globalShipmentRepository.listShipmentItemOutcomes(itemIds);
+  const next = { ...extraOutcomesByItemId.value };
+  for (const id of itemIds) {
+    next[id] = rows.filter((r) => r.shipment_item_id === id);
+  }
+  extraOutcomesByItemId.value = next;
+};
+
+const onVendorDiscountSubmit = async (payload: {
+  sourceOutcomeId: number;
+  quantity: number;
+  newPurchasePrice: number;
+}) => {
+  vendorDiscountSubmitting.value = true;
+  try {
+    const result = await globalShipmentRepository.applyShipmentOutcomeVendorDiscount(
+      shipmentId,
+      payload.sourceOutcomeId,
+      payload.quantity,
+      payload.newPurchasePrice,
+    );
+    await vendorDiscountDialogRef.value?.loadCredits?.();
+    showSuccessNotification(
+      `Vendor credit recorded (${currentPurchaseCurrencySymbol}${Number(result.credit_amount).toFixed(2)}). Stock unchanged.`,
+    );
+  } catch (err) {
+    showErrorNotification((err as Error).message || 'Could not apply vendor discount');
+  } finally {
+    vendorDiscountSubmitting.value = false;
+  }
+};
+
 const addExtraOutcome = async (item: {
   id: number;
   purchase_price: number;
@@ -1280,8 +1425,18 @@ const addExtraOutcome = async (item: {
 };
 
 const updateExtraOutcome = async (id: number, patch: Partial<ShipmentItemOutcome>) => {
+  if (!canEditSplits.value) {
+    showErrorNotification(
+      isShipmentReceived.value
+        ? 'Splits are locked after receive. Use Record vendor credit for vendor price agreements.'
+        : 'Splits cannot be edited right now.',
+    );
+    return;
+  }
   try {
-    const updated = await globalShipmentRepository.updateShipmentItemOutcome(id, patch);
+    const updated = await globalShipmentRepository.updateShipmentItemOutcome(id, patch, {
+      shipmentId: shipmentId.value,
+    });
     const list = extraOutcomesByItemId.value[updated.shipment_item_id] ?? [];
     extraOutcomesByItemId.value = {
       ...extraOutcomesByItemId.value,
@@ -1293,6 +1448,10 @@ const updateExtraOutcome = async (id: number, patch: Partial<ShipmentItemOutcome
 };
 
 const deleteExtraOutcome = async (id: number) => {
+  if (!canEditSplits.value) {
+    showErrorNotification('Splits cannot be removed after receive.');
+    return;
+  }
   try {
     await globalShipmentRepository.deleteShipmentItemOutcome(id);
     const next: Record<number, ShipmentItemOutcome[]> = {};

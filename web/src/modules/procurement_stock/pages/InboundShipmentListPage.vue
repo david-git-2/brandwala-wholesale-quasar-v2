@@ -6,85 +6,61 @@
         {{ shipmentStore.error }}
       </q-banner>
 
-      <!-- Compact List Toolbar -->
-      <q-card flat bordered class="q-pa-xs flex-shrink-0 list-toolbar-card">
-        <div class="row items-center justify-between q-col-gutter-xs">
-          <!-- Quick Filter Tabs -->
-          <div class="col-12 col-md-auto">
-            <div class="row items-center q-gutter-x-xs quick-filter-toggle">
-              <button
-                v-for="tab in filterTabs"
-                :key="tab.value"
-                type="button"
-                class="quick-filter-pill"
-                :class="{ 'quick-filter-pill--active': quickFilter === tab.value }"
-                @click="setQuickFilter(tab.value)"
+      <ProcurementOpsListToolbar
+        :search="searchText"
+        search-placeholder="Search by shipment name or ID..."
+        :filter-count="activeFilterCount"
+        @update:search="onSearchTextUpdate"
+        @open-filters="openFilterDrawer"
+      >
+        <template #pills>
+          <div class="row items-center q-gutter-x-xs quick-filter-toggle">
+            <button
+              v-for="tab in filterTabs"
+              :key="tab.value"
+              type="button"
+              class="quick-filter-pill"
+              :class="{ 'quick-filter-pill--active': quickFilter === tab.value }"
+              @click="setQuickFilter(tab.value)"
+            >
+              <span>{{ tab.label }}</span>
+              <span
+                v-if="tab.count !== undefined"
+                class="pill-badge"
+                :class="{ 'pill-badge--active': quickFilter === tab.value }"
               >
-                <span>{{ tab.label }}</span>
-                <span
-                  v-if="tab.count !== undefined"
-                  class="pill-badge"
-                  :class="{ 'pill-badge--active': quickFilter === tab.value }"
-                >
-                  {{ tab.count }}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Search & Header Actions -->
-          <div class="col-12 col-md-grow row items-center justify-end q-gutter-x-xs">
-            <q-input
-              v-model="searchText"
-              outlined
-              dense
-              debounce="300"
-              clearable
-              style="min-width: 220px"
-              class="col-grow col-sm-auto dense-search-input"
-              placeholder="Search by shipment name or ID..."
-              @update:model-value="onSearch"
-            >
-              <template #prepend>
-                <q-icon name="ph ph-magnifying-glass" size="16px" class="text-slate-400" />
-              </template>
-            </q-input>
-
-            <q-btn flat round dense icon="ph ph-funnel" class="text-slate-500" @click="openFilterDrawer">
-              <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
-                {{ activeFilterCount }}
-              </q-badge>
-              <q-tooltip>Filter options</q-tooltip>
-            </q-btn>
-
-            <q-btn
-              outline
-              dense
-              no-caps
-              color="grey-8"
-              class="rounded-sq-btn text-weight-medium q-px-sm"
-              label="Archived"
-              icon="ph ph-archive-box"
-              @click="openArchivedShipmentsModal"
-            >
-              <span v-if="shipmentStore.archivedTotal > 0" class="archived-counter-badge q-ml-xs">
-                {{ shipmentStore.archivedTotal }}
+                {{ tab.count }}
               </span>
-            </q-btn>
-
-            <q-btn
-              color="primary"
-              unelevated
-              no-caps
-              dense
-              class="rounded-sq-btn text-weight-bold q-px-sm"
-              label="New Shipment"
-              icon="ph ph-plus"
-              @click="openCreateShipment"
-            />
+            </button>
           </div>
-        </div>
-      </q-card>
+        </template>
+        <template #trailing>
+          <q-btn
+            outline
+            dense
+            no-caps
+            color="grey-8"
+            class="rounded-sq-btn text-weight-medium q-px-sm"
+            label="Archived"
+            icon="ph ph-archive-box"
+            @click="openArchivedShipmentsModal"
+          >
+            <span v-if="shipmentStore.archivedTotal > 0" class="archived-counter-badge q-ml-xs">
+              {{ shipmentStore.archivedTotal }}
+            </span>
+          </q-btn>
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            dense
+            class="rounded-sq-btn text-weight-bold q-px-sm"
+            label="New Shipment"
+            icon="ph ph-plus"
+            @click="openCreateShipment"
+          />
+        </template>
+      </ProcurementOpsListToolbar>
 
       <!-- Filter Sidebar Drawer -->
       <FilterSidebar v-model="filterDrawerOpen" title="Filter Shipments">
@@ -220,6 +196,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
+import ProcurementOpsListToolbar from '../components/ProcurementOpsListToolbar.vue';
 import ShipmentFormDialog from '../components/ShipmentFormDialog.vue';
 import ArchivedShipmentsModal from '../components/ArchivedShipmentsModal.vue';
 import { formatGlobalShipmentStatus } from '../constants/shipmentStatus';
@@ -351,6 +328,11 @@ const loadMoreShipments = async () => {
   } finally {
     loadingMore.value = false;
   }
+};
+
+const onSearchTextUpdate = (val: string | null | undefined) => {
+  searchText.value = val ?? '';
+  onSearch();
 };
 
 const onSearch = () => {

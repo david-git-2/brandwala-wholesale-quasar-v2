@@ -241,7 +241,7 @@ const apply = () => {
           :columns="[
             { name: 'shipment', label: 'Shipment', field: 'shipment_name', align: 'left' },
             { name: 'location', label: 'Location', field: 'location_name', align: 'left' },
-            { name: 'grade', label: 'Grade', field: 'grade_label', align: 'center' },
+            { name: 'grade', label: 'Condition', field: 'grade_label', align: 'center' },
             { name: 'atp', label: 'Available', field: 'available_atp', align: 'right' },
             { name: 'added', label: 'Added', field: 'global_stock_id', align: 'right' },
             { name: 'cost', label: 'Cost', field: 'unit_cost_amount', align: 'right' },

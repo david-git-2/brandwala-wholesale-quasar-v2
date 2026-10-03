@@ -271,6 +271,50 @@ export function useInboundShipmentActions(options: {
     router.back();
   };
 
+  const goToReceivePostStock = () => {
+    const tenantSlug = router.currentRoute.value.params.tenantSlug;
+    if (tenantSlug) {
+      void router.push({
+        name: 'app-procurement-shipment-receive',
+        params: { tenantSlug, id: String(shipmentId) },
+      });
+    } else {
+      void router.push({
+        name: 'app-procurement-shipment-receive',
+        params: { id: String(shipmentId) },
+      });
+    }
+  };
+
+  const startReceiveFlow = async () => {
+    const items = shipmentStore.currentShipmentItems ?? [];
+    if (items.length === 0) {
+      showWarningNotification('Add line items before receive.');
+      return;
+    }
+    try {
+      const outcomes = await globalShipmentRepository.listShipmentItemOutcomes(
+        items.map((item) => item.id),
+      );
+      const postable = outcomes.filter(
+        (row) => row.reason !== 'ordered' && row.kind === 'sellable' && row.quantity > 0,
+      );
+      if (postable.length === 0) {
+        $q.dialog({
+          title: 'Add receive splits',
+          message:
+            'Add sellable splits on each line first (Add split → good qty). Then open Receive to post stock.',
+          ok: { label: 'OK', flat: true },
+        });
+        return;
+      }
+      goToReceivePostStock();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      showErrorNotification(message || 'Could not load receive splits');
+    }
+  };
+
   const changeProgress = async (tagId: number | null) => {
     if (!shipmentStore.currentShipment) return;
     const currentId =
@@ -338,36 +382,7 @@ export function useInboundShipmentActions(options: {
     }
 
     if (newStatus === 'received') {
-      $q.dialog({
-        title: 'Mark received',
-        message:
-          'This sets the shipment to Received and adds a sellable / general split on every line, filled with the ordered qty. You can edit splits on this page. Stock is not posted yet.',
-        cancel: true,
-        persistent: true,
-      }).onOk(() => {
-        void (async () => {
-          updatingStatus.value = true;
-          targetUpdatingStatus.value = 'received';
-          try {
-            await shipmentStore.updateShipment(shipmentId, { status: 'received' });
-            const shipment = shipmentStore.currentShipment;
-            const parentTenantId = shipment?.parent_tenant_id;
-            if (!parentTenantId) throw new Error('Shipment parent tenant missing');
-            await globalShipmentRepository.ensureReceivedGeneralOutcomes(
-              parentTenantId,
-              shipmentStore.currentShipmentItems,
-            );
-            showSuccessNotification('Shipment marked received. Splits added from ordered qty.');
-            await loadShipmentDetails();
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            showErrorNotification(message || 'Failed to mark received');
-          } finally {
-            updatingStatus.value = false;
-            targetUpdatingStatus.value = null;
-          }
-        })();
-      });
+      void startReceiveFlow();
       return;
     }
 
@@ -533,11 +548,13 @@ export function useInboundShipmentActions(options: {
     }
     if (status === 'in_transit') {
       return {
-        message: 'Shipment is in transit. Mark received to add sellable splits from ordered qty.',
-        label: 'Mark received',
+        message: 'Review sellable splits, post to stock, then status becomes Received.',
+        label: 'Receive & post stock',
         disabled: false,
         reason: '',
-        action: () => changeStatus('received'),
+        action: () => {
+          void startReceiveFlow();
+        },
       };
     }
     return {
@@ -759,6 +776,8 @@ export function useInboundShipmentActions(options: {
     changeProgress,
     changeProgressFlow,
     changeStatus,
+    goToReceivePostStock,
+    startReceiveFlow,
     rollbackShipmentToDraft,
     confirmDeleteShipment,
     nextStep,

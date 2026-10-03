@@ -258,7 +258,7 @@ CREATE TABLE IF NOT EXISTS "public"."stock_locations" (
     "parent_tenant_id" bigint NOT NULL,
     "code" "text" NOT NULL,
     "name" "text" NOT NULL,
-    "kind" "public"."stock_location_kind" DEFAULT 'box'::"public"."stock_location_kind" NOT NULL,
+    "kind" "public"."stock_location_kind" DEFAULT 'bin'::"public"."stock_location_kind" NOT NULL,
     "is_default" boolean DEFAULT false NOT NULL,
     "is_pickable" boolean DEFAULT true NOT NULL,
     "sort_order" integer DEFAULT 0 NOT NULL,
@@ -638,6 +638,7 @@ CREATE TABLE IF NOT EXISTS "public"."global_stocks" (
     "id" bigint NOT NULL,
     "parent_tenant_id" bigint NOT NULL,
     "shipment_item_id" bigint NOT NULL,
+    "outcome_id" bigint,
     "stock_type_id" bigint,
     "quantity" integer DEFAULT 0 NOT NULL,
     "is_usable" boolean DEFAULT true NOT NULL,
@@ -1113,7 +1114,7 @@ ALTER TABLE ONLY "public"."global_stock_types"
 
 
 ALTER TABLE ONLY "public"."global_stocks"
-    ADD CONSTRAINT "global_stocks_grain_unique" UNIQUE ("shipment_item_id", "availability", "location_id", "grade_tag_id");
+    ADD CONSTRAINT "global_stocks_outcome_grain_unique" UNIQUE ("outcome_id", "availability", "location_id", "grade_tag_id");
 
 
 

@@ -1939,6 +1939,80 @@ export type Database = {
           },
         ]
       }
+      global_shipment_outcome_vendor_credits: {
+        Row: {
+          created_at: string
+          created_by_email: string | null
+          credit_amount: number
+          id: number
+          new_purchase_price: number
+          outcome_id: number
+          parent_tenant_id: number
+          previous_purchase_price: number
+          quantity: number
+          shipment_id: number
+          shipment_item_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_email?: string | null
+          credit_amount: number
+          id?: number
+          new_purchase_price: number
+          outcome_id: number
+          parent_tenant_id: number
+          previous_purchase_price: number
+          quantity: number
+          shipment_id: number
+          shipment_item_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_email?: string | null
+          credit_amount?: number
+          id?: number
+          new_purchase_price?: number
+          outcome_id?: number
+          parent_tenant_id?: number
+          previous_purchase_price?: number
+          quantity?: number
+          shipment_id?: number
+          shipment_item_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_shipment_outcome_vendor_credits_outcome_id_fkey"
+            columns: ["outcome_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipment_item_outcomes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipment_outcome_vendor_credits_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipment_outcome_vendor_credits_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipment_outcome_vendor_credits_shipment_item_id_fkey"
+            columns: ["shipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipment_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       global_shipment_sections: {
         Row: {
           created_at: string
@@ -9613,6 +9687,10 @@ export type Database = {
         Args: { p_order_item_id: number }
         Returns: undefined
       }
+      _stamp_global_shipment_outcome_costs: {
+        Args: { p_shipment_id: number }
+        Returns: number
+      }
       _stock_location_is_leaf: { Args: { p_id: number }; Returns: boolean }
       _undo_wallet_ledger_row_before_delete: {
         Args: {
@@ -10147,6 +10225,15 @@ export type Database = {
           p_adjustments: Json
           p_shipment_id: number
           p_transaction_rate?: number
+        }
+        Returns: Json
+      }
+      apply_shipment_outcome_vendor_discount: {
+        Args: {
+          p_new_purchase_price: number
+          p_quantity: number
+          p_shipment_id: number
+          p_source_outcome_id: number
         }
         Returns: Json
       }
@@ -11601,6 +11688,10 @@ export type Database = {
         Returns: number
       }
       default_returns_stock_location_id: {
+        Args: { p_tenant_id: number }
+        Returns: number
+      }
+      default_sellable_global_stock_type_id: {
         Args: { p_tenant_id: number }
         Returns: number
       }
@@ -13193,6 +13284,44 @@ export type Database = {
         }
         Returns: Json
       }
+      list_global_stocks_cursor: {
+        Args: {
+          p_availability?: Database["public"]["Enums"]["stock_availability"]
+          p_cursor_id?: number
+          p_grade_tag_id?: number
+          p_group_by?: string
+          p_group_key?: string
+          p_hide_zero_stock?: boolean
+          p_include_total?: boolean
+          p_is_sellable?: boolean
+          p_limit?: number
+          p_location_id?: number
+          p_search?: string
+          p_shipment_id?: number
+          p_shipment_status?: string
+          p_stock_type_id?: number
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      list_global_stocks_groups: {
+        Args: {
+          p_availability?: Database["public"]["Enums"]["stock_availability"]
+          p_grade_tag_id?: number
+          p_group_by: string
+          p_hide_zero_stock?: boolean
+          p_is_sellable?: boolean
+          p_limit?: number
+          p_location_id?: number
+          p_offset?: number
+          p_search?: string
+          p_shipment_id?: number
+          p_shipment_status?: string
+          p_stock_type_id?: number
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       list_global_stocks_paginated:
         | {
             Args: {
@@ -13212,6 +13341,7 @@ export type Database = {
         | {
             Args: {
               p_availability?: Database["public"]["Enums"]["stock_availability"]
+              p_grade_tag_id?: number
               p_hide_zero_stock?: boolean
               p_is_sellable?: boolean
               p_location_id?: number
@@ -13630,6 +13760,10 @@ export type Database = {
           purchase_price: number
           shipment_id: number
         }[]
+      }
+      list_shipment_outcome_vendor_credits: {
+        Args: { p_shipment_id: number }
+        Returns: Json
       }
       list_shipment_payee_settlements: {
         Args: { p_shipment_id: number }
@@ -14354,6 +14488,10 @@ export type Database = {
         Returns: undefined
       }
       post_sales_invoice: { Args: { p_invoice_id: number }; Returns: undefined }
+      post_shipment_outcome_stock: {
+        Args: { p_shipment_id: number; p_stock_rows?: Json }
+        Returns: Json
+      }
       post_stock_movement: { Args: { p_movement_id: number }; Returns: Json }
       preorder_demand_invoice_items_stale: {
         Args: {
@@ -14828,6 +14966,10 @@ export type Database = {
         Args: { p_scanned_value: string; p_tenant_id: number }
         Returns: string
       }
+      restamp_global_shipment_on_hand: {
+        Args: { p_outcome_id?: number; p_shipment_id?: number }
+        Returns: Json
+      }
       return_shipment_to_vendor: {
         Args: { p_items_qty: Json; p_outcome: string; p_shipment_id: number }
         Returns: Json
@@ -15170,6 +15312,10 @@ export type Database = {
         Returns: number
       }
       stock_grade_tag_id_for_slug: { Args: { p_slug: string }; Returns: number }
+      stock_location_matches_filter: {
+        Args: { p_filter_id: number; p_location_id: number }
+        Returns: boolean
+      }
       submit_dropship_order_from_cart: {
         Args: {
           p_billing_profile_id?: number
@@ -16779,7 +16925,13 @@ export type Database = {
         | "ordered"
       shop_type_enum: "vendor_catalog" | "fixed_price" | "dropship"
       stock_availability: "sellable" | "held" | "unsellable"
-      stock_location_kind: "shelf" | "slot" | "box" | "returns"
+      stock_location_kind:
+        | "warehouse"
+        | "zone"
+        | "shelf"
+        | "level"
+        | "bin"
+        | "returns"
       stock_movement_type:
         | "adjustment"
         | "location_transfer"
@@ -17077,7 +17229,14 @@ export const Constants = {
       ],
       shop_type_enum: ["vendor_catalog", "fixed_price", "dropship"],
       stock_availability: ["sellable", "held", "unsellable"],
-      stock_location_kind: ["shelf", "slot", "box", "returns"],
+      stock_location_kind: [
+        "warehouse",
+        "zone",
+        "shelf",
+        "level",
+        "bin",
+        "returns",
+      ],
       stock_movement_type: [
         "adjustment",
         "location_transfer",

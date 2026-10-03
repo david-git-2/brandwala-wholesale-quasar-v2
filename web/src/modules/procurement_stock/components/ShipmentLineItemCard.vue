@@ -111,8 +111,14 @@
       <div class="line-card__head">Price {{ currencySymbol }}</div>
       <div class="line-card__head">Cost</div>
       <div class="line-card__head">Qty</div>
-      <div class="line-card__head">Kind</div>
-      <div class="line-card__head">Type</div>
+      <div class="line-card__head line-card__head--hint">
+        Stock impact
+        <q-tooltip anchor="top middle" self="bottom middle">At receive: warehouse stock vs loss (not shelf condition)</q-tooltip>
+      </div>
+      <div class="line-card__head line-card__head--hint">
+        Land reason
+        <q-tooltip anchor="top middle" self="bottom middle">What arrived on the truck (fixed after receive)</q-tooltip>
+      </div>
       <div class="line-card__head" />
 
       <div class="line-card__cell line-card__cell--plain">
@@ -171,7 +177,7 @@
             borderless
             input-class="text-center font-mono text-weight-bold excel-cell-input-native"
             class="excel-cell-input excel-cell-input--price-tint"
-            :disable="!canEditCosts"
+            :disable="!canEditSplits"
             @change="(val: string | number | null) => onExtraNumber(row, 'purchase_price', val)"
           />
         </div>
@@ -190,7 +196,7 @@
             borderless
             input-class="text-center font-mono text-weight-bold excel-cell-input-native"
             class="excel-cell-input excel-cell-input--qty-tint"
-            :disable="!canEditCosts"
+            :disable="!canEditSplits"
             @change="(val: string | number | null) => onExtraNumber(row, 'quantity', val)"
           />
         </div>
@@ -202,7 +208,7 @@
             size="sm"
             class="line-card__chip-btn"
             :class="kindChipClass(row.kind)"
-            :disable="!canEditCosts"
+            :disable="!canEditSplits"
             :label="optionLabel(kindOptions, row.kind)"
           >
             <q-menu auto-close>
@@ -229,8 +235,8 @@
             size="sm"
             class="line-card__chip-btn"
             :class="reasonChipClass(row.reason)"
-            :disable="!canEditCosts"
-            :label="optionLabel(reasonOptions, row.reason)"
+            :disable="!canEditSplits || row.reason === 'vendor_discount'"
+            :label="reasonLabel(row.reason)"
           >
             <q-menu auto-close>
               <q-list dense style="min-width: 180px">
@@ -257,27 +263,43 @@
           color="negative"
           class="line-card__trash"
           aria-label="Remove split"
-          :disable="!canEditCosts"
+          :disable="!canEditSplits"
           @click="emit('delete-extra', row.id)"
         />
       </template>
 
-      <q-btn
-        v-if="canAddSplit"
-        flat
-        dense
-        no-caps
-        size="sm"
-        color="primary"
-        icon="ph ph-plus"
-        label="Add split"
-        class="line-card__add"
-        :disable="!canEditCosts"
-        :loading="addingExtra"
-        @click="emit('add-extra', item)"
-      >
-        <q-tooltip>Missing, damaged, or a different vendor price</q-tooltip>
-      </q-btn>
+      <div v-if="canAddSplit || canShowVendorDiscount" class="line-card__actions">
+        <q-btn
+          v-if="canAddSplit"
+          flat
+          dense
+          no-caps
+          size="sm"
+          color="primary"
+          icon="ph ph-plus"
+          label="Add split"
+          :disable="!canEditSplits"
+          :loading="addingExtra"
+          @click="emit('add-extra', item)"
+        >
+          <q-tooltip>Missing, damaged, or good qty when goods land</q-tooltip>
+        </q-btn>
+
+        <q-btn
+          v-if="canShowVendorDiscount"
+          flat
+          dense
+          no-caps
+          size="sm"
+          color="deep-orange-9"
+          icon="ph ph-tag"
+          label="Record vendor credit"
+          :disable="!canEditLineCostFields"
+          @click="emit('open-vendor-discount', item)"
+        >
+          <q-tooltip>Log vendor price credit (does not move stock)</q-tooltip>
+        </q-btn>
+      </div>
     </div>
   </div>
 </template>
@@ -285,15 +307,23 @@
 <script setup lang="ts">
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShipmentItemOutcome } from '../repositories/globalShipmentRepository';
+import {
+  OUTCOME_KIND_OPTIONS,
+  OUTCOME_REASON_PICKER_OPTIONS,
+  formatOutcomeReason,
+} from '../constants/shipmentOutcomeLabels';
 
 const props = defineProps<{
   item: Record<string, any>;
   extraOutcomes: ShipmentItemOutcome[];
   currencySymbol: string;
   canEditCosts: boolean;
+  canEditLineCostFields: boolean;
   canEditStructure: boolean;
   isReceived: boolean;
   canAddSplit: boolean;
+  canEditSplits: boolean;
+  canShowVendorDiscount: boolean;
   showBatch: boolean;
   batchSummary: { compactLabel: string; lineCount: number; toneClass: string };
   addingExtra: boolean;
@@ -308,22 +338,14 @@ const emit = defineEmits<{
   'cell-blur': [item: Record<string, any>, field: string];
   'open-batch': [item: Record<string, any>];
   'add-extra': [item: Record<string, any>];
+  'open-vendor-discount': [item: Record<string, any>];
   'update-extra': [id: number, patch: Partial<ShipmentItemOutcome>];
   'delete-extra': [id: number];
 }>();
 
-const kindOptions = [
-  { label: 'Sellable', value: 'sellable' },
-  { label: 'Unsellable', value: 'unsellable' },
-];
-
-const reasonOptions = [
-  { label: 'General', value: 'general' },
-  { label: 'Vendor discount', value: 'vendor_discount' },
-  { label: 'Missing', value: 'missing' },
-  { label: 'Damaged', value: 'damaged' },
-  { label: 'Other', value: 'other' },
-];
+const kindOptions = OUTCOME_KIND_OPTIONS;
+const reasonOptions = OUTCOME_REASON_PICKER_OPTIONS;
+const reasonLabel = formatOutcomeReason;
 
 const optionLabel = (opts: { label: string; value: string }[], value: string) =>
   opts.find((opt) => opt.value === value)?.label ?? value;
@@ -564,7 +586,7 @@ const onExtraNumber = (
   align-items: center;
   min-width: 0;
 }
-.line-card__grid > *:not(.line-card__head):not(.line-card__add) {
+.line-card__grid > *:not(.line-card__head):not(.line-card__actions) {
   min-height: var(--line-card-value-h);
   height: var(--line-card-value-h);
 }
@@ -585,6 +607,11 @@ const onExtraNumber = (
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.line-card__head--hint {
+  cursor: help;
+  text-decoration: underline dotted rgba(0, 0, 0, 0.25);
+  text-underline-offset: 2px;
 }
 .line-card__cell {
   min-width: 0;
@@ -624,6 +651,14 @@ const onExtraNumber = (
   color: var(--bw-theme-ink);
   border-color: var(--bw-theme-border);
   font-size: 12px;
+}
+.line-card__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
 }
 .line-card__add {
   grid-column: 1 / 4;

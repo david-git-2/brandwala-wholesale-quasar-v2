@@ -16,29 +16,32 @@
           </q-btn>
           <div class="ellipsis">
             <div class="text-subtitle1 text-weight-bolder text-grey-9 ellipsis">
-              Receive Shipment Stock Checklist
+              Receive &amp; post to stock
             </div>
             <div class="text-caption text-grey-7 ellipsis">
               {{ shipmentName }}
-              <span v-if="items.length"> · {{ items.length }} line<span v-if="items.length !== 1">s</span></span>
+              <span v-if="extras.length">
+                · {{ totalExtraQty }} unit<span v-if="totalExtraQty !== 1">s</span> on
+                {{ extras.length }} sellable split<span v-if="extras.length !== 1">s</span>
+              </span>
             </div>
           </div>
         </div>
 
         <div class="row items-center q-gutter-md no-wrap">
+          <q-banner
+            v-if="extras.length"
+            dense
+            rounded
+            class="bg-blue-1 text-blue-10 q-py-xs q-px-sm"
+            style="max-width: 420px"
+          >
+            Posting marks the shipment <strong>Received</strong> and puts units in the default bin.
+          </q-banner>
           <div class="row items-center q-gutter-md text-caption text-grey-7">
             <span>
-              Ordered:
-              <span class="text-weight-bold text-grey-9">{{ totalOrderedQty }}</span>
-            </span>
-            <span>
-              Received:
-              <span
-                class="text-weight-bold"
-                :class="totalReceivedQty === totalOrderedQty ? 'text-positive' : 'text-primary'"
-              >
-                {{ totalReceivedQty }}
-              </span>
+              Extra qty:
+              <span class="text-weight-bold text-primary">{{ totalExtraQty }}</span>
             </span>
           </div>
           <q-btn
@@ -55,7 +58,7 @@
             color="primary"
             unelevated
             icon="ph ph-check-circle"
-            label="Confirm & Post Stock"
+            label="Post to Stock"
             no-caps
             dense
             class="rounded-sq-btn text-weight-bold"
@@ -94,17 +97,17 @@
             <th class="text-left" style="width: 82px; min-width: 82px">Image</th>
             <th class="text-left" style="min-width: 120px; width: 120px; max-width: 120px; white-space: normal">Name</th>
             <th class="text-left" style="min-width: 105px; width: 115px">Codes</th>
-            <th class="text-center bw-ops-col-tint--qty" style="min-width: 56px; width: 56px">Ordered</th>
-            <th class="text-center bw-ops-col-tint--received" style="min-width: 72px; width: 72px">Received</th>
-            <th class="text-center" style="min-width: 88px; width: 88px">Variance</th>
+            <th class="text-left" style="min-width: 120px">Line</th>
+            <th class="text-center" style="min-width: 56px">Qty</th>
+            <th class="text-center" style="min-width: 88px">Stock impact</th>
+            <th class="text-center" style="min-width: 88px">Land reason</th>
           </tr>
         </thead>
         <tbody>
           <tr
-            v-for="(item, index) in items"
-            :key="item.id"
+            v-for="(row, index) in extras"
+            :key="row.id"
             class="shipment-item-row"
-            :class="{ 'row-variance': (item.received_quantity ?? 0) !== item.ordered_quantity }"
           >
             <td class="text-center text-weight-medium text-grey-7 q-pa-none" style="width: 36px; min-width: 36px">
               {{ index + 1 }}
@@ -113,8 +116,8 @@
             <td class="shipment-image-col">
               <q-avatar square size="82px" class="avatar-soft-sq bg-grey-2 border-grey overflow-hidden" style="width: 0.85in; height: 0.85in">
                 <SmartImage
-                  :src="item.image_url"
-                  :alt="item.name"
+                  :src="row.image_url"
+                  :alt="row.item_name"
                   style="object-fit: cover; width: 100%; height: 100%"
                 />
               </q-avatar>
@@ -122,107 +125,23 @@
 
             <td style="width: 120px; min-width: 120px; max-width: 120px; white-space: normal !important; word-break: break-word">
               <div class="text-weight-bold text-grey-9" style="font-size: 13px; line-height: 1.35; word-break: break-word; white-space: normal">
-                {{ item.name }}
+                {{ row.item_name }}
               </div>
             </td>
 
             <td class="font-mono text-caption">
-              <div class="column q-gutter-y-2xs" style="line-height: 1.1">
-                <div v-if="item.product_code" class="row items-center justify-between no-wrap">
-                  <div class="ellipsis">
-                    <span class="text-grey-6 text-uppercase" style="font-size: 8px">C: </span>
-                    <b class="text-dark" style="font-size: 10px">{{ item.product_code }}</b>
-                  </div>
-                  <q-btn
-                    flat
-                    dense
-                    round
-                    size="xs"
-                    icon="ph ph-copy"
-                    color="grey-7"
-                    style="font-size: 9px; padding: 0"
-                    @click.stop="copyToClipboard(item.product_code, 'Product Code')"
-                  >
-                    <q-tooltip>Copy Code</q-tooltip>
-                  </q-btn>
-                </div>
-                <div v-if="item.barcode" class="row items-center justify-between no-wrap">
-                  <div class="ellipsis">
-                    <span class="text-grey-6 text-uppercase" style="font-size: 8px">B: </span>
-                    <span class="text-grey-9" style="font-size: 10px">{{ item.barcode }}</span>
-                  </div>
-                  <q-btn
-                    flat
-                    dense
-                    round
-                    size="xs"
-                    icon="ph ph-copy"
-                    color="grey-7"
-                    style="font-size: 9px; padding: 0"
-                    @click.stop="copyToClipboard(item.barcode, 'Barcode')"
-                  >
-                    <q-tooltip>Copy Barcode</q-tooltip>
-                  </q-btn>
-                </div>
-                <span v-if="!item.product_code && !item.barcode" class="text-grey-5">—</span>
-              </div>
+              <span v-if="row.product_code" class="text-grey-9">{{ row.product_code }}</span>
+              <span v-else class="text-grey-5">—</span>
             </td>
 
-            <td class="text-center bw-ops-col-tint--qty font-mono text-weight-bold text-grey-9" style="width: 56px; min-width: 56px">
-              {{ item.ordered_quantity }}
-            </td>
-
-            <td class="text-center bw-ops-col-tint--received" style="width: 72px; min-width: 72px">
-              <div class="row justify-center">
-                <q-input
-                  v-model.number="item.received_quantity"
-                  type="number"
-                  min="0"
-                  dense
-                  outlined
-                  hide-bottom-space
-                  class="inline-edit-input excel-cell-input"
-                  style="max-width: 56px"
-                  input-class="text-center text-weight-bold"
-                  :rules="[
-                    (val) => val !== null && val !== undefined && val !== '' || 'Required',
-                    (val) => Number(val) >= 0 || 'Must be >= 0',
-                  ]"
-                />
-              </div>
-            </td>
-
-            <td class="text-center">
-              <q-badge
-                v-if="(item.received_quantity ?? 0) === item.ordered_quantity"
-                color="positive"
-                text-color="white"
-                class="text-weight-bold text-xxs q-px-sm"
-              >
-                Exact
-              </q-badge>
-              <q-badge
-                v-else-if="(item.received_quantity ?? 0) < item.ordered_quantity"
-                color="orange-8"
-                text-color="white"
-                class="text-weight-bold text-xxs q-px-sm"
-              >
-                -{{ item.ordered_quantity - (item.received_quantity ?? 0) }}
-              </q-badge>
-              <q-badge
-                v-else
-                color="blue-8"
-                text-color="white"
-                class="text-weight-bold text-xxs q-px-sm"
-              >
-                +{{ (item.received_quantity ?? 0) - item.ordered_quantity }}
-              </q-badge>
-            </td>
+            <td class="text-center font-mono text-weight-bold">{{ row.quantity }}</td>
+            <td class="text-center text-caption">{{ formatOutcomeKind(row.kind) }}</td>
+            <td class="text-center text-caption">{{ formatOutcomeReason(row.reason) }}</td>
           </tr>
 
-          <tr v-if="items.length === 0">
+          <tr v-if="extras.length === 0">
             <td colspan="7" class="text-center text-grey-6 q-py-xl">
-              No line items to receive.
+              Add receive extras on the shipment line page first (not ordered paper rows).
             </td>
           </tr>
         </tbody>
@@ -237,16 +156,17 @@ import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import {
+  globalShipmentRepository,
+  type ShipmentItemOutcome,
+} from '../repositories/globalShipmentRepository';
 import { showSuccessNotification, showErrorNotification, requestConfirmation } from 'src/utils/appFeedback';
+import { formatOutcomeKind, formatOutcomeReason } from '../constants/shipmentOutcomeLabels';
 
-interface ReceiveItemDraft {
-  id: number;
-  name: string;
-  image_url: string | null;
+interface PutawayExtraRow extends ShipmentItemOutcome {
+  item_name: string;
   product_code: string | null;
-  barcode: string | null;
-  ordered_quantity: number;
-  received_quantity: number;
+  image_url: string | null;
 }
 
 const route = useRoute();
@@ -259,29 +179,15 @@ const loading = ref(false);
 const submitting = ref(false);
 const error = ref<string | null>(null);
 
-const items = ref<ReceiveItemDraft[]>([]);
+const extras = ref<PutawayExtraRow[]>([]);
 
 const shipmentName = computed(() => shipmentStore.currentShipment?.name || `#${shipmentId.value}`);
 
-const totalOrderedQty = computed(() =>
-  items.value.reduce((sum, item) => sum + (item.ordered_quantity || 0), 0),
+const totalExtraQty = computed(() =>
+  extras.value.reduce((sum, row) => sum + (Number(row.quantity) || 0), 0),
 );
 
-const totalReceivedQty = computed(() =>
-  items.value.reduce((sum, item) => sum + (Number(item.received_quantity) || 0), 0),
-);
-
-const isValid = computed(() => {
-  if (items.value.length === 0) return false;
-  const allNonNegative = items.value.every(
-    (item) =>
-      item.received_quantity !== null &&
-      item.received_quantity !== undefined &&
-      !isNaN(Number(item.received_quantity)) &&
-      Number(item.received_quantity) >= 0,
-  );
-  return allNonNegative && totalReceivedQty.value > 0;
-});
+const isValid = computed(() => extras.value.some((row) => row.kind === 'sellable' && row.quantity > 0));
 
 const copyToClipboard = (text: string | null, label: string) => {
   if (!text) return;
@@ -311,15 +217,8 @@ onMounted(async () => {
       return;
     }
 
-    if (shipment.status === 'received' || shipment.stock_ready === true) {
-      error.value = 'Shipment already received. Stock has been posted.';
-      showErrorNotification(error.value);
-      goBack();
-      return;
-    }
-
-    if (shipment.status !== 'in_transit') {
-      error.value = 'Shipment must be in transit before receiving stock.';
+    if (shipment.status === 'cancelled') {
+      error.value = 'Cancelled shipments cannot post stock.';
       showErrorNotification(error.value);
       goBack();
       return;
@@ -328,19 +227,25 @@ onMounted(async () => {
     const loadedItems = shipmentStore.currentShipmentItems || [];
 
     if (loadedItems.length === 0) {
-      error.value = 'Shipment has no line items to receive.';
+      error.value = 'Shipment has no line items.';
       return;
     }
 
-    items.value = loadedItems.map((item) => ({
-      id: item.id,
-      name: item.name,
-      image_url: item.image_url,
-      product_code: item.product_code,
-      barcode: item.barcode,
-      ordered_quantity: item.ordered_quantity,
-      received_quantity: item.received_quantity ?? item.ordered_quantity,
-    }));
+    const outcomes = await globalShipmentRepository.listShipmentItemOutcomes(
+      loadedItems.map((item) => item.id),
+    );
+    const itemById = new Map(loadedItems.map((item) => [item.id, item]));
+    extras.value = outcomes
+      .filter((row) => row.reason !== 'ordered' && row.kind === 'sellable' && row.quantity > 0)
+      .map((row) => {
+        const line = itemById.get(row.shipment_item_id);
+        return {
+          ...row,
+          item_name: line?.name ?? 'Line',
+          product_code: line?.product_code ?? null,
+          image_url: line?.image_url ?? null,
+        };
+      });
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Failed to load shipment details';
   } finally {
@@ -367,9 +272,9 @@ const onConfirmReceive = async () => {
   if (!isValid.value || submitting.value) return;
 
   const confirmed = await requestConfirmation(
-    `Are you sure you want to receive and post stock for ${shipmentName.value}? Total received quantity: ${totalReceivedQty.value} pcs across ${items.value.length} item(s).`,
-    'Confirm Receive Stock',
-    'Confirm & Post',
+    `Post unposted sellable extras to the default put-away bin for ${shipmentName.value}? (${totalExtraQty.value} pcs on ${extras.value.length} row(s))`,
+    'Post to stock',
+    'Post',
   );
 
   if (!confirmed) return;
@@ -378,17 +283,20 @@ const onConfirmReceive = async () => {
   error.value = null;
 
   try {
-    const stockRows = items.value.map((item) => ({
-      shipment_item_id: item.id,
-      quantity: Number(item.received_quantity),
-      availability: 'sellable' as const,
+    const stockRows = extras.value.map((row) => ({
+      outcome_id: row.id,
       location_id: null,
     }));
 
-    const result = await shipmentStore.finalizeShipment(shipmentId.value, stockRows);
+    const result = await shipmentStore.postOutcomeStock(shipmentId.value, stockRows);
+
+    if (result.stock_rows_posted === 0) {
+      showErrorNotification('Nothing new to post. Extras may already be on the shelf.');
+      return;
+    }
 
     showSuccessNotification(
-      `Shipment received! Stamped ${result.items_stamped} items, posted ${result.stock_rows_posted} stock rows.`,
+      `Posted ${result.stock_rows_posted} lot row(s). Shipment is Received. Stamped ${result.items_stamped} line cost(s).`,
     );
 
     goBack();

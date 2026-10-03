@@ -874,17 +874,145 @@ export interface FinalizeShipmentResult {
   movement_id?: number;
 }
 
+export interface PostShipmentOutcomeStockRow {
+  outcome_id?: number;
+  shipment_item_id?: number;
+  location_id?: number | null;
+}
+
+export interface PostShipmentOutcomeStockResult {
+  shipment_id: number;
+  items_stamped: number;
+  stock_rows_posted: number;
+  stock_ready: boolean;
+  movement_id?: number;
+}
+
+const postShipmentOutcomeStock = async (
+  shipmentId: number,
+  stockRows?: PostShipmentOutcomeStockRow[] | null,
+): Promise<PostShipmentOutcomeStockResult> => {
+  const { data, error } = await db.rpc('post_shipment_outcome_stock', {
+    p_shipment_id: shipmentId,
+    p_stock_rows: stockRows ?? null,
+  });
+  if (error) throw error;
+  return data as PostShipmentOutcomeStockResult;
+};
+
+const restampShipmentOnHand = async (
+  shipmentId: number,
+  outcomeId?: number,
+): Promise<void> => {
+  const { error } = await db.rpc('restamp_global_shipment_on_hand', {
+    p_shipment_id: shipmentId,
+    p_outcome_id: outcomeId ?? null,
+  });
+  if (error) throw error;
+};
+
+export interface ApplyShipmentOutcomeVendorDiscountResult {
+  mode: 'record';
+  id: number;
+  shipment_id: number;
+  outcome_id: number;
+  quantity: number;
+  previous_purchase_price: number;
+  new_purchase_price: number;
+  credit_amount: number;
+}
+
+export interface ShipmentOutcomeVendorCredit {
+  id: number;
+  shipment_id: number;
+  shipment_item_id: number;
+  outcome_id: number;
+  quantity: number;
+  previous_purchase_price: number;
+  new_purchase_price: number;
+  credit_amount: number;
+  created_by_email: string | null;
+  created_at: string;
+  item_name: string;
+}
+
+const applyShipmentOutcomeVendorDiscount = async (
+  shipmentId: number,
+  sourceOutcomeId: number,
+  quantity: number,
+  newPurchasePrice: number,
+): Promise<ApplyShipmentOutcomeVendorDiscountResult> => {
+  const { data, error } = await db.rpc('apply_shipment_outcome_vendor_discount', {
+    p_shipment_id: shipmentId,
+    p_source_outcome_id: sourceOutcomeId,
+    p_quantity: quantity,
+    p_new_purchase_price: newPurchasePrice,
+  });
+  if (error) throw error;
+  return data as ApplyShipmentOutcomeVendorDiscountResult;
+};
+
+const listShipmentOutcomeVendorCredits = async (
+  shipmentId: number,
+): Promise<ShipmentOutcomeVendorCredit[]> => {
+  const { data, error } = await db.rpc('list_shipment_outcome_vendor_credits', {
+    p_shipment_id: shipmentId,
+  });
+  if (error) throw error;
+  return (data as ShipmentOutcomeVendorCredit[] | null) ?? [];
+};
+
+export interface OutcomeOnHandSnapshot {
+  byOutcomeId: Record<number, number>;
+  byShipmentItemId: Record<number, number>;
+}
+
+const sumOutcomeOnHandByShipmentItemIds = async (
+  shipmentItemIds: number[],
+): Promise<OutcomeOnHandSnapshot> => {
+  if (shipmentItemIds.length === 0) {
+    return { byOutcomeId: {}, byShipmentItemId: {} };
+  }
+  const { data, error } = await db
+    .from('global_stocks')
+    .select('shipment_item_id, outcome_id, quantity')
+    .in('shipment_item_id', shipmentItemIds);
+  if (error) throw error;
+  const byOutcomeId: Record<number, number> = {};
+  const byShipmentItemId: Record<number, number> = {};
+  for (const row of data ?? []) {
+    const qty = Number(row.quantity ?? 0);
+    const itemId = Number(row.shipment_item_id);
+    if (itemId) {
+      byShipmentItemId[itemId] = (byShipmentItemId[itemId] ?? 0) + qty;
+    }
+    const oid = Number(row.outcome_id);
+    if (oid) {
+      byOutcomeId[oid] = (byOutcomeId[oid] ?? 0) + qty;
+    }
+  }
+  return { byOutcomeId, byShipmentItemId };
+};
+
 /** Stamp landed costs + optional stock post. Never posts wallet ledger. */
 const finalizeShipment = async (
   shipmentId: number,
   stockRows?: FinalizeShipmentStockRow[] | null,
 ): Promise<FinalizeShipmentResult> => {
-  const { data, error } = await db.rpc('finalize_global_shipment', {
-    p_shipment_id: shipmentId,
-    p_stock_rows: stockRows ?? null,
-  });
-  if (error) throw error;
-  return data as FinalizeShipmentResult;
+  const mapped: PostShipmentOutcomeStockRow[] | null =
+    stockRows?.map((row) => ({
+      shipment_item_id: row.shipment_item_id,
+      location_id: row.location_id ?? null,
+    })) ?? null;
+  const data = await postShipmentOutcomeStock(shipmentId, mapped);
+  return {
+    shipment_id: data.shipment_id,
+    items_stamped: data.items_stamped,
+    stock_rows_posted: data.stock_rows_posted,
+    stock_ready: data.stock_ready === true,
+    wallet_posted: false,
+    movement_id: data.movement_id,
+  };
 };
 
 const normalizeProgressTag = (t: Record<string, unknown>): ShipmentProgressTag => ({
@@ -1345,6 +1473,7 @@ const ensureReceivedGeneralOutcomes = async (
 const updateShipmentItemOutcome = async (
   id: number,
   payload: Partial<Pick<ShipmentItemOutcome, 'quantity' | 'kind' | 'reason' | 'purchase_price' | 'cost' | 'description'>>,
+  options?: { shipmentId?: number; restampOnHand?: boolean },
 ): Promise<ShipmentItemOutcome> => {
   const { data, error } = await db
     .from('global_shipment_item_outcomes')
@@ -1353,7 +1482,18 @@ const updateShipmentItemOutcome = async (
     .select()
     .single();
   if (error) throw error;
-  return data as ShipmentItemOutcome;
+  const updated = data as ShipmentItemOutcome;
+  if (options?.restampOnHand !== false && options?.shipmentId != null) {
+    if (
+      payload.purchase_price !== undefined ||
+      payload.cost !== undefined ||
+      payload.quantity !== undefined ||
+      payload.kind !== undefined
+    ) {
+      await restampShipmentOnHand(options.shipmentId, id);
+    }
+  }
+  return updated;
 };
 
 const deleteShipmentItemOutcome = async (id: number): Promise<void> => {
@@ -1408,6 +1548,11 @@ export const globalShipmentRepository = {
   listChildProcurementLines,
   addChildLineToParentShipment,
   finalizeShipment,
+  postShipmentOutcomeStock,
+  restampShipmentOnHand,
+  applyShipmentOutcomeVendorDiscount,
+  listShipmentOutcomeVendorCredits,
+  sumOutcomeOnHandByShipmentItemIds,
   ensureShipmentProgressTags,
   setShipmentProgressTag,
   listShipmentProgressTags,

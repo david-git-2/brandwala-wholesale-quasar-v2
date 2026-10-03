@@ -9,6 +9,34 @@ export const procurementStockQueryKeys = {
     stockTypeId?: number | null;
   }) => ['procurementStock', 'allocatableStockList', params] as const,
 
+  warehouseStockList: (params: {
+    tenantId: number;
+    limit: number;
+    search?: string | null;
+    shipmentId?: number | null;
+    shipmentStatus?: string | null;
+    locationId?: number | null;
+    availability?: string | null;
+    gradeTagId?: number | null;
+    isSellable?: boolean | null;
+    hideZeroStock?: boolean;
+    groupBy?: string | null;
+    groupKey?: string | null;
+  }) => ['procurementStock', 'warehouseStockList', params] as const,
+
+  warehouseStockGroups: (params: {
+    tenantId: number;
+    groupBy: string;
+    limit: number;
+    search?: string | null;
+    shipmentId?: number | null;
+    shipmentStatus?: string | null;
+    locationId?: number | null;
+    availability?: string | null;
+    gradeTagId?: number | null;
+    hideZeroStock?: boolean;
+  }) => ['procurementStock', 'warehouseStockGroups', params] as const,
+
   stockAllocations: (stockId: number) =>
     ['procurementStock', 'stockAllocations', { stockId }] as const,
 

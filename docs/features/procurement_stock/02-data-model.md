@@ -260,6 +260,21 @@ erDiagram
 
 Map (inbound): `VENDORS` · `CARGO` · `SHIPMENTS` · `SECTIONS` · `ITEMS` · `BOXES` · `OUTCOMES` · `COST_ENTRIES` · `LOCAL_COSTS` · `BATCH_LISTS` · `BATCH_ITEMS` · `STOCKS` · `LOCATIONS` · `MOVEMENTS` · `MOVE_LINES`. **Retire** `ALLOCATIONS` / `global_stock_allocations` ([PS9](00-gaps.md)).
 
+### 1 inbound — warehouse stock locations
+
+Table: `public.stock_locations` (one row per node). Tree via `parent_location_id`. Scoped by `parent_tenant_id` (stock-owning parent tenant).
+
+| Kind | Parent | Role |
+| :--- | :--- | :--- |
+| `warehouse` | — (root) | Site / building |
+| `returns` | — (root) | Returns area (not pickable by default) |
+| `zone` | `warehouse` or `returns` | Aisle / zone |
+| `shelf` | `zone` | Shelf row |
+| `level` | `shelf` | Shelf level |
+| `bin` | `level` | **Leaf** — `global_stocks.location_id` points here; default put-away |
+
+Enforced in `_validate_stock_location_nesting`. Leaf = no active children (`_stock_location_is_leaf`). RPCs: `list_stock_locations`, `upsert_stock_location`, `delete_stock_location`, `set_default_stock_location`, `ensure_default_stock_location` (bootstrap `MAIN` → … → `MAIN-BIN`).
+
 ---
 
 ## 1b. Demand & Fulfill ERD
@@ -373,12 +388,14 @@ create type public.stock_availability as enum (
   'unsellable'
 );
 
--- Hierarchical warehouse location type
-create type public.stock_location_type as enum (
+-- Warehouse location kind (`stock_locations.kind`)
+create type public.stock_location_kind as enum (
   'warehouse',
-  'room',
+  'zone',
   'shelf',
-  'bin'
+  'level',
+  'bin',
+  'returns'
 );
 
 -- Immutable stock movement action types
@@ -408,11 +425,11 @@ create type public.stock_movement_type as enum (
 | :--- | :--- |
 | One `purchase_price` + `received_quantity` + `landed_cost_bdt` per line | **Outcomes** hold qty, purchase price, landed `cost`, kind/reason. Line is product + ordered qty + weights + section. |
 
-Live lots use `shipment_item_id`. **Target:** `global_stocks.outcome_id`. Drop lot `shipment_item_id`. Grain `(outcome_id, availability, location_id, grade_tag_id)`.
+**Live:** lots FK `outcome_id`; unique grain `(outcome_id, availability, location_id, grade_tag_id)`. Keep `shipment_item_id` for joins until wean complete.
 
-**Cargo:** never reduce cargo/duty on `global_shipment_cost_entries`. Better vendor price on extra-row `purchase_price` / restamped `cost`. Cost entries: optional `section_id`; **no** pay/settle in this module ([PS12](00-gaps.md)).
+**Cargo:** never reduce cargo/duty on `global_shipment_cost_entries`. Vendor price agreements → `global_shipment_outcome_vendor_credits` (record only; does not change outcomes or lots). Cost entries: optional `section_id`; **no** pay/settle in this module ([PS12](00-gaps.md)).
 
-**Restamp:** extra outcomes → on-hand lots only. Qty still out: return inbound first, or **stop**.
+**Restamp:** post/receive paths only (not vendor credit). Qty still out: return inbound first, or **stop**.
 
 **Close:** `global_shipments.is_closed` ([US-9](01-prd.md)). Writes blocked.
 

@@ -27,3 +27,9 @@ export {
   availabilityChipColor,
   type StockAvailability,
 } from '../constants/stockAvailability';
+export {
+  OUTCOME_KIND_OPTIONS,
+  OUTCOME_REASON_PICKER_OPTIONS,
+  formatOutcomeReason,
+  formatOutcomeKind,
+} from '../constants/shipmentOutcomeLabels';

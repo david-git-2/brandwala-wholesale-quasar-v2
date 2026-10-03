@@ -4,7 +4,7 @@ export type StockAvailability = Database['public']['Enums']['stock_availability'
 
 export const STOCK_AVAILABILITY_OPTIONS: Array<{ label: string; value: StockAvailability }> = [
   { label: 'Sellable', value: 'sellable' },
-  { label: 'Held', value: 'held' },
+  { label: 'On hold', value: 'held' },
   { label: 'Unsellable', value: 'unsellable' },
 ];
 
