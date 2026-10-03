@@ -96,6 +96,8 @@ When shipment is **`received`**, staff use **Record vendor credit** on line item
 
 **List:** `list_shipment_outcome_vendor_credits(p_shipment_id)` → jsonb array (newest first).
 
+**Delete:** `delete_shipment_outcome_vendor_credit(p_credit_id)` — same shipment guards as apply; removes the financial row only.
+
 Cargo/duty and land splits unchanged. Shipment profit / AP may consume credits later ([PS8](00-gaps.md)).
 
 ## 2b. Legacy alias: `finalize_global_shipment`

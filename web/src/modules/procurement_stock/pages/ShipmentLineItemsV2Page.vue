@@ -138,56 +138,6 @@
 
         <!-- Right: Header Buttons & Settings -->
         <div class="row items-center q-gutter-x-sm no-wrap">
-          <!-- Selection Actions: Exactly 1 Item Selected -> Edit & Delete -->
-          <template v-if="selectedItemIds.length === 1 && canEditLineStructure">
-            <q-btn
-              color="primary"
-              icon="ph ph-pencil-simple"
-              label="Edit"
-              unelevated
-              dense
-              no-caps
-              size="sm"
-              class="q-px-sm rounded-sq-btn text-weight-bold"
-              style="border-radius: 8px"
-              @click="editSingleSelectedItem"
-            >
-              <q-tooltip>Edit selected item</q-tooltip>
-            </q-btn>
-            <q-btn
-              color="negative"
-              icon="ph ph-trash"
-              label="Delete"
-              outline
-              dense
-              no-caps
-              size="sm"
-              class="q-px-sm rounded-sq-btn text-weight-bold"
-              style="border-radius: 8px"
-              @click="deleteSingleSelectedItem"
-            >
-              <q-tooltip>Delete selected item</q-tooltip>
-            </q-btn>
-          </template>
-
-          <!-- Selection Actions: Multiple Items Selected -> Bulk Delete -->
-          <template v-else-if="selectedItemIds.length > 1 && canEditLineStructure">
-            <q-btn
-              color="negative"
-              icon="ph ph-trash"
-              :label="`Bulk Delete (${selectedItemIds.length})`"
-              unelevated
-              dense
-              no-caps
-              size="sm"
-              class="q-px-sm rounded-sq-btn text-weight-bold"
-              style="border-radius: 8px"
-              @click="bulkDeleteSelectedItems"
-            >
-              <q-tooltip>Delete {{ selectedItemIds.length }} selected items</q-tooltip>
-            </q-btn>
-          </template>
-
           <q-btn
             outline
             dense
@@ -197,7 +147,7 @@
             icon="ph ph-clipboard-text"
             label="Bulk Paste"
             size="sm"
-            :disable="!canEditLineCostFields && !canEditLineStructure"
+            :disable="!canEditShipmentOrderLineFields && !canEditLineStructure"
             @click="openBulkPasteDialog('purchase_price')"
           >
             <q-tooltip>Paste barcode, product code, and one column from Excel</q-tooltip>
@@ -286,15 +236,114 @@
     <!-- Middle Scrollable Section: product cards -->
     <div
       ref="tableScrollContainerRef"
-      class="shipment-items-middle-section col overflow-auto q-pa-md hide-native-scrollbar"
+      class="shipment-items-middle-section col overflow-auto hide-native-scrollbar"
       style="overflow-x: auto; overflow-y: auto"
       @scroll="onTableScroll"
     >
-      <div v-if="shipmentStore.loading" class="column q-gutter-sm">
-        <q-skeleton v-for="n in 5" :key="`skel-${n}`" type="rect" height="120px" class="rounded-borders" />
+      <div v-if="shipmentStore.loading" class="column">
+        <q-skeleton v-for="n in 8" :key="`skel-${n}`" type="rect" height="56px" />
       </div>
       <template v-else-if="displayedItems.length > 0">
-        <div class="column q-gutter-sm">
+        <div class="line-sheet">
+          <q-banner
+            v-if="landSplitReceiveBlockCount > 0"
+            dense
+            rounded
+            class="land-split-guard-banner q-mb-xs"
+          >
+            <template #avatar>
+              <q-icon name="ph ph-warning" color="warning" />
+            </template>
+            {{ landSplitReceiveBlockCount }} product<span v-if="landSplitReceiveBlockCount !== 1">s</span>
+            need land splits before receive. Check the highlighted rows (name + code).
+          </q-banner>
+          <div class="line-sheet-sticky-top">
+          <div
+            v-if="selectedItemIds.length > 0 && canEditLineStructure"
+            class="line-sheet-selection-bar row items-center no-wrap q-gutter-x-sm q-px-sm q-py-xs"
+          >
+            <q-checkbox
+              :model-value="allSelected"
+              dense
+              size="xs"
+              @update:model-value="(v) => (allSelected = !!v)"
+            />
+            <span class="text-caption text-weight-bold text-grey-9">
+              {{ selectedItemIds.length }} selected
+            </span>
+            <q-space />
+            <q-btn
+              v-if="selectedItemIds.length === 1"
+              flat
+              dense
+              no-caps
+              size="sm"
+              color="primary"
+              icon="ph ph-pencil-simple"
+              label="Edit"
+              @click="editSingleSelectedItem"
+            />
+            <q-btn
+              flat
+              dense
+              no-caps
+              size="sm"
+              color="grey-8"
+              label="Clear"
+              @click="selectedItemIds = []"
+            />
+            <q-btn
+              unelevated
+              dense
+              no-caps
+              size="sm"
+              color="negative"
+              icon="ph ph-trash"
+              :label="
+                selectedItemIds.length === 1
+                  ? 'Delete'
+                  : `Delete (${selectedItemIds.length})`
+              "
+              @click="bulkDeleteSelectedItems"
+            />
+          </div>
+          <div
+            class="line-sheet-head"
+            :class="{
+              'line-sheet-head--outcomes': showOutcomeColumns,
+              'line-sheet-head--actions': showLineActionsColumn,
+            }"
+          >
+            <q-checkbox
+              :model-value="allSelected"
+              dense
+              size="xs"
+              class="line-sheet-head__select"
+              :disable="displayedItems.length === 0 || !canEditLineStructure"
+              @update:model-value="(v) => (allSelected = !!v)"
+            />
+            <span>#</span>
+            <span />
+            <span class="text-left">Product</span>
+            <span>Wt g</span>
+            <span>Pkg g</span>
+            <span>Price {{ currentPurchaseCurrencySymbol }}</span>
+            <span>Cost</span>
+            <span>Qty</span>
+            <template v-if="showOutcomeColumns">
+              <span class="line-sheet-head__hint">
+                Stock impact
+                <q-tooltip>At receive: warehouse stock vs loss (not shelf condition)</q-tooltip>
+              </span>
+              <span class="line-sheet-head__hint">
+                Land reason
+                <q-tooltip>What arrived on the truck (fixed after receive)</q-tooltip>
+              </span>
+              <span />
+            </template>
+            <span v-if="showLineActionsColumn" />
+          </div>
+          </div>
           <template v-for="(item, index) in displayedItems" :key="item.id">
             <div
               v-if="isFirstItemOfSection(item, index)"
@@ -316,15 +365,20 @@
             <ShipmentLineItemCard
               :item="item"
               :extra-outcomes="extraOutcomesForItem(item.id)"
+              :vendor-credits="vendorCreditsForItem(item.id)"
               :currency-symbol="currentPurchaseCurrencySymbol"
-              :can-edit-costs="canEditLineCostFields"
+              :can-edit-costs="canEditShipmentOrderLineFields"
               :can-edit-line-cost-fields="canEditLineCostFields"
               :can-edit-structure="canEditLineStructure"
               :is-received="isShipmentReceived"
               :can-add-split="canAddSplit"
               :can-edit-splits="canEditSplits"
               :can-show-vendor-discount="canShowVendorDiscountForItem(item.id)"
+              :can-delete-vendor-credit="canDeleteVendorCredit"
               :show-batch="true"
+              :show-outcome-columns="showOutcomeColumns"
+              :show-actions-column="showLineActionsColumn"
+              :land-split-attention="landSplitAttentionForItem(item.id)"
               :batch-summary="batchSummaryForItem(item)"
               :adding-extra="addingExtraItemId === item.id"
               :get-draft="(field) => getCellDraftValue(item, field)"
@@ -338,6 +392,7 @@
               @open-vendor-discount="openVendorDiscount"
               @update-extra="updateExtraOutcome"
               @delete-extra="deleteExtraOutcome"
+              @delete-vendor-credit="deleteVendorCredit"
             />
           </template>
         </div>
@@ -538,7 +593,9 @@
       :currency-symbol="currentPurchaseCurrencySymbol"
       :extras="vendorDiscountExtras"
       :submitting="vendorDiscountSubmitting"
+      :can-delete="canDeleteVendorCredit"
       @submit="onVendorDiscountSubmit"
+      @delete-credit="deleteVendorCredit"
     />
 
     <ShipmentLineBatchCodeDialog
@@ -562,7 +619,11 @@ import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import {
+  requestConfirmation,
+  showErrorNotification,
+  showSuccessNotification,
+} from 'src/utils/appFeedback';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { useCargoCompaniesQuery } from '../composables/useProcurementStockQuery';
@@ -584,6 +645,7 @@ import {
   globalShipmentRepository,
   type GlobalShipmentItem,
   type ShipmentItemOutcome,
+  type ShipmentOutcomeVendorCredit,
 } from '../repositories/globalShipmentRepository';
 import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
 import { useBatchCodeItemsByShipmentQuery } from '../composables/useBatchCodeQueries';
@@ -600,6 +662,10 @@ import {
   type BatchCodeLineSummary,
   type BatchCodeMatchTableRow,
 } from '../utils/batchCodeShipmentMatch';
+import {
+  describeLandSplitIssueShort,
+  findLandSplitQtyMismatches,
+} from '../utils/landSplitQtyGuard';
 
 const $q = useQuasar();
 const route = useRoute();
@@ -623,6 +689,7 @@ const {
   isCostsLocked,
   canEditLineStructure,
   canEditLineCostFields,
+  canEditShipmentOrderLineFields,
 } = calculations;
 
 const isShipmentReceived = computed(
@@ -632,12 +699,13 @@ const isShipmentReceived = computed(
 const canAddSplit = computed(() => shipmentStore.currentShipment?.status === 'in_transit');
 
 const canEditSplits = computed(
-  () => !isShipmentReceived.value && canEditLineCostFields.value,
+  () =>
+    shipmentStore.currentShipment?.status === 'in_transit' &&
+    canEditShipmentOrderLineFields.value,
 );
 
 const {
   openEditItem,
-  confirmDeleteItem,
   changeStatus,
   changeProgress,
   changeProgressFlow,
@@ -766,15 +834,13 @@ const bulkPasteFieldLabel = computed(() => {
 
 const bulkPasteFieldOptions = computed(() => {
   const options: { label: string; value: typeof bulkPasteField.value }[] = [];
-  if (canEditLineCostFields.value) {
+  if (canEditShipmentOrderLineFields.value) {
     options.push(
       { label: 'Price', value: 'purchase_price' },
       { label: 'Product Weight', value: 'product_weight' },
       { label: 'Package Weight', value: 'package_weight' },
+      { label: 'Quantity', value: 'ordered_quantity' },
     );
-  }
-  if (canEditLineStructure.value) {
-    options.push({ label: 'Quantity', value: 'ordered_quantity' });
   }
   return options;
 });
@@ -1262,6 +1328,71 @@ const addingExtraItemId = ref<number | null>(null);
 const extraOutcomesForItem = (itemId: number) =>
   (extraOutcomesByItemId.value[itemId] ?? []).filter((row) => row.reason !== 'ordered');
 
+const shipmentVendorCredits = ref<ShipmentOutcomeVendorCredit[]>([]);
+
+const loadShipmentVendorCredits = async () => {
+  if (!shipmentId || Number.isNaN(shipmentId)) {
+    shipmentVendorCredits.value = [];
+    return;
+  }
+  try {
+    shipmentVendorCredits.value = await globalShipmentRepository.listShipmentOutcomeVendorCredits(
+      shipmentId,
+    );
+  } catch {
+    shipmentVendorCredits.value = [];
+  }
+};
+
+const vendorCreditsForItem = (itemId: number) =>
+  shipmentVendorCredits.value.filter((row) => row.shipment_item_id === itemId);
+
+const showOutcomeColumns = computed(
+  () =>
+    Object.values(extraOutcomesByItemId.value).some((rows) =>
+      rows.some((row) => row.reason !== 'ordered'),
+    ) || shipmentVendorCredits.value.length > 0,
+);
+
+const showLineActionsColumn = computed(
+  () => canAddSplit.value || isShipmentReceived.value,
+);
+
+const allShipmentOutcomesFlat = computed(() =>
+  Object.values(extraOutcomesByItemId.value).flat(),
+);
+
+const showLandSplitLineHints = computed(() => {
+  const status = shipmentStore.currentShipment?.status;
+  return status === 'draft' || status === 'in_transit';
+});
+
+const landSplitIssueByItemId = computed(() => {
+  const issues = findLandSplitQtyMismatches(
+    shipmentStore.currentShipmentItems,
+    allShipmentOutcomesFlat.value,
+  );
+  return new Map(issues.map((issue) => [issue.itemId, issue]));
+});
+
+const landSplitReceiveBlockCount = computed(() =>
+  showLandSplitLineHints.value ? landSplitIssueByItemId.value.size : 0,
+);
+
+const landSplitAttentionForItem = (itemId: number): string | null => {
+  if (!showLandSplitLineHints.value) return null;
+  const issue = landSplitIssueByItemId.value.get(itemId);
+  return issue ? describeLandSplitIssueShort(issue) : null;
+};
+
+watch(
+  () => shipmentStore.currentShipment?.id,
+  () => {
+    void loadShipmentVendorCredits();
+  },
+  { immediate: true },
+);
+
 watch(
   () => shipmentStore.currentShipmentItems.map((i) => i.id).join(','),
   async (key) => {
@@ -1331,8 +1462,12 @@ watch(
   { immediate: true },
 );
 
+const canDeleteVendorCredit = computed(
+  () => isShipmentReceived.value && canEditLineCostFields.value,
+);
+
 const canShowVendorDiscountForItem = (itemId: number) => {
-  if (!isShipmentReceived.value || !canEditLineCostFields.value) return false;
+  if (!canDeleteVendorCredit.value) return false;
   return extraOutcomesForItem(itemId).some(
     (row) => row.kind === 'sellable' && Number(row.quantity) > 0,
   );
@@ -1386,6 +1521,7 @@ const onVendorDiscountSubmit = async (payload: {
       payload.newPurchasePrice,
     );
     await vendorDiscountDialogRef.value?.loadCredits?.();
+    await loadShipmentVendorCredits();
     showSuccessNotification(
       `Vendor credit recorded (${currentPurchaseCurrencySymbol}${Number(result.credit_amount).toFixed(2)}). Stock unchanged.`,
     );
@@ -1444,6 +1580,29 @@ const updateExtraOutcome = async (id: number, patch: Partial<ShipmentItemOutcome
     };
   } catch (err) {
     showErrorNotification((err as Error).message || 'Could not update price');
+  }
+};
+
+const deleteVendorCredit = async (id: number) => {
+  if (!canDeleteVendorCredit.value) {
+    showErrorNotification('Vendor credits cannot be removed in this state.');
+    return;
+  }
+  const confirmed = await requestConfirmation(
+    'Remove this vendor credit record? Land splits and stock stay unchanged.',
+    'Remove vendor credit',
+    'Remove',
+  );
+  if (!confirmed) return;
+  try {
+    await globalShipmentRepository.deleteShipmentOutcomeVendorCredit(id);
+    await loadShipmentVendorCredits();
+    await vendorDiscountDialogRef.value?.loadCredits?.();
+    showSuccessNotification('Vendor credit removed.');
+  } catch (err) {
+    showErrorNotification((err as Error).message || 'Could not remove vendor credit');
+  } finally {
+    vendorDiscountDialogRef.value?.clearDeleting?.();
   }
 };
 
@@ -1598,7 +1757,15 @@ const onCellDirectInput = (item: any, field: string, val: string | number | null
   cellDraftValues[item.id][field] = val;
 };
 
+const ORDER_LINE_FIELDS = new Set([
+  'purchase_price',
+  'ordered_quantity',
+  'product_weight',
+  'package_weight',
+]);
+
 const onCellDirectBlur = async (item: any, field: string) => {
+  if (ORDER_LINE_FIELDS.has(field) && !canEditShipmentOrderLineFields.value) return;
   if (!cellDraftValues[item.id] || cellDraftValues[item.id][field] === undefined) return;
   const draftVal = cellDraftValues[item.id][field];
   delete cellDraftValues[item.id][field];
@@ -1712,15 +1879,6 @@ const editSingleSelectedItem = () => {
   const item = (shipmentStore.currentShipmentItems ?? []).find((it) => it.id === targetId);
   if (item) {
     openEditItem(item);
-  }
-};
-
-const deleteSingleSelectedItem = () => {
-  if (selectedItemIds.value.length !== 1) return;
-  const targetId = selectedItemIds.value[0];
-  if (targetId != null) {
-    confirmDeleteItem(targetId);
-    selectedItemIds.value = [];
   }
 };
 
@@ -2076,10 +2234,59 @@ const removeSheet = async (id: string) => {
   padding-right: 0;
 }
 
-.section-break-card {
+.land-split-guard-banner {
+  background: color-mix(in srgb, var(--bw-warning, #b45309) 12%, #fff);
+  color: var(--bw-theme-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.line-sheet-selection-bar {
+  background: color-mix(in srgb, var(--q-primary) 10%, #fff);
+  border-bottom: 1px solid var(--bw-theme-border);
+}
+.line-sheet-sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   background: #fff;
-  border: 1px solid var(--bw-theme-border);
-  border-radius: 8px;
+}
+.line-sheet-head {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px 32px 1in minmax(220px, 1fr) 68px 68px 76px 76px 60px;
+  column-gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  background: #fff;
+  border-bottom: 1px solid var(--bw-theme-border);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--bw-neutral-chrome, #64748b);
+  text-align: right;
+}
+.line-sheet-head--actions {
+  grid-template-columns: 22px 32px 1in minmax(220px, 1fr) 68px 68px 76px 76px 60px 96px;
+}
+.line-sheet-head--outcomes {
+  grid-template-columns: 22px 32px 1in minmax(200px, 1fr) 68px 68px 76px 76px 60px 92px 104px 24px;
+}
+.line-sheet-head--outcomes.line-sheet-head--actions {
+  grid-template-columns: 22px 32px 1in minmax(200px, 1fr) 68px 68px 76px 76px 60px 92px 104px 24px 96px;
+}
+.line-sheet-head__select {
+  justify-self: center;
+}
+.line-sheet-head__hint {
+  cursor: help;
+  text-decoration: underline dotted rgba(0, 0, 0, 0.25);
+  text-underline-offset: 2px;
+}
+.section-break-card {
+  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%);
+  border-bottom: 1px solid var(--bw-theme-border);
+  border-radius: 0;
   user-select: none;
 }
 .section-break-row {

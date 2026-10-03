@@ -27,8 +27,8 @@
 
 | Status | Ordered extra | Land extras | Post to stock | Warehouse |
 | :--- | :--- | :--- | :--- | :--- |
-| `draft` | Paste → `ordered` | Yes | If extras exist | Lots only if posted |
-| `in_transit` | Edit paper | Yes | Yes | Same |
+| `draft` | Paste → `ordered` | Yes (paper only: price, qty, weights) | If extras exist | Lots only if posted |
+| `in_transit` | Edit paper + land splits | Yes (paper + splits) | Yes | Same |
 | `received` | Paper stays | More extras until close | **Again** (delta) | Movements only |
 | `cancelled` | No writes | No | No | Do not invent extras |
 
@@ -69,7 +69,7 @@ Live: extras post via `post_shipment_outcome_stock`; put-away page; Mark receive
 
 | Case | Story | Staff | System | Shipment paper | Stock |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **A Land** | Paper 100. Truck: 92 good, 5 broken, 3 missing. | Add **extras** beside ordered (general / damaged / missing). **Post to stock**. | Ordered row stays 100. No auto-fill “leftover 3” ([PS11](00-gaps.md)). | One inbound split only | Sellable extras → lots; unsellable → loss; ordered never posts |
+| **A Land** | Paper 100. Truck: 92 good, 5 broken, 3 missing. | Add **extras** beside ordered (92 general, 5 damaged, **3 missing**). **Post to stock**. | Ordered row stays 100. No auto-fill leftover ([PS11](00-gaps.md)). Receive blocked until split qty = 100. | One inbound split only | Sellable extras → lots; unsellable → loss; ordered never posts |
 | **B Warehouse** | Six months later one bottle breaks in the bin. | Grade / write-off on **warehouse** page. | Extra rows unchanged. Status unchanged. | Unchanged | Qty down now; not a new inbound row |
 | **C–E Vendor cheaper** | Vendor agrees lower price on N units of a land split. | **Record vendor credit** when `received` (qty ≤ split qty). | Inserts `global_shipment_outcome_vendor_credits` only. **No** stock move, **no** outcome peel, **no** restamp. | Land splits unchanged | Lot cost unchanged; credit for finance / profit ([PS8](00-gaps.md)) |
 
@@ -79,7 +79,8 @@ Live: extras post via `post_shipment_outcome_stock`; put-away page; Mark receive
 | :--- | :--- |
 | Mark received → clone ordered qty into a `general` extra | Paper is not landed qty; stock still empty |
 | Receive page types a second “received qty” | Fights extras; use Post to stock |
-| Auto-fill missing = ordered − sum(extras) | Staff choose to book missing ([PS11](00-gaps.md)) |
+| Auto-fill missing = ordered − sum(extras) | Staff book leftover as Missing/damaged ([PS11](00-gaps.md)) |
+| Post to stock while any line’s land-split qty ≠ ordered | Land story incomplete; leftover must be a split |
 | Warehouse damage → new shipment `damaged` row | Mixes landing truth with shelf life (Case B) |
 | Lower extra qty below qty already in bin without write-off | Error; shrink shelf via movement first |
 | Book full vendor credit on shipment profit while goods unsold | Overstates profit ([PS8](00-gaps.md)) |
@@ -125,6 +126,7 @@ Life of cargo: sales − COGS (40@10 + 60@8) − cargo − duty − local. Same 
 
 ### US-2 Receive → stock
 - Post lots from **sellable** extra outcomes (not `ordered`). Unsellable = loss. Ordered does not create lots.
+- Guard: every line with ordered qty &gt; 0 must have land extras (`reason` not `ordered` / not `vendor_discount`) whose qty **sums to ordered**. Block Receive until then. Do not invent leftover rows.
 
 ### US-9 Close
 - Staff click Close → `is_closed = true`. All shipment screens for that id read-only (lines, outcomes, costs, batch, rates).

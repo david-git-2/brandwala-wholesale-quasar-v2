@@ -108,6 +108,20 @@
                   · credit {{ currencySymbol }}{{ Number(row.credit_amount).toFixed(2) }}
                 </q-item-label>
               </q-item-section>
+              <q-item-section v-if="canDelete" side>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="sm"
+                  icon="ph ph-trash"
+                  color="negative"
+                  aria-label="Remove vendor credit"
+                  :disable="deletingCreditId === row.id"
+                  :loading="deletingCreditId === row.id"
+                  @click="onDeleteCredit(row.id)"
+                />
+              </q-item-section>
             </q-item>
           </q-list>
         </div>
@@ -132,11 +146,13 @@ const props = defineProps<{
   currencySymbol: string;
   extras: ShipmentItemOutcome[];
   submitting?: boolean;
+  canDelete?: boolean;
 }>();
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean];
   submit: [payload: { sourceOutcomeId: number; quantity: number; newPurchasePrice: number }];
+  'delete-credit': [id: number];
 }>();
 
 const isOpen = computed({
@@ -148,6 +164,9 @@ const sourceOutcomeId = ref<number | null>(null);
 const quantity = ref(1);
 const newPurchasePrice = ref(0);
 const recentCredits = ref<ShipmentOutcomeVendorCredit[]>([]);
+const deletingCreditId = ref<number | null>(null);
+
+const canDelete = computed(() => props.canDelete === true);
 
 const discountableExtras = computed(() =>
   props.extras.filter(
@@ -214,5 +233,14 @@ const onSubmit = () => {
   });
 };
 
-defineExpose({ loadCredits });
+const onDeleteCredit = (id: number) => {
+  deletingCreditId.value = id;
+  emit('delete-credit', id);
+};
+
+const clearDeleting = () => {
+  deletingCreditId.value = null;
+};
+
+defineExpose({ loadCredits, clearDeleting });
 </script>

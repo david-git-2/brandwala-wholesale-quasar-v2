@@ -625,6 +625,7 @@ GRANT ALL ON FUNCTION "public"."apply_global_shipment_purchase_balance"("p_shipm
 GRANT ALL ON FUNCTION "public"."apply_shipment_outcome_vendor_discount"("p_shipment_id" bigint, "p_source_outcome_id" bigint, "p_quantity" integer, "p_new_purchase_price" numeric) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."list_shipment_outcome_vendor_credits"("p_shipment_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_shipment_outcome_vendor_credit"("p_credit_id" bigint) TO "authenticated";
 
 
 

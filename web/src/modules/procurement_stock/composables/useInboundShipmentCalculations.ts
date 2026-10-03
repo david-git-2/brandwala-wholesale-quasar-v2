@@ -162,6 +162,14 @@ export function useInboundShipmentCalculations() {
 
   const canEditLineCostFields = computed(() => canEditCosts.value);
 
+  /** Paper line only: purchase price, ordered qty, weights — draft and in_transit only. */
+  const canEditShipmentOrderLineFields = computed(() => {
+    const shipment = shipmentStore.currentShipment;
+    if (!shipment) return false;
+    if (shipment.status === 'cancelled' || isCostsLocked.value) return false;
+    return shipment.status === 'draft' || shipment.status === 'in_transit';
+  });
+
   /** US-8: local costs until shipment close; not blocked by costs_locked. */
   const canEditLocalCosts = computed(() => {
     const shipment = shipmentStore.currentShipment;
@@ -209,6 +217,7 @@ export function useInboundShipmentCalculations() {
     canEditCosts,
     canEditLineStructure,
     canEditLineCostFields,
+    canEditShipmentOrderLineFields,
     canEditLocalCosts,
     hasLineItems,
     weightNeedsAttention,

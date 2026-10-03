@@ -117,12 +117,24 @@ const emit = defineEmits<{
 const addBatchId = ref('');
 const addExpireDate = ref('');
 
+const clearAddFields = () => {
+  addBatchId.value = '';
+  addExpireDate.value = '';
+};
+
 watch(
   () => props.modelValue,
   (open) => {
     if (!open) return;
-    addBatchId.value = '';
-    addExpireDate.value = '';
+    clearAddFields();
+  },
+);
+
+watch(
+  () => props.rows.length,
+  (next, prev) => {
+    if (!props.modelValue || prev == null || next <= prev) return;
+    clearAddFields();
   },
 );
 

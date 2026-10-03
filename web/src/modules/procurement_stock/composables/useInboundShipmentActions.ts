@@ -22,6 +22,10 @@ import {
 } from 'src/utils/appFeedback';
 import { buildShipmentExcelWorkbook } from '../utils/buildShipmentExcelWorkbook';
 import { filterShipmentItemsBySheet } from '../utils/filterShipmentItemsBySheet';
+import {
+  findLandSplitQtyMismatches,
+  formatLandSplitQtyGuardMessage,
+} from '../utils/landSplitQtyGuard';
 import { calculateShipmentCostSummary, costingShipmentFromEntries } from 'src/shared/shipment-engine';
 import {
   formatGlobalShipmentStatus,
@@ -296,6 +300,15 @@ export function useInboundShipmentActions(options: {
       const outcomes = await globalShipmentRepository.listShipmentItemOutcomes(
         items.map((item) => item.id),
       );
+      const qtyIssues = findLandSplitQtyMismatches(items, outcomes);
+      if (qtyIssues.length > 0) {
+        $q.dialog({
+          title: 'Land splits incomplete',
+          message: formatLandSplitQtyGuardMessage(qtyIssues),
+          ok: { label: 'OK', flat: true },
+        });
+        return;
+      }
       const postable = outcomes.filter(
         (row) => row.reason !== 'ordered' && row.kind === 'sellable' && row.quantity > 0,
       );

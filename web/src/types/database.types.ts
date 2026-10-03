@@ -11727,6 +11727,10 @@ export type Database = {
         Returns: boolean
       }
       delete_shipment_order: { Args: { p_id: number }; Returns: undefined }
+      delete_shipment_outcome_vendor_credit: {
+        Args: { p_credit_id: number }
+        Returns: undefined
+      }
       delete_shop: {
         Args: { p_shop_id: number; p_tenant_id: number }
         Returns: undefined

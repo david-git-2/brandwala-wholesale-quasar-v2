@@ -962,6 +962,13 @@ const listShipmentOutcomeVendorCredits = async (
   return (data as ShipmentOutcomeVendorCredit[] | null) ?? [];
 };
 
+const deleteShipmentOutcomeVendorCredit = async (creditId: number): Promise<void> => {
+  const { error } = await db.rpc('delete_shipment_outcome_vendor_credit', {
+    p_credit_id: creditId,
+  });
+  if (error) throw error;
+};
+
 export interface OutcomeOnHandSnapshot {
   byOutcomeId: Record<number, number>;
   byShipmentItemId: Record<number, number>;
@@ -1552,6 +1559,7 @@ export const globalShipmentRepository = {
   restampShipmentOnHand,
   applyShipmentOutcomeVendorDiscount,
   listShipmentOutcomeVendorCredits,
+  deleteShipmentOutcomeVendorCredit,
   sumOutcomeOnHandByShipmentItemIds,
   ensureShipmentProgressTags,
   setShipmentProgressTag,
