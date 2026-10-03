@@ -22,11 +22,11 @@
 | :--- | :--- |
 | Surfaces | `shop` storefront; `app` shop config + dropship desk |
 | In | Shops, carts, catalog/dropship orders, pricing, stock pick, **pickup locations** (warehouse sender address for courier), reseller payout trigger |
-| Out | Physical warehouse receive, Koba carts, thrift POS. **Wholesale invoice desk** (create/issue/collect). **Catalog pack-out delivery paper** lives on the **procurement Fulfill desk**. Parent invoice engine for dropship (call it, don’t own it). Reseller identity is billing profiles, not pickup locations. |
+| Out | Physical warehouse receive, Koba carts, thrift POS. **Wholesale invoice desk** (create/issue/collect). **Catalog pack-out** lives on procurement **Delivery paper** (`procurement/fulfill`). Parent invoice engine for dropship (call it, don’t own it). Reseller identity is billing profiles, not pickup locations. |
 
 Dropship money path (target): pick → **one** ship+issue RPC → deliver (parcel only) → remittance **pay in**. Packing slip is not a `sales_invoices` row.
 
-Wholesale **walk-in** pays on the **invoice desk**. Catalog **delivery**: Fulfill **delivery paper** + optional **proforma**; then **take** / **condition** bills. Do not use `fulfill_shop_order_to_invoice` (`issue: true`) as pack. Numbers: [money-story](../bills_pays/money-story.md). Gaps: [00-gaps](00-gaps.md), [SI19](../bills_pays/00-gaps.md).
+Wholesale **walk-in** pays on the **invoice desk**. Catalog **delivery**: **Delivery paper** + optional **proforma**; close dropdown take / condition / return; then **take** / **condition** bills. Do not use `fulfill_shop_order_to_invoice` (`issue: true`) as pack. Numbers: [money-story](../bills_pays/money-story.md). Gaps: [00-gaps](00-gaps.md), [SI19](../bills_pays/00-gaps.md).
 
 ---
 
@@ -44,7 +44,7 @@ It orchestrates packing slips for end-recipients and a **merchant** B2B bill (`s
 | :--- | :--- | :--- |
 | **Storefront Customer** | B2B Customer | Browse accessible shops, submit cart preorders, accept/counter first-offer price quotes, set final quantities. |
 | **Dropship Reseller** | Reseller Partner | Place dropship orders for end recipients with custom resell prices, track courier deliveries, withdraw wallet profits. |
-| **Fulfillment Staff** | Operational | Pick stock for dropship orders, generate packing slips, assign couriers. Catalog pack-out: delivery paper on procurement Fulfill (not an issued bill). |
+| **Fulfillment Staff** | Operational | Pick stock for dropship orders, generate packing slips, assign couriers. Catalog pack-out: **Delivery paper** desk (not an issued bill). |
 | **Procurement Staff** | Operational | Review preorder demand list, log vendor PO placements, advance orders to `ready_for_shipment`. |
 | **Shop Admin / Manager**| Full Access | Create and configure shops (`vendor_catalog`, `fixed_price`, `dropship`), set price visibility permissions, configure categories. |
 

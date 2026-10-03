@@ -18,7 +18,7 @@ One money pack. Layers: **bill** · **pay** · **cashbook**. Not a wallet. Table
 | :--- | :--- |
 | Surfaces | `app`; `shop` statement |
 | In | Issued bills (take / condition / dropship merchant; later AP). Pay in/out. Cashbook leftover. Shared **profile**. |
-| Out | Delivery paper / Fulfill proforma. Packing slip / COD face. Reports. Investor withdraw. Koba / thrift. Vendor **cost** credit (outcomes) until [WA15](00-gaps.md). |
+| Out | Delivery paper / optional proforma. Packing slip / COD face. Reports. Investor withdraw. Koba / thrift. Vendor **cost** credit (outcomes) until [WA15](00-gaps.md). |
 
 Numbers: [money-story](money-story.md). Gaps: [00-gaps](00-gaps.md).
 
@@ -53,7 +53,7 @@ Pay in → ALLOC to open bills. Remainder → **cashbook on that profile** (we o
 - [ ] US-2 Returns: `return_quantity` only. Excess paid → customer cashbook.
 - [ ] US-3 Never issue a bill from a pay.
 - [ ] US-4 Dropship merchant bill at ship. Packing slip ≠ bill. COD ≠ bill.
-- [ ] US-5 Delivery paper + optional proforma; then take and/or condition ([SI19](00-gaps.md)).
+- [ ] US-5 Delivery paper desk close (dropdown take / condition / return); optional proforma; then take and/or condition bills ([SI19](00-gaps.md)).
 
 ### Pays + leftover
 - [ ] US-6 Cashbook only via ledger writer. Reverse entries. Parent books.

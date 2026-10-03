@@ -9,7 +9,7 @@
 
 ## 1. ERD
 
-Short names = `global_*`. `OUTCOMES` is target. Live SQL: `supabase/schemas/procurement/02_tables.sql`. **Demand / Fulfill** has its own ERD in [§1b](#1b-demand--fulfill-erd) (not mixed with inbound).
+Short names = `global_*`. `OUTCOMES` is target. Live SQL: `supabase/schemas/procurement/02_tables.sql`. **Demand / Delivery paper** has its own ERD in [§1b](#1b-demand--delivery-paper-erd) (not mixed with inbound).
 
 ### Inbound & warehouse — overview
 
@@ -277,13 +277,13 @@ Enforced in `_validate_stock_location_nesting`. Leaf = no active children (`_sto
 
 ---
 
-## 1b. Demand & Fulfill ERD
+## 1b. Demand & Delivery paper ERD
 
 One table `preorder_demand`, two desks ([01 US-4](01-prd.md)). Live SQL: `public.preorder_demand` in `supabase/schemas/public.sql`. Touches warehouse **STOCKS** (§1) via `stock_picks` jsonb, not shipment receive.
 
-Map: `SHOP_ORDER` shop_orders · `ORDER_LINE` shop_order_items · `PBC_FILE` product_based_costing_files · `PBC_LINE` product_based_costing_items · `PREORDER_DEMAND` preorder_demand · `VENDORS` vendors · `STOCKS` global_stocks · `INVOICE` sales_invoices (handoff from Fulfill; live proforma, target delivery paper).
+Map: `SHOP_ORDER` shop_orders · `ORDER_LINE` shop_order_items · `PBC_FILE` product_based_costing_files · `PBC_LINE` product_based_costing_items · `PREORDER_DEMAND` preorder_demand · `VENDORS` vendors · `STOCKS` global_stocks · `INVOICE` sales_invoices (handoff from Delivery paper; live proforma, target take/condition bills after close). No separate checklist table.
 
-### Demand & Fulfill — overview
+### Demand & Delivery paper — overview
 
 ```mermaid
 %%{init: {"er": {"useMaxWidth": true, "layoutDirection": "TB", "minEntityWidth": 220, "minEntityHeight": 90, "entityPadding": 24, "fontSize": 16, "diagramPadding": 32}}}%%
@@ -298,7 +298,7 @@ erDiagram
     SHOP_ORDER ||--o| INVOICE : global_invoice_id
 ```
 
-### Demand & Fulfill — details
+### Demand & Delivery paper — details
 
 ```mermaid
 %%{init: {"er": {"useMaxWidth": true, "layoutDirection": "TB", "minEntityWidth": 220, "minEntityHeight": 90, "entityPadding": 24, "fontSize": 16, "diagramPadding": 32}}}%%
@@ -362,7 +362,7 @@ erDiagram
 | Desk | Writes on `preorder_demand` | Parent document status |
 | :--- | :--- | :--- |
 | **Demand** | `vendor_id`, `placed_quantity` | `procuring` on shop order / PBC file |
-| **Fulfill** | `stock_picks` → `delivered_quantity` | → `ready_for_shipment` → `delivered` |
+| **Delivery paper** | `stock_picks` → `delivered_quantity` | → `ready_for_shipment` → close (take / condition / return) → `delivered` |
 
 Unique `(source_type, source_id)`. Open need: `get_procurement_demand_open_qty`. `stock_picks[]`: `global_stock_id`, `quantity` (→ **STOCKS**). List RPCs group by shop order or PBC file ([03 §5](03-api-contract.md)). Dropship merchant bill at ship: [shop_order](../shop_order/01-prd.md), not this diagram.
 
@@ -410,7 +410,7 @@ create type public.stock_movement_type as enum (
 );
 ```
 
-**Wholesale delivery (target):** pack-out is not `sale_outbound`. Units go `sellable` → `held` on the delivery paper. After close: **take** → `sale_outbound` with the take invoice; **condition** stays `held` (condition invoice may be unpaid); goods on condition may return → `sellable` and that bill is voided/credited; **return** at close → `sellable`, no bill. Dropship picks already use `held` until ship.
+**Wholesale delivery (target):** pack-out is not `sale_outbound`. Units go `sellable` → `held` on the Delivery paper desk. Close each packed qty (dropdown): **take** → `sale_outbound` + take invoice; **condition** stays `held` + condition invoice (may be unpaid); goods on condition may later return → `sellable` and that bill is voided/credited; **return** at close → `sellable`, no bill. Dropship picks already use `held` until ship.
 
 **Receive outcomes (target):** [US-7](01-prd.md). Child table `global_shipment_item_outcomes`. Paste → first row **kind `sellable`**, **reason `ordered`** (paper qty). After land, **add** rows beside it (`general` = default received). Do not shrink ordered. **Receive / post** requires land extras (not `ordered`, not `vendor_discount`) to sum to `ordered_quantity` per line — staff book leftover; do not auto-fill ([PS11](00-gaps.md)). Optional `description`, batch **text** (no FK). No `stock_id`.
 
@@ -521,4 +521,4 @@ On **`ShipmentLineItemsV2Page`**, the bottom **section tabs** (sheet bar) are pe
 
 ## 4. Batch Code Analyze
 
-See **Details** ERD (`BATCH_LISTS` / `BATCH_ITEMS`). One list per shipment. Empty expire + mfg → mfg + 36 months. **Expires in** is UI-only. Demand / Fulfill: [§1b](#1b-demand--fulfill-erd).
+See **Details** ERD (`BATCH_LISTS` / `BATCH_ITEMS`). One list per shipment. Empty expire + mfg → mfg + 36 months. **Expires in** is UI-only. Demand / Delivery paper: [§1b](#1b-demand--delivery-paper-erd).

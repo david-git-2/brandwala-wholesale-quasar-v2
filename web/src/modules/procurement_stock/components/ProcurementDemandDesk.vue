@@ -383,7 +383,7 @@ const isFulfillMode = computed(() => props.mode === 'fulfill');
 const isChildWorkspace = computed(() => authStore.selectedTenant?.parent_id != null);
 const tableColCount = computed(() => (isBuyMode.value ? 5 : 6));
 const emptyMessage = computed(() =>
-  isBuyMode.value ? 'No demand lines.' : 'No fulfill lines.',
+  isBuyMode.value ? 'No demand lines.' : 'No delivery paper lines.',
 );
 
 const searchText = ref('');

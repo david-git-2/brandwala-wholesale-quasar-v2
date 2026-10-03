@@ -127,8 +127,8 @@ const PROCUREMENT_STOCK_HUB = {
     {
       navWeight: 30.5,
       moduleKey: 'procurement_fulfill' as ModuleKey,
-      title: 'Fulfill',
-      caption: 'Pick stock and invoice shop orders',
+      title: 'Delivery paper',
+      caption: 'Pick stock; close as take, condition, or return',
       icon: 'ph ph-package',
       routeSegment: 'procurement/fulfill',
     },

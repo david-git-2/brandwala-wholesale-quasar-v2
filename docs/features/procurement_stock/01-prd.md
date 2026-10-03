@@ -16,7 +16,7 @@
 | | |
 | :--- | :--- |
 | Surfaces | `app` only |
-| In | Shipments, sections, landed cost entries (optional section), **local costs** (optional section, not in unit cost), bins, `global_stocks`, movements, vendors, batch analyze (optional), **receive outcomes**, **close shipment**, Demand / Fulfill / delivery paper |
+| In | Shipments, sections, landed cost entries (optional section), **local costs** (optional section, not in unit cost), bins, `global_stocks`, movements, vendors, batch analyze (optional), **receive outcomes**, **close shipment**, Demand / **Delivery paper** |
 | Out | Shop cart, Koba, thrift, PBC formulas. Final sales invoice issue. Cost entries are **not** wallet pay/settle. **Child quota allocations** — retire ([PS9](00-gaps.md)). Warehouse damage/expiry after stock is **stock movement**, not a new inbound “general” row. |
 
 ---
@@ -141,27 +141,37 @@ Life of cargo: sales − COGS (40@10 + 60@8) − cargo − duty − local. Same 
 - Stock only in **bin** (leaf). Location tree per parent tenant: **warehouse → zone → shelf → level → bin**. Parallel root **returns** uses the same zone → shelf → level → bin chain under it. Location / grade changes → `stock_movements`.
 - **Warehouse list:** cursor infinite scroll; filters (location subtree, grade, shipment, sell status); optional **group by** shipment / product / bin / condition / sell status via `list_global_stocks_groups` + grouped row load.
 
-### US-4 Demand & Fulfill (shared desk)
+### US-4 Demand & Delivery paper (shared desk)
 
-Two **app** routes, one data model (`preorder_demand`). Not a separate module. Not dropship order fulfillment ([shop_order](../shop_order/01-prd.md) US-3).
+Two **app** routes, one data model (`preorder_demand`). Not a separate module. Not dropship order fulfillment ([shop_order](../shop_order/01-prd.md) US-3). Nav label **Delivery paper**; module key / route stay `procurement_fulfill` / `procurement/fulfill`.
 
 | Desk | Route | Job |
 | :--- | :--- | :--- |
 | **Demand** | `/:slug/app/procurement/demand` | See confirmed need. Optional vendor + **placed** qty (PO). Filter by child tenant. |
-| **Fulfill** | `/:slug/app/procurement/fulfill` | **Stock picks** from warehouse (`global_stocks`). Mark **ready for shipment**. Pack / bill handoff. |
+| **Delivery paper** | `/:slug/app/procurement/fulfill` | Pick warehouse stock (`held`). Mark **ready for shipment**. Optional proforma. Close packed qty: take / condition / return. |
 
 **Sources (same list):** catalog **shop order** lines (`shop_order_item`) and **PBC** file lines (`pbc_costing_item`) after customer confirm. Pre-order quotes enter via [product_based_costing](../product_based_costing/01-prd.md) → same Demand desk.
 
 **Document status** (on the shop order or PBC file, not on `preorder_demand`): `procuring` → `ready_for_shipment` → `delivered`. Both desks filter by this status tab.
 
-| Field on `preorder_demand` | Demand desk | Fulfill desk |
+| Field on `preorder_demand` | Demand desk | Delivery paper desk |
 | :--- | :--- | :--- |
 | `vendor_id` | Set per line or bulk for document | Read |
 | `placed_quantity` | Vendor PO qty (may be 0 if stock on hand) | Read |
 | `stock_picks` / `delivered_quantity` | Read | Write; sum of picks ≤ open need |
 | `notes` | Optional | Optional |
 
-**Fulfill → sales:** **Live:** `create_invoice_from_preorder_demand_document` / `sync_…` builds **proforma** from picks when `ready_for_shipment` (not a final take bill). **Target:** **delivery paper** (`held`) + optional proforma; then **take** / **condition** bills — not issue-from-Fulfill ([PS6](00-gaps.md), [bills_pays US-5](../bills_pays/01-prd.md)). Dropship ship+issue stays on the order.
+**Close (target — per packed qty, dropdown not checkbox):**
+
+| Choice | Locked name | Bill | Stock |
+| :--- | :--- | :--- | :--- |
+| Accepted | **Take** | Take invoice (issued) | `sale_outbound` |
+| Condition | **Condition** | Condition invoice (sale when **paid**) | Stays `held` (later return → sellable + void/credit that bill) |
+| Return | **Return** | None | Back to sellable |
+
+One pack may mix all three. Optional **proforma** is print/share only — not the take or condition bill. No separate checklist table: the delivery paper **is** the close.
+
+**Live today:** `create_invoice_from_preorder_demand_document` / `sync_…` builds **proforma** from picks when `ready_for_shipment`. **Target:** paper close → take and/or condition bills — not issue-from-this-desk ([PS6](00-gaps.md), [bills_pays US-5](../bills_pays/01-prd.md)). Dropship ship+issue stays on the order.
 
 **Out of scope here:** inbound shipment receive, invoice collect, dropship 5-stage desk.
 

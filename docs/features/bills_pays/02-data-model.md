@@ -2,7 +2,7 @@
 
 Live SQL still uses old names (map below). Gaps: [00-gaps](00-gaps.md) BP3–BP4. Spec names are **target**.
 
-Not on this ERD: delivery paper (procurement); **shop_order** — optional `shop_order_id` on bill/pay. `draft` / `proforma_generated` = maybe-bill, not issued.
+Not on this ERD: delivery paper (procurement **Delivery paper** desk); **shop_order** — optional `shop_order_id` on bill/pay. `draft` / `proforma_generated` = maybe-bill, not issued.
 
 ---
 
@@ -187,7 +187,7 @@ Same table. Different paper. Never mix with packing slip / delivery paper / COD 
 | Condition | wholesale + condition | Buyer | After paper; stock may stay `held` | When **paid** |
 | Dropship merchant | `dropship` | Shop profile | At ship | Issued merchant total |
 | AP | later | Vendor / cargo | WA15 | Not AR |
-| Proforma | `proforma_generated` | — | Composer / Fulfill | **No** — not issued |
+| Proforma | `proforma_generated` | — | Composer / Delivery paper | **No** — not issued |
 
 Statuses: `draft`, `proforma_generated`, `issued`, `voided`. Never `posted`. Payment: `due`, `partially_paid`, `paid`, `settled_with_write_off`.
 

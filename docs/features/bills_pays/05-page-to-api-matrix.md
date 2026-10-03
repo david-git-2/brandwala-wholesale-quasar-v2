@@ -17,7 +17,7 @@
 | **`InvoiceDetailsPage`** | Menu Void (if still wired) | `useVoidInvoiceMutation` | `RPC: void_sales_invoice` | Restores stock; invalidates detail & list |
 | **`InvoiceDetailsPage`** | Apply Settlement Write-off | `useApplySettlementMutation` | `RPC: apply_global_invoice_settlement_discount` | Updates `due_amount` only; invalidates detail |
 | **`WholesaleCollectPaymentDialog`** (create + detail) | Submit cash / store credit / settlement | `invoiceRepository.collectWholesaleInvoicePayment` | `RPC: collect_wholesale_invoice_payment` | Wholesale/retail cash-in on **this** bill. Not courier remittance |
-| **`StaffOrderDetailPage`** | Fulfill to invoice (catalog only) | `useFulfillOrderToInvoiceMutation` | `RPC: fulfill_shop_order_to_invoice` → `create_sales_invoice_from_payload` | **Live:** issues bill. **Target:** [SI19](00-gaps.md) paper → take + condition bills |
+| **`StaffOrderDetailPage`** | Fulfill to invoice (catalog only) | `useFulfillOrderToInvoiceMutation` | `RPC: fulfill_shop_order_to_invoice` → `create_sales_invoice_from_payload` | **Live:** issues bill. **Target:** Delivery paper close ([SI19](00-gaps.md)) |
 | **`WholesaleInvoiceReturnPage`** | Submit Credit Return | `useWholesaleReturnMutation`| `RPC: process_wholesale_invoice_return` | Updates `return_quantity`, restocks to `held` |
 | **`DropshipOrderDetailV2ReadyForPickupPage`** | Mark as shipped | `shopOrderService.shipDropshipOrderAndIssueMerchantBill` | `RPC: ship_dropship_order_and_issue_merchant_bill` | Merchant bill from picks + `shipped` |
 | **`DropshipManagementDetailPage`** | Mark as delivered | `markDropshipOrderDelivered` only | `RPC: mark_dropship_order_delivered` | Does **not** issue invoice or post cash |

@@ -559,8 +559,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'procurement_fulfill',
-    name: 'Fulfill',
-    description: 'Pick parent warehouse stock and invoice shop orders.',
+    name: 'Delivery paper',
+    description: 'Pick parent warehouse stock. Close packed qty as take, condition, or return. Optional proforma is not an issued bill.',
     parentModuleKey: 'procurement_stock',
     routes: [],
   },

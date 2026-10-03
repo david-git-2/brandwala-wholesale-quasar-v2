@@ -23,7 +23,7 @@ web/src/modules/procurement_stock/
 │   ├── StockMovementsPage.vue            # Immutable movement & transfer audit log
 │   ├── CargoCompaniesPage.vue            # Freight carrier list & wallet links
 │   ├── ProcurementDemandPage.vue         # mode=buy → ProcurementDemandDesk
-│   └── ProcurementFulfillPage.vue        # mode=fulfill → ProcurementDemandDesk
+│   └── ProcurementFulfillPage.vue        # nav Delivery paper; mode=fulfill → ProcurementDemandDesk
 ├── components/
 │   ├── ShipmentBoxWeightGrid.vue         # Box Excel grid
 │   ├── ShipmentBatchCodeGrid.vue         # Batch code Excel grid (q-markup-table)
@@ -37,13 +37,13 @@ web/src/modules/procurement_stock/
 │   ├── ShipmentLocalCostsPanel.vue       # Target: local opex rows (not landed)
 │   ├── StockMoveLocationDialog.vue       # Location transfer dialog
 │   └── StockMoveGradeDialog.vue          # Condition grade transition modal
-│   ├── ProcurementDemandDesk.vue           # Shared ops table: Demand vs Fulfill mode
+│   ├── ProcurementDemandDesk.vue           # Shared ops table: Demand vs Delivery paper mode
 │   ├── ProcurementDemandGroupItemRows.vue  # Expandable group lines + inline save
 │   └── ProcurementDemandStockPickDialog.vue # Lot picker for fulfill picks
 ├── repositories/
 │   ├── shipmentRepository.ts             # Supabase RPC invocation client
 │   ├── warehouseStockRepository.ts       # Location, movement & pool queries
-│   └── procurementDemandRepository.ts    # Demand/Fulfill list + upsert + invoice RPCs
+│   └── procurementDemandRepository.ts    # Demand/Delivery paper list + upsert + invoice RPCs
 ├── composables/
 │   ├── useProcurementDemandGroupsQuery.ts
 │   ├── useProcurementDemandGroupItemsInfiniteQuery.ts

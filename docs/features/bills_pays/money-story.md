@@ -4,7 +4,7 @@ Same SKU. Shipment cost stays on the **shipment**. GP = [shipment P&L](../report
 
 Layers: **profile · bill · pay · alloc · cashbook**. Not a wallet. Tables: [02](02-data-model.md).
 
-Same `bills` table. **Different paper.** Do not mix desks. Fulfill **proforma** is not issued.
+Same `bills` table. **Different paper.** Do not mix desks. Delivery paper **proforma** is not issued.
 
 | Step | Wholesale | Dropship |
 | :--- | :--- | :--- |
@@ -65,7 +65,7 @@ Shop **Glamour Closet** **1,500**. Karim COD **2,200**. Courier fee **80**. Bank
 | Wrong | Right |
 | :--- | :--- |
 | Wallet / credit invoice | Cashbook on profile |
-| Fulfill create = issued bill | Proforma / paper; then take + condition |
+| Delivery paper create = issued bill | Optional proforma; close dropdown take / condition / return |
 | Invoice total = COD | Tenant sell / merchant sell |
 | Deliver posts tenant cash | Remittance is tenant cash |
 | Second pay product for dropship | Same `pays`; `source` differs |

@@ -26,4 +26,4 @@ Mapping of all UI controls, stage actions, dialog triggers, and form submissions
 | **`DropshipOrderConfirmedInvoicePaper`** | Pickup location select | Copies onto order sender fields | `RPC: update_dropship_consignment` | Saves `sender_name` / `pickup_phone` / `pickup_address` |
 | **`StaffOrderDetailPage`** | Staff Submit First Offer | `useStaffPriceCatalogOrderMutation` | `RPC: staff_price_shop_order` | Sets status `priced`; invalidates order cache |
 | **`CustomerOrderDetailPage`** | Customer Accept / Counter | `useSendCustomerCounterMutation` | `RPC: customer_counter_offer` | Sets status `countered` / `confirmed` |
-| **`StaffOrderDetailPage`** | Fulfill to invoice | `useFulfillOrderToInvoiceMutation` | `RPC: fulfill_shop_order_to_invoice` | **Live:** catalog issue. **Target:** delivery paper ([SO6](00-gaps.md)); not dropship |
+| **`StaffOrderDetailPage`** | Fulfill to invoice | `useFulfillOrderToInvoiceMutation` | `RPC: fulfill_shop_order_to_invoice` | **Live:** catalog issue. **Target:** Delivery paper close ([SO6](00-gaps.md)); not dropship |

@@ -177,7 +177,7 @@ language plpgsql security definer;
 Updates vendor PO (`placed_quantity`), warehouse picks (`stock_picks` → `delivered_quantity`), or both.
 
 - `placed_quantity` = vendor PO qty (Demand desk). May be 0.
-- `delivered_quantity` / picks = warehouse allocation (Fulfill desk). Capped at confirmed need (`get_procurement_demand_open_qty.open_qty`), **not** placed qty.
+- `delivered_quantity` / picks = warehouse allocation (Delivery paper desk). Capped at confirmed need (`get_procurement_demand_open_qty.open_qty`), **not** placed qty.
 
 ### 5.1b `fill_preorder_demand_placed_quantities_for_document`
 
@@ -195,7 +195,7 @@ Sets `vendor_id` on **every** demand line for one document (`p_document_type` + 
 
 **Live today:** builds proforma (`issue: false`) from stock picks. Document must be `ready_for_shipment`. Idempotent if a linked invoice exists.
 
-**Target:** Fulfill pack creates a **delivery paper**, not this bill. See [01-prd US-4](01-prd.md) and [bills_pays US-5](../bills_pays/01-prd.md). Gap [PS6](00-gaps.md).
+**Target:** this desk **is** the delivery paper. Close writes take / condition / return; then take and/or condition bills. See [01-prd US-4](01-prd.md) and [bills_pays US-5](../bills_pays/01-prd.md). Gap [PS6](00-gaps.md).
 
 ### 5.2b `sync_invoice_from_preorder_demand_document`
 
@@ -213,11 +213,11 @@ Line fields include `barcode`, `product_code`, `vendor_code`, `market_code`, `br
 
 ### 5.5 `list_procurement_fulfill_groups`
 
-Fulfill desk group headers. Same JSON shape as `list_procurement_demand_groups`, but **no** `p_child_tenant_id`. Default `p_procurement_status` = `procuring` (also accepts `ready_for_shipment`, `delivered`).
+Delivery paper desk group headers. Same JSON shape as `list_procurement_demand_groups`, but **no** `p_child_tenant_id`. Default `p_procurement_status` = `procuring` (also accepts `ready_for_shipment`, `delivered`). RPC name stays `list_procurement_fulfill_groups`.
 
 ### 5.6 `list_procurement_fulfill_group_items`
 
-Fulfill desk lines for one expanded group. Same request/response contract as `list_procurement_demand_group_items` (implementation delegates to that RPC).
+Delivery paper desk lines for one expanded group. Same request/response contract as `list_procurement_demand_group_items` (implementation delegates to that RPC). RPC name stays `list_procurement_fulfill_group_items`.
 
 ---
 
