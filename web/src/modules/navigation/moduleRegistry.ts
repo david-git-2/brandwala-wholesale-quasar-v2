@@ -625,16 +625,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Sales Invoices',
     description: 'Desk invoices: wholesale, retail, and walk-in.',
     navIcon: 'ph ph-receipt',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Invoices',
-        caption: 'All sales invoices',
-        icon: 'ph ph-receipt',
-        routeSegment: 'sales/invoices',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'after_sales',
@@ -688,16 +679,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Wallets',
     description: 'Balances for the company, customers, suppliers, cargo, couriers, and investors.',
     navIcon: 'ph ph-wallet',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Wallets',
-        caption: 'Whose money do you want to see?',
-        icon: 'ph ph-wallet',
-        routeSegment: 'wallet',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'recipient_profile',
@@ -711,16 +693,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Invoice Brands',
     description: 'Print layout presets and company invoice brand headers.',
     navIcon: 'ph ph-paint-brush',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Invoice Brands',
-        caption: 'Invoice brand headers and print layout presets',
-        icon: 'ph ph-paint-brush',
-        routeSegment: 'sales/invoices/brands',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'reporting_treasury',
@@ -743,16 +716,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Payments & Collection',
     description: 'Cash in (collect, courier remittance) and cash out (merchant payout).',
     navIcon: 'ph ph-credit-card',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Payments',
-        caption: 'Cash in and cash out',
-        icon: 'ph ph-credit-card',
-        routeSegment: 'finance/payments',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
 
   {

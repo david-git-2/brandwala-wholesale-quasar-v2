@@ -109,12 +109,10 @@
               :is-submitting-pricing="isSubmittingPricing"
               :is-confirming-order="isConfirmingOrder"
               :is-placing-procurement="isPlacingProcurement"
-              :is-fulfilling-to-invoice="isFulfillingToInvoice"
               @delete-order="confirmDeleteOrder"
               @submit-pricing="handleSubmitStaffPricing"
               @confirm-order="handleConfirmOrder"
               @place-procurement="handlePlaceForProcurement"
-              @fulfill-invoice="handleFulfillToInvoice"
             />
           </div>
 
@@ -179,7 +177,6 @@ import {
   useSubmitStaffPricingMutation,
   useConfirmShopOrderMutation,
   usePlaceOrderForProcurementMutation,
-  useFulfillOrderToInvoiceMutation,
   useUpdateOrderChargesMutation,
   useDeleteShopOrderMutation,
   useProcessDropshipOrderMutation,
@@ -246,7 +243,6 @@ const { mutate: updateOrderStatus, isPending: isUpdatingStatus } = useUpdateOrde
 const { mutate: submitStaffPricing, isPending: isSubmittingPricing } = useSubmitStaffPricingMutation();
 const { mutate: confirmShopOrder, isPending: isConfirmingOrder } = useConfirmShopOrderMutation();
 const { mutate: placeOrderForProcurement, isPending: isPlacingProcurement } = usePlaceOrderForProcurementMutation();
-const { mutate: fulfillOrderToInvoice, isPending: isFulfillingToInvoice } = useFulfillOrderToInvoiceMutation();
 const { mutate: updateOrderCharges, isPending: isUpdatingCharges } = useUpdateOrderChargesMutation();
 const { mutate: deleteShopOrder, isPending: isDeletingOrder } = useDeleteShopOrderMutation();
 const { mutate: processDropshipOrder, isPending: isProcessingDropship } = useProcessDropshipOrderMutation();
@@ -680,8 +676,7 @@ const canAction = computed(() => {
 const canFulfill = computed(() => {
   const o = currentOrder.value;
   if (!o || o.status !== 'confirmed') return false;
-  if (o.shop_type_snapshot === 'vendor_catalog') return false;
-  return true;
+  return o.shop_type_snapshot === 'vendor_catalog';
 });
 
 const changeOrderStatus = (newStatus: string) => {
@@ -768,12 +763,6 @@ const handleSaveRates = (payload: {
 const handlePlaceForProcurement = () => {
   if (orderId.value) {
     placeOrderForProcurement(orderId.value);
-  }
-};
-
-const handleFulfillToInvoice = () => {
-  if (orderId.value) {
-    fulfillOrderToInvoice(orderId.value);
   }
 };
 

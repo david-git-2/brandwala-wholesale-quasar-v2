@@ -131,9 +131,9 @@ watch(
 
 // Navigation drill-down routes for KPI scorecard
 const cardRoutes = computed(() => ({
-  reportsSalesSummary: routes.reportsSalesSummary(),
-  walletHome: routes.walletHome(),
-  reportsCustomerDues: routes.reportsCustomerDues(),
+  reportsSalesSummary: routes.financeReports(),
+  walletHome: routes.financeCashInReport(),
+  reportsCustomerDues: routes.financeCustomerDuesReport(),
   stockValuation: routes.stockValuation(),
 }));
 
@@ -165,14 +165,14 @@ const attentionStripItems = computed<AttentionStripItem[]>(() => {
       id: 'overdue-invoices',
       label: '14 Overdue Invoices',
       sublabel: '৳ 4,85,000 credit due',
-      to: routes.globalInvoices({ payment_status: 'overdue' }),
+      to: routes.financeCustomerDuesReport(),
       tone: 'warn',
     },
     {
       id: 'cod-collect',
       label: '৳ 9,20,000 COD in Courier',
       sublabel: 'Pathao & Steadfast holding',
-      to: routes.walletHome(),
+      to: routes.financeCashInReport(),
       tone: 'warn',
     },
     {

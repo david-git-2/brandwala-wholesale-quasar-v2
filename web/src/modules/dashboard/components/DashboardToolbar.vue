@@ -74,15 +74,6 @@
         :to="routes.procurementShipmentCreate()"
       />
 
-      <q-btn
-        unelevated
-        no-caps
-        dense
-        class="btn-primary"
-        icon="ph ph-plus"
-        label="New Invoice"
-        :to="routes.globalInvoicesCreate()"
-      />
     </div>
   </div>
 </template>

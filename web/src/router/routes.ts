@@ -16,12 +16,11 @@ import thriftRoutes from 'src/modules/thrift/routes';
 import investorPortalRoutes from 'src/modules/investor_portal/routes';
 import globalRoutes from 'src/modules/global/routes';
 import procurementStockRoutes from 'src/modules/procurement_stock/routes';
-import salesInvoiceRoutes from 'src/modules/sales_invoice/routes';
 import reportingTreasuryRoutes from 'src/modules/reporting_treasury/routes';
+import { moneyUiRedirectRoutes } from 'src/modules/navigation/moneyUiRedirects';
 import investorCapitalAdminRoutes from 'src/modules/investor_capital/routes/adminRoutes';
 import shopOrderRoutes from 'src/modules/shop_order/routes';
 import accessControlRoutes from 'src/modules/access_control/routes';
-import walletRoutes from 'src/modules/wallet/routes';
 import customerRoutes from 'src/modules/customer/routes';
 import afterSalesRoutes from 'src/modules/after_sales/routes';
 
@@ -94,11 +93,10 @@ const routes: RouteRecordRaw[] = [
   ...procurementStockRoutes,
   ...shopOrderRoutes,
   ...globalRoutes,
-  ...salesInvoiceRoutes,
+  ...moneyUiRedirectRoutes,
   ...reportingTreasuryRoutes,
   ...investorCapitalAdminRoutes,
   ...accessControlRoutes,
-  ...walletRoutes,
   ...customerRoutes,
   ...afterSalesRoutes,
 

@@ -79,7 +79,7 @@ const customerRoutes: RouteRecordRaw[] = [
         path: 'recipient-profiles',
         name: 'app-global-recipient-profiles',
         component: () =>
-          import('src/modules/sales_invoice/pages/RecipientProfilesPage.vue'),
+          import('../pages/RecipientProfilesPage.vue'),
         beforeEnter: createAccessGuard({
           requiredScope: 'app',
           requiredModule: 'recipient_profile',

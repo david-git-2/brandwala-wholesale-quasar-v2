@@ -379,14 +379,8 @@ function formatDateTime(iso: string): string {
   }
 }
 
-function openInvoice(invoiceId: number) {
-  void router.push(`/${tenantSlug.value || 'tenant'}/app/sales/invoices/${invoiceId}`);
-}
-
-function onRowClick(row: CashInReportEntry) {
-  if (row.invoice_id) {
-    openInvoice(row.invoice_id);
-  }
+function onRowClick(_row: CashInReportEntry) {
+  // Invoice desk unmounted (BP5); row is display-only.
 }
 </script>
 

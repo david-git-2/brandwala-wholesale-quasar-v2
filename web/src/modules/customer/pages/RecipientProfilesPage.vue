@@ -261,7 +261,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, reactive } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useRecipientProfileStore } from '../stores/recipientProfileStore';
+import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
 import type { RecipientProfile } from 'src/types/recipientProfile';
 
 const authStore = useAuthStore();

@@ -161,16 +161,6 @@ const emit = defineEmits<{
             :loading="isPlacingProcurement"
             @click="emit('place-procurement')"
           />
-          <q-btn
-            v-else-if="order.shop_type_snapshot !== 'dropship'"
-            color="teal-7"
-            unelevated
-            no-caps
-            :label="$t('shop_admin.fulfill_to_invoice')"
-            class="pill-btn text-weight-bold q-px-lg q-py-sm"
-            :loading="isFulfillingToInvoice"
-            @click="emit('fulfill-invoice')"
-          />
         </div>
       </div>
     </div>

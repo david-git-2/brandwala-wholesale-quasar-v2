@@ -5,8 +5,6 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useProcurementDashboardQuery } from 'src/modules/procurement_stock/composables/useProcurementDashboardQuery';
 import { useShopOrderDashboardQuery } from 'src/modules/shop_order/composables/useShopOrderDashboardQuery';
-import { useSalesInvoiceDashboardQuery } from 'src/modules/sales_invoice/composables/useSalesInvoiceDashboardQuery';
-import { useWalletAccounts } from 'src/modules/wallet/composables/useWalletAccounts';
 import { useInvestorCapitalDashboardQuery } from 'src/modules/investor_capital/composables/useInvestorCapitalDashboardQuery';
 import { globalShipmentRepository } from 'src/modules/procurement_stock/repositories/globalShipmentRepository';
 import type { UnifiedDashboardMetrics } from '../types/unifiedDashboard';
@@ -38,8 +36,6 @@ export function useUnifiedDashboardQuery(
 
   const procurementQuery = useProcurementDashboardQuery(effectiveTenantId);
   const shopOrderQuery = useShopOrderDashboardQuery(effectiveTenantId);
-  const invoiceQuery = useSalesInvoiceDashboardQuery(effectiveTenantId);
-  const { dashboardSummary, refetchDashboard } = useWalletAccounts();
   const investorQuery = useInvestorCapitalDashboardQuery(effectiveTenantId);
 
   // Inbound active shipments live query
@@ -69,37 +65,22 @@ export function useUnifiedDashboardQuery(
     () =>
       procurementQuery.isLoading.value ||
       shopOrderQuery.isLoading.value ||
-      invoiceQuery.isLoading.value ||
       shipmentsQuery.isLoading.value,
   );
 
   const metrics = computed<UnifiedDashboardMetrics>(() => {
-    const inv = invoiceQuery.data.value;
     const proc = procurementQuery.data.value;
-    const wallet = dashboardSummary.value;
     const shop = shopOrderQuery.data.value;
     const investor = investorQuery.data.value;
     const rawShipments = shipmentsQuery.data.value || [];
 
     const isBrandFiltered = selectedBrandId.value !== null;
 
-    // Gross Invoiced Sales
-    const totalBilled = (inv?.paidAmount ?? 0) + (inv?.dueAmount ?? 0) + (inv?.overdueAmount ?? 0);
-    const revenue =
-      dateRange.value === 'today'
-        ? inv?.todayBilledAmount || (totalBilled > 0 ? Math.round(totalBilled * 0.08) : 0)
-        : totalBilled;
-
-    // Liquid Cash & Bank Position
-    const liquidCash = wallet?.company_cash_reserve_total ?? 0;
-    const accountCount = wallet ? 4 : 1;
-
-    // Customer Receivables
-    const receivables = (inv?.dueAmount ?? 0) + (inv?.overdueAmount ?? 0);
-    const agingOver30dPct =
-      receivables > 0 && (inv?.overdueAmount ?? 0) > 0
-        ? Math.min(100, Math.round(((inv?.overdueAmount ?? 0) / receivables) * 100))
-        : 0;
+    const revenue = 0;
+    const liquidCash = 0;
+    const accountCount = 0;
+    const receivables = 0;
+    const agingOver30dPct = 0;
 
     // Warehouse Stock
     const stockValuation = proc?.sellableValueBdt ?? 0;
@@ -195,12 +176,12 @@ export function useUnifiedDashboardQuery(
 
       treasury: {
         bankBalance: liquidCash,
-        courierCodTotal: wallet?.courier_cod_holding_total ?? 0,
+        courierCodTotal: 0,
         customerDues: receivables,
-        vendorPayables: wallet?.vendor_payables_total ?? 0,
+        vendorPayables: 0,
         investorYieldDue: investor?.dueToInvestors ?? 0,
-        steadfastCod: Math.round((wallet?.courier_cod_holding_total ?? 0) * 0.58),
-        pathaoCod: Math.round((wallet?.courier_cod_holding_total ?? 0) * 0.42),
+        steadfastCod: 0,
+        pathaoCod: 0,
       },
 
       brands: brandRows,
@@ -212,10 +193,8 @@ export function useUnifiedDashboardQuery(
     await Promise.all([
       procurementQuery.refetch(),
       shopOrderQuery.refetch(),
-      invoiceQuery.refetch(),
       investorQuery.refetch(),
       shipmentsQuery.refetch(),
-      refetchDashboard(),
     ]);
   };
 

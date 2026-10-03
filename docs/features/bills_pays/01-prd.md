@@ -1,13 +1,13 @@
 # Bills & pays — PRD
 
-One money pack. Layers: **bill** · **pay** · **cashbook**. Not a wallet. Table names: [02](02-data-model.md). Code desks still `sales_invoice/` and `wallet/`.
+One money pack. Layers: **bill** · **pay** · **cashbook**. Not a wallet. Table names: [02](02-data-model.md). Target desks: Bills · Payments · Cashbook ([BP5](00-gaps.md)).
 
 ## As-built
 
 | | |
 | :--- | :--- |
 | Spec | `docs/features/bills_pays/` |
-| UI | Bills + Payments + cashbook page (`app/wallet`) |
+| UI | **Unmounted** until rebuild ([BP5](00-gaps.md)). Target: Bills desk, Payments desk, Cashbook desk. |
 | SQL | Live names in [02 rename map](02-data-model.md#rename-map-spec--live) |
 | Access | `app`; `shop` merchant statement |
 | Model | BW — [business-models](../../architecture/business-models.md) |

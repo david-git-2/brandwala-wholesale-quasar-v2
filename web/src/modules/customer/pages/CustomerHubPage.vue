@@ -120,17 +120,6 @@
             </q-td>
           </template>
 
-          <template #body-cell-wallet="props">
-            <q-td :props="props" class="text-right">
-              <span
-                class="numeric-cell"
-                :class="props.row.wallet_available_balance >= 0 ? 'text-grey-8' : 'text-negative'"
-              >
-                {{ formatBdt(props.row.wallet_available_balance) }}
-              </span>
-            </q-td>
-          </template>
-
           <template #body-cell-status="props">
             <q-td :props="props">
               <span
@@ -234,7 +223,6 @@ const columns: QTableProps['columns'] = [
   { name: 'contact', label: 'Contact', field: 'email', align: 'left' },
   { name: 'address', label: 'Address', field: 'address', align: 'left' },
   { name: 'members', label: 'Members', field: 'member_count', align: 'right' },
-  { name: 'wallet', label: 'Wallet Balance', field: 'wallet_available_balance', align: 'right' },
   { name: 'status', label: 'Status', field: 'is_active', align: 'left' },
   { name: 'actions', label: '', field: 'id', align: 'right' },
 ];

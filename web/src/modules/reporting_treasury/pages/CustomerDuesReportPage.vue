@@ -59,7 +59,6 @@
       :pagination="{ rowsPerPage: 50 }"
       class="compact-ops-table full-height bg-white"
       no-data-label="No customers with outstanding dues"
-      @row-click="(_, row) => openInvoices(row)"
     >
       <template #body-cell-still_due="props">
         <q-td :props="props" class="text-weight-bold text-negative bw-tabular">
@@ -151,16 +150,6 @@ function formatAging(aging: CustomerDuesAging) {
   return parts.join(' · ') || '—';
 }
 
-function openInvoices(row: CustomerDuesRow) {
-  void router.push({
-    path: `/${tenantSlug.value || 'tenant'}/app/sales/invoices`,
-    query: {
-      billing_profile_id: String(row.billing_profile_id),
-      invoice_status: 'issued',
-      quick_filter: 'unpaid',
-    },
-  });
-}
 </script>
 
 <style scoped>

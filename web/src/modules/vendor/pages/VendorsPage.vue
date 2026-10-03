@@ -82,7 +82,6 @@
           v-else
           :vendors="filteredItems"
           @select="onClickVendorCard"
-          @wallet="onClickWallet"
         />
       </template>
 
@@ -96,12 +95,6 @@
         @save="handleSaveVendor"
       />
 
-      <!-- Vendor Wallet Pockets Dialog -->
-      <VendorWalletDialog
-        v-if="openWalletDialog"
-        v-model="openWalletDialog"
-        :vendor="walletVendor"
-      />
     </div>
   </q-page>
 </template>
@@ -115,7 +108,6 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import AddVendorDialog from '../components/AddVendorDialog.vue';
 import VendorCardView from '../components/VendorCardView.vue';
 import VendorSkeleton from '../components/VendorSkeleton.vue';
-import VendorWalletDialog from '../components/VendorWalletDialog.vue';
 import { useVendorStore } from '../stores/vendorStore';
 import type { Vendor, VendorCreateInput, VendorUpdateInput } from '../types';
 
@@ -127,8 +119,6 @@ const { items, markets, loading, error } = storeToRefs(vendorStore);
 
 const openEditDialog = ref(false);
 const selectedVendor = ref<Vendor | null>(null);
-const openWalletDialog = ref(false);
-const walletVendor = ref<Vendor | null>(null);
 const showSearchInput = ref(false);
 const searchText = ref('');
 
@@ -165,11 +155,6 @@ const onClickVendorCard = (row: Vendor) => {
   const routeName =
     authStore.scope === 'platform' ? 'platform-vendor-details-page' : 'app-vendor-details-page';
   void router.push({ name: routeName, params: { ...route.params, id: row.id } });
-};
-
-const onClickWallet = (row: Vendor) => {
-  walletVendor.value = row;
-  openWalletDialog.value = true;
 };
 
 const checkVendorCodeAvailability = async (code: string, excludeId?: number | null) => {

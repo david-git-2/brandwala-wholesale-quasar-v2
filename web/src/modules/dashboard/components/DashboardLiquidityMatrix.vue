@@ -4,8 +4,8 @@
       <div class="row items-center q-gutter-x-xs">
         <span class="liquidity-title">Treasury & Liquidity Runway</span>
       </div>
-      <router-link :to="routes.walletHome()" class="liquidity-view-all">
-        Wallet ledger <q-icon name="ph ph-arrow-right" size="11px" />
+      <router-link :to="routes.financeReports()" class="liquidity-view-all">
+        Reports <q-icon name="ph ph-arrow-right" size="11px" />
       </router-link>
     </div>
 
@@ -49,7 +49,7 @@
       <div class="cod-strip">
         <div class="cod-header">
           <span class="text-caption text-weight-medium text-slate-500">Courier COD Remittance</span>
-          <router-link :to="routes.walletHome()" class="text-caption text-slate-400 hover-dark">Reconcile</router-link>
+          <router-link :to="routes.financeCashInReport()" class="text-caption text-slate-400 hover-dark">Cash in</router-link>
         </div>
         <div class="cod-partners">
           <div class="cod-partner">

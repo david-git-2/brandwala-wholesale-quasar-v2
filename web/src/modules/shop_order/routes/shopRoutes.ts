@@ -14,9 +14,7 @@ const shopRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'wallet',
-        name: 'shop-merchant-wallet-page',
-        component: () => import('src/modules/shop_order/pages/MerchantWalletPage.vue'),
-        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_order_mgmt' }),
+        redirect: { name: 'shop-orders-page' },
       },
       {
         path: ':id',

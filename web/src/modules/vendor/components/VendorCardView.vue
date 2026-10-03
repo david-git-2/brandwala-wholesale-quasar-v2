@@ -35,18 +35,6 @@
 
         <q-card-actions class="q-pt-none q-px-md q-pb-md row justify-between items-center">
           <span class="text-caption text-grey-6">ID: #{{ vendor.id }}</span>
-          <q-btn
-            flat
-            dense
-            no-caps
-            color="primary"
-            icon="ph ph-wallet"
-            label="Wallet"
-            class="wallet-btn"
-            @click.stop="$emit('wallet', vendor)"
-          >
-            <q-tooltip>Open Universal Wallet</q-tooltip>
-          </q-btn>
         </q-card-actions>
       </q-card>
     </div>
@@ -62,7 +50,6 @@ defineProps<{
 
 defineEmits<{
   (e: 'select', vendor: Vendor): void;
-  (e: 'wallet', vendor: Vendor): void;
 }>();
 </script>
 

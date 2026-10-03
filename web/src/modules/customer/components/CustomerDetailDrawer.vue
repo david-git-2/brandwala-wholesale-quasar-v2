@@ -347,78 +347,6 @@
             />
           </q-tab-panel>
 
-          <!-- TAB 4: Universal Wallet Summary -->
-          <q-tab-panel name="wallet" class="q-pa-none">
-            <div class="column q-gutter-y-md">
-              <q-card flat bordered class="bg-primary text-white q-pa-md rounded-borders">
-                <div class="text-caption text-uppercase opacity-80">Available Net Balance</div>
-                <div class="text-h4 text-weight-bolder q-my-xs">
-                  {{ formatBdt(walletBalance) }}
-                </div>
-                <div v-if="customer.billing_profile_id" class="text-caption opacity-90">
-                  Billing profile #{{ customer.billing_profile_id }}
-                </div>
-                <div v-else class="text-caption opacity-90">
-                  No billing profile linked — wallet activity will not post until one exists.
-                </div>
-              </q-card>
-
-              <div v-if="!customer.billing_profile_id" class="text-caption text-grey-7 text-center q-pa-md">
-                Create or link a billing profile for this customer group to enable wallet ledger.
-              </div>
-
-              <template v-else>
-                <div class="row items-center justify-between">
-                  <div class="text-subtitle2 text-weight-bold text-grey-9">Wallet transactions</div>
-                  <q-btn
-                    flat
-                    dense
-                    no-caps
-                    icon="ph ph-arrows-clockwise"
-                    label="Refresh"
-                    class="text-caption"
-                    @click="onRefreshWallet"
-                  />
-                </div>
-
-                <div v-if="walletLoading" class="row justify-center q-py-md">
-                  <q-spinner color="primary" size="2em" />
-                </div>
-
-                <div
-                  v-else-if="!ledgerEntries.length"
-                  class="text-center text-grey-7 q-pa-lg border-all-1 rounded-borders"
-                >
-                  No wallet transactions recorded yet.
-                </div>
-
-                <q-list v-else separator bordered class="rounded-borders">
-                  <q-item v-for="entry in ledgerEntries" :key="entry.id" class="q-py-sm">
-                    <q-item-section>
-                      <q-item-label class="text-weight-bold text-caption text-grey-9">
-                        {{ walletTxLabel(entry) }}
-                      </q-item-label>
-                      <q-item-label caption class="text-grey-7">
-                        {{ formatWalletDate(entry.created_at) }}
-                        <span v-if="entry.source_id"> · {{ entry.source_id }}</span>
-                      </q-item-label>
-                    </q-item-section>
-                    <q-item-section side class="text-right">
-                      <q-item-label
-                        class="text-weight-bold text-caption"
-                        :class="entry.type === 'credit' ? 'text-positive' : 'text-negative'"
-                      >
-                        {{ entry.type === 'credit' ? '+' : '-' }}{{ formatBdt(Number(entry.amount)) }}
-                      </q-item-label>
-                      <q-item-label caption class="text-grey-6">
-                        Bal: {{ formatBdt(Number(entry.balance_after)) }}
-                      </q-item-label>
-                    </q-item-section>
-                  </q-item>
-                </q-list>
-              </template>
-            </div>
-          </q-tab-panel>
         </q-tab-panels>
       </div>
     </div>
@@ -541,8 +469,6 @@ import {
   useCustomerAccountQuery,
 } from '../composables/useCustomerQuery';
 import { customerQueryKeys } from '../services/customerQueryKeys';
-import { useWalletQuery } from 'src/modules/wallet/composables/useWalletQuery';
-import { walletQueryKeys } from 'src/modules/wallet/shared/queryKeys/walletQueryKeys';
 import CustomerAccountTab from './CustomerAccountTab.vue';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 import { useCanAdministerCustomerGroup } from '../composables/useCanAdministerCustomerGroup';
@@ -565,13 +491,12 @@ const emit = defineEmits<{
 }>();
 
 const canAdministerCustomerGroup = useCanAdministerCustomerGroup();
-const activeTab = ref<'general' | 'members' | 'account' | 'wallet'>('general');
+const activeTab = ref<'general' | 'members' | 'account'>('general');
 
 const drawerTabs = [
   { name: 'general' as const, label: 'General', icon: 'ph ph-user-circle' },
   { name: 'members' as const, label: 'Members', icon: 'ph ph-users-three' },
   { name: 'account' as const, label: 'Account', icon: 'ph ph-scale' },
-  { name: 'wallet' as const, label: 'Wallet', icon: 'ph ph-wallet' },
 ];
 const queryClient = useQueryClient();
 const {
@@ -627,22 +552,6 @@ const accountSummary = computed(() => accountQuery.data.value);
 const membersQuery = useCustomerMembersQuery(customerGroupId);
 const members = computed(() => membersQuery.data.value ?? []);
 
-const { ledgerEntries, isLoading: walletLoading, refetch: refetchWallet } = useWalletQuery(
-  'customer',
-  billingProfileId,
-);
-
-const walletBalance = computed(() => {
-  if (ledgerEntries.value.length > 0) {
-    return Number(ledgerEntries.value[0]?.balance_after ?? 0);
-  }
-  return Number(props.customer?.wallet_available_balance ?? 0);
-});
-
-const onRefreshWallet = () => {
-  void refetchWallet();
-};
-
 const onRefreshAccount = () => {
   void accountQuery.refetch();
 };
@@ -650,33 +559,8 @@ const onRefreshAccount = () => {
 const onAccountActionComplete = async () => {
   await Promise.all([
     accountQuery.refetch(),
-    refetchWallet(),
     queryClient.invalidateQueries({ queryKey: customerQueryKeys.root }),
-    queryClient.invalidateQueries({ queryKey: walletQueryKeys.all }),
   ]);
-};
-
-const formatWalletDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-const walletTxLabel = (entry: { type: string; metadata: Record<string, unknown> }) => {
-  const txType = entry.metadata?.['transaction_type'] as string | undefined;
-  switch (txType) {
-    case 'dropship_profit':
-      return 'Dropship profit';
-    case 'invoice_collection':
-      return 'Invoice collection';
-    case 'merchant_funds_held':
-      return 'Merchant profit held';
-    case 'profit_paid_out':
-      return 'Profit paid out';
-    case 'payment_received':
-      return 'Payment received';
-    case 'invoice_billed':
-      return 'Invoice billed';
-    default:
-      return (entry.metadata?.['label'] as string | undefined) || 'Adjustment';
-  }
 };
 
 const isSavingGeneral = ref(false);

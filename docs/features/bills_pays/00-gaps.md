@@ -4,6 +4,7 @@ Open with [01-prd.md](01-prd.md). Types: `not_built` | `doc_wrong` | `sql_split`
 
 | ID | Type | Plan / doc | Code today | Fix |
 | :--- | :--- | :--- | :--- | :--- |
+| BP5 | not_built | Rebuild Bills / Payments / Cashbook desks | App UI **unmounted** (2026-10); SQL + RPCs unchanged | New UI under bills_pays pack; see [01 As-built](01-prd.md#as-built) |
 | BP1 | ~~doc_wrong~~ | One pack Bills & pays | Two doc folders | **Done (2026-10):** this folder; `docs/features/wallet/` is a pointer |
 | BP2 | design | Rename UI/RPC off `wallet` | `web/src/modules/wallet/`, `record_ledger_transaction` | Later; cashbook is the product |
 | BP3 | design | FK **`profile_id`**; drop `billing_profiles`; customer `subject_id` → group when 1:1 | `billing_profiles` on bills/pays | Party sync **done** (`20271001130000_profile_party_sync_triggers.sql`); [02 § Profile](02-data-model.md#profile-profiles) |

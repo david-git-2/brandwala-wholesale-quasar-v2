@@ -21,7 +21,10 @@ const accountingRedirect = (to: { params: Record<string, string | string[]> }, s
 const reportingTreasuryRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/app/accounting/invoice',
-    redirect: (to) => accountingRedirect(to, '/sales/invoices'),
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params);
+      return `${prefix}/app/dashboard`;
+    },
   },
   {
     path: '/:tenantSlug?/app/accounting/customer-payments',
@@ -94,13 +97,6 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
         meta: { title: 'Shipment cost and profit', headerTitle: 'Shipment cost and profit' },
       },
       {
-        path: 'reports/wallet',
-        name: 'app-finance-wallet-report-page',
-        component: () => import('../pages/WalletReportPage.vue'),
-        beforeEnter: guard('reporting_treasury'),
-        meta: { title: 'Wallet', headerTitle: 'Wallet' },
-      },
-      {
         path: 'reports/courier-cod',
         name: 'app-finance-courier-cod-report-page',
         component: () => import('../pages/CourierCodReportPage.vue'),
@@ -113,20 +109,6 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/MonthSnapshotReportPage.vue'),
         beforeEnter: guard('reporting_treasury'),
         meta: { title: 'Month snapshot', headerTitle: 'Month snapshot' },
-      },
-      {
-        path: 'payments',
-        name: 'app-finance-payments-page',
-        component: () => import('src/modules/wallet/pages/PaymentsPage.vue'),
-        beforeEnter: guard('payments'),
-        meta: { title: 'Payments', headerTitle: 'Payments — cash in & cash out' },
-      },
-      {
-        path: 'payments/collect/:customerGroupId',
-        name: 'app-finance-payments-collect-page',
-        component: () => import('src/modules/wallet/pages/CollectCustomerPaymentPage.vue'),
-        beforeEnter: guard('payments'),
-        meta: { title: 'Cash in', headerTitle: 'Cash in — collect' },
       },
     ],
   },

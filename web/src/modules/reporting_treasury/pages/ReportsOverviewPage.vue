@@ -44,13 +44,6 @@ const reportGroups: HubLinkGroup[] = [
         icon: 'ph ph-bank',
         iconTone: 'primary',
       },
-      {
-        key: 'wallet',
-        title: 'Wallet',
-        caption: 'Credit in, applied out, still owed.',
-        icon: 'ph ph-wallet',
-        iconTone: 'neutral',
-      },
     ],
   },
   {
@@ -117,7 +110,6 @@ const reportGroups: HubLinkGroup[] = [
 const pathByKey: Record<string, string> = {
   'customer-dues': 'customer-dues',
   'cash-in': 'cash-in',
-  wallet: 'wallet',
   'invoice-book': 'invoice-book',
   'invoice-profit': 'invoice-profit',
   'shipment-profit': 'shipment-profit',

@@ -38,14 +38,10 @@ export const useAppDashboardRoutes = (tenantSlugOverride?: string) => {
       withSlug('app-shop-orders-page', query ? { query } : undefined),
     shopOrdersDropship: () =>
       withSlug('app-shop-orders-page', { query: { shopType: 'dropship' } }),
-    globalInvoices: (query?: RouteQuery) =>
-      withSlug('app-global-invoices-page', query ? { query } : undefined),
-    globalInvoicesCreate: () => withSlug('app-global-invoices-create-wholesale'),
-    reportsSalesSummary: () => withSlug('app-global-invoices-overview'),
-    reportsCustomerDues: () =>
-      withSlug('app-global-invoices-page', { query: { payment_status: 'unpaid' } }),
+    financeReports: () => withSlug('app-finance-reports-page'),
+    financeCashInReport: () => withSlug('app-finance-cash-in-report-page'),
+    financeCustomerDuesReport: () => withSlug('app-finance-customer-dues-report-page'),
     stockValuation: () => withSlug('app-procurement-stock-list'),
-    walletHome: () => withSlug('app-wallet-home-page'),
     tasks: () => withSlug('tasks-page'),
     capitalLedger: () => withSlug('app-capital-ledger-page'),
     capitalShipments: () => withSlug('app-capital-shipments-page'),

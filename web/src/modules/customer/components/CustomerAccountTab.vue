@@ -10,7 +10,7 @@
 
     <template v-else-if="summary">
       <div v-if="!summary.billing_profile_id" class="text-caption text-grey-7 text-center q-pa-md">
-        No billing profile linked — create or link one to enable account balances and wallet actions.
+        No billing profile linked — create or link one to see account balances.
       </div>
 
       <template v-else>
@@ -30,7 +30,7 @@
               <div class="text-h5 text-weight-bolder text-positive">
                 {{ formatBdt(summary.store_credit_balance) }}
               </div>
-              <div class="text-caption text-grey-6">Store credit / wallet</div>
+              <div class="text-caption text-grey-6">Store credit</div>
             </q-card>
           </div>
         </div>
@@ -50,58 +50,6 @@
         </div>
 
         <div class="row q-gutter-xs wrap">
-          <q-btn
-            unelevated
-            color="primary"
-            icon="ph ph-coins"
-            label="Collect"
-            no-caps
-            size="sm"
-            class="action-btn text-weight-bold"
-            :disable="!summary.open_invoices.length"
-            @click="openCollectForInvoice(summary.open_invoices[0])"
-          />
-          <q-btn
-            unelevated
-            color="teal-8"
-            icon="ph ph-plus-circle"
-            label="Deposit"
-            no-caps
-            size="sm"
-            class="action-btn text-weight-bold"
-            @click="openWalletAction('deposit')"
-          />
-          <q-btn
-            unelevated
-            color="indigo-8"
-            icon="ph ph-tag"
-            label="Credit"
-            no-caps
-            size="sm"
-            class="action-btn text-weight-bold"
-            @click="openWalletAction('credit')"
-          />
-          <q-btn
-            unelevated
-            color="positive"
-            icon="ph ph-bank"
-            label="Withdraw"
-            no-caps
-            size="sm"
-            class="action-btn text-weight-bold"
-            :disable="summary.store_credit_balance <= 0"
-            @click="openWalletAction('withdraw')"
-          />
-          <q-btn
-            flat
-            color="primary"
-            icon="ph ph-arrow-square-out"
-            label="Full wallet"
-            no-caps
-            size="sm"
-            class="text-weight-bold"
-            @click="onOpenFullWallet"
-          />
           <q-btn
             flat
             dense
@@ -124,7 +72,6 @@
                   <th class="text-left">Type</th>
                   <th class="text-right">Due</th>
                   <th class="text-left">Desk</th>
-                  <th class="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -135,17 +82,6 @@
                     {{ formatBdt(inv.due_amount) }}
                   </td>
                   <td class="text-caption">{{ inv.issued_by_tenant_name || '—' }}</td>
-                  <td class="text-right">
-                    <q-btn
-                      flat
-                      dense
-                      no-caps
-                      color="primary"
-                      label="Collect"
-                      size="sm"
-                      @click="openCollectForInvoice(inv)"
-                    />
-                  </td>
                 </tr>
               </tbody>
             </q-markup-table>
@@ -203,45 +139,12 @@
         </div>
       </template>
     </template>
-
-    <WholesaleCollectPaymentDialog
-      v-model="collectDialogOpen"
-      :due-amount="collectDueAmount"
-      :paid-amount="collectPaidAmount"
-      :store-credit="collectStoreCredit"
-      :saving="isCollecting"
-      @submit="onCollectSubmit"
-    />
-
-    <WalletActionModal
-      v-model="walletModalOpen"
-      :action-type="walletActionType"
-      entity-type="customer"
-      :entity-id="effectiveBillingProfileId"
-      :entity-name="groupName"
-      :available-balance="summary?.store_credit_balance ?? 0"
-      :submitting="isWalletSubmitting"
-      @submit="onWalletSubmit"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import WholesaleCollectPaymentDialog from 'src/modules/sales_invoice/components/WholesaleCollectPaymentDialog.vue';
-import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
-import type { WholesaleCollectPaymentPayload } from 'src/modules/sales_invoice/types';
-import WalletActionModal, {
-  type WalletActionPayload,
-  type WalletModalActionType,
-} from 'src/modules/wallet/components/WalletActionModal.vue';
-import { walletRepository } from 'src/modules/wallet/repositories/walletRepository';
-import { showSuccessNotification, showErrorNotification, parseSupabaseError } from 'src/utils/appFeedback';
-import type {
-  CustomerAccountOpenInvoice,
-  CustomerAccountSummary,
-} from '../types/customer';
+import { computed } from 'vue';
+import type { CustomerAccountSummary } from '../types/customer';
 
 const props = defineProps<{
   tenantId: number;
@@ -259,30 +162,11 @@ const emit = defineEmits<{
   (e: 'action-complete'): void;
 }>();
 
-const router = useRouter();
-const route = useRoute();
-
-const collectDialogOpen = ref(false);
-const isCollecting = ref(false);
-const selectedInvoice = ref<CustomerAccountOpenInvoice | null>(null);
-
-const walletModalOpen = ref(false);
-const walletActionType = ref<WalletModalActionType>('deposit');
-const isWalletSubmitting = ref(false);
-
-const effectiveBillingProfileId = computed(
-  () => props.summary?.billing_profile_id ?? props.billingProfileId ?? 0,
-);
-
 const errorMessage = computed(() => props.error?.message || 'Failed to load account summary.');
 
 const stillDueClass = computed(() =>
   Number(props.summary?.still_due ?? 0) > 0 ? 'text-negative' : 'text-grey-8',
 );
-
-const collectDueAmount = computed(() => Number(selectedInvoice.value?.due_amount ?? 0));
-const collectPaidAmount = computed(() => Number(selectedInvoice.value?.paid_amount ?? 0));
-const collectStoreCredit = computed(() => Number(props.summary?.store_credit_balance ?? 0));
 
 type ActivityRow = {
   key: string;
@@ -307,7 +191,7 @@ const activityRows = computed<ActivityRow[]>(() => {
 
   const ledger = (summary.recent_ledger ?? []).map((l) => ({
     key: `led-${l.id}`,
-    label: l.label || l.transaction_type || 'Wallet entry',
+    label: l.label || l.transaction_type || 'Ledger entry',
     subtitle: formatActivityDate(l.created_at),
     amountText: `${l.type === 'credit' ? '+' : '-'}${formatBdt(Number(l.amount))}`,
     amountClass: l.type === 'credit' ? 'text-positive' : 'text-negative',
@@ -338,94 +222,9 @@ const formatActivityDate = (iso: string) =>
     hour: '2-digit',
     minute: '2-digit',
   });
-
-const openCollectForInvoice = (inv: CustomerAccountOpenInvoice | undefined) => {
-  if (!inv) return;
-  selectedInvoice.value = inv;
-  collectDialogOpen.value = true;
-};
-
-const openWalletAction = (action: WalletModalActionType) => {
-  walletActionType.value = action;
-  walletModalOpen.value = true;
-};
-
-const onOpenFullWallet = () => {
-  if (!effectiveBillingProfileId.value) return;
-  void router.push({
-    name: 'app-universal-wallet-page',
-    params: {
-      tenantSlug: route.params.tenantSlug,
-      walletType: 'customers',
-      entityId: String(effectiveBillingProfileId.value),
-    },
-  });
-};
-
-const onCollectSubmit = async (payload: WholesaleCollectPaymentPayload) => {
-  if (!selectedInvoice.value) return;
-  isCollecting.value = true;
-  try {
-    await invoiceRepository.collectWholesaleInvoicePayment({
-      invoice_id: selectedInvoice.value.id,
-      instruments: payload.instruments,
-      wallet_amount: payload.walletAmount,
-      settlement_amount: payload.settlementAmount,
-      note: payload.note,
-      received_on: payload.receivedOn,
-    });
-    showSuccessNotification('Payment recorded successfully.');
-    collectDialogOpen.value = false;
-    selectedInvoice.value = null;
-    emit('action-complete');
-  } catch (err: unknown) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to record payment.'));
-  } finally {
-    isCollecting.value = false;
-  }
-};
-
-const onWalletSubmit = async (payload: WalletActionPayload) => {
-  if (!effectiveBillingProfileId.value) return;
-  isWalletSubmitting.value = true;
-  try {
-    const result = await walletRepository.recordManualTransaction({
-      tenant_id: props.tenantId,
-      action_type: payload.actionType,
-      primary_entity_type: 'customer',
-      primary_entity_id: effectiveBillingProfileId.value,
-      amount: payload.amount,
-      currency_code: payload.currency,
-      exchange_rate: payload.exchangeRate,
-      category: payload.category,
-      payment_method: payload.paymentMethod,
-      reference_id: payload.referenceId || null,
-      note: payload.note || null,
-      counterparty_entity_type: payload.targetEntityType || null,
-      counterparty_entity_id: payload.targetEntityId || null,
-      target_bucket: 'available',
-    });
-
-    if (result.success === false) {
-      throw new Error(String(result.error || 'Transaction failed'));
-    }
-
-    showSuccessNotification('Wallet transaction recorded.');
-    walletModalOpen.value = false;
-    emit('action-complete');
-  } catch (err: unknown) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to record wallet transaction.'));
-  } finally {
-    isWalletSubmitting.value = false;
-  }
-};
 </script>
 
 <style scoped>
-.action-btn {
-  border-radius: 8px !important;
-}
-
 .account-card {
   border-radius: 10px;
 }
