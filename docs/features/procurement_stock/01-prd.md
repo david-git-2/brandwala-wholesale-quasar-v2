@@ -148,7 +148,7 @@ Two **app** routes, one data model (`preorder_demand`). Not a separate module. N
 | Desk | Route | Job |
 | :--- | :--- | :--- |
 | **Demand** | `/:slug/app/procurement/demand` | See confirmed need. Optional vendor + **placed** qty (PO). Filter by child tenant. |
-| **Delivery paper** | `/:slug/app/procurement/fulfill` | Pick warehouse stock (`held`). Mark **packed**. Optional proforma. Close packed qty: take / condition / return. |
+| **Delivery paper** | `/:slug/app/procurement/fulfill` | Pick warehouse stock (`held`). Mark **packed** (status only). On **packed**, set close per pick: take / condition / return (`stock_picks.close_action`). Bills later ([PS6](00-gaps.md)). |
 
 **Sources (same list):** catalog **shop order** lines (`shop_order_item`) and **PBC** file lines (`pbc_costing_item`) after customer confirm. Pre-order quotes enter via [product_based_costing](../product_based_costing/01-prd.md) → same Demand desk.
 
@@ -171,7 +171,7 @@ Two **app** routes, one data model (`preorder_demand`). Not a separate module. N
 
 One pack may mix all three. Optional **proforma** is print/share only — not the take or condition bill. No separate checklist table: the delivery paper **is** the close.
 
-**Live today:** `create_invoice_from_preorder_demand_document` / `sync_…` builds **proforma** from picks when `packed`. **Target:** paper close → take and/or condition bills — not issue-from-this-desk ([PS6](00-gaps.md), [bills_pays US-5](../bills_pays/01-prd.md)). Dropship ship+issue stays on the order.
+**Live today:** Mark **packed** does not create a bill. Delivery paper saves `close_action` on each `stock_picks` row while `packed`. `create_invoice_from_preorder_demand_document` / `sync_…` remain in SQL but are not wired from this desk. **Target:** issue take / condition bills from close ([PS6](00-gaps.md), [bills_pays US-5](../bills_pays/01-prd.md)). Dropship ship+issue stays on the order.
 
 **Out of scope here:** inbound shipment receive, invoice collect, dropship 5-stage desk.
 

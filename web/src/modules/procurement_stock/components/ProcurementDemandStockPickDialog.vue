@@ -13,11 +13,14 @@ export type DemandStockPickRow = {
   unit_cost_amount: number;
 };
 
+export type DemandCloseAction = 'take' | 'condition' | 'return';
+
 export type DemandStockPickSelection = {
   globalStockId: number;
   shipmentName: string;
   locationName: string;
   quantity: number;
+  closeAction?: DemandCloseAction | null;
 };
 
 const props = defineProps<{

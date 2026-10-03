@@ -11801,6 +11801,7 @@ declare
   v_elem jsonb;
   v_stock_id bigint;
   v_qty integer;
+  v_close_action text;
 begin
   if p_stock_picks is null then
     return true;
@@ -11814,6 +11815,11 @@ begin
     v_stock_id := nullif(v_elem->>'global_stock_id', '')::bigint;
     v_qty := coalesce((v_elem->>'quantity')::integer, 0);
     if v_stock_id is null or v_qty <= 0 then
+      return false;
+    end if;
+    v_close_action := lower(trim(coalesce(v_elem->>'close_action', '')));
+    if v_close_action <> ''
+      and v_close_action not in ('take', 'condition', 'return') then
       return false;
     end if;
   end loop;
@@ -12999,7 +13005,6 @@ CREATE OR REPLACE FUNCTION "public"."staff_mark_pbc_packed"("p_file_id" bigint) 
     AS $$
 declare
   v_file record;
-  v_result jsonb;
 begin
   select * into v_file
   from public.product_based_costing_files
@@ -13014,7 +13019,7 @@ begin
   end if;
 
   if public.normalize_pbc_procurement_status(v_file.status) <> 'procuring' then
-    raise exception 'costing file must be procuring to mark ready for shipment';
+    raise exception 'costing file must be procuring to mark packed';
   end if;
 
   update public.product_based_costing_files
@@ -13023,18 +13028,10 @@ begin
     updated_at = now()
   where id = p_file_id;
 
-  v_result := public.create_invoice_from_preorder_demand_document(
-    v_file.tenant_id,
-    'pbc_costing_file',
-    p_file_id
-  );
-
   return jsonb_build_object(
     'success', true,
     'file_id', p_file_id,
-    'status', 'packed',
-    'invoice_id', v_result->>'invoice_id',
-    'invoice_created', coalesce(v_result->>'created', 'false')::boolean
+    'status', 'packed'
   );
 end;
 $$;

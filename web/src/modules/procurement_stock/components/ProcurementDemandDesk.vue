@@ -150,34 +150,8 @@
                         :disable="isGroupSaving(group)"
                         @click.stop="onChangeGroupStatus(group)"
                       >
-                        <q-tooltip>Set status to ready for shipment</q-tooltip>
+                        <q-tooltip>Mark group packed (status only)</q-tooltip>
                       </q-btn>
-                      <q-btn
-                        v-if="canCreateGroupInvoice(group)"
-                        unelevated
-                        dense
-                        no-caps
-                        color="primary"
-                        icon="ph ph-file-plus"
-                        label="Create invoice"
-                        class="demand-group-invoice-btn q-ml-xs"
-                        :loading="isGroupSaving(group)"
-                        :disable="isGroupSaving(group)"
-                        @click.stop="onCreateGroupInvoice(group)"
-                      />
-                      <q-btn
-                        v-if="canUpdateGroupInvoice(group)"
-                        unelevated
-                        dense
-                        no-caps
-                        color="primary"
-                        icon="ph ph-arrows-clockwise"
-                        label="Update invoice"
-                        class="demand-group-invoice-btn q-ml-xs"
-                        :loading="isGroupSaving(group)"
-                        :disable="isGroupSaving(group)"
-                        @click.stop="onUpdateGroupInvoice(group)"
-                      />
                       <q-btn
                         v-if="isFulfillMode"
                         flat
@@ -195,17 +169,6 @@
                           Assign oldest warehouse stock to lines with enough ATP; skip short lines
                         </q-tooltip>
                       </q-btn>
-                      <q-btn
-                        v-if="isFulfillMode && canOpenGroupInvoice(group)"
-                        flat
-                        dense
-                        no-caps
-                        color="primary"
-                        icon="ph ph-file-text"
-                        label="Open invoice"
-                        class="demand-group-invoice-btn q-ml-xs"
-                        @click.stop="openGroupInvoiceDetails(group)"
-                      />
                     </div>
                   </td>
                 </tr>
@@ -220,6 +183,8 @@
                   :is-fulfill-mode="isFulfillMode"
                   :can-edit-procuring="isProcuringGroup(group)"
                   :can-pick-stock="canPickStockForGroup(group)"
+                  :is-packed-close-mode="isPackedCloseMode(group)"
+                  :close-action-options="closeActionOptions"
                   :table-col-count="tableColCount"
                   :vendor-options="vendorOptions"
                   :vendors-loading="vendorsLoading"
@@ -232,6 +197,8 @@
                   @vendor-change="(item, v) => onVendorChange(group, item, v)"
                   @flush-save="(item) => flushProcuringSave(group, item)"
                   @pick-stock="(item) => openStockPickDialog(group, item)"
+                  @close-action-change="(item, stockId, action) =>
+                    onPickCloseActionChange(group, item, stockId, action)"
                 />
               </template>
             </tbody>
@@ -314,11 +281,7 @@ import {
 import ProcurementDemandStockPickDialog, {
   type DemandStockPickSelection,
 } from './ProcurementDemandStockPickDialog.vue';
-import {
-  useCreateDemandDocumentInvoiceMutation,
-  useSetDemandGroupStatusMutation,
-  useSyncDemandDocumentInvoiceMutation,
-} from '../composables/useMarkDemandGroupReadyMutation';
+import { useMarkDemandGroupReadyMutation } from '../composables/useMarkDemandGroupReadyMutation';
 import { useProcurementDemandGroupsQuery } from '../composables/useProcurementDemandGroupsQuery';
 import { useProcurementFulfillGroupsQuery } from '../composables/useProcurementFulfillGroupsQuery';
 import {
@@ -445,12 +408,23 @@ const isProcuringGroup = (group: ProcurementDemandGroup) =>
   group.document_status === 'procuring';
 
 const canPickStockForGroup = (group: ProcurementDemandGroup) =>
-  isFulfillMode.value &&
-  (group.document_status === 'procuring' || group.document_status === 'packed');
+  isFulfillMode.value && group.document_status === 'procuring';
 
-const allocatedColumnLabel = computed(() =>
-  procurementStatus.value === 'procuring' ? 'Allocated' : 'Allocated qty',
-);
+const isPackedCloseMode = (group: ProcurementDemandGroup) =>
+  isFulfillMode.value && group.document_status === 'packed';
+
+const closeActionOptions = [
+  { label: 'Take', value: 'take' as const },
+  { label: 'Condition', value: 'condition' as const },
+  { label: 'Return', value: 'return' as const },
+];
+
+const allocatedColumnLabel = computed(() => {
+  if (isFulfillMode.value && fulfillProcurementStatus.value === 'packed') {
+    return 'Going out / close';
+  }
+  return 'Allocated';
+});
 
 const {
   data: demandData,
@@ -514,9 +488,7 @@ const setVendorMutation = useSetPreorderDemandVendorMutation({
   childTenantId: listChildTenantId,
 });
 
-const setStatusMutation = useSetDemandGroupStatusMutation();
-const createInvoiceMutation = useCreateDemandDocumentInvoiceMutation();
-const syncInvoiceMutation = useSyncDemandDocumentInvoiceMutation();
+const markReadyMutation = useMarkDemandGroupReadyMutation();
 
 const refreshDemandDesk = async () => {
   if (isFulfillMode.value) {
@@ -569,6 +541,7 @@ const mapStockPicksFromApi = (picks?: PreorderDemandStockPick[]): DemandStockPic
     shipmentName: pick.shipment_name ?? '',
     locationName: pick.location_name ?? '',
     quantity: pick.quantity,
+    closeAction: pick.close_action ?? null,
   }));
 
 const mapStockPicksToApi = (picks: DemandStockPickSelection[]): PreorderDemandStockPick[] =>
@@ -577,6 +550,7 @@ const mapStockPicksToApi = (picks: DemandStockPickSelection[]): PreorderDemandSt
     quantity: pick.quantity,
     shipment_name: pick.shipmentName || null,
     location_name: pick.locationName || null,
+    close_action: pick.closeAction ?? null,
   }));
 
 const syncDraftsFromGroupItems = (
@@ -850,49 +824,30 @@ const groupStatusColor = (status: string) => getCustomerOrderStatusColor(status)
 const isGroupSaving = (group: ProcurementDemandGroup) =>
   savingGroupKeys.value.has(groupKey(group));
 
-const isEditableInvoiceStatus = (status?: string | null) =>
-  status === 'draft' || status === 'proforma_generated';
-
 const canChangeFulfillStatus = (group: ProcurementDemandGroup) =>
   isFulfillMode.value &&
   procurementStatus.value === 'procuring' &&
   isProcuringGroup(group);
 
-const canCreateGroupInvoice = (group: ProcurementDemandGroup) =>
-  isFulfillMode.value &&
-  procurementStatus.value === 'packed' &&
-  group.document_status === 'packed' &&
-  !group.invoice_id;
-
-const canUpdateGroupInvoice = (group: ProcurementDemandGroup) =>
-  isFulfillMode.value &&
-  !!group.invoice_id &&
-  !!group.invoice_stale &&
-  isEditableInvoiceStatus(group.invoice_status);
-
-const canOpenGroupInvoice = (group: ProcurementDemandGroup) =>
-  isFulfillMode.value && !!group.invoice_id;
-
 const onChangeGroupStatus = async (group: ProcurementDemandGroup) => {
-  const tenantId = listTenantId.value;
-  if (!tenantId || !isProcuringGroup(group)) return;
+  if (!isProcuringGroup(group)) return;
 
   const ok = await requestConfirmation(
-    `Set ${groupTitle(group)} to ready for shipment?`,
-    'Change status',
-    'Set ready',
+    `Mark ${groupTitle(group)} as packed?`,
+    'Mark packed',
+    'Mark packed',
   );
   if (!ok) return;
 
   const key = groupKey(group);
   savingGroupKeys.value = new Set(savingGroupKeys.value).add(key);
   try {
-    await setStatusMutation.mutateAsync({ group, tenantId });
-    showSuccessNotification('Status set to ready for shipment.');
+    await markReadyMutation.mutateAsync(group);
+    showSuccessNotification('Marked packed.');
     fulfillProcurementStatus.value = 'packed';
     await refreshDemandDesk();
   } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to change status'));
+    showErrorNotification(parseSupabaseError(err, 'Failed to mark packed'));
   } finally {
     const next = new Set(savingGroupKeys.value);
     next.delete(key);
@@ -900,80 +855,34 @@ const onChangeGroupStatus = async (group: ProcurementDemandGroup) => {
   }
 };
 
-const onCreateGroupInvoice = async (group: ProcurementDemandGroup) => {
-  const tenantId = mutationTenantId.value;
-  if (!tenantId) return;
-
-  const ok = await requestConfirmation(
-    `Create a proforma invoice from current stock picks for ${groupTitle(group)}?`,
-    'Create invoice',
-    'Create',
+const onPickCloseActionChange = async (
+  group: ProcurementDemandGroup,
+  item: ProcurementDemandItem,
+  globalStockId: number,
+  closeAction: 'take' | 'condition' | 'return' | null,
+) => {
+  const key = itemRowKey(group, item);
+  const draft = getDraft(group, item);
+  const nextPicks = draft.stockPicks.map((pick) =>
+    pick.globalStockId === globalStockId ? { ...pick, closeAction } : pick,
   );
-  if (!ok) return;
+  drafts[key] = { ...draft, stockPicks: nextPicks };
 
-  const key = groupKey(group);
-  savingGroupKeys.value = new Set(savingGroupKeys.value).add(key);
+  savingRowKeys.value = new Set(savingRowKeys.value).add(key);
   try {
-    await createInvoiceMutation.mutateAsync({ group, tenantId });
-    showSuccessNotification('Proforma invoice created — open it to review and issue.');
-    await refreshDemandDesk();
-  } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to create invoice'));
-  } finally {
-    const next = new Set(savingGroupKeys.value);
-    next.delete(key);
-    savingGroupKeys.value = next;
-  }
-};
-
-const onUpdateGroupInvoice = async (group: ProcurementDemandGroup) => {
-  const tenantId = mutationTenantId.value;
-  if (!tenantId) return;
-
-  const ok = await requestConfirmation(
-    `Update the linked invoice to match current stock picks for ${groupTitle(group)}?`,
-    'Update invoice',
-    'Update',
-  );
-  if (!ok) return;
-
-  const key = groupKey(group);
-  savingGroupKeys.value = new Set(savingGroupKeys.value).add(key);
-  try {
-    await syncInvoiceMutation.mutateAsync({ group, tenantId });
-    showSuccessNotification('Invoice updated from stock picks.');
-    await refreshDemandDesk();
-  } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to update invoice'));
-  } finally {
-    const next = new Set(savingGroupKeys.value);
-    next.delete(key);
-    savingGroupKeys.value = next;
-  }
-};
-
-const openGroupInvoiceDetails = (group: ProcurementDemandGroup) => {
-  const invoiceId = group.invoice_id;
-  if (!invoiceId) return;
-
-  const tenantSlug = authStore.tenantSlug || '';
-  const isComposerDraft = isEditableInvoiceStatus(group.invoice_status);
-  if (isComposerDraft) {
-    void router.push({
-      name: 'app-global-invoices-create-wholesale',
-      params: { tenantSlug },
-      query: { id: String(invoiceId) },
+    await upsertMutation.mutateAsync({
+      sourceType: item.source_type,
+      sourceId: item.source_id,
+      stockPicks: mapStockPicksToApi(nextPicks),
     });
-    return;
+    showSuccessNotification('Close choice saved.');
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to save close choice'));
+  } finally {
+    const next = new Set(savingRowKeys.value);
+    next.delete(key);
+    savingRowKeys.value = next;
   }
-
-  void router.push({
-    name: 'app-global-invoice-details-page',
-    params: {
-      tenantSlug,
-      id: String(invoiceId),
-    },
-  });
 };
 
 const openGroupSource = (group: ProcurementDemandGroup) => {

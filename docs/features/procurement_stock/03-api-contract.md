@@ -174,7 +174,7 @@ language plpgsql security definer;
 
 ### 5.1 `upsert_preorder_demand`
 
-Updates vendor PO (`placed_quantity`), warehouse picks (`stock_picks` → `delivered_quantity`), or both.
+Updates vendor PO (`placed_quantity`), warehouse picks (`stock_picks` → `delivered_quantity`), or both. Each pick object may include `close_action` (`take` \| `condition` \| `return`) while the parent document is `packed`.
 
 - `placed_quantity` = vendor PO qty (Demand desk). May be 0.
 - `delivered_quantity` / picks = warehouse allocation (Delivery paper desk). Capped at confirmed need (`get_procurement_demand_open_qty.open_qty`), **not** placed qty.
@@ -193,9 +193,9 @@ Sets `vendor_id` on **every** demand line for one document (`p_document_type` + 
 
 ### 5.2 `create_invoice_from_preorder_demand_document`
 
-**Live today:** builds proforma (`issue: false`) from stock picks. Document must be `packed`. Idempotent if a linked invoice exists.
+**Not wired from Delivery paper UI.** RPC remains for legacy/manual use. Mark **packed** uses `staff_set_catalog_ordered_qty` / `staff_mark_pbc_packed` (status + backlog only). Close choices persist on `stock_picks.close_action` via `upsert_preorder_demand`.
 
-**Target:** this desk **is** the delivery paper. Close writes take / condition / return; then take and/or condition bills. See [01-prd US-4](01-prd.md) and [bills_pays US-5](../bills_pays/01-prd.md). Gap [PS6](00-gaps.md).
+**Target:** issue take / condition bills from close — [PS6](00-gaps.md), [bills_pays US-5](../bills_pays/01-prd.md).
 
 ### 5.2b `sync_invoice_from_preorder_demand_document`
 

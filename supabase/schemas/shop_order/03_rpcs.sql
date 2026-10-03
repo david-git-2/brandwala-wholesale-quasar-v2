@@ -10108,7 +10108,6 @@ declare
   v_allocated integer;
   v_shortfall integer;
   v_product record;
-  v_invoice_result jsonb;
 begin
   select * into v_order from public.shop_orders where id = p_order_id;
   if not found then
@@ -10135,12 +10134,6 @@ begin
     placed_at = coalesce(placed_at, now()),
     updated_at = now()
   where id = p_order_id;
-
-  v_invoice_result := public.create_invoice_from_preorder_demand_document(
-    v_desk_tenant_id,
-    'shop_order',
-    p_order_id
-  );
 
   for v_item_row in
     select oi.*

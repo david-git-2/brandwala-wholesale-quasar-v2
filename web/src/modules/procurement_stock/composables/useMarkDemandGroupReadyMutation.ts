@@ -20,33 +20,3 @@ export function useMarkDemandGroupReadyMutation() {
     onSuccess: () => invalidateDemandQueries(queryClient),
   });
 }
-
-export function useSetDemandGroupStatusMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (params: { group: ProcurementDemandGroup; tenantId: number }) =>
-      procurementDemandRepository.setDemandGroupStatusReadyForShipment(params),
-    onSuccess: () => invalidateDemandQueries(queryClient),
-  });
-}
-
-export function useCreateDemandDocumentInvoiceMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (params: { group: ProcurementDemandGroup; tenantId: number }) =>
-      procurementDemandRepository.createDemandDocumentInvoice(params),
-    onSuccess: () => invalidateDemandQueries(queryClient),
-  });
-}
-
-export function useSyncDemandDocumentInvoiceMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (params: { group: ProcurementDemandGroup; tenantId: number }) =>
-      procurementDemandRepository.syncDemandDocumentInvoice(params),
-    onSuccess: () => invalidateDemandQueries(queryClient),
-  });
-}

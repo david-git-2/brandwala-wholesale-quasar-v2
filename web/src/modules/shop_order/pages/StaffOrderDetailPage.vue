@@ -679,7 +679,9 @@ const canAction = computed(() => {
 
 const canFulfill = computed(() => {
   const o = currentOrder.value;
-  return !!(o && o.status === 'confirmed');
+  if (!o || o.status !== 'confirmed') return false;
+  if (o.shop_type_snapshot === 'vendor_catalog') return false;
+  return true;
 });
 
 const changeOrderStatus = (newStatus: string) => {

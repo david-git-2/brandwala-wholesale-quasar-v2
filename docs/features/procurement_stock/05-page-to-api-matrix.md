@@ -41,10 +41,8 @@ Mapping of all UI views, buttons, dialog triggers, and user actions to correspon
 | **`ProcurementFulfillPage`** (nav: **Delivery paper**) | Mount groups / expand group | `useProcurementFulfillGroupsQuery`, `useProcurementFulfillGroupItemsInfiniteQuery` | `RPC: list_procurement_fulfill_groups` (`procuring` / `packed`); `RPC: list_procurement_fulfill_group_items` (cursor) | `fulfillGroups` + `fulfillGroupItems`; group includes `invoice_stale` |
 | **`ProcurementFulfillPage`** | Fill oldest stock (group) | `useFillPreorderDemandOldestStockMutation` | `RPC: fill_preorder_demand_oldest_stock_for_document` | Invalidates demand + fulfill caches |
 | **`ProcurementFulfillPage`** | Pick stock | `useUpsertPreorderDemandMutation` | `RPC: upsert_preorder_demand` (`p_stock_picks`) | Invalidates demand + fulfill caches |
-| **`ProcurementFulfillPage`** | Change status → ready for shipment | `useSetDemandGroupStatusMutation` | Shop: `RPC: update_shop_order_status_for_staff` (`packed`). PBC: `product_based_costing_files.status` | Status only; no invoice |
-| **`ProcurementFulfillPage`** | Create invoice | `useCreateDemandDocumentInvoiceMutation` | `RPC: create_invoice_from_preorder_demand_document` | **Live:** proforma from picks. **Target:** paper close dropdown take / condition / return ([PS6](00-gaps.md)) |
-| **`ProcurementFulfillPage`** | Update invoice | `useSyncDemandDocumentInvoiceMutation` | `RPC: sync_invoice_from_preorder_demand_document` | Live: ready + stale draft/proforma. Target: optional proforma only |
-| **`ProcurementFulfillPage`** | Open invoice | `router.push` | none | Live: linked bill. Target: take / condition bills after close |
+| **`ProcurementFulfillPage`** | Mark packed (group) | `useMarkDemandGroupReadyMutation` | Shop: `RPC: staff_set_catalog_ordered_qty`. PBC: `RPC: staff_mark_pbc_packed` | Status + catalog backlog only; no bill |
+| **`ProcurementFulfillPage`** | Close dropdown (packed tab) | `useUpsertPreorderDemandMutation` | `RPC: upsert_preorder_demand` (`p_stock_picks` + `close_action`) | Take / condition / return per pick; bills later ([PS6](00-gaps.md)) |
 | **`ShipmentSettingsDrawer` More** | Batch Code | Router | `app-procurement-shipment-batch-code` | — |
 | **`ShipmentBatchCodePage`** | Mount / ensure list | `ensureList` | `Table: batch_code_lists` select/insert by `shipment_id` | `procurementStockQueryKeys.batchCodeList` |
 | **`ShipmentBatchCodePage`** | Add line dialog | `createItem` | `Table: batch_code_items` insert | Patch items cache |

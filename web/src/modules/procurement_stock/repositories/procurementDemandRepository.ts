@@ -14,11 +14,14 @@ export interface ProcurementDemandVendor {
   name: string | null;
 }
 
+export type PreorderDemandCloseAction = 'take' | 'condition' | 'return';
+
 export interface PreorderDemandStockPick {
   global_stock_id: number;
   quantity: number;
   shipment_name?: string | null;
   location_name?: string | null;
+  close_action?: PreorderDemandCloseAction | null;
 }
 
 export interface ProcurementDemandItem {
@@ -86,14 +89,6 @@ export interface ListProcurementDemandGroupItemsParams {
   search?: string | null;
   limit?: number;
   cursor?: ProcurementDemandGroupItemsCursor | null;
-}
-
-export interface MarkDemandGroupReadyResult {
-  invoiceId: number | null;
-}
-
-export interface DemandDocumentInvoiceResult {
-  invoiceId: number | null;
 }
 
 export interface ProcurementDemandGroupsMeta {
@@ -372,90 +367,13 @@ const setPreorderDemandVendorForDocument = async (
 
 const markDemandGroupReadyForShipment = async (
   group: ProcurementDemandGroup,
-): Promise<MarkDemandGroupReadyResult> => {
+): Promise<void> => {
   if (group.document_type === 'shop_order') {
-    const response = await shopOrderRepository.staffSetCatalogOrderedQty(
-      group.document_id,
-      [],
-    );
-
-    return { invoiceId: response.order.global_invoice_id ?? null };
-  }
-
-  const result = await productBasedCostingRepository.markPbcReadyForShipment(
-    group.document_id,
-  );
-
-  const invoiceId =
-    result && typeof result === 'object' && 'invoice_id' in result
-      ? Number((result as { invoice_id?: string | number }).invoice_id) || null
-      : null;
-
-  return { invoiceId };
-};
-
-const createDemandDocumentInvoice = async (params: {
-  tenantId: number;
-  group: ProcurementDemandGroup;
-}): Promise<DemandDocumentInvoiceResult> => {
-  const { data, error } = await supabase.rpc('create_invoice_from_preorder_demand_document', {
-    p_tenant_id: params.tenantId,
-    p_document_type: params.group.document_type,
-    p_document_id: params.group.document_id,
-  });
-
-  if (error) throw error;
-
-  const result = data as { invoice_id?: string | number } | null;
-  const invoiceId =
-    result && typeof result === 'object' && 'invoice_id' in result
-      ? Number(result.invoice_id) || null
-      : null;
-
-  return { invoiceId };
-};
-
-const syncDemandDocumentInvoice = async (params: {
-  tenantId: number;
-  group: ProcurementDemandGroup;
-}): Promise<DemandDocumentInvoiceResult> => {
-  const { data, error } = await supabase.rpc('sync_invoice_from_preorder_demand_document', {
-    p_tenant_id: params.tenantId,
-    p_document_type: params.group.document_type,
-    p_document_id: params.group.document_id,
-  });
-
-  if (error) throw error;
-
-  const result = data as { invoice_id?: string | number } | null;
-  const invoiceId =
-    result && typeof result === 'object' && 'invoice_id' in result
-      ? Number(result.invoice_id) || null
-      : null;
-
-  return { invoiceId };
-};
-
-const setDemandGroupStatusReadyForShipment = async (params: {
-  group: ProcurementDemandGroup;
-  tenantId: number;
-}): Promise<void> => {
-  const { group, tenantId } = params;
-  if (group.document_status === 'packed') return;
-
-  if (group.document_type === 'shop_order') {
-    await shopOrderRepository.updateOrderStatus(
-      tenantId,
-      group.document_id,
-      'packed',
-    );
+    await shopOrderRepository.staffSetCatalogOrderedQty(group.document_id, []);
     return;
   }
 
-  await productBasedCostingRepository.updateProductBasedCostingFile({
-    id: group.document_id,
-    status: 'packed',
-  });
+  await productBasedCostingRepository.markPbcReadyForShipment(group.document_id);
 };
 
 export const procurementDemandRepository = {
@@ -468,9 +386,6 @@ export const procurementDemandRepository = {
   fillPreorderDemandOldestStockForDocument,
   setPreorderDemandVendorForDocument,
   markDemandGroupReadyForShipment,
-  createDemandDocumentInvoice,
-  syncDemandDocumentInvoice,
-  setDemandGroupStatusReadyForShipment,
 };
 
 export const getItemNeedQuantity = (item: ProcurementDemandItem): number =>

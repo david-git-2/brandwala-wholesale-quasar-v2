@@ -1783,7 +1783,6 @@ CREATE OR REPLACE FUNCTION "public"."staff_mark_pbc_packed"("p_file_id" bigint) 
     AS $$
 declare
   v_file record;
-  v_result jsonb;
 begin
   select * into v_file
   from public.product_based_costing_files
@@ -1798,14 +1797,8 @@ begin
   end if;
 
   if public.normalize_pbc_procurement_status(v_file.status) <> 'procuring' then
-    raise exception 'costing file must be procuring to mark ready for shipment';
+    raise exception 'costing file must be procuring to mark packed';
   end if;
-
-  v_result := public.create_invoice_from_preorder_demand_document(
-    v_file.tenant_id,
-    'pbc_costing_file',
-    p_file_id
-  );
 
   update public.product_based_costing_files
   set
@@ -1816,9 +1809,7 @@ begin
   return jsonb_build_object(
     'success', true,
     'file_id', p_file_id,
-    'status', 'packed',
-    'invoice_id', v_result->>'invoice_id',
-    'invoice_created', coalesce(v_result->>'created', 'false')::boolean
+    'status', 'packed'
   );
 end;
 $$;
@@ -1878,7 +1869,6 @@ declare
   v_allocated integer;
   v_shortfall integer;
   v_product record;
-  v_invoice_result jsonb;
 begin
   select * into v_order from public.shop_orders where id = p_order_id;
   if not found then
@@ -1896,14 +1886,8 @@ begin
   end if;
 
   if public.normalize_shop_order_procurement_status(v_order.status) <> 'procuring' then
-    raise exception 'order must be procuring to mark ready for shipment';
+    raise exception 'order must be procuring to mark packed';
   end if;
-
-  v_invoice_result := public.create_invoice_from_preorder_demand_document(
-    v_desk_tenant_id,
-    'shop_order',
-    p_order_id
-  );
 
   for v_item_row in
     select oi.*

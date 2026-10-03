@@ -140,42 +140,81 @@
       </span>
     </td>
     <td v-if="isFulfillMode" class="text-center demand-delivered-col">
-      <div class="row items-center justify-center no-wrap demand-delivered-cell">
-        <q-input
-          :model-value="getDraft(item).deliveredQuantity"
-          type="number"
-          dense
-          outlined
-          readonly
-          hide-bottom-space
-          class="demand-field demand-field--qty"
-        />
-        <q-btn
-          flat
-          round
-          dense
-          color="primary"
-          icon="ph ph-package"
-          class="demand-pick-stock-btn"
-          :disable="!canPickStock || !item.product_id || isRowSaving(item)"
-          :loading="isRowSaving(item)"
-          @click="emit('pick-stock', item)"
+      <template v-if="isPackedCloseMode">
+        <div class="text-weight-medium q-mb-xs">
+          {{ (getDraft(item).deliveredQuantity ?? getItemDeliveredQuantity(item)) || 0 }} going
+        </div>
+        <ul
+          v-if="getDraft(item).stockPicks.length"
+          class="demand-pick-list q-ma-none q-pa-none"
         >
-          <q-tooltip>Pick stock</q-tooltip>
-        </q-btn>
-      </div>
-      <ul
-        v-if="getDraft(item).stockPicks.length"
-        class="demand-pick-list q-mt-xs q-pl-md q-ma-none"
-      >
-        <li
-          v-for="pick in getDraft(item).stockPicks"
-          :key="pick.globalStockId"
-          class="text-caption text-grey-7"
+          <li
+            v-for="pick in getDraft(item).stockPicks"
+            :key="pick.globalStockId"
+            class="demand-packed-pick-row column q-gutter-y-xs q-mb-sm"
+          >
+            <span class="text-caption text-grey-8 text-left">
+              {{ pick.shipmentName || pick.globalStockId }}
+              <span v-if="pick.locationName"> · {{ pick.locationName }}</span>
+              · {{ pick.quantity }}
+            </span>
+            <q-select
+              :model-value="pick.closeAction ?? null"
+              :options="closeActionOptions"
+              emit-value
+              map-options
+              dense
+              outlined
+              hide-bottom-space
+              clearable
+              placeholder="Customer close"
+              class="demand-field demand-close-select"
+              :disable="isRowSaving(item)"
+              :loading="isRowSaving(item)"
+              @update:model-value="(v) => emitCloseAction(item, pick.globalStockId, v)"
+            />
+          </li>
+        </ul>
+        <span v-else class="text-caption text-grey-6">No stock picks</span>
+      </template>
+      <template v-else>
+        <div class="row items-center justify-center no-wrap demand-delivered-cell">
+          <q-input
+            :model-value="getDraft(item).deliveredQuantity"
+            type="number"
+            dense
+            outlined
+            readonly
+            hide-bottom-space
+            class="demand-field demand-field--qty"
+          />
+          <q-btn
+            flat
+            round
+            dense
+            color="primary"
+            icon="ph ph-package"
+            class="demand-pick-stock-btn"
+            :disable="!canPickStock || !item.product_id || isRowSaving(item)"
+            :loading="isRowSaving(item)"
+            @click="emit('pick-stock', item)"
+          >
+            <q-tooltip>Pick stock</q-tooltip>
+          </q-btn>
+        </div>
+        <ul
+          v-if="getDraft(item).stockPicks.length"
+          class="demand-pick-list q-mt-xs q-pl-md q-ma-none"
         >
-          {{ pick.shipmentName || pick.globalStockId }} · {{ pick.quantity }}
-        </li>
-      </ul>
+          <li
+            v-for="pick in getDraft(item).stockPicks"
+            :key="pick.globalStockId"
+            class="text-caption text-grey-7"
+          >
+            {{ pick.shipmentName || pick.globalStockId }} · {{ pick.quantity }}
+          </li>
+        </ul>
+      </template>
     </td>
   </tr>
   <tr
@@ -195,7 +234,10 @@ import { copyToClipboard } from 'quasar';
 import { PROCUREMENT_DEMAND_TABLE_SCROLL_KEY } from '../shared/procurementDemandScroll';
 import SmartImage from 'src/components/SmartImage.vue';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
-import type { DemandStockPickSelection } from './ProcurementDemandStockPickDialog.vue';
+import type {
+  DemandCloseAction,
+  DemandStockPickSelection,
+} from './ProcurementDemandStockPickDialog.vue';
 import { useProcurementDemandGroupItemsInfiniteQuery } from '../composables/useProcurementDemandGroupItemsInfiniteQuery';
 import { useProcurementFulfillGroupItemsInfiniteQuery } from '../composables/useProcurementFulfillGroupItemsInfiniteQuery';
 import {
@@ -222,6 +264,8 @@ const props = defineProps<{
   isFulfillMode: boolean;
   canEditProcuring: boolean;
   canPickStock: boolean;
+  isPackedCloseMode: boolean;
+  closeActionOptions: Array<{ label: string; value: DemandCloseAction }>;
   tableColCount: number;
   vendorOptions: Array<{ id: number; label: string }>;
   vendorsLoading: boolean;
@@ -237,7 +281,20 @@ const emit = defineEmits<{
   'vendor-change': [item: ProcurementDemandItem, value: number | null];
   'flush-save': [item: ProcurementDemandItem];
   'pick-stock': [item: ProcurementDemandItem];
+  'close-action-change': [
+    item: ProcurementDemandItem,
+    globalStockId: number,
+    action: DemandCloseAction | null,
+  ];
 }>();
+
+const emitCloseAction = (
+  item: ProcurementDemandItem,
+  globalStockId: number,
+  action: DemandCloseAction | null,
+) => {
+  emit('close-action-change', item, globalStockId, action);
+};
 
 const documentType = computed(() => props.group.document_type);
 const documentId = computed(() => props.group.document_id);

@@ -66,9 +66,9 @@ Cash-in: [bills_pays 01](../bills_pays/01-prd.md). Remittance allocates to merch
 
 **Target:** catalog pack-out is the procurement **Delivery paper** desk. Close take / condition / return; then **take** and/or **condition** bills. [SI19](../bills_pays/00-gaps.md). Dropship must not use this RPC. Walk-in remains invoice desk create.
 
-### 2.5 Catalog procurement mark ready: `staff_set_catalog_ordered_qty`
+### 2.5 Catalog procurement mark packed: `staff_set_catalog_ordered_qty`
 
-Delivery paper desk **Mark ready for shipment**. **Live:** creates proforma via `create_invoice_from_preorder_demand_document` (lines from `preorder_demand.stock_picks`; sets `sales_invoices.shop_order_id` after create, not on payload). Backlog shortfall per line = `confirmed_quantity - delivered_quantity` (picks), not vendor `placed_quantity`. `p_items` is legacy; server reads all order lines.
+Delivery paper desk **Mark packed**. Sets `shop_orders.status` = `packed`; does **not** create a bill. Backlog shortfall per line = `confirmed_quantity - delivered_quantity` (picks), not vendor `placed_quantity`. `p_items` is legacy; server reads all order lines. Close choices on the packed tab use `upsert_preorder_demand` (`stock_picks.close_action`).
 
 ---
 
