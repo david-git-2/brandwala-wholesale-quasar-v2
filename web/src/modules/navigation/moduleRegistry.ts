@@ -625,7 +625,16 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Sales Invoices',
     description: 'Desk invoices: wholesale, retail, and walk-in.',
     navIcon: 'ph ph-receipt',
-    routes: [],
+    routes: [
+      {
+        scope: 'app',
+        title: 'Bills',
+        caption: 'Issue, void, and print bills',
+        icon: 'ph ph-receipt',
+        routeSegment: 'sales/invoices',
+        requiredAction: 'view',
+      },
+    ],
   },
   {
     key: 'after_sales',
@@ -679,7 +688,16 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Wallets',
     description: 'Balances for the company, customers, suppliers, cargo, couriers, and investors.',
     navIcon: 'ph ph-wallet',
-    routes: [],
+    routes: [
+      {
+        scope: 'app',
+        title: 'Cashbook',
+        caption: 'Leftover balances and audit trail',
+        icon: 'ph ph-wallet',
+        routeSegment: 'wallet',
+        requiredAction: 'view',
+      },
+    ],
   },
   {
     key: 'recipient_profile',
@@ -716,7 +734,16 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Payments & Collection',
     description: 'Cash in (collect, courier remittance) and cash out (merchant payout).',
     navIcon: 'ph ph-credit-card',
-    routes: [],
+    routes: [
+      {
+        scope: 'app',
+        title: 'Payments',
+        caption: 'Cash in and cash out',
+        icon: 'ph ph-credit-card',
+        routeSegment: 'finance/payments',
+        requiredAction: 'view',
+      },
+    ],
   },
 
   {

@@ -34,6 +34,12 @@ export const REFERENCE_HUB_MODULE_KEYS: readonly ModuleKey[] = [
   'global_reference_unit_of_measure',
 ];
 
+export const BILLS_PAYS_HUB_MODULE_KEYS: readonly ModuleKey[] = [
+  'global_invoice',
+  'payments',
+  'universal_wallet',
+];
+
 export type WeightedWorkspaceLink = WorkspaceLink & { navWeight: number };
 
 type CanViewModule = (moduleKey: ModuleKey) => boolean;
@@ -205,6 +211,35 @@ export const SETTINGS_HUB_ITEMS: readonly SettingsHubItemDef[] = [
   },
 ];
 
+const BILLS_PAYS_HUB = {
+  primaryLinks: [
+    {
+      navWeight: 45,
+      moduleKey: 'global_invoice' as ModuleKey,
+      title: 'Bills',
+      caption: 'Issue, void, and print bills',
+      icon: 'ph ph-receipt',
+      routeSegment: 'sales/invoices',
+    },
+    {
+      navWeight: 46,
+      moduleKey: 'payments' as ModuleKey,
+      title: 'Payments',
+      caption: 'Cash in and cash out',
+      icon: 'ph ph-credit-card',
+      routeSegment: 'finance/payments',
+    },
+    {
+      navWeight: 47,
+      moduleKey: 'universal_wallet' as ModuleKey,
+      title: 'Cashbook',
+      caption: 'Leftover balances and audit trail',
+      icon: 'ph ph-wallet',
+      routeSegment: 'wallet',
+    },
+  ] satisfies HubPrimaryLinkDef[],
+};
+
 const buildAppPath = (tenantSlug: string | null | undefined, routeSegment: string): string =>
   buildModuleRoutePath({ scope: 'app', routeSegment, tenantSlug });
 
@@ -304,6 +339,40 @@ export function buildShopProcurementHubNavLinks(
   return groups;
 }
 
+export function buildBillsPaysHubNavLinks(
+  canView: CanViewModule,
+  tenantSlug: string | null | undefined,
+): WeightedWorkspaceLink[] {
+  const children: WorkspaceLink[] = [];
+
+  for (const primary of BILLS_PAYS_HUB.primaryLinks) {
+    if (!canView(primary.moduleKey)) {
+      continue;
+    }
+    children.push({
+      title: primary.title,
+      caption: primary.caption,
+      icon: primary.icon,
+      to: buildAppPath(tenantSlug, primary.routeSegment),
+    });
+  }
+
+  if (children.length === 0) {
+    return [];
+  }
+
+  return [
+    {
+      navWeight: 45,
+      navGroup: true,
+      title: 'Bills & pays',
+      caption: 'Bills, payments, and cashbook',
+      icon: 'ph ph-coins',
+      children,
+    },
+  ];
+}
+
 export function buildSettingsNavLink(
   context: SettingsAccessContext,
   tenantSlug: string | null | undefined,
@@ -353,6 +422,10 @@ export function getReferenceFamilyModuleKeys(): readonly ModuleKey[] {
     (definition) =>
       definition.key === 'global_reference' || definition.parentModuleKey === 'global_reference',
   ).map((definition) => definition.key);
+}
+
+export function getBillsPaysFamilyModuleKeys(): readonly ModuleKey[] {
+  return [...BILLS_PAYS_HUB_MODULE_KEYS];
 }
 
 export function mergeNavLinksByWeight(...linkGroups: WeightedWorkspaceLink[][]): WorkspaceLink[] {

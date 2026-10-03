@@ -8,8 +8,10 @@ import { hasTenantContextForScope, useModulePermissions } from './modulePermissi
 import { MODULE_REGISTRY, type ModuleKey } from './moduleRegistry';
 import { buildNavLinksFromModuleHierarchy } from 'src/modules/featureCatalog/utils/moduleHierarchy';
 import {
+  buildBillsPaysHubNavLinks,
   buildSettingsNavLink,
   buildShopProcurementHubNavLinks,
+  getBillsPaysFamilyModuleKeys,
   getProcurementFamilyModuleKeys,
   getReferenceFamilyModuleKeys,
   getShopOrderFamilyModuleKeys,
@@ -140,6 +142,7 @@ const EXCLUDED_APP_MODULE_KEYS = new Set<ModuleKey>([
   ...getShopOrderFamilyModuleKeys(),
   ...getProcurementFamilyModuleKeys(),
   ...getReferenceFamilyModuleKeys(),
+  ...getBillsPaysFamilyModuleKeys(),
 ]);
 
 const getBaseWorkspaceLinks = ({
@@ -345,7 +348,10 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           ]
         : [];
 
-    const hubLinks = buildShopProcurementHubNavLinks(canView, authStore.tenantSlug);
+    const hubLinks = [
+      ...buildShopProcurementHubNavLinks(canView, authStore.tenantSlug),
+      ...buildBillsPaysHubNavLinks(canView, authStore.tenantSlug),
+    ];
 
     const settingsLink = buildSettingsNavLink(
       {

@@ -17,6 +17,7 @@ import investorPortalRoutes from 'src/modules/investor_portal/routes';
 import globalRoutes from 'src/modules/global/routes';
 import procurementStockRoutes from 'src/modules/procurement_stock/routes';
 import reportingTreasuryRoutes from 'src/modules/reporting_treasury/routes';
+import billsPaysRoutes from 'src/modules/bills_pays/routes';
 import { moneyUiRedirectRoutes } from 'src/modules/navigation/moneyUiRedirects';
 import investorCapitalAdminRoutes from 'src/modules/investor_capital/routes/adminRoutes';
 import shopOrderRoutes from 'src/modules/shop_order/routes';
@@ -93,6 +94,7 @@ const routes: RouteRecordRaw[] = [
   ...procurementStockRoutes,
   ...shopOrderRoutes,
   ...globalRoutes,
+  ...billsPaysRoutes,
   ...moneyUiRedirectRoutes,
   ...reportingTreasuryRoutes,
   ...investorCapitalAdminRoutes,
