@@ -52,11 +52,16 @@
           />
         </div>
 
-        <div class="q-mb-md">
-          <div class="text-overline text-grey-7">Bill to</div>
-          <div class="text-subtitle2 text-weight-medium">{{ profileName }}</div>
-          <div v-if="bill.billing_profiles?.email" class="text-caption text-grey-7">
-            {{ bill.billing_profiles.email }}
+        <div class="row q-col-gutter-md q-mb-md">
+          <div class="col-12 col-sm-6">
+            <div class="text-overline text-grey-7">To</div>
+            <div class="text-subtitle2 text-weight-medium">{{ profileName }}</div>
+            <div v-if="bill.billing_profiles?.email" class="text-caption text-grey-7">
+              {{ bill.billing_profiles.email }}
+            </div>
+            <div v-if="bill.billing_profiles?.address" class="text-caption text-grey-7">
+              {{ bill.billing_profiles.address }}
+            </div>
           </div>
         </div>
 
@@ -72,7 +77,9 @@
           </thead>
           <tbody>
             <tr v-for="line in lines" :key="line.id">
-              <td>{{ line.name_snapshot }}</td>
+              <td class="bill-line-item-cell">
+                <BillLineItemDisplay :name="line.name_snapshot" :image-url="line.image_url" />
+              </td>
               <td class="text-right">{{ line.quantity }}</td>
               <td class="text-right">{{ formatAmountBdt(line.sell_price_amount) }}</td>
               <td class="text-right">{{ formatAmountBdt(line.line_discount_amount) }}</td>
@@ -136,6 +143,7 @@ import {
 } from 'src/modules/sales_invoice/utils/invoiceListDisplay';
 import { useBillDetailQuery } from '../composables/useBillDetailQuery';
 import { useVoidBillMutation } from '../composables/useVoidBillMutation';
+import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -186,7 +194,16 @@ const goBack = () => {
 };
 
 const onPrint = () => {
-  window.print();
+  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  const id = billId.value;
+  if (!id) return;
+  router.push({
+    name: 'app-bill-preview-page',
+    params: {
+      ...(tenantSlug ? { tenantSlug } : {}),
+      billId: String(id),
+    },
+  });
 };
 
 const onVoid = async () => {
@@ -231,6 +248,11 @@ const onVoid = async () => {
   font-size: 11px;
   color: var(--bw-neutral-chrome, #64748b);
   font-weight: 600;
+}
+
+.bill-line-item-cell {
+  vertical-align: top;
+  max-width: 320px;
 }
 
 @media print {

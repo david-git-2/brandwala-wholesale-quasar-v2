@@ -7,7 +7,7 @@ One money pack. Layers: **bill** · **pay** · **cashbook**. Not a wallet. Table
 | | |
 | :--- | :--- |
 | Spec | `docs/features/bills_pays/` |
-| UI | **Bills**, **Payments**, and **Cashbook** desks live in `bills_pays/` (`/app/sales/invoices`, `/app/finance/payments`, `/app/wallet`). Cashbook is read-only audit (directory + ledger). No bill composer on Bills desk ([BP5](00-gaps.md)). |
+| UI | **Bills**, **Payments**, and **Cashbook** desks live in `bills_pays/` (`/app/sales/invoices`, `/app/finance/payments`, `/app/wallet`). Cashbook is read-only audit (directory + ledger). Bills desk: list, **manual compose** (trade / walk-in FIFO), **print preview** with `invoice_brands` letterhead, brand settings. Returns still [BP5](00-gaps.md). |
 | SQL | Live names in [02 rename map](02-data-model.md#rename-map-spec--live) |
 | Access | `app`; `shop` merchant statement |
 | Model | BW — [business-models](../../architecture/business-models.md) |
@@ -49,7 +49,7 @@ Pay in → ALLOC to open bills. Remainder → **cashbook on that profile** (we o
 ## Stories
 
 ### Bills
-- [ ] US-1 FIFO issue. Print qty, sell, charges.
+- [x] US-1 FIFO issue. Print qty, sell, charges. (`BillComposePage`, `BillPreviewPage`; collect stays on Payments.)
 - [ ] US-2 Returns: `return_quantity` only. Excess paid → customer cashbook.
 - [ ] US-3 Never issue a bill from a pay.
 - [ ] US-4 Dropship merchant bill at ship. Packing slip ≠ bill. COD ≠ bill.

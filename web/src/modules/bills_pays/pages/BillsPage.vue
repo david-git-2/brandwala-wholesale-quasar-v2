@@ -21,6 +21,26 @@
             </button>
           </div>
         </template>
+        <template #trailing>
+          <q-btn
+            flat
+            dense
+            no-caps
+            icon="ph ph-palette"
+            label="Brands"
+            class="text-slate-600"
+            @click="goBrands"
+          />
+          <q-btn
+            unelevated
+            dense
+            no-caps
+            color="primary"
+            icon="ph ph-plus"
+            label="New bill"
+            @click="goCompose"
+          />
+        </template>
       </ProcurementOpsListToolbar>
 
       <div v-if="listQuery.isError.value" class="bw-status-banner bg-negative text-white q-pa-sm rounded-borders">
@@ -186,8 +206,35 @@ const loadMore = () => {
   page.value += 1;
 };
 
+const tenantSlugParam = () =>
+  typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+
+const goCompose = () => {
+  router.push({
+    name: 'app-bill-compose-page',
+    params: tenantSlugParam() ? { tenantSlug: tenantSlugParam() } : {},
+  });
+};
+
+const goBrands = () => {
+  router.push({
+    name: 'app-bill-brands-page',
+    params: tenantSlugParam() ? { tenantSlug: tenantSlugParam() } : {},
+  });
+};
+
 const openBill = (row: GlobalInvoiceRow) => {
-  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  const tenantSlug = tenantSlugParam();
+  const isDraft =
+    row.invoice_status === 'draft' || row.invoice_status === 'proforma_generated';
+  if (isDraft) {
+    router.push({
+      name: 'app-bill-compose-page',
+      params: tenantSlug ? { tenantSlug } : {},
+      query: { id: String(row.id) },
+    });
+    return;
+  }
   router.push({
     name: 'app-bill-detail-page',
     params: {

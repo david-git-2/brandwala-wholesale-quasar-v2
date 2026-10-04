@@ -11,18 +11,23 @@ Code: **Bills + Payments + Cashbook** `web/src/modules/bills_pays/`. Bill reads/
 ```text
 web/src/modules/bills_pays/
 ├── pages/
-│   ├── BillsPage.vue                     # Ops list browse + status pills
-│   └── BillDetailPage.vue                # Read issued bill; void + print
+│   ├── BillsPage.vue                     # Ops list browse + status pills; New bill / Brands
+│   ├── BillComposePage.vue               # Trade / walk-in FIFO composer; draft + issue
+│   ├── BillDetailPage.vue                # Read issued bill; void; Print → preview route
+│   ├── BillPreviewPage.vue               # Letterhead + barcode; window.print()
+│   └── BillBrandsPage.vue                # CRUD invoice_brands (name, address)
 ├── components/
-│   └── BillListRow.vue                   # List row (profile, sell, status)
+│   ├── BillListRow.vue
+│   └── BillStockSearch.vue               # Debounced search_sales_invoice_stock
 ├── composables/
 │   ├── useBillsListQuery.ts
 │   ├── useBillDetailQuery.ts
-│   └── useVoidBillMutation.ts
+│   ├── useVoidBillMutation.ts
+│   └── useBillComposeMutation.ts
 └── services/
     └── billsQueryKeys.ts
 
-# Later slices (not mounted): walk-in composer, returns, branding — reuse sales_invoice/ types + RPCs.
+# Later: returns on Bills desk — reuse sales_invoice/ return RPCs.
 ```
 
 ## B. Payments desk

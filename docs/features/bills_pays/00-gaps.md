@@ -4,7 +4,7 @@ Open with [01-prd.md](01-prd.md). Types: `not_built` | `doc_wrong` | `sql_split`
 
 | ID | Type | Plan / doc | Code today | Fix |
 | :--- | :--- | :--- | :--- | :--- |
-| BP5 | not_built | Rebuild Bills / Payments / Cashbook desks | Three desks live (`bills_pays/`); Cashbook read-only (no reverse/manual); bill composer/returns not on Bills | FIFO composer + returns on Bills; ledger reverse (US-6) later |
+| BP5 | not_built | Rebuild Bills / Payments / Cashbook desks | Three desks live (`bills_pays/`); Cashbook read-only; **FIFO composer + branded preview + invoice brands** on Bills; returns not on Bills | Returns on Bills; ledger reverse (US-6) later |
 | BP1 | ~~doc_wrong~~ | One pack Bills & pays | Two doc folders | **Done (2026-10):** this folder; `docs/features/wallet/` is a pointer |
 | BP2 | design | Rename UI/RPC off `wallet` | `web/src/modules/wallet/`, `record_ledger_transaction` | Later; cashbook is the product |
 | BP3 | ~~design~~ | FK **`profile_id`**; drop `billing_profiles`; customer `subject_id` → group when 1:1 | `bills.profile_id`, `pays.profile_id` → `profiles` | **Partly done (2026-10, `20271006120000_bills_pays_backend_pack.sql`):** FK on bills/pays. `billing_profiles` **kept**: shop orders, demand buckets, costing files, and cashbook still point at it, and `profiles` has no group/tenant/color yet. RPC param `p_billing_profile_id` = `profiles.id` |

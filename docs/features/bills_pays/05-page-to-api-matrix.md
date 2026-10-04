@@ -11,8 +11,13 @@
 | **`BillsPage`** | Mount / filter / search | `useBillsListQuery` | `Table: bills` (+ `profiles` join) via `invoiceRepository.listGlobalInvoices` | `billsQueryKeys.list` (`staleTime: 30s`) |
 | **`BillDetailPage`** | Mount | `useBillDetailQuery` | `Table: bills` + `RPC: list_global_invoice_items` | `billsQueryKeys.detail` / `items` |
 | **`BillDetailPage`** | Void (issued, unpaid) | `useVoidBillMutation` | `RPC: void_sales_invoice` | Invalidates `billsQueryKeys` root + detail |
-| **`BillDetailPage`** | Print | `window.print()` | — | — |
-| *(later)* **`CreateWholesaleInvoicePage`** | Composer / issue | — | `RPC: create_sales_invoice_from_payload` | Not on Bills desk yet |
+| **`BillDetailPage`** | Print | navigate `app-bill-preview-page` | — | — |
+| **`BillComposePage`** | Mount draft (`?id=`) | `invoiceRepository.getGlobalInvoiceById` + `listGlobalInvoiceItems` | `Table: bills` / `bill_lines` | — |
+| **`BillComposePage`** | FIFO search | `BillStockSearch` | `RPC: search_sales_invoice_stock` | — |
+| **`BillComposePage`** | Save draft / issue | `useBillComposeMutation` | `RPC: create_sales_invoice_from_payload` or `update_sales_invoice_from_payload`; issue → `post_sales_invoice` on edits | `billsQueryKeys` |
+| **`BillPreviewPage`** | Mount / brand pick | `useBillDetailQuery` + `listInvoiceBrands` | `Table: invoice_brands` | last brand id in `localStorage` per parent tenant |
+| **`BillPreviewPage`** | Print | `window.print()` | — | — |
+| **`BillBrandsPage`** | CRUD | direct repository | `Table: invoice_brands` (writes: `invoice_brand` grant + RLS) | `['invoice_brands', parentTenantId]` |
 | *(later)* collect on bill | — | — | `post_customer_receipt_with_allocations` | **Payments** desk, not Bills |
 | **`StaffOrderDetailPage`** | Fulfill to invoice (catalog only) | `useFulfillOrderToInvoiceMutation` | `RPC: fulfill_shop_order_to_invoice` → `create_sales_invoice_from_payload` | **Live:** issues bill. **Target:** Delivery paper close ([SI19](00-gaps.md)) |
 | **`WholesaleInvoiceReturnPage`** | Submit Credit Return | `useWholesaleReturnMutation`| `RPC: process_wholesale_invoice_return` | Updates `return_quantity`, restocks to `held` |

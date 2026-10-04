@@ -635,9 +635,13 @@ export type SalesInvoiceFromPayloadInput = {
     invoice_type: 'wholesale' | 'retail';
     billing_profile_id: number;
     invoice_date?: string;
+    due_date?: string;
     discount_amount?: number;
+    shipping_charge?: number;
+    wrapping_charge?: number;
+    print_charge?: number;
     note?: string;
-    retail_billing_mode?: 'account' | null;
+    retail_billing_mode?: 'account' | 'direct' | null;
   };
   items: SalesInvoicePayloadItem[];
   issue: boolean;
