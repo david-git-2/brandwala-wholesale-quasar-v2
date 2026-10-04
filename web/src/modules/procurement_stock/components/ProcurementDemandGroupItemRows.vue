@@ -5,7 +5,7 @@
     </td>
   </tr>
   <tr
-    v-for="item in demandItems"
+    v-for="item in visibleDemandItems"
     :key="itemRowKey(item)"
     class="demand-item-row"
     :style="lineStatusStyle(item)"
@@ -265,6 +265,7 @@ const props = defineProps<{
   canEditProcuring: boolean;
   canPickStock: boolean;
   isPackedCloseMode: boolean;
+  onlyLinesWithStockPicks: boolean;
   closeActionOptions: Array<{ label: string; value: DemandCloseAction }>;
   tableColCount: number;
   vendorOptions: Array<{ id: number; label: string }>;
@@ -321,6 +322,19 @@ const activeItemsQuery = computed(() =>
 );
 
 const demandItems = computed(() => activeItemsQuery.value.demandItems.value);
+
+const itemHasStockAttached = (item: ProcurementDemandItem): boolean => {
+  const draft = props.drafts[itemRowKey(item)];
+  if (draft?.stockPicks?.length) return true;
+  if (item.stock_picks?.length) return true;
+  const delivered = draft?.deliveredQuantity ?? item.delivered_quantity ?? 0;
+  return delivered > 0;
+};
+
+const visibleDemandItems = computed(() => {
+  if (!props.onlyLinesWithStockPicks) return demandItems.value;
+  return demandItems.value.filter((item) => itemHasStockAttached(item));
+});
 const hasMoreItems = computed(() => activeItemsQuery.value.hasMoreItems.value);
 const fetchNextPage = (...args: Parameters<typeof demandItemsQuery.fetchNextPage>) =>
   activeItemsQuery.value.fetchNextPage(...args);

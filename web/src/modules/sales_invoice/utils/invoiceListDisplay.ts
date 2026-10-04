@@ -1,6 +1,8 @@
 import type { GlobalInvoiceRow } from '../types';
 
 export const invoiceChannelLabel = (row: GlobalInvoiceRow) => {
+  const paperKind = (row.channel_meta as { delivery_kind?: string } | null | undefined)?.delivery_kind;
+  if (row.invoice_type === 'wholesale' && paperKind === 'condition') return 'Condition';
   if (row.invoice_type === 'wholesale') return 'Trade';
   if (row.invoice_type === 'dropship') return 'Dropship';
   if (row.retail_billing_mode === 'direct') return 'Walk-in';
@@ -36,8 +38,7 @@ export const invoiceListStatusSlug = (row: GlobalInvoiceRow) => {
 
 export const invoiceListStatusLabel = (row: GlobalInvoiceRow) => {
   if (row.invoice_status === 'voided') return 'Voided';
-  if (row.invoice_status === 'proforma_generated') return 'Proforma';
-  if (row.invoice_status === 'draft') return 'Draft';
+  if (row.invoice_status === 'draft' || row.invoice_status === 'proforma_generated') return 'Draft';
   const ps = (row.payment_status ?? 'due').toLowerCase();
   if (ps === 'paid') return 'Paid';
   if (ps === 'partial' || ps === 'partially_paid') return 'Partial';
@@ -47,8 +48,9 @@ export const invoiceListStatusLabel = (row: GlobalInvoiceRow) => {
 
 export const invoiceListStatusIcon = (row: GlobalInvoiceRow) => {
   if (row.invoice_status === 'voided') return 'ph ph-prohibit';
-  if (row.invoice_status === 'draft') return 'ph ph-pencil-simple';
-  if (row.invoice_status === 'proforma_generated') return 'ph ph-file-text';
+  if (row.invoice_status === 'draft' || row.invoice_status === 'proforma_generated') {
+    return 'ph ph-pencil-simple';
+  }
   return getPaymentStatusIcon(row.payment_status);
 };
 

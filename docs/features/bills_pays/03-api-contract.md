@@ -7,7 +7,7 @@ Spec tables: [02](02-data-model.md) (`bills`, `pays`, `profiles`, `cashbook_*`).
 
 ## 1. Unified Creation RPC: `create_sales_invoice_from_payload`
 
-Creates a **bill** with header, lines, and optional `issue`. `sell_price_amount` is **tenant sell** only. Issue does not record payment. Live SQL: `supabase/schemas/bills_pays/03_rpcs.sql`.
+Creates a **bill** with header, lines, and optional `issue`. `sell_price_amount` is **tenant sell** only. Issue does not record payment. Wholesale trade: `invoice.channel_meta.delivery_kind` is `take` (default) or `condition` (stock → `held` on issue; walk-in cannot use condition). Live SQL: `supabase/schemas/bills_pays/03_rpcs.sql`.
 
 | Who | Calls this RPC? |
 | :--- | :--- |
@@ -26,7 +26,10 @@ COD/resell are never payload totals. [01-prd](01-prd.md) / [money-story](money-s
     "due_date": "2026-10-02",
     "discount_amount": 1000.00,
     "shipping_charge": 500.00,
-    "note": "Net 15 days payment terms"
+    "note": "Net 15 days payment terms",
+    "channel_meta": {
+      "delivery_kind": "take"
+    }
   },
   "items": [
     {
@@ -59,7 +62,7 @@ COD/resell are never payload totals. [01-prd](01-prd.md) / [money-story](money-s
 
 ## 2. Unified Patching RPC: `update_sales_invoice_from_payload`
 
-Performs partial PATCH updates on draft or proforma invoices, modifying only sent keys, adding new items, or removing items by ID.
+Performs partial PATCH updates on **draft** bills only, modifying only sent keys, adding new items, or removing items by ID. Issued bills are not patched here.
 
 ### Signature
 ```sql

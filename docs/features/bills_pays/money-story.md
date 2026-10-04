@@ -9,7 +9,7 @@ Same `bills` table. **Different paper.** Do not mix desks. Delivery paper **prof
 | Step | Wholesale | Dropship |
 | :--- | :--- | :--- |
 | Who (profile) | Buyer | Shop |
-| Issued bill | Take (and/or condition from paper) | Merchant bill at ship |
+| Issued bill | Take and/or condition (compose or paper) | Merchant bill at ship |
 | Pay in | Collect | Courier remittance after `delivered` |
 | Pay amount | What they handed you | **Net bank in**, not COD face |
 | Leftover | Customer cashbook | Shop cashbook, then pay out |
@@ -66,6 +66,7 @@ Shop **Glamour Closet** **1,500**. Karim COD **2,200**. Courier fee **80**. Bank
 | :--- | :--- |
 | Wallet / credit invoice | Cashbook on profile |
 | Delivery paper create = issued bill | Optional proforma; close dropdown take / condition / return |
+| Condition only from Delivery | Trade compose can issue condition too; walk-in cannot |
 | Invoice total = COD | Tenant sell / merchant sell |
 | Deliver posts tenant cash | Remittance is tenant cash |
 | Second pay product for dropship | Same `pays`; `source` differs |

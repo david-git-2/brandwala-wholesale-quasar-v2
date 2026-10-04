@@ -182,6 +182,7 @@ watch(
       accumulatedRows.value = [...accumulatedRows.value, ...next];
     }
   },
+  { immediate: true },
 );
 
 watch([statusPill, debouncedSearch], () => {

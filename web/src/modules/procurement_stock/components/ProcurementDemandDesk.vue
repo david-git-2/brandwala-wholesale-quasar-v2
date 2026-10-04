@@ -3,7 +3,7 @@
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
       <q-card flat class="floating-surface shadow-1 q-pa-xs flex-shrink-0">
         <div class="row items-center q-col-gutter-xs">
-          <div v-if="isFulfillMode" class="col-12 col-md-auto">
+          <div v-if="isFulfillMode && !isFixedGroupPage" class="col-12 col-md-auto">
             <q-btn-toggle
               v-model="fulfillProcurementStatus"
               no-caps
@@ -16,6 +16,24 @@
             />
           </div>
           <div class="col-12 col-md-auto row items-center justify-end q-gutter-x-xs">
+            <q-btn
+              v-if="isFixedGroupPage"
+              flat
+              round
+              dense
+              icon="ph ph-arrow-left"
+              color="grey-8"
+              @click="goBackFromFixedGroup"
+            >
+              <q-tooltip>Back to delivery paper</q-tooltip>
+            </q-btn>
+            <div
+              v-if="isFixedGroupPage && fixedGroupTitle"
+              class="text-subtitle2 text-weight-bold text-grey-9 ellipsis"
+              style="max-width: min(420px, 40vw)"
+            >
+              {{ fixedGroupTitle }}
+            </div>
             <q-input
               v-model="searchText"
               outlined
@@ -44,7 +62,7 @@
 
         <div ref="demandTableScrollRef" class="col treasury-table-wrap q-px-sm q-pb-sm">
           <div
-            v-if="!isLoading && groups.length === 0"
+            v-if="!isLoading && visibleGroups.length === 0"
             class="column items-center justify-center full-height text-grey-7 q-pa-lg"
           >
             <q-icon name="ph ph-clipboard-text" size="40px" class="q-mb-sm" />
@@ -67,12 +85,17 @@
               </tr>
             </thead>
             <tbody>
-              <template v-for="group in groups" :key="groupKey(group)">
-                <tr class="demand-group-row cursor-pointer" @click="toggleGroup(groupKey(group))">
+              <template v-for="group in visibleGroups" :key="groupKey(group)">
+                <tr
+                  v-if="!isFixedGroupPage"
+                  class="demand-group-row cursor-pointer"
+                  @click="onGroupRowClick(group)"
+                >
                   <td :colspan="tableColCount">
                     <div class="row items-center q-gutter-x-xs no-wrap">
                       <q-icon
-                        :name="isGroupExpanded(groupKey(group)) ? 'ph ph-caret-down' : 'ph ph-caret-right'"
+                        v-if="!isFixedGroupPage"
+                        :name="groupRowCaretIcon(group)"
                         size="16px"
                         color="grey-7"
                       />
@@ -174,16 +197,17 @@
                 </tr>
 
                 <ProcurementDemandGroupItemRows
-                  v-if="isGroupExpanded(groupKey(group)) && listTenantId"
+                  v-if="showGroupItemRows(group) && listTenantId"
                   :group="group"
                   :tenant-id="listTenantId"
                   :search="debouncedSearch"
-                  :enabled="isGroupExpanded(groupKey(group))"
+                  :enabled="showGroupItemRows(group)"
                   :is-buy-mode="isBuyMode"
                   :is-fulfill-mode="isFulfillMode"
                   :can-edit-procuring="isProcuringGroup(group)"
                   :can-pick-stock="canPickStockForGroup(group)"
                   :is-packed-close-mode="isPackedCloseMode(group)"
+                  :only-lines-with-stock-picks="onlyPackedTabLinesWithStock"
                   :close-action-options="closeActionOptions"
                   :table-col-count="tableColCount"
                   :vendor-options="vendorOptions"
@@ -265,7 +289,7 @@ import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { computed, provide, reactive, ref, watch } from 'vue';
 import { PROCUREMENT_DEMAND_TABLE_SCROLL_KEY } from '../shared/procurementDemandScroll';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import ProcurementDemandGroupItemRows from './ProcurementDemandGroupItemRows.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { vendorRepository } from 'src/modules/vendor/repositories/vendorRepository';
@@ -329,12 +353,21 @@ type StockPickTarget = {
   initialPicks: DemandStockPickSelection[];
 };
 
+export type ProcurementDemandFixedDocument = {
+  documentType: ProcurementDemandDocumentType;
+  documentId: number;
+  documentName?: string | null;
+};
+
 const props = defineProps<{
   mode: 'buy' | 'fulfill';
+  /** Fulfill packed tab: one document's lines on a dedicated page. */
+  fixedDocument?: ProcurementDemandFixedDocument | null;
 }>();
 
 const authStore = useAuthStore();
 const queryClient = useQueryClient();
+const route = useRoute();
 const router = useRouter();
 const demandTableScrollRef = ref<HTMLElement | null>(null);
 
@@ -343,6 +376,7 @@ const { t, te } = useI18n();
 
 const isBuyMode = computed(() => props.mode === 'buy');
 const isFulfillMode = computed(() => props.mode === 'fulfill');
+const isFixedGroupPage = computed(() => props.fixedDocument != null);
 const isChildWorkspace = computed(() => authStore.selectedTenant?.parent_id != null);
 const tableColCount = computed(() => (isBuyMode.value ? 5 : 6));
 const emptyMessage = computed(() =>
@@ -410,8 +444,16 @@ const isProcuringGroup = (group: ProcurementDemandGroup) =>
 const canPickStockForGroup = (group: ProcurementDemandGroup) =>
   isFulfillMode.value && group.document_status === 'procuring';
 
+const onlyPackedTabLinesWithStock = computed(
+  () => isFulfillMode.value && fulfillProcurementStatus.value === 'packed',
+);
+
+const navigatePackedGroupToPage = computed(
+  () => onlyPackedTabLinesWithStock.value && !isFixedGroupPage.value,
+);
+
 const isPackedCloseMode = (group: ProcurementDemandGroup) =>
-  isFulfillMode.value && group.document_status === 'packed';
+  onlyPackedTabLinesWithStock.value && group.document_status === 'packed';
 
 const closeActionOptions = [
   { label: 'Take', value: 'take' as const },
@@ -463,6 +505,37 @@ const groups = computed(() => {
   return demandData.value?.groups ?? [];
 });
 
+const stubFixedGroup = (): ProcurementDemandGroup | null => {
+  const fixed = props.fixedDocument;
+  if (!fixed) return null;
+  const name = fixed.documentName?.trim();
+  return {
+    document_type: fixed.documentType,
+    document_id: fixed.documentId,
+    document_name: name || null,
+    document_status: 'packed',
+    customer_group_name: null,
+    vendor: null,
+    item_count: 0,
+    unallocated_item_count: 0,
+  };
+};
+
+const visibleGroups = computed(() => {
+  const fixed = props.fixedDocument;
+  if (!fixed) return groups.value;
+  const match = groups.value.find(
+    (g) => g.document_type === fixed.documentType && g.document_id === fixed.documentId,
+  );
+  const stub = stubFixedGroup();
+  return match ? [match] : stub ? [stub] : [];
+});
+
+const fixedGroupTitle = computed(() => {
+  const group = visibleGroups.value[0];
+  return group ? groupTitle(group) : '';
+});
+
 const upsertMutation = useUpsertPreorderDemandMutation({
   tenantId: mutationTenantId,
   procurementStatus,
@@ -509,7 +582,8 @@ const { data: vendors = [], isLoading: vendorsLoading } = useQuery({
 
 const vendorOptions = computed(() => {
   const needle = vendorFilter.value.trim().toLowerCase();
-  return (vendors.value as Vendor[])
+  const list = (vendors.value ?? []) as Vendor[];
+  return list
     .filter((vendor) => {
       if (!needle) return true;
       return (
@@ -531,7 +605,7 @@ const filterVendors = (val: string, update: (fn: () => void) => void) => {
 
 const vendorLabel = (vendorId: number | null) => {
   if (!vendorId) return '—';
-  const match = (vendors.value as Vendor[]).find((vendor) => vendor.id === vendorId);
+  const match = ((vendors.value ?? []) as Vendor[]).find((vendor) => vendor.id === vendorId);
   return match ? `${match.name} (${match.code})` : String(vendorId);
 };
 
@@ -579,6 +653,26 @@ const isRowSaving = (group: ProcurementDemandGroup, item: ProcurementDemandItem)
   savingRowKeys.value.has(itemRowKey(group, item));
 
 const isGroupExpanded = (key: string) => expandedGroupKeys.value.has(key);
+
+const showGroupItemRows = (group: ProcurementDemandGroup) => {
+  if (isFixedGroupPage.value) return true;
+  if (navigatePackedGroupToPage.value) return false;
+  return isGroupExpanded(groupKey(group));
+};
+
+const groupRowCaretIcon = (group: ProcurementDemandGroup) => {
+  if (navigatePackedGroupToPage.value) return 'ph ph-arrow-right';
+  return isGroupExpanded(groupKey(group)) ? 'ph ph-caret-down' : 'ph ph-caret-right';
+};
+
+const onGroupRowClick = (group: ProcurementDemandGroup) => {
+  if (isFixedGroupPage.value) return;
+  if (navigatePackedGroupToPage.value) {
+    openFulfillGroupPage(group);
+    return;
+  }
+  toggleGroup(groupKey(group));
+};
 
 const toggleGroup = (key: string) => {
   const next = new Set(expandedGroupKeys.value);
@@ -714,7 +808,7 @@ const onFillPlaceQtyForGroup = async (group: ProcurementDemandGroup) => {
 
 const openBulkVendorDialog = (group: ProcurementDemandGroup) => {
   bulkVendorTargetGroup.value = group;
-  const defaultVendor = (vendors.value as Vendor[]).find((vendor) => vendor.is_default);
+  const defaultVendor = ((vendors.value ?? []) as Vendor[]).find((vendor) => vendor.is_default);
   bulkVendorId.value = defaultVendor?.id ?? null;
   bulkVendorDialogOpen.value = true;
 };
@@ -855,6 +949,29 @@ const onChangeGroupStatus = async (group: ProcurementDemandGroup) => {
   }
 };
 
+const openFulfillGroupPage = (group: ProcurementDemandGroup) => {
+  void router.push({
+    name: 'app-procurement-fulfill-group',
+    params: {
+      tenantSlug: authStore.tenantSlug || '',
+      documentType: group.document_type,
+      documentId: String(group.document_id),
+    },
+    query: {
+      status: 'packed',
+      documentName: group.document_name?.trim() || undefined,
+    },
+  });
+};
+
+const goBackFromFixedGroup = () => {
+  void router.push({
+    name: 'app-procurement-fulfill',
+    params: { tenantSlug: authStore.tenantSlug || '' },
+    query: { status: 'packed' },
+  });
+};
+
 const onPickCloseActionChange = async (
   group: ProcurementDemandGroup,
   item: ProcurementDemandItem,
@@ -884,6 +1001,21 @@ const onPickCloseActionChange = async (
     savingRowKeys.value = next;
   }
 };
+
+const syncFulfillTabFromRoute = () => {
+  if (!isFulfillMode.value) return;
+  if (isFixedGroupPage.value) {
+    fulfillProcurementStatus.value = 'packed';
+    return;
+  }
+  const status = route.query.status;
+  if (status === 'packed' || status === 'procuring') {
+    fulfillProcurementStatus.value = status;
+  }
+};
+
+watch(() => route.query.status, syncFulfillTabFromRoute, { immediate: true });
+watch(isFixedGroupPage, syncFulfillTabFromRoute, { immediate: true });
 
 const openGroupSource = (group: ProcurementDemandGroup) => {
   const tenantSlug = authStore.tenantSlug || '';

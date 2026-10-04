@@ -43,6 +43,18 @@
               { label: 'Walk-in', value: 'walkin' },
             ]"
           />
+          <q-btn-toggle
+            v-if="billKind === 'trade'"
+            v-model="tradePaperKind"
+            spread
+            no-caps
+            dense
+            toggle-color="secondary"
+            :options="[
+              { label: 'Take', value: 'take' },
+              { label: 'Condition', value: 'condition' },
+            ]"
+          />
         </div>
 
         <div class="row q-col-gutter-md">
@@ -311,6 +323,7 @@ const editInvoiceId = computed(() => {
 });
 
 const billKind = ref<'trade' | 'walkin'>('trade');
+const tradePaperKind = ref<'take' | 'condition'>('take');
 const billingProfileId = ref<number | null>(null);
 const invoiceDate = ref(new Date().toISOString().slice(0, 10));
 const dueDate = ref<string | null>(null);
@@ -401,9 +414,17 @@ const removeLine = (index: number) => {
   lines.value.splice(index, 1);
 };
 
+watch(billKind, (kind) => {
+  if (kind === 'walkin') {
+    tradePaperKind.value = 'take';
+  }
+});
+
 const buildPayload = () => {
   const invoiceType: 'wholesale' | 'retail' = billKind.value === 'walkin' ? 'retail' : 'wholesale';
   const retailMode: 'direct' | null = billKind.value === 'walkin' ? 'direct' : null;
+  const deliveryKind =
+    billKind.value === 'trade' ? tradePaperKind.value : ('take' as const);
   return {
     invoice: {
       invoice_type: invoiceType,
@@ -416,6 +437,7 @@ const buildPayload = () => {
       print_charge: printCharge.value || 0,
       note: note.value.trim() || undefined,
       retail_billing_mode: retailMode,
+      channel_meta: { delivery_kind: deliveryKind },
     },
     items: lines.value.map((l) => ({
       ...(l.id ? { id: l.id } : {}),
@@ -452,8 +474,12 @@ const saveDraft = async () => {
 const issueBill = async () => {
   if (!canIssue.value) return;
   const ok = await requestConfirmation(
-    'Sellable stock will leave inventory when you issue. You can collect payment later on Payments.',
-    'Issue this bill?',
+    tradePaperKind.value === 'condition' && billKind.value === 'trade'
+      ? 'Stock moves to held. Sales count when this bill is paid. Collect on Payments.'
+      : 'Sellable stock will leave inventory when you issue. You can collect payment later on Payments.',
+    tradePaperKind.value === 'condition' && billKind.value === 'trade'
+      ? 'Issue this condition bill?'
+      : 'Issue this bill?',
   );
   if (!ok) return;
   const result = await composeMutation.mutateAsync({
@@ -495,6 +521,9 @@ const loadExisting = async (id: number) => {
     }
     billKind.value =
       bill.invoice_type === 'retail' && bill.retail_billing_mode === 'direct' ? 'walkin' : 'trade';
+    const meta = bill.channel_meta as { delivery_kind?: string } | null | undefined;
+    const kind = (meta?.delivery_kind ?? 'take').toLowerCase();
+    tradePaperKind.value = kind === 'condition' ? 'condition' : 'take';
     billingProfileId.value = bill.billing_profile_id ?? null;
     invoiceDate.value = bill.invoice_date?.slice(0, 10) ?? invoiceDate.value;
     dueDate.value = bill.due_date?.slice(0, 10) ?? null;

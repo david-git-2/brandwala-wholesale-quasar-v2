@@ -11816,7 +11816,7 @@ begin
   end if;
 
   if p_stock_picks is not null and v_doc_status not in ('procuring', 'packed') then
-    raise exception 'stock_picks can only be updated while procuring or ready for shipment';
+    raise exception 'stock_picks can only be updated while procuring or packed';
   end if;
 
   if p_placed_quantity is not null and coalesce(p_placed_quantity, 0) < 0 then

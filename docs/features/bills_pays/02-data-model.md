@@ -2,7 +2,7 @@
 
 Live SQL still uses old names (map below). Gaps: [00-gaps](00-gaps.md) BP3–BP4. Spec names are **target**.
 
-Not on this ERD: delivery paper (procurement **Delivery paper** desk); **shop_order** — optional `shop_order_id` on bill/pay. `draft` / `proforma_generated` = maybe-bill, not issued.
+Not on this ERD: delivery paper (procurement **Delivery paper** desk); **shop_order** — optional `shop_order_id` on bill/pay. Composer `draft` is not issued. Delivery **proforma** is not a bill status.
 
 ---
 
@@ -183,13 +183,16 @@ Same table. Different paper. Never mix with packing slip / delivery paper / COD 
 
 | Kind | `invoice_type` / meta | Who | Issued when | Sales |
 | :--- | :--- | :--- | :--- | :--- |
-| Take | wholesale/retail + take | Buyer | Walk-in now, or after delivery paper | At issue |
-| Condition | wholesale + condition | Buyer | After paper; stock may stay `held` | When **paid** |
+| Take | wholesale/retail + take | Buyer | Walk-in now; trade compose take; or delivery close take | At issue |
+| Condition | wholesale + condition | Buyer | Trade compose condition, or delivery close condition. Stock `held`. Not walk-in. | When **paid** |
 | Dropship merchant | `dropship` | Shop profile | At ship | Issued merchant total |
 | AP | later | Vendor / cargo | WA15 | Not AR |
-| Proforma | `proforma_generated` | — | Composer / Delivery paper | **No** — not issued |
 
-Statuses: `draft`, `proforma_generated`, `issued`, `voided`. Never `posted`. Payment: `due`, `partially_paid`, `paid`, `settled_with_write_off`.
+Kinds are not statuses. **`channel_meta.delivery_kind`:** `take` (default) or `condition` on wholesale trade compose / delivery close. Delivery **proforma** is not a row on this table.
+
+**Paper** (`invoice_status`): `draft` (composer only) · `issued` (real bill) · `voided`. Never `posted`. Never `proforma_generated` on the Bills desk (live enum may still hold leftover rows; treat as draft until SI19).
+
+**Money** (`payment_status`): `due` · `partially_paid` · `paid`. Condition unpaid stays `issued` + `due`. No `refunded` / `settled_with_write_off`.
 
 `total_amount` = subtotal − discount + charges. Lines = tenant sell only (no cost columns on the bill). GP = shipment P&L ([reporting 01](../reporting_treasury/01-prd.md)). Charges = merchant-owed only. `channel_meta` = recipient / COD / `delivery_kind` — not sales.
 

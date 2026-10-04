@@ -1167,6 +1167,7 @@ declare
   v_cod_charge numeric(12,2);
   v_line_meta jsonb;
   v_channel_meta jsonb;
+  v_delivery_kind text;
 begin
   if not public.is_tenant_staff(p_tenant_id) then
     return jsonb_build_object('success', false, 'error', 'access denied');
@@ -1181,6 +1182,10 @@ begin
   v_issue := coalesce((p_payload->>'issue')::boolean, false);
   v_shop_order_id := nullif(p_payload->>'shop_order_id', '')::bigint;
   v_channel_meta := coalesce(v_inv->'channel_meta', '{}'::jsonb);
+  v_delivery_kind := lower(trim(coalesce(v_channel_meta->>'delivery_kind', 'take')));
+  if v_delivery_kind not in ('take', 'condition') then
+    return jsonb_build_object('success', false, 'error', 'channel_meta.delivery_kind must be take or condition');
+  end if;
 
   if v_inv->>'invoice_type' is null or trim(v_inv->>'invoice_type') = '' then
     return jsonb_build_object('success', false, 'error', 'invoice.invoice_type is required');
@@ -1200,6 +1205,17 @@ begin
     when v_inv->>'retail_billing_mode' is null or trim(v_inv->>'retail_billing_mode') = '' then null
     else (v_inv->>'retail_billing_mode')::public.retail_billing_mode
   end;
+
+  if v_delivery_kind = 'condition' then
+    if v_invoice_type <> 'wholesale'::public.global_invoice_type then
+      return jsonb_build_object('success', false, 'error', 'condition bills require wholesale invoice_type');
+    end if;
+    if v_retail_mode = 'direct'::public.retail_billing_mode then
+      return jsonb_build_object('success', false, 'error', 'walk-in bills cannot be condition');
+    end if;
+  end if;
+
+  v_channel_meta := coalesce(v_channel_meta, '{}'::jsonb) || jsonb_build_object('delivery_kind', v_delivery_kind);
 
   select * into v_invoice
   from public.create_sales_invoice(
@@ -3571,6 +3587,8 @@ declare
   v_eff_tenant_id bigint;
   v_stock record;
   v_qty integer;
+  v_delivery_kind text;
+  v_held_stock_id bigint;
 begin
   select * into v_invoice from public.bills where id = p_invoice_id for update;
   if v_invoice.id is null then raise exception 'invoice not found'; end if;
@@ -3615,39 +3633,19 @@ begin
     end if;
   end if;
 
+  v_delivery_kind := lower(trim(coalesce(v_invoice.channel_meta->>'delivery_kind', 'take')));
+  if v_delivery_kind not in ('take', 'condition') then
+    v_delivery_kind := 'take';
+  end if;
 
-  v_mov_no := 'MOV-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('public.stock_movements_id_seq')::text, 6, '0');
+  if v_invoice.invoice_type = 'wholesale'::public.global_invoice_type
+     and v_delivery_kind = 'condition' then
+    for v_item in select * from public.global_invoice_items where invoice_id = p_invoice_id loop
+      v_qty := ceil(v_item.quantity)::integer;
 
-  insert into public.stock_movements (
-    tenant_id,
-    movement_no,
-    movement_type,
-    reference_type,
-    reference_id,
-    notes,
-    created_by_email,
-    is_posted,
-    posted_at
-  ) values (
-    v_parent_id,
-    v_mov_no,
-    'adjustment'::public.stock_movement_type,
-    'sales_invoice',
-    p_invoice_id::text,
-    'Issued ' || upper(v_invoice.invoice_type::text) || ' Invoice #' || coalesce(v_invoice.invoice_no, p_invoice_id::text),
-    public.current_user_email(),
-    true,
-    now()
-  ) returning id into v_mov_id;
-
-  for v_item in select * from public.global_invoice_items where invoice_id = p_invoice_id loop
-    v_qty := ceil(v_item.quantity)::integer;
-
-    select * into v_stock from public.global_stocks where id = v_item.global_stock_id for update;
-    if v_stock.id is not null then
-      if v_invoice.invoice_type = 'dropship'::public.global_invoice_type
-         and v_stock.availability <> 'held'::public.stock_availability then
-        raise exception 'dropship invoice stock % must be held before issue', v_item.global_stock_id;
+      select * into v_stock from public.global_stocks where id = v_item.global_stock_id for update;
+      if v_stock.id is null then
+        continue;
       end if;
 
       if v_stock.quantity < v_qty then
@@ -3655,29 +3653,104 @@ begin
           v_item.global_stock_id, v_qty, v_stock.quantity;
       end if;
 
-      update public.global_stocks
-      set quantity = quantity - v_qty
-      where id = v_item.global_stock_id;
+      if v_stock.availability = 'sellable'::public.stock_availability then
+        perform public.create_and_post_stock_movement(
+          p_tenant_id => v_parent_id,
+          p_stock_id => v_item.global_stock_id,
+          p_quantity => v_qty,
+          p_to_availability => 'held'::public.stock_availability,
+          p_movement_type => 'availability_transfer'::public.stock_movement_type,
+          p_notes => 'Condition bill #' || coalesce(v_invoice.invoice_no, p_invoice_id::text),
+          p_reference_type => 'sales_invoice',
+          p_reference_id => p_invoice_id::text
+        );
 
-      insert into public.stock_movement_lines (
-        movement_id,
-        stock_id,
-        quantity,
-        from_location_id,
-        to_location_id,
-        from_availability,
-        to_availability
-      ) values (
-        v_mov_id,
-        v_item.global_stock_id,
-        v_qty,
-        v_stock.location_id,
-        v_stock.location_id,
-        v_stock.availability,
-        v_stock.availability
-      );
-    end if;
-  end loop;
+        select gs.id
+        into v_held_stock_id
+        from public.global_stocks gs
+        where gs.shipment_item_id = v_stock.shipment_item_id
+          and gs.availability = 'held'::public.stock_availability
+          and gs.location_id = v_stock.location_id
+          and gs.grade_tag_id = coalesce(v_stock.grade_tag_id, public.default_stock_grade_tag_id())
+        order by gs.id desc
+        limit 1;
+
+        if v_held_stock_id is null then
+          raise exception 'held stock not found after condition transfer for line %', v_item.id;
+        end if;
+
+        update public.bill_lines
+        set global_stock_id = v_held_stock_id
+        where id = v_item.id;
+      elsif v_stock.availability <> 'held'::public.stock_availability then
+        raise exception 'condition bill stock % must be sellable or held (current: %)',
+          v_item.global_stock_id, v_stock.availability;
+      end if;
+    end loop;
+  else
+    v_mov_no := 'MOV-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('public.stock_movements_id_seq')::text, 6, '0');
+
+    insert into public.stock_movements (
+      tenant_id,
+      movement_no,
+      movement_type,
+      reference_type,
+      reference_id,
+      notes,
+      created_by_email,
+      is_posted,
+      posted_at
+    ) values (
+      v_parent_id,
+      v_mov_no,
+      'adjustment'::public.stock_movement_type,
+      'sales_invoice',
+      p_invoice_id::text,
+      'Issued ' || upper(v_invoice.invoice_type::text) || ' Invoice #' || coalesce(v_invoice.invoice_no, p_invoice_id::text),
+      public.current_user_email(),
+      true,
+      now()
+    ) returning id into v_mov_id;
+
+    for v_item in select * from public.global_invoice_items where invoice_id = p_invoice_id loop
+      v_qty := ceil(v_item.quantity)::integer;
+
+      select * into v_stock from public.global_stocks where id = v_item.global_stock_id for update;
+      if v_stock.id is not null then
+        if v_invoice.invoice_type = 'dropship'::public.global_invoice_type
+           and v_stock.availability <> 'held'::public.stock_availability then
+          raise exception 'dropship invoice stock % must be held before issue', v_item.global_stock_id;
+        end if;
+
+        if v_stock.quantity < v_qty then
+          raise exception 'insufficient stock quantity on stock % (requested %, available %)',
+            v_item.global_stock_id, v_qty, v_stock.quantity;
+        end if;
+
+        update public.global_stocks
+        set quantity = quantity - v_qty
+        where id = v_item.global_stock_id;
+
+        insert into public.stock_movement_lines (
+          movement_id,
+          stock_id,
+          quantity,
+          from_location_id,
+          to_location_id,
+          from_availability,
+          to_availability
+        ) values (
+          v_mov_id,
+          v_item.global_stock_id,
+          v_qty,
+          v_stock.location_id,
+          v_stock.location_id,
+          v_stock.availability,
+          v_stock.availability
+        );
+      end if;
+    end loop;
+  end if;
 
   update public.bills
   set invoice_status = 'issued'::public.global_invoice_status
@@ -5552,6 +5625,8 @@ begin
         else shipping_charge
       end,
       channel_meta = case
+        when v_inv_patch ? 'channel_meta' and jsonb_typeof(v_inv_patch->'channel_meta') = 'object'
+          then coalesce(channel_meta, '{}'::jsonb) || (v_inv_patch->'channel_meta')
         when v_inv_patch ? 'cod_charge_amount' then coalesce(channel_meta, '{}'::jsonb) || jsonb_build_object('cod_charge_amount', coalesce(nullif(v_inv_patch->>'cod_charge_amount', '')::numeric, 0))
         when v_inv_patch ? 'cod_charge' then coalesce(channel_meta, '{}'::jsonb) || jsonb_build_object('cod_charge_amount', coalesce(nullif(v_inv_patch->>'cod_charge', '')::numeric, 0))
         else channel_meta

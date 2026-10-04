@@ -127,6 +127,12 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/ProcurementFulfillPage.vue'),
         beforeEnter: guard('procurement_fulfill'),
       },
+      {
+        path: 'group/:documentType/:documentId',
+        name: 'app-procurement-fulfill-group',
+        component: () => import('../pages/ProcurementFulfillGroupPage.vue'),
+        beforeEnter: guard('procurement_fulfill'),
+      },
     ],
   },
   {

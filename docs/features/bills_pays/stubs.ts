@@ -7,8 +7,8 @@ export interface SalesInvoiceStub {
   id: string;
   invoice_no: string;
   invoice_type: 'wholesale' | 'retail' | 'dropship';
-  invoice_status: 'draft' | 'proforma_generated' | 'issued' | 'voided';
-  payment_status: 'due' | 'partially_paid' | 'paid' | 'refunded';
+  invoice_status: 'draft' | 'issued' | 'voided';
+  payment_status: 'due' | 'partially_paid' | 'paid';
   customer_name: string;
   invoice_date: string;
   total_amount: number;

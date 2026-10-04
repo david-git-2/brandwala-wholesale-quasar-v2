@@ -69,7 +69,7 @@ const listGlobalInvoices = async (
   let query = supabase
     .from('bills')
     .select(
-      'id, parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, billing_profile_id:profile_id, retail_billing_mode, recipient_name, created_by, created_at, billing_profiles:profiles!bills_profile_id_fkey(name, email, color:accent_color), issued_by:tenants!global_invoices_issued_by_tenant_id_fkey(name)',
+      'id, parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, billing_profile_id:profile_id, retail_billing_mode, channel_meta, recipient_name, created_by, created_at, billing_profiles:profiles!bills_profile_id_fkey(name, email, color:accent_color), issued_by:tenants!global_invoices_issued_by_tenant_id_fkey(name)',
       { count: 'exact' },
     );
 
@@ -642,6 +642,7 @@ export type SalesInvoiceFromPayloadInput = {
     print_charge?: number;
     note?: string;
     retail_billing_mode?: 'account' | 'direct' | null;
+    channel_meta?: { delivery_kind?: 'take' | 'condition' };
   };
   items: SalesInvoicePayloadItem[];
   issue: boolean;
@@ -698,15 +699,6 @@ const updateSalesInvoiceFromPayload = async (
   });
   if (error) throw error;
   return parsePayloadRpcResult(data);
-};
-
-const markInvoiceProformaGenerated = async (invoiceId: number): Promise<void> => {
-  const { error } = await supabase
-    .from('bills')
-    .update({ invoice_status: 'proforma_generated' })
-    .eq('id', invoiceId)
-    .eq('invoice_status', 'draft');
-  if (error) throw error;
 };
 
 const voidGlobalInvoice = async (invoiceId: number): Promise<void> => {
@@ -935,7 +927,6 @@ export const invoiceRepository = {
   issueWholesaleInvoice,
   createSalesInvoiceFromPayload,
   updateSalesInvoiceFromPayload,
-  markInvoiceProformaGenerated,
   voidGlobalInvoice,
   unpostGlobalInvoice,
   deleteGlobalInvoice,

@@ -14,7 +14,7 @@
 | **`BillDetailPage`** | Print | navigate `app-bill-preview-page` | — | — |
 | **`BillComposePage`** | Mount draft (`?id=`) | `invoiceRepository.getGlobalInvoiceById` + `listGlobalInvoiceItems` | `Table: bills` / `bill_lines` | — |
 | **`BillComposePage`** | FIFO search | `BillStockSearch` | `RPC: search_sales_invoice_stock` | — |
-| **`BillComposePage`** | Save draft / issue | `useBillComposeMutation` | `RPC: create_sales_invoice_from_payload` or `update_sales_invoice_from_payload`; issue → `post_sales_invoice` on edits | `billsQueryKeys` |
+| **`BillComposePage`** | Save draft / issue | `useBillComposeMutation` | `RPC: create_sales_invoice_from_payload` or `update_sales_invoice_from_payload`; issue → `post_sales_invoice` on edits. Paper stays `draft` until issue. **Target:** trade Take/Condition ([BP7](00-gaps.md)); walk-in take only. | `billsQueryKeys` |
 | **`BillPreviewPage`** | Mount / brand pick | `useBillDetailQuery` + `listInvoiceBrands` | `Table: invoice_brands` | last brand id in `localStorage` per parent tenant |
 | **`BillPreviewPage`** | Print | `window.print()` | — | — |
 | **`BillBrandsPage`** | CRUD | direct repository | `Table: invoice_brands` (writes: `invoice_brand` grant + RLS) | `['invoice_brands', parentTenantId]` |

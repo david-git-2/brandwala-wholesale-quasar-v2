@@ -12,7 +12,7 @@ Code: **Bills + Payments + Cashbook** `web/src/modules/bills_pays/`. Bill reads/
 web/src/modules/bills_pays/
 ├── pages/
 │   ├── BillsPage.vue                     # Ops list browse + status pills; New bill / Brands
-│   ├── BillComposePage.vue               # Trade / walk-in FIFO composer; draft + issue
+│   ├── BillComposePage.vue               # Trade FIFO take|condition; walk-in take; paper `draft` then `issued`
 │   ├── BillDetailPage.vue                # Read issued bill; void; Print → preview route
 │   ├── BillPreviewPage.vue               # Letterhead + barcode; window.print()
 │   └── BillBrandsPage.vue                # CRUD invoice_brands (name, address)

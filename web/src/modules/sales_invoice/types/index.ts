@@ -51,6 +51,7 @@ export type GlobalInvoiceRow = {
   created_by?: string | null;
   created_at?: string;
   settlement_discount_amount?: number;
+  channel_meta?: Record<string, unknown> | null;
 };
 
 export type GlobalInvoiceType = 'retail' | 'wholesale' | 'dropship';
