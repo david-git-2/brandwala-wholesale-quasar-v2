@@ -218,7 +218,7 @@ export const courierRemittanceRepository = {
 
     // Fetch universal wallet ledger balances for middleman (& customer compat) entities
     const { data: ledger, error: ledgerErr } = await supabase
-      .from('universal_wallet_ledger')
+      .from('cashbook_entries')
       .select('entity_id, type, amount')
       .eq('tenant_id', tenantId)
       .in('entity_type', ['middleman', 'customer']);

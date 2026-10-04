@@ -2,19 +2,12 @@
 -- ---------------------------------------------------------------------------
 -- Helpers
 -- ---------------------------------------------------------------------------
-create or replace function public.investor_uwl_flow_total(
-  p_tenant_id bigint,
-  p_investor_id bigint,
-  p_flow text
-)
-returns numeric
-language sql
-stable
-security definer
-set search_path = public
-as $$
+CREATE OR REPLACE FUNCTION "public"."investor_uwl_flow_total"("p_tenant_id" bigint, "p_investor_id" bigint, "p_flow" "text") RETURNS numeric
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
   select coalesce(sum(abs(uwl.amount)), 0)::numeric(12,2)
-  from public.universal_wallet_ledger uwl
+  from public.cashbook_entries uwl
   inner join public.investors i on i.id = uwl.entity_id
   where i.tenant_id = p_tenant_id
     and uwl.entity_type = 'investor'
@@ -38,21 +31,12 @@ as $$
     );
 $$;
 
-create or replace function public.investor_uwl_flow_total_range(
-  p_tenant_id bigint,
-  p_investor_id bigint,
-  p_flow text,
-  p_start_date date,
-  p_end_date date
-)
-returns numeric
-language sql
-stable
-security definer
-set search_path = public
-as $$
+CREATE OR REPLACE FUNCTION "public"."investor_uwl_flow_total_range"("p_tenant_id" bigint, "p_investor_id" bigint, "p_flow" "text", "p_start_date" "date", "p_end_date" "date") RETURNS numeric
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
   select coalesce(sum(abs(uwl.amount)), 0)::numeric(12,2)
-  from public.universal_wallet_ledger uwl
+  from public.cashbook_entries uwl
   inner join public.investors i on i.id = uwl.entity_id
   where i.tenant_id = p_tenant_id
     and uwl.entity_id = p_investor_id
@@ -590,28 +574,10 @@ $$;
 drop function if exists public.list_investor_transactions(bigint, bigint, int, int);
 drop function if exists public.list_investor_wallet_activity(bigint, bigint, int, int);
 
-create or replace function public.list_investor_wallet_activity(
-  p_tenant_id bigint,
-  p_investor_id bigint default null,
-  p_limit int default 50,
-  p_offset int default 0
-)
-returns table (
-  id text,
-  investor_id bigint,
-  amount numeric,
-  activity_date date,
-  method public.investor_payment_method,
-  transaction_type text,
-  note text,
-  created_at timestamptz,
-  total_count bigint
-)
-language plpgsql
-security definer
-set search_path = public
-stable
-as $$
+CREATE OR REPLACE FUNCTION "public"."list_investor_wallet_activity"("p_tenant_id" bigint, "p_investor_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" "text", "investor_id" bigint, "amount" numeric, "activity_date" "date", "method" "public"."investor_payment_method", "transaction_type" "text", "note" "text", "created_at" timestamp with time zone, "total_count" bigint)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 declare
   v_total_count bigint;
 begin
@@ -623,7 +589,7 @@ begin
   end if;
 
   select count(*) into v_total_count
-  from public.universal_wallet_ledger uwl
+  from public.cashbook_entries uwl
   inner join public.investors i on i.id = uwl.entity_id
   where i.tenant_id = p_tenant_id
     and uwl.entity_type = 'investor'
@@ -641,7 +607,7 @@ begin
     coalesce(uwl.metadata->>'notes', uwl.metadata->>'note'),
     uwl.created_at,
     v_total_count
-  from public.universal_wallet_ledger uwl
+  from public.cashbook_entries uwl
   inner join public.investors i on i.id = uwl.entity_id
   where i.tenant_id = p_tenant_id
     and uwl.entity_type = 'investor'

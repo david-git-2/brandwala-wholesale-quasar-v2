@@ -358,6 +358,7 @@ BEGIN
       image_url,
       quantity,
       confirmed_quantity,
+      delivered_quantity,
       price_gbp,
       product_weight,
       package_weight,
@@ -371,6 +372,7 @@ BEGIN
       v_backlog.image_url,
       v_backlog.open_quantity,
       v_backlog.open_quantity,
+      NULL,
       v_backlog.price_gbp,
       v_backlog.product_weight::integer,
       v_backlog.package_weight::integer,
@@ -440,6 +442,7 @@ BEGIN
       image_url,
       quantity,
       confirmed_quantity,
+      delivered_quantity,
       price_gbp,
       product_weight,
       package_weight,
@@ -453,6 +456,7 @@ BEGIN
       v_backlog.image_url,
       v_backlog.open_quantity,
       v_backlog.open_quantity,
+      NULL,
       v_backlog.price_gbp,
       v_backlog.product_weight::integer,
       v_backlog.package_weight::integer,
@@ -2609,14 +2613,15 @@ CREATE OR REPLACE FUNCTION "public"."create_vendor_with_wallet"("p_tenant_id" bi
     AS $$
 declare
   v_vendor public.vendors;
-  v_wallet public.wallet_accounts;
+  v_wallet public.cashbook_accounts;
   v_currency_code text := 'BDT';
+  v_books_id bigint;
 begin
-  -- 1. Permission checks
   if p_tenant_id is null then
     if not public.is_superadmin() then
       raise exception 'not allowed';
     end if;
+    v_books_id := null;
   else
     if not (
       public.is_superadmin()
@@ -2632,11 +2637,11 @@ begin
     ) then
       raise exception 'not allowed';
     end if;
+    v_books_id := p_tenant_id;
   end if;
 
-  -- 2. Insert vendor record
   insert into public.vendors (
-    tenant_id,
+    parent_tenant_id,
     name,
     code,
     market_code,
@@ -2646,7 +2651,7 @@ begin
     website
   )
   values (
-    p_tenant_id,
+    v_books_id,
     trim(p_name),
     upper(trim(p_code)),
     upper(trim(p_market_code)),
@@ -2657,32 +2662,30 @@ begin
   )
   returning * into v_vendor;
 
-  -- 3. Create or fetch wallet_accounts anchor for vendor (Default BDT)
-  insert into public.wallet_accounts (
-    tenant_id,
-    parent_tenant_id,
-    entity_type,
-    entity_id,
-    currency_code,
-    available_balance,
-    pending_balance,
-    locked_balance
-  )
-  values (
-    p_tenant_id,
-    coalesce(v_vendor.parent_tenant_id, p_tenant_id),
-    'vendor',
-    v_vendor.id,
-    v_currency_code,
-    0.0000,
-    0.0000,
-    0.0000
-  )
-  on conflict (tenant_id, entity_type, entity_id, currency_code)
-  do update set updated_at = now()
-  returning * into v_wallet;
+  if v_books_id is not null then
+    insert into public.cashbook_accounts (
+      tenant_id,
+      entity_type,
+      entity_id,
+      currency_code,
+      available_balance,
+      pending_balance,
+      locked_balance
+    )
+    values (
+      v_books_id,
+      'vendor',
+      v_vendor.id,
+      v_currency_code,
+      0.0000,
+      0.0000,
+      0.0000
+    )
+    on conflict (tenant_id, entity_type, entity_id, currency_code)
+    do update set updated_at = now()
+    returning * into v_wallet;
+  end if;
 
-  -- 4. Return JSON payload matching documentation specification
   return jsonb_build_object(
     'vendor', to_jsonb(v_vendor),
     'wallet', to_jsonb(v_wallet)
@@ -3512,12 +3515,10 @@ begin
     raise exception 'tenant % not found', p_tenant_id;
   end if;
 
-  -- Vendors / default vendor live on parent (stock-owning) tenants only
   if v_tenant.parent_id is not null then
     raise exception 'ensure_default_vendor requires a parent tenant (got child %)', p_tenant_id;
   end if;
 
-  -- Auth: skip when no JWT (migration / service); otherwise same bar as create_vendor
   if auth.uid() is not null then
     if not (
       public.is_superadmin()
@@ -3535,10 +3536,9 @@ begin
     end if;
   end if;
 
-  -- Already has a default
   select id into v_vendor_id
   from public.vendors
-  where tenant_id = p_tenant_id
+  where parent_tenant_id = p_tenant_id
     and is_default = true
   limit 1;
 
@@ -3546,10 +3546,9 @@ begin
     return v_vendor_id;
   end if;
 
-  -- Promote reserved code DEFAULT if present
   select id into v_vendor_id
   from public.vendors
-  where tenant_id = p_tenant_id
+  where parent_tenant_id = p_tenant_id
     and upper(trim(code)) = 'DEFAULT'
   limit 1;
 
@@ -3562,36 +3561,18 @@ begin
     return v_vendor_id;
   end if;
 
-  -- Resolve market_code from existing tenant vendors, then stable prod FKs
-  select v.market_code into v_market_code
-  from public.vendors v
-  where v.tenant_id = p_tenant_id
-  order by v.id
+  select upper(trim(code)) into v_market_code
+  from public.global_markets
+  where is_active = true
+  order by id asc
   limit 1;
 
-  if v_market_code is null then
-    select m.code into v_market_code
-    from public.markets m
-    where m.is_active = true
-      and m.code in ('GB', 'BD', 'US')
-    order by case m.code when 'GB' then 1 when 'BD' then 2 else 3 end
-    limit 1;
-  end if;
-
-  if v_market_code is null then
-    select m.code into v_market_code
-    from public.markets m
-    where m.is_active = true
-    order by m.id
-    limit 1;
-  end if;
-
-  if v_market_code is null then
-    raise exception 'no active market available for default vendor';
+  if v_market_code is null or v_market_code = '' then
+    v_market_code := 'BD';
   end if;
 
   insert into public.vendors (
-    tenant_id,
+    parent_tenant_id,
     name,
     code,
     market_code,
@@ -3606,8 +3587,7 @@ begin
   )
   returning id into v_vendor_id;
 
-  -- Mirror create_vendor_with_wallet: zero BDT wallet anchor
-  insert into public.wallet_accounts (
+  insert into public.cashbook_accounts (
     tenant_id,
     parent_tenant_id,
     entity_type,
@@ -4460,92 +4440,6 @@ $$;
 ALTER FUNCTION "public"."get_costing_file_by_id"("p_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_payee_settlement_summary"("p_tenant_id" bigint, "p_shipment_id" bigint, "p_entity_type" "text", "p_entity_id" bigint) RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-  v_avail NUMERIC(18,4) := 0;
-  v_paid NUMERIC(18,4) := 0;
-  v_credited NUMERIC(18,4) := 0;
-  v_used NUMERIC(18,4) := 0;
-  v_events JSONB := '[]'::jsonb;
-BEGIN
-  IF p_entity_id IS NULL THEN
-    RETURN NULL;
-  END IF;
-
-  SELECT COALESCE(available_balance, 0) INTO v_avail
-  FROM public.wallet_accounts
-  WHERE tenant_id = p_tenant_id
-    AND entity_type = p_entity_type
-    AND entity_id = p_entity_id
-    AND currency_code = 'BDT';
-
-  SELECT COALESCE(SUM(base_amount), 0) INTO v_paid
-  FROM public.universal_wallet_ledger
-  WHERE tenant_id = p_tenant_id
-    AND source_type = 'shipment'
-    AND source_id = p_shipment_id::text
-    AND metadata->>'action' = 'pay'
-    AND metadata->>'payee_type' = p_entity_type
-    AND (metadata->>'payee_id')::bigint = p_entity_id;
-
-  SELECT COALESCE(SUM(base_amount), 0) INTO v_credited
-  FROM public.universal_wallet_ledger
-  WHERE tenant_id = p_tenant_id
-    AND source_type = 'shipment'
-    AND source_id = p_shipment_id::text
-    AND metadata->>'action' = 'record_credit'
-    AND entity_type = p_entity_type
-    AND entity_id = p_entity_id;
-
-  SELECT COALESCE(SUM(base_amount), 0) INTO v_used
-  FROM public.universal_wallet_ledger
-  WHERE tenant_id = p_tenant_id
-    AND source_type = 'shipment'
-    AND source_id = p_shipment_id::text
-    AND metadata->>'action' = 'use_credit'
-    AND entity_type = p_entity_type
-    AND entity_id = p_entity_id;
-
-  SELECT COALESCE(jsonb_agg(
-    jsonb_build_object(
-      'id', id,
-      'created_at', created_at,
-      'type', type,
-      'action', metadata->>'action',
-      'amount_input', COALESCE((metadata->>'amount_input')::numeric, amount),
-      'exchange_rate', COALESCE((metadata->>'exchange_rate')::numeric, exchange_rate),
-      'base_amount', base_amount
-    ) ORDER BY created_at DESC
-  ), '[]'::jsonb) INTO v_events
-  FROM public.universal_wallet_ledger
-  WHERE tenant_id = p_tenant_id
-    AND source_type = 'shipment'
-    AND source_id = p_shipment_id::text
-    AND (
-      (entity_type = p_entity_type AND entity_id = p_entity_id)
-      OR
-      (metadata->>'payee_type' = p_entity_type AND (metadata->>'payee_id')::bigint = p_entity_id)
-    );
-
-  RETURN jsonb_build_object(
-    'entity_type', p_entity_type,
-    'entity_id', p_entity_id,
-    'available_bdt', v_avail,
-    'paid_bdt', v_paid,
-    'credited_bdt', v_credited,
-    'used_bdt', v_used,
-    'recent_events', v_events
-  );
-END;
-$$;
-
-
-ALTER FUNCTION "public"."get_payee_settlement_summary"("p_tenant_id" bigint, "p_shipment_id" bigint, "p_entity_type" "text", "p_entity_id" bigint) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."get_shipment_pnl"("p_tenant_id" bigint, "p_shipment_id" bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -4592,7 +4486,7 @@ begin
       si.*,
       public.calculate_landed_unit_cost(si.id) as landed_unit_cost,
       coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_qty,
-      coalesce(sum(ii.unit_cost_price * (ii.quantity - ii.return_quantity)), 0) as sold_cost,
+      coalesce(public.calculate_landed_unit_cost(si.id), 0) * coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_cost,
       coalesce(sum(
         ii.sell_price_amount * (ii.quantity - coalesce(ii.return_quantity, 0))
         - case
@@ -4614,7 +4508,7 @@ begin
       (si.ordered_quantity - coalesce(sum(ii.quantity - ii.return_quantity), 0) - coalesce(disp.sellable_qty, 0) - coalesce(disp.stolen_qty, 0) - coalesce(disp.box_damage_qty, 0) - coalesce(disp.expired_qty, 0) - coalesce(disp.reserved_qty, 0)) as reconciliation_gap
     from public.global_shipment_items si
     left join public.global_invoice_items ii on ii.shipment_item_id = si.id
-    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
+    left join public.bills inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
     left join lateral (
       select coalesce(sum(x.line_total_amount), 0.00) as inv_line_subtotal
       from public.global_invoice_items x
@@ -4661,7 +4555,7 @@ begin
       public.calculate_landed_unit_cost(si.id) as landed_unit_cost,
       si.ordered_quantity as received_qty,
       coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_qty,
-      coalesce(sum(ii.unit_cost_price * (ii.quantity - ii.return_quantity)), 0) as sold_cost,
+      coalesce(public.calculate_landed_unit_cost(si.id), 0) * coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_cost,
       coalesce(sum(
         ii.sell_price_amount * (ii.quantity - coalesce(ii.return_quantity, 0))
         - case
@@ -4677,7 +4571,7 @@ begin
       (si.ordered_quantity - coalesce(sum(ii.quantity - ii.return_quantity), 0) - coalesce(disp.sellable_qty, 0) - coalesce(disp.stolen_qty, 0) - coalesce(disp.box_damage_qty, 0) - coalesce(disp.expired_qty, 0) - coalesce(disp.reserved_qty, 0)) as reconciliation_gap
     from public.global_shipment_items si
     left join public.global_invoice_items ii on ii.shipment_item_id = si.id
-    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
+    left join public.bills inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
     left join lateral (
       select coalesce(sum(x.line_total_amount), 0.00) as inv_line_subtotal
       from public.global_invoice_items x
@@ -4883,7 +4777,7 @@ CREATE OR REPLACE FUNCTION "public"."global_stock_hold_qty"("p_global_stock_id" 
     coalesce((
       select sum(gii.quantity - coalesce(gii.return_quantity, 0))
       from public.global_invoice_items gii
-      join public.global_invoices gi on gi.id = gii.invoice_id
+      join public.bills gi on gi.id = gii.invoice_id
       where gii.global_stock_id = p_global_stock_id
         and gi.invoice_status = 'draft'::public.global_invoice_status
     ), 0)
@@ -8204,7 +8098,7 @@ begin
       coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_qty
     from public.global_shipment_items si
     left join public.global_invoice_items ii on ii.shipment_item_id = si.id
-    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
+    left join public.bills inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
     where si.shipment_id = p_global_shipment_id
     group by si.id, si.ordered_quantity
   ) t;
@@ -8237,7 +8131,7 @@ begin
     -- Update investor pending profit bucket if profit is realized
     if v_computed_profit > 0 and v_status = 'realized' then
       if not exists (
-        select 1 from public.universal_wallet_ledger
+        select 1 from public.cashbook_entries
         where tenant_id = v_shipment.parent_tenant_id
           and entity_type = 'investor'
           and entity_id = v_inv.investor_id
@@ -9570,47 +9464,47 @@ CREATE OR REPLACE FUNCTION "public"."trg_fn_auto_upsert_pbc_backlog"() RETURNS "
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-DECLARE
-  v_file public.product_based_costing_files%ROWTYPE;
+declare
+  v_file public.product_based_costing_files%rowtype;
   v_tenant_id bigint;
   v_other_id bigint;
   v_open_qty numeric;
-  v_prod RECORD;
+  v_prod record;
   v_price_gbp numeric;
   v_name text;
-BEGIN
-  IF TG_OP = 'DELETE' THEN
-    IF OLD.product_id IS NOT NULL AND OLD.product_based_costing_file_id IS NOT NULL THEN
-      SELECT * INTO v_file
-      FROM public.product_based_costing_files
-      WHERE id = OLD.product_based_costing_file_id;
+begin
+  if tg_op = 'DELETE' then
+    if old.product_id is not null and old.product_based_costing_file_id is not null then
+      select * into v_file
+      from public.product_based_costing_files
+      where id = old.product_based_costing_file_id;
 
-      IF v_file.id IS NOT NULL THEN
+      if v_file.id is not null then
         v_tenant_id := v_file.tenant_id;
-        IF v_tenant_id IS NULL AND v_file.billing_profile_id IS NOT NULL THEN
-          SELECT tenant_id INTO v_tenant_id
-          FROM public.billing_profiles
-          WHERE id = v_file.billing_profile_id;
-        END IF;
+        if v_tenant_id is null and v_file.billing_profile_id is not null then
+          select tenant_id into v_tenant_id
+          from public.billing_profiles
+          where id = v_file.billing_profile_id;
+        end if;
 
-        SELECT pci.id INTO v_other_id
-        FROM public.product_based_costing_items pci
-        INNER JOIN public.product_based_costing_files pcf
-          ON pcf.id = pci.product_based_costing_file_id
-        WHERE pci.product_id = OLD.product_id
-          AND pcf.billing_profile_id IS NOT DISTINCT FROM v_file.billing_profile_id
-        ORDER BY pci.updated_at DESC NULLS LAST, pci.id DESC
-        LIMIT 1;
+        select pci.id into v_other_id
+        from public.product_based_costing_items pci
+        inner join public.product_based_costing_files pcf
+          on pcf.id = pci.product_based_costing_file_id
+        where pci.product_id = old.product_id
+          and pcf.billing_profile_id is not distinct from v_file.billing_profile_id
+        order by pci.updated_at desc nulls last, pci.id desc
+        limit 1;
 
-        IF v_other_id IS NOT NULL THEN
-          PERFORM public.upsert_pbc_backlog_from_item(v_other_id);
-        ELSIF v_tenant_id IS NOT NULL AND v_file.billing_profile_id IS NOT NULL THEN
-          v_open_qty := coalesce(OLD.confirmed_quantity, OLD.quantity, 0);
+        if v_other_id is not null then
+          perform public.upsert_pbc_backlog_from_item(v_other_id);
+        elsif v_tenant_id is not null and v_file.billing_profile_id is not null then
+          v_open_qty := coalesce(old.confirmed_quantity, old.quantity, 0);
 
-          IF coalesce(v_file.status, 'pending') IN ('pending', 'offered')
-             AND v_open_qty > 0
-          THEN
-            SELECT
+          if coalesce(v_file.status, 'pending') in ('pending', 'offered')
+             and v_open_qty > 0
+          then
+            select
               p.name,
               p.image_url,
               p.list_price_amount,
@@ -9618,24 +9512,24 @@ BEGIN
               p.package_weight,
               p.barcode,
               p.product_code,
-              gc.code AS list_price_currency_code
-            INTO v_prod
-            FROM public.products p
-            LEFT JOIN public.global_currencies gc ON gc.id = p.list_price_currency_id
-            WHERE p.id = OLD.product_id;
+              gc.code as list_price_currency_code
+            into v_prod
+            from public.products p
+            left join public.global_currencies gc on gc.id = p.list_price_currency_id
+            where p.id = old.product_id;
 
-            v_name := coalesce(OLD.name, v_prod.name);
+            v_name := coalesce(old.name, v_prod.name);
             v_price_gbp := coalesce(
-              OLD.price_gbp,
-              CASE
-                WHEN v_prod.list_price_currency_code IS NULL OR v_prod.list_price_currency_code = 'GBP'
-                  THEN v_prod.list_price_amount
-                ELSE NULL
-              END
+              old.price_gbp,
+              case
+                when v_prod.list_price_currency_code is null or v_prod.list_price_currency_code = 'GBP'
+                  then v_prod.list_price_amount
+                else null
+              end
             );
 
-            IF v_name IS NOT NULL THEN
-              INSERT INTO public.product_based_costing_backlog_items (
+            if v_name is not null then
+              insert into public.product_based_costing_backlog_items (
                 tenant_id,
                 billing_profile_id,
                 product_id,
@@ -9651,52 +9545,52 @@ BEGIN
                 last_costing_item_id,
                 updated_at
               )
-              VALUES (
+              values (
                 v_tenant_id,
                 v_file.billing_profile_id,
-                OLD.product_id,
+                old.product_id,
                 round(v_open_qty)::integer,
                 v_name,
-                coalesce(OLD.image_url, v_prod.image_url),
-                coalesce(OLD.barcode, v_prod.barcode),
-                coalesce(OLD.product_code, v_prod.product_code),
+                coalesce(old.image_url, v_prod.image_url),
+                coalesce(old.barcode, v_prod.barcode),
+                coalesce(old.product_code, v_prod.product_code),
                 v_price_gbp,
-                coalesce(OLD.product_weight::numeric, v_prod.product_weight),
-                coalesce(OLD.package_weight::numeric, v_prod.package_weight),
+                coalesce(old.product_weight::numeric, v_prod.product_weight),
+                coalesce(old.package_weight::numeric, v_prod.package_weight),
                 v_file.id,
-                NULL,
+                null,
                 now()
               )
-              ON CONFLICT (tenant_id, billing_profile_id, product_id)
-              DO UPDATE SET
-                open_quantity = EXCLUDED.open_quantity,
-                name = EXCLUDED.name,
-                image_url = EXCLUDED.image_url,
-                barcode = EXCLUDED.barcode,
-                product_code = EXCLUDED.product_code,
-                price_gbp = EXCLUDED.price_gbp,
-                product_weight = EXCLUDED.product_weight,
-                package_weight = EXCLUDED.package_weight,
-                last_costing_file_id = EXCLUDED.last_costing_file_id,
-                last_costing_item_id = EXCLUDED.last_costing_item_id,
+              on conflict (tenant_id, billing_profile_id, product_id)
+              do update set
+                open_quantity = excluded.open_quantity,
+                name = excluded.name,
+                image_url = excluded.image_url,
+                barcode = excluded.barcode,
+                product_code = excluded.product_code,
+                price_gbp = excluded.price_gbp,
+                product_weight = excluded.product_weight,
+                package_weight = excluded.package_weight,
+                last_costing_file_id = excluded.last_costing_file_id,
+                last_costing_item_id = excluded.last_costing_item_id,
                 updated_at = now();
-            END IF;
-          ELSE
-            DELETE FROM public.product_based_costing_backlog_items
-            WHERE tenant_id = v_tenant_id
-              AND billing_profile_id = v_file.billing_profile_id
-              AND product_id = OLD.product_id;
-          END IF;
-        END IF;
-      END IF;
-    END IF;
+            end if;
+          else
+            delete from public.product_based_costing_backlog_items
+            where tenant_id = v_tenant_id
+              and billing_profile_id = v_file.billing_profile_id
+              and product_id = old.product_id;
+          end if;
+        end if;
+      end if;
+    end if;
 
-    RETURN OLD;
-  END IF;
+    return old;
+  end if;
 
-  PERFORM public.upsert_pbc_backlog_from_item(NEW.id);
-  RETURN NEW;
-END;
+  perform public.upsert_pbc_backlog_from_item(new.id);
+  return new;
+end;
 $$;
 
 
@@ -9707,21 +9601,21 @@ CREATE OR REPLACE FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"() RETURNS 
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-BEGIN
-  IF NEW.tenant_id IS NOT NULL THEN
-    SELECT coalesce(t.parent_id, t.id)
-    INTO NEW.tenant_id
-    FROM public.tenants t
-    WHERE t.id = NEW.tenant_id;
-  ELSIF NEW.billing_profile_id IS NOT NULL THEN
-    SELECT coalesce(t.parent_id, t.id)
-    INTO NEW.tenant_id
-    FROM public.billing_profiles bp
+begin
+  if new.tenant_id is not null then
+    select coalesce(t.parent_id, t.id)
+    into new.tenant_id
+    from public.tenants t
+    where t.id = new.tenant_id;
+  elsif new.billing_profile_id is not null then
+    select coalesce(t.parent_id, t.id)
+    into new.tenant_id
+    from public.billing_profiles bp
     inner join public.tenants t on t.id = bp.tenant_id
-    WHERE bp.id = NEW.billing_profile_id;
-  END IF;
-  RETURN NEW;
-END;
+    where bp.id = new.billing_profile_id;
+  end if;
+  return new;
+end;
 $$;
 
 
@@ -9732,22 +9626,22 @@ CREATE OR REPLACE FUNCTION "public"."trg_fn_pbc_files_stamp_billing_profile"() R
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-BEGIN
-  IF NEW.customer_group_id IS NOT NULL THEN
-    SELECT bp.id
-    INTO NEW.billing_profile_id
-    FROM public.billing_profiles bp
-    WHERE bp.customer_group_id = NEW.customer_group_id;
+begin
+  if new.customer_group_id is not null then
+    select bp.id
+    into new.billing_profile_id
+    from public.billing_profiles bp
+    where bp.customer_group_id = new.customer_group_id;
 
-    IF NEW.billing_profile_id IS NULL THEN
-      RAISE EXCEPTION 'customer_group_id % has no linked billing profile', NEW.customer_group_id;
-    END IF;
-  ELSIF TG_OP = 'UPDATE' AND NEW.customer_group_id IS NULL AND OLD.customer_group_id IS NOT NULL THEN
-    NEW.billing_profile_id := NULL;
-  END IF;
+    if new.billing_profile_id is null then
+      raise exception 'customer_group_id % has no linked billing profile', new.customer_group_id;
+    end if;
+  elsif tg_op = 'UPDATE' and new.customer_group_id is null and old.customer_group_id is not null then
+    new.billing_profile_id := null;
+  end if;
 
-  RETURN NEW;
-END;
+  return new;
+end;
 $$;
 
 
@@ -10868,49 +10762,49 @@ CREATE OR REPLACE FUNCTION "public"."upsert_pbc_backlog_from_item"("p_costing_it
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-DECLARE
-  v_item public.product_based_costing_items%ROWTYPE;
-  v_file public.product_based_costing_files%ROWTYPE;
-  v_prod RECORD;
+declare
+  v_item public.product_based_costing_items%rowtype;
+  v_file public.product_based_costing_files%rowtype;
+  v_prod record;
   v_confirmed_qty numeric;
   v_open_qty numeric;
   v_backlog_row public.product_based_costing_backlog_items;
   v_tenant_id bigint;
   v_price_gbp numeric;
-BEGIN
-  SELECT * INTO v_item
-  FROM public.product_based_costing_items
-  WHERE id = p_costing_item_id;
+begin
+  select * into v_item
+  from public.product_based_costing_items
+  where id = p_costing_item_id;
 
-  IF v_item.id IS NULL THEN
-    RETURN NULL;
-  END IF;
+  if v_item.id is null then
+    return null;
+  end if;
 
-  SELECT * INTO v_file
-  FROM public.product_based_costing_files
-  WHERE id = v_item.product_based_costing_file_id;
+  select * into v_file
+  from public.product_based_costing_files
+  where id = v_item.product_based_costing_file_id;
 
-  IF v_file.id IS NULL THEN
-    RAISE EXCEPTION 'costing file % not found', v_item.product_based_costing_file_id;
-  END IF;
+  if v_file.id is null then
+    raise exception 'costing file % not found', v_item.product_based_costing_file_id;
+  end if;
 
   v_tenant_id := v_file.tenant_id;
-  IF v_tenant_id IS NULL AND v_file.billing_profile_id IS NOT NULL THEN
-    SELECT tenant_id INTO v_tenant_id
-    FROM public.billing_profiles
-    WHERE id = v_file.billing_profile_id;
-  END IF;
+  if v_tenant_id is null and v_file.billing_profile_id is not null then
+    select tenant_id into v_tenant_id
+    from public.billing_profiles
+    where id = v_file.billing_profile_id;
+  end if;
 
-  IF v_tenant_id IS NOT NULL AND NOT (
+  if v_tenant_id is not null and not (
     public.can_admin_manage_costing_file(v_tenant_id)
-    OR public.can_staff_access_costing_file(v_tenant_id)
-  ) THEN
-    RAISE EXCEPTION 'access denied for tenant %', v_tenant_id;
-  END IF;
+    or public.can_staff_access_costing_file(v_tenant_id)
+  ) then
+    raise exception 'access denied for tenant %', v_tenant_id;
+  end if;
 
-  IF v_tenant_id IS NULL OR v_file.billing_profile_id IS NULL OR v_item.product_id IS NULL THEN
-    RETURN NULL;
-  END IF;
+  if v_tenant_id is null or v_file.billing_profile_id is null or v_item.product_id is null then
+    return null;
+  end if;
 
   v_confirmed_qty := coalesce(v_item.confirmed_quantity, v_item.quantity, 0);
   v_open_qty := case
@@ -10919,15 +10813,15 @@ BEGIN
     else 0
   end;
 
-  IF v_confirmed_qty <= 0 OR v_open_qty <= 0 THEN
-    DELETE FROM public.product_based_costing_backlog_items
-    WHERE tenant_id = v_tenant_id
-      AND billing_profile_id = v_file.billing_profile_id
-      AND product_id = v_item.product_id;
-    RETURN NULL;
-  END IF;
+  if v_confirmed_qty <= 0 or v_open_qty <= 0 then
+    delete from public.product_based_costing_backlog_items
+    where tenant_id = v_tenant_id
+      and billing_profile_id = v_file.billing_profile_id
+      and product_id = v_item.product_id;
+    return null;
+  end if;
 
-  SELECT
+  select
     p.name,
     p.image_url,
     p.list_price_amount,
@@ -10936,22 +10830,22 @@ BEGIN
     p.barcode,
     p.product_code,
     p.brand,
-    gc.code AS list_price_currency_code
-  INTO v_prod
-  FROM public.products p
-  LEFT JOIN public.global_currencies gc ON gc.id = p.list_price_currency_id
-  WHERE p.id = v_item.product_id;
+    gc.code as list_price_currency_code
+  into v_prod
+  from public.products p
+  left join public.global_currencies gc on gc.id = p.list_price_currency_id
+  where p.id = v_item.product_id;
 
   v_price_gbp := coalesce(
     v_item.price_gbp,
-    CASE
-      WHEN v_prod.list_price_currency_code IS NULL OR v_prod.list_price_currency_code = 'GBP'
-        THEN v_prod.list_price_amount
-      ELSE NULL
-    END
+    case
+      when v_prod.list_price_currency_code is null or v_prod.list_price_currency_code = 'GBP'
+        then v_prod.list_price_amount
+      else null
+    end
   );
 
-  INSERT INTO public.product_based_costing_backlog_items (
+  insert into public.product_based_costing_backlog_items (
     tenant_id,
     billing_profile_id,
     product_id,
@@ -10967,7 +10861,7 @@ BEGIN
     last_costing_item_id,
     updated_at
   )
-  VALUES (
+  values (
     v_tenant_id,
     v_file.billing_profile_id,
     v_item.product_id,
@@ -10983,23 +10877,23 @@ BEGIN
     v_item.id,
     now()
   )
-  ON CONFLICT (tenant_id, billing_profile_id, product_id)
-  DO UPDATE SET
-    open_quantity = EXCLUDED.open_quantity,
-    name = EXCLUDED.name,
-    image_url = EXCLUDED.image_url,
-    barcode = EXCLUDED.barcode,
-    product_code = EXCLUDED.product_code,
-    price_gbp = EXCLUDED.price_gbp,
-    product_weight = EXCLUDED.product_weight,
-    package_weight = EXCLUDED.package_weight,
-    last_costing_file_id = EXCLUDED.last_costing_file_id,
-    last_costing_item_id = EXCLUDED.last_costing_item_id,
+  on conflict (tenant_id, billing_profile_id, product_id)
+  do update set
+    open_quantity = excluded.open_quantity,
+    name = excluded.name,
+    image_url = excluded.image_url,
+    barcode = excluded.barcode,
+    product_code = excluded.product_code,
+    price_gbp = excluded.price_gbp,
+    product_weight = excluded.product_weight,
+    package_weight = excluded.package_weight,
+    last_costing_file_id = excluded.last_costing_file_id,
+    last_costing_item_id = excluded.last_costing_item_id,
     updated_at = now()
-  RETURNING * INTO v_backlog_row;
+  returning * into v_backlog_row;
 
-  RETURN v_backlog_row;
-END;
+  return v_backlog_row;
+end;
 $$;
 
 
@@ -12744,7 +12638,7 @@ CREATE OR REPLACE FUNCTION "public"."preorder_demand_invoice_items_stale"("p_doc
       ),
       '[]'::jsonb
     ) as sig
-    from public.sales_invoice_items sii
+    from public.bill_lines sii
     where sii.invoice_id = p_invoice_id
   )
   select
@@ -12767,6 +12661,11 @@ declare
   v_existing_invoice_id bigint;
   v_doc_status text;
   v_items jsonb := '[]'::jsonb;
+  v_pick_elem jsonb;
+  v_pd record;
+  v_sell_price numeric(12,2);
+  v_global_stock_id bigint;
+  v_qty integer;
   v_payload jsonb;
   v_result jsonb;
   v_invoice_id bigint;
@@ -12811,8 +12710,8 @@ begin
     raise exception 'access denied';
   end if;
 
-  if v_doc_status <> 'packed' then
-    raise exception 'document must be packed to create invoice from demand';
+  if v_doc_status <> 'procuring' then
+    raise exception 'document must be procuring to create invoice from demand';
   end if;
 
   if v_billing_profile_id is null then
@@ -12827,10 +12726,64 @@ begin
     );
   end if;
 
-  v_items := public.build_preorder_demand_invoice_items(v_doc_type, p_document_id);
+  if v_doc_type = 'shop_order' then
+    for v_pd in
+      select
+        pd.stock_picks,
+        coalesce(oi.final_price_amount, oi.staff_offer_amount, 0)::numeric(12,2) as sell_price
+      from public.preorder_demand pd
+      inner join public.shop_order_items oi
+        on pd.source_type = 'shop_order_item'
+        and pd.source_id = oi.id
+      where oi.order_id = p_document_id
+        and jsonb_array_length(coalesce(pd.stock_picks, '[]'::jsonb)) > 0
+    loop
+      v_sell_price := v_pd.sell_price;
+      for v_pick_elem in
+        select value from jsonb_array_elements(coalesce(v_pd.stock_picks, '[]'::jsonb))
+      loop
+        v_global_stock_id := nullif(v_pick_elem->>'global_stock_id', '')::bigint;
+        v_qty := coalesce((v_pick_elem->>'quantity')::integer, 0);
+        if v_global_stock_id is not null and v_qty > 0 then
+          v_items := v_items || jsonb_build_array(jsonb_build_object(
+            'global_stock_id', v_global_stock_id,
+            'quantity', v_qty,
+            'sell_price_amount', v_sell_price
+          ));
+        end if;
+      end loop;
+    end loop;
+  else
+    for v_pd in
+      select
+        pd.stock_picks,
+        coalesce(pci.offer_price, 0)::numeric(12,2) as sell_price
+      from public.preorder_demand pd
+      inner join public.product_based_costing_items pci
+        on pd.source_type = 'pbc_costing_item'
+        and pd.source_id = pci.id
+      where pci.product_based_costing_file_id = p_document_id
+        and jsonb_array_length(coalesce(pd.stock_picks, '[]'::jsonb)) > 0
+    loop
+      v_sell_price := v_pd.sell_price;
+      for v_pick_elem in
+        select value from jsonb_array_elements(coalesce(v_pd.stock_picks, '[]'::jsonb))
+      loop
+        v_global_stock_id := nullif(v_pick_elem->>'global_stock_id', '')::bigint;
+        v_qty := coalesce((v_pick_elem->>'quantity')::integer, 0);
+        if v_global_stock_id is not null and v_qty > 0 then
+          v_items := v_items || jsonb_build_array(jsonb_build_object(
+            'global_stock_id', v_global_stock_id,
+            'quantity', v_qty,
+            'sell_price_amount', v_sell_price
+          ));
+        end if;
+      end loop;
+    end loop;
+  end if;
 
   if jsonb_array_length(v_items) = 0 then
-    raise exception 'at least one stock pick is required before creating invoice';
+    raise exception 'at least one stock pick is required before marking ready for shipment';
   end if;
 
   v_payload := jsonb_build_object(
@@ -12850,7 +12803,7 @@ begin
 
   v_invoice_id := (v_result->>'invoice_id')::bigint;
 
-  update public.sales_invoices
+  update public.bills
   set
     invoice_status = 'proforma_generated'::public.global_invoice_status,
     shop_order_id = case when v_doc_type = 'shop_order' then p_document_id else shop_order_id end,
@@ -12948,7 +12901,7 @@ begin
 
   select si.invoice_status
   into v_invoice_status
-  from public.sales_invoices si
+  from public.bills si
   where si.id = v_invoice_id;
 
   if v_invoice_status is null then
@@ -12970,7 +12923,7 @@ begin
 
   select coalesce(jsonb_agg(sii.id), '[]'::jsonb)
   into v_remove_ids
-  from public.sales_invoice_items sii
+  from public.bill_lines sii
   where sii.invoice_id = v_invoice_id;
 
   v_payload := jsonb_build_object(
@@ -13104,8 +13057,7 @@ begin
       coalesce(pd.placed_quantity, 0) as placed_quantity,
       coalesce(pd.delivered_quantity, 0) as delivered_quantity,
       coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks,
-      o.global_invoice_id as invoice_id,
-      nullif(trim(coalesce(o.name, o.order_no, '')), '') as document_name
+      o.global_invoice_id as invoice_id
     from public.shop_order_items oi
     inner join public.shop_orders o on o.id = oi.order_id
     inner join tenant_scope ts on ts.tenant_id = o.tenant_id
@@ -13164,8 +13116,7 @@ begin
       coalesce(pd.placed_quantity, 0) as placed_quantity,
       coalesce(pd.delivered_quantity, 0) as delivered_quantity,
       coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks,
-      f.invoice_id,
-      nullif(trim(coalesce(f.name, '')), '') as document_name
+      f.invoice_id
     from public.product_based_costing_items pci
     inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
     inner join tenant_scope ts on ts.tenant_id = f.tenant_id
@@ -13207,27 +13158,35 @@ begin
       max(el.customer_group_name) as customer_group_name,
       (array_agg(el.vendor) filter (where el.vendor is not null))[1] as vendor,
       max(el.invoice_id) as invoice_id,
-      max(el.document_name) as document_name,
-      count(*)::integer as item_count,
-      count(*) filter (where el.quantity > el.delivered_quantity)::integer as unallocated_item_count
+      jsonb_agg(
+        jsonb_build_object(
+          'source_type', el.source_type,
+          'source_id', el.source_id,
+          'product_id', el.product_id,
+          'name', el.name,
+          'image_url', el.image_url,
+          'barcode', nullif(el.barcode, ''),
+          'product_code', nullif(el.product_code, ''),
+          'quantity', el.quantity,
+          'need_quantity', el.quantity,
+          'preorder_demand_id', el.preorder_demand_id,
+          'vendor_id', el.vendor_id,
+          'placed_quantity', el.placed_quantity,
+          'delivered_quantity', el.delivered_quantity,
+          'remaining_quantity', el.quantity - el.placed_quantity,
+          'remaining_to_deliver', greatest(el.quantity - el.delivered_quantity, 0),
+          'stock_picks', el.stock_picks
+        )
+        order by el.source_id
+      ) as items,
+      count(*)::integer as item_count
     from eligible_lines el
     group by el.document_type, el.document_id
   ),
-  enriched as (
-    select
-      g.*,
-      inv.invoice_status,
-      case
-        when g.invoice_id is null then false
-        else public.preorder_demand_invoice_items_stale(g.document_type, g.document_id, g.invoice_id)
-      end as invoice_stale
-    from grouped g
-    left join public.sales_invoices inv on inv.id = g.invoice_id
-  ),
   paged as (
-    select e.*, count(*) over ()::integer as total_groups
-    from enriched e
-    order by e.document_type, e.document_id
+    select g.*, count(*) over ()::integer as total_groups
+    from grouped g
+    order by g.document_type, g.document_id
     limit v_limit offset v_offset
   )
   select
@@ -13236,16 +13195,12 @@ begin
         jsonb_build_object(
           'document_type', p.document_type,
           'document_id', p.document_id,
-          'document_name', p.document_name,
           'document_status', p.document_status,
           'customer_group_id', p.customer_group_id,
           'customer_group_name', p.customer_group_name,
           'vendor', p.vendor,
           'invoice_id', p.invoice_id,
-          'invoice_status', p.invoice_status,
-          'invoice_stale', coalesce(p.invoice_stale, false),
-          'item_count', p.item_count,
-          'unallocated_item_count', p.unallocated_item_count
+          'items', p.items
         )
         order by p.document_type, p.document_id
       ),
@@ -13701,7 +13656,7 @@ begin
         else public.preorder_demand_invoice_items_stale(g.document_type, g.document_id, g.invoice_id)
       end as invoice_stale
     from grouped g
-    left join public.sales_invoices inv on inv.id = g.invoice_id
+    left join public.bills inv on inv.id = g.invoice_id
   ),
   paged as (
     select e.*, count(*) over ()::integer as total_groups

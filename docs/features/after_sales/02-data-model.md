@@ -1,6 +1,6 @@
 # After-Sales & Returns — Data Model & Schema Specification
 
-> **Module Schema Target**: `supabase/schemas/after_sales/` or `supabase/schemas/sales_invoice/`  
+> **Module Schema Target**: `supabase/schemas/after_sales/` or `supabase/schemas/bills_pays/`  
 > **Source Tables**: `after_sales_policies`, `after_sales_cases`, `after_sales_case_lines`
 
 ---

@@ -161,9 +161,11 @@ CREATE OR REPLACE FUNCTION "public"."add_to_shop_cart"("p_shop_id" bigint, "p_pr
 declare
   v_cart_res jsonb;
   v_cart_id bigint;
+  v_tenant_id bigint;
   v_shop_type public.shop_type_enum;
   v_pricing_method text;
   v_markup_percentage numeric;
+  v_buy_currency_id bigint;
   v_prod_name text;
   v_prod_image text;
   v_prod_vendor text;
@@ -190,8 +192,8 @@ begin
   v_cart_res := public.get_or_create_shop_cart(p_shop_id);
   v_cart_id := (v_cart_res->'cart'->>'id')::bigint;
 
-  select tenant_id, shop_type, pricing_method, markup_percentage
-  into v_tenant_id, v_shop_type, v_pricing_method, v_markup_percentage
+  select tenant_id, shop_type, pricing_method, markup_percentage, buy_currency_id
+  into v_tenant_id, v_shop_type, v_pricing_method, v_markup_percentage, v_buy_currency_id
   from public.shops
   where id = p_shop_id;
 
@@ -201,6 +203,8 @@ begin
 
   if coalesce(v_can_add_to_cart, false) is not true then
     raise exception 'cart additions not allowed';
+  end if;
+
   select name, image_url, vendor_code, is_available, list_price_amount, list_price_currency_id
   into v_prod_name, v_prod_image, v_prod_vendor, v_prod_is_available, v_prod_price_amount, v_prod_price_currency_id
   from public.products
@@ -208,11 +212,15 @@ begin
 
   if v_prod_name is null then
     raise exception 'product not found';
+  end if;
+
   v_global_stock_id := coalesce(p_global_stock_id, p_global_stock_allocation_id);
 
   if v_shop_type in ('fixed_price', 'dropship') then
     if v_global_stock_id is null then
       raise exception 'global stock required for this shop type';
+    end if;
+
     select
       l.id, l.global_stock_id, l.sell_price_amount, l.sell_price_currency_id,
       l.minimum_sell_price_amount, l.minimum_sell_price_currency_id, l.display_quantity_override
@@ -227,18 +235,23 @@ begin
 
     if v_listing_id is null then
       raise exception 'active product listing not found on this shop';
-    if v_shop_type = 'fixed_price' then
-      select coalesce(gsi.landed_cost_bdt, public.calculate_landed_unit_cost(gsi.id))
-      into v_landed_cost
-      from public.global_stocks gs
-      join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
-      where gs.id = v_global_stock_id;
+    end if;
 
+    select coalesce(gsi.landed_cost_bdt, public.calculate_landed_unit_cost(gs.shipment_item_id))
+    into v_landed_cost
+    from public.global_stocks gs
+    join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+    where gs.id = v_global_stock_id;
+
+    if v_shop_type = 'fixed_price' then
       if v_pricing_method = 'markup' then
         v_sell_price_amount := v_landed_cost * (1 + v_markup_percentage / 100.0);
       elsif v_pricing_method = 'direct_cost' then
         v_sell_price_amount := v_landed_cost;
-      select id, quantity into v_existing_item_id, v_existing_item_qty
+      end if;
+    end if;
+
+    select id, quantity into v_existing_item_id, v_existing_item_qty
     from public.shop_cart_items
     where cart_id = v_cart_id
       and global_stock_id = v_global_stock_id;
@@ -249,6 +262,8 @@ begin
 
     if v_target_qty > v_available_to_sell then
       raise exception 'insufficient stock: requested %, available %', v_target_qty, v_available_to_sell;
+    end if;
+
     if v_shop_type = 'dropship' then
       if coalesce(v_can_set_dropship_price, false) then
         if p_customer_sell_price_amount is not null then
@@ -259,14 +274,20 @@ begin
             v_customer_sell_price_amount := greatest(v_sell_price_amount, coalesce(v_min_sell_price_amount, 0));
           else
             v_customer_sell_price_amount := v_sell_price_amount;
+          end if;
           v_customer_sell_price_currency_id := v_sell_price_currency_id;
+        end if;
+
         if v_customer_sell_price_currency_id = v_min_sell_price_currency_id
            and v_customer_sell_price_amount < v_min_sell_price_amount then
           raise exception 'price cannot be lower than the minimum sell price %', v_min_sell_price_amount;
-        else
+        end if;
+      else
         v_customer_sell_price_amount := v_sell_price_amount;
         v_customer_sell_price_currency_id := v_sell_price_currency_id;
-      else
+      end if;
+    end if;
+  else
     select id, quantity into v_existing_item_id, v_existing_item_qty
     from public.shop_cart_items
     where cart_id = v_cart_id
@@ -274,6 +295,8 @@ begin
 
     v_existing_item_qty := coalesce(v_existing_item_qty, 0);
     v_target_qty := v_existing_item_qty + p_quantity;
+  end if;
+
   if v_existing_item_id is not null then
     update public.shop_cart_items
     set
@@ -296,13 +319,20 @@ begin
     values (
       v_cart_id, p_product_id, v_global_stock_id, null,
       p_quantity, 1,
-      v_prod_price_amount, v_prod_price_currency_id,
+      case when v_shop_type = 'dropship' then coalesce(v_landed_cost, v_prod_price_amount) else v_prod_price_amount end,
+      case when v_shop_type = 'dropship' then v_buy_currency_id else v_prod_price_currency_id end,
       v_sell_price_amount, v_sell_price_currency_id,
       v_min_sell_price_amount, v_min_sell_price_currency_id,
       v_customer_sell_price_amount, v_customer_sell_price_currency_id,
       v_prod_name, v_prod_image
     );
+  end if;
+
   return public.get_or_create_shop_cart(p_shop_id);
+end;
+$$;
+
+
 ALTER FUNCTION "public"."add_to_shop_cart"("p_shop_id" bigint, "p_product_id" bigint, "p_global_stock_allocation_id" bigint, "p_quantity" integer, "p_customer_sell_price_amount" numeric, "p_customer_sell_price_currency_id" bigint, "p_global_stock_id" bigint) OWNER TO "postgres";
 
 
@@ -312,7 +342,7 @@ CREATE OR REPLACE FUNCTION "public"."advance_dropship_order_status"("p_order_id"
     AS $$
 declare
   v_order public.shop_orders;
-  v_invoice public.global_invoices;
+  v_invoice public.bills;
   v_current_status public.shop_order_status;
   v_is_valid boolean := false;
 begin
@@ -364,7 +394,7 @@ begin
   end if;
 
   if p_target_status = 'processing' and v_order.global_invoice_id is not null then
-    select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id;
+    select * into v_invoice from public.bills where id = v_order.global_invoice_id;
     if v_invoice.payment_status in ('paid', 'partially_paid') then
       return jsonb_build_object(
         'success', false,
@@ -388,12 +418,12 @@ begin
   end if;
 
   if p_target_status = 'processing' and v_order.global_invoice_id is not null then
-    select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id;
+    select * into v_invoice from public.bills where id = v_order.global_invoice_id;
     if v_invoice.invoice_status = 'issued'::public.global_invoice_status then
       perform public.unpost_global_invoice(v_order.global_invoice_id);
     end if;
 
-    delete from public.universal_wallet_ledger
+    delete from public.cashbook_entries
     where source_type = 'shop_order'
       and (
         source_id = p_order_id::text
@@ -408,7 +438,7 @@ begin
 
     delete from public.global_return_items where invoice_id = v_order.global_invoice_id;
     delete from public.global_invoice_items where invoice_id = v_order.global_invoice_id;
-    delete from public.global_invoices where id = v_order.global_invoice_id;
+    delete from public.bills where id = v_order.global_invoice_id;
   end if;
 
   return jsonb_build_object('success', true, 'new_status', p_target_status);
@@ -450,17 +480,17 @@ begin
 
     select coalesce(sum(u.amount), 0)
     into v_hold
-    from public.universal_wallet_ledger u
+    from public.cashbook_entries u
     where u.parent_tenant_id = v_parent_tenant_id
       and u.source_type = 'shop_order'
       and u.source_id = r.id::text
       and u.entity_type in ('middleman', 'customer')
       and u.type = 'credit'
-      and coalesce(u.metadata->>'transaction_type', '') = 'dropship_profit'
+      and coalesce(u.metadata->>'transaction_type', '') = 'dropship_profit';
 
     select coalesce(sum(u.amount), 0)
     into v_paid
-    from public.universal_wallet_ledger u
+    from public.cashbook_entries u
     where u.parent_tenant_id = v_parent_tenant_id
       and u.entity_type in ('middleman', 'customer')
       and u.entity_id = p_billing_profile_id
@@ -581,7 +611,7 @@ begin
 
   if exists (
     select 1
-    from public.universal_wallet_ledger u
+    from public.cashbook_entries u
     where u.parent_tenant_id = v_parent_tenant_id
       and u.source_type = 'shop_order'
       and u.source_id = p_order_id::text
@@ -1506,7 +1536,7 @@ ALTER FUNCTION "public"."search_shop_catalog_for_customer"("p_tenant_id" bigint,
 CREATE OR REPLACE FUNCTION "public"."get_shop_catalog_product_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_product_id" bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
-    AS $_$
+    AS $$
 declare
   v_shop_id bigint;
   v_shop_tenant_id bigint;
@@ -1535,6 +1565,7 @@ declare
   v_can_view_quantity boolean;
   v_can_set_dropship_price boolean;
   v_can_see_catalog_price boolean;
+  v_min_available_units integer;
   v_product jsonb;
 begin
   if p_tenant_id is null then
@@ -1551,12 +1582,12 @@ begin
     id, tenant_id, name, shop_type, vendor_code, order_mode,
     is_negotiable, show_stock_quantity, default_currency_id, is_active,
     buy_currency_id, sell_currency_id, pricing_method, markup_percentage, quantity_display_mode,
-    vendor_filters
+    vendor_filters, min_available_units
   into
     v_shop_id, v_shop_tenant_id, v_shop_name, v_shop_type, v_vendor_code, v_order_mode,
     v_is_negotiable, v_show_stock_quantity, v_default_currency_id, v_is_active,
     v_buy_currency_id, v_sell_currency_id, v_pricing_method, v_markup_percentage, v_quantity_display_mode,
-    v_vendor_filters
+    v_vendor_filters, v_min_available_units
   from public.shops
   where slug = p_shop_slug
     and tenant_id = p_tenant_id
@@ -1625,6 +1656,7 @@ begin
             and (vf.brands is null or array_length(vf.brands, 1) is null or p.brand = any(vf.brands))
         ))
       )
+      and public.shop_catalog_meets_min_available_units(v_min_available_units, p.available_units)
     limit 1;
   else
     select jsonb_build_object(
@@ -1773,7 +1805,7 @@ begin
     )
   );
 end;
-$_$;
+$$;
 
 
 ALTER FUNCTION "public"."get_shop_catalog_product_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_product_id" bigint) OWNER TO "postgres";
@@ -1945,14 +1977,20 @@ begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id;
   if v_tenant_id is null then
     raise exception 'shop not found';
+  end if;
+
   if not public.user_can_manage_shop_tenant(v_tenant_id) then
     raise exception 'not allowed';
+  end if;
+
   -- Use provided markup or lookup from rule
   v_markup := p_markup_percentage;
   if v_markup is null then
     select markup_percentage into v_markup
     from public.shop_pricing_rules
     where shop_id = p_shop_id;
+  end if;
+
   v_markup := coalesce(v_markup, 0.00);
 
   update public.shop_product_listings spl
@@ -1967,6 +2005,10 @@ begin
 
   get diagnostics v_count = row_count;
   return v_count;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."bulk_apply_shop_markup"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_listing_ids" bigint[]) OWNER TO "postgres";
 
 
@@ -1982,13 +2024,19 @@ begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id;
   if v_tenant_id is null then
     raise exception 'shop not found';
+  end if;
+
   if not public.user_can_manage_shop_tenant(v_tenant_id) then
     raise exception 'not allowed';
+  end if;
+
   v_amount := p_markup_amount;
   if v_amount is null then
     select markup_percentage into v_amount
     from public.shop_pricing_rules
     where shop_id = p_shop_id;
+  end if;
+
   v_amount := coalesce(v_amount, 0.00);
 
   if p_target_price = 'min_sell_price' then
@@ -2017,8 +2065,14 @@ begin
     where spl.shop_id = p_shop_id
       and (p_listing_ids is null or spl.id = any(p_listing_ids))
       and spl.is_price_locked is false;
+  end if;
+
   get diagnostics v_count = row_count;
   return v_count;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."bulk_apply_shop_markup"("p_shop_id" bigint, "p_markup_amount" numeric, "p_markup_type" "text", "p_target_price" "text", "p_listing_ids" bigint[]) OWNER TO "postgres";
 
 
@@ -2100,6 +2154,9 @@ CREATE OR REPLACE FUNCTION "public"."can_customer_access_shop"("p_shop_id" bigin
     SET "search_path" TO 'public'
     AS $$
   select coalesce((select can_browse from public.get_shop_permissions_for_customer(p_shop_id)), false);
+$$;
+
+
 ALTER FUNCTION "public"."can_customer_access_shop"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -2108,6 +2165,9 @@ CREATE OR REPLACE FUNCTION "public"."can_customer_negotiate_on_shop"("p_shop_id"
     SET "search_path" TO 'public'
     AS $$
   select coalesce((select can_negotiate from public.get_shop_permissions_for_customer(p_shop_id)), false);
+$$;
+
+
 ALTER FUNCTION "public"."can_customer_negotiate_on_shop"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -2116,6 +2176,9 @@ CREATE OR REPLACE FUNCTION "public"."can_customer_see_shop_price"("p_shop_id" bi
     SET "search_path" TO 'public'
     AS $$
   select coalesce((select can_see_buy_price from public.get_shop_permissions_for_customer(p_shop_id)), false);
+$$;
+
+
 ALTER FUNCTION "public"."can_customer_see_shop_price"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -2219,7 +2282,7 @@ begin
 
   if exists (
     select 1
-    from public.universal_wallet_ledger
+    from public.cashbook_entries
     where parent_tenant_id = v_parent_tenant_id
       and entity_type = 'tenant'
       and source_type = 'shop_order'
@@ -2257,7 +2320,7 @@ begin
 
   if exists (
     select 1
-    from public.universal_wallet_ledger
+    from public.cashbook_entries
     where parent_tenant_id = v_parent_tenant_id
       and entity_type = 'courier'
       and entity_id = v_courier_id
@@ -2382,8 +2445,12 @@ begin
   
   if v_tenant_id is null then
     raise exception 'order not found';
+  end if;
+
   if not public.is_tenant_staff(v_tenant_id) then
     raise exception 'access denied';
+  end if;
+
   -- Finalize pricing: set final price to staff offer or customer offer
   update public.shop_order_items
   set
@@ -2396,6 +2463,10 @@ begin
     status = 'confirmed',
     updated_at = now()
   where id = p_order_id;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."confirm_shop_order"("p_order_id" bigint) OWNER TO "postgres";
 
 
@@ -2419,6 +2490,9 @@ CREATE OR REPLACE FUNCTION "public"."customer_can_select_shop"("p_shop_id" bigin
       and coalesce(profile.is_active, true) = true
       and coalesce(access.can_browse, profile.default_can_browse, false) = true
   );
+$$;
+
+
 ALTER FUNCTION "public"."customer_can_select_shop"("p_shop_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -2628,59 +2702,16 @@ $$;
 ALTER FUNCTION "public"."delete_shop"("p_shop_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."_undo_wallet_ledger_row_before_delete"("p_row" "public"."universal_wallet_ledger") RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."purge_shop_order_wallet_ledger"("p_order_id" bigint, "p_tenant_id" bigint, "p_order_no" "text", "p_invoice_id" bigint DEFAULT NULL::bigint, "p_invoice_no" "text" DEFAULT NULL::"text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
-  v_bucket text;
-begin
-  v_bucket := coalesce(p_row.metadata->>'target_bucket', 'available');
-
-  update public.wallet_accounts wa
-  set
-    available_balance = case
-      when v_bucket = 'available' and p_row.type = 'credit' then wa.available_balance - p_row.amount
-      when v_bucket = 'available' and p_row.type = 'debit' then wa.available_balance + p_row.amount
-      else wa.available_balance
-    end,
-    pending_balance = case
-      when v_bucket = 'pending' and p_row.type = 'credit' then wa.pending_balance - p_row.amount
-      when v_bucket = 'pending' and p_row.type = 'debit' then wa.pending_balance + p_row.amount
-      else wa.pending_balance
-    end,
-    locked_balance = case
-      when v_bucket = 'locked' and p_row.type = 'credit' then wa.locked_balance - p_row.amount
-      when v_bucket = 'locked' and p_row.type = 'debit' then wa.locked_balance + p_row.amount
-      else wa.locked_balance
-    end,
-    updated_at = now()
-  where wa.parent_tenant_id = p_row.parent_tenant_id
-    and wa.entity_type = p_row.entity_type
-    and wa.entity_id = p_row.entity_id
-    and wa.currency_code = p_row.currency_code;
-end;
-$$;
-
-ALTER FUNCTION "public"."_undo_wallet_ledger_row_before_delete"("p_row" "public"."universal_wallet_ledger") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."purge_shop_order_wallet_ledger"(
-  "p_order_id" bigint,
-  "p_tenant_id" bigint,
-  "p_order_no" "text",
-  "p_invoice_id" bigint DEFAULT NULL::bigint,
-  "p_invoice_no" "text" DEFAULT NULL::"text"
-) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_row public.universal_wallet_ledger;
+  v_row public.cashbook_entries;
 begin
   for v_row in
     select *
-    from public.universal_wallet_ledger u
+    from public.cashbook_entries u
     where (
       u.source_type = 'shop_order'
       and (
@@ -2695,7 +2726,7 @@ begin
     perform public._undo_wallet_ledger_row_before_delete(v_row);
   end loop;
 
-  delete from public.universal_wallet_ledger u
+  delete from public.cashbook_entries u
   where (
     u.source_type = 'shop_order'
     and (
@@ -2717,7 +2748,7 @@ CREATE OR REPLACE FUNCTION "public"."purge_shop_order_invoice"("p_invoice_id" bi
     SET "search_path" TO 'public'
     AS $$
 declare
-  v_invoice public.global_invoices;
+  v_invoice public.bills;
   v_payment_ids bigint[];
 begin
   if p_invoice_id is null then
@@ -2725,7 +2756,7 @@ begin
   end if;
 
   select * into v_invoice
-  from public.global_invoices
+  from public.bills
   where id = p_invoice_id
   for update;
 
@@ -2735,21 +2766,21 @@ begin
 
   select coalesce(array_agg(distinct ip.payment_id), '{}'::bigint[])
   into v_payment_ids
-  from public.invoice_payments ip
+  from public.pay_allocations ip
   where ip.global_invoice_id = p_invoice_id;
 
-  delete from public.invoice_payments
+  delete from public.pay_allocations
   where global_invoice_id = p_invoice_id;
 
-  delete from public.global_payments gp
+  delete from public.pays gp
   where gp.id = any (v_payment_ids)
     and not exists (
       select 1
-      from public.invoice_payments ip
+      from public.pay_allocations ip
       where ip.payment_id = gp.id
     );
 
-  update public.sales_invoices
+  update public.bills
   set
     paid_amount = 0.00,
     payment_status = 'due',
@@ -2763,7 +2794,7 @@ begin
 
   delete from public.global_return_items where invoice_id = p_invoice_id;
   delete from public.global_invoice_items where invoice_id = p_invoice_id;
-  delete from public.sales_invoices where id = p_invoice_id;
+  delete from public.bills where id = p_invoice_id;
 end;
 $$;
 
@@ -2776,7 +2807,7 @@ CREATE OR REPLACE FUNCTION "public"."purge_shop_order_financial_artifacts"("p_or
     AS $$
 declare
   v_order public.shop_orders;
-  v_invoice public.global_invoices;
+  v_invoice public.bills;
   v_invoice_id bigint;
 begin
   select * into v_order
@@ -2791,8 +2822,8 @@ begin
 
   if v_invoice_id is null and v_order.shop_type_snapshot = 'dropship' then
     select i.id into v_invoice_id
-    from public.global_invoices i
-    where i.tenant_id = v_order.tenant_id
+    from public.bills i
+    where i.parent_tenant_id = v_order.tenant_id
       and i.invoice_no = 'INV-DS-' || v_order.order_no
       and not exists (
         select 1
@@ -2805,7 +2836,7 @@ begin
   end if;
 
   if v_invoice_id is not null then
-    select * into v_invoice from public.global_invoices where id = v_invoice_id;
+    select * into v_invoice from public.bills where id = v_invoice_id;
   end if;
 
   delete from public.courier_remittance_items
@@ -2905,10 +2936,16 @@ CREATE OR REPLACE FUNCTION "public"."delete_shop_product_listing"("p_listing_id"
 begin
   if not public.user_can_manage_shop_tenant(p_tenant_id) then
     raise exception 'not allowed';
+  end if;
+
   delete from public.shop_product_listings
   where id = p_listing_id and tenant_id = p_tenant_id;
 
   return true;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."delete_shop_product_listing"("p_listing_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -2916,7 +2953,11 @@ CREATE OR REPLACE FUNCTION "public"."fetch_customer_shop_categories"("p_tenant_i
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
+declare
+  v_parent_tenant_id bigint;
 begin
+  v_parent_tenant_id := public.resolve_parent_tenant_id(p_tenant_id);
+
   return query
   with accessible_shops as (
     select distinct s.id, s.shop_type, s.vendor_code, s.vendor_filters
@@ -2940,7 +2981,7 @@ begin
     from public.products p
     join accessible_shops s on s.shop_type = 'vendor_catalog'
     where p.is_available = true
-      and (p.tenant_id = p_tenant_id or p.parent_tenant_id = p_tenant_id)
+      and p.parent_tenant_id = v_parent_tenant_id
       and (
         ((s.vendor_filters is null or jsonb_array_length(s.vendor_filters) = 0) and p.vendor_code = s.vendor_code)
         or
@@ -2971,6 +3012,10 @@ begin
   from combined_products cp
   group by coalesce(nullif(trim(cp.category), ''), 'Uncategorized')
   order by count(cp.id) desc, name asc;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."fetch_customer_shop_categories"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -2980,6 +3025,8 @@ CREATE OR REPLACE FUNCTION "public"."finalize_dropship_return"("p_order_id" bigi
     AS $$
 declare
   v_order record;
+  v_invoice record;
+  v_parent_tenant_id bigint;
   v_ref text;
   v_item_elem jsonb;
   v_order_item_id bigint;
@@ -2992,6 +3039,7 @@ declare
   v_target_stock_id bigint;
   v_net_delivered numeric;
   v_currency text;
+  v_billing_profile_id bigint;
   v_is_remitted boolean := false;
   v_existing_ref_order_id bigint;
   v_profit numeric(12,2) := 0;
@@ -3001,18 +3049,41 @@ declare
   v_courier_charge numeric(12,2) := 0;
   v_has_billed boolean := false;
   v_has_profit boolean := false;
+  v_grade_tag_id bigint;
+  v_to_availability public.stock_availability;
+  v_to_availability_raw text;
+  v_use_explicit_targets boolean := false;
 begin
   select * into v_order from public.shop_orders where id = p_order_id for update;
   if v_order.id is null then
     raise exception 'Shop order #% not found', p_order_id;
+  end if;
+
   if v_order.shop_type_snapshot <> 'dropship' then
     raise exception 'Order #% is not a dropship order', p_order_id;
+  end if;
+
   v_currency := 'BDT';
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
+
+  if not (
+    public.user_can_manage_parent_tenant(v_parent_tenant_id)
+    or exists (
+      select 1 from public.memberships m
+      where m.tenant_id = v_order.tenant_id
+        and lower(trim(m.email)) = public.current_user_email()
+        and m.is_active = true
+        and m.role in ('admin', 'staff')
+    )
+  ) then
+    raise exception 'Permission denied: Staff or Admin role required';
+  end if;
+
   v_ref := nullif(trim(coalesce(p_return_ref, '')), '');
   if v_ref is not null then
     select id into v_existing_ref_order_id
     from public.shop_orders
-    where tenant_id = v_order.tenant_id
+    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
       and return_ref = v_ref;
 
     if v_existing_ref_order_id is not null then
@@ -3025,40 +3096,83 @@ begin
         );
       else
         raise exception 'Duplicate return reference % already used for another return', v_ref;
-      if v_order.return_sub_state = 'return_finalized' then
+      end if;
+    end if;
+  end if;
+
+  if v_order.return_sub_state = 'return_finalized' then
     return jsonb_build_object(
       'success', true,
       'idempotent', true,
       'message', 'Order return is already finalized',
       'order_id', p_order_id
     );
+  end if;
+
   if v_order.global_invoice_id is not null then
-    select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id for update;
+    select * into v_invoice from public.bills where id = v_order.global_invoice_id for update;
+  end if;
+
   v_billing_profile_id := v_order.billing_profile_id;
   if v_billing_profile_id is null and v_order.customer_group_id is not null then
     select id into v_billing_profile_id
     from public.billing_profiles
-    where tenant_id = v_order.tenant_id
+    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
       and customer_group_id = v_order.customer_group_id
     order by is_default desc, created_at asc
     limit 1;
+  end if;
+
   if p_items is not null and jsonb_array_length(p_items) > 0 then
     for v_item_elem in select * from jsonb_array_elements(p_items) loop
       v_order_item_id := (v_item_elem->>'order_item_id')::bigint;
       v_returned_qty := coalesce((v_item_elem->>'returned_qty')::numeric, 0);
       v_condition := coalesce(lower(trim(v_item_elem->>'condition')), 'perfect');
+      v_grade_tag_id := nullif((v_item_elem->>'grade_tag_id')::bigint, 0);
+      v_to_availability_raw := nullif(lower(trim(v_item_elem->>'to_availability')), '');
+      v_use_explicit_targets := v_grade_tag_id is not null or v_to_availability_raw is not null;
 
       if v_returned_qty <= 0 then
         continue;
+      end if;
+
       select * into v_order_item
       from public.shop_order_items
       where id = v_order_item_id and order_id = p_order_id for update;
 
       if v_order_item.id is null then
         raise exception 'Order item #% not found on order #%', v_order_item_id, p_order_id;
+      end if;
+
       v_net_delivered := coalesce(v_order_item.confirmed_quantity, v_order_item.quantity) - coalesce(v_order_item.returned_quantity, 0);
       if v_returned_qty > v_net_delivered then
         raise exception 'Returned quantity % exceeds net delivered quantity % for item #%', v_returned_qty, v_net_delivered, v_order_item_id;
+      end if;
+
+      if v_use_explicit_targets then
+        v_grade_tag_id := coalesce(
+          v_grade_tag_id,
+          v_order_item.grade_tag_id,
+          public.default_stock_grade_tag_id()
+        );
+        v_to_availability := coalesce(
+          v_to_availability_raw::public.stock_availability,
+          'held'::public.stock_availability
+        );
+      else
+        v_to_availability := case
+          when v_condition = 'damaged' then 'unsellable'::public.stock_availability
+          else 'held'::public.stock_availability
+        end;
+        v_grade_tag_id := public.stock_grade_tag_id_for_slug(
+          case v_condition
+            when 'open_box' then 'open_box'
+            when 'damaged' then 'badly_damaged'
+            else 'standard'
+          end
+        );
+      end if;
+
       select * into v_stock from public.global_stocks where id = v_order_item.global_stock_id;
 
       if v_stock.id is not null then
@@ -3067,22 +3181,15 @@ begin
           v_stock.id,
           ceil(v_returned_qty)::integer,
           public.default_returns_stock_location_id(v_parent_tenant_id),
-          case
-            when v_condition = 'damaged' then 'unsellable'::public.stock_availability
-            else 'held'::public.stock_availability
-          end,
-          public.stock_grade_tag_id_for_slug(
-            case v_condition
-              when 'open_box' then 'open_box'
-              when 'damaged' then 'badly_damaged'
-              else 'standard'
-            end
-          ),
+          v_to_availability,
+          v_grade_tag_id,
           'return_inbound'::public.stock_movement_type,
           coalesce(p_override_reason, 'Dropship return'),
           'shop_order',
           p_order_id::text
         );
+      end if;
+
       update public.shop_order_items
       set returned_quantity = coalesce(returned_quantity, 0) + v_returned_qty, updated_at = now()
       where id = v_order_item_id;
@@ -3101,17 +3208,24 @@ begin
             quantity, return_charge_amount, note
           )
           values (
-            v_invoice.tenant_id, v_invoice.parent_tenant_id, v_invoice.id, v_invoice_item.id, v_order_item.global_stock_id,
+            v_invoice.parent_tenant_id, v_invoice.parent_tenant_id, v_invoice.id, v_invoice_item.id, v_order_item.global_stock_id,
             v_returned_qty, 0.00, coalesce(p_override_reason, 'Dropship return finalization')
           );
 
           update public.global_invoice_items
           set return_quantity = coalesce(return_quantity, 0) + v_returned_qty, updated_at = now()
           where id = v_invoice_item.id;
-        if v_invoice.id is not null then
+        end if;
+      end if;
+    end loop;
+  end if;
+
+  if v_invoice.id is not null then
     perform public.recompute_global_invoice_totals(v_invoice.id);
+  end if;
+
   select exists (
-    select 1 from public.universal_wallet_ledger
+    select 1 from public.cashbook_entries
     where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
       and source_type = 'shop_order'
       and source_id = p_order_id::text
@@ -3121,7 +3235,7 @@ begin
   -- Resolve amounts from UWL (canonical after billing-profile unification)
   select coalesce(sum(case when type = 'credit' then base_amount else -base_amount end), 0)
   into v_billed
-  from public.universal_wallet_ledger
+  from public.cashbook_entries
   where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
@@ -3132,7 +3246,7 @@ begin
   -- Net billed outstanding before clawback: invert so positive = amount still billed
   v_billed := greatest(-v_billed, 0);
   v_has_billed := v_billed > 0 or exists (
-    select 1 from public.universal_wallet_ledger
+    select 1 from public.cashbook_entries
     where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
       and source_type = 'shop_order'
       and source_id = p_order_id::text
@@ -3141,7 +3255,7 @@ begin
 
   select coalesce(sum(case when type = 'credit' then base_amount else -base_amount end), 0)
   into v_profit
-  from public.universal_wallet_ledger
+  from public.cashbook_entries
   where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
@@ -3154,7 +3268,7 @@ begin
 
   select coalesce(sum(case when type = 'credit' then base_amount else -base_amount end), 0)
   into v_revenue
-  from public.universal_wallet_ledger
+  from public.cashbook_entries
   where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
@@ -3163,9 +3277,11 @@ begin
 
   if v_revenue <= 0 then
     v_revenue := coalesce(v_invoice.total_amount, 0.00);
+  end if;
+
   select coalesce((metadata->>'net_remitted')::numeric, amount, 0)
   into v_remit_net
-  from public.universal_wallet_ledger
+  from public.cashbook_entries
   where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
@@ -3174,7 +3290,7 @@ begin
 
   select coalesce((metadata->>'courier_charge')::numeric, amount, 0)
   into v_courier_charge
-  from public.universal_wallet_ledger
+  from public.cashbook_entries
   where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
@@ -3184,7 +3300,7 @@ begin
   -- Leg 1: Reverse remaining invoice billed / collection net on customer
   if v_billing_profile_id is not null and v_has_billed and v_billed > 0
      and not exists (
-       select 1 from public.universal_wallet_ledger
+       select 1 from public.cashbook_entries
        where source_type = 'shop_order' and source_id = p_order_id::text
          and metadata->>'transaction_type' = 'return_reversal'
      )
@@ -3210,19 +3326,19 @@ begin
     );
   elsif v_billing_profile_id is not null and v_has_billed and v_billed = 0
      and exists (
-       select 1 from public.universal_wallet_ledger
+       select 1 from public.cashbook_entries
        where source_type = 'shop_order' and source_id = p_order_id::text
          and metadata->>'transaction_type' = 'invoice_billed'
      )
      and not exists (
-       select 1 from public.universal_wallet_ledger
+       select 1 from public.cashbook_entries
        where source_type = 'shop_order' and source_id = p_order_id::text
          and metadata->>'transaction_type' = 'return_reversal'
      )
   then
     -- Invoice fully collected already — reverse original billed amount then reverse collection net via billed lookup
     select coalesce(base_amount, 0) into v_billed
-    from public.universal_wallet_ledger
+    from public.cashbook_entries
     where source_type = 'shop_order' and source_id = p_order_id::text
       and metadata->>'transaction_type' = 'invoice_billed'
     limit 1;
@@ -3249,7 +3365,7 @@ begin
       );
 
       if exists (
-        select 1 from public.universal_wallet_ledger
+        select 1 from public.cashbook_entries
         where source_type = 'shop_order' and source_id = p_order_id::text
           and metadata->>'transaction_type' = 'invoice_collection'
       ) then
@@ -3272,27 +3388,30 @@ begin
             'return_ref', v_ref
           )
         );
-      -- Historical remittance path: invoice_collection posted without invoice_billed.
+      end if;
+    end if;
+
+  -- Historical remittance path: invoice_collection posted without invoice_billed.
   -- Unwind collection only (no synthetic return_reversal credit).
   elsif v_billing_profile_id is not null
      and exists (
-       select 1 from public.universal_wallet_ledger
+       select 1 from public.cashbook_entries
        where source_type = 'shop_order' and source_id = p_order_id::text
          and metadata->>'transaction_type' = 'invoice_collection'
      )
      and not exists (
-       select 1 from public.universal_wallet_ledger
+       select 1 from public.cashbook_entries
        where source_type = 'shop_order' and source_id = p_order_id::text
          and metadata->>'transaction_type' = 'invoice_billed'
      )
      and not exists (
-       select 1 from public.universal_wallet_ledger
+       select 1 from public.cashbook_entries
        where source_type = 'shop_order' and source_id = p_order_id::text
          and metadata->>'transaction_type' = 'return_collection_reversal'
      )
   then
     select coalesce(sum(base_amount), 0) into v_billed
-    from public.universal_wallet_ledger
+    from public.cashbook_entries
     where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
       and source_type = 'shop_order'
       and source_id = p_order_id::text
@@ -3321,10 +3440,13 @@ begin
           'return_ref', v_ref
         )
       );
-    -- Leg 2: Claw back profit on customer (unified billing-profile wallet)
+    end if;
+  end if;
+
+  -- Leg 2: Claw back profit on customer (unified billing-profile wallet)
   if v_billing_profile_id is not null and v_has_profit
      and not exists (
-       select 1 from public.universal_wallet_ledger
+       select 1 from public.cashbook_entries
        where source_type = 'shop_order' and source_id = p_order_id::text
          and metadata->>'transaction_type' = 'return_profit_clawback'
      )
@@ -3348,10 +3470,12 @@ begin
         'return_ref', v_ref
       )
     );
+  end if;
+
   -- Leg 3: Reverse tenant revenue
   if v_revenue > 0
      and not exists (
-       select 1 from public.universal_wallet_ledger
+       select 1 from public.cashbook_entries
        where source_type = 'shop_order' and source_id = p_order_id::text
          and metadata->>'transaction_type' = 'return_revenue_reversal'
      )
@@ -3375,11 +3499,13 @@ begin
         'return_ref', v_ref
       )
     );
+  end if;
+
   -- Leg 4: Reverse remittance cash + courier fee if remitted
   if v_is_remitted then
     if coalesce(v_remit_net, 0) > 0
        and not exists (
-         select 1 from public.universal_wallet_ledger
+         select 1 from public.cashbook_entries
          where source_type = 'shop_order' and source_id = p_order_id::text
            and metadata->>'purpose' = 'remittance_return_reversal'
        )
@@ -3404,9 +3530,11 @@ begin
           'return_ref', v_ref
         )
       );
+    end if;
+
     if coalesce(v_courier_charge, 0) > 0
        and not exists (
-         select 1 from public.universal_wallet_ledger
+         select 1 from public.cashbook_entries
          where source_type = 'shop_order' and source_id = p_order_id::text
            and metadata->>'purpose' = 'courier_charge_return_reversal'
        )
@@ -3431,12 +3559,15 @@ begin
           'return_ref', v_ref
         )
       );
-    -- Return fee: UWL only (legacy middle_man_payout_ledger was dropped)
+    end if;
+  end if;
+
+  -- Return fee: UWL only (legacy middle_man_payout_ledger was dropped)
   if p_deduct_from_middle_man
      and p_actual_return_charge > 0
      and v_billing_profile_id is not null
      and not exists (
-       select 1 from public.universal_wallet_ledger
+       select 1 from public.cashbook_entries
        where source_type = 'shop_order'
          and source_id = p_order_id::text
          and metadata->>'transaction_type' = 'return_fee'
@@ -3462,6 +3593,8 @@ begin
         'invoice_id', v_order.global_invoice_id
       )
     );
+  end if;
+
   update public.shop_orders
   set
     status = 'returned'::public.shop_order_status,
@@ -3481,6 +3614,10 @@ begin
     'return_sub_state', 'return_finalized',
     'return_ref', v_ref
   );
+end;
+$$;
+
+
 ALTER FUNCTION "public"."finalize_dropship_return"("p_order_id" bigint, "p_items" "jsonb", "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_override_reason" "text", "p_return_ref" "text") OWNER TO "postgres";
 
 
@@ -3527,7 +3664,7 @@ begin
 
   if exists (
     select 1
-    from public.sales_invoices si
+    from public.bills si
     where si.shop_order_id = p_order_id
   ) then
     raise exception 'order already has a linked sales invoice';
@@ -3611,7 +3748,7 @@ begin
 
   v_invoice_id := (v_result->>'invoice_id')::bigint;
 
-  update public.sales_invoices
+  update public.bills
   set
     shop_order_id = p_order_id,
     collection_source = 'billing_profile'::public.collection_source_type,
@@ -3640,6 +3777,10 @@ declare
 begin
   v_order_no := 'ORD-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(floor(random() * 100000)::text, 5, '0');
   return v_order_no;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."generate_shop_order_number"("p_tenant_id" bigint, "p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -3887,16 +4028,10 @@ $$;
 ALTER FUNCTION "public"."get_customer_shop_order"("p_tenant_id" bigint, "p_order_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_shop_order_for_staff"(
-  p_tenant_id bigint,
-  p_order_id bigint
-)
-RETURNS "jsonb"
-LANGUAGE "plpgsql"
-SECURITY DEFINER
-SET "search_path" TO 'public'
-STABLE
-AS $$
+CREATE OR REPLACE FUNCTION "public"."get_shop_order_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 declare
   v_order public.shop_orders%rowtype;
   v_shop_name text;
@@ -3962,22 +4097,15 @@ begin
   from public.customer_groups cg
   where cg.id = v_order.customer_group_id;
 
-  if v_order.shop_type_snapshot = 'dropship' then
-    v_collection_source := case
-      when coalesce(v_order.is_prepaid_snapshot, false) then 'billing_profile'::public.collection_source_type
-      else coalesce(v_order.collection_source, 'recipient'::public.collection_source_type)
-    end;
-  else
-    v_collection_source := v_order.collection_source;
-    if v_collection_source is null and v_order.global_invoice_id is not null then
-      select inv.collection_source
-      into v_collection_source
-      from public.sales_invoices inv
-      where inv.id = v_order.global_invoice_id;
-    end if;
-    if v_collection_source is null and v_order.is_prepaid_snapshot then
-      v_collection_source := 'billing_profile'::public.collection_source_type;
-    end if;
+  v_collection_source := v_order.collection_source;
+  if v_collection_source is null and v_order.global_invoice_id is not null then
+    select inv.collection_source
+    into v_collection_source
+    from public.bills inv
+    where inv.id = v_order.global_invoice_id;
+  end if;
+  if v_collection_source is null and v_order.is_prepaid_snapshot then
+    v_collection_source := 'billing_profile'::public.collection_source_type;
   end if;
 
   select count(*)::bigint
@@ -4612,6 +4740,8 @@ begin
 
   if v_tenant_id is null then
     return;
+  end if;
+
   -- 1. Access group with can_set_dropship_price
   select coalesce(bool_or(
     access.status = true and coalesce(access.can_set_dropship_price, profile.default_can_set_dropship_price, false) = true
@@ -4678,6 +4808,10 @@ begin
     v_has_listing_with_floor,
     v_has_active_courier,
     v_ready;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."get_dropship_shop_readiness"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -4728,7 +4862,7 @@ begin
     from public.shop_orders o
     left join public.shops s on s.id = o.shop_id
     left join public.billing_profiles bp on bp.id = o.billing_profile_id
-    left join public.sales_invoices inv on inv.id = o.global_invoice_id
+    left join public.bills inv on inv.id = o.global_invoice_id
     where (
         (v_is_parent_scope and (o.parent_tenant_id = p_tenant_id or o.tenant_id = p_tenant_id))
         or (not v_is_parent_scope and o.tenant_id = p_tenant_id)
@@ -4741,7 +4875,7 @@ begin
       l.source_id,
       max(case when coalesce(l.metadata->>'purpose', '') in ('delivered_costing', 'courier_cod_receivable') then 1 else 0 end) as has_delivered_costing,
       max(case when coalesce(l.metadata->>'purpose', '') = 'courier_remittance' then 1 else 0 end) as has_remittance
-    from public.universal_wallet_ledger l
+    from public.cashbook_entries l
     where l.parent_tenant_id = v_parent_tenant_id
       and l.source_type = 'shop_order'
       and l.source_id in (select fo.id::text from finance_orders fo)
@@ -4769,28 +4903,27 @@ begin
       fo.billing_profile_name as "billingProfileName",
       fo.created_at as "createdAt",
       case
-        when fo.status::text = 'payment_received'
-          or fo.courier_remittance_ref is not null
-          or coalesce(lf.has_remittance, 0) > 0
-          then 'completed'
         when fo.status::text = 'delivered'
-          and (
-            coalesce(fo.is_prepaid_snapshot, false)
-            or coalesce(fo.cod_collect_amount, 0) <= 0
-          )
-          then 'completed'
+          and coalesce(lf.has_remittance, 0) = 0
+          and fo.courier_remittance_ref is null
+          and coalesce(fo.cod_collect_amount, 0) > 0
+          and coalesce(
+            fo.collection_source,
+            fo.invoice_collection_source,
+            case when fo.is_prepaid_snapshot then 'billing_profile' else 'recipient' end
+          ) <> 'billing_profile'
+          then 'courier_remittance'
+        when coalesce(lf.has_delivered_costing, 0) = 0 and fo.status::text = 'delivered' then 'delivered_costing'
         when fo.status::text = 'delivered'
-          and coalesce(lf.has_delivered_costing, 0) = 0
-          then 'delivered_costing'
-        when fo.status::text = 'delivered'
+          or (coalesce(lf.has_remittance, 0) = 0 and fo.status::text <> 'payment_received')
           then 'courier_remittance'
         else 'completed'
       end as "nextStep",
-      case
-        when coalesce(fo.is_prepaid_snapshot, false) then 'billing_profile'
-        else coalesce(fo.collection_source, 'recipient')
-      end as "collectionSource",
-      coalesce(fo.is_prepaid_snapshot, false) as "isPrepaidSnapshot",
+      coalesce(
+        fo.collection_source,
+        fo.invoice_collection_source,
+        case when fo.is_prepaid_snapshot then 'billing_profile' else null end
+      ) as "collectionSource",
       coalesce(fo.payout_settlement_status, 'unpaid') as "payoutSettlementStatus",
       case
         when fo.global_invoice_id is not null then greatest(coalesce(fo.invoice_total_amount, 0) - coalesce(fo.invoice_paid_amount, 0), 0)
@@ -4817,7 +4950,7 @@ begin
   )
   into v_merchants
   from public.billing_profiles bp
-  left join public.wallet_accounts wa
+  left join public.cashbook_accounts wa
     on wa.tenant_id = p_tenant_id
    and wa.entity_type = 'customer'
    and wa.entity_id = bp.id
@@ -4840,7 +4973,7 @@ ALTER FUNCTION "public"."get_dropship_finance_hub_data"("p_tenant_id" bigint) OW
 
 
 CREATE OR REPLACE FUNCTION "public"."get_dropship_wallet_reconciliation_report"("p_tenant_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
@@ -4853,7 +4986,11 @@ declare
   v_conflicting_active_offers bigint := 0;
   v_missing_or_duplicate_gifts bigint := 0;
 begin
-  v_target_tenant_id := coalesce(p_tenant_id, public.current_tenant_id());
+  if p_tenant_id is not null then
+    v_target_tenant_id := p_tenant_id;
+  else
+    v_target_tenant_id := public.current_tenant_id();
+  end if;
 
   if not (
     public.is_superadmin()
@@ -4866,16 +5003,18 @@ begin
     )
   ) then
     raise exception 'Permission denied: Admin or Staff role required for reconciliation report';
+  end if;
+
   -- 1. Posted dropship invoices missing invoice_billed (P0A contract)
   select count(*) into v_missing_invoice_billed
-  from public.global_invoices i
+  from public.bills i
   where i.invoice_type = 'dropship'
     and i.invoice_status = 'posted'
     and i.billing_profile_id is not null
     and i.total_amount > 0
     and (v_target_tenant_id is null or i.tenant_id = v_target_tenant_id)
     and not exists (
-      select 1 from public.universal_wallet_ledger u
+      select 1 from public.cashbook_entries u
       where u.tenant_id = i.tenant_id
         and u.entity_type = 'customer'
         and u.entity_id = i.billing_profile_id
@@ -4892,7 +5031,7 @@ begin
     and o.courier_remittance_ref is not null
     and (v_target_tenant_id is null or o.tenant_id = v_target_tenant_id)
     and not exists (
-      select 1 from public.universal_wallet_ledger u
+      select 1 from public.cashbook_entries u
       where u.tenant_id = o.tenant_id
         and u.entity_type = 'courier'
         and u.source_type = 'shop_order'
@@ -4907,7 +5046,7 @@ begin
     and o.status = 'returned'
     and (v_target_tenant_id is null or o.tenant_id = v_target_tenant_id)
     and not exists (
-      select 1 from public.universal_wallet_ledger u
+      select 1 from public.cashbook_entries u
       where u.tenant_id = o.tenant_id
         and u.source_type = 'shop_order'
         and u.source_id = o.id::text
@@ -4923,7 +5062,7 @@ begin
 
   -- 4. Mixed customer vs middleman profit rows
   select count(*) into v_mixed_customer_profit
-  from public.universal_wallet_ledger u
+  from public.cashbook_entries u
   where u.entity_type = 'customer'
     and u.source_type = 'shop_order'
     and u.metadata->>'transaction_type' = 'dropship_profit'
@@ -4931,7 +5070,7 @@ begin
 
   -- 5. Uncanonicalized source_ids (order_no instead of order_id string), exclude invoice_billed
   select count(*) into v_uncanonicalized_source_ids
-  from public.universal_wallet_ledger u
+  from public.cashbook_entries u
   join public.shop_orders o on o.tenant_id = u.tenant_id and o.order_no = u.source_id
   where u.source_type = 'shop_order'
     and coalesce(u.metadata->>'transaction_type', '') <> 'invoice_billed'
@@ -4972,6 +5111,10 @@ begin
       'missing_or_duplicate_gifts', v_missing_or_duplicate_gifts
     )
   );
+end;
+$$;
+
+
 ALTER FUNCTION "public"."get_dropship_wallet_reconciliation_report"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -5013,13 +5156,12 @@ begin
 
   select coalesce(w.available_balance, 0)
   into v_available
-  from public.wallet_accounts w
+  from public.cashbook_accounts w
   where w.parent_tenant_id = public.resolve_parent_tenant_id(v_tenant_id)
     and w.entity_type = 'customer'
     and w.entity_id = v_bp_id
     and w.currency_code = 'BDT';
 
-  -- Pending: remitted orders with profit not yet credited to wallet
   select coalesce(sum(s.reseller_profit), 0)
   into v_pending
   from public.shop_orders o
@@ -5031,7 +5173,6 @@ begin
     and coalesce(s.reseller_profit, 0) > 0
     and s.merchant_payout_at is null;
 
-  -- Locked: delivered COD not yet remitted by courier
   select coalesce(sum(greatest(coalesce(o.cod_collect_amount, 0), 0)), 0)
   into v_locked
   from public.shop_orders o
@@ -5058,16 +5199,23 @@ CREATE OR REPLACE FUNCTION "public"."get_or_create_shop_cart"("p_shop_id" bigint
     SET "search_path" TO 'public'
     AS $$
 declare
-  v_tenant_id         bigint;
+  v_tenant_id bigint;
   v_customer_group_id bigint;
   v_can_see_buy_price_snapshot boolean;
   v_can_see_sell_price_snapshot boolean;
-  v_cart_id           bigint;
-  v_result            jsonb;
+  v_cart_id bigint;
+  v_result jsonb;
+  v_perm record;
 begin
-  select tenant_id into v_tenant_id from public.shops where id = p_shop_id and is_active = true;
+  select tenant_id into v_tenant_id
+  from public.shops
+  where id = p_shop_id
+    and is_active = true;
+
   if v_tenant_id is null then
     raise exception 'shop not found or inactive';
+  end if;
+
   select access.customer_group_id into v_customer_group_id
   from public.shop_customer_group_access access
   join public.customer_groups cg on cg.id = access.customer_group_id
@@ -5082,12 +5230,19 @@ begin
 
   if v_customer_group_id is null then
     raise exception 'no customer group access found';
+  end if;
+
   if not public.can_customer_access_shop(p_shop_id) then
     raise exception 'access denied';
+  end if;
 
-  select can_see_buy_price, can_see_sell_price
-  into v_can_see_buy_price_snapshot, v_can_see_sell_price_snapshot
-  from public.get_shop_permissions_for_customer(p_shop_id);
+  select *
+  into v_perm
+  from public.get_shop_permissions_for_customer(p_shop_id)
+  limit 1;
+
+  v_can_see_buy_price_snapshot := coalesce(v_perm.can_see_buy_price, false);
+  v_can_see_sell_price_snapshot := coalesce(v_perm.can_see_sell_price, false);
 
   select id into v_cart_id
   from public.shop_carts
@@ -5100,11 +5255,13 @@ begin
 
   if v_cart_id is null then
     insert into public.shop_carts (
-      tenant_id, shop_id, customer_group_id, can_see_buy_price_snapshot, can_see_sell_price_snapshot, status, deduct_charges_from_margin,
-      deduct_print_from_margin, deduct_packing_from_margin
+      tenant_id, shop_id, customer_group_id,
+      can_see_buy_price_snapshot, can_see_sell_price_snapshot, status,
+      deduct_charges_from_margin, deduct_print_from_margin, deduct_packing_from_margin
     )
     values (
-      v_tenant_id, p_shop_id, v_customer_group_id, v_can_see_buy_price_snapshot, v_can_see_sell_price_snapshot, 'active',
+      v_tenant_id, p_shop_id, v_customer_group_id,
+      v_can_see_buy_price_snapshot, v_can_see_sell_price_snapshot, 'active',
       (select deduct_charges_from_margin from public.shops where id = p_shop_id),
       (select deduct_print_from_margin from public.shops where id = p_shop_id),
       (select deduct_packing_from_margin from public.shops where id = p_shop_id)
@@ -5115,16 +5272,20 @@ begin
     set
       deduct_charges_from_margin = (select deduct_charges_from_margin from public.shops where id = p_shop_id),
       deduct_print_from_margin = (select deduct_print_from_margin from public.shops where id = p_shop_id),
-      deduct_packing_from_margin = (select deduct_packing_from_margin from public.shops where id = p_shop_id)
+      deduct_packing_from_margin = (select deduct_packing_from_margin from public.shops where id = p_shop_id),
+      can_see_buy_price_snapshot = v_can_see_buy_price_snapshot,
+      can_see_sell_price_snapshot = v_can_see_sell_price_snapshot
     where id = v_cart_id;
+  end if;
+
   select jsonb_build_object(
     'cart', jsonb_build_object(
       'id', c.id,
       'tenant_id', c.tenant_id,
       'shop_id', c.shop_id,
       'customer_group_id', c.customer_group_id,
-      'can_see_buy_price_snapshot', c.can_see_buy_price_snapshot,
-      'can_see_sell_price_snapshot', c.can_see_sell_price_snapshot,
+      'can_see_buy_price_snapshot', v_can_see_buy_price_snapshot,
+      'can_see_sell_price_snapshot', v_can_see_sell_price_snapshot,
       'status', c.status,
       'created_at', c.created_at,
       'updated_at', c.updated_at,
@@ -5143,19 +5304,21 @@ begin
             'id', ci.id,
             'cart_id', ci.cart_id,
             'product_id', ci.product_id,
+            'listing_id', ci.listing_id,
+            'grade_tag_id', ci.grade_tag_id,
             'global_stock_id', ci.global_stock_id,
             'global_stock_allocation_id', ci.global_stock_allocation_id,
             'quantity', ci.quantity,
             'minimum_quantity', ci.minimum_quantity,
             'minimum_order_quantity', p.minimum_order_quantity,
-            'unit_list_price_amount', case when c.can_see_buy_price_snapshot then ci.unit_list_price_amount else null end,
-            'unit_list_price_currency_id', case when c.can_see_buy_price_snapshot then ci.unit_list_price_currency_id else null end,
-            'unit_sell_price_amount', case when c.can_see_sell_price_snapshot then ci.unit_sell_price_amount else null end,
-            'unit_sell_price_currency_id', case when c.can_see_sell_price_snapshot then ci.unit_sell_price_currency_id else null end,
-            'unit_minimum_sell_price_amount', case when c.can_see_sell_price_snapshot then ci.unit_minimum_sell_price_amount else null end,
-            'unit_minimum_sell_price_currency_id', case when c.can_see_sell_price_snapshot then ci.unit_minimum_sell_price_currency_id else null end,
-            'customer_sell_price_amount', case when c.can_see_sell_price_snapshot then ci.customer_sell_price_amount else null end,
-            'customer_sell_price_currency_id', case when c.can_see_sell_price_snapshot then ci.customer_sell_price_currency_id else null end,
+            'unit_list_price_amount', case when v_can_see_buy_price_snapshot then ci.unit_list_price_amount else null end,
+            'unit_list_price_currency_id', case when v_can_see_buy_price_snapshot then ci.unit_list_price_currency_id else null end,
+            'unit_sell_price_amount', case when v_can_see_sell_price_snapshot then ci.unit_sell_price_amount else null end,
+            'unit_sell_price_currency_id', case when v_can_see_sell_price_snapshot then ci.unit_sell_price_currency_id else null end,
+            'unit_minimum_sell_price_amount', case when v_can_see_sell_price_snapshot then ci.unit_minimum_sell_price_amount else null end,
+            'unit_minimum_sell_price_currency_id', case when v_can_see_sell_price_snapshot then ci.unit_minimum_sell_price_currency_id else null end,
+            'customer_sell_price_amount', case when v_can_see_sell_price_snapshot then ci.customer_sell_price_amount else null end,
+            'customer_sell_price_currency_id', case when v_can_see_sell_price_snapshot then ci.customer_sell_price_currency_id else null end,
             'name', ci.name,
             'image_url', ci.image_url
           )
@@ -5165,14 +5328,38 @@ begin
         where ci.cart_id = c.id
       ),
       '[]'::jsonb
-    )
+    ),
+    'permissions', jsonb_build_object(
+      'can_browse', coalesce(v_perm.can_browse, false),
+      'can_see_buy_price', coalesce(v_perm.can_see_buy_price, false),
+      'can_see_sell_price', coalesce(v_perm.can_see_sell_price, false),
+      'can_see_resell_minimum_price', coalesce(v_perm.can_see_resell_minimum_price, false),
+      'can_add_to_cart', coalesce(v_perm.can_add_to_cart, false),
+      'can_place_order', coalesce(v_perm.can_place_order, false),
+      'can_negotiate', coalesce(v_perm.can_negotiate, false),
+      'can_view_quantity', coalesce(v_perm.can_view_quantity, false),
+      'can_set_dropship_price', coalesce(v_perm.can_set_dropship_price, false)
+    ),
+    'currency', case
+      when gc.id is not null then jsonb_build_object(
+        'id', gc.id,
+        'code', gc.code,
+        'symbol', gc.symbol
+      )
+      else null
+    end
   )
   into v_result
   from public.shop_carts c
   join public.shops s on s.id = c.shop_id
+  left join public.global_currencies gc on gc.id = s.sell_currency_id
   where c.id = v_cart_id;
 
   return v_result;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."get_or_create_shop_cart"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -5581,26 +5768,7 @@ $$;
 ALTER FUNCTION "public"."get_dropship_review_cart"("p_shop_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."submit_dropship_order_from_cart"(
-  "p_shop_id" bigint,
-  "p_recipient_name" "text",
-  "p_recipient_phone" "text",
-  "p_shipping_address" "text",
-  "p_recipient_phone_secondary" "text" DEFAULT NULL::"text",
-  "p_shipping_district" "text" DEFAULT NULL::"text",
-  "p_shipping_thana" "text" DEFAULT NULL::"text",
-  "p_shipping_post_code" "text" DEFAULT NULL::"text",
-  "p_billing_profile_id" bigint DEFAULT NULL::bigint,
-  "p_is_prepaid" boolean DEFAULT false,
-  "p_delivery_instructions" "text" DEFAULT NULL::"text",
-  "p_cod_charge_amount" numeric DEFAULT 0,
-  "p_delivery_charge_amount" numeric DEFAULT 0,
-  "p_print_charge_amount" numeric DEFAULT 0,
-  "p_packing_charge_amount" numeric DEFAULT 0,
-  "p_discount_amount" numeric DEFAULT 0,
-  "p_recipient_pays_delivery" boolean DEFAULT true,
-  "p_recipient_pays_cod" boolean DEFAULT true
-) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."submit_dropship_order_from_cart"("p_shop_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text" DEFAULT NULL::"text", "p_shipping_district" "text" DEFAULT NULL::"text", "p_shipping_thana" "text" DEFAULT NULL::"text", "p_shipping_post_code" "text" DEFAULT NULL::"text", "p_billing_profile_id" bigint DEFAULT NULL::bigint, "p_is_prepaid" boolean DEFAULT false, "p_delivery_instructions" "text" DEFAULT NULL::"text", "p_cod_charge_amount" numeric DEFAULT 0, "p_delivery_charge_amount" numeric DEFAULT 0, "p_print_charge_amount" numeric DEFAULT 0, "p_packing_charge_amount" numeric DEFAULT 0, "p_discount_amount" numeric DEFAULT 0, "p_recipient_pays_delivery" boolean DEFAULT true, "p_recipient_pays_cod" boolean DEFAULT true) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -5621,107 +5789,52 @@ declare
   v_ci record;
   v_deduct_delivery_from_margin boolean;
   v_deduct_cod_from_margin boolean;
-  v_parent_tenant_id bigint;
-  v_stock public.global_stocks%rowtype;
-  v_held_stock_id bigint;
   v_order_item_id bigint;
   v_available_after integer;
   v_grade_tag_id bigint;
   v_listing_id bigint;
 begin
-  select * into v_shop
-  from public.shops
-  where id = p_shop_id
-    and is_active = true;
-
-  if v_shop.id is null then
-    raise exception 'shop not found or inactive';
-  end if;
-
-  if v_shop.shop_type <> 'dropship' then
-    raise exception 'shop is not dropship';
-  end if;
-
-  if not public.can_customer_access_shop(p_shop_id) then
-    raise exception 'access denied';
-  end if;
+  select * into v_shop from public.shops where id = p_shop_id and is_active = true;
+  if v_shop.id is null then raise exception 'shop not found or inactive'; end if;
+  if v_shop.shop_type <> 'dropship' then raise exception 'shop is not dropship'; end if;
+  if not public.can_customer_access_shop(p_shop_id) then raise exception 'access denied'; end if;
 
   select access.customer_group_id into v_customer_group_id
   from public.shop_customer_group_access access
   join public.customer_groups cg on cg.id = access.customer_group_id
   join public.customer_group_members cgm on cgm.customer_group_id = cg.id
-  where access.shop_id = p_shop_id
-    and access.status = true
-    and cg.is_active = true
-    and cgm.is_active = true
-    and lower(trim(cgm.email)) = public.current_user_email()
-  order by access.created_at asc
-  limit 1;
+  where access.shop_id = p_shop_id and access.status = true and cg.is_active = true
+    and cgm.is_active = true and lower(trim(cgm.email)) = public.current_user_email()
+  order by access.created_at asc limit 1;
 
-  if v_customer_group_id is null then
-    raise exception 'no customer group access found';
-  end if;
+  if v_customer_group_id is null then raise exception 'no customer group access found'; end if;
 
-  select * into v_cart
-  from public.shop_carts c
-  where c.tenant_id = v_shop.tenant_id
-    and c.shop_id = p_shop_id
-    and c.customer_group_id = v_customer_group_id
-    and c.status = 'active'
-  order by c.id desc
-  limit 1;
+  select * into v_cart from public.shop_carts c
+  where c.tenant_id = v_shop.tenant_id and c.shop_id = p_shop_id
+    and c.customer_group_id = v_customer_group_id and c.status = 'active'
+  order by c.id desc limit 1;
 
-  if v_cart.id is null then
-    raise exception 'active cart not found';
-  end if;
+  if v_cart.id is null then raise exception 'active cart not found'; end if;
+  if not public.is_cart_owner(v_cart.customer_group_id, v_cart.tenant_id) then raise exception 'access denied'; end if;
 
-  if not public.is_cart_owner(v_cart.customer_group_id, v_cart.tenant_id) then
-    raise exception 'access denied';
-  end if;
+  select can_place_order into v_can_place_order from public.get_shop_permissions_for_customer(p_shop_id);
+  if coalesce(v_can_place_order, false) is not true then raise exception 'checkout not allowed for this customer group'; end if;
 
-  select can_place_order into v_can_place_order
-  from public.get_shop_permissions_for_customer(p_shop_id);
+  select count(*) into v_item_count from public.shop_cart_items where cart_id = v_cart.id;
+  if v_item_count = 0 then raise exception 'cart is empty'; end if;
 
-  if coalesce(v_can_place_order, false) is not true then
-    raise exception 'checkout not allowed for this customer group';
-  end if;
-
-  select count(*) into v_item_count
-  from public.shop_cart_items
-  where cart_id = v_cart.id;
-
-  if v_item_count = 0 then
-    raise exception 'cart is empty';
-  end if;
-
-  if nullif(trim(coalesce(p_recipient_name, '')), '') is null then
-    raise exception 'recipient name is required';
-  end if;
-
+  if nullif(trim(coalesce(p_recipient_name, '')), '') is null then raise exception 'recipient name is required'; end if;
   v_phone := nullif(trim(coalesce(p_recipient_phone, '')), '');
-  if v_phone is null then
-    raise exception 'recipient phone is required';
-  end if;
-
-  if nullif(trim(coalesce(p_shipping_address, '')), '') is null then
-    raise exception 'shipping address is required';
-  end if;
-
-  if nullif(trim(coalesce(p_shipping_district, '')), '') is null then
-    raise exception 'shipping district is required';
-  end if;
-
-  if nullif(trim(coalesce(p_shipping_thana, '')), '') is null then
-    raise exception 'shipping thana is required';
-  end if;
+  if v_phone is null then raise exception 'recipient phone is required'; end if;
+  if nullif(trim(coalesce(p_shipping_address, '')), '') is null then raise exception 'shipping address is required'; end if;
+  if nullif(trim(coalesce(p_shipping_district, '')), '') is null then raise exception 'shipping district is required'; end if;
+  if nullif(trim(coalesce(p_shipping_thana, '')), '') is null then raise exception 'shipping thana is required'; end if;
 
   if exists (
-    select 1
-    from public.shop_cart_items ci
+    select 1 from public.shop_cart_items ci
     where ci.cart_id = v_cart.id
       and coalesce(ci.unit_minimum_sell_price_amount, 0) > 0
-      and coalesce(ci.customer_sell_price_amount, ci.unit_sell_price_amount, 0)
-        < ci.unit_minimum_sell_price_amount
+      and coalesce(ci.customer_sell_price_amount, ci.unit_sell_price_amount, 0) < ci.unit_minimum_sell_price_amount
   ) then
     raise exception 'price floor violation: some items are priced below the minimum sell price';
   end if;
@@ -5731,63 +5844,49 @@ begin
     v_billing_profile_id := public.resolve_billing_profile_for_customer_group(v_cart.tenant_id, v_cart.customer_group_id);
   end if;
 
-  if v_shop.order_mode = 'checkout_fixed' then
-    v_order_status := 'confirmed';
-  else
-    v_order_status := 'submitted';
-  end if;
+  if v_shop.order_mode = 'checkout_fixed' then v_order_status := 'confirmed';
+  else v_order_status := 'submitted'; end if;
 
   v_deduct_delivery_from_margin := not coalesce(p_recipient_pays_delivery, true);
   v_deduct_cod_from_margin := not coalesce(p_recipient_pays_cod, true);
-  v_parent_tenant_id := public.resolve_parent_tenant_id(v_cart.tenant_id);
 
   select public.generate_shop_order_number(v_cart.tenant_id, v_cart.shop_id) into v_order_no;
 
   v_profile := public.upsert_recipient_profile_and_address(
-    p_tenant_id => v_cart.tenant_id,
-    p_name => p_recipient_name,
-    p_phone => v_phone,
-    p_phone_secondary => p_recipient_phone_secondary,
-    p_address => p_shipping_address,
-    p_district => p_shipping_district,
-    p_thana => p_shipping_thana
+    p_tenant_id => v_cart.tenant_id, p_name => p_recipient_name, p_phone => v_phone,
+    p_phone_secondary => p_recipient_phone_secondary, p_address => p_shipping_address,
+    p_district => p_shipping_district, p_thana => p_shipping_thana
   );
   v_recipient_profile_id := (v_profile->>'id')::bigint;
 
   insert into public.shop_orders (
-    tenant_id, shop_id, customer_group_id, cart_id,
-    order_no, name,
-    shop_type_snapshot, order_mode_snapshot, is_negotiable_snapshot,
-    status, negotiate_round,
+    tenant_id, shop_id, customer_group_id, cart_id, order_no, name,
+    shop_type_snapshot, order_mode_snapshot, is_negotiable_snapshot, status, negotiate_round,
     recipient_name, recipient_phone, recipient_phone_secondary,
     shipping_address, shipping_district, shipping_thana,
-    recipient_profile_id, billing_profile_id,
-    created_by_email,
+    recipient_profile_id, billing_profile_id, created_by_email,
     cod_charge_amount, delivery_charge_amount, print_charge_amount, packing_charge_amount, discount_amount,
     is_prepaid_snapshot, delivery_instructions, deduct_charges_from_margin,
     deduct_cod_from_margin, deduct_delivery_from_margin, deduct_print_from_margin, deduct_packing_from_margin
-  )
-  values (
-    v_cart.tenant_id, v_cart.shop_id, v_cart.customer_group_id, v_cart.id,
-    v_order_no, 'Order for ' || nullif(trim(coalesce(p_recipient_name, '')), ''),
-    v_shop.shop_type, v_shop.order_mode, v_shop.is_negotiable,
-    v_order_status, 0,
-    nullif(trim(coalesce(p_recipient_name, '')), ''), v_phone, nullif(trim(coalesce(p_recipient_phone_secondary, '')), ''),
-    nullif(trim(coalesce(p_shipping_address, '')), ''), nullif(trim(coalesce(p_shipping_district, '')), ''), nullif(trim(coalesce(p_shipping_thana, '')), ''),
-    v_recipient_profile_id, v_billing_profile_id,
-    public.current_user_email(),
+  ) values (
+    v_cart.tenant_id, v_cart.shop_id, v_cart.customer_group_id, v_cart.id, v_order_no,
+    'Order for ' || nullif(trim(coalesce(p_recipient_name, '')), ''),
+    v_shop.shop_type, v_shop.order_mode, v_shop.is_negotiable, v_order_status, 0,
+    nullif(trim(coalesce(p_recipient_name, '')), ''), v_phone,
+    nullif(trim(coalesce(p_recipient_phone_secondary, '')), ''),
+    nullif(trim(coalesce(p_shipping_address, '')), ''),
+    nullif(trim(coalesce(p_shipping_district, '')), ''),
+    nullif(trim(coalesce(p_shipping_thana, '')), ''),
+    v_recipient_profile_id, v_billing_profile_id, public.current_user_email(),
     coalesce(p_cod_charge_amount, 0), coalesce(p_delivery_charge_amount, 0),
     coalesce(p_print_charge_amount, 0), coalesce(p_packing_charge_amount, 0), coalesce(p_discount_amount, 0),
     coalesce(p_is_prepaid, false), nullif(trim(coalesce(p_delivery_instructions, '')), ''),
-    v_shop.deduct_charges_from_margin,
-    v_deduct_cod_from_margin, v_deduct_delivery_from_margin,
+    v_shop.deduct_charges_from_margin, v_deduct_cod_from_margin, v_deduct_delivery_from_margin,
     v_shop.deduct_print_from_margin, v_shop.deduct_packing_from_margin
-  )
-  returning id into v_order_id;
+  ) returning id into v_order_id;
 
   insert into public.shop_order_items (
-    order_id, product_id, listing_id, grade_tag_id,
-    global_stock_id, global_stock_allocation_id,
+    order_id, product_id, listing_id, grade_tag_id, global_stock_id, global_stock_allocation_id,
     name, image_url, quantity,
     unit_list_price_amount, unit_list_price_currency_id,
     unit_sell_price_amount, unit_sell_price_currency_id,
@@ -5795,38 +5894,24 @@ begin
     customer_sell_price_amount, customer_sell_price_currency_id,
     customer_offer_amount, customer_offer_currency_id,
     final_price_amount, final_price_currency_id,
-    cost_price_amount, cost_price_currency_id
+    cost_price_amount, cost_price_currency_id, confirmed_quantity
   )
   select
-    v_order_id,
-    ci.product_id,
-    ci.listing_id,
+    v_order_id, ci.product_id, ci.listing_id,
     coalesce(ci.grade_tag_id, l.grade_tag_id, gs.grade_tag_id, public.default_stock_grade_tag_id()),
-    null,
-    null,
-    ci.name, ci.image_url, ci.quantity,
+    null, null, ci.name, ci.image_url, ci.quantity,
     ci.unit_list_price_amount, ci.unit_list_price_currency_id,
     ci.unit_sell_price_amount, ci.unit_sell_price_currency_id,
     ci.unit_minimum_sell_price_amount, ci.unit_minimum_sell_price_currency_id,
     ci.customer_sell_price_amount, ci.customer_sell_price_currency_id,
     ci.customer_sell_price_amount, ci.customer_sell_price_currency_id,
-    case
-      when v_order_status = 'confirmed' then coalesce(ci.customer_sell_price_amount, ci.unit_sell_price_amount)
-      else null
-    end,
-    case
-      when v_order_status = 'confirmed' then coalesce(ci.customer_sell_price_currency_id, ci.unit_sell_price_currency_id)
-      else null
-    end,
-    coalesce(
-      ci.unit_list_price_amount,
-      public.shop_product_grade_avg_landed_cost(
-        v_cart.tenant_id,
-        ci.product_id,
-        coalesce(ci.grade_tag_id, l.grade_tag_id, gs.grade_tag_id, public.default_stock_grade_tag_id())
-      )
-    ),
-    v_shop.buy_currency_id
+    case when v_order_status = 'confirmed' then coalesce(ci.customer_sell_price_amount, ci.unit_sell_price_amount) else null end,
+    case when v_order_status = 'confirmed' then coalesce(ci.customer_sell_price_currency_id, ci.unit_sell_price_currency_id) else null end,
+    coalesce(ci.unit_list_price_amount, public.shop_product_grade_avg_landed_cost(
+      v_cart.tenant_id, ci.product_id,
+      coalesce(ci.grade_tag_id, l.grade_tag_id, gs.grade_tag_id, public.default_stock_grade_tag_id())
+    )),
+    v_shop.buy_currency_id, 0
   from public.shop_cart_items ci
   left join public.shop_product_listings l on l.id = ci.listing_id
   left join public.global_stocks gs on gs.id = ci.global_stock_id
@@ -5839,180 +5924,66 @@ begin
       (select gs.grade_tag_id from public.global_stocks gs where gs.id = v_ci.global_stock_id),
       public.default_stock_grade_tag_id()
     );
-
     v_listing_id := coalesce(
       v_ci.listing_id,
-      (
-        select l.id
-        from public.shop_product_listings l
-        where l.shop_id = v_shop.id
-          and l.product_id = v_ci.product_id
-          and coalesce(l.grade_tag_id, public.default_stock_grade_tag_id()) = v_grade_tag_id
-        order by l.id asc
-        limit 1
-      ),
-      (
-        select l.id
-        from public.shop_product_listings l
-        where l.shop_id = v_shop.id
-          and l.product_id = v_ci.product_id
-          and l.global_stock_id = v_ci.global_stock_id
-        limit 1
-      )
+      (select l.id from public.shop_product_listings l where l.shop_id = v_shop.id and l.product_id = v_ci.product_id
+        and coalesce(l.grade_tag_id, public.default_stock_grade_tag_id()) = v_grade_tag_id order by l.id asc limit 1),
+      (select l.id from public.shop_product_listings l where l.shop_id = v_shop.id and l.product_id = v_ci.product_id
+        and l.global_stock_id = v_ci.global_stock_id limit 1)
     );
 
     if v_listing_id is not null then
       update public.shop_product_listings
       set display_quantity_override = greatest(0, display_quantity_override - v_ci.quantity)
-      where id = v_listing_id
-        and display_quantity_override is not null;
+      where id = v_listing_id and display_quantity_override is not null;
     elsif v_ci.global_stock_id is not null then
       update public.shop_product_listings
       set display_quantity_override = greatest(0, display_quantity_override - v_ci.quantity)
-      where shop_id = v_shop.id
-        and product_id = v_ci.product_id
-        and global_stock_id = v_ci.global_stock_id
+      where shop_id = v_shop.id and product_id = v_ci.product_id and global_stock_id = v_ci.global_stock_id
         and display_quantity_override is not null;
     end if;
 
-    if v_grade_tag_id is not null then
-      v_held_stock_id := public.hold_shop_grade_stock_for_order(
-        v_parent_tenant_id,
-        v_cart.tenant_id,
-        v_ci.product_id,
-        v_grade_tag_id,
-        v_ci.quantity,
-        v_order_id,
-        'Dropship order hold'
-      );
-    elsif v_ci.global_stock_id is not null then
-      select * into v_stock
-      from public.global_stocks
-      where id = v_ci.global_stock_id
-      for update;
-
-      if not found then
-        raise exception 'stock not found for cart item %', v_ci.name;
-      end if;
-
-      if v_stock.availability <> 'sellable'::public.stock_availability then
-        raise exception 'insufficient sellable stock for %', v_ci.name;
-      end if;
-
-      if v_stock.quantity < v_ci.quantity then
-        raise exception 'insufficient stock quantity for % (requested %, available %)',
-          v_ci.name, v_ci.quantity, v_stock.quantity;
-      end if;
-
-      perform public.create_and_post_stock_movement(
-        p_tenant_id => v_parent_tenant_id,
-        p_stock_id => v_ci.global_stock_id,
-        p_quantity => v_ci.quantity,
-        p_to_location_id => v_stock.location_id,
-        p_to_availability => 'held'::public.stock_availability,
-        p_to_grade_tag_id => v_stock.grade_tag_id,
-        p_movement_type => 'availability_transfer'::public.stock_movement_type,
-        p_notes => 'Dropship order hold',
-        p_reference_type => 'shop_order',
-        p_reference_id => v_order_id::text
-      );
-
-      select gs.id into v_held_stock_id
-      from public.global_stocks gs
-      where gs.shipment_item_id = v_stock.shipment_item_id
-        and gs.parent_tenant_id = v_parent_tenant_id
-        and gs.availability = 'held'::public.stock_availability
-        and gs.location_id is not distinct from v_stock.location_id
-        and coalesce(gs.grade_tag_id, public.default_stock_grade_tag_id())
-          = coalesce(v_stock.grade_tag_id, public.default_stock_grade_tag_id())
-      order by gs.id desc
-      limit 1;
-    else
-      raise exception 'cart line missing grade for %', v_ci.name;
-    end if;
-
-    select soi.id into v_order_item_id
-    from public.shop_order_items soi
-    where soi.order_id = v_order_id
-      and soi.product_id = v_ci.product_id
-      and soi.listing_id is not distinct from v_ci.listing_id
-    order by soi.id asc
-    limit 1;
-
+    select soi.id into v_order_item_id from public.shop_order_items soi
+    where soi.order_id = v_order_id and soi.product_id = v_ci.product_id
+      and soi.listing_id is not distinct from v_ci.listing_id order by soi.id asc limit 1;
     if v_order_item_id is null then
-      select soi.id into v_order_item_id
-      from public.shop_order_items soi
-      where soi.order_id = v_order_id
-        and soi.product_id = v_ci.product_id
-      order by soi.id asc
-      limit 1;
+      select soi.id into v_order_item_id from public.shop_order_items soi
+      where soi.order_id = v_order_id and soi.product_id = v_ci.product_id order by soi.id asc limit 1;
     end if;
-
     if v_order_item_id is not null then
       update public.shop_order_items
-      set
-        listing_id = coalesce(listing_id, v_listing_id),
-        grade_tag_id = coalesce(grade_tag_id, v_grade_tag_id),
-        global_stock_id = v_held_stock_id,
-        cost_price_amount = coalesce(
-          cost_price_amount,
-          public.resolve_shop_order_item_landed_cost(v_held_stock_id, null, unit_list_price_amount)
-        )
+      set listing_id = coalesce(listing_id, v_listing_id), grade_tag_id = coalesce(grade_tag_id, v_grade_tag_id)
       where id = v_order_item_id;
     end if;
 
     if v_listing_id is not null then
-      v_available_after := public.shop_product_grade_available_units(
-        v_cart.tenant_id, v_ci.product_id, v_grade_tag_id
-      );
-      if coalesce((
-        select display_quantity_override
-        from public.shop_product_listings
-        where id = v_listing_id
-      ), v_available_after, 0) <= 0 then
-        update public.shop_product_listings
-        set is_active = false
-        where id = v_listing_id;
+      v_available_after := public.shop_product_grade_available_units(v_cart.tenant_id, v_ci.product_id, v_grade_tag_id);
+      if coalesce((select display_quantity_override from public.shop_product_listings where id = v_listing_id), v_available_after, 0) <= 0 then
+        update public.shop_product_listings set is_active = false where id = v_listing_id;
       end if;
     elsif v_ci.global_stock_id is not null then
-      select coalesce(sum(gs.quantity), 0) into v_available_after
-      from public.global_stocks gs
-      where gs.shipment_item_id = (
-        select shipment_item_id from public.global_stocks where id = v_ci.global_stock_id
-      )
+      select coalesce(sum(gs.quantity), 0) into v_available_after from public.global_stocks gs
+      where gs.shipment_item_id = (select shipment_item_id from public.global_stocks where id = v_ci.global_stock_id)
         and gs.availability = 'sellable'::public.stock_availability;
-
-      if coalesce((
-        select display_quantity_override
-        from public.shop_product_listings
-        where shop_id = v_shop.id
-          and product_id = v_ci.product_id
-          and global_stock_id = v_ci.global_stock_id
-      ), v_available_after, 0) <= 0 then
-        update public.shop_product_listings
-        set is_active = false
-        where shop_id = v_shop.id
-          and product_id = v_ci.product_id
-          and global_stock_id = v_ci.global_stock_id;
+      if coalesce((select display_quantity_override from public.shop_product_listings
+        where shop_id = v_shop.id and product_id = v_ci.product_id and global_stock_id = v_ci.global_stock_id),
+        v_available_after, 0) <= 0 then
+        update public.shop_product_listings set is_active = false
+        where shop_id = v_shop.id and product_id = v_ci.product_id and global_stock_id = v_ci.global_stock_id;
       end if;
     end if;
   end loop;
 
   delete from public.shop_stock_reservations
   where cart_item_id in (select id from public.shop_cart_items where cart_id = v_cart.id);
+  update public.shop_carts set status = 'converted', updated_at = now() where id = v_cart.id;
 
-  update public.shop_carts
-  set status = 'converted', updated_at = now()
-  where id = v_cart.id;
+  perform public.recompute_dropship_cod_collect_amount(v_order_id);
 
   select jsonb_build_object(
-    'order_id', v_order_id,
-    'order_no', v_order_no,
-    'status', v_order_status,
-    'cart_id', v_cart.id,
-    'shop_id', v_shop.id
+    'order_id', v_order_id, 'order_no', v_order_no, 'status', v_order_status,
+    'cart_id', v_cart.id, 'shop_id', v_shop.id
   ) into v_result;
-
   return v_result;
 end;
 $$;
@@ -6182,6 +6153,8 @@ begin
       and ma.is_active = true
       and ma.scope = 'shop';
     return;
+  end if;
+
   return query
   with role_allowed as (
     select rg.module_key, rg.action
@@ -6215,6 +6188,10 @@ begin
     and tm.is_active = true
     and ma.is_active = true
     and ma.scope = 'shop';
+end;
+$$;
+
+
 ALTER FUNCTION "public"."get_shop_effective_grants"("p_tenant_id" bigint, "p_customer_group_member_id" bigint) OWNER TO "postgres";
 
 
@@ -6388,6 +6365,8 @@ begin
       and m.is_active = true
   ) then
     raise exception 'not allowed';
+  end if;
+
   return query
   select
     gsa.id as allocation_id,
@@ -6425,6 +6404,10 @@ begin
         and spl.global_stock_allocation_id = gsa.id
     )
   order by p.name asc;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."list_allocations_for_shop_pick"("p_tenant_id" bigint, "p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -6433,6 +6416,9 @@ CREATE OR REPLACE FUNCTION "public"."list_allocations_for_shop_pick"("p_shop_id"
     SET "search_path" TO 'public'
     AS $$
   select jsonb_build_object('data', '[]'::jsonb, 'total', 0);
+$$;
+
+
 ALTER FUNCTION "public"."list_allocations_for_shop_pick"("p_shop_id" bigint, "p_search" "text") OWNER TO "postgres";
 
 
@@ -6447,19 +6433,25 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_active_carts"("p_tenant_id" b
     s.slug as shop_slug,
     null::text as shop_logo_url,
     s.shop_type::text as shop_type,
-    c.can_see_buy_price_snapshot as can_see_buy_price,
-    c.can_see_sell_price_snapshot as can_see_sell_price,
+    coalesce(perm.can_see_buy_price, false) as can_see_buy_price,
+    coalesce(perm.can_see_sell_price, false) as can_see_sell_price,
     s.sell_currency_id as currency_id,
     gc.code as currency_code,
     gc.symbol as currency_symbol,
     coalesce(sum(ci.quantity), 0)::bigint as item_count,
     case
-      when c.can_see_sell_price_snapshot then
+      when s.shop_type = 'vendor_catalog'::public.shop_type_enum
+        and coalesce(perm.can_see_buy_price, false) then
+        sum(ci.quantity * coalesce(ci.unit_list_price_amount, 0))::numeric
+      when coalesce(perm.can_see_sell_price, false) then
         sum(
           ci.quantity * coalesce(
             ci.customer_sell_price_amount,
             ci.unit_sell_price_amount,
-            ci.unit_list_price_amount,
+            case
+              when s.shop_type = 'vendor_catalog'::public.shop_type_enum then null
+              else ci.unit_list_price_amount
+            end,
             0
           )
         )::numeric
@@ -6470,12 +6462,20 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_active_carts"("p_tenant_id" b
   join public.shops s on s.id = c.shop_id
   join public.shop_cart_items ci on ci.cart_id = c.id
   left join public.global_currencies gc on gc.id = s.sell_currency_id
+  left join lateral (
+    select p.can_see_buy_price, p.can_see_sell_price
+    from public.get_shop_permissions_for_customer(s.id) p
+    limit 1
+  ) perm on true
   where p_tenant_id is not null
     and c.status = 'active'
     and c.tenant_id = p_tenant_id
     and c.customer_group_id = public.current_customer_group_id(p_tenant_id)
-  group by c.id, s.id, gc.code, gc.symbol
+  group by c.id, s.id, s.shop_type, gc.code, gc.symbol, perm.can_see_buy_price, perm.can_see_sell_price
   order by c.updated_at desc;
+$$;
+
+
 ALTER FUNCTION "public"."list_customer_active_carts"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -6655,13 +6655,8 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) 
     bool_or(
       case
         when access.status = false or coalesce(profile.is_active, true) = false then false
-        else public.resolve_shop_can_see_buy_price(
-          s.shop_type,
-          access.can_see_buy_price,
-          access.can_see_sell_price,
-          profile.default_can_see_buy_price,
-          profile.default_can_see_sell_price
-        )
+        when s.shop_type = 'dropship' then true
+        else coalesce(access.can_see_buy_price, profile.default_can_see_buy_price, false)
       end
     ) as can_see_buy_price,
     bool_or(
@@ -6721,6 +6716,9 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) 
     gc.code,
     gc.symbol
   order by s.name asc;
+$$;
+
+
 ALTER FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -8065,11 +8063,14 @@ CREATE OR REPLACE FUNCTION "public"."list_my_dropship_wallet_ledger"("p_limit" i
     AS $_$
 declare
   v_email text := public.current_user_email();
+  v_tenant_id bigint;
   v_group_id bigint;
   v_bp_id bigint;
 begin
   if v_email is null or length(trim(v_email)) = 0 then
     raise exception 'Not authenticated';
+  end if;
+
   select cg.tenant_id, cgm.customer_group_id
   into v_tenant_id, v_group_id
   from public.customer_group_members cgm
@@ -8082,9 +8083,13 @@ begin
 
   if v_tenant_id is null then
     raise exception 'No active customer group membership';
+  end if;
+
   v_bp_id := public.resolve_billing_profile_for_customer_group(v_tenant_id, v_group_id);
   if v_bp_id is null then
     raise exception 'No billing profile linked for your customer group';
+  end if;
+
   return query
   select
     u.id::text,
@@ -8098,13 +8103,14 @@ begin
       else null
     end as order_id,
     coalesce(u.metadata->>'notes', u.metadata->>'note', '')::text as note
-  from public.universal_wallet_ledger u
+  from public.cashbook_entries u
   where u.tenant_id = v_tenant_id
     and u.entity_id = v_bp_id
     and u.entity_type in ('middleman', 'customer')
   order by u.created_at desc, u.id desc
   limit greatest(coalesce(p_limit, 50), 1)
   offset greatest(coalesce(p_offset, 0), 0);
+end;
 $_$;
 
 
@@ -8227,10 +8233,14 @@ begin
     and s.deleted_at is null;
   if v_tenant_id is null then
     raise exception 'shop not found';
+  end if;
+
   if not public.has_active_tenant_membership(v_tenant_id)
      and not public.has_active_tenant_membership(public.resolve_parent_tenant_id(v_tenant_id))
      and not public.is_superadmin() then
     raise exception 'not allowed';
+  end if;
+
   return query
   select
     l.id,
@@ -8265,6 +8275,10 @@ begin
   left join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
   where l.shop_id = p_shop_id
   order by gsi.name asc;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."list_shop_product_listings"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -8419,7 +8433,7 @@ begin
   select jsonb_agg(
     jsonb_build_object(
       'order_item_id', id,
-      'returned_qty', greatest(coalesce(confirmed_quantity, quantity) - coalesce(returned_quantity, 0), 0),
+      'returned_qty', greatest(coalesce(delivered_quantity, quantity) - coalesce(returned_quantity, 0), 0),
       'condition', 'perfect'
     )
   )
@@ -8435,6 +8449,10 @@ begin
     p_override_reason => p_reason,
     p_return_ref => 'AUTO-RET-' || p_order_id::text || '-' || extract(epoch from now())::bigint
   );
+end;
+$$;
+
+
 ALTER FUNCTION "public"."mark_dropship_order_returned"("p_order_id" bigint, "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_reason" "text") OWNER TO "postgres";
 
 
@@ -8454,28 +8472,40 @@ begin
 
   if v_tenant_id is null then
     raise exception 'order not found';
+  end if;
+
   if not public.is_tenant_staff(v_tenant_id) then
     raise exception 'access denied';
+  end if;
+
   if v_type <> 'vendor_catalog' then
     raise exception 'only vendor catalog orders can be placed for procurement';
+  end if;
+
   if v_status <> 'confirmed' then
     raise exception 'order must be confirmed before placing';
+  end if;
+
   update public.shop_orders
   set status = 'placed',
       placed_at = now(),
       updated_at = now()
   where id = p_order_id;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."place_shop_order_for_procurement"("p_order_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."process_dropship_courier_remittance_uwl"("p_order_id" bigint, "p_net_amount" numeric, "p_courier_charge" numeric DEFAULT 0.00, "p_remittance_ref" "text" DEFAULT NULL::"text") RETURNS void
+CREATE OR REPLACE FUNCTION "public"."process_dropship_courier_remittance_uwl"("p_order_id" bigint, "p_net_amount" numeric, "p_courier_charge" numeric DEFAULT 0.00, "p_remittance_ref" "text" DEFAULT NULL::"text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
   v_order record;
   v_parent_tenant_id bigint;
-  v_courier_id bigint := 0;
+  v_courier_id bigint;
   v_cod numeric(12,2) := 0.00;
   v_charge numeric(12,2) := 0.00;
   v_net numeric(12,2) := 0.00;
@@ -8517,7 +8547,7 @@ begin
   end if;
 
   if v_net > 0 and not exists (
-    select 1 from public.universal_wallet_ledger
+    select 1 from public.cashbook_entries
     where parent_tenant_id = v_parent_tenant_id
       and entity_type = 'courier'
       and source_type = 'shop_order'
@@ -8551,7 +8581,7 @@ begin
   end if;
 
   if v_charge > 0 and not exists (
-    select 1 from public.universal_wallet_ledger
+    select 1 from public.cashbook_entries
     where parent_tenant_id = v_parent_tenant_id
       and entity_type = 'courier'
       and source_type = 'shop_order'
@@ -8585,7 +8615,7 @@ begin
   end if;
 
   if not exists (
-    select 1 from public.universal_wallet_ledger
+    select 1 from public.cashbook_entries
     where parent_tenant_id = v_parent_tenant_id
       and entity_type = 'tenant'
       and source_type = 'shop_order'
@@ -8633,10 +8663,16 @@ begin
   select * into v_order from public.shop_orders where id = p_order_id;
   if not found then
     return jsonb_build_object('success', false, 'error', 'Order not found');
+  end if;
+
   if v_order.shop_type_snapshot <> 'dropship' then
     return jsonb_build_object('success', false, 'error', 'Only dropship orders can be handed off to the dropship desk');
+  end if;
+
   if v_order.status <> 'confirmed' then
     return jsonb_build_object('success', false, 'error', 'Only confirmed orders can be handed off to the dropship desk');
+  end if;
+
   -- Update status to processing (merchant details will be added later)
   update public.shop_orders
   set
@@ -8649,6 +8685,10 @@ begin
     'order_id', p_order_id,
     'new_status', 'processing'
   );
+end;
+$$;
+
+
 ALTER FUNCTION "public"."process_dropship_shop_order"("p_order_id" bigint) OWNER TO "postgres";
 
 
@@ -8656,77 +8696,21 @@ CREATE OR REPLACE FUNCTION "public"."record_dropship_courier_remittance"("p_orde
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-declare
-  v_order record;
-  v_ref text;
 begin
-  select * into v_order from public.shop_orders where id = p_order_id for update;
-  if v_order.status <> 'delivered' then
-    raise exception 'Courier remittance requires order status delivered (current: %)', v_order.status;
-  if v_order.global_invoice_id is null then
-    raise exception 'Accounting invoice is required before recording courier remittance';
-  v_ref := nullif(trim(coalesce(p_remittance_ref, '')), '');
-  if v_ref is null then
-    raise exception 'Remittance reference is required';
-  if coalesce(p_net_amount, 0.00) <= 0.00 then
-    raise exception 'Net remittance amount must be positive';
-  select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id for update;
-  -- Same money-in path as record_recipient_invoice_collection
-  insert into public.global_payments (
-    tenant_id,
-    billing_profile_id,
-    collection_source,
-    amount,
-    unallocated_amount,
-    payment_date,
-    method,
-    reference,
-    note
-  )
-  values (
-    v_invoice.tenant_id,
-    null,
-    'recipient'::public.collection_source_type,
+  return public.record_dropship_courier_remittance(
+    p_order_id,
     p_net_amount,
-    0.00,
-    coalesce(p_payment_date, current_date),
-    coalesce(nullif(trim(p_method), ''), 'cash'),
-    v_ref,
-    coalesce(
-      nullif(trim(p_note), ''),
-      'Courier remittance order #' || v_order.order_no
-        || coalesce(' bank:' || nullif(trim(p_bank_trx_id), ''), '')
-    )
-  )
-  returning id into v_payment_id;
-
-  insert into public.invoice_payments (tenant_id, payment_id, global_invoice_id, amount)
-  values (v_invoice.tenant_id, v_payment_id, v_order.global_invoice_id, p_net_amount);
-
-  update public.global_invoices
-  set
-    paid_amount = coalesce(paid_amount, 0.00) + p_net_amount,
-    note = coalesce(nullif(trim(p_note), ''), note),
-    updated_at = now()
-  where id = v_order.global_invoice_id;
-
-  perform public.recompute_global_invoice_payment_status(v_order.global_invoice_id);
-
-  update public.shop_orders
-  set
-    status = 'payment_received'::public.shop_order_status,
-    courier_remittance_ref = v_ref,
-    courier_bank_trx_id = coalesce(nullif(trim(p_bank_trx_id), ''), courier_bank_trx_id),
-    updated_at = now()
-  where id = p_order_id;
-
-  return jsonb_build_object(
-    'success', true,
-    'invoice_id', v_order.global_invoice_id,
-    'payment_id', v_payment_id,
-    'order_id', p_order_id,
-    'status', 'payment_received'
+    p_remittance_ref,
+    p_bank_trx_id,
+    p_payment_date,
+    p_method,
+    p_note,
+    0.00
   );
+end;
+$$;
+
+
 ALTER FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text") OWNER TO "postgres";
 
 
@@ -8736,15 +8720,17 @@ CREATE OR REPLACE FUNCTION "public"."record_dropship_courier_remittance"("p_orde
     AS $$
 declare
   v_order record;
-  v_invoice public.global_invoices;
+  v_invoice public.bills;
   v_parent_tenant_id bigint;
   v_payment_id bigint;
+  v_pay public.pays;
   v_ref text;
   v_cod numeric(12,2);
   v_charge numeric(12,2);
   v_net numeric(12,2);
   v_invoice_due numeric(12,2);
   v_invoice_pay numeric(12,2);
+  v_remainder numeric(12,2);
   v_already_remitted boolean := false;
 begin
   select * into v_order from public.shop_orders where id = p_order_id for update;
@@ -8767,7 +8753,7 @@ begin
   v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
 
   select exists (
-    select 1 from public.universal_wallet_ledger
+    select 1 from public.cashbook_entries
     where parent_tenant_id = v_parent_tenant_id
       and entity_type = 'tenant'
       and source_type = 'shop_order'
@@ -8827,16 +8813,26 @@ begin
     raise exception 'Permission denied: Staff or Admin role required';
   end if;
 
-  select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id for update;
+  select * into v_invoice from public.bills where id = v_order.global_invoice_id for update;
   if v_invoice.id is null then
     raise exception 'Invoice not found';
   end if;
-  if v_invoice.collection_source <> 'recipient'::public.collection_source_type then
-    raise exception 'This invoice does not collect from recipient.';
+
+  if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
+    raise exception 'Merchant bill must be issued before remittance (current: %)', v_invoice.invoice_status;
   end if;
 
-  v_invoice_due := greatest(coalesce(v_invoice.total_amount, 0.00) - coalesce(v_invoice.paid_amount, 0.00), 0.00);
+  if v_invoice.invoice_type <> 'dropship'::public.global_invoice_type then
+    raise exception 'Remittance applies to dropship merchant bills only';
+  end if;
+
+  if v_invoice.profile_id is null then
+    raise exception 'Merchant profile is required on the bill';
+  end if;
+
+  v_invoice_due := greatest(coalesce(v_invoice.due_amount, 0.00), 0.00);
   v_invoice_pay := least(v_net, v_invoice_due);
+  v_remainder := greatest(v_net - v_invoice_pay, 0.00);
 
   perform public.process_dropship_courier_remittance_uwl(
     p_order_id => p_order_id,
@@ -8845,55 +8841,54 @@ begin
     p_remittance_ref => v_ref
   );
 
-  update public.universal_wallet_ledger
-  set metadata = metadata || jsonb_build_object('invoice_allocated', v_invoice_pay)
+  update public.cashbook_entries
+  set metadata = metadata || jsonb_build_object(
+    'invoice_allocated', v_invoice_pay,
+    'merchant_funds_held', v_remainder
+  )
   where parent_tenant_id = v_parent_tenant_id
     and entity_type = 'tenant'
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and metadata->>'purpose' = 'tenant_remittance_received';
 
-  if v_invoice_pay > 0 then
-    insert into public.global_payments (
-      tenant_id,
-      billing_profile_id,
-      collection_source,
-      amount,
-      unallocated_amount,
-      payment_date,
-      method,
-      reference,
-      note
-    )
-    values (
-      v_invoice.tenant_id,
-      null,
-      'recipient'::public.collection_source_type,
-      v_invoice_pay,
-      0.00,
-      coalesce(p_payment_date, current_date),
-      coalesce(nullif(trim(p_method), ''), 'cash'),
-      v_ref,
-      coalesce(
-        nullif(trim(p_note), ''),
-        'Courier remittance order #' || v_order.order_no
-          || coalesce(' bank:' || nullif(trim(p_bank_trx_id), ''), '')
-          || ' (invoice payment ' || v_invoice_pay::text || ')'
+  v_pay := public.post_customer_receipt_with_allocations(
+    p_tenant_id => v_order.tenant_id,
+    p_billing_profile_id => v_invoice.profile_id,
+    p_received_on => coalesce(p_payment_date, current_date),
+    p_note => coalesce(
+      nullif(trim(p_note), ''),
+      'Courier remittance order #' || v_order.order_no
+        || coalesce(' bank:' || nullif(trim(p_bank_trx_id), ''), '')
+    ),
+    p_reference => v_ref,
+    p_source => 'courier_remittance',
+    p_instruments => jsonb_build_array(
+      jsonb_strip_nulls(
+        jsonb_build_object(
+          'payment_method_code',
+            case upper(coalesce(nullif(trim(p_method), ''), 'CASH'))
+              when 'BANK_TRANSFER' then 'BANK_TRANSFER'
+              when 'BKASH' then 'BKASH'
+              else 'CASH'
+            end,
+          'amount', v_net,
+          'reference', nullif(trim(coalesce(p_bank_trx_id, '')), '')
+        )
       )
-    )
-    returning id into v_payment_id;
+    ),
+    p_allocations => case
+      when v_invoice_pay > 0 then jsonb_build_array(jsonb_build_object('bill_id', v_invoice.id, 'amount', v_invoice_pay))
+      else '[]'::jsonb
+    end,
+    p_shop_order_id => p_order_id
+  );
+  v_payment_id := v_pay.id;
 
-    insert into public.invoice_payments (tenant_id, payment_id, global_invoice_id, amount)
-    values (v_invoice.tenant_id, v_payment_id, v_order.global_invoice_id, v_invoice_pay);
-
-    update public.global_invoices
-    set
-      paid_amount = coalesce(paid_amount, 0.00) + v_invoice_pay,
-      note = coalesce(nullif(trim(p_note), ''), note),
-      updated_at = now()
-    where id = v_order.global_invoice_id;
-
-    perform public.recompute_global_invoice_payment_status(v_order.global_invoice_id);
+  if v_invoice_pay > 0 and nullif(trim(p_note), '') is not null then
+    update public.bills
+    set note = trim(p_note), updated_at = now()
+    where id = v_invoice.id;
   end if;
 
   update public.shop_orders
@@ -8901,6 +8896,7 @@ begin
     status = 'payment_received'::public.shop_order_status,
     courier_remittance_ref = v_ref,
     courier_bank_trx_id = coalesce(nullif(trim(p_bank_trx_id), ''), courier_bank_trx_id),
+    payout_settlement_status = case when v_remainder > 0 then 'paid' else payout_settlement_status end,
     updated_at = now()
   where id = p_order_id;
 
@@ -8912,7 +8908,8 @@ begin
     'status', 'payment_received',
     'net_amount', v_net,
     'courier_charge', v_charge,
-    'invoice_allocated', v_invoice_pay
+    'invoice_allocated', v_invoice_pay,
+    'merchant_remainder', v_remainder
   );
 end;
 $$;
@@ -8920,15 +8917,16 @@ $$;
 ALTER FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text", "p_courier_charge" numeric) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text" DEFAULT NULL::"text", "p_payment_date" "date" DEFAULT NULL::"date", "p_method" "text" DEFAULT 'cash'::"text", "p_note" "text" DEFAULT NULL::"text", "p_courier_charge" numeric DEFAULT 0.00) RETURNS jsonb
+CREATE OR REPLACE FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text" DEFAULT NULL::"text", "p_payment_date" "date" DEFAULT NULL::"date", "p_method" "text" DEFAULT 'cash'::"text", "p_note" "text" DEFAULT NULL::"text", "p_courier_charge" numeric DEFAULT 0.00) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
   v_order record;
-  v_invoice public.global_invoices;
+  v_invoice public.bills;
   v_parent_tenant_id bigint;
   v_payment_id bigint;
+  v_pay public.pays;
   v_ref text;
   v_cod numeric(12,2);
   v_charge numeric(12,2);
@@ -8937,7 +8935,6 @@ declare
   v_invoice_pay numeric(12,2);
   v_remainder numeric(12,2);
   v_already_remitted boolean := false;
-  v_payment_unallocated numeric(12,2);
 begin
   select * into v_order from public.shop_orders where id = p_order_id for update;
   if v_order.id is null then
@@ -8959,7 +8956,7 @@ begin
   v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
 
   select exists (
-    select 1 from public.universal_wallet_ledger
+    select 1 from public.cashbook_entries
     where parent_tenant_id = v_parent_tenant_id
       and entity_type = 'tenant'
       and source_type = 'shop_order'
@@ -8968,96 +8965,12 @@ begin
   ) into v_already_remitted;
 
   if v_already_remitted then
-    select * into v_invoice
-    from public.global_invoices
-    where id = v_order.global_invoice_id
-    for update;
-
-    select coalesce(
-      nullif(trim(coalesce(u.metadata->>'net_remitted', '')), '')::numeric,
-      u.amount,
-      0.00
-    )
-    into v_net
-    from public.universal_wallet_ledger u
-    where u.parent_tenant_id = v_parent_tenant_id
-      and u.entity_type = 'tenant'
-      and u.source_type = 'shop_order'
-      and u.source_id = p_order_id::text
-      and u.metadata->>'purpose' = 'tenant_remittance_received'
-    order by u.created_at desc
-    limit 1;
-
-    v_invoice_due := greatest(coalesce(v_invoice.due_amount, 0.00), 0.00);
-    v_invoice_pay := 0.00;
-    v_payment_id := null;
-
-    if v_invoice_due > 0.00 and coalesce(v_net, 0.00) > 0.00 then
-      select gp.id, gp.unallocated_amount
-      into v_payment_id, v_payment_unallocated
-      from public.global_payments gp
-      where gp.shop_order_id = p_order_id
-      order by gp.id desc
-      limit 1;
-
-      if v_payment_id is not null then
-        v_invoice_pay := least(
-          v_net,
-          v_invoice_due,
-          greatest(coalesce(v_payment_unallocated, 0.00), 0.00)
-        );
-
-        if v_invoice_pay > 0.00 then
-          insert into public.invoice_payments (tenant_id, payment_id, global_invoice_id, amount)
-          values (v_invoice.tenant_id, v_payment_id, v_order.global_invoice_id, v_invoice_pay);
-
-          update public.global_payments
-          set unallocated_amount = greatest(coalesce(unallocated_amount, 0.00) - v_invoice_pay, 0.00)
-          where id = v_payment_id;
-
-          update public.global_invoices
-          set
-            paid_amount = coalesce(paid_amount, 0.00) + v_invoice_pay,
-            updated_at = now()
-          where id = v_order.global_invoice_id;
-
-          perform public.recompute_global_invoice_payment_status(v_order.global_invoice_id);
-        end if;
-      end if;
-    end if;
-
-    select coalesce(u.amount, 0.00)
-    into v_remainder
-    from public.universal_wallet_ledger u
-    where u.parent_tenant_id = v_parent_tenant_id
-      and u.source_type = 'shop_order'
-      and u.source_id = p_order_id::text
-      and u.entity_type in ('middleman', 'customer')
-      and u.entity_id = v_invoice.billing_profile_id
-      and u.type = 'credit'
-      and coalesce(u.metadata->>'transaction_type', '') = 'dropship_profit'
-    order by u.created_at desc
-    limit 1;
-
-    if coalesce(v_remainder, 0.00) <= 0.00 then
-      v_remainder := greatest(coalesce(v_net, 0.00) - v_invoice_pay, 0.00);
-    end if;
-
-    update public.dropship_order_settlements
-    set
-      remittance_at = coalesce(remittance_at, now()),
-      reseller_profit = coalesce(nullif(v_remainder, 0.00), reseller_profit),
-      updated_at = now()
-    where shop_order_id = p_order_id;
-
     return jsonb_build_object(
       'success', true,
       'already_recorded', true,
       'invoice_id', v_order.global_invoice_id,
       'order_id', p_order_id,
-      'status', v_order.status,
-      'invoice_allocated', v_invoice_pay,
-      'merchant_remainder', v_remainder
+      'status', v_order.status
     );
   end if;
 
@@ -9103,7 +9016,7 @@ begin
     raise exception 'Permission denied: Staff or Admin role required';
   end if;
 
-  select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id for update;
+  select * into v_invoice from public.bills where id = v_order.global_invoice_id for update;
   if v_invoice.id is null then
     raise exception 'Invoice not found';
   end if;
@@ -9116,11 +9029,11 @@ begin
     raise exception 'Remittance applies to dropship merchant bills only';
   end if;
 
-  if v_invoice.billing_profile_id is null then
-    raise exception 'Merchant billing profile is required on the invoice';
+  if v_invoice.profile_id is null then
+    raise exception 'Merchant profile is required on the bill';
   end if;
 
-  v_invoice_due := greatest(coalesce(v_invoice.total_amount, 0.00) - coalesce(v_invoice.paid_amount, 0.00), 0.00);
+  v_invoice_due := greatest(coalesce(v_invoice.due_amount, 0.00), 0.00);
   v_invoice_pay := least(v_net, v_invoice_due);
   v_remainder := greatest(v_net - v_invoice_pay, 0.00);
 
@@ -9131,7 +9044,7 @@ begin
     p_remittance_ref => v_ref
   );
 
-  update public.universal_wallet_ledger
+  update public.cashbook_entries
   set metadata = metadata || jsonb_build_object(
     'invoice_allocated', v_invoice_pay,
     'merchant_funds_held', v_remainder
@@ -9142,39 +9055,18 @@ begin
     and source_id = p_order_id::text
     and metadata->>'purpose' = 'tenant_remittance_received';
 
-  insert into public.global_payments (
-    tenant_id,
-    billing_profile_id,
-    collection_source,
-    amount,
-    unallocated_amount,
-    payment_date,
-    method,
-    reference,
-    note,
-    shop_order_id
-  )
-  values (
-    v_invoice.tenant_id,
-    v_invoice.billing_profile_id,
-    'billing_profile'::public.collection_source_type,
-    v_net,
-    v_remainder,
-    coalesce(p_payment_date, current_date),
-    coalesce(nullif(trim(p_method), ''), 'cash'),
-    v_ref,
-    coalesce(
+  v_pay := public.post_customer_receipt_with_allocations(
+    p_tenant_id => v_order.tenant_id,
+    p_billing_profile_id => v_invoice.profile_id,
+    p_received_on => coalesce(p_payment_date, current_date),
+    p_note => coalesce(
       nullif(trim(p_note), ''),
       'Courier remittance order #' || v_order.order_no
         || coalesce(' bank:' || nullif(trim(p_bank_trx_id), ''), '')
     ),
-    p_order_id
-  )
-  returning id into v_payment_id;
-
-  perform public.insert_global_payment_instruments(
-    v_payment_id,
-    jsonb_build_array(
+    p_reference => v_ref,
+    p_source => 'courier_remittance',
+    p_instruments => jsonb_build_array(
       jsonb_strip_nulls(
         jsonb_build_object(
           'payment_method_code',
@@ -9187,76 +9079,27 @@ begin
           'reference', nullif(trim(coalesce(p_bank_trx_id, '')), '')
         )
       )
-    )
-  );
-
-  if v_invoice_pay > 0 then
-    insert into public.invoice_payments (tenant_id, payment_id, global_invoice_id, amount)
-    values (v_invoice.tenant_id, v_payment_id, v_order.global_invoice_id, v_invoice_pay);
-
-    update public.global_invoices
-    set
-      paid_amount = coalesce(paid_amount, 0.00) + v_invoice_pay,
-      note = coalesce(nullif(trim(p_note), ''), note),
-      updated_at = now()
-    where id = v_order.global_invoice_id;
-
-    perform public.recompute_global_invoice_payment_status(v_order.global_invoice_id);
-  end if;
-
-  if v_remainder > 0 and not exists (
-    select 1
-    from public.universal_wallet_ledger u
-    where u.parent_tenant_id = v_parent_tenant_id
-      and u.source_type = 'shop_order'
-      and u.source_id = p_order_id::text
-      and u.entity_type in ('middleman', 'customer')
-      and u.entity_id = v_invoice.billing_profile_id
-      and u.type = 'credit'
-      and coalesce(u.metadata->>'transaction_type', '') = 'dropship_profit'
-  ) then
-    perform public.record_ledger_transaction(
-      p_parent_tenant_id => v_parent_tenant_id,
-      p_operating_tenant_id => v_order.tenant_id,
-      p_entity_type => 'customer',
-      p_entity_id => v_invoice.billing_profile_id,
-      p_type => 'credit',
-      p_amount => v_remainder,
-      p_currency_code => 'BDT',
-      p_exchange_rate => 1.000000,
-      p_source_type => 'shop_order',
-      p_source_id => p_order_id::text,
-      p_metadata => jsonb_build_object(
-        'section', 'payout_earned',
-        'transaction_type', 'dropship_profit',
-        'label', 'Dropship profit from remittance remainder',
-        'order_no', v_order.order_no,
-        'order_id', p_order_id,
-        'shop_order_id', p_order_id::text,
-        'invoice_id', v_order.global_invoice_id,
-        'remittance_ref', v_ref,
-        'net_remitted', v_net,
-        'invoice_allocated', v_invoice_pay
-      )
-    );
-  end if;
-
-  update public.dropship_order_settlements
-  set
-    remittance_at = coalesce(remittance_at, now()),
-    collected_cod_amount = case
-      when coalesce(collected_cod_amount, 0.00) > 0.00 then collected_cod_amount
-      else coalesce(v_cod, collected_cod_amount)
+    ),
+    p_allocations => case
+      when v_invoice_pay > 0 then jsonb_build_array(jsonb_build_object('bill_id', v_invoice.id, 'amount', v_invoice_pay))
+      else '[]'::jsonb
     end,
-    reseller_profit = v_remainder,
-    updated_at = now()
-  where shop_order_id = p_order_id;
+    p_shop_order_id => p_order_id
+  );
+  v_payment_id := v_pay.id;
+
+  if v_invoice_pay > 0 and nullif(trim(p_note), '') is not null then
+    update public.bills
+    set note = trim(p_note), updated_at = now()
+    where id = v_invoice.id;
+  end if;
 
   update public.shop_orders
   set
     status = 'payment_received'::public.shop_order_status,
     courier_remittance_ref = v_ref,
     courier_bank_trx_id = coalesce(nullif(trim(p_bank_trx_id), ''), courier_bank_trx_id),
+    payout_settlement_status = case when v_remainder > 0 then 'paid' else payout_settlement_status end,
     updated_at = now()
   where id = p_order_id;
 
@@ -9278,7 +9121,7 @@ $$;
 ALTER FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text", "p_courier_charge" numeric) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_dropship_management_order"("p_tenant_id" bigint, "p_order_id" bigint) RETURNS jsonb
+CREATE OR REPLACE FUNCTION "public"."get_dropship_management_order"("p_tenant_id" bigint, "p_order_id" bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -9297,8 +9140,6 @@ declare
   v_has_settlement boolean := false;
   v_invoice jsonb;
   v_is_returned boolean := false;
-  v_parent_tenant_id bigint;
-  v_remittance_done boolean := false;
 begin
   if not public.is_tenant_staff(p_tenant_id) then
     raise exception 'access denied';
@@ -9318,8 +9159,6 @@ begin
   if v_order.status not in ('shipped', 'delivered', 'payment_received', 'reseller_paid', 'returned') then
     raise exception 'order status % is not eligible for dropship management desk', v_order.status;
   end if;
-
-  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
 
   v_detail := public.get_dropship_order_detail_v2(p_tenant_id, p_order_id);
 
@@ -9357,19 +9196,6 @@ begin
 
   v_has_settlement := found;
 
-  v_remittance_done := (
-    v_order.courier_remittance_ref is not null
-    or coalesce(v_settlement.remittance_at, null) is not null
-    or exists (
-      select 1
-      from public.universal_wallet_ledger l
-      where l.parent_tenant_id = v_parent_tenant_id
-        and l.source_type = 'shop_order'
-        and l.source_id = p_order_id::text
-        and l.metadata->>'purpose' = 'tenant_remittance_received'
-    )
-  );
-
   v_charge_lines := public.build_dropship_management_charge_lines(
     v_order,
     case when v_has_settlement then v_settlement.id else null end
@@ -9393,7 +9219,7 @@ begin
       'due_amount', i.due_amount
     )
     into v_invoice
-    from public.global_invoices i
+    from public.bills i
     where i.id = v_order.global_invoice_id;
   end if;
 
@@ -9447,7 +9273,7 @@ begin
       'can_record_bank_transfer',
         not v_is_returned
         and v_order.status in ('delivered', 'payment_received')
-        and not v_remittance_done,
+        and (not v_has_settlement or v_settlement.remittance_at is null),
       'can_transfer_to_reseller',
         not v_is_returned
         and v_order.status in ('delivered', 'payment_received')
@@ -9491,7 +9317,8 @@ CREATE OR REPLACE FUNCTION "public"."remove_shop_cart_item"("p_cart_item_id" big
 declare
   v_cart_id bigint;
   v_shop_id bigint;
-  begin
+  v_tenant_id bigint;
+begin
   select ci.cart_id, c.shop_id, c.tenant_id
   into v_cart_id, v_shop_id, v_tenant_id
   from public.shop_cart_items ci
@@ -9500,12 +9327,20 @@ declare
 
   if v_cart_id is null then
     raise exception 'cart item not found';
+  end if;
+
   -- Access verification
   if not public.is_cart_owner((select customer_group_id from public.shop_carts where id = v_cart_id), v_tenant_id) then
     raise exception 'access denied';
+  end if;
+
   delete from public.shop_cart_items where id = p_cart_item_id;
 
   return public.get_or_create_shop_cart(v_shop_id);
+end;
+$$;
+
+
 ALTER FUNCTION "public"."remove_shop_cart_item"("p_cart_item_id" bigint) OWNER TO "postgres";
 
 
@@ -9514,7 +9349,12 @@ CREATE OR REPLACE FUNCTION "public"."set_customer_group_shop_profiles_updated_at
     AS $$
 begin
   new.updated_at = now();
-  ALTER FUNCTION "public"."set_customer_group_shop_profiles_updated_at"() OWNER TO "postgres";
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_customer_group_shop_profiles_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_shop_customer_group_access_updated_at"() RETURNS "trigger"
@@ -9522,7 +9362,12 @@ CREATE OR REPLACE FUNCTION "public"."set_shop_customer_group_access_updated_at"(
     AS $$
 begin
   new.updated_at = now();
-  ALTER FUNCTION "public"."set_shop_customer_group_access_updated_at"() OWNER TO "postgres";
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_shop_customer_group_access_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_shop_order_updated_at"() RETURNS "trigger"
@@ -9530,7 +9375,12 @@ CREATE OR REPLACE FUNCTION "public"."set_shop_order_updated_at"() RETURNS "trigg
     AS $$
 begin
   new.updated_at = now();
-  ALTER FUNCTION "public"."set_shop_order_updated_at"() OWNER TO "postgres";
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_shop_order_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_shop_pricing_rules_updated_at"() RETURNS "trigger"
@@ -9538,7 +9388,12 @@ CREATE OR REPLACE FUNCTION "public"."set_shop_pricing_rules_updated_at"() RETURN
     AS $$
 begin
   new.updated_at = now();
-  ALTER FUNCTION "public"."set_shop_pricing_rules_updated_at"() OWNER TO "postgres";
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_shop_pricing_rules_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_shop_product_listings_updated_at"() RETURNS "trigger"
@@ -9546,7 +9401,12 @@ CREATE OR REPLACE FUNCTION "public"."set_shop_product_listings_updated_at"() RET
     AS $$
 begin
   new.updated_at = now();
-  ALTER FUNCTION "public"."set_shop_product_listings_updated_at"() OWNER TO "postgres";
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_shop_product_listings_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_shops_updated_at"() RETURNS "trigger"
@@ -9594,7 +9454,13 @@ begin
     new.is_negotiable := true;
   else
     new.is_negotiable := false;
-  ALTER FUNCTION "public"."shops_derive_is_negotiable"() OWNER TO "postgres";
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."shops_derive_is_negotiable"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."staff_counter_offer"("p_order_id" bigint, "p_items" "jsonb") RETURNS "void"
@@ -9603,24 +9469,35 @@ CREATE OR REPLACE FUNCTION "public"."staff_counter_offer"("p_order_id" bigint, "
     AS $$
 declare
   v_tenant_id bigint;
-  begin
+  v_item record;
+begin
   select tenant_id into v_tenant_id from public.shop_orders where id = p_order_id;
   
   if v_tenant_id is null then
     raise exception 'order not found';
+  end if;
+
   if not public.is_tenant_staff(v_tenant_id) then
     raise exception 'access denied';
+  end if;
+
   for v_item in select * from jsonb_to_recordset(p_items) as x(id bigint, staff_offer_amount numeric, staff_offer_currency_id bigint) loop
     update public.shop_order_items
     set
       staff_offer_amount = v_item.staff_offer_amount,
       staff_offer_currency_id = v_item.staff_offer_currency_id
     where id = v_item.id and order_id = p_order_id;
+  end loop;
+
   update public.shop_orders
   set
     status = 'negotiating',
     updated_at = now()
   where id = p_order_id;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."staff_counter_offer"("p_order_id" bigint, "p_items" "jsonb") OWNER TO "postgres";
 
 
@@ -9869,16 +9746,10 @@ $$;
 -- ---------------------------------------------------------------------------
 -- update_shop_order_charges_for_staff
 -- ---------------------------------------------------------------------------
-create or replace function public.update_shop_order_charges_for_staff(
-  p_tenant_id bigint,
-  p_order_id bigint,
-  p_payload jsonb
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
+CREATE OR REPLACE FUNCTION "public"."update_shop_order_charges_for_staff"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 declare
   v_order record;
 begin
@@ -10091,15 +9962,10 @@ begin
 end;
 $$;
 
-create or replace function public.staff_set_catalog_ordered_qty(
-  p_order_id bigint,
-  p_items jsonb
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
+CREATE OR REPLACE FUNCTION "public"."staff_set_catalog_ordered_qty"("p_order_id" bigint, "p_items" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 declare
   v_order record;
   v_desk_tenant_id bigint;
@@ -10125,7 +9991,7 @@ begin
   end if;
 
   if public.normalize_shop_order_procurement_status(v_order.status) <> 'procuring' then
-    raise exception 'order must be procuring to mark ready for shipment';
+    raise exception 'order must be procuring to mark packed';
   end if;
 
   update public.shop_orders
@@ -10501,6 +10367,8 @@ begin
   if tg_op = 'DELETE' then
     delete from public.shop_stock_reservations where cart_item_id = old.id;
     return old;
+  end if;
+
   if new.quantity > 0 and new.global_stock_id is not null then
     insert into public.shop_stock_reservations (cart_item_id, global_stock_id, global_stock_allocation_id, quantity)
     values (new.id, new.global_stock_id, null, new.quantity)
@@ -10510,7 +10378,14 @@ begin
       quantity = excluded.quantity;
   else
     delete from public.shop_stock_reservations where cart_item_id = new.id;
-  ALTER FUNCTION "public"."sync_shop_cart_item_reservation"() OWNER TO "postgres";
+  end if;
+
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."sync_shop_cart_item_reservation"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_auto_publish_dropship_listing"() RETURNS "trigger"
@@ -10522,6 +10397,7 @@ declare
   v_rule record;
   v_landed_cost numeric;
   v_currency_id bigint;
+  v_product_id bigint;
   v_stock_id bigint;
   v_sell_price numeric;
 begin
@@ -10583,7 +10459,16 @@ begin
             else shop_product_listings.sell_price_amount
           end,
           updated_at = now();
-      ALTER FUNCTION "public"."trg_auto_publish_dropship_listing"() OWNER TO "postgres";
+      end if;
+    end if;
+  end loop;
+
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."trg_auto_publish_dropship_listing"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_dropship_consignment"("p_order_id" bigint, "p_cod_collect_amount" numeric DEFAULT 0.00, "p_package_weight_band" "text" DEFAULT 'under_1kg'::"text", "p_item_category" "text" DEFAULT NULL::"text", "p_parcel_description" "text" DEFAULT NULL::"text", "p_courier_order_ref" "text" DEFAULT NULL::"text", "p_delivery_zone" "text" DEFAULT 'inside_dhaka'::"text", "p_sender_name" "text" DEFAULT NULL::"text", "p_pickup_phone" "text" DEFAULT NULL::"text", "p_pickup_address" "text" DEFAULT NULL::"text", "p_payout_account_type" "text" DEFAULT 'bank'::"text", "p_payout_account_info" "text" DEFAULT NULL::"text", "p_allow_open_box" boolean DEFAULT false, "p_delivery_instruction_notes" "text" DEFAULT NULL::"text", "p_courier_service_id" "uuid" DEFAULT NULL::"uuid", "p_courier_tracking_number" "text" DEFAULT NULL::"text", "p_courier_awb_number" "text" DEFAULT NULL::"text", "p_courier_consignment_id" "text" DEFAULT NULL::"text", "p_tracking_url" "text" DEFAULT NULL::"text", "p_courier_cost_amount" numeric DEFAULT 0.00, "p_recipient_name" "text" DEFAULT NULL::"text", "p_recipient_phone" "text" DEFAULT NULL::"text", "p_recipient_phone_secondary" "text" DEFAULT NULL::"text", "p_shipping_address" "text" DEFAULT NULL::"text", "p_shipping_district" "text" DEFAULT NULL::"text", "p_shipping_thana" "text" DEFAULT NULL::"text", "p_delivery_charge_amount" numeric DEFAULT NULL::numeric, "p_cod_charge_amount" numeric DEFAULT NULL::numeric) RETURNS "jsonb"
@@ -10596,8 +10481,16 @@ declare
   v_recipient_profile_id bigint;
   v_delivery_charge numeric;
   v_cod_charge numeric;
-if not public.is_tenant_staff(v_order.tenant_id) then
+begin
+  select * into v_order from public.shop_orders where id = p_order_id;
+  if v_order.id is null then
+    raise exception 'Order not found';
+  end if;
+
+  if not public.is_tenant_staff(v_order.tenant_id) then
     raise exception 'access denied';
+  end if;
+
   v_delivery_charge := coalesce(p_delivery_charge_amount, p_courier_cost_amount, 0.00);
   v_cod_charge := coalesce(p_cod_charge_amount, 0.00);
 
@@ -10650,7 +10543,13 @@ if not public.is_tenant_staff(v_order.tenant_id) then
       recipient_profile_id = v_recipient_profile_id,
       updated_at = now()
     where id = p_order_id;
+  end if;
+
   return jsonb_build_object('success', true);
+end;
+$$;
+
+
 ALTER FUNCTION "public"."update_dropship_consignment"("p_order_id" bigint, "p_cod_collect_amount" numeric, "p_package_weight_band" "text", "p_item_category" "text", "p_parcel_description" "text", "p_courier_order_ref" "text", "p_delivery_zone" "text", "p_sender_name" "text", "p_pickup_phone" "text", "p_pickup_address" "text", "p_payout_account_type" "text", "p_payout_account_info" "text", "p_allow_open_box" boolean, "p_delivery_instruction_notes" "text", "p_courier_service_id" "uuid", "p_courier_tracking_number" "text", "p_courier_awb_number" "text", "p_courier_consignment_id" "text", "p_tracking_url" "text", "p_courier_cost_amount" numeric, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_phone_secondary" "text", "p_shipping_address" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_delivery_charge_amount" numeric, "p_cod_charge_amount" numeric) OWNER TO "postgres";
 
 
@@ -10661,6 +10560,7 @@ CREATE OR REPLACE FUNCTION "public"."update_shop_cart_item_price"("p_cart_item_i
 declare
   v_cart_id bigint;
   v_shop_id bigint;
+  v_tenant_id bigint;
   v_shop_type public.shop_type_enum;
   v_global_stock_allocation_id bigint;
   v_sell_price_amount numeric;
@@ -10682,21 +10582,35 @@ begin
 
   if v_cart_id is null then
     raise exception 'cart item not found';
+  end if;
+
   if not public.is_cart_owner((select customer_group_id from public.shop_carts where id = v_cart_id), v_tenant_id) then
     raise exception 'access denied';
+  end if;
+
   if v_shop_type <> 'dropship' then
     raise exception 'price updates only allowed for dropship shops';
+  end if;
+
   if p_price < 0 then
     raise exception 'price cannot be negative';
+  end if;
+
   -- Enforce minimum sell price floor
   if v_customer_sell_price_currency_id = v_min_sell_price_currency_id 
      and p_price < v_min_sell_price_amount then
     raise exception 'price cannot be lower than the minimum sell price %', v_min_sell_price_amount;
+  end if;
+
   update public.shop_cart_items
   set customer_sell_price_amount = p_price, updated_at = now()
   where id = p_cart_item_id;
 
   return public.get_or_create_shop_cart(v_shop_id);
+end;
+$$;
+
+
 ALTER FUNCTION "public"."update_shop_cart_item_price"("p_cart_item_id" bigint, "p_price" numeric) OWNER TO "postgres";
 
 
@@ -10704,50 +10618,69 @@ CREATE OR REPLACE FUNCTION "public"."update_shop_cart_item_qty"("p_cart_item_id"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-declare
+DECLARE
   v_cart_id bigint;
   v_shop_id bigint;
+  v_tenant_id bigint;
   v_shop_type public.shop_type_enum;
-  v_global_stock_allocation_id bigint;
-  v_allocated_qty integer;
-  v_other_reserved_qty integer;
+  v_product_id bigint;
+  v_listing_id bigint;
+  v_grade_tag_id bigint;
+  v_display_qty_override integer;
   v_available_to_sell integer;
-begin
-  if p_quantity <= 0 then
-    return public.remove_shop_cart_item(p_cart_item_id);
-  select ci.cart_id, ci.global_stock_allocation_id, c.shop_id, c.tenant_id, s.shop_type
-  into v_cart_id, v_global_stock_allocation_id, v_shop_id, v_tenant_id, v_shop_type
-  from public.shop_cart_items ci
-  join public.shop_carts c on c.id = ci.cart_id
-  join public.shops s on s.id = c.shop_id
-  where ci.id = p_cart_item_id;
+BEGIN
+  IF p_quantity <= 0 THEN
+    RETURN public.remove_shop_cart_item(p_cart_item_id);
+  END IF;
 
-  if v_cart_id is null then
-    raise exception 'cart item not found';
-  -- Access verification via is_cart_owner RLS trigger fallback check
-  if not public.is_cart_owner((select customer_group_id from public.shop_carts where id = v_cart_id), v_tenant_id) then
-    raise exception 'access denied';
-  -- Verify stock if stock-backed
-  if v_shop_type in ('fixed_price', 'dropship') and v_global_stock_allocation_id is not null then
-    select quantity into v_allocated_qty
-    from public.global_stock_allocations
-    where id = v_global_stock_allocation_id;
+  SELECT ci.cart_id, ci.product_id, ci.listing_id, ci.grade_tag_id,
+         c.shop_id, c.tenant_id, s.shop_type
+  INTO v_cart_id, v_product_id, v_listing_id, v_grade_tag_id,
+       v_shop_id, v_tenant_id, v_shop_type
+  FROM public.shop_cart_items ci
+  JOIN public.shop_carts c ON c.id = ci.cart_id
+  JOIN public.shops s ON s.id = c.shop_id
+  WHERE ci.id = p_cart_item_id;
 
-    select coalesce(sum(quantity), 0)
-    into v_other_reserved_qty
-    from public.shop_stock_reservations r
-    where r.global_stock_allocation_id = v_global_stock_allocation_id
-      and r.cart_item_id <> p_cart_item_id;
+  IF v_cart_id IS NULL THEN
+    RAISE EXCEPTION 'cart item not found';
+  END IF;
 
-    v_available_to_sell := v_allocated_qty - v_other_reserved_qty;
+  IF NOT public.is_cart_owner(
+    (SELECT customer_group_id FROM public.shop_carts WHERE id = v_cart_id),
+    v_tenant_id
+  ) THEN
+    RAISE EXCEPTION 'access denied';
+  END IF;
 
-    if p_quantity > v_available_to_sell then
-      raise exception 'insufficient stock: requested %, available %', p_quantity, greatest(0, v_available_to_sell);
-    update public.shop_cart_items
-  set quantity = p_quantity, updated_at = now()
-  where id = p_cart_item_id;
+  IF v_shop_type IN ('fixed_price', 'dropship') AND v_grade_tag_id IS NOT NULL THEN
+    SELECT l.display_quantity_override
+    INTO v_display_qty_override
+    FROM public.shop_product_listings l
+    WHERE l.id = coalesce(v_listing_id, -1);
 
-  return public.get_or_create_shop_cart(v_shop_id);
+    v_available_to_sell := public.shop_product_grade_available_units(
+      v_tenant_id, v_product_id, v_grade_tag_id
+    );
+    IF v_display_qty_override IS NOT NULL THEN
+      v_available_to_sell := v_display_qty_override;
+    END IF;
+
+    IF p_quantity > v_available_to_sell THEN
+      RAISE EXCEPTION 'insufficient stock: requested %, available %',
+        p_quantity, greatest(0, v_available_to_sell);
+    END IF;
+  END IF;
+
+  UPDATE public.shop_cart_items
+  SET quantity = p_quantity, updated_at = now()
+  WHERE id = p_cart_item_id;
+
+  RETURN public.get_or_create_shop_cart(v_shop_id);
+END;
+$$;
+
+
 ALTER FUNCTION "public"."update_shop_cart_item_qty"("p_cart_item_id" bigint, "p_quantity" integer) OWNER TO "postgres";
 
 
@@ -10758,6 +10691,8 @@ CREATE OR REPLACE FUNCTION "public"."upsert_customer_group_shop_profile"("p_tena
 begin
   if not public.user_can_manage_shop_tenant(p_tenant_id) then
     raise exception 'not allowed';
+  end if;
+
   return query
   insert into public.customer_group_shop_profiles (
     tenant_id,
@@ -10797,6 +10732,10 @@ begin
     default_can_set_dropship_price = excluded.default_can_set_dropship_price,
     updated_at = now()
   returning *;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."upsert_customer_group_shop_profile"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_is_active" boolean, "p_default_can_browse" boolean, "p_default_can_see_buy_price" boolean, "p_default_can_see_sell_price" boolean, "p_default_can_add_to_cart" boolean, "p_default_can_place_order" boolean, "p_default_can_negotiate" boolean, "p_default_can_view_quantity" boolean, "p_default_can_set_dropship_price" boolean) OWNER TO "postgres";
 
 
@@ -10811,25 +10750,37 @@ declare
 begin
   if not public.user_can_manage_shop_tenant(p_tenant_id) then
     raise exception 'not allowed';
+  end if;
+
   if p_pricing_method is not null and p_pricing_method not in ('direct_cost', 'markup') then
     raise exception 'invalid pricing method';
+  end if;
   if p_quantity_display_mode is not null and p_quantity_display_mode not in ('original', 'custom_override') then
     raise exception 'invalid quantity display mode';
+  end if;
   if p_markup_percentage < 0 then
     raise exception 'markup percentage must be non-negative';
+  end if;
   if coalesce(p_min_available_units, 0) < 0 then
     raise exception 'min_available_units must be non-negative';
+  end if;
+
   v_vendor_code := nullif(trim(coalesce(p_vendor_code, '')), '');
   if v_vendor_code is null
      and p_vendor_filters is not null
      and jsonb_typeof(p_vendor_filters) = 'array'
      and jsonb_array_length(p_vendor_filters) > 0 then
     v_vendor_code := nullif(trim(coalesce(p_vendor_filters->0->>'vendor_code', '')), '');
+  end if;
+
   if p_id is null then
     if p_shop_type is null then
       raise exception 'shop_type is required when creating a shop';
+    end if;
     if p_shop_type = 'dropship' and p_is_negotiable then
       raise exception 'dropship shops cannot be negotiable';
+    end if;
+
     insert into public.shops (
       tenant_id,
       name,
@@ -10887,7 +10838,6 @@ begin
       coalesce(p_min_available_units, 0)
     )
     returning * into v_result;
-
   else
     select shop_type into v_shop_type
     from public.shops
@@ -10896,8 +10846,11 @@ begin
 
     if v_shop_type is null then
       raise exception 'shop not found';
+    end if;
     if v_shop_type = 'dropship' and p_is_negotiable then
       raise exception 'dropship shops cannot be negotiable';
+    end if;
+
     update public.shops
     set
       name                            = trim(p_name),
@@ -10936,11 +10889,18 @@ begin
 
     if v_result is null then
       raise exception 'shop not found or update failed';
-    return next v_result;
+    end if;
+  end if;
+
+  return next v_result;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum", "p_vendor_code" "text", "p_id" bigint, "p_default_currency_id" bigint, "p_global_stock_type_id" bigint, "p_allow_delivery" boolean, "p_buy_currency_id" bigint, "p_sell_currency_id" bigint, "p_pricing_method" "text", "p_markup_percentage" numeric, "p_quantity_display_mode" "text", "p_default_print_charge_amount" numeric, "p_default_packing_charge_amount" numeric, "p_deduct_charges_from_margin" boolean, "p_vendor_filters" "jsonb", "p_deduct_print_from_margin" boolean, "p_deduct_packing_from_margin" boolean, "p_description" "text", "p_category_ids" bigint[], "p_min_available_units" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."upsert_shop_customer_group_access"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_can_browse" boolean DEFAULT NULL::boolean, "p_can_see_buy_price" boolean DEFAULT NULL::boolean, "p_can_see_sell_price" boolean DEFAULT NULL::boolean, "p_can_add_to_cart" boolean DEFAULT NULL::boolean, "p_can_place_order" boolean DEFAULT NULL::boolean, "p_can_negotiate" boolean DEFAULT NULL::boolean, "p_can_view_quantity" boolean DEFAULT NULL::boolean, "p_can_set_dropship_price" boolean DEFAULT NULL::boolean, "p_price_tier_code" "text" DEFAULT NULL::"text", "p_credit_limit_amount" numeric DEFAULT NULL::numeric, "p_credit_limit_currency_id" bigint DEFAULT NULL::bigint) RETURNS SETOF "public"."shop_customer_group_access"
+CREATE OR REPLACE FUNCTION "public"."upsert_shop_customer_group_access"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_can_browse" boolean DEFAULT NULL::boolean, "p_can_see_buy_price" boolean DEFAULT NULL::boolean, "p_can_see_sell_price" boolean DEFAULT NULL::boolean, "p_can_add_to_cart" boolean DEFAULT NULL::boolean, "p_can_place_order" boolean DEFAULT NULL::boolean, "p_can_negotiate" boolean DEFAULT NULL::boolean, "p_can_view_quantity" boolean DEFAULT NULL::boolean, "p_can_set_dropship_price" boolean DEFAULT NULL::boolean, "p_price_tier_code" "text" DEFAULT NULL::"text", "p_credit_limit_amount" numeric DEFAULT NULL::numeric, "p_credit_limit_currency_id" bigint DEFAULT NULL::bigint, "p_can_see_resell_minimum_price" boolean DEFAULT NULL::boolean) RETURNS SETOF "public"."shop_customer_group_access"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -10953,12 +10913,18 @@ begin
 
   if v_tenant_id is null then
     raise exception 'shop not found';
+  end if;
+
   if not public.user_can_manage_shop_tenant(v_tenant_id)
      and not public.user_can_manage_shop_tenant(public.resolve_parent_tenant_id(v_tenant_id))
      and not public.is_superadmin() then
     raise exception 'not allowed';
+  end if;
+
   if (p_credit_limit_amount is null) <> (p_credit_limit_currency_id is null) then
     raise exception 'both credit_limit_amount and credit_limit_currency_id must be provided together or be null';
+  end if;
+
   return query
   insert into public.shop_customer_group_access (
     shop_id,
@@ -10967,6 +10933,7 @@ begin
     can_browse,
     can_see_buy_price,
     can_see_sell_price,
+    can_see_resell_minimum_price,
     can_add_to_cart,
     can_place_order,
     can_negotiate,
@@ -10983,6 +10950,7 @@ begin
     p_can_browse,
     p_can_see_buy_price,
     p_can_see_sell_price,
+    p_can_see_resell_minimum_price,
     p_can_add_to_cart,
     p_can_place_order,
     p_can_negotiate,
@@ -10997,6 +10965,7 @@ begin
     can_browse = excluded.can_browse,
     can_see_buy_price = excluded.can_see_buy_price,
     can_see_sell_price = excluded.can_see_sell_price,
+    can_see_resell_minimum_price = excluded.can_see_resell_minimum_price,
     can_add_to_cart = excluded.can_add_to_cart,
     can_place_order = excluded.can_place_order,
     can_negotiate = excluded.can_negotiate,
@@ -11007,6 +10976,10 @@ begin
     credit_limit_currency_id = excluded.credit_limit_currency_id,
     updated_at = now()
   returning *;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."upsert_shop_customer_group_access"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_can_browse" boolean, "p_can_see_buy_price" boolean, "p_can_see_sell_price" boolean, "p_can_add_to_cart" boolean, "p_can_place_order" boolean, "p_can_negotiate" boolean, "p_can_view_quantity" boolean, "p_can_set_dropship_price" boolean, "p_price_tier_code" "text", "p_credit_limit_amount" numeric, "p_credit_limit_currency_id" bigint) OWNER TO "postgres";
 
 
@@ -11020,8 +10993,12 @@ begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id;
   if v_tenant_id is null then
     raise exception 'shop not found';
+  end if;
+
   if not public.user_can_manage_shop_tenant(v_tenant_id) then
     raise exception 'not allowed';
+  end if;
+
   return query
   insert into public.shop_pricing_rules (
     tenant_id,
@@ -11040,6 +11017,10 @@ begin
     is_auto_publish = excluded.is_auto_publish,
     updated_at = now()
   returning *;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_is_auto_publish" boolean) OWNER TO "postgres";
 
 
@@ -11053,8 +11034,12 @@ begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id;
   if v_tenant_id is null then
     raise exception 'shop not found';
+  end if;
+
   if not public.user_can_manage_shop_tenant(v_tenant_id) then
     raise exception 'not allowed';
+  end if;
+
   return query
   insert into public.shop_pricing_rules (
     tenant_id,
@@ -11076,6 +11061,10 @@ begin
     default_show_quantity = excluded.default_show_quantity,
     updated_at = now()
   returning *;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_is_auto_publish" boolean, "p_default_show_quantity" boolean) OWNER TO "postgres";
 
 
@@ -11089,8 +11078,12 @@ begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id;
   if v_tenant_id is null then
     raise exception 'shop not found';
+  end if;
+
   if not public.user_can_manage_shop_tenant(v_tenant_id) then
     raise exception 'not allowed';
+  end if;
+
   return query
   insert into public.shop_pricing_rules (
     tenant_id,
@@ -11115,6 +11108,10 @@ begin
     default_add_quantity = excluded.default_add_quantity,
     updated_at = now()
   returning *;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_is_auto_publish" boolean, "p_default_show_quantity" boolean, "p_default_add_quantity" integer) OWNER TO "postgres";
 
 
@@ -11128,8 +11125,12 @@ begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id;
   if v_tenant_id is null then
     raise exception 'shop not found';
+  end if;
+
   if not public.user_can_manage_shop_tenant(v_tenant_id) then
     raise exception 'not allowed';
+  end if;
+
   return query
   insert into public.shop_pricing_rules (
     tenant_id,
@@ -11157,6 +11158,10 @@ begin
     dropship_markup_percentage = excluded.dropship_markup_percentage,
     updated_at = now()
   returning *;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_is_auto_publish" boolean, "p_default_show_quantity" boolean, "p_default_add_quantity" integer, "p_dropship_markup_percentage" numeric) OWNER TO "postgres";
 
 
@@ -11166,10 +11171,13 @@ CREATE OR REPLACE FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" 
     AS $$
 declare
   v_global_stock_id bigint;
-  begin
+  v_product_id bigint;
+begin
   -- Caller must be admin/staff of this tenant
   if not public.user_can_manage_shop_tenant(p_tenant_id) then
     raise exception 'not allowed';
+  end if;
+
   -- Resolve denormalized IDs
   select gsa.stock_id, gsi.product_id
   into v_global_stock_id, v_product_id
@@ -11180,9 +11188,13 @@ declare
 
   if v_global_stock_id is null or v_product_id is null then
     raise exception 'invalid global stock allocation';
+  end if;
+
   -- Dropship dual money constraint
   if (p_minimum_sell_price_amount is null) <> (p_minimum_sell_price_currency_id is null) then
     raise exception 'both minimum_sell_price_amount and minimum_sell_price_currency_id must be provided together or be null';
+  end if;
+
   return query
   insert into public.shop_product_listings (
     id,
@@ -11225,6 +11237,10 @@ declare
     is_active = excluded.is_active,
     updated_at = now()
   returning *;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" bigint, "p_shop_id" bigint, "p_global_stock_allocation_id" bigint, "p_sell_price_amount" numeric, "p_sell_price_currency_id" bigint, "p_minimum_sell_price_amount" numeric, "p_minimum_sell_price_currency_id" bigint, "p_show_quantity" boolean, "p_display_quantity_override" integer, "p_is_active" boolean, "p_id" bigint) OWNER TO "postgres";
 
 
@@ -11242,6 +11258,8 @@ declare
 begin
   if not public.user_can_manage_shop_tenant(p_tenant_id) then
     raise exception 'not allowed';
+  end if;
+
   -- Resolve stock & product id from allocation by joining global_stocks and global_shipment_items
   select gsa.stock_id, gsi.product_id
   into v_global_stock_id, v_product_id
@@ -11252,11 +11270,15 @@ begin
 
   if v_global_stock_id is null then
     raise exception 'allocation not found';
+  end if;
+
   if p_id is not null then
     select * into v_existing from public.shop_product_listings where id = p_id;
   else
     select * into v_existing from public.shop_product_listings
     where shop_id = p_shop_id and global_stock_allocation_id = p_global_stock_allocation_id;
+  end if;
+
   v_price_locked := coalesce(p_is_price_locked, v_existing.is_price_locked, false);
   v_qty_locked := coalesce(p_is_quantity_locked, v_existing.is_quantity_locked, false);
   v_override_type := coalesce(p_quantity_override_type, v_existing.quantity_override_type, 'absolute');
@@ -11315,7 +11337,12 @@ begin
       v_override_type
     )
     returning *;
-  ALTER FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" bigint, "p_shop_id" bigint, "p_global_stock_allocation_id" bigint, "p_sell_price_amount" numeric, "p_sell_price_currency_id" bigint, "p_minimum_sell_price_amount" numeric, "p_minimum_sell_price_currency_id" bigint, "p_show_quantity" boolean, "p_display_quantity_override" integer, "p_is_active" boolean, "p_id" bigint, "p_is_price_locked" boolean, "p_is_quantity_locked" boolean, "p_quantity_override_type" "text") OWNER TO "postgres";
+  end if;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" bigint, "p_shop_id" bigint, "p_global_stock_allocation_id" bigint, "p_sell_price_amount" numeric, "p_sell_price_currency_id" bigint, "p_minimum_sell_price_amount" numeric, "p_minimum_sell_price_currency_id" bigint, "p_show_quantity" boolean, "p_display_quantity_override" integer, "p_is_active" boolean, "p_id" bigint, "p_is_price_locked" boolean, "p_is_quantity_locked" boolean, "p_quantity_override_type" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" bigint, "p_shop_id" bigint, "p_global_stock_allocation_id" bigint DEFAULT NULL::bigint, "p_sell_price_amount" numeric DEFAULT NULL::numeric, "p_sell_price_currency_id" bigint DEFAULT NULL::bigint, "p_minimum_sell_price_amount" numeric DEFAULT NULL::numeric, "p_minimum_sell_price_currency_id" bigint DEFAULT NULL::bigint, "p_show_quantity" boolean DEFAULT NULL::boolean, "p_display_quantity_override" integer DEFAULT NULL::integer, "p_is_active" boolean DEFAULT true, "p_id" bigint DEFAULT NULL::bigint, "p_is_price_locked" boolean DEFAULT NULL::boolean, "p_is_quantity_locked" boolean DEFAULT NULL::boolean, "p_quantity_override_type" "text" DEFAULT NULL::"text", "p_global_stock_id" bigint DEFAULT NULL::bigint) RETURNS SETOF "public"."shop_product_listings"
@@ -11334,10 +11361,14 @@ begin
      and not public.user_can_manage_shop_tenant(public.resolve_parent_tenant_id(p_tenant_id))
      and not public.is_superadmin() then
     raise exception 'not allowed';
+  end if;
+
   v_target_stock_id := coalesce(p_global_stock_id, p_global_stock_allocation_id);
 
   if v_target_stock_id is null then
     raise exception 'global stock not found';
+  end if;
+
   select gsi.product_id into v_product_id
   from public.global_stocks gs
   join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
@@ -11345,11 +11376,15 @@ begin
 
   if v_product_id is null then
     raise exception 'global stock not found';
+  end if;
+
   if p_id is not null then
     select * into v_existing from public.shop_product_listings where id = p_id;
   else
     select * into v_existing from public.shop_product_listings
     where shop_id = p_shop_id and global_stock_id = v_target_stock_id;
+  end if;
+
   v_price_locked := coalesce(p_is_price_locked, v_existing.is_price_locked, false);
   v_qty_locked := coalesce(p_is_quantity_locked, v_existing.is_quantity_locked, false);
   v_override_type := coalesce(p_quantity_override_type, v_existing.quantity_override_type, 'absolute');
@@ -11373,6 +11408,8 @@ begin
     where id = v_existing.id
     returning *;
     return;
+  end if;
+
   return query
   insert into public.shop_product_listings (
     tenant_id,
@@ -11408,6 +11445,10 @@ begin
     v_override_type
   )
   returning *;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" bigint, "p_shop_id" bigint, "p_global_stock_allocation_id" bigint, "p_sell_price_amount" numeric, "p_sell_price_currency_id" bigint, "p_minimum_sell_price_amount" numeric, "p_minimum_sell_price_currency_id" bigint, "p_show_quantity" boolean, "p_display_quantity_override" integer, "p_is_active" boolean, "p_id" bigint, "p_is_price_locked" boolean, "p_is_quantity_locked" boolean, "p_quantity_override_type" "text", "p_global_stock_id" bigint) OWNER TO "postgres";
 
 
@@ -11423,6 +11464,9 @@ CREATE OR REPLACE FUNCTION "public"."user_can_manage_shop_tenant"("p_tenant_id" 
       and m.is_active = true
       and m.role in ('admin', 'staff')
   );
+$$;
+
+
 ALTER FUNCTION "public"."user_can_manage_shop_tenant"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -11433,6 +11477,7 @@ CREATE OR REPLACE FUNCTION "public"."release_dropship_order_stock"("p_order_id" 
 declare
   v_order public.shop_orders%rowtype;
   v_item record;
+  v_pick record;
   v_skip_stock_release boolean := false;
   v_invoice_status public.global_invoice_status;
   v_parent_tenant_id bigint;
@@ -11440,14 +11485,11 @@ declare
   v_new_override_qty integer;
   v_new_sellable_qty integer;
   v_grade_tag_id bigint;
+  v_held_stock_id bigint;
+  v_release_qty integer;
 begin
-  select * into v_order
-  from public.shop_orders
-  where id = p_order_id;
-
-  if v_order.id is null then
-    return;
-  end if;
+  select * into v_order from public.shop_orders where id = p_order_id;
+  if v_order.id is null then return; end if;
 
   if coalesce(v_order.shop_type_snapshot, (
     select shop_type from public.shops where id = v_order.shop_id
@@ -11457,9 +11499,7 @@ begin
 
   if v_order.global_invoice_id is not null then
     select invoice_status into v_invoice_status
-    from public.global_invoices
-    where id = v_order.global_invoice_id;
-
+    from public.bills where id = v_order.global_invoice_id;
     if v_invoice_status = 'issued'::public.global_invoice_status then
       v_skip_stock_release := true;
     end if;
@@ -11467,8 +11507,40 @@ begin
 
   v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
 
-  for v_item in
-    select * from public.shop_order_items where order_id = p_order_id
+  if not v_skip_stock_release then
+    for v_pick in
+      select * from public.shop_order_item_stock_picks where order_id = p_order_id
+    loop
+      if v_pick.held_stock_id is null then continue; end if;
+
+      v_held_stock_id := v_pick.held_stock_id;
+      v_release_qty := v_pick.quantity;
+
+      update public.shop_order_item_stock_picks
+      set held_stock_id = null, updated_at = now()
+      where id = v_pick.id;
+
+      select * into v_stock from public.global_stocks where id = v_held_stock_id for update;
+      if found
+         and v_stock.availability = 'held'::public.stock_availability
+         and v_stock.quantity >= v_release_qty then
+        perform public.create_and_post_stock_movement(
+          p_tenant_id => v_parent_tenant_id,
+          p_stock_id => v_stock.id,
+          p_quantity => v_release_qty,
+          p_to_location_id => v_stock.location_id,
+          p_to_availability => 'sellable'::public.stock_availability,
+          p_to_grade_tag_id => v_stock.grade_tag_id,
+          p_movement_type => 'availability_transfer'::public.stock_movement_type,
+          p_notes => 'Dropship order release (pick)',
+          p_reference_type => 'shop_order',
+          p_reference_id => p_order_id::text
+        );
+      end if;
+    end loop;
+  end if;
+
+  for v_item in select * from public.shop_order_items where order_id = p_order_id
   loop
     v_grade_tag_id := coalesce(
       v_item.grade_tag_id,
@@ -11480,43 +11552,29 @@ begin
       if v_item.listing_id is not null then
         update public.shop_product_listings
         set display_quantity_override = display_quantity_override + v_item.quantity
-        where id = v_item.listing_id
-          and display_quantity_override is not null;
-      elsif v_item.product_id is not null and v_item.global_stock_id is not null then
-        update public.shop_product_listings
-        set display_quantity_override = display_quantity_override + v_item.quantity
-        where shop_id = v_order.shop_id
-          and product_id = v_item.product_id
-          and global_stock_id = v_item.global_stock_id
-          and display_quantity_override is not null;
-      elsif v_item.product_id is not null and v_item.global_stock_allocation_id is not null then
-        update public.shop_product_listings
-        set display_quantity_override = display_quantity_override + v_item.quantity
-        where shop_id = v_order.shop_id
-          and product_id = v_item.product_id
-          and global_stock_allocation_id = v_item.global_stock_allocation_id
-          and display_quantity_override is not null;
+        where id = v_item.listing_id and display_quantity_override is not null;
       end if;
     end if;
 
-    if not v_skip_stock_release and v_item.global_stock_id is not null then
-      select * into v_stock
-      from public.global_stocks
-      where id = v_item.global_stock_id
-      for update;
-
+    if not v_skip_stock_release
+       and v_item.global_stock_id is not null
+       and not exists (
+         select 1 from public.shop_order_item_stock_picks sp
+         where sp.order_item_id = v_item.id
+       ) then
+      select * into v_stock from public.global_stocks where id = v_item.global_stock_id for update;
       if found
          and v_stock.availability = 'held'::public.stock_availability
-         and v_stock.quantity >= v_item.quantity then
+         and v_stock.quantity >= coalesce(v_item.confirmed_quantity, v_item.quantity) then
         perform public.create_and_post_stock_movement(
           p_tenant_id => v_parent_tenant_id,
           p_stock_id => v_stock.id,
-          p_quantity => v_item.quantity,
+          p_quantity => coalesce(v_item.confirmed_quantity, v_item.quantity),
           p_to_location_id => v_stock.location_id,
           p_to_availability => 'sellable'::public.stock_availability,
           p_to_grade_tag_id => v_stock.grade_tag_id,
           p_movement_type => 'availability_transfer'::public.stock_movement_type,
-          p_notes => 'Dropship order release',
+          p_notes => 'Dropship order release (legacy line)',
           p_reference_type => 'shop_order',
           p_reference_id => p_order_id::text
         );
@@ -11527,55 +11585,10 @@ begin
       v_new_sellable_qty := public.shop_product_grade_available_units(
         v_order.tenant_id, v_item.product_id, v_grade_tag_id
       );
-
       select display_quantity_override into v_new_override_qty
-      from public.shop_product_listings
-      where id = v_item.listing_id;
-
+      from public.shop_product_listings where id = v_item.listing_id;
       if coalesce(v_new_override_qty, v_new_sellable_qty, 0) > 0 then
-        update public.shop_product_listings
-        set is_active = true
-        where id = v_item.listing_id;
-      end if;
-    elsif v_item.product_id is not null and v_item.global_stock_id is not null then
-      v_new_sellable_qty := 0;
-      select coalesce(sum(gs.quantity), 0) into v_new_sellable_qty
-      from public.global_stocks gs
-      where gs.shipment_item_id = (
-        select shipment_item_id from public.global_stocks where id = v_item.global_stock_id
-      )
-        and gs.availability = 'sellable'::public.stock_availability;
-
-      select display_quantity_override into v_new_override_qty
-      from public.shop_product_listings
-      where shop_id = v_order.shop_id
-        and product_id = v_item.product_id
-        and global_stock_id = v_item.global_stock_id;
-
-      if coalesce(v_new_override_qty, v_new_sellable_qty, 0) > 0 then
-        update public.shop_product_listings
-        set is_active = true
-        where shop_id = v_order.shop_id
-          and product_id = v_item.product_id
-          and global_stock_id = v_item.global_stock_id;
-      end if;
-    elsif v_item.product_id is not null and v_item.global_stock_allocation_id is not null then
-      select gsa.quantity into v_new_sellable_qty
-      from public.global_stock_allocations gsa
-      where gsa.id = v_item.global_stock_allocation_id;
-
-      select display_quantity_override into v_new_override_qty
-      from public.shop_product_listings
-      where shop_id = v_order.shop_id
-        and product_id = v_item.product_id
-        and global_stock_allocation_id = v_item.global_stock_allocation_id;
-
-      if coalesce(v_new_override_qty, v_new_sellable_qty, 0) > 0 then
-        update public.shop_product_listings
-        set is_active = true
-        where shop_id = v_order.shop_id
-          and product_id = v_item.product_id
-          and global_stock_allocation_id = v_item.global_stock_allocation_id;
+        update public.shop_product_listings set is_active = true where id = v_item.listing_id;
       end if;
     end if;
   end loop;
@@ -11697,20 +11710,10 @@ $$;
 ALTER FUNCTION "public"."can_access_demand_bucket_profile"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_staff_only" boolean) OWNER TO "postgres";
 
 -- 4. Internal add (no auth — callers must validate)
-create or replace function public.add_demand_bucket_item_internal(
-  p_tenant_id bigint,
-  p_billing_profile_id bigint,
-  p_product_id bigint,
-  p_source_type public.demand_bucket_source_type,
-  p_source_id bigint default null,
-  p_snapshot jsonb default '{}'::jsonb,
-  p_quantity integer default 1
-)
-returns public.customer_demand_bucket_items
-language plpgsql
-security definer
-set search_path = public
-as $$
+CREATE OR REPLACE FUNCTION "public"."add_demand_bucket_item_internal"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint DEFAULT NULL::bigint, "p_snapshot" "jsonb" DEFAULT '{}'::"jsonb", "p_quantity" integer DEFAULT 1) RETURNS "public"."customer_demand_bucket_items"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 declare
   v_row public.customer_demand_bucket_items;
   v_name text;
@@ -11807,38 +11810,10 @@ begin
 end;
 $$;
 
-create or replace function public.list_demand_bucket_items(
-  p_tenant_id bigint,
-  p_billing_profile_id bigint,
-  p_status public.demand_bucket_status default 'open',
-  p_limit integer default 100,
-  p_offset integer default 0
-)
-returns table (
-  id bigint,
-  tenant_id bigint,
-  billing_profile_id bigint,
-  product_id bigint,
-  source_type public.demand_bucket_source_type,
-  source_id bigint,
-  name text,
-  image_url text,
-  barcode text,
-  product_code text,
-  note text,
-  quantity integer,
-  status public.demand_bucket_status,
-  popped_at timestamptz,
-  popped_into_type text,
-  popped_into_id bigint,
-  created_at timestamptz,
-  updated_at timestamptz
-)
-language plpgsql
-stable
-security definer
-set search_path = public
-as $$
+CREATE OR REPLACE FUNCTION "public"."list_demand_bucket_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_status" "public"."demand_bucket_status" DEFAULT 'open'::"public"."demand_bucket_status", "p_limit" integer DEFAULT 100, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" bigint, "tenant_id" bigint, "billing_profile_id" bigint, "product_id" bigint, "source_type" "public"."demand_bucket_source_type", "source_id" bigint, "name" "text", "image_url" "text", "barcode" "text", "product_code" "text", "note" "text", "quantity" integer, "status" "public"."demand_bucket_status", "popped_at" timestamp with time zone, "popped_into_type" "text", "popped_into_id" bigint, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 declare
   v_limit integer := greatest(coalesce(p_limit, 100), 1);
   v_offset integer := greatest(coalesce(p_offset, 0), 0);
@@ -11876,16 +11851,10 @@ begin
 end;
 $$;
 
-create or replace function public.pop_demand_bucket_item(
-  p_bucket_item_id bigint,
-  p_popped_into_type text,
-  p_popped_into_id bigint
-)
-returns public.customer_demand_bucket_items
-language plpgsql
-security definer
-set search_path = public
-as $$
+CREATE OR REPLACE FUNCTION "public"."pop_demand_bucket_item"("p_bucket_item_id" bigint, "p_popped_into_type" "text", "p_popped_into_id" bigint) RETURNS "public"."customer_demand_bucket_items"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 declare
   v_row public.customer_demand_bucket_items;
 begin
@@ -11958,14 +11927,10 @@ begin
 end;
 $$;
 
-create or replace function public.cancel_demand_bucket_item(
-  p_bucket_item_id bigint
-)
-returns public.customer_demand_bucket_items
-language plpgsql
-security definer
-set search_path = public
-as $$
+CREATE OR REPLACE FUNCTION "public"."cancel_demand_bucket_item"("p_bucket_item_id" bigint) RETURNS "public"."customer_demand_bucket_items"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 declare
   v_row public.customer_demand_bucket_items;
 begin
@@ -12053,13 +12018,10 @@ end;
 $$;
 
 
-CREATE OR REPLACE FUNCTION public.get_shop_order_dashboard_metrics(p_tenant_id bigint)
-RETURNS jsonb
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
+CREATE OR REPLACE FUNCTION "public"."get_shop_order_dashboard_metrics"("p_tenant_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 DECLARE
   v_today date;
   v_sales numeric := 0;
@@ -12085,7 +12047,7 @@ BEGIN
     coalesce(sum(si.total_amount), 0),
     count(*)
   INTO v_sales, v_invoice_count
-  FROM public.sales_invoices si
+  FROM public.bills si
   WHERE si.issued_by_tenant_id = p_tenant_id
     AND si.invoice_status = 'issued'::public.global_invoice_status
     AND si.invoice_date = v_today;
@@ -12207,7 +12169,7 @@ BEGIN
       date_trunc('hour', timezone('Asia/Dhaka', si.created_at)) AS hour_at,
       to_char(timezone('Asia/Dhaka', si.created_at), 'HH12 AM') AS label,
       round(sum(si.total_amount), 2) AS amount
-    FROM public.sales_invoices si
+    FROM public.bills si
     WHERE si.issued_by_tenant_id = p_tenant_id
       AND si.invoice_status = 'issued'::public.global_invoice_status
       AND si.invoice_date = v_today

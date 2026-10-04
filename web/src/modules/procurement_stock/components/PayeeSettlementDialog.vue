@@ -216,7 +216,7 @@ const fetchWalletBalance = async () => {
   loadingBalance.value = true;
   try {
     const { data } = await supabase
-      .from('wallet_accounts')
+      .from('cashbook_accounts')
       .select('available_balance')
       .eq('entity_type', props.entityType)
       .eq('entity_id', props.entityId)

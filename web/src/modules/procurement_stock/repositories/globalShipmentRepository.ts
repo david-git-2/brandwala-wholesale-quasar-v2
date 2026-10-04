@@ -777,8 +777,8 @@ const checkShipmentInvoiceReferences = async (shipmentId: number): Promise<strin
 
   const itemIds = items.map((i) => i.id);
   const { data, error } = await db
-    .from('sales_invoice_items')
-    .select('invoice_id, sales_invoices(invoice_no)')
+    .from('bill_lines')
+    .select('invoice_id, sales_invoices:bills(invoice_no)')
     .in('shipment_item_id', itemIds);
 
   if (error) throw error;

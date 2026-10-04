@@ -31,8 +31,7 @@ Move one domain per change; delete moved objects from `public.sql` in the same c
 | **permissions** | `supabase/schemas/permissions/` | Stub | Grants / `has_module_action` |
 | **shop** | `supabase/schemas/shop/` | Absorbed | Config + orders live in **split** `shop_order/`; no separate `public.sql` copy |
 | **tag** | `supabase/schemas/tag/` | Stub | Taxonomy |
-| **sales_invoice** | `supabase/schemas/sales_invoice/` | **Split** | Sales invoices, line items, billing RPCs |
-| **wallet** | `supabase/schemas/wallet/` | Pending | `universal_wallet_ledger`, customer/vendor balance books |
+| **bills_pays** | `supabase/schemas/bills_pays/` | **Split** | `bills`, `bill_lines`, `bill_charges`, `pays`, `pay_instruments`, `pay_allocations`, `cashbook_accounts`, `cashbook_entries`, `profiles`, `billing_profiles`; bill/pay/cashbook RPCs. Replaces old `sales_invoice/` + wallet ledger in `public.sql` |
 | **customer** | `supabase/schemas/customer/` | Pending | Customer accounts, addresses, credit profiles |
 | **products** | `supabase/schemas/products/` | Pending | Products catalog, variations, tags, categories |
 | **reporting** | `supabase/schemas/reporting/` | Pending | Treasury, profit reports, COD reconciliation RPCs |

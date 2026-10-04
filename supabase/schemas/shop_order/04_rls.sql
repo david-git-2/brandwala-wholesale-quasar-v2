@@ -281,12 +281,6 @@ GRANT ALL ON FUNCTION "public"."confirm_dropship_delivered_costing"("p_order_id"
 GRANT ALL ON FUNCTION "public"."confirm_shop_order"("p_order_id" bigint) TO "authenticated";
 
 
-GRANT ALL ON FUNCTION "public"."create_dropship_invoice"("p_order_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_note" "text") TO "authenticated";
-
-
-GRANT ALL ON FUNCTION "public"."create_dual_invoice_from_dropship_order"("p_order_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_note" "text") TO "authenticated";
-
-
 REVOKE ALL ON FUNCTION "public"."customer_can_select_shop"("p_shop_id" bigint, "p_tenant_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."customer_can_select_shop"("p_shop_id" bigint, "p_tenant_id" bigint) TO "authenticated";
 
@@ -347,9 +341,7 @@ GRANT ALL ON FUNCTION "public"."save_dropship_settlement_draft"("p_tenant_id" bi
 GRANT ALL ON FUNCTION "public"."mark_dropship_order_delivered"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."ensure_dropship_courier_cod_receivable"("p_order_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."ensure_dropship_courier_cod_receivable"("p_order_id" bigint) TO "service_role";
-GRANT ALL ON FUNCTION "public"."issue_dropship_tenant_b2b_invoice"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."ship_dropship_order_and_issue_merchant_bill"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."ensure_dropship_tenant_b2b_invoice_at_delivered"("p_order_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."record_dropship_courier_bank_transfer"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."transfer_dropship_reseller_profit"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") TO "authenticated";
 

@@ -1582,21 +1582,6 @@ ALTER TABLE ONLY "public"."product_based_costing_items"
 
 
 
-ALTER TABLE ONLY "public"."sales_invoice_items"
-    ADD CONSTRAINT "global_invoice_items_global_stock_id_fkey" FOREIGN KEY ("global_stock_id") REFERENCES "public"."global_stocks"("id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."sales_invoice_items"
-    ADD CONSTRAINT "global_invoice_items_shipment_item_id_fkey" FOREIGN KEY ("shipment_item_id") REFERENCES "public"."global_shipment_items"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."sales_return_items"
-    ADD CONSTRAINT "global_return_items_global_stock_id_fkey" FOREIGN KEY ("global_stock_id") REFERENCES "public"."global_stocks"("id") ON DELETE RESTRICT;
-
-
-
 ALTER TABLE ONLY "public"."global_shipment_boxes"
     ADD CONSTRAINT "global_shipment_boxes_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 

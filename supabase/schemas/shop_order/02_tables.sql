@@ -855,7 +855,7 @@ ALTER TABLE ONLY "public"."shop_orders"
 
 
 ALTER TABLE ONLY "public"."shop_orders"
-    ADD CONSTRAINT "shop_orders_global_invoice_id_fkey" FOREIGN KEY ("global_invoice_id") REFERENCES "public"."sales_invoices"("id") ON DELETE SET NULL;
+    ADD CONSTRAINT "shop_orders_global_invoice_id_fkey" FOREIGN KEY ("global_invoice_id") REFERENCES "public"."bills"("id") ON DELETE SET NULL;
 
 
 ALTER TABLE ONLY "public"."shop_orders"

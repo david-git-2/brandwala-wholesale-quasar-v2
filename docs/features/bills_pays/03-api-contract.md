@@ -7,7 +7,7 @@ Spec tables: [02](02-data-model.md) (`bills`, `pays`, `profiles`, `cashbook_*`).
 
 ## 1. Unified Creation RPC: `create_sales_invoice_from_payload`
 
-Creates a **bill** with header, lines, and optional `issue`. `sell_price_amount` is **tenant sell** only. Issue does not record payment. Live SQL: `supabase/schemas/sales_invoice/03_rpcs.sql`.
+Creates a **bill** with header, lines, and optional `issue`. `sell_price_amount` is **tenant sell** only. Issue does not record payment. Live SQL: `supabase/schemas/bills_pays/03_rpcs.sql`.
 
 | Who | Calls this RPC? |
 | :--- | :--- |
