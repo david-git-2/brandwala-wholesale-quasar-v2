@@ -7,7 +7,7 @@ One money pack. Layers: **bill** · **pay** · **cashbook**. Not a wallet. Table
 | | |
 | :--- | :--- |
 | Spec | `docs/features/bills_pays/` |
-| UI | **Bills** list + detail at `/app/sales/invoices`. **Payments** list, collect, remittance, payout, void at `/app/finance/payments` (`bills_pays/`). **Cashbook** blank. No bill composer on Bills desk ([BP5](00-gaps.md)). |
+| UI | **Bills**, **Payments**, and **Cashbook** desks live in `bills_pays/` (`/app/sales/invoices`, `/app/finance/payments`, `/app/wallet`). Cashbook is read-only audit (directory + ledger). No bill composer on Bills desk ([BP5](00-gaps.md)). |
 | SQL | Live names in [02 rename map](02-data-model.md#rename-map-spec--live) |
 | Access | `app`; `shop` merchant statement |
 | Model | BW — [business-models](../../architecture/business-models.md) |

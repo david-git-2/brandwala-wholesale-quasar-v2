@@ -28,7 +28,7 @@ export const moneyUiRedirectRoutes: RouteRecordRaw[] = [
     redirect: appDashboardPath,
   },
   {
-    path: '/:tenantSlug?/app/wallet/:pathMatch(.*)*',
+    path: '/:tenantSlug?/app/wallet/entity/:pathMatch(.*)*',
     redirect: appDashboardPath,
   },
   {

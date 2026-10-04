@@ -35,4 +35,11 @@
 | **`RemitPayPage`** | Post remittance | `dropshipFinanceRepository.confirmCourierRemittance` | `RPC: record_dropship_courier_remittance` | `paysQueryKeys` |
 | **`PayoutPayPage`** | Submit payout | `paysRepository.dispenseMiddlemanPayout` | `RPC: dispense_middleman_payout_from_tenant` | `paysQueryKeys` |
 | **`PayDetailPage`** | Void | `useVoidPayMutation` | `RPC: void_customer_receipt` | `paysQueryKeys` + `billsQueryKeys` |
-| *(later)* **`CashbookPage`** | Ledger browse | — | `cashbook_entries` / ledger RPCs | BP5 |
+## C. Cashbook
+
+| Page / Component | UI Control / Action | Triggered Hook / Method | Backend RPC / Operation | Cache Invalidation |
+| :--- | :--- | :--- | :--- | :--- |
+| **`CashbookPage`** | Party type pills / search | `useCashbookEntitiesQuery` | `RPC: list_wallet_entities_for_staff`; **Us** tab → `get_wallet_detail_for_staff` (`tenant`) | `cashbookQueryKeys` |
+| **`CashbookPartyPage`** | Mount balances | `useCashbookPartyQuery` → detail | `RPC: get_wallet_detail_for_staff` | `cashbookQueryKeys.detail` |
+| **`CashbookPartyPage`** | Ledger list | `useCashbookPartyQuery` → ledger | `RPC: list_wallet_ledger_for_staff` | `cashbookQueryKeys.ledger` |
+| *(later)* reverse / manual | — | — | `reverse_wallet_ledger_entry_for_staff` / `record_ledger_transaction` | US-6 / BP2 |

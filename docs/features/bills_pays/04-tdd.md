@@ -1,6 +1,6 @@
 # Bills & pays — TDD
 
-Code: **Bills + Payments** `web/src/modules/bills_pays/`. Bill reads/writes reuse `web/src/modules/sales_invoice/repositories/invoiceRepository.ts`. Pays: `bills_pays/repositories/paysRepository.ts`. Dropship remittance: `shop_order/repositories/dropshipFinanceRepository.ts`. **Cashbook** page still blank.
+Code: **Bills + Payments + Cashbook** `web/src/modules/bills_pays/`. Bill reads/writes reuse `invoiceRepository.ts`. Pays: `paysRepository.ts`. Cashbook: `cashbookRepository.ts` (live RPC names `wallet_*` until BP2). Dropship remittance: `dropshipFinanceRepository.ts`.
 
 ## A. Bill desk
 
@@ -46,6 +46,26 @@ web/src/modules/bills_pays/
 └── services/
     └── paysQueryKeys.ts
 ```
+
+## C. Cashbook desk (read-only)
+
+```text
+web/src/modules/bills_pays/
+├── pages/
+│   ├── CashbookPage.vue
+│   └── CashbookPartyPage.vue
+├── components/
+│   └── CashbookEntityRow.vue
+├── composables/
+│   ├── useCashbookEntitiesQuery.ts
+│   └── useCashbookPartyQuery.ts
+├── repositories/
+│   └── cashbookRepository.ts
+└── services/
+    └── cashbookQueryKeys.ts
+```
+
+Ledger rows are not deleted in UI; **reverse** and manual credit/debit stay out of scope until US-6.
 
 ---
 

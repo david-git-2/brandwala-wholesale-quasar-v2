@@ -83,6 +83,13 @@ const billsPaysRoutes: RouteRecordRaw[] = [
         meta: { hasPageToolbar: true, title: 'Cashbook', headerTitle: 'Cashbook' },
         beforeEnter: guard('universal_wallet'),
       },
+      {
+        path: ':entityType/:entityId',
+        name: 'app-cashbook-party-page',
+        component: () => import('../pages/CashbookPartyPage.vue'),
+        meta: { hasPageToolbar: true, title: 'Cashbook', headerTitle: 'Cashbook' },
+        beforeEnter: guard('universal_wallet'),
+      },
     ],
   },
 ];
