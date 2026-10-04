@@ -5,9 +5,9 @@ alwaysApply: true
 
 # Docs first
 
-1. Read `docs/README.md`. Then that module’s `01-prd.md` and `00-gaps.md`. Then files you will edit.
-2. Do not read other modules, `doc/brand-theme.md`, or `supabase/migrations/` for current SQL.
-3. Load that folder’s `02`–`05` only when you need tables, RPCs, or button wiring.
+1. Read `docs/README.md`. Then that module’s `spec.md` and `00-gaps.md`. Then files you will edit.
+2. Do not read other modules or `doc/brand-theme.md`.
+3. **SQL today** = `supabase/schemas/` (or `public.sql`). Grep one symbol. Never glob, list, or bulk-read `supabase/migrations/`. Open a migration only when creating/reviewing **that** new file, or when a reset error names it. Copy RPC bodies from schemas, never from old migrations. For tables, RPCs, and button wiring, grep schemas and `web/src/modules/<name>/`.
 4. Copy the pattern in the module for **data** (RPCs, statuses, grants, stock tables). For **page chrome**, copy ops list layout (`InboundShipmentListPage.vue` / `docs/guides/ui-standards.md`), not hub pages with `AppPageHeader`.
 5. Missing or conflicting fact → stop, no code:
 

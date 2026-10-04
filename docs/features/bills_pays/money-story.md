@@ -1,8 +1,8 @@
 # Bill → pay (worked example)
 
-Same SKU. Shipment cost stays on the **shipment**. GP = [shipment P&L](../reporting_treasury/01-prd.md).
+Same SKU. Shipment cost stays on the **shipment**. GP = [shipment P&L](../reporting_treasury/spec.md).
 
-Layers: **profile · bill · pay · alloc · cashbook**. Not a wallet. Tables: [02](02-data-model.md).
+Layers: **profile · bill · pay · alloc · cashbook**. Not a wallet. Rename map: [spec](spec.md#rename-map-spec--live).
 
 Same `bills` table. **Different paper.** Do not mix desks. Delivery paper **proforma** is not issued.
 

@@ -31,6 +31,25 @@
         <!-- Right Header Actions: Minimalist text/ghost buttons -->
         <div class="row items-center q-gutter-x-md no-wrap">
           <!-- Dark Mode Toggle Button with Icon + Label -->
+          <div class="doc-header-tabs">
+            <button
+              type="button"
+              class="doc-header-link-btn"
+              :class="{ 'doc-header-link-btn--active': viewTab === 'docs' }"
+              @click="viewTab = 'docs'"
+            >
+              Docs
+            </button>
+            <button
+              type="button"
+              class="doc-header-link-btn"
+              :class="{ 'doc-header-link-btn--active': viewTab === 'schema' }"
+              @click="viewTab = 'schema'"
+            >
+              Schema
+            </button>
+          </div>
+
           <button class="doc-header-link-btn" @click="toggleDark">
             <q-icon :name="isDark ? 'light_mode' : 'dark_mode'" size="15px" class="q-mr-xs" />
             <span>{{ isDark ? 'Light' : 'Dark' }}</span>
@@ -207,7 +226,7 @@
 
     <!-- Right-hand Table of Contents: Completely Borderless Floating Column -->
     <q-drawer
-      v-if="activeDoc && activeDoc.headings.length > 0"
+      v-if="viewTab === 'docs' && activeDoc && activeDoc.headings.length > 0"
       side="right"
       v-model="rightDrawerOpen"
       show-if-above
@@ -250,7 +269,10 @@
 
     <!-- Main Content Canvas -->
     <q-page-container class="doc-main-container">
-      <q-page class="doc-prose-page" v-if="activeDoc">
+      <q-page v-if="viewTab === 'schema'" class="doc-prose-page">
+        <DevSchemaPanel />
+      </q-page>
+      <q-page class="doc-prose-page" v-else-if="activeDoc">
         <div class="doc-prose-wrapper">
           <!-- Rendered Prose View -->
           <article
@@ -299,6 +321,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { marked } from 'marked';
 import { getAllDocs, groupDocsByCategory, type DocItem, type DocCategoryGroup } from 'src/lib/docsLoader';
+import DevSchemaPanel from 'src/components/dev/DevSchemaPanel.vue';
 
 const $q = useQuasar();
 const route = useRoute();
@@ -307,6 +330,7 @@ const router = useRouter();
 // Layout state
 const leftDrawerOpen = ref(true);
 const rightDrawerOpen = ref(true);
+const viewTab = ref<'docs' | 'schema'>('docs');
 const searchQuery = ref('');
 const selectedBadge = ref<string | null>(null);
 const activeHeadingId = ref<string>('');
@@ -401,11 +425,8 @@ function getDocTreeSlug(doc: DocItem): string {
     return fileName;
   }
   if (doc.path.startsWith('docs/features/')) {
-    if (doc.badge === 'PRD') return '01-prd';
-    if (doc.badge === 'Data Model' || doc.badge === 'Schema') return '02-data-model';
-    if (doc.badge === 'API Contract') return '03-api-contract';
-    if (doc.badge === 'TDD') return '04-tdd';
-    if (doc.badge === 'Matrix') return '05-matrix';
+    if (doc.badge === 'PRD') return 'spec';
+    if (doc.badge === 'Gaps') return '00-gaps';
     if (doc.badge === 'Fix Plan') return 'fix-plan';
   }
   if (fileName === 'README') return 'Overview';
@@ -742,6 +763,17 @@ body.body--dark .doc-pill-tag {
   background-color: #18181b;
   border-color: #27272a;
   color: #a1a1aa;
+}
+
+.doc-header-tabs {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.doc-header-link-btn--active {
+  border-color: var(--bw-brand-accent, #0d6b5c);
+  color: var(--bw-brand-accent, #0d6b5c);
+  font-weight: 600;
 }
 
 .doc-header-link-btn {

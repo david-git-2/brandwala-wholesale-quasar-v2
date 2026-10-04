@@ -1,0 +1,7 @@
+# History only — current SQL is supabase/schemas/
+# Keep readable by path/grep when writing one new migration; do not index.
+supabase/migrations/
+
+# Schema dump leftovers (not live)
+supabase/schemas/*.bak
+supabase/schemas/*.pre-so3

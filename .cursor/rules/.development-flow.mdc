@@ -26,13 +26,13 @@ alwaysApply: true
 - New tables: migration → indexes → RLS → helper functions (`security definer` if cross-table) → RPCs → regenerate types
 - Permissions: `authStore.effectiveGrants` + `createAccessGuard`; server via `has_module_action()` / `membership_has_module_action()`
 - Data contract order: DB schema → UI data shapes → API/RPC contracts (backend fulfills UI, not vice versa)
-- Domain change: `docs/README.md` → module `01-prd.md` → `web/src/modules/<module>/`. New docs: `docs/STRUCTURE.md`. Missing fact: `DOC_GAP`.
+- Domain change: `docs/README.md` → module `spec.md` → `web/src/modules/<module>/`. New docs: `docs/STRUCTURE.md`. Missing fact: `DOC_GAP`.
 
 ## File structure
 - `web/src/modules/<module>/` — pages, components, stores, services, repositories, routes
 - `web/src/components/` — cross-module shared UI (`ui/` subfolder for primitives)
 - `supabase/schemas/` — current SQL ([doc/supabase-schema.md](../../doc/supabase-schema.md)); `supabase/migrations/` — history
-- `docs/README.md` + `docs/STRUCTURE.md` — index and how to add docs. Specs: `docs/features/<module>/01-prd.md`. `doc/fix/` — dated fix notes.
+- `docs/README.md` + `docs/STRUCTURE.md` — index and how to add docs. Specs: `docs/features/<module>/spec.md`. `doc/fix/` — dated fix notes.
 
 ## Naming conventions
 - Vue SFCs: PascalCase (`TenantPage.vue`)

@@ -19,7 +19,7 @@ Optional later: partner capital report (not one of the eight views).
 | ID | Type | Plan / doc | Code today | Fix |
 | :--- | :--- | :--- | :--- | :--- |
 | RT1 | sql_split | Reporting domain | RPCs in `public.sql` | Split later |
-| RT2 | **Done** | ACs match layers | `01-prd` US-1–3 ticked | — |
+| RT2 | **Done** | ACs match layers | [spec](spec.md) US-1–3 ticked | — |
 | RT3 | **Done** | Sales = issued `total_amount`; never COD | `p_invoice_type` on profit; snapshot `sales_by_invoice_type` | `20270928160000_reporting_money_layers_rt3_11.sql` |
 | RT4 | **Done** | Cash in = receipts only | `buyer_receipt` / `courier_remittance` on entries | same migration |
 | RT5 | **Done** | AR = billed party due | Dues + snapshot AR: `billing_profile_id` required; not wholesale-only | same migration |
@@ -35,5 +35,5 @@ Optional later: partner capital report (not one of the eight views).
 | RT15 | **Done** | Month snapshot cash tile | UWL cash | Same receipt rule as RT14 — `20270928140000_fix_report_rpcs_rt14_15.sql` |
 | RT16 | **Done** | Wallet liability | Gross customer credits | Net of reversal/void purposes — `20270928150000_fix_report_rpcs_rt16_17.sql`; entity split still RT7 |
 | RT17 | **Done** | Shipment profit | Sold-only inbound | Ordered inbound; sold % **99.8**; revenue **1,237,000** on fixture — `20270928150000_fix_report_rpcs_rt16_17.sql` |
-| RT18 | not_built | Shipment P&L minus **local costs** ([procurement US-8](../procurement_stock/01-prd.md)) | Landed / line COGS only | Subtract `global_shipment_local_costs` sum in `get_tenant_shipment_profit_report` |
-| RT19 | not_built | GP = lines **by `shipment_id`** vs shipment landed + local. No bill cost table | Invoice profit RPC: COGS = 0; bill cost table dropped ([SI5](../bills_pays/00-gaps.md) done 2026-10) | Shipment P&L UI ([01-prd](01-prd.md) US-1); align margin RPCs to shipment landed cost |
+| RT18 | not_built | Shipment P&L minus **local costs** ([procurement US-8](../procurement_stock/spec.md)) | Landed / line COGS only | Subtract `global_shipment_local_costs` sum in `get_tenant_shipment_profit_report` |
+| RT19 | not_built | GP = lines **by `shipment_id`** vs shipment landed + local. No bill cost table | Invoice profit RPC: COGS = 0; bill cost table dropped ([SI5](../bills_pays/00-gaps.md) done 2026-10) | Shipment P&L UI ([spec](spec.md) US-1); align margin RPCs to shipment landed cost |

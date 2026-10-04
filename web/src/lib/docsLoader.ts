@@ -78,7 +78,13 @@ function parseMarkdownMetadata(rawPath: string, content: string): DocItem {
 
   if (lowerPath.includes('gaps') || lowerTitle.includes('gaps')) {
     badge = 'Gaps';
-  } else if (lowerPath.includes('prd') || lowerTitle.includes('prd') || lowerTitle.includes('product requirement')) {
+  } else if (
+    fileName === 'spec' ||
+    lowerPath.endsWith('/spec.md') ||
+    lowerPath.includes('prd') ||
+    lowerTitle.includes('prd') ||
+    lowerTitle.includes('product requirement')
+  ) {
     badge = 'PRD';
   } else if (lowerPath.includes('data-model') || lowerTitle.includes('data model') || lowerTitle.includes('schema')) {
     badge = 'Data Model';

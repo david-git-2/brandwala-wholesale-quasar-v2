@@ -10,7 +10,7 @@ People say **BW**, **pre-order**, **K-beauty**, **thrift**. In code those are th
 
 | Name people use | Code / modules | What it sells | Stock | Money |
 | :--- | :--- | :--- | :--- | :--- |
-| **BW** (Brandwala wholesale) | `procurement_stock`, `products`, `sales_invoice`, `shop_order` (stock-backed shop), `customer`, `reporting_treasury`, `after_sales` | In-hand goods to B2B buyers, walk-in, dropship resellers | Parent `global_stocks`. Allocations table **retire** ([PS9](../features/procurement_stock/00-gaps.md)). Target shop sell from listings / `global_stock_id`. | **[Bills & pays](../features/bills_pays/01-prd.md)** (`bills` + `pays` + cashbook; live `sales_invoices` / ledger). Code desks `sales_invoice` / `wallet`. |
+| **BW** (Brandwala wholesale) | `procurement_stock`, `products`, `sales_invoice`, `shop_order` (stock-backed shop), `customer`, `reporting_treasury`, `after_sales` | In-hand goods to B2B buyers, walk-in, dropship resellers | Parent `global_stocks`. Allocations table **retire** ([PS9](../features/procurement_stock/00-gaps.md)). Target shop sell from listings / `global_stock_id`. | **[Bills & pays](../features/bills_pays/spec.md)** (`bills` + `pays` + cashbook; live `sales_invoices` / ledger). Code desks `sales_invoice` / `wallet`. |
 | **Pre-order** | `product_based_costing`, `costingFile`, shop catalog negotiation, `procurement_demand` | Quotes **before** goods land | No warehouse row yet. Demand list → later inbound shipment | PBC file → customer confirm → same demand desk as catalog preorders |
 | **K-beauty** | `koba` (`koba_retail`, `koba_wholesale`) | UK/K-beauty catalog, staff cart + shop cart | **Own** tables: `koba_products`, `koba_orders`, `koba_carts`. Not `global_stocks`. | Commission / profit share in `koba_retail_settings`. Not the wholesale FIFO desk. |
 | **Thrift** | `thrift` (+ submodules) | One-off garments, POS, courier COD | **Own** thrift boxes/items. Not on the global entity model. | Thrift POS + reports. Do not copy this folder into BW modules. |
@@ -47,7 +47,7 @@ Shared: tenants, grants, FX catalogs. BW money is **Bills & pays** (code desks `
 
 | Model | Spec | UI |
 | :--- | :--- | :--- |
-| BW | [procurement](../features/procurement_stock/01-prd.md), [bills & pays](../features/bills_pays/01-prd.md), [shop order](../features/shop_order/01-prd.md) | `procurement_stock/`, `sales_invoice/`, `wallet/`, `shop_order/` |
-| Pre-order | [PBC](../features/product_based_costing/01-prd.md), shop negotiation in [shop_order](../features/shop_order/01-prd.md) | `product_based_costing/`, `costingFile/`, `shop_order/` |
-| K-beauty | [global_reference PRD § Koba](../features/global_reference/01-prd.md) | `web/src/modules/koba/` |
-| Thrift | [thrift](../features/thrift/01-prd.md) | `web/src/modules/thrift/` |
+| BW | [procurement](../features/procurement_stock/spec.md), [bills & pays](../features/bills_pays/spec.md), [shop order](../features/shop_order/spec.md) | `procurement_stock/`, `sales_invoice/`, `wallet/`, `shop_order/` |
+| Pre-order | [PBC](../features/product_based_costing/spec.md), shop negotiation in [shop_order](../features/shop_order/spec.md) | `product_based_costing/`, `costingFile/`, `shop_order/` |
+| K-beauty | [global_reference § Koba](../features/global_reference/spec.md) | `web/src/modules/koba/` |
+| Thrift | [thrift](../features/thrift/spec.md) | `web/src/modules/thrift/` |

@@ -1,6 +1,6 @@
 # Shop order & dropship — gaps
 
-Open with [01-prd.md](01-prd.md). Types: `not_built` | `doc_wrong` | `sql_split`. When you ship a row: delete it.
+Open with [spec.md](spec.md). Types: `not_built` | `doc_wrong` | `sql_split`. When you ship a row: delete it.
 
 | ID | Type | Plan / doc | Code today | Fix |
 | :--- | :--- | :--- | :--- | :--- |

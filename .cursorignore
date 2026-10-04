@@ -28,6 +28,10 @@ python/data/
 # Catalog dumps (not app source)
 web/public/uk/
 
+# Schema dump leftovers (not live SQL)
+supabase/schemas/*.bak
+supabase/schemas/*.pre-so3
+
 # Logs and backups
 **/*.log
 backups/

@@ -15,7 +15,7 @@ Read **[doc/supabase-schema.md](../../../doc/supabase-schema.md)** first.
 2. Else use the first **Pending** row in `doc/supabase-schema.md`.
 3. **One domain per session.** Stop when that row is updated.
 
-Name prefixes (grep `supabase/schemas/public.sql`; also read `docs/features/<module>/02-data-model.md` if it exists):
+Name prefixes (grep `supabase/schemas/public.sql`; table names in `docs/features/<module>/spec.md` if needed):
 
 | Domain | Typical objects |
 |--------|-----------------|

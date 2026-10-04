@@ -1,6 +1,6 @@
 # UI — tokens and ops list layout
 
-Canonical UI file. New UI notes go here or in a module `01-prd`, not a second guide. Law: [STRUCTURE](../STRUCTURE.md).
+Canonical UI file. New UI notes go here or in a module `spec.md`, not a second guide. Law: [STRUCTURE](../STRUCTURE.md).
 
 ---
 

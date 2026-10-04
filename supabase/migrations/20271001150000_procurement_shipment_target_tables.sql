@@ -1,4 +1,4 @@
--- Procurement inbound target schema ([docs/features/procurement_stock/01-prd.md] US-7–US-9, [02-data-model.md]).
+-- Procurement inbound target schema (docs/features/procurement_stock/spec.md US-7–US-9).
 
 alter table public.global_shipments
   add column if not exists is_closed boolean not null default false;

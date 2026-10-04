@@ -3,7 +3,7 @@
 **Status:** Planned (not implemented)  
 **Type:** Visual identity + hierarchy. **Not** a new IA, routing map, or page layout.  
 **Surfaces:** Logged-in `shop` scope (`theme-shop`, `ShopLayout` → `WorkspaceShell`).  
-**Related:** [shop_order spec](../docs/features/shop_order/01-prd.md) · [`docs/guides/ui-standards.md`](../docs/guides/ui-standards.md)
+**Related:** [shop_order spec](../../docs/features/shop_order/spec.md) · [`docs/guides/ui-standards.md`](../../docs/guides/ui-standards.md)
 
 ---
 

@@ -7,11 +7,14 @@
 ## Supabase Database Schema Rule (Token Optimization)
 - **Current SQL**: `supabase/schemas/` (`public.sql` until a module is split). How-to & tracker: `doc/supabase-schema.md` (user says `split schema <domain>`). Module map: `docs/README.md`.
 - **TypeScript shapes**: `web/src/types/database.types.ts` (tables, columns, enums, RPC signatures — not function bodies or RLS).
-- **Do NOT Scan Migrations**: Do NOT read through all files in `supabase/migrations/*.sql` to determine active database state.
-- **New Migrations Only**: Only inspect or edit `supabase/migrations/*.sql` when writing/reviewing a generated or DML migration.
+- **Do NOT Scan Migrations**: Do not glob, list, or bulk-read `supabase/migrations/`. That folder is not in the semantic index. Active state is `supabase/schemas/` only.
+- **New Migrations Only**: Open `supabase/migrations/*.sql` only when writing/reviewing **that** generated or DML file, or when a reset error names the file.
 - **Migration Source of Truth**: When creating new RPC migrations, **ALWAYS** copy the function body from the active declarative schema in `supabase/schemas/<domain>/03_rpcs.sql`, NEVER from historical migration files in `supabase/migrations/` (to prevent resurrecting deprecated enum values like `'posted'`).
 - **Local backend commands**: Follow `.cursor/rules/supabase-local-backend.mdc`. Default after a migration: `pnpm run backend:local` + `backend:types:local`. Do **not** auto-run `backend:reset` or `backend:restore-dumps` when local already has prod data.
 - **Migration order / fresh reset**: Before adding or fixing `supabase/migrations/*.sql`, follow `.agents/skills/supabase-migration-order/SKILL.md`. Run `backend:reset` only to prove empty-DB replay (ordering fixes) or when the user asks — not after every feature.
+
+## Feature docs — `docs/features/<module>/`
+Load **`spec.md` + `00-gaps.md` only**. Tables/RPCs/UI: grep `supabase/schemas/` and `web/src/modules/<module>/`.
 
 ## Procurement module — `docs/features/procurement_stock/`
 Shipment track (7A–14B) and warehouse W1–W9 are complete.

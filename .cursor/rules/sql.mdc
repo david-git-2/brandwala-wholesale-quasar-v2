@@ -16,6 +16,7 @@ alwaysApply: false
 - For query edits: show only the changed clause(s) when possible. If the full query is needed, show it complete (queries don't usefully diff in pieces).
 
 ## Migrations
+- Never list or read the whole `supabase/migrations/` folder. Current SQL is `supabase/schemas/`.
 - **Supabase DDL:** edit `supabase/schemas/` then diff — `.cursor/rules/supabase-declarative-schema.mdc`.
 - **Supabase (`supabase/migrations/`):** follow `.cursor/rules/supabase-migrations.mdc` and `.cursor/rules/supabase-local-backend.mdc` (default `backend:local`; reset only when user asks or fixing ordering).
 - Prefer a **new** migration for features. Edit an already-applied file only to fix local fresh-reset breakage (never for normal schema work).

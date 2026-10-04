@@ -2,6 +2,8 @@
 
 All database definitions, stored procedures, RLS policies, and migrations follow modular live SQL in `supabase/schemas/`. Tracker: [doc/supabase-schema.md](../../doc/supabase-schema.md).
 
+`supabase/migrations/` is apply history for prod and local replay. It is not the live schema. Do not list or read that folder to learn tables or RPCs. Grep `supabase/schemas/`. Open one migration file only when you are adding or fixing that file.
+
 ---
 
 ## Directory structure (source of truth)
@@ -28,10 +30,11 @@ Stub folders (`wallet/`, `thrift/`, `tenants/`, …) may exist before objects ar
 
 ## Rules
 
-1. **RPC body for a new migration** comes from `supabase/schemas/<domain>/03_rpcs.sql` (or `04_rpcs.sql` in notifications). Never copy from old `migrations/` files.
-2. **Tenant isolation:** business rows carry tenant FK(s). RLS on. Access is membership + `has_module_action()`, not a `tenant_users` table name in the web app.
-3. **Ledger:** post only via `record_ledger_transaction`. No direct balance writes. No stub RPCs that skip the ledger.
-4. After changing SQL on an existing local DB (prod snapshot already loaded):
+1. Feature `spec.md` / PRD must not paste full `CREATE` or RPC bodies — link `supabase/schemas/<domain>/` instead.
+2. **RPC body for a new migration** comes from `supabase/schemas/<domain>/03_rpcs.sql` (or `04_rpcs.sql` in notifications). Never copy from old `migrations/` files.
+3. **Tenant isolation:** business rows carry tenant FK(s). RLS on. Access is membership + `has_module_action()`, not a `tenant_users` table name in the web app.
+4. **Ledger:** post only via `record_ledger_transaction`. No direct balance writes. No stub RPCs that skip the ledger.
+5. After changing SQL on an existing local DB (prod snapshot already loaded):
 
 ```bash
 pnpm run backend:local
