@@ -34,6 +34,7 @@ Skip planning chatter for trivial tasks (one-line edits, single-file reads).
 | Locate a file by name pattern             | `glob`                            | `find` recursive shell, listing all |
 | Understand "how does X work"              | Semantic search, then targeted read | Reading 10 files speculatively    |
 | Read a known function in a known file     | Targeted `read` (offset/limit)    | Full-file read on a 1k-line file    |
+| Table columns / RPC args                  | Grep `database.types.ts` or `schemas/<domain>/`, then targeted read | Full `database.types.ts` or `public.sql` |
 | Check a single command's output           | Run it once                       | Run it, then `--help`, then again   |
 
 ## 3. Batch Independent Calls

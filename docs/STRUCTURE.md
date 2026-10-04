@@ -35,7 +35,7 @@ Do **not** add `doc/<module>/*.md`. Do **not** add `docs/architecture/*` copies 
 | 4 | Grep `supabase/schemas/` + `web/src/modules/<name>/` for tables, RPCs, wiring | `supabase/migrations/` |
 | 5 | Files you will **edit** | |
 
-Live SQL = `supabase/schemas/`. Live UI = `web/src/modules/<name>/`. Specs do not replace those.
+Live SQL = `supabase/schemas/`. Live UI = `web/src/modules/<name>/`. Specs do not replace those. Never full-read `database.types.ts` or `public.sql` — grep one symbol, then targeted read.
 
 ## DOC_GAP
 

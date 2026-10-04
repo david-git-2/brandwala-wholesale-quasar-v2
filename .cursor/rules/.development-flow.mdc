@@ -12,7 +12,7 @@ alwaysApply: true
 - Auth: Google OAuth via Supabase; scoped login (`platform` | `app` | `shop`)
 - Deploy: Cloudflare Pages (`web/` root, `npm run build`, output `dist/spa`)
 - Python ETL: `python/` scripts (PC/WTS product sync) — env shared via `web/.env`
-- Types: generated at `web/src/types/database.types.ts` via `npm run backend:types` (re-export: `web/src/types/supabase.ts`)
+- Types: generated at `web/src/types/database.types.ts` via `npm run backend:types` (re-export: `web/src/types/supabase.ts`). Grep signatures only — never full-read; not proof migrations are reset-safe.
 
 ## App surfaces
 - `platform` — superadmin (`/auth/platform/login` → `/platform/dashboard`)

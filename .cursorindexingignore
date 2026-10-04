@@ -5,3 +5,13 @@ supabase/migrations/
 # Schema dump leftovers (not live)
 supabase/schemas/*.bak
 supabase/schemas/*.pre-so3
+
+# Huge generated / monolith SQL — grep by symbol; read offset/limit only
+web/src/types/database.types.ts
+web/src/types/supabase.ts
+supabase/schemas/public.sql
+
+# Not product truth / duplicate docs
+doc/brand-theme.md
+doc/BRAND_THEME_PLAN.md
+web/public/doc/

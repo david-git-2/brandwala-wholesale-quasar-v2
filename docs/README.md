@@ -56,17 +56,17 @@ Also in code, no pack: `settings/`, `navigation/`, `featureCatalog/`.
 
 ## Locked (do not reinvent)
 
-- BW stock: parent `global_stocks`. **Retire** child-quota `global_stock_allocations` (no sister stock UI). Shop/invoice still have live FKs until [PS9](features/procurement_stock/00-gaps.md). Target shop sell = listings on `global_stock_id`.
-- Pre-order is demand until received on a shipment.
-- K-beauty = `koba_*`. Thrift = `thrift_*`. Never mix into `global_stocks`.
-- Scopes: `platform` \| `app` \| `shop` \| `investor`. Grants: `effectiveGrants` + `has_module_action()`.
-- **Bills & pays** is one pack ([bills_pays spec](features/bills_pays/spec.md)). **Profile** = party. **Bill** = issued paper (take / condition / dropship merchant; AP later). Paper status `draft` / `issued` / `voided`; money `due` / `partially_paid` / `paid`. **Proforma** = Delivery maybe-paper, not a bill status. **Pay** = cash in or out. **Alloc** = pay → open bill only. **Cashbook** = leftover we owe them (and tenant/courier cash). No wallet product. Live table rename map in [spec](features/bills_pays/spec.md). Code folders `sales_invoice/` + `wallet/` are desks. No fake `wallet_posted`.
-- Invoices (AR): company-owned `global_invoices`; `issued_by_tenant_id` is the desk.
-- Wholesale **pack-out** is the **Delivery paper** desk (nav label; code `procurement_fulfill`). Optional **proforma** is not an issued bill. Stock on the paper is `held`. Close each packed qty with a dropdown: **take** (accepted) → take bill + `sale_outbound`; **condition** → condition bill, stock stays `held`; **return** → sellable, no bill. **Bills trade compose** can also issue take or condition (one kind per bill). Walk-in compose is take only. Dropship bill-at-ship unchanged.
-- Inbound **vendor better price** is on **outcome** rows. Lots FK `outcome_id`. Cargo never reduces. After a **delivery return** (e.g. short-dated): return inbound first, then restamp **on-hand** lots from outcomes — not a hand stock edit; do not rewrite qty still out. Same SKU other lots unchanged. Not a customer pay. Vendor/cargo **AP bill + pay out** later ([WA15](features/bills_pays/00-gaps.md)).
-- Money: **one pay-in path** (cash, bank, store credit, courier remittance). COD face stays on the order until remittance. Do not add a second payments product per channel.
-- Investor portal v1 read-only.
-- Copy the **module’s** Pinia or Vue Query pattern. Do not convert it.
+Detail lives in the linked spec — do not duplicate here.
+
+| Topic | Open |
+| :--- | :--- |
+| Login surfaces | [scopes](architecture/scopes.md) |
+| BW / pre-order / Koba / thrift | [business-models](architecture/business-models.md) |
+| Stock, receive, Delivery paper | [procurement spec](features/procurement_stock/spec.md) |
+| Bills, pays, cashbook, money layers | [bills_pays spec](features/bills_pays/spec.md) |
+| Shop / dropship channel | [shop_order spec](features/shop_order/spec.md) |
+| Investor portal v1 read-only | [investor_capital spec](features/investor_capital/spec.md) |
+| UI pattern in a module | Copy that module’s Pinia or Vue Query — do not convert |
 
 ---
 

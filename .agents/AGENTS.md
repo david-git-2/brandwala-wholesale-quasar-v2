@@ -6,40 +6,16 @@
 
 ## Supabase Database Schema Rule (Token Optimization)
 - **Current SQL**: `supabase/schemas/` (`public.sql` until a module is split). How-to & tracker: `doc/supabase-schema.md` (user says `split schema <domain>`). Module map: `docs/README.md`.
-- **TypeScript shapes**: `web/src/types/database.types.ts` (tables, columns, enums, RPC signatures — not function bodies or RLS).
-- **Do NOT Scan Migrations**: Do not glob, list, or bulk-read `supabase/migrations/`. That folder is not in the semantic index. Active state is `supabase/schemas/` only.
+- **Never full-read** `web/src/types/database.types.ts` or `supabase/schemas/public.sql`. Grep one symbol; targeted read only. UI list pages: `.agents/skills/quasar/SKILL.md` + `docs/guides/ui-standards.md`.
+- **TypeScript shapes**: `database.types.ts` (tables, columns, enums, RPC signatures — not bodies or RLS).
+- **Do NOT Scan Migrations**: Do not glob, list, or bulk-read `supabase/migrations/`. Active state is `supabase/schemas/` only.
 - **New Migrations Only**: Open `supabase/migrations/*.sql` only when writing/reviewing **that** generated or DML file, or when a reset error names the file.
-- **Migration Source of Truth**: When creating new RPC migrations, **ALWAYS** copy the function body from the active declarative schema in `supabase/schemas/<domain>/03_rpcs.sql`, NEVER from historical migration files in `supabase/migrations/` (to prevent resurrecting deprecated enum values like `'posted'`).
-- **Local backend commands**: Follow `.cursor/rules/supabase-local-backend.mdc`. Default after a migration: `pnpm run backend:local` + `backend:types:local`. Do **not** auto-run `backend:reset` or `backend:restore-dumps` when local already has prod data.
-- **Migration order / fresh reset**: Before adding or fixing `supabase/migrations/*.sql`, follow `.agents/skills/supabase-migration-order/SKILL.md`. Run `backend:reset` only to prove empty-DB replay (ordering fixes) or when the user asks — not after every feature.
+- **Migration Source of Truth**: Copy RPC bodies from `supabase/schemas/<domain>/03_rpcs.sql` (or `04_rpcs.sql` in notifications), never from old migrations.
+- **Local backend**: `.cursor/rules/supabase-local-backend.mdc`. Default after migration: `pnpm run backend:local` + `backend:types:local`.
+- **Migration order / fresh reset**: `.agents/skills/supabase-migration-order/SKILL.md`. `backend:reset` only when user asks or proving empty-DB replay.
 
 ## Feature docs — `docs/features/<module>/`
 Load **`spec.md` + `00-gaps.md` only**. Tables/RPCs/UI: grep `supabase/schemas/` and `web/src/modules/<module>/`.
 
-## Procurement module — `docs/features/procurement_stock/`
-Shipment track (7A–14B) and warehouse W1–W9 are complete.
-When a phase adds SQL migrations:
-- **Read** the migration files you add or replace.
-- **Run** `pnpm run backend:local` and `pnpm run backend:types:local` before marking done (or `backend:reset` only when proving empty-DB replay / user requested reset).
-- Treat **`database.types.ts` as generated output**, not proof migrations are reset-safe.
-- **Never** ship stub RPCs (count-only loops, fake `wallet_posted: true` without `record_ledger_transaction`).
-
-## API & Network Optimization Rules
-- **Avoid Redundant Calls**: Never make redundant API calls if the data is already available or can be derived from existing state.
-- **Use RPCs for Multiple Operations**: If an action requires multiple database operations (e.g., inserts/updates across multiple tables), create and use a Supabase RPC (Stored Procedure) to handle it in a single network request.
-- **Cache-First Mutations**: For edit or delete operations, DO NOT refetch the entire list afterwards. Instead, manually update the local cache (e.g., Vue Query / React Query cache) with the new data or remove the deleted item.
-- **Partial Payload for Edits (PATCH style)**: When editing a record, only send the fields that were actually modified in the payload. Do not send the entire object back to the server.
-- **Optimistic Updates**: Provide immediate UI feedback by optimistically updating the local state before the API call completes, rolling back if it fails.
-- **Debounce Input-Driven Requests**: For search inputs or rapid toggles, debounce the API calls to prevent spamming the backend.
-- **Batch Operations**: When performing the same action on multiple items (e.g., bulk delete), use a single bulk API call rather than iterating and sending individual requests.
-
-## List Table UI & Layout Design System Rule
-- **Copy source**: `InboundShipmentListPage.vue`. Do not copy hub/overview pages (`AppPageHeader`, `bw-page__stack`) for new ops screens.
-- **Zero In-Page Headers**: Never render redundant in-page `<h1>` or `text-overline` header banners. Global breadcrumbs in the top header provide page title and hierarchy. Move primary action buttons and search controls directly into the compact table toolbar.
-- **Non-Scrolling Page Container**: Lock `q-page` height to `calc(100vh - 55px)` with `overflow: hidden`.
-- **Internal Table Scroll**: Use sticky headers (`thead tr th`) and let table middle scroll internally (`.q-table__middle { overflow-y: auto }`).
-- **Status Row Hues**: Apply soft status background hues and inset left accent borders (`boxShadow: inset 3px 0 0 ...`).
-- **Flat table surfaces**: Ops list tables use global flat `.q-table__container` styling — not heavy `.floating-surface.shadow-1` stacks (see `docs/guides/ui-standards.md`).
-- **Rounded Square Buttons**: Primary action buttons MUST use rounded square corners (`border-radius: 8px`), NOT pill shapes.
-- **Outlined Search Input**: Search inputs MUST use `outlined rounded dense`.
-- **Neutral Avatars**: Entity/vendor avatars MUST use neutral grey tones (`color="grey-3" text-color="grey-9"`).
+## Procurement — `docs/features/procurement_stock/`
+When a phase adds SQL migrations: read those files; run `backend:local` + `backend:types:local` before done. Never ship stub RPCs (fake `wallet_posted` without `record_ledger_transaction`).
