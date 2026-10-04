@@ -6027,8 +6027,8 @@ declare
 begin
   select * into v_invoice from public.bills where id = p_invoice_id for update;
   if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.invoice_status <> 'posted'::public.global_invoice_status then
-    raise exception 'only posted invoices can be voided';
+  if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
+    raise exception 'only issued invoices can be voided';
   end if;
   if v_invoice.paid_amount > 0 then
     raise exception 'cannot void a paid or partially paid invoice; reverse collections/payments first';

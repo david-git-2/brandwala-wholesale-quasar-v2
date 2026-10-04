@@ -1,6 +1,6 @@
 # Bills & pays — TDD
 
-Code: `web/src/modules/sales_invoice/` and `web/src/modules/wallet/`.
+Code: **Bills desk** `web/src/modules/bills_pays/` (list + detail). Data layer: `web/src/modules/sales_invoice/repositories/invoiceRepository.ts`. **Payments / cashbook** still `web/src/modules/wallet/` (blank pages).
 
 ## A. Bill desk
 
@@ -9,28 +9,20 @@ Code: `web/src/modules/sales_invoice/` and `web/src/modules/wallet/`.
 ## 1. Component Architecture & Hierarchy
 
 ```text
-web/src/modules/sales_invoice/
+web/src/modules/bills_pays/
 ├── pages/
-│   ├── InvoicesListPage.vue              # Row list browse + filters (not q-table)
-│   ├── CreateWholesaleInvoicePage.vue    # Trade/retail composer desk
-│   ├── InvoiceDetailsPage.vue            # Issued/read desk + walk-in draft edit
-│   ├── WholesaleInvoiceReturnPage.vue    # Return line items with restocking fee deduction
-│   ├── InvoicePreviewPage.vue            # Clean print voucher preview with barcode
-│   └── InvoiceBrandsPage.vue             # Invoice branding & print template settings
+│   ├── BillsPage.vue                     # Ops list browse + status pills
+│   └── BillDetailPage.vue                # Read issued bill; void + print
 ├── components/
-│   ├── InvoiceListRow.vue                # Browse list row (customer, money, status)
-│   ├── InvoiceDeskChrome.vue             # Shared sticky chrome (create + details)
-│   ├── InvoicePartiesStrip.vue           # Brand + bill-to cards
-│   ├── InvoiceStockSearchBar.vue         # FIFO search + inline results list
-│   ├── InvoiceLinesTable.vue             # Dense line grid (edit + read modes)
-│   ├── InvoiceTotalsPanel.vue            # Sticky totals sidebar
-│   ├── NetworkStockSearchPanel.vue       # Walk-in draft stock dialog (shows cost)
-│   ├── InvoiceBulkPasteDialog.vue        # Walk-in bulk paste
-│   ├── WholesaleCollectPaymentDialog.vue # Multi-instrument collect
-│   └── WholesaleIssueConfirmDialog.vue   # Stock commitment confirm
+│   └── BillListRow.vue                   # List row (profile, sell, status)
+├── composables/
+│   ├── useBillsListQuery.ts
+│   ├── useBillDetailQuery.ts
+│   └── useVoidBillMutation.ts
 └── services/
-    ├── salesInvoiceRepository.ts         # Supabase RPC invocation layer
-    └── salesInvoiceQueryKeys.ts          # TanStack query keys
+    └── billsQueryKeys.ts
+
+# Later slices (not mounted): walk-in composer, returns, branding — reuse sales_invoice/ types + RPCs.
 ```
 
 ---

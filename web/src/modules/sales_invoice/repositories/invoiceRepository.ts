@@ -122,7 +122,7 @@ const listGlobalInvoices = async (
     const cleanSearch = search.trim();
     let billingProfileIds: number[] = [];
     const { data: profiles } = await supabase
-      .from('billing_profiles')
+      .from('profiles')
       .select('id')
       .ilike('name', `%${cleanSearch}%`);
     if (profiles) {

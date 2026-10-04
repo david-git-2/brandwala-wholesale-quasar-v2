@@ -8,7 +8,19 @@ const appDashboardPath = (to: { params: Record<string, string | string[]> }) => 
 /** Nested legacy money URLs → dashboard. List URLs are real blank desks (bills_pays routes). */
 export const moneyUiRedirectRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/sales/invoices/:pathMatch(.*)*',
+    path: '/:tenantSlug?/app/sales/invoices/create',
+    redirect: appDashboardPath,
+  },
+  {
+    path: '/:tenantSlug?/app/sales/invoices/create/:pathMatch(.*)*',
+    redirect: appDashboardPath,
+  },
+  {
+    path: '/:tenantSlug?/app/sales/invoices/:billId/preview',
+    redirect: appDashboardPath,
+  },
+  {
+    path: '/:tenantSlug?/app/sales/invoices/:billId/returns',
     redirect: appDashboardPath,
   },
   {
