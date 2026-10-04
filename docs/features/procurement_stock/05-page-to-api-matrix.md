@@ -42,7 +42,8 @@ Mapping of all UI views, buttons, dialog triggers, and user actions to correspon
 | **`ProcurementFulfillPage`** | Fill oldest stock (group) | `useFillPreorderDemandOldestStockMutation` | `RPC: fill_preorder_demand_oldest_stock_for_document` | Invalidates demand + fulfill caches |
 | **`ProcurementFulfillPage`** | Pick stock | `useUpsertPreorderDemandMutation` | `RPC: upsert_preorder_demand` (`p_stock_picks`) | Invalidates demand + fulfill caches |
 | **`ProcurementFulfillPage`** | Mark packed (group) | `useMarkDemandGroupReadyMutation` | Shop: `RPC: staff_set_catalog_ordered_qty`. PBC: `RPC: staff_mark_pbc_packed` | Status + catalog backlog only; no bill |
-| **`ProcurementFulfillPage`** | Close dropdown (packed tab) | `useUpsertPreorderDemandMutation` | `RPC: upsert_preorder_demand` (`p_stock_picks` + `close_action`) | Take / condition / return per pick; bills later ([PS6](00-gaps.md)) |
+| **`ProcurementFulfillPage`** | Close dropdown (packed tab) | `useUpsertPreorderDemandMutation` | `RPC: upsert_preorder_demand` (`p_stock_picks` + `close_action`) | Per-pick close choice |
+| **`ProcurementFulfillPage`** | Packed header Take / Condition / Return + Create invoice / Return stock | `useClosePreorderDemandDocumentMutation` | `RPC: close_preorder_demand_document` | One bill or return pass per visible packed document ([PS6](00-gaps.md)) |
 | **`ShipmentSettingsDrawer` More** | Batch Code | Router | `app-procurement-shipment-batch-code` | — |
 | **`ShipmentBatchCodePage`** | Mount / ensure list | `ensureList` | `Table: batch_code_lists` select/insert by `shipment_id` | `procurementStockQueryKeys.batchCodeList` |
 | **`ShipmentBatchCodePage`** | Add line dialog | `createItem` | `Table: batch_code_items` insert | Patch items cache |

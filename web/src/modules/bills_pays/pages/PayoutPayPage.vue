@@ -5,44 +5,106 @@
     </div>
     <div class="col overflow-auto">
       <div class="pay-form-card q-pa-md q-gutter-y-md">
-        <div class="text-subtitle1 text-weight-bold">Pay out — merchant</div>
-        <p class="text-caption text-grey-7 q-ma-none">Settles shop cashbook. Not a bill allocation.</p>
+        <q-tabs v-model="mode" dense align="left" active-color="primary" indicator-color="primary">
+          <q-tab name="ap" label="Shipment AP" />
+          <q-tab name="merchant" label="Merchant leftover" />
+        </q-tabs>
+        <q-separator />
 
-        <q-input v-model="search" outlined dense label="Search shop / group" debounce="300" @update:model-value="loadSummary" />
+        <q-tab-panels v-model="mode" animated>
+          <q-tab-panel name="ap" class="q-pa-none q-gutter-y-md">
+            <p class="text-caption text-grey-7 q-ma-none">Pay vendor, cargo, or local AP bills from inbound shipments.</p>
+            <q-input
+              v-model="apSearch"
+              outlined
+              dense
+              label="Search party"
+              debounce="300"
+              @update:model-value="loadApProfiles"
+            />
+            <q-list bordered separator class="rounded-borders">
+              <q-item
+                v-for="row in apProfiles"
+                :key="row.profile_id"
+                clickable
+                :active="selectedApProfileId === row.profile_id"
+                @click="selectApProfile(row)"
+              >
+                <q-item-section>
+                  <q-item-label>{{ row.name }}</q-item-label>
+                  <q-item-label caption>
+                    {{ row.profile_type }} · Due {{ formatAmountBdt(row.total_due) }}
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
 
-        <q-list bordered separator class="rounded-borders">
-          <q-item
-            v-for="row in summary"
-            :key="row.customer_group_id"
-            clickable
-            :active="selectedGroupId === row.customer_group_id"
-            @click="selectGroup(row)"
-          >
-            <q-item-section>
-              <q-item-label>{{ row.name }}</q-item-label>
-              <q-item-label caption>Payable {{ formatAmountBdt(row.payable_balance) }}</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
+            <template v-if="selectedApProfileId && apBills.length">
+              <div class="text-subtitle2 text-weight-medium">Open AP bills</div>
+              <q-list bordered separator class="rounded-borders">
+                <q-item v-for="bill in apBills" :key="bill.id">
+                  <q-item-section>
+                    <q-item-label>{{ bill.invoice_no }}</q-item-label>
+                    <q-item-label caption>{{ bill.note || bill.ap_kind }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-item-label>{{ formatAmountBdt(bill.due_amount) }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+              <q-input v-model.number="apAmount" outlined dense label="Payment amount" type="number" />
+              <q-select v-model="apMethod" :options="methodOptions" emit-value map-options outlined dense label="Method" />
+              <q-input v-model="apReference" outlined dense label="Reference" />
+              <q-input v-model="apNotes" outlined dense label="Notes" type="textarea" autogrow />
+              <q-btn
+                unelevated
+                color="primary"
+                no-caps
+                label="Post AP pay out"
+                :loading="submitting"
+                :disable="!canSubmitAp"
+                @click="submitAp"
+              />
+            </template>
+          </q-tab-panel>
 
-        <template v-if="selectedProfile">
-          <div class="text-body2">
-            Profile: <strong>{{ selectedProfile.name }}</strong> · Balance
-            {{ formatAmountBdt(selectedProfile.payable_balance) }}
-          </div>
-          <q-input v-model.number="amount" outlined dense label="Payout amount" type="number" />
-          <q-select v-model="method" :options="methodOptions" emit-value map-options outlined dense label="Method" />
-          <q-input v-model="notes" outlined dense label="Notes" type="textarea" autogrow />
-          <q-btn
-            unelevated
-            color="primary"
-            no-caps
-            label="Pay out"
-            :loading="submitting"
-            :disable="!canSubmit"
-            @click="submit"
-          />
-        </template>
+          <q-tab-panel name="merchant" class="q-pa-none q-gutter-y-md">
+            <p class="text-caption text-grey-7 q-ma-none">Settles shop cashbook. Not a bill allocation.</p>
+            <q-input v-model="search" outlined dense label="Search shop / group" debounce="300" @update:model-value="loadSummary" />
+            <q-list bordered separator class="rounded-borders">
+              <q-item
+                v-for="row in summary"
+                :key="row.customer_group_id"
+                clickable
+                :active="selectedGroupId === row.customer_group_id"
+                @click="selectGroup(row)"
+              >
+                <q-item-section>
+                  <q-item-label>{{ row.name }}</q-item-label>
+                  <q-item-label caption>Payable {{ formatAmountBdt(row.payable_balance) }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+            <template v-if="selectedProfile">
+              <div class="text-body2">
+                Profile: <strong>{{ selectedProfile.name }}</strong> · Balance
+                {{ formatAmountBdt(selectedProfile.payable_balance) }}
+              </div>
+              <q-input v-model.number="amount" outlined dense label="Payout amount" type="number" />
+              <q-select v-model="method" :options="methodOptions" emit-value map-options outlined dense label="Method" />
+              <q-input v-model="notes" outlined dense label="Notes" type="textarea" autogrow />
+              <q-btn
+                unelevated
+                color="primary"
+                no-caps
+                label="Pay out"
+                :loading="submitting"
+                :disable="!canSubmitMerchant"
+                @click="submitMerchant"
+              />
+            </template>
+          </q-tab-panel>
+        </q-tab-panels>
       </div>
     </div>
   </q-page>
@@ -53,22 +115,43 @@ import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
-import { paysRepository, type CustomerGroupPayoutSummary } from '../repositories/paysRepository';
+import {
+  paysRepository,
+  type ApPayProfileSummary,
+  type CustomerGroupPayoutSummary,
+  type OpenApBillRow,
+} from '../repositories/paysRepository';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 
+const mode = ref<'ap' | 'merchant'>('ap');
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
+const parentTenantId = computed(() => {
+  const t = authStore.selectedTenant;
+  if (!t?.id) return 0;
+  return t.parent_id ?? t.id;
+});
+
 const search = ref('');
 const summary = ref<CustomerGroupPayoutSummary[]>([]);
 const selectedGroupId = ref<number | null>(null);
 const selectedProfile = ref<{ billing_profile_id: number; name: string; payable_balance: number } | null>(null);
-
 const amount = ref<number | null>(null);
 const method = ref('bank_transfer');
 const notes = ref('');
+
+const apSearch = ref('');
+const apProfiles = ref<ApPayProfileSummary[]>([]);
+const selectedApProfileId = ref<number | null>(null);
+const apBills = ref<OpenApBillRow[]>([]);
+const apAmount = ref<number | null>(null);
+const apMethod = ref('bank_transfer');
+const apReference = ref('');
+const apNotes = ref('');
+
 const submitting = ref(false);
 const methodOptions = [
   { label: 'Bank transfer', value: 'bank_transfer' },
@@ -76,11 +159,21 @@ const methodOptions = [
   { label: 'bKash', value: 'bkash' },
 ];
 
-const canSubmit = computed(
+const canSubmitMerchant = computed(
   () =>
     !!selectedProfile.value &&
     (amount.value ?? 0) > 0 &&
     (amount.value ?? 0) <= (selectedProfile.value?.payable_balance ?? 0),
+);
+
+const apDueTotal = computed(() => apBills.value.reduce((s, b) => s + (Number(b.due_amount) || 0), 0));
+
+const canSubmitAp = computed(
+  () =>
+    selectedApProfileId.value != null &&
+    apBills.value.length > 0 &&
+    (apAmount.value ?? 0) > 0 &&
+    (apAmount.value ?? 0) <= apDueTotal.value,
 );
 
 const loadSummary = async () => {
@@ -89,6 +182,17 @@ const loadSummary = async () => {
     search: search.value,
     onlyWithPayable: true,
   });
+};
+
+const loadApProfiles = async () => {
+  if (!parentTenantId.value) return;
+  apProfiles.value = await paysRepository.listApPayProfileSummaries(parentTenantId.value, apSearch.value);
+};
+
+const selectApProfile = async (row: ApPayProfileSummary) => {
+  selectedApProfileId.value = row.profile_id;
+  apBills.value = await paysRepository.listOpenApBillsForProfile(parentTenantId.value, row.profile_id);
+  apAmount.value = apBills.value.reduce((s, b) => s + Number(b.due_amount), 0);
 };
 
 const selectGroup = (row: CustomerGroupPayoutSummary) => {
@@ -103,8 +207,50 @@ const goBack = () => {
   router.push({ name: 'app-payments-page', params: tenantSlug ? { tenantSlug } : {} });
 };
 
-const submit = async () => {
-  if (!selectedProfile.value || !canSubmit.value) return;
+const buildApAllocations = (payAmount: number) => {
+  let remaining = payAmount;
+  const allocations: Array<{ bill_id: number; amount: number }> = [];
+  for (const bill of apBills.value) {
+    if (remaining <= 0) break;
+    const due = Number(bill.due_amount) || 0;
+    if (due <= 0) continue;
+    const slice = Math.min(due, remaining);
+    allocations.push({ bill_id: bill.id, amount: slice });
+    remaining -= slice;
+  }
+  return allocations;
+};
+
+const submitAp = async () => {
+  if (!canSubmitAp.value || selectedApProfileId.value == null) return;
+  const payAmount = Number(apAmount.value);
+  const allocations = buildApAllocations(payAmount);
+  const allocSum = allocations.reduce((s, a) => s + a.amount, 0);
+  if (allocSum !== payAmount) {
+    showErrorNotification('Payment must fully allocate to open AP bills.');
+    return;
+  }
+  submitting.value = true;
+  try {
+    await paysRepository.postApPayoutWithAllocations({
+      tenant_id: tenantId.value,
+      profile_id: selectedApProfileId.value,
+      reference: apReference.value || null,
+      note: apNotes.value || null,
+      instruments: [{ payment_method_code: apMethod.value, amount: payAmount }],
+      allocations,
+    });
+    showSuccessNotification('AP pay out recorded.');
+    goBack();
+  } catch (e) {
+    showErrorNotification(e instanceof Error ? e.message : 'AP pay out failed.');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+const submitMerchant = async () => {
+  if (!selectedProfile.value || !canSubmitMerchant.value) return;
   submitting.value = true;
   try {
     await paysRepository.dispenseMiddlemanPayout({
@@ -124,6 +270,7 @@ const submit = async () => {
 };
 
 void loadSummary();
+void loadApProfiles();
 </script>
 
 <style scoped>

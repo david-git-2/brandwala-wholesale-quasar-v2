@@ -455,6 +455,18 @@ GRANT ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenan
 
 GRANT ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint) TO "service_role";
 
+REVOKE ALL ON FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric) FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "public"."sync_shipment_ap_bills"("p_shipment_id" bigint) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."sync_shipment_ap_bills"("p_shipment_id" bigint) TO "service_role";
+
+REVOKE ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb") FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb") TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb") TO "service_role";
+
 GRANT ALL ON FUNCTION "public"."post_global_invoice"("p_invoice_id" bigint) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."post_global_invoice"("p_invoice_id" bigint) TO "service_role";

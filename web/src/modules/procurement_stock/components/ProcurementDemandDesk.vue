@@ -15,25 +15,54 @@
               :options="fulfillStatusTabOptions"
             />
           </div>
-          <div class="col-12 col-md-auto row items-center justify-end q-gutter-x-xs">
+          <div v-if="showPackedCloseToolbar" class="col-12 col-md-auto row items-center q-gutter-x-xs">
+            <q-btn-toggle
+              v-model="packedCloseActionFilter"
+              no-caps
+              unelevated
+              toggle-color="primary"
+              color="grey-3"
+              text-color="grey-9"
+              class="demand-status-tabs"
+              :options="closeActionFilterOptions"
+            />
             <q-btn
-              v-if="isFixedGroupPage"
-              flat
-              round
-              dense
-              icon="ph ph-arrow-left"
-              color="grey-8"
-              @click="goBackFromFixedGroup"
-            >
-              <q-tooltip>Back to delivery paper</q-tooltip>
-            </q-btn>
+              unelevated
+              no-caps
+              color="primary"
+              :label="packedClosePrimaryLabel"
+              :loading="closeDocumentMutation.isPending.value"
+              :disable="!canRunPackedClose || closeDocumentMutation.isPending.value"
+              @click="onPackedClosePrimary"
+            />
+          </div>
+          <div
+            class="col row items-center q-gutter-x-xs"
+            :class="isFixedGroupPage ? 'justify-between' : 'justify-end'"
+          >
             <div
-              v-if="isFixedGroupPage && fixedGroupTitle"
-              class="text-subtitle2 text-weight-bold text-grey-9 ellipsis"
-              style="max-width: min(420px, 40vw)"
+              v-if="isFixedGroupPage"
+              class="row items-center no-wrap q-gutter-x-xs col-shrink"
             >
-              {{ fixedGroupTitle }}
+              <q-btn
+                flat
+                round
+                dense
+                icon="ph ph-arrow-left"
+                color="grey-8"
+                @click="goBackFromFixedGroup"
+              >
+                <q-tooltip>Back to delivery paper</q-tooltip>
+              </q-btn>
+              <div
+                v-if="fixedGroupTitle"
+                class="text-subtitle2 text-weight-bold text-grey-9 ellipsis text-left"
+                style="max-width: min(420px, 40vw)"
+              >
+                {{ fixedGroupTitle }}
+              </div>
             </div>
+            <div class="row items-center justify-end q-gutter-x-xs col-shrink">
             <q-input
               v-model="searchText"
               outlined
@@ -51,6 +80,7 @@
             <q-btn flat round dense icon="ph ph-arrow-clockwise" :loading="isFetching" @click="refreshDemandDesk">
               <q-tooltip>Refresh</q-tooltip>
             </q-btn>
+            </div>
           </div>
         </div>
       </q-card>
@@ -78,9 +108,11 @@
               <tr>
                 <th class="text-center demand-image-col">Image</th>
                 <th class="text-left demand-product-col">Product</th>
-                <th class="text-center demand-qty-col">Quantity</th>
-                <th class="text-center demand-place-col">Place order</th>
-                <th class="text-left demand-vendor-col">Vendor</th>
+                <th class="text-center demand-qty-col">
+                  {{ isFulfillMode ? 'Packaged' : 'Quantity' }}
+                </th>
+                <th v-if="isBuyMode" class="text-center demand-place-col">Place order</th>
+                <th v-if="isBuyMode" class="text-left demand-vendor-col">Vendor</th>
                 <th v-if="isFulfillMode" class="text-center demand-delivered-col">{{ allocatedColumnLabel }}</th>
               </tr>
             </thead>
@@ -100,7 +132,12 @@
                         color="grey-7"
                       />
                       <q-icon :name="groupIcon(group.document_type)" size="16px" color="primary" />
-                      <span class="text-weight-bold text-grey-9">{{ groupTitle(group) }}</span>
+                      <span class="text-weight-bold text-grey-9 demand-group-title col ellipsis">
+                        {{ groupTitle(group) }}
+                        <q-tooltip anchor="top middle" self="bottom middle" :offset="[0, 4]">
+                          {{ groupTitle(group) }}
+                        </q-tooltip>
+                      </span>
                       <span class="text-caption text-grey-7">
                         · {{ group.customer_group_name || '—' }}
                       </span>
@@ -208,6 +245,7 @@
                   :can-pick-stock="canPickStockForGroup(group)"
                   :is-packed-close-mode="isPackedCloseMode(group)"
                   :only-lines-with-stock-picks="onlyPackedTabLinesWithStock"
+                  :packed-close-action-filter="packedCloseActionFilter"
                   :close-action-options="closeActionOptions"
                   :table-col-count="tableColCount"
                   :vendor-options="vendorOptions"
@@ -221,8 +259,16 @@
                   @vendor-change="(item, v) => onVendorChange(group, item, v)"
                   @flush-save="(item) => flushProcuringSave(group, item)"
                   @pick-stock="(item) => openStockPickDialog(group, item)"
-                  @close-action-change="(item, stockId, action) =>
-                    onPickCloseActionChange(group, item, stockId, action)"
+                  @close-action-change="(item, clientKey, action) =>
+                    onPickCloseActionChange(group, item, clientKey, action)"
+                  @pick-quantity-input="(item, clientKey, value) =>
+                    onPickQuantityInput(group, item, clientKey, value)"
+                  @pick-quantity-commit="(item, clientKey) =>
+                    onPickQuantityCommit(group, item, clientKey)"
+                  @add-close-split="(item, globalStockId) =>
+                    onAddCloseSplit(group, item, globalStockId)"
+                  @delete-close-pick="(item, clientKey) =>
+                    onDeletePackedPick(group, item, clientKey)"
                 />
               </template>
             </tbody>
@@ -230,6 +276,41 @@
         </div>
       </q-card>
     </div>
+
+    <q-dialog v-model="packedCloseConfirmOpen" persistent>
+      <q-card class="demand-packed-close-confirm-card">
+        <q-card-section>
+          <div class="text-subtitle1 text-weight-bold text-grey-9">{{ packedCloseConfirmTitle }}</div>
+          <div class="text-body2 text-grey-8 q-mt-sm">{{ packedCloseConfirmMessage }}</div>
+          <ul
+            v-if="packedCloseConfirmDocuments.length"
+            class="demand-packed-close-doc-list q-mt-sm q-mb-none q-pl-md text-body2 text-grey-9"
+          >
+            <li v-for="(name, idx) in packedCloseConfirmDocuments" :key="idx">{{ name }}</li>
+          </ul>
+          <div class="text-caption text-grey-7 q-mt-sm">Lines already invoiced or returned are skipped.</div>
+        </q-card-section>
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn
+            v-close-popup
+            flat
+            no-caps
+            label="Cancel"
+            color="grey-7"
+            :disable="closeDocumentMutation.isPending.value"
+          />
+          <q-btn
+            unelevated
+            no-caps
+            :color="packedClosePendingAction === 'return' ? 'negative' : 'primary'"
+            :label="packedCloseConfirmOkLabel"
+            :loading="closeDocumentMutation.isPending.value"
+            :disable="closeDocumentMutation.isPending.value"
+            @click="executePackedClose"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <q-dialog v-if="isBuyMode" v-model="bulkVendorDialogOpen" persistent>
       <q-card class="demand-bulk-vendor-card">
@@ -302,10 +383,14 @@ import {
   showErrorNotification,
   showSuccessNotification,
 } from 'src/utils/appFeedback';
+import { createDemandPickClientKey } from '../utils/demandStockPickClientKey';
+import { sumWarehousePackagedPickQty } from '../utils/demandStockPickQty';
 import ProcurementDemandStockPickDialog, {
   type DemandStockPickSelection,
 } from './ProcurementDemandStockPickDialog.vue';
+import { useClosePreorderDemandDocumentMutation } from '../composables/useClosePreorderDemandDocumentMutation';
 import { useMarkDemandGroupReadyMutation } from '../composables/useMarkDemandGroupReadyMutation';
+import { demandPickMatchesCloseFilter } from '../utils/demandClosePickFilter';
 import { useProcurementDemandGroupsQuery } from '../composables/useProcurementDemandGroupsQuery';
 import { useProcurementFulfillGroupsQuery } from '../composables/useProcurementFulfillGroupsQuery';
 import {
@@ -316,6 +401,7 @@ import {
 } from '../composables/useProcurementPlacementMutations';
 import {
   getItemDeliveredQuantity,
+  type PreorderDemandCloseAction,
   type PreorderDemandStockPick,
   type ProcurementDemandDocumentType,
   type ProcurementDemandGroup,
@@ -378,7 +464,7 @@ const isBuyMode = computed(() => props.mode === 'buy');
 const isFulfillMode = computed(() => props.mode === 'fulfill');
 const isFixedGroupPage = computed(() => props.fixedDocument != null);
 const isChildWorkspace = computed(() => authStore.selectedTenant?.parent_id != null);
-const tableColCount = computed(() => (isBuyMode.value ? 5 : 6));
+const tableColCount = computed(() => (isBuyMode.value ? 5 : 4));
 const emptyMessage = computed(() =>
   isBuyMode.value ? 'No demand lines.' : 'No delivery paper lines.',
 );
@@ -460,6 +546,131 @@ const closeActionOptions = [
   { label: 'Condition', value: 'condition' as const },
   { label: 'Return', value: 'return' as const },
 ];
+
+const closeActionFilterOptions = closeActionOptions;
+
+const showPackedCloseToolbar = computed(() => onlyPackedTabLinesWithStock.value);
+
+const packedCloseActionFilter = ref<PreorderDemandCloseAction | null>(null);
+
+const packedClosePrimaryLabel = computed(() =>
+  packedCloseActionFilter.value === 'return' ? 'Return stock' : 'Create invoice',
+);
+
+const closeDocumentMutation = useClosePreorderDemandDocumentMutation();
+
+const packedCloseConfirmOpen = ref(false);
+const packedCloseConfirmTitle = ref('');
+const packedCloseConfirmMessage = ref('');
+const packedCloseConfirmDocuments = ref<string[]>([]);
+const packedClosePendingAction = ref<PreorderDemandCloseAction | null>(null);
+
+const packedCloseConfirmOkLabel = computed(() =>
+  packedClosePendingAction.value === 'return' ? 'Return stock' : 'Create invoice',
+);
+
+const countOpenClosePicksForFilter = (
+  action: PreorderDemandCloseAction,
+): { documentCount: number; unitCount: number } => {
+  let documentCount = 0;
+  let unitCount = 0;
+  const packedGroups = visibleGroups.value.filter((g) => isPackedCloseMode(g));
+  for (const group of packedGroups) {
+    const prefix = `${groupKey(group)}-`;
+    let groupUnits = 0;
+    for (const [key, draft] of Object.entries(drafts)) {
+      if (!key.startsWith(prefix)) continue;
+      for (const pick of draft.stockPicks) {
+        if (demandPickMatchesCloseFilter(pick, action)) {
+          groupUnits += pick.quantity;
+        }
+      }
+    }
+    if (groupUnits > 0) {
+      documentCount += 1;
+      unitCount += groupUnits;
+    }
+  }
+  return { documentCount, unitCount };
+};
+
+const canRunPackedClose = computed(() => {
+  const action = packedCloseActionFilter.value;
+  if (!action || !mutationTenantId.value) return false;
+  if (isFixedGroupPage.value || !navigatePackedGroupToPage.value) {
+    const { unitCount } = countOpenClosePicksForFilter(action);
+    return unitCount > 0;
+  }
+  return visibleGroups.value.some((g) => isPackedCloseMode(g));
+});
+
+const onPackedClosePrimary = () => {
+  const action = packedCloseActionFilter.value;
+  if (!action || !mutationTenantId.value) return;
+
+  const packedGroups = visibleGroups.value.filter((g) => isPackedCloseMode(g));
+  if (!packedGroups.length) return;
+
+  const preview = isFixedGroupPage.value || !navigatePackedGroupToPage.value
+    ? countOpenClosePicksForFilter(action)
+    : { documentCount: packedGroups.length, unitCount: null as number | null };
+
+  const actionLabel = closeActionOptions.find((o) => o.value === action)?.label ?? action;
+
+  packedClosePendingAction.value = action;
+  packedCloseConfirmTitle.value =
+    action === 'return' ? 'Return stock?' : `Create ${actionLabel} invoice?`;
+  packedCloseConfirmMessage.value =
+    preview.unitCount != null
+      ? `This will process ${preview.unitCount} unit(s) marked ${actionLabel} on ${preview.documentCount} order(s)/file(s).`
+      : `This will run ${actionLabel} close on ${preview.documentCount} packed order(s)/file(s) shown on this page.`;
+  packedCloseConfirmDocuments.value = packedGroups.map((g) => groupTitle(g));
+  packedCloseConfirmOpen.value = true;
+};
+
+const executePackedClose = async () => {
+  const action = packedClosePendingAction.value;
+  const tenantId = mutationTenantId.value;
+  if (!action || !tenantId) return;
+
+  const packedGroups = visibleGroups.value.filter((g) => isPackedCloseMode(g));
+  if (!packedGroups.length) {
+    packedCloseConfirmOpen.value = false;
+    return;
+  }
+
+  let createdDocs = 0;
+  let createdUnits = 0;
+  try {
+    for (const group of packedGroups) {
+      const result = await closeDocumentMutation.mutateAsync({
+        tenantId,
+        documentType: group.document_type,
+        documentId: group.document_id,
+        closeAction: action,
+      });
+      if (result.created) {
+        createdDocs += 1;
+        createdUnits += result.unit_count ?? 0;
+      }
+    }
+    packedCloseConfirmOpen.value = false;
+    if (createdDocs === 0) {
+      showSuccessNotification('Nothing left to close for this filter.');
+    } else if (action === 'return') {
+      showSuccessNotification(`Returned ${createdUnits} unit(s) across ${createdDocs} document(s).`);
+    } else {
+      showSuccessNotification(`Created invoice(s) for ${createdUnits} unit(s) across ${createdDocs} document(s).`);
+    }
+    await refreshDemandDesk();
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to close delivery paper picks'));
+  }
+};
+
+watch(onlyPackedTabLinesWithStock, (packed) => {
+  if (!packed) packedCloseActionFilter.value = null;
+});
 
 const allocatedColumnLabel = computed(() => {
   if (isFulfillMode.value && fulfillProcurementStatus.value === 'packed') {
@@ -609,14 +820,29 @@ const vendorLabel = (vendorId: number | null) => {
   return match ? `${match.name} (${match.code})` : String(vendorId);
 };
 
-const mapStockPicksFromApi = (picks?: PreorderDemandStockPick[]): DemandStockPickSelection[] =>
-  (picks ?? []).map((pick) => ({
-    globalStockId: Number(pick.global_stock_id),
-    shipmentName: pick.shipment_name ?? '',
-    locationName: pick.location_name ?? '',
-    quantity: pick.quantity,
-    closeAction: pick.close_action ?? null,
-  }));
+const mapStockPicksFromApi = (picks?: PreorderDemandStockPick[]): DemandStockPickSelection[] => {
+  const seenStockIds = new Set<number>();
+  return (picks ?? []).map((pick) => {
+    const globalStockId = Number(pick.global_stock_id);
+    const isCloseSplit = pick.close_split === true || seenStockIds.has(globalStockId);
+    seenStockIds.add(globalStockId);
+    const initialQuantity = isCloseSplit
+      ? undefined
+      : (pick.initial_quantity ?? pick.quantity);
+    return {
+      clientKey: createDemandPickClientKey(),
+      globalStockId,
+      shipmentName: pick.shipment_name ?? '',
+      locationName: pick.location_name ?? '',
+      quantity: pick.quantity,
+      initialQuantity,
+      closeAction: pick.close_action ?? 'take',
+      isCloseSplit,
+      invoiceId: pick.invoice_id ?? null,
+      returnedAt: pick.returned_at ?? null,
+    };
+  });
+};
 
 const mapStockPicksToApi = (picks: DemandStockPickSelection[]): PreorderDemandStockPick[] =>
   picks.map((pick) => ({
@@ -624,8 +850,22 @@ const mapStockPicksToApi = (picks: DemandStockPickSelection[]): PreorderDemandSt
     quantity: pick.quantity,
     shipment_name: pick.shipmentName || null,
     location_name: pick.locationName || null,
-    close_action: pick.closeAction ?? null,
+    close_action: pick.closeAction ?? 'take',
+    ...(pick.isCloseSplit ? { close_split: true } : {}),
+    ...(!pick.isCloseSplit && pick.initialQuantity != null
+      ? { initial_quantity: pick.initialQuantity }
+      : {}),
+    ...(pick.invoiceId != null ? { invoice_id: pick.invoiceId } : {}),
+    ...(pick.returnedAt ? { returned_at: pick.returnedAt } : {}),
   }));
+
+const stockPicksFromItem = (item: ProcurementDemandItem) =>
+  mapStockPicksFromApi(item.stock_picks);
+
+const packagedQtyFromPicks = (picks: DemandStockPickSelection[]) => {
+  const qty = sumWarehousePackagedPickQty(picks);
+  return qty > 0 ? qty : null;
+};
 
 const syncDraftsFromGroupItems = (
   group: ProcurementDemandGroup,
@@ -634,11 +874,12 @@ const syncDraftsFromGroupItems = (
   for (const item of items) {
     const key = itemRowKey(group, item);
     if (savingRowKeys.value.has(key)) continue;
+    const stockPicks = stockPicksFromItem(item);
     drafts[key] = {
       vendorId: item.vendor_id ?? null,
       quantity: normalizeDraftQuantity(item.placed_quantity),
-      deliveredQuantity: normalizeDraftQuantity(item.delivered_quantity),
-      stockPicks: mapStockPicksFromApi(item.stock_picks),
+      deliveredQuantity: packagedQtyFromPicks(stockPicks),
+      stockPicks,
     };
   }
 };
@@ -701,11 +942,12 @@ const groupTitle = (group: ProcurementDemandGroup) => {
 const getDraft = (group: ProcurementDemandGroup, item: ProcurementDemandItem): ItemDraft => {
   const key = itemRowKey(group, item);
   if (!drafts[key]) {
+    const stockPicks = stockPicksFromItem(item);
     drafts[key] = {
       vendorId: item.vendor_id ?? null,
       quantity: normalizeDraftQuantity(item.placed_quantity),
-      deliveredQuantity: normalizeDraftQuantity(item.delivered_quantity),
-      stockPicks: mapStockPicksFromApi(item.stock_picks),
+      deliveredQuantity: packagedQtyFromPicks(stockPicks),
+      stockPicks,
     };
   }
   return drafts[key];
@@ -884,9 +1126,12 @@ const onStockPickApply = async (payload: {
 
   const key = itemRowKey(target.group, target.item);
   const draft = getDraft(target.group, target.item);
-  draft.stockPicks = payload.picks;
-  draft.deliveredQuantity =
-    payload.totalQuantity > 0 ? normalizeDraftQuantity(payload.totalQuantity) : null;
+  draft.stockPicks = payload.picks.map((pick) => ({
+    ...pick,
+    isCloseSplit: false,
+    initialQuantity: pick.initialQuantity ?? pick.quantity,
+  }));
+  draft.deliveredQuantity = packagedQtyFromPicks(draft.stockPicks);
 
   savingRowKeys.value = new Set(savingRowKeys.value).add(key);
   try {
@@ -972,19 +1217,20 @@ const goBackFromFixedGroup = () => {
   });
 };
 
-const onPickCloseActionChange = async (
+const persistPackedPicks = async (
   group: ProcurementDemandGroup,
   item: ProcurementDemandItem,
-  globalStockId: number,
-  closeAction: 'take' | 'condition' | 'return' | null,
+  nextPicks: DemandStockPickSelection[],
+  successMessage: string,
 ) => {
   const key = itemRowKey(group, item);
   const draft = getDraft(group, item);
-  const nextPicks = draft.stockPicks.map((pick) =>
-    pick.globalStockId === globalStockId ? { ...pick, closeAction } : pick,
-  );
-  drafts[key] = { ...draft, stockPicks: nextPicks };
-
+  const packagedQty = sumWarehousePackagedPickQty(nextPicks);
+  drafts[key] = {
+    ...draft,
+    stockPicks: nextPicks,
+    deliveredQuantity: packagedQty > 0 ? packagedQty : null,
+  };
   savingRowKeys.value = new Set(savingRowKeys.value).add(key);
   try {
     await upsertMutation.mutateAsync({
@@ -992,7 +1238,7 @@ const onPickCloseActionChange = async (
       sourceId: item.source_id,
       stockPicks: mapStockPicksToApi(nextPicks),
     });
-    showSuccessNotification('Close choice saved.');
+    showSuccessNotification(successMessage);
   } catch (err) {
     showErrorNotification(parseSupabaseError(err, 'Failed to save close choice'));
   } finally {
@@ -1000,6 +1246,94 @@ const onPickCloseActionChange = async (
     next.delete(key);
     savingRowKeys.value = next;
   }
+};
+
+const onPickCloseActionChange = async (
+  group: ProcurementDemandGroup,
+  item: ProcurementDemandItem,
+  clientKey: string,
+  closeAction: 'take' | 'condition' | 'return' | null,
+) => {
+  const draft = getDraft(group, item);
+  const nextPicks = draft.stockPicks.map((pick) =>
+    pick.clientKey === clientKey ? { ...pick, closeAction } : pick,
+  );
+  await persistPackedPicks(group, item, nextPicks, 'Close choice saved.');
+};
+
+const onPickQuantityInput = (
+  group: ProcurementDemandGroup,
+  item: ProcurementDemandItem,
+  clientKey: string,
+  value: string | number | null,
+) => {
+  if (value === '' || value === null) return;
+  const qty = Math.trunc(Number(value));
+  if (!Number.isFinite(qty) || qty < 1) return;
+  const key = itemRowKey(group, item);
+  const draft = getDraft(group, item);
+  const nextPicks = draft.stockPicks.map((pick) =>
+    pick.clientKey === clientKey ? { ...pick, quantity: qty } : pick,
+  );
+  const packagedQty = sumWarehousePackagedPickQty(nextPicks);
+  drafts[key] = {
+    ...draft,
+    stockPicks: nextPicks,
+    deliveredQuantity: packagedQty > 0 ? packagedQty : null,
+  };
+};
+
+const onPickQuantityCommit = async (
+  group: ProcurementDemandGroup,
+  item: ProcurementDemandItem,
+  clientKey: string,
+) => {
+  const draft = getDraft(group, item);
+  const pick = draft.stockPicks.find((row) => row.clientKey === clientKey);
+  if (!pick || pick.quantity < 1) {
+    showErrorNotification('Quantity must be at least 1.');
+    return;
+  }
+  await persistPackedPicks(group, item, draft.stockPicks, 'Quantity saved.');
+};
+
+const onAddCloseSplit = async (
+  group: ProcurementDemandGroup,
+  item: ProcurementDemandItem,
+  globalStockId: number,
+) => {
+  const draft = getDraft(group, item);
+  const source = draft.stockPicks.find((pick) => pick.globalStockId === globalStockId);
+  if (!source) return;
+  const nextPicks = [
+    ...draft.stockPicks,
+    {
+      clientKey: createDemandPickClientKey(),
+      globalStockId: source.globalStockId,
+      shipmentName: source.shipmentName,
+      locationName: source.locationName,
+      quantity: 1,
+      closeAction: 'take',
+      isCloseSplit: true,
+      initialQuantity: undefined,
+    },
+  ];
+  await persistPackedPicks(group, item, nextPicks, 'Split row added.');
+};
+
+const onDeletePackedPick = async (
+  group: ProcurementDemandGroup,
+  item: ProcurementDemandItem,
+  clientKey: string,
+) => {
+  const draft = getDraft(group, item);
+  const target = draft.stockPicks.find((pick) => pick.clientKey === clientKey);
+  if (!target?.isCloseSplit) {
+    showErrorNotification('Only added split rows can be removed.');
+    return;
+  }
+  const nextPicks = draft.stockPicks.filter((pick) => pick.clientKey !== clientKey);
+  await persistPackedPicks(group, item, nextPicks, 'Split removed.');
 };
 
 const syncFulfillTabFromRoute = () => {
@@ -1080,6 +1414,10 @@ body.body--dark .demand-table :deep(tbody td) {
   border-bottom: 1px solid #262626;
 }
 
+.demand-group-title {
+  min-width: 0;
+}
+
 .demand-group-row td {
   background: #f8fafc;
   padding: 4px 8px !important;
@@ -1138,119 +1476,8 @@ body.body--dark .demand-group-row td {
   text-transform: uppercase;
 }
 
-.demand-table :deep(.demand-code-chips) {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.demand-table :deep(.demand-code-chip) {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  max-width: 100%;
-  margin: 0;
-  font: inherit;
-  padding: 2px 6px 2px 5px;
-  border: 1px solid var(--bw-theme-border, #e2e8f0);
-  border-radius: var(--bw-radius-sm, 8px);
-  background: var(--bw-theme-surface, #fff);
-  color: var(--bw-theme-ink, #0f172a);
-  cursor: pointer;
-  text-align: left;
-  line-height: 1.2;
-}
-
-.demand-table :deep(.demand-code-chip:hover),
-.demand-table :deep(.demand-code-chip:focus-visible) {
-  border-color: var(--bw-theme-primary, #047857);
-  background: var(--bw-theme-primary-soft, #ecfdf5);
-  outline: none;
-}
-
-.demand-table :deep(.demand-code-chip--primary) {
-  border-color: color-mix(in srgb, var(--bw-theme-primary, #047857) 28%, var(--bw-theme-border, #e2e8f0));
-}
-
-.demand-table :deep(.demand-code-k) {
-  flex: 0 0 auto;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--bw-theme-muted, #64748b);
-}
-
-.demand-table :deep(.demand-code-v) {
-  min-width: 0;
-  font-family: var(--bw-font-mono, ui-monospace, monospace);
-  font-size: 11px;
-  font-weight: 550;
-  overflow-wrap: anywhere;
-}
-
-.demand-table :deep(.demand-code-copy) {
-  flex: 0 0 auto;
-  opacity: 0.35;
-}
-
-.demand-table :deep(.demand-code-chip:hover .demand-code-copy),
-.demand-table :deep(.demand-code-chip:focus-visible .demand-code-copy) {
-  opacity: 1;
-  color: var(--bw-theme-primary, #047857);
-}
-
 body.body--dark .demand-table :deep(.demand-product-name) {
   color: #f4f4f5;
-}
-
-body.body--dark .demand-table :deep(.demand-code-chip) {
-  background: #1c1c1c;
-  border-color: #2e2e2e;
-  color: #e4e4e7;
-}
-
-body.body--dark .demand-table :deep(.demand-code-chip:hover),
-body.body--dark .demand-table :deep(.demand-code-chip:focus-visible) {
-  background: #242424;
-}
-
-.demand-table :deep(.demand-product-facts) {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.demand-table :deep(.demand-fact) {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 7px;
-  border-radius: var(--bw-radius-sm, 8px);
-  background: #f1f5f9;
-  color: var(--bw-theme-muted, #64748b);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.demand-table :deep(.demand-fact--ok) {
-  background: var(--bw-theme-primary-soft, #ecfdf5);
-  color: var(--bw-theme-primary, #047857);
-}
-
-.demand-table :deep(.demand-fact--muted) {
-  background: #f8fafc;
-  color: #94a3b8;
-}
-
-body.body--dark .demand-table :deep(.demand-fact) {
-  background: #242424;
-  color: #a1a1aa;
-}
-
-body.body--dark .demand-table :deep(.demand-fact--ok) {
-  background: #052e1f;
-  color: #6ee7b7;
 }
 
 .demand-table :deep(.shipment-item-image-box) {
@@ -1302,21 +1529,21 @@ body.body--dark .demand-table :deep(.demand-fact--ok) {
 }
 
 .demand-delivered-col {
-  width: 130px;
-  min-width: 130px;
+  width: 280px;
+  min-width: 280px;
 }
 
 .demand-delivered-cell {
   gap: 2px;
 }
 
-.demand-pick-stock-btn {
-  flex-shrink: 0;
+.demand-split-btn {
+  border-radius: 8px;
 }
 
 .demand-pick-list {
   line-height: 1.25;
-  max-width: 150px;
+  max-width: 280px;
   margin-inline: auto;
   text-align: left;
 }
@@ -1358,6 +1585,15 @@ body.body--dark .demand-table :deep(.demand-fact--ok) {
 
 .demand-status-tabs {
   min-height: 36px;
+}
+
+.demand-packed-close-confirm-card {
+  min-width: min(100vw - 32px, 420px);
+}
+
+.demand-packed-close-doc-list {
+  max-height: 160px;
+  overflow-y: auto;
 }
 
 .demand-group-invoice-btn {

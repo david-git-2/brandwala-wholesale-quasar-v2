@@ -54,7 +54,7 @@ export type GlobalInvoiceRow = {
   channel_meta?: Record<string, unknown> | null;
 };
 
-export type GlobalInvoiceType = 'retail' | 'wholesale' | 'dropship';
+export type GlobalInvoiceType = 'retail' | 'wholesale' | 'dropship' | 'ap';
 export type InvoiceCollectionSource = 'billing_profile' | 'recipient';
 
 export type CreateGlobalInvoiceInput = {

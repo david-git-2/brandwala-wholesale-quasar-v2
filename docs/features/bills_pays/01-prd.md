@@ -17,8 +17,8 @@ One money pack. Layers: **bill** · **pay** · **cashbook**. Not a wallet. Table
 | | |
 | :--- | :--- |
 | Surfaces | `app`; `shop` statement |
-| In | Issued bills (take / condition / dropship merchant; later AP). Pay in/out. Cashbook leftover. Shared **profile**. |
-| Out | Delivery paper / optional proforma. Packing slip / COD face. Reports. Investor withdraw. Koba / thrift. Vendor **cost** credit (outcomes) until [WA15](00-gaps.md). |
+| In | Issued bills (take / condition / dropship merchant; **AP** from inbound shipments). Pay in/out. Cashbook leftover. Shared **profile**. |
+| Out | Delivery paper / optional proforma. Packing slip / COD face. Reports. Investor withdraw. Koba / thrift. Vendor **outcome** credit (costing) stays on shipment — not a take bill. |
 
 Numbers: [money-story](money-story.md). Gaps: [00-gaps](00-gaps.md).
 
@@ -43,8 +43,13 @@ Paper status: `draft` / `issued` / `voided`. Money status: `due` / `partially_pa
 | Condition | After pay | When paid |
 | Dropship merchant | Remittance | Issued merchant total |
 | Walk-in | Collect | At issue |
+| AP (vendor / cargo / local) | Pay out (`ap_payout`) | Never sales |
 
-Pay in → ALLOC to open bills. Remainder → **cashbook on that profile** (we owe them). Pay out settles cashbook. Not ALLOC. Merchant pay out now; vendor/cargo later ([WA15](00-gaps.md)).
+**Pay in** (Collect, Remittance) → ALLOC to **AR** bills they owe us. Remainder → **cashbook** on that profile.
+
+**Pay out:** (1) **Merchant leftover** — cashbook only (`dispense_middleman_payout_from_tenant`). (2) **Shipment AP** — ALLOC to open `invoice_type = ap` bills (`post_ap_payout_with_allocations`, `pays.source = ap_payout`). Tenant cash **down**.
+
+Inbound shipment costs sync AP via `sync_shipment_ap_bills` ([WA15](00-gaps.md)); procurement does not post pays ([PS12](../procurement_stock/00-gaps.md)).
 
 ---
 
@@ -64,4 +69,4 @@ Pay in → ALLOC to open bills. Remainder → **cashbook on that profile** (we o
 - [ ] US-8 Split tender. Cheque bounce v2 ([WA13](00-gaps.md)).
 - [ ] US-9 Merchant leftover from pay remainder; pay out. Not ALLOC. Live RPC `dispense_middleman_payout_from_tenant` until BP2.
 - [ ] US-10 Customer overpay / return leftover → customer cashbook. Next collect may apply it.
-- [ ] US-11 Vendor cheaper goods = shipment outcomes today. AP bill + cashbook later ([WA15](00-gaps.md)). Not a take bill.
+- [x] US-11 Shipment **vendor / cargo / local** AP bills auto-sync from procurement costs; pay on Payments **Pay out**. Vendor outcome credit stays costing-only. Not a take bill ([WA15](00-gaps.md)).

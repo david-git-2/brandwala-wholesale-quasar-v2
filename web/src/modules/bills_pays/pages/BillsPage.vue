@@ -10,6 +10,17 @@
         <template #pills>
           <div class="row items-center q-gutter-x-xs quick-filter-toggle">
             <button
+              v-for="tab in arTabs"
+              :key="tab.value"
+              type="button"
+              class="quick-filter-pill"
+              :class="{ 'quick-filter-pill--active': arSide === tab.value }"
+              @click="setArSide(tab.value)"
+            >
+              {{ tab.label }}
+            </button>
+            <span class="text-grey-5 q-mx-xs">|</span>
+            <button
               v-for="tab in filterTabs"
               :key="tab.value"
               type="button"
@@ -32,6 +43,7 @@
             @click="goBrands"
           />
           <q-btn
+            v-if="arSide === 'they_owe'"
             unelevated
             dense
             no-caps
@@ -106,6 +118,7 @@ import { useBillsListQuery } from '../composables/useBillsListQuery';
 import type { GlobalInvoiceRow } from 'src/modules/sales_invoice/types';
 
 type StatusPill = 'all' | 'due' | 'partial' | 'paid' | 'voided';
+type ArSide = 'they_owe' | 'we_owe';
 
 const PAGE_SIZE = 25;
 
@@ -116,10 +129,16 @@ const router = useRouter();
 const searchText = ref('');
 const debouncedSearch = ref('');
 const statusPill = ref<StatusPill>('all');
+const arSide = ref<ArSide>('they_owe');
 const page = ref(1);
 const accumulatedRows = ref<GlobalInvoiceRow[]>([]);
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+const arTabs: { label: string; value: ArSide }[] = [
+  { label: 'They owe', value: 'they_owe' },
+  { label: 'We owe', value: 'we_owe' },
+];
 
 const filterTabs: { label: string; value: StatusPill }[] = [
   { label: 'All', value: 'all' },
@@ -144,6 +163,7 @@ const listParams = computed(() => {
     page: page.value,
     pageSize: PAGE_SIZE,
     search: debouncedSearch.value || undefined,
+    arSide: arSide.value,
   };
   switch (statusPill.value) {
     case 'due':
@@ -185,10 +205,14 @@ watch(
   { immediate: true },
 );
 
-watch([statusPill, debouncedSearch], () => {
+watch([statusPill, arSide, debouncedSearch], () => {
   page.value = 1;
   accumulatedRows.value = [];
 });
+
+const setArSide = (value: ArSide) => {
+  arSide.value = value;
+};
 
 const onSearchTextUpdate = (value: string) => {
   searchText.value = value;

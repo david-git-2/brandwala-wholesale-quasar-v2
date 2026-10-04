@@ -1573,6 +1573,8 @@ GRANT ALL ON FUNCTION "public"."set_preorder_demand_vendor_for_document"(bigint,
 GRANT ALL ON FUNCTION "public"."list_procurement_demand_group_items"(bigint, text, bigint, text, integer, bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_procurement_fulfill_groups"(bigint, text, text, integer, integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_procurement_fulfill_group_items"(bigint, text, bigint, text, integer, bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."close_preorder_demand_document"(bigint, text, bigint, text) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."close_preorder_demand_document"(bigint, text, bigint, text) TO "service_role";
 GRANT ALL ON FUNCTION "public"."create_invoice_from_preorder_demand_document"(bigint, text, bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."sync_invoice_from_preorder_demand_document"(bigint, text, bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."staff_mark_pbc_packed"(bigint) TO "authenticated";

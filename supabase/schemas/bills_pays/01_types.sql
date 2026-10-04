@@ -28,7 +28,8 @@ ALTER TYPE "public"."global_invoice_status" OWNER TO "postgres";
 CREATE TYPE "public"."global_invoice_type" AS ENUM (
     'wholesale',
     'retail',
-    'dropship'
+    'dropship',
+    'ap'
 );
 
 ALTER TYPE "public"."global_invoice_type" OWNER TO "postgres";

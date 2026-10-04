@@ -22,7 +22,22 @@ export interface PreorderDemandStockPick {
   shipment_name?: string | null;
   location_name?: string | null;
   close_action?: PreorderDemandCloseAction | null;
+  close_split?: boolean | null;
+  initial_quantity?: number | null;
+  invoice_id?: number | null;
+  returned_at?: string | null;
 }
+
+export type ClosePreorderDemandDocumentResult = {
+  success: boolean;
+  created?: boolean;
+  close_action?: PreorderDemandCloseAction;
+  invoice_id?: number;
+  invoice_no?: string;
+  pick_count?: number;
+  unit_count?: number;
+  error?: string;
+};
 
 export interface ProcurementDemandItem {
   source_type: ProcurementDemandSourceType;
@@ -365,6 +380,28 @@ const setPreorderDemandVendorForDocument = async (
   return data as SetPreorderDemandVendorResult;
 };
 
+const closePreorderDemandDocument = async (params: {
+  tenantId: number;
+  documentType: ProcurementDemandDocumentType;
+  documentId: number;
+  closeAction: PreorderDemandCloseAction;
+}): Promise<ClosePreorderDemandDocumentResult> => {
+  const { data, error } = await supabase.rpc('close_preorder_demand_document', {
+    p_tenant_id: params.tenantId,
+    p_document_type: params.documentType,
+    p_document_id: params.documentId,
+    p_close_action: params.closeAction,
+  });
+
+  if (error) throw error;
+
+  const result = (data ?? {}) as ClosePreorderDemandDocumentResult;
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to close delivery paper picks');
+  }
+  return result;
+};
+
 const markDemandGroupReadyForShipment = async (
   group: ProcurementDemandGroup,
 ): Promise<void> => {
@@ -386,6 +423,7 @@ export const procurementDemandRepository = {
   fillPreorderDemandOldestStockForDocument,
   setPreorderDemandVendorForDocument,
   markDemandGroupReadyForShipment,
+  closePreorderDemandDocument,
 };
 
 export const getItemNeedQuantity = (item: ProcurementDemandItem): number =>

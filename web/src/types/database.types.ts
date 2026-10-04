@@ -389,6 +389,8 @@ export type Database = {
       }
       bills: {
         Row: {
+          ap_kind: string | null
+          ap_shipment_id: number | null
           channel_meta: Json
           charges_amount: number
           collection_source: Database["public"]["Enums"]["collection_source_type"]
@@ -425,6 +427,8 @@ export type Database = {
           written_off_amount: number
         }
         Insert: {
+          ap_kind?: string | null
+          ap_shipment_id?: number | null
           channel_meta?: Json
           charges_amount?: number
           collection_source: Database["public"]["Enums"]["collection_source_type"]
@@ -461,6 +465,8 @@ export type Database = {
           written_off_amount?: number
         }
         Update: {
+          ap_kind?: string | null
+          ap_shipment_id?: number | null
           channel_meta?: Json
           charges_amount?: number
           collection_source?: Database["public"]["Enums"]["collection_source_type"]
@@ -497,6 +503,13 @@ export type Database = {
           written_off_amount?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "bills_ap_shipment_id_fkey"
+            columns: ["ap_shipment_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bills_profile_id_fkey"
             columns: ["profile_id"]
@@ -9411,6 +9424,18 @@ export type Database = {
         Args: { p_row: Database["public"]["Tables"]["cashbook_entries"]["Row"] }
         Returns: undefined
       }
+      _upsert_shipment_ap_bill: {
+        Args: {
+          p_amount: number
+          p_ap_kind: string
+          p_issued_by_tenant_id: number
+          p_parent_tenant_id: number
+          p_profile_id: number
+          p_shipment_id: number
+          p_shipment_name: string
+        }
+        Returns: number
+      }
       _validate_stock_location_nesting: {
         Args: {
           p_kind: Database["public"]["Enums"]["stock_location_kind"]
@@ -9872,6 +9897,8 @@ export type Database = {
       apply_global_invoice_settlement_discount: {
         Args: { p_amount: number; p_invoice_id: number; p_note?: string }
         Returns: {
+          ap_kind: string | null
+          ap_shipment_id: number | null
           channel_meta: Json
           charges_amount: number
           collection_source: Database["public"]["Enums"]["collection_source_type"]
@@ -10529,6 +10556,15 @@ export type Database = {
         Args: { p_order_item_id: number }
         Returns: Json
       }
+      close_preorder_demand_document: {
+        Args: {
+          p_close_action: string
+          p_document_id: number
+          p_document_type: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       compute_dropship_order_reseller_purchase: {
         Args: { p_order_id: number }
         Returns: {
@@ -10764,6 +10800,8 @@ export type Database = {
               p_tenant_id: number
             }
             Returns: {
+              ap_kind: string | null
+              ap_shipment_id: number | null
               channel_meta: Json
               charges_amount: number
               collection_source: Database["public"]["Enums"]["collection_source_type"]
@@ -10822,6 +10860,8 @@ export type Database = {
               p_tenant_id: number
             }
             Returns: {
+              ap_kind: string | null
+              ap_shipment_id: number | null
               channel_meta: Json
               charges_amount: number
               collection_source: Database["public"]["Enums"]["collection_source_type"]
@@ -10905,6 +10945,8 @@ export type Database = {
               p_tenant_id: number
             }
             Returns: {
+              ap_kind: string | null
+              ap_shipment_id: number | null
               channel_meta: Json
               charges_amount: number
               collection_source: Database["public"]["Enums"]["collection_source_type"]
@@ -10962,6 +11004,8 @@ export type Database = {
               p_tenant_id: number
             }
             Returns: {
+              ap_kind: string | null
+              ap_shipment_id: number | null
               channel_meta: Json
               charges_amount: number
               collection_source: Database["public"]["Enums"]["collection_source_type"]
@@ -12369,6 +12413,8 @@ export type Database = {
       issue_wholesale_invoice: {
         Args: { p_invoice_id: number; p_items?: Json }
         Returns: {
+          ap_kind: string | null
+          ap_shipment_id: number | null
           channel_meta: Json
           charges_amount: number
           collection_source: Database["public"]["Enums"]["collection_source_type"]
@@ -14122,6 +14168,40 @@ export type Database = {
         }
         Returns: Json
       }
+      post_ap_payout_with_allocations: {
+        Args: {
+          p_allocations?: Json
+          p_instruments?: Json
+          p_note?: string
+          p_paid_on: string
+          p_profile_id: number
+          p_reference?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          amount: number
+          collection_source: Database["public"]["Enums"]["collection_source_type"]
+          created_at: string
+          customer_group_id: number | null
+          id: number
+          method: string | null
+          note: string | null
+          payment_date: string
+          profile_id: number | null
+          reference: string | null
+          shop_order_id: number | null
+          source: string
+          tenant_id: number
+          unallocated_amount: number
+          voided_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "pays"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       post_customer_receipt_with_allocations: {
         Args: {
           p_allocations?: Json
@@ -14363,6 +14443,8 @@ export type Database = {
           p_reference?: string
         }
         Returns: {
+          ap_kind: string | null
+          ap_shipment_id: number | null
           channel_meta: Json
           charges_amount: number
           collection_source: Database["public"]["Enums"]["collection_source_type"]
@@ -15038,6 +15120,7 @@ export type Database = {
         Args: { p_invoice_id: number }
         Returns: undefined
       }
+      sync_shipment_ap_bills: { Args: { p_shipment_id: number }; Returns: Json }
       thrift_barcode_sequence_sort_key: {
         Args: { p_barcode_id: string }
         Returns: {
@@ -16489,7 +16572,7 @@ export type Database = {
         | "proforma_generated"
         | "issued"
         | "voided"
-      global_invoice_type: "wholesale" | "retail" | "dropship"
+      global_invoice_type: "wholesale" | "retail" | "dropship" | "ap"
       global_shipment_cost_type:
         | "product"
         | "cargo"
@@ -16785,7 +16868,7 @@ export const Constants = {
         "issued",
         "voided",
       ],
-      global_invoice_type: ["wholesale", "retail", "dropship"],
+      global_invoice_type: ["wholesale", "retail", "dropship", "ap"],
       global_shipment_cost_type: [
         "product",
         "cargo",

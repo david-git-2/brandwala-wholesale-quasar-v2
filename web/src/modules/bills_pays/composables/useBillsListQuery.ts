@@ -18,6 +18,7 @@ export function useBillsListQuery(params: Ref<BillsListQueryParams>) {
         invoiceStatus: params.value.invoiceStatus,
         paymentStatus: params.value.paymentStatus,
         issuedByTenantId: params.value.issuedByTenantId,
+        arSide: params.value.arSide,
       }),
     ),
     queryFn: () => invoiceRepository.listGlobalInvoices(params.value),

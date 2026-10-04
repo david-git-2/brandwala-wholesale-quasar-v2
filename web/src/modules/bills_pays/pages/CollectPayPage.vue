@@ -6,6 +6,7 @@
     <div class="col overflow-auto">
       <div class="pay-form-card q-pa-md q-gutter-y-md">
         <div class="text-subtitle1 text-weight-bold">Pay in — customer</div>
+        <p class="text-caption text-grey-7 q-ma-none">Money they pay you against your sales bills. Vendor/cargo AP uses Pay out.</p>
 
         <q-input v-model="groupSearch" outlined dense label="Search customer group" debounce="300" @update:model-value="loadGroups" />
         <q-toggle v-model="onlyWithDue" dense label="Only with open bills" @update:model-value="loadGroups" />

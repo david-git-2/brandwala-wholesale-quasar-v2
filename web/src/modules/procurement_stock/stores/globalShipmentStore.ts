@@ -15,6 +15,7 @@ import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRe
 import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxRepository';
 import { globalShipmentCostEntryRepository } from '../repositories/globalShipmentCostEntryRepository';
 import { globalShipmentLocalCostRepository } from '../repositories/globalShipmentLocalCostRepository';
+import { syncShipmentApBills } from '../repositories/shipmentApBillsRepository';
 import type { GlobalShipmentLocalCost } from '../types/shipmentLocalCost';
 import { shipmentSectionRepository } from '../repositories/shipmentSectionRepository';
 import type {
@@ -291,6 +292,14 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
+    async syncShipmentApBillsQuiet(shipmentId: number) {
+      try {
+        await syncShipmentApBills(shipmentId);
+      } catch (err: unknown) {
+        console.warn('sync_shipment_ap_bills failed', err);
+      }
+    },
+
     async saveShipmentLocalCost(
       shipmentId: number,
       payload: {
@@ -338,6 +347,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           });
           this.currentLocalCosts.push(saved);
         }
+        await this.syncShipmentApBillsQuiet(shipmentId);
         return saved;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to save local cost';
@@ -357,6 +367,9 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       try {
         await globalShipmentLocalCostRepository.remove(id);
         this.currentLocalCosts = this.currentLocalCosts.filter((r) => r.id !== id);
+        if (shipment?.id) {
+          await this.syncShipmentApBillsQuiet(shipment.id);
+        }
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to delete local cost';
         throw err;
@@ -439,6 +452,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
             received_weight: result.shipment.received_weight ?? total,
           };
         }
+        await this.syncShipmentApBillsQuiet(shipmentId);
         return result;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to save cost entries';
@@ -625,6 +639,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         if (index !== -1) {
           this.rows[index] = updated;
         }
+        await this.syncShipmentApBillsQuiet(id);
         return updated;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to update shipment';

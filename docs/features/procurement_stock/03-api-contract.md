@@ -191,11 +191,13 @@ FIFO warehouse picks for **every line** on one document (`p_document_type` + `p_
 
 Sets `vendor_id` on **every** demand line for one document (`p_document_type` + `p_document_id` + `p_vendor_id`). Document must be `procuring`. Does not change `placed_quantity`, picks, or delivered qty on existing rows. Returns `{ updated_count, vendor_id }`.
 
-### 5.2 `create_invoice_from_preorder_demand_document`
+### 5.2 `close_preorder_demand_document`
 
-**Not wired from Delivery paper UI.** RPC remains for legacy/manual use. Mark **packed** uses `staff_set_catalog_ordered_qty` / `staff_mark_pbc_packed` (status + backlog only). Close choices persist on `stock_picks.close_action` via `upsert_preorder_demand`.
+`p_close_action`: `take` \| `condition` \| `return`. Document must be `packed`. Collects open picks matching `close_action` (skips `invoice_id` / `returned_at` on pick JSON). **take** / **condition:** one issued wholesale bill via `create_sales_invoice_from_payload` (`channel_meta.delivery_kind`), stamps `invoice_id` on picks; take may set document `global_invoice_id` / `invoice_id` when empty. **return:** `held` → `sellable` same bin, stamps `returned_at`. Idempotent when no open picks (`created: false`).
 
-**Target:** issue take / condition bills from close — [PS6](00-gaps.md), [bills_pays US-5](../bills_pays/01-prd.md).
+### 5.2a `create_invoice_from_preorder_demand_document`
+
+Legacy / not wired from Delivery paper UI (proforma, all picks, `procuring` only).
 
 ### 5.2b `sync_invoice_from_preorder_demand_document`
 

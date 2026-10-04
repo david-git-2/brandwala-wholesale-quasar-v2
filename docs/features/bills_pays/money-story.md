@@ -52,11 +52,22 @@ Shop **Glamour Closet** **1,500**. Karim COD **2,200**. Courier fee **80**. Bank
 
 ---
 
-## Vendor credit
+## Inbound shipment AP — `INV-AP-20261004-0001`
 
-**Today:** better price on shipment **outcomes**. Not bill, not pay, not cashbook.
+Shipment **S-42**. Vendor goods **80,000**. Cargo+duty **12,000**. Local opex **3,000**.
 
-**Later:** vendor profile + AP bill and/or vendor cashbook. Pay out less. Never a customer take bill.
+| Layer | Store |
+| :--- | :--- |
+| PROCUREMENT | Cost rows on shipment (not customer sales) |
+| BILL ×3 | AP issued / due per kind (`vendor`, `cargo`, `local`); sync when costs change while unpaid |
+| PAY out | Bank **95,000** with ALLOC across the three AP bills → all `paid` |
+| CASHBOOK | Tenant cash **−95,000** (not Collect) |
+
+Vendor **outcome credit** (cheaper price) still adjusts costing only until sold — not folded into these AP headers.
+
+## Vendor credit (outcomes)
+
+Better price on shipment **outcomes** = costing timing. Not a take bill. AP headers follow **product cost entries** / header purchase total.
 
 ---
 

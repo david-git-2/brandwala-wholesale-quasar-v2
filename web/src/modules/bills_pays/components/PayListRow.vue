@@ -37,10 +37,11 @@ defineEmits<{ open: [row: PayListRow] }>();
 
 const sourceLabel = computed(() => {
   const s = props.row.source;
+  if (s === 'ap_payout') return 'AP pay out';
   if (s === 'courier_remittance') return 'Remittance';
   if (s === 'store_credit') return 'Store credit';
   if (s === 'bank') return 'Bank';
-  return 'Cash in';
+  return 'Pay in';
 });
 </script>
 

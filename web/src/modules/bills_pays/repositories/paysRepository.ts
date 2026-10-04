@@ -77,18 +77,19 @@ const listPays = async (params: ListPaysParams): Promise<{ data: PayListRow[]; t
   const { tenantId, page = 1, pageSize = 25, search, side = 'in' } = params;
   const offset = (page - 1) * pageSize;
 
-  if (side === 'out') {
-    return { data: [], total: 0 };
-  }
-
   let query = supabase
     .from('pays')
     .select(
       'id, payment_date, amount, unallocated_amount, source, method, reference, note, voided_at, profile_id, shop_order_id, profiles:profiles!pays_profile_id_fkey(name)',
       { count: 'exact' },
     )
-    .eq('tenant_id', tenantId)
-    .in('source', [...PAY_IN_SOURCES]);
+    .eq('tenant_id', tenantId);
+
+  if (side === 'out') {
+    query = query.eq('source', 'ap_payout');
+  } else {
+    query = query.in('source', [...PAY_IN_SOURCES]);
+  }
 
   if (search?.trim()) {
     const clean = search.trim();
@@ -262,6 +263,107 @@ const voidCustomerReceipt = async (tenantId: number, paymentId: number, reason: 
   return data;
 };
 
+export type OpenApBillRow = {
+  id: number;
+  invoice_no: string;
+  due_amount: number;
+  total_amount: number;
+  ap_kind: string | null;
+  ap_shipment_id: number | null;
+  note: string | null;
+};
+
+export type ApPayProfileSummary = {
+  profile_id: number;
+  name: string;
+  profile_type: string;
+  total_due: number;
+};
+
+const listOpenApBillsForProfile = async (
+  parentTenantId: number,
+  profileId: number,
+): Promise<OpenApBillRow[]> => {
+  const { data, error } = await supabase
+    .from('bills')
+    .select('id, invoice_no, due_amount, total_amount, ap_kind, ap_shipment_id, note')
+    .eq('parent_tenant_id', parentTenantId)
+    .eq('invoice_type', 'ap')
+    .eq('profile_id', profileId)
+    .eq('invoice_status', 'issued')
+    .gt('due_amount', 0)
+    .order('invoice_date', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as OpenApBillRow[];
+};
+
+const listApPayProfileSummaries = async (
+  parentTenantId: number,
+  search?: string,
+): Promise<ApPayProfileSummary[]> => {
+  const { data, error } = await supabase
+    .from('bills')
+    .select('profile_id, due_amount, profiles:profiles!bills_profile_id_fkey(name, profile_type)')
+    .eq('parent_tenant_id', parentTenantId)
+    .eq('invoice_type', 'ap')
+    .eq('invoice_status', 'issued')
+    .gt('due_amount', 0);
+
+  if (error) throw error;
+
+  type Raw = {
+    profile_id: number | null;
+    due_amount: number;
+    profiles?: { name: string; profile_type: string } | { name: string; profile_type: string }[] | null;
+  };
+
+  const byProfile = new Map<number, ApPayProfileSummary>();
+  for (const row of (data as Raw[] | null) ?? []) {
+    if (row.profile_id == null) continue;
+    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+    const name = profile?.name ?? `Profile #${row.profile_id}`;
+    if (search?.trim() && !name.toLowerCase().includes(search.trim().toLowerCase())) {
+      continue;
+    }
+    const existing = byProfile.get(row.profile_id);
+    if (existing) {
+      existing.total_due += Number(row.due_amount) || 0;
+    } else {
+      byProfile.set(row.profile_id, {
+        profile_id: row.profile_id,
+        name,
+        profile_type: profile?.profile_type ?? '',
+        total_due: Number(row.due_amount) || 0,
+      });
+    }
+  }
+
+  return [...byProfile.values()].sort((a, b) => b.total_due - a.total_due);
+};
+
+const postApPayoutWithAllocations = async (payload: {
+  tenant_id: number;
+  profile_id: number;
+  paid_on?: string;
+  note?: string | null;
+  reference?: string | null;
+  instruments: WholesalePaymentInstrumentInput[];
+  allocations: Array<{ bill_id: number; amount: number }>;
+}) => {
+  const { data, error } = await supabase.rpc('post_ap_payout_with_allocations', {
+    p_tenant_id: payload.tenant_id,
+    p_profile_id: payload.profile_id,
+    p_paid_on: payload.paid_on ?? localToday(),
+    p_note: payload.note ?? null,
+    p_reference: payload.reference ?? null,
+    p_instruments: payload.instruments,
+    p_allocations: payload.allocations.map((a) => ({ bill_id: a.bill_id, amount: a.amount })),
+  });
+  if (error) throw error;
+  return data;
+};
+
 const dispenseMiddlemanPayout = async (payload: {
   tenant_id: number;
   billing_profile_id: number;
@@ -289,7 +391,10 @@ export const paysRepository = {
   listCustomerGroupsPaymentSummary,
   listCustomerGroupsPayoutSummary,
   listBillingProfilesForGroup,
+  listOpenApBillsForProfile,
+  listApPayProfileSummaries,
   postCustomerReceipt,
+  postApPayoutWithAllocations,
   voidCustomerReceipt,
   dispenseMiddlemanPayout,
 };

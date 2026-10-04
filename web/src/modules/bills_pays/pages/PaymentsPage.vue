@@ -55,14 +55,7 @@
         </template>
       </ProcurementOpsListToolbar>
 
-      <div v-if="side === 'out'" class="col column items-center justify-center text-grey-7 invoice-list-card q-pa-lg">
-        <q-icon name="ph ph-arrow-up-right" size="40px" class="q-mb-sm text-grey-4" />
-        <div class="text-subtitle2 text-weight-medium">Pay outs are not listed here</div>
-        <div class="text-caption text-grey-6 q-mt-xs q-mb-md">Merchant payouts post to cashbook. Use Pay out to settle a shop balance.</div>
-        <q-btn unelevated no-caps color="primary" label="Pay out" @click="goPayout" />
-      </div>
-
-      <template v-else>
+      <template v-if="side === 'out' || side === 'in'">
         <div v-if="listQuery.isError.value" class="bw-status-banner bg-negative text-white q-pa-sm rounded-borders">
           {{ listErrorMessage }}
         </div>
@@ -84,7 +77,24 @@
         >
           <q-icon name="ph ph-credit-card" size="48px" class="q-mb-sm text-grey-4" />
           <div class="text-subtitle1 text-weight-bold text-slate-800">No payments yet</div>
-          <q-btn class="q-mt-md" unelevated no-caps color="primary" label="Record pay in" @click="goCollect" />
+          <q-btn
+            v-if="side === 'in'"
+            class="q-mt-md"
+            unelevated
+            no-caps
+            color="primary"
+            label="Record pay in"
+            @click="goCollect"
+          />
+          <q-btn
+            v-else
+            class="q-mt-md"
+            unelevated
+            no-caps
+            color="primary"
+            label="Record pay out"
+            @click="goPayout"
+          />
         </div>
 
         <div v-else-if="!rows.length" class="column items-center justify-center text-grey-7 q-py-xl col invoice-list-card">
@@ -134,8 +144,8 @@ const page = ref(1);
 const accumulatedRows = ref<PayRow[]>([]);
 
 const sideTabs = [
-  { label: 'Cash in', value: 'in' as const },
-  { label: 'Cash out', value: 'out' as const },
+  { label: 'Pay in', value: 'in' as const },
+  { label: 'Pay out', value: 'out' as const },
 ];
 
 const operatingTenantId = computed(() => authStore.selectedTenant?.id ?? null);
@@ -164,7 +174,7 @@ let searchTimer: ReturnType<typeof setTimeout> | null = null;
 watch(
   () => listQuery.data.value,
   (payload) => {
-    if (!payload || side.value === 'out') return;
+    if (!payload) return;
     if (page.value === 1) accumulatedRows.value = payload.data;
     else {
       const ids = new Set(accumulatedRows.value.map((r) => r.id));

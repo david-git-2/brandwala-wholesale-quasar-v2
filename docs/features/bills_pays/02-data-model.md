@@ -186,7 +186,7 @@ Same table. Different paper. Never mix with packing slip / delivery paper / COD 
 | Take | wholesale/retail + take | Buyer | Walk-in now; trade compose take; or delivery close take | At issue |
 | Condition | wholesale + condition | Buyer | Trade compose condition, or delivery close condition. Stock `held`. Not walk-in. | When **paid** |
 | Dropship merchant | `dropship` | Shop profile | At ship | Issued merchant total |
-| AP | later | Vendor / cargo | WA15 | Not AR |
+| AP | `ap` + `ap_kind` + `ap_shipment_id` | Vendor / cargo / company (local opex) | `sync_shipment_ap_bills` after cost save | Not AR |
 
 Kinds are not statuses. **`channel_meta.delivery_kind`:** `take` (default) or `condition` on wholesale trade compose / delivery close. Delivery **proforma** is not a row on this table.
 
@@ -208,7 +208,7 @@ Kinds are not statuses. **`channel_meta.delivery_kind`:** `take` (default) or `c
 | Instruments | `pay_instruments` | cash / cheque (`banks`) / bKash |
 | Allocation | `pay_allocations` | Apply to **open bills** only. Sum ≤ header. |
 
-**Pay in** sources: cash, bank, store credit (cashbook), courier remittance. **Pay out:** merchant now; vendor later. Pay out = cashbook, not ALLOC.
+**Pay in** sources: `customer_cash`, `bank`, `store_credit`, `courier_remittance`. **Pay out:** `ap_payout` (ALLOC to AP bills) + merchant leftover (cashbook debit only, no ALLOC). Unique AP bill: `(parent_tenant_id, ap_shipment_id, ap_kind)` where `invoice_type = ap`.
 
 COD face is not a pay. Cheque bounce = reversing pay ([WA13](00-gaps.md)).
 

@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { globalRepository } from 'src/modules/global/repositories/globalRepository';
 import type { StockNetworkRow } from 'src/modules/global/types';
 import { parseSupabaseError, showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import { createDemandPickClientKey } from '../utils/demandStockPickClientKey';
 
 export type DemandStockPickRow = {
   global_stock_id: number;
@@ -16,11 +17,16 @@ export type DemandStockPickRow = {
 export type DemandCloseAction = 'take' | 'condition' | 'return';
 
 export type DemandStockPickSelection = {
+  clientKey: string;
   globalStockId: number;
   shipmentName: string;
   locationName: string;
   quantity: number;
+  initialQuantity?: number;
   closeAction?: DemandCloseAction | null;
+  isCloseSplit?: boolean;
+  invoiceId?: number | null;
+  returnedAt?: string | null;
 };
 
 const props = defineProps<{
@@ -110,7 +116,9 @@ const selectedTotal = computed(() =>
 const remainingToPick = computed(() => Math.max(0, props.needQuantity - selectedTotal.value));
 
 const committedQty = (stockId: number) =>
-  committedPicks.value.find((pick) => pick.globalStockId === stockId)?.quantity ?? 0;
+  committedPicks.value
+    .filter((pick) => pick.globalStockId === stockId)
+    .reduce((sum, pick) => sum + pick.quantity, 0);
 
 const resetQtyDefaults = () => {
   const nextQty: Record<number, number | null> = {};
@@ -122,7 +130,10 @@ const resetQtyDefaults = () => {
 };
 
 const resetState = () => {
-  committedPicks.value = (props.initialPicks ?? []).map((pick) => ({ ...pick }));
+  committedPicks.value = (props.initialPicks ?? []).map((pick) => ({
+    ...pick,
+    clientKey: pick.clientKey || createDemandPickClientKey(),
+  }));
   resetQtyDefaults();
 };
 
@@ -131,7 +142,10 @@ watch(
   (open) => {
     if (!open) return;
     search.value = '';
-    committedPicks.value = (props.initialPicks ?? []).map((pick) => ({ ...pick }));
+    committedPicks.value = (props.initialPicks ?? []).map((pick) => ({
+      ...pick,
+      clientKey: pick.clientKey || createDemandPickClientKey(),
+    }));
     void loadRows().then(resetQtyDefaults);
   },
 );
@@ -168,12 +182,16 @@ const addPick = (row: DemandStockPickRow) => {
   const existing = committedPicks.value.find((pick) => pick.globalStockId === row.global_stock_id);
   if (existing) {
     existing.quantity = qty;
+    existing.initialQuantity = qty;
   } else {
     committedPicks.value.push({
+      clientKey: createDemandPickClientKey(),
       globalStockId: row.global_stock_id,
       shipmentName: row.shipment_name,
       locationName: row.location_name,
       quantity: qty,
+      initialQuantity: qty,
+      isCloseSplit: false,
     });
   }
   showSuccessNotification(`Added ${qty} from ${row.shipment_name}.`);

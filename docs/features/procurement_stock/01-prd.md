@@ -110,7 +110,7 @@ Life of cargo: sales − COGS (40@10 + 60@8) − cargo − duty − local. Same 
 
 ### US-1 Shipment, sections, landed costs
 - Create draft, sections (tabs; **All** is UI-only), lines, cost entries (optional `section_id`).
-- Cost entries are a **record**. No settlement / ledger pay in this module. Drop `settled_at` from the product story ([PS12](00-gaps.md)).
+- Cost entries are a **record**. No settlement / ledger pay in this module. After save, call **`sync_shipment_ap_bills`** so Bills/Payments AP stays current ([WA15](../bills_pays/00-gaps.md)). Drop `settled_at` from the product story ([PS12](00-gaps.md)).
 - Status: `draft` \| `in_transit` \| `received` \| `cancelled`. Progress tags are extra, not extra statuses.
 - Stamp landed BDT from FX, weight, duty until `costs_locked` or until **closed**.
 
@@ -171,7 +171,7 @@ Two **app** routes, one data model (`preorder_demand`). Not a separate module. N
 
 One pack may mix all three. Optional **proforma** is print/share only — not the take or condition bill. No separate checklist table: the delivery paper **is** the close.
 
-**Live today:** Mark **packed** does not create a bill. Delivery paper saves `close_action` on each `stock_picks` row while `packed`. `create_invoice_from_preorder_demand_document` / `sync_…` remain in SQL but are not wired from this desk. **Target:** issue take / condition bills from close ([PS6](00-gaps.md), [bills_pays US-5](../bills_pays/01-prd.md)). Dropship ship+issue stays on the order.
+**Live today:** Mark **packed** does not create a bill. On the **packed** tab, set `close_action` per pick, filter Take / Condition / Return in the header to preview lines, then **Create invoice** (take or condition bill, issued) or **Return stock** (`held` → sellable, same bin). RPC `close_preorder_demand_document`. Dropship ship+issue stays on the order.
 
 **Out of scope here:** inbound shipment receive, invoice collect, dropship 5-stage desk.
 

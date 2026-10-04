@@ -128,6 +128,36 @@ language plpgsql security definer;
 
 Dropship remittance: order `delivered` + merchant bill; net bank in; ALLOC on bill; leftover → shop cashbook. Do not issue a bill on Payments desk.
 
+### Shipment AP sync: `sync_shipment_ap_bills`
+
+Called from procurement after shipment vendor/cargo/header totals, cost entries, or local costs save (not from procurement pay UI).
+
+```sql
+create or replace function public.sync_shipment_ap_bills(p_shipment_id bigint)
+returns jsonb
+language plpgsql security definer;
+```
+
+Upserts up to three issued AP bills (`invoice_type = ap`, `ap_kind` `vendor`|`cargo`|`local`, `ap_shipment_id`). Skips zero amount or missing party. Unpaid bills rewrite totals from live costs; paid bills never shrink below `paid_amount`. Cancelled shipment → void unpaid AP only.
+
+### AP pay out: `post_ap_payout_with_allocations`
+
+Separate from `post_customer_receipt_with_allocations`. `pays.source = ap_payout`. ALLOC to open AP bills only; sum(allocations) = header amount; tenant cashbook debit.
+
+```sql
+create or replace function public.post_ap_payout_with_allocations(
+  p_tenant_id bigint,
+  p_profile_id bigint,
+  p_paid_on date,
+  p_note text default null,
+  p_reference text default null,
+  p_instruments jsonb default '[]'::jsonb,
+  p_allocations jsonb default '[]'::jsonb  -- { bill_id, amount }
+)
+returns public.pays
+language plpgsql security definer;
+```
+
 ---
 
 ## 0. Unified receipt RPC (live)

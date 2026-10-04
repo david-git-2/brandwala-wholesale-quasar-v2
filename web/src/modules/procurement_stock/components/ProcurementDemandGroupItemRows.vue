@@ -25,76 +25,12 @@
       <div class="demand-product-identity">
         <div class="demand-product-name">{{ item.name }}</div>
         <div v-if="item.brand" class="demand-product-brand">{{ item.brand }}</div>
-        <div class="demand-code-chips">
-          <button
-            v-if="item.barcode"
-            type="button"
-            class="demand-code-chip"
-            aria-label="Copy barcode"
-            @click.stop="copyCode(item.barcode, 'Barcode')"
-          >
-            <span class="demand-code-k">BAR</span>
-            <span class="demand-code-v">{{ item.barcode }}</span>
-            <q-icon name="ph ph-copy" size="12px" class="demand-code-copy" />
-            <q-tooltip>Copy barcode</q-tooltip>
-          </button>
-          <button
-            v-if="item.product_code"
-            type="button"
-            class="demand-code-chip demand-code-chip--primary"
-            aria-label="Copy product code"
-            @click.stop="copyCode(item.product_code, 'Product code')"
-          >
-            <span class="demand-code-k">CODE</span>
-            <span class="demand-code-v">{{ item.product_code }}</span>
-            <q-icon name="ph ph-copy" size="12px" class="demand-code-copy" />
-            <q-tooltip>Copy product code</q-tooltip>
-          </button>
-          <button
-            v-if="item.vendor_code"
-            type="button"
-            class="demand-code-chip"
-            aria-label="Copy vendor code"
-            @click.stop="copyCode(item.vendor_code, 'Vendor code')"
-          >
-            <span class="demand-code-k">VEN</span>
-            <span class="demand-code-v">{{ item.vendor_code }}</span>
-            <q-icon name="ph ph-copy" size="12px" class="demand-code-copy" />
-            <q-tooltip>Copy vendor code</q-tooltip>
-          </button>
-          <button
-            v-if="item.market_code"
-            type="button"
-            class="demand-code-chip"
-            aria-label="Copy market code"
-            @click.stop="copyCode(item.market_code, 'Market code')"
-          >
-            <span class="demand-code-k">MKT</span>
-            <span class="demand-code-v">{{ item.market_code }}</span>
-            <q-icon name="ph ph-copy" size="12px" class="demand-code-copy" />
-            <q-tooltip>Copy market</q-tooltip>
-          </button>
-        </div>
-        <div
-          v-if="item.available_units != null || item.languages || item.country_of_origin"
-          class="demand-product-facts"
-        >
-          <span
-            v-if="item.available_units != null"
-            class="demand-fact"
-            :class="item.available_units > 0 ? 'demand-fact--ok' : 'demand-fact--muted'"
-          >
-            {{ item.available_units }} avail
-          </span>
-          <span v-if="item.languages" class="demand-fact">{{ item.languages }}</span>
-          <span v-if="item.country_of_origin" class="demand-fact">{{ item.country_of_origin }}</span>
-        </div>
       </div>
     </td>
     <td class="text-center demand-qty-col text-weight-medium">
-      {{ item.quantity }}
+      {{ displayLineQuantity(item) }}
     </td>
-    <td class="text-center demand-place-col">
+    <td v-if="isBuyMode" class="text-center demand-place-col">
       <q-input
         v-if="isBuyMode"
         :model-value="getDraft(item).quantity"
@@ -112,9 +48,8 @@
         {{ getItemPlacedQuantity(item) || '—' }}
       </span>
     </td>
-    <td class="demand-vendor-col">
+    <td v-if="isBuyMode" class="demand-vendor-col">
       <q-select
-        v-if="isBuyMode"
         :model-value="getDraft(item).vendorId"
         :options="vendorOptions"
         option-value="id"
@@ -135,43 +70,77 @@
         @update:model-value="(v) => onVendorChange(item, v)"
         @blur="() => flushProcuringSave(item)"
       />
-      <span v-else class="text-grey-9">
-        {{ vendorLabel(getDraft(item).vendorId) }}
-      </span>
     </td>
     <td v-if="isFulfillMode" class="text-center demand-delivered-col">
       <template v-if="isPackedCloseMode">
-        <div class="text-weight-medium q-mb-xs">
-          {{ (getDraft(item).deliveredQuantity ?? getItemDeliveredQuantity(item)) || 0 }} going
-        </div>
         <ul
           v-if="getDraft(item).stockPicks.length"
           class="demand-pick-list q-ma-none q-pa-none"
         >
           <li
-            v-for="pick in getDraft(item).stockPicks"
-            :key="pick.globalStockId"
-            class="demand-packed-pick-row column q-gutter-y-xs q-mb-sm"
+            v-for="lot in pickLotsForItem(item)"
+            :key="lot.globalStockId"
+            class="demand-packed-lot q-mb-sm"
           >
-            <span class="text-caption text-grey-8 text-left">
-              {{ pick.shipmentName || pick.globalStockId }}
-              <span v-if="pick.locationName"> · {{ pick.locationName }}</span>
-              · {{ pick.quantity }}
-            </span>
-            <q-select
-              :model-value="pick.closeAction ?? null"
-              :options="closeActionOptions"
-              emit-value
-              map-options
+            <div class="text-caption text-grey-8 text-left q-mb-xs ellipsis">
+              {{ lot.shipmentName || lot.globalStockId }}
+              <span v-if="lot.locationName"> · {{ lot.locationName }}</span>
+            </div>
+            <div
+              v-for="pick in lot.rows"
+              :key="pick.clientKey"
+              class="row items-center no-wrap q-gutter-xs demand-packed-pick-controls q-mb-xs"
+            >
+              <q-input
+                :model-value="pick.quantity"
+                type="number"
+                min="1"
+                dense
+                outlined
+                hide-bottom-space
+                class="demand-field demand-field--qty"
+                aria-label="Quantity"
+                :disable="isRowSaving(item)"
+                @update:model-value="(v) => emitPickQuantityInput(item, pick.clientKey, v)"
+                @blur="() => emitPickQuantityCommit(item, pick.clientKey)"
+              />
+              <q-select
+                :model-value="pick.closeAction ?? 'take'"
+                :options="closeActionOptions"
+                emit-value
+                map-options
+                dense
+                outlined
+                hide-bottom-space
+                placeholder="Close"
+                class="demand-field demand-close-select col"
+                :disable="isRowSaving(item)"
+                :loading="isRowSaving(item)"
+                @update:model-value="(v) => emitCloseAction(item, pick.clientKey, v)"
+              />
+              <q-btn
+                v-if="pick.isCloseSplit"
+                flat
+                round
+                dense
+                color="negative"
+                icon="ph ph-trash"
+                aria-label="Remove split"
+                :disable="isRowSaving(item)"
+                @click="emit('delete-close-pick', item, pick.clientKey)"
+              >
+                <q-tooltip>Remove split</q-tooltip>
+              </q-btn>
+            </div>
+            <q-btn
+              unelevated
               dense
-              outlined
-              hide-bottom-space
-              clearable
-              placeholder="Customer close"
-              class="demand-field demand-close-select"
+              no-caps
+              color="primary"
+              label="Split"
+              class="demand-split-btn"
               :disable="isRowSaving(item)"
-              :loading="isRowSaving(item)"
-              @update:model-value="(v) => emitCloseAction(item, pick.globalStockId, v)"
+              @click="emit('add-close-split', item, lot.globalStockId)"
             />
           </li>
         </ul>
@@ -179,15 +148,6 @@
       </template>
       <template v-else>
         <div class="row items-center justify-center no-wrap demand-delivered-cell">
-          <q-input
-            :model-value="getDraft(item).deliveredQuantity"
-            type="number"
-            dense
-            outlined
-            readonly
-            hide-bottom-space
-            class="demand-field demand-field--qty"
-          />
           <q-btn
             flat
             round
@@ -208,7 +168,7 @@
         >
           <li
             v-for="pick in getDraft(item).stockPicks"
-            :key="pick.globalStockId"
+            :key="pick.clientKey || `${pick.globalStockId}-${pick.quantity}`"
             class="text-caption text-grey-7"
           >
             {{ pick.shipmentName || pick.globalStockId }} · {{ pick.quantity }}
@@ -230,10 +190,8 @@
 
 <script setup lang="ts">
 import { computed, inject, onUnmounted, ref, watch } from 'vue';
-import { copyToClipboard } from 'quasar';
 import { PROCUREMENT_DEMAND_TABLE_SCROLL_KEY } from '../shared/procurementDemandScroll';
 import SmartImage from 'src/components/SmartImage.vue';
-import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import type {
   DemandCloseAction,
   DemandStockPickSelection,
@@ -247,6 +205,8 @@ import {
   type ProcurementDemandGroup,
   type ProcurementDemandItem,
 } from '../repositories/procurementDemandRepository';
+import { demandPickMatchesCloseFilter } from '../utils/demandClosePickFilter';
+import { sumWarehousePackagedPickQty } from '../utils/demandStockPickQty';
 
 export type DemandItemDraft = {
   vendorId: number | null;
@@ -266,6 +226,7 @@ const props = defineProps<{
   canPickStock: boolean;
   isPackedCloseMode: boolean;
   onlyLinesWithStockPicks: boolean;
+  packedCloseActionFilter: DemandCloseAction | null;
   closeActionOptions: Array<{ label: string; value: DemandCloseAction }>;
   tableColCount: number;
   vendorOptions: Array<{ id: number; label: string }>;
@@ -284,17 +245,66 @@ const emit = defineEmits<{
   'pick-stock': [item: ProcurementDemandItem];
   'close-action-change': [
     item: ProcurementDemandItem,
-    globalStockId: number,
+    clientKey: string,
     action: DemandCloseAction | null,
   ];
+  'pick-quantity-input': [
+    item: ProcurementDemandItem,
+    clientKey: string,
+    value: string | number | null,
+  ];
+  'pick-quantity-commit': [item: ProcurementDemandItem, clientKey: string];
+  'add-close-split': [item: ProcurementDemandItem, globalStockId: number];
+  'delete-close-pick': [item: ProcurementDemandItem, clientKey: string];
 }>();
+
+type PackedPickLot = {
+  globalStockId: number;
+  shipmentName: string;
+  locationName: string;
+  rows: DemandStockPickSelection[];
+};
+
+const pickLotsForItem = (item: ProcurementDemandItem): PackedPickLot[] => {
+  const filter = props.packedCloseActionFilter;
+  const picks = getDraft(item).stockPicks.filter((pick) =>
+    demandPickMatchesCloseFilter(pick, filter),
+  );
+  const order: number[] = [];
+  const byStockId = new Map<number, PackedPickLot>();
+  for (const pick of picks) {
+    if (!byStockId.has(pick.globalStockId)) {
+      order.push(pick.globalStockId);
+      byStockId.set(pick.globalStockId, {
+        globalStockId: pick.globalStockId,
+        shipmentName: pick.shipmentName,
+        locationName: pick.locationName,
+        rows: [],
+      });
+    }
+    byStockId.get(pick.globalStockId)?.rows.push(pick);
+  }
+  return order.map((id) => byStockId.get(id)!);
+};
 
 const emitCloseAction = (
   item: ProcurementDemandItem,
-  globalStockId: number,
+  clientKey: string,
   action: DemandCloseAction | null,
 ) => {
-  emit('close-action-change', item, globalStockId, action);
+  emit('close-action-change', item, clientKey, action);
+};
+
+const emitPickQuantityInput = (
+  item: ProcurementDemandItem,
+  clientKey: string,
+  value: string | number | null,
+) => {
+  emit('pick-quantity-input', item, clientKey, value);
+};
+
+const emitPickQuantityCommit = (item: ProcurementDemandItem, clientKey: string) => {
+  emit('pick-quantity-commit', item, clientKey);
 };
 
 const documentType = computed(() => props.group.document_type);
@@ -331,9 +341,22 @@ const itemHasStockAttached = (item: ProcurementDemandItem): boolean => {
   return delivered > 0;
 };
 
+const itemHasMatchingClosePick = (item: ProcurementDemandItem): boolean => {
+  if (!props.packedCloseActionFilter) return itemHasStockAttached(item);
+  const draft = props.drafts[itemRowKey(item)];
+  const picks = draft?.stockPicks?.length ? draft.stockPicks : item.stock_picks ?? [];
+  return picks.some((pick) => demandPickMatchesCloseFilter(pick, props.packedCloseActionFilter));
+};
+
 const visibleDemandItems = computed(() => {
-  if (!props.onlyLinesWithStockPicks) return demandItems.value;
-  return demandItems.value.filter((item) => itemHasStockAttached(item));
+  let items = demandItems.value;
+  if (props.onlyLinesWithStockPicks) {
+    items = items.filter((item) => itemHasStockAttached(item));
+  }
+  if (props.packedCloseActionFilter) {
+    items = items.filter((item) => itemHasMatchingClosePick(item));
+  }
+  return items;
 });
 const hasMoreItems = computed(() => activeItemsQuery.value.hasMoreItems.value);
 const fetchNextPage = (...args: Parameters<typeof demandItemsQuery.fetchNextPage>) =>
@@ -418,6 +441,17 @@ const getDraft = (item: ProcurementDemandItem): DemandItemDraft => {
   );
 };
 
+const packagedFromStockQty = (item: ProcurementDemandItem) => {
+  const draft = getDraft(item);
+  if (draft.stockPicks.length) return sumWarehousePackagedPickQty(draft.stockPicks);
+  const apiPicks = item.stock_picks ?? [];
+  if (apiPicks.length) return sumWarehousePackagedPickQty(apiPicks);
+  return getItemDeliveredQuantity(item);
+};
+
+const displayLineQuantity = (item: ProcurementDemandItem) =>
+  props.isFulfillMode ? packagedFromStockQty(item) : item.quantity;
+
 const isRowSaving = (item: ProcurementDemandItem) =>
   props.savingRowKeys.has(itemRowKey(item));
 
@@ -435,16 +469,6 @@ const onVendorChange = (item: ProcurementDemandItem, value: number | null) => {
 
 const flushProcuringSave = (item: ProcurementDemandItem) => {
   emit('flush-save', item);
-};
-
-const copyCode = (value: string, label: string) => {
-  void copyToClipboard(value)
-    .then(() => {
-      showSuccessNotification(`${label} copied`);
-    })
-    .catch(() => {
-      showErrorNotification(`Could not copy ${label.toLowerCase()}`);
-    });
 };
 
 const lineStatusStyle = (item: ProcurementDemandItem) => {
@@ -476,3 +500,23 @@ const lineStatusStyle = (item: ProcurementDemandItem) => {
   return { boxShadow: 'inset 3px 0 0 #94a3b8' };
 };
 </script>
+
+<style scoped lang="scss">
+.demand-packed-pick-controls {
+  min-width: 0;
+}
+
+.demand-packed-pick-controls .demand-close-select {
+  min-width: 0;
+}
+
+.demand-packed-pick-controls .demand-field--qty {
+  flex: 0 0 56px;
+  max-width: 56px;
+}
+
+.demand-split-btn {
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+</style>

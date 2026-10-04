@@ -118,6 +118,9 @@ CREATE TABLE IF NOT EXISTS "public"."bills" (
     "charges_amount" numeric(12,2) DEFAULT 0 NOT NULL,
     "channel_meta" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
     "profile_id" bigint,
+    "ap_shipment_id" bigint,
+    "ap_kind" "text",
+    CONSTRAINT "bills_ap_kind_check" CHECK (("ap_kind" IS NULL) OR ("ap_kind" = ANY (ARRAY['vendor'::"text", 'cargo'::"text", 'local'::"text"]))),
     CONSTRAINT "global_invoices_charges_amount_check" CHECK (("charges_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_discount_amount_check" CHECK (("discount_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_due_amount_check" CHECK (("due_amount" >= (0)::numeric)),
@@ -153,7 +156,7 @@ CREATE TABLE IF NOT EXISTS "public"."pays" (
     "source" "text" DEFAULT 'customer_cash'::"text" NOT NULL,
     CONSTRAINT "payments_amount_check" CHECK (("amount" >= (0)::numeric)),
     CONSTRAINT "payments_method_check" CHECK ((("method" IS NULL) OR ("method" = ANY (ARRAY['cash'::"text", 'bank'::"text", 'bank_transfer'::"text", 'mobile_banking'::"text", 'bkash'::"text", 'nagad'::"text", 'other'::"text", 'cheque'::"text", 'rocket'::"text", 'upay'::"text", 'tap'::"text", 'card_pos'::"text", 'wire_transfer'::"text", 'paypal'::"text", 'stripe'::"text", 'letter_of_credit'::"text", 'cod'::"text", 'split'::"text", 'store_credit'::"text"])))),
-    CONSTRAINT "pays_source_check" CHECK (("source" = ANY (ARRAY['customer_cash'::"text", 'bank'::"text", 'store_credit'::"text", 'courier_remittance'::"text"])))
+    CONSTRAINT "pays_source_check" CHECK (("source" = ANY (ARRAY['customer_cash'::"text", 'bank'::"text", 'store_credit'::"text", 'courier_remittance'::"text", 'ap_payout'::"text"])))
 );
 
 ALTER TABLE "public"."pays" OWNER TO "postgres";
@@ -565,6 +568,10 @@ CREATE INDEX "billing_profiles_parent_tenant_id_idx" ON "public"."billing_profil
 CREATE INDEX "billing_profiles_tenant_id_idx" ON "public"."billing_profiles" USING "btree" ("tenant_id");
 
 CREATE INDEX "bills_profile_id_idx" ON "public"."bills" USING "btree" ("profile_id");
+
+CREATE UNIQUE INDEX "bills_ap_shipment_kind_uidx" ON "public"."bills" USING "btree" ("parent_tenant_id", "ap_shipment_id", "ap_kind") WHERE (("invoice_type" = 'ap'::"public"."global_invoice_type") AND ("ap_shipment_id" IS NOT NULL) AND ("ap_kind" IS NOT NULL));
+
+CREATE INDEX "bills_ap_shipment_id_idx" ON "public"."bills" USING "btree" ("ap_shipment_id") WHERE ("invoice_type" = 'ap'::"public"."global_invoice_type");
 
 CREATE INDEX "global_invoice_items_global_stock_id_idx" ON "public"."bill_lines" USING "btree" ("global_stock_id");
 

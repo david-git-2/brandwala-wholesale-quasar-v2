@@ -34,11 +34,14 @@
 | Page / Component | UI Control / Action | Triggered Hook / Method | Backend RPC / Operation | Cache Invalidation / Optimistic Strategy |
 | :--- | :--- | :--- | :--- | :--- |
 | **`PaymentsPage`** | Mount / search / Cash in pill | `usePaysListQuery` | `Table: pays` via `paysRepository.listPays` | `paysQueryKeys.list` (`staleTime: 30s`) |
-| **`PaymentsPage`** | Cash out pill | — | Empty list (payouts are cashbook-only today) | — |
+| **`PaymentsPage`** | Pay out pill | `usePaysListQuery` `side: out` | `Table: pays` where `source = ap_payout` | `paysQueryKeys.list` |
+| **`BillsPage`** | They owe / We owe pill | `useBillsListQuery` | `invoice_type` filter (`ap` vs not `ap`) | `billsQueryKeys.list` |
 | **`CollectPayPage`** | Post receipt | `useCollectPayMutation` | `RPC: post_customer_receipt_with_allocations` | `paysQueryKeys` + `billsQueryKeys` |
 | **`CollectPayPage`** | Pick customer | `paysRepository.listCustomerGroupsPaymentSummary` | `RPC: list_customer_groups_payment_summary` | — |
 | **`RemitPayPage`** | Post remittance | `dropshipFinanceRepository.confirmCourierRemittance` | `RPC: record_dropship_courier_remittance` | `paysQueryKeys` |
-| **`PayoutPayPage`** | Submit payout | `paysRepository.dispenseMiddlemanPayout` | `RPC: dispense_middleman_payout_from_tenant` | `paysQueryKeys` |
+| **`PayoutPayPage`** | Merchant leftover | `paysRepository.dispenseMiddlemanPayout` | `RPC: dispense_middleman_payout_from_tenant` | `paysQueryKeys` |
+| **`PayoutPayPage`** | Shipment AP pay | `paysRepository.postApPayoutWithAllocations` | `RPC: post_ap_payout_with_allocations` | `paysQueryKeys` + `billsQueryKeys` |
+| **Procurement shipment save** | After costs / vendor / local | `syncShipmentApBills` | `RPC: sync_shipment_ap_bills` | — |
 | **`PayDetailPage`** | Void | `useVoidPayMutation` | `RPC: void_customer_receipt` | `paysQueryKeys` + `billsQueryKeys` |
 ## C. Cashbook
 
