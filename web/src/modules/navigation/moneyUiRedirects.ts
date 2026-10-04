@@ -32,7 +32,11 @@ export const moneyUiRedirectRoutes: RouteRecordRaw[] = [
     redirect: appDashboardPath,
   },
   {
-    path: '/:tenantSlug?/app/finance/payments/:pathMatch(.*)*',
+    path: '/:tenantSlug?/app/finance/payments/collect/:pathMatch(.*)*',
+    redirect: appDashboardPath,
+  },
+  {
+    path: '/:tenantSlug?/app/finance/reports/payments',
     redirect: appDashboardPath,
   },
   {

@@ -121,17 +121,13 @@ language plpgsql security definer;
 
 ## B. Pays & cashbook
 
-Target: **one receipt RPC** (header + instrument lines + allocations + ledger) then invoice status update. Live collect/remittance RPCs still differ — [00-gaps](00-gaps.md) WA4, WA9–WA12.
+**Live:** `post_customer_receipt_with_allocations` in `supabase/schemas/bills_pays/03_rpcs.sql` — Payments desk collect + dropship remittance (via `record_dropship_courier_remittance`). [00-gaps](00-gaps.md) WA12 done; WA4 = same writer, different `p_source` / screens.
 
-Ledger list/detail below. Bodies: `public.sql` until pays schema split ([WA1](00-gaps.md)). Payments live: `collect_wholesale_invoice_payment` (wholesale/retail collect on invoice detail); dropship remittance RPCs in `supabase/schemas/shop_order/03_rpcs.sql`. Unify later — [00-gaps](00-gaps.md) WA4.
-
-Wholesale collect **live**: `collect_wholesale_invoice_payment` on issued buyer bill (cash / store credit / settlement). Receipt amount = money received; allocates to that invoice. Do not use remittance RPCs or `create_billing_profile_payment_with_allocations` on the invoice desk.
-
-Dropship remittance **target**: order `delivered` + linked issued merchant bill; receipt amount = net bank in; allocate `min(net, invoice.due)`; leftover → shop **cashbook**. Do not rewrite sell. Do not issue a bill here. Require `global_invoice_id` ([shop_order 01-prd](../shop_order/01-prd.md) US-3).
+Dropship remittance: order `delivered` + merchant bill; net bank in; ALLOC on bill; leftover → shop cashbook. Do not issue a bill on Payments desk.
 
 ---
 
-## 0. Target unified receipt RPC (not live)
+## 0. Unified receipt RPC (live)
 
 Posts one receipt header, zero or more instrument lines, optional invoice allocations, optional ledger remainder. Used by **invoice collect** and **profile collect** ([02-data-model](02-data-model.md)). Params still `p_billing_profile_id` until BP3.
 

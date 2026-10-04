@@ -1,6 +1,6 @@
 # Bills & pays — TDD
 
-Code: **Bills desk** `web/src/modules/bills_pays/` (list + detail). Data layer: `web/src/modules/sales_invoice/repositories/invoiceRepository.ts`. **Payments / cashbook** still `web/src/modules/wallet/` (blank pages).
+Code: **Bills + Payments** `web/src/modules/bills_pays/`. Bill reads/writes reuse `web/src/modules/sales_invoice/repositories/invoiceRepository.ts`. Pays: `bills_pays/repositories/paysRepository.ts`. Dropship remittance: `shop_order/repositories/dropshipFinanceRepository.ts`. **Cashbook** page still blank.
 
 ## A. Bill desk
 
@@ -23,6 +23,28 @@ web/src/modules/bills_pays/
     └── billsQueryKeys.ts
 
 # Later slices (not mounted): walk-in composer, returns, branding — reuse sales_invoice/ types + RPCs.
+```
+
+## B. Payments desk
+
+```text
+web/src/modules/bills_pays/
+├── pages/
+│   ├── PaymentsPage.vue
+│   ├── CollectPayPage.vue
+│   ├── RemitPayPage.vue
+│   ├── PayoutPayPage.vue
+│   └── PayDetailPage.vue
+├── components/
+│   └── PayListRow.vue
+├── composables/
+│   ├── usePaysListQuery.ts
+│   ├── useCollectPayMutation.ts
+│   └── useVoidPayMutation.ts
+├── repositories/
+│   └── paysRepository.ts
+└── services/
+    └── paysQueryKeys.ts
 ```
 
 ---
