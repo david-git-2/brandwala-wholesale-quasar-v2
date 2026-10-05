@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import {
   calculateLineLandedCostBdt,
+  calculateLineLandedCostBreakdown,
   calculateTransactionRate,
   getCalculatedTransactionRate,
   calculateShipmentCostSummary,
@@ -64,6 +65,20 @@ describe('shipment-engine costEngine', () => {
 
     const costWithFallback = calculateLineLandedCostBdt(item1, sampleInternationalShipment);
     expect(costWithFallback).toBeCloseTo(2390.025, 2);
+  });
+
+  test('calculateLineLandedCostBreakdown matches calculateLineLandedCostBdt', () => {
+    const breakdown = calculateLineLandedCostBreakdown(
+      item1,
+      sampleInternationalShipment,
+      sampleItems,
+    );
+    expect(breakdown.landedCostBdt).toBeCloseTo(
+      calculateLineLandedCostBdt(item1, sampleInternationalShipment, sampleItems),
+      6,
+    );
+    expect(breakdown.purchasePricePerUnit).toBe(10);
+    expect(breakdown.transactionRate).toBeGreaterThan(0);
   });
 
   test('lineLandedCostTotal matches totalCost when invoice weight differs from packaging', () => {

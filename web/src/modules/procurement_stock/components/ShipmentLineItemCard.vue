@@ -154,19 +154,32 @@
       />
     </div>
     <div class="line-card__cell" @click.stop>
-      <div class="line-card__num-fill line-card__num-fill--cost font-mono">
+      <div
+        class="line-card__num-fill line-card__num-fill--cost font-mono"
+        :class="{ 'line-card__num-fill--has-tip': unitCostTooltip }"
+      >
         {{ (item.landed_cost_bdt ?? item.unitCost ?? 0).toFixed(2) }}
+        <q-tooltip
+          v-if="unitCostTooltip"
+          max-width="300px"
+          anchor="top middle"
+          self="bottom middle"
+          :offset="[0, 6]"
+        >
+          <span class="line-card__cost-tooltip-text">{{ unitCostTooltip }}</span>
+        </q-tooltip>
       </div>
     </div>
     <div class="line-card__cell" @click.stop>
       <q-input
         v-if="!isReceived"
-        :model-value="getDraft('ordered_quantity')"
+        :model-value="blankZero(getDraft('ordered_quantity'))"
         type="number"
         min="1"
         step="1"
         dense
         borderless
+        placeholder="—"
         input-class="font-mono text-right excel-cell-input-native"
         class="excel-cell-input excel-cell-input--qty-tint"
         :disable="!canEditStructure"
@@ -250,12 +263,13 @@
         </div>
         <div class="line-card__cell" @click.stop>
           <q-input
-            :model-value="row.quantity"
+            :model-value="blankZero(row.quantity)"
             type="number"
             min="0"
             step="1"
             dense
             borderless
+            placeholder="—"
             input-class="font-mono text-right excel-cell-input-native"
             class="excel-cell-input excel-cell-input--qty-tint"
             :disable="!canEditSplits"
@@ -274,14 +288,17 @@
             :label="optionLabel(kindOptions, row.kind)"
           >
             <q-menu auto-close>
-              <q-list dense style="min-width: 160px">
+              <q-list dense class="line-card__outcome-menu" style="min-width: 160px">
                 <q-item
                   v-for="opt in kindOptions"
                   :key="opt.value"
                   clickable
                   v-close-popup
                   :active="row.kind === opt.value"
-                  @click="emit('update-extra', row.id, { kind: opt.value })"
+                  active-class="line-card__outcome-menu-chip--picked"
+                  class="line-card__outcome-menu-chip"
+                  :class="kindChipClass(opt.value)"
+                  @click="onExtraKindSelect(row, opt.value)"
                 >
                   <q-item-section>{{ opt.label }}</q-item-section>
                 </q-item>
@@ -301,13 +318,16 @@
             :label="reasonLabel(row.reason)"
           >
             <q-menu auto-close>
-              <q-list dense style="min-width: 180px">
+              <q-list dense class="line-card__outcome-menu" style="min-width: 180px">
                 <q-item
                   v-for="opt in reasonOptions"
                   :key="opt.value"
                   clickable
                   v-close-popup
                   :active="row.reason === opt.value"
+                  active-class="line-card__outcome-menu-chip--picked"
+                  class="line-card__outcome-menu-chip"
+                  :class="reasonChipClass(opt.value)"
                   @click="emit('update-extra', row.id, { reason: opt.value })"
                 >
                   <q-item-section>{{ opt.label }}</q-item-section>
@@ -413,6 +433,7 @@ const props = defineProps<{
   showOutcomeColumns: boolean;
   showActionsColumn: boolean;
   landSplitAttention?: string | null;
+  unitCostTooltip?: string | null;
   batchSummary: { compactLabel: string; lineCount: number; toneClass: string };
   addingExtra: boolean;
   getDraft: (field: string) => string | number | null;
@@ -490,6 +511,15 @@ const extraCostBdt = (row: ShipmentItemOutcome) => scaledUnitCostBdt(Number(row.
 
 const vendorCreditCostBdt = (credit: ShipmentOutcomeVendorCredit) =>
   scaledUnitCostBdt(Number(credit.new_purchase_price));
+
+const onExtraKindSelect = (row: ShipmentItemOutcome, kind: 'sellable' | 'unsellable') => {
+  if (kind === row.kind) return;
+  const patch: Partial<ShipmentItemOutcome> = { kind };
+  if (kind === 'unsellable') {
+    patch.reason = 'missing';
+  }
+  emit('update-extra', row.id, patch);
+};
 
 const onExtraNumber = (
   row: ShipmentItemOutcome,
@@ -723,6 +753,14 @@ const onExtraNumber = (
 .line-card__num-fill--cost {
   background-color: color-mix(in srgb, var(--bw-ops-hue-cost) 42%, #fff);
 }
+.line-card__num-fill--has-tip {
+  cursor: help;
+}
+.line-card__cost-tooltip-text {
+  white-space: pre-line;
+  font-size: 11px;
+  line-height: 1.4;
+}
 .line-card__num-fill--qty {
   background-color: color-mix(in srgb, var(--bw-ops-hue-qty) 42%, #fff);
 }
@@ -784,37 +822,65 @@ const onExtraNumber = (
 .line-card__chip-btn :deep(.q-btn__content) {
   justify-content: center;
 }
-.line-card__chip-btn--kind-sellable {
+.line-card__outcome-menu {
+  padding: 4px 0;
+}
+.line-card__outcome-menu-chip {
+  margin: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  font-size: 12px;
+  min-height: 30px;
+}
+.line-card__outcome-menu-chip :deep(.q-focus-helper) {
+  opacity: 0 !important;
+}
+.line-card__outcome-menu-chip.q-item--active::before {
+  opacity: 0 !important;
+}
+.line-card__outcome-menu-chip--picked {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+.line-card__chip-btn--kind-sellable,
+.line-card__outcome-menu-chip.line-card__chip-btn--kind-sellable {
   background: color-mix(in srgb, #10b981 24%, #fff);
   color: #047857;
   border-color: color-mix(in srgb, #10b981 42%, var(--bw-theme-border));
 }
-.line-card__chip-btn--kind-unsellable {
+.line-card__chip-btn--kind-unsellable,
+.line-card__outcome-menu-chip.line-card__chip-btn--kind-unsellable {
   background: color-mix(in srgb, #ef4444 22%, #fff);
   color: #b91c1c;
   border-color: color-mix(in srgb, #ef4444 40%, var(--bw-theme-border));
 }
-.line-card__chip-btn--reason-general {
+.line-card__chip-btn--reason-general,
+.line-card__outcome-menu-chip.line-card__chip-btn--reason-general {
   background: color-mix(in srgb, var(--bw-theme-ink) 8%, #fff);
   color: var(--bw-theme-ink);
   border-color: var(--bw-theme-border);
 }
-.line-card__chip-btn--reason-vendor-discount {
+.line-card__chip-btn--reason-vendor-discount,
+.line-card__outcome-menu-chip.line-card__chip-btn--reason-vendor-discount {
   background: color-mix(in srgb, #14b8a6 22%, #fff);
   color: #0f766e;
   border-color: color-mix(in srgb, #14b8a6 40%, var(--bw-theme-border));
 }
-.line-card__chip-btn--reason-missing {
+.line-card__chip-btn--reason-missing,
+.line-card__outcome-menu-chip.line-card__chip-btn--reason-missing {
   background: color-mix(in srgb, #f59e0b 26%, #fff);
   color: #b45309;
   border-color: color-mix(in srgb, #f59e0b 44%, var(--bw-theme-border));
 }
-.line-card__chip-btn--reason-damaged {
+.line-card__chip-btn--reason-damaged,
+.line-card__outcome-menu-chip.line-card__chip-btn--reason-damaged {
   background: color-mix(in srgb, #f97316 24%, #fff);
   color: #c2410c;
   border-color: color-mix(in srgb, #f97316 42%, var(--bw-theme-border));
 }
-.line-card__chip-btn--reason-other {
+.line-card__chip-btn--reason-other,
+.line-card__outcome-menu-chip.line-card__chip-btn--reason-other {
   background: color-mix(in srgb, #6366f1 22%, #fff);
   color: #4338ca;
   border-color: color-mix(in srgb, #6366f1 40%, var(--bw-theme-border));

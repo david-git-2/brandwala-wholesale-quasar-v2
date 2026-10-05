@@ -145,23 +145,14 @@ export const getCalculatedTransactionRate = (
   return calculateTransactionRate(shipment, items);
 };
 
-/** Preview unit landed cost in BDT — does not write `landed_cost_bdt`. */
-export const calculateLineLandedCostBdt = (
-  item: CostingLineItemInput,
-  shipment?: CostingShipmentInput | null,
+/** Blended FX used to convert purchase-currency base → BDT (international only). */
+export const getEffectiveTransactionRateForLandedCost = (
+  shipment: CostingShipmentInput,
   items?: CostingLineItemInput[],
-): number => {
-  if (!item) return 0;
-  if (!shipment) return Number(item.purchase_price) || 0;
-
-  const base = calculateLinePurchaseBase(item, shipment, items);
-
-  if (shipment.type === 'local') {
-    return base;
-  }
+): number | null => {
+  if (shipment.type === 'local') return null;
 
   const rawTxRate = items && items.length > 0 ? calculateRawTransactionRate(shipment, items) : null;
-
   const storedTxRate = shipment.transaction_rate;
 
   const effectiveRate =
@@ -171,7 +162,71 @@ export const calculateLineLandedCostBdt = (
         ? storedTxRate
         : ((shipment.product_conversion_rate || 1) + (shipment.cargo_conversion_rate || 1)) / 2;
 
-  return base * effectiveRate;
+  return effectiveRate;
+};
+
+export type LineLandedCostBreakdown = {
+  purchasePricePerUnit: number;
+  cargoSharePerUnit: number;
+  basePerUnit: number;
+  transactionRate: number | null;
+  landedCostBdt: number;
+};
+
+export const calculateLineLandedCostBreakdown = (
+  item: CostingLineItemInput,
+  shipment?: CostingShipmentInput | null,
+  items?: CostingLineItemInput[],
+): LineLandedCostBreakdown => {
+  const purchasePricePerUnit = Number(item.purchase_price) || 0;
+  const qty = item.ordered_quantity || 0;
+  const lineCargoTotal =
+    shipment && items && items.length > 0
+      ? calculateLineCargoPurchaseShare(item, shipment, items)
+      : 0;
+  const cargoSharePerUnit = qty > 0 ? lineCargoTotal / qty : 0;
+  const basePerUnit = calculateLinePurchaseBase(item, shipment, items);
+
+  if (!shipment) {
+    return {
+      purchasePricePerUnit,
+      cargoSharePerUnit,
+      basePerUnit: purchasePricePerUnit,
+      transactionRate: null,
+      landedCostBdt: purchasePricePerUnit,
+    };
+  }
+
+  if (shipment.type === 'local') {
+    return {
+      purchasePricePerUnit,
+      cargoSharePerUnit,
+      basePerUnit,
+      transactionRate: null,
+      landedCostBdt: basePerUnit,
+    };
+  }
+
+  const transactionRate = getEffectiveTransactionRateForLandedCost(shipment, items);
+  const landedCostBdt = basePerUnit * (transactionRate ?? 1);
+
+  return {
+    purchasePricePerUnit,
+    cargoSharePerUnit,
+    basePerUnit,
+    transactionRate,
+    landedCostBdt,
+  };
+};
+
+/** Preview unit landed cost in BDT — does not write `landed_cost_bdt`. */
+export const calculateLineLandedCostBdt = (
+  item: CostingLineItemInput,
+  shipment?: CostingShipmentInput | null,
+  items?: CostingLineItemInput[],
+): number => {
+  if (!item) return 0;
+  return calculateLineLandedCostBreakdown(item, shipment, items).landedCostBdt;
 };
 
 export function buildShipmentForLiveCosting(

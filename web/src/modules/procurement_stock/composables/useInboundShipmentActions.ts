@@ -30,6 +30,7 @@ import { calculateShipmentCostSummary, costingShipmentFromEntries } from 'src/sh
 import {
   formatGlobalShipmentStatus,
   isGlobalShipmentStatus,
+  shipmentStatusChangeConfirmCopy,
 } from '../constants/shipmentStatus';
 
 const safeNamePart = (value: string) =>
@@ -399,10 +400,20 @@ export function useInboundShipmentActions(options: {
       return;
     }
 
+    const confirmCopy = shipmentStatusChangeConfirmCopy(newStatus);
     $q.dialog({
-      title: 'Confirm Status Change',
-      message: `Are you sure you want to change the status of this shipment to "${formatGlobalShipmentStatus(newStatus)}"?`,
-      cancel: true,
+      title: confirmCopy.title,
+      message: confirmCopy.message,
+      cancel: {
+        label: 'Cancel',
+        flat: true,
+        color: 'grey-7',
+      },
+      ok: {
+        label: confirmCopy.okLabel,
+        unelevated: true,
+        color: 'primary',
+      },
       persistent: true,
     }).onOk(() => {
       void (async () => {

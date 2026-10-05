@@ -10,6 +10,40 @@ export function isGlobalShipmentStatus(value: string): value is GlobalShipmentSt
   return (GLOBAL_SHIPMENT_STATUSES as readonly string[]).includes(value);
 }
 
+export type ShipmentStatusChangeConfirmCopy = {
+  title: string;
+  message: string;
+  okLabel: string;
+};
+
+/** Confirm dialog copy when changing workflow status (not receive/cancel). */
+export function shipmentStatusChangeConfirmCopy(
+  newStatus: GlobalShipmentStatus,
+): ShipmentStatusChangeConfirmCopy {
+  switch (newStatus) {
+    case 'in_transit':
+      return {
+        title: 'Mark shipment in transit',
+        message:
+          'Use this when goods have left the vendor and are on the way. You can add land splits on each line before receive. Nothing is posted to stock yet.',
+        okLabel: 'Mark in transit',
+      };
+    case 'draft':
+      return {
+        title: 'Return to draft',
+        message:
+          'Moves the shipment back to Draft so you can change lines and costs. Receive and stock posting stay unavailable until you dispatch again.',
+        okLabel: 'Set to draft',
+      };
+    default:
+      return {
+        title: 'Confirm status change',
+        message: `Change this shipment to "${formatGlobalShipmentStatus(newStatus)}"?`,
+        okLabel: `Set to ${formatGlobalShipmentStatus(newStatus)}`,
+      };
+  }
+}
+
 export function formatGlobalShipmentStatus(status: string | null | undefined): string {
   switch ((status ?? '').trim().toLowerCase()) {
     case 'draft':

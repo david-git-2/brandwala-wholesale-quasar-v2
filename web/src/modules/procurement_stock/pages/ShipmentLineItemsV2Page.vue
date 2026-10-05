@@ -249,13 +249,35 @@
             v-if="landSplitReceiveBlockCount > 0"
             dense
             rounded
+            inline-actions
             class="land-split-guard-banner q-mb-xs"
           >
             <template #avatar>
               <q-icon name="ph ph-warning" color="warning" />
             </template>
-            {{ landSplitReceiveBlockCount }} product<span v-if="landSplitReceiveBlockCount !== 1">s</span>
-            need land splits before receive. Check the highlighted rows (name + code).
+            <span>
+              {{ landSplitReceiveBlockCount }} product<span v-if="landSplitReceiveBlockCount !== 1">s</span>
+              need land splits before receive. Check the highlighted rows (name + code).
+            </span>
+            <template #action>
+              <q-btn
+                unelevated
+                dense
+                no-caps
+                color="orange-8"
+                text-color="white"
+                class="land-split-guard-banner__action"
+                label="Fill sellable qty"
+                :loading="bulkApplyingLandSplits"
+                :disable="!canEditSplits"
+                @click="bulkApplySellableLandSplits"
+              >
+                <q-tooltip max-width="260px">
+                  Add a sellable split for the remaining ordered qty on each highlighted line. Adjust
+                  missing or damaged after.
+                </q-tooltip>
+              </q-btn>
+            </template>
           </q-banner>
           <div class="line-sheet-sticky-top">
           <div
@@ -379,6 +401,7 @@
               :show-outcome-columns="showOutcomeColumns"
               :show-actions-column="showLineActionsColumn"
               :land-split-attention="landSplitAttentionForItem(item.id)"
+              :unit-cost-tooltip="item.unitCostTooltip"
               :batch-summary="batchSummaryForItem(item)"
               :adding-extra="addingExtraItemId === item.id"
               :get-draft="(field) => getCellDraftValue(item, field)"
@@ -639,8 +662,10 @@ import { useInboundShipmentCalculations } from '../composables/useInboundShipmen
 import { useInboundShipmentActions } from '../composables/useInboundShipmentActions';
 import {
   calculateLineLandedCostBdt,
+  calculateLineLandedCostBreakdown,
   costingShipmentFromEntries,
 } from 'src/shared/shipment-engine';
+import { formatLineLandedCostTooltip } from '../utils/lineLandedCostTooltip';
 import {
   globalShipmentRepository,
   type GlobalShipmentItem,
@@ -1227,6 +1252,17 @@ const displayedItems = computed(() => {
       const pPrice = Number(item.purchase_price) || 0;
       const oQty = Number(item.ordered_quantity) || 0;
       const unitCost = resolveLineUnitCostBdt(item, storeItems);
+      const forCostingTooltip =
+        shipment != null
+          ? costingShipmentFromEntries(shipment, costEntries, storeItems)
+          : null;
+      const unitCostTooltip =
+        forCostingTooltip != null
+          ? formatLineLandedCostTooltip(
+              calculateLineLandedCostBreakdown(item, forCostingTooltip, storeItems),
+              currentPurchaseCurrencySymbol.value,
+            )
+          : null;
       const totalCost = unitCost * oQty;
       const vendorName = getSectionVendor(item.section_id);
       const vendorInitials = vendorName
@@ -1262,6 +1298,7 @@ const displayedItems = computed(() => {
         price: pPrice,
         cost: totalCost,
         unitCost,
+        unitCostTooltip,
         image_url: item.image_url,
         image: item.image_url || 'https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=100&auto=format&fit=crop&q=60',
         rawItem: item,
@@ -1364,7 +1401,7 @@ const allShipmentOutcomesFlat = computed(() =>
 
 const showLandSplitLineHints = computed(() => {
   const status = shipmentStore.currentShipment?.status;
-  return status === 'draft' || status === 'in_transit';
+  return status === 'in_transit';
 });
 
 const landSplitIssueByItemId = computed(() => {
@@ -1385,6 +1422,115 @@ const landSplitAttentionForItem = (itemId: number): string | null => {
   return issue ? describeLandSplitIssueShort(issue) : null;
 };
 
+const bulkApplyingLandSplits = ref(false);
+
+const reloadShipmentItemOutcomes = async () => {
+  const ids = shipmentStore.currentShipmentItems.map((i) => i.id);
+  if (ids.length === 0) {
+    extraOutcomesByItemId.value = {};
+    return;
+  }
+  const rows = await globalShipmentRepository.listShipmentItemOutcomes(ids);
+  const map: Record<number, ShipmentItemOutcome[]> = {};
+  for (const row of rows) {
+    (map[row.shipment_item_id] ??= []).push(row);
+  }
+  extraOutcomesByItemId.value = map;
+};
+
+const bulkApplySellableLandSplits = async () => {
+  if (!canEditSplits.value) return;
+  const issues = Array.from(landSplitIssueByItemId.value.values());
+  if (issues.length === 0) return;
+
+  const fillable = issues.filter((issue) => issue.orderedQty > issue.splitQty);
+  const skippedOver = issues.length - fillable.length;
+  if (fillable.length === 0) {
+    showWarningNotification(
+      'These lines are over-split. Reduce quantities on the line before receive.',
+    );
+    return;
+  }
+
+  const confirmed = await requestConfirmation(
+    `Add sellable splits for ${fillable.length} product${fillable.length === 1 ? '' : 's'} (full ordered qty where none yet, or the remaining qty where partially split). You can edit splits after.`,
+    'Fill sellable land splits',
+    'Fill splits',
+  );
+  if (!confirmed) return;
+
+  const itemsById = new Map(shipmentStore.currentShipmentItems.map((item) => [item.id, item]));
+  const parentTenantId = resolveBatchParentTenantId();
+  const fullQtyItems: Array<{
+    id: number;
+    ordered_quantity: number;
+    purchase_price: number;
+    landed_cost_bdt?: number | null;
+  }> = [];
+  const gapRows: Array<{
+    parent_tenant_id: number;
+    shipment_item_id: number;
+    quantity: number;
+    kind: 'sellable';
+    reason: 'general';
+    purchase_price: number;
+    cost: number | null;
+  }> = [];
+
+  for (const issue of fillable) {
+    const item = itemsById.get(issue.itemId);
+    if (!item) continue;
+    const gap = issue.orderedQty - issue.splitQty;
+    const purchasePrice = Number(item.purchase_price) || 0;
+    const cost = item.landed_cost_bdt ?? resolveLineUnitCostBdt(item, shipmentStore.currentShipmentItems);
+
+    if (issue.splitQty === 0) {
+      fullQtyItems.push({
+        id: item.id,
+        ordered_quantity: issue.orderedQty,
+        purchase_price: purchasePrice,
+        landed_cost_bdt: cost,
+      });
+      continue;
+    }
+
+    gapRows.push({
+      parent_tenant_id: parentTenantId,
+      shipment_item_id: item.id,
+      quantity: gap,
+      kind: 'sellable',
+      reason: 'general',
+      purchase_price: purchasePrice,
+      cost: cost ?? null,
+    });
+  }
+
+  bulkApplyingLandSplits.value = true;
+  try {
+    const createdFull = fullQtyItems.length
+      ? await globalShipmentRepository.ensureReceivedGeneralOutcomes(parentTenantId, fullQtyItems)
+      : [];
+    const createdGaps = gapRows.length
+      ? await globalShipmentRepository.createShipmentItemOutcomesBulk(gapRows)
+      : [];
+    await reloadShipmentItemOutcomes();
+    const added = createdFull.length + createdGaps.length;
+    if (added === 0) {
+      showWarningNotification('No new splits were added. Refresh the page or adjust lines manually.');
+    } else {
+      let msg = `Added ${added} sellable split${added === 1 ? '' : 's'}. Review and adjust if needed.`;
+      if (skippedOver > 0) {
+        msg += ` ${skippedOver} over-split line${skippedOver === 1 ? '' : 's'} skipped.`;
+      }
+      showSuccessNotification(msg);
+    }
+  } catch (err) {
+    showErrorNotification((err as Error).message || 'Could not fill land splits');
+  } finally {
+    bulkApplyingLandSplits.value = false;
+  }
+};
+
 watch(
   () => shipmentStore.currentShipment?.id,
   () => {
@@ -1402,12 +1548,7 @@ watch(
       return;
     }
     try {
-      const rows = await globalShipmentRepository.listShipmentItemOutcomes(ids);
-      const map: Record<number, ShipmentItemOutcome[]> = {};
-      for (const row of rows) {
-        (map[row.shipment_item_id] ??= []).push(row);
-      }
-      extraOutcomesByItemId.value = map;
+      await reloadShipmentItemOutcomes();
     } catch (err) {
       extraOutcomesByItemId.value = {};
       console.error(err);
@@ -2239,6 +2380,18 @@ const removeSheet = async (id: string) => {
   color: var(--bw-theme-ink);
   font-size: 12px;
   font-weight: 600;
+}
+.land-split-guard-banner :deep(.q-banner__content) {
+  min-width: 0;
+}
+.land-split-guard-banner :deep(.q-banner__actions) {
+  flex-shrink: 0;
+  padding-left: 8px;
+}
+.land-split-guard-banner__action {
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 0 10px;
 }
 .line-sheet-selection-bar {
   background: color-mix(in srgb, var(--q-primary) 10%, #fff);
