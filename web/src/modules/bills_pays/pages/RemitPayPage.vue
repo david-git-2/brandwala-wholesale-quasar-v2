@@ -55,6 +55,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { paymentsPageRoute } from '../utils/paymentsNavigation';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 import { dropshipFinanceRepository, type FinanceHubOrderQueueItem } from 'src/modules/shop_order/repositories/dropshipFinanceRepository';
@@ -97,7 +98,7 @@ const selectOrder = (order: FinanceHubOrderQueueItem) => {
 
 const goBack = () => {
   const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
-  router.push({ name: 'app-payments-page', params: tenantSlug ? { tenantSlug } : {} });
+  router.push(paymentsPageRoute(tenantSlug, 'in'));
 };
 
 const submit = async () => {

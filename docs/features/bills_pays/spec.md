@@ -71,6 +71,18 @@ Paper: `draft` / `issued` / `voided`. Money: `due` / `partially_paid` / `paid`. 
 
 **Pay in** → ALLOC to AR bills; remainder → profile cashbook. **Pay out:** merchant leftover (`dispense_middleman_payout_from_tenant`) or AP alloc (`post_ap_payout_with_allocations`). Inbound AP sync: `sync_shipment_ap_bills` ([WA15](00-gaps.md)).
 
+### AP paper (not AR compose)
+
+AR bills use `bill_lines` (item, qty, sell, disc). AP bills have **no** `bill_lines`. Created only by `sync_shipment_ap_bills`. Print snapshot in `bills.channel_meta.ap_paper` (refreshed while unpaid).
+
+| `ap_kind` | Print shows | Not on paper |
+| :--- | :--- | :--- |
+| `vendor` | Foreign product total, conversion rate, BDT due | SKU / qty lines |
+| `cargo` | Weight (kg), foreign price, conversion rate, BDT due | Item grid |
+| `local` | Description + amount per local cost row | Sell / discount |
+
+UI: `ApBillPaper` on bill detail/preview when `invoice_type = ap`. **Parties on paper:** vendor/cargo = **From** (issuer); **To** = tenant (payer). Local AP = tenant only (**Payable by**). `profile_id` stays the payee for pay-out. Bills list **We owe** only; no AP compose.
+
 ## Stories
 
 ### Bills
@@ -86,5 +98,5 @@ Paper: `draft` / `issued` / `voided`. Money: `due` / `partially_paid` / `paid`. 
 - [ ] US-7 One pay-in writer (collect + remittance).
 - [ ] US-8 Split tender; cheque bounce v2 ([WA13](00-gaps.md)).
 - [ ] US-9 Merchant leftover payout; not ALLOC.
-- [ ] US-10 Customer overpay / return → cashbook.
+- [x] US-10 Customer overpay / leftover: cashbook at collect; apply on Pay in (FIFO) or later from the payment.
 - [x] US-11 Shipment AP auto-sync; vendor outcome credit costing-only.

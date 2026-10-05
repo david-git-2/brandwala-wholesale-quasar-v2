@@ -14,7 +14,13 @@ export function useBillDetailQuery(billId: Ref<number | null>) {
   const itemsQuery = useQuery({
     queryKey: computed(() => billsQueryKeys.items(billId.value)),
     queryFn: () => invoiceRepository.listGlobalInvoiceItems(billId.value!),
-    enabled: computed(() => billId.value != null && billId.value > 0),
+    enabled: computed(() => {
+      const id = billId.value;
+      if (id == null || id <= 0) return false;
+      const inv = detailQuery.data.value;
+      if (!inv) return false;
+      return inv.invoice_type !== 'ap';
+    }),
     staleTime: 30_000,
   });
 

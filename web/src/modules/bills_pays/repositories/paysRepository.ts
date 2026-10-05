@@ -61,6 +61,7 @@ export type PayAllocationRow = {
 };
 
 export type PayDetail = PayListRow & {
+  tenant_id: number;
   customer_group_id: number | null;
   instruments: Array<{
     id: number;
@@ -170,6 +171,7 @@ const getPayById = async (payId: number): Promise<PayDetail> => {
     profile_id: pay.profile_id,
     profile_name: profile?.name ?? null,
     shop_order_id: pay.shop_order_id,
+    tenant_id: pay.tenant_id,
     customer_group_id: pay.customer_group_id,
     instruments: (instruments ?? []).map((i) => ({
       id: i.id,
@@ -385,6 +387,22 @@ const dispenseMiddlemanPayout = async (payload: {
   return data;
 };
 
+const allocatePayToBill = async (payload: {
+  tenant_id: number;
+  payment_id: number;
+  bill_id: number;
+  amount: number;
+}) => {
+  const { data, error } = await supabase.rpc('allocate_payment_to_global_invoice', {
+    p_tenant_id: payload.tenant_id,
+    p_payment_id: payload.payment_id,
+    p_global_invoice_id: payload.bill_id,
+    p_amount: payload.amount,
+  });
+  if (error) throw error;
+  return data;
+};
+
 export const paysRepository = {
   listPays,
   getPayById,
@@ -394,6 +412,7 @@ export const paysRepository = {
   listOpenApBillsForProfile,
   listApPayProfileSummaries,
   postCustomerReceipt,
+  allocatePayToBill,
   postApPayoutWithAllocations,
   voidCustomerReceipt,
   dispenseMiddlemanPayout,

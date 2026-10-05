@@ -1,60 +1,61 @@
 <template>
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
-    <div class="row items-center justify-between q-pb-sm shrink-0">
-      <q-btn flat dense no-caps icon="ph ph-arrow-left" label="Bills" @click="goBack" />
-      <div class="row items-center q-gutter-sm">
-        <q-btn
-          outline
-          dense
-          no-caps
-          label="Save draft"
-          :loading="composeMutation.isPending.value"
-          :disable="!canSave"
-          @click="saveDraft"
-        />
-        <q-btn
-          unelevated
-          dense
-          no-caps
-          color="primary"
-          label="Issue bill"
-          :loading="composeMutation.isPending.value"
-          :disable="!canIssue"
-          @click="issueBill"
-        />
-      </div>
-    </div>
-
     <div v-if="loadingExisting" class="col flex flex-center">
       <q-spinner color="primary" size="32px" />
     </div>
 
     <div v-else class="col overflow-auto">
       <div class="compose-card q-pa-md q-gutter-y-md">
-        <div class="row items-center q-gutter-md">
-          <q-btn-toggle
-            v-model="billKind"
-            spread
-            no-caps
-            dense
-            toggle-color="primary"
-            :options="[
-              { label: 'Trade', value: 'trade' },
-              { label: 'Walk-in', value: 'walkin' },
-            ]"
-          />
-          <q-btn-toggle
-            v-if="billKind === 'trade'"
-            v-model="tradePaperKind"
-            spread
-            no-caps
-            dense
-            toggle-color="secondary"
-            :options="[
-              { label: 'Take', value: 'take' },
-              { label: 'Condition', value: 'condition' },
-            ]"
-          />
+        <div class="compose-kind-toolbar row items-end justify-between q-col-gutter-sm">
+          <div class="row items-start q-gutter-md wrap col">
+            <div class="compose-kind-group">
+              <div class="compose-kind-heading">Bill type</div>
+              <q-btn-toggle
+                v-model="billKind"
+                unelevated
+                no-caps
+                toggle-color="primary"
+                color="grey-3"
+                text-color="grey-9"
+                class="compose-kind-tabs"
+                :options="billKindToggleOptions"
+              />
+            </div>
+            <div v-if="billKind === 'trade'" class="compose-kind-group">
+              <div class="compose-kind-heading">Delivery paper</div>
+              <q-btn-toggle
+                v-model="tradePaperKind"
+                unelevated
+                no-caps
+                toggle-color="primary"
+                color="grey-3"
+                text-color="grey-9"
+                class="compose-kind-tabs"
+                :options="tradePaperToggleOptions"
+              />
+            </div>
+          </div>
+          <div class="row items-center justify-end q-gutter-sm col-shrink compose-page-actions">
+            <q-btn
+              outline
+              no-caps
+              label="Save draft"
+              icon="ph ph-floppy-disk"
+              :loading="composeMutation.isPending.value"
+              :disable="!canSave"
+              @click="saveDraft"
+            />
+            <q-btn
+              unelevated
+              no-caps
+              color="primary"
+              label="Issue bill"
+              icon="ph ph-check-circle"
+              :loading="composeMutation.isPending.value"
+              :disable="!canIssue"
+              @click="issueBill"
+            />
+          </div>
         </div>
 
         <div class="row q-col-gutter-md">
@@ -241,10 +242,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuery } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import { supabase } from 'src/boot/supabase';
 import { formatAmountBdt } from 'src/utils/currency';
 import { requestConfirmation } from 'src/utils/appFeedback';
@@ -269,10 +271,22 @@ type ComposeLine = {
   line_discount_amount: number;
 };
 
+const billKindToggleOptions = [
+  { label: 'Trade', value: 'trade' as const, icon: 'ph ph-briefcase' },
+  { label: 'Walk-in', value: 'walkin' as const, icon: 'ph ph-storefront' },
+];
+
+const tradePaperToggleOptions = [
+  { label: 'Take', value: 'take' as const, icon: 'ph ph-arrow-circle-down' },
+  { label: 'Condition', value: 'condition' as const, icon: 'ph ph-seal-check' },
+];
+
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const composeMutation = useBillComposeMutation();
+const { setCustomBreadcrumbs, clearCustomBreadcrumbs } = useBreadcrumbs();
+const composeBreadcrumbTitle = ref('New bill');
 
 const BRAND_STORAGE_KEY = 'bills_pays_last_invoice_brand_id';
 
@@ -552,6 +566,8 @@ const loadExisting = async (id: number) => {
         } as BillingProfile,
       ];
     }
+    const no = bill.invoice_no?.trim();
+    composeBreadcrumbTitle.value = no || `Bill #${id}`;
   } finally {
     loadingExisting.value = false;
   }
@@ -560,19 +576,39 @@ const loadExisting = async (id: number) => {
 watch(
   editInvoiceId,
   (id) => {
+    if (!id) composeBreadcrumbTitle.value = 'New bill';
     if (id) void loadExisting(id);
   },
   { immediate: true },
 );
 
+const breadcrumbItems = computed(() => {
+  const tenantSlug =
+    (typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null) ||
+    authStore.tenantSlug ||
+    undefined;
+  return [
+    {
+      label: authStore.selectedTenant?.name || 'Workspace',
+      icon: 'ph ph-buildings',
+    },
+    {
+      label: 'Bills',
+      to: {
+        name: 'app-bills-page',
+        ...(tenantSlug ? { params: { tenantSlug } } : {}),
+      },
+    },
+    { label: composeBreadcrumbTitle.value },
+  ];
+});
+
+watch(breadcrumbItems, (items) => setCustomBreadcrumbs(items), { immediate: true });
+onBeforeUnmount(() => clearCustomBreadcrumbs());
+
 watch(tenantId, () => {
   void filterProfiles('', (cb) => cb());
 });
-
-const goBack = () => {
-  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
-  router.push({ name: 'app-bills-page', params: tenantSlug ? { tenantSlug } : {} });
-};
 
 void filterProfiles('', (cb) => cb());
 </script>
@@ -588,6 +624,60 @@ void filterProfiles('', (cb) => cb());
   border: 1px solid var(--bw-neutral-border, #e7e1d8);
   border-radius: 8px;
 }
+
+.compose-kind-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px 20px;
+  padding: 10px 12px;
+  border-radius: var(--bw-radius-sm, 8px);
+  background: var(--bw-neutral-surface-alt, #f8fafc);
+  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+}
+
+body.body--dark .compose-kind-toolbar {
+  background: #1c1c1c;
+  border-color: #2e2e2e;
+}
+
+.compose-kind-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.compose-kind-heading {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bw-neutral-chrome, #64748b);
+  padding-left: 2px;
+}
+
+.compose-kind-tabs {
+  min-height: 36px;
+}
+
+.compose-kind-tabs :deep(.q-btn) {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.compose-kind-tabs :deep(.q-btn .q-icon) {
+  font-size: 16px;
+  margin-right: 6px;
+}
+
+.compose-page-actions :deep(.q-btn) {
+  min-height: 36px;
+  padding: 0 14px;
+}
+
 .totals-panel {
   min-width: 220px;
   display: flex;

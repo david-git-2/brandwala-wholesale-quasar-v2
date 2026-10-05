@@ -19,6 +19,6 @@ Open with [spec.md](spec.md). Types: `not_built` | `doc_wrong` | `sql_split` | `
 | WA4 | design | One pay RPC; remittance `source` | `pays.source` (`customer_cash`, `bank`, `store_credit`, `courier_remittance`) | Two screens; same allocations |
 | WA12 | ~~design~~ | One receipt writer | `post_customer_receipt_with_allocations` | **Done (2026-10):** courier remittance calls it; old `create_billing_profile_payment_with_allocations`, `collect_wholesale_invoice_payment`, `record_batch_customer_payment` dropped |
 | WA13 | not_built | Cheque bounce | Cheques count at desk | Reversing pay later |
-| WA15 | partial | Shipment auto-sync **vendor / cargo / local** AP bills; `post_ap_payout_with_allocations` (`ap_payout`); Payments **Pay out** lists AP pays | Sync RPC + pay writer + desk UI | Backfill existing shipments; void AP on cancel when unpaid only |
+| WA16 | ~~not_built~~ | Pay in FIFO auto-alloc; leftover may stay unallocated and attach later from the payment | Collect **Fill oldest first**; Pay detail leftover + `allocate_payment_to_global_invoice` (cashbook debit) | **Done (2026-10)** |
 
 Done rows (keep IDs for other packs): SI3–SI4, SI7–SI8, SI10–SI18, WA5–WA11, WA14 — shipped 2026-09. SI5, SI6, SI9, WA1, WA12, BP4 (tables) — 2026-10. SI2: never resurrect invoice status `posted`.

@@ -349,6 +349,8 @@ GRANT ALL ON FUNCTION "public"."apply_global_invoice_target_total"("p_invoice_id
 
 GRANT ALL ON FUNCTION "public"."billing_profile_valid_for_issuer"("p_billing_profile_id" bigint, "p_issued_by_tenant_id" bigint) TO "authenticated";
 
+GRANT ALL ON FUNCTION "public"."profile_valid_for_issuer"("p_profile_id" bigint, "p_issued_by_tenant_id" bigint) TO "authenticated";
+
 GRANT ALL ON FUNCTION "public"."build_dropship_tenant_b2b_invoice_payload"("p_order_id" bigint, "p_invoice_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_note" "text") TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."canonicalize_dropship_order_wallet_source_ids"("p_order_id" bigint) TO "authenticated";
@@ -455,7 +457,7 @@ GRANT ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenan
 
 GRANT ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint) TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric) FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb") FROM PUBLIC;
 
 GRANT ALL ON FUNCTION "public"."sync_shipment_ap_bills"("p_shipment_id" bigint) TO "authenticated";
 

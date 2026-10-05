@@ -1,4 +1,8 @@
 import { supabase } from 'src/boot/supabase';
+import {
+  formatPbcSourceLabel,
+  formatShopOrderSourceLabel,
+} from 'src/modules/bills_pays/utils/billSourceContext';
 import { tenantRepository } from 'src/modules/tenant/repositories/tenantRepository';
 import type { GlobalStockCostingInput } from 'src/modules/global/types';
 import type {
@@ -44,6 +48,90 @@ export type PaginatedGlobalInvoices = {
   total: number;
 };
 
+const attachBillSourceContextLabels = async (rows: GlobalInvoiceRow[]): Promise<void> => {
+  if (!rows.length) return;
+
+  const billIds = rows.map((row) => row.id);
+  const shopOrderIds = [
+    ...new Set(
+      rows.map((row) => row.shop_order_id).filter((id): id is number => id != null && id > 0),
+    ),
+  ];
+
+  const shopOrderQueries: Promise<{ data: unknown; error: unknown }>[] = [
+    supabase
+      .from('shop_orders')
+      .select('id, order_no, name, global_invoice_id')
+      .in('global_invoice_id', billIds),
+  ];
+  if (shopOrderIds.length) {
+    shopOrderQueries.push(
+      supabase
+        .from('shop_orders')
+        .select('id, order_no, name, global_invoice_id')
+        .in('id', shopOrderIds),
+    );
+  }
+
+  const [ordersByInvoiceRes, ordersByIdRes, pbcRes] = await Promise.all([
+    shopOrderQueries[0],
+    shopOrderIds.length ? shopOrderQueries[1] : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from('product_based_costing_files')
+      .select('id, name, order_for, invoice_id')
+      .in('invoice_id', billIds),
+  ]);
+
+  if (ordersByInvoiceRes.error) throw ordersByInvoiceRes.error;
+  if (ordersByIdRes.error) throw ordersByIdRes.error;
+  if (pbcRes.error) throw pbcRes.error;
+
+  type ShopOrderLink = {
+    id: number;
+    order_no: string;
+    name: string;
+    global_invoice_id: number | null;
+  };
+  type PbcLink = {
+    id: number;
+    name: string | null;
+    order_for: string | null;
+    invoice_id: number | null;
+  };
+
+  const orderById = new Map<number, ShopOrderLink>();
+  const orderByInvoiceId = new Map<number, ShopOrderLink>();
+  for (const res of [ordersByInvoiceRes, ordersByIdRes]) {
+    for (const order of (res.data as ShopOrderLink[] | null) ?? []) {
+      orderById.set(order.id, order);
+      if (order.global_invoice_id != null) {
+        orderByInvoiceId.set(order.global_invoice_id, order);
+      }
+    }
+  }
+
+  const pbcByInvoiceId = new Map<number, PbcLink>();
+  for (const file of (pbcRes.data as PbcLink[] | null) ?? []) {
+    if (file.invoice_id != null) {
+      pbcByInvoiceId.set(file.invoice_id, file);
+    }
+  }
+
+  for (const row of rows) {
+    const pbc = pbcByInvoiceId.get(row.id);
+    if (pbc) {
+      row.source_context_label = formatPbcSourceLabel(pbc);
+      continue;
+    }
+    const order =
+      (row.shop_order_id != null ? orderById.get(row.shop_order_id) : undefined) ??
+      orderByInvoiceId.get(row.id);
+    if (order) {
+      row.source_context_label = formatShopOrderSourceLabel(order);
+    }
+  }
+};
+
 const listGlobalInvoices = async (
   params: ListGlobalInvoicesParams,
 ): Promise<PaginatedGlobalInvoices> => {
@@ -71,7 +159,7 @@ const listGlobalInvoices = async (
   let query = supabase
     .from('bills')
     .select(
-      'id, parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, billing_profile_id:profile_id, retail_billing_mode, channel_meta, recipient_name, created_by, created_at, billing_profiles:profiles!bills_profile_id_fkey(name, email, color:accent_color), issued_by:tenants!global_invoices_issued_by_tenant_id_fkey(name)',
+      'id, parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, billing_profile_id:profile_id, shop_order_id, retail_billing_mode, channel_meta, recipient_name, created_by, created_at, billing_profiles:profiles!bills_profile_id_fkey(name, email, color:accent_color), issued_by:tenants!global_invoices_issued_by_tenant_id_fkey(name)',
       { count: 'exact' },
     );
 
@@ -194,6 +282,8 @@ const listGlobalInvoices = async (
       }
     }
   }
+
+  await attachBillSourceContextLabels(rows);
 
   return {
     data: rows,

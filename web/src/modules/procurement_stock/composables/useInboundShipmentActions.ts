@@ -370,6 +370,14 @@ export function useInboundShipmentActions(options: {
       return;
     }
 
+    if (
+      shipmentStore.currentShipment.status === 'received' &&
+      (newStatus === 'draft' || newStatus === 'in_transit')
+    ) {
+      showWarningNotification('Received shipments cannot return to Draft or In Transit.');
+      return;
+    }
+
     if (newStatus === 'cancelled') {
       $q.dialog({
         title: 'Cancel shipment',

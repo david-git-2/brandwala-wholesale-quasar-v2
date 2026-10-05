@@ -445,18 +445,59 @@
                 <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
                   Cargo
                 </div>
-                <q-btn
-                  outline
-                  dense
-                  no-caps
-                  size="xs"
-                  color="primary"
-                  icon="ph ph-plus"
-                  label="Add Rate"
-                  class="q-px-sm rounded-btn text-weight-bold"
-                  :disable="!canEditCosts"
-                  @click="addCargoRateRow"
-                />
+                <div class="row items-center q-gutter-xs">
+                  <q-btn
+                    v-if="!cargoApBill"
+                    outline
+                    dense
+                    no-caps
+                    size="xs"
+                    color="primary"
+                    icon="ph ph-receipt"
+                    label="Create bill"
+                    class="q-px-sm rounded-btn text-weight-bold"
+                    :loading="apSyncKind === 'cargo'"
+                    :disable="!canEditCosts || !!apSyncKind"
+                    @click="syncApBill('cargo')"
+                  />
+                  <template v-else>
+                    <q-btn
+                      outline
+                      dense
+                      no-caps
+                      size="xs"
+                      color="primary"
+                      icon="ph ph-arrows-clockwise"
+                      label="Update"
+                      class="q-px-sm rounded-btn text-weight-bold"
+                      :loading="apSyncKind === 'cargo'"
+                      :disable="!canEditCosts || !!apSyncKind"
+                      @click="syncApBill('cargo')"
+                    />
+                    <q-btn
+                      flat
+                      dense
+                      no-caps
+                      size="xs"
+                      color="primary"
+                      :label="cargoApBill.invoice_no"
+                      class="text-weight-bold"
+                      @click="openApBill(cargoApBill.id)"
+                    />
+                  </template>
+                  <q-btn
+                    outline
+                    dense
+                    no-caps
+                    size="xs"
+                    color="primary"
+                    icon="ph ph-plus"
+                    label="Add Rate"
+                    class="q-px-sm rounded-btn text-weight-bold"
+                    :disable="!canEditCosts"
+                    @click="addCargoRateRow"
+                  />
+                </div>
               </div>
 
               <div class="column q-gutter-y-sm">
@@ -541,18 +582,59 @@
                 <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
                   Product
                 </div>
-                <q-btn
-                  outline
-                  dense
-                  no-caps
-                  size="xs"
-                  color="primary"
-                  icon="ph ph-plus"
-                  label="Add Rate"
-                  class="q-px-sm rounded-btn text-weight-bold"
-                  :disable="!canEditCosts"
-                  @click="addProductRateRow"
-                />
+                <div class="row items-center q-gutter-xs">
+                  <q-btn
+                    v-if="!vendorApBill"
+                    outline
+                    dense
+                    no-caps
+                    size="xs"
+                    color="primary"
+                    icon="ph ph-receipt"
+                    label="Create bill"
+                    class="q-px-sm rounded-btn text-weight-bold"
+                    :loading="apSyncKind === 'vendor'"
+                    :disable="!canEditCosts || !!apSyncKind"
+                    @click="syncApBill('vendor')"
+                  />
+                  <template v-else>
+                    <q-btn
+                      outline
+                      dense
+                      no-caps
+                      size="xs"
+                      color="primary"
+                      icon="ph ph-arrows-clockwise"
+                      label="Update"
+                      class="q-px-sm rounded-btn text-weight-bold"
+                      :loading="apSyncKind === 'vendor'"
+                      :disable="!canEditCosts || !!apSyncKind"
+                      @click="syncApBill('vendor')"
+                    />
+                    <q-btn
+                      flat
+                      dense
+                      no-caps
+                      size="xs"
+                      color="primary"
+                      :label="vendorApBill.invoice_no"
+                      class="text-weight-bold"
+                      @click="openApBill(vendorApBill.id)"
+                    />
+                  </template>
+                  <q-btn
+                    outline
+                    dense
+                    no-caps
+                    size="xs"
+                    color="primary"
+                    icon="ph ph-plus"
+                    label="Add Rate"
+                    class="q-px-sm rounded-btn text-weight-bold"
+                    :disable="!canEditCosts"
+                    @click="addProductRateRow"
+                  />
+                </div>
               </div>
 
               <div class="column q-gutter-y-sm">
@@ -630,8 +712,9 @@
         </q-tab-panel>
 
         <!-- 4. Local costs Tab Panel -->
-        <q-tab-panel name="local-costs" class="bg-white">
+        <q-tab-panel name="local-costs" class="bg-white shipment-settings-drawer-panel--fill">
           <ShipmentLocalCostsPanel
+            class="shipment-local-costs-panel--embedded"
             :shipment-id="shipmentId"
             :default-cost-currency-id="shipmentStore.currentShipment?.shipment_cost_currency_id ?? null"
             :default-cost-symbol="currentCostCurrencySymbol"
@@ -799,6 +882,12 @@ import {
   globalShipmentStatusChipStyle,
 } from '../constants/shipmentStatus';
 import ShipmentLocalCostsPanel from './ShipmentLocalCostsPanel.vue';
+import {
+  listShipmentApBills,
+  syncShipmentApBills,
+  type ShipmentApBillRow,
+  type ShipmentApKind,
+} from '../repositories/shipmentApBillsRepository';
 
 const props = withDefaults(
   defineProps<{
@@ -850,12 +939,83 @@ const settingsTabs = [
   { name: 'more', label: 'More', icon: 'ph ph-dots-three-outline' },
 ] as const;
 const archivingLoading = ref(false);
+const apBills = ref<ShipmentApBillRow[]>([]);
+const apSyncKind = ref<ShipmentApKind | null>(null);
+
+const vendorApBill = computed(() => apBills.value.find((b) => b.ap_kind === 'vendor') ?? null);
+const cargoApBill = computed(() => apBills.value.find((b) => b.ap_kind === 'cargo') ?? null);
+
+const loadApBills = async () => {
+  if (!props.shipmentId) {
+    apBills.value = [];
+    return;
+  }
+  try {
+    apBills.value = await listShipmentApBills(props.shipmentId);
+  } catch {
+    apBills.value = [];
+  }
+};
+
+const openApBill = (billId: number) => {
+  const tenantSlug = authStore.tenantSlug;
+  if (!tenantSlug) return;
+  void router.push({
+    name: 'app-bill-detail-page',
+    params: { tenantSlug, billId: String(billId) },
+  });
+};
+
+const syncApBill = async (kind: ShipmentApKind) => {
+  const ship = shipmentStore.currentShipment;
+  if (!ship || ship.id !== props.shipmentId) return;
+  if (kind === 'vendor' && !ship.vendor_id) {
+    $q.notify({ message: 'Set a vendor on this shipment first.', color: 'warning', icon: 'ph ph-warning' });
+    return;
+  }
+  if (kind === 'cargo' && !ship.cargo_company_id) {
+    $q.notify({ message: 'Set a cargo company on this shipment first.', color: 'warning', icon: 'ph ph-warning' });
+    return;
+  }
+  apSyncKind.value = kind;
+  try {
+    const existed = apBills.value.some((b) => b.ap_kind === kind);
+    await syncShipmentApBills(props.shipmentId);
+    await loadApBills();
+    const linked = apBills.value.find((b) => b.ap_kind === kind);
+    if (!linked) {
+      $q.notify({
+        message: kind === 'vendor' ? 'Add product rates first.' : 'Add cargo rates first.',
+        color: 'warning',
+        icon: 'ph ph-warning',
+      });
+      return;
+    }
+    $q.notify({
+      message: existed ? `Bill ${linked.invoice_no} updated` : `Bill ${linked.invoice_no} created`,
+      color: 'positive',
+      icon: 'ph ph-check-circle',
+      timeout: 1200,
+    });
+  } catch (err: unknown) {
+    $q.notify({
+      message: (err as Error).message || 'Could not create bill',
+      color: 'negative',
+      icon: 'ph ph-warning-circle',
+    });
+  } finally {
+    apSyncKind.value = null;
+  }
+};
 
 watch(
-  () => [props.modelValue, props.initialTab],
+  () => [props.modelValue, props.initialTab, props.shipmentId] as const,
   ([isOpen, tab]) => {
     if (isOpen && tab) {
       activeTab.value = tab as string;
+    }
+    if (isOpen) {
+      void loadApBills();
     }
   },
 );
@@ -1315,6 +1475,7 @@ const saveRates = async () => {
     });
 
     syncRatesFromStore();
+    void loadApBills();
     $q.notify({
       message: 'Rates and weight saved',
       color: 'positive',
@@ -1342,6 +1503,15 @@ const saveRates = async () => {
 
 .shipment-settings-drawer :deep(.q-drawer__content) {
   background: #fff;
+  height: 100%;
+  max-height: calc(100dvh - var(--workspace-header-offset, 44px));
+  padding-top: 0 !important;
+  min-height: 0 !important;
+}
+
+.shipment-settings-drawer.q-drawer--top-padding :deep(.q-drawer__content) {
+  padding-top: 0 !important;
+  min-height: 100% !important;
 }
 
 .shipment-settings-drawer__close {
@@ -1408,8 +1578,37 @@ const saveRates = async () => {
   color: var(--q-primary);
 }
 
+.shipment-settings-drawer-panels {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.shipment-settings-drawer-panels :deep(.q-panel-parent) {
+  height: 100%;
+  min-height: 0;
+}
+
+.shipment-settings-drawer-panels :deep(.q-panel.scroll) {
+  height: 100%;
+  min-height: 0;
+}
+
 .shipment-settings-drawer-panels :deep(.q-tab-panel) {
   padding: 12px 14px;
+}
+
+.shipment-settings-drawer-panel--fill {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.shipment-settings-drawer-panel--fill :deep(.shipment-local-costs-panel--embedded) {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .border-bottom {

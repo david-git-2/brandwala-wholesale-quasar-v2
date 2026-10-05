@@ -29,6 +29,9 @@
             <q-tooltip v-if="st === 'received' && lockReceived">
               Split every item first
             </q-tooltip>
+            <q-tooltip v-else-if="isBackwardFromReceived(st)">
+              Cannot move back from Received
+            </q-tooltip>
           </q-btn>
           <q-icon
             v-if="idx < workflowStatuses.length - 1"
@@ -191,9 +194,14 @@ function statusColor(st: string): string {
   return globalShipmentStatusWorkflowColor(st);
 }
 
+function isBackwardFromReceived(st: string): boolean {
+  return props.status === 'received' && (st === 'draft' || st === 'in_transit');
+}
+
 function isStatusDisabled(st: string): boolean {
   if (props.updating && props.targetStatus !== st) return true;
   if (props.status === 'cancelled' && st !== 'cancelled') return true;
+  if (isBackwardFromReceived(st)) return true;
   return false;
 }
 </script>

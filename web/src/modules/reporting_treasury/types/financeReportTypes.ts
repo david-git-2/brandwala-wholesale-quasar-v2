@@ -198,6 +198,17 @@ export type MonthSnapshotKpis = {
   merchant_payable?: number;
 };
 
+export type MonthSnapshotPosition = {
+  tenant_cash: number;
+  courier_holding: number;
+  ar_outstanding: number;
+  cod_unremitted: number;
+  ap_payable: number;
+  merchant_payable: number;
+  customer_store_credit: number;
+  net_buffer: number;
+};
+
 export type MonthSnapshotReportPayload = {
   tenant_id: number;
   month: string;
@@ -205,4 +216,5 @@ export type MonthSnapshotReportPayload = {
   end_date: string;
   sales_by_invoice_type?: Record<string, number>;
   kpis: MonthSnapshotKpis;
+  position?: MonthSnapshotPosition;
 };

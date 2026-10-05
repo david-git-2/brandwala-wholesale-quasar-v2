@@ -108,7 +108,7 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
         name: 'app-finance-month-snapshot-report-page',
         component: () => import('../pages/MonthSnapshotReportPage.vue'),
         beforeEnter: guard('reporting_treasury'),
-        meta: { title: 'Month snapshot', headerTitle: 'Month snapshot' },
+        meta: { title: 'Money position', headerTitle: 'Money position' },
       },
     ],
   },

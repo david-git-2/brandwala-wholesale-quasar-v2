@@ -59,7 +59,7 @@ Dropship: sales = merchant total, not COD face. Sales reports filter `invoice_ty
 | 5 | Courier COD | Face vs remitted |
 | 6 | Cashbook liability | Merchant / customer / courier owed |
 | 7 | Shipment P&L | Batch payoff |
-| 8 | Month snapshot | Four tiles + optional merchant payable |
+| 8 | Money position (month snapshot route) | **As-of:** bank/till, courier holding, AR, COD unremitted, AP, shop leftover, customer credit, net buffer. **Month:** sales, GP, cash in. Drill-down tiles only — no collect on this page. |
 
 ### US-3: Reporting does not collect
 - [x] Collect on Payments desk only; report routes read-only.

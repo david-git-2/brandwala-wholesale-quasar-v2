@@ -9424,18 +9424,32 @@ export type Database = {
         Args: { p_row: Database["public"]["Tables"]["cashbook_entries"]["Row"] }
         Returns: undefined
       }
-      _upsert_shipment_ap_bill: {
-        Args: {
-          p_amount: number
-          p_ap_kind: string
-          p_issued_by_tenant_id: number
-          p_parent_tenant_id: number
-          p_profile_id: number
-          p_shipment_id: number
-          p_shipment_name: string
-        }
-        Returns: number
-      }
+      _upsert_shipment_ap_bill:
+        | {
+            Args: {
+              p_amount: number
+              p_ap_kind: string
+              p_issued_by_tenant_id: number
+              p_parent_tenant_id: number
+              p_profile_id: number
+              p_shipment_id: number
+              p_shipment_name: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_amount: number
+              p_ap_kind: string
+              p_ap_paper?: Json
+              p_issued_by_tenant_id: number
+              p_parent_tenant_id: number
+              p_profile_id: number
+              p_shipment_id: number
+              p_shipment_name: string
+            }
+            Returns: number
+          }
       _validate_stock_location_nesting: {
         Args: {
           p_kind: Database["public"]["Enums"]["stock_location_kind"]
@@ -14291,6 +14305,10 @@ export type Database = {
           p_return_charge_amount?: number
         }
         Returns: Json
+      }
+      profile_valid_for_issuer: {
+        Args: { p_issued_by_tenant_id: number; p_profile_id: number }
+        Returns: boolean
       }
       purge_archived_shipment: { Args: { p_id: number }; Returns: undefined }
       purge_popped_demand_bucket_items: {

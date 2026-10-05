@@ -1,31 +1,5 @@
 <template>
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden bill-detail-page">
-    <div class="row items-center justify-between q-pb-sm shrink-0 bill-detail-toolbar no-print">
-      <q-btn flat dense no-caps icon="ph ph-arrow-left" label="Bills" @click="goBack" />
-      <div class="row items-center q-gutter-sm">
-        <q-btn
-          v-if="canVoid"
-          outline
-          dense
-          no-caps
-          color="negative"
-          icon="ph ph-prohibit"
-          label="Void"
-          :loading="voidMutation.isPending.value"
-          @click="onVoid"
-        />
-        <q-btn
-          unelevated
-          dense
-          no-caps
-          color="primary"
-          icon="ph ph-printer"
-          label="Print"
-          @click="onPrint"
-        />
-      </div>
-    </div>
-
     <div v-if="detailQuery.isPending.value" class="col flex flex-center">
       <q-spinner color="primary" size="32px" />
     </div>
@@ -36,6 +10,27 @@
 
     <div v-else-if="bill" class="col overflow-auto bill-print-root">
       <div class="bill-detail-card q-pa-md">
+        <div class="bill-page-actions row items-center justify-end q-gutter-sm no-print q-mb-md">
+          <q-btn
+            v-if="canVoid"
+            outline
+            no-caps
+            color="negative"
+            icon="ph ph-prohibit"
+            label="Void"
+            :loading="voidMutation.isPending.value"
+            @click="onVoid"
+          />
+          <q-btn
+            unelevated
+            no-caps
+            color="primary"
+            icon="ph ph-printer"
+            label="Print"
+            @click="onPrint"
+          />
+        </div>
+
         <div class="row items-start justify-between q-mb-md">
           <div>
             <div class="text-h6 text-weight-bold">{{ bill.invoice_no }}</div>
@@ -52,74 +47,103 @@
           />
         </div>
 
-        <div class="row q-col-gutter-md q-mb-md">
-          <div class="col-12 col-sm-6">
-            <div class="text-overline text-grey-7">To</div>
-            <div class="text-subtitle2 text-weight-medium">{{ profileName }}</div>
-            <div v-if="bill.billing_profiles?.email" class="text-caption text-grey-7">
-              {{ bill.billing_profiles.email }}
-            </div>
-            <div v-if="bill.billing_profiles?.address" class="text-caption text-grey-7">
-              {{ bill.billing_profiles.address }}
+        <div class="q-mb-md">
+          <ApBillPartiesBlock v-if="isApBill" :bill="bill" />
+          <div v-else class="row q-col-gutter-md">
+            <div class="col-12 col-sm-6">
+              <div class="text-overline text-grey-7">To</div>
+              <div class="text-subtitle2 text-weight-medium">{{ profileName }}</div>
+              <div v-if="bill.billing_profiles?.email" class="text-caption text-grey-7">
+                {{ bill.billing_profiles.email }}
+              </div>
+              <div v-if="bill.billing_profiles?.address" class="text-caption text-grey-7">
+                {{ bill.billing_profiles.address }}
+              </div>
             </div>
           </div>
         </div>
 
-        <q-markup-table flat dense class="bill-lines-table">
-          <thead>
-            <tr>
-              <th class="text-left">Item</th>
-              <th class="text-right">Qty</th>
-              <th class="text-right">Sell</th>
-              <th class="text-right">Disc.</th>
-              <th class="text-right">Line total</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="line in lines" :key="line.id">
-              <td class="bill-line-item-cell">
-                <BillLineItemDisplay :name="line.name_snapshot" :image-url="line.image_url" />
-              </td>
-              <td class="text-right">{{ line.quantity }}</td>
-              <td class="text-right">{{ formatAmountBdt(line.sell_price_amount) }}</td>
-              <td class="text-right">{{ formatAmountBdt(line.line_discount_amount) }}</td>
-              <td class="text-right text-weight-medium">{{ formatAmountBdt(line.line_total_amount) }}</td>
-            </tr>
-          </tbody>
-        </q-markup-table>
-
-        <div class="row justify-end q-mt-md">
-          <div class="bill-totals-panel">
-            <div v-if="bill.discount_amount" class="bill-total-row">
-              <span>Discount</span>
-              <span>{{ formatAmountBdt(bill.discount_amount) }}</span>
-            </div>
-            <div v-if="bill.shipping_charge" class="bill-total-row">
-              <span>Shipping</span>
-              <span>{{ formatAmountBdt(bill.shipping_charge) }}</span>
-            </div>
-            <div v-if="bill.wrapping_charge" class="bill-total-row">
-              <span>Wrapping</span>
-              <span>{{ formatAmountBdt(bill.wrapping_charge) }}</span>
-            </div>
-            <div v-if="bill.print_charge" class="bill-total-row">
-              <span>Print</span>
-              <span>{{ formatAmountBdt(bill.print_charge) }}</span>
-            </div>
-            <div class="bill-total-row text-weight-bold">
-              <span>Total</span>
-              <span>{{ formatAmountBdt(bill.total_amount) }}</span>
-            </div>
-            <div class="bill-total-row">
-              <span>Paid</span>
-              <span>{{ formatAmountBdt(bill.paid_amount) }}</span>
-            </div>
-            <div class="bill-total-row text-weight-bold">
-              <span>Due</span>
-              <span>{{ formatAmountBdt(bill.due_amount) }}</span>
+        <template v-if="isApBill">
+          <ApBillPaper
+            :channel-meta="bill.channel_meta"
+            :ap-kind="bill.ap_kind"
+            :total-amount="bill.total_amount"
+          />
+          <div class="row justify-end q-mt-md">
+            <div class="bill-totals-panel">
+              <div class="bill-total-row text-weight-bold">
+                <span>Total</span>
+                <span>{{ formatAmountBdt(bill.total_amount) }}</span>
+              </div>
+              <div class="bill-total-row">
+                <span>Paid</span>
+                <span>{{ formatAmountBdt(bill.paid_amount) }}</span>
+              </div>
+              <div class="bill-total-row text-weight-bold">
+                <span>Due</span>
+                <span>{{ formatAmountBdt(bill.due_amount) }}</span>
+              </div>
             </div>
           </div>
-        </div>
+        </template>
+
+        <template v-else>
+          <q-markup-table flat dense class="bill-lines-table">
+            <thead>
+              <tr>
+                <th class="text-left">Item</th>
+                <th class="text-right">Qty</th>
+                <th class="text-right">Sell</th>
+                <th class="text-right">Disc.</th>
+                <th class="text-right">Line total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="line in lines" :key="line.id">
+                <td class="bill-line-item-cell">
+                  <BillLineItemDisplay :name="line.name_snapshot" :image-url="line.image_url" />
+                </td>
+                <td class="text-right">{{ line.quantity }}</td>
+                <td class="text-right">{{ formatAmountBdt(line.sell_price_amount) }}</td>
+                <td class="text-right">{{ formatAmountBdt(line.line_discount_amount) }}</td>
+                <td class="text-right text-weight-medium">{{ formatAmountBdt(line.line_total_amount) }}</td>
+              </tr>
+            </tbody>
+          </q-markup-table>
+
+          <div class="row justify-end q-mt-md">
+            <div class="bill-totals-panel">
+              <div v-if="bill.discount_amount" class="bill-total-row">
+                <span>Discount</span>
+                <span>{{ formatAmountBdt(bill.discount_amount) }}</span>
+              </div>
+              <div v-if="bill.shipping_charge" class="bill-total-row">
+                <span>Shipping</span>
+                <span>{{ formatAmountBdt(bill.shipping_charge) }}</span>
+              </div>
+              <div v-if="bill.wrapping_charge" class="bill-total-row">
+                <span>Wrapping</span>
+                <span>{{ formatAmountBdt(bill.wrapping_charge) }}</span>
+              </div>
+              <div v-if="bill.print_charge" class="bill-total-row">
+                <span>Print</span>
+                <span>{{ formatAmountBdt(bill.print_charge) }}</span>
+              </div>
+              <div class="bill-total-row text-weight-bold">
+                <span>Total</span>
+                <span>{{ formatAmountBdt(bill.total_amount) }}</span>
+              </div>
+              <div class="bill-total-row">
+                <span>Paid</span>
+                <span>{{ formatAmountBdt(bill.paid_amount) }}</span>
+              </div>
+              <div class="bill-total-row text-weight-bold">
+                <span>Due</span>
+                <span>{{ formatAmountBdt(bill.due_amount) }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
 
         <div v-if="bill.note" class="q-mt-md">
           <div class="text-overline text-grey-7">Note</div>
@@ -131,8 +155,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import { formatAmountBdt } from 'src/utils/currency';
 import { requestConfirmation } from 'src/utils/appFeedback';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow, GlobalInvoiceRow } from 'src/modules/sales_invoice/types';
@@ -144,9 +170,13 @@ import {
 import { useBillDetailQuery } from '../composables/useBillDetailQuery';
 import { useVoidBillMutation } from '../composables/useVoidBillMutation';
 import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
+import ApBillPaper from '../components/ApBillPaper.vue';
+import ApBillPartiesBlock from '../components/ApBillPartiesBlock.vue';
 
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
+const { setCustomBreadcrumbs, clearCustomBreadcrumbs } = useBreadcrumbs();
 
 const billId = computed(() => {
   const raw = route.params.billId;
@@ -158,6 +188,7 @@ const { detailQuery, itemsQuery } = useBillDetailQuery(billId);
 const voidMutation = useVoidBillMutation(() => billId.value);
 
 const bill = computed(() => detailQuery.data.value as GlobalInvoiceDetail | undefined);
+const isApBill = computed(() => bill.value?.invoice_type === 'ap');
 const lines = computed(() => (itemsQuery.data.value ?? []) as GlobalInvoiceItemRow[]);
 
 const profileName = computed(
@@ -185,13 +216,35 @@ const detailErrorMessage = computed(() => {
   return err instanceof Error ? err.message : 'Could not load bill.';
 });
 
-const goBack = () => {
-  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
-  router.push({
-    name: 'app-bills-page',
-    params: tenantSlug ? { tenantSlug } : {},
-  });
-};
+const billLeafLabel = computed(() => {
+  const no = bill.value?.invoice_no?.trim();
+  if (no) return no;
+  return billId.value ? `Bill #${billId.value}` : 'Bill';
+});
+
+const breadcrumbItems = computed(() => {
+  const tenantSlug =
+    (typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null) ||
+    authStore.tenantSlug ||
+    undefined;
+  return [
+    {
+      label: authStore.selectedTenant?.name || 'Workspace',
+      icon: 'ph ph-buildings',
+    },
+    {
+      label: 'Bills',
+      to: {
+        name: 'app-bills-page',
+        ...(tenantSlug ? { params: { tenantSlug } } : {}),
+      },
+    },
+    { label: billLeafLabel.value },
+  ];
+});
+
+watch(breadcrumbItems, (items) => setCustomBreadcrumbs(items), { immediate: true });
+onBeforeUnmount(() => clearCustomBreadcrumbs());
 
 const onPrint = () => {
   const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
@@ -253,6 +306,11 @@ const onVoid = async () => {
 .bill-line-item-cell {
   vertical-align: top;
   max-width: 320px;
+}
+
+.bill-page-actions :deep(.q-btn) {
+  min-height: 36px;
+  padding: 0 14px;
 }
 
 @media print {

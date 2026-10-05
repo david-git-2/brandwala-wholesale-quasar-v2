@@ -270,11 +270,18 @@ begin
   select * into v_payment from public.pays where id = p_payment_id for update;
   if not found then raise exception 'Payment not found.'; end if;
   if v_payment.tenant_id <> p_tenant_id then raise exception 'Payment tenant mismatch.'; end if;
+  if v_payment.voided_at is not null then raise exception 'Payment is voided.'; end if;
+  if v_payment.source not in ('customer_cash', 'bank') then
+    raise exception 'Only customer cash/bank leftover can be allocated later.';
+  end if;
 
   -- Lock invoice
   select * into v_invoice from public.bills where id = p_global_invoice_id for update;
   if not found then raise exception 'Invoice not found.'; end if;
   if v_invoice.parent_tenant_id <> p_tenant_id then raise exception 'Invoice tenant mismatch.'; end if;
+  if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
+    raise exception 'Bill % is not issued', v_invoice.invoice_no;
+  end if;
 
   -- Validate same billing profile
   if coalesce(v_invoice.profile_id, 0) <> coalesce(v_payment.profile_id, 0) then
@@ -301,13 +308,33 @@ begin
   set unallocated_amount = unallocated_amount - p_amount
   where id = p_payment_id;
 
-  -- Update invoice paid amount
-  update public.bills
-  set paid_amount = coalesce(paid_amount, 0.00) + p_amount, updated_at = now()
-  where id = p_global_invoice_id;
-
   -- Recompute invoice payment status and due_amount
   perform public.recompute_global_invoice_payment_status(p_global_invoice_id);
+
+  -- Leftover was credited to customer cashbook at collect; apply it now.
+  if v_payment.profile_id is not null then
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => p_tenant_id,
+      p_operating_tenant_id => p_tenant_id,
+      p_entity_type => 'customer',
+      p_entity_id => v_payment.profile_id,
+      p_type => 'debit',
+      p_amount => p_amount,
+      p_currency_code => 'BDT',
+      p_exchange_rate => 1.000000,
+      p_source_type => 'sales_invoice',
+      p_source_id => p_payment_id::text,
+      p_allow_overdraft => false,
+      p_metadata => jsonb_build_object(
+        'section', 'payments',
+        'purpose', 'apply_store_credit',
+        'transaction_type', 'wallet_credit',
+        'label', 'Applied leftover to bill',
+        'payment_id', p_payment_id,
+        'bill_id', p_global_invoice_id
+      )
+    );
+  end if;
 
   return v_row;
 end;
@@ -539,6 +566,30 @@ CREATE OR REPLACE FUNCTION "public"."billing_profile_valid_for_issuer"("p_billin
 $$;
 
 ALTER FUNCTION "public"."billing_profile_valid_for_issuer"("p_billing_profile_id" bigint, "p_issued_by_tenant_id" bigint) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."profile_valid_for_issuer"("p_profile_id" bigint, "p_issued_by_tenant_id" bigint) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select exists (
+    select 1
+    from public.profiles pr
+    where pr.id = p_profile_id
+      and pr.deleted_at is null
+      and (
+        pr.parent_tenant_id = p_issued_by_tenant_id
+        or pr.parent_tenant_id = public.resolve_parent_tenant_id(p_issued_by_tenant_id)
+        or exists (
+          select 1
+          from public.tenants t
+          where t.id = p_issued_by_tenant_id
+            and t.parent_id = pr.parent_tenant_id
+        )
+      )
+  );
+$$;
+
+ALTER FUNCTION "public"."profile_valid_for_issuer"("p_profile_id" bigint, "p_issued_by_tenant_id" bigint) OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."build_dropship_tenant_b2b_invoice_payload"("p_order_id" bigint, "p_invoice_id" bigint DEFAULT NULL::bigint, "p_invoice_no" "text" DEFAULT NULL::"text", "p_billing_profile_id" bigint DEFAULT NULL::bigint, "p_note" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -3565,7 +3616,7 @@ $$;
 
 ALTER FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint) OWNER TO "postgres";
 
-CREATE OR REPLACE FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric) RETURNS bigint
+CREATE OR REPLACE FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb" DEFAULT NULL::"jsonb") RETURNS bigint
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -3576,6 +3627,7 @@ declare
   v_status text;
   v_invoice_no text;
   v_kind_label text;
+  v_meta_base jsonb;
 begin
   if p_ap_kind not in ('vendor', 'cargo', 'local') then
     raise exception 'Invalid ap_kind %', p_ap_kind;
@@ -3601,6 +3653,10 @@ begin
 
   v_target := round(p_amount, 2);
   v_kind_label := initcap(p_ap_kind);
+  v_meta_base := jsonb_build_object('ap_kind', p_ap_kind, 'shipment_id', p_shipment_id);
+  if p_ap_paper is not null then
+    v_meta_base := v_meta_base || jsonb_build_object('ap_paper', p_ap_paper);
+  end if;
 
   if v_bill.id is null then
     v_invoice_no := public.generate_sales_invoice_number(p_issued_by_tenant_id, 'ap'::public.global_invoice_type, current_date);
@@ -3615,7 +3671,7 @@ begin
       v_target, v_target, v_target, 0,
       p_shipment_id, p_ap_kind,
       format('Shipment %s — %s AP', coalesce(p_shipment_name, p_shipment_id::text), v_kind_label),
-      jsonb_build_object('ap_kind', p_ap_kind, 'shipment_id', p_shipment_id)
+      v_meta_base
     )
     returning id into v_bill.id;
     return v_bill.id;
@@ -3641,7 +3697,13 @@ begin
     due_amount = v_due,
     payment_status = v_status,
     note = format('Shipment %s — %s AP', coalesce(p_shipment_name, p_shipment_id::text), v_kind_label),
-    channel_meta = coalesce(channel_meta, '{}'::jsonb) || jsonb_build_object('ap_kind', p_ap_kind, 'shipment_id', p_shipment_id),
+    channel_meta = coalesce(channel_meta, '{}'::jsonb)
+      || jsonb_build_object('ap_kind', p_ap_kind, 'shipment_id', p_shipment_id)
+      || case
+        when p_ap_paper is not null and coalesce(v_bill.paid_amount, 0) = 0
+        then jsonb_build_object('ap_paper', p_ap_paper)
+        else '{}'::jsonb
+      end,
     updated_at = now()
   where id = v_bill.id;
 
@@ -3649,7 +3711,7 @@ begin
 end;
 $$;
 
-ALTER FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric) OWNER TO "postgres";
+ALTER FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb") OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."sync_shipment_ap_bills"("p_shipment_id" bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -3667,6 +3729,15 @@ declare
   v_local_amt numeric(12, 2) := 0;
   v_extra_local numeric(12, 2) := 0;
   v_tenant_name text;
+  v_vendor_foreign numeric(12, 2) := 0;
+  v_cargo_foreign numeric(12, 2) := 0;
+  v_vendor_rate numeric(12, 4) := 1;
+  v_cargo_rate numeric(12, 4) := 1;
+  v_weight_kg numeric(12, 3);
+  v_vendor_paper jsonb;
+  v_cargo_paper jsonb;
+  v_local_paper jsonb;
+  v_local_lines jsonb;
 begin
   if p_shipment_id is null then
     raise exception 'shipment_id is required';
@@ -3726,6 +3797,96 @@ begin
 
   v_local_amt := v_local_amt + v_extra_local;
 
+  select coalesce(sum(round(e.amount, 2)), 0)
+  into v_vendor_foreign
+  from public.global_shipment_cost_entries e
+  where e.shipment_id = p_shipment_id
+    and e.cost_type = 'product'::public.global_shipment_cost_type;
+
+  if v_vendor_foreign = 0 then
+    v_vendor_foreign := coalesce(round(v_ship.purchase_invoice_total, 2), 0);
+  end if;
+
+  v_vendor_rate := case
+    when v_vendor_foreign > 0 and v_vendor_amt > 0 then round(v_vendor_amt / v_vendor_foreign, 4)
+    else 1
+  end;
+
+  v_vendor_paper := jsonb_build_object(
+    'paper', 'vendor',
+    'foreign_amount', v_vendor_foreign,
+    'conversion_rate', v_vendor_rate,
+    'bdt_amount', v_vendor_amt
+  );
+
+  select coalesce(sum(round(e.amount, 2)), 0)
+  into v_cargo_foreign
+  from public.global_shipment_cost_entries e
+  where e.shipment_id = p_shipment_id
+    and e.cost_type in ('cargo'::public.global_shipment_cost_type, 'duty'::public.global_shipment_cost_type);
+
+  if v_cargo_foreign = 0 then
+    v_cargo_foreign := coalesce(round(v_ship.cargo_invoice_total, 2), 0);
+  end if;
+
+  v_cargo_rate := case
+    when v_cargo_foreign > 0 and v_cargo_amt > 0 then round(v_cargo_amt / v_cargo_foreign, 4)
+    else 1
+  end;
+
+  v_weight_kg := coalesce(v_ship.total_weight_kg, v_ship.received_weight, 0);
+
+  v_cargo_paper := jsonb_build_object(
+    'paper', 'cargo',
+    'weight_kg', v_weight_kg,
+    'price', v_cargo_foreign,
+    'conversion_rate', v_cargo_rate,
+    'bdt_amount', v_cargo_amt
+  );
+
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'description', coalesce(nullif(trim(lc.description), ''), 'Local cost'),
+        'amount', round(lc.amount, 2)
+      )
+      order by lc.id
+    ),
+    '[]'::jsonb
+  )
+  into v_local_lines
+  from public.global_shipment_local_costs lc
+  where lc.shipment_id = p_shipment_id;
+
+  select coalesce(v_local_lines, '[]'::jsonb) || coalesce(
+    (
+      select jsonb_agg(
+        jsonb_build_object(
+          'description', initcap(replace(e.cost_type::text, '_', ' ')),
+          'amount', round(e.amount * coalesce(e.exchange_rate, 1), 2)
+        )
+        order by e.id
+      )
+      from public.global_shipment_cost_entries e
+      where e.shipment_id = p_shipment_id
+        and e.cost_type in (
+          'insurance'::public.global_shipment_cost_type,
+          'labor'::public.global_shipment_cost_type,
+          'washing'::public.global_shipment_cost_type,
+          'transport'::public.global_shipment_cost_type,
+          'handling'::public.global_shipment_cost_type
+        )
+    ),
+    '[]'::jsonb
+  )
+  into v_local_lines;
+
+  v_local_paper := jsonb_build_object(
+    'paper', 'local',
+    'lines', coalesce(v_local_lines, '[]'::jsonb),
+    'bdt_amount', v_local_amt
+  );
+
   if v_ship.vendor_id is not null then
     select pr.id into v_vendor_profile
     from public.profiles pr
@@ -3765,9 +3926,9 @@ begin
 
   return jsonb_build_object(
     'success', true,
-    'vendor_bill_id', public._upsert_shipment_ap_bill(v_parent, v_issued_by, p_shipment_id, v_ship.name, 'vendor', v_vendor_profile, v_vendor_amt),
-    'cargo_bill_id', public._upsert_shipment_ap_bill(v_parent, v_issued_by, p_shipment_id, v_ship.name, 'cargo', v_cargo_profile, v_cargo_amt),
-    'local_bill_id', public._upsert_shipment_ap_bill(v_parent, v_issued_by, p_shipment_id, v_ship.name, 'local', v_local_profile, v_local_amt)
+    'vendor_bill_id', public._upsert_shipment_ap_bill(v_parent, v_issued_by, p_shipment_id, v_ship.name, 'vendor', v_vendor_profile, v_vendor_amt, v_vendor_paper),
+    'cargo_bill_id', public._upsert_shipment_ap_bill(v_parent, v_issued_by, p_shipment_id, v_ship.name, 'cargo', v_cargo_profile, v_cargo_amt, v_cargo_paper),
+    'local_bill_id', public._upsert_shipment_ap_bill(v_parent, v_issued_by, p_shipment_id, v_ship.name, 'local', v_local_profile, v_local_amt, v_local_paper)
   );
 end;
 $$;
@@ -5605,11 +5766,11 @@ CREATE OR REPLACE FUNCTION "public"."trg_validate_global_invoice_profiles"() RET
     AS $$
 begin
   if new.profile_id is not null then
-    if not public.billing_profile_valid_for_issuer(
+    if not public.profile_valid_for_issuer(
       new.profile_id,
       new.issued_by_tenant_id
     ) then
-      raise exception 'Billing profile tenant_id must match invoice issued_by_tenant_id';
+      raise exception 'Profile books must match invoice issued_by_tenant_id';
     end if;
   end if;
 

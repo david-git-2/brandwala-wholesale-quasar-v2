@@ -98,8 +98,8 @@ const reportGroups: HubLinkGroup[] = [
     items: [
       {
         key: 'month-snapshot',
-        title: 'Month snapshot',
-        caption: 'Net sales, cash, AR, wallet, stock.',
+        title: 'Money position',
+        caption: 'What we have, owe, and will get — plus this month.',
         icon: 'ph ph-chart-pie',
         iconTone: 'neutral',
       },

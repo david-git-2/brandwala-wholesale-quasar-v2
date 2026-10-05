@@ -13031,6 +13031,14 @@ DECLARE
   v_cash_collected numeric(18,4) := 0;
   v_ar_outstanding numeric(18,4) := 0;
   v_merchant_payable numeric(18,4) := 0;
+  v_tenant_cash numeric(18,4) := 0;
+  v_ledger_cash numeric(18,4);
+  v_courier_holding numeric(18,4) := 0;
+  v_cod_unremitted numeric(18,4) := 0;
+  v_ap_payable numeric(18,4) := 0;
+  v_customer_store_credit numeric(18,4) := 0;
+  v_merchant_leftover numeric(18,4) := 0;
+  v_net_buffer numeric(18,4) := 0;
   v_sales_by_invoice_type jsonb := '{}'::jsonb;
 BEGIN
   IF p_tenant_id IS NULL OR p_month IS NULL THEN
@@ -13099,6 +13107,7 @@ BEGIN
   FROM public.bills si
   WHERE si.parent_tenant_id = v_books_id
     AND si.invoice_status = 'issued'::public.global_invoice_status
+    AND si.invoice_type <> 'ap'::public.global_invoice_type
     AND si.profile_id IS NOT NULL
     AND si.due_amount > 0;
 
@@ -13110,6 +13119,84 @@ BEGIN
   INTO v_merchant_payable
   FROM public.cashbook_accounts
   WHERE parent_tenant_id = v_books_id;
+
+  SELECT coalesce(w.available_balance, 0.0000)
+  INTO v_tenant_cash
+  FROM public.cashbook_accounts w
+  WHERE w.parent_tenant_id = v_books_id
+    AND w.entity_type = 'tenant'
+    AND w.entity_id = v_books_id
+    AND w.currency_code = 'BDT'
+  LIMIT 1;
+
+  SELECT l.balance_after
+  INTO v_ledger_cash
+  FROM public.cashbook_entries l
+  WHERE l.parent_tenant_id = v_books_id
+    AND l.entity_type = 'tenant'
+    AND l.entity_id = v_books_id
+    AND coalesce(l.currency_code, 'BDT') = 'BDT'
+  ORDER BY l.id DESC
+  LIMIT 1;
+
+  IF coalesce(v_tenant_cash, 0) = 0 AND coalesce(v_ledger_cash, 0) <> 0 THEN
+    v_tenant_cash := v_ledger_cash;
+  END IF;
+
+  SELECT round(coalesce(sum(pending_balance + available_balance), 0), 2)
+  INTO v_courier_holding
+  FROM public.cashbook_accounts
+  WHERE parent_tenant_id = v_books_id
+    AND entity_type = 'courier';
+
+  WITH delivered_orders AS (
+    SELECT
+      coalesce(so.cod_collect_amount, 0)::numeric(12,2) AS cod_collect_amount,
+      round(coalesce((
+        SELECT l.amount
+        FROM public.cashbook_entries l
+        WHERE l.parent_tenant_id = v_books_id
+          AND l.entity_type = 'tenant'
+          AND l.source_type = 'shop_order'
+          AND l.source_id = so.id::text
+          AND coalesce(l.metadata->>'purpose', '') = 'tenant_remittance_received'
+        LIMIT 1
+      ), 0), 2) AS remitted_amount
+    FROM public.shop_orders so
+    WHERE public.resolve_parent_tenant_id(so.tenant_id) = v_books_id
+      AND so.status IN ('delivered'::public.shop_order_status, 'payment_received'::public.shop_order_status)
+      AND so.shop_type_snapshot = 'dropship'::public.shop_type_enum
+      AND coalesce(so.cod_collect_amount, 0) > 0
+  )
+  SELECT round(coalesce(sum(greatest(cod_collect_amount - remitted_amount, 0)), 0), 2)
+  INTO v_cod_unremitted
+  FROM delivered_orders;
+
+  SELECT round(coalesce(sum(si.due_amount), 0), 2)
+  INTO v_ap_payable
+  FROM public.bills si
+  WHERE si.parent_tenant_id = v_books_id
+    AND si.invoice_type = 'ap'::public.global_invoice_type
+    AND si.invoice_status = 'issued'::public.global_invoice_status
+    AND si.due_amount > 0;
+
+  SELECT
+    round(coalesce(sum(CASE WHEN entity_type = 'customer' THEN available_balance ELSE 0 END), 0), 2),
+    round(coalesce(sum(CASE WHEN entity_type = 'middleman' THEN pending_balance + available_balance ELSE 0 END), 0), 2)
+  INTO v_customer_store_credit, v_merchant_leftover
+  FROM public.cashbook_accounts
+  WHERE parent_tenant_id = v_books_id;
+
+  v_net_buffer := round(
+    coalesce(v_tenant_cash, 0)
+    + coalesce(v_courier_holding, 0)
+    + coalesce(v_ar_outstanding, 0)
+    + coalesce(v_cod_unremitted, 0)
+    - coalesce(v_ap_payable, 0)
+    - coalesce(v_merchant_leftover, 0)
+    - coalesce(v_customer_store_credit, 0),
+    2
+  );
 
   RETURN jsonb_build_object(
     'tenant_id', v_books_id,
@@ -13124,6 +13211,16 @@ BEGIN
       'cash_collected', v_cash_collected,
       'ar_outstanding', v_ar_outstanding,
       'merchant_payable', v_merchant_payable
+    ),
+    'position', jsonb_build_object(
+      'tenant_cash', round(coalesce(v_tenant_cash, 0), 2),
+      'courier_holding', coalesce(v_courier_holding, 0),
+      'ar_outstanding', v_ar_outstanding,
+      'cod_unremitted', coalesce(v_cod_unremitted, 0),
+      'ap_payable', coalesce(v_ap_payable, 0),
+      'merchant_payable', coalesce(v_merchant_leftover, 0),
+      'customer_store_credit', coalesce(v_customer_store_credit, 0),
+      'net_buffer', v_net_buffer
     )
   );
 END;

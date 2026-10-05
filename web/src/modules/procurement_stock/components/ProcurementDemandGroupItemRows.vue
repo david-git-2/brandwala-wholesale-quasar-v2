@@ -5,6 +5,15 @@
     </td>
   </tr>
   <tr
+    v-else-if="!isLoading && visibleDemandItems.length === 0 && isPackedCloseMode"
+    class="demand-item-row"
+  >
+    <td :colspan="tableColCount" class="text-center text-grey-7 q-py-xl">
+      <q-icon name="ph ph-clipboard-text" size="36px" class="q-mb-sm text-grey-5" />
+      <div class="text-body2 text-grey-8">{{ packedCloseEmptyLabel }}</div>
+    </td>
+  </tr>
+  <tr
     v-for="item in visibleDemandItems"
     :key="itemRowKey(item)"
     class="demand-item-row"
@@ -341,23 +350,23 @@ const itemHasStockAttached = (item: ProcurementDemandItem): boolean => {
   return delivered > 0;
 };
 
-const itemHasMatchingClosePick = (item: ProcurementDemandItem): boolean => {
-  if (!props.packedCloseActionFilter) return itemHasStockAttached(item);
-  const draft = props.drafts[itemRowKey(item)];
-  const picks = draft?.stockPicks?.length ? draft.stockPicks : item.stock_picks ?? [];
-  return picks.some((pick) => demandPickMatchesCloseFilter(pick, props.packedCloseActionFilter));
-};
-
 const visibleDemandItems = computed(() => {
   let items = demandItems.value;
   if (props.onlyLinesWithStockPicks) {
     items = items.filter((item) => itemHasStockAttached(item));
   }
-  if (props.packedCloseActionFilter) {
-    items = items.filter((item) => itemHasMatchingClosePick(item));
-  }
   return items;
 });
+
+const packedCloseEmptyLabel = computed(() => {
+  const action = props.packedCloseActionFilter;
+  if (!action) {
+    return 'Choose Take, Condition, or Return above to see lines ready to close.';
+  }
+  const label = action === 'take' ? 'Take' : action === 'condition' ? 'Condition' : 'Return';
+  return `No open ${label} lines. If you already closed this action, open the bill from the toolbar.`;
+});
+
 const hasMoreItems = computed(() => activeItemsQuery.value.hasMoreItems.value);
 const fetchNextPage = (...args: Parameters<typeof demandItemsQuery.fetchNextPage>) =>
   activeItemsQuery.value.fetchNextPage(...args);

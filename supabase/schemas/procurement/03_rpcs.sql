@@ -12852,7 +12852,7 @@ begin
         'channel_meta', jsonb_build_object('delivery_kind', v_delivery_kind)
       ),
       'items', v_items,
-      'issue', true
+      'issue', false
     );
 
     v_result := public.create_sales_invoice_from_payload(v_operating_tenant_id, v_payload);

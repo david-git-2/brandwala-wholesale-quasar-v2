@@ -53,18 +53,47 @@
                 </q-item>
               </q-list>
               <q-input v-model.number="apAmount" outlined dense label="Payment amount" type="number" />
-              <q-select v-model="apMethod" :options="methodOptions" emit-value map-options outlined dense label="Method" />
-              <q-input v-model="apReference" outlined dense label="Reference" />
-              <q-input v-model="apNotes" outlined dense label="Notes" type="textarea" autogrow />
-              <q-btn
-                unelevated
-                color="primary"
-                no-caps
-                label="Post AP pay out"
-                :loading="submitting"
-                :disable="!canSubmitAp"
-                @click="submitAp"
+              <q-select
+                v-model="apMethod"
+                :options="methodOptions"
+                emit-value
+                map-options
+                outlined
+                dense
+                label="Method"
+                :loading="loadingPaymentMeta"
               />
+              <PaymentInstrumentExtrasFields
+                :method-code="apMethod"
+                :method-options="methodOptions"
+                :bd-bank-options="bdBankOptions"
+                :loading="loadingPaymentMeta"
+                :bd-bank-id="apBdBankId"
+                :cheque-number="apChequeNumber"
+                :instrument-date="apInstrumentDate"
+                :instrument-reference="apInstrumentReference"
+                @update:bd-bank-id="apBdBankId = $event"
+                @update:cheque-number="apChequeNumber = $event"
+                @update:instrument-date="apInstrumentDate = $event"
+                @update:instrument-reference="apInstrumentReference = $event"
+              />
+              <q-input v-model="apReference" outlined dense clearable label="Payment reference (optional)" />
+              <q-input v-model="apNotes" outlined dense label="Notes" type="textarea" autogrow />
+              <div class="pay-submit-wrap full-width">
+                <q-btn
+                  unelevated
+                  color="primary"
+                  no-caps
+                  class="full-width"
+                  label="Post AP pay out"
+                  :loading="submitting"
+                  :disable="!canSubmitAp || submitting"
+                  @click="submitAp"
+                />
+                <q-tooltip v-if="apSubmitDisabledReason" anchor="top middle" self="bottom middle">
+                  {{ apSubmitDisabledReason }}
+                </q-tooltip>
+              </div>
             </template>
           </q-tab-panel>
 
@@ -91,7 +120,16 @@
                 {{ formatAmountBdt(selectedProfile.payable_balance) }}
               </div>
               <q-input v-model.number="amount" outlined dense label="Payout amount" type="number" />
-              <q-select v-model="method" :options="methodOptions" emit-value map-options outlined dense label="Method" />
+              <q-select
+                v-model="method"
+                :options="methodOptions"
+                emit-value
+                map-options
+                outlined
+                dense
+                label="Method"
+                :loading="loadingPaymentMeta"
+              />
               <q-input v-model="notes" outlined dense label="Notes" type="textarea" autogrow />
               <q-btn
                 unelevated
@@ -111,8 +149,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 import {
@@ -122,10 +161,20 @@ import {
   type OpenApBillRow,
 } from '../repositories/paysRepository';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import PaymentInstrumentExtrasFields from '../components/PaymentInstrumentExtrasFields.vue';
+import { useWholesalePaymentMethodMeta } from '../composables/useWholesalePaymentMethodMeta';
+import {
+  buildWholesalePaymentInstrument,
+  paymentInstrumentExtrasBlockReason,
+  paymentMethodFieldFlags,
+} from '../utils/paymentInstrumentFields';
+import { paymentsPageRoute } from '../utils/paymentsNavigation';
+import { paysQueryKeys } from '../services/paysQueryKeys';
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
+const queryClient = useQueryClient();
 
 const mode = ref<'ap' | 'merchant'>('ap');
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
@@ -151,13 +200,40 @@ const apAmount = ref<number | null>(null);
 const apMethod = ref('bank_transfer');
 const apReference = ref('');
 const apNotes = ref('');
+const apBdBankId = ref<number | null>(null);
+const apChequeNumber = ref('');
+const apInstrumentDate = ref('');
+const apInstrumentReference = ref('');
 
 const submitting = ref(false);
-const methodOptions = [
-  { label: 'Bank transfer', value: 'bank_transfer' },
-  { label: 'Cash', value: 'cash' },
-  { label: 'bKash', value: 'bkash' },
-];
+const { loadingPaymentMeta, methodOptions, bdBankOptions, loadPaymentMeta } =
+  useWholesalePaymentMethodMeta('bank_transfer');
+
+const resetApInstrumentFields = () => {
+  apBdBankId.value = null;
+  apChequeNumber.value = '';
+  apInstrumentDate.value = '';
+  apInstrumentReference.value = '';
+};
+
+watch(apMethod, () => {
+  resetApInstrumentFields();
+});
+
+const apMethodFieldFlags = computed(() => {
+  const row = methodOptions.value.find((m) => m.value === apMethod.value);
+  const meta = row
+    ? { code: row.code, category: row.category }
+    : { code: apMethod.value.toUpperCase(), category: '' };
+  return paymentMethodFieldFlags(meta);
+});
+
+const apInstrumentFields = computed(() => ({
+  bdBankId: apBdBankId.value,
+  chequeNumber: apChequeNumber.value,
+  instrumentDate: apInstrumentDate.value,
+  instrumentReference: apInstrumentReference.value,
+}));
 
 const canSubmitMerchant = computed(
   () =>
@@ -168,13 +244,17 @@ const canSubmitMerchant = computed(
 
 const apDueTotal = computed(() => apBills.value.reduce((s, b) => s + (Number(b.due_amount) || 0), 0));
 
-const canSubmitAp = computed(
-  () =>
-    selectedApProfileId.value != null &&
-    apBills.value.length > 0 &&
-    (apAmount.value ?? 0) > 0 &&
-    (apAmount.value ?? 0) <= apDueTotal.value,
-);
+const apSubmitDisabledReason = computed((): string | null => {
+  if (selectedApProfileId.value == null) return 'Select a party to pay';
+  if (!apBills.value.length) return 'No open AP bills for this party';
+  if ((apAmount.value ?? 0) <= 0) return 'Enter a payment amount';
+  if ((apAmount.value ?? 0) > apDueTotal.value) {
+    return 'Payment amount cannot exceed total due on open bills';
+  }
+  return paymentInstrumentExtrasBlockReason(apMethodFieldFlags.value, apInstrumentFields.value);
+});
+
+const canSubmitAp = computed(() => apSubmitDisabledReason.value === null);
 
 const loadSummary = async () => {
   if (!tenantId.value) return;
@@ -202,9 +282,11 @@ const selectGroup = (row: CustomerGroupPayoutSummary) => {
   amount.value = selectedProfile.value?.payable_balance ?? null;
 };
 
+const tenantSlugParam = () =>
+  typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+
 const goBack = () => {
-  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
-  router.push({ name: 'app-payments-page', params: tenantSlug ? { tenantSlug } : {} });
+  router.push(paymentsPageRoute(tenantSlugParam(), 'out'));
 };
 
 const buildApAllocations = (payAmount: number) => {
@@ -237,10 +319,20 @@ const submitAp = async () => {
       profile_id: selectedApProfileId.value,
       reference: apReference.value || null,
       note: apNotes.value || null,
-      instruments: [{ payment_method_code: apMethod.value, amount: payAmount }],
+      instruments: [
+        buildWholesalePaymentInstrument({
+          payment_method_code: apMethod.value,
+          amount: payAmount,
+          instrument_reference: apInstrumentReference.value,
+          bd_bank_id: apBdBankId.value,
+          cheque_number: apChequeNumber.value,
+          instrument_date: apInstrumentDate.value,
+        }),
+      ],
       allocations,
     });
     showSuccessNotification('AP pay out recorded.');
+    void queryClient.invalidateQueries({ queryKey: paysQueryKeys.root });
     goBack();
   } catch (e) {
     showErrorNotification(e instanceof Error ? e.message : 'AP pay out failed.');
@@ -261,6 +353,7 @@ const submitMerchant = async () => {
       reference_notes: notes.value || null,
     });
     showSuccessNotification('Payout recorded.');
+    void queryClient.invalidateQueries({ queryKey: paysQueryKeys.root });
     goBack();
   } catch (e) {
     showErrorNotification(e instanceof Error ? e.message : 'Payout failed.');
@@ -271,6 +364,10 @@ const submitMerchant = async () => {
 
 void loadSummary();
 void loadApProfiles();
+void loadPaymentMeta((code) => {
+  if (mode.value === 'ap') apMethod.value = code;
+  else method.value = code;
+});
 </script>
 
 <style scoped>
@@ -283,5 +380,14 @@ void loadApProfiles();
   background: var(--bw-neutral-surface, #fff);
   border: 1px solid var(--bw-neutral-border, #e7e1d8);
   border-radius: 8px;
+}
+.pay-submit-wrap {
+  display: inline-block;
+  width: 100%;
+  cursor: default;
+}
+.pay-submit-wrap :deep(.q-btn.disabled),
+.pay-submit-wrap :deep(.q-btn--disabled) {
+  pointer-events: none;
 }
 </style>

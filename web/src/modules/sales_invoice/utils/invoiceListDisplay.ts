@@ -1,6 +1,12 @@
 import type { GlobalInvoiceRow } from '../types';
 
 export const invoiceChannelLabel = (row: GlobalInvoiceRow) => {
+  if (row.invoice_type === 'ap') {
+    if (row.ap_kind === 'vendor') return 'Vendor AP';
+    if (row.ap_kind === 'cargo') return 'Cargo AP';
+    if (row.ap_kind === 'local') return 'Local AP';
+    return 'AP';
+  }
   const paperKind = (row.channel_meta as { delivery_kind?: string } | null | undefined)?.delivery_kind;
   if (row.invoice_type === 'wholesale' && paperKind === 'condition') return 'Condition';
   if (row.invoice_type === 'wholesale') return 'Trade';
@@ -10,6 +16,7 @@ export const invoiceChannelLabel = (row: GlobalInvoiceRow) => {
 };
 
 export const invoiceChannelTone = (row: GlobalInvoiceRow) => {
+  if (row.invoice_type === 'ap') return { color: 'brown-1', textColor: 'brown-9' };
   if (row.invoice_type === 'wholesale') return { color: 'purple-1', textColor: 'purple-9' };
   if (row.invoice_type === 'dropship') return { color: 'orange-1', textColor: 'orange-9' };
   if (row.retail_billing_mode === 'direct') return { color: 'green-1', textColor: 'positive' };

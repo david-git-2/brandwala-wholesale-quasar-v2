@@ -27,6 +27,7 @@ export function useMonthSnapshotReport() {
 
   return {
     kpis: computed(() => reportQuery.data.value?.kpis ?? null),
+    position: computed(() => reportQuery.data.value?.position ?? null),
     month,
     monthLabel: computed(() => formatMonthLabel(month.value)),
     startDate: computed(() => reportQuery.data.value?.start_date ?? null),

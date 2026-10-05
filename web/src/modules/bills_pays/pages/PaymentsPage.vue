@@ -15,7 +15,7 @@
               type="button"
               class="quick-filter-pill"
               :class="{ 'quick-filter-pill--active': side === tab.value }"
-              @click="side = tab.value"
+              @click="setSide(tab.value)"
             >
               {{ tab.label }}
             </button>
@@ -101,7 +101,7 @@
           <div class="text-subtitle2">No payments match</div>
         </div>
 
-        <div v-else class="invoice-list-card col">
+        <div v-else class="invoice-list-card payments-list-card">
           <div class="invoice-list-scroll">
             <PayListRow v-for="row in rows" :key="row.id" :row="row" @open="openPay" />
             <div v-if="hasMore" class="row justify-center q-py-sm">
@@ -126,20 +126,24 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
 import PayListRow from '../components/PayListRow.vue';
 import { usePaysListQuery } from '../composables/usePaysListQuery';
 import type { PayListRow as PayRow } from '../repositories/paysRepository';
+import { paysQueryKeys } from '../services/paysQueryKeys';
+import { parsePaymentsListSide } from '../utils/paymentsNavigation';
 
 const PAGE_SIZE = 25;
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
+const queryClient = useQueryClient();
 
 const searchText = ref('');
 const debouncedSearch = ref('');
-const side = ref<'in' | 'out'>('in');
+const side = ref<'in' | 'out'>(parsePaymentsListSide(route.query.side));
 const page = ref(1);
 const accumulatedRows = ref<PayRow[]>([]);
 
@@ -171,22 +175,42 @@ const listErrorMessage = computed(() => {
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-watch(
-  () => listQuery.data.value,
-  (payload) => {
-    if (!payload) return;
-    if (page.value === 1) accumulatedRows.value = payload.data;
-    else {
-      const ids = new Set(accumulatedRows.value.map((r) => r.id));
-      accumulatedRows.value = [...accumulatedRows.value, ...payload.data.filter((r) => !ids.has(r.id))];
-    }
-  },
-);
+const syncRowsFromQuery = (payload: { data: PayRow[]; total: number } | undefined) => {
+  if (!payload) return;
+  if (page.value === 1) accumulatedRows.value = payload.data;
+  else {
+    const ids = new Set(accumulatedRows.value.map((r) => r.id));
+    accumulatedRows.value = [...accumulatedRows.value, ...payload.data.filter((r) => !ids.has(r.id))];
+  }
+};
+
+watch(() => listQuery.data.value, syncRowsFromQuery, { immediate: true });
 
 watch([side, debouncedSearch], () => {
   page.value = 1;
   accumulatedRows.value = [];
 });
+
+watch(
+  () => route.query.side,
+  (value) => {
+    side.value = parsePaymentsListSide(value);
+  },
+);
+
+watch(
+  () => route.name,
+  (name) => {
+    if (name !== 'app-payments-page') return;
+    void queryClient.invalidateQueries({ queryKey: paysQueryKeys.root });
+  },
+);
+
+const setSide = (value: 'in' | 'out') => {
+  if (side.value === value) return;
+  side.value = value;
+  void router.replace({ query: { ...route.query, side: value } });
+};
 
 const routeParams = () => {
   const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
@@ -231,5 +255,16 @@ const goPayout = () => router.push({ name: 'app-payout-pay-page', params: routeP
 }
 .rounded-sq-btn {
   border-radius: 8px;
+}
+.payments-list-card {
+  flex: 0 1 auto;
+  align-self: stretch;
+  max-height: 100%;
+  min-height: 0;
+}
+.payments-list-card .invoice-list-scroll {
+  flex: 0 1 auto;
+  max-height: calc(100vh - 11rem);
+  overflow-y: auto;
 }
 </style>

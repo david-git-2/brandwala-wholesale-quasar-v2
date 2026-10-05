@@ -2,84 +2,157 @@
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
       <q-card flat class="floating-surface shadow-1 q-pa-xs flex-shrink-0">
-        <div class="row items-center q-col-gutter-xs">
-          <div v-if="isFulfillMode && !isFixedGroupPage" class="col-12 col-md-auto">
-            <q-btn-toggle
-              v-model="fulfillProcurementStatus"
-              no-caps
-              unelevated
-              toggle-color="primary"
-              color="grey-3"
-              text-color="grey-9"
-              class="demand-status-tabs"
-              :options="fulfillStatusTabOptions"
-            />
-          </div>
-          <div v-if="showPackedCloseToolbar" class="col-12 col-md-auto row items-center q-gutter-x-xs">
-            <q-btn-toggle
-              v-model="packedCloseActionFilter"
-              no-caps
-              unelevated
-              toggle-color="primary"
-              color="grey-3"
-              text-color="grey-9"
-              class="demand-status-tabs"
-              :options="closeActionFilterOptions"
-            />
-            <q-btn
-              unelevated
-              no-caps
-              color="primary"
-              :label="packedClosePrimaryLabel"
-              :loading="closeDocumentMutation.isPending.value"
-              :disable="!canRunPackedClose || closeDocumentMutation.isPending.value"
-              @click="onPackedClosePrimary"
-            />
-          </div>
+        <div class="column q-gutter-y-xs">
           <div
-            class="col row items-center q-gutter-x-xs"
-            :class="isFixedGroupPage ? 'justify-between' : 'justify-end'"
+            v-if="isFixedGroupPage"
+            class="row items-center justify-between q-col-gutter-x-xs no-wrap"
           >
-            <div
-              v-if="isFixedGroupPage"
-              class="row items-center no-wrap q-gutter-x-xs col-shrink"
-            >
+            <div class="row items-center no-wrap q-gutter-x-xs col min-width-0">
               <q-btn
                 flat
                 round
                 dense
                 icon="ph ph-arrow-left"
                 color="grey-8"
+                class="col-shrink"
                 @click="goBackFromFixedGroup"
               >
                 <q-tooltip>Back to delivery paper</q-tooltip>
               </q-btn>
               <div
                 v-if="fixedGroupTitle"
-                class="text-subtitle2 text-weight-bold text-grey-9 ellipsis text-left"
-                style="max-width: min(420px, 40vw)"
+                class="text-subtitle2 text-weight-bold text-grey-9 ellipsis text-left col min-width-0"
               >
                 {{ fixedGroupTitle }}
               </div>
             </div>
             <div class="row items-center justify-end q-gutter-x-xs col-shrink">
-            <q-input
-              v-model="searchText"
-              outlined
-              rounded
-              dense
-              clearable
-              style="min-width: 220px"
-              class="col-grow col-sm-auto dense-search-input"
-              placeholder="Search product or customer..."
+              <q-input
+                v-model="searchText"
+                outlined
+                rounded
+                dense
+                clearable
+                style="min-width: 220px"
+                class="dense-search-input"
+                placeholder="Search product or customer..."
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-magnifying-glass" size="16px" />
+                </template>
+              </q-input>
+              <q-btn
+                flat
+                round
+                dense
+                icon="ph ph-arrow-clockwise"
+                :loading="isFetching"
+                @click="refreshDemandDesk"
+              >
+                <q-tooltip>Refresh</q-tooltip>
+              </q-btn>
+            </div>
+          </div>
+
+          <div class="row items-center q-col-gutter-xs">
+            <div v-if="isFulfillMode && !isFixedGroupPage" class="col-12 col-md-auto">
+              <q-btn-toggle
+                v-model="fulfillProcurementStatus"
+                no-caps
+                unelevated
+                toggle-color="primary"
+                color="grey-3"
+                text-color="grey-9"
+                class="demand-status-tabs"
+                :options="fulfillStatusTabOptions"
+              />
+            </div>
+            <div
+              v-if="showPackedCloseToolbar"
+              class="col-12 row items-center q-gutter-x-sm wrap packed-close-toolbar"
             >
-              <template #prepend>
-                <q-icon name="ph ph-magnifying-glass" size="16px" />
-              </template>
-            </q-input>
-            <q-btn flat round dense icon="ph ph-arrow-clockwise" :loading="isFetching" @click="refreshDemandDesk">
-              <q-tooltip>Refresh</q-tooltip>
-            </q-btn>
+              <div class="row items-center q-gutter-x-xs col-shrink">
+                <q-btn-toggle
+                  v-model="packedCloseActionFilter"
+                  no-caps
+                  unelevated
+                  toggle-color="primary"
+                  color="grey-3"
+                  text-color="grey-9"
+                  class="demand-status-tabs"
+                  :options="closeActionFilterOptions"
+                />
+                <q-btn
+                  v-if="packedCloseExistingInvoiceId"
+                  flat
+                  no-caps
+                  color="primary"
+                  icon="ph ph-receipt"
+                  label="View bill"
+                  @click="openPackedCloseInvoice"
+                />
+                <q-btn
+                  unelevated
+                  no-caps
+                  color="primary"
+                  :label="packedClosePrimaryLabel"
+                  :loading="closeDocumentMutation.isPending.value"
+                  :disable="!canRunPackedClose || closeDocumentMutation.isPending.value"
+                  @click="onPackedClosePrimary"
+                />
+              </div>
+              <div
+                class="row items-center q-gutter-x-md text-caption text-grey-8 packed-close-qty-summary"
+                title="Open units not yet invoiced or returned"
+              >
+                <span>
+                  Take
+                  <span class="text-weight-bold text-grey-9 font-mono q-ml-xs">
+                    {{ packedCloseQtyByAction.take }}
+                  </span>
+                </span>
+                <span>
+                  Condition
+                  <span class="text-weight-bold text-grey-9 font-mono q-ml-xs">
+                    {{ packedCloseQtyByAction.condition }}
+                  </span>
+                </span>
+                <span>
+                  Return
+                  <span class="text-weight-bold text-grey-9 font-mono q-ml-xs">
+                    {{ packedCloseQtyByAction.return }}
+                  </span>
+                </span>
+              </div>
+            </div>
+            <div
+              v-if="!isFixedGroupPage"
+              class="col row items-center q-gutter-x-xs justify-end"
+            >
+              <q-input
+                v-model="searchText"
+                outlined
+                rounded
+                dense
+                clearable
+                style="min-width: 220px"
+                class="col-grow col-sm-auto dense-search-input"
+                placeholder="Search product or customer..."
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-magnifying-glass" size="16px" />
+                </template>
+              </q-input>
+              <q-btn
+                flat
+                round
+                dense
+                icon="ph ph-arrow-clockwise"
+                :loading="isFetching"
+                @click="refreshDemandDesk"
+              >
+                <q-tooltip>Refresh</q-tooltip>
+              </q-btn>
             </div>
           </div>
         </div>
@@ -244,7 +317,7 @@
                   :can-edit-procuring="isProcuringGroup(group)"
                   :can-pick-stock="canPickStockForGroup(group)"
                   :is-packed-close-mode="isPackedCloseMode(group)"
-                  :only-lines-with-stock-picks="onlyPackedTabLinesWithStock"
+                  :only-lines-with-stock-picks="onlyPackedTabLinesWithStock && !isFixedGroupPage"
                   :packed-close-action-filter="packedCloseActionFilter"
                   :close-action-options="closeActionOptions"
                   :table-col-count="tableColCount"
@@ -390,7 +463,11 @@ import ProcurementDemandStockPickDialog, {
 } from './ProcurementDemandStockPickDialog.vue';
 import { useClosePreorderDemandDocumentMutation } from '../composables/useClosePreorderDemandDocumentMutation';
 import { useMarkDemandGroupReadyMutation } from '../composables/useMarkDemandGroupReadyMutation';
-import { demandPickMatchesCloseFilter } from '../utils/demandClosePickFilter';
+import {
+  demandPickMatchesCloseFilter,
+  resolveInvoiceIdForCloseAction,
+  sumOpenClosePickQuantitiesByAction,
+} from '../utils/demandClosePickFilter';
 import { useProcurementDemandGroupsQuery } from '../composables/useProcurementDemandGroupsQuery';
 import { useProcurementFulfillGroupsQuery } from '../composables/useProcurementFulfillGroupsQuery';
 import {
@@ -549,9 +626,45 @@ const closeActionOptions = [
 
 const closeActionFilterOptions = closeActionOptions;
 
-const showPackedCloseToolbar = computed(() => onlyPackedTabLinesWithStock.value);
+/** Take / condition / return close runs on the delivery-paper group page, not the fulfill queue list. */
+const showPackedCloseToolbar = computed(
+  () => onlyPackedTabLinesWithStock.value && isFixedGroupPage.value,
+);
 
 const packedCloseActionFilter = ref<PreorderDemandCloseAction | null>(null);
+
+const fixedPackedGroup = computed(() => {
+  if (!isFixedGroupPage.value || !onlyPackedTabLinesWithStock.value) return null;
+  return visibleGroups.value[0] ?? null;
+});
+
+const packedCloseExistingInvoiceId = computed(() => {
+  const action = packedCloseActionFilter.value;
+  const group = fixedPackedGroup.value;
+  if (!group || !action) return null;
+  const prefix = `${group.document_type}-${group.document_id}-`;
+  return resolveInvoiceIdForCloseAction(group, action, drafts, prefix);
+});
+
+const packedCloseQtyByAction = computed(() => {
+  const group = fixedPackedGroup.value;
+  if (!group) {
+    return { take: 0, condition: 0, return: 0 };
+  }
+  const prefix = `${group.document_type}-${group.document_id}-`;
+  return sumOpenClosePickQuantitiesByAction(drafts, prefix);
+});
+
+const openPackedCloseInvoice = () => {
+  const billId = packedCloseExistingInvoiceId.value;
+  if (!billId) return;
+  const tenantSlug = authStore.tenantSlug || undefined;
+  void router.push({
+    name: 'app-bill-compose-page',
+    params: tenantSlug ? { tenantSlug } : {},
+    query: { id: String(billId) },
+  });
+};
 
 const packedClosePrimaryLabel = computed(() =>
   packedCloseActionFilter.value === 'return' ? 'Return stock' : 'Create invoice',
@@ -671,6 +784,16 @@ const executePackedClose = async () => {
 watch(onlyPackedTabLinesWithStock, (packed) => {
   if (!packed) packedCloseActionFilter.value = null;
 });
+
+watch(
+  () => [isFixedGroupPage.value, onlyPackedTabLinesWithStock.value] as const,
+  ([fixed, packed]) => {
+    if (fixed && packed && packedCloseActionFilter.value == null) {
+      packedCloseActionFilter.value = 'take';
+    }
+  },
+  { immediate: true },
+);
 
 const allocatedColumnLabel = computed(() => {
   if (isFulfillMode.value && fulfillProcurementStatus.value === 'packed') {

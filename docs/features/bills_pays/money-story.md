@@ -30,7 +30,7 @@ Buyer **ABC**. Sell **1,500**. Pay **1,500** cash.
 
 Sales **1,500**. GP = shipment P&L.
 
-**Overpay 2,000:** ALLOC 1,500; customer cashbook **+500**. No second bill. Next take: apply leftover via pay in.
+**Overpay 2,000:** ALLOC 1,500; customer cashbook **+500**. No second bill. Next take: apply leftover via pay in, or open the pay and attach leftover to bills (oldest first).
 
 ---
 
@@ -64,6 +64,14 @@ Shipment **S-42**. Vendor goods **80,000**. Cargo+duty **12,000**. Local opex **
 | CASHBOOK | Tenant cash **−95,000** (not Collect) |
 
 Vendor **outcome credit** (cheaper price) still adjusts costing only until sold — not folded into these AP headers.
+
+**What prints (snapshot on each AP bill):**
+
+| Kind | Fields on paper |
+| :--- | :--- |
+| Vendor | Foreign amount · FX rate · **BDT** total |
+| Cargo | Weight (kg) · foreign price · FX rate · **BDT** total |
+| Local | Line list: description · amount (BDT) |
 
 ## Vendor credit (outcomes)
 

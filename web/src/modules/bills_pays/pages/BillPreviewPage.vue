@@ -26,69 +26,98 @@
 
     <div v-else-if="bill" class="preview-sheet q-pa-lg">
       <div class="row justify-between q-mb-lg">
-        <div class="col-5">
-          <div class="text-overline text-grey-7">From</div>
-          <div class="text-h6 text-weight-bold">{{ selectedBrand?.name || '—' }}</div>
-          <div v-if="selectedBrand?.address" class="text-body2 text-grey-8 q-mt-xs whitespace-pre-line">
-            {{ selectedBrand.address }}
+        <template v-if="isApBill">
+          <div class="col-grow">
+            <ApBillPartiesBlock :bill="bill" />
           </div>
-        </div>
-        <div class="col-4">
-          <div class="text-overline text-grey-7">To</div>
-          <div class="text-subtitle1 text-weight-bold">{{ profileName }}</div>
-          <div v-if="bill.billing_profiles?.address" class="text-caption text-grey-7 whitespace-pre-line">
-            {{ bill.billing_profiles.address }}
+          <div class="col-auto text-right">
+            <div class="text-h6 text-weight-bold">{{ bill.invoice_no }}</div>
+            <div class="text-caption text-grey-7">{{ bill.invoice_date }}</div>
+            <div v-if="bill.due_date" class="text-caption">Due {{ bill.due_date }}</div>
           </div>
-        </div>
-        <div class="col-auto text-right">
-          <div class="text-h6 text-weight-bold">{{ bill.invoice_no }}</div>
-          <div class="text-caption text-grey-7">{{ bill.invoice_date }}</div>
-          <div v-if="bill.due_date" class="text-caption">Due {{ bill.due_date }}</div>
-        </div>
+        </template>
+        <template v-else>
+          <div class="col-5">
+            <div class="text-overline text-grey-7">From</div>
+            <div class="text-h6 text-weight-bold">{{ selectedBrand?.name || '—' }}</div>
+            <div v-if="selectedBrand?.address" class="text-body2 text-grey-8 q-mt-xs whitespace-pre-line">
+              {{ selectedBrand.address }}
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="text-overline text-grey-7">To</div>
+            <div class="text-subtitle1 text-weight-bold">{{ profileName }}</div>
+            <div v-if="bill.billing_profiles?.address" class="text-caption text-grey-7 whitespace-pre-line">
+              {{ bill.billing_profiles.address }}
+            </div>
+          </div>
+          <div class="col-auto text-right">
+            <div class="text-h6 text-weight-bold">{{ bill.invoice_no }}</div>
+            <div class="text-caption text-grey-7">{{ bill.invoice_date }}</div>
+            <div v-if="bill.due_date" class="text-caption">Due {{ bill.due_date }}</div>
+          </div>
+        </template>
       </div>
 
-      <q-markup-table flat dense class="preview-lines">
-        <thead>
-          <tr>
-            <th class="text-left">Item</th>
-            <th class="text-right">Qty</th>
-            <th class="text-right">Sell</th>
-            <th class="text-right">Disc.</th>
-            <th class="text-right">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="line in lines" :key="line.id">
-            <td class="preview-line-item-cell">
-              <BillLineItemDisplay :name="line.name_snapshot" :image-url="line.image_url" />
-            </td>
-            <td class="text-right">{{ line.quantity }}</td>
-            <td class="text-right">{{ formatAmountBdt(line.sell_price_amount) }}</td>
-            <td class="text-right">{{ formatAmountBdt(line.line_discount_amount) }}</td>
-            <td class="text-right">{{ formatAmountBdt(line.line_total_amount) }}</td>
-          </tr>
-        </tbody>
-      </q-markup-table>
-
-      <div class="row justify-end q-mt-md">
-        <div class="totals-panel">
-          <div v-if="bill.discount_amount" class="total-row">
-            <span>Discount</span><span>{{ formatAmountBdt(bill.discount_amount) }}</span>
-          </div>
-          <div v-if="bill.shipping_charge" class="total-row">
-            <span>Shipping</span><span>{{ formatAmountBdt(bill.shipping_charge) }}</span>
-          </div>
-          <div v-if="bill.wrapping_charge" class="total-row">
-            <span>Wrapping</span><span>{{ formatAmountBdt(bill.wrapping_charge) }}</span>
-          </div>
-          <div v-if="bill.print_charge" class="total-row">
-            <span>Print</span><span>{{ formatAmountBdt(bill.print_charge) }}</span>
-          </div>
-          <div class="total-row text-weight-bold">
-            <span>Total</span><span>{{ formatAmountBdt(bill.total_amount) }}</span>
+      <template v-if="isApBill">
+        <ApBillPaper
+          :channel-meta="bill.channel_meta"
+          :ap-kind="bill.ap_kind"
+          :total-amount="bill.total_amount"
+        />
+        <div class="row justify-end q-mt-md">
+          <div class="totals-panel">
+            <div class="total-row text-weight-bold">
+              <span>Total</span><span>{{ formatAmountBdt(bill.total_amount) }}</span>
+            </div>
           </div>
         </div>
-      </div>
+      </template>
+
+      <template v-else>
+        <q-markup-table flat dense class="preview-lines">
+          <thead>
+            <tr>
+              <th class="text-left">Item</th>
+              <th class="text-right">Qty</th>
+              <th class="text-right">Sell</th>
+              <th class="text-right">Disc.</th>
+              <th class="text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="line in lines" :key="line.id">
+              <td class="preview-line-item-cell">
+                <BillLineItemDisplay :name="line.name_snapshot" :image-url="line.image_url" />
+              </td>
+              <td class="text-right">{{ line.quantity }}</td>
+              <td class="text-right">{{ formatAmountBdt(line.sell_price_amount) }}</td>
+              <td class="text-right">{{ formatAmountBdt(line.line_discount_amount) }}</td>
+              <td class="text-right">{{ formatAmountBdt(line.line_total_amount) }}</td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+
+        <div class="row justify-end q-mt-md">
+          <div class="totals-panel">
+            <div v-if="bill.discount_amount" class="total-row">
+              <span>Discount</span><span>{{ formatAmountBdt(bill.discount_amount) }}</span>
+            </div>
+            <div v-if="bill.shipping_charge" class="total-row">
+              <span>Shipping</span><span>{{ formatAmountBdt(bill.shipping_charge) }}</span>
+            </div>
+            <div v-if="bill.wrapping_charge" class="total-row">
+              <span>Wrapping</span><span>{{ formatAmountBdt(bill.wrapping_charge) }}</span>
+            </div>
+            <div v-if="bill.print_charge" class="total-row">
+              <span>Print</span><span>{{ formatAmountBdt(bill.print_charge) }}</span>
+            </div>
+            <div class="total-row text-weight-bold">
+              <span>Total</span><span>{{ formatAmountBdt(bill.total_amount) }}</span>
+            </div>
+          </div>
+        </div>
+      </template>
 
       <div v-if="bill.note" class="q-mt-md text-caption">{{ bill.note }}</div>
 
@@ -109,6 +138,8 @@ import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/sale
 import { invoiceRepository, type InvoiceBrand } from 'src/modules/sales_invoice/repositories/invoiceRepository';
 import BarcodeRenderer from 'src/modules/thrift/barcode/components/BarcodeRenderer.vue';
 import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
+import ApBillPaper from '../components/ApBillPaper.vue';
+import ApBillPartiesBlock from '../components/ApBillPartiesBlock.vue';
 import { useBillDetailQuery } from '../composables/useBillDetailQuery';
 
 const BRAND_STORAGE_KEY = 'bills_pays_last_invoice_brand_id';
@@ -167,6 +198,7 @@ watch(selectedBrandId, (id) => {
 });
 
 const bill = computed(() => detailQuery.data.value as GlobalInvoiceDetail | undefined);
+const isApBill = computed(() => bill.value?.invoice_type === 'ap');
 const lines = computed(() => (itemsQuery.data.value ?? []) as GlobalInvoiceItemRow[]);
 
 const profileName = computed(
