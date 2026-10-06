@@ -440,6 +440,9 @@ CREATE TABLE IF NOT EXISTS "public"."shop_orders" (
     "payout_settlement_status" "text",
     "profit_basis" "text" DEFAULT 'total_cost'::"text",
     "parent_tenant_id" bigint,
+    "recipient_call_attempt_count" integer DEFAULT 0 NOT NULL,
+    "recipient_verified_at" timestamp with time zone,
+    "cancel_reason" "text",
     CONSTRAINT "shop_orders_delivery_zone_check" CHECK (("delivery_zone" = ANY (ARRAY['inside_dhaka'::"text", 'outside_dhaka'::"text"]))),
     CONSTRAINT "shop_orders_payout_settlement_status_check" CHECK ((("payout_settlement_status" IS NULL) OR ("payout_settlement_status" = ANY (ARRAY['unpaid'::"text", 'partial'::"text", 'paid'::"text"])))),
     CONSTRAINT "shop_orders_profit_basis_check" CHECK (("profit_basis" = ANY (ARRAY['purchase'::"text", 'total_cost'::"text"]))),
@@ -799,7 +802,7 @@ ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
 
 
 ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
-    ADD CONSTRAINT "shop_order_item_stock_picks_global_stock_id_fkey" FOREIGN KEY ("global_stock_id") REFERENCES "public"."global_stocks"("id");
+    ADD CONSTRAINT "shop_order_item_stock_picks_global_stock_id_fkey" FOREIGN KEY ("global_stock_id") REFERENCES "public"."global_stocks"("id") ON DELETE SET NULL;
 
 
 ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
@@ -811,7 +814,7 @@ ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
 
 
 ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
-    ADD CONSTRAINT "shop_order_item_stock_picks_held_stock_id_fkey" FOREIGN KEY ("held_stock_id") REFERENCES "public"."global_stocks"("id");
+    ADD CONSTRAINT "shop_order_item_stock_picks_held_stock_id_fkey" FOREIGN KEY ("held_stock_id") REFERENCES "public"."global_stocks"("id") ON DELETE SET NULL;
 
 
 CREATE INDEX "idx_shop_order_item_stock_picks_order_id" ON "public"."shop_order_item_stock_picks" USING "btree" ("order_id");

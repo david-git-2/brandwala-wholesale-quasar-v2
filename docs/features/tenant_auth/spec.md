@@ -41,15 +41,15 @@ See [scopes](../../architecture/scopes.md).
 
 ### US-1: Company vs brand hierarchy
 - Parent company + one-level child brands; books at company.
-  - [ ] `parent_id` null = company; brands point to company.
-  - [ ] Workspace switcher: companies only; `list_child_tenant_refs`.
+  - [x] `parent_id` null = company; brands point to company.
+  - [x] Workspace switcher: companies only; `list_child_tenant_refs`.
 
 ### US-2: Four URL scopes
-- [ ] `/platform/*` — superadmin (not `/superadmin/*`).
-- [ ] `/:slug/app/*` — ERP.
-- [ ] `/:slug/shop/*` — storefront.
-- [ ] `/:slug/investor/*` — capital portal.
+- [x] `/platform/*` — superadmin (not `/superadmin/*`).
+- [x] `/:slug/app/*` — ERP.
+- [x] `/:slug/shop/*` — storefront.
+- [x] `/:slug/investor/*` — capital portal.
 
 ### US-3: Three-layer RBAC
 - Module enabled → admin bypass → explicit action grants.
-  - [ ] UI hides nav/actions without grant.
+  - [x] UI hides nav/actions without grant.

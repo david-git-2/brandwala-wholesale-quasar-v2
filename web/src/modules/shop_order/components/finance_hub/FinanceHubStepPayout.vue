@@ -67,7 +67,7 @@
           unelevated
           no-caps
           :loading="loading"
-          label="Withdraw cash from merchant wallet"
+          label="Pay out from merchant cashbook"
         />
       </div>
     </q-form>

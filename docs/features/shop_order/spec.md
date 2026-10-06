@@ -55,3 +55,17 @@ Dropship: pick → ship+issue RPC → deliver → remittance pay in. Packing sli
 - [x] Deliver: parcel only; remittance remainder → merchant wallet.
 
 Post-ship: **Dropship settlement** desk; `record_dropship_courier_remittance` is single remittance writer.
+
+### US-4: Recipient confirmation call
+- [x] While dropship `status = confirmed`, staff call `recipient_name` / `recipient_phone` (app log only; no auto-dial).
+- [x] **No answer** → `recipient_call_attempt_count += 1`; stay `confirmed` (no auto-cancel).
+- [x] **Recipient confirmed** → `recipient_verified_at` set; `confirm_dropship_recipient_call` advances to `processing`.
+- [x] **Recipient cancelled** → required `cancel_reason`; `cancel_shop_order_dropship` with reason.
+- [x] `advance_dropship_order_status` to `processing` blocked until `recipient_verified_at` is set.
+- [x] Reseller sees `cancel_reason` on shop order detail when `cancelled`.
+
+### US-5: Dropship money layers
+- [x] **Recipient** — COD face on order only; not a `bills` row ([money-story](../bills_pays/money-story.md)).
+- [x] **Merchant bill** — one issued bill to shop profile at ship (`ship_dropship_order_and_issue_merchant_bill`); amount = merchant total, not COD.
+- [x] **Courier** — COD receivable at deliver; tenant cash on **net** remittance pay in (`record_dropship_courier_remittance` → `post_customer_receipt_with_allocations`, `source = courier_remittance`).
+- [x] **Alloc** — remittance pays merchant bill; remainder → shop **cashbook** (profit), pay out later — not a second AR bill.

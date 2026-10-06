@@ -21,6 +21,16 @@
           <span>Pending {{ formatAmountBdt(detail?.pending_balance ?? 0) }}</span>
           <span>Locked {{ formatAmountBdt(detail?.locked_balance ?? 0) }}</span>
         </div>
+        <div v-if="entityType === 'customer' && entityId" class="q-mt-sm">
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-hand-coins"
+            label="Pay in (collect)"
+            @click="goCollect"
+          />
+        </div>
       </div>
 
       <q-input
@@ -159,6 +169,15 @@ const formatDate = (iso: string) => {
 const goBack = () => {
   const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
   router.push({ name: 'app-cashbook-page', params: tenantSlug ? { tenantSlug } : {} });
+};
+
+const goCollect = () => {
+  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  router.push({
+    name: 'app-collect-pay-page',
+    params: tenantSlug ? { tenantSlug } : {},
+    query: { billingProfileId: String(entityId.value) },
+  });
 };
 </script>
 

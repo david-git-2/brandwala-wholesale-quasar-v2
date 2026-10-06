@@ -8,7 +8,7 @@ One money pack. Layers: **bill** · **pay** · **cashbook**. Not a wallet. Numbe
 | :--- | :--- |
 | Spec | `docs/features/bills_pays/spec.md` + [00-gaps](00-gaps.md) |
 | UI | **Bills**, **Payments**, **Cashbook** in `bills_pays/` (`/app/sales/invoices`, `/app/finance/payments`, `/app/wallet`). Bills: list, manual compose (trade take/condition; walk-in take), print preview, brand settings. |
-| SQL | Live names below; pays in `public.sql`; invoice domain split |
+| SQL | **BP4 (2026-10):** tables `bills`, `bill_lines`, `pays`, `cashbook_*`; split `supabase/schemas/bills_pays/` + invoice domain |
 | Access | `app`; `shop` merchant statement |
 | Model | BW — [business-models](../../architecture/business-models.md) |
 
@@ -21,22 +21,22 @@ One money pack. Layers: **bill** · **pay** · **cashbook**. Not a wallet. Numbe
 | Desks (legacy paths) | `sales_invoice/`, `wallet/` module folders |
 | Types | `web/src/types/database.types.ts` |
 
-## Rename map (spec → live)
+## Rename map (spec term → live)
 
-| Spec | Live today |
-| :--- | :--- |
-| `profiles` | `billing_profiles` |
-| `bills` | `sales_invoices` |
-| `bill_lines` | `sales_invoice_items` |
-| `bill_charges` | `sales_invoice_charges` |
-| `pays` | `global_payments` |
-| `pay_instruments` | `global_payment_instruments` |
-| `pay_allocations` | `invoice_payments` |
-| `cashbook_accounts` | `wallet_accounts` |
-| `cashbook_entries` | `universal_wallet_ledger` |
-| `banks` | `bd_banks` |
+| Spec | Table (live) | Legacy column names still in DB |
+| :--- | :--- | :--- |
+| `profiles` | `billing_profiles` (until [BP3](00-gaps.md)) | — |
+| `bills` | `bills` | `invoice_id` on children; was `sales_invoices` |
+| `bill_lines` | `bill_lines` | was `sales_invoice_items` |
+| `bill_charges` | `bill_charges` | was `sales_invoice_charges` |
+| `pays` | `pays` | was `global_payments` |
+| `pay_instruments` | `pay_instruments` | was `global_payment_instruments` |
+| `pay_allocations` | `pay_allocations` | `invoice_id` = bill id; was `invoice_payments` |
+| `cashbook_accounts` | `cashbook_accounts` | was `wallet_accounts` |
+| `cashbook_entries` | `cashbook_entries` | was `universal_wallet_ledger` |
+| `banks` | `bd_banks` | — |
 
-FKs: `profile_id` → live `billing_profile_id`; alloc `bill_id` → `invoice_id`. No wallet product.
+FKs in RPCs/UI: `profile_id` often `billing_profile_id`; alloc `bill_id` often `invoice_id`. **Cashbook** is the product name; route `/app/wallet` is legacy path only.
 
 **Profile** = money party (`profile_type` customer, merchant, …). Not `recipient_profiles` (delivery). `customer_groups` until [BP3](00-gaps.md).
 
@@ -90,12 +90,12 @@ UI: `ApBillPaper` on bill detail/preview when `invoice_type = ap`. **Parties on 
 - [x] US-1b Trade take/condition; walk-in take; condition held until paid.
 - [ ] US-2 Returns `return_quantity`; excess → customer cashbook.
 - [ ] US-3 Never issue bill from pay.
-- [ ] US-4 Dropship merchant at ship; packing slip ≠ bill.
-- [ ] US-5 Delivery paper close → bills ([SI19](00-gaps.md)).
+- [x] US-4 Dropship merchant at ship; packing slip ≠ bill.
+- [x] US-5 Delivery paper close → bills ([SI19](00-gaps.md)).
 
 ### Pays + leftover
 - [ ] US-6 Cashbook via ledger writer only.
-- [ ] US-7 One pay-in writer (collect + remittance).
+- [x] US-7 One pay-in writer (collect + remittance).
 - [ ] US-8 Split tender; cheque bounce v2 ([WA13](00-gaps.md)).
 - [ ] US-9 Merchant leftover payout; not ALLOC.
 - [x] US-10 Customer overpay / leftover: cashbook at collect; apply on Pay in (FIFO) or later from the payment.

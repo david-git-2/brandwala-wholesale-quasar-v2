@@ -2560,10 +2560,12 @@ export type Database = {
       }
       global_stocks: {
         Row: {
+          archived_at: string | null
           availability: Database["public"]["Enums"]["stock_availability"]
           created_at: string
           grade_tag_id: number | null
           id: number
+          is_archived: boolean
           is_usable: boolean
           location_id: number | null
           outcome_id: number | null
@@ -2574,10 +2576,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           availability?: Database["public"]["Enums"]["stock_availability"]
           created_at?: string
           grade_tag_id?: number | null
           id?: number
+          is_archived?: boolean
           is_usable?: boolean
           location_id?: number | null
           outcome_id?: number | null
@@ -2588,10 +2592,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           availability?: Database["public"]["Enums"]["stock_availability"]
           created_at?: string
           grade_tag_id?: number | null
           id?: number
+          is_archived?: boolean
           is_usable?: boolean
           location_id?: number | null
           outcome_id?: number | null
@@ -6079,6 +6085,7 @@ export type Database = {
         Row: {
           allow_open_box: boolean | null
           billing_profile_id: number | null
+          cancel_reason: string | null
           cargo_rate: number | null
           cart_id: number | null
           cod_charge_amount: number
@@ -6144,10 +6151,12 @@ export type Database = {
           print_charge_amount: number
           profit_basis: string | null
           profit_rate: number | null
+          recipient_call_attempt_count: number
           recipient_name: string | null
           recipient_phone: string | null
           recipient_phone_secondary: string | null
           recipient_profile_id: number | null
+          recipient_verified_at: string | null
           replacement_of_order_id: number | null
           return_charge_amount: number | null
           return_override_reason: string | null
@@ -6168,6 +6177,7 @@ export type Database = {
         Insert: {
           allow_open_box?: boolean | null
           billing_profile_id?: number | null
+          cancel_reason?: string | null
           cargo_rate?: number | null
           cart_id?: number | null
           cod_charge_amount?: number
@@ -6233,10 +6243,12 @@ export type Database = {
           print_charge_amount?: number
           profit_basis?: string | null
           profit_rate?: number | null
+          recipient_call_attempt_count?: number
           recipient_name?: string | null
           recipient_phone?: string | null
           recipient_phone_secondary?: string | null
           recipient_profile_id?: number | null
+          recipient_verified_at?: string | null
           replacement_of_order_id?: number | null
           return_charge_amount?: number | null
           return_override_reason?: string | null
@@ -6257,6 +6269,7 @@ export type Database = {
         Update: {
           allow_open_box?: boolean | null
           billing_profile_id?: number | null
+          cancel_reason?: string | null
           cargo_rate?: number | null
           cart_id?: number | null
           cod_charge_amount?: number
@@ -6322,10 +6335,12 @@ export type Database = {
           print_charge_amount?: number
           profit_basis?: string | null
           profit_rate?: number | null
+          recipient_call_attempt_count?: number
           recipient_name?: string | null
           recipient_phone?: string | null
           recipient_phone_secondary?: string | null
           recipient_profile_id?: number | null
+          recipient_verified_at?: string | null
           replacement_of_order_id?: number | null
           return_charge_amount?: number | null
           return_override_reason?: string | null
@@ -9415,6 +9430,10 @@ export type Database = {
         Args: { p_order_item_id: number }
         Returns: undefined
       }
+      _set_global_stocks_archived_for_shipment: {
+        Args: { p_archive: boolean; p_shipment_id: number }
+        Returns: undefined
+      }
       _stamp_global_shipment_outcome_costs: {
         Args: { p_shipment_id: number }
         Returns: number
@@ -10570,6 +10589,7 @@ export type Database = {
         Args: { p_order_item_id: number }
         Returns: Json
       }
+      close_global_shipment: { Args: { p_shipment_id: number }; Returns: Json }
       close_preorder_demand_document: {
         Args: {
           p_close_action: string
@@ -10638,6 +10658,10 @@ export type Database = {
           p_delivery_charge?: number
           p_order_id: number
         }
+        Returns: Json
+      }
+      confirm_dropship_recipient_call: {
+        Args: { p_order_id: number }
         Returns: Json
       }
       confirm_shop_order: { Args: { p_order_id: number }; Returns: undefined }
@@ -14400,6 +14424,10 @@ export type Database = {
             }
             Returns: Json
           }
+      record_dropship_recipient_call_no_answer: {
+        Args: { p_order_id: number }
+        Returns: Json
+      }
       record_investor_capital_adjustment: {
         Args: {
           p_amount: number

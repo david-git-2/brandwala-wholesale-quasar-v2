@@ -139,10 +139,11 @@
                 <span>Shipment Actions</span>
               </div>
               <div class="text-caption text-grey-6 text-xxs">
-                Archive to hide from active list, or permanently delete this shipment.
+                Archive hides from the active list. Delete permanently only after archiving (removes stock; invoices unlink stock).
               </div>
               <div class="row q-gutter-sm q-pt-xs">
                 <q-btn
+                  v-if="!isCurrentShipmentArchived"
                   outline
                   dense
                   no-caps
@@ -154,12 +155,13 @@
                   @click="confirmArchiveFromDrawer"
                 />
                 <q-btn
+                  v-else
                   outline
                   dense
                   no-caps
                   color="negative"
                   icon="ph ph-trash"
-                  label="Delete"
+                  label="Delete permanently"
                   class="col"
                   :loading="deletingLoading"
                   @click="confirmDeleteFromDrawer"
@@ -929,6 +931,10 @@ const canViewInvestorShipmentShare = computed(() =>
 const router = useRouter();
 const $q = useQuasar();
 const shipmentStore = useGlobalShipmentStore();
+
+const isCurrentShipmentArchived = computed(
+  () => Boolean(shipmentStore.currentShipment?.is_archived),
+);
 const activeTab = ref(props.initialTab || 'details');
 const settingsTabs = [
   { name: 'details', label: 'Details', icon: 'ph ph-identification-badge' },
@@ -1076,8 +1082,10 @@ const confirmArchiveFromDrawer = () => {
           timeout: 2000,
         });
         emit('update:modelValue', false);
-        const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : '';
-        void router.push(`${tenantPrefix}/app/procurement/shipments`);
+        void router.push({
+          name: 'app-procurement-shipment-list',
+          params: { tenantSlug: authStore.tenantSlug },
+        });
       } catch (err: unknown) {
         $q.notify({
           type: 'negative',
@@ -1096,8 +1104,8 @@ const confirmDeleteFromDrawer = () => {
   const shipment = shipmentStore.currentShipment;
   if (!shipment) return;
   $q.dialog({
-    title: 'Delete Shipment',
-    message: `Are you sure you want to permanently delete "${shipment.name}" (#${(shipment as any).tenant_shipment_id || shipment.id})? This action cannot be undone.`,
+    title: 'Delete Shipment Permanently',
+    message: `Delete archived shipment "${shipment.name}" (#${(shipment as any).tenant_shipment_id || shipment.id}) and all warehouse stock? Invoices stay; bill lines will no longer reference that stock.`,
     cancel: {
       flat: true,
       label: 'Cancel',
@@ -1113,15 +1121,17 @@ const confirmDeleteFromDrawer = () => {
     void (async () => {
       deletingLoading.value = true;
       try {
-        await shipmentStore.deleteShipment(shipment.id);
+        await shipmentStore.purgeArchivedShipment(shipment.id);
         $q.notify({
           type: 'positive',
           message: `Shipment "${shipment.name}" deleted successfully.`,
           timeout: 2000,
         });
         emit('update:modelValue', false);
-        const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : '';
-        void router.push(`${tenantPrefix}/app/procurement/shipments`);
+        void router.push({
+          name: 'app-procurement-shipment-list',
+          params: { tenantSlug: authStore.tenantSlug },
+        });
       } catch (err: unknown) {
         $q.notify({
           type: 'negative',

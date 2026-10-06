@@ -4022,12 +4022,16 @@ begin
   where order_id = p_order_id;
 
   update public.shop_orders
-  set status = 'cancelled'::public.shop_order_status, updated_at = now()
+  set
+    status = 'cancelled'::public.shop_order_status,
+    cancel_reason = nullif(trim(p_reason), ''),
+    updated_at = now()
   where id = p_order_id;
 
   return jsonb_build_object(
     'success', true,
     'new_status', 'cancelled',
+    'cancel_reason', nullif(trim(p_reason), ''),
     'restock_summary', jsonb_build_object(
       'pick_rows_released', v_released_picks,
       'reason', nullif(trim(p_reason), '')

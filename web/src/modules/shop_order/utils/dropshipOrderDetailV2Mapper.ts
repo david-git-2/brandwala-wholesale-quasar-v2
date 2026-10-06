@@ -9,6 +9,7 @@ import type {
 export type DropshipOrderDetailV2Permissions = {
   can_show_invoice_paper: boolean;
   can_start_processing: boolean;
+  can_confirm_recipient_call?: boolean;
   can_mark_ready_for_pickup: boolean;
   can_mark_shipped: boolean;
   can_print_customer_invoice: boolean;
@@ -129,6 +130,9 @@ export function mapDropshipOrderDetailV2Response(raw: unknown): DropshipOrderDet
     courier_name: (orderRaw.courier_name as string | null) ?? null,
     courier_awb_number: (orderRaw.courier_awb_number as string | null) ?? null,
     tracking_url: (orderRaw.tracking_url as string | null) ?? null,
+    recipient_call_attempt_count: num(orderRaw.recipient_call_attempt_count),
+    recipient_verified_at: (orderRaw.recipient_verified_at as string | null) ?? null,
+    cancel_reason: (orderRaw.cancel_reason as string | null) ?? null,
   };
 
   const items: ShopOrderItem[] = ((payload.items as ShopOrderItem[] | null) ?? []).map((item) => {
@@ -198,6 +202,7 @@ export function mapDropshipOrderDetailV2Response(raw: unknown): DropshipOrderDet
     permissions: {
       can_show_invoice_paper: bool(permissionsRaw.can_show_invoice_paper),
       can_start_processing: bool(permissionsRaw.can_start_processing),
+      can_confirm_recipient_call: bool(permissionsRaw.can_confirm_recipient_call),
       can_mark_ready_for_pickup: bool(permissionsRaw.can_mark_ready_for_pickup),
       can_mark_shipped: bool(permissionsRaw.can_mark_shipped),
       can_print_customer_invoice: bool(permissionsRaw.can_print_customer_invoice),

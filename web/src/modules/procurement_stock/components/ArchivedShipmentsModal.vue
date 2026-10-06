@@ -13,7 +13,7 @@
               </q-badge>
             </div>
             <div class="text-caption text-grey-6 text-xxs">
-              Restorable shipments or permanent purge for drafts & cancelled
+              Restorable shipments. Permanent delete removes warehouse stock; bill lines keep their snapshot with stock unlinked.
             </div>
           </div>
         </div>
@@ -130,9 +130,8 @@
                     <q-tooltip>Restore shipment back to active list</q-tooltip>
                   </q-btn>
 
-                  <!-- Permanent Delete Button (ONLY for draft and cancelled) -->
+                  <!-- Permanent Delete (archived only) -->
                   <q-btn
-                    v-if="shipment.status === 'draft' || shipment.status === 'cancelled'"
                     flat
                     round
                     dense
@@ -142,7 +141,7 @@
                     :loading="purgingId === shipment.id"
                     @click="confirmPermanentDelete(shipment)"
                   >
-                    <q-tooltip>Permanently delete this archived {{ shipment.status }} shipment</q-tooltip>
+                    <q-tooltip>Permanently delete shipment, stock, and line items. Invoices stay; stock link cleared.</q-tooltip>
                   </q-btn>
                 </div>
               </q-item-section>
@@ -263,7 +262,7 @@ const confirmRestore = (shipment: GlobalShipment) => {
 const confirmPermanentDelete = (shipment: GlobalShipment) => {
   $q.dialog({
     title: 'Permanently Delete Shipment',
-    message: `This action CANNOT be undone. Are you sure you want to permanently delete archived ${shipment.status} shipment "${shipment.name}" (#${(shipment as any).tenant_shipment_id || shipment.id}) and all its associated items?`,
+    message: `This cannot be undone. Delete archived shipment "${shipment.name}" (#${(shipment as any).tenant_shipment_id || shipment.id}) and all warehouse stock for it? Existing invoices will stay; bill lines will no longer point at that stock.`,
     color: 'negative',
     cancel: {
       flat: true,

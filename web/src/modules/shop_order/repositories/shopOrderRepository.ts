@@ -835,6 +835,34 @@ const cancelShopOrderDropship = async (orderId: number, reason: string | null) =
   return payload;
 };
 
+const recordDropshipRecipientCallNoAnswer = async (orderId: number) => {
+  const { data, error } = await supabase.rpc('record_dropship_recipient_call_no_answer', {
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+  const payload = data as {
+    success?: boolean;
+    error?: string;
+    recipient_call_attempt_count?: number;
+  };
+  if (payload.success === false) {
+    throw new Error(payload.error || 'Failed to log call attempt');
+  }
+  return payload;
+};
+
+const confirmDropshipRecipientCall = async (orderId: number) => {
+  const { data, error } = await supabase.rpc('confirm_dropship_recipient_call', {
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+  const payload = data as { success?: boolean; error?: string; new_status?: string };
+  if (payload.success === false) {
+    throw new Error(payload.error || 'Failed to confirm recipient');
+  }
+  return payload;
+};
+
 const getCustomerShopOrder = async (
   tenantId: number,
   orderId: number,
@@ -1187,6 +1215,8 @@ export const shopOrderRepository = {
   markShopOrderItemUnavailable,
   clearShopOrderItemUnavailable,
   cancelShopOrderDropship,
+  recordDropshipRecipientCallNoAnswer,
+  confirmDropshipRecipientCall,
   getCustomerShopOrder,
   placeShopOrderForProcurement,
   fulfillShopOrderToInvoice,

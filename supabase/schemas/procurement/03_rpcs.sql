@@ -1358,6 +1358,7 @@ begin
     inner join public.global_shipments gship on gship.id = gsi.shipment_id
     inner join public.global_stock_types gst on gst.id = gs.stock_type_id
     where gs.parent_tenant_id = p_parent_tenant_id
+      and gs.is_archived = false
       and gship.id = p_shipment_id
       and gship.status = 'received'
       and gst.is_sellable = true
@@ -2907,6 +2908,26 @@ $$;
 ALTER FUNCTION "public"."delete_global_stock_allocation"("p_allocation_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."_set_global_stocks_archived_for_shipment"("p_shipment_id" bigint, "p_archive" boolean) RETURNS "void"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  update public.global_stocks gs
+  set
+    is_archived = p_archive,
+    archived_at = case when p_archive then now() else null end,
+    updated_at = now()
+  from public.global_shipment_items gsi
+  where gsi.id = gs.shipment_item_id
+    and gsi.shipment_id = p_shipment_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."_set_global_stocks_archived_for_shipment"("p_shipment_id" bigint, "p_archive" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."archive_shipment"("p_id" bigint) RETURNS "public"."global_shipments"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -2933,6 +2954,8 @@ begin
       updated_at = now()
   where id = p_id
   returning * into v_ship;
+
+  perform public._set_global_stocks_archived_for_shipment(p_id, true);
 
   return v_ship;
 end;
@@ -3035,6 +3058,8 @@ begin
   where id = p_id
   returning * into v_ship;
 
+  perform public._set_global_stocks_archived_for_shipment(p_id, false);
+
   return v_ship;
 end;
 $$;
@@ -3067,25 +3092,7 @@ begin
     raise exception 'shipment must be archived before it can be permanently deleted';
   end if;
 
-  -- Only draft and cancelled shipments can be permanently deleted
-  if v_ship.status not in ('draft', 'cancelled') then
-    raise exception 'shipment in status % cannot be deleted; only archived draft or cancelled shipments may be purged', v_ship.status;
-  end if;
-
-  -- Verify no physical stock was ever created for this shipment
-  if exists (
-    select 1
-    from public.global_stocks gs
-    where gs.shipment_item_id in (
-      select id from public.global_shipment_items where shipment_id = p_id
-    )
-  ) or v_ship.stock_ready = true then
-    raise exception 'cannot delete shipment: physical inventory records exist for this shipment';
-  end if;
-
-  -- Delete the global shipment record.
-  -- Child records (items, sections, boxes, cost entries, investments) will be deleted
-  -- automatically via ON DELETE CASCADE constraints on their foreign keys.
+  -- Delete shipment, items, and global_stocks (CASCADE). Bill lines and other FKs use ON DELETE SET NULL on global_stock_id.
   delete from public.global_shipments where id = p_id;
 end;
 $$;
@@ -4758,6 +4765,7 @@ CREATE OR REPLACE FUNCTION "public"."global_stock_atp_qty"("p_global_stock_id" b
       from public.global_stocks gs
       left join public.stock_locations sl on sl.id = gs.location_id
       where gs.id = p_global_stock_id
+        and gs.is_archived = false
         and gs.availability = 'sellable'::public.stock_availability
         and (gs.location_id is null or sl.is_pickable = true)
     ), 0) - public.global_stock_hold_qty(p_global_stock_id),
@@ -4923,6 +4931,7 @@ begin
   inner join public.global_shipments gship on gship.id = gsi.shipment_id
   inner join public.global_stock_types gst on gst.id = gs.stock_type_id
   where gs.parent_tenant_id = p_tenant_id
+    and gs.is_archived = false
     and gship.status = 'received'
     and gst.is_sellable = true
     and (p_shipment_id is null or gship.id = p_shipment_id)
@@ -4965,6 +4974,7 @@ begin
     inner join public.global_stock_types gst on gst.id = gs.stock_type_id
     left join public.global_stock_allocations gsa on gsa.stock_id = gs.id
     where gs.parent_tenant_id = p_tenant_id
+      and gs.is_archived = false
       and gship.status = 'received'
       and gst.is_sellable = true
       and (p_shipment_id is null or gship.id = p_shipment_id)
@@ -5573,6 +5583,7 @@ begin
     or (not v_is_parent and gsa.child_tenant_id = p_tenant_id)
   )
   and (p_child_tenant_id is null or gsa.child_tenant_id = p_child_tenant_id)
+  and gs.is_archived = false
   and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
   and (
     p_search is null or p_search = '' or (
@@ -5622,6 +5633,7 @@ begin
       or (not v_is_parent and gsa.child_tenant_id = p_tenant_id)
     )
     and (p_child_tenant_id is null or gsa.child_tenant_id = p_child_tenant_id)
+    and gs.is_archived = false
     and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
     and (
       p_search is null or p_search = '' or (
@@ -5678,6 +5690,7 @@ begin
   inner join public.global_shipments gship on gship.id = gsi.shipment_id
   left join public.global_stock_types gst on gst.id = gs.stock_type_id
   where gs.parent_tenant_id = p_tenant_id
+    and gs.is_archived = false
     and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
     and (p_availability is null or gs.availability = p_availability)
     and (
@@ -5735,6 +5748,7 @@ begin
     left join public.stock_locations sl on sl.id = gs.location_id
     left join public.global_shipment_item_outcomes o on o.id = gs.outcome_id
     where gs.parent_tenant_id = p_tenant_id
+      and gs.is_archived = false
       and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
       and (p_availability is null or gs.availability = p_availability)
       and (
@@ -5823,6 +5837,7 @@ begin
   inner join public.global_shipments gship on gship.id = gsi.shipment_id
   left join public.global_stock_types gst on gst.id = gs.stock_type_id
   where gs.parent_tenant_id = p_tenant_id
+    and gs.is_archived = false
     and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
     and (
       p_is_sellable is null
@@ -5886,6 +5901,7 @@ begin
     left join public.stock_locations sl on sl.id = gs.location_id
     left join public.global_shipment_item_outcomes o on o.id = gs.outcome_id
     where gs.parent_tenant_id = p_tenant_id
+      and gs.is_archived = false
       and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
       and (
         p_is_sellable is null
@@ -5958,6 +5974,7 @@ begin
     inner join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
     inner join public.global_shipments gship on gship.id = gsi.shipment_id
     where gs.parent_tenant_id = p_tenant_id
+      and gs.is_archived = false
       and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
       and (
         p_is_sellable is null
@@ -6033,6 +6050,7 @@ begin
     left join public.stock_locations sl on sl.id = gs.location_id
     left join public.global_shipment_item_outcomes o on o.id = gs.outcome_id
     where gs.parent_tenant_id = p_tenant_id
+      and gs.is_archived = false
       and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
       and (
         p_is_sellable is null
@@ -6144,6 +6162,7 @@ begin
     left join public.stock_locations sl on sl.id = gs.location_id
     left join public.tags tg on tg.id = gs.grade_tag_id
     where gs.parent_tenant_id = p_tenant_id
+      and gs.is_archived = false
       and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
       and (
         p_is_sellable is null
@@ -8692,6 +8711,7 @@ begin
   left join public.tenants ht on ht.id = coalesce(sh.assigned_child_tenant_id, v_parent_id)
   left join public.stock_locations sl on sl.id = gs.location_id
   where gs.parent_tenant_id = v_parent_id
+    and gs.is_archived = false
     and (
       v_is_parent_context
       or sh.assigned_child_tenant_id is null
@@ -12235,6 +12255,7 @@ begin
       inner join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
       left join public.stock_locations sl on sl.id = gs.location_id
       where gs.parent_tenant_id = v_parent_tenant_id
+        and gs.is_archived = false
         and gsi.product_id = r.product_id
         and gs.availability = 'sellable'::public.stock_availability
         and (gs.location_id is null or sl.is_pickable = true)
@@ -12275,6 +12296,7 @@ begin
       inner join public.global_shipments sh on sh.id = gsi.shipment_id
       left join public.stock_locations sl on sl.id = gs.location_id
       where gs.parent_tenant_id = v_parent_tenant_id
+        and gs.is_archived = false
         and gsi.product_id = r.product_id
         and gs.availability = 'sellable'::public.stock_availability
         and (gs.location_id is null or sl.is_pickable = true)
@@ -14236,7 +14258,8 @@ BEGIN
   INTO v_sellable, v_held, v_unsellable, v_total, v_value
   FROM public.global_stocks gs
   JOIN public.global_shipment_items gsi ON gsi.id = gs.shipment_item_id
-  WHERE gs.parent_tenant_id = v_books_id;
+  WHERE gs.parent_tenant_id = v_books_id
+    AND gs.is_archived = false;
 
   SELECT
     coalesce(count(*) FILTER (WHERE s.status = 'in_transit'), 0),
@@ -14254,6 +14277,7 @@ BEGIN
     FROM public.global_stocks gs
     LEFT JOIN public.tags t ON t.id = gs.grade_tag_id
     WHERE gs.parent_tenant_id = v_books_id
+      AND gs.is_archived = false
       AND gs.quantity > 0
     GROUP BY coalesce(t.name, 'Ungraded')
   ) g;
@@ -14286,6 +14310,7 @@ BEGIN
     FROM public.global_stocks gs
     LEFT JOIN public.stock_locations sl ON sl.id = gs.location_id
     WHERE gs.parent_tenant_id = v_books_id
+      AND gs.is_archived = false
       AND gs.quantity > 0
     GROUP BY coalesce(sl.name, 'Unlocated')
   ) l;
@@ -14449,5 +14474,34 @@ $$;
 
 
 ALTER FUNCTION public.paste_batch_code_items(bigint, integer, jsonb) OWNER TO postgres;
+
+
+CREATE OR REPLACE FUNCTION public.close_global_shipment(p_shipment_id bigint)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+DECLARE
+  v_ship public.global_shipments%rowtype;
+BEGIN
+  SELECT * INTO v_ship FROM public.global_shipments WHERE id = p_shipment_id FOR UPDATE;
+  IF v_ship.id IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'shipment not found');
+  END IF;
+  IF NOT public.is_tenant_staff(v_ship.tenant_id) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'access denied');
+  END IF;
+  IF coalesce(v_ship.is_closed, false) THEN
+    RETURN jsonb_build_object('success', true, 'message', 'already closed');
+  END IF;
+  UPDATE public.global_shipments
+  SET is_closed = true, updated_at = now()
+  WHERE id = p_shipment_id;
+  RETURN jsonb_build_object('success', true, 'is_closed', true);
+END;
+$$;
+
+ALTER FUNCTION public.close_global_shipment(bigint) OWNER TO postgres;
 
 

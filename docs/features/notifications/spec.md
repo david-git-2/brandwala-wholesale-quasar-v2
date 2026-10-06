@@ -46,5 +46,5 @@ See [scopes](../../architecture/scopes.md).
 
 ### US-2: Operational tasks
 - Assign tasks with due dates linked to domain records.
-  - [ ] Priorities: `low`, `medium`, `high`, `urgent`.
+  - [x] Priorities: `low`, `medium`, `high`, `urgent` (four levels).
   - [ ] Completion logs user + timestamp.

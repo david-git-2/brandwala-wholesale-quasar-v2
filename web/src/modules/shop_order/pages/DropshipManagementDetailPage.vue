@@ -91,6 +91,18 @@
           </template>
 
           <q-btn
+            v-else-if="deskStep === 'remit'"
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-bank"
+            label="Record remittance"
+            class="text-weight-bold"
+            style="border-radius: 8px; min-width: 220px"
+            @click="goToRemittance"
+          />
+
+          <q-btn
             v-else-if="deskStep === 'done' && orderData.invoice?.id"
             outline
             color="primary"
@@ -193,7 +205,7 @@ const deskBannerText = computed(() => {
     case 'outcome':
       return 'Parcel is in transit. Confirm delivery or mark a return — cash is recorded when the courier remits.';
     case 'remit':
-      return 'Parcel delivered. Record courier remittance on Payments (Cash in) to pay the merchant bill and credit reseller profit.';
+      return 'Parcel delivered. Record courier remittance on Payments → Remittance (net bank in) to pay the merchant bill; shop profit stays on cashbook.';
     default:
       if (orderData.value?.order.status === 'returned') {
         return 'Return finalized — settlement is read-only.';
@@ -263,6 +275,14 @@ function openMerchantInvoice() {
   void router.push({
     name: 'app-global-invoice-details-page',
     params: { tenantSlug: tenantSlug.value, id: String(invoiceId) },
+  });
+}
+
+function goToRemittance() {
+  void router.push({
+    name: 'app-remit-pay-page',
+    params: { tenantSlug: tenantSlug.value },
+    query: { orderId: String(orderId.value) },
   });
 }
 

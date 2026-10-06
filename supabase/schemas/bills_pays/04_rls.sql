@@ -60,7 +60,7 @@ ALTER TABLE ONLY "public"."bill_lines"
     ADD CONSTRAINT "global_invoice_items_assigned_child_tenant_id_fkey" FOREIGN KEY ("assigned_child_tenant_id") REFERENCES "public"."tenants"("id");
 
 ALTER TABLE ONLY "public"."bill_lines"
-    ADD CONSTRAINT "global_invoice_items_global_stock_id_fkey" FOREIGN KEY ("global_stock_id") REFERENCES "public"."global_stocks"("id") ON DELETE RESTRICT;
+    ADD CONSTRAINT "global_invoice_items_global_stock_id_fkey" FOREIGN KEY ("global_stock_id") REFERENCES "public"."global_stocks"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."bill_lines"
     ADD CONSTRAINT "global_invoice_items_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."bills"("id") ON DELETE CASCADE;
@@ -99,7 +99,7 @@ ALTER TABLE ONLY "public"."pays"
     ADD CONSTRAINT "global_payments_shop_order_id_fkey" FOREIGN KEY ("shop_order_id") REFERENCES "public"."shop_orders"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."sales_return_items"
-    ADD CONSTRAINT "global_return_items_global_stock_id_fkey" FOREIGN KEY ("global_stock_id") REFERENCES "public"."global_stocks"("id") ON DELETE RESTRICT;
+    ADD CONSTRAINT "global_return_items_global_stock_id_fkey" FOREIGN KEY ("global_stock_id") REFERENCES "public"."global_stocks"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."sales_return_items"
     ADD CONSTRAINT "global_return_items_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."bills"("id") ON DELETE CASCADE;

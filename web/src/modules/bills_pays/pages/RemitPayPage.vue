@@ -121,8 +121,14 @@ const submit = async () => {
   }
 };
 
-onMounted(() => {
-  void loadQueue();
+onMounted(async () => {
+  await loadQueue();
+  const raw = route.query.orderId;
+  const orderId = typeof raw === 'string' ? Number(raw) : Array.isArray(raw) ? Number(raw[0]) : NaN;
+  if (Number.isFinite(orderId) && orderId > 0) {
+    const match = remitOrders.value.find((o) => o.id === orderId);
+    if (match) selectOrder(match);
+  }
 });
 </script>
 

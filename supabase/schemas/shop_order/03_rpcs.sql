@@ -403,6 +403,15 @@ begin
     end if;
   end if;
 
+  if p_target_status = 'processing'::public.shop_order_status
+     and v_current_status = 'confirmed'::public.shop_order_status
+     and v_order.recipient_verified_at is null then
+    return jsonb_build_object(
+      'success', false,
+      'error', 'Recipient must confirm by phone before processing'
+    );
+  end if;
+
   update public.shop_orders
   set
     status = p_target_status,
@@ -446,6 +455,96 @@ end;
 $$;
 
 ALTER FUNCTION "public"."advance_dropship_order_status"("p_order_id" bigint, "p_target_status" "public"."shop_order_status", "p_remittance_ref" "text", "p_bank_trx_id" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."record_dropship_recipient_call_no_answer"("p_order_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_order public.shop_orders%rowtype;
+  v_new_count integer;
+begin
+  select * into v_order from public.shop_orders where id = p_order_id for update;
+  if v_order.id is null then
+    return jsonb_build_object('success', false, 'error', 'order not found');
+  end if;
+
+  if v_order.shop_type_snapshot <> 'dropship' then
+    return jsonb_build_object('success', false, 'error', 'not a dropship order');
+  end if;
+
+  if not public.is_tenant_staff(v_order.tenant_id) then
+    return jsonb_build_object('success', false, 'error', 'access denied');
+  end if;
+
+  if v_order.status <> 'confirmed'::public.shop_order_status then
+    return jsonb_build_object(
+      'success', false,
+      'error', format('order must be confirmed to log a call attempt (current: %s)', v_order.status)
+    );
+  end if;
+
+  update public.shop_orders
+  set
+    recipient_call_attempt_count = coalesce(recipient_call_attempt_count, 0) + 1,
+    updated_at = now()
+  where id = p_order_id
+  returning recipient_call_attempt_count into v_new_count;
+
+  return jsonb_build_object(
+    'success', true,
+    'recipient_call_attempt_count', v_new_count
+  );
+end;
+$$;
+
+ALTER FUNCTION "public"."record_dropship_recipient_call_no_answer"("p_order_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."confirm_dropship_recipient_call"("p_order_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_order public.shop_orders%rowtype;
+  v_advance jsonb;
+begin
+  select * into v_order from public.shop_orders where id = p_order_id for update;
+  if v_order.id is null then
+    return jsonb_build_object('success', false, 'error', 'order not found');
+  end if;
+
+  if v_order.shop_type_snapshot <> 'dropship' then
+    return jsonb_build_object('success', false, 'error', 'not a dropship order');
+  end if;
+
+  if not public.is_tenant_staff(v_order.tenant_id) then
+    return jsonb_build_object('success', false, 'error', 'access denied');
+  end if;
+
+  if v_order.status <> 'confirmed'::public.shop_order_status then
+    return jsonb_build_object(
+      'success', false,
+      'error', format('order must be confirmed to verify recipient (current: %s)', v_order.status)
+    );
+  end if;
+
+  if v_order.recipient_verified_at is not null then
+    v_advance := public.advance_dropship_order_status(p_order_id, 'processing'::public.shop_order_status);
+    return v_advance;
+  end if;
+
+  update public.shop_orders
+  set recipient_verified_at = now(), updated_at = now()
+  where id = p_order_id;
+
+  v_advance := public.advance_dropship_order_status(p_order_id, 'processing'::public.shop_order_status);
+  return v_advance;
+end;
+$$;
+
+ALTER FUNCTION "public"."confirm_dropship_recipient_call"("p_order_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."apply_dropship_payout_settlement_fifo"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric) RETURNS "void"
@@ -3658,6 +3757,10 @@ begin
     raise exception 'vendor catalog orders cannot be fulfilled to an invoice directly';
   end if;
 
+  if v_order.shop_type_snapshot = 'fixed_price' then
+    raise exception 'stock-backed catalog orders must close on Delivery paper (take / condition / return), not fulfill_shop_order_to_invoice';
+  end if;
+
   if v_order.shop_type_snapshot = 'dropship' then
     raise exception 'dropship orders must use ship_dropship_order_and_issue_merchant_bill';
   end if;
@@ -4015,7 +4118,10 @@ begin
       'courier_name', v_order.courier_name,
       'courier_awb_number', v_order.courier_awb_number,
       'tracking_url', v_order.tracking_url,
-      'payout_settlement_status', v_order.payout_settlement_status
+      'payout_settlement_status', v_order.payout_settlement_status,
+      'cancel_reason', v_order.cancel_reason,
+      'recipient_call_attempt_count', coalesce(v_order.recipient_call_attempt_count, 0),
+      'recipient_verified_at', v_order.recipient_verified_at
     );
 
   return jsonb_build_object(
@@ -4660,7 +4766,10 @@ begin
       'delivery_zone', v_order.delivery_zone,
       'courier_name', v_order.courier_name,
       'courier_awb_number', v_order.courier_awb_number,
-      'tracking_url', v_order.tracking_url
+      'tracking_url', v_order.tracking_url,
+      'recipient_call_attempt_count', coalesce(v_order.recipient_call_attempt_count, 0),
+      'recipient_verified_at', v_order.recipient_verified_at,
+      'cancel_reason', v_order.cancel_reason
     ),
     'items', v_items,
     'summary', jsonb_build_object(
@@ -4708,7 +4817,8 @@ begin
     ),
     'permissions', jsonb_build_object(
       'can_show_invoice_paper', v_order.status = 'confirmed',
-      'can_start_processing', v_order.status = 'confirmed',
+      'can_start_processing', false,
+      'can_confirm_recipient_call', v_order.status = 'confirmed' and v_order.recipient_verified_at is null,
       'can_mark_ready_for_pickup', v_order.status = 'processing',
       'can_mark_shipped', v_order.status = 'ready_for_pickup',
       'can_print_customer_invoice', v_order.status in ('ready_for_pickup', 'shipped', 'delivered')

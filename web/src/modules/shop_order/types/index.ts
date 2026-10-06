@@ -497,6 +497,9 @@ export interface CustomerOrderDetailOrder {
   courier_awb_number: string | null;
   tracking_url: string | null;
   payout_settlement_status: string | null;
+  cancel_reason?: string | null;
+  recipient_call_attempt_count?: number;
+  recipient_verified_at?: string | null;
 }
 
 export interface CustomerOrderDetail {
@@ -567,6 +570,9 @@ export interface ShopOrder {
   courier_bank_trx_id?: string | null;
   collection_source?: string | null;
   payout_settlement_status?: string | null;
+  recipient_call_attempt_count?: number;
+  recipient_verified_at?: string | null;
+  cancel_reason?: string | null;
 }
 
 export interface ShopOrderItemStockPick {

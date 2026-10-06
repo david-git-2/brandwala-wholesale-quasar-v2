@@ -647,6 +647,8 @@ CREATE TABLE IF NOT EXISTS "public"."global_stocks" (
     "availability" "public"."stock_availability" DEFAULT 'sellable'::"public"."stock_availability" NOT NULL,
     "location_id" bigint,
     "grade_tag_id" bigint,
+    "is_archived" boolean DEFAULT false NOT NULL,
+    "archived_at" timestamp with time zone,
     CONSTRAINT "global_stocks_quantity_check" CHECK (("quantity" >= 0))
 );
 
@@ -659,6 +661,10 @@ COMMENT ON COLUMN "public"."global_stocks"."availability" IS 'Stock pool availab
 
 
 COMMENT ON COLUMN "public"."global_stocks"."location_id" IS 'Warehouse bin / location where stock is located.';
+
+
+
+COMMENT ON COLUMN "public"."global_stocks"."is_archived" IS 'When true, stock is hidden from operational warehouse views (e.g. archived shipment).';
 
 
 
@@ -1319,6 +1325,10 @@ CREATE INDEX "global_stocks_location_id_idx" ON "public"."global_stocks" USING "
 
 
 CREATE INDEX "global_stocks_parent_tenant_idx" ON "public"."global_stocks" USING "btree" ("parent_tenant_id");
+
+
+
+CREATE INDEX "global_stocks_parent_tenant_is_archived_idx" ON "public"."global_stocks" USING "btree" ("parent_tenant_id", "is_archived");
 
 
 

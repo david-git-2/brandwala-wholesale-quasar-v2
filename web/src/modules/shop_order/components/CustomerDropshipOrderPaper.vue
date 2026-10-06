@@ -165,6 +165,11 @@ const estimatedProfit = computed(() => {
 
 const isBeforePickup = computed(() => hideCourierCharges.value);
 
+const showCancelReason = computed(
+  () =>
+    props.normalizedStatus === 'cancelled' && Boolean(props.order.cancel_reason?.trim()),
+);
+
 const copyDetail = (text: string | null | undefined, label: string) => {
   const value = text?.trim();
   if (!value) {
@@ -200,6 +205,21 @@ const copyDetail = (text: string | null | undefined, label: string) => {
         <span class="dropship-invoice-paper__status-next-value">{{ nextStatusLabel }}</span>
       </div>
     </div>
+
+    <q-banner
+      v-if="showCancelReason"
+      rounded
+      class="bg-red-1 text-grey-9 q-mb-md"
+      dense
+    >
+      <template #avatar>
+        <q-icon name="ph ph-info" color="negative" />
+      </template>
+      <div class="text-caption text-weight-bold text-uppercase text-negative q-mb-xs">
+        Cancellation reason
+      </div>
+      <div class="text-body2">{{ order.cancel_reason }}</div>
+    </q-banner>
 
     <!-- Editorial Hero Header -->
     <header class="dropship-invoice-paper__header">
