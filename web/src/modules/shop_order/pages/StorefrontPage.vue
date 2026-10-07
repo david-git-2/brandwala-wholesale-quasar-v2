@@ -126,9 +126,21 @@
         :category-options="filteredCategoryOptions"
         @filter-brands="filterBrands"
         @filter-categories="filterCategories"
-        @reset-filters="onResetFilters"
-        @apply="filterDrawerOpen = false"
       />
+
+      <template #footer>
+        <div class="row q-gutter-sm justify-end">
+          <q-btn flat no-caps :label="$t('shop_admin.reset')" color="grey-7" @click="onResetFilters" />
+          <q-btn
+            unelevated
+            no-caps
+            :label="$t('shop.apply')"
+            color="primary"
+            style="border-radius: 8px"
+            @click="filterDrawerOpen = false"
+          />
+        </div>
+      </template>
     </FilterSidebar>
   </q-page>
 </template>

@@ -58,11 +58,13 @@ export const requestConfirmation = (
         label: 'Cancel',
         flat: true,
         color: 'grey-7',
+        noCaps: true,
       },
       ok: {
         label: confirmLabel,
-        unelevated: true,
+        outline: true,
         color: 'primary',
+        noCaps: true,
       },
       persistent: true,
     })

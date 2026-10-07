@@ -50,6 +50,14 @@ export interface UpsertProfilePayload {
   default_can_set_dropship_price: boolean;
 }
 
+export interface ShopListingGroupVisibilityRow {
+  listing_id: number;
+  product_id: number;
+  product_name: string | null;
+  product_image_url: string | null;
+  is_visible: boolean;
+}
+
 export interface UpsertAccessPayload {
   shop_id: number;
   customer_group_id: number;

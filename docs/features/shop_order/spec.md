@@ -44,6 +44,8 @@ Dropship: pick → ship+issue RPC → deliver → remittance pay in. Packing sli
 ### US-1: Storefront types & tiers
 - [x] `vendor_catalog` / `fixed_price` / `dropship` with group price flags.
 - [x] Dropship enforces `minimum_sell_price_amount`.
+- [x] **Custom override display qty:** `shops.display_quantity_add` (default 6). Real ≤2 → show real; real >2 → show real + pad. `recalc_shop_display_quantities` on admin storefront tab. Customer catalog never shows 0 when real stock >0 (stale override fallback).
+- [x] **Dropship listing visibility by group:** Access row **Products** button opens a dialog with show checkboxes. No hide row = shown. `shop_listing_group_hides` + `list_shop_listing_group_visibility` / `set_shop_listing_group_visibility`. Customer browse, product, and cart respect hides.
 
 ### US-2: Catalog negotiation
 - [x] `submitted` → `priced` → `countered` → `final_offered` → `confirmed`.

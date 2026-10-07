@@ -1,4 +1,14 @@
 <template>
+  <Teleport to="body">
+    <AppTradeFlowLoadingScreen
+      v-if="isLoading"
+      fullscreen
+      :scope="scope"
+      tagline="Connecting…"
+      aria-label="Connecting"
+    />
+  </Teleport>
+
   <section class="auth-card">
     <div class="auth-card__accent-bar" aria-hidden="true" />
 
@@ -93,6 +103,7 @@
 import { computed, inject, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import type { Ref } from 'vue';
+import AppTradeFlowLoadingScreen from 'src/components/brand/AppTradeFlowLoadingScreen.vue';
 import { useOAuthLogin, type AuthScope } from '../composables/useOAuthLogin';
 
 const props = defineProps<{

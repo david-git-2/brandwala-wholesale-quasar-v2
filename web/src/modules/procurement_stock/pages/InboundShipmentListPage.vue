@@ -64,19 +64,19 @@
 
       <!-- Filter Sidebar Drawer -->
       <FilterSidebar v-model="filterDrawerOpen" title="Filter Shipments">
-        <div class="q-gutter-y-md q-pa-sm">
-          <q-select
-            v-model="draftStatusFilter"
-            :options="statusOptions"
-            outlined
-            dense
-            clearable
-            emit-value
-            map-options
-            label="Shipment Status"
-          />
+        <q-select
+          v-model="draftStatusFilter"
+          :options="statusOptions"
+          outlined
+          dense
+          clearable
+          emit-value
+          map-options
+          label="Shipment Status"
+        />
 
-          <div class="row justify-end q-gutter-x-sm q-mt-md">
+        <template #footer>
+          <div class="row justify-end q-gutter-x-sm">
             <q-btn flat no-caps label="Reset" color="grey-7" @click="onResetFilters" />
             <q-btn
               unelevated
@@ -86,7 +86,7 @@
               @click="onApplyDrawerFilters"
             />
           </div>
-        </div>
+        </template>
       </FilterSidebar>
 
       <!-- Skeleton Loading State -->

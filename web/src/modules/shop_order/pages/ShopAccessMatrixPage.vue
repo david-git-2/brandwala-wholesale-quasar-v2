@@ -218,6 +218,18 @@
                     @click="openGroupDetails(props.row)"
                   />
                   <q-btn
+                    v-if="shopType === 'dropship'"
+                    flat
+                    dense
+                    no-caps
+                    size="sm"
+                    color="grey-8"
+                    icon="ph ph-package"
+                    :label="$t('shop_admin.access_products_button')"
+                    data-test="access-products-btn"
+                    @click="openProductsDialog(props.row.id)"
+                  />
+                  <q-btn
                     flat
                     dense
                     no-caps
@@ -364,23 +376,34 @@
         </q-card>
       </q-dialog>
 
-      <q-dialog
+      <AppResizableOverlayPanel
         v-model="drawerOpen"
-        position="right"
-        maximized
-        transition-show="slide-left"
-        transition-hide="slide-right"
+        storage-key="shop_order.access-configure-width"
+        :default-width="520"
+        :min-width="400"
+        :max-width="720"
+        :aria-label="$t('shop_admin.configure')"
       >
-        <q-card class="column no-wrap" style="width: 500px; max-width: 100vw">
-          <q-card-section class="row items-center justify-between bg-primary text-white q-py-md">
-            <div>
-              <div class="text-overline opacity-80">{{ $t('shop_admin.configure') }}</div>
-              <div class="text-h6 text-weight-bold">{{ activeGroupName }}</div>
+        <div class="access-side-panel column no-wrap full-height">
+          <div class="access-side-panel__header row items-center q-pa-md shrink-0">
+            <div class="col min-width-0">
+              <div class="text-overline text-primary">{{ $t('shop_admin.configure') }}</div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9 ellipsis">{{ activeGroupName }}</div>
             </div>
-            <q-btn flat round icon="ph ph-x" color="white" v-close-popup />
-          </q-card-section>
+            <q-btn
+              flat
+              round
+              dense
+              icon="ph ph-x"
+              color="grey-7"
+              :aria-label="$t('shop_admin.cancel')"
+              @click="drawerOpen = false"
+            />
+          </div>
 
-          <q-card-section class="col scroll q-gutter-y-lg q-pa-md">
+          <q-separator />
+
+          <div class="access-side-panel__body col scroll q-pa-md q-gutter-y-lg">
             <div>
               <div class="text-subtitle2 text-weight-bold text-grey-8 q-mb-sm row items-center">
                 <q-icon name="ph ph-eye" size="18px" color="primary" class="q-mr-xs" />
@@ -514,21 +537,103 @@
                 </div>
               </q-card>
             </div>
-          </q-card-section>
+          </div>
 
-          <q-card-actions align="right" class="q-pa-md border-top">
-            <q-btn flat :label="$t('shop_admin.cancel')" color="grey-7" v-close-popup />
+          <div class="access-side-panel__footer row items-center justify-end q-gutter-sm q-pa-md shrink-0">
+            <q-btn flat :label="$t('shop_admin.cancel')" color="grey-7" no-caps @click="drawerOpen = false" />
             <q-btn
               unelevated
               :label="$t('shop_admin.save')"
               color="primary"
               icon="ph ph-floppy-disk"
+              no-caps
               :loading="store.saving"
               @click="onDrawerSave"
             />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
+          </div>
+        </div>
+      </AppResizableOverlayPanel>
+
+      <AppResizableOverlayPanel
+        v-model="productsDialogOpen"
+        storage-key="shop_order.access-products-width"
+        :default-width="440"
+        :min-width="360"
+        :max-width="640"
+        :aria-label="$t('shop_admin.access_domain_products')"
+      >
+        <div class="access-side-panel column no-wrap full-height">
+          <div class="access-side-panel__header row items-center q-pa-md shrink-0">
+            <div class="col min-width-0">
+              <div class="text-overline text-primary">{{ $t('shop_admin.access_domain_products') }}</div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9 ellipsis">
+                {{ productsGroupName }}
+              </div>
+            </div>
+            <q-btn
+              flat
+              round
+              dense
+              icon="ph ph-x"
+              color="grey-7"
+              :aria-label="$t('shop_admin.cancel')"
+              @click="productsDialogOpen = false"
+            />
+          </div>
+
+          <q-separator />
+
+          <div class="access-side-panel__body col scroll q-pa-md column no-wrap">
+            <div class="text-caption text-grey-7 q-mb-sm">
+              {{ $t('shop_admin.access_products_hint') }}
+            </div>
+            <q-input
+              v-model="listingSearch"
+              outlined
+              dense
+              :placeholder="$t('shop_admin.access_products_search')"
+              class="q-mb-sm"
+            >
+              <template #prepend>
+                <q-icon name="ph ph-magnifying-glass" size="18px" class="text-grey-5" />
+              </template>
+            </q-input>
+            <div v-if="listingLoading" class="text-caption text-grey-6 q-py-md">
+              {{ $t('shop_admin.loading') }}
+            </div>
+            <div
+              v-else-if="filteredListingRows.length === 0"
+              class="text-caption text-grey-6 q-py-md"
+            >
+              {{ $t('shop_admin.access_products_empty') }}
+            </div>
+            <div v-else class="access-listing-list col">
+              <div
+                v-for="row in filteredListingRows"
+                :key="row.listing_id"
+                class="row items-start q-py-sm access-listing-row"
+              >
+                <q-checkbox
+                  :model-value="row.is_visible"
+                  :disable="togglingListingId === row.listing_id"
+                  color="primary"
+                  dense
+                  class="access-listing-checkbox q-mr-xs"
+                  @update:model-value="(val) => onToggleListingVisible(row, Boolean(val))"
+                />
+                <SmartImage
+                  :src="row.product_image_url"
+                  :alt="row.product_name || ''"
+                  :product-id="row.product_id"
+                  img-class="access-listing-img"
+                  fallback-class="access-listing-img-fallback"
+                />
+                <div class="access-listing-name text-body2 col q-ml-sm">{{ row.product_name }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </AppResizableOverlayPanel>
 
       <CustomerGroupDetailsDrawer
         v-model="groupDetailsOpen"
@@ -547,7 +652,15 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useCustomerGroupMutations } from 'src/modules/tenant/composables/useCustomerGroupMutations';
 import type { CustomerGroupCreateInput } from 'src/modules/tenant/types';
 import { useShopPermissionsStore } from '../stores/shopPermissionsStore';
-import type { UpsertAccessPayload, ShopCustomerGroupAccess, Shop } from '../types';
+import type {
+  UpsertAccessPayload,
+  ShopCustomerGroupAccess,
+  Shop,
+  ShopListingGroupVisibilityRow,
+} from '../types';
+import { shopPermissionsRepository } from '../repositories/shopPermissionsRepository';
+import SmartImage from 'src/components/SmartImage.vue';
+import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import {
   requestConfirmation,
   showErrorNotification,
@@ -591,6 +704,12 @@ const addDialogOpen = ref(false);
 const createDialogOpen = ref(false);
 const selectedGroupId = ref<number | null>(null);
 const drawerOpen = ref(false);
+const productsDialogOpen = ref(false);
+const productsGroupId = ref<number | null>(null);
+const listingRows = ref<ShopListingGroupVisibilityRow[]>([]);
+const listingSearch = ref('');
+const listingLoading = ref(false);
+const togglingListingId = ref<number | null>(null);
 const activeGroupId = ref<number | null>(null);
 const groupDetailsOpen = ref(false);
 const selectedDetailsGroup = ref<{
@@ -641,6 +760,53 @@ const isLoading = computed(
 
 const isCreating = computed(() => createGroupMutation.isPending.value || store.saving);
 
+const filteredListingRows = computed(() => {
+  const q = listingSearch.value.trim().toLowerCase();
+  if (!q) return listingRows.value;
+  return listingRows.value.filter((row) => (row.product_name || '').toLowerCase().includes(q));
+});
+
+const loadListingVisibility = async (groupId: number) => {
+  if (shopType.value !== 'dropship' || !shopId.value) {
+    listingRows.value = [];
+    return;
+  }
+  listingLoading.value = true;
+  try {
+    listingRows.value = await shopPermissionsRepository.listListingGroupVisibility(
+      shopId.value,
+      groupId,
+    );
+  } catch (err: unknown) {
+    listingRows.value = [];
+    const message = err instanceof Error ? err.message : t('shop_admin.access_products_save_failed');
+    showErrorNotification(message);
+  } finally {
+    listingLoading.value = false;
+  }
+};
+
+const onToggleListingVisible = async (row: ShopListingGroupVisibilityRow, visible: boolean) => {
+  if (!shopId.value || !productsGroupId.value) return;
+  const previous = row.is_visible;
+  row.is_visible = visible;
+  togglingListingId.value = row.listing_id;
+  try {
+    await shopPermissionsRepository.setListingGroupVisibility(
+      shopId.value,
+      productsGroupId.value,
+      row.listing_id,
+      visible,
+    );
+  } catch (err: unknown) {
+    row.is_visible = previous;
+    const message = err instanceof Error ? err.message : t('shop_admin.access_products_save_failed');
+    showErrorNotification(message);
+  } finally {
+    togglingListingId.value = null;
+  }
+};
+
 const isEmailValid = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((email ?? '').trim());
 
 const isCreateFormValid = computed(
@@ -675,6 +841,11 @@ const availableGroupOptions = computed(() =>
 const activeGroupName = computed(() => {
   if (!activeGroupId.value) return '';
   return store.customerGroups.find((g) => g.id === activeGroupId.value)?.name ?? '';
+});
+
+const productsGroupName = computed(() => {
+  if (!productsGroupId.value) return '';
+  return store.customerGroups.find((g) => g.id === productsGroupId.value)?.name ?? '';
 });
 
 const matrixColumns = computed(() => [
@@ -856,6 +1027,14 @@ const openEditDrawer = (groupId: number) => {
   drawerOpen.value = true;
 };
 
+const openProductsDialog = (groupId: number) => {
+  productsGroupId.value = groupId;
+  listingSearch.value = '';
+  listingRows.value = [];
+  productsDialogOpen.value = true;
+  void loadListingVisibility(groupId);
+};
+
 const onDrawerSave = async () => {
   if (
     editForm.value.credit_limit_amount === null ||
@@ -1025,6 +1204,45 @@ onMounted(load);
 .group-avatar {
   font-size: 12px;
   font-weight: 600;
+}
+
+.access-side-panel {
+  height: 100%;
+  min-height: 0;
+}
+
+.access-side-panel__footer {
+  border-top: 1px solid var(--bw-theme-border, #e2e8f0);
+}
+
+.access-listing-list {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.access-listing-row {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.access-listing-checkbox {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.access-listing-name {
+  min-width: 0;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.access-listing-img,
+.access-listing-img-fallback {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .status-chip {

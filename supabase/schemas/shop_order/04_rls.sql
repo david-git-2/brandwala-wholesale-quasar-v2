@@ -102,6 +102,27 @@ CREATE POLICY "shop_cg_access_write_tenant_admin_staff" ON "public"."shop_custom
 ALTER TABLE "public"."shop_customer_group_access" ENABLE ROW LEVEL SECURITY;
 
 
+CREATE POLICY "shop_listing_group_hides_select_tenant_member" ON "public"."shop_listing_group_hides" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM ("public"."shops" "s"
+     JOIN "public"."memberships" "tm" ON (("tm"."tenant_id" = "s"."tenant_id")))
+  WHERE (("s"."id" = "shop_listing_group_hides"."shop_id") AND ("lower"(TRIM(BOTH FROM "tm"."email")) = "public"."current_user_email"()) AND ("tm"."is_active" = true)))));
+
+
+CREATE POLICY "shop_listing_group_hides_superadmin_all" ON "public"."shop_listing_group_hides" USING ((EXISTS ( SELECT 1
+   FROM "public"."memberships" "m"
+  WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'superadmin'::"public"."app_role") AND ("m"."is_active" = true)))));
+
+
+CREATE POLICY "shop_listing_group_hides_write_tenant_admin_staff" ON "public"."shop_listing_group_hides" USING ((EXISTS ( SELECT 1
+   FROM "public"."shops" "s"
+  WHERE (("s"."id" = "shop_listing_group_hides"."shop_id") AND "public"."membership_has_module_action"("s"."tenant_id", 'shop_permissions'::"text", 'configure'::"text"))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."shops" "s"
+  WHERE (("s"."id" = "shop_listing_group_hides"."shop_id") AND "public"."membership_has_module_action"("s"."tenant_id", 'shop_permissions'::"text", 'configure'::"text")))));
+
+
+ALTER TABLE "public"."shop_listing_group_hides" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."shop_order_items" ENABLE ROW LEVEL SECURITY;
 
 
@@ -425,6 +446,8 @@ GRANT ALL ON FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint
 GRANT ALL ON FUNCTION "public"."list_shop_product_listings"("p_shop_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_shop_storefront_listings_for_admin"("p_shop_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_shop_storefront_listing_price_calculation"("p_shop_id" bigint, "p_listing_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_shop_listing_group_visibility"("p_shop_id" bigint, "p_customer_group_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_shop_listing_group_visibility"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_listing_id" bigint, "p_visible" boolean) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."list_shops"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_active" boolean) TO "authenticated";
@@ -489,7 +512,13 @@ GRANT ALL ON TABLE "public"."shops" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shops" TO "service_role";
 
 
-GRANT ALL ON FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum", "p_vendor_code" "text", "p_id" bigint, "p_default_currency_id" bigint, "p_global_stock_type_id" bigint, "p_allow_delivery" boolean, "p_buy_currency_id" bigint, "p_sell_currency_id" bigint, "p_pricing_method" "text", "p_markup_percentage" numeric, "p_quantity_display_mode" "text", "p_default_print_charge_amount" numeric, "p_default_packing_charge_amount" numeric, "p_deduct_charges_from_margin" boolean, "p_vendor_filters" "jsonb", "p_deduct_print_from_margin" boolean, "p_deduct_packing_from_margin" boolean, "p_description" "text", "p_category_ids" bigint[], "p_min_available_units" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum", "p_vendor_code" "text", "p_id" bigint, "p_default_currency_id" bigint, "p_global_stock_type_id" bigint, "p_allow_delivery" boolean, "p_buy_currency_id" bigint, "p_sell_currency_id" bigint, "p_pricing_method" "text", "p_markup_percentage" numeric, "p_quantity_display_mode" "text", "p_default_print_charge_amount" numeric, "p_default_packing_charge_amount" numeric, "p_deduct_charges_from_margin" boolean, "p_vendor_filters" "jsonb", "p_deduct_print_from_margin" boolean, "p_deduct_packing_from_margin" boolean, "p_description" "text", "p_category_ids" bigint[], "p_min_available_units" integer, "p_display_quantity_add" integer) TO "authenticated";
+
+
+GRANT ALL ON FUNCTION "public"."recalc_shop_display_quantities"("p_shop_id" bigint) TO "authenticated";
+
+
+GRANT ALL ON FUNCTION "public"."shop_padded_display_quantity"("p_real" integer, "p_add" integer) TO "authenticated";
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_customer_group_access" TO "anon";
@@ -519,6 +548,14 @@ GRANT ALL ON FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_product_listings" TO "anon";
 GRANT ALL ON TABLE "public"."shop_product_listings" TO "authenticated";
+GRANT ALL ON TABLE "public"."shop_listing_group_hides" TO "authenticated";
+GRANT ALL ON TABLE "public"."shop_listing_group_hides" TO "service_role";
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."shop_listing_group_hides" TO "authenticated";
+GRANT UPDATE ON SEQUENCE "public"."shop_listing_group_hides_id_seq" TO "anon";
+GRANT UPDATE ON SEQUENCE "public"."shop_listing_group_hides_id_seq" TO "authenticated";
+GRANT UPDATE ON SEQUENCE "public"."shop_listing_group_hides_id_seq" TO "service_role";
+GRANT USAGE, SELECT ON SEQUENCE "public"."shop_listing_group_hides_id_seq" TO "authenticated";
+GRANT USAGE, SELECT ON SEQUENCE "public"."shop_listing_group_hides_id_seq" TO "service_role";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_product_listings" TO "service_role";
 
 

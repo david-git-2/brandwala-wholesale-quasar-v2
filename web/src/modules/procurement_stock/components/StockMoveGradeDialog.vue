@@ -3,7 +3,7 @@
     v-model="isOpen"
     :title="drawerTitle"
     width="min(420px, 92vw)"
-    :z-index="6001"
+    storage-key="procurement.stock-move-grade-width"
     @update:model-value="onDrawerToggle"
   >
     <div v-if="stockRow" class="column q-gutter-y-md">

@@ -277,6 +277,7 @@ export interface Shop {
   pricing_method: 'direct_cost' | 'markup';
   markup_percentage: number;
   quantity_display_mode: 'original' | 'custom_override';
+  display_quantity_add?: number;
   default_print_charge_amount?: number;
   default_packing_charge_amount?: number;
   deduct_charges_from_margin?: boolean;
@@ -341,6 +342,7 @@ export interface CreateShopPayload {
   pricing_method?: 'direct_cost' | 'markup' | null;
   markup_percentage?: number;
   quantity_display_mode?: 'original' | 'custom_override' | null;
+  display_quantity_add?: number;
   default_print_charge_amount?: number;
   default_packing_charge_amount?: number;
   deduct_charges_from_margin?: boolean;
@@ -369,6 +371,7 @@ export interface UpdateShopPayload {
   pricing_method?: 'direct_cost' | 'markup' | null;
   markup_percentage?: number;
   quantity_display_mode?: 'original' | 'custom_override' | null;
+  display_quantity_add?: number;
   default_print_charge_amount?: number;
   default_packing_charge_amount?: number;
   deduct_charges_from_margin?: boolean;

@@ -918,10 +918,12 @@
         class="soft-input q-mb-md"
       />
       <q-checkbox v-model="sidePanelActive" dense label="Active only" class="q-mb-md" />
-      <div class="row q-gutter-sm justify-end">
-        <q-btn flat no-caps label="Reset" @click="resetSidePanel" />
-        <q-btn unelevated no-caps color="primary" label="Apply" @click="filterPanelOpen = false" />
-      </div>
+      <template #footer>
+        <div class="row q-gutter-sm justify-end">
+          <q-btn flat no-caps label="Reset" @click="resetSidePanel" />
+          <q-btn unelevated no-caps color="primary" label="Apply" @click="filterPanelOpen = false" />
+        </div>
+      </template>
     </FilterSidebar>
     </div>
 
@@ -1172,15 +1174,17 @@
             label="Brand"
             class="soft-input q-mb-md"
           />
-          <div class="row q-gutter-sm justify-end">
-            <q-btn
-              flat
-              no-caps
-              label="Reset"
-              @click="addProductsVendor = null; addProductsBrand = null"
-            />
-            <q-btn unelevated no-caps color="primary" label="Apply" @click="addProductsFilterOpen = false" />
-          </div>
+          <template #footer>
+            <div class="row q-gutter-sm justify-end">
+              <q-btn
+                flat
+                no-caps
+                label="Reset"
+                @click="addProductsVendor = null; addProductsBrand = null"
+              />
+              <q-btn unelevated no-caps color="primary" label="Apply" @click="addProductsFilterOpen = false" />
+            </div>
+          </template>
         </FilterSidebar>
       </q-card>
     </q-dialog>

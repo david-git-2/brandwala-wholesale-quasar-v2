@@ -3092,7 +3092,51 @@ begin
     raise exception 'shipment must be archived before it can be permanently deleted';
   end if;
 
-  -- Delete shipment, items, and global_stocks (CASCADE). Bill lines and other FKs use ON DELETE SET NULL on global_stock_id.
+  -- Stock picks require non-null shipment/stock FKs; remove before shipment CASCADE deletes stock.
+  delete from public.shop_order_item_stock_picks sp
+  where sp.shipment_id = p_id
+     or sp.shipment_item_id in (
+       select id from public.global_shipment_items where shipment_id = p_id
+     )
+     or sp.global_stock_id in (
+       select gs.id
+       from public.global_stocks gs
+       inner join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+       where gsi.shipment_id = p_id
+     )
+     or sp.held_stock_id in (
+       select gs.id
+       from public.global_stocks gs
+       inner join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+       where gsi.shipment_id = p_id
+     );
+
+  update public.bill_lines bl
+  set
+    global_stock_id = null,
+    shipment_item_id = null,
+    updated_at = now()
+  where bl.shipment_item_id in (
+    select id from public.global_shipment_items where shipment_id = p_id
+  )
+  or bl.global_stock_id in (
+    select gs.id
+    from public.global_stocks gs
+    inner join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+    where gsi.shipment_id = p_id
+  );
+
+  update public.sales_return_items sri
+  set
+    global_stock_id = null,
+    updated_at = now()
+  where sri.global_stock_id in (
+    select gs.id
+    from public.global_stocks gs
+    inner join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+    where gsi.shipment_id = p_id
+  );
+
   delete from public.global_shipments where id = p_id;
 end;
 $$;
@@ -9404,19 +9448,16 @@ CREATE OR REPLACE FUNCTION "public"."sync_product_tenant_from_vendor"() RETURNS 
     LANGUAGE "plpgsql"
     AS $$
 declare
-  v_tenant_id bigint;
   v_parent_tenant_id bigint;
 begin
   if new.vendor_id is not null then
-    select v.tenant_id, v.parent_tenant_id
-    into v_tenant_id, v_parent_tenant_id
+    select v.parent_tenant_id
+    into v_parent_tenant_id
     from public.vendors v
     where v.id = new.vendor_id;
 
     if v_parent_tenant_id is not null then
       new.parent_tenant_id := public.resolve_parent_tenant_id(v_parent_tenant_id);
-    elsif v_tenant_id is not null then
-      new.parent_tenant_id := public.resolve_parent_tenant_id(v_tenant_id);
     end if;
   end if;
 

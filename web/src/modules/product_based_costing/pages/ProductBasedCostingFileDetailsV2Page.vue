@@ -193,12 +193,14 @@
           </q-btn>
 
           <q-btn
-            flat
+            unelevated
             round
             dense
-            color="grey-8"
+            color="grey-2"
+            text-color="grey-9"
             icon="ph ph-gear"
             size="sm"
+            class="border-grey pbc-v2-header-settings-btn"
             @click="openSettingsDrawer()"
           >
             <q-tooltip>File Settings</q-tooltip>
@@ -1224,22 +1226,29 @@
         @updated="handleUpdated"
       />
 
-      <q-dialog v-model="showBulkPasteDialog" persistent>
-        <q-card style="width: 640px; max-width: 95vw; border-radius: 12px">
-          <q-card-section class="row items-center justify-between q-pb-none">
-            <div class="row items-center q-gutter-x-sm">
+      <AppResizableOverlayPanel
+        v-model="showBulkPasteDialog"
+        storage-key="product_based_costing.bulk-paste-width"
+        :default-width="640"
+        :min-width="400"
+        :max-width="960"
+        aria-label="Bulk paste costing values"
+      >
+        <div class="bulk-paste-overlay column no-wrap full-height">
+          <div class="bulk-paste-overlay__header row items-center justify-between q-px-md q-pt-md q-pb-sm shrink-0">
+            <div class="row items-center q-gutter-x-sm min-width-0">
               <q-avatar color="primary" text-color="white" icon="ph ph-clipboard-text" size="32px" />
-              <div>
+              <div class="min-width-0">
                 <div class="text-subtitle1 text-weight-bold text-grey-9">Bulk Paste {{ bulkPasteFieldLabel }}</div>
                 <div class="text-caption text-grey-6">
                   Click a cell, then paste. Columns: Barcode, Product code, {{ bulkPasteFieldLabel }}.
                 </div>
               </div>
             </div>
-            <q-btn v-close-popup icon="ph ph-x" flat round dense color="grey-6" />
-          </q-card-section>
+            <q-btn icon="ph ph-x" flat round dense color="grey-6" aria-label="Close" @click="showBulkPasteDialog = false" />
+          </div>
 
-          <q-card-section class="q-py-md">
+          <div class="bulk-paste-overlay__body col q-px-md q-py-md overflow-auto">
             <div class="bulk-paste-grid-wrap" @paste.capture="onBulkPasteGridPaste">
               <table class="bulk-paste-grid">
                 <thead>
@@ -1282,12 +1291,10 @@
                 </tbody>
               </table>
             </div>
-          </q-card-section>
+          </div>
 
-          <q-separator />
-
-          <q-card-actions align="right" class="q-pa-md bg-grey-1">
-            <q-btn v-close-popup flat label="Cancel" color="grey-7" no-caps :disable="bulkPasteSaving" />
+          <div class="bulk-paste-overlay__footer row items-center justify-end q-gutter-sm q-pa-md shrink-0">
+            <q-btn flat label="Cancel" color="grey-7" no-caps :disable="bulkPasteSaving" @click="showBulkPasteDialog = false" />
             <q-btn
               unelevated
               color="primary"
@@ -1299,9 +1306,9 @@
               :disable="bulkPasteSaving"
               @click="applyBulkPaste"
             />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
+          </div>
+        </div>
+      </AppResizableOverlayPanel>
     </template>
   </q-page>
 </template>
@@ -1312,6 +1319,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useQuasar, copyToClipboard } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
+import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import ProductBasedCostingItemCard from '../components/ProductBasedCostingItemCard.vue';
 import AddCostingItemsDrawer from '../components/AddCostingItemsDrawer.vue';
@@ -2798,6 +2806,11 @@ function goBackToList() {
 
 .pbc-v2-header-workflow {
   min-width: 0;
+  margin-top: 4px;
+}
+
+.pbc-v2-header-settings-btn :deep(.q-icon) {
+  font-size: 17px;
 }
 
 .pbc-v2-top-section__code {
@@ -2988,6 +3001,21 @@ function goBackToList() {
 
 .sl-reorder-cell {
   background-color: #f8f9fa;
+}
+
+.bulk-paste-overlay {
+  min-height: 0;
+  background: #fff;
+}
+
+.bulk-paste-overlay__footer {
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.bulk-paste-overlay__body .bulk-paste-grid-wrap {
+  max-height: none;
+  min-height: 12rem;
 }
 
 .bulk-paste-grid-wrap {

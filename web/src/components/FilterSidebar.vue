@@ -1,39 +1,52 @@
 <template>
-  <transition name="filter-sidebar-fade">
-    <div v-if="modelValue" class="filter-sidebar__backdrop" :style="backdropStyle" @click="close" />
-  </transition>
+  <AppResizableOverlayPanel
+    :model-value="modelValue"
+    :default-width="defaultWidthPx"
+    :min-width="280"
+    :max-width="960"
+    :storage-key="storageKey"
+    :z-index="zIndex"
+    :aria-label="title"
+    @update:model-value="emit('update:modelValue', $event)"
+  >
+    <div class="filter-sidebar__inner column full-height no-wrap overflow-hidden">
+      <div class="filter-sidebar__header row items-center justify-between no-wrap shrink-0">
+        <div class="text-subtitle1 text-weight-bold">{{ title }}</div>
+        <q-btn flat round dense icon="ph ph-x" :aria-label="`Close ${title}`" @click="close" />
+      </div>
 
-  <transition name="filter-sidebar-slide">
-    <div v-if="modelValue" class="filter-sidebar" :style="panelStyle" @click.stop>
-      <div class="filter-sidebar__inner q-pa-md">
-        <div class="row items-center justify-between q-mb-md">
-          <div class="text-subtitle1 text-weight-bold">{{ title }}</div>
-          <q-btn flat round dense icon="ph ph-x" :aria-label="`Close ${title}`" @click="close" />
-        </div>
-
+      <div class="filter-sidebar__body col min-height-0">
         <slot />
       </div>
+
+      <div v-if="$slots.footer" class="filter-sidebar__footer shrink-0">
+        <slot name="footer" />
+      </div>
     </div>
-  </transition>
+  </AppResizableOverlayPanel>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { computed } from 'vue';
+import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 
 const props = withDefaults(
   defineProps<{
     modelValue: boolean;
     title?: string | undefined;
+    /** @deprecated inset is aligned with workspace shell via AppResizableOverlayPanel */
     topOffset?: number | undefined;
+    /** @deprecated */
     bottomOffset?: number | undefined;
     width?: string | undefined;
     zIndex?: number | undefined;
+    /** Persist panel width in localStorage when set */
+    storageKey?: string | undefined;
   }>(),
   {
     title: 'Filters',
-    topOffset: 76,
-    bottomOffset: 12,
     width: 'min(320px, 92vw)',
+    zIndex: 6000,
   },
 );
 
@@ -45,96 +58,39 @@ const close = () => {
   emit('update:modelValue', false);
 };
 
-const onWindowKeyDown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && props.modelValue) {
-    close();
-  }
-};
+function parseWidthPx(width: string): number {
+  const match = width.match(/(\d+)\s*px/);
+  return match ? Number.parseInt(match[1], 10) : 320;
+}
 
-onMounted(() => {
-  window.addEventListener('keydown', onWindowKeyDown);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onWindowKeyDown);
-});
-
-const backdropStyle = computed(() => ({
-  zIndex: props.zIndex ? props.zIndex - 1 : undefined,
-}));
-
-const panelStyle = computed(() => ({
-  top: `${props.topOffset}px`,
-  bottom: `${props.bottomOffset}px`,
-  width: props.width,
-  zIndex: props.zIndex ? props.zIndex : undefined,
-}));
+const defaultWidthPx = computed(() => parseWidthPx(props.width ?? 'min(320px, 92vw)'));
 </script>
 
 <style scoped>
-.filter-sidebar__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.35);
-  z-index: 2998;
-}
-
-.filter-sidebar {
-  position: fixed;
-  right: 0;
-  padding: 12px;
-  box-sizing: border-box;
-  z-index: 2999;
-}
-
 .filter-sidebar__inner {
   position: relative;
-  overflow: hidden;
   width: 100%;
   height: 100%;
+  min-height: 0;
+  background: var(--bw-theme-surface, #fff);
+}
+
+.filter-sidebar__header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--bw-neutral-border, #e2e8f0);
+}
+
+.filter-sidebar__body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 12px 16px 16px;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 16px;
-  box-shadow:
-    0 14px 34px rgba(15, 23, 42, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
-.filter-sidebar__inner::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    140deg,
-    rgba(255, 255, 255, 0.45) 0%,
-    rgba(255, 255, 255, 0.08) 40%,
-    rgba(255, 255, 255, 0.03) 100%
-  );
-}
-
-.filter-sidebar-fade-enter-active,
-.filter-sidebar-fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.filter-sidebar-fade-enter-from,
-.filter-sidebar-fade-leave-to {
-  opacity: 0;
-}
-
-.filter-sidebar-slide-enter-active,
-.filter-sidebar-slide-leave-active {
-  transition:
-    transform 0.22s ease,
-    opacity 0.22s ease;
-}
-
-.filter-sidebar-slide-enter-from,
-.filter-sidebar-slide-leave-to {
-  transform: translateX(18px);
-  opacity: 0;
+.filter-sidebar__footer {
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--bw-neutral-border, #e2e8f0);
+  background: var(--bw-neutral-surface, #ffffff);
 }
 </style>

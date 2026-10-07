@@ -20,7 +20,7 @@ ROOT_ENV_FILE = ROOT_DIR / ".env"
 SNAPSHOT_RETENTION_DAYS = 7
 
 
-def load_env_file(path: Path) -> None:
+def load_env_file(path: Path, overwrite: bool = False) -> None:
     if not path.exists():
         return
 
@@ -40,7 +40,11 @@ def load_env_file(path: Path) -> None:
             or (value.startswith("'") and value.endswith("'"))
         ):
             value = value[1:-1]
-        if key:
+        if not key:
+            continue
+        if overwrite:
+            os.environ[key] = value
+        else:
             os.environ.setdefault(key, value)
 
 
@@ -233,29 +237,20 @@ def ensure_vendor_exists(
     client: SupabaseRestClient,
     vendor_code: str,
     market_code: str,
-    tenant_id: int | None,
+    parent_tenant_id: int,
     dry_run: bool,
 ) -> dict[str, Any]:
-    preferred_code = (
-        f"{vendor_code}-{tenant_id}".upper()
-        if tenant_id is not None
-        else vendor_code.upper()
-    )
-    candidate_codes = [vendor_code]
-    if tenant_id is not None:
-        candidate_codes.append(f"{vendor_code}-{tenant_id}")
+    preferred_code = f"{vendor_code}-{parent_tenant_id}".upper()
+    candidate_codes = [vendor_code, f"{vendor_code}-{parent_tenant_id}"]
 
     code_filter = ",".join(candidate_codes)
     params = {
-        "select": "id,code,tenant_id,market_code",
+        "select": "id,code,parent_tenant_id,market_code",
         "code": f"in.({code_filter})",
         "market_code": f"eq.{market_code}",
+        "parent_tenant_id": f"eq.{parent_tenant_id}",
         "limit": "50",
     }
-    if tenant_id is None:
-        params["tenant_id"] = "is.null"
-    else:
-        params["tenant_id"] = f"eq.{tenant_id}"
 
     rows = client.get_rows("vendors", params)
     if rows:
@@ -272,15 +267,15 @@ def ensure_vendor_exists(
         "name": vendor_code,
         "code": vendor_code,
         "market_code": market_code,
-        "tenant_id": tenant_id,
+        "parent_tenant_id": parent_tenant_id,
     }
     if dry_run:
         print(f"[dry-run] would create missing vendor: {payload}")
-        preview_code = f"{vendor_code}-{tenant_id}" if tenant_id is not None else vendor_code
+        preview_code = f"{vendor_code}-{parent_tenant_id}"
         return {
             "id": -1,
             "code": preview_code,
-            "tenant_id": tenant_id,
+            "parent_tenant_id": parent_tenant_id,
             "market_code": market_code,
         }
 
@@ -307,7 +302,7 @@ def get_vendor_by_id(
     rows = client.get_rows(
         "vendors",
         {
-            "select": "id,code,tenant_id,market_code",
+            "select": "id,code,parent_tenant_id,market_code",
             "id": f"eq.{vendor_id}",
             "limit": "1",
         },
@@ -318,6 +313,23 @@ def get_vendor_by_id(
             "Create/fix this vendor row first, then rerun sync."
         )
     return rows[0]
+
+
+def assert_vendor_parent_scope(
+    vendor_row: dict[str, Any],
+    parent_tenant_id: int,
+    vendor_id: int,
+) -> None:
+    vendor_parent = to_int_or_none(vendor_row.get("parent_tenant_id"))
+    if vendor_parent is None:
+        raise RuntimeError(
+            f"Vendor id={vendor_id} has no parent_tenant_id. Fix vendor row before sync."
+        )
+    if vendor_parent != parent_tenant_id:
+        raise ValueError(
+            f"Vendor id={vendor_id} parent_tenant_id={vendor_parent} "
+            f"does not match --parent-tenant-id={parent_tenant_id}."
+        )
 
 
 def ensure_market_exists(
@@ -400,6 +412,7 @@ def ensure_lookup_rows_for_new_inserts(
     chunk_size: int,
     dry_run: bool,
     write_retries: int,
+    parent_tenant_id: int,
 ) -> None:
     if not inserts:
         return
@@ -424,6 +437,7 @@ def ensure_lookup_rows_for_new_inserts(
                     "name": brand_name,
                     "vendor_id": vendor_id,
                     "vendor_code": vendor_code,
+                    "parent_tenant_id": parent_tenant_id,
                 })
 
         if category_name:
@@ -434,6 +448,7 @@ def ensure_lookup_rows_for_new_inserts(
                     "name": category_name,
                     "vendor_id": vendor_id,
                     "vendor_code": vendor_code,
+                    "parent_tenant_id": parent_tenant_id,
                 })
 
     if dry_run:

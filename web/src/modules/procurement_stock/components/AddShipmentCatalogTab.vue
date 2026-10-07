@@ -418,7 +418,7 @@
 
     <!-- Catalog Filters Sidebar -->
     <FilterSidebar v-model="filterDrawerOpen" title="Filters" :z-index="7000">
-      <div class="q-gutter-y-md q-pa-sm">
+      <div class="column q-gutter-y-md">
         <q-select
           v-model="draftBrand"
           :options="brandOptions"
@@ -446,12 +446,14 @@
           new-value-mode="add-unique"
           @filter="filterCategories"
         />
+      </div>
 
-        <div class="row justify-end q-gutter-x-sm q-mt-md">
+      <template #footer>
+        <div class="row justify-end q-gutter-x-sm">
           <q-btn flat no-caps label="Reset" color="grey-7" @click="onResetFilters" />
           <q-btn unelevated no-caps label="Apply Filters" color="primary" @click="onApplyFilters" />
         </div>
-      </div>
+      </template>
     </FilterSidebar>
 
     <!-- New Product Sidebar -->

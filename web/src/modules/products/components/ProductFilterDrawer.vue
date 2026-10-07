@@ -70,10 +70,12 @@
       label="Availability"
       @update:model-value="(val) => emit('update:availability', val)"
     />
-    <div class="row q-gutter-sm justify-end">
-      <q-btn flat no-caps label="Reset" @click="emit('reset')" />
-      <q-btn flat no-caps label="Apply" @click="emit('apply')" />
-    </div>
+    <template #footer>
+      <div class="row q-gutter-sm justify-end">
+        <q-btn flat no-caps label="Reset" @click="emit('reset')" />
+        <q-btn flat no-caps label="Apply" @click="emit('apply')" />
+      </div>
+    </template>
   </FilterSidebar>
 </template>
 

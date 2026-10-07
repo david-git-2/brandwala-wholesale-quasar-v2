@@ -1,8 +1,8 @@
 <template>
-  <PageInitialLoader
+  <AppTradeFlowLoadingScreen
     v-if="loading && !tenant"
-    compact
-    message="Loading shop…"
+    scope="shop"
+    tagline="Loading shop…"
   />
 
   <q-banner
@@ -28,7 +28,7 @@
 import { computed } from 'vue';
 
 import AuthLoginPanel from '../components/AuthLoginPanel.vue';
-import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
+import AppTradeFlowLoadingScreen from 'src/components/brand/AppTradeFlowLoadingScreen.vue';
 import { useTenantEntryContext } from 'src/modules/tenant/composables/useTenantEntryContext';
 
 const { loading, tenant, resolvedTenantSlug, error: entryError } = useTenantEntryContext();

@@ -1,25 +1,41 @@
 <template>
-  <q-dialog ref="dialogRef" @hide="onDialogHide" position="right" full-height persistent>
-    <q-card class="drawer-card column no-wrap">
-      <AddShipmentItemsPanel
-        class="col"
-        :shipment-id="shipmentId"
-        :initial-section-id="initialSectionId"
-        layout="drawer"
-        @saved="onSaved"
-        @cancel="onCancel"
-      />
-    </q-card>
+  <q-dialog
+    ref="dialogRef"
+    class="add-shipment-items-drawer-dialog"
+    maximized
+    no-shake
+    @hide="onDialogHide"
+  >
+    <AppResizableOverlayPanel
+      :model-value="panelOpen"
+      storage-key="procurement.add-shipment-items-drawer-width"
+      :default-width="820"
+      :min-width="480"
+      :max-width="1200"
+      aria-label="Add shipment items"
+      @update:model-value="onPanelOpenChange"
+    >
+      <div class="drawer-card column no-wrap full-height">
+        <AddShipmentItemsPanel
+          class="col"
+          :shipment-id="shipmentId"
+          :initial-section-id="initialSectionId"
+          layout="drawer"
+          @saved="onSaved"
+          @cancel="onCancel"
+        />
+      </div>
+    </AppResizableOverlayPanel>
   </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref } from 'vue';
 import { useDialogPluginComponent } from 'quasar';
-import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import AddShipmentItemsPanel from './AddShipmentItemsPanel.vue';
 
-const props = defineProps<{
+defineProps<{
   shipmentId: number;
   initialSectionId?: number | null | undefined;
 }>();
@@ -27,11 +43,15 @@ const props = defineProps<{
 defineEmits([...useDialogPluginComponent.emits]);
 
 const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
-const shipmentStore = useGlobalShipmentStore();
 
-const shipmentName = computed(
-  () => shipmentStore.currentShipment?.name ?? `Shipment #${props.shipmentId}`,
-);
+const panelOpen = ref(true);
+
+const onPanelOpenChange = (open: boolean) => {
+  panelOpen.value = open;
+  if (!open) {
+    dialogRef.value?.hide();
+  }
+};
 
 const onSaved = () => {
   onDialogOK();
@@ -44,19 +64,21 @@ const onCancel = () => {
 
 <style scoped>
 .drawer-card {
-  width: 820px;
-  max-width: 95vw;
-  height: calc(100vh - 24px) !important;
-  margin: 12px;
-  border-radius: 16px !important;
-  background: #ffffff !important;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.2) !important;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
+  background: #ffffff;
+}
+</style>
+
+<style>
+.add-shipment-items-drawer-dialog .q-dialog__backdrop {
+  display: none;
 }
 
-.drawer-header {
-  background: #0f172a !important; /* Premium dark navy slate */
-  border-bottom: 1px solid #334155;
+.add-shipment-items-drawer-dialog .q-dialog__inner {
+  padding: 0;
+  pointer-events: none;
 }
 </style>

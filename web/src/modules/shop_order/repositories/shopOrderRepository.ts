@@ -53,7 +53,7 @@ const listShops = async (
 };
 
 const SHOP_DETAIL_SELECT =
-  'id, tenant_id, name, slug, shop_type, vendor_code, order_mode, is_negotiable, show_stock_quantity, default_currency_id, global_stock_type_id, is_active, allow_delivery, buy_currency_id, sell_currency_id, pricing_method, markup_percentage, quantity_display_mode, default_print_charge_amount, default_packing_charge_amount, deduct_charges_from_margin, vendor_filters, deduct_print_from_margin, deduct_packing_from_margin, description, category_ids, min_available_units, created_at, updated_at, tenant:tenant_id(slug)';
+  'id, tenant_id, name, slug, shop_type, vendor_code, order_mode, is_negotiable, show_stock_quantity, default_currency_id, global_stock_type_id, is_active, allow_delivery, buy_currency_id, sell_currency_id, pricing_method, markup_percentage, quantity_display_mode, display_quantity_add, default_print_charge_amount, default_packing_charge_amount, deduct_charges_from_margin, vendor_filters, deduct_print_from_margin, deduct_packing_from_margin, description, category_ids, min_available_units, created_at, updated_at, tenant:tenant_id(slug)';
 
 type ShopDetailRow = Shop & {
   tenant?: { slug: string | null } | null;
@@ -110,6 +110,7 @@ const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promi
     p_description: payload.description?.trim() || null,
     p_category_ids: payload.category_ids ?? [],
     p_min_available_units: payload.min_available_units ?? 0,
+    p_display_quantity_add: payload.display_quantity_add ?? 6,
   });
 
   if (error) {
@@ -1171,10 +1172,19 @@ const updateCatalogOrderItem = async (
   }
 };
 
+const recalcShopDisplayQuantities = async (shopId: number): Promise<number> => {
+  const { data, error } = await supabase.rpc('recalc_shop_display_quantities', {
+    p_shop_id: shopId,
+  });
+  if (error) throw error;
+  return Number(data ?? 0);
+};
+
 export const shopOrderRepository = {
   listShops,
   getShop,
   upsertShop,
+  recalcShopDisplayQuantities,
   deleteShop,
   updateShopExtraAttributes,
   browseShopCatalog,

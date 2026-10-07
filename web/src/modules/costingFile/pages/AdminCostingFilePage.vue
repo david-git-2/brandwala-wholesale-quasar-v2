@@ -369,20 +369,22 @@
           :options="customerGroupFilterOptions"
           @update:model-value="handleCustomerGroupFilterChange"
         />
-        <div class="row q-gutter-sm justify-end">
-          <q-btn
-            flat
-            no-caps
-            label="Reset"
-            @click="
-              () => {
-                selectedCustomerGroupId = null;
-                page = 1;
-                loadFiles();
-              }
-            "
-          />
-        </div>
+        <template #footer>
+          <div class="row q-gutter-sm justify-end">
+            <q-btn
+              flat
+              no-caps
+              label="Reset"
+              @click="
+                () => {
+                  selectedCustomerGroupId = null;
+                  page = 1;
+                  loadFiles();
+                }
+              "
+            />
+          </div>
+        </template>
       </FilterSidebar>
     </section>
   </q-page>

@@ -2,12 +2,14 @@ PC_JSON ?= ../web/public/uk/pc_data.json
 PC_VENDOR ?= PC
 PC_MARKET ?= GB
 PC_EXPORT_FLAGS ?=
-PC_SYNC_FLAGS ?= --parent-tenant-id 15
+# --tenant-id on WTS_SYNC_FLAGS is inserted_by_tenant_id only, not vendor scope.
+PC_SYNC_FLAGS ?= --parent-tenant-id 15 --vendor-id 3
 
 WTS_JSON ?= ../web/public/uk/wts_data.json
 WTS_VENDOR ?= WTS
 WTS_MARKET ?= GB
 WTS_EXPORT_FLAGS ?=
+# --tenant-id is inserted_by_tenant_id only, not vendor scope.
 WTS_SYNC_FLAGS ?= --vendor-id 4 --parent-tenant-id 15 --tenant-id 10
 
 pc:

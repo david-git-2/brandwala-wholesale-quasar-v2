@@ -20,6 +20,7 @@ from product_sync_lib import (
     ROOT_DIR,
     SNAPSHOT_RETENTION_DAYS,
     SupabaseRestClient,
+    assert_vendor_parent_scope,
     build_scope_params,
     chunked,
     ensure_lookup_rows_for_new_inserts,
@@ -320,6 +321,8 @@ def main() -> int:
             f"Vendor market={vendor_market_code}, input market={market_code}."
         )
 
+    assert_vendor_parent_scope(vendor_row, parent_tenant_id, resolved_vendor_id)
+
     rows = load_products(input_path)
     barcode_counts: dict[str, int] = {}
     deduped_inserts: dict[str, dict[str, Any]] = {}
@@ -438,6 +441,7 @@ def main() -> int:
             chunk_size=max(1, args.chunk_size),
             dry_run=True,
             write_retries=max(1, args.write_retries),
+            parent_tenant_id=parent_tenant_id,
         )
         print("Dry run complete. No DB writes.")
         return 0
@@ -515,6 +519,7 @@ def main() -> int:
         chunk_size=max(1, args.chunk_size),
         dry_run=False,
         write_retries=max(1, args.write_retries),
+        parent_tenant_id=parent_tenant_id,
     )
 
     updates_total = len(updates)

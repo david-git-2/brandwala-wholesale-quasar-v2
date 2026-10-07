@@ -161,11 +161,17 @@ import {
 } from '../utils/storefrontProductGroups';
 import { normalizeStorefrontGradeSlug } from '../constants/storefrontWarehouseGrades';
 import { formatCatalogPrice, hasCatalogPrice } from '../utils/catalogPriceUtils';
+import {
+  hasShopDisplayQuantityOverride,
+  resolveShopDisplayQuantity,
+} from '../utils/shopDisplayQuantity';
 
 const props = defineProps<{
   group: StorefrontProductGroup;
   permissions?: CustomerShopPermissions | null;
   shopType?: ShopType | null;
+  displayQuantityAdd?: number;
+  quantityDisplayMode?: 'original' | 'custom_override';
   showQuantityBreakdown?: boolean | undefined;
   showCalculateSellPrice?: boolean | undefined;
   showAvgCost?: boolean | undefined;
@@ -227,16 +233,22 @@ const actualAvailableQty = computed(() => {
   return raw ?? 0;
 });
 
-const hasDisplayOverride = computed(
-  () =>
-    selectedListing.value?.display_quantity_override !== null &&
-    selectedListing.value?.display_quantity_override !== undefined,
-);
+const hasDisplayOverride = computed(() => {
+  const listing = selectedListing.value;
+  if (!listing) return false;
+  return hasShopDisplayQuantityOverride(
+    listing.display_quantity_override,
+    actualAvailableQty.value,
+  );
+});
 
 const displayQtyValue = computed(() => {
-  if (!selectedListing.value) return 0;
-  if (hasDisplayOverride.value) return selectedListing.value.display_quantity_override as number;
-  return actualAvailableQty.value;
+  const listing = selectedListing.value;
+  if (!listing) return 0;
+  return resolveShopDisplayQuantity(actualAvailableQty.value, listing.display_quantity_override, {
+    displayAdd: props.displayQuantityAdd ?? 6,
+    quantityDisplayMode: props.quantityDisplayMode ?? 'custom_override',
+  });
 });
 
 const actualQtyClass = computed(() =>

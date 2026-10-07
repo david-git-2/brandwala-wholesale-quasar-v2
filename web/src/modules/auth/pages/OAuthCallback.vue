@@ -1,40 +1,31 @@
 <template>
-  <div class="callback-stage" :class="`theme-${scope}`">
-    <div class="callback-stage__card">
-      <template v-if="isRedirectingToApp">
-        <q-spinner-tail color="primary" size="42px" />
-        <div class="callback-stage__title">Opening Thrift App...</div>
-        <div class="callback-stage__copy">
-          You are being redirected back to the Thrift application.
-        </div>
-        <div v-if="appRedirectUrl" class="q-mt-lg">
-          <q-btn
-            color="primary"
-            unelevated
-            no-caps
-            class="q-px-lg q-py-sm font-semibold"
-            :href="appRedirectUrl"
-            label="Open Thrift App"
-          />
-          <div class="text-caption text-grey-6 q-mt-sm">
-            If the app didn't open automatically, click the button above.
-          </div>
-        </div>
-      </template>
-      <template v-else>
-        <q-spinner-tail color="primary" size="42px" />
-        <div class="callback-stage__title">Finishing sign-in</div>
-        <div class="callback-stage__copy">
-          Checking your access for the selected route and preparing the workspace.
-        </div>
-      </template>
-    </div>
-  </div>
+  <AppTradeFlowLoadingScreen
+    fullscreen
+    :scope="scope"
+    :tagline="isRedirectingToApp ? 'Opening Thrift App…' : 'Finishing sign-in'"
+    :aria-label="isRedirectingToApp ? 'Opening Thrift App' : 'Finishing sign-in'"
+  >
+    <template v-if="isRedirectingToApp && appRedirectUrl">
+      <q-btn
+        color="primary"
+        unelevated
+        no-caps
+        class="q-px-lg q-py-sm font-semibold q-mt-md"
+        :href="appRedirectUrl"
+        label="Open Thrift App"
+      />
+      <div class="text-caption text-grey-6 q-mt-sm">
+        If the app didn't open automatically, click the button above.
+      </div>
+    </template>
+  </AppTradeFlowLoadingScreen>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
+
+import AppTradeFlowLoadingScreen from 'src/components/brand/AppTradeFlowLoadingScreen.vue';
 import { useOAuthLogin, type AuthScope } from '../composables/useOAuthLogin';
 
 const route = useRoute();
@@ -47,26 +38,22 @@ const isRedirectingToApp = ref(false);
 const appRedirectUrl = ref('');
 
 onMounted(() => {
+  document.getElementById('app-splash')?.remove();
+
   const appRedirect = route.query.app_redirect;
 
   if (appRedirect === 'thrift') {
     isRedirectingToApp.value = true;
 
-    // ── PKCE code passthrough ──────────────────────────────────────────
-    // The native app called signInWithOAuth({ skipBrowserRedirect: true })
-    // which stored the PKCE code_verifier in the app's WebView storage.
-    // We must NOT exchange the code here (the web page doesn't have the
-    // code_verifier). Instead, pass the raw `code` straight back to the
-    // app so IT can call exchangeCodeForSession().
     const code = route.query.code as string | undefined;
-    const tenantSlug = (route.query.tenant_slug as string) || 'thrift';
+    const thriftTenantSlug = (route.query.tenant_slug as string) || 'thrift';
 
     if (code) {
       const isAndroid = /Android/i.test(navigator.userAgent);
       if (isAndroid) {
-        appRedirectUrl.value = `intent://auth-callback?code=${encodeURIComponent(code)}&scope=app&tenant_slug=${encodeURIComponent(tenantSlug)}#Intent;scheme=com.brandwala.thriftapp;package=com.brandwala.thriftapp;end`;
+        appRedirectUrl.value = `intent://auth-callback?code=${encodeURIComponent(code)}&scope=app&tenant_slug=${encodeURIComponent(thriftTenantSlug)}#Intent;scheme=com.brandwala.thriftapp;package=com.brandwala.thriftapp;end`;
       } else {
-        appRedirectUrl.value = `com.brandwala.thriftapp://auth-callback?code=${encodeURIComponent(code)}&scope=app&tenant_slug=${encodeURIComponent(tenantSlug)}`;
+        appRedirectUrl.value = `com.brandwala.thriftapp://auth-callback?code=${encodeURIComponent(code)}&scope=app&tenant_slug=${encodeURIComponent(thriftTenantSlug)}`;
       }
       window.location.href = appRedirectUrl.value;
       return;
@@ -76,48 +63,3 @@ onMounted(() => {
   void processLoginResult();
 });
 </script>
-
-<style scoped>
-.callback-stage {
-  --callback-border: var(--bw-theme-border, rgb(95 70 43 / 0.12));
-  --callback-surface: color-mix(in srgb, var(--bw-theme-surface, white) 90%, white 10%);
-  --callback-ink: var(--bw-theme-ink, #281f17);
-  --callback-muted: var(--bw-theme-muted, #6d5a48);
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: min(70dvh, 28rem);
-  padding: 0.25rem;
-}
-
-.callback-stage__card {
-  width: min(100%, 28rem);
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: clamp(1.25rem, 5vw, 2rem);
-  border-radius: clamp(1rem, 4vw, 1.75rem);
-  border: 1px solid var(--callback-border);
-  background: linear-gradient(180deg, var(--callback-surface), var(--bw-theme-base, #f5ece2));
-  text-align: center;
-}
-
-.callback-stage__title {
-  margin-top: 1rem;
-  font-size: clamp(1.1rem, 4.5vw, 1.35rem);
-  font-weight: 700;
-  color: var(--callback-ink);
-  line-height: 1.25;
-}
-
-.callback-stage__copy {
-  margin-top: 0.55rem;
-  color: var(--callback-muted);
-  line-height: 1.6;
-  font-size: clamp(0.875rem, 3.5vw, 1rem);
-  padding-inline: 0.25rem;
-}
-</style>

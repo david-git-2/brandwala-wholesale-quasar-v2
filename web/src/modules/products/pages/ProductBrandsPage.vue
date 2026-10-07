@@ -113,9 +113,11 @@
         class="soft-input q-mb-md"
         label="Vendor"
       />
-      <div class="row justify-end">
-        <q-btn flat no-caps label="Reset" @click="onResetFilters" />
-      </div>
+      <template #footer>
+        <div class="row justify-end">
+          <q-btn flat no-caps label="Reset" @click="onResetFilters" />
+        </div>
+      </template>
     </FilterSidebar>
 
     <q-dialog v-model="dialogOpen" persistent>

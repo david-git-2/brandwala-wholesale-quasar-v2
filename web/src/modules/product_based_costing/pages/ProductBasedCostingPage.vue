@@ -87,9 +87,11 @@
           :label="$t('product_based_costing.status')"
           @update:model-value="onDrawerStatusChange"
         />
-        <div class="row q-gutter-sm justify-end">
-          <q-btn flat no-caps :label="$t('product_based_costing.reset')" @click="onResetFilters" />
-        </div>
+        <template #footer>
+          <div class="row q-gutter-sm justify-end">
+            <q-btn flat no-caps :label="$t('product_based_costing.reset')" @click="onResetFilters" />
+          </div>
+        </template>
       </FilterSidebar>
 
       <!-- Skeleton -->

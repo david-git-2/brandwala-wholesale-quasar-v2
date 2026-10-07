@@ -318,6 +318,14 @@ export default {
   help_qty_display_title: 'Quantity Display Mode',
   help_qty_display_desc:
     'Show Original Stock Qty: displays warehouse physical stock. Custom Override: displays custom marketing override value if set.',
+  display_quantity_add: 'Display quantity padding',
+  display_quantity_add_hint:
+    'When stock is above 2 units, customers see real stock plus this number (1–2 show exact stock).',
+  storefront_recalc_display_qty: 'Recalc display qty',
+  storefront_recalc_display_qty_confirm_title: 'Rewrite display quantities?',
+  storefront_recalc_display_qty_confirm:
+    'Updates every unlocked listing from current warehouse stock and your display quantity padding. Locked overrides are not changed.',
+  storefront_recalc_display_qty_confirm_ok: 'Rewrite all',
   help_active_title: 'Active',
   help_active_desc: 'On: shop is visible to customers. Off: customers cannot open or view the shop.',
 
@@ -396,6 +404,13 @@ export default {
   access_domain_catalog: 'Catalog & stock',
   access_domain_pricing: 'Pricing',
   access_domain_ordering: 'Ordering',
+  access_products_button: 'Products',
+  access_domain_products: 'Products for this group',
+  access_products_hint: 'Checked products show on the storefront for this group. New products stay shown until you uncheck them.',
+  access_products_search: 'Search products',
+  access_products_empty: 'No storefront products yet.',
+  access_products_show: 'Show',
+  access_products_save_failed: 'Could not update product visibility.',
   configure: 'Configure',
   collapse: 'Collapse',
   expand: 'Expand',

@@ -1,14 +1,14 @@
 <template>
-  <q-drawer
+  <AppResizableOverlayPanel
     :model-value="modelValue"
-    side="right"
-    overlay
-    bordered
-    :width="680"
-    class="shipment-settings-drawer bg-white"
+    storage-key="procurement.shipment-settings-drawer-width"
+    :default-width="680"
+    :min-width="400"
+    :max-width="1200"
+    aria-label="Shipment settings"
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
-    <div class="column full-height no-wrap overflow-hidden" aria-label="Shipment settings">
+    <div class="column full-height no-wrap overflow-hidden shipment-settings-drawer">
       <!-- Segmented tabs -->
       <div class="shipment-drawer-header border-bottom row items-center no-wrap q-gutter-x-xs q-px-sm q-py-sm">
         <div class="shipment-drawer-tabs__scroll col min-width-0">
@@ -863,10 +863,11 @@
         </q-tab-panel>
       </q-tab-panels>
     </div>
-  </q-drawer>
+  </AppResizableOverlayPanel>
 </template>
 
 <script setup lang="ts">
+import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import { ref, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
@@ -1509,19 +1510,8 @@ const saveRates = async () => {
 <style scoped>
 .shipment-settings-drawer {
   background: #fff;
-}
-
-.shipment-settings-drawer :deep(.q-drawer__content) {
-  background: #fff;
   height: 100%;
-  max-height: calc(100dvh - var(--workspace-header-offset, 44px));
-  padding-top: 0 !important;
-  min-height: 0 !important;
-}
-
-.shipment-settings-drawer.q-drawer--top-padding :deep(.q-drawer__content) {
-  padding-top: 0 !important;
-  min-height: 100% !important;
+  min-height: 0;
 }
 
 .shipment-settings-drawer__close {

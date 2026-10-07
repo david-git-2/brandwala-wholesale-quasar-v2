@@ -2,6 +2,7 @@ import { supabase } from 'src/boot/supabase';
 import type {
   CustomerGroupShopProfile,
   ShopCustomerGroupAccess,
+  ShopListingGroupVisibilityRow,
   UpsertProfilePayload,
   UpsertAccessPayload,
 } from '../types';
@@ -130,6 +131,41 @@ const upsertAccessOverride = async (
   return (Array.isArray(data) ? data[0] : data) as ShopCustomerGroupAccess;
 };
 
+const listListingGroupVisibility = async (
+  shopId: number,
+  customerGroupId: number,
+): Promise<ShopListingGroupVisibilityRow[]> => {
+  const { data, error } = await supabase.rpc('list_shop_listing_group_visibility', {
+    p_shop_id: shopId,
+    p_customer_group_id: customerGroupId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const payload = data as { data?: ShopListingGroupVisibilityRow[] } | null;
+  return payload?.data ?? [];
+};
+
+const setListingGroupVisibility = async (
+  shopId: number,
+  customerGroupId: number,
+  listingId: number,
+  visible: boolean,
+): Promise<void> => {
+  const { error } = await supabase.rpc('set_shop_listing_group_visibility', {
+    p_shop_id: shopId,
+    p_customer_group_id: customerGroupId,
+    p_listing_id: listingId,
+    p_visible: visible,
+  });
+
+  if (error) {
+    throw error;
+  }
+};
+
 const listCurrencies = async (): Promise<Currency[]> => {
   const { data, error } = await supabase
     .from('global_currencies')
@@ -149,5 +185,7 @@ export const shopPermissionsRepository = {
   upsertProfile,
   listAccessOverrides,
   upsertAccessOverride,
+  listListingGroupVisibility,
+  setListingGroupVisibility,
   listCurrencies,
 };

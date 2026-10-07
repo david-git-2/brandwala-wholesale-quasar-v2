@@ -1,12 +1,20 @@
 <template>
-  <q-dialog :model-value="modelValue" position="right" @update:model-value="$emit('update:modelValue', $event)">
-    <q-card class="group-details-panel column no-wrap">
-      <q-card-section class="row items-center q-pb-sm">
+  <AppResizableOverlayPanel
+    :model-value="modelValue"
+    storage-key="shop_order.access-group-details-width"
+    :default-width="440"
+    :min-width="360"
+    :max-width="640"
+    :aria-label="$t('shop_admin.access_group_details')"
+    @update:model-value="$emit('update:modelValue', $event)"
+  >
+    <div class="access-side-panel column no-wrap full-height">
+      <div class="access-side-panel__header row items-center q-pa-md shrink-0">
         <div
           class="accent-swatch q-mr-sm"
           :style="{ backgroundColor: group?.accent_color || 'var(--bw-theme-primary)' }"
         />
-        <div class="col">
+        <div class="col min-width-0">
           <div class="text-overline text-primary">{{ $t('shop_admin.access_group_details') }}</div>
           <div class="text-subtitle1 text-weight-bold text-grey-9 ellipsis">
             {{ group?.name }}
@@ -17,14 +25,15 @@
           round
           dense
           icon="ph ph-x"
+          color="grey-7"
           :aria-label="$t('shop_admin.cancel')"
           @click="$emit('update:modelValue', false)"
         />
-      </q-card-section>
+      </div>
 
       <q-separator />
 
-      <div class="col scroll q-pa-md">
+      <div class="access-side-panel__body col scroll q-pa-md">
         <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-sm">
           {{ $t('shop_admin.members') }}
         </div>
@@ -33,7 +42,10 @@
           <q-skeleton v-for="n in 3" :key="n" type="rect" height="56px" class="rounded-borders" />
         </div>
 
-        <div v-else-if="sortedMembers.length === 0" class="column items-center text-center q-pa-lg text-grey-6">
+        <div
+          v-else-if="sortedMembers.length === 0"
+          class="column items-center text-center q-pa-lg text-grey-6"
+        >
           <q-icon name="ph ph-users" size="32px" color="grey-5" class="q-mb-sm" />
           <div>{{ $t('shop_admin.no_members') }}</div>
         </div>
@@ -57,12 +69,13 @@
           </q-item>
         </q-list>
       </div>
-    </q-card>
-  </q-dialog>
+    </div>
+  </AppResizableOverlayPanel>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
 import type { CustomerGroupMember } from 'src/modules/tenant/types';
 
@@ -104,11 +117,9 @@ watch(
 </script>
 
 <style scoped>
-.group-details-panel {
-  width: 420px;
-  max-width: 100vw;
-  height: 100vh;
-  border-radius: 0;
+.access-side-panel {
+  height: 100%;
+  min-height: 0;
 }
 
 .accent-swatch {

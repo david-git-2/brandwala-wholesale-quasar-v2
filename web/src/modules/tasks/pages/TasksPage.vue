@@ -1571,11 +1571,13 @@
           </q-btn>
         </div>
 
-        <!-- Reset Button -->
+      </div>
+
+      <template #footer>
         <div class="row q-gutter-sm justify-end">
           <q-btn flat no-caps label="Reset" @click="resetFilters" />
         </div>
-      </div>
+      </template>
     </FilterSidebar>
 
     <!-- Dialog Popups -->

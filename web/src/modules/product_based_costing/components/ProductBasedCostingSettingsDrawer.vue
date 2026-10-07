@@ -1,25 +1,23 @@
 <template>
-  <q-dialog
+  <AppResizableOverlayPanel
     :model-value="modelValue"
-    position="right"
-    transition-show="jump-left"
-    transition-hide="jump-right"
+    storage-key="product_based_costing.settings-drawer-width"
+    :default-width="520"
+    :min-width="360"
+    :max-width="960"
+    aria-label="Costing file settings"
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
-    <q-card
-      class="column no-wrap bg-white q-ma-md rounded-borders-lg overflow-hidden shadow-10"
-      style="width: 520px; max-width: 95vw; height: calc(100vh - 32px); border-radius: 16px"
-    >
-      <!-- Top Tabs Bar -->
-      <div class="bg-grey-1 border-bottom q-px-sm">
+    <div class="column full-height no-wrap overflow-hidden pbc-settings-drawer">
+      <div class="pbc-settings-drawer__header bg-grey-1 border-bottom row items-center no-wrap q-gutter-x-xs q-px-sm q-py-xs">
         <q-tabs
           v-model="activeTab"
           dense
           no-caps
           active-color="primary"
           indicator-color="primary"
-          align="justify"
-          class="text-grey-7 text-weight-medium"
+          align="left"
+          class="col min-width-0 text-grey-7 text-weight-medium pbc-settings-drawer__tabs"
         >
           <q-tab name="details" label="Details" icon="ph ph-identification-badge" />
           <q-tab name="summary" label="Summary" icon="ph ph-chart-pie-slice" />
@@ -27,10 +25,19 @@
           <q-tab name="status" label="Status" icon="ph ph-traffic-signal" />
           <q-tab name="actions" label="Actions" icon="ph ph-dots-three-outline" />
         </q-tabs>
+        <q-btn
+          flat
+          round
+          dense
+          icon="ph ph-x"
+          color="grey-7"
+          aria-label="Close settings"
+          class="pbc-settings-drawer__close shrink-0"
+          @click="emit('update:modelValue', false)"
+        />
       </div>
 
-      <!-- Tab Panels -->
-      <q-tab-panels v-model="activeTab" animated class="col bg-white overflow-auto">
+      <q-tab-panels v-model="activeTab" animated class="col bg-white pbc-settings-drawer-panels">
         <!-- 1. Details Tab Panel -->
         <q-tab-panel name="details" class="q-pa-md bg-white">
           <div class="column q-gutter-y-md">
@@ -386,13 +393,14 @@
           </div>
         </q-tab-panel>
       </q-tab-panels>
-    </q-card>
-  </q-dialog>
+    </div>
+  </AppResizableOverlayPanel>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { normalizePbcFileStatus } from '../composables/useProductBasedCostingFileDetailsState';
 import {
@@ -625,6 +633,36 @@ function emitDrawerAction(action: PbcSettingsDrawerAction) {
 </script>
 
 <style scoped>
+.pbc-settings-drawer {
+  background: #fff;
+  height: 100%;
+  min-height: 0;
+}
+
+.pbc-settings-drawer__close {
+  margin-left: 2px;
+}
+
+.pbc-settings-drawer__tabs :deep(.q-tabs__content) {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.pbc-settings-drawer-panels {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pbc-settings-drawer-panels :deep(.q-panel-parent) {
+  height: 100%;
+  min-height: 0;
+}
+
+.pbc-settings-drawer-panels :deep(.q-panel.scroll) {
+  height: 100%;
+  min-height: 0;
+}
+
 .rounded-sq-btn {
   border-radius: 8px !important;
 }

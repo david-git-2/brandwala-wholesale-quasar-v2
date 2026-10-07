@@ -217,13 +217,14 @@
           </q-btn>
 
           <q-btn
-            :outline="!settingsDrawerOpen"
-            :unelevated="settingsDrawerOpen"
+            unelevated
             round
-            color="primary"
-            class="shipment-settings-trigger"
+            dense
+            color="grey-2"
+            text-color="grey-9"
+            class="border-grey shipment-settings-trigger"
             icon="ph ph-gear-six"
-            size="md"
+            size="sm"
             aria-label="Settings"
             @click="openSettingsDrawer('details')"
           >
@@ -491,23 +492,29 @@
       @edit="switchToEditFromView"
     />
 
-    <!-- Bulk Paste Dialog -->
-    <q-dialog v-model="showBulkPasteDialog" persistent>
-      <q-card style="width: 640px; max-width: 95vw; border-radius: 12px">
-        <q-card-section class="row items-center justify-between q-pb-none">
-          <div class="row items-center q-gutter-x-sm">
+    <AppResizableOverlayPanel
+      v-model="showBulkPasteDialog"
+      storage-key="procurement.shipment-bulk-paste-width"
+      :default-width="640"
+      :min-width="400"
+      :max-width="960"
+      aria-label="Bulk paste shipment values"
+    >
+      <div class="bulk-paste-overlay column no-wrap full-height">
+        <div class="bulk-paste-overlay__header row items-center justify-between q-px-md q-pt-md q-pb-sm shrink-0">
+          <div class="row items-center q-gutter-x-sm min-width-0">
             <q-avatar color="primary" text-color="white" icon="ph ph-clipboard-text" size="32px" />
-            <div>
+            <div class="min-width-0">
               <div class="text-subtitle1 text-weight-bold text-grey-9">Bulk Paste {{ bulkPasteFieldLabel }}</div>
               <div class="text-caption text-grey-6">
                 Click a cell, then paste. Data fills from that cell, like Excel.
               </div>
             </div>
           </div>
-          <q-btn v-close-popup icon="ph ph-x" flat round dense color="grey-6" />
-        </q-card-section>
+          <q-btn icon="ph ph-x" flat round dense color="grey-6" aria-label="Close" @click="showBulkPasteDialog = false" />
+        </div>
 
-        <q-card-section class="q-pt-sm q-pb-none">
+        <div class="q-px-md q-pb-sm shrink-0">
           <q-select
             v-model="bulkPasteField"
             :options="bulkPasteFieldOptions"
@@ -518,9 +525,9 @@
             label="Column to update"
             class="full-width"
           />
-        </q-card-section>
+        </div>
 
-        <q-card-section class="q-py-md">
+        <div class="bulk-paste-overlay__body col q-px-md q-py-sm overflow-auto">
           <div class="bulk-paste-grid-wrap" @paste.capture="onBulkPasteGridPaste">
             <table class="bulk-paste-grid">
               <thead>
@@ -563,12 +570,10 @@
               </tbody>
             </table>
           </div>
-        </q-card-section>
+        </div>
 
-        <q-separator />
-
-        <q-card-actions align="right" class="q-pa-md bg-grey-1">
-          <q-btn v-close-popup flat label="Cancel" color="grey-7" no-caps :disable="bulkPasteSaving" />
+        <div class="bulk-paste-overlay__footer row items-center justify-end q-gutter-sm q-pa-md shrink-0">
+          <q-btn flat label="Cancel" color="grey-7" no-caps :disable="bulkPasteSaving" @click="showBulkPasteDialog = false" />
           <q-btn
             unelevated
             color="primary"
@@ -580,9 +585,9 @@
             :disable="bulkPasteSaving"
             @click="applyBulkPaste"
           />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+        </div>
+      </div>
+    </AppResizableOverlayPanel>
 
     <!-- Image Preview Dialog -->
     <q-dialog v-model="showImagePreviewDialog">
@@ -653,6 +658,7 @@ import { useCargoCompaniesQuery } from '../composables/useProcurementStockQuery'
 import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';
 import ShipmentLineItemCard from '../components/ShipmentLineItemCard.vue';
 import ShipmentExcelBottomBar, { type SheetTabItem } from '../components/ShipmentExcelBottomBar.vue';
+import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import ShipmentSettingsDrawer from '../components/ShipmentSettingsDrawer.vue';
 import ShipmentSectionSheetDialog from '../components/ShipmentSectionSheetDialog.vue';
 import ShipmentSectionViewDialog from '../components/ShipmentSectionViewDialog.vue';
@@ -2355,12 +2361,14 @@ const removeSheet = async (id: string) => {
 }
 
 .shipment-settings-trigger {
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
 }
 
 .shipment-settings-trigger :deep(.q-icon) {
-  font-size: 22px;
+  font-size: 17px;
 }
 
 .shipment-items-middle-section,
@@ -2724,6 +2732,21 @@ const removeSheet = async (id: string) => {
 
 .item-img-container:hover .img-expand-btn {
   opacity: 1;
+}
+
+.bulk-paste-overlay {
+  min-height: 0;
+  background: #fff;
+}
+
+.bulk-paste-overlay__footer {
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.bulk-paste-overlay__body .bulk-paste-grid-wrap {
+  max-height: none;
+  min-height: 12rem;
 }
 
 .bulk-paste-grid-wrap {

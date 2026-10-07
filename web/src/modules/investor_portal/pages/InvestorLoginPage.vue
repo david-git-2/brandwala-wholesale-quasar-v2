@@ -1,9 +1,9 @@
 <template>
   <div>
-    <PageInitialLoader
+    <AppTradeFlowLoadingScreen
       v-if="loading && !tenantSlugFromRoute"
-      compact
-      message="Loading…"
+      scope="investor"
+      tagline="Loading…"
     />
 
     <q-banner v-else-if="entryError" class="bg-orange-1 text-orange-10 q-mb-md" rounded dense>
@@ -25,7 +25,7 @@ import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 
 import AuthLoginPanel from 'src/modules/auth/components/AuthLoginPanel.vue';
-import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
+import AppTradeFlowLoadingScreen from 'src/components/brand/AppTradeFlowLoadingScreen.vue';
 import { useTenantEntryContext } from 'src/modules/tenant/composables/useTenantEntryContext';
 
 const route = useRoute();

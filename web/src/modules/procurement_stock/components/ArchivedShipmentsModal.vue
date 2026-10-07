@@ -2,10 +2,17 @@
   <q-dialog ref="dialogRef" persistent @hide="onDialogHide">
     <q-card class="column no-wrap" style="width: 780px; max-width: 95vw; height: 80vh; max-height: 700px; border-radius: 12px">
       <!-- Modal Header -->
-      <q-card-section class="row items-center justify-between q-py-sm q-px-md border-bottom bg-grey-1 flex-shrink-0">
-        <div class="row items-center q-gutter-x-sm">
-          <q-avatar size="32px" color="blue-grey-1" text-color="blue-grey-8" icon="ph ph-archive-box" font-size="18px" />
-          <div>
+      <q-card-section class="row items-start justify-between no-wrap q-py-sm q-px-md border-bottom bg-grey-1 flex-shrink-0">
+        <div class="col row items-center q-gutter-x-sm min-width-0">
+          <q-avatar
+            size="32px"
+            color="blue-grey-1"
+            text-color="blue-grey-8"
+            icon="ph ph-archive-box"
+            font-size="18px"
+            class="flex-shrink-0"
+          />
+          <div class="col min-width-0">
             <div class="text-subtitle1 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
               <span>Archived Shipments</span>
               <q-badge color="blue-grey-2" text-color="blue-grey-9" rounded class="text-weight-bold q-ml-xs">
@@ -18,7 +25,16 @@
           </div>
         </div>
 
-        <q-btn flat round dense icon="ph ph-x" color="grey-7" v-close-popup />
+        <q-btn
+          flat
+          round
+          dense
+          icon="ph ph-x"
+          color="grey-7"
+          class="col-auto flex-shrink-0 q-ml-sm"
+          aria-label="Close"
+          v-close-popup
+        />
       </q-card-section>
 
       <!-- Search & Refresh Toolbar -->
@@ -162,7 +178,7 @@ import type { GlobalShipment } from '../repositories/globalShipmentRepository';
 
 defineEmits([...useDialogPluginComponent.emits]);
 
-const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
+const { dialogRef, onDialogHide } = useDialogPluginComponent();
 const $q = useQuasar();
 const authStore = useAuthStore();
 const shipmentStore = useGlobalShipmentStore();
@@ -247,7 +263,6 @@ const confirmRestore = (shipment: GlobalShipment) => {
         message: `Shipment "${shipment.name}" restored successfully.`,
         timeout: 2000,
       });
-      onDialogOK({ action: 'restored', id: shipment.id });
     } catch (err: unknown) {
       $q.notify({
         type: 'negative',
@@ -284,7 +299,6 @@ const confirmPermanentDelete = (shipment: GlobalShipment) => {
         message: `Shipment "${shipment.name}" permanently deleted.`,
         timeout: 2000,
       });
-      onDialogOK({ action: 'purged', id: shipment.id });
     } catch (err: unknown) {
       $q.notify({
         type: 'negative',

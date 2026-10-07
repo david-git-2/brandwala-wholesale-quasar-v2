@@ -40,6 +40,80 @@ $$;
 ALTER FUNCTION "public"."shop_product_grade_available_units"("p_shop_tenant_id" bigint, "p_product_id" bigint, "p_grade_tag_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."shop_padded_display_quantity"("p_real" integer, "p_add" integer DEFAULT 6) RETURNS integer
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO 'public'
+    AS $$
+  select case
+    when coalesce(p_real, 0) <= 0 then 0
+    when p_real <= 2 then p_real
+    else p_real + greatest(coalesce(p_add, 6), 0)
+  end;
+$$;
+
+
+ALTER FUNCTION "public"."shop_padded_display_quantity"("p_real" integer, "p_add" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."recalc_shop_display_quantities"("p_shop_id" bigint) RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_tenant_id bigint;
+  v_display_add integer;
+  v_updated integer;
+begin
+  if p_shop_id is null then
+    raise exception 'shop required';
+  end if;
+
+  select s.tenant_id, coalesce(s.display_quantity_add, 6)
+  into v_tenant_id, v_display_add
+  from public.shops s
+  where s.id = p_shop_id
+    and s.deleted_at is null;
+
+  if v_tenant_id is null then
+    raise exception 'shop not found';
+  end if;
+
+  if not public.user_can_manage_shop_tenant(v_tenant_id)
+     and not public.user_can_manage_shop_tenant(public.resolve_parent_tenant_id(v_tenant_id))
+     and not public.is_superadmin() then
+    raise exception 'not allowed';
+  end if;
+
+  with updated as (
+    update public.shop_product_listings l
+    set
+      display_quantity_override = public.shop_padded_display_quantity(
+        public.shop_product_grade_available_units(
+          v_tenant_id,
+          l.product_id,
+          (
+            select gs.grade_tag_id
+            from public.global_stocks gs
+            where gs.id = l.global_stock_id
+          )
+        ),
+        v_display_add
+      ),
+      updated_at = now()
+    where l.shop_id = p_shop_id
+      and not l.is_quantity_locked
+    returning l.id
+  )
+  select count(*)::integer into v_updated from updated;
+
+  return coalesce(v_updated, 0);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."recalc_shop_display_quantities"("p_shop_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."hold_shop_grade_stock_for_order"("p_parent_tenant_id" bigint, "p_shop_tenant_id" bigint, "p_product_id" bigint, "p_grade_tag_id" bigint, "p_quantity" integer, "p_order_id" bigint, "p_notes" "text" DEFAULT NULL::"text") RETURNS bigint
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -235,6 +309,15 @@ begin
 
     if v_listing_id is null then
       raise exception 'active product listing not found on this shop';
+    end if;
+
+    if v_shop_type = 'dropship' and exists (
+      select 1
+      from public.shop_listing_group_hides h
+      where h.listing_id = v_listing_id
+        and h.customer_group_id = public.current_customer_group_id(v_tenant_id)
+    ) then
+      raise exception 'product not available for this customer';
     end if;
 
     select coalesce(gsi.landed_cost_bdt, public.calculate_landed_unit_cost(gs.shipment_item_id))
@@ -804,6 +887,7 @@ declare
   v_pricing_method text;
   v_markup_percentage numeric;
   v_quantity_display_mode text;
+  v_display_quantity_add integer;
   v_vendor_filters jsonb;
   v_min_available_units integer;
   v_can_browse boolean;
@@ -827,12 +911,14 @@ declare
   v_next_cursor jsonb := null;
   v_last_name text;
   v_last_id bigint;
+  v_group_id bigint;
 begin
   if p_tenant_id is null then
     raise exception 'tenant required';
   end if;
 
-  if public.current_customer_group_id(p_tenant_id) is null then
+  v_group_id := public.current_customer_group_id(p_tenant_id);
+  if v_group_id is null then
     raise exception 'access denied';
   end if;
 
@@ -840,12 +926,12 @@ begin
     id, tenant_id, name, shop_type, vendor_code, order_mode,
     is_negotiable, show_stock_quantity, default_currency_id, is_active,
     buy_currency_id, sell_currency_id, pricing_method, markup_percentage, quantity_display_mode,
-    vendor_filters, min_available_units
+    display_quantity_add, vendor_filters, min_available_units
   into
     v_shop_id, v_tenant_id, v_shop_name, v_shop_type, v_vendor_code, v_order_mode,
     v_is_negotiable, v_show_stock_quantity, v_default_currency_id, v_is_active,
     v_buy_currency_id, v_sell_currency_id, v_pricing_method, v_markup_percentage, v_quantity_display_mode,
-    v_vendor_filters, v_min_available_units
+    v_display_quantity_add, v_vendor_filters, v_min_available_units
   from public.shops
   where slug = p_shop_slug
     and tenant_id = p_tenant_id
@@ -870,6 +956,7 @@ begin
   end if;
 
   v_parent_tenant_id := public.resolve_parent_tenant_id(v_tenant_id);
+  v_display_quantity_add := coalesce(v_display_quantity_add, 6);
   v_limit := greatest(1, least(coalesce(p_limit, 20), 200));
   v_fetch_limit := v_limit + 1;
   v_cursor_name := coalesce(p_cursor_name, '');
@@ -1024,6 +1111,12 @@ begin
             and ($3 is null or trim($3) = '' or lower(coalesce(p.category, '')) = lower(trim($3)))
             and ($4 is null or trim($4) = '' or lower(coalesce(p.brand, '')) = lower(trim($4)))
             and ($7 is null or (coalesce(p.name, ''), l.id) > (coalesce($6, ''), $7))
+            and not exists (
+              select 1
+              from public.shop_listing_group_hides h
+              where h.listing_id = l.id
+                and h.customer_group_id = $20
+            )
         ),
         paged as (
           select f.*
@@ -1082,8 +1175,10 @@ begin
                   'available_units', case
                     when not $10 or not coalesce(p.listing_show_quantity, $11) then null
                     when $14 = 'original' then greatest(0, p.available_qty)
-                    when p.display_quantity_override is not null then p.display_quantity_override
-                    else greatest(0, p.available_qty)
+                    when p.display_quantity_override is not null
+                      and not (p.display_quantity_override = 0 and p.available_qty > 0)
+                      then p.display_quantity_override
+                    else public.shop_padded_display_quantity(p.available_qty, $19)
                   end,
                   'listing_id', p.listing_id,
                   'stock_grade', case
@@ -1127,7 +1222,9 @@ begin
       v_tenant_id,
       v_can_see_buy_price,
       v_buy_currency_id,
-      v_can_see_resell_minimum_price;
+      v_can_see_resell_minimum_price,
+      v_display_quantity_add,
+      v_group_id;
   end if;
 
   v_data := coalesce(v_result->'data', '[]'::jsonb);
@@ -1653,6 +1750,7 @@ declare
   v_pricing_method text;
   v_markup_percentage numeric;
   v_quantity_display_mode text;
+  v_display_quantity_add integer;
   v_vendor_filters jsonb;
   v_can_browse boolean;
   v_can_see_buy_price boolean;
@@ -1681,12 +1779,12 @@ begin
     id, tenant_id, name, shop_type, vendor_code, order_mode,
     is_negotiable, show_stock_quantity, default_currency_id, is_active,
     buy_currency_id, sell_currency_id, pricing_method, markup_percentage, quantity_display_mode,
-    vendor_filters, min_available_units
+    display_quantity_add, vendor_filters, min_available_units
   into
     v_shop_id, v_shop_tenant_id, v_shop_name, v_shop_type, v_vendor_code, v_order_mode,
     v_is_negotiable, v_show_stock_quantity, v_default_currency_id, v_is_active,
     v_buy_currency_id, v_sell_currency_id, v_pricing_method, v_markup_percentage, v_quantity_display_mode,
-    v_vendor_filters, v_min_available_units
+    v_display_quantity_add, v_vendor_filters, v_min_available_units
   from public.shops
   where slug = p_shop_slug
     and tenant_id = p_tenant_id
@@ -1711,6 +1809,7 @@ begin
   end if;
 
   v_parent_tenant_id := public.resolve_parent_tenant_id(v_shop_tenant_id);
+  v_display_quantity_add := coalesce(v_display_quantity_add, 6);
   v_can_see_catalog_price := coalesce(v_can_see_buy_price, false);
 
   if v_shop_type = 'vendor_catalog' then
@@ -1797,8 +1896,10 @@ begin
       'available_units', case
         when not v_can_view_quantity or not coalesce(row.listing_show_quantity, v_show_stock_quantity) then null
         when v_quantity_display_mode = 'original' then greatest(0, row.available_qty)
-        when row.display_quantity_override is not null then row.display_quantity_override
-        else greatest(0, row.available_qty)
+        when row.display_quantity_override is not null
+          and not (row.display_quantity_override = 0 and row.available_qty > 0)
+          then row.display_quantity_override
+        else public.shop_padded_display_quantity(row.available_qty, v_display_quantity_add)
       end,
       'listing_id', row.listing_id,
       'stock_grade', case
@@ -1861,6 +1962,12 @@ begin
         and l.is_active = true
         and p.is_available = true
         and coalesce(p.hazardous, false) = false
+        and not exists (
+          select 1
+          from public.shop_listing_group_hides h
+          where h.listing_id = l.id
+            and h.customer_group_id = public.current_customer_group_id(p_tenant_id)
+        )
       order by l.id asc
       limit 1
     ) row;
@@ -8061,6 +8168,120 @@ $$;
 ALTER FUNCTION "public"."list_shop_storefront_listings_for_admin"("p_shop_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."list_shop_listing_group_visibility"("p_shop_id" bigint, "p_customer_group_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_tenant_id bigint;
+  v_shop_type public.shop_type_enum;
+  v_data jsonb;
+begin
+  select s.tenant_id, s.shop_type
+  into v_tenant_id, v_shop_type
+  from public.shops s
+  where s.id = p_shop_id
+    and s.deleted_at is null;
+
+  if v_tenant_id is null then
+    raise exception 'shop not found';
+  end if;
+
+  if not public.user_can_manage_shop_tenant(v_tenant_id)
+     and not public.user_can_manage_shop_tenant(public.resolve_parent_tenant_id(v_tenant_id))
+     and not public.is_superadmin() then
+    raise exception 'not allowed';
+  end if;
+
+  if v_shop_type <> 'dropship' then
+    return jsonb_build_object('data', '[]'::jsonb);
+  end if;
+
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'listing_id', l.id,
+        'product_id', p.id,
+        'product_name', p.name,
+        'product_image_url', p.image_url,
+        'is_visible', h.listing_id is null
+      )
+      order by p.name asc, l.id asc
+    ),
+    '[]'::jsonb
+  )
+  into v_data
+  from public.shop_product_listings l
+  join public.products p on p.id = l.product_id
+  left join public.shop_listing_group_hides h
+    on h.listing_id = l.id
+   and h.customer_group_id = p_customer_group_id
+  where l.shop_id = p_shop_id
+    and l.is_active = true;
+
+  return jsonb_build_object('data', v_data);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."list_shop_listing_group_visibility"("p_shop_id" bigint, "p_customer_group_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."set_shop_listing_group_visibility"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_listing_id" bigint, "p_visible" boolean) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_tenant_id bigint;
+  v_shop_type public.shop_type_enum;
+begin
+  select s.tenant_id, s.shop_type
+  into v_tenant_id, v_shop_type
+  from public.shops s
+  where s.id = p_shop_id
+    and s.deleted_at is null;
+
+  if v_tenant_id is null then
+    raise exception 'shop not found';
+  end if;
+
+  if not public.user_can_manage_shop_tenant(v_tenant_id)
+     and not public.user_can_manage_shop_tenant(public.resolve_parent_tenant_id(v_tenant_id))
+     and not public.is_superadmin() then
+    raise exception 'not allowed';
+  end if;
+
+  if v_shop_type <> 'dropship' then
+    raise exception 'listing visibility is only for dropship shops';
+  end if;
+
+  if not exists (
+    select 1
+    from public.shop_product_listings l
+    where l.id = p_listing_id
+      and l.shop_id = p_shop_id
+  ) then
+    raise exception 'listing not found on this shop';
+  end if;
+
+  if coalesce(p_visible, true) then
+    delete from public.shop_listing_group_hides
+    where listing_id = p_listing_id
+      and customer_group_id = p_customer_group_id;
+  else
+    insert into public.shop_listing_group_hides (shop_id, listing_id, customer_group_id)
+    values (p_shop_id, p_listing_id, p_customer_group_id)
+    on conflict (listing_id, customer_group_id) do nothing;
+  end if;
+
+  return jsonb_build_object('success', true, 'listing_id', p_listing_id, 'is_visible', coalesce(p_visible, true));
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_shop_listing_group_visibility"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_listing_id" bigint, "p_visible" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."list_listable_stock_for_shop"("p_shop_id" bigint, "p_search" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -8392,7 +8613,10 @@ $$;
 ALTER FUNCTION "public"."list_shop_product_listings"("p_shop_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_shops"("p_tenant_id" bigint, "p_parent_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 200, "p_offset" integer DEFAULT 0, "p_search" "text" DEFAULT NULL::"text", "p_active" boolean DEFAULT NULL::boolean) RETURNS TABLE("id" bigint, "tenant_id" bigint, "name" "text", "slug" "text", "shop_type" "public"."shop_type_enum", "vendor_code" "text", "order_mode" "public"."shop_order_mode_enum", "is_negotiable" boolean, "show_stock_quantity" boolean, "default_currency_id" bigint, "global_stock_type_id" bigint, "is_active" boolean, "allow_delivery" boolean, "buy_currency_id" bigint, "sell_currency_id" bigint, "pricing_method" "text", "markup_percentage" numeric, "quantity_display_mode" "text", "default_print_charge_amount" numeric, "default_packing_charge_amount" numeric, "deduct_charges_from_margin" boolean, "vendor_filters" "jsonb", "deduct_print_from_margin" boolean, "deduct_packing_from_margin" boolean, "description" "text", "category_ids" bigint[], "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "total_count" bigint, "tenant_name" "text")
+DROP FUNCTION IF EXISTS "public"."list_shops"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_active" boolean);
+
+
+CREATE OR REPLACE FUNCTION "public"."list_shops"("p_tenant_id" bigint, "p_parent_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 200, "p_offset" integer DEFAULT 0, "p_search" "text" DEFAULT NULL::"text", "p_active" boolean DEFAULT NULL::boolean) RETURNS TABLE("id" bigint, "tenant_id" bigint, "name" "text", "slug" "text", "shop_type" "public"."shop_type_enum", "vendor_code" "text", "order_mode" "public"."shop_order_mode_enum", "is_negotiable" boolean, "show_stock_quantity" boolean, "default_currency_id" bigint, "global_stock_type_id" bigint, "is_active" boolean, "allow_delivery" boolean, "buy_currency_id" bigint, "sell_currency_id" bigint, "pricing_method" "text", "markup_percentage" numeric, "quantity_display_mode" "text", "display_quantity_add" integer, "default_print_charge_amount" numeric, "default_packing_charge_amount" numeric, "deduct_charges_from_margin" boolean, "vendor_filters" "jsonb", "deduct_print_from_margin" boolean, "deduct_packing_from_margin" boolean, "description" "text", "category_ids" bigint[], "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "total_count" bigint, "tenant_name" "text")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -8446,6 +8670,7 @@ begin
       s.pricing_method,
       s.markup_percentage,
       s.quantity_display_mode,
+      s.display_quantity_add,
       s.default_print_charge_amount,
       s.default_packing_charge_amount,
       s.deduct_charges_from_margin,
@@ -8504,6 +8729,7 @@ begin
       s.pricing_method,
       s.markup_percentage,
       s.quantity_display_mode,
+      s.display_quantity_add,
       s.default_print_charge_amount,
       s.default_packing_charge_amount,
       s.deduct_charges_from_margin,
@@ -10849,7 +11075,7 @@ $$;
 ALTER FUNCTION "public"."upsert_customer_group_shop_profile"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_is_active" boolean, "p_default_can_browse" boolean, "p_default_can_see_buy_price" boolean, "p_default_can_see_sell_price" boolean, "p_default_can_add_to_cart" boolean, "p_default_can_place_order" boolean, "p_default_can_negotiate" boolean, "p_default_can_view_quantity" boolean, "p_default_can_set_dropship_price" boolean) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum" DEFAULT NULL::"public"."shop_type_enum", "p_vendor_code" "text" DEFAULT NULL::"text", "p_id" bigint DEFAULT NULL::bigint, "p_default_currency_id" bigint DEFAULT NULL::bigint, "p_global_stock_type_id" bigint DEFAULT NULL::bigint, "p_allow_delivery" boolean DEFAULT false, "p_buy_currency_id" bigint DEFAULT NULL::bigint, "p_sell_currency_id" bigint DEFAULT NULL::bigint, "p_pricing_method" "text" DEFAULT NULL::"text", "p_markup_percentage" numeric DEFAULT 0, "p_quantity_display_mode" "text" DEFAULT NULL::"text", "p_default_print_charge_amount" numeric DEFAULT 0, "p_default_packing_charge_amount" numeric DEFAULT 0, "p_deduct_charges_from_margin" boolean DEFAULT false, "p_vendor_filters" "jsonb" DEFAULT NULL::"jsonb", "p_deduct_print_from_margin" boolean DEFAULT false, "p_deduct_packing_from_margin" boolean DEFAULT false, "p_description" "text" DEFAULT NULL::"text", "p_category_ids" bigint[] DEFAULT '{}'::bigint[], "p_min_available_units" integer DEFAULT 0) RETURNS SETOF "public"."shops"
+CREATE OR REPLACE FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum" DEFAULT NULL::"public"."shop_type_enum", "p_vendor_code" "text" DEFAULT NULL::"text", "p_id" bigint DEFAULT NULL::bigint, "p_default_currency_id" bigint DEFAULT NULL::bigint, "p_global_stock_type_id" bigint DEFAULT NULL::bigint, "p_allow_delivery" boolean DEFAULT false, "p_buy_currency_id" bigint DEFAULT NULL::bigint, "p_sell_currency_id" bigint DEFAULT NULL::bigint, "p_pricing_method" "text" DEFAULT NULL::"text", "p_markup_percentage" numeric DEFAULT 0, "p_quantity_display_mode" "text" DEFAULT NULL::"text", "p_default_print_charge_amount" numeric DEFAULT 0, "p_default_packing_charge_amount" numeric DEFAULT 0, "p_deduct_charges_from_margin" boolean DEFAULT false, "p_vendor_filters" "jsonb" DEFAULT NULL::"jsonb", "p_deduct_print_from_margin" boolean DEFAULT false, "p_deduct_packing_from_margin" boolean DEFAULT false, "p_description" "text" DEFAULT NULL::"text", "p_category_ids" bigint[] DEFAULT '{}'::bigint[], "p_min_available_units" integer DEFAULT 0, "p_display_quantity_add" integer DEFAULT 6) RETURNS SETOF "public"."shops"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -10873,6 +11099,9 @@ begin
   end if;
   if coalesce(p_min_available_units, 0) < 0 then
     raise exception 'min_available_units must be non-negative';
+  end if;
+  if coalesce(p_display_quantity_add, 6) < 0 then
+    raise exception 'display_quantity_add must be non-negative';
   end if;
 
   v_vendor_code := nullif(trim(coalesce(p_vendor_code, '')), '');
@@ -10909,6 +11138,7 @@ begin
       pricing_method,
       markup_percentage,
       quantity_display_mode,
+      display_quantity_add,
       default_print_charge_amount,
       default_packing_charge_amount,
       deduct_charges_from_margin,
@@ -10937,6 +11167,7 @@ begin
       coalesce(p_pricing_method, 'direct_cost'),
       coalesce(p_markup_percentage, 0),
       coalesce(p_quantity_display_mode, 'original'),
+      coalesce(p_display_quantity_add, 6),
       coalesce(p_default_print_charge_amount, 0),
       coalesce(p_default_packing_charge_amount, 0),
       coalesce(p_deduct_charges_from_margin, false),
@@ -10977,6 +11208,7 @@ begin
       pricing_method                  = coalesce(p_pricing_method, pricing_method),
       markup_percentage               = coalesce(p_markup_percentage, markup_percentage),
       quantity_display_mode           = coalesce(p_quantity_display_mode, quantity_display_mode),
+      display_quantity_add            = coalesce(p_display_quantity_add, display_quantity_add),
       default_print_charge_amount     = coalesce(p_default_print_charge_amount, default_print_charge_amount),
       default_packing_charge_amount   = coalesce(p_default_packing_charge_amount, default_packing_charge_amount),
       deduct_charges_from_margin      = coalesce(p_deduct_charges_from_margin, deduct_charges_from_margin),
@@ -11007,7 +11239,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum", "p_vendor_code" "text", "p_id" bigint, "p_default_currency_id" bigint, "p_global_stock_type_id" bigint, "p_allow_delivery" boolean, "p_buy_currency_id" bigint, "p_sell_currency_id" bigint, "p_pricing_method" "text", "p_markup_percentage" numeric, "p_quantity_display_mode" "text", "p_default_print_charge_amount" numeric, "p_default_packing_charge_amount" numeric, "p_deduct_charges_from_margin" boolean, "p_vendor_filters" "jsonb", "p_deduct_print_from_margin" boolean, "p_deduct_packing_from_margin" boolean, "p_description" "text", "p_category_ids" bigint[], "p_min_available_units" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum", "p_vendor_code" "text", "p_id" bigint, "p_default_currency_id" bigint, "p_global_stock_type_id" bigint, "p_allow_delivery" boolean, "p_buy_currency_id" bigint, "p_sell_currency_id" bigint, "p_pricing_method" "text", "p_markup_percentage" numeric, "p_quantity_display_mode" "text", "p_default_print_charge_amount" numeric, "p_default_packing_charge_amount" numeric, "p_deduct_charges_from_margin" boolean, "p_vendor_filters" "jsonb", "p_deduct_print_from_margin" boolean, "p_deduct_packing_from_margin" boolean, "p_description" "text", "p_category_ids" bigint[], "p_min_available_units" integer, "p_display_quantity_add" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."upsert_shop_customer_group_access"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_can_browse" boolean DEFAULT NULL::boolean, "p_can_see_buy_price" boolean DEFAULT NULL::boolean, "p_can_see_sell_price" boolean DEFAULT NULL::boolean, "p_can_add_to_cart" boolean DEFAULT NULL::boolean, "p_can_place_order" boolean DEFAULT NULL::boolean, "p_can_negotiate" boolean DEFAULT NULL::boolean, "p_can_view_quantity" boolean DEFAULT NULL::boolean, "p_can_set_dropship_price" boolean DEFAULT NULL::boolean, "p_price_tier_code" "text" DEFAULT NULL::"text", "p_credit_limit_amount" numeric DEFAULT NULL::numeric, "p_credit_limit_currency_id" bigint DEFAULT NULL::bigint, "p_can_see_resell_minimum_price" boolean DEFAULT NULL::boolean) RETURNS SETOF "public"."shop_customer_group_access"

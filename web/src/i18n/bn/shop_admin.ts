@@ -314,6 +314,14 @@ export default {
   help_retail_pricing_desc:
     'সরাসরি খরচ: ক্রয়মূল্যই বিক্রয়মূল্য হিসেবে দেখাবে। মার্কআপ: ক্রয়মূল্যের সাথে নির্দিষ্ট মার্কআপ শতাংশ যোগ হবে।',
   help_qty_display_title: 'স্টক পরিমাণ সেটিংস',
+  display_quantity_add: 'ডিসপ্লে পরিমাণ প্যাডিং',
+  display_quantity_add_hint:
+    'স্টক ২-এর বেশি হলে গ্রাহকরা আসল স্টকের সাথে এই সংখ্যা দেখেন (১–২ হলে ঠিক স্টক)।',
+  storefront_recalc_display_qty: 'ডিসপ্লে পরিমাণ পুনঃহিসাব',
+  storefront_recalc_display_qty_confirm_title: 'ডিসপ্লে পরিমাণ আবার লিখবেন?',
+  storefront_recalc_display_qty_confirm:
+    'আনলক করা প্রতিটি লিস্টিং বর্তমান গুদাম স্টক ও ডিসপ্লে প্যাডিং সেটিং থেকে আপডেট হবে। লক করা ওভাররাইড পরিবর্তন হবে না।',
+  storefront_recalc_display_qty_confirm_ok: 'সব আবার লিখুন',
   help_qty_display_desc:
     'আসল স্টক: গুদামের ফিজিক্যাল আসল স্টক দেখাবে। কাস্টম সংখ্যা: নির্দিষ্ট কাস্টম ওভাররাইড সংখ্যা মার্কেটিং হিসেবে দেখাবে।',
   help_active_title: 'সক্রিয়',
@@ -391,6 +399,13 @@ export default {
   access_domain_catalog: 'ক্যাটালগ ও স্টক',
   access_domain_pricing: 'দাম',
   access_domain_ordering: 'অর্ডার',
+  access_products_button: 'পণ্য',
+  access_domain_products: 'এই গ্রুপের পণ্য',
+  access_products_hint: 'টিক দেওয়া পণ্য এই গ্রুপের স্টোরফ্রন্টে দেখা যাবে। নতুন পণ্য টিক খোলা পর্যন্ত দেখা যাবে।',
+  access_products_search: 'পণ্য খুঁজুন',
+  access_products_empty: 'এখনও কোনো স্টোরফ্রন্ট পণ্য নেই।',
+  access_products_show: 'দেখাও',
+  access_products_save_failed: 'পণ্য দেখানো আপডেট হয়নি।',
   configure: 'কনফিগার',
   collapse: 'বন্ধ',
   expand: 'খুলুন',

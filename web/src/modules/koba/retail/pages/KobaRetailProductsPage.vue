@@ -102,10 +102,12 @@
         :loading="store.loadingLookups"
       />
 
-      <div class="row q-gutter-sm justify-end">
-        <q-btn flat no-caps label="Reset" @click="onResetDrawerFilters" />
-        <q-btn flat no-caps label="Apply" color="primary" @click="onApplyDrawerFilters" />
-      </div>
+      <template #footer>
+        <div class="row q-gutter-sm justify-end">
+          <q-btn flat no-caps label="Reset" @click="onResetDrawerFilters" />
+          <q-btn flat no-caps label="Apply" color="primary" @click="onApplyDrawerFilters" />
+        </div>
+      </template>
     </FilterSidebar>
 
     <!-- Loading -->

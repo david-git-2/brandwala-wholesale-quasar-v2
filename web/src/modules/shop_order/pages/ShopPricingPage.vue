@@ -559,6 +559,7 @@ import ShopPricingBulkActionBar from '../components/ShopPricingBulkActionBar.vue
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShopProductListing, CandidateAllocation, UpsertListingPayload, Shop } from '../types';
 import { roundNearest5or0, roundUpToNearest50or100 } from '../utils/shopPricingRound';
+import { shopPaddedDisplayQuantity } from '../utils/shopDisplayQuantity';
 
 const props = withDefaults(defineProps<{ embedded?: boolean; shop?: Shop | null }>(), {
   embedded: false,
@@ -603,6 +604,7 @@ const { mutate: deleteListing } = useDeleteShopListingMutation();
 const shopName = ref<string>('');
 const shopType = ref<string>('');
 const shopDefaultCurrencyId = ref<number | null>(null);
+const shopDisplayQuantityAdd = ref(6);
 const search = ref<string>('');
 const columnSearchQuery = ref('');
 
@@ -914,6 +916,7 @@ const initShopFromProp = (shop: Shop) => {
   shopName.value = shop.name;
   shopType.value = shop.shop_type;
   shopDefaultCurrencyId.value = shop.default_currency_id ?? null;
+  shopDisplayQuantityAdd.value = shop.display_quantity_add ?? 6;
   form.value.sell_price_currency_id = shop.default_currency_id || 0;
   form.value.minimum_sell_price_currency_id = shop.default_currency_id || null;
 };
@@ -923,13 +926,14 @@ const loadShopDetails = async () => {
 
   const { data: shopData } = await supabase
     .from('shops')
-    .select('name, shop_type, default_currency_id')
+    .select('name, shop_type, default_currency_id, display_quantity_add')
     .eq('id', shopId.value)
     .single();
   if (shopData) {
     shopName.value = shopData.name;
     shopType.value = shopData.shop_type;
     shopDefaultCurrencyId.value = shopData.default_currency_id ?? null;
+    shopDisplayQuantityAdd.value = shopData.display_quantity_add ?? 6;
     form.value.sell_price_currency_id = shopData.default_currency_id || 0;
     form.value.minimum_sell_price_currency_id = shopData.default_currency_id || null;
   }
@@ -1043,9 +1047,10 @@ const onSavePricingRule = (payload: {
       onSuccess: () => {
         const sellMarkupPct = payload.markup_percentage;
         const dropshipMarkupPct = payload.dropship_markup_percentage ?? 0;
-        const qtyAdd = payload.global_quantity_add !== null && payload.global_quantity_add !== undefined
-          ? Number(payload.global_quantity_add)
-          : null;
+        const qtyPad =
+          payload.global_quantity_add !== null && payload.global_quantity_add !== undefined
+            ? Number(payload.global_quantity_add)
+            : shopDisplayQuantityAdd.value;
 
         listings.value.forEach((item) => {
           const baseCost = item.unit_cost_amount ?? item.minimum_sell_price_amount;
@@ -1071,10 +1076,9 @@ const onSavePricingRule = (payload: {
             ? (item.minimum_sell_price_currency_id || shopDefaultCurrencyId.value || item.sell_price_currency_id || null)
             : null;
 
-          // If global quantity add is provided and item is NOT manually locked, update display_quantity_override
           let newDisplayQty = item.display_quantity_override;
-          if (qtyAdd !== null && !item.is_quantity_locked) {
-            newDisplayQty = item.available_to_sell + qtyAdd;
+          if (!item.is_quantity_locked) {
+            newDisplayQty = shopPaddedDisplayQuantity(item.available_to_sell, qtyPad);
           }
 
           const listingPayload: UpsertListingPayload = {

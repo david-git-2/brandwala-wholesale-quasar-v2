@@ -81,7 +81,7 @@
       </ProcurementOpsListToolbar>
 
       <FilterSidebar v-model="filterDrawerOpen" title="Filters">
-        <div class="q-gutter-y-md q-pa-sm">
+        <div class="column q-gutter-y-md">
           <div>
             <div class="text-caption text-weight-medium q-mb-xs">Location (any level)</div>
             <StockLocationHierarchyPicker
@@ -131,26 +131,20 @@
           />
 
           <q-toggle v-model="draftHideZeroStockFilter" label="Hide Zero Stock" left-label />
+        </div>
 
-          <div class="row justify-end q-gutter-x-sm q-mt-md">
+        <template #footer>
+          <div class="row justify-end q-gutter-x-sm">
             <q-btn flat no-caps label="Reset" color="grey-7" @click="onResetFilters" />
             <q-btn unelevated no-caps label="Apply Filters" color="primary" @click="onApplyDrawerFilters" />
           </div>
-        </div>
+        </template>
       </FilterSidebar>
 
-      <div v-if="listIsLoading && !listHasRows" class="warehouse-list-card col">
-        <div class="warehouse-list-scroll">
-          <div v-for="n in 8" :key="n" class="warehouse-list-item warehouse-list-item--skeleton">
-            <q-skeleton type="QAvatar" size="1in" class="shrink-0" />
-            <div class="warehouse-list-info col">
-              <q-skeleton type="text" width="200px" height="16px" class="q-mb-xs" />
-              <q-skeleton type="text" width="320px" height="13px" />
-            </div>
-            <q-skeleton type="text" width="48px" height="16px" />
-          </div>
-        </div>
-      </div>
+      <WarehouseStockListSkeleton
+        v-if="listIsLoading && !listHasRows"
+        :read-only="isWarehouseReadOnly"
+      />
 
       <div
         v-else-if="!listHasRows && (totalCount ?? 0) === 0 && activeFilterCount === 0 && quickAvailability === 'all' && !groupBy && !listIsFetching"
@@ -307,6 +301,7 @@ import ProcurementOpsListToolbar from '../components/ProcurementOpsListToolbar.v
 import StockLocationHierarchyPicker from '../components/StockLocationHierarchyPicker.vue';
 import WarehouseStockListHeaderRow from '../components/WarehouseStockListHeaderRow.vue';
 import WarehouseStockListRow from '../components/WarehouseStockListRow.vue';
+import WarehouseStockListSkeleton from '../components/WarehouseStockListSkeleton.vue';
 import WarehouseStockGroupLotsPanel from '../components/WarehouseStockGroupLotsPanel.vue';
 import StockMoveGradeDialog from '../components/StockMoveGradeDialog.vue';
 import StockMoveLocationDialog from '../components/StockMoveLocationDialog.vue';
@@ -812,14 +807,6 @@ onMounted(async () => {
 
 .warehouse-group-header:hover {
   background: color-mix(in srgb, var(--bw-neutral-canvas, #fbfaf7) 90%, transparent);
-}
-
-.warehouse-list-item--skeleton {
-  cursor: default;
-}
-
-.warehouse-list-item--skeleton:hover {
-  background: transparent;
 }
 
 .text-slate-400 {

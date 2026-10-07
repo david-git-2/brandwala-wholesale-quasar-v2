@@ -147,7 +147,17 @@
                   </template>
                 </q-input>
               </div>
-              <div class="col-auto">
+              <div class="col-auto row items-center q-gutter-sm no-wrap">
+                <q-btn
+                  outline
+                  color="primary"
+                  icon="ph ph-arrows-clockwise"
+                  :label="$t('shop_admin.storefront_recalc_display_qty')"
+                  no-caps
+                  :loading="isRecalcingDisplayQty"
+                  data-test="storefront-recalc-display-qty"
+                  @click="onRecalcStorefrontDisplayQty"
+                />
                 <q-btn
                   color="primary"
                   icon="ph ph-plus"
@@ -182,6 +192,8 @@
                       :group="group"
                       :permissions="storefrontPreviewPermissions"
                       :shop-type="shop.shop_type"
+                      :display-quantity-add="shop.display_quantity_add ?? 6"
+                      :quantity-display-mode="shop.quantity_display_mode"
                       :format-money="formatStorefrontMoney"
                       :show-quantity-breakdown="true"
                       :show-calculate-sell-price="true"
@@ -292,6 +304,7 @@ import {
   useDeleteShopStorefrontListingMutation,
   useToggleShopStorefrontListingMutation,
 } from '../composables/useShopStorefrontAdminMutations';
+import { useRecalcShopDisplayQuantitiesMutation } from '../composables/useRecalcShopDisplayQuantitiesMutation';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopCatalogPath } from '../utils/catalogShop';
 import { showSuccessNotification, showErrorNotification, requestConfirmation } from 'src/utils/appFeedback';
@@ -361,6 +374,20 @@ const { mutate: toggleStorefrontListingMutation } = useToggleShopStorefrontListi
 const { mutate: deleteStorefrontListingMutation, isPending: isDeletingStorefrontListing } =
   useDeleteShopStorefrontListingMutation();
 const { mutate: ensureStorefrontGradeMutation } = useEnsureShopStorefrontGradeListingMutation();
+const { mutate: recalcDisplayQtyMutation, isPending: isRecalcingDisplayQty } =
+  useRecalcShopDisplayQuantitiesMutation();
+
+const onRecalcStorefrontDisplayQty = async () => {
+  if (!shopId.value) return;
+  const confirmed = await requestConfirmation(
+    t('shop_admin.storefront_recalc_display_qty_confirm'),
+    t('shop_admin.storefront_recalc_display_qty_confirm_title'),
+    t('shop_admin.storefront_recalc_display_qty_confirm_ok'),
+  );
+  if (confirmed) {
+    recalcDisplayQtyMutation(shopId.value);
+  }
+};
 
 const storefrontProducts = computed(() => {
   const pages = storefrontListingsData.value?.pages ?? [];

@@ -303,6 +303,18 @@
             </q-item>
           </template>
         </q-select>
+        <q-input
+          v-if="form.quantity_display_mode === 'custom_override'"
+          v-model.number="form.display_quantity_add"
+          type="number"
+          class="q-mt-md"
+          :label="$t('shop_admin.display_quantity_add')"
+          :hint="$t('shop_admin.display_quantity_add_hint')"
+          outlined
+          dense
+          min="0"
+          step="1"
+        />
       </q-card-section>
     </q-card>
 
@@ -425,6 +437,7 @@ type ShopForm = {
   pricing_method: 'direct_cost' | 'markup';
   markup_percentage: number;
   quantity_display_mode: 'original' | 'custom_override';
+  display_quantity_add: number;
   default_print_charge_amount?: number;
   default_packing_charge_amount?: number;
   deduct_charges_from_margin: boolean;
@@ -477,6 +490,7 @@ function shopToForm(shop: Shop): ShopForm {
     pricing_method: shop.pricing_method || 'direct_cost',
     markup_percentage: shop.markup_percentage || 0,
     quantity_display_mode: shop.quantity_display_mode || 'original',
+    display_quantity_add: shop.display_quantity_add ?? 6,
     default_print_charge_amount: shop.default_print_charge_amount || 0,
     default_packing_charge_amount: shop.default_packing_charge_amount || 0,
     deduct_charges_from_margin: shop.deduct_charges_from_margin || false,
@@ -855,6 +869,7 @@ function buildPayload(): UpdateShopPayload | null {
     pricing_method: form.pricing_method,
     markup_percentage: Number(form.markup_percentage || 0),
     quantity_display_mode: form.quantity_display_mode,
+    display_quantity_add: Math.max(0, Number(form.display_quantity_add ?? 6)),
     default_print_charge_amount: Number(form.default_print_charge_amount || 0),
     default_packing_charge_amount: Number(form.default_packing_charge_amount || 0),
     deduct_charges_from_margin: form.deduct_charges_from_margin,

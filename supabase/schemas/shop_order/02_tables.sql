@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS "public"."shops" (
     "pricing_method" "text" NOT NULL,
     "markup_percentage" numeric(5,2) DEFAULT 0 NOT NULL,
     "quantity_display_mode" "text" NOT NULL,
+    "display_quantity_add" integer DEFAULT 6 NOT NULL,
     "default_print_charge_amount" numeric(12,2) DEFAULT 0 NOT NULL,
     "default_packing_charge_amount" numeric(12,2) DEFAULT 0 NOT NULL,
     "deduct_charges_from_margin" boolean DEFAULT false NOT NULL,
@@ -61,6 +62,7 @@ CREATE TABLE IF NOT EXISTS "public"."shops" (
     CONSTRAINT "shops_markup_percentage_check" CHECK (("markup_percentage" >= (0)::numeric)),
     CONSTRAINT "shops_pricing_method_check" CHECK (("pricing_method" = ANY (ARRAY['direct_cost'::"text", 'markup'::"text"]))),
     CONSTRAINT "shops_quantity_display_mode_check" CHECK (("quantity_display_mode" = ANY (ARRAY['original'::"text", 'custom_override'::"text"]))),
+    CONSTRAINT "shops_display_quantity_add_check" CHECK (("display_quantity_add" >= 0)),
     CONSTRAINT "shops_sell_currency_match" CHECK (("sell_currency_id" = "default_currency_id")),
     CONSTRAINT "shops_vendor_catalog_requires_vendor_code" CHECK ((("shop_type" <> 'vendor_catalog'::"public"."shop_type_enum") OR ("is_active" = false) OR ("vendor_code" IS NOT NULL) OR (("vendor_filters" IS NOT NULL) AND ("jsonb_array_length"("vendor_filters") > 0))))
 );
@@ -139,6 +141,21 @@ CREATE TABLE IF NOT EXISTS "public"."shop_product_listings" (
 
 
 ALTER TABLE "public"."shop_product_listings" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."shop_listing_group_hides" (
+    "id" bigint NOT NULL,
+    "shop_id" bigint NOT NULL,
+    "listing_id" bigint NOT NULL,
+    "customer_group_id" bigint NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."shop_listing_group_hides" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."shop_listing_group_hides" IS 'Dropship: row means this group cannot see the listing. No row = shown.';
 
 
 ALTER TABLE "public"."customer_group_shop_profiles" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
@@ -489,6 +506,16 @@ ALTER TABLE "public"."shop_product_listings" ALTER COLUMN "id" ADD GENERATED ALW
 );
 
 
+ALTER TABLE "public"."shop_listing_group_hides" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."shop_listing_group_hides_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
 CREATE TABLE IF NOT EXISTS "public"."shop_product_offers" (
     "id" bigint NOT NULL,
     "shop_id" bigint NOT NULL,
@@ -606,6 +633,14 @@ ALTER TABLE ONLY "public"."shop_product_listings"
     ADD CONSTRAINT "shop_product_listings_unique_shop_alloc" UNIQUE ("shop_id", "global_stock_allocation_id");
 
 
+ALTER TABLE ONLY "public"."shop_listing_group_hides"
+    ADD CONSTRAINT "shop_listing_group_hides_pkey" PRIMARY KEY ("id");
+
+
+ALTER TABLE ONLY "public"."shop_listing_group_hides"
+    ADD CONSTRAINT "shop_listing_group_hides_listing_group_unique" UNIQUE ("listing_id", "customer_group_id");
+
+
 ALTER TABLE ONLY "public"."shop_product_offers"
     ADD CONSTRAINT "shop_product_offers_pkey" PRIMARY KEY ("id");
 
@@ -627,6 +662,9 @@ ALTER TABLE ONLY "public"."shop_categories"
 
 
 CREATE INDEX "idx_shop_categories_tenant" ON "public"."shop_categories" USING "btree" ("tenant_id", "is_active");
+
+
+CREATE INDEX "idx_shop_listing_group_hides_shop_group" ON "public"."shop_listing_group_hides" USING "btree" ("shop_id", "customer_group_id");
 
 
 CREATE UNIQUE INDEX "idx_shop_orders_tenant_return_ref" ON "public"."shop_orders" USING "btree" ("tenant_id", "return_ref") WHERE ("return_ref" IS NOT NULL);
@@ -802,15 +840,15 @@ ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
 
 
 ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
-    ADD CONSTRAINT "shop_order_item_stock_picks_global_stock_id_fkey" FOREIGN KEY ("global_stock_id") REFERENCES "public"."global_stocks"("id") ON DELETE SET NULL;
+    ADD CONSTRAINT "shop_order_item_stock_picks_global_stock_id_fkey" FOREIGN KEY ("global_stock_id") REFERENCES "public"."global_stocks"("id") ON DELETE CASCADE;
 
 
 ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
-    ADD CONSTRAINT "shop_order_item_stock_picks_shipment_item_id_fkey" FOREIGN KEY ("shipment_item_id") REFERENCES "public"."global_shipment_items"("id");
+    ADD CONSTRAINT "shop_order_item_stock_picks_shipment_item_id_fkey" FOREIGN KEY ("shipment_item_id") REFERENCES "public"."global_shipment_items"("id") ON DELETE CASCADE;
 
 
 ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
-    ADD CONSTRAINT "shop_order_item_stock_picks_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."global_shipments"("id");
+    ADD CONSTRAINT "shop_order_item_stock_picks_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."global_shipments"("id") ON DELETE CASCADE;
 
 
 ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
@@ -907,6 +945,18 @@ ALTER TABLE ONLY "public"."shop_product_listings"
 
 ALTER TABLE ONLY "public"."shop_product_listings"
     ADD CONSTRAINT "shop_product_listings_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."shop_listing_group_hides"
+    ADD CONSTRAINT "shop_listing_group_hides_shop_id_fkey" FOREIGN KEY ("shop_id") REFERENCES "public"."shops"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."shop_listing_group_hides"
+    ADD CONSTRAINT "shop_listing_group_hides_listing_id_fkey" FOREIGN KEY ("listing_id") REFERENCES "public"."shop_product_listings"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."shop_listing_group_hides"
+    ADD CONSTRAINT "shop_listing_group_hides_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
 
 
 ALTER TABLE ONLY "public"."shop_product_offers"

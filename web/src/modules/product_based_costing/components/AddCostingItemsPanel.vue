@@ -263,7 +263,7 @@
     </div>
 
     <FilterSidebar v-model="filterDrawerOpen" :title="$t('product_based_costing.filters')" :z-index="7000">
-      <div class="q-gutter-y-md q-pa-sm">
+      <div class="column q-gutter-y-md">
         <q-select
           v-model="draftVendorId"
           :options="vendorOptions"
@@ -304,7 +304,10 @@
           @filter="filterCategories"
         />
 
-        <div class="row justify-end q-gutter-x-sm q-mt-md">
+      </div>
+
+      <template #footer>
+        <div class="row justify-end q-gutter-x-sm">
           <q-btn
             flat
             no-caps
@@ -320,7 +323,7 @@
             @click="onApplyFilters"
           />
         </div>
-      </div>
+      </template>
     </FilterSidebar>
   </div>
 </template>
