@@ -16,6 +16,7 @@
       >
         <q-tab name="delivered_costing" label="1. Delivered Costing" />
         <q-tab name="courier_remittance" label="2. Courier Remittance" />
+        <q-tab name="middleman_payout" label="3. Dropship shop profit" />
         <q-tab name="all" label="All Delivered Orders" />
       </q-tabs>
     </q-card-section>
@@ -120,12 +121,14 @@ const columns = [
 function getStepColor(step: string) {
   if (step === 'delivered_costing') return 'orange';
   if (step === 'courier_remittance') return 'primary';
+  if (step === 'middleman_payout') return 'deep-purple';
   return 'positive';
 }
 
 function getStepLabel(step: string) {
   if (step === 'delivered_costing') return '1. Costing Needed';
   if (step === 'courier_remittance') return '2. Remittance Needed';
+  if (step === 'middleman_payout') return '3. Dropship shop profit';
   return 'Completed';
 }
 </script>

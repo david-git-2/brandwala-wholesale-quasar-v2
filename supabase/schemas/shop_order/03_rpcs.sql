@@ -533,6 +533,10 @@ begin
     delete from public.bills where id = v_order.global_invoice_id;
   end if;
 
+  if p_target_status = 'processing'::public.shop_order_status then
+    perform public.apply_shop_auto_gift_items(p_order_id);
+  end if;
+
   return jsonb_build_object('success', true, 'new_status', p_target_status);
 end;
 $$;
@@ -651,11 +655,15 @@ begin
   for r in
     select o.id
     from public.shop_orders o
-    where o.tenant_id = p_tenant_id
-      and o.billing_profile_id = p_billing_profile_id
+    where o.billing_profile_id = p_billing_profile_id
       and o.shop_type_snapshot = 'dropship'
       and o.global_invoice_id is not null
       and coalesce(o.payout_settlement_status, 'unpaid') in ('unpaid', 'partial')
+      and (
+        o.tenant_id = p_tenant_id
+        or o.parent_tenant_id = v_parent_tenant_id
+        or o.tenant_id = v_parent_tenant_id
+      )
     order by o.created_at asc, o.id asc
   loop
     exit when v_remaining <= 0;
@@ -4759,7 +4767,15 @@ begin
         'fulfillment_resolved', (
           coalesce(soi.is_fulfillment_unavailable, false)
           or coalesce(soi.confirmed_quantity, 0) > 0
+          or (coalesce(soi.is_gift, false) and soi.gift_source = 'customer_stock' and coalesce(soi.confirmed_quantity, 0) >= soi.quantity)
+          or (coalesce(soi.is_gift, false) and soi.gift_source = 'stock')
         ),
+        'is_gift', coalesce(soi.is_gift, false),
+        'gift_source', soi.gift_source,
+        'gift_cost_amount', coalesce(soi.gift_cost_amount, 0),
+        'gift_cost_charged_to', soi.gift_cost_charged_to,
+        'gift_added_by', soi.gift_added_by,
+        'shop_customer_stock_id', soi.shop_customer_stock_id,
         'sku', p.product_code,
         'barcode', p.barcode,
         'brand', p.brand,
@@ -4784,7 +4800,8 @@ begin
   )
   into v_items_resell_total
   from public.shop_order_items soi
-  where soi.order_id = v_order.id;
+  where soi.order_id = v_order.id
+    and not coalesce(soi.is_gift, false);
 
   v_recipient_charge_total :=
     case when not coalesce(v_order.deduct_delivery_from_margin, false)
@@ -4802,6 +4819,15 @@ begin
   select coalesce(bool_and(
     coalesce(soi.is_fulfillment_unavailable, false)
     or coalesce(soi.confirmed_quantity, 0) > 0
+    or (
+      coalesce(soi.is_gift, false)
+      and soi.gift_source = 'customer_stock'
+      and coalesce(soi.confirmed_quantity, 0) >= soi.quantity
+    )
+    or (
+      coalesce(soi.is_gift, false)
+      and soi.gift_source = 'stock'
+    )
   ), true)
   into v_all_lines_resolved
   from public.shop_order_items soi
@@ -4826,57 +4852,62 @@ begin
 
   return jsonb_build_object(
     'success', true,
-    'order', jsonb_build_object(
-      'id', v_order.id,
-      'tenant_id', v_order.tenant_id,
-      'shop_id', v_order.shop_id,
-      'shop_name', v_shop_name,
-      'customer_group_id', v_order.customer_group_id,
-      'customer_group_name', v_customer_group_name,
-      'cart_id', v_order.cart_id,
-      'order_no', v_order.order_no,
-      'name', v_order.name,
-      'shop_type_snapshot', v_order.shop_type_snapshot,
-      'order_mode_snapshot', v_order.order_mode_snapshot,
-      'is_negotiable_snapshot', v_order.is_negotiable_snapshot,
-      'status', v_order.status,
-      'negotiate_round', v_order.negotiate_round,
-      'placed_at', v_order.placed_at,
-      'fulfilled_at', v_order.fulfilled_at,
-      'global_invoice_id', v_order.global_invoice_id,
-      'created_by_email', v_order.created_by_email,
-      'created_at', v_order.created_at,
-      'updated_at', v_order.updated_at,
-      'shop_sell_currency_symbol', v_sell_symbol,
-      'recipient_name', v_order.recipient_name,
-      'recipient_phone', v_order.recipient_phone,
-      'recipient_phone_secondary', v_order.recipient_phone_secondary,
-      'shipping_address', v_order.shipping_address,
-      'shipping_thana', v_order.shipping_thana,
-      'shipping_district', v_order.shipping_district,
-      'shipping_post_code', null,
-      'recipient_profile_id', v_order.recipient_profile_id,
-      'billing_profile_id', v_order.billing_profile_id,
-      'delivery_instructions', v_order.delivery_instructions,
-      'is_prepaid_snapshot', v_order.is_prepaid_snapshot,
-      'cod_charge_amount', v_order.cod_charge_amount,
-      'delivery_charge_amount', v_order.delivery_charge_amount,
-      'print_charge_amount', v_order.print_charge_amount,
-      'packing_charge_amount', v_order.packing_charge_amount,
-      'discount_amount', v_order.discount_amount,
-      'deduct_cod_from_margin', v_order.deduct_cod_from_margin,
-      'deduct_delivery_from_margin', v_order.deduct_delivery_from_margin,
-      'deduct_print_from_margin', v_order.deduct_print_from_margin,
-      'deduct_packing_from_margin', v_order.deduct_packing_from_margin,
-      'cod_collect_amount', coalesce(v_order.cod_collect_amount, v_recipient_grand_total),
-      'item_count', jsonb_array_length(v_items),
-      'delivery_zone', v_order.delivery_zone,
-      'courier_name', v_order.courier_name,
-      'courier_awb_number', v_order.courier_awb_number,
-      'tracking_url', v_order.tracking_url,
-      'recipient_call_attempt_count', coalesce(v_order.recipient_call_attempt_count, 0),
-      'recipient_verified_at', v_order.recipient_verified_at,
-      'cancel_reason', v_order.cancel_reason
+    'order', (
+      jsonb_build_object(
+        'id', v_order.id,
+        'tenant_id', v_order.tenant_id,
+        'shop_id', v_order.shop_id,
+        'shop_name', v_shop_name,
+        'customer_group_id', v_order.customer_group_id,
+        'customer_group_name', v_customer_group_name,
+        'cart_id', v_order.cart_id,
+        'order_no', v_order.order_no,
+        'name', v_order.name,
+        'shop_type_snapshot', v_order.shop_type_snapshot,
+        'order_mode_snapshot', v_order.order_mode_snapshot,
+        'is_negotiable_snapshot', v_order.is_negotiable_snapshot,
+        'status', v_order.status,
+        'negotiate_round', v_order.negotiate_round,
+        'placed_at', v_order.placed_at,
+        'fulfilled_at', v_order.fulfilled_at,
+        'global_invoice_id', v_order.global_invoice_id,
+        'created_by_email', v_order.created_by_email,
+        'created_at', v_order.created_at,
+        'updated_at', v_order.updated_at,
+        'shop_sell_currency_symbol', v_sell_symbol,
+        'recipient_name', v_order.recipient_name,
+        'recipient_phone', v_order.recipient_phone,
+        'recipient_phone_secondary', v_order.recipient_phone_secondary,
+        'shipping_address', v_order.shipping_address,
+        'shipping_thana', v_order.shipping_thana,
+        'shipping_district', v_order.shipping_district,
+        'shipping_post_code', null,
+        'recipient_profile_id', v_order.recipient_profile_id,
+        'billing_profile_id', v_order.billing_profile_id,
+        'delivery_instructions', v_order.delivery_instructions,
+        'is_prepaid_snapshot', v_order.is_prepaid_snapshot,
+        'cod_charge_amount', v_order.cod_charge_amount,
+        'delivery_charge_amount', v_order.delivery_charge_amount,
+        'print_charge_amount', v_order.print_charge_amount,
+        'packing_charge_amount', v_order.packing_charge_amount,
+        'discount_amount', v_order.discount_amount,
+        'deduct_cod_from_margin', v_order.deduct_cod_from_margin,
+        'deduct_delivery_from_margin', v_order.deduct_delivery_from_margin,
+        'deduct_print_from_margin', v_order.deduct_print_from_margin,
+        'deduct_packing_from_margin', v_order.deduct_packing_from_margin,
+        'cod_collect_amount', coalesce(v_order.cod_collect_amount, v_recipient_grand_total),
+        'item_count', jsonb_array_length(v_items),
+        'delivery_zone', v_order.delivery_zone,
+        'courier_name', v_order.courier_name,
+        'courier_awb_number', v_order.courier_awb_number,
+        'tracking_url', v_order.tracking_url,
+        'recipient_call_attempt_count', coalesce(v_order.recipient_call_attempt_count, 0),
+        'recipient_verified_at', v_order.recipient_verified_at,
+        'cancel_reason', v_order.cancel_reason
+      ) || jsonb_build_object(
+        'auto_gifts_applied_at', v_order.auto_gifts_applied_at,
+        'auto_gifts_apply_result', v_order.auto_gifts_apply_result
+      )
     ),
     'items', v_items,
     'summary', jsonb_build_object(
@@ -4992,11 +5023,11 @@ begin
   -- 4. Active listing with floor price set (minimum_sell_price_amount is not null and > 0)
   select exists (
     select 1
-    from public.shop_product_listings
-    where shop_id = p_shop_id
-      and is_active = true
-      and minimum_sell_price_amount is not null
-      and minimum_sell_price_amount > 0
+    from public.shop_product_listings spl
+    where spl.shop_id = p_shop_id
+      and spl.is_active = true
+      and spl.minimum_sell_price_amount is not null
+      and spl.minimum_sell_price_amount > 0
   )
   into v_has_listing_with_floor;
 
@@ -5091,7 +5122,7 @@ begin
     select
       l.source_id,
       max(case when coalesce(l.metadata->>'purpose', '') in ('delivered_costing', 'courier_cod_receivable') then 1 else 0 end) as has_delivered_costing,
-      max(case when coalesce(l.metadata->>'purpose', '') = 'courier_remittance' then 1 else 0 end) as has_remittance
+      max(case when coalesce(l.metadata->>'purpose', '') in ('courier_remittance', 'tenant_remittance_received') then 1 else 0 end) as has_remittance
     from public.cashbook_entries l
     where l.parent_tenant_id = v_parent_tenant_id
       and l.source_type = 'shop_order'
@@ -5127,20 +5158,29 @@ begin
           and coalesce(
             fo.collection_source,
             fo.invoice_collection_source,
-            case when fo.is_prepaid_snapshot then 'billing_profile' else 'recipient' end
-          ) <> 'billing_profile'
+            case
+              when fo.is_prepaid_snapshot then 'billing_profile'::public.collection_source_type
+              else 'recipient'::public.collection_source_type
+            end
+          ) <> 'billing_profile'::public.collection_source_type
           then 'courier_remittance'
         when coalesce(lf.has_delivered_costing, 0) = 0 and fo.status::text = 'delivered' then 'delivered_costing'
         when fo.status::text = 'delivered'
           or (coalesce(lf.has_remittance, 0) = 0 and fo.status::text <> 'payment_received')
           then 'courier_remittance'
+        when fo.status::text = 'payment_received'
+          and coalesce(fo.payout_settlement_status, 'unpaid') in ('unpaid', 'partial')
+          then 'middleman_payout'
         else 'completed'
       end as "nextStep",
       coalesce(
         fo.collection_source,
         fo.invoice_collection_source,
-        case when fo.is_prepaid_snapshot then 'billing_profile' else null end
-      ) as "collectionSource",
+        case
+          when fo.is_prepaid_snapshot then 'billing_profile'::public.collection_source_type
+          else null::public.collection_source_type
+        end
+      )::text as "collectionSource",
       coalesce(fo.payout_settlement_status, 'unpaid') as "payoutSettlementStatus",
       case
         when fo.global_invoice_id is not null then greatest(coalesce(fo.invoice_total_amount, 0) - coalesce(fo.invoice_paid_amount, 0), 0)
@@ -5168,10 +5208,12 @@ begin
   into v_merchants
   from public.billing_profiles bp
   left join public.cashbook_accounts wa
-    on wa.tenant_id = p_tenant_id
+    on wa.parent_tenant_id = v_parent_tenant_id
    and wa.entity_type = 'customer'
    and wa.entity_id = bp.id
-  where bp.tenant_id = p_tenant_id;
+   and wa.currency_code = 'BDT'
+  where bp.tenant_id = p_tenant_id
+     or bp.tenant_id = v_parent_tenant_id;
 
   return jsonb_build_object(
     'kpis', jsonb_build_object(
@@ -9232,7 +9274,11 @@ begin
     status = 'payment_received'::public.shop_order_status,
     courier_remittance_ref = v_ref,
     courier_bank_trx_id = coalesce(nullif(trim(p_bank_trx_id), ''), courier_bank_trx_id),
-    payout_settlement_status = case when v_remainder > 0 then 'paid' else payout_settlement_status end,
+    payout_settlement_status = case
+      when v_remainder > 0 then 'unpaid'
+      when v_remainder <= 0 then 'paid'
+      else payout_settlement_status
+    end,
     updated_at = now()
   where id = p_order_id;
 
@@ -9435,7 +9481,11 @@ begin
     status = 'payment_received'::public.shop_order_status,
     courier_remittance_ref = v_ref,
     courier_bank_trx_id = coalesce(nullif(trim(p_bank_trx_id), ''), courier_bank_trx_id),
-    payout_settlement_status = case when v_remainder > 0 then 'paid' else payout_settlement_status end,
+    payout_settlement_status = case
+      when v_remainder > 0 then 'unpaid'
+      when v_remainder <= 0 then 'paid'
+      else payout_settlement_status
+    end,
     updated_at = now()
   where id = p_order_id;
 
@@ -9476,6 +9526,8 @@ declare
   v_has_settlement boolean := false;
   v_invoice jsonb;
   v_is_returned boolean := false;
+  v_gift_cost_merchant_total numeric(15,2) := 0;
+  v_gift_cost_tenant_total numeric(15,2) := 0;
 begin
   if not public.is_tenant_staff(p_tenant_id) then
     raise exception 'access denied';
@@ -9489,6 +9541,23 @@ begin
   if v_order.id is null then
     raise exception 'order not found';
   end if;
+
+  select
+    coalesce(sum(soi.gift_cost_amount) filter (
+      where coalesce(soi.is_gift, false)
+        and soi.gift_source = 'stock'
+        and soi.gift_cost_charged_to = 'reseller'
+        and coalesce(soi.gift_cost_amount, 0) > 0
+    ), 0),
+    coalesce(sum(soi.gift_cost_amount) filter (
+      where coalesce(soi.is_gift, false)
+        and soi.gift_source = 'stock'
+        and soi.gift_cost_charged_to = 'tenant'
+        and coalesce(soi.gift_cost_amount, 0) > 0
+    ), 0)
+  into v_gift_cost_merchant_total, v_gift_cost_tenant_total
+  from public.shop_order_items soi
+  where soi.order_id = p_order_id;
 
   v_is_returned := v_order.status = 'returned'::public.shop_order_status;
 
@@ -9590,7 +9659,9 @@ begin
       'company_profit', v_settlement.company_profit,
       'courier_cod_booked_at', v_settlement.courier_cod_booked_at,
       'remittance_at', v_settlement.remittance_at,
-      'merchant_payout_at', v_settlement.merchant_payout_at
+      'merchant_payout_at', v_settlement.merchant_payout_at,
+      'gift_cost_merchant_total', v_gift_cost_merchant_total,
+      'gift_cost_tenant_total', v_gift_cost_tenant_total
     ),
     'invoice', v_invoice,
     'step_state', jsonb_build_object(
@@ -12922,5 +12993,74 @@ begin
   perform public.recompute_dropship_cod_collect_amount(v_order.id);
 
   return jsonb_build_object('success', true);
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- update_dropship_order_gift_item_cost
+-- ---------------------------------------------------------------------------
+create or replace function public.update_dropship_order_gift_item_cost(
+  p_order_item_id bigint,
+  p_gift_cost_amount numeric,
+  p_gift_cost_charged_to text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_item public.shop_order_items%rowtype;
+  v_order public.shop_orders%rowtype;
+  v_cost numeric(12,4);
+  v_charged_to text;
+begin
+  select soi.* into v_item
+  from public.shop_order_items soi
+  where soi.id = p_order_item_id
+  for update;
+
+  if v_item.id is null then
+    return jsonb_build_object('success', false, 'error', 'order item not found');
+  end if;
+
+  if coalesce(v_item.is_gift, false) is not true or v_item.gift_source is distinct from 'stock' then
+    return jsonb_build_object('success', false, 'error', 'not a warehouse gift line');
+  end if;
+
+  select * into v_order from public.shop_orders where id = v_item.order_id for update;
+  if v_order.id is null then
+    return jsonb_build_object('success', false, 'error', 'order not found');
+  end if;
+
+  if v_order.status <> 'processing'::public.shop_order_status then
+    return jsonb_build_object('success', false, 'error', 'gift cost can only be edited while processing');
+  end if;
+
+  if not public.is_tenant_staff(v_order.tenant_id) then
+    return jsonb_build_object('success', false, 'error', 'access denied');
+  end if;
+
+  v_cost := coalesce(p_gift_cost_amount, 0);
+  v_charged_to := p_gift_cost_charged_to;
+
+  if v_cost > 0 and v_charged_to is null then
+    return jsonb_build_object('success', false, 'error', 'gift_cost_charged_to required when cost > 0');
+  end if;
+
+  if v_cost <= 0 then
+    v_charged_to := null;
+  elsif v_charged_to not in ('reseller', 'tenant') then
+    return jsonb_build_object('success', false, 'error', 'invalid gift_cost_charged_to');
+  end if;
+
+  update public.shop_order_items
+  set
+    gift_cost_amount = v_cost,
+    gift_cost_charged_to = v_charged_to,
+    updated_at = now()
+  where id = v_item.id;
+
+  return jsonb_build_object('success', true, 'order_item_id', v_item.id);
 end;
 $$;

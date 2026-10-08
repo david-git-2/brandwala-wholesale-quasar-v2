@@ -41,6 +41,50 @@
           </div>
         </div>
 
+        <template v-if="canDispenseShopPayout">
+          <q-separator class="q-mt-md" />
+          <q-banner dense rounded class="bg-blue-1 text-blue-10 q-mt-md">
+            Remittance profit is on the shop cashbook. Pay it out here — do not allocate to another bill.
+          </q-banner>
+          <q-input
+            v-model.number="shopPayoutAmount"
+            type="number"
+            outlined
+            dense
+            label="Pay out to shop (BDT)"
+            class="q-mt-sm"
+          />
+          <q-select
+            v-model="shopPayoutMethod"
+            :options="shopPayoutMethodOptions"
+            emit-value
+            map-options
+            outlined
+            dense
+            label="Payout method"
+            class="q-mt-sm"
+          />
+          <q-input
+            v-model="shopPayoutNotes"
+            outlined
+            dense
+            label="Reference notes"
+            type="textarea"
+            autogrow
+            class="q-mt-sm"
+          />
+          <q-btn
+            unelevated
+            color="primary"
+            no-caps
+            class="full-width q-mt-md"
+            label="Pay out to shop"
+            :loading="shopPayoutSubmitting"
+            :disable="!canSubmitShopPayout"
+            @click="submitShopPayout"
+          />
+        </template>
+
         <template v-if="canAllocateLater">
           <q-separator class="q-mt-md" />
           <div class="row items-center justify-between q-mt-md">
@@ -134,6 +178,9 @@ import { paysQueryKeys } from '../services/paysQueryKeys';
 import { useVoidPayMutation } from '../composables/useVoidPayMutation';
 import { useAllocatePayMutation } from '../composables/useAllocatePayMutation';
 import { fifoFillByOldest } from '../utils/fifoBillAlloc';
+import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import { useQueryClient } from '@tanstack/vue-query';
+import { supabase } from 'src/boot/supabase';
 
 type BillAlloc = {
   id: number;
@@ -150,6 +197,19 @@ const route = useRoute();
 const router = useRouter();
 const voidMutation = useVoidPayMutation();
 const allocateMutation = useAllocatePayMutation();
+const queryClient = useQueryClient();
+
+const shopPayoutAmount = ref<number | null>(null);
+const shopPayoutMethod = ref('bank_transfer');
+const shopPayoutNotes = ref('');
+const shopPayoutSubmitting = ref(false);
+const shopOrderPayoutSettled = ref(false);
+
+const shopPayoutMethodOptions = [
+  { label: 'Bank transfer', value: 'bank_transfer' },
+  { label: 'bKash', value: 'bkash' },
+  { label: 'Cash', value: 'cash' },
+];
 
 const payId = computed(() => {
   const raw = route.params.payId;
@@ -167,6 +227,48 @@ const detailQuery = useQuery({
 
 const pay = computed(() => detailQuery.data.value);
 
+const canDispenseShopPayout = computed(
+  () =>
+    !!pay.value &&
+    !pay.value.voided_at &&
+    pay.value.source === 'courier_remittance' &&
+    pay.value.profile_id != null &&
+    pay.value.unallocated_amount > 0 &&
+    !shopOrderPayoutSettled.value,
+);
+
+watch(
+  () => pay.value?.shop_order_id,
+  async (orderId) => {
+    shopOrderPayoutSettled.value = false;
+    if (!orderId) return;
+    const { data } = await supabase
+      .from('shop_orders')
+      .select('payout_settlement_status')
+      .eq('id', orderId)
+      .maybeSingle();
+    shopOrderPayoutSettled.value = data?.payout_settlement_status === 'paid';
+  },
+  { immediate: true },
+);
+
+const canSubmitShopPayout = computed(
+  () =>
+    canDispenseShopPayout.value &&
+    (shopPayoutAmount.value ?? 0) > 0 &&
+    (shopPayoutAmount.value ?? 0) <= (pay.value?.unallocated_amount ?? 0),
+);
+
+watch(
+  () => pay.value?.unallocated_amount,
+  (amt) => {
+    if (amt != null && amt > 0 && canDispenseShopPayout.value) {
+      shopPayoutAmount.value = amt;
+    }
+  },
+  { immediate: true },
+);
+
 const canAllocateLater = computed(
   () =>
     !!pay.value &&
@@ -175,6 +277,28 @@ const canAllocateLater = computed(
     (pay.value.source === 'customer_cash' || pay.value.source === 'bank') &&
     pay.value.profile_id != null,
 );
+
+const submitShopPayout = async () => {
+  if (!pay.value?.profile_id || !canSubmitShopPayout.value) return;
+  shopPayoutSubmitting.value = true;
+  try {
+    await paysRepository.dispenseMiddlemanPayout({
+      tenant_id: pay.value.tenant_id,
+      billing_profile_id: pay.value.profile_id,
+      amount: Number(shopPayoutAmount.value),
+      payout_method: shopPayoutMethod.value,
+      reference_notes: shopPayoutNotes.value || null,
+    });
+    showSuccessNotification('Shop payout recorded.');
+    shopOrderPayoutSettled.value = true;
+    void queryClient.invalidateQueries({ queryKey: paysQueryKeys.detail(pay.value.id) });
+    void queryClient.invalidateQueries({ queryKey: paysQueryKeys.root });
+  } catch (e) {
+    showErrorNotification(e instanceof Error ? e.message : 'Shop payout failed.');
+  } finally {
+    shopPayoutSubmitting.value = false;
+  }
+};
 
 const openBills = ref<BillAlloc[]>([]);
 const loadingBills = ref(false);

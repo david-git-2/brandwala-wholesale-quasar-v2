@@ -242,6 +242,10 @@
             </template>
           </q-tab-panel>
 
+          <q-tab-panel v-if="showGiftsTab" name="gifts" class="q-pa-none q-pt-md">
+            <ShopDropshipGiftsSettingsCard v-if="shop" :shop="shop" />
+          </q-tab-panel>
+
           <q-tab-panel v-if="showStockTab" name="stock" class="q-pa-none q-pt-md">
             <ShopWarehouseStockPage
               v-if="activeTab === 'stock' && shop"
@@ -292,6 +296,7 @@ import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import ShopSettingsForm from 'src/modules/shop_order/components/ShopSettingsForm.vue';
 import ShopSettingsSkeleton from 'src/modules/shop_order/components/ShopSettingsSkeleton.vue';
 import DropshipShopReadinessCard from 'src/modules/shop_order/components/DropshipShopReadinessCard.vue';
+import ShopDropshipGiftsSettingsCard from 'src/modules/shop_order/components/ShopDropshipGiftsSettingsCard.vue';
 import StorefrontProductGroupCard from 'src/modules/shop_order/components/StorefrontProductGroupCard.vue';
 import ShopStorefrontAddProductDrawer from 'src/modules/shop_order/components/ShopStorefrontAddProductDrawer.vue';
 import ShopStorefrontCalculateSellPriceDrawer from 'src/modules/shop_order/components/ShopStorefrontCalculateSellPriceDrawer.vue';
@@ -328,7 +333,7 @@ const ShopCatalogStorefrontPage = defineAsyncComponent(
   () => import('src/modules/shop_order/pages/ShopCatalogStorefrontPage.vue'),
 );
 
-type ShopDetailTab = 'setup' | 'access' | 'storefront' | 'stock';
+type ShopDetailTab = 'setup' | 'access' | 'storefront' | 'stock' | 'gifts';
 
 const route = useRoute();
 const router = useRouter();
@@ -588,6 +593,7 @@ const showStorefrontTab = computed(
 const showStockTab = computed(
   () => shop.value?.shop_type === 'fixed_price' || shop.value?.shop_type === 'dropship',
 );
+const showGiftsTab = computed(() => shop.value?.shop_type === 'dropship');
 
 const shopTabs = computed(() => {
   const tabs: Array<{ name: ShopDetailTab; label: string; icon: string }> = [
@@ -606,6 +612,9 @@ const shopTabs = computed(() => {
   if (showStockTab.value) {
     tabs.push({ name: 'stock', label: t('shop_admin.shop_tab_stock'), icon: 'ph ph-warehouse' });
   }
+  if (showGiftsTab.value) {
+    tabs.push({ name: 'gifts', label: 'Gifts', icon: 'ph ph-gift' });
+  }
   return tabs;
 });
 
@@ -614,6 +623,7 @@ const isValidTab = (tab: string): tab is ShopDetailTab => {
   if (tab === 'access') return showAccessTab.value;
   if (tab === 'storefront') return showStorefrontTab.value;
   if (tab === 'stock') return showStockTab.value;
+  if (tab === 'gifts') return showGiftsTab.value;
   return false;
 };
 

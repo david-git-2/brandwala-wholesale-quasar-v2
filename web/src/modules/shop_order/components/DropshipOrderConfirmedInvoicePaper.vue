@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { copyToClipboard } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
@@ -15,6 +15,7 @@ import type {
   DropshipInvoiceDeliveredQuantitiesState,
   DropshipInvoicePickupState,
 } from '../utils/dropshipInvoiceFulfillment';
+import { roundUpToNearest5 } from '../utils/catalogPricingUtils';
 
 const props = withDefaults(
   defineProps<{
@@ -56,6 +57,13 @@ const emit = defineEmits<{
   (e: 'mark-unavailable', itemId: number): void;
   (e: 'clear-unavailable', itemId: number): void;
   (e: 'remove-pick', pickId: number): void;
+  (e: 'add-gift'): void;
+  (e: 'remove-gift', itemId: number): void;
+  (e: 'update-gift-cost', payload: {
+    itemId: number;
+    amount: number;
+    chargedTo: 'reseller' | 'tenant';
+  }): void;
 }>();
 
 type ItemPricing = {
@@ -80,18 +88,26 @@ const resolveItemPricing = (item: ShopOrderItem): ItemPricing => ({
 
 const itemRows = computed(() =>
   props.orderItems.map((item) => {
-    const pricing = resolveItemPricing(item);
     const orderedQuantity = item.quantity;
     const deliveredQuantity = props.showStockPickActions
       ? item.is_fulfillment_unavailable
         ? 0
         : (item.confirmed_quantity ?? 0)
       : (deliveredQuantities.value?.[item.id] ?? item.confirmed_quantity ?? 0);
+    const isGift = item.is_gift === true;
+    const pricing = isGift
+      ? { cost: 0, sell: 0, resell: 0 }
+      : resolveItemPricing(item);
     return {
       id: item.id,
       productId: item.product_id,
       imageUrl: item.image_url,
       name: item.name,
+      isGift,
+      giftSource: item.gift_source,
+      giftCostAmount: item.gift_cost_amount ?? 0,
+      giftChargedTo: item.gift_cost_charged_to,
+      giftAddedBy: item.gift_added_by,
       code: item.sku?.trim() || null,
       barcode: item.barcode?.trim() || null,
       stockId: item.global_stock_id,
@@ -197,6 +213,104 @@ const summaryChargeRows = computed(() =>
     includeZeroAmounts: isEditableSummary.value,
   }),
 );
+
+const stockGiftItems = computed(() =>
+  props.orderItems.filter((item) => item.is_gift && item.gift_source === 'stock'),
+);
+
+const unitLandedCost = (item: ShopOrderItem) =>
+  Number(item.cost_price_amount ?? item.unit_list_price_amount ?? 0);
+
+const suggestedGiftLineCost = (item: ShopOrderItem) =>
+  roundUpToNearest5(unitLandedCost(item) * Number(item.quantity ?? 0));
+
+type GiftCostDraft = { amount: number; chargedTo: 'reseller' | 'tenant' };
+
+const giftCostDraft = ref<Record<number, GiftCostDraft>>({});
+const giftCostSaveTimers: Record<number, ReturnType<typeof setTimeout>> = {};
+
+const scheduleGiftCostSave = (itemId: number) => {
+  if (!isEditableSummary.value) return;
+  const draft = giftCostDraft.value[itemId];
+  if (!draft) return;
+  if (giftCostSaveTimers[itemId]) clearTimeout(giftCostSaveTimers[itemId]);
+  giftCostSaveTimers[itemId] = setTimeout(() => {
+    delete giftCostSaveTimers[itemId];
+    const amount = roundUpToNearest5(Math.max(0, Number(draft.amount) || 0));
+    const chargedTo = amount > 0 ? draft.chargedTo : 'reseller';
+    emit('update-gift-cost', { itemId, amount, chargedTo });
+  }, 600);
+};
+
+watch(
+  stockGiftItems,
+  (items) => {
+    const next: Record<number, GiftCostDraft> = { ...giftCostDraft.value };
+    const activeIds = new Set(items.map((item) => item.id));
+    for (const id of Object.keys(next)) {
+      if (!activeIds.has(Number(id))) delete next[Number(id)];
+    }
+    for (const item of items) {
+      const stored = Number(item.gift_cost_amount ?? 0);
+      const suggested = suggestedGiftLineCost(item);
+      const existing = next[item.id];
+      if (!existing) {
+        next[item.id] = {
+          amount: stored > 0 ? stored : suggested,
+          chargedTo: item.gift_cost_charged_to ?? 'reseller',
+        };
+        continue;
+      }
+      if (stored > 0 && existing.amount !== stored) {
+        next[item.id] = {
+          ...existing,
+          amount: stored,
+          chargedTo: item.gift_cost_charged_to ?? existing.chargedTo,
+        };
+      }
+    }
+    giftCostDraft.value = next;
+
+    if (props.editableSummary && !props.readonly) {
+      for (const item of items) {
+        const stored = Number(item.gift_cost_amount ?? 0);
+        const suggested = suggestedGiftLineCost(item);
+        if (stored <= 0 && suggested > 0 && next[item.id]) {
+          scheduleGiftCostSave(item.id);
+        }
+      }
+    }
+  },
+  { immediate: true },
+);
+
+const updateGiftCostAmount = (itemId: number, value: string | number | null) => {
+  const parsed = Number(value);
+  const amount = roundUpToNearest5(Number.isFinite(parsed) ? Math.max(0, parsed) : 0);
+  const prev = giftCostDraft.value[itemId];
+  if (!prev) return;
+  giftCostDraft.value = {
+    ...giftCostDraft.value,
+    [itemId]: { ...prev, amount },
+  };
+  scheduleGiftCostSave(itemId);
+};
+
+const updateGiftCostChargedTo = (itemId: number, chargedTo: 'reseller' | 'tenant') => {
+  const prev = giftCostDraft.value[itemId];
+  if (!prev) return;
+  giftCostDraft.value = {
+    ...giftCostDraft.value,
+    [itemId]: { ...prev, chargedTo },
+  };
+  scheduleGiftCostSave(itemId);
+};
+
+onBeforeUnmount(() => {
+  for (const timer of Object.values(giftCostSaveTimers)) {
+    clearTimeout(timer);
+  }
+});
 
 const recipientGrandTotal = computed(() =>
   computeRecipientGrandTotal(totals.value.resell, summaryState.value),
@@ -483,17 +597,29 @@ const copyFullCourierSnippet = () => {
               <q-icon name="ph ph-package" size="14px" />
               <span>Ordered Items ({{ totals.orderedQty }})</span>
             </div>
+            <div class="row items-center q-gutter-x-sm">
+            <q-btn
+              v-if="showStockPickActions && !readonly"
+              flat
+              no-caps
+              size="sm"
+              color="primary"
+              icon="ph ph-gift"
+              label="Add gift item"
+              class="dropship-invoice-paper__toolbar-btn"
+              @click="emit('add-gift')"
+            />
             <q-btn
               flat
-              dense
               no-caps
-              size="xs"
+              size="sm"
               :color="showInternalFinancials ? 'primary' : 'grey-7'"
               :icon="showInternalFinancials ? 'ph ph-eye-slash' : 'ph ph-eye'"
               :label="showInternalFinancials ? 'Hide Cost Columns' : 'Show Cost / Margins'"
-              class="text-weight-medium"
+              class="dropship-invoice-paper__toolbar-btn text-weight-medium"
               @click="showInternalFinancials = !showInternalFinancials"
             />
+            </div>
           </div>
 
           <div class="dropship-invoice-paper__table-wrap">
@@ -527,6 +653,19 @@ const copyFullCourierSnippet = () => {
                   <td class="col-item">
                     <div class="dropship-invoice-paper__item-name row items-center q-gutter-x-xs">
                       <span>{{ row.name }}</span>
+                      <q-badge v-if="row.isGift" color="purple-7" label="Gift" />
+                      <q-badge
+                        v-if="row.isGift && row.giftSource === 'customer_stock'"
+                        outline
+                        color="purple-7"
+                        label="Customer stock"
+                      />
+                      <q-badge
+                        v-if="row.isGift && row.giftSource === 'stock' && row.giftCostAmount > 0"
+                        outline
+                        color="grey-8"
+                        :label="`Cost ${formatMoney(row.giftCostAmount)} → ${row.giftChargedTo}`"
+                      />
                       <q-badge v-if="row.isUnavailable" color="negative" label="Unavailable" />
                       <q-badge
                         v-else-if="props.showStockPickActions && row.fulfillmentResolved && row.deliveredQuantity === row.orderedQuantity"
@@ -601,7 +740,20 @@ const copyFullCourierSnippet = () => {
                     {{ formatMoney(row.lineResell) }}
                   </td>
                   <td v-if="showStockPickActions && !readonly" class="col-actions text-right">
-                    <div v-if="!row.isUnavailable" class="row items-center justify-end no-wrap q-gutter-xs">
+                    <div v-if="row.isGift" class="row items-center justify-end no-wrap q-gutter-xs">
+                      <q-btn
+                        flat
+                        dense
+                        round
+                        color="negative"
+                        icon="ph ph-trash"
+                        aria-label="Remove gift"
+                        @click="emit('remove-gift', row.id)"
+                      >
+                        <q-tooltip>Remove gift</q-tooltip>
+                      </q-btn>
+                    </div>
+                    <div v-else-if="!row.isUnavailable" class="row items-center justify-end no-wrap q-gutter-xs">
                       <q-btn
                         unelevated
                         dense
@@ -818,6 +970,57 @@ const copyFullCourierSnippet = () => {
           </div>
 
           <div
+            v-for="gift in stockGiftItems"
+            :key="`gift-cost-${gift.id}`"
+            class="dropship-invoice-paper__summary-row dropship-invoice-paper__internal-col"
+            :class="{ 'dropship-invoice-paper__summary-row--editable': isEditableSummary }"
+          >
+            <div class="dropship-invoice-paper__summary-label">
+              <span>Gift cost</span>
+              <span class="text-caption text-grey-6 gift-cost-product-name">{{ gift.name }}</span>
+              <template v-if="isEditableSummary">
+                <q-btn-toggle
+                  :model-value="giftCostDraft[gift.id]?.chargedTo === 'tenant'"
+                  dense
+                  no-caps
+                  unelevated
+                  toggle-color="primary"
+                  color="grey-3"
+                  text-color="grey-8"
+                  class="dropship-invoice-paper__payer-toggle"
+                  :options="[
+                    { label: 'Merchant', value: false },
+                    { label: 'Tenant', value: true },
+                  ]"
+                  @update:model-value="(isTenant) => updateGiftCostChargedTo(gift.id, isTenant ? 'tenant' : 'reseller')"
+                />
+              </template>
+              <span
+                v-else
+                class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--merchant"
+              >
+                {{ gift.gift_cost_charged_to === 'tenant' ? 'Tenant pays' : 'Merchant pays' }}
+              </span>
+            </div>
+            <q-input
+              v-if="isEditableSummary"
+              :model-value="giftCostDraft[gift.id]?.amount ?? 0"
+              type="number"
+              min="0"
+              step="0.01"
+              dense
+              outlined
+              hide-bottom-space
+              class="dropship-invoice-paper__amount-input"
+              input-class="text-right"
+              @update:model-value="(val) => updateGiftCostAmount(gift.id, val)"
+            />
+            <span v-else class="text-weight-medium">
+              {{ formatMoney(gift.gift_cost_amount ?? suggestedGiftLineCost(gift)) }}
+            </span>
+          </div>
+
+          <div
             v-if="isEditableSummary || summaryState.discount_amount > 0"
             class="dropship-invoice-paper__summary-row"
             :class="{ 'dropship-invoice-paper__summary-row--editable': isEditableSummary }"
@@ -1015,5 +1218,13 @@ const copyFullCourierSnippet = () => {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.gift-cost-product-name {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+  max-width: 100%;
 }
 </style>

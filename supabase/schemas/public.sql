@@ -443,6 +443,10 @@ begin
     return;
   end if;
 
+  if coalesce(v_item.is_gift, false) and v_item.gift_source = 'customer_stock' then
+    return;
+  end if;
+
   if coalesce(v_item.is_fulfillment_unavailable, false) then
     update public.shop_order_items
     set
@@ -26999,6 +27003,15 @@ begin
       and soi.quantity > 0
       and coalesce(soi.is_fulfillment_unavailable, false) = false
       and coalesce(soi.confirmed_quantity, 0) <= 0
+      and not (
+        coalesce(soi.is_gift, false)
+        and soi.gift_source = 'stock'
+      )
+      and not (
+        coalesce(soi.is_gift, false)
+        and soi.gift_source = 'customer_stock'
+        and coalesce(soi.confirmed_quantity, 0) >= soi.quantity
+      )
       and not exists (
         select 1
         from public.shop_order_item_stock_picks sp

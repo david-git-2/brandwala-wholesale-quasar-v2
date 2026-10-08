@@ -576,6 +576,31 @@ export interface ShopOrder {
   recipient_call_attempt_count?: number;
   recipient_verified_at?: string | null;
   cancel_reason?: string | null;
+  auto_gifts_applied_at?: string | null;
+  auto_gifts_apply_result?: { skipped?: Array<{ product_id?: number; error?: string }> } | null;
+}
+
+export interface ShopCustomerStockRow {
+  id: number;
+  shop_id: number;
+  customer_group_id: number | null;
+  product_id: number | null;
+  product_name: string;
+  product_code: string | null;
+  item_label: string | null;
+  quantity_on_hand: number;
+  updated_at: string;
+}
+
+export interface ShopAutoGiftItemRow {
+  id: number;
+  shop_id: number;
+  product_id: number;
+  quantity: number;
+  gift_source: 'stock' | 'customer_stock';
+  gift_cost_amount: number;
+  gift_cost_charged_to: 'reseller' | 'tenant' | null;
+  is_active: boolean;
 }
 
 export interface ShopOrderItemStockPick {
@@ -632,6 +657,12 @@ export interface ShopOrderItem {
   customer_counter_at?: string | null;
   final_offer_at?: string | null;
   returned_quantity: number;
+  is_gift?: boolean;
+  gift_source?: 'stock' | 'customer_stock' | null;
+  gift_cost_amount?: number | null;
+  gift_cost_charged_to?: 'reseller' | 'tenant' | null;
+  gift_added_by?: 'manual' | 'auto' | null;
+  shop_customer_stock_id?: number | null;
   procurement_pulled: boolean;
   sku?: string | null;
   brand?: string | null;

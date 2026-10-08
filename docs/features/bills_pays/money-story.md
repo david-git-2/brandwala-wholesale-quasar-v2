@@ -46,9 +46,11 @@ Shop **Glamour Closet** **1,500**. Karim COD **2,200**. Courier fee **80**. Bank
 | PAY | Remittance 2,120 |
 | ALLOC | 1,500 on merchant bill |
 | CASHBOOK | Shop leftover **+620**; tenant +2,120; courier down |
-| PAY out later | Shop 620. Cashbook only. No ALLOC |
+| PAY out later | Shop 620. Cashbook only. No ALLOC. Remittance does not mark payout paid until dispense. |
 
 **Month both deals:** sales **3,000** · cash in **3,620** · we-owe shop **620**.
+
+**Dropship gifts:** recipient COD unchanged. Warehouse gift cost charged to **reseller** increases merchant bill at ship (like margin deductions). Charged to **tenant** does not change merchant bill. Customer-stock gifts have no money line.
 
 ---
 

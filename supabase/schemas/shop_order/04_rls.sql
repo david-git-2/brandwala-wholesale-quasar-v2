@@ -425,6 +425,17 @@ GRANT ALL ON FUNCTION "public"."list_allocated_stock_for_shop"("p_shop_id" bigin
 
 GRANT ALL ON FUNCTION "public"."list_stock_for_order_item_pick"("p_order_item_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."add_shop_order_item_stock_pick"("p_order_item_id" bigint, "p_global_stock_id" bigint, "p_quantity" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_shop_customer_stocks"("p_shop_id" bigint, "p_customer_group_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."receive_shop_customer_stock"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_quantity" integer, "p_product_id" bigint, "p_item_label" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."add_dropship_order_gift_item"("p_order_id" bigint, "p_product_id" bigint, "p_quantity" integer, "p_gift_source" "text", "p_gift_cost_amount" numeric, "p_gift_cost_charged_to" "text", "p_gift_added_by" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."remove_dropship_order_gift_item"("p_order_item_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_dropship_order_gift_item_cost"("p_order_item_id" bigint, "p_gift_cost_amount" numeric, "p_gift_cost_charged_to" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_shop_auto_gift_items"("p_shop_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."upsert_shop_auto_gift_item"("p_shop_id" bigint, "p_payload" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_shop_auto_gift_item"("p_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."apply_shop_auto_gift_items"("p_order_id" bigint) TO "authenticated";
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."shop_customer_stocks" TO "authenticated";
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."shop_auto_gift_items" TO "authenticated";
 GRANT ALL ON FUNCTION "public"."remove_shop_order_item_stock_pick"("p_pick_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."mark_shop_order_item_unavailable"("p_order_item_id" bigint, "p_reason" "text", "p_add_to_demand_bucket" boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."clear_shop_order_item_unavailable"("p_order_item_id" bigint) TO "authenticated";

@@ -25,7 +25,7 @@
 | | |
 | :--- | :--- |
 | Surfaces | `shop` storefront; `app` config + dropship desk |
-| In | Shops, carts, catalog/dropship orders, pricing, stock pick, pickup locations, reseller payout |
+| In | Shops, carts, catalog/dropship orders, pricing, stock pick, pickup locations, reseller payout, dropship gifts, shop customer stock, auto gifts |
 | Out | Warehouse receive; Koba/thrift; wholesale invoice desk; catalog pack-out on **Delivery paper**; parent invoice engine for dropship |
 
 Dropship: pick → ship+issue RPC → deliver → remittance pay in. Packing slip ≠ `sales_invoices` row. Catalog delivery: Delivery paper + optional proforma; close take/condition/return; then bills. Numbers: [money-story](../bills_pays/money-story.md).
@@ -70,4 +70,17 @@ Post-ship: **Dropship settlement** desk; `record_dropship_courier_remittance` is
 - [x] **Recipient** — COD face on order only; not a `bills` row ([money-story](../bills_pays/money-story.md)).
 - [x] **Merchant bill** — one issued bill to shop profile at ship (`ship_dropship_order_and_issue_merchant_bill`); amount = merchant total, not COD.
 - [x] **Courier** — COD receivable at deliver; tenant cash on **net** remittance pay in (`record_dropship_courier_remittance` → `post_customer_receipt_with_allocations`, `source = courier_remittance`).
-- [x] **Alloc** — remittance pays merchant bill; remainder → shop **cashbook** (profit), pay out later — not a second AR bill.
+- [x] **Alloc** — remittance pays merchant bill; remainder → shop **cashbook** (profit), pay out later — not a second AR bill. `payout_settlement_status` stays unpaid until `dispense_middleman_payout_from_tenant`.
+
+### US-6: Dropship gifts
+- [x] Many **gift** lines per order (`is_gift`); recipient sell/COD unchanged (excluded from resell total).
+- [x] **Add gift item** on processing desk while `processing`, before ship; remove until ship.
+- [x] **Cost on** (`gift_source = stock`): warehouse pick; entered `gift_cost_amount` charged to **reseller** or **tenant** (not SKU landed cost).
+- [x] **Customer provided** (`gift_source = customer_stock`): from `shop_customer_stocks`; cost 0; no warehouse pick.
+- [x] Merchant bill at ship includes warehouse gifts charged to reseller only.
+
+### US-7: Shop customer stock
+- [x] Per-shop `shop_customer_stocks` (product + qty); **Receive** on shop settings (app). Not `global_stocks`.
+
+### US-8: Auto gifts
+- [x] Per-shop `shop_auto_gift_items` (active rows); `apply_shop_auto_gift_items` once when order enters `processing` (`auto_gifts_applied_at`). Short customer stock → skip row, show on desk.

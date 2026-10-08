@@ -51,8 +51,10 @@ const itemQuantity = computed(() => Math.max(0, props.data.computed.order_item_q
 
 const orderItemRows = computed(() =>
   props.data.items.map((item) => {
-    const resell = item.customer_sell_price_amount ?? 0;
+    const isWarehouseGift = item.is_gift && item.gift_source === 'stock';
+    const resell = isWarehouseGift ? 0 : (item.customer_sell_price_amount ?? 0);
     const qty = Math.max(item.quantity, 0);
+    const giftCost = isWarehouseGift ? (item.gift_cost_amount ?? 0) : 0;
     return {
       id: item.id,
       name: item.name,
@@ -61,9 +63,15 @@ const orderItemRows = computed(() =>
       lineResell: resell * qty,
       imageUrl: item.image_url,
       productCode: item.product_code,
+      isWarehouseGift,
+      giftCost,
+      giftChargedTo: item.gift_cost_charged_to,
     };
   }),
 );
+
+const giftCostMerchantTotal = computed(() => props.data.settlement.gift_cost_merchant_total);
+const giftCostTenantTotal = computed(() => props.data.settlement.gift_cost_tenant_total);
 
 const resellerPurchaseCost = computed(() => props.data.settlement.reseller_purchase_cost);
 
@@ -153,14 +161,16 @@ const resellerProfit = computed(
     recipientPay.value
     - orderDiscountAmount.value
     - resellerPurchaseCost.value
-    - merchantPaidCharges.value,
+    - merchantPaidCharges.value
+    - giftCostMerchantTotal.value,
 );
 
 const companyProfit = computed(
   () =>
     resellerPurchaseCost.value
     - companyProcurementCost.value
-    - form.discountCompanyPay,
+    - form.discountCompanyPay
+    - giftCostTenantTotal.value,
 );
 
 const courierRows = computed(() => [
@@ -263,11 +273,27 @@ defineExpose({ getDraftPayload });
             />
           </div>
           <div class="dropship-mgmt-settlement-paper__item-body">
-            <div class="dropship-invoice-paper__recipient-name">{{ item.name }}</div>
+            <div class="dropship-invoice-paper__recipient-name">
+              {{ item.name }}
+              <q-badge
+                v-if="item.isWarehouseGift"
+                color="secondary"
+                class="q-ml-xs text-weight-bold"
+                label="Gift"
+              />
+            </div>
             <div v-if="item.productCode" class="dropship-invoice-paper__line text-grey-7">
               Code {{ item.productCode }}
             </div>
-            <div class="dropship-invoice-paper__line text-grey-7">
+            <div v-if="item.isWarehouseGift" class="dropship-invoice-paper__line text-grey-7">
+              Qty {{ item.quantity }}
+              <template v-if="item.giftCost > 0">
+                · Gift cost {{ formatMoney(item.giftCost) }}
+                <span v-if="item.giftChargedTo === 'reseller'">· Merchant bill</span>
+                <span v-else-if="item.giftChargedTo === 'tenant'">· Company</span>
+              </template>
+            </div>
+            <div v-else class="dropship-invoice-paper__line text-grey-7">
               Qty {{ item.quantity }} · Resell {{ formatMoney(item.resell) }} · Line
               {{ formatMoney(item.lineResell) }}
             </div>
@@ -412,6 +438,32 @@ defineExpose({ getDraftPayload });
             </span>
           </div>
           <span class="text-weight-medium">{{ formatMoney(resellerPurchaseCost) }}</span>
+        </div>
+
+        <div
+          v-if="giftCostMerchantTotal > 0"
+          class="dropship-invoice-paper__summary-row"
+        >
+          <div class="dropship-invoice-paper__summary-label">
+            <span>Warehouse gift cost (merchant)</span>
+            <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--merchant">
+              On merchant bill
+            </span>
+          </div>
+          <span class="text-weight-medium">{{ formatMoney(giftCostMerchantTotal) }}</span>
+        </div>
+
+        <div
+          v-if="giftCostTenantTotal > 0"
+          class="dropship-invoice-paper__summary-row"
+        >
+          <div class="dropship-invoice-paper__summary-label">
+            <span>Warehouse gift cost (company)</span>
+            <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--company">
+              Deduct from company profit
+            </span>
+          </div>
+          <span class="text-weight-medium">{{ formatMoney(giftCostTenantTotal) }}</span>
         </div>
 
         <div class="dropship-invoice-paper__summary-row">

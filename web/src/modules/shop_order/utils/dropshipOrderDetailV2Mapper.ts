@@ -133,6 +133,8 @@ export function mapDropshipOrderDetailV2Response(raw: unknown): DropshipOrderDet
     recipient_call_attempt_count: num(orderRaw.recipient_call_attempt_count),
     recipient_verified_at: (orderRaw.recipient_verified_at as string | null) ?? null,
     cancel_reason: (orderRaw.cancel_reason as string | null) ?? null,
+    auto_gifts_applied_at: (orderRaw.auto_gifts_applied_at as string | null) ?? null,
+    auto_gifts_apply_result: (orderRaw.auto_gifts_apply_result as ShopOrder['auto_gifts_apply_result']) ?? null,
   };
 
   const items: ShopOrderItem[] = ((payload.items as ShopOrderItem[] | null) ?? []).map((item) => {
@@ -146,6 +148,12 @@ export function mapDropshipOrderDetailV2Response(raw: unknown): DropshipOrderDet
       is_fulfillment_unavailable: bool(row.is_fulfillment_unavailable),
       unavailable_reason: (row.unavailable_reason as string | null) ?? null,
       fulfillment_resolved: bool(row.fulfillment_resolved),
+      is_gift: bool(row.is_gift),
+      gift_source: (row.gift_source as ShopOrderItem['gift_source']) ?? null,
+      gift_cost_amount: row.gift_cost_amount != null ? num(row.gift_cost_amount) : null,
+      gift_cost_charged_to: (row.gift_cost_charged_to as ShopOrderItem['gift_cost_charged_to']) ?? null,
+      gift_added_by: (row.gift_added_by as ShopOrderItem['gift_added_by']) ?? null,
+      shop_customer_stock_id: row.shop_customer_stock_id != null ? num(row.shop_customer_stock_id) : null,
       stock_picks: mapStockPicks(row.stock_picks),
       customer_offer_amount: item.customer_offer_amount ?? null,
       customer_offer_currency_id: item.customer_offer_currency_id ?? null,

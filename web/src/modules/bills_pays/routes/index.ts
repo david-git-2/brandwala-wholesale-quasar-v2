@@ -72,10 +72,11 @@ const billsPaysRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'remit',
-        name: 'app-remit-pay-page',
-        component: () => import('../pages/RemitPayPage.vue'),
-        meta: { hasPageToolbar: true, title: 'Remittance', headerTitle: 'Remittance' },
-        beforeEnter: guard('payments'),
+        redirect: (to) => ({
+          name: 'app-collect-pay-page',
+          params: to.params,
+          query: { ...to.query, mode: 'courier' },
+        }),
       },
       {
         path: 'payout',

@@ -36,7 +36,7 @@
             >
               <q-tab name="delivered_costing" label="1. Delivered Costing" />
               <q-tab name="courier_remittance" label="2. Courier Remittance" />
-              <q-tab name="middleman_payout" label="3. Cash withdrawal" />
+              <q-tab name="middleman_payout" label="3. Dropship shop profit" />
             </q-tabs>
           </div>
 
@@ -150,6 +150,11 @@ function handleSelectOrder(order: FinanceHubOrderQueueItem) {
     activeTab.value = 'delivered_costing';
   } else if (order.nextStep === 'courier_remittance') {
     activeTab.value = 'courier_remittance';
+  } else if (order.nextStep === 'middleman_payout') {
+    activeTab.value = 'middleman_payout';
+    if (order.billingProfileId) {
+      preselectedMerchantId.value = order.billingProfileId;
+    }
   }
 }
 
@@ -168,10 +173,21 @@ async function handleConfirmRemittance(payload: {
   remittanceRef?: string;
   bankTrxId?: string;
 }) {
-  await confirmCourierRemittanceMutation.mutateAsync(payload);
+  const result = await confirmCourierRemittanceMutation.mutateAsync(payload);
   if (selectedOrder.value && selectedOrder.value.id === payload.orderId) {
-    selectedOrder.value.nextStep = 'completed';
     selectedOrder.value.status = 'payment_received';
+    const remainder = Number((result as { merchant_remainder?: number })?.merchant_remainder ?? 0);
+    if (remainder > 0) {
+      selectedOrder.value.nextStep = 'middleman_payout';
+      selectedOrder.value.payoutSettlementStatus = 'unpaid';
+      activeTab.value = 'middleman_payout';
+      if (selectedOrder.value.billingProfileId) {
+        preselectedMerchantId.value = selectedOrder.value.billingProfileId;
+      }
+    } else {
+      selectedOrder.value.nextStep = 'completed';
+      selectedOrder.value.payoutSettlementStatus = 'paid';
+    }
   }
 }
 

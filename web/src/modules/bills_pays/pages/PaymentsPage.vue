@@ -28,16 +28,6 @@
             no-caps
             color="grey-8"
             class="rounded-sq-btn q-px-sm"
-            label="Remittance"
-            icon="ph ph-truck"
-            @click="goRemit"
-          />
-          <q-btn
-            outline
-            dense
-            no-caps
-            color="grey-8"
-            class="rounded-sq-btn q-px-sm"
             label="Pay out"
             icon="ph ph-arrow-up-right"
             @click="goPayout"
@@ -229,7 +219,6 @@ const openPay = (row: PayRow) => {
   router.push({ name: 'app-pay-detail-page', params: { ...routeParams(), payId: String(row.id) } });
 };
 const goCollect = () => router.push({ name: 'app-collect-pay-page', params: routeParams() });
-const goRemit = () => router.push({ name: 'app-remit-pay-page', params: routeParams() });
 const goPayout = () => router.push({ name: 'app-payout-pay-page', params: routeParams() });
 </script>
 

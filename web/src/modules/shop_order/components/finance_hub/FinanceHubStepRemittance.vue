@@ -1,11 +1,11 @@
 <template>
   <component :is="rootTag" v-bind="rootProps">
     <div
-      v-if="variant === 'card'"
+      v-if="variant === 'card' || context === 'payin'"
       class="text-subtitle1 text-weight-bold text-primary q-mb-md row items-center gap-xs"
     >
       <q-icon name="ph ph-bank" size="20px" />
-      <span>Step 2: Confirm Courier Remittance</span>
+      <span>{{ context === 'payin' ? 'Courier pay in' : 'Step 2: Confirm Courier Remittance' }}</span>
     </div>
 
     <div v-if="!selectedOrder" class="text-body2 text-grey-6 q-my-md">
@@ -25,7 +25,16 @@
       class="q-gutter-y-sm"
       @submit.prevent="handleConfirm"
     >
-      <div v-if="variant === 'card'" class="text-subtitle2 text-weight-bold q-mb-xs">
+      <q-banner
+        v-if="invoiceDue > 0"
+        dense
+        rounded
+        class="bg-blue-1 text-blue-10 q-mb-sm"
+      >
+        Merchant B2B bill due: {{ formatAmt(invoiceDue) }} BDT — cleared from this pay in (up to net received).
+      </q-banner>
+
+      <div v-if="variant === 'card' || context === 'payin'" class="text-subtitle2 text-weight-bold q-mb-xs">
         Order #{{ selectedOrder.orderNo }}
         <span v-if="selectedOrder.courierName" class="text-grey-7 text-body2 text-weight-regular">
           · {{ selectedOrder.courierName }}
@@ -168,7 +177,7 @@
           no-caps
           :loading="loading"
           :disable="netRemitted <= 0 || overCod || !form.remittanceRef || form.netAmount <= 0"
-          label="Confirm Remittance"
+          :label="context === 'payin' ? 'Post courier pay in' : 'Confirm Remittance'"
         />
       </div>
     </q-form>
@@ -188,8 +197,10 @@ const props = withDefaults(
     /** Optional B2B invoice outstanding; defaults to order totalAmount when unknown */
     invoiceOutstanding?: number | null;
     variant?: 'card' | 'panel';
+    /** When set from Payments → Pay in → Courier */
+    context?: 'hub' | 'payin';
   }>(),
-  { variant: 'card' },
+  { variant: 'card', context: 'hub' },
 );
 
 const emit = defineEmits<{

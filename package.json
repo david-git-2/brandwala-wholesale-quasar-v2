@@ -50,6 +50,7 @@
     "backend:schema:dump": "bash scripts/supabase-local.sh schema:dump",
     "backend:schema:diff": "bash scripts/supabase-local.sh schema:diff",
     "db:schema": "pnpm run backend:types",
+    "backend:clean": "bash scripts/backend-clean.sh",
     "deploy:backend": "bash scripts/deploy-backend.sh",
     "backend:all": "pnpm run backend:push:all && pnpm run db:schema"
   },

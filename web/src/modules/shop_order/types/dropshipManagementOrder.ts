@@ -28,6 +28,8 @@ export interface DropshipManagementSettlementState {
   courier_cod_booked_at: string | null;
   remittance_at: string | null;
   merchant_payout_at: string | null;
+  gift_cost_merchant_total: number;
+  gift_cost_tenant_total: number;
 }
 
 export interface DropshipManagementInvoiceState {
@@ -59,6 +61,10 @@ export interface DropshipManagementReturnLine {
   customer_sell_price_amount?: number | null;
   unit_sell_price_amount?: number | null;
   stock_picks?: Array<{ id: number; shipment_name?: string | null; quantity: number }>;
+  is_gift?: boolean;
+  gift_source?: string | null;
+  gift_cost_amount?: number | null;
+  gift_cost_charged_to?: 'reseller' | 'tenant' | null;
 }
 
 export interface DropshipReturnItemPayload {

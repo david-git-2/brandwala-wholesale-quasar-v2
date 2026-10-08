@@ -358,7 +358,7 @@ const mapListGlobalInvoiceItemRow = (row: any): GlobalInvoiceItemRow => {
   return {
     id: Number(row.id),
     invoice_id: Number(row.invoice_id),
-    global_stock_id: Number(row.global_stock_id),
+    global_stock_id: row.global_stock_id == null ? 0 : Number(row.global_stock_id),
     name_snapshot: row.name_snapshot,
     quantity: Number(row.quantity),
     sell_price_amount: Number(row.sell_price_amount),

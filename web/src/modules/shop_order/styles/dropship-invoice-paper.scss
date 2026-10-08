@@ -445,6 +445,16 @@
   font-weight: 600;
 }
 
+.dropship-invoice-paper__toolbar-btn {
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+
+  .q-icon {
+    font-size: 18px;
+  }
+}
+
 .dropship-invoice-paper__picked-cards {
   max-width: 380px;
 }

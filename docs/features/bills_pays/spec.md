@@ -69,7 +69,7 @@ Paper: `draft` / `issued` / `voided`. Money: `due` / `partially_paid` / `paid`. 
 | Walk-in | Collect | At issue |
 | AP (vendor/cargo/local) | Pay out (`ap_payout`) | Never sales |
 
-**Pay in** → ALLOC to AR bills; remainder → profile cashbook. **Pay out:** merchant leftover (`dispense_middleman_payout_from_tenant`) or AP alloc (`post_ap_payout_with_allocations`). Inbound AP sync: `sync_shipment_ap_bills` ([WA15](00-gaps.md)).
+**Pay in** → ALLOC to AR bills; remainder → profile cashbook. **UI:** Customer tab (collect) + **Courier** tab (dropship net bank in → same writer, `courier_remittance`). **Pay out:** dropship shop profit (`dispense_middleman_payout_from_tenant`) or AP alloc (`post_ap_payout_with_allocations`). Inbound AP sync: `sync_shipment_ap_bills` ([WA15](00-gaps.md)).
 
 ### AP paper (not AR compose)
 
@@ -97,6 +97,6 @@ UI: `ApBillPaper` on bill detail/preview when `invoice_type = ap`. **Parties on 
 - [ ] US-6 Cashbook via ledger writer only.
 - [x] US-7 One pay-in writer (collect + remittance).
 - [ ] US-8 Split tender; cheque bounce v2 ([WA13](00-gaps.md)).
-- [ ] US-9 Merchant leftover payout; not ALLOC.
+- [x] US-9 Merchant leftover payout; not ALLOC (remittance → cashbook; Pay out / finance hub step 3).
 - [x] US-10 Customer overpay / leftover: cashbook at collect; apply on Pay in (FIFO) or later from the payment.
 - [x] US-11 Shipment AP auto-sync; vendor outcome credit costing-only.

@@ -160,10 +160,13 @@ const printModel = computed<InvoicePrintModel>(() => {
 
   const lines = items.value.map((item) => {
     const quantity = resolveDeliveredQuantity(item);
-    const unitPrice = Number(item.customer_sell_price_amount ?? item.unit_sell_price_amount ?? 0);
+    const isGift = item.is_gift === true;
+    const unitPrice = isGift
+      ? 0
+      : Number(item.customer_sell_price_amount ?? item.unit_sell_price_amount ?? 0);
     return {
       id: item.id,
-      name: item.name || '',
+      name: isGift ? `${item.name || ''} (Gift)` : item.name || '',
       quantity,
       unitPrice,
       lineTotal: unitPrice * quantity,

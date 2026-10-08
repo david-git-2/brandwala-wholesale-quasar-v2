@@ -609,6 +609,13 @@ declare
   v_held public.global_stocks;
   v_charges record;
   v_channel_meta jsonb;
+  v_gift record;
+  v_gift_stock_id bigint;
+  v_gift_shipment_item_id bigint;
+  v_gift_name text;
+  v_gift_barcode text;
+  v_gift_product_code text;
+  v_gift_assigned_child bigint;
 begin
   select * into v_order from public.shop_orders where id = p_order_id;
   if v_order.id is null then
@@ -668,6 +675,10 @@ begin
       soi.unit_sell_price_amount,
       soi.final_price_amount,
       soi.customer_sell_price_amount,
+      coalesce(soi.is_gift, false) as is_gift,
+      soi.gift_source,
+      coalesce(soi.gift_cost_amount, 0) as gift_cost_amount,
+      soi.gift_cost_charged_to,
       gs.shipment_item_id as stock_shipment_item_id,
       coalesce(public.calculate_landed_unit_cost(gs.shipment_item_id), 0) as stock_cost,
       gsi.name as stock_name,
@@ -705,7 +716,15 @@ begin
       );
     end if;
 
-    v_item_sell_price := coalesce(v_pick.unit_sell_price_amount, v_pick.final_price_amount, 0);
+    if coalesce(v_pick.is_gift, false) and v_pick.gift_source = 'stock' and v_pick.gift_cost_charged_to = 'reseller' then
+      v_item_sell_price := case
+        when coalesce(v_pick.pick_quantity, 0) > 0 then
+          round(coalesce(v_pick.gift_cost_amount, 0) / v_pick.pick_quantity, 2)
+        else coalesce(v_pick.gift_cost_amount, 0)
+      end;
+    else
+      v_item_sell_price := coalesce(v_pick.unit_sell_price_amount, v_pick.final_price_amount, 0);
+    end if;
     v_resell_price := coalesce(
       v_pick.customer_sell_price_amount,
       v_pick.final_price_amount,
@@ -729,19 +748,113 @@ begin
       'global_stock_id', v_pick.held_stock_id,
       'product_id', v_pick.product_id,
       'shipment_item_id', v_pick.stock_shipment_item_id,
-      'name_snapshot', coalesce(v_pick.stock_name, v_pick.line_name),
+      'name_snapshot',
+        coalesce(v_pick.stock_name, v_pick.line_name)
+        || case
+          when coalesce(v_pick.is_gift, false)
+            and v_pick.gift_source = 'stock'
+            and v_pick.gift_cost_charged_to = 'reseller'
+          then ' (Gift)'
+          else ''
+        end,
       'barcode_snapshot', v_pick.stock_barcode,
       'product_code_snapshot', v_pick.stock_product_code,
       'quantity', v_pick.pick_quantity,
       'sell_price_amount', v_item_sell_price,
       'line_discount_amount', 0,
       'assigned_child_tenant_id', v_pick.stock_assigned_child,
-      'line_meta', jsonb_build_object('resell_price_amount', v_resell_price)
+      'line_meta',
+        jsonb_build_object('resell_price_amount', v_resell_price)
+        || case
+          when coalesce(v_pick.is_gift, false)
+            and v_pick.gift_source = 'stock'
+            and v_pick.gift_cost_charged_to = 'reseller'
+          then jsonb_build_object(
+            'gift_line_total_amount', coalesce(v_pick.gift_cost_amount, 0),
+            'is_warehouse_gift', true
+          )
+          else '{}'::jsonb
+        end
     ));
 
     if v_line_id is null then
       v_item_json := v_item_json - 'id';
     end if;
+
+    v_items := v_items || jsonb_build_array(v_item_json);
+  end loop;
+
+  for v_gift in
+    select
+      soi.id as order_item_id,
+      soi.product_id,
+      soi.name as line_name,
+      soi.quantity,
+      coalesce(soi.gift_cost_amount, 0) as gift_cost_amount,
+      p.barcode as product_barcode,
+      p.product_code as product_code
+    from public.shop_order_items soi
+    left join public.products p on p.id = soi.product_id
+    where soi.order_id = v_order.id
+      and coalesce(soi.is_gift, false)
+      and soi.gift_source = 'stock'
+      and soi.gift_cost_charged_to = 'reseller'
+      and coalesce(soi.gift_cost_amount, 0) > 0
+      and not exists (
+        select 1
+        from public.shop_order_item_stock_picks sp
+        where sp.order_item_id = soi.id
+          and sp.quantity > 0
+      )
+  loop
+    v_gift_shipment_item_id := null;
+    v_gift_name := v_gift.line_name;
+    v_gift_barcode := v_gift.product_barcode;
+    v_gift_product_code := v_gift.product_code;
+    v_gift_assigned_child := null;
+
+    select
+      gs.shipment_item_id,
+      coalesce(gsi.name, v_gift.line_name),
+      gsi.barcode,
+      gsi.product_code,
+      sh.assigned_child_tenant_id
+    into
+      v_gift_shipment_item_id,
+      v_gift_name,
+      v_gift_barcode,
+      v_gift_product_code,
+      v_gift_assigned_child
+    from public.global_stock_allocations gsa
+    inner join public.global_stocks gs on gs.id = gsa.global_stock_id
+    left join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+    left join public.global_shipments sh on sh.id = gsi.shipment_id
+    where gsa.shop_id = v_order.shop_id
+      and gs.product_id = v_gift.product_id
+    order by public.global_stock_atp_qty(gs.id) desc, gs.id
+    limit 1;
+
+    v_item_json := jsonb_strip_nulls(jsonb_build_object(
+      'product_id', v_gift.product_id,
+      'shipment_item_id', v_gift_shipment_item_id,
+      'name_snapshot', v_gift_name || ' (Gift)',
+      'barcode_snapshot', v_gift_barcode,
+      'product_code_snapshot', v_gift_product_code,
+      'quantity', v_gift.quantity,
+      'sell_price_amount', case
+        when coalesce(v_gift.quantity, 0) > 0 then
+          round(coalesce(v_gift.gift_cost_amount, 0) / v_gift.quantity, 2)
+        else coalesce(v_gift.gift_cost_amount, 0)
+      end,
+      'line_discount_amount', 0,
+      'assigned_child_tenant_id', v_gift_assigned_child,
+      'line_meta', jsonb_build_object(
+        'resell_price_amount', 0,
+        'is_warehouse_gift', true,
+        'gift_line_total_amount', coalesce(v_gift.gift_cost_amount, 0),
+        'order_item_id', v_gift.order_item_id
+      )
+    ));
 
     v_items := v_items || jsonb_build_array(v_item_json);
   end loop;
@@ -1303,14 +1416,64 @@ begin
     v_line_discount := coalesce(nullif(v_item_elem->>'line_discount_amount', '')::numeric, 0);
     v_line_meta := coalesce(v_item_elem->'line_meta', '{}'::jsonb);
 
-    if v_global_stock_id is null then
-      return jsonb_build_object('success', false, 'error', 'each item requires global_stock_id');
-    end if;
     if v_quantity is null or v_quantity <= 0 then
       return jsonb_build_object('success', false, 'error', 'each item requires quantity > 0');
     end if;
     if v_sell_price is null or v_sell_price < 0 then
       return jsonb_build_object('success', false, 'error', 'each item requires sell_price_amount >= 0');
+    end if;
+
+    if v_global_stock_id is null
+       and coalesce(v_line_meta->>'is_warehouse_gift', 'false') = 'true' then
+      v_product_id := nullif(v_item_elem->>'product_id', '')::bigint;
+      v_shipment_item_id := nullif(v_item_elem->>'shipment_item_id', '')::bigint;
+      v_name_snapshot := coalesce(nullif(trim(v_item_elem->>'name_snapshot'), ''), 'Gift item');
+      v_barcode_snapshot := nullif(trim(v_item_elem->>'barcode_snapshot'), '');
+      v_product_code_snapshot := nullif(trim(v_item_elem->>'product_code_snapshot'), '');
+      v_assigned_child := nullif(v_item_elem->>'assigned_child_tenant_id', '')::bigint;
+      v_line_total := coalesce(
+        nullif(v_line_meta->>'gift_line_total_amount', '')::numeric,
+        greatest((v_quantity * v_sell_price) - v_line_discount, 0)
+      );
+
+      insert into public.bill_lines (
+        parent_tenant_id,
+        invoice_id,
+        global_stock_id,
+        shipment_item_id,
+        product_id,
+        name_snapshot,
+        barcode_snapshot,
+        product_code_snapshot,
+        quantity,
+        sell_price_amount,
+        line_discount_amount,
+        line_total_amount,
+        assigned_child_tenant_id,
+        line_meta
+      )
+      values (
+        v_parent_id,
+        v_invoice_id,
+        null,
+        v_shipment_item_id,
+        v_product_id,
+        v_name_snapshot,
+        v_barcode_snapshot,
+        v_product_code_snapshot,
+        v_quantity,
+        v_sell_price,
+        v_line_discount,
+        v_line_total,
+        v_assigned_child,
+        v_line_meta
+      );
+
+      continue;
+    end if;
+
+    if v_global_stock_id is null then
+      return jsonb_build_object('success', false, 'error', 'each item requires global_stock_id');
     end if;
 
     select
@@ -1350,7 +1513,10 @@ begin
     v_product_code_snapshot := coalesce(nullif(trim(v_item_elem->>'product_code_snapshot'), ''), v_product_code_snapshot);
     v_assigned_child := coalesce(nullif(v_item_elem->>'assigned_child_tenant_id', '')::bigint, v_assigned_child);
 
-    v_line_total := greatest((v_quantity * v_sell_price) - v_line_discount, 0);
+    v_line_total := coalesce(
+      nullif(v_line_meta->>'gift_line_total_amount', '')::numeric,
+      greatest((v_quantity * v_sell_price) - v_line_discount, 0)
+    );
 
     insert into public.bill_lines (
       parent_tenant_id,

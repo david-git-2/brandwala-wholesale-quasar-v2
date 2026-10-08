@@ -139,6 +139,13 @@ function mapReturnLines(raw: unknown): DropshipManagementReturnLine[] {
       unit_sell_price_amount:
         row.unit_sell_price_amount == null ? null : num(row.unit_sell_price_amount),
       stock_picks,
+      is_gift: row.is_gift === true,
+      gift_source: (row.gift_source as string | null) ?? null,
+      gift_cost_amount: row.gift_cost_amount == null ? null : num(row.gift_cost_amount),
+      gift_cost_charged_to:
+        row.gift_cost_charged_to === 'reseller' || row.gift_cost_charged_to === 'tenant'
+          ? row.gift_cost_charged_to
+          : null,
     };
   });
 }
@@ -214,6 +221,8 @@ export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManage
       courier_cod_booked_at: (settlementRaw.courier_cod_booked_at as string | null) ?? null,
       remittance_at: (settlementRaw.remittance_at as string | null) ?? null,
       merchant_payout_at: (settlementRaw.merchant_payout_at as string | null) ?? null,
+      gift_cost_merchant_total: num(settlementRaw.gift_cost_merchant_total),
+      gift_cost_tenant_total: num(settlementRaw.gift_cost_tenant_total),
     },
     courier: mapCourier(orderRaw, computedRaw, settlementRaw, fulfillmentRaw),
     invoice: mapInvoice(payload.invoice),

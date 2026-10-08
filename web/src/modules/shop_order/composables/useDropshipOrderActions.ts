@@ -79,16 +79,17 @@ export function useDropshipOrderActions(
 
     if (canRecordRemittance.value) {
       return {
-        label: 'Record Courier Remittance',
+        label: 'Courier pay in',
         icon: 'ph ph-bank',
         loading: false,
         action: () => {
           if (!order.value) return;
           void router.push({
-            name: 'app-shop-dropship-finance-hub-page',
+            name: 'app-collect-pay-page',
+            params: { tenantSlug: tenantSlug.value || undefined },
             query: {
+              mode: 'courier',
               orderId: String(order.value.id),
-              step: 'courier_remittance',
             },
           });
         },

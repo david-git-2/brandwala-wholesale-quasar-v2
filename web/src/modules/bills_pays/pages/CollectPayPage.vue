@@ -2,11 +2,81 @@
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="col overflow-auto">
       <div class="pay-form-card q-pa-md">
+        <q-tabs
+          v-model="payInKind"
+          dense
+          align="left"
+          active-color="primary"
+          indicator-color="primary"
+          class="q-mb-sm"
+          @update:model-value="onPayInKindChange"
+        >
+          <q-tab name="customer" label="Customer" />
+          <q-tab name="courier" label="Courier" />
+        </q-tabs>
+        <q-separator class="q-mb-md" />
+
+        <template v-if="payInKind === 'courier'">
+          <div class="text-subtitle1 text-weight-bold">Pay in — courier</div>
+          <p class="text-caption text-grey-7 q-ma-none q-mb-md">
+            Net bank in from the courier (COD minus their charges). Pays the merchant B2B bill; shop profit goes to
+            cashbook — use Pay out when you send money to the shop.
+          </p>
+
+          <template v-if="!courierSelectedOrder">
+            <div v-if="courierLoading" class="text-grey-7 q-pa-md">Loading orders…</div>
+            <q-list v-else-if="courierOrders.length" bordered separator class="rounded-borders collect-group-list">
+              <q-item
+                v-for="order in courierOrders"
+                :key="order.id"
+                clickable
+                v-ripple
+                @click="courierSelectedOrder = order"
+              >
+                <q-item-section>
+                  <q-item-label class="text-weight-medium">{{ order.orderNo }}</q-item-label>
+                  <q-item-label caption>
+                    {{ order.shopName || order.customerName || '—' }}
+                    · COD {{ formatAmountBdt(order.codCollectAmount) }}
+                    · Bill due {{ formatAmountBdt(order.invoiceOutstanding ?? 0) }}
+                  </q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-icon name="ph ph-caret-right" color="grey-6" />
+                </q-item-section>
+              </q-item>
+            </q-list>
+            <div v-else class="text-center text-grey-7 q-pa-lg">
+              No dropship orders awaiting courier pay in.
+            </div>
+          </template>
+
+          <template v-else>
+            <q-btn
+              flat
+              dense
+              no-caps
+              color="primary"
+              icon="ph ph-arrow-left"
+              label="Change order"
+              class="q-mb-sm q-px-none"
+              @click="courierSelectedOrder = null"
+            />
+            <FinanceHubStepRemittance
+              :selected-order="courierSelectedOrder"
+              :loading="courierSubmitting"
+              variant="panel"
+              context="payin"
+              @submit="submitCourierPayIn"
+            />
+          </template>
+        </template>
+
         <!-- Step 1: pick customer group -->
-        <template v-if="!selectedGroupId">
+        <template v-else-if="!selectedGroupId">
           <div class="text-subtitle1 text-weight-bold">Pay in — customer</div>
           <p class="text-caption text-grey-7 q-ma-none q-mb-md">
-            Money they pay you against your sales bills. Vendor/cargo AP uses Pay out.
+            Money they pay you against your sales bills. Courier dropship uses the Courier tab. Vendor AP uses Pay out.
           </p>
 
           <q-input
@@ -56,7 +126,7 @@
         </template>
 
         <!-- Step 2: receipt against selected group -->
-        <template v-else>
+        <template v-else-if="payInKind === 'customer'">
           <q-btn
             flat
             dense
@@ -310,11 +380,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { paymentsPageRoute } from '../utils/paymentsNavigation';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
+import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import FinanceHubStepRemittance from 'src/modules/shop_order/components/finance_hub/FinanceHubStepRemittance.vue';
+import {
+  dropshipFinanceRepository,
+  type FinanceHubOrderQueueItem,
+} from 'src/modules/shop_order/repositories/dropshipFinanceRepository';
+import { isAwaitingCourierRemittance } from 'src/modules/shop_order/utils/isAwaitingCourierRemittance';
 import { getInitials } from 'src/modules/sales_invoice/utils/invoiceListDisplay';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
 import { paysRepository, type CustomerGroupPaymentSummary } from '../repositories/paysRepository';
@@ -333,6 +410,65 @@ const router = useRouter();
 const collectMutation = useCollectPayMutation();
 
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
+
+type PayInKind = 'customer' | 'courier';
+const payInKind = ref<PayInKind>(route.query.mode === 'courier' ? 'courier' : 'customer');
+const courierOrders = ref<FinanceHubOrderQueueItem[]>([]);
+const courierSelectedOrder = ref<FinanceHubOrderQueueItem | null>(null);
+const courierLoading = ref(false);
+const courierSubmitting = ref(false);
+
+const loadCourierQueue = async () => {
+  if (!tenantId.value) return;
+  courierLoading.value = true;
+  try {
+    const hub = await dropshipFinanceRepository.getHubData(tenantId.value);
+    courierOrders.value = hub.orders.filter(isAwaitingCourierRemittance);
+  } finally {
+    courierLoading.value = false;
+  }
+};
+
+const selectCourierOrderFromQuery = () => {
+  const raw = route.query.orderId;
+  const orderId = typeof raw === 'string' ? Number(raw) : Array.isArray(raw) ? Number(raw[0]) : NaN;
+  if (!Number.isFinite(orderId) || orderId <= 0) return;
+  const match = courierOrders.value.find((o) => o.id === orderId);
+  if (match) courierSelectedOrder.value = match;
+};
+
+const onPayInKindChange = (kind: PayInKind) => {
+  if (kind === 'courier') {
+    void loadCourierQueue();
+  } else {
+    courierSelectedOrder.value = null;
+  }
+};
+
+const submitCourierPayIn = async (payload: {
+  orderId: number;
+  netAmount: number;
+  courierCharge: number;
+  remittanceRef?: string;
+  bankTrxId?: string;
+}) => {
+  courierSubmitting.value = true;
+  try {
+    await dropshipFinanceRepository.confirmCourierRemittance({
+      orderId: payload.orderId,
+      netAmount: payload.netAmount,
+      courierCharge: payload.courierCharge,
+      remittanceRef: payload.remittanceRef ?? `REMIT-${payload.orderId}`,
+      bankTrxId: payload.bankTrxId,
+    });
+    showSuccessNotification('Courier pay in recorded.');
+    goBack();
+  } catch (e) {
+    showErrorNotification(e instanceof Error ? e.message : 'Courier pay in failed.');
+  } finally {
+    courierSubmitting.value = false;
+  }
+};
 const parentTenantId = computed(() => {
   const t = authStore.selectedTenant;
   if (!t) return null;
@@ -610,6 +746,13 @@ const submit = async () => {
 
 void loadGroups();
 void loadPaymentMeta();
+
+onMounted(async () => {
+  if (payInKind.value === 'courier') {
+    await loadCourierQueue();
+    selectCourierOrderFromQuery();
+  }
+});
 </script>
 
 <style scoped>

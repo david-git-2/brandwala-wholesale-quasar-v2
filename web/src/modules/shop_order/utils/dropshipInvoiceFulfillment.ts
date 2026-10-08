@@ -20,9 +20,17 @@ export function isDropshipLineResolved(item: {
   confirmed_quantity?: number | null;
   is_fulfillment_unavailable?: boolean;
   fulfillment_resolved?: boolean;
+  is_gift?: boolean;
+  gift_source?: string | null;
   stock_picks?: Array<{ quantity?: number | null }> | null;
 }): boolean {
   if ((item.quantity ?? 0) <= 0) return true;
+  if (item.is_gift && item.gift_source === 'customer_stock') {
+    return (item.confirmed_quantity ?? 0) >= (item.quantity ?? 0);
+  }
+  if (item.is_gift && item.gift_source === 'stock') {
+    return true;
+  }
   if (item.is_fulfillment_unavailable === true) return true;
   if (item.fulfillment_resolved === true) return true;
   const pickedQty = item.confirmed_quantity ?? 0;

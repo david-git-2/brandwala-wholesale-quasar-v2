@@ -789,6 +789,99 @@ const addShopOrderItemStockPick = async (
   return data as { success?: boolean; confirmed_quantity?: number; cod_collect_amount?: number };
 };
 
+const listShopCustomerStocks = async (shopId: number, customerGroupId?: number | null) => {
+  const { data, error } = await supabase.rpc('list_shop_customer_stocks', {
+    p_shop_id: shopId,
+    p_customer_group_id: customerGroupId ?? undefined,
+  });
+  if (error) throw error;
+  return (data ?? []) as import('../types').ShopCustomerStockRow[];
+};
+
+const receiveShopCustomerStock = async (params: {
+  shopId: number;
+  customerGroupId: number;
+  quantity: number;
+  productId?: number | null;
+  itemLabel?: string | null;
+}) => {
+  const { data, error } = await supabase.rpc('receive_shop_customer_stock', {
+    p_shop_id: params.shopId,
+    p_customer_group_id: params.customerGroupId,
+    p_quantity: params.quantity,
+    p_product_id: params.productId ?? undefined,
+    p_item_label: params.itemLabel?.trim() || undefined,
+  });
+  if (error) throw error;
+  return data as { success?: boolean; error?: string };
+};
+
+const listShopAutoGiftItems = async (shopId: number) => {
+  const { data, error } = await supabase.rpc('list_shop_auto_gift_items', { p_shop_id: shopId });
+  if (error) throw error;
+  return (data ?? []) as import('../types').ShopAutoGiftItemRow[];
+};
+
+const upsertShopAutoGiftItem = async (shopId: number, payload: Record<string, unknown>) => {
+  const { data, error } = await supabase.rpc('upsert_shop_auto_gift_item', {
+    p_shop_id: shopId,
+    p_payload: payload,
+  });
+  if (error) throw error;
+  return data as { success?: boolean; error?: string };
+};
+
+const deleteShopAutoGiftItem = async (id: number) => {
+  const { data, error } = await supabase.rpc('delete_shop_auto_gift_item', { p_id: id });
+  if (error) throw error;
+  return data as { success?: boolean; error?: string };
+};
+
+const addDropshipOrderGiftItem = async (params: {
+  orderId: number;
+  productId?: number | null;
+  quantity: number;
+  giftSource: 'stock' | 'customer_stock';
+  giftCostAmount?: number;
+  giftCostChargedTo?: 'reseller' | 'tenant' | null;
+  shopCustomerStockId?: number | null;
+}) => {
+  const { data, error } = await supabase.rpc('add_dropship_order_gift_item', {
+    p_order_id: params.orderId,
+    p_product_id: params.productId ?? undefined,
+    p_quantity: params.quantity,
+    p_gift_source: params.giftSource,
+    p_gift_cost_amount: params.giftCostAmount ?? 0,
+    p_gift_cost_charged_to: params.giftCostChargedTo ?? null,
+    p_gift_added_by: 'manual',
+    p_shop_customer_stock_id: params.shopCustomerStockId ?? undefined,
+  });
+  if (error) throw error;
+  return data as { success?: boolean; error?: string; order_item_id?: number };
+};
+
+const removeDropshipOrderGiftItem = async (orderItemId: number) => {
+  const { data, error } = await supabase.rpc('remove_dropship_order_gift_item', {
+    p_order_item_id: orderItemId,
+  });
+  if (error) throw error;
+  return data as { success?: boolean; error?: string };
+};
+
+const updateDropshipOrderGiftItemCost = async (
+  orderItemId: number,
+  giftCostAmount: number,
+  giftCostChargedTo: 'reseller' | 'tenant' | null,
+) => {
+  const { data, error } = await supabase.rpc('update_dropship_order_gift_item_cost', {
+    p_order_item_id: orderItemId,
+    p_gift_cost_amount: giftCostAmount,
+    p_gift_cost_charged_to: giftCostChargedTo,
+  });
+  if (error) throw error;
+  return data as { success?: boolean; error?: string };
+};
+
 const removeShopOrderItemStockPick = async (pickId: number) => {
   const { data, error } = await supabase.rpc('remove_shop_order_item_stock_pick', {
     p_pick_id: pickId,
@@ -1239,6 +1332,14 @@ export const shopOrderRepository = {
   updateCatalogOrderRates,
   updateCatalogOrderItem,
   updateCatalogOrderItemForStaff,
+  listShopCustomerStocks,
+  receiveShopCustomerStock,
+  listShopAutoGiftItems,
+  upsertShopAutoGiftItem,
+  deleteShopAutoGiftItem,
+  addDropshipOrderGiftItem,
+  removeDropshipOrderGiftItem,
+  updateDropshipOrderGiftItemCost,
 };
 
 

@@ -3,6 +3,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import DropshipOrderConfirmedInvoicePaper from '../components/DropshipOrderConfirmedInvoicePaper.vue';
 import DropshipOrderItemStockPickDialog from '../components/DropshipOrderItemStockPickDialog.vue';
+import DropshipAddGiftItemDialog from '../components/DropshipAddGiftItemDialog.vue';
 import DropshipOrderCancelDialog from '../components/DropshipOrderCancelDialog.vue';
 import { useDropshipOrderDetailV2Query } from '../composables/useDropshipOrderDetailV2Query';
 import { useDropshipCourierOptions } from '../composables/useDropshipCourierOptions';
@@ -62,6 +63,7 @@ const courierForm = reactive<DropshipInvoiceCourierState>({
 
 const formReady = ref(false);
 const pickDialogOpen = ref(false);
+const giftDialogOpen = ref(false);
 const cancelDialogOpen = ref(false);
 const pickTargetItem = ref<ShopOrderItem | null>(null);
 const actionLoading = ref(false);
@@ -226,11 +228,60 @@ const removePick = async (pickId: number) => {
 const onOrderCancelled = () => {
   void router.push({ name: 'app-shop-dropship-orders-page' });
 };
+
+const autoGiftsSkipped = computed(() => {
+  const skipped = order.value?.auto_gifts_apply_result?.skipped;
+  return Array.isArray(skipped) ? skipped : [];
+});
+
+const removeGift = async (itemId: number) => {
+  actionLoading.value = true;
+  try {
+    const res = await shopOrderRepository.removeDropshipOrderGiftItem(itemId);
+    if (!res.success) throw new Error(res.error || 'Failed to remove gift');
+    showSuccessNotification('Gift removed.');
+    await invalidateDetail();
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to remove gift'));
+  } finally {
+    actionLoading.value = false;
+  }
+};
+
+const onUpdateGiftCost = async (payload: {
+  itemId: number;
+  amount: number;
+  chargedTo: 'reseller' | 'tenant';
+}) => {
+  try {
+    const res = await shopOrderRepository.updateDropshipOrderGiftItemCost(
+      payload.itemId,
+      payload.amount,
+      payload.amount > 0 ? payload.chargedTo : null,
+    );
+    if (!res.success) throw new Error(res.error || 'Failed to update gift cost');
+    await invalidateDetail();
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to update gift cost'));
+  }
+};
 </script>
 
 <template>
   <q-page class="bw-page dropship-order-detail-v2">
     <div class="bw-page__stack">
+      <q-banner
+        v-if="autoGiftsSkipped.length"
+        dense
+        rounded
+        class="bg-orange-1 text-orange-10"
+      >
+        Some auto gifts were skipped (not enough customer stock).
+        <span v-for="(row, idx) in autoGiftsSkipped" :key="idx" class="q-ml-xs">
+          Product #{{ row.product_id }}: {{ row.error }}
+        </span>
+      </q-banner>
+
       <q-banner
         v-if="showNothingToShipBanner"
         dense
@@ -346,9 +397,21 @@ const onOrderCancelled = () => {
           @mark-unavailable="markUnavailable"
           @clear-unavailable="clearUnavailable"
           @remove-pick="removePick"
+          @add-gift="giftDialogOpen = true"
+          @remove-gift="removeGift"
+          @update-gift-cost="onUpdateGiftCost"
         />
       </template>
     </div>
+
+    <DropshipAddGiftItemDialog
+      v-if="order"
+      v-model="giftDialogOpen"
+      :order-id="order.id"
+      :shop-id="order.shop_id"
+      :customer-group-id="order.customer_group_id"
+      @added="invalidateDetail"
+    />
 
     <DropshipOrderItemStockPickDialog
       v-model="pickDialogOpen"

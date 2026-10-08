@@ -34,6 +34,13 @@ export const shopOrderQueryKeys = {
     ['shopOrder', 'storefrontProductRelated', { tenantId, shopSlug, productId }] as const,
   catalogSearch: (tenantId: number, search: string, limit?: number) =>
     ['shopOrder', 'catalogSearch', { tenantId, search, limit: limit ?? 15 }] as const,
+  staffProductSearch: (params: {
+    tenantId: number;
+    shopId: number;
+    scope: 'shop_listings' | 'tenant_products';
+    search: string;
+    limit?: number;
+  }) => ['shopOrder', 'staffProductSearch', params] as const,
   brandOptions: (params: { vendorCode?: string | null; tenantId?: number | null }) =>
     ['shopOrder', 'brandOptions', params] as const,
   categoryOptions: (params: { vendorCode?: string | null; tenantId?: number | null }) =>
@@ -47,6 +54,9 @@ export const shopOrderQueryKeys = {
     ['shopOrder', 'storefrontCatalogSearch', { tenantId, search }] as const,
   shopAllocatedStock: (shopId: number, search: string) =>
     ['shopOrder', 'shopAllocatedStock', { shopId, search }] as const,
+  shopCustomerStocks: (shopId: number, customerGroupId?: number | null) =>
+    ['shopOrder', 'shopCustomerStocks', { shopId, customerGroupId: customerGroupId ?? null }] as const,
+  shopAutoGifts: (shopId: number) => ['shopOrder', 'shopAutoGifts', { shopId }] as const,
   pricingCandidates: (tenantId: number, shopId: number) =>
     ['shopOrder', 'pricingCandidates', { tenantId, shopId }] as const,
   currencies: () => ['shopOrder', 'currencies'] as const,

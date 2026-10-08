@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   public: {
     Tables: {
       activity_logs: {
@@ -3080,13 +3075,6 @@ export type Database = {
             referencedRelation: "koba_carts"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "koba_cart_items_koba_product_id_fkey"
-            columns: ["koba_product_id"]
-            isOneToOne: false
-            referencedRelation: "koba_products"
-            referencedColumns: ["id"]
-          },
         ]
       }
       koba_carts: {
@@ -3169,6 +3157,7 @@ export type Database = {
           commission_percentage: number | null
           confirmed_quantity: number | null
           created_at: string
+          custom_price_gbp: number | null
           delivered_quantity: number
           id: number
           image_url: string | null
@@ -3188,6 +3177,7 @@ export type Database = {
           commission_percentage?: number | null
           confirmed_quantity?: number | null
           created_at?: string
+          custom_price_gbp?: number | null
           delivered_quantity?: number
           id?: number
           image_url?: string | null
@@ -3207,6 +3197,7 @@ export type Database = {
           commission_percentage?: number | null
           confirmed_quantity?: number | null
           created_at?: string
+          custom_price_gbp?: number | null
           delivered_quantity?: number
           id?: number
           image_url?: string | null
@@ -5406,6 +5397,70 @@ export type Database = {
           },
         ]
       }
+      shop_auto_gift_items: {
+        Row: {
+          created_at: string
+          gift_cost_amount: number
+          gift_cost_charged_to: string | null
+          gift_source: string
+          id: number
+          is_active: boolean
+          product_id: number
+          quantity: number
+          shop_id: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          gift_cost_amount?: number
+          gift_cost_charged_to?: string | null
+          gift_source: string
+          id?: never
+          is_active?: boolean
+          product_id: number
+          quantity?: number
+          shop_id: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          gift_cost_amount?: number
+          gift_cost_charged_to?: string | null
+          gift_source?: string
+          id?: never
+          is_active?: boolean
+          product_id?: number
+          quantity?: number
+          shop_id?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_auto_gift_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_auto_gift_items_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_auto_gift_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_cart_items: {
         Row: {
           cart_id: number
@@ -5550,8 +5605,6 @@ export type Database = {
           created_at: string
           customer_group_id: number
           deduct_charges_from_margin: boolean
-          deduct_cod_from_margin: boolean
-          deduct_delivery_from_margin: boolean
           deduct_packing_from_margin: boolean
           deduct_print_from_margin: boolean
           delivery_charge_amount: number
@@ -5573,8 +5626,6 @@ export type Database = {
           created_at?: string
           customer_group_id: number
           deduct_charges_from_margin?: boolean
-          deduct_cod_from_margin?: boolean
-          deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
           delivery_charge_amount?: number
@@ -5596,8 +5647,6 @@ export type Database = {
           created_at?: string
           customer_group_id?: number
           deduct_charges_from_margin?: boolean
-          deduct_cod_from_margin?: boolean
-          deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
           delivery_charge_amount?: number
@@ -5765,6 +5814,71 @@ export type Database = {
           },
         ]
       }
+      shop_customer_stocks: {
+        Row: {
+          created_at: string
+          customer_group_id: number | null
+          id: number
+          item_label: string | null
+          product_id: number | null
+          quantity_on_hand: number
+          shop_id: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_group_id?: number | null
+          id?: never
+          item_label?: string | null
+          product_id?: number | null
+          quantity_on_hand?: number
+          shop_id: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_group_id?: number | null
+          id?: never
+          item_label?: string | null
+          product_id?: number | null
+          quantity_on_hand?: number
+          shop_id?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_customer_stocks_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_customer_stocks_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_customer_stocks_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_customer_stocks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_listing_group_hides: {
         Row: {
           created_at: string
@@ -5922,6 +6036,10 @@ export type Database = {
           final_offer_at: string | null
           final_price_amount: number | null
           final_price_currency_id: number | null
+          gift_added_by: string | null
+          gift_cost_amount: number
+          gift_cost_charged_to: string | null
+          gift_source: string | null
           global_stock_allocation_id: number | null
           global_stock_id: number | null
           grade_tag_id: number | null
@@ -5930,14 +6048,16 @@ export type Database = {
           is_final_offer_manual: boolean
           is_first_offer_manual: boolean
           is_fulfillment_unavailable: boolean
+          is_gift: boolean
           listing_id: number | null
           name: string
           negotiation_status: string | null
           order_id: number
           procurement_pulled: boolean
-          product_id: number
+          product_id: number | null
           quantity: number
           returned_quantity: number
+          shop_customer_stock_id: number | null
           shortfall_quantity: number
           staff_offer_amount: number | null
           staff_offer_at: string | null
@@ -5969,6 +6089,10 @@ export type Database = {
           final_offer_at?: string | null
           final_price_amount?: number | null
           final_price_currency_id?: number | null
+          gift_added_by?: string | null
+          gift_cost_amount?: number
+          gift_cost_charged_to?: string | null
+          gift_source?: string | null
           global_stock_allocation_id?: number | null
           global_stock_id?: number | null
           grade_tag_id?: number | null
@@ -5977,14 +6101,16 @@ export type Database = {
           is_final_offer_manual?: boolean
           is_first_offer_manual?: boolean
           is_fulfillment_unavailable?: boolean
+          is_gift?: boolean
           listing_id?: number | null
           name: string
           negotiation_status?: string | null
           order_id: number
           procurement_pulled?: boolean
-          product_id: number
+          product_id?: number | null
           quantity: number
           returned_quantity?: number
+          shop_customer_stock_id?: number | null
           shortfall_quantity?: number
           staff_offer_amount?: number | null
           staff_offer_at?: string | null
@@ -6016,6 +6142,10 @@ export type Database = {
           final_offer_at?: string | null
           final_price_amount?: number | null
           final_price_currency_id?: number | null
+          gift_added_by?: string | null
+          gift_cost_amount?: number
+          gift_cost_charged_to?: string | null
+          gift_source?: string | null
           global_stock_allocation_id?: number | null
           global_stock_id?: number | null
           grade_tag_id?: number | null
@@ -6024,14 +6154,16 @@ export type Database = {
           is_final_offer_manual?: boolean
           is_first_offer_manual?: boolean
           is_fulfillment_unavailable?: boolean
+          is_gift?: boolean
           listing_id?: number | null
           name?: string
           negotiation_status?: string | null
           order_id?: number
           procurement_pulled?: boolean
-          product_id?: number
+          product_id?: number | null
           quantity?: number
           returned_quantity?: number
+          shop_customer_stock_id?: number | null
           shortfall_quantity?: number
           staff_offer_amount?: number | null
           staff_offer_at?: string | null
@@ -6113,6 +6245,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shop_order_items_shop_customer_stock_id_fkey"
+            columns: ["shop_customer_stock_id"]
+            isOneToOne: false
+            referencedRelation: "shop_customer_stocks"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "shop_order_items_staff_offer_currency_id_fkey"
             columns: ["staff_offer_currency_id"]
             isOneToOne: false
@@ -6145,6 +6284,8 @@ export type Database = {
       shop_orders: {
         Row: {
           allow_open_box: boolean | null
+          auto_gifts_applied_at: string | null
+          auto_gifts_apply_result: Json | null
           billing_profile_id: number | null
           cancel_reason: string | null
           cargo_rate: number | null
@@ -6237,6 +6378,8 @@ export type Database = {
         }
         Insert: {
           allow_open_box?: boolean | null
+          auto_gifts_applied_at?: string | null
+          auto_gifts_apply_result?: Json | null
           billing_profile_id?: number | null
           cancel_reason?: string | null
           cargo_rate?: number | null
@@ -6329,6 +6472,8 @@ export type Database = {
         }
         Update: {
           allow_open_box?: boolean | null
+          auto_gifts_applied_at?: string | null
+          auto_gifts_apply_result?: Json | null
           billing_profile_id?: number | null
           cancel_reason?: string | null
           cargo_rate?: number | null
@@ -6446,13 +6591,6 @@ export type Database = {
             columns: ["customer_group_id"]
             isOneToOne: false
             referencedRelation: "customer_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shop_orders_global_invoice_id_fkey"
-            columns: ["global_invoice_id"]
-            isOneToOne: false
-            referencedRelation: "bills"
             referencedColumns: ["id"]
           },
           {
@@ -6759,8 +6897,6 @@ export type Database = {
           category_ids: number[] | null
           created_at: string
           deduct_charges_from_margin: boolean
-          deduct_cod_from_margin: boolean
-          deduct_delivery_from_margin: boolean
           deduct_packing_from_margin: boolean
           deduct_print_from_margin: boolean
           deduct_return_charge_from_middle_man: boolean | null
@@ -6775,7 +6911,7 @@ export type Database = {
           id: number
           is_active: boolean
           is_negotiable: boolean
-          markup_percentage: number
+          markup_percentage: number | null
           min_available_units: number
           name: string
           order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
@@ -6797,8 +6933,6 @@ export type Database = {
           category_ids?: number[] | null
           created_at?: string
           deduct_charges_from_margin?: boolean
-          deduct_cod_from_margin?: boolean
-          deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
           deduct_return_charge_from_middle_man?: boolean | null
@@ -6813,7 +6947,7 @@ export type Database = {
           id?: never
           is_active?: boolean
           is_negotiable?: boolean
-          markup_percentage?: number
+          markup_percentage?: number | null
           min_available_units?: number
           name: string
           order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
@@ -6835,8 +6969,6 @@ export type Database = {
           category_ids?: number[] | null
           created_at?: string
           deduct_charges_from_margin?: boolean
-          deduct_cod_from_margin?: boolean
-          deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
           deduct_return_charge_from_middle_man?: boolean | null
@@ -6851,7 +6983,7 @@ export type Database = {
           id?: never
           is_active?: boolean
           is_negotiable?: boolean
-          markup_percentage?: number
+          markup_percentage?: number | null
           min_available_units?: number
           name?: string
           order_mode?: Database["public"]["Enums"]["shop_order_mode_enum"]
@@ -6982,6 +7114,7 @@ export type Database = {
             | null
           to_grade_tag_id: number | null
           to_location_id: number | null
+          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -6999,6 +7132,7 @@ export type Database = {
             | null
           to_grade_tag_id?: number | null
           to_location_id?: number | null
+          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -7016,6 +7150,7 @@ export type Database = {
             | null
           to_grade_tag_id?: number | null
           to_location_id?: number | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -9662,6 +9797,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      add_dropship_order_gift_item: {
+        Args: {
+          p_gift_added_by?: string
+          p_gift_cost_amount?: number
+          p_gift_cost_charged_to?: string
+          p_gift_source: string
+          p_order_id: number
+          p_product_id: number
+          p_quantity: number
+          p_shop_customer_stock_id?: number
+        }
+        Returns: Json
+      }
       add_global_invoice_item: {
         Args: {
           p_global_stock_id: number
@@ -10079,6 +10227,10 @@ export type Database = {
           p_shipment_id: number
           p_source_outcome_id: number
         }
+        Returns: Json
+      }
+      apply_shop_auto_gift_items: {
+        Args: { p_order_id: number }
         Returns: Json
       }
       archive_shipment: {
@@ -10551,10 +10703,6 @@ export type Database = {
         Returns: boolean
       }
       can_staff_access_costing_file: {
-        Args: { p_tenant_id: number }
-        Returns: boolean
-      }
-      can_tenant_view_costing_file_viewer: {
         Args: { p_tenant_id: number }
         Returns: boolean
       }
@@ -11450,7 +11598,6 @@ export type Database = {
             }
             Returns: Json
           }
-      current_authenticated_email: { Args: never; Returns: string }
       current_costing_item_actor_role: {
         Args: { p_costing_file_id: number }
         Returns: string
@@ -11542,6 +11689,7 @@ export type Database = {
         Args: { p_shop_id: number; p_tenant_id: number }
         Returns: undefined
       }
+      delete_shop_auto_gift_item: { Args: { p_id: number }; Returns: Json }
       delete_shop_order: { Args: { p_order_id: number }; Returns: undefined }
       delete_shop_product_listing: {
         Args: { p_listing_id: number; p_tenant_id: number }
@@ -12015,17 +12163,27 @@ export type Database = {
           tenant_id: number
         }[]
       }
-      get_product_based_costing_file_summary: {
-        Args: {
-          p_cargo_rate_kg_gbp?: number
-          p_conversion_rate?: number
-          p_file_id: number
-          p_offer_pricing_mode?: string
-          p_profit_rate?: number
-          p_vat_rate?: number
-        }
-        Returns: Json
-      }
+      get_product_based_costing_file_summary:
+        | {
+            Args: {
+              p_cargo_rate_kg_gbp?: number
+              p_conversion_rate?: number
+              p_file_id: number
+              p_profit_rate?: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_cargo_rate_kg_gbp?: number
+              p_conversion_rate?: number
+              p_file_id: number
+              p_offer_pricing_mode?: string
+              p_profit_rate?: number
+              p_vat_rate?: number
+            }
+            Returns: Json
+          }
       get_product_for_tenant: {
         Args: { p_id: number; p_tenant_id: number }
         Returns: {
@@ -13622,6 +13780,42 @@ export type Database = {
         }
         Returns: Json
       }
+      list_shop_auto_gift_items: {
+        Args: { p_shop_id: number }
+        Returns: {
+          created_at: string
+          gift_cost_amount: number
+          gift_cost_charged_to: string | null
+          gift_source: string
+          id: number
+          is_active: boolean
+          product_id: number
+          quantity: number
+          shop_id: number
+          tenant_id: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "shop_auto_gift_items"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      list_shop_customer_stocks: {
+        Args: { p_customer_group_id?: number; p_shop_id: number }
+        Returns: {
+          customer_group_id: number
+          id: number
+          item_label: string
+          product_code: string
+          product_id: number
+          product_name: string
+          quantity_on_hand: number
+          shop_id: number
+          updated_at: string
+        }[]
+      }
       list_shop_listing_group_visibility: {
         Args: { p_customer_group_id: number; p_shop_id: number }
         Returns: Json
@@ -14452,6 +14646,16 @@ export type Database = {
         Args: { p_shipment_id: number }
         Returns: number
       }
+      receive_shop_customer_stock: {
+        Args: {
+          p_customer_group_id: number
+          p_item_label?: string
+          p_product_id?: number
+          p_quantity: number
+          p_shop_id: number
+        }
+        Returns: Json
+      }
       recipient_profile_valid_for_issuer: {
         Args: { p_issued_by_tenant_id: number; p_recipient_profile_id: number }
         Returns: boolean
@@ -14737,6 +14941,10 @@ export type Database = {
       }
       release_thrift_stock_hold: {
         Args: { p_stock_id: number; p_tenant_id: number }
+        Returns: Json
+      }
+      remove_dropship_order_gift_item: {
+        Args: { p_order_item_id: number }
         Returns: Json
       }
       remove_global_invoice_item: {
@@ -15208,44 +15416,26 @@ export type Database = {
         }
         Returns: Json
       }
-      submit_shop_order_from_cart:
-        | {
-            Args: {
-              p_billing_profile_id?: number
-              p_cart_id: number
-              p_cod_charge_amount?: number
-              p_delivery_charge_amount?: number
-              p_delivery_instructions?: string
-              p_discount_amount?: number
-              p_is_prepaid?: boolean
-              p_packing_charge_amount?: number
-              p_print_charge_amount?: number
-              p_recipient_name: string
-              p_recipient_phone: string
-              p_shipping_address: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_billing_profile_id?: number
-              p_cart_id: number
-              p_cod_charge_amount?: number
-              p_delivery_charge_amount?: number
-              p_delivery_instructions?: string
-              p_discount_amount?: number
-              p_is_prepaid?: boolean
-              p_packing_charge_amount?: number
-              p_print_charge_amount?: number
-              p_recipient_name: string
-              p_recipient_phone: string
-              p_recipient_phone_secondary?: string
-              p_shipping_address: string
-              p_shipping_district?: string
-              p_shipping_thana?: string
-            }
-            Returns: Json
-          }
+      submit_shop_order_from_cart: {
+        Args: {
+          p_billing_profile_id?: number
+          p_cart_id: number
+          p_cod_charge_amount?: number
+          p_delivery_charge_amount?: number
+          p_delivery_instructions?: string
+          p_discount_amount?: number
+          p_is_prepaid?: boolean
+          p_packing_charge_amount?: number
+          p_print_charge_amount?: number
+          p_recipient_name: string
+          p_recipient_phone: string
+          p_recipient_phone_secondary?: string
+          p_shipping_address: string
+          p_shipping_district?: string
+          p_shipping_thana?: string
+        }
+        Returns: Json
+      }
       sum_preorder_stock_picks: {
         Args: { p_stock_picks: Json }
         Returns: number
@@ -15557,6 +15747,14 @@ export type Database = {
           p_shipping_district?: string
           p_shipping_thana?: string
           p_tracking_url?: string
+        }
+        Returns: Json
+      }
+      update_dropship_order_gift_item_cost: {
+        Args: {
+          p_gift_cost_amount: number
+          p_gift_cost_charged_to: string
+          p_order_item_id: number
         }
         Returns: Json
       }
@@ -16192,159 +16390,84 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      upsert_shop:
-        | {
-            Args: {
-              p_allow_delivery?: boolean
-              p_buy_currency_id?: number
-              p_deduct_charges_from_margin?: boolean
-              p_deduct_cod_from_margin?: boolean
-              p_deduct_delivery_from_margin?: boolean
-              p_deduct_packing_from_margin?: boolean
-              p_deduct_print_from_margin?: boolean
-              p_default_cod_charge_pct?: number
-              p_default_currency_id?: number
-              p_default_delivery_charge_amount?: number
-              p_default_packing_charge_amount?: number
-              p_default_print_charge_amount?: number
-              p_global_stock_type_id?: number
-              p_id?: number
-              p_is_active: boolean
-              p_is_negotiable: boolean
-              p_markup_percentage?: number
-              p_name: string
-              p_order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
-              p_pricing_method?: string
-              p_quantity_display_mode?: string
-              p_sell_currency_id?: number
-              p_shop_type?: Database["public"]["Enums"]["shop_type_enum"]
-              p_show_stock_quantity: boolean
-              p_slug: string
-              p_tenant_id: number
-              p_vendor_code?: string
-              p_vendor_filters?: Json
-            }
-            Returns: {
-              allow_delivery: boolean
-              buy_currency_id: number
-              category_ids: number[] | null
-              created_at: string
-              deduct_charges_from_margin: boolean
-              deduct_cod_from_margin: boolean
-              deduct_delivery_from_margin: boolean
-              deduct_packing_from_margin: boolean
-              deduct_print_from_margin: boolean
-              deduct_return_charge_from_middle_man: boolean | null
-              default_currency_id: number | null
-              default_packing_charge_amount: number
-              default_print_charge_amount: number
-              deleted_at: string | null
-              deleted_by: string | null
-              description: string | null
-              display_quantity_add: number
-              global_stock_type_id: number | null
-              id: number
-              is_active: boolean
-              is_negotiable: boolean
-              markup_percentage: number
-              min_available_units: number
-              name: string
-              order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
-              parent_tenant_id: number | null
-              pricing_method: string
-              quantity_display_mode: string
-              sell_currency_id: number
-              shop_type: Database["public"]["Enums"]["shop_type_enum"]
-              show_stock_quantity: boolean
-              slug: string
-              tenant_id: number
-              updated_at: string
-              vendor_code: string | null
-              vendor_filters: Json | null
-            }[]
-            SetofOptions: {
-              from: "*"
-              to: "shops"
-              isOneToOne: false
-              isSetofReturn: true
-            }
-          }
-        | {
-            Args: {
-              p_allow_delivery?: boolean
-              p_buy_currency_id?: number
-              p_category_ids?: number[]
-              p_deduct_charges_from_margin?: boolean
-              p_deduct_packing_from_margin?: boolean
-              p_deduct_print_from_margin?: boolean
-              p_default_currency_id?: number
-              p_default_packing_charge_amount?: number
-              p_default_print_charge_amount?: number
-              p_description?: string
-              p_display_quantity_add?: number
-              p_global_stock_type_id?: number
-              p_id?: number
-              p_is_active: boolean
-              p_is_negotiable: boolean
-              p_markup_percentage?: number
-              p_min_available_units?: number
-              p_name: string
-              p_order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
-              p_pricing_method?: string
-              p_quantity_display_mode?: string
-              p_sell_currency_id?: number
-              p_shop_type?: Database["public"]["Enums"]["shop_type_enum"]
-              p_show_stock_quantity: boolean
-              p_slug: string
-              p_tenant_id: number
-              p_vendor_code?: string
-              p_vendor_filters?: Json
-            }
-            Returns: {
-              allow_delivery: boolean
-              buy_currency_id: number
-              category_ids: number[] | null
-              created_at: string
-              deduct_charges_from_margin: boolean
-              deduct_cod_from_margin: boolean
-              deduct_delivery_from_margin: boolean
-              deduct_packing_from_margin: boolean
-              deduct_print_from_margin: boolean
-              deduct_return_charge_from_middle_man: boolean | null
-              default_currency_id: number | null
-              default_packing_charge_amount: number
-              default_print_charge_amount: number
-              deleted_at: string | null
-              deleted_by: string | null
-              description: string | null
-              display_quantity_add: number
-              global_stock_type_id: number | null
-              id: number
-              is_active: boolean
-              is_negotiable: boolean
-              markup_percentage: number
-              min_available_units: number
-              name: string
-              order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
-              parent_tenant_id: number | null
-              pricing_method: string
-              quantity_display_mode: string
-              sell_currency_id: number
-              shop_type: Database["public"]["Enums"]["shop_type_enum"]
-              show_stock_quantity: boolean
-              slug: string
-              tenant_id: number
-              updated_at: string
-              vendor_code: string | null
-              vendor_filters: Json | null
-            }[]
-            SetofOptions: {
-              from: "*"
-              to: "shops"
-              isOneToOne: false
-              isSetofReturn: true
-            }
-          }
+      upsert_shop: {
+        Args: {
+          p_allow_delivery?: boolean
+          p_buy_currency_id?: number
+          p_category_ids?: number[]
+          p_deduct_charges_from_margin?: boolean
+          p_deduct_packing_from_margin?: boolean
+          p_deduct_print_from_margin?: boolean
+          p_default_currency_id?: number
+          p_default_packing_charge_amount?: number
+          p_default_print_charge_amount?: number
+          p_description?: string
+          p_display_quantity_add?: number
+          p_global_stock_type_id?: number
+          p_id?: number
+          p_is_active: boolean
+          p_is_negotiable: boolean
+          p_markup_percentage?: number
+          p_min_available_units?: number
+          p_name: string
+          p_order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          p_pricing_method?: string
+          p_quantity_display_mode?: string
+          p_sell_currency_id?: number
+          p_shop_type?: Database["public"]["Enums"]["shop_type_enum"]
+          p_show_stock_quantity: boolean
+          p_slug: string
+          p_tenant_id: number
+          p_vendor_code?: string
+          p_vendor_filters?: Json
+        }
+        Returns: {
+          allow_delivery: boolean
+          buy_currency_id: number
+          category_ids: number[] | null
+          created_at: string
+          deduct_charges_from_margin: boolean
+          deduct_packing_from_margin: boolean
+          deduct_print_from_margin: boolean
+          deduct_return_charge_from_middle_man: boolean | null
+          default_currency_id: number | null
+          default_packing_charge_amount: number
+          default_print_charge_amount: number
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          display_quantity_add: number
+          global_stock_type_id: number | null
+          id: number
+          is_active: boolean
+          is_negotiable: boolean
+          markup_percentage: number | null
+          min_available_units: number
+          name: string
+          order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          parent_tenant_id: number | null
+          pricing_method: string
+          quantity_display_mode: string
+          sell_currency_id: number
+          shop_type: Database["public"]["Enums"]["shop_type_enum"]
+          show_stock_quantity: boolean
+          slug: string
+          tenant_id: number
+          updated_at: string
+          vendor_code: string | null
+          vendor_filters: Json | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "shops"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      upsert_shop_auto_gift_item: {
+        Args: { p_payload: Json; p_shop_id: number }
+        Returns: Json
+      }
       upsert_shop_customer_group_access: {
         Args: {
           p_can_add_to_cart?: boolean
@@ -16882,15 +17005,15 @@ export type Database = {
         | "shipped"
         | "delivered"
         | "payment_received"
+        | "reseller_paid"
         | "ready_for_pickup"
         | "returned"
         | "costing_pending"
         | "countered"
         | "final_offered"
         | "procuring"
-        | "ordered"
         | "packed"
-        | "reseller_paid"
+        | "ordered"
       shop_type_enum: "vendor_catalog" | "fixed_price" | "dropship"
       stock_availability: "sellable" | "held" | "unsellable"
       stock_location_kind:
@@ -16901,12 +17024,13 @@ export type Database = {
         | "bin"
         | "returns"
       stock_movement_type:
-        | "receive_putaway"
+        | "adjustment"
         | "location_transfer"
         | "availability_transfer"
-        | "adjustment"
+        | "receive_putaway"
         | "return_inbound"
         | "receive_rollback"
+        | "vendor_return"
         | "grade_change"
       thrift_condition: "NEW_WITH_TAGS" | "EXCELLENT" | "GOOD" | "FAIR"
       thrift_delivery_status:
@@ -16945,12 +17069,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -16974,11 +17098,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -16999,11 +17123,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -17024,11 +17148,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -17041,11 +17165,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -17184,15 +17308,15 @@ export const Constants = {
         "shipped",
         "delivered",
         "payment_received",
+        "reseller_paid",
         "ready_for_pickup",
         "returned",
         "costing_pending",
         "countered",
         "final_offered",
         "procuring",
-        "ordered",
         "packed",
-        "reseller_paid",
+        "ordered",
       ],
       shop_type_enum: ["vendor_catalog", "fixed_price", "dropship"],
       stock_availability: ["sellable", "held", "unsellable"],
@@ -17205,12 +17329,13 @@ export const Constants = {
         "returns",
       ],
       stock_movement_type: [
-        "receive_putaway",
+        "adjustment",
         "location_transfer",
         "availability_transfer",
-        "adjustment",
+        "receive_putaway",
         "return_inbound",
         "receive_rollback",
+        "vendor_return",
         "grade_change",
       ],
       thrift_condition: ["NEW_WITH_TAGS", "EXCELLENT", "GOOD", "FAIR"],
@@ -17240,3 +17365,4 @@ export const Constants = {
     },
   },
 } as const
+

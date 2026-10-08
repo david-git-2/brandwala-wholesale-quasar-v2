@@ -42,7 +42,7 @@ const ENTITY_MAP: Record<string, { label: string; singular: string; defaultSubPa
   shipment: { label: 'Shipments', singular: 'Shipment' },
   'inbound-shipments': { label: 'Inbound Shipments', singular: 'Shipment' },
   inbound: { label: 'Inbound Shipments', singular: 'Shipment' },
-  stock: { label: 'Stock Catalog', singular: 'Stock Item' },
+  stock: { label: 'Warehouse', singular: 'Stock Item' },
   'child-stock': { label: 'Location Stock', singular: 'Stock Item' },
   'stock-locations': { label: 'Stock Locations', singular: 'Stock Location' },
   'cargo-companies': { label: 'Cargo Companies', singular: 'Cargo Company' },
@@ -56,6 +56,7 @@ const ENTITY_MAP: Record<string, { label: string; singular: string; defaultSubPa
   categories: { label: 'Categories', singular: 'Category' },
   pricing: { label: 'Pricing', singular: 'Pricing' },
   invoices: { label: 'Bills', singular: 'Bill' },
+  payments: { label: 'Payments', singular: 'Payment' },
   files: { label: 'Costing Files', singular: 'Costing File' },
   vendors: { label: 'Vendors', singular: 'Vendor' },
   profiles: { label: 'Profiles', singular: 'Profile' },
@@ -89,7 +90,7 @@ const ACTION_MAP: Record<string, string> = {
 };
 
 /** URL folders that are not pages — do not render them as crumbs. */
-const PATH_PREFIX_SEGMENTS = new Set(['sales']);
+const PATH_PREFIX_SEGMENTS = new Set(['sales', 'finance']);
 
 export function useBreadcrumbs() {
   const route = useRoute();

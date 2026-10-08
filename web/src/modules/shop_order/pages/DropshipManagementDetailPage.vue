@@ -96,10 +96,22 @@
             unelevated
             no-caps
             icon="ph ph-bank"
-            label="Record remittance"
+            label="Courier pay in"
             class="text-weight-bold"
             style="border-radius: 8px; min-width: 220px"
             @click="goToRemittance"
+          />
+
+          <q-btn
+            v-else-if="orderData.step_state.can_transfer_to_reseller"
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-hand-coins"
+            label="Pay dropship shop profit"
+            class="text-weight-bold"
+            style="border-radius: 8px; min-width: 220px"
+            @click="goToShopPayout"
           />
 
           <q-btn
@@ -205,16 +217,19 @@ const deskBannerText = computed(() => {
     case 'outcome':
       return 'Parcel is in transit. Confirm delivery or mark a return — cash is recorded when the courier remits.';
     case 'remit':
-      return 'Parcel delivered. Record courier remittance on Payments → Remittance (net bank in) to pay the merchant bill; shop profit stays on cashbook.';
+      return 'Parcel delivered. Use Payments → Pay in → Courier (net bank in) to clear the merchant bill; shop profit stays on cashbook until Pay out.';
     default:
       if (orderData.value?.order.status === 'returned') {
         return 'Return finalized — settlement is read-only.';
+      }
+      if (orderData.value?.step_state.can_transfer_to_reseller) {
+        return 'Remittance posted. Shop profit is on cashbook — use Pay shop profit when you send money to the merchant.';
       }
       if (
         orderData.value?.order.status === 'payment_received'
         || orderData.value?.order.status === 'reseller_paid'
       ) {
-        return 'Settlement complete — remittance posted and merchant profit credited.';
+        return 'Settlement complete — remittance posted and shop profit paid out.';
       }
       return 'Settlement desk — read-only recap.';
   }
@@ -280,9 +295,17 @@ function openMerchantInvoice() {
 
 function goToRemittance() {
   void router.push({
-    name: 'app-remit-pay-page',
+    name: 'app-collect-pay-page',
     params: { tenantSlug: tenantSlug.value },
-    query: { orderId: String(orderId.value) },
+    query: { mode: 'courier', orderId: String(orderId.value) },
+  });
+}
+
+function goToShopPayout() {
+  void router.push({
+    name: 'app-shop-dropship-finance-hub-page',
+    params: { tenantSlug: tenantSlug.value },
+    query: { orderId: String(orderId.value), step: 'middleman_payout' },
   });
 }
 
