@@ -81,7 +81,8 @@ CREATE TYPE "public"."global_shipment_cost_type" AS ENUM (
     'labor',
     'washing',
     'transport',
-    'handling'
+    'handling',
+    'local'
 );
 
 
@@ -3302,8 +3303,8 @@ begin
   select
     coalesce(sum(amount) filter (where cost_type = 'product'), 0),
     coalesce(sum(amount * exchange_rate) filter (where cost_type = 'product'), 0),
-    coalesce(sum(amount) filter (where cost_type != 'product'), 0),
-    coalesce(sum(amount * exchange_rate) filter (where cost_type != 'product'), 0)
+    coalesce(sum(amount) filter (where cost_type in ('cargo', 'duty')), 0),
+    coalesce(sum(amount * exchange_rate) filter (where cost_type in ('cargo', 'duty')), 0)
   into v_product_amount, v_goods_bdt, v_cargo_amount, v_cargo_bdt
   from public.global_shipment_cost_entries
   where shipment_id = v_shipment_id;
@@ -27426,8 +27427,8 @@ begin
   select
     coalesce(sum(amount) filter (where cost_type = 'product'), 0),
     coalesce(sum(amount * exchange_rate) filter (where cost_type = 'product'), 0),
-    coalesce(sum(amount) filter (where cost_type != 'product'), 0),
-    coalesce(sum(amount * exchange_rate) filter (where cost_type != 'product'), 0)
+    coalesce(sum(amount) filter (where cost_type in ('cargo', 'duty')), 0),
+    coalesce(sum(amount * exchange_rate) filter (where cost_type in ('cargo', 'duty')), 0)
   into v_product_amount, v_goods_bdt, v_cargo_amount, v_cargo_bdt
   from public.global_shipment_cost_entries
   where shipment_id = p_shipment_id;

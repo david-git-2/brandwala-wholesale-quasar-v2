@@ -23,6 +23,9 @@ export type PayListRow = {
   profile_id: number | null;
   profile_name: string | null;
   shop_order_id: number | null;
+  settlement_currency_code: string;
+  foreign_amount: number | null;
+  exchange_rate: number;
 };
 
 export type ListPaysParams = {
@@ -81,7 +84,7 @@ const listPays = async (params: ListPaysParams): Promise<{ data: PayListRow[]; t
   let query = supabase
     .from('pays')
     .select(
-      'id, payment_date, amount, unallocated_amount, source, method, reference, note, voided_at, profile_id, shop_order_id, profiles:profiles!pays_profile_id_fkey(name)',
+      'id, payment_date, amount, unallocated_amount, source, method, reference, note, voided_at, profile_id, shop_order_id, settlement_currency_code, foreign_amount, exchange_rate, profiles:profiles!pays_profile_id_fkey(name)',
       { count: 'exact' },
     )
     .eq('tenant_id', tenantId);
@@ -127,6 +130,9 @@ const listPays = async (params: ListPaysParams): Promise<{ data: PayListRow[]; t
       profile_id: row.profile_id,
       profile_name: profile?.name ?? null,
       shop_order_id: row.shop_order_id,
+      settlement_currency_code: row.settlement_currency_code ?? 'BDT',
+      foreign_amount: row.foreign_amount,
+      exchange_rate: row.exchange_rate ?? 1,
     };
   });
 
@@ -137,7 +143,7 @@ const getPayById = async (payId: number): Promise<PayDetail> => {
   const { data: pay, error: payError } = await supabase
     .from('pays')
     .select(
-      'id, payment_date, amount, unallocated_amount, source, method, reference, note, voided_at, profile_id, shop_order_id, tenant_id, customer_group_id, profiles:profiles!pays_profile_id_fkey(name)',
+      'id, payment_date, amount, unallocated_amount, source, method, reference, note, voided_at, profile_id, shop_order_id, tenant_id, customer_group_id, settlement_currency_code, foreign_amount, exchange_rate, profiles:profiles!pays_profile_id_fkey(name)',
     )
     .eq('id', payId)
     .single();
@@ -173,6 +179,9 @@ const getPayById = async (payId: number): Promise<PayDetail> => {
     shop_order_id: pay.shop_order_id,
     tenant_id: pay.tenant_id,
     customer_group_id: pay.customer_group_id,
+    settlement_currency_code: pay.settlement_currency_code ?? 'BDT',
+    foreign_amount: pay.foreign_amount,
+    exchange_rate: pay.exchange_rate ?? 1,
     instruments: (instruments ?? []).map((i) => ({
       id: i.id,
       payment_method_code: i.payment_method_code,
@@ -352,6 +361,9 @@ const postApPayoutWithAllocations = async (payload: {
   reference?: string | null;
   instruments: WholesalePaymentInstrumentInput[];
   allocations: Array<{ bill_id: number; amount: number }>;
+  settlement_currency_code?: string;
+  foreign_amount?: number | null;
+  exchange_rate?: number | null;
 }) => {
   const { data, error } = await supabase.rpc('post_ap_payout_with_allocations', {
     p_tenant_id: payload.tenant_id,
@@ -361,6 +373,9 @@ const postApPayoutWithAllocations = async (payload: {
     p_reference: payload.reference ?? null,
     p_instruments: payload.instruments,
     p_allocations: payload.allocations.map((a) => ({ bill_id: a.bill_id, amount: a.amount })),
+    p_settlement_currency_code: payload.settlement_currency_code ?? 'BDT',
+    p_foreign_amount: payload.foreign_amount ?? null,
+    p_exchange_rate: payload.exchange_rate ?? null,
   });
   if (error) throw error;
   return data;

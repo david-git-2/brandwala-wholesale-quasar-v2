@@ -3826,8 +3826,8 @@ begin
   select
     coalesce(sum(amount) filter (where cost_type = 'product'), 0),
     coalesce(sum(amount * exchange_rate) filter (where cost_type = 'product'), 0),
-    coalesce(sum(amount) filter (where cost_type != 'product'), 0),
-    coalesce(sum(amount * exchange_rate) filter (where cost_type != 'product'), 0)
+    coalesce(sum(amount) filter (where cost_type in ('cargo', 'duty')), 0),
+    coalesce(sum(amount * exchange_rate) filter (where cost_type in ('cargo', 'duty')), 0)
   into v_product_amount, v_goods_bdt, v_cargo_amount, v_cargo_bdt
   from public.global_shipment_cost_entries
   where shipment_id = p_shipment_id;
@@ -9247,8 +9247,8 @@ begin
   select
     coalesce(sum(amount) filter (where cost_type = 'product'), 0),
     coalesce(sum(amount * exchange_rate) filter (where cost_type = 'product'), 0),
-    coalesce(sum(amount) filter (where cost_type != 'product'), 0),
-    coalesce(sum(amount * exchange_rate) filter (where cost_type != 'product'), 0)
+    coalesce(sum(amount) filter (where cost_type in ('cargo', 'duty')), 0),
+    coalesce(sum(amount * exchange_rate) filter (where cost_type in ('cargo', 'duty')), 0)
   into v_product_amount, v_goods_bdt, v_cargo_amount, v_cargo_bdt
   from public.global_shipment_cost_entries
   where shipment_id = p_shipment_id;
@@ -10643,6 +10643,7 @@ begin
           entity_id = nullif(v_entry->>'entity_id', '')::bigint,
           allocation = nullif(v_entry->>'allocation', ''),
           metadata = coalesce(v_entry->'metadata', '{}'::jsonb),
+          section_id = nullif(v_entry->>'section_id', '')::bigint,
           updated_at = now()
         where e.id = v_id
           and e.shipment_id = p_shipment_id
@@ -10663,7 +10664,8 @@ begin
           entity_type,
           entity_id,
           allocation,
-          metadata
+          metadata,
+          section_id
         ) values (
           v_ship.parent_tenant_id,
           p_shipment_id,
@@ -10675,7 +10677,8 @@ begin
           nullif(v_entry->>'entity_type', ''),
           nullif(v_entry->>'entity_id', '')::bigint,
           nullif(v_entry->>'allocation', ''),
-          coalesce(v_entry->'metadata', '{}'::jsonb)
+          coalesce(v_entry->'metadata', '{}'::jsonb),
+          nullif(v_entry->>'section_id', '')::bigint
         )
         returning * into v_row;
       end if;
@@ -10716,7 +10719,7 @@ $$;
 ALTER FUNCTION "public"."save_global_shipment_cost_entries"("p_shipment_id" bigint, "p_entries" "jsonb", "p_delete_ids" bigint[], "p_received_weight" numeric, "p_total_weight_kg" numeric) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."upsert_global_shipment_cost_entry"("p_shipment_id" bigint, "p_cost_type" "public"."global_shipment_cost_type", "p_amount" numeric, "p_exchange_rate" numeric DEFAULT 1.0, "p_currency_id" bigint DEFAULT NULL::bigint, "p_payment_source" "text" DEFAULT NULL::"text", "p_entity_type" "text" DEFAULT NULL::"text", "p_entity_id" bigint DEFAULT NULL::bigint, "p_allocation" "text" DEFAULT NULL::"text", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb", "p_id" bigint DEFAULT NULL::bigint) RETURNS "public"."global_shipment_cost_entries"
+CREATE OR REPLACE FUNCTION "public"."upsert_global_shipment_cost_entry"("p_shipment_id" bigint, "p_cost_type" "public"."global_shipment_cost_type", "p_amount" numeric, "p_exchange_rate" numeric DEFAULT 1.0, "p_currency_id" bigint DEFAULT NULL::bigint, "p_payment_source" "text" DEFAULT NULL::"text", "p_entity_type" "text" DEFAULT NULL::"text", "p_entity_id" bigint DEFAULT NULL::bigint, "p_allocation" "text" DEFAULT NULL::"text", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb", "p_section_id" bigint DEFAULT NULL::bigint, "p_id" bigint DEFAULT NULL::bigint) RETURNS "public"."global_shipment_cost_entries"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -10757,6 +10760,7 @@ begin
       entity_id = p_entity_id,
       allocation = p_allocation,
       metadata = coalesce(p_metadata, '{}'::jsonb),
+      section_id = p_section_id,
       updated_at = now()
     where e.id = p_id
       and e.shipment_id = p_shipment_id
@@ -10777,7 +10781,8 @@ begin
       entity_type,
       entity_id,
       allocation,
-      metadata
+      metadata,
+      section_id
     ) values (
       v_ship.parent_tenant_id,
       p_shipment_id,
@@ -10789,12 +10794,14 @@ begin
       p_entity_type,
       p_entity_id,
       p_allocation,
-      coalesce(p_metadata, '{}'::jsonb)
+      coalesce(p_metadata, '{}'::jsonb),
+      p_section_id
     )
     returning * into v_row;
   end if;
 
-  if exists (select 1 from public.global_shipment_items where shipment_id = p_shipment_id) then
+  if p_cost_type is distinct from 'local'::public.global_shipment_cost_type
+     and exists (select 1 from public.global_shipment_items where shipment_id = p_shipment_id) then
     perform public.stamp_global_shipment_landed_costs(p_shipment_id);
   end if;
 
@@ -10803,7 +10810,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."upsert_global_shipment_cost_entry"("p_shipment_id" bigint, "p_cost_type" "public"."global_shipment_cost_type", "p_amount" numeric, "p_exchange_rate" numeric, "p_currency_id" bigint, "p_payment_source" "text", "p_entity_type" "text", "p_entity_id" bigint, "p_allocation" "text", "p_metadata" "jsonb", "p_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."upsert_global_shipment_cost_entry"("p_shipment_id" bigint, "p_cost_type" "public"."global_shipment_cost_type", "p_amount" numeric, "p_exchange_rate" numeric, "p_currency_id" bigint, "p_payment_source" "text", "p_entity_type" "text", "p_entity_id" bigint, "p_allocation" "text", "p_metadata" "jsonb", "p_section_id" bigint, "p_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."upsert_global_stock_allocation"("p_parent_tenant_id" bigint, "p_child_tenant_id" bigint, "p_stock_id" bigint, "p_quantity" integer) RETURNS "jsonb"
@@ -11270,8 +11277,8 @@ begin
   select
     coalesce(sum(amount) filter (where cost_type = 'product'), 0),
     coalesce(sum(amount * exchange_rate) filter (where cost_type = 'product'), 0),
-    coalesce(sum(amount) filter (where cost_type != 'product'), 0),
-    coalesce(sum(amount * exchange_rate) filter (where cost_type != 'product'), 0)
+    coalesce(sum(amount) filter (where cost_type in ('cargo', 'duty')), 0),
+    coalesce(sum(amount * exchange_rate) filter (where cost_type in ('cargo', 'duty')), 0)
   into v_product_amount, v_goods_bdt, v_cargo_amount, v_cargo_bdt
   from public.global_shipment_cost_entries
   where shipment_id = v_shipment_id;

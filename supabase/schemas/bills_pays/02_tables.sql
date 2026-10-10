@@ -154,7 +154,12 @@ CREATE TABLE IF NOT EXISTS "public"."pays" (
     "shop_order_id" bigint,
     "profile_id" bigint,
     "source" "text" DEFAULT 'customer_cash'::"text" NOT NULL,
+    "settlement_currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
+    "foreign_amount" numeric(12,2),
+    "exchange_rate" numeric(15,6) DEFAULT 1.000000 NOT NULL,
     CONSTRAINT "payments_amount_check" CHECK (("amount" >= (0)::numeric)),
+    CONSTRAINT "pays_exchange_rate_positive" CHECK (("exchange_rate" > (0)::numeric)),
+    CONSTRAINT "pays_settlement_fx_check" CHECK (((("settlement_currency_code" = 'BDT'::"text") AND ("foreign_amount" IS NULL) AND ("exchange_rate" = 1.000000)) OR (("settlement_currency_code" <> 'BDT'::"text") AND ("foreign_amount" IS NOT NULL) AND ("foreign_amount" > (0)::numeric) AND ("exchange_rate" > (0)::numeric)))),
     CONSTRAINT "payments_method_check" CHECK ((("method" IS NULL) OR ("method" = ANY (ARRAY['cash'::"text", 'bank'::"text", 'bank_transfer'::"text", 'mobile_banking'::"text", 'bkash'::"text", 'nagad'::"text", 'other'::"text", 'cheque'::"text", 'rocket'::"text", 'upay'::"text", 'tap'::"text", 'card_pos'::"text", 'wire_transfer'::"text", 'paypal'::"text", 'stripe'::"text", 'letter_of_credit'::"text", 'cod'::"text", 'split'::"text", 'store_credit'::"text"])))),
     CONSTRAINT "pays_source_check" CHECK (("source" = ANY (ARRAY['customer_cash'::"text", 'bank'::"text", 'store_credit'::"text", 'courier_remittance'::"text", 'ap_payout'::"text"])))
 );

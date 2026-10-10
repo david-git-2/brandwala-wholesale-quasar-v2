@@ -23,6 +23,12 @@
         <div v-if="pay.voided_at" class="text-negative text-weight-medium">Voided</div>
         <div>Profile: {{ pay.profile_name || '—' }}</div>
         <div>Amount: {{ formatAmountBdt(pay.amount) }}</div>
+        <div
+          v-if="pay.foreign_amount != null && pay.settlement_currency_code !== 'BDT'"
+          class="text-body2 text-grey-8"
+        >
+          Settlement: {{ pay.foreign_amount }} {{ pay.settlement_currency_code }} @ {{ pay.exchange_rate }} → BDT
+        </div>
         <div v-if="pay.unallocated_amount > 0">Leftover: {{ formatAmountBdt(pay.unallocated_amount) }}</div>
         <div v-if="pay.reference">Ref: {{ pay.reference }}</div>
         <div v-if="pay.note">Note: {{ pay.note }}</div>

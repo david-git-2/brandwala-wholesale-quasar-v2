@@ -1,10 +1,11 @@
 import { supabase } from 'src/boot/supabase';
-import type { GlobalShipmentLocalCost } from '../types/shipmentLocalCost';
 
 const db = supabase as any;
+import type { GlobalShipmentCostEntry } from '../types/shipmentCostEntry';
+import type { GlobalShipmentLocalCost } from '../types/shipmentLocalCost';
+import { globalShipmentCostEntryRepository } from './globalShipmentCostEntryRepository';
 
 export type UpsertShipmentLocalCostPayload = {
-  id?: number | null;
   parent_tenant_id: number;
   shipment_id: number;
   description: string;
@@ -13,60 +14,81 @@ export type UpsertShipmentLocalCostPayload = {
   currency_id?: number | null;
 };
 
+const mapEntryToLocal = (entry: GlobalShipmentCostEntry): GlobalShipmentLocalCost => {
+  const meta = (entry.metadata ?? {}) as { description?: string };
+  return {
+    id: entry.id,
+    parent_tenant_id: entry.parent_tenant_id,
+    shipment_id: entry.shipment_id,
+    section_id: entry.section_id,
+    description: meta.description?.trim() || '',
+    amount: Number(entry.amount),
+    currency_id: entry.currency_id,
+    created_at: entry.created_at,
+    updated_at: entry.updated_at,
+  };
+};
+
 const listByShipmentId = async (shipmentId: number): Promise<GlobalShipmentLocalCost[]> => {
-  const { data, error } = await db
-    .from('global_shipment_local_costs')
-    .select('*')
-    .eq('shipment_id', shipmentId)
-    .order('id', { ascending: true });
-
-  if (error) throw error;
-  return (data as GlobalShipmentLocalCost[] | null) ?? [];
+  const entries = await globalShipmentCostEntryRepository.listByShipmentId(shipmentId);
+  return entries.filter((e) => e.cost_type === 'local').map(mapEntryToLocal);
 };
 
-const create = async (payload: UpsertShipmentLocalCostPayload): Promise<GlobalShipmentLocalCost> => {
-  const { data, error } = await db
-    .from('global_shipment_local_costs')
-    .insert([
-      {
-        parent_tenant_id: payload.parent_tenant_id,
-        shipment_id: payload.shipment_id,
-        description: payload.description.trim(),
-        amount: payload.amount,
-        section_id: payload.section_id ?? null,
-        currency_id: payload.currency_id ?? null,
-      },
-    ])
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data as GlobalShipmentLocalCost;
+const upsertLocal = async (
+  shipmentId: number,
+  payload: {
+    id?: number | null;
+    description: string;
+    amount: number;
+    section_id?: number | null;
+    currency_id?: number | null;
+  },
+): Promise<GlobalShipmentLocalCost> => {
+  const entry = await globalShipmentCostEntryRepository.upsert({
+    shipment_id: shipmentId,
+    cost_type: 'local',
+    amount: payload.amount,
+    exchange_rate: 1,
+    currency_id: payload.currency_id ?? null,
+    metadata: { description: payload.description },
+    section_id: payload.section_id ?? null,
+    id: payload.id ?? null,
+  });
+  return mapEntryToLocal(entry);
 };
+
+const create = async (payload: UpsertShipmentLocalCostPayload): Promise<GlobalShipmentLocalCost> =>
+  upsertLocal(payload.shipment_id, {
+    description: payload.description,
+    amount: payload.amount,
+    section_id: payload.section_id,
+    currency_id: payload.currency_id,
+  });
 
 const update = async (
   id: number,
   payload: Pick<UpsertShipmentLocalCostPayload, 'description' | 'amount' | 'section_id' | 'currency_id'>,
 ): Promise<GlobalShipmentLocalCost> => {
-  const { data, error } = await db
-    .from('global_shipment_local_costs')
-    .update({
-      description: payload.description.trim(),
-      amount: payload.amount,
-      section_id: payload.section_id ?? null,
-      currency_id: payload.currency_id ?? null,
-    })
+  const { data: row, error } = await db
+    .from('global_shipment_cost_entries')
+    .select('shipment_id')
     .eq('id', id)
-    .select('*')
-    .single();
-
+    .eq('cost_type', 'local')
+    .maybeSingle();
   if (error) throw error;
-  return data as GlobalShipmentLocalCost;
+  if (!row?.shipment_id) throw new Error('Local cost not found');
+
+  return upsertLocal(row.shipment_id, {
+    id,
+    description: payload.description,
+    amount: payload.amount,
+    section_id: payload.section_id,
+    currency_id: payload.currency_id,
+  });
 };
 
 const remove = async (id: number): Promise<void> => {
-  const { error } = await db.from('global_shipment_local_costs').delete().eq('id', id);
-  if (error) throw error;
+  await globalShipmentCostEntryRepository.delete(id);
 };
 
 export const globalShipmentLocalCostRepository = {

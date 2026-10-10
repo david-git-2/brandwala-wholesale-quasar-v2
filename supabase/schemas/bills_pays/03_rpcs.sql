@@ -3507,7 +3507,51 @@ $$;
 
 ALTER FUNCTION "public"."list_wallet_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text", "p_operating_tenant_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
-CREATE OR REPLACE FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_received_on" "date", "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_source" "text" DEFAULT 'customer_cash'::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_shop_order_id" bigint DEFAULT NULL::bigint) RETURNS "public"."pays"
+CREATE OR REPLACE FUNCTION "public"."normalize_pay_settlement_fx"("p_instrument_total_bdt" numeric, "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric) RETURNS TABLE("settlement_currency_code" "text", "foreign_amount" numeric, "exchange_rate" numeric, "amount_bdt" numeric)
+    LANGUAGE "plpgsql" IMMUTABLE
+    AS $$
+declare
+  v_cur text;
+  v_for numeric;
+  v_rate numeric;
+  v_bdt numeric;
+begin
+  v_cur := upper(trim(coalesce(p_settlement_currency_code, 'BDT')));
+  v_for := p_foreign_amount;
+
+  if v_for is not null and v_for > 0 then
+    if v_cur in ('', 'BDT') then
+      raise exception 'foreign_amount requires a non-BDT settlement_currency_code';
+    end if;
+    v_rate := coalesce(p_exchange_rate, 0);
+    if v_rate <= 0 then
+      raise exception 'exchange_rate must be positive when foreign_amount is set';
+    end if;
+    v_bdt := round(v_for * v_rate, 2);
+    if coalesce(p_instrument_total_bdt, 0) > 0 and round(p_instrument_total_bdt, 2) <> v_bdt then
+      raise exception 'Payment instruments total (%) must match BDT from foreign settlement (%)',
+        p_instrument_total_bdt, v_bdt;
+    end if;
+    settlement_currency_code := v_cur;
+    foreign_amount := round(v_for, 2);
+    exchange_rate := v_rate;
+    amount_bdt := v_bdt;
+    return next;
+    return;
+  end if;
+
+  v_bdt := round(coalesce(p_instrument_total_bdt, 0), 2);
+  settlement_currency_code := 'BDT';
+  foreign_amount := null;
+  exchange_rate := 1.000000;
+  amount_bdt := v_bdt;
+  return next;
+end;
+$$;
+
+ALTER FUNCTION "public"."normalize_pay_settlement_fx"("p_instrument_total_bdt" numeric, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_received_on" "date", "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_source" "text" DEFAULT 'customer_cash'::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_shop_order_id" bigint DEFAULT NULL::bigint, "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric) RETURNS "public"."pays"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -3531,6 +3575,9 @@ declare
   v_total_alloc numeric(12, 2) := 0.00;
   v_leftover numeric(12, 2);
   v_profit_already_credited boolean := false;
+  v_settle_currency text := 'BDT';
+  v_foreign_amt numeric(12, 2);
+  v_fx_rate numeric(15, 6) := 1.000000;
 begin
   if p_tenant_id is null then
     raise exception 'Tenant is required';
@@ -3605,12 +3652,22 @@ begin
     v_header_method := 'other';
   end if;
 
+  if v_source <> 'store_credit' then
+    select n.settlement_currency_code, n.foreign_amount, n.exchange_rate, n.amount_bdt
+    into v_settle_currency, v_foreign_amt, v_fx_rate, v_amount
+    from public.normalize_pay_settlement_fx(
+      v_amount, p_settlement_currency_code, p_foreign_amount, p_exchange_rate
+    ) n;
+  end if;
+
   insert into public.pays (
     tenant_id, profile_id, source, amount, unallocated_amount,
-    payment_date, method, reference, note, shop_order_id
+    payment_date, method, reference, note, shop_order_id,
+    settlement_currency_code, foreign_amount, exchange_rate
   ) values (
     v_parent_id, p_billing_profile_id, v_source, v_amount, v_amount,
-    v_received_on, v_header_method, v_reference, v_note, p_shop_order_id
+    v_received_on, v_header_method, v_reference, v_note, p_shop_order_id,
+    v_settle_currency, v_foreign_amt, v_fx_rate
   ) returning * into v_pay;
 
   if v_line_count > 0 then
@@ -3780,7 +3837,7 @@ begin
 end;
 $$;
 
-ALTER FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb" DEFAULT NULL::"jsonb") RETURNS bigint
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -3893,7 +3950,6 @@ declare
   v_vendor_amt numeric(12, 2) := 0;
   v_cargo_amt numeric(12, 2) := 0;
   v_local_amt numeric(12, 2) := 0;
-  v_extra_local numeric(12, 2) := 0;
   v_tenant_name text;
   v_vendor_foreign numeric(12, 2) := 0;
   v_cargo_foreign numeric(12, 2) := 0;
@@ -3944,24 +4000,18 @@ begin
     v_cargo_amt := coalesce(round(v_ship.cargo_invoice_total, 2), 0);
   end if;
 
-  select coalesce(sum(round(lc.amount, 2)), 0)
-  into v_local_amt
-  from public.global_shipment_local_costs lc
-  where lc.shipment_id = p_shipment_id;
-
   select coalesce(sum(round(e.amount * coalesce(e.exchange_rate, 1), 2)), 0)
-  into v_extra_local
+  into v_local_amt
   from public.global_shipment_cost_entries e
   where e.shipment_id = p_shipment_id
     and e.cost_type in (
+      'local'::public.global_shipment_cost_type,
       'insurance'::public.global_shipment_cost_type,
       'labor'::public.global_shipment_cost_type,
       'washing'::public.global_shipment_cost_type,
       'transport'::public.global_shipment_cost_type,
       'handling'::public.global_shipment_cost_type
     );
-
-  v_local_amt := v_local_amt + v_extra_local;
 
   select coalesce(sum(round(e.amount, 2)), 0)
   into v_vendor_foreign
@@ -4011,24 +4061,13 @@ begin
   );
 
   select coalesce(
-    jsonb_agg(
-      jsonb_build_object(
-        'description', coalesce(nullif(trim(lc.description), ''), 'Local cost'),
-        'amount', round(lc.amount, 2)
-      )
-      order by lc.id
-    ),
-    '[]'::jsonb
-  )
-  into v_local_lines
-  from public.global_shipment_local_costs lc
-  where lc.shipment_id = p_shipment_id;
-
-  select coalesce(v_local_lines, '[]'::jsonb) || coalesce(
     (
       select jsonb_agg(
         jsonb_build_object(
-          'description', initcap(replace(e.cost_type::text, '_', ' ')),
+          'description', coalesce(
+            nullif(trim(e.metadata->>'description'), ''),
+            initcap(replace(e.cost_type::text, '_', ' '))
+          ),
           'amount', round(e.amount * coalesce(e.exchange_rate, 1), 2)
         )
         order by e.id
@@ -4036,6 +4075,7 @@ begin
       from public.global_shipment_cost_entries e
       where e.shipment_id = p_shipment_id
         and e.cost_type in (
+          'local'::public.global_shipment_cost_type,
           'insurance'::public.global_shipment_cost_type,
           'labor'::public.global_shipment_cost_type,
           'washing'::public.global_shipment_cost_type,
@@ -4101,7 +4141,7 @@ $$;
 
 ALTER FUNCTION "public"."sync_shipment_ap_bills"("p_shipment_id" bigint) OWNER TO "postgres";
 
-CREATE OR REPLACE FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb") RETURNS "public"."pays"
+CREATE OR REPLACE FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric) RETURNS "public"."pays"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -4122,6 +4162,9 @@ declare
   v_bill_id bigint;
   v_alloc_amount numeric(12, 2);
   v_total_alloc numeric(12, 2) := 0.00;
+  v_settle_currency text := 'BDT';
+  v_foreign_amt numeric(12, 2);
+  v_fx_rate numeric(15, 6) := 1.000000;
 begin
   if p_tenant_id is null then
     raise exception 'Tenant is required';
@@ -4183,12 +4226,20 @@ begin
     v_header_method := 'other';
   end if;
 
+  select n.settlement_currency_code, n.foreign_amount, n.exchange_rate, n.amount_bdt
+  into v_settle_currency, v_foreign_amt, v_fx_rate, v_amount
+  from public.normalize_pay_settlement_fx(
+    v_amount, p_settlement_currency_code, p_foreign_amount, p_exchange_rate
+  ) n;
+
   insert into public.pays (
     tenant_id, profile_id, source, amount, unallocated_amount,
-    payment_date, method, reference, note
+    payment_date, method, reference, note,
+    settlement_currency_code, foreign_amount, exchange_rate
   ) values (
     v_parent_id, p_profile_id, 'ap_payout', v_amount, 0,
-    v_received_on, v_header_method, v_reference, v_note
+    v_received_on, v_header_method, v_reference, v_note,
+    v_settle_currency, v_foreign_amt, v_fx_rate
   ) returning * into v_pay;
 
   perform public.insert_global_payment_instruments(v_pay.id, p_instruments);
@@ -4252,7 +4303,10 @@ begin
       'label', 'AP paid out',
       'payment_id', v_pay.id,
       'method', v_header_method,
-      'reference', v_reference
+      'reference', v_reference,
+      'settlement_currency_code', v_settle_currency,
+      'foreign_amount', v_foreign_amt,
+      'exchange_rate', v_fx_rate
     )
   );
 
@@ -4260,7 +4314,7 @@ begin
 end;
 $$;
 
-ALTER FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb") OWNER TO "postgres";
+ALTER FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."post_global_invoice"("p_invoice_id" bigint) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER

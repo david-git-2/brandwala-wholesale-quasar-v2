@@ -108,6 +108,7 @@ const upsert = async (payload: UpsertShipmentCostEntryPayload): Promise<GlobalSh
     p_entity_id: payload.entity_id ?? null,
     p_allocation: payload.allocation ?? null,
     p_metadata: payload.metadata ?? {},
+    p_section_id: payload.section_id ?? null,
     p_id: payload.id ?? null,
   });
   if (error) throw error;

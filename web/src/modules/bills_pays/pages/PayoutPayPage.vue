@@ -52,7 +52,44 @@
                   </q-item-section>
                 </q-item>
               </q-list>
-              <q-input v-model.number="apAmount" outlined dense label="Payment amount" type="number" />
+              <q-select
+                v-model="apSettlementCurrency"
+                :options="settlementCurrencyOptions"
+                emit-value
+                map-options
+                outlined
+                dense
+                label="Settlement currency"
+              />
+              <template v-if="apSettlementCurrency !== 'BDT'">
+                <q-input
+                  v-model.number="apForeignAmount"
+                  outlined
+                  dense
+                  :label="`Amount (${apSettlementCurrency})`"
+                  type="number"
+                  step="0.01"
+                />
+                <q-input
+                  v-model.number="apExchangeRate"
+                  outlined
+                  dense
+                  label="Exchange rate (BDT per 1 unit)"
+                  type="number"
+                  step="0.0001"
+                />
+                <div v-if="apComputedBdtAmount != null" class="text-caption text-grey-8">
+                  BDT equivalent: {{ formatAmountBdt(apComputedBdtAmount) }}
+                </div>
+              </template>
+              <q-input
+                v-model.number="apAmount"
+                outlined
+                dense
+                :label="apSettlementCurrency === 'BDT' ? 'Payment amount (BDT)' : 'Payment amount (BDT, from FX)'"
+                type="number"
+                :readonly="apSettlementCurrency !== 'BDT'"
+              />
               <q-select
                 v-model="apMethod"
                 :options="methodOptions"
@@ -152,6 +189,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { useRoute, useRouter } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -199,6 +237,38 @@ const apProfiles = ref<ApPayProfileSummary[]>([]);
 const selectedApProfileId = ref<number | null>(null);
 const apBills = ref<OpenApBillRow[]>([]);
 const apAmount = ref<number | null>(null);
+const apSettlementCurrency = ref('BDT');
+const apForeignAmount = ref<number | null>(null);
+const apExchangeRate = ref<number | null>(null);
+const { data: currenciesData } = useGlobalCurrenciesQuery();
+const settlementCurrencyOptions = computed(() => {
+  const fromRef =
+    (currenciesData.value ?? [])
+      .filter((c) => c.is_active)
+      .map((c) => ({ label: `${c.code} — ${c.name}`, value: c.code }));
+  const codes = new Set(fromRef.map((o) => o.value));
+  if (!codes.has('BDT')) {
+    fromRef.unshift({ label: 'BDT — Bangladesh Taka', value: 'BDT' });
+  }
+  return fromRef.sort((a, b) => (a.value === 'BDT' ? -1 : b.value === 'BDT' ? 1 : a.value.localeCompare(b.value)));
+});
+const apComputedBdtAmount = computed(() => {
+  if (apSettlementCurrency.value === 'BDT') return null;
+  const foreign = apForeignAmount.value;
+  const rate = apExchangeRate.value;
+  if (foreign == null || rate == null || foreign <= 0 || rate <= 0) return null;
+  return Math.round(foreign * rate * 100) / 100;
+});
+watch([apSettlementCurrency, apForeignAmount, apExchangeRate], () => {
+  if (apSettlementCurrency.value === 'BDT') {
+    apForeignAmount.value = null;
+    apExchangeRate.value = null;
+    return;
+  }
+  if (apComputedBdtAmount.value != null) {
+    apAmount.value = apComputedBdtAmount.value;
+  }
+});
 const apMethod = ref('bank_transfer');
 const apReference = ref('');
 const apNotes = ref('');
@@ -249,6 +319,10 @@ const apDueTotal = computed(() => apBills.value.reduce((s, b) => s + (Number(b.d
 const apSubmitDisabledReason = computed((): string | null => {
   if (selectedApProfileId.value == null) return 'Select a party to pay';
   if (!apBills.value.length) return 'No open AP bills for this party';
+  if (apSettlementCurrency.value !== 'BDT') {
+    if ((apForeignAmount.value ?? 0) <= 0) return 'Enter foreign amount';
+    if ((apExchangeRate.value ?? 0) <= 0) return 'Enter exchange rate';
+  }
   if ((apAmount.value ?? 0) <= 0) return 'Enter a payment amount';
   if ((apAmount.value ?? 0) > apDueTotal.value) {
     return 'Payment amount cannot exceed total due on open bills';
@@ -321,6 +395,11 @@ const submitAp = async () => {
       profile_id: selectedApProfileId.value,
       reference: apReference.value || null,
       note: apNotes.value || null,
+      settlement_currency_code: apSettlementCurrency.value,
+      foreign_amount:
+        apSettlementCurrency.value === 'BDT' ? null : Number(apForeignAmount.value),
+      exchange_rate:
+        apSettlementCurrency.value === 'BDT' ? null : Number(apExchangeRate.value),
       instruments: [
         buildWholesalePaymentInstrument({
           payment_method_code: apMethod.value,

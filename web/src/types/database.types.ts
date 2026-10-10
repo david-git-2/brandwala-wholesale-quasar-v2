@@ -2170,71 +2170,6 @@ export type Database = {
           },
         ]
       }
-      global_shipment_local_costs: {
-        Row: {
-          amount: number
-          created_at: string
-          currency_id: number | null
-          description: string
-          id: number
-          parent_tenant_id: number
-          section_id: number | null
-          shipment_id: number
-          updated_at: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          currency_id?: number | null
-          description: string
-          id?: number
-          parent_tenant_id: number
-          section_id?: number | null
-          shipment_id: number
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          currency_id?: number | null
-          description?: string
-          id?: number
-          parent_tenant_id?: number
-          section_id?: number | null
-          shipment_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "global_shipment_local_costs_currency_id_fkey"
-            columns: ["currency_id"]
-            isOneToOne: false
-            referencedRelation: "global_currencies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "global_shipment_local_costs_parent_tenant_id_fkey"
-            columns: ["parent_tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "global_shipment_local_costs_section_id_fkey"
-            columns: ["section_id"]
-            isOneToOne: false
-            referencedRelation: "global_shipment_sections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "global_shipment_local_costs_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "global_shipments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       global_shipment_outcome_vendor_credits: {
         Row: {
           created_at: string
@@ -4001,12 +3936,15 @@ export type Database = {
           collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
           customer_group_id: number | null
+          exchange_rate: number
+          foreign_amount: number | null
           id: number
           method: string | null
           note: string | null
           payment_date: string
           profile_id: number | null
           reference: string | null
+          settlement_currency_code: string
           shop_order_id: number | null
           source: string
           tenant_id: number
@@ -4018,12 +3956,15 @@ export type Database = {
           collection_source?: Database["public"]["Enums"]["collection_source_type"]
           created_at?: string
           customer_group_id?: number | null
+          exchange_rate?: number
+          foreign_amount?: number | null
           id?: number
           method?: string | null
           note?: string | null
           payment_date?: string
           profile_id?: number | null
           reference?: string | null
+          settlement_currency_code?: string
           shop_order_id?: number | null
           source?: string
           tenant_id: number
@@ -4035,12 +3976,15 @@ export type Database = {
           collection_source?: Database["public"]["Enums"]["collection_source_type"]
           created_at?: string
           customer_group_id?: number | null
+          exchange_rate?: number
+          foreign_amount?: number | null
           id?: number
           method?: string | null
           note?: string | null
           payment_date?: string
           profile_id?: number | null
           reference?: string | null
+          settlement_currency_code?: string
           shop_order_id?: number | null
           source?: string
           tenant_id?: number
@@ -14352,6 +14296,20 @@ export type Database = {
         Args: { p_phone: string }
         Returns: string
       }
+      normalize_pay_settlement_fx: {
+        Args: {
+          p_exchange_rate?: number
+          p_foreign_amount?: number
+          p_instrument_total_bdt: number
+          p_settlement_currency_code?: string
+        }
+        Returns: {
+          amount_bdt: number
+          exchange_rate: number
+          foreign_amount: number
+          settlement_currency_code: string
+        }[]
+      }
       normalize_pbc_procurement_status: {
         Args: { p_status: string }
         Returns: string
@@ -14477,11 +14435,14 @@ export type Database = {
       post_ap_payout_with_allocations: {
         Args: {
           p_allocations?: Json
+          p_exchange_rate?: number
+          p_foreign_amount?: number
           p_instruments?: Json
           p_note?: string
           p_paid_on: string
           p_profile_id: number
           p_reference?: string
+          p_settlement_currency_code?: string
           p_tenant_id: number
         }
         Returns: {
@@ -14489,12 +14450,15 @@ export type Database = {
           collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
           customer_group_id: number | null
+          exchange_rate: number
+          foreign_amount: number | null
           id: number
           method: string | null
           note: string | null
           payment_date: string
           profile_id: number | null
           reference: string | null
+          settlement_currency_code: string
           shop_order_id: number | null
           source: string
           tenant_id: number
@@ -14512,10 +14476,13 @@ export type Database = {
         Args: {
           p_allocations?: Json
           p_billing_profile_id: number
+          p_exchange_rate?: number
+          p_foreign_amount?: number
           p_instruments?: Json
           p_note?: string
           p_received_on: string
           p_reference?: string
+          p_settlement_currency_code?: string
           p_shop_order_id?: number
           p_source?: string
           p_tenant_id: number
@@ -14525,12 +14492,15 @@ export type Database = {
           collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
           customer_group_id: number | null
+          exchange_rate: number
+          foreign_amount: number | null
           id: number
           method: string | null
           note: string | null
           payment_date: string
           profile_id: number | null
           reference: string | null
+          settlement_currency_code: string
           shop_order_id: number | null
           source: string
           tenant_id: number
@@ -16163,6 +16133,7 @@ export type Database = {
           p_id?: number
           p_metadata?: Json
           p_payment_source?: string
+          p_section_id?: number
           p_shipment_id: number
         }
         Returns: {
@@ -16941,6 +16912,7 @@ export type Database = {
         | "washing"
         | "transport"
         | "handling"
+        | "local"
       global_shipment_item_add_method: "order" | "costing" | "manual"
       global_shipment_outcome_kind: "sellable" | "unsellable"
       global_shipment_outcome_reason:
@@ -17237,6 +17209,7 @@ export const Constants = {
         "washing",
         "transport",
         "handling",
+        "local",
       ],
       global_shipment_item_add_method: ["order", "costing", "manual"],
       global_shipment_outcome_kind: ["sellable", "unsellable"],

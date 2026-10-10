@@ -69,7 +69,9 @@ as $$
 declare
   v_shop public.shops%rowtype;
 begin
-  select * into v_shop from public.shops where id = p_shop_id;
+  select s.* into v_shop
+  from public.shops s
+  where s.id = p_shop_id;
   if v_shop.id is null then
     raise exception 'shop not found';
   end if;
