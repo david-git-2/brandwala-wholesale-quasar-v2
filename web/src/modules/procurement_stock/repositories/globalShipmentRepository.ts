@@ -83,6 +83,14 @@ export interface GlobalShipment {
   costs_locked_by?: string | null;
   is_closed?: boolean;
   public_tracking_token?: string | null;
+  /** From AP pays on the material bill — not stored on the row. */
+  product_conversion_rate?: number | null;
+  /** From AP pays on the freight bill — not stored on the row. */
+  cargo_conversion_rate?: number | null;
+  /** Freight foreign ÷ kg. */
+  cargo_rate?: number | null;
+  /** Money-weighted blend of material + freight pays. */
+  transaction_rate?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -126,6 +134,32 @@ export interface PaginatedResult<T> {
   meta: PaginationMeta;
 }
 
+type ShipmentApFxJson = {
+  product_conversion_rate?: number | string;
+  cargo_conversion_rate?: number | string;
+  cargo_rate?: number | string;
+  transaction_rate?: number | string;
+};
+
+const applyShipmentApFx = async (shipment: GlobalShipment): Promise<GlobalShipment> => {
+  const { data, error } = await supabase.rpc('refresh_global_shipment_fx_from_ap_payments', {
+    p_shipment_id: shipment.id,
+  });
+  if (error || !data) return shipment;
+  const fx = data as ShipmentApFxJson;
+  const num = (v: number | string | undefined) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  return {
+    ...shipment,
+    product_conversion_rate: num(fx.product_conversion_rate),
+    cargo_conversion_rate: num(fx.cargo_conversion_rate),
+    cargo_rate: num(fx.cargo_rate),
+    transaction_rate: num(fx.transaction_rate),
+  };
+};
+
 const normalizeShipment = (row: GlobalShipment & Record<string, unknown>): GlobalShipment => {
   const total =
     (row.total_weight_kg as number | null | undefined) ??
@@ -168,7 +202,7 @@ const getShipmentOverviewDetails = async (
   if (!data) throw new Error('Shipment not found');
 
   const raw = data as any;
-  const shipment = normalizeShipment(raw.shipment);
+  const shipment = await applyShipmentApFx(normalizeShipment(raw.shipment));
 
   return {
     shipment,
@@ -199,7 +233,8 @@ const getById = async (id: number): Promise<GlobalShipment> => {
   };
   const tag = row.progress_tag;
   const flow = row.progress_flow;
-  return normalizeShipment({
+  return applyShipmentApFx(
+    normalizeShipment({
     ...row,
     progress_flow: flow?.id
       ? {
@@ -222,7 +257,8 @@ const getById = async (id: number): Promise<GlobalShipment> => {
           color: tag.color ?? null,
         }
       : null,
-  });
+  }),
+  );
 };
 
 const listPaginated = async (

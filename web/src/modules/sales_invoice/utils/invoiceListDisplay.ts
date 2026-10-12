@@ -1,11 +1,9 @@
+import { shipmentApKindLabel } from 'src/modules/procurement_stock/constants/shipmentApBuckets';
 import type { GlobalInvoiceRow } from '../types';
 
 export const invoiceChannelLabel = (row: GlobalInvoiceRow) => {
   if (row.invoice_type === 'ap') {
-    if (row.ap_kind === 'vendor') return 'Vendor AP';
-    if (row.ap_kind === 'cargo') return 'Cargo AP';
-    if (row.ap_kind === 'local') return 'Local AP';
-    return 'AP';
+    return shipmentApKindLabel(row.ap_kind);
   }
   const paperKind = (row.channel_meta as { delivery_kind?: string } | null | undefined)?.delivery_kind;
   if (row.invoice_type === 'wholesale' && paperKind === 'condition') return 'Condition';

@@ -106,7 +106,7 @@ export function mapDropshipOrderDetailV2Response(raw: unknown): DropshipOrderDet
     shipping_thana: (orderRaw.shipping_thana as string | null) ?? null,
     shipping_post_code: (orderRaw.shipping_post_code as string | null) ?? null,
     recipient_profile_id: (orderRaw.recipient_profile_id as number | null) ?? null,
-    billing_profile_id: (orderRaw.billing_profile_id as number | null) ?? null,
+    profile_id: (orderRaw.profile_id as number | null) ?? null,
     placed_at: (orderRaw.placed_at as string | null) ?? null,
     fulfilled_at: (orderRaw.fulfilled_at as string | null) ?? null,
     global_invoice_id: (orderRaw.global_invoice_id as number | null) ?? null,

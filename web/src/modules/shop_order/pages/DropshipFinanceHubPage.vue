@@ -152,8 +152,8 @@ function handleSelectOrder(order: FinanceHubOrderQueueItem) {
     activeTab.value = 'courier_remittance';
   } else if (order.nextStep === 'middleman_payout') {
     activeTab.value = 'middleman_payout';
-    if (order.billingProfileId) {
-      preselectedMerchantId.value = order.billingProfileId;
+    if (order.profileId) {
+      preselectedMerchantId.value = order.profileId;
     }
   }
 }
@@ -181,8 +181,8 @@ async function handleConfirmRemittance(payload: {
       selectedOrder.value.nextStep = 'middleman_payout';
       selectedOrder.value.payoutSettlementStatus = 'unpaid';
       activeTab.value = 'middleman_payout';
-      if (selectedOrder.value.billingProfileId) {
-        preselectedMerchantId.value = selectedOrder.value.billingProfileId;
+      if (selectedOrder.value.profileId) {
+        preselectedMerchantId.value = selectedOrder.value.profileId;
       }
     } else {
       selectedOrder.value.nextStep = 'completed';
@@ -191,7 +191,7 @@ async function handleConfirmRemittance(payload: {
   }
 }
 
-async function handleDispensePayout(payload: { billingProfileId: number; amount: number; payoutMethod?: string; referenceNotes?: string }) {
+async function handleDispensePayout(payload: { profileId: number; amount: number; payoutMethod?: string; referenceNotes?: string }) {
   if (!currentTenantId.value) return;
   await dispenseMiddlemanPayoutMutation.mutateAsync({
     tenantId: currentTenantId.value,

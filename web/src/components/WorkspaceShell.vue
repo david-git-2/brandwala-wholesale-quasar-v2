@@ -1002,8 +1002,17 @@ const confirmLogout = async () => {
 .workspace-shell__toolbar {
   min-height: var(--workspace-header-offset);
   height: var(--workspace-header-offset);
+  min-width: 0;
+  overflow: hidden;
   gap: 0.5rem;
   padding: 0 0.65rem;
+}
+
+@media (max-width: 1023px) {
+  .workspace-shell__toolbar {
+    gap: 0.35rem;
+    padding: 0 0.45rem;
+  }
 }
 
 .workspace-shell__menu {
@@ -1029,7 +1038,8 @@ const confirmLogout = async () => {
 
 .workspace-shell__context {
   min-width: 0;
-  flex: 0 1 auto;
+  flex: 1 1 0;
+  overflow: hidden;
 }
 
 .workspace-shell__center {
@@ -1050,7 +1060,15 @@ const confirmLogout = async () => {
 .workspace-shell__actions {
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
+  min-width: 0;
   gap: 0.5rem;
+}
+
+@media (max-width: 1023px) {
+  .workspace-shell__actions {
+    gap: 0.25rem;
+  }
 }
 
 .workspace-shell__drawer {

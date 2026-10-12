@@ -9,7 +9,7 @@
     </div>
 
     <template v-else-if="summary">
-      <div v-if="!summary.billing_profile_id" class="text-caption text-grey-7 text-center q-pa-md">
+      <div v-if="!summary.profile_id" class="text-caption text-grey-7 text-center q-pa-md">
         No billing profile linked — create or link one to see account balances.
       </div>
 
@@ -150,7 +150,7 @@ const props = defineProps<{
   tenantId: number;
   customerGroupId: number;
   groupName: string;
-  billingProfileId: number | null;
+  profileId: number | null;
   summary: CustomerAccountSummary | null | undefined;
   isLoading: boolean;
   isError: boolean;

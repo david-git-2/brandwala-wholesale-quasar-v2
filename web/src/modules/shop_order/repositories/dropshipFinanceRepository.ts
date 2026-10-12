@@ -20,8 +20,8 @@ export interface FinanceHubOrderQueueItem {
   courierNotes: string | null;
   courierRemittanceRef: string | null;
   courierBankTrxId: string | null;
-  billingProfileId: number | null;
-  billingProfileName: string | null;
+  profileId: number | null;
+  customerProfileName: string | null;
   createdAt: string;
   nextStep: 'delivered_costing' | 'courier_remittance' | 'middleman_payout' | 'completed';
   collectionSource?: string | null;
@@ -100,14 +100,14 @@ export const dropshipFinanceRepository = {
 
   async dispenseMiddlemanPayout(params: {
     tenantId: number;
-    billingProfileId: number;
+    profileId: number;
     amount: number;
     payoutMethod?: string;
     referenceNotes?: string;
   }) {
     const { data, error } = await supabase.rpc('dispense_middleman_payout_from_tenant', {
       p_tenant_id: params.tenantId,
-      p_billing_profile_id: params.billingProfileId,
+      p_profile_id: params.profileId,
       p_amount: params.amount,
       p_payout_method: params.payoutMethod ?? 'bank_transfer',
       p_reference_notes: params.referenceNotes ?? null,

@@ -1,7 +1,82 @@
 <template>
   <nav class="app-breadcrumbs row items-center no-wrap" aria-label="Breadcrumb">
     <ol class="app-breadcrumbs__list row items-center no-wrap q-pa-none q-ma-none">
-      <template v-for="(item, index) in breadcrumbs" :key="index">
+      <template v-if="useCollapsedTrail">
+        <li class="app-breadcrumbs__item row items-center no-wrap">
+          <router-link
+            v-if="headCrumb?.to"
+            :to="headCrumb.to"
+            class="app-breadcrumbs__link row items-center no-wrap"
+          >
+            <q-icon
+              v-if="headCrumb.icon"
+              :name="headCrumb.icon"
+              size="13px"
+              class="q-mr-xs breadcrumb-icon"
+            />
+            <span class="app-breadcrumbs__label ellipsis">{{ headCrumb.label }}</span>
+          </router-link>
+          <div v-else class="app-breadcrumbs__current row items-center no-wrap">
+            <q-icon
+              v-if="headCrumb?.icon"
+              :name="headCrumb.icon"
+              size="13px"
+              class="q-mr-xs breadcrumb-icon"
+            />
+            <span class="app-breadcrumbs__label ellipsis app-breadcrumbs__parent">{{
+              headCrumb?.label
+            }}</span>
+          </div>
+        </li>
+
+        <li class="app-breadcrumbs__separator row items-center q-px-xs" aria-hidden="true">
+          <q-icon name="ph ph-caret-right" size="12px" />
+        </li>
+
+        <li class="app-breadcrumbs__item row items-center no-wrap app-breadcrumbs__item--menu">
+          <q-btn flat dense round size="xs" class="app-breadcrumbs__ellipsis" aria-label="More breadcrumb levels">
+            <q-icon name="ph ph-dots-three" size="14px" />
+            <q-menu anchor="bottom left" self="top left" :offset="[0, 6]">
+              <q-list dense class="q-py-xs" style="min-width: 180px">
+                <q-item
+                  v-for="(item, midIndex) in middleCrumbs"
+                  :key="midIndex"
+                  clickable
+                  :to="item.to"
+                  v-close-popup
+                  class="app-breadcrumbs__menu-item"
+                >
+                  <q-item-section>
+                    <q-item-label class="text-caption">{{ item.label }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
+        </li>
+
+        <li class="app-breadcrumbs__separator row items-center q-px-xs" aria-hidden="true">
+          <q-icon name="ph ph-caret-right" size="12px" />
+        </li>
+
+        <li
+          v-if="tailCrumb"
+          class="app-breadcrumbs__item row items-center no-wrap app-breadcrumbs__item--active"
+        >
+          <div class="app-breadcrumbs__current row items-center no-wrap">
+            <span class="app-breadcrumbs__label ellipsis app-breadcrumbs__leaf">{{ tailCrumb.label }}</span>
+            <span
+              v-if="tailCrumb.badge"
+              class="app-breadcrumbs__badge row items-center no-wrap"
+            >
+              <q-icon v-if="tailCrumb.badge.icon" :name="tailCrumb.badge.icon" size="11px" class="q-mr-xs" />
+              {{ tailCrumb.badge.label }}
+            </span>
+          </div>
+        </li>
+      </template>
+
+      <template v-for="(item, index) in breadcrumbs" v-else :key="index">
         <!-- Separator -->
         <li
           v-if="index > 0"
@@ -55,9 +130,23 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+import { useQuasar } from 'quasar';
+
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
 
 const { breadcrumbs } = useBreadcrumbs();
+const $q = useQuasar();
+
+const useCollapsedTrail = computed(
+  () => $q.screen.lt.md && breadcrumbs.value.length > 3,
+);
+
+const headCrumb = computed(() => breadcrumbs.value[0] ?? null);
+const tailCrumb = computed(() => breadcrumbs.value[breadcrumbs.value.length - 1] ?? null);
+const middleCrumbs = computed(() =>
+  useCollapsedTrail.value ? breadcrumbs.value.slice(1, -1) : [],
+);
 </script>
 
 <style scoped>
@@ -73,6 +162,32 @@ const { breadcrumbs } = useBreadcrumbs();
 .app-breadcrumbs__item {
   min-width: 0;
   max-width: 240px;
+}
+
+.app-breadcrumbs__item--menu {
+  max-width: none;
+  flex-shrink: 0;
+}
+
+.app-breadcrumbs__ellipsis {
+  color: var(--bw-neutral-muted);
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+}
+
+.app-breadcrumbs__menu-item {
+  min-height: 32px;
+}
+
+@media (max-width: 1023px) {
+  .app-breadcrumbs__item {
+    max-width: min(42vw, 200px);
+  }
+
+  .app-breadcrumbs__item--active {
+    max-width: min(52vw, 240px);
+  }
 }
 
 @media (min-width: 1024px) {

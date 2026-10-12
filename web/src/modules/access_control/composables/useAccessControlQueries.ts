@@ -74,10 +74,10 @@ export function useCustomerGroupMembersQuery(groupId: Ref<number | null>, enable
   });
 }
 
-export function useBillingProfilesQuery(tenantId: Ref<number | null>, enabled: Ref<boolean>) {
+export function useCustomerProfilesQuery(tenantId: Ref<number | null>, enabled: Ref<boolean>) {
   return useQuery({
-    queryKey: computed(() => accessControlQueryKeys.billingProfiles(tenantId.value || 0)),
-    queryFn: () => accessControlRepository.fetchBillingProfiles(tenantId.value!),
+    queryKey: computed(() => accessControlQueryKeys.customerProfiles(tenantId.value || 0)),
+    queryFn: () => accessControlRepository.fetchCustomerProfiles(tenantId.value!),
     enabled: computed(() => enabled.value && !!tenantId.value),
     staleTime: STALE_5_MIN,
   });

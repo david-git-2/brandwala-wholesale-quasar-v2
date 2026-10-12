@@ -64,6 +64,29 @@ const sumQuantity = (items: CostingLineItemInput[]): number => {
   return quantity;
 };
 
+export type MoneyWeightedFxLeg = { foreign: number; rate: number };
+
+/**
+ * Bucket-style FX: Σ(foreign × rate) / Σ foreign — same as total BDT ÷ total foreign.
+ * Never uses arithmetic mean of rates.
+ */
+export const moneyWeightedBlendRate = (
+  legs: MoneyWeightedFxLeg[],
+  fallbackRate = 1,
+): number => {
+  let foreignSum = 0;
+  let bdtSum = 0;
+  for (const leg of legs) {
+    const foreign = Number(leg.foreign) || 0;
+    const rate = Number(leg.rate) || 0;
+    if (foreign <= 0 || rate <= 0) continue;
+    foreignSum += foreign;
+    bdtSum += foreign * rate;
+  }
+  if (foreignSum > 0) return bdtSum / foreignSum;
+  return fallbackRate > 0 ? fallbackRate : 1;
+};
+
 export const calculateLineCargoPurchaseShare = (
   item: CostingLineItemInput,
   shipment: CostingShipmentInput,
@@ -118,15 +141,15 @@ export const calculateRawTransactionRate = (
   const goodsPurchase = items ? sumGoodsPurchase(items) : 0;
   const cargoPurchase = cargoWeight * cargoRate;
 
-  const goodsBdt = goodsPurchase * productConv;
-  const cargoBdt = cargoPurchase * cargoConv;
-  const denominator = goodsPurchase + cargoPurchase;
-
-  if (denominator > 0) {
-    return (goodsBdt + cargoBdt) / denominator;
-  }
-
-  return (productConv + cargoConv) / 2;
+  return moneyWeightedBlendRate(
+    [
+      { foreign: goodsPurchase, rate: productConv },
+      { foreign: cargoPurchase, rate: cargoConv },
+    ],
+    shipment.transaction_rate && shipment.transaction_rate > 0
+      ? shipment.transaction_rate
+      : productConv,
+  );
 };
 
 export const calculateTransactionRate = (
@@ -142,6 +165,11 @@ export const getCalculatedTransactionRate = (
   shipment: CostingShipmentInput,
   items: CostingLineItemInput[],
 ): number | null => {
+  if (shipment.type === 'local') return null;
+  const fromPays = shipment.transaction_rate;
+  if (fromPays != null && fromPays > 0) {
+    return Math.round(fromPays * 100) / 100;
+  }
   return calculateTransactionRate(shipment, items);
 };
 
@@ -155,21 +183,33 @@ export const getEffectiveTransactionRateForLandedCost = (
   const rawTxRate = items && items.length > 0 ? calculateRawTransactionRate(shipment, items) : null;
   const storedTxRate = shipment.transaction_rate;
 
-  const effectiveRate =
-    rawTxRate !== null && rawTxRate > 0
-      ? rawTxRate
-      : storedTxRate !== null && storedTxRate !== undefined && storedTxRate > 0
-        ? storedTxRate
-        : ((shipment.product_conversion_rate || 1) + (shipment.cargo_conversion_rate || 1)) / 2;
+  if (rawTxRate !== null && rawTxRate > 0) return rawTxRate;
+  if (storedTxRate !== null && storedTxRate !== undefined && storedTxRate > 0) return storedTxRate;
 
-  return effectiveRate;
+  const productConv = shipment.product_conversion_rate || 1;
+  const cargoConv = shipment.cargo_conversion_rate || 1;
+  const cargoRate = shipment.cargo_rate || 0;
+  const cargoWeight = items && items.length > 0 ? getCargoWeightKg(shipment, items) : 0;
+  const goodsPurchase = items && items.length > 0 ? sumGoodsPurchase(items) : 0;
+  const cargoPurchase = cargoWeight * cargoRate;
+
+  return moneyWeightedBlendRate(
+    [
+      { foreign: goodsPurchase, rate: productConv },
+      { foreign: cargoPurchase, rate: cargoConv },
+    ],
+    productConv,
+  );
 };
 
 export type LineLandedCostBreakdown = {
   purchasePricePerUnit: number;
   cargoSharePerUnit: number;
   basePerUnit: number;
+  /** Pay-weighted material + freight blend — shown for context; line uses split rates below. */
   transactionRate: number | null;
+  productConversionRate: number | null;
+  cargoConversionRate: number | null;
   landedCostBdt: number;
 };
 
@@ -184,7 +224,11 @@ export const calculateLineLandedCostBreakdown = (
     shipment && items && items.length > 0
       ? calculateLineCargoPurchaseShare(item, shipment, items)
       : 0;
-  const cargoSharePerUnit = qty > 0 ? lineCargoTotal / qty : 0;
+  const cargoSharePerUnit =
+    items && items.length > 0 && qty > 0
+      ? lineCargoTotal / qty
+      : (((item.product_weight || 0) + (item.package_weight || 0)) / 1000) *
+        (shipment?.cargo_rate || 0);
   const basePerUnit = calculateLinePurchaseBase(item, shipment, items);
 
   if (!shipment) {
@@ -193,6 +237,8 @@ export const calculateLineLandedCostBreakdown = (
       cargoSharePerUnit,
       basePerUnit: purchasePricePerUnit,
       transactionRate: null,
+      productConversionRate: null,
+      cargoConversionRate: null,
       landedCostBdt: purchasePricePerUnit,
     };
   }
@@ -203,18 +249,24 @@ export const calculateLineLandedCostBreakdown = (
       cargoSharePerUnit,
       basePerUnit,
       transactionRate: null,
+      productConversionRate: null,
+      cargoConversionRate: null,
       landedCostBdt: basePerUnit,
     };
   }
 
-  const transactionRate = getEffectiveTransactionRateForLandedCost(shipment, items);
-  const landedCostBdt = basePerUnit * (transactionRate ?? 1);
+  const productConv = shipment.product_conversion_rate || 1.0;
+  const cargoConv = shipment.cargo_conversion_rate || 1.0;
+  const transactionRate = getCalculatedTransactionRate(shipment, items ?? []);
+  const landedCostBdt = purchasePricePerUnit * productConv + cargoSharePerUnit * cargoConv;
 
   return {
     purchasePricePerUnit,
     cargoSharePerUnit,
     basePerUnit,
     transactionRate,
+    productConversionRate: productConv,
+    cargoConversionRate: cargoConv,
     landedCostBdt,
   };
 };
@@ -285,27 +337,42 @@ export function calculateShipmentCostSummary(
 
 // --- Cost-entry helpers (entry → header-shaped preview input) ---
 
+const LEGACY_COST_TYPE_BY_BUCKET: Record<string, string> = {
+  material: 'product',
+  freight: 'cargo',
+};
+
+export const entryCostType = (entry: CostEntryInput): string | null => {
+  if (entry.cost_type) return entry.cost_type;
+  if (entry.cost_bucket) {
+    return LEGACY_COST_TYPE_BY_BUCKET[entry.cost_bucket] ?? entry.cost_bucket;
+  }
+  return null;
+};
+
 const sumByType = (entries: CostEntryInput[], costType: string): number => {
   let total = 0;
   for (const e of entries) {
-    if (e.cost_type === costType) total += Number(e.amount) || 0;
+    if (entryCostType(e) === costType) total += Number(e.amount) || 0;
   }
   return total;
 };
 
-/** Money-weighted average exchange rate for a cost_type. */
-export const effectiveRateForType = (entries: CostEntryInput[], costType: string): number => {
-  let weighted = 0;
-  let amountSum = 0;
+/** Money-weighted average FX for a cost_type (total BDT ÷ total foreign on matching rows). */
+export const effectiveRateForType = (
+  entries: CostEntryInput[],
+  costType: string,
+  fallbackRate = 1,
+): number => {
+  const legs: MoneyWeightedFxLeg[] = [];
   for (const e of entries) {
-    if (e.cost_type !== costType) continue;
+    if (entryCostType(e) !== costType) continue;
     const amount = Number(e.amount) || 0;
-    const rate = Number(e.exchange_rate) || 1;
-    weighted += amount * rate;
-    amountSum += amount;
+    const rawRate = Number(e.exchange_rate);
+    const rate = Number.isFinite(rawRate) && rawRate > 0 ? rawRate : fallbackRate;
+    if (amount > 0) legs.push({ foreign: amount, rate });
   }
-  if (amountSum <= 0) return 1;
-  return weighted / amountSum;
+  return moneyWeightedBlendRate(legs, fallbackRate);
 };
 
 /**
@@ -318,18 +385,42 @@ export function costingShipmentFromEntries(
   items: CostingLineItemInput[],
 ): CostingShipmentInput {
   const hasEntries = entries && entries.length > 0;
-  const productRate = hasEntries ? effectiveRateForType(entries, 'product') : (shipment.product_conversion_rate ?? 1.0);
-  const cargoFxRate = hasEntries ? effectiveRateForType(entries, 'cargo') : (shipment.cargo_conversion_rate ?? 1.0);
+  const headerProductRate = shipment.product_conversion_rate ?? 1.0;
+  const headerCargoRate = shipment.cargo_conversion_rate ?? 1.0;
+  const productAmount = hasEntries ? sumByType(entries, 'product') : 0;
   const cargoAmount = hasEntries ? sumByType(entries, 'cargo') : 0;
+  const productRate =
+    productAmount > 0
+      ? effectiveRateForType(entries, 'product', headerProductRate)
+      : headerProductRate;
+  const cargoFxRate =
+    cargoAmount > 0
+      ? effectiveRateForType(entries, 'cargo', headerCargoRate)
+      : headerCargoRate;
   const cargoKg = getCargoWeightKg(shipment, items);
   const cargoRatePerKg = cargoKg > 0 ? cargoAmount / cargoKg : (shipment.cargo_rate ?? 0);
 
-  return {
+  const merged: CostingShipmentInput = {
     ...shipment,
     product_conversion_rate: productRate,
     cargo_conversion_rate: cargoFxRate,
     cargo_rate: cargoRatePerKg,
-    transaction_rate: null,
+    transaction_rate: shipment.transaction_rate ?? null,
+  };
+
+  if (shipment.type === 'local') {
+    return { ...merged, transaction_rate: null };
+  }
+
+  const fromPays = shipment.transaction_rate;
+  const fromPreview =
+    fromPays != null && fromPays > 0
+      ? fromPays
+      : calculateTransactionRate(merged, items);
+
+  return {
+    ...merged,
+    transaction_rate: fromPreview,
   };
 }
 
@@ -342,5 +433,5 @@ export function sumProductEntryAmount(entries: CostEntryInput[]): number {
 }
 
 export function productCostEntries(entries: CostEntryInput[]): CostEntryInput[] {
-  return entries.filter((e) => e.cost_type === 'product');
+  return entries.filter((e) => entryCostType(e) === 'product');
 }

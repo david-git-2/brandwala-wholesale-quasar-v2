@@ -440,7 +440,7 @@ export default {
   group_name: 'গ্রুপের নাম',
   accent_color: 'অ্যাকসেন্ট রঙ হেক্স (যেমন #B45F34)',
   status: 'স্ট্যাটাস',
-  col_billing_profiles: 'বিলিং প্রোফাইল',
+  col_profiles: 'বিলিং প্রোফাইল',
   none_required_dropship: 'নেই (ড্রপশিপের জন্য আবশ্যক)',
   edit_group: 'গ্রুপ সম্পাদনা',
   connect_billing_profile: 'বিলিং প্রোফাইল সংযুক্ত করুন',

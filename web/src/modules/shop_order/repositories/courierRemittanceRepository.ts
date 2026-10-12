@@ -189,7 +189,7 @@ export const courierRemittanceRepository = {
   async dispensePayout(payload: DispensePayoutPayload): Promise<DispensePayoutResult> {
     const { data, error } = await supabase.rpc('dispense_middleman_payout_from_tenant', {
       p_tenant_id: payload.tenantId,
-      p_billing_profile_id: payload.billingProfileId,
+      p_profile_id: payload.profileId,
       p_amount: payload.amount,
       p_payout_method: payload.method ?? 'bank_transfer',
       p_reference_notes: payload.trxId ? `Trx: ${payload.trxId}` : null,
@@ -205,7 +205,7 @@ export const courierRemittanceRepository = {
 
   async fetchMerchantPayoutSummaries(tenantId: number): Promise<MerchantPayoutSummary[]> {
     const { data: profiles, error: profileErr } = await supabase
-      .from('billing_profiles')
+      .from('profiles')
       .select('id, name, email, phone, customer_group_id')
       .eq('tenant_id', tenantId);
 
@@ -231,7 +231,7 @@ export const courierRemittanceRepository = {
     const summaryMap = new Map<number, MerchantPayoutSummary>();
     profiles.forEach((p) => {
       summaryMap.set(p.id, {
-        billing_profile_id: p.id,
+        profile_id: p.id,
         name: p.name,
         email: p.email ?? null,
         phone: p.phone ?? null,

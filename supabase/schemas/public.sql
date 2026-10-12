@@ -89,6 +89,30 @@ CREATE TYPE "public"."global_shipment_cost_type" AS ENUM (
 ALTER TYPE "public"."global_shipment_cost_type" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."global_shipment_cost_bucket" AS ENUM (
+    'material',
+    'freight',
+    'customs',
+    'handling',
+    'finance',
+    'other'
+);
+
+
+ALTER TYPE "public"."global_shipment_cost_bucket" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."global_shipment_cost_component" AS ENUM (
+    'subtotal',
+    'carriage',
+    'vat_tax',
+    'misc'
+);
+
+
+ALTER TYPE "public"."global_shipment_cost_component" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."global_shipment_item_add_method" AS ENUM (
     'order',
     'costing',
@@ -848,18 +872,18 @@ $$;
 ALTER FUNCTION "public"."add_child_line_to_parent_shipment"("p_parent_shipment_id" bigint, "p_source_type" "text", "p_source_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."add_demand_bucket_item"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint DEFAULT NULL::bigint, "p_snapshot" "jsonb" DEFAULT '{}'::"jsonb", "p_quantity" integer DEFAULT 1) RETURNS "public"."customer_demand_bucket_items"
+CREATE OR REPLACE FUNCTION "public"."add_demand_bucket_item"("p_tenant_id" bigint, "p_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint DEFAULT NULL::bigint, "p_snapshot" "jsonb" DEFAULT '{}'::"jsonb", "p_quantity" integer DEFAULT 1) RETURNS "public"."customer_demand_bucket_items"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 begin
-  if not public.can_access_demand_bucket_profile(p_tenant_id, p_billing_profile_id, true) then
+  if not public.can_access_demand_bucket_profile(p_tenant_id, p_profile_id, true) then
     raise exception 'access denied';
   end if;
 
   return public.add_demand_bucket_item_internal(
     p_tenant_id,
-    p_billing_profile_id,
+    p_profile_id,
     p_product_id,
     p_source_type,
     p_source_id,
@@ -870,10 +894,10 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."add_demand_bucket_item"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint, "p_snapshot" "jsonb", "p_quantity" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."add_demand_bucket_item"("p_tenant_id" bigint, "p_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint, "p_snapshot" "jsonb", "p_quantity" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."add_demand_bucket_item_internal"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint DEFAULT NULL::bigint, "p_snapshot" "jsonb" DEFAULT '{}'::"jsonb", "p_quantity" integer DEFAULT 1) RETURNS "public"."customer_demand_bucket_items"
+CREATE OR REPLACE FUNCTION "public"."add_demand_bucket_item_internal"("p_tenant_id" bigint, "p_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint DEFAULT NULL::bigint, "p_snapshot" "jsonb" DEFAULT '{}'::"jsonb", "p_quantity" integer DEFAULT 1) RETURNS "public"."customer_demand_bucket_items"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -886,8 +910,8 @@ declare
   v_note text;
   v_quantity integer;
 begin
-  if p_tenant_id is null or p_billing_profile_id is null or p_product_id is null then
-    raise exception 'tenant_id, billing_profile_id, and product_id are required';
+  if p_tenant_id is null or p_profile_id is null or p_product_id is null then
+    raise exception 'tenant_id, profile_id, and product_id are required';
   end if;
 
   v_quantity := greatest(coalesce(p_quantity, 1), 1);
@@ -911,7 +935,7 @@ begin
 
   insert into public.customer_demand_bucket_items (
     tenant_id,
-    billing_profile_id,
+    profile_id,
     product_id,
     source_type,
     source_id,
@@ -924,7 +948,7 @@ begin
     status
   ) values (
     p_tenant_id,
-    p_billing_profile_id,
+    p_profile_id,
     p_product_id,
     p_source_type,
     p_source_id,
@@ -943,7 +967,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."add_demand_bucket_item_internal"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint, "p_snapshot" "jsonb", "p_quantity" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."add_demand_bucket_item_internal"("p_tenant_id" bigint, "p_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint, "p_snapshot" "jsonb", "p_quantity" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."add_pbc_backlog_to_costing_file"("p_file_id" bigint, "p_backlog_ids" bigint[]) RETURNS SETOF bigint
@@ -970,8 +994,8 @@ BEGIN
     RAISE EXCEPTION 'access denied for tenant %', v_file.tenant_id;
   END IF;
 
-  IF v_file.billing_profile_id IS NULL THEN
-    RAISE EXCEPTION 'costing file % must have a billing_profile_id assigned before consuming backlog', p_file_id;
+  IF v_file.profile_id IS NULL THEN
+    RAISE EXCEPTION 'costing file % must have a profile_id assigned before consuming backlog', p_file_id;
   END IF;
 
   IF p_backlog_ids IS NULL OR array_length(p_backlog_ids, 1) IS NULL THEN
@@ -983,7 +1007,7 @@ BEGIN
     FROM public.product_based_costing_backlog_items
     WHERE id = ANY(p_backlog_ids)
       AND tenant_id = v_file.tenant_id
-      AND billing_profile_id = v_file.billing_profile_id
+      AND profile_id = v_file.profile_id
   LOOP
     INSERT INTO public.product_based_costing_items (
       product_based_costing_file_id,
@@ -1054,8 +1078,8 @@ BEGIN
     RAISE EXCEPTION 'access denied for tenant %', v_file.tenant_id;
   END IF;
 
-  IF v_file.billing_profile_id IS NULL THEN
-    RAISE EXCEPTION 'costing file % must have a billing_profile_id assigned before consuming backlog', p_file_id;
+  IF v_file.profile_id IS NULL THEN
+    RAISE EXCEPTION 'costing file % must have a profile_id assigned before consuming backlog', p_file_id;
   END IF;
 
   IF p_backlog_ids IS NULL OR array_length(p_backlog_ids, 1) IS NULL THEN
@@ -1067,7 +1091,7 @@ BEGIN
     FROM public.product_based_costing_backlog_items
     WHERE id = ANY(p_backlog_ids)
       AND tenant_id = v_file.tenant_id
-      AND billing_profile_id = v_file.billing_profile_id
+      AND profile_id = v_file.profile_id
   LOOP
     INSERT INTO public.product_based_costing_items (
       product_based_costing_file_id,
@@ -3921,7 +3945,7 @@ begin
     raise exception 'bucket item % is not open', p_bucket_item_id;
   end if;
 
-  if not public.can_access_demand_bucket_profile(v_row.tenant_id, v_row.billing_profile_id, true) then
+  if not public.can_access_demand_bucket_profile(v_row.tenant_id, v_row.profile_id, true) then
     raise exception 'access denied';
   end if;
 
@@ -4947,7 +4971,8 @@ CREATE OR REPLACE FUNCTION "public"."create_customer_account"("p_tenant_id" bigi
     AS $$
 declare
   v_group public.customer_groups;
-  v_billing_profile public.billing_profiles;
+  v_profile public.profiles;
+  v_profile_id bigint;
   v_books_id bigint;
   v_clean_phone text;
   v_clean_code text;
@@ -4977,12 +5002,13 @@ begin
 
   if exists (
     select 1
-    from public.billing_profiles bp
-    left join public.customer_groups cg on cg.id = bp.customer_group_id
-    where bp.parent_tenant_id = v_books_id
-      and bp.phone_country_code = v_clean_code
-      and bp.phone = v_clean_phone
-      and bp.is_phone_unique
+    from public.profiles pr
+    left join public.customer_groups cg on cg.id = pr.customer_group_id
+    where pr.profile_type = 'customer'::public.profile_party_type
+      and pr.parent_tenant_id = v_books_id
+      and pr.phone_country_code = v_clean_code
+      and pr.phone = v_clean_phone
+      and pr.is_phone_unique
       and (cg.id is null or cg.deleted_at is null)
   ) then
     raise exception 'This phone is already used by another customer';
@@ -5003,44 +5029,60 @@ begin
   )
   returning * into v_group;
 
-  select * into v_billing_profile
-  from public.billing_profiles
+  select * into v_profile
+  from public.profiles
   where customer_group_id = v_group.id
+    and profile_type = 'customer'::public.profile_party_type
   order by id asc
   limit 1;
 
-  if v_billing_profile.id is null then
-    insert into public.billing_profiles (
-      tenant_id,
+  if v_profile.id is null then
+    insert into public.profiles (
       parent_tenant_id,
+      profile_type,
+      subject_id,
       customer_group_id,
+      operating_tenant_id,
       name,
       phone,
       phone_country_code,
+      address,
+      accent_color,
+      is_active,
       created_at,
       updated_at
     ) values (
       v_books_id,
-      v_books_id,
+      'customer'::public.profile_party_type,
       v_group.id,
+      v_group.id,
+      v_books_id,
       v_clean_group_name,
       v_clean_phone,
       v_clean_code,
+      nullif(trim(coalesce(p_address, '')), ''),
+      v_clean_color,
+      true,
       now(),
       now()
     )
-    returning * into v_billing_profile;
+    returning * into v_profile;
+
+    update public.profiles
+    set subject_id = v_profile.id
+    where id = v_profile.id;
   else
-    update public.billing_profiles
+    update public.profiles
     set
       name = v_clean_group_name,
       phone = v_clean_phone,
       phone_country_code = v_clean_code,
       parent_tenant_id = v_books_id,
-      tenant_id = v_books_id,
+      operating_tenant_id = v_books_id,
+      address = coalesce(nullif(trim(coalesce(p_address, '')), ''), address),
       updated_at = now()
-    where id = v_billing_profile.id
-    returning * into v_billing_profile;
+    where id = v_profile.id
+    returning * into v_profile;
   end if;
 
   insert into public.cashbook_accounts (
@@ -5056,7 +5098,7 @@ begin
     v_books_id,
     v_books_id,
     'customer',
-    v_billing_profile.id,
+    v_profile.id,
     'BDT',
     0.0000,
     0.0000,
@@ -5067,12 +5109,12 @@ begin
   return jsonb_build_object(
     'id', v_group.id,
     'customer_group_id', v_group.id,
-    'billing_profile_id', v_billing_profile.id,
+    'profile_id', v_profile.id,
     'group_name', v_group.name,
-    'admin_name', v_billing_profile.name,
-    'email', v_billing_profile.email,
-    'phone', concat_ws(' ', v_billing_profile.phone_country_code, v_billing_profile.phone),
-    'address', v_billing_profile.address,
+    'admin_name', v_profile.name,
+    'email', v_profile.email,
+    'phone', concat_ws(' ', v_profile.phone_country_code, v_profile.phone),
+    'address', v_profile.address,
     'accent_color', coalesce(v_group.accent_color, '#B45F34'),
     'is_active', v_group.is_active,
     'member_count', 0,
@@ -5092,7 +5134,7 @@ CREATE OR REPLACE FUNCTION "public"."create_invoice_from_preorder_demand_documen
     AS $$
 declare
   v_doc_type text := lower(trim(coalesce(p_document_type, '')));
-  v_billing_profile_id bigint;
+  v_profile_id bigint;
   v_operating_tenant_id bigint;
   v_existing_invoice_id bigint;
   v_doc_status text;
@@ -5113,10 +5155,10 @@ begin
   if v_doc_type = 'shop_order' then
     select
       o.tenant_id,
-      o.billing_profile_id,
+      o.profile_id,
       o.global_invoice_id,
       public.normalize_shop_order_procurement_status(o.status)
-    into v_operating_tenant_id, v_billing_profile_id, v_existing_invoice_id, v_doc_status
+    into v_operating_tenant_id, v_profile_id, v_existing_invoice_id, v_doc_status
     from public.shop_orders o
     where o.id = p_document_id
       and o.shop_type_snapshot = 'vendor_catalog';
@@ -5127,10 +5169,10 @@ begin
   elsif v_doc_type = 'pbc_costing_file' then
     select
       f.tenant_id,
-      f.billing_profile_id,
+      f.profile_id,
       f.invoice_id,
       public.normalize_pbc_procurement_status(f.status)
-    into v_operating_tenant_id, v_billing_profile_id, v_existing_invoice_id, v_doc_status
+    into v_operating_tenant_id, v_profile_id, v_existing_invoice_id, v_doc_status
     from public.product_based_costing_files f
     where f.id = p_document_id;
 
@@ -5150,8 +5192,8 @@ begin
     raise exception 'document must be procuring to create invoice from demand';
   end if;
 
-  if v_billing_profile_id is null then
-    raise exception 'billing_profile_id is required on document';
+  if v_profile_id is null then
+    raise exception 'profile_id is required on document';
   end if;
 
   if v_existing_invoice_id is not null then
@@ -5225,7 +5267,7 @@ begin
   v_payload := jsonb_build_object(
     'invoice', jsonb_build_object(
       'invoice_type', 'wholesale',
-      'billing_profile_id', v_billing_profile_id
+      'profile_id', v_profile_id
     ),
     'items', v_items,
     'issue', false
@@ -9009,7 +9051,7 @@ $$;
 ALTER FUNCTION "public"."find_active_tenant_by_slug"("p_slug" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."find_customer_admin_email_conflict"("p_tenant_id" bigint, "p_email" "text", "p_exclude_billing_profile_id" bigint DEFAULT NULL::bigint, "p_exclude_member_id" bigint DEFAULT NULL::bigint, "p_exclude_customer_group_id" bigint DEFAULT NULL::bigint) RETURNS "text"
+CREATE OR REPLACE FUNCTION "public"."find_customer_admin_email_conflict"("p_tenant_id" bigint, "p_email" "text", "p_exclude_profile_id" bigint DEFAULT NULL::bigint, "p_exclude_member_id" bigint DEFAULT NULL::bigint, "p_exclude_customer_group_id" bigint DEFAULT NULL::bigint) RETURNS "text"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -9020,7 +9062,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."find_customer_admin_email_conflict"("p_tenant_id" bigint, "p_email" "text", "p_exclude_billing_profile_id" bigint, "p_exclude_member_id" bigint, "p_exclude_customer_group_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."find_customer_admin_email_conflict"("p_tenant_id" bigint, "p_email" "text", "p_exclude_profile_id" bigint, "p_exclude_member_id" bigint, "p_exclude_customer_group_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."find_customer_create_conflict"("p_tenant_id" bigint, "p_phone" "text" DEFAULT NULL::"text", "p_phone_country_code" "text" DEFAULT NULL::"text", "p_group_name" "text" DEFAULT NULL::"text") RETURNS "jsonb"
@@ -9046,7 +9088,7 @@ begin
   if v_phone is not null and v_code is not null then
     select cg.name
     into v_phone_group
-    from public.billing_profiles bp
+    from public.profiles bp
     left join public.customer_groups cg on cg.id = bp.customer_group_id
     where bp.parent_tenant_id = v_books_id
       and bp.phone_country_code = v_code
@@ -9584,7 +9626,7 @@ CREATE OR REPLACE FUNCTION "public"."get_customer_account_summary_for_staff"("p_
 declare
   v_books_id bigint;
   v_group_tenant_id bigint;
-  v_billing_profile_id bigint;
+  v_profile_id bigint;
   v_bp_ids bigint[];
   v_still_due numeric(12, 2) := 0;
   v_total_billed numeric(12, 2) := 0;
@@ -9629,8 +9671,8 @@ begin
       case when bp.tenant_id = v_group_tenant_id then 0 else 1 end,
       bp.id
     ))[1]
-  into v_bp_ids, v_billing_profile_id
-  from public.billing_profiles bp
+  into v_bp_ids, v_profile_id
+  from public.profiles bp
   where bp.customer_group_id = p_customer_group_id
     and (
       bp.tenant_id = v_books_id
@@ -9639,11 +9681,11 @@ begin
       )
     );
 
-  if v_billing_profile_id is null then
+  if v_profile_id is null then
     return jsonb_build_object(
       'success', true,
       'books_tenant_id', v_books_id,
-      'billing_profile_id', null,
+      'profile_id', null,
       'still_due', 0,
       'total_billed', 0,
       'collected_cash', 0,
@@ -9700,7 +9742,7 @@ begin
   from public.cashbook_accounts wa
   where wa.parent_tenant_id = v_books_id
     and wa.entity_type = 'customer'
-    and wa.entity_id = v_billing_profile_id
+    and wa.entity_id = v_profile_id
     and wa.currency_code = 'BDT';
 
   select coalesce(sum(gp.unallocated_amount), 0.00)
@@ -9799,7 +9841,7 @@ begin
   return jsonb_build_object(
     'success', true,
     'books_tenant_id', v_books_id,
-    'billing_profile_id', v_billing_profile_id,
+    'profile_id', v_profile_id,
     'still_due', v_still_due,
     'total_billed', v_total_billed,
     'collected_cash', v_collected_cash,
@@ -9868,7 +9910,7 @@ BEGIN
   ),
   per_invoice AS (
     SELECT
-      si.profile_id AS billing_profile_id,
+      si.profile_id AS profile_id,
       si.due_amount,
       (si.total_amount + coalesce(ir.returned, 0))::numeric(12,2) AS billed,
       coalesce(ir.returned, 0)::numeric(12,2) AS returned,
@@ -9894,7 +9936,7 @@ BEGIN
   ),
   customer_base AS (
     SELECT
-      pi.billing_profile_id,
+      pi.profile_id,
       round(sum(pi.billed), 2) AS billed,
       round(sum(pi.returned), 2) AS returned,
       round(sum(pi.collected_cash), 2) AS collected_cash,
@@ -9909,7 +9951,7 @@ BEGIN
       round(coalesce(sum(pi.due_amount) FILTER (WHERE pi.aging_bucket = '61_90'), 0), 2) AS aging_d61_90,
       round(coalesce(sum(pi.due_amount) FILTER (WHERE pi.aging_bucket = '90_plus'), 0), 2) AS aging_d90_plus
     FROM per_invoice pi
-    GROUP BY pi.billing_profile_id
+    GROUP BY pi.profile_id
     HAVING sum(pi.due_amount) > 0
   ),
   customer_rows AS (
@@ -9919,7 +9961,7 @@ BEGIN
       bp.phone,
       cl.credit_limit
     FROM customer_base cb
-    JOIN public.billing_profiles bp ON bp.id = cb.billing_profile_id
+    JOIN public.profiles bp ON bp.id = cb.profile_id
     LEFT JOIN LATERAL (
       SELECT max(scga.credit_limit_amount)::numeric(12,2) AS credit_limit
       FROM public.shop_customer_group_access scga
@@ -9969,7 +10011,7 @@ BEGIN
       'customer_count', customer_count
     ) FROM totals_calc),
     coalesce((SELECT jsonb_agg(jsonb_build_object(
-      'billing_profile_id', billing_profile_id, 'name', name, 'phone', phone, 'credit_limit', credit_limit,
+      'profile_id', profile_id, 'name', name, 'phone', phone, 'credit_limit', credit_limit,
       'billed', billed, 'returned', returned, 'collected_cash', collected_cash, 'wallet_applied', wallet_applied,
       'settlement', settlement, 'still_due', still_due, 'oldest_due_date', oldest_due_date,
       'open_invoice_count', open_invoice_count,
@@ -11441,7 +11483,7 @@ begin
     from public.product_based_costing_items pci
     inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
     where pci.id = p_source_id
-      and f.billing_profile_id is not null;
+      and f.profile_id is not null;
   end if;
 end;
 $$;
@@ -12796,7 +12838,7 @@ BEGIN
   base AS (
     SELECT
       si.id, si.invoice_no, si.invoice_date, si.invoice_type::text AS invoice_type,
-      si.payment_status, si.profile_id AS billing_profile_id, si.due_amount,
+      si.payment_status, si.profile_id AS profile_id, si.due_amount,
       coalesce(nullif(trim(bp.name), ''), nullif(trim(si.recipient_name), ''), 'Unknown') AS customer_name,
       coalesce(child.name, parent.name) AS issued_by_name,
       round((si.total_amount + coalesce(ir.returned, 0)), 2) AS billed,
@@ -12806,7 +12848,7 @@ BEGIN
       round(coalesce(si.written_off_amount, 0), 2) AS settlement,
       round(coalesce(si.due_amount, 0), 2) AS still_due
     FROM public.bills si
-    LEFT JOIN public.billing_profiles bp ON bp.id = si.profile_id
+    LEFT JOIN public.profiles bp ON bp.id = si.profile_id
     LEFT JOIN public.tenants child ON child.id = si.issued_by_tenant_id
     LEFT JOIN public.tenants parent ON parent.id = si.parent_tenant_id
     LEFT JOIN invoice_returned ir ON ir.invoice_id = si.id
@@ -12839,7 +12881,7 @@ BEGIN
       'wallet_applied', wallet_applied, 'settlement', settlement, 'still_due', still_due, 'invoice_count', invoice_count) FROM totals_calc),
     coalesce((SELECT jsonb_agg(jsonb_build_object(
       'id', id, 'invoice_no', invoice_no, 'invoice_date', invoice_date, 'invoice_type', invoice_type,
-      'payment_status', payment_status, 'customer_name', customer_name, 'billing_profile_id', billing_profile_id,
+      'payment_status', payment_status, 'customer_name', customer_name, 'profile_id', profile_id,
       'issued_by_name', issued_by_name, 'billed', billed, 'returned', returned, 'collected_cash', collected_cash,
       'wallet_applied', wallet_applied, 'settlement', settlement, 'still_due', still_due
     ) ORDER BY invoice_date DESC, id DESC) FROM paged), '[]'::jsonb)
@@ -12913,7 +12955,7 @@ BEGIN
       round(coalesce(sum(lm.cogs), 0), 2) AS cogs,
       round(coalesce(sum(lm.net_revenue - lm.cogs), 0), 2) AS realized_gp
     FROM public.bills si
-    LEFT JOIN public.billing_profiles bp ON bp.id = si.profile_id
+    LEFT JOIN public.profiles bp ON bp.id = si.profile_id
     LEFT JOIN line_metrics lm ON lm.invoice_id = si.id
     WHERE si.parent_tenant_id = v_books_id
       AND si.invoice_status = 'issued'::public.global_invoice_status
@@ -13544,7 +13586,7 @@ BEGIN
 
   WITH ledger_agg AS (
     SELECT
-      l.entity_id AS billing_profile_id,
+      l.entity_id AS profile_id,
       round(
         coalesce(sum(CASE
           WHEN l.type = 'credit'
@@ -13573,15 +13615,15 @@ BEGIN
   ),
   base AS (
     SELECT
-      wa.entity_id AS billing_profile_id,
+      wa.entity_id AS profile_id,
       bp.name,
       bp.phone,
       round(coalesce(la.credit_issued, 0), 2) AS credit_issued,
       round(coalesce(la.credit_applied, 0), 2) AS credit_applied,
       round(coalesce(wa.available_balance, 0), 2) AS outstanding
     FROM public.cashbook_accounts wa
-    JOIN public.billing_profiles bp ON bp.id = wa.entity_id
-    LEFT JOIN ledger_agg la ON la.billing_profile_id = wa.entity_id
+    JOIN public.profiles bp ON bp.id = wa.entity_id
+    LEFT JOIN ledger_agg la ON la.profile_id = wa.entity_id
     WHERE wa.parent_tenant_id = v_books_id
       AND wa.entity_type = 'customer'
       AND (
@@ -13614,7 +13656,7 @@ BEGIN
       'courier', v_courier
     ) FROM totals_calc),
     coalesce((SELECT jsonb_agg(jsonb_build_object(
-      'billing_profile_id', billing_profile_id, 'name', name, 'phone', phone,
+      'profile_id', profile_id, 'name', name, 'phone', phone,
       'credit_issued', credit_issued, 'credit_applied', credit_applied, 'outstanding', outstanding
     ) ORDER BY outstanding DESC, name ASC) FROM paged), '[]'::jsonb)
   INTO v_total_count, v_totals, v_rows;
@@ -15937,7 +15979,7 @@ $$;
 ALTER FUNCTION "public"."list_costing_files_for_actor"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_page" integer, "p_page_size" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_customer_accounts"("p_tenant_id" bigint, "p_search" "text" DEFAULT NULL::"text") RETURNS TABLE("id" bigint, "customer_group_id" bigint, "billing_profile_id" bigint, "group_name" "text", "admin_name" "text", "email" "text", "phone" "text", "address" "text", "accent_color" "text", "is_active" boolean, "member_count" bigint, "wallet_available_balance" numeric, "created_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."list_customer_accounts"("p_tenant_id" bigint, "p_search" "text" DEFAULT NULL::"text") RETURNS TABLE("id" bigint, "customer_group_id" bigint, "profile_id" bigint, "group_name" "text", "admin_name" "text", "email" "text", "phone" "text", "address" "text", "accent_color" "text", "is_active" boolean, "member_count" bigint, "wallet_available_balance" numeric, "created_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -15950,7 +15992,7 @@ begin
   select
     cg.id,
     cg.id as customer_group_id,
-    bp.id as billing_profile_id,
+    bp.id as profile_id,
     cg.name as group_name,
     coalesce(bp.name, cg.name) as admin_name,
     bp.email,
@@ -15962,7 +16004,7 @@ begin
     coalesce(wa.available_balance, 0.00) as wallet_available_balance,
     cg.created_at
   from public.customer_groups cg
-  left join public.billing_profiles bp
+  left join public.profiles bp
     on bp.customer_group_id = cg.id
    and bp.parent_tenant_id = v_books_id
   left join (
@@ -16016,7 +16058,7 @@ begin
   select count(*)
   into v_total_count
   from public.customer_groups cg
-  left join public.billing_profiles bp
+  left join public.profiles bp
     on bp.customer_group_id = cg.id
    and bp.parent_tenant_id = v_books_id
   where cg.parent_tenant_id = v_books_id
@@ -16039,7 +16081,7 @@ begin
       jsonb_build_object(
         'id', cg.id,
         'customer_group_id', cg.id,
-        'billing_profile_id', bp.id,
+        'profile_id', bp.id,
         'group_name', cg.name,
         'admin_name', coalesce(bp.name, cg.name),
         'email', bp.email,
@@ -16052,7 +16094,7 @@ begin
         'created_at', cg.created_at
       ) as row_json
     from public.customer_groups cg
-    left join public.billing_profiles bp
+    left join public.profiles bp
       on bp.customer_group_id = cg.id
      and bp.parent_tenant_id = v_books_id
     left join (
@@ -16139,7 +16181,7 @@ $$;
 ALTER FUNCTION "public"."list_customer_group_member_grants"("p_cgm_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_customer_order_backlog_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "billing_profile_id" bigint, "product_id" bigint, "order_id" bigint, "order_item_id" bigint, "requested_quantity" integer, "fulfilled_quantity" integer, "open_quantity" integer, "backlog_status" "text", "name" "text", "image_url" "text", "barcode" "text", "product_code" "text", "created_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."list_customer_order_backlog_items"("p_tenant_id" bigint, "p_profile_id" bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "profile_id" bigint, "product_id" bigint, "order_id" bigint, "order_item_id" bigint, "requested_quantity" integer, "fulfilled_quantity" integer, "open_quantity" integer, "backlog_status" "text", "name" "text", "image_url" "text", "barcode" "text", "product_code" "text", "created_at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -16148,7 +16190,7 @@ BEGIN
   SELECT 
     b.id,
     b.tenant_id,
-    b.billing_profile_id,
+    b.profile_id,
     b.product_id,
     b.order_id,
     b.order_item_id,
@@ -16164,17 +16206,17 @@ BEGIN
   FROM customer_order_backlog_items b
   JOIN products p ON p.id = b.product_id
   WHERE b.tenant_id = p_tenant_id
-    AND b.billing_profile_id = p_billing_profile_id
+    AND b.profile_id = p_profile_id
     AND b.backlog_status IN ('open', 'partially_fulfilled')
   ORDER BY b.created_at DESC;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."list_customer_order_backlog_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_customer_order_backlog_items"("p_tenant_id" bigint, "p_profile_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_demand_bucket_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_status" "public"."demand_bucket_status" DEFAULT 'open'::"public"."demand_bucket_status", "p_limit" integer DEFAULT 100, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" bigint, "tenant_id" bigint, "billing_profile_id" bigint, "product_id" bigint, "source_type" "public"."demand_bucket_source_type", "source_id" bigint, "name" "text", "image_url" "text", "barcode" "text", "product_code" "text", "note" "text", "quantity" integer, "status" "public"."demand_bucket_status", "popped_at" timestamp with time zone, "popped_into_type" "text", "popped_into_id" bigint, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."list_demand_bucket_items"("p_tenant_id" bigint, "p_profile_id" bigint, "p_status" "public"."demand_bucket_status" DEFAULT 'open'::"public"."demand_bucket_status", "p_limit" integer DEFAULT 100, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" bigint, "tenant_id" bigint, "profile_id" bigint, "product_id" bigint, "source_type" "public"."demand_bucket_source_type", "source_id" bigint, "name" "text", "image_url" "text", "barcode" "text", "product_code" "text", "note" "text", "quantity" integer, "status" "public"."demand_bucket_status", "popped_at" timestamp with time zone, "popped_into_type" "text", "popped_into_id" bigint, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -16182,7 +16224,7 @@ declare
   v_limit integer := greatest(coalesce(p_limit, 100), 1);
   v_offset integer := greatest(coalesce(p_offset, 0), 0);
 begin
-  if not public.can_access_demand_bucket_profile(p_tenant_id, p_billing_profile_id, false) then
+  if not public.can_access_demand_bucket_profile(p_tenant_id, p_profile_id, false) then
     raise exception 'access denied';
   end if;
 
@@ -16190,7 +16232,7 @@ begin
   select
     b.id,
     b.tenant_id,
-    b.billing_profile_id,
+    b.profile_id,
     b.product_id,
     b.source_type,
     b.source_id,
@@ -16207,7 +16249,7 @@ begin
     b.created_at,
     b.updated_at
   from public.customer_demand_bucket_items b
-  where b.billing_profile_id = p_billing_profile_id
+  where b.profile_id = p_profile_id
     and (p_status is null or b.status = p_status)
   order by b.created_at desc, b.id desc
   limit v_limit
@@ -16216,7 +16258,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."list_demand_bucket_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_status" "public"."demand_bucket_status", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_demand_bucket_items"("p_tenant_id" bigint, "p_profile_id" bigint, "p_status" "public"."demand_bucket_status", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_global_currencies"() RETURNS TABLE("id" bigint, "name" "text", "country" "text", "code" "text", "symbol" "text")
@@ -16401,6 +16443,11 @@ CREATE TABLE IF NOT EXISTS "public"."global_shipment_cost_entries" (
     "parent_tenant_id" bigint NOT NULL,
     "shipment_id" bigint NOT NULL,
     "cost_type" "public"."global_shipment_cost_type" NOT NULL,
+    "cost_bucket" "public"."global_shipment_cost_bucket" NOT NULL,
+    "cost_component" "public"."global_shipment_cost_component" NOT NULL,
+    "is_capitalizable" boolean DEFAULT true NOT NULL,
+    "description" "text",
+    "item_sku" "text",
     "amount" numeric NOT NULL,
     "currency_id" bigint,
     "exchange_rate" numeric DEFAULT 1.0 NOT NULL,
@@ -16421,6 +16468,18 @@ CREATE TABLE IF NOT EXISTS "public"."global_shipment_cost_entries" (
 
 
 ALTER TABLE "public"."global_shipment_cost_entries" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."global_shipment_cost_entries"."cost_bucket" IS 'Operational category: material, freight, customs, handling, finance, other.';
+
+
+COMMENT ON COLUMN "public"."global_shipment_cost_entries"."cost_component" IS 'Voucher line axis: subtotal, carriage, vat_tax, misc.';
+
+
+COMMENT ON COLUMN "public"."global_shipment_cost_entries"."is_capitalizable" IS 'When true, amount flows into landed unit cost (BDT stamp). When false, P&L / local opex only.';
+
+
+COMMENT ON COLUMN "public"."global_shipment_cost_entries"."item_sku" IS 'Product SKU when cost is line-specific; null or ALL for shared shipment overhead.';
 
 
 CREATE OR REPLACE FUNCTION "public"."list_global_shipment_cost_entries"("p_shipment_id" bigint) RETURNS SETOF "public"."global_shipment_cost_entries"
@@ -17968,7 +18027,7 @@ $$;
 ALTER FUNCTION "public"."list_payment_methods"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "billing_profile_id" bigint, "product_id" bigint, "open_quantity" integer, "name" "text", "image_url" "text", "barcode" "text", "product_code" "text", "price_gbp" numeric, "product_weight" numeric, "package_weight" numeric, "note" "text", "last_costing_file_id" bigint, "last_costing_item_id" bigint, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p_profile_id" bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "profile_id" bigint, "product_id" bigint, "open_quantity" integer, "name" "text", "image_url" "text", "barcode" "text", "product_code" "text", "price_gbp" numeric, "product_weight" numeric, "package_weight" numeric, "note" "text", "last_costing_file_id" bigint, "last_costing_item_id" bigint, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -17981,7 +18040,7 @@ BEGIN
   SELECT
     bi.id,
     bi.tenant_id,
-    bi.billing_profile_id,
+    bi.profile_id,
     bi.product_id,
     bi.open_quantity,
     bi.name,
@@ -17998,13 +18057,13 @@ BEGIN
     bi.updated_at
   FROM public.product_based_costing_backlog_items bi
   WHERE bi.tenant_id = p_tenant_id
-    AND bi.billing_profile_id = p_billing_profile_id
+    AND bi.profile_id = p_profile_id
   ORDER BY bi.updated_at DESC;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p_profile_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_procurement_demand_groups"("p_tenant_id" bigint, "p_procurement_status" "text" DEFAULT 'procuring'::"text", "p_search" "text" DEFAULT NULL::"text", "p_child_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
@@ -18141,7 +18200,7 @@ begin
       on pd.source_type = 'pbc_costing_item'
       and pd.source_id = pci.id
       and pd.tenant_id = f.tenant_id
-    where f.billing_profile_id is not null
+    where f.profile_id is not null
       and public.normalize_pbc_procurement_status(f.status) = v_status
       and (
         v_search is null
@@ -20466,7 +20525,7 @@ declare
   v_item public.shop_order_items%rowtype;
   v_order public.shop_orders%rowtype;
   v_picked integer := 0;
-  v_billing_profile_id bigint;
+  v_profile_id bigint;
 begin
   if p_shortfall_qty is null or p_shortfall_qty <= 0 then
     raise exception 'shortfall quantity must be positive';
@@ -20495,13 +20554,13 @@ begin
   where id = p_order_item_id;
 
   if coalesce(p_add_to_demand_bucket, true) then
-    v_billing_profile_id := coalesce(
-      v_order.billing_profile_id,
-      public.resolve_billing_profile_for_customer_group(v_order.tenant_id, v_order.customer_group_id)
+    v_profile_id := coalesce(
+      v_order.profile_id,
+      public.resolve_customer_profile_for_group(v_order.tenant_id, v_order.customer_group_id)
     );
-    if v_billing_profile_id is not null then
+    if v_profile_id is not null then
       perform public.add_demand_bucket_item(
-        v_order.tenant_id, v_billing_profile_id, v_item.product_id,
+        v_order.tenant_id, v_profile_id, v_item.product_id,
         'shop_order'::public.demand_bucket_source_type, v_order.id,
         jsonb_build_object('order_item_id', v_item.id, 'reason', coalesce(p_reason, 'partial_shortfall')),
         p_shortfall_qty
@@ -20526,7 +20585,7 @@ declare
   v_item public.shop_order_items%rowtype;
   v_order public.shop_orders%rowtype;
   v_pick_count integer := 0;
-  v_billing_profile_id bigint;
+  v_profile_id bigint;
 begin
   select * into v_item from public.shop_order_items where id = p_order_item_id for update;
   if v_item.id is null then
@@ -20562,14 +20621,14 @@ begin
   where id = p_order_item_id;
 
   if coalesce(p_add_to_demand_bucket, true) then
-    v_billing_profile_id := coalesce(
-      v_order.billing_profile_id,
-      public.resolve_billing_profile_for_customer_group(v_order.tenant_id, v_order.customer_group_id)
+    v_profile_id := coalesce(
+      v_order.profile_id,
+      public.resolve_customer_profile_for_group(v_order.tenant_id, v_order.customer_group_id)
     );
-    if v_billing_profile_id is not null then
+    if v_profile_id is not null then
       perform public.add_demand_bucket_item(
         v_order.tenant_id,
-        v_billing_profile_id,
+        v_profile_id,
         v_item.product_id,
         'shop_order'::public.demand_bucket_source_type,
         v_order.id,
@@ -21721,7 +21780,7 @@ begin
     raise exception 'bucket item % is not open', p_bucket_item_id;
   end if;
 
-  if not public.can_access_demand_bucket_profile(v_row.tenant_id, v_row.billing_profile_id, false) then
+  if not public.can_access_demand_bucket_profile(v_row.tenant_id, v_row.profile_id, false) then
     raise exception 'access denied';
   end if;
 
@@ -25684,7 +25743,7 @@ begin
     insert into public.dropship_order_settlements (
       tenant_id,
       shop_order_id,
-      billing_profile_id,
+      profile_id,
       currency_id,
       calculated_cod_amount,
       collected_cod_amount,
@@ -25699,7 +25758,7 @@ begin
     ) values (
       v_order.tenant_id,
       p_order_id,
-      v_order.billing_profile_id,
+      v_order.profile_id,
       v_currency_id,
       v_calculated_cod,
       v_collected_cod,
@@ -25716,7 +25775,7 @@ begin
   else
     update public.dropship_order_settlements
     set
-      billing_profile_id = coalesce(v_order.billing_profile_id, billing_profile_id),
+      profile_id = coalesce(v_order.profile_id, profile_id),
       currency_id = coalesce(v_currency_id, currency_id),
       calculated_cod_amount = v_calculated_cod,
       collected_cod_amount = v_collected_cod,
@@ -26983,7 +27042,7 @@ begin
     );
   end if;
 
-  if v_order.billing_profile_id is null then
+  if v_order.profile_id is null then
     return jsonb_build_object('success', false, 'error', 'billing profile is required before ship');
   end if;
 
@@ -27284,7 +27343,7 @@ begin
 
     v_shortfall := greatest(v_target_qty - coalesce(v_allocated, 0), 0);
 
-    if v_shortfall > 0 and v_order.billing_profile_id is not null then
+    if v_shortfall > 0 and v_order.profile_id is not null then
         select p.barcode, p.product_code
         into v_product
         from public.products p
@@ -27293,7 +27352,7 @@ begin
         perform public.add_demand_bucket_item_internal(
           p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
-          p_billing_profile_id => v_order.billing_profile_id,
+          p_profile_id => v_order.profile_id,
           p_product_id => v_item_row.product_id,
           p_source_type => 'shop_order_item',
           p_source_id => v_item_row.id,
@@ -27309,7 +27368,7 @@ begin
 
         insert into public.customer_order_backlog_items (
           tenant_id,
-          billing_profile_id,
+          profile_id,
           product_id,
           order_id,
           order_item_id,
@@ -27318,7 +27377,7 @@ begin
           backlog_status
         ) values (
           v_order.tenant_id,
-          v_order.billing_profile_id,
+          v_order.profile_id,
           v_item_row.product_id,
           p_order_id,
           v_item_row.id,
@@ -27326,7 +27385,7 @@ begin
           0,
           'open'
         )
-        on conflict (tenant_id, billing_profile_id, product_id)
+        on conflict (tenant_id, profile_id, product_id)
         do update set
           requested_quantity = customer_order_backlog_items.requested_quantity + excluded.requested_quantity,
           backlog_status = 'open',
@@ -27963,7 +28022,7 @@ $$;
 ALTER FUNCTION "public"."transfer_network_owner"("p_parent_tenant_id" bigint, "p_new_email" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."trg_billing_profiles_normalize_phone"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."trg_profiles_normalize_phone"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
     AS $$
@@ -27974,10 +28033,10 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."trg_billing_profiles_normalize_phone"() OWNER TO "postgres";
+ALTER FUNCTION "public"."trg_profiles_normalize_phone"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."trg_billing_profiles_sync_parent_tenant"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."trg_profiles_sync_parent_tenant"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
     AS $$
@@ -27992,7 +28051,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."trg_billing_profiles_sync_parent_tenant"() OWNER TO "postgres";
+ALTER FUNCTION "public"."trg_profiles_sync_parent_tenant"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_customer_groups_guard_administer_active"() RETURNS "trigger"
@@ -28019,21 +28078,21 @@ CREATE OR REPLACE FUNCTION "public"."trg_customer_groups_soft_delete_phone_uniqu
     AS $$
 begin
   if new.deleted_at is not null and old.deleted_at is null then
-    alter table public.billing_profiles disable trigger trg_billing_profiles_admin_email_unique_per_tenant;
+    alter table public.profiles disable trigger trg_customer_profiles_admin_email_unique_per_tenant;
 
-    update public.billing_profiles
+    update public.profiles
     set is_phone_unique = false
     where customer_group_id = new.id;
 
-    alter table public.billing_profiles enable trigger trg_billing_profiles_admin_email_unique_per_tenant;
+    alter table public.profiles enable trigger trg_customer_profiles_admin_email_unique_per_tenant;
   elsif new.deleted_at is null and old.deleted_at is not null then
-    alter table public.billing_profiles disable trigger trg_billing_profiles_admin_email_unique_per_tenant;
+    alter table public.profiles disable trigger trg_customer_profiles_admin_email_unique_per_tenant;
 
-    update public.billing_profiles
+    update public.profiles
     set is_phone_unique = true
     where customer_group_id = new.id;
 
-    alter table public.billing_profiles enable trigger trg_billing_profiles_admin_email_unique_per_tenant;
+    alter table public.profiles enable trigger trg_customer_profiles_admin_email_unique_per_tenant;
   end if;
   return new;
 end;
@@ -28157,10 +28216,10 @@ begin
 
       if v_file.id is not null then
         v_tenant_id := v_file.tenant_id;
-        if v_tenant_id is null and v_file.billing_profile_id is not null then
+        if v_tenant_id is null and v_file.profile_id is not null then
           select tenant_id into v_tenant_id
-          from public.billing_profiles
-          where id = v_file.billing_profile_id;
+          from public.profiles
+          where id = v_file.profile_id;
         end if;
 
         select pci.id into v_other_id
@@ -28168,13 +28227,13 @@ begin
         inner join public.product_based_costing_files pcf
           on pcf.id = pci.product_based_costing_file_id
         where pci.product_id = old.product_id
-          and pcf.billing_profile_id is not distinct from v_file.billing_profile_id
+          and pcf.profile_id is not distinct from v_file.profile_id
         order by pci.updated_at desc nulls last, pci.id desc
         limit 1;
 
         if v_other_id is not null then
           perform public.upsert_pbc_backlog_from_item(v_other_id);
-        elsif v_tenant_id is not null and v_file.billing_profile_id is not null then
+        elsif v_tenant_id is not null and v_file.profile_id is not null then
           v_open_qty := coalesce(old.confirmed_quantity, old.quantity, 0);
 
           if coalesce(v_file.status, 'pending') in ('pending', 'offered')
@@ -28207,7 +28266,7 @@ begin
             if v_name is not null then
               insert into public.product_based_costing_backlog_items (
                 tenant_id,
-                billing_profile_id,
+                profile_id,
                 product_id,
                 open_quantity,
                 name,
@@ -28223,7 +28282,7 @@ begin
               )
               values (
                 v_tenant_id,
-                v_file.billing_profile_id,
+                v_file.profile_id,
                 old.product_id,
                 round(v_open_qty)::integer,
                 v_name,
@@ -28237,7 +28296,7 @@ begin
                 null,
                 now()
               )
-              on conflict (tenant_id, billing_profile_id, product_id)
+              on conflict (tenant_id, profile_id, product_id)
               do update set
                 open_quantity = excluded.open_quantity,
                 name = excluded.name,
@@ -28254,7 +28313,7 @@ begin
           else
             delete from public.product_based_costing_backlog_items
             where tenant_id = v_tenant_id
-              and billing_profile_id = v_file.billing_profile_id
+              and profile_id = v_file.profile_id
               and product_id = old.product_id;
           end if;
         end if;
@@ -28572,12 +28631,12 @@ begin
     into new.tenant_id
     from public.tenants t
     where t.id = new.tenant_id;
-  elsif new.billing_profile_id is not null then
+  elsif new.profile_id is not null then
     select coalesce(t.parent_id, t.id)
     into new.tenant_id
-    from public.billing_profiles bp
+    from public.profiles bp
     inner join public.tenants t on t.id = bp.tenant_id
-    where bp.id = new.billing_profile_id;
+    where bp.id = new.profile_id;
   end if;
   return new;
 end;
@@ -28594,15 +28653,15 @@ CREATE OR REPLACE FUNCTION "public"."trg_fn_pbc_files_stamp_billing_profile"() R
 begin
   if new.customer_group_id is not null then
     select bp.id
-    into new.billing_profile_id
-    from public.billing_profiles bp
+    into new.profile_id
+    from public.profiles bp
     where bp.customer_group_id = new.customer_group_id;
 
-    if new.billing_profile_id is null then
-      raise exception 'customer_group_id % has no linked billing profile', new.customer_group_id;
+    if new.profile_id is null then
+      raise exception 'customer_group_id % has no linked customer profile', new.customer_group_id;
     end if;
   elsif tg_op = 'UPDATE' and new.customer_group_id is null and old.customer_group_id is not null then
-    new.billing_profile_id := null;
+    new.profile_id := null;
   end if;
 
   return new;
@@ -30842,7 +30901,7 @@ ALTER FUNCTION "public"."upsert_my_notification_preferences"("p_channel_push" bo
 CREATE TABLE IF NOT EXISTS "public"."product_based_costing_backlog_items" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
-    "billing_profile_id" bigint NOT NULL,
+    "profile_id" bigint NOT NULL,
     "product_id" bigint NOT NULL,
     "open_quantity" integer NOT NULL,
     "name" "text" NOT NULL,
@@ -30895,10 +30954,10 @@ begin
   end if;
 
   v_tenant_id := v_file.tenant_id;
-  if v_tenant_id is null and v_file.billing_profile_id is not null then
+  if v_tenant_id is null and v_file.profile_id is not null then
     select tenant_id into v_tenant_id
-    from public.billing_profiles
-    where id = v_file.billing_profile_id;
+    from public.profiles
+    where id = v_file.profile_id;
   end if;
 
   if v_tenant_id is not null and not (
@@ -30908,7 +30967,7 @@ begin
     raise exception 'access denied for tenant %', v_tenant_id;
   end if;
 
-  if v_tenant_id is null or v_file.billing_profile_id is null or v_item.product_id is null then
+  if v_tenant_id is null or v_file.profile_id is null or v_item.product_id is null then
     return null;
   end if;
 
@@ -30922,7 +30981,7 @@ begin
   if v_confirmed_qty <= 0 or v_open_qty <= 0 then
     delete from public.product_based_costing_backlog_items
     where tenant_id = v_tenant_id
-      and billing_profile_id = v_file.billing_profile_id
+      and profile_id = v_file.profile_id
       and product_id = v_item.product_id;
     return null;
   end if;
@@ -30953,7 +31012,7 @@ begin
 
   insert into public.product_based_costing_backlog_items (
     tenant_id,
-    billing_profile_id,
+    profile_id,
     product_id,
     open_quantity,
     name,
@@ -30969,7 +31028,7 @@ begin
   )
   values (
     v_tenant_id,
-    v_file.billing_profile_id,
+    v_file.profile_id,
     v_item.product_id,
     v_open_qty,
     coalesce(v_item.name, v_prod.name),
@@ -30983,7 +31042,7 @@ begin
     v_item.id,
     now()
   )
-  on conflict (tenant_id, billing_profile_id, product_id)
+  on conflict (tenant_id, profile_id, product_id)
   do update set
     open_quantity = excluded.open_quantity,
     name = excluded.name,
@@ -32292,7 +32351,7 @@ ALTER SEQUENCE "public"."customer_groups_id_seq" OWNED BY "public"."customer_gro
 CREATE TABLE IF NOT EXISTS "public"."customer_order_backlog_items" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
-    "billing_profile_id" bigint NOT NULL,
+    "profile_id" bigint NOT NULL,
     "product_id" bigint NOT NULL,
     "order_id" bigint,
     "order_item_id" bigint,
@@ -33227,7 +33286,7 @@ CREATE TABLE IF NOT EXISTS "public"."product_based_costing_files" (
     "market_code" "text",
     "default_shipment_id" bigint,
     "vendor_id" bigint,
-    "billing_profile_id" bigint,
+    "profile_id" bigint,
     "customer_group_id" bigint
 );
 
@@ -35549,7 +35608,7 @@ ALTER TABLE ONLY "public"."units_of_measure"
 
 
 ALTER TABLE ONLY "public"."customer_order_backlog_items"
-    ADD CONSTRAINT "uq_customer_backlog_item" UNIQUE ("tenant_id", "billing_profile_id", "product_id");
+    ADD CONSTRAINT "uq_customer_backlog_item" UNIQUE ("tenant_id", "profile_id", "product_id");
 
 
 ALTER TABLE ONLY "public"."koba_brands"
@@ -35573,7 +35632,7 @@ ALTER TABLE ONLY "public"."koba_products"
 
 
 ALTER TABLE ONLY "public"."product_based_costing_backlog_items"
-    ADD CONSTRAINT "uq_pbc_backlog_tenant_profile_product" UNIQUE ("tenant_id", "billing_profile_id", "product_id");
+    ADD CONSTRAINT "uq_pbc_backlog_tenant_profile_product" UNIQUE ("tenant_id", "profile_id", "product_id");
 
 
 ALTER TABLE ONLY "public"."courier_remittance_batches"
@@ -35797,7 +35856,7 @@ CREATE INDEX "idx_courier_remittance_items_tenant" ON "public"."courier_remittan
 CREATE INDEX "idx_courier_remittance_items_tracking" ON "public"."courier_remittance_items" USING "btree" ("tracking_number");
 
 
-CREATE INDEX "idx_pbc_backlog_tenant_profile" ON "public"."product_based_costing_backlog_items" USING "btree" ("tenant_id", "billing_profile_id");
+CREATE INDEX "idx_pbc_backlog_tenant_profile" ON "public"."product_based_costing_backlog_items" USING "btree" ("tenant_id", "profile_id");
 
 
 CREATE INDEX "idx_pickup_locations_tenant" ON "public"."pickup_locations" USING "btree" ("tenant_id");
@@ -36016,7 +36075,7 @@ CREATE INDEX "preorder_demand_source_idx" ON "public"."preorder_demand" USING "b
 CREATE INDEX "preorder_demand_tenant_updated_idx" ON "public"."preorder_demand" USING "btree" ("tenant_id", "updated_at" DESC);
 
 
-CREATE INDEX "product_based_costing_files_billing_profile_id_idx" ON "public"."product_based_costing_files" USING "btree" ("billing_profile_id");
+CREATE INDEX "product_based_costing_files_profile_id_idx" ON "public"."product_based_costing_files" USING "btree" ("profile_id");
 
 
 CREATE INDEX "product_based_costing_files_customer_group_id_idx" ON "public"."product_based_costing_files" USING "btree" ("customer_group_id");
@@ -36598,7 +36657,7 @@ CREATE OR REPLACE TRIGGER "trg_payment_methods_updated_at" BEFORE UPDATE ON "pub
 CREATE OR REPLACE TRIGGER "trg_pbc_files_0_stamp_billing_profile" BEFORE INSERT OR UPDATE OF "customer_group_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_stamp_billing_profile"();
 
 
-CREATE OR REPLACE TRIGGER "trg_pbc_files_auto_tenant_id" BEFORE INSERT OR UPDATE OF "billing_profile_id", "tenant_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"();
+CREATE OR REPLACE TRIGGER "trg_pbc_files_auto_tenant_id" BEFORE INSERT OR UPDATE OF "profile_id", "tenant_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"();
 
 
 CREATE OR REPLACE TRIGGER "trg_pbc_items_auto_backlog" AFTER INSERT OR DELETE OR UPDATE OF "quantity", "confirmed_quantity", "product_id", "price_gbp" ON "public"."product_based_costing_items" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_auto_upsert_pbc_backlog"();
@@ -38877,10 +38936,10 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_shipment_it
 GRANT ALL ON FUNCTION "public"."add_child_line_to_parent_shipment"("p_parent_shipment_id" bigint, "p_source_type" "text", "p_source_id" bigint) TO "authenticated";
 
 
-GRANT ALL ON FUNCTION "public"."add_demand_bucket_item"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint, "p_snapshot" "jsonb", "p_quantity" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."add_demand_bucket_item"("p_tenant_id" bigint, "p_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint, "p_snapshot" "jsonb", "p_quantity" integer) TO "authenticated";
 
 
-GRANT ALL ON FUNCTION "public"."add_demand_bucket_item_internal"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint, "p_snapshot" "jsonb", "p_quantity" integer) TO "service_role";
+GRANT ALL ON FUNCTION "public"."add_demand_bucket_item_internal"("p_tenant_id" bigint, "p_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint, "p_snapshot" "jsonb", "p_quantity" integer) TO "service_role";
 
 
 GRANT ALL ON FUNCTION "public"."add_pbc_backlog_to_costing_file"("p_file_id" bigint, "p_backlog_ids" bigint[]) TO "authenticated";
@@ -39659,10 +39718,10 @@ GRANT ALL ON FUNCTION "public"."list_customer_accounts_paginated"("p_tenant_id" 
 GRANT ALL ON FUNCTION "public"."list_customer_group_member_grants"("p_cgm_id" bigint) TO "authenticated";
 
 
-GRANT ALL ON FUNCTION "public"."list_customer_order_backlog_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_customer_order_backlog_items"("p_tenant_id" bigint, "p_profile_id" bigint) TO "authenticated";
 
 
-GRANT ALL ON FUNCTION "public"."list_demand_bucket_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_status" "public"."demand_bucket_status", "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_demand_bucket_items"("p_tenant_id" bigint, "p_profile_id" bigint, "p_status" "public"."demand_bucket_status", "p_limit" integer, "p_offset" integer) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."list_global_currencies"() TO "authenticated";
@@ -39747,7 +39806,7 @@ GRANT ALL ON FUNCTION "public"."list_my_notifications_paginated"("p_tenant_id" b
 GRANT ALL ON FUNCTION "public"."list_payment_methods"() TO "authenticated";
 
 
-GRANT ALL ON FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p_profile_id" bigint) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."list_procurement_demand_groups"("p_tenant_id" bigint, "p_procurement_status" "text", "p_search" "text", "p_child_tenant_id" bigint, "p_limit" integer, "p_offset" integer) TO "authenticated";

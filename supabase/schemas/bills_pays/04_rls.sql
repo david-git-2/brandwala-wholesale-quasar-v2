@@ -1,20 +1,16 @@
 -- bills_pays: triggers, foreign keys, RLS policies, grants.
 
-CREATE OR REPLACE TRIGGER "trg_billing_profiles_admin_email_unique_per_tenant" BEFORE INSERT OR UPDATE ON "public"."billing_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_billing_profile_admin_email_unique_per_tenant"();
+CREATE OR REPLACE TRIGGER "trg_customer_profiles_admin_email_unique_per_tenant" BEFORE INSERT OR UPDATE ON "public"."profiles" FOR EACH ROW WHEN (("new"."profile_type" = 'customer'::"public"."profile_party_type")) EXECUTE FUNCTION "public"."enforce_customer_profile_admin_email_unique_per_tenant"();
 
-CREATE OR REPLACE TRIGGER "trg_billing_profiles_normalize_phone" BEFORE INSERT OR UPDATE OF "phone" ON "public"."billing_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."trg_billing_profiles_normalize_phone"();
+CREATE OR REPLACE TRIGGER "trg_customer_profiles_normalize_phone" BEFORE INSERT OR UPDATE OF "phone" ON "public"."profiles" FOR EACH ROW WHEN (("new"."profile_type" = 'customer'::"public"."profile_party_type")) EXECUTE FUNCTION "public"."trg_customer_profiles_normalize_phone"();
 
-CREATE OR REPLACE TRIGGER "trg_billing_profiles_set_updated_at" BEFORE UPDATE ON "public"."billing_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
-CREATE OR REPLACE TRIGGER "trg_billing_profiles_sync_parent_tenant" BEFORE INSERT OR UPDATE OF "tenant_id", "parent_tenant_id" ON "public"."billing_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."trg_billing_profiles_sync_parent_tenant"();
-
-CREATE OR REPLACE TRIGGER "trg_billing_profiles_sync_profile" AFTER INSERT OR UPDATE ON "public"."billing_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."trg_sync_profile_from_billing_profile"();
+CREATE OR REPLACE TRIGGER "trg_customer_profiles_sync_operating_tenant" BEFORE INSERT OR UPDATE OF "operating_tenant_id", "parent_tenant_id" ON "public"."profiles" FOR EACH ROW WHEN (("new"."profile_type" = 'customer'::"public"."profile_party_type")) EXECUTE FUNCTION "public"."trg_customer_profiles_sync_operating_tenant"();
 
 CREATE OR REPLACE TRIGGER "trg_cargo_companies_sync_profile" AFTER INSERT OR UPDATE ON "public"."cargo_companies" FOR EACH ROW EXECUTE FUNCTION "public"."trg_sync_profile_from_cargo_company"();
 
 CREATE OR REPLACE TRIGGER "trg_courier_services_sync_profile" AFTER INSERT OR UPDATE ON "public"."courier_services" FOR EACH ROW EXECUTE FUNCTION "public"."trg_sync_profile_from_courier_service"();
 
-CREATE OR REPLACE TRIGGER "trg_customer_groups_auto_billing_profile" AFTER INSERT ON "public"."customer_groups" FOR EACH ROW EXECUTE FUNCTION "public"."trg_auto_create_billing_profile_for_customer_group"();
+CREATE OR REPLACE TRIGGER "trg_customer_groups_auto_customer_profile" AFTER INSERT ON "public"."customer_groups" FOR EACH ROW EXECUTE FUNCTION "public"."trg_auto_create_customer_profile_for_customer_group"();
 
 CREATE OR REPLACE TRIGGER "trg_customer_groups_sync_profile" AFTER UPDATE OF "accent_color", "is_active", "deleted_at" ON "public"."customer_groups" FOR EACH ROW EXECUTE FUNCTION "public"."trg_sync_profile_from_customer_group"();
 
@@ -44,17 +40,23 @@ CREATE OR REPLACE TRIGGER "trg_validate_global_invoice_profiles_insert_update" B
 
 CREATE OR REPLACE TRIGGER "trg_vendors_sync_profile" AFTER INSERT OR UPDATE ON "public"."vendors" FOR EACH ROW EXECUTE FUNCTION "public"."trg_sync_profile_from_vendor"();
 
-ALTER TABLE ONLY "public"."billing_profiles"
-    ADD CONSTRAINT "billing_profiles_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
 
-ALTER TABLE ONLY "public"."billing_profiles"
-    ADD CONSTRAINT "billing_profiles_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."billing_profiles"
-    ADD CONSTRAINT "billing_profiles_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_operating_tenant_id_fkey" FOREIGN KEY ("operating_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."bills"
     ADD CONSTRAINT "bills_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."bills"
+    ADD CONSTRAINT "bills_parent_bill_id_fkey" FOREIGN KEY ("parent_bill_id") REFERENCES "public"."bills"("id") ON DELETE RESTRICT;
+
+ALTER TABLE ONLY "public"."bills"
+    ADD CONSTRAINT "bills_from_profile_id_fkey" FOREIGN KEY ("from_profile_id") REFERENCES "public"."profiles"("id") ON DELETE RESTRICT;
+
+ALTER TABLE ONLY "public"."bills"
+    ADD CONSTRAINT "bills_to_profile_id_fkey" FOREIGN KEY ("to_profile_id") REFERENCES "public"."profiles"("id") ON DELETE RESTRICT;
 
 ALTER TABLE ONLY "public"."bill_lines"
     ADD CONSTRAINT "global_invoice_items_assigned_child_tenant_id_fkey" FOREIGN KEY ("assigned_child_tenant_id") REFERENCES "public"."tenants"("id");
@@ -91,6 +93,9 @@ ALTER TABLE ONLY "public"."pay_instruments"
 
 ALTER TABLE ONLY "public"."pay_instruments"
     ADD CONSTRAINT "global_payment_instruments_payment_method_code_fkey" FOREIGN KEY ("payment_method_code") REFERENCES "public"."payment_methods"("code");
+
+ALTER TABLE ONLY "public"."pay_instruments"
+    ADD CONSTRAINT "pay_instruments_cashbook_point_id_fkey" FOREIGN KEY ("cashbook_point_id") REFERENCES "public"."cashbook_points"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."pays"
     ADD CONSTRAINT "global_payments_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE SET NULL;
@@ -143,6 +148,12 @@ ALTER TABLE ONLY "public"."pays"
 ALTER TABLE ONLY "public"."pays"
     ADD CONSTRAINT "pays_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
+ALTER TABLE ONLY "public"."pays"
+    ADD CONSTRAINT "pays_cashbook_point_id_fkey" FOREIGN KEY ("cashbook_point_id") REFERENCES "public"."cashbook_points"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."pay_allocations"
+    ADD CONSTRAINT "pay_allocations_bill_id_fkey" FOREIGN KEY ("bill_id") REFERENCES "public"."bills"("id") ON DELETE CASCADE;
+
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profiles_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE RESTRICT;
 
@@ -151,12 +162,6 @@ ALTER TABLE ONLY "public"."recipient_profiles"
 
 ALTER TABLE ONLY "public"."recipient_profiles"
     ADD CONSTRAINT "recipient_profiles_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."bill_charges"
-    ADD CONSTRAINT "sales_invoice_charges_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."bills"("id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."bill_charges"
-    ADD CONSTRAINT "sales_invoice_charges_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."sales_invoice_counters"
     ADD CONSTRAINT "sales_invoice_counters_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
@@ -179,21 +184,25 @@ ALTER TABLE ONLY "public"."cashbook_accounts"
 ALTER TABLE ONLY "public"."cashbook_accounts"
     ADD CONSTRAINT "wallet_accounts_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id");
 
-ALTER TABLE "public"."bill_charges" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ONLY "public"."cashbook_points"
+    ADD CONSTRAINT "cashbook_points_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."cashbook_points"
+    ADD CONSTRAINT "cashbook_points_cashbook_account_id_fkey" FOREIGN KEY ("cashbook_account_id") REFERENCES "public"."cashbook_accounts"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."cashbook_points"
+    ADD CONSTRAINT "cashbook_points_custodian_membership_id_fkey" FOREIGN KEY ("custodian_membership_id") REFERENCES "public"."memberships"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."cashbook_entries"
+    ADD CONSTRAINT "cashbook_entries_cashbook_point_id_fkey" FOREIGN KEY ("cashbook_point_id") REFERENCES "public"."cashbook_points"("id") ON DELETE SET NULL;
 
 ALTER TABLE "public"."bill_lines" ENABLE ROW LEVEL SECURITY;
-
-ALTER TABLE "public"."billing_profiles" ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "billing_profiles_select" ON "public"."billing_profiles" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "billing_profiles"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
-
-CREATE POLICY "billing_profiles_write" ON "public"."billing_profiles" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'billing_profile'::"text", 'edit'::"text")) WITH CHECK ("public"."membership_has_module_action"("tenant_id", 'billing_profile'::"text", 'edit'::"text"));
 
 ALTER TABLE "public"."bills" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."cashbook_accounts" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "public"."cashbook_points" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."cashbook_entries" ENABLE ROW LEVEL SECURITY;
 
@@ -281,12 +290,6 @@ CREATE POLICY "recipient_profiles_select" ON "public"."recipient_profiles" FOR S
 
 CREATE POLICY "recipient_profiles_write" ON "public"."recipient_profiles" TO "authenticated" USING (("public"."membership_has_module_action"("tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'customer'::"text", 'edit'::"text") OR (("parent_tenant_id" IS NOT NULL) AND ("public"."membership_has_module_action"("parent_tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("parent_tenant_id", 'customer'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id"))))) WITH CHECK (("public"."membership_has_module_action"("tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'customer'::"text", 'edit'::"text") OR (("parent_tenant_id" IS NOT NULL) AND ("public"."membership_has_module_action"("parent_tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("parent_tenant_id", 'customer'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")))));
 
-CREATE POLICY "sales_invoice_charges_all" ON "public"."bill_charges" TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."bills" "gi"
-  WHERE ("gi"."id" = "bill_charges"."invoice_id")))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."bills" "gi"
-  WHERE ("gi"."id" = "bill_charges"."invoice_id"))));
-
 ALTER TABLE "public"."sales_invoice_counters" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."sales_return_items" ENABLE ROW LEVEL SECURITY;
@@ -298,6 +301,8 @@ CREATE POLICY "universal_wallet_ledger_select" ON "public"."cashbook_entries" FO
   WHERE (("m"."tenant_id" = "cashbook_entries"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
 
 CREATE POLICY "wallet_accounts_authenticated_policy" ON "public"."cashbook_accounts" TO "authenticated" USING (true) WITH CHECK (true);
+
+CREATE POLICY "cashbook_points_authenticated_policy" ON "public"."cashbook_points" TO "authenticated" USING (true) WITH CHECK (true);
 
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."cashbook_entries" TO "authenticated";
 
@@ -347,41 +352,44 @@ GRANT ALL ON FUNCTION "public"."apply_global_invoice_settlement_discount"("p_inv
 
 GRANT ALL ON FUNCTION "public"."apply_global_invoice_target_total"("p_invoice_id" bigint, "p_target_total" numeric, "p_dry_run" boolean) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."billing_profile_valid_for_issuer"("p_billing_profile_id" bigint, "p_issued_by_tenant_id" bigint) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."profile_valid_for_issuer"("p_profile_id" bigint, "p_issued_by_tenant_id" bigint) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."build_dropship_tenant_b2b_invoice_payload"("p_order_id" bigint, "p_invoice_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_note" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."build_dropship_tenant_b2b_invoice_payload"("p_order_id" bigint, "p_invoice_id" bigint, "p_invoice_no" "text", "p_profile_id" bigint, "p_note" "text") TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."canonicalize_dropship_order_wallet_source_ids"("p_order_id" bigint) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."convert_wholesale_draft_to_retail"("p_invoice_id" bigint) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."create_dropship_invoice"("p_order_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_note" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_dropship_invoice"("p_order_id" bigint, "p_invoice_no" "text", "p_profile_id" bigint, "p_note" "text") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."create_dual_invoice_from_dropship_order"("p_order_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_note" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_dual_invoice_from_dropship_order"("p_order_id" bigint, "p_invoice_no" "text", "p_profile_id" bigint, "p_note" "text") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_billing_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_billing_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") TO "service_role";
+GRANT ALL ON FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_billing_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_billing_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") TO "service_role";
+GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."create_bill_adjustment"("p_parent_bill_id" bigint, "p_kind" "text", "p_amount" numeric, "p_reason" "text", "p_issue" boolean) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."create_bill_adjustment"("p_parent_bill_id" bigint, "p_kind" "text", "p_amount" numeric, "p_reason" "text", "p_issue" boolean) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."create_sales_invoice_from_payload"("p_tenant_id" bigint, "p_payload" "jsonb") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text", "p_reference_notes" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text", "p_reference_notes" "text") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text", "p_reference_notes" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text", "p_reference_notes" "text") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."ensure_dropship_invoice_billed_entry"("p_invoice_id" bigint) TO "authenticated";
 
@@ -392,6 +400,10 @@ GRANT ALL ON FUNCTION "public"."ensure_dropship_tenant_b2b_invoice_at_delivered"
 GRANT ALL ON FUNCTION "public"."generate_sales_invoice_number"("p_tenant_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_date" "date") TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."generate_sales_invoice_number"("p_tenant_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_date" "date") TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."stamp_bill_kernel_fields"("p_bill_id" bigint) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."stamp_bill_kernel_fields"("p_bill_id" bigint) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."get_recipient_profile_by_phone"("p_tenant_id" bigint, "p_phone" "text") TO "authenticated";
 
@@ -451,13 +463,36 @@ GRANT ALL ON TABLE "public"."pays" TO "authenticated";
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."pays" TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) FROM PUBLIC;
 
-GRANT ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "service_role";
+GRANT ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb") FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb", "p_keep_as_draft" boolean) FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "public"."issue_bill_adjustment"("p_adjustment_id" bigint) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."issue_bill_adjustment"("p_adjustment_id" bigint) TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."get_bill_net_balances"("p_bill_id" bigint) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."get_bill_net_balances"("p_bill_id" bigint) TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."list_bill_adjustments"("p_parent_bill_id" bigint) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."list_bill_adjustments"("p_parent_bill_id" bigint) TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."issue_shipment_ap_bills"("p_shipment_id" bigint) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."issue_shipment_ap_bills"("p_shipment_id" bigint) TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."issue_shipment_ap_bill_for_kind"("p_shipment_id" bigint, "p_ap_kind" "text") TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."issue_shipment_ap_bill_for_kind"("p_shipment_id" bigint, "p_ap_kind" "text") TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."shipment_ap_bucket_paid_totals"("p_shipment_id" bigint, "p_ap_kind" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."shipment_ap_bucket_paid_totals"("p_shipment_id" bigint, "p_ap_kind" "text") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."sync_shipment_ap_bills"("p_shipment_id" bigint) TO "authenticated";
 
@@ -487,7 +522,11 @@ GRANT ALL ON FUNCTION "public"."recompute_global_invoice_payment_status"("p_glob
 
 GRANT ALL ON FUNCTION "public"."recompute_global_invoice_totals"("p_invoice_id" bigint) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."record_ledger_transaction"("p_parent_tenant_id" bigint, "p_operating_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_type" "text", "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_source_type" "text", "p_source_id" "text", "p_metadata" "jsonb", "p_target_bucket" "text", "p_allow_overdraft" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_cashbook_point_for_staff"("p_tenant_id" bigint, "p_point_id" bigint) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."delete_cashbook_point_for_staff"("p_tenant_id" bigint, "p_point_id" bigint) TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."record_ledger_transaction"("p_parent_tenant_id" bigint, "p_operating_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_type" "text", "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_source_type" "text", "p_source_id" "text", "p_metadata" "jsonb", "p_target_bucket" "text", "p_allow_overdraft" boolean, "p_cashbook_point_id" bigint) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."record_recipient_invoice_collection"("p_global_invoice_id" bigint, "p_amount" numeric, "p_payment_date" "date", "p_method" "text", "p_reference" "text", "p_note" "text") TO "authenticated";
 
@@ -495,7 +534,7 @@ GRANT ALL ON FUNCTION "public"."record_recipient_invoice_collection"("p_global_i
 
 GRANT ALL ON FUNCTION "public"."remove_global_invoice_item"("p_invoice_item_id" bigint) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."resolve_billing_profile_for_customer_group"("p_tenant_id" bigint, "p_customer_group_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."resolve_customer_profile_for_group"("p_tenant_id" bigint, "p_customer_group_id" bigint) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."reverse_wallet_ledger_entry_for_staff"("p_tenant_id" bigint, "p_ledger_entry_id" "uuid", "p_reason" "text", "p_reference_id" "text") TO "authenticated";
 
@@ -543,29 +582,19 @@ GRANT ALL ON FUNCTION "public"."void_sales_invoice"("p_invoice_id" bigint) TO "a
 
 GRANT ALL ON FUNCTION "public"."void_sales_invoice"("p_invoice_id" bigint) TO "service_role";
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."bill_charges" TO "anon";
 
-GRANT ALL ON TABLE "public"."bill_charges" TO "authenticated";
-
-GRANT ALL ON TABLE "public"."bill_charges" TO "service_role";
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."billing_profiles" TO "anon";
-
-GRANT ALL ON TABLE "public"."billing_profiles" TO "authenticated";
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."billing_profiles" TO "service_role";
-
-GRANT UPDATE ON SEQUENCE "public"."billing_profiles_id_seq" TO "anon";
-
-GRANT ALL ON SEQUENCE "public"."billing_profiles_id_seq" TO "authenticated";
-
-GRANT UPDATE ON SEQUENCE "public"."billing_profiles_id_seq" TO "service_role";
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."cashbook_accounts" TO "anon";
 
 GRANT ALL ON TABLE "public"."cashbook_accounts" TO "authenticated";
 
 GRANT ALL ON TABLE "public"."cashbook_accounts" TO "service_role";
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."cashbook_points" TO "anon";
+
+GRANT ALL ON TABLE "public"."cashbook_points" TO "authenticated";
+
+GRANT ALL ON TABLE "public"."cashbook_points" TO "service_role";
 
 GRANT REFERENCES,TRIGGER,TRUNCATE ON TABLE "public"."global_invoice_items" TO "anon";
 
@@ -669,12 +698,6 @@ GRANT ALL ON SEQUENCE "public"."recipient_profiles_id_seq" TO "authenticated";
 
 GRANT ALL ON SEQUENCE "public"."recipient_profiles_id_seq" TO "service_role";
 
-GRANT UPDATE ON SEQUENCE "public"."sales_invoice_charges_id_seq" TO "anon";
-
-GRANT ALL ON SEQUENCE "public"."sales_invoice_charges_id_seq" TO "authenticated";
-
-GRANT ALL ON SEQUENCE "public"."sales_invoice_charges_id_seq" TO "service_role";
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."sales_invoice_counters" TO "anon";
 
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."sales_invoice_counters" TO "authenticated";
@@ -691,4 +714,4 @@ ALTER TABLE ONLY "public"."courier_remittance_items"
     ADD CONSTRAINT "courier_remittance_items_global_invoice_id_fkey" FOREIGN KEY ("global_invoice_id") REFERENCES "public"."bills"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."customer_order_backlog_items"
-    ADD CONSTRAINT "customer_order_backlog_items_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "customer_order_backlog_items_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;

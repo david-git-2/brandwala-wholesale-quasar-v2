@@ -3,8 +3,11 @@ import {
   calculateLineLandedCostBdt,
   calculateLineLandedCostBreakdown,
   calculateTransactionRate,
+  moneyWeightedBlendRate,
   getCalculatedTransactionRate,
   calculateShipmentCostSummary,
+  costingShipmentFromEntries,
+  sumProductEntryAmount,
   type CostingLineItemInput,
 } from '../costEngine';
 
@@ -48,9 +51,35 @@ describe('shipment-engine costEngine', () => {
     expect(rate).toBe(135.92);
   });
 
+  test('moneyWeightedBlendRate is total BDT over total foreign, not mean of rates', () => {
+    const rate = moneyWeightedBlendRate([
+      { foreign: 100, rate: 120 },
+      { foreign: 300, rate: 140 },
+    ]);
+    expect(rate).toBeCloseTo((100 * 120 + 300 * 140) / 400, 6);
+    expect(rate).not.toBeCloseTo((120 + 140) / 2, 2);
+  });
+
+  test('calculateTransactionRate does not arithmetic-mean bucket rates when purchase base is empty', () => {
+    const rate = calculateTransactionRate(
+      { ...sampleInternationalShipment, cargo_rate: 0, received_weight: null },
+      [],
+    );
+    expect(rate).toBe(124.5);
+    expect(rate).not.toBeCloseTo((124.5 + 165.2) / 2, 1);
+  });
+
   test('calculateTransactionRate returns null for domestic shipment', () => {
     const rate = calculateTransactionRate(sampleDomesticShipment, sampleItems);
     expect(rate).toBeNull();
+  });
+
+  test('getCalculatedTransactionRate prefers pay-weighted transaction_rate', () => {
+    const rate = getCalculatedTransactionRate(
+      { ...sampleInternationalShipment, transaction_rate: 166.59 },
+      sampleItems,
+    );
+    expect(rate).toBe(166.59);
   });
 
   test('getCalculatedTransactionRate works identical to calculateTransactionRate', () => {
@@ -64,7 +93,7 @@ describe('shipment-engine costEngine', () => {
     expect(cost).toBeCloseTo(1889.28, 1);
 
     const costWithFallback = calculateLineLandedCostBdt(item1, sampleInternationalShipment);
-    expect(costWithFallback).toBeCloseTo(2390.025, 2);
+    expect(costWithFallback).toBeCloseTo(2318.8, 1);
   });
 
   test('calculateLineLandedCostBreakdown matches calculateLineLandedCostBdt', () => {
@@ -136,6 +165,17 @@ describe('shipment-engine costEngine', () => {
     expect(summary.cargoWeightKg).toBe(30.0);
     expect(summary.cargoWeightKg).toEqual(adjustedShipment.received_weight);
     expect(summary.lineLandedCostTotal).toBeCloseTo(summary.totalCost, 2);
+  });
+
+  test('costingShipmentFromEntries maps material/freight buckets for preview', () => {
+    const shipment = { ...sampleInternationalShipment, cargo_rate: 0, received_weight: 10 };
+    const entries = [
+      { cost_bucket: 'material', amount: 100 },
+      { cost_bucket: 'freight', amount: 65 },
+    ];
+    const preview = costingShipmentFromEntries(shipment, entries, sampleItems);
+    expect(preview.cargo_rate).toBe(6.5);
+    expect(sumProductEntryAmount(entries)).toBe(100);
   });
 
   test('calculateShipmentCostSummary handles domestic shipment correctly', () => {

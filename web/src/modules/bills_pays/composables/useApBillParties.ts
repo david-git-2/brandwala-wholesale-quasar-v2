@@ -9,27 +9,38 @@ export function useApBillParties(bill: Ref<GlobalInvoiceDetail | undefined>) {
   const tenantName = computed(() => authStore.selectedTenant?.name ?? '—');
 
   const counterpartyName = computed(
-    () => bill.value?.billing_profiles?.name || bill.value?.recipient_name || '—',
+    () => bill.value?.profiles?.name || bill.value?.recipient_name || '—',
   );
 
-  const counterpartyAddress = computed(() => bill.value?.billing_profiles?.address ?? null);
+  const counterpartyAddress = computed(() => bill.value?.profiles?.address ?? null);
 
-  const counterpartyEmail = computed(() => bill.value?.billing_profiles?.email ?? null);
+  const counterpartyEmail = computed(() => bill.value?.profiles?.email ?? null);
 
   const showCounterparty = computed(() => {
     const kind = bill.value?.ap_kind;
-    return kind === 'vendor' || kind === 'cargo';
+    return (
+      kind === 'vendor'
+      || kind === 'material'
+      || kind === 'cargo'
+      || kind === 'freight'
+      || kind === 'customs'
+    );
   });
 
   const counterpartyLabel = computed(() => {
-    if (bill.value?.ap_kind === 'vendor') return 'From (vendor)';
-    if (bill.value?.ap_kind === 'cargo') return 'From (cargo)';
+    const kind = bill.value?.ap_kind;
+    if (kind === 'vendor' || kind === 'material') return 'From (vendor)';
+    if (kind === 'cargo' || kind === 'freight' || kind === 'customs') return 'From (cargo)';
     return 'From';
   });
 
-  const tenantLabel = computed(() =>
-    bill.value?.ap_kind === 'local' ? 'Payable by (tenant)' : 'To (tenant)',
-  );
+  const tenantLabel = computed(() => {
+    const kind = bill.value?.ap_kind;
+    if (kind === 'local' || kind === 'handling' || kind === 'finance' || kind === 'other') {
+      return 'Payable by (tenant)';
+    }
+    return 'To (tenant)';
+  });
 
   return {
     tenantName,

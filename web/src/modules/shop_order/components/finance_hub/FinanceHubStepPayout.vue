@@ -9,7 +9,7 @@
       <div class="row q-col-gutter-sm">
         <div class="col-12 col-md-6">
           <q-select
-            v-model="form.billingProfileId"
+            v-model="form.profileId"
             :options="merchantOptions"
             option-value="id"
             option-label="label"
@@ -85,11 +85,11 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'submit', payload: { billingProfileId: number; amount: number; payoutMethod?: string; referenceNotes?: string }): void;
+  (e: 'submit', payload: { profileId: number; amount: number; payoutMethod?: string; referenceNotes?: string }): void;
 }>();
 
 const form = reactive({
-  billingProfileId: null as number | null,
+  profileId: null as number | null,
   amount: 0,
   payoutMethod: 'bank_transfer',
   referenceNotes: '',
@@ -113,7 +113,7 @@ watch(
   () => props.preselectedMerchantId,
   (id) => {
     if (id) {
-      form.billingProfileId = id;
+      form.profileId = id;
       const m = props.merchants.find((x) => x.id === id);
       if (m && m.payableBalance > 0) {
         form.amount = m.payableBalance;
@@ -124,7 +124,7 @@ watch(
 );
 
 watch(
-  () => form.billingProfileId,
+  () => form.profileId,
   (newId) => {
     if (newId) {
       const m = props.merchants.find((x) => x.id === newId);
@@ -136,9 +136,9 @@ watch(
 );
 
 function handleConfirm() {
-  if (!form.billingProfileId || form.amount <= 0) return;
+  if (!form.profileId || form.amount <= 0) return;
   emit('submit', {
-    billingProfileId: form.billingProfileId,
+    profileId: form.profileId,
     amount: form.amount,
     payoutMethod: form.payoutMethod,
     referenceNotes: form.referenceNotes,

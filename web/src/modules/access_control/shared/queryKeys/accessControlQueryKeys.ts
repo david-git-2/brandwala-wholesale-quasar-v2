@@ -19,7 +19,7 @@ export const accessControlQueryKeys = {
   customerGroupMembers: (groupId: number) =>
     ['accessControl', 'customerGroupMembers', { groupId }] as const,
   cgmOverrideIds: (groupId: number) => ['accessControl', 'cgmOverrideIds', { groupId }] as const,
-  billingProfiles: (tenantId: number) =>
-    ['accessControl', 'billingProfiles', { tenantId }] as const,
+  customerProfiles: (tenantId: number) =>
+    ['accessControl', 'customerProfiles', { tenantId }] as const,
   investors: () => ['accessControl', 'investors'] as const,
 };

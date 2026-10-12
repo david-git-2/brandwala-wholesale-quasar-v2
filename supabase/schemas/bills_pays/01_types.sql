@@ -2,6 +2,7 @@
 
 CREATE TYPE "public"."collection_source_type" AS ENUM (
     'billing_profile',
+    'profile',
     'recipient'
 );
 
@@ -24,6 +25,31 @@ CREATE TYPE "public"."global_invoice_status" AS ENUM (
 );
 
 ALTER TYPE "public"."global_invoice_status" OWNER TO "postgres";
+
+CREATE TYPE "public"."bill_document_kind" AS ENUM (
+    'standard',
+    'credit_note',
+    'debit_note'
+);
+
+ALTER TYPE "public"."bill_document_kind" OWNER TO "postgres";
+
+CREATE TYPE "public"."bill_settlement_kind" AS ENUM (
+    'take',
+    'condition'
+);
+
+ALTER TYPE "public"."bill_settlement_kind" OWNER TO "postgres";
+
+CREATE TYPE "public"."cashbook_point_kind" AS ENUM (
+    'drawer',
+    'safe',
+    'bank_counter',
+    'mobile',
+    'other'
+);
+
+ALTER TYPE "public"."cashbook_point_kind" OWNER TO "postgres";
 
 CREATE TYPE "public"."global_invoice_type" AS ENUM (
     'wholesale',

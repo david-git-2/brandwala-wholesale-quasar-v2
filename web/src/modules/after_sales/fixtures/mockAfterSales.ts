@@ -22,7 +22,7 @@ export const MOCK_DROPSHIP_ORDERS: MockDropshipOrder[] = [
     recipient_name: 'Rahim Uddin',
     recipient_phone: '01712345678',
     merchant_name: 'Style Corner BD',
-    merchant_billing_profile_id: 301,
+    merchant_profile_id: 301,
   },
   {
     id: 5002,
@@ -30,7 +30,7 @@ export const MOCK_DROPSHIP_ORDERS: MockDropshipOrder[] = [
     recipient_name: 'Sadia Khan',
     recipient_phone: '01898765432',
     merchant_name: 'Urban Reseller',
-    merchant_billing_profile_id: 302,
+    merchant_profile_id: 302,
   },
 ];
 
@@ -166,7 +166,7 @@ const initialCases: AfterSalesCase[] = [
     sales_invoice_no: 'WS-20260820-0123',
     shop_order_id: null,
     shop_order_no: null,
-    billing_profile_id: 201,
+    profile_id: 201,
     customer_name: 'Metro Traders Ltd',
     policy_snapshot: wholesalePolicySnapshot,
     intake_source: null,
@@ -213,7 +213,7 @@ const initialCases: AfterSalesCase[] = [
     sales_invoice_no: 'WS-20260901-0045',
     shop_order_id: null,
     shop_order_no: null,
-    billing_profile_id: 202,
+    profile_id: 202,
     customer_name: 'Bay Fashion Wholesale',
     policy_snapshot: {
       ...wholesalePolicySnapshot,
@@ -284,7 +284,7 @@ const initialCases: AfterSalesCase[] = [
     sales_invoice_no: null,
     shop_order_id: 5001,
     shop_order_no: 'DS-20260901-0042',
-    billing_profile_id: 301,
+    profile_id: 301,
     customer_name: 'Style Corner BD',
     policy_snapshot: {
       policy_id: 'pol-003',
@@ -350,7 +350,7 @@ const initialCases: AfterSalesCase[] = [
     sales_invoice_no: null,
     shop_order_id: 5002,
     shop_order_no: 'DS-20260903-0088',
-    billing_profile_id: 302,
+    profile_id: 302,
     customer_name: 'Urban Reseller',
     policy_snapshot: {
       policy_id: 'pol-001',

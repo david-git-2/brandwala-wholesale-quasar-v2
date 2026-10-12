@@ -126,12 +126,12 @@
                 @click="emit('open-link-profile')"
               />
             </div>
-            <div v-if="linkedBillingProfiles.length === 0" class="text-caption text-grey-6">
+            <div v-if="linkedCustomerProfiles.length === 0" class="text-caption text-grey-6">
               No billing profiles linked to this group.
             </div>
             <div v-else class="row q-gutter-xs">
               <q-chip
-                v-for="prof in linkedBillingProfiles"
+                v-for="prof in linkedCustomerProfiles"
                 :key="prof.id"
                 :removable="canAdministerCustomerGroup"
                 dense
@@ -257,7 +257,7 @@ interface Props {
   selectedGroupId: number | null;
   selectedGroup: CustomerGroup | null;
   sortedMembers: CustomerGroupMember[];
-  linkedBillingProfiles: any[];
+  linkedCustomerProfiles: any[];
   shopRoles: Array<{ id: number; name: string }>;
   hasCgmOverridesMap: Record<number, boolean>;
   canAdministerCustomerGroup: boolean;

@@ -39,7 +39,7 @@ export type ListGlobalInvoicesParams = {
   fromDate?: string | null;
   toDate?: string | null;
   quickFilter?: 'all' | 'paid' | 'unpaid';
-  billingProfileId?: number | null;
+  profileId?: number | null;
   arSide?: 'they_owe' | 'we_owe';
 };
 
@@ -150,7 +150,7 @@ const listGlobalInvoices = async (
     fromDate,
     toDate,
     quickFilter,
-    billingProfileId,
+    profileId,
     arSide,
   } = params;
 
@@ -159,7 +159,7 @@ const listGlobalInvoices = async (
   let query = supabase
     .from('bills')
     .select(
-      'id, parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, billing_profile_id:profile_id, shop_order_id, retail_billing_mode, channel_meta, recipient_name, created_by, created_at, billing_profiles:profiles!bills_profile_id_fkey(name, email, color:accent_color), issued_by:tenants!global_invoices_issued_by_tenant_id_fkey(name)',
+      'id, parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, profile_id:profile_id, shop_order_id, retail_billing_mode, channel_meta, recipient_name, created_by, created_at, profiles:profiles!bills_profile_id_fkey(name, email, color:accent_color), issued_by:tenants!global_invoices_issued_by_tenant_id_fkey(name)',
       { count: 'exact' },
     );
 
@@ -193,12 +193,15 @@ const listGlobalInvoices = async (
 
   if (arSide === 'we_owe') {
     query = query.eq('invoice_type', 'ap');
+    if (!invoiceStatus) {
+      query = query.eq('invoice_status', 'issued');
+    }
   } else if (arSide === 'they_owe') {
     query = query.neq('invoice_type', 'ap');
   }
 
-  if (billingProfileId) {
-    query = query.eq('profile_id', billingProfileId);
+  if (profileId) {
+    query = query.eq('profile_id', profileId);
   }
 
   if (quickFilter === 'paid') {
@@ -216,13 +219,13 @@ const listGlobalInvoices = async (
 
   if (search && search.trim()) {
     const cleanSearch = search.trim();
-    let billingProfileIds: number[] = [];
+    let profileIds: number[] = [];
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id')
       .ilike('name', `%${cleanSearch}%`);
     if (profiles) {
-      billingProfileIds = profiles.map((p) => p.id);
+      profileIds = profiles.map((p) => p.id);
     }
 
     const conditions = [
@@ -233,8 +236,8 @@ const listGlobalInvoices = async (
     if (!Number.isNaN(maybeId) && Number.isFinite(maybeId)) {
       conditions.push(`id.eq.${maybeId}`);
     }
-    if (billingProfileIds.length > 0) {
-      conditions.push(`profile_id.in.(${billingProfileIds.join(',')})`);
+    if (profileIds.length > 0) {
+      conditions.push(`profile_id.in.(${profileIds.join(',')})`);
     }
     query = query.or(conditions.join(','));
   }
@@ -246,24 +249,24 @@ const listGlobalInvoices = async (
   if (error) throw error;
 
   type GlobalInvoiceListRow = GlobalInvoiceRow & {
-    billing_profiles?: { name: string; email: string | null; color: string | null; customer_group_id: number | null } | { name: string; email: string | null; color: string | null; customer_group_id: number | null }[] | null;
+    profiles?: { name: string; email: string | null; color: string | null; customer_group_id: number | null } | { name: string; email: string | null; color: string | null; customer_group_id: number | null }[] | null;
     issued_by?: { name: string } | { name: string }[] | null;
   };
 
   const rows = ((data as GlobalInvoiceListRow[] | null) ?? []).map((row) => {
-    const billingProfile = Array.isArray(row.billing_profiles)
-      ? (row.billing_profiles[0] ?? null)
-      : (row.billing_profiles ?? null);
+    const customerProfile = Array.isArray(row.profiles)
+      ? (row.profiles[0] ?? null)
+      : (row.profiles ?? null);
     const issuedBy = Array.isArray(row.issued_by)
       ? (row.issued_by[0] ?? null)
       : (row.issued_by ?? null);
 
     return {
       ...row,
-      billing_profile_name: billingProfile?.name ?? null,
-      billing_profile_email: billingProfile?.email ?? null,
-      billing_profile_color: billingProfile?.color ?? null,
-      billing_profile_customer_group_id: billingProfile?.customer_group_id ?? null,
+      profile_name: customerProfile?.name ?? null,
+      profile_email: customerProfile?.email ?? null,
+      profile_accent_color: customerProfile?.color ?? null,
+      profile_customer_group_id: customerProfile?.customer_group_id ?? null,
       issued_by_tenant_name: issuedBy?.name ?? null,
     };
   });
@@ -297,7 +300,7 @@ const createGlobalInvoice = async (
   const { data, error } = await supabase.rpc('create_sales_invoice', {
     p_tenant_id: payload.tenant_id,
     p_invoice_no: payload.invoice_no.trim(),
-    p_billing_profile_id: payload.billing_profile_id ?? null,
+    p_profile_id: payload.profile_id ?? null,
     p_recipient_profile_id: payload.recipient_profile_id ?? null,
     p_invoice_type: payload.invoice_type ?? 'wholesale',
     p_recipient_name: payload.recipient_name ?? null,
@@ -318,7 +321,7 @@ const createGlobalInvoice = async (
 const getGlobalInvoiceById = async (invoiceId: number): Promise<GlobalInvoiceDetail> => {
   const { data, error } = await supabase
     .from('bills')
-    .select('*, billing_profile_id:profile_id, billing_profiles:profiles!bills_profile_id_fkey(id, name, email, phone, address, color:accent_color)')
+    .select('*, profile_id:profile_id, profiles:profiles!bills_profile_id_fkey(id, name, email, phone, address, color:accent_color)')
     .eq('id', invoiceId)
     .single();
 
@@ -401,9 +404,9 @@ const addGlobalInvoiceItem = async (payload: {
   return data as GlobalInvoiceItemRow;
 };
 
-const recordBillingProfilePayment = async (payload: {
+const recordCustomerProfilePayment = async (payload: {
   tenant_id: number;
-  billing_profile_id: number;
+  profile_id: number;
   amount: number;
   payment_date?: string;
   method?: string;
@@ -412,7 +415,7 @@ const recordBillingProfilePayment = async (payload: {
 }) => {
   const { data, error } = await supabase.rpc('post_customer_receipt_with_allocations', {
     p_tenant_id: payload.tenant_id,
-    p_billing_profile_id: payload.billing_profile_id,
+    p_profile_id: payload.profile_id,
     p_received_on: payload.payment_date ?? localToday(),
     p_reference: payload.reference ?? null,
     p_source: 'customer_cash',
@@ -480,7 +483,7 @@ const collectWholesaleInvoicePayment = async (payload: {
   const cash = instruments.reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
   const receipt = {
     p_tenant_id: bill.issued_by_tenant_id,
-    p_billing_profile_id: bill.profile_id,
+    p_profile_id: bill.profile_id,
     p_received_on: payload.received_on ?? localToday(),
     p_note: payload.note ?? null,
   };
@@ -550,13 +553,13 @@ const listInvoiceCollectionHistory = async (
 
 const createMiddleManPayout = async (payload: {
   tenant_id: number;
-  billing_profile_id: number;
+  profile_id: number;
   global_invoice_id: number;
   amount: number;
 }) => {
   const { data, error } = await supabase.rpc('dispense_middleman_payout_from_tenant', {
     p_tenant_id: payload.tenant_id,
-    p_billing_profile_id: payload.billing_profile_id,
+    p_profile_id: payload.profile_id,
     p_amount: payload.amount,
     p_payout_method: 'bank_transfer',
     p_reference_notes: `Invoice #${payload.global_invoice_id}`,
@@ -731,7 +734,7 @@ export type SalesInvoiceFromPayloadInput = {
   invoice: {
     invoice_no?: string;
     invoice_type: 'wholesale' | 'retail';
-    billing_profile_id: number;
+    profile_id: number;
     invoice_date?: string;
     due_date?: string;
     discount_amount?: number;
@@ -1008,7 +1011,7 @@ export const invoiceRepository = {
   updateGlobalInvoiceItem,
   updateInvoiceItemsBulk,
   applyGlobalInvoiceTargetTotal,
-  recordBillingProfilePayment,
+  recordCustomerProfilePayment,
   recordRecipientInvoiceCollection,
   applySettlementDiscount,
   collectWholesaleInvoicePayment,

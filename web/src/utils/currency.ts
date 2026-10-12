@@ -42,3 +42,27 @@ export const formatAmountBdt = (
     maximumFractionDigits: normalizedOptions.maximumFractionDigits,
   }).format(safeAmount);
 };
+
+/** Grouped BDT with ৳ prefix (cashbook / bill paid & due). */
+export const formatBdtTaka = (value: number | string | null | undefined): string =>
+  `৳${formatAmountBdt(value)}`;
+
+const SETTLEMENT_CURRENCY_SYMBOL: Record<string, string> = {
+  BDT: '৳',
+  GBP: '£',
+  USD: '$',
+  EUR: '€',
+};
+
+/** Foreign or BDT settlement leg — never uses ৳ unless currency is BDT. */
+export const formatSettlementCurrencyAmount = (
+  value: number | string | null | undefined,
+  currencyCode: string,
+  currencySymbol?: string | null,
+): string => {
+  const code = (currencyCode || 'BDT').toUpperCase();
+  const formatted = formatAmountBdt(value);
+  const sym = currencySymbol?.trim() || SETTLEMENT_CURRENCY_SYMBOL[code];
+  if (sym) return `${sym}${formatted}`;
+  return `${formatted} ${code}`;
+};

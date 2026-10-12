@@ -61,9 +61,9 @@ export const accessControlRepository = {
     return data || [];
   },
 
-  async fetchBillingProfiles(tenantId: number) {
+  async fetchCustomerProfiles(tenantId: number) {
     const { data, error } = await supabase
-      .from('billing_profiles')
+      .from('profiles')
       .select('*')
       .eq('tenant_id', tenantId);
     if (error) throw error;

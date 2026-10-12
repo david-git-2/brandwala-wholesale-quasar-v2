@@ -47,8 +47,8 @@
           <div class="col-4">
             <div class="text-overline text-grey-7">To</div>
             <div class="text-subtitle1 text-weight-bold">{{ profileName }}</div>
-            <div v-if="bill.billing_profiles?.address" class="text-caption text-grey-7 whitespace-pre-line">
-              {{ bill.billing_profiles.address }}
+            <div v-if="bill.profiles?.address" class="text-caption text-grey-7 whitespace-pre-line">
+              {{ bill.profiles.address }}
             </div>
           </div>
           <div class="col-auto text-right">
@@ -67,7 +67,31 @@
         />
         <div class="row justify-end q-mt-md">
           <div class="totals-panel">
-            <div class="total-row text-weight-bold">
+            <template v-if="apCurrencyBalances">
+              <div
+                v-for="(group, gIdx) in apCurrencyBalances"
+                :key="group.currency_code"
+                :class="{ 'ap-bill-balance-group--spaced': gIdx > 0 }"
+              >
+                <div
+                  v-if="apCurrencyBalances.length > 1"
+                  class="text-caption text-weight-bold text-grey-8 q-mb-xs text-uppercase"
+                  style="letter-spacing: 0.04em"
+                >
+                  {{ group.currency_code }}
+                </div>
+                <div class="total-row">
+                  <span>Total</span><span class="font-mono">{{ group.totalLabel }}</span>
+                </div>
+                <div class="total-row">
+                  <span>Paid</span><span class="font-mono">{{ group.paidLabel }}</span>
+                </div>
+                <div class="total-row text-weight-bold">
+                  <span>Due</span><span class="font-mono">{{ group.dueLabel }}</span>
+                </div>
+              </div>
+            </template>
+            <div v-else class="total-row text-weight-bold">
               <span>Total</span><span>{{ formatAmountBdt(bill.total_amount) }}</span>
             </div>
           </div>
@@ -141,6 +165,7 @@ import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
 import ApBillPaper from '../components/ApBillPaper.vue';
 import ApBillPartiesBlock from '../components/ApBillPartiesBlock.vue';
 import { useBillDetailQuery } from '../composables/useBillDetailQuery';
+import { apBillCurrencyBalances } from '../utils/parseApBillPaper';
 
 const BRAND_STORAGE_KEY = 'bills_pays_last_invoice_brand_id';
 
@@ -199,10 +224,18 @@ watch(selectedBrandId, (id) => {
 
 const bill = computed(() => detailQuery.data.value as GlobalInvoiceDetail | undefined);
 const isApBill = computed(() => bill.value?.invoice_type === 'ap');
+const apCurrencyBalances = computed(() => {
+  if (!isApBill.value || !bill.value) return null;
+  return apBillCurrencyBalances(
+    bill.value.channel_meta as Record<string, unknown> | null,
+    bill.value.paid_amount,
+    bill.value.due_amount,
+  );
+});
 const lines = computed(() => (itemsQuery.data.value ?? []) as GlobalInvoiceItemRow[]);
 
 const profileName = computed(
-  () => bill.value?.billing_profiles?.name || bill.value?.recipient_name || '—',
+  () => bill.value?.profiles?.name || bill.value?.recipient_name || '—',
 );
 
 const goBack = () => {
@@ -251,6 +284,12 @@ const onPrint = () => {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 4px;
+}
+
+.ap-bill-balance-group--spaced {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--bw-neutral-border, #e2e8f0);
 }
 .preview-lines th {
   font-size: 11px;

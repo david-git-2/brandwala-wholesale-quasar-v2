@@ -239,11 +239,11 @@ const hydrateRecipientFields = (loadedOrder: ShopOrder) => {
 };
 
 const hydrateBrandFields = async (loadedOrder: ShopOrder) => {
-  if (loadedOrder.billing_profile_id) {
+  if (loadedOrder.profile_id) {
     const { data: bp } = await supabase
-      .from('billing_profiles')
+      .from('profiles')
       .select('name, address')
-      .eq('id', loadedOrder.billing_profile_id)
+      .eq('id', loadedOrder.profile_id)
       .maybeSingle();
     if (bp) {
       brandName.value = bp.name || '';

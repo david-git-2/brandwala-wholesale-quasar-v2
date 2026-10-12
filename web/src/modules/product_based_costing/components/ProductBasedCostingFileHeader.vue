@@ -50,8 +50,8 @@
             </div>
 
             <q-select
-              v-model="selectedBillingProfile"
-              :options="billingProfileOptions"
+              v-model="selectedCustomerProfile"
+              :options="customerProfileOptions"
               option-label="name"
               option-value="id"
               :label="$t('product_based_costing.billing_profile')"
@@ -61,10 +61,10 @@
               clearable
               use-input
               input-debounce="300"
-              :loading="loadingProfiles || savingBillingProfile"
+              :loading="loadingProfiles || savingCustomerProfile"
               class="billing-profile-select q-mt-xs"
-              @filter="filterBillingProfiles"
-              @update:model-value="onBillingProfileChange"
+              @filter="filterCustomerProfiles"
+              @update:model-value="onCustomerProfileChange"
             >
               <template #option="scope">
                 <q-item v-bind="scope.itemProps" dense class="rounded-borders q-my-xs">
@@ -81,7 +81,7 @@
               <template #no-option>
                 <q-item dense class="column items-center q-py-md q-gutter-y-xs">
                   <div class="text-caption text-grey-7">
-                    {{ $t('product_based_costing.no_billing_profiles') }}
+                    {{ $t('product_based_costing.no_profiles') }}
                   </div>
                   <q-btn
                     color="primary"
@@ -92,7 +92,7 @@
                     icon="ph ph-plus"
                     :label="$t('product_based_costing.create_billing_profile')"
                     class="square-btn q-px-sm q-mt-xs"
-                    @click="openCreateBillingProfileDialog"
+                    @click="openCreateCustomerProfileDialog"
                   />
                 </q-item>
               </template>
@@ -242,9 +242,9 @@ import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import type { ProductBasedCostingFile } from '../types';
-import type { BillingProfile } from 'src/modules/sales_invoice/repositories/billingProfileRepository';
+import type { CustomerProfile } from 'src/modules/sales_invoice/repositories/customerProfileRepository';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useBillingProfileMutations } from 'src/modules/sales_invoice/composables/useBillingProfileMutations';
+import { useCustomerProfileMutations } from 'src/modules/sales_invoice/composables/useCustomerProfileMutations';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 import {
   alwaysVisibleColumns,
@@ -260,9 +260,9 @@ const props = withDefaults(
     file: ProductBasedCostingFile | null;
     isLoading: boolean;
     visibleColumns: string[];
-    allBillingProfiles: BillingProfile[];
+    allCustomerProfiles: CustomerProfile[];
     loadingProfiles: boolean;
-    savingBillingProfile: boolean;
+    savingCustomerProfile: boolean;
     itemCount?: number;
   }>(),
   { itemCount: 0 },
@@ -277,22 +277,22 @@ const emit = defineEmits<{
   (e: 'download-excel'): void;
   (e: 'update:visibleColumns', columns: string[]): void;
   (e: 'save-inline-name', name: string): void;
-  (e: 'update-billing-profile', profile: BillingProfile | null): void;
+  (e: 'update-billing-profile', profile: CustomerProfile | null): void;
 }>();
 
 const $q = useQuasar();
 const { t } = useI18n();
 const tenantStore = useTenantStore();
-const { createBillingProfileMutation } = useBillingProfileMutations();
-const billingProfileSearchText = ref('');
+const { createCustomerProfileMutation } = useCustomerProfileMutations();
+const customerProfileSearchText = ref('');
 
 const isEditingName = ref(false);
 const editingNameValue = ref('');
 const savingName = ref(false);
 const nameInputRef = ref<HTMLInputElement | { focus: () => void; select: () => void } | null>(null);
 
-const selectedBillingProfile = ref<BillingProfile | null>(null);
-const billingProfileOptions = ref<BillingProfile[]>([]);
+const selectedCustomerProfile = ref<CustomerProfile | null>(null);
+const customerProfileOptions = ref<CustomerProfile[]>([]);
 
 const localVisibleColumns = computed({
   get: () => props.visibleColumns,
@@ -332,41 +332,41 @@ const allSelectableColumnsSelected = computed({
 });
 
 watch(
-  () => props.allBillingProfiles,
+  () => props.allCustomerProfiles,
   (profiles) => {
-    billingProfileOptions.value = profiles;
-    syncSelectedBillingProfile();
+    customerProfileOptions.value = profiles;
+    syncSelectedCustomerProfile();
   },
   { immediate: true },
 );
 
 watch(
-  () => props.file?.billing_profile_id,
+  () => props.file?.profile_id,
   () => {
-    syncSelectedBillingProfile();
+    syncSelectedCustomerProfile();
   },
   { immediate: true },
 );
 
-function syncSelectedBillingProfile() {
-  if (props.file?.billing_profile_id) {
-    const found = props.allBillingProfiles.find((p) => p.id === props.file?.billing_profile_id);
+function syncSelectedCustomerProfile() {
+  if (props.file?.profile_id) {
+    const found = props.allCustomerProfiles.find((p) => p.id === props.file?.profile_id);
     if (found) {
-      selectedBillingProfile.value = found;
+      selectedCustomerProfile.value = found;
       return;
     }
   }
-  selectedBillingProfile.value = null;
+  selectedCustomerProfile.value = null;
 }
 
-function filterBillingProfiles(val: string, update: (fn: () => void) => void) {
-  billingProfileSearchText.value = val;
+function filterCustomerProfiles(val: string, update: (fn: () => void) => void) {
+  customerProfileSearchText.value = val;
   update(() => {
     if (!val.trim()) {
-      billingProfileOptions.value = props.allBillingProfiles;
+      customerProfileOptions.value = props.allCustomerProfiles;
     } else {
       const needle = val.toLowerCase();
-      billingProfileOptions.value = props.allBillingProfiles.filter(
+      customerProfileOptions.value = props.allCustomerProfiles.filter(
         (p) =>
           p.name.toLowerCase().includes(needle) ||
           (p.email && p.email.toLowerCase().includes(needle)),
@@ -375,12 +375,12 @@ function filterBillingProfiles(val: string, update: (fn: () => void) => void) {
   });
 }
 
-function openCreateBillingProfileDialog() {
+function openCreateCustomerProfileDialog() {
   $q.dialog({
     title: t('product_based_costing.create_billing_profile_title'),
     message: t('product_based_costing.create_billing_profile_message'),
     prompt: {
-      model: billingProfileSearchText.value.trim(),
+      model: customerProfileSearchText.value.trim(),
       type: 'text',
       label: t('product_based_costing.profile_name'),
       isValid: (val) => Boolean(val && val.trim().length > 0),
@@ -395,14 +395,14 @@ function openCreateBillingProfileDialog() {
         return;
       }
       try {
-        const created = await createBillingProfileMutation.mutateAsync({
+        const created = await createCustomerProfileMutation.mutateAsync({
           tenant_id: tenantId,
           name: name.trim(),
         });
         showSuccessNotification(
           t('product_based_costing.billing_profile_created', { name: created.name }),
         );
-        onBillingProfileChange(created);
+        onCustomerProfileChange(created);
       } catch (err: unknown) {
         showErrorNotification(
           err instanceof Error ? err.message : t('product_based_costing.create_billing_profile_failed'),
@@ -443,7 +443,7 @@ function saveInlineName() {
   savingName.value = false;
 }
 
-function onBillingProfileChange(val: BillingProfile | null) {
+function onCustomerProfileChange(val: CustomerProfile | null) {
   emit('update-billing-profile', val);
 }
 

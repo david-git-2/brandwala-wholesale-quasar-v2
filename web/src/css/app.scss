@@ -462,6 +462,41 @@ body.body--dark .q-field--outlined {
   }
 }
 
+/* Compact dropdown carets (q-select, btn-dropdown, expansion items) */
+.q-select__dropdown-icon {
+  font-size: 12px !important;
+  width: 12px;
+  min-width: 12px;
+  height: 12px;
+}
+
+.q-field--dense .q-select__dropdown-icon {
+  font-size: 11px !important;
+  width: 11px;
+  min-width: 11px;
+  height: 11px;
+}
+
+.q-select .q-field__append {
+  padding-left: 4px;
+}
+
+.q-btn-dropdown__arrow {
+  font-size: 12px !important;
+}
+
+.q-btn-dropdown--dense .q-btn-dropdown__arrow {
+  font-size: 11px !important;
+}
+
+.q-expansion-item__toggle-icon {
+  font-size: 14px !important;
+}
+
+.q-expansion-item--dense .q-expansion-item__toggle-icon {
+  font-size: 12px !important;
+}
+
 /* 3. Global Quasar Table Refresh — flat data surfaces */
 .q-table__container {
   border: 1px solid var(--bw-theme-border);

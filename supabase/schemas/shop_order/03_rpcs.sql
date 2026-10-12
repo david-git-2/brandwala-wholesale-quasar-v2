@@ -634,7 +634,7 @@ $$;
 ALTER FUNCTION "public"."confirm_dropship_recipient_call"("p_order_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."apply_dropship_payout_settlement_fifo"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric) RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."apply_dropship_payout_settlement_fifo"("p_tenant_id" bigint, "p_profile_id" bigint, "p_amount" numeric) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -655,7 +655,7 @@ begin
   for r in
     select o.id
     from public.shop_orders o
-    where o.billing_profile_id = p_billing_profile_id
+    where o.profile_id = p_profile_id
       and o.shop_type_snapshot = 'dropship'
       and o.global_invoice_id is not null
       and coalesce(o.payout_settlement_status, 'unpaid') in ('unpaid', 'partial')
@@ -683,7 +683,7 @@ begin
     from public.cashbook_entries u
     where u.parent_tenant_id = v_parent_tenant_id
       and u.entity_type in ('middleman', 'customer')
-      and u.entity_id = p_billing_profile_id
+      and u.entity_id = p_profile_id
       and u.type = 'debit'
       and coalesce(u.metadata->>'transaction_type', '') = 'profit_paid_out'
       and coalesce(u.metadata->>'shop_order_id', u.metadata->>'order_id', '') = r.id::text;
@@ -711,7 +711,7 @@ begin
 end;
 $$;
 
-ALTER FUNCTION "public"."apply_dropship_payout_settlement_fifo"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric) OWNER TO "postgres";
+ALTER FUNCTION "public"."apply_dropship_payout_settlement_fifo"("p_tenant_id" bigint, "p_profile_id" bigint, "p_amount" numeric) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."transfer_dropship_reseller_profit"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "jsonb"
@@ -722,7 +722,7 @@ declare
   v_order public.shop_orders;
   v_settlement public.dropship_order_settlements;
   v_save jsonb;
-  v_billing_profile_id bigint;
+  v_profile_id bigint;
   v_amount numeric(15,2);
   v_parent_tenant_id bigint;
 begin
@@ -781,8 +781,8 @@ begin
     where shop_order_id = p_order_id;
   end if;
 
-  v_billing_profile_id := coalesce(v_order.billing_profile_id, v_settlement.billing_profile_id);
-  if v_billing_profile_id is null then
+  v_profile_id := coalesce(v_order.profile_id, v_settlement.profile_id);
+  if v_profile_id is null then
     raise exception 'billing profile is required for reseller profit credit';
   end if;
 
@@ -806,7 +806,7 @@ begin
       and u.source_type = 'shop_order'
       and u.source_id = p_order_id::text
       and u.entity_type in ('middleman', 'customer')
-      and u.entity_id = v_billing_profile_id
+      and u.entity_id = v_profile_id
       and u.type = 'credit'
       and coalesce(u.metadata->>'transaction_type', '') = 'dropship_profit'
   ) then
@@ -823,7 +823,7 @@ begin
     p_parent_tenant_id => v_parent_tenant_id,
     p_operating_tenant_id => v_order.tenant_id,
     p_entity_type => 'customer',
-    p_entity_id => v_billing_profile_id,
+    p_entity_id => v_profile_id,
     p_type => 'credit',
     p_amount => v_amount,
     p_currency_code => 'BDT',
@@ -867,7 +867,7 @@ begin
     'order_id', p_order_id,
     'amount', v_amount,
     'status', 'reseller_paid',
-    'billing_profile_id', v_billing_profile_id
+    'profile_id', v_profile_id
   );
 end;
 $$;
@@ -1565,7 +1565,7 @@ begin
     join public.shop_customer_group_access access on access.shop_id = s.id
     join public.customer_groups cg on cg.id = access.customer_group_id
     left join public.customer_group_shop_profiles profile
-      on profile.customer_group_id = cg.id and profile.tenant_id = s.tenant_id
+      on profile.customer_group_id = cg.id and profile.operating_tenant_id = s.tenant_id
     where s.is_active = true
       and s.deleted_at is null
       and s.tenant_id = p_tenant_id
@@ -2695,7 +2695,7 @@ CREATE OR REPLACE FUNCTION "public"."customer_can_select_shop"("p_shop_id" bigin
     join public.customer_group_members cgm on cgm.customer_group_id = cg.id
     left join public.customer_group_shop_profiles profile
       on profile.customer_group_id = cg.id
-     and profile.tenant_id = p_tenant_id
+     and profile.operating_tenant_id = p_tenant_id
     where access.shop_id = p_shop_id
       and cg.is_active = true
       and cgm.is_active = true
@@ -3180,7 +3180,7 @@ begin
     join public.customer_groups cg on cg.id = access.customer_group_id
     join public.customer_group_members cgm on cgm.customer_group_id = cg.id
     left join public.customer_group_shop_profiles profile
-      on profile.customer_group_id = cg.id and profile.tenant_id = s.tenant_id
+      on profile.customer_group_id = cg.id and profile.operating_tenant_id = s.tenant_id
     where s.is_active = true
       and cg.is_active = true
       and cgm.is_active = true
@@ -3253,7 +3253,7 @@ declare
   v_target_stock_id bigint;
   v_net_delivered numeric;
   v_currency text;
-  v_billing_profile_id bigint;
+  v_profile_id bigint;
   v_is_remitted boolean := false;
   v_existing_ref_order_id bigint;
   v_profit numeric(12,2) := 0;
@@ -3327,10 +3327,10 @@ begin
     select * into v_invoice from public.bills where id = v_order.global_invoice_id for update;
   end if;
 
-  v_billing_profile_id := v_order.billing_profile_id;
-  if v_billing_profile_id is null and v_order.customer_group_id is not null then
-    select id into v_billing_profile_id
-    from public.billing_profiles
+  v_profile_id := v_order.profile_id;
+  if v_profile_id is null and v_order.customer_group_id is not null then
+    select id into v_profile_id
+    from public.profiles
     where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
       and customer_group_id = v_order.customer_group_id
     order by is_default desc, created_at asc
@@ -3454,7 +3454,7 @@ begin
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and entity_type = 'customer'
-    and entity_id = v_billing_profile_id
+    and entity_id = v_profile_id
     and metadata->>'transaction_type' in ('invoice_billed', 'return_reversal', 'invoice_collection');
 
   -- Net billed outstanding before clawback: invert so positive = amount still billed
@@ -3474,7 +3474,7 @@ begin
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and entity_type in ('customer', 'middleman')
-    and entity_id = v_billing_profile_id
+    and entity_id = v_profile_id
     and metadata->>'section' = 'payout_earned';
 
   v_profit := greatest(v_profit, 0);
@@ -3512,7 +3512,7 @@ begin
   limit 1;
 
   -- Leg 1: Reverse remaining invoice billed / collection net on customer
-  if v_billing_profile_id is not null and v_has_billed and v_billed > 0
+  if v_profile_id is not null and v_has_billed and v_billed > 0
      and not exists (
        select 1 from public.cashbook_entries
        where source_type = 'shop_order' and source_id = p_order_id::text
@@ -3523,7 +3523,7 @@ begin
       p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'customer',
-      p_entity_id => v_billing_profile_id,
+      p_entity_id => v_profile_id,
       p_type => 'credit',
       p_amount => v_billed,
       p_currency_code => v_currency,
@@ -3538,7 +3538,7 @@ begin
         'return_ref', v_ref
       )
     );
-  elsif v_billing_profile_id is not null and v_has_billed and v_billed = 0
+  elsif v_profile_id is not null and v_has_billed and v_billed = 0
      and exists (
        select 1 from public.cashbook_entries
        where source_type = 'shop_order' and source_id = p_order_id::text
@@ -3562,7 +3562,7 @@ begin
         p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
         p_entity_type => 'customer',
-        p_entity_id => v_billing_profile_id,
+        p_entity_id => v_profile_id,
         p_type => 'credit',
         p_amount => v_billed,
         p_currency_code => v_currency,
@@ -3587,7 +3587,7 @@ begin
           p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
           p_entity_type => 'customer',
-          p_entity_id => v_billing_profile_id,
+          p_entity_id => v_profile_id,
           p_type => 'debit',
           p_amount => v_billed,
           p_currency_code => v_currency,
@@ -3607,7 +3607,7 @@ begin
 
   -- Historical remittance path: invoice_collection posted without invoice_billed.
   -- Unwind collection only (no synthetic return_reversal credit).
-  elsif v_billing_profile_id is not null
+  elsif v_profile_id is not null
      and exists (
        select 1 from public.cashbook_entries
        where source_type = 'shop_order' and source_id = p_order_id::text
@@ -3630,7 +3630,7 @@ begin
       and source_type = 'shop_order'
       and source_id = p_order_id::text
       and entity_type = 'customer'
-      and entity_id = v_billing_profile_id
+      and entity_id = v_profile_id
       and type = 'credit'
       and metadata->>'transaction_type' = 'invoice_collection';
 
@@ -3639,7 +3639,7 @@ begin
         p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
         p_entity_type => 'customer',
-        p_entity_id => v_billing_profile_id,
+        p_entity_id => v_profile_id,
         p_type => 'debit',
         p_amount => v_billed,
         p_currency_code => v_currency,
@@ -3658,7 +3658,7 @@ begin
   end if;
 
   -- Leg 2: Claw back profit on customer (unified billing-profile wallet)
-  if v_billing_profile_id is not null and v_has_profit
+  if v_profile_id is not null and v_has_profit
      and not exists (
        select 1 from public.cashbook_entries
        where source_type = 'shop_order' and source_id = p_order_id::text
@@ -3669,7 +3669,7 @@ begin
       p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'customer',
-      p_entity_id => v_billing_profile_id,
+      p_entity_id => v_profile_id,
       p_type => 'debit',
       p_amount => v_profit,
       p_currency_code => v_currency,
@@ -3779,7 +3779,7 @@ begin
   -- Return fee: UWL only (legacy middle_man_payout_ledger was dropped)
   if p_deduct_from_middle_man
      and p_actual_return_charge > 0
-     and v_billing_profile_id is not null
+     and v_profile_id is not null
      and not exists (
        select 1 from public.cashbook_entries
        where source_type = 'shop_order'
@@ -3791,7 +3791,7 @@ begin
       p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'customer',
-      p_entity_id => v_billing_profile_id,
+      p_entity_id => v_profile_id,
       p_type => 'debit',
       p_amount => p_actual_return_charge,
       p_currency_code => v_currency,
@@ -3891,12 +3891,12 @@ begin
   if v_order.order_mode_snapshot = 'checkout_wholesale' then
     v_invoice_type := 'wholesale'::public.global_invoice_type;
     v_retail_billing_mode := null;
-    if v_order.billing_profile_id is null then
+    if v_order.profile_id is null then
       raise exception 'billing profile is required for wholesale shop orders';
     end if;
   else
     v_invoice_type := 'retail'::public.global_invoice_type;
-    if v_order.billing_profile_id is not null then
+    if v_order.profile_id is not null then
       v_retail_billing_mode := 'account'::public.retail_billing_mode;
     else
       v_retail_billing_mode := 'direct'::public.retail_billing_mode;
@@ -3943,7 +3943,7 @@ begin
     'invoice', jsonb_build_object(
       'invoice_no', v_invoice_no,
       'invoice_type', v_invoice_type,
-      'billing_profile_id', v_order.billing_profile_id,
+      'profile_id', v_order.profile_id,
       'recipient_name', v_order.recipient_name,
       'recipient_phone', v_order.recipient_phone,
       'recipient_address', v_order.shipping_address,
@@ -3969,7 +3969,7 @@ begin
   update public.bills
   set
     shop_order_id = p_order_id,
-    collection_source = 'billing_profile'::public.collection_source_type,
+    collection_source = 'profile'::public.collection_source_type,
     updated_at = now()
   where id = v_invoice_id;
 
@@ -4194,7 +4194,7 @@ begin
       'shipping_district', v_order.shipping_district,
       'shipping_thana', v_order.shipping_thana,
       'recipient_profile_id', v_order.recipient_profile_id,
-      'billing_profile_id', v_order.billing_profile_id,
+      'profile_id', v_order.profile_id,
       'placed_at', v_order.placed_at,
       'fulfilled_at', v_order.fulfilled_at,
       'shop_sell_currency_id', v_sell_currency_id,
@@ -4326,7 +4326,7 @@ begin
     where inv.id = v_order.global_invoice_id;
   end if;
   if v_collection_source is null and v_order.is_prepaid_snapshot then
-    v_collection_source := 'billing_profile'::public.collection_source_type;
+    v_collection_source := 'profile'::public.collection_source_type;
   end if;
 
   select count(*)::bigint
@@ -4564,7 +4564,7 @@ begin
       'district', v_order.shipping_district,
       'thana', v_order.shipping_thana,
       'profile_id', v_order.recipient_profile_id,
-      'billing_profile_id', v_order.billing_profile_id,
+      'profile_id', v_order.profile_id,
       'delivery_instructions', v_order.delivery_instructions,
       'is_prepaid', v_order.is_prepaid_snapshot
     ),
@@ -4883,7 +4883,7 @@ begin
         'shipping_district', v_order.shipping_district,
         'shipping_post_code', null,
         'recipient_profile_id', v_order.recipient_profile_id,
-        'billing_profile_id', v_order.billing_profile_id,
+        'profile_id', v_order.profile_id,
         'delivery_instructions', v_order.delivery_instructions,
         'is_prepaid_snapshot', v_order.is_prepaid_snapshot,
         'cod_charge_amount', v_order.cod_charge_amount,
@@ -4997,7 +4997,7 @@ begin
   into v_has_access_group_with_price
   from public.shop_customer_group_access access
   left join public.customer_group_shop_profiles profile
-    on profile.customer_group_id = access.customer_group_id and profile.tenant_id = v_tenant_id
+    on profile.customer_group_id = access.customer_group_id and profile.operating_tenant_id = v_tenant_id
   where access.shop_id = p_shop_id;
 
   -- 2. Customer group with active members attached to shop access
@@ -5010,13 +5010,13 @@ begin
   )
   into v_has_customer_group_with_members;
 
-  -- 3. Billing profile linked (resolve_billing_profile_for_customer_group returns non-null for at least one linked group)
+  -- 3. Billing profile linked (resolve_customer_profile_for_group returns non-null for at least one linked group)
   select exists (
     select 1
     from public.shop_customer_group_access access
     where access.shop_id = p_shop_id
       and access.status = true
-      and public.resolve_billing_profile_for_customer_group(v_tenant_id, access.customer_group_id) is not null
+      and public.resolve_customer_profile_for_group(v_tenant_id, access.customer_group_id) is not null
   )
   into v_has_billing_profile_linked;
 
@@ -5096,20 +5096,20 @@ begin
       o.courier_name,
       o.courier_remittance_ref,
       o.courier_bank_trx_id,
-      o.billing_profile_id,
+      o.profile_id,
       o.created_at,
       o.collection_source,
       o.payout_settlement_status,
       o.is_prepaid_snapshot,
       o.global_invoice_id,
       s.name as shop_name,
-      bp.name as billing_profile_name,
+      pr.name as billing_profile_name,
       inv.collection_source as invoice_collection_source,
       inv.total_amount as invoice_total_amount,
       inv.paid_amount as invoice_paid_amount
     from public.shop_orders o
     left join public.shops s on s.id = o.shop_id
-    left join public.billing_profiles bp on bp.id = o.billing_profile_id
+    left join public.profiles pr on pr.id = o.profile_id
     left join public.bills inv on inv.id = o.global_invoice_id
     where (
         (v_is_parent_scope and (o.parent_tenant_id = p_tenant_id or o.tenant_id = p_tenant_id))
@@ -5147,7 +5147,7 @@ begin
       fo.driver_notes as "courierNotes",
       fo.courier_remittance_ref as "courierRemittanceRef",
       fo.courier_bank_trx_id as "courierBankTrxId",
-      fo.billing_profile_id as "billingProfileId",
+      fo.profile_id as "billingProfileId",
       fo.billing_profile_name as "billingProfileName",
       fo.created_at as "createdAt",
       case
@@ -5159,10 +5159,10 @@ begin
             fo.collection_source,
             fo.invoice_collection_source,
             case
-              when fo.is_prepaid_snapshot then 'billing_profile'::public.collection_source_type
+              when fo.is_prepaid_snapshot then 'profile'::public.collection_source_type
               else 'recipient'::public.collection_source_type
             end
-          ) <> 'billing_profile'::public.collection_source_type
+          ) <> 'profile'::public.collection_source_type
           then 'courier_remittance'
         when coalesce(lf.has_delivered_costing, 0) = 0 and fo.status::text = 'delivered' then 'delivered_costing'
         when fo.status::text = 'delivered'
@@ -5177,7 +5177,7 @@ begin
         fo.collection_source,
         fo.invoice_collection_source,
         case
-          when fo.is_prepaid_snapshot then 'billing_profile'::public.collection_source_type
+          when fo.is_prepaid_snapshot then 'profile'::public.collection_source_type
           else null::public.collection_source_type
         end
       )::text as "collectionSource",
@@ -5197,23 +5197,23 @@ begin
   select coalesce(
     jsonb_agg(
       jsonb_build_object(
-        'id', bp.id,
-        'name', bp.name,
+        'id', pr.id,
+        'name', pr.name,
         'payableBalance', coalesce(wa.available_balance, 0)
       )
-      order by bp.name
+      order by pr.name
     ),
     '[]'::jsonb
   )
   into v_merchants
-  from public.billing_profiles bp
+  from public.profiles pr
   left join public.cashbook_accounts wa
     on wa.parent_tenant_id = v_parent_tenant_id
    and wa.entity_type = 'customer'
-   and wa.entity_id = bp.id
+   and wa.entity_id = pr.id
    and wa.currency_code = 'BDT'
-  where bp.tenant_id = p_tenant_id
-     or bp.tenant_id = v_parent_tenant_id;
+  where pr.operating_tenant_id = p_tenant_id
+     or pr.operating_tenant_id = v_parent_tenant_id;
 
   return jsonb_build_object(
     'kpis', jsonb_build_object(
@@ -5269,14 +5269,14 @@ begin
   from public.bills i
   where i.invoice_type = 'dropship'
     and i.invoice_status = 'posted'
-    and i.billing_profile_id is not null
+    and i.profile_id is not null
     and i.total_amount > 0
     and (v_target_tenant_id is null or i.tenant_id = v_target_tenant_id)
     and not exists (
       select 1 from public.cashbook_entries u
       where u.tenant_id = i.tenant_id
         and u.entity_type = 'customer'
-        and u.entity_id = i.billing_profile_id
+        and u.entity_id = i.profile_id
         and u.source_type = 'shop_order'
         and u.metadata->>'transaction_type' = 'invoice_billed'
         and (u.metadata->>'invoice_id' = i.id::text or u.source_id = i.invoice_no)
@@ -5377,7 +5377,7 @@ $$;
 ALTER FUNCTION "public"."get_dropship_wallet_reconciliation_report"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_my_dropship_wallet_summary"() RETURNS TABLE("billing_profile_id" bigint, "available_balance" numeric, "pending_balance" numeric, "locked_balance" numeric, "currency" "text")
+CREATE OR REPLACE FUNCTION "public"."get_my_dropship_wallet_summary"() RETURNS TABLE("profile_id" bigint, "available_balance" numeric, "pending_balance" numeric, "locked_balance" numeric, "currency" "text")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -5408,7 +5408,7 @@ begin
     raise exception 'No active customer group membership';
   end if;
 
-  v_bp_id := public.resolve_billing_profile_for_customer_group(v_tenant_id, v_group_id);
+  v_bp_id := public.resolve_customer_profile_for_group(v_tenant_id, v_group_id);
   if v_bp_id is null then
     raise exception 'No billing profile linked for your customer group';
   end if;
@@ -5426,7 +5426,7 @@ begin
   from public.shop_orders o
   join public.dropship_order_settlements s on s.shop_order_id = o.id
   where o.tenant_id = v_tenant_id
-    and o.billing_profile_id = v_bp_id
+    and o.profile_id = v_bp_id
     and o.shop_type_snapshot = 'dropship'
     and o.status = 'payment_received'::public.shop_order_status
     and coalesce(s.reseller_profit, 0) > 0
@@ -5436,7 +5436,7 @@ begin
   into v_locked
   from public.shop_orders o
   where o.tenant_id = v_tenant_id
-    and o.billing_profile_id = v_bp_id
+    and o.profile_id = v_bp_id
     and o.shop_type_snapshot = 'dropship'
     and o.status = 'delivered'
     and o.courier_remittance_ref is null
@@ -6027,7 +6027,7 @@ $$;
 ALTER FUNCTION "public"."get_dropship_review_cart"("p_shop_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."submit_dropship_order_from_cart"("p_shop_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text" DEFAULT NULL::"text", "p_shipping_district" "text" DEFAULT NULL::"text", "p_shipping_thana" "text" DEFAULT NULL::"text", "p_shipping_post_code" "text" DEFAULT NULL::"text", "p_billing_profile_id" bigint DEFAULT NULL::bigint, "p_is_prepaid" boolean DEFAULT false, "p_delivery_instructions" "text" DEFAULT NULL::"text", "p_cod_charge_amount" numeric DEFAULT 0, "p_delivery_charge_amount" numeric DEFAULT 0, "p_print_charge_amount" numeric DEFAULT 0, "p_packing_charge_amount" numeric DEFAULT 0, "p_discount_amount" numeric DEFAULT 0, "p_recipient_pays_delivery" boolean DEFAULT true, "p_recipient_pays_cod" boolean DEFAULT true) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."submit_dropship_order_from_cart"("p_shop_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text" DEFAULT NULL::"text", "p_shipping_district" "text" DEFAULT NULL::"text", "p_shipping_thana" "text" DEFAULT NULL::"text", "p_shipping_post_code" "text" DEFAULT NULL::"text", "p_profile_id" bigint DEFAULT NULL::bigint, "p_is_prepaid" boolean DEFAULT false, "p_delivery_instructions" "text" DEFAULT NULL::"text", "p_cod_charge_amount" numeric DEFAULT 0, "p_delivery_charge_amount" numeric DEFAULT 0, "p_print_charge_amount" numeric DEFAULT 0, "p_packing_charge_amount" numeric DEFAULT 0, "p_discount_amount" numeric DEFAULT 0, "p_recipient_pays_delivery" boolean DEFAULT true, "p_recipient_pays_cod" boolean DEFAULT true) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -6041,7 +6041,7 @@ declare
   v_can_place_order boolean;
   v_item_count integer;
   v_result jsonb;
-  v_billing_profile_id bigint;
+  v_profile_id bigint;
   v_profile jsonb;
   v_recipient_profile_id bigint;
   v_phone text;
@@ -6098,9 +6098,9 @@ begin
     raise exception 'price floor violation: some items are priced below the minimum sell price';
   end if;
 
-  v_billing_profile_id := p_billing_profile_id;
-  if v_billing_profile_id is null then
-    v_billing_profile_id := public.resolve_billing_profile_for_customer_group(v_cart.tenant_id, v_cart.customer_group_id);
+  v_profile_id := p_profile_id;
+  if v_profile_id is null then
+    v_profile_id := public.resolve_customer_profile_for_group(v_cart.tenant_id, v_cart.customer_group_id);
   end if;
 
   if v_shop.order_mode = 'checkout_fixed' then v_order_status := 'confirmed';
@@ -6123,7 +6123,7 @@ begin
     shop_type_snapshot, order_mode_snapshot, is_negotiable_snapshot, status, negotiate_round,
     recipient_name, recipient_phone, recipient_phone_secondary,
     shipping_address, shipping_district, shipping_thana,
-    recipient_profile_id, billing_profile_id, created_by_email,
+    recipient_profile_id, profile_id, created_by_email,
     cod_charge_amount, delivery_charge_amount, print_charge_amount, packing_charge_amount, discount_amount,
     is_prepaid_snapshot, delivery_instructions, deduct_charges_from_margin,
     deduct_cod_from_margin, deduct_delivery_from_margin, deduct_print_from_margin, deduct_packing_from_margin
@@ -6136,7 +6136,7 @@ begin
     nullif(trim(coalesce(p_shipping_address, '')), ''),
     nullif(trim(coalesce(p_shipping_district, '')), ''),
     nullif(trim(coalesce(p_shipping_thana, '')), ''),
-    v_recipient_profile_id, v_billing_profile_id, public.current_user_email(),
+    v_recipient_profile_id, v_profile_id, public.current_user_email(),
     coalesce(p_cod_charge_amount, 0), coalesce(p_delivery_charge_amount, 0),
     coalesce(p_print_charge_amount, 0), coalesce(p_packing_charge_amount, 0), coalesce(p_discount_amount, 0),
     coalesce(p_is_prepaid, false), nullif(trim(coalesce(p_delivery_instructions, '')), ''),
@@ -6256,7 +6256,7 @@ ALTER FUNCTION "public"."submit_dropship_order_from_cart"(
   "p_shipping_district" "text",
   "p_shipping_thana" "text",
   "p_shipping_post_code" "text",
-  "p_billing_profile_id" bigint,
+  "p_profile_id" bigint,
   "p_is_prepaid" boolean,
   "p_delivery_instructions" "text",
   "p_cod_charge_amount" numeric,
@@ -6562,7 +6562,7 @@ begin
   join public.customer_groups cg on cg.id = cgm.customer_group_id
   join public.shop_customer_group_access access on access.customer_group_id = cg.id
   left join public.customer_group_shop_profiles profile
-    on profile.customer_group_id = cg.id and profile.tenant_id = v_tenant_id
+    on profile.customer_group_id = cg.id and profile.operating_tenant_id = v_tenant_id
   where access.shop_id = p_shop_id
     and cg.id = public.current_customer_group_id(v_tenant_id)
     and cg.is_active = true
@@ -6950,7 +6950,7 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) 
   join public.shop_customer_group_access access on access.shop_id = s.id
   join public.customer_groups cg on cg.id = access.customer_group_id
   left join public.customer_group_shop_profiles profile
-    on profile.customer_group_id = cg.id and profile.tenant_id = s.tenant_id
+    on profile.customer_group_id = cg.id and profile.operating_tenant_id = s.tenant_id
   left join public.global_currencies gc on gc.id = s.sell_currency_id
   where p_tenant_id is not null
     and s.is_active = true
@@ -6995,7 +6995,7 @@ CREATE OR REPLACE FUNCTION "public"."customer_accessible_catalog_glance"("p_tena
     join public.shop_customer_group_access access on access.shop_id = s.id
     join public.customer_groups cg on cg.id = access.customer_group_id
     left join public.customer_group_shop_profiles profile
-      on profile.customer_group_id = cg.id and profile.tenant_id = s.tenant_id
+      on profile.customer_group_id = cg.id and profile.operating_tenant_id = s.tenant_id
     where s.is_active = true
       and s.deleted_at is null
       and s.tenant_id = p_tenant_id
@@ -7181,7 +7181,7 @@ begin
     join public.shop_customer_group_access access on access.shop_id = s.id
     join public.customer_groups cg on cg.id = access.customer_group_id
     left join public.customer_group_shop_profiles profile
-      on profile.customer_group_id = cg.id and profile.tenant_id = s.tenant_id
+      on profile.customer_group_id = cg.id and profile.operating_tenant_id = s.tenant_id
     left join public.global_currencies gc on gc.id = s.sell_currency_id
     where s.is_active = true
       and s.deleted_at is null
@@ -8458,7 +8458,7 @@ begin
     raise exception 'No active customer group membership';
   end if;
 
-  v_bp_id := public.resolve_billing_profile_for_customer_group(v_tenant_id, v_group_id);
+  v_bp_id := public.resolve_customer_profile_for_group(v_tenant_id, v_group_id);
   if v_bp_id is null then
     raise exception 'No billing profile linked for your customer group';
   end if;
@@ -9232,7 +9232,7 @@ begin
 
   v_pay := public.post_customer_receipt_with_allocations(
     p_tenant_id => v_order.tenant_id,
-    p_billing_profile_id => v_invoice.profile_id,
+    p_profile_id => v_invoice.profile_id,
     p_received_on => coalesce(p_payment_date, current_date),
     p_note => coalesce(
       nullif(trim(p_note), ''),
@@ -9439,7 +9439,7 @@ begin
 
   v_pay := public.post_customer_receipt_with_allocations(
     p_tenant_id => v_order.tenant_id,
-    p_billing_profile_id => v_invoice.profile_id,
+    p_profile_id => v_invoice.profile_id,
     p_received_on => coalesce(p_payment_date, current_date),
     p_note => coalesce(
       nullif(trim(p_note), ''),
@@ -10423,7 +10423,7 @@ begin
 
     v_shortfall := greatest(v_target_qty - coalesce(v_allocated, 0), 0);
 
-    if v_shortfall > 0 and v_order.billing_profile_id is not null then
+    if v_shortfall > 0 and v_order.profile_id is not null then
         select p.barcode, p.product_code
         into v_product
         from public.products p
@@ -10432,7 +10432,7 @@ begin
         perform public.add_demand_bucket_item_internal(
           p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
-          p_billing_profile_id => v_order.billing_profile_id,
+          p_profile_id => v_order.profile_id,
           p_product_id => v_item_row.product_id,
           p_source_type => 'shop_order_item',
           p_source_id => v_item_row.id,
@@ -10448,7 +10448,7 @@ begin
 
         insert into public.customer_order_backlog_items (
           tenant_id,
-          billing_profile_id,
+          profile_id,
           product_id,
           order_id,
           order_item_id,
@@ -10457,7 +10457,7 @@ begin
           backlog_status
         ) values (
           v_order.tenant_id,
-          v_order.billing_profile_id,
+          v_order.profile_id,
           v_item_row.product_id,
           p_order_id,
           v_item_row.id,
@@ -10465,7 +10465,7 @@ begin
           0,
           'open'
         )
-        on conflict (tenant_id, billing_profile_id, product_id)
+        on conflict (tenant_id, profile_id, product_id)
         do update set
           requested_quantity = customer_order_backlog_items.requested_quantity + excluded.requested_quantity,
           backlog_status = 'open',
@@ -10535,7 +10535,7 @@ end;
 $$;
 
 
-CREATE OR REPLACE FUNCTION "public"."submit_shop_order_from_cart"("p_cart_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text" DEFAULT NULL::"text", "p_shipping_district" "text" DEFAULT NULL::"text", "p_shipping_thana" "text" DEFAULT NULL::"text", "p_billing_profile_id" bigint DEFAULT NULL::bigint, "p_is_prepaid" boolean DEFAULT false, "p_delivery_instructions" "text" DEFAULT NULL::"text", "p_cod_charge_amount" numeric DEFAULT 0, "p_delivery_charge_amount" numeric DEFAULT 0, "p_print_charge_amount" numeric DEFAULT 0, "p_packing_charge_amount" numeric DEFAULT 0, "p_discount_amount" numeric DEFAULT 0) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."submit_shop_order_from_cart"("p_cart_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text" DEFAULT NULL::"text", "p_shipping_district" "text" DEFAULT NULL::"text", "p_shipping_thana" "text" DEFAULT NULL::"text", "p_profile_id" bigint DEFAULT NULL::bigint, "p_is_prepaid" boolean DEFAULT false, "p_delivery_instructions" "text" DEFAULT NULL::"text", "p_cod_charge_amount" numeric DEFAULT 0, "p_delivery_charge_amount" numeric DEFAULT 0, "p_print_charge_amount" numeric DEFAULT 0, "p_packing_charge_amount" numeric DEFAULT 0, "p_discount_amount" numeric DEFAULT 0) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -10549,7 +10549,7 @@ declare
   v_can_negotiate boolean;
   v_item_count integer;
   v_result jsonb;
-  v_billing_profile_id bigint;
+  v_profile_id bigint;
   v_profile jsonb;
   v_recipient_profile_id bigint;
   v_phone text;
@@ -10595,9 +10595,9 @@ begin
     end if;
   end if;
 
-  v_billing_profile_id := p_billing_profile_id;
-  if v_billing_profile_id is null then
-    v_billing_profile_id := public.resolve_billing_profile_for_customer_group(v_cart.tenant_id, v_cart.customer_group_id);
+  v_profile_id := p_profile_id;
+  if v_profile_id is null then
+    v_profile_id := public.resolve_customer_profile_for_group(v_cart.tenant_id, v_cart.customer_group_id);
   end if;
 
   if v_shop.shop_type = 'vendor_catalog' then
@@ -10637,7 +10637,7 @@ begin
     status, negotiate_round,
     recipient_name, recipient_phone, recipient_phone_secondary,
     shipping_address, shipping_district, shipping_thana,
-    recipient_profile_id, billing_profile_id,
+    recipient_profile_id, profile_id,
     created_by_email,
     cod_charge_amount, delivery_charge_amount, print_charge_amount, packing_charge_amount, discount_amount,
     is_prepaid_snapshot, delivery_instructions, deduct_charges_from_margin,
@@ -10651,7 +10651,7 @@ begin
     v_order_status, case when v_order_status = 'negotiating' then 1 else 0 end,
     nullif(trim(coalesce(p_recipient_name, '')), ''), v_phone, nullif(trim(coalesce(p_recipient_phone_secondary, '')), ''),
     nullif(trim(coalesce(p_shipping_address, '')), ''), nullif(trim(coalesce(p_shipping_district, '')), ''), nullif(trim(coalesce(p_shipping_thana, '')), ''),
-    v_recipient_profile_id, v_billing_profile_id,
+    v_recipient_profile_id, v_profile_id,
     public.current_user_email(),
     p_cod_charge_amount, p_delivery_charge_amount, p_print_charge_amount, p_packing_charge_amount, p_discount_amount,
     p_is_prepaid, p_delivery_instructions, v_shop.deduct_charges_from_margin,
@@ -10764,7 +10764,7 @@ begin
   return v_result;
 end;
 $$;
-ALTER FUNCTION "public"."submit_shop_order_from_cart"("p_cart_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_billing_profile_id" bigint, "p_is_prepaid" boolean, "p_delivery_instructions" "text", "p_cod_charge_amount" numeric, "p_delivery_charge_amount" numeric, "p_print_charge_amount" numeric, "p_packing_charge_amount" numeric, "p_discount_amount" numeric) OWNER TO "postgres";
+ALTER FUNCTION "public"."submit_shop_order_from_cart"("p_cart_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_profile_id" bigint, "p_is_prepaid" boolean, "p_delivery_instructions" "text", "p_cod_charge_amount" numeric, "p_delivery_charge_amount" numeric, "p_print_charge_amount" numeric, "p_packing_charge_amount" numeric, "p_discount_amount" numeric) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."sync_shop_cart_item_reservation"() RETURNS "trigger"
@@ -12041,7 +12041,7 @@ $$;
 ALTER FUNCTION "public"."restock_dropship_order_on_delete"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."can_access_demand_bucket_profile"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_staff_only" boolean DEFAULT false) RETURNS boolean
+CREATE OR REPLACE FUNCTION "public"."can_access_demand_bucket_profile"("p_tenant_id" bigint, "p_profile_id" bigint, "p_staff_only" boolean DEFAULT false) RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -12049,24 +12049,24 @@ declare
   v_profile record;
   v_is_parent boolean;
 begin
-  if p_tenant_id is null or p_billing_profile_id is null then
+  if p_tenant_id is null or p_profile_id is null then
     return false;
   end if;
 
-  select bp.id, bp.tenant_id, bp.customer_group_id
+  select pr.id, pr.operating_tenant_id, pr.customer_group_id
   into v_profile
-  from public.billing_profiles bp
-  where bp.id = p_billing_profile_id;
+  from public.profiles pr
+  where pr.id = p_profile_id;
 
   if not found then
     return false;
   end if;
 
-  if v_profile.tenant_id <> p_tenant_id then
+  if v_profile.operating_tenant_id <> p_tenant_id then
     if not exists (
       select 1
       from public.tenants t
-      where t.id = v_profile.tenant_id
+      where t.id = v_profile.operating_tenant_id
         and t.parent_id = p_tenant_id
     ) then
       return false;
@@ -12082,7 +12082,7 @@ begin
       return true;
     end if;
   elsif public.is_tenant_staff(p_tenant_id)
-     or public.is_tenant_staff(v_profile.tenant_id) then
+     or public.is_tenant_staff(v_profile.operating_tenant_id) then
     return true;
   end if;
 
@@ -12120,10 +12120,10 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."can_access_demand_bucket_profile"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_staff_only" boolean) OWNER TO "postgres";
+ALTER FUNCTION "public"."can_access_demand_bucket_profile"("p_tenant_id" bigint, "p_profile_id" bigint, "p_staff_only" boolean) OWNER TO "postgres";
 
 -- 4. Internal add (no auth — callers must validate)
-CREATE OR REPLACE FUNCTION "public"."add_demand_bucket_item_internal"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint DEFAULT NULL::bigint, "p_snapshot" "jsonb" DEFAULT '{}'::"jsonb", "p_quantity" integer DEFAULT 1) RETURNS "public"."customer_demand_bucket_items"
+CREATE OR REPLACE FUNCTION "public"."add_demand_bucket_item_internal"("p_tenant_id" bigint, "p_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint DEFAULT NULL::bigint, "p_snapshot" "jsonb" DEFAULT '{}'::"jsonb", "p_quantity" integer DEFAULT 1) RETURNS "public"."customer_demand_bucket_items"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -12136,8 +12136,8 @@ declare
   v_note text;
   v_quantity integer;
 begin
-  if p_tenant_id is null or p_billing_profile_id is null or p_product_id is null then
-    raise exception 'tenant_id, billing_profile_id, and product_id are required';
+  if p_tenant_id is null or p_profile_id is null or p_product_id is null then
+    raise exception 'tenant_id, profile_id, and product_id are required';
   end if;
 
   v_quantity := greatest(coalesce(p_quantity, 1), 1);
@@ -12161,7 +12161,7 @@ begin
 
   insert into public.customer_demand_bucket_items (
     tenant_id,
-    billing_profile_id,
+    profile_id,
     product_id,
     source_type,
     source_id,
@@ -12174,7 +12174,7 @@ begin
     status
   ) values (
     p_tenant_id,
-    p_billing_profile_id,
+    p_profile_id,
     p_product_id,
     p_source_type,
     p_source_id,
@@ -12194,7 +12194,7 @@ $$;
 
 create or replace function public.add_demand_bucket_item(
   p_tenant_id bigint,
-  p_billing_profile_id bigint,
+  p_profile_id bigint,
   p_product_id bigint,
   p_source_type public.demand_bucket_source_type,
   p_source_id bigint default null,
@@ -12207,13 +12207,13 @@ security definer
 set search_path = public
 as $$
 begin
-  if not public.can_access_demand_bucket_profile(p_tenant_id, p_billing_profile_id, true) then
+  if not public.can_access_demand_bucket_profile(p_tenant_id, p_profile_id, true) then
     raise exception 'access denied';
   end if;
 
   return public.add_demand_bucket_item_internal(
     p_tenant_id,
-    p_billing_profile_id,
+    p_profile_id,
     p_product_id,
     p_source_type,
     p_source_id,
@@ -12223,7 +12223,7 @@ begin
 end;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."list_demand_bucket_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_status" "public"."demand_bucket_status" DEFAULT 'open'::"public"."demand_bucket_status", "p_limit" integer DEFAULT 100, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" bigint, "tenant_id" bigint, "billing_profile_id" bigint, "product_id" bigint, "source_type" "public"."demand_bucket_source_type", "source_id" bigint, "name" "text", "image_url" "text", "barcode" "text", "product_code" "text", "note" "text", "quantity" integer, "status" "public"."demand_bucket_status", "popped_at" timestamp with time zone, "popped_into_type" "text", "popped_into_id" bigint, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."list_demand_bucket_items"("p_tenant_id" bigint, "p_profile_id" bigint, "p_status" "public"."demand_bucket_status" DEFAULT 'open'::"public"."demand_bucket_status", "p_limit" integer DEFAULT 100, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" bigint, "tenant_id" bigint, "profile_id" bigint, "product_id" bigint, "source_type" "public"."demand_bucket_source_type", "source_id" bigint, "name" "text", "image_url" "text", "barcode" "text", "product_code" "text", "note" "text", "quantity" integer, "status" "public"."demand_bucket_status", "popped_at" timestamp with time zone, "popped_into_type" "text", "popped_into_id" bigint, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -12231,7 +12231,7 @@ declare
   v_limit integer := greatest(coalesce(p_limit, 100), 1);
   v_offset integer := greatest(coalesce(p_offset, 0), 0);
 begin
-  if not public.can_access_demand_bucket_profile(p_tenant_id, p_billing_profile_id, false) then
+  if not public.can_access_demand_bucket_profile(p_tenant_id, p_profile_id, false) then
     raise exception 'access denied';
   end if;
 
@@ -12239,7 +12239,7 @@ begin
   select
     b.id,
     b.tenant_id,
-    b.billing_profile_id,
+    b.profile_id,
     b.product_id,
     b.source_type,
     b.source_id,
@@ -12256,7 +12256,7 @@ begin
     b.created_at,
     b.updated_at
   from public.customer_demand_bucket_items b
-  where b.billing_profile_id = p_billing_profile_id
+  where b.profile_id = p_profile_id
     and (p_status is null or b.status = p_status)
   order by b.created_at desc, b.id desc
   limit v_limit
@@ -12291,7 +12291,7 @@ begin
     raise exception 'bucket item % is not open', p_bucket_item_id;
   end if;
 
-  if not public.can_access_demand_bucket_profile(v_row.tenant_id, v_row.billing_profile_id, false) then
+  if not public.can_access_demand_bucket_profile(v_row.tenant_id, v_row.profile_id, false) then
     raise exception 'access denied';
   end if;
 
@@ -12359,7 +12359,7 @@ begin
     raise exception 'bucket item % is not open', p_bucket_item_id;
   end if;
 
-  if not public.can_access_demand_bucket_profile(v_row.tenant_id, v_row.billing_profile_id, true) then
+  if not public.can_access_demand_bucket_profile(v_row.tenant_id, v_row.profile_id, true) then
     raise exception 'access denied';
   end if;
 

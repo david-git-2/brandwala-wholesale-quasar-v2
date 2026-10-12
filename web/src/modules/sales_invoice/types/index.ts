@@ -17,12 +17,17 @@ export type InvoicePaymentHistoryEntry = {
   entry_id: number;
   payment_id: number | null;
   payment_date: string;
+  /** BDT applied to this bill (allocation or write-off). */
   amount: number;
+  /** Full payment receipt in BDT. */
   receipt_amount: number;
   voided_at: string | null;
   method: string | null;
   note: string | null;
   write_off_reason: string | null;
+  settlement_currency_code?: string | null;
+  foreign_amount?: number | null;
+  exchange_rate?: number | null;
   instruments: InvoicePaymentHistoryInstrument[];
 };
 
@@ -41,11 +46,11 @@ export type GlobalInvoiceRow = {
   total_amount: number;
   due_amount: number;
   paid_amount: number;
-  billing_profile_id?: number | null;
-  billing_profile_name?: string | null;
-  billing_profile_email?: string | null;
-  billing_profile_color?: string | null;
-  billing_profile_customer_group_id?: number | null;
+  profile_id?: number | null;
+  profile_name?: string | null;
+  profile_email?: string | null;
+  profile_accent_color?: string | null;
+  profile_customer_group_id?: number | null;
   retail_billing_mode?: 'account' | 'direct' | null;
   recipient_name?: string | null;
   created_by?: string | null;
@@ -59,12 +64,12 @@ export type GlobalInvoiceRow = {
 };
 
 export type GlobalInvoiceType = 'retail' | 'wholesale' | 'dropship' | 'ap';
-export type InvoiceCollectionSource = 'billing_profile' | 'recipient';
+export type InvoiceCollectionSource = 'billing_profile' | 'profile' | 'recipient';
 
 export type CreateGlobalInvoiceInput = {
   tenant_id: number;
   invoice_no: string;
-  billing_profile_id?: number | null;
+  profile_id?: number | null;
   invoice_type?: GlobalInvoiceType;
   recipient_profile_id?: number | null;
   recipient_name?: string | null;
@@ -80,7 +85,7 @@ export type CreateGlobalInvoiceInput = {
 export type GlobalInvoiceCreated = GlobalInvoiceRow & {
   note: string | null;
   customer_group_id: number | null;
-  billing_profile_id: number | null;
+  profile_id: number | null;
   recipient_party_id: number | null;
   recipient_name: string | null;
   recipient_phone: string | null;
@@ -100,7 +105,7 @@ export type GlobalInvoiceDetail = GlobalInvoiceCreated & {
   print_charge: number;
   recipient_phone: string | null;
   recipient_address: string | null;
-  billing_profiles?: {
+  profiles?: {
     id: number;
     name: string;
     email: string | null;

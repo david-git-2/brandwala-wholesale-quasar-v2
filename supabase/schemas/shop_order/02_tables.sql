@@ -400,7 +400,7 @@ CREATE TABLE IF NOT EXISTS "public"."shop_orders" (
     "recipient_name" "text",
     "recipient_phone" "text",
     "shipping_address" "text",
-    "billing_profile_id" bigint,
+    "profile_id" bigint,
     "placed_at" timestamp with time zone,
     "fulfilled_at" timestamp with time zone,
     "global_invoice_id" bigint,
@@ -1007,7 +1007,7 @@ CREATE INDEX "idx_shop_auto_gift_items_shop_id" ON "public"."shop_auto_gift_item
 
 
 ALTER TABLE ONLY "public"."shop_orders"
-    ADD CONSTRAINT "shop_orders_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE SET NULL;
+    ADD CONSTRAINT "shop_orders_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 ALTER TABLE ONLY "public"."shop_orders"
@@ -1120,7 +1120,7 @@ CREATE OR REPLACE TRIGGER "trg_restock_dropship_order_on_delete" BEFORE DELETE O
 CREATE TABLE IF NOT EXISTS "public"."customer_demand_bucket_items" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
-    "billing_profile_id" bigint NOT NULL,
+    "profile_id" bigint NOT NULL,
     "product_id" bigint NOT NULL,
     "source_type" "public"."demand_bucket_source_type" NOT NULL,
     "source_id" bigint,
@@ -1157,7 +1157,7 @@ ALTER TABLE ONLY "public"."customer_demand_bucket_items"
     ADD CONSTRAINT "customer_demand_bucket_items_pkey" PRIMARY KEY ("id");
 
 
-CREATE INDEX "idx_demand_bucket_open_profile" ON "public"."customer_demand_bucket_items" USING "btree" ("tenant_id", "billing_profile_id") WHERE ("status" = 'open'::"public"."demand_bucket_status");
+CREATE INDEX "idx_demand_bucket_open_profile" ON "public"."customer_demand_bucket_items" USING "btree" ("tenant_id", "profile_id") WHERE ("status" = 'open'::"public"."demand_bucket_status");
 
 
 CREATE INDEX "idx_demand_bucket_popped_purge" ON "public"."customer_demand_bucket_items" USING "btree" ("popped_at") WHERE ("status" = 'popped'::"public"."demand_bucket_status");
@@ -1167,7 +1167,7 @@ CREATE INDEX "idx_demand_bucket_source" ON "public"."customer_demand_bucket_item
 
 
 ALTER TABLE ONLY "public"."customer_demand_bucket_items"
-    ADD CONSTRAINT "customer_demand_bucket_items_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "customer_demand_bucket_items_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 ALTER TABLE ONLY "public"."customer_demand_bucket_items"
@@ -1185,7 +1185,7 @@ CREATE TABLE IF NOT EXISTS "public"."dropship_order_settlements" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
     "shop_order_id" bigint NOT NULL,
-    "billing_profile_id" bigint,
+    "profile_id" bigint,
     "currency_id" bigint,
     "calculated_cod_amount" numeric(15,2) DEFAULT 0 NOT NULL,
     "collected_cod_amount" numeric(15,2) DEFAULT 0 NOT NULL,
@@ -1268,7 +1268,7 @@ CREATE INDEX "idx_dropship_settlement_charge_lines_settlement" ON "public"."drop
 
 
 ALTER TABLE ONLY "public"."dropship_order_settlements"
-    ADD CONSTRAINT "dropship_order_settlements_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE SET NULL;
+    ADD CONSTRAINT "dropship_order_settlements_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 ALTER TABLE ONLY "public"."dropship_order_settlements"

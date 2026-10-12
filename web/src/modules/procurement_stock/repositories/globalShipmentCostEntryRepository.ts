@@ -26,13 +26,6 @@ export interface SaveShipmentCostEntriesResult {
   } | null;
 }
 
-/** Shipment is source_* only — never a wallet payee. */
-const assertPayeeAllowed = (entityType: string | null | undefined) => {
-  if (entityType === 'shipment') {
-    throw new Error("Payee entity_type cannot be 'shipment'");
-  }
-};
-
 const listByShipmentId = async (shipmentId: number): Promise<GlobalShipmentCostEntry[]> => {
   const { data, error } = await db.rpc('list_global_shipment_cost_entries', {
     p_shipment_id: shipmentId,
@@ -54,21 +47,16 @@ const saveBatch = async (
   entries: UpsertShipmentCostEntryPayload[],
   options: SaveShipmentCostEntriesOptions = {},
 ): Promise<SaveShipmentCostEntriesResult> => {
-  for (const e of entries) {
-    assertPayeeAllowed(e.entity_type);
-  }
-
   const rpcEntries = entries.map((e) => ({
     id: e.id ?? null,
-    cost_type: e.cost_type,
+    cost_bucket: e.cost_bucket,
+    cost_component: e.cost_component,
+    is_capitalizable: e.is_capitalizable ?? true,
+    description: e.description ?? null,
     amount: e.amount,
-    exchange_rate: e.exchange_rate ?? 1,
     currency_id: e.currency_id ?? null,
-    payment_source: e.payment_source ?? null,
-    entity_type: e.entity_type ?? null,
-    entity_id: e.entity_id ?? null,
-    allocation: e.allocation ?? null,
     metadata: e.metadata ?? {},
+    section_id: e.section_id ?? null,
   }));
 
   const { data, error } = await db.rpc('save_global_shipment_cost_entries', {
@@ -96,20 +84,17 @@ const saveBatch = async (
 };
 
 const upsert = async (payload: UpsertShipmentCostEntryPayload): Promise<GlobalShipmentCostEntry> => {
-  assertPayeeAllowed(payload.entity_type);
   const { data, error } = await db.rpc('upsert_global_shipment_cost_entry', {
     p_shipment_id: payload.shipment_id,
-    p_cost_type: payload.cost_type,
+    p_cost_bucket: payload.cost_bucket,
+    p_cost_component: payload.cost_component,
     p_amount: payload.amount,
-    p_exchange_rate: payload.exchange_rate ?? 1,
     p_currency_id: payload.currency_id ?? null,
-    p_payment_source: payload.payment_source ?? null,
-    p_entity_type: payload.entity_type ?? null,
-    p_entity_id: payload.entity_id ?? null,
-    p_allocation: payload.allocation ?? null,
     p_metadata: payload.metadata ?? {},
     p_section_id: payload.section_id ?? null,
     p_id: payload.id ?? null,
+    p_description: payload.description ?? null,
+    p_is_capitalizable: payload.is_capitalizable ?? true,
   });
   if (error) throw error;
   return data as GlobalShipmentCostEntry;
@@ -125,9 +110,6 @@ const revise = async (
   shipmentId: number,
   entries: ReviseShipmentCostEntryInput[],
 ): Promise<{ shipment_id: number; items_stamped: number; wallet_posted: boolean }> => {
-  for (const e of entries) {
-    assertPayeeAllowed(e.entity_type);
-  }
   const { data, error } = await db.rpc('revise_global_shipment_costs', {
     p_shipment_id: shipmentId,
     p_entries: entries,

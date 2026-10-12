@@ -161,7 +161,7 @@
         {{ (item.landed_cost_bdt ?? item.unitCost ?? 0).toFixed(2) }}
         <q-tooltip
           v-if="unitCostTooltip"
-          max-width="300px"
+          max-width="340px"
           anchor="top middle"
           self="bottom middle"
           :offset="[0, 6]"

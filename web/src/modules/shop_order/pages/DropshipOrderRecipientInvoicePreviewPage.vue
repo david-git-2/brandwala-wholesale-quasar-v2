@@ -271,11 +271,11 @@ onMounted(async () => {
     recipientAddress.value = addressParts.join(', ');
 
     // Set initial brand
-    if (orderRes.order.billing_profile_id) {
+    if (orderRes.order.profile_id) {
       const { data: bp } = await supabase
-        .from('billing_profiles')
+        .from('profiles')
         .select('name, address')
-        .eq('id', orderRes.order.billing_profile_id)
+        .eq('id', orderRes.order.profile_id)
         .maybeSingle();
       if (bp) {
         brandName.value = bp.name || '';

@@ -26,9 +26,12 @@ export interface CostingLineItemInput {
 
 /** Minimal cost-entry slice for entry→header mapping and rate weighting. */
 export interface CostEntryInput {
-  cost_type: string;
+  /** Legacy day-one type (`product` / `cargo`). */
+  cost_type?: string;
+  /** Current DB axis (`material` / `freight` / …). */
+  cost_bucket?: string;
   amount: number;
-  exchange_rate: number;
+  exchange_rate?: number;
 }
 
 export interface ShipmentCostSummary {

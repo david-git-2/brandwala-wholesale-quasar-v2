@@ -7,7 +7,7 @@ import type { WholesalePaymentInstrumentInput } from 'src/modules/sales_invoice/
 
 export type CollectPayPayload = {
   tenantId: number;
-  billingProfileId: number;
+  profileId: number;
   receivedOn: string;
   note?: string | null;
   reference?: string | null;
@@ -35,7 +35,7 @@ export function useCollectPayMutation() {
       if (cashTotal > 0) {
         await paysRepository.postCustomerReceipt({
           tenant_id: payload.tenantId,
-          billing_profile_id: payload.billingProfileId,
+          profile_id: payload.profileId,
           received_on: payload.receivedOn,
           note: payload.note,
           reference: payload.reference,
@@ -48,7 +48,7 @@ export function useCollectPayMutation() {
       if (scTotal > 0) {
         await paysRepository.postCustomerReceipt({
           tenant_id: payload.tenantId,
-          billing_profile_id: payload.billingProfileId,
+          profile_id: payload.profileId,
           received_on: payload.receivedOn,
           note: payload.note,
           reference: payload.reference,

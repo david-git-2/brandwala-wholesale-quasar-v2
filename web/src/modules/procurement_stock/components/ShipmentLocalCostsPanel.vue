@@ -25,7 +25,7 @@
         </div>
         <div class="row items-center q-gutter-xs">
           <q-btn
-            v-if="!localApBill"
+            v-if="!otherApBill"
             outline
             dense
             no-caps
@@ -58,9 +58,9 @@
               no-caps
               size="xs"
               color="primary"
-              :label="localApBill.invoice_no"
+              :label="otherApBill.invoice_no"
               class="text-weight-bold"
-              @click="openApBill(localApBill.id)"
+              @click="openApBill(otherApBill.id)"
             />
           </template>
           <q-btn
@@ -230,7 +230,7 @@ const router = useRouter();
 const { data: currenciesData } = useGlobalCurrenciesQuery();
 const apBills = ref<ShipmentApBillRow[]>([]);
 const apSyncing = ref(false);
-const localApBill = computed(() => apBills.value.find((b) => b.ap_kind === 'local') ?? null);
+const otherApBill = computed(() => apBills.value.find((b) => b.ap_kind === 'other') ?? null);
 
 const loadApBills = async () => {
   try {
@@ -252,10 +252,10 @@ const openApBill = (billId: number) => {
 const syncLocalApBill = async () => {
   apSyncing.value = true;
   try {
-    const existed = Boolean(localApBill.value);
+    const existed = Boolean(otherApBill.value);
     await syncShipmentApBills(props.shipmentId);
     await loadApBills();
-    const linked = localApBill.value;
+    const linked = otherApBill.value;
     if (!linked) {
       showErrorNotification('Add a local cost line first.');
       return;

@@ -16,24 +16,26 @@ Shipment keeps **final costing amounts** (sums of cost rows). Payments keep **ca
 | Today | Breaks |
 | :--- | :--- |
 | Unique one AP bill per shipment per `ap_kind` (`vendor` / `cargo` / `local`) | Many pays at different FX blend into one rate |
-| Header `product_conversion_rate` + `cargo_conversion_rate` | Unit stamp ignores per-pay FX |
+| Header `product_conversion_rate` + `cargo_conversion_rate` typed manually | **Fixed (2026-10-10):** `refresh_global_shipment_fx_from_ap_payments` after AP payout; stamp uses material/freight BDT + header rates |
 | Cost rows `payment_source` cash/credit/wallet + `pay_settle_shipment_costs` | Second cashbook next to pays |
 | Duty folded into cargo AP; no VAT kind | Cannot split warehouse delivery vs refundable VAT |
 | Outcome vendor credit vs unpaid AP vs VAT pay-in | Three “credits” mixed |
 
 ## Target rows
 
-Each **cost event** is one `global_shipment_cost_entries` row (type, foreign amount, **that row’s** FX, payee). Each row owns **one AP bill**. Pays allocate to those bills. Drop one-bill-per-kind. Link `ap_shipment_id` + `cost_entry_id`.
+Each **cost event** is one `global_shipment_cost_entries` row (**bucket** × **component**, BDT `amount`, `is_capitalizable`). **One AP bill per cost bucket** (`ap_kind` = bucket name). Pays allocate to those bills via `pay_allocations`. Legacy `vendor` / `cargo` / `local` AP kinds voided on sync.
 
-| Cost type | Unit stamp | Cash |
+| Bucket (examples) | Unit stamp (`is_capitalizable`) | Cash |
 | :--- | :--- | :--- |
-| Product (goods) | Yes | Pay out to vendor AP |
-| Warehouse delivery (company charge to foreign warehouse) | Yes | Pay out (vendor or cargo payee) |
-| Cargo (separate cargo invoice) | Yes | Pay out to cargo AP |
-| VAT | **No** | Pay out; later pay **in** when certificate returns it |
-| Local opex | **No** (P&L only, spec US-8) | Pay out to local AP |
+| `material` (goods, warehouse delivery subtotal) | Yes | Pay out to vendor AP |
+| `freight` (ocean/air) | Yes | Pay out to cargo AP |
+| `customs` (`vat_tax` = CD/RD/AIT) | Usually **no** | Pay out; VAT pay-in when certificate returns |
+| `handling` / `finance` | Per row flag | Pay out to local or finance AP |
+| `other` (tips, repack, fines) | Yes if needed to receive goods; **no** if penalty | Local AP |
 
-Header FX = display average of those rows.
+**Components:** `subtotal`, `carriage`, `vat_tax`, `misc` — see procurement spec US-1 matrix.
+
+Header FX is **computed**, not stored. Material pays → product rate. Freight pays → cargo FX. Freight foreign ÷ kg → cargo rate. Transaction rate = money-weighted blend of those two pays only. Allocations on FX pays are **foreign**; Taka = foreign × `exchange_rate`. Stamp: SKU price × product rate + kg share × cargo FX. `post_ap_payout_with_allocations` restamps.
 
 **Middleman float:** profile cashbook, not `payment_source = wallet` on the shipment. Pay middleman (leftover on profile) or pay vendor from their leftover.
 
@@ -121,18 +123,34 @@ Do not only note 20+50 on the shipment. Do not set shipment total to 210 and lea
 
 ---
 
-## Local costs table (done 2026-10-10)
+## Cost entry axes (done 2026-10-10)
 
-`global_shipment_local_costs` dropped. Local opex = `global_shipment_cost_entries` with `cost_type = local`; description in `metadata.description`. Migration: `20271010160000_drop_global_shipment_local_costs.sql`.
+`global_shipment_local_costs` dropped. P&L-only rows = `is_capitalizable = false` (often `other` + `misc`). `description` column + `metadata.description`. Migration: `20271010180000_global_shipment_cost_bucket_axes.sql`.
+
+## Unit stamp (align 2026-10-10)
+
+Cost rows are **Taka**. `currency_id` is the voucher currency. One AP bill per bucket is cash only — mixed currencies in a bucket still stamp as **sum of those Taka rows**, then one split. Do not invent a bucket FX for SKUs. Do not fold customs/handling/finance/other into `transaction_rate`.
+
+Locked in [procurement US-1](../../docs/features/procurement_stock/spec.md):
+
+| Bucket | On stock if flag on | Split |
+| :--- | :--- | :--- |
+| `material` | Line `purchase_price` (extras keep own price) | Not re-spread. Material `carriage` → goods **value**. |
+| `freight` | Yes | Gross **kg** (fallback qty). Foreign share via `cargo_conversion_rate`. |
+| `customs` | Usually VAT **off**; CD/RD **on** when flagged | **CIF Taka** (goods + freight share). |
+| `handling` | Per row | **Qty**. |
+| `finance` | Per row | **Goods Taka**. |
+| `other` | Per row (repack on; fine off) | **Qty** when on. |
+
+`section_id` set → pool and drivers only for that section’s lines.
+
+**VAT leftover:** no special rule. Unrefunded VAT is stock only if that row is `is_capitalizable`. Else P&L ([US-8](../../docs/features/procurement_stock/spec.md)).
 
 ## Build order
 
-1. Cost row = source of truth (type, foreign, row FX, payee). Header FX = average.
-2. Sync one AP bill per cost row. Remove one-bill-per-kind unique.
-3. All cash through Payments: pay out AP, pay in VAT/goods refund, leftover on middleman profile.
-4. Stamp = product + warehouse delivery + cargo. Local + VAT off stamp.
-5. Stop using settle columns and shipment wallet/credit flags.
-
-## Open (write into spec before code)
-
-When VAT is not fully refunded (fee, delay, never): leftover in **unit cost**, or always **P&L only** like local cost?
+1. **Done:** Cost rows = BDT amounts per bucket × component; capitalizable flag drives stamp.
+2. **Done:** `sync_shipment_ap_bills` — one AP bill per bucket; migration `20271010190000`.
+3. **Done:** Cash via Payments AP payout; legacy `pay_settle_shipment_costs` stubbed; settle columns dropped (`20271010210000`).
+4. **Partial:** Stamp uses capitalizable `material` + `freight` BDT; freight by weight in **foreign** using `cargo_conversion_rate`; blended `transaction_rate` for goods+cargo only ([PS13](../../docs/features/procurement_stock/00-gaps.md)).
+5. **Open:** Stamp remaining buckets per table above (`stamp_global_shipment_landed_costs`, `calculate_landed_unit_cost`, line-cost UI).
+6. **Open:** AP pay-in for VAT/goods refund; middleman profile float UI; per-row AP (if ever needed).

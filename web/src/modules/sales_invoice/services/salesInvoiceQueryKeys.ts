@@ -4,10 +4,10 @@ export const salesInvoiceQueryKeys = {
     [...salesInvoiceQueryKeys.root, 'list', parentTenantId ?? 0, params] as const,
   walletBalances: (tenantId: number | null) =>
     [...salesInvoiceQueryKeys.root, 'wallet_balances', tenantId ?? 0] as const,
-  walletLedger: (tenantId: number | null, billingProfileId: number | null) =>
-    [...salesInvoiceQueryKeys.root, 'wallet_ledger', tenantId ?? 0, billingProfileId ?? 0] as const,
-  billingProfiles: (tenantId: number | null, params?: Record<string, unknown>) =>
-    [...salesInvoiceQueryKeys.root, 'billing_profiles', tenantId ?? 0, params ?? {}] as const,
+  walletLedger: (tenantId: number | null, profileId: number | null) =>
+    [...salesInvoiceQueryKeys.root, 'wallet_ledger', tenantId ?? 0, profileId ?? 0] as const,
+  customerProfiles: (tenantId: number | null, params?: Record<string, unknown>) =>
+    [...salesInvoiceQueryKeys.root, 'profiles', tenantId ?? 0, params ?? {}] as const,
   brands: (tenantId: number | null, params?: Record<string, unknown>) =>
     [...salesInvoiceQueryKeys.root, 'brands', tenantId ?? 0, params ?? {}] as const,
   stockSearch: (tenantId: number | null, search?: string) =>

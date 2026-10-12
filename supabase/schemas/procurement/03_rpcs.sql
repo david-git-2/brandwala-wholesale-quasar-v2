@@ -336,8 +336,8 @@ BEGIN
     RAISE EXCEPTION 'access denied for tenant %', v_file.tenant_id;
   END IF;
 
-  IF v_file.billing_profile_id IS NULL THEN
-    RAISE EXCEPTION 'costing file % must have a billing_profile_id assigned before consuming backlog', p_file_id;
+  IF v_file.profile_id IS NULL THEN
+    RAISE EXCEPTION 'costing file % must have a profile_id assigned before consuming backlog', p_file_id;
   END IF;
 
   IF p_backlog_ids IS NULL OR array_length(p_backlog_ids, 1) IS NULL THEN
@@ -349,7 +349,7 @@ BEGIN
     FROM public.product_based_costing_backlog_items
     WHERE id = ANY(p_backlog_ids)
       AND tenant_id = v_file.tenant_id
-      AND billing_profile_id = v_file.billing_profile_id
+      AND profile_id = v_file.profile_id
   LOOP
     INSERT INTO public.product_based_costing_items (
       product_based_costing_file_id,
@@ -420,8 +420,8 @@ BEGIN
     RAISE EXCEPTION 'access denied for tenant %', v_file.tenant_id;
   END IF;
 
-  IF v_file.billing_profile_id IS NULL THEN
-    RAISE EXCEPTION 'costing file % must have a billing_profile_id assigned before consuming backlog', p_file_id;
+  IF v_file.profile_id IS NULL THEN
+    RAISE EXCEPTION 'costing file % must have a profile_id assigned before consuming backlog', p_file_id;
   END IF;
 
   IF p_backlog_ids IS NULL OR array_length(p_backlog_ids, 1) IS NULL THEN
@@ -433,7 +433,7 @@ BEGIN
     FROM public.product_based_costing_backlog_items
     WHERE id = ANY(p_backlog_ids)
       AND tenant_id = v_file.tenant_id
-      AND billing_profile_id = v_file.billing_profile_id
+      AND profile_id = v_file.profile_id
   LOOP
     INSERT INTO public.product_based_costing_items (
       product_based_costing_file_id,
@@ -833,7 +833,7 @@ begin
   into v_actual_total
   from public.global_shipment_cost_entries e
   where e.shipment_id = p_shipment_id
-    and e.cost_type = 'product';
+    and e.cost_bucket = 'material'::public.global_shipment_cost_bucket;
 
   if v_actual_total <= 0 then
     raise exception 'Product cost entry amount must be saved before applying purchase price balance.';
@@ -2257,7 +2257,7 @@ begin
       select 1
       from public.vendors v
       where v.id = v_vendor_id
-        and coalesce(v.parent_tenant_id, v.tenant_id) = v_stock_parent
+        and v.parent_tenant_id = v_stock_parent
     ) then
       raise exception 'vendor % does not belong to parent tenant %', v_vendor_id, v_stock_parent;
     end if;
@@ -2271,7 +2271,7 @@ begin
       select 1
       from public.cargo_companies c
       where c.id = v_cargo_id
-        and coalesce(c.parent_tenant_id, c.tenant_id) = v_stock_parent
+        and c.parent_tenant_id = v_stock_parent
     ) then
       raise exception 'cargo company % does not belong to parent tenant %', v_cargo_id, v_stock_parent;
     end if;
@@ -2295,23 +2295,7 @@ begin
   )
   returning * into v_row;
 
-  -- Auto-create primary default section for this shipment
-  insert into public.global_shipment_sections (
-    parent_tenant_id,
-    shipment_id,
-    vendor_id,
-    title,
-    sort_order,
-    metadata
-  )
-  values (
-    v_stock_parent,
-    v_row.id,
-    v_vendor_id,
-    'Section 1',
-    0,
-    '{}'::jsonb
-  );
+  perform public.ensure_global_shipment_default_section(v_row.id);
 
   return v_row;
 end;
@@ -3023,6 +3007,9 @@ begin
   where id = p_shipment_id
   returning * into v_ship;
 
+  perform public.sync_shipment_ap_bills(p_shipment_id);
+  perform public.issue_shipment_ap_bills(p_shipment_id);
+
   return v_ship;
 end;
 $$;
@@ -3669,6 +3656,30 @@ $$;
 ALTER FUNCTION "public"."ensure_default_vendor"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."trg_fn_global_shipment_cost_entry_axes"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+begin
+  if new.cost_bucket is null then
+    raise exception 'cost_bucket is required';
+  end if;
+
+  if new.cost_component is null then
+    raise exception 'cost_component is required';
+  end if;
+
+  if new.description is null and new.metadata ? 'description' then
+    new.description := nullif(trim(new.metadata->>'description'), '');
+  end if;
+
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."trg_fn_global_shipment_cost_entry_axes"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."ensure_global_shipment_cost_entries_from_header"("p_shipment_id" bigint) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -3701,27 +3712,43 @@ begin
   v_cargo_amt := coalesce(v_ship.cargo_invoice_total, 0);
 
   insert into public.global_shipment_cost_entries (
-    parent_tenant_id, shipment_id, cost_type, amount, currency_id, exchange_rate, metadata
+    parent_tenant_id,
+    shipment_id,
+    cost_bucket,
+    cost_component,
+    is_capitalizable,
+    amount,
+    currency_id,
+    metadata
   ) values (
     v_ship.parent_tenant_id,
     p_shipment_id,
-    'product',
+    'material',
+    'subtotal',
+    true,
     greatest(v_goods, 0),
     v_ship.shipment_purchase_currency_id,
-    1.0,
     jsonb_build_object('source', 'header_backfill')
   );
 
   if v_cargo_amt > 0 then
     insert into public.global_shipment_cost_entries (
-      parent_tenant_id, shipment_id, cost_type, amount, currency_id, exchange_rate, metadata
+      parent_tenant_id,
+      shipment_id,
+      cost_bucket,
+      cost_component,
+      is_capitalizable,
+      amount,
+      currency_id,
+      metadata
     ) values (
       v_ship.parent_tenant_id,
       p_shipment_id,
-      'cargo',
+      'freight',
+      'subtotal',
+      true,
       v_cargo_amt,
       v_ship.shipment_cost_currency_id,
-      1.0,
       jsonb_build_object('source', 'header_backfill')
     );
   end if;
@@ -3730,6 +3757,61 @@ $$;
 
 
 ALTER FUNCTION "public"."ensure_global_shipment_cost_entries_from_header"("p_shipment_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."ensure_global_shipment_default_section"("p_shipment_id" bigint) RETURNS bigint
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ship public.global_shipments%rowtype;
+  v_section_id bigint;
+  v_vendor_id bigint;
+begin
+  select * into v_ship from public.global_shipments where id = p_shipment_id;
+  if not found then
+    raise exception 'shipment not found';
+  end if;
+
+  select s.id into v_section_id
+  from public.global_shipment_sections s
+  where s.shipment_id = p_shipment_id
+  order by s.sort_order asc, s.id asc
+  limit 1;
+
+  if v_section_id is not null then
+    return v_section_id;
+  end if;
+
+  v_vendor_id := v_ship.vendor_id;
+  if v_vendor_id is null then
+    v_vendor_id := public.ensure_default_vendor(v_ship.parent_tenant_id);
+  end if;
+
+  insert into public.global_shipment_sections (
+    parent_tenant_id,
+    shipment_id,
+    vendor_id,
+    title,
+    sort_order,
+    metadata
+  )
+  values (
+    v_ship.parent_tenant_id,
+    p_shipment_id,
+    v_vendor_id,
+    'Section 1',
+    0,
+    '{}'::jsonb
+  )
+  returning id into v_section_id;
+
+  return v_section_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."ensure_global_shipment_default_section"("p_shipment_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."ensure_shipment_progress_tags"("p_tenant_id" bigint) RETURNS SETOF "public"."tags"
@@ -3804,11 +3886,9 @@ CREATE OR REPLACE FUNCTION "public"."_stamp_global_shipment_outcome_costs"("p_sh
     AS $$
 declare
   v_ship public.global_shipments%rowtype;
-  v_product_amount numeric := 0;
-  v_cargo_amount numeric := 0;
-  v_goods_bdt numeric := 0;
-  v_cargo_bdt numeric := 0;
+  v_cargo_foreign numeric := 0;
   v_blended numeric := 1;
+  v_fx jsonb;
   v_pack_kg numeric := 0;
   v_updated integer := 0;
   r_out record;
@@ -3823,20 +3903,9 @@ begin
     return 0;
   end if;
 
-  select
-    coalesce(sum(amount) filter (where cost_type = 'product'), 0),
-    coalesce(sum(amount * exchange_rate) filter (where cost_type = 'product'), 0),
-    coalesce(sum(amount) filter (where cost_type in ('cargo', 'duty')), 0),
-    coalesce(sum(amount * exchange_rate) filter (where cost_type in ('cargo', 'duty')), 0)
-  into v_product_amount, v_goods_bdt, v_cargo_amount, v_cargo_bdt
-  from public.global_shipment_cost_entries
-  where shipment_id = p_shipment_id;
-
-  if (v_product_amount + v_cargo_amount) > 0 then
-    v_blended := (v_goods_bdt + v_cargo_bdt) / (v_product_amount + v_cargo_amount);
-  else
-    v_blended := 1;
-  end if;
+  v_fx := public._global_shipment_landed_fx_inputs(p_shipment_id);
+  v_cargo_foreign := coalesce((v_fx ->> 'cargo_foreign')::numeric, 0);
+  v_blended := coalesce((v_fx ->> 'blended_rate')::numeric, 1);
 
   select coalesce(sum(
     ((coalesce(gsi.product_weight, 0) + coalesce(gsi.package_weight, 0)) * gsi.ordered_quantity) / 1000.0
@@ -3859,11 +3928,11 @@ begin
     ) / 1000.0;
 
     if v_pack_kg > 0 then
-      v_line_cargo_share := (v_line_gross / v_pack_kg) * v_cargo_amount;
+      v_line_cargo_share := (v_line_gross / v_pack_kg) * v_cargo_foreign;
     elsif (select coalesce(sum(ordered_quantity), 0) from public.global_shipment_items where shipment_id = p_shipment_id) > 0 then
       v_line_cargo_share := (r_line.ordered_quantity::numeric
         / (select sum(ordered_quantity) from public.global_shipment_items where shipment_id = p_shipment_id)
-      ) * v_cargo_amount;
+      ) * v_cargo_foreign;
     else
       v_line_cargo_share := 0;
     end if;
@@ -5498,7 +5567,7 @@ begin
   select e.*
   from public.global_shipment_cost_entries e
   where e.shipment_id = p_shipment_id
-  order by e.cost_type, e.id;
+  order by e.cost_bucket, e.cost_component, e.id;
 end;
 $$;
 
@@ -6454,7 +6523,7 @@ $$;
 ALTER FUNCTION "public"."list_inventory_items_with_stock"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_sort_by" "text", "p_sort_order" "text", "p_filters" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "billing_profile_id" bigint, "product_id" bigint, "open_quantity" integer, "name" "text", "image_url" "text", "barcode" "text", "product_code" "text", "price_gbp" numeric, "product_weight" numeric, "package_weight" numeric, "note" "text", "last_costing_file_id" bigint, "last_costing_item_id" bigint, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p_profile_id" bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "profile_id" bigint, "product_id" bigint, "open_quantity" integer, "name" "text", "image_url" "text", "barcode" "text", "product_code" "text", "price_gbp" numeric, "product_weight" numeric, "package_weight" numeric, "note" "text", "last_costing_file_id" bigint, "last_costing_item_id" bigint, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -6467,7 +6536,7 @@ BEGIN
   SELECT
     bi.id,
     bi.tenant_id,
-    bi.billing_profile_id,
+    bi.profile_id,
     bi.product_id,
     bi.open_quantity,
     bi.name,
@@ -6484,13 +6553,13 @@ BEGIN
     bi.updated_at
   FROM public.product_based_costing_backlog_items bi
   WHERE bi.tenant_id = p_tenant_id
-    AND bi.billing_profile_id = p_billing_profile_id
+    AND bi.profile_id = p_profile_id
   ORDER BY bi.updated_at DESC;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p_profile_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_product_based_costing_files"("p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 20, "p_cursor_created_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_cursor_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
@@ -6954,6 +7023,8 @@ CREATE OR REPLACE FUNCTION "public"."list_vendors_for_tenant"("p_tenant_id" bigi
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
+declare
+  v_books_id bigint;
 begin
   if p_tenant_id is null then
     if not public.is_superadmin() then
@@ -6963,7 +7034,7 @@ begin
     return query
     select v.*
     from public.vendors v
-    where v.tenant_id is null
+    where v.parent_tenant_id is null
     order by v.id asc;
 
     return;
@@ -6973,19 +7044,13 @@ begin
     raise exception 'not allowed';
   end if;
 
-  if public.is_child_tenant(p_tenant_id) then
-    return query
-    select v.*
-    from public.vendors v
-    where v.tenant_id = p_tenant_id
-    order by v.id asc;
-  else
-    return query
-    select v.*
-    from public.vendors v
-    where v.parent_tenant_id = p_tenant_id
-    order by v.id asc;
-  end if;
+  v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
+
+  return query
+  select v.*
+  from public.vendors v
+  where v.parent_tenant_id = v_books_id
+  order by v.id asc;
 end;
 $$;
 
@@ -7196,133 +7261,8 @@ CREATE OR REPLACE FUNCTION "public"."pay_settle_shipment_costs"("p_shipment_id" 
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-declare
-  v_ship public.global_shipments%rowtype;
-  v_entry public.global_shipment_cost_entries%rowtype;
-  v_amount numeric;
-  v_settled_count integer := 0;
-  v_wallet_posted boolean := false;
-  v_ledger jsonb;
-  v_wallet_entity_type text;
 begin
-  select * into v_ship
-  from public.global_shipments
-  where id = p_shipment_id
-  for update;
-
-  if not found then
-    raise exception 'shipment not found';
-  end if;
-
-  if v_ship.status is distinct from 'received' then
-    raise exception 'shipment must be received before settlement';
-  end if;
-
-  if not public.has_active_tenant_membership(v_ship.parent_tenant_id)
-     and not public.is_superadmin() then
-    raise exception 'not authorized';
-  end if;
-
-  for v_entry in
-    select *
-    from public.global_shipment_cost_entries
-    where shipment_id = p_shipment_id
-      and (p_cost_entry_ids is null or id = any(p_cost_entry_ids))
-      and payment_source is not null
-      and entity_type is not null
-      and entity_id is not null
-      and settled_at is null
-  loop
-    if v_entry.entity_type = 'shipment' then
-      raise exception 'cost entry % cannot settle shipment entity', v_entry.id;
-    end if;
-
-    v_amount := round(coalesce(v_entry.amount, 0) * coalesce(v_entry.exchange_rate, 1), 4);
-    if v_amount <= 0 then
-      continue;
-    end if;
-
-    v_wallet_entity_type := case
-      when v_entry.entity_type = 'cargo_company' then 'cargo_company'
-      else v_entry.entity_type
-    end;
-
-    if v_entry.payment_source in ('cash', 'wallet') then
-      v_ledger := public.record_ledger_transaction(
-        p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
-        p_entity_type => v_wallet_entity_type,
-        p_entity_id => v_entry.entity_id,
-        p_type => 'debit',
-        p_amount => v_amount,
-        p_currency_code => 'BDT',
-        p_exchange_rate => 1.000000,
-        p_source_type => 'shipment',
-        p_source_id => p_shipment_id::text,
-        p_metadata => jsonb_build_object(
-          'cost_entry_id', v_entry.id,
-          'payment_source', v_entry.payment_source,
-          'purpose', 'shipment_cost_settle_payee'
-        ),
-        p_target_bucket => 'available'
-      );
-
-      v_ledger := public.record_ledger_transaction(
-        p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
-        p_entity_type => 'tenant',
-        p_entity_id => v_ship.parent_tenant_id,
-        p_type => 'debit',
-        p_amount => v_amount,
-        p_currency_code => 'BDT',
-        p_exchange_rate => 1.000000,
-        p_source_type => 'shipment',
-        p_source_id => p_shipment_id::text,
-        p_metadata => jsonb_build_object(
-          'cost_entry_id', v_entry.id,
-          'payment_source', v_entry.payment_source,
-          'purpose', 'shipment_cost_settle_tenant_cash'
-        ),
-        p_target_bucket => 'available'
-      );
-      v_wallet_posted := true;
-
-    elsif v_entry.payment_source = 'credit' then
-      v_ledger := public.record_ledger_transaction(
-        p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
-        p_entity_type => v_wallet_entity_type,
-        p_entity_id => v_entry.entity_id,
-        p_type => 'credit',
-        p_amount => v_amount,
-        p_currency_code => 'BDT',
-        p_exchange_rate => 1.000000,
-        p_source_type => 'shipment',
-        p_source_id => p_shipment_id::text,
-        p_metadata => jsonb_build_object(
-          'cost_entry_id', v_entry.id,
-          'payment_source', 'credit',
-          'purpose', 'shipment_cost_credit_payable'
-        ),
-        p_target_bucket => 'pending'
-      );
-      v_wallet_posted := true;
-    else
-      raise exception 'unsupported payment_source % on entry %', v_entry.payment_source, v_entry.id;
-    end if;
-
-    update public.global_shipment_cost_entries
-    set
-      settled_at = now(),
-      settlement_ledger_id = coalesce((v_ledger->>'id')::uuid, settlement_ledger_id),
-      updated_at = now()
-    where id = v_entry.id;
-
-    v_settled_count := v_settled_count + 1;
-  end loop;
-
-  return jsonb_build_object(
-    'shipment_id', p_shipment_id,
-    'settled_entries_count', v_settled_count,
-    'wallet_posted', v_wallet_posted and v_settled_count > 0
-  );
+  raise exception 'pay_settle_shipment_costs is retired; use sync_shipment_ap_bills and post_ap_payout_with_allocations';
 end;
 $$;
 
@@ -7854,8 +7794,12 @@ begin
 
   if v_total_cost_gbp > 0 then
     v_transaction_rate := v_total_cost_bdt / v_total_cost_gbp;
+  elsif v_goods_cost_gbp > 0 then
+    v_transaction_rate := coalesce(v_product_conv, 1);
+  elsif v_cargo_cost_gbp > 0 then
+    v_transaction_rate := coalesce(v_cargo_conv, 1);
   else
-    v_transaction_rate := (coalesce(v_product_conv, 0) + coalesce(v_cargo_conv, 0)) / 2.0;
+    v_transaction_rate := coalesce(nullif(v_product_conv, 0), nullif(v_cargo_conv, 0), 1);
   end if;
 
   update public.shipments
@@ -8454,9 +8398,9 @@ begin
 
   if v_amount <= 0 then
     v_amount := coalesce((
-      select sum(coalesce(e.amount, 0) * coalesce(e.exchange_rate, 1))
+      select sum(coalesce(e.amount, 0))
       from public.global_shipment_cost_entries e
-      where e.shipment_id = p_shipment_id and e.cost_type = 'product'
+      where e.shipment_id = p_shipment_id and e.cost_bucket = 'material'::public.global_shipment_cost_bucket
     ), 0);
   end if;
 
@@ -8547,9 +8491,9 @@ begin
 
   select coalesce(jsonb_agg(jsonb_build_object(
     'id', e.id,
-    'cost_type', e.cost_type,
+    'cost_bucket', e.cost_bucket,
+    'cost_component', e.cost_component,
     'amount', e.amount,
-    'exchange_rate', e.exchange_rate,
     'landed_snapshot', (
       select coalesce(jsonb_agg(jsonb_build_object(
         'item_id', i.id,
@@ -8571,26 +8515,20 @@ begin
     insert into public.global_shipment_cost_entries (
       parent_tenant_id,
       shipment_id,
-      cost_type,
+      cost_bucket,
+      cost_component,
+      is_capitalizable,
       amount,
       currency_id,
-      exchange_rate,
-      payment_source,
-      entity_type,
-      entity_id,
-      allocation,
       metadata
     ) values (
       v_ship.parent_tenant_id,
       p_shipment_id,
-      (v_entry->>'cost_type')::public.global_shipment_cost_type,
+      (v_entry->>'cost_bucket')::public.global_shipment_cost_bucket,
+      (v_entry->>'cost_component')::public.global_shipment_cost_component,
+      coalesce((v_entry->>'is_capitalizable')::boolean, true),
       (v_entry->>'amount')::numeric,
       nullif(v_entry->>'currency_id', '')::bigint,
-      coalesce(nullif(v_entry->>'exchange_rate', '')::numeric, 1.0),
-      nullif(v_entry->>'payment_source', ''),
-      nullif(v_entry->>'entity_type', ''),
-      nullif(v_entry->>'entity_id', '')::bigint,
-      nullif(v_entry->>'allocation', ''),
       coalesce(v_entry->'metadata', '{}'::jsonb)
     );
   end loop;
@@ -9218,23 +9156,136 @@ $$;
 ALTER FUNCTION "public"."settle_shipment_payee"("p_shipment_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_action" "text", "p_amount" numeric, "p_exchange_rate" numeric) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."refresh_global_shipment_fx_from_ap_payments"("p_shipment_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_fx jsonb;
+begin
+  if p_shipment_id is null then
+    raise exception 'shipment_id is required';
+  end if;
+
+  if not exists (select 1 from public.global_shipments gs where gs.id = p_shipment_id) then
+    raise exception 'shipment not found';
+  end if;
+
+  v_fx := public._global_shipment_landed_fx_inputs(p_shipment_id);
+  return v_fx;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."refresh_global_shipment_fx_from_ap_payments"("p_shipment_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."_global_shipment_landed_fx_inputs"("p_shipment_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_mat jsonb;
+  v_fre jsonb;
+  v_prod_rate numeric := 1;
+  v_cargo_fx numeric := 1;
+  v_product_foreign numeric := 0;
+  v_cargo_foreign numeric := 0;
+  v_entry_material numeric := 0;
+  v_entry_freight numeric := 0;
+  v_goods_bdt numeric := 0;
+  v_freight_bdt numeric := 0;
+  v_blended numeric := 1;
+  v_kg numeric := 0;
+  v_cargo_per_kg numeric := 0;
+  v_mat_count integer := 0;
+  v_fre_count integer := 0;
+begin
+  v_mat := public.shipment_ap_bucket_paid_totals(p_shipment_id, 'material');
+  v_fre := public.shipment_ap_bucket_paid_totals(p_shipment_id, 'freight');
+
+  v_mat_count := coalesce((v_mat ->> 'payment_count')::integer, 0);
+  v_fre_count := coalesce((v_fre ->> 'payment_count')::integer, 0);
+
+  if v_mat_count > 0 then
+    v_prod_rate := coalesce((v_mat ->> 'conversion_rate')::numeric, 1);
+  end if;
+  if v_fre_count > 0 then
+    v_cargo_fx := coalesce((v_fre ->> 'conversion_rate')::numeric, 1);
+  end if;
+
+  select
+    coalesce(sum(gce.amount) filter (where gce.is_capitalizable and gce.cost_bucket = 'material'), 0),
+    coalesce(sum(gce.amount) filter (where gce.is_capitalizable and gce.cost_bucket = 'freight'), 0)
+  into v_entry_material, v_entry_freight
+  from public.global_shipment_cost_entries gce
+  where gce.shipment_id = p_shipment_id;
+
+  v_product_foreign := coalesce((v_mat ->> 'foreign_paid')::numeric, 0);
+  if v_product_foreign <= 0 then
+    v_product_foreign := v_entry_material;
+  end if;
+
+  v_cargo_foreign := coalesce((v_fre ->> 'foreign_paid')::numeric, 0);
+  if v_cargo_foreign <= 0 then
+    v_cargo_foreign := v_entry_freight;
+  end if;
+
+  v_goods_bdt := round(v_product_foreign * v_prod_rate, 2);
+  v_freight_bdt := round(v_cargo_foreign * v_cargo_fx, 2);
+
+  if (v_product_foreign + v_cargo_foreign) > 0 then
+    v_blended := round((v_goods_bdt + v_freight_bdt) / (v_product_foreign + v_cargo_foreign), 6);
+  else
+    v_blended := 1;
+  end if;
+
+  select coalesce(gs.total_weight_kg, gs.received_weight, 0)
+  into v_kg
+  from public.global_shipments gs
+  where gs.id = p_shipment_id;
+
+  if coalesce(v_kg, 0) > 0 and v_cargo_foreign > 0 then
+    v_cargo_per_kg := round(v_cargo_foreign / v_kg, 6);
+  end if;
+
+  return jsonb_build_object(
+    'material', v_mat,
+    'freight', v_fre,
+    'goods_bdt', v_goods_bdt,
+    'freight_bdt', v_freight_bdt,
+    'product_foreign', v_product_foreign,
+    'cargo_foreign', v_cargo_foreign,
+    'product_conversion_rate', v_prod_rate,
+    'cargo_conversion_rate', v_cargo_fx,
+    'cargo_rate', v_cargo_per_kg,
+    'transaction_rate', v_blended,
+    'blended_rate', v_blended
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."_global_shipment_landed_fx_inputs"("p_shipment_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."stamp_global_shipment_landed_costs"("p_shipment_id" bigint) RETURNS integer
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
   v_ship public.global_shipments%rowtype;
-  v_product_amount numeric := 0;
-  v_cargo_amount numeric := 0;
-  v_goods_bdt numeric := 0;
-  v_cargo_bdt numeric := 0;
-  v_blended numeric := 1;
+  v_cargo_foreign numeric := 0;
+  v_prod_rate numeric := 1;
+  v_cargo_fx numeric := 1;
+  v_fx jsonb;
   v_pack_kg numeric := 0;
   v_updated integer := 0;
   r record;
   v_line_gross numeric;
   v_line_cargo_share numeric;
-  v_unit_base numeric;
+  v_unit_product numeric;
+  v_unit_cargo numeric;
   v_landed numeric;
 begin
   select * into v_ship from public.global_shipments where id = p_shipment_id for update;
@@ -9244,20 +9295,10 @@ begin
 
   perform public.ensure_global_shipment_cost_entries_from_header(p_shipment_id);
 
-  select
-    coalesce(sum(amount) filter (where cost_type = 'product'), 0),
-    coalesce(sum(amount * exchange_rate) filter (where cost_type = 'product'), 0),
-    coalesce(sum(amount) filter (where cost_type in ('cargo', 'duty')), 0),
-    coalesce(sum(amount * exchange_rate) filter (where cost_type in ('cargo', 'duty')), 0)
-  into v_product_amount, v_goods_bdt, v_cargo_amount, v_cargo_bdt
-  from public.global_shipment_cost_entries
-  where shipment_id = p_shipment_id;
-
-  if (v_product_amount + v_cargo_amount) > 0 then
-    v_blended := (v_goods_bdt + v_cargo_bdt) / (v_product_amount + v_cargo_amount);
-  else
-    v_blended := 1;
-  end if;
+  v_fx := public._global_shipment_landed_fx_inputs(p_shipment_id);
+  v_cargo_foreign := coalesce((v_fx ->> 'cargo_foreign')::numeric, 0);
+  v_prod_rate := coalesce((v_fx ->> 'product_conversion_rate')::numeric, 1);
+  v_cargo_fx := coalesce((v_fx ->> 'cargo_conversion_rate')::numeric, 1);
 
   select coalesce(sum(
     ((coalesce(gsi.product_weight, 0) + coalesce(gsi.package_weight, 0)) * gsi.ordered_quantity) / 1000.0
@@ -9278,25 +9319,27 @@ begin
     ) / 1000.0;
 
     if v_pack_kg > 0 then
-      v_line_cargo_share := (v_line_gross / v_pack_kg) * v_cargo_amount;
+      v_line_cargo_share := (v_line_gross / v_pack_kg) * v_cargo_foreign;
     elsif (select coalesce(sum(ordered_quantity), 0) from public.global_shipment_items where shipment_id = p_shipment_id) > 0 then
       v_line_cargo_share := (r.ordered_quantity::numeric
         / (select sum(ordered_quantity) from public.global_shipment_items where shipment_id = p_shipment_id)
-      ) * v_cargo_amount;
+      ) * v_cargo_foreign;
     else
       v_line_cargo_share := 0;
     end if;
 
     if r.ordered_quantity > 0 then
-      v_unit_base := coalesce(r.purchase_price, 0) + (v_line_cargo_share / r.ordered_quantity);
+      v_unit_product := coalesce(r.purchase_price, 0);
+      v_unit_cargo := v_line_cargo_share / r.ordered_quantity;
     else
-      v_unit_base := coalesce(r.purchase_price, 0);
+      v_unit_product := coalesce(r.purchase_price, 0);
+      v_unit_cargo := 0;
     end if;
 
     if v_ship.type::text in ('local', 'domestic') then
-      v_landed := v_unit_base;
+      v_landed := v_unit_product + v_unit_cargo;
     else
-      v_landed := v_unit_base * v_blended;
+      v_landed := (v_unit_product * v_prod_rate) + (v_unit_cargo * v_cargo_fx);
     end if;
 
     update public.global_shipment_items
@@ -9542,10 +9585,10 @@ begin
 
       if v_file.id is not null then
         v_tenant_id := v_file.tenant_id;
-        if v_tenant_id is null and v_file.billing_profile_id is not null then
+        if v_tenant_id is null and v_file.profile_id is not null then
           select tenant_id into v_tenant_id
-          from public.billing_profiles
-          where id = v_file.billing_profile_id;
+          from public.profiles
+          where id = v_file.profile_id;
         end if;
 
         select pci.id into v_other_id
@@ -9553,13 +9596,13 @@ begin
         inner join public.product_based_costing_files pcf
           on pcf.id = pci.product_based_costing_file_id
         where pci.product_id = old.product_id
-          and pcf.billing_profile_id is not distinct from v_file.billing_profile_id
+          and pcf.profile_id is not distinct from v_file.profile_id
         order by pci.updated_at desc nulls last, pci.id desc
         limit 1;
 
         if v_other_id is not null then
           perform public.upsert_pbc_backlog_from_item(v_other_id);
-        elsif v_tenant_id is not null and v_file.billing_profile_id is not null then
+        elsif v_tenant_id is not null and v_file.profile_id is not null then
           v_open_qty := coalesce(old.confirmed_quantity, old.quantity, 0);
 
           if coalesce(v_file.status, 'pending') in ('pending', 'offered')
@@ -9592,7 +9635,7 @@ begin
             if v_name is not null then
               insert into public.product_based_costing_backlog_items (
                 tenant_id,
-                billing_profile_id,
+                profile_id,
                 product_id,
                 open_quantity,
                 name,
@@ -9608,7 +9651,7 @@ begin
               )
               values (
                 v_tenant_id,
-                v_file.billing_profile_id,
+                v_file.profile_id,
                 old.product_id,
                 round(v_open_qty)::integer,
                 v_name,
@@ -9622,7 +9665,7 @@ begin
                 null,
                 now()
               )
-              on conflict (tenant_id, billing_profile_id, product_id)
+              on conflict (tenant_id, profile_id, product_id)
               do update set
                 open_quantity = excluded.open_quantity,
                 name = excluded.name,
@@ -9639,7 +9682,7 @@ begin
           else
             delete from public.product_based_costing_backlog_items
             where tenant_id = v_tenant_id
-              and billing_profile_id = v_file.billing_profile_id
+              and profile_id = v_file.profile_id
               and product_id = old.product_id;
           end if;
         end if;
@@ -9668,12 +9711,12 @@ begin
     into new.tenant_id
     from public.tenants t
     where t.id = new.tenant_id;
-  elsif new.billing_profile_id is not null then
+  elsif new.profile_id is not null then
     select coalesce(t.parent_id, t.id)
     into new.tenant_id
-    from public.billing_profiles bp
-    inner join public.tenants t on t.id = bp.tenant_id
-    where bp.id = new.billing_profile_id;
+    from public.profiles pr
+    inner join public.tenants t on t.id = pr.operating_tenant_id
+    where pr.id = new.profile_id;
   end if;
   return new;
 end;
@@ -9683,22 +9726,22 @@ $$;
 ALTER FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."trg_fn_pbc_files_stamp_billing_profile"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."trg_fn_pbc_files_stamp_profile"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 begin
   if new.customer_group_id is not null then
-    select bp.id
-    into new.billing_profile_id
-    from public.billing_profiles bp
-    where bp.customer_group_id = new.customer_group_id;
+    select pr.id
+    into new.profile_id
+    from public.profiles pr
+    where pr.customer_group_id = new.customer_group_id;
 
-    if new.billing_profile_id is null then
+    if new.profile_id is null then
       raise exception 'customer_group_id % has no linked billing profile', new.customer_group_id;
     end if;
   elsif tg_op = 'UPDATE' and new.customer_group_id is null and old.customer_group_id is not null then
-    new.billing_profile_id := null;
+    new.profile_id := null;
   end if;
 
   return new;
@@ -9706,7 +9749,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."trg_fn_pbc_files_stamp_billing_profile"() OWNER TO "postgres";
+ALTER FUNCTION "public"."trg_fn_pbc_files_stamp_profile"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_pbc_files_stamp_currency_codes"() RETURNS "trigger"
@@ -10580,10 +10623,13 @@ declare
   v_row public.global_shipment_cost_entries%rowtype;
   v_id bigint;
   v_amount numeric;
-  v_rate numeric;
   v_stamped integer := 0;
   v_cost_entries jsonb;
   v_items jsonb;
+  v_cost_bucket public.global_shipment_cost_bucket;
+  v_cost_component public.global_shipment_cost_component;
+  v_is_capitalizable boolean;
+  v_description text;
 begin
   select * into v_ship from public.global_shipments where id = p_shipment_id for update;
   if not found then
@@ -10620,28 +10666,33 @@ begin
     for v_entry in select value from jsonb_array_elements(p_entries)
     loop
       v_amount := nullif(v_entry->>'amount', '')::numeric;
-      v_rate := coalesce(nullif(v_entry->>'exchange_rate', '')::numeric, 1.0);
       v_id := nullif(v_entry->>'id', '')::bigint;
 
       if v_amount is null or v_amount < 0 then
         raise exception 'amount must be >= 0';
       end if;
 
-      if v_rate is null or v_rate <= 0 then
-        raise exception 'exchange_rate must be > 0';
+      v_cost_bucket := nullif(v_entry->>'cost_bucket', '')::public.global_shipment_cost_bucket;
+      v_cost_component := nullif(v_entry->>'cost_component', '')::public.global_shipment_cost_component;
+      if v_cost_bucket is null or v_cost_component is null then
+        raise exception 'cost_bucket and cost_component are required';
       end if;
+
+      v_is_capitalizable := case
+        when v_entry ? 'is_capitalizable' then (v_entry->>'is_capitalizable')::boolean
+        else null
+      end;
+      v_description := nullif(trim(v_entry->>'description'), '');
 
       if v_id is not null then
         update public.global_shipment_cost_entries e
         set
-          cost_type = (v_entry->>'cost_type')::public.global_shipment_cost_type,
+          cost_bucket = v_cost_bucket,
+          cost_component = v_cost_component,
+          is_capitalizable = coalesce(v_is_capitalizable, e.is_capitalizable),
+          description = coalesce(v_description, e.description),
           amount = v_amount,
-          exchange_rate = v_rate,
           currency_id = nullif(v_entry->>'currency_id', '')::bigint,
-          payment_source = nullif(v_entry->>'payment_source', ''),
-          entity_type = nullif(v_entry->>'entity_type', ''),
-          entity_id = nullif(v_entry->>'entity_id', '')::bigint,
-          allocation = nullif(v_entry->>'allocation', ''),
           metadata = coalesce(v_entry->'metadata', '{}'::jsonb),
           section_id = nullif(v_entry->>'section_id', '')::bigint,
           updated_at = now()
@@ -10656,27 +10707,23 @@ begin
         insert into public.global_shipment_cost_entries (
           parent_tenant_id,
           shipment_id,
-          cost_type,
+          cost_bucket,
+          cost_component,
+          is_capitalizable,
+          description,
           amount,
           currency_id,
-          exchange_rate,
-          payment_source,
-          entity_type,
-          entity_id,
-          allocation,
           metadata,
           section_id
         ) values (
           v_ship.parent_tenant_id,
           p_shipment_id,
-          (v_entry->>'cost_type')::public.global_shipment_cost_type,
+          v_cost_bucket,
+          v_cost_component,
+          coalesce(v_is_capitalizable, true),
+          v_description,
           v_amount,
           nullif(v_entry->>'currency_id', '')::bigint,
-          v_rate,
-          nullif(v_entry->>'payment_source', ''),
-          nullif(v_entry->>'entity_type', ''),
-          nullif(v_entry->>'entity_id', '')::bigint,
-          nullif(v_entry->>'allocation', ''),
           coalesce(v_entry->'metadata', '{}'::jsonb),
           nullif(v_entry->>'section_id', '')::bigint
         )
@@ -10719,7 +10766,7 @@ $$;
 ALTER FUNCTION "public"."save_global_shipment_cost_entries"("p_shipment_id" bigint, "p_entries" "jsonb", "p_delete_ids" bigint[], "p_received_weight" numeric, "p_total_weight_kg" numeric) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."upsert_global_shipment_cost_entry"("p_shipment_id" bigint, "p_cost_type" "public"."global_shipment_cost_type", "p_amount" numeric, "p_exchange_rate" numeric DEFAULT 1.0, "p_currency_id" bigint DEFAULT NULL::bigint, "p_payment_source" "text" DEFAULT NULL::"text", "p_entity_type" "text" DEFAULT NULL::"text", "p_entity_id" bigint DEFAULT NULL::bigint, "p_allocation" "text" DEFAULT NULL::"text", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb", "p_section_id" bigint DEFAULT NULL::bigint, "p_id" bigint DEFAULT NULL::bigint) RETURNS "public"."global_shipment_cost_entries"
+CREATE OR REPLACE FUNCTION "public"."upsert_global_shipment_cost_entry"("p_shipment_id" bigint, "p_cost_bucket" "public"."global_shipment_cost_bucket", "p_cost_component" "public"."global_shipment_cost_component", "p_amount" numeric, "p_currency_id" bigint DEFAULT NULL::bigint, "p_metadata" "jsonb" DEFAULT '{}'::"jsonb", "p_section_id" bigint DEFAULT NULL::bigint, "p_id" bigint DEFAULT NULL::bigint, "p_description" "text" DEFAULT NULL::"text", "p_is_capitalizable" boolean DEFAULT true) RETURNS "public"."global_shipment_cost_entries"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -10744,21 +10791,15 @@ begin
     raise exception 'amount must be >= 0';
   end if;
 
-  if p_exchange_rate is null or p_exchange_rate <= 0 then
-    raise exception 'exchange_rate must be > 0';
-  end if;
-
   if p_id is not null then
     update public.global_shipment_cost_entries e
     set
-      cost_type = p_cost_type,
+      cost_bucket = p_cost_bucket,
+      cost_component = p_cost_component,
+      is_capitalizable = coalesce(p_is_capitalizable, e.is_capitalizable),
+      description = coalesce(p_description, e.description),
       amount = p_amount,
-      exchange_rate = p_exchange_rate,
       currency_id = p_currency_id,
-      payment_source = p_payment_source,
-      entity_type = p_entity_type,
-      entity_id = p_entity_id,
-      allocation = p_allocation,
       metadata = coalesce(p_metadata, '{}'::jsonb),
       section_id = p_section_id,
       updated_at = now()
@@ -10773,34 +10814,30 @@ begin
     insert into public.global_shipment_cost_entries (
       parent_tenant_id,
       shipment_id,
-      cost_type,
+      cost_bucket,
+      cost_component,
+      is_capitalizable,
+      description,
       amount,
       currency_id,
-      exchange_rate,
-      payment_source,
-      entity_type,
-      entity_id,
-      allocation,
       metadata,
       section_id
     ) values (
       v_ship.parent_tenant_id,
       p_shipment_id,
-      p_cost_type,
+      p_cost_bucket,
+      p_cost_component,
+      coalesce(p_is_capitalizable, true),
+      p_description,
       p_amount,
       p_currency_id,
-      p_exchange_rate,
-      p_payment_source,
-      p_entity_type,
-      p_entity_id,
-      p_allocation,
       coalesce(p_metadata, '{}'::jsonb),
       p_section_id
     )
     returning * into v_row;
   end if;
 
-  if p_cost_type is distinct from 'local'::public.global_shipment_cost_type
+  if coalesce(v_row.is_capitalizable, true)
      and exists (select 1 from public.global_shipment_items where shipment_id = p_shipment_id) then
     perform public.stamp_global_shipment_landed_costs(p_shipment_id);
   end if;
@@ -10810,7 +10847,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."upsert_global_shipment_cost_entry"("p_shipment_id" bigint, "p_cost_type" "public"."global_shipment_cost_type", "p_amount" numeric, "p_exchange_rate" numeric, "p_currency_id" bigint, "p_payment_source" "text", "p_entity_type" "text", "p_entity_id" bigint, "p_allocation" "text", "p_metadata" "jsonb", "p_section_id" bigint, "p_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."upsert_global_shipment_cost_entry"("p_shipment_id" bigint, "p_cost_bucket" "public"."global_shipment_cost_bucket", "p_cost_component" "public"."global_shipment_cost_component", "p_amount" numeric, "p_currency_id" bigint, "p_metadata" "jsonb", "p_section_id" bigint, "p_id" bigint, "p_description" "text", "p_is_capitalizable" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."upsert_global_stock_allocation"("p_parent_tenant_id" bigint, "p_child_tenant_id" bigint, "p_stock_id" bigint, "p_quantity" integer) RETURNS "jsonb"
@@ -10857,10 +10894,10 @@ begin
   end if;
 
   v_tenant_id := v_file.tenant_id;
-  if v_tenant_id is null and v_file.billing_profile_id is not null then
+  if v_tenant_id is null and v_file.profile_id is not null then
     select tenant_id into v_tenant_id
-    from public.billing_profiles
-    where id = v_file.billing_profile_id;
+    from public.profiles
+    where id = v_file.profile_id;
   end if;
 
   if v_tenant_id is not null and not (
@@ -10870,7 +10907,7 @@ begin
     raise exception 'access denied for tenant %', v_tenant_id;
   end if;
 
-  if v_tenant_id is null or v_file.billing_profile_id is null or v_item.product_id is null then
+  if v_tenant_id is null or v_file.profile_id is null or v_item.product_id is null then
     return null;
   end if;
 
@@ -10884,7 +10921,7 @@ begin
   if v_confirmed_qty <= 0 or v_open_qty <= 0 then
     delete from public.product_based_costing_backlog_items
     where tenant_id = v_tenant_id
-      and billing_profile_id = v_file.billing_profile_id
+      and profile_id = v_file.profile_id
       and product_id = v_item.product_id;
     return null;
   end if;
@@ -10915,7 +10952,7 @@ begin
 
   insert into public.product_based_costing_backlog_items (
     tenant_id,
-    billing_profile_id,
+    profile_id,
     product_id,
     open_quantity,
     name,
@@ -10931,7 +10968,7 @@ begin
   )
   values (
     v_tenant_id,
-    v_file.billing_profile_id,
+    v_file.profile_id,
     v_item.product_id,
     v_open_qty,
     coalesce(v_item.name, v_prod.name),
@@ -10945,7 +10982,7 @@ begin
     v_item.id,
     now()
   )
-  on conflict (tenant_id, billing_profile_id, product_id)
+  on conflict (tenant_id, profile_id, product_id)
   do update set
     open_quantity = excluded.open_quantity,
     name = excluded.name,
@@ -11235,14 +11272,12 @@ declare
   v_line_gross_weight_kg numeric;
   v_line_cargo_share numeric := 0;
   v_line_purchase_base numeric;
-  v_effective_rate numeric := 1;
+  v_prod_rate numeric := 1;
+  v_cargo_fx numeric := 1;
   v_landed_cost numeric;
   v_total_qty numeric;
-
-  v_product_amount numeric := 0;
-  v_cargo_amount numeric := 0;
-  v_goods_bdt numeric := 0;
-  v_cargo_bdt numeric := 0;
+  v_cargo_foreign numeric := 0;
+  v_fx jsonb;
 begin
   select
     shipment_id,
@@ -11274,14 +11309,10 @@ begin
   from public.global_shipments
   where id = v_shipment_id;
 
-  select
-    coalesce(sum(amount) filter (where cost_type = 'product'), 0),
-    coalesce(sum(amount * exchange_rate) filter (where cost_type = 'product'), 0),
-    coalesce(sum(amount) filter (where cost_type in ('cargo', 'duty')), 0),
-    coalesce(sum(amount * exchange_rate) filter (where cost_type in ('cargo', 'duty')), 0)
-  into v_product_amount, v_goods_bdt, v_cargo_amount, v_cargo_bdt
-  from public.global_shipment_cost_entries
-  where shipment_id = v_shipment_id;
+  v_fx := public._global_shipment_landed_fx_inputs(v_shipment_id);
+  v_cargo_foreign := coalesce((v_fx ->> 'cargo_foreign')::numeric, 0);
+  v_prod_rate := coalesce((v_fx ->> 'product_conversion_rate')::numeric, 1);
+  v_cargo_fx := coalesce((v_fx ->> 'cargo_conversion_rate')::numeric, 1);
 
   select coalesce(sum(((product_weight + package_weight) * ordered_quantity) / 1000.0), 0)
   into v_total_packaging_weight_kg
@@ -11290,15 +11321,15 @@ begin
 
   v_line_gross_weight_kg := ((coalesce(v_product_weight, 0) + coalesce(v_package_weight, 0)) * coalesce(v_qty, 0)) / 1000.0;
 
-  if v_qty > 0 and v_cargo_amount > 0 then
+  if v_qty > 0 and v_cargo_foreign > 0 then
     if v_total_packaging_weight_kg > 0 then
-      v_line_cargo_share := ((v_line_gross_weight_kg / v_total_packaging_weight_kg) * v_cargo_amount) / v_qty;
+      v_line_cargo_share := ((v_line_gross_weight_kg / v_total_packaging_weight_kg) * v_cargo_foreign) / v_qty;
     else
       select coalesce(sum(ordered_quantity), 0) into v_total_qty
       from public.global_shipment_items
       where shipment_id = v_shipment_id;
       if v_total_qty > 0 then
-        v_line_cargo_share := ((v_qty / v_total_qty) * v_cargo_amount) / v_qty;
+        v_line_cargo_share := ((v_qty / v_total_qty) * v_cargo_foreign) / v_qty;
       end if;
     end if;
   end if;
@@ -11309,13 +11340,8 @@ begin
     return round(v_line_purchase_base::numeric, 4);
   end if;
 
-  if (v_product_amount + v_cargo_amount) > 0 then
-    v_effective_rate := (v_goods_bdt + v_cargo_bdt) / (v_product_amount + v_cargo_amount);
-  else
-    v_effective_rate := 1.0;
-  end if;
-
-  v_landed_cost := v_line_purchase_base * v_effective_rate;
+  v_landed_cost := (coalesce(v_purchase_price, 0) * v_prod_rate)
+    + (coalesce(v_line_cargo_share, 0) * v_cargo_fx);
   return round(v_landed_cost::numeric, 4);
 end;
 $$;
@@ -11324,7 +11350,7 @@ $$;
 ALTER FUNCTION "public"."calculate_landed_unit_cost"("p_shipment_item_id" bigint) OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."calculate_landed_unit_cost"("p_shipment_item_id" bigint) IS 'Unit cost: prefer global_shipment_items.landed_cost_bdt stamp; else legacy header-rate formula for drafts.';
+COMMENT ON FUNCTION "public"."calculate_landed_unit_cost"("p_shipment_item_id" bigint) IS 'Unit cost: prefer landed_cost_bdt stamp; else SKU price × material pay FX + weight share of freight × freight pay FX.';
 
 
 
@@ -11534,6 +11560,8 @@ begin
   -- Ensure cost entries from header are synced
   perform public.ensure_global_shipment_cost_entries_from_header(p_shipment_id);
 
+  perform public.ensure_global_shipment_default_section(p_shipment_id);
+
   -- 1. Sections with vendor info
   select coalesce(
     jsonb_agg(
@@ -11575,7 +11603,7 @@ begin
   select coalesce(
     jsonb_agg(
       to_jsonb(ce.*)
-      order by ce.cost_type asc, ce.id asc
+      order by ce.cost_bucket asc, ce.cost_component asc, ce.id asc
     ),
     '[]'::jsonb
   )
@@ -11833,7 +11861,7 @@ begin
     from public.product_based_costing_items pci
     inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
     where pci.id = p_source_id
-      and f.billing_profile_id is not null;
+      and f.profile_id is not null;
   end if;
 end;
 $$;
@@ -12013,7 +12041,7 @@ begin
     into v_line_tenant_id, v_doc_status
     from public.product_based_costing_files f
     where f.id = p_document_id
-      and f.billing_profile_id is not null;
+      and f.profile_id is not null;
 
     if v_line_tenant_id is null then
       raise exception 'costing file not found';
@@ -12095,7 +12123,7 @@ begin
       from public.product_based_costing_items pci
       inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
       where f.id = p_document_id
-        and f.billing_profile_id is not null
+        and f.profile_id is not null
     ),
     upserted as (
       insert into public.preorder_demand (
@@ -12204,7 +12232,7 @@ begin
     into v_line_tenant_id, v_doc_status
     from public.product_based_costing_files f
     where f.id = p_document_id
-      and f.billing_profile_id is not null;
+      and f.profile_id is not null;
 
     if v_line_tenant_id is null then
       raise exception 'costing file not found';
@@ -12274,7 +12302,7 @@ begin
       inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
       where v_doc_type = 'pbc_costing_file'
         and f.id = p_document_id
-        and f.billing_profile_id is not null
+        and f.profile_id is not null
     ) q
     order by q.source_id
   loop
@@ -12486,7 +12514,7 @@ begin
     into v_line_tenant_id, v_doc_status
     from public.product_based_costing_files f
     where f.id = p_document_id
-      and f.billing_profile_id is not null;
+      and f.profile_id is not null;
 
     if v_line_tenant_id is null then
       raise exception 'costing file not found';
@@ -12562,7 +12590,7 @@ begin
       from public.product_based_costing_items pci
       inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
       where f.id = p_document_id
-        and f.billing_profile_id is not null
+        and f.profile_id is not null
     ),
     upserted as (
       insert into public.preorder_demand (
@@ -12738,7 +12766,7 @@ declare
   v_doc_type text := lower(trim(coalesce(p_document_type, '')));
   v_close_action text := lower(trim(coalesce(p_close_action, '')));
   v_operating_tenant_id bigint;
-  v_billing_profile_id bigint;
+  v_profile_id bigint;
   v_doc_status text;
   v_parent_tenant_id bigint;
   v_global_invoice_id bigint;
@@ -12770,10 +12798,10 @@ begin
   if v_doc_type = 'shop_order' then
     select
       o.tenant_id,
-      o.billing_profile_id,
+      o.profile_id,
       o.global_invoice_id,
       public.normalize_shop_order_procurement_status(o.status)
-    into v_operating_tenant_id, v_billing_profile_id, v_global_invoice_id, v_doc_status
+    into v_operating_tenant_id, v_profile_id, v_global_invoice_id, v_doc_status
     from public.shop_orders o
     where o.id = p_document_id
       and o.shop_type_snapshot = 'vendor_catalog';
@@ -12784,10 +12812,10 @@ begin
   elsif v_doc_type = 'pbc_costing_file' then
     select
       f.tenant_id,
-      f.billing_profile_id,
+      f.profile_id,
       f.invoice_id,
       public.normalize_pbc_procurement_status(f.status)
-    into v_operating_tenant_id, v_billing_profile_id, v_pbc_invoice_id, v_doc_status
+    into v_operating_tenant_id, v_profile_id, v_pbc_invoice_id, v_doc_status
     from public.product_based_costing_files f
     where f.id = p_document_id;
 
@@ -12819,8 +12847,8 @@ begin
     raise exception 'document must be packed to close picks';
   end if;
 
-  if v_billing_profile_id is null and v_close_action in ('take', 'condition') then
-    raise exception 'billing_profile_id is required on document';
+  if v_profile_id is null and v_close_action in ('take', 'condition') then
+    raise exception 'profile_id is required on document';
   end if;
 
   select coalesce(t.parent_id, t.id)
@@ -12918,7 +12946,7 @@ begin
     v_payload := jsonb_build_object(
       'invoice', jsonb_build_object(
         'invoice_type', 'wholesale',
-        'billing_profile_id', v_billing_profile_id,
+        'profile_id', v_profile_id,
         'channel_meta', jsonb_build_object('delivery_kind', v_delivery_kind)
       ),
       'items', v_items,
@@ -13184,7 +13212,7 @@ CREATE OR REPLACE FUNCTION "public"."create_invoice_from_preorder_demand_documen
     AS $$
 declare
   v_doc_type text := lower(trim(coalesce(p_document_type, '')));
-  v_billing_profile_id bigint;
+  v_profile_id bigint;
   v_operating_tenant_id bigint;
   v_existing_invoice_id bigint;
   v_doc_status text;
@@ -13205,10 +13233,10 @@ begin
   if v_doc_type = 'shop_order' then
     select
       o.tenant_id,
-      o.billing_profile_id,
+      o.profile_id,
       o.global_invoice_id,
       public.normalize_shop_order_procurement_status(o.status)
-    into v_operating_tenant_id, v_billing_profile_id, v_existing_invoice_id, v_doc_status
+    into v_operating_tenant_id, v_profile_id, v_existing_invoice_id, v_doc_status
     from public.shop_orders o
     where o.id = p_document_id
       and o.shop_type_snapshot = 'vendor_catalog';
@@ -13219,10 +13247,10 @@ begin
   elsif v_doc_type = 'pbc_costing_file' then
     select
       f.tenant_id,
-      f.billing_profile_id,
+      f.profile_id,
       f.invoice_id,
       public.normalize_pbc_procurement_status(f.status)
-    into v_operating_tenant_id, v_billing_profile_id, v_existing_invoice_id, v_doc_status
+    into v_operating_tenant_id, v_profile_id, v_existing_invoice_id, v_doc_status
     from public.product_based_costing_files f
     where f.id = p_document_id;
 
@@ -13242,8 +13270,8 @@ begin
     raise exception 'document must be procuring to create invoice from demand';
   end if;
 
-  if v_billing_profile_id is null then
-    raise exception 'billing_profile_id is required on document';
+  if v_profile_id is null then
+    raise exception 'profile_id is required on document';
   end if;
 
   if v_existing_invoice_id is not null then
@@ -13317,7 +13345,7 @@ begin
   v_payload := jsonb_build_object(
     'invoice', jsonb_build_object(
       'invoice_type', 'wholesale',
-      'billing_profile_id', v_billing_profile_id
+      'profile_id', v_profile_id
     ),
     'items', v_items,
     'issue', false
@@ -13657,7 +13685,7 @@ begin
       on pd.source_type = 'pbc_costing_item'
       and pd.source_id = pci.id
       and pd.tenant_id = f.tenant_id
-    where f.billing_profile_id is not null
+    where f.profile_id is not null
       and public.normalize_pbc_procurement_status(f.status) = v_status
       and (
         v_search is null
@@ -13894,7 +13922,7 @@ begin
       and pd.tenant_id = f.tenant_id
     where v_doc_type = 'pbc_costing_file'
       and f.id = p_document_id
-      and f.billing_profile_id is not null
+      and f.profile_id is not null
   ),
   demand_lines as (
     select * from shop_lines
@@ -14142,7 +14170,7 @@ begin
       on pd.source_type = 'pbc_costing_item'
       and pd.source_id = pci.id
       and pd.tenant_id = f.tenant_id
-    where f.billing_profile_id is not null
+    where f.profile_id is not null
       and public.normalize_pbc_procurement_status(f.status) = v_status
       and (
         v_search is null

@@ -69,7 +69,23 @@ Lots mirror kind/reason; warehouse grades via tags — do not write splits back 
 ## User stories
 
 ### US-1 Shipment, sections, landed costs
-- Four statuses; sections + cost entries (`section_id` optional). Record only — `sync_shipment_ap_bills` after save ([WA15](../bills_pays/00-gaps.md)).
+- Four statuses; sections + cost entries (`section_id` optional). Record only — `sync_shipment_ap_bills` after save ([WA15](../bills_pays/00-gaps.md)). After a bucket bill is **issued**, money changes go through bills/pays (credit/debit notes), not cost-row edits.
+- Each row is `global_shipment_cost_entries`: **bucket** (`material` \| `freight` \| `customs` \| `handling` \| `finance` \| `other`) × **component** (`subtotal` \| `carriage` \| `vat_tax` \| `misc`), plus `description`, BDT `amount`, optional `currency_id`, `section_id`, `metadata`.
+- **`is_capitalizable`:** `true` → included in landed unit cost (BDT stamp); `false` → shipment P&L / local opex only (fines, refundable VAT, misc tips when not capitalized). No extra VAT leftover rule — leftover on stock only if that row’s flag is on.
+- Matrix examples: material+subtotal = goods invoice; freight+subtotal = ocean/air base; customs+`vat_tax` = CD/RD/AIT; handling+`misc` = gate labor; finance+`misc` = SWIFT; other+`misc` = dock tips (cap flag per row). Cash settlement is on bills/pays only (not on cost rows).
+- **FX (not stored on `global_shipments`):** from AP **pays** on bucket bills `material` and `freight` (`shipment_ap_bucket_paid_totals` / `_global_shipment_landed_fx_inputs`). Product rate = Taka ÷ foreign on material pays. Cargo FX = same on freight pays. Cargo **per kg** = freight foreign ÷ shipment kg. Transaction rate = (material Taka + freight Taka) ÷ (material foreign + freight foreign). FX pays store allocations in **bill/foreign** units; Taka = alloc × `pays.exchange_rate`. `post_ap_payout_with_allocations` restamps landed cost after pay.
+- **Unit stamp:** SKU `purchase_price` × **product rate** + weight share of freight foreign × **cargo FX**. Do **not** convert the whole line at the blended transaction rate. Do **not** run customs/handling/finance/other through the goods+cargo blend.
+
+| Bucket | Split onto SKUs |
+| :--- | :--- |
+| `material` | Already on the line (`purchase_price`). Header `carriage` on material → add to **goods value**, not kg. |
+| `freight` | **Gross kg** (product + package); fallback **qty** if weight is 0. |
+| `customs` | **CIF Taka** on the line (goods Taka + freight Taka share). |
+| `handling` | **Qty**. |
+| `finance` | **Goods Taka**. |
+| `other` | **Qty** when capitalized. |
+
+Code today stamps only material+freight ([PS13](00-gaps.md)).
 
 ### US-7 Outcomes + stock
 - `global_shipment_item_outcomes`; lots FK `outcome_id`. Restamp on-hand only when vendor price drops.
@@ -78,7 +94,7 @@ Lots mirror kind/reason; warehouse grades via tags — do not write splits back 
 - Post from sellable extras; guard land qty = ordered per line.
 
 ### US-8 Local costs
-- Subtract from shipment profit; not in unit stamp.
+- Rows with `is_capitalizable = false` subtract from shipment profit; they do not affect unit stamp. (Often `other` bucket or customs VAT; not limited to a single legacy `local` type.)
 
 ### US-9 Close
 - `is_closed` → read-only shipment UI ([PS10](00-gaps.md)).

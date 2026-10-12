@@ -150,7 +150,7 @@
 
           <q-select
             v-if="profiles.length > 1"
-            v-model="billingProfileId"
+            v-model="profileId"
             :options="profiles"
             option-value="id"
             option-label="name"
@@ -165,7 +165,7 @@
             Bill-to: <span class="text-weight-medium text-grey-9">{{ profiles[0].name }}</span>
           </div>
 
-          <template v-if="billingProfileId">
+          <template v-if="profileId">
             <div class="row items-center justify-between q-mb-sm">
               <div class="text-subtitle2 text-weight-medium">Allocate to bills</div>
               <div class="row items-center q-gutter-xs">
@@ -481,7 +481,7 @@ const groups = ref<CustomerGroupPaymentSummary[]>([]);
 const selectedGroupId = ref<number | null>(null);
 const selectedGroupSnapshot = ref<CustomerGroupPaymentSummary | null>(null);
 const profiles = ref<Array<{ id: number; name: string }>>([]);
-const billingProfileId = ref<number | null>(null);
+const profileId = ref<number | null>(null);
 const loadingBills = ref(false);
 
 const selectedGroup = computed(
@@ -569,7 +569,7 @@ const resetInstrumentFields = () => {
 
 const resetReceiptForm = () => {
   openBills.value = [];
-  billingProfileId.value = null;
+  profileId.value = null;
   cashAmount.value = null;
   reference.value = '';
   note.value = '';
@@ -591,18 +591,18 @@ const selectGroup = async (group: CustomerGroupPaymentSummary) => {
   selectedGroupId.value = group.id;
   selectedGroupSnapshot.value = group;
   resetReceiptForm();
-  profiles.value = await paysRepository.listBillingProfilesForGroup(group.id);
-  billingProfileId.value = profiles.value[0]?.id ?? null;
+  profiles.value = await paysRepository.listCustomerProfilesForGroup(group.id);
+  profileId.value = profiles.value[0]?.id ?? null;
 };
 
-watch(billingProfileId, async (profileId) => {
+watch(profileId, async (profileId) => {
   openBills.value = [];
   if (!profileId || !parentTenantId.value) return;
   loadingBills.value = true;
   try {
     const { data } = await invoiceRepository.listGlobalInvoices({
       parentTenantId: parentTenantId.value,
-      billingProfileId: profileId,
+      profileId: profileId,
       invoiceStatus: 'issued',
       quickFilter: 'unpaid',
       pageSize: 100,
@@ -706,7 +706,7 @@ const instrumentFields = computed(() => ({
 }));
 
 const submitDisabledReason = computed((): string | null => {
-  if (!billingProfileId.value) return 'Select a billing profile';
+  if (!profileId.value) return 'Select a billing profile';
   if ((cashAmount.value ?? 0) <= 0) return 'Enter an amount received';
   if (selectedAllocTotal.value > (cashAmount.value ?? 0)) {
     return 'Bill allocations cannot exceed the payment amount';
@@ -722,10 +722,10 @@ const goBack = () => {
 };
 
 const submit = async () => {
-  if (!billingProfileId.value || !canSubmit.value) return;
+  if (!profileId.value || !canSubmit.value) return;
   await collectMutation.mutateAsync({
     tenantId: tenantId.value,
-    billingProfileId: billingProfileId.value,
+    profileId: profileId.value,
     receivedOn: receivedOn.value,
     note: note.value || null,
     reference: reference.value || null,

@@ -1,5 +1,5 @@
 <template>
-  <Teleport to="body">
+  <Teleport to="body" :disabled="containInParent">
     <Transition name="app-resizable-overlay-panel">
       <div
         v-if="modelValue"
@@ -55,6 +55,8 @@ const props = withDefaults(
     storageKey?: string;
     ariaLabel?: string;
     zIndex?: number;
+    /** Keep overlay in parent DOM (e.g. inside q-dialog) instead of teleporting to body */
+    containInParent?: boolean;
   }>(),
   {
     side: 'right',
@@ -63,6 +65,7 @@ const props = withDefaults(
     defaultWidth: 680,
     ariaLabel: 'Side panel',
     zIndex: 6000,
+    containInParent: false,
   },
 );
 
@@ -141,12 +144,32 @@ function onResizeEnd() {
   }
 }
 
+function focusPanelOnOpen() {
+  requestAnimationFrame(() => {
+    const panel = panelRef.value;
+    if (!panel) return;
+
+    const autofocusEl =
+      panel.querySelector<HTMLElement>('[data-autofocus="true"]') ??
+      panel.querySelector<HTMLElement>(
+        'input.q-field__native:not([disabled]):not([readonly]), textarea.q-field__native:not([disabled]):not([readonly])',
+      );
+
+    if (autofocusEl) {
+      autofocusEl.focus();
+      return;
+    }
+
+    panel.focus();
+  });
+}
+
 watch(
   () => props.modelValue,
   (open) => {
     if (open) {
       panelWidth.value = clampWidth(panelWidth.value);
-      requestAnimationFrame(() => panelRef.value?.focus());
+      focusPanelOnOpen();
     }
   },
 );

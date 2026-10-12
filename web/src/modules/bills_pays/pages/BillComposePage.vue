@@ -79,7 +79,7 @@
           <div class="col-12 col-sm-6">
             <div class="text-overline text-grey-7 q-mb-xs">To</div>
             <q-select
-              v-model="billingProfileId"
+              v-model="profileId"
               :options="profileOptions"
               option-value="id"
               option-label="name"
@@ -250,7 +250,7 @@ import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import { supabase } from 'src/boot/supabase';
 import { formatAmountBdt } from 'src/utils/currency';
 import { requestConfirmation } from 'src/utils/appFeedback';
-import type { BillingProfile } from 'src/modules/sales_invoice/repositories/billingProfileRepository';
+import type { CustomerProfile } from 'src/modules/sales_invoice/repositories/customerProfileRepository';
 import {
   invoiceRepository,
   type SalesInvoiceStockItem,
@@ -338,7 +338,7 @@ const editInvoiceId = computed(() => {
 
 const billKind = ref<'trade' | 'walkin'>('trade');
 const tradePaperKind = ref<'take' | 'condition'>('take');
-const billingProfileId = ref<number | null>(null);
+const profileId = ref<number | null>(null);
 const invoiceDate = ref(new Date().toISOString().slice(0, 10));
 const dueDate = ref<string | null>(null);
 
@@ -354,9 +354,9 @@ const lines = ref<ComposeLine[]>([]);
 const removedItemIds = ref<number[]>([]);
 const loadingExisting = ref(false);
 
-const profileOptions = ref<BillingProfile[]>([]);
+const profileOptions = ref<CustomerProfile[]>([]);
 const selectedProfile = computed(
-  () => profileOptions.value.find((p) => p.id === billingProfileId.value) ?? null,
+  () => profileOptions.value.find((p) => p.id === profileId.value) ?? null,
 );
 
 const filterProfiles = async (
@@ -371,7 +371,7 @@ const filterProfiles = async (
   }
   const needle = val.trim();
   let query = supabase
-    .from('billing_profiles')
+    .from('profiles')
     .select('*')
     .eq('tenant_id', tenantId.value)
     .order('name', { ascending: true })
@@ -381,7 +381,7 @@ const filterProfiles = async (
   }
   const { data } = await query;
   update(() => {
-    profileOptions.value = (data as BillingProfile[]) ?? [];
+    profileOptions.value = (data as CustomerProfile[]) ?? [];
   });
 };
 
@@ -396,7 +396,7 @@ const estimatedTotal = computed(() =>
   Math.max(subtotal.value - (discountAmount.value || 0) + chargesSum.value, 0),
 );
 
-const canSave = computed(() => !!tenantId.value && !!billingProfileId.value);
+const canSave = computed(() => !!tenantId.value && !!profileId.value);
 const canIssue = computed(
   () => canSave.value && lines.value.length > 0 && lines.value.every((l) => l.quantity > 0),
 );
@@ -442,7 +442,7 @@ const buildPayload = () => {
   return {
     invoice: {
       invoice_type: invoiceType,
-      billing_profile_id: billingProfileId.value!,
+      profile_id: profileId.value!,
       invoice_date: invoiceDate.value,
       due_date: dueDate.value || undefined,
       discount_amount: discountAmount.value || 0,
@@ -538,7 +538,7 @@ const loadExisting = async (id: number) => {
     const meta = bill.channel_meta as { delivery_kind?: string } | null | undefined;
     const kind = (meta?.delivery_kind ?? 'take').toLowerCase();
     tradePaperKind.value = kind === 'condition' ? 'condition' : 'take';
-    billingProfileId.value = bill.billing_profile_id ?? null;
+    profileId.value = bill.profile_id ?? null;
     invoiceDate.value = bill.invoice_date?.slice(0, 10) ?? invoiceDate.value;
     dueDate.value = bill.due_date?.slice(0, 10) ?? null;
     discountAmount.value = Number(bill.discount_amount ?? 0);
@@ -557,13 +557,13 @@ const loadExisting = async (id: number) => {
       sell_price_amount: item.sell_price_amount,
       line_discount_amount: item.line_discount_amount,
     }));
-    if (billingProfileId.value && bill.billing_profiles) {
+    if (profileId.value && bill.profiles) {
       profileOptions.value = [
         {
-          id: billingProfileId.value,
-          name: bill.billing_profiles.name,
+          id: profileId.value,
+          name: bill.profiles.name,
           tenant_id: tenantId.value,
-        } as BillingProfile,
+        } as CustomerProfile,
       ];
     }
     const no = bill.invoice_no?.trim();

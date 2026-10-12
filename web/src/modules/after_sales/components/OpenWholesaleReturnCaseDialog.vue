@@ -103,7 +103,7 @@ export type WholesaleCaseDialogContext = {
   salesInvoiceId: number;
   invoiceNo: string;
   customerName: string;
-  billingProfileId: number | null;
+  profileId: number | null;
   lines: Array<{ invoice_item_id: number; product_name: string; max_qty: number }>;
 };
 
@@ -151,7 +151,7 @@ const loadDemoInvoice = () => {
     salesInvoiceId: 9001,
     invoiceNo: 'WS-20260820-0123',
     customerName: 'Metro Traders Ltd',
-    billingProfileId: 201,
+    profileId: 201,
     lines: [
       { invoice_item_id: 10001, product_name: 'Premium Cotton Tee — Navy L', max_qty: 5 },
     ],
@@ -214,7 +214,7 @@ const onSubmit = async () => {
       operating_tenant_name: tenant.name,
       sales_invoice_id: ctx.salesInvoiceId,
       sales_invoice_no: ctx.invoiceNo,
-      billing_profile_id: ctx.billingProfileId,
+      profile_id: ctx.profileId,
       customer_name: ctx.customerName,
       reason_code: reasonCode.value,
       lines: lineDrafts.value

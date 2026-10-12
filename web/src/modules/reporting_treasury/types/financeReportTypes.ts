@@ -13,7 +13,7 @@ export type CustomerDuesAging = {
 };
 
 export type CustomerDuesRow = {
-  billing_profile_id: number;
+  profile_id: number;
   name: string;
   phone: string | null;
   credit_limit: number | null;
@@ -53,7 +53,7 @@ export type InvoiceBookRow = {
   invoice_type: string;
   payment_status: string;
   customer_name: string;
-  billing_profile_id: number | null;
+  profile_id: number | null;
   issued_by_name: string | null;
   billed: number;
   returned: number;
@@ -127,7 +127,7 @@ export type InvoiceProfitReportPayload = {
 };
 
 export type WalletLiabilityRow = {
-  billing_profile_id: number;
+  profile_id: number;
   name: string;
   phone: string | null;
   credit_issued: number;

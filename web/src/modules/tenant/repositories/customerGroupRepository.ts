@@ -76,16 +76,16 @@ const createCustomerGroup = async (payload: CustomerGroupCreateInput & {
   const addressVal = payload.address?.trim() || null;
 
   await supabase
-    .from('billing_profiles')
+    .from('profiles')
     .update({
       name: adminName,
       email: emailVal,
       phone: phoneVal,
       address: addressVal,
-      color: payload.accent_color?.trim() || null,
+      accent_color: payload.accent_color?.trim() || null,
     })
     .eq('customer_group_id', group.id)
-    .eq('tenant_id', payload.tenant_id);
+    .eq('profile_type', 'customer');
 
   return group;
 };
@@ -141,7 +141,7 @@ const updateCustomerGroup = async (payload: CustomerGroupUpdateInput & {
 
   if (Object.keys(bpUpdate).length > 0) {
     await supabase
-      .from('billing_profiles')
+      .from('profiles')
       .update(bpUpdate)
       .eq('customer_group_id', group.id);
   }
@@ -268,14 +268,14 @@ const deleteCustomerGroupMember = async (
   }
 };
 
-const createAndLinkToBillingProfile = async (payload: {
-  billing_profile_id: number;
+const createAndLinkToCustomerProfile = async (payload: {
+  profile_id: number;
   tenant_id: number;
   name: string;
   email?: string | null;
   phone?: string | null;
   address?: string | null;
-  color?: string | null;
+  accent_color?: string | null;
 }): Promise<CustomerGroup> => {
   // 1. Create the customer group
   const { data: group, error: groupError } = await supabase
@@ -285,7 +285,7 @@ const createAndLinkToBillingProfile = async (payload: {
         tenant_id: payload.tenant_id,
         name: payload.name.trim(),
         is_active: true,
-        accent_color: payload.color?.trim() || null,
+        accent_color: payload.accent_color?.trim() || null,
       },
     ])
     .select()
@@ -297,29 +297,29 @@ const createAndLinkToBillingProfile = async (payload: {
 
   const createdGroup = group as CustomerGroup;
 
-  // 2. Link existing billing profile to newly created customer group
+  // 2. Link existing customer profile to newly created customer group
   const { error: bpError } = await supabase
-    .from('billing_profiles')
+    .from('profiles')
     .update({
       customer_group_id: createdGroup.id,
       name: payload.name.trim(),
       email: payload.email?.trim() || null,
       phone: payload.phone?.trim() || null,
       address: payload.address?.trim() || null,
-      color: payload.color?.trim() || null,
+      accent_color: payload.accent_color?.trim() || null,
     })
-    .eq('id', payload.billing_profile_id);
+    .eq('id', payload.profile_id);
 
   if (bpError) {
     throw bpError;
   }
 
-  // 3. Clean up any redundant auto-created billing profile from DB trigger
+  // 3. Clean up any redundant auto-created profile from DB trigger
   await supabase
-    .from('billing_profiles')
+    .from('profiles')
     .delete()
     .eq('customer_group_id', createdGroup.id)
-    .neq('id', payload.billing_profile_id);
+    .neq('id', payload.profile_id);
 
   // 4. Create admin member if email provided
   if (payload.email?.trim()) {
@@ -341,7 +341,7 @@ const createAndLinkToBillingProfile = async (payload: {
 export const customerGroupRepository = {
   listCustomerGroupsByTenant,
   createCustomerGroup,
-  createAndLinkToBillingProfile,
+  createAndLinkToCustomerProfile,
   updateCustomerGroup,
   deleteCustomerGroup,
   listCustomerGroupMembersByGroup,

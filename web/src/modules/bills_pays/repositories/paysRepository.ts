@@ -49,8 +49,8 @@ export type CustomerGroupPayoutSummary = {
   name: string;
   account_code: string;
   payable_balance: number;
-  billing_profiles: Array<{
-    billing_profile_id: number;
+  profiles: Array<{
+    profile_id: number;
     name: string;
     payable_balance: number;
   }>;
@@ -228,11 +228,12 @@ const listCustomerGroupsPayoutSummary = async (
   return (data as CustomerGroupPayoutSummary[]) ?? [];
 };
 
-const listBillingProfilesForGroup = async (customerGroupId: number) => {
+const listCustomerProfilesForGroup = async (customerGroupId: number) => {
   const { data, error } = await supabase
-    .from('billing_profiles')
+    .from('profiles')
     .select('id, name')
     .eq('customer_group_id', customerGroupId)
+    .eq('profile_type', 'customer')
     .order('name');
   if (error) throw error;
   return data ?? [];
@@ -240,25 +241,31 @@ const listBillingProfilesForGroup = async (customerGroupId: number) => {
 
 export type PostCustomerReceiptInput = {
   tenant_id: number;
-  billing_profile_id: number;
+  profile_id: number;
   received_on?: string;
   note?: string | null;
   reference?: string | null;
   source: 'customer_cash' | 'bank' | 'store_credit';
   instruments?: WholesalePaymentInstrumentInput[];
   allocations: Array<{ bill_id: number; amount: number }>;
+  settlement_currency_code?: string;
+  foreign_amount?: number | null;
+  exchange_rate?: number | null;
 };
 
 const postCustomerReceipt = async (payload: PostCustomerReceiptInput) => {
   const { data, error } = await supabase.rpc('post_customer_receipt_with_allocations', {
     p_tenant_id: payload.tenant_id,
-    p_billing_profile_id: payload.billing_profile_id,
+    p_profile_id: payload.profile_id,
     p_received_on: payload.received_on ?? localToday(),
     p_note: payload.note ?? null,
     p_reference: payload.reference ?? null,
     p_source: payload.source,
     p_instruments: payload.instruments ?? [],
     p_allocations: payload.allocations,
+    p_settlement_currency_code: payload.settlement_currency_code ?? 'BDT',
+    p_foreign_amount: payload.foreign_amount ?? null,
+    p_exchange_rate: payload.exchange_rate ?? null,
   });
   if (error) throw error;
   return data;
@@ -383,14 +390,14 @@ const postApPayoutWithAllocations = async (payload: {
 
 const dispenseMiddlemanPayout = async (payload: {
   tenant_id: number;
-  billing_profile_id: number;
+  profile_id: number;
   amount: number;
   payout_method?: string;
   reference_notes?: string | null;
 }) => {
   const { data, error } = await supabase.rpc('dispense_middleman_payout_from_tenant', {
     p_tenant_id: payload.tenant_id,
-    p_billing_profile_id: payload.billing_profile_id,
+    p_profile_id: payload.profile_id,
     p_amount: payload.amount,
     p_payout_method: payload.payout_method ?? 'bank_transfer',
     p_reference_notes: payload.reference_notes ?? null,
@@ -423,7 +430,7 @@ export const paysRepository = {
   getPayById,
   listCustomerGroupsPaymentSummary,
   listCustomerGroupsPayoutSummary,
-  listBillingProfilesForGroup,
+  listCustomerProfilesForGroup,
   listOpenApBillsForProfile,
   listApPayProfileSummaries,
   postCustomerReceipt,

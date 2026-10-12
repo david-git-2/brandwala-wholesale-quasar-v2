@@ -5,7 +5,7 @@ import { showSuccessNotification, handleApiFailure } from 'src/utils/appFeedback
 export interface BacklogItem {
   id: number;
   tenant_id: number;
-  billing_profile_id: number;
+  profile_id: number;
   product_id: number;
   open_quantity: number;
   name: string;
@@ -24,8 +24,8 @@ export function usePbcBacklog() {
   const saving = ref(false);
   const error = ref<string | null>(null);
 
-  async function fetchBacklogItems(tenantId: number, billingProfileId: number) {
-    if (!tenantId || !billingProfileId) {
+  async function fetchBacklogItems(tenantId: number, profileId: number) {
+    if (!tenantId || !profileId) {
       items.value = [];
       return;
     }
@@ -36,7 +36,7 @@ export function usePbcBacklog() {
     try {
       const { data, error: err } = await supabase.rpc('list_pbc_backlog_items', {
         p_tenant_id: tenantId,
-        p_billing_profile_id: billingProfileId,
+        p_profile_id: profileId,
       });
 
       if (err) {

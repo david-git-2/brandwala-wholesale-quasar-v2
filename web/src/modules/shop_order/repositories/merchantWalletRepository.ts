@@ -1,7 +1,7 @@
 import { supabase } from 'src/boot/supabase';
 
 export interface MerchantWalletSummary {
-  billing_profile_id: number;
+  profile_id: number;
   available_balance: number;
   pending_balance: number;
   locked_balance: number;
@@ -28,7 +28,7 @@ export const merchantWalletRepository = {
       throw new Error('No wallet summary returned');
     }
     return {
-      billing_profile_id: Number(row.billing_profile_id),
+      profile_id: Number(row.profile_id),
       available_balance: Number(row.available_balance || 0),
       pending_balance: Number(row.pending_balance || 0),
       locked_balance: Number(row.locked_balance || 0),

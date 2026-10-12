@@ -4,7 +4,7 @@ Same SKU. Shipment cost stays on the **shipment**. GP = [shipment P&L](../report
 
 Layers: **profile · bill · pay · alloc · cashbook**. Not a wallet. Rename map: [spec](spec.md#rename-map-spec--live).
 
-Same `bills` table. **Different paper.** Do not mix desks. Delivery paper **proforma** is not issued.
+Same `bills` table. **Different paper.** Stock lines optional (header/AP/service bills still issue and pay). Delivery paper **proforma** is not issued. Pays: receive or pay out from instruments or cashbook (profile leftover = custody).
 
 | Step | Wholesale | Dropship |
 | :--- | :--- | :--- |
@@ -65,7 +65,7 @@ Shipment **S-42**. Vendor goods **80,000**. Cargo+duty **12,000**. Local opex **
 | PAY out | Bank **95,000** with ALLOC across the three AP bills → all `paid` |
 | CASHBOOK | Tenant cash **−95,000** (not Collect) |
 
-Vendor **outcome credit** (cheaper price) still adjusts costing only until sold — not folded into these AP headers.
+Vendor **outcome qty** still adjusts costing until sold. Commercial short/VAT after issue = **credit note** on that AP bill (same `bills` table), then pay in / leftover. Do not rewrite the issued total.
 
 **What prints (snapshot on each AP bill):**
 
@@ -92,4 +92,4 @@ Better price on shipment **outcomes** = costing timing. Not a take bill. AP head
 | Deliver posts tenant cash | Remittance is tenant cash |
 | Second pay product for dropship | Same `pays`; `source` differs |
 | Unpaid condition as sales | Sales = issued **take** + **paid** condition |
-| Vendor credit on buyer bill | Outcomes now; AP later |
+| Vendor credit on buyer bill | Outcomes = qty/costing; AP money = credit note on the AP bill |

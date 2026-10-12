@@ -59,6 +59,9 @@ CREATE OR REPLACE TRIGGER "trg_batch_code_items_updated_at" BEFORE UPDATE ON "pu
 CREATE OR REPLACE TRIGGER "trg_global_shipment_cost_entries_updated_at" BEFORE UPDATE ON "public"."global_shipment_cost_entries" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
+CREATE OR REPLACE TRIGGER "trg_global_shipment_cost_entry_axes" BEFORE INSERT OR UPDATE ON "public"."global_shipment_cost_entries" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_global_shipment_cost_entry_axes"();
+
+
 
 CREATE OR REPLACE TRIGGER "trg_global_shipment_sections_updated_at" BEFORE UPDATE ON "public"."global_shipment_sections" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
@@ -108,7 +111,7 @@ CREATE OR REPLACE TRIGGER "trg_pbc_files_stamp_currency_codes" BEFORE INSERT OR 
 
 
 
-CREATE OR REPLACE TRIGGER "trg_pbc_files_auto_tenant_id" BEFORE INSERT OR UPDATE OF "billing_profile_id", "tenant_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"();
+CREATE OR REPLACE TRIGGER "trg_pbc_files_auto_tenant_id" BEFORE INSERT OR UPDATE OF "profile_id", "tenant_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"();
 
 
 
@@ -882,6 +885,8 @@ GRANT ALL ON FUNCTION "public"."ensure_default_vendor"("p_tenant_id" bigint) TO 
 
 REVOKE ALL ON FUNCTION "public"."ensure_global_shipment_cost_entries_from_header"("p_shipment_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."ensure_global_shipment_cost_entries_from_header"("p_shipment_id" bigint) TO "authenticated";
+REVOKE ALL ON FUNCTION "public"."ensure_global_shipment_default_section"("p_shipment_id" bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."ensure_global_shipment_default_section"("p_shipment_id" bigint) TO "authenticated";
 
 
 
@@ -1027,7 +1032,7 @@ GRANT ALL ON FUNCTION "public"."list_inventory_items_with_stock"("p_tenant_id" b
 
 
 
-GRANT ALL ON FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_pbc_backlog_items"("p_tenant_id" bigint, "p_profile_id" bigint) TO "authenticated";
 
 
 
@@ -1188,6 +1193,9 @@ GRANT ALL ON FUNCTION "public"."settle_shipment_payee"("p_shipment_id" bigint, "
 
 
 
+GRANT ALL ON FUNCTION "public"."refresh_global_shipment_fx_from_ap_payments"("p_shipment_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."refresh_global_shipment_fx_from_ap_payments"("p_shipment_id" bigint) TO "service_role";
+
 REVOKE ALL ON FUNCTION "public"."stamp_global_shipment_landed_costs"("p_shipment_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."stamp_global_shipment_landed_costs"("p_shipment_id" bigint) TO "authenticated";
 
@@ -1282,8 +1290,8 @@ GRANT ALL ON FUNCTION "public"."save_global_shipment_cost_entries"("p_shipment_i
 
 
 
-REVOKE ALL ON FUNCTION "public"."upsert_global_shipment_cost_entry"("p_shipment_id" bigint, "p_cost_type" "public"."global_shipment_cost_type", "p_amount" numeric, "p_exchange_rate" numeric, "p_currency_id" bigint, "p_payment_source" "text", "p_entity_type" "text", "p_entity_id" bigint, "p_allocation" "text", "p_metadata" "jsonb", "p_section_id" bigint, "p_id" bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."upsert_global_shipment_cost_entry"("p_shipment_id" bigint, "p_cost_type" "public"."global_shipment_cost_type", "p_amount" numeric, "p_exchange_rate" numeric, "p_currency_id" bigint, "p_payment_source" "text", "p_entity_type" "text", "p_entity_id" bigint, "p_allocation" "text", "p_metadata" "jsonb", "p_section_id" bigint, "p_id" bigint) TO "authenticated";
+REVOKE ALL ON FUNCTION "public"."upsert_global_shipment_cost_entry"("p_shipment_id" bigint, "p_cost_bucket" "public"."global_shipment_cost_bucket", "p_cost_component" "public"."global_shipment_cost_component", "p_amount" numeric, "p_currency_id" bigint, "p_metadata" "jsonb", "p_section_id" bigint, "p_id" bigint, "p_description" "text", "p_is_capitalizable" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."upsert_global_shipment_cost_entry"("p_shipment_id" bigint, "p_cost_bucket" "public"."global_shipment_cost_bucket", "p_cost_component" "public"."global_shipment_cost_component", "p_amount" numeric, "p_currency_id" bigint, "p_metadata" "jsonb", "p_section_id" bigint, "p_id" bigint, "p_description" "text", "p_is_capitalizable" boolean) TO "authenticated";
 
 
 

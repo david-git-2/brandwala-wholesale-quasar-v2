@@ -230,27 +230,30 @@ CREATE TABLE IF NOT EXISTS "public"."global_shipment_cost_entries" (
     "id" bigint NOT NULL,
     "parent_tenant_id" bigint NOT NULL,
     "shipment_id" bigint NOT NULL,
-    "cost_type" "public"."global_shipment_cost_type" NOT NULL,
+    "cost_bucket" "public"."global_shipment_cost_bucket" NOT NULL,
+    "cost_component" "public"."global_shipment_cost_component" NOT NULL,
+    "is_capitalizable" boolean DEFAULT true NOT NULL,
+    "description" "text",
     "amount" numeric NOT NULL,
     "currency_id" bigint,
-    "exchange_rate" numeric DEFAULT 1.0 NOT NULL,
-    "payment_source" "text",
-    "entity_type" "text",
-    "entity_id" bigint,
-    "allocation" "text",
     "metadata" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "settled_at" timestamp with time zone,
-    "settlement_ledger_id" "uuid",
     "section_id" bigint,
-    CONSTRAINT "global_shipment_cost_entries_amount_check" CHECK (("amount" >= (0)::numeric)),
-    CONSTRAINT "global_shipment_cost_entries_exchange_rate_check" CHECK (("exchange_rate" > (0)::numeric)),
-    CONSTRAINT "global_shipment_cost_entries_payment_source_check" CHECK ((("payment_source" IS NULL) OR ("payment_source" = ANY (ARRAY['cash'::"text", 'credit'::"text", 'wallet'::"text"]))))
+    CONSTRAINT "global_shipment_cost_entries_amount_check" CHECK (("amount" >= (0)::numeric))
 );
 
 
 ALTER TABLE "public"."global_shipment_cost_entries" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."global_shipment_cost_entries"."cost_bucket" IS 'Operational category: material, freight, customs, handling, finance, other.';
+
+
+COMMENT ON COLUMN "public"."global_shipment_cost_entries"."cost_component" IS 'Voucher line axis: subtotal, carriage, vat_tax, misc.';
+
+
+COMMENT ON COLUMN "public"."global_shipment_cost_entries"."is_capitalizable" IS 'When true, amount flows into landed unit cost (BDT stamp). When false, P&L / local opex only.';
 
 
 CREATE TABLE IF NOT EXISTS "public"."stock_locations" (
@@ -300,7 +303,7 @@ ALTER TABLE "public"."shipment_investments" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."product_based_costing_backlog_items" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
-    "billing_profile_id" bigint NOT NULL,
+    "profile_id" bigint NOT NULL,
     "product_id" bigint NOT NULL,
     "open_quantity" integer NOT NULL,
     "name" "text" NOT NULL,
@@ -713,7 +716,7 @@ CREATE TABLE IF NOT EXISTS "public"."product_based_costing_files" (
     "market_code" "text",
     "default_shipment_id" bigint,
     "vendor_id" bigint,
-    "billing_profile_id" bigint,
+    "profile_id" bigint,
     "customer_group_id" bigint,
     "buy_currency_id" bigint NOT NULL,
     "buy_currency_code" "text" NOT NULL,
@@ -1190,7 +1193,7 @@ ALTER TABLE ONLY "public"."stock_movements"
 
 
 ALTER TABLE ONLY "public"."product_based_costing_backlog_items"
-    ADD CONSTRAINT "uq_pbc_backlog_tenant_profile_product" UNIQUE ("tenant_id", "billing_profile_id", "product_id");
+    ADD CONSTRAINT "uq_pbc_backlog_tenant_profile_product" UNIQUE ("tenant_id", "profile_id", "product_id");
 
 
 
@@ -1260,15 +1263,11 @@ CREATE INDEX "global_shipment_cost_entries_parent_tenant_idx" ON "public"."globa
 
 
 
-CREATE INDEX "global_shipment_cost_entries_settled_idx" ON "public"."global_shipment_cost_entries" USING "btree" ("shipment_id") WHERE ("settled_at" IS NULL);
-
-
-
 CREATE INDEX "global_shipment_cost_entries_shipment_idx" ON "public"."global_shipment_cost_entries" USING "btree" ("shipment_id");
 
 
 
-CREATE INDEX "global_shipment_cost_entries_type_idx" ON "public"."global_shipment_cost_entries" USING "btree" ("shipment_id", "cost_type");
+CREATE INDEX "global_shipment_cost_entries_bucket_idx" ON "public"."global_shipment_cost_entries" USING "btree" ("shipment_id", "cost_bucket");
 
 
 
@@ -1340,11 +1339,11 @@ CREATE INDEX "global_stocks_stock_type_idx" ON "public"."global_stocks" USING "b
 
 
 
-CREATE INDEX "idx_pbc_backlog_tenant_profile" ON "public"."product_based_costing_backlog_items" USING "btree" ("tenant_id", "billing_profile_id");
+CREATE INDEX "idx_pbc_backlog_tenant_profile" ON "public"."product_based_costing_backlog_items" USING "btree" ("tenant_id", "profile_id");
 
 
 
-CREATE INDEX "product_based_costing_files_billing_profile_id_idx" ON "public"."product_based_costing_files" USING "btree" ("billing_profile_id");
+CREATE INDEX "product_based_costing_files_profile_id_idx" ON "public"."product_based_costing_files" USING "btree" ("profile_id");
 
 
 
@@ -1756,7 +1755,7 @@ ALTER TABLE ONLY "public"."global_stocks"
 
 
 ALTER TABLE ONLY "public"."product_based_costing_backlog_items"
-    ADD CONSTRAINT "product_based_costing_backlog_items_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "product_based_costing_backlog_items_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 
@@ -1781,7 +1780,7 @@ ALTER TABLE ONLY "public"."product_based_costing_backlog_items"
 
 
 ALTER TABLE ONLY "public"."product_based_costing_files"
-    ADD CONSTRAINT "product_based_costing_files_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE SET NULL;
+    ADD CONSTRAINT "product_based_costing_files_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 

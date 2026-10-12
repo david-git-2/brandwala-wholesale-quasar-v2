@@ -389,7 +389,7 @@ GRANT ALL ON FUNCTION "public"."get_my_dropship_wallet_summary"() TO "authentica
 GRANT ALL ON FUNCTION "public"."get_or_create_shop_cart"("p_shop_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_dropship_shop_cart"("p_shop_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_dropship_review_cart"("p_shop_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."submit_dropship_order_from_cart"("p_shop_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_shipping_post_code" "text", "p_billing_profile_id" bigint, "p_is_prepaid" boolean, "p_delivery_instructions" "text", "p_cod_charge_amount" numeric, "p_delivery_charge_amount" numeric, "p_print_charge_amount" numeric, "p_packing_charge_amount" numeric, "p_discount_amount" numeric, "p_recipient_pays_delivery" boolean, "p_recipient_pays_cod" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."submit_dropship_order_from_cart"("p_shop_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_shipping_post_code" "text", "p_profile_id" bigint, "p_is_prepaid" boolean, "p_delivery_instructions" "text", "p_cod_charge_amount" numeric, "p_delivery_charge_amount" numeric, "p_print_charge_amount" numeric, "p_packing_charge_amount" numeric, "p_discount_amount" numeric, "p_recipient_pays_delivery" boolean, "p_recipient_pays_cod" boolean) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint) TO "authenticated";
@@ -498,7 +498,7 @@ GRANT ALL ON FUNCTION "public"."staff_set_catalog_ordered_qty"("p_order_id" bigi
 GRANT ALL ON FUNCTION "public"."staff_set_catalog_delivered_qty"("p_order_id" bigint, "p_items" "jsonb") TO "authenticated";
 
 
-GRANT ALL ON FUNCTION "public"."submit_shop_order_from_cart"("p_cart_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_billing_profile_id" bigint, "p_is_prepaid" boolean, "p_delivery_instructions" "text", "p_cod_charge_amount" numeric, "p_delivery_charge_amount" numeric, "p_print_charge_amount" numeric, "p_packing_charge_amount" numeric, "p_discount_amount" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."submit_shop_order_from_cart"("p_cart_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_profile_id" bigint, "p_is_prepaid" boolean, "p_delivery_instructions" "text", "p_cod_charge_amount" numeric, "p_delivery_charge_amount" numeric, "p_print_charge_amount" numeric, "p_packing_charge_amount" numeric, "p_discount_amount" numeric) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."update_dropship_consignment"("p_order_id" bigint, "p_cod_collect_amount" numeric, "p_package_weight_band" "text", "p_item_category" "text", "p_parcel_description" "text", "p_courier_order_ref" "text", "p_delivery_zone" "text", "p_sender_name" "text", "p_pickup_phone" "text", "p_pickup_address" "text", "p_payout_account_type" "text", "p_payout_account_info" "text", "p_allow_open_box" boolean, "p_delivery_instruction_notes" "text", "p_courier_service_id" "uuid", "p_courier_tracking_number" "text", "p_courier_awb_number" "text", "p_courier_consignment_id" "text", "p_tracking_url" "text", "p_courier_cost_amount" numeric, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_phone_secondary" "text", "p_shipping_address" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_delivery_charge_amount" numeric, "p_cod_charge_amount" numeric) TO "authenticated";
@@ -686,9 +686,9 @@ GRANT USAGE,SELECT ON SEQUENCE "public"."customer_demand_bucket_items_id_seq" TO
 GRANT ALL ON SEQUENCE "public"."customer_demand_bucket_items_id_seq" TO "service_role";
 
 
-GRANT ALL ON FUNCTION "public"."can_access_demand_bucket_profile"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_staff_only" boolean) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."add_demand_bucket_item"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint, "p_snapshot" "jsonb", "p_quantity" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."list_demand_bucket_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_status" "public"."demand_bucket_status", "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_access_demand_bucket_profile"("p_tenant_id" bigint, "p_profile_id" bigint, "p_staff_only" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."add_demand_bucket_item"("p_tenant_id" bigint, "p_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint, "p_snapshot" "jsonb", "p_quantity" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_demand_bucket_items"("p_tenant_id" bigint, "p_profile_id" bigint, "p_status" "public"."demand_bucket_status", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."pop_demand_bucket_item"("p_bucket_item_id" bigint, "p_popped_into_type" "text", "p_popped_into_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."pop_demand_bucket_items"("p_bucket_item_ids" bigint[], "p_popped_into_type" "text", "p_popped_into_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."cancel_demand_bucket_item"("p_bucket_item_id" bigint) TO "authenticated";

@@ -116,7 +116,7 @@ export interface ReconcileSingleOrderResult {
 
 export interface DispensePayoutPayload {
   tenantId: number;
-  billingProfileId: number;
+  profileId: number;
   amount: number;
   method?: string;
   trxId?: string;
@@ -124,13 +124,13 @@ export interface DispensePayoutPayload {
 
 export interface DispensePayoutResult {
   success: boolean;
-  billing_profile_id: number;
+  profile_id: number;
   amount: number;
   new_balance: number;
 }
 
 export interface MerchantPayoutSummary {
-  billing_profile_id: number;
+  profile_id: number;
   name: string;
   email: string | null;
   phone: string | null;

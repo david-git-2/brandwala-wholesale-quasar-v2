@@ -227,7 +227,7 @@ const parentTenantId = computed(() => {
 const search = ref('');
 const summary = ref<CustomerGroupPayoutSummary[]>([]);
 const selectedGroupId = ref<number | null>(null);
-const selectedProfile = ref<{ billing_profile_id: number; name: string; payable_balance: number } | null>(null);
+const selectedProfile = ref<{ profile_id: number; name: string; payable_balance: number } | null>(null);
 const amount = ref<number | null>(null);
 const method = ref('bank_transfer');
 const notes = ref('');
@@ -353,7 +353,7 @@ const selectApProfile = async (row: ApPayProfileSummary) => {
 
 const selectGroup = (row: CustomerGroupPayoutSummary) => {
   selectedGroupId.value = row.customer_group_id;
-  const profiles = row.billing_profiles ?? [];
+  const profiles = row.profiles ?? [];
   selectedProfile.value = profiles[0] ?? null;
   amount.value = selectedProfile.value?.payable_balance ?? null;
 };
@@ -428,7 +428,7 @@ const submitMerchant = async () => {
   try {
     await paysRepository.dispenseMiddlemanPayout({
       tenant_id: tenantId.value,
-      billing_profile_id: selectedProfile.value.billing_profile_id,
+      profile_id: selectedProfile.value.profile_id,
       amount: Number(amount.value),
       payout_method: method.value,
       reference_notes: notes.value || null,

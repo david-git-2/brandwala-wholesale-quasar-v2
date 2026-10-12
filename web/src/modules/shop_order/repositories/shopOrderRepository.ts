@@ -316,7 +316,7 @@ const submitShopOrderFromCart = async (
   recipientName: string,
   recipientPhone: string,
   shippingAddress: string,
-  billingProfileId: number | null,
+  profileId: number | null,
   isPrepaid?: boolean,
   deliveryInstructions?: string | null,
   codChargeAmount?: number,
@@ -336,7 +336,7 @@ const submitShopOrderFromCart = async (
     p_recipient_phone_secondary: recipientPhoneSecondary ?? null,
     p_shipping_district: shippingDistrict ?? null,
     p_shipping_thana: shippingThana ?? null,
-    p_billing_profile_id: billingProfileId || null,
+    p_profile_id: profileId || null,
     p_is_prepaid: isPrepaid ?? false,
     p_delivery_instructions: deliveryInstructions ?? null,
     p_cod_charge_amount: codChargeAmount ?? 0,
@@ -1167,11 +1167,11 @@ const staffSetCatalogDeliveredQty = async (
 
 const listCustomerOrderBacklogItems = async (
   tenantId: number,
-  billingProfileId: number,
+  profileId: number,
 ): Promise<any[]> => {
   const { data, error } = await supabase.rpc('list_customer_order_backlog_items', {
     p_tenant_id: tenantId,
-    p_billing_profile_id: billingProfileId,
+    p_profile_id: profileId,
   });
   if (error) throw error;
   return (data as any[] | null) ?? [];

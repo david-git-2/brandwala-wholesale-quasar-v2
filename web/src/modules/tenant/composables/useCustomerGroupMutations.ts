@@ -26,14 +26,14 @@ export function useCustomerGroupMutations() {
 
   const createAndLinkGroupMutation = useMutation({
     mutationFn: (input: {
-      billing_profile_id: number;
+      profile_id: number;
       tenant_id: number;
       name: string;
       email?: string | null;
       phone?: string | null;
       address?: string | null;
-      color?: string | null;
-    }) => customerGroupRepository.createAndLinkToBillingProfile(input),
+      accent_color?: string | null;
+    }) => customerGroupRepository.createAndLinkToCustomerProfile(input),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({
         queryKey: tenantQueryKeys.customerGroups(data.tenant_id),

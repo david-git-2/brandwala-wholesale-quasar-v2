@@ -108,7 +108,7 @@ export interface SubmitDropshipOrderPayload {
   discountAmount?: number;
   recipientPaysDelivery: boolean;
   recipientPaysCod: boolean;
-  billingProfileId?: number | null;
+  profileId?: number | null;
 }
 
 export interface SubmitDropshipOrderResult {
@@ -155,7 +155,7 @@ const submitDropshipOrderFromCart = async (
     p_shipping_district: payload.shippingDistrict ?? null,
     p_shipping_thana: payload.shippingThana ?? null,
     p_shipping_post_code: payload.shippingPostCode ?? null,
-    p_billing_profile_id: payload.billingProfileId ?? null,
+    p_profile_id: payload.profileId ?? null,
     p_is_prepaid: payload.isPrepaid ?? false,
     p_delivery_instructions: payload.deliveryInstructions ?? null,
     p_cod_charge_amount: payload.codChargeAmount,

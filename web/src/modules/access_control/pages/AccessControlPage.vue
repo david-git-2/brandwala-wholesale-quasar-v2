@@ -113,7 +113,7 @@
                   :selected-group-id="selectedCustomerGroupId"
                   :selected-group="selectedCustomerGroup"
                   :sorted-members="sortedCustomerGroupMembers"
-                  :linked-billing-profiles="linkedBillingProfiles"
+                  :linked-billing-profiles="linkedCustomerProfiles"
                   :shop-roles="shopRoles"
                   :has-cgm-overrides-map="hasCgmOverridesMap"
                   :can-administer-customer-group="canAdministerCustomerGroup"
@@ -203,12 +203,12 @@
         @confirm="confirmDeleteCustomerGroupMember"
       />
 
-      <LinkBillingProfileDialog
+      <LinkCustomerProfileDialog
         v-model="linkProfileDialogOpen"
         :group-name="selectedCustomerGroup?.name"
         :unassociated-profile-options="unassociatedProfileOptions"
-        :saving="billingProfileStore.saving"
-        @create-profile="goToBillingProfileCreate"
+        :saving="customerProfileStore.saving"
+        @create-profile="goToCustomerProfileCreate"
         @submit="submitLinkProfile"
       />
     </div>
@@ -225,7 +225,7 @@ import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore';
 import type { Membership, TenantMembershipRole } from 'src/modules/membership/types';
 import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
-import { useBillingProfileStore } from 'src/modules/sales_invoice/stores/billingProfileStore';
+import { useCustomerProfileStore } from 'src/modules/sales_invoice/stores/customerProfileStore';
 import { useTenantModuleStore } from 'src/modules/tenant/stores/tenantModuleStore';
 import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
@@ -252,7 +252,7 @@ import {
   useTenantMembersQuery,
   useCustomerGroupsQuery,
   useCustomerGroupMembersQuery,
-  useBillingProfilesQuery,
+  useCustomerProfilesQuery,
   useInvestorsQuery,
 } from '../composables/useAccessControlQueries';
 
@@ -270,7 +270,7 @@ import CustomerGroupMemberFormDialog, {
   type CustomerMemberFormData,
 } from '../components/dialogs/CustomerGroupMemberFormDialog.vue';
 import DeleteCustomerGroupMemberDialog from '../components/dialogs/DeleteCustomerGroupMemberDialog.vue';
-import LinkBillingProfileDialog from '../components/dialogs/LinkBillingProfileDialog.vue';
+import LinkCustomerProfileDialog from '../components/dialogs/LinkCustomerProfileDialog.vue';
 import { useCanAdministerCustomerGroup } from 'src/modules/customer/composables/useCanAdministerCustomerGroup';
 
 // Styling helpers
@@ -298,7 +298,7 @@ const tenantModuleStore = useTenantModuleStore();
 const moduleStore = useModuleStore();
 const membershipStore = useMembershipStore();
 const customerGroupStore = useCustomerGroupStore();
-const billingProfileStore = useBillingProfileStore();
+const customerProfileStore = useCustomerProfileStore();
 
 const canAdministerCustomerGroup = useCanAdministerCustomerGroup();
 const tenantId = computed(() => authStore.tenantId);
@@ -366,8 +366,8 @@ const customerGroupMembersQuery = useCustomerGroupMembersQuery(selectedCustomerG
 const customerGroupMembers = computed<CustomerGroupMember[]>(() => customerGroupMembersQuery.data.value || []);
 const customerGroupMembersLoading = computed(() => customerGroupMembersQuery.isLoading.value);
 
-const billingProfilesQuery = useBillingProfilesQuery(tenantId, isCustomerGroupsTab);
-const billingProfiles = computed(() => billingProfilesQuery.data.value || []);
+const customerProfilesQuery = useCustomerProfilesQuery(tenantId, isCustomerGroupsTab);
+const customerProfiles = computed(() => customerProfilesQuery.data.value || []);
 
 const investorsQuery = useInvestorsQuery(isTeamTab);
 const allInvestors = computed(() => investorsQuery.data.value || []);
@@ -666,15 +666,15 @@ const selectCustomerGroup = (groupId: number) => {
   selectedCustomerGroupId.value = groupId;
 };
 
-const linkedBillingProfiles = computed(() => {
+const linkedCustomerProfiles = computed(() => {
   if (!selectedCustomerGroupId.value) return [];
-  return billingProfiles.value.filter(
+  return customerProfiles.value.filter(
     (p) => p.customer_group_id === selectedCustomerGroupId.value,
   );
 });
 
 const unassociatedProfileOptions = computed(() => {
-  return billingProfiles.value
+  return customerProfiles.value
     .filter((p) => p.customer_group_id !== selectedCustomerGroupId.value)
     .map((p) => ({
       label: p.customer_group_id
@@ -690,7 +690,7 @@ const openLinkProfileDialog = () => {
   linkProfileDialogOpen.value = true;
 };
 
-const goToBillingProfileCreate = () => {
+const goToCustomerProfileCreate = () => {
   linkProfileDialogOpen.value = false;
   void router.push({
     name: 'app-global-billing-profiles',
@@ -705,10 +705,10 @@ const goToBillingProfileCreate = () => {
 
 const submitLinkProfile = async (profileId: number) => {
   if (!selectedCustomerGroupId.value) return;
-  const profile = billingProfileStore.items.find((p) => p.id === profileId);
+  const profile = customerProfileStore.items.find((p) => p.id === profileId);
   if (!profile) return;
 
-  const res = await billingProfileStore.updateBillingProfile({
+  const res = await customerProfileStore.updateCustomerProfile({
     id: profile.id,
     patch: {
       name: profile.name,
@@ -725,7 +725,7 @@ const submitLinkProfile = async (profileId: number) => {
 };
 
 const unlinkProfile = async (profile: any) => {
-  await billingProfileStore.updateBillingProfile({
+  await customerProfileStore.updateCustomerProfile({
     id: profile.id,
     patch: {
       name: profile.name,

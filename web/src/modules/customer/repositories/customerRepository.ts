@@ -113,9 +113,9 @@ const updateCustomer = async (input: UpdateCustomerInput): Promise<void> => {
 
   if (groupError) throw groupError;
 
-  // 2. Update billing_profiles
+  // 2. Update profiles
   const { error: bpError } = await supabase
-    .from('billing_profiles')
+    .from('profiles')
     .update({
       name: input.admin_name.trim(),
       email: input.email?.trim() || null,

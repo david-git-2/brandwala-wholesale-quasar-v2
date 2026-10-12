@@ -54,7 +54,7 @@
       dense
       :rows="rows"
       :columns="columns"
-      row-key="billing_profile_id"
+      row-key="profile_id"
       :loading="isLoading"
       :pagination="{ rowsPerPage: 50 }"
       class="compact-ops-table full-height bg-white"

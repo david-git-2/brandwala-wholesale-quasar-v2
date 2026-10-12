@@ -4,10 +4,13 @@
     class="add-shipment-items-drawer-dialog"
     maximized
     no-shake
+    no-focus
+    allow-focus-outside
     @hide="onDialogHide"
   >
     <AppResizableOverlayPanel
       :model-value="panelOpen"
+      contain-in-parent
       storage-key="procurement.add-shipment-items-drawer-width"
       :default-width="820"
       :min-width="480"

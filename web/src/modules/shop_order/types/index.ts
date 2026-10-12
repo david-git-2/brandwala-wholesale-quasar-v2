@@ -470,7 +470,7 @@ export interface CustomerOrderDetailOrder {
   shipping_district: string | null;
   shipping_thana: string | null;
   recipient_profile_id: number | null;
-  billing_profile_id: number | null;
+  profile_id: number | null;
   placed_at: string | null;
   fulfilled_at: string | null;
   shop_sell_currency_id: number | null;
@@ -540,7 +540,7 @@ export interface ShopOrder {
   shipping_district?: string | null;
   shipping_thana?: string | null;
   recipient_profile_id?: number | null;
-  billing_profile_id: number | null;
+  profile_id: number | null;
   placed_at: string | null;
   fulfilled_at: string | null;
   global_invoice_id: number | null;

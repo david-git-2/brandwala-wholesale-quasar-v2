@@ -1977,7 +1977,7 @@ function isBacklogItemOnCurrentFile(item: BacklogItem) {
 
 function refreshBacklog() {
   const tenantId = tenantStore.selectedTenant?.id;
-  const profileId = file.value?.billing_profile_id;
+  const profileId = file.value?.profile_id;
   if (tenantId && profileId) {
     void backlog.fetchBacklogItems(tenantId, profileId);
   }

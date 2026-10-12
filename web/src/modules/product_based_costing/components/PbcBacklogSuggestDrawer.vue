@@ -179,7 +179,7 @@ import { computed, ref, watch } from 'vue';
 export interface BacklogItem {
   id: number;
   tenant_id: number;
-  billing_profile_id: number;
+  profile_id: number;
   product_id: number;
   open_quantity: number;
   name: string;

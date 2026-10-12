@@ -8,4 +8,8 @@ export const cashbookQueryKeys = {
     [...cashbookQueryKeys.root, 'detail', tenantId ?? 0, entityType, entityId ?? 0] as const,
   ledger: (tenantId: number | null, entityType: string, entityId: number | null, params: Record<string, unknown>) =>
     [...cashbookQueryKeys.root, 'ledger', tenantId ?? 0, entityType, entityId ?? 0, params] as const,
+  cashbookAccount: (booksTenantId: number | null, entityType: string, entityId: number | null) =>
+    [...cashbookQueryKeys.root, 'account', booksTenantId ?? 0, entityType, entityId ?? 0] as const,
+  points: (cashbookAccountId: number | null) =>
+    [...cashbookQueryKeys.root, 'points', cashbookAccountId ?? 0] as const,
 };

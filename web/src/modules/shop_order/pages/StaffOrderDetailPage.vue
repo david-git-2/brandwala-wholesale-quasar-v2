@@ -134,10 +134,10 @@
 
     <!-- Catalog Customer Backlog Drawer -->
     <CatalogBacklogDrawer
-      v-if="currentOrder && currentOrder.billing_profile_id"
+      v-if="currentOrder && currentOrder.profile_id"
       v-model="showBacklogDrawer"
       :tenant-id="currentOrder.tenant_id"
-      :billing-profile-id="currentOrder.billing_profile_id"
+      :billing-profile-id="currentOrder.profile_id"
     />
 
     <CatalogOrderSettingsDialog

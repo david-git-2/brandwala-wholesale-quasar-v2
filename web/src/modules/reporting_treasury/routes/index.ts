@@ -31,7 +31,7 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
     redirect: (to) => accountingRedirect(to, '/finance/reports'),
   },
   {
-    path: '/:tenantSlug?/app/accounting/customer-payments/:billingProfileId',
+    path: '/:tenantSlug?/app/accounting/customer-payments/:profileId',
     redirect: (to) => accountingRedirect(to, '/finance/reports'),
   },
   {

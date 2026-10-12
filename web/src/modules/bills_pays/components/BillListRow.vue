@@ -63,7 +63,7 @@ const statusSlug = computed(() => invoiceListStatusSlug(props.row));
 const statusLabel = computed(() => invoiceListStatusLabel(props.row));
 const statusIcon = computed(() => invoiceListStatusIcon(props.row));
 const profileName = computed(
-  () => props.row.billing_profile_name || props.row.recipient_name || '—',
+  () => props.row.profile_name || props.row.recipient_name || '—',
 );
 </script>
 

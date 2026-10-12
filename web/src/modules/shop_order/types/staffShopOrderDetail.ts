@@ -61,7 +61,7 @@ export interface StaffShopOrderDetailOrder {
     district: string | null;
     thana: string | null;
     profile_id: number | null;
-    billing_profile_id: number | null;
+    profile_id: number | null;
     delivery_instructions: string | null;
     is_prepaid: boolean;
   };

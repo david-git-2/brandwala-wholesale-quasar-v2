@@ -1,4 +1,4 @@
-/** Local opex rows stored as `global_shipment_cost_entries` with cost_type = local. */
+/** P&L-only rows: `global_shipment_cost_entries` with `is_capitalizable = false` (often `other` / legacy `local`). */
 export type GlobalShipmentLocalCost = {
   id: number;
   parent_tenant_id: number;

@@ -290,7 +290,7 @@ const submitShopPayout = async () => {
   try {
     await paysRepository.dispenseMiddlemanPayout({
       tenant_id: pay.value.tenant_id,
-      billing_profile_id: pay.value.profile_id,
+      profile_id: pay.value.profile_id,
       amount: Number(shopPayoutAmount.value),
       payout_method: shopPayoutMethod.value,
       reference_notes: shopPayoutNotes.value || null,
@@ -318,7 +318,7 @@ watch(
     try {
       const { data } = await invoiceRepository.listGlobalInvoices({
         parentTenantId: pay.value.tenant_id,
-        billingProfileId: pay.value.profile_id,
+        profileId: pay.value.profile_id,
         invoiceStatus: 'issued',
         quickFilter: 'unpaid',
         pageSize: 100,

@@ -5,11 +5,11 @@
     </template>
 
     <template #header-extra>
-      <div class="row items-center q-gutter-x-sm no-wrap">
+      <div class="app-header-extra row items-center q-gutter-x-sm no-wrap">
         <!-- Modern Quick-search trigger (⌘K) -->
         <button
           type="button"
-          class="header-quick-search gt-xs"
+          class="header-quick-search gt-sm"
           aria-label="Search pages"
           @click="workspaceShellRef?.openCommandPalette()"
         >
@@ -18,7 +18,17 @@
           <kbd class="header-quick-search__kbd">⌘K</kbd>
         </button>
 
-        <div class="header-divider gt-xs" />
+        <q-btn
+          flat
+          round
+          dense
+          class="header-quick-search-icon lt-md"
+          icon="ph ph-magnifying-glass"
+          aria-label="Search pages"
+          @click="workspaceShellRef?.openCommandPalette()"
+        />
+
+        <div class="header-divider gt-sm" />
 
         <NotificationBell />
 
@@ -32,12 +42,14 @@
           dense
           class="tenant-switcher-pill q-px-sm"
           menu-class="tenant-switcher-menu"
+          dropdown-icon="none"
           :loading="selectingTenantId !== null"
         >
           <template #label>
             <div class="row items-center no-wrap q-gutter-x-xs">
               <q-icon name="ph ph-buildings" size="14px" color="primary" />
-              <span class="tenant-switcher-pill__label ellipsis">{{ selectedTenantLabel }}</span>
+              <span class="tenant-switcher-pill__label ellipsis gt-sm">{{ selectedTenantLabel }}</span>
+              <q-icon name="ph ph-caret-down" size="12px" class="tenant-switcher-pill__caret gt-xs" />
             </div>
           </template>
 
@@ -73,7 +85,7 @@
           </q-list>
         </q-btn-dropdown>
 
-        <div class="header-divider gt-xs" />
+        <div class="header-divider gt-sm" />
 
         <!-- User Profile Avatar & Menu (Includes Appearance, Language, Help, Logout) -->
         <UserProfileMenu @sign-out="onMobileSignOut" />
@@ -187,6 +199,24 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.app-header-extra {
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1023px) {
+  .app-header-extra {
+    column-gap: 0.2rem !important;
+  }
+}
+
+.header-quick-search-icon {
+  color: var(--bw-neutral-muted);
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+}
+
 .header-quick-search {
   display: inline-flex;
   align-items: center;
@@ -250,11 +280,22 @@ onMounted(() => {
 
 .tenant-switcher-pill :deep(.q-btn__content) {
   color: var(--bw-neutral-ink);
+  flex: 0 1 auto;
+  gap: 4px;
 }
 
-.tenant-switcher-pill :deep(.q-btn-dropdown__arrow) {
+/* dropdown-icon="none" still renders an empty arrow slot */
+.tenant-switcher-pill :deep(.q-btn-dropdown__arrow-container) {
+  display: none;
+  width: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.tenant-switcher-pill__caret {
   color: var(--bw-neutral-chrome);
-  margin-left: 2px;
+  flex-shrink: 0;
 }
 
 .tenant-switcher-pill__label {
@@ -291,9 +332,10 @@ onMounted(() => {
   font-weight: 600;
 }
 
-@media (max-width: 600px) {
-  .tenant-switcher-pill__label {
-    max-width: 90px;
+@media (max-width: 1023px) {
+  .tenant-switcher-pill {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
   }
 }
 </style>

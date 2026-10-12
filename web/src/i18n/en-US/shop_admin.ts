@@ -446,7 +446,7 @@ export default {
   group_name: 'Group Name',
   accent_color: 'Accent Color Hex (e.g. #B45F34)',
   status: 'Status',
-  col_billing_profiles: 'Billing Profiles',
+  col_profiles: 'Billing Profiles',
   none_required_dropship: 'None (Required for Dropship)',
   edit_group: 'Edit group',
   connect_billing_profile: 'Connect billing profile',

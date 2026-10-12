@@ -716,6 +716,7 @@ const actions = useInboundShipmentActions({
 
 const {
   currentPurchaseCurrencySymbol,
+  currentCostCurrencySymbol,
   isStockPosted,
   isCostsLocked,
   canEditLineStructure,
@@ -1267,6 +1268,7 @@ const displayedItems = computed(() => {
           ? formatLineLandedCostTooltip(
               calculateLineLandedCostBreakdown(item, forCostingTooltip, storeItems),
               currentPurchaseCurrencySymbol.value,
+              currentCostCurrencySymbol.value,
             )
           : null;
       const totalCost = unitCost * oQty;

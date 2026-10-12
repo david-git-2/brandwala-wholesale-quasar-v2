@@ -139,7 +139,7 @@
             icon="ph ph-plus"
             label="Add rate"
             data-test="cost-entry-add-product"
-            @click="addRow('product')"
+            @click="addRow('material')"
           />
         </div>
 
@@ -167,33 +167,18 @@
               </q-btn>
             </div>
             <div class="row q-col-gutter-sm">
-              <div class="col-12 col-sm-6">
+              <div class="col-12">
                 <q-input
                   v-model.number="row.amount"
                   type="number"
                   step="0.01"
                   min="0"
-                  label="Amount *"
+                  label="Amount (BDT) *"
                   dense
                   outlined
                   class="soft-input"
-                  :prefix="purchaseCurrencySymbol"
+                  prefix="৳"
                   :disable="!canEdit"
-                  hint="Purchase currency total for this FX slice"
-                />
-              </div>
-              <div class="col-12 col-sm-6">
-                <q-input
-                  v-model.number="row.exchange_rate"
-                  type="number"
-                  step="0.0001"
-                  min="0.0001"
-                  label="Exchange rate → BDT *"
-                  dense
-                  outlined
-                  class="soft-input"
-                  :disable="!canEdit || isLocalShipment"
-                  :hint="isLocalShipment ? 'Forced to 1.00 for local' : 'Rate to base currency'"
                 />
               </div>
               <div class="col-12">
@@ -227,7 +212,7 @@
             icon="ph ph-plus"
             label="Add rate"
             data-test="cost-entry-add-cargo"
-            @click="addRow('cargo')"
+            @click="addRow('freight')"
           />
         </div>
 
@@ -321,32 +306,18 @@
               </q-btn>
             </div>
             <div class="row q-col-gutter-sm">
-              <div class="col-12 col-sm-6">
+              <div class="col-12">
                 <q-input
                   v-model.number="row.amount"
                   type="number"
                   step="0.01"
                   min="0"
-                  label="Freight amount *"
+                  label="Freight amount (BDT) *"
                   dense
                   outlined
                   class="soft-input"
-                  :prefix="purchaseCurrencySymbol"
+                  prefix="৳"
                   :disable="!canEdit"
-                />
-              </div>
-              <div class="col-12 col-sm-6">
-                <q-input
-                  v-model.number="row.exchange_rate"
-                  type="number"
-                  step="0.0001"
-                  min="0.0001"
-                  label="Exchange rate → BDT *"
-                  dense
-                  outlined
-                  class="soft-input"
-                  :disable="!canEdit || isLocalShipment"
-                  :hint="isLocalShipment ? 'Forced to 1.00 for local' : undefined"
                 />
               </div>
               <div class="col-12">
@@ -595,7 +566,6 @@ import type {
   CostEntryDraft,
   CostEntriesSavePayload,
   GlobalShipmentCostEntry,
-  ShipmentCostPayeeType,
 } from '../types/shipmentCostEntry';
 import type { ShipmentSection } from '../types/shipmentSection';
 import { showErrorNotification, showSuccessNotification, showWarningNotification } from 'src/utils/appFeedback';
@@ -758,8 +728,8 @@ const confirmSectionBalance = async () => {
   }
 };
 
-const productRows = computed(() => drafts.value.filter((d) => d.cost_type === 'product'));
-const cargoRows = computed(() => drafts.value.filter((d) => d.cost_type === 'cargo'));
+const productRows = computed(() => drafts.value.filter((d) => d.cost_bucket === 'material'));
+const cargoRows = computed(() => drafts.value.filter((d) => d.cost_bucket === 'freight'));
 
 const getSectionCalculatedPurchase = (sectionId?: number | null) => {
   const items = shipmentItems.value;
@@ -877,27 +847,16 @@ const confirmDistributeWeight = async () => {
 
 const newLocalKey = () => `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-const emptyRow = (costType: 'product' | 'cargo'): CostEntryDraft => {
+const emptyRow = (costBucket: 'material' | 'freight'): CostEntryDraft => {
   const ship = shipmentStore.currentShipment;
-  let entity_type: ShipmentCostPayeeType | null = null;
-  let entity_id: number | null = null;
-  if (costType === 'product' && ship?.vendor_id) {
-    entity_type = 'vendor';
-    entity_id = ship.vendor_id;
-  } else if (costType === 'cargo' && ship?.cargo_company_id) {
-    entity_type = 'cargo_company';
-    entity_id = ship.cargo_company_id;
-  }
   return {
     localKey: newLocalKey(),
     id: null,
-    cost_type: costType,
+    cost_bucket: costBucket,
+    cost_component: 'subtotal',
+    is_capitalizable: true,
     amount: 0,
-    exchange_rate: 1,
-    payment_source: null,
-    entity_type,
-    entity_id,
-    per_kg_rate: null,
+    per_kg_rate: costBucket === 'freight' ? null : null,
     note: null,
     section_id: null,
   };
@@ -908,10 +867,7 @@ const totalCargoFreight = computed(() => {
 });
 
 const totalCargoBaseCost = computed(() => {
-  return cargoRows.value.reduce(
-    (sum, r) => sum + (Number(r.amount) || 0) * (Number(r.exchange_rate) || 1),
-    0,
-  );
+  return totalCargoFreight.value;
 });
 
 const effectivePerKg = computed(() => {
@@ -935,15 +891,11 @@ const entryToDraft = (entry: GlobalShipmentCostEntry): CostEntryDraft => {
   return {
     localKey: `id-${entry.id}`,
     id: entry.id,
-    cost_type: entry.cost_type,
+    cost_bucket: entry.cost_bucket,
+    cost_component: entry.cost_component ?? 'subtotal',
+    is_capitalizable: entry.is_capitalizable,
     amount: Number(entry.amount) || 0,
-    exchange_rate: props.isLocalShipment ? 1 : Number(entry.exchange_rate) || 1,
-    payment_source: null,
-    entity_type: entry.cost_type === 'product' ? 'vendor' : 'cargo_company',
-    entity_id: entry.cost_type === 'product'
-      ? (shipmentStore.currentShipment?.vendor_id ?? null)
-      : (shipmentStore.currentShipment?.cargo_company_id ?? null),
-    per_kg_rate: null,
+        per_kg_rate: null,
     note,
     section_id,
   };
@@ -951,8 +903,8 @@ const entryToDraft = (entry: GlobalShipmentCostEntry): CostEntryDraft => {
 
 const ensureDayOneShape = (rows: CostEntryDraft[]): CostEntryDraft[] => {
   const next = [...rows];
-  if (!next.some((r) => r.cost_type === 'product')) next.push(emptyRow('product'));
-  if (!next.some((r) => r.cost_type === 'cargo')) next.push(emptyRow('cargo'));
+  if (!next.some((r) => r.cost_bucket === 'material')) next.push(emptyRow('material'));
+  if (!next.some((r) => r.cost_bucket === 'freight')) next.push(emptyRow('freight'));
   return next;
 };
 
@@ -960,12 +912,12 @@ const resetDrafts = () => {
   localWeightKg.value = props.cargoKg > 0 ? Math.round(props.cargoKg * 100) / 100 : 0;
 
   if (!props.entries.length) {
-    drafts.value = [emptyRow('product'), emptyRow('cargo')];
+    drafts.value = [emptyRow('material'), emptyRow('freight')];
     return;
   }
 
   const mapped = props.entries
-    .filter((e) => e.cost_type === 'product' || e.cost_type === 'cargo')
+    .filter((e) => e.cost_bucket === 'material' || e.cost_bucket === 'freight')
     .map(entryToDraft);
 
   drafts.value = ensureDayOneShape(mapped);
@@ -984,24 +936,14 @@ watch(
   },
 );
 
-watch(
-  () => props.isLocalShipment,
-  (local) => {
-    if (!local) return;
-    for (const row of drafts.value) {
-      row.exchange_rate = 1;
-    }
-  },
-);
-
-const addRow = (costType: 'product' | 'cargo') => {
-  drafts.value.push(emptyRow(costType));
+const addRow = (costBucket: 'material' | 'freight') => {
+  drafts.value.push(emptyRow(costBucket));
 };
 
 const removeRow = (localKey: string) => {
   const row = drafts.value.find((d) => d.localKey === localKey);
   if (!row) return;
-  const sameType = drafts.value.filter((d) => d.cost_type === row.cost_type);
+  const sameType = drafts.value.filter((d) => d.cost_bucket === row.cost_bucket);
   if (sameType.length <= 1) return;
   drafts.value = drafts.value.filter((d) => d.localKey !== localKey);
 };
@@ -1012,10 +954,6 @@ const onSave = () => {
       showErrorNotification('Amount must be ≥ 0');
       return;
     }
-    if (!row.exchange_rate || row.exchange_rate <= 0) {
-      showErrorNotification('Exchange rate must be > 0');
-      return;
-    }
   }
 
   if (!productRows.value.length || !cargoRows.value.length) {
@@ -1024,22 +962,11 @@ const onSave = () => {
   }
 
   const unifiedPerKg = effectivePerKg.value;
-  const draftsOut = drafts.value.map((d) => {
-    const isProduct = d.cost_type === 'product';
-    const entType = isProduct ? 'vendor' : 'cargo_company';
-    const entId = isProduct
-      ? (shipmentStore.currentShipment?.vendor_id ?? null)
-      : (shipmentStore.currentShipment?.cargo_company_id ?? null);
-    return {
-      ...d,
-      exchange_rate: props.isLocalShipment ? 1 : d.exchange_rate,
-      per_kg_rate: isProduct ? null : unifiedPerKg,
-      section_id: d.section_id ?? null,
-      payment_source: null,
-      entity_type: entType as ShipmentCostPayeeType,
-      entity_id: entId,
-    };
-  });
+  const draftsOut = drafts.value.map((d) => ({
+    ...d,
+    per_kg_rate: d.cost_bucket === 'freight' ? unifiedPerKg : null,
+    section_id: d.section_id ?? null,
+  }));
 
   const w = localWeightKg.value;
   emit('save', {

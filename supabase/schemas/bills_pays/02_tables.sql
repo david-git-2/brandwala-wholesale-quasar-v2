@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS "public"."cashbook_entries" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "parent_tenant_id" bigint NOT NULL,
     "operating_tenant_id" bigint NOT NULL,
+    "cashbook_point_id" bigint,
     CONSTRAINT "universal_wallet_ledger_amount_check" CHECK (("amount" >= (0)::numeric)),
     CONSTRAINT "universal_wallet_ledger_base_amount_check" CHECK (("base_amount" >= (0)::numeric)),
     CONSTRAINT "universal_wallet_ledger_exchange_rate_check" CHECK (("exchange_rate" > (0)::numeric)),
@@ -44,6 +45,10 @@ CREATE TABLE IF NOT EXISTS "public"."bill_lines" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "assigned_child_tenant_id" bigint,
     "line_meta" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "line_kind" "text" DEFAULT 'stock'::"text" NOT NULL,
+    "currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
+    "books_amount" numeric(12,2),
+    CONSTRAINT "bill_lines_line_kind_check" CHECK (("line_kind" = ANY (ARRAY['stock'::"text", 'description'::"text", 'charge'::"text"]))),
     CONSTRAINT "global_invoice_items_line_discount_amount_check" CHECK (("line_discount_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoice_items_line_total_amount_check" CHECK (("line_total_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoice_items_quantity_check" CHECK (("quantity" > (0)::numeric)),
@@ -80,6 +85,7 @@ CREATE TABLE IF NOT EXISTS "public"."pay_allocations" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "global_invoice_id" bigint,
     "commerce_invoice_id" bigint,
+    "bill_id" bigint,
     CONSTRAINT "payment_allocations_amount_check" CHECK (("amount" > (0)::numeric))
 );
 
@@ -120,7 +126,18 @@ CREATE TABLE IF NOT EXISTS "public"."bills" (
     "profile_id" bigint,
     "ap_shipment_id" bigint,
     "ap_kind" "text",
-    CONSTRAINT "bills_ap_kind_check" CHECK (("ap_kind" IS NULL) OR ("ap_kind" = ANY (ARRAY['vendor'::"text", 'cargo'::"text", 'local'::"text"]))),
+    "document_kind" "public"."bill_document_kind" DEFAULT 'standard'::"public"."bill_document_kind" NOT NULL,
+    "parent_bill_id" bigint,
+    "from_profile_id" bigint,
+    "to_profile_id" bigint,
+    "settlement_kind" "public"."bill_settlement_kind",
+    "source_type" "text",
+    "source_id" "text",
+    "source_key" "text",
+    "currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
+    CONSTRAINT "bills_ap_kind_check" CHECK (("ap_kind" IS NULL) OR ("ap_kind" = ANY (ARRAY['vendor'::"text", 'cargo'::"text", 'local'::"text", 'material'::"text", 'freight'::"text", 'customs'::"text", 'handling'::"text", 'finance'::"text", 'other'::"text"]))),
+    CONSTRAINT "bills_document_parent_check" CHECK (((("document_kind" = 'standard'::"public"."bill_document_kind") AND ("parent_bill_id" IS NULL)) OR (("document_kind" <> 'standard'::"public"."bill_document_kind") AND ("parent_bill_id" IS NOT NULL)))),
+    CONSTRAINT "bills_from_to_distinct" CHECK (("from_profile_id" IS DISTINCT FROM "to_profile_id")),
     CONSTRAINT "global_invoices_charges_amount_check" CHECK (("charges_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_discount_amount_check" CHECK (("discount_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_due_amount_check" CHECK (("due_amount" >= (0)::numeric)),
@@ -157,6 +174,7 @@ CREATE TABLE IF NOT EXISTS "public"."pays" (
     "settlement_currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
     "foreign_amount" numeric(12,2),
     "exchange_rate" numeric(15,6) DEFAULT 1.000000 NOT NULL,
+    "cashbook_point_id" bigint,
     CONSTRAINT "payments_amount_check" CHECK (("amount" >= (0)::numeric)),
     CONSTRAINT "pays_exchange_rate_positive" CHECK (("exchange_rate" > (0)::numeric)),
     CONSTRAINT "pays_settlement_fx_check" CHECK (((("settlement_currency_code" = 'BDT'::"text") AND ("foreign_amount" IS NULL) AND ("exchange_rate" = 1.000000)) OR (("settlement_currency_code" <> 'BDT'::"text") AND ("foreign_amount" IS NOT NULL) AND ("foreign_amount" > (0)::numeric) AND ("exchange_rate" > (0)::numeric)))),
@@ -165,47 +183,6 @@ CREATE TABLE IF NOT EXISTS "public"."pays" (
 );
 
 ALTER TABLE "public"."pays" OWNER TO "postgres";
-
-CREATE TABLE IF NOT EXISTS "public"."bill_charges" (
-    "id" bigint NOT NULL,
-    "invoice_id" bigint NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
-    "charge_type" "public"."invoice_charge_type" NOT NULL,
-    "amount" numeric(12,2) DEFAULT 0 NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "sales_invoice_charges_amount_check" CHECK (("amount" >= (0)::numeric))
-);
-
-ALTER TABLE "public"."bill_charges" OWNER TO "postgres";
-
-CREATE TABLE IF NOT EXISTS "public"."billing_profiles" (
-    "id" bigint NOT NULL,
-    "tenant_id" bigint NOT NULL,
-    "name" "text" NOT NULL,
-    "email" "text",
-    "customer_group_id" bigint,
-    "phone" "text",
-    "address" "text",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "color" "text",
-    "parent_tenant_id" bigint NOT NULL,
-    "phone_country_code" "text" DEFAULT '+880'::"text" NOT NULL,
-    "is_phone_unique" boolean DEFAULT true NOT NULL
-);
-
-ALTER TABLE "public"."billing_profiles" OWNER TO "postgres";
-
-CREATE SEQUENCE IF NOT EXISTS "public"."billing_profiles_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE "public"."billing_profiles_id_seq" OWNER TO "postgres";
-
-ALTER SEQUENCE "public"."billing_profiles_id_seq" OWNED BY "public"."billing_profiles"."id";
 
 CREATE TABLE IF NOT EXISTS "public"."cashbook_accounts" (
     "id" bigint NOT NULL,
@@ -223,6 +200,26 @@ CREATE TABLE IF NOT EXISTS "public"."cashbook_accounts" (
 );
 
 ALTER TABLE "public"."cashbook_accounts" OWNER TO "postgres";
+
+CREATE TABLE IF NOT EXISTS "public"."cashbook_points" (
+    "id" bigint NOT NULL,
+    "parent_tenant_id" bigint NOT NULL,
+    "cashbook_account_id" bigint NOT NULL,
+    "code" "text" NOT NULL,
+    "name" "text" NOT NULL,
+    "kind" "public"."cashbook_point_kind" DEFAULT 'drawer'::"public"."cashbook_point_kind" NOT NULL,
+    "custodian_membership_id" bigint,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "cashbook_points_code_trimmed" CHECK (("btrim"("code") <> ''::"text")),
+    CONSTRAINT "cashbook_points_name_trimmed" CHECK (("btrim"("name") <> ''::"text"))
+);
+
+ALTER TABLE "public"."cashbook_points" OWNER TO "postgres";
+
+COMMENT ON TABLE "public"."cashbook_points" IS 'Physical/logical place for tenant-held cash under a cashbook account (till, safe, drawer). v1: tenant operating books only; pays may tag entries later.';
 
 CREATE OR REPLACE VIEW "public"."global_invoice_items" WITH ("security_invoker"='false') AS
  SELECT "id",
@@ -243,7 +240,10 @@ CREATE OR REPLACE VIEW "public"."global_invoice_items" WITH ("security_invoker"=
     "created_at",
     "updated_at",
     "assigned_child_tenant_id",
-    "line_meta"
+    "line_meta",
+    "line_kind",
+    "currency_code",
+    "books_amount"
    FROM "public"."bill_lines";
 
 ALTER VIEW "public"."global_invoice_items" OWNER TO "postgres";
@@ -281,6 +281,7 @@ CREATE TABLE IF NOT EXISTS "public"."pay_instruments" (
     "cheque_date" "date",
     "sort_order" integer DEFAULT 0 NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "cashbook_point_id" bigint,
     CONSTRAINT "global_payment_instruments_amount_positive" CHECK (("amount" > (0)::numeric)),
     CONSTRAINT "global_payment_instruments_cheque_fields" CHECK ((("payment_method_code" <> 'CHEQUE'::"text") OR (("bd_bank_id" IS NOT NULL) AND (NULLIF(TRIM(BOTH FROM "cheque_number"), ''::"text") IS NOT NULL) AND ("cheque_date" IS NOT NULL))))
 );
@@ -409,6 +410,8 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "accent_color" "text",
     "is_active" boolean DEFAULT true NOT NULL,
     "deleted_at" timestamp with time zone,
+    "customer_group_id" bigint,
+    "operating_tenant_id" bigint,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
@@ -452,17 +455,6 @@ ALTER SEQUENCE "public"."recipient_profiles_id_seq" OWNER TO "postgres";
 
 ALTER SEQUENCE "public"."recipient_profiles_id_seq" OWNED BY "public"."recipient_profiles"."id";
 
-CREATE SEQUENCE IF NOT EXISTS "public"."sales_invoice_charges_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE "public"."sales_invoice_charges_id_seq" OWNER TO "postgres";
-
-ALTER SEQUENCE "public"."sales_invoice_charges_id_seq" OWNED BY "public"."bill_charges"."id";
-
 CREATE TABLE IF NOT EXISTS "public"."sales_invoice_counters" (
     "tenant_id" bigint NOT NULL,
     "invoice_type" "public"."global_invoice_type" NOT NULL,
@@ -485,11 +477,16 @@ ALTER TABLE "public"."cashbook_accounts" ALTER COLUMN "id" ADD GENERATED ALWAYS 
     CACHE 1
 );
 
-ALTER TABLE ONLY "public"."bill_charges" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."sales_invoice_charges_id_seq"'::"regclass");
+ALTER TABLE "public"."cashbook_points" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."cashbook_points_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
 
 ALTER TABLE ONLY "public"."bill_lines" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_invoice_items_id_seq"'::"regclass");
-
-ALTER TABLE ONLY "public"."billing_profiles" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."billing_profiles_id_seq"'::"regclass");
 
 ALTER TABLE ONLY "public"."bills" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_invoices_id_seq"'::"regclass");
 
@@ -504,9 +501,6 @@ ALTER TABLE ONLY "public"."pays" ALTER COLUMN "id" SET DEFAULT "nextval"('"publi
 ALTER TABLE ONLY "public"."recipient_profiles" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."recipient_profiles_id_seq"'::"regclass");
 
 ALTER TABLE ONLY "public"."sales_return_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_return_items_id_seq"'::"regclass");
-
-ALTER TABLE ONLY "public"."billing_profiles"
-    ADD CONSTRAINT "billing_profiles_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."bill_lines"
     ADD CONSTRAINT "global_invoice_items_pkey" PRIMARY KEY ("id");
@@ -544,9 +538,6 @@ ALTER TABLE ONLY "public"."profiles"
 ALTER TABLE ONLY "public"."recipient_profiles"
     ADD CONSTRAINT "recipient_profiles_pkey" PRIMARY KEY ("id");
 
-ALTER TABLE ONLY "public"."bill_charges"
-    ADD CONSTRAINT "sales_invoice_charges_pkey" PRIMARY KEY ("id");
-
 ALTER TABLE ONLY "public"."sales_invoice_counters"
     ADD CONSTRAINT "sales_invoice_counters_pkey" PRIMARY KEY ("tenant_id", "invoice_type", "date_key");
 
@@ -562,19 +553,33 @@ ALTER TABLE ONLY "public"."cashbook_accounts"
 ALTER TABLE ONLY "public"."cashbook_accounts"
     ADD CONSTRAINT "wallet_accounts_pkey" PRIMARY KEY ("id");
 
-CREATE INDEX "billing_profiles_customer_group_id_idx" ON "public"."billing_profiles" USING "btree" ("customer_group_id");
+ALTER TABLE ONLY "public"."cashbook_points"
+    ADD CONSTRAINT "cashbook_points_pkey" PRIMARY KEY ("id");
 
-CREATE INDEX "billing_profiles_name_idx" ON "public"."billing_profiles" USING "btree" ("name");
+ALTER TABLE ONLY "public"."cashbook_points"
+    ADD CONSTRAINT "cashbook_points_account_code_key" UNIQUE ("cashbook_account_id", "code");
 
-CREATE UNIQUE INDEX "billing_profiles_parent_phone_uidx" ON "public"."billing_profiles" USING "btree" ("parent_tenant_id", "phone_country_code", "phone") WHERE (("phone" IS NOT NULL) AND ("btrim"("phone") <> ''::"text") AND "is_phone_unique");
+CREATE INDEX "profiles_customer_group_id_idx" ON "public"."profiles" USING "btree" ("customer_group_id") WHERE ("profile_type" = 'customer'::"public"."profile_party_type");
 
-CREATE INDEX "billing_profiles_parent_tenant_id_idx" ON "public"."billing_profiles" USING "btree" ("parent_tenant_id");
+CREATE INDEX "profiles_operating_tenant_id_idx" ON "public"."profiles" USING "btree" ("operating_tenant_id") WHERE ("profile_type" = 'customer'::"public"."profile_party_type");
 
-CREATE INDEX "billing_profiles_tenant_id_idx" ON "public"."billing_profiles" USING "btree" ("tenant_id");
+CREATE UNIQUE INDEX "profiles_customer_parent_phone_uidx" ON "public"."profiles" USING "btree" ("parent_tenant_id", "phone_country_code", "phone") WHERE (("profile_type" = 'customer'::"public"."profile_party_type") AND ("phone" IS NOT NULL) AND ("btrim"("phone") <> ''::"text") AND "is_phone_unique");
 
 CREATE INDEX "bills_profile_id_idx" ON "public"."bills" USING "btree" ("profile_id");
 
-CREATE UNIQUE INDEX "bills_ap_shipment_kind_uidx" ON "public"."bills" USING "btree" ("parent_tenant_id", "ap_shipment_id", "ap_kind") WHERE (("invoice_type" = 'ap'::"public"."global_invoice_type") AND ("ap_shipment_id" IS NOT NULL) AND ("ap_kind" IS NOT NULL));
+CREATE INDEX "bills_from_profile_id_idx" ON "public"."bills" USING "btree" ("from_profile_id");
+
+CREATE INDEX "bills_to_profile_id_idx" ON "public"."bills" USING "btree" ("to_profile_id");
+
+CREATE UNIQUE INDEX "bills_source_plug_uidx" ON "public"."bills" USING "btree" ("parent_tenant_id", "source_type", "source_id", COALESCE("source_key", ''::"text")) WHERE (("document_kind" = 'standard'::"public"."bill_document_kind") AND ("source_type" IS NOT NULL) AND ("source_id" IS NOT NULL));
+
+CREATE INDEX "pay_allocations_bill_id_idx" ON "public"."pay_allocations" USING "btree" ("bill_id");
+
+CREATE INDEX "pays_cashbook_point_id_idx" ON "public"."pays" USING "btree" ("cashbook_point_id") WHERE ("cashbook_point_id" IS NOT NULL);
+
+CREATE UNIQUE INDEX "bills_ap_shipment_kind_uidx" ON "public"."bills" USING "btree" ("parent_tenant_id", "ap_shipment_id", "ap_kind") WHERE (("invoice_type" = 'ap'::"public"."global_invoice_type") AND ("document_kind" = 'standard'::"public"."bill_document_kind") AND ("ap_shipment_id" IS NOT NULL) AND ("ap_kind" IS NOT NULL));
+
+CREATE INDEX "bills_parent_bill_id_idx" ON "public"."bills" USING "btree" ("parent_bill_id") WHERE ("parent_bill_id" IS NOT NULL);
 
 CREATE INDEX "bills_ap_shipment_id_idx" ON "public"."bills" USING "btree" ("ap_shipment_id") WHERE ("invoice_type" = 'ap'::"public"."global_invoice_type");
 
@@ -612,8 +617,6 @@ CREATE INDEX "idx_invoice_write_offs_payment_id" ON "public"."invoice_write_offs
 
 CREATE INDEX "idx_invoice_write_offs_tenant_id" ON "public"."invoice_write_offs" USING "btree" ("tenant_id");
 
-CREATE INDEX "idx_sales_invoice_charges_invoice_id" ON "public"."bill_charges" USING "btree" ("invoice_id");
-
 CREATE INDEX "idx_sales_invoices_scoping" ON "public"."bills" USING "btree" ("parent_tenant_id", "issued_by_tenant_id", "invoice_status", "invoice_date");
 
 CREATE INDEX "idx_sales_invoices_shop_order_id" ON "public"."bills" USING "btree" ("shop_order_id");
@@ -629,6 +632,12 @@ CREATE INDEX "idx_uwl_parent_book_lookup" ON "public"."cashbook_entries" USING "
 CREATE INDEX "idx_uwl_parent_operating_created" ON "public"."cashbook_entries" USING "btree" ("parent_tenant_id", "operating_tenant_id", "created_at" DESC);
 
 CREATE INDEX "idx_wallet_accounts_tenant_entity" ON "public"."cashbook_accounts" USING "btree" ("tenant_id", "entity_type", "entity_id");
+
+CREATE INDEX "cashbook_points_parent_tenant_id_idx" ON "public"."cashbook_points" USING "btree" ("parent_tenant_id");
+
+CREATE INDEX "cashbook_points_account_active_idx" ON "public"."cashbook_points" USING "btree" ("cashbook_account_id", "sort_order") WHERE ("is_active" = true);
+
+CREATE INDEX "cashbook_entries_point_lookup_idx" ON "public"."cashbook_entries" USING "btree" ("cashbook_point_id", "created_at" DESC) WHERE ("cashbook_point_id" IS NOT NULL);
 
 CREATE INDEX "invoice_brands_parent_tenant_id_idx" ON "public"."invoice_brands" USING "btree" ("parent_tenant_id");
 

@@ -42,6 +42,30 @@ CREATE TYPE "public"."global_shipment_cost_type" AS ENUM (
 ALTER TYPE "public"."global_shipment_cost_type" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."global_shipment_cost_bucket" AS ENUM (
+    'material',
+    'freight',
+    'customs',
+    'handling',
+    'finance',
+    'other'
+);
+
+
+ALTER TYPE "public"."global_shipment_cost_bucket" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."global_shipment_cost_component" AS ENUM (
+    'subtotal',
+    'carriage',
+    'vat_tax',
+    'misc'
+);
+
+
+ALTER TYPE "public"."global_shipment_cost_component" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."global_shipment_item_add_method" AS ENUM (
     'order',
     'costing',

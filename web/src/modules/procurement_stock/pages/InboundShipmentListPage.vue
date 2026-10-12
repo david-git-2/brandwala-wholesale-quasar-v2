@@ -370,8 +370,11 @@ const viewDetails = (id: number) => {
 const openCreateShipment = () => {
   $q.dialog({
     component: ShipmentFormDialog,
-  }).onOk(() => {
+  }).onOk((created: { id?: number } | undefined) => {
     void loadShipments();
+    if (created?.id) {
+      viewDetails(created.id);
+    }
   });
 };
 

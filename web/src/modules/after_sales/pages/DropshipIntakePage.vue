@@ -207,7 +207,7 @@ const onSubmit = async () => {
       operating_tenant_name: tenant.name,
       shop_order_id: order.id,
       shop_order_no: order.order_no,
-      merchant_billing_profile_id: order.merchant_billing_profile_id,
+      merchant_profile_id: order.merchant_profile_id,
       customer_name: order.merchant_name,
       intake_source: intakeSource.value,
       reported_to: reportedTo.value,

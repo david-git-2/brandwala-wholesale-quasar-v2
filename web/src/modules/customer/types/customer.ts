@@ -13,7 +13,7 @@ export interface CustomerListPageResult {
 export interface CustomerAccount {
   id: number;
   customer_group_id: number;
-  billing_profile_id: number | null;
+  profile_id: number | null;
   group_name: string;
   admin_name: string;
   email: string | null;
@@ -68,7 +68,7 @@ export interface UpdateCustomerInput {
   id: number;
   tenant_id: number;
   customer_group_id: number;
-  billing_profile_id?: number | null;
+  profile_id?: number | null;
   group_name: string;
   admin_name: string;
   email?: string | null;
@@ -131,7 +131,7 @@ export interface CustomerAccountSummary {
   success: boolean;
   error?: string;
   books_tenant_id?: number;
-  billing_profile_id: number | null;
+  profile_id: number | null;
   still_due: number;
   total_billed: number;
   collected_cash: number;

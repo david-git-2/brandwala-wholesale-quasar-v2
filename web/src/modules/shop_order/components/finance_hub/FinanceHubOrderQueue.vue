@@ -110,7 +110,7 @@ const filteredOrders = computed(() => {
 const columns = [
   { name: 'orderNo', label: 'Order #', field: 'orderNo', align: 'left' as const, sortable: true },
   { name: 'customerName', label: 'Customer', field: (row: FinanceHubOrderQueueItem) => row.customerName || 'N/A', align: 'left' as const },
-  { name: 'merchant', label: 'Merchant', field: (row: FinanceHubOrderQueueItem) => row.billingProfileName || 'N/A', align: 'left' as const },
+  { name: 'merchant', label: 'Merchant', field: (row: FinanceHubOrderQueueItem) => row.customerProfileName || 'N/A', align: 'left' as const },
   { name: 'totalAmount', label: 'Total', field: (row: FinanceHubOrderQueueItem) => `${row.totalAmount} BDT`, align: 'right' as const, sortable: true },
   { name: 'cod', label: 'COD Collect', field: (row: FinanceHubOrderQueueItem) => `${row.codCollectAmount} BDT`, align: 'right' as const },
   { name: 'status', label: 'Status', field: 'status', align: 'center' as const },

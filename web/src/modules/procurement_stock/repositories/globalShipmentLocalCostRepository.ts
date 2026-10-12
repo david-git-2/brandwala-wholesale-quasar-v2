@@ -1,7 +1,7 @@
 import { supabase } from 'src/boot/supabase';
 
 const db = supabase as any;
-import type { GlobalShipmentCostEntry } from '../types/shipmentCostEntry';
+import { LOCAL_COST_BUCKET, type GlobalShipmentCostEntry } from '../types/shipmentCostEntry';
 import type { GlobalShipmentLocalCost } from '../types/shipmentLocalCost';
 import { globalShipmentCostEntryRepository } from './globalShipmentCostEntryRepository';
 
@@ -21,7 +21,7 @@ const mapEntryToLocal = (entry: GlobalShipmentCostEntry): GlobalShipmentLocalCos
     parent_tenant_id: entry.parent_tenant_id,
     shipment_id: entry.shipment_id,
     section_id: entry.section_id,
-    description: meta.description?.trim() || '',
+    description: entry.description?.trim() || meta.description?.trim() || '',
     amount: Number(entry.amount),
     currency_id: entry.currency_id,
     created_at: entry.created_at,
@@ -31,7 +31,7 @@ const mapEntryToLocal = (entry: GlobalShipmentCostEntry): GlobalShipmentLocalCos
 
 const listByShipmentId = async (shipmentId: number): Promise<GlobalShipmentLocalCost[]> => {
   const entries = await globalShipmentCostEntryRepository.listByShipmentId(shipmentId);
-  return entries.filter((e) => e.cost_type === 'local').map(mapEntryToLocal);
+  return entries.filter((e) => e.cost_bucket === LOCAL_COST_BUCKET && !e.is_capitalizable).map(mapEntryToLocal);
 };
 
 const upsertLocal = async (
@@ -46,9 +46,11 @@ const upsertLocal = async (
 ): Promise<GlobalShipmentLocalCost> => {
   const entry = await globalShipmentCostEntryRepository.upsert({
     shipment_id: shipmentId,
-    cost_type: 'local',
+    cost_bucket: LOCAL_COST_BUCKET,
+    cost_component: 'misc',
+    is_capitalizable: false,
+    description: payload.description,
     amount: payload.amount,
-    exchange_rate: 1,
     currency_id: payload.currency_id ?? null,
     metadata: { description: payload.description },
     section_id: payload.section_id ?? null,
@@ -73,7 +75,7 @@ const update = async (
     .from('global_shipment_cost_entries')
     .select('shipment_id')
     .eq('id', id)
-    .eq('cost_type', 'local')
+    .eq('cost_bucket', LOCAL_COST_BUCKET)
     .maybeSingle();
   if (error) throw error;
   if (!row?.shipment_id) throw new Error('Local cost not found');

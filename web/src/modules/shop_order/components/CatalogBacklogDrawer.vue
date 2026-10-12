@@ -102,7 +102,7 @@ import { shopOrderRepository } from '../repositories/shopOrderRepository';
 export interface BacklogItem {
   id: number;
   tenant_id: number;
-  billing_profile_id: number;
+  profile_id: number;
   product_id: number;
   order_id: number | null;
   order_item_id: number | null;
@@ -120,7 +120,7 @@ export interface BacklogItem {
 const props = defineProps<{
   modelValue: boolean;
   tenantId: number;
-  billingProfileId: number | null;
+  profileId: number | null;
 }>();
 
 const emit = defineEmits<{
@@ -136,7 +136,7 @@ const items = ref<BacklogItem[]>([]);
 const loading = ref(false);
 
 const loadBacklogItems = async () => {
-  if (!props.tenantId || !props.billingProfileId) {
+  if (!props.tenantId || !props.profileId) {
     items.value = [];
     return;
   }
@@ -144,7 +144,7 @@ const loadBacklogItems = async () => {
   try {
     const data = await shopOrderRepository.listCustomerOrderBacklogItems(
       props.tenantId,
-      props.billingProfileId,
+      props.profileId,
     );
     items.value = data || [];
   } catch (err) {

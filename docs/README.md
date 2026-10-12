@@ -15,7 +15,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Who logs in where, which features? | [scopes](architecture/scopes.md) |
 | How this company sells (BW, pre-order, K-beauty, thrift) | [business-models](architecture/business-models.md) |
 | Wholesale vs dropship bill → pay (numbers) | [money-story](features/bills_pays/money-story.md) |
-| Bills vs pays vs cashbook | [bills_pays spec](features/bills_pays/spec.md) |
+| Bills vs pays vs cashbook | [bills_pays spec](features/bills_pays/spec.md) · [kernel schema](features/bills_pays/kernel-schema.md) · [kernel plan](../doc/fix/2026-10-12-bills-pays-kernel-plan.md) |
 | What numbers go on reports (sales vs cash vs COD) | [reporting spec](features/reporting_treasury/spec.md) |
 | What is unfinished / wrong in a module? | That module’s `00-gaps.md` |
 | Where is the code / SQL? | [Module map](#module-map) |

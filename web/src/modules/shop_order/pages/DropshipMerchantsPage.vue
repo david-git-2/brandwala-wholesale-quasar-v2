@@ -94,7 +94,7 @@
                   No merchant profiles found.
                 </td>
               </tr>
-              <tr v-for="m in filteredMerchants" :key="m.billing_profile_id" class="hover-row">
+              <tr v-for="m in filteredMerchants" :key="m.profile_id" class="hover-row">
                 <td>
                   <div class="row items-center q-gutter-x-sm">
                     <q-avatar size="36px" :color="getAvatarColor(m.name)" text-color="white" class="text-weight-bold">
@@ -102,7 +102,7 @@
                     </q-avatar>
                     <div>
                       <div class="text-weight-bold text-grey-9">{{ m.name }}</div>
-                      <div class="text-caption text-grey-7">ID: #{{ m.billing_profile_id }}</div>
+                      <div class="text-caption text-grey-7">ID: #{{ m.profile_id }}</div>
                     </div>
                   </div>
                 </td>
@@ -139,7 +139,7 @@
                         ...(m.customer_group_id
                           ? { customerGroupId: m.customer_group_id }
                           : {}),
-                        merchantId: m.billing_profile_id,
+                        merchantId: m.profile_id,
                       },
                     }"
                   >

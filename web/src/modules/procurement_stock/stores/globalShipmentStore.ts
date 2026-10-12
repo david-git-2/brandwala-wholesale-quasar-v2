@@ -55,7 +55,7 @@ const draftToUpsertPayload = (
   defaultCurrencyId: number | null | undefined,
 ): UpsertShipmentCostEntryPayload => {
   const meta: Record<string, unknown> = {};
-  if (d.cost_type === 'cargo' && d.per_kg_rate != null) {
+  if (d.cost_bucket === 'freight' && d.per_kg_rate != null) {
     meta.per_kg_rate = d.per_kg_rate;
   }
   if (d.note != null && d.note.trim() !== '') {
@@ -65,13 +65,12 @@ const draftToUpsertPayload = (
   return {
     shipment_id: shipmentId,
     id: d.id,
-    cost_type: d.cost_type,
+    cost_bucket: d.cost_bucket,
+    cost_component: d.cost_component,
+    is_capitalizable: d.is_capitalizable ?? true,
+    description: d.description ?? null,
     amount: Number(d.amount) || 0,
-    exchange_rate: Number(d.exchange_rate) || 1,
     currency_id: defaultCurrencyId ?? null,
-    payment_source: d.payment_source,
-    entity_type: d.entity_type,
-    entity_id: d.entity_type ? d.entity_id : null,
     section_id: d.section_id ?? null,
     metadata: meta as UpsertShipmentCostEntryPayload['metadata'],
   };
@@ -489,7 +488,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         throw new Error('Current shipment not loaded');
       }
 
-      const count = this.currentCostEntries.filter((e: any) => e.cost_type === 'product').length;
+      const count = this.currentCostEntries.filter((e: any) => e.cost_bucket === 'material').length;
       if (count > 1) {
         throw new Error(
           'Multiple product cost entries exist. Update on Landed cost tab directly.',
@@ -499,21 +498,15 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       this.costEntriesSaving = true;
       this.error = null;
       try {
-        const existing: any = this.currentCostEntries.find((e: any) => e.cost_type === 'product');
+        const existing: any = this.currentCostEntries.find((e: any) => e.cost_bucket === 'material');
         const rounded = Math.round(total * 100) / 100;
-        const payload: any = {
+        const payload: UpsertShipmentCostEntryPayload = {
           shipment_id: shipmentId,
           id: existing?.id ?? null,
-          cost_type: 'product',
+          cost_bucket: 'material',
+          cost_component: 'subtotal',
           amount: rounded,
-          exchange_rate: existing ? Number(existing.exchange_rate) || 1 : 1,
           currency_id: existing?.currency_id ?? shipment.shipment_purchase_currency_id,
-          payment_source: existing?.payment_source ?? null,
-          entity_type:
-            existing?.entity_type === 'vendor' || existing?.entity_type === 'cargo_company'
-              ? existing.entity_type
-              : null,
-          entity_id: existing?.entity_id ?? null,
           metadata: existing?.metadata ?? {},
         };
         await globalShipmentCostEntryRepository.upsert(payload);
@@ -1579,20 +1572,21 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       return this.updateShipmentItem(itemId, { section_id: sectionId });
     },
 
-    async createShipmentCostEntry(shipmentId: number, payload: Partial<CostEntryDraft> & { cost_type: 'product' | 'cargo' | 'other' }) {
+    async createShipmentCostEntry(
+      shipmentId: number,
+      payload: Partial<CostEntryDraft> & { cost_bucket: CostEntryDraft['cost_bucket'] },
+    ) {
       this.saving = true;
       this.error = null;
       try {
         const created = await globalShipmentCostEntryRepository.upsert({
           shipment_id: shipmentId,
-          cost_type: payload.cost_type,
+          cost_bucket: payload.cost_bucket,
+          cost_component: payload.cost_component ?? 'subtotal',
+          is_capitalizable: payload.is_capitalizable ?? true,
+          description: payload.description ?? null,
           amount: payload.amount ?? 0,
-          exchange_rate: payload.exchange_rate ?? 1,
           currency_id: payload.currency_id ?? this.currentShipment?.shipment_purchase_currency_id ?? null,
-          payment_source: payload.payment_source ?? null,
-          entity_type: payload.entity_type ?? null,
-          entity_id: payload.entity_id ?? null,
-          allocation: payload.allocation ?? null,
           metadata: payload.metadata ?? {},
         });
         const existingIdx = this.currentCostEntries.findIndex((e: any) => e.id === created.id);
@@ -1613,7 +1607,10 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
-    async updateShipmentCostEntry(id: number, payload: Partial<CostEntryDraft> & { cost_type: 'product' | 'cargo' | 'other' }) {
+    async updateShipmentCostEntry(
+      id: number,
+      payload: Partial<CostEntryDraft> & { cost_bucket: CostEntryDraft['cost_bucket'] },
+    ) {
       this.saving = true;
       this.error = null;
       try {
@@ -1622,14 +1619,12 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         const updated = await globalShipmentCostEntryRepository.upsert({
           id,
           shipment_id: shipmentId,
-          cost_type: payload.cost_type,
+          cost_bucket: payload.cost_bucket,
+          cost_component: payload.cost_component ?? 'subtotal',
+          is_capitalizable: payload.is_capitalizable ?? true,
+          description: payload.description ?? null,
           amount: payload.amount ?? 0,
-          exchange_rate: payload.exchange_rate ?? 1,
           currency_id: payload.currency_id ?? this.currentShipment?.shipment_purchase_currency_id ?? null,
-          payment_source: payload.payment_source ?? null,
-          entity_type: payload.entity_type ?? null,
-          entity_id: payload.entity_id ?? null,
-          allocation: payload.allocation ?? null,
           metadata: payload.metadata ?? {},
         });
         const existingIdx = this.currentCostEntries.findIndex((e: any) => e.id === id);

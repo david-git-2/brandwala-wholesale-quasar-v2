@@ -44,7 +44,7 @@ export function useDropshipFinanceHubMutations(tenantId: { value: number | null 
   });
 
   const dispenseMiddlemanPayoutMutation = useMutation({
-    mutationFn: (params: { tenantId: number; billingProfileId: number; amount: number; payoutMethod?: string; referenceNotes?: string }) =>
+    mutationFn: (params: { tenantId: number; profileId: number; amount: number; payoutMethod?: string; referenceNotes?: string }) =>
       dropshipFinanceRepository.dispenseMiddlemanPayout(params),
     onSuccess: (data) => {
       showSuccessNotification(data.message || 'Middleman payout dispensed successfully');

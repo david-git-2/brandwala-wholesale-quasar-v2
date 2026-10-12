@@ -15,7 +15,7 @@
 | Need | Path |
 | :--- | :--- |
 | Tables, RPCs | Grep `customer_groups`, `create_customer_account` in `public.sql` |
-| Money party | [bills_pays spec](../bills_pays/spec.md) — `profiles` / `billing_profiles` |
+| Money party | [bills_pays spec](../bills_pays/spec.md) — `profiles` (`profile_type = customer`) |
 | Pages | `web/src/modules/customer/pages/` |
 | Recipient profiles | Same hub; `parentModuleKey: customer` |
 
@@ -44,7 +44,7 @@ See [scopes](../../architecture/scopes.md).
 
 ### US-1: Atomic customer provisioning
 - One modal → group + profile + wallet account.
-  - [ ] `create_customer_account`: `customer_groups`, profile (`billing_profiles` until [BP3](../bills_pays/00-gaps.md)), `wallet_accounts`.
+  - [x] `create_customer_account`: `customer_groups`, `profiles`, `cashbook_accounts`.
   - [ ] Phone unique per books parent tenant.
   - [ ] Member login optional on create.
 

@@ -2,7 +2,7 @@ import type { Database } from 'src/types/supabase';
 
 export type ProductBasedCostingFile =
   Database['public']['Tables']['product_based_costing_files']['Row'] & {
-    billing_profile_id?: number | null;
+    profile_id?: number | null;
     customer_group_id?: number | null;
     customer_group_name?: string | null;
     default_shipment_id?: number | null;

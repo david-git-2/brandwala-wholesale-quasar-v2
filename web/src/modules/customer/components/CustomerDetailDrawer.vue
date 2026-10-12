@@ -337,7 +337,7 @@
               :tenant-id="tenantId"
               :customer-group-id="customer?.customer_group_id ?? 0"
               :group-name="form.group_name"
-              :billing-profile-id="billingProfileId || null"
+              :billing-profile-id="profileId || null"
               :summary="accountSummary"
               :is-loading="accountQuery.isLoading.value"
               :is-error="accountQuery.isError.value"
@@ -541,7 +541,7 @@ const onConfirmDeleteCustomer = async () => {
 };
 
 const customerGroupId = computed(() => props.customer?.customer_group_id ?? null);
-const billingProfileId = computed(() => props.customer?.billing_profile_id ?? 0);
+const profileId = computed(() => props.customer?.profile_id ?? 0);
 const accountTabActive = computed(() => activeTab.value === 'account' && props.modelValue);
 const accountQuery = useCustomerAccountQuery(
   computed(() => props.tenantId),
@@ -758,7 +758,7 @@ const saveGeneralInfo = async (options?: { silent?: boolean }) => {
       id: props.customer.id,
       tenant_id: props.tenantId,
       customer_group_id: props.customer.customer_group_id,
-      billing_profile_id: props.customer.billing_profile_id,
+      profile_id: props.customer.profile_id,
       group_name: form.group_name.trim(),
       admin_name: form.admin_name.trim(),
       email: props.customer.email?.trim() || null,

@@ -96,7 +96,7 @@ export type AfterSalesCase = {
   sales_invoice_no: string | null;
   shop_order_id: number | null;
   shop_order_no: string | null;
-  billing_profile_id: number | null;
+  profile_id: number | null;
   customer_name: string;
   policy_snapshot: AfterSalesPolicySnapshot;
   intake_source: DropshipIntakeSource | null;
@@ -140,7 +140,7 @@ export type MockDropshipOrder = {
   recipient_name: string;
   recipient_phone: string;
   merchant_name: string;
-  merchant_billing_profile_id: number;
+  merchant_profile_id: number;
 };
 
 export type CreateWholesaleCasePayload = {
@@ -149,7 +149,7 @@ export type CreateWholesaleCasePayload = {
   operating_tenant_name: string;
   sales_invoice_id: number;
   sales_invoice_no: string;
-  billing_profile_id: number | null;
+  profile_id: number | null;
   customer_name: string;
   reason_code: AfterSalesReasonCode;
   lines: Array<{
@@ -165,7 +165,7 @@ export type CreateDropshipCasePayload = {
   operating_tenant_name: string;
   shop_order_id: number;
   shop_order_no: string;
-  merchant_billing_profile_id: number;
+  merchant_profile_id: number;
   customer_name: string;
   intake_source: DropshipIntakeSource;
   reported_to: DropshipReportedTo;

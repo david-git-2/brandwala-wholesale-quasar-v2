@@ -1,15 +1,15 @@
 import { defineStore } from 'pinia';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
-import { billingProfileRepository } from '../repositories/billingProfileRepository';
+import { customerProfileRepository } from '../repositories/customerProfileRepository';
 import type {
-  BillingProfile,
-  BillingProfileListQuery,
-  CreateBillingProfileInput,
-  UpdateBillingProfileInput,
-} from '../repositories/billingProfileRepository';
+  CustomerProfile,
+  CustomerProfileListQuery,
+  CreateCustomerProfileInput,
+  UpdateCustomerProfileInput,
+} from '../repositories/customerProfileRepository';
 
-export interface BillingProfileStoreState {
-  items: BillingProfile[];
+export interface CustomerProfileStoreState {
+  items: CustomerProfile[];
   total: number;
   page: number;
   page_size: number;
@@ -19,8 +19,8 @@ export interface BillingProfileStoreState {
   error: string | null;
 }
 
-export const useBillingProfileStore = defineStore('billingProfile', {
-  state: (): BillingProfileStoreState => ({
+export const useCustomerProfileStore = defineStore('customerProfile', {
+  state: (): CustomerProfileStoreState => ({
     items: [],
     total: 0,
     page: 1,
@@ -31,12 +31,12 @@ export const useBillingProfileStore = defineStore('billingProfile', {
     error: null,
   }),
   actions: {
-    async fetchBillingProfiles(payload: BillingProfileListQuery = {}) {
+    async fetchCustomerProfiles(payload: CustomerProfileListQuery = {}) {
       this.loading = true;
       this.error = null;
 
       try {
-        const result = await billingProfileRepository.listBillingProfiles(payload);
+        const result = await customerProfileRepository.listCustomerProfiles(payload);
         this.items = result.data ?? [];
         this.total = result.meta.total ?? 0;
         this.page = result.meta.page ?? 1;
@@ -53,12 +53,12 @@ export const useBillingProfileStore = defineStore('billingProfile', {
       }
     },
 
-    async createBillingProfile(payload: CreateBillingProfileInput) {
+    async createCustomerProfile(payload: CreateCustomerProfileInput) {
       this.saving = true;
       this.error = null;
 
       try {
-        const result = await billingProfileRepository.createBillingProfile(payload);
+        const result = await customerProfileRepository.createCustomerProfile(payload);
         this.items.unshift(result);
         this.total += 1;
         showSuccessNotification('Billing profile created successfully.');
@@ -73,12 +73,12 @@ export const useBillingProfileStore = defineStore('billingProfile', {
       }
     },
 
-    async updateBillingProfile(payload: UpdateBillingProfileInput) {
+    async updateCustomerProfile(payload: UpdateCustomerProfileInput) {
       this.saving = true;
       this.error = null;
 
       try {
-        const result = await billingProfileRepository.updateBillingProfile(payload);
+        const result = await customerProfileRepository.updateCustomerProfile(payload);
         const index = this.items.findIndex((row) => row.id === result.id);
         if (index >= 0) {
           this.items.splice(index, 1, result);
@@ -95,12 +95,12 @@ export const useBillingProfileStore = defineStore('billingProfile', {
       }
     },
 
-    async deleteBillingProfile(id: number) {
+    async deleteCustomerProfile(id: number) {
       this.saving = true;
       this.error = null;
 
       try {
-        await billingProfileRepository.deleteBillingProfile({ id });
+        await customerProfileRepository.deleteCustomerProfile({ id });
         this.items = this.items.filter((row) => row.id !== id);
         this.total = Math.max(0, this.total - 1);
         showSuccessNotification('Billing profile deleted successfully.');
