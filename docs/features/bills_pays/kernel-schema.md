@@ -65,7 +65,7 @@ Walk-in: `take` only. AP / description-only bills: null. Who promised / extra wo
 
 **Checks**
 
-- `from_profile_id` ≠ `to_profile_id`
+- `from_profile_id` ≠ `to_profile_id` when both are set (null allowed until both sides exist)
 - Both profiles same `parent_tenant_id` as the bill
 - Notes: `document_kind ≠ standard` ⇒ `parent_bill_id` set; copy parent `source_*` and from/to unless the adapter overrides
 - Unique standard plug: `(parent_tenant_id, source_type, source_id, source_key)` where `document_kind = standard` and source set

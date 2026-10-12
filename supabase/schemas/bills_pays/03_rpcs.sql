@@ -1934,6 +1934,14 @@ begin
     end if;
   end if;
 
+  if v_from is not null and v_from = v_to then
+    if v_bill.invoice_type = 'ap'::public.global_invoice_type then
+      v_to := null;
+    else
+      v_from := null;
+    end if;
+  end if;
+
   update public.bills
   set
     from_profile_id = v_from,
@@ -6208,6 +6216,7 @@ begin
     and sh.status = 'received'
     and gs.availability = 'sellable'::public.stock_availability
     and gs.quantity > 0
+    and public.global_stock_atp_qty(gs.id) > 0
     and (
       p_search is null
       or trim(p_search) = ''

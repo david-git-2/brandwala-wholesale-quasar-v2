@@ -4,96 +4,232 @@
       <q-spinner color="primary" size="32px" />
     </div>
 
-    <div v-else class="col overflow-auto">
-      <div class="compose-card q-pa-md q-gutter-y-md">
-        <div class="compose-kind-toolbar row items-end justify-between q-col-gutter-sm">
-          <div class="row items-start q-gutter-md wrap col">
+    <div v-else class="col overflow-auto compose-scroll">
+      <div class="compose-card column no-wrap">
+        <div class="compose-sticky-toolbar compose-kind-toolbar row items-center justify-between q-col-gutter-sm">
+          <div class="col row items-end q-gutter-md wrap">
+            <div v-if="showSettlementGroup" class="compose-kind-group">
+              <div class="compose-kind-heading">Settlement</div>
+              <div class="compose-toolbar-segment">
+                <q-btn
+                  v-for="opt in settlementOptions"
+                  :key="opt.value"
+                  dense
+                  unelevated
+                  no-caps
+                  :icon="opt.icon"
+                  :label="opt.label"
+                  :color="composePaperKind === opt.value ? 'primary' : 'transparent'"
+                  :text-color="composePaperKind === opt.value ? 'white' : 'grey-8'"
+                  class="compose-toolbar-btn"
+                  :disable="directionLocked || (opt.value === 'condition' && !hasStockLines)"
+                  @click="composePaperKind = opt.value"
+                />
+              </div>
+            </div>
             <div class="compose-kind-group">
-              <div class="compose-kind-heading">Bill type</div>
-              <q-btn-toggle
-                v-model="billKind"
-                unelevated
-                no-caps
-                toggle-color="primary"
-                color="grey-3"
-                text-color="grey-9"
-                class="compose-kind-tabs"
-                :options="billKindToggleOptions"
+              <div class="compose-kind-heading">Document</div>
+              <div class="row items-center q-gutter-xs wrap compose-document-chips">
+                <q-chip
+                  v-for="opt in documentKindOptions"
+                  :key="opt.value"
+                  dense
+                  clickable
+                  class="compose-document-chip"
+                  :outline="documentKind !== opt.value"
+                  :color="documentKind === opt.value ? 'primary' : 'grey-3'"
+                  :text-color="documentKind === opt.value ? 'white' : 'grey-8'"
+                  @click="onDocumentKindClick(opt.value)"
+                >
+                  {{ opt.label }}
+                </q-chip>
+              </div>
+              <q-select
+                v-if="documentKind !== 'standard'"
+                v-model="parentBillId"
+                :options="parentBillOptions"
+                option-value="id"
+                option-label="label"
+                emit-value
+                map-options
+                use-input
+                input-debounce="300"
+                outlined
+                dense
+                class="compose-parent-bill-select q-mt-xs"
+                label="Parent bill *"
+                @filter="filterParentBills"
               />
             </div>
-            <div v-if="billKind === 'trade'" class="compose-kind-group">
-              <div class="compose-kind-heading">Delivery paper</div>
-              <q-btn-toggle
-                v-model="tradePaperKind"
-                unelevated
-                no-caps
-                toggle-color="primary"
-                color="grey-3"
-                text-color="grey-9"
-                class="compose-kind-tabs"
-                :options="tradePaperToggleOptions"
-              />
+            <div class="compose-kind-group">
+              <div class="compose-kind-heading">Source</div>
+              <div class="row items-center q-gutter-xs wrap compose-document-chips">
+                <q-chip
+                  dense
+                  outline
+                  class="compose-document-chip"
+                  color="grey-3"
+                  text-color="grey-8"
+                >
+                  <span class="text-weight-medium">{{ sourceTypeLabel }}</span>
+                </q-chip>
+                <q-chip
+                  v-if="sourceId"
+                  dense
+                  outline
+                  class="compose-document-chip"
+                  color="grey-3"
+                  text-color="grey-8"
+                >
+                  ID {{ sourceId }}
+                </q-chip>
+                <q-chip
+                  v-if="sourceKey"
+                  dense
+                  outline
+                  class="compose-document-chip"
+                  color="grey-3"
+                  text-color="grey-8"
+                >
+                  {{ sourceKey }}
+                </q-chip>
+              </div>
             </div>
           </div>
-          <div class="row items-center justify-end q-gutter-sm col-shrink compose-page-actions">
+          <div class="compose-toolbar-segment col-shrink compose-lifecycle-group">
             <q-btn
-              outline
+              dense
+              unelevated
               no-caps
-              label="Save draft"
+              label="Save as draft"
               icon="ph ph-floppy-disk"
+              color="transparent"
+              text-color="grey-8"
+              class="compose-toolbar-btn"
               :loading="composeMutation.isPending.value"
-              :disable="!canSave"
+              :disable="!canSave || voidingDraft"
               @click="saveDraft"
             />
             <q-btn
+              dense
               unelevated
               no-caps
-              color="primary"
-              label="Issue bill"
+              label="Issue"
               icon="ph ph-check-circle"
+              :color="canIssue && !voidingDraft ? 'primary' : 'transparent'"
+              :text-color="canIssue && !voidingDraft ? 'white' : 'grey-6'"
+              class="compose-toolbar-btn"
               :loading="composeMutation.isPending.value"
-              :disable="!canIssue"
+              :disable="!canIssue || voidingDraft"
               @click="issueBill"
+            />
+            <q-btn
+              dense
+              unelevated
+              no-caps
+              label="Void"
+              icon="ph ph-prohibit"
+              :color="canVoidDraft && !composeMutation.isPending.value ? 'negative' : 'transparent'"
+              :text-color="
+                canVoidDraft && !composeMutation.isPending.value ? 'white' : 'grey-6'
+              "
+              class="compose-toolbar-btn"
+              :loading="voidingDraft"
+              :disable="!canVoidDraft || composeMutation.isPending.value"
+              @click="voidDraft"
             />
           </div>
         </div>
 
-        <div class="row q-col-gutter-md">
+        <div class="compose-body q-pa-md q-gutter-y-md">
+        <div class="row q-col-gutter-sm">
           <div class="col-12 col-sm-6">
-            <div class="text-overline text-grey-7 q-mb-xs">From</div>
-            <q-select
-              v-model="selectedBrandId"
-              :options="brandOptions"
-              option-value="id"
-              option-label="name"
-              emit-value
-              map-options
-              outlined
-              dense
-              label="Letterhead brand"
-            />
-            <div v-if="selectedBrand?.address" class="text-caption text-grey-7 q-mt-xs whitespace-pre-line">
-              {{ selectedBrand.address }}
+            <div class="compose-party-card q-pa-sm">
+              <q-select
+                v-model="fromProfileId"
+                :options="fromProfileOptions"
+                option-value="id"
+                option-label="name"
+                emit-value
+                map-options
+                use-input
+                fill-input
+                hide-selected
+                input-debounce="300"
+                outlined
+                dense
+                class="compose-party-select"
+                :readonly="directionLocked"
+                :disable="directionLocked"
+                :error="profilesAreSame"
+                error-message="Must differ from To"
+                @filter="filterFromProfiles"
+              >
+                <template #prepend>
+                  <span class="compose-party-label">From</span>
+                </template>
+                <template #option="scope">
+                  <q-item v-bind="scope.itemProps" dense>
+                    <q-item-section>
+                      <q-item-label>{{ scope.opt.name }}</q-item-label>
+                      <q-item-label caption>
+                        {{ profilePartyCaption(scope.opt) }}
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </template>
+                <template #no-option>
+                  <q-item dense>
+                    <q-item-section class="text-grey-7">No profiles found</q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
             </div>
           </div>
           <div class="col-12 col-sm-6">
-            <div class="text-overline text-grey-7 q-mb-xs">To</div>
-            <q-select
-              v-model="profileId"
-              :options="profileOptions"
-              option-value="id"
-              option-label="name"
-              emit-value
-              map-options
-              use-input
-              input-debounce="300"
-              outlined
-              dense
-              label="Bill-to profile *"
-              @filter="filterProfiles"
-            />
-            <div v-if="selectedProfile?.address" class="text-caption text-grey-7 q-mt-xs whitespace-pre-line">
-              {{ selectedProfile.address }}
+            <div class="compose-party-card q-pa-sm">
+              <q-select
+                v-model="toProfileId"
+                :options="toProfileOptions"
+                option-value="id"
+                option-label="name"
+                emit-value
+                map-options
+                use-input
+                fill-input
+                hide-selected
+                input-debounce="300"
+                outlined
+                dense
+                class="compose-party-select"
+                :readonly="directionLocked || isWalkIn"
+                :disable="directionLocked || isWalkIn"
+                :error="profilesAreSame && !isWalkIn"
+                error-message="Must differ from From"
+                @filter="filterToProfiles"
+              >
+                <template #prepend>
+                  <span class="compose-party-label">To</span>
+                </template>
+                <template #option="scope">
+                  <q-item v-bind="scope.itemProps" dense>
+                    <q-item-section>
+                      <q-item-label>{{ scope.opt.name }}</q-item-label>
+                      <q-item-label caption>
+                        {{ profilePartyCaption(scope.opt) }}
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </template>
+                <template #no-option>
+                  <q-item dense>
+                    <q-item-section class="text-grey-7">No profiles found</q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+              <div v-if="isWalkIn" class="text-caption text-grey-7 q-px-xs q-pt-xs">
+                Walk-in — no bill-to on paper.
+              </div>
             </div>
           </div>
         </div>
@@ -145,15 +281,58 @@
 
         <q-separator />
 
-        <div class="text-subtitle2 text-weight-bold">Add lines (FIFO)</div>
-        <BillStockSearch :tenant-id="tenantId" @select="addLineFromStock" />
+        <div class="row items-center justify-between q-mb-xs">
+          <div class="text-subtitle2 text-weight-bold">Lines</div>
+          <q-btn-dropdown
+            outline
+            dense
+            no-caps
+            color="primary"
+            icon="ph ph-plus"
+            label="Add line"
+          >
+            <q-list dense class="compose-add-line-menu">
+              <q-item
+                v-for="opt in addLineMenuOptions"
+                :key="opt.key"
+                v-close-popup
+                clickable
+                :disable="opt.line_kind === 'stock' && !showStockSearch"
+                @click="addBlankLine(opt)"
+              >
+                <q-item-section avatar>
+                  <q-icon :name="opt.icon" size="18px" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ opt.label }}</q-item-label>
+                  <q-item-label v-if="opt.caption" caption>{{ opt.caption }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
+        </div>
+        <div v-if="!lines.length" class="compose-lines-empty text-center text-grey-7 q-py-lg">
+          Use Add line for stock, description, or charge lines.
+        </div>
 
+        <q-dialog v-model="stockLinePickerOpen">
+          <q-card class="compose-stock-picker-card">
+            <q-card-section class="row items-center justify-between q-pb-none">
+              <div class="text-weight-bold">Add stock line</div>
+              <q-btn flat round dense icon="ph ph-x" @click="stockLinePickerOpen = false" />
+            </q-card-section>
+            <q-card-section>
+              <BillStockSearch :tenant-id="tenantId" @select="onStockPickedFromPicker" />
+            </q-card-section>
+          </q-card>
+        </q-dialog>
         <q-markup-table v-if="lines.length" flat dense class="compose-lines-table">
           <thead>
             <tr>
+              <th class="text-left">Kind</th>
               <th class="text-left">Item</th>
               <th class="text-right">Qty</th>
-              <th class="text-right">Sell</th>
+              <th class="text-right">Unit</th>
               <th class="text-right">Line disc.</th>
               <th class="text-right">Line total</th>
               <th />
@@ -161,8 +340,40 @@
           </thead>
           <tbody>
             <tr v-for="(line, idx) in lines" :key="line.key">
+              <td class="text-caption text-grey-8 text-capitalize">{{ lineKindLabel(line) }}</td>
               <td class="compose-line-item-cell">
-                <BillLineItemDisplay :name="line.name" :image-url="line.image_url" />
+                <BillLineItemDisplay
+                  v-if="line.line_kind === 'stock'"
+                  :name="line.name"
+                  :image-url="line.image_url"
+                />
+                <div v-else-if="line.line_kind === 'charge'" class="column q-gutter-y-xs">
+                  <q-select
+                    :model-value="line.charge_type ?? 'shipping'"
+                    :options="chargeTypeOptions"
+                    dense
+                    outlined
+                    emit-value
+                    map-options
+                    hide-bottom-space
+                    @update:model-value="(v) => onChargeTypeChange(line, v)"
+                  />
+                  <q-input
+                    v-model="line.name"
+                    dense
+                    outlined
+                    hide-bottom-space
+                    placeholder="Label"
+                  />
+                </div>
+                <q-input
+                  v-else
+                  v-model="line.name"
+                  dense
+                  outlined
+                  hide-bottom-space
+                  placeholder="Description"
+                />
               </td>
               <td class="text-right">
                 <q-input
@@ -170,8 +381,9 @@
                   type="number"
                   dense
                   outlined
-                  :max="line.available_atp"
-                  min="1"
+                  :max="line.line_kind === 'stock' ? line.available_atp : undefined"
+                  min="0.001"
+                  :readonly="line.line_kind === 'charge'"
                   style="max-width: 72px"
                 />
               </td>
@@ -187,6 +399,7 @@
               </td>
               <td class="text-right">
                 <q-input
+                  v-if="line.line_kind !== 'charge'"
                   v-model.number="line.line_discount_amount"
                   type="number"
                   dense
@@ -194,6 +407,7 @@
                   min="0"
                   style="max-width: 96px"
                 />
+                <span v-else class="text-grey-6">—</span>
               </td>
               <td class="text-right text-weight-medium">{{ formatAmountBdt(lineTotal(line)) }}</td>
               <td class="text-right">
@@ -205,35 +419,44 @@
 
         <q-separator />
 
-        <div class="row q-col-gutter-md">
-          <div class="col-12 col-sm-6">
-            <q-input v-model.number="discountAmount" outlined dense label="Header discount" type="number" min="0" />
-          </div>
-          <div class="col-12 col-sm-6">
-            <q-input v-model.number="shippingCharge" outlined dense label="Shipping" type="number" min="0" />
-          </div>
-          <div class="col-12 col-sm-6">
-            <q-input v-model.number="wrappingCharge" outlined dense label="Wrapping" type="number" min="0" />
-          </div>
-          <div class="col-12 col-sm-6">
-            <q-input v-model.number="printCharge" outlined dense label="Print" type="number" min="0" />
-          </div>
         </div>
 
-        <q-input v-model="note" outlined dense label="Note" type="textarea" autogrow />
-
-        <div class="row justify-end">
-          <div class="totals-panel">
-            <div class="total-row"><span>Subtotal</span><span>{{ formatAmountBdt(subtotal) }}</span></div>
-            <div v-if="discountAmount" class="total-row">
-              <span>Discount</span><span>−{{ formatAmountBdt(discountAmount) }}</span>
+        <div class="compose-footer q-pa-md">
+          <div class="row q-col-gutter-md items-end">
+            <div class="col-12 col-sm-6">
+              <q-input
+                v-model.number="discountAmount"
+                outlined
+                dense
+                label="Header discount"
+                type="number"
+                min="0"
+              />
             </div>
-            <div v-if="chargesSum" class="total-row">
-              <span>Charges</span><span>{{ formatAmountBdt(chargesSum) }}</span>
+            <div class="col-12 col-sm-6">
+              <div class="totals-panel">
+                <div class="total-row"><span>Subtotal</span><span>{{ formatAmountBdt(subtotal) }}</span></div>
+                <div v-if="discountAmount" class="total-row">
+                  <span>Discount</span><span>−{{ formatAmountBdt(discountAmount) }}</span>
+                </div>
+                <div class="total-row text-weight-bold">
+                  <span>Total (est.)</span><span>{{ formatAmountBdt(estimatedTotal) }}</span>
+                </div>
+              </div>
             </div>
-            <div class="total-row text-weight-bold">
-              <span>Total (est.)</span><span>{{ formatAmountBdt(estimatedTotal) }}</span>
-            </div>
+          </div>
+          <q-separator class="q-my-md" />
+          <div class="compose-note-section">
+            <div class="text-subtitle2 text-weight-bold q-mb-sm">Note</div>
+            <q-input
+              v-model="note"
+              outlined
+              dense
+              type="textarea"
+              autogrow
+              placeholder="Comment on this bill (not a credit note)"
+              :rows="2"
+            />
           </div>
         </div>
       </div>
@@ -244,12 +467,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useQuery } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import { supabase } from 'src/boot/supabase';
 import { formatAmountBdt } from 'src/utils/currency';
-import { requestConfirmation } from 'src/utils/appFeedback';
+import {
+  requestConfirmation,
+  showErrorNotification,
+  showSuccessNotification,
+} from 'src/utils/appFeedback';
 import type { CustomerProfile } from 'src/modules/sales_invoice/repositories/customerProfileRepository';
 import {
   invoiceRepository,
@@ -257,28 +483,92 @@ import {
 } from 'src/modules/sales_invoice/repositories/invoiceRepository';
 import BillStockSearch from '../components/BillStockSearch.vue';
 import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
+type ComposeLineKind = 'stock' | 'description' | 'charge';
 import { useBillComposeMutation } from '../composables/useBillComposeMutation';
+import type { Database } from 'src/types/supabase';
+
+type BillDocumentKind = Database['public']['Enums']['bill_document_kind'];
+type BillSettlementKind = Database['public']['Enums']['bill_settlement_kind'];
+type BillDirection = 'they_owe' | 'we_owe';
 
 type ComposeLine = {
   key: string;
+  line_kind: ComposeLineKind;
   id?: number;
-  global_stock_id: number;
+  global_stock_id?: number;
   name: string;
   image_url?: string | null;
-  available_atp: number;
+  available_atp?: number;
   quantity: number;
   sell_price_amount: number;
   line_discount_amount: number;
+  charge_type?: string;
 };
 
-const billKindToggleOptions = [
-  { label: 'Trade', value: 'trade' as const, icon: 'ph ph-briefcase' },
-  { label: 'Walk-in', value: 'walkin' as const, icon: 'ph ph-storefront' },
+const chargeTypeOptions = [
+  { label: 'Shipping', value: 'shipping' },
+  { label: 'Wrapping', value: 'wrapping' },
+  { label: 'Print', value: 'print' },
+  { label: 'Delivery', value: 'delivery' },
+  { label: 'Other', value: 'other' },
 ];
 
-const tradePaperToggleOptions = [
-  { label: 'Take', value: 'take' as const, icon: 'ph ph-arrow-circle-down' },
-  { label: 'Condition', value: 'condition' as const, icon: 'ph ph-seal-check' },
+const chargeTypeLabel = (type: string) =>
+  chargeTypeOptions.find((o) => o.value === type)?.label ?? 'Charge';
+
+type AddLineMenuOption = {
+  key: string;
+  label: string;
+  caption: string;
+  icon: string;
+  line_kind: ComposeLineKind;
+};
+
+const addLineMenuOptions: AddLineMenuOption[] = [
+  {
+    key: 'stock',
+    label: 'Stock',
+    caption: 'Search sellable inventory',
+    icon: 'ph ph-package',
+    line_kind: 'stock',
+  },
+  {
+    key: 'description',
+    label: 'Description',
+    caption: 'Text or service line',
+    icon: 'ph ph-text-align-left',
+    line_kind: 'description',
+  },
+  {
+    key: 'charge',
+    label: 'Charge',
+    caption: 'Shipping, fees, print, …',
+    icon: 'ph ph-receipt',
+    line_kind: 'charge',
+  },
+];
+
+const stockLinePickerOpen = ref(false);
+
+const lineKindLabel = (line: ComposeLine) => {
+  if (line.line_kind === 'charge' && line.charge_type) {
+    return line.charge_type.replace(/_/g, ' ');
+  }
+  return line.line_kind;
+};
+
+type ComposePaperKind = 'take' | 'condition' | 'walkin';
+
+const settlementOptions: Array<{ label: string; value: ComposePaperKind; icon: string }> = [
+  { label: 'Take', value: 'take', icon: 'ph ph-arrow-circle-down' },
+  { label: 'Condition', value: 'condition', icon: 'ph ph-seal-check' },
+  { label: 'Walk-in', value: 'walkin', icon: 'ph ph-storefront' },
+];
+
+const documentKindOptions: Array<{ label: string; value: BillDocumentKind }> = [
+  { label: 'Standard', value: 'standard' },
+  { label: 'Credit note', value: 'credit_note' },
+  { label: 'Debit note', value: 'debit_note' },
 ];
 
 const authStore = useAuthStore();
@@ -288,7 +578,7 @@ const composeMutation = useBillComposeMutation();
 const { setCustomBreadcrumbs, clearCustomBreadcrumbs } = useBreadcrumbs();
 const composeBreadcrumbTitle = ref('New bill');
 
-const BRAND_STORAGE_KEY = 'bills_pays_last_invoice_brand_id';
+const TENANT_PROFILE_STORAGE_KEY = 'bills_pays_last_tenant_side_profile_id';
 
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
 const parentTenantId = computed(() => {
@@ -297,37 +587,149 @@ const parentTenantId = computed(() => {
   return t.parent_id ?? t.id;
 });
 
-const brandsQuery = useQuery({
-  queryKey: computed(() => ['invoice_brands', parentTenantId.value]),
-  queryFn: () =>
-    invoiceRepository.listInvoiceBrands({ parent_tenant_id: parentTenantId.value! }),
-  enabled: computed(() => parentTenantId.value != null),
+const documentKind = ref<BillDocumentKind>('standard');
+const parentBillId = ref<number | null>(null);
+const parentBillOptions = ref<Array<{ id: number; label: string }>>([]);
+
+const sourceType = ref<string | null>(null);
+const sourceId = ref<string | null>(null);
+const sourceKey = ref<string | null>(null);
+
+const formatSourceToken = (value: string | null | undefined) =>
+  value?.trim() ? value.replace(/_/g, ' ') : '';
+
+const sourceTypeLabel = computed(() => {
+  if (sourceType.value) return formatSourceToken(sourceType.value);
+  return editInvoiceId.value ? '—' : 'compose';
 });
 
-const brandOptions = computed(() => brandsQuery.data.value ?? []);
-const selectedBrandId = ref<number | null>(null);
-const selectedBrand = computed(
-  () => brandOptions.value.find((b) => b.id === selectedBrandId.value) ?? brandOptions.value[0],
+const applySourcePlugFromBill = (bill: {
+  source_type?: string | null;
+  source_id?: string | null;
+  source_key?: string | null;
+}) => {
+  sourceType.value = bill.source_type ?? null;
+  sourceId.value = bill.source_id ?? null;
+  sourceKey.value = bill.source_key ?? null;
+};
+
+const refreshBillSourcePlug = async (billId: number) => {
+  const { data, error } = await supabase
+    .from('bills')
+    .select('source_type, source_id, source_key')
+    .eq('id', billId)
+    .maybeSingle();
+  if (error) throw error;
+  if (data) applySourcePlugFromBill(data);
+};
+
+const onDocumentKindClick = (kind: BillDocumentKind) => {
+  documentKind.value = kind;
+  if (kind === 'standard') {
+    parentBillId.value = null;
+    parentBillOptions.value = [];
+  }
+};
+
+watch(parentBillId, async (id) => {
+  if (!id || documentKind.value === 'standard') return;
+  const { data, error } = await supabase
+    .from('bills')
+    .select('from_profile_id, to_profile_id, invoice_type')
+    .eq('id', id)
+    .maybeSingle();
+  if (error || !data) return;
+  if (data.from_profile_id) fromProfileId.value = data.from_profile_id;
+  if (data.to_profile_id) toProfileId.value = data.to_profile_id;
+});
+
+const tenantSideProfileId = ref<number | null>(null);
+const composePaperKind = ref<ComposePaperKind>('take');
+const lines = ref<ComposeLine[]>([]);
+
+const stockLines = computed(() =>
+  lines.value.filter((l) => l.line_kind === 'stock' && l.global_stock_id != null),
 );
+
+const fromProfileId = ref<number | null>(null);
+const toProfileId = ref<number | null>(null);
+const fromProfileOptions = ref<CustomerProfile[]>([]);
+const toProfileOptions = ref<CustomerProfile[]>([]);
+
+const directionLocked = computed(
+  () => documentKind.value !== 'standard' && parentBillId.value != null,
+);
+
+/** To = tenant profile → we owe (pay out); otherwise they owe (collect). */
+const billDirection = computed<BillDirection>(() => {
+  const tenantSide = tenantSideProfileId.value;
+  if (tenantSide != null && toProfileId.value === tenantSide) {
+    return 'we_owe';
+  }
+  return 'they_owe';
+});
+
+const isWalkIn = computed(
+  () => billDirection.value === 'they_owe' && composePaperKind.value === 'walkin',
+);
+
+const showSettlementGroup = computed(() => billDirection.value === 'they_owe');
+
+const showStockSearch = computed(
+  () =>
+    billDirection.value === 'they_owe' &&
+    documentKind.value === 'standard' &&
+    composePaperKind.value !== 'walkin',
+);
+
+const hasStockLines = computed(() => stockLines.value.length > 0);
+
+const rememberTenantSideProfile = (id: number | null) => {
+  if (id == null || !tenantId.value) return;
+  localStorage.setItem(`${TENANT_PROFILE_STORAGE_KEY}_${tenantId.value}`, String(id));
+};
+
+const applyDefaultTenantSideProfile = (profiles: CustomerProfile[]) => {
+  const issuedId = tenantId.value;
+  const tenantRow =
+    profiles.find((p) => p.profile_type === 'tenant' && p.subject_id === issuedId) ??
+    profiles.find((p) => p.id === tenantSideProfileId.value);
+  if (!tenantRow) return;
+
+  tenantSideProfileId.value = tenantRow.id;
+  if (!editInvoiceId.value && fromProfileId.value == null) {
+    fromProfileId.value = tenantRow.id;
+  }
+};
 
 watch(
-  brandOptions,
-  (brands) => {
-    if (!brands.length) return;
-    const stored = localStorage.getItem(`${BRAND_STORAGE_KEY}_${parentTenantId.value ?? 0}`);
-    const storedId = stored ? Number(stored) : NaN;
-    if (Number.isFinite(storedId) && brands.some((b) => b.id === storedId)) {
-      selectedBrandId.value = storedId;
-    } else {
-      selectedBrandId.value = brands[0].id;
-    }
+  () => [fromProfileId.value, toProfileId.value, billDirection.value] as const,
+  ([from, to, dir]) => {
+    const tenantSide = tenantSideProfileId.value;
+    if (tenantSide == null) return;
+    if (dir === 'they_owe' && from === tenantSide) rememberTenantSideProfile(from);
+    if (dir === 'we_owe' && to === tenantSide) rememberTenantSideProfile(to);
   },
-  { immediate: true },
 );
 
-watch(selectedBrandId, (id) => {
-  if (id == null || parentTenantId.value == null) return;
-  localStorage.setItem(`${BRAND_STORAGE_KEY}_${parentTenantId.value}`, String(id));
+watch(fromProfileId, (id) => {
+  void ensureProfileInOptions(id, 'from');
+});
+watch(toProfileId, (toId, prevTo) => {
+  void ensureProfileInOptions(toId, 'to');
+  const tenantSide = tenantSideProfileId.value;
+  if (tenantSide != null && toId === tenantSide && prevTo !== toId) {
+    lines.value = lines.value.filter((l) => l.line_kind !== 'stock');
+    if (composePaperKind.value === 'condition') {
+      composePaperKind.value = 'take';
+    }
+  }
+});
+
+watch(hasStockLines, (has) => {
+  if (!has && composePaperKind.value === 'condition') {
+    composePaperKind.value = 'take';
+  }
 });
 
 const editInvoiceId = computed(() => {
@@ -336,9 +738,6 @@ const editInvoiceId = computed(() => {
   return Number.isFinite(id) && id > 0 ? id : null;
 });
 
-const billKind = ref<'trade' | 'walkin'>('trade');
-const tradePaperKind = ref<'take' | 'condition'>('take');
-const profileId = ref<number | null>(null);
 const invoiceDate = ref(new Date().toISOString().slice(0, 10));
 const dueDate = ref<string | null>(null);
 
@@ -346,60 +745,328 @@ const onDueDatePicked = (value: string | null) => {
   dueDate.value = value && value.length ? value : null;
 };
 const discountAmount = ref(0);
-const shippingCharge = ref(0);
-const wrappingCharge = ref(0);
-const printCharge = ref(0);
 const note = ref('');
-const lines = ref<ComposeLine[]>([]);
 const removedItemIds = ref<number[]>([]);
 const loadingExisting = ref(false);
+const voidingDraft = ref(false);
 
-const profileOptions = ref<CustomerProfile[]>([]);
-const selectedProfile = computed(
-  () => profileOptions.value.find((p) => p.id === profileId.value) ?? null,
+const canVoidDraft = computed(() => editInvoiceId.value != null);
+
+const profilesAreSame = computed(
+  () =>
+    !isWalkIn.value &&
+    fromProfileId.value != null &&
+    toProfileId.value != null &&
+    fromProfileId.value === toProfileId.value,
 );
 
-const filterProfiles = async (
-  val: string,
-  update: (cb: () => void) => void,
+type PartySide = 'from' | 'to';
+
+const composePartyTypes: Database['public']['Enums']['profile_party_type'][] = [
+  'tenant',
+  'company',
+  'customer',
+  'vendor',
+  'cargo',
+  'courier',
+  'investor',
+];
+
+const profilePartyCaption = (profile: CustomerProfile) => {
+  const type = profile.profile_type.replace(/_/g, ' ');
+  const phone = profile.phone?.trim();
+  return phone ? `${type} · ${phone}` : type;
+};
+
+const fetchProfileOptions = async (needle: string): Promise<CustomerProfile[]> => {
+  const booksId = parentTenantId.value;
+  if (!booksId) return [];
+
+  let query = supabase
+    .from('profiles')
+    .select('*')
+    .eq('parent_tenant_id', booksId)
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .in('profile_type', composePartyTypes)
+    .order('name', { ascending: true })
+    .limit(50);
+
+  const trimmed = needle.trim();
+  if (trimmed) {
+    query = query.ilike('name', `%${trimmed}%`);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data as CustomerProfile[]) ?? [];
+};
+
+const mergeProfileIntoOptions = (
+  list: { value: CustomerProfile[] },
+  profile: CustomerProfile,
 ) => {
-  if (!tenantId.value) {
+  if (list.value.some((p) => p.id === profile.id)) return;
+  list.value = [profile, ...list.value];
+};
+
+const ensureProfileInOptions = async (id: number | null, side: PartySide) => {
+  if (id == null) return;
+  const list = side === 'from' ? fromProfileOptions : toProfileOptions;
+  if (list.value.some((p) => p.id === id)) return;
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle();
+  if (error || !data) return;
+  mergeProfileIntoOptions(list, data as CustomerProfile);
+};
+
+const filterFromProfiles = async (val: string, update: (cb: () => void) => void) => {
+  const rows = await fetchProfileOptions(val);
+  update(() => {
+    fromProfileOptions.value = rows;
+    applyDefaultTenantSideProfile(rows);
+    void ensureProfileInOptions(fromProfileId.value, 'from');
+  });
+};
+
+const filterToProfiles = async (val: string, update: (cb: () => void) => void) => {
+  const rows = await fetchProfileOptions(val);
+  update(() => {
+    toProfileOptions.value = rows;
+    void ensureProfileInOptions(toProfileId.value, 'to');
+  });
+};
+
+const resolveTenantSideProfile = async () => {
+  const booksId = parentTenantId.value;
+  const issuedId = tenantId.value;
+  if (!booksId || !issuedId) return;
+
+  const tenantProfileQuery = () =>
+    supabase
+      .from('profiles')
+      .select('*')
+      .eq('parent_tenant_id', booksId)
+      .eq('profile_type', 'tenant')
+      .eq('is_active', true)
+      .is('deleted_at', null);
+
+  let row: CustomerProfile | null = null;
+
+  const { data: issuedRow } = await tenantProfileQuery().eq('subject_id', issuedId).maybeSingle();
+  if (issuedRow) row = issuedRow as CustomerProfile;
+
+  if (!row && booksId !== issuedId) {
+    const { data: parentRow } = await tenantProfileQuery().eq('subject_id', booksId).maybeSingle();
+    if (parentRow) row = parentRow as CustomerProfile;
+  }
+
+  if (!row) {
+    const { data: fallback } = await tenantProfileQuery().limit(1).maybeSingle();
+    if (fallback) row = fallback as CustomerProfile;
+  }
+
+  if (!row) return;
+
+  tenantSideProfileId.value = row.id;
+  mergeProfileIntoOptions(fromProfileOptions, row);
+
+  if (!editInvoiceId.value) {
+    fromProfileId.value = row.id;
+  } else if (fromProfileId.value == null) {
+    fromProfileId.value = row.id;
+  }
+};
+
+const filterParentBills = async (val: string, update: (cb: () => void) => void) => {
+  if (!parentTenantId.value) {
     update(() => {
-      profileOptions.value = [];
+      parentBillOptions.value = [];
     });
     return;
   }
   const needle = val.trim();
   let query = supabase
-    .from('profiles')
-    .select('*')
-    .eq('tenant_id', tenantId.value)
-    .order('name', { ascending: true })
-    .limit(30);
+    .from('bills')
+    .select('id, invoice_no, invoice_date')
+    .eq('parent_tenant_id', parentTenantId.value)
+    .eq('document_kind', 'standard')
+    .eq('invoice_status', 'issued')
+    .order('invoice_date', { ascending: false })
+    .limit(25);
   if (needle) {
-    query = query.ilike('name', `%${needle}%`);
+    query = query.ilike('invoice_no', `%${needle}%`);
   }
   const { data } = await query;
   update(() => {
-    profileOptions.value = (data as CustomerProfile[]) ?? [];
+    parentBillOptions.value =
+      (data ?? []).map((row) => ({
+        id: row.id,
+        label: `${row.invoice_no ?? `#${row.id}`} · ${row.invoice_date ?? ''}`,
+      })) ?? [];
   });
 };
 
-const lineTotal = (line: ComposeLine) =>
+const persistManualLines = async (billId: number) => {
+  const parentId = parentTenantId.value;
+  if (!parentId) return;
+
+  for (const line of lines.value.filter((l) => l.line_kind !== 'stock')) {
+    const lineTotal = lineTotalAmount(line);
+    const lineMeta =
+      line.line_kind === 'charge' && line.charge_type
+        ? { charge_type: line.charge_type }
+        : {};
+
+    if (line.id) {
+      const { error } = await supabase
+        .from('bill_lines')
+        .update({
+          name_snapshot: line.name,
+          quantity: line.quantity,
+          sell_price_amount: line.sell_price_amount,
+          line_discount_amount: line.line_discount_amount || 0,
+          line_total_amount: lineTotal,
+          books_amount: lineTotal,
+          line_meta: lineMeta,
+        })
+        .eq('id', line.id);
+      if (error) throw error;
+      continue;
+    }
+
+    const { data, error } = await supabase
+      .from('bill_lines')
+      .insert({
+        invoice_id: billId,
+        parent_tenant_id: parentId,
+        line_kind: line.line_kind,
+        global_stock_id: null,
+        name_snapshot: line.name,
+        quantity: line.quantity,
+        sell_price_amount: line.sell_price_amount,
+        line_discount_amount: line.line_discount_amount || 0,
+        line_total_amount: lineTotal,
+        books_amount: lineTotal,
+        currency_code: 'BDT',
+        line_meta: lineMeta,
+      })
+      .select('id')
+      .single();
+    if (error) throw error;
+    line.id = data.id;
+  }
+
+  const { error: recomputeError } = await supabase.rpc('recompute_global_invoice_totals', {
+    p_invoice_id: billId,
+  });
+  if (recomputeError) throw recomputeError;
+};
+
+const lineTotalAmount = (line: ComposeLine) =>
   Math.max(line.quantity * line.sell_price_amount - (line.line_discount_amount || 0), 0);
 
-const subtotal = computed(() => lines.value.reduce((s, l) => s + lineTotal(l), 0));
-const chargesSum = computed(
-  () => (shippingCharge.value || 0) + (wrappingCharge.value || 0) + (printCharge.value || 0),
-);
-const estimatedTotal = computed(() =>
-  Math.max(subtotal.value - (discountAmount.value || 0) + chargesSum.value, 0),
+const settlementKindForKernel = (): BillSettlementKind | null => {
+  if (billDirection.value === 'we_owe') return null;
+  if (composePaperKind.value === 'walkin') return 'take';
+  if (composePaperKind.value === 'condition' && !hasStockLines.value) return 'take';
+  return composePaperKind.value === 'condition' ? 'condition' : 'take';
+};
+
+const isSourcePlugged = computed(
+  () => !!sourceType.value && sourceType.value !== 'compose',
 );
 
-const canSave = computed(() => !!tenantId.value && !!profileId.value);
-const canIssue = computed(
-  () => canSave.value && lines.value.length > 0 && lines.value.every((l) => l.quantity > 0),
+const persistBillMeta = async (billId: number) => {
+  const parent = documentKind.value === 'standard' ? null : parentBillId.value;
+  if (documentKind.value !== 'standard' && parent == null) {
+    throw new Error('Choose the issued bill this note applies to.');
+  }
+
+  const letterheadId =
+    billDirection.value === 'they_owe' ? fromProfileId.value : toProfileId.value;
+
+  const channelMeta = {
+    delivery_kind: billDirection.value === 'we_owe' ? 'take' : composePaperKind.value === 'walkin' ? 'take' : composePaperKind.value,
+    letterhead_profile_id: letterheadId,
+  };
+
+  const patch: {
+    document_kind: BillDocumentKind;
+    parent_bill_id: number | null;
+    from_profile_id: number | null;
+    to_profile_id: number | null;
+    settlement_kind: BillSettlementKind | null;
+    channel_meta: { delivery_kind: string; letterhead_profile_id: number | null };
+    profile_id?: number | null;
+    invoice_type?: 'wholesale' | 'retail' | 'ap';
+    source_type?: string;
+    source_id?: string;
+  } = {
+    document_kind: documentKind.value,
+    parent_bill_id: parent,
+    from_profile_id: fromProfileId.value,
+    to_profile_id: toProfileId.value,
+    settlement_kind: settlementKindForKernel(),
+    channel_meta: channelMeta,
+  };
+
+  if (billDirection.value === 'we_owe') {
+    patch.invoice_type = 'ap';
+    patch.profile_id = fromProfileId.value;
+  } else if (!isWalkIn.value) {
+    patch.profile_id = toProfileId.value;
+    patch.invoice_type = 'wholesale';
+  } else {
+    patch.profile_id = null;
+    patch.invoice_type = 'retail';
+  }
+
+  if (!isSourcePlugged.value) {
+    patch.source_type = 'compose';
+    patch.source_id = String(billId);
+  }
+
+  const { error } = await supabase.from('bills').update(patch).eq('id', billId);
+  if (error) throw error;
+};
+
+const lineTotal = (line: ComposeLine) => lineTotalAmount(line);
+
+const subtotal = computed(() => lines.value.reduce((s, l) => s + lineTotal(l), 0));
+const estimatedTotal = computed(() =>
+  Math.max(subtotal.value - (discountAmount.value || 0), 0),
 );
+
+const documentKindReady = computed(
+  () => documentKind.value === 'standard' || parentBillId.value != null,
+);
+
+const canSave = computed(() => {
+  if (!tenantId.value || !documentKindReady.value || profilesAreSame.value) return false;
+  if (isWalkIn.value) return !!fromProfileId.value;
+  if (billDirection.value === 'we_owe') {
+    return !!fromProfileId.value && !!toProfileId.value;
+  }
+  return !!fromProfileId.value && !!toProfileId.value;
+});
+const lineIsValid = (line: ComposeLine) => {
+  if (!line.name.trim()) return false;
+  if (line.quantity <= 0) return false;
+  if (line.sell_price_amount < 0) return false;
+  if (line.line_kind === 'stock') {
+    return line.global_stock_id != null;
+  }
+  return true;
+};
+
+const canIssue = computed(() => {
+  if (!canSave.value || lines.value.length === 0 || !lines.value.every(lineIsValid)) {
+    return false;
+  }
+  if (billDirection.value === 'we_owe' && stockLines.value.length > 0) return false;
+  if (composePaperKind.value === 'condition' && !hasStockLines.value) return false;
+  return true;
+});
 
 const addLineFromStock = (row: SalesInvoiceStockItem) => {
   if (row.available_atp <= 0) return;
@@ -410,6 +1077,7 @@ const addLineFromStock = (row: SalesInvoiceStockItem) => {
   }
   lines.value.push({
     key: `new-${row.global_stock_id}-${Date.now()}`,
+    line_kind: 'stock',
     global_stock_id: row.global_stock_id,
     name: row.name,
     image_url: row.image_url,
@@ -417,6 +1085,58 @@ const addLineFromStock = (row: SalesInvoiceStockItem) => {
     quantity: 1,
     sell_price_amount: row.suggested_sell_price,
     line_discount_amount: 0,
+  });
+};
+
+const injectLegacyHeaderCharges = (
+  mappedLines: ComposeLine[],
+  header: { shipping?: number; wrapping?: number; print?: number },
+) => {
+  const hasChargeType = (type: string) =>
+    mappedLines.some((l) => l.line_kind === 'charge' && l.charge_type === type);
+  const pushCharge = (type: string, label: string, amount: number) => {
+    if (amount <= 0 || hasChargeType(type)) return;
+    mappedLines.push({
+      key: `legacy-${type}-${Date.now()}`,
+      line_kind: 'charge',
+      name: label,
+      quantity: 1,
+      sell_price_amount: amount,
+      line_discount_amount: 0,
+      charge_type: type,
+    });
+  };
+  pushCharge('shipping', 'Shipping', header.shipping ?? 0);
+  pushCharge('wrapping', 'Wrapping', header.wrapping ?? 0);
+  pushCharge('print', 'Print', header.print ?? 0);
+};
+
+const onChargeTypeChange = (line: ComposeLine, chargeType: string) => {
+  line.charge_type = chargeType;
+  const preset = chargeTypeLabel(chargeType);
+  if (!line.name.trim() || chargeTypeOptions.some((o) => o.label === line.name.trim())) {
+    line.name = preset;
+  }
+};
+
+const onStockPickedFromPicker = (row: SalesInvoiceStockItem) => {
+  addLineFromStock(row);
+  stockLinePickerOpen.value = false;
+};
+
+const addBlankLine = (opt: AddLineMenuOption) => {
+  if (opt.line_kind === 'stock') {
+    stockLinePickerOpen.value = true;
+    return;
+  }
+  lines.value.push({
+    key: `manual-${opt.line_kind}-${Date.now()}`,
+    line_kind: opt.line_kind,
+    name: opt.line_kind === 'charge' ? chargeTypeLabel('shipping') : '',
+    quantity: 1,
+    sell_price_amount: 0,
+    line_discount_amount: 0,
+    charge_type: opt.line_kind === 'charge' ? 'shipping' : undefined,
   });
 };
 
@@ -428,34 +1148,40 @@ const removeLine = (index: number) => {
   lines.value.splice(index, 1);
 };
 
-watch(billKind, (kind) => {
-  if (kind === 'walkin') {
-    tradePaperKind.value = 'take';
-  }
-});
-
 const buildPayload = () => {
-  const invoiceType: 'wholesale' | 'retail' = billKind.value === 'walkin' ? 'retail' : 'wholesale';
-  const retailMode: 'direct' | null = billKind.value === 'walkin' ? 'direct' : null;
-  const deliveryKind =
-    billKind.value === 'trade' ? tradePaperKind.value : ('take' as const);
+  const walkIn = isWalkIn.value;
+  const weOwe = billDirection.value === 'we_owe';
+  const invoiceType: 'wholesale' | 'retail' = walkIn ? 'retail' : 'wholesale';
+  const retailMode: 'direct' | null = walkIn ? 'direct' : null;
+  const deliveryKind: 'take' | 'condition' =
+    weOwe || walkIn ? 'take' : composePaperKind.value === 'condition' ? 'condition' : 'take';
+  const letterheadId = weOwe ? toProfileId.value : fromProfileId.value;
+  let profileIdForRpc: number | undefined;
+  if (weOwe) {
+    profileIdForRpc = fromProfileId.value ?? undefined;
+  } else if (!walkIn) {
+    profileIdForRpc = toProfileId.value ?? undefined;
+  }
   return {
     invoice: {
       invoice_type: invoiceType,
-      profile_id: profileId.value!,
+      profile_id: profileIdForRpc,
       invoice_date: invoiceDate.value,
       due_date: dueDate.value || undefined,
       discount_amount: discountAmount.value || 0,
-      shipping_charge: shippingCharge.value || 0,
-      wrapping_charge: wrappingCharge.value || 0,
-      print_charge: printCharge.value || 0,
+      shipping_charge: 0,
+      wrapping_charge: 0,
+      print_charge: 0,
       note: note.value.trim() || undefined,
       retail_billing_mode: retailMode,
-      channel_meta: { delivery_kind: deliveryKind },
+      channel_meta: {
+        delivery_kind: deliveryKind,
+        letterhead_profile_id: letterheadId,
+      },
     },
-    items: lines.value.map((l) => ({
+    items: stockLines.value.map((l) => ({
       ...(l.id ? { id: l.id } : {}),
-      global_stock_id: l.global_stock_id,
+      global_stock_id: l.global_stock_id!,
       quantity: l.quantity,
       sell_price_amount: l.sell_price_amount,
       line_discount_amount: l.line_discount_amount || 0,
@@ -473,6 +1199,12 @@ const saveDraft = async () => {
     removeItemIds: removedItemIds.value,
     issue: false,
   });
+  const savedId = result.invoice_id ?? editInvoiceId.value;
+  if (savedId) {
+    await persistManualLines(savedId);
+    await persistBillMeta(savedId);
+    await refreshBillSourcePlug(savedId);
+  }
   const newId = result.invoice_id;
   if (newId && !editInvoiceId.value) {
     const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
@@ -485,26 +1217,82 @@ const saveDraft = async () => {
   removedItemIds.value = [];
 };
 
-const issueBill = async () => {
-  if (!canIssue.value) return;
+const goToBillsList = async () => {
+  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  await router.push({
+    name: 'app-bills-page',
+    params: tenantSlug ? { tenantSlug } : {},
+  });
+};
+
+const voidDraft = async () => {
+  const id = editInvoiceId.value;
+  if (!id || !canVoidDraft.value) return;
   const ok = await requestConfirmation(
-    tradePaperKind.value === 'condition' && billKind.value === 'trade'
-      ? 'Stock moves to held. Sales count when this bill is paid. Collect on Payments.'
-      : 'Sellable stock will leave inventory when you issue. You can collect payment later on Payments.',
-    tradePaperKind.value === 'condition' && billKind.value === 'trade'
-      ? 'Issue this condition bill?'
-      : 'Issue this bill?',
+    'This removes the draft bill. You cannot undo this.',
+    'Void this draft?',
   );
   if (!ok) return;
+  voidingDraft.value = true;
+  try {
+    await invoiceRepository.deleteGlobalInvoice(id);
+    showSuccessNotification('Draft voided.');
+    await goToBillsList();
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Could not void draft.';
+    showErrorNotification(message);
+  } finally {
+    voidingDraft.value = false;
+  }
+};
+
+const issueConfirmCopy = () => {
+  if (billDirection.value === 'we_owe') {
+    return {
+      title: 'Issue this payable bill?',
+      body: 'No sales on this paper. Pay out later on Payments.',
+    };
+  }
+  if (!hasStockLines.value) {
+    return {
+      title: 'Issue this bill?',
+      body: 'Paper only — no inventory moves. Collect or pay on Payments.',
+    };
+  }
+  if (composePaperKind.value === 'condition') {
+    return {
+      title: 'Issue this condition bill?',
+      body: 'Stock moves to held. Sales count when this bill is paid. Collect on Payments.',
+    };
+  }
+  return {
+    title: 'Issue this bill?',
+    body: 'Sellable stock will leave inventory when you issue. You can collect payment later on Payments.',
+  };
+};
+
+const issueBill = async () => {
+  if (!canIssue.value) return;
+  const copy = issueConfirmCopy();
+  const ok = await requestConfirmation(copy.body, copy.title);
+  if (!ok) return;
+  const hasStock = stockLines.value.length > 0;
   const result = await composeMutation.mutateAsync({
     tenantId: tenantId.value,
     invoiceId: editInvoiceId.value,
     payload: buildPayload(),
     removeItemIds: removedItemIds.value,
-    issue: true,
+    issue: hasStock,
   });
   const id = result.invoice_id ?? editInvoiceId.value;
   if (!id) return;
+  await persistManualLines(id);
+  await persistBillMeta(id);
+  await refreshBillSourcePlug(id);
+  if (!hasStock) {
+    await invoiceRepository.postGlobalInvoice(id);
+  }
+  removedItemIds.value = [];
   const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
   router.push({
     name: 'app-bill-detail-page',
@@ -518,10 +1306,20 @@ const issueBill = async () => {
 const loadExisting = async (id: number) => {
   loadingExisting.value = true;
   try {
-    const [bill, items] = await Promise.all([
+    const [bill, items, rawLinesRes] = await Promise.all([
       invoiceRepository.getGlobalInvoiceById(id),
       invoiceRepository.listGlobalInvoiceItems(id),
+      supabase
+        .from('bill_lines')
+        .select(
+          'id, line_kind, name_snapshot, quantity, sell_price_amount, line_discount_amount, global_stock_id, line_meta',
+        )
+        .eq('invoice_id', id)
+        .order('id'),
     ]);
+    if (rawLinesRes.error) throw rawLinesRes.error;
+    const rawLines = rawLinesRes.data ?? [];
+    const stockItemById = new Map(items.map((item) => [item.id, item]));
     if (!['draft', 'proforma_generated'].includes(bill.invoice_status)) {
       const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
       router.replace({
@@ -533,38 +1331,102 @@ const loadExisting = async (id: number) => {
       });
       return;
     }
-    billKind.value =
-      bill.invoice_type === 'retail' && bill.retail_billing_mode === 'direct' ? 'walkin' : 'trade';
-    const meta = bill.channel_meta as { delivery_kind?: string } | null | undefined;
-    const kind = (meta?.delivery_kind ?? 'take').toLowerCase();
-    tradePaperKind.value = kind === 'condition' ? 'condition' : 'take';
-    profileId.value = bill.profile_id ?? null;
+    const meta = bill.channel_meta as {
+      delivery_kind?: string;
+      letterhead_profile_id?: number;
+    } | null | undefined;
+    const deliveryKind = (meta?.delivery_kind ?? 'take').toLowerCase();
+    const billRow = bill as {
+      from_profile_id?: number | null;
+      to_profile_id?: number | null;
+      settlement_kind?: BillSettlementKind | null;
+      document_kind?: BillDocumentKind;
+      parent_bill_id?: number | null;
+      source_type?: string | null;
+      source_id?: string | null;
+      source_key?: string | null;
+    };
+    applySourcePlugFromBill(billRow);
+    documentKind.value = billRow.document_kind ?? 'standard';
+    parentBillId.value = billRow.parent_bill_id ?? null;
+    if (parentBillId.value) {
+      const { data: parentRow } = await supabase
+        .from('bills')
+        .select('invoice_no')
+        .eq('id', parentBillId.value)
+        .maybeSingle();
+      parentBillOptions.value = [
+        {
+          id: parentBillId.value,
+          label: parentRow?.invoice_no?.trim() || `Bill #${parentBillId.value}`,
+        },
+      ];
+    }
+
+    await resolveTenantSideProfile();
+
+    if (bill.invoice_type === 'ap') {
+      fromProfileId.value = billRow.from_profile_id ?? bill.profile_id ?? null;
+      toProfileId.value = billRow.to_profile_id ?? tenantSideProfileId.value;
+    } else {
+      fromProfileId.value =
+        billRow.from_profile_id ?? meta?.letterhead_profile_id ?? tenantSideProfileId.value;
+      toProfileId.value = billRow.to_profile_id ?? bill.profile_id ?? null;
+    }
+
     invoiceDate.value = bill.invoice_date?.slice(0, 10) ?? invoiceDate.value;
     dueDate.value = bill.due_date?.slice(0, 10) ?? null;
     discountAmount.value = Number(bill.discount_amount ?? 0);
-    shippingCharge.value = Number(bill.shipping_charge ?? 0);
-    wrappingCharge.value = Number(bill.wrapping_charge ?? 0);
-    printCharge.value = Number(bill.print_charge ?? 0);
     note.value = bill.note ?? '';
-    lines.value = items.map((item) => ({
-      key: `item-${item.id}`,
-      id: item.id,
-      global_stock_id: item.global_stock_id,
-      name: item.name_snapshot,
-      image_url: item.image_url,
-      available_atp: item.quantity,
-      quantity: item.quantity,
-      sell_price_amount: item.sell_price_amount,
-      line_discount_amount: item.line_discount_amount,
-    }));
-    if (profileId.value && bill.profiles) {
-      profileOptions.value = [
-        {
-          id: profileId.value,
-          name: bill.profiles.name,
-          tenant_id: tenantId.value,
-        } as CustomerProfile,
-      ];
+
+    const mappedLines: ComposeLine[] = rawLines.map((row) => {
+      const kind = (row.line_kind ?? 'stock') as ComposeLineKind;
+      const stockItem = stockItemById.get(row.id);
+      const lineMeta = row.line_meta as { charge_type?: string } | null;
+      return {
+        key: `item-${row.id}`,
+        id: row.id,
+        line_kind: kind,
+        global_stock_id: row.global_stock_id ?? undefined,
+        name: row.name_snapshot,
+        image_url: stockItem?.image_url ?? null,
+        available_atp: stockItem?.available_atp ?? row.quantity,
+        quantity: Number(row.quantity),
+        sell_price_amount: Number(row.sell_price_amount),
+        line_discount_amount: Number(row.line_discount_amount ?? 0),
+        charge_type: lineMeta?.charge_type,
+      };
+    });
+    injectLegacyHeaderCharges(mappedLines, {
+      shipping: Number(bill.shipping_charge ?? 0),
+      wrapping: Number(bill.wrapping_charge ?? 0),
+      print: Number(bill.print_charge ?? 0),
+    });
+    lines.value = mappedLines;
+
+    const settle =
+      billRow.settlement_kind ??
+      (deliveryKind === 'condition' ? 'condition' : 'take');
+    if (bill.invoice_type === 'retail' && bill.retail_billing_mode === 'direct') {
+      composePaperKind.value = 'walkin';
+    } else if (settle === 'condition') {
+      composePaperKind.value = 'condition';
+    } else {
+      composePaperKind.value = 'take';
+    }
+
+    const optionRows: CustomerProfile[] = [];
+    const profileIds = [fromProfileId.value, toProfileId.value].filter(
+      (id): id is number => id != null,
+    );
+    for (const pid of profileIds) {
+      const { data: row } = await supabase.from('profiles').select('*').eq('id', pid).maybeSingle();
+      if (row) optionRows.push(row as CustomerProfile);
+    }
+    if (optionRows.length) {
+      const unique = optionRows.filter((p, i, arr) => arr.findIndex((x) => x.id === p.id) === i);
+      fromProfileOptions.value = unique;
+      toProfileOptions.value = unique;
     }
     const no = bill.invoice_no?.trim();
     composeBreadcrumbTitle.value = no || `Bill #${id}`;
@@ -606,11 +1468,15 @@ const breadcrumbItems = computed(() => {
 watch(breadcrumbItems, (items) => setCustomBreadcrumbs(items), { immediate: true });
 onBeforeUnmount(() => clearCustomBreadcrumbs());
 
-watch(tenantId, () => {
-  void filterProfiles('', (cb) => cb());
+watch(tenantId, async () => {
+  await resolveTenantSideProfile();
+  void filterFromProfiles('', (cb) => cb());
+  void filterToProfiles('', (cb) => cb());
 });
 
-void filterProfiles('', (cb) => cb());
+void resolveTenantSideProfile();
+void filterFromProfiles('', (cb) => cb());
+void filterToProfiles('', (cb) => cb());
 </script>
 
 <style scoped>
@@ -620,9 +1486,68 @@ void filterProfiles('', (cb) => cb());
 .compose-card {
   max-width: 960px;
   margin: 0 auto;
+  min-height: 100%;
   background: var(--bw-neutral-surface, #fff);
   border: 1px solid var(--bw-neutral-border, #e7e1d8);
   border-radius: 8px;
+}
+
+.compose-sticky-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-radius: 8px 8px 0 0;
+}
+
+.compose-party-card {
+  background: var(--bw-neutral-surface-alt, #f8fafc);
+  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+  border-radius: 8px;
+}
+
+.compose-party-select :deep(.q-field__control) {
+  min-height: 36px;
+}
+
+.compose-party-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bw-neutral-chrome, #64748b);
+  padding-right: 4px;
+  white-space: nowrap;
+}
+
+body.body--dark .compose-party-card {
+  background: #1c1c1c;
+  border-color: #2e2e2e;
+}
+
+.compose-footer {
+  border-top: 1px solid var(--bw-neutral-border, #e7e1d8);
+  background: var(--bw-neutral-surface-alt, #f8fafc);
+  border-radius: 0 0 8px 8px;
+}
+
+body.body--dark .compose-footer {
+  background: #1c1c1c;
+  border-color: #2e2e2e;
+}
+
+.compose-lines-empty {
+  font-size: 13px;
+  border: 1px dashed var(--bw-neutral-border, #e7e1d8);
+  border-radius: 8px;
+}
+
+.compose-add-line-menu {
+  min-width: 240px;
+}
+
+.compose-stock-picker-card {
+  width: min(480px, 92vw);
+  max-width: 480px;
 }
 
 .compose-kind-toolbar {
@@ -657,25 +1582,60 @@ body.body--dark .compose-kind-toolbar {
   padding-left: 2px;
 }
 
-.compose-kind-tabs {
-  min-height: 36px;
+.compose-toolbar-segment {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--bw-radius-sm, 8px);
+  background: #f1f5f9;
+  flex-shrink: 0;
 }
 
-.compose-kind-tabs :deep(.q-btn) {
-  min-height: 36px;
-  padding: 0 14px;
-  font-size: 13px;
+body.body--dark .compose-toolbar-segment {
+  background: #2a2622;
+}
+
+.compose-toolbar-segment :deep(.compose-toolbar-btn) {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
   font-weight: 600;
+  border-radius: 6px;
 }
 
-.compose-kind-tabs :deep(.q-btn .q-icon) {
-  font-size: 16px;
-  margin-right: 6px;
+.compose-toolbar-segment :deep(.compose-toolbar-btn .q-icon) {
+  font-size: 14px;
 }
 
-.compose-page-actions :deep(.q-btn) {
-  min-height: 36px;
-  padding: 0 14px;
+.compose-toolbar-segment :deep(.compose-toolbar-btn .q-icon.on-left) {
+  margin-right: 4px;
+}
+
+.compose-toolbar-segment :deep(.compose-toolbar-btn .q-btn__content) {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.compose-lifecycle-group {
+  flex-shrink: 0;
+}
+
+.compose-document-chips {
+  min-height: 28px;
+}
+
+.compose-document-chip {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.compose-parent-bill-select {
+  min-width: 220px;
+  max-width: 320px;
 }
 
 .totals-panel {
@@ -697,5 +1657,9 @@ body.body--dark .compose-kind-toolbar {
 .compose-line-item-cell {
   vertical-align: top;
   max-width: 320px;
+}
+
+.compose-note-section {
+  max-width: 640px;
 }
 </style>

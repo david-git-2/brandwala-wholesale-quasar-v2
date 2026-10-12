@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS "public"."bills" (
     "currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
     CONSTRAINT "bills_ap_kind_check" CHECK (("ap_kind" IS NULL) OR ("ap_kind" = ANY (ARRAY['vendor'::"text", 'cargo'::"text", 'local'::"text", 'material'::"text", 'freight'::"text", 'customs'::"text", 'handling'::"text", 'finance'::"text", 'other'::"text"]))),
     CONSTRAINT "bills_document_parent_check" CHECK (((("document_kind" = 'standard'::"public"."bill_document_kind") AND ("parent_bill_id" IS NULL)) OR (("document_kind" <> 'standard'::"public"."bill_document_kind") AND ("parent_bill_id" IS NOT NULL)))),
-    CONSTRAINT "bills_from_to_distinct" CHECK (("from_profile_id" IS DISTINCT FROM "to_profile_id")),
+    CONSTRAINT "bills_from_to_distinct" CHECK ((("from_profile_id" IS NULL) OR ("to_profile_id" IS NULL) OR ("from_profile_id" <> "to_profile_id"))),
     CONSTRAINT "global_invoices_charges_amount_check" CHECK (("charges_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_discount_amount_check" CHECK (("discount_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_due_amount_check" CHECK (("due_amount" >= (0)::numeric)),

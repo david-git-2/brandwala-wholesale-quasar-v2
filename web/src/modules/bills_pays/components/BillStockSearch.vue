@@ -87,11 +87,12 @@ const runSearch = async () => {
   }
   loading.value = true;
   try {
-    results.value = await invoiceRepository.searchSalesInvoiceStock({
+    const rows = await invoiceRepository.searchSalesInvoiceStock({
       tenantId: props.tenantId,
       search: q,
       limit: 40,
     });
+    results.value = rows.filter((row) => (row.available_atp ?? 0) > 0);
   } catch (err) {
     console.error(err);
     results.value = [];

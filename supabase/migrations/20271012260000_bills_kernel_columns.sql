@@ -22,11 +22,6 @@ ALTER TABLE public.bills
   ADD COLUMN IF NOT EXISTS source_key text,
   ADD COLUMN IF NOT EXISTS currency_code text DEFAULT 'BDT' NOT NULL;
 
-ALTER TABLE public.bills
-  DROP CONSTRAINT IF EXISTS bills_from_to_distinct;
-ALTER TABLE public.bills
-  ADD CONSTRAINT bills_from_to_distinct CHECK (from_profile_id IS DISTINCT FROM to_profile_id);
-
 ALTER TABLE public.bill_lines
   ADD COLUMN IF NOT EXISTS line_kind text DEFAULT 'stock' NOT NULL,
   ADD COLUMN IF NOT EXISTS currency_code text DEFAULT 'BDT' NOT NULL,
@@ -212,6 +207,15 @@ begin
     end if;
   end if;
 
+  -- Self-bills (counterparty is the tenant profile): keep one side, leave the other null.
+  if v_from is not null and v_from = v_to then
+    if v_bill.invoice_type = 'ap'::public.global_invoice_type then
+      v_to := null;
+    else
+      v_from := null;
+    end if;
+  end if;
+
   update public.bills
   set
     from_profile_id = v_from,
@@ -236,6 +240,18 @@ BEGIN
     PERFORM public.stamp_bill_kernel_fields(r.id);
   END LOOP;
 END $$;
+
+-- After stamp: allow nulls (unfilled tenant/counterparty). Reject equal non-null ids.
+-- IS DISTINCT FROM would also reject NULL/NULL on every existing row before stamp.
+ALTER TABLE public.bills
+  DROP CONSTRAINT IF EXISTS bills_from_to_distinct;
+ALTER TABLE public.bills
+  ADD CONSTRAINT bills_from_to_distinct
+  CHECK (
+    from_profile_id IS NULL
+    OR to_profile_id IS NULL
+    OR from_profile_id <> to_profile_id
+  );
 
 CREATE UNIQUE INDEX IF NOT EXISTS bills_source_plug_uidx
   ON public.bills USING btree (
