@@ -25,17 +25,76 @@
             <tr>
               <th class="text-left">Description</th>
               <th class="text-right">Amount</th>
+              <th v-if="noteEditMode" class="text-right note-amount-col">
+                Revised ({{ group.currency_code || 'BDT' }})
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(line, idx) in group.lines" :key="idx">
+            <tr v-for="(line, lineIdx) in group.lines" :key="lineIdx">
               <td>{{ line.description }}</td>
-              <td class="text-right font-mono">{{ formatLineAmount(line, group) }}</td>
+              <td class="text-right font-mono">
+                {{ formatDraftOrLineAmount(gIdx, lineIdx, line, group) }}
+              </td>
+              <td v-if="noteEditMode" class="text-right note-amount-col">
+                <q-input
+                  v-if="draftForApLine(gIdx, lineIdx)"
+                  :model-value="draftForApLine(gIdx, lineIdx)!.revisedAmount"
+                  dense
+                  outlined
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  class="note-amount-input"
+                  :placeholder="formatForeign(draftForApLine(gIdx, lineIdx)?.maxAmount ?? line.amount)"
+                  @update:model-value="
+                    (v) => onNoteAmount(draftForApLine(gIdx, lineIdx)!, v as number | null)
+                  "
+                />
+              </td>
+            </tr>
+            <tr v-for="row in extraRowsForGroup(group.currency_code)" :key="row.key">
+              <td>
+                <q-input v-model="row.name" dense outlined placeholder="Description" />
+              </td>
+              <td />
+              <td v-if="noteEditMode" class="text-right note-amount-col">
+                <q-input
+                  :model-value="row.amount"
+                  dense
+                  outlined
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  class="note-amount-input"
+                  placeholder="0"
+                  @update:model-value="(v) => onNoteAmount(row, v as number | null)"
+                />
+              </td>
             </tr>
           </tbody>
+          <tfoot v-if="noteEditMode">
+            <tr class="text-weight-bold">
+              <td>Total</td>
+              <td class="text-right font-mono">{{ formatGroupTotal(group) }}</td>
+              <td class="text-right font-mono">{{ formatNoteGroupTotal(group, gIdx) }}</td>
+            </tr>
+          </tfoot>
         </q-markup-table>
 
-        <div class="ap-bill-row text-weight-bold q-mt-sm">
+        <div v-if="noteEditMode" class="q-mt-xs">
+          <q-btn
+            flat
+            dense
+            no-caps
+            color="primary"
+            icon="ph ph-plus"
+            label="Add line"
+            @click="emit('add-extra-line', (group.currency_code || 'BDT').toUpperCase())"
+          />
+        </div>
+
+        <div v-if="!noteEditMode" class="ap-bill-row text-weight-bold q-mt-sm">
           <span>Total ({{ group.currency_code }})</span>
           <span class="font-mono">{{ formatGroupTotal(group) }}</span>
         </div>
@@ -43,6 +102,26 @@
 
       <div v-if="currencyGroups.length === 0" class="text-caption text-grey-6 q-py-sm">
         No line detail on file. Re-sync from shipment to refresh.
+      </div>
+
+      <div
+        v-if="noteEditMode && apTotalDraft"
+        class="row items-center q-gutter-sm q-mt-sm"
+      >
+        <span class="text-body2">{{ apTotalDraft.name }}</span>
+        <q-input
+          :model-value="apTotalDraft.revisedAmount"
+          dense
+          outlined
+          type="number"
+          step="0.01"
+          :label="`Revised (${apTotalDraft.currencyCode})`"
+          :placeholder="
+            apTotalDraft.maxAmount != null ? formatForeign(apTotalDraft.maxAmount) : '0'
+          "
+          class="note-amount-input"
+          @update:model-value="(v) => onNoteAmount(apTotalDraft!, v as number | null)"
+        />
       </div>
 
       <div v-if="showLegacyConversion(linePaper)" class="ap-bill-row q-mt-sm">
@@ -111,11 +190,20 @@ import type {
   ApBillPaperBucketLines,
 } from '../types/apBillPaper';
 import { apBillCurrencyGroups, parseApBillPaper } from '../utils/parseApBillPaper';
+import type { BillAdjustmentDraftRow } from '../utils/billAdjustmentParentLines';
+import { apLineDraftKey, parseNoteInputAmount } from '../utils/billAdjustmentParentLines';
 
 const props = defineProps<{
   channelMeta?: Record<string, unknown> | null;
   apKind?: string | null;
   totalAmount?: number | null;
+  noteEditMode?: boolean;
+  draftRows?: BillAdjustmentDraftRow[];
+}>();
+
+const emit = defineEmits<{
+  'add-extra-line': [currencyCode: string];
+  'note-amount': [row: BillAdjustmentDraftRow, value: number | null];
 }>();
 
 const paper = computed((): ApBillPaperSnapshot | null =>
@@ -129,6 +217,24 @@ const linePaper = computed((): ApBillPaperBucketLines | null => {
 });
 
 const currencyGroups = computed(() => apBillCurrencyGroups(props.channelMeta));
+
+const apTotalDraft = computed(() => props.draftRows?.find((r) => r.key === 'ap-total'));
+
+function draftForApLine(groupIdx: number, lineIdx: number) {
+  const key = apLineDraftKey(groupIdx, lineIdx);
+  return props.draftRows?.find((r) => r.key === key);
+}
+
+function extraRowsForGroup(currencyCode: string) {
+  const code = (currencyCode || 'BDT').toUpperCase();
+  return (props.draftRows ?? []).filter(
+    (r) => r.isExtra && r.currencyCode.toUpperCase() === code,
+  );
+}
+
+function onNoteAmount(row: BillAdjustmentDraftRow, value: number | null) {
+  emit('note-amount', row, value);
+}
 
 const formatForeign = (n: number) =>
   Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -144,13 +250,59 @@ const formatLineAmount = (line: ApBillPaperLine, group: ApBillPaperCurrencyGroup
   return sym ? `${sym}${formatted}` : formatted;
 };
 
+function formatDraftOrLineAmount(
+  gIdx: number,
+  lineIdx: number,
+  line: ApBillPaperLine,
+  group: ApBillPaperCurrencyGroup,
+) {
+  const d = draftForApLine(gIdx, lineIdx);
+  if (props.noteEditMode && d?.maxAmount != null) {
+    const rem = d.maxAmount;
+    const orig = Number(d.originalAmount ?? line.amount);
+    const formatted = formatForeign(rem);
+    const prefix = orig > rem + 0.001 ? 'left ' : '';
+    const sym = line.currency_symbol || group.currency_symbol || '';
+    return prefix + (sym ? `${sym}${formatted}` : formatted);
+  }
+  return formatLineAmount(line, group);
+}
+
+function groupInvoiceTotal(group: ApBillPaperCurrencyGroup): number {
+  const ft = Number(group.foreign_total);
+  if (Number.isFinite(ft) && ft > 0) return ft;
+  return (group.lines ?? []).reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
+}
+
 const formatGroupTotal = (group: ApBillPaperCurrencyGroup) => {
   const sym = group.currency_symbol || '';
-  const formatted = formatForeign(group.foreign_total);
+  const formatted = formatForeign(groupInvoiceTotal(group));
   return sym ? `${sym}${formatted}` : formatted;
 };
 
-/** FX on paper only for legacy snapshots or after payout stamped a rate. */
+function noteSumForGroup(gIdx: number, group: ApBillPaperCurrencyGroup): number {
+  let sum = 0;
+  const groupLines = group.lines ?? [];
+  for (let lineIdx = 0; lineIdx < groupLines.length; lineIdx++) {
+    const line = groupLines[lineIdx];
+    const d = draftForApLine(gIdx, lineIdx);
+    const revised = d?.revisedAmount;
+    if (revised != null && Number.isFinite(revised)) sum += revised;
+    else sum += Number(d?.maxAmount ?? line.amount) || 0;
+  }
+  for (const row of extraRowsForGroup(group.currency_code)) {
+    const amt = parseNoteInputAmount(row.amount);
+    if (amt != null) sum += amt;
+  }
+  return sum;
+}
+
+const formatNoteGroupTotal = (group: ApBillPaperCurrencyGroup, gIdx: number) => {
+  const sym = group.currency_symbol || '';
+  const formatted = formatForeign(noteSumForGroup(gIdx, group));
+  return sym ? `${sym}${formatted}` : formatted;
+};
+
 const showLegacyConversion = (p: ApBillPaperBucketLines) => {
   const rate = p.conversion_rate;
   if (rate == null || rate <= 0) return false;
@@ -180,5 +332,14 @@ const showLegacyBdtDue = (p: ApBillPaperBucketLines) => showLegacyConversion(p);
   font-size: 11px;
   color: var(--bw-neutral-chrome, #64748b);
   font-weight: 600;
+}
+
+.note-amount-col {
+  min-width: 120px;
+}
+
+.note-amount-input {
+  max-width: 120px;
+  margin-left: auto;
 }
 </style>

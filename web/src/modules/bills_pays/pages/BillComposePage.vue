@@ -29,20 +29,19 @@
             </div>
             <div class="compose-kind-group">
               <div class="compose-kind-heading">Document</div>
-              <div class="row items-center q-gutter-xs wrap compose-document-chips">
-                <q-chip
+              <div class="compose-toolbar-segment compose-document-segment">
+                <q-btn
                   v-for="opt in documentKindOptions"
                   :key="opt.value"
                   dense
-                  clickable
-                  class="compose-document-chip"
-                  :outline="documentKind !== opt.value"
-                  :color="documentKind === opt.value ? 'primary' : 'grey-3'"
-                  :text-color="documentKind === opt.value ? 'white' : 'grey-8'"
+                  unelevated
+                  no-caps
+                  :label="opt.label"
+                  :color="documentKind === opt.value ? 'primary' : 'transparent'"
+                  :text-color="documentKind === opt.value ? 'white' : 'grey-9'"
+                  class="compose-toolbar-btn"
                   @click="onDocumentKindClick(opt.value)"
-                >
-                  {{ opt.label }}
-                </q-chip>
+                />
               </div>
               <q-select
                 v-if="documentKind !== 'standard'"
@@ -1627,10 +1626,27 @@ body.body--dark .compose-toolbar-segment {
   min-height: 28px;
 }
 
+.compose-document-segment :deep(.compose-toolbar-btn) {
+  color: var(--bw-neutral-ink, #171412);
+}
+
+body.body--dark .compose-document-segment :deep(.compose-toolbar-btn) {
+  color: var(--bw-neutral-ink, #f5f5f4);
+}
+
 .compose-document-chip {
   font-size: 12px;
   font-weight: 600;
   border-radius: 6px;
+  background: var(--bw-neutral-surface, #fff) !important;
+  color: var(--bw-neutral-ink, #171412) !important;
+  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+}
+
+body.body--dark .compose-document-chip {
+  background: var(--bw-neutral-surface, #1c1917) !important;
+  color: var(--bw-neutral-ink, #f5f5f4) !important;
+  border-color: var(--bw-neutral-border, #2a2622);
 }
 
 .compose-parent-bill-select {

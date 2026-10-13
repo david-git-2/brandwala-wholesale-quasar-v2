@@ -27,13 +27,23 @@
     <div v-else-if="bill" class="preview-sheet q-pa-lg">
       <div class="row justify-between q-mb-lg">
         <template v-if="isApBill">
-          <div class="col-grow">
+          <div class="col-grow column q-gutter-y-sm">
             <ApBillPartiesBlock :bill="bill" />
+            <BillKernelSourceChips
+              :source-type="bill.source_type"
+              :source-id="bill.source_id"
+              :source-key="bill.source_key ?? bill.ap_kind"
+            />
           </div>
           <div class="col-auto text-right">
+            <div v-if="documentTitle" class="text-subtitle1 text-weight-bold">{{ documentTitle }}</div>
             <div class="text-h6 text-weight-bold">{{ bill.invoice_no }}</div>
+            <div v-if="parentInvoiceNo" class="text-caption text-grey-8">
+              Against {{ parentInvoiceNo }}
+            </div>
             <div class="text-caption text-grey-7">{{ bill.invoice_date }}</div>
             <div v-if="bill.due_date" class="text-caption">Due {{ bill.due_date }}</div>
+            <div v-if="bill.currency_code" class="text-caption text-grey-7">{{ bill.currency_code }}</div>
           </div>
         </template>
         <template v-else>
@@ -52,17 +62,44 @@
             </div>
           </div>
           <div class="col-auto text-right">
+            <div v-if="documentTitle" class="text-subtitle1 text-weight-bold">{{ documentTitle }}</div>
             <div class="text-h6 text-weight-bold">{{ bill.invoice_no }}</div>
+            <div v-if="parentInvoiceNo" class="text-caption text-grey-8">
+              Against {{ parentInvoiceNo }}
+            </div>
             <div class="text-caption text-grey-7">{{ bill.invoice_date }}</div>
             <div v-if="bill.due_date" class="text-caption">Due {{ bill.due_date }}</div>
           </div>
         </template>
       </div>
 
-      <template v-if="isApBill">
+      <template v-if="isAdjustmentBill">
+        <BillAdjustmentLinesTable
+          :lines="adjustmentLineRows"
+          :header-total-bdt="bill.total_amount"
+        />
+        <div class="row justify-end q-mt-md">
+          <div class="totals-panel">
+            <div class="total-row text-weight-bold">
+              <span>Total (books)</span>
+              <span>{{ formatAmountBdt(bill.total_amount) }}</span>
+            </div>
+            <div class="total-row">
+              <span>Paid</span>
+              <span>{{ formatAmountBdt(bill.paid_amount) }}</span>
+            </div>
+            <div class="total-row text-weight-bold">
+              <span>Due</span>
+              <span>{{ formatAmountBdt(bill.due_amount) }}</span>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <template v-else-if="isApBill">
         <ApBillPaper
           :channel-meta="bill.channel_meta"
-          :ap-kind="bill.ap_kind"
+          :ap-kind="bill.source_key ?? bill.ap_kind"
           :total-amount="bill.total_amount"
         />
         <div class="row justify-end q-mt-md">
@@ -83,11 +120,27 @@
                 <div class="total-row">
                   <span>Total</span><span class="font-mono">{{ group.totalLabel }}</span>
                 </div>
+                <div v-if="group.conversionRate" class="total-row text-caption text-grey-7">
+                  <span>Rate</span>
+                  <span class="font-mono">{{ group.conversionRate }} BDT per 1 {{ group.currency_code }}</span>
+                </div>
                 <div class="total-row">
-                  <span>Paid</span><span class="font-mono">{{ group.paidLabel }}</span>
+                  <span>Paid</span>
+                  <div class="column items-end">
+                    <span class="font-mono">{{ group.paidLabel }}</span>
+                    <span v-if="group.paidBdtLabel" class="text-caption text-grey-7 font-mono">
+                      {{ group.paidBdtLabel }} BDT
+                    </span>
+                  </div>
                 </div>
                 <div class="total-row text-weight-bold">
-                  <span>Due</span><span class="font-mono">{{ group.dueLabel }}</span>
+                  <span>Due</span>
+                  <div class="column items-end">
+                    <span class="font-mono">{{ group.dueLabel }}</span>
+                    <span v-if="group.dueBdtLabel" class="text-caption text-grey-7 font-mono">
+                      {{ group.dueBdtLabel }} BDT
+                    </span>
+                  </div>
                 </div>
               </div>
             </template>
@@ -163,7 +216,10 @@ import { invoiceRepository, type InvoiceBrand } from 'src/modules/sales_invoice/
 import BarcodeRenderer from 'src/modules/thrift/barcode/components/BarcodeRenderer.vue';
 import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
 import ApBillPaper from '../components/ApBillPaper.vue';
+import BillAdjustmentLinesTable from '../components/BillAdjustmentLinesTable.vue';
+import type { BillLineDisplayRow } from '../repositories/billLinesRepository';
 import ApBillPartiesBlock from '../components/ApBillPartiesBlock.vue';
+import BillKernelSourceChips from '../components/BillKernelSourceChips.vue';
 import { useBillDetailQuery } from '../composables/useBillDetailQuery';
 import { apBillCurrencyBalances } from '../utils/parseApBillPaper';
 
@@ -179,7 +235,7 @@ const billId = computed(() => {
   return Number.isFinite(id) && id > 0 ? id : null;
 });
 
-const { detailQuery, itemsQuery } = useBillDetailQuery(billId);
+const { detailQuery, itemsQuery, billLinesQuery } = useBillDetailQuery(billId);
 
 const parentTenantId = computed(() => {
   const t = authStore.selectedTenant;
@@ -224,6 +280,24 @@ watch(selectedBrandId, (id) => {
 
 const bill = computed(() => detailQuery.data.value as GlobalInvoiceDetail | undefined);
 const isApBill = computed(() => bill.value?.invoice_type === 'ap');
+
+const billDocumentKind = computed(() => {
+  const b = bill.value as { document_kind?: string } | undefined;
+  return b?.document_kind ?? 'standard';
+});
+const isAdjustmentBill = computed(() => billDocumentKind.value !== 'standard');
+const documentTitle = computed(() => {
+  if (billDocumentKind.value === 'credit_note') return 'Credit note';
+  if (billDocumentKind.value === 'debit_note') return 'Debit note';
+  return null;
+});
+const parentInvoiceNo = computed(() => {
+  const meta = bill.value?.channel_meta as Record<string, unknown> | null;
+  const adj = meta?.adjustment as Record<string, unknown> | undefined;
+  const fromMeta = adj?.parent_invoice_no;
+  if (typeof fromMeta === 'string' && fromMeta.trim()) return fromMeta.trim();
+  return null;
+});
 const apCurrencyBalances = computed(() => {
   if (!isApBill.value || !bill.value) return null;
   return apBillCurrencyBalances(
@@ -233,6 +307,21 @@ const apCurrencyBalances = computed(() => {
   );
 });
 const lines = computed(() => (itemsQuery.data.value ?? []) as GlobalInvoiceItemRow[]);
+
+const adjustmentLineRows = computed((): BillLineDisplayRow[] => {
+  if (!isAdjustmentBill.value) return [];
+  if (isApBill.value) {
+    return billLinesQuery.data.value ?? [];
+  }
+  return lines.value.map((line) => ({
+    id: line.id,
+    name_snapshot: line.name_snapshot ?? 'Line',
+    currency_code: 'BDT',
+    line_total_amount: Number(line.line_total_amount ?? 0),
+    books_amount: Number(line.line_total_amount ?? 0),
+    quantity: Number(line.quantity ?? 1),
+  }));
+});
 
 const profileName = computed(
   () => bill.value?.profiles?.name || bill.value?.recipient_name || '—',

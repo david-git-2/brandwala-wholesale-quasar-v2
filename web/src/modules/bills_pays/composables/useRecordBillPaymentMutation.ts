@@ -92,7 +92,11 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
       void queryClient.invalidateQueries({ queryKey: paysQueryKeys.root });
       if (id) {
         void queryClient.invalidateQueries({ queryKey: billsQueryKeys.detail(id) });
+        void queryClient.invalidateQueries({
+          queryKey: [...billsQueryKeys.detail(id), 'net-balances'],
+        });
         void queryClient.invalidateQueries({ queryKey: billsQueryKeys.paymentHistory(id) });
+        void queryClient.invalidateQueries({ queryKey: billsQueryKeys.adjustments(id) });
       }
     },
     onError: (error: unknown) => {

@@ -11,7 +11,7 @@ Open with [spec.md](spec.md). Types: `not_built` | `doc_wrong` | `sql_split` | `
 | WA4 | ~~design~~ | One pay RPC; remittance `source` | `RemitPayPage` + `CollectPayPage`; remittance RPC → `post_customer_receipt_with_allocations` | **Done (2026-10)** |
 | WA13 | not_built | Cheque bounce | Cheques at desk | Reversing pay later |
 | WA15 | partial | Inbound shipment AP per cost bucket + FX from pays | Bucket bills; FX + leftover from pays; restamp on AP payout | AP pay-in on shipment bills |
-| BP8 | partial | Credit/debit notes in money kernel (same `bills` table) | Columns + `create_bill_adjustment` / balances; no desk UI | Bill detail issue/print; shipment adapter on shortage |
+| BP8 | partial | Credit/debit notes in money kernel (same `bills` table) | Desk: compose notes, parent settlement panel, **Record vendor refund** (`post_vendor_credit_refund` pay-in on AP CN) | Shipment adapter on shortage; AR CN refund; apply CN to next bill (BP11); full CN/DN print |
 | BP9 | not_built | Generic source plug + one upsert/issue for adapters | `ap_shipment_id` / `shop_order_id` only | Target columns: [kernel-schema](kernel-schema.md). `source_type` + `source_id` + `source_key`; wrap shipment sync |
 | BP10 | not_built | Kernel reads: by source, by profile | Custom FX RPCs on shipment only | `list` pays/docs/balances; features do not sum allocs |
 | BP11 | partial | Apply leftover / open credit to next bill | AR collect leftover (US-10); not AP / not credit-note remainder | Same apply RPC for customer and vendor |

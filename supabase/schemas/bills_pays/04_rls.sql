@@ -381,9 +381,9 @@ GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_i
 
 GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."create_bill_adjustment"("p_parent_bill_id" bigint, "p_kind" "text", "p_amount" numeric, "p_reason" "text", "p_issue" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_bill_adjustment"("p_parent_bill_id" bigint, "p_kind" "text", "p_amount" numeric, "p_reason" "text", "p_issue" boolean, "p_refund_amount" numeric, "p_cashbook_point_id" bigint, "p_lines" "jsonb") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."create_bill_adjustment"("p_parent_bill_id" bigint, "p_kind" "text", "p_amount" numeric, "p_reason" "text", "p_issue" boolean) TO "service_role";
+GRANT ALL ON FUNCTION "public"."create_bill_adjustment"("p_parent_bill_id" bigint, "p_kind" "text", "p_amount" numeric, "p_reason" "text", "p_issue" boolean, "p_refund_amount" numeric, "p_cashbook_point_id" bigint, "p_lines" "jsonb") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."create_sales_invoice_from_payload"("p_tenant_id" bigint, "p_payload" "jsonb") TO "authenticated";
 
@@ -503,6 +503,12 @@ REVOKE ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" 
 GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "service_role";
+
+REVOKE ALL ON FUNCTION "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."post_global_invoice"("p_invoice_id" bigint) TO "authenticated";
 

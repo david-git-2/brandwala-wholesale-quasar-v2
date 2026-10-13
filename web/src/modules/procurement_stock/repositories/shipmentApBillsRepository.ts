@@ -10,11 +10,20 @@ export type { ShipmentApKind };
 export type ShipmentApBillRow = {
   id: number;
   invoice_no: string;
-  ap_kind: ShipmentApKind;
+  ap_kind: ShipmentApKind | null;
+  source_type: string | null;
+  source_id: string | null;
+  source_key: string | null;
   invoice_status: string;
   payment_status: string | null;
   total_amount: number;
   due_amount: number;
+};
+
+export const shipmentApBillBucket = (bill: ShipmentApBillRow): ShipmentApKind | null => {
+  const key = bill.source_key ?? bill.ap_kind;
+  if (!key) return null;
+  return key as ShipmentApKind;
 };
 
 export type ShipmentApBucketPaidTotals = {
@@ -97,21 +106,30 @@ export async function issueShipmentApBillForKind(
 }
 
 export async function listShipmentApBills(shipmentId: number): Promise<ShipmentApBillRow[]> {
+  const sid = String(shipmentId);
   const { data, error } = await supabase
     .from('bills')
-    .select('id, invoice_no, ap_kind, invoice_status, payment_status, total_amount, due_amount')
-    .eq('ap_shipment_id', shipmentId)
+    .select(
+      'id, invoice_no, ap_kind, source_type, source_id, source_key, invoice_status, payment_status, total_amount, due_amount',
+    )
     .eq('invoice_type', 'ap')
+    .eq('document_kind', 'standard')
     .neq('invoice_status', 'voided')
-    .in('ap_kind', LISTABLE_AP_KINDS);
+    .or(
+      `and(source_type.eq.shipment_cost,source_id.eq.${sid}),ap_shipment_id.eq.${shipmentId}`,
+    );
 
   if (error) throw error;
-  return (data ?? []) as ShipmentApBillRow[];
+  const rows = (data ?? []) as ShipmentApBillRow[];
+  return rows.filter((row) => {
+    const bucket = shipmentApBillBucket(row);
+    return bucket != null && LISTABLE_AP_KINDS.includes(bucket);
+  });
 }
 
 export function findShipmentApBill(
   bills: ShipmentApBillRow[],
   kind: ShipmentApKind,
 ): ShipmentApBillRow | null {
-  return bills.find((b) => b.ap_kind === kind) ?? null;
+  return bills.find((b) => shipmentApBillBucket(b) === kind) ?? null;
 }

@@ -607,7 +607,7 @@
                   label="Add cost"
                   class="q-px-sm rounded-btn text-weight-bold"
                   :disable="!canEditCostLines"
-                  @click="addCostRow"
+                  @click="openAddCostDialog"
                 />
               </div>
 
@@ -781,13 +781,11 @@
                       :options="currencyOptions"
                       emit-value
                       map-options
-                      clearable
-                      label="Currency"
+                      label="Currency *"
                       dense
                       outlined
                       class="bg-white"
                       :disable="!canEditCostLines"
-                      :hint="defaultCostCurrencyHint"
                       @update:model-value="onCostsBlur"
                     />
                   </div>
@@ -968,6 +966,96 @@
         </q-tab-panel>
       </q-tab-panels>
     </div>
+
+    <q-dialog v-model="showAddCostDialog" persistent>
+      <q-card style="width: 540px; max-width: 95vw; border-radius: 8px">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6 text-primary text-weight-bold">Add cost line</div>
+          <q-space />
+          <q-btn v-close-popup icon="ph ph-x" flat round dense @click="closeAddCostDialog" />
+        </q-card-section>
+
+        <q-card-section class="q-pt-sm q-gutter-y-sm">
+          <div class="row q-col-gutter-sm">
+            <div class="col-6 col-sm-6">
+              <q-select
+                v-model="addCostForm.cost_bucket"
+                :options="costBucketOptions"
+                emit-value
+                map-options
+                label="Bucket"
+                dense
+                outlined
+              />
+            </div>
+            <div class="col-6 col-sm-6">
+              <q-select
+                v-model="addCostForm.cost_component"
+                :options="costComponentOptions"
+                emit-value
+                map-options
+                label="Component"
+                dense
+                outlined
+              />
+            </div>
+            <div class="col-6 col-sm-6">
+              <q-select
+                v-model="addCostForm.currency_id"
+                :options="currencyOptions"
+                emit-value
+                map-options
+                label="Currency *"
+                dense
+                outlined
+                :error="addCostFormCurrencyError"
+                error-message="Currency is required"
+              />
+            </div>
+            <div class="col-6 col-sm-6">
+              <q-input
+                v-model.number="addCostForm.amount"
+                label="Amount *"
+                type="number"
+                min="0"
+                step="0.01"
+                dense
+                outlined
+                autofocus
+                placeholder="0.00"
+                class="font-mono"
+                :prefix="addCostDialogCurrencySymbol"
+                :error="addCostFormAmountError"
+                error-message="Enter a valid amount"
+                @keyup.enter="confirmAddCostRow"
+              />
+            </div>
+          </div>
+
+          <q-input
+            v-model="addCostForm.description"
+            label="Description (optional)"
+            dense
+            outlined
+            placeholder="e.g. Ocean freight, CD/VAT, gate labor"
+            @keyup.enter="confirmAddCostRow"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat no-caps label="Cancel" color="grey-8" @click="closeAddCostDialog" />
+          <q-btn
+            unelevated
+            no-caps
+            color="primary"
+            label="Save"
+            class="rounded-sq-btn text-weight-bold"
+            :loading="savingCosts"
+            @click="confirmAddCostRow"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </AppResizableOverlayPanel>
 </template>
 
@@ -1006,6 +1094,7 @@ import {
   fetchShipmentApFxSnapshot,
   issueShipmentApBillForKind,
   listShipmentApBills,
+  shipmentApBillBucket,
   syncShipmentApBills,
   type ShipmentApBillRow,
   type ShipmentApFxSnapshot,
@@ -1040,6 +1129,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'update:modelValue', val: boolean): void;
+  (e: 'update:active-tab', tab: string): void;
   (e: 'update-flow', flowId: number): void;
   (e: 'update-progress', tagId: number | null): void;
 }>();
@@ -1093,6 +1183,12 @@ watch(
     }
   },
 );
+
+watch(activeTab, (tab) => {
+  if (props.modelValue) {
+    emit('update:active-tab', tab);
+  }
+});
 
 const navigateToShipmentPage = (routeName: string) => {
   emit('update:modelValue', false);
@@ -1236,10 +1332,6 @@ const canEditCostLines = computed(() => {
   return canEditCostsFlag.value;
 });
 
-const defaultCostCurrencyHint = computed(
-  () => `Empty uses shipment cost currency (${currentCostCurrencySymbol.value})`,
-);
-
 const boxTotalsNetDiff = computed(() =>
   describeBoxTotalsNetDiff(
     currentShipmentBoxesReceivedTotal.value,
@@ -1362,8 +1454,10 @@ const summaryApBillRows = computed(() => {
   const order = new Map<string, number>();
   SHIPMENT_AP_COST_BUCKETS.forEach((k, i) => order.set(k, i));
   const sorted = [...apBills.value].sort((a, b) => {
-    const ai = order.get(a.ap_kind) ?? 99;
-    const bi = order.get(b.ap_kind) ?? 99;
+    const ak = shipmentApBillBucket(a) ?? '';
+    const bk = shipmentApBillBucket(b) ?? '';
+    const ai = order.get(ak) ?? 99;
+    const bi = order.get(bk) ?? 99;
     return ai - bi;
   });
   return sorted.map((bill) => {
@@ -1383,7 +1477,7 @@ const summaryApBillRows = computed(() => {
           : bill.invoice_status;
     return {
       ...bill,
-      kindLabel: shipmentApKindLabel(bill.ap_kind),
+      kindLabel: shipmentApKindLabel(shipmentApBillBucket(bill)),
       invoiceLabel,
       statusChip,
     };
@@ -1433,17 +1527,19 @@ type ShipmentCostRowDraft = {
 
 const newCostRowKey = () => `cost-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-const defaultCostCurrencyId = (): number | null => {
+const defaultCostLineCurrencyId = computed((): number | null => {
+  const bdtId = (currenciesData.value ?? []).find((c) => c.code === 'BDT')?.id;
+  if (bdtId != null) return bdtId;
   const s = shipmentStore.currentShipment;
   return s?.shipment_cost_currency_id ?? s?.shipment_purchase_currency_id ?? null;
-};
+});
 
 const emptyCostRow = (): ShipmentCostRowDraft => ({
   localKey: newCostRowKey(),
   dbId: null,
   cost_bucket: 'freight',
   cost_component: DEFAULT_COST_COMPONENT,
-  currency_id: defaultCostCurrencyId(),
+  currency_id: defaultCostLineCurrencyId.value,
   amount: null,
   description: '',
 });
@@ -1451,6 +1547,39 @@ const emptyCostRow = (): ShipmentCostRowDraft => ({
 const costRowsList = ref<ShipmentCostRowDraft[]>([]);
 const costBucketFilter = ref<'all' | GlobalShipmentCostBucket>('all');
 const savingCosts = ref(false);
+
+type AddCostFormDraft = Omit<ShipmentCostRowDraft, 'localKey' | 'dbId'>;
+
+const showAddCostDialog = ref(false);
+const addCostFormAmountError = ref(false);
+const addCostFormCurrencyError = ref(false);
+const addCostForm = ref<AddCostFormDraft>({
+  cost_bucket: 'freight',
+  cost_component: DEFAULT_COST_COMPONENT,
+  currency_id: null,
+  amount: null,
+  description: '',
+});
+
+const resetAddCostForm = () => {
+  addCostForm.value = {
+    cost_bucket: costBucketFilter.value !== 'all' ? costBucketFilter.value : 'freight',
+    cost_component: DEFAULT_COST_COMPONENT,
+    currency_id: defaultCostLineCurrencyId.value,
+    amount: null,
+    description: '',
+  };
+  addCostFormAmountError.value = false;
+  addCostFormCurrencyError.value = false;
+};
+
+const addCostDialogCurrencySymbol = computed(() =>
+  costRowCurrencySymbol({
+    localKey: '',
+    dbId: null,
+    ...addCostForm.value,
+  }),
+);
 
 const costBucketFilterTabs = computed(() => {
   const tabs: Array<{ value: 'all' | GlobalShipmentCostBucket; label: string; count: number }> = [
@@ -1759,7 +1888,11 @@ const mapEntryToCostRow = (entry: GlobalShipmentCostEntry): ShipmentCostRowDraft
 
 const isIncompleteCostDraft = (row: ShipmentCostRowDraft): boolean => {
   if (row.dbId != null) return false;
-  return row.amount == null || Number.isNaN(Number(row.amount));
+  return (
+    row.currency_id == null ||
+    row.amount == null ||
+    Number.isNaN(Number(row.amount))
+  );
 };
 
 const syncCostsFromStore = () => {
@@ -1879,12 +2012,41 @@ onBeforeUnmount(() => {
   clearDeleteHold();
 });
 
-const addCostRow = () => {
-  const row = emptyCostRow();
-  if (costBucketFilter.value !== 'all') {
-    row.cost_bucket = costBucketFilter.value;
+const openAddCostDialog = () => {
+  if (!canEditCostLines.value) return;
+  resetAddCostForm();
+  showAddCostDialog.value = true;
+};
+
+const closeAddCostDialog = () => {
+  showAddCostDialog.value = false;
+};
+
+const confirmAddCostRow = async () => {
+  const raw = addCostForm.value.amount;
+  const amt = raw != null ? Number(raw) : NaN;
+  if (Number.isNaN(amt) || amt < 0) {
+    addCostFormAmountError.value = true;
+    return;
   }
+  addCostFormAmountError.value = false;
+
+  if (addCostForm.value.currency_id == null) {
+    addCostFormCurrencyError.value = true;
+    return;
+  }
+  addCostFormCurrencyError.value = false;
+
+  const row = emptyCostRow();
+  row.cost_bucket = addCostForm.value.cost_bucket;
+  row.cost_component = addCostForm.value.cost_component;
+  row.currency_id = addCostForm.value.currency_id;
+  row.amount = Math.round(amt * 100) / 100;
+  row.description = addCostForm.value.description.trim();
+
   costRowsList.value.unshift(row);
+  closeAddCostDialog();
+  await saveCosts();
 };
 
 const removeCostRow = async (index: number) => {
@@ -1921,6 +2083,7 @@ const saveCosts = async () => {
     const batchEntries: UpsertShipmentCostEntryPayload[] = [];
 
     for (const row of costRowsList.value) {
+      if (row.currency_id == null) continue;
       if (row.amount == null || Number.isNaN(Number(row.amount))) continue;
       const amt = Number(row.amount);
       if (amt < 0) continue;

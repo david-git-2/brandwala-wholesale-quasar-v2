@@ -22,12 +22,16 @@
         <div class="text-caption text-grey-7">{{ pay.payment_date }} · {{ pay.source }}</div>
         <div v-if="pay.voided_at" class="text-negative text-weight-medium">Voided</div>
         <div>Profile: {{ pay.profile_name || '—' }}</div>
-        <div>Amount: {{ formatAmountBdt(pay.amount) }}</div>
+        <div v-if="isFxPay">
+          Amount:
+          {{ formatSettlementCurrencyAmount(pay.foreign_amount, pay.settlement_currency_code) }}
+        </div>
+        <div v-else>Amount: {{ formatBdtTaka(pay.amount) }}</div>
         <div
-          v-if="pay.foreign_amount != null && pay.settlement_currency_code !== 'BDT'"
+          v-if="isFxPay"
           class="text-body2 text-grey-8"
         >
-          Settlement: {{ pay.foreign_amount }} {{ pay.settlement_currency_code }} @ {{ pay.exchange_rate }} → BDT
+          {{ formatBdtTaka(pay.amount) }} @ {{ pay.exchange_rate }} BDT/{{ pay.settlement_currency_code }}
         </div>
         <div v-if="pay.unallocated_amount > 0">Leftover: {{ formatAmountBdt(pay.unallocated_amount) }}</div>
         <div v-if="pay.reference">Ref: {{ pay.reference }}</div>
@@ -43,7 +47,7 @@
         <div v-if="pay.allocations.length" class="q-mt-md">
           <div class="text-weight-medium">Allocations</div>
           <div v-for="alloc in pay.allocations" :key="alloc.id" class="text-body2">
-            {{ alloc.invoice_no || alloc.global_invoice_id }} — {{ formatAmountBdt(alloc.amount) }}
+            {{ alloc.invoice_no || alloc.global_invoice_id }} — {{ formatAllocAmount(alloc.amount) }}
           </div>
         </div>
 
@@ -177,7 +181,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { paySourceToListSide, paymentsPageRoute } from '../utils/paymentsNavigation';
 import { useQuery } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { formatAmountBdt } from 'src/utils/currency';
+import { formatAmountBdt, formatBdtTaka, formatSettlementCurrencyAmount } from 'src/utils/currency';
 import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
 import { paysRepository } from '../repositories/paysRepository';
 import { paysQueryKeys } from '../services/paysQueryKeys';
@@ -232,6 +236,21 @@ const detailQuery = useQuery({
 });
 
 const pay = computed(() => detailQuery.data.value);
+
+const isFxPay = computed(() => {
+  const p = pay.value;
+  if (!p) return false;
+  const code = (p.settlement_currency_code ?? 'BDT').toUpperCase();
+  return code !== 'BDT' && Number(p.exchange_rate) > 0 && p.foreign_amount != null;
+});
+
+const formatAllocAmount = (allocBdt: number) => {
+  const p = pay.value;
+  if (!p || !isFxPay.value) return formatBdtTaka(allocBdt);
+  const rate = Number(p.exchange_rate) || 1;
+  const fx = Math.round((allocBdt / rate) * 100) / 100;
+  return formatSettlementCurrencyAmount(fx, p.settlement_currency_code ?? 'BDT');
+};
 
 const canDispenseShopPayout = computed(
   () =>

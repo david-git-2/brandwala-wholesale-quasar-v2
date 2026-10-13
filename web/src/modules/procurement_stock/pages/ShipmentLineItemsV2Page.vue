@@ -475,6 +475,7 @@
       :progress-target-id="progressTargetId"
       @update-flow="changeProgressFlow"
       @update-progress="changeProgress"
+      @update:active-tab="onSettingsDrawerTabChange"
     />
 
     <!-- Add / Edit Section Sheet Dialog -->
@@ -643,7 +644,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useQueryClient } from '@tanstack/vue-query';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
@@ -700,6 +701,53 @@ import {
 
 const $q = useQuasar();
 const route = useRoute();
+const router = useRouter();
+
+const SHIPMENT_SETTINGS_DRAWER_TABS = new Set([
+  'details',
+  'summary',
+  'costs',
+  'progress',
+  'more',
+]);
+
+type ShipmentSettingsDrawerTab =
+  | 'details'
+  | 'summary'
+  | 'costs'
+  | 'progress'
+  | 'more';
+
+const normalizeSettingsDrawerTab = (raw: unknown): ShipmentSettingsDrawerTab => {
+  if (typeof raw !== 'string' || !raw.trim()) return 'details';
+  const tab = raw.trim() === 'rates' ? 'costs' : raw.trim();
+  return SHIPMENT_SETTINGS_DRAWER_TABS.has(tab) ? (tab as ShipmentSettingsDrawerTab) : 'details';
+};
+
+const settingsTabFromRoute = (): string | undefined => {
+  const q = route.query.settingsTab;
+  return typeof q === 'string' && q.trim() ? q.trim() : undefined;
+};
+
+const setSettingsTabRouteQuery = async (tab: ShipmentSettingsDrawerTab | null) => {
+  const nextQuery = { ...route.query };
+  if (tab) {
+    nextQuery.settingsTab = tab;
+  } else {
+    delete nextQuery.settingsTab;
+  }
+  await router.replace({ query: nextQuery });
+};
+
+const syncSettingsDrawerFromRoute = () => {
+  const fromQuery = settingsTabFromRoute();
+  if (fromQuery) {
+    settingsDrawerTab.value = normalizeSettingsDrawerTab(fromQuery);
+    settingsDrawerOpen.value = true;
+  } else {
+    settingsDrawerOpen.value = false;
+  }
+};
 const shipmentStore = useGlobalShipmentStore();
 const shipmentId = Number(route.params.id);
 
@@ -813,15 +861,38 @@ const saveNameInPlace = async () => {
 };
 
 const settingsDrawerOpen = ref(false);
-const settingsDrawerTab = ref('details');
+const settingsDrawerTab = ref<ShipmentSettingsDrawerTab>('details');
 
-const openSettingsDrawer = (tab = 'details') => {
-  if (settingsDrawerOpen.value && settingsDrawerTab.value === tab) {
+watch(() => route.query.settingsTab, syncSettingsDrawerFromRoute, { immediate: true });
+
+watch(settingsDrawerOpen, (open) => {
+  if (open) {
+    const q = settingsTabFromRoute();
+    if (q !== settingsDrawerTab.value) {
+      void setSettingsTabRouteQuery(settingsDrawerTab.value);
+    }
+  } else if (settingsTabFromRoute()) {
+    void setSettingsTabRouteQuery(null);
+  }
+});
+
+const openSettingsDrawer = (tab: ShipmentSettingsDrawerTab | string = 'details') => {
+  const normalized = normalizeSettingsDrawerTab(tab);
+  if (settingsDrawerOpen.value && settingsDrawerTab.value === normalized) {
     settingsDrawerOpen.value = false;
     return;
   }
-  settingsDrawerTab.value = tab;
+  settingsDrawerTab.value = normalized;
   settingsDrawerOpen.value = true;
+};
+
+const onSettingsDrawerTabChange = (tab: string) => {
+  const normalized = normalizeSettingsDrawerTab(tab);
+  if (settingsDrawerTab.value === normalized) return;
+  settingsDrawerTab.value = normalized;
+  if (settingsDrawerOpen.value) {
+    void setSettingsTabRouteQuery(normalized);
+  }
 };
 
 const showAddSectionDialog = ref(false);

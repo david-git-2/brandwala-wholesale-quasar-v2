@@ -29,6 +29,11 @@ export type InvoicePaymentHistoryEntry = {
   foreign_amount?: number | null;
   exchange_rate?: number | null;
   instruments: InvoicePaymentHistoryInstrument[];
+  /** pays.source — e.g. ap_payout, customer_cash */
+  payment_source?: string | null;
+  /** Child note when this row is rolled up onto the parent bill. */
+  related_invoice_no?: string | null;
+  related_document_kind?: string | null;
 };
 
 export type GlobalInvoiceRow = {
@@ -60,6 +65,12 @@ export type GlobalInvoiceRow = {
   ap_kind?: string | null;
   ap_shipment_id?: number | null;
   shop_order_id?: number | null;
+  source_type?: string | null;
+  source_id?: string | null;
+  source_key?: string | null;
+  from_profile_id?: number | null;
+  to_profile_id?: number | null;
+  currency_code?: string | null;
   source_context_label?: string | null;
 };
 
@@ -112,6 +123,20 @@ export type GlobalInvoiceDetail = GlobalInvoiceCreated & {
     phone: string | null;
     address: string | null;
     color: string | null;
+  } | null;
+  from_profile?: {
+    id: number;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    address: string | null;
+  } | null;
+  to_profile?: {
+    id: number;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    address: string | null;
   } | null;
 };
 

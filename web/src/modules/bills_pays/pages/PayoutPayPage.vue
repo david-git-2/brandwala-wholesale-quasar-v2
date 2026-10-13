@@ -210,8 +210,15 @@ import {
 } from '../utils/paymentInstrumentFields';
 import { paymentsPageRoute } from '../utils/paymentsNavigation';
 import { paysQueryKeys } from '../services/paysQueryKeys';
+import { apBillBooksDueBdt } from '../utils/apBillBooks';
 
 const authStore = useAuthStore();
+
+const apBillDueBdt = (bill: OpenApBillRow) => {
+  const rate =
+    apSettlementCurrency.value === 'BDT' ? null : Number(apExchangeRate.value) || null;
+  return apBillBooksDueBdt(bill.channel_meta, bill.due_amount, rate);
+};
 const route = useRoute();
 const router = useRouter();
 const queryClient = useQueryClient();
@@ -314,7 +321,9 @@ const canSubmitMerchant = computed(
     (amount.value ?? 0) <= (selectedProfile.value?.payable_balance ?? 0),
 );
 
-const apDueTotal = computed(() => apBills.value.reduce((s, b) => s + (Number(b.due_amount) || 0), 0));
+const apDueTotal = computed(() =>
+  apBills.value.reduce((s, b) => s + apBillDueBdt(b), 0),
+);
 
 const apSubmitDisabledReason = computed((): string | null => {
   if (selectedApProfileId.value == null) return 'Select a party to pay';
@@ -348,7 +357,7 @@ const loadApProfiles = async () => {
 const selectApProfile = async (row: ApPayProfileSummary) => {
   selectedApProfileId.value = row.profile_id;
   apBills.value = await paysRepository.listOpenApBillsForProfile(parentTenantId.value, row.profile_id);
-  apAmount.value = apBills.value.reduce((s, b) => s + Number(b.due_amount), 0);
+  apAmount.value = apBills.value.reduce((s, b) => s + apBillDueBdt(b), 0);
 };
 
 const selectGroup = (row: CustomerGroupPayoutSummary) => {
@@ -370,7 +379,7 @@ const buildApAllocations = (payAmount: number) => {
   const allocations: Array<{ bill_id: number; amount: number }> = [];
   for (const bill of apBills.value) {
     if (remaining <= 0) break;
-    const due = Number(bill.due_amount) || 0;
+    const due = apBillDueBdt(bill);
     if (due <= 0) continue;
     const slice = Math.min(due, remaining);
     allocations.push({ bill_id: bill.id, amount: slice });

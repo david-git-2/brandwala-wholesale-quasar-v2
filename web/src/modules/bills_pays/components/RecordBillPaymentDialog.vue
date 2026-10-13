@@ -126,7 +126,8 @@ import {
   paymentInstrumentExtrasBlockReason,
   paymentMethodFieldFlags,
 } from '../utils/paymentInstrumentFields';
-import { apBillCurrencyGroups } from '../utils/parseApBillPaper';
+import { apBillBooksDueBdt } from '../utils/apBillBooks';
+import { apBillCurrencyGroups, apBillPaperConversionRate } from '../utils/parseApBillPaper';
 import type { RecordBillPaymentInput } from '../composables/useRecordBillPaymentMutation';
 
 const props = defineProps<{
@@ -241,7 +242,11 @@ const resetForm = () => {
   settlementCurrency.value = defaultSettlementCurrency();
   foreignAmount.value = null;
   exchangeRate.value = null;
-  amountBdt.value = Math.max(0, Number(props.dueAmount) || 0);
+  const paperRate = apBillPaperConversionRate(props.channelMeta ?? null);
+  amountBdt.value = Math.max(
+    0,
+    apBillBooksDueBdt(props.channelMeta ?? null, Number(props.dueAmount) || 0, paperRate),
+  );
   methodCode.value = 'bank_transfer';
   reference.value = '';
   note.value = '';
@@ -258,9 +263,17 @@ watch(
   },
 );
 
+const booksDueBdt = computed(() =>
+  apBillBooksDueBdt(
+    props.channelMeta ?? null,
+    Number(props.dueAmount) || 0,
+    settlementCurrency.value === 'BDT' ? null : Number(exchangeRate.value) || null,
+  ),
+);
+
 const allocToBill = computed(() => {
   const amt = Number(amountBdt.value) || 0;
-  const due = Math.max(0, Number(props.dueAmount) || 0);
+  const due = Math.max(0, booksDueBdt.value);
   return Math.min(amt, due);
 });
 
@@ -297,7 +310,7 @@ const submit = () => {
     profileId: props.profileId,
     paidOn: paidOn.value,
     amountBdt: amt,
-    billDueAmount: props.dueAmount,
+    billDueAmount: booksDueBdt.value,
     settlementCurrencyCode: settlementCurrency.value,
     foreignAmount: settlementCurrency.value === 'BDT' ? null : Number(foreignAmount.value),
     exchangeRate: settlementCurrency.value === 'BDT' ? null : Number(exchangeRate.value),

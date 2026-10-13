@@ -19,6 +19,7 @@ export function useIssueApBillMutation(billId: () => number | null) {
       void queryClient.invalidateQueries({ queryKey: billsQueryKeys.root });
       if (id) {
         void queryClient.invalidateQueries({ queryKey: billsQueryKeys.detail(id) });
+        void queryClient.invalidateQueries({ queryKey: [...billsQueryKeys.detail(id), 'net-balances'] });
         void queryClient.invalidateQueries({ queryKey: billsQueryKeys.items(id) });
       }
     },

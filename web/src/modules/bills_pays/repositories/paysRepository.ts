@@ -289,6 +289,7 @@ export type OpenApBillRow = {
   ap_kind: string | null;
   ap_shipment_id: number | null;
   note: string | null;
+  channel_meta: Record<string, unknown> | null;
 };
 
 export type ApPayProfileSummary = {
@@ -304,7 +305,7 @@ const listOpenApBillsForProfile = async (
 ): Promise<OpenApBillRow[]> => {
   const { data, error } = await supabase
     .from('bills')
-    .select('id, invoice_no, due_amount, total_amount, ap_kind, ap_shipment_id, note')
+    .select('id, invoice_no, due_amount, total_amount, ap_kind, ap_shipment_id, note, channel_meta')
     .eq('parent_tenant_id', parentTenantId)
     .eq('invoice_type', 'ap')
     .eq('profile_id', profileId)

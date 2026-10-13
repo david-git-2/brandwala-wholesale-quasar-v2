@@ -321,7 +321,13 @@ const createGlobalInvoice = async (
 const getGlobalInvoiceById = async (invoiceId: number): Promise<GlobalInvoiceDetail> => {
   const { data, error } = await supabase
     .from('bills')
-    .select('*, profile_id:profile_id, profiles:profiles!bills_profile_id_fkey(id, name, email, phone, address, color:accent_color)')
+    .select(
+      `*,
+      profile_id:profile_id,
+      profiles:profiles!bills_profile_id_fkey(id, name, email, phone, address, color:accent_color),
+      from_profile:profiles!bills_from_profile_id_fkey(id, name, email, phone, address),
+      to_profile:profiles!bills_to_profile_id_fkey(id, name, email, phone, address)`,
+    )
     .eq('id', invoiceId)
     .single();
 

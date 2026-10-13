@@ -6,4 +6,6 @@ export const billsQueryKeys = {
   items: (billId: number | null) => [...billsQueryKeys.root, 'items', billId ?? 0] as const,
   paymentHistory: (billId: number | null) =>
     [...billsQueryKeys.root, 'paymentHistory', billId ?? 0] as const,
+  adjustments: (billId: number | null) =>
+    [...billsQueryKeys.root, 'adjustments', billId ?? 0] as const,
 };

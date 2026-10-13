@@ -22,11 +22,11 @@ export const paymentMethodFieldFlags = (meta: PaymentMethodFieldMeta | null) => 
       category === 'international' ||
       isBankTransfer ||
       isCheque,
-    bankRequired: isCheque,
+    bankRequired: isCheque || isBankTransfer,
     chequeNumberRequired: isCheque,
     instrumentDateRequired: isCheque,
-    bankOrReferenceRequired: isBankTransfer,
-    bankLabel: isCheque ? 'Bank' : 'Bank (optional)',
+    bankOrReferenceRequired: false,
+    bankLabel: isCheque || isBankTransfer ? 'Bank' : 'Bank (optional)',
     instrumentReferenceLabel:
       category === 'bd_mobile_wallet'
         ? 'Trx ID (optional)'
