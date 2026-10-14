@@ -17,33 +17,15 @@
           <span>Pending {{ formatAmountBdt(detail?.pending_balance ?? 0) }}</span>
           <span>Locked {{ formatAmountBdt(detail?.locked_balance ?? 0) }}</span>
         </div>
-        <div v-if="showCashPoints" class="row q-gutter-xs q-mt-sm cashbook-point-chips items-center">
-          <q-btn
-            v-for="point in activePoints"
-            :key="point.id"
-            outline
-            rounded
-            dense
-            no-caps
-            size="sm"
-            color="grey-7"
-            class="cashbook-point-chip-btn"
-            @click="openEditPoint(point)"
-          >
-            <q-icon name="ph ph-wallet" size="14px" class="q-mr-xs" />
-            {{ point.name }}
-            <span class="text-caption q-ml-xs text-grey-7">({{ cashbookPointKindLabel(point.kind) }})</span>
-          </q-btn>
+        <div v-if="showCashPoints" class="q-mt-sm">
           <q-btn
             outline
-            rounded
             dense
             no-caps
-            size="sm"
             color="primary"
-            icon="ph ph-plus"
-            label="Add"
-            @click="openAddPoint"
+            icon="ph ph-map-pin"
+            label="Manage locations"
+            @click="goManageLocations"
           />
         </div>
         <div v-if="entityType === 'customer' && entityId" class="q-mt-sm">
@@ -102,15 +84,6 @@
       </div>
     </div>
 
-    <CashbookPointFormDialog
-      v-model="pointFormOpen"
-      :mode="pointFormMode"
-      :point="editingPoint"
-      :cashbook-account-id="cashbookAccountId"
-      :parent-tenant-id="booksTenantId"
-      :operating-tenant-id="operatingTenantId"
-      @saved="onPointSaved"
-    />
   </q-page>
 </template>
 
@@ -119,11 +92,8 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
-import CashbookPointFormDialog from '../components/CashbookPointFormDialog.vue';
 import { useCashbookPartyQuery } from '../composables/useCashbookPartyQuery';
-import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
-import { cashbookPointKindLabel } from '../constants/cashbookPointKinds';
-import { type CashbookLedgerRow, type CashbookPointRow } from '../repositories/cashbookRepository';
+import { type CashbookLedgerRow } from '../repositories/cashbookRepository';
 
 const LEDGER_PAGE = 50;
 const ALLOWED_TYPES = new Set(['tenant', 'customer', 'courier', 'vendor']);
@@ -138,11 +108,6 @@ const ledgerOffset = ref(0);
 const accumulatedLedger = ref<CashbookLedgerRow[]>([]);
 
 const operatingTenantId = computed(() => authStore.selectedTenant?.id ?? 0);
-const booksTenantId = computed(() => {
-  const t = authStore.selectedTenant;
-  if (!t) return 0;
-  return t.parent_id ?? t.id;
-});
 
 const entityType = computed(() => {
   const raw = route.params.entityType;
@@ -156,39 +121,7 @@ const entityId = computed(() => {
   return Number.isFinite(id) && id > 0 ? id : 0;
 });
 
-const pointFormOpen = ref(false);
-const pointFormMode = ref<'add' | 'edit'>('add');
-const editingPoint = ref<CashbookPointRow | null>(null);
 const showCashPoints = computed(() => entityType.value === 'tenant' && entityId.value > 0);
-
-const pointsContext = computed(() => ({
-  booksTenantId: booksTenantId.value,
-  entityType: entityType.value,
-  entityId: entityId.value,
-  enabled: showCashPoints.value,
-}));
-
-const { pointsQuery, cashbookAccountId } = useCashbookPointsQuery(pointsContext);
-
-const activePoints = computed(() =>
-  (pointsQuery.data.value ?? []).filter((p) => p.is_active),
-);
-
-const onPointSaved = () => {
-  void pointsQuery.refetch();
-};
-
-const openAddPoint = () => {
-  pointFormMode.value = 'add';
-  editingPoint.value = null;
-  pointFormOpen.value = true;
-};
-
-const openEditPoint = (point: CashbookPointRow) => {
-  pointFormMode.value = 'edit';
-  editingPoint.value = point;
-  pointFormOpen.value = true;
-};
 
 const partyParams = computed(() => ({
   tenantId: operatingTenantId.value,
@@ -245,12 +178,27 @@ const formatDate = (iso: string) => {
   }
 };
 
-const goCollect = () => {
+const routeParams = () => {
   const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  return tenantSlug ? { tenantSlug } : {};
+};
+
+const goCollect = () => {
   router.push({
     name: 'app-collect-pay-page',
-    params: tenantSlug ? { tenantSlug } : {},
+    params: routeParams(),
     query: { profileId: String(entityId.value) },
+  });
+};
+
+const goManageLocations = () => {
+  router.push({
+    name: 'app-cashbook-points-page',
+    params: {
+      ...routeParams(),
+      entityType: entityType.value,
+      entityId: String(entityId.value),
+    },
   });
 };
 </script>
@@ -271,11 +219,5 @@ const goCollect = () => {
   max-width: 960px;
   margin: 0 auto;
   width: 100%;
-}
-.cashbook-point-chips {
-  flex-wrap: wrap;
-}
-.cashbook-point-chip-btn {
-  max-width: 100%;
 }
 </style>

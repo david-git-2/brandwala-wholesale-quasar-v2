@@ -106,6 +106,13 @@ const billsPaysRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('universal_wallet'),
       },
       {
+        path: ':entityType/:entityId/points',
+        name: 'app-cashbook-points-page',
+        component: () => import('../pages/CashbookPointsPage.vue'),
+        meta: { hasPageToolbar: true, title: 'Locations', headerTitle: 'Locations' },
+        beforeEnter: guard('universal_wallet'),
+      },
+      {
         path: ':entityType/:entityId',
         name: 'app-cashbook-party-page',
         component: () => import('../pages/CashbookPartyPage.vue'),

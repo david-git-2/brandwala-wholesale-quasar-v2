@@ -131,15 +131,15 @@
           <div class="row justify-end q-mt-md">
             <div class="bill-totals-panel">
               <div class="bill-total-row text-weight-bold">
-                <span>Total (books)</span>
+                <span>Note amount</span>
                 <span>{{ formatAmountBdt(bill.total_amount) }}</span>
               </div>
               <div class="bill-total-row">
-                <span>Paid</span>
+                <span>Refund received</span>
                 <span>{{ formatAmountBdt(bill.paid_amount) }}</span>
               </div>
               <div class="bill-total-row text-weight-bold">
-                <span>Due</span>
+                <span>Vendor still owes you</span>
                 <span>{{ formatAmountBdt(bill.due_amount) }}</span>
               </div>
             </div>
@@ -169,38 +169,13 @@
           />
           <div class="row justify-end q-mt-md">
             <div class="bill-totals-panel">
-              <template v-if="apCurrencyBalances">
-                <div
-                  v-for="(group, gIdx) in apCurrencyBalances"
-                  :key="group.currency_code"
-                  class="ap-bill-balance-group"
-                  :class="{ 'ap-bill-balance-group--spaced': gIdx > 0 }"
-                >
-                  <div
-                    v-if="apCurrencyBalances.length > 1"
-                    class="text-caption text-weight-bold text-grey-8 q-mb-xs text-uppercase"
-                    style="letter-spacing: 0.04em"
-                  >
-                    {{ group.currency_code }}
-                  </div>
-                  <div class="bill-total-row">
-                    <span>Total</span>
-                    <span class="font-mono">{{ group.totalLabel }}</span>
-                  </div>
-                  <div v-if="group.conversionRate" class="bill-total-row text-caption text-grey-7">
-                    <span>Rate</span>
-                    <span class="font-mono">
-                      {{ group.conversionRate }} BDT per 1 {{ group.currency_code }}
-                    </span>
-                  </div>
-                </div>
-              </template>
               <BillNetSettlementPanel
                 :balances="netBalances"
                 :is-ap="true"
                 :loading="netBalancesQuery.isPending.value"
                 :channel-meta="(bill.channel_meta as Record<string, unknown> | null) ?? null"
                 :open-credit-note-nos="openApCreditNoteNos"
+                :vendor-refund-receipts="vendorRefundReceiptBuckets"
               />
             </div>
           </div>
@@ -482,6 +457,7 @@
       :due-amount="paymentDueAmount"
       :profile-id="billProfileId"
       :tenant-id="operatingTenantId"
+      :books-tenant-id="operatingTenantId"
       :is-ap="isApBill"
       :channel-meta="(bill.channel_meta as Record<string, unknown> | null) ?? null"
       :loading="recordPaymentMutation.isPending.value"
@@ -508,7 +484,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
-import { formatAmountBdt, formatBdtTaka, formatSettlementCurrencyAmount } from 'src/utils/currency';
+import { formatAmountBdt, formatBdtTaka } from 'src/utils/currency';
 import { requestConfirmation } from 'src/utils/appFeedback';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow, GlobalInvoiceRow } from 'src/modules/sales_invoice/types';
 import {
@@ -524,11 +500,11 @@ import { useVoidBillMutation } from '../composables/useVoidBillMutation';
 import type { RecordBillPaymentInput } from '../composables/useRecordBillPaymentMutation';
 import type { InvoicePaymentHistoryEntry } from 'src/modules/sales_invoice/types';
 import {
-  isForeignSettlementPaymentHistory,
+  aggregateVendorRefundReceipts,
+  formatPaymentHistoryBooksCaption,
+  formatPaymentHistoryPrimary,
   paymentHistoryEntryCaption,
   paymentHistoryFxCaption,
-  paymentHistorySettlementCode,
-  paymentHistorySettlementOnBill,
 } from '../utils/paymentHistoryDisplay';
 import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
 import ApBillPaper from '../components/ApBillPaper.vue';
@@ -594,6 +570,10 @@ const adjustmentComposerOpen = ref(false);
 
 const bill = computed(() => detailQuery.data.value as GlobalInvoiceDetail | undefined);
 const isApBill = computed(() => bill.value?.invoice_type === 'ap');
+
+const vendorRefundReceiptBuckets = computed(() =>
+  aggregateVendorRefundReceipts(paymentHistoryEntries.value, { isAp: isApBill.value }),
+);
 
 const lines = computed(() => (itemsQuery.data.value ?? []) as GlobalInvoiceItemRow[]);
 
@@ -884,25 +864,14 @@ const onVoid = async () => {
 const paymentEntryCaption = (entry: InvoicePaymentHistoryEntry) =>
   paymentHistoryEntryCaption(entry, { isAp: isApBill.value });
 
-const paymentHistoryPrimaryAmount = (entry: InvoicePaymentHistoryEntry) => {
-  if (!isForeignSettlementPaymentHistory(entry, apBillSettlementCurrency.value)) {
-    return formatBdtTaka(entry.amount);
-  }
-  return formatSettlementCurrencyAmount(
-    paymentHistorySettlementOnBill(entry, apBillSettlementCurrency.value),
-    paymentHistorySettlementCode(entry, apBillSettlementCurrency.value),
-  );
-};
+const paymentHistoryPrimaryAmount = (entry: InvoicePaymentHistoryEntry) =>
+  formatPaymentHistoryPrimary(entry, apBillSettlementCurrency.value);
 
 const paymentHistoryFxLine = (entry: InvoicePaymentHistoryEntry) =>
   paymentHistoryFxCaption(entry, apBillSettlementCurrency.value);
 
-const paymentHistoryBdtSideCaption = (entry: InvoicePaymentHistoryEntry): string | null => {
-  if (!isForeignSettlementPaymentHistory(entry, apBillSettlementCurrency.value)) return null;
-  const rate = entry.exchange_rate ?? 1;
-  const code = paymentHistorySettlementCode(entry, apBillSettlementCurrency.value);
-  return `${formatBdtTaka(entry.amount)} @ ${rate} BDT/${code}`;
-};
+const paymentHistoryBdtSideCaption = (entry: InvoicePaymentHistoryEntry): string | null =>
+  formatPaymentHistoryBooksCaption(entry, apBillSettlementCurrency.value);
 
 const goToPayment = (paymentId: number) => {
   const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;

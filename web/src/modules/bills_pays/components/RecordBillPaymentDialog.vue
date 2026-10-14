@@ -27,46 +27,135 @@
         </q-input>
 
         <q-select
-          v-model="settlementCurrency"
-          :options="settlementCurrencyOptions"
+          v-if="isAp"
+          v-model="payFromPotId"
+          :options="payFromOptions"
           emit-value
           map-options
           outlined
           dense
-          label="Settlement currency"
+          label="Pay from (location & currency)"
+          hint="Till, safe, or bank — and which cash pot"
+          :loading="payFromLoading"
         />
 
-        <template v-if="settlementCurrency !== 'BDT'">
-          <q-input
-            v-model.number="foreignAmount"
+        <template v-if="isAp">
+          <q-select
+            v-model="apPaymentCurrency"
+            :options="settlementCurrencyOptions"
+            emit-value
+            map-options
             outlined
             dense
-            :label="`Amount (${settlementCurrency})`"
+            label="Payment currency"
+            hint="Currency you record this pay-out in"
+          />
+          <p v-if="apNeedsCurrencyShift" class="text-caption text-grey-7 q-mb-none">
+            {{ apCurrencyShiftHint }}
+          </p>
+          <template v-if="apNeedsSeparateBooksFx">
+            <q-input
+              v-model.number="apForeignAmount"
+              outlined
+              dense
+              :label="`Amount (${apPaymentCurrency})`"
+              type="number"
+              step="0.01"
+            />
+            <q-input
+              v-model.number="apBooksExchangeRate"
+              outlined
+              dense
+              :label="apBooksCashRateLabel"
+              type="number"
+              step="0.0001"
+            />
+          </template>
+          <template v-else-if="apNeedsBooksFx">
+            <q-input
+              v-model.number="apForeignAmount"
+              outlined
+              dense
+              :label="`Amount (${apPaymentCurrency})`"
+              type="number"
+              step="0.01"
+            />
+          </template>
+          <q-input
+            v-if="apNeedsCurrencyShift"
+            v-model.number="apTransactionRate"
+            outlined
+            dense
+            :label="apPotCashRateLabel"
+            type="number"
+            step="0.0001"
+            :hint="
+              apNeedsBooksFx && !apNeedsSeparateBooksFx
+                ? `Also converts to ${booksCurrencyCode} in the books`
+                : 'How much pot cash per 1 unit of payment currency'
+            "
+          />
+          <div
+            v-if="apNeedsBooksFx && apComputedBooksBdt != null"
+            class="text-caption text-grey-8"
+          >
+            Books ({{ booksCurrencyCode }}): {{ formatAmountBdt(apComputedBooksBdt) }}
+          </div>
+          <q-input
+            v-if="!apNeedsBooksFx"
+            v-model.number="amountBdt"
+            outlined
+            dense
+            :label="`Payment amount (${booksCurrencyCode})`"
             type="number"
             step="0.01"
           />
-          <q-input
-            v-model.number="exchangeRate"
-            outlined
-            dense
-            label="Exchange rate (BDT per 1 unit)"
-            type="number"
-            step="0.0001"
-          />
-          <div v-if="computedBdtAmount != null" class="text-caption text-grey-8">
-            BDT equivalent: {{ formatAmountBdt(computedBdtAmount) }}
-          </div>
         </template>
 
-        <q-input
-          v-model.number="amountBdt"
-          outlined
-          dense
-          :label="settlementCurrency === 'BDT' ? 'Payment amount (BDT)' : 'Payment amount (BDT, from FX)'"
-          type="number"
-          step="0.01"
-          :readonly="settlementCurrency !== 'BDT'"
-        />
+        <template v-else>
+          <q-select
+            v-model="settlementCurrency"
+            :options="settlementCurrencyOptions"
+            emit-value
+            map-options
+            outlined
+            dense
+            label="Payment currency"
+          />
+          <template v-if="collectNeedsBooksFx">
+            <q-input
+              v-model.number="foreignAmount"
+              outlined
+              dense
+              :label="`Amount (${settlementCurrency})`"
+              type="number"
+              step="0.01"
+            />
+            <q-input
+              v-model.number="exchangeRate"
+              outlined
+              dense
+              :label="`${booksCurrencyCode} rate (per 1 ${settlementCurrency})`"
+              type="number"
+              step="0.0001"
+            />
+          </template>
+          <div
+            v-if="collectNeedsBooksFx && computedBdtAmount != null"
+            class="text-caption text-grey-8"
+          >
+            Books ({{ booksCurrencyCode }}): {{ formatAmountBdt(computedBdtAmount) }}
+          </div>
+          <q-input
+            v-if="!collectNeedsBooksFx"
+            v-model.number="amountBdt"
+            outlined
+            dense
+            :label="`Payment amount (${booksCurrencyCode})`"
+            type="number"
+            step="0.01"
+          />
+        </template>
 
         <q-select
           v-model="methodCode"
@@ -122,12 +211,17 @@ import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composabl
 import { formatAmountBdt } from 'src/utils/currency';
 import PaymentInstrumentExtrasFields from './PaymentInstrumentExtrasFields.vue';
 import { useWholesalePaymentMethodMeta } from '../composables/useWholesalePaymentMethodMeta';
+import { useApPayoutFxFields } from '../composables/useApPayoutFxFields';
+import { useBooksCurrencyCode } from '../composables/useBooksCurrencyCode';
+import { useCashbookPayFromPotSelect } from '../composables/useCashbookPayFromPotSelect';
+import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
 import {
   paymentInstrumentExtrasBlockReason,
   paymentMethodFieldFlags,
 } from '../utils/paymentInstrumentFields';
 import { apBillBooksDueBdt } from '../utils/apBillBooks';
 import { apBillCurrencyGroups, apBillPaperConversionRate } from '../utils/parseApBillPaper';
+import { currenciesMatch } from '../utils/apPayoutFx';
 import type { RecordBillPaymentInput } from '../composables/useRecordBillPaymentMutation';
 
 const props = defineProps<{
@@ -136,6 +230,8 @@ const props = defineProps<{
   billId: number;
   profileId: number;
   tenantId: number;
+  /** Parent books tenant — cash points load from tenant cashbook. */
+  booksTenantId: number;
   isAp: boolean;
   channelMeta?: Record<string, unknown> | null;
   loading?: boolean;
@@ -155,7 +251,7 @@ const localToday = () => {
 };
 
 const paidOn = ref(localToday());
-const settlementCurrency = ref('BDT');
+const settlementCurrency = ref('BDT'); // reset on open via defaultSettlementCurrency()
 const foreignAmount = ref<number | null>(null);
 const exchangeRate = ref<number | null>(null);
 const amountBdt = ref<number | null>(null);
@@ -166,9 +262,52 @@ const bdBankId = ref<number | null>(null);
 const chequeNumber = ref('');
 const instrumentDate = ref('');
 const instrumentReference = ref('');
-
 const { loadingPaymentMeta, methodOptions, bdBankOptions, loadPaymentMeta } =
   useWholesalePaymentMethodMeta('bank_transfer');
+
+const pointsContext = computed(() => ({
+  booksTenantId: props.booksTenantId,
+  entityType: 'tenant',
+  entityId: props.booksTenantId,
+  enabled: props.modelValue && props.isAp && props.booksTenantId > 0,
+}));
+const { pointsQuery } = useCashbookPointsQuery(pointsContext);
+const apPoints = computed(() => pointsQuery.data.value);
+const payFromEnabled = computed(
+  () => props.modelValue && props.isAp && props.booksTenantId > 0,
+);
+const {
+  selectedPotId: payFromPotId,
+  payFromOptions,
+  cashbookPointId,
+  sourceCurrencyCode,
+  loading: payFromLoading,
+} = useCashbookPayFromPotSelect(apPoints, payFromEnabled);
+
+const booksCurrencyCode = useBooksCurrencyCode();
+
+const collectNeedsBooksFx = computed(
+  () => !currenciesMatch(settlementCurrency.value, booksCurrencyCode.value),
+);
+
+const {
+  paymentCurrency: apPaymentCurrency,
+  foreignAmount: apForeignAmount,
+  booksExchangeRate: apBooksExchangeRate,
+  transactionRate: apTransactionRate,
+  needsTransactionRate: apNeedsTransactionRate,
+  needsCurrencyShift: apNeedsCurrencyShift,
+  currencyShiftHint: apCurrencyShiftHint,
+  potCashRateLabel: apPotCashRateLabel,
+  booksCashRateLabel: apBooksCashRateLabel,
+  needsBooksFx: apNeedsBooksFx,
+  needsSeparateBooksFx: apNeedsSeparateBooksFx,
+  computedBooksBdt: apComputedBooksBdt,
+  resetFxAmounts: resetApFxAmounts,
+  validateFxFields: validateApFxFields,
+  settlementFxPayload: apSettlementFxPayload,
+  sourceFxPayload: apSourceFxPayload,
+} = useApPayoutFxFields(sourceCurrencyCode, amountBdt, booksCurrencyCode);
 
 const { data: currenciesData } = useGlobalCurrenciesQuery();
 
@@ -177,14 +316,17 @@ const settlementCurrencyOptions = computed(() => {
     .filter((c) => c.is_active)
     .map((c) => ({ label: `${c.code} — ${c.name}`, value: c.code }));
   const codes = new Set(fromRef.map((o) => o.value));
-  if (!codes.has('BDT')) {
-    fromRef.unshift({ label: 'BDT — Bangladesh Taka', value: 'BDT' });
+  const base = booksCurrencyCode.value;
+  if (!codes.has(base)) {
+    fromRef.unshift({ label: base, value: base });
   }
-  return fromRef.sort((a, b) => (a.value === 'BDT' ? -1 : b.value === 'BDT' ? 1 : a.value.localeCompare(b.value)));
+  return fromRef.sort((a, b) =>
+    a.value === base ? -1 : b.value === base ? 1 : a.value.localeCompare(b.value),
+  );
 });
 
 const computedBdtAmount = computed(() => {
-  if (settlementCurrency.value === 'BDT') return null;
+  if (!collectNeedsBooksFx.value) return null;
   const foreign = foreignAmount.value;
   const rate = exchangeRate.value;
   if (foreign == null || rate == null || foreign <= 0 || rate <= 0) return null;
@@ -192,13 +334,23 @@ const computedBdtAmount = computed(() => {
 });
 
 watch([settlementCurrency, foreignAmount, exchangeRate], () => {
-  if (settlementCurrency.value === 'BDT') {
+  if (!props.isAp) {
+    if (!collectNeedsBooksFx.value) {
+      foreignAmount.value = null;
+      exchangeRate.value = null;
+      return;
+    }
+    if (computedBdtAmount.value != null) {
+      amountBdt.value = computedBdtAmount.value;
+    }
+  }
+});
+
+watch(payFromPotId, () => {
+  if (props.isAp) resetApFxAmounts();
+  else {
     foreignAmount.value = null;
     exchangeRate.value = null;
-    return;
-  }
-  if (computedBdtAmount.value != null) {
-    amountBdt.value = computedBdtAmount.value;
   }
 });
 
@@ -229,17 +381,23 @@ watch(methodCode, () => {
 });
 
 const defaultSettlementCurrency = () => {
-  if (!props.isAp) return 'BDT';
+  const base = booksCurrencyCode.value;
+  if (!props.isAp) return base;
   const groups = apBillCurrencyGroups(props.channelMeta ?? null);
-  if (groups.length === 1 && groups[0]?.currency_code && groups[0].currency_code !== 'BDT') {
+  if (groups.length === 1 && groups[0]?.currency_code && groups[0].currency_code !== base) {
     return groups[0].currency_code;
   }
-  return 'BDT';
+  return base;
 };
 
 const resetForm = () => {
   paidOn.value = localToday();
-  settlementCurrency.value = defaultSettlementCurrency();
+  const defaultPayCur = defaultSettlementCurrency();
+  settlementCurrency.value = defaultPayCur;
+  if (props.isAp) {
+    apPaymentCurrency.value = defaultPayCur;
+    resetApFxAmounts();
+  }
   foreignAmount.value = null;
   exchangeRate.value = null;
   const paperRate = apBillPaperConversionRate(props.channelMeta ?? null);
@@ -250,6 +408,7 @@ const resetForm = () => {
   methodCode.value = 'bank_transfer';
   reference.value = '';
   note.value = '';
+  payFromPotId.value = null;
   resetInstrumentFields();
 };
 
@@ -263,13 +422,18 @@ watch(
   },
 );
 
-const booksDueBdt = computed(() =>
-  apBillBooksDueBdt(
-    props.channelMeta ?? null,
-    Number(props.dueAmount) || 0,
-    settlementCurrency.value === 'BDT' ? null : Number(exchangeRate.value) || null,
-  ),
-);
+const booksDueBdt = computed(() => {
+  const fxRate = props.isAp
+    ? apNeedsSeparateBooksFx.value
+      ? Number(apBooksExchangeRate.value) || null
+      : apNeedsBooksFx.value
+        ? Number(apTransactionRate.value) || null
+        : null
+    : collectNeedsBooksFx.value
+      ? Number(exchangeRate.value) || null
+      : null;
+  return apBillBooksDueBdt(props.channelMeta ?? null, Number(props.dueAmount) || 0, fxRate);
+});
 
 const allocToBill = computed(() => {
   const amt = Number(amountBdt.value) || 0;
@@ -289,10 +453,17 @@ const paymentOverDue = computed(
 const submitDisabledReason = computed(() => {
   const amt = Number(amountBdt.value);
   if (!amt || amt <= 0) return 'Enter a payment amount';
-  if (settlementCurrency.value !== 'BDT') {
-    if (computedBdtAmount.value == null) return 'Enter foreign amount and exchange rate';
+  if (props.isAp) {
+    if (payFromLoading.value) return 'Loading pay-from locations…';
+    if (!payFromPotId.value) return 'Choose location and currency to pay from';
+    const fxReason = validateApFxFields();
+    if (fxReason) return fxReason;
+  } else if (collectNeedsBooksFx.value) {
+    if (computedBdtAmount.value == null) {
+      return `Enter payment currency amount and ${booksCurrencyCode.value} rate`;
+    }
     if (Math.round(amt * 100) !== Math.round(computedBdtAmount.value * 100)) {
-      return 'BDT amount must match foreign × rate';
+      return `Books amount (${booksCurrencyCode.value}) must match payment currency × rate`;
     }
   }
   return paymentInstrumentExtrasBlockReason(methodFieldFlags.value, instrumentFields.value);
@@ -303,6 +474,13 @@ const close = () => emit('update:modelValue', false);
 const submit = () => {
   if (submitDisabledReason.value) return;
   const amt = Number(amountBdt.value);
+  const fx = props.isAp
+    ? { ...apSettlementFxPayload(), ...apSourceFxPayload(payFromPotId.value) }
+    : {
+        settlement_currency_code: settlementCurrency.value,
+        foreign_amount: collectNeedsBooksFx.value ? Number(foreignAmount.value) : null,
+        exchange_rate: collectNeedsBooksFx.value ? Number(exchangeRate.value) : null,
+      };
   emit('submit', {
     tenantId: props.tenantId,
     billId: props.billId,
@@ -311,12 +489,17 @@ const submit = () => {
     paidOn: paidOn.value,
     amountBdt: amt,
     billDueAmount: booksDueBdt.value,
-    settlementCurrencyCode: settlementCurrency.value,
-    foreignAmount: settlementCurrency.value === 'BDT' ? null : Number(foreignAmount.value),
-    exchangeRate: settlementCurrency.value === 'BDT' ? null : Number(exchangeRate.value),
+    settlementCurrencyCode: fx.settlement_currency_code,
+    booksCurrencyCode: booksCurrencyCode.value,
+    foreignAmount: fx.foreign_amount,
+    exchangeRate: fx.exchange_rate,
     methodCode: methodCode.value,
     reference: reference.value.trim() || null,
     note: note.value.trim() || null,
+    sourceCurrencyCode: props.isAp ? fx.source_currency_code : null,
+    transactionRate: props.isAp ? fx.transaction_rate : null,
+    cashbookPointPotId: props.isAp ? fx.cashbook_point_pot_id : null,
+    cashbookPointId: props.isAp ? cashbookPointId.value : null,
     instrumentFields: instrumentFields.value,
   });
 };

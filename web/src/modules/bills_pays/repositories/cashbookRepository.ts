@@ -37,6 +37,14 @@ export type CashbookPointRow = {
   sort_order: number;
 };
 
+export type CashbookPointPotRow = {
+  id: number;
+  cashbook_point_id: number;
+  parent_tenant_id: number;
+  currency_code: string;
+  amount: number;
+};
+
 export type CashbookLedgerRow = {
   id: string;
   type: string;
@@ -231,22 +239,124 @@ const resolvePointCode = async (
   return uniqueCashbookPointCode(base, taken);
 };
 
+const normalizePotCurrencyCodes = (codes: string[]): string[] => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of codes) {
+    const code = raw.trim().toUpperCase();
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    out.push(code);
+  }
+  if (!out.length) {
+    throw new Error('Add at least one currency pot.');
+  }
+  return out;
+};
+
+const mapPointPotRow = (row: {
+  id: number;
+  cashbook_point_id: number;
+  parent_tenant_id: number;
+  currency_code: string;
+  amount: number | string | null;
+}): CashbookPointPotRow => ({
+  id: row.id,
+  cashbook_point_id: row.cashbook_point_id,
+  parent_tenant_id: row.parent_tenant_id,
+  currency_code: row.currency_code,
+  amount: Number(row.amount ?? 0),
+});
+
+const listCashbookPointPots = async (pointId: number): Promise<CashbookPointPotRow[]> => {
+  const { data, error } = await supabase
+    .from('cashbook_point_pots')
+    .select('id, cashbook_point_id, parent_tenant_id, currency_code, amount')
+    .eq('cashbook_point_id', pointId)
+    .order('currency_code', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(mapPointPotRow);
+};
+
+const listCashbookPointPotsForPoints = async (pointIds: number[]): Promise<CashbookPointPotRow[]> => {
+  if (!pointIds.length) return [];
+  const { data, error } = await supabase
+    .from('cashbook_point_pots')
+    .select('id, cashbook_point_id, parent_tenant_id, currency_code, amount')
+    .in('cashbook_point_id', pointIds)
+    .order('currency_code', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(mapPointPotRow);
+};
+
+const insertCashbookPointPots = async (
+  parentTenantId: number,
+  pointId: number,
+  currencyCodes: string[],
+): Promise<void> => {
+  const codes = normalizePotCurrencyCodes(currencyCodes);
+  const { error } = await supabase.from('cashbook_point_pots').insert(
+    codes.map((currency_code) => ({
+      parent_tenant_id: parentTenantId,
+      cashbook_point_id: pointId,
+      currency_code,
+      amount: 0,
+    })),
+  );
+  if (error) throw error;
+};
+
+const syncCashbookPointPots = async (
+  parentTenantId: number,
+  pointId: number,
+  currencyCodes: string[],
+): Promise<void> => {
+  const desired = normalizePotCurrencyCodes(currencyCodes);
+  const existing = await listCashbookPointPots(pointId);
+  const desiredSet = new Set(desired);
+  const existingByCode = new Map(existing.map((p) => [p.currency_code.toUpperCase(), p]));
+
+  for (const pot of existing) {
+    const code = pot.currency_code.toUpperCase();
+    if (desiredSet.has(code)) continue;
+    if (pot.amount > 0) {
+      throw new Error(`Cannot remove ${code} pot while it still holds cash.`);
+    }
+    const { error } = await supabase.from('cashbook_point_pots').delete().eq('id', pot.id);
+    if (error) throw error;
+  }
+
+  const toAdd = desired.filter((code) => !existingByCode.has(code));
+  if (toAdd.length) {
+    await insertCashbookPointPots(parentTenantId, pointId, toAdd);
+  }
+};
+
 const createCashbookPoint = async (input: {
   parentTenantId: number;
   cashbookAccountId: number;
   name: string;
   kind: CashbookPointKind;
-}): Promise<void> => {
+  currencyCodes: string[];
+}): Promise<number> => {
   const code = await resolvePointCode(input.cashbookAccountId, input.name);
-  const { error } = await supabase.from('cashbook_points').insert({
-    parent_tenant_id: input.parentTenantId,
-    cashbook_account_id: input.cashbookAccountId,
-    code,
-    name: input.name.trim(),
-    kind: input.kind,
-    is_active: true,
-  });
+  const { data, error } = await supabase
+    .from('cashbook_points')
+    .insert({
+      parent_tenant_id: input.parentTenantId,
+      cashbook_account_id: input.cashbookAccountId,
+      code,
+      name: input.name.trim(),
+      kind: input.kind,
+      is_active: true,
+    })
+    .select('id')
+    .single();
   if (error) throw error;
+  const pointId = data?.id;
+  if (!pointId) throw new Error('Could not create cash point.');
+  await insertCashbookPointPots(input.parentTenantId, pointId, input.currencyCodes);
+  return pointId;
 };
 
 const updateCashbookPoint = async (
@@ -281,6 +391,9 @@ export const cashbookRepository = {
   listLedger,
   findCashbookAccountId,
   listCashbookPoints,
+  listCashbookPointPots,
+  listCashbookPointPotsForPoints,
+  syncCashbookPointPots,
   createCashbookPoint,
   updateCashbookPoint,
   deleteCashbookPoint,

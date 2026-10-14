@@ -39,7 +39,7 @@ Every bill side is a **profile**. Tenant itself has a `tenant` (or `company`) pr
 | Settle | `settlement_kind` | enum | `take` \| `condition`. Null on AP / fee / notes. Not `status` |
 | Plug | `source_type` | text | Adapter id, e.g. `shipment_cost`, `shop_order`, `compose` |
 | | `source_id` | text | Adapter row id (string so any module) |
-| | `source_key` | text | Optional slice, e.g. cost bucket |
+| | `source_key` | text | Optional slice, e.g. shipment cost bucket, or `{bucket}:{currency_code}` for shipment AP |
 | Issued money | `currency_code` | text | **Books** currency (default `BDT`). Due / paid / alloc use this |
 | | `subtotal_amount` | numeric | Sum of line books amounts at issue |
 | | `discount_amount` | numeric | |
@@ -94,7 +94,9 @@ Any module may issue a bill with **only description or charge lines** (fees, AP 
 
 `charge` lines are commercial amounts on the same paper as stock. Header has no `shipping_charge` / `wrapping_charge` / `print_charge` / `charges_amount`.
 
-**Currency groups (shipment paper and any mixed bill):** one bill, many line currencies. Print / adapters `GROUP BY currency_code` and `SUM(line_total_amount)` per group. Do not split the bill. Header `total_amount` stays the books (BDT) sum of `books_amount`. FX rate lives on the **pay**, not on each line (same as live shipment FX). If `books_amount` is unknown until paid, leave it null on draft; issue may still freeze BDT when the adapter has a rate, else freeze after first pay restamp — adapter rule, not a second bill.
+**Currency groups on one bill (compose / AR / generic adapters):** lines may use more than one `currency_code` on the same issued bill. Print / UI `GROUP BY currency_code` and `SUM(line_total_amount)` per group for display. Header `total_amount` is the books (BDT) sum of `books_amount`. FX rate lives on the **pay**, not on each line.
+
+**Shipment AP (exception):** cost rows in one **bucket** may use different currencies. `sync_shipment_ap_bills` must **not** issue one mixed-currency AP bill. Group by bucket, then by `currency_code`; **one standard bill per (bucket, currency)**. Plug: `source_type = shipment_cost`, `source_id = shipment id`, `source_key = {bucket}:{currency_code}` (e.g. `freight:GBP`). Keep `ap_kind` = bucket (`material`, `freight`, …) so pays and landed-cost rollups still key off bucket. Each bill’s paper and face amount are **single-currency** for that group. On sync, void unpaid draft/issued bills for that shipment whose `source_key` no longer matches a live group. FX for material/freight may aggregate pays across all bills with the same `ap_kind` on that shipment (weighted by paid foreign per currency).
 
 ### `pays`
 
@@ -107,7 +109,7 @@ Any module may issue a bill with **only description or charge lines** (fees, AP 
 | `payment_date` | date | |
 | `source` | text | `customer_cash`, `bank`, `store_credit`, `courier_remittance`, `ap_payout`, … |
 | `cashbook_point_id` | bigint FK `cashbook_points` | **Where this money sat** (drawer, safe, …). Required when the tenant cashbook moves. Null only for profile-custody / leftover with no point |
-| FX | `settlement_currency_code`, `foreign_amount`, `exchange_rate` | Foreign pays |
+| FX | `settlement_currency_code`, `foreign_amount`, `exchange_rate`, `quote_currency_code` | Pair: `exchange_rate` = **quote per 1 settlement**. Default quote `BDT`. Freeze this onto the cashbook line |
 | leftover | `unallocated_amount` | Remainder after alloc |
 
 Every pay is a transaction you can ask: which point holds (or held) this amount. Ledger rows copy this id. Live `pays` does **not** have this column yet.
@@ -140,31 +142,65 @@ Direction of cash is **which bills you alloc** (from/to), not a new pay product.
 
 ### `cashbook_accounts`
 
-Leftover and custody per tenant / profile. Features do not write the ledger except via kernel pay RPCs.
+Leftover and custody per tenant / profile. One row per `(parent, entity, currency_code)`. Features do not write the ledger except via kernel pay RPCs. Tenant **BDT** account remains the books running total. Foreign cash on hand lives on **pots**, not mixed into this BDT balance.
 
-### `cashbook_points` (live — cash point)
+### `cashbook_points` (place — not a currency)
 
-Till / safe / drawer under a **tenant** cashbook account. Not a stock location. Profile custody books do not use points in v1.
+Till / safe / bank / fintech under a **tenant** cashbook. Not a stock location. **No currency on the point.** UK cash can hold GBP and BDT as two pots. Profile custody books do not use points in v1.
 
 | Column | Type | Rule |
 | :--- | :--- | :--- |
 | `id` | bigint PK | |
 | `parent_tenant_id` | bigint | |
-| `cashbook_account_id` | bigint FK `cashbook_accounts` | Tenant operating book |
+| `cashbook_account_id` | bigint FK `cashbook_accounts` | Tenant **BDT** operating book (header). Pots are extra |
 | `code` | text | Unique per account |
-| `name` | text | |
+| `name` | text | e.g. UK cash, Wise |
 | `kind` | enum | `drawer`, `safe`, `bank_counter`, `mobile`, `other` |
 | `custodian_membership_id` | bigint | Optional staff |
 | `is_active` | boolean | |
 | `sort_order` | integer | |
 
+### `cashbook_point_pots` (place × currency)
+
+Running **cash** in one currency at one point. Do **not** store a single FX rate here — money in the same pot can arrive at different rates.
+
+| Column | Type | Rule |
+| :--- | :--- | :--- |
+| `id` | bigint PK | |
+| `parent_tenant_id` | bigint | |
+| `cashbook_point_id` | bigint FK `cashbook_points` | CASCADE |
+| `currency_code` | text | Cash currency (`GBP`, `BDT`, …). Codes from `global_currencies` |
+| `amount` | numeric | On-hand in **this** currency. ≥ 0 |
+| Unique | `(cashbook_point_id, currency_code)` | One pot per currency per place |
+
+### `books_exchange_rates` (default pick — not posted truth)
+
+Staff pick a rate when recording a pay. Posted cash **copies** the pair onto the ledger line and never looks this table up again.
+
+| Column | Type | Rule |
+| :--- | :--- | :--- |
+| `id` | bigint PK | |
+| `parent_tenant_id` | bigint | |
+| `base_currency_code` | text | Always books (`BDT` v1) |
+| `quote_currency_code` | text | Foreign (`GBP`) |
+| `rate` | numeric | **base per 1 quote** (155.5 BDT per 1 GBP) |
+| `rate_date` | timestamptz | When this quote applied |
+| `source` | text | `manual` (v1) |
+
 ### `cashbook_entries`
 
 | Extra | Type | Rule |
 | :--- | :--- | :--- |
-| `cashbook_point_id` | bigint FK `cashbook_points` | Copy from the pay / instrument that wrote this line. Same amount, same place. Delete point → clear FK then drop row |
+| `cashbook_point_id` | bigint FK | Place |
+| `cashbook_point_pot_id` | bigint FK `cashbook_point_pots` | Which currency pile moved |
+| `amount` | numeric | Cash face (same currency as `currency_code`) |
+| `currency_code` | text | Cash currency |
+| `quote_currency_code` | text | Books (`BDT`) |
+| `exchange_rate` | numeric | **quote per 1 cash** (BDT per 1 GBP) |
+| `base_amount` | numeric | Frozen books (`amount` × rate) |
+| `rate_date` | date | When that pair was used |
 
-Pay in / pay out **must** pass a point when tenant cash moves (collect, AP payout, remittance into till/bank). `record_ledger_transaction(..., p_cashbook_point_id)` already exists; collect/AP writers do not pass it yet ([BP15](00-gaps.md)). Point-to-point transfer RPC is still open.
+Pay in / pay out **must** pass a point when tenant cash moves. Writers must upsert the pot, credit/debit `pots.amount` in cash currency, and freeze the pair on the line. Collect/AP still often post BDT-only ([BP15](00-gaps.md) / [BP16](00-gaps.md)). Point-to-point transfer RPC is still open.
 
 ---
 
@@ -191,7 +227,7 @@ Features call kernel. They pass **from, to, source, lines**. They do not add FKs
 | Adapter | `source_type` | `source_id` | `source_key` | From | To |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Compose desk | `compose` | bill id after insert / null | — | chosen | chosen |
-| Shipment AP | `shipment_cost` | shipment id | bucket (`material`, `freight`, …) | vendor/cargo | tenant. Lines grouped by `currency_code`; one bill per bucket |
+| Shipment AP | `shipment_cost` | shipment id | `{bucket}:{currency_code}` | vendor/cargo | tenant. One bill per **bucket × currency**; never mix currencies on one shipment AP bill |
 | Shop / dropship | `shop_order` | order id | optional | tenant | merchant |
 | Delivery close | `delivery_close` | paper id | — | tenant | customer |
 | After-sales money | parent source copied | | | same | same | via `create_bill_adjustment` |

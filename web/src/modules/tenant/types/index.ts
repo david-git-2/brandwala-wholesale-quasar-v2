@@ -16,6 +16,7 @@ export type Tenant = {
   is_active: boolean;
   parent_id: number | null;
   preference: unknown;
+  base_currency_code: string;
   created_at: string;
   updated_at: string;
 };

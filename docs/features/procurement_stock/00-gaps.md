@@ -10,3 +10,4 @@
 | PS10 | not_built | Close button + `is_closed`; shipment UI read-only | Column exists; no close RPC/UI guard yet | `costs_locked` / archive unchanged |
 | PS12 | ~~partial~~ | Cost entries = record only; AP on bucket bills | **Done (2026-10):** settle columns dropped; `pay_settle_shipment_costs` stub; FX from AP pays ([WA15](../bills_pays/00-gaps.md)) |
 | PS13 | partial | Unit stamp = capitalizable rows, split per [spec US-1](spec.md) | `stamp_global_shipment_landed_costs` / `calculate_landed_unit_cost` use only material + freight + blended FX | Add customs/handling/finance/other BDT pools; section-scoped rows; UI `calculateLineLandedCostBdt` same formula |
+| PS14 | not_built | AP sync: one bill per bucket **× currency** ([spec US-1](spec.md), [WA15](../bills_pays/00-gaps.md)) | One AP bill per bucket; multi-currency bucket → mixed invoice | Same as WA15 SQL/UI; shipment summary copy (“one bill per bucket”) |

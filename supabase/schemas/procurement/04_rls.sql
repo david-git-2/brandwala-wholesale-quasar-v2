@@ -79,6 +79,10 @@ CREATE OR REPLACE TRIGGER "trg_global_shipment_items_restamp_landed_cost" AFTER 
 
 
 
+CREATE OR REPLACE TRIGGER "trg_global_shipment_items_sync_catalog_weights" AFTER INSERT OR UPDATE OF "product_weight", "package_weight", "product_id" ON "public"."global_shipment_items" FOR EACH ROW EXECUTE FUNCTION "public"."trg_sync_catalog_weights_from_global_shipment_item"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_global_shipment_items_updated_at" BEFORE UPDATE ON "public"."global_shipment_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 

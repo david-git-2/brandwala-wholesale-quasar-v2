@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS "public"."cashbook_entries" (
     "parent_tenant_id" bigint NOT NULL,
     "operating_tenant_id" bigint NOT NULL,
     "cashbook_point_id" bigint,
+    "cashbook_point_pot_id" bigint,
+    "quote_currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
+    "rate_date" "date",
     CONSTRAINT "universal_wallet_ledger_amount_check" CHECK (("amount" >= (0)::numeric)),
     CONSTRAINT "universal_wallet_ledger_base_amount_check" CHECK (("base_amount" >= (0)::numeric)),
     CONSTRAINT "universal_wallet_ledger_exchange_rate_check" CHECK (("exchange_rate" > (0)::numeric)),
@@ -174,10 +177,16 @@ CREATE TABLE IF NOT EXISTS "public"."pays" (
     "settlement_currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
     "foreign_amount" numeric(12,2),
     "exchange_rate" numeric(15,6) DEFAULT 1.000000 NOT NULL,
+    "quote_currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
     "cashbook_point_id" bigint,
+    "source_currency_code" "text",
+    "transaction_rate" numeric(15,6),
+    "source_amount" numeric(12,2),
+    "cashbook_point_pot_id" bigint,
     CONSTRAINT "payments_amount_check" CHECK (("amount" >= (0)::numeric)),
     CONSTRAINT "pays_exchange_rate_positive" CHECK (("exchange_rate" > (0)::numeric)),
     CONSTRAINT "pays_settlement_fx_check" CHECK (((("settlement_currency_code" = 'BDT'::"text") AND ("foreign_amount" IS NULL) AND ("exchange_rate" = 1.000000)) OR (("settlement_currency_code" <> 'BDT'::"text") AND ("foreign_amount" IS NOT NULL) AND ("foreign_amount" > (0)::numeric) AND ("exchange_rate" > (0)::numeric)))),
+    CONSTRAINT "pays_source_fx_check" CHECK (((("source_currency_code" IS NULL) AND ("transaction_rate" IS NULL) AND ("source_amount" IS NULL)) OR (("source_currency_code" IS NOT NULL) AND ("btrim"("source_currency_code") <> ''::"text") AND (("upper"("source_currency_code") = "upper"("settlement_currency_code") AND (("transaction_rate" IS NULL) OR ("transaction_rate" = 1.000000))) OR (("upper"("source_currency_code") <> "upper"("settlement_currency_code")) AND ("transaction_rate" > (0)::numeric)))))),
     CONSTRAINT "payments_method_check" CHECK ((("method" IS NULL) OR ("method" = ANY (ARRAY['cash'::"text", 'bank'::"text", 'bank_transfer'::"text", 'mobile_banking'::"text", 'bkash'::"text", 'nagad'::"text", 'other'::"text", 'cheque'::"text", 'rocket'::"text", 'upay'::"text", 'tap'::"text", 'card_pos'::"text", 'wire_transfer'::"text", 'paypal'::"text", 'stripe'::"text", 'letter_of_credit'::"text", 'cod'::"text", 'split'::"text", 'store_credit'::"text"])))),
     CONSTRAINT "pays_source_check" CHECK (("source" = ANY (ARRAY['customer_cash'::"text", 'bank'::"text", 'store_credit'::"text", 'courier_remittance'::"text", 'ap_payout'::"text"])))
 );
@@ -219,7 +228,41 @@ CREATE TABLE IF NOT EXISTS "public"."cashbook_points" (
 
 ALTER TABLE "public"."cashbook_points" OWNER TO "postgres";
 
-COMMENT ON TABLE "public"."cashbook_points" IS 'Physical/logical place for tenant-held cash under a cashbook account (till, safe, drawer). v1: tenant operating books only; pays may tag entries later.';
+COMMENT ON TABLE "public"."cashbook_points" IS 'Place for tenant-held cash (till, safe, bank, fintech). No currency on the point; on-hand cash is cashbook_point_pots.';
+
+CREATE TABLE IF NOT EXISTS "public"."cashbook_point_pots" (
+    "id" bigint NOT NULL,
+    "parent_tenant_id" bigint NOT NULL,
+    "cashbook_point_id" bigint NOT NULL,
+    "currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
+    "amount" numeric(18,4) DEFAULT 0.0000 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "cashbook_point_pots_amount_non_negative" CHECK (("amount" >= (0)::numeric)),
+    CONSTRAINT "cashbook_point_pots_currency_code_trimmed" CHECK (("btrim"("currency_code") <> ''::"text"))
+);
+
+ALTER TABLE "public"."cashbook_point_pots" OWNER TO "postgres";
+
+COMMENT ON TABLE "public"."cashbook_point_pots" IS 'On-hand cash at a point in one currency. FX rate is frozen on cashbook_entries, not on this row.';
+
+CREATE TABLE IF NOT EXISTS "public"."books_exchange_rates" (
+    "id" bigint NOT NULL,
+    "parent_tenant_id" bigint NOT NULL,
+    "base_currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
+    "quote_currency_code" "text" NOT NULL,
+    "rate" numeric(18,6) NOT NULL,
+    "rate_date" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "source" "text" DEFAULT 'manual'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "books_exchange_rates_rate_positive" CHECK (("rate" > (0)::numeric)),
+    CONSTRAINT "books_exchange_rates_codes_trimmed" CHECK ((("btrim"("base_currency_code") <> ''::"text") AND ("btrim"("quote_currency_code") <> ''::"text"))),
+    CONSTRAINT "books_exchange_rates_pair_distinct" CHECK (("upper"("base_currency_code") <> "upper"("quote_currency_code")))
+);
+
+ALTER TABLE "public"."books_exchange_rates" OWNER TO "postgres";
+
+COMMENT ON TABLE "public"."books_exchange_rates" IS 'Default FX pick: rate = base (BDT) per 1 quote (e.g. GBP). Posted pays copy the pair onto the ledger line.';
 
 CREATE OR REPLACE VIEW "public"."global_invoice_items" WITH ("security_invoker"='false') AS
  SELECT "id",
@@ -486,6 +529,24 @@ ALTER TABLE "public"."cashbook_points" ALTER COLUMN "id" ADD GENERATED ALWAYS AS
     CACHE 1
 );
 
+ALTER TABLE "public"."cashbook_point_pots" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."cashbook_point_pots_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+ALTER TABLE "public"."books_exchange_rates" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."books_exchange_rates_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
 ALTER TABLE ONLY "public"."bill_lines" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_invoice_items_id_seq"'::"regclass");
 
 ALTER TABLE ONLY "public"."bills" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_invoices_id_seq"'::"regclass");
@@ -558,6 +619,15 @@ ALTER TABLE ONLY "public"."cashbook_points"
 
 ALTER TABLE ONLY "public"."cashbook_points"
     ADD CONSTRAINT "cashbook_points_account_code_key" UNIQUE ("cashbook_account_id", "code");
+
+ALTER TABLE ONLY "public"."cashbook_point_pots"
+    ADD CONSTRAINT "cashbook_point_pots_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."cashbook_point_pots"
+    ADD CONSTRAINT "cashbook_point_pots_point_currency_key" UNIQUE ("cashbook_point_id", "currency_code");
+
+ALTER TABLE ONLY "public"."books_exchange_rates"
+    ADD CONSTRAINT "books_exchange_rates_pkey" PRIMARY KEY ("id");
 
 CREATE INDEX "profiles_customer_group_id_idx" ON "public"."profiles" USING "btree" ("customer_group_id") WHERE ("profile_type" = 'customer'::"public"."profile_party_type");
 
@@ -638,6 +708,12 @@ CREATE INDEX "cashbook_points_parent_tenant_id_idx" ON "public"."cashbook_points
 CREATE INDEX "cashbook_points_account_active_idx" ON "public"."cashbook_points" USING "btree" ("cashbook_account_id", "sort_order") WHERE ("is_active" = true);
 
 CREATE INDEX "cashbook_entries_point_lookup_idx" ON "public"."cashbook_entries" USING "btree" ("cashbook_point_id", "created_at" DESC) WHERE ("cashbook_point_id" IS NOT NULL);
+
+CREATE INDEX "cashbook_entries_pot_lookup_idx" ON "public"."cashbook_entries" USING "btree" ("cashbook_point_pot_id", "created_at" DESC) WHERE ("cashbook_point_pot_id" IS NOT NULL);
+
+CREATE INDEX "cashbook_point_pots_parent_tenant_id_idx" ON "public"."cashbook_point_pots" USING "btree" ("parent_tenant_id");
+
+CREATE INDEX "books_exchange_rates_lookup_idx" ON "public"."books_exchange_rates" USING "btree" ("parent_tenant_id", "quote_currency_code", "rate_date" DESC);
 
 CREATE INDEX "invoice_brands_parent_tenant_id_idx" ON "public"."invoice_brands" USING "btree" ("parent_tenant_id");
 

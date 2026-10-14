@@ -80,6 +80,7 @@ export const buildWholesalePaymentInstrument = (input: {
   bd_bank_id?: number | null;
   cheque_number?: string | null;
   instrument_date?: string | null;
+  cashbook_point_id?: number | null;
 }): WholesalePaymentInstrumentInput => {
   const ref = input.instrument_reference?.trim() || null;
   const chequeNo = input.cheque_number?.trim() || null;
@@ -91,5 +92,6 @@ export const buildWholesalePaymentInstrument = (input: {
     bd_bank_id: input.bd_bank_id ?? null,
     cheque_number: chequeNo,
     cheque_date: date,
+    cashbook_point_id: input.cashbook_point_id ?? null,
   };
 };

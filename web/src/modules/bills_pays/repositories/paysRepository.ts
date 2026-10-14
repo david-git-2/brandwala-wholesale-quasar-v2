@@ -364,6 +364,7 @@ const listApPayProfileSummaries = async (
 const postApPayoutWithAllocations = async (payload: {
   tenant_id: number;
   profile_id: number;
+  cashbook_point_id: number;
   paid_on?: string;
   note?: string | null;
   reference?: string | null;
@@ -372,11 +373,15 @@ const postApPayoutWithAllocations = async (payload: {
   settlement_currency_code?: string;
   foreign_amount?: number | null;
   exchange_rate?: number | null;
+  source_currency_code?: string;
+  transaction_rate?: number | null;
+  cashbook_point_pot_id?: number | null;
 }) => {
   const { data, error } = await supabase.rpc('post_ap_payout_with_allocations', {
     p_tenant_id: payload.tenant_id,
     p_profile_id: payload.profile_id,
     p_paid_on: payload.paid_on ?? localToday(),
+    p_cashbook_point_id: payload.cashbook_point_id,
     p_note: payload.note ?? null,
     p_reference: payload.reference ?? null,
     p_instruments: payload.instruments,
@@ -384,6 +389,9 @@ const postApPayoutWithAllocations = async (payload: {
     p_settlement_currency_code: payload.settlement_currency_code ?? 'BDT',
     p_foreign_amount: payload.foreign_amount ?? null,
     p_exchange_rate: payload.exchange_rate ?? null,
+    p_source_currency_code: payload.source_currency_code ?? null,
+    p_transaction_rate: payload.transaction_rate ?? null,
+    p_cashbook_point_pot_id: payload.cashbook_point_pot_id ?? null,
   });
   if (error) throw error;
   return data;

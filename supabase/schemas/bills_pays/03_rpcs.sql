@@ -2287,7 +2287,7 @@ $$;
 
 ALTER FUNCTION "public"."create_bill_adjustment"("p_parent_bill_id" bigint, "p_kind" "text", "p_amount" numeric, "p_reason" "text", "p_issue" boolean, "p_refund_amount" numeric, "p_cashbook_point_id" bigint, "p_lines" "jsonb") OWNER TO "postgres";
 
-DROP FUNCTION IF EXISTS "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text");
+DROP FUNCTION IF EXISTS "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric);
 
 CREATE OR REPLACE FUNCTION "public"."post_vendor_credit_refund"(
   "p_credit_note_id" bigint,
@@ -2297,7 +2297,10 @@ CREATE OR REPLACE FUNCTION "public"."post_vendor_credit_refund"(
   "p_note" "text" DEFAULT NULL::"text",
   "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text",
   "p_foreign_amount" numeric DEFAULT NULL::numeric,
-  "p_exchange_rate" numeric DEFAULT NULL::numeric
+  "p_exchange_rate" numeric DEFAULT NULL::numeric,
+  "p_source_currency_code" "text" DEFAULT NULL::"text",
+  "p_transaction_rate" numeric DEFAULT NULL::numeric,
+  "p_cashbook_point_pot_id" bigint DEFAULT NULL::bigint
 ) RETURNS "public"."pays"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -2310,6 +2313,12 @@ declare
   v_settle_currency text := 'BDT';
   v_foreign_amt numeric(12, 2);
   v_fx_rate numeric(15, 6) := 1.000000;
+  v_base_currency text := 'BDT';
+  v_source_currency text;
+  v_transaction_rate numeric(15, 6) := 1.000000;
+  v_source_amount numeric(12, 2);
+  v_pot_id bigint := p_cashbook_point_pot_id;
+  v_payment_face numeric(12, 2);
 begin
   if p_credit_note_id is null then
     raise exception 'credit_note_id is required';
@@ -2364,10 +2373,16 @@ begin
 
   v_reason := coalesce(nullif(trim(coalesce(p_note, '')), ''), 'Vendor credit refund');
 
+  v_base_currency := public.resolve_tenant_base_currency_code(v_cn.parent_tenant_id);
+
   select n.settlement_currency_code, n.foreign_amount, n.exchange_rate, n.amount_bdt
   into v_settle_currency, v_foreign_amt, v_fx_rate, v_refund
   from public.normalize_pay_settlement_fx(
-    v_refund, p_settlement_currency_code, p_foreign_amount, p_exchange_rate
+    v_refund,
+    p_settlement_currency_code,
+    p_foreign_amount,
+    p_exchange_rate,
+    v_base_currency
   ) n;
 
   if v_refund <= 0 then
@@ -2377,6 +2392,55 @@ begin
   if v_refund > coalesce(v_cn.due_amount, 0.00) then
     raise exception 'Refund % exceeds open credit % on the note', v_refund, coalesce(v_cn.due_amount, 0);
   end if;
+
+  v_source_currency := upper(trim(coalesce(p_source_currency_code, '')));
+  if v_source_currency = '' then
+    select upper(cpp.currency_code)
+    into v_source_currency
+    from public.cashbook_point_pots cpp
+    where cpp.cashbook_point_id = p_cashbook_point_id
+      and cpp.parent_tenant_id = v_cn.parent_tenant_id
+    order by case when upper(cpp.currency_code) = v_base_currency then 0 else 1 end, cpp.id
+    limit 1;
+  end if;
+
+  if v_pot_id is null and coalesce(v_source_currency, '') <> '' then
+    select cpp.id
+    into v_pot_id
+    from public.cashbook_point_pots cpp
+    where cpp.cashbook_point_id = p_cashbook_point_id
+      and cpp.parent_tenant_id = v_cn.parent_tenant_id
+      and upper(cpp.currency_code) = v_source_currency
+    limit 1;
+  end if;
+
+  if v_pot_id is not null and not exists (
+    select 1
+    from public.cashbook_point_pots cpp
+    where cpp.id = v_pot_id
+      and cpp.cashbook_point_id = p_cashbook_point_id
+      and cpp.parent_tenant_id = v_cn.parent_tenant_id
+  ) then
+    raise exception 'Invalid cash pot for this point';
+  end if;
+
+  if upper(v_settle_currency) = v_source_currency then
+    v_transaction_rate := 1.000000;
+  else
+    v_transaction_rate := coalesce(p_transaction_rate, 0);
+    if v_transaction_rate <= 0 then
+      raise exception 'transaction_rate required when pot currency (%) differs from refund currency (%)',
+        v_source_currency, v_settle_currency;
+    end if;
+  end if;
+
+  if upper(v_settle_currency) = v_base_currency then
+    v_payment_face := v_refund;
+  else
+    v_payment_face := coalesce(v_foreign_amt, 0);
+  end if;
+
+  v_source_amount := round(v_payment_face * v_transaction_rate, 2);
 
   insert into public.pays (
     tenant_id,
@@ -2390,7 +2454,12 @@ begin
     cashbook_point_id,
     settlement_currency_code,
     foreign_amount,
-    exchange_rate
+    exchange_rate,
+    quote_currency_code,
+    source_currency_code,
+    transaction_rate,
+    source_amount,
+    cashbook_point_pot_id
   ) values (
     v_cn.parent_tenant_id,
     v_cn.profile_id,
@@ -2403,7 +2472,12 @@ begin
     p_cashbook_point_id,
     v_settle_currency,
     v_foreign_amt,
-    v_fx_rate
+    v_fx_rate,
+    v_base_currency,
+    v_source_currency,
+    v_transaction_rate,
+    v_source_amount,
+    v_pot_id
   )
   returning * into v_pay;
 
@@ -2462,7 +2536,11 @@ begin
       'parent_bill_id', v_cn.parent_bill_id,
       'settlement_currency_code', v_settle_currency,
       'foreign_amount', v_foreign_amt,
-      'exchange_rate', v_fx_rate
+      'exchange_rate', v_fx_rate,
+      'source_currency_code', v_source_currency,
+      'transaction_rate', v_transaction_rate,
+      'source_amount', v_source_amount,
+      'cashbook_point_pot_id', v_pot_id
     ),
     p_allow_overdraft => true,
     p_cashbook_point_id => p_cashbook_point_id
@@ -2472,7 +2550,7 @@ begin
 end;
 $$;
 
-ALTER FUNCTION "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) OWNER TO "postgres";
+ALTER FUNCTION "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."issue_bill_adjustment"("p_adjustment_id" bigint) RETURNS "public"."bills"
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -3200,7 +3278,7 @@ begin
     v_sort := v_sort + 1;
     insert into public.pay_instruments (
       payment_id, payment_method_code, amount, reference,
-      bd_bank_id, cheque_number, cheque_date, sort_order
+      bd_bank_id, cheque_number, cheque_date, sort_order, cashbook_point_id
     ) values (
       p_payment_id,
       v_method_code,
@@ -3212,7 +3290,8 @@ begin
         when v_method_code in ('CHEQUE', 'BANK_TRANSFER') then (v_line.value ->> 'cheque_date')::date
         else null
       end,
-      v_sort
+      v_sort,
+      nullif(v_line.value ->> 'cashbook_point_id', '')::bigint
     );
   end loop;
 end;
@@ -4312,21 +4391,23 @@ $$;
 
 ALTER FUNCTION "public"."list_wallet_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text", "p_operating_tenant_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
-CREATE OR REPLACE FUNCTION "public"."normalize_pay_settlement_fx"("p_instrument_total_bdt" numeric, "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric) RETURNS TABLE("settlement_currency_code" "text", "foreign_amount" numeric, "exchange_rate" numeric, "amount_bdt" numeric)
+CREATE OR REPLACE FUNCTION "public"."normalize_pay_settlement_fx"("p_instrument_total_bdt" numeric, "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_base_currency_code" "text" DEFAULT 'BDT'::"text") RETURNS TABLE("settlement_currency_code" "text", "foreign_amount" numeric, "exchange_rate" numeric, "amount_bdt" numeric)
     LANGUAGE "plpgsql" IMMUTABLE
     AS $$
 declare
   v_cur text;
+  v_base text;
   v_for numeric;
   v_rate numeric;
   v_bdt numeric;
 begin
-  v_cur := upper(trim(coalesce(p_settlement_currency_code, 'BDT')));
+  v_base := upper(trim(coalesce(p_base_currency_code, 'BDT')));
+  v_cur := upper(trim(coalesce(p_settlement_currency_code, v_base)));
   v_for := p_foreign_amount;
 
   if v_for is not null and v_for > 0 then
-    if v_cur in ('', 'BDT') then
-      raise exception 'foreign_amount requires a non-BDT settlement_currency_code';
+    if v_cur in ('', v_base) then
+      raise exception 'foreign_amount requires a settlement currency other than base (%)', v_base;
     end if;
     v_rate := coalesce(p_exchange_rate, 0);
     if v_rate <= 0 then
@@ -4334,7 +4415,7 @@ begin
     end if;
     v_bdt := round(v_for * v_rate, 2);
     if coalesce(p_instrument_total_bdt, 0) > 0 and round(p_instrument_total_bdt, 2) <> v_bdt then
-      raise exception 'Payment instruments total (%) must match BDT from foreign settlement (%)',
+      raise exception 'Payment instruments total (%) must match books amount from foreign settlement (%)',
         p_instrument_total_bdt, v_bdt;
     end if;
     settlement_currency_code := v_cur;
@@ -4346,7 +4427,7 @@ begin
   end if;
 
   v_bdt := round(coalesce(p_instrument_total_bdt, 0), 2);
-  settlement_currency_code := 'BDT';
+  settlement_currency_code := v_base;
   foreign_amount := null;
   exchange_rate := 1.000000;
   amount_bdt := v_bdt;
@@ -4354,7 +4435,7 @@ begin
 end;
 $$;
 
-ALTER FUNCTION "public"."normalize_pay_settlement_fx"("p_instrument_total_bdt" numeric, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) OWNER TO "postgres";
+ALTER FUNCTION "public"."normalize_pay_settlement_fx"("p_instrument_total_bdt" numeric, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_base_currency_code" "text") OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_source" "text" DEFAULT 'customer_cash'::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_shop_order_id" bigint DEFAULT NULL::bigint, "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric) RETURNS "public"."pays"
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -4461,7 +4542,11 @@ begin
     select n.settlement_currency_code, n.foreign_amount, n.exchange_rate, n.amount_bdt
     into v_settle_currency, v_foreign_amt, v_fx_rate, v_amount
     from public.normalize_pay_settlement_fx(
-      v_amount, p_settlement_currency_code, p_foreign_amount, p_exchange_rate
+      v_amount,
+      p_settlement_currency_code,
+      p_foreign_amount,
+      p_exchange_rate,
+      public.resolve_tenant_base_currency_code(p_tenant_id)
     ) n;
   end if;
 
@@ -5305,7 +5390,7 @@ $$;
 
 ALTER FUNCTION "public"."shipment_ap_bucket_paid_totals"("p_shipment_id" bigint, "p_ap_kind" "text") OWNER TO "postgres";
 
-CREATE OR REPLACE FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric) RETURNS "public"."pays"
+CREATE OR REPLACE FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_source_currency_code" "text" DEFAULT NULL::"text", "p_transaction_rate" numeric DEFAULT NULL::numeric, "p_cashbook_point_pot_id" bigint DEFAULT NULL::bigint) RETURNS "public"."pays"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -5338,6 +5423,12 @@ declare
   v_effective_due numeric(12, 2);
   v_paper jsonb;
   v_books_total numeric(12, 2);
+  v_source_currency text;
+  v_transaction_rate numeric(15, 6) := 1.000000;
+  v_source_amount numeric(12, 2);
+  v_pot_id bigint := p_cashbook_point_pot_id;
+  v_payment_face numeric(12, 2);
+  v_base_currency text := 'BDT';
 begin
   if p_tenant_id is null then
     raise exception 'Tenant is required';
@@ -5347,6 +5438,7 @@ begin
   end if;
 
   v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_base_currency := public.resolve_tenant_base_currency_code(p_tenant_id);
 
   if not (
     coalesce(auth.role(), '') = 'service_role'
@@ -5368,6 +5460,23 @@ begin
     where pr.id = p_profile_id and pr.parent_tenant_id = v_parent_id
   ) then
     raise exception 'Profile % does not belong to these books', p_profile_id;
+  end if;
+
+  if p_cashbook_point_id is null then
+    raise exception 'Choose a cash point for this pay out';
+  end if;
+
+  if not exists (
+    select 1
+    from public.cashbook_points cp
+    join public.cashbook_accounts ca on ca.id = cp.cashbook_account_id
+    where cp.id = p_cashbook_point_id
+      and cp.is_active = true
+      and ca.parent_tenant_id = v_parent_id
+      and ca.entity_type = 'tenant'
+      and ca.entity_id = v_parent_id
+  ) then
+    raise exception 'Invalid cash point for this tenant';
   end if;
 
   if coalesce(jsonb_typeof(p_instruments), 'null') = 'array' then
@@ -5402,20 +5511,69 @@ begin
   select n.settlement_currency_code, n.foreign_amount, n.exchange_rate, n.amount_bdt
   into v_settle_currency, v_foreign_amt, v_fx_rate, v_amount
   from public.normalize_pay_settlement_fx(
-    v_amount, p_settlement_currency_code, p_foreign_amount, p_exchange_rate
+    v_amount,
+    p_settlement_currency_code,
+    p_foreign_amount,
+    p_exchange_rate,
+    v_base_currency
   ) n;
+
+  v_source_currency := upper(trim(coalesce(p_source_currency_code, '')));
+  if v_source_currency = '' then
+    select upper(cpp.currency_code)
+    into v_source_currency
+    from public.cashbook_point_pots cpp
+    where cpp.cashbook_point_id = p_cashbook_point_id
+      and cpp.parent_tenant_id = v_parent_id
+    order by case when upper(cpp.currency_code) = 'BDT' then 0 else 1 end, cpp.id
+    limit 1;
+  end if;
+
+  if v_pot_id is null and coalesce(v_source_currency, '') <> '' then
+    select cpp.id
+    into v_pot_id
+    from public.cashbook_point_pots cpp
+    where cpp.cashbook_point_id = p_cashbook_point_id
+      and cpp.parent_tenant_id = v_parent_id
+      and upper(cpp.currency_code) = v_source_currency
+    limit 1;
+  end if;
+
+  if upper(v_settle_currency) = v_source_currency then
+    v_transaction_rate := 1.000000;
+  else
+    v_transaction_rate := coalesce(p_transaction_rate, 0);
+    if v_transaction_rate <= 0 then
+      raise exception 'transaction_rate required when source currency (%) differs from payment currency (%)',
+        v_source_currency, v_settle_currency;
+    end if;
+  end if;
+
+  if upper(v_settle_currency) = v_base_currency then
+    v_payment_face := v_amount;
+  else
+    v_payment_face := coalesce(v_foreign_amt, 0);
+  end if;
+
+  v_source_amount := round(v_payment_face * v_transaction_rate, 2);
 
   insert into public.pays (
     tenant_id, profile_id, source, amount, unallocated_amount,
     payment_date, method, reference, note,
-    settlement_currency_code, foreign_amount, exchange_rate
+    settlement_currency_code, foreign_amount, exchange_rate, quote_currency_code, cashbook_point_id,
+    source_currency_code, transaction_rate, source_amount, cashbook_point_pot_id
   ) values (
     v_parent_id, p_profile_id, 'ap_payout', v_amount, 0,
     v_received_on, v_header_method, v_reference, v_note,
-    v_settle_currency, v_foreign_amt, v_fx_rate
+    v_settle_currency, v_foreign_amt, v_fx_rate, v_base_currency, p_cashbook_point_id,
+    v_source_currency, v_transaction_rate, v_source_amount, v_pot_id
   ) returning * into v_pay;
 
   perform public.insert_global_payment_instruments(v_pay.id, p_instruments);
+
+  update public.pay_instruments pi
+  set cashbook_point_id = coalesce(pi.cashbook_point_id, p_cashbook_point_id)
+  where pi.payment_id = v_pay.id;
 
   if coalesce(jsonb_typeof(p_allocations), 'null') = 'array' then
     for v_alloc in select value from jsonb_array_elements(p_allocations)
@@ -5447,11 +5605,11 @@ begin
       v_foreign_face := public.ap_bill_channel_foreign_face(v_channel_meta);
       v_paper_currency := public.ap_bill_channel_currency(v_channel_meta);
 
-      if v_settle_currency <> 'BDT'
+      if upper(v_settle_currency) <> v_base_currency
          and v_fx_rate > 0
          and v_foreign_face is not null
          and v_foreign_face > 0
-         and v_paper_currency <> 'BDT'
+         and upper(coalesce(v_paper_currency, v_base_currency)) <> v_base_currency
       then
         if v_alloc_amount <= v_foreign_face + 0.01
            and v_alloc_amount < v_amount * 0.99
@@ -5478,11 +5636,11 @@ begin
       perform public.recompute_global_invoice_payment_status(v_bill_id);
       v_total_alloc := v_total_alloc + v_alloc_amount;
 
-      if v_settle_currency <> 'BDT'
+      if upper(v_settle_currency) <> v_base_currency
          and v_fx_rate > 0
          and v_foreign_face is not null
          and v_foreign_face > 0
-         and v_paper_currency <> 'BDT'
+         and upper(coalesce(v_paper_currency, v_base_currency)) <> v_base_currency
       then
         v_books_total := round(v_foreign_face * v_fx_rate, 2);
         v_paper := coalesce(v_channel_meta->'ap_paper', '{}'::jsonb)
@@ -5535,9 +5693,14 @@ begin
       'reference', v_reference,
       'settlement_currency_code', v_settle_currency,
       'foreign_amount', v_foreign_amt,
-      'exchange_rate', v_fx_rate
+      'exchange_rate', v_fx_rate,
+      'source_currency_code', v_source_currency,
+      'transaction_rate', v_transaction_rate,
+      'source_amount', v_source_amount,
+      'cashbook_point_pot_id', v_pot_id
     ),
-    p_allow_overdraft => true
+    p_allow_overdraft => true,
+    p_cashbook_point_id => p_cashbook_point_id
   );
 
   if coalesce(array_length(v_shipment_ids, 1), 0) > 0 then
@@ -5552,7 +5715,7 @@ begin
 end;
 $$;
 
-ALTER FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) OWNER TO "postgres";
+ALTER FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."post_global_invoice"("p_invoice_id" bigint) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER

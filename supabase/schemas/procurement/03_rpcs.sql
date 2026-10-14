@@ -945,17 +945,6 @@ begin
   where gsi.id = adj.item_id
     and gsi.shipment_id = p_shipment_id;
 
-  update public.products p
-  set
-    package_weight = adj.package_weight,
-    updated_at = now()
-  from jsonb_to_recordset(p_adjustments) as adj(item_id bigint, package_weight numeric)
-  inner join public.global_shipment_items gsi
-    on gsi.id = adj.item_id
-   and gsi.shipment_id = p_shipment_id
-  where p.id = gsi.product_id
-    and gsi.product_id is not null;
-
   perform set_config('app.skip_item_landed_restamp', '0', true);
 
   perform public.stamp_global_shipment_landed_costs(p_shipment_id);
@@ -9861,6 +9850,51 @@ $$;
 
 
 ALTER FUNCTION "public"."trg_global_shipment_items_guard_landed_cost"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."trg_sync_catalog_weights_from_global_shipment_item"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ship public.global_shipments%rowtype;
+begin
+  if new.product_id is null then
+    return new;
+  end if;
+
+  if tg_op = 'UPDATE'
+     and new.product_weight is not distinct from old.product_weight
+     and new.package_weight is not distinct from old.package_weight
+     and new.product_id is not distinct from old.product_id then
+    return new;
+  end if;
+
+  select * into v_ship
+  from public.global_shipments
+  where id = new.shipment_id;
+
+  if not found then
+    return new;
+  end if;
+
+  if not public.user_can_manage_parent_tenant(v_ship.parent_tenant_id) then
+    return new;
+  end if;
+
+  update public.products p
+  set
+    product_weight = new.product_weight,
+    package_weight = new.package_weight,
+    updated_at = now()
+  where p.id = new.product_id;
+
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."trg_sync_catalog_weights_from_global_shipment_item"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_shipment_items_recalc_transaction_rate"() RETURNS "trigger"

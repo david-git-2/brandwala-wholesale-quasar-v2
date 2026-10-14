@@ -277,7 +277,6 @@ import SmartImage from 'src/components/SmartImage.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
-import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
 import { productRepository } from 'src/modules/products/repositories/productRepository';
 
 const props = withDefaults(
@@ -515,25 +514,6 @@ const onSubmitSingle = async () => {
 
     if (isEdit.value) {
       const updated = await shipmentStore.updateShipmentItem(props.item!.id, form.value);
-      const targetProductId = form.value.product_id;
-      if (targetProductId != null) {
-        const weightChanged =
-          props.item?.product_weight !== form.value.product_weight ||
-          props.item?.package_weight !== form.value.package_weight ||
-          props.item?.product_id !== targetProductId;
-        if (weightChanged) {
-          await syncShipmentWeightToProduct(
-            targetProductId,
-            'product_weight',
-            form.value.product_weight,
-          );
-          await syncShipmentWeightToProduct(
-            targetProductId,
-            'package_weight',
-            form.value.package_weight,
-          );
-        }
-      }
       onDialogOK(updated);
     } else {
       const payload: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at'> = {

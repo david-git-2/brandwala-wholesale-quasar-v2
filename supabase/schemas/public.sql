@@ -17874,7 +17874,7 @@ $$;
 ALTER FUNCTION "public"."list_membership_ids_with_overrides"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_my_admin_tenants"() RETURNS TABLE("id" bigint, "name" "text", "slug" "text", "public_domain" "text", "is_active" boolean, "parent_id" bigint, "preference" "jsonb", "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."list_my_admin_tenants"() RETURNS TABLE("id" bigint, "name" "text", "slug" "text", "public_domain" "text", "is_active" boolean, "parent_id" bigint, "preference" "jsonb", "base_currency_code" "text", "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -17900,6 +17900,7 @@ CREATE OR REPLACE FUNCTION "public"."list_my_admin_tenants"() RETURNS TABLE("id"
     t.is_active,
     t.parent_id,
     t.preference,
+    t.base_currency_code,
     t.created_at,
     t.updated_at
   from public.tenants t
@@ -19489,7 +19490,7 @@ $$;
 ALTER FUNCTION "public"."list_tenants_by_membership"("p_tenant_id" bigint, "p_email" "text", "p_role" "public"."app_role") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_tenants_for_superadmin"() RETURNS TABLE("id" bigint, "name" "text", "slug" "text", "public_domain" "text", "is_active" boolean, "parent_id" bigint, "preference" "jsonb", "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."list_tenants_for_superadmin"() RETURNS TABLE("id" bigint, "name" "text", "slug" "text", "public_domain" "text", "is_active" boolean, "parent_id" bigint, "preference" "jsonb", "base_currency_code" "text", "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -19507,6 +19508,7 @@ begin
     t.is_active,
     t.parent_id,
     t.preference,
+    t.base_currency_code,
     t.created_at,
     t.updated_at
   from public.tenants t
@@ -24790,6 +24792,19 @@ $$;
 
 
 ALTER FUNCTION "public"."resolve_parent_tenant_id"("p_tenant_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."resolve_tenant_base_currency_code"("p_tenant_id" bigint) RETURNS "text"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select upper(trim(coalesce(t.base_currency_code, 'BDT')))
+  from public.tenants t
+  where t.id = public.resolve_parent_tenant_id(p_tenant_id);
+$$;
+
+
+ALTER FUNCTION "public"."resolve_tenant_base_currency_code"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."resolve_tenant_for_entry"("p_slug" "text" DEFAULT NULL::"text", "p_hostname" "text" DEFAULT NULL::"text") RETURNS TABLE("id" bigint, "name" "text", "slug" "text", "public_domain" "text")
@@ -33795,7 +33810,9 @@ CREATE TABLE IF NOT EXISTS "public"."tenants" (
     "public_domain" "text",
     "parent_id" bigint,
     "preference" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
-    CONSTRAINT "tenants_parent_id_check" CHECK ((("parent_id" IS NULL) OR ("parent_id" <> "id")))
+    "base_currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
+    CONSTRAINT "tenants_parent_id_check" CHECK ((("parent_id" IS NULL) OR ("parent_id" <> "id"))),
+    CONSTRAINT "tenants_base_currency_code_trimmed" CHECK (("btrim"("base_currency_code") <> ''::"text"))
 );
 
 

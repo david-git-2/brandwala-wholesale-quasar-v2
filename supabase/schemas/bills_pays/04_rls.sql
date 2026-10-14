@@ -151,6 +151,9 @@ ALTER TABLE ONLY "public"."pays"
 ALTER TABLE ONLY "public"."pays"
     ADD CONSTRAINT "pays_cashbook_point_id_fkey" FOREIGN KEY ("cashbook_point_id") REFERENCES "public"."cashbook_points"("id") ON DELETE SET NULL;
 
+ALTER TABLE ONLY "public"."pays"
+    ADD CONSTRAINT "pays_cashbook_point_pot_id_fkey" FOREIGN KEY ("cashbook_point_pot_id") REFERENCES "public"."cashbook_point_pots"("id") ON DELETE SET NULL;
+
 ALTER TABLE ONLY "public"."pay_allocations"
     ADD CONSTRAINT "pay_allocations_bill_id_fkey" FOREIGN KEY ("bill_id") REFERENCES "public"."bills"("id") ON DELETE CASCADE;
 
@@ -196,6 +199,18 @@ ALTER TABLE ONLY "public"."cashbook_points"
 ALTER TABLE ONLY "public"."cashbook_entries"
     ADD CONSTRAINT "cashbook_entries_cashbook_point_id_fkey" FOREIGN KEY ("cashbook_point_id") REFERENCES "public"."cashbook_points"("id") ON DELETE SET NULL;
 
+ALTER TABLE ONLY "public"."cashbook_entries"
+    ADD CONSTRAINT "cashbook_entries_cashbook_point_pot_id_fkey" FOREIGN KEY ("cashbook_point_pot_id") REFERENCES "public"."cashbook_point_pots"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."cashbook_point_pots"
+    ADD CONSTRAINT "cashbook_point_pots_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."cashbook_point_pots"
+    ADD CONSTRAINT "cashbook_point_pots_cashbook_point_id_fkey" FOREIGN KEY ("cashbook_point_id") REFERENCES "public"."cashbook_points"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."books_exchange_rates"
+    ADD CONSTRAINT "books_exchange_rates_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
 ALTER TABLE "public"."bill_lines" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."bills" ENABLE ROW LEVEL SECURITY;
@@ -203,6 +218,10 @@ ALTER TABLE "public"."bills" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."cashbook_accounts" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."cashbook_points" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "public"."cashbook_point_pots" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "public"."books_exchange_rates" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."cashbook_entries" ENABLE ROW LEVEL SECURITY;
 
@@ -303,6 +322,10 @@ CREATE POLICY "universal_wallet_ledger_select" ON "public"."cashbook_entries" FO
 CREATE POLICY "wallet_accounts_authenticated_policy" ON "public"."cashbook_accounts" TO "authenticated" USING (true) WITH CHECK (true);
 
 CREATE POLICY "cashbook_points_authenticated_policy" ON "public"."cashbook_points" TO "authenticated" USING (true) WITH CHECK (true);
+
+CREATE POLICY "cashbook_point_pots_authenticated_policy" ON "public"."cashbook_point_pots" TO "authenticated" USING (true) WITH CHECK (true);
+
+CREATE POLICY "books_exchange_rates_authenticated_policy" ON "public"."books_exchange_rates" TO "authenticated" USING (true) WITH CHECK (true);
 
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."cashbook_entries" TO "authenticated";
 
@@ -498,17 +521,17 @@ GRANT ALL ON FUNCTION "public"."sync_shipment_ap_bills"("p_shipment_id" bigint) 
 
 GRANT ALL ON FUNCTION "public"."sync_shipment_ap_bills"("p_shipment_id" bigint) TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) FROM PUBLIC;
 
-GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "service_role";
+GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) FROM PUBLIC;
 
-GRANT ALL ON FUNCTION "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "service_role";
+GRANT ALL ON FUNCTION "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."post_global_invoice"("p_invoice_id" bigint) TO "authenticated";
 
@@ -601,6 +624,22 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."cashbook_points" T
 GRANT ALL ON TABLE "public"."cashbook_points" TO "authenticated";
 
 GRANT ALL ON TABLE "public"."cashbook_points" TO "service_role";
+
+GRANT ALL ON TABLE "public"."cashbook_point_pots" TO "authenticated";
+
+GRANT ALL ON TABLE "public"."cashbook_point_pots" TO "service_role";
+
+GRANT ALL ON TABLE "public"."books_exchange_rates" TO "authenticated";
+
+GRANT ALL ON TABLE "public"."books_exchange_rates" TO "service_role";
+
+GRANT ALL ON SEQUENCE "public"."cashbook_point_pots_id_seq" TO "authenticated";
+
+GRANT ALL ON SEQUENCE "public"."cashbook_point_pots_id_seq" TO "service_role";
+
+GRANT ALL ON SEQUENCE "public"."books_exchange_rates_id_seq" TO "authenticated";
+
+GRANT ALL ON SEQUENCE "public"."books_exchange_rates_id_seq" TO "service_role";
 
 GRANT REFERENCES,TRIGGER,TRUNCATE ON TABLE "public"."global_invoice_items" TO "anon";
 

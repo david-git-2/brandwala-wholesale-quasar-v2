@@ -1,21 +1,20 @@
 import type { InvoicePaymentHistoryEntry } from 'src/modules/sales_invoice/types';
-import { formatBdtTaka } from 'src/utils/currency';
+import { formatBdtTaka, formatSettlementCurrencyAmount } from 'src/utils/currency';
 
+/** Currency the cash actually moved in (payment row), not the bill’s invoice currency. */
 export const paymentHistorySettlementCode = (
   entry: InvoicePaymentHistoryEntry,
   billCurrencyCode?: string | null,
-) => (billCurrencyCode || entry.settlement_currency_code || 'BDT').toUpperCase();
+) => (entry.settlement_currency_code || billCurrencyCode || 'BDT').trim().toUpperCase();
 
 export const isForeignSettlementPaymentHistory = (
   entry: InvoicePaymentHistoryEntry,
   billCurrencyCode?: string | null,
 ) => {
-  const rate = Number(entry.exchange_rate) || 0;
-  if (rate <= 0) return false;
-  const entryCode = String(entry.settlement_currency_code ?? '').toUpperCase();
-  if (entryCode && entryCode !== 'BDT') return true;
   const code = paymentHistorySettlementCode(entry, billCurrencyCode);
-  return code !== 'BDT';
+  if (code !== 'BDT') return true;
+  const rate = Number(entry.exchange_rate) || 0;
+  return rate > 0 && Math.abs(rate - 1) > 0.0001;
 };
 
 /**
@@ -46,25 +45,63 @@ export const paymentHistoryReceiptBdt = (entry: InvoicePaymentHistoryEntry): num
   return receiptBdt || allocBdt;
 };
 
-/** Settlement-currency amount applied to this bill. */
+/** BDT applied to this bill / note (allocation). */
+export const paymentHistoryBooksApplied = (entry: InvoicePaymentHistoryEntry): number =>
+  Number(entry.amount) || 0;
+
+/** Cash face in settlement currency (e.g. GBP received on a USD invoice refund). */
+export const paymentHistoryCashFaceAmount = (entry: InvoicePaymentHistoryEntry): number => {
+  const code = paymentHistorySettlementCode(entry);
+  if (code === 'BDT') {
+    return paymentHistoryReceiptBdt(entry);
+  }
+  const foreign = Number(entry.foreign_amount);
+  if (Number.isFinite(foreign) && foreign > 0) {
+    return Math.round(foreign * 100) / 100;
+  }
+  const rate = Number(entry.exchange_rate) || 0;
+  const receipt = paymentHistoryReceiptBdt(entry);
+  if (rate > 0 && receipt > 0) {
+    return Math.round((receipt / rate) * 100) / 100;
+  }
+  return paymentHistoryBooksApplied(entry);
+};
+
+/** Settlement-currency amount applied to this bill (legacy; prefers payment cash face). */
 export const paymentHistorySettlementOnBill = (
   entry: InvoicePaymentHistoryEntry,
   billCurrencyCode?: string | null,
 ): number => {
-  const allocBdt = Number(entry.amount) || 0;
-  const rate = Number(entry.exchange_rate) || 1;
-  if (!isForeignSettlementPaymentHistory(entry, billCurrencyCode) || rate <= 0) return allocBdt;
-  const receiptBdt = paymentHistoryReceiptBdt(entry);
-  if (receiptBdt > 0) {
-    return Math.round((receiptBdt / rate) * 100) / 100;
+  const settleCode = paymentHistorySettlementCode(entry, billCurrencyCode);
+  if (settleCode === 'BDT') {
+    return paymentHistoryBooksApplied(entry);
   }
-  if (allocBdt > rate * 50) {
-    return Math.round((allocBdt / rate) * 100) / 100;
-  }
-  return allocBdt;
+  return paymentHistoryCashFaceAmount(entry);
 };
 
-/** Match Pay detail: `Settlement: 1.69 GBP @ 166 → ৳280.38` */
+export const formatPaymentHistoryPrimary = (
+  entry: InvoicePaymentHistoryEntry,
+  billCurrencyCode?: string | null,
+): string => {
+  const code = paymentHistorySettlementCode(entry, billCurrencyCode);
+  if (code === 'BDT') {
+    return formatBdtTaka(paymentHistoryReceiptBdt(entry));
+  }
+  return formatSettlementCurrencyAmount(paymentHistoryCashFaceAmount(entry), code);
+};
+
+export const formatPaymentHistoryBooksCaption = (
+  entry: InvoicePaymentHistoryEntry,
+  billCurrencyCode?: string | null,
+): string | null => {
+  const code = paymentHistorySettlementCode(entry, billCurrencyCode);
+  if (code === 'BDT') return null;
+  const books = paymentHistoryBooksApplied(entry);
+  const rate = Number(entry.exchange_rate) || 1;
+  return `${formatBdtTaka(books)} @ ${rate} BDT/${code}`;
+};
+
+/** Match Pay detail: cash in settlement currency → books on bill */
 export const paymentHistoryFxCaption = (
   entry: InvoicePaymentHistoryEntry,
   billCurrencyCode?: string | null,
@@ -72,16 +109,9 @@ export const paymentHistoryFxCaption = (
   if (!isForeignSettlementPaymentHistory(entry, billCurrencyCode)) return null;
   const code = paymentHistorySettlementCode(entry, billCurrencyCode);
   const rate = Number(entry.exchange_rate) || 1;
-  const onBillBdt = Number(entry.amount) || 0;
-  const onBillFx = paymentHistorySettlementOnBill(entry, billCurrencyCode);
-  const receiptBdt = paymentHistoryReceiptBdt(entry);
-  const payFx = rate > 0 ? Math.round((receiptBdt / rate) * 100) / 100 : 0;
-
-  let line = `Settlement: ${onBillFx} ${code} @ ${rate} → ${formatBdtTaka(onBillBdt)}`;
-  if (receiptBdt > 0 && Math.abs(receiptBdt - onBillBdt) > 0.005) {
-    line += ` · Payment ${payFx} ${code} → ${formatBdtTaka(receiptBdt)}`;
-  }
-  return line;
+  const onBillBdt = paymentHistoryBooksApplied(entry);
+  const payFx = paymentHistoryCashFaceAmount(entry);
+  return `Settlement: ${payFx} ${code} @ ${rate} → ${formatBdtTaka(onBillBdt)}`;
 };
 
 export const paymentHistoryEntryCaption = (
@@ -104,3 +134,38 @@ export const paymentHistoryEntryCaption = (
   const method = entry.method?.replace(/_/g, ' ') ?? 'Payment';
   return method;
 };
+
+export type VendorRefundReceiptBucket = {
+  currencyCode: string;
+  foreignTotal: number;
+  booksBdt: number;
+};
+
+export function aggregateVendorRefundReceipts(
+  entries: InvoicePaymentHistoryEntry[],
+  opts?: { isAp?: boolean },
+): VendorRefundReceiptBucket[] {
+  if (!opts?.isAp) return [];
+  const map = new Map<string, { foreign: number; bdt: number }>();
+  for (const entry of entries) {
+    if (entry.voided_at) continue;
+    if (entry.related_document_kind !== 'credit_note' || entry.payment_source !== 'customer_cash') {
+      continue;
+    }
+    const code = paymentHistorySettlementCode(entry);
+    const bdt = paymentHistoryBooksApplied(entry);
+    const fx = code === 'BDT' ? bdt : paymentHistoryCashFaceAmount(entry);
+    const prev = map.get(code) ?? { foreign: 0, bdt: 0 };
+    map.set(code, {
+      foreign: Math.round((prev.foreign + fx) * 100) / 100,
+      bdt: Math.round((prev.bdt + bdt) * 100) / 100,
+    });
+  }
+  return [...map.entries()]
+    .map(([currencyCode, v]) => ({
+      currencyCode,
+      foreignTotal: v.foreign,
+      booksBdt: v.bdt,
+    }))
+    .sort((a, b) => a.currencyCode.localeCompare(b.currencyCode));
+}

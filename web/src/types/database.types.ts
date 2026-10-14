@@ -498,6 +498,47 @@ export type Database = {
           },
         ]
       }
+      books_exchange_rates: {
+        Row: {
+          base_currency_code: string
+          created_at: string
+          id: number
+          parent_tenant_id: number
+          quote_currency_code: string
+          rate: number
+          rate_date: string
+          source: string
+        }
+        Insert: {
+          base_currency_code?: string
+          created_at?: string
+          id?: never
+          parent_tenant_id: number
+          quote_currency_code: string
+          rate: number
+          rate_date?: string
+          source?: string
+        }
+        Update: {
+          base_currency_code?: string
+          created_at?: string
+          id?: never
+          parent_tenant_id?: number
+          quote_currency_code?: string
+          rate?: number
+          rate_date?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_exchange_rates_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cargo_companies: {
         Row: {
           address: string | null
@@ -617,6 +658,7 @@ export type Database = {
           balance_after: number
           base_amount: number
           cashbook_point_id: number | null
+          cashbook_point_pot_id: number | null
           created_at: string
           currency_code: string
           entity_id: number
@@ -626,6 +668,8 @@ export type Database = {
           metadata: Json
           operating_tenant_id: number
           parent_tenant_id: number
+          quote_currency_code: string
+          rate_date: string | null
           source_id: string | null
           source_type: string
           tenant_id: number
@@ -636,6 +680,7 @@ export type Database = {
           balance_after: number
           base_amount: number
           cashbook_point_id?: number | null
+          cashbook_point_pot_id?: number | null
           created_at?: string
           currency_code?: string
           entity_id: number
@@ -645,6 +690,8 @@ export type Database = {
           metadata?: Json
           operating_tenant_id: number
           parent_tenant_id: number
+          quote_currency_code?: string
+          rate_date?: string | null
           source_id?: string | null
           source_type: string
           tenant_id: number
@@ -655,6 +702,7 @@ export type Database = {
           balance_after?: number
           base_amount?: number
           cashbook_point_id?: number | null
+          cashbook_point_pot_id?: number | null
           created_at?: string
           currency_code?: string
           entity_id?: number
@@ -664,6 +712,8 @@ export type Database = {
           metadata?: Json
           operating_tenant_id?: number
           parent_tenant_id?: number
+          quote_currency_code?: string
+          rate_date?: string | null
           source_id?: string | null
           source_type?: string
           tenant_id?: number
@@ -675,6 +725,13 @@ export type Database = {
             columns: ["cashbook_point_id"]
             isOneToOne: false
             referencedRelation: "cashbook_points"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cashbook_entries_cashbook_point_pot_id_fkey"
+            columns: ["cashbook_point_pot_id"]
+            isOneToOne: false
+            referencedRelation: "cashbook_point_pots"
             referencedColumns: ["id"]
           },
           {
@@ -694,6 +751,51 @@ export type Database = {
           {
             foreignKeyName: "universal_wallet_ledger_tenant_id_fkey"
             columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cashbook_point_pots: {
+        Row: {
+          amount: number
+          cashbook_point_id: number
+          created_at: string
+          currency_code: string
+          id: number
+          parent_tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          cashbook_point_id: number
+          created_at?: string
+          currency_code?: string
+          id?: never
+          parent_tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          cashbook_point_id?: number
+          created_at?: string
+          currency_code?: string
+          id?: never
+          parent_tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cashbook_point_pots_cashbook_point_id_fkey"
+            columns: ["cashbook_point_id"]
+            isOneToOne: false
+            referencedRelation: "cashbook_points"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cashbook_point_pots_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
@@ -3967,6 +4069,7 @@ export type Database = {
         Row: {
           amount: number
           cashbook_point_id: number | null
+          cashbook_point_pot_id: number | null
           collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
           customer_group_id: number | null
@@ -3977,17 +4080,22 @@ export type Database = {
           note: string | null
           payment_date: string
           profile_id: number | null
+          quote_currency_code: string
           reference: string | null
           settlement_currency_code: string
           shop_order_id: number | null
           source: string
+          source_amount: number | null
+          source_currency_code: string | null
           tenant_id: number
+          transaction_rate: number | null
           unallocated_amount: number
           voided_at: string | null
         }
         Insert: {
           amount: number
           cashbook_point_id?: number | null
+          cashbook_point_pot_id?: number | null
           collection_source?: Database["public"]["Enums"]["collection_source_type"]
           created_at?: string
           customer_group_id?: number | null
@@ -3998,17 +4106,22 @@ export type Database = {
           note?: string | null
           payment_date?: string
           profile_id?: number | null
+          quote_currency_code?: string
           reference?: string | null
           settlement_currency_code?: string
           shop_order_id?: number | null
           source?: string
+          source_amount?: number | null
+          source_currency_code?: string | null
           tenant_id: number
+          transaction_rate?: number | null
           unallocated_amount?: number
           voided_at?: string | null
         }
         Update: {
           amount?: number
           cashbook_point_id?: number | null
+          cashbook_point_pot_id?: number | null
           collection_source?: Database["public"]["Enums"]["collection_source_type"]
           created_at?: string
           customer_group_id?: number | null
@@ -4019,11 +4132,15 @@ export type Database = {
           note?: string | null
           payment_date?: string
           profile_id?: number | null
+          quote_currency_code?: string
           reference?: string | null
           settlement_currency_code?: string
           shop_order_id?: number | null
           source?: string
+          source_amount?: number | null
+          source_currency_code?: string | null
           tenant_id?: number
+          transaction_rate?: number | null
           unallocated_amount?: number
           voided_at?: string | null
         }
@@ -4054,6 +4171,13 @@ export type Database = {
             columns: ["cashbook_point_id"]
             isOneToOne: false
             referencedRelation: "cashbook_points"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pays_cashbook_point_pot_id_fkey"
+            columns: ["cashbook_point_pot_id"]
+            isOneToOne: false
+            referencedRelation: "cashbook_point_pots"
             referencedColumns: ["id"]
           },
           {
@@ -7714,6 +7838,7 @@ export type Database = {
       }
       tenants: {
         Row: {
+          base_currency_code: string
           created_at: string
           id: number
           is_active: boolean
@@ -7725,6 +7850,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          base_currency_code?: string
           created_at?: string
           id?: number
           is_active?: boolean
@@ -7736,6 +7862,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          base_currency_code?: string
           created_at?: string
           id?: number
           is_active?: boolean
@@ -13306,6 +13433,7 @@ export type Database = {
       list_my_admin_tenants: {
         Args: never
         Returns: {
+          base_currency_code: string
           created_at: string
           id: number
           is_active: boolean
@@ -13889,6 +14017,7 @@ export type Database = {
       list_tenants_for_superadmin: {
         Args: never
         Returns: {
+          base_currency_code: string
           created_at: string
           id: number
           is_active: boolean
@@ -14176,6 +14305,7 @@ export type Database = {
       }
       normalize_pay_settlement_fx: {
         Args: {
+          p_base_currency_code?: string
           p_exchange_rate?: number
           p_foreign_amount?: number
           p_instrument_total_bdt: number
@@ -14313,6 +14443,8 @@ export type Database = {
       post_ap_payout_with_allocations: {
         Args: {
           p_allocations?: Json
+          p_cashbook_point_id: number
+          p_cashbook_point_pot_id?: number
           p_exchange_rate?: number
           p_foreign_amount?: number
           p_instruments?: Json
@@ -14321,11 +14453,14 @@ export type Database = {
           p_profile_id: number
           p_reference?: string
           p_settlement_currency_code?: string
+          p_source_currency_code?: string
           p_tenant_id: number
+          p_transaction_rate?: number
         }
         Returns: {
           amount: number
           cashbook_point_id: number | null
+          cashbook_point_pot_id: number | null
           collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
           customer_group_id: number | null
@@ -14336,11 +14471,15 @@ export type Database = {
           note: string | null
           payment_date: string
           profile_id: number | null
+          quote_currency_code: string
           reference: string | null
           settlement_currency_code: string
           shop_order_id: number | null
           source: string
+          source_amount: number | null
+          source_currency_code: string | null
           tenant_id: number
+          transaction_rate: number | null
           unallocated_amount: number
           voided_at: string | null
         }
@@ -14365,16 +14504,20 @@ export type Database = {
         Args: {
           p_amount: number
           p_cashbook_point_id: number
+          p_cashbook_point_pot_id?: number
           p_credit_note_id: number
           p_exchange_rate?: number
           p_foreign_amount?: number
           p_note?: string
           p_received_on?: string
           p_settlement_currency_code?: string
+          p_source_currency_code?: string
+          p_transaction_rate?: number
         }
         Returns: {
           amount: number
           cashbook_point_id: number | null
+          cashbook_point_pot_id: number | null
           collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
           customer_group_id: number | null
@@ -14385,11 +14528,15 @@ export type Database = {
           note: string | null
           payment_date: string
           profile_id: number | null
+          quote_currency_code: string
           reference: string | null
           settlement_currency_code: string
           shop_order_id: number | null
           source: string
+          source_amount: number | null
+          source_currency_code: string | null
           tenant_id: number
+          transaction_rate: number | null
           unallocated_amount: number
           voided_at: string | null
         }
@@ -14874,6 +15021,10 @@ export type Database = {
           p_unit_list_price_amount?: number
         }
         Returns: number
+      }
+      resolve_tenant_base_currency_code: {
+        Args: { p_tenant_id: number }
+        Returns: string
       }
       resolve_tenant_for_entry: {
         Args: { p_hostname?: string; p_slug?: string }

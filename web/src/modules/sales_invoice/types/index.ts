@@ -221,6 +221,7 @@ export type WholesalePaymentInstrumentInput = {
   bd_bank_id?: number | null;
   cheque_number?: string | null;
   cheque_date?: string | null;
+  cashbook_point_id?: number | null;
 };
 
 export type WholesaleCollectPaymentPayload = {

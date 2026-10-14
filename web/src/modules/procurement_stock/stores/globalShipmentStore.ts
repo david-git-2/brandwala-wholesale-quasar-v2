@@ -33,7 +33,6 @@ import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
 import { invalidateSharedShipmentItemsCostingCache, seedSharedShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance';
 import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBalance';
-import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
 
 const COST_AFFECTING_ITEM_FIELDS = new Set([
   'product_weight',
@@ -898,35 +897,6 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           this.currentShipmentItems = await reloadShipmentLineCosts(shipmentId);
         } else {
           invalidateSharedShipmentItemsCostingCache(shipmentId);
-        }
-
-        // Sync modified weight fields to the products catalog in background
-        const productUpdates: Promise<void>[] = [];
-        for (const u of updates) {
-          const item = this.currentShipmentItems.find((item) => item.id === u.id);
-          if (item && item.product_id != null) {
-            if ('product_weight' in u.payload && u.payload.product_weight !== undefined) {
-              productUpdates.push(
-                syncShipmentWeightToProduct(
-                  item.product_id,
-                  'product_weight',
-                  u.payload.product_weight,
-                ),
-              );
-            }
-            if ('package_weight' in u.payload && u.payload.package_weight !== undefined) {
-              productUpdates.push(
-                syncShipmentWeightToProduct(
-                  item.product_id,
-                  'package_weight',
-                  u.payload.package_weight,
-                ),
-              );
-            }
-          }
-        }
-        if (productUpdates.length > 0) {
-          void Promise.all(productUpdates);
         }
 
         return updatedItems;

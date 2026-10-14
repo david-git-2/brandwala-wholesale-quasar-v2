@@ -1,54 +1,59 @@
 <template>
   <div class="bill-net-settlement-panel">
-    <div class="text-overline text-grey-7 q-mb-xs">Settlement (books)</div>
+    <div class="text-overline text-grey-7 q-mb-xs">Money summary</div>
+    <div
+      v-if="isDualCurrency && invoiceRate"
+      class="text-caption text-grey-7 q-mb-xs bill-total-row"
+    >
+      <span>Rate</span>
+      <span class="font-mono">{{ invoiceRate }} BDT per 1 {{ invoiceCurrency }}</span>
+    </div>
     <div v-if="loading" class="text-caption text-grey-6">Loading balances…</div>
     <template v-else-if="balances">
       <div class="bill-total-row">
-        <span>Original issued</span>
-        <span class="font-mono">{{ formatAmountBdt(balances.original_total) }}</span>
+        <span>{{ startingAmountLabel }}</span>
+        <DualAmountCell :display="dualAmount(balances.original_total, 'original')" />
       </div>
-      <div v-if="balances.credits_issued > 0" class="bill-total-row">
-        <span>Credit notes</span>
-        <span class="font-mono">− {{ formatAmountBdt(balances.credits_issued) }}</span>
-      </div>
-      <div v-if="balances.debits_issued > 0" class="bill-total-row">
-        <span>Debit notes</span>
-        <span class="font-mono">+ {{ formatAmountBdt(balances.debits_issued) }}</span>
-      </div>
-      <div class="bill-total-row">
-        <span>Paid</span>
-        <span class="font-mono">{{ formatAmountBdt(balances.paid_amount) }}</span>
-      </div>
-      <div class="bill-total-row text-weight-bold">
-        <span>Due</span>
-        <span class="font-mono">{{ formatAmountBdt(balances.due_amount) }}</span>
-      </div>
-      <div
-        v-if="isAp && vendorRefundsReceived > 0"
-        class="bill-total-row text-positive"
-      >
-        <span>Refunds received</span>
-        <span class="font-mono column items-end">
-          <span>{{ openAmountPrimary(vendorRefundsReceived) }}</span>
+      <div class="bill-total-row text-weight-medium">
+        <span>Amount after notes</span>
+        <span class="column items-end">
+          <DualAmountCell :display="dualAmount(amountAfterNotes)" />
           <span
-            v-if="openAmountBooksCaption(vendorRefundsReceived)"
-            class="text-caption text-grey-7"
+            v-if="notesAdjustmentCaption"
+            class="text-caption text-grey-7 text-weight-regular text-right"
           >
-            {{ openAmountBooksCaption(vendorRefundsReceived) }}
+            {{ notesAdjustmentCaption }}
           </span>
         </span>
+      </div>
+      <div class="bill-total-row">
+        <span>{{ paidLabel }}</span>
+        <DualAmountCell :display="dualAmount(balances.paid_amount)" />
+      </div>
+      <div class="bill-total-row text-weight-bold">
+        <span>{{ stillOwedLabel }}</span>
+        <DualAmountCell :display="dualAmount(balances.due_amount, 'due')" />
+      </div>
+      <template v-if="isAp && refundReceiptRows.length">
+        <div
+          v-for="row in refundReceiptRows"
+          :key="row.currencyCode"
+          class="bill-total-row text-positive"
+        >
+          <span>{{ refundRowLabel(row.currencyCode) }}</span>
+          <DualAmountCell :display="row.display" />
+        </div>
+      </template>
+      <div
+        v-else-if="isAp && vendorRefundsReceived > 0"
+        class="bill-total-row text-positive"
+      >
+        <span>Refund received from vendor</span>
+        <DualAmountCell :display="dualAmount(vendorRefundsReceived)" />
       </div>
       <div v-if="balances.credit_open > 0" class="bill-total-row text-primary">
         <span>{{ openCreditLabel }}</span>
-        <span class="font-mono column items-end">
-          <span>{{ openAmountPrimary(balances.credit_open) }}</span>
-          <span
-            v-if="openAmountBooksCaption(balances.credit_open)"
-            class="text-caption text-grey-7"
-          >
-            {{ openAmountBooksCaption(balances.credit_open) }}
-          </span>
-        </span>
+        <DualAmountCell :display="dualAmount(balances.credit_open)" />
       </div>
       <div v-if="balances.credit_open > 0 && openCreditNoteNos.length" class="text-caption text-grey-7">
         On: {{ openCreditNoteNos.join(', ') }}
@@ -61,16 +66,37 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, defineComponent, h } from 'vue';
 import { formatAmountBdt, formatSettlementCurrencyAmount } from 'src/utils/currency';
 import type { BillNetBalances } from '../composables/useBillNetBalancesQuery';
-import {
-  apBillPaperCurrencyCode as apInvoiceCurrencyFromMeta,
-} from '../utils/apBillBooks';
+import type { VendorRefundReceiptBucket } from '../utils/paymentHistoryDisplay';
+import { apBillPaperForeignTotal } from '../utils/apBillBooks';
 import {
   apBillPaperConversionRate,
+  apBillPaperCurrencyCode,
   apBooksToSettlementAmount,
 } from '../utils/parseApBillPaper';
+
+export type DualAmountDisplay = {
+  primary: string;
+  secondary: string | null;
+};
+
+const DualAmountCell = defineComponent({
+  name: 'DualAmountCell',
+  props: {
+    display: { type: Object as () => DualAmountDisplay, required: true },
+  },
+  setup(props) {
+    return () =>
+      h('span', { class: 'font-mono column items-end' }, [
+        h('span', props.display.primary),
+        props.display.secondary
+          ? h('span', { class: 'text-caption text-grey-7' }, props.display.secondary)
+          : null,
+      ]);
+  },
+});
 
 const props = defineProps<{
   balances: BillNetBalances | null | undefined;
@@ -79,12 +105,125 @@ const props = defineProps<{
   channelMeta?: Record<string, unknown> | null;
   /** Issued credit notes with due &gt; 0 (for “still open on …”). */
   openCreditNoteNos?: string[];
+  /** Cash refunds grouped by settlement currency (from payment history). */
+  vendorRefundReceipts?: VendorRefundReceiptBucket[];
 }>();
 
+const refundReceiptRows = computed(() => {
+  const buckets = props.vendorRefundReceipts ?? [];
+  return buckets
+    .filter((b) => b.booksBdt > 0 || b.foreignTotal > 0)
+    .map((b) => {
+      const code = b.currencyCode.toUpperCase();
+      if (code === 'BDT') {
+        return {
+          currencyCode: code,
+          display: { primary: formatAmountBdt(b.booksBdt), secondary: null },
+        };
+      }
+      return {
+        currencyCode: code,
+        display: {
+          primary: formatSettlementCurrencyAmount(b.foreignTotal, code),
+          secondary: formatAmountBdt(b.booksBdt),
+        },
+      };
+    });
+});
+
+function refundRowLabel(currencyCode: string): string {
+  if (currencyCode === 'BDT') return 'Refund received from vendor';
+  return `Refund received (${currencyCode})`;
+}
+
 const invoiceCurrency = computed(() =>
-  props.isAp ? apInvoiceCurrencyFromMeta(props.channelMeta ?? null) : 'BDT',
+  props.isAp ? apBillPaperCurrencyCode(props.channelMeta ?? null) : 'BDT',
 );
 const invoiceRate = computed(() => apBillPaperConversionRate(props.channelMeta ?? null));
+const foreignPaperTotal = computed(() =>
+  Math.max(0, Number(apBillPaperForeignTotal(props.channelMeta ?? null) ?? 0)),
+);
+
+const isDualCurrency = computed(
+  () => props.isAp && invoiceCurrency.value !== 'BDT' && foreignPaperTotal.value > 0,
+);
+
+const amountAfterNotes = computed(() => {
+  if (!props.balances) return 0;
+  const original = Number(props.balances.original_total) || 0;
+  const credits = Number(props.balances.credits_issued) || 0;
+  const debits = Number(props.balances.debits_issued) || 0;
+  return Math.round((original - credits + debits) * 100) / 100;
+});
+
+function booksToForeignFace(books: number, hint?: 'original' | 'due'): number {
+  const code = invoiceCurrency.value;
+  const foreignTotal = foreignPaperTotal.value;
+  const b = Math.max(0, Number(books) || 0);
+  if (!isDualCurrency.value) return b;
+
+  if (hint === 'original' && props.balances) {
+    const originalBooks = Number(props.balances.original_total) || 0;
+    if (Math.abs(b - originalBooks) < 0.02) return foreignTotal;
+  }
+
+  if (hint === 'due' && props.balances) {
+    const dueBooks = Number(props.balances.due_amount) || 0;
+    if (b > 0 && Math.abs(b - dueBooks) < 0.02 && Math.abs(b - foreignTotal) < 0.02) {
+      return b;
+    }
+  }
+
+  return apBooksToSettlementAmount(b, props.channelMeta ?? null, foreignTotal, code);
+}
+
+function dualAmount(books: number, hint?: 'original' | 'due'): DualAmountDisplay {
+  const b = Number(books) || 0;
+  if (!isDualCurrency.value) {
+    return { primary: formatAmountBdt(b), secondary: null };
+  }
+  const code = invoiceCurrency.value;
+  const fx = booksToForeignFace(b, hint);
+  return {
+    primary: formatSettlementCurrencyAmount(fx, code),
+    secondary: formatAmountBdt(b),
+  };
+}
+
+const notesAdjustmentCaption = computed(() => {
+  if (!props.balances) return null;
+  const credits = Number(props.balances.credits_issued) || 0;
+  const debits = Number(props.balances.debits_issued) || 0;
+  const parts: string[] = [];
+  if (credits > 0) {
+    parts.push(formatNoteDelta('credit notes', credits, true));
+  }
+  if (debits > 0) {
+    parts.push(formatNoteDelta('debit notes', debits, false));
+  }
+  if (!parts.length) return null;
+  return parts.join(' · ');
+});
+
+function formatNoteDelta(label: string, books: number, subtract: boolean): string {
+  const sign = subtract ? '−' : '+';
+  if (!isDualCurrency.value) {
+    return `${label} ${sign}${formatAmountBdt(books)}`;
+  }
+  const fx = booksToForeignFace(books);
+  const code = invoiceCurrency.value;
+  return `${label} ${sign}${formatSettlementCurrencyAmount(fx, code)} (${formatAmountBdt(books)})`;
+}
+
+const startingAmountLabel = computed(() =>
+  props.isAp ? 'First bill amount' : 'First invoice amount',
+);
+
+const paidLabel = computed(() => (props.isAp ? 'You paid' : 'Customer paid'));
+
+const stillOwedLabel = computed(() =>
+  props.isAp ? 'You still owe' : 'Customer still owes',
+);
 
 const vendorRefundsReceived = computed(() => {
   if (!props.isAp || !props.balances) return 0;
@@ -98,40 +237,14 @@ const openCreditNoteNos = computed(() =>
 );
 
 const openCreditLabel = computed(() =>
-  props.isAp ? 'Still open on credit notes' : 'Open customer credit',
+  props.isAp ? 'Vendor still owes you' : 'Credit still owed to customer',
 );
 
 const openCreditHint = computed(() =>
   props.isAp
-    ? 'Record vendor refund per open note when cash hits your till or bank. Each note clears separately.'
-    : 'Refund or apply to another invoice when that flow is available.',
+    ? 'Record vendor refund when cash hits your till or bank. Each open note clears separately.'
+    : 'Refund the customer or apply to another invoice when that flow is available.',
 );
-
-function booksToInvoiceFace(books: number): number | null {
-  const code = invoiceCurrency.value;
-  if (!props.isAp || code === 'BDT' || books <= 0) return null;
-  const rate = invoiceRate.value;
-  if (rate && rate > 0) {
-    return Math.round((books / rate) * 100) / 100;
-  }
-  return apBooksToSettlementAmount(books, props.channelMeta ?? null, 0, code);
-}
-
-function openAmountPrimary(books: number): string {
-  const fx = booksToInvoiceFace(books);
-  const code = invoiceCurrency.value;
-  if (fx != null && code !== 'BDT') {
-    return formatSettlementCurrencyAmount(fx, code);
-  }
-  return formatAmountBdt(books);
-}
-
-function openAmountBooksCaption(books: number): string | null {
-  const fx = booksToInvoiceFace(books);
-  const code = invoiceCurrency.value;
-  if (fx == null || code === 'BDT') return null;
-  return `${formatAmountBdt(books)} books`;
-}
 </script>
 
 <style scoped lang="scss">

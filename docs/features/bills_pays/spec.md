@@ -65,7 +65,7 @@ Paper: `draft` / `issued` / `voided`. Money: `due` / `partially_paid` / `paid`. 
 
 **Pay desk is modular.** One flow: **receive** or **pay out**, from **bank / cash instrument** or **cashbook account** (tenant cash, profile leftover = custody). Alloc to bills optional; remainder stays on that account. Courier remittance and AP payout are the same writers with a source, not separate products. Each pay (and each split-tender slice) stores **`cashbook_point_id`** so you can find where that amount is ([kernel-schema](kernel-schema.md)).
 
-**Cash points** (product label; not “location” — stock uses locations): optional breakdown of **tenant** operating cash per `cashbook_account`. Rows in `cashbook_points` (`kind`: drawer, safe, bank_counter, mobile, other). `record_ledger_transaction` may set `cashbook_entries.cashbook_point_id`; delete point clears that FK on existing lines then removes the row (`delete_cashbook_point_for_staff`). Profile custody books do not use points in v1. Internal moves between points = future transfer RPC ([BP15](00-gaps.md)).
+**Cash points** (product label; not “location” — stock uses locations): a **place** (till, safe, bank, fintech). No currency on the point. On-hand cash is `cashbook_point_pots` (place × currency). Each ledger line freezes cash amount, currency, **BDT per 1 cash**, and books amount. Rate list `books_exchange_rates` is a default pick; posted lines do not look it up again. [kernel-schema](kernel-schema.md). Point CRUD live; FX pots not wired on refund/collect yet ([BP16](00-gaps.md)). Profile custody: no points in v1. Point-to-point transfer: later ([BP15](00-gaps.md)).
 
 ### Kernel (features plug in)
 

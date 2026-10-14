@@ -12,4 +12,6 @@ export const cashbookQueryKeys = {
     [...cashbookQueryKeys.root, 'account', booksTenantId ?? 0, entityType, entityId ?? 0] as const,
   points: (cashbookAccountId: number | null) =>
     [...cashbookQueryKeys.root, 'points', cashbookAccountId ?? 0] as const,
+  pointPots: (pointId: number | null) =>
+    [...cashbookQueryKeys.root, 'point_pots', pointId ?? 0] as const,
 };

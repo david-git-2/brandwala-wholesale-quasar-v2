@@ -188,6 +188,24 @@ Attachments on a note, reason-code enum, aging/statement reports, cheque lifecyc
 
 ---
 
+## Phase 11 — Cash pots + frozen FX (BP16)
+
+**Goal:** Each place can hold more than one currency. Each cash movement stores **amount, currency, rate pair, BDT**.
+
+**Do not:** new `locations` / `transactions` tables. Point = place. Pot = place × currency. Rate list = default for the form.
+
+**Files:**
+- `supabase/schemas/bills_pays/02_tables.sql` — `cashbook_point_pots`, `books_exchange_rates`; `cashbook_entries.cashbook_point_pot_id`, `quote_currency_code`, `rate_date`; `pays.quote_currency_code`
+- Later: `record_ledger_transaction` upserts pot; `post_vendor_credit_refund` (and collect/AP) pass cash currency + rate, not BDT @ 1
+- Later: `CashbookPartyPage.vue` — pots on the point chip; ledger shows cash + books
+
+**Rules:**
+- Pot has **no** single rate
+- `exchange_rate` = quote (BDT) per 1 cash currency
+- Existing BDT ledger rows stay valid (`currency_code=BDT`, rate 1)
+
+---
+
 ## Order
 
 1 (compose slots) and 2 (pay in/out from accounts) can start with today’s RPCs.  
@@ -196,6 +214,7 @@ Attachments on a note, reason-code enum, aging/statement reports, cheque lifecyc
 5–7 kernel source + upsert + reads — before a third adapter.  
 8 shipment as client.  
 9 reverse pay.  
-10 returns → credit note.
+10 returns → credit note.  
+11 cash pots + FX freeze (tables first; writers/UI after).
 
 Do not start a new feature’s money path until phase 6 exists. Stock compose stays a **slot** on the bill shell.
