@@ -17,7 +17,7 @@
       class="bg-amber-1 text-amber-10 rounded-borders q-mb-md"
       dense
     >
-      Prepaid / billing-profile collection — recipient courier remittance is not applicable for this order.
+      Prepaid / billing-profile collection — end customer courier remittance is not applicable for this order.
     </q-banner>
 
     <q-form
@@ -31,7 +31,7 @@
         rounded
         class="bg-blue-1 text-blue-10 q-mb-sm"
       >
-        Merchant B2B bill due: {{ formatAmt(invoiceDue) }} BDT — cleared from this pay in (up to net received).
+        Customer invoice due: {{ formatAmt(invoiceDue) }} BDT — cleared from this pay in (up to net received).
       </q-banner>
 
       <div v-if="variant === 'card' || context === 'payin'" class="text-subtitle2 text-weight-bold q-mb-xs">
@@ -141,6 +141,21 @@
             class="soft-input"
           />
         </div>
+
+        <div class="col-12">
+          <q-select
+            v-model="form.cashbookPointId"
+            :options="cashbookPointOptions"
+            emit-value
+            map-options
+            outlined
+            dense
+            label="Deposit to (cashbook location) *"
+            hint="Till, safe, or bank where courier money landed"
+            :loading="pointsQuery.isLoading.value"
+            :rules="[val => !!val || 'Required']"
+          />
+        </div>
       </div>
 
       <div class="bg-grey-2 q-pa-sm rounded-borders q-gutter-y-xs">
@@ -154,7 +169,7 @@
           <span>{{ formatAmt(invoiceAllocated) }} BDT</span>
         </div>
         <div class="row items-center justify-between text-caption text-grey-8">
-          <span>→ Held for merchant profit payout</span>
+          <span>→ Held for dropshipper profit payout</span>
           <span>{{ formatAmt(merchantHeld) }} BDT</span>
         </div>
         <div class="row items-center justify-between text-caption text-grey-8">
@@ -176,7 +191,13 @@
           unelevated
           no-caps
           :loading="loading"
-          :disable="netRemitted <= 0 || overCod || !form.remittanceRef || form.netAmount <= 0"
+          :disable="
+            netRemitted <= 0
+            || overCod
+            || !form.remittanceRef
+            || form.netAmount <= 0
+            || !form.cashbookPointId
+          "
           :label="context === 'payin' ? 'Post courier pay in' : 'Confirm Remittance'"
         />
       </div>
@@ -187,8 +208,27 @@
 <script setup lang="ts">
 import { reactive, computed, watch } from 'vue';
 import { QCard } from 'quasar';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useCashbookPointsQuery } from 'src/modules/bills_pays/composables/useCashbookPointsQuery';
 import type { FinanceHubOrderQueueItem } from '../../repositories/dropshipFinanceRepository';
 import { expectedCourierRemittanceNet } from '../../utils/expectedCourierRemittanceNet';
+
+const authStore = useAuthStore();
+const booksTenantId = computed(() => {
+  const t = authStore.selectedTenant;
+  if (!t) return 0;
+  return t.parent_id ?? t.id;
+});
+const pointsContext = computed(() => ({
+  booksTenantId: booksTenantId.value,
+  entityType: 'tenant',
+  entityId: booksTenantId.value,
+  enabled: booksTenantId.value > 0,
+}));
+const { pointsQuery } = useCashbookPointsQuery(pointsContext);
+const cashbookPointOptions = computed(() =>
+  (pointsQuery.data.value ?? []).map((p) => ({ label: p.name, value: p.id })),
+);
 
 const props = withDefaults(
   defineProps<{
@@ -212,6 +252,7 @@ const emit = defineEmits<{
       courierCharge: number;
       remittanceRef?: string;
       bankTrxId?: string;
+      cashbookPointId: number;
     },
   ): void;
 }>();
@@ -227,6 +268,7 @@ const form = reactive({
   codCharge: 0,
   remittanceRef: '',
   bankTrxId: '',
+  cashbookPointId: null as number | null,
 });
 
 const totalCourierCharge = computed(
@@ -272,6 +314,16 @@ watch(
   { immediate: true },
 );
 
+watch(
+  cashbookPointOptions,
+  (options) => {
+    if (!form.cashbookPointId && options.length === 1) {
+      form.cashbookPointId = options[0].value;
+    }
+  },
+  { immediate: true },
+);
+
 const formatAmt = (n: number) =>
   Number(n || 0).toLocaleString('en-BD', {
     minimumFractionDigits: 2,
@@ -306,13 +358,21 @@ const overCod = computed(() => {
 });
 
 function handleConfirm() {
-  if (!props.selectedOrder || netRemitted.value <= 0 || overCod.value) return;
+  if (
+    !props.selectedOrder
+    || netRemitted.value <= 0
+    || overCod.value
+    || !form.cashbookPointId
+  ) {
+    return;
+  }
   emit('submit', {
     orderId: props.selectedOrder.id,
     netAmount: netRemitted.value,
     courierCharge: totalCourierCharge.value,
     remittanceRef: form.remittanceRef,
     bankTrxId: form.bankTrxId,
+    cashbookPointId: form.cashbookPointId,
   });
 }
 </script>

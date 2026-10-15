@@ -78,7 +78,6 @@
           rounded
           emit-value
           map-options
-          clearable
           :label="$t('shop_admin.filter_by_status', 'Status')"
           :options="statusOptions"
           style="min-width: 160px"

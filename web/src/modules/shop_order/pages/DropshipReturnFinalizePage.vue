@@ -12,9 +12,9 @@
           </div>
           <div class="text-caption text-grey-6">
             <span v-if="orderData">
-              {{ orderData.order.customer_group_name || 'Merchant' }}
+              {{ orderData.order.customer_group_name || 'Dropshipper' }}
               <span class="q-mx-xs">•</span>
-              {{ orderData.order.recipient_name || 'Recipient' }}
+              {{ orderData.order.recipient_name || 'End customer' }}
               <span v-if="orderData.courier.courier_awb_number" class="q-mx-xs">•</span>
               <span v-if="orderData.courier.courier_awb_number">
                 {{ orderData.courier.courier_name || 'Courier' }} · {{ orderData.courier.courier_awb_number }}
@@ -200,7 +200,7 @@
               v-if="returnCostPayer === 'merchant'"
               v-model="deductFromMerchant"
               dense
-              label="Deduct return fee from merchant wallet"
+              label="Deduct return fee from dropshipper balance"
             />
 
             <q-input
@@ -286,9 +286,9 @@ interface ReturnItemState {
 const returnInputs = ref<Record<number, ReturnItemState>>({});
 
 const chargePayerOptions = [
-  { label: 'Recipient', value: 'recipient' as const },
-  { label: 'Merchant', value: 'merchant' as const },
-  { label: 'Company', value: 'company' as const },
+  { label: 'End customer', value: 'recipient' as const },
+  { label: 'Dropshipper', value: 'merchant' as const },
+  { label: 'Supplier', value: 'company' as const },
 ];
 
 const availabilityOptions = STOCK_AVAILABILITY_OPTIONS.map((opt) => ({

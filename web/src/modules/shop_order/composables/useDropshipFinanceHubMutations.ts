@@ -33,6 +33,7 @@ export function useDropshipFinanceHubMutations(tenantId: { value: number | null 
       courierCharge?: number;
       remittanceRef?: string;
       bankTrxId?: string;
+      cashbookPointId: number;
     }) => dropshipFinanceRepository.confirmCourierRemittance(params),
     onSuccess: (data) => {
       showSuccessNotification(data.message || 'Courier remittance confirmed successfully');
@@ -47,11 +48,11 @@ export function useDropshipFinanceHubMutations(tenantId: { value: number | null 
     mutationFn: (params: { tenantId: number; profileId: number; amount: number; payoutMethod?: string; referenceNotes?: string }) =>
       dropshipFinanceRepository.dispenseMiddlemanPayout(params),
     onSuccess: (data) => {
-      showSuccessNotification(data.message || 'Middleman payout dispensed successfully');
+      showSuccessNotification(data.message || 'Dropshipper payout dispensed successfully');
       invalidateHub();
     },
     onError: (err: unknown) => {
-      showErrorNotification(parseSupabaseError(err, 'Failed to dispense middleman payout'));
+      showErrorNotification(parseSupabaseError(err, 'Failed to dispense dropshipper payout'));
     },
   });
 

@@ -63,7 +63,7 @@ export const chargePayer = (deductFromMargin: boolean | undefined): ChargePayer 
   deductFromMargin ? 'merchant' : 'recipient';
 
 export const chargePayerLabel = (deductFromMargin: boolean | undefined): string =>
-  chargePayer(deductFromMargin) === 'recipient' ? 'Recipient pays' : 'Merchant pays';
+  chargePayer(deductFromMargin) === 'recipient' ? 'End customer pays' : 'Dropshipper pays';
 
 export const chargeCountsTowardRecipientTotal = (deductFromMargin: boolean | undefined): boolean =>
   !deductFromMargin;

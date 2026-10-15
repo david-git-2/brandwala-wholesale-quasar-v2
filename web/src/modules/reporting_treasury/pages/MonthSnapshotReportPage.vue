@@ -176,9 +176,9 @@ const positionTiles = computed((): PositionTile[] => {
     },
     {
       group: 'We owe',
-      label: 'Shop leftover',
+      label: 'Dropshipper balance',
       value: `−${formatAmountBdt(p.merchant_payable)}`,
-      caption: 'Merchant cashbook payable',
+      caption: 'Dropshipper profit on cashbook',
       to: `${appBase.value}/finance/payments`,
       valueClass: 'text-negative',
     },

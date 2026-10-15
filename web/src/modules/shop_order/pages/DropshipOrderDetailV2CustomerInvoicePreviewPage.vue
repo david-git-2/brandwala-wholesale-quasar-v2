@@ -46,11 +46,11 @@
 
             <q-separator class="q-my-md" />
 
-            <q-input v-model="recipientName" label="Recipient name" outlined dense class="q-mb-md" />
-            <q-input v-model="recipientPhone" label="Recipient phone" outlined dense class="q-mb-md" />
+            <q-input v-model="recipientName" label="End customer name" outlined dense class="q-mb-md" />
+            <q-input v-model="recipientPhone" label="End customer phone" outlined dense class="q-mb-md" />
             <q-input
               v-model="recipientAddress"
-              label="Recipient address"
+              label="End customer address"
               type="textarea"
               outlined
               dense

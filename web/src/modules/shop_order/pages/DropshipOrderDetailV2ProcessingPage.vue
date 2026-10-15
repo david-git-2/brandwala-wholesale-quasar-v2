@@ -179,6 +179,13 @@ const openPickDialog = (itemId: number) => {
   pickDialogOpen.value = true;
 };
 
+const onMarkUnavailableFromPickDialog = async () => {
+  const itemId = pickTargetItem.value?.id;
+  if (itemId == null) return;
+  pickDialogOpen.value = false;
+  await markUnavailable(itemId);
+};
+
 const markUnavailable = async (itemId: number) => {
   const confirmed = await requestConfirmation(
     'Mark this line unavailable? Delivered qty will be 0. A demand bucket entry will be created by default.',
@@ -358,23 +365,6 @@ const onUpdateGiftCost = async (payload: {
               label="Cancel order"
               @click="cancelDialogOpen = true"
             />
-            <q-btn
-              v-if="canMarkReadyForPickup"
-              color="primary"
-              unelevated
-              no-caps
-              icon="ph ph-check-circle"
-              label="Ready for pickup"
-              class="text-weight-bold"
-              style="border-radius: 8px; min-width: 200px"
-              :loading="advancingStatus"
-              :disable="!canAdvanceToReadyForPickup || advancingStatus"
-              @click="advanceToReadyForPickup()"
-            >
-              <q-tooltip v-if="readyForPickupBlockReason">
-                {{ readyForPickupBlockReason }}
-              </q-tooltip>
-            </q-btn>
           </div>
         </div>
 
@@ -394,13 +384,34 @@ const onUpdateGiftCost = async (payload: {
           @pickup-select="onPickupLocationSelect"
           @courier-change="onCourierChange"
           @pick-stock="openPickDialog"
-          @mark-unavailable="markUnavailable"
           @clear-unavailable="clearUnavailable"
           @remove-pick="removePick"
           @add-gift="giftDialogOpen = true"
           @remove-gift="removeGift"
           @update-gift-cost="onUpdateGiftCost"
         />
+
+        <div
+          v-if="canMarkReadyForPickup"
+          class="dropship-order-detail-v2__primary-cta"
+        >
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-check-circle"
+            label="Ready for pickup"
+            class="text-weight-bold"
+            style="border-radius: 8px; min-width: 200px"
+            :loading="advancingStatus"
+            :disable="!canAdvanceToReadyForPickup || advancingStatus"
+            @click="advanceToReadyForPickup()"
+          >
+            <q-tooltip v-if="readyForPickupBlockReason">
+              {{ readyForPickupBlockReason }}
+            </q-tooltip>
+          </q-btn>
+        </div>
       </template>
     </div>
 
@@ -417,6 +428,7 @@ const onUpdateGiftCost = async (payload: {
       v-model="pickDialogOpen"
       :order-item="pickTargetItem"
       @picked="invalidateDetail"
+      @mark-unavailable="onMarkUnavailableFromPickDialog"
     />
 
     <DropshipOrderCancelDialog
@@ -453,8 +465,19 @@ const onUpdateGiftCost = async (payload: {
   margin: 0 auto;
   width: 100%;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.dropship-order-detail-v2__primary-cta {
+  max-width: 1100px;
+  margin: 1.25rem auto 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  position: sticky;
+  bottom: 12px;
+  z-index: 2;
 }
 </style>

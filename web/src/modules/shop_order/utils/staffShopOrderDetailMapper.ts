@@ -69,7 +69,7 @@ export function mapStaffShopOrderDetailToFlat(
     shipping_district: recipient.district,
     shipping_thana: recipient.thana,
     recipient_profile_id: recipient.profile_id,
-    profile_id: recipient.profile_id,
+    profile_id: customer.profile_id,
     placed_at: o.placed_at,
     fulfilled_at: o.fulfilled_at,
     global_invoice_id: o.global_invoice_id,

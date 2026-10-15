@@ -39,6 +39,7 @@ export interface StaffShopOrderDetailOrder {
   customer: {
     group_id: number;
     group_name: string | null;
+    profile_id: number | null;
   };
   status: {
     value: string;
@@ -60,7 +61,6 @@ export interface StaffShopOrderDetailOrder {
     address: string | null;
     district: string | null;
     thana: string | null;
-    profile_id: number | null;
     profile_id: number | null;
     delivery_instructions: string | null;
     is_prepaid: boolean;

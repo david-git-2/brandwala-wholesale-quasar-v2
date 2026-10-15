@@ -126,8 +126,8 @@ const steps = computed<ProcessStep[]>(() => {
   return [
     {
       id: 'recipient',
-      label: 'Recipient & Delivery Address',
-      shortLabel: 'Recipient',
+      label: 'End customer & delivery address',
+      shortLabel: 'End customer',
       status: recipientComplete ? 'completed' : currentStepId === 'recipient' ? 'current' : 'upcoming',
     },
     {

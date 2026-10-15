@@ -80,8 +80,8 @@ const logNoAnswer = async () => {
 const confirmRecipient = async () => {
   if (!order.value) return;
   const confirmed = await requestConfirmation(
-    'Did the recipient confirm they want this order?',
-    'Recipient confirmed',
+    'Did the end customer confirm they want this order?',
+    'End customer confirmed',
     'Confirm & start processing',
   );
   if (!confirmed) return;
@@ -89,10 +89,10 @@ const confirmRecipient = async () => {
   callActionLoading.value = 'confirm';
   try {
     await shopOrderRepository.confirmDropshipRecipientCall(order.value.id);
-    showSuccessNotification('Recipient confirmed. Order is now processing.');
+    showSuccessNotification('End customer confirmed. Order is now processing.');
     await invalidateOrderQueries();
   } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to confirm recipient'));
+    showErrorNotification(parseSupabaseError(err, 'Failed to confirm end customer'));
   } finally {
     callActionLoading.value = null;
   }
@@ -107,7 +107,7 @@ const submitRecipientCancel = async () => {
   if (!order.value) return;
   const reason = cancelReason.value.trim();
   if (!reason) {
-    showErrorNotification('Please enter why the recipient cancelled.');
+    showErrorNotification('Please enter why the end customer cancelled.');
     return;
   }
 
@@ -150,13 +150,13 @@ const submitRecipientCancel = async () => {
           class="form-card dropship-order-detail-v2__call-card"
         >
           <q-card-section>
-            <div class="text-subtitle1 text-weight-bold q-mb-xs">Recipient confirmation call</div>
+            <div class="text-subtitle1 text-weight-bold q-mb-xs">End customer confirmation call</div>
             <p class="text-body2 text-grey-7 q-mb-sm">
-              Call the recipient and log the outcome before processing starts.
+              Call the end customer and log the outcome before processing starts.
             </p>
             <div class="row q-col-gutter-md q-mb-md">
               <div class="col-12 col-sm-6">
-                <div class="text-caption text-grey-6 text-uppercase">Recipient</div>
+                <div class="text-caption text-grey-6 text-uppercase">End customer</div>
                 <div class="text-body1 text-weight-medium">
                   {{ order.recipient_name || '—' }}
                 </div>
@@ -187,7 +187,7 @@ const submitRecipientCancel = async () => {
               outline
               no-caps
               icon="ph ph-x-circle"
-              label="Recipient cancelled"
+              label="End customer cancelled"
               :disable="callActionLoading !== null"
               @click="openCancelDialog"
             />
@@ -196,7 +196,7 @@ const submitRecipientCancel = async () => {
               unelevated
               no-caps
               icon="ph ph-check-circle"
-              label="Recipient confirmed"
+              label="End customer confirmed"
               class="text-weight-bold"
               :loading="callActionLoading === 'confirm'"
               :disable="callActionLoading !== null && callActionLoading !== 'confirm'"
@@ -212,7 +212,7 @@ const submitRecipientCancel = async () => {
               Paper invoice view
             </div>
             <p class="text-body2 text-grey-6 q-mb-sm">
-              Full recipient and item details appear here once the order is confirmed.
+              Full end customer and item details appear here once the order is confirmed.
             </p>
             <q-chip dense outline color="grey-7" class="text-capitalize">
               Current status: {{ order.status.replace(/_/g, ' ') }}
@@ -225,9 +225,9 @@ const submitRecipientCancel = async () => {
     <q-dialog v-model="cancelDialogOpen" persistent>
       <q-card style="min-width: 320px; max-width: 480px">
         <q-card-section>
-          <div class="text-h6">Recipient cancelled</div>
+          <div class="text-h6">End customer cancelled</div>
           <p class="text-body2 text-grey-7 q-mt-sm q-mb-none">
-            This reason is shown to the reseller on their order page.
+            This reason is shown to the dropshipper on their order page.
           </p>
         </q-card-section>
         <q-card-section class="q-pt-none">

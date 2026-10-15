@@ -253,7 +253,7 @@ const copyDetail = (text: string | null | undefined, label: string) => {
         <section class="dropship-invoice-paper__address-block">
           <div class="dropship-invoice-paper__section-label q-mb-sm">
             <q-icon name="ph ph-map-pin" size="14px" />
-            <span>Deliver to Recipient</span>
+            <span>Deliver to end customer</span>
           </div>
 
           <div class="dropship-invoice-paper__copy-row dropship-invoice-paper__recipient-name">
@@ -266,7 +266,7 @@ const copyDetail = (text: string | null | undefined, label: string) => {
               color="grey-7"
               class="dropship-invoice-paper__copy-btn"
               aria-label="Copy recipient name"
-              @click="copyDetail(order.recipient_name, 'Recipient name')"
+              @click="copyDetail(order.recipient_name, 'End customer name')"
             >
               <q-tooltip>Copy name</q-tooltip>
             </q-btn>
@@ -479,7 +479,7 @@ const copyDetail = (text: string | null | undefined, label: string) => {
             <div class="dropship-invoice-paper__summary-label">
               <span>{{ t('shop.items_subtotal') }}</span>
               <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--recipient">
-                Recipient
+                End customer
               </span>
             </div>
             <span class="text-weight-medium">{{ formatMoney(totals.resell) }}</span>
@@ -542,7 +542,7 @@ const copyDetail = (text: string | null | undefined, label: string) => {
           <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--profit">
             <div class="dropship-invoice-paper__summary-label">
               <q-icon name="ph ph-trend-up" size="18px" class="q-mr-xs" />
-              <span>{{ t('shop_admin.your_profit') }}</span>
+              <span>{{ t('shop.estimated_profit') }}</span>
             </div>
             <span class="text-h6 text-weight-bolder">{{ formatMoney(estimatedProfit) }}</span>
           </div>

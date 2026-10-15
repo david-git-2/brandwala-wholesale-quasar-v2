@@ -131,7 +131,7 @@ watch(panelOpen, (open) => {
       <q-card-section>
         <div class="text-subtitle2 text-weight-bold">Customers</div>
         <p class="text-caption text-grey-7 q-mb-md">
-          Resellers who can use this shop. Click a customer to view gift stock and add items they left with you.
+          Dropshippers who can use this shop. Click a dropshipper to view gift stock and add items they left with you.
         </p>
         <q-input
           v-model="customerSearch"

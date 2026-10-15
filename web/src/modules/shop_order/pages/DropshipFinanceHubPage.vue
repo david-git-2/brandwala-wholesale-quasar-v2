@@ -36,7 +36,7 @@
             >
               <q-tab name="delivered_costing" label="1. Delivered Costing" />
               <q-tab name="courier_remittance" label="2. Courier Remittance" />
-              <q-tab name="middleman_payout" label="3. Dropship shop profit" />
+              <q-tab name="middleman_payout" label="3. Dropshipper profit" />
             </q-tabs>
           </div>
 

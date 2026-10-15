@@ -44,7 +44,7 @@ const updateField = (key: string, val: any) => {
     <q-card-section class="border-bottom row items-center justify-between">
       <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
         <q-icon name="ph ph-user" size="18px" class="q-mr-xs text-primary" />
-        Block A: Recipient Delivery Information
+        Block A: End customer delivery
       </div>
       <div class="row items-center q-gutter-x-sm">
         <q-chip dense :color="props.readonly ? 'grey-3' : 'blue-1'" :text-color="props.readonly ? 'grey-8' : 'primary'" size="sm">
@@ -57,7 +57,7 @@ const updateField = (key: string, val: any) => {
         <div class="col-12 col-sm-6">
           <q-input
             :model-value="props.form.recipient_name"
-            label="Recipient Name *"
+            label="End customer name *"
             outlined
             dense
             hide-bottom-space
@@ -68,7 +68,7 @@ const updateField = (key: string, val: any) => {
         <div class="col-12 col-sm-6">
           <q-input
             :model-value="props.form.recipient_phone"
-            label="Recipient Phone *"
+            label="End customer phone *"
             outlined
             dense
             hide-bottom-space

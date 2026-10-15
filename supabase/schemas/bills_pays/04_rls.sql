@@ -573,6 +573,20 @@ GRANT ALL ON FUNCTION "public"."search_sales_invoice_stock"("p_tenant_id" bigint
 
 GRANT ALL ON FUNCTION "public"."sync_dropship_tenant_b2b_invoice_from_order"("p_order_id" bigint) TO "authenticated";
 
+GRANT ALL ON FUNCTION "public"."upsert_dropship_courier_ap_bill"("p_order_id" bigint, "p_keep_as_draft" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."upsert_dropship_courier_ap_bill"("p_order_id" bigint, "p_keep_as_draft" boolean) TO "service_role";
+GRANT ALL ON FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver"("p_order_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver"("p_order_id" bigint) TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."apply_dropship_issued_bill_notes_at_deliver"("p_order_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."apply_dropship_issued_bill_notes_at_deliver"("p_order_id" bigint) TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."finalize_dropship_order_bills_at_delivered"("p_order_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."finalize_dropship_order_bills_at_delivered"("p_order_id" bigint) TO "service_role";
+
 GRANT ALL ON FUNCTION "public"."sync_sales_invoice_charges_from_header"("p_invoice_id" bigint) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."transfer_wallet_balance"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_from_bucket" "text", "p_to_bucket" "text", "p_amount" numeric, "p_currency_code" "text", "p_notes" "text", "p_metadata" "jsonb") TO "authenticated";

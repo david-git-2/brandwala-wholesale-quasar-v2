@@ -19,7 +19,7 @@
         <template v-if="payInKind === 'courier'">
           <div class="text-subtitle1 text-weight-bold">Pay in — courier</div>
           <p class="text-caption text-grey-7 q-ma-none q-mb-md">
-            Net bank in from the courier (COD minus their charges). Pays the merchant B2B bill; shop profit goes to
+            Net bank in from the courier (COD minus their charges). Pays the customer invoice; dropshipper profit goes to
             cashbook — use Pay out when you send money to the shop.
           </p>
 
@@ -451,6 +451,7 @@ const submitCourierPayIn = async (payload: {
   courierCharge: number;
   remittanceRef?: string;
   bankTrxId?: string;
+  cashbookPointId: number;
 }) => {
   courierSubmitting.value = true;
   try {
@@ -460,6 +461,7 @@ const submitCourierPayIn = async (payload: {
       courierCharge: payload.courierCharge,
       remittanceRef: payload.remittanceRef ?? `REMIT-${payload.orderId}`,
       bankTrxId: payload.bankTrxId,
+      cashbookPointId: payload.cashbookPointId,
     });
     showSuccessNotification('Courier pay in recorded.');
     goBack();

@@ -52,7 +52,7 @@ const ENTITY_MAP: Record<string, { label: string; singular: string; defaultSubPa
   orders: { label: 'Orders', singular: 'Order' },
   'dropship-orders': { label: 'Dropship Orders', singular: 'Dropship Order' },
   'customer-groups': { label: 'Customer Groups', singular: 'Customer Group' },
-  merchants: { label: 'Merchants', singular: 'Merchant' },
+  merchants: { label: 'Dropshippers', singular: 'Dropshipper' },
   categories: { label: 'Categories', singular: 'Category' },
   pricing: { label: 'Pricing', singular: 'Pricing' },
   invoices: { label: 'Bills', singular: 'Bill' },

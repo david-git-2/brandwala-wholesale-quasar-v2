@@ -10231,6 +10231,10 @@ export type Database = {
         Args: { p_channel_meta: Json }
         Returns: number
       }
+      apply_dropship_issued_bill_notes_at_deliver: {
+        Args: { p_order_id: number }
+        Returns: Json
+      }
       apply_dropship_order_charge_lines: {
         Args: { p_charge_lines: Json; p_order_id: number }
         Returns: undefined
@@ -10515,6 +10519,16 @@ export type Database = {
         Args: {
           p_order: Database["public"]["Tables"]["shop_orders"]["Row"]
           p_settlement_id?: number
+        }
+        Returns: Json
+      }
+      build_dropship_tenant_b2b_invoice_payload: {
+        Args: {
+          p_invoice_id?: number
+          p_invoice_no?: string
+          p_note?: string
+          p_order_id: number
+          p_profile_id?: number
         }
         Returns: Json
       }
@@ -11200,6 +11214,148 @@ export type Database = {
         }
         Returns: Json
       }
+      create_sales_invoice:
+        | {
+            Args: {
+              p_due_date?: string
+              p_invoice_date?: string
+              p_invoice_no?: string
+              p_invoice_type?: Database["public"]["Enums"]["global_invoice_type"]
+              p_note?: string
+              p_profile_id?: number
+              p_recipient_address?: string
+              p_recipient_name?: string
+              p_recipient_phone?: string
+              p_recipient_profile_id?: number
+              p_retail_billing_mode?: Database["public"]["Enums"]["retail_billing_mode"]
+              p_tenant_id: number
+            }
+            Returns: {
+              ap_kind: string | null
+              ap_shipment_id: number | null
+              channel_meta: Json
+              charges_amount: number
+              collection_source: Database["public"]["Enums"]["collection_source_type"]
+              created_at: string
+              created_by: string | null
+              currency_code: string
+              discount_amount: number
+              document_kind: Database["public"]["Enums"]["bill_document_kind"]
+              due_amount: number
+              due_date: string | null
+              from_profile_id: number | null
+              id: number
+              invoice_date: string
+              invoice_no: string
+              invoice_status: Database["public"]["Enums"]["global_invoice_status"]
+              invoice_type: Database["public"]["Enums"]["global_invoice_type"]
+              issued_by_tenant_id: number
+              note: string | null
+              paid_amount: number
+              parent_bill_id: number | null
+              parent_tenant_id: number
+              payment_status: string
+              print_charge: number
+              profile_id: number | null
+              recipient_address: string | null
+              recipient_name: string | null
+              recipient_phone: string | null
+              recipient_profile_id: number | null
+              retail_billing_mode:
+                | Database["public"]["Enums"]["retail_billing_mode"]
+                | null
+              settlement_kind:
+                | Database["public"]["Enums"]["bill_settlement_kind"]
+                | null
+              shipping_charge: number
+              shop_order_id: number | null
+              source_id: string | null
+              source_key: string | null
+              source_type: string | null
+              subtotal_amount: number
+              to_profile_id: number | null
+              total_amount: number
+              updated_at: string
+              wrapping_charge: number
+              written_off_amount: number
+            }
+            SetofOptions: {
+              from: "*"
+              to: "bills"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_invoice_no: string
+              p_invoice_type?: Database["public"]["Enums"]["global_invoice_type"]
+              p_middle_man_payout_amount?: number
+              p_note?: string
+              p_profile_id: number
+              p_recipient_address?: string
+              p_recipient_name?: string
+              p_recipient_party_id?: number
+              p_recipient_phone?: string
+              p_source_module?: Database["public"]["Enums"]["global_source_module"]
+              p_tenant_id: number
+            }
+            Returns: {
+              ap_kind: string | null
+              ap_shipment_id: number | null
+              channel_meta: Json
+              charges_amount: number
+              collection_source: Database["public"]["Enums"]["collection_source_type"]
+              created_at: string
+              created_by: string | null
+              currency_code: string
+              discount_amount: number
+              document_kind: Database["public"]["Enums"]["bill_document_kind"]
+              due_amount: number
+              due_date: string | null
+              from_profile_id: number | null
+              id: number
+              invoice_date: string
+              invoice_no: string
+              invoice_status: Database["public"]["Enums"]["global_invoice_status"]
+              invoice_type: Database["public"]["Enums"]["global_invoice_type"]
+              issued_by_tenant_id: number
+              note: string | null
+              paid_amount: number
+              parent_bill_id: number | null
+              parent_tenant_id: number
+              payment_status: string
+              print_charge: number
+              profile_id: number | null
+              recipient_address: string | null
+              recipient_name: string | null
+              recipient_phone: string | null
+              recipient_profile_id: number | null
+              retail_billing_mode:
+                | Database["public"]["Enums"]["retail_billing_mode"]
+                | null
+              settlement_kind:
+                | Database["public"]["Enums"]["bill_settlement_kind"]
+                | null
+              shipping_charge: number
+              shop_order_id: number | null
+              source_id: string | null
+              source_key: string | null
+              source_type: string | null
+              subtotal_amount: number
+              to_profile_id: number | null
+              total_amount: number
+              updated_at: string
+              wrapping_charge: number
+              written_off_amount: number
+            }
+            SetofOptions: {
+              from: "*"
+              to: "bills"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       create_sales_invoice_from_payload: {
         Args: { p_payload: Json; p_tenant_id: number }
         Returns: Json
@@ -11713,6 +11869,10 @@ export type Database = {
         }
         Returns: Json
       }
+      finalize_dropship_order_bills_at_delivered: {
+        Args: { p_order_id: number }
+        Returns: Json
+      }
       finalize_dropship_return: {
         Args: {
           p_actual_return_charge?: number
@@ -12006,10 +12166,10 @@ export type Database = {
         Args: never
         Returns: {
           available_balance: number
-          billing_profile_id: number
           currency: string
           locked_balance: number
           pending_balance: number
+          profile_id: number
         }[]
       }
       get_my_notification_preferences: { Args: never; Returns: Json }
@@ -14490,6 +14650,54 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      post_customer_receipt_with_allocations: {
+        Args: {
+          p_allocations?: Json
+          p_exchange_rate?: number
+          p_foreign_amount?: number
+          p_instruments?: Json
+          p_note?: string
+          p_profile_id: number
+          p_received_on: string
+          p_reference?: string
+          p_settlement_currency_code?: string
+          p_shop_order_id?: number
+          p_source?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          amount: number
+          cashbook_point_id: number | null
+          cashbook_point_pot_id: number | null
+          collection_source: Database["public"]["Enums"]["collection_source_type"]
+          created_at: string
+          customer_group_id: number | null
+          exchange_rate: number
+          foreign_amount: number | null
+          id: number
+          method: string | null
+          note: string | null
+          payment_date: string
+          profile_id: number | null
+          quote_currency_code: string
+          reference: string | null
+          settlement_currency_code: string
+          shop_order_id: number | null
+          source: string
+          source_amount: number | null
+          source_currency_code: string | null
+          tenant_id: number
+          transaction_rate: number | null
+          unallocated_amount: number
+          voided_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "pays"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       post_global_invoice: {
         Args: { p_invoice_id: number }
         Returns: undefined
@@ -14554,6 +14762,14 @@ export type Database = {
           p_invoice_id: number
         }
         Returns: boolean
+      }
+      preview_dropship_issued_bill_notes_at_deliver: {
+        Args: { p_order_id: number }
+        Returns: Json
+      }
+      preview_dropship_issued_bill_notes_at_deliver_for_staff: {
+        Args: { p_order_id: number; p_tenant_id: number }
+        Returns: Json
       }
       preview_tenant_data_purge: {
         Args: {
@@ -14689,6 +14905,20 @@ export type Database = {
         | {
             Args: {
               p_bank_trx_id?: string
+              p_courier_charge?: number
+              p_method?: string
+              p_net_amount: number
+              p_note?: string
+              p_order_id: number
+              p_payment_date?: string
+              p_remittance_ref: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_bank_trx_id?: string
+              p_cashbook_point_id?: number
               p_courier_charge?: number
               p_method?: string
               p_net_amount: number
@@ -14988,6 +15218,10 @@ export type Database = {
       resolve_customer_group_notification_user_ids: {
         Args: { p_customer_group_id: number }
         Returns: string[]
+      }
+      resolve_customer_profile_for_group: {
+        Args: { p_customer_group_id: number; p_tenant_id: number }
+        Returns: number
       }
       resolve_notification_recipient_user_ids: {
         Args: {
@@ -15409,6 +15643,29 @@ export type Database = {
       stock_location_matches_filter: {
         Args: { p_filter_id: number; p_location_id: number }
         Returns: boolean
+      }
+      submit_dropship_order_from_cart: {
+        Args: {
+          p_cod_charge_amount?: number
+          p_delivery_charge_amount?: number
+          p_delivery_instructions?: string
+          p_discount_amount?: number
+          p_is_prepaid?: boolean
+          p_packing_charge_amount?: number
+          p_print_charge_amount?: number
+          p_profile_id?: number
+          p_recipient_name: string
+          p_recipient_pays_cod?: boolean
+          p_recipient_pays_delivery?: boolean
+          p_recipient_phone: string
+          p_recipient_phone_secondary?: string
+          p_shipping_address: string
+          p_shipping_district?: string
+          p_shipping_post_code?: string
+          p_shipping_thana?: string
+          p_shop_id: number
+        }
+        Returns: Json
       }
       sum_preorder_stock_picks: {
         Args: { p_stock_picks: Json }
@@ -16127,6 +16384,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      upsert_dropship_courier_ap_bill: {
+        Args: { p_keep_as_draft?: boolean; p_order_id: number }
+        Returns: Json
       }
       upsert_global_shipment_cost_entry: {
         Args: {

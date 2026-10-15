@@ -153,7 +153,7 @@ const advanceToShipped = async () => {
   if (!order.value || !canMarkShipped.value) return;
 
   const confirmed = await requestConfirmation(
-    'Mark this order as shipped and issue the merchant bill? The order stays locked after this step.',
+    'Mark this order as shipped and issue the customer and courier bills?',
     'Mark as shipped',
     'Mark as shipped',
   );
@@ -171,12 +171,12 @@ const advanceToShipped = async () => {
       order.value.id,
     );
     if (!shipRes.success) {
-      throw new Error(shipRes.error ?? 'Failed to ship order and issue merchant bill.');
+      throw new Error(shipRes.error ?? 'Failed to ship order and issue bills.');
     }
 
-    const billIssued = (shipRes.data as { created?: boolean })?.created === true;
+    const billCreated = (shipRes.data as { created?: boolean })?.created === true;
     showSuccessNotification(
-      billIssued ? 'Shipped and merchant bill issued.' : 'Shipped. Merchant bill was already on file.',
+      billCreated ? 'Shipped. Customer and courier bills issued.' : 'Shipped. Bills were already on file.',
     );
     await queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.dropshipDetailV2(authStore.tenantId ?? 0, orderId.value),
@@ -198,6 +198,12 @@ const onOrderCancelled = () => {
 
 const showSettlementDeskLink = computed(
   () => displayStatus.value === 'shipped' || displayStatus.value === 'delivered',
+);
+
+const showShippedBillLinks = computed(
+  () =>
+    displayStatus.value !== 'ready_for_pickup'
+    && (!!order.value?.global_invoice_id || !!order.value?.courier_ap_bill_id),
 );
 
 const openSettlementDesk = () => {
@@ -222,12 +228,12 @@ const openSettlementDesk = () => {
         <span class="text-caption">
           {{
             displayStatus === 'reseller_paid' || displayStatus === 'payment_received'
-              ? 'Settlement complete — invoice paid and merchant profit credited from courier remittance.'
+              ? 'Settlement complete — invoice paid and dropshipper profit credited from courier remittance.'
               : displayStatus === 'delivered'
                   ? 'Delivered — reconcile settlement on the dropship management desk.'
                   : displayStatus === 'shipped'
-                    ? 'Shipped — order is locked. Print the packing slip for the recipient.'
-                    : 'Ready for pickup — order is locked. Print the packing slip for the recipient.'
+                    ? 'Shipped — order is locked. Print the packing slip for the end customer.'
+                    : 'Ready for pickup — order is locked. Print the packing slip for the end customer.'
           }}
         </span>
       </q-banner>
@@ -242,6 +248,28 @@ const openSettlementDesk = () => {
 
       <template v-else-if="order">
         <div class="dropship-order-detail-v2__ready-actions no-print">
+          <q-btn
+            v-if="showShippedBillLinks && order.global_invoice_id"
+            outline
+            color="primary"
+            no-caps
+            icon="ph ph-receipt"
+            label="Customer bill"
+            class="text-weight-bold"
+            style="border-radius: 8px"
+            :to="{ name: 'app-global-invoice-details-page', params: { id: order.global_invoice_id } }"
+          />
+          <q-btn
+            v-if="showShippedBillLinks && order.courier_ap_bill_id"
+            outline
+            color="primary"
+            no-caps
+            icon="ph ph-truck"
+            label="Courier bill"
+            class="text-weight-bold"
+            style="border-radius: 8px"
+            :to="{ name: 'app-global-invoice-details-page', params: { id: order.courier_ap_bill_id } }"
+          />
           <q-btn
             v-if="showSettlementDeskLink"
             unelevated

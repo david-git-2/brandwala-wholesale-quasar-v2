@@ -41,17 +41,19 @@
                 />
               </q-card-section>
 
-              <q-card-section v-if="requestDelivery">
+              <q-card-section v-if="requestDelivery" class="relative-position">
+                <q-inner-loading :showing="isPhoneProfileLoading" color="primary" />
                 <!-- Free Delivery Option for Dropship -->
                 <div v-if="shopType === 'dropship'" class="q-mb-md bg-blue-1 q-pa-sm rounded-borders" style="border: 1px solid rgba(25, 118, 210, 0.15); border-radius: 8px;">
                   <q-toggle
                     v-model="isFreeDelivery"
-                    label="Free Delivery for Recipient Customer"
+                    label="Free delivery for end customer"
                     color="primary"
                     dense
+                    :disable="isPhoneProfileLoading"
                   />
                   <div class="text-caption text-grey-7 q-ml-md q-mt-xs">
-                    {{ isFreeDelivery ? 'Delivery and COD charges will be deducted from your profit margin. Recipient customer will not pay delivery/COD charges.' : 'Recipient customer will pay delivery and COD charges.' }}
+                    {{ isFreeDelivery ? 'Delivery and COD charges will be deducted from your profit margin. End customer will not pay delivery/COD charges.' : 'End customer will pay delivery and COD charges.' }}
                   </div>
                 </div>
 
@@ -63,8 +65,9 @@
                         v-model="recipientName"
                         outlined
                         dense
+                        :disable="isPhoneProfileLoading"
                         :label="$t('shop.recipient_name') + ' *'"
-                        :rules="[val => !!val?.trim() || 'Recipient name is required']"
+                        :rules="[val => !!val?.trim() || 'End customer name is required']"
                       />
                     </div>
 
@@ -74,10 +77,12 @@
                         v-model="recipientPhone"
                         outlined
                         dense
+                        :loading="isPhoneProfileLoading"
+                        :disable="isPhoneProfileLoading"
                         :label="$t('shop.recipient_phone') + ' *'"
                         hint="Must be an 11-digit BD number (e.g. 01712345678)"
                         :rules="[
-                          val => !!val?.trim() || 'Recipient phone is required',
+                          val => !!val?.trim() || 'End customer phone is required',
                           val => /^01[3-9]\d{8}$/.test(val?.trim() || '') || 'Must be a valid 11-digit Bangladeshi mobile number (e.g. 01XXXXXXXXX)'
                         ]"
                         @blur="onRecipientPhoneBlur"
@@ -91,6 +96,7 @@
                         outlined
                         dense
                         label="Secondary Phone (Optional)"
+                        :disable="isPhoneProfileLoading"
                         :rules="[
                           val => !val?.trim() || /^01[3-9]\d{8}$/.test(val.trim()) || 'Must be a valid 11-digit Bangladeshi mobile number (e.g. 01XXXXXXXXX)'
                         ]"
@@ -103,6 +109,7 @@
                         v-model="district"
                         outlined
                         dense
+                        :disable="isPhoneProfileLoading"
                         use-input
                         fill-input
                         hide-selected
@@ -139,6 +146,7 @@
                         v-model="thana"
                         outlined
                         dense
+                        :disable="isPhoneProfileLoading"
                         use-input
                         fill-input
                         hide-selected
@@ -175,6 +183,7 @@
                         v-model="postCode"
                         outlined
                         dense
+                        :disable="isPhoneProfileLoading"
                         use-input
                         fill-input
                         hide-selected
@@ -210,6 +219,7 @@
                         outlined
                         dense
                         type="textarea"
+                        :disable="isPhoneProfileLoading"
                         :label="$t('shop.shipping_address') + ' *'"
                         rows="3"
                         :rules="[val => !!val?.trim() || 'Shipping address is required']"
@@ -230,6 +240,7 @@
                     outlined
                     dense
                     type="textarea"
+                    :disable="isPhoneProfileLoading"
                     :label="$t('shop.delivery_instructions')"
                     rows="2"
                     class="q-mt-md"
@@ -389,8 +400,9 @@
                 class="full-width pill-btn text-weight-bold q-py-sm"
                 :loading="orderStore.saving"
                 :disabled="
-                  requestDelivery &&
-                  (!recipientName.trim() || !/^01[3-9]\d{8}$/.test(recipientPhone.trim()) || !shippingAddress.trim())
+                  isPhoneProfileLoading ||
+                  (requestDelivery &&
+                    (!recipientName.trim() || !/^01[3-9]\d{8}$/.test(recipientPhone.trim()) || !shippingAddress.trim()))
                 "
                 @click="submitOrder"
               />
@@ -457,6 +469,7 @@ const {
 const orderStore = useShopOrderStore();
 const recipientProfileStore = useRecipientProfileStore();
 const lastLookupPhone = ref('');
+const isPhoneProfileLoading = ref(false);
 
 const recipientName = ref('');
 const recipientPhone = ref('');
@@ -673,6 +686,28 @@ onMounted(async () => {
   }
 });
 
+const clearEndCustomerDetailsFromPhone = () => {
+  recipientName.value = '';
+  secondaryPhone.value = '';
+  district.value = '';
+  thana.value = '';
+  postCode.value = '';
+  shippingAddress.value = '';
+  deliveryInstructions.value = '';
+};
+
+watch(
+  () => recipientPhone.value.replace(/\D/g, ''),
+  (phone) => {
+    if (isPhoneProfileLoading.value) return;
+    if (!lastLookupPhone.value) return;
+    if (phone !== lastLookupPhone.value) {
+      clearEndCustomerDetailsFromPhone();
+      lastLookupPhone.value = '';
+    }
+  },
+);
+
 const goBack = () => {
   const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
   void router.push(`${tenantSlug}/shop/cart`);
@@ -683,25 +718,31 @@ const onRecipientPhoneBlur = async () => {
   const tenantId = cart.value?.tenant_id;
   if (!tenantId || !/^01\d{9}$/.test(phone)) return;
   if (phone === lastLookupPhone.value) return;
+
+  isPhoneProfileLoading.value = true;
   lastLookupPhone.value = phone;
+  try {
+    const profile = await recipientProfileStore.getByPhone(tenantId, phone);
+    if (!profile) {
+      lastLookupPhone.value = '';
+      return;
+    }
 
-  const profile = await recipientProfileStore.getByPhone(tenantId, phone);
-  if (!profile) return;
-
-  if (!recipientName.value.trim()) recipientName.value = profile.name || '';
-  if (!secondaryPhone.value.trim() && profile.secondary_phone) {
-    secondaryPhone.value = profile.secondary_phone;
-  }
-  if (!shippingAddress.value.trim() && profile.address) {
-    shippingAddress.value = profile.address;
-  }
-  if (profile.district) {
-    district.value = profile.district;
-    await updateThanaList(profile.district);
-  }
-  if (profile.thana) {
-    thana.value = profile.thana;
-    await updatePostcodeList(district.value, profile.thana);
+    recipientName.value = profile.name || '';
+    secondaryPhone.value = profile.secondary_phone || '';
+    shippingAddress.value = profile.address || '';
+    district.value = profile.district || '';
+    thana.value = profile.thana || '';
+    if (profile.district) {
+      await updateThanaList(profile.district);
+    }
+    if (profile.district && profile.thana) {
+      await updatePostcodeList(district.value, profile.thana);
+    }
+  } catch {
+    lastLookupPhone.value = '';
+  } finally {
+    isPhoneProfileLoading.value = false;
   }
 };
 

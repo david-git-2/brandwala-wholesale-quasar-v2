@@ -30,7 +30,7 @@ const emit = defineEmits<{
         />
       </div>
       <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-        Merchant: <strong class="text-grey-9">{{ order?.customer_group_name || '—' }}</strong>
+        Dropshipper: <strong class="text-grey-9">{{ order?.customer_group_name || '—' }}</strong>
       </p>
     </div>
     <div class="col-auto row q-gutter-sm items-center wrap">
@@ -49,7 +49,7 @@ const emit = defineEmits<{
         outline
         color="accent"
         icon="ph ph-receipt"
-        label="Print Recipient Invoice"
+        label="Print end customer slip"
         no-caps
         @click="emit('open-recipient-invoice')"
       />

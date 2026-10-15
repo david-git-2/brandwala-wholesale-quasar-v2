@@ -487,7 +487,7 @@ const copyFullCourierSnippet = () => {
           <div class="row items-center justify-between q-mb-sm">
             <div class="dropship-invoice-paper__section-label">
               <q-icon name="ph ph-map-pin" size="14px" />
-              <span>Deliver to Recipient</span>
+              <span>Deliver to end customer</span>
             </div>
             <q-btn
               flat
@@ -514,7 +514,7 @@ const copyFullCourierSnippet = () => {
               color="grey-7"
               class="dropship-invoice-paper__copy-btn"
               aria-label="Copy recipient name"
-              @click="copyDetail(order.recipient_name, 'Recipient name')"
+              @click="copyDetail(order.recipient_name, 'End customer name')"
             >
               <q-tooltip>Copy name</q-tooltip>
             </q-btn>
@@ -753,29 +753,25 @@ const copyFullCourierSnippet = () => {
                         <q-tooltip>Remove gift</q-tooltip>
                       </q-btn>
                     </div>
-                    <div v-else-if="!row.isUnavailable" class="row items-center justify-end no-wrap q-gutter-xs">
+                    <div v-else-if="!row.isUnavailable" class="row items-center justify-end no-wrap">
                       <q-btn
                         unelevated
                         dense
                         no-caps
-                        color="primary"
-                        icon="ph ph-package"
-                        label="Pick stock"
-                        class="dropship-invoice-paper__action-btn"
+                        :color="row.stockPicks.length > 0 || row.deliveredQuantity > 0 ? undefined : 'primary'"
+                        :label="
+                          row.stockPicks.length > 0 || row.deliveredQuantity > 0
+                            ? `Change picks (${row.deliveredQuantity || row.stockPicks.reduce((s, p) => s + (p.quantity ?? 0), 0)})`
+                            : 'Pick stock'
+                        "
+                        :class="[
+                          'dropship-invoice-paper__action-btn',
+                          row.stockPicks.length > 0 || row.deliveredQuantity > 0
+                            ? 'dropship-invoice-paper__action-btn--picked'
+                            : '',
+                        ]"
                         @click="emit('pick-stock', row.id)"
                       />
-                      <q-btn
-                        v-if="row.stockPicks.length === 0"
-                        flat
-                        dense
-                        round
-                        color="negative"
-                        icon="ph ph-prohibit"
-                        aria-label="Mark unavailable"
-                        @click="emit('mark-unavailable', row.id)"
-                      >
-                        <q-tooltip>Mark unavailable</q-tooltip>
-                      </q-btn>
                     </div>
                     <div v-else class="row items-center justify-end no-wrap">
                       <q-btn
@@ -783,7 +779,6 @@ const copyFullCourierSnippet = () => {
                         dense
                         no-caps
                         color="primary"
-                        icon="ph ph-arrow-counter-clockwise"
                         label="Undo"
                         class="dropship-invoice-paper__action-btn"
                         @click="emit('clear-unavailable', row.id)"
@@ -906,7 +901,7 @@ const copyFullCourierSnippet = () => {
             <div class="dropship-invoice-paper__summary-label">
               <span>Items (Resell)</span>
               <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--recipient">
-                Recipient
+                End customer
               </span>
             </div>
             <span class="text-weight-bold">
@@ -936,8 +931,8 @@ const copyFullCourierSnippet = () => {
                   text-color="grey-8"
                   class="dropship-invoice-paper__payer-toggle"
                   :options="[
-                    { label: 'Recipient', value: false },
-                    { label: 'Merchant', value: true },
+                    { label: 'End customer', value: false },
+                    { label: 'Dropshipper', value: true },
                   ]"
                   @update:model-value="(val) => updateChargeDeduct(row.key, val)"
                 />
@@ -989,7 +984,7 @@ const copyFullCourierSnippet = () => {
                   text-color="grey-8"
                   class="dropship-invoice-paper__payer-toggle"
                   :options="[
-                    { label: 'Merchant', value: false },
+                    { label: 'Dropshipper', value: false },
                     { label: 'Tenant', value: true },
                   ]"
                   @update:model-value="(isTenant) => updateGiftCostChargedTo(gift.id, isTenant ? 'tenant' : 'reseller')"
@@ -999,7 +994,7 @@ const copyFullCourierSnippet = () => {
                 v-else
                 class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--merchant"
               >
-                {{ gift.gift_cost_charged_to === 'tenant' ? 'Tenant pays' : 'Merchant pays' }}
+                {{ gift.gift_cost_charged_to === 'tenant' ? 'Supplier pays' : 'Dropshipper pays' }}
               </span>
             </div>
             <q-input
@@ -1028,7 +1023,7 @@ const copyFullCourierSnippet = () => {
             <div class="dropship-invoice-paper__summary-label">
               <span>Discount</span>
               <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--merchant">
-                Merchant
+                Dropshipper
               </span>
             </div>
             <q-input
@@ -1050,9 +1045,9 @@ const copyFullCourierSnippet = () => {
           <!-- Recipient Total -->
           <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--grand">
             <div class="dropship-invoice-paper__summary-label">
-              <span>Recipient Total</span>
+              <span>End customer total</span>
               <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--muted">
-                Due from Recipient
+                Due from end customer
               </span>
             </div>
             <span class="text-primary text-h6 text-weight-bolder">
@@ -1076,7 +1071,7 @@ const copyFullCourierSnippet = () => {
                 size="xs"
                 color="primary"
                 class="dropship-invoice-paper__sync-btn"
-                label="Match Recipient Total"
+                label="Match end customer total"
                 @click="syncCodCollectToRecipientTotal"
               />
             </div>

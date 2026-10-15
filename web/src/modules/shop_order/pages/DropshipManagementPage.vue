@@ -11,7 +11,7 @@
               rounded
               clearable
               debounce="300"
-              placeholder="Search order no, merchant, recipient..."
+              placeholder="Search order no, dropshipper, end customer..."
               @update:model-value="onSearchChange"
             >
               <template #prepend>
@@ -60,8 +60,8 @@
               <tr>
                 <th class="text-left">Order</th>
                 <th v-if="isParentTenant" class="text-left">Business</th>
-                <th class="text-left">Merchant</th>
-                <th class="text-left">Recipient</th>
+                <th class="text-left">Dropshipper</th>
+                <th class="text-left">End customer</th>
                 <th class="text-left">Courier</th>
                 <th class="text-right">Status</th>
               </tr>
@@ -164,7 +164,7 @@ const statusOptions = [
   { label: 'Shipped', value: 'shipped' },
   { label: 'Delivered', value: 'delivered' },
   { label: 'Payment received', value: 'payment_received' },
-  { label: 'Reseller paid', value: 'reseller_paid' },
+  { label: 'Dropshipper paid', value: 'reseller_paid' },
   { label: 'Returned', value: 'returned' },
 ] as const;
 
@@ -216,7 +216,7 @@ const onStatusChange = () => {
 
 function statusLabel(status: ShopOrderStatus): string {
   if (status === 'payment_received') return 'Payment received';
-  if (status === 'reseller_paid') return 'Reseller paid';
+  if (status === 'reseller_paid') return 'Dropshipper paid';
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 

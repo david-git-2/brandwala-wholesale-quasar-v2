@@ -516,7 +516,22 @@ const getDropshipOrderDetailV2 = async (tenantId: number, orderId: number) => {
   });
   if (error) throw error;
 
-  return mapDropshipOrderDetailV2Response(data);
+  const mapped = mapDropshipOrderDetailV2Response(data);
+  const { data: courierBills } = await supabase
+    .from('bills')
+    .select('id, source_type, source_key')
+    .eq('source_id', String(orderId))
+    .eq('invoice_type', 'ap')
+    .neq('invoice_status', 'voided');
+
+  const courierBill =
+    (courierBills ?? []).find((row) => row.source_type === 'dropship_courier')
+    ?? (courierBills ?? []).find(
+      (row) => row.source_type === 'shop_order' && row.source_key === 'courier',
+    );
+
+  mapped.order.courier_ap_bill_id = courierBill?.id ?? mapped.order.courier_ap_bill_id ?? null;
+  return mapped;
 };
 
 const getDropshipManagementOrder = async (
@@ -541,6 +556,18 @@ const saveDropshipSettlementDraft = async (
     p_order_id: orderId,
     p_payload: payload,
   });
+  if (error) throw error;
+  return data;
+};
+
+const previewDropshipDeliverBillNotes = async (tenantId: number, orderId: number) => {
+  const { data, error } = await supabase.rpc(
+    'preview_dropship_issued_bill_notes_at_deliver_for_staff',
+    {
+      p_tenant_id: tenantId,
+      p_order_id: orderId,
+    },
+  );
   if (error) throw error;
   return data;
 };
@@ -1305,6 +1332,7 @@ export const shopOrderRepository = {
   getDropshipOrderDetailV2,
   getDropshipManagementOrder,
   saveDropshipSettlementDraft,
+  previewDropshipDeliverBillNotes,
   markDropshipOrderDelivered,
   markDropshipOrderReturnedFromSettlement,
   issueDropshipTenantB2bInvoice,

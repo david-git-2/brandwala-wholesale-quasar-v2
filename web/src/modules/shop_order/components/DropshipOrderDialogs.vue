@@ -43,13 +43,13 @@ const emit = defineEmits<{
         </q-card-section>
         <q-card-section class="q-pt-sm text-body2">
           <p class="text-grey-8 q-mb-md">
-            Advancing to <strong>Ready for Pickup</strong> locks picking and summary edits. The merchant bill is issued when you mark the order as shipped.
+            Advancing to <strong>Ready for Pickup</strong> locks picking and summary edits. The customer invoice is issued when you mark the order as shipped.
           </p>
 
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-sm-6">
               <q-card flat bordered class="q-pa-sm bg-grey-1">
-                <div class="text-caption text-grey-7">Recipient Pays</div>
+                <div class="text-caption text-grey-7">End customer pays</div>
                 <div class="text-weight-bold text-h6">{{ props.formatBdt(props.recipientGrandTotal) }}</div>
               </q-card>
             </div>

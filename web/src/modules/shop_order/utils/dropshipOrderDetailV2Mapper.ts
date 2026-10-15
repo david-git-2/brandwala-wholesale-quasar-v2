@@ -110,6 +110,7 @@ export function mapDropshipOrderDetailV2Response(raw: unknown): DropshipOrderDet
     placed_at: (orderRaw.placed_at as string | null) ?? null,
     fulfilled_at: (orderRaw.fulfilled_at as string | null) ?? null,
     global_invoice_id: (orderRaw.global_invoice_id as number | null) ?? null,
+    courier_ap_bill_id: (orderRaw.courier_ap_bill_id as number | null) ?? null,
     shop_sell_currency_symbol: (orderRaw.shop_sell_currency_symbol as string | null) ?? null,
     created_by_email: String(orderRaw.created_by_email ?? ''),
     created_at: String(orderRaw.created_at ?? ''),

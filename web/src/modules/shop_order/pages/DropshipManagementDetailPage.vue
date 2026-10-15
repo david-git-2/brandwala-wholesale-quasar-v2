@@ -32,37 +32,11 @@
             color="primary"
             no-caps
             icon="ph ph-receipt"
-            label="View merchant bill"
+            label="View customer invoice"
             class="text-weight-bold"
             style="border-radius: 8px"
             @click="openMerchantInvoice"
           />
-
-          <template v-if="deskStep === 'outcome' && !isSettlementReadonly">
-            <q-btn
-              v-if="!adjustFeesOpen"
-              outline
-              color="primary"
-              no-caps
-              icon="ph ph-sliders-horizontal"
-              label="Adjust fees"
-              style="border-radius: 8px"
-              @click="adjustFeesOpen = true"
-            />
-            <template v-else>
-              <q-btn flat no-caps color="grey-8" label="Done adjusting" @click="adjustFeesOpen = false" />
-              <q-btn
-                outline
-                color="primary"
-                no-caps
-                icon="ph ph-floppy-disk"
-                label="Save draft"
-                style="border-radius: 8px"
-                :loading="savingDraft"
-                @click="onSaveDraft"
-              />
-            </template>
-          </template>
 
           <template v-if="deskStep === 'outcome'">
             <q-btn
@@ -99,7 +73,8 @@
             label="Courier pay in"
             class="text-weight-bold"
             style="border-radius: 8px; min-width: 220px"
-            @click="goToRemittance"
+            :loading="courierPayInSubmitting"
+            @click="onCourierPayIn"
           />
 
           <q-btn
@@ -108,7 +83,7 @@
             unelevated
             no-caps
             icon="ph ph-hand-coins"
-            label="Pay dropship shop profit"
+            label="Pay dropshipper profit"
             class="text-weight-bold"
             style="border-radius: 8px; min-width: 220px"
             @click="goToShopPayout"
@@ -120,7 +95,7 @@
             color="primary"
             no-caps
             icon="ph ph-receipt"
-            label="View merchant invoice"
+            label="View customer invoice"
             class="text-weight-bold"
             style="border-radius: 8px; min-width: 200px"
             @click="openMerchantInvoice"
@@ -132,6 +107,7 @@
           :data="orderData"
           :readonly="paperReadonly"
           :return-section-mode="returnSectionMode"
+          @autosave="onAutosaveDraft"
         />
       </template>
     </div>
@@ -140,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -148,7 +124,19 @@ import { requestConfirmation, showErrorNotification, showSuccessNotification } f
 import DropshipManagementSettlementPaper from '../components/DropshipManagementSettlementPaper.vue';
 import { shopOrderService } from '../services/shopOrderService';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
-import type { DropshipManagementOrderView } from '../types/dropshipManagementOrder';
+import type {
+  DropshipManagementOrderView,
+  DropshipSettlementDraftPayload,
+} from '../types/dropshipManagementOrder';
+import {
+  parseDropshipDeliverBillNotesPreview,
+  requestDropshipMarkDeliveredConfirmation,
+} from '../utils/dropshipDeliverBillNotesPreview';
+import { dropshipFinanceRepository } from '../repositories/dropshipFinanceRepository';
+import {
+  requestDropshipCourierPayInDialog,
+  toFinanceHubQueueItemFromManagementView,
+} from '../utils/dropshipCourierPayInDialog';
 
 const route = useRoute();
 const router = useRouter();
@@ -159,10 +147,8 @@ const authStore = useAuthStore();
 const queryClient = useQueryClient();
 
 const paperRef = ref<InstanceType<typeof DropshipManagementSettlementPaper> | null>(null);
-const savingDraft = ref(false);
 const actionKind = ref<'delivered' | null>(null);
-const adjustFeesOpen = ref(false);
-
+const courierPayInSubmitting = ref(false);
 type ManagementDeskStep = 'outcome' | 'remit' | 'done';
 
 const orderId = computed(() => Number(route.params.id));
@@ -217,19 +203,19 @@ const deskBannerText = computed(() => {
     case 'outcome':
       return 'Parcel is in transit. Confirm delivery or mark a return — cash is recorded when the courier remits.';
     case 'remit':
-      return 'Parcel delivered. Use Payments → Pay in → Courier (net bank in) to clear the merchant bill; shop profit stays on cashbook until Pay out.';
+      return 'Parcel delivered. Use Courier pay in for net bank in from the courier — customer invoice clears here; dropshipper profit stays on cashbook until Pay out.';
     default:
       if (orderData.value?.order.status === 'returned') {
         return 'Return finalized — settlement is read-only.';
       }
       if (orderData.value?.step_state.can_transfer_to_reseller) {
-        return 'Remittance posted. Shop profit is on cashbook — use Pay shop profit when you send money to the merchant.';
+        return 'Remittance posted. Dropshipper profit is on cashbook — use Pay out when you send money to the dropshipper.';
       }
       if (
         orderData.value?.order.status === 'payment_received'
         || orderData.value?.order.status === 'reseller_paid'
       ) {
-        return 'Settlement complete — remittance posted and shop profit paid out.';
+        return 'Settlement complete — remittance posted and dropshipper profit paid out.';
       }
       return 'Settlement desk — read-only recap.';
   }
@@ -237,20 +223,13 @@ const deskBannerText = computed(() => {
 
 const paperReadonly = computed(() => {
   if (isSettlementReadonly.value) return true;
-  if (deskStep.value !== 'outcome') return true;
-  return !adjustFeesOpen.value;
+  return deskStep.value !== 'outcome';
 });
 
 const showFooterActions = computed(() => {
   const status = orderData.value?.order.status;
   if (!status || status === 'returned') return deskStep.value === 'done' && !!orderData.value?.invoice?.id;
   return deskStep.value !== 'done' || !!orderData.value?.invoice?.id;
-});
-
-watch(orderData, () => {
-  if (deskStep.value !== 'outcome') {
-    adjustFeesOpen.value = false;
-  }
 });
 
 function getPayload() {
@@ -261,26 +240,16 @@ async function invalidateDetail() {
   await queryClient.invalidateQueries({ queryKey: detailQueryKey.value });
 }
 
-async function onSaveDraft() {
-  if (!authStore.tenantId) return;
-  const payload = getPayload();
-  if (!payload) return;
+async function onAutosaveDraft(payload: DropshipSettlementDraftPayload) {
+  if (!authStore.tenantId || paperReadonly.value) return;
 
-  savingDraft.value = true;
-  try {
-    const res = await shopOrderService.saveDropshipSettlementDraft(
-      authStore.tenantId,
-      orderId.value,
-      payload,
-    );
-    if (!res.success) {
-      showErrorNotification(res.error ?? 'Failed to save draft.');
-      return;
-    }
-    showSuccessNotification('Settlement draft saved.');
-    await invalidateDetail();
-  } finally {
-    savingDraft.value = false;
+  const res = await shopOrderService.saveDropshipSettlementDraft(
+    authStore.tenantId,
+    orderId.value,
+    payload,
+  );
+  if (!res.success) {
+    showErrorNotification(res.error ?? 'Failed to save settlement.');
   }
 }
 
@@ -293,12 +262,30 @@ function openMerchantInvoice() {
   });
 }
 
-function goToRemittance() {
-  void router.push({
-    name: 'app-collect-pay-page',
-    params: { tenantSlug: tenantSlug.value },
-    query: { mode: 'courier', orderId: String(orderId.value) },
-  });
+async function onCourierPayIn() {
+  if (!orderData.value || courierPayInSubmitting.value) return;
+
+  const queueItem = toFinanceHubQueueItemFromManagementView(orderData.value);
+  const payload = await requestDropshipCourierPayInDialog(queueItem);
+  if (!payload) return;
+
+  courierPayInSubmitting.value = true;
+  try {
+    await dropshipFinanceRepository.confirmCourierRemittance({
+      orderId: payload.orderId,
+      netAmount: payload.netAmount,
+      courierCharge: payload.courierCharge,
+      remittanceRef: payload.remittanceRef ?? `REMIT-${payload.orderId}`,
+      bankTrxId: payload.bankTrxId,
+      cashbookPointId: payload.cashbookPointId,
+    });
+    showSuccessNotification('Courier pay in recorded.');
+    await invalidateDetail();
+  } catch (e) {
+    showErrorNotification(e instanceof Error ? e.message : 'Courier pay in failed.');
+  } finally {
+    courierPayInSubmitting.value = false;
+  }
 }
 
 function goToShopPayout() {
@@ -316,15 +303,28 @@ async function onMarkDelivered() {
 
   if (!orderData.value?.step_state.can_mark_delivered) return;
 
-  const confirmed = await requestConfirmation(
-    'Mark this parcel as delivered? The merchant bill was already issued at ship. Cash comes when the courier remits.',
-    'Mark as delivered',
-    'Mark delivered',
-  );
-  if (!confirmed) return;
-
   actionKind.value = 'delivered';
   try {
+    const saveRes = await shopOrderService.saveDropshipSettlementDraft(
+      authStore.tenantId,
+      orderId.value,
+      payload,
+    );
+    if (!saveRes.success) {
+      showErrorNotification(saveRes.error ?? 'Failed to save settlement before deliver.');
+      return;
+    }
+
+    const previewRes = await shopOrderService.previewDropshipDeliverBillNotes(
+      authStore.tenantId,
+      orderId.value,
+    );
+    const confirmed = await requestDropshipMarkDeliveredConfirmation(
+      previewRes.success ? parseDropshipDeliverBillNotesPreview(previewRes.data) : null,
+      { orderNo: orderData.value?.order.order_no },
+    );
+    if (!confirmed) return;
+
     const res = await shopOrderService.markDropshipOrderDelivered(
       authStore.tenantId,
       orderId.value,

@@ -732,7 +732,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'payments',
     name: 'Payments & Collection',
-    description: 'Cash in (collect, courier remittance) and cash out (merchant payout).',
+    description: 'Cash in (collect, courier remittance) and cash out (dropshipper profit payout).',
     navIcon: 'ph ph-credit-card',
     routes: [
       {

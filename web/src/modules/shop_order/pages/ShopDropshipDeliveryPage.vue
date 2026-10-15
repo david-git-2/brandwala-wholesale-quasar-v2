@@ -55,6 +55,7 @@
           :district-options="districtOptions"
           :thana-options="thanaOptions"
           :postcode-options="postcodeOptions"
+          :phone-lookup-loading="isPhoneProfileLoading"
           @phone-blur="onRecipientPhoneBlur"
           @filter-district="filterDistrict"
           @filter-thana="filterThana"
@@ -68,6 +69,7 @@
           v-model:recipient-pays-cod="recipientPaysCod"
           :charges="chargePreview"
           :currency-symbol="currencySymbol"
+          :disable="isPhoneProfileLoading"
         />
         <ShopDropshipDeliverySummaryCard
           :summary="summary"
@@ -82,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
@@ -100,6 +102,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const recipientProfileStore = useRecipientProfileStore();
 const lastLookupPhone = ref('');
+const isPhoneProfileLoading = ref(false);
 
 const {
   districtOptions,
@@ -123,7 +126,6 @@ const {
   items,
   currencySymbol,
   resellSubtotal,
-  chargeEstimates,
   reviewSummary,
   isLoading,
   isError,
@@ -147,8 +149,9 @@ const customerForm = reactive({
   deliveryInstructions: '',
 });
 
-const deliveryCharge = computed(() => chargeEstimates.value?.delivery_mid ?? 0);
-const codCharge = computed(() => chargeEstimates.value?.cod_charge_preview ?? 0);
+/** Delivery/COD amounts are set on staff processing desk, not at shop checkout (see ShopCheckoutPage). */
+const deliveryCharge = computed(() => 0);
+const codCharge = computed(() => 0);
 const printCharge = computed(() => cart.value?.charges.print_charge_amount ?? 0);
 const packingCharge = computed(() => cart.value?.charges.packing_charge_amount ?? 0);
 
@@ -186,34 +189,33 @@ const canSubmit = computed(() => {
   return (
     customerForm.recipientName.trim().length > 0 &&
     /^01[3-9]\d{8}$/.test(phone) &&
-    customerForm.district.trim().length > 0 &&
-    customerForm.thana.trim().length > 0 &&
     customerForm.shippingAddress.trim().length > 0 &&
-    !isSubmitting.value
+    !isSubmitting.value &&
+    !isPhoneProfileLoading.value
   );
 });
 
-const formatShippingAddress = () => {
-  let formattedAddress = customerForm.shippingAddress.trim();
-  const district = customerForm.district.trim();
-  const thana = customerForm.thana.trim();
-  const postCode = customerForm.postCode.trim();
-
-  const parts = [
-    thana ? `Thana: ${thana}` : '',
-    district ? `District: ${district}` : '',
-    postCode ? `Post Code: ${postCode}` : '',
-  ].filter(Boolean);
-  const locationPart = parts.join(', ');
-
-  if (formattedAddress && district && !formattedAddress.toLowerCase().includes(district.toLowerCase())) {
-    formattedAddress = `${formattedAddress}\n${locationPart}`;
-  } else if (!formattedAddress) {
-    formattedAddress = locationPart;
-  }
-
-  return formattedAddress;
+const clearEndCustomerDetailsFromPhone = () => {
+  customerForm.recipientName = '';
+  customerForm.secondaryPhone = '';
+  customerForm.district = '';
+  customerForm.thana = '';
+  customerForm.postCode = '';
+  customerForm.shippingAddress = '';
+  customerForm.deliveryInstructions = '';
 };
+
+watch(
+  () => customerForm.recipientPhone.replace(/\D/g, ''),
+  (phone) => {
+    if (isPhoneProfileLoading.value) return;
+    if (!lastLookupPhone.value) return;
+    if (phone !== lastLookupPhone.value) {
+      clearEndCustomerDetailsFromPhone();
+      lastLookupPhone.value = '';
+    }
+  },
+);
 
 const onDistrictChange = async (newDistrict: string) => {
   customerForm.thana = '';
@@ -231,38 +233,41 @@ const onRecipientPhoneBlur = async () => {
   const tenantId = cart.value?.tenant_id;
   if (!tenantId || !/^01\d{9}$/.test(phone)) return;
   if (phone === lastLookupPhone.value) return;
+
+  isPhoneProfileLoading.value = true;
   lastLookupPhone.value = phone;
+  try {
+    const profile = await recipientProfileStore.getByPhone(tenantId, phone);
+    if (!profile) {
+      lastLookupPhone.value = '';
+      return;
+    }
 
-  const profile = await recipientProfileStore.getByPhone(tenantId, phone);
-  if (!profile) return;
+    customerForm.recipientName = profile.name || '';
+    customerForm.secondaryPhone = profile.secondary_phone || '';
 
-  if (!customerForm.recipientName.trim()) customerForm.recipientName = profile.name || '';
-  if (!customerForm.secondaryPhone.trim() && profile.secondary_phone) {
-    customerForm.secondaryPhone = profile.secondary_phone;
-  }
+    let baseAddress = profile.address || '';
+    let extractedPostcode = '';
+    const postCodeMatch = baseAddress.match(/Post\s*Code:\s*([^\n,]+)/i);
+    if (postCodeMatch) {
+      extractedPostcode = postCodeMatch[1]?.trim() || '';
+    }
+    baseAddress = baseAddress.replace(/\n?(?:Thana|District|Post\s*Code):.*$/gi, '').trim();
 
-  let baseAddress = profile.address || '';
-  let extractedPostcode = '';
-  const postCodeMatch = baseAddress.match(/Post\s*Code:\s*([^\n,]+)/i);
-  if (postCodeMatch) {
-    extractedPostcode = postCodeMatch[1]?.trim() || '';
-  }
-  baseAddress = baseAddress.replace(/\n?(?:Thana|District|Post\s*Code):.*$/gi, '').trim();
-
-  if (!customerForm.shippingAddress.trim() && baseAddress) {
     customerForm.shippingAddress = baseAddress;
-  }
-  if (profile.district) {
-    customerForm.district = profile.district;
-    await updateThanaList(profile.district);
-  }
-  if (profile.thana) {
-    customerForm.thana = profile.thana;
-    await updatePostcodeList(customerForm.district, profile.thana);
-  }
-  if (extractedPostcode) {
+    customerForm.district = profile.district || '';
+    customerForm.thana = profile.thana || '';
     customerForm.postCode = extractedPostcode;
-    await updatePostcodeList(customerForm.district, customerForm.thana, extractedPostcode);
+    if (profile.district) {
+      await updateThanaList(profile.district);
+    }
+    if (profile.district && profile.thana) {
+      await updatePostcodeList(customerForm.district, customerForm.thana, extractedPostcode || undefined);
+    }
+  } catch {
+    lastLookupPhone.value = '';
+  } finally {
+    isPhoneProfileLoading.value = false;
   }
 };
 
@@ -284,7 +289,7 @@ const onPlaceOrder = async () => {
     shopId: shopId.value,
     recipientName: customerForm.recipientName.trim(),
     recipientPhone: customerForm.recipientPhone.trim(),
-    shippingAddress: formatShippingAddress(),
+    shippingAddress: customerForm.shippingAddress.trim(),
     recipientPhoneSecondary: customerForm.secondaryPhone.trim() || null,
     shippingDistrict: customerForm.district.trim() || null,
     shippingThana: customerForm.thana.trim() || null,

@@ -36,7 +36,7 @@ export const dropshipManagementChargePayerOptions: Array<{
   label: string;
   value: DropshipManagementChargePayer;
 }> = [
-  { label: 'Recipient pays', value: 'recipient' },
+  { label: 'End customer pays', value: 'recipient' },
   { label: 'Merchant pays', value: 'merchant' },
   { label: 'Company pays', value: 'company' },
 ];

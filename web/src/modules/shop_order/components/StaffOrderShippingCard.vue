@@ -56,7 +56,7 @@ const copyAllShippingDetails = () => {
             size="sm"
             icon="ph ph-copy"
             color="grey-6"
-            @click="copyToClipboard(order.recipient_name, 'Recipient Name')"
+            @click="copyToClipboard(order.recipient_name, 'End customer name')"
           >
             <q-tooltip>Copy Name</q-tooltip>
           </q-btn>

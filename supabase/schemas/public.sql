@@ -20326,21 +20326,29 @@ begin
   end if;
 
   if v_order.global_invoice_id is null then
-    raise exception 'merchant bill must be issued before deliver';
+    raise exception 'customer invoice is required before deliver';
   end if;
 
   select * into v_invoice from public.bills where id = v_order.global_invoice_id;
   if v_invoice.id is null then
-    raise exception 'linked merchant bill not found';
+    raise exception 'linked customer invoice not found';
   end if;
 
-  if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
-    raise exception 'merchant bill must be issued before deliver (current: %)', v_invoice.invoice_status;
+  if v_invoice.invoice_status not in (
+    'draft'::public.global_invoice_status,
+    'issued'::public.global_invoice_status
+  ) then
+    raise exception 'customer invoice must be draft or issued before deliver (current: %)', v_invoice.invoice_status;
   end if;
 
   perform public.canonicalize_dropship_order_wallet_source_ids(p_order_id);
 
   v_save := public.save_dropship_settlement_draft(p_tenant_id, p_order_id, p_payload);
+  if coalesce(v_save->>'success', 'false') <> 'true' then
+    return v_save;
+  end if;
+
+  v_save := public.finalize_dropship_order_bills_at_delivered(p_order_id);
   if coalesce(v_save->>'success', 'false') <> 'true' then
     return v_save;
   end if;
@@ -27027,6 +27035,7 @@ CREATE OR REPLACE FUNCTION "public"."ship_dropship_order_and_issue_merchant_bill
 declare
   v_order public.shop_orders;
   v_issue jsonb;
+  v_ap jsonb;
 begin
   if not public.is_tenant_staff(p_tenant_id) then
     return jsonb_build_object('success', false, 'error', 'access denied');
@@ -27102,6 +27111,14 @@ begin
     return v_issue;
   end if;
 
+  v_ap := public.upsert_dropship_courier_ap_bill(p_order_id, false);
+  if coalesce(v_ap->>'success', 'false') <> 'true' then
+    return v_ap;
+  end if;
+  if nullif(v_ap->>'bill_id', '') is null then
+    return jsonb_build_object('success', false, 'error', 'courier bill was not created');
+  end if;
+
   update public.shop_orders
   set
     status = 'shipped'::public.shop_order_status,
@@ -27113,6 +27130,7 @@ begin
     'order_id', p_order_id,
     'new_status', 'shipped',
     'invoice', v_issue->'invoice',
+    'courier_ap', v_ap,
     'created', coalesce(v_issue->>'created', 'false')::boolean,
     'already_issued', coalesce(v_issue->>'already_issued', 'false')::boolean
   );

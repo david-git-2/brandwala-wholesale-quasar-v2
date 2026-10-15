@@ -36,13 +36,13 @@
       <q-card flat bordered class="stat-card">
         <q-card-section>
           <div class="text-caption text-uppercase text-weight-medium text-warning">
-            3. Middleman Profit Payable
+            3. Dropshipper profit payable
           </div>
           <div class="text-h5 text-weight-bold q-mt-xs">
             {{ formatCurrency(kpis.middlemanPayableTotal) }}
           </div>
           <div class="text-caption text-muted q-mt-2">
-            Owed to merchant / middleman profiles
+            Owed to dropshipper profiles (cashbook)
           </div>
         </q-card-section>
       </q-card>

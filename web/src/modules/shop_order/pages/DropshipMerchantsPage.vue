@@ -5,16 +5,16 @@
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline text-primary">Shops</div>
-          <h1 class="text-h5 text-weight-bold q-my-none">Merchant Payout Center</h1>
+          <h1 class="text-h5 text-weight-bold q-my-none">Dropshipper payouts</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Monitor merchant margins, locked courier escrow, available wallet balances, and dispense merchant payouts.
+            Monitor dropshipper profit, locked courier escrow, available balances, and pay dropshippers from Payments.
           </p>
         </div>
         <div class="col-auto row q-gutter-sm">
           <q-btn
             color="primary"
             icon="ph ph-plus"
-            label="Add Merchant Profile"
+            label="Add dropshipper profile"
             no-caps
             unelevated
             class="rounded-btn"
@@ -36,7 +36,7 @@
                 v-model="searchQuery"
                 dense
                 outlined
-                placeholder="Search reseller name, email, phone..."
+                placeholder="Search dropshipper name, email, phone..."
                 clearable
               >
                 <template #prepend>
@@ -52,7 +52,7 @@
                 :text-color="balanceFilter === 'all' ? 'white' : 'grey-9'"
                 @click="balanceFilter = 'all'"
               >
-                All Resellers ({{ merchantList.length }})
+                All dropshippers ({{ merchantList.length }})
               </q-chip>
               <q-chip
                 clickable
@@ -81,17 +81,17 @@
           <q-markup-table flat borderless class="q-mb-none soft-table">
             <thead>
               <tr>
-                <th class="text-left">Merchant / Reseller Profile</th>
+                <th class="text-left">Dropshipper</th>
                 <th class="text-left">Contact Info</th>
                 <th class="text-right">Locked Margin (Pending Courier)</th>
-                <th class="text-right">Available Wallet Balance</th>
+                <th class="text-right">Available balance</th>
                 <th class="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="filteredMerchants.length === 0">
                 <td colspan="5" class="text-center text-grey-6 q-pa-lg">
-                  No merchant profiles found.
+                  No dropshipper profiles found.
                 </td>
               </tr>
               <tr v-for="m in filteredMerchants" :key="m.profile_id" class="hover-row">
@@ -158,12 +158,12 @@
       <q-dialog v-model="addDialogOpen" persistent>
         <q-card style="min-width: 450px; max-width: 90vw;" class="q-pa-sm">
           <q-card-section class="row items-center justify-between">
-            <div class="text-h6 text-weight-bold">Add Merchant Profile</div>
+            <div class="text-h6 text-weight-bold">Add dropshipper profile</div>
             <q-btn v-close-popup flat round dense icon="ph ph-x" />
           </q-card-section>
           <q-separator />
           <q-card-section class="q-gutter-y-md">
-            <q-input v-model="newMerchantForm.merchant_name" label="Merchant Name *" dense outlined />
+            <q-input v-model="newMerchantForm.merchant_name" label="Dropshipper name *" dense outlined />
             <q-input v-model="newMerchantForm.phone_primary" label="Primary Phone *" dense outlined />
             <q-input v-model="newMerchantForm.pickup_address" label="Pickup Address *" dense outlined type="textarea" rows="2" />
           </q-card-section>

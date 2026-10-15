@@ -445,6 +445,42 @@
   font-weight: 600;
 }
 
+.dropship-invoice-paper__action-btn--unavailable {
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+  color: #b91c1c;
+
+  &:hover {
+    background: color-mix(in srgb, #ef4444 22%, transparent);
+  }
+}
+
+body.body--dark .dropship-invoice-paper__action-btn--unavailable {
+  background: color-mix(in srgb, #f87171 18%, transparent);
+  color: #fca5a5;
+
+  &:hover {
+    background: color-mix(in srgb, #f87171 26%, transparent);
+  }
+}
+
+.dropship-invoice-paper__action-btn--picked {
+  background: color-mix(in srgb, #10b981 14%, transparent);
+  color: #047857;
+
+  &:hover {
+    background: color-mix(in srgb, #10b981 22%, transparent);
+  }
+}
+
+body.body--dark .dropship-invoice-paper__action-btn--picked {
+  background: color-mix(in srgb, #34d399 18%, transparent);
+  color: #6ee7b7;
+
+  &:hover {
+    background: color-mix(in srgb, #34d399 26%, transparent);
+  }
+}
+
 .dropship-invoice-paper__toolbar-btn {
   min-height: 36px;
   padding: 6px 14px;

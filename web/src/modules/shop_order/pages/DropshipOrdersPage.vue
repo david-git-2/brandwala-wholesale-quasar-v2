@@ -28,7 +28,7 @@
             outline
             color="secondary"
             icon="ph ph-storefront"
-            label="Merchants & Pickup"
+            label="Dropshippers & pickup"
             no-caps
             :to="{ name: 'app-shop-dropship-merchants-page' }"
           />
@@ -44,7 +44,7 @@
               dense
               outlined
               hide-bottom-space
-              placeholder="Search order no, recipient, phone, AWB..."
+              placeholder="Search order no, end customer, phone, AWB..."
               clearable
               debounce="300"
               @update:model-value="onSearchChange"
@@ -82,7 +82,7 @@
               <th class="text-left">Order No</th>
               <th v-if="isParentTenant" class="text-left">Tenant</th>
               <th class="text-left">Middle Man</th>
-              <th class="text-left">Recipient</th>
+              <th class="text-left">End customer</th>
               <th class="text-left">Courier</th>
               <th class="text-left">AWB</th>
               <th class="text-left">Status</th>

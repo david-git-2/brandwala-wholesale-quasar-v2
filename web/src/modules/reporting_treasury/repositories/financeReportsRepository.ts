@@ -280,7 +280,7 @@ export const financeReportsRepository = {
       ['Gross Profit', payload.kpis.gross_profit],
       ['Cash Collected', payload.kpis.cash_collected],
       ['AR Due', payload.kpis.ar_outstanding],
-      ['Merchant Payable', payload.kpis.merchant_payable ?? 0],
+      ['Dropshipper profit payable', payload.kpis.merchant_payable ?? 0],
     ];
     const pos = payload.position;
     if (pos) {
@@ -290,7 +290,7 @@ export const financeReportsRepository = {
         ['Position — Customer bills due', pos.ar_outstanding],
         ['Position — COD not remitted', pos.cod_unremitted],
         ['Position — Shipment AP', pos.ap_payable],
-        ['Position — Shop leftover', pos.merchant_payable],
+        ['Position — Dropshipper balance', pos.merchant_payable],
         ['Position — Customer credit', pos.customer_store_credit],
         ['Position — Net buffer', pos.net_buffer],
       );

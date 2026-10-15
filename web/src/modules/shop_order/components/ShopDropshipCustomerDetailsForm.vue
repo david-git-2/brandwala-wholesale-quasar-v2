@@ -7,7 +7,8 @@
       </div>
     </q-card-section>
 
-    <q-card-section>
+    <q-card-section class="relative-position">
+      <q-inner-loading :showing="phoneLookupLoading" color="primary" />
       <div class="row q-col-gutter-md">
         <div class="col-12 col-sm-6">
           <q-input
@@ -17,6 +18,8 @@
             hide-bottom-space
             :label="$t('shop.recipient_phone') + ' *'"
             hint="01XXXXXXXXX"
+            :loading="phoneLookupLoading"
+            :disable="fieldsDisabled"
             @blur="$emit('phone-blur')"
           />
         </div>
@@ -28,6 +31,7 @@
             dense
             hide-bottom-space
             :label="$t('shop.recipient_name') + ' *'"
+            :disable="fieldsDisabled"
           />
         </div>
 
@@ -38,6 +42,7 @@
             dense
             hide-bottom-space
             :label="$t('shop.dropship_secondary_phone')"
+            :disable="fieldsDisabled"
           />
         </div>
 
@@ -46,12 +51,13 @@
             v-model="form.district"
             outlined
             dense
+            :disable="fieldsDisabled"
             use-input
             fill-input
             hide-selected
             input-debounce="0"
             hide-bottom-space
-            :label="$t('shop.dropship_district') + ' *'"
+            :label="$t('shop.dropship_district')"
             :options="districtOptions"
             option-label="name"
             option-value="name"
@@ -81,12 +87,13 @@
             v-model="form.thana"
             outlined
             dense
+            :disable="fieldsDisabled"
             use-input
             fill-input
             hide-selected
             input-debounce="0"
             hide-bottom-space
-            :label="$t('shop.dropship_thana') + ' *'"
+            :label="$t('shop.dropship_thana')"
             :options="thanaOptions"
             option-label="name"
             option-value="name"
@@ -116,6 +123,7 @@
             v-model="form.postCode"
             outlined
             dense
+            :disable="fieldsDisabled"
             use-input
             fill-input
             hide-selected
@@ -154,6 +162,7 @@
             hide-bottom-space
             :label="$t('shop.shipping_address') + ' *'"
             rows="3"
+            :disable="fieldsDisabled"
           />
         </div>
 
@@ -166,6 +175,7 @@
             hide-bottom-space
             :label="$t('shop.delivery_instructions')"
             rows="2"
+            :disable="fieldsDisabled"
           />
         </div>
       </div>
@@ -174,6 +184,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, withDefaults } from 'vue';
 import type { BDLocationOption, BDPostcodeOption } from 'src/utils/bdAddressService';
 
 export interface DropshipCustomerForm {
@@ -187,12 +198,18 @@ export interface DropshipCustomerForm {
   deliveryInstructions: string;
 }
 
-defineProps<{
-  form: DropshipCustomerForm;
-  districtOptions: BDLocationOption[];
-  thanaOptions: BDLocationOption[];
-  postcodeOptions: (BDPostcodeOption & { displayLabel: string })[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    form: DropshipCustomerForm;
+    districtOptions: BDLocationOption[];
+    thanaOptions: BDLocationOption[];
+    postcodeOptions: (BDPostcodeOption & { displayLabel: string })[];
+    phoneLookupLoading?: boolean;
+  }>(),
+  { phoneLookupLoading: false },
+);
+
+const fieldsDisabled = computed(() => props.phoneLookupLoading);
 
 defineEmits<{
   (e: 'phone-blur'): void;

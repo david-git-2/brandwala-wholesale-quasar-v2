@@ -22,7 +22,7 @@
       <div class="text-weight-bold" style="white-space: pre-wrap; word-break: break-word">{{ model.clientName }}</div>
       <div v-if="model.clientTr">TR: {{ model.clientTr }}</div>
       <template v-if="!model.isWholesale">
-        <div class="q-mt-xs"><strong>Recipient:</strong> {{ model.recipientName }}</div>
+        <div class="q-mt-xs"><strong>End customer:</strong> {{ model.recipientName }}</div>
         <div v-if="model.recipientPhone">{{ model.recipientPhone }}</div>
         <div v-if="model.recipientAddress" style="white-space: pre-wrap; word-break: break-word">
           {{ model.recipientAddress }}

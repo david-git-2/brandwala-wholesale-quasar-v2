@@ -12,7 +12,7 @@ const props = withDefaults(
     title?: string;
   }>(),
   {
-    title: 'Block C: Merchant Sender Pickup Info',
+    title: 'Block C: Dropshipper pickup (sender)',
   },
 );
 
@@ -43,7 +43,7 @@ const updateField = (key: string, val: any) => {
           </div>
           <div v-if="props.selectedMerchantId" class="text-caption text-grey-7 q-mr-sm">
             <q-chip dense color="blue-1" text-color="primary" size="sm">
-              {{ props.form.sender_name || 'Merchant Selected' }}
+              {{ props.form.sender_name || 'Dropshipper selected' }}
             </q-chip>
           </div>
         </div>
@@ -57,7 +57,7 @@ const updateField = (key: string, val: any) => {
               emit-value
               map-options
               clearable
-              label="Select Merchant Profile *"
+              label="Select dropshipper pickup profile *"
               outlined
               dense
               hide-bottom-space

@@ -16,7 +16,7 @@
       >
         <q-tab name="delivered_costing" label="1. Delivered Costing" />
         <q-tab name="courier_remittance" label="2. Courier Remittance" />
-        <q-tab name="middleman_payout" label="3. Dropship shop profit" />
+        <q-tab name="middleman_payout" label="3. Dropshipper profit" />
         <q-tab name="all" label="All Delivered Orders" />
       </q-tabs>
     </q-card-section>
@@ -110,7 +110,7 @@ const filteredOrders = computed(() => {
 const columns = [
   { name: 'orderNo', label: 'Order #', field: 'orderNo', align: 'left' as const, sortable: true },
   { name: 'customerName', label: 'Customer', field: (row: FinanceHubOrderQueueItem) => row.customerName || 'N/A', align: 'left' as const },
-  { name: 'merchant', label: 'Merchant', field: (row: FinanceHubOrderQueueItem) => row.customerProfileName || 'N/A', align: 'left' as const },
+  { name: 'merchant', label: 'Dropshipper', field: (row: FinanceHubOrderQueueItem) => row.customerProfileName || 'N/A', align: 'left' as const },
   { name: 'totalAmount', label: 'Total', field: (row: FinanceHubOrderQueueItem) => `${row.totalAmount} BDT`, align: 'right' as const, sortable: true },
   { name: 'cod', label: 'COD Collect', field: (row: FinanceHubOrderQueueItem) => `${row.codCollectAmount} BDT`, align: 'right' as const },
   { name: 'status', label: 'Status', field: 'status', align: 'center' as const },
@@ -128,7 +128,7 @@ function getStepColor(step: string) {
 function getStepLabel(step: string) {
   if (step === 'delivered_costing') return '1. Costing Needed';
   if (step === 'courier_remittance') return '2. Remittance Needed';
-  if (step === 'middleman_payout') return '3. Dropship shop profit';
+  if (step === 'middleman_payout') return '3. Dropshipper profit';
   return 'Completed';
 }
 </script>

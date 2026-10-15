@@ -75,9 +75,13 @@
         >
           <!-- Left Section: Status indicator, Order No, Name & Inline Metadata -->
           <div class="order-main-info col min-width-0 row items-center no-wrap">
-            <div class="order-id-block column flex-shrink-0 q-mr-md">
-              <div class="row items-center no-wrap q-gutter-x-xs">
-                <span class="order-no font-mono text-weight-bolder text-primary">
+            <div class="order-details-block column col min-width-0 justify-center">
+              <span class="order-name text-weight-bold text-grey-9 ellipsis">
+                {{ orderListPrimaryLabel(order) }}
+              </span>
+
+              <div class="row items-center no-wrap q-gutter-x-xs q-mt-xxs">
+                <span class="order-no font-mono text-caption text-grey-7 ellipsis">
                   {{ order.order_no }}
                 </span>
                 <q-btn
@@ -95,28 +99,12 @@
                     {{ $t('shop_admin.copy_order_no', 'Copy Order No') }}
                   </q-tooltip>
                 </q-btn>
-              </div>
-
-              <span class="order-date text-caption text-grey-6">
-                {{ formatDate(order.created_at) }}
-              </span>
-            </div>
-
-            <!-- Details / Meta Tags Strip -->
-            <div class="order-details-block column col min-width-0 justify-center">
-              <div class="row items-center no-wrap q-gutter-x-xs ellipsis q-mb-xs">
-                <span v-if="order.name" class="order-name text-weight-bold text-grey-9 ellipsis">
-                  {{ order.name }}
-                </span>
-                <span v-else-if="order.recipient_name" class="order-name text-weight-bold text-grey-9 ellipsis">
-                  {{ order.recipient_name }}
-                </span>
-                <span v-else class="order-name text-weight-medium text-grey-8 ellipsis">
-                  {{ order.shop_name || $t('shop_admin.untitled_order', 'Order') }}
+                <span class="order-date text-caption text-grey-6">
+                  {{ formatDate(order.created_at) }}
                 </span>
               </div>
 
-              <div class="order-meta-line row items-center wrap q-gutter-xs text-caption">
+              <div class="order-meta-line row items-center wrap q-gutter-xs text-caption q-mt-xs">
                 <!-- Shop Name Pill -->
                 <span class="meta-pill meta-pill--shop">
                   <q-icon name="ph ph-storefront" size="12px" class="q-mr-xs text-grey-6" />
@@ -226,6 +214,18 @@ const draftCount = computed(() => {
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '—';
   return date.formatDate(dateStr, 'D MMM YYYY, HH:mm');
+};
+
+/** Dropship `order.name` is "Order for {end customer}"; list title uses dropshipper (customer group). */
+const orderListPrimaryLabel = (order: ShopOrder): string => {
+  if (order.shop_type_snapshot === 'dropship') {
+    const customer = order.customer_group_name?.trim();
+    if (customer) return customer;
+    return order.shop_name || t('shop_admin.untitled_order', 'Order');
+  }
+  if (order.name?.trim()) return order.name.trim();
+  if (order.recipient_name?.trim()) return order.recipient_name.trim();
+  return order.shop_name || t('shop_admin.untitled_order', 'Order');
 };
 
 const copyOrderNo = (orderNo: string) => {
@@ -431,13 +431,9 @@ const getStatusBadgeInfo = (status: string) => {
   outline-offset: -2px;
 }
 
-/* Typography & ID block */
-.order-id-block {
-  min-width: 140px;
-}
-
+/* Typography */
 .order-no {
-  font-size: 13px;
+  font-size: 11px;
   letter-spacing: 0.02em;
 }
 
@@ -778,11 +774,6 @@ body.body--dark .status-returned {
   .order-aside-actions {
     width: 100%;
     justify-content: space-between;
-  }
-  .order-id-block {
-    min-width: 100%;
-    margin-right: 0;
-    margin-bottom: 4px;
   }
 }
 </style>

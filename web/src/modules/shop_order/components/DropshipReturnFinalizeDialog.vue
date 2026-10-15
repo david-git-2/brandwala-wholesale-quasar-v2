@@ -97,7 +97,7 @@
 
         <q-toggle
           v-model="form.deduct_from_middle_man"
-          label="Deduct return fee from merchant wallet"
+          label="Deduct return fee from dropshipper balance"
           color="primary"
           dense
         />

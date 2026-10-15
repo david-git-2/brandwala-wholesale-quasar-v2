@@ -228,7 +228,7 @@ const warehouseSearchReady = computed(
         <div class="col min-width-0">
           <div class="text-overline text-primary">Gift</div>
           <div class="text-subtitle1 text-weight-bold text-grey-9">Add gift item</div>
-          <p class="text-caption text-grey-7 q-mb-none q-mt-xs">Recipient does not pay for gifts.</p>
+          <p class="text-caption text-grey-7 q-mb-none q-mt-xs">End customer does not pay for gifts.</p>
         </div>
         <q-btn
           flat

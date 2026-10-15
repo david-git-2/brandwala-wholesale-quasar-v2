@@ -17,6 +17,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
   (e: 'picked'): void;
+  (e: 'mark-unavailable'): void;
 }>();
 
 const search = ref('');
@@ -355,7 +356,17 @@ const removePick = async (pickId: number) => {
       </q-card-section>
 
       <!-- Footer -->
-      <q-card-actions align="right" class="q-pa-md bg-grey-1 border-top">
+      <q-card-actions class="row items-center justify-between q-pa-md bg-grey-1 border-top">
+        <q-btn
+          v-if="activePicks.length === 0 && pickedTotal === 0"
+          unelevated
+          dense
+          no-caps
+          label="Mark unavailable"
+          class="dropship-invoice-paper__action-btn dropship-invoice-paper__action-btn--unavailable text-weight-bold"
+          @click="emit('mark-unavailable')"
+        />
+        <span v-else />
         <q-btn
           unelevated
           no-caps
@@ -370,7 +381,9 @@ const removePick = async (pickId: number) => {
   </q-dialog>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+@import '../styles/dropship-invoice-paper.scss';
+
 .border-bottom {
   border-bottom: 1px solid #e2e8f0;
 }

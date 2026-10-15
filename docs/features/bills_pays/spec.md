@@ -91,7 +91,7 @@ Build order: [kernel plan](../../../doc/fix/2026-10-12-bills-pays-kernel-plan.md
 | Proforma | No | No |
 | Take | After pay | At issue |
 | Condition | After pay | When paid |
-| Dropship merchant | Remittance | At issue (merchant total) |
+| Dropship merchant | Remittance | At issue (merchant total; issue at ship) |
 | Walk-in | Collect | At issue |
 | AP (per shipment cost bucket) | Pay out (`ap_payout`) | Never sales |
 
@@ -99,7 +99,7 @@ Build order: [kernel plan](../../../doc/fix/2026-10-12-bills-pays-kernel-plan.md
 
 ### AP paper (not AR compose)
 
-AR bills use `bill_lines` (item, qty, sell, disc). AP bills have **no** `bill_lines`. Created only by `sync_shipment_ap_bills`. While shipment `costs_locked` is false, bucket bills stay **`draft`** and sync updates totals; **`lock_global_shipment_costs`** runs sync then `issue_shipment_ap_bills` (`draft` → `issued`). Print snapshot in `bills.channel_meta.ap_paper` (refreshed while unpaid and no pay yet).
+AR bills use `bill_lines` (item, qty, sell, disc). AP bills have **no** `bill_lines`. Created by `sync_shipment_ap_bills` (inbound) or `upsert_dropship_courier_ap_bill` (dropship courier, `source_type=dropship_courier`). While shipment `costs_locked` is false, bucket bills stay **`draft`** and sync updates totals; **`lock_global_shipment_costs`** runs sync then `issue_shipment_ap_bills` (`draft` → `issued`). Dropship courier AP is **`issued` at ship**. Print snapshot in `bills.channel_meta.ap_paper` (refreshed while unpaid and no pay yet).
 
 | `ap_kind` (= cost bucket) | Print shows | Not on paper |
 | :--- | :--- | :--- |

@@ -12,7 +12,7 @@ export function useQuickRemitMutation() {
     },
     onSuccess: async (data) => {
       showSuccessNotification(
-        `Order payment remitted and middleman profit unlocked (Order #${data.order_id}).`
+        `Order payment remitted and dropshipper profit unlocked (Order #${data.order_id}).`
       );
       // Invalidate shop order queries to update table lists and holding summary
       await queryClient.invalidateQueries({ queryKey: ['shopOrder'] });

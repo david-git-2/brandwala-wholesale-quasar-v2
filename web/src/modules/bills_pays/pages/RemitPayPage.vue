@@ -7,7 +7,7 @@
       <div class="pay-form-card q-pa-md q-gutter-y-md">
         <div class="text-subtitle1 text-weight-bold">Courier remittance</div>
         <p class="text-caption text-grey-7 q-ma-none">
-          Net bank in only — not COD face. Allocates to the merchant bill on the order.
+          Net bank in only — not COD face. Allocates to the customer invoice on the order.
         </p>
 
         <div v-if="loading" class="text-grey-7">Loading queue…</div>

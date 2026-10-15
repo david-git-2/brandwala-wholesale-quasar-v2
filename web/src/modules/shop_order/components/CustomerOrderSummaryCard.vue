@@ -111,7 +111,7 @@
             </div>
 
             <div class="row justify-between text-body2 text-weight-medium text-positive">
-              <span>{{ $t('shop_admin.your_profit') }}</span>
+              <span>{{ $t('shop.estimated_profit') }}</span>
               <span>{{ currencySymbol }}{{ estimatedProfit.toFixed(2) }}</span>
             </div>
           </div>

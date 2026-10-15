@@ -262,6 +262,25 @@ const saveDropshipSettlementDraft = async (
   }
 };
 
+const previewDropshipDeliverBillNotes = async (
+  tenantId: number,
+  orderId: number,
+): Promise<ShopServiceResult<unknown>> => {
+  try {
+    const data = await shopOrderRepository.previewDropshipDeliverBillNotes(tenantId, orderId);
+    const row = (data ?? {}) as { success?: boolean; error?: string };
+    if (row.success === false) {
+      return { success: false, error: row.error ?? 'Failed to preview bill notes.' };
+    }
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to preview bill notes.'),
+    };
+  }
+};
+
 const markDropshipOrderDelivered = async (
   tenantId: number,
   orderId: number,
@@ -333,13 +352,13 @@ const shipDropshipOrderAndIssueMerchantBill = async (
     const data = await shopOrderRepository.shipDropshipOrderAndIssueMerchantBill(tenantId, orderId);
     const row = (data ?? {}) as { success?: boolean; error?: string };
     if (row.success === false) {
-      return { success: false, error: row.error ?? 'Failed to ship order and issue merchant bill.' };
+      return { success: false, error: row.error ?? 'Failed to ship order and issue customer invoice.' };
     }
     return { success: true, data };
   } catch (error) {
     return {
       success: false,
-      error: getErrorMessage(error, 'Failed to ship order and issue merchant bill.'),
+      error: getErrorMessage(error, 'Failed to ship order and issue customer invoice.'),
     };
   }
 };
@@ -371,7 +390,7 @@ const transferDropshipResellerProfit = async (
 ): Promise<ShopServiceResult<unknown>> => {
   try {
     const data = await shopOrderRepository.transferDropshipResellerProfit(tenantId, orderId, payload);
-    const rpcError = getRpcFailure(data, 'Failed to transfer reseller profit.');
+    const rpcError = getRpcFailure(data, 'Failed to transfer dropshipper profit.');
     if (rpcError) {
       return { success: false, error: rpcError };
     }
@@ -379,7 +398,7 @@ const transferDropshipResellerProfit = async (
   } catch (error) {
     return {
       success: false,
-      error: getErrorMessage(error, 'Failed to transfer reseller profit.'),
+      error: getErrorMessage(error, 'Failed to transfer dropshipper profit.'),
     };
   }
 };
@@ -627,6 +646,7 @@ export const shopOrderService = {
   fetchDropshipStaffOrders,
   fetchDropshipManagementOrder,
   saveDropshipSettlementDraft,
+  previewDropshipDeliverBillNotes,
   markDropshipOrderDelivered,
   markDropshipOrderReturnedFromSettlement,
   issueDropshipTenantB2bInvoice,

@@ -8,7 +8,7 @@
             <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
             <div>
               <div class="text-overline text-primary">Dropship Orders</div>
-              <h1 class="text-h5 text-weight-bold q-my-none">Recipient Invoice Preview</h1>
+              <h1 class="text-h5 text-weight-bold q-my-none">End customer slip preview</h1>
               <p v-if="order?.order_no" class="text-body2 text-grey-7 q-mt-xs q-mb-none">
                 Order #{{ order.order_no }}
               </p>
@@ -59,7 +59,7 @@
 
             <q-input
               v-model="recipientName"
-              label="Recipient Name"
+              label="End customer name"
               outlined
               dense
               class="q-mb-md"
@@ -67,7 +67,7 @@
 
             <q-input
               v-model="recipientPhone"
-              label="Recipient Phone"
+              label="End customer phone"
               outlined
               dense
               class="q-mb-md"
@@ -75,7 +75,7 @@
 
             <q-input
               v-model="recipientAddress"
-              label="Recipient Address"
+              label="End customer address"
               type="textarea"
               outlined
               dense
@@ -102,7 +102,7 @@
               unelevated
               no-caps
               icon="ph ph-printer"
-              label="Print Recipient Invoice"
+              label="Print end customer slip"
               class="full-width text-weight-bold"
               @click="printInvoice"
             />
@@ -281,10 +281,10 @@ onMounted(async () => {
         brandName.value = bp.name || '';
         brandAddress.value = bp.address || '';
       } else {
-        brandName.value = orderRes.order.customer_group_name || 'Dropship Reseller';
+        brandName.value = orderRes.order.customer_group_name || 'Dropshipper';
       }
     } else {
-      brandName.value = orderRes.order.customer_group_name || 'Dropship Reseller';
+      brandName.value = orderRes.order.customer_group_name || 'Dropshipper';
     }
   } catch (err) {
     console.error('Failed to load dropship order data for print preview:', err);

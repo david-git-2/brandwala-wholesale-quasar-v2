@@ -5,7 +5,7 @@
         <div class="col">
           <h1 class="text-h5 q-my-none">Pickup locations</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Warehouse or shop addresses the courier picks up from. Not the reseller.
+            Warehouse or shop addresses the courier picks up from. Not the dropshipper’s end customer.
           </p>
         </div>
         <div class="col-auto">

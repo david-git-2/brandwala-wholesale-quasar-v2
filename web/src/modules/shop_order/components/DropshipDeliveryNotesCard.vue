@@ -28,7 +28,7 @@ const updateField = (key: string, val: any) => {
         <div class="col-12">
           <q-toggle
             :model-value="props.form.allow_open_box"
-            label="Allow Open-Box Inspection by Recipient"
+            label="Allow open-box inspection by end customer"
             color="primary"
             @update:model-value="(val) => updateField('allow_open_box', val)"
           />

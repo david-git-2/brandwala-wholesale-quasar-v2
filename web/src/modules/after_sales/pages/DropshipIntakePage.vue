@@ -145,7 +145,7 @@ const intakeSourceOptions = [
 
 const reportedToOptions = [
   { label: 'Company', value: 'company' },
-  { label: 'Merchant', value: 'merchant' },
+  { label: 'Dropshipper', value: 'merchant' },
 ];
 
 const reasonOptions = [

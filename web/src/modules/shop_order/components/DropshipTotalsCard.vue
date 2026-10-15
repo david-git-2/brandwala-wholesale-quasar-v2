@@ -143,19 +143,19 @@ const updateField = (key: string, val: any) => {
         </div>
         <q-separator class="q-my-sm" />
         <div class="row justify-between items-baseline">
-          <span class="text-subtitle2 text-weight-bold text-grey-9">Recipient Pay Total</span>
+          <span class="text-subtitle2 text-weight-bold text-grey-9">End customer pay total</span>
           <span class="text-h6 text-weight-bold text-primary">{{ formatBdt(recipientGrandTotal) }}</span>
         </div>
         <q-separator class="q-my-sm" />
         <div class="row justify-between text-body2 text-weight-medium text-grey-9">
-          <span>B2B / Wallet Invoice</span>
+          <span>Customer invoice (B2B)</span>
           <span>{{ formatBdt(b2bInvoiceDisplay) }}</span>
         </div>
         <div class="text-caption text-grey-6 q-mb-xs">
           Wholesale + print + packing (posted to billing-profile AR &amp; tenant revenue). Excludes courier fees.
         </div>
         <div class="row justify-between text-caption text-grey-6">
-          <span>Middle-Man Cost (profit basis)</span>
+          <span>Dropshipper cost (profit basis)</span>
           <span>{{ formatBdt(middlemanTotalCost) }}</span>
         </div>
         <div class="text-caption text-grey-6 q-mb-xs">

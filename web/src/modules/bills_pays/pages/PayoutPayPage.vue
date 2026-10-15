@@ -7,7 +7,7 @@
       <div class="pay-form-card q-pa-md q-gutter-y-md">
         <q-tabs v-model="mode" dense align="left" active-color="primary" indicator-color="primary">
           <q-tab name="ap" label="Shipment AP" />
-          <q-tab name="merchant" label="Dropship shop profit" />
+          <q-tab name="merchant" label="Dropshipper profit" />
         </q-tabs>
         <q-separator />
 
@@ -178,7 +178,7 @@
 
           <q-tab-panel name="merchant" class="q-pa-none q-gutter-y-md">
             <p class="text-caption text-grey-7 q-ma-none">
-              Dropship shop profit on cashbook after courier pay in. Not a bill allocation.
+              Dropshipper profit on cashbook after courier pay in. Not a bill allocation.
             </p>
             <q-input v-model="search" outlined dense label="Search shop / group" debounce="300" @update:model-value="loadSummary" />
             <q-list bordered separator class="rounded-borders">

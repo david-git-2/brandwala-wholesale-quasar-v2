@@ -2,7 +2,7 @@
   <q-card flat bordered class="q-pa-md">
     <div class="text-subtitle1 text-weight-bold text-primary q-mb-md row items-center gap-xs">
       <q-icon name="ph ph-hand-coins" size="20px" />
-      <span>Step 3: Dropship shop profit</span>
+      <span>Step 3: {{ DROPSHIP_TERM.dropshipperProfit }}</span>
     </div>
 
     <q-form @submit.prevent="handleConfirm" class="q-gutter-y-sm">
@@ -15,11 +15,11 @@
             option-label="label"
             emit-value
             map-options
-            label="Select Merchant / Middleman"
+            :label="`Select ${DROPSHIP_TERM.dropshipper}`"
             outlined
             dense
             class="soft-input"
-            :rules="[val => !!val || 'Merchant profile is required']"
+            :rules="[val => !!val || 'Dropshipper profile is required']"
           />
         </div>
 
@@ -67,7 +67,7 @@
           unelevated
           no-caps
           :loading="loading"
-          label="Pay out from merchant cashbook"
+          :label="`Pay out from ${DROPSHIP_TERM.dropshipper.toLowerCase()} cashbook`"
         />
       </div>
     </q-form>
@@ -77,6 +77,7 @@
 <script setup lang="ts">
 import { reactive, computed, watch } from 'vue';
 import type { FinanceHubMerchantItem } from '../../repositories/dropshipFinanceRepository';
+import { DROPSHIP_TERM } from '../../constants/dropshipTerminology';
 
 const props = defineProps<{
   merchants: FinanceHubMerchantItem[];

@@ -544,6 +544,7 @@ export interface ShopOrder {
   placed_at: string | null;
   fulfilled_at: string | null;
   global_invoice_id: number | null;
+  courier_ap_bill_id?: number | null;
   shop_sell_currency_id?: number | null;
   shop_buy_currency_id?: number | null;
   shop_sell_currency_symbol?: string | null;

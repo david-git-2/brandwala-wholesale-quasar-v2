@@ -13,6 +13,7 @@
           :model-value="recipientPaysDelivery"
           color="primary"
           dense
+          :disable="disable"
           :label="$t('shop.dropship_recipient_pays_delivery')"
           @update:model-value="$emit('update:recipientPaysDelivery', $event)"
         />
@@ -30,6 +31,7 @@
           :model-value="recipientPaysCod"
           color="primary"
           dense
+          :disable="disable"
           :label="$t('shop.dropship_recipient_pays_cod')"
           @update:model-value="$emit('update:recipientPaysCod', $event)"
         />
@@ -92,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import { withDefaults } from 'vue';
 import { formatCartMoney } from '../utils/cartPriceUtils';
 
 export interface DropshipChargePreview {
@@ -103,12 +106,16 @@ export interface DropshipChargePreview {
   recipientPaysCod: boolean;
 }
 
-const props = defineProps<{
-  recipientPaysDelivery: boolean;
-  recipientPaysCod: boolean;
-  charges: DropshipChargePreview;
-  currencySymbol?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    recipientPaysDelivery: boolean;
+    recipientPaysCod: boolean;
+    charges: DropshipChargePreview;
+    currencySymbol?: string;
+    disable?: boolean;
+  }>(),
+  { disable: false },
+);
 
 defineEmits<{
   (e: 'update:recipientPaysDelivery', value: boolean): void;

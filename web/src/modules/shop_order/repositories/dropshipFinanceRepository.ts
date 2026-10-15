@@ -79,6 +79,7 @@ export const dropshipFinanceRepository = {
     courierCharge?: number;
     remittanceRef?: string;
     bankTrxId?: string;
+    cashbookPointId: number;
   }) {
     if (!(params.netAmount > 0)) {
       throw new Error('Net remittance amount must be positive');
@@ -89,6 +90,7 @@ export const dropshipFinanceRepository = {
       p_remittance_ref: params.remittanceRef ?? `REMIT-${params.orderId}`,
       p_bank_trx_id: params.bankTrxId ?? null,
       p_courier_charge: params.courierCharge ?? 0,
+      p_cashbook_point_id: params.cashbookPointId,
     });
 
     if (error) throw error;

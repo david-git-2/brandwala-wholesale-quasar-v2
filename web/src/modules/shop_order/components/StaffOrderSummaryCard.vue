@@ -165,7 +165,7 @@ const saveCharges = () => {
         <!-- Dropship detailed context preview -->
         <template v-if="order.shop_type_snapshot === 'dropship'">
           <div class="row justify-between text-body2 text-grey-7 q-mb-xs">
-            <span>Seller (Middle-man):</span>
+            <span>Dropshipper:</span>
             <span class="text-weight-bold text-grey-8">{{ order.customer_group_name }}</span>
           </div>
 
@@ -231,17 +231,17 @@ const saveCharges = () => {
           <q-separator class="q-my-sm" />
 
           <div class="row justify-between text-body1 text-weight-bold text-grey-9 q-mb-sm">
-            <span>Recipient Grand Total:</span>
+            <span>End customer pay total:</span>
             <span>{{ currencySymbol }}{{ recipientGrandTotal.toFixed(2) }}</span>
           </div>
 
           <div class="bg-blue-50 q-pa-sm rounded-borders text-caption text-grey-8 q-mb-sm" style="border: 1px solid #bfdbfe;">
             <div class="row justify-between">
-              <span>Wholesale Base Cost:</span>
+              <span>Supplier price (B2B):</span>
               <span class="text-weight-bold">{{ currencySymbol }}{{ accountingSubtotal.toFixed(2) }}</span>
             </div>
             <div class="row justify-between">
-              <span>Middle-man Total Cost:</span>
+              <span>Dropshipper cost (incl. deductions):</span>
               <span class="text-weight-bold text-grey-9">{{ currencySymbol }}{{ middlemanTotalCost.toFixed(2) }}</span>
             </div>
             <q-separator class="q-my-xs" />
