@@ -56,6 +56,17 @@
           <q-banner dense rounded class="bg-blue-1 text-blue-10 q-mt-md">
             Remittance profit is on the shop cashbook. Pay it out here — do not allocate to another bill.
           </q-banner>
+          <q-select
+            v-model="shopPayFromPotId"
+            :options="shopPayFromOptions"
+            emit-value
+            map-options
+            outlined
+            dense
+            label="Pay from (location & currency)"
+            class="q-mt-sm"
+            :loading="shopPayFromLoading"
+          />
           <q-input
             v-model.number="shopPayoutAmount"
             type="number"
@@ -191,6 +202,8 @@ import { fifoFillByOldest } from '../utils/fifoBillAlloc';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { useQueryClient } from '@tanstack/vue-query';
 import { supabase } from 'src/boot/supabase';
+import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
+import { useCashbookPayFromPotSelect } from '../composables/useCashbookPayFromPotSelect';
 
 type BillAlloc = {
   id: number;
@@ -228,7 +241,11 @@ const payId = computed(() => {
 });
 
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
-
+const parentTenantId = computed(() => {
+  const t = authStore.selectedTenant;
+  if (!t?.id) return 0;
+  return t.parent_id ?? t.id;
+});
 const detailQuery = useQuery({
   queryKey: computed(() => paysQueryKeys.detail(payId.value)),
   queryFn: () => paysRepository.getPayById(payId.value!),
@@ -262,6 +279,22 @@ const canDispenseShopPayout = computed(
     !shopOrderPayoutSettled.value,
 );
 
+const shopPayoutPointsContext = computed(() => ({
+  booksTenantId: parentTenantId.value,
+  entityType: 'tenant',
+  entityId: parentTenantId.value,
+  enabled: parentTenantId.value > 0 && canDispenseShopPayout.value,
+}));
+const { pointsQuery: shopPayoutPointsQuery } = useCashbookPointsQuery(shopPayoutPointsContext);
+const shopPayoutPoints = computed(() => shopPayoutPointsQuery.data.value);
+const shopPayFromEnabled = computed(() => canDispenseShopPayout.value && parentTenantId.value > 0);
+const {
+  selectedPotId: shopPayFromPotId,
+  payFromOptions: shopPayFromOptions,
+  cashbookPointId: shopCashbookPointId,
+  loading: shopPayFromLoading,
+} = useCashbookPayFromPotSelect(shopPayoutPoints, shopPayFromEnabled);
+
 watch(
   () => pay.value?.shop_order_id,
   async (orderId) => {
@@ -280,6 +313,9 @@ watch(
 const canSubmitShopPayout = computed(
   () =>
     canDispenseShopPayout.value &&
+    !!shopPayFromPotId.value &&
+    !!shopCashbookPointId.value &&
+    !shopPayFromLoading.value &&
     (shopPayoutAmount.value ?? 0) > 0 &&
     (shopPayoutAmount.value ?? 0) <= (pay.value?.unallocated_amount ?? 0),
 );
@@ -307,12 +343,15 @@ const submitShopPayout = async () => {
   if (!pay.value?.profile_id || !canSubmitShopPayout.value) return;
   shopPayoutSubmitting.value = true;
   try {
+    if (!shopCashbookPointId.value || !shopPayFromPotId.value) return;
     await paysRepository.dispenseMiddlemanPayout({
       tenant_id: pay.value.tenant_id,
       profile_id: pay.value.profile_id,
       amount: Number(shopPayoutAmount.value),
       payout_method: shopPayoutMethod.value,
       reference_notes: shopPayoutNotes.value || null,
+      cashbook_point_id: shopCashbookPointId.value,
+      cashbook_point_pot_id: shopPayFromPotId.value,
     });
     showSuccessNotification('Shop payout recorded.');
     shopOrderPayoutSettled.value = true;

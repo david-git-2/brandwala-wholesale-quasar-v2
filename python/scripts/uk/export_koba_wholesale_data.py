@@ -13,9 +13,12 @@ from typing import Optional, Tuple, List, Dict, Any
 from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
+import sys
 
 BASE_URL = "https://www.kobainternational.com/wp-json/wc/store/v1/products"
 ROOT_DIR = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from catalog_refresh_lib import add_parent_tenant_argument, log_scrape
 load_dotenv(ROOT_DIR / ".env")
 load_dotenv(ROOT_DIR / "web" / ".env")
 DEFAULT_OUTFILE = ROOT_DIR / "web" / "public" / "uk" / "koba_wholesale_data.json"
@@ -43,6 +46,7 @@ def parse_args() -> argparse.Namespace:
         default=0,
         help="Limit scraping to N products (0 for unlimited; useful for testing)",
     )
+    add_parent_tenant_argument(parser, 10)
     return parser.parse_args()
 
 def login_session(session: requests.Session, email: str, password: str):
@@ -281,6 +285,7 @@ def sync_to_supabase(products: List[Dict[str, Any]], tenant_id: int):
 
 def main():
     args = parse_args()
+    scrape_started = time.perf_counter()
     outfile = Path(args.outfile).expanduser().resolve()
 
     session = requests.Session()
@@ -341,6 +346,12 @@ def main():
         f.write("\n")
 
     print(f"\n✅ Successfully saved {len(all_products)} raw products to {outfile}")
+    log_scrape(
+        source="koba_wholesale",
+        parent_tenant_id=int(args.parent_tenant_id),
+        products_updated=len(all_products),
+        duration_seconds=int(time.perf_counter() - scrape_started),
+    )
 
     # Automatically sync to staging database tables under tenant_id = 13 (Wholesale)
     try:

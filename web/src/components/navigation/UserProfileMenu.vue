@@ -16,7 +16,13 @@
       </div>
 
       <!-- Profile Dropdown Menu -->
-      <q-menu anchor="bottom end" self="top end" class="user-profile-dropdown" style="min-width: 250px">
+      <q-menu
+        anchor="bottom end"
+        self="top end"
+        class="user-profile-dropdown"
+        style="min-width: 250px"
+        @show="loadReleaseVersions"
+      >
         <div class="user-profile-dropdown__header q-pa-md">
           <div class="row items-center no-wrap q-gutter-x-sm">
             <q-avatar size="34px" class="user-profile-btn__avatar">
@@ -39,6 +45,10 @@
             <span class="user-profile-dropdown__badge">
               {{ currentRoleLabel }}
             </span>
+          </div>
+          <div v-if="releaseVersions" class="user-profile-dropdown__versions q-mt-sm">
+            <div>Backend {{ releaseVersions.backend_version }}</div>
+            <div>Frontend {{ releaseVersions.frontend_version }}</div>
           </div>
         </div>
 
@@ -178,14 +188,22 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
+import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
 import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
 import { listShopLoginGroups } from 'src/modules/auth/utils/shopCustomerGroupSession';
 import { getShopSelectCompanyRouteLocation, getAppRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 
+type ReleaseVersions = {
+  backend_version: string;
+  frontend_version: string;
+};
+
 const showAboutDialog = ref(false);
 const companyCount = ref(0);
+const releaseVersions = ref<ReleaseVersions | null>(null);
+const releaseVersionsLoaded = ref(false);
 
 const emit = defineEmits<{
   (e: 'sign-out'): void;
@@ -264,6 +282,25 @@ const goNotificationPreferences = () => {
   );
 };
 
+const loadReleaseVersions = async () => {
+  if (releaseVersionsLoaded.value || isShopScope.value) {
+    return;
+  }
+  releaseVersionsLoaded.value = true;
+  const { data, error } = await supabase.rpc('get_app_release_versions');
+  if (error || !data?.length) {
+    return;
+  }
+  const row = data[0];
+  if (!row?.backend_version && !row?.frontend_version) {
+    return;
+  }
+  releaseVersions.value = {
+    backend_version: row.backend_version || 'unknown',
+    frontend_version: row.frontend_version || 'unknown',
+  };
+};
+
 onMounted(async () => {
   if (!isShopScope.value || !authStore.user?.email || authStore.tenantId == null) {
     return;
@@ -326,6 +363,13 @@ onMounted(async () => {
   font-size: 11.5px;
   color: var(--bw-neutral-muted);
   line-height: 1.3;
+}
+
+.user-profile-dropdown__versions {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--bw-neutral-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .user-profile-dropdown__badge {

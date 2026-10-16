@@ -23,6 +23,7 @@ except ModuleNotFoundError:  # pragma: no cover - handled at runtime
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
+from catalog_refresh_lib import log_upload, resolve_catalog_source, resolve_upload_file_name
 from product_sync_lib import (
     ROOT_DIR,
     SNAPSHOT_RETENTION_DAYS,
@@ -123,6 +124,18 @@ def parse_args() -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         help="Print planned actions without writing to DB.",
+    )
+    parser.add_argument(
+        "--catalog-source",
+        dest="catalog_source",
+        default=os.getenv("CATALOG_REFRESH_SOURCE", "").strip(),
+        help="catalog_refresh_log source key (default: CATALOG_REFRESH_SOURCE or vendor).",
+    )
+    parser.add_argument(
+        "--upload-file-name",
+        dest="upload_file_name",
+        default=os.getenv("CATALOG_UPLOAD_FILE_NAME", "").strip(),
+        help="Original Excel file name for catalog_refresh_log.",
     )
     parser.add_argument(
         "--images-dir",
@@ -337,6 +350,7 @@ def guess_content_type(path: Path) -> str:
 
 def main() -> int:
     args = parse_args()
+    sync_started = time.perf_counter()
     switch_web_env_to_prod()
 
     parent_raw = to_text(args.parent_tenant_id) or "15"
@@ -816,7 +830,17 @@ def main() -> int:
         f"update_failures={update_failures}, insert_failures={insert_failures}",
         flush=True,
     )
-
+    products_updated = max(0, len(updates) - update_failures)
+    if insert_failures == 0:
+        products_updated += len(inserts)
+    if not args.dry_run:
+        log_upload(
+            source=resolve_catalog_source(args.catalog_source, vendor_code.lower()),
+            parent_tenant_id=parent_tenant_id,
+            file_name=resolve_upload_file_name(args.upload_file_name, input_path),
+            products_updated=products_updated,
+            duration_seconds=int(time.perf_counter() - sync_started),
+        )
     print("Sync complete.")
     return 0
 

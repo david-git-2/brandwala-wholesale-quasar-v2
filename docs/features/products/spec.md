@@ -17,6 +17,7 @@
 | Products, brands, categories | Grep `products`, `product_brands` in `public.sql` |
 | Tags | `web/src/modules/tag/`, tag tables in `public.sql` |
 | PC import | Grep `price check` / PC pipeline in `products/` module |
+| Scrape/upload log & deploy versions (planned) | [upload-and-release-visibility.md](upload-and-release-visibility.md) |
 | Pages | `web/src/modules/products/pages/` |
 
 ## Scope

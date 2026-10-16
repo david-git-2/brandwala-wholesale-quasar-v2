@@ -5,9 +5,16 @@
     </div>
     <div class="col overflow-auto">
       <div class="pay-form-card q-pa-md q-gutter-y-md">
-        <q-tabs v-model="mode" dense align="left" active-color="primary" indicator-color="primary">
+        <q-tabs
+          v-model="mode"
+          dense
+          align="left"
+          active-color="primary"
+          indicator-color="primary"
+          class="payout-pay-tabs"
+        >
           <q-tab name="ap" label="Shipment AP" />
-          <q-tab name="merchant" label="Dropshipper profit" />
+          <q-tab name="customer" label="Customer cash out" />
         </q-tabs>
         <q-separator />
 
@@ -176,31 +183,72 @@
             </template>
           </q-tab-panel>
 
-          <q-tab-panel name="merchant" class="q-pa-none q-gutter-y-md">
+          <q-tab-panel name="customer" class="q-pa-none q-gutter-y-md">
             <p class="text-caption text-grey-7 q-ma-none">
-              Dropshipper profit on cashbook after courier pay in. Not a bill allocation.
+              Send money to customers who have available balance on their cashbook (overpay or deposit). Not a bill
+              allocation.
             </p>
-            <q-input v-model="search" outlined dense label="Search shop / group" debounce="300" @update:model-value="loadSummary" />
-            <q-list bordered separator class="rounded-borders">
+            <q-input
+              v-model="search"
+              outlined
+              dense
+              label="Search customer"
+              debounce="300"
+              @update:model-value="loadCustomers"
+            />
+            <q-list v-if="customerRows.length" bordered separator class="rounded-borders">
               <q-item
-                v-for="row in summary"
-                :key="row.customer_group_id"
+                v-for="row in customerRows"
+                :key="row.entity_id"
                 clickable
-                :active="selectedGroupId === row.customer_group_id"
-                @click="selectGroup(row)"
+                :active="selectedCustomerId === row.entity_id"
+                @click="selectCustomer(row)"
               >
                 <q-item-section>
                   <q-item-label>{{ row.name }}</q-item-label>
-                  <q-item-label caption>Payable {{ formatAmountBdt(row.payable_balance) }}</q-item-label>
+                  <q-item-label v-if="row.caption" caption>{{ row.caption }}</q-item-label>
+                  <q-item-label caption>
+                    Available {{ formatAmountBdt(row.available_balance) }}
+                  </q-item-label>
                 </q-item-section>
               </q-item>
             </q-list>
-            <template v-if="selectedProfile">
+            <div v-else class="text-caption text-grey-7 q-py-sm">
+              No customer profiles match.
+            </div>
+            <template v-if="selectedCustomer">
               <div class="text-body2">
-                Profile: <strong>{{ selectedProfile.name }}</strong> · Balance
-                {{ formatAmountBdt(selectedProfile.payable_balance) }}
+                <strong>{{ selectedCustomer.name }}</strong>
               </div>
-              <q-input v-model.number="amount" outlined dense label="Payout amount" type="number" />
+              <div class="text-caption text-grey-7">
+                They have {{ formatAmountBdt(selectedCustomer.available_balance) }}
+                · They owe {{ formatAmountBdt(customerDueTotal) }}
+              </div>
+              <div v-if="loadingCustomerBills" class="text-caption text-grey-7">Loading unpaid bills…</div>
+              <q-list v-else-if="customerDueBills.length" bordered separator class="rounded-borders">
+                <q-item v-for="bill in customerDueBills" :key="bill.id">
+                  <q-item-section>
+                    <q-item-label>{{ bill.invoice_no }}</q-item-label>
+                    <q-item-label v-if="bill.source_context_label" caption>{{ bill.source_context_label }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-item-label>Due {{ formatAmountBdt(bill.due_amount) }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+              <div v-else class="text-caption text-grey-7">No unpaid bills.</div>
+              <q-select
+                v-model="customerPayFromPotId"
+                :options="customerPayFromOptions"
+                emit-value
+                map-options
+                outlined
+                dense
+                label="Pay from (location & currency)"
+                hint="Till, safe, or bank — tenant cash leaves this pot"
+                :loading="customerPayFromLoading"
+              />
+              <q-input v-model.number="amount" outlined dense label="Cash out amount" type="number" />
               <q-select
                 v-model="method"
                 :options="methodOptions"
@@ -216,10 +264,10 @@
                 unelevated
                 color="primary"
                 no-caps
-                label="Pay out"
+                label="Cash out"
                 :loading="submitting"
-                :disable="!canSubmitMerchant"
-                @click="submitMerchant"
+                :disable="!canSubmitCustomer"
+                @click="submitCustomerCashOut"
               />
             </template>
           </q-tab-panel>
@@ -239,9 +287,10 @@ import { formatAmountBdt } from 'src/utils/currency';
 import {
   paysRepository,
   type ApPayProfileSummary,
-  type CustomerGroupPayoutSummary,
   type OpenApBillRow,
 } from '../repositories/paysRepository';
+import { cashbookRepository, type CashbookEntityRow } from '../repositories/cashbookRepository';
+import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import PaymentInstrumentExtrasFields from '../components/PaymentInstrumentExtrasFields.vue';
 import { useWholesalePaymentMethodMeta } from '../composables/useWholesalePaymentMethodMeta';
@@ -266,7 +315,7 @@ const route = useRoute();
 const router = useRouter();
 const queryClient = useQueryClient();
 
-const mode = ref<'ap' | 'merchant'>('ap');
+const mode = ref<'ap' | 'customer'>('ap');
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
 const parentTenantId = computed(() => {
   const t = authStore.selectedTenant;
@@ -275,9 +324,19 @@ const parentTenantId = computed(() => {
 });
 
 const search = ref('');
-const summary = ref<CustomerGroupPayoutSummary[]>([]);
-const selectedGroupId = ref<number | null>(null);
-const selectedProfile = ref<{ profile_id: number; name: string; payable_balance: number } | null>(null);
+const customerRows = ref<CashbookEntityRow[]>([]);
+const selectedCustomerId = ref<number | null>(null);
+const selectedCustomer = ref<{ profile_id: number; name: string; available_balance: number } | null>(null);
+const customerDueBills = ref<Array<{
+  id: number;
+  invoice_no: string;
+  due_amount: number;
+  source_context_label: string | null;
+}>>([]);
+const loadingCustomerBills = ref(false);
+const customerDueTotal = computed(() =>
+  customerDueBills.value.reduce((sum, bill) => sum + (Number(bill.due_amount) || 0), 0),
+);
 const amount = ref<number | null>(null);
 const method = ref('bank_transfer');
 const notes = ref('');
@@ -324,6 +383,22 @@ const {
   sourceCurrencyCode: apSourceCurrency,
   loading: apPayFromLoading,
 } = useCashbookPayFromPotSelect(apPoints, apPayFromEnabled);
+
+const customerPointsContext = computed(() => ({
+  booksTenantId: parentTenantId.value,
+  entityType: 'tenant',
+  entityId: parentTenantId.value,
+  enabled: mode.value === 'customer' && parentTenantId.value > 0,
+}));
+const { pointsQuery: customerPointsQuery } = useCashbookPointsQuery(customerPointsContext);
+const customerPoints = computed(() => customerPointsQuery.data.value);
+const customerPayFromEnabled = computed(() => mode.value === 'customer' && parentTenantId.value > 0);
+const {
+  selectedPotId: customerPayFromPotId,
+  payFromOptions: customerPayFromOptions,
+  cashbookPointId: customerCashbookPointId,
+  loading: customerPayFromLoading,
+} = useCashbookPayFromPotSelect(customerPoints, customerPayFromEnabled);
 
 const {
   paymentCurrency: apPaymentCurrency,
@@ -387,11 +462,13 @@ const apInstrumentFields = computed(() => ({
   instrumentReference: apInstrumentReference.value,
 }));
 
-const canSubmitMerchant = computed(
+const canSubmitCustomer = computed(
   () =>
-    !!selectedProfile.value &&
-    (amount.value ?? 0) > 0 &&
-    (amount.value ?? 0) <= (selectedProfile.value?.payable_balance ?? 0),
+    !!selectedCustomer.value &&
+    !!customerPayFromPotId.value &&
+    !!customerCashbookPointId.value &&
+    !customerPayFromLoading.value &&
+    (amount.value ?? 0) > 0,
 );
 
 const apDueTotal = computed(() =>
@@ -414,12 +491,15 @@ const apSubmitDisabledReason = computed((): string | null => {
 
 const canSubmitAp = computed(() => apSubmitDisabledReason.value === null);
 
-const loadSummary = async () => {
+const loadCustomers = async () => {
   if (!tenantId.value) return;
-  summary.value = await paysRepository.listCustomerGroupsPayoutSummary(tenantId.value, {
+  const rows = await cashbookRepository.listEntities({
+    tenantId: tenantId.value,
+    entityType: 'customer',
     search: search.value,
-    onlyWithPayable: true,
+    limit: 200,
   });
+  customerRows.value = rows;
 };
 
 const loadApProfiles = async () => {
@@ -435,11 +515,34 @@ const selectApProfile = async (row: ApPayProfileSummary) => {
   apAmount.value = apBills.value.reduce((s, b) => s + apBillDueBdt(b), 0);
 };
 
-const selectGroup = (row: CustomerGroupPayoutSummary) => {
-  selectedGroupId.value = row.customer_group_id;
-  const profiles = row.profiles ?? [];
-  selectedProfile.value = profiles[0] ?? null;
-  amount.value = selectedProfile.value?.payable_balance ?? null;
+const selectCustomer = async (row: CashbookEntityRow) => {
+  selectedCustomerId.value = row.entity_id;
+  selectedCustomer.value = {
+    profile_id: row.entity_id,
+    name: row.name,
+    available_balance: row.available_balance,
+  };
+  amount.value = row.available_balance;
+  customerDueBills.value = [];
+  if (!parentTenantId.value) return;
+  loadingCustomerBills.value = true;
+  try {
+    const { data } = await invoiceRepository.listGlobalInvoices({
+      parentTenantId: parentTenantId.value,
+      profileId: row.entity_id,
+      invoiceStatus: 'issued',
+      quickFilter: 'unpaid',
+      pageSize: 100,
+    });
+    customerDueBills.value = data.map((b) => ({
+      id: b.id,
+      invoice_no: b.invoice_no,
+      due_amount: b.due_amount,
+      source_context_label: b.source_context_label ?? null,
+    }));
+  } finally {
+    loadingCustomerBills.value = false;
+  }
 };
 
 const tenantSlugParam = () =>
@@ -506,28 +609,31 @@ const submitAp = async () => {
   }
 };
 
-const submitMerchant = async () => {
-  if (!selectedProfile.value || !canSubmitMerchant.value) return;
+const submitCustomerCashOut = async () => {
+  if (!selectedCustomer.value || !canSubmitCustomer.value) return;
   submitting.value = true;
   try {
+    if (!customerCashbookPointId.value || !customerPayFromPotId.value) return;
     await paysRepository.dispenseMiddlemanPayout({
       tenant_id: tenantId.value,
-      profile_id: selectedProfile.value.profile_id,
+      profile_id: selectedCustomer.value.profile_id,
       amount: Number(amount.value),
       payout_method: method.value,
       reference_notes: notes.value || null,
+      cashbook_point_id: customerCashbookPointId.value,
+      cashbook_point_pot_id: customerPayFromPotId.value,
     });
-    showSuccessNotification('Payout recorded.');
+    showSuccessNotification('Customer cash out recorded.');
     void queryClient.invalidateQueries({ queryKey: paysQueryKeys.root });
     goBack();
   } catch (e) {
-    showErrorNotification(e instanceof Error ? e.message : 'Payout failed.');
+    showErrorNotification(e instanceof Error ? e.message : 'Cash out failed.');
   } finally {
     submitting.value = false;
   }
 };
 
-void loadSummary();
+void loadCustomers();
 void loadApProfiles();
 void loadPaymentMeta((code) => {
   if (mode.value === 'ap') apMethod.value = code;
@@ -554,5 +660,10 @@ void loadPaymentMeta((code) => {
 .pay-submit-wrap :deep(.q-btn.disabled),
 .pay-submit-wrap :deep(.q-btn--disabled) {
   pointer-events: none;
+}
+.payout-pay-tabs :deep(.q-tab__label) {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
 }
 </style>

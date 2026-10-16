@@ -47,4 +47,6 @@ echo "Regenerating types from linked production..."
 mkdir -p web/src/types
 supabase_cmd gen types typescript --linked --schema public > web/src/types/database.types.ts
 
+bash "${ROOT_DIR}/scripts/record-app-release.sh" backend || true
+
 echo "Backend deploy succeeded."

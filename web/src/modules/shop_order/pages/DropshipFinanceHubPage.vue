@@ -191,7 +191,14 @@ async function handleConfirmRemittance(payload: {
   }
 }
 
-async function handleDispensePayout(payload: { profileId: number; amount: number; payoutMethod?: string; referenceNotes?: string }) {
+async function handleDispensePayout(payload: {
+  profileId: number;
+  amount: number;
+  payoutMethod?: string;
+  referenceNotes?: string;
+  cashbookPointId: number;
+  cashbookPointPotId: number;
+}) {
   if (!currentTenantId.value) return;
   await dispenseMiddlemanPayoutMutation.mutateAsync({
     tenantId: currentTenantId.value,

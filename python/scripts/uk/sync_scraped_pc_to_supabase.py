@@ -18,6 +18,9 @@ except ModuleNotFoundError:
 
 # Paths
 SCRIPT_DIR = Path(__file__).resolve().parent
+import sys
+sys.path.insert(0, str(SCRIPT_DIR))
+from catalog_refresh_lib import log_upload
 ROOT_DIR = SCRIPT_DIR.parents[2]
 WEB_ENV_FILE = ROOT_DIR / "web" / ".env"
 ROOT_ENV_FILE = ROOT_DIR / ".env"
@@ -186,6 +189,7 @@ def run_with_retries(task, retries: int = 3, delay: float = 0.5):
             time.sleep(delay * attempt)
 
 def main():
+    sync_started = time.perf_counter()
     supabase_url = to_text(os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL"))
     supabase_key = to_text(os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
 
@@ -316,6 +320,8 @@ def main():
 
     print(f"Planned updates: {len(updates)}")
     print(f"Planned inserts: {len(inserts)}")
+    update_failures = 0
+    insert_failures = 0
 
     # 5. Apply Updates in parallel
     if updates:
@@ -342,6 +348,7 @@ def main():
                     print(f"Updates: {done}/{len(updates)} ({done/len(updates)*100:.1f}%) | Rate: {rate:.1f}/s")
             if failures > 0:
                 print(f"⚠️ Warning: {failures} updates failed.")
+            update_failures = failures
 
     # 6. Apply Inserts in batches
     if inserts:
@@ -369,6 +376,18 @@ def main():
                     print(f"Insert batches: {done}/{len(insert_batches)} ({done/len(insert_batches)*100:.1f}%) | Rate: {rate:.1f}/s")
             if failures > 0:
                 print(f"⚠️ Warning: {failures} insert batches failed.")
+            insert_failures = failures
+
+    products_updated = max(0, len(updates) - update_failures)
+    if insert_failures == 0:
+        products_updated += len(inserts)
+    log_upload(
+        source="pc_pricecheck",
+        parent_tenant_id=PARENT_TENANT_ID,
+        file_name=INPUT_JSON.name,
+        products_updated=products_updated,
+        duration_seconds=int(time.perf_counter() - sync_started),
+    )
 
     print("\n✅ Database sync complete successfully!")
 

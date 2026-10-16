@@ -3,6 +3,7 @@
 pricing, barcodes, SKU codes, case sizes, stock levels, and brands, and saves the data to a JSON file."""
 
 import os
+import sys
 import re
 import json
 import time
@@ -13,6 +14,8 @@ from playwright.sync_api import sync_playwright
 
 # Paths relative to this script
 SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+from catalog_refresh_lib import log_scrape, resolve_parent_tenant_id
 ROOT_DIR = SCRIPT_DIR.parents[2]
 WEB_ENV_FILE = ROOT_DIR / "web" / ".env"
 ROOT_ENV_FILE = ROOT_DIR / ".env"
@@ -79,6 +82,7 @@ COMMON_BRANDS = [
 ]
 
 def main():
+    scrape_started = time.perf_counter()
     out_json = Path(DEFAULT_OUT_JSON)
     out_json.parent.mkdir(parents=True, exist_ok=True)
     
@@ -428,6 +432,12 @@ def main():
 
     print(f"\n✅ Scraped {len(products)} products. Saved to {out_json}")
     print(f"✅ Manifest written to {manifest_path}")
+    log_scrape(
+        source="pc_pricecheck",
+        parent_tenant_id=resolve_parent_tenant_id(None, 15),
+        products_updated=len(products),
+        duration_seconds=int(time.perf_counter() - scrape_started),
+    )
 
 if __name__ == "__main__":
     main()

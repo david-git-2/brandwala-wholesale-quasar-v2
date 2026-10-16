@@ -58,6 +58,22 @@
             class="soft-input"
           />
         </div>
+
+        <div class="col-12">
+          <q-select
+            v-model="payFromPotId"
+            :options="payFromOptions"
+            emit-value
+            map-options
+            outlined
+            dense
+            label="Pay from (location & currency)"
+            hint="Tenant cash leaves this pot"
+            class="soft-input"
+            :loading="payFromLoading"
+            :rules="[val => !!val || 'Choose where cash is paid from']"
+          />
+        </div>
       </div>
 
       <div class="row justify-end q-mt-md">
@@ -67,6 +83,7 @@
           unelevated
           no-caps
           :loading="loading"
+          :disable="!payFromPotId || payFromLoading"
           :label="`Pay out from ${DROPSHIP_TERM.dropshipper.toLowerCase()} cashbook`"
         />
       </div>
@@ -76,8 +93,33 @@
 
 <script setup lang="ts">
 import { reactive, computed, watch } from 'vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useCashbookPointsQuery } from 'src/modules/bills_pays/composables/useCashbookPointsQuery';
+import { useCashbookPayFromPotSelect } from 'src/modules/bills_pays/composables/useCashbookPayFromPotSelect';
 import type { FinanceHubMerchantItem } from '../../repositories/dropshipFinanceRepository';
 import { DROPSHIP_TERM } from '../../constants/dropshipTerminology';
+
+const authStore = useAuthStore();
+const booksTenantId = computed(() => {
+  const t = authStore.selectedTenant;
+  if (!t) return 0;
+  return t.parent_id ?? t.id;
+});
+const pointsContext = computed(() => ({
+  booksTenantId: booksTenantId.value,
+  entityType: 'tenant',
+  entityId: booksTenantId.value,
+  enabled: booksTenantId.value > 0,
+}));
+const { pointsQuery } = useCashbookPointsQuery(pointsContext);
+const points = computed(() => pointsQuery.data.value);
+const payFromEnabled = computed(() => booksTenantId.value > 0);
+const {
+  selectedPotId: payFromPotId,
+  payFromOptions,
+  cashbookPointId,
+  loading: payFromLoading,
+} = useCashbookPayFromPotSelect(points, payFromEnabled);
 
 const props = defineProps<{
   merchants: FinanceHubMerchantItem[];
@@ -86,7 +128,17 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'submit', payload: { profileId: number; amount: number; payoutMethod?: string; referenceNotes?: string }): void;
+  (
+    e: 'submit',
+    payload: {
+      profileId: number;
+      amount: number;
+      payoutMethod?: string;
+      referenceNotes?: string;
+      cashbookPointId: number;
+      cashbookPointPotId: number;
+    },
+  ): void;
 }>();
 
 const form = reactive({
@@ -137,12 +189,14 @@ watch(
 );
 
 function handleConfirm() {
-  if (!form.profileId || form.amount <= 0) return;
+  if (!form.profileId || form.amount <= 0 || !payFromPotId.value || !cashbookPointId.value) return;
   emit('submit', {
     profileId: form.profileId,
     amount: form.amount,
     payoutMethod: form.payoutMethod,
     referenceNotes: form.referenceNotes,
+    cashbookPointId: cashbookPointId.value,
+    cashbookPointPotId: payFromPotId.value,
   });
 }
 </script>

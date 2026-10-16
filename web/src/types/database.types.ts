@@ -47,6 +47,30 @@ export type Database = {
           },
         ]
       }
+      app_release_versions: {
+        Row: {
+          backend_updated_at: string
+          backend_version: string
+          frontend_updated_at: string
+          frontend_version: string
+          id: number
+        }
+        Insert: {
+          backend_updated_at?: string
+          backend_version?: string
+          frontend_updated_at?: string
+          frontend_version?: string
+          id?: number
+        }
+        Update: {
+          backend_updated_at?: string
+          backend_version?: string
+          frontend_updated_at?: string
+          frontend_version?: string
+          id?: number
+        }
+        Relationships: []
+      }
       batch_code_items: {
         Row: {
           barcode: string | null
@@ -865,6 +889,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      catalog_refresh_log: {
+        Row: {
+          duration_seconds: number | null
+          event_kind: string
+          file_name: string | null
+          id: number
+          parent_tenant_id: number
+          products_updated: number | null
+          ran_at: string
+          source: string
+          source_url: string | null
+        }
+        Insert: {
+          duration_seconds?: number | null
+          event_kind: string
+          file_name?: string | null
+          id?: number
+          parent_tenant_id: number
+          products_updated?: number | null
+          ran_at?: string
+          source: string
+          source_url?: string | null
+        }
+        Update: {
+          duration_seconds?: number | null
+          event_kind?: string
+          file_name?: string | null
+          id?: number
+          parent_tenant_id?: number
+          products_updated?: number | null
+          ran_at?: string
+          source?: string
+          source_url?: string | null
+        }
+        Relationships: []
       }
       comments: {
         Row: {
@@ -10239,6 +10299,10 @@ export type Database = {
         Args: { p_charge_lines: Json; p_order_id: number }
         Returns: undefined
       }
+      apply_dropship_payout_settlement_fifo: {
+        Args: { p_amount: number; p_profile_id: number; p_tenant_id: number }
+        Returns: undefined
+      }
       apply_dropship_reseller_unit_purchase: {
         Args: { p_order_id: number; p_unit_sell_price_amount: number }
         Returns: undefined
@@ -11775,6 +11839,18 @@ export type Database = {
         Args: { p_stock_ids: number[]; p_tenant_id: number }
         Returns: Json
       }
+      dispense_middleman_payout_from_tenant: {
+        Args: {
+          p_amount: number
+          p_cashbook_point_id?: number
+          p_cashbook_point_pot_id?: number
+          p_payout_method?: string
+          p_profile_id: number
+          p_reference_notes?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       enqueue_notification: {
         Args: {
           p_action?: string
@@ -11993,6 +12069,15 @@ export type Database = {
           tenant_preference: Json
           tenant_role_id: number
           tenant_slug: string
+        }[]
+      }
+      get_app_release_versions: {
+        Args: never
+        Returns: {
+          backend_updated_at: string
+          backend_version: string
+          frontend_updated_at: string
+          frontend_version: string
         }[]
       }
       get_available_stock: {
@@ -12961,6 +13046,20 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      list_catalog_refresh_log: {
+        Args: { p_limit?: number; p_parent_tenant_id: number }
+        Returns: {
+          duration_seconds: number
+          event_kind: string
+          file_name: string
+          id: number
+          parent_tenant_id: number
+          products_updated: number
+          ran_at: string
+          source: string
+          source_url: string
+        }[]
       }
       list_cgm_ids_with_overrides: {
         Args: { p_customer_group_id: number }

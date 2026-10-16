@@ -72,47 +72,40 @@
           </template>
         </template>
 
-        <!-- Step 1: pick customer group -->
-        <template v-else-if="!selectedGroupId">
+        <template v-else-if="!profileId">
           <div class="text-subtitle1 text-weight-bold">Pay in — customer</div>
           <p class="text-caption text-grey-7 q-ma-none q-mb-md">
             Money they pay you against your sales bills. Courier dropship uses the Courier tab. Vendor AP uses Pay out.
           </p>
 
           <q-input
-            v-model="groupSearch"
+            v-model="profileSearch"
             outlined
             dense
-            label="Search customer group"
+            label="Search profile"
             debounce="300"
             class="q-mb-sm"
-            @update:model-value="loadGroups"
-          />
-          <q-toggle
-            v-model="onlyWithDue"
-            dense
-            label="Only with open bills"
-            class="q-mb-md"
-            @update:model-value="loadGroups"
+            @update:model-value="loadProfiles"
           />
 
-          <q-list v-if="groups.length" bordered separator class="rounded-borders collect-group-list">
+          <q-list v-if="profileRows.length" bordered separator class="rounded-borders collect-group-list">
             <q-item
-              v-for="g in groups"
-              :key="g.id"
+              v-for="row in profileRows"
+              :key="row.entity_id"
               clickable
               v-ripple
-              @click="selectGroup(g)"
+              @click="selectProfile(row)"
             >
               <q-item-section avatar>
                 <q-avatar color="primary" text-color="white" size="36px" font-size="14px">
-                  {{ groupInitials(g.name) }}
+                  {{ profileInitials(row.name) }}
                 </q-avatar>
               </q-item-section>
               <q-item-section>
-                <q-item-label class="text-weight-medium">{{ g.name }}</q-item-label>
+                <q-item-label class="text-weight-medium">{{ row.name }}</q-item-label>
+                <q-item-label v-if="row.caption" caption>{{ row.caption }}</q-item-label>
                 <q-item-label caption>
-                  Due {{ formatAmountBdt(g.total_due) }} · {{ g.open_invoice_count }} open
+                  They have {{ formatAmountBdt(row.available_balance) }}
                 </q-item-label>
               </q-item-section>
               <q-item-section side>
@@ -121,11 +114,10 @@
             </q-item>
           </q-list>
           <div v-else class="text-center text-grey-7 q-pa-lg">
-            No customer groups match. Try turning off “Only with open bills” or change your search.
+            No profiles match.
           </div>
         </template>
 
-        <!-- Step 2: receipt against selected group -->
         <template v-else-if="payInKind === 'customer'">
           <q-btn
             flat
@@ -133,39 +125,43 @@
             no-caps
             color="primary"
             icon="ph ph-arrow-left"
-            label="Change customer"
+            label="Change profile"
             class="q-mb-sm q-px-none"
             @click="changeCustomer"
           />
 
           <div class="collect-customer-banner q-pa-md q-mb-md">
-            <div class="collect-customer-banner__title text-subtitle1 text-weight-bold">{{ selectedGroup?.name }}</div>
+            <div class="collect-customer-banner__title text-subtitle1 text-weight-bold">{{ selectedProfileName }}</div>
             <div class="collect-customer-banner__meta text-caption q-mt-xs">
-              Total due {{ formatAmountBdt(selectedGroup?.total_due ?? 0) }}
-              · {{ selectedGroup?.open_invoice_count ?? 0 }} open bill{{
-                (selectedGroup?.open_invoice_count ?? 0) === 1 ? '' : 's'
-              }}
+              They have {{ formatAmountBdt(selectedAvailable) }}
+              · They owe {{ formatAmountBdt(dueTotal) }}
+              · {{ openBills.length }} unpaid bill{{ openBills.length === 1 ? '' : 's' }}
             </div>
           </div>
 
-          <q-select
-            v-if="profiles.length > 1"
-            v-model="profileId"
-            :options="profiles"
-            option-value="id"
-            option-label="name"
-            emit-value
-            map-options
-            outlined
-            dense
-            label="Bill-to profile"
-            class="q-mb-md"
-          />
-          <div v-else-if="profiles.length === 1" class="text-caption text-grey-7 q-mb-md">
-            Bill-to: <span class="text-weight-medium text-grey-9">{{ profiles[0].name }}</span>
+          <div class="row q-gutter-sm q-mb-md">
+            <q-btn
+              unelevated
+              no-caps
+              color="primary"
+              :outline="payDirection !== 'in'"
+              label="Pay in"
+              @click="payDirection = 'in'"
+            />
+            <q-btn
+              unelevated
+              no-caps
+              color="primary"
+              :outline="payDirection !== 'out'"
+              label="Pay out"
+              @click="payDirection = 'out'"
+            />
           </div>
+          <p class="text-caption text-grey-7 q-mt-none q-mb-md">
+            Pay in is cash they give you. Pay out is cash you send them from their leftover.
+          </p>
 
-          <template v-if="profileId">
+          <template v-if="profileId && payDirection === 'in'">
             <div class="row items-center justify-between q-mb-sm">
               <div class="text-subtitle2 text-weight-medium">Allocate to bills</div>
               <div class="row items-center q-gutter-xs">
@@ -373,6 +369,56 @@
               </q-tooltip>
             </span>
           </template>
+
+          <template v-else-if="profileId && payDirection === 'out'">
+            <q-select
+              v-model="cashOutPotId"
+              :options="cashOutPayFromOptions"
+              emit-value
+              map-options
+              outlined
+              dense
+              class="q-mb-md"
+              label="Pay from (location & currency)"
+              hint="Till, safe, or bank — company cash leaves this pot"
+              :loading="cashOutPayFromLoading"
+            />
+            <q-input
+              v-model.number="cashOutAmount"
+              outlined
+              dense
+              class="q-mb-md"
+              label="Cash out amount"
+              type="number"
+            />
+            <q-select
+              v-model="methodCode"
+              :options="methodOptions"
+              emit-value
+              map-options
+              outlined
+              dense
+              class="q-mb-md"
+              label="Method"
+              :loading="loadingPaymentMeta"
+            />
+            <q-input v-model="note" outlined dense class="q-mb-md" label="Notes" type="textarea" autogrow />
+            <span class="full-width inline-block">
+              <q-btn
+                unelevated
+                color="primary"
+                no-caps
+                class="full-width"
+                label="Cash out"
+                :loading="cashOutSubmitting"
+                :disable="!canSubmitCashOut"
+                @click="submitCashOut"
+              />
+              <q-tooltip v-if="cashOutDisabledReason">
+                {{ cashOutDisabledReason }}
+              </q-tooltip>
+            </span>
+          </template>
         </template>
       </div>
     </div>
@@ -394,9 +440,14 @@ import {
 import { isAwaitingCourierRemittance } from 'src/modules/shop_order/utils/isAwaitingCourierRemittance';
 import { getInitials } from 'src/modules/sales_invoice/utils/invoiceListDisplay';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
-import { paysRepository, type CustomerGroupPaymentSummary } from '../repositories/paysRepository';
+import { useQueryClient } from '@tanstack/vue-query';
+import { cashbookRepository, type CashbookEntityRow } from '../repositories/cashbookRepository';
 import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import { paysRepository } from '../repositories/paysRepository';
+import { paysQueryKeys } from '../services/paysQueryKeys';
 import { useCollectPayMutation } from '../composables/useCollectPayMutation';
+import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
+import { useCashbookPayFromPotSelect } from '../composables/useCashbookPayFromPotSelect';
 import {
   buildWholesalePaymentInstrument,
   paymentInstrumentExtrasBlockReason,
@@ -408,6 +459,8 @@ const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const collectMutation = useCollectPayMutation();
+const queryClient = useQueryClient();
+const payDirection = ref<'in' | 'out'>('in');
 
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
 
@@ -477,21 +530,32 @@ const parentTenantId = computed(() => {
   return t.parent_id ?? t.id;
 });
 
-const groupSearch = ref('');
-const onlyWithDue = ref(true);
-const groups = ref<CustomerGroupPaymentSummary[]>([]);
-const selectedGroupId = ref<number | null>(null);
-const selectedGroupSnapshot = ref<CustomerGroupPaymentSummary | null>(null);
-const profiles = ref<Array<{ id: number; name: string }>>([]);
-const profileId = ref<number | null>(null);
-const loadingBills = ref(false);
-
-const selectedGroup = computed(
-  () =>
-    selectedGroupSnapshot.value ??
-    groups.value.find((g) => g.id === selectedGroupId.value) ??
-    null,
+const cashOutPointsContext = computed(() => ({
+  booksTenantId: parentTenantId.value ?? 0,
+  entityType: 'tenant',
+  entityId: parentTenantId.value ?? 0,
+  enabled: payDirection.value === 'out' && (parentTenantId.value ?? 0) > 0,
+}));
+const { pointsQuery: cashOutPointsQuery } = useCashbookPointsQuery(cashOutPointsContext);
+const cashOutPoints = computed(() => cashOutPointsQuery.data.value);
+const cashOutPayFromEnabled = computed(
+  () => payDirection.value === 'out' && (parentTenantId.value ?? 0) > 0,
 );
+const {
+  selectedPotId: cashOutPotId,
+  payFromOptions: cashOutPayFromOptions,
+  cashbookPointId: cashOutPointId,
+  loading: cashOutPayFromLoading,
+} = useCashbookPayFromPotSelect(cashOutPoints, cashOutPayFromEnabled);
+const cashOutAmount = ref<number | null>(null);
+const cashOutSubmitting = ref(false);
+
+const profileSearch = ref('');
+const profileRows = ref<CashbookEntityRow[]>([]);
+const profileId = ref<number | null>(null);
+const selectedProfileName = ref('');
+const selectedAvailable = ref(0);
+const loadingBills = ref(false);
 
 type BillAlloc = {
   id: number;
@@ -552,15 +616,21 @@ const loadPaymentMeta = async () => {
   }
 };
 
-const groupInitials = (name: string) => getInitials(name);
+const profileInitials = (name: string) => getInitials(name);
 
-const loadGroups = async () => {
+const loadProfiles = async () => {
   if (!tenantId.value) return;
-  groups.value = await paysRepository.listCustomerGroupsPaymentSummary(tenantId.value, {
-    search: groupSearch.value,
-    onlyWithDue: onlyWithDue.value,
+  profileRows.value = await cashbookRepository.listEntities({
+    tenantId: tenantId.value,
+    entityType: 'customer',
+    search: profileSearch.value,
+    limit: 200,
   });
 };
+
+const dueTotal = computed(() =>
+  openBills.value.reduce((sum, bill) => sum + (Number(bill.due_amount) || 0), 0),
+);
 
 const resetInstrumentFields = () => {
   bdBankId.value = null;
@@ -583,19 +653,33 @@ watch(methodCode, () => {
 });
 
 const changeCustomer = () => {
-  selectedGroupId.value = null;
-  selectedGroupSnapshot.value = null;
-  profiles.value = [];
-  resetReceiptForm();
+  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  router.push(paymentsPageRoute(tenantSlug, payDirection.value));
 };
 
-const selectGroup = async (group: CustomerGroupPaymentSummary) => {
-  selectedGroupId.value = group.id;
-  selectedGroupSnapshot.value = group;
-  resetReceiptForm();
-  profiles.value = await paysRepository.listCustomerProfilesForGroup(group.id);
-  profileId.value = profiles.value[0]?.id ?? null;
+const selectProfile = (row: CashbookEntityRow, direction: 'in' | 'out' = 'in') => {
+  selectedProfileName.value = row.name;
+  selectedAvailable.value = row.available_balance;
+  payDirection.value = direction;
+  cashOutAmount.value = row.available_balance;
+  profileId.value = row.entity_id;
 };
+
+const applyRouteProfile = () => {
+  const raw = route.query.profileId;
+  const id = typeof raw === 'string' ? Number(raw) : NaN;
+  if (!Number.isFinite(id) || id <= 0) return;
+  const row = profileRows.value.find((p) => p.entity_id === id);
+  if (!row) return;
+  const direction = route.query.direction === 'out' ? 'out' : 'in';
+  selectProfile(row, direction);
+};
+
+watch(payDirection, (dir) => {
+  if (dir === 'out' && (cashOutAmount.value == null || cashOutAmount.value === 0)) {
+    cashOutAmount.value = selectedAvailable.value;
+  }
+});
 
 watch(profileId, async (profileId) => {
   openBills.value = [];
@@ -720,7 +804,40 @@ const canSubmit = computed(() => submitDisabledReason.value === null);
 
 const goBack = () => {
   const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
-  router.push(paymentsPageRoute(tenantSlug, 'in'));
+  router.push(paymentsPageRoute(tenantSlug, payDirection.value));
+};
+
+const cashOutDisabledReason = computed((): string | null => {
+  if (!profileId.value) return 'Select a profile';
+  if (cashOutPayFromLoading.value) return 'Loading pay-from locations…';
+  if (!cashOutPotId.value || !cashOutPointId.value) return 'Choose where cash is paid from';
+  if ((cashOutAmount.value ?? 0) <= 0) return 'Enter a cash out amount';
+  return null;
+});
+
+const canSubmitCashOut = computed(() => cashOutDisabledReason.value === null);
+
+const submitCashOut = async () => {
+  if (!profileId.value || !canSubmitCashOut.value || !cashOutPointId.value || !cashOutPotId.value) return;
+  cashOutSubmitting.value = true;
+  try {
+    await paysRepository.dispenseMiddlemanPayout({
+      tenant_id: tenantId.value,
+      profile_id: profileId.value,
+      amount: Number(cashOutAmount.value),
+      payout_method: methodCode.value,
+      reference_notes: note.value || null,
+      cashbook_point_id: cashOutPointId.value,
+      cashbook_point_pot_id: cashOutPotId.value,
+    });
+    showSuccessNotification('Cash out recorded.');
+    void queryClient.invalidateQueries({ queryKey: paysQueryKeys.root });
+    goBack();
+  } catch (e) {
+    showErrorNotification(e instanceof Error ? e.message : 'Cash out failed.');
+  } finally {
+    cashOutSubmitting.value = false;
+  }
 };
 
 const submit = async () => {
@@ -746,7 +863,7 @@ const submit = async () => {
   goBack();
 };
 
-void loadGroups();
+void loadProfiles().then(() => applyRouteProfile());
 void loadPaymentMeta();
 
 onMounted(async () => {

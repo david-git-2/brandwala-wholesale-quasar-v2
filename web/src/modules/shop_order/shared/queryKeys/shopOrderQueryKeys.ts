@@ -34,6 +34,8 @@ export const shopOrderQueryKeys = {
     ['shopOrder', 'storefrontProductRelated', { tenantId, shopSlug, productId }] as const,
   catalogSearch: (tenantId: number, search: string, limit?: number) =>
     ['shopOrder', 'catalogSearch', { tenantId, search, limit: limit ?? 15 }] as const,
+  catalogRefreshLog: (parentTenantId: number) =>
+    ['shopOrder', 'catalogRefreshLog', { parentTenantId }] as const,
   staffProductSearch: (params: {
     tenantId: number;
     shopId: number;

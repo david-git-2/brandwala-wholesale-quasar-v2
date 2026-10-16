@@ -3906,6 +3906,67 @@ $$;
 ALTER FUNCTION "public"."can_view_products_internal"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."list_catalog_refresh_log"("p_parent_tenant_id" bigint, "p_limit" integer DEFAULT 50) RETURNS TABLE("id" bigint, "parent_tenant_id" bigint, "source" "text", "event_kind" "text", "source_url" "text", "file_name" "text", "ran_at" timestamp with time zone, "products_updated" integer, "duration_seconds" integer)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if p_parent_tenant_id is null then
+    raise exception 'parent_tenant_id is required';
+  end if;
+  if not public.can_view_products_for_parent(p_parent_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
+  return query
+  select
+    l.id,
+    l.parent_tenant_id,
+    l.source,
+    l.event_kind,
+    l.source_url,
+    l.file_name,
+    l.ran_at,
+    l.products_updated,
+    l.duration_seconds
+  from public.catalog_refresh_log l
+  where l.parent_tenant_id = p_parent_tenant_id
+  order by l.ran_at desc
+  limit greatest(1, least(coalesce(p_limit, 50), 200));
+end;
+$$;
+
+
+CREATE OR REPLACE FUNCTION "public"."get_app_release_versions"() RETURNS TABLE("backend_version" "text", "frontend_version" "text", "backend_updated_at" timestamp with time zone, "frontend_updated_at" timestamp with time zone)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if not (
+    public.is_superadmin()
+    or exists (
+      select 1
+      from public.memberships m
+      where m.is_active = true
+        and lower(trim(m.email)) = public.current_user_email()
+        and public.membership_has_module_action(m.tenant_id, 'products', 'view')
+    )
+  ) then
+    raise exception 'not allowed';
+  end if;
+
+  return query
+  select
+    v.backend_version,
+    v.frontend_version,
+    v.backend_updated_at,
+    v.frontend_updated_at
+  from public.app_release_versions v
+  where v.id = 1;
+end;
+$$;
+
+
 CREATE OR REPLACE FUNCTION "public"."can_view_tenant_modules"("p_tenant_id" bigint) RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -33432,6 +33493,31 @@ CREATE TABLE IF NOT EXISTS "public"."product_sync_snapshots" (
 );
 
 
+CREATE TABLE IF NOT EXISTS "public"."catalog_refresh_log" (
+    "id" bigint NOT NULL,
+    "parent_tenant_id" bigint NOT NULL,
+    "source" "text" NOT NULL,
+    "event_kind" "text" NOT NULL,
+    "source_url" "text",
+    "file_name" "text",
+    "ran_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "products_updated" integer,
+    "duration_seconds" integer,
+    CONSTRAINT "catalog_refresh_log_event_kind_check" CHECK (("event_kind" = ANY (ARRAY['scrape'::"text", 'upload'::"text"]))),
+    CONSTRAINT "catalog_refresh_log_payload_check" CHECK (((("event_kind" = 'scrape'::"text") AND ("source_url" IS NOT NULL) AND ("file_name" IS NULL)) OR (("event_kind" = 'upload'::"text") AND ("file_name" IS NOT NULL))))
+);
+
+
+CREATE TABLE IF NOT EXISTS "public"."app_release_versions" (
+    "id" smallint DEFAULT 1 NOT NULL,
+    "backend_version" "text" DEFAULT 'unknown'::"text" NOT NULL,
+    "frontend_version" "text" DEFAULT 'unknown'::"text" NOT NULL,
+    "backend_updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "frontend_updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "app_release_versions_singleton" CHECK (("id" = 1))
+);
+
+
 ALTER TABLE "public"."product_sync_snapshots" OWNER TO "postgres";
 
 
@@ -39550,6 +39636,14 @@ GRANT SELECT,INSERT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE "public
 GRANT ALL ON FUNCTION "public"."get_product_for_tenant"("p_id" bigint, "p_tenant_id" bigint) TO "authenticated";
 
 
+GRANT ALL ON FUNCTION "public"."list_catalog_refresh_log"("p_parent_tenant_id" bigint, "p_limit" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_catalog_refresh_log"("p_parent_tenant_id" bigint, "p_limit" integer) TO "service_role";
+
+
+GRANT ALL ON FUNCTION "public"."get_app_release_versions"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_app_release_versions"() TO "service_role";
+
+
 REVOKE ALL ON FUNCTION "public"."get_shipment_overview_details"("p_shipment_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_shipment_overview_details"("p_shipment_id" bigint) TO "authenticated";
 
@@ -40899,6 +40993,15 @@ GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public
 
 
 GRANT ALL ON SEQUENCE "public"."product_sync_snapshots_id_seq" TO "service_role";
+
+
+GRANT SELECT,INSERT ON TABLE "public"."catalog_refresh_log" TO "service_role";
+
+
+GRANT USAGE, SELECT ON SEQUENCE "public"."catalog_refresh_log_id_seq" TO "service_role";
+
+
+GRANT SELECT,INSERT,UPDATE ON TABLE "public"."app_release_versions" TO "service_role";
 
 
 GRANT UPDATE ON SEQUENCE "public"."products_id_seq" TO "anon";

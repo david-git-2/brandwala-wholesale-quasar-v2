@@ -86,6 +86,13 @@ const billsPaysRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('payments'),
       },
       {
+        path: 'party/:entityType/:entityId',
+        name: 'app-payment-profile-page',
+        component: () => import('../pages/PaymentProfilePage.vue'),
+        meta: { hasPageToolbar: true, title: 'Profile', headerTitle: 'Profile' },
+        beforeEnter: guard('payments'),
+      },
+      {
         path: ':payId',
         name: 'app-pay-detail-page',
         component: () => import('../pages/PayDetailPage.vue'),

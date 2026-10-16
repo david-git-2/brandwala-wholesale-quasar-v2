@@ -200,13 +200,6 @@
                     <span class="shop-slug text-grey-6 font-mono ellipsis">
                       {{ shop.slug }}
                     </span>
-                    <span
-                      v-if="isParentTenant && shop.tenant_name"
-                      class="tenant-tag q-ml-xs flex-shrink-0"
-                    >
-                      <q-icon name="ph ph-buildings" size="11px" class="q-mr-xs text-grey-6" />
-                      {{ shop.tenant_name }}
-                    </span>
                   </div>
 
                   <!-- Description / Meta Strip -->
@@ -227,19 +220,14 @@
                         {{ vendor }}
                       </span>
                     </template>
-
-                    <!-- Created Date -->
-                    <span class="text-grey-5 meta-date">
-                      {{ formatCreatedAt(shop.created_at) }}
-                    </span>
-
-                    <!-- Description Preview if present -->
                     <span
-                      v-if="shop.description"
-                      class="text-grey-6 shop-desc-preview ellipsis"
-                      :title="shop.description"
+                      v-for="line in shopVendorCatalogLines(shop)"
+                      :key="line.vendor"
+                      class="meta-catalog-update row items-center no-wrap q-gutter-x-xs"
                     >
-                      · {{ shop.description }}
+                      <span class="meta-catalog-update__vendor text-grey-7">{{ line.vendor }}</span>
+                      <span class="meta-catalog-update__file text-grey-9">{{ line.fileName }}</span>
+                      <span class="meta-catalog-update__date text-grey-5">{{ line.updatedAt }}</span>
                     </span>
                   </div>
                 </div>
@@ -291,12 +279,13 @@
 import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import { date } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue';
 import { useChildTenantsQuery } from 'src/modules/procurement_stock/composables/useProcurementStockQuery';
 import { useInfiniteShopListQuery, type ShopListQueryParams } from '../composables/useShopQuery';
 import { useSaveShopMutation } from '../composables/useShopMutations';
+import { useCatalogRefreshLogQuery } from '../composables/useCatalogRefreshLogQuery';
+import { catalogRefreshDisplayForVendor } from '../utils/catalogRefreshByVendor';
 import type { Shop, ShopType, CreateShopPayload } from 'src/modules/shop_order/types';
 
 const authStore = useAuthStore();
@@ -339,6 +328,8 @@ const {
   isFetchingNextPage,
   fetchNextPage,
 } = useInfiniteShopListQuery(queryParams, 20);
+
+const { data: catalogRefreshRows } = useCatalogRefreshLogQuery(parentTenantId);
 
 const childTenantOptions = computed(() => {
   const map = new Map<number, string>();
@@ -438,10 +429,28 @@ const shopVendorLabels = (shop: Shop): string[] => {
   return legacy ? [legacy] : [];
 };
 
-const formatCreatedAt = (value?: string | null) => {
-  if (!value) return '—';
-  return date.formatDate(value, 'D MMM YYYY');
+type VendorCatalogLine = { vendor: string; fileName: string; updatedAt: string };
+
+const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
+  const rows = catalogRefreshRows.value ?? [];
+  if (!rows.length) {
+    return [];
+  }
+  return shopVendorLabels(shop)
+    .map((vendor) => {
+      const display = catalogRefreshDisplayForVendor(rows, vendor);
+      if (!display) {
+        return null;
+      }
+      return {
+        vendor,
+        fileName: display.fileName,
+        updatedAt: display.updatedAt,
+      };
+    })
+    .filter((line): line is VendorCatalogLine => line !== null);
 };
+
 </script>
 
 <style scoped>
@@ -591,19 +600,6 @@ const formatCreatedAt = (value?: string | null) => {
   color: #cbd5e1;
 }
 
-.tenant-tag {
-  display: inline-flex;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 1.5px 6px;
-  border-radius: 4px;
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #e2e8f0;
-  line-height: 1.2;
-}
-
 .meta-pill {
   display: inline-flex;
   align-items: center;
@@ -626,13 +622,29 @@ const formatCreatedAt = (value?: string | null) => {
   border: 1px solid #dbeafe;
 }
 
-.meta-date {
+.meta-catalog-update {
   font-size: 11px;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow: hidden;
 }
 
-.shop-desc-preview {
-  max-width: 260px;
-  font-size: 11.5px;
+.meta-catalog-update__vendor {
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.meta-catalog-update__file {
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta-catalog-update__date {
+  flex-shrink: 0;
+  font-size: 11px;
 }
 
 .item-aside {
@@ -759,12 +771,6 @@ body.body--dark .shops-segmented__item {
 body.body--dark .shops-segmented__item--active {
   background: #262626;
   color: #f8fafc;
-}
-
-body.body--dark .tenant-tag {
-  background: rgba(255, 255, 255, 0.08);
-  color: #cbd5e1;
-  border-color: rgba(255, 255, 255, 0.12);
 }
 
 body.body--dark .meta-pill--type {

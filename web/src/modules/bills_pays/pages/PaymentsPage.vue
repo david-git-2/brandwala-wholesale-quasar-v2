@@ -3,112 +3,60 @@
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden invoice-list-stack">
       <ProcurementOpsListToolbar
         :search="searchText"
-        search-placeholder="Search pay ID, reference, note…"
+        search-placeholder="Search profile…"
         :filter-count="0"
         @update:search="onSearchTextUpdate"
       >
         <template #pills>
           <div class="row items-center q-gutter-x-xs quick-filter-toggle">
             <button
-              v-for="tab in sideTabs"
+              v-for="tab in typeTabs"
               :key="tab.value"
               type="button"
               class="quick-filter-pill"
-              :class="{ 'quick-filter-pill--active': side === tab.value }"
-              @click="setSide(tab.value)"
+              :class="{ 'quick-filter-pill--active': entityTab === tab.value }"
+              @click="setEntityTab(tab.value)"
             >
               {{ tab.label }}
             </button>
           </div>
         </template>
-        <template #trailing>
-          <q-btn
-            outline
-            dense
-            no-caps
-            color="grey-8"
-            class="rounded-sq-btn q-px-sm"
-            label="Pay out"
-            icon="ph ph-arrow-up-right"
-            @click="goPayout"
-          />
-          <q-btn
-            unelevated
-            dense
-            no-caps
-            color="primary"
-            class="rounded-sq-btn text-weight-bold q-px-sm"
-            label="Pay in"
-            icon="ph ph-plus"
-            @click="goCollect"
-          />
-        </template>
       </ProcurementOpsListToolbar>
 
-      <template v-if="side === 'out' || side === 'in'">
-        <div v-if="listQuery.isError.value" class="bw-status-banner bg-negative text-white q-pa-sm rounded-borders">
-          {{ listErrorMessage }}
-        </div>
+      <div v-if="listError" class="bw-status-banner bg-negative text-white q-pa-sm rounded-borders">
+        {{ listError }}
+      </div>
 
-        <div
-          v-if="listQuery.isPending.value && !listQuery.data.value?.data.length"
-          class="invoice-list-card col"
-        >
-          <div class="invoice-list-scroll">
-            <div v-for="n in 6" :key="n" class="invoice-list-item invoice-list-item--skeleton">
-              <q-skeleton type="text" width="60%" />
-            </div>
+      <div
+        v-if="isPending && !rows.length"
+        class="invoice-list-card col"
+      >
+        <div class="invoice-list-scroll">
+          <div v-for="n in 6" :key="n" class="invoice-list-item invoice-list-item--skeleton">
+            <q-skeleton type="text" width="60%" />
           </div>
         </div>
+      </div>
 
-        <div
-          v-else-if="!rows.length && !debouncedSearch"
-          class="column items-center justify-center q-pa-xl text-grey-6 col invoice-list-card"
-        >
-          <q-icon name="ph ph-credit-card" size="48px" class="q-mb-sm text-grey-4" />
-          <div class="text-subtitle1 text-weight-bold text-slate-800">No payments yet</div>
-          <q-btn
-            v-if="side === 'in'"
-            class="q-mt-md"
-            unelevated
-            no-caps
-            color="primary"
-            label="Record pay in"
-            @click="goCollect"
-          />
-          <q-btn
-            v-else
-            class="q-mt-md"
-            unelevated
-            no-caps
-            color="primary"
-            label="Record pay out"
-            @click="goPayout"
-          />
-        </div>
+      <div
+        v-else-if="!rows.length"
+        class="column items-center justify-center q-pa-xl text-grey-6 col invoice-list-card"
+      >
+        <q-icon name="ph ph-users" size="48px" class="q-mb-sm text-grey-4" />
+        <div class="text-subtitle1 text-weight-bold text-slate-800">No profiles</div>
+      </div>
 
-        <div v-else-if="!rows.length" class="column items-center justify-center text-grey-7 q-py-xl col invoice-list-card">
-          <div class="text-subtitle2">No payments match</div>
-        </div>
-
-        <div v-else class="invoice-list-card payments-list-card">
-          <div class="invoice-list-scroll">
-            <PayListRow v-for="row in rows" :key="row.id" :row="row" @open="openPay" />
-            <div v-if="hasMore" class="row justify-center q-py-sm">
-              <q-btn
-                flat
-                dense
-                no-caps
-                :loading="listQuery.isFetching.value"
-                class="load-more-btn q-px-md"
-                label="Load more"
-                icon="ph ph-arrow-down"
-                @click="page += 1"
-              />
-            </div>
+      <div v-else class="invoice-list-card payments-list-card">
+        <div class="invoice-list-scroll">
+          <div
+            v-for="row in rows"
+            :key="`${row.entity_type}-${row.entity_id}`"
+            class="profile-row-wrap"
+          >
+            <CashbookEntityRow :row="row" @open="selectProfile" />
           </div>
         </div>
-      </template>
+      </div>
     </div>
   </q-page>
 </template>
@@ -116,97 +64,79 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
-import PayListRow from '../components/PayListRow.vue';
-import { usePaysListQuery } from '../composables/usePaysListQuery';
-import type { PayListRow as PayRow } from '../repositories/paysRepository';
-import { paysQueryKeys } from '../services/paysQueryKeys';
-import { parsePaymentsListSide } from '../utils/paymentsNavigation';
+import CashbookEntityRow from '../components/CashbookEntityRow.vue';
+import {
+  cashbookRepository,
+  type CashbookEntityRow as EntityRow,
+} from '../repositories/cashbookRepository';
 
-const PAGE_SIZE = 25;
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
-const queryClient = useQueryClient();
+
+type EntityTab = 'tenant' | 'customer' | 'courier' | 'vendor';
 
 const searchText = ref('');
 const debouncedSearch = ref('');
-const side = ref<'in' | 'out'>(parsePaymentsListSide(route.query.side));
-const page = ref(1);
-const accumulatedRows = ref<PayRow[]>([]);
+const entityTab = ref<EntityTab>('customer');
+const rows = ref<EntityRow[]>([]);
+const isPending = ref(false);
+const listError = ref<string | null>(null);
 
-const sideTabs = [
-  { label: 'Pay in', value: 'in' as const },
-  { label: 'Pay out', value: 'out' as const },
+const typeTabs: { label: string; value: EntityTab }[] = [
+  { label: 'Tenant', value: 'tenant' },
+  { label: 'Customer', value: 'customer' },
+  { label: 'Courier', value: 'courier' },
+  { label: 'Vendor', value: 'vendor' },
 ];
 
-const operatingTenantId = computed(() => authStore.selectedTenant?.id ?? null);
-
-const listParams = computed(() => ({
-  tenantId: operatingTenantId.value ?? 0,
-  page: page.value,
-  pageSize: PAGE_SIZE,
-  search: debouncedSearch.value || undefined,
-  side: side.value,
-}));
-
-const listQuery = usePaysListQuery(listParams);
-
-const rows = computed(() => accumulatedRows.value);
-const total = computed(() => listQuery.data.value?.total ?? 0);
-const hasMore = computed(() => accumulatedRows.value.length < total.value);
-
-const listErrorMessage = computed(() => {
-  const err = listQuery.error.value;
-  return err instanceof Error ? err.message : 'Could not load payments.';
+const operatingTenantId = computed(() => authStore.selectedTenant?.id ?? 0);
+const booksTenantId = computed(() => {
+  const t = authStore.selectedTenant;
+  if (!t) return 0;
+  return t.parent_id ?? t.id;
 });
 
-let searchTimer: ReturnType<typeof setTimeout> | null = null;
-
-const syncRowsFromQuery = (payload: { data: PayRow[]; total: number } | undefined) => {
-  if (!payload) return;
-  if (page.value === 1) accumulatedRows.value = payload.data;
-  else {
-    const ids = new Set(accumulatedRows.value.map((r) => r.id));
-    accumulatedRows.value = [...accumulatedRows.value, ...payload.data.filter((r) => !ids.has(r.id))];
+const loadRows = async () => {
+  if (!operatingTenantId.value) return;
+  isPending.value = true;
+  listError.value = null;
+  try {
+    if (entityTab.value === 'tenant') {
+      rows.value = [
+        await cashbookRepository.getTenantCashRow(operatingTenantId.value, booksTenantId.value),
+      ];
+    } else {
+      rows.value = await cashbookRepository.listEntities({
+        tenantId: operatingTenantId.value,
+        entityType: entityTab.value,
+        search: debouncedSearch.value || undefined,
+        limit: 200,
+      });
+    }
+  } catch (e) {
+    listError.value = e instanceof Error ? e.message : 'Could not load profiles.';
+    rows.value = [];
+  } finally {
+    isPending.value = false;
   }
 };
 
-watch(() => listQuery.data.value, syncRowsFromQuery, { immediate: true });
-
-watch([side, debouncedSearch], () => {
-  page.value = 1;
-  accumulatedRows.value = [];
+watch(debouncedSearch, () => {
+  void loadRows();
 });
 
-watch(
-  () => route.query.side,
-  (value) => {
-    side.value = parsePaymentsListSide(value);
-  },
-);
-
-watch(
-  () => route.name,
-  (name) => {
-    if (name !== 'app-payments-page') return;
-    void queryClient.invalidateQueries({ queryKey: paysQueryKeys.root });
-  },
-);
-
-const setSide = (value: 'in' | 'out') => {
-  if (side.value === value) return;
-  side.value = value;
-  void router.replace({ query: { ...route.query, side: value } });
+const setEntityTab = (value: EntityTab) => {
+  if (entityTab.value === value) return;
+  entityTab.value = value;
+  void loadRows();
 };
 
-const routeParams = () => {
-  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
-  return tenantSlug ? { tenantSlug } : {};
-};
+void loadRows();
 
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
 const onSearchTextUpdate = (value: string) => {
   searchText.value = value;
   if (searchTimer) clearTimeout(searchTimer);
@@ -215,11 +145,18 @@ const onSearchTextUpdate = (value: string) => {
   }, 300);
 };
 
-const openPay = (row: PayRow) => {
-  router.push({ name: 'app-pay-detail-page', params: { ...routeParams(), payId: String(row.id) } });
+const selectProfile = (row: EntityRow) => {
+  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  router.push({
+    name: 'app-payment-profile-page',
+    params: {
+      ...(tenantSlug ? { tenantSlug } : {}),
+      entityType: row.entity_type,
+      entityId: String(row.entity_id),
+    },
+  });
 };
-const goCollect = () => router.push({ name: 'app-collect-pay-page', params: routeParams() });
-const goPayout = () => router.push({ name: 'app-payout-pay-page', params: routeParams() });
+
 </script>
 
 <style scoped lang="scss">
@@ -241,9 +178,6 @@ const goPayout = () => router.push({ name: 'app-payout-pay-page', params: routeP
   background: #0d6b5c;
   border-color: #0d6b5c;
   color: #fff;
-}
-.rounded-sq-btn {
-  border-radius: 8px;
 }
 .payments-list-card {
   flex: 0 1 auto;

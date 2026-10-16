@@ -30,10 +30,13 @@ export type PayListRow = {
 
 export type ListPaysParams = {
   tenantId: number;
+  /** Books tenant id when pays rows use parent tenant (default: tenantId). */
+  booksTenantId?: number;
   page?: number;
   pageSize?: number;
   search?: string;
   side?: 'in' | 'out';
+  profileId?: number;
 };
 
 export type CustomerGroupPaymentSummary = {
@@ -78,8 +81,10 @@ export type PayDetail = PayListRow & {
 };
 
 const listPays = async (params: ListPaysParams): Promise<{ data: PayListRow[]; total: number }> => {
-  const { tenantId, page = 1, pageSize = 25, search, side = 'in' } = params;
+  const { tenantId, page = 1, pageSize = 25, search, side, profileId } = params;
   const offset = (page - 1) * pageSize;
+  // pays.tenant_id is always the books (parent) tenant, not the child operating tenant.
+  const booksTenantId = params.booksTenantId ?? tenantId;
 
   let query = supabase
     .from('pays')
@@ -87,9 +92,11 @@ const listPays = async (params: ListPaysParams): Promise<{ data: PayListRow[]; t
       'id, payment_date, amount, unallocated_amount, source, method, reference, note, voided_at, profile_id, shop_order_id, settlement_currency_code, foreign_amount, exchange_rate, profiles:profiles!pays_profile_id_fkey(name)',
       { count: 'exact' },
     )
-    .eq('tenant_id', tenantId);
+    .eq('tenant_id', booksTenantId);
 
-  if (side === 'out') {
+  if (profileId != null) {
+    query = query.eq('profile_id', profileId);
+  } else if (side === 'out') {
     query = query.eq('source', 'ap_payout');
   } else {
     query = query.in('source', [...PAY_IN_SOURCES]);
@@ -233,7 +240,6 @@ const listCustomerProfilesForGroup = async (customerGroupId: number) => {
     .from('profiles')
     .select('id, name')
     .eq('customer_group_id', customerGroupId)
-    .eq('profile_type', 'customer')
     .order('name');
   if (error) throw error;
   return data ?? [];
@@ -403,6 +409,8 @@ const dispenseMiddlemanPayout = async (payload: {
   amount: number;
   payout_method?: string;
   reference_notes?: string | null;
+  cashbook_point_id: number;
+  cashbook_point_pot_id?: number | null;
 }) => {
   const { data, error } = await supabase.rpc('dispense_middleman_payout_from_tenant', {
     p_tenant_id: payload.tenant_id,
@@ -410,6 +418,8 @@ const dispenseMiddlemanPayout = async (payload: {
     p_amount: payload.amount,
     p_payout_method: payload.payout_method ?? 'bank_transfer',
     p_reference_notes: payload.reference_notes ?? null,
+    p_cashbook_point_id: payload.cashbook_point_id,
+    p_cashbook_point_pot_id: payload.cashbook_point_pot_id ?? null,
   });
   if (error) throw error;
   if (data && typeof data === 'object' && (data as { success?: boolean }).success === false) {

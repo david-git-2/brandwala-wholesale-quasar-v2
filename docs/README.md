@@ -18,6 +18,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Bills vs pays vs cashbook | [bills_pays spec](features/bills_pays/spec.md) · [kernel schema](features/bills_pays/kernel-schema.md) · [kernel plan](../doc/fix/2026-10-12-bills-pays-kernel-plan.md) |
 | What numbers go on reports (sales vs cash vs COD) | [reporting spec](features/reporting_treasury/spec.md) |
 | What is unfinished / wrong in a module? | That module’s `00-gaps.md` |
+| Catalog scrape/upload log & app versions (planned) | [products refresh & release](features/products/upload-and-release-visibility.md) |
 | Where is the code / SQL? | [Module map](#module-map) |
 | Tables / RPCs / button wiring | `supabase/schemas/` + module code |
 | Login / grants | [tenant_auth spec](features/tenant_auth/spec.md) |

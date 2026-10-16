@@ -227,6 +227,8 @@ if run and uploaded is not None:
         env["PYTHONUNBUFFERED"] = "1"
         env["PY_PRODUCTS_PARENT_TENANT_ID"] = str(int(parent_tenant_id))
         env["PY_PRODUCTS_TENANT_ID"] = str(int(inserted_by_tenant_id))
+        env["CATALOG_REFRESH_SOURCE"] = "wts_excel"
+        env["CATALOG_UPLOAD_FILE_NAME"] = uploaded.name or "wts_data.xlsx"
         lines: list[str] = []
         if backup_path:
             lines.append(f"Backed up previous sheet to {backup_path.name}\n")

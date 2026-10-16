@@ -410,9 +410,9 @@ GRANT ALL ON FUNCTION "public"."create_bill_adjustment"("p_parent_bill_id" bigin
 
 GRANT ALL ON FUNCTION "public"."create_sales_invoice_from_payload"("p_tenant_id" bigint, "p_payload" "jsonb") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text", "p_reference_notes" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text", "p_reference_notes" "text", "p_cashbook_point_id" bigint, "p_cashbook_point_pot_id" bigint) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text", "p_reference_notes" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text", "p_reference_notes" "text", "p_cashbook_point_id" bigint, "p_cashbook_point_pot_id" bigint) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."ensure_dropship_invoice_billed_entry"("p_invoice_id" bigint) TO "authenticated";
 

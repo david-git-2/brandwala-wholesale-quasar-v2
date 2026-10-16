@@ -14,6 +14,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
+import sys
 
 BASE = "https://www.kobareseller.com"
 LOGIN_GET = f"{BASE}/login"
@@ -22,6 +23,8 @@ CSRF_COOKIE_URL = f"{BASE}/sanctum/csrf-cookie"
 PRODUCTS_PATH = "/dashboard/products"
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from catalog_refresh_lib import add_parent_tenant_argument, log_scrape
 load_dotenv(ROOT_DIR / ".env")
 load_dotenv(ROOT_DIR / "web" / ".env")
 DEFAULT_OUTFILE = ROOT_DIR / "web" / "public" / "uk" / "koba_retail_data.json"
@@ -60,6 +63,7 @@ def parse_args() -> argparse.Namespace:
         default=0,
         help="Products per page (default: use site default)",
     )
+    add_parent_tenant_argument(parser, 10)
     return parser.parse_args()
 
 def extract_brand(name: str) -> str:
@@ -375,6 +379,7 @@ def sync_to_supabase(products: List[Dict[str, Any]], tenant_id: int):
 
 def main():
     args = parse_args()
+    scrape_started = time.perf_counter()
     
     if not args.email or not args.password:
         raise SystemExit("Missing KOBA_EMAIL or KOBA_PASSWORD credentials. Set them in .env or pass as arguments.")
@@ -439,6 +444,12 @@ def main():
         f.write("\n")
 
     print(f"\n✅ Successfully saved {len(deduped_raw)} raw products to {outfile}")
+    log_scrape(
+        source="koba_retail",
+        parent_tenant_id=int(args.parent_tenant_id),
+        products_updated=len(deduped_raw),
+        duration_seconds=int(time.perf_counter() - scrape_started),
+    )
 
     # Automatically sync to staging database tables under tenant_id = 12 (Retail)
     try:

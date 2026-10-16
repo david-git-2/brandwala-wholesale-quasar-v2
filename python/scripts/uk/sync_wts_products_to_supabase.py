@@ -16,6 +16,7 @@ from uuid import uuid4
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
+from catalog_refresh_lib import log_upload, resolve_catalog_source, resolve_upload_file_name
 from product_sync_lib import (
     ROOT_DIR,
     SNAPSHOT_RETENTION_DAYS,
@@ -110,6 +111,18 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=env_int("PY_PRODUCTS_WRITE_RETRIES", 3),
         help="Retry attempts per write operation (default: 3).",
+    )
+    parser.add_argument(
+        "--catalog-source",
+        dest="catalog_source",
+        default=os.getenv("CATALOG_REFRESH_SOURCE", "wts").strip() or "wts",
+        help="catalog_refresh_log source key (default: wts or CATALOG_REFRESH_SOURCE).",
+    )
+    parser.add_argument(
+        "--upload-file-name",
+        dest="upload_file_name",
+        default=os.getenv("CATALOG_UPLOAD_FILE_NAME", "").strip(),
+        help="Original Excel file name for catalog_refresh_log.",
     )
     return parser.parse_args()
 
@@ -272,6 +285,7 @@ def build_wts_update_payload(
 
 def main() -> int:
     args = parse_args()
+    sync_started = time.perf_counter()
 
     parent_raw = to_text(args.parent_tenant_id) or "15"
     if not (parent_raw.isdigit() and int(parent_raw) > 0):
@@ -580,6 +594,17 @@ def main() -> int:
         f"update_failures={update_failures}, insert_failures={insert_failures}",
         flush=True,
     )
+    products_updated = max(0, len(updates) - update_failures)
+    if insert_failures == 0:
+        products_updated += len(inserts)
+    if not args.dry_run:
+        log_upload(
+            source=resolve_catalog_source(args.catalog_source, "wts"),
+            parent_tenant_id=parent_tenant_id,
+            file_name=resolve_upload_file_name(args.upload_file_name, Path(args.input_path)),
+            products_updated=products_updated,
+            duration_seconds=int(time.perf_counter() - sync_started),
+        )
     print("Sync complete.")
     return 0
 

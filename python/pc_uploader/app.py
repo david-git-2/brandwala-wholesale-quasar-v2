@@ -212,6 +212,8 @@ if run and uploaded is not None:
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
         env["PY_PRODUCTS_PARENT_TENANT_ID"] = str(int(parent_tenant_id))
+        env["CATALOG_REFRESH_SOURCE"] = "pc"
+        env["CATALOG_UPLOAD_FILE_NAME"] = uploaded.name or "pc_data.xlsx"
         lines: list[str] = []
         if backup_path:
             lines.append(f"Backed up previous sheet to {backup_path.name}\n")

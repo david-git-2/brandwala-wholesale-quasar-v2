@@ -5,6 +5,7 @@ import argparse
 import html as htmlmod
 import json
 import re
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +15,8 @@ import requests
 
 BASE_URL = "https://elfinternationalltd.com/wp-json/wc/store/v1/products"
 ROOT_DIR = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from catalog_refresh_lib import add_parent_tenant_argument, log_scrape
 DEFAULT_OUT_JSON = ROOT_DIR / "web" / "public" / "uk" / "elf_data.json"
 DEFAULT_OUT_MANIFEST = ROOT_DIR / "web" / "public" / "uk" / "elf_manifest.json"
 
@@ -48,6 +51,7 @@ def parse_args() -> argparse.Namespace:
         default=0,
         help="Limit to N products (0 = unlimited)",
     )
+    add_parent_tenant_argument(parser, 15)
     return parser.parse_args()
 
 
@@ -188,6 +192,7 @@ def fetch_all_products(session: requests.Session, limit: int = 0) -> list[dict[s
 
 def main() -> None:
     args = parse_args()
+    scrape_started = time.perf_counter()
     out_json = Path(args.outfile).expanduser().resolve()
     out_manifest = Path(args.manifest).expanduser().resolve()
 
@@ -231,6 +236,12 @@ def main() -> None:
 
     print(f"\nSaved {len(products)} products to {out_json}")
     print(f"Manifest: {out_manifest}")
+    log_scrape(
+        source="elf",
+        parent_tenant_id=int(args.parent_tenant_id),
+        products_updated=len(products),
+        duration_seconds=int(time.perf_counter() - scrape_started),
+    )
 
 
 if __name__ == "__main__":

@@ -28,16 +28,6 @@
             @click="goManageLocations"
           />
         </div>
-        <div v-if="entityType === 'customer' && entityId" class="q-mt-sm">
-          <q-btn
-            color="primary"
-            unelevated
-            no-caps
-            icon="ph ph-hand-coins"
-            label="Pay in (collect)"
-            @click="goCollect"
-          />
-        </div>
       </div>
 
       <q-input
@@ -181,14 +171,6 @@ const formatDate = (iso: string) => {
 const routeParams = () => {
   const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
   return tenantSlug ? { tenantSlug } : {};
-};
-
-const goCollect = () => {
-  router.push({
-    name: 'app-collect-pay-page',
-    params: routeParams(),
-    query: { profileId: String(entityId.value) },
-  });
 };
 
 const goManageLocations = () => {

@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generatedAt": "2026-10-07T05:18:48.929196Z",
+    "generatedAt": "2026-10-16T14:22:02.622734Z",
     "sourceFile": "pc_data.xlsx",
     "sheet": "6.10.2026",
     "count": 4408,
@@ -19,7 +19,7 @@
     "productIdRule": "product_id = barcode + '_' + product_code",
     "hazardousRowsCount": 861,
     "formulaCategoryRowsSkipped": 0,
-    "normalizedAt": "2026-10-07T05:18:49.472611Z",
+    "normalizedAt": "2026-10-16T14:22:03.048033Z",
     "normalizedStage": "minimum_quantity",
     "minimumQuantityRule": "fixed 6 for all products"
   },

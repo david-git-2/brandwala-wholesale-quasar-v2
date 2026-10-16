@@ -1636,7 +1636,7 @@ $$;
 
 ALTER FUNCTION "public"."create_sales_invoice_from_payload"("p_tenant_id" bigint, "p_payload" "jsonb") OWNER TO "postgres";
 
-CREATE OR REPLACE FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text" DEFAULT 'bank_transfer'::"text", "p_reference_notes" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text" DEFAULT 'bank_transfer'::"text", "p_reference_notes" "text" DEFAULT NULL::"text", "p_cashbook_point_id" bigint DEFAULT NULL::bigint, "p_cashbook_point_pot_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -1644,6 +1644,7 @@ declare
   v_profile public.profiles;
   v_payout_id text;
   v_parent_tenant_id bigint;
+  v_pot_id bigint := p_cashbook_point_pot_id;
 begin
   if p_tenant_id is null then
     return jsonb_build_object('success', false, 'error', 'Tenant ID is required');
@@ -1682,6 +1683,37 @@ begin
   v_parent_tenant_id := public.resolve_parent_tenant_id(p_tenant_id);
   v_payout_id := 'PO-' || gen_random_uuid()::text;
 
+  if p_cashbook_point_id is null then
+    return jsonb_build_object('success', false, 'error', 'Choose a cash point for this pay out');
+  end if;
+
+  if not exists (
+    select 1
+    from public.cashbook_points cp
+    join public.cashbook_accounts ca on ca.id = cp.cashbook_account_id
+    where cp.id = p_cashbook_point_id
+      and cp.is_active = true
+      and ca.parent_tenant_id = v_parent_tenant_id
+      and ca.entity_type = 'tenant'
+      and ca.entity_id = v_parent_tenant_id
+  ) then
+    return jsonb_build_object('success', false, 'error', 'Invalid cash point for this tenant');
+  end if;
+
+  if v_pot_id is null then
+    select cpp.id
+    into v_pot_id
+    from public.cashbook_point_pots cpp
+    where cpp.cashbook_point_id = p_cashbook_point_id
+      and cpp.parent_tenant_id = v_parent_tenant_id
+    order by case when upper(cpp.currency_code) = 'BDT' then 0 else 1 end, cpp.id
+    limit 1;
+  end if;
+
+  if v_pot_id is null then
+    return jsonb_build_object('success', false, 'error', 'No currency pot at this cash point');
+  end if;
+
   perform public.record_ledger_transaction(
     p_parent_tenant_id => v_parent_tenant_id,
     p_operating_tenant_id => p_tenant_id,
@@ -1701,8 +1733,10 @@ begin
       'profile_id', p_profile_id,
       'profile_name', v_profile.name,
       'payout_method', p_payout_method,
-      'notes', p_reference_notes
-    )
+      'notes', p_reference_notes,
+      'cashbook_point_pot_id', v_pot_id
+    ),
+    p_cashbook_point_id => p_cashbook_point_id
   );
 
   perform public.record_ledger_transaction(
@@ -1741,7 +1775,7 @@ begin
 end;
 $$;
 
-ALTER FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text", "p_reference_notes" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text", "p_reference_notes" "text", "p_cashbook_point_id" bigint, "p_cashbook_point_pot_id" bigint) OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."enforce_customer_profile_admin_email_unique_per_tenant"() RETURNS "trigger"
     LANGUAGE "plpgsql"
@@ -7179,9 +7213,6 @@ BEGIN
     IF p_type = 'credit' THEN
       v_avail := v_avail + p_amount;
     ELSE
-      IF v_avail < p_amount AND NOT coalesce(p_allow_overdraft, false) THEN
-        RAISE EXCEPTION 'Insufficient available balance (Available: %, Requested debit: %).', v_avail, p_amount;
-      END IF;
       v_avail := v_avail - p_amount;
     END IF;
     v_new_balance := v_avail;
@@ -7882,9 +7913,6 @@ BEGIN
     END IF;
     v_pend := v_pend - p_amount;
   ELSIF p_from_bucket = 'available' THEN
-    IF v_avail < p_amount THEN
-      RAISE EXCEPTION 'Insufficient available balance (Available: %, Requested: %).', v_avail, p_amount;
-    END IF;
     v_avail := v_avail - p_amount;
   ELSIF p_from_bucket = 'locked' THEN
     IF v_lock < p_amount THEN

@@ -59,6 +59,7 @@ while [[ "${attempt}" -le "${RETRY_ATTEMPTS}" ]]; do
   echo "Deploy attempt ${attempt}/${RETRY_ATTEMPTS}..."
   if wrangler_cmd pages deploy web/dist/spa --project-name "${PROJECT_NAME}" --commit-dirty=true --skip-caching; then
     echo "Deploy succeeded."
+    bash "${ROOT_DIR}/scripts/record-app-release.sh" frontend || true
     echo "Note: web/.env is now on PRODUCTION. Run pnpm run env:local to return to Docker for daily work."
     exit 0
   fi

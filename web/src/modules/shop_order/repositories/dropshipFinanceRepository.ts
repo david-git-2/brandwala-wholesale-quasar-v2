@@ -106,6 +106,8 @@ export const dropshipFinanceRepository = {
     amount: number;
     payoutMethod?: string;
     referenceNotes?: string;
+    cashbookPointId: number;
+    cashbookPointPotId?: number | null;
   }) {
     const { data, error } = await supabase.rpc('dispense_middleman_payout_from_tenant', {
       p_tenant_id: params.tenantId,
@@ -113,6 +115,8 @@ export const dropshipFinanceRepository = {
       p_amount: params.amount,
       p_payout_method: params.payoutMethod ?? 'bank_transfer',
       p_reference_notes: params.referenceNotes ?? null,
+      p_cashbook_point_id: params.cashbookPointId,
+      p_cashbook_point_pot_id: params.cashbookPointPotId ?? null,
     });
 
     if (error) throw error;
