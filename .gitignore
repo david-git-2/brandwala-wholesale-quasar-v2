@@ -42,3 +42,7 @@ python/data/**/*.xls
 
 scratch*.js
 scratch/
+
+# UK scraper/export JSON (large, generated; not served by the web app)
+python/data/uk/out/*
+!python/data/uk/out/.gitkeep
