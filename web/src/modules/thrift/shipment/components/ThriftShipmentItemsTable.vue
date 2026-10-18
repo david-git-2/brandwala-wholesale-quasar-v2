@@ -495,7 +495,7 @@ function resolvedListedPrice(row: ThriftStock): number {
 }
 
 .thrift-shipment-details-table :deep(thead tr th) {
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #f7f9fc 4%);
   position: sticky;
   top: 0;
   z-index: 2;
@@ -512,7 +512,7 @@ function resolvedListedPrice(row: ThriftStock): number {
 
 .thrift-shipment-details-table :deep(td.col-sticky-sl) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #bw-theme-surface) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #tf-theme-surface) 94%, #f8f9fa 6%);
 }
 
 /* Sticky Image Column */
@@ -526,7 +526,7 @@ function resolvedListedPrice(row: ThriftStock): number {
 
 .thrift-shipment-details-table :deep(td.col-sticky-image) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #bw-theme-surface) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #tf-theme-surface) 96%, #fcfcfc 4%);
 }
 
 /* Sticky Barcode Column */
@@ -540,7 +540,7 @@ function resolvedListedPrice(row: ThriftStock): number {
 
 .thrift-shipment-details-table :deep(td.col-sticky-barcode) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #bw-theme-surface) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #tf-theme-surface) 96%, #fcfcfc 4%);
 }
 
 /* Header Sticky Corners */

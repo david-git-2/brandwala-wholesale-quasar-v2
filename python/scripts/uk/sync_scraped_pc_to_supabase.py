@@ -24,7 +24,7 @@ from catalog_refresh_lib import log_upload
 ROOT_DIR = SCRIPT_DIR.parents[2]
 WEB_ENV_FILE = ROOT_DIR / "web" / ".env"
 ROOT_ENV_FILE = ROOT_DIR / ".env"
-INPUT_JSON = ROOT_DIR / "web" / "public" / "uk" / "pc_scraped_data.json"
+INPUT_JSON = ROOT_DIR / "python" / "data" / "uk" / "out" / "pc_scraped_data.json"
 
 PC_VENDOR_ID = 3
 PC_VENDOR_CODE = "PC"

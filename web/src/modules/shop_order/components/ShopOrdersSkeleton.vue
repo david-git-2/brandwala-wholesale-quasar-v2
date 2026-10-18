@@ -59,19 +59,19 @@
 
 <style scoped>
 .orders-skeleton-list-card {
-  background: var(--bw-theme-surface, #ffffff);
-  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  background: var(--tf-theme-surface, #ffffff);
+  border: 1px solid var(--tf-theme-border, #e2e8f0);
   border-radius: 10px;
 }
 
 .skeleton-meta-bar {
-  background: var(--bw-neutral-surface, #f8fafc);
-  border-bottom: 1px solid var(--bw-theme-border, #e2e8f0);
+  background: var(--tf-neutral-surface, #f8fafc);
+  border-bottom: 1px solid var(--tf-theme-border, #e2e8f0);
   min-height: 34px;
 }
 
 .skeleton-row {
-  border-bottom: 1px solid var(--bw-theme-border, #f1f5f9);
+  border-bottom: 1px solid var(--tf-theme-border, #f1f5f9);
 }
 
 .skeleton-row:last-child {
@@ -79,16 +79,16 @@
 }
 
 body.body--dark .orders-skeleton-list-card {
-  background: #1c1917;
-  border-color: #2a2622;
+  background: var(--tf-neutral-surface);
+  border-color: var(--tf-neutral-border);
 }
 
 body.body--dark .skeleton-meta-bar {
-  background: #24201d;
-  border-color: #2a2622;
+  background: var(--tf-neutral-canvas);
+  border-color: var(--tf-neutral-border);
 }
 
 body.body--dark .skeleton-row {
-  border-color: #2a2622;
+  border-color: var(--tf-neutral-border);
 }
 </style>

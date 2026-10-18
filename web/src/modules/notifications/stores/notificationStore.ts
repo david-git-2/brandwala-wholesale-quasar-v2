@@ -11,6 +11,13 @@ const PREVIEW_PAGE_SIZE = 8;
 
 type VisibilityHandler = () => void;
 
+const REFRESH_DEBOUNCE_MS = 2000;
+const STALE_ON_FOCUS_MS = 60_000;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+let refreshInFlight = false;
+let dirty = false;
+let lastRefreshAt = 0;
+
 const mapReadState = (items: NotificationItem[], notificationId: string, now: string) =>
   items.map((item) =>
     item.notification_id === notificationId
@@ -109,8 +116,42 @@ export const useNotificationStore = defineStore('notifications', {
       this.previewMenuOpen = open;
     },
 
+    scheduleRefresh(tenantId: number) {
+      if (document.visibilityState !== 'visible') {
+        dirty = true;
+        return;
+      }
+      if (refreshTimer) return;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        void this.refreshActive(tenantId);
+      }, REFRESH_DEBOUNCE_MS);
+    },
+
     async refreshActive(tenantId: number) {
-      await this.loadUnreadCount(tenantId);
+      if (refreshInFlight) {
+        dirty = true;
+        return;
+      }
+      refreshInFlight = true;
+      dirty = false;
+      lastRefreshAt = Date.now();
+      try {
+        await this.refreshActiveInner(tenantId);
+      } finally {
+        refreshInFlight = false;
+        if (dirty && document.visibilityState === 'visible') this.scheduleRefresh(tenantId);
+      }
+    },
+
+    async refreshActiveInner(tenantId: number) {
+      const listActive =
+        this.viewMode === 'page' || this.previewMenuOpen || this.previewLoaded;
+      // List queries already return unread_count; skip the extra count call.
+      if (!listActive) {
+        await this.loadUnreadCount(tenantId);
+        return;
+      }
 
       if (this.viewMode === 'page') {
         await this.loadPage(tenantId, this.page, {
@@ -213,20 +254,25 @@ export const useNotificationStore = defineStore('notifications', {
             filter: `user_id=eq.${userId}`,
           },
           () => {
-            void this.refreshActive(tenantId);
+            this.scheduleRefresh(tenantId);
           },
         )
         .subscribe();
 
       this.visibilityHandler = () => {
-        if (document.visibilityState === 'visible') {
-          void this.refreshActive(tenantId);
+        if (document.visibilityState !== 'visible') return;
+        if (dirty || Date.now() - lastRefreshAt > STALE_ON_FOCUS_MS) {
+          this.scheduleRefresh(tenantId);
         }
       };
       document.addEventListener('visibilitychange', this.visibilityHandler);
     },
 
     unsubscribe() {
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+        refreshTimer = null;
+      }
       if (this.channel) {
         void supabase.removeChannel(this.channel);
         this.channel = null;

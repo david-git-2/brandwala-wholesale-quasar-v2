@@ -115,8 +115,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
+import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { showSuccessNotification } from 'src/utils/appFeedback';
 import {
@@ -129,8 +130,27 @@ const props = defineProps<{
   id: number;
 }>();
 
+const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+
+usePageBreadcrumbs(() => {
+  const tenantSlug =
+    authStore.tenantSlug || (route.params.tenantSlug as string | undefined) || null;
+  const hubPath = tenantSlug ? `/${tenantSlug}/app/access-control` : '/app/access-control';
+  const rolesPath = tenantSlug ? `/${tenantSlug}/app/access-control/roles` : '/app/access-control/roles';
+
+  return [
+    {
+      label: authStore.selectedTenant?.name || 'Workspace',
+      icon: 'ph ph-buildings',
+    },
+    { label: 'Access Control', to: hubPath },
+    { label: 'Roles', to: rolesPath },
+    { label: role.value?.name || 'Role' },
+    { label: 'Grants' },
+  ];
+});
 
 const role = ref<any>(null);
 const grants = ref<any[]>([]);

@@ -53,7 +53,7 @@ export default {
 
 .dropship-action-bar__card {
   border-radius: 12px;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
 }
 
 .dropship-action-bar__inner {

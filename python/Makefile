@@ -1,11 +1,11 @@
-PC_JSON ?= ../web/public/uk/pc_data.json
+PC_JSON ?= data/uk/out/pc_data.json
 PC_VENDOR ?= PC
 PC_MARKET ?= GB
 PC_EXPORT_FLAGS ?=
 # --tenant-id on WTS_SYNC_FLAGS is inserted_by_tenant_id only, not vendor scope.
 PC_SYNC_FLAGS ?= --parent-tenant-id 15 --vendor-id 3
 
-WTS_JSON ?= ../web/public/uk/wts_data.json
+WTS_JSON ?= data/uk/out/wts_data.json
 WTS_VENDOR ?= WTS
 WTS_MARKET ?= GB
 WTS_EXPORT_FLAGS ?=
@@ -57,7 +57,7 @@ wts-excel:
 	python scripts/uk/move_ml_to_end.py --input "$(WTS_JSON)" --fields name --no-backup
 	CATALOG_REFRESH_SOURCE=wts_excel python scripts/uk/sync_wts_products_to_supabase.py --input "$(WTS_JSON)" --market "$(WTS_MARKET)" --catalog-source wts_excel $(WTS_SYNC_FLAGS)
 
-KOBA_RETAIL_JSON ?= ../web/public/uk/koba_retail_data.json
+KOBA_RETAIL_JSON ?= data/uk/out/koba_retail_data.json
 KOBA_RETAIL_VENDOR ?= KOBA_RETAIL
 KOBA_RETAIL_MARKET ?= GB
 
@@ -70,7 +70,7 @@ koba-retail-scrape:
 koba-retail-sync:
 	CATALOG_REFRESH_SOURCE=koba_retail python scripts/uk/sync_pc_products_to_supabase.py --input "$(KOBA_RETAIL_JSON)" --vendor "$(KOBA_RETAIL_VENDOR)" --market "$(KOBA_RETAIL_MARKET)" --parent-tenant-id 10 --catalog-source koba_retail --skip-image-upload
 
-KOBA_WHOLESALE_JSON ?= ../web/public/uk/koba_wholesale_data.json
+KOBA_WHOLESALE_JSON ?= data/uk/out/koba_wholesale_data.json
 KOBA_WHOLESALE_VENDOR ?= KOBA_WHOLESALE
 KOBA_WHOLESALE_MARKET ?= GB
 
@@ -83,7 +83,7 @@ koba-wholesale-scrape:
 koba-wholesale-sync:
 	CATALOG_REFRESH_SOURCE=koba_wholesale python scripts/uk/sync_pc_products_to_supabase.py --input "$(KOBA_WHOLESALE_JSON)" --vendor "$(KOBA_WHOLESALE_VENDOR)" --market "$(KOBA_WHOLESALE_MARKET)" --parent-tenant-id 10 --catalog-source koba_wholesale --skip-image-upload
 
-ELF_JSON ?= ../web/public/uk/elf_data.json
+ELF_JSON ?= data/uk/out/elf_data.json
 ELF_VENDOR ?= ELF
 ELF_MARKET ?= GB
 

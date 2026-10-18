@@ -7,6 +7,7 @@ import {
   type GlobalStockListCursor,
 } from '../repositories/globalStockRepository';
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
+import { STALE_STANDARD } from 'src/query/staleTimes';
 
 export const WAREHOUSE_STOCK_PAGE_SIZE = 20;
 
@@ -95,7 +96,7 @@ export function useWarehouseStockInfiniteQuery(options: {
       return Number.isFinite(id) ? { id } : undefined;
     },
     initialPageParam: null as GlobalStockListCursor | null,
-    staleTime: 30_000,
+    staleTime: STALE_STANDARD,
     placeholderData: keepPreviousData,
     enabled: computed(() => {
       if (unref(options.enabled) === false) return false;

@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md costing-list-page">
     <PageInitialLoader v-if="initialLoading" />
-    <section v-else class="bw-page__stack">
+    <section v-else class="tf-page__stack">
       <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
         <q-card-section class="q-py-sm">
           <div class="row items-center justify-between q-col-gutter-sm">
@@ -98,7 +98,7 @@
         />
       </div>
 
-      <q-banner v-if="error" class="bw-status-banner text-white" rounded>
+      <q-banner v-if="error" class="tf-status-banner text-white" rounded>
         {{ error }}
       </q-banner>
 
@@ -519,7 +519,7 @@ const customerGroupNameById = (customerGroupId: number) =>
 const customerGroupAccentColorById = (customerGroupId: number) =>
   customerGroupOptions.value
     .find((option) => option.value === customerGroupId)
-    ?.accentColor?.trim() || 'var(--bw-theme-primary)';
+    ?.accentColor?.trim() || 'var(--tf-theme-primary)';
 const buildCreateFileName = (customerGroupId: number | null) => {
   const customerGroupName =
     customerGroupOptions.value.find((option) => option.value === customerGroupId)?.label ??
@@ -869,7 +869,7 @@ watch(
 }
 
 .costing-list-table :deep(th) {
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #f7f9fc 4%);
 }
 
 .costing-list-table :deep(tbody tr td) {
@@ -899,7 +899,7 @@ watch(
 
 .costing-page__card {
   width: 100%;
-  border-left: 4px solid var(--costing-card-accent, var(--bw-theme-primary));
+  border-left: 4px solid var(--costing-card-accent, var(--tf-theme-primary));
 }
 
 .costing-page__dialog {

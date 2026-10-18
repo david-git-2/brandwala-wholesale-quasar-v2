@@ -935,7 +935,7 @@ const onVendorChange = async () => {
 .image-preview-container {
   border: 1px dashed #cfd8dc;
   border-radius: 8px;
-  background-color: #fafafa;
+  background-color: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   overflow: hidden;
   transition: all 0.3s ease;
 }

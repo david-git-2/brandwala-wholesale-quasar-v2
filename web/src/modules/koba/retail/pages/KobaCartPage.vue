@@ -1,5 +1,5 @@
 <template>
-  <q-page class="bw-page q-pa-md cart-page">
+  <q-page class="tf-page q-pa-md cart-page">
     <!-- Header -->
     <div class="cart-header q-mb-md">
       <div class="row items-center q-gutter-sm">

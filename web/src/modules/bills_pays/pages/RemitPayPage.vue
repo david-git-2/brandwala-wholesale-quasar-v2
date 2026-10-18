@@ -139,8 +139,8 @@ onMounted(async () => {
 .pay-form-card {
   max-width: 720px;
   margin: 0 auto;
-  background: var(--bw-neutral-surface, #fff);
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+  background: var(--tf-neutral-surface, #fff);
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
   border-radius: 8px;
 }
 </style>

@@ -1394,8 +1394,11 @@ begin
   set
     shop_order_id = v_shop_order_id,
     channel_meta = v_channel_meta,
+    settlement_kind = v_delivery_kind::public.bill_settlement_kind,
     updated_at = now()
   where id = v_invoice_id;
+
+  perform public.stamp_bill_kernel_fields(v_invoice_id);
 
   for v_item_elem in select value from jsonb_array_elements(v_items) as t(value) loop
     v_global_stock_id := nullif(v_item_elem->>'global_stock_id', '')::bigint;

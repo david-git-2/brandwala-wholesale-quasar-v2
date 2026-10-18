@@ -1,5 +1,5 @@
 <template>
-  <q-page class="bw-page reports-overview-page q-pa-md">
+  <q-page class="tf-page reports-overview-page q-pa-md">
     <div class="reports-hub">
       <app-page-header
         title="Reports"
@@ -131,19 +131,18 @@ function onSelect(item: HubLinkItem) {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 55px);
-  overflow: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .reports-hub {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
   max-width: 720px;
   margin: 0 auto;
   width: 100%;
-  overflow-y: auto;
 }
 
 @media (max-width: 899px) {

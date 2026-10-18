@@ -9,33 +9,24 @@
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
     <div class="column full-height no-wrap overflow-hidden pbc-settings-drawer">
-      <div class="pbc-settings-drawer__header bg-grey-1 border-bottom row items-center no-wrap q-gutter-x-xs q-px-sm q-py-xs">
-        <q-tabs
-          v-model="activeTab"
-          dense
-          no-caps
-          active-color="primary"
-          indicator-color="primary"
-          align="left"
-          class="col min-width-0 text-grey-7 text-weight-medium pbc-settings-drawer__tabs"
-        >
-          <q-tab name="details" label="Details" icon="ph ph-identification-badge" />
-          <q-tab name="summary" label="Summary" icon="ph ph-chart-pie-slice" />
-          <q-tab name="rates" label="Rates" icon="ph ph-percent" />
-          <q-tab name="status" label="Status" icon="ph ph-traffic-signal" />
-          <q-tab name="actions" label="Actions" icon="ph ph-dots-three-outline" />
-        </q-tabs>
-        <q-btn
-          flat
-          round
-          dense
-          icon="ph ph-x"
-          color="grey-7"
-          aria-label="Close settings"
-          class="pbc-settings-drawer__close shrink-0"
-          @click="emit('update:modelValue', false)"
-        />
-      </div>
+      <TfDrawerSectionTabsHeader
+        v-model="activeTab"
+        :tabs="[...settingsTabs]"
+        aria-label="Costing file settings sections"
+      >
+        <template #trailing>
+          <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-x"
+            color="grey-7"
+            aria-label="Close settings"
+            class="pbc-settings-drawer__close shrink-0"
+            @click="emit('update:modelValue', false)"
+          />
+        </template>
+      </TfDrawerSectionTabsHeader>
 
       <q-tab-panels v-model="activeTab" animated class="col bg-white pbc-settings-drawer-panels">
         <!-- 1. Details Tab Panel -->
@@ -401,6 +392,7 @@
 import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
+import TfDrawerSectionTabsHeader from 'src/components/ui/TfDrawerSectionTabsHeader.vue';
 import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { normalizePbcFileStatus } from '../composables/useProductBasedCostingFileDetailsState';
 import {
@@ -462,6 +454,14 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const activeTab = ref('details');
+
+const settingsTabs = [
+  { name: 'details', label: 'Details', icon: 'ph ph-identification-badge' },
+  { name: 'summary', label: 'Summary', icon: 'ph ph-chart-pie-slice' },
+  { name: 'rates', label: 'Rates', icon: 'ph ph-percent' },
+  { name: 'status', label: 'Status', icon: 'ph ph-traffic-signal' },
+  { name: 'actions', label: 'Actions', icon: 'ph ph-dots-three-outline' },
+] as const;
 
 const drawerFileName = ref('');
 const drawerOrderFor = ref('');
@@ -634,18 +634,13 @@ function emitDrawerAction(action: PbcSettingsDrawerAction) {
 
 <style scoped>
 .pbc-settings-drawer {
-  background: #fff;
+  background: var(--tf-neutral-surface);
   height: 100%;
   min-height: 0;
 }
 
 .pbc-settings-drawer__close {
   margin-left: 2px;
-}
-
-.pbc-settings-drawer__tabs :deep(.q-tabs__content) {
-  overflow-x: auto;
-  scrollbar-width: thin;
 }
 
 .pbc-settings-drawer-panels {
@@ -667,10 +662,10 @@ function emitDrawerAction(action: PbcSettingsDrawerAction) {
   border-radius: 8px !important;
 }
 .border-bottom {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--tf-neutral-border);
 }
 .border-grey {
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--tf-neutral-border);
 }
 .settings-staff-actions :deep(.pbc-staff-actions) {
   position: static;

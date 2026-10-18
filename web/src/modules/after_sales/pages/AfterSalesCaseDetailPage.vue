@@ -1,12 +1,12 @@
 <template>
-  <q-page class="bw-page after-sales-case-detail-page">
+  <q-page class="tf-page after-sales-case-detail-page">
     <div v-if="caseQuery.isLoading.value" class="case-detail-loading">
       <q-spinner color="primary" size="40px" />
     </div>
 
-    <div v-else-if="!caseRow" class="case-detail-loading bw-text-muted">Case not found.</div>
+    <div v-else-if="!caseRow" class="case-detail-loading tf-text-muted">Case not found.</div>
 
-    <section v-else class="bw-page__stack case-detail-stack">
+    <section v-else class="tf-page__stack case-detail-stack">
       <q-card flat bordered class="q-pa-md">
         <div class="case-detail-header">
           <div class="case-detail-header__title">{{ caseRow.case_no }}</div>
@@ -86,7 +86,7 @@
 
     <div
       v-if="caseRow && footerActions.length"
-      class="case-detail-footer bw-inline-actions"
+      class="case-detail-footer tf-inline-actions"
     >
       <q-btn
         v-for="action in footerActions"
@@ -317,12 +317,12 @@ const footerActions = computed(() => {
 .case-detail-header__title {
   font-size: 1.25rem;
   font-weight: 800;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .case-detail-header__meta {
   font-size: 0.82rem;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .case-detail-footer {
@@ -333,7 +333,7 @@ const footerActions = computed(() => {
   z-index: 10;
   justify-content: flex-end;
   padding: 0.65rem clamp(1rem, 2.4vw, 2rem);
-  background: color-mix(in srgb, var(--bw-theme-surface) 94%, var(--bw-theme-base) 6%);
-  border-top: 1px solid var(--bw-theme-border);
+  background: color-mix(in srgb, var(--tf-theme-surface) 94%, var(--tf-theme-base) 6%);
+  border-top: 1px solid var(--tf-theme-border);
 }
 </style>

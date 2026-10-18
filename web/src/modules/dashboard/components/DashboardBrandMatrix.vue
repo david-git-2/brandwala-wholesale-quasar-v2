@@ -42,7 +42,7 @@
             </td>
 
             <!-- Revenue -->
-            <td class="text-right bw-tabular text-weight-semibold text-slate-900">
+            <td class="text-right tf-tabular text-weight-semibold text-slate-900">
               {{ formatDashboardMoney(brand.revenue) }}
             </td>
 
@@ -52,17 +52,17 @@
                 <div class="share-bar">
                   <div class="share-bar__fill" :style="{ width: `${brand.sharePct}%` }" />
                 </div>
-                <span class="share-val bw-tabular text-caption text-slate-500">{{ brand.sharePct }}%</span>
+                <span class="share-val tf-tabular text-caption text-slate-500">{{ brand.sharePct }}%</span>
               </div>
             </td>
 
             <!-- Orders Count -->
-            <td class="text-right bw-tabular text-slate-600">
+            <td class="text-right tf-tabular text-slate-600">
               {{ formatDashboardCount(brand.orderCount) }}
             </td>
 
             <!-- Gross Margin % -->
-            <td class="text-right bw-tabular">
+            <td class="text-right tf-tabular">
               <span class="text-weight-medium" :class="brand.marginPct >= 28 ? 'text-emerald' : 'text-slate-600'">
                 {{ brand.marginPct.toFixed(1) }}%
               </span>
@@ -114,9 +114,9 @@ defineEmits<{
 
 <style scoped>
 .brand-matrix-card {
-  background: var(--bw-neutral-surface, #FFFFFF);
-  border: 1px solid var(--bw-neutral-border, #F1F5F9);
-  border-radius: var(--bw-radius-md, 12px);
+  background: var(--tf-neutral-surface, #FFFFFF);
+  border: 1px solid var(--tf-neutral-border, #F1F5F9);
+  border-radius: var(--tf-radius-md, 12px);
   padding: 0.85rem 1rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
@@ -159,7 +159,7 @@ defineEmits<{
 }
 
 .brand-row:hover {
-  background: #F8FAFC;
+  background: var(--tf-hover-bg);
 }
 
 .brand-row--active {

@@ -47,11 +47,11 @@ const links = computed(() => {
 <style scoped>
 .investor-context__title {
   font-weight: 700;
-  color: var(--bw-theme-ink, #171412);
+  color: var(--tf-theme-ink, #171412);
 }
 
 .investor-context__caption {
   font-size: 0.75rem;
-  color: var(--bw-theme-muted, #736a61);
+  color: var(--tf-theme-muted, #736a61);
 }
 </style>

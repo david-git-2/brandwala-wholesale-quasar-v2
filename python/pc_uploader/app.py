@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT_DIR / "python"))
 from pc_excel_spec import REQUIRED_PC_COLUMNS
 
 PC_XLSX = ROOT_DIR / "python" / "data" / "uk" / "pc_data.xlsx"
-PC_JSON = ROOT_DIR / "web" / "public" / "uk" / "pc_data.json"
+PC_JSON = ROOT_DIR / "python" / "data" / "uk" / "out" / "pc_data.json"
 
 DEFAULT_HEADER_ROW = 4
 DEFAULT_PARENT_TENANT_ID = 15

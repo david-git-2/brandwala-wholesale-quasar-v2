@@ -65,9 +65,9 @@ function formatCurrency(val: number) {
 <style scoped>
 .stat-card {
   border-radius: 10px;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
 }
 .text-muted {
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 </style>

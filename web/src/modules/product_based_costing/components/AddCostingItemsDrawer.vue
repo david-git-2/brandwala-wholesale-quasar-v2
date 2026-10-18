@@ -97,21 +97,21 @@ const openBrowseCatalog = () => {
   height: calc(100vh - 24px) !important;
   margin: 12px;
   border-radius: 16px !important;
-  background: var(--bw-theme-surface) !important;
-  color: var(--bw-theme-ink);
-  border: 1px solid var(--bw-theme-border);
-  box-shadow: var(--bw-theme-shadow) !important;
+  background: var(--tf-theme-surface) !important;
+  color: var(--tf-theme-ink);
+  border: 1px solid var(--tf-theme-border);
+  box-shadow: var(--tf-theme-shadow) !important;
   overflow: hidden;
 }
 
 .drawer-header {
-  background: var(--bw-theme-primary) !important;
+  background: var(--tf-theme-primary) !important;
   border-bottom: 1px solid rgb(0 0 0 / 0.12);
-  color: #fff;
+  color: var(--tf-neutral-surface);
 }
 
 .drawer-header__title {
-  color: #fff;
+  color: var(--tf-neutral-surface);
 }
 
 .drawer-header__subtitle {

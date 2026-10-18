@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page">
-    <section class="bw-page__stack">
+  <q-page class="tf-page">
+    <section class="tf-page__stack">
       <section>
         <div class="text-overline">Platform</div>
         <h1 class="text-h5 q-my-none">Global Reference Data</h1>

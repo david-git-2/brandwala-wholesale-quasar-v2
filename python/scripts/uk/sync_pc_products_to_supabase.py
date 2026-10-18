@@ -52,7 +52,7 @@ from product_sync_lib import (
     utc_now,
 )
 
-DEFAULT_INPUT = ROOT_DIR / "web" / "public" / "uk" / "pc_data.json"
+DEFAULT_INPUT = ROOT_DIR / "python" / "data" / "uk" / "out" / "pc_data.json"
 DEFAULT_STORAGE_BUCKET = str(os.getenv("PY_SUPABASE_STORAGE_BUCKET") or "product-images").strip()
 DEFAULT_STORAGE_PREFIX = str(os.getenv("PY_SUPABASE_STORAGE_PREFIX") or "uk/pc").strip().strip("/")
 DEFAULT_IMAGES_DIR = ROOT_DIR / "python" / "images" / "uk" / "out_images"
@@ -76,7 +76,7 @@ def parse_args() -> argparse.Namespace:
         "--input",
         dest="input_path",
         default=str(DEFAULT_INPUT),
-        help="Input JSON path (default: web/public/uk/pc_data.json)",
+        help="Input JSON path (default: python/data/uk/out/pc_data.json)",
     )
     parser.add_argument(
         "--vendor",

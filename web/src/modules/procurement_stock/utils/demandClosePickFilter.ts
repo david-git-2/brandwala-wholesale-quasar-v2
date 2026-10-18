@@ -48,6 +48,24 @@ export function demandPickMatchesCloseFilter(
   return demandPickCloseAction(pick) === filter;
 }
 
+/** Packed close UI: All (null) shows every open pick; a tab shows that close action only. */
+export function demandPickVisibleInPackedCloseList(
+  pick: DemandStockPickSelection | PreorderDemandStockPick,
+  filter: PreorderDemandCloseAction | null,
+): boolean {
+  return demandPickMatchesCloseFilter(pick, filter);
+}
+
+export function closeActionSelectOptionsForPick(
+  _pick?: DemandStockPickSelection | PreorderDemandStockPick,
+): Array<{ label: string; value: PreorderDemandCloseAction }> {
+  return [
+    { label: 'Take', value: 'take' },
+    { label: 'Condition', value: 'condition' },
+    { label: 'Return', value: 'return' },
+  ];
+}
+
 /** Bill id for a close action (take uses document invoice_id; condition from picks). */
 export function resolveInvoiceIdForCloseAction(
   group: ProcurementDemandGroup,

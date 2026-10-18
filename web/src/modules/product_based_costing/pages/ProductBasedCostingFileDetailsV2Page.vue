@@ -5,17 +5,14 @@
       <div class="pbc-v2-top-section__main row items-center justify-between no-wrap">
         <!-- Left: Back Button, Code, Name -->
         <div class="row items-center q-gutter-x-xs no-wrap ellipsis min-width-0 col-auto">
-          <q-btn
-            flat
-            round
-            dense
+          <TfBtn
+            variant="icon"
             icon="ph ph-arrow-left"
             color="grey-8"
-            size="sm"
             @click="goBackToList"
           >
-            <q-tooltip>{{ $t('product_based_costing.go_back') }}</q-tooltip>
-          </q-btn>
+            <q-tooltip :delay="400">{{ $t('product_based_costing.go_back') }}</q-tooltip>
+          </TfBtn>
 
           <span class="pbc-v2-top-section__code text-subtitle2 text-weight-bolder text-grey-8 font-mono bg-grey-2 q-px-xs rounded-borders">
             PBC-{{ fileId }}
@@ -84,12 +81,8 @@
         <!-- Right Header Action Controls -->
         <div class="row items-center q-gutter-x-xs no-wrap col-auto">
           <!-- Add Products Button -->
-          <q-btn
-            color="primary"
-            unelevated
-            dense
-            no-caps
-            size="sm"
+          <TfBtn
+            variant="primary"
             icon="ph ph-plus"
             :label="$t('product_based_costing.add_products')"
             class="q-px-sm rounded-sq-btn text-weight-bold"
@@ -98,21 +91,18 @@
           />
 
           <!-- Backlog Auto-Suggest Button -->
-          <q-btn
+          <TfBtn
             v-if="availableBacklogItems.length"
-            outline
-            dense
-            no-caps
+            variant="secondary"
             color="orange-9"
-            size="sm"
             icon="ph ph-tray"
             :label="`Backlog (${availableBacklogItems.length})`"
             class="q-px-sm rounded-sq-btn text-weight-bold bg-orange-1"
             style="border-radius: 8px"
             @click="openBacklogDrawer"
           >
-            <q-tooltip>Review open unfulfilled demand backlog for this customer</q-tooltip>
-          </q-btn>
+            <q-tooltip :delay="400">Review open unfulfilled demand backlog for this customer</q-tooltip>
+          </TfBtn>
 
           <q-btn-toggle
             v-model="itemsView"
@@ -131,15 +121,12 @@
           />
 
           <!-- Columns Menu -->
-          <q-btn
-            flat
-            dense
-            no-caps
+          <TfBtn
+            variant="tertiary"
             color="grey-8"
             class="rounded-sq-btn text-weight-bold q-px-sm border-grey"
             icon="ph ph-columns"
             :label="$t('product_based_costing.columns')"
-            size="sm"
             style="border-radius: 8px"
           >
             <q-menu auto-close="false">
@@ -190,7 +177,7 @@
                 </q-item>
               </q-list>
             </q-menu>
-          </q-btn>
+          </TfBtn>
 
           <q-btn
             unelevated
@@ -335,20 +322,17 @@
           </div>
 
           <div class="pbc-rates-editor__actions">
-            <q-btn
-              flat
-              dense
-              no-caps
+            <TfBtn
+              variant="tertiary"
+              size="md"
               label="Cancel"
               class="rounded-sq-btn"
               style="border-radius: 8px"
               @click="ratesExpanded = false"
             />
-            <q-btn
-              unelevated
-              dense
-              no-caps
-              color="primary"
+            <TfBtn
+              variant="primary"
+              size="md"
               label="Save"
               class="rounded-sq-btn q-px-md"
               style="border-radius: 8px"
@@ -483,7 +467,7 @@
             </th>
 
             <!-- Qty -->
-            <th v-if="visibleColumnMap.qty" class="text-center bw-ops-col-tint--qty" style="width: 56px; min-width: 56px">
+            <th v-if="visibleColumnMap.qty" class="text-center tf-ops-col-tint--qty" style="width: 56px; min-width: 56px">
               <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
                 <span>Qty</span>
                 <q-btn
@@ -502,7 +486,7 @@
             </th>
 
             <!-- Confirmed Qty -->
-            <th v-if="visibleColumnMap.confirmedQty" class="text-center bw-ops-col-tint--qty" style="width: 56px; min-width: 56px">
+            <th v-if="visibleColumnMap.confirmedQty" class="text-center tf-ops-col-tint--qty" style="width: 56px; min-width: 56px">
               Conf. Qty
             </th>
 
@@ -517,7 +501,7 @@
             </th>
 
             <!-- Purchase Price GBP -->
-            <th v-if="visibleColumnMap.priceGbp" class="text-center bw-ops-col-tint--price" style="width: 56px; min-width: 56px">
+            <th v-if="visibleColumnMap.priceGbp" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
                 <span>{{ $t('product_based_costing.table_col_priceGbp', currencyI18n) }}</span>
                 <q-btn
@@ -536,7 +520,7 @@
             </th>
 
             <!-- Total Purchase GBP -->
-            <th v-if="visibleColumnMap.totalPurchasePriceGbp" class="text-center bw-ops-col-tint--price" style="width: 56px; min-width: 56px">
+            <th v-if="visibleColumnMap.totalPurchasePriceGbp" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               {{ $t('product_based_costing.table_col_totalPurchasePriceGbp', currencyI18n) }}
             </th>
 
@@ -563,7 +547,7 @@
             </th>
 
             <!-- Package Wt (g) -->
-            <th v-if="visibleColumnMap.packageWeight" class="text-center bw-ops-col-tint--weight" style="width: 56px; min-width: 56px; line-height: 1.2; padding-top: 4px; padding-bottom: 4px">
+            <th v-if="visibleColumnMap.packageWeight" class="text-center tf-ops-col-tint--weight" style="width: 56px; min-width: 56px; line-height: 1.2; padding-top: 4px; padding-bottom: 4px">
               <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
                 <div>
                   <div>Package</div>
@@ -585,7 +569,7 @@
             </th>
 
             <!-- Total Wt (g) -->
-            <th v-if="visibleColumnMap.totalWeight" class="text-center bw-ops-col-tint--weight" style="width: 56px; min-width: 56px; line-height: 1.2; padding-top: 4px; padding-bottom: 4px">
+            <th v-if="visibleColumnMap.totalWeight" class="text-center tf-ops-col-tint--weight" style="width: 56px; min-width: 56px; line-height: 1.2; padding-top: 4px; padding-bottom: 4px">
               <div>Total</div>
               <div>Weight</div>
             </th>
@@ -601,27 +585,27 @@
             </th>
 
             <!-- Total Cost GBP/Unit -->
-            <th v-if="visibleColumnMap.totalCostGbp" class="text-center bw-ops-col-tint--cost" style="width: 56px; min-width: 56px">
+            <th v-if="visibleColumnMap.totalCostGbp" class="text-center tf-ops-col-tint--cost" style="width: 56px; min-width: 56px">
               {{ $t('product_based_costing.table_col_totalCostGbp', currencyI18n) }}
             </th>
 
             <!-- Row Total Cost GBP -->
-            <th v-if="visibleColumnMap.rowTotalCostGbp" class="text-center bw-ops-col-tint--cost" style="width: 56px; min-width: 56px">
+            <th v-if="visibleColumnMap.rowTotalCostGbp" class="text-center tf-ops-col-tint--cost" style="width: 56px; min-width: 56px">
               {{ $t('product_based_costing.table_col_rowTotalCostGbp', currencyI18n) }}
             </th>
 
             <!-- Cost BDT -->
-            <th v-if="visibleColumnMap.costBdt" class="text-center bw-ops-col-tint--cost" style="width: 60px; min-width: 60px">
+            <th v-if="visibleColumnMap.costBdt" class="text-center tf-ops-col-tint--cost" style="width: 60px; min-width: 60px">
               {{ $t('product_based_costing.table_col_costBdt', currencyI18n) }}
             </th>
 
             <!-- Row Total Cost BDT -->
-            <th v-if="visibleColumnMap.totalCostBdt" class="text-center bw-ops-col-tint--cost" style="width: 60px; min-width: 60px">
+            <th v-if="visibleColumnMap.totalCostBdt" class="text-center tf-ops-col-tint--cost" style="width: 60px; min-width: 60px">
               {{ $t('product_based_costing.table_col_totalCostBdt', currencyI18n) }}
             </th>
 
             <!-- Offer Price BDT -->
-            <th v-if="visibleColumnMap.offerPriceBdt" class="text-center bw-ops-col-tint--price" style="width: 84px; min-width: 84px">
+            <th v-if="visibleColumnMap.offerPriceBdt" class="text-center tf-ops-col-tint--price" style="width: 84px; min-width: 84px">
               <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
                 <span>{{ $t('product_based_costing.table_col_offerPriceBdt', currencyI18n) }}</span>
                 <q-btn
@@ -640,7 +624,7 @@
             </th>
 
             <!-- Total Offer BDT -->
-            <th v-if="visibleColumnMap.totalBdt" class="text-center bw-ops-col-tint--price" style="width: 64px; min-width: 64px">
+            <th v-if="visibleColumnMap.totalBdt" class="text-center tf-ops-col-tint--price" style="width: 64px; min-width: 64px">
               Tot Offer
             </th>
 
@@ -670,8 +654,7 @@
           <!-- Loading State -->
           <tr v-if="isLoading">
             <td colspan="20" class="text-center q-py-xl">
-              <q-spinner-dots color="primary" size="40px" />
-              <div class="text-caption text-grey-6 q-mt-xs">Loading costing line items...</div>
+              <TfSkeletonRows :rows="6" :cols="6" height="18px" />
             </td>
           </tr>
 
@@ -762,7 +745,7 @@
               </td>
 
               <!-- Qty (Inline Edit) -->
-              <td v-if="visibleColumnMap.qty" class="text-center bw-ops-col-tint--qty" style="width: 56px; min-width: 56px">
+              <td v-if="visibleColumnMap.qty" class="text-center tf-ops-col-tint--qty" style="width: 56px; min-width: 56px">
                 <div class="row justify-center">
                   <q-input
                     :model-value="getDraftValue(row, 'quantity')"
@@ -783,7 +766,7 @@
               </td>
 
               <!-- Confirmed Qty (Inline Edit) -->
-              <td v-if="visibleColumnMap.confirmedQty" class="text-center bw-ops-col-tint--qty" style="width: 56px; min-width: 56px">
+              <td v-if="visibleColumnMap.confirmedQty" class="text-center tf-ops-col-tint--qty" style="width: 56px; min-width: 56px">
                 <div class="row justify-center">
                   <q-input
                     :model-value="getDraftValue(row, 'confirmed_quantity')"
@@ -860,7 +843,7 @@
               </td>
 
               <!-- Purchase Price GBP (Inline Edit) -->
-              <td v-if="visibleColumnMap.priceGbp" class="text-center bw-ops-col-tint--price" style="width: 56px; min-width: 56px">
+              <td v-if="visibleColumnMap.priceGbp" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
                 <div class="row justify-center">
                   <q-input
                     :model-value="getDraftValue(row, 'price_gbp')"
@@ -883,7 +866,7 @@
               </td>
 
               <!-- Total Purchase Price GBP -->
-              <td v-if="visibleColumnMap.totalPurchasePriceGbp" class="text-center bw-ops-col-tint--price font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
+              <td v-if="visibleColumnMap.totalPurchasePriceGbp" class="text-center tf-ops-col-tint--price font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
                 {{ buyMark }}{{ formatMoney(row.totalPurchasePriceGbp) }}
               </td>
 
@@ -908,7 +891,7 @@
               </td>
 
               <!-- Package Wt (g) (Inline Edit) -->
-              <td v-if="visibleColumnMap.packageWeight" class="text-center bw-ops-col-tint--weight font-mono text-grey-8" style="width: 56px; min-width: 56px">
+              <td v-if="visibleColumnMap.packageWeight" class="text-center tf-ops-col-tint--weight font-mono text-grey-8" style="width: 56px; min-width: 56px">
                 <div class="row justify-center">
                   <q-input
                     :model-value="getDraftValue(row, 'package_weight')"
@@ -928,7 +911,7 @@
               </td>
 
               <!-- Total Wt (g) -->
-              <td v-if="visibleColumnMap.totalWeight" class="text-center bw-ops-col-tint--weight font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
+              <td v-if="visibleColumnMap.totalWeight" class="text-center tf-ops-col-tint--weight font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
                 {{ row.totalWeight }}g
               </td>
 
@@ -943,27 +926,27 @@
               </td>
 
               <!-- Total Cost GBP -->
-              <td v-if="visibleColumnMap.totalCostGbp" class="text-center bw-ops-col-tint--cost font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
+              <td v-if="visibleColumnMap.totalCostGbp" class="text-center tf-ops-col-tint--cost font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
                 {{ buyMark }}{{ formatMoney(row.totalCostGbp) }}
               </td>
 
               <!-- Row Total Cost GBP -->
-              <td v-if="visibleColumnMap.rowTotalCostGbp" class="text-center bw-ops-col-tint--cost font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
+              <td v-if="visibleColumnMap.rowTotalCostGbp" class="text-center tf-ops-col-tint--cost font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
                 {{ buyMark }}{{ formatMoney(row.rowTotalCostGbp) }}
               </td>
 
               <!-- Cost BDT -->
-              <td v-if="visibleColumnMap.costBdt" class="text-center bw-ops-col-tint--cost font-mono text-weight-bold text-grey-9" style="width: 60px; min-width: 60px">
+              <td v-if="visibleColumnMap.costBdt" class="text-center tf-ops-col-tint--cost font-mono text-weight-bold text-grey-9" style="width: 60px; min-width: 60px">
                 {{ sellMark }}{{ formatMoney(row.costBdt) }}
               </td>
 
               <!-- Row Total Cost BDT -->
-              <td v-if="visibleColumnMap.totalCostBdt" class="text-center bw-ops-col-tint--cost font-mono text-caption text-grey-9" style="width: 60px; min-width: 60px">
+              <td v-if="visibleColumnMap.totalCostBdt" class="text-center tf-ops-col-tint--cost font-mono text-caption text-grey-9" style="width: 60px; min-width: 60px">
                 {{ sellMark }}{{ formatMoney(row.totalCostBdt) }}
               </td>
 
               <!-- Offer Price BDT (Inline Edit) -->
-              <td v-if="visibleColumnMap.offerPriceBdt" class="text-center bw-ops-col-tint--price" style="width: 84px; min-width: 84px">
+              <td v-if="visibleColumnMap.offerPriceBdt" class="text-center tf-ops-col-tint--price" style="width: 84px; min-width: 84px">
                 <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
                   <q-icon
                     v-if="row.isOfferPriceManual"
@@ -1006,7 +989,7 @@
               </td>
 
               <!-- Total Offer BDT -->
-              <td v-if="visibleColumnMap.totalBdt" class="text-center bw-ops-col-tint--price font-mono text-weight-bold text-positive" style="width: 64px; min-width: 64px">
+              <td v-if="visibleColumnMap.totalBdt" class="text-center tf-ops-col-tint--price font-mono text-weight-bold text-positive" style="width: 64px; min-width: 64px">
                 {{ sellMark }}{{ formatMoney(row.totalBdt) }}
               </td>
 
@@ -1095,9 +1078,8 @@
         </tbody>
       </table>
 
-      <div v-else-if="isLoading" class="column items-center justify-center q-py-xl">
-        <q-spinner-dots color="primary" size="40px" />
-        <div class="text-caption text-grey-6 q-mt-xs">Loading costing line items...</div>
+      <div v-else-if="isLoading" class="q-pa-md">
+        <TfSkeletonRows :rows="6" :cols="3" height="18px" />
       </div>
 
       <div v-else-if="!tableRows.length" class="column items-center justify-center q-py-xl text-grey-6">
@@ -1321,6 +1303,8 @@ import { useI18n } from 'vue-i18n';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import SmartImage from 'src/components/SmartImage.vue';
+import TfBtn from 'src/components/ui/TfBtn.vue';
+import TfSkeletonRows from 'src/components/ui/TfSkeletonRows.vue';
 import ProductBasedCostingItemCard from '../components/ProductBasedCostingItemCard.vue';
 import AddCostingItemsDrawer from '../components/AddCostingItemsDrawer.vue';
 import { productBasedCostingService } from '../services/productBasedCostingService';
@@ -2849,15 +2833,15 @@ function goBackToList() {
 }
 
 .border-bottom {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--tf-neutral-border);
 }
 
 .border-top {
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--tf-neutral-border);
 }
 
 .border-grey {
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--tf-neutral-border);
 }
 
 .rounded-sq-btn {
@@ -2884,16 +2868,16 @@ function goBackToList() {
   position: sticky;
   top: 0;
   z-index: 5;
-  background-color: #f1f5f9 !important;
-  color: #0f172a !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  background-color: var(--tf-disabled-bg) !important;
+  color: var(--tf-neutral-ink) !important;
+  border-bottom: 1px solid var(--tf-neutral-border);
   padding: 4px 6px !important;
   font-size: 11px;
 }
 
 .pbc-v2-markup-table tbody tr td {
   padding: 3px 4px !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--tf-neutral-border);
   min-height: 44px;
   height: auto;
   vertical-align: middle;
@@ -2905,32 +2889,32 @@ function goBackToList() {
 }
 
 /* Soft Column Tints (Color Code Standard from OPS_SPREADSHEET_TABLE_PATTERN.md) */
-.pbc-v2-markup-table th.bw-ops-col-tint--price,
-.pbc-v2-markup-table td.bw-ops-col-tint--price {
-  background-color: #daf3e4 !important;
-  box-shadow: inset 2px 0 0 #059669;
+.pbc-v2-markup-table th.tf-ops-col-tint--price,
+.pbc-v2-markup-table td.tf-ops-col-tint--price {
+  background-color: var(--tf-ops-hue-price) !important;
+  box-shadow: inset 2px 0 0 var(--tf-ops-accent-price);
 }
 
-.pbc-v2-markup-table th.bw-ops-col-tint--cost,
-.pbc-v2-markup-table td.bw-ops-col-tint--cost {
-  background-color: #ffe8d1 !important;
-  box-shadow: inset 2px 0 0 #ea580c;
+.pbc-v2-markup-table th.tf-ops-col-tint--cost,
+.pbc-v2-markup-table td.tf-ops-col-tint--cost {
+  background-color: var(--tf-ops-hue-cost) !important;
+  box-shadow: inset 2px 0 0 var(--tf-ops-accent-cost);
 }
 
-.pbc-v2-markup-table th.bw-ops-col-tint--qty,
-.pbc-v2-markup-table td.bw-ops-col-tint--qty {
-  background-color: #d0e6ff !important;
-  box-shadow: inset 2px 0 0 #2563eb;
+.pbc-v2-markup-table th.tf-ops-col-tint--qty,
+.pbc-v2-markup-table td.tf-ops-col-tint--qty {
+  background-color: var(--tf-ops-hue-qty) !important;
+  box-shadow: inset 2px 0 0 var(--tf-ops-accent-qty);
 }
 
-.pbc-v2-markup-table th.bw-ops-col-tint--weight,
-.pbc-v2-markup-table td.bw-ops-col-tint--weight {
-  background-color: #e8d7f7 !important;
-  box-shadow: inset 2px 0 0 #9333ea;
+.pbc-v2-markup-table th.tf-ops-col-tint--weight,
+.pbc-v2-markup-table td.tf-ops-col-tint--weight {
+  background-color: var(--tf-ops-hue-weight) !important;
+  box-shadow: inset 2px 0 0 var(--tf-ops-accent-weight);
 }
 
 .pbc-row:hover {
-  background-color: #f8fafc !important;
+  background-color: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%) !important;
 }
 
 .pbc-row:hover td {
@@ -2938,11 +2922,11 @@ function goBackToList() {
 }
 
 .pbc-row-selected {
-  background-color: #eff6ff !important;
+  background-color: var(--tf-info-soft) !important;
 }
 
 .pbc-row-selected td {
-  background-color: #e0f2fe !important;
+  background-color: var(--tf-info-soft) !important;
 }
 
 .pbc-row-img {
@@ -2951,8 +2935,8 @@ function goBackToList() {
   display: block;
   margin: 0 auto;
   border-radius: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: #fff;
+  border: 1px solid var(--tf-neutral-border);
+  background: var(--tf-neutral-surface);
   overflow: hidden;
 }
 
@@ -2969,8 +2953,8 @@ function goBackToList() {
   display: block;
   margin: 0 auto;
   border-radius: 6px;
-  border: 1px dashed rgba(0, 0, 0, 0.12);
-  background-color: #f1f5f9;
+  border: 1px dashed var(--tf-neutral-border);
+  background-color: var(--tf-disabled-bg);
   overflow: hidden;
 }
 
@@ -3000,17 +2984,17 @@ function goBackToList() {
 }
 
 .sl-reorder-cell {
-  background-color: #f8f9fa;
+  background-color: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
 }
 
 .bulk-paste-overlay {
   min-height: 0;
-  background: #fff;
+  background: var(--tf-neutral-surface);
 }
 
 .bulk-paste-overlay__footer {
-  border-top: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border-top: 1px solid var(--tf-neutral-border);
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
 }
 
 .bulk-paste-overlay__body .bulk-paste-grid-wrap {
@@ -3021,7 +3005,7 @@ function goBackToList() {
 .bulk-paste-grid-wrap {
   overflow: auto;
   max-height: 360px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--tf-neutral-border);
   border-radius: 8px;
 }
 
@@ -3035,18 +3019,18 @@ function goBackToList() {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--tf-disabled-bg);
+  color: var(--tf-neutral-muted);
   font-weight: 700;
   text-align: left;
   padding: 6px 8px;
-  border-bottom: 1px solid #e2e8f0;
-  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--tf-neutral-border);
+  border-right: 1px solid var(--tf-neutral-border);
 }
 
 .bulk-paste-grid td {
-  border-bottom: 1px solid #e2e8f0;
-  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--tf-neutral-border);
+  border-right: 1px solid var(--tf-neutral-border);
   padding: 0;
 }
 
@@ -3062,12 +3046,12 @@ function goBackToList() {
   padding: 0 8px;
   font-size: 12px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  background: #fff;
-  color: #0f172a;
+  background: var(--tf-neutral-surface);
+  color: var(--tf-neutral-ink);
 }
 
 .bulk-paste-cell:focus {
-  box-shadow: inset 0 0 0 2px var(--q-primary, #2563eb);
+  box-shadow: inset 0 0 0 2px var(--q-primary, var(--tf-ops-accent-qty));
 }
 
 .bulk-paste-cell--value {
@@ -3112,13 +3096,13 @@ function goBackToList() {
 
 /* Crisp Excel focus box */
 :deep(.excel-cell-input.q-field--focused .q-field__control) {
-  background-color: #ffffff !important;
-  border: 1.5px solid #059669 !important;
-  box-shadow: 0 0 0 1px #059669 !important;
+  background-color: var(--tf-neutral-surface) !important;
+  border: 1.5px solid var(--tf-ops-accent-price) !important;
+  box-shadow: 0 0 0 1px var(--tf-ops-accent-price) !important;
 }
 
 .rates-pill {
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--tf-neutral-border);
   font-size: 11px;
   line-height: 1.2;
   padding-top: 2px;
@@ -3126,7 +3110,7 @@ function goBackToList() {
 }
 
 .pbc-rates-editor {
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--tf-neutral-border);
   margin-top: 6px;
   padding-top: 10px;
   padding-bottom: 4px;
@@ -3140,8 +3124,8 @@ function goBackToList() {
 }
 
 .pbc-rates-group {
-  background: #f8fafc;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
+  border: 1px solid var(--tf-neutral-border);
   border-radius: 8px;
   padding: 8px 10px 10px;
 }
@@ -3151,12 +3135,12 @@ function goBackToList() {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--tf-neutral-muted);
   margin-bottom: 6px;
 }
 
 .pbc-rates-mode-toggle {
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--tf-neutral-border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -3191,19 +3175,19 @@ function goBackToList() {
 }
 
 .excel-scrollbar-wrapper {
-  background-color: #e2e8f0;
+  background-color: var(--tf-neutral-border);
   height: 22px;
   width: 220px;
   max-width: 260px;
   border-radius: 4px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--tf-neutral-border-strong);
   padding: 0 2px;
 }
 
 .excel-scroll-arrow-btn {
   background: transparent;
   border: none;
-  color: #475569;
+  color: var(--tf-neutral-muted);
   width: 16px;
   height: 16px;
   display: flex;
@@ -3215,14 +3199,14 @@ function goBackToList() {
 }
 
 .excel-scroll-arrow-btn:hover {
-  background-color: #cbd5e1;
-  color: #0f172a;
+  background-color: var(--tf-neutral-border-strong);
+  color: var(--tf-neutral-ink);
 }
 
 .excel-scroll-track {
   height: 12px;
   width: 160px;
-  background-color: #cbd5e1;
+  background-color: var(--tf-neutral-border-strong);
   border-radius: 3px;
   position: relative;
   margin: 0 4px;
@@ -3230,7 +3214,7 @@ function goBackToList() {
 
 .excel-scroll-thumb {
   height: 12px;
-  background-color: #64748b;
+  background-color: var(--tf-neutral-muted);
   border-radius: 3px;
   position: absolute;
   top: 0;
@@ -3239,7 +3223,7 @@ function goBackToList() {
 }
 
 .excel-scroll-thumb:hover {
-  background-color: #475569;
+  background-color: var(--tf-neutral-muted);
 }
 
 .hide-native-scrollbar {

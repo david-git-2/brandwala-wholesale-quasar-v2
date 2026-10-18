@@ -47,7 +47,7 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => ({
       display: props.indexAxis === 'x',
       grid: { display: false },
       ticks: {
-        color: 'var(--bw-theme-muted)',
+        color: 'var(--tf-theme-muted)',
         font: { size: 11, weight: 500 },
       },
       border: { display: false },
@@ -56,7 +56,7 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => ({
       display: props.indexAxis === 'y',
       grid: { display: false },
       ticks: {
-        color: 'var(--bw-theme-muted)',
+        color: 'var(--tf-theme-muted)',
         font: { size: 11, weight: 500 },
       },
       border: { display: false },
@@ -87,6 +87,6 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => ({
   place-items: center;
   text-align: center;
   font-size: 13px;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 </style>

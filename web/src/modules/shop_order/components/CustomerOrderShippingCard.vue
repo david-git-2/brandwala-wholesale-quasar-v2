@@ -64,13 +64,13 @@ export default {
 <style scoped>
 .details-card {
   border-radius: 14px;
-  background: var(--bw-theme-surface, #fff);
-  border-color: var(--bw-theme-border, rgba(0, 0, 0, 0.12));
+  background: var(--tf-theme-surface, #fff);
+  border-color: var(--tf-theme-border, rgba(0, 0, 0, 0.12));
   box-shadow: 0 4px 12px rgba(34, 56, 101, 0.02);
 }
 
 .border-bottom {
-  border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08));
+  border-bottom: 1px solid var(--tf-theme-border, rgba(34, 56, 101, 0.08));
 }
 
 body.body--dark .details-card {
@@ -78,11 +78,11 @@ body.body--dark .details-card {
 }
 
 body.body--dark .details-card :deep(.text-grey-9) {
-  color: var(--bw-theme-ink) !important;
+  color: var(--tf-theme-ink) !important;
 }
 
 body.body--dark .details-card :deep(.text-grey-8) {
-  color: var(--bw-theme-muted) !important;
+  color: var(--tf-theme-muted) !important;
 }
 
 .shipping-expansion :deep(.q-item) {

@@ -37,8 +37,8 @@ defineProps<{
 
 <style scoped>
 .category-card {
-  border-radius: var(--bw-shop-radius-card, 20px);
-  background: var(--bw-theme-surface);
-  box-shadow: var(--bw-theme-shadow);
+  border-radius: var(--tf-shop-radius-card, 20px);
+  background: var(--tf-theme-surface);
+  box-shadow: var(--tf-theme-shadow);
 }
 </style>

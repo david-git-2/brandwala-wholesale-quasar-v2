@@ -15,7 +15,7 @@ defineProps<{
   width: 1em;
   height: 1em;
   flex-shrink: 0;
-  background-color: var(--bw-theme-primary, var(--bw-neutral-ink));
+  background-color: var(--tf-theme-primary, var(--tf-neutral-ink));
   -webkit-mask: url('/brand/logo-mark-light.png') center / contain no-repeat;
   mask: url('/brand/logo-mark-light.png') center / contain no-repeat;
 }

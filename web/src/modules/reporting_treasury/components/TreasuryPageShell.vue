@@ -1,9 +1,9 @@
 <template>
   <q-page
-    :class="dense ? 'q-pa-sm q-sm-pa-md' : 'bw-page'"
+    :class="dense ? 'q-pa-sm q-sm-pa-md' : 'tf-page'"
     :style="dense ? 'max-width: 100% !important;' : ''"
   >
-    <div :class="dense ? 'q-gutter-y-sm' : 'bw-page__stack'">
+    <div :class="dense ? 'q-gutter-y-sm' : 'tf-page__stack'">
       <!-- Title & Subtitle Card -->
       <q-card flat bordered :class="dense ? 'q-py-none q-px-sm' : 'q-pa-md'">
         <AppPageHeader :title="title" :subtitle="subtitle || ''" :dense="dense">
@@ -14,7 +14,7 @@
       </q-card>
 
       <!-- Status Banner / Error Slot -->
-      <q-banner v-if="error" class="bw-status-banner text-white" rounded>
+      <q-banner v-if="error" class="tf-status-banner text-white" rounded>
         {{ error }}
       </q-banner>
       <slot name="error-banner" />

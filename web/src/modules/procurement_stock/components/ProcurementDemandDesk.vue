@@ -1,97 +1,137 @@
 <template>
-  <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
+  <q-page class="q-px-xs q-py-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
-      <q-card flat class="floating-surface shadow-1 q-pa-xs flex-shrink-0">
-        <div class="column q-gutter-y-xs">
+      <q-card flat class="floating-surface shadow-1 demand-desk-toolbar flex-shrink-0">
+        <div class="demand-desk-toolbar__inner column no-wrap">
           <div
             v-if="isFixedGroupPage"
-            class="row items-center justify-between q-col-gutter-x-xs no-wrap"
+            class="row items-center no-wrap q-gutter-x-xs"
           >
-            <div class="row items-center no-wrap q-gutter-x-xs col min-width-0">
-              <q-btn
-                flat
-                round
-                dense
-                icon="ph ph-arrow-left"
-                color="grey-8"
-                class="col-shrink"
-                @click="goBackFromFixedGroup"
-              >
-                <q-tooltip>Back to delivery paper</q-tooltip>
-              </q-btn>
-              <div
-                v-if="fixedGroupTitle"
-                class="text-subtitle2 text-weight-bold text-grey-9 ellipsis text-left col min-width-0"
-              >
-                {{ fixedGroupTitle }}
-              </div>
-            </div>
-            <div class="row items-center justify-end q-gutter-x-xs col-shrink">
-              <q-input
-                v-model="searchText"
-                outlined
-                rounded
-                dense
-                clearable
-                style="min-width: 220px"
-                class="dense-search-input"
-                placeholder="Search product or customer..."
-              >
-                <template #prepend>
-                  <q-icon name="ph ph-magnifying-glass" size="16px" />
-                </template>
-              </q-input>
-              <q-btn
-                flat
-                round
-                dense
-                icon="ph ph-arrow-clockwise"
-                :loading="isFetching"
-                @click="refreshDemandDesk"
-              >
-                <q-tooltip>Refresh</q-tooltip>
-              </q-btn>
+            <q-btn
+              flat
+              round
+              dense
+              icon="ph ph-arrow-left"
+              color="grey-8"
+              class="col-shrink"
+              @click="goBackFromFixedGroup"
+            >
+              <q-tooltip>Back to delivery paper</q-tooltip>
+            </q-btn>
+            <div
+              v-if="fixedGroupTitle"
+              class="text-subtitle2 text-weight-bold text-grey-9 ellipsis text-left col min-width-0"
+            >
+              {{ fixedGroupTitle }}
             </div>
           </div>
 
-          <div class="row items-center q-col-gutter-xs">
-            <div v-if="isFulfillMode && !isFixedGroupPage" class="col-12 col-md-auto">
-              <q-btn-toggle
-                v-model="fulfillProcurementStatus"
-                no-caps
-                unelevated
-                toggle-color="primary"
-                color="grey-3"
-                text-color="grey-9"
-                class="demand-status-tabs"
-                :options="fulfillStatusTabOptions"
-              />
-            </div>
+          <div
+            v-else
+            class="demand-desk-toolbar__head row items-start justify-between q-col-gutter-sm no-wrap"
+          >
+            <header class="demand-desk-intro col min-width-0">
+              <h1 class="demand-desk-intro__title">{{ deskPageTitle }}</h1>
+              <p class="demand-desk-intro__subtitle">{{ deskPageSubtitle }}</p>
+            </header>
             <div
-              v-if="showPackedCloseToolbar"
-              class="col-12 row items-center q-gutter-x-sm wrap packed-close-toolbar"
+              v-if="isFulfillMode"
+              class="demand-desk-toolbar__status col-shrink"
             >
-              <div class="row items-center q-gutter-x-xs col-shrink">
+              <div class="demand-filter-segment" role="group" aria-label="Fulfillment status">
                 <q-btn-toggle
-                  v-model="packedCloseActionFilter"
+                  v-model="fulfillProcurementStatus"
                   no-caps
                   unelevated
                   toggle-color="primary"
                   color="grey-3"
                   text-color="grey-9"
                   class="demand-status-tabs"
-                  :options="closeActionFilterOptions"
+                  :options="fulfillStatusTabOptions"
                 />
+              </div>
+            </div>
+          </div>
+
+          <div
+            v-if="showDemandProfileBar || showPackedCloseToolbar"
+            class="demand-desk-toolbar__controls column q-gutter-y-sm"
+          >
+            <div v-if="showDemandProfileBar" class="demand-desk-toolbar__filters column q-gutter-y-xs">
+              <div
+                class="demand-filter-segment demand-profile-toggle-wrap"
+                role="group"
+                aria-label="Customer profile"
+              >
+                <q-btn-toggle
+                  v-model="demandProfileFilterKey"
+                  no-caps
+                  unelevated
+                  toggle-color="primary"
+                  color="grey-3"
+                  text-color="grey-9"
+                  class="demand-profile-toggle demand-status-tabs"
+                  :options="demandProfileToggleOptions"
+                />
+              </div>
+              <div
+                v-if="showProfileToolbarActions"
+                class="demand-desk-toolbar__profile-actions row items-center no-wrap q-gutter-xs"
+              >
+                <q-btn
+                  v-if="showProfileFillOldestStockButton"
+                  flat
+                  no-caps
+                  color="primary"
+                  icon="ph ph-stack"
+                  label="Fill oldest stock"
+                  class="demand-profile-action-btn"
+                  :loading="profileFillOldestStockLoading"
+                  :disable="!canProfileFillOldestStock || profileFillOldestStockLoading"
+                  @click="onProfileBulkFillOldestStock"
+                />
+                <q-btn
+                  v-if="showProfileChangeStatusButton"
+                  unelevated
+                  no-caps
+                  color="primary"
+                  icon="ph ph-arrows-clockwise"
+                  label="Change status"
+                  class="demand-profile-action-btn"
+                  :loading="profileChangeStatusLoading"
+                  :disable="!canProfileChangeStatus || profileChangeStatusLoading"
+                  @click="onProfileBulkChangeStatus"
+                />
+              </div>
+            </div>
+            <div
+              v-if="showPackedCloseToolbar"
+              class="row items-center q-gutter-x-sm wrap packed-close-toolbar"
+            >
+              <div class="row items-center q-gutter-x-xs col-shrink">
+                <div class="demand-filter-segment" role="group" aria-label="Close action">
+                  <q-btn-toggle
+                    v-model="packedCloseActionFilter"
+                    no-caps
+                    unelevated
+                    toggle-color="primary"
+                    color="grey-3"
+                    text-color="grey-9"
+                    class="demand-status-tabs"
+                    :options="closeActionFilterOptions"
+                  />
+                </div>
                 <q-btn
                   v-if="packedCloseExistingInvoiceId"
                   flat
                   no-caps
-                  color="primary"
+                  color="grey-8"
                   icon="ph ph-receipt"
                   label="View bill"
                   @click="openPackedCloseInvoice"
                 />
                 <q-btn
+                  v-if="canShowPackedCloseInvoiceButton"
                   unelevated
                   no-caps
                   color="primary"
@@ -100,10 +140,20 @@
                   :disable="!canRunPackedClose || closeDocumentMutation.isPending.value"
                   @click="onPackedClosePrimary"
                 />
+                <q-btn
+                  v-if="canShowPackedReturnButton"
+                  unelevated
+                  no-caps
+                  color="primary"
+                  label="Return to warehouse"
+                  :loading="closeDocumentMutation.isPending.value"
+                  :disable="!canRunPackedReturn || closeDocumentMutation.isPending.value"
+                  @click="onPackedReturnToWarehouse"
+                />
               </div>
               <div
                 class="row items-center q-gutter-x-md text-caption text-grey-8 packed-close-qty-summary"
-                title="Open units not yet invoiced or returned"
+                title="Open units not yet invoiced"
               >
                 <span>
                   Take
@@ -125,40 +175,11 @@
                 </span>
               </div>
             </div>
-            <div
-              v-if="!isFixedGroupPage"
-              class="col row items-center q-gutter-x-xs justify-end"
-            >
-              <q-input
-                v-model="searchText"
-                outlined
-                rounded
-                dense
-                clearable
-                style="min-width: 220px"
-                class="col-grow col-sm-auto dense-search-input"
-                placeholder="Search product or customer..."
-              >
-                <template #prepend>
-                  <q-icon name="ph ph-magnifying-glass" size="16px" />
-                </template>
-              </q-input>
-              <q-btn
-                flat
-                round
-                dense
-                icon="ph ph-arrow-clockwise"
-                :loading="isFetching"
-                @click="refreshDemandDesk"
-              >
-                <q-tooltip>Refresh</q-tooltip>
-              </q-btn>
-            </div>
           </div>
         </div>
       </q-card>
 
-      <q-card flat bordered class="col column no-wrap overflow-hidden floating-surface shadow-1">
+      <q-card flat bordered class="col column no-wrap overflow-hidden floating-surface shadow-1 demand-desk-body">
         <q-inner-loading :showing="isLoading">
           <q-spinner-dots size="40px" color="primary" />
         </q-inner-loading>
@@ -172,180 +193,213 @@
             <div class="text-body2">{{ emptyMessage }}</div>
           </div>
 
-          <q-markup-table
-            v-else
-            flat
-            class="demand-table shipment-details-table full-height"
-          >
-            <thead>
-              <tr>
-                <th class="text-center demand-image-col">Image</th>
-                <th class="text-left demand-product-col">Product</th>
-                <th class="text-center demand-qty-col">
-                  {{ isFulfillMode ? 'Packaged' : 'Quantity' }}
-                </th>
-                <th v-if="isBuyMode" class="text-center demand-place-col">Place order</th>
-                <th v-if="isBuyMode" class="text-left demand-vendor-col">Vendor</th>
-                <th v-if="isFulfillMode" class="text-center demand-delivered-col">{{ allocatedColumnLabel }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <template v-for="group in visibleGroups" :key="groupKey(group)">
-                <tr
-                  v-if="!isFixedGroupPage"
-                  class="demand-group-row cursor-pointer"
+          <div v-else-if="useFulfillLineCards && listTenantId" class="demand-buy-card-grid">
+            <ProcurementDemandFulfillCards
+              v-for="group in visibleGroups"
+              :key="groupKey(group)"
+              nested
+              :group="group"
+              :tenant-id="listTenantId"
+              :search="debouncedSearch"
+              :enabled="Boolean(listTenantId)"
+              :can-pick-stock="canPickStockForGroup(group)"
+              :is-packed-close-mode="isPackedCloseMode(group)"
+              :only-lines-with-stock-picks="packedCloseListQueueMode"
+              :packed-close-action-filter="packedCloseListFilter"
+              :close-action-options="closeActionOptions"
+              :allocated-label="allocatedColumnLabel"
+              :drafts="drafts"
+              :saving-row-keys="savingRowKeys"
+              :dirty-row-keys="dirtyPackedRowKeys"
+              @sync-items="(items) => syncDraftsFromGroupItems(group, items)"
+              @pick-stock="(item) => openStockPickDialog(group, item)"
+              @close-action-change="(item, clientKey, action) =>
+                onPickCloseActionChange(group, item, clientKey, action)"
+              @pick-quantity-input="(item, clientKey, value) =>
+                onPickQuantityInput(group, item, clientKey, value)"
+              @add-close-split="(item, globalStockId) =>
+                onAddCloseSplit(group, item, globalStockId)"
+              @delete-close-pick="(item, clientKey) =>
+                onDeletePackedPick(group, item, clientKey)"
+              @save-packed-picks="(item) => onSavePackedPicks(group, item)"
+              @open-source="openGroupSource(group)"
+              @fill-oldest-stock="onFillOldestStockForGroup(group)"
+            />
+          </div>
+
+          <div v-else-if="isBuyMode && listTenantId" class="demand-buy-card-grid">
+            <ProcurementDemandBuyCards
+              v-for="group in visibleGroups"
+              :key="groupKey(group)"
+              nested
+              :group="group"
+              :tenant-id="listTenantId"
+              :search="debouncedSearch"
+              :enabled="Boolean(listTenantId)"
+              :can-edit-procuring="isProcuringGroup(group)"
+              :vendor-options="vendorOptions"
+              :vendors-loading="vendorsLoading"
+              :drafts="drafts"
+              :saving-row-keys="savingRowKeys"
+              @sync-items="(items) => syncDraftsFromGroupItems(group, items)"
+              @filter-vendors="filterVendors"
+              @placed-quantity-input="(item, v) => onPlacedQuantityInput(group, item, v)"
+              @vendor-change="(item, v) => onVendorChange(group, item, v)"
+              @flush-save="(item) => flushProcuringSave(group, item)"
+              @open-source="openGroupSource(group)"
+              @fill-place-qty="onFillPlaceQtyForGroup(group)"
+              @set-vendor="openBulkVendorDialog(group)"
+            />
+          </div>
+
+          <div v-else class="demand-groups-stack column no-wrap">
+            <article
+              v-for="group in visibleGroups"
+              :key="groupKey(group)"
+              class="demand-group-block"
+            >
+              <section
+                v-if="!isFixedGroupPage"
+                class="demand-group-hero"
+                :class="{
+                  'demand-group-hero--expanded': showGroupItemRows(group),
+                  'demand-group-hero--queue': navigatePackedGroupToPage,
+                }"
+              >
+                <div
+                  class="demand-group-hero__head row no-wrap items-center q-gutter-sm cursor-pointer"
+                  role="button"
+                  tabindex="0"
+                  :aria-expanded="isGroupExpanded(groupKey(group))"
                   @click="onGroupRowClick(group)"
+                  @keydown.enter="onGroupRowClick(group)"
+                  @keydown.space.prevent="onGroupRowClick(group)"
                 >
-                  <td :colspan="tableColCount">
-                    <div class="row items-center q-gutter-x-xs no-wrap">
-                      <q-icon
-                        v-if="!isFixedGroupPage"
-                        :name="groupRowCaretIcon(group)"
-                        size="16px"
-                        color="grey-7"
-                      />
-                      <q-icon :name="groupIcon(group.document_type)" size="16px" color="primary" />
-                      <span class="text-weight-bold text-grey-9 demand-group-title col ellipsis">
-                        {{ groupTitle(group) }}
-                        <q-tooltip anchor="top middle" self="bottom middle" :offset="[0, 4]">
-                          {{ groupTitle(group) }}
-                        </q-tooltip>
+                  <q-btn
+                    v-if="!isBuyMode && !navigatePackedGroupToPage"
+                    flat
+                    round
+                    dense
+                    size="sm"
+                    :icon="groupRowCaretIcon(group)"
+                    color="grey-8"
+                    class="demand-group-hero__caret"
+                    aria-label="Expand or collapse lines"
+                    @click.stop="onGroupRowClick(group)"
+                  />
+                  <div
+                    class="demand-group-hero__icon flex flex-center"
+                    :class="
+                      group.document_type === 'shop_order'
+                        ? 'demand-group-hero__icon--shop'
+                        : 'demand-group-hero__icon--costing'
+                    "
+                  >
+                    <q-icon
+                      :name="
+                        group.document_type === 'shop_order'
+                          ? 'ph ph-receipt'
+                          : 'ph ph-file-text'
+                      "
+                      size="18px"
+                    />
+                  </div>
+                  <div class="col min-width-0">
+                    <div class="demand-group-hero__title ellipsis">
+                      {{ groupPrimaryLabel(group) }}
+                    </div>
+                    <div
+                      class="demand-group-hero__subtitle row items-center wrap q-gutter-x-xs q-gutter-y-xs"
+                    >
+                      <span class="demand-group-hero__type-pill">
+                        {{ groupSourceTypeLabel(group) }}
                       </span>
-                      <span class="text-caption text-grey-7">
-                        · {{ group.customer_group_name || '—' }}
+                      <span class="demand-group-hero__doc-ref ellipsis">
+                        {{ groupDocumentHeadline(group) }}
                       </span>
-                      <q-space />
+                      <span
+                        v-if="group.profile_name && navigatePackedGroupToPage"
+                        class="demand-group-hero__profile ellipsis"
+                      >
+                        {{ group.profile_name }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="demand-group-hero__meta row items-center no-wrap q-gutter-x-sm flex-shrink-0">
+                    <div class="column items-end q-gutter-y-xs">
                       <q-badge
                         :color="groupStatusColor(group.document_status)"
                         text-color="white"
-                        class="text-weight-medium"
+                        :rounded="false"
+                        class="text-weight-medium demand-group-hero__status"
                         :label="groupStatusLabel(group)"
                       />
-                      <q-badge color="grey-3" text-color="grey-9" :label="`${group.item_count} items`" />
-                      <q-btn
-                        flat
-                        dense
-                        no-caps
-                        color="primary"
-                        icon="ph ph-arrow-square-out"
-                        :label="group.document_type === 'shop_order' ? 'Open order' : 'Open file'"
-                        class="demand-group-invoice-btn q-ml-xs"
-                        @click.stop="openGroupSource(group)"
-                      >
-                        <q-tooltip>
-                          {{
-                            group.document_type === 'shop_order'
-                              ? 'Open order details'
-                              : 'Open costing file details'
-                          }}
-                        </q-tooltip>
-                      </q-btn>
-                      <q-btn
-                        v-if="isBuyMode && isProcuringGroup(group)"
-                        flat
-                        dense
-                        no-caps
-                        color="primary"
-                        icon="ph ph-copy"
-                        label="Fill place qty"
-                        class="demand-group-invoice-btn q-ml-xs"
-                        :loading="isGroupSaving(group)"
-                        :disable="isGroupSaving(group)"
-                        @click.stop="onFillPlaceQtyForGroup(group)"
-                      >
-                        <q-tooltip>Set place order qty to demand qty on every line</q-tooltip>
-                      </q-btn>
-                      <q-btn
-                        v-if="isBuyMode && isProcuringGroup(group)"
-                        flat
-                        dense
-                        no-caps
-                        color="primary"
-                        icon="ph ph-storefront"
-                        label="Set vendor"
-                        class="demand-group-invoice-btn q-ml-xs"
-                        :loading="isGroupSaving(group)"
-                        :disable="isGroupSaving(group)"
-                        @click.stop="openBulkVendorDialog(group)"
-                      >
-                        <q-tooltip>Apply one vendor to all lines in this group</q-tooltip>
-                      </q-btn>
-                      <q-btn
-                        v-if="canChangeFulfillStatus(group)"
-                        flat
-                        dense
-                        no-caps
-                        color="primary"
-                        icon="ph ph-arrows-clockwise"
-                        label="Change status"
-                        class="demand-group-invoice-btn q-ml-xs"
-                        :loading="isGroupSaving(group)"
-                        :disable="isGroupSaving(group)"
-                        @click.stop="onChangeGroupStatus(group)"
-                      >
-                        <q-tooltip>Mark group packed (status only)</q-tooltip>
-                      </q-btn>
-                      <q-btn
-                        v-if="isFulfillMode"
-                        flat
-                        dense
-                        no-caps
-                        color="primary"
-                        icon="ph ph-stack"
-                        label="Fill oldest stock"
-                        class="demand-group-invoice-btn q-ml-xs"
-                        :loading="isGroupSaving(group)"
-                        :disable="isGroupSaving(group)"
-                        @click.stop="onFillOldestStockForGroup(group)"
-                      >
-                        <q-tooltip>
-                          Assign oldest warehouse stock to lines with enough ATP; skip short lines
-                        </q-tooltip>
-                      </q-btn>
+                      <span class="demand-group-hero__item-count text-caption text-grey-7">
+                        {{ group.item_count }}
+                        {{ group.item_count === 1 ? 'line' : 'lines' }}
+                      </span>
                     </div>
-                  </td>
-                </tr>
+                    <q-icon
+                      v-if="navigatePackedGroupToPage"
+                      name="ph ph-caret-right"
+                      size="20px"
+                      class="demand-group-hero__go text-grey-6"
+                      aria-hidden="true"
+                    />
+                  </div>
+                </div>
+              </section>
 
-                <ProcurementDemandGroupItemRows
-                  v-if="showGroupItemRows(group) && listTenantId"
-                  :group="group"
-                  :tenant-id="listTenantId"
-                  :search="debouncedSearch"
-                  :enabled="showGroupItemRows(group)"
+              <div
+                v-if="showGroupItemRows(group) && listTenantId"
+                class="demand-group-lines"
+                :class="{ 'demand-group-lines--under-hero': !isFixedGroupPage }"
+              >
+                <ProcurementDemandGroupLinesTable
                   :is-buy-mode="isBuyMode"
                   :is-fulfill-mode="isFulfillMode"
-                  :can-edit-procuring="isProcuringGroup(group)"
-                  :can-pick-stock="canPickStockForGroup(group)"
-                  :is-packed-close-mode="isPackedCloseMode(group)"
-                  :only-lines-with-stock-picks="onlyPackedTabLinesWithStock && !isFixedGroupPage"
-                  :packed-close-action-filter="packedCloseActionFilter"
-                  :close-action-options="closeActionOptions"
-                  :table-col-count="tableColCount"
-                  :vendor-options="vendorOptions"
-                  :vendors-loading="vendorsLoading"
-                  :drafts="drafts"
-                  :saving-row-keys="savingRowKeys"
-                  :vendor-label="vendorLabel"
-                  @sync-items="(items) => syncDraftsFromGroupItems(group, items)"
-                  @filter-vendors="filterVendors"
-                  @placed-quantity-input="(item, v) => onPlacedQuantityInput(group, item, v)"
-                  @vendor-change="(item, v) => onVendorChange(group, item, v)"
-                  @flush-save="(item) => flushProcuringSave(group, item)"
-                  @pick-stock="(item) => openStockPickDialog(group, item)"
-                  @close-action-change="(item, clientKey, action) =>
-                    onPickCloseActionChange(group, item, clientKey, action)"
-                  @pick-quantity-input="(item, clientKey, value) =>
-                    onPickQuantityInput(group, item, clientKey, value)"
-                  @pick-quantity-commit="(item, clientKey) =>
-                    onPickQuantityCommit(group, item, clientKey)"
-                  @add-close-split="(item, globalStockId) =>
-                    onAddCloseSplit(group, item, globalStockId)"
-                  @delete-close-pick="(item, clientKey) =>
-                    onDeletePackedPick(group, item, clientKey)"
-                />
-              </template>
-            </tbody>
-          </q-markup-table>
+                  :allocated-column-label="allocatedColumnLabel"
+                >
+                  <ProcurementDemandGroupItemRows
+                    :group="group"
+                    :tenant-id="listTenantId"
+                    :search="debouncedSearch"
+                    :enabled="showGroupItemRows(group)"
+                    :is-buy-mode="isBuyMode"
+                    :is-fulfill-mode="isFulfillMode"
+                    :can-edit-procuring="isProcuringGroup(group)"
+                    :can-pick-stock="canPickStockForGroup(group)"
+                    :is-packed-close-mode="isPackedCloseMode(group)"
+                    :only-lines-with-stock-picks="packedCloseListQueueMode"
+                    :packed-close-action-filter="packedCloseListFilter"
+                    :close-action-options="closeActionOptions"
+                    :table-col-count="tableColCount"
+                    :vendor-options="vendorOptions"
+                    :vendors-loading="vendorsLoading"
+                    :drafts="drafts"
+                    :saving-row-keys="savingRowKeys"
+                    :dirty-row-keys="dirtyPackedRowKeys"
+                    :vendor-label="vendorLabel"
+                    @sync-items="(items) => syncDraftsFromGroupItems(group, items)"
+                    @filter-vendors="filterVendors"
+                    @placed-quantity-input="(item, v) => onPlacedQuantityInput(group, item, v)"
+                    @vendor-change="(item, v) => onVendorChange(group, item, v)"
+                    @flush-save="(item) => flushProcuringSave(group, item)"
+                    @pick-stock="(item) => openStockPickDialog(group, item)"
+                    @close-action-change="(item, clientKey, action) =>
+                      onPickCloseActionChange(group, item, clientKey, action)"
+                    @pick-quantity-input="(item, clientKey, value) =>
+                      onPickQuantityInput(group, item, clientKey, value)"
+                    @add-close-split="(item, globalStockId) =>
+                      onAddCloseSplit(group, item, globalStockId)"
+                    @delete-close-pick="(item, clientKey) =>
+                      onDeletePackedPick(group, item, clientKey)"
+                    @save-packed-picks="(item) => onSavePackedPicks(group, item)"
+                  />
+                </ProcurementDemandGroupLinesTable>
+              </div>
+            </article>
+          </div>
         </div>
       </q-card>
     </div>
@@ -361,7 +415,7 @@
           >
             <li v-for="(name, idx) in packedCloseConfirmDocuments" :key="idx">{{ name }}</li>
           </ul>
-          <div class="text-caption text-grey-7 q-mt-sm">Lines already invoiced or returned are skipped.</div>
+          <div class="text-caption text-grey-7 q-mt-sm">{{ packedCloseConfirmSkipHint }}</div>
         </q-card-section>
         <q-card-actions align="right" class="q-px-md q-pb-md">
           <q-btn
@@ -375,7 +429,7 @@
           <q-btn
             unelevated
             no-caps
-            :color="packedClosePendingAction === 'return' ? 'negative' : 'primary'"
+            color="primary"
             :label="packedCloseConfirmOkLabel"
             :loading="closeDocumentMutation.isPending.value"
             :disable="closeDocumentMutation.isPending.value"
@@ -444,7 +498,10 @@ import { computed, provide, reactive, ref, watch } from 'vue';
 import { PROCUREMENT_DEMAND_TABLE_SCROLL_KEY } from '../shared/procurementDemandScroll';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import ProcurementDemandBuyCards from './ProcurementDemandBuyCards.vue';
+import ProcurementDemandFulfillCards from './ProcurementDemandFulfillCards.vue';
 import ProcurementDemandGroupItemRows from './ProcurementDemandGroupItemRows.vue';
+import ProcurementDemandGroupLinesTable from './ProcurementDemandGroupLinesTable.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { vendorRepository } from 'src/modules/vendor/repositories/vendorRepository';
 import type { Vendor } from 'src/modules/vendor/types';
@@ -457,7 +514,11 @@ import {
   showSuccessNotification,
 } from 'src/utils/appFeedback';
 import { createDemandPickClientKey } from '../utils/demandStockPickClientKey';
-import { sumWarehousePackagedPickQty } from '../utils/demandStockPickQty';
+import {
+  applyCloseSplitQuantityToLot,
+  restoreBaseQtyAfterRemovingSplit,
+  sumWarehousePackagedPickQty,
+} from '../utils/demandStockPickQty';
 import ProcurementDemandStockPickDialog, {
   type DemandStockPickSelection,
 } from './ProcurementDemandStockPickDialog.vue';
@@ -485,7 +546,6 @@ import {
   type ProcurementDemandItem,
   type ProcurementDemandStatus,
 } from '../repositories/procurementDemandRepository';
-
 type ItemDraft = {
   vendorId: number | null;
   quantity: number | null;
@@ -540,19 +600,34 @@ const { t, te } = useI18n();
 const isBuyMode = computed(() => props.mode === 'buy');
 const isFulfillMode = computed(() => props.mode === 'fulfill');
 const isFixedGroupPage = computed(() => props.fixedDocument != null);
+
 const isChildWorkspace = computed(() => authStore.selectedTenant?.parent_id != null);
-const tableColCount = computed(() => (isBuyMode.value ? 5 : 4));
+const tableColCount = computed(() => (isBuyMode.value ? 7 : 6));
 const emptyMessage = computed(() =>
   isBuyMode.value ? 'No demand lines.' : 'No delivery paper lines.',
 );
 
-const searchText = ref('');
 const debouncedSearch = ref('');
+const demandProfileFilterKey = ref<'all' | number>('all');
+const demandProfileFilterId = computed<number | null>(() =>
+  demandProfileFilterKey.value === 'all' ? null : demandProfileFilterKey.value,
+);
 const expandedGroupKeys = ref<Set<string>>(new Set());
 const drafts = reactive<Record<string, ItemDraft>>({});
 const stockPickDialogOpen = ref(false);
 const stockPickTarget = ref<StockPickTarget | null>(null);
 const savingRowKeys = ref<Set<string>>(new Set());
+const dirtyPackedRowKeys = ref<Set<string>>(new Set());
+
+const markPackedDirty = (key: string) => {
+  dirtyPackedRowKeys.value = new Set(dirtyPackedRowKeys.value).add(key);
+};
+
+const clearPackedDirty = (key: string) => {
+  const next = new Set(dirtyPackedRowKeys.value);
+  next.delete(key);
+  dirtyPackedRowKeys.value = next;
+};
 const savingGroupKeys = ref<Set<string>>(new Set());
 const vendorFilter = ref('');
 const bulkVendorDialogOpen = ref(false);
@@ -581,14 +656,6 @@ const mutationTenantId = computed(() => {
 
 const listChildTenantId = computed(() => null);
 
-let searchTimer: ReturnType<typeof setTimeout> | undefined;
-watch(searchText, (value) => {
-  if (searchTimer) clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    debouncedSearch.value = value;
-  }, 300);
-});
-
 const demandProcurementStatus = ref<ProcurementDemandStatus>('procuring');
 const fulfillProcurementStatus = ref<ProcurementDemandStatus>('procuring');
 
@@ -601,6 +668,22 @@ const procurementStatus = computed<ProcurementDemandStatus>(() =>
   isFulfillMode.value ? fulfillProcurementStatus.value : demandProcurementStatus.value,
 );
 
+const deskPageTitle = computed(() => {
+  if (isBuyMode.value) return 'Demand paper';
+  if (fulfillProcurementStatus.value === 'packed') return 'Delivery paper — packed';
+  return 'Delivery paper';
+});
+
+const deskPageSubtitle = computed(() => {
+  if (isBuyMode.value) {
+    return 'Open each customer document below. Enter placed qty (what you ordered) and choose a vendor on every line.';
+  }
+  if (fulfillProcurementStatus.value === 'packed') {
+    return 'Review stock picks and close lines (take or condition) when ready.';
+  }
+  return 'Assign warehouse stock to each line. Expand a document to pick lots.';
+});
+
 const isProcuringGroup = (group: ProcurementDemandGroup) =>
   group.document_status === 'procuring';
 
@@ -611,8 +694,29 @@ const onlyPackedTabLinesWithStock = computed(
   () => isFulfillMode.value && fulfillProcurementStatus.value === 'packed',
 );
 
+const hasDemandProfileFilter = computed(() => demandProfileFilterId.value != null);
+
+/** Packed close on one document page or when a profile filter groups the queue inline. */
+const packedCloseInlineMode = computed(
+  () =>
+    onlyPackedTabLinesWithStock.value &&
+    (isFixedGroupPage.value || hasDemandProfileFilter.value),
+);
+
+const packedCloseListQueueMode = computed(
+  () => onlyPackedTabLinesWithStock.value && !packedCloseInlineMode.value,
+);
+
 const navigatePackedGroupToPage = computed(
-  () => onlyPackedTabLinesWithStock.value && !isFixedGroupPage.value,
+  () => packedCloseListQueueMode.value,
+);
+
+const useFulfillLineCards = computed(
+  () =>
+    isFulfillMode.value &&
+    (isFixedGroupPage.value ||
+      fulfillProcurementStatus.value === 'procuring' ||
+      packedCloseInlineMode.value),
 );
 
 const isPackedCloseMode = (group: ProcurementDemandGroup) =>
@@ -621,38 +725,56 @@ const isPackedCloseMode = (group: ProcurementDemandGroup) =>
 const closeActionOptions = [
   { label: 'Take', value: 'take' as const },
   { label: 'Condition', value: 'condition' as const },
-  { label: 'Return', value: 'return' as const },
 ];
 
-const closeActionFilterOptions = closeActionOptions;
+type PackedCloseFilterTab = 'all' | PreorderDemandCloseAction;
 
-/** Take / condition / return close runs on the delivery-paper group page, not the fulfill queue list. */
-const showPackedCloseToolbar = computed(
-  () => onlyPackedTabLinesWithStock.value && isFixedGroupPage.value,
+const closeActionFilterOptions: Array<{ label: string; value: PackedCloseFilterTab }> = [
+  { label: 'All', value: 'all' },
+  { label: 'Take', value: 'take' },
+  { label: 'Condition', value: 'condition' },
+  { label: 'Return', value: 'return' },
+];
+
+const showPackedCloseToolbar = computed(() => packedCloseInlineMode.value);
+
+const packedCloseActionFilter = ref<PackedCloseFilterTab>('all');
+
+const packedCloseListFilter = computed<PreorderDemandCloseAction | null>(() =>
+  packedCloseActionFilter.value === 'all' ? null : packedCloseActionFilter.value,
 );
 
-const packedCloseActionFilter = ref<PreorderDemandCloseAction | null>(null);
-
-const fixedPackedGroup = computed(() => {
-  if (!isFixedGroupPage.value || !onlyPackedTabLinesWithStock.value) return null;
-  return visibleGroups.value[0] ?? null;
-});
+const packedGroupsForClose = computed(() =>
+  visibleGroups.value.filter((g) => isPackedCloseMode(g)),
+);
 
 const packedCloseExistingInvoiceId = computed(() => {
-  const action = packedCloseActionFilter.value;
-  const group = fixedPackedGroup.value;
-  if (!group || !action) return null;
-  const prefix = `${group.document_type}-${group.document_id}-`;
-  return resolveInvoiceIdForCloseAction(group, action, drafts, prefix);
+  const action = packedCloseListFilter.value;
+  if (!action || action === 'return') return null;
+  const invoiceIds = new Set<number>();
+  for (const group of packedGroupsForClose.value) {
+    const prefix = `${group.document_type}-${group.document_id}-`;
+    const id = resolveInvoiceIdForCloseAction(group, action, drafts, prefix);
+    if (id != null) invoiceIds.add(id);
+  }
+  if (invoiceIds.size === 1) return [...invoiceIds][0] ?? null;
+  return null;
 });
 
 const packedCloseQtyByAction = computed(() => {
-  const group = fixedPackedGroup.value;
-  if (!group) {
-    return { take: 0, condition: 0, return: 0 };
+  const totals: Record<PreorderDemandCloseAction, number> = {
+    take: 0,
+    condition: 0,
+    return: 0,
+  };
+  for (const group of packedGroupsForClose.value) {
+    const prefix = `${group.document_type}-${group.document_id}-`;
+    const part = sumOpenClosePickQuantitiesByAction(drafts, prefix);
+    totals.take += part.take;
+    totals.condition += part.condition;
+    totals.return += part.return;
   }
-  const prefix = `${group.document_type}-${group.document_id}-`;
-  return sumOpenClosePickQuantitiesByAction(drafts, prefix);
+  return totals;
 });
 
 const openPackedCloseInvoice = () => {
@@ -666,8 +788,14 @@ const openPackedCloseInvoice = () => {
   });
 };
 
-const packedClosePrimaryLabel = computed(() =>
-  packedCloseActionFilter.value === 'return' ? 'Return stock' : 'Create invoice',
+const packedClosePrimaryLabel = computed(() => 'Create invoice');
+const packedCloseIsReturnClose = computed(
+  () => packedClosePendingActions.value.length === 1 && packedClosePendingActions.value[0] === 'return',
+);
+const packedCloseConfirmSkipHint = computed(() =>
+  packedCloseIsReturnClose.value
+    ? 'Lines already returned or invoiced are skipped.'
+    : 'Lines already invoiced are skipped.',
 );
 
 const closeDocumentMutation = useClosePreorderDemandDocumentMutation();
@@ -677,9 +805,10 @@ const packedCloseConfirmTitle = ref('');
 const packedCloseConfirmMessage = ref('');
 const packedCloseConfirmDocuments = ref<string[]>([]);
 const packedClosePendingAction = ref<PreorderDemandCloseAction | null>(null);
+const packedClosePendingActions = ref<PreorderDemandCloseAction[]>([]);
 
 const packedCloseConfirmOkLabel = computed(() =>
-  packedClosePendingAction.value === 'return' ? 'Return stock' : 'Create invoice',
+  packedCloseIsReturnClose.value ? 'Return to warehouse' : 'Create invoice',
 );
 
 const countOpenClosePicksForFilter = (
@@ -707,44 +836,87 @@ const countOpenClosePicksForFilter = (
   return { documentCount, unitCount };
 };
 
+const packedCloseInvoiceActions = (
+  action: PreorderDemandCloseAction | 'all' | null,
+): PreorderDemandCloseAction[] => {
+  if (action === 'condition' || action === 'take') return [action];
+  if (action === 'all' || action == null) return ['take', 'condition'];
+  return [];
+};
+
+const canShowPackedCloseInvoiceButton = computed(() => {
+  const action = packedCloseActionFilter.value;
+  return action === 'all' || action === 'take' || action === 'condition';
+});
+
+const canShowPackedReturnButton = computed(() => packedCloseActionFilter.value === 'return');
+
 const canRunPackedClose = computed(() => {
   const action = packedCloseActionFilter.value;
-  if (!action || !mutationTenantId.value) return false;
-  if (isFixedGroupPage.value || !navigatePackedGroupToPage.value) {
-    const { unitCount } = countOpenClosePicksForFilter(action);
-    return unitCount > 0;
-  }
-  return visibleGroups.value.some((g) => isPackedCloseMode(g));
+  if (action === 'return' || !mutationTenantId.value) return false;
+  const actions = packedCloseInvoiceActions(action);
+  return actions.some((closeAction) => countOpenClosePicksForFilter(closeAction).unitCount > 0);
+});
+
+const canRunPackedReturn = computed(() => {
+  if (!mutationTenantId.value) return false;
+  return countOpenClosePicksForFilter('return').unitCount > 0;
 });
 
 const onPackedClosePrimary = () => {
   const action = packedCloseActionFilter.value;
-  if (!action || !mutationTenantId.value) return;
+  if (action === 'return' || !mutationTenantId.value) return;
 
   const packedGroups = visibleGroups.value.filter((g) => isPackedCloseMode(g));
   if (!packedGroups.length) return;
 
-  const preview = isFixedGroupPage.value || !navigatePackedGroupToPage.value
-    ? countOpenClosePicksForFilter(action)
-    : { documentCount: packedGroups.length, unitCount: null as number | null };
+  const actions = packedCloseInvoiceActions(action);
+  const preview = actions.reduce(
+    (acc, closeAction) => {
+      const part = countOpenClosePicksForFilter(closeAction);
+      acc.documentCount = Math.max(acc.documentCount, part.documentCount);
+      acc.unitCount += part.unitCount;
+      return acc;
+    },
+    { documentCount: 0, unitCount: 0 },
+  );
 
-  const actionLabel = closeActionOptions.find((o) => o.value === action)?.label ?? action;
+  const actionLabel =
+    action === 'all' ? 'take and condition' : (closeActionOptions.find((o) => o.value === action)?.label ?? action);
 
-  packedClosePendingAction.value = action;
+  packedClosePendingAction.value = action === 'all' ? 'take' : action;
+  packedClosePendingActions.value = actions;
   packedCloseConfirmTitle.value =
-    action === 'return' ? 'Return stock?' : `Create ${actionLabel} invoice?`;
+    action === 'condition' ? 'Create condition bill?' : `Create ${actionLabel} invoice?`;
   packedCloseConfirmMessage.value =
-    preview.unitCount != null
-      ? `This will process ${preview.unitCount} unit(s) marked ${actionLabel} on ${preview.documentCount} order(s)/file(s).`
-      : `This will run ${actionLabel} close on ${preview.documentCount} packed order(s)/file(s) shown on this page.`;
+    `This will create ${actionLabel} bill(s) for ${preview.unitCount} unit(s) on ${preview.documentCount} order(s)/file(s).`;
+  packedCloseConfirmDocuments.value = packedGroups.map((g) => groupTitle(g));
+  packedCloseConfirmOpen.value = true;
+};
+
+const onPackedReturnToWarehouse = () => {
+  if (!mutationTenantId.value) return;
+
+  const packedGroups = visibleGroups.value.filter((g) => isPackedCloseMode(g));
+  if (!packedGroups.length) return;
+
+  const preview = countOpenClosePicksForFilter('return');
+  packedClosePendingAction.value = 'return';
+  packedClosePendingActions.value = ['return'];
+  packedCloseConfirmTitle.value = 'Return stock to warehouse?';
+  packedCloseConfirmMessage.value =
+    `This will put ${preview.unitCount} unit(s) back as sellable warehouse stock on ${preview.documentCount} order(s)/file(s).`;
   packedCloseConfirmDocuments.value = packedGroups.map((g) => groupTitle(g));
   packedCloseConfirmOpen.value = true;
 };
 
 const executePackedClose = async () => {
-  const action = packedClosePendingAction.value;
+  const actions =
+    packedClosePendingActions.value.length > 0
+      ? packedClosePendingActions.value
+      : packedCloseInvoiceActions(packedClosePendingAction.value);
   const tenantId = mutationTenantId.value;
-  if (!action || !tenantId) return;
+  if (!actions.length || !tenantId) return;
 
   const packedGroups = visibleGroups.value.filter((g) => isPackedCloseMode(g));
   if (!packedGroups.length) {
@@ -756,24 +928,29 @@ const executePackedClose = async () => {
   let createdUnits = 0;
   try {
     for (const group of packedGroups) {
-      const result = await closeDocumentMutation.mutateAsync({
-        tenantId,
-        documentType: group.document_type,
-        documentId: group.document_id,
-        closeAction: action,
-      });
-      if (result.created) {
-        createdDocs += 1;
-        createdUnits += result.unit_count ?? 0;
+      let groupCreated = false;
+      for (const closeAction of actions) {
+        const result = await closeDocumentMutation.mutateAsync({
+          tenantId,
+          documentType: group.document_type,
+          documentId: group.document_id,
+          closeAction,
+        });
+        if (result.created) {
+          groupCreated = true;
+          createdUnits += result.unit_count ?? 0;
+        }
       }
+      if (groupCreated) createdDocs += 1;
     }
     packedCloseConfirmOpen.value = false;
+    packedClosePendingActions.value = [];
     if (createdDocs === 0) {
       showSuccessNotification('Nothing left to close for this filter.');
-    } else if (action === 'return') {
-      showSuccessNotification(`Returned ${createdUnits} unit(s) across ${createdDocs} document(s).`);
+    } else if (actions.length === 1 && actions[0] === 'return') {
+      showSuccessNotification(`Returned ${createdUnits} unit(s) to warehouse on ${createdDocs} document(s).`);
     } else {
-      showSuccessNotification(`Created invoice(s) for ${createdUnits} unit(s) across ${createdDocs} document(s).`);
+      showSuccessNotification(`Created bill(s) for ${createdUnits} unit(s) across ${createdDocs} document(s).`);
     }
     await refreshDemandDesk();
   } catch (err) {
@@ -782,14 +959,15 @@ const executePackedClose = async () => {
 };
 
 watch(onlyPackedTabLinesWithStock, (packed) => {
-  if (!packed) packedCloseActionFilter.value = null;
+  if (!packed) packedCloseActionFilter.value = 'all';
 });
 
 watch(
-  () => [isFixedGroupPage.value, onlyPackedTabLinesWithStock.value] as const,
-  ([fixed, packed]) => {
-    if (fixed && packed && packedCloseActionFilter.value == null) {
-      packedCloseActionFilter.value = 'take';
+  () =>
+    [isFixedGroupPage.value, onlyPackedTabLinesWithStock.value, hasDemandProfileFilter.value] as const,
+  ([fixed, packed, profile]) => {
+    if (packed && (fixed || profile) && packedCloseActionFilter.value == null) {
+      packedCloseActionFilter.value = 'all';
     }
   },
   { immediate: true },
@@ -839,6 +1017,47 @@ const groups = computed(() => {
   return demandData.value?.groups ?? [];
 });
 
+const demandProfileFacets = computed(() => {
+  const byId = new Map<number, string>();
+  for (const group of groups.value) {
+    const id = group.profile_id;
+    if (id == null) continue;
+    const name = group.profile_name?.trim() || `Profile #${id}`;
+    byId.set(id, name);
+  }
+  return [...byId.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+});
+
+const demandProfileToggleOptions = computed(() => {
+  const options: Array<{ label: string; value: 'all' | number }> = [{ label: 'All', value: 'all' }];
+  for (const facet of demandProfileFacets.value) {
+    options.push({ label: facet.name, value: facet.id });
+  }
+  return options;
+});
+
+const showDemandProfileBar = computed(
+  () =>
+    (isBuyMode.value || isFulfillMode.value) &&
+    !isFixedGroupPage.value &&
+    demandProfileFacets.value.length > 0 &&
+    !(isFulfillMode.value && fulfillProcurementStatus.value === 'packed'),
+);
+
+watch(demandProfileFacets, (facets) => {
+  const key = demandProfileFilterKey.value;
+  if (key === 'all') return;
+  if (!facets.some((facet) => facet.id === key)) {
+    demandProfileFilterKey.value = 'all';
+  }
+});
+
+watch(fulfillProcurementStatus, () => {
+  demandProfileFilterKey.value = 'all';
+});
+
 const stubFixedGroup = (): ProcurementDemandGroup | null => {
   const fixed = props.fixedDocument;
   if (!fixed) return null;
@@ -849,6 +1068,8 @@ const stubFixedGroup = (): ProcurementDemandGroup | null => {
     document_name: name || null,
     document_status: 'packed',
     customer_group_name: null,
+    profile_id: null,
+    profile_name: null,
     vendor: null,
     item_count: 0,
     unallocated_item_count: 0,
@@ -857,12 +1078,16 @@ const stubFixedGroup = (): ProcurementDemandGroup | null => {
 
 const visibleGroups = computed(() => {
   const fixed = props.fixedDocument;
-  if (!fixed) return groups.value;
-  const match = groups.value.find(
-    (g) => g.document_type === fixed.documentType && g.document_id === fixed.documentId,
-  );
-  const stub = stubFixedGroup();
-  return match ? [match] : stub ? [stub] : [];
+  if (fixed) {
+    const match = groups.value.find(
+      (g) => g.document_type === fixed.documentType && g.document_id === fixed.documentId,
+    );
+    const stub = stubFixedGroup();
+    return match ? [match] : stub ? [stub] : [];
+  }
+  const profileId = demandProfileFilterId.value;
+  if (profileId == null) return groups.value;
+  return groups.value.filter((group) => group.profile_id === profileId);
 });
 
 const fixedGroupTitle = computed(() => {
@@ -875,6 +1100,7 @@ const upsertMutation = useUpsertPreorderDemandMutation({
   procurementStatus,
   search: debouncedSearch,
   childTenantId: listChildTenantId,
+  profileId: demandProfileFilterId,
 });
 
 const fillOldestStockMutation = useFillPreorderDemandOldestStockMutation({
@@ -886,6 +1112,7 @@ const fillPlacedQtyMutation = useFillPreorderDemandPlacedQuantitiesMutation({
   procurementStatus,
   search: debouncedSearch,
   childTenantId: listChildTenantId,
+  profileId: demandProfileFilterId,
 });
 
 const setVendorMutation = useSetPreorderDemandVendorMutation({
@@ -893,6 +1120,7 @@ const setVendorMutation = useSetPreorderDemandVendorMutation({
   procurementStatus,
   search: debouncedSearch,
   childTenantId: listChildTenantId,
+  profileId: demandProfileFilterId,
 });
 
 const markReadyMutation = useMarkDemandGroupReadyMutation();
@@ -927,7 +1155,7 @@ const vendorOptions = computed(() => {
     })
     .map((vendor) => ({
       id: vendor.id,
-      label: `${vendor.name} (${vendor.code})`,
+      label: vendor.code?.trim() || vendor.name,
     }));
 });
 
@@ -940,7 +1168,7 @@ const filterVendors = (val: string, update: (fn: () => void) => void) => {
 const vendorLabel = (vendorId: number | null) => {
   if (!vendorId) return '—';
   const match = ((vendors.value ?? []) as Vendor[]).find((vendor) => vendor.id === vendorId);
-  return match ? `${match.name} (${match.code})` : String(vendorId);
+  return match ? match.code?.trim() || match.name : String(vendorId);
 };
 
 const mapStockPicksFromApi = (picks?: PreorderDemandStockPick[]): DemandStockPickSelection[] => {
@@ -982,6 +1210,21 @@ const mapStockPicksToApi = (picks: DemandStockPickSelection[]): PreorderDemandSt
     ...(pick.returnedAt ? { returned_at: pick.returnedAt } : {}),
   }));
 
+/** Server still rejects qty 0 on some DBs; keep empty splits in the local draft only. */
+const stockPicksForApi = (picks: DemandStockPickSelection[]) =>
+  mapStockPicksToApi(picks.filter((pick) => !pick.isCloseSplit || pick.quantity > 0));
+
+const mergeLocalUnsavedSplits = (
+  incoming: DemandStockPickSelection[],
+  local: DemandStockPickSelection[] | undefined,
+): DemandStockPickSelection[] => {
+  if (!local?.length) return incoming;
+  const unsaved = local.filter((pick) => pick.isCloseSplit && pick.quantity < 1);
+  if (!unsaved.length) return incoming;
+  const incomingKeys = new Set(incoming.map((pick) => pick.clientKey));
+  return [...incoming, ...unsaved.filter((pick) => !incomingKeys.has(pick.clientKey))];
+};
+
 const stockPicksFromItem = (item: ProcurementDemandItem) =>
   mapStockPicksFromApi(item.stock_picks);
 
@@ -996,8 +1239,9 @@ const syncDraftsFromGroupItems = (
 ) => {
   for (const item of items) {
     const key = itemRowKey(group, item);
-    if (savingRowKeys.value.has(key)) continue;
-    const stockPicks = stockPicksFromItem(item);
+    if (savingRowKeys.value.has(key) || dirtyPackedRowKeys.value.has(key)) continue;
+    const incoming = stockPicksFromItem(item);
+    const stockPicks = mergeLocalUnsavedSplits(incoming, drafts[key]?.stockPicks);
     drafts[key] = {
       vendorId: item.vendor_id ?? null,
       quantity: normalizeDraftQuantity(item.placed_quantity),
@@ -1021,6 +1265,7 @@ const isGroupExpanded = (key: string) => expandedGroupKeys.value.has(key);
 const showGroupItemRows = (group: ProcurementDemandGroup) => {
   if (isFixedGroupPage.value) return true;
   if (navigatePackedGroupToPage.value) return false;
+  if (isBuyMode.value) return true;
   return isGroupExpanded(groupKey(group));
 };
 
@@ -1048,19 +1293,46 @@ const toggleGroup = (key: string) => {
   expandedGroupKeys.value = next;
 };
 
-const groupIcon = (documentType: ProcurementDemandDocumentType) =>
-  documentType === 'shop_order' ? 'ph ph-receipt' : 'ph ph-file-text';
+const groupPrimaryLabel = (group: ProcurementDemandGroup) =>
+  group.customer_group_name?.trim() || '—';
 
-const groupTitle = (group: ProcurementDemandGroup) => {
+const groupSourceTypeLabel = (group: ProcurementDemandGroup) =>
+  group.document_type === 'shop_order' ? 'Shop order' : 'Costing file';
+
+const groupShopOrderRef = (group: ProcurementDemandGroup) => {
+  const no = group.shop_order_no?.trim() || group.document_name?.trim();
+  if (no) return no;
+  return `#${group.document_id}`;
+};
+
+const groupCostingFileRef = (group: ProcurementDemandGroup) => {
   const name = group.document_name?.trim();
+  if (name) return `${name} (#${group.document_id})`;
+  return `File #${group.document_id}`;
+};
+
+/** Document identity under the customer-group hero title. */
+const groupDocumentHeadline = (group: ProcurementDemandGroup) => {
   if (group.document_type === 'shop_order') {
-    return name || `Order #${group.document_id}`;
+    return groupShopOrderRef(group);
   }
-  if (name) {
-    return `${name} (#${group.document_id})`;
-  }
+  const name = group.document_name?.trim();
+  if (name) return `${name} · #${group.document_id}`;
   return `Costing file #${group.document_id}`;
 };
+
+const groupHeaderTooltip = (group: ProcurementDemandGroup) => {
+  const parts = [groupPrimaryLabel(group), groupSourceTypeLabel(group)];
+  if (group.document_type === 'shop_order') {
+    parts.push(groupShopOrderRef(group));
+  } else {
+    parts.push(groupCostingFileRef(group));
+  }
+  return parts.join(' · ');
+};
+
+/** Confirmations and toasts: customer group + document reference. */
+const groupTitle = (group: ProcurementDemandGroup) => groupHeaderTooltip(group);
 
 const getDraft = (group: ProcurementDemandGroup, item: ProcurementDemandItem): ItemDraft => {
   const key = itemRowKey(group, item);
@@ -1117,26 +1389,14 @@ const saveProcuringLine = async (
   }
 };
 
-const onFillOldestStockForGroup = async (group: ProcurementDemandGroup) => {
-  const ok = await requestConfirmation(
-    `Fill oldest stock for all lines in ${groupTitle(group)}? Lines without enough stock are left empty. Lines that already have picks are skipped.`,
-    'Fill oldest stock',
-    'Fill stock',
-  );
-  if (!ok) return;
+const fillOldestStockForGroup = async (group: ProcurementDemandGroup) => {
   const gk = groupKey(group);
   savingGroupKeys.value = new Set(savingGroupKeys.value).add(gk);
   try {
-    const result = await fillOldestStockMutation.mutateAsync({
+    return await fillOldestStockMutation.mutateAsync({
       documentType: group.document_type,
       documentId: group.document_id,
     });
-    showSuccessNotification(
-      `Stock picks saved for ${result.updated_count} line(s). ${result.skipped_count} line(s) skipped.`,
-    );
-    await refreshDemandDesk();
-  } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to fill oldest stock'));
   } finally {
     const next = new Set(savingGroupKeys.value);
     next.delete(gk);
@@ -1144,12 +1404,62 @@ const onFillOldestStockForGroup = async (group: ProcurementDemandGroup) => {
   }
 };
 
+const onFillOldestStockForGroup = async (group: ProcurementDemandGroup) => {
+  const ok = await requestConfirmation(
+    `Fill oldest stock for all lines in ${groupTitle(group)}? Lines without enough stock are left empty. Lines that already have picks are skipped.`,
+    'Fill oldest stock',
+    'Fill stock',
+  );
+  if (!ok) return;
+  try {
+    const result = await fillOldestStockForGroup(group);
+    showSuccessNotification(
+      `Stock picks saved for ${result.updated_count} line(s). ${result.skipped_count} line(s) skipped.`,
+    );
+    await refreshDemandDesk();
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to fill oldest stock'));
+  }
+};
+
+const onProfileBulkFillOldestStock = async () => {
+  const groups = profileFillOldestStockGroups.value;
+  if (!groups.length) return;
+
+  const message =
+    groups.length === 1
+      ? `Fill oldest stock for all lines in ${groupTitle(groups[0])}? Lines without enough stock are left empty. Lines that already have picks are skipped.`
+      : `Fill oldest stock for all lines in ${groups.length} order(s)/file(s) for this profile? Lines without enough stock are left empty. Lines that already have picks are skipped.`;
+
+  const ok = await requestConfirmation(message, 'Fill oldest stock', 'Fill stock');
+  if (!ok) return;
+
+  profileBulkFillOldestRunning.value = true;
+  let updatedTotal = 0;
+  let skippedTotal = 0;
+  try {
+    for (const group of groups) {
+      const result = await fillOldestStockForGroup(group);
+      updatedTotal += result.updated_count;
+      skippedTotal += result.skipped_count;
+    }
+    showSuccessNotification(
+      `Stock picks saved for ${updatedTotal} line(s). ${skippedTotal} line(s) skipped.`,
+    );
+    await refreshDemandDesk();
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to fill oldest stock'));
+  } finally {
+    profileBulkFillOldestRunning.value = false;
+  }
+};
+
 const onFillPlaceQtyForGroup = async (group: ProcurementDemandGroup) => {
   if (!isProcuringGroup(group)) return;
   const ok = await requestConfirmation(
-    `Set place order qty to demand qty on all ${group.item_count} line(s) in ${groupTitle(group)}? Existing place qty values will be overwritten.`,
-    'Fill place qty',
-    'Fill qty',
+    `Set placed qty from customer need on all ${group.item_count} line(s) in ${groupTitle(group)}? Existing placed qty values will be overwritten.`,
+    'Fill placed qty',
+    'Fill placed qty',
   );
   if (!ok) return;
   const gk = groupKey(group);
@@ -1160,10 +1470,10 @@ const onFillPlaceQtyForGroup = async (group: ProcurementDemandGroup) => {
       documentId: group.document_id,
     });
     showSuccessNotification(
-      `Place order quantities updated for ${result.updated_count} line(s).`,
+      `Placed quantities updated for ${result.updated_count} line(s).`,
     );
   } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to fill place order quantities'));
+    showErrorNotification(parseSupabaseError(err, 'Failed to fill placed quantities'));
   } finally {
     const next = new Set(savingGroupKeys.value);
     next.delete(gk);
@@ -1291,6 +1601,54 @@ const canChangeFulfillStatus = (group: ProcurementDemandGroup) =>
   procurementStatus.value === 'procuring' &&
   isProcuringGroup(group);
 
+const showProfileToolbarActions = computed(
+  () =>
+    isFulfillMode.value &&
+    !isFixedGroupPage.value &&
+    hasDemandProfileFilter.value &&
+    fulfillProcurementStatus.value === 'procuring',
+);
+
+const showProfileChangeStatusButton = computed(() => showProfileToolbarActions.value);
+
+const showProfileFillOldestStockButton = computed(() => showProfileToolbarActions.value);
+
+const profileFillOldestStockGroups = computed(() =>
+  visibleGroups.value.filter((group) => canPickStockForGroup(group)),
+);
+
+const canProfileFillOldestStock = computed(() => profileFillOldestStockGroups.value.length > 0);
+
+const profileBulkFillOldestRunning = ref(false);
+
+const profileFillOldestStockLoading = computed(
+  () => fillOldestStockMutation.isPending.value || profileBulkFillOldestRunning.value,
+);
+
+const profileChangeStatusGroups = computed(() =>
+  visibleGroups.value.filter((group) => canChangeFulfillStatus(group)),
+);
+
+const canProfileChangeStatus = computed(() => profileChangeStatusGroups.value.length > 0);
+
+const profileBulkStatusRunning = ref(false);
+
+const profileChangeStatusLoading = computed(
+  () => markReadyMutation.isPending.value || profileBulkStatusRunning.value,
+);
+
+const markGroupPacked = async (group: ProcurementDemandGroup) => {
+  const key = groupKey(group);
+  savingGroupKeys.value = new Set(savingGroupKeys.value).add(key);
+  try {
+    await markReadyMutation.mutateAsync(group);
+  } finally {
+    const next = new Set(savingGroupKeys.value);
+    next.delete(key);
+    savingGroupKeys.value = next;
+  }
+};
+
 const onChangeGroupStatus = async (group: ProcurementDemandGroup) => {
   if (!isProcuringGroup(group)) return;
 
@@ -1301,19 +1659,42 @@ const onChangeGroupStatus = async (group: ProcurementDemandGroup) => {
   );
   if (!ok) return;
 
-  const key = groupKey(group);
-  savingGroupKeys.value = new Set(savingGroupKeys.value).add(key);
   try {
-    await markReadyMutation.mutateAsync(group);
+    await markGroupPacked(group);
     showSuccessNotification('Marked packed.');
     fulfillProcurementStatus.value = 'packed';
     await refreshDemandDesk();
   } catch (err) {
     showErrorNotification(parseSupabaseError(err, 'Failed to mark packed'));
+  }
+};
+
+const onProfileBulkChangeStatus = async () => {
+  const groups = profileChangeStatusGroups.value;
+  if (!groups.length) return;
+
+  const message =
+    groups.length === 1
+      ? `Mark ${groupTitle(groups[0])} as packed?`
+      : `Mark ${groups.length} order(s)/file(s) for this profile as packed?`;
+
+  const ok = await requestConfirmation(message, 'Mark packed', 'Mark packed');
+  if (!ok) return;
+
+  profileBulkStatusRunning.value = true;
+  try {
+    for (const group of groups) {
+      await markGroupPacked(group);
+    }
+    showSuccessNotification(
+      groups.length === 1 ? 'Marked packed.' : `Marked ${groups.length} document(s) packed.`,
+    );
+    fulfillProcurementStatus.value = 'packed';
+    await refreshDemandDesk();
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to mark packed'));
   } finally {
-    const next = new Set(savingGroupKeys.value);
-    next.delete(key);
-    savingGroupKeys.value = next;
+    profileBulkStatusRunning.value = false;
   }
 };
 
@@ -1348,6 +1729,7 @@ const persistPackedPicks = async (
 ) => {
   const key = itemRowKey(group, item);
   const draft = getDraft(group, item);
+  const previousPicks = draft.stockPicks;
   const packagedQty = sumWarehousePackagedPickQty(nextPicks);
   drafts[key] = {
     ...draft,
@@ -1359,10 +1741,16 @@ const persistPackedPicks = async (
     await upsertMutation.mutateAsync({
       sourceType: item.source_type,
       sourceId: item.source_id,
-      stockPicks: mapStockPicksToApi(nextPicks),
+      stockPicks: stockPicksForApi(nextPicks),
     });
+    clearPackedDirty(key);
     showSuccessNotification(successMessage);
   } catch (err) {
+    drafts[key] = {
+      ...drafts[key],
+      stockPicks: previousPicks,
+      deliveredQuantity: packagedQtyFromPicks(previousPicks),
+    };
     showErrorNotification(parseSupabaseError(err, 'Failed to save close choice'));
   } finally {
     const next = new Set(savingRowKeys.value);
@@ -1371,17 +1759,21 @@ const persistPackedPicks = async (
   }
 };
 
-const onPickCloseActionChange = async (
+const onPickCloseActionChange = (
   group: ProcurementDemandGroup,
   item: ProcurementDemandItem,
   clientKey: string,
   closeAction: 'take' | 'condition' | 'return' | null,
 ) => {
+  const key = itemRowKey(group, item);
   const draft = getDraft(group, item);
-  const nextPicks = draft.stockPicks.map((pick) =>
-    pick.clientKey === clientKey ? { ...pick, closeAction } : pick,
-  );
-  await persistPackedPicks(group, item, nextPicks, 'Close choice saved.');
+  drafts[key] = {
+    ...draft,
+    stockPicks: draft.stockPicks.map((pick) =>
+      pick.clientKey === clientKey ? { ...pick, closeAction } : pick,
+    ),
+  };
+  markPackedDirty(key);
 };
 
 const onPickQuantityInput = (
@@ -1392,59 +1784,53 @@ const onPickQuantityInput = (
 ) => {
   if (value === '' || value === null) return;
   const qty = Math.trunc(Number(value));
-  if (!Number.isFinite(qty) || qty < 1) return;
+  if (!Number.isFinite(qty) || qty < 0) return;
   const key = itemRowKey(group, item);
   const draft = getDraft(group, item);
-  const nextPicks = draft.stockPicks.map((pick) =>
-    pick.clientKey === clientKey ? { ...pick, quantity: qty } : pick,
-  );
-  const packagedQty = sumWarehousePackagedPickQty(nextPicks);
+  const nextPicks = applyCloseSplitQuantityToLot(draft.stockPicks, clientKey, qty);
   drafts[key] = {
     ...draft,
     stockPicks: nextPicks,
-    deliveredQuantity: packagedQty > 0 ? packagedQty : null,
+    deliveredQuantity: packagedQtyFromPicks(nextPicks),
   };
+  markPackedDirty(key);
 };
 
-const onPickQuantityCommit = async (
-  group: ProcurementDemandGroup,
-  item: ProcurementDemandItem,
-  clientKey: string,
-) => {
-  const draft = getDraft(group, item);
-  const pick = draft.stockPicks.find((row) => row.clientKey === clientKey);
-  if (!pick || pick.quantity < 1) {
-    showErrorNotification('Quantity must be at least 1.');
-    return;
-  }
-  await persistPackedPicks(group, item, draft.stockPicks, 'Quantity saved.');
-};
-
-const onAddCloseSplit = async (
+const onAddCloseSplit = (
   group: ProcurementDemandGroup,
   item: ProcurementDemandItem,
   globalStockId: number,
 ) => {
   const draft = getDraft(group, item);
-  const source = draft.stockPicks.find((pick) => pick.globalStockId === globalStockId);
-  if (!source) return;
-  const nextPicks = [
-    ...draft.stockPicks,
-    {
-      clientKey: createDemandPickClientKey(),
-      globalStockId: source.globalStockId,
-      shipmentName: source.shipmentName,
-      locationName: source.locationName,
-      quantity: 1,
-      closeAction: 'take',
-      isCloseSplit: true,
-      initialQuantity: undefined,
-    },
-  ];
-  await persistPackedPicks(group, item, nextPicks, 'Split row added.');
+  const source =
+    draft.stockPicks.find((pick) => pick.globalStockId === globalStockId && !pick.isCloseSplit) ??
+    draft.stockPicks.find((pick) => pick.globalStockId === globalStockId) ??
+    stockPicksFromItem(item).find((pick) => pick.globalStockId === globalStockId);
+  if (!source) {
+    showErrorNotification('No stock pick found to split.');
+    return;
+  }
+  const key = itemRowKey(group, item);
+  drafts[key] = {
+    ...draft,
+    stockPicks: [
+      ...draft.stockPicks,
+      {
+        clientKey: createDemandPickClientKey(),
+        globalStockId: source.globalStockId,
+        shipmentName: source.shipmentName,
+        locationName: source.locationName,
+        quantity: 0,
+        closeAction: 'condition',
+        isCloseSplit: true,
+        initialQuantity: undefined,
+      },
+    ],
+  };
+  markPackedDirty(key);
 };
 
-const onDeletePackedPick = async (
+const onDeletePackedPick = (
   group: ProcurementDemandGroup,
   item: ProcurementDemandItem,
   clientKey: string,
@@ -1455,8 +1841,25 @@ const onDeletePackedPick = async (
     showErrorNotification('Only added split rows can be removed.');
     return;
   }
-  const nextPicks = draft.stockPicks.filter((pick) => pick.clientKey !== clientKey);
-  await persistPackedPicks(group, item, nextPicks, 'Split removed.');
+  const key = itemRowKey(group, item);
+  const nextPicks = restoreBaseQtyAfterRemovingSplit(
+    draft.stockPicks.filter((pick) => pick.clientKey !== clientKey),
+    target,
+  );
+  drafts[key] = {
+    ...draft,
+    stockPicks: nextPicks,
+    deliveredQuantity: packagedQtyFromPicks(nextPicks),
+  };
+  markPackedDirty(key);
+};
+
+const onSavePackedPicks = async (
+  group: ProcurementDemandGroup,
+  item: ProcurementDemandItem,
+) => {
+  const draft = getDraft(group, item);
+  await persistPackedPicks(group, item, draft.stockPicks, 'Close picks saved.');
 };
 
 const syncFulfillTabFromRoute = () => {
@@ -1495,6 +1898,14 @@ const openGroupSource = (group: ProcurementDemandGroup) => {
   flex: 1 1 0%;
   min-height: 0;
   overflow: auto;
+}
+
+.demand-buy-card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 0 16px;
 }
 
 .demand-table {
@@ -1537,23 +1948,204 @@ body.body--dark .demand-table :deep(tbody td) {
   border-bottom: 1px solid #262626;
 }
 
-.demand-group-title {
+.demand-group-chip {
+  font-size: 10px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+
+.demand-groups-stack {
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
+  padding: 4px 2px 8px;
+}
+
+.demand-group-block {
   min-width: 0;
 }
 
-.demand-group-row td {
-  background: #f8fafc;
-  padding: 4px 8px !important;
-  border-bottom: 1px solid #e2e8f0;
+.demand-group-lines {
+  min-width: 0;
 }
 
-.demand-group-row:hover td {
-  background: #f1f5f9;
+.demand-group-lines--under-hero {
+  padding: 0 2px 2px;
 }
 
-body.body--dark .demand-group-row td {
-  background: #242424;
-  border-bottom-color: #2e2e2e;
+.demand-group-lines--under-hero :deep(.demand-group-lines-table) {
+  border: 1px solid #eef1f5;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+  background: var(--tf-theme-surface, #ffffff);
+}
+
+.demand-group-lines:not(.demand-group-lines--under-hero) :deep(.demand-group-lines-table) {
+  border: 1px solid #eef1f5;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--tf-theme-surface, #ffffff);
+}
+
+.demand-group-lines :deep(.demand-group-lines-table thead tr th) {
+  position: static;
+  top: auto;
+}
+
+.demand-group-hero {
+  margin: 0 2px;
+  border-radius: 8px;
+  border: 1px solid var(--tf-theme-border, #e2e8f0);
+  background: color-mix(
+    in srgb,
+    var(--tf-theme-primary-soft, #ecfdf5) 22%,
+    var(--tf-theme-surface, #ffffff) 78%
+  );
+  box-shadow: 0 1px 1px color-mix(in srgb, var(--tf-theme-ink, #0f172a) 4%, transparent);
+  overflow: hidden;
+}
+
+.demand-group-hero--queue {
+  margin: 0;
+  border-radius: var(--tf-radius-sm, 8px);
+  background: var(--tf-theme-surface, #ffffff);
+  border-color: var(--tf-theme-border, #e7e1d8);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.demand-group-hero--queue:hover {
+  border-color: color-mix(in srgb, var(--q-primary) 28%, var(--tf-theme-border, #e7e1d8));
+  box-shadow: 0 2px 8px rgb(15 23 42 / 0.07);
+}
+
+.demand-group-hero--queue .demand-group-hero__head {
+  padding: 12px 14px;
+}
+
+.demand-group-hero--queue .demand-group-hero__head:hover {
+  background: var(--tf-neutral-canvas, #fbfaf7);
+}
+
+.demand-group-hero--expanded {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: none;
+}
+
+.demand-group-hero__head {
+  padding: 8px 10px 6px;
+  min-width: 0;
+}
+
+.demand-group-hero__head:hover {
+  background: color-mix(in srgb, var(--tf-theme-primary-soft, #ecfdf5) 14%, transparent);
+}
+
+.demand-group-hero__caret {
+  flex-shrink: 0;
+}
+
+.demand-group-hero__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  color: var(--tf-theme-primary, #059669);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 75%, var(--tf-theme-primary-soft, #ecfdf5) 25%);
+  border: 1px solid var(--tf-theme-border, #e2e8f0);
+}
+
+.demand-group-hero__icon--costing {
+  color: color-mix(in srgb, var(--tf-theme-primary, #059669) 40%, #4f46e5 60%);
+}
+
+.demand-group-hero__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--tf-theme-ink, #0f172a);
+  letter-spacing: -0.01em;
+}
+
+.demand-group-hero__subtitle {
+  margin-top: 2px;
+  min-width: 0;
+}
+
+.demand-group-hero__type-pill {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 3px 7px;
+  border-radius: 6px;
+  color: var(--tf-theme-primary, #059669);
+  background: var(--tf-theme-primary-soft, #ecfdf5);
+  border: 1px solid color-mix(in srgb, var(--tf-theme-primary, #059669) 18%, transparent);
+}
+
+.demand-group-hero__doc-ref {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tf-theme-muted, #64748b);
+  min-width: 0;
+}
+
+.demand-group-hero__profile {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tf-neutral-ink, #334155);
+  min-width: 0;
+  max-width: 10rem;
+}
+
+.demand-group-hero__go {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.demand-group-hero__meta {
+  text-align: right;
+}
+
+.demand-group-hero__status {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  min-height: 24px;
+  padding: 4px 10px;
+  border-radius: 6px !important;
+}
+
+.demand-group-hero__item-count {
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+body.body--dark .demand-group-hero {
+  background: color-mix(in srgb, var(--tf-theme-surface, #1c1c1c) 90%, var(--tf-theme-primary-soft, #064e3b) 10%);
+  box-shadow: none;
+}
+
+body.body--dark .demand-group-hero__head:hover {
+  background: color-mix(in srgb, var(--tf-theme-primary-soft, #064e3b) 18%, transparent);
+}
+
+body.body--dark .demand-group-hero__title {
+  color: var(--tf-theme-ink, #fafafa);
+}
+
+body.body--dark .demand-group-hero--queue {
+  background: var(--tf-theme-surface, #1c1c1c);
+}
+
+body.body--dark .demand-group-hero--queue .demand-group-hero__head:hover {
+  background: color-mix(in srgb, var(--tf-theme-surface, #1c1c1c) 88%, #fff 12%);
 }
 
 .demand-table :deep(.demand-image-col) {
@@ -1580,7 +2172,7 @@ body.body--dark .demand-group-row td {
 
 .demand-table :deep(.demand-product-name) {
   font-weight: 650;
-  color: var(--bw-theme-ink, #0f172a);
+  color: var(--tf-theme-ink, #0f172a);
   font-size: 13px;
   letter-spacing: -0.01em;
   line-height: 1.3;
@@ -1590,9 +2182,9 @@ body.body--dark .demand-group-row td {
   display: inline-flex;
   align-self: flex-start;
   padding: 1px 7px;
-  border-radius: var(--bw-radius-sm, 8px);
-  background: var(--bw-theme-primary-soft, #ecfdf5);
-  color: var(--bw-theme-primary, #047857);
+  border-radius: var(--tf-radius-sm, 8px);
+  background: var(--tf-theme-primary-soft, #ecfdf5);
+  color: var(--tf-theme-primary, #047857);
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.04em;
@@ -1706,8 +2298,137 @@ body.body--dark .demand-table :deep(.demand-product-name) {
   text-align: center;
 }
 
+.demand-desk-toolbar {
+  padding: 8px 10px;
+}
+
+.demand-desk-toolbar__inner {
+  gap: 10px;
+}
+
+.demand-desk-toolbar__head {
+  gap: 12px;
+}
+
+.demand-desk-toolbar__status {
+  padding-top: 2px;
+}
+
+.demand-desk-toolbar__controls {
+  padding-top: 2px;
+  border-top: 1px solid color-mix(in srgb, var(--tf-theme-border, #e7e1d8) 65%, transparent);
+}
+
+.demand-desk-toolbar__filters {
+  max-width: 100%;
+}
+
+.demand-profile-toggle-wrap {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.demand-profile-toggle {
+  flex-wrap: nowrap;
+}
+
+.demand-profile-toggle :deep(.q-btn) {
+  max-width: 11rem;
+}
+
+.demand-profile-toggle :deep(.q-btn .q-btn__content) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demand-desk-toolbar__profile-actions {
+  flex-shrink: 0;
+}
+
+.demand-profile-action-btn {
+  flex-shrink: 0;
+}
+
+@media (max-width: 599px) {
+  .demand-desk-toolbar__head {
+    flex-wrap: wrap;
+  }
+
+  .demand-desk-toolbar__status {
+    width: 100%;
+  }
+
+  .demand-desk-toolbar__filters {
+    flex-wrap: wrap;
+  }
+
+  .demand-desk-toolbar__profile-actions {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+
+  .demand-profile-action-btn {
+    flex: 1 1 auto;
+  }
+}
+
+.demand-desk-intro {
+  min-width: 0;
+}
+
+.demand-desk-intro__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--tf-theme-ink, #0f172a);
+  letter-spacing: -0.01em;
+}
+
+.demand-desk-intro__subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--tf-theme-muted, #64748b);
+  max-width: 36rem;
+}
+
+.demand-desk-body :deep(.treasury-table-wrap) {
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
+
+.demand-filter-segment {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--tf-radius-sm, 8px);
+  border: 1px solid var(--tf-theme-border, #e7e1d8);
+  background: var(--tf-neutral-canvas, #fbfaf7);
+}
+
 .demand-status-tabs {
-  min-height: 36px;
+  min-height: 30px;
+}
+
+.demand-desk-toolbar :deep(.q-btn:not(.q-btn--round)) {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.demand-desk-body :deep(.tf-btn) {
+  min-height: 26px !important;
+  padding: 0 8px !important;
+  font-size: 11px;
+  width: auto;
+}
+
+.demand-status-tabs :deep(.q-btn) {
+  border-radius: 6px;
 }
 
 .demand-packed-close-confirm-card {
@@ -1719,10 +2440,4 @@ body.body--dark .demand-table :deep(.demand-product-name) {
   overflow-y: auto;
 }
 
-.demand-group-invoice-btn {
-  border-radius: 6px;
-  font-size: 11px;
-  min-height: 28px;
-  padding: 0 10px;
-}
 </style>

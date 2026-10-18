@@ -1,9 +1,9 @@
 <template>
-  <q-page class="bw-page theme-shop" data-test="storefront-page">
-    <div class="bw-page__stack">
+  <q-page class="tf-page theme-shop" data-test="storefront-page">
+    <div class="tf-page__stack">
       <template v-if="accessDenied">
         <q-banner
-          class="bw-status-banner bg-negative text-white"
+          class="tf-status-banner bg-negative text-white"
           rounded
           data-test="storefront-access-denied"
         >
@@ -25,7 +25,7 @@
 
       <template v-else-if="notFound">
         <q-banner
-          class="bw-status-banner bg-warning text-white"
+          class="tf-status-banner bg-warning text-white"
           rounded
           data-test="storefront-not-found"
         >
@@ -61,7 +61,7 @@
         />
 
         <q-infinite-scroll ref="infiniteScrollRef" :offset="250" @load="onLoadMore">
-          <div v-if="catalogItems.length > 0" class="bw-entity-grid">
+          <div v-if="catalogItems.length > 0" class="tf-entity-grid">
             <StorefrontProductCard
               v-for="item in catalogItems"
               :key="itemKey(item)"
@@ -92,9 +92,9 @@
             class="column items-center justify-center q-pa-xl text-center empty-state-block floating-surface"
             data-test="storefront-empty"
           >
-            <q-icon name="ph ph-tote" size="64px" class="q-mb-md bw-text-muted" />
+            <q-icon name="ph ph-tote" size="64px" class="q-mb-md tf-text-muted" />
             <div class="text-subtitle1 text-weight-bold">{{ $t('shop.no_products_found') }}</div>
-            <p class="bw-type-body bw-text-muted q-mt-sm q-mb-none">
+            <p class="tf-type-body tf-text-muted q-mt-sm q-mb-none">
               {{ $t('shop.no_products_desc') }}
             </p>
             <q-btn

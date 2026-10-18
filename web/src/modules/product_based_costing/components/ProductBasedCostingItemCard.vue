@@ -121,22 +121,22 @@
       </dl>
 
       <div class="pbc-item-card__stats">
-        <div class="pbc-item-card__stat bw-ops-col-tint--qty">
+        <div class="pbc-item-card__stat tf-ops-col-tint--qty">
           <span class="pbc-item-card__stat-label">{{ $t('product_based_costing.table_col_qty') }}</span>
-          <span class="pbc-item-card__stat-value bw-tabular">{{ row.quantity }}</span>
-          <span class="pbc-item-card__stat-sub bw-tabular">{{ row.confirmed_quantity }} conf</span>
+          <span class="pbc-item-card__stat-value tf-tabular">{{ row.quantity }}</span>
+          <span class="pbc-item-card__stat-sub tf-tabular">{{ row.confirmed_quantity }} conf</span>
         </div>
-        <div class="pbc-item-card__stat bw-ops-col-tint--price">
+        <div class="pbc-item-card__stat tf-ops-col-tint--price">
           <span class="pbc-item-card__stat-label">{{ $t('product_based_costing.table_col_priceGbp', currencyI18n) }}</span>
-          <span class="pbc-item-card__stat-value bw-tabular">{{ buyMark }}{{ formatMoney(row.price_gbp) }}</span>
+          <span class="pbc-item-card__stat-value tf-tabular">{{ buyMark }}{{ formatMoney(row.price_gbp) }}</span>
         </div>
-        <div class="pbc-item-card__stat bw-ops-col-tint--cost">
+        <div class="pbc-item-card__stat tf-ops-col-tint--cost">
           <span class="pbc-item-card__stat-label">{{ $t('product_based_costing.table_col_costBdt', currencyI18n) }}</span>
-          <span class="pbc-item-card__stat-value bw-tabular">{{ sellMark }}{{ formatMoney(row.costBdt) }}</span>
+          <span class="pbc-item-card__stat-value tf-tabular">{{ sellMark }}{{ formatMoney(row.costBdt) }}</span>
         </div>
-        <div class="pbc-item-card__stat bw-ops-col-tint--price">
+        <div class="pbc-item-card__stat tf-ops-col-tint--price">
           <span class="pbc-item-card__stat-label">{{ $t('product_based_costing.table_col_offerPriceBdt', currencyI18n) }}</span>
-          <span class="pbc-item-card__stat-value bw-tabular">{{ sellMark }}{{ formatMoney(row.offer_price) }}</span>
+          <span class="pbc-item-card__stat-value tf-tabular">{{ sellMark }}{{ formatMoney(row.offer_price) }}</span>
         </div>
       </div>
     </div>
@@ -285,16 +285,16 @@ const statusLabel = computed(() => formatStatusLabel(props.row.status));
   display: grid;
   grid-template-columns: 108px minmax(0, 1fr);
   min-height: 0;
-  border-radius: var(--bw-radius-md, 12px);
-  background: var(--bw-neutral-surface, #fff);
-  border-color: var(--bw-neutral-border, #e7e1d8);
+  border-radius: var(--tf-radius-md, 12px);
+  background: var(--tf-neutral-surface, var(--tf-neutral-surface));
+  border-color: var(--tf-neutral-border, #e7e1d8);
   overflow: hidden;
 }
 
 .pbc-item-card__media {
   position: relative;
-  background: var(--bw-neutral-canvas, #fbfaf7);
-  border-right: 1px solid var(--bw-neutral-border, #e7e1d8);
+  background: var(--tf-neutral-canvas, #fbfaf7);
+  border-right: 1px solid var(--tf-neutral-border, #e7e1d8);
   min-height: 132px;
 }
 
@@ -315,11 +315,11 @@ const statusLabel = computed(() => formatStatusLabel(props.row.status));
   justify-content: center;
   font-size: 12px;
   font-weight: 800;
-  font-family: var(--bw-font-mono, ui-monospace, monospace);
+  font-family: var(--tf-font-mono, ui-monospace, monospace);
   line-height: 1;
-  color: var(--bw-neutral-ink, #171412);
-  background: var(--bw-neutral-canvas, #fbfaf7);
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+  color: var(--tf-neutral-ink, #171412);
+  background: var(--tf-neutral-canvas, #fbfaf7);
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
   border-radius: 6px;
 }
 
@@ -361,7 +361,7 @@ const statusLabel = computed(() => formatStatusLabel(props.row.status));
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--bw-neutral-muted, #736a61);
+  color: var(--tf-neutral-muted, #736a61);
 }
 
 .pbc-item-card__name {
@@ -391,8 +391,8 @@ const statusLabel = computed(() => formatStatusLabel(props.row.status));
   line-height: 1.2;
   padding: 2px 6px;
   border-radius: 4px;
-  background: var(--bw-neutral-canvas, #fbfaf7);
-  color: var(--bw-neutral-ink, #171412);
+  background: var(--tf-neutral-canvas, #fbfaf7);
+  color: var(--tf-neutral-ink, #171412);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -400,18 +400,18 @@ const statusLabel = computed(() => formatStatusLabel(props.row.status));
 }
 
 .pbc-item-card__chip--out {
-  color: var(--bw-error, #b83a3a);
-  background: color-mix(in srgb, var(--bw-error, #b83a3a) 12%, #fff);
+  color: var(--tf-error, #b83a3a);
+  background: color-mix(in srgb, var(--tf-error, #b83a3a) 12%, var(--tf-neutral-surface));
 }
 
 .pbc-item-card__chip--low {
-  color: var(--bw-warning, #b45309);
-  background: color-mix(in srgb, var(--bw-warning, #b45309) 12%, #fff);
+  color: var(--tf-warning, #b45309);
+  background: color-mix(in srgb, var(--tf-warning, #b45309) 12%, var(--tf-neutral-surface));
 }
 
 .pbc-item-card__chip--ok {
-  color: var(--bw-success, #1a7f4b);
-  background: color-mix(in srgb, var(--bw-success, #1a7f4b) 12%, #fff);
+  color: var(--tf-success, #1a7f4b);
+  background: color-mix(in srgb, var(--tf-success, #1a7f4b) 12%, var(--tf-neutral-surface));
 }
 
 .pbc-item-card__meta {
@@ -432,7 +432,7 @@ const statusLabel = computed(() => formatStatusLabel(props.row.status));
   font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--bw-neutral-muted, #736a61);
+  color: var(--tf-neutral-muted, #736a61);
   margin-bottom: 4px;
 }
 
@@ -449,8 +449,8 @@ const statusLabel = computed(() => formatStatusLabel(props.row.status));
   max-width: 100%;
   padding: 3px 7px;
   border-radius: 6px;
-  background: var(--bw-neutral-canvas, #fbfaf7);
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+  background: var(--tf-neutral-canvas, #fbfaf7);
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.3;
@@ -458,7 +458,7 @@ const statusLabel = computed(() => formatStatusLabel(props.row.status));
 
 .pbc-item-card__batch-date {
   font-weight: 600;
-  color: var(--bw-neutral-muted, #736a61);
+  color: var(--tf-neutral-muted, #736a61);
 }
 
 .pbc-item-card__row {
@@ -472,14 +472,14 @@ const statusLabel = computed(() => formatStatusLabel(props.row.status));
   font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--bw-neutral-muted, #736a61);
+  color: var(--tf-neutral-muted, #736a61);
 }
 
 .pbc-item-card__row dd {
   margin: 0;
   font-size: 11px;
   font-weight: 600;
-  color: var(--bw-neutral-ink, #171412);
+  color: var(--tf-neutral-ink, #171412);
   display: flex;
   align-items: center;
   gap: 2px;
@@ -502,7 +502,7 @@ const statusLabel = computed(() => formatStatusLabel(props.row.status));
   gap: 6px;
   margin-top: auto;
   padding-top: 8px;
-  border-top: 1px solid var(--bw-neutral-border, #e7e1d8);
+  border-top: 1px solid var(--tf-neutral-border, #e7e1d8);
 }
 
 .pbc-item-card__stat {
@@ -514,19 +514,19 @@ const statusLabel = computed(() => formatStatusLabel(props.row.status));
   border-radius: 6px;
 }
 
-.pbc-item-card__stat.bw-ops-col-tint--qty {
-  background-color: #d0e6ff !important;
-  box-shadow: inset 2px 0 0 #2563eb;
+.pbc-item-card__stat.tf-ops-col-tint--qty {
+  background-color: var(--tf-ops-hue-qty) !important;
+  box-shadow: inset 2px 0 0 var(--tf-ops-accent-qty);
 }
 
-.pbc-item-card__stat.bw-ops-col-tint--price {
-  background-color: #daf3e4 !important;
-  box-shadow: inset 2px 0 0 #059669;
+.pbc-item-card__stat.tf-ops-col-tint--price {
+  background-color: var(--tf-ops-hue-price) !important;
+  box-shadow: inset 2px 0 0 var(--tf-ops-accent-price);
 }
 
-.pbc-item-card__stat.bw-ops-col-tint--cost {
-  background-color: #ffe8d1 !important;
-  box-shadow: inset 2px 0 0 #ea580c;
+.pbc-item-card__stat.tf-ops-col-tint--cost {
+  background-color: var(--tf-ops-hue-cost) !important;
+  box-shadow: inset 2px 0 0 var(--tf-ops-accent-cost);
 }
 
 .pbc-item-card__stat-label {
@@ -534,7 +534,7 @@ const statusLabel = computed(() => formatStatusLabel(props.row.status));
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--bw-neutral-muted, #736a61);
+  color: var(--tf-neutral-muted, #736a61);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -548,7 +548,7 @@ const statusLabel = computed(() => formatStatusLabel(props.row.status));
 
 .pbc-item-card__stat-sub {
   font-size: 10px;
-  color: var(--bw-neutral-muted, #736a61);
+  color: var(--tf-neutral-muted, #736a61);
 }
 
 @media (max-width: 599px) {

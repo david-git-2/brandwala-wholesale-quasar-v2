@@ -299,7 +299,7 @@ const fileMetaRows = computed(() => {
   display: block;
   font-size: 10px;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--tf-neutral-muted);
   font-weight: 600;
 }
 
@@ -307,12 +307,12 @@ const fileMetaRows = computed(() => {
   display: block;
   font-size: 13px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--tf-neutral-ink);
   font-family: ui-monospace, monospace;
 }
 
 .stat-tile {
-  background: #f8fafc;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 10px;
   padding: 10px;
@@ -337,14 +337,14 @@ const fileMetaRows = computed(() => {
 .stat-tile__label {
   font-size: 10px;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--tf-neutral-muted);
   font-weight: 600;
 }
 
 .stat-tile__value {
   font-size: 18px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--tf-neutral-ink);
   line-height: 1.2;
 }
 
@@ -377,7 +377,7 @@ const fileMetaRows = computed(() => {
 }
 
 .bg-surface-subtle {
-  background: var(--bw-theme-surface-subtle, rgba(248, 250, 252, 0.7));
+  background: var(--tf-theme-surface-subtle, rgba(248, 250, 252, 0.7));
 }
 
 .bg-primary-subtle {

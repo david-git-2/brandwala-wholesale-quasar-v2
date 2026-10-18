@@ -178,7 +178,7 @@ const priceBlocksFor = (item: ShopOrderItem) => {
 <style scoped>
 .dropship-order-item {
   border-radius: 8px;
-  background: var(--bw-theme-surface, #ffffff);
+  background: var(--tf-theme-surface, #ffffff);
   border-color: rgba(34, 56, 101, 0.1);
 }
 
@@ -243,7 +243,7 @@ const priceBlocksFor = (item: ShopOrderItem) => {
   font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted, #736a61);
+  color: var(--tf-theme-muted, #736a61);
   line-height: 1.1;
 }
 
@@ -252,14 +252,14 @@ const priceBlocksFor = (item: ShopOrderItem) => {
   font-size: 0.78rem;
   font-weight: 700;
   line-height: 1.2;
-  color: var(--bw-theme-ink, #171412);
+  color: var(--tf-theme-ink, #171412);
 }
 
 .dropship-order-item__price-sub {
   margin-top: 0.05rem;
   font-size: 0.65rem;
   line-height: 1.1;
-  color: var(--bw-theme-muted, #736a61);
+  color: var(--tf-theme-muted, #736a61);
 }
 
 .dropship-order-item__totals {

@@ -12,7 +12,7 @@ export const ensureThriftChartsRegistered = () => {
 export const readThemeRgb = (fallback = '45 212 191') => {
   if (typeof document === 'undefined') return fallback;
   const value = getComputedStyle(document.documentElement)
-    .getPropertyValue('--bw-theme-primary-rgb')
+    .getPropertyValue('--tf-theme-primary-rgb')
     .trim();
   return value || fallback;
 };

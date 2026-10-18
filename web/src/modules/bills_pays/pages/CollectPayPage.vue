@@ -881,8 +881,8 @@ onMounted(async () => {
 .pay-form-card {
   max-width: 720px;
   margin: 0 auto;
-  background: var(--bw-neutral-surface, #fff);
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+  background: var(--tf-neutral-surface, #fff);
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
   border-radius: 8px;
 }
 .collect-group-list {
@@ -890,19 +890,19 @@ onMounted(async () => {
   overflow: auto;
 }
 .collect-customer-banner {
-  background: var(--bw-neutral-canvas);
-  border: 1px solid var(--bw-neutral-border);
-  border-radius: var(--bw-radius-sm, 8px);
-  color: var(--bw-neutral-ink);
+  background: var(--tf-neutral-canvas);
+  border: 1px solid var(--tf-neutral-border);
+  border-radius: var(--tf-radius-sm, 8px);
+  color: var(--tf-neutral-ink);
 }
 .collect-customer-banner__title {
-  color: var(--bw-neutral-ink);
+  color: var(--tf-neutral-ink);
 }
 .collect-customer-banner__meta {
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
 }
 .collect-empty-bills {
-  border: 1px dashed var(--bw-neutral-border, #e7e1d8);
+  border: 1px dashed var(--tf-neutral-border, #e7e1d8);
 }
 .collect-bill-list {
   max-height: min(40vh, 360px);

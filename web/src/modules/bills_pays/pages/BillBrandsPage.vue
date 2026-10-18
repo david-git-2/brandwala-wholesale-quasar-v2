@@ -167,6 +167,6 @@ const goBack = () => {
 .brands-table {
   max-width: 720px;
   margin: 0 auto;
-  background: var(--bw-neutral-surface, #fff);
+  background: var(--tf-neutral-surface, #fff);
 }
 </style>

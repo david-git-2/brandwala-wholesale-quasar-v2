@@ -8,28 +8,19 @@
         @update:search="onSearchTextUpdate"
       >
         <template #pills>
-          <div class="row items-center q-gutter-x-xs quick-filter-toggle">
-            <button
-              v-for="tab in arTabs"
-              :key="tab.value"
-              type="button"
-              class="quick-filter-pill"
-              :class="{ 'quick-filter-pill--active': arSide === tab.value }"
-              @click="setArSide(tab.value)"
-            >
-              {{ tab.label }}
-            </button>
-            <span class="text-grey-5 q-mx-xs">|</span>
-            <button
-              v-for="tab in filterTabs"
-              :key="tab.value"
-              type="button"
-              class="quick-filter-pill"
-              :class="{ 'quick-filter-pill--active': statusPill === tab.value }"
-              @click="setStatusPill(tab.value)"
-            >
-              <span>{{ tab.label }}</span>
-            </button>
+          <div class="row items-center q-gutter-x-sm no-wrap">
+            <TfDrawerSectionTabs
+              v-model="arSide"
+              :tabs="arSectionTabs"
+              aria-label="Receivable or payable"
+              @update:model-value="setArSide"
+            />
+            <TfDrawerSectionTabs
+              v-model="statusPill"
+              :tabs="statusSectionTabs"
+              aria-label="Bill status"
+              @update:model-value="setStatusPill"
+            />
           </div>
         </template>
         <template #trailing>
@@ -55,7 +46,7 @@
         </template>
       </ProcurementOpsListToolbar>
 
-      <div v-if="listQuery.isError.value" class="bw-status-banner bg-negative text-white q-pa-sm rounded-borders">
+      <div v-if="listQuery.isError.value" class="tf-status-banner bg-negative text-white q-pa-sm rounded-borders">
         {{ listErrorMessage }}
       </div>
 
@@ -113,6 +104,7 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
+import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import BillListRow from '../components/BillListRow.vue';
 import { useBillsListQuery } from '../composables/useBillsListQuery';
 import type { GlobalInvoiceRow } from 'src/modules/sales_invoice/types';
@@ -147,6 +139,9 @@ const filterTabs: { label: string; value: StatusPill }[] = [
   { label: 'Paid', value: 'paid' },
   { label: 'Voided', value: 'voided' },
 ];
+
+const arSectionTabs = arTabs.map((tab) => ({ name: tab.value, label: tab.label }));
+const statusSectionTabs = filterTabs.map((tab) => ({ name: tab.value, label: tab.label }));
 
 const tenantScope = computed(() => {
   const tenant = authStore.selectedTenant;
@@ -210,8 +205,8 @@ watch([statusPill, arSide, debouncedSearch], () => {
   accumulatedRows.value = [];
 });
 
-const setArSide = (value: ArSide) => {
-  arSide.value = value;
+const setArSide = (value: string | number) => {
+  arSide.value = value as ArSide;
 };
 
 const onSearchTextUpdate = (value: string) => {
@@ -222,8 +217,8 @@ const onSearchTextUpdate = (value: string) => {
   }, 300);
 };
 
-const setStatusPill = (value: StatusPill) => {
-  statusPill.value = value;
+const setStatusPill = (value: string | number) => {
+  statusPill.value = value as StatusPill;
 };
 
 const loadMore = () => {
@@ -277,20 +272,4 @@ const openBill = (row: GlobalInvoiceRow) => {
   height: calc(100vh - 55px);
 }
 
-.quick-filter-pill {
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
-  background: var(--bw-neutral-surface, #fff);
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #64748b;
-  cursor: pointer;
-}
-
-.quick-filter-pill--active {
-  background: #0d6b5c;
-  border-color: #0d6b5c;
-  color: #fff;
-}
 </style>

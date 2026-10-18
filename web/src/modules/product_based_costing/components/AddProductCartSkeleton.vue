@@ -20,7 +20,7 @@
 }
 
 .add-product-cart-card-sk {
-  border-radius: var(--bw-radius-md, 12px);
+  border-radius: var(--tf-radius-md, 12px);
   overflow: hidden;
 }
 

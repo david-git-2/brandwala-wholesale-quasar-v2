@@ -253,6 +253,6 @@ function handleCreateMerchant() {
   color: #555;
 }
 .hover-row:hover {
-  background-color: #f9fafb;
+  background-color: var(--tf-hover-bg);
 }
 </style>

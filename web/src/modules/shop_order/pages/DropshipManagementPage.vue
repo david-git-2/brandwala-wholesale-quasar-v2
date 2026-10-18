@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page">
-    <section class="bw-page__stack">
+  <q-page class="tf-page">
+    <section class="tf-page__stack">
       <q-card flat bordered class="form-card q-pa-sm">
         <div class="row items-center q-col-gutter-md">
           <div class="col-12 col-sm-6 col-md-4">
@@ -246,7 +246,7 @@ function rowAccentStyle(status: ShopOrderStatus) {
   const color = rowAccentColor(status);
   return {
     boxShadow: `inset 3px 0 0 ${color}`,
-    background: `color-mix(in srgb, ${color} 8%, var(--bw-neutral-surface, #fff))`,
+    background: `color-mix(in srgb, ${color} 8%, var(--tf-neutral-surface, #fff))`,
   };
 }
 
@@ -275,6 +275,6 @@ export default {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--bw-neutral-chrome, #64748b);
+  color: var(--tf-neutral-chrome, #64748b);
 }
 </style>

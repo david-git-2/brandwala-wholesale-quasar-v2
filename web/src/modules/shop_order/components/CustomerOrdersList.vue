@@ -147,12 +147,12 @@ const getStatusColor = (status: string) => {
 <style scoped>
 .order-table-card {
   border-radius: 12px;
-  background: var(--bw-theme-surface);
-  box-shadow: var(--bw-theme-shadow, 0 2px 8px rgba(0, 0, 0, 0.04));
+  background: var(--tf-theme-surface);
+  box-shadow: var(--tf-theme-shadow, 0 2px 8px rgba(0, 0, 0, 0.04));
 }
 
 .order-table-card--empty {
-  border: 1px solid var(--bw-theme-border, rgb(0 0 0 / 0.12));
+  border: 1px solid var(--tf-theme-border, rgb(0 0 0 / 0.12));
 }
 
 .order-item {
@@ -160,7 +160,7 @@ const getStatusColor = (status: string) => {
 }
 
 .order-item:hover {
-  background-color: var(--bw-theme-primary-soft);
+  background-color: var(--tf-theme-primary-soft);
 }
 
 .order-waiting {

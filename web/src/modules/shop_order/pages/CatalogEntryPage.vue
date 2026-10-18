@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md">
     <PageInitialLoader v-if="shopsQuery.isLoading.value" />
-    <q-banner v-else-if="shopsError" class="bw-status-banner bg-negative text-white" rounded>
+    <q-banner v-else-if="shopsError" class="tf-status-banner bg-negative text-white" rounded>
       {{ shopsError }}
     </q-banner>
   </q-page>

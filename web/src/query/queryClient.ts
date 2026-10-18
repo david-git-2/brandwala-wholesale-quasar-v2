@@ -1,9 +1,10 @@
 import { QueryClient } from '@tanstack/vue-query';
+import { STALE_STANDARD } from './staleTimes';
 
 export const appQueryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
+      staleTime: STALE_STANDARD,
       gcTime: 5 * 60_000,
       retry: 1,
       refetchOnWindowFocus: false,

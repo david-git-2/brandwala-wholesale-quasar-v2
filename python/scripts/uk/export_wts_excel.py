@@ -56,10 +56,10 @@ def env_path(env_key: str, default_abs_path: str) -> str:
 
 
 DEFAULT_XLSX = env_path("PY_UK_WTS_XLSX_PATH", os.path.join(ROOT_DIR, "python", "data", "uk", "wts_data.xlsx"))
-DEFAULT_OUT_JSON = env_path("PY_UK_WTS_OUT_JSON_PATH", os.path.join(ROOT_DIR, "web", "public", "uk", "wts_data.json"))
+DEFAULT_OUT_JSON = env_path("PY_UK_WTS_OUT_JSON_PATH", os.path.join(ROOT_DIR, "python", "data", "uk", "out", "wts_data.json"))
 DEFAULT_OUT_MANIFEST = env_path(
     "PY_UK_WTS_OUT_MANIFEST_PATH",
-    os.path.join(ROOT_DIR, "web", "public", "uk", "wts_manifest.json"),
+    os.path.join(ROOT_DIR, "python", "data", "uk", "out", "wts_manifest.json"),
 )
 DEFAULT_HEADER_ROW = 1
 

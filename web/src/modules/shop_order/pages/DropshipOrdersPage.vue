@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page">
-    <section class="bw-page__stack">
+  <q-page class="tf-page">
+    <section class="tf-page__stack">
       <!-- Header -->
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">

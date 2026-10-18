@@ -14,7 +14,7 @@ from typing import Any
 ROOT_DIR = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT_DIR / "python"))
 from pc_excel_spec import sanitize_cell_text
-DEFAULT_INPUT = ROOT_DIR / "web" / "public" / "uk" / "pc_data.json"
+DEFAULT_INPUT = ROOT_DIR / "python" / "data" / "uk" / "out" / "pc_data.json"
 
 
 def parse_args() -> argparse.Namespace:
@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
         "--input",
         dest="input_path",
         default=str(DEFAULT_INPUT),
-        help="Input JSON path (default: web/public/uk/pc_data.json)",
+        help="Input JSON path (default: python/data/uk/out/pc_data.json)",
     )
     parser.add_argument(
         "--output",

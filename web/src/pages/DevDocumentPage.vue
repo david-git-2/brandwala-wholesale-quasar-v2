@@ -729,7 +729,7 @@ body.body--dark .doc-slate-header {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  background-color: var(--bw-brand-accent, #0d6b5c);
+  background-color: var(--tf-brand-accent, #0d6b5c);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -771,8 +771,8 @@ body.body--dark .doc-pill-tag {
 }
 
 .doc-header-link-btn--active {
-  border-color: var(--bw-brand-accent, #0d6b5c);
-  color: var(--bw-brand-accent, #0d6b5c);
+  border-color: var(--tf-brand-accent, #0d6b5c);
+  color: var(--tf-brand-accent, #0d6b5c);
   font-weight: 600;
 }
 
@@ -855,8 +855,8 @@ body.body--dark .doc-sidebar-header {
   transition: border-color 0.15s ease;
 
   &:focus-within {
-    border-color: var(--bw-brand-accent, #0d6b5c);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--bw-brand-accent, #0d6b5c) 15%, transparent);
+    border-color: var(--tf-brand-accent, #0d6b5c);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tf-brand-accent, #0d6b5c) 15%, transparent);
   }
 }
 
@@ -981,7 +981,7 @@ body.body--dark .doc-folder-row {
 }
 
 .doc-folder-icon {
-  color: var(--bw-brand-accent, #0d6b5c);
+  color: var(--tf-brand-accent, #0d6b5c);
 }
 
 .doc-folder-label {
@@ -1029,8 +1029,8 @@ body.body--dark .doc-tree-children {
   }
 
   &--active {
-    background-color: color-mix(in srgb, var(--bw-brand-accent, #0d6b5c) 10%, transparent) !important;
-    color: var(--bw-brand-accent, #0d6b5c) !important;
+    background-color: color-mix(in srgb, var(--tf-brand-accent, #0d6b5c) 10%, transparent) !important;
+    color: var(--tf-brand-accent, #0d6b5c) !important;
     font-weight: 600;
   }
 }
@@ -1043,8 +1043,8 @@ body.body--dark .doc-tree-child-item {
   }
 
   &--active {
-    background-color: color-mix(in srgb, var(--bw-brand-accent, #4db8a4) 18%, transparent) !important;
-    color: var(--bw-brand-accent, #4db8a4) !important;
+    background-color: color-mix(in srgb, var(--tf-brand-accent, #4db8a4) 18%, transparent) !important;
+    color: var(--tf-brand-accent, #4db8a4) !important;
   }
 }
 
@@ -1069,8 +1069,8 @@ body.body--dark .doc-tree-child-item {
   }
 
   &--active {
-    background-color: color-mix(in srgb, var(--bw-brand-accent, #0d6b5c) 10%, transparent) !important;
-    color: var(--bw-brand-accent, #0d6b5c) !important;
+    background-color: color-mix(in srgb, var(--tf-brand-accent, #0d6b5c) 10%, transparent) !important;
+    color: var(--tf-brand-accent, #0d6b5c) !important;
     font-weight: 600;
   }
 }
@@ -1083,8 +1083,8 @@ body.body--dark .doc-tree-item {
   }
 
   &--active {
-    background-color: color-mix(in srgb, var(--bw-brand-accent, #4db8a4) 18%, transparent) !important;
-    color: var(--bw-brand-accent, #4db8a4) !important;
+    background-color: color-mix(in srgb, var(--tf-brand-accent, #4db8a4) 18%, transparent) !important;
+    color: var(--tf-brand-accent, #4db8a4) !important;
   }
 }
 
@@ -1214,7 +1214,7 @@ body.body--dark .doc-toc-headline {
   }
 
   &--active {
-    color: var(--bw-brand-accent, #0d6b5c) !important;
+    color: var(--tf-brand-accent, #0d6b5c) !important;
     font-weight: 600;
   }
 
@@ -1227,7 +1227,7 @@ body.body--dark .doc-toc-headline {
 body.body--dark .doc-toc-anchor {
   color: #a1a1aa;
   &:hover { color: #f4f4f5; }
-  &--active { color: var(--bw-brand-accent, #4db8a4) !important; }
+  &--active { color: var(--tf-brand-accent, #4db8a4) !important; }
 }
 
 .doc-toc-bullet {
@@ -1246,7 +1246,7 @@ body.body--dark .doc-toc-anchor {
   padding: 0;
 
   &:hover {
-    color: var(--bw-brand-accent, #0d6b5c);
+    color: var(--tf-brand-accent, #0d6b5c);
   }
 }
 
@@ -1445,7 +1445,7 @@ body.body--dark .doc-main-container {
   }
 
   a {
-    color: var(--bw-brand-accent, #0d6b5c);
+    color: var(--tf-brand-accent, #0d6b5c);
     text-decoration: none;
     font-weight: 500;
 
@@ -1495,7 +1495,7 @@ body.body--dark .doc-slate-prose {
   }
 
   a {
-    color: var(--bw-brand-accent, #4db8a4);
+    color: var(--tf-brand-accent, #4db8a4);
   }
 }
 
@@ -1557,7 +1557,7 @@ body.body--dark .doc-slate-pagination {
   transition: all 0.15s ease;
 
   &:hover {
-    border-color: var(--bw-brand-accent, #0d6b5c);
+    border-color: var(--tf-brand-accent, #0d6b5c);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   }
 }
@@ -1567,7 +1567,7 @@ body.body--dark .doc-pag-card {
   border-color: #27272a;
 
   &:hover {
-    border-color: var(--bw-brand-accent, #4db8a4);
+    border-color: var(--tf-brand-accent, #4db8a4);
   }
 }
 

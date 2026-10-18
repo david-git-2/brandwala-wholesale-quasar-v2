@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md costing-list-page theme-shop">
     <PageInitialLoader v-if="initialLoading" />
-    <section v-else class="bw-page__stack costing-page">
+    <section v-else class="tf-page__stack costing-page">
       <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
         <q-card-section class="q-py-sm">
           <div class="row items-center justify-between q-col-gutter-sm">
@@ -259,7 +259,7 @@ const onRequest = async (props: { pagination: { page: number; rowsPerPage: numbe
 };
 
 const cardAccentColor = computed(
-  () => authStore.customerGroup?.accentColor?.trim() || 'var(--bw-theme-primary)',
+  () => authStore.customerGroup?.accentColor?.trim() || 'var(--tf-theme-primary)',
 );
 const statusChipStyle = (currentStatus: string | null | undefined) => {
   const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
@@ -431,7 +431,7 @@ onMounted(async () => {
   gap: 1.25rem;
 }
 .costing-list-table :deep(th) {
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #f7f9fc 4%);
 }
 .costing-list-table :deep(tbody tr td) {
   background: inherit !important;
@@ -456,7 +456,7 @@ onMounted(async () => {
 }
 .costing-page__card {
   width: 100%;
-  border-left: 4px solid var(--costing-card-accent, var(--bw-theme-primary));
+  border-left: 4px solid var(--costing-card-accent, var(--tf-theme-primary));
 }
 .costing-page__dialog {
   width: min(440px, 92vw);
@@ -467,7 +467,7 @@ onMounted(async () => {
   padding-top: 0.5rem;
 }
 .costing-page__empty {
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 @media (max-width: 900px) {
   .costing-page__card-grid {

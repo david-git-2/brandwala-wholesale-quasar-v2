@@ -86,8 +86,8 @@ files.forEach(file => {
     const backdropFilterIndex = charIndex + line.indexOf('backdrop-filter');
     const selector = getSelectorForPosition(content, backdropFilterIndex);
 
-    // Check if it is a violation on .floating-surface or .bw-page-toolbar
-    const isViolationClass = selector && /\.(floating-surface|bw-page-toolbar)(?![a-zA-Z0-9_-])/i.test(selector);
+    // Check if it is a violation on .floating-surface or .tf-page-toolbar
+    const isViolationClass = selector && /\.(floating-surface|tf-page-toolbar)(?![a-zA-Z0-9_-])/i.test(selector);
     
     // Check if it is on the allowlist
     const isAllowlisted = 
@@ -120,7 +120,7 @@ console.log(`Violations (blocked):              ${violationsCount}`);
 console.log('\x1b[36m======================================================\x1b[0m\n');
 
 if (violationsCount > 0) {
-  console.error('\x1b[31mFAIL: New violations detected in .floating-surface or .bw-page-toolbar classes. Exiting with 1.\x1b[0m');
+  console.error('\x1b[31mFAIL: New violations detected in .floating-surface or .tf-page-toolbar classes. Exiting with 1.\x1b[0m');
   process.exit(1);
 } else {
   console.log('\x1b[32mSUCCESS: Performance budget checks passed successfully.\x1b[0m');

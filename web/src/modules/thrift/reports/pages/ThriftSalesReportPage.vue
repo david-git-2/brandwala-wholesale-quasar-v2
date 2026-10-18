@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page thrift-sales-report-page">
-    <div class="bw-page__stack">
+  <q-page class="tf-page thrift-sales-report-page">
+    <div class="tf-page__stack">
       <header class="page-nav">
         <q-btn
           flat
@@ -385,9 +385,9 @@ const channelColumns: QTableColumn[] = [
 .filter-card,
 .story-card,
 .detail-card {
-  border: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--tf-theme-border, rgba(0, 0, 0, 0.1));
   border-radius: 14px;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
 }
 
 .filter-card {
@@ -399,7 +399,7 @@ const channelColumns: QTableColumn[] = [
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
   margin-bottom: 0.55rem;
 }
 
@@ -415,8 +415,8 @@ const channelColumns: QTableColumn[] = [
 }
 
 .hero-panel--good {
-  background: var(--bw-theme-primary-soft, rgb(var(--bw-theme-primary-rgb, 52 211 153) / 0.12));
-  border-color: color-mix(in srgb, var(--bw-theme-primary, var(--q-primary)) 28%, transparent);
+  background: var(--tf-theme-primary-soft, rgb(var(--tf-theme-primary-rgb, 52 211 153) / 0.12));
+  border-color: color-mix(in srgb, var(--tf-theme-primary, var(--q-primary)) 28%, transparent);
 }
 
 .hero-panel--bad {
@@ -427,7 +427,7 @@ const channelColumns: QTableColumn[] = [
 .hero-panel__label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .hero-panel__amount {
@@ -436,7 +436,7 @@ const channelColumns: QTableColumn[] = [
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.15;
-  color: var(--bw-theme-ink, inherit);
+  color: var(--tf-theme-ink, inherit);
 }
 
 .hero-panel--good .hero-panel__amount {
@@ -450,14 +450,14 @@ const channelColumns: QTableColumn[] = [
 .hero-panel__meta {
   margin-top: 0.35rem;
   font-size: 0.95rem;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .hero-panel__note {
   margin-top: 0.85rem;
   font-size: 0.8rem;
   line-height: 1.4;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .sales-deeplink {
@@ -470,7 +470,7 @@ const channelColumns: QTableColumn[] = [
 .sales-deeplink__caption {
   font-size: 0.8rem;
   line-height: 1.4;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .story-card {
@@ -489,9 +489,9 @@ const channelColumns: QTableColumn[] = [
   align-items: baseline;
   gap: 1rem;
   padding: 0.55rem 0;
-  border-top: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.08));
+  border-top: 1px solid var(--tf-theme-border, rgba(0, 0, 0, 0.08));
   font-size: 0.95rem;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .story-row:first-of-type {
@@ -500,7 +500,7 @@ const channelColumns: QTableColumn[] = [
 }
 
 .story-row strong {
-  color: var(--bw-theme-ink, inherit);
+  color: var(--tf-theme-ink, inherit);
   font-weight: 650;
   text-align: right;
 }

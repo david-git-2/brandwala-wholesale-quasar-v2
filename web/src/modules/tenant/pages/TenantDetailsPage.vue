@@ -784,7 +784,7 @@ onMounted(async () => {
 }
 
 .costing-list-table :deep(th) {
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #f7f9fc 4%);
 }
 
 .tenant-details-page__header {

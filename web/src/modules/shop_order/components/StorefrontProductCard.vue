@@ -61,7 +61,7 @@
       >
         <div
           v-if="resolvedPriceText"
-          class="storefront-product-card__price bw-tabular"
+          class="storefront-product-card__price tf-tabular"
         >
           <span
             v-if="showPriceLabel && resolvedPriceLabel"
@@ -444,10 +444,10 @@ const gradeChipStyle = computed(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  border-radius: var(--bw-radius-md);
-  background: color-mix(in srgb, var(--bw-theme-surface) 90%, var(--bw-shop-mauve, #996888) 10%);
-  border-color: var(--bw-theme-border);
-  color: var(--bw-theme-ink);
+  border-radius: var(--tf-radius-md);
+  background: color-mix(in srgb, var(--tf-theme-surface) 90%, var(--tf-shop-mauve, #996888) 10%);
+  border-color: var(--tf-theme-border);
+  color: var(--tf-theme-ink);
   overflow: hidden;
   transition:
     transform 0.25s ease,
@@ -455,7 +455,7 @@ const gradeChipStyle = computed(() => {
 }
 .product-card:hover {
   transform: translateY(-4px);
-  box-shadow: var(--bw-theme-shadow, 0 10px 24px rgb(42 43 42 / 0.08));
+  box-shadow: var(--tf-theme-shadow, 0 10px 24px rgb(42 43 42 / 0.08));
 }
 .product-card--listing-inactive {
   opacity: 0.72;
@@ -470,14 +470,14 @@ const gradeChipStyle = computed(() => {
 .admin-card-actions {
   padding-top: 6px;
   margin-top: 8px;
-  border-top: 1px solid var(--bw-theme-border, rgb(42 43 42 / 0.08));
+  border-top: 1px solid var(--tf-theme-border, rgb(42 43 42 / 0.08));
 }
 .product-image-wrapper {
   position: relative;
   height: 200px;
   flex: 0 0 200px;
   background: #ffffff;
-  border-bottom: 1px solid var(--bw-theme-border, rgb(42 43 42 / 0.06));
+  border-bottom: 1px solid var(--tf-theme-border, rgb(42 43 42 / 0.06));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -516,7 +516,7 @@ const gradeChipStyle = computed(() => {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted, #5e4955);
+  color: var(--tf-theme-muted, #5e4955);
   gap: 0.35rem;
 }
 
@@ -559,7 +559,7 @@ const gradeChipStyle = computed(() => {
   line-height: 1.35;
   min-height: calc(1.35em * 2);
   max-height: calc(1.35em * 2);
-  color: var(--bw-theme-ink, #2a2b2a);
+  color: var(--tf-theme-ink, #2a2b2a);
   word-break: break-word;
   overflow-wrap: anywhere;
   display: -webkit-box;
@@ -573,7 +573,7 @@ const gradeChipStyle = computed(() => {
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.03em;
-  color: var(--bw-theme-ink, #2a2b2a);
+  color: var(--tf-theme-ink, #2a2b2a);
 }
 .storefront-product-card__price-label {
   display: block;
@@ -582,31 +582,31 @@ const gradeChipStyle = computed(() => {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted, #5e4955);
+  color: var(--tf-theme-muted, #5e4955);
 }
 .storefront-product-card__min-price {
   margin-top: 0.15rem;
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--bw-theme-muted, #5e4955);
+  color: var(--tf-theme-muted, #5e4955);
 }
 .storefront-product-card__min-price span {
   font-weight: 700;
-  color: var(--bw-shop-plum, #5e4955);
+  color: var(--tf-shop-plum, #5e4955);
 }
 .product-stock {
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--bw-theme-muted, #5e4955);
+  color: var(--tf-theme-muted, #5e4955);
 }
 .product-stock--ok {
-  color: var(--bw-success, #1a7f4b);
+  color: var(--tf-success, #1a7f4b);
 }
 .product-stock--low {
   color: var(--q-warning, #f2c037);
 }
 .product-stock--out {
-  color: var(--bw-error, #b42318);
+  color: var(--tf-error, #b42318);
 }
 .product-actions {
   flex-shrink: 0;
@@ -622,16 +622,16 @@ const gradeChipStyle = computed(() => {
   width: 100%;
 }
 .quantity-controls {
-  border: 1px solid var(--bw-theme-border);
-  border-radius: var(--bw-radius-sm);
+  border: 1px solid var(--tf-theme-border);
+  border-radius: var(--tf-radius-sm);
   padding: 2px;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
 }
 .quantity-value {
   width: 28px;
   font-size: 13px;
   user-select: none;
-  color: var(--bw-theme-ink, #2a2b2a);
+  color: var(--tf-theme-ink, #2a2b2a);
 }
 .product-pricing {
   flex-shrink: 0;
@@ -640,7 +640,7 @@ const gradeChipStyle = computed(() => {
 }
 
 .product-card--dropship .storefront-product-card__price-label {
-  color: var(--bw-shop-mauve, #996888);
+  color: var(--tf-shop-mauve, #996888);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -664,7 +664,7 @@ const gradeChipStyle = computed(() => {
     height: auto;
     margin: 0 0 10px;
     padding: 10px;
-    border-radius: var(--bw-radius-md);
+    border-radius: var(--tf-radius-md);
     border: none !important;
     overflow: hidden;
   }
@@ -681,7 +681,7 @@ const gradeChipStyle = computed(() => {
     margin: 0;
     padding: 0;
     border-bottom: none;
-    border-radius: var(--bw-radius-md);
+    border-radius: var(--tf-radius-md);
     overflow: hidden;
   }
   .product-main {

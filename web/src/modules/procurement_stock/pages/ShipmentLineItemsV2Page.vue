@@ -2426,7 +2426,7 @@ const removeSheet = async (id: string) => {
 <style scoped>
 .shipment-items-v2-page {
   background: #fff;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .shipment-items-top-section {
@@ -2447,7 +2447,7 @@ const removeSheet = async (id: string) => {
 .shipment-items-middle-section,
 .shipment-items-markup-table {
   background: #fff;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .shipment-header-workflow :deep(.shipment-status-toolbar) {
@@ -2457,8 +2457,8 @@ const removeSheet = async (id: string) => {
 }
 
 .land-split-guard-banner {
-  background: color-mix(in srgb, var(--bw-warning, #b45309) 12%, #fff);
-  color: var(--bw-theme-ink);
+  background: color-mix(in srgb, var(--tf-warning, #b45309) 12%, #fff);
+  color: var(--tf-theme-ink);
   font-size: 12px;
   font-weight: 600;
 }
@@ -2476,7 +2476,7 @@ const removeSheet = async (id: string) => {
 }
 .line-sheet-selection-bar {
   background: color-mix(in srgb, var(--q-primary) 10%, #fff);
-  border-bottom: 1px solid var(--bw-theme-border);
+  border-bottom: 1px solid var(--tf-theme-border);
 }
 .line-sheet-sticky-top {
   position: sticky;
@@ -2492,12 +2492,12 @@ const removeSheet = async (id: string) => {
   align-items: center;
   padding: 6px 8px;
   background: #fff;
-  border-bottom: 1px solid var(--bw-theme-border);
+  border-bottom: 1px solid var(--tf-theme-border);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--bw-neutral-chrome, #64748b);
+  color: var(--tf-neutral-chrome, #64748b);
   text-align: right;
 }
 .line-sheet-head--actions {
@@ -2518,30 +2518,30 @@ const removeSheet = async (id: string) => {
   text-underline-offset: 2px;
 }
 .section-break-card {
-  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%);
-  border-bottom: 1px solid var(--bw-theme-border);
+  background: color-mix(in srgb, var(--tf-theme-surface) 88%, var(--tf-theme-base) 12%);
+  border-bottom: 1px solid var(--tf-theme-border);
   border-radius: 0;
   user-select: none;
 }
 .section-break-row {
-  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%) !important;
-  border-top: 2px solid var(--bw-theme-border) !important;
-  border-bottom: 1px solid var(--bw-theme-border) !important;
+  background: color-mix(in srgb, var(--tf-theme-surface) 88%, var(--tf-theme-base) 12%) !important;
+  border-top: 2px solid var(--tf-theme-border) !important;
+  border-bottom: 1px solid var(--tf-theme-border) !important;
   user-select: none;
 }
 .section-break-row td {
-  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%) !important;
+  background: color-mix(in srgb, var(--tf-theme-surface) 88%, var(--tf-theme-base) 12%) !important;
   height: 38px !important;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 .border-bottom {
-  border-bottom: 1px solid var(--bw-theme-border);
+  border-bottom: 1px solid var(--tf-theme-border);
 }
 .border-top {
-  border-top: 1px solid var(--bw-theme-border);
+  border-top: 1px solid var(--tf-theme-border);
 }
 .border-grey {
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
   border-radius: 8px;
 }
 .shrink-0 {
@@ -2568,26 +2568,26 @@ const removeSheet = async (id: string) => {
 .shipment-items-markup-table td {
   padding: 4px 4px !important;
   height: 48px;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
-.shipment-items-markup-table tbody td:not([class*='bw-ops-col-tint']) {
-  background-color: var(--bw-theme-surface) !important;
+.shipment-items-markup-table tbody td:not([class*='tf-ops-col-tint']) {
+  background-color: var(--tf-theme-surface) !important;
 }
 
-.shipment-items-markup-table thead th:not([class*='bw-ops-col-tint']) {
-  background: color-mix(in srgb, var(--bw-theme-surface) 92%, var(--bw-theme-base) 8%) !important;
-  color: var(--bw-theme-muted) !important;
-  border-bottom: 1px solid var(--bw-theme-border);
+.shipment-items-markup-table thead th:not([class*='tf-ops-col-tint']) {
+  background: color-mix(in srgb, var(--tf-theme-surface) 92%, var(--tf-theme-base) 8%) !important;
+  color: var(--tf-theme-muted) !important;
+  border-bottom: 1px solid var(--tf-theme-border);
 }
 
-.shipment-items-markup-table thead th[class*='bw-ops-col-tint'] {
-  color: var(--bw-theme-muted) !important;
-  border-bottom: 1px solid var(--bw-theme-border);
+.shipment-items-markup-table thead th[class*='tf-ops-col-tint'] {
+  color: var(--tf-theme-muted) !important;
+  border-bottom: 1px solid var(--tf-theme-border);
 }
 
-.shipment-items-markup-table tr.row-selected td:not([class*='bw-ops-col-tint']) {
-  background-color: color-mix(in srgb, var(--bw-theme-surface) 82%, var(--bw-theme-primary) 18%) !important;
+.shipment-items-markup-table tr.row-selected td:not([class*='tf-ops-col-tint']) {
+  background-color: color-mix(in srgb, var(--tf-theme-surface) 82%, var(--tf-theme-primary) 18%) !important;
 }
 
 .shipment-items-markup-table tr:hover td {
@@ -2625,40 +2625,40 @@ const removeSheet = async (id: string) => {
 }
 
 :deep(.excel-cell-input:hover .q-field__control) {
-  background-color: color-mix(in srgb, var(--bw-theme-ink) 6%, transparent) !important;
+  background-color: color-mix(in srgb, var(--tf-theme-ink) 6%, transparent) !important;
 }
 
 :deep(.excel-cell-input.q-field--focused .q-field__control) {
-  background-color: var(--bw-theme-surface) !important;
-  border: 1.5px solid var(--bw-theme-primary) !important;
-  box-shadow: 0 0 0 1px var(--bw-theme-primary) !important;
+  background-color: var(--tf-theme-surface) !important;
+  border: 1.5px solid var(--tf-theme-primary) !important;
+  box-shadow: 0 0 0 1px var(--tf-theme-primary) !important;
 }
 
 :deep(.excel-cell-input--weight-tint .q-field__control) {
   border-radius: 6px !important;
-  background-color: color-mix(in srgb, var(--bw-ops-hue-weight) 78%, var(--bw-theme-surface)) !important;
+  background-color: color-mix(in srgb, var(--tf-ops-hue-weight) 78%, var(--tf-theme-surface)) !important;
   box-shadow: none !important;
 }
 :deep(.excel-cell-input--weight-tint:hover .q-field__control) {
-  background-color: color-mix(in srgb, var(--bw-ops-hue-weight) 88%, var(--bw-theme-surface)) !important;
+  background-color: color-mix(in srgb, var(--tf-ops-hue-weight) 88%, var(--tf-theme-surface)) !important;
 }
 :deep(.excel-cell-input--weight-tint.q-field--focused .q-field__control) {
-  background-color: color-mix(in srgb, var(--bw-ops-hue-weight) 88%, var(--bw-theme-surface)) !important;
-  border: 1.5px solid var(--bw-ops-accent-weight) !important;
+  background-color: color-mix(in srgb, var(--tf-ops-hue-weight) 88%, var(--tf-theme-surface)) !important;
+  border: 1.5px solid var(--tf-ops-accent-weight) !important;
   box-shadow: none !important;
 }
 
 :deep(.excel-cell-input--price-tint .q-field__control) {
   border-radius: 6px !important;
-  background-color: color-mix(in srgb, var(--bw-ops-hue-price) 78%, var(--bw-theme-surface)) !important;
+  background-color: color-mix(in srgb, var(--tf-ops-hue-price) 78%, var(--tf-theme-surface)) !important;
   box-shadow: none !important;
 }
 :deep(.excel-cell-input--price-tint:hover .q-field__control) {
-  background-color: color-mix(in srgb, var(--bw-ops-hue-price) 88%, var(--bw-theme-surface)) !important;
+  background-color: color-mix(in srgb, var(--tf-ops-hue-price) 88%, var(--tf-theme-surface)) !important;
 }
 :deep(.excel-cell-input--price-tint.q-field--focused .q-field__control) {
-  background-color: color-mix(in srgb, var(--bw-ops-hue-price) 88%, var(--bw-theme-surface)) !important;
-  border: 1.5px solid var(--bw-ops-accent-price) !important;
+  background-color: color-mix(in srgb, var(--tf-ops-hue-price) 88%, var(--tf-theme-surface)) !important;
+  border: 1.5px solid var(--tf-ops-accent-price) !important;
   box-shadow: none !important;
 }
 
@@ -2705,7 +2705,7 @@ const removeSheet = async (id: string) => {
 }
 
 .shipment-name-display-btn:hover {
-  background: var(--bw-neutral-surface-hover, rgba(0, 0, 0, 0.05));
+  background: var(--tf-neutral-surface-hover, rgba(0, 0, 0, 0.05));
   border-color: #E2E8F0;
 }
 
@@ -2763,8 +2763,8 @@ const removeSheet = async (id: string) => {
   max-height: 1in;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--bw-neutral-surface-subtle, #F1F5F9);
-  border: 1px solid var(--bw-theme-border, #E2E8F0);
+  background: var(--tf-neutral-surface-subtle, #F1F5F9);
+  border: 1px solid var(--tf-theme-border, #E2E8F0);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2942,7 +2942,7 @@ const removeSheet = async (id: string) => {
 }
 
 .empty-state-table-row td {
-  background: var(--bw-neutral-surface, #FFFFFF);
+  background: var(--tf-neutral-surface, #FFFFFF);
 }
 
 .empty-placeholder-wrapper {

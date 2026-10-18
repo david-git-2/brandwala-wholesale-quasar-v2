@@ -21,7 +21,7 @@ defineProps<{
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .dashboard-attention__prefix {
@@ -33,7 +33,7 @@ defineProps<{
 }
 
 .dashboard-attention__link {
-  color: var(--bw-warning);
+  color: var(--tf-warning);
   font-weight: 500;
   text-decoration: none;
 }

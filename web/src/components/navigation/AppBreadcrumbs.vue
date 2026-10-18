@@ -170,7 +170,7 @@ const middleCrumbs = computed(() =>
 }
 
 .app-breadcrumbs__ellipsis {
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
   width: 24px;
   height: 24px;
   min-height: 24px;
@@ -201,15 +201,15 @@ const middleCrumbs = computed(() =>
   font-size: 13px;
   font-weight: 500;
   line-height: 1.25;
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
   padding: 3px 6px;
   border-radius: 6px;
   transition: all 0.15s ease-in-out;
 }
 
 .app-breadcrumbs__link:hover {
-  color: var(--bw-neutral-ink);
-  background: color-mix(in srgb, var(--bw-neutral-ink) 5%, transparent);
+  color: var(--tf-neutral-ink);
+  background: color-mix(in srgb, var(--tf-neutral-ink) 5%, transparent);
 }
 
 .app-breadcrumbs__current {
@@ -226,23 +226,23 @@ const middleCrumbs = computed(() =>
 
 .app-breadcrumbs__leaf {
   font-weight: 600;
-  color: var(--bw-neutral-ink);
+  color: var(--tf-neutral-ink);
   letter-spacing: -0.01em;
 }
 
 .app-breadcrumbs__parent {
   font-weight: 500;
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
 }
 
 .app-breadcrumbs__separator {
   user-select: none;
-  color: var(--bw-neutral-chrome);
+  color: var(--tf-neutral-chrome);
   opacity: 0.7;
 }
 
 .breadcrumb-icon {
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
 }
 
 .app-breadcrumbs__badge {
@@ -253,8 +253,8 @@ const middleCrumbs = computed(() =>
   text-transform: uppercase;
   padding: 1.5px 7px;
   border-radius: 999px;
-  background: var(--bw-theme-primary-soft);
-  color: var(--bw-brand-accent);
-  border: 1px solid color-mix(in srgb, var(--bw-brand-accent) 22%, transparent);
+  background: var(--tf-theme-primary-soft);
+  color: var(--tf-brand-accent);
+  border: 1px solid color-mix(in srgb, var(--tf-brand-accent) 22%, transparent);
 }
 </style>

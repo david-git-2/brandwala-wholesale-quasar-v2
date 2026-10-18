@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page notification-inbox-page">
-    <div class="bw-page__stack">
+  <q-page class="tf-page notification-inbox-page">
+    <div class="tf-page__stack">
       <q-card flat bordered class="notification-inbox-page__card">
         <q-card-section class="row items-center q-col-gutter-sm q-pb-sm">
           <div class="col-auto">
@@ -138,6 +138,6 @@ const onSelect = async (item: NotificationItem) => {
 
 <style scoped>
 .notification-inbox-page__card {
-  border-radius: var(--bw-radius-md, 12px);
+  border-radius: var(--tf-radius-md, 12px);
 }
 </style>

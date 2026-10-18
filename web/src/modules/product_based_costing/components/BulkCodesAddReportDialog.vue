@@ -43,7 +43,7 @@
           </div>
           <q-list dense bordered separator class="rounded-borders report-list">
             <q-item v-for="code in report.missing" :key="`missing-${code}`" dense>
-              <q-item-section class="bw-tabular">{{ code }}</q-item-section>
+              <q-item-section class="tf-tabular">{{ code }}</q-item-section>
             </q-item>
           </q-list>
         </div>
@@ -57,7 +57,7 @@
           </q-banner>
           <q-list dense bordered separator class="rounded-borders report-list">
             <q-item v-for="entry in report.duplicateCodes" :key="`dup-${entry.code}`" dense>
-              <q-item-section class="bw-tabular">{{ entry.code }}</q-item-section>
+              <q-item-section class="tf-tabular">{{ entry.code }}</q-item-section>
               <q-item-section side>
                 <q-badge color="amber-8" :label="`×${entry.count}`" />
               </q-item-section>
@@ -71,7 +71,7 @@
           </div>
           <q-list dense bordered separator class="rounded-borders report-list">
             <q-item v-for="code in report.alreadyOnFile" :key="`onfile-${code}`" dense>
-              <q-item-section class="bw-tabular">{{ code }}</q-item-section>
+              <q-item-section class="tf-tabular">{{ code }}</q-item-section>
             </q-item>
           </q-list>
         </div>
@@ -124,8 +124,8 @@ const { dialogRef, onDialogHide } = useDialogPluginComponent();
 
 <style scoped>
 .summary-tile {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
+  border: 1px solid var(--tf-neutral-border);
   border-radius: 8px;
   padding: 10px 8px;
   text-align: center;
@@ -140,19 +140,19 @@ const { dialogRef, onDialogHide } = useDialogPluginComponent();
 }
 
 .summary-tile--muted .summary-tile__value {
-  color: #64748b;
+  color: var(--tf-neutral-muted);
 }
 
 .summary-tile__value {
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.2;
-  color: #0f172a;
+  color: var(--tf-neutral-ink);
 }
 
 .summary-tile__label {
   font-size: 11px;
-  color: #64748b;
+  color: var(--tf-neutral-muted);
   margin-top: 2px;
 }
 

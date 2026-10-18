@@ -44,7 +44,7 @@
           </div>
         </div>
 
-        <div class="text-caption bw-text-muted">
+        <div class="text-caption tf-text-muted">
           To move stock to another bin, use <strong>Stock location</strong> on this row.
         </div>
 

@@ -39,7 +39,7 @@
         <ReportKpiStrip label="Gross profit" :value="totals?.realized_gp" highlight />
         <div class="row items-baseline q-gutter-x-xs">
           <span class="text-caption text-grey-7 text-uppercase font-bold" style="font-size:11px">Margin:</span>
-          <span class="text-subtitle2 text-weight-bolder bw-tabular text-primary">
+          <span class="text-subtitle2 text-weight-bolder tf-tabular text-primary">
             {{ Number(totals?.gp_margin_pct ?? 0).toFixed(1) }}%
           </span>
         </div>

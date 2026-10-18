@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md costing-details-page theme-app">
     <PageInitialLoader v-if="initialLoading" />
-    <section v-else class="bw-page__stack costing-page">
+    <section v-else class="tf-page__stack costing-page">
       <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
         <q-card-section class="q-py-sm">
           <div class="row items-center justify-between q-col-gutter-sm">
@@ -249,6 +249,7 @@ import {
   summarizeAdminProductRows,
 } from 'src/modules/costingFile/composables/useCostingFileDetailRows';
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
+import { useCostingFileDetailBreadcrumbs } from 'src/modules/costingFile/composables/useCostingFileDetailBreadcrumbs';
 import type {
   CostingFileDetails,
   CostingFileItem,
@@ -259,6 +260,7 @@ const route = useRoute();
 const router = useRouter();
 const costingFileStore = useCostingFileStore();
 const selectedFile = computed<CostingFileDetails | null>(() => costingFileStore.selectedItem);
+useCostingFileDetailBreadcrumbs('staff', () => selectedFile.value);
 const costingFileItems = computed<CostingFileItem[]>(() => costingFileStore.costingFileItems);
 const detailsLoading = computed(() => costingFileStore.detailsLoading);
 const itemLoading = computed(() => costingFileStore.itemLoading);
@@ -774,7 +776,7 @@ watch(editDialogOpen, (isOpen) => {
 
 .costing-page__table :deep(.costing-page__sticky-col) {
   position: sticky;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
 }
 
 .costing-page__table :deep(td.costing-page__sticky-col) {
@@ -795,22 +797,22 @@ watch(editDialogOpen, (isOpen) => {
 
 .costing-page__table :deep(td.costing-page__sticky-col--sl) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .costing-page__table :deep(td.costing-page__sticky-col--image) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .costing-page__table :deep(th.costing-page__sticky-col--sl) {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .costing-page__table :deep(th.costing-page__sticky-col--image) {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .costing-page__sl-cell {
@@ -832,7 +834,7 @@ watch(editDialogOpen, (isOpen) => {
   height: 96px;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
 }
 
 .costing-page__image :deep(.q-img__image) {
@@ -844,8 +846,8 @@ watch(editDialogOpen, (isOpen) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px dashed var(--bw-theme-border);
-  color: var(--bw-theme-muted);
+  border: 1px dashed var(--tf-theme-border);
+  color: var(--tf-theme-muted);
   font-size: 0.75rem;
   text-align: center;
   padding: 0.5rem;
@@ -862,7 +864,7 @@ watch(editDialogOpen, (isOpen) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--bw-theme-primary);
+  color: var(--tf-theme-primary);
   text-decoration: none;
 }
 

@@ -11,9 +11,9 @@ from typing import Any
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
-DEFAULT_INPUT = ROOT_DIR / "web" / "public" / "uk" / "pc_data.json"
-DEFAULT_BRANDS_OUTPUT = ROOT_DIR / "web" / "public" / "uk" / "brands.json"
-DEFAULT_CATEGORIES_OUTPUT = ROOT_DIR / "web" / "public" / "uk" / "categories.json"
+DEFAULT_INPUT = ROOT_DIR / "python" / "data" / "uk" / "out" / "pc_data.json"
+DEFAULT_BRANDS_OUTPUT = ROOT_DIR / "python" / "data" / "uk" / "out" / "brands.json"
+DEFAULT_CATEGORIES_OUTPUT = ROOT_DIR / "python" / "data" / "uk" / "out" / "categories.json"
 
 
 def parse_args() -> argparse.Namespace:
@@ -24,19 +24,19 @@ def parse_args() -> argparse.Namespace:
         "--input",
         dest="input_path",
         default=str(DEFAULT_INPUT),
-        help="Input JSON path (default: web/public/uk/pc_data.json)",
+        help="Input JSON path (default: python/data/uk/out/pc_data.json)",
     )
     parser.add_argument(
         "--brands-output",
         dest="brands_output_path",
         default=str(DEFAULT_BRANDS_OUTPUT),
-        help="Brands JSON output path (default: web/public/uk/brands.json)",
+        help="Brands JSON output path (default: python/data/uk/out/brands.json)",
     )
     parser.add_argument(
         "--categories-output",
         dest="categories_output_path",
         default=str(DEFAULT_CATEGORIES_OUTPUT),
-        help="Categories JSON output path (default: web/public/uk/categories.json)",
+        help="Categories JSON output path (default: python/data/uk/out/categories.json)",
     )
     return parser.parse_args()
 

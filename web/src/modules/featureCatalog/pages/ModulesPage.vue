@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page">
-    <section class="bw-page__stack">
+  <q-page class="tf-page">
+    <section class="tf-page__stack">
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline">Catalog</div>
@@ -18,7 +18,7 @@
         </div>
       </section>
 
-      <q-banner v-if="error" class="bw-status-banner text-white" rounded>
+      <q-banner v-if="error" class="tf-status-banner text-white" rounded>
         {{ error }}
       </q-banner>
 
@@ -34,7 +34,7 @@
         </q-card-section>
 
         <q-card-section v-if="items.length">
-          <div class="bw-page__stack">
+          <div class="tf-page__stack">
             <template v-for="parent in topLevelModules" :key="parent.key">
               <q-card flat bordered>
                 <q-card-section>
@@ -59,7 +59,7 @@
               </q-card>
               <div
                 v-if="moduleStore.submodulesOf(parent.key).length"
-                class="bw-entity-grid q-ml-lg"
+                class="tf-entity-grid q-ml-lg"
               >
                 <q-card
                   v-for="child in moduleStore.submodulesOf(parent.key)"

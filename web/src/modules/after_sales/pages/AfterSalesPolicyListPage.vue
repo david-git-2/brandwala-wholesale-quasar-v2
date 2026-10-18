@@ -1,11 +1,11 @@
 <template>
-  <q-page class="bw-page after-sales-policy-list-page">
-    <section class="bw-page__stack">
-      <div class="bw-page-toolbar">
-        <div class="bw-page-toolbar__left">
-          <h1 class="bw-page-toolbar__title">{{ pageHeading }}</h1>
+  <q-page class="tf-page after-sales-policy-list-page">
+    <section class="tf-page__stack">
+      <div class="tf-page-toolbar">
+        <div class="tf-page-toolbar__left">
+          <h1 class="tf-page-toolbar__title">{{ pageHeading }}</h1>
         </div>
-        <div v-if="isParentWorkspace" class="bw-page-toolbar__actions">
+        <div v-if="isParentWorkspace" class="tf-page-toolbar__actions">
           <q-btn
             color="primary"
             unelevated
@@ -93,7 +93,7 @@
               <span v-if="props.row.requires_approval">
                 Yes<span v-if="props.row.approval_threshold_bdt"> · ৳{{ props.row.approval_threshold_bdt }}</span>
               </span>
-              <span v-else class="bw-text-muted">No</span>
+              <span v-else class="tf-text-muted">No</span>
             </q-td>
           </template>
 
@@ -227,9 +227,9 @@ const onRowClick = (_event: Event, row: AfterSalesPolicyProgram) => {
 
 <style scoped>
 .after-sales-note-banner {
-  background: color-mix(in srgb, var(--bw-theme-muted) 12%, var(--bw-theme-surface));
-  color: var(--bw-theme-ink);
-  border: 1px solid var(--bw-theme-border);
+  background: color-mix(in srgb, var(--tf-theme-muted) 12%, var(--tf-theme-surface));
+  color: var(--tf-theme-ink);
+  border: 1px solid var(--tf-theme-border);
 }
 
 :deep(.q-table tbody tr) {

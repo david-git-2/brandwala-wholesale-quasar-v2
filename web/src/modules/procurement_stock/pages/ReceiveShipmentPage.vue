@@ -423,16 +423,16 @@ const onConfirmReceive = async () => {
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--bw-neutral-chrome, #64748b);
+  color: var(--tf-neutral-chrome, #64748b);
   padding: 8px 6px !important;
-  border-bottom: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-bottom: 1px solid var(--tf-theme-border, #e2e8f0);
   vertical-align: bottom;
 }
 
 .receive-post-table tbody td {
   padding: 6px !important;
   vertical-align: top;
-  border-bottom: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-bottom: 1px solid var(--tf-theme-border, #e2e8f0);
 }
 
 .receive-post-table__sl {
@@ -467,8 +467,8 @@ const onConfirmReceive = async () => {
   height: 1in;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid var(--bw-theme-border, #e2e8f0);
-  background: var(--bw-neutral-surface-subtle, #f1f5f9);
+  border: 1px solid var(--tf-theme-border, #e2e8f0);
+  background: var(--tf-neutral-surface-subtle, #f1f5f9);
 }
 
 .receive-post-table__thumb :deep(.receive-post-table__thumb-img),
@@ -482,7 +482,7 @@ const onConfirmReceive = async () => {
   font-size: 13px;
   font-weight: 650;
   line-height: 1.35;
-  color: var(--bw-theme-ink, #171412);
+  color: var(--tf-theme-ink, #171412);
   word-break: break-word;
 }
 
@@ -491,14 +491,14 @@ const onConfirmReceive = async () => {
   padding: 4px 4px !important;
 }
 
-.shipment-items-markup-table th.bw-ops-col-tint--qty,
-.shipment-items-markup-table td.bw-ops-col-tint--qty {
+.shipment-items-markup-table th.tf-ops-col-tint--qty,
+.shipment-items-markup-table td.tf-ops-col-tint--qty {
   background-color: #d0e6ff !important;
   box-shadow: inset 2px 0 0 #2563eb;
 }
 
-.shipment-items-markup-table th.bw-ops-col-tint--received,
-.shipment-items-markup-table td.bw-ops-col-tint--received {
+.shipment-items-markup-table th.tf-ops-col-tint--received,
+.shipment-items-markup-table td.tf-ops-col-tint--received {
   background-color: #daf3e4 !important;
   box-shadow: inset 2px 0 0 #059669;
 }

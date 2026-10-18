@@ -455,6 +455,7 @@
       v-model="paymentDialogOpen"
       :bill-id="bill.id"
       :due-amount="paymentDueAmount"
+      :due-currency-code="paymentDueCurrencyCode"
       :profile-id="billProfileId"
       :tenant-id="operatingTenantId"
       :books-tenant-id="operatingTenantId"
@@ -522,6 +523,7 @@ import { useBillAdjustmentDraft } from '../composables/useBillAdjustmentDraft';
 import { useBillAdjustmentsQuery } from '../composables/useBillAdjustmentsQuery';
 import { useCreateBillAdjustmentMutation } from '../composables/useCreateBillAdjustmentMutation';
 import { syncShipmentApBills } from 'src/modules/procurement_stock/repositories/shipmentApBillsRepository';
+import { apBillDueStoresForeignFace } from '../utils/apBillBooks';
 import {
   apBillCurrencyBalances,
   apBillPaperCurrencyCode,
@@ -698,6 +700,19 @@ const paymentDueAmount = computed(() => {
   const nb = netBalances.value;
   if (nb?.due_amount != null) return Math.max(0, Number(nb.due_amount));
   return Math.max(0, Number(bill.value?.due_amount ?? 0));
+});
+
+const paymentDueCurrencyCode = computed(() => {
+  const b = bill.value;
+  if (!b) return null;
+  const due = paymentDueAmount.value;
+  const meta = (b.channel_meta as Record<string, unknown> | null) ?? null;
+  if (isApBill.value && apBillDueStoresForeignFace(meta, due)) {
+    return apBillPaperCurrencyCode(meta);
+  }
+  const header = String(b.currency_code ?? '').trim();
+  if (header) return header.toUpperCase();
+  return 'BDT';
 });
 
 const vendorRefundTargetId = computed(() => {
@@ -928,9 +943,9 @@ const submitAdjustment = async () => {
 .bill-detail-card {
   max-width: 960px;
   margin: 0 auto;
-  background: var(--bw-neutral-surface, #fff);
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
-  border-radius: var(--bw-radius-sm, 8px);
+  background: var(--tf-neutral-surface, #fff);
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
+  border-radius: var(--tf-radius-sm, 8px);
 }
 
 .bill-totals-panel {
@@ -950,12 +965,12 @@ const submitAdjustment = async () => {
 .ap-bill-balance-group--spaced {
   margin-top: 0.65rem;
   padding-top: 0.65rem;
-  border-top: 1px solid var(--bw-neutral-border, #e2e8f0);
+  border-top: 1px solid var(--tf-neutral-border, #e2e8f0);
 }
 
 .bill-lines-table th {
   font-size: 11px;
-  color: var(--bw-neutral-chrome, #64748b);
+  color: var(--tf-neutral-chrome, #64748b);
   font-weight: 600;
 }
 

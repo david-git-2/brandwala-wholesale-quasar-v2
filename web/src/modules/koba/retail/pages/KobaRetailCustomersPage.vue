@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md bw-page">
+  <q-page class="q-pa-md tf-page">
     <!-- Header Section -->
     <div class="row items-center justify-between q-mb-md">
       <div>
@@ -62,7 +62,7 @@
         :pagination="pagination"
         flat
         binary-state-sort
-        class="bw-table"
+        class="tf-table"
         no-data-label="No customers found"
       >
         <!-- Customer Name Column -->
@@ -230,7 +230,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.bw-page {
+.tf-page {
   background: #f8fafc;
 }
 .filter-card {
@@ -246,7 +246,7 @@ onMounted(() => {
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.8);
 }
-.bw-table :deep(th) {
+.tf-table :deep(th) {
   font-weight: 700;
   color: var(--q-grey-9);
   background: #f1f5f9;

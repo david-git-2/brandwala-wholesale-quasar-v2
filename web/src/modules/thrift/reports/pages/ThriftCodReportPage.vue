@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page thrift-cod-report-page">
-    <div class="bw-page__stack">
+  <q-page class="tf-page thrift-cod-report-page">
+    <div class="tf-page__stack">
       <header class="page-nav">
         <q-btn
           flat
@@ -154,7 +154,7 @@ const errorMessage = computed(() => {
 .hero-panel__label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .hero-panel__amount {
@@ -170,7 +170,7 @@ const errorMessage = computed(() => {
   margin-top: 0.85rem;
   font-size: 0.8rem;
   line-height: 1.4;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .support-grid {
@@ -180,15 +180,15 @@ const errorMessage = computed(() => {
 }
 
 .support-card {
-  border: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--tf-theme-border, rgba(0, 0, 0, 0.1));
   border-radius: 14px;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
   padding: 1rem;
 }
 
 .support-card__label {
   font-size: 0.75rem;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .support-card__value {
@@ -200,7 +200,7 @@ const errorMessage = computed(() => {
 .help-text {
   font-size: 0.9rem;
   line-height: 1.45;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .error-banner {

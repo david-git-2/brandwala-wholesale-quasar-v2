@@ -264,10 +264,10 @@ const onConfirm = () => {
 
 <style scoped>
 .border-top-grey {
-  border-top: 1px solid color-mix(in srgb, var(--bw-theme-border, #e0e0e0) 80%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--tf-theme-border, #e0e0e0) 80%, transparent);
 }
 .soft-toggle {
-  border: 1px solid color-mix(in srgb, var(--bw-theme-border, #e0e0e0) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tf-theme-border, #e0e0e0) 80%, transparent);
   border-radius: 8px;
 }
 </style>

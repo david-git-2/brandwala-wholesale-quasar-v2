@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page q-pa-md">
-    <section class="bw-page__stack">
+  <q-page class="tf-page q-pa-md">
+    <section class="tf-page__stack">
       <q-banner v-if="isError" class="text-white bg-negative" rounded>
         {{ error?.message || $t('shop_admin.shop_setup_load_failed') }}
       </q-banner>
@@ -790,8 +790,8 @@ body.body--dark .shop-danger-zone {
 
 .storefront-preview-empty {
   min-height: 280px;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 60%, transparent);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 60%, transparent);
   border-radius: 16px;
-  border: 1px dashed var(--bw-theme-border, rgba(34, 56, 101, 0.12));
+  border: 1px dashed var(--tf-theme-border, rgba(34, 56, 101, 0.12));
 }
 </style>

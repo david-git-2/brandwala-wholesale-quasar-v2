@@ -1028,7 +1028,7 @@ export default {
 }
 
 .excel-scroll-arrow-btn:hover {
-  background: #f1f5f9;
+  background: var(--tf-hover-bg);
   color: #334155;
 }
 </style>

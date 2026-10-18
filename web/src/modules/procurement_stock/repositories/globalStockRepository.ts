@@ -50,6 +50,8 @@ export interface GlobalStock {
   purchase_price: number;
   product_weight: number;
   package_weight: number;
+  landed_cost_bdt?: number | null;
+  resolved_landed_cost_bdt?: number | null;
   shipment_name: string;
   shipment_type: 'international' | 'local' | 'transfer';
   shipment_status: string;

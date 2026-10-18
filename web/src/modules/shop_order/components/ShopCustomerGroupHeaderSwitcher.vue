@@ -74,7 +74,7 @@ const roleLabel = (role: string) => {
   font-size: 0.78rem;
   line-height: 1.2;
   max-width: 100%;
-  color: var(--bw-theme-muted, #5e4955);
+  color: var(--tf-theme-muted, #5e4955);
 }
 
 .shop-company-switch__trigger {

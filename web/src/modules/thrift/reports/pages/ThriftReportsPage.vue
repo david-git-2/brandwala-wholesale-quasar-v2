@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page thrift-reports-page">
-    <div class="bw-page__stack">
+  <q-page class="tf-page thrift-reports-page">
+    <div class="tf-page__stack">
       <header class="page-header">
         <div class="text-overline text-primary">Thrift</div>
         <h1 class="text-h4 text-weight-bold q-my-none">Reports</h1>
@@ -135,7 +135,7 @@ function goLedger() {
 <style scoped>
 .page-header__sub {
   margin-top: 0.35rem;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
   font-size: 0.95rem;
 }
 
@@ -152,9 +152,9 @@ function goLedger() {
   padding: 1rem 1rem;
   min-height: 88px;
   text-align: left;
-  border: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--tf-theme-border, rgba(0, 0, 0, 0.1));
   border-radius: 14px;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
   color: inherit;
   cursor: pointer;
   transition:
@@ -164,8 +164,8 @@ function goLedger() {
 }
 
 .portal-card:hover {
-  border-color: var(--bw-theme-primary, var(--q-primary));
-  box-shadow: var(--bw-theme-shadow, 0 8px 24px rgb(0 0 0 / 0.06));
+  border-color: var(--tf-theme-primary, var(--q-primary));
+  box-shadow: var(--tf-theme-shadow, 0 8px 24px rgb(0 0 0 / 0.06));
 }
 
 .portal-card:active {
@@ -183,8 +183,8 @@ function goLedger() {
 }
 
 .portal-card__icon--earn {
-  background: var(--bw-theme-primary-soft, rgb(var(--bw-theme-primary-rgb, 52 211 153) / 0.15));
-  color: var(--bw-theme-primary, var(--q-primary));
+  background: var(--tf-theme-primary-soft, rgb(var(--tf-theme-primary-rgb, 52 211 153) / 0.15));
+  color: var(--tf-theme-primary, var(--q-primary));
 }
 
 .portal-card__icon--cod {
@@ -209,25 +209,25 @@ function goLedger() {
   font-size: 1.05rem;
   font-weight: 700;
   line-height: 1.3;
-  color: var(--bw-theme-ink, inherit);
+  color: var(--tf-theme-ink, inherit);
 }
 
 .portal-card__caption {
   font-size: 0.875rem;
   line-height: 1.35;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .portal-card__chevron {
   flex: 0 0 auto;
-  color: var(--bw-theme-muted, #9ca3af);
+  color: var(--tf-theme-muted, #9ca3af);
 }
 
 .glance-card {
-  border: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--tf-theme-border, rgba(0, 0, 0, 0.1));
   border-radius: 14px;
   padding: 1rem 1.1rem;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
 }
 
 .glance-card__label {
@@ -235,7 +235,7 @@ function goLedger() {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
   margin-bottom: 0.75rem;
 }
 
@@ -255,6 +255,6 @@ function goLedger() {
 .glance-card__meta {
   margin-top: 0.2rem;
   font-size: 0.75rem;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 </style>

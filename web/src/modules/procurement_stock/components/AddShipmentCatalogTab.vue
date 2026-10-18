@@ -1254,7 +1254,7 @@ onMounted(async () => {
 }
 
 .product-card-row:hover {
-  background-color: #f8fafc;
+  background-color: var(--tf-hover-bg);
 }
 
 .add-product-list-row {
@@ -1264,7 +1264,7 @@ onMounted(async () => {
 }
 
 .add-product-list-row:hover {
-  background-color: #f1f5f9;
+  background-color: var(--tf-hover-bg);
 }
 
 .side-actions {

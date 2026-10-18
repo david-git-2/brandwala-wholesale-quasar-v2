@@ -9,14 +9,14 @@
     :to="to"
   >
     <template v-if="featured">
-      <span class="dashboard-metric__value dashboard-metric__value--featured bw-tabular">{{ value }}</span>
+      <span class="dashboard-metric__value dashboard-metric__value--featured tf-tabular">{{ value }}</span>
       <span class="dashboard-metric__label dashboard-metric__label--featured">{{ label }}</span>
       <span v-if="unit" class="dashboard-metric__unit">{{ unit }}</span>
     </template>
     <template v-else>
       <span class="dashboard-metric__label">{{ label }}</span>
       <span class="dashboard-metric__value-row">
-        <span class="dashboard-metric__value bw-tabular">{{ value }}</span>
+        <span class="dashboard-metric__value tf-tabular">{{ value }}</span>
         <span v-if="unit" class="dashboard-metric__unit">{{ unit }}</span>
       </span>
     </template>
@@ -69,7 +69,7 @@ const effectiveTone = computed(() => {
 .dashboard-metric__label {
   font-size: 12px;
   font-weight: 500;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
   line-height: 1.3;
 }
 
@@ -89,7 +89,7 @@ const effectiveTone = computed(() => {
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .dashboard-metric__value--featured {
@@ -100,20 +100,20 @@ const effectiveTone = computed(() => {
 }
 
 .dashboard-metric--ok .dashboard-metric__value {
-  color: var(--bw-success);
+  color: var(--tf-success);
 }
 
 .dashboard-metric--warn .dashboard-metric__value {
-  color: var(--bw-warning);
+  color: var(--tf-warning);
 }
 
 .dashboard-metric--muted .dashboard-metric__value {
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .dashboard-metric__unit {
   font-size: 12px;
   font-weight: 500;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 </style>

@@ -36,7 +36,7 @@
           <div class="text-caption q-mt-xs">Add a till, safe, or bank counter to tag payments.</div>
         </div>
 
-        <div v-else class="bw-entity-grid q-pa-xs">
+        <div v-else class="tf-entity-grid q-pa-xs">
           <q-card
             v-for="point in points"
             :key="point.id"
@@ -195,18 +195,18 @@ const openEditPoint = (point: CashbookPointRow) => {
   width: 100%;
 }
 .points-empty,
-.bw-entity-grid {
+.tf-entity-grid {
   max-width: 960px;
   margin: 0 auto;
   width: 100%;
 }
 .cash-point-card {
-  border-radius: var(--bw-radius-md, 12px);
+  border-radius: var(--tf-radius-md, 12px);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .cash-point-card:hover {
-  border-color: var(--bw-theme-primary, #0d6b5c);
-  box-shadow: var(--bw-theme-shadow, 0 2px 8px rgba(0, 0, 0, 0.06));
+  border-color: var(--tf-theme-primary, #0d6b5c);
+  box-shadow: var(--tf-theme-shadow, 0 2px 8px rgba(0, 0, 0, 0.06));
 }
 .cash-point-card--inactive {
   opacity: 0.72;

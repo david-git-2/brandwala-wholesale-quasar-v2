@@ -215,7 +215,7 @@ const handleCopy = (text: string | null | undefined, label: string) => {
 
 <style scoped>
 .add-product-cart-card {
-  border-radius: var(--bw-radius-md, 12px);
+  border-radius: var(--tf-radius-md, 12px);
   overflow: hidden;
   height: 100%;
   display: flex;
@@ -225,14 +225,14 @@ const handleCopy = (text: string | null | undefined, label: string) => {
 
 .add-product-cart-card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--bw-theme-shadow, 0 4px 12px rgba(0, 0, 0, 0.08));
+  box-shadow: var(--tf-theme-shadow, 0 4px 12px var(--tf-neutral-border));
 }
 
 .add-product-cart-card__image-wrap {
   position: relative;
   height: 160px;
-  background: var(--bw-theme-base, #f8fafc);
-  border-bottom: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.08));
+  background: var(--tf-theme-base, color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%));
+  border-bottom: 1px solid var(--tf-theme-border, var(--tf-neutral-border));
 }
 
 .add-product-cart-card__badge {
@@ -276,7 +276,7 @@ const handleCopy = (text: string | null | undefined, label: string) => {
   font-size: 14px;
   font-weight: 700;
   line-height: 1.3;
-  color: var(--bw-theme-ink, #1e293b);
+  color: var(--tf-theme-ink, #1e293b);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -287,7 +287,7 @@ const handleCopy = (text: string | null | undefined, label: string) => {
   margin-top: 2px;
   font-size: 11px;
   font-weight: 500;
-  color: var(--bw-theme-muted, #64748b);
+  color: var(--tf-theme-muted, var(--tf-neutral-muted));
 }
 
 .add-product-cart-card__metrics {
@@ -296,8 +296,8 @@ const handleCopy = (text: string | null | undefined, label: string) => {
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.35rem 0.5rem;
-  border-radius: var(--bw-radius-sm, 8px);
-  background: color-mix(in srgb, var(--bw-theme-primary, #5ea3a3) 8%, var(--bw-theme-surface, #fff) 92%);
+  border-radius: var(--tf-radius-sm, 8px);
+  background: color-mix(in srgb, var(--tf-theme-primary, #5ea3a3) 8%, var(--tf-theme-surface, var(--tf-neutral-surface)) 92%);
 }
 
 .add-product-cart-card__price {
@@ -317,7 +317,7 @@ const handleCopy = (text: string | null | undefined, label: string) => {
   flex-direction: column;
   gap: 0.25rem;
   padding-top: 0.35rem;
-  border-top: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.08));
+  border-top: 1px solid var(--tf-theme-border, var(--tf-neutral-border));
 }
 
 .add-product-cart-card__detail-row {
@@ -330,7 +330,7 @@ const handleCopy = (text: string | null | undefined, label: string) => {
 }
 
 .add-product-cart-card__detail-label {
-  color: var(--bw-theme-muted, #64748b);
+  color: var(--tf-theme-muted, var(--tf-neutral-muted));
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -344,7 +344,7 @@ const handleCopy = (text: string | null | undefined, label: string) => {
 }
 
 .add-product-cart-card__detail-value {
-  color: var(--bw-theme-ink, #334155);
+  color: var(--tf-theme-ink, var(--tf-neutral-ink));
   word-break: break-word;
   min-width: 0;
 }
@@ -370,7 +370,7 @@ const handleCopy = (text: string | null | undefined, label: string) => {
     height: auto;
     min-height: 112px;
     border-bottom: none;
-    border-right: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.08));
+    border-right: 1px solid var(--tf-theme-border, var(--tf-neutral-border));
   }
 
   .add-product-cart-card__body {

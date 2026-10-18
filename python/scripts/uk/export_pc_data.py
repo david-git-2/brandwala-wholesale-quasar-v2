@@ -61,8 +61,8 @@ def env_path(env_key: str, default_abs_path: str) -> str:
 
 
 DEFAULT_XLSX = env_path("PY_UK_PC_XLSX_PATH", os.path.join(ROOT_DIR, "python", "data", "uk", "pc_data.xlsx"))
-DEFAULT_OUT_JSON = env_path("PY_UK_PC_OUT_JSON_PATH", os.path.join(ROOT_DIR, "web", "public", "uk", "pc_data.json"))
-DEFAULT_OUT_MANIFEST = env_path("PY_UK_PC_OUT_MANIFEST_PATH", os.path.join(ROOT_DIR, "web", "public", "uk", "pc_manifest.json"))
+DEFAULT_OUT_JSON = env_path("PY_UK_PC_OUT_JSON_PATH", os.path.join(ROOT_DIR, "python", "data", "uk", "out", "pc_data.json"))
+DEFAULT_OUT_MANIFEST = env_path("PY_UK_PC_OUT_MANIFEST_PATH", os.path.join(ROOT_DIR, "python", "data", "uk", "out", "pc_manifest.json"))
 DEFAULT_OUT_IMAGES = env_path("PY_UK_PC_OUT_IMAGES_DIR", os.path.join(ROOT_DIR, "python", "images", "uk", "out_images"))
 
 CREDS_DIR = env_path("PY_GOOGLE_CREDS_DIR", os.path.join(ROOT_DIR, "python", "credentials"))

@@ -1064,7 +1064,7 @@ function formatNumber(val?: number | null): string {
 
 .preview-page__meta-card {
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
 }
 
 .preview-page__meta-section {
@@ -1099,7 +1099,7 @@ function formatNumber(val?: number | null): string {
 .preview-page__table-card {
   border-radius: 8px;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
 }
 
 .preview-page__table {
@@ -1180,7 +1180,7 @@ function formatNumber(val?: number | null): string {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  background-color: #ffffff;
+  background-color: var(--tf-neutral-surface);
   border-radius: 6px;
   border: 1px solid #e5e7eb;
   overflow: hidden;
@@ -1268,7 +1268,7 @@ function formatNumber(val?: number | null): string {
 
 .preview-page__summary-card {
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
   break-inside: avoid;
   page-break-inside: avoid;
 }

@@ -128,7 +128,7 @@
         <div class="row items-center q-gutter-x-md">
           <div class="row items-baseline q-gutter-x-xs">
             <span class="text-caption text-grey-7 text-uppercase font-bold" style="font-size: 11px">Total Cash In:</span>
-            <span class="text-subtitle2 text-weight-bolder text-primary bw-tabular">
+            <span class="text-subtitle2 text-weight-bolder text-primary tf-tabular">
               {{ formatAmountBdt(cashInTotal) }}
             </span>
             <span class="text-caption text-grey-5">({{ entryCount }} entries)</span>
@@ -187,7 +187,7 @@
             @click="onRowClick(props.row)"
           >
             <!-- Date & Time -->
-            <q-td key="created_at" :props="props" class="bw-tabular text-grey-9">
+            <q-td key="created_at" :props="props" class="tf-tabular text-grey-9">
               {{ formatDateTime(props.row.created_at) }}
             </q-td>
 
@@ -202,7 +202,7 @@
             </q-td>
 
             <!-- Amount (BDT) -->
-            <q-td key="amount" :props="props" class="text-weight-bold text-positive bw-tabular">
+            <q-td key="amount" :props="props" class="text-weight-bold text-positive tf-tabular">
               +{{ formatAmountBdt(props.row.amount) }}
             </q-td>
 
@@ -435,7 +435,7 @@ function onRowClick(_row: CashInReportEntry) {
 }
 
 .hover-row:hover {
-  background-color: #f8fafc;
+  background-color: var(--tf-hover-bg);
 }
 
 .method-status-badge {

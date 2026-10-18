@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page notification-preferences-page">
-    <div class="bw-page__stack">
+  <q-page class="tf-page notification-preferences-page">
+    <div class="tf-page__stack">
       <q-card flat bordered class="notification-preferences-page__card">
         <q-card-section>
           <div class="text-subtitle1 text-weight-bold q-mb-xs">Browser alerts</div>
@@ -117,6 +117,6 @@ const onTogglePush = async (enabled: boolean) => {
 
 <style scoped>
 .notification-preferences-page__card {
-  border-radius: var(--bw-radius-md, 12px);
+  border-radius: var(--tf-radius-md, 12px);
 }
 </style>

@@ -139,7 +139,7 @@
           <!-- Total Landed Cost -->
           <div class="row items-baseline q-gutter-x-xs">
             <span class="text-caption text-grey-7 text-uppercase font-bold" style="font-size: 11px">Landed Cost:</span>
-            <span class="text-subtitle2 text-weight-bolder text-grey-9 bw-tabular">
+            <span class="text-subtitle2 text-weight-bolder text-grey-9 tf-tabular">
               {{ formatAmountBdt(summary?.total_landed_cost || 0) }}
             </span>
             <span class="text-caption text-grey-5">({{ summary?.total_inbound_units || 0 }} pcs)</span>
@@ -150,7 +150,7 @@
           <!-- Sold Revenue -->
           <div class="row items-baseline q-gutter-x-xs">
             <span class="text-caption text-grey-7 text-uppercase font-bold" style="font-size: 11px">Billed Sales:</span>
-            <span class="text-subtitle2 text-weight-bolder text-primary bw-tabular">
+            <span class="text-subtitle2 text-weight-bolder text-primary tf-tabular">
               {{ formatAmountBdt(summary?.total_gross_sold_revenue || 0) }}
             </span>
             <span class="text-caption text-grey-5">({{ summary?.total_net_sold_units || 0 }} sold)</span>
@@ -162,7 +162,7 @@
           <div class="row items-baseline q-gutter-x-xs">
             <span class="text-caption text-grey-7 text-uppercase font-bold" style="font-size: 11px">Realized GP:</span>
             <span
-              class="text-subtitle2 text-weight-bolder bw-tabular"
+              class="text-subtitle2 text-weight-bolder tf-tabular"
               :class="(summary?.total_realized_gross_profit || 0) >= 0 ? 'text-positive' : 'text-negative'"
             >
               {{ (summary?.total_realized_gross_profit || 0) >= 0 ? '+' : '' }}{{ formatAmountBdt(summary?.total_realized_gross_profit || 0) }}
@@ -183,7 +183,7 @@
           <!-- Unsold Stock Value -->
           <div class="row items-baseline q-gutter-x-xs">
             <span class="text-caption text-grey-7 text-uppercase font-bold" style="font-size: 11px">Unsold Inventory:</span>
-            <span class="text-subtitle2 text-weight-bolder text-warning bw-tabular">
+            <span class="text-subtitle2 text-weight-bolder text-warning tf-tabular">
               {{ formatAmountBdt(summary?.total_unsold_stock_value || 0) }}
             </span>
           </div>
@@ -193,7 +193,7 @@
           <!-- Damage Losses -->
           <div v-if="(summary?.total_damage_loss_value || 0) > 0" class="row items-baseline q-gutter-x-xs">
             <span class="text-caption text-grey-7 text-uppercase font-bold" style="font-size: 11px">Damage Loss:</span>
-            <span class="text-subtitle2 text-weight-bolder text-negative bw-tabular">
+            <span class="text-subtitle2 text-weight-bolder text-negative tf-tabular">
               -{{ formatAmountBdt(summary?.total_damage_loss_value || 0) }}
             </span>
           </div>
@@ -252,22 +252,22 @@
             </q-td>
 
             <!-- Created / Received Date -->
-            <q-td key="created_at" :props="props" class="bw-tabular text-grey-8">
+            <q-td key="created_at" :props="props" class="tf-tabular text-grey-8">
               {{ formatDate(props.row.created_at) }}
             </q-td>
 
             <!-- Inbound Qty -->
-            <q-td key="inbound_quantity" :props="props" class="bw-tabular text-right font-mono">
+            <q-td key="inbound_quantity" :props="props" class="tf-tabular text-right font-mono">
               {{ props.row.inbound_quantity.toLocaleString() }}
             </q-td>
 
             <!-- Total Landed Cost (BDT) -->
-            <q-td key="total_landed_cost" :props="props" class="text-right text-weight-bold text-grey-9 bw-tabular font-mono">
+            <q-td key="total_landed_cost" :props="props" class="text-right text-weight-bold text-grey-9 tf-tabular font-mono">
               {{ formatAmountBdt(props.row.total_landed_cost) }}
             </q-td>
 
             <!-- Sold Qty & Progress Bar -->
-            <q-td key="net_sold_quantity" :props="props" class="text-right bw-tabular">
+            <q-td key="net_sold_quantity" :props="props" class="text-right tf-tabular">
               <div class="row items-center justify-end q-gutter-x-xs">
                 <span class="font-mono text-grey-9 text-weight-medium">
                   {{ props.row.net_sold_quantity.toLocaleString() }}
@@ -285,12 +285,12 @@
             </q-td>
 
             <!-- Gross Sold Revenue -->
-            <q-td key="gross_sold_revenue" :props="props" class="text-right text-weight-bold text-primary bw-tabular font-mono">
+            <q-td key="gross_sold_revenue" :props="props" class="text-right text-weight-bold text-primary tf-tabular font-mono">
               {{ formatAmountBdt(props.row.gross_sold_revenue) }}
             </q-td>
 
             <!-- Realized Gross Profit & Margin -->
-            <q-td key="realized_gross_profit" :props="props" class="text-right bw-tabular">
+            <q-td key="realized_gross_profit" :props="props" class="text-right tf-tabular">
               <div
                 class="text-weight-bolder font-mono"
                 :class="props.row.realized_gross_profit >= 0 ? 'text-positive' : 'text-negative'"
@@ -303,7 +303,7 @@
             </q-td>
 
             <!-- Unsold Stock Value -->
-            <q-td key="unsold_stock_value" :props="props" class="text-right bw-tabular font-mono text-grey-8">
+            <q-td key="unsold_stock_value" :props="props" class="text-right tf-tabular font-mono text-grey-8">
               <div>{{ formatAmountBdt(props.row.unsold_stock_value) }}</div>
               <div class="text-xxs text-grey-5">{{ props.row.sellable_stock_qty }} pcs left</div>
             </q-td>
@@ -445,7 +445,7 @@ const columns: QTableColumn<ShipmentProfitReportRow>[] = [
 }
 
 .hover-row:hover {
-  background-color: #f8fafc;
+  background-color: var(--tf-hover-bg);
 }
 
 /* Status High-Visibility Table Rows & Inset Left Bars */

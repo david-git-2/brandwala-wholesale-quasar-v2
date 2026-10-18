@@ -32,25 +32,25 @@ defineProps<{
 
 .app-page-header__eyebrow {
   margin: 0 0 0.25rem;
-  font-size: var(--bw-text-meta);
+  font-size: var(--tf-text-meta);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted, #736a61);
+  color: var(--tf-theme-muted, #736a61);
 }
 
 .app-page-header__title {
   margin: 0;
-  font-size: var(--bw-text-title);
+  font-size: var(--tf-text-title);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
-  color: var(--bw-theme-ink, #171412);
+  color: var(--tf-theme-ink, #171412);
 }
 
 .app-page-header__subtitle {
   margin: 0.35rem 0 0;
-  color: var(--bw-theme-muted, #736a61);
+  color: var(--tf-theme-muted, #736a61);
 }
 
 .app-page-header__action {

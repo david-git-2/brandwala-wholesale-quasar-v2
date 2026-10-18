@@ -11,8 +11,8 @@ null
 message
 : 
 "column \"product_conversion_rate\" does not exist"<template>
-  <q-page class="bw-page thrift-shipment-reports-list-page">
-    <div class="bw-page__stack">
+  <q-page class="tf-page thrift-shipment-reports-list-page">
+    <div class="tf-page__stack">
       <header class="page-nav">
         <q-btn
           flat
@@ -186,7 +186,7 @@ function formatDate(value: string) {
 .page-nav__sub {
   margin-top: 0.25rem;
   font-size: 0.875rem;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .search-input :deep(.q-field__control) {
@@ -206,9 +206,9 @@ function formatDate(value: string) {
   min-height: 76px;
   padding: 0.9rem 1rem;
   text-align: left;
-  border: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--tf-theme-border, rgba(0, 0, 0, 0.1));
   border-radius: 14px;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
   color: inherit;
   cursor: pointer;
   transition:
@@ -217,8 +217,8 @@ function formatDate(value: string) {
 }
 
 .shipment-row:hover {
-  border-color: var(--bw-theme-primary, var(--q-primary));
-  box-shadow: var(--bw-theme-shadow, 0 8px 24px rgb(0 0 0 / 0.06));
+  border-color: var(--tf-theme-primary, var(--q-primary));
+  box-shadow: var(--tf-theme-shadow, 0 8px 24px rgb(0 0 0 / 0.06));
 }
 
 .shipment-row__icon {
@@ -244,30 +244,30 @@ function formatDate(value: string) {
 .shipment-row__name {
   font-weight: 700;
   font-size: 1rem;
-  color: var(--bw-theme-ink, inherit);
+  color: var(--tf-theme-ink, inherit);
 }
 
 .shipment-row__meta {
   font-size: 0.8rem;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .shipment-row__teaser {
   font-size: 0.8rem;
-  color: var(--bw-theme-ink, inherit);
+  color: var(--tf-theme-ink, inherit);
   opacity: 0.85;
 }
 
 .shipment-row__chevron {
-  color: var(--bw-theme-muted, #9ca3af);
+  color: var(--tf-theme-muted, #9ca3af);
   flex: 0 0 auto;
 }
 
 .empty-state {
-  border: 1px dashed var(--bw-theme-border, rgba(0, 0, 0, 0.15));
+  border: 1px dashed var(--tf-theme-border, rgba(0, 0, 0, 0.15));
   border-radius: 14px;
   padding: 2.5rem 1.25rem;
   text-align: center;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 </style>

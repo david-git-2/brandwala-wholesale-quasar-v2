@@ -104,7 +104,7 @@ Code today stamps only material+freight ([PS13](00-gaps.md)).
 - Bins leaf; tree warehouse → zone → shelf → level → bin (+ returns root). `list_global_stocks_groups` for grouped list.
 
 ### US-4 Demand & Delivery paper
-- Routes: `procurement/demand`, `procurement/fulfill` (`preorder_demand`). Sources: shop order + PBC lines. **Packed** close: take / condition / return → bills via `close_preorder_demand_document` ([PS6](00-gaps.md) done). Not dropship desk ([shop_order](../shop_order/spec.md) US-3).
+- Routes: `procurement/demand`, `procurement/fulfill` (`preorder_demand`). Sources: shop order + PBC lines. Entering **procuring** writes one demand row per line with the orderer's `profile_id` (not staff-edited). **Packed** close: take / condition → bills via `close_preorder_demand_document` (`source_type=delivery_close`, `settlement_kind=take|condition`). Return → warehouse sellable (no bill) ([PS6](00-gaps.md) done). Not dropship desk ([shop_order](../shop_order/spec.md) US-3).
 
 ### US-5 Archive / US-6 Batch code
 - List archive; optional batch analyze per shipment.

@@ -64,9 +64,9 @@ const emit = defineEmits<{
 
 <style scoped>
 .procurement-ops-toolbar {
-  background: var(--bw-neutral-surface, #ffffff);
-  border-radius: var(--bw-radius-sm, 8px);
-  border: 1px solid var(--bw-neutral-border, #e2e8f0);
+  background: var(--tf-neutral-surface, #ffffff);
+  border-radius: var(--tf-radius-sm, 8px);
+  border: 1px solid var(--tf-neutral-border, #e2e8f0);
 }
 
 .procurement-ops-toolbar__primary {
@@ -88,57 +88,7 @@ const emit = defineEmits<{
 }
 
 .text-slate-400 {
-  color: var(--bw-neutral-chrome, #64748b);
+  color: var(--tf-neutral-chrome, #64748b);
 }
 
-:deep(.quick-filter-toggle) {
-  display: flex;
-  align-items: center;
-  background: #f1f5f9;
-  border-radius: var(--bw-radius-sm, 8px);
-  padding: 2px;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-:deep(.quick-filter-pill) {
-  border: none;
-  background: transparent;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #64748b;
-  border-radius: 6px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-:deep(.quick-filter-pill:hover) {
-  color: #0f172a;
-}
-
-:deep(.quick-filter-pill--active) {
-  background: var(--bw-neutral-surface, #ffffff);
-  color: #0f172a;
-  font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-:deep(.pill-badge) {
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 0 5px;
-  border-radius: 4px;
-  background: #e2e8f0;
-  color: #475569;
-}
-
-:deep(.pill-badge--active) {
-  background: rgba(37, 99, 235, 0.12);
-  color: #2563eb;
-}
 </style>

@@ -39,9 +39,9 @@ Do not dump Help-drawer copy on the page. Do not add product tours. Do not send 
 
 ## Styling stack (in order)
 
-1. **App theme** — `var(--bw-theme-*)` and Quasar `color="primary"` (maps to theme). No hardcoded hex except locked domain table pastels.
+1. **App theme** — `var(--tf-theme-*)` and Quasar `color="primary"` (maps to theme). No hardcoded hex except locked domain table pastels.
 2. **Quasar** — `q-pa-*`, `q-gutter-*`, `row`/`column`/`col-*`, `items-*`, `justify-*`, `full-width`, button variants (`unelevated` / `flat` / `outline`).
-3. **Project utilities** — `.bw-page`, `.bw-page__stack`, `.bw-entity-grid`, `.bw-inline-actions`, `.soft-input`, `.floating-surface`, `.pill-btn`, `.bw-text-muted` from `web/src/css/app.scss`.
+3. **Project utilities** — `.tf-page`, `.tf-page__stack`, `.tf-entity-grid`, `.tf-inline-actions`, `.soft-input`, `.floating-surface`, `.pill-btn`, `.tf-text-muted` from `web/src/css/app.scss`.
 4. **Custom SCSS** — only when Quasar + tokens cannot express the need; scoped to the SFC; reuse tokens; no new global color system; no `backdrop-filter` on static chrome.
 
 ## Do not

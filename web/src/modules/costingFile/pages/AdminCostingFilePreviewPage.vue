@@ -363,7 +363,7 @@ const getTotalsValue = (columnName: string) => {
   display: block;
   border-radius: 6px;
   overflow: hidden;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
 }
 
 .preview-page__image :deep(img) {
@@ -375,8 +375,8 @@ const getTotalsValue = (columnName: string) => {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  border: 1px dashed var(--bw-theme-border);
-  color: var(--bw-theme-muted);
+  border: 1px dashed var(--tf-theme-border);
+  color: var(--tf-theme-muted);
   font-size: 0.65rem;
   text-align: center;
   padding-top: 0.35rem;

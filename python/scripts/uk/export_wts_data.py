@@ -22,8 +22,8 @@ ROOT_DIR = SCRIPT_DIR.parents[2]
 WEB_ENV_FILE = ROOT_DIR / "web" / ".env"
 ROOT_ENV_FILE = ROOT_DIR / ".env"
 
-DEFAULT_OUT_JSON = ROOT_DIR / "web" / "public" / "uk" / "wts_data.json"
-DEFAULT_OUT_MANIFEST = ROOT_DIR / "web" / "public" / "uk" / "wts_manifest.json"
+DEFAULT_OUT_JSON = ROOT_DIR / "python" / "data" / "uk" / "out" / "wts_data.json"
+DEFAULT_OUT_MANIFEST = ROOT_DIR / "python" / "data" / "uk" / "out" / "wts_manifest.json"
 DEFAULT_OUT_IMAGES_DIR = ROOT_DIR / "python" / "images" / "uk" / "wts_images"
 DEFAULT_CACHE_JSON = ROOT_DIR / "python" / "data" / "uk" / "wts_cache.json"
 

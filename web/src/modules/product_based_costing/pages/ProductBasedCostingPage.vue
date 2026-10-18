@@ -16,34 +16,24 @@
 
       <!-- Toolbar -->
       <q-card flat bordered class="q-pa-xs flex-shrink-0">
-        <div class="row items-center justify-between q-col-gutter-xs">
-          <div class="col-12 col-lg-auto">
-            <div class="row items-center q-gutter-x-xs quick-filter-toggle">
-              <q-btn
-                v-for="tab in filterTabs"
-                :key="tab.value"
-                dense
-                unelevated
-                no-caps
-                :color="quickFilter === tab.value ? 'primary' : 'transparent'"
-                :text-color="quickFilter === tab.value ? 'white' : 'grey-8'"
-                class="quick-filter-btn text-xs"
-                @click="setQuickFilter(tab.value)"
-              >
-                {{ tab.label }}
-              </q-btn>
-            </div>
+        <div class="pbc-toolbar">
+          <div class="pbc-toolbar__tabs">
+            <TfDrawerSectionTabs
+              v-model="quickFilter"
+              :tabs="quickFilterSectionTabs"
+              aria-label="Filter costing files"
+              @update:model-value="setQuickFilter"
+            />
           </div>
 
-          <div class="col-12 col-lg row items-center justify-end q-gutter-x-xs">
+          <div class="pbc-toolbar__actions">
             <q-input
               v-model="searchText"
               outlined
               rounded
               dense
               clearable
-              style="min-width: 200px"
-              class="col-grow col-sm-auto dense-search-input"
+              class="pbc-toolbar__search dense-search-input"
               :placeholder="$t('product_based_costing.search')"
               @keyup.enter="onApplyFilters"
               @clear="onApplyFilters"
@@ -53,18 +43,16 @@
               </template>
             </q-input>
 
-            <q-btn flat round dense icon="ph ph-funnel" @click="openFilterDrawer">
+            <TfBtn variant="icon" size="md" icon="ph ph-funnel" @click="openFilterDrawer">
               <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
                 {{ activeFilterCount }}
               </q-badge>
-              <q-tooltip>{{ $t('product_based_costing.filters') }}</q-tooltip>
-            </q-btn>
+              <q-tooltip :delay="400">{{ $t('product_based_costing.filters') }}</q-tooltip>
+            </TfBtn>
 
-            <q-btn
-              color="primary"
-              unelevated
-              no-caps
-              dense
+            <TfBtn
+              variant="primary"
+              size="md"
               class="rounded-sq-btn text-weight-bold q-px-sm"
               :label="$t('product_based_costing.create_file')"
               icon="ph ph-plus"
@@ -89,42 +77,36 @@
         />
         <template #footer>
           <div class="row q-gutter-sm justify-end">
-            <q-btn flat no-caps :label="$t('product_based_costing.reset')" @click="onResetFilters" />
+            <TfBtn variant="tertiary" :label="$t('product_based_costing.reset')" @click="onResetFilters" />
           </div>
         </template>
       </FilterSidebar>
 
       <!-- Skeleton -->
-      <div v-if="isLoading" class="col overflow-auto q-pa-sm">
-        <div class="row q-col-gutter-sm">
-          <div v-for="n in 6" :key="n" class="col-12">
-            <q-card flat bordered class="q-px-sm q-py-xs">
-              <q-skeleton type="text" width="70%" />
-              <q-skeleton type="text" width="40%" class="q-mt-xs" />
-            </q-card>
-          </div>
-        </div>
+      <div v-if="isLoading && !items.length" class="col overflow-auto q-pa-sm">
+        <TfSkeletonRows :rows="6" :cols="2" height="20px" />
       </div>
 
       <!-- Empty -->
       <div
         v-else-if="!items.length && quickFilter === '__all__' && !searchText.trim()"
-        class="column items-center justify-center q-pa-lg text-grey-6 empty-state-block col"
+        class="column items-center justify-center q-pa-md empty-state-block col"
       >
-        <q-icon name="ph ph-calculator" size="48px" class="q-mb-xs text-grey-4" />
-        <div class="text-subtitle2 text-weight-medium q-mb-xs">{{ $t('product_based_costing.title') }}</div>
-        <div class="text-caption text-grey-6 q-mb-sm">{{ $t('product_based_costing.subtitle') }}</div>
-        <q-btn
-          color="primary"
-          unelevated
-          no-caps
-          dense
+        <TfEmptyState
+          icon="ph ph-calculator"
+          :title="$t('product_based_costing.title')"
+          :message="$t('product_based_costing.subtitle')"
+        >
+        <TfBtn
+          variant="primary"
+          size="md"
           class="rounded-sq-btn text-weight-bold q-px-md"
           :label="$t('product_based_costing.create_file')"
           icon="ph ph-plus"
           :loading="isCreating"
           @click="openCreateDialog"
         />
+        </TfEmptyState>
       </div>
 
       <!-- No matches -->
@@ -137,7 +119,11 @@
       </div>
 
       <!-- Card list -->
-      <div v-else class="col overflow-auto q-pa-sm">
+      <div
+        v-else
+        class="col overflow-auto q-pa-sm"
+        :class="{ 'pbc-list--placeholder': isPlaceholderData }"
+      >
         <CostingFileCard
           :items="items"
           @select="onSelect"
@@ -179,6 +165,10 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useQuasar, type QInfiniteScroll } from 'quasar';
 import { useRouter, useRoute } from 'vue-router';
+import TfBtn from 'src/components/ui/TfBtn.vue';
+import TfEmptyState from 'src/components/ui/TfEmptyState.vue';
+import TfSkeletonRows from 'src/components/ui/TfSkeletonRows.vue';
+import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFileDialog.vue';
 import CostingFileCard from '../components/CostingFileCard.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
@@ -231,6 +221,7 @@ const {
   fetchNextPage,
   isFetchingNextPage,
   hasMoreFiles,
+  isPlaceholderData,
 } = useProductBasedCostingFilesQuery(queryParams);
 
 watch(queryParams, () => {
@@ -266,6 +257,10 @@ const filterTabs = computed(() => [
   { label: t('product_based_costing.status_packed'), value: 'packed' },
   { label: t('product_based_costing.status_delivered'), value: 'delivered' },
 ]);
+
+const quickFilterSectionTabs = computed(() =>
+  filterTabs.value.map((tab) => ({ name: tab.value, label: tab.label })),
+);
 
 watch(statusFilter, (value) => {
   quickFilter.value = value;
@@ -413,6 +408,40 @@ const setQuickFilter = (value: string) => {
 </script>
 
 <style scoped>
+.pbc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.pbc-toolbar__tabs {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.pbc-toolbar__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.pbc-toolbar__search {
+  flex: 1 1 140px;
+  min-width: 0;
+  max-width: 280px;
+}
+@media (max-width: 599px) {
+  .pbc-toolbar__tabs,
+  .pbc-toolbar__actions {
+    flex-basis: 100%;
+  }
+  .pbc-toolbar__search {
+    max-width: none;
+  }
+}
 .page-fixed-layout {
   height: calc(100vh - 55px);
   overflow: hidden;
@@ -420,20 +449,6 @@ const setQuickFilter = (value: string) => {
 
 .rounded-sq-btn {
   border-radius: 8px;
-}
-
-.quick-filter-toggle {
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 8px;
-  padding: 2px;
-  overflow-x: auto;
-  flex-wrap: nowrap;
-}
-
-.quick-filter-toggle :deep(.q-btn) {
-  border-radius: 6px;
-  font-weight: 600;
-  padding: 2px 10px;
 }
 
 .treasury-table-wrap {
@@ -471,43 +486,31 @@ const setQuickFilter = (value: string) => {
   top: 0;
   z-index: 2;
   font-weight: 700;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--tf-neutral-ink);
+  background: var(--tf-neutral-canvas);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 8px 12px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--tf-neutral-border);
 }
 
-body.body--dark .pbc-list-table :deep(thead tr th) {
-  background: #1c1c1c;
-  color: #a1a1aa;
-  border-bottom: 1px solid #2e2e2e;
-}
 
 .pbc-list-table :deep(tbody tr) {
   transition: background-color 0.15s ease;
 }
 
 .pbc-list-table :deep(tbody tr:hover) {
-  background-color: #f1f5f9 !important;
+  background-color: var(--tf-disabled-bg) !important;
 }
 
-body.body--dark .pbc-list-table :deep(tbody tr:hover) {
-  background-color: #242424 !important;
-}
 
 .pbc-list-table :deep(tbody td) {
   padding: 6px 12px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--tf-neutral-border);
   font-size: 12.5px;
 }
 
-body.body--dark .pbc-list-table :deep(tbody td) {
-  border-bottom: 1px solid #262626;
-  color: #ededed;
-}
 
 .pbc-status-badge {
   border-radius: 6px;
@@ -531,9 +534,14 @@ body.body--dark .pbc-list-table :deep(tbody td) {
 }
 
 .empty-state-block {
-  border: 1px dashed rgba(0, 0, 0, 0.12);
+  border: 1px dashed var(--tf-neutral-border-strong);
   border-radius: 12px;
-  background: #fff;
+  background: var(--tf-neutral-surface);
+}
+
+.pbc-list--placeholder {
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .soft-input :deep(.q-field__control) {

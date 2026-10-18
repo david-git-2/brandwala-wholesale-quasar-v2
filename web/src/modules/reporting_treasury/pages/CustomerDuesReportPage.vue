@@ -61,12 +61,12 @@
       no-data-label="No customers with outstanding dues"
     >
       <template #body-cell-still_due="props">
-        <q-td :props="props" class="text-weight-bold text-negative bw-tabular">
+        <q-td :props="props" class="text-weight-bold text-negative tf-tabular">
           {{ formatAmountBdt(props.row.still_due) }}
         </q-td>
       </template>
       <template #body-cell-aging="props">
-        <q-td :props="props" class="text-caption bw-tabular">
+        <q-td :props="props" class="text-caption tf-tabular">
           {{ formatAging(props.row.aging) }}
         </q-td>
       </template>
@@ -131,7 +131,7 @@ const KpiItem = defineComponent({
         h(
           'span',
           {
-            class: `text-subtitle2 text-weight-bolder bw-tabular ${props.highlight ? 'text-negative' : 'text-primary'}`,
+            class: `text-subtitle2 text-weight-bolder tf-tabular ${props.highlight ? 'text-negative' : 'text-primary'}`,
           },
           props.format === 'number' ? String(props.value ?? 0) : formatAmountBdt(Number(props.value || 0)),
         ),

@@ -136,7 +136,7 @@ const barOptions = computed<ChartOptions<'bar'>>(() => ({
       beginAtZero: true,
       grid: { color: 'rgba(148, 163, 184, 0.25)' },
       ticks: {
-        color: 'var(--bw-theme-muted)',
+        color: 'var(--tf-theme-muted)',
         font: { size: 11, weight: 600 },
         precision: 0,
       },
@@ -145,7 +145,7 @@ const barOptions = computed<ChartOptions<'bar'>>(() => ({
     y: {
       grid: { display: false },
       ticks: {
-        color: 'var(--bw-theme-ink)',
+        color: 'var(--tf-theme-ink)',
         font: { size: 11, weight: 600 },
       },
       border: { display: false },
@@ -161,7 +161,7 @@ const emitNavigate = (path: string) => {
 <style scoped>
 .hub-summary-chart {
   border-radius: 14px;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
 }
 
 .hub-summary-chart__header {
@@ -178,13 +178,13 @@ const emitNavigate = (path: string) => {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .hub-summary-chart__subtitle {
   margin: 0.25rem 0 0;
   font-size: 0.78rem;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .hub-summary-chart__total {
@@ -199,7 +199,7 @@ const emitNavigate = (path: string) => {
   font-size: 1.75rem;
   font-weight: 800;
   line-height: 1;
-  color: var(--bw-theme-primary);
+  color: var(--tf-theme-primary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -208,7 +208,7 @@ const emitNavigate = (path: string) => {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .hub-summary-chart__canvas-wrap {

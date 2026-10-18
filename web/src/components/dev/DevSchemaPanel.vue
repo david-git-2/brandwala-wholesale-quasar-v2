@@ -149,8 +149,8 @@ function shortType(type: string): string {
   cursor: pointer;
 }
 .schema-scope-btn--active {
-  border-color: var(--bw-brand-accent, #0d6b5c);
-  color: var(--bw-brand-accent, #0d6b5c);
+  border-color: var(--tf-brand-accent, #0d6b5c);
+  color: var(--tf-brand-accent, #0d6b5c);
   font-weight: 600;
 }
 .schema-search {

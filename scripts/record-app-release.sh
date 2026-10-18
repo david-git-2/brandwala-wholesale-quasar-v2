@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Usage: record-app-release.sh backend|frontend [version]
+# Default version: semver from repo package.json (e.g. 1.0.0). Override with 2nd arg.
 # Writes public.app_release_versions via PostgREST (service role).
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -9,12 +10,16 @@ KIND="${1:-}"
 VERSION="${2:-}"
 
 if [[ "${KIND}" != "backend" && "${KIND}" != "frontend" ]]; then
-  echo "Usage: $0 backend|frontend [git-sha]" >&2
+  echo "Usage: $0 backend|frontend [version]" >&2
   exit 1
 fi
 
 if [[ -z "${VERSION}" ]]; then
-  VERSION="$(git -C "${ROOT_DIR}" rev-parse --short HEAD)"
+  if command -v node >/dev/null 2>&1; then
+    VERSION="$(node -p "require('${ROOT_DIR}/package.json').version")"
+  else
+    VERSION="1.0.0"
+  fi
 fi
 
 if [[ -f "${ROOT_DIR}/web/.env" ]]; then

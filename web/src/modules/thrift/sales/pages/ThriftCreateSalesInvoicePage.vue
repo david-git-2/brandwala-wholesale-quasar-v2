@@ -2271,8 +2271,8 @@ async function onSaveInvoice() {
 }
 
 .risk-block {
-  background: var(--bw-theme-surface, #fafafa);
-  border: 1px solid var(--bw-theme-border, #e0e0e0);
+  background: var(--tf-theme-surface, #fafafa);
+  border: 1px solid var(--tf-theme-border, #e0e0e0);
 }
 
 .risk-block--rto {
@@ -2291,9 +2291,9 @@ async function onSaveInvoice() {
 
 .courier-fee-row {
   padding: 0.65rem 0.75rem;
-  border: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.08));
+  border: 1px solid var(--tf-theme-border, rgba(0, 0, 0, 0.08));
   border-radius: 8px;
-  background: var(--bw-theme-surface, transparent);
+  background: var(--tf-theme-surface, transparent);
 }
 
 .thrift-invoice-table-wrap {

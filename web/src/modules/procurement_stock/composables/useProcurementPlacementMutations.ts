@@ -23,6 +23,7 @@ function useDemandGroupsQueryKey(options: {
   procurementStatus: Ref<ProcurementDemandStatus> | ComputedRef<ProcurementDemandStatus>;
   search?: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
   childTenantId?: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
+  profileId?: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
   limit?: number;
   offset?: Ref<number> | ComputedRef<number>;
 }) {
@@ -36,6 +37,10 @@ function useDemandGroupsQueryKey(options: {
         return trimmed.length ? trimmed : null;
       })(),
       childTenantId: unref(options.childTenantId) ?? null,
+      profileId: (() => {
+        const raw = unref(options.profileId);
+        return raw && !Number.isNaN(Number(raw)) ? Number(raw) : null;
+      })(),
       limit: options.limit ?? 50,
       offset: unref(options.offset) ?? 0,
     }),

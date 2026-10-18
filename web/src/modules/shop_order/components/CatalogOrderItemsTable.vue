@@ -1,21 +1,21 @@
 <template>
   <div class="catalog-items-table column no-wrap col">
-    <div class="row items-center justify-between q-px-md q-py-sm bg-grey-1 border-bottom shrink-0">
+    <div class="row items-center justify-between q-px-md q-py-sm catalog-toolbar border-bottom shrink-0">
       <div class="row items-center q-gutter-x-sm">
         <span class="text-caption text-weight-bold text-grey-8">Quantity:</span>
         <q-btn-toggle
           v-model="quantityFilter"
           dense
           unelevated
+          no-caps
+          :ripple="false"
           toggle-color="primary"
-          color="white"
-          text-color="grey-9"
           :options="[
             { label: 'Has quantity', value: 'non_zero' },
             { label: 'Zero quantity', value: 'zero' },
             { label: 'All items', value: 'all' },
           ]"
-          class="shadow-1"
+          class="catalog-qty-toggle"
         />
       </div>
       <div class="text-caption text-grey-7">
@@ -28,9 +28,9 @@
       class="col overflow-auto hide-native-scrollbar catalog-table-scroll"
       @scroll="onTableScroll"
     >
-      <table class="pbc-v2-markup-table bg-white" style="min-width: 1400px; width: 100%">
+      <table class="pbc-v2-markup-table" style="min-width: 1400px; width: 100%">
         <thead>
-          <tr class="bg-grey-2 text-grey-9 text-weight-bold catalog-table-header">
+          <tr class="text-weight-bold catalog-table-header">
             <th v-if="isColVisible('sl')" class="text-center sticky-col-2 q-pa-none" style="width: 40px; min-width: 40px">SL</th>
             <th v-if="isColVisible('image')" class="text-center pbc-image-col" style="width: 0.85in; min-width: 0.85in">Image</th>
             <th v-if="isColVisible('name')" class="text-left" style="min-width: 180px; width: 180px">Name</th>
@@ -1075,11 +1075,36 @@ defineExpose({
 
 <style scoped>
 .border-bottom {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--tf-neutral-border);
 }
 
 .border-top {
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--tf-neutral-border);
+}
+
+.catalog-toolbar {
+  background-color: var(--tf-neutral-canvas);
+}
+
+.catalog-qty-toggle {
+  border: 1px solid var(--tf-neutral-border-strong);
+  border-radius: var(--tf-radius-sm);
+  background-color: var(--tf-neutral-surface);
+}
+
+.catalog-qty-toggle :deep(.q-btn:not(.bg-primary)) {
+  background-color: transparent;
+  color: var(--tf-neutral-ink);
+}
+
+.catalog-items-table .text-grey-6,
+.catalog-items-table .text-grey-7,
+.catalog-items-table .text-grey-8 {
+  color: var(--tf-neutral-muted) !important;
+}
+
+.catalog-items-table .text-grey-9 {
+  color: var(--tf-neutral-ink) !important;
 }
 
 .catalog-table-scroll {
@@ -1091,22 +1116,24 @@ defineExpose({
 
 .pbc-v2-markup-table {
   border-collapse: collapse;
+  background-color: var(--tf-neutral-surface);
+  color: var(--tf-neutral-ink);
 }
 
 .pbc-v2-markup-table thead tr th {
   position: sticky;
   top: 0;
   z-index: 5;
-  background-color: #f1f5f9 !important;
-  color: #0f172a !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  background-color: var(--tf-neutral-canvas) !important;
+  color: var(--tf-neutral-chrome-text) !important;
+  border-bottom: 1px solid var(--tf-neutral-border-strong);
   padding: 4px 6px !important;
   font-size: 11px;
 }
 
 .pbc-v2-markup-table tbody tr td {
   padding: 3px 4px !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--tf-neutral-border);
   min-height: 44px;
   height: auto;
   vertical-align: middle;
@@ -1114,30 +1141,26 @@ defineExpose({
 
 .pbc-v2-markup-table th.bw-ops-col-tint--price,
 .pbc-v2-markup-table td.bw-ops-col-tint--price {
-  background-color: #daf3e4 !important;
-  box-shadow: inset 2px 0 0 #059669;
+  background-color: var(--tf-success-soft) !important;
 }
 
 .pbc-v2-markup-table th.bw-ops-col-tint--cost,
 .pbc-v2-markup-table td.bw-ops-col-tint--cost {
-  background-color: #ffe8d1 !important;
-  box-shadow: inset 2px 0 0 #ea580c;
+  background-color: var(--tf-warning-soft) !important;
 }
 
 .pbc-v2-markup-table th.bw-ops-col-tint--qty,
 .pbc-v2-markup-table td.bw-ops-col-tint--qty {
-  background-color: #d0e6ff !important;
-  box-shadow: inset 2px 0 0 #2563eb;
+  background-color: var(--tf-info-soft) !important;
 }
 
 .pbc-v2-markup-table th.bw-ops-col-tint--weight,
 .pbc-v2-markup-table td.bw-ops-col-tint--weight {
-  background-color: #e8d7f7 !important;
-  box-shadow: inset 2px 0 0 #9333ea;
+  background-color: var(--tf-theme-primary-soft) !important;
 }
 
 .pbc-row:hover {
-  background-color: #f8fafc !important;
+  background-color: var(--tf-hover-bg) !important;
 }
 
 .pbc-row:hover td {
@@ -1148,12 +1171,13 @@ defineExpose({
   position: sticky;
   left: 0;
   z-index: 4;
-  background-color: #fff !important;
+  background-color: var(--tf-neutral-surface) !important;
+  border-right: 1px solid var(--tf-neutral-border);
 }
 
 .pbc-v2-markup-table thead tr th.sticky-col-2 {
   z-index: 6;
-  background-color: #f1f5f9 !important;
+  background-color: var(--tf-neutral-canvas) !important;
 }
 
 .pbc-image-cell {
@@ -1167,8 +1191,8 @@ defineExpose({
   display: block;
   margin: 0 auto;
   border-radius: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: #fff;
+  border: 1px solid var(--tf-neutral-border);
+  background: #fff; /* product photos sit on white in both themes */
   overflow: hidden;
 }
 
@@ -1185,8 +1209,8 @@ defineExpose({
   display: block;
   margin: 0 auto;
   border-radius: 6px;
-  border: 1px dashed rgba(0, 0, 0, 0.12);
-  background-color: #f1f5f9;
+  border: 1px dashed var(--tf-neutral-border-strong);
+  background-color: var(--tf-neutral-canvas);
   overflow: hidden;
 }
 
@@ -1230,8 +1254,8 @@ defineExpose({
 
 :deep(.excel-cell-input:hover .q-field__control),
 :deep(.excel-cell-input.q-field--focused .q-field__control) {
-  border: 1px solid #94a3b8 !important;
-  background-color: #fff !important;
+  border: 1px solid var(--tf-neutral-border-strong) !important;
+  background-color: var(--tf-hover-bg) !important;
   border-radius: 4px !important;
 }
 

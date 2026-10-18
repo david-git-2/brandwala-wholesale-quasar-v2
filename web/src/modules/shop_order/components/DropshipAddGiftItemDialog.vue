@@ -451,26 +451,26 @@ const warehouseSearchReady = computed(
 }
 
 .gift-side-panel__pending {
-  border-top: 1px solid var(--bw-theme-border, #e2e8f0);
-  background: var(--bw-theme-surface-muted, #f8fafc);
+  border-top: 1px solid var(--tf-theme-border, #e2e8f0);
+  background: var(--tf-theme-surface-muted, #f8fafc);
   max-height: 280px;
   overflow-y: auto;
 }
 
 .gift-pending-empty {
-  border: 1px dashed var(--bw-theme-border, #e2e8f0);
-  border-radius: var(--bw-radius-md, 8px);
+  border: 1px dashed var(--tf-theme-border, #e2e8f0);
+  border-radius: var(--tf-radius-md, 8px);
 }
 
 .gift-pending-list {
-  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  border: 1px solid var(--tf-theme-border, #e2e8f0);
   background: #fff;
   overflow: hidden;
 }
 
 .gift-pending-row {
   padding: 10px 12px;
-  border-bottom: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-bottom: 1px solid var(--tf-theme-border, #e2e8f0);
 }
 
 .gift-pending-row:last-child {
@@ -502,7 +502,7 @@ const warehouseSearchReady = computed(
 }
 
 .gift-side-panel__footer {
-  border-top: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-top: 1px solid var(--tf-theme-border, #e2e8f0);
 }
 
 .gift-search-results {

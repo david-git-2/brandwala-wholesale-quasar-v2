@@ -311,7 +311,7 @@ onMounted(() => {
 .portal-block-card--clickable:hover,
 .portal-block-card--clickable:focus-visible {
   transform: translateY(-2px);
-  background: #ffffff;
+  background: var(--tf-hover-bg);
   border-color: rgba(34, 56, 101, 0.2);
   box-shadow: 0 4px 14px rgba(25, 35, 47, 0.08);
   outline: none;

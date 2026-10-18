@@ -3,7 +3,7 @@
     <div v-if="redirecting" class="row justify-center items-center q-pa-xl">
       <q-spinner color="primary" size="3em" />
     </div>
-    <q-banner v-else-if="pageError" class="bw-status-banner bg-negative text-white q-ma-xs">
+    <q-banner v-else-if="pageError" class="tf-status-banner bg-negative text-white q-ma-xs">
       {{ pageError }}
     </q-banner>
   </q-page>

@@ -50,7 +50,7 @@
               </q-item-section>
             </q-item>
           </q-list>
-          <div v-if="warehouseListIncomplete" class="text-caption bw-text-muted">
+          <div v-if="warehouseListIncomplete" class="text-caption tf-text-muted">
             Scroll the warehouse list to load more rows — other bins may not show yet.
           </div>
         </div>

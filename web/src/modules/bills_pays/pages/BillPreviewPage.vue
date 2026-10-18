@@ -361,7 +361,7 @@ const onPrint = () => {
   max-width: 800px;
   margin: 0 auto;
   background: #fff;
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
   border-radius: 8px;
 }
 .totals-panel {
@@ -378,7 +378,7 @@ const onPrint = () => {
 .ap-bill-balance-group--spaced {
   margin-top: 0.65rem;
   padding-top: 0.65rem;
-  border-top: 1px solid var(--bw-neutral-border, #e2e8f0);
+  border-top: 1px solid var(--tf-neutral-border, #e2e8f0);
 }
 .preview-lines th {
   font-size: 11px;

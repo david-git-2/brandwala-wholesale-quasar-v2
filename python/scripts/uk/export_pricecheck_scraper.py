@@ -20,8 +20,8 @@ ROOT_DIR = SCRIPT_DIR.parents[2]
 WEB_ENV_FILE = ROOT_DIR / "web" / ".env"
 ROOT_ENV_FILE = ROOT_DIR / ".env"
 
-DEFAULT_OUT_JSON = ROOT_DIR / "web" / "public" / "uk" / "pc_scraped_data.json"
-DEFAULT_OUT_MANIFEST = ROOT_DIR / "web" / "public" / "uk" / "pc_scraped_manifest.json"
+DEFAULT_OUT_JSON = ROOT_DIR / "python" / "data" / "uk" / "out" / "pc_scraped_data.json"
+DEFAULT_OUT_MANIFEST = ROOT_DIR / "python" / "data" / "uk" / "out" / "pc_scraped_manifest.json"
 
 def load_env_file(path: Path) -> None:
     if not path.exists():

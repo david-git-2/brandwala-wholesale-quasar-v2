@@ -190,8 +190,8 @@ const goManageLocations = () => {
   height: calc(100vh - 55px);
 }
 .cashbook-header {
-  background: var(--bw-neutral-surface, #fff);
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+  background: var(--tf-neutral-surface, #fff);
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
   border-radius: 8px;
   max-width: 960px;
   margin: 0 auto;

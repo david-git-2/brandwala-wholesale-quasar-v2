@@ -13,16 +13,16 @@
         v-if="cart?.shop_type === 'dropship' ? (canSeeBuyPrice || canSeeSellPrice) : canSeeLinePrices"
       >
         <template v-if="cart?.shop_type === 'dropship'">
-          <div v-if="canSeeSellPrice" class="row justify-between q-mb-sm bw-type-body bw-text-muted">
+          <div v-if="canSeeSellPrice" class="row justify-between q-mb-sm tf-type-body tf-text-muted">
             <span>{{ $t('shop.items_subtotal') }}</span>
-            <span class="text-weight-medium bw-tabular">
+            <span class="text-weight-medium tf-tabular">
               {{ formatCartTotal() }}
             </span>
           </div>
 
-          <div v-if="canSeeBuyPrice" class="row justify-between q-mb-sm bw-type-body bw-text-muted">
+          <div v-if="canSeeBuyPrice" class="row justify-between q-mb-sm tf-type-body tf-text-muted">
             <span>{{ $t('shop.your_cost_buyer') }}</span>
-            <span class="text-weight-medium bw-tabular">
+            <span class="text-weight-medium tf-tabular">
               {{ formatAmount(buyerTotal) }}
             </span>
           </div>
@@ -31,16 +31,16 @@
             v-if="canSeeBuyPrice && canSeeSellPrice"
             class="column q-mb-sm q-pa-sm rounded-borders profit-panel"
           >
-            <div class="row justify-between items-center bw-type-body">
+            <div class="row justify-between items-center tf-type-body">
               <span class="text-weight-bold text-positive row items-center q-gutter-x-xs">
                 <q-icon name="ph ph-trend-up" size="16px" />
                 <span>{{ $t('shop.estimated_profit') }}</span>
               </span>
-              <span class="text-weight-bold text-positive text-subtitle1 bw-tabular">
+              <span class="text-weight-bold text-positive text-subtitle1 tf-tabular">
                 {{ formatAmount(estimatedProfit) }}
               </span>
             </div>
-            <div class="bw-type-meta bw-text-muted q-mt-xs">
+            <div class="tf-type-meta tf-text-muted q-mt-xs">
               {{ $t('shop.charges_finalized_checkout') }}
             </div>
           </div>
@@ -48,43 +48,43 @@
           <q-expansion-item
             dense
             :label="$t('shop.estimated_charges')"
-            header-class="bw-type-meta bw-text-muted"
+            header-class="tf-type-meta tf-text-muted"
             class="q-mb-sm"
           >
             <div class="column q-pa-sm rounded-borders stat-card">
-              <div v-if="printCharge > 0" class="row justify-between bw-type-meta bw-text-muted q-mb-xs">
+              <div v-if="printCharge > 0" class="row justify-between tf-type-meta tf-text-muted q-mb-xs">
                 <span>{{ $t('shop.print_charge') }}</span>
-                <span class="bw-tabular">{{ formatAmount(printCharge) }}</span>
+                <span class="tf-tabular">{{ formatAmount(printCharge) }}</span>
               </div>
-              <div v-if="packingCharge > 0" class="row justify-between bw-type-meta bw-text-muted q-mb-xs">
+              <div v-if="packingCharge > 0" class="row justify-between tf-type-meta tf-text-muted q-mb-xs">
                 <span>
                   {{ $t('shop.packing_charge') }}
-                  <span v-if="defaultPackingCharge > 0 && itemCount > 0" class="bw-text-muted">
+                  <span v-if="defaultPackingCharge > 0 && itemCount > 0" class="tf-text-muted">
                     ({{ formatAmount(defaultPackingCharge) }} &times; {{ itemCount }})
                   </span>
                 </span>
-                <span class="bw-tabular">{{ formatAmount(packingCharge) }}</span>
+                <span class="tf-tabular">{{ formatAmount(packingCharge) }}</span>
               </div>
-              <div class="row justify-between bw-type-meta bw-text-muted q-mb-xs">
+              <div class="row justify-between tf-type-meta tf-text-muted q-mb-xs">
                 <span>{{ $t('shop.delivery_charge') }}</span>
-                <span class="bw-tabular">
+                <span class="tf-tabular">
                   {{ formatAmount(courierEstimate.deliveryMin) }}–{{ formatAmount(courierEstimate.deliveryMax) }}
                 </span>
               </div>
-              <div v-if="codEstimateSummary" class="row justify-between bw-type-meta bw-text-muted">
+              <div v-if="codEstimateSummary" class="row justify-between tf-type-meta tf-text-muted">
                 <span>{{ $t('shop.cod_fee') }}</span>
                 <span>{{ codEstimateSummary }}</span>
               </div>
-              <div class="bw-type-meta bw-text-muted q-mt-sm">
+              <div class="tf-type-meta tf-text-muted q-mt-sm">
                 {{ $t('shop.courier_charges_may_vary') }}
               </div>
             </div>
           </q-expansion-item>
         </template>
         <template v-else-if="canSeeLinePrices">
-          <div class="row justify-between q-mb-sm bw-type-body bw-text-muted">
+          <div class="row justify-between q-mb-sm tf-type-body tf-text-muted">
             <span>{{ $t('shop.subtotal') }} ({{ itemCount }} {{ $t('shop.items').toLowerCase() }})</span>
-            <span class="text-weight-medium bw-tabular">
+            <span class="text-weight-medium tf-tabular">
               {{ formatCartTotal() }}
             </span>
           </div>
@@ -98,7 +98,7 @@
               cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
             }}
           </span>
-          <span class="bw-type-kpi text-primary bw-tabular">
+          <span class="tf-type-kpi text-primary tf-tabular">
             {{ cart?.shop_type === 'dropship' ? formatAmount(recipientGrandTotal) : formatCartTotal() }}
           </span>
         </div>
@@ -167,7 +167,7 @@ defineEmits<{
 }
 
 .profit-panel {
-  background: var(--bw-success-soft);
-  border: 1px solid var(--bw-theme-border);
+  background: var(--tf-success-soft);
+  border: 1px solid var(--tf-theme-border);
 }
 </style>

@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md costing-details-page theme-app">
     <PageInitialLoader v-if="initialLoading" />
-    <section v-else class="bw-page__stack costing-page">
+    <section v-else class="tf-page__stack costing-page">
       <q-card flat class="q-mb-md floating-surface hero-surface shadow-1 costing-page__header">
         <div class="costing-page__heading">
           <h1 class="text-h6 text-weight-bold q-my-none">Costing file details</h1>
@@ -115,7 +115,7 @@
         </p>
       </section>
 
-      <section v-else-if="selectedFile?.status === 'customer_submitted'" class="bw-page__stack">
+      <section v-else-if="selectedFile?.status === 'customer_submitted'" class="tf-page__stack">
         <div>
           <div class="text-subtitle1">Submitted items</div>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
@@ -1079,6 +1079,7 @@ import type {
 } from 'src/modules/costingFile/types';
 import { showSuccessNotification } from 'src/utils/appFeedback';
 import { calculateCostingItem } from 'src/modules/costingFile/utils/costingCalculations';
+import { useCostingFileDetailBreadcrumbs } from 'src/modules/costingFile/composables/useCostingFileDetailBreadcrumbs';
 
 const route = useRoute();
 const router = useRouter();
@@ -1088,6 +1089,7 @@ const tenantStore = useTenantStore();
 const shipmentStore = useGlobalShipmentStore();
 const costingFileStore = useCostingFileStore();
 const selectedFile = computed<CostingFileDetails | null>(() => costingFileStore.selectedItem);
+useCostingFileDetailBreadcrumbs('admin', () => selectedFile.value);
 const costingFileItems = computed<CostingFileItem[]>(() => costingFileStore.costingFileItems);
 const loadingItems = computed(() => costingFileStore.itemLoading);
 
@@ -2439,7 +2441,7 @@ onMounted(async () => {
 .costing-page__field-label {
   font-size: 0.675rem;
   font-weight: 600;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .costing-page__pricing-input {
@@ -2463,7 +2465,7 @@ onMounted(async () => {
   min-width: 0;
   max-width: 100%;
   height: clamp(400px, calc(100vh - 300px), 82vh);
-  background: var(--bw-theme-base, #eef2f5);
+  background: var(--tf-theme-base, #eef2f5);
 }
 
 .costing-page__table :deep(.q-table__middle) {
@@ -2486,7 +2488,7 @@ onMounted(async () => {
 .costing-page__table :deep(.q-table thead tr th) {
   position: sticky;
   z-index: 2;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
 }
 
 .costing-page__table :deep(.q-table thead tr:first-child th) {
@@ -2514,22 +2516,22 @@ onMounted(async () => {
 
 .costing-page__table--review :deep(.q-table td:first-child) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .costing-page__table--review :deep(.q-table td:nth-child(2)) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .costing-page__table--review :deep(.q-table tr:first-child th:first-child) {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .costing-page__table--review :deep(.q-table tr:first-child th:nth-child(2)) {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .costing-page__table--product :deep(.q-table td:nth-child(2)),
@@ -2546,22 +2548,22 @@ onMounted(async () => {
 
 .costing-page__table--product :deep(.q-table td:nth-child(2)) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .costing-page__table--product :deep(.q-table td:nth-child(3)) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .costing-page__table--product :deep(.q-table tr:first-child th:nth-child(2)) {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .costing-page__table--product :deep(.q-table tr:first-child th:nth-child(3)) {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .costing-page__table--review :deep(.costing-page__rejected-row > td) {
@@ -2590,8 +2592,8 @@ onMounted(async () => {
   min-width: 84px;
   padding: 0.3rem 0.55rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bw-theme-primary) 10%, white);
-  color: var(--bw-theme-primary);
+  background: color-mix(in srgb, var(--tf-theme-primary) 10%, white);
+  color: var(--tf-theme-primary);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -2641,7 +2643,7 @@ onMounted(async () => {
   height: 96px;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
 }
 
 .costing-page__image :deep(.q-img__image) {
@@ -2653,8 +2655,8 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px dashed var(--bw-theme-border);
-  color: var(--bw-theme-muted);
+  border: 1px dashed var(--tf-theme-border);
+  color: var(--tf-theme-muted);
   font-size: 0.75rem;
   text-align: center;
   padding: 0.5rem;
@@ -2671,7 +2673,7 @@ onMounted(async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--bw-theme-primary);
+  color: var(--tf-theme-primary);
   text-decoration: none;
 }
 
@@ -2730,7 +2732,7 @@ onMounted(async () => {
   border: 0;
   padding: 0;
   background: transparent;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
   cursor: pointer;
   font: inherit;
   font-weight: 700;
@@ -2800,8 +2802,8 @@ onMounted(async () => {
   align-items: center;
   padding: 0.15rem 0.4rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bw-theme-primary) 12%, white);
-  color: var(--bw-theme-primary);
+  background: color-mix(in srgb, var(--tf-theme-primary) 12%, white);
+  color: var(--tf-theme-primary);
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.02em;

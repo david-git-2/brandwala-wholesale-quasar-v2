@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md costing-list-page theme-app">
     <PageInitialLoader v-if="initialLoading" />
-    <section v-else class="bw-page__stack costing-page">
+    <section v-else class="tf-page__stack costing-page">
       <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
         <q-card-section class="q-py-sm">
           <div class="row items-center justify-between q-col-gutter-sm">
@@ -85,7 +85,7 @@ const initialLoading = ref(true);
 const page = ref(1);
 const pageSize = 20;
 
-const cardAccentColor = computed(() => 'var(--bw-theme-primary)');
+const cardAccentColor = computed(() => 'var(--tf-theme-primary)');
 const statusChipStyle = (currentStatus: string | null | undefined) => {
   const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
   if (value === 'draft') {
@@ -211,7 +211,7 @@ onMounted(async () => {
 }
 .costing-page__card {
   width: 100%;
-  border-left: 4px solid var(--costing-card-accent, var(--bw-theme-primary));
+  border-left: 4px solid var(--costing-card-accent, var(--tf-theme-primary));
 }
 .costing-page__pagination {
   display: flex;

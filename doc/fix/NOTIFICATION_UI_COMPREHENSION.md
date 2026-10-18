@@ -98,7 +98,7 @@ Silent refresh: no skeleton when list already loaded. Bell reloads preview on me
 
 ## 7. Style Guidelines & Accessibility
 
-Theme tokens (`--bw-theme-*`), `data-test` on bell, list items, unread dot, filters. `v-close-popup` on bell row click and footer actions.
+Theme tokens (`--tf-theme-*`), `data-test` on bell, list items, unread dot, filters. `v-close-popup` on bell row click and footer actions.
 
 ---
 

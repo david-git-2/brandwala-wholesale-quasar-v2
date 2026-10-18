@@ -4,7 +4,7 @@
       <div class="text-subtitle2 text-weight-bold">
         {{ $t('shop.items') }} ({{ itemCount }})
       </div>
-      <div v-if="currentShopCartInfo" class="bw-type-meta bw-text-muted">
+      <div v-if="currentShopCartInfo" class="tf-type-meta tf-text-muted">
         Store:
         <span class="text-weight-bold text-primary">{{ currentShopCartInfo.shop_name }}</span>
       </div>
@@ -17,7 +17,7 @@
         <q-item-section avatar class="item-img-section">
           <q-avatar size="64px" rounded color="grey-3" text-color="grey-9" class="shop-product-thumb">
             <q-img v-if="item.image_url" :src="item.image_url" fit="contain" />
-            <q-icon v-else name="ph ph-image" class="bw-text-muted" size="32px" />
+            <q-icon v-else name="ph ph-image" class="tf-text-muted" size="32px" />
           </q-avatar>
         </q-item-section>
 
@@ -40,14 +40,14 @@
               />
               <div
                 v-if="item.resell_minimum_price?.amount != null"
-                class="bw-type-meta row items-center q-gutter-x-xs"
-                :class="isItemPriceBelowFloor(item) ? 'text-negative' : 'bw-text-muted'"
+                class="tf-type-meta row items-center q-gutter-x-xs"
+                :class="isItemPriceBelowFloor(item) ? 'text-negative' : 'tf-text-muted'"
               >
                 <q-icon
                   :name="isItemPriceBelowFloor(item) ? 'ph ph-warning' : 'ph ph-info'"
                   size="14px"
                   :color="isItemPriceBelowFloor(item) ? 'negative' : undefined"
-                  :class="isItemPriceBelowFloor(item) ? undefined : 'bw-text-muted'"
+                  :class="isItemPriceBelowFloor(item) ? undefined : 'tf-text-muted'"
                 />
                 <span>{{ $t('customer_dashboard.min_sell', { price: formatMinSellPrice(item) }) }}</span>
               </div>
@@ -83,7 +83,7 @@
                 :disabled="isSaving || getItemQty(item) <= getItemMinQty(item)"
                 @click="$emit('adjust-qty-local', item, -getItemMinQty(item))"
               />
-              <div class="quantity-value text-weight-bold text-center bw-tabular">
+              <div class="quantity-value text-weight-bold text-center tf-tabular">
                 {{ getItemQty(item) }}
               </div>
               <q-btn
@@ -117,35 +117,35 @@
         >
           <template v-if="cart?.shop_type === 'dropship'">
             <div v-if="canSeeBuyPrice" class="q-mb-xs">
-              <span class="bw-type-meta bw-text-muted block q-mb-xs">{{ $t('shop.your_cost') }}</span>
-              <div class="text-subtitle2 text-weight-bold bw-tabular">
+              <span class="tf-type-meta tf-text-muted block q-mb-xs">{{ $t('shop.your_cost') }}</span>
+              <div class="text-subtitle2 text-weight-bold tf-tabular">
                 {{ formatBuyerItemTotal(item) }}
               </div>
-              <div class="bw-type-meta bw-text-muted">
+              <div class="tf-type-meta tf-text-muted">
                 {{ formatBuyerUnitPrice(item) }} {{ $t('shop.each') }}
               </div>
             </div>
             <div v-if="canSeeSellPrice && item.resell_minimum_price?.amount != null" class="q-mb-xs">
-              <span class="bw-type-meta bw-text-muted block q-mb-xs">Min Sell Price</span>
-              <div class="bw-type-meta text-weight-medium">
+              <span class="tf-type-meta tf-text-muted block q-mb-xs">Min Sell Price</span>
+              <div class="tf-type-meta text-weight-medium">
                 {{ formatMinSellPrice(item) }} {{ $t('shop.each') }}
               </div>
             </div>
             <div v-if="canSeeSellPrice" class="q-mt-xs">
-              <span class="bw-type-meta bw-text-muted block q-mb-xs">{{ $t('shop.recipient_pay') }}</span>
-              <div class="text-subtitle2 text-weight-bold text-primary bw-tabular">
+              <span class="tf-type-meta tf-text-muted block q-mb-xs">{{ $t('shop.recipient_pay') }}</span>
+              <div class="text-subtitle2 text-weight-bold text-primary tf-tabular">
                 {{ formatItemTotal(item) }}
               </div>
-              <div class="bw-type-meta bw-text-muted">
+              <div class="tf-type-meta tf-text-muted">
                 {{ formatUnitPrice(item) }} {{ $t('shop.each') }}
               </div>
             </div>
           </template>
           <template v-else-if="canSeeLinePrices">
-            <div class="text-subtitle2 text-weight-bold bw-tabular">
+            <div class="text-subtitle2 text-weight-bold tf-tabular">
               {{ formatItemTotal(item) }}
             </div>
-            <div class="bw-type-meta bw-text-muted">
+            <div class="tf-type-meta tf-text-muted">
               {{ formatUnitPrice(item) }} {{ $t('shop.each') }}
             </div>
           </template>
@@ -231,7 +231,7 @@ const getItemMinQty = (item: any) =>
 }
 
 .items-row:hover {
-  background: color-mix(in srgb, var(--bw-theme-surface) 92%, var(--bw-theme-primary-soft) 8%);
+  background: color-mix(in srgb, var(--tf-theme-surface) 92%, var(--tf-theme-primary-soft) 8%);
 }
 
 .item-name {
@@ -244,10 +244,10 @@ const getItemMinQty = (item: any) =>
 }
 
 .quantity-controls {
-  border: 1px solid var(--bw-theme-border);
-  border-radius: var(--bw-radius-sm);
+  border: 1px solid var(--tf-theme-border);
+  border-radius: var(--tf-radius-sm);
   padding: 2px 6px;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
 }
 
 .quantity-value {

@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md costing-details-page theme-shop">
     <PageInitialLoader v-if="initialLoading" />
-    <section v-else class="bw-page__stack costing-page">
+    <section v-else class="tf-page__stack costing-page">
       <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
         <q-card-section class="q-py-sm">
           <div class="row items-center justify-between q-col-gutter-sm">
@@ -987,6 +987,7 @@ import {
   summarizeCustomerProductRows,
 } from 'src/modules/costingFile/composables/useCostingFileDetailRows';
 import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
+import { useCostingFileDetailBreadcrumbs } from 'src/modules/costingFile/composables/useCostingFileDetailBreadcrumbs';
 import type { CostingFileItemStatus } from 'src/modules/costingFile/types';
 import { showSuccessNotification } from 'src/utils/appFeedback';
 
@@ -995,6 +996,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const costingFileStore = useCostingFileStore();
 const { selectedItem: selectedFile, costingFileItems: itemForms } = storeToRefs(costingFileStore);
+useCostingFileDetailBreadcrumbs('shop', () => selectedFile.value);
 
 const submitDialog = ref(false);
 const addItemDialogOpen = ref(false);
@@ -1764,7 +1766,7 @@ watch(
 .costing-page__field-label {
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .costing-page__required-star {
@@ -1776,9 +1778,9 @@ watch(
   display: grid;
   gap: 0.6rem;
   padding: 0.85rem;
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
   border-radius: 12px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--bw-theme-primary) 4%, white), white);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tf-theme-primary) 4%, white), white);
 }
 
 .costing-page__link-preview-head {
@@ -1791,20 +1793,20 @@ watch(
 .costing-page__link-preview-title {
   font-size: 0.92rem;
   font-weight: 700;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .costing-page__link-preview-frame {
   width: 100%;
   height: 240px;
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
   border-radius: 10px;
   background: #fff;
 }
 
 .costing-page__link-preview-note {
   font-size: 0.8rem;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .costing-page__request-actions {
@@ -1830,7 +1832,7 @@ watch(
 
 .costing-page__table :deep(.costing-page__sticky-col) {
   position: sticky;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
 }
 
 .costing-page__table :deep(td.costing-page__sticky-col) {
@@ -1851,22 +1853,22 @@ watch(
 
 .costing-page__table :deep(td.costing-page__sticky-col--sl) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .costing-page__table :deep(td.costing-page__sticky-col--image) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .costing-page__table :deep(th.costing-page__sticky-col--sl) {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .costing-page__table :deep(th.costing-page__sticky-col--image) {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .costing-page__sl-cell {
@@ -1990,7 +1992,7 @@ watch(
   height: 96px;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
 }
 
 .costing-page__image :deep(.q-img__image) {
@@ -2002,8 +2004,8 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px dashed var(--bw-theme-border);
-  color: var(--bw-theme-muted);
+  border: 1px dashed var(--tf-theme-border);
+  color: var(--tf-theme-muted);
   font-size: 0.75rem;
   text-align: center;
   padding: 0.5rem;
@@ -2030,8 +2032,8 @@ watch(
   min-width: 84px;
   padding: 0.3rem 0.55rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bw-theme-primary) 10%, white);
-  color: var(--bw-theme-primary);
+  background: color-mix(in srgb, var(--tf-theme-primary) 10%, white);
+  color: var(--tf-theme-primary);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -2060,7 +2062,7 @@ watch(
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: bottom;
-  color: var(--bw-theme-primary);
+  color: var(--tf-theme-primary);
   text-decoration: none;
 }
 
@@ -2093,7 +2095,7 @@ watch(
   top: 0;
   z-index: 7;
   padding: 0.5rem 0;
-  background: var(--bw-theme-base, #f4f6f8);
+  background: var(--tf-theme-base, #f4f6f8);
 }
 
 .costing-page__shared-profit-input {
@@ -2130,7 +2132,7 @@ watch(
 .costing-page__table :deep(.q-table__container),
 .costing-page__table :deep(.q-table__middle),
 .costing-page__table :deep(.q-table__bottom) {
-  background: var(--bw-theme-base, #f4f6f8);
+  background: var(--tf-theme-base, #f4f6f8);
 }
 
 .costing-page__table :deep(.q-table thead tr th),
@@ -2149,7 +2151,7 @@ watch(
 .costing-page__table--offered :deep(.q-table thead tr th) {
   position: sticky;
   z-index: 2;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
 }
 
 .costing-page__table--offered :deep(.q-table thead tr:first-child th) {
@@ -2176,22 +2178,22 @@ watch(
 
 .costing-page__table--offered :deep(.q-table td:first-child) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .costing-page__table--offered :deep(.q-table td:nth-child(2)) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .costing-page__table--offered :deep(.q-table tr:first-child th:first-child) {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .costing-page__table--offered :deep(.q-table tr:first-child th:nth-child(2)) {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .costing-page__table--offered :deep(.q-table tbody) {

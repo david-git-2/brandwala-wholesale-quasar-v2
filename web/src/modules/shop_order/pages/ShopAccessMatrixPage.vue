@@ -1,6 +1,6 @@
 <template>
-  <component :is="embedded ? 'div' : 'q-page'" :class="embedded ? 'access-embedded' : 'bw-page'">
-    <section :class="embedded ? 'access-section column no-wrap full-height' : 'bw-page__stack'">
+  <component :is="embedded ? 'div' : 'q-page'" :class="embedded ? 'access-embedded' : 'tf-page'">
+    <section :class="embedded ? 'access-section column no-wrap full-height' : 'tf-page__stack'">
       <section v-if="!embedded" class="row items-center q-col-gutter-md q-mb-md">
         <div class="col-12 row items-center no-wrap">
           <q-btn
@@ -1212,7 +1212,7 @@ onMounted(load);
 }
 
 .access-side-panel__footer {
-  border-top: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-top: 1px solid var(--tf-theme-border, #e2e8f0);
 }
 
 .access-listing-list {
@@ -1285,7 +1285,7 @@ body.body--dark .access-table :deep(tbody tr:hover) {
 }
 
 .border-top {
-  border-top: 1px solid var(--bw-theme-border);
+  border-top: 1px solid var(--tf-theme-border);
 }
 
 .opacity-80 {

@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page page-fixed-layout q-pa-md">
-    <section class="bw-page__stack" style="min-width: 0; flex: 1 1 0%; display: flex; flex-direction: column; overflow: hidden;">
+  <q-page class="tf-page page-fixed-layout q-pa-md">
+    <section class="tf-page__stack" style="min-width: 0; flex: 1 1 0%; display: flex; flex-direction: column; overflow: hidden;">
       <AppPageHeader
         dense
         eyebrow="Procurement & Stock"
@@ -22,7 +22,7 @@
         </template>
       </AppPageHeader>
 
-      <q-banner v-if="error" class="bw-status-banner bg-negative text-white q-mb-md">
+      <q-banner v-if="error" class="tf-status-banner bg-negative text-white q-mb-md">
         {{ error }}
       </q-banner>
 

@@ -2000,6 +2000,7 @@ CREATE TABLE IF NOT EXISTS "public"."preorder_demand" (
     "tenant_id" bigint NOT NULL,
     "source_type" "public"."preorder_demand_source_type" NOT NULL,
     "source_id" bigint NOT NULL,
+    "profile_id" bigint,
     "vendor_id" bigint,
     "placed_quantity" integer DEFAULT 0 NOT NULL,
     "delivered_quantity" integer DEFAULT 0 NOT NULL,
@@ -2031,6 +2032,10 @@ ALTER TABLE ONLY "public"."preorder_demand"
 
 
 ALTER TABLE ONLY "public"."preorder_demand"
+    ADD CONSTRAINT "preorder_demand_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+ALTER TABLE ONLY "public"."preorder_demand"
     ADD CONSTRAINT "preorder_demand_updated_by_user_id_fkey" FOREIGN KEY ("updated_by_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
 
 
@@ -2038,6 +2043,9 @@ CREATE INDEX "preorder_demand_source_idx" ON "public"."preorder_demand" USING "b
 
 
 CREATE INDEX "preorder_demand_tenant_updated_idx" ON "public"."preorder_demand" USING "btree" ("tenant_id", "updated_at" DESC);
+
+
+CREATE INDEX "preorder_demand_tenant_profile_idx" ON "public"."preorder_demand" USING "btree" ("tenant_id", "profile_id") WHERE ("profile_id" IS NOT NULL);
 
 
 CREATE OR REPLACE TRIGGER "trg_preorder_demand_set_updated_at" BEFORE UPDATE ON "public"."preorder_demand" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();

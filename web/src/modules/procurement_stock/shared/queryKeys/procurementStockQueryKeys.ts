@@ -82,6 +82,7 @@ export const procurementStockQueryKeys = {
     procurementStatus: string;
     search?: string | null;
     childTenantId?: number | null;
+    profileId?: number | null;
     limit?: number;
     offset?: number;
   }) => ['procurementStock', 'demandGroups', params] as const,
@@ -98,6 +99,7 @@ export const procurementStockQueryKeys = {
     tenantId: number;
     procurementStatus: string;
     search?: string | null;
+    profileId?: number | null;
     limit?: number;
     offset?: number;
   }) => ['procurementStock', 'fulfillGroups', params] as const,

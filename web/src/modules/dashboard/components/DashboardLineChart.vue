@@ -81,6 +81,6 @@ const options: ChartOptions<'line'> = {
   place-items: center;
   text-align: center;
   font-size: 13px;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 </style>

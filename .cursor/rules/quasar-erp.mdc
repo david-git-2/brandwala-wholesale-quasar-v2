@@ -1,0 +1,55 @@
+---
+description: Enterprise UI styling and dense layout standards for Quasar Vue components
+globs: web/src/**/*.vue, web/src/**/*.scss
+alwaysApply: false
+---
+
+# Quasar ERP UI (flat, bordered, dense)
+
+Tokens: `web/src/css/app.scss`. Status map: `web/src/utils/statusMap.ts`. Layout: `docs/guides/ui-standards.md`.
+
+## Shared components (`web/src/components/ui/`)
+
+`TfBtn` button · `TfStatusBadge` status · `TfConfirmDialog` confirm · `TfDrawerSectionTabs` / `TfDrawerSectionTabsHeader` (segmented pill tabs — drawers + list filters) · `TfTabs` underline tabs (rare) · `TfSegmented` legacy · `TfSideSheet` right panel (420/560/720) · `TfEmptyState` · `useNotify()` toast.
+
+## Color (central — never choose colors in a page)
+
+- DON'T write hex/rgb, Quasar palette names (`blue-1`, `teal-9`, `amber`, `grey-7`), or per-page status functions.
+- Status → `<TfStatusBadge :status="raw" :label="…">`. New status string → add to `statusMap.ts` only.
+- Groups: `wait` grey · `attention` amber (someone must act) · `progress` slate-sky · `done` green · `bad` red.
+- Row/status dot: `tf-dot tf-dot--<group>`. DON'T add side accent bars or tinted row backgrounds.
+- Text/borders/surfaces: `--tf-neutral-*` tokens. Tints: `--tf-*-soft`. Primary: `--tf-theme-primary` (actions only, never state).
+- Money: `text-positive`/`text-negative` only with a sign or icon.
+
+## Dark mode
+
+- Dark tokens only in `app.scss` (`body.body--dark`). Pages never define dark hex; use `--tf-neutral-*`, `--tf-*-soft`, `--tf-theme-primary` / `--tf-theme-on-primary`. No warm brown or green surfaces.
+
+## Global
+
+- Borders `1px solid var(--tf-neutral-border)`; inputs `--tf-neutral-border-strong`.
+- DON'T add `box-shadow`, `shadow-*`, `q-card--elevated`, hover lift. Allowed: `--tf-focus-ring`, `q-menu`.
+- Radius `--tf-radius-sm`. DON'T use `rounded`/pill except badges.
+- `:ripple="false"`. Spacing `q-pa-sm|md`, `q-gutter-sm`; DON'T use `q-pa-lg|xl`. Icons: Phosphor `ph ph-*`.
+- Motion: `--tf-dur-fast|--tf-dur`, `--tf-ease`; animate opacity/transform/color only; `tf-fade`, `tf-slide-right`.
+
+## Components
+
+- `<q-btn>`: `unelevated no-caps` (prefer `TfBtn`). Row actions `flat dense size="sm"`. No `push`/`glossy`/`rounded`/`round`/`fab`.
+- `<q-card flat bordered>` always. Detail panels: `TfSideSheet`, not hand-built right dialogs. Dialog titles 15px/600.
+- Fields: `outlined dense hide-bottom-space`. No `filled`/`standout`/`borderless`/`rounded`.
+- Section / status / filter tabs: `TfDrawerSectionTabs` (or `TfDrawerSectionTabsHeader` + close in `#trailing`). Do not hand-roll `quick-filter-pill` or duplicate `shipment-drawer-tabs` CSS. Empty: `TfEmptyState`.
+
+## Tables
+
+- `flat bordered dense`. Header uppercase 11px/600, `letter-spacing:.04em`, `--tf-neutral-chrome-text`. Cells `4px 8px`.
+- First column (code/ID/SKU): sticky left, opaque surface, right border, mono.
+- Numeric: `align: 'right'` + class `tf-num` (header too). >100 rows: `virtual-scroll`.
+
+## Size
+
+- Page file ≤ 150 lines; part component ≤ 250. Split: template blocks → `components/<Page><Part>.vue`, logic → `composables/use<Page>.ts`.
+
+## Checklist
+
+grep diff: `#[0-9a-f]{3,6}`, `shadow`, `filled`, `push`, `rounded`, `q-pa-xl`, `text-h6`, `blue-|teal-|amber|grey-[0-9]`.

@@ -2,14 +2,11 @@
   <div class="row items-center q-gutter-xs wrap pbc-status-workflow-row">
     <template v-for="(st, idx) in workflowStatuses" :key="st">
       <q-btn
-        :color="status === st ? pbcFileStatusWorkflowColor(st) : isPassedStatus(status, st) ? 'grey-5' : 'grey-3'"
-        :text-color="status === st ? 'white' : isPassedStatus(status, st) ? 'grey-9' : 'grey-7'"
-        :outline="status !== st"
-        :unelevated="status === st"
+        flat
         dense
         no-caps
         size="sm"
-        class="q-px-sm text-caption status-chip-btn"
+        :class="chipClass(st)"
         :loading="updating && targetStatus === st"
         :disable="isStatusDisabled(st)"
         @click="$emit('update-status', st)"
@@ -28,14 +25,11 @@
     <q-separator vertical inset class="q-mx-xs status-workflow-sep" />
 
     <q-btn
-      :color="status === 'cancelled' ? 'negative' : 'grey-3'"
-      :text-color="status === 'cancelled' ? 'white' : 'grey-7'"
-      :outline="status !== 'cancelled'"
-      :unelevated="status === 'cancelled'"
+      flat
       dense
       no-caps
       size="sm"
-      class="q-px-sm text-caption status-chip-btn"
+      :class="chipClass('cancelled')"
       :loading="updating && targetStatus === 'cancelled'"
       :disable="isStatusDisabled('cancelled')"
       @click="$emit('update-status', 'cancelled')"
@@ -48,7 +42,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import { normalizePbcFileStatus, workflowStatuses } from '../composables/useProductBasedCostingFileDetailsState';
-import { pbcFileStatusWorkflowColor } from '../utils/pbcFileStatus';
 
 const props = defineProps<{
   status: string;
@@ -65,6 +58,11 @@ const { t } = useI18n();
 function statusLabel(st: string): string {
   const key = normalizePbcFileStatus(st);
   return t(`product_based_costing.status_${key}`);
+}
+
+function chipClass(st: string): string[] {
+  const state = normalizePbcFileStatus(props.status) === st ? 'active' : isPassedStatus(props.status, st) ? 'passed' : 'todo';
+  return ['q-px-sm', 'text-caption', 'status-chip-btn', `pbc-chip--${st}`, `status-chip-btn--${state}`];
 }
 
 function isPassedStatus(currentStatus: string, st: string): boolean {
@@ -94,6 +92,29 @@ function isStatusDisabled(st: string): boolean {
   padding-bottom: 0;
   border-radius: 6px;
   font-weight: 500;
+}
+
+.status-chip-btn {
+  --pbc-c: var(--tf-neutral-muted);
+  color: var(--tf-neutral-muted);
+  border: 1px solid var(--tf-neutral-border);
+}
+.pbc-chip--pending { --pbc-c: var(--tf-pbc-pending); }
+.pbc-chip--offered { --pbc-c: var(--tf-pbc-offered); }
+.pbc-chip--confirmed { --pbc-c: var(--tf-pbc-confirmed); }
+.pbc-chip--procuring { --pbc-c: var(--tf-pbc-procuring); }
+.pbc-chip--packed { --pbc-c: var(--tf-pbc-packed); }
+.pbc-chip--delivered { --pbc-c: var(--tf-pbc-delivered); }
+.pbc-chip--cancelled { --pbc-c: var(--tf-pbc-cancelled); }
+.status-chip-btn--passed {
+  color: var(--pbc-c);
+  background: color-mix(in srgb, var(--pbc-c) 14%, var(--tf-neutral-surface));
+  border-color: color-mix(in srgb, var(--pbc-c) 40%, var(--tf-neutral-surface));
+}
+.status-chip-btn--active {
+  color: var(--tf-neutral-surface);
+  background: var(--pbc-c);
+  border-color: var(--pbc-c);
 }
 
 .status-workflow-sep {

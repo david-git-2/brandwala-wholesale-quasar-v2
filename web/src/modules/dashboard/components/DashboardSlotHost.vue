@@ -61,15 +61,15 @@ const slotClass = computed(() => ({
   min-height: 72px;
   padding: 0.9rem 1rem;
   border-radius: 14px;
-  border: 1px solid var(--bw-theme-border);
-  background: var(--bw-theme-surface);
+  border: 1px solid var(--tf-theme-border);
+  background: var(--tf-theme-surface);
   color: inherit;
   text-decoration: none;
   transition: border-color 0.15s ease;
 }
 
 .dashboard-slot:hover {
-  border-color: var(--bw-theme-primary);
+  border-color: var(--tf-theme-primary);
 }
 
 .dashboard-slot__icon {
@@ -80,8 +80,8 @@ const slotClass = computed(() => ({
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--bw-theme-primary-soft, rgb(var(--bw-theme-primary-rgb) / 0.15));
-  color: var(--bw-theme-primary);
+  background: var(--tf-theme-primary-soft, rgb(var(--tf-theme-primary-rgb) / 0.15));
+  color: var(--tf-theme-primary);
 }
 
 .dashboard-slot__icon i {
@@ -99,22 +99,22 @@ const slotClass = computed(() => ({
   font-size: 1.02rem;
   font-weight: 700;
   line-height: 1.3;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .dashboard-slot__caption {
   font-size: 0.875rem;
   line-height: 1.35;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .dashboard-slot__chevron {
   flex: 0 0 auto;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
   font-size: 1.1rem;
 }
 
 .dashboard-slot--primary {
-  border-color: rgb(var(--bw-theme-primary-rgb) / 0.28);
+  border-color: rgb(var(--tf-theme-primary-rgb) / 0.28);
 }
 </style>

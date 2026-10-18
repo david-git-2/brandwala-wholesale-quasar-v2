@@ -4,7 +4,7 @@
       <div class="dashboard-share-bars__head">
         <span class="dashboard-share-bars__label">{{ row.label }}</span>
         <span class="dashboard-share-bars__sep" aria-hidden="true">·</span>
-        <span class="dashboard-share-bars__value bw-tabular">{{ row.displayValue ?? row.value }}</span>
+        <span class="dashboard-share-bars__value tf-tabular">{{ row.displayValue ?? row.value }}</span>
       </div>
       <div class="dashboard-share-bars__track">
         <div
@@ -68,23 +68,23 @@ const barWidth = (row: DashboardShareBarRow) => {
 }
 
 .dashboard-share-bars__label {
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
   min-width: 0;
 }
 
 .dashboard-share-bars__sep {
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .dashboard-share-bars__value {
   font-weight: 600;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .dashboard-share-bars__track {
   height: 8px;
   border-radius: 999px;
-  background: var(--bw-theme-border);
+  background: var(--tf-theme-border);
   overflow: hidden;
 }
 
@@ -95,19 +95,19 @@ const barWidth = (row: DashboardShareBarRow) => {
 }
 
 .dashboard-share-bars__fill--primary {
-  background: color-mix(in srgb, var(--bw-theme-primary) 70%, transparent);
+  background: color-mix(in srgb, var(--tf-theme-primary) 70%, transparent);
 }
 
 .dashboard-share-bars__fill--warn {
-  background: color-mix(in srgb, var(--bw-warning) 70%, transparent);
+  background: color-mix(in srgb, var(--tf-warning) 70%, transparent);
 }
 
 .dashboard-share-bars__fill--success {
-  background: color-mix(in srgb, var(--bw-success) 70%, transparent);
+  background: color-mix(in srgb, var(--tf-success) 70%, transparent);
 }
 
 .dashboard-share-bars__empty {
   font-size: 12px;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 </style>

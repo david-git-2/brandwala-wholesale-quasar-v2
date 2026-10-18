@@ -21,7 +21,7 @@
         </div>
       </section>
 
-      <q-banner v-if="store.error" class="bw-status-banner bg-negative text-white">
+      <q-banner v-if="store.error" class="tf-status-banner bg-negative text-white">
         <div class="row items-center justify-between q-gutter-sm">
           <div>{{ store.error }}</div>
           <q-btn flat dense no-caps color="white" label="Retry" @click="reload" />

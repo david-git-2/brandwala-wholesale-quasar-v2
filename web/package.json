@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A Quasar Project",
   "productName": "TradeflowBD",
   "author": "marceldavidbaroi <marceldavidbaroi@gmail.com>",
@@ -11,7 +11,10 @@
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
-    "build": "quasar build",
+    "build": "node ../scripts/check-contrast.mjs && quasar build",
+    "build:analyze": "PERF_ANALYZE=1 node ../scripts/check-contrast.mjs && quasar build",
+    "check:contrast": "node ../scripts/check-contrast.mjs",
+    "check:ui-colors": "node ../scripts/check-ui-colors.mjs",
     "type-check": "vue-tsc --noEmit",
     "perf-budget": "node scripts/perf-budget.mjs",
     "postinstall": "quasar prepare"

@@ -4,7 +4,7 @@
       <q-spinner color="primary" size="3em" />
     </div>
 
-    <q-banner v-else-if="error" class="bw-status-banner bg-negative text-white q-ma-xs shrink-0">
+    <q-banner v-else-if="error" class="tf-status-banner bg-negative text-white q-ma-xs shrink-0">
       {{ error }}
     </q-banner>
 

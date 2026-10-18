@@ -1,52 +1,132 @@
 <template>
   <q-page class="shops-page q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
-      <!-- Toolbar -->
-      <q-card flat bordered class="shops-toolbar q-pa-xs flex-shrink-0">
-        <div class="row items-center justify-between q-col-gutter-xs">
-          <div class="col-12 col-md row items-center q-gutter-x-xs wrap">
-            <q-input
-              v-model="search"
-              clearable
-              debounce="350"
-              dense
-              outlined
-              rounded
-              class="shops-search col-grow col-sm-auto"
-              style="min-width: 240px"
-              :placeholder="$t('shop_admin.search_shops_placeholder')"
-              data-test="shops-search"
-            >
-              <template #prepend>
-                <q-icon name="ph ph-magnifying-glass" size="16px" class="text-grey-6" />
-              </template>
-            </q-input>
+      <!-- Toolbar: mobile compact -->
+      <q-card flat bordered class="shops-toolbar shops-toolbar--mobile q-pa-xs flex-shrink-0 lt-sm">
+        <div v-if="!mobileSearchOpen" class="row items-center no-wrap q-gutter-x-xs">
+          <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-magnifying-glass"
+            class="shops-toolbar-icon-btn"
+            :aria-label="$t('shop_admin.search_shops_placeholder')"
+            data-test="shops-search-toggle"
+            @click="openMobileSearch"
+          />
+          <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-funnel"
+            class="shops-toolbar-icon-btn"
+            aria-label="Filters"
+            data-test="shops-filter-toggle"
+            @click="filterDrawerOpen = true"
+          >
+            <q-badge v-if="shopsFilterCount > 0" color="primary" rounded floating>
+              {{ shopsFilterCount }}
+            </q-badge>
+          </q-btn>
+          <q-chip
+            v-if="search.trim()"
+            dense
+            removable
+            class="shops-toolbar-search-chip"
+            @remove="search = ''"
+          >
+            {{ search.trim() }}
+          </q-chip>
+          <q-space />
+          <q-btn
+            color="primary"
+            unelevated
+            round
+            dense
+            icon="ph ph-plus"
+            class="shops-toolbar-fab"
+            :aria-label="$t('shop_admin.new_shop')"
+            data-test="shops-create"
+            @click="openCreate"
+          />
+        </div>
+        <div v-else class="row items-center no-wrap q-gutter-x-xs">
+          <q-input
+            ref="mobileSearchInputRef"
+            v-model="search"
+            clearable
+            debounce="350"
+            dense
+            outlined
+            rounded
+            autofocus
+            class="shops-search col min-width-0"
+            :placeholder="$t('shop_admin.search_shops_placeholder')"
+            data-test="shops-search"
+          >
+            <template #prepend>
+              <q-icon name="ph ph-magnifying-glass" size="16px" class="text-grey-6" />
+            </template>
+          </q-input>
+          <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-x"
+            class="shops-toolbar-icon-btn"
+            aria-label="Close search"
+            @click="closeMobileSearch"
+          />
+        </div>
+      </q-card>
 
-            <q-select
-              v-if="isParentTenant && childTenantOptions.length > 0"
-              v-model="selectedChildTenantId"
-              :options="childTenantOptions"
-              option-value="value"
-              option-label="label"
-              emit-value
-              map-options
-              dense
-              outlined
-              rounded
-              clearable
-              options-dense
-              class="shops-business-select col-grow col-sm-auto"
-              style="min-width: 190px"
-              placeholder="Filter by business"
-              :loading="childTenantsLoading"
-              data-test="shops-business-filter"
-            >
-              <template #prepend>
-                <q-icon name="ph ph-buildings" size="16px" class="text-grey-6" />
-              </template>
-            </q-select>
+      <!-- Toolbar: tablet/desktop -->
+      <q-card flat bordered class="shops-toolbar q-pa-xs flex-shrink-0 gt-xs">
+        <div
+          class="shops-toolbar__grid"
+          :class="{ 'shops-toolbar__grid--with-business': isParentTenant && childTenantOptions.length > 0 }"
+        >
+          <q-input
+            v-model="search"
+            clearable
+            debounce="350"
+            dense
+            outlined
+            rounded
+            class="shops-toolbar__search shops-search"
+            :placeholder="$t('shop_admin.search_shops_placeholder')"
+            data-test="shops-search-desktop"
+          >
+            <template #prepend>
+              <q-icon name="ph ph-magnifying-glass" size="16px" class="text-grey-6" />
+            </template>
+          </q-input>
 
-            <div class="shops-segmented col-auto" role="tablist" :aria-label="$t('shop_admin.status')">
+          <q-select
+            v-if="isParentTenant && childTenantOptions.length > 0"
+            v-model="selectedChildTenantId"
+            :options="childTenantOptions"
+            option-value="value"
+            option-label="label"
+            emit-value
+            map-options
+            dense
+            outlined
+            rounded
+            clearable
+            options-dense
+            class="shops-toolbar__business shops-business-select"
+            placeholder="Filter by business"
+            :loading="childTenantsLoading"
+            data-test="shops-business-filter"
+          >
+            <template #prepend>
+              <q-icon name="ph ph-buildings" size="16px" class="text-grey-6" />
+            </template>
+          </q-select>
+
+          <div class="shops-toolbar__filters min-width-0">
+            <div class="shops-segmented" role="tablist" :aria-label="$t('shop_admin.status')">
               <button
                 v-for="option in filterOptions"
                 :key="String(option.value)"
@@ -60,18 +140,16 @@
             </div>
           </div>
 
-          <div class="col-auto">
-            <q-btn
-              color="primary"
-              unelevated
-              no-caps
-              class="shops-create-btn text-weight-bold"
-              icon="ph ph-plus"
-              :label="$t('shop_admin.new_shop')"
-              data-test="shops-create"
-              @click="openCreate"
-            />
-          </div>
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            class="shops-toolbar__create shops-create-btn text-weight-bold"
+            icon="ph ph-plus"
+            :label="$t('shop_admin.new_shop')"
+            data-test="shops-create-desktop"
+            @click="openCreate"
+          />
         </div>
       </q-card>
 
@@ -220,14 +298,27 @@
                         {{ vendor }}
                       </span>
                     </template>
+                  </div>
+
+                  <div
+                    v-if="shopVendorCatalogLines(shop).length"
+                    class="shop-catalog-meta row wrap q-gutter-xs q-mt-xs"
+                  >
                     <span
                       v-for="line in shopVendorCatalogLines(shop)"
                       :key="line.vendor"
-                      class="meta-catalog-update row items-center no-wrap q-gutter-x-xs"
+                      class="meta-catalog-update"
+                      :title="`${line.vendor}: ${line.fileName} (${line.updatedAt})`"
                     >
-                      <span class="meta-catalog-update__vendor text-grey-7">{{ line.vendor }}</span>
-                      <span class="meta-catalog-update__file text-grey-9">{{ line.fileName }}</span>
-                      <span class="meta-catalog-update__date text-grey-5">{{ line.updatedAt }}</span>
+                      <span class="meta-catalog-update__vendor">{{ line.vendor }}</span>
+                      <span class="meta-catalog-update__file">
+                        <q-icon name="ph ph-file-xls" size="13px" class="meta-catalog-update__icon" />
+                        <span class="meta-catalog-update__file-text">{{ line.fileName }}</span>
+                      </span>
+                      <span class="meta-catalog-update__date">
+                        <q-icon name="ph ph-calendar-blank" size="13px" class="meta-catalog-update__icon" />
+                        {{ line.updatedAt }}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -272,14 +363,66 @@
       :save-error="dialogError"
       @save="onSave"
     />
+
+    <FilterSidebar v-model="filterDrawerOpen" title="Filter shops">
+      <div class="text-caption text-weight-medium text-grey-7 q-mb-sm">
+        {{ $t('shop_admin.status') }}
+      </div>
+      <div class="shops-segmented shops-segmented--drawer" role="tablist" :aria-label="$t('shop_admin.status')">
+        <button
+          v-for="option in filterOptions"
+          :key="`drawer-${String(option.value)}`"
+          type="button"
+          class="shops-segmented__item"
+          :class="{ 'shops-segmented__item--active': activeFilter === option.value }"
+          @click="activeFilter = option.value"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+
+      <q-select
+        v-if="isParentTenant && childTenantOptions.length > 0"
+        v-model="selectedChildTenantId"
+        :options="childTenantOptions"
+        option-value="value"
+        option-label="label"
+        emit-value
+        map-options
+        dense
+        outlined
+        clearable
+        options-dense
+        class="shops-business-select q-mt-md"
+        label="Business"
+        :loading="childTenantsLoading"
+        data-test="shops-business-filter-drawer"
+      />
+
+      <template #footer>
+        <div class="row items-center justify-between full-width">
+          <q-btn
+            flat
+            no-caps
+            color="grey-7"
+            label="Reset"
+            :disable="!shopsFilterCount"
+            @click="onResetDrawerFilters"
+          />
+          <q-btn flat no-caps color="primary" label="Done" @click="filterDrawerOpen = false" />
+        </div>
+      </template>
+    </FilterSidebar>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
+import type { QInput } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue';
 import { useChildTenantsQuery } from 'src/modules/procurement_stock/composables/useProcurementStockQuery';
 import { useInfiniteShopListQuery, type ShopListQueryParams } from '../composables/useShopQuery';
@@ -307,6 +450,36 @@ const { data: childTenants, isLoading: childTenantsLoading } = useChildTenantsQu
 const search = ref<string>('');
 const activeFilter = ref<boolean | null>(null);
 const selectedChildTenantId = ref<number | null>(null);
+const filterDrawerOpen = ref(false);
+const mobileSearchOpen = ref(false);
+const mobileSearchInputRef = ref<QInput | null>(null);
+
+const shopsFilterCount = computed(() => {
+  let count = 0;
+  if (activeFilter.value !== null) {
+    count += 1;
+  }
+  if (selectedChildTenantId.value !== null) {
+    count += 1;
+  }
+  return count;
+});
+
+const openMobileSearch = () => {
+  mobileSearchOpen.value = true;
+  void nextTick(() => {
+    mobileSearchInputRef.value?.focus();
+  });
+};
+
+const closeMobileSearch = () => {
+  mobileSearchOpen.value = false;
+};
+
+const onResetDrawerFilters = () => {
+  activeFilter.value = null;
+  selectedChildTenantId.value = null;
+};
 
 const queryParams = computed<ShopListQueryParams>(() => {
   const isChildSelected = selectedChildTenantId.value !== null;
@@ -459,9 +632,87 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
 }
 
 .shops-toolbar {
-  background: var(--bw-theme-surface, #ffffff);
-  border-radius: var(--bw-radius-md, 10px);
-  border-color: var(--bw-theme-border, #e2e8f0);
+  background: var(--tf-theme-surface, #ffffff);
+  border-radius: var(--tf-radius-md, 10px);
+  border-color: var(--tf-theme-border, #e2e8f0);
+}
+
+.shops-toolbar--mobile {
+  min-height: 44px;
+}
+
+.shops-toolbar-icon-btn {
+  color: var(--tf-theme-muted, #64748b);
+}
+
+.shops-toolbar-fab {
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--tf-theme-primary, #10b981) 35%, transparent);
+}
+
+.shops-toolbar-search-chip {
+  max-width: 140px;
+  font-size: 11px;
+}
+
+.shops-toolbar-search-chip :deep(.q-chip__content) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shops-segmented--drawer {
+  display: flex;
+  width: 100%;
+}
+
+.shops-segmented--drawer .shops-segmented__item {
+  flex: 1 1 0;
+  text-align: center;
+  padding: 8px 6px;
+}
+
+.shops-toolbar__grid {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'search'
+    'filters'
+    'create';
+}
+
+.shops-toolbar__grid--with-business {
+  grid-template-areas:
+    'search'
+    'business'
+    'filters'
+    'create';
+}
+
+.shops-toolbar__search {
+  grid-area: search;
+  min-width: 0;
+  width: 100%;
+}
+
+.shops-toolbar__business {
+  grid-area: business;
+  min-width: 0;
+  width: 100%;
+}
+
+.shops-toolbar__filters {
+  grid-area: filters;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.shops-toolbar__create {
+  grid-area: create;
+  width: 100%;
 }
 
 .shops-search :deep(.q-field__control),
@@ -475,7 +726,46 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
   gap: 2px;
   padding: 3px;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 40%, #f8fafc 60%);
+  background: color-mix(in srgb, var(--tf-theme-border, #e2e8f0) 40%, #f8fafc 60%);
+  width: max-content;
+  max-width: 100%;
+}
+
+@media (min-width: 600px) {
+  .shops-toolbar__grid {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'search create'
+      'filters filters';
+  }
+
+  .shops-toolbar__grid--with-business {
+    grid-template-areas:
+      'search create'
+      'business business'
+      'filters filters';
+  }
+
+  .shops-toolbar__create {
+    width: auto;
+    justify-self: end;
+  }
+}
+
+@media (min-width: 768px) {
+  .shops-toolbar__grid {
+    grid-template-columns: minmax(200px, 1fr) auto auto;
+    grid-template-areas: 'search filters create';
+  }
+
+  .shops-toolbar__grid--with-business {
+    grid-template-columns: minmax(180px, 1fr) minmax(160px, 220px) auto auto;
+    grid-template-areas: 'search business filters create';
+  }
+
+  .shops-toolbar__business {
+    width: auto;
+  }
 }
 
 .shops-segmented__item {
@@ -493,27 +783,27 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
 }
 
 .shops-segmented__item--active {
-  background: var(--bw-theme-surface, #ffffff);
+  background: var(--tf-theme-surface, #ffffff);
   color: #0f172a;
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
 }
 
 .shops-create-btn {
-  border-radius: var(--bw-radius-sm, 8px);
+  border-radius: var(--tf-radius-sm, 8px);
   min-height: 36px;
 }
 
 /* Linear List Card & Scroll Structure */
 .clean-list-card {
-  background: var(--bw-theme-surface, #ffffff);
-  border: 1px solid var(--bw-theme-border, #e2e8f0);
-  border-radius: var(--bw-radius-md, 10px);
+  background: var(--tf-theme-surface, #ffffff);
+  border: 1px solid var(--tf-theme-border, #e2e8f0);
+  border-radius: var(--tf-radius-md, 10px);
   max-height: 100%;
 }
 
 .shops-list-meta-bar {
-  background: var(--bw-neutral-surface, #f8fafc);
-  border-bottom: 1px solid var(--bw-theme-border, #e2e8f0);
+  background: var(--tf-neutral-surface, #f8fafc);
+  border-bottom: 1px solid var(--tf-theme-border, #e2e8f0);
   min-height: 34px;
 }
 
@@ -554,7 +844,7 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
   align-items: center;
   justify-content: space-between;
   padding: 0.65rem 1rem;
-  border-bottom: 1px solid var(--bw-theme-border, #f1f5f9);
+  border-bottom: 1px solid var(--tf-theme-border, #f1f5f9);
   cursor: pointer;
   transition: all 0.15s ease;
   min-height: 54px;
@@ -569,7 +859,7 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
 }
 
 .clean-list-item:hover .shop-name {
-  color: var(--bw-theme-primary, #4f46e5);
+  color: var(--tf-theme-primary, #4f46e5);
 }
 
 /* Status Row Accents */
@@ -582,9 +872,9 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
 }
 
 .shop-avatar {
-  background: color-mix(in srgb, var(--bw-theme-primary-soft, #eef2ff) 70%, #fff 30%);
-  color: var(--bw-theme-primary, #4f46e5);
-  border-radius: var(--bw-radius-sm, 8px);
+  background: color-mix(in srgb, var(--tf-theme-primary-soft, #eef2ff) 70%, #fff 30%);
+  color: var(--tf-theme-primary, #4f46e5);
+  border-radius: var(--tf-radius-sm, 8px);
 }
 
 .shop-name {
@@ -612,7 +902,7 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
 }
 
 .meta-pill--type {
-  background: color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 28%, #f4f4f5 72%);
+  background: color-mix(in srgb, var(--tf-theme-border, #e2e8f0) 28%, #f4f4f5 72%);
   color: #3f3f46;
 }
 
@@ -622,29 +912,69 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
   border: 1px solid #dbeafe;
 }
 
+.shop-catalog-meta {
+  width: 100%;
+}
+
 .meta-catalog-update {
-  font-size: 11px;
-  line-height: 1.3;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
   max-width: 100%;
-  overflow: hidden;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  background: color-mix(
+    in srgb,
+    var(--tf-theme-primary-soft, #ecfdf5) 50%,
+    var(--tf-theme-surface, #ffffff) 50%
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--tf-theme-primary, #10b981) 28%, var(--tf-theme-border, #e2e8f0) 72%);
+  color: var(--tf-theme-ink, #18181b);
 }
 
 .meta-catalog-update__vendor {
-  font-weight: 600;
   flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--tf-theme-primary, #059669);
 }
 
 .meta-catalog-update__file {
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   min-width: 0;
+  max-width: min(320px, 100%);
+  font-weight: 600;
+  color: var(--tf-theme-ink, #18181b);
+}
+
+.meta-catalog-update__file-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .meta-catalog-update__date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   flex-shrink: 0;
-  font-size: 11px;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--tf-theme-muted, #3f3f46);
+}
+
+.meta-catalog-update__icon {
+  flex-shrink: 0;
+  color: var(--tf-theme-primary, #059669);
+  opacity: 0.9;
 }
 
 .item-aside {
@@ -689,25 +1019,25 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
 }
 
 .shop-manage-btn {
-  border-radius: var(--bw-radius-sm, 8px);
+  border-radius: var(--tf-radius-sm, 8px);
   font-size: 12px;
 }
 
 .load-more-btn {
   background: #f1f5f9;
   color: #334155;
-  border-radius: var(--bw-radius-sm, 8px);
+  border-radius: var(--tf-radius-sm, 8px);
   font-size: 12px;
   transition: all 0.15s ease;
 }
 
 .load-more-btn:hover {
   background: #e2e8f0;
-  color: #0f172a;
+  color: var(--tf-neutral-ink);
 }
 
 .clear-filters-btn {
-  border-radius: var(--bw-radius-sm, 8px);
+  border-radius: var(--tf-radius-sm, 8px);
   font-size: 12px;
 }
 
@@ -725,22 +1055,22 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
 
 /* Dark mode support */
 body.body--dark .shops-toolbar {
-  background: #1c1917;
-  border-color: #2a2622;
+  background: var(--tf-neutral-surface);
+  border-color: var(--tf-neutral-border);
 }
 
 body.body--dark .clean-list-card {
-  background: #1c1917;
-  border-color: #2a2622;
+  background: var(--tf-neutral-surface);
+  border-color: var(--tf-neutral-border);
 }
 
 body.body--dark .shops-list-meta-bar {
-  background: #24201d;
-  border-color: #2a2622;
+  background: var(--tf-neutral-canvas);
+  border-color: var(--tf-neutral-border);
 }
 
 body.body--dark .clean-list-item {
-  border-color: #2a2622;
+  border-color: var(--tf-neutral-border);
 }
 
 body.body--dark .clean-list-item:hover {
@@ -748,16 +1078,16 @@ body.body--dark .clean-list-item:hover {
 }
 
 body.body--dark .shop-row--public {
-  background: #1c1917;
+  background: var(--tf-neutral-surface);
 }
 
 body.body--dark .shop-row--draft {
-  background: #1c1917;
+  background: var(--tf-neutral-surface);
 }
 
 body.body--dark .shop-avatar {
   background: rgba(255, 255, 255, 0.08);
-  color: #a5b4fc;
+  color: var(--tf-theme-primary);
 }
 
 body.body--dark .shops-segmented {
@@ -765,17 +1095,17 @@ body.body--dark .shops-segmented {
 }
 
 body.body--dark .shops-segmented__item {
-  color: #94a3b8;
+  color: var(--tf-neutral-muted);
 }
 
 body.body--dark .shops-segmented__item--active {
-  background: #262626;
-  color: #f8fafc;
+  background: var(--tf-disabled-bg);
+  color: var(--tf-neutral-ink);
 }
 
 body.body--dark .meta-pill--type {
   background: rgb(255 255 255 / 0.08);
-  color: #e4e4e7;
+  color: var(--tf-neutral-ink);
 }
 
 body.body--dark .meta-pill--vendor {
@@ -784,22 +1114,32 @@ body.body--dark .meta-pill--vendor {
   border-color: rgba(59, 130, 246, 0.25);
 }
 
+body.body--dark .meta-count-chip--public {
+  background: var(--tf-success-soft);
+  color: var(--tf-success);
+}
+
+body.body--dark .meta-count-chip--draft {
+  background: var(--tf-disabled-bg);
+  color: var(--tf-neutral-muted);
+}
+
 body.body--dark .shops-status--public {
-  background: rgb(16 185 129 / 0.14);
-  color: #6ee7b7;
+  background: var(--tf-success-soft);
+  color: var(--tf-success);
 }
 
 body.body--dark .shops-status--draft {
   background: rgb(148 163 184 / 0.12);
-  color: #cbd5e1;
+  color: var(--tf-neutral-muted);
 }
 
 body.body--dark .load-more-btn {
-  background: #262626;
-  color: #f1f5f9;
+  background: var(--tf-disabled-bg);
+  color: var(--tf-neutral-ink);
 }
 
 body.body--dark .load-more-btn:hover {
-  background: #333333;
+  background: var(--tf-neutral-border);
 }
 </style>

@@ -43,14 +43,14 @@ const formatCountWithPlus = (value?: number | null) => {
   font-size: clamp(1.75rem, 5vw, 2.25rem);
   font-weight: 700;
   line-height: 1.1;
-  color: var(--bw-shop-charcoal);
+  color: var(--tf-shop-charcoal);
 }
 
 .shop-home-banner__stat-label {
   margin-top: 0.2rem;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: var(--bw-shop-plum);
+  color: var(--tf-shop-plum);
   text-transform: capitalize;
 }
 </style>

@@ -4312,6 +4312,7 @@ export type Database = {
           id: number
           notes: string | null
           placed_quantity: number
+          profile_id: number | null
           source_id: number
           source_type: Database["public"]["Enums"]["preorder_demand_source_type"]
           stock_picks: Json
@@ -4326,6 +4327,7 @@ export type Database = {
           id?: never
           notes?: string | null
           placed_quantity?: number
+          profile_id?: number | null
           source_id: number
           source_type: Database["public"]["Enums"]["preorder_demand_source_type"]
           stock_picks?: Json
@@ -4340,6 +4342,7 @@ export type Database = {
           id?: never
           notes?: string | null
           placed_quantity?: number
+          profile_id?: number | null
           source_id?: number
           source_type?: Database["public"]["Enums"]["preorder_demand_source_type"]
           stock_picks?: Json
@@ -4349,6 +4352,13 @@ export type Database = {
           vendor_id?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "preorder_demand_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "preorder_demand_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -11897,6 +11907,10 @@ export type Database = {
         Args: { p_shipment_id: number }
         Returns: number
       }
+      ensure_preorder_demand_for_procuring_document: {
+        Args: { p_document_id: number; p_document_type: string }
+        Returns: undefined
+      }
       ensure_shipment_progress_tags: {
         Args: { p_tenant_id: number }
         Returns: {
@@ -13204,7 +13218,6 @@ export type Database = {
           accent_color: string
           address: string
           admin_name: string
-          billing_profile_id: number
           created_at: string
           customer_group_id: number
           email: string
@@ -13213,6 +13226,7 @@ export type Database = {
           is_active: boolean
           member_count: number
           phone: string
+          profile_id: number
           wallet_available_balance: number
         }[]
       }
@@ -13758,17 +13772,30 @@ export type Database = {
         }
         Returns: Json
       }
-      list_procurement_demand_groups: {
-        Args: {
-          p_child_tenant_id?: number
-          p_limit?: number
-          p_offset?: number
-          p_procurement_status?: string
-          p_search?: string
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
+      list_procurement_demand_groups:
+        | {
+            Args: {
+              p_child_tenant_id?: number
+              p_limit?: number
+              p_offset?: number
+              p_procurement_status?: string
+              p_search?: string
+              p_tenant_id: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_child_tenant_id?: number
+              p_limit?: number
+              p_offset?: number
+              p_procurement_status?: string
+              p_profile_id?: number
+              p_search?: string
+              p_tenant_id: number
+            }
+            Returns: Json
+          }
       list_procurement_fulfill_group_items: {
         Args: {
           p_cursor_source_id?: number
@@ -13780,16 +13807,28 @@ export type Database = {
         }
         Returns: Json
       }
-      list_procurement_fulfill_groups: {
-        Args: {
-          p_limit?: number
-          p_offset?: number
-          p_procurement_status?: string
-          p_search?: string
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
+      list_procurement_fulfill_groups:
+        | {
+            Args: {
+              p_limit?: number
+              p_offset?: number
+              p_procurement_status?: string
+              p_search?: string
+              p_tenant_id: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_limit?: number
+              p_offset?: number
+              p_procurement_status?: string
+              p_profile_id?: number
+              p_search?: string
+              p_tenant_id: number
+            }
+            Returns: Json
+          }
       list_procurement_shop_order_lines: {
         Args: {
           p_child_tenant_id?: number
@@ -15766,6 +15805,26 @@ export type Database = {
         }
         Returns: Json
       }
+      submit_shop_order_from_cart: {
+        Args: {
+          p_cart_id: number
+          p_cod_charge_amount?: number
+          p_delivery_charge_amount?: number
+          p_delivery_instructions?: string
+          p_discount_amount?: number
+          p_is_prepaid?: boolean
+          p_packing_charge_amount?: number
+          p_print_charge_amount?: number
+          p_profile_id?: number
+          p_recipient_name: string
+          p_recipient_phone: string
+          p_recipient_phone_secondary?: string
+          p_shipping_address: string
+          p_shipping_district?: string
+          p_shipping_thana?: string
+        }
+        Returns: Json
+      }
       sum_preorder_stock_picks: {
         Args: { p_stock_picks: Json }
         Returns: number
@@ -16636,6 +16695,7 @@ export type Database = {
           id: number
           notes: string | null
           placed_quantity: number
+          profile_id: number | null
           source_id: number
           source_type: Database["public"]["Enums"]["preorder_demand_source_type"]
           stock_picks: Json

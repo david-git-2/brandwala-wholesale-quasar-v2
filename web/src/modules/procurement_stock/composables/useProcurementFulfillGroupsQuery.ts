@@ -5,13 +5,13 @@ import {
   type ProcurementDemandStatus,
 } from '../repositories/procurementDemandRepository';
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
-
-const THIRTY_SECONDS = 30 * 1000;
+import { STALE_STANDARD } from 'src/query/staleTimes';
 
 export function useProcurementFulfillGroupsQuery(options: {
   tenantId: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
   procurementStatus: Ref<ProcurementDemandStatus> | ComputedRef<ProcurementDemandStatus>;
   search?: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
+  profileId?: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
   limit?: number;
   offset?: Ref<number> | ComputedRef<number>;
   enabled?: Ref<boolean> | ComputedRef<boolean>;
@@ -27,6 +27,11 @@ export function useProcurementFulfillGroupsQuery(options: {
     return trimmed.length ? trimmed : null;
   });
 
+  const resolvedProfileId = computed(() => {
+    const raw = unref(options.profileId);
+    return raw && !Number.isNaN(Number(raw)) ? Number(raw) : null;
+  });
+
   const resolvedOffset = computed(() => unref(options.offset) ?? 0);
 
   const queryKey = computed(() =>
@@ -34,6 +39,7 @@ export function useProcurementFulfillGroupsQuery(options: {
       tenantId: resolvedTenantId.value ?? 0,
       procurementStatus: unref(options.procurementStatus),
       search: resolvedSearch.value,
+      profileId: resolvedProfileId.value,
       limit: options.limit ?? 50,
       offset: resolvedOffset.value,
     }),
@@ -46,6 +52,7 @@ export function useProcurementFulfillGroupsQuery(options: {
         tenantId: resolvedTenantId.value!,
         procurementStatus: unref(options.procurementStatus),
         search: resolvedSearch.value,
+        profileId: resolvedProfileId.value,
         limit: options.limit ?? 50,
         offset: resolvedOffset.value,
       }),
@@ -53,6 +60,6 @@ export function useProcurementFulfillGroupsQuery(options: {
       if (unref(options.enabled) === false) return false;
       return resolvedTenantId.value !== null;
     }),
-    staleTime: THIRTY_SECONDS,
+    staleTime: STALE_STANDARD,
   });
 }

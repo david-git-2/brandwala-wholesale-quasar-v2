@@ -147,13 +147,13 @@ function progressStepClass(stepKey: CatalogProgressKey): string {
 <style scoped lang="scss">
 .catalog-progress-bar {
   border-radius: 10px;
-  background: var(--bw-theme-surface, #fff);
-  border-color: var(--bw-theme-border, rgba(0, 0, 0, 0.12));
-  color: var(--bw-theme-ink);
+  background: var(--tf-theme-surface, #fff);
+  border-color: var(--tf-theme-border, rgba(0, 0, 0, 0.12));
+  color: var(--tf-theme-ink);
 }
 
 .catalog-progress-bar--customer {
-  background: var(--bw-theme-surface, #fafafa);
+  background: var(--tf-theme-surface, #fafafa);
 }
 
 .progress-row {
@@ -207,26 +207,26 @@ function progressStepClass(stepKey: CatalogProgressKey): string {
 }
 
 body.body--dark .catalog-progress-bar :deep(.text-grey-9) {
-  color: var(--bw-theme-ink) !important;
+  color: var(--tf-theme-ink) !important;
 }
 
 body.body--dark .catalog-progress-bar :deep(.text-grey-6) {
-  color: var(--bw-theme-muted) !important;
+  color: var(--tf-theme-muted) !important;
 }
 
 body.body--dark .progress-step {
-  background: var(--bw-theme-base);
-  color: var(--bw-theme-muted);
-  border-color: var(--bw-theme-border);
+  background: var(--tf-theme-base);
+  color: var(--tf-theme-muted);
+  border-color: var(--tf-theme-border);
 }
 
 body.body--dark .progress-step--done {
-  background: color-mix(in srgb, var(--bw-theme-surface) 80%, var(--bw-theme-ink) 20%);
-  color: var(--bw-theme-ink);
+  background: color-mix(in srgb, var(--tf-theme-surface) 80%, var(--tf-theme-ink) 20%);
+  color: var(--tf-theme-ink);
 }
 
 body.body--dark .progress-step--upcoming {
-  background: var(--bw-theme-base);
-  color: var(--bw-theme-muted);
+  background: var(--tf-theme-base);
+  color: var(--tf-theme-muted);
 }
 </style>

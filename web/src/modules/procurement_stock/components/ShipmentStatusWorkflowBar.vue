@@ -254,7 +254,7 @@ function isStatusDisabled(st: string): boolean {
 .next-step-row {
   margin-top: 4px;
   padding-top: 4px;
-  border-top: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.08));
+  border-top: 1px solid var(--tf-theme-border, rgba(0, 0, 0, 0.08));
 }
 
 @media (max-width: 599px) {

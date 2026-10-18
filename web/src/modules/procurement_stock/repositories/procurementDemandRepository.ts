@@ -69,9 +69,12 @@ export interface ProcurementDemandGroup {
   document_type: ProcurementDemandDocumentType;
   document_id: number;
   document_name?: string | null;
+  shop_order_no?: string | null;
   document_status: string;
   customer_group_id?: number | null;
   customer_group_name?: string | null;
+  profile_id?: number | null;
+  profile_name?: string | null;
   vendor: ProcurementDemandVendor | null;
   invoice_id?: number | null;
   invoice_status?: string | null;
@@ -128,6 +131,7 @@ export interface ListProcurementDemandGroupsParams {
   procurementStatus?: ProcurementDemandStatus;
   search?: string | null;
   childTenantId?: number | null;
+  profileId?: number | null;
   limit?: number;
   offset?: number;
 }
@@ -136,6 +140,7 @@ export interface ListProcurementFulfillGroupsParams {
   tenantId: number;
   procurementStatus?: ProcurementDemandStatus;
   search?: string | null;
+  profileId?: number | null;
   limit?: number;
   offset?: number;
 }
@@ -212,6 +217,7 @@ const listProcurementDemandGroups = async (
     p_procurement_status: params.procurementStatus ?? 'procuring',
     p_search: params.search ?? null,
     p_child_tenant_id: params.childTenantId ?? null,
+    p_profile_id: params.profileId ?? null,
     p_limit: params.limit ?? 50,
     p_offset: params.offset ?? 0,
   });
@@ -235,6 +241,7 @@ const listProcurementFulfillGroups = async (
     p_tenant_id: params.tenantId,
     p_procurement_status: params.procurementStatus ?? 'procuring',
     p_search: params.search ?? null,
+    p_profile_id: params.profileId ?? null,
     p_limit: params.limit ?? 50,
     p_offset: params.offset ?? 0,
   });

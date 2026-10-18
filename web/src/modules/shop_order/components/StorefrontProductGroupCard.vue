@@ -290,8 +290,8 @@ const resellMinimumText = computed(() => {
   flex-direction: row;
   align-items: stretch;
   border-radius: 16px;
-  background: var(--bw-theme-surface, #ffffff);
-  border-color: var(--bw-theme-border, rgba(34, 56, 101, 0.12));
+  background: var(--tf-theme-surface, #ffffff);
+  border-color: var(--tf-theme-border, rgba(34, 56, 101, 0.12));
   overflow: visible;
   transition:
     transform 0.25s ease,
@@ -299,7 +299,7 @@ const resellMinimumText = computed(() => {
 }
 .product-group-card:hover {
   transform: translateY(-4px);
-  box-shadow: var(--bw-theme-shadow, 0 10px 20px rgba(34, 56, 101, 0.06));
+  box-shadow: var(--tf-theme-shadow, 0 10px 20px rgba(34, 56, 101, 0.06));
 }
 .product-group-card--inactive {
   opacity: 0.78;
@@ -308,7 +308,7 @@ const resellMinimumText = computed(() => {
   width: 112px;
   flex: 0 0 112px;
   min-height: 112px;
-  border-right: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.05));
+  border-right: 1px solid var(--tf-theme-border, rgba(34, 56, 101, 0.05));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -336,7 +336,7 @@ const resellMinimumText = computed(() => {
   padding: 10px 12px 10px;
 }
 .product-meta {
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 .product-name {
   line-height: 1.35;
@@ -345,7 +345,7 @@ const resellMinimumText = computed(() => {
   padding: 8px;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.02);
-  border: 1px dashed var(--bw-theme-border, rgba(34, 56, 101, 0.12));
+  border: 1px dashed var(--tf-theme-border, rgba(34, 56, 101, 0.12));
 }
 .product-details-grid {
   display: grid;
@@ -360,7 +360,7 @@ const resellMinimumText = computed(() => {
 }
 .detail-label {
   font-size: 11px;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
   font-weight: 500;
 }
 .detail-value {
@@ -369,7 +369,7 @@ const resellMinimumText = computed(() => {
 }
 .admin-card-actions {
   padding-top: 4px;
-  border-top: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08));
+  border-top: 1px solid var(--tf-theme-border, rgba(34, 56, 101, 0.08));
 }
 .min-width-0 {
   min-width: 0;

@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md costing-details-page theme-app">
     <PageInitialLoader v-if="initialLoading" />
-    <section v-else class="bw-page__stack viewer-page">
+    <section v-else class="tf-page__stack viewer-page">
       <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
         <q-card-section class="q-py-sm">
           <div class="row items-center justify-between q-col-gutter-sm">
@@ -190,11 +190,13 @@ import {
   buildAdminReviewRows,
   summarizeAdminReviewRows,
 } from 'src/modules/costingFile/composables/useCostingFileDetailRows';
+import { useCostingFileDetailBreadcrumbs } from 'src/modules/costingFile/composables/useCostingFileDetailBreadcrumbs';
 
 const route = useRoute();
 const router = useRouter();
 const costingFileStore = useCostingFileStore();
 const { selectedItem: selectedFile, costingFileItems } = storeToRefs(costingFileStore);
+useCostingFileDetailBreadcrumbs('viewer', () => selectedFile.value);
 const initialLoading = ref(true);
 
 const formatStatusLabel = (status: string) =>
@@ -591,7 +593,7 @@ onMounted(async () => {
 
 .viewer-page__table :deep(.viewer-page__sticky-col) {
   position: sticky;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
 }
 
 .viewer-page__table :deep(td.viewer-page__sticky-col) {
@@ -612,22 +614,22 @@ onMounted(async () => {
 
 .viewer-page__table :deep(td.viewer-page__sticky-col--sl) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .viewer-page__table :deep(td.viewer-page__sticky-col--image) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .viewer-page__table :deep(th.viewer-page__sticky-col--sl) {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .viewer-page__table :deep(th.viewer-page__sticky-col--image) {
   z-index: 4;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .viewer-page :deep(.viewer-page__tone-indigo) {
@@ -667,7 +669,7 @@ onMounted(async () => {
   width: 72px;
   border-radius: 12px;
   overflow: hidden;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
 }
 
 .viewer-page__image :deep(.q-img__image) {
@@ -679,12 +681,12 @@ onMounted(async () => {
   display: grid;
   place-items: center;
   background: rgba(0, 0, 0, 0.04);
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
   font-size: 0.75rem;
 }
 
 .viewer-page__link {
-  color: var(--bw-theme-primary);
+  color: var(--tf-theme-primary);
   text-decoration: underline;
   display: inline-block;
   max-width: 100%;

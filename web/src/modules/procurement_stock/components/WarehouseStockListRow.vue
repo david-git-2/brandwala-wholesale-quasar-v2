@@ -44,8 +44,22 @@
     </div>
     <div class="warehouse-list-aside">
       <div class="warehouse-metric warehouse-metric--cost font-mono">
-        <div class="text-weight-bold" style="font-size: 12px">{{ unitCostLabel }}</div>
-        <div class="text-caption bw-text-muted" style="font-size: 10px">T: {{ lineTotalLabel }}</div>
+        <div class="row items-center justify-center no-wrap q-gutter-x-xs">
+          <div class="text-weight-bold" style="font-size: 12px">{{ unitCostLabel }}</div>
+          <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-info"
+            size="xs"
+            color="grey-7"
+            aria-label="Unit cost details"
+            @click.stop="emit('cost-detail', row)"
+          >
+            <q-tooltip>Cost &amp; shipment details</q-tooltip>
+          </q-btn>
+        </div>
+        <div class="text-caption tf-text-muted" style="font-size: 10px">T: {{ lineTotalLabel }}</div>
       </div>
       <div class="warehouse-metric warehouse-metric--qty font-mono text-weight-bold">
         {{ row.quantity }}
@@ -110,6 +124,7 @@ const emit = defineEmits<{
   location: [row: GlobalStock];
   condition: [row: GlobalStock];
   'copy-code': [code: string];
+  'cost-detail': [row: GlobalStock];
 }>();
 </script>
 
@@ -119,23 +134,23 @@ const emit = defineEmits<{
   align-items: center;
   gap: 0.65rem;
   padding: 0.55rem 1rem;
-  border-bottom: 1px solid var(--bw-neutral-border, #f1f5f9);
+  border-bottom: 1px solid var(--tf-neutral-border, #f1f5f9);
   transition: background 0.15s ease;
   min-height: calc(1in + 8px);
 }
 
 .warehouse-list-item:hover {
-  background: #f8fafc;
+  background: var(--tf-hover-bg);
 }
 
 .warehouse-list-sl {
   width: 28px;
   text-align: center;
-  color: var(--bw-neutral-chrome, #64748b);
+  color: var(--tf-neutral-chrome, #64748b);
 }
 
 .border-grey {
-  border: 1px solid var(--bw-neutral-border, #e2e8f0);
+  border: 1px solid var(--tf-neutral-border, #e2e8f0);
   border-radius: 8px;
 }
 
@@ -180,7 +195,7 @@ const emit = defineEmits<{
 .warehouse-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--bw-neutral-ink, #1e293b);
+  color: var(--tf-neutral-ink, #1e293b);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -192,7 +207,7 @@ const emit = defineEmits<{
   flex-wrap: wrap;
   gap: 4px 6px;
   font-size: 11.5px;
-  color: var(--bw-neutral-muted, #64748b);
+  color: var(--tf-neutral-muted, #64748b);
 }
 
 .warehouse-meta-line--secondary {
@@ -200,7 +215,7 @@ const emit = defineEmits<{
 }
 
 .meta-inbound {
-  color: var(--bw-info, #2563eb);
+  color: var(--tf-info, #2563eb);
   font-weight: 500;
 }
 
@@ -218,16 +233,16 @@ const emit = defineEmits<{
 .warehouse-metric {
   text-align: center;
   padding: 2px 4px;
-  min-width: 52px;
+  min-width: 72px;
 }
 
 .warehouse-metric--cost {
-  color: var(--bw-neutral-ink, #1e293b);
+  color: var(--tf-neutral-ink, #1e293b);
 }
 
 .warehouse-metric--qty {
   font-size: 13px;
   min-width: 1in;
-  color: var(--bw-neutral-ink, #1e293b);
+  color: var(--tf-neutral-ink, #1e293b);
 }
 </style>

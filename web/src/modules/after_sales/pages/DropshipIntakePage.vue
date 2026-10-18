@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page dropship-intake-page">
-    <section class="bw-page__stack intake-stack">
+  <q-page class="tf-page dropship-intake-page">
+    <section class="tf-page__stack intake-stack">
       <q-card flat bordered class="q-pa-md q-gutter-y-md">
         <q-input
           v-model="orderSearch"
@@ -75,7 +75,7 @@
         </template>
       </q-card>
 
-      <div class="bw-inline-actions" style="justify-content: flex-end">
+      <div class="tf-inline-actions" style="justify-content: flex-end">
         <q-btn flat no-caps label="Cancel" style="border-radius: 8px" @click="goToHub" />
         <q-btn
           color="primary"
@@ -233,6 +233,6 @@ const onSubmit = async () => {
 }
 
 .intake-order-active {
-  background: color-mix(in srgb, var(--bw-theme-primary) 10%, var(--bw-theme-surface));
+  background: color-mix(in srgb, var(--tf-theme-primary) 10%, var(--tf-theme-surface));
 }
 </style>

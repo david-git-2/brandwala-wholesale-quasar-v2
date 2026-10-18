@@ -15,6 +15,7 @@
       @location="emit('location', $event)"
       @condition="emit('condition', $event)"
       @copy-code="emit('copy-code', $event)"
+      @cost-detail="emit('cost-detail', $event)"
     />
     <div v-if="isFetching && !stockRows.length" class="row justify-center q-py-sm">
       <q-spinner color="primary" size="20px" />
@@ -63,6 +64,7 @@ const emit = defineEmits<{
   location: [row: GlobalStock];
   condition: [row: GlobalStock];
   'copy-code': [code: string];
+  'cost-detail': [row: GlobalStock];
 }>();
 
 const sentinelRef = ref<HTMLElement | null>(null);
@@ -117,8 +119,8 @@ onBeforeUnmount(disconnectObserver);
 
 <style scoped>
 .warehouse-group-lots {
-  background: color-mix(in srgb, var(--bw-neutral-canvas, #fbfaf7) 55%, transparent);
-  border-bottom: 1px solid var(--bw-neutral-border, #e2e8f0);
+  background: color-mix(in srgb, var(--tf-neutral-canvas, #fbfaf7) 55%, transparent);
+  border-bottom: 1px solid var(--tf-neutral-border, #e2e8f0);
 }
 
 .warehouse-list-sentinel {

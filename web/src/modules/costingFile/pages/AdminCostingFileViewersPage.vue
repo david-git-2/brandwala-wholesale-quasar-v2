@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md costing-details-page theme-app">
-    <section class="bw-page__stack viewer-page">
+    <section class="tf-page__stack viewer-page">
       <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
         <q-card-section class="q-py-sm">
           <div class="row items-center justify-between q-col-gutter-sm">
@@ -309,7 +309,7 @@ onMounted(async () => {
 }
 
 .viewer-page__summary-card {
-  border-left: 4px solid var(--bw-theme-primary);
+  border-left: 4px solid var(--tf-theme-primary);
 }
 
 .viewer-page__summary-grid {

@@ -126,6 +126,6 @@ const statusColor = (status: AfterSalesCaseStatus) => {
 .case-table-party-caption {
   margin-top: 0.15rem;
   font-size: 0.72rem;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 </style>

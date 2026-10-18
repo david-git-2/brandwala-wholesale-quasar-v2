@@ -180,11 +180,11 @@ defineExpose({
 .excel-bottom-bar {
   height: 34px;
   min-height: 34px;
-  background-color: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%);
-  color: var(--bw-theme-ink);
-  border-top: 2px solid var(--bw-theme-border);
+  background-color: color-mix(in srgb, var(--tf-theme-surface) 88%, var(--tf-theme-base) 12%);
+  color: var(--tf-theme-ink);
+  border-top: 2px solid var(--tf-theme-border);
   user-select: none;
-  font-family: var(--bw-font-ui);
+  font-family: var(--tf-font-ui);
   font-size: 12px;
 }
 
@@ -195,7 +195,7 @@ defineExpose({
 .excel-icon-btn {
   background: transparent;
   border: none;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
   width: 24px;
   height: 24px;
   display: flex;
@@ -208,8 +208,8 @@ defineExpose({
 }
 
 .excel-icon-btn:hover {
-  background-color: var(--bw-theme-primary-soft);
-  color: var(--bw-theme-ink);
+  background-color: var(--tf-theme-primary-soft);
+  color: var(--tf-theme-ink);
 }
 
 .excel-tabs-scroll-container {
@@ -225,65 +225,65 @@ defineExpose({
 .excel-tab-item {
   height: 30px;
   padding: 0 14px;
-  color: var(--bw-theme-muted);
-  background: color-mix(in srgb, var(--bw-theme-surface) 80%, var(--bw-theme-base) 20%);
+  color: var(--tf-theme-muted);
+  background: color-mix(in srgb, var(--tf-theme-surface) 80%, var(--tf-theme-base) 20%);
   margin-right: 2px;
   border-radius: 4px 4px 0 0;
-  border-top: 1px solid var(--bw-theme-border);
-  border-left: 1px solid var(--bw-theme-border);
-  border-right: 1px solid var(--bw-theme-border);
+  border-top: 1px solid var(--tf-theme-border);
+  border-left: 1px solid var(--tf-theme-border);
+  border-right: 1px solid var(--tf-theme-border);
   font-weight: 600;
   font-size: 12px;
   transition: all 0.15s ease;
 }
 
 .excel-tab-item:hover {
-  background-color: var(--bw-theme-surface);
-  color: var(--bw-theme-ink);
+  background-color: var(--tf-theme-surface);
+  color: var(--tf-theme-ink);
 }
 
 .excel-tab-item--active {
-  background-color: var(--bw-theme-surface) !important;
-  color: var(--bw-theme-primary) !important;
+  background-color: var(--tf-theme-surface) !important;
+  color: var(--tf-theme-primary) !important;
   font-weight: 700;
-  border-top: 2.5px solid var(--bw-theme-primary);
-  box-shadow: 0 -2px 4px var(--bw-theme-shadow);
+  border-top: 2.5px solid var(--tf-theme-primary);
+  box-shadow: 0 -2px 4px var(--tf-theme-shadow);
 }
 
 .excel-plus-btn {
-  color: var(--bw-theme-primary);
+  color: var(--tf-theme-primary);
   font-weight: bold;
 }
 
 .excel-plus-btn:hover {
-  background-color: var(--bw-theme-primary-soft);
-  color: var(--bw-theme-primary);
+  background-color: var(--tf-theme-primary-soft);
+  color: var(--tf-theme-primary);
 }
 
 .excel-splitter-bar {
   width: 3px;
   height: 18px;
-  background-color: var(--bw-theme-border);
+  background-color: var(--tf-theme-border);
   margin: 0 8px;
   border-radius: 2px;
 }
 
 .excel-scrollbar-wrapper {
-  background-color: color-mix(in srgb, var(--bw-theme-surface) 80%, var(--bw-theme-base) 20%);
+  background-color: color-mix(in srgb, var(--tf-theme-surface) 80%, var(--tf-theme-base) 20%);
   height: 20px;
   width: 220px;
   max-width: 260px;
   margin-left: auto;
   margin-right: 10px;
   border-radius: 4px;
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
   padding: 0 2px;
 }
 
 .excel-scroll-arrow-btn {
   background: transparent;
   border: none;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
   width: 16px;
   height: 16px;
   display: flex;
@@ -294,13 +294,13 @@ defineExpose({
 }
 
 .excel-scroll-arrow-btn:hover {
-  background-color: var(--bw-theme-border);
-  color: var(--bw-theme-ink);
+  background-color: var(--tf-theme-border);
+  color: var(--tf-theme-ink);
 }
 
 .excel-scroll-track {
   height: 12px;
-  background-color: var(--bw-theme-border);
+  background-color: var(--tf-theme-border);
   border-radius: 3px;
   position: relative;
   margin: 0 4px;
@@ -308,7 +308,7 @@ defineExpose({
 
 .excel-scroll-thumb {
   height: 12px;
-  background-color: var(--bw-theme-muted);
+  background-color: var(--tf-theme-muted);
   border-radius: 3px;
   position: absolute;
   top: 0;
@@ -318,7 +318,7 @@ defineExpose({
 
 .excel-scroll-thumb:hover,
 .excel-scroll-thumb:active {
-  background-color: var(--bw-theme-ink);
+  background-color: var(--tf-theme-ink);
 }
 
 .excel-end-cap {

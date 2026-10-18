@@ -6,6 +6,7 @@ import {
   type GlobalStockGroupRow,
 } from '../repositories/globalStockRepository';
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
+import { STALE_STANDARD } from 'src/query/staleTimes';
 
 export const WAREHOUSE_STOCK_GROUPS_PAGE_SIZE = 50;
 
@@ -82,7 +83,7 @@ export function useWarehouseStockGroupsQuery(options: {
       return allPages.length * pageSize;
     },
     initialPageParam: 0,
-    staleTime: 30_000,
+    staleTime: STALE_STANDARD,
     placeholderData: keepPreviousData,
     enabled: computed(() => {
       if (unref(options.enabled) === false) return false;

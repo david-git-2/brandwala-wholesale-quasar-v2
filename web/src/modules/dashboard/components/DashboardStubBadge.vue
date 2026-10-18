@@ -12,8 +12,8 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted);
-  background: color-mix(in srgb, var(--bw-theme-muted) 12%, var(--bw-theme-surface));
-  border: 1px solid var(--bw-theme-border);
+  color: var(--tf-theme-muted);
+  background: color-mix(in srgb, var(--tf-theme-muted) 12%, var(--tf-theme-surface));
+  border: 1px solid var(--tf-theme-border);
 }
 </style>

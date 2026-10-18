@@ -19,10 +19,10 @@
       <q-menu
         anchor="bottom end"
         self="top end"
-        class="user-profile-dropdown"
-        style="min-width: 250px"
+        :offset="[0, 8]"
         @show="loadReleaseVersions"
       >
+        <div class="user-profile-dropdown">
         <div class="user-profile-dropdown__header q-pa-md">
           <div class="row items-center no-wrap q-gutter-x-sm">
             <q-avatar size="34px" class="user-profile-btn__avatar">
@@ -47,11 +47,22 @@
             </span>
           </div>
           <div v-if="releaseVersions" class="user-profile-dropdown__versions q-mt-sm">
-            <div>Backend {{ releaseVersions.backend_version }}</div>
-            <div>Frontend {{ releaseVersions.frontend_version }}</div>
+            <span
+              class="user-profile-dropdown__version-pill"
+              :title="releaseVersionBuildHint(releaseVersions.backend_version)"
+            >
+              API {{ formatReleaseVersionLabel(releaseVersions.backend_version) }}
+            </span>
+            <span
+              class="user-profile-dropdown__version-pill"
+              :title="releaseVersionBuildHint(releaseVersions.frontend_version)"
+            >
+              App {{ formatReleaseVersionLabel(releaseVersions.frontend_version) }}
+            </span>
           </div>
         </div>
 
+        <div class="user-profile-dropdown__body">
         <q-list dense class="q-py-xs user-profile-dropdown__list">
           <!-- Workspace Info -->
           <template v-if="contextValue">
@@ -176,6 +187,8 @@
             <q-item-section class="text-weight-medium">Sign Out</q-item-section>
           </q-item>
         </q-list>
+        </div>
+        </div>
       </q-menu>
     </q-btn>
 
@@ -194,6 +207,10 @@ import { useAppearance } from 'src/composables/useAppearance';
 import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
 import { listShopLoginGroups } from 'src/modules/auth/utils/shopCustomerGroupSession';
 import { getShopSelectCompanyRouteLocation, getAppRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
+import {
+  formatReleaseVersionLabel,
+  releaseVersionBuildHint,
+} from 'src/utils/appReleaseVersion';
 
 type ReleaseVersions = {
   backend_version: string;
@@ -323,53 +340,83 @@ onMounted(async () => {
 }
 
 .user-profile-btn:hover {
-  background: color-mix(in srgb, var(--bw-neutral-ink) 5%, transparent);
+  background: color-mix(in srgb, var(--tf-neutral-ink) 5%, transparent);
 }
 
 .user-profile-btn__avatar {
-  background: var(--bw-theme-primary-soft);
-  color: var(--bw-brand-accent);
+  background: var(--tf-theme-primary-soft);
+  color: var(--tf-brand-accent);
   font-weight: 700;
   font-size: 11px;
-  border: 1px solid color-mix(in srgb, var(--bw-brand-accent) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tf-brand-accent) 20%, transparent);
 }
 
 .user-profile-btn__caret {
-  color: var(--bw-neutral-chrome);
+  color: var(--tf-neutral-chrome);
   margin-left: 2px;
 }
 
 .user-profile-dropdown {
+  display: flex;
+  flex-direction: column;
+  min-width: min(300px, calc(100vw - 24px));
+  max-width: min(340px, calc(100vw - 24px));
+  max-height: min(560px, calc(100dvh - 64px));
   border-radius: 12px;
   overflow: hidden;
-  background: var(--bw-neutral-surface);
-  border: 1px solid var(--bw-neutral-border);
+  background: var(--tf-neutral-surface);
+  border: 1px solid var(--tf-neutral-border);
   box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.18);
 }
 
 .user-profile-dropdown__header {
-  background: var(--bw-neutral-canvas);
-  border-bottom: 1px solid var(--bw-neutral-border);
+  flex-shrink: 0;
+  background: var(--tf-neutral-canvas);
+  border-bottom: 1px solid var(--tf-neutral-border);
+}
+
+.user-profile-dropdown__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .user-profile-dropdown__name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--bw-neutral-ink);
+  color: var(--tf-neutral-ink);
   line-height: 1.3;
 }
 
 .user-profile-dropdown__email {
   font-size: 11.5px;
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
   line-height: 1.3;
 }
 
 .user-profile-dropdown__versions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-profile-dropdown__version-pill {
+  display: inline-flex;
+  align-items: center;
   font-size: 10.5px;
-  line-height: 1.35;
-  color: var(--bw-neutral-muted);
+  line-height: 1.2;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--tf-neutral-muted);
+  background: color-mix(in srgb, var(--tf-neutral-border) 35%, var(--tf-neutral-surface) 65%);
+  border: 1px solid var(--tf-neutral-border);
+  white-space: nowrap;
 }
 
 .user-profile-dropdown__badge {
@@ -381,9 +428,9 @@ onMounted(async () => {
   text-transform: uppercase;
   padding: 1.5px 7px;
   border-radius: 999px;
-  background: var(--bw-theme-primary-soft);
-  color: var(--bw-brand-accent);
-  border: 1px solid color-mix(in srgb, var(--bw-brand-accent) 22%, transparent);
+  background: var(--tf-theme-primary-soft);
+  color: var(--tf-brand-accent);
+  border: 1px solid color-mix(in srgb, var(--tf-brand-accent) 22%, transparent);
 }
 
 .dropdown-header {
@@ -391,7 +438,7 @@ onMounted(async () => {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--bw-neutral-chrome);
+  color: var(--tf-neutral-chrome);
   padding: 8px 14px 2px;
 }
 
@@ -401,26 +448,26 @@ onMounted(async () => {
   border-radius: 6px;
   margin: 1px 6px;
   font-size: 13px;
-  color: var(--bw-neutral-ink);
+  color: var(--tf-neutral-ink);
   transition: background-color 0.15s ease;
 }
 
 .dropdown-item:hover {
-  background: color-mix(in srgb, var(--bw-neutral-ink) 4%, transparent);
+  background: color-mix(in srgb, var(--tf-neutral-ink) 4%, transparent);
 }
 
 .dropdown-item__icon {
-  color: var(--bw-neutral-chrome);
+  color: var(--tf-neutral-chrome);
 }
 
 .dropdown-item--active {
-  background: var(--bw-theme-primary-soft) !important;
-  color: var(--bw-brand-accent) !important;
+  background: var(--tf-theme-primary-soft) !important;
+  color: var(--tf-brand-accent) !important;
   font-weight: 600;
 }
 
 .dropdown-sep {
-  background: var(--bw-neutral-border);
+  background: var(--tf-neutral-border);
   opacity: 0.7;
 }
 </style>

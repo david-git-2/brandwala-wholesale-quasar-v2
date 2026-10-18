@@ -561,7 +561,7 @@ export default {
 }
 
 .catalog-order-section-title {
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .dropship-order-layout--negotiating {

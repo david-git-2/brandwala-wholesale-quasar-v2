@@ -645,17 +645,17 @@ const getStatusBadgeInfo = (status: string) => {
 /* Dark Mode Overrides */
 body.body--dark .orders-list-wrapper,
 body.body--dark .empty-orders-state {
-  background: #1c1917;
-  border-color: #2a2622;
+  background: var(--tf-neutral-surface);
+  border-color: var(--tf-neutral-border);
 }
 
 body.body--dark .orders-list-meta-bar {
-  background: #24201d;
-  border-color: #2a2622;
+  background: var(--tf-neutral-canvas);
+  border-color: var(--tf-neutral-border);
 }
 
 body.body--dark .order-list-row {
-  border-color: #2a2622;
+  border-color: var(--tf-neutral-border);
 }
 
 body.body--dark .order-list-row:hover {

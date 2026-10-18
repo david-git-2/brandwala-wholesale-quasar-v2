@@ -101,22 +101,22 @@
                 </q-td>
 
                 <!-- Inbound Qty -->
-                <q-td key="inbound_qty" :props="props" class="bw-tabular text-right font-mono">
+                <q-td key="inbound_qty" :props="props" class="tf-tabular text-right font-mono">
                   {{ props.row.inbound_qty }}
                 </q-td>
 
                 <!-- Unit Cost (BDT) -->
-                <q-td key="unit_cost_bdt" :props="props" class="bw-tabular text-right font-mono">
+                <q-td key="unit_cost_bdt" :props="props" class="tf-tabular text-right font-mono">
                   {{ formatAmountBdt(props.row.unit_cost_bdt || 0) }}
                 </q-td>
 
                 <!-- Net Sold Qty -->
-                <q-td key="sold_qty" :props="props" class="bw-tabular text-right font-mono">
+                <q-td key="sold_qty" :props="props" class="tf-tabular text-right font-mono">
                   {{ props.row.sold_qty }}
                 </q-td>
 
                 <!-- Sold Revenue -->
-                <q-td key="sold_revenue" :props="props" class="bw-tabular text-right font-mono text-primary font-bold">
+                <q-td key="sold_revenue" :props="props" class="tf-tabular text-right font-mono text-primary font-bold">
                   {{ formatAmountBdt(props.row.sold_revenue || 0) }}
                 </q-td>
 
@@ -124,26 +124,26 @@
                 <q-td
                   key="gross_profit"
                   :props="props"
-                  class="bw-tabular text-right font-mono font-bold"
+                  class="tf-tabular text-right font-mono font-bold"
                   :class="props.row.gross_profit >= 0 ? 'text-positive' : 'text-negative'"
                 >
                   {{ props.row.gross_profit >= 0 ? '+' : '' }}{{ formatAmountBdt(props.row.gross_profit || 0) }}
                 </q-td>
 
                 <!-- Sellable Qty -->
-                <q-td key="sellable_qty" :props="props" class="bw-tabular text-right font-mono">
+                <q-td key="sellable_qty" :props="props" class="tf-tabular text-right font-mono">
                   <span :class="props.row.sellable_qty > 0 ? 'text-grey-9' : 'text-grey-4'">
                     {{ props.row.sellable_qty }}
                   </span>
                 </q-td>
 
                 <!-- Unsold Stock Value -->
-                <q-td key="unsold_stock_value" :props="props" class="bw-tabular text-right font-mono text-grey-8">
+                <q-td key="unsold_stock_value" :props="props" class="tf-tabular text-right font-mono text-grey-8">
                   {{ formatAmountBdt(props.row.unsold_stock_value || 0) }}
                 </q-td>
 
                 <!-- Damaged Qty / Loss -->
-                <q-td key="damaged_qty" :props="props" class="bw-tabular text-right font-mono">
+                <q-td key="damaged_qty" :props="props" class="tf-tabular text-right font-mono">
                   <span v-if="props.row.damaged_qty > 0" class="text-negative font-bold">
                     {{ props.row.damaged_qty }} ({{ formatAmountBdt(props.row.damage_loss_value) }})
                   </span>

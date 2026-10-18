@@ -18,7 +18,7 @@ Previously the product told **three different brand stories** at once (violet sp
 |----------------|-------|---------|
 | Splash | Violet / heavy blobs | Warm stone canvas, compact logo, scope tagline |
 | `app.scss` | Cool slate + Supabase emerald scopes | Warm neutrals + oxide burgundy / trade teal / commerce indigo / capital teal |
-| Fonts | Roboto bundle + misaligned decimals | Jakarta + Plex Mono (`.bw-tabular`) + Noto Sans Bengali |
+| Fonts | Roboto bundle + misaligned decimals | Jakarta + Plex Mono (`.tf-tabular`) + Noto Sans Bengali |
 
 ---
 
@@ -61,24 +61,24 @@ Wholesale ERP is invoices, ledgers, and warehouse labels. Cool slate (`#eef0f4`)
 
 | Token | Light | Dark | Use |
 |-------|-------|------|-----|
-| `--bw-neutral-canvas` | `#fbfaf7` | `#141210` | Page background |
-| `--bw-neutral-surface` | `#ffffff` | `#1c1917` | Cards, tables |
-| `--bw-neutral-border` | `#e7e1d8` | `#2a2622` | Borders |
-| `--bw-neutral-ink` | `#171412` | `#f5f5f4` | Body text |
-| `--bw-neutral-muted` | `#736a61` | `#a8a29e` | Captions, meta |
-| `--bw-neutral-chrome` | `#64748b` | `#94a3b8` | Table headers, overlines only |
+| `--tf-neutral-canvas` | `#fbfaf7` | `#141210` | Page background |
+| `--tf-neutral-surface` | `#ffffff` | `#1c1917` | Cards, tables |
+| `--tf-neutral-border` | `#e7e1d8` | `#2a2622` | Borders |
+| `--tf-neutral-ink` | `#171412` | `#f5f5f4` | Body text |
+| `--tf-neutral-muted` | `#736a61` | `#a8a29e` | Captions, meta |
+| `--tf-neutral-chrome` | `#64748b` | `#94a3b8` | Table headers, overlines only |
 
-Map existing `--bw-brand-*` and `--bw-theme-*` to these names (or alias them) so components keep working during migration.
+Map existing `--tf-brand-*` and `--tf-theme-*` to these names (or alias them) so components keep working during migration.
 
 #### Semantic (state — never reuse as scope primary)
 
 | Token | Light | Use |
 |-------|-------|-----|
-| `--bw-success` | `#1A7F4B` | Posted, paid, in stock |
-| `--bw-warning` | `#B45309` | Pending, low stock, draft |
-| `--bw-error` | `#B83A3A` | Failed, voided, overdue |
-| `--bw-info` | `#2563EB` | Info banners, links |
-| `--bw-success-soft` etc. | 12% color-mix on surface | Row hues, banners |
+| `--tf-success` | `#1A7F4B` | Posted, paid, in stock |
+| `--tf-warning` | `#B45309` | Pending, low stock, draft |
+| `--tf-error` | `#B83A3A` | Failed, voided, overdue |
+| `--tf-info` | `#2563EB` | Info banners, links |
+| `--tf-success-soft` etc. | 12% color-mix on surface | Row hues, banners |
 
 #### Scope accents (place — four app surfaces)
 
@@ -93,7 +93,7 @@ Map existing `--bw-brand-*` and `--bw-theme-*` to these names (or alias them) so
 
 | File | Change |
 |------|--------|
-| `web/src/css/app.scss` | Replace `:root` neutrals; update `.theme-platform` / `.theme-app` / `.theme-shop` / `.theme-investor`; add `--bw-success` … `--bw-info` + soft variants; tone down dark-mode neon primaries |
+| `web/src/css/app.scss` | Replace `:root` neutrals; update `.theme-platform` / `.theme-app` / `.theme-shop` / `.theme-investor`; add `--tf-success` … `--tf-info` + soft variants; tone down dark-mode neon primaries |
 | `web/src/css/quasar.variables.scss` | Align `$positive`, `$negative`, `$warning`, `$info` with semantic tokens |
 | `web/src/css/app.scss` | Stat cards: use semantic tokens instead of `#e53935` / `#2e7d32` |
 | `web/src/css/app.scss` | Ops column tints: same hues at 6–8% background + 1px left accent (not full candy blocks) |
@@ -113,7 +113,7 @@ Map existing `--bw-brand-*` and `--bw-theme-*` to these names (or alias them) so
 
 ### Why
 
-Scopes already swap `--bw-theme-primary`, but surfaces, shadows, and density are identical everywhere. Shop buyers and warehouse staff need different rhythm. Tables use heavy triple shadows that make every list feel like a marketing card.
+Scopes already swap `--tf-theme-primary`, but surfaces, shadows, and density are identical everywhere. Shop buyers and warehouse staff need different rhythm. Tables use heavy triple shadows that make every list feel like a marketing card.
 
 ### What
 
@@ -138,9 +138,9 @@ Scopes already swap `--bw-theme-primary`, but surfaces, shadows, and density are
 
 | File | Change |
 |------|--------|
-| `web/src/components/WorkspaceShell.vue` | Nav active + shop bottom nav use `--bw-theme-primary-soft`; mini drawer icon centering |
+| `web/src/components/WorkspaceShell.vue` | Nav active + shop bottom nav use `--tf-theme-primary-soft`; mini drawer icon centering |
 | `web/src/css/app.scss` | Flatten `.q-table__container` shadow stack; card hover only on `.cursor-pointer` |
-| `web/src/composables/useAppearance.ts` | Optional: density affects CSS class on `body` (`bw-density-compact`) |
+| `web/src/composables/useAppearance.ts` | Optional: density affects CSS class on `body` (`tf-density-compact`) |
 | Shop pages under `web/src/modules/shop_order/pages/` | Spacing + title scale via `.theme-shop` scoped rules |
 | `docs/UI_CONSISTENCY.md` | Document elevation rules and shop rhythm |
 
@@ -169,12 +169,12 @@ Plus Jakarta Sans is already the UI voice — good. Numbers in P&L and ledger ta
 CSS:
 
 ```css
---bw-font-ui: 'Plus Jakarta Sans', system-ui, sans-serif;
---bw-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
---bw-font-bn: 'Noto Sans Bengali', var(--bw-font-ui);
+--tf-font-ui: 'Plus Jakarta Sans', system-ui, sans-serif;
+--tf-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+--tf-font-bn: 'Noto Sans Bengali', var(--tf-font-ui);
 
-.bw-tabular {
-  font-family: var(--bw-font-mono);
+.tf-tabular {
+  font-family: var(--tf-font-mono);
   font-variant-numeric: tabular-nums lining-nums;
 }
 ```
@@ -195,10 +195,10 @@ Change table body from `0.84rem` → `0.875rem`. Reserve **700** for titles and 
 |------|--------|
 | `web/index.html` | Add Google Fonts links for IBM Plex Mono + Noto Sans Bengali |
 | `web/quasar.config.ts` | Remove `roboto-font` from extras if Jakarta covers Latin |
-| `web/src/css/app.scss` | Font variables; `.bw-tabular`; body `font-family`; Bengali `html[lang="bn"]` override |
+| `web/src/css/app.scss` | Font variables; `.tf-tabular`; body `font-family`; Bengali `html[lang="bn"]` override |
 | `web/src/css/app.scss` | `.stat-value` → mono + tabular nums |
-| Costing / treasury / wallet tables | Replace ad-hoc `font-mono` with `.bw-tabular` |
-| `web/src/components/WorkspaceShell.vue` | `.locale-bn` uses `--bw-font-bn` |
+| Costing / treasury / wallet tables | Replace ad-hoc `font-mono` with `.tf-tabular` |
+| `web/src/components/WorkspaceShell.vue` | `.locale-bn` uses `--tf-font-bn` |
 | `docs/UI_CONSISTENCY.md` | Typography section: Jakarta + Plex Mono, not Roboto |
 
 ### Acceptance

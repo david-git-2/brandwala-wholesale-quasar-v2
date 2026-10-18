@@ -83,9 +83,9 @@ const waitMessage = computed(() => {
   position: sticky;
   bottom: 0;
   z-index: 10;
-  background: #fff;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+  background: var(--tf-neutral-surface);
+  border-top: 1px solid var(--tf-neutral-border);
+  box-shadow: 0 -4px 12px var(--tf-neutral-border);
   margin: 0 -8px -8px;
   border-radius: 10px 10px 0 0;
 }

@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
-      <q-banner v-if="error" class="bw-status-banner bg-negative text-white flex-shrink-0" dense rounded>
+      <q-banner v-if="error" class="tf-status-banner bg-negative text-white flex-shrink-0" dense rounded>
         {{ error }}
       </q-banner>
 

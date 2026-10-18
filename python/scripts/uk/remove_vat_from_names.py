@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
-DEFAULT_INPUT = ROOT_DIR / "web" / "public" / "uk" / "pc_data.json"
+DEFAULT_INPUT = ROOT_DIR / "python" / "data" / "uk" / "out" / "pc_data.json"
 
 VAT_IN_PARENS_RE = re.compile(r"\s*\((?=[^)]*\bVAT\b)[^)]*\)\s*", re.IGNORECASE)
 TRAILING_VAT_RE = re.compile(
@@ -30,7 +30,7 @@ def parse_args() -> argparse.Namespace:
         "--input",
         dest="input_path",
         default=str(DEFAULT_INPUT),
-        help="Input JSON path (default: web/public/uk/pc_data.json)",
+        help="Input JSON path (default: python/data/uk/out/pc_data.json)",
     )
     parser.add_argument(
         "--output",

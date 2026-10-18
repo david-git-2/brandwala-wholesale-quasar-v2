@@ -88,7 +88,7 @@ function progressStepClass(stepKey: PbcProgressStepKey): string {
 
 .progress-step {
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--tf-neutral-border);
   background: #f5f5f5;
   color: rgba(0, 0, 0, 0.55);
   padding: 2px 8px;
@@ -98,7 +98,7 @@ function progressStepClass(stepKey: PbcProgressStepKey): string {
 
 .progress-step--current {
   background: var(--q-primary);
-  color: #fff;
+  color: var(--tf-neutral-surface);
   border-color: var(--q-primary);
 }
 
@@ -108,7 +108,7 @@ function progressStepClass(stepKey: PbcProgressStepKey): string {
 }
 
 .progress-step--upcoming {
-  background: #fafafa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   color: rgba(0, 0, 0, 0.45);
 }
 

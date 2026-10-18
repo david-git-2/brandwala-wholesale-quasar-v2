@@ -120,7 +120,7 @@ export default {
 <style scoped>
 .decision-summary-card {
   border-radius: 12px;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
 }
 
 .action-btn {

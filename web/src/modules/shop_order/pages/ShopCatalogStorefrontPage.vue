@@ -1,9 +1,9 @@
 <template>
   <component
     :is="embedded ? 'div' : 'q-page'"
-    :class="embedded ? 'catalog-storefront-embed' : 'bw-page'"
+    :class="embedded ? 'catalog-storefront-embed' : 'tf-page'"
   >
-    <section :class="embedded ? 'catalog-storefront-embed__stack' : 'bw-page__stack'">
+    <section :class="embedded ? 'catalog-storefront-embed__stack' : 'tf-page__stack'">
       <q-banner
         v-if="!hasVendorFilters"
         rounded
@@ -200,8 +200,8 @@ const formatMoney = (amount: unknown, symbol?: string | null) => {
 
 .catalog-storefront-empty {
   min-height: 280px;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 60%, transparent);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 60%, transparent);
   border-radius: 16px;
-  border: 1px dashed var(--bw-theme-border, rgba(34, 56, 101, 0.12));
+  border: 1px dashed var(--tf-theme-border, rgba(34, 56, 101, 0.12));
 }
 </style>

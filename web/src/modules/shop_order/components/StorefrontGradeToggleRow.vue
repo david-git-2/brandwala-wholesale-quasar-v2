@@ -54,7 +54,7 @@ const gradeState = (slug: string) => gradeListingStateForSlug(props.listingsByGr
 <style scoped>
 .grade-toggle {
   border-radius: 6px;
-  border: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.1));
+  border: 1px solid var(--tf-theme-border, rgba(34, 56, 101, 0.1));
   overflow: hidden;
   gap: 1px;
   background: rgba(0, 0, 0, 0.02);

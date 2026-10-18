@@ -1,5 +1,5 @@
 <template>
-  <q-page class="bw-page q-pa-md">
+  <q-page class="tf-page q-pa-md">
     <!-- Header -->
     <div class="detail-header q-mb-md">
       <div class="row items-center justify-between no-wrap w-full">

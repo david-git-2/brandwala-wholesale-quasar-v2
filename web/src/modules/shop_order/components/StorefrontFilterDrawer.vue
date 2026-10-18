@@ -65,6 +65,6 @@ const categoryModel = computed({
 <style scoped>
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 82%, transparent);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 82%, transparent);
 }
 </style>

@@ -183,7 +183,7 @@ onMounted(() => {
 
 .auth-card__accent-bar {
   height: 4px;
-  background: var(--bw-theme-primary, #2a2b2a);
+  background: var(--tf-theme-primary, #2a2b2a);
 }
 
 .auth-card__header {
@@ -194,12 +194,12 @@ onMounted(() => {
   margin: 0;
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--bw-theme-ink, #1c1416);
+  color: var(--tf-theme-ink, #1c1416);
 }
 
 .auth-card__subtitle {
   margin: 0.35rem 0 0;
-  color: var(--bw-theme-muted, #6b6560);
+  color: var(--tf-theme-muted, #6b6560);
   font-size: 0.9rem;
   line-height: 1.4;
 }
@@ -227,14 +227,14 @@ onMounted(() => {
   width: 100%;
   text-align: left;
   border-radius: 8px;
-  border: 1px solid var(--bw-theme-border, #ebe7e2);
-  background: var(--bw-theme-surface, #fff);
+  border: 1px solid var(--tf-theme-border, #ebe7e2);
+  background: var(--tf-theme-surface, #fff);
   padding: 0.7rem 0.85rem;
   cursor: pointer;
 }
 
 .company-card:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--bw-theme-primary, #2a2b2a) 35%, #ebe7e2);
+  border-color: color-mix(in srgb, var(--tf-theme-primary, #2a2b2a) 35%, #ebe7e2);
 }
 
 .company-card:disabled {
@@ -259,15 +259,15 @@ onMounted(() => {
 
 .company-card__name {
   font-weight: 650;
-  color: var(--bw-theme-ink, #1c1416);
+  color: var(--tf-theme-ink, #1c1416);
 }
 
 .company-card__role {
   font-size: 0.75rem;
-  color: var(--bw-theme-muted, #6b6560);
+  color: var(--tf-theme-muted, #6b6560);
 }
 
 .company-card__chevron {
-  color: var(--bw-theme-muted, #6b6560);
+  color: var(--tf-theme-muted, #6b6560);
 }
 </style>

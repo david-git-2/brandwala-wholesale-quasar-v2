@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page thrift-report-details-page">
-    <div class="bw-page__stack">
+  <q-page class="tf-page thrift-report-details-page">
+    <div class="tf-page__stack">
       <header class="page-nav">
         <q-btn
           flat
@@ -375,7 +375,7 @@ function formatDate(value: string) {
 .page-nav__sub {
   margin-top: 0.25rem;
   font-size: 0.875rem;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .hero-panel {
@@ -385,8 +385,8 @@ function formatDate(value: string) {
 }
 
 .hero-panel--good {
-  background: var(--bw-theme-primary-soft, rgb(var(--bw-theme-primary-rgb, 52 211 153) / 0.12));
-  border-color: color-mix(in srgb, var(--bw-theme-primary, var(--q-primary)) 28%, transparent);
+  background: var(--tf-theme-primary-soft, rgb(var(--tf-theme-primary-rgb, 52 211 153) / 0.12));
+  border-color: color-mix(in srgb, var(--tf-theme-primary, var(--q-primary)) 28%, transparent);
 }
 
 .hero-panel--bad {
@@ -397,7 +397,7 @@ function formatDate(value: string) {
 .hero-panel__label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .hero-panel__amount {
@@ -437,9 +437,9 @@ function formatDate(value: string) {
 }
 
 .chip-card {
-  border: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--tf-theme-border, rgba(0, 0, 0, 0.1));
   border-radius: 14px;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
   text-align: center;
   padding: 0.85rem 0.5rem;
 }
@@ -457,14 +457,14 @@ function formatDate(value: string) {
 .chip-card__label {
   margin-top: 0.2rem;
   font-size: 0.72rem;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .story-card,
 .detail-card {
-  border: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--tf-theme-border, rgba(0, 0, 0, 0.1));
   border-radius: 14px;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
 }
 
 .story-card {
@@ -483,9 +483,9 @@ function formatDate(value: string) {
   align-items: baseline;
   gap: 1rem;
   padding: 0.55rem 0;
-  border-top: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.08));
+  border-top: 1px solid var(--tf-theme-border, rgba(0, 0, 0, 0.08));
   font-size: 0.95rem;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .story-row:first-of-type {
@@ -494,7 +494,7 @@ function formatDate(value: string) {
 }
 
 .story-row strong {
-  color: var(--bw-theme-ink, inherit);
+  color: var(--tf-theme-ink, inherit);
   font-weight: 650;
   text-align: right;
 }

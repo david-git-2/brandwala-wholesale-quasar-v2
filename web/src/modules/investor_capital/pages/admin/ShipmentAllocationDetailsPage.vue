@@ -167,6 +167,7 @@ import { calculateLineLandedCostBdt } from 'src/shared/shipment-engine';
 import type { ShipmentInvestment } from 'src/modules/investor_capital/types';
 import { formatAmountBdt } from 'src/utils/currency';
 import ShipmentShareEditor from '../../components/ShipmentShareEditor.vue';
+import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
 
 const route = useRoute();
 const router = useRouter();
@@ -185,6 +186,31 @@ const resolvedTenantId = computed(() => authStore.tenantId ?? 0);
 const shipmentId = computed(() => {
   const parsed = Number(route.params.id);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+});
+
+const shipmentTitle = computed(() => {
+  const shipment = shipmentStore.currentShipment;
+  if (!shipment) return 'Shipment';
+  const code =
+    (shipment as { tenant_shipment_id?: number }).tenant_shipment_id ?? shipment.id;
+  const name = shipment.name?.trim();
+  return name ? `#${code} ${name}` : `#${code}`;
+});
+
+usePageBreadcrumbs(() => {
+  const tenantSlug =
+    authStore.tenantSlug || (route.params.tenantSlug as string | undefined) || null;
+  const listPath = tenantSlug ? `/${tenantSlug}/app/capital/shipments` : '/app/capital/shipments';
+
+  return [
+    {
+      label: authStore.selectedTenant?.name || 'Workspace',
+      icon: 'ph ph-buildings',
+    },
+    { label: 'Capital' },
+    { label: 'Shipments', to: listPath },
+    { label: shipmentTitle.value },
+  ];
 });
 
 const totalShipmentCost = computed(() => {

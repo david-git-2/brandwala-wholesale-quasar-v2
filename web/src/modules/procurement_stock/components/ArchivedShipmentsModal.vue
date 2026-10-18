@@ -323,6 +323,6 @@ const confirmPermanentDelete = (shipment: GlobalShipment) => {
   font-size: 13px;
 }
 .hover-bg-grey:hover {
-  background-color: #f8fafc;
+  background-color: var(--tf-hover-bg);
 }
 </style>

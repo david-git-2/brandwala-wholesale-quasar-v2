@@ -63,7 +63,7 @@ const chartOptions = computed(() =>
 .dashboard-sparkline__placeholder {
   width: 100%;
   height: 100%;
-  border-bottom: 1px dashed var(--bw-theme-border, #e7e1d8);
+  border-bottom: 1px dashed var(--tf-theme-border, #e7e1d8);
   opacity: 0.3;
 }
 </style>

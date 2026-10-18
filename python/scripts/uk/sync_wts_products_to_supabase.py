@@ -40,7 +40,7 @@ from product_sync_lib import (
     utc_now,
 )
 
-DEFAULT_INPUT = ROOT_DIR / "web" / "public" / "uk" / "wts_data.json"
+DEFAULT_INPUT = ROOT_DIR / "python" / "data" / "uk" / "out" / "wts_data.json"
 WTS_VENDOR_CODE = "WTS"
 WTS_VENDOR_ID = 4
 
@@ -53,7 +53,7 @@ def parse_args() -> argparse.Namespace:
         "--input",
         dest="input_path",
         default=str(DEFAULT_INPUT),
-        help="Input JSON path (default: web/public/uk/wts_data.json).",
+        help="Input JSON path (default: python/data/uk/out/wts_data.json).",
     )
     parser.add_argument(
         "--market",

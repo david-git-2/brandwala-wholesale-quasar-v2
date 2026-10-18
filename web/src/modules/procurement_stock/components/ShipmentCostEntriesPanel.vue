@@ -981,13 +981,13 @@ defineExpose({ resetDrafts });
 <style scoped>
 .cost-section {
   padding: 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--bw-theme-border, #e0e0e0) 100%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tf-theme-border, #e0e0e0) 100%, transparent);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, var(--bw-theme-base, #f5f5f5));
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, var(--tf-theme-base, #f5f5f5));
 }
 
 .cost-entry-row {
-  border: 1px solid color-mix(in srgb, var(--bw-theme-border, #e0e0e0) 80%, transparent);
-  background: var(--bw-theme-surface, #fff);
+  border: 1px solid color-mix(in srgb, var(--tf-theme-border, #e0e0e0) 80%, transparent);
+  background: var(--tf-theme-surface, #fff);
 }
 </style>

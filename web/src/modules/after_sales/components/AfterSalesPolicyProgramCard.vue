@@ -191,18 +191,18 @@ const patch = (partial: Partial<AfterSalesPolicyProgram>) => {
 <style scoped>
 .policy-program-card {
   border-radius: 14px;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
 }
 
 .policy-program-card__title {
   font-size: 1rem;
   font-weight: 700;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .policy-program-card__caption {
   margin-top: 0.2rem;
   font-size: 0.78rem;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 </style>

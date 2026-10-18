@@ -1,5 +1,5 @@
 <template>
-  <q-ajax-bar ref="bar" position="top" color="primary" size="6px" skip-hijack />
+  <q-ajax-bar ref="bar" position="top" color="accent" size="3px" skip-hijack />
 </template>
 
 <script setup lang="ts">

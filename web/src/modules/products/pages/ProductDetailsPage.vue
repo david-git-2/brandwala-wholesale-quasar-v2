@@ -402,6 +402,7 @@ import type { Vendor } from 'src/modules/vendor/types';
 import type { QForm } from 'quasar';
 import { showSuccessNotification } from 'src/utils/appFeedback';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
+import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
 
 const route = useRoute();
 const router = useRouter();
@@ -415,6 +416,24 @@ const deleting = ref(false);
 const updating = ref(false);
 const error = ref<string | null>(null);
 const product = ref<Product | null>(null);
+
+usePageBreadcrumbs(() => {
+  const tenantSlug =
+    authStore.tenantSlug || (route.params.tenantSlug as string | undefined) || null;
+  const hubPath = tenantSlug ? `/${tenantSlug}/app/products` : '/app/products';
+  const listPath = tenantSlug ? `/${tenantSlug}/app/products/list` : '/app/products/list';
+
+  return [
+    {
+      label: authStore.selectedTenant?.name || 'Workspace',
+      icon: 'ph ph-buildings',
+    },
+    { label: 'Products', to: hubPath },
+    { label: 'List', to: listPath },
+    { label: product.value?.name || 'Product' },
+  ];
+});
+
 const isEditing = ref(false);
 const formRef = ref<QForm | null>(null);
 

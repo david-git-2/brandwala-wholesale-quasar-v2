@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page">
-    <section class="bw-page__stack">
+  <q-page class="tf-page">
+    <section class="tf-page__stack">
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline">Catalog</div>
@@ -11,7 +11,7 @@
         </div>
       </section>
 
-      <q-banner v-if="isError" class="bw-status-banner text-white" rounded>
+      <q-banner v-if="isError" class="tf-status-banner text-white" rounded>
         {{ error?.message || 'Failed to load units of measure.' }}
       </q-banner>
 

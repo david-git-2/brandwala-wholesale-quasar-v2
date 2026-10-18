@@ -1,5 +1,5 @@
 <template>
-  <q-page class="bw-page">
+  <q-page class="tf-page">
     <!-- Page Header -->
     <div class="koba-header q-mb-md">
       <div>

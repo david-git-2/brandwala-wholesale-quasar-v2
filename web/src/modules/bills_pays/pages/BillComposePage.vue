@@ -1486,8 +1486,8 @@ void filterToProfiles('', (cb) => cb());
   max-width: 960px;
   margin: 0 auto;
   min-height: 100%;
-  background: var(--bw-neutral-surface, #fff);
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+  background: var(--tf-neutral-surface, #fff);
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
   border-radius: 8px;
 }
 
@@ -1499,8 +1499,8 @@ void filterToProfiles('', (cb) => cb());
 }
 
 .compose-party-card {
-  background: var(--bw-neutral-surface-alt, #f8fafc);
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+  background: var(--tf-neutral-surface-alt, #f8fafc);
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
   border-radius: 8px;
 }
 
@@ -1513,7 +1513,7 @@ void filterToProfiles('', (cb) => cb());
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--bw-neutral-chrome, #64748b);
+  color: var(--tf-neutral-chrome, #64748b);
   padding-right: 4px;
   white-space: nowrap;
 }
@@ -1524,8 +1524,8 @@ body.body--dark .compose-party-card {
 }
 
 .compose-footer {
-  border-top: 1px solid var(--bw-neutral-border, #e7e1d8);
-  background: var(--bw-neutral-surface-alt, #f8fafc);
+  border-top: 1px solid var(--tf-neutral-border, #e7e1d8);
+  background: var(--tf-neutral-surface-alt, #f8fafc);
   border-radius: 0 0 8px 8px;
 }
 
@@ -1536,7 +1536,7 @@ body.body--dark .compose-footer {
 
 .compose-lines-empty {
   font-size: 13px;
-  border: 1px dashed var(--bw-neutral-border, #e7e1d8);
+  border: 1px dashed var(--tf-neutral-border, #e7e1d8);
   border-radius: 8px;
 }
 
@@ -1555,9 +1555,9 @@ body.body--dark .compose-footer {
   align-items: stretch;
   gap: 12px 20px;
   padding: 10px 12px;
-  border-radius: var(--bw-radius-sm, 8px);
-  background: var(--bw-neutral-surface-alt, #f8fafc);
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+  border-radius: var(--tf-radius-sm, 8px);
+  background: var(--tf-neutral-surface-alt, #f8fafc);
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
 }
 
 body.body--dark .compose-kind-toolbar {
@@ -1577,7 +1577,7 @@ body.body--dark .compose-kind-toolbar {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--bw-neutral-chrome, #64748b);
+  color: var(--tf-neutral-chrome, #64748b);
   padding-left: 2px;
 }
 
@@ -1587,13 +1587,13 @@ body.body--dark .compose-kind-toolbar {
   flex-wrap: nowrap;
   gap: 2px;
   padding: 2px;
-  border-radius: var(--bw-radius-sm, 8px);
+  border-radius: var(--tf-radius-sm, 8px);
   background: #f1f5f9;
   flex-shrink: 0;
 }
 
 body.body--dark .compose-toolbar-segment {
-  background: #2a2622;
+  background: var(--tf-neutral-border);
 }
 
 .compose-toolbar-segment :deep(.compose-toolbar-btn) {
@@ -1627,26 +1627,26 @@ body.body--dark .compose-toolbar-segment {
 }
 
 .compose-document-segment :deep(.compose-toolbar-btn) {
-  color: var(--bw-neutral-ink, #171412);
+  color: var(--tf-neutral-ink, #171412);
 }
 
 body.body--dark .compose-document-segment :deep(.compose-toolbar-btn) {
-  color: var(--bw-neutral-ink, #f5f5f4);
+  color: var(--tf-neutral-ink, #f5f5f4);
 }
 
 .compose-document-chip {
   font-size: 12px;
   font-weight: 600;
   border-radius: 6px;
-  background: var(--bw-neutral-surface, #fff) !important;
-  color: var(--bw-neutral-ink, #171412) !important;
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+  background: var(--tf-neutral-surface, #fff) !important;
+  color: var(--tf-neutral-ink, #171412) !important;
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
 }
 
 body.body--dark .compose-document-chip {
-  background: var(--bw-neutral-surface, #1c1917) !important;
-  color: var(--bw-neutral-ink, #f5f5f4) !important;
-  border-color: var(--bw-neutral-border, #2a2622);
+  background: var(--tf-neutral-surface, #1c1917) !important;
+  color: var(--tf-neutral-ink, #f5f5f4) !important;
+  border-color: var(--tf-neutral-border, #2a2622);
 }
 
 .compose-parent-bill-select {
@@ -1668,7 +1668,7 @@ body.body--dark .compose-document-chip {
 }
 .compose-lines-table th {
   font-size: 11px;
-  color: var(--bw-neutral-chrome, #64748b);
+  color: var(--tf-neutral-chrome, #64748b);
 }
 .compose-line-item-cell {
   vertical-align: top;

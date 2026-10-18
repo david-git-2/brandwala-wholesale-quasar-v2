@@ -381,9 +381,9 @@ body.body--dark .orders-table {
   position: sticky;
   top: 0;
   z-index: 2;
-  color: var(--bw-neutral-chrome, #0f172a);
+  color: var(--tf-neutral-chrome, #0f172a);
   font-weight: 700;
-  background: var(--bw-neutral-surface, #f8fafc);
+  background: var(--tf-neutral-surface, #f8fafc);
 }
 
 body.body--dark .orders-table :deep(thead tr th) {

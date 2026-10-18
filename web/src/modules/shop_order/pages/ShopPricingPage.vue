@@ -1,6 +1,6 @@
 <template>
-  <component :is="embedded ? 'div' : 'q-page'" :class="embedded ? '' : 'bw-page'">
-    <section :class="embedded ? 'q-gutter-y-sm' : 'bw-page__stack'">
+  <component :is="embedded ? 'div' : 'q-page'" :class="embedded ? '' : 'tf-page'">
+    <section :class="embedded ? 'q-gutter-y-sm' : 'tf-page__stack'">
       <!-- Header -->
       <section v-if="!embedded" class="row items-center justify-between q-col-gutter-md">
         <div class="col">
@@ -271,7 +271,7 @@
                 type="number"
                 dense
                 borderless
-                input-class="text-right bw-tabular"
+                input-class="text-right tf-tabular"
                 class="cell-input"
                 step="0.01"
                 min="0"
@@ -304,7 +304,7 @@
                 type="number"
                 dense
                 borderless
-                input-class="text-right bw-tabular"
+                input-class="text-right tf-tabular"
                 class="cell-input"
                 step="0.01"
                 min="0"
@@ -338,7 +338,7 @@
                   type="number"
                   dense
                   borderless
-                  input-class="text-center bw-tabular"
+                  input-class="text-center tf-tabular"
                   class="cell-input display-qty-input"
                   min="0"
                   step="1"
@@ -1350,7 +1350,7 @@ onMounted(() => {
   position: sticky;
   top: 0;
   z-index: 2;
-  background-color: var(--bw-theme-surface, #ffffff);
+  background-color: var(--tf-theme-surface, #ffffff);
   font-weight: 700;
   font-size: 11px;
   text-transform: uppercase;

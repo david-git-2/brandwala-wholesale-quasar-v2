@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md costing-list-page theme-app">
     <PageInitialLoader v-if="initialLoading" />
-    <section v-else class="bw-page__stack costing-page">
+    <section v-else class="tf-page__stack costing-page">
       <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
         <q-card-section class="q-py-sm">
           <div class="row items-center justify-between q-col-gutter-sm">
@@ -205,7 +205,7 @@ const customerGroupNameById = (customerGroupId: number) =>
 const customerGroupAccentColorById = (customerGroupId: number) =>
   customerGroupOptions.value
     .find((option) => option.value === customerGroupId)
-    ?.accentColor?.trim() || 'var(--bw-theme-primary)';
+    ?.accentColor?.trim() || 'var(--tf-theme-primary)';
 const buildCreateFileName = (customerGroupId: number | null) => {
   const customerGroupName =
     customerGroupOptions.value.find((option) => option.value === customerGroupId)?.label ??
@@ -478,7 +478,7 @@ onMounted(async () => {
 
 .costing-page__card {
   width: 100%;
-  border-left: 4px solid var(--costing-card-accent, var(--bw-theme-primary));
+  border-left: 4px solid var(--costing-card-accent, var(--tf-theme-primary));
 }
 
 .costing-page__pagination {

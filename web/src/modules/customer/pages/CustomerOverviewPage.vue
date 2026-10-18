@@ -824,7 +824,7 @@ onMounted(() => {
 
 <style scoped>
 .customer-overview-page {
-  background: var(--bw-brand-base, #eef0f4);
+  background: var(--tf-brand-base, #eef0f4);
   height: calc(100vh - 55px);
   max-height: calc(100vh - 55px);
   overflow: hidden;
@@ -922,9 +922,9 @@ onMounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--bw-neutral-surface, #ffffff);
-  border: 1px solid var(--bw-neutral-border, #e2e8f0);
-  border-radius: var(--bw-radius-sm, 8px);
+  background: var(--tf-neutral-surface, #ffffff);
+  border: 1px solid var(--tf-neutral-border, #e2e8f0);
+  border-radius: var(--tf-radius-sm, 8px);
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
@@ -940,22 +940,22 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0.65rem 1rem;
-  border-bottom: 1px solid var(--bw-neutral-border, #f1f5f9);
+  border-bottom: 1px solid var(--tf-neutral-border, #f1f5f9);
   cursor: pointer;
   transition: all 0.15s ease;
   min-height: 52px;
 }
 
 .clean-list-item:hover {
-  background: #f8fafc;
+  background: var(--tf-hover-bg);
 }
 
 .clean-list-item:hover .item-name {
-  color: #0f172a;
+  color: var(--tf-neutral-ink);
 }
 
 .clean-list-item:hover .item-chevron {
-  color: #0f172a;
+  color: var(--tf-neutral-ink);
   transform: translateX(2px);
 }
 
@@ -1082,14 +1082,14 @@ onMounted(() => {
 
 .load-more-btn {
   background: #f1f5f9;
-  border-radius: var(--bw-radius-sm, 8px);
+  border-radius: var(--tf-radius-sm, 8px);
   font-size: 12px;
   transition: all 0.15s ease;
 }
 
 .load-more-btn:hover {
   background: #e2e8f0;
-  color: #0f172a;
+  color: var(--tf-neutral-ink);
 }
 
 .numeric-cell {

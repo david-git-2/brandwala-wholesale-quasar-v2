@@ -10,35 +10,24 @@
   >
     <div class="column full-height no-wrap overflow-hidden shipment-settings-drawer">
       <!-- Segmented tabs -->
-      <div class="shipment-drawer-header border-bottom row items-center no-wrap q-gutter-x-xs q-px-sm q-py-sm">
-        <div class="shipment-drawer-tabs__scroll col min-width-0">
-          <div class="shipment-drawer-tabs__track" role="tablist" aria-label="Shipment settings sections">
-            <button
-              v-for="tab in settingsTabs"
-              :key="tab.name"
-              type="button"
-              role="tab"
-              class="shipment-drawer-tabs__item"
-              :class="{ 'shipment-drawer-tabs__item--active': activeTab === tab.name }"
-              :aria-selected="activeTab === tab.name"
-              @click="activeTab = tab.name"
-            >
-              <q-icon :name="tab.icon" size="15px" class="shipment-drawer-tabs__icon" />
-              <span>{{ tab.label }}</span>
-            </button>
-          </div>
-        </div>
-        <q-btn
-          flat
-          round
-          dense
-          icon="ph ph-x"
-          color="grey-7"
-          aria-label="Close settings"
-          class="shipment-settings-drawer__close shrink-0"
-          @click="emit('update:modelValue', false)"
-        />
-      </div>
+      <TfDrawerSectionTabsHeader
+        v-model="activeTab"
+        :tabs="settingsTabs"
+        aria-label="Shipment settings sections"
+      >
+        <template #trailing>
+          <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-x"
+            color="grey-7"
+            aria-label="Close settings"
+            class="shipment-settings-drawer__close shrink-0"
+            @click="emit('update:modelValue', false)"
+          />
+        </template>
+      </TfDrawerSectionTabsHeader>
 
       <!-- Tab Panels -->
       <q-tab-panels v-model="activeTab" animated class="col bg-white shipment-settings-drawer-panels">
@@ -590,33 +579,12 @@
                 Cost lines
               </div>
 
-              <div class="cost-bucket-tabs__scroll">
-                <div
-                  class="cost-bucket-tabs__track"
-                  role="tablist"
-                  aria-label="Filter cost lines by bucket"
-                >
-                  <button
-                    v-for="tab in costBucketFilterTabs"
-                    :key="tab.value"
-                    type="button"
-                    role="tab"
-                    class="cost-bucket-tabs__item"
-                    :class="{ 'cost-bucket-tabs__item--active': costBucketFilter === tab.value }"
-                    :aria-selected="costBucketFilter === tab.value"
-                    @click="costBucketFilter = tab.value"
-                  >
-                    <span>{{ tab.label }}</span>
-                    <span
-                      v-if="tab.count > 0"
-                      class="cost-bucket-tabs__count"
-                      :class="{ 'cost-bucket-tabs__count--active': costBucketFilter === tab.value }"
-                    >
-                      {{ tab.count }}
-                    </span>
-                  </button>
-                </div>
-              </div>
+              <TfDrawerSectionTabs
+                v-model="costBucketFilter"
+                :tabs="costBucketSectionTabs"
+                aria-label="Filter cost lines by bucket"
+                count-visibility="positive"
+              />
 
               <div class="row items-center justify-between q-gutter-sm cost-lines-actions q-px-xs">
                 <q-btn
@@ -1000,6 +968,8 @@
 
 <script setup lang="ts">
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
+import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
+import TfDrawerSectionTabsHeader from 'src/components/ui/TfDrawerSectionTabsHeader.vue';
 import { ref, computed, watch, unref, onBeforeUnmount } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
@@ -1559,6 +1529,14 @@ const costBucketFilterTabs = computed(() =>
   })),
 );
 
+const costBucketSectionTabs = computed(() =>
+  costBucketFilterTabs.value.map((tab) => ({
+    name: tab.value,
+    label: tab.label,
+    count: tab.count,
+  })),
+);
+
 const costRowDisplayGroups = computed(() => {
   const filter = costBucketFilter.value;
 
@@ -2115,133 +2093,6 @@ const saveShipmentWeightIfChanged = async () => {
   margin-left: 2px;
 }
 
-.shipment-drawer-header {
-  background: #fff;
-}
-
-.shipment-drawer-tabs__scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.shipment-drawer-tabs__scroll::-webkit-scrollbar {
-  display: none;
-}
-
-.shipment-drawer-tabs__track {
-  display: inline-flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 10px;
-  background: #f1f5f9;
-  min-width: min-content;
-}
-
-.shipment-drawer-tabs__item {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 34px;
-  border: none;
-  background: transparent;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.2;
-  padding: 6px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.shipment-drawer-tabs__item:hover {
-  color: #0f172a;
-}
-
-.shipment-drawer-tabs__item--active {
-  background: #fff;
-  color: var(--q-primary);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
-}
-
-.shipment-drawer-tabs__item--active .shipment-drawer-tabs__icon {
-  color: var(--q-primary);
-}
-
-.cost-bucket-tabs__scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.cost-bucket-tabs__scroll::-webkit-scrollbar {
-  display: none;
-}
-
-.cost-bucket-tabs__track {
-  display: inline-flex;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 8px;
-  background: #f1f5f9;
-  min-width: min-content;
-}
-
-.cost-bucket-tabs__item {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 28px;
-  border: none;
-  background: transparent;
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
-  padding: 4px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.cost-bucket-tabs__item:hover {
-  color: #0f172a;
-}
-
-.cost-bucket-tabs__item--active {
-  background: #fff;
-  color: var(--q-primary);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-
-.cost-bucket-tabs__count {
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  padding: 2px 5px;
-  border-radius: 999px;
-  background: #e2e8f0;
-  color: #64748b;
-}
-
-.cost-bucket-tabs__count--active {
-  background: color-mix(in srgb, var(--q-primary) 12%, #fff);
-  color: var(--q-primary);
-}
-
 .cost-line-sl {
   min-width: 1.25rem;
   text-align: center;
@@ -2403,6 +2254,6 @@ const saveShipmentWeightIfChanged = async () => {
   font-size: 13px;
 }
 .summary-ap-bill-row:hover {
-  background: #f1f5f9;
+  background: var(--tf-hover-bg);
 }
 </style>

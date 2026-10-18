@@ -57,7 +57,7 @@
       <h2 class="ds-section__title">Quasar Sass vs scoped primary</h2>
       <p class="ds-note">
         <code>$primary</code> in quasar.variables is terracotta. Each scope overrides
-        <code>--q-primary</code> via <code>--bw-theme-primary</code>.
+        <code>--q-primary</code> via <code>--tf-theme-primary</code>.
       </p>
       <div class="ds-swatch-grid">
         <div class="ds-swatch">
@@ -73,7 +73,7 @@
 
     <section class="ds-section">
       <h2 class="ds-section__title">Brand mark by scope</h2>
-      <p class="ds-note">Tf mark tints to <code>--bw-theme-primary</code> for each place.</p>
+      <p class="ds-note">Tf mark tints to <code>--tf-theme-primary</code> for each place.</p>
       <div class="ds-logo-row">
         <div
           v-for="scope in scopes"
@@ -105,12 +105,12 @@
         Caprasimo is removed.
       </p>
       <div class="ds-type-stack">
-        <p class="bw-type-meta">meta — 11px / 600 — TABLE HEADER</p>
-        <p class="bw-type-body">body — 14px / 400 — Tables, forms, lists</p>
-        <p class="bw-type-title">title — 22px / 700 — Page title</p>
-        <p class="bw-type-kpi">kpi — 22px / 600 — ৳ 12,450.00</p>
-        <p class="bw-type-product">product — 18px / 600 — Shop product name</p>
-        <p class="bw-type-shop-name">shop-name — 28–32px / 700</p>
+        <p class="tf-type-meta">meta — 11px / 600 — TABLE HEADER</p>
+        <p class="tf-type-body">body — 14px / 400 — Tables, forms, lists</p>
+        <p class="tf-type-title">title — 22px / 700 — Page title</p>
+        <p class="tf-type-kpi">kpi — 22px / 600 — ৳ 12,450.00</p>
+        <p class="tf-type-product">product — 18px / 600 — Shop product name</p>
+        <p class="tf-type-shop-name">shop-name — 28–32px / 700</p>
         <p class="locale-bn">বাংলা পাঠ্য — Noto 400</p>
         <p class="locale-bn-label">বাংলা লেবেল — Noto 600</p>
       </div>
@@ -134,7 +134,7 @@
         <q-card flat bordered class="ds-card-sample">
           <q-card-section>
             <div class="text-subtitle2">q-card flat bordered</div>
-            <div class="bw-text-muted q-mt-xs">Default card surface</div>
+            <div class="tf-text-muted q-mt-xs">Default card surface</div>
           </q-card-section>
         </q-card>
         <div class="floating-surface ds-surface-sample">
@@ -355,11 +355,11 @@
                   <th v-if="opsVisible.image" class="text-left" style="width: 82px">Image</th>
                   <th v-if="opsVisible.name" class="text-left" style="width: 120px; max-width: 120px">Name</th>
                   <th v-if="opsVisible.codes" class="text-left" style="width: 115px">Codes</th>
-                  <th v-if="opsVisible.price" class="text-center bw-ops-col-tint--price" style="width: 56px">Price</th>
-                  <th v-if="opsVisible.cost" class="text-center bw-ops-col-tint--cost" style="width: 56px">Cost</th>
-                  <th v-if="opsVisible.qty" class="text-center bw-ops-col-tint--qty" style="width: 56px">Qty</th>
+                  <th v-if="opsVisible.price" class="text-center tf-ops-col-tint--price" style="width: 56px">Price</th>
+                  <th v-if="opsVisible.cost" class="text-center tf-ops-col-tint--cost" style="width: 56px">Cost</th>
+                  <th v-if="opsVisible.qty" class="text-center tf-ops-col-tint--qty" style="width: 56px">Qty</th>
                   <th v-if="opsVisible.weight" class="text-center" style="width: 56px">Wt</th>
-                  <th v-if="opsVisible.pkg" class="text-center bw-ops-col-tint--weight" style="width: 56px">Pkg</th>
+                  <th v-if="opsVisible.pkg" class="text-center tf-ops-col-tint--weight" style="width: 56px">Pkg</th>
                 </tr>
               </thead>
               <tbody>
@@ -414,7 +414,7 @@
                       <span style="font-size: 10px">{{ item.barcode }}</span>
                     </div>
                   </td>
-                  <td v-if="opsVisible.price" class="text-center bw-ops-col-tint--price">
+                  <td v-if="opsVisible.price" class="text-center tf-ops-col-tint--price">
                     <q-input
                       v-model.number="item.price"
                       type="number"
@@ -429,13 +429,13 @@
                       {{ (item.price * item.qty).toLocaleString() }}
                     </div>
                   </td>
-                  <td v-if="opsVisible.cost" class="text-center bw-ops-col-tint--cost font-mono text-weight-bold text-primary" style="font-size: 12px">
+                  <td v-if="opsVisible.cost" class="text-center tf-ops-col-tint--cost font-mono text-weight-bold text-primary" style="font-size: 12px">
                     {{ item.cost }}
                     <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
                       {{ (item.cost * item.qty).toLocaleString() }}
                     </div>
                   </td>
-                  <td v-if="opsVisible.qty" class="text-center bw-ops-col-tint--qty">
+                  <td v-if="opsVisible.qty" class="text-center tf-ops-col-tint--qty">
                     <q-input
                       v-model.number="item.qty"
                       type="number"
@@ -450,7 +450,7 @@
                   <td v-if="opsVisible.weight" class="text-center font-mono text-grey-8" style="font-size: 12px">
                     {{ item.productWeight.toFixed(3) }}
                   </td>
-                  <td v-if="opsVisible.pkg" class="text-center bw-ops-col-tint--weight font-mono" style="font-size: 12px">
+                  <td v-if="opsVisible.pkg" class="text-center tf-ops-col-tint--weight font-mono" style="font-size: 12px">
                     {{ item.packageWeight.toFixed(3) }}
                   </td>
                 </tr>
@@ -653,7 +653,7 @@
               data-test="entity-list-search"
             >
               <template #prepend>
-                <q-icon name="ph ph-magnifying-glass" size="18px" class="bw-text-muted" />
+                <q-icon name="ph ph-magnifying-glass" size="18px" class="tf-text-muted" />
               </template>
             </q-input>
             <q-btn
@@ -690,7 +690,7 @@
                 </span>
                 <span class="ds-entity-row__side">
                   <span
-                    class="ds-entity-row__money bw-tabular"
+                    class="ds-entity-row__money tf-tabular"
                     :class="{ 'ds-entity-row__money--neg': row.wallet < 0 }"
                   >
                     {{ formatBdt(row.wallet) }}
@@ -707,7 +707,7 @@
                   round
                   dense
                   icon="ph ph-dots-three"
-                  class="bw-text-muted"
+                  class="tf-text-muted"
                   aria-label="Row actions"
                   data-test="entity-row-actions"
                   @click.stop
@@ -821,9 +821,9 @@
             </div>
           </div>
           <div class="ds-meter">
-            <div class="ds-meter__seg" style="width: 58%; background: var(--bw-theme-primary)" title="COD" />
-            <div class="ds-meter__seg" style="width: 28%; background: var(--bw-success)" title="Digital" />
-            <div class="ds-meter__seg" style="width: 14%; background: var(--bw-warning)" title="Cash" />
+            <div class="ds-meter__seg" style="width: 58%; background: var(--tf-theme-primary)" title="COD" />
+            <div class="ds-meter__seg" style="width: 28%; background: var(--tf-success)" title="Digital" />
+            <div class="ds-meter__seg" style="width: 14%; background: var(--tf-warning)" title="Cash" />
           </div>
           <div class="ds-meter-legend">
             <span><i class="ds-meter-legend__swatch ds-meter-legend__swatch--shop" /> COD 58%</span>
@@ -967,8 +967,8 @@
           </q-tab-panel>
           <q-tab-panel name="summary" class="q-pa-md">
             <div class="text-subtitle2 text-weight-bold q-mb-sm">Totals</div>
-            <div class="bw-text-muted">Qty {{ sampleQty }} · {{ sampleStatus }}</div>
-            <div class="bw-type-kpi q-mt-sm">৳ 12,450.00</div>
+            <div class="tf-text-muted">Qty {{ sampleQty }} · {{ sampleStatus }}</div>
+            <div class="tf-type-kpi q-mt-sm">৳ 12,450.00</div>
           </q-tab-panel>
         </q-tab-panels>
         <q-card-actions align="right" class="q-pa-md border-top">
@@ -1019,7 +1019,7 @@
                   no-caps
                   icon="ph ph-list-plus"
                   label="Bulk codes"
-                  class="bw-text-muted"
+                  class="tf-text-muted"
                   @click="addProductsBulkOpen = !addProductsBulkOpen"
                 />
                 <q-btn
@@ -1027,7 +1027,7 @@
                   round
                   dense
                   icon="ph ph-funnel"
-                  class="bw-text-muted"
+                  class="tf-text-muted"
                   aria-label="Filters"
                   @click="addProductsFilterOpen = true"
                 >
@@ -1041,7 +1041,7 @@
               v-if="addProductsBulkOpen"
               class="column q-gutter-y-sm ds-add-products-bulk q-pa-sm rounded-borders"
             >
-              <span class="text-caption text-weight-medium bw-text-muted">Bulk paste mode: Auto</span>
+              <span class="text-caption text-weight-medium tf-text-muted">Bulk paste mode: Auto</span>
               <q-input
                 v-model="addProductsBulkText"
                 type="textarea"
@@ -1193,7 +1193,7 @@
       <q-card class="ds-dialog-card">
         <q-card-section>
           <div class="text-subtitle1 text-weight-bold">Edit listing</div>
-          <div class="bw-text-muted">Form dialog sample</div>
+          <div class="tf-text-muted">Form dialog sample</div>
         </q-card-section>
         <q-card-section class="q-gutter-md q-pt-none">
           <q-input v-model="sampleName" outlined dense label="Name" hide-bottom-space />
@@ -1592,12 +1592,12 @@ const hBarChartOptions: ChartOptions<'bar'> = {
     x: {
       beginAtZero: true,
       grid: { color: 'rgba(148, 163, 184, 0.25)' },
-      ticks: { color: 'var(--bw-theme-muted)', font: { size: 11, weight: 600 }, precision: 0 },
+      ticks: { color: 'var(--tf-theme-muted)', font: { size: 11, weight: 600 }, precision: 0 },
       border: { display: false },
     },
     y: {
       grid: { display: false },
-      ticks: { color: 'var(--bw-theme-ink)', font: { size: 11, weight: 600 } },
+      ticks: { color: 'var(--tf-theme-ink)', font: { size: 11, weight: 600 } },
       border: { display: false },
     },
   },
@@ -1625,12 +1625,12 @@ const vBarChartOptions: ChartOptions<'bar'> = {
   scales: {
     x: {
       grid: { display: false },
-      ticks: { color: 'var(--bw-theme-ink)', font: { size: 10, weight: 700 } },
+      ticks: { color: 'var(--tf-theme-ink)', font: { size: 10, weight: 700 } },
       border: { display: false },
     },
     y: {
       grid: { color: 'rgba(148, 163, 184, 0.25)' },
-      ticks: { color: 'var(--bw-theme-muted)', font: { size: 10, weight: 600 } },
+      ticks: { color: 'var(--tf-theme-muted)', font: { size: 10, weight: 600 } },
       border: { display: false },
     },
   },
@@ -1672,13 +1672,13 @@ const lineChartOptions: ChartOptions<'line'> = {
   scales: {
     x: {
       grid: { display: false },
-      ticks: { color: 'var(--bw-theme-muted)', font: { size: 10, weight: 600 } },
+      ticks: { color: 'var(--tf-theme-muted)', font: { size: 10, weight: 600 } },
       border: { display: false },
     },
     y: {
       grid: { color: 'rgba(226, 232, 240, 0.6)' },
       ticks: {
-        color: 'var(--bw-theme-muted)',
+        color: 'var(--tf-theme-muted)',
         font: { size: 10 },
         callback: (val) => `৳${Number(val) / 1000}k`,
       },
@@ -1699,30 +1699,30 @@ const scopes = [
 ] as const;
 
 const neutralTokens = [
-  { token: '--bw-neutral-canvas', label: 'Canvas' },
-  { token: '--bw-neutral-surface', label: 'Surface' },
-  { token: '--bw-neutral-border', label: 'Border' },
-  { token: '--bw-neutral-ink', label: 'Ink' },
-  { token: '--bw-neutral-muted', label: 'Muted' },
-  { token: '--bw-neutral-chrome', label: 'Chrome' },
+  { token: '--tf-neutral-canvas', label: 'Canvas' },
+  { token: '--tf-neutral-surface', label: 'Surface' },
+  { token: '--tf-neutral-border', label: 'Border' },
+  { token: '--tf-neutral-ink', label: 'Ink' },
+  { token: '--tf-neutral-muted', label: 'Muted' },
+  { token: '--tf-neutral-chrome', label: 'Chrome' },
 ];
 
 const semanticTokens = [
-  { token: '--bw-success', label: 'Success' },
-  { token: '--bw-success-soft', label: 'Success soft' },
-  { token: '--bw-warning', label: 'Warning' },
-  { token: '--bw-warning-soft', label: 'Warning soft' },
-  { token: '--bw-error', label: 'Error' },
-  { token: '--bw-error-soft', label: 'Error soft' },
-  { token: '--bw-info', label: 'Info' },
-  { token: '--bw-info-soft', label: 'Info soft' },
+  { token: '--tf-success', label: 'Success' },
+  { token: '--tf-success-soft', label: 'Success soft' },
+  { token: '--tf-warning', label: 'Warning' },
+  { token: '--tf-warning-soft', label: 'Warning soft' },
+  { token: '--tf-error', label: 'Error' },
+  { token: '--tf-error-soft', label: 'Error soft' },
+  { token: '--tf-info', label: 'Info' },
+  { token: '--tf-info-soft', label: 'Info soft' },
 ];
 
 const opsHueTokens = [
-  { token: '--bw-ops-hue-weight', label: 'Weight' },
-  { token: '--bw-ops-hue-price', label: 'Price' },
-  { token: '--bw-ops-hue-cost', label: 'Cost' },
-  { token: '--bw-ops-hue-qty', label: 'Qty' },
+  { token: '--tf-ops-hue-weight', label: 'Weight' },
+  { token: '--tf-ops-hue-price', label: 'Price' },
+  { token: '--tf-ops-hue-cost', label: 'Cost' },
+  { token: '--tf-ops-hue-qty', label: 'Qty' },
 ];
 
 const radiusSamples = [
@@ -1773,13 +1773,13 @@ const ScopePanel = defineComponent({
   },
   setup(props) {
     const themeTokens = [
-      { token: '--bw-theme-base', label: 'Base' },
-      { token: '--bw-theme-surface', label: 'Surface' },
-      { token: '--bw-theme-border', label: 'Border' },
-      { token: '--bw-theme-ink', label: 'Ink' },
-      { token: '--bw-theme-muted', label: 'Muted' },
-      { token: '--bw-theme-primary', label: 'Primary' },
-      { token: '--bw-theme-primary-soft', label: 'Primary soft' },
+      { token: '--tf-theme-base', label: 'Base' },
+      { token: '--tf-theme-surface', label: 'Surface' },
+      { token: '--tf-theme-border', label: 'Border' },
+      { token: '--tf-theme-ink', label: 'Ink' },
+      { token: '--tf-theme-muted', label: 'Muted' },
+      { token: '--tf-theme-primary', label: 'Primary' },
+      { token: '--tf-theme-primary-soft', label: 'Primary soft' },
       { token: '--q-primary', label: '--q-primary' },
     ];
 
@@ -1806,16 +1806,16 @@ const ScopePanel = defineComponent({
                 type: 'button',
                 class: 'ds-scope-primary-btn',
                 style: {
-                  background: 'var(--bw-theme-primary)',
-                  color: 'var(--bw-theme-surface)',
+                  background: 'var(--tf-theme-primary)',
+                  color: 'var(--tf-theme-surface)',
                 },
               }, 'Primary'),
               h('span', {
                 class: 'ds-scope-chip',
                 style: {
-                  background: 'var(--bw-theme-primary-soft)',
-                  color: 'var(--bw-theme-primary)',
-                  border: '1px solid var(--bw-theme-border)',
+                  background: 'var(--tf-theme-primary-soft)',
+                  color: 'var(--tf-theme-primary)',
+                  border: '1px solid var(--tf-theme-border)',
                 },
               }, 'Chip'),
             ]),
@@ -1835,8 +1835,8 @@ watch(mode, (val) => {
   max-width: none !important;
   min-height: 100vh;
   padding: clamp(1rem, 2.4vw, 2rem);
-  background: var(--bw-neutral-canvas);
-  color: var(--bw-neutral-ink);
+  background: var(--tf-neutral-canvas);
+  color: var(--tf-neutral-ink);
 }
 
 .ds-header {
@@ -1857,7 +1857,7 @@ watch(mode, (val) => {
 
 .ds-subtitle {
   margin: 0.35rem 0 0;
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
   font-size: 0.875rem;
 
   code {
@@ -1878,7 +1878,7 @@ watch(mode, (val) => {
 .ds-note {
   margin: -0.25rem 0 1rem;
   font-size: 0.8125rem;
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
 }
 
 .ds-swatch-grid {
@@ -1892,9 +1892,9 @@ watch(mode, (val) => {
   gap: 0.65rem;
   align-items: center;
   padding: 0.5rem;
-  border: 1px solid var(--bw-neutral-border);
+  border: 1px solid var(--tf-neutral-border);
   border-radius: 8px;
-  background: var(--bw-neutral-surface);
+  background: var(--tf-neutral-surface);
 }
 
 :deep(.ds-swatch__chip) {
@@ -1919,13 +1919,13 @@ watch(mode, (val) => {
 
 :deep(.ds-swatch__token) {
   font-size: 0.6875rem;
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
   word-break: break-all;
 }
 
 :deep(.ds-swatch__resolved) {
   font-size: 0.625rem;
-  color: var(--bw-neutral-chrome);
+  color: var(--tf-neutral-chrome);
 }
 
 .ds-logo-row {
@@ -1940,9 +1940,9 @@ watch(mode, (val) => {
   align-items: center;
   gap: 0.75rem;
   padding: 1.25rem 1rem;
-  border: 1px solid var(--bw-theme-border, var(--bw-neutral-border));
+  border: 1px solid var(--tf-theme-border, var(--tf-neutral-border));
   border-radius: 12px;
-  background: var(--bw-theme-surface, var(--bw-neutral-surface));
+  background: var(--tf-theme-surface, var(--tf-neutral-surface));
 }
 
 .ds-logo-mark {
@@ -1963,11 +1963,11 @@ watch(mode, (val) => {
 }
 
 :deep(.ds-scope-panel) {
-  border: 1px solid var(--bw-theme-border, var(--bw-neutral-border));
+  border: 1px solid var(--tf-theme-border, var(--tf-neutral-border));
   border-radius: 12px;
   padding: 1rem;
-  background: var(--bw-theme-base, var(--bw-neutral-canvas));
-  color: var(--bw-theme-ink, var(--bw-neutral-ink));
+  background: var(--tf-theme-base, var(--tf-neutral-canvas));
+  color: var(--tf-theme-ink, var(--tf-neutral-ink));
 }
 
 :deep(.ds-scope-panel__head) {
@@ -1995,20 +1995,20 @@ watch(mode, (val) => {
 }
 
 :deep(.ds-scope-panel .ds-swatch) {
-  background: var(--bw-theme-surface, var(--bw-neutral-surface));
-  border-color: var(--bw-theme-border, var(--bw-neutral-border));
+  background: var(--tf-theme-surface, var(--tf-neutral-surface));
+  border-color: var(--tf-theme-border, var(--tf-neutral-border));
 }
 
 :deep(.ds-scope-panel__demo) {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--bw-theme-border, var(--bw-neutral-border));
+  border-top: 1px solid var(--tf-theme-border, var(--tf-neutral-border));
 }
 
 :deep(.ds-scope-panel__copy) {
   margin: 0 0 0.65rem;
   font-size: 0.75rem;
-  color: var(--bw-theme-muted, var(--bw-neutral-muted));
+  color: var(--tf-theme-muted, var(--tf-neutral-muted));
 }
 
 :deep(.ds-scope-panel__controls) {
@@ -2027,7 +2027,7 @@ watch(mode, (val) => {
 }
 
 :deep(.ds-scope-chip) {
-  border-radius: var(--bw-radius-sm);
+  border-radius: var(--tf-radius-sm);
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
   font-weight: 600;
@@ -2037,9 +2037,9 @@ watch(mode, (val) => {
   display: grid;
   gap: 0.85rem;
   padding: 1rem;
-  border: 1px solid var(--bw-neutral-border);
+  border: 1px solid var(--tf-neutral-border);
   border-radius: 12px;
-  background: var(--bw-neutral-surface);
+  background: var(--tf-neutral-surface);
 
   p {
     margin: 0;
@@ -2060,7 +2060,7 @@ watch(mode, (val) => {
   font-size: 0.75rem;
 
   code {
-    color: var(--bw-neutral-muted);
+    color: var(--tf-neutral-muted);
     font-size: 0.6875rem;
   }
 }
@@ -2068,8 +2068,8 @@ watch(mode, (val) => {
 .ds-radius-box {
   width: 72px;
   height: 48px;
-  background: var(--bw-neutral-surface);
-  border: 1px solid var(--bw-neutral-border);
+  background: var(--tf-neutral-surface);
+  border: 1px solid var(--tf-neutral-border);
 }
 
 .ds-component-row {
@@ -2097,16 +2097,16 @@ watch(mode, (val) => {
   padding: 1.25rem 1.25rem 0;
   margin: 0 -0.25rem 2rem;
   border-radius: 12px;
-  background: var(--bw-theme-base, var(--bw-neutral-canvas));
-  border: 1px solid var(--bw-theme-border, var(--bw-neutral-border));
+  background: var(--tf-theme-base, var(--tf-neutral-canvas));
+  border: 1px solid var(--tf-theme-border, var(--tf-neutral-border));
 }
 
 .ds-block {
   padding: 0.85rem 1rem 1rem;
   margin-bottom: 0.75rem;
-  border: 1px solid var(--bw-theme-border, var(--bw-neutral-border));
+  border: 1px solid var(--tf-theme-border, var(--tf-neutral-border));
   border-radius: 12px;
-  background: var(--bw-theme-surface, var(--bw-neutral-surface));
+  background: var(--tf-theme-surface, var(--tf-neutral-surface));
 }
 
 .ds-block__label {
@@ -2115,7 +2115,7 @@ watch(mode, (val) => {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted, var(--bw-neutral-muted));
+  color: var(--tf-theme-muted, var(--tf-neutral-muted));
 }
 
 .ds-input-grid {
@@ -2126,9 +2126,9 @@ watch(mode, (val) => {
 
 .ds-hub-list {
   padding: 12px;
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
   border-radius: 8px;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
 }
 
 .ds-hub-action {
@@ -2140,7 +2140,7 @@ watch(mode, (val) => {
 }
 
 .ds-hub-search :deep(.q-field--outlined .q-field__control:before) {
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
 }
 
 .ds-hub-table {
@@ -2153,23 +2153,23 @@ watch(mode, (val) => {
 }
 
 .ds-hub-table :deep(thead tr th) {
-  background: color-mix(in srgb, var(--bw-theme-surface) 92%, var(--bw-theme-base) 8%);
+  background: color-mix(in srgb, var(--tf-theme-surface) 92%, var(--tf-theme-base) 8%);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.05em;
-  color: var(--bw-theme-muted);
-  border-bottom: 1px solid var(--bw-theme-border);
+  color: var(--tf-theme-muted);
+  border-bottom: 1px solid var(--tf-theme-border);
 }
 
 .ds-hub-table :deep(tbody tr td) {
   padding: 12px 16px;
   vertical-align: middle;
-  border-bottom: 1px solid var(--bw-theme-border);
-  color: var(--bw-theme-ink);
+  border-bottom: 1px solid var(--tf-theme-border);
+  color: var(--tf-theme-ink);
 }
 
 .ds-hub-table :deep(tbody tr:hover) {
-  background-color: var(--bw-theme-primary-soft);
+  background-color: var(--tf-theme-primary-soft);
 }
 
 .ds-hub-two-line {
@@ -2182,12 +2182,12 @@ watch(mode, (val) => {
 .ds-hub-muted {
   font-size: 12px;
   line-height: 16px;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .ds-hub-avatar {
-  background: var(--bw-theme-primary-soft);
-  color: var(--bw-theme-primary);
+  background: var(--tf-theme-primary-soft);
+  color: var(--tf-theme-primary);
   font-size: 12px;
   font-weight: 600;
 }
@@ -2209,20 +2209,20 @@ watch(mode, (val) => {
 }
 
 .ds-hub-status--active {
-  background: var(--bw-success-soft);
-  color: var(--bw-success);
+  background: var(--tf-success-soft);
+  color: var(--tf-success);
 }
 
 .ds-hub-status--inactive {
-  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%);
-  color: var(--bw-theme-muted);
+  background: color-mix(in srgb, var(--tf-theme-surface) 88%, var(--tf-theme-base) 12%);
+  color: var(--tf-theme-muted);
 }
 
 .ds-entity-list {
   padding: 12px;
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
   border-radius: 12px;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
 }
 
 .ds-entity-list__toolbar {
@@ -2247,10 +2247,10 @@ watch(mode, (val) => {
   gap: 12px;
   width: 100%;
   padding: 12px 14px;
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
   border-radius: 12px;
-  background: var(--bw-theme-surface);
-  color: var(--bw-theme-ink);
+  background: var(--tf-theme-surface);
+  color: var(--tf-theme-ink);
   cursor: pointer;
   text-align: left;
   transition:
@@ -2262,18 +2262,18 @@ watch(mode, (val) => {
 
 .ds-entity-row:hover {
   transform: translateY(-1px);
-  box-shadow: var(--bw-theme-shadow);
-  border-color: color-mix(in srgb, var(--bw-theme-primary) 28%, var(--bw-theme-border));
+  box-shadow: var(--tf-theme-shadow);
+  border-color: color-mix(in srgb, var(--tf-theme-primary) 28%, var(--tf-theme-border));
 }
 
 .ds-entity-row:focus-visible {
-  outline: 2px solid var(--bw-theme-primary);
+  outline: 2px solid var(--tf-theme-primary);
   outline-offset: 2px;
 }
 
 .ds-entity-row--active {
-  background: var(--bw-theme-primary-soft);
-  border-color: color-mix(in srgb, var(--bw-theme-primary) 38%, var(--bw-theme-border));
+  background: var(--tf-theme-primary-soft);
+  border-color: color-mix(in srgb, var(--tf-theme-primary) 38%, var(--tf-theme-border));
 }
 
 .ds-entity-row__avatar {
@@ -2283,8 +2283,8 @@ watch(mode, (val) => {
   border-radius: 8px;
   display: grid;
   place-items: center;
-  background: var(--bw-theme-primary-soft);
-  color: var(--bw-theme-primary);
+  background: var(--tf-theme-primary-soft);
+  color: var(--tf-theme-primary);
   font-size: 13px;
   font-weight: 700;
 }
@@ -2309,7 +2309,7 @@ watch(mode, (val) => {
 .ds-entity-row__meta {
   font-size: 12px;
   line-height: 1.35;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2326,11 +2326,11 @@ watch(mode, (val) => {
 .ds-entity-row__money {
   font-size: 13px;
   font-weight: 600;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .ds-entity-row__money--neg {
-  color: var(--bw-error);
+  color: var(--tf-error);
 }
 
 @media (max-width: 640px) {
@@ -2352,7 +2352,7 @@ watch(mode, (val) => {
 
 .ds-chart-card {
   border-radius: 12px;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
 }
 
 .ds-chart-card__head {
@@ -2368,13 +2368,13 @@ watch(mode, (val) => {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted, var(--bw-neutral-muted));
+  color: var(--tf-theme-muted, var(--tf-neutral-muted));
 }
 
 .ds-chart-card__sub {
   margin-top: 0.2rem;
   font-size: 0.78rem;
-  color: var(--bw-theme-muted, var(--bw-neutral-muted));
+  color: var(--tf-theme-muted, var(--tf-neutral-muted));
 }
 
 .ds-chart-card__kpi {
@@ -2384,7 +2384,7 @@ watch(mode, (val) => {
 }
 
 .ds-chart-card__kpi-value {
-  font-family: var(--bw-font-mono, inherit);
+  font-family: var(--tf-font-mono, inherit);
   font-size: 1.25rem;
   font-weight: 600;
   line-height: 1;
@@ -2396,7 +2396,7 @@ watch(mode, (val) => {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted, var(--bw-neutral-muted));
+  color: var(--tf-theme-muted, var(--tf-neutral-muted));
 }
 
 .ds-chart-card__canvas {
@@ -2427,7 +2427,7 @@ watch(mode, (val) => {
 }
 
 .ds-donut__pct {
-  font-family: var(--bw-font-mono, inherit);
+  font-family: var(--tf-font-mono, inherit);
   font-size: 1.1rem;
   font-weight: 600;
   line-height: 1;
@@ -2439,7 +2439,7 @@ watch(mode, (val) => {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted, var(--bw-neutral-muted));
+  color: var(--tf-theme-muted, var(--tf-neutral-muted));
 }
 
 .ds-donut-legend {
@@ -2477,7 +2477,7 @@ watch(mode, (val) => {
   height: 12px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--bw-neutral-border);
+  background: var(--tf-neutral-border);
 }
 
 .ds-meter__seg {
@@ -2490,7 +2490,7 @@ watch(mode, (val) => {
   gap: 0.85rem;
   margin-top: 0.75rem;
   font-size: 0.75rem;
-  color: var(--bw-theme-muted, var(--bw-neutral-muted));
+  color: var(--tf-theme-muted, var(--tf-neutral-muted));
 }
 
 .ds-meter-legend span {
@@ -2507,15 +2507,15 @@ watch(mode, (val) => {
 }
 
 .ds-meter-legend__swatch--shop {
-  background: var(--bw-theme-primary);
+  background: var(--tf-theme-primary);
 }
 
 .ds-meter-legend__swatch--success {
-  background: var(--bw-success);
+  background: var(--tf-success);
 }
 
 .ds-meter-legend__swatch--warning {
-  background: var(--bw-warning);
+  background: var(--tf-warning);
 }
 
 .ds-dialog-card {
@@ -2538,9 +2538,9 @@ watch(mode, (val) => {
   margin: 12px;
   border-radius: 12px;
   overflow: hidden;
-  background: var(--bw-theme-surface);
-  color: var(--bw-theme-ink);
-  border: 1px solid var(--bw-theme-border);
+  background: var(--tf-theme-surface);
+  color: var(--tf-theme-ink);
+  border: 1px solid var(--tf-theme-border);
 }
 
 .ds-add-products-header {
@@ -2548,13 +2548,13 @@ watch(mode, (val) => {
 }
 
 .ds-add-products-toolbar {
-  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%);
-  border-bottom: 1px solid var(--bw-theme-border);
+  background: color-mix(in srgb, var(--tf-theme-surface) 88%, var(--tf-theme-base) 12%);
+  border-bottom: 1px solid var(--tf-theme-border);
 }
 
 .ds-add-products-bulk {
-  background: color-mix(in srgb, var(--bw-theme-surface) 82%, var(--bw-theme-base) 18%);
-  border: 1px solid var(--bw-theme-border);
+  background: color-mix(in srgb, var(--tf-theme-surface) 82%, var(--tf-theme-base) 18%);
+  border: 1px solid var(--tf-theme-border);
 }
 
 .ds-add-products-body {
@@ -2567,17 +2567,17 @@ watch(mode, (val) => {
 }
 
 .ds-add-products-list {
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
 }
 
 .ds-add-products-thumb {
-  background: var(--bw-theme-base);
-  color: var(--bw-theme-muted);
+  background: var(--tf-theme-base);
+  color: var(--tf-theme-muted);
 }
 
 .ds-add-products-footer {
-  border-top: 1px solid var(--bw-theme-border);
-  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%);
+  border-top: 1px solid var(--tf-theme-border);
+  background: color-mix(in srgb, var(--tf-theme-surface) 88%, var(--tf-theme-base) 12%);
 }
 
 .ds-ops-sheet {
@@ -2585,10 +2585,10 @@ watch(mode, (val) => {
   flex-direction: column;
   height: 420px;
   overflow: hidden;
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
   border-radius: 8px;
-  background: var(--bw-theme-surface);
-  color: var(--bw-theme-ink);
+  background: var(--tf-theme-surface);
+  color: var(--tf-theme-ink);
 }
 
 .ds-ops-sheet__toolbar {
@@ -2599,12 +2599,12 @@ watch(mode, (val) => {
   gap: 0.75rem;
   flex-shrink: 0;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--bw-theme-border);
-  background: var(--bw-theme-surface);
+  border-bottom: 1px solid var(--tf-theme-border);
+  background: var(--tf-theme-surface);
 }
 
 .ds-ops-sheet__ghost {
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
   border-radius: 8px;
 }
 
@@ -2612,7 +2612,7 @@ watch(mode, (val) => {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
 }
 
 .hide-native-scrollbar {
@@ -2629,34 +2629,34 @@ watch(mode, (val) => {
 }
 
 :deep(.ds-ops-table) {
-  background: var(--bw-theme-surface);
-  color: var(--bw-theme-ink);
+  background: var(--tf-theme-surface);
+  color: var(--tf-theme-ink);
 }
 
 :deep(.ds-ops-table th),
 :deep(.ds-ops-table td) {
   padding: 4px !important;
   height: 48px;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
-:deep(.ds-ops-table tbody td:not([class*='bw-ops-col-tint'])) {
-  background-color: var(--bw-theme-surface) !important;
+:deep(.ds-ops-table tbody td:not([class*='tf-ops-col-tint'])) {
+  background-color: var(--tf-theme-surface) !important;
 }
 
-:deep(.ds-ops-table thead th:not([class*='bw-ops-col-tint'])) {
-  background: color-mix(in srgb, var(--bw-theme-surface) 92%, var(--bw-theme-base) 8%) !important;
-  color: var(--bw-theme-muted) !important;
-  border-bottom: 1px solid var(--bw-theme-border);
+:deep(.ds-ops-table thead th:not([class*='tf-ops-col-tint'])) {
+  background: color-mix(in srgb, var(--tf-theme-surface) 92%, var(--tf-theme-base) 8%) !important;
+  color: var(--tf-theme-muted) !important;
+  border-bottom: 1px solid var(--tf-theme-border);
 }
 
-:deep(.ds-ops-table thead th[class*='bw-ops-col-tint']) {
-  color: var(--bw-theme-muted) !important;
-  border-bottom: 1px solid var(--bw-theme-border);
+:deep(.ds-ops-table thead th[class*='tf-ops-col-tint']) {
+  color: var(--tf-theme-muted) !important;
+  border-bottom: 1px solid var(--tf-theme-border);
 }
 
-:deep(.ds-ops-table tr.row-selected td:not([class*='bw-ops-col-tint'])) {
-  background-color: color-mix(in srgb, var(--bw-theme-surface) 82%, var(--bw-theme-primary) 18%) !important;
+:deep(.ds-ops-table tr.row-selected td:not([class*='tf-ops-col-tint'])) {
+  background-color: color-mix(in srgb, var(--tf-theme-surface) 82%, var(--tf-theme-primary) 18%) !important;
 }
 
 :deep(.ds-ops-table tr:hover td) {
@@ -2664,15 +2664,15 @@ watch(mode, (val) => {
 }
 
 :deep(.ds-ops-table .section-break-row) {
-  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%) !important;
-  border-top: 2px solid var(--bw-theme-border) !important;
-  border-bottom: 1px solid var(--bw-theme-border) !important;
+  background: color-mix(in srgb, var(--tf-theme-surface) 88%, var(--tf-theme-base) 12%) !important;
+  border-top: 2px solid var(--tf-theme-border) !important;
+  border-bottom: 1px solid var(--tf-theme-border) !important;
 }
 
 :deep(.ds-ops-table .section-break-row td) {
-  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%) !important;
+  background: color-mix(in srgb, var(--tf-theme-surface) 88%, var(--tf-theme-base) 12%) !important;
   height: 38px !important;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 :deep(.inline-edit-input input[type='number']::-webkit-outer-spin-button),
@@ -2703,12 +2703,12 @@ watch(mode, (val) => {
 }
 
 :deep(.excel-cell-input:hover .q-field__control) {
-  background-color: color-mix(in srgb, var(--bw-theme-ink) 6%, transparent) !important;
+  background-color: color-mix(in srgb, var(--tf-theme-ink) 6%, transparent) !important;
 }
 
 :deep(.excel-cell-input.q-field--focused .q-field__control) {
-  background-color: var(--bw-theme-surface) !important;
-  border: 1.5px solid var(--bw-theme-primary) !important;
-  box-shadow: 0 0 0 1px var(--bw-theme-primary) !important;
+  background-color: var(--tf-theme-surface) !important;
+  border: 1.5px solid var(--tf-theme-primary) !important;
+  box-shadow: 0 0 0 1px var(--tf-theme-primary) !important;
 }
 </style>

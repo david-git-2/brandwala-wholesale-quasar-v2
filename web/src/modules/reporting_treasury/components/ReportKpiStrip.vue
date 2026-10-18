@@ -2,7 +2,7 @@
   <div class="row items-baseline q-gutter-x-xs">
     <span class="text-caption text-grey-7 text-uppercase font-bold" style="font-size: 11px">{{ label }}:</span>
     <span
-      class="text-subtitle2 text-weight-bolder bw-tabular"
+      class="text-subtitle2 text-weight-bolder tf-tabular"
       :class="highlight ? 'text-negative' : 'text-primary'"
     >
       {{ displayValue }}

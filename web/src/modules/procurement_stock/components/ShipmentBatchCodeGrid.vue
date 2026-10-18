@@ -91,7 +91,7 @@
                   <span class="batch-header-label">Brand</span>
                 </th>
               </template>
-              <th class="batch-col-expires text-center bw-ops-col-tint--qty">Expires in</th>
+              <th class="batch-col-expires text-center tf-ops-col-tint--qty">Expires in</th>
               <th class="batch-col-arrived text-center">Arrived</th>
               <th class="batch-col-actions text-center" />
             </tr>
@@ -653,7 +653,7 @@ const displayExpireDate = (itemId: number, savedExpire: string | null): string |
   height: 52px;
 }
 
-.shipment-items-markup-table th.bw-ops-col-tint--qty {
+.shipment-items-markup-table th.tf-ops-col-tint--qty {
   background-color: #d0e6ff !important;
   box-shadow: inset 2px 0 0 #2563eb;
 }

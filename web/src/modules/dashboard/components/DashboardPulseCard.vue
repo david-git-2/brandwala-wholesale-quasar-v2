@@ -49,7 +49,7 @@ withDefaults(
   }>(),
   {
     hasChart: true,
-    accent: 'var(--bw-theme-primary)',
+    accent: 'var(--tf-theme-primary)',
   },
 );
 </script>
@@ -78,7 +78,7 @@ withDefaults(
 .dashboard-story__title {
   font-size: 12px;
   font-weight: 500;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .dashboard-story__body {
@@ -125,8 +125,8 @@ withDefaults(
   overflow: hidden;
   padding: 1rem 1rem 0.85rem;
   border-radius: 14px;
-  background: color-mix(in srgb, var(--bw-theme-border) 28%, var(--bw-theme-surface));
-  border: 1px solid color-mix(in srgb, var(--bw-theme-border) 65%, transparent);
+  background: color-mix(in srgb, var(--tf-theme-border) 28%, var(--tf-theme-surface));
+  border: 1px solid color-mix(in srgb, var(--tf-theme-border) 65%, transparent);
 }
 
 .dashboard-story__figure-label {
@@ -135,7 +135,7 @@ withDefaults(
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .dashboard-story__footer {

@@ -551,18 +551,18 @@ async function ensureVendorsLoaded() {
 
 <style scoped>
 .add-product-cart-page {
-  background: var(--bw-theme-base, #f1f5f9);
+  background: var(--tf-theme-base, var(--tf-disabled-bg));
 }
 
 .border-bottom {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--tf-neutral-border);
 }
 
 .add-product-cart-page__title {
   font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
-  color: var(--bw-theme-ink, #1e293b);
+  color: var(--tf-theme-ink, #1e293b);
 }
 
 .add-product-cart-page__search {

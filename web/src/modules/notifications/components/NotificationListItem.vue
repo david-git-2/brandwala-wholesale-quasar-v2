@@ -105,8 +105,8 @@ const relativeTime = computed(() => formatRelativeTime(props.item.created_at));
 }
 
 .notification-list-item--unread {
-  border-left-color: var(--bw-theme-primary, var(--q-primary));
-  background: color-mix(in srgb, var(--bw-theme-primary, var(--q-primary)) 8%, transparent);
+  border-left-color: var(--tf-theme-primary, var(--q-primary));
+  background: color-mix(in srgb, var(--tf-theme-primary, var(--q-primary)) 8%, transparent);
 }
 
 .notification-list-item--no-link {
@@ -123,18 +123,18 @@ const relativeTime = computed(() => formatRelativeTime(props.item.created_at));
   height: 8px;
   margin-top: 6px;
   border-radius: 50%;
-  background: var(--bw-theme-primary, var(--q-primary));
+  background: var(--tf-theme-primary, var(--q-primary));
 }
 
 .notification-list-item__title {
-  color: var(--bw-theme-ink, #0f172a);
+  color: var(--tf-theme-ink, #0f172a);
 }
 
 .notification-list-item__kind,
 .notification-list-item__body,
 .notification-list-item__tenant,
 .notification-list-item__time {
-  color: var(--bw-theme-muted, #64748b);
+  color: var(--tf-theme-muted, #64748b);
 }
 
 .notification-list-item__time-col {

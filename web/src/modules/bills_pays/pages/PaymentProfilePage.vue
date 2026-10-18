@@ -277,8 +277,8 @@ onMounted(() => {
   height: calc(100vh - 55px);
 }
 .profile-header {
-  background: var(--bw-neutral-canvas, #f7f4ef);
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
+  background: var(--tf-neutral-canvas, #f7f4ef);
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
   border-radius: 8px;
 }
 </style>

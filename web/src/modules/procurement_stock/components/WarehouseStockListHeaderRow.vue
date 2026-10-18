@@ -20,13 +20,13 @@ defineProps<{ readOnly?: boolean }>();
   z-index: 2;
   padding: 0.4rem 1rem;
   gap: 0.65rem;
-  background: var(--bw-neutral-surface, #ffffff);
-  border-bottom: 1px solid var(--bw-neutral-border, #e2e8f0);
+  background: var(--tf-neutral-surface, #ffffff);
+  border-bottom: 1px solid var(--tf-neutral-border, #e2e8f0);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--bw-neutral-chrome, #64748b);
+  color: var(--tf-neutral-chrome, #64748b);
 }
 
 .warehouse-list-header__sl {

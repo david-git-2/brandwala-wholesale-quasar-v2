@@ -143,18 +143,18 @@ const loginErrorMessage = computed(() => {
 
 <style scoped>
 .auth-card {
-  --card-accent: var(--bw-theme-primary);
-  --card-accent-rgb: var(--bw-theme-primary-rgb);
-  --card-soft: var(--bw-theme-primary-soft);
-  --card-ink: var(--bw-theme-ink);
-  --card-muted: var(--bw-theme-muted);
+  --card-accent: var(--tf-theme-primary);
+  --card-accent-rgb: var(--tf-theme-primary-rgb);
+  --card-soft: var(--tf-theme-primary-soft);
+  --card-ink: var(--tf-theme-ink);
+  --card-muted: var(--tf-theme-muted);
   --card-pad-x: clamp(1rem, 4vw, 1.75rem);
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  background: var(--bw-theme-surface);
+  background: var(--tf-theme-surface);
   border-radius: 8px;
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
   box-shadow:
     0 2px 4px rgb(0 0 0 / 0.04),
     0 8px 24px rgb(0 0 0 / 0.06);

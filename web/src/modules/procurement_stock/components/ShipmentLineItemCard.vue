@@ -547,7 +547,7 @@ const onExtraNumber = (
   row-gap: 0;
   align-items: start;
   padding: 6px 8px;
-  border-bottom: 1px solid var(--bw-theme-border);
+  border-bottom: 1px solid var(--tf-theme-border);
   background: #fff;
 }
 .line-card__lead {
@@ -589,12 +589,12 @@ const onExtraNumber = (
   --metric-tail-cols: 68px 68px 76px 76px 60px 92px 104px 24px 96px;
 }
 .line-card--selected {
-  box-shadow: inset 3px 0 0 var(--bw-theme-primary);
-  background: color-mix(in srgb, var(--bw-theme-primary) 4%, #fff);
+  box-shadow: inset 3px 0 0 var(--tf-theme-primary);
+  background: color-mix(in srgb, var(--tf-theme-primary) 4%, #fff);
 }
 .line-card--land-attention {
-  box-shadow: inset 3px 0 0 var(--bw-warning, #b45309);
-  background: color-mix(in srgb, var(--bw-warning, #b45309) 6%, #fff);
+  box-shadow: inset 3px 0 0 var(--tf-warning, #b45309);
+  background: color-mix(in srgb, var(--tf-warning, #b45309) 6%, #fff);
 }
 .line-card__land-attention {
   display: flex;
@@ -613,7 +613,7 @@ const onExtraNumber = (
   font-size: 13px;
   font-weight: 650;
   line-height: 1.25;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -625,18 +625,18 @@ const onExtraNumber = (
   column-gap: 6px;
   font-size: 11px;
   line-height: 1.35;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 .line-card__id-k {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 .line-card__id-v {
   min-width: 0;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
   font-weight: 600;
 }
 .line-card__id-row--copy {
@@ -644,12 +644,12 @@ const onExtraNumber = (
   border-radius: 4px;
 }
 .line-card__id-row--copy:hover {
-  background: color-mix(in srgb, var(--bw-theme-ink) 6%, #fff);
+  background: color-mix(in srgb, var(--tf-theme-ink) 6%, #fff);
 }
 .line-card__style {
   font-size: 11px;
   line-height: 1.3;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 .line-card__product {
   display: flex;
@@ -690,7 +690,7 @@ const onExtraNumber = (
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 .line-card__batch-num {
   font-size: 12px;
@@ -731,13 +731,13 @@ const onExtraNumber = (
   height: var(--line-card-value-h);
 }
 .excel-cell-input--weight-tint :deep(.q-field__control) {
-  background-color: color-mix(in srgb, var(--bw-ops-hue-weight) 42%, #fff) !important;
+  background-color: color-mix(in srgb, var(--tf-ops-hue-weight) 42%, #fff) !important;
 }
 .excel-cell-input--price-tint :deep(.q-field__control) {
-  background-color: color-mix(in srgb, var(--bw-ops-hue-price) 42%, #fff) !important;
+  background-color: color-mix(in srgb, var(--tf-ops-hue-price) 42%, #fff) !important;
 }
 .excel-cell-input--qty-tint :deep(.q-field__control) {
-  background-color: color-mix(in srgb, var(--bw-ops-hue-qty) 42%, #fff) !important;
+  background-color: color-mix(in srgb, var(--tf-ops-hue-qty) 42%, #fff) !important;
 }
 .line-card__num-fill {
   width: 100%;
@@ -751,7 +751,7 @@ const onExtraNumber = (
   font-weight: 700;
 }
 .line-card__num-fill--cost {
-  background-color: color-mix(in srgb, var(--bw-ops-hue-cost) 42%, #fff);
+  background-color: color-mix(in srgb, var(--tf-ops-hue-cost) 42%, #fff);
 }
 .line-card__num-fill--has-tip {
   cursor: help;
@@ -762,10 +762,10 @@ const onExtraNumber = (
   line-height: 1.4;
 }
 .line-card__num-fill--qty {
-  background-color: color-mix(in srgb, var(--bw-ops-hue-qty) 42%, #fff);
+  background-color: color-mix(in srgb, var(--tf-ops-hue-qty) 42%, #fff);
 }
 .line-card__num-fill--price {
-  background-color: color-mix(in srgb, var(--bw-ops-hue-price) 42%, #fff);
+  background-color: color-mix(in srgb, var(--tf-ops-hue-price) 42%, #fff);
 }
 .line-card__num-fill--vendor-credit {
   background-color: color-mix(in srgb, #14b8a6 28%, #fff);
@@ -782,7 +782,7 @@ const onExtraNumber = (
   font-weight: 700;
   background: color-mix(in srgb, #14b8a6 22%, #fff);
   color: #0f766e;
-  border: 1px solid color-mix(in srgb, #14b8a6 40%, var(--bw-theme-border));
+  border: 1px solid color-mix(in srgb, #14b8a6 40%, var(--tf-theme-border));
   border-radius: 8px;
 }
 .line-card__metric-row--vendor-credit .line-card__chip-btn--reason-vendor-discount {
@@ -795,7 +795,7 @@ const onExtraNumber = (
 .line-card__paper-tag {
   font-size: 11px;
   font-weight: 600;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
   text-align: center;
 }
 .line-card__actions {
@@ -847,43 +847,43 @@ const onExtraNumber = (
 .line-card__outcome-menu-chip.line-card__chip-btn--kind-sellable {
   background: color-mix(in srgb, #10b981 24%, #fff);
   color: #047857;
-  border-color: color-mix(in srgb, #10b981 42%, var(--bw-theme-border));
+  border-color: color-mix(in srgb, #10b981 42%, var(--tf-theme-border));
 }
 .line-card__chip-btn--kind-unsellable,
 .line-card__outcome-menu-chip.line-card__chip-btn--kind-unsellable {
   background: color-mix(in srgb, #ef4444 22%, #fff);
   color: #b91c1c;
-  border-color: color-mix(in srgb, #ef4444 40%, var(--bw-theme-border));
+  border-color: color-mix(in srgb, #ef4444 40%, var(--tf-theme-border));
 }
 .line-card__chip-btn--reason-general,
 .line-card__outcome-menu-chip.line-card__chip-btn--reason-general {
-  background: color-mix(in srgb, var(--bw-theme-ink) 8%, #fff);
-  color: var(--bw-theme-ink);
-  border-color: var(--bw-theme-border);
+  background: color-mix(in srgb, var(--tf-theme-ink) 8%, #fff);
+  color: var(--tf-theme-ink);
+  border-color: var(--tf-theme-border);
 }
 .line-card__chip-btn--reason-vendor-discount,
 .line-card__outcome-menu-chip.line-card__chip-btn--reason-vendor-discount {
   background: color-mix(in srgb, #14b8a6 22%, #fff);
   color: #0f766e;
-  border-color: color-mix(in srgb, #14b8a6 40%, var(--bw-theme-border));
+  border-color: color-mix(in srgb, #14b8a6 40%, var(--tf-theme-border));
 }
 .line-card__chip-btn--reason-missing,
 .line-card__outcome-menu-chip.line-card__chip-btn--reason-missing {
   background: color-mix(in srgb, #f59e0b 26%, #fff);
   color: #b45309;
-  border-color: color-mix(in srgb, #f59e0b 44%, var(--bw-theme-border));
+  border-color: color-mix(in srgb, #f59e0b 44%, var(--tf-theme-border));
 }
 .line-card__chip-btn--reason-damaged,
 .line-card__outcome-menu-chip.line-card__chip-btn--reason-damaged {
   background: color-mix(in srgb, #f97316 24%, #fff);
   color: #c2410c;
-  border-color: color-mix(in srgb, #f97316 42%, var(--bw-theme-border));
+  border-color: color-mix(in srgb, #f97316 42%, var(--tf-theme-border));
 }
 .line-card__chip-btn--reason-other,
 .line-card__outcome-menu-chip.line-card__chip-btn--reason-other {
   background: color-mix(in srgb, #6366f1 22%, #fff);
   color: #4338ca;
-  border-color: color-mix(in srgb, #6366f1 40%, var(--bw-theme-border));
+  border-color: color-mix(in srgb, #6366f1 40%, var(--tf-theme-border));
 }
 .item-img-container {
   position: relative;
@@ -892,8 +892,8 @@ const onExtraNumber = (
   height: 1in;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--bw-neutral-surface-subtle, #f1f5f9);
-  border: 1px solid var(--bw-theme-border);
+  background: var(--tf-neutral-surface-subtle, #f1f5f9);
+  border: 1px solid var(--tf-theme-border);
 }
 .item-img-container :deep(.item-img-smart),
 .item-img-container :deep(.smart-image-wrapper),

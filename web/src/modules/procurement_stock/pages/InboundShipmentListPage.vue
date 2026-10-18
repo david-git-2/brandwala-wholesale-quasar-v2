@@ -2,7 +2,7 @@
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
       <!-- Status/Error Banner -->
-      <q-banner v-if="shipmentStore.error" class="bw-status-banner bg-negative text-white flex-shrink-0" dense rounded>
+      <q-banner v-if="shipmentStore.error" class="tf-status-banner bg-negative text-white flex-shrink-0" dense rounded>
         {{ shipmentStore.error }}
       </q-banner>
 
@@ -14,25 +14,12 @@
         @open-filters="openFilterDrawer"
       >
         <template #pills>
-          <div class="row items-center q-gutter-x-xs quick-filter-toggle">
-            <button
-              v-for="tab in filterTabs"
-              :key="tab.value"
-              type="button"
-              class="quick-filter-pill"
-              :class="{ 'quick-filter-pill--active': quickFilter === tab.value }"
-              @click="setQuickFilter(tab.value)"
-            >
-              <span>{{ tab.label }}</span>
-              <span
-                v-if="tab.count !== undefined"
-                class="pill-badge"
-                :class="{ 'pill-badge--active': quickFilter === tab.value }"
-              >
-                {{ tab.count }}
-              </span>
-            </button>
-          </div>
+          <TfDrawerSectionTabs
+            v-model="quickFilter"
+            :tabs="quickFilterSectionTabs"
+            aria-label="Filter shipments"
+            @update:model-value="setQuickFilter"
+          />
         </template>
         <template #trailing>
           <q-btn
@@ -197,6 +184,7 @@ import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ProcurementOpsListToolbar from '../components/ProcurementOpsListToolbar.vue';
+import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import ShipmentFormDialog from '../components/ShipmentFormDialog.vue';
 import ArchivedShipmentsModal from '../components/ArchivedShipmentsModal.vue';
 import { formatGlobalShipmentStatus } from '../constants/shipmentStatus';
@@ -234,6 +222,14 @@ const filterTabs = computed(() => [
   { label: 'Received', value: 'received', count: receivedCount.value },
   { label: 'Cancelled', value: 'cancelled' },
 ]);
+
+const quickFilterSectionTabs = computed(() =>
+  filterTabs.value.map((tab) => ({
+    name: tab.value,
+    label: tab.label,
+    count: tab.count,
+  })),
+);
 
 const setQuickFilter = (val: string) => {
   quickFilter.value = val;
@@ -408,73 +404,24 @@ watch(
   height: calc(100vh - 55px);
   max-height: calc(100vh - 55px);
   overflow: hidden;
-  background: var(--bw-neutral-canvas, #F8FAFC);
+  background: var(--tf-neutral-canvas, #F8FAFC);
 }
 
 .list-toolbar-card {
-  background: var(--bw-neutral-surface, #FFFFFF);
-  border-radius: var(--bw-radius-sm, 8px);
-  border: 1px solid var(--bw-neutral-border, #E2E8F0);
+  background: var(--tf-neutral-surface, #FFFFFF);
+  border-radius: var(--tf-radius-sm, 8px);
+  border: 1px solid var(--tf-neutral-border, #E2E8F0);
 }
 
 .rounded-sq-btn {
-  border-radius: var(--bw-radius-sm, 8px);
-}
-
-.quick-filter-toggle {
-  display: flex;
-  align-items: center;
-  background: #F1F5F9;
-  border-radius: var(--bw-radius-sm, 8px);
-  padding: 2px;
-  gap: 2px;
-}
-
-.quick-filter-pill {
-  border: none;
-  background: transparent;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #64748B;
-  border-radius: 6px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  transition: all 0.15s ease;
-}
-
-.quick-filter-pill:hover {
-  color: #0F172A;
-}
-
-.quick-filter-pill--active {
-  background: var(--bw-neutral-surface, #FFFFFF);
-  color: #0F172A;
-  font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.pill-badge {
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 0 5px;
-  border-radius: 4px;
-  background: #E2E8F0;
-  color: #475569;
-}
-
-.pill-badge--active {
-  background: #0F172A;
-  color: #FFFFFF;
+  border-radius: var(--tf-radius-sm, 8px);
 }
 
 .archived-counter-badge {
   font-size: 10.5px;
   font-weight: 600;
-  background: #F1F5F9;
-  color: #475569;
+  background: var(--tf-disabled-bg);
+  color: var(--tf-neutral-muted);
   padding: 1px 6px;
   border-radius: 4px;
 }
@@ -485,9 +432,9 @@ watch(
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--bw-neutral-surface, #FFFFFF);
-  border: 1px solid var(--bw-neutral-border, #E2E8F0);
-  border-radius: var(--bw-radius-sm, 8px);
+  background: var(--tf-neutral-surface, #FFFFFF);
+  border: 1px solid var(--tf-neutral-border, #E2E8F0);
+  border-radius: var(--tf-radius-sm, 8px);
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
@@ -504,22 +451,22 @@ watch(
   align-items: center;
   justify-content: space-between;
   padding: 0.65rem 1rem;
-  border-bottom: 1px solid var(--bw-neutral-border, #F1F5F9);
+  border-bottom: 1px solid var(--tf-neutral-border, #F1F5F9);
   cursor: pointer;
   transition: all 0.15s ease;
   min-height: 50px;
 }
 
 .shipment-list-item:hover {
-  background: #F8FAFC;
+  background: var(--tf-hover-bg);
 }
 
 .shipment-list-item:hover .shipment-name {
-  color: #0F172A;
+  color: var(--tf-neutral-ink);
 }
 
 .shipment-list-item:hover .shipment-chevron {
-  color: #0F172A;
+  color: var(--tf-neutral-ink);
   transform: translateX(2px);
 }
 
@@ -539,7 +486,7 @@ watch(
 .shipment-name {
   font-size: 13px;
   font-weight: 600;
-  color: #1E293B;
+  color: var(--tf-neutral-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -551,7 +498,7 @@ watch(
   align-items: center;
   gap: 6px;
   font-size: 11.5px;
-  color: #64748B;
+  color: var(--tf-neutral-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -562,12 +509,12 @@ watch(
 }
 
 .meta-vendor {
-  color: #475569;
+  color: var(--tf-neutral-muted);
   font-weight: 500;
 }
 
 .meta-dot {
-  color: #94A3B8;
+  color: var(--tf-neutral-chrome-text);
   font-weight: 700;
 }
 
@@ -596,32 +543,32 @@ watch(
 }
 
 .status-pill--received {
-  background: #DCFCE7;
-  color: #166534;
+  background: var(--tf-success-soft);
+  color: var(--tf-success);
 }
 
 .status-pill--transit {
-  background: #FFEDD5;
-  color: #9A3412;
+  background: var(--tf-info-soft);
+  color: var(--tf-info);
 }
 
 .status-pill--draft {
-  background: #FEF3C7;
-  color: #92400E;
+  background: var(--tf-warning-soft);
+  color: var(--tf-warning);
 }
 
 .status-pill--cancelled {
-  background: #FEE2E2;
-  color: #991B1B;
+  background: var(--tf-error-soft);
+  color: var(--tf-error);
 }
 
 .status-pill--default {
-  background: #F1F5F9;
-  color: #475569;
+  background: var(--tf-disabled-bg);
+  color: var(--tf-neutral-muted);
 }
 
 .shipment-chevron {
-  color: #94A3B8;
+  color: var(--tf-neutral-chrome-text);
   transition: all 0.15s ease;
 }
 
@@ -636,20 +583,20 @@ watch(
 
 /* Load More */
 .load-more-btn {
-  background: #F1F5F9;
-  border-radius: var(--bw-radius-sm, 8px);
+  background: var(--tf-disabled-bg);
+  border-radius: var(--tf-radius-sm, 8px);
   font-size: 12px;
   transition: all 0.15s ease;
 }
 
 .load-more-btn:hover {
-  background: #E2E8F0;
-  color: #0F172A;
+  background: var(--tf-hover-bg);
+  color: var(--tf-neutral-ink);
 }
 
-.text-slate-400 { color: #94A3B8; }
-.text-slate-500 { color: #64748B; }
-.text-slate-700 { color: #334155; }
-.text-slate-800 { color: #1E293B; }
-.text-slate-900 { color: #0F172A; }
+.text-slate-400 { color: var(--tf-neutral-chrome-text); }
+.text-slate-500 { color: var(--tf-neutral-muted); }
+.text-slate-700 { color: var(--tf-neutral-ink); }
+.text-slate-800 { color: var(--tf-neutral-ink); }
+.text-slate-900 { color: var(--tf-neutral-ink); }
 </style>

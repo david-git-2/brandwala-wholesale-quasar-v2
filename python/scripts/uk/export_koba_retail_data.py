@@ -27,14 +27,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from catalog_refresh_lib import add_parent_tenant_argument, log_scrape
 load_dotenv(ROOT_DIR / ".env")
 load_dotenv(ROOT_DIR / "web" / ".env")
-DEFAULT_OUTFILE = ROOT_DIR / "web" / "public" / "uk" / "koba_retail_data.json"
+DEFAULT_OUTFILE = ROOT_DIR / "python" / "data" / "uk" / "out" / "koba_retail_data.json"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Scrape Kobaresell products catalog.")
     parser.add_argument(
         "--outfile",
         default=str(DEFAULT_OUTFILE),
-        help="Path to output JSON file (default: web/public/uk/koba_retail_data.json)",
+        help="Path to output JSON file (default: python/data/uk/out/koba_retail_data.json)",
     )
     parser.add_argument(
         "--email",

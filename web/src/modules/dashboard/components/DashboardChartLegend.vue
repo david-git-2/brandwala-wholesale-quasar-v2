@@ -3,8 +3,8 @@
     <li v-for="row in rows" :key="row.label" class="dashboard-chart-legend__row">
       <span class="dashboard-chart-legend__label">{{ row.label }}</span>
       <span class="dashboard-chart-legend__sep" aria-hidden="true">·</span>
-      <span class="dashboard-chart-legend__value bw-tabular">{{ row.value }}</span>
-      <span v-if="row.pct != null" class="dashboard-chart-legend__pct bw-tabular">({{ row.pct }}%)</span>
+      <span class="dashboard-chart-legend__value tf-tabular">{{ row.value }}</span>
+      <span v-if="row.pct != null" class="dashboard-chart-legend__pct tf-tabular">({{ row.pct }}%)</span>
     </li>
   </ul>
 </template>
@@ -43,19 +43,19 @@ defineProps<{
 }
 
 .dashboard-chart-legend__label {
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .dashboard-chart-legend__sep {
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .dashboard-chart-legend__value {
   font-weight: 600;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .dashboard-chart-legend__pct {
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 </style>

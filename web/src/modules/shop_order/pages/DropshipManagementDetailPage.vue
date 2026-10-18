@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page dropship-order-detail-v2">
-    <div class="bw-page__stack">
+  <q-page class="tf-page dropship-order-detail-v2">
+    <div class="tf-page__stack">
       <template v-if="isLoading">
         <section class="dropship-order-detail-v2__loading">
           <q-skeleton type="rect" height="520px" class="dropship-order-detail-v2__paper-skeleton" />

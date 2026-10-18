@@ -12,8 +12,8 @@
             <tr>
               <th class="text-center" style="width: 48px; min-width: 48px">SL</th>
               <th class="text-left" style="min-width: 120px">Box #</th>
-              <th class="text-center bw-ops-col-tint--qty" style="min-width: 100px">Received (kg)</th>
-              <th class="text-center bw-ops-col-tint--qty" style="min-width: 100px">Shipping (kg)</th>
+              <th class="text-center tf-ops-col-tint--qty" style="min-width: 100px">Received (kg)</th>
+              <th class="text-center tf-ops-col-tint--qty" style="min-width: 100px">Shipping (kg)</th>
               <th class="text-center" style="min-width: 100px">
                 <div>Ship − recv</div>
                 <div class="text-xxs text-weight-regular text-grey-7">(kg)</div>
@@ -43,7 +43,7 @@
               <td
                 v-for="field in weightFields"
                 :key="field"
-                class="text-center bw-ops-col-tint--qty q-pa-none"
+                class="text-center tf-ops-col-tint--qty q-pa-none"
                 @click.stop
               >
                 <q-input
@@ -262,8 +262,8 @@ const statusBadgeColor = (status: BoxWeightVarianceStatus): string => {
   height: 48px;
 }
 
-.shipment-items-markup-table th.bw-ops-col-tint--qty,
-.shipment-items-markup-table td.bw-ops-col-tint--qty {
+.shipment-items-markup-table th.tf-ops-col-tint--qty,
+.shipment-items-markup-table td.tf-ops-col-tint--qty {
   background-color: #d0e6ff !important;
   box-shadow: inset 2px 0 0 #2563eb;
 }

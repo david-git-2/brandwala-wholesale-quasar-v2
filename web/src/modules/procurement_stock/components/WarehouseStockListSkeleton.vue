@@ -54,9 +54,9 @@ withDefaults(
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--bw-neutral-surface, #ffffff);
-  border: 1px solid var(--bw-neutral-border, #e2e8f0);
-  border-radius: var(--bw-radius-sm, 8px);
+  background: var(--tf-neutral-surface, #ffffff);
+  border: 1px solid var(--tf-neutral-border, #e2e8f0);
+  border-radius: var(--tf-radius-sm, 8px);
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
@@ -73,7 +73,7 @@ withDefaults(
   align-items: center;
   gap: 0.65rem;
   padding: 0.55rem 1rem;
-  border-bottom: 1px solid var(--bw-neutral-border, #f1f5f9);
+  border-bottom: 1px solid var(--tf-neutral-border, #f1f5f9);
   min-height: calc(1in + 8px);
 }
 

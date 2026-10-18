@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT_DIR / "python"))
 from wts_excel_spec import REQUIRED_WTS_COLUMNS
 
 WTS_XLSX = ROOT_DIR / "python" / "data" / "uk" / "wts_data.xlsx"
-WTS_JSON = ROOT_DIR / "web" / "public" / "uk" / "wts_data.json"
+WTS_JSON = ROOT_DIR / "python" / "data" / "uk" / "out" / "wts_data.json"
 
 DEFAULT_HEADER_ROW = 1
 DEFAULT_PARENT_TENANT_ID = 15

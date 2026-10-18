@@ -204,7 +204,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: row;
   max-width: 96vw;
-  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  border: 1px solid var(--tf-theme-border, #e2e8f0);
   box-shadow: -8px 0 32px rgba(15, 23, 42, 0.12);
   pointer-events: auto;
   outline: none;
@@ -213,13 +213,13 @@ onUnmounted(() => {
 .app-resizable-overlay-panel--right .app-resizable-overlay-panel__panel {
   right: 0;
   border-right: none;
-  border-radius: var(--bw-radius-md, 12px) 0 0 var(--bw-radius-md, 12px);
+  border-radius: var(--tf-radius-md, 12px) 0 0 var(--tf-radius-md, 12px);
 }
 
 .app-resizable-overlay-panel--left .app-resizable-overlay-panel__panel {
   left: 0;
   border-left: none;
-  border-radius: 0 var(--bw-radius-md, 12px) var(--bw-radius-md, 12px) 0;
+  border-radius: 0 var(--tf-radius-md, 12px) var(--tf-radius-md, 12px) 0;
   box-shadow: 8px 0 32px rgba(15, 23, 42, 0.12);
 }
 
@@ -241,7 +241,7 @@ onUnmounted(() => {
   left: 4px;
   width: 2px;
   border-radius: 2px;
-  background: color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 70%, transparent);
+  background: color-mix(in srgb, var(--tf-theme-border, #e2e8f0) 70%, transparent);
   transition: background-color 0.15s ease;
 }
 
@@ -260,9 +260,9 @@ onUnmounted(() => {
   justify-content: center;
   width: 14px;
   height: 40px;
-  border-radius: var(--bw-radius-pill, 999px);
-  border: 1px solid var(--bw-theme-border, #e2e8f0);
-  background: var(--bw-theme-surface, #fff);
+  border-radius: var(--tf-radius-pill, 999px);
+  border: 1px solid var(--tf-theme-border, #e2e8f0);
+  background: var(--tf-theme-surface, #fff);
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
   pointer-events: none;
   transition:
@@ -276,8 +276,8 @@ onUnmounted(() => {
   border-radius: 2px;
   background: repeating-linear-gradient(
     to bottom,
-    var(--bw-theme-muted, #94a3b8) 0,
-    var(--bw-theme-muted, #94a3b8) 2px,
+    var(--tf-theme-muted, #94a3b8) 0,
+    var(--tf-theme-muted, #94a3b8) 2px,
     transparent 2px,
     transparent 5px
   );
@@ -285,7 +285,7 @@ onUnmounted(() => {
 
 .app-resizable-overlay-panel__resize:hover .app-resizable-overlay-panel__anchor,
 .app-resizable-overlay-panel__resize:active .app-resizable-overlay-panel__anchor {
-  border-color: color-mix(in srgb, var(--q-primary, #059669) 45%, var(--bw-theme-border, #e2e8f0));
+  border-color: color-mix(in srgb, var(--q-primary, #059669) 45%, var(--tf-theme-border, #e2e8f0));
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.14);
 }
 

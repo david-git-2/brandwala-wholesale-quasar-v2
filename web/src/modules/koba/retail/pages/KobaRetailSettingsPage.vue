@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md bw-page">
+  <q-page class="q-pa-md tf-page">
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-btn flat round icon="ph ph-arrow-left" color="grey-8" :to="{ name: 'app-koba-retail-page' }" />
       <div>

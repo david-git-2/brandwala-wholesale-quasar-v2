@@ -207,7 +207,7 @@ const lineChartOptions: ChartOptions<'line'> = {
   max-width: 95vw;
   height: 100%;
   background: #ffffff;
-  border-left: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-left: 1px solid var(--tf-theme-border, #e2e8f0);
   box-shadow: -8px 0 32px rgba(15, 23, 42, 0.08);
   display: flex;
   flex-direction: column;

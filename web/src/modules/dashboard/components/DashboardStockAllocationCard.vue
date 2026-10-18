@@ -15,7 +15,7 @@
         <div class="allocation-header">
           <div>
             <span class="text-caption text-slate-400">Total Pooled Stock</span>
-            <div class="text-h6 text-weight-bold text-slate-900 bw-tabular">
+            <div class="text-h6 text-weight-bold text-slate-900 tf-tabular">
               {{ formatDashboardCount(totalUnits) }} <span class="text-caption text-weight-regular text-slate-400">pcs</span>
             </div>
           </div>
@@ -48,17 +48,17 @@
           <div class="legend-row">
             <span class="dot dot--avail" />
             <span class="legend-name">Available for sale</span>
-            <span class="legend-val bw-tabular">{{ formatDashboardCount(availableUnits) }}</span>
+            <span class="legend-val tf-tabular">{{ formatDashboardCount(availableUnits) }}</span>
           </div>
           <div class="legend-row">
             <span class="dot dot--alloc" />
             <span class="legend-name">Reserved in orders</span>
-            <span class="legend-val bw-tabular">{{ formatDashboardCount(allocatedUnits) }}</span>
+            <span class="legend-val tf-tabular">{{ formatDashboardCount(allocatedUnits) }}</span>
           </div>
           <div class="legend-row">
             <span class="dot dot--transit" />
             <span class="legend-name">Inbound in transit</span>
-            <span class="legend-val bw-tabular">{{ formatDashboardCount(inTransitUnits) }}</span>
+            <span class="legend-val tf-tabular">{{ formatDashboardCount(inTransitUnits) }}</span>
           </div>
         </div>
       </div>
@@ -176,8 +176,8 @@ const navigateTo = (to: RouteLocationRaw) => {
 
 <style scoped>
 .stock-card {
-  background: var(--bw-neutral-surface, #FFFFFF);
-  border: 1px solid var(--bw-neutral-border, #E2E8F0);
+  background: var(--tf-neutral-surface, #FFFFFF);
+  border: 1px solid var(--tf-neutral-border, #E2E8F0);
   border-radius: 10px;
   padding: 1rem 1.15rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -218,11 +218,11 @@ body.body--dark .stock-title {
 }
 
 .stock-view-all:hover {
-  color: var(--bw-brand-accent, #0d6b5c);
+  color: var(--tf-brand-accent, #0d6b5c);
 }
 
 body.body--dark .stock-view-all:hover {
-  color: var(--bw-brand-accent, #4db8a4);
+  color: var(--tf-brand-accent, #4db8a4);
 }
 
 .stock-body {
@@ -341,7 +341,7 @@ body.body--dark .sellable-status-pill {
 }
 
 .shipment-item:hover {
-  background: #F1F5F9;
+  background: var(--tf-hover-bg);
 }
 
 .shipment-item__left {

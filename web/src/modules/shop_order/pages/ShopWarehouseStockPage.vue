@@ -1,6 +1,6 @@
 <template>
-  <component :is="embedded ? 'div' : 'q-page'" :class="embedded ? '' : 'bw-page'">
-    <section :class="embedded ? 'column q-gutter-y-md' : 'bw-page__stack'">
+  <component :is="embedded ? 'div' : 'q-page'" :class="embedded ? '' : 'tf-page'">
+    <section :class="embedded ? 'column q-gutter-y-md' : 'tf-page__stack'">
       <section v-if="!embedded" class="row items-center q-gutter-x-sm">
         <q-btn flat round icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
         <div>

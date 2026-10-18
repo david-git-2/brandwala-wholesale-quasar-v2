@@ -401,19 +401,19 @@ function onAddToCart() {
 
 <style scoped lang="scss">
 .border-bottom {
-  border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.12));
+  border-bottom: 1px solid var(--tf-theme-border, rgba(34, 56, 101, 0.12));
 }
 
 .border-top {
-  border-top: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.12));
+  border-top: 1px solid var(--tf-theme-border, rgba(34, 56, 101, 0.12));
 }
 
 .bg-surface {
-  background-color: var(--bw-theme-surface, #ffffff);
+  background-color: var(--tf-theme-surface, #ffffff);
 }
 
 .quantity-stepper {
-  border: 1.5px solid var(--bw-theme-border, rgba(34, 56, 101, 0.18));
+  border: 1.5px solid var(--tf-theme-border, rgba(34, 56, 101, 0.18));
   border-radius: 8px;
   padding: 2px 4px;
 }
@@ -422,7 +422,7 @@ function onAddToCart() {
   max-height: 85vh;
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
-  background-color: var(--bw-theme-base, #ffffff);
+  background-color: var(--tf-theme-base, #ffffff);
 }
 
 .bottom-sheet-handle {

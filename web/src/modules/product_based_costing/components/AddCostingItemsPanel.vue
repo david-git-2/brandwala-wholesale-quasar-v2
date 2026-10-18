@@ -29,7 +29,7 @@
               dense
               no-caps
               icon="ph ph-list-plus"
-              class="bw-text-muted"
+              class="tf-text-muted"
               :label="$t('product_based_costing.bulk_codes')"
               @click="showBulkCodes = !showBulkCodes"
             />
@@ -38,7 +38,7 @@
               round
               dense
               icon="ph ph-funnel"
-              class="bw-text-muted"
+              class="tf-text-muted"
               aria-label="Filters"
               @click="openFilterSidebar"
             >
@@ -54,7 +54,7 @@
           class="column q-gutter-y-sm bulk-codes-box q-pa-sm rounded-borders"
         >
           <div class="row items-center justify-between q-px-xs">
-            <span class="text-caption text-weight-medium bw-text-muted">
+            <span class="text-caption text-weight-medium tf-text-muted">
               {{ $t('product_based_costing.bulk_paste_mode') }}:
             </span>
             <q-btn-dropdown
@@ -62,7 +62,7 @@
               dense
               no-caps
               :label="bulkSearchFieldLabel"
-              class="text-caption text-weight-medium bw-text-muted search-field-dropdown"
+              class="text-caption text-weight-medium tf-text-muted search-field-dropdown"
             >
               <q-list dense>
                 <q-item clickable v-close-popup @click="bulkSearchField = 'auto'">
@@ -946,13 +946,13 @@ onMounted(async () => {
 }
 
 .toolbar-section {
-  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%);
-  border-bottom: 1px solid var(--bw-theme-border);
+  background: color-mix(in srgb, var(--tf-theme-surface) 88%, var(--tf-theme-base) 12%);
+  border-bottom: 1px solid var(--tf-theme-border);
 }
 
 .bulk-codes-box {
-  background: color-mix(in srgb, var(--bw-theme-surface) 82%, var(--bw-theme-base) 18%);
-  border: 1px solid var(--bw-theme-border);
+  background: color-mix(in srgb, var(--tf-theme-surface) 82%, var(--tf-theme-base) 18%);
+  border: 1px solid var(--tf-theme-border);
 }
 
 .browse-section {
@@ -969,14 +969,14 @@ onMounted(async () => {
 }
 
 .browse-list {
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
 }
 
 .browse-product-thumb {
   width: 0.8in;
   height: 0.8in;
-  background: var(--bw-theme-base);
-  color: var(--bw-theme-muted);
+  background: var(--tf-theme-base);
+  color: var(--tf-theme-muted);
 }
 
 :deep(.browse-product-thumb__img) {
@@ -990,8 +990,8 @@ onMounted(async () => {
 }
 
 .panel-footer {
-  border-top: 1px solid var(--bw-theme-border);
-  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%);
+  border-top: 1px solid var(--tf-theme-border);
+  background: color-mix(in srgb, var(--tf-theme-surface) 88%, var(--tf-theme-base) 12%);
 }
 
 :deep(input[type='number']::-webkit-outer-spin-button),

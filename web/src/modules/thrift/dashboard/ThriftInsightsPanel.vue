@@ -1,13 +1,13 @@
 <template>
   <DashboardPulseSkeleton v-if="isLoading" />
-  <q-banner v-else-if="isError" class="bw-status-banner bg-negative text-white" rounded dense>
+  <q-banner v-else-if="isError" class="tf-status-banner bg-negative text-white" rounded dense>
     Could not load thrift snapshot.
   </q-banner>
   <DashboardPulseCard
     v-else
     title="Shop glance"
     figure-label="Stock mix"
-    accent="var(--bw-success)"
+    accent="var(--tf-success)"
     :has-chart="hasStockMix"
   >
     <template #featured>

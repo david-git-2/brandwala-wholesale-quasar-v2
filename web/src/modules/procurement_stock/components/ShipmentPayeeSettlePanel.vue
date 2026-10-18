@@ -750,9 +750,9 @@ defineExpose({ resetInputs, fetchSettlements });
   border-radius: 8px;
 }
 .border-grey {
-  border: 1px solid var(--bw-theme-border, #e0e0e0);
+  border: 1px solid var(--tf-theme-border, #e0e0e0);
 }
 .border-top-grey {
-  border-top: 1px solid var(--bw-theme-border, #e0e0e0);
+  border-top: 1px solid var(--tf-theme-border, #e0e0e0);
 }
 </style>

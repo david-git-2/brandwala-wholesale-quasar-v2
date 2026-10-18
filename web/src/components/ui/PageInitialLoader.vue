@@ -36,7 +36,7 @@ withDefaults(
 
 .page-initial-loader__message {
   margin: 0;
-  color: var(--bw-theme-muted, #736a61);
+  color: var(--tf-theme-muted, #736a61);
   font-size: 0.9rem;
   text-align: center;
   line-height: 1.45;

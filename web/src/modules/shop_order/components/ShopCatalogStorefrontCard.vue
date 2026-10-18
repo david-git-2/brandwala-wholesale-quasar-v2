@@ -58,7 +58,7 @@
         </div>
       </dl>
 
-      <div v-if="priceText" class="catalog-storefront-card__price bw-tabular">
+      <div v-if="priceText" class="catalog-storefront-card__price tf-tabular">
         <span class="catalog-storefront-card__price-label">
           {{ $t('shop_admin.storefront_product_list_price') }}
         </span>
@@ -120,9 +120,9 @@ const priceText = computed(() => {
   flex-direction: column;
   height: 100%;
   border-radius: 16px;
-  background: color-mix(in srgb, #ffffff 90%, var(--bw-shop-mauve, #996888) 10%);
-  border-color: var(--bw-theme-border, rgb(42 43 42 / 0.1));
-  color: var(--bw-theme-ink, #2a2b2a);
+  background: color-mix(in srgb, #ffffff 90%, var(--tf-shop-mauve, #996888) 10%);
+  border-color: var(--tf-theme-border, rgb(42 43 42 / 0.1));
+  color: var(--tf-theme-ink, #2a2b2a);
   overflow: hidden;
   transition:
     transform 0.2s ease,
@@ -131,7 +131,7 @@ const priceText = computed(() => {
 
 .catalog-storefront-card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--bw-theme-shadow, 0 8px 20px rgb(42 43 42 / 0.08));
+  box-shadow: var(--tf-theme-shadow, 0 8px 20px rgb(42 43 42 / 0.08));
 }
 
 .catalog-storefront-card__image {
@@ -139,7 +139,7 @@ const priceText = computed(() => {
   height: 200px;
   flex: 0 0 200px;
   background: #ffffff;
-  border-bottom: 1px solid var(--bw-theme-border, rgb(42 43 42 / 0.06));
+  border-bottom: 1px solid var(--tf-theme-border, rgb(42 43 42 / 0.06));
   overflow: hidden;
 }
 
@@ -180,7 +180,7 @@ const priceText = computed(() => {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted, #64748b);
+  color: var(--tf-theme-muted, #64748b);
 }
 
 .catalog-storefront-card__name {
@@ -210,13 +210,13 @@ const priceText = computed(() => {
 
 .catalog-storefront-card__row dt {
   margin: 0;
-  color: var(--bw-theme-muted, #64748b);
+  color: var(--tf-theme-muted, #64748b);
   font-weight: 500;
 }
 
 .catalog-storefront-card__row dd {
   margin: 0;
-  color: var(--bw-theme-ink, #2a2b2a);
+  color: var(--tf-theme-ink, #2a2b2a);
   font-weight: 600;
   word-break: break-word;
 }
@@ -236,7 +236,7 @@ const priceText = computed(() => {
 .catalog-storefront-card__price {
   margin-top: auto;
   padding-top: 10px;
-  border-top: 1px solid var(--bw-theme-border, rgb(42 43 42 / 0.08));
+  border-top: 1px solid var(--tf-theme-border, rgb(42 43 42 / 0.08));
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -245,7 +245,7 @@ const priceText = computed(() => {
 .catalog-storefront-card__price-label {
   font-size: 11px;
   font-weight: 600;
-  color: var(--bw-theme-muted, #64748b);
+  color: var(--tf-theme-muted, #64748b);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -253,6 +253,6 @@ const priceText = computed(() => {
 .catalog-storefront-card__price-value {
   font-size: 18px;
   font-weight: 700;
-  color: var(--bw-theme-primary, #996888);
+  color: var(--tf-theme-primary, #996888);
 }
 </style>

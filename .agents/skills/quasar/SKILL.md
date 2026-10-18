@@ -25,12 +25,12 @@ Guide for designing, building, styling, and optimizing Vue 3 components using th
 - `.theme-investor` (Teal - Finance desk)
 
 ### Key CSS Theme Variables
-`--bw-theme-base`, `--bw-theme-surface`, `--bw-theme-border`, `--bw-theme-ink`, `--bw-theme-muted`, `--bw-theme-primary`, `--bw-theme-primary-soft`, `--bw-theme-shadow`.
+`--tf-theme-base`, `--tf-theme-surface`, `--tf-theme-border`, `--tf-theme-ink`, `--tf-theme-muted`, `--tf-theme-primary`, `--tf-theme-primary-soft`, `--tf-theme-shadow`.
 
 ### Radius Rules
-- **sm (`8px`):** buttons, chips, inputs, avatars, tables (`--bw-radius-sm`)
-- **md (`12px`):** cards, dialogs, drawers, empty states (`--bw-radius-md`)
-- **pill (`999px`):** shop CTAs only (`--bw-radius-pill`)
+- **sm (`8px`):** buttons, chips, inputs, avatars, tables (`--tf-radius-sm`)
+- **md (`12px`):** cards, dialogs, drawers, empty states (`--tf-radius-md`)
+- **pill (`999px`):** shop CTAs only (`--tf-radius-pill`)
 
 ---
 
@@ -71,13 +71,13 @@ Guide for designing, building, styling, and optimizing Vue 3 components using th
 </template>
 ```
 
-**Hub / overview / investor / treasury only:** `q-page.bw-page` + `AppPageHeader`. Never use that shell for ops lists.
+**Hub / overview / investor / treasury only:** `q-page.tf-page` + `AppPageHeader`. Never use that shell for ops lists.
 
 ### Core Utility Classes
 - `.page-fixed-layout`: height `calc(100vh - 55px)`, `overflow: hidden`.
-- `.bw-page` / `.bw-page__stack`: hub/overview padding only, not ops tables.
-- `.bw-entity-grid`: Grid listing (`repeat(auto-fit, minmax(240px, 1fr))`, `gap: 1rem`).
-- `.bw-inline-actions`: Action button row (`gap: 0.65rem`).
+- `.tf-page` / `.tf-page__stack`: hub/overview padding only, not ops tables.
+- `.tf-entity-grid`: Grid listing (`repeat(auto-fit, minmax(240px, 1fr))`, `gap: 1rem`).
+- `.tf-inline-actions`: Action button row (`gap: 0.65rem`).
 
 ---
 
@@ -115,7 +115,7 @@ Guide for designing, building, styling, and optimizing Vue 3 components using th
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
   &:hover {
     transform: translateY(-2px);
-    box-shadow: var(--bw-theme-shadow);
+    box-shadow: var(--tf-theme-shadow);
   }
 }
 ```

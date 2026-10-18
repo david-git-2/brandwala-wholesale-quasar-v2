@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page after-sales-policy-page">
-    <section class="bw-page__stack">
+  <q-page class="tf-page after-sales-policy-page">
+    <section class="tf-page__stack">
       <q-banner v-if="!isParentWorkspace" rounded class="after-sales-note-banner">
         Managed by parent company. You can view policy here but cannot edit it.
       </q-banner>
@@ -51,7 +51,7 @@
           @update:program="onPolicyUpdate"
         />
 
-        <div v-if="isParentWorkspace" class="bw-inline-actions" style="justify-content: flex-end">
+        <div v-if="isParentWorkspace" class="tf-inline-actions" style="justify-content: flex-end">
           <q-btn flat no-caps label="Cancel" style="border-radius: 8px" @click="goToList" />
           <q-btn
             color="primary"
@@ -209,15 +209,15 @@ const onSave = async () => {
 
 <style scoped>
 .after-sales-note-banner {
-  background: color-mix(in srgb, var(--bw-theme-muted) 12%, var(--bw-theme-surface));
-  color: var(--bw-theme-ink);
-  border: 1px solid var(--bw-theme-border);
+  background: color-mix(in srgb, var(--tf-theme-muted) 12%, var(--tf-theme-surface));
+  color: var(--tf-theme-ink);
+  border: 1px solid var(--tf-theme-border);
 }
 
 .after-sales-warn-banner {
-  background: color-mix(in srgb, var(--q-warning) 14%, var(--bw-theme-surface));
-  color: var(--bw-theme-ink);
-  border: 1px solid var(--bw-theme-border);
+  background: color-mix(in srgb, var(--q-warning) 14%, var(--tf-theme-surface));
+  color: var(--tf-theme-ink);
+  border: 1px solid var(--tf-theme-border);
 }
 
 .policy-skeleton {

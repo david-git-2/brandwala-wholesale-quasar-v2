@@ -53,13 +53,13 @@ const goToOrderDetails = (order: CustomerOrderListRow) => {
   text-align: center;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--bw-shop-plum);
+  color: var(--tf-shop-plum);
 }
 
 .recent-orders-cta {
-  border-radius: var(--bw-radius-sm) !important;
-  background: var(--bw-shop-blue) !important;
-  color: var(--bw-shop-paper) !important;
+  border-radius: var(--tf-radius-sm) !important;
+  background: var(--tf-shop-blue) !important;
+  color: var(--tf-shop-paper) !important;
   font-weight: 600;
   padding: 0.45rem 1rem;
 }

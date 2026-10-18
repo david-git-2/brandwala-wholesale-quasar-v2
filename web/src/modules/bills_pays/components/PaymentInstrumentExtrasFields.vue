@@ -1,7 +1,27 @@
 <template>
   <div class="row q-col-gutter-sm">
     <div v-if="methodFieldFlags.showBank" class="col-12">
+      <BillDialogField v-if="externalLabels" :label="methodFieldFlags.bankLabel">
+        <q-select
+          :model-value="bdBankId"
+          :options="bdBankOptions"
+          emit-value
+          map-options
+          outlined
+          dense
+          :clearable="!methodFieldFlags.bankRequired"
+          :loading="loading"
+          :rules="methodFieldFlags.bankRequired ? [(v) => v != null || 'Required'] : undefined"
+          hide-bottom-space
+          @update:model-value="emit('update:bdBankId', $event)"
+        >
+          <template #prepend>
+            <BillDialogFieldIcon name="ph ph-bank" />
+          </template>
+        </q-select>
+      </BillDialogField>
       <q-select
+        v-else
         :model-value="bdBankId"
         :options="bdBankOptions"
         emit-value
@@ -17,7 +37,23 @@
       />
     </div>
     <div v-if="methodFieldFlags.showChequeNumber" class="col-12 col-sm-6">
+      <BillDialogField v-if="externalLabels" label="Cheque number">
+        <q-input
+          :model-value="chequeNumber"
+          outlined
+          dense
+          :clearable="!methodFieldFlags.chequeNumberRequired"
+          :rules="methodFieldFlags.chequeNumberRequired ? [(v) => !!String(v || '').trim() || 'Required'] : undefined"
+          hide-bottom-space
+          @update:model-value="emit('update:chequeNumber', String($event ?? ''))"
+        >
+          <template #prepend>
+            <BillDialogFieldIcon name="ph ph-receipt" />
+          </template>
+        </q-input>
+      </BillDialogField>
       <q-input
+        v-else
         :model-value="chequeNumber"
         outlined
         dense
@@ -29,7 +65,39 @@
       />
     </div>
     <div v-if="methodFieldFlags.showInstrumentDate" class="col-12 col-sm-6">
+      <BillDialogField v-if="externalLabels" :label="methodFieldFlags.instrumentDateLabel">
+        <q-input
+          :model-value="instrumentDate"
+          outlined
+          dense
+          :clearable="!methodFieldFlags.instrumentDateRequired"
+          readonly
+          :rules="methodFieldFlags.instrumentDateRequired ? [(v) => !!String(v || '').trim() || 'Required'] : undefined"
+          hide-bottom-space
+          @update:model-value="emit('update:instrumentDate', String($event ?? ''))"
+        >
+          <template #prepend>
+            <BillDialogFieldIcon name="ph ph-calendar-blank" />
+          </template>
+          <template #append>
+            <q-icon name="ph ph-calendar" class="cursor-pointer">
+              <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                <q-date
+                  :model-value="instrumentDate"
+                  mask="YYYY-MM-DD"
+                  @update:model-value="emit('update:instrumentDate', String($event ?? ''))"
+                >
+                  <div class="row items-center justify-end">
+                    <q-btn v-close-popup label="Done" color="primary" flat no-caps />
+                  </div>
+                </q-date>
+              </q-popup-proxy>
+            </q-icon>
+          </template>
+        </q-input>
+      </BillDialogField>
       <q-input
+        v-else
         :model-value="instrumentDate"
         outlined
         dense
@@ -58,7 +126,30 @@
       </q-input>
     </div>
     <div v-if="methodFieldFlags.showInstrumentReference" class="col-12">
+      <BillDialogField
+        v-if="externalLabels"
+        :label="methodFieldFlags.instrumentReferenceLabel"
+        :hint="
+          methodFieldFlags.bankOrReferenceRequired && bdBankId == null && !instrumentReference.trim()
+            ? 'Bank or transaction reference is required'
+            : undefined
+        "
+      >
+        <q-input
+          :model-value="instrumentReference"
+          outlined
+          dense
+          clearable
+          hide-bottom-space
+          @update:model-value="emit('update:instrumentReference', String($event ?? ''))"
+        >
+          <template #prepend>
+            <BillDialogFieldIcon name="ph ph-link" />
+          </template>
+        </q-input>
+      </BillDialogField>
       <q-input
+        v-else
         :model-value="instrumentReference"
         outlined
         dense
@@ -77,6 +168,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import BillDialogField from './BillDialogField.vue';
+import BillDialogFieldIcon from './BillDialogFieldIcon.vue';
 import { paymentMethodFieldFlags } from '../utils/paymentInstrumentFields';
 
 const props = defineProps<{
@@ -88,6 +181,7 @@ const props = defineProps<{
   chequeNumber: string;
   instrumentDate: string;
   instrumentReference: string;
+  externalLabels?: boolean;
 }>();
 
 const emit = defineEmits<{

@@ -8,11 +8,11 @@
 
 <style scoped>
 .dashboard-page {
-  --dashboard-border: var(--bw-theme-border);
-  --dashboard-surface: color-mix(in srgb, var(--bw-theme-surface) 94%, white 6%);
-  --dashboard-ink: var(--bw-theme-ink);
-  --dashboard-muted: var(--bw-theme-muted);
-  --dashboard-accent-soft: rgb(var(--bw-theme-primary-rgb) / 0.1);
+  --dashboard-border: var(--tf-theme-border);
+  --dashboard-surface: color-mix(in srgb, var(--tf-theme-surface) 94%, white 6%);
+  --dashboard-ink: var(--tf-theme-ink);
+  --dashboard-muted: var(--tf-theme-muted);
+  --dashboard-accent-soft: rgb(var(--tf-theme-primary-rgb) / 0.1);
   display: grid;
   gap: 1.25rem;
 }

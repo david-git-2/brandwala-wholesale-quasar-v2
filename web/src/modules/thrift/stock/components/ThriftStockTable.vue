@@ -952,7 +952,7 @@ const statusDotColor = (status: string | null | undefined) => {
 .thrift-table {
   max-width: 100%;
   height: clamp(400px, calc(100vh - 280px), 82vh);
-  background: var(--bw-theme-base, #eef2f5);
+  background: var(--tf-theme-base, #eef2f5);
 }
 
 .thrift-table :deep(.q-table__middle) {
@@ -975,7 +975,7 @@ const statusDotColor = (status: string | null | undefined) => {
 .thrift-table :deep(thead tr th) {
   position: sticky;
   z-index: 2;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #f7f9fc 4%);
 }
 
 .thrift-table :deep(thead tr:first-child th) {
@@ -996,7 +996,7 @@ const statusDotColor = (status: string | null | undefined) => {
   padding-right: 4px;
   box-sizing: border-box;
   overflow: hidden;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
 .thrift-table :deep(td.col-sticky-sl),
@@ -1012,7 +1012,7 @@ const statusDotColor = (status: string | null | undefined) => {
   padding-right: 4px;
   box-sizing: border-box;
   overflow: hidden;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 .thrift-table :deep(td.col-sticky-image),
@@ -1028,7 +1028,7 @@ const statusDotColor = (status: string | null | undefined) => {
   box-sizing: border-box;
   overflow: hidden;
   vertical-align: middle;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
 /* When select column is hidden, shift sticky SL/IMAGE to the left edge */
@@ -1099,7 +1099,7 @@ const statusDotColor = (status: string | null | undefined) => {
 }
 
 .thrift-table :deep(th) {
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #f7f9fc 4%);
 }
 
 .thrift-status-chip {

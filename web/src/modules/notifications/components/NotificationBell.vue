@@ -185,14 +185,14 @@ const onBrowserAlerts = () => {
   border-radius: 8px;
   width: 32px;
   height: 32px;
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
   background: transparent;
   transition: all 0.15s ease-in-out;
 }
 
 .notification-bell:hover {
-  color: var(--bw-neutral-ink);
-  background: color-mix(in srgb, var(--bw-neutral-ink) 5%, transparent);
+  color: var(--tf-neutral-ink);
+  background: color-mix(in srgb, var(--tf-neutral-ink) 5%, transparent);
 }
 
 .notification-bell :deep(.q-icon),
@@ -209,25 +209,25 @@ const onBrowserAlerts = () => {
   font-size: 9.5px;
   font-weight: 700;
   border-radius: 999px;
-  border: 1.5px solid var(--bw-neutral-surface);
+  border: 1.5px solid var(--tf-neutral-surface);
 }
 
 .notification-bell__menu {
   width: min(360px, calc(100vw - 24px));
   border-radius: 12px;
   overflow: hidden;
-  background: var(--bw-neutral-surface);
-  border: 1px solid var(--bw-neutral-border);
+  background: var(--tf-neutral-surface);
+  border: 1px solid var(--tf-neutral-border);
   box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.18);
 }
 
 .notification-bell__header {
-  border-bottom: 1px solid var(--bw-neutral-border);
-  background: var(--bw-neutral-canvas);
+  border-bottom: 1px solid var(--tf-neutral-border);
+  background: var(--tf-neutral-canvas);
 }
 
 .notification-bell__footer {
-  border-top: 1px solid var(--bw-neutral-border);
-  background: var(--bw-neutral-canvas);
+  border-top: 1px solid var(--tf-neutral-border);
+  background: var(--tf-neutral-canvas);
 }
 </style>

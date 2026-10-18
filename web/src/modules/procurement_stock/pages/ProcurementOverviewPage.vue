@@ -69,7 +69,7 @@ const onSelect = (item: HubLinkItem) => {
 
 <style scoped>
 .procurement-overview-page {
-  background: var(--bw-brand-base, #eef0f4);
+  background: var(--tf-brand-base, #eef0f4);
   height: calc(100vh - 55px);
   overflow: hidden;
 }

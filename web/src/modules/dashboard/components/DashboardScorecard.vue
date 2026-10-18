@@ -165,8 +165,8 @@ const formatNumberOnly = (value: unknown): string => {
 }
 
 .scorecard-tile {
-  background: var(--bw-neutral-surface, #FFFFFF);
-  border: 1px solid var(--bw-neutral-border, #E2E8F0);
+  background: var(--tf-neutral-surface, #FFFFFF);
+  border: 1px solid var(--tf-neutral-border, #E2E8F0);
   border-radius: 10px;
   padding: 1rem 1.15rem;
   display: flex;
@@ -278,7 +278,7 @@ body.body--dark .stat-pill-neutral {
 }
 
 .main-number {
-  font-family: var(--bw-font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--tf-font-mono, 'IBM Plex Mono', monospace);
   font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.035em;

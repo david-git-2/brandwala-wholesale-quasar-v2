@@ -62,11 +62,11 @@ const SEGMENT_META: ReadonlyArray<{
   labelKey: string;
   hot?: boolean;
 }> = [
-  { id: 'needs_you', token: '--bw-warning', fallback: '#b45309', labelKey: 'customer_dashboard.glance_needs_you', hot: true },
-  { id: 'in_progress', token: '--bw-theme-primary', fallback: '#3368a0', labelKey: 'customer_dashboard.glance_in_progress' },
-  { id: 'delivered', token: '--bw-shop-sky', fallback: '#66a3bf', labelKey: 'customer_dashboard.glance_delivered' },
-  { id: 'paid', token: '--bw-success', fallback: '#1a7f4b', labelKey: 'customer_dashboard.glance_paid' },
-  { id: 'payment_needed', token: '--bw-error', fallback: '#b83a3a', labelKey: 'customer_dashboard.glance_payment_needed', hot: true },
+  { id: 'needs_you', token: '--tf-warning', fallback: '#b45309', labelKey: 'customer_dashboard.glance_needs_you', hot: true },
+  { id: 'in_progress', token: '--tf-theme-primary', fallback: '#3368a0', labelKey: 'customer_dashboard.glance_in_progress' },
+  { id: 'delivered', token: '--tf-shop-sky', fallback: '#66a3bf', labelKey: 'customer_dashboard.glance_delivered' },
+  { id: 'paid', token: '--tf-success', fallback: '#1a7f4b', labelKey: 'customer_dashboard.glance_paid' },
+  { id: 'payment_needed', token: '--tf-error', fallback: '#b83a3a', labelKey: 'customer_dashboard.glance_payment_needed', hot: true },
 ];
 
 function themeColor(token: string, fallback: string) {
@@ -128,9 +128,9 @@ const donutOptions = computed<ChartOptions<'doughnut'>>(() => ({
 
 <style scoped>
 .glance-card {
-  border-radius: var(--bw-shop-radius-card, 20px);
-  background: var(--bw-theme-surface);
-  box-shadow: var(--bw-theme-shadow);
+  border-radius: var(--tf-shop-radius-card, 20px);
+  background: var(--tf-theme-surface);
+  box-shadow: var(--tf-theme-shadow);
 }
 
 .glance-layout {
@@ -163,7 +163,7 @@ const donutOptions = computed<ChartOptions<'doughnut'>>(() => ({
   font-weight: 700;
   letter-spacing: -0.04em;
   line-height: 1;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 
 .glance-chart__caption {
@@ -171,7 +171,7 @@ const donutOptions = computed<ChartOptions<'doughnut'>>(() => ({
   font-size: 0.68rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .glance-legend-grid {
@@ -187,7 +187,7 @@ const donutOptions = computed<ChartOptions<'doughnut'>>(() => ({
   gap: 0.65rem;
   padding: 0.5rem 0.6rem;
   border-radius: 10px;
-  background: var(--bw-theme-primary-soft, rgb(0 0 0 / 0.03));
+  background: var(--tf-theme-primary-soft, rgb(0 0 0 / 0.03));
 }
 
 .glance-legend--hot .glance-legend__count {
@@ -208,7 +208,7 @@ const donutOptions = computed<ChartOptions<'doughnut'>>(() => ({
 
 .glance-legend__label {
   font-size: 0.78rem;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
   line-height: 1.2;
 }
 
@@ -217,7 +217,7 @@ const donutOptions = computed<ChartOptions<'doughnut'>>(() => ({
   height: 4px;
   border-radius: 999px;
   overflow: hidden;
-  background: var(--bw-theme-border);
+  background: var(--tf-theme-border);
 }
 
 .glance-legend__fill {
@@ -231,6 +231,6 @@ const donutOptions = computed<ChartOptions<'doughnut'>>(() => ({
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
 }
 </style>

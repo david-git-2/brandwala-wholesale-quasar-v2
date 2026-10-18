@@ -325,12 +325,12 @@ const showLegacyBdtDue = (p: ApBillPaperBucketLines) => showLegacyConversion(p);
 
 .ap-bill-currency-group + .ap-bill-currency-group {
   padding-top: 0.5rem;
-  border-top: 1px solid var(--bw-neutral-border, #e2e8f0);
+  border-top: 1px solid var(--tf-neutral-border, #e2e8f0);
 }
 
 .ap-bill-lines th {
   font-size: 11px;
-  color: var(--bw-neutral-chrome, #64748b);
+  color: var(--tf-neutral-chrome, #64748b);
   font-weight: 600;
 }
 

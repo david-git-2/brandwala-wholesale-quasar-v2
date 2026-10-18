@@ -23,7 +23,7 @@
               <div>
                 <div class="text-caption text-grey-7">Net buffer</div>
                 <div
-                  class="text-h5 text-weight-bolder bw-tabular"
+                  class="text-h5 text-weight-bolder tf-tabular"
                   :class="position.net_buffer >= 0 ? 'text-positive' : 'text-negative'"
                 >
                   {{ formatAmountBdt(position.net_buffer) }}
@@ -43,7 +43,7 @@
               <q-card flat bordered class="q-pa-sm cursor-pointer position-tile" @click="tile.to && go(tile.to)">
                 <div class="text-caption text-grey-7 text-uppercase">{{ tile.group }}</div>
                 <div class="text-caption text-weight-medium">{{ tile.label }}</div>
-                <div class="text-h6 text-weight-bolder bw-tabular" :class="tile.valueClass">{{ tile.value }}</div>
+                <div class="text-h6 text-weight-bolder tf-tabular" :class="tile.valueClass">{{ tile.value }}</div>
                 <div v-if="tile.caption" class="text-caption text-grey-6">{{ tile.caption }}</div>
               </q-card>
             </div>
@@ -56,7 +56,7 @@
             <div v-for="tile in monthTiles" :key="tile.label" class="col-12 col-sm-6 col-md-4">
               <q-card flat bordered class="q-pa-sm cursor-pointer" @click="tile.to && go(tile.to)">
                 <div class="text-caption text-grey-7 text-uppercase">{{ tile.label }}</div>
-                <div class="text-h6 text-weight-bolder text-primary bw-tabular">{{ tile.value }}</div>
+                <div class="text-h6 text-weight-bolder text-primary tf-tabular">{{ tile.value }}</div>
                 <div v-if="tile.caption" class="text-caption text-grey-6">{{ tile.caption }}</div>
               </q-card>
             </div>

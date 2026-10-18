@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
-      <q-banner v-if="listErrorMessage" class="bw-status-banner bg-negative text-white flex-shrink-0" dense rounded>
+      <q-banner v-if="listErrorMessage" class="tf-status-banner bg-negative text-white flex-shrink-0" dense rounded>
         {{ listErrorMessage }}
       </q-banner>
 
@@ -14,18 +14,12 @@
       >
         <template #pills>
           <div class="row items-center q-gutter-x-sm no-wrap">
-            <div class="row items-center q-gutter-x-xs quick-filter-toggle">
-              <button
-                v-for="pill in availabilityQuickPills"
-                :key="pill.value"
-                type="button"
-                class="quick-filter-pill"
-                :class="{ 'quick-filter-pill--active': quickAvailability === pill.value }"
-                @click="setQuickAvailability(pill.value)"
-              >
-                {{ pill.label }}
-              </button>
-            </div>
+            <TfDrawerSectionTabs
+              v-model="quickAvailability"
+              :tabs="availabilitySectionTabs"
+              aria-label="Stock availability"
+              @update:model-value="setQuickAvailability"
+            />
             <q-select
               v-model="groupBy"
               :options="groupByOptions"
@@ -194,6 +188,7 @@
               @location="openLocationDialog"
               @condition="openMoveGradeDialog"
               @copy-code="(code) => copyText(code, 'Product Code')"
+              @cost-detail="openCostDetailDrawer"
             />
           </template>
           <template v-else>
@@ -231,6 +226,7 @@
                 @location="openLocationDialog"
                 @condition="openMoveGradeDialog"
                 @copy-code="(code) => copyText(code, 'Product Code')"
+                @cost-detail="openCostDetailDrawer"
               />
             </div>
           </template>
@@ -271,6 +267,13 @@
       :tenant-id="warehouseTenantId || 0"
       @updated="() => void refreshStockList()"
     />
+
+    <WarehouseStockCostDetailDrawer
+      v-model="costDetailDrawerOpen"
+      :stock-row="costDetailStockRow"
+      :unit-cost="costDetailUnitCost"
+      :get-shipment-items-sync="(id) => costingCache.getSync(id)"
+    />
   </q-page>
 </template>
 
@@ -298,6 +301,7 @@ import { tagRepository } from 'src/modules/tag/repositories/tagRepository';
 import type { Tag } from 'src/modules/tag/types';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ProcurementOpsListToolbar from '../components/ProcurementOpsListToolbar.vue';
+import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import StockLocationHierarchyPicker from '../components/StockLocationHierarchyPicker.vue';
 import WarehouseStockListHeaderRow from '../components/WarehouseStockListHeaderRow.vue';
 import WarehouseStockListRow from '../components/WarehouseStockListRow.vue';
@@ -305,6 +309,7 @@ import WarehouseStockListSkeleton from '../components/WarehouseStockListSkeleton
 import WarehouseStockGroupLotsPanel from '../components/WarehouseStockGroupLotsPanel.vue';
 import StockMoveGradeDialog from '../components/StockMoveGradeDialog.vue';
 import StockMoveLocationDialog from '../components/StockMoveLocationDialog.vue';
+import WarehouseStockCostDetailDrawer from '../components/WarehouseStockCostDetailDrawer.vue';
 import { getSharedShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
 import {
   isGlobalStockCostingInput,
@@ -408,6 +413,9 @@ const listErrorMessage = computed(() =>
 
 const moveGradeDialogOpen = ref(false);
 const locationDialogOpen = ref(false);
+const costDetailDrawerOpen = ref(false);
+const costDetailStockRow = ref<GlobalStock | null>(null);
+const costDetailUnitCost = ref(0);
 const selectedStockRow = ref<GlobalStock | null>(null);
 const gradeTags = ref<Tag[]>([]);
 
@@ -423,6 +431,10 @@ const gradeLabel = (row: GlobalStock): string =>
   row.grade_name || gradeNameById.value.get(row.grade_tag_id ?? 0) || 'Standard';
 
 const availabilityQuickPills = WAREHOUSE_AVAILABILITY_QUICK_FILTERS;
+const availabilitySectionTabs = availabilityQuickPills.map((pill) => ({
+  name: pill.value,
+  label: pill.label,
+}));
 const groupByOptions = WAREHOUSE_STOCK_GROUP_BY_OPTIONS;
 
 const shipmentStatusOptions = [
@@ -450,9 +462,10 @@ const gradeFilterChipLabel = computed(() => {
   return name ? `Condition: ${name}` : `Condition #${id}`;
 });
 
-const setQuickAvailability = (value: 'all' | StockAvailability) => {
-  quickAvailability.value = value;
-  availabilityFilter.value = value === 'all' ? null : value;
+const setQuickAvailability = (value: string | number) => {
+  const next = value as 'all' | StockAvailability;
+  quickAvailability.value = next;
+  availabilityFilter.value = next === 'all' ? null : next;
   resetScrollPosition();
 };
 
@@ -605,6 +618,12 @@ const openLocationDialog = (row: GlobalStock) => {
 const openMoveGradeDialog = (row: GlobalStock) => {
   selectedStockRow.value = row;
   moveGradeDialogOpen.value = true;
+};
+
+const openCostDetailDrawer = (row: GlobalStock) => {
+  costDetailStockRow.value = row;
+  costDetailUnitCost.value = getUnitCost(row);
+  costDetailDrawerOpen.value = true;
 };
 
 const activeFilterCount = computed(() => {
@@ -765,7 +784,7 @@ onMounted(async () => {
   border-radius: 6px;
 }
 .font-mono {
-  font-family: var(--bw-font-mono, monospace);
+  font-family: var(--tf-font-mono, monospace);
 }
 .rounded-sq-btn {
   border-radius: 8px;
@@ -776,9 +795,9 @@ onMounted(async () => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--bw-neutral-surface, #ffffff);
-  border: 1px solid var(--bw-neutral-border, #e2e8f0);
-  border-radius: var(--bw-radius-sm, 8px);
+  background: var(--tf-neutral-surface, #ffffff);
+  border: 1px solid var(--tf-neutral-border, #e2e8f0);
+  border-radius: var(--tf-radius-sm, 8px);
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
@@ -798,15 +817,15 @@ onMounted(async () => {
 
 .warehouse-group-header {
   border: none;
-  background: color-mix(in srgb, var(--bw-neutral-canvas, #fbfaf7) 70%, transparent);
+  background: color-mix(in srgb, var(--tf-neutral-canvas, #fbfaf7) 70%, transparent);
   padding: 0.55rem 1rem;
   cursor: pointer;
-  border-bottom: 1px solid var(--bw-neutral-border, #e2e8f0);
-  color: var(--bw-neutral-ink, #1e293b);
+  border-bottom: 1px solid var(--tf-neutral-border, #e2e8f0);
+  color: var(--tf-neutral-ink, #1e293b);
 }
 
 .warehouse-group-header:hover {
-  background: color-mix(in srgb, var(--bw-neutral-canvas, #fbfaf7) 90%, transparent);
+  background: color-mix(in srgb, var(--tf-neutral-canvas, #fbfaf7) 90%, transparent);
 }
 
 .text-slate-400 {

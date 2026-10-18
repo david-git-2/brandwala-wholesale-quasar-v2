@@ -351,7 +351,7 @@
                     type="number"
                     dense
                     borderless
-                    input-class="text-center bw-tabular"
+                    input-class="text-center tf-tabular"
                     class="cell-input"
                     min="0"
                     step="1"
@@ -380,7 +380,7 @@
                     type="number"
                     dense
                     borderless
-                    input-class="text-center bw-tabular"
+                    input-class="text-center tf-tabular"
                     class="cell-input"
                     :class="{ 'cell-input--review': focusConfirmedQty }"
                     min="0"
@@ -404,7 +404,7 @@
                     type="number"
                     dense
                     borderless
-                    input-class="text-center text-green-10 text-weight-bold bw-tabular"
+                    input-class="text-center text-green-10 text-weight-bold tf-tabular"
                     class="cell-input"
                     min="0"
                     step="0.01"
@@ -423,7 +423,7 @@
                     type="number"
                     dense
                     borderless
-                    input-class="text-center bw-tabular"
+                    input-class="text-center tf-tabular"
                     class="cell-input"
                     min="0"
                     step="1"
@@ -443,7 +443,7 @@
                     type="number"
                     dense
                     borderless
-                    input-class="text-center bw-tabular"
+                    input-class="text-center tf-tabular"
                     class="cell-input"
                     min="0"
                     step="1"
@@ -473,7 +473,7 @@
                       type="number"
                       dense
                       borderless
-                      input-class="text-center text-purple-10 text-weight-bold bw-tabular"
+                      input-class="text-center text-purple-10 text-weight-bold tf-tabular"
                       class="cell-input"
                       min="0"
                       step="1"
@@ -502,7 +502,7 @@
                   class="col-6 col-sm-3 text-center bg-bdt-light q-pa-xs rounded-borders"
                 >
                   <div class="metric-label text-amber-9">{{ $t('product_based_costing.preview_cost_bdt') }}</div>
-                  <div class="metric-value text-amber-10 bw-tabular text-weight-medium">
+                  <div class="metric-value text-amber-10 tf-tabular text-weight-medium">
                     ৳{{ formatNumber(getCostBdt(slotProps.row)) }}
                   </div>
                 </div>
@@ -513,7 +513,7 @@
                   class="col-6 col-sm-3 text-center bg-bdt-light q-pa-xs rounded-borders"
                 >
                   <div class="metric-label text-amber-9">{{ $t('product_based_costing.table_col_totalCostBdt') }}</div>
-                  <div class="metric-value text-amber-10 bw-tabular text-weight-medium">
+                  <div class="metric-value text-amber-10 tf-tabular text-weight-medium">
                     ৳{{ formatNumber(getTotalCostBdt(slotProps.row)) }}
                   </div>
                 </div>
@@ -521,7 +521,7 @@
                 <!-- Profit BDT -->
                 <div v-if="isColumnVisible('profitBdt')" class="col-6 col-sm-3 text-center">
                   <div class="metric-label">{{ $t('product_based_costing.preview_profit_bdt') }}</div>
-                  <div class="metric-value bw-tabular">
+                  <div class="metric-value tf-tabular">
                     ৳{{ formatNumber(getProfitBdt(slotProps.row)) }}
                   </div>
                 </div>
@@ -529,7 +529,7 @@
                 <!-- Profit Rate -->
                 <div v-if="isColumnVisible('profitRate')" class="col-6 col-sm-3 text-center">
                   <div class="metric-label">{{ $t('product_based_costing.table_col_profitRate') }}</div>
-                  <div class="metric-value bw-tabular">
+                  <div class="metric-value tf-tabular">
                     {{ formatNumber(getProfitRate(slotProps.row)) }}%
                   </div>
                 </div>
@@ -718,7 +718,7 @@
               type="number"
               dense
               borderless
-              input-class="text-center bw-tabular"
+              input-class="text-center tf-tabular"
               class="cell-input"
               min="0"
               step="1"
@@ -739,7 +739,7 @@
               type="number"
               dense
               borderless
-              input-class="text-center bw-tabular"
+              input-class="text-center tf-tabular"
               class="cell-input"
               :class="{ 'cell-input--review': focusConfirmedQty }"
               min="0"
@@ -758,7 +758,7 @@
             <div class="barcode-lines text-caption">
               <div class="row items-center no-wrap">
                 <span class="text-weight-bold">{{ $t('product_based_costing.barcode') }}:</span>
-                <span class="q-ml-xs bw-tabular">{{ slotProps.row.barcode || '-' }}</span>
+                <span class="q-ml-xs tf-tabular">{{ slotProps.row.barcode || '-' }}</span>
                 <q-btn
                   v-if="slotProps.row.barcode"
                   flat
@@ -775,7 +775,7 @@
               </div>
               <div class="row items-center no-wrap">
                 <span class="text-weight-bold">{{ $t('product_based_costing.code') }}:</span>
-                <span class="q-ml-xs bw-tabular">{{ slotProps.row.productCode || '-' }}</span>
+                <span class="q-ml-xs tf-tabular">{{ slotProps.row.productCode || '-' }}</span>
                 <q-btn
                   v-if="slotProps.row.productCode"
                   flat
@@ -792,7 +792,7 @@
               </div>
               <div class="row items-center no-wrap">
                 <span class="text-weight-bold">{{ $t('product_based_costing.product_id') }}:</span>
-                <span class="q-ml-xs bw-tabular">{{ slotProps.row.productId || '-' }}</span>
+                <span class="q-ml-xs tf-tabular">{{ slotProps.row.productId || '-' }}</span>
                 <q-btn
                   v-if="slotProps.row.productId"
                   flat
@@ -838,7 +838,7 @@
               type="number"
               dense
               borderless
-              input-class="text-center bw-tabular"
+              input-class="text-center tf-tabular"
               class="cell-input"
               min="0"
               step="0.01"
@@ -867,7 +867,7 @@
               type="number"
               dense
               borderless
-              input-class="text-center bw-tabular"
+              input-class="text-center tf-tabular"
               class="cell-input"
               min="0"
               step="1"
@@ -888,7 +888,7 @@
               type="number"
               dense
               borderless
-              input-class="text-center bw-tabular"
+              input-class="text-center tf-tabular"
               class="cell-input"
               min="0"
               step="1"
@@ -981,7 +981,7 @@
                 type="number"
                 dense
                 borderless
-                input-class="text-center bw-tabular"
+                input-class="text-center tf-tabular"
                 class="cell-input col"
                 min="0"
                 step="1"
@@ -2145,14 +2145,14 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
 
 .bulk-selection-bar {
   padding: 10px 12px;
-  border: 1px solid #f0c9c9;
+  border: 1px solid var(--tf-error);
   border-radius: 10px;
-  background: #fff8f8;
+  background: var(--tf-error-soft);
 }
 .costing-q-table {
   max-width: 100%;
   /* height set via Quasar :style — keeps bottom scrollbars in viewport */
-  background: var(--bw-theme-base, #eef2f5);
+  background: var(--tf-theme-base, #eef2f5);
 }
 
 .product-based-costing-table :deep(.costing-q-table .q-table__middle) {
@@ -2180,7 +2180,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, var(--tf-neutral-surface));
   white-space: normal !important;
   vertical-align: middle;
   padding: 6px 4px;
@@ -2220,32 +2220,32 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
 
 .product-based-costing-table :deep(.costing-q-table td:first-child) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, var(--tf-neutral-surface)) 94%, color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%) 6%);
 }
 
 .product-based-costing-table :deep(.costing-q-table td:nth-child(2)) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, var(--tf-neutral-surface)) 96%, color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%) 4%);
 }
 
 .product-based-costing-table :deep(.costing-q-table td:nth-child(3)) {
   z-index: 1;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, var(--tf-neutral-surface)) 96%, color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%) 4%);
 }
 
 .product-based-costing-table :deep(.costing-q-table thead tr th:first-child) {
   z-index: 20;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
+  background: color-mix(in srgb, var(--tf-theme-surface, var(--tf-neutral-surface)) 94%, color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%) 6%);
 }
 
 .product-based-costing-table :deep(.costing-q-table thead tr th:nth-child(2)) {
   z-index: 20;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, var(--tf-neutral-surface)) 96%, color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%) 4%);
 }
 
 .product-based-costing-table :deep(.costing-q-table thead tr th:nth-child(3)) {
   z-index: 20;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+  background: color-mix(in srgb, var(--tf-theme-surface, var(--tf-neutral-surface)) 96%, color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%) 4%);
 }
 
 .product-based-costing-table :deep(.costing-q-table tbody) {
@@ -2257,7 +2257,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
 }
 
 .costing-item-card.row-incomplete-offer {
-  border-color: color-mix(in srgb, var(--q-warning) 60%, var(--bw-theme-border, #e2e8f0));
+  border-color: color-mix(in srgb, var(--q-warning) 60%, var(--tf-theme-border, var(--tf-neutral-border)));
 }
 
 .table-image {
@@ -2265,9 +2265,9 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   height: 96px;
   display: block;
   margin: 0 auto;
-  border: 1px solid #ddd;
+  border: 1px solid var(--tf-neutral-border-strong);
   border-radius: 6px;
-  background: #fff;
+  background: var(--tf-neutral-surface);
   overflow: hidden;
 }
 
@@ -2282,21 +2282,21 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
 :deep(.q-table__middle),
 :deep(.q-table__middle table),
 :deep(.q-table__bottom) {
-  background: var(--bw-theme-base, #eef2f5);
+  background: var(--tf-theme-base, #eef2f5);
 }
 
 .table-image-placeholder {
   width: 96px;
   height: 96px;
   margin: 0 auto;
-  border: 1px dashed #bbb;
+  border: 1px dashed var(--tf-neutral-border-strong);
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  color: #777;
-  background: #fafafa;
+  color: var(--tf-neutral-muted);
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
 }
 
 .editable-cell {
@@ -2358,21 +2358,21 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 42px;
   width: 42px;
   max-width: 42px;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
 }
 
 .col-image {
   min-width: 130px;
   width: 130px;
   max-width: 130px;
-  background: #fcfcfc;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
 }
 
 .col-name {
   min-width: 200px;
   width: 200px;
   max-width: 200px;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
 }
 
 .name-cell-content {
@@ -2411,14 +2411,14 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 150px;
   width: 150px;
   max-width: 150px;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
 }
 
 .col-note {
   min-width: 260px;
   width: 260px;
   max-width: 260px;
-  background: #fcfcfc;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   overflow: hidden;
   vertical-align: top;
 }
@@ -2427,7 +2427,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2442,7 +2442,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
 }
 
 .qty-col--focus {
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
 }
 
 .confirmed-qty-header {
@@ -2457,7 +2457,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2466,21 +2466,21 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 240px;
   width: 240px;
   max-width: 240px;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
 }
 
 .col-website {
   min-width: 120px;
   width: 120px;
   max-width: 120px;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
 }
 
 .col-price-gbp {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2489,7 +2489,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2498,7 +2498,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2507,7 +2507,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2516,7 +2516,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2525,7 +2525,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2534,7 +2534,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2543,7 +2543,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2552,7 +2552,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2561,7 +2561,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2570,7 +2570,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2579,7 +2579,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2588,7 +2588,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2597,7 +2597,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2606,7 +2606,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2615,7 +2615,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 72px;
   width: 72px;
   max-width: 72px;
-  background: #ffffff;
+  background: var(--tf-neutral-surface);
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -2624,19 +2624,19 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   min-width: 150px;
   width: 150px;
   max-width: 150px;
-  background: #f8f9fa;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
 }
 
 :deep(.bg-gbp) {
-  background-color: #e6f4ea !important;
+  background-color: var(--tf-ops-hue-price) !important;
 }
 
 :deep(.bg-bdt) {
-  background-color: #fff8e1 !important;
+  background-color: var(--tf-ops-hue-cost) !important;
 }
 
 :deep(.bg-offer) {
-  background-color: #f3e5f5 !important;
+  background-color: var(--tf-ops-hue-weight) !important;
 }
 .col-name-wrap {
   min-width: 150px;
@@ -2664,7 +2664,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   border-radius: 12px;
   transition: all 0.3s ease;
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--tf-neutral-border);
 }
 
 .costing-item-card:hover {
@@ -2673,7 +2673,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
 }
 
 .card-header {
-  background-color: var(--bw-theme-surface-variant, #fafafa);
+  background-color: var(--tf-theme-surface-variant, color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%));
   min-height: 48px;
 }
 
@@ -2682,8 +2682,8 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: #fff;
+  border: 1px solid var(--tf-neutral-border);
+  background: var(--tf-neutral-surface);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2706,18 +2706,18 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
 .card-image-placeholder {
   width: 100%;
   height: 100%;
-  background-color: #f0f0f0;
+  background-color: var(--tf-disabled-bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #aaa;
+  color: var(--tf-neutral-muted);
   font-size: 11px;
 }
 
 .card-item-name {
   font-size: 14px;
   line-height: 1.4;
-  color: #2c3e50;
+  color: var(--tf-neutral-ink);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -2729,8 +2729,8 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
 }
 
 .card-note-section {
-  border: 1px dashed rgba(0, 0, 0, 0.1);
-  background: var(--bw-theme-surface-variant, #f9f9f9);
+  border: 1px dashed var(--tf-neutral-border);
+  background: var(--tf-theme-surface-variant, color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%));
 }
 
 .card-costing-grid {
@@ -2739,7 +2739,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
 
 .metric-label {
   font-size: 11px;
-  color: #7f8c8d;
+  color: var(--tf-neutral-muted);
   margin-bottom: 2px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -2747,33 +2747,33 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
 
 .metric-value {
   font-size: 14px;
-  color: #2c3e50;
+  color: var(--tf-neutral-ink);
 }
 
 .bg-gbp-light {
-  background-color: color-mix(in srgb, #e6f4ea 35%, var(--bw-theme-surface, #fff));
+  background-color: color-mix(in srgb, var(--tf-ops-hue-price) 35%, var(--tf-theme-surface, var(--tf-neutral-surface)));
 }
 
 .bg-offer-light {
-  background-color: color-mix(in srgb, #f3e5f5 35%, var(--bw-theme-surface, #fff));
+  background-color: color-mix(in srgb, var(--tf-ops-hue-weight) 35%, var(--tf-theme-surface, var(--tf-neutral-surface)));
 }
 
 .bg-bdt-light {
-  background-color: color-mix(in srgb, #fff8e1 35%, var(--bw-theme-surface, #fff));
+  background-color: color-mix(in srgb, var(--tf-ops-hue-cost) 35%, var(--tf-theme-surface, var(--tf-neutral-surface)));
 }
 </style>
 
 <style>
 .pbc-status-tooltip.q-tooltip {
-  background: #fff !important;
-  color: #334155 !important;
+  background: var(--tf-neutral-surface) !important;
+  color: var(--tf-neutral-ink) !important;
   font-size: 13px;
   line-height: 1.4;
   white-space: normal;
   max-width: 280px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--tf-neutral-border);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
 }
 
@@ -2782,7 +2782,7 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--tf-neutral-muted);
 }
 
 .pbc-status-tooltip__k--next {

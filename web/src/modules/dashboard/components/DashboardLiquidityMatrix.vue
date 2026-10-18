@@ -14,14 +14,14 @@
       <div class="runway-summary">
         <div class="runway-row">
           <span class="text-caption text-slate-500">30-Day Projected Net Buffer</span>
-          <span class="text-caption text-weight-bold text-emerald bw-tabular">+{{ formatDashboardMoney(netLiquidity) }}</span>
+          <span class="text-caption text-weight-bold text-emerald tf-tabular">+{{ formatDashboardMoney(netLiquidity) }}</span>
         </div>
         <div class="runway-progress">
           <div class="runway-progress__fill" :style="{ width: `${coveragePct}%` }" />
         </div>
         <div class="runway-sub-row text-caption-xs text-slate-400">
-          <span>Inflows: <strong class="text-slate-700 bw-tabular">{{ formatDashboardMoney(totalInflows) }}</strong></span>
-          <span>Outflows: <strong class="text-slate-700 bw-tabular">-{{ formatDashboardMoney(totalOutflows) }}</strong></span>
+          <span>Inflows: <strong class="text-slate-700 tf-tabular">{{ formatDashboardMoney(totalInflows) }}</strong></span>
+          <span>Outflows: <strong class="text-slate-700 tf-tabular">-{{ formatDashboardMoney(totalOutflows) }}</strong></span>
         </div>
       </div>
 
@@ -29,19 +29,19 @@
       <div class="ledger-metrics-grid">
         <div class="ledger-cell">
           <span class="cell-label text-slate-500">Bank Balance</span>
-          <span class="cell-val text-slate-900 bw-tabular">{{ formatDashboardMoney(bankBalance) }}</span>
+          <span class="cell-val text-slate-900 tf-tabular">{{ formatDashboardMoney(bankBalance) }}</span>
         </div>
         <div class="ledger-cell">
           <span class="cell-label text-slate-500">Courier COD Holding</span>
-          <span class="cell-val text-amber-700 bw-tabular">{{ formatDashboardMoney(courierCodTotal) }}</span>
+          <span class="cell-val text-amber-700 tf-tabular">{{ formatDashboardMoney(courierCodTotal) }}</span>
         </div>
         <div class="ledger-cell">
           <span class="cell-label text-slate-500">Customer Receivables</span>
-          <span class="cell-val text-slate-900 bw-tabular">{{ formatDashboardMoney(customerDues) }}</span>
+          <span class="cell-val text-slate-900 tf-tabular">{{ formatDashboardMoney(customerDues) }}</span>
         </div>
         <div class="ledger-cell">
           <span class="cell-label text-slate-500">Vendor Payables</span>
-          <span class="cell-val text-rose-700 bw-tabular">-{{ formatDashboardMoney(vendorPayables) }}</span>
+          <span class="cell-val text-rose-700 tf-tabular">-{{ formatDashboardMoney(vendorPayables) }}</span>
         </div>
       </div>
 
@@ -55,12 +55,12 @@
           <div class="cod-partner">
             <span class="partner-dot partner-dot--steadfast" />
             <span class="partner-name text-slate-600">Steadfast</span>
-            <span class="partner-val text-slate-900 bw-tabular">{{ formatDashboardMoney(steadfastCod) }}</span>
+            <span class="partner-val text-slate-900 tf-tabular">{{ formatDashboardMoney(steadfastCod) }}</span>
           </div>
           <div class="cod-partner">
             <span class="partner-dot partner-dot--pathao" />
             <span class="partner-name text-slate-600">Pathao</span>
-            <span class="partner-val text-slate-900 bw-tabular">{{ formatDashboardMoney(pathaoCod) }}</span>
+            <span class="partner-val text-slate-900 tf-tabular">{{ formatDashboardMoney(pathaoCod) }}</span>
           </div>
         </div>
       </div>
@@ -115,8 +115,8 @@ const coveragePct = computed(() => {
 
 <style scoped>
 .liquidity-card {
-  background: var(--bw-neutral-surface, #FFFFFF);
-  border: 1px solid var(--bw-neutral-border, #E2E8F0);
+  background: var(--tf-neutral-surface, #FFFFFF);
+  border: 1px solid var(--tf-neutral-border, #E2E8F0);
   border-radius: 10px;
   padding: 1rem 1.15rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -157,11 +157,11 @@ body.body--dark .liquidity-title {
 }
 
 .liquidity-view-all:hover {
-  color: var(--bw-brand-accent, #0d6b5c);
+  color: var(--tf-brand-accent, #0d6b5c);
 }
 
 body.body--dark .liquidity-view-all:hover {
-  color: var(--bw-brand-accent, #4db8a4);
+  color: var(--tf-brand-accent, #4db8a4);
 }
 
 .liquidity-body {

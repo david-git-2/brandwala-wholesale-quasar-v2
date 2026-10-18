@@ -245,7 +245,7 @@ body.body--dark .segmented-date-control {
 }
 
 .segmented-date-btn:hover {
-  color: #0F172A;
+  color: var(--tf-neutral-ink);
 }
 
 body.body--dark .segmented-date-btn {
@@ -270,7 +270,7 @@ body.body--dark .segmented-date-btn--active {
 }
 
 .btn-primary {
-  background: var(--bw-brand-accent, #0d6b5c) !important;
+  background: var(--tf-brand-accent, #0d6b5c) !important;
   color: #FFFFFF !important;
   font-size: 12px;
   font-weight: 600;
@@ -285,7 +285,7 @@ body.body--dark .segmented-date-btn--active {
 }
 
 body.body--dark .btn-primary {
-  background: var(--bw-brand-accent, #4db8a4) !important;
+  background: var(--tf-brand-accent, #4db8a4) !important;
   color: #09090B !important;
 }
 
@@ -302,7 +302,7 @@ body.body--dark .btn-primary {
 }
 
 .btn-secondary:hover {
-  background: #F8FAFC !important;
+  background: var(--tf-hover-bg) !important;
   border-color: #CBD5E1;
 }
 

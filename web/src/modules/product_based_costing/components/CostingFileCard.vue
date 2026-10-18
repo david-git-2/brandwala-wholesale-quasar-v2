@@ -5,23 +5,19 @@
         class="q-px-sm q-py-xs cursor-pointer"
         bordered
         flat
-        :style="statusSurfaceStyle(item.status)"
         @click="handleSelect(item)"
       >
         <div class="row items-center justify-between no-wrap">
           <div class="col min-width-0">
             <div class="text-subtitle1 text-weight-bold ellipsis">#{{ item.id }} {{ item.name }}</div>
-            <div class="text-caption text-grey-8 ellipsis">
+            <div class="text-caption ellipsis tf-card-sub">
               {{ $t('product_based_costing.created_for', { name: item.order_for || $t('product_based_costing.untitled') }) }}
             </div>
           </div>
 
           <div class="row items-center q-gutter-xs">
-            <q-chip dense square :style="statusChipStyle(item.status)" class="costing-status-chip">
-              <span class="status-dot" :style="{ backgroundColor: statusDotColor(item.status) }" />
-              {{ statusLabel(item.status) }}
-            </q-chip>
-            <q-btn icon="ph ph-dots-three-vertical" flat round dense @click.stop>
+            <TfStatusBadge unique="pbc" :status="normalizeStatus(item.status)" :label="statusLabel(item.status)" />
+            <TfBtn variant="icon" icon="ph ph-dots-three-vertical" @click.stop>
               <q-menu auto-close>
                 <q-list dense style="min-width: 140px">
                   <q-item clickable v-ripple @click="handleCopy(item)">
@@ -37,7 +33,7 @@
                   </q-item>
                 </q-list>
               </q-menu>
-            </q-btn>
+            </TfBtn>
           </div>
         </div>
       </q-card>
@@ -47,6 +43,8 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import TfBtn from 'src/components/ui/TfBtn.vue';
+import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
 import type { ProductBasedCostingFile } from '../types';
 import { normalizePbcFileStatus } from '../composables/useProductBasedCostingFileDetailsState';
 
@@ -87,149 +85,10 @@ const handleDelete = (item: ProductBasedCostingFile) => {
 
 const normalizeStatus = (status: string | null | undefined) =>
   normalizePbcFileStatus((status ?? '').trim().toLowerCase() || 'pending');
-
-const statusSurfaceStyle = (status: string | null | undefined) => {
-  const value = normalizeStatus(status);
-  if (value === 'pending') {
-    return {
-      backgroundColor: '#fffbf2',
-      boxShadow: 'inset 6px 0 0 #d8a54a',
-    };
-  }
-  if (value === 'offered') {
-    return {
-      backgroundColor: '#f3f7ff',
-      boxShadow: 'inset 6px 0 0 #6f93d8',
-    };
-  }
-  if (value === 'confirmed') {
-    return {
-      backgroundColor: '#e6f7ff',
-      boxShadow: 'inset 6px 0 0 #1890ff',
-    };
-  }
-  if (value === 'procuring') {
-    return {
-      backgroundColor: '#f0f5ff',
-      boxShadow: 'inset 6px 0 0 #2f54eb',
-    };
-  }
-  if (value === 'packed') {
-    return {
-      backgroundColor: '#f6ffed',
-      boxShadow: 'inset 6px 0 0 #52c41a',
-    };
-  }
-  if (value === 'delivered') {
-    return {
-      backgroundColor: '#e6fffb',
-      boxShadow: 'inset 6px 0 0 #13c2c2',
-    };
-  }
-  if (value === 'cancelled') {
-    return {
-      backgroundColor: '#fff4f6',
-      boxShadow: 'inset 6px 0 0 #c97586',
-    };
-  }
-  return {
-    backgroundColor: '#f8f9fb',
-    boxShadow: 'inset 6px 0 0 #8ea0b8',
-  };
-};
-
-const statusChipStyle = (status: string | null | undefined) => {
-  const value = normalizeStatus(status);
-  if (value === 'pending') {
-    return {
-      backgroundColor: '#efd399',
-      color: '#6a4a14',
-      border: '1px solid #d8b672',
-      boxShadow: '0 1px 2px rgba(106, 74, 20, 0.18)',
-    };
-  }
-  if (value === 'offered') {
-    return {
-      backgroundColor: '#c8d8f8',
-      color: '#27487a',
-      border: '1px solid #a9c4f3',
-      boxShadow: '0 1px 2px rgba(39, 72, 122, 0.18)',
-    };
-  }
-  if (value === 'confirmed') {
-    return {
-      backgroundColor: '#bae7ff',
-      color: '#0050b3',
-      border: '1px solid #91d5ff',
-      boxShadow: '0 1px 2px rgba(0, 80, 179, 0.18)',
-    };
-  }
-  if (value === 'procuring') {
-    return {
-      backgroundColor: '#d6e4ff',
-      color: '#10239e',
-      border: '1px solid #adc6ff',
-      boxShadow: '0 1px 2px rgba(16, 35, 158, 0.18)',
-    };
-  }
-  if (value === 'packed') {
-    return {
-      backgroundColor: '#d9f7be',
-      color: '#237804',
-      border: '1px solid #b7eb8f',
-      boxShadow: '0 1px 2px rgba(35, 120, 4, 0.18)',
-    };
-  }
-  if (value === 'delivered') {
-    return {
-      backgroundColor: '#b5f5ec',
-      color: '#00474f',
-      border: '1px solid #87e8de',
-      boxShadow: '0 1px 2px rgba(0, 71, 79, 0.18)',
-    };
-  }
-  if (value === 'cancelled') {
-    return {
-      backgroundColor: '#f2c7d0',
-      color: '#6f2b3a',
-      border: '1px solid #e3a6b3',
-      boxShadow: '0 1px 2px rgba(111, 43, 58, 0.18)',
-    };
-  }
-  return {
-    backgroundColor: '#dbe5f3',
-    color: '#3b4b66',
-    border: '1px solid #b9c8dd',
-    boxShadow: '0 1px 2px rgba(59, 75, 102, 0.18)',
-  };
-};
-
-const statusDotColor = (status: string | null | undefined) => {
-  const value = normalizeStatus(status);
-  if (value === 'pending') return '#9a6a24';
-  if (value === 'offered') return '#3f67b3';
-  if (value === 'confirmed') return '#1890ff';
-  if (value === 'procuring') return '#2f54eb';
-  if (value === 'packed') return '#52c41a';
-  if (value === 'delivered') return '#13c2c2';
-  if (value === 'cancelled') return '#a64c62';
-  return '#66758c';
-};
 </script>
 
 <style scoped>
-.costing-status-chip {
-  border-radius: 6px !important;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  padding: 0 8px;
-}
-
-.status-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  margin-right: 6px;
+.tf-card-sub {
+  color: var(--tf-neutral-muted);
 }
 </style>

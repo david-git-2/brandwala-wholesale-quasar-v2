@@ -1,9 +1,9 @@
 <template>
-  <q-page class="bw-page theme-shop">
+  <q-page class="tf-page theme-shop">
     <div class="q-gutter-y-md">
       <CustomerDashboardSkeleton v-if="dashboardQuery.isLoading.value" />
 
-      <q-banner v-else-if="dashboardError" class="bw-status-banner bg-negative text-white" rounded>
+      <q-banner v-else-if="dashboardError" class="tf-status-banner bg-negative text-white" rounded>
         {{ dashboardError }}
       </q-banner>
 

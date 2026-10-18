@@ -529,15 +529,15 @@ defineExpose({ getDraftPayload });
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--bw-neutral-secondary, #64748b);
+  color: var(--tf-neutral-secondary, #64748b);
   text-align: left;
-  border-bottom: 2px solid var(--bw-theme-border, #e2e8f0);
+  border-bottom: 2px solid var(--tf-theme-border, #e2e8f0);
 }
 
 .dropship-mgmt-settlement-paper__table td {
   padding: 0.5rem 0.65rem;
   vertical-align: middle;
-  border-bottom: 1px solid color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 55%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--tf-theme-border, #e2e8f0) 55%, transparent);
 }
 
 .dropship-mgmt-settlement-paper__amount-col {
@@ -567,7 +567,7 @@ defineExpose({ getDraftPayload });
 }
 
 .dropship-mgmt-settlement-paper__table tfoot tr:first-child td {
-  border-top: 2px solid var(--bw-theme-border, #e2e8f0);
+  border-top: 2px solid var(--tf-theme-border, #e2e8f0);
   padding-top: 0.75rem;
 }
 

@@ -474,7 +474,7 @@ async function onAddToCart() {
 
 .product-detail__gallery {
   background: #fff;
-  border: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.12));
+  border: 1px solid var(--tf-theme-border, rgba(34, 56, 101, 0.12));
   min-height: 280px;
 }
 
@@ -491,7 +491,7 @@ async function onAddToCart() {
 }
 
 .product-detail__title {
-  color: var(--bw-theme-ink, #1f2937);
+  color: var(--tf-theme-ink, #1f2937);
   line-height: 1.3;
 }
 
@@ -504,25 +504,25 @@ async function onAddToCart() {
   grid-template-columns: minmax(120px, 38%) 1fr;
   gap: 8px 12px;
   padding: 6px 0;
-  border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08));
+  border-bottom: 1px solid var(--tf-theme-border, rgba(34, 56, 101, 0.08));
 }
 
 .product-detail__spec-row dt {
   margin: 0;
   font-size: 0.8125rem;
-  color: var(--bw-theme-muted, #6b7280);
+  color: var(--tf-theme-muted, #6b7280);
 }
 
 .product-detail__spec-row dd {
   margin: 0;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--bw-theme-ink, #1f2937);
+  color: var(--tf-theme-ink, #1f2937);
 }
 
 .product-detail__price-card {
   border-radius: 10px;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 92%, var(--bw-theme-primary-soft, #eff6ff) 8%);
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 92%, var(--tf-theme-primary-soft, #eff6ff) 8%);
 }
 
 .product-detail__related-card {
@@ -533,7 +533,7 @@ async function onAddToCart() {
 .product-detail__related-image-wrap {
   height: 96px;
   background: #fff;
-  border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08));
+  border-bottom: 1px solid var(--tf-theme-border, rgba(34, 56, 101, 0.08));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -571,11 +571,11 @@ async function onAddToCart() {
 
 .product-detail__cart-actions {
   padding: 12px 0;
-  border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08));
+  border-bottom: 1px solid var(--tf-theme-border, rgba(34, 56, 101, 0.08));
 }
 
 .quantity-stepper {
-  border: 1.5px solid var(--bw-theme-border, rgba(34, 56, 101, 0.18));
+  border: 1.5px solid var(--tf-theme-border, rgba(34, 56, 101, 0.18));
   border-radius: 8px;
   padding: 2px 4px;
 }

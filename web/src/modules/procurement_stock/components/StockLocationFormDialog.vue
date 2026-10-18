@@ -85,7 +85,7 @@
             label="Default put-away place"
             :disable="!form.is_active"
           />
-          <div v-else class="text-caption bw-text-muted">
+          <div v-else class="text-caption tf-text-muted">
             Default put-away is only set on leaf bins (no children under them).
           </div>
         </q-card-section>

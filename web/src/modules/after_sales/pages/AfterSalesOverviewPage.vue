@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page after-sales-overview-page">
-    <section class="bw-page__stack">
+  <q-page class="tf-page after-sales-overview-page">
+    <section class="tf-page__stack">
       <AfterSalesOverviewSkeleton v-if="hubQuery.isLoading.value" />
 
       <template v-else>
@@ -9,7 +9,7 @@
           @navigate="goTo"
         />
 
-        <div class="bw-inline-actions">
+        <div class="tf-inline-actions">
           <q-btn
             color="primary"
             unelevated
@@ -41,7 +41,7 @@
         <div class="after-sales-hub">
           <section class="hub-group">
             <h2 class="hub-group__title">Queues</h2>
-            <div class="bw-entity-grid">
+            <div class="tf-entity-grid">
               <button
                 v-for="card in queueCards"
                 :key="card.key"
@@ -61,7 +61,7 @@
 
           <section class="hub-group">
             <h2 class="hub-group__title">Intake &amp; policy</h2>
-            <div class="bw-entity-grid">
+            <div class="tf-entity-grid">
               <button
                 v-for="card in intakePolicyCards"
                 :key="card.key"
@@ -207,7 +207,7 @@ const goTo = (path: string) => {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .hub-tile {
@@ -218,10 +218,10 @@ const goTo = (path: string) => {
   min-height: 128px;
   padding: 0.95rem 1rem;
   text-align: left;
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
   border-radius: 14px;
-  background: var(--bw-theme-surface);
-  color: var(--bw-theme-ink);
+  background: var(--tf-theme-surface);
+  color: var(--tf-theme-ink);
   cursor: pointer;
   transition:
     border-color 0.2s ease,
@@ -231,14 +231,14 @@ const goTo = (path: string) => {
 }
 
 .hub-tile:hover {
-  border-color: color-mix(in srgb, var(--tile-accent) 50%, var(--bw-theme-border));
-  background: color-mix(in srgb, var(--tile-accent) 8%, var(--bw-theme-surface));
+  border-color: color-mix(in srgb, var(--tile-accent) 50%, var(--tf-theme-border));
+  background: color-mix(in srgb, var(--tile-accent) 8%, var(--tf-theme-surface));
   transform: translateY(-2px);
   box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--tile-accent) 35%, transparent);
 }
 
 .hub-tile:focus-visible {
-  outline: 2px solid var(--bw-theme-primary);
+  outline: 2px solid var(--tf-theme-primary);
   outline-offset: 2px;
 }
 
@@ -262,7 +262,7 @@ const goTo = (path: string) => {
 .hub-tile__caption {
   font-size: 0.8rem;
   line-height: 1.35;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 
 .hub-tile--inbox {
@@ -282,6 +282,6 @@ const goTo = (path: string) => {
 }
 
 .hub-tile--policy {
-  --tile-accent: var(--bw-theme-primary);
+  --tile-accent: var(--tf-theme-primary);
 }
 </style>

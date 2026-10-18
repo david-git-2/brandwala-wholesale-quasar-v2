@@ -17,8 +17,8 @@ A wholesale customer logs into `/:slug/shop/*` to browse stock, price, cart, and
 
 | Cause | What the user sees |
 | :--- | :--- |
-| All four scopes share `--bw-neutral-canvas` `#fbfaf7` | Same cream ops paper |
-| Shop only swaps `--bw-theme-primary` to `#3d52b0` at **8%** soft | Accent is almost invisible |
+| All four scopes share `--tf-neutral-canvas` `#fbfaf7` | Same cream ops paper |
+| Shop only swaps `--tf-theme-primary` to `#3d52b0` at **8%** soft | Accent is almost invisible |
 | Cool indigo on warm parchment | 2016 corporate, not trade catalog |
 | `WorkspaceShell` chrome identical to app | Staff tool, not store |
 | Cards: 160px `contain` image, 12px name, `text-grey-*` | Inventory tiles, not products |
@@ -48,7 +48,7 @@ Staff preview (`/:slug/app/shop/shops/:id/preview`) must inherit the same `.them
 
 N/A — no payload or RPC changes. Catalog still uses existing list / detail / cart queries. TanStack Query keys stay as in `SHOP_ORDER.md`.
 
-If a component currently hardcodes `text-grey-6` for muted copy, switch to `--bw-theme-muted` / `.bw-text-muted`. That is CSS only.
+If a component currently hardcodes `text-grey-6` for muted copy, switch to `--tf-theme-muted` / `.tf-text-muted`. That is CSS only.
 
 ---
 
@@ -71,14 +71,14 @@ Give shop its **own canvas and surface**, not only primary. Keep TradeFlow BD fa
 
 | Token | Current | Target (light) | Job |
 | :--- | :--- | :--- | :--- |
-| `--bw-theme-base` | shared cream `#fbfaf7` | Cool catalog paper `#f4f6fb` | Photos sit on a clean stage |
-| `--bw-theme-surface` | `#ffffff` | `#ffffff` | Cards stay white |
-| `--bw-theme-border` | warm `#e7e1d8` | Cool stone `#dbe1ea` | Matches cool canvas |
-| `--bw-theme-ink` | `#171412` | Near-navy `#141824` | Sharper product names |
-| `--bw-theme-muted` | `#736a61` | `#5c6575` | Captions, not Material grey |
-| `--bw-theme-primary` | `#3d52b0` indigo | **Shipped:** commerce copper `#c45c26` | Cart, Search, active nav |
-| `--bw-theme-primary-soft` | `rgb(61 82 176 / 0.08)` | **16%** (`0.16`) | Nav/pills actually read as shop |
-| `--bw-theme-shadow` | 12% indigo wash | Slightly deeper indigo (`0.16`) | Card hover |
+| `--tf-theme-base` | shared cream `#fbfaf7` | Cool catalog paper `#f4f6fb` | Photos sit on a clean stage |
+| `--tf-theme-surface` | `#ffffff` | `#ffffff` | Cards stay white |
+| `--tf-theme-border` | warm `#e7e1d8` | Cool stone `#dbe1ea` | Matches cool canvas |
+| `--tf-theme-ink` | `#171412` | Near-navy `#141824` | Sharper product names |
+| `--tf-theme-muted` | `#736a61` | `#5c6575` | Captions, not Material grey |
+| `--tf-theme-primary` | `#3d52b0` indigo | **Shipped:** commerce copper `#c45c26` | Cart, Search, active nav |
+| `--tf-theme-primary-soft` | `rgb(61 82 176 / 0.08)` | **16%** (`0.16`) | Nav/pills actually read as shop |
+| `--tf-theme-shadow` | 12% indigo wash | Slightly deeper indigo (`0.16`) | Card hover |
 
 Dark mode (`body.body--dark .theme-shop`): copper `#e08a4f`; cool slate base/surface/border, not the shared warm dark stone.
 
@@ -88,7 +88,7 @@ Files: `ShopLayout.vue`, `WorkspaceShell.vue` shop branches only.
 
 - Header: opaque cool surface (no `backdrop-filter`). Cart icon remains the loudest chrome control (`color="primary"`).
 - Do not add a header color badge or drawer accent rail (still forbidden in `UI_CONSISTENCY.md`) unless this doc is later amended.
-- Active nav + shop bottom nav: filled pill using the new 16% `--bw-theme-primary-soft`.
+- Active nav + shop bottom nav: filled pill using the new 16% `--tf-theme-primary-soft`.
 - Hide or de-emphasize ops-only chrome on **catalog / product / cart / checkout** only: compact-density toggle is irrelevant to buyers; do not surface it in the shop header menu if it is only useful for tables. Orders/wallet pages may keep table density.
 
 **C. Product cards (same grid, new hierarchy)**
@@ -99,17 +99,17 @@ File: `StorefrontProductCard.vue` (+ admin reuse on Shop Settings storefront tab
 | :--- | :--- |
 | Image box 160px, `object-fit: contain`, 8px inner pad | Taller stage (~200px desktop / ~168px mobile), still `contain` so packshots are not cropped; **cool tint behind image** (`color-mix` 6% primary into surface), **edge-to-edge** (no 8px pad) |
 | Name 12px / 3-line clamp | Name `0.875rem` / weight 600 / 2-line clamp |
-| Price 13px grey-adjacent | Price **hero**: `1rem` / 700 / `--bw-theme-ink` + `.bw-tabular` |
-| Brand `text-uppercase` caption | Brand `--bw-theme-muted`, not `text-grey-*` |
-| Qty / avail as green-red caption | Keep permission gates; use `--bw-success` / `--bw-error`, not Quasar `text-positive` if it fights tokens |
-| Hover `translateY(-4px)` | Keep lift; shadow uses shop `--bw-theme-shadow` |
-| Border `q-card flat bordered` radius 16px | Keep radius 16px; border `--bw-theme-border` |
+| Price 13px grey-adjacent | Price **hero**: `1rem` / 700 / `--tf-theme-ink` + `.tf-tabular` |
+| Brand `text-uppercase` caption | Brand `--tf-theme-muted`, not `text-grey-*` |
+| Qty / avail as green-red caption | Keep permission gates; use `--tf-success` / `--tf-error`, not Quasar `text-positive` if it fights tokens |
+| Hover `translateY(-4px)` | Keep lift; shadow uses shop `--tf-theme-shadow` |
+| Border `q-card flat bordered` radius 16px | Keep radius 16px; border `--tf-theme-border` |
 
 Admin-only rows (listing toggle, calculate sell price) stay below the commerce block so buyers never see them; staff preview may look slightly denser — acceptable.
 
 **D. Toolbar**
 
-`StorefrontSearchToolbar.vue`: keep one row. Search stays `.soft-input`. Primary Search button stays unelevated primary. Shop switcher outline primary. Replace `text-grey-9` shop name with `--bw-theme-ink`.
+`StorefrontSearchToolbar.vue`: keep one row. Search stays `.soft-input`. Primary Search button stays unelevated primary. Shop switcher outline primary. Replace `text-grey-9` shop name with `--tf-theme-ink`.
 
 **E. Product detail, cart, checkout, dashboard**
 
@@ -139,10 +139,10 @@ Koba routes that reuse `ShopLayout` inherit tokens automatically. Do not special
 
 ## 7. Style Guidelines & Accessibility
 
-- Tokens only: `--bw-theme-*`, `--bw-success|warning|error|info`. Ban new hex on components except the token block in `app.scss`.
+- Tokens only: `--tf-theme-*`, `--tf-success|warning|error|info`. Ban new hex on components except the token block in `app.scss`.
 - Replace Quasar `text-grey-5`…`text-grey-9` on shop catalog components with theme ink/muted.
 - Contrast: indigo on white buttons must stay WCAG AA for the Search / Add to cart labels.
-- Focus: keep existing 3px `--bw-theme-primary-soft` ring on `.soft-input`.
+- Focus: keep existing 3px `--tf-theme-primary-soft` ring on `.soft-input`.
 - Motion: hover lift ≤ 4px; respect `prefers-reduced-motion` (disable transform if that media query is already used globally; add on cards if missing).
 - Radius: buttons 8px, cards 16px (hero-class), chips 4px / pills 999px as today.
 - No `backdrop-filter` on header/toolbar.

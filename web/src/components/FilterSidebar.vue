@@ -72,12 +72,12 @@ const defaultWidthPx = computed(() => parseWidthPx(props.width ?? 'min(320px, 92
   width: 100%;
   height: 100%;
   min-height: 0;
-  background: var(--bw-theme-surface, #fff);
+  background: var(--tf-theme-surface, #fff);
 }
 
 .filter-sidebar__header {
   padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--bw-neutral-border, #e2e8f0);
+  border-bottom: 1px solid var(--tf-neutral-border, #e2e8f0);
 }
 
 .filter-sidebar__body {
@@ -90,7 +90,7 @@ const defaultWidthPx = computed(() => parseWidthPx(props.width ?? 'min(320px, 92
 
 .filter-sidebar__footer {
   padding: 12px 16px 16px;
-  border-top: 1px solid var(--bw-neutral-border, #e2e8f0);
-  background: var(--bw-neutral-surface, #ffffff);
+  border-top: 1px solid var(--tf-neutral-border, #e2e8f0);
+  background: var(--tf-neutral-surface, #ffffff);
 }
 </style>

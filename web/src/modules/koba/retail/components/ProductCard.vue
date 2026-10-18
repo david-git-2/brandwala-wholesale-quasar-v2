@@ -409,7 +409,7 @@ async function onRemove() {
   top: 8px;
   right: 8px;
   z-index: 1;
-  background: var(--bw-theme-primary, #1b4d3e);
+  background: var(--tf-theme-primary, #1b4d3e);
   color: #ffffff;
   font-size: 9px;
   font-weight: 700;
@@ -493,7 +493,7 @@ async function onRemove() {
   z-index: 2;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   background: rgba(255, 255, 255, 0.9);
-  color: var(--bw-theme-primary, #1b4d3e) !important;
+  color: var(--tf-theme-primary, #1b4d3e) !important;
   transition:
     transform 0.2s ease,
     background-color 0.2s ease;
@@ -501,7 +501,7 @@ async function onRemove() {
 
 .info-btn:hover {
   transform: scale(1.08);
-  background: #ffffff;
+  background: var(--tf-hover-bg);
 }
 
 /* Details Dialog */

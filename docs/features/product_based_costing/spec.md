@@ -49,7 +49,7 @@ See [scopes](../../architecture/scopes.md).
 - [x] Modes and FX as above; unlocked lines recalc on save.
 
 ### US-2: Shared procurement lifecycle
-- Confirmed files → Demand desk with catalog preorders (`procuring` … `delivered`).
+- Confirmed files → Demand desk with catalog preorders (`procuring` … `delivered`). Entering `procuring` writes `preorder_demand` rows with the file `profile_id`.
   - [ ] Stays `procuring` through PO and inbound.
   - [ ] Packed qty on **Delivery paper**; close take/condition/return — no customer bill at `packed`.
 

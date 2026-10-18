@@ -4,7 +4,7 @@
       <q-skeleton type="text" width="180px" height="28px" />
       <q-skeleton type="text" width="280px" class="q-mt-xs" />
     </q-card>
-    <div class="bw-entity-grid">
+    <div class="tf-entity-grid">
       <q-card
         v-for="n in 8"
         :key="n"
@@ -24,7 +24,7 @@
     </div>
   </div>
 
-  <div v-else class="bw-entity-grid q-mt-xs">
+  <div v-else class="tf-entity-grid q-mt-xs">
     <q-card
       v-for="n in 4"
       :key="'sk-more-' + n"
@@ -60,10 +60,10 @@ withDefaults(
   display: flex;
   flex-direction: column;
   height: 100%;
-  border-radius: var(--bw-radius-md);
-  background: color-mix(in srgb, var(--bw-theme-surface) 90%, var(--bw-shop-mauve, #996888) 10%);
-  border-color: var(--bw-theme-border);
-  color: var(--bw-theme-ink);
+  border-radius: var(--tf-radius-md);
+  background: color-mix(in srgb, var(--tf-theme-surface) 90%, var(--tf-shop-mauve, #996888) 10%);
+  border-color: var(--tf-theme-border);
+  color: var(--tf-theme-ink);
   overflow: hidden;
 }
 
@@ -71,8 +71,8 @@ withDefaults(
   position: relative;
   height: 200px;
   flex: 0 0 200px;
-  background: var(--bw-theme-surface);
-  border-bottom: 1px solid var(--bw-theme-border);
+  background: var(--tf-theme-surface);
+  border-bottom: 1px solid var(--tf-theme-border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -96,7 +96,7 @@ withDefaults(
     height: auto;
     margin: 0 0 10px;
     padding: 10px;
-    border-radius: var(--bw-radius-md);
+    border-radius: var(--tf-radius-md);
     border: none !important;
   }
   .product-image-wrapper {
@@ -106,7 +106,7 @@ withDefaults(
     margin: 0;
     padding: 0;
     border-bottom: none;
-    border-radius: var(--bw-radius-md);
+    border-radius: var(--tf-radius-md);
   }
   .product-body {
     padding: 0;

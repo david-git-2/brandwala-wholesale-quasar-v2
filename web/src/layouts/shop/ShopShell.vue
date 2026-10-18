@@ -632,13 +632,13 @@ defineExpose({
 <style scoped>
 .shop-shell {
   min-height: 100vh;
-  --shop-shell-base: var(--bw-theme-base, #ffffff);
-  --shop-shell-surface: var(--bw-theme-surface, #ffffff);
-  --shop-shell-border: var(--bw-theme-border, #ebe7e2);
-  --shop-shell-ink: var(--bw-theme-ink, #2a2b2a);
-  --shop-shell-muted: var(--bw-theme-muted, #5e4955);
-  --shop-shell-accent: var(--bw-theme-primary, #2a2b2a);
-  --shop-shell-accent-soft: var(--bw-theme-primary-soft, rgb(153 104 136 / 0.16));
+  --shop-shell-base: var(--tf-theme-base, #ffffff);
+  --shop-shell-surface: var(--tf-theme-surface, #ffffff);
+  --shop-shell-border: var(--tf-theme-border, #ebe7e2);
+  --shop-shell-ink: var(--tf-theme-ink, #2a2b2a);
+  --shop-shell-muted: var(--tf-theme-muted, #5e4955);
+  --shop-shell-accent: var(--tf-theme-primary, #2a2b2a);
+  --shop-shell-accent-soft: var(--tf-theme-primary-soft, rgb(153 104 136 / 0.16));
   background: var(--shop-shell-base);
   color: var(--shop-shell-ink);
 }
@@ -688,7 +688,7 @@ defineExpose({
   flex: 0 0 auto;
   min-width: 0;
   max-width: 9rem;
-  color: var(--bw-shop-charcoal, #2a2b2a);
+  color: var(--tf-shop-charcoal, #2a2b2a);
 }
 
 .shop-shell__tenant-text {
@@ -909,7 +909,7 @@ defineExpose({
   background: var(--shop-shell-surface);
   border: 1px solid color-mix(in srgb, var(--shop-shell-border) 70%, transparent);
   box-shadow:
-    0 10px 28px rgb(var(--bw-theme-primary-rgb, 51 104 160) / 0.1),
+    0 10px 28px rgb(var(--tf-theme-primary-rgb, 51 104 160) / 0.1),
     0 1px 0 color-mix(in srgb, white 70%, transparent);
 }
 
@@ -976,7 +976,7 @@ defineExpose({
   height: 1rem;
   padding: 0 0.22rem;
   border-radius: 999px;
-  background: var(--bw-error, #c44536);
+  background: var(--tf-error, #c44536);
   color: #fff;
   font-size: 0.6rem;
   font-weight: 700;

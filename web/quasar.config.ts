@@ -1,7 +1,23 @@
 // Configuration for your app
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from '#q-app';
+
+const quasarConfigDir = dirname(fileURLToPath(import.meta.url));
+const appReleaseVersion = (() => {
+  try {
+    const rootPkg = JSON.parse(
+      readFileSync(join(quasarConfigDir, '../package.json'), 'utf8'),
+    ) as { version?: string };
+    return rootPkg.version?.trim() || '1.0.0';
+  } catch {
+    return '1.0.0';
+  }
+})();
 
 export default defineConfig((ctx) => {
   const checkerVitePlugin: [string, Record<string, unknown>, { server: boolean }] = [
@@ -25,6 +41,7 @@ export default defineConfig((ctx) => {
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
     boot: [
       'quasar-icon-set',
+      'notify',
       'splash',
       'supabase',
       'vue-query',
@@ -39,9 +56,7 @@ export default defineConfig((ctx) => {
     css: ['~@phosphor-icons/web/regular', 'app.scss'],
 
     // https://github.com/quasarframework/quasar/tree/dev/extras
-    extras: [
-      // Icons: Phosphor webfont only (see boot/phosphor.ts + src/icon-set/phosphor.ts)
-    ],
+    extras: [],
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#build
     build: {
@@ -70,6 +85,7 @@ export default defineConfig((ctx) => {
         VITE_FIREBASE_MESSAGING_SENDER_ID: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
         VITE_FIREBASE_APP_ID: process.env.VITE_FIREBASE_APP_ID,
         VITE_FIREBASE_VAPID_KEY: process.env.VITE_FIREBASE_VAPID_KEY,
+        VITE_APP_VERSION: appReleaseVersion,
       },
       target: {
         browser: 'baseline-widely-available',
@@ -94,7 +110,8 @@ export default defineConfig((ctx) => {
       // rebuildCache: true, // rebuilds Vite/linter/etc cache on startup
 
       // publicPath: '/',
-      // analyze: true,
+      /** Set PERF_ANALYZE=1 (see `npm run build:analyze`) to emit rollup visualizer report. */
+      analyze: process.env.PERF_ANALYZE === '1',
       // env: {},
       // rawDefine: {}
       // ignorePublicFolder: true,
@@ -110,9 +127,38 @@ export default defineConfig((ctx) => {
       // Keep production output file count lower (helps Cloudflare Pages upload stability).
       extendViteConf() {
         return {
+          plugins: [
+            {
+              // Phosphor ships woff2 + woff + ttf + svg (~4 MB). Every supported browser uses woff2 (147 KB).
+              name: 'phosphor-woff2-only',
+              enforce: 'pre' as const,
+              transform(code: string, id: string) {
+                if (!id.replace(/\\/g, '/').includes('@phosphor-icons/web/src/regular/style.css')) {
+                  return null;
+                }
+                const next = code.replace(
+                  /src:\s*url\("\.\/Phosphor\.woff2"\)[\s\S]*?;/,
+                  'src: url("./Phosphor.woff2") format("woff2");',
+                );
+                return next === code ? null : { code: next, map: null };
+              },
+            },
+          ],
           build: {
-            cssCodeSplit: false,
+            cssCodeSplit: true,
             assetsInlineLimit: 8192,
+            rolldownOptions: {
+              output: {
+                codeSplitting: {
+                  groups: [
+                    { name: 'vendor-supabase', test: /node_modules[\\/]@supabase/, priority: 30 },
+                    { name: 'vendor-firebase', test: /node_modules[\\/](firebase|@firebase)/, priority: 30 },
+                    { name: 'vendor-vue', test: /node_modules[\\/](vue|vue-router|pinia|@vue|vue-i18n|@intlify|@tanstack)[\\/]/, priority: 20 },
+                    { name: 'vendor-quasar', test: /node_modules[\\/]quasar/, priority: 20 },
+                  ],
+                },
+              },
+            },
           },
           optimizeDeps: {
             include: ['mermaid'],
@@ -134,7 +180,8 @@ export default defineConfig((ctx) => {
     framework: {
       config: {
         notify: {
-          position: 'bottom',
+          position: 'top-right',
+          progress: false,
         },
       },
 

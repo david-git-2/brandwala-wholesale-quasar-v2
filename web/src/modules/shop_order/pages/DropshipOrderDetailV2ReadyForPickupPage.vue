@@ -219,8 +219,8 @@ const openSettlementDesk = () => {
 </script>
 
 <template>
-  <q-page class="bw-page dropship-order-detail-v2">
-    <div class="bw-page__stack">
+  <q-page class="tf-page dropship-order-detail-v2">
+    <div class="tf-page__stack">
       <q-banner dense rounded class="bg-blue-1 text-blue-10 dropship-order-detail-v2__info-banner no-print">
         <template #avatar>
           <q-icon name="ph ph-check-circle" color="blue-8" />

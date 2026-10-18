@@ -21,7 +21,7 @@
         </div>
       </section>
 
-      <q-banner v-if="store.error" class="bw-status-banner bg-negative text-white">
+      <q-banner v-if="store.error" class="tf-status-banner bg-negative text-white">
         <div class="row items-center justify-between q-gutter-sm">
           <div>{{ store.error }}</div>
           <q-btn flat dense no-caps color="white" label="Retry" @click="reload" />
@@ -49,21 +49,21 @@
             width="124"
             height="78"
             rx="8"
-            fill="var(--bw-theme-primary-soft)"
-            stroke="var(--bw-theme-border)"
+            fill="var(--tf-theme-primary-soft)"
+            stroke="var(--tf-theme-border)"
             stroke-width="1.5"
           />
-          <rect x="28" y="34" width="104" height="8" rx="2" fill="var(--bw-theme-primary)" opacity="0.35" />
-          <rect x="28" y="54" width="104" height="8" rx="2" fill="var(--bw-theme-primary)" opacity="0.35" />
-          <rect x="28" y="74" width="104" height="8" rx="2" fill="var(--bw-theme-primary)" opacity="0.35" />
+          <rect x="28" y="34" width="104" height="8" rx="2" fill="var(--tf-theme-primary)" opacity="0.35" />
+          <rect x="28" y="54" width="104" height="8" rx="2" fill="var(--tf-theme-primary)" opacity="0.35" />
+          <rect x="28" y="74" width="104" height="8" rx="2" fill="var(--tf-theme-primary)" opacity="0.35" />
           <rect
             x="36"
             y="40"
             width="28"
             height="22"
             rx="3"
-            fill="var(--bw-theme-surface)"
-            stroke="var(--bw-theme-primary)"
+            fill="var(--tf-theme-surface)"
+            stroke="var(--tf-theme-primary)"
             stroke-width="1.25"
           />
           <rect
@@ -72,8 +72,8 @@
             width="22"
             height="18"
             rx="3"
-            fill="var(--bw-theme-surface)"
-            stroke="var(--bw-theme-primary)"
+            fill="var(--tf-theme-surface)"
+            stroke="var(--tf-theme-primary)"
             stroke-width="1.25"
           />
           <rect
@@ -82,21 +82,21 @@
             width="18"
             height="14"
             rx="2.5"
-            fill="var(--bw-theme-surface)"
-            stroke="var(--bw-theme-primary)"
+            fill="var(--tf-theme-surface)"
+            stroke="var(--tf-theme-primary)"
             stroke-width="1.25"
             opacity="0.7"
           />
-          <circle cx="128" cy="28" r="14" fill="var(--bw-theme-primary)" />
+          <circle cx="128" cy="28" r="14" fill="var(--tf-theme-primary)" />
           <path
             d="M128 21v14M121 28h14"
-            stroke="var(--bw-theme-surface)"
+            stroke="var(--tf-theme-surface)"
             stroke-width="2"
             stroke-linecap="round"
           />
         </svg>
         <div class="text-subtitle1 text-weight-medium q-mb-xs">No locations yet</div>
-        <div class="text-body2 bw-text-muted q-mb-md" style="max-width: 320px">
+        <div class="text-body2 tf-text-muted q-mb-md" style="max-width: 320px">
           Add a warehouse, then zones, shelves, levels, and bins for put-away.
         </div>
         <q-btn
@@ -173,7 +173,7 @@
                   <span v-else class="q-px-sm" style="width: 28px" />
                   <div>
                     <div class="text-weight-medium">{{ props.row.name }}</div>
-                    <div class="text-caption bw-text-muted">{{ props.row.code }}</div>
+                    <div class="text-caption tf-text-muted">{{ props.row.code }}</div>
                   </div>
                 </div>
               </q-td>
@@ -195,7 +195,7 @@
                 >
                   <q-tooltip>Default put-away</q-tooltip>
                 </q-icon>
-                <span v-else class="bw-text-muted">—</span>
+                <span v-else class="tf-text-muted">—</span>
               </q-td>
             </template>
 
@@ -273,7 +273,7 @@
               <div class="column items-center q-pa-xl empty-state text-center">
                 <q-icon name="ph ph-funnel-simple" size="48px" color="grey-4" class="q-mb-md" />
                 <div class="text-subtitle1 text-weight-medium q-mb-xs">No matching places</div>
-                <div class="text-body2 bw-text-muted q-mb-md" style="max-width: 320px">
+                <div class="text-body2 tf-text-muted q-mb-md" style="max-width: 320px">
                   Try clearing filters or searching a different code.
                 </div>
                 <q-btn

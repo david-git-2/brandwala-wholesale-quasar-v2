@@ -8,22 +8,16 @@
         @update:search="onSearchTextUpdate"
       >
         <template #pills>
-          <div class="row items-center q-gutter-x-xs quick-filter-toggle">
-            <button
-              v-for="tab in typeTabs"
-              :key="tab.value"
-              type="button"
-              class="quick-filter-pill"
-              :class="{ 'quick-filter-pill--active': entityTab === tab.value }"
-              @click="setEntityTab(tab.value)"
-            >
-              {{ tab.label }}
-            </button>
-          </div>
+          <TfDrawerSectionTabs
+            v-model="entityTab"
+            :tabs="typeSectionTabs"
+            aria-label="Payment profile type"
+            @update:model-value="setEntityTab"
+          />
         </template>
       </ProcurementOpsListToolbar>
 
-      <div v-if="listError" class="bw-status-banner bg-negative text-white q-pa-sm rounded-borders">
+      <div v-if="listError" class="tf-status-banner bg-negative text-white q-pa-sm rounded-borders">
         {{ listError }}
       </div>
 
@@ -66,6 +60,7 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
+import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import CashbookEntityRow from '../components/CashbookEntityRow.vue';
 import {
   cashbookRepository,
@@ -91,6 +86,8 @@ const typeTabs: { label: string; value: EntityTab }[] = [
   { label: 'Courier', value: 'courier' },
   { label: 'Vendor', value: 'vendor' },
 ];
+
+const typeSectionTabs = typeTabs.map((tab) => ({ name: tab.value, label: tab.label }));
 
 const operatingTenantId = computed(() => authStore.selectedTenant?.id ?? 0);
 const booksTenantId = computed(() => {
@@ -128,9 +125,10 @@ watch(debouncedSearch, () => {
   void loadRows();
 });
 
-const setEntityTab = (value: EntityTab) => {
-  if (entityTab.value === value) return;
-  entityTab.value = value;
+const setEntityTab = (value: string | number) => {
+  const next = value as EntityTab;
+  if (entityTab.value === next) return;
+  entityTab.value = next;
   void loadRows();
 };
 
@@ -163,21 +161,6 @@ const selectProfile = (row: EntityRow) => {
 @import 'src/modules/sales_invoice/styles/invoice-list.scss';
 .page-fixed-layout {
   height: calc(100vh - 55px);
-}
-.quick-filter-pill {
-  border: 1px solid var(--bw-neutral-border, #e7e1d8);
-  background: var(--bw-neutral-surface, #fff);
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #64748b;
-  cursor: pointer;
-}
-.quick-filter-pill--active {
-  background: #0d6b5c;
-  border-color: #0d6b5c;
-  color: #fff;
 }
 .payments-list-card {
   flex: 0 1 auto;

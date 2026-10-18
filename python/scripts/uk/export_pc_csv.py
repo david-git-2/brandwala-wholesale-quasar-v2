@@ -11,8 +11,8 @@ from typing import Any
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
-DEFAULT_INPUT = ROOT_DIR / "web" / "public" / "uk" / "pc_data.json"
-DEFAULT_OUTPUT = ROOT_DIR / "web" / "public" / "uk" / "pc_data.csv"
+DEFAULT_INPUT = ROOT_DIR / "python" / "data" / "uk" / "out" / "pc_data.json"
+DEFAULT_OUTPUT = ROOT_DIR / "python" / "data" / "uk" / "out" / "pc_data.csv"
 EXCLUDED_HEADERS = {
     "case_size",
     "inner_case",
@@ -34,13 +34,13 @@ def parse_args() -> argparse.Namespace:
         "--input",
         dest="input_path",
         default=str(DEFAULT_INPUT),
-        help="Input JSON path (default: web/public/uk/pc_data.json)",
+        help="Input JSON path (default: python/data/uk/out/pc_data.json)",
     )
     parser.add_argument(
         "--output",
         dest="output_path",
         default=str(DEFAULT_OUTPUT),
-        help="Output CSV path (default: web/public/uk/pc_data.csv)",
+        help="Output CSV path (default: python/data/uk/out/pc_data.csv)",
     )
     return parser.parse_args()
 

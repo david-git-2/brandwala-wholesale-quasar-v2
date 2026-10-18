@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page">
-    <div class="bw-page__stack">
+  <q-page class="tf-page">
+    <div class="tf-page__stack">
       <!-- Header -->
       <app-page-header
         title="Courier remittance &amp; payouts"
@@ -209,6 +209,6 @@ async function handleDispensePayout(payload: {
 
 <style scoped>
 .border-grey {
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
 }
 </style>

@@ -5,7 +5,7 @@
       <div class="dashboard-donut__chart">
         <Doughnut :data="chartData" :options="options" />
         <div v-if="centerValue" class="dashboard-donut__center">
-          <span class="dashboard-donut__center-val bw-tabular">{{ centerValue }}</span>
+          <span class="dashboard-donut__center-val tf-tabular">{{ centerValue }}</span>
         </div>
       </div>
     </template>
@@ -77,7 +77,7 @@ const options: ChartOptions<'doughnut'> = {
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.03em;
-  color: var(--bw-theme-ink);
+  color: var(--tf-theme-ink);
   line-height: 1;
 }
 
@@ -87,6 +87,6 @@ const options: ChartOptions<'doughnut'> = {
   place-items: center;
   text-align: center;
   font-size: 13px;
-  color: var(--bw-theme-muted);
+  color: var(--tf-theme-muted);
 }
 </style>

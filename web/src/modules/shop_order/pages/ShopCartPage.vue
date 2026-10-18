@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page theme-shop" data-test="shop-cart-page">
-    <div class="bw-page__stack">
+  <q-page class="tf-page theme-shop" data-test="shop-cart-page">
+    <div class="tf-page__stack">
       <ShopCartHeader
         :show-cart-picker="showCartPicker"
         :item-count="itemCount"
@@ -21,7 +21,7 @@
       />
 
       <template v-else-if="isCartsError">
-        <q-banner class="bw-status-banner bg-negative text-white" rounded data-test="shop-cart-error">
+        <q-banner class="tf-status-banner bg-negative text-white" rounded data-test="shop-cart-error">
           <div class="text-subtitle1 text-weight-bold">{{ $t('shop.cart_load_error') }}</div>
           <div class="q-mt-xs">{{ $t('shop.cart_load_error_desc') }}</div>
         </q-banner>
@@ -44,9 +44,9 @@
         class="column items-center justify-center q-pa-xl text-center empty-state-block floating-surface"
         data-test="shop-cart-empty"
       >
-        <q-icon name="ph ph-shopping-cart" size="64px" class="q-mb-md bw-text-muted" />
+        <q-icon name="ph ph-shopping-cart" size="64px" class="q-mb-md tf-text-muted" />
         <div class="text-subtitle1 text-weight-bold">{{ $t('shop.cart_empty') }}</div>
-        <p class="bw-type-body bw-text-muted q-mt-sm q-mb-md">
+        <p class="tf-type-body tf-text-muted q-mt-sm q-mb-md">
           {{ $t('shop.cart_empty_desc') }}
         </p>
         <q-btn

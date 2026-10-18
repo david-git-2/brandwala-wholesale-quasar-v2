@@ -31164,6 +31164,7 @@ CREATE TABLE IF NOT EXISTS "public"."preorder_demand" (
     "tenant_id" bigint NOT NULL,
     "source_type" "public"."preorder_demand_source_type" NOT NULL,
     "source_id" bigint NOT NULL,
+    "profile_id" bigint,
     "vendor_id" bigint,
     "placed_quantity" integer DEFAULT 0 NOT NULL,
     "delivered_quantity" integer DEFAULT 0 NOT NULL,
@@ -36196,6 +36197,9 @@ CREATE INDEX "preorder_demand_source_idx" ON "public"."preorder_demand" USING "b
 CREATE INDEX "preorder_demand_tenant_updated_idx" ON "public"."preorder_demand" USING "btree" ("tenant_id", "updated_at" DESC);
 
 
+CREATE INDEX "preorder_demand_tenant_profile_idx" ON "public"."preorder_demand" USING "btree" ("tenant_id", "profile_id") WHERE ("profile_id" IS NOT NULL);
+
+
 CREATE INDEX "product_based_costing_files_profile_id_idx" ON "public"."product_based_costing_files" USING "btree" ("profile_id");
 
 
@@ -37426,6 +37430,10 @@ ALTER TABLE ONLY "public"."preorder_demand"
 
 ALTER TABLE ONLY "public"."preorder_demand"
     ADD CONSTRAINT "preorder_demand_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE SET NULL;
+
+
+ALTER TABLE ONLY "public"."preorder_demand"
+    ADD CONSTRAINT "preorder_demand_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 ALTER TABLE ONLY "public"."product_based_costing_backlog_items"

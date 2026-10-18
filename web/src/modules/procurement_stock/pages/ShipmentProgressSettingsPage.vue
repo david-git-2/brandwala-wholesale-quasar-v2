@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page">
-    <div class="bw-page__stack">
+  <q-page class="tf-page">
+    <div class="tf-page__stack">
       <div class="row items-start justify-between q-col-gutter-sm">
         <div class="col">
           <AppPageHeader
@@ -520,6 +520,6 @@ onMounted(async () => {
   width: 24px;
   height: 24px;
   border-radius: 4px;
-  border: 1px solid var(--bw-theme-border);
+  border: 1px solid var(--tf-theme-border);
 }
 </style>

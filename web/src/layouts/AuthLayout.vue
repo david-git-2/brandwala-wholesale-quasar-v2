@@ -100,14 +100,14 @@ const tagline = computed(() => {
 
 <style scoped>
 .auth-layout {
-  --auth-bg: var(--bw-theme-base);
-  --auth-accent: var(--bw-theme-primary);
-  --auth-accent-rgb: var(--bw-theme-primary-rgb);
-  --auth-ink: var(--bw-theme-ink);
-  --auth-muted: var(--bw-theme-muted);
-  --auth-mid: color-mix(in srgb, var(--bw-theme-primary) 72%, var(--bw-theme-ink));
-  --auth-glow: rgb(var(--bw-theme-primary-rgb) / 0.28);
-  --auth-ghost: color-mix(in srgb, var(--bw-theme-ink) 10%, transparent);
+  --auth-bg: var(--tf-theme-base);
+  --auth-accent: var(--tf-theme-primary);
+  --auth-accent-rgb: var(--tf-theme-primary-rgb);
+  --auth-ink: var(--tf-theme-ink);
+  --auth-muted: var(--tf-theme-muted);
+  --auth-mid: color-mix(in srgb, var(--tf-theme-primary) 72%, var(--tf-theme-ink));
+  --auth-glow: rgb(var(--tf-theme-primary-rgb) / 0.28);
+  --auth-ghost: color-mix(in srgb, var(--tf-theme-ink) 10%, transparent);
   min-height: 100dvh;
   background: var(--auth-bg);
   position: relative;
@@ -187,10 +187,10 @@ const tagline = computed(() => {
   padding: clamp(1.75rem, 3.5vw, 2.75rem);
   overflow: hidden;
   background-image:
-    linear-gradient(color-mix(in srgb, var(--bw-theme-ink) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(color-mix(in srgb, var(--tf-theme-ink) 5%, transparent) 1px, transparent 1px),
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--bw-theme-ink) 5%, transparent) 1px,
+      color-mix(in srgb, var(--tf-theme-ink) 5%, transparent) 1px,
       transparent 1px
     );
   background-size: 48px 48px;
@@ -284,7 +284,7 @@ const tagline = computed(() => {
   background: linear-gradient(
     160deg,
     var(--auth-ghost) 0%,
-    color-mix(in srgb, var(--bw-theme-ink) 8%, transparent) 100%
+    color-mix(in srgb, var(--tf-theme-ink) 8%, transparent) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;

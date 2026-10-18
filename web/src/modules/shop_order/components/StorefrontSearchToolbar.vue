@@ -54,7 +54,7 @@
     </q-card>
 
     <div v-if="hasActiveFilters" class="row items-center q-gutter-xs active-filters-section">
-      <span class="bw-type-meta bw-text-muted q-mr-xs">
+      <span class="tf-type-meta tf-text-muted q-mr-xs">
         {{ $t('shop.active_filters') }}
       </span>
       <q-chip
@@ -142,7 +142,7 @@ const onClearSearchChip = () => {
 
 <style scoped>
 .storefront-toolbar {
-  border-radius: var(--bw-radius-md);
+  border-radius: var(--tf-radius-md);
 }
 
 @media (max-width: 599px) {
@@ -152,8 +152,8 @@ const onClearSearchChip = () => {
 }
 
 .fixed-price-chip {
-  border-radius: var(--bw-radius-sm);
-  background: color-mix(in srgb, var(--bw-theme-primary) 12%, var(--bw-theme-surface));
-  color: var(--bw-theme-ink);
+  border-radius: var(--tf-radius-sm);
+  background: color-mix(in srgb, var(--tf-theme-primary) 12%, var(--tf-theme-surface));
+  color: var(--tf-theme-ink);
 }
 </style>

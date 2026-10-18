@@ -7,6 +7,7 @@ import {
   type ProcurementDemandItem,
 } from '../repositories/procurementDemandRepository';
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
+import { STALE_STANDARD } from 'src/query/staleTimes';
 
 export const DEMAND_GROUP_ITEMS_PAGE_SIZE = 50;
 
@@ -70,7 +71,7 @@ export function useProcurementDemandGroupItemsInfiniteQuery(options: {
         ? lastPage.meta.next_cursor
         : undefined,
     initialPageParam: null as ProcurementDemandGroupItemsCursor | null,
-    staleTime: 30_000,
+    staleTime: STALE_STANDARD,
     placeholderData: keepPreviousData,
     enabled: computed(() => {
       if (unref(options.enabled) === false) return false;

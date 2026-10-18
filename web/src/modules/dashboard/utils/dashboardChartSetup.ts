@@ -39,16 +39,16 @@ export const ensureDashboardChartsRegistered = () => {
 export const readThemeRgb = (fallback = '2 132 199', root?: Element | null) => {
   if (typeof document === 'undefined') return fallback;
   const el = root ?? document.body;
-  const value = getComputedStyle(el).getPropertyValue('--bw-theme-primary-rgb').trim();
+  const value = getComputedStyle(el).getPropertyValue('--tf-theme-primary-rgb').trim();
   return value || fallback;
 };
 
 export const rgba = (rgb: string, alpha: number) => `rgb(${rgb} / ${alpha})`;
 
 export const dashboardTooltip = (): Partial<TooltipOptions> => ({
-  backgroundColor: 'var(--bw-theme-ink)',
+  backgroundColor: 'var(--tf-theme-ink)',
   titleFont: { size: 0 },
-  bodyFont: { size: 12, family: 'var(--bw-font-ui)' },
+  bodyFont: { size: 12, family: 'var(--tf-font-ui)' },
   padding: 8,
   cornerRadius: 6,
   displayColors: false,

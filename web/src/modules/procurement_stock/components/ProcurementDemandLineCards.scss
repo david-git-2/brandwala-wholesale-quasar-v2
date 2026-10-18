@@ -1,0 +1,333 @@
+.demand-buy-cards--nested,
+.demand-buy-card-grid--nested {
+  display: contents;
+}
+
+.demand-buy-card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 0 12px;
+}
+
+.demand-buy-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--tf-neutral-border);
+  border-radius: var(--tf-radius-md);
+  background: var(--tf-neutral-surface);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+
+.demand-buy-card__media {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  border-radius: var(--tf-radius-sm, 8px);
+  overflow: hidden;
+  border: 1px solid var(--tf-neutral-border);
+  background: var(--tf-neutral-canvas);
+}
+
+.demand-buy-card__media :deep(.smart-image-wrapper) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.demand-buy-card__image,
+.demand-buy-card__image-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.demand-buy-card__body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.demand-buy-chip-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.demand-buy-chip-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.demand-buy-chip {
+  max-width: 100%;
+  min-height: 30px !important;
+  height: auto !important;
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  border: 1px solid transparent;
+
+  :deep(.q-chip__content) {
+    padding: 0 4px;
+    column-gap: 6px;
+  }
+
+  :deep(.q-icon) {
+    font-size: 14px;
+    opacity: 0.92;
+  }
+
+  :deep(.q-chip__content .ellipsis) {
+    min-width: 0;
+    max-width: 11rem;
+    line-height: 1.35;
+  }
+}
+
+.demand-buy-chip--doc :deep(.q-chip__content .ellipsis) {
+  max-width: 14rem;
+}
+
+.demand-buy-chip--code {
+  background: var(--tf-ops-hue-qty) !important;
+  color: var(--tf-neutral-ink) !important;
+  border-color: color-mix(in srgb, var(--tf-ops-accent-qty) 25%, var(--tf-neutral-border)) !important;
+}
+
+.demand-buy-chip--source-shop {
+  background: var(--tf-theme-primary-soft) !important;
+  color: var(--tf-theme-primary) !important;
+}
+
+.demand-buy-chip--source-costing {
+  background: var(--tf-ops-hue-price) !important;
+  color: var(--tf-ops-accent-price) !important;
+}
+
+.demand-buy-chip--doc {
+  background: var(--tf-info-soft) !important;
+  color: var(--tf-info) !important;
+}
+
+.demand-buy-chip--profile {
+  background: var(--tf-neutral-canvas) !important;
+  color: var(--tf-neutral-ink) !important;
+  border-color: var(--tf-neutral-border) !important;
+}
+
+.demand-buy-chip--group {
+  background: color-mix(in srgb, var(--tf-warning) 12%, var(--tf-neutral-surface)) !important;
+  color: var(--tf-neutral-ink) !important;
+  border-color: color-mix(in srgb, var(--tf-warning) 28%, var(--tf-neutral-border)) !important;
+}
+
+.demand-buy-card__need-value--settled {
+  font-size: 22px;
+  font-weight: 650;
+  color: var(--tf-success, #15803d);
+}
+
+.demand-buy-card--pick-pending {
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 0.04),
+    0 0 0 1px color-mix(in srgb, var(--q-primary) 12%, transparent);
+}
+
+.demand-buy-card--pick-complete {
+  opacity: 0.92;
+  background: color-mix(in srgb, var(--tf-neutral-canvas) 55%, var(--tf-neutral-surface));
+}
+
+.demand-pick-cta--pending {
+  font-weight: 650;
+  border-radius: var(--tf-radius-sm);
+}
+
+.demand-pick-cta--complete {
+  font-weight: 600;
+}
+
+.demand-buy-cards :deep(.tf-btn) {
+  width: auto;
+  max-width: 100%;
+  min-height: 26px !important;
+  padding: 0 8px !important;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.demand-pick-cta {
+  width: auto;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.demand-pick-confirm-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.demand-pick-confirm-badge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 6px;
+}
+
+.demand-buy-card__editors {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 280px;
+}
+
+.demand-buy-card__editors--fulfill-row {
+  flex: 0 0 268px;
+  width: 268px;
+  max-width: 268px;
+  min-width: 268px;
+}
+
+.demand-buy-card__editors-fulfill {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+}
+
+.demand-buy-card__metric-row {
+  display: grid;
+  grid-template-columns: 60px 76px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+  width: 100%;
+}
+
+.demand-buy-card__editors--packed {
+  flex: 1 1 280px;
+  width: auto;
+  min-width: 0;
+  max-width: 420px;
+}
+
+.demand-buy-card__need {
+  flex: 0 0 auto;
+  text-align: center;
+  min-width: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.demand-buy-card__need-label {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tf-theme-muted, #475569);
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demand-buy-card__need-value {
+  font-size: 28px;
+  font-weight: 750;
+  line-height: 1.1;
+  color: var(--tf-theme-ink, #0f172a);
+}
+
+.demand-buy-card__qty {
+  width: 132px;
+}
+
+.demand-buy-card__qty :deep(.q-field__control) {
+  height: 52px;
+}
+
+.demand-buy-card__qty-input {
+  font-size: 22px;
+  text-align: center;
+}
+
+.demand-buy-card__vendor {
+  flex: 1;
+  min-width: 0;
+}
+
+.demand-buy-card__vendor :deep(.q-field__control) {
+  height: 52px;
+}
+
+.demand-fulfill-pick {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.demand-fulfill-pick .demand-pick-cta {
+  align-self: center;
+}
+
+.demand-fulfill-packed-qty {
+  width: 72px;
+}
+
+.demand-packed-pick-controls {
+  min-width: 0;
+}
+
+.demand-pick-list {
+  list-style: none;
+}
+
+@media (max-width: 720px) {
+  .demand-buy-card,
+  .demand-buy-card__body {
+    flex-wrap: wrap;
+  }
+
+  .demand-buy-card__editors {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: none;
+  }
+
+  .demand-buy-card__qty {
+    width: 140px;
+  }
+}
+
+.demand-buy-card__name {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--tf-theme-ink, #171412);
+}
+
+.demand-buy-card__brand {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tf-theme-primary, #0d6b5c);
+}

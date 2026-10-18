@@ -19,7 +19,7 @@
         <div class="step-progress-bar step-progress-bar--pending" />
         <div class="step-meta">
           <span class="step-name">Pending Approval</span>
-          <span class="step-count bw-tabular">{{ formatDashboardCount(pendingCount) }}</span>
+          <span class="step-count tf-tabular">{{ formatDashboardCount(pendingCount) }}</span>
         </div>
         <div class="step-sub text-slate-400">{{ formatDashboardMoney(pendingAmount) }}</div>
       </div>
@@ -32,7 +32,7 @@
         <div class="step-progress-bar step-progress-bar--processing" />
         <div class="step-meta">
           <span class="step-name">Warehouse Picking</span>
-          <span class="step-count bw-tabular">{{ formatDashboardCount(processingCount) }}</span>
+          <span class="step-count tf-tabular">{{ formatDashboardCount(processingCount) }}</span>
         </div>
         <div class="step-sub text-slate-400">{{ formatDashboardCount(processingUnits) }} pcs queued</div>
       </div>
@@ -45,7 +45,7 @@
         <div class="step-progress-bar step-progress-bar--transit" />
         <div class="step-meta">
           <span class="step-name">In Courier Transit</span>
-          <span class="step-count bw-tabular">{{ formatDashboardCount(inTransitCount) }}</span>
+          <span class="step-count tf-tabular">{{ formatDashboardCount(inTransitCount) }}</span>
         </div>
         <div class="step-sub text-slate-400">Pathao / Steadfast</div>
       </div>
@@ -58,7 +58,7 @@
         <div class="step-progress-bar step-progress-bar--delivered" />
         <div class="step-meta">
           <span class="step-name">Delivered & Settled</span>
-          <span class="step-count bw-tabular text-emerald">{{ formatDashboardCount(deliveredCount) }}</span>
+          <span class="step-count tf-tabular text-emerald">{{ formatDashboardCount(deliveredCount) }}</span>
         </div>
         <div class="step-sub text-emerald">Reconciled</div>
       </div>
@@ -100,8 +100,8 @@ const navigateTo = (to: RouteLocationRaw) => {
 
 <style scoped>
 .fulfillment-card {
-  background: var(--bw-neutral-surface, #FFFFFF);
-  border: 1px solid var(--bw-neutral-border, #E2E8F0);
+  background: var(--tf-neutral-surface, #FFFFFF);
+  border: 1px solid var(--tf-neutral-border, #E2E8F0);
   border-radius: 10px;
   padding: 1rem 1.15rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -142,11 +142,11 @@ body.body--dark .fulfillment-title {
 }
 
 .fulfillment-view-all:hover {
-  color: var(--bw-brand-accent, #0d6b5c);
+  color: var(--tf-brand-accent, #0d6b5c);
 }
 
 body.body--dark .fulfillment-view-all:hover {
-  color: var(--bw-brand-accent, #4db8a4);
+  color: var(--tf-brand-accent, #4db8a4);
 }
 
 .stepper-track {

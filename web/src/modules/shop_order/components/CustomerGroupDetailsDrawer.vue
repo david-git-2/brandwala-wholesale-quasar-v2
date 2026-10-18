@@ -12,7 +12,7 @@
       <div class="access-side-panel__header row items-center q-pa-md shrink-0">
         <div
           class="accent-swatch q-mr-sm"
-          :style="{ backgroundColor: group?.accent_color || 'var(--bw-theme-primary)' }"
+          :style="{ backgroundColor: group?.accent_color || 'var(--tf-theme-primary)' }"
         />
         <div class="col min-width-0">
           <div class="text-overline text-primary">{{ $t('shop_admin.access_group_details') }}</div>

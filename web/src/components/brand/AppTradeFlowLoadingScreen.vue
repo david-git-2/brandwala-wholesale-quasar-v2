@@ -84,12 +84,12 @@ const resolvedTenantName = computed(() => {
 
 <style scoped>
 .tf-loading-screen {
-  --splash-bg: var(--bw-theme-base, #f4f6f8);
-  --splash-surface: var(--bw-theme-surface, #ffffff);
-  --splash-accent: var(--bw-theme-primary, #0d6b5c);
-  --splash-accent-rgb: var(--bw-theme-primary-rgb, 13 107 92);
-  --splash-ink: var(--bw-theme-ink, #0f172a);
-  --splash-muted: var(--bw-theme-muted, #64748b);
+  --splash-bg: var(--tf-theme-base, #f4f6f8);
+  --splash-surface: var(--tf-theme-surface, #ffffff);
+  --splash-accent: var(--tf-theme-primary, #0d6b5c);
+  --splash-accent-rgb: var(--tf-theme-primary-rgb, 13 107 92);
+  --splash-ink: var(--tf-theme-ink, #0f172a);
+  --splash-muted: var(--tf-theme-muted, #64748b);
   --splash-glow: rgb(var(--splash-accent-rgb) / 0.14);
   --splash-gradient-end: color-mix(in srgb, var(--splash-bg) 88%, var(--splash-accent) 12%);
 

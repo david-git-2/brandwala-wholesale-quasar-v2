@@ -39,7 +39,23 @@ if ! pnpm install --frozen-lockfile; then
   pnpm install
 fi
 
-pnpm --filter web build
+echo "Pre-deploy check 1/3: type-check..."
+if ! NODE_OPTIONS="--max-old-space-size=6144" pnpm --filter web type-check; then
+  echo "ERROR: type-check failed. Deploy stopped. Fix the errors above and run again."
+  exit 1
+fi
+
+echo "Pre-deploy check 2/3: lint..."
+if ! pnpm --filter web lint; then
+  echo "ERROR: lint failed. Deploy stopped. Fix the errors above and run again."
+  exit 1
+fi
+
+echo "Pre-deploy check 3/3: build..."
+if ! pnpm --filter web build; then
+  echo "ERROR: build failed. Deploy stopped. Fix the errors above and run again."
+  exit 1
+fi
 
 # Clean up large scraper data, backups, and temporary files not used by the frontend
 echo "Cleaning up local development data, backups, and DS_Store from build output..."

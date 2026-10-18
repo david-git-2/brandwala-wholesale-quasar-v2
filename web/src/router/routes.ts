@@ -25,6 +25,40 @@ import accessControlRoutes from 'src/modules/access_control/routes';
 import customerRoutes from 'src/modules/customer/routes';
 import afterSalesRoutes from 'src/modules/after_sales/routes';
 
+const devRoutes: RouteRecordRaw[] = [
+  {
+    path: '/dev/designsystem',
+    component: () => import('layouts/ExternalLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'dev-design-system',
+        component: () => import('pages/DesignSystemPage.vue'),
+        meta: {
+          title: 'Design System',
+        },
+      },
+    ],
+  },
+  {
+    path: '/dev/document',
+    name: 'dev-documentation-codex',
+    component: () => import('pages/DevDocumentPage.vue'),
+    meta: {
+      title: 'Documentation Codex',
+      public: true,
+    },
+  },
+  {
+    path: '/dev/documents',
+    redirect: '/dev/document',
+  },
+  {
+    path: '/dev/doc',
+    redirect: '/dev/document',
+  },
+];
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
@@ -102,37 +136,8 @@ const routes: RouteRecordRaw[] = [
   ...customerRoutes,
   ...afterSalesRoutes,
 
-  {
-    path: '/dev/designsystem',
-    component: () => import('layouts/ExternalLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'dev-design-system',
-        component: () => import('pages/DesignSystemPage.vue'),
-        meta: {
-          title: 'Design System',
-        },
-      },
-    ],
-  },
-  {
-    path: '/dev/document',
-    name: 'dev-documentation-codex',
-    component: () => import('pages/DevDocumentPage.vue'),
-    meta: {
-      title: 'Documentation Codex',
-      public: true,
-    },
-  },
-  {
-    path: '/dev/documents',
-    redirect: '/dev/document',
-  },
-  {
-    path: '/dev/doc',
-    redirect: '/dev/document',
-  },
+  // Dev-only pages (local). Not registered in production, so Vite drops their code from the build.
+  ...(import.meta.env.DEV ? devRoutes : []),
 
   // Always leave this as last one
   {

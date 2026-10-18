@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page after-sales-case-list-page">
-    <section class="bw-page__stack">
+  <q-page class="tf-page after-sales-case-list-page">
+    <section class="tf-page__stack">
       <q-card flat bordered class="q-pa-sm">
         <div class="row items-center q-col-gutter-sm">
           <div class="col-12 col-md-3">

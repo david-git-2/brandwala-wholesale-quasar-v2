@@ -1576,6 +1576,12 @@ GRANT ALL ON SEQUENCE "public"."preorder_demand_id_seq" TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."ensure_preorder_demand_for_procuring_document"("text", bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."ensure_preorder_demand_for_procuring_document"("text", bigint) FROM "anon";
+REVOKE ALL ON FUNCTION "public"."ensure_preorder_demand_for_procuring_document"("text", bigint) FROM "authenticated";
+REVOKE ALL ON FUNCTION "public"."trg_fn_shop_order_write_preorder_demand"() FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."trg_fn_pbc_file_write_preorder_demand"() FROM PUBLIC;
+
 GRANT ALL ON FUNCTION "public"."can_access_preorder_demand_tenant"(bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_procurement_demand_open_qty"("public"."preorder_demand_source_type", bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."upsert_preorder_demand"(bigint, "public"."preorder_demand_source_type", bigint, bigint, integer, jsonb, text) TO "authenticated";

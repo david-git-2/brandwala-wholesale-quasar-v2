@@ -102,7 +102,7 @@
                     }}
                   </div>
                 </td>
-                <td v-for="colIdx in maxColumns" :key="colIdx" class="text-center bw-tabular">
+                <td v-for="colIdx in maxColumns" :key="colIdx" class="text-center tf-tabular">
                   <template v-if="getPastedValueForCell(index, colIdx - 1) !== null">
                     <span class="text-weight-bold text-primary">
                       {{
@@ -342,6 +342,6 @@ const onApply = async () => {
   position: sticky;
   top: 0;
   z-index: 1;
-  background-color: #fff;
+  background-color: var(--tf-neutral-surface);
 }
 </style>

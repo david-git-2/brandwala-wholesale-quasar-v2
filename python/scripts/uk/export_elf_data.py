@@ -17,8 +17,8 @@ BASE_URL = "https://elfinternationalltd.com/wp-json/wc/store/v1/products"
 ROOT_DIR = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from catalog_refresh_lib import add_parent_tenant_argument, log_scrape
-DEFAULT_OUT_JSON = ROOT_DIR / "web" / "public" / "uk" / "elf_data.json"
-DEFAULT_OUT_MANIFEST = ROOT_DIR / "web" / "public" / "uk" / "elf_manifest.json"
+DEFAULT_OUT_JSON = ROOT_DIR / "python" / "data" / "uk" / "out" / "elf_data.json"
+DEFAULT_OUT_MANIFEST = ROOT_DIR / "python" / "data" / "uk" / "out" / "elf_manifest.json"
 
 HEADERS = {
     "User-Agent": (
@@ -38,12 +38,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--outfile",
         default=str(DEFAULT_OUT_JSON),
-        help="Path to output JSON (default: web/public/uk/elf_data.json)",
+        help="Path to output JSON (default: python/data/uk/out/elf_data.json)",
     )
     parser.add_argument(
         "--manifest",
         default=str(DEFAULT_OUT_MANIFEST),
-        help="Path to manifest JSON (default: web/public/uk/elf_manifest.json)",
+        help="Path to manifest JSON (default: python/data/uk/out/elf_manifest.json)",
     )
     parser.add_argument(
         "--limit",

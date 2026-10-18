@@ -34,7 +34,7 @@
         </div>
       </q-card>
 
-      <q-banner v-if="error" class="bw-status-banner bg-negative text-white flex-shrink-0" dense rounded>
+      <q-banner v-if="error" class="tf-status-banner bg-negative text-white flex-shrink-0" dense rounded>
         {{ error }}
       </q-banner>
 
@@ -51,11 +51,28 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useInvestorDetailContext } from '../../composables/useInvestorDetailContext';
+import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const { investor, loadingInvestors, error, goBackToList } = useInvestorDetailContext();
+
+usePageBreadcrumbs(() => {
+  const tenantSlug =
+    authStore.tenantSlug || (route.params.tenantSlug as string | undefined) || null;
+  const listPath = tenantSlug ? `/${tenantSlug}/app/capital/investors` : '/app/capital/investors';
+
+  return [
+    {
+      label: authStore.selectedTenant?.name || 'Workspace',
+      icon: 'ph ph-buildings',
+    },
+    { label: 'Capital' },
+    { label: 'Investors', to: listPath },
+    { label: investor.value?.name || 'Investor' },
+  ];
+});
 
 type DetailTab = 'general' | 'investment' | 'shipments';
 
@@ -99,8 +116,8 @@ const onTabChange = (tab: DetailTab) => {
   display: flex;
   gap: 4px;
   padding: 4px;
-  border-radius: var(--bw-radius-sm, 8px);
-  background: var(--bw-neutral-muted-bg, #f1f5f9);
+  border-radius: var(--tf-radius-sm, 8px);
+  background: var(--tf-neutral-muted-bg, #f1f5f9);
 }
 
 .drawer-tabs__item {
@@ -112,7 +129,7 @@ const onTabChange = (tab: DetailTab) => {
   min-width: 0;
   border: none;
   background: transparent;
-  color: var(--bw-neutral-chrome, #64748b);
+  color: var(--tf-neutral-chrome, #64748b);
   font-size: 13px;
   font-weight: 500;
   line-height: 1.2;
@@ -126,12 +143,12 @@ const onTabChange = (tab: DetailTab) => {
 }
 
 .drawer-tabs__item:hover {
-  color: var(--bw-neutral-ink, #0f172a);
+  color: var(--tf-neutral-ink, #0f172a);
 }
 
 .drawer-tabs__item--active {
-  background: var(--bw-neutral-surface, #ffffff);
-  color: var(--bw-neutral-ink, #0f172a);
+  background: var(--tf-neutral-surface, #ffffff);
+  color: var(--tf-neutral-ink, #0f172a);
   font-weight: 600;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }

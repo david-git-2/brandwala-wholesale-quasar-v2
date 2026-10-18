@@ -275,8 +275,8 @@ const onUpdateGiftCost = async (payload: {
 </script>
 
 <template>
-  <q-page class="bw-page dropship-order-detail-v2">
-    <div class="bw-page__stack">
+  <q-page class="tf-page dropship-order-detail-v2">
+    <div class="tf-page__stack">
       <q-banner
         v-if="autoGiftsSkipped.length"
         dense

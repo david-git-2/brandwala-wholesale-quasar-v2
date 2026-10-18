@@ -155,7 +155,7 @@ defineProps<{
 }
 
 .bg-surface-subtle {
-  background: var(--bw-theme-surface-subtle, rgba(248, 250, 252, 0.7));
+  background: var(--tf-theme-surface-subtle, rgba(248, 250, 252, 0.7));
 }
 
 .bg-primary-subtle {

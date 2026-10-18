@@ -11828,6 +11828,162 @@ $$;
 ALTER FUNCTION "public"."sum_preorder_stock_picks"("p_stock_picks" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."trg_fn_preorder_demand_stamp_profile"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if NEW.profile_id is not null then
+    return NEW;
+  end if;
+  if NEW.source_type = 'shop_order_item'::public.preorder_demand_source_type then
+    select o.profile_id
+    into NEW.profile_id
+    from public.shop_order_items oi
+    inner join public.shop_orders o on o.id = oi.order_id
+    where oi.id = NEW.source_id;
+  elsif NEW.source_type = 'pbc_costing_item'::public.preorder_demand_source_type then
+    select f.profile_id
+    into NEW.profile_id
+    from public.product_based_costing_items pci
+    inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
+    where pci.id = NEW.source_id;
+  end if;
+  return NEW;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."trg_fn_preorder_demand_stamp_profile"() OWNER TO "postgres";
+
+
+DROP TRIGGER IF EXISTS "trg_preorder_demand_stamp_profile" ON "public"."preorder_demand";
+CREATE TRIGGER "trg_preorder_demand_stamp_profile"
+BEFORE INSERT OR UPDATE ON "public"."preorder_demand"
+FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_preorder_demand_stamp_profile"();
+
+
+CREATE OR REPLACE FUNCTION "public"."ensure_preorder_demand_for_procuring_document"("p_document_type" "text", "p_document_id" bigint) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_doc_type text := lower(trim(coalesce(p_document_type, '')));
+begin
+  if p_document_id is null then
+    return;
+  end if;
+
+  if v_doc_type = 'shop_order' then
+    insert into public.preorder_demand (
+      tenant_id,
+      source_type,
+      source_id,
+      profile_id,
+      placed_quantity,
+      delivered_quantity,
+      stock_picks
+    )
+    select
+      o.tenant_id,
+      'shop_order_item'::public.preorder_demand_source_type,
+      oi.id,
+      o.profile_id,
+      greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer,
+      0,
+      '[]'::jsonb
+    from public.shop_order_items oi
+    inner join public.shop_orders o on o.id = oi.order_id
+    where o.id = p_document_id
+      and o.shop_type_snapshot = 'vendor_catalog'
+    on conflict (source_type, source_id) do update set
+      profile_id = coalesce(public.preorder_demand.profile_id, excluded.profile_id),
+      updated_at = now();
+  elsif v_doc_type = 'pbc_costing_file' then
+    insert into public.preorder_demand (
+      tenant_id,
+      source_type,
+      source_id,
+      profile_id,
+      placed_quantity,
+      delivered_quantity,
+      stock_picks
+    )
+    select
+      f.tenant_id,
+      'pbc_costing_item'::public.preorder_demand_source_type,
+      pci.id,
+      f.profile_id,
+      greatest(
+        case
+          when pci.assigned_shipment_id is not null then 0
+          else coalesce(pci.confirmed_quantity, pci.quantity::integer, 0)
+        end,
+        0
+      )::integer,
+      0,
+      '[]'::jsonb
+    from public.product_based_costing_items pci
+    inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
+    where f.id = p_document_id
+    on conflict (source_type, source_id) do update set
+      profile_id = coalesce(public.preorder_demand.profile_id, excluded.profile_id),
+      updated_at = now();
+  end if;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."ensure_preorder_demand_for_procuring_document"("p_document_type" "text", "p_document_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."trg_fn_shop_order_write_preorder_demand"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if NEW.shop_type_snapshot = 'vendor_catalog'
+    and NEW.status = 'procuring'::public.shop_order_status
+    and OLD.status is distinct from NEW.status then
+    perform public.ensure_preorder_demand_for_procuring_document('shop_order', NEW.id);
+  end if;
+  return NEW;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."trg_fn_shop_order_write_preorder_demand"() OWNER TO "postgres";
+
+
+DROP TRIGGER IF EXISTS "trg_shop_order_write_preorder_demand" ON "public"."shop_orders";
+CREATE TRIGGER "trg_shop_order_write_preorder_demand"
+AFTER UPDATE ON "public"."shop_orders"
+FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_shop_order_write_preorder_demand"();
+
+
+CREATE OR REPLACE FUNCTION "public"."trg_fn_pbc_file_write_preorder_demand"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if public.normalize_pbc_procurement_status(NEW.status) = 'procuring'
+    and public.normalize_pbc_procurement_status(OLD.status) is distinct from 'procuring' then
+    perform public.ensure_preorder_demand_for_procuring_document('pbc_costing_file', NEW.id);
+  end if;
+  return NEW;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."trg_fn_pbc_file_write_preorder_demand"() OWNER TO "postgres";
+
+
+DROP TRIGGER IF EXISTS "trg_pbc_file_write_preorder_demand" ON "public"."product_based_costing_files";
+CREATE TRIGGER "trg_pbc_file_write_preorder_demand"
+AFTER UPDATE ON "public"."product_based_costing_files"
+FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_file_write_preorder_demand"();
+
+
 CREATE OR REPLACE FUNCTION "public"."validate_preorder_stock_picks"("p_stock_picks" "jsonb") RETURNS boolean
     LANGUAGE "plpgsql" IMMUTABLE
     AS $$
@@ -11836,6 +11992,7 @@ declare
   v_stock_id bigint;
   v_qty integer;
   v_close_action text;
+  v_is_close_split boolean;
 begin
   if p_stock_picks is null then
     return true;
@@ -11848,7 +12005,15 @@ begin
   loop
     v_stock_id := nullif(v_elem->>'global_stock_id', '')::bigint;
     v_qty := coalesce((v_elem->>'quantity')::integer, 0);
-    if v_stock_id is null or v_qty <= 0 then
+    v_is_close_split := coalesce((v_elem->>'close_split')::boolean, false);
+    if v_stock_id is null then
+      return false;
+    end if;
+    if v_is_close_split then
+      if v_qty < 0 then
+        return false;
+      end if;
+    elsif v_qty <= 0 then
       return false;
     end if;
     v_close_action := lower(trim(coalesce(v_elem->>'close_action', '')));
@@ -12995,6 +13160,39 @@ begin
 
     v_invoice_id := (v_result->>'invoice_id')::bigint;
 
+    begin
+      update public.bills
+      set
+        source_type = 'delivery_close',
+        source_id = p_document_id::text,
+        source_key = v_close_action,
+        settlement_kind = v_close_action::public.bill_settlement_kind,
+        channel_meta = coalesce(channel_meta, '{}'::jsonb)
+          || jsonb_build_object(
+            'delivery_kind', v_close_action,
+            'document_type', v_doc_type
+          ),
+        updated_at = now()
+      where id = v_invoice_id;
+    exception
+      when unique_violation then
+        update public.bills
+        set
+          source_type = 'delivery_close',
+          source_id = p_document_id::text,
+          source_key = v_close_action || ':' || v_invoice_id::text,
+          settlement_kind = v_close_action::public.bill_settlement_kind,
+          channel_meta = coalesce(channel_meta, '{}'::jsonb)
+            || jsonb_build_object(
+              'delivery_kind', v_close_action,
+              'document_type', v_doc_type
+            ),
+          updated_at = now()
+        where id = v_invoice_id;
+    end;
+
+    perform public.stamp_bill_kernel_fields(v_invoice_id);
+
     if v_doc_type = 'shop_order' then
       for v_pd in
         select pd.id, pd.source_type, pd.source_id, pd.stock_picks
@@ -13583,7 +13781,7 @@ $$;
 ALTER FUNCTION "public"."staff_mark_pbc_packed"("p_file_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_procurement_demand_groups"("p_tenant_id" bigint, "p_procurement_status" "text" DEFAULT 'procuring'::"text", "p_search" "text" DEFAULT NULL::"text", "p_child_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."list_procurement_demand_groups"("p_tenant_id" bigint, "p_procurement_status" "text" DEFAULT 'procuring'::"text", "p_search" "text" DEFAULT NULL::"text", "p_child_tenant_id" bigint DEFAULT NULL::bigint, "p_profile_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -13592,6 +13790,7 @@ declare
   v_allowed boolean := false;
   v_status text := lower(trim(coalesce(p_procurement_status, 'procuring')));
   v_search text := nullif(trim(coalesce(p_search, '')), '');
+  v_profile_id bigint := p_profile_id;
   v_limit integer := greatest(coalesce(p_limit, 50), 1);
   v_offset integer := greatest(coalesce(p_offset, 0), 0);
   v_groups jsonb := '[]'::jsonb;
@@ -13633,6 +13832,8 @@ begin
       public.normalize_shop_order_procurement_status(o.status) as document_status,
       o.customer_group_id,
       cg.name as customer_group_name,
+      coalesce(pd.profile_id, o.profile_id) as profile_id,
+      pr.name as profile_name,
       null::jsonb as vendor,
       'shop_order_item'::text as source_type,
       oi.id as source_id,
@@ -13648,7 +13849,8 @@ begin
       coalesce(pd.delivered_quantity, 0) as delivered_quantity,
       coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks,
       o.global_invoice_id as invoice_id,
-      nullif(trim(coalesce(o.name, o.order_no, '')), '') as document_name
+      nullif(trim(o.order_no), '') as shop_order_no,
+      nullif(trim(o.order_no), '') as document_name
     from public.shop_order_items oi
     inner join public.shop_orders o on o.id = oi.order_id
     inner join tenant_scope ts on ts.tenant_id = o.tenant_id
@@ -13658,8 +13860,10 @@ begin
       on pd.source_type = 'shop_order_item'
       and pd.source_id = oi.id
       and pd.tenant_id = o.tenant_id
+    left join public.profiles pr on pr.id = coalesce(pd.profile_id, o.profile_id)
     where o.shop_type_snapshot = 'vendor_catalog'
       and public.normalize_shop_order_procurement_status(o.status) = v_status
+      and (v_profile_id is null or coalesce(pd.profile_id, o.profile_id) = v_profile_id)
       and (
         v_search is null
         or oi.name ilike '%' || v_search || '%'
@@ -13667,6 +13871,7 @@ begin
         or o.order_no ilike '%' || v_search || '%'
         or coalesce(p.barcode, '') ilike '%' || v_search || '%'
         or coalesce(p.product_code, '') ilike '%' || v_search || '%'
+        or coalesce(pr.name, '') ilike '%' || v_search || '%'
       )
   ),
   pbc_lines as (
@@ -13676,6 +13881,8 @@ begin
       public.normalize_pbc_procurement_status(f.status) as document_status,
       f.customer_group_id,
       cg.name as customer_group_name,
+      coalesce(pd.profile_id, f.profile_id) as profile_id,
+      pr.name as profile_name,
       case
         when v.id is not null then jsonb_build_object(
           'id', v.id,
@@ -13708,6 +13915,7 @@ begin
       coalesce(pd.delivered_quantity, 0) as delivered_quantity,
       coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks,
       f.invoice_id,
+      null::text as shop_order_no,
       nullif(trim(coalesce(f.name, '')), '') as document_name
     from public.product_based_costing_items pci
     inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
@@ -13719,14 +13927,17 @@ begin
       on pd.source_type = 'pbc_costing_item'
       and pd.source_id = pci.id
       and pd.tenant_id = f.tenant_id
+    left join public.profiles pr on pr.id = coalesce(pd.profile_id, f.profile_id)
     where f.profile_id is not null
       and public.normalize_pbc_procurement_status(f.status) = v_status
+      and (v_profile_id is null or coalesce(pd.profile_id, f.profile_id) = v_profile_id)
       and (
         v_search is null
         or coalesce(pci.name, p.name, '') ilike '%' || v_search || '%'
         or coalesce(f.name, '') ilike '%' || v_search || '%'
         or coalesce(pci.barcode, p.barcode, '') ilike '%' || v_search || '%'
         or coalesce(pci.product_code, p.product_code, '') ilike '%' || v_search || '%'
+        or coalesce(pr.name, '') ilike '%' || v_search || '%'
       )
   ),
   demand_lines as (
@@ -13748,9 +13959,12 @@ begin
       max(el.document_status) as document_status,
       max(el.customer_group_id) as customer_group_id,
       max(el.customer_group_name) as customer_group_name,
+      max(el.profile_id) as profile_id,
+      max(el.profile_name) as profile_name,
       (array_agg(el.vendor) filter (where el.vendor is not null))[1] as vendor,
       max(el.invoice_id) as invoice_id,
       max(el.document_name) as document_name,
+      max(el.shop_order_no) as shop_order_no,
       jsonb_agg(
         jsonb_build_object(
           'source_type', el.source_type,
@@ -13789,11 +14003,15 @@ begin
           'document_type', p.document_type,
           'document_id', p.document_id,
           'document_name', p.document_name,
+          'shop_order_no', p.shop_order_no,
           'document_status', p.document_status,
           'customer_group_id', p.customer_group_id,
           'customer_group_name', p.customer_group_name,
+          'profile_id', p.profile_id,
+          'profile_name', p.profile_name,
           'vendor', p.vendor,
           'invoice_id', p.invoice_id,
+          'item_count', p.item_count,
           'items', p.items
         )
         order by p.document_type, p.document_id
@@ -13828,7 +14046,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."list_procurement_demand_groups"("p_tenant_id" bigint, "p_procurement_status" "text", "p_search" "text", "p_child_tenant_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_procurement_demand_groups"("p_tenant_id" bigint, "p_procurement_status" "text", "p_search" "text", "p_child_tenant_id" bigint, "p_profile_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_procurement_demand_group_items"("p_tenant_id" bigint, "p_document_type" "text", "p_document_id" bigint, "p_search" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 50, "p_cursor_source_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
@@ -14069,7 +14287,7 @@ $$;
 ALTER FUNCTION "public"."list_procurement_demand_group_items"(bigint, text, bigint, text, integer, bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_procurement_fulfill_groups"("p_tenant_id" bigint, "p_procurement_status" "text" DEFAULT 'procuring'::"text", "p_search" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."list_procurement_fulfill_groups"("p_tenant_id" bigint, "p_procurement_status" "text" DEFAULT 'procuring'::"text", "p_search" "text" DEFAULT NULL::"text", "p_profile_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -14078,6 +14296,7 @@ declare
   v_allowed boolean := false;
   v_status text := lower(trim(coalesce(p_procurement_status, 'procuring')));
   v_search text := nullif(trim(coalesce(p_search, '')), '');
+  v_profile_id bigint := p_profile_id;
   v_limit integer := greatest(coalesce(p_limit, 50), 1);
   v_offset integer := greatest(coalesce(p_offset, 0), 0);
   v_groups jsonb := '[]'::jsonb;
@@ -14118,6 +14337,8 @@ begin
       public.normalize_shop_order_procurement_status(o.status) as document_status,
       o.customer_group_id,
       cg.name as customer_group_name,
+      coalesce(pd.profile_id, o.profile_id) as profile_id,
+      pr.name as profile_name,
       null::jsonb as vendor,
       'shop_order_item'::text as source_type,
       oi.id as source_id,
@@ -14133,7 +14354,8 @@ begin
       coalesce(pd.delivered_quantity, 0) as delivered_quantity,
       coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks,
       o.global_invoice_id as invoice_id,
-      nullif(trim(coalesce(o.name, o.order_no, '')), '') as document_name
+      nullif(trim(o.order_no), '') as shop_order_no,
+      nullif(trim(o.order_no), '') as document_name
     from public.shop_order_items oi
     inner join public.shop_orders o on o.id = oi.order_id
     inner join tenant_scope ts on ts.tenant_id = o.tenant_id
@@ -14143,8 +14365,10 @@ begin
       on pd.source_type = 'shop_order_item'
       and pd.source_id = oi.id
       and pd.tenant_id = o.tenant_id
+    left join public.profiles pr on pr.id = coalesce(pd.profile_id, o.profile_id)
     where o.shop_type_snapshot = 'vendor_catalog'
       and public.normalize_shop_order_procurement_status(o.status) = v_status
+      and (v_profile_id is null or coalesce(pd.profile_id, o.profile_id) = v_profile_id)
       and (
         v_search is null
         or oi.name ilike '%' || v_search || '%'
@@ -14152,6 +14376,7 @@ begin
         or o.order_no ilike '%' || v_search || '%'
         or coalesce(p.barcode, '') ilike '%' || v_search || '%'
         or coalesce(p.product_code, '') ilike '%' || v_search || '%'
+        or coalesce(pr.name, '') ilike '%' || v_search || '%'
       )
   ),
   pbc_lines as (
@@ -14161,6 +14386,8 @@ begin
       public.normalize_pbc_procurement_status(f.status) as document_status,
       f.customer_group_id,
       cg.name as customer_group_name,
+      coalesce(pd.profile_id, f.profile_id) as profile_id,
+      pr.name as profile_name,
       case
         when v.id is not null then jsonb_build_object(
           'id', v.id,
@@ -14193,6 +14420,7 @@ begin
       coalesce(pd.delivered_quantity, 0) as delivered_quantity,
       coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks,
       f.invoice_id,
+      null::text as shop_order_no,
       nullif(trim(coalesce(f.name, '')), '') as document_name
     from public.product_based_costing_items pci
     inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
@@ -14204,14 +14432,17 @@ begin
       on pd.source_type = 'pbc_costing_item'
       and pd.source_id = pci.id
       and pd.tenant_id = f.tenant_id
+    left join public.profiles pr on pr.id = coalesce(pd.profile_id, f.profile_id)
     where f.profile_id is not null
       and public.normalize_pbc_procurement_status(f.status) = v_status
+      and (v_profile_id is null or coalesce(pd.profile_id, f.profile_id) = v_profile_id)
       and (
         v_search is null
         or coalesce(pci.name, p.name, '') ilike '%' || v_search || '%'
         or coalesce(f.name, '') ilike '%' || v_search || '%'
         or coalesce(pci.barcode, p.barcode, '') ilike '%' || v_search || '%'
         or coalesce(pci.product_code, p.product_code, '') ilike '%' || v_search || '%'
+        or coalesce(pr.name, '') ilike '%' || v_search || '%'
       )
   ),
   demand_lines as (
@@ -14233,9 +14464,12 @@ begin
       max(el.document_status) as document_status,
       max(el.customer_group_id) as customer_group_id,
       max(el.customer_group_name) as customer_group_name,
+      max(el.profile_id) as profile_id,
+      max(el.profile_name) as profile_name,
       (array_agg(el.vendor) filter (where el.vendor is not null))[1] as vendor,
       max(el.invoice_id) as invoice_id,
       max(el.document_name) as document_name,
+      max(el.shop_order_no) as shop_order_no,
       count(*)::integer as item_count,
       count(*) filter (where el.quantity > el.delivered_quantity)::integer as unallocated_item_count
     from eligible_lines el
@@ -14265,9 +14499,12 @@ begin
           'document_type', p.document_type,
           'document_id', p.document_id,
           'document_name', p.document_name,
+          'shop_order_no', p.shop_order_no,
           'document_status', p.document_status,
           'customer_group_id', p.customer_group_id,
           'customer_group_name', p.customer_group_name,
+          'profile_id', p.profile_id,
+          'profile_name', p.profile_name,
           'vendor', p.vendor,
           'invoice_id', p.invoice_id,
           'invoice_status', p.invoice_status,
@@ -14307,7 +14544,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."list_procurement_fulfill_groups"("p_tenant_id" bigint, "p_procurement_status" "text", "p_search" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_procurement_fulfill_groups"("p_tenant_id" bigint, "p_procurement_status" "text", "p_search" "text", "p_profile_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_procurement_fulfill_group_items"("p_tenant_id" bigint, "p_document_type" "text", "p_document_id" bigint, "p_search" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 50, "p_cursor_source_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"

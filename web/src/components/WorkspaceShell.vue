@@ -132,6 +132,7 @@
       v-if="!useMobileBottomNav"
       v-model="drawerOpen"
       :mini="isMini"
+      :mini-to-overlay="!navPinned"
       @mouseenter="miniState = false"
       @mouseleave="miniState = true"
       :mini-width="58"
@@ -423,31 +424,37 @@
         <div class="command-palette-sep" />
 
         <q-scroll-area style="height: 300px">
-          <q-list v-if="filteredLinks.length" class="q-py-xs">
+          <q-list v-if="filteredPaletteItems.length" class="q-py-xs">
             <q-item
-              v-for="(link, idx) in filteredLinks"
-              :key="link.to || link.title"
+              v-for="(item, idx) in filteredPaletteItems"
+              :key="item.to || item.title"
               clickable
               :active="idx === activeIndex"
               active-class="command-palette-item--active"
               class="command-palette-item q-mx-sm q-my-xs rounded-borders"
-              @click="navigate(link)"
+              @click="navigate(item)"
               @mouseenter="activeIndex = idx"
             >
               <q-item-section avatar>
-                <q-icon :name="link.icon" size="sm" />
+                <q-icon :name="item.icon" size="sm" />
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-weight-medium">
-                  <span v-html="highlightMatch(translateTitle(link.title), searchQuery)"></span>
+                  <span v-if="paletteQuery" v-html="highlightMatch(item.titleLabel, paletteQuery)"></span>
+                  <template v-else>{{ item.titleLabel }}</template>
                 </q-item-label>
-                <q-item-label v-if="link.caption" caption>
-                  <span v-html="highlightMatch(translateCaption(link.title, link.caption), searchQuery)"></span>
+                <q-item-label v-if="item.captionLabel" caption>
+                  <span
+                    v-if="paletteQuery"
+                    v-html="highlightMatch(item.captionLabel, paletteQuery)"
+                  ></span>
+                  <template v-else>{{ item.captionLabel }}</template>
                 </q-item-label>
               </q-item-section>
-              <q-item-section side v-if="link.parentTitle">
+              <q-item-section side v-if="item.parentLabel">
                 <q-badge outline color="primary" size="sm">
-                  <span v-html="highlightMatch(translateTitle(link.parentTitle), searchQuery)"></span>
+                  <span v-if="paletteQuery" v-html="highlightMatch(item.parentLabel, paletteQuery)"></span>
+                  <template v-else>{{ item.parentLabel }}</template>
                 </q-badge>
               </q-item-section>
             </q-item>
@@ -516,7 +523,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { QInput } from 'quasar';
@@ -641,7 +648,7 @@ const shouldShowSectionHeader = (link: WorkspaceLink, child: WorkspaceLink, idx:
   return link.children[idx - 1]?.section !== child.section;
 };
 
-const NAV_EXPANDED_GROUPS_KEY = `bw-nav-expanded-groups:${props.theme}`;
+const NAV_EXPANDED_GROUPS_KEY = `tf-nav-expanded-groups:${props.theme}`;
 
 const readPersistedExpandedGroups = (): Record<string, boolean> => {
   if (typeof sessionStorage === 'undefined') return {};
@@ -734,6 +741,12 @@ interface FlattenedLink {
   parentTitle?: string | undefined;
 }
 
+interface PaletteItem extends FlattenedLink {
+  titleLabel: string;
+  captionLabel: string;
+  parentLabel: string;
+}
+
 const flattenedLinks = computed(() => {
   const result: FlattenedLink[] = [];
 
@@ -757,6 +770,17 @@ const flattenedLinks = computed(() => {
   traverse(props.links);
   return result;
 });
+
+const paletteItems = computed((): PaletteItem[] =>
+  flattenedLinks.value.map((link) => ({
+    ...link,
+    titleLabel: translateTitle(link.title),
+    captionLabel: translateCaption(link.title, link.caption ?? ''),
+    parentLabel: link.parentTitle ? translateTitle(link.parentTitle) : '',
+  })),
+);
+
+const paletteQuery = computed(() => searchQuery.value.trim());
 
 const escapeHtml = (value: string) =>
   value
@@ -790,25 +814,22 @@ const highlightMatch = (text: string, rawQuery: string) => {
   return result;
 };
 
-const filteredLinks = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase();
+const filteredPaletteItems = computed(() => {
+  const query = paletteQuery.value.toLowerCase();
   if (!query) {
-    return flattenedLinks.value;
+    return paletteItems.value;
   }
-  return flattenedLinks.value
-    .map((link) => {
-      const title = translateTitle(link.title).toLowerCase();
-      const caption = translateCaption(link.title, link.caption ?? '').toLowerCase();
-      const parentTitle = link.parentTitle ? translateTitle(link.parentTitle).toLowerCase() : '';
-      const titleMatch = title.includes(query);
-      const captionMatch = caption.includes(query);
-      const parentMatch = parentTitle.includes(query);
+  return paletteItems.value
+    .map((item) => {
+      const titleMatch = item.titleLabel.toLowerCase().includes(query);
+      const captionMatch = item.captionLabel.toLowerCase().includes(query);
+      const parentMatch = item.parentLabel.toLowerCase().includes(query);
       if (!titleMatch && !captionMatch && !parentMatch) return null;
-      return { link, rank: titleMatch ? 0 : 1 };
+      return { item, rank: titleMatch ? 0 : 1 };
     })
-    .filter((entry): entry is { link: FlattenedLink; rank: number } => entry !== null)
+    .filter((entry): entry is { item: PaletteItem; rank: number } => entry !== null)
     .sort((a, b) => a.rank - b.rank)
-    .map((entry) => entry.link);
+    .map((entry) => entry.item);
 });
 
 watch(searchQuery, () => {
@@ -816,9 +837,9 @@ watch(searchQuery, () => {
 });
 
 const onPaletteShow = () => {
-  setTimeout(() => {
+  void nextTick(() => {
     searchInputRef.value?.focus();
-  }, 50);
+  });
 };
 
 const onPaletteHide = () => {
@@ -829,14 +850,14 @@ const onPaletteHide = () => {
 const onInputKeydown = (e: KeyboardEvent) => {
   if (e.key === 'ArrowDown') {
     e.preventDefault();
-    activeIndex.value = (activeIndex.value + 1) % filteredLinks.value.length;
+    activeIndex.value = (activeIndex.value + 1) % filteredPaletteItems.value.length;
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
     activeIndex.value =
-      (activeIndex.value - 1 + filteredLinks.value.length) % filteredLinks.value.length;
+      (activeIndex.value - 1 + filteredPaletteItems.value.length) % filteredPaletteItems.value.length;
   } else if (e.key === 'Enter') {
     e.preventDefault();
-    const selectedLink = filteredLinks.value[activeIndex.value];
+    const selectedLink = filteredPaletteItems.value[activeIndex.value];
     if (selectedLink) {
       navigate(selectedLink);
     }
@@ -980,14 +1001,14 @@ const confirmLogout = async () => {
 .workspace-shell {
   min-height: 100vh;
   --workspace-header-offset: 44px;
-  --shell-base: var(--bw-neutral-canvas);
-  --shell-surface: var(--bw-neutral-surface);
-  --shell-border: var(--bw-neutral-border);
-  --shell-shadow: var(--bw-theme-shadow);
-  --shell-ink: var(--bw-neutral-ink);
-  --shell-muted: var(--bw-neutral-muted);
-  --shell-accent: var(--bw-brand-accent);
-  --shell-accent-soft: var(--bw-theme-primary-soft);
+  --shell-base: var(--tf-neutral-canvas);
+  --shell-surface: var(--tf-neutral-surface);
+  --shell-border: var(--tf-neutral-border);
+  --shell-shadow: var(--tf-theme-shadow);
+  --shell-ink: var(--tf-neutral-ink);
+  --shell-muted: var(--tf-neutral-muted);
+  --shell-accent: var(--tf-brand-accent);
+  --shell-accent-soft: var(--tf-theme-primary-soft);
   background: var(--shell-base);
   color: var(--shell-ink);
 }
@@ -1016,7 +1037,7 @@ const confirmLogout = async () => {
 }
 
 .workspace-shell__menu {
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
   background: transparent;
   border-radius: 8px;
   width: 26px;
@@ -1025,8 +1046,8 @@ const confirmLogout = async () => {
 }
 
 .workspace-shell__menu:hover {
-  color: var(--bw-neutral-ink);
-  background: color-mix(in srgb, var(--bw-neutral-ink) 5%, transparent);
+  color: var(--tf-neutral-ink);
+  background: color-mix(in srgb, var(--tf-neutral-ink) 5%, transparent);
 }
 
 .workspace-shell__header-divider {
@@ -1081,6 +1102,11 @@ const confirmLogout = async () => {
   bottom: 0 !important;
 }
 
+/* Mobile drawer backdrop: start under the header, same as the drawer. */
+.workspace-shell :deep(.q-drawer__backdrop) {
+  top: var(--workspace-header-offset) !important;
+}
+
 .workspace-shell :deep(.q-drawer__content) {
   height: calc(100vh - var(--workspace-header-offset)) !important;
   overflow: hidden;
@@ -1111,7 +1137,7 @@ const confirmLogout = async () => {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
 }
 
 .workspace-shell__app-mark {
@@ -1130,13 +1156,13 @@ const confirmLogout = async () => {
   border-radius: 8px;
   width: 26px;
   height: 26px;
-  color: var(--bw-neutral-chrome);
+  color: var(--tf-neutral-chrome);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .workspace-shell__pin-btn:hover {
-  color: var(--bw-neutral-ink);
-  background: color-mix(in srgb, var(--bw-neutral-ink) 5%, transparent);
+  color: var(--tf-neutral-ink);
+  background: color-mix(in srgb, var(--tf-neutral-ink) 5%, transparent);
 }
 
 .workspace-shell__pin-btn--pinned {
@@ -1167,15 +1193,15 @@ const confirmLogout = async () => {
   height: 36px;
   padding: 0 10px;
   border-radius: 8px;
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
   font-size: 13px;
   font-weight: 500;
   transition: all 0.15s ease-in-out;
 }
 
 .workspace-shell__nav-item:hover {
-  color: var(--bw-neutral-ink);
-  background: color-mix(in srgb, var(--bw-neutral-ink) 4%, transparent);
+  color: var(--tf-neutral-ink);
+  background: color-mix(in srgb, var(--tf-neutral-ink) 4%, transparent);
 }
 
 .workspace-shell__nav-item--active {
@@ -1218,13 +1244,13 @@ const confirmLogout = async () => {
   height: 32px;
   padding: 0 8px;
   font-size: 12.5px;
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
   transition: all 0.15s ease-in-out;
 }
 
 .workspace-shell__nav-sub-item:hover {
-  color: var(--bw-neutral-ink);
-  background: color-mix(in srgb, var(--bw-neutral-ink) 4%, transparent);
+  color: var(--tf-neutral-ink);
+  background: color-mix(in srgb, var(--tf-neutral-ink) 4%, transparent);
 }
 
 .workspace-shell__nav-sub-item.workspace-shell__nav-item--active {
@@ -1239,7 +1265,7 @@ const confirmLogout = async () => {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--bw-neutral-chrome);
+  color: var(--tf-neutral-chrome);
   text-transform: uppercase;
   padding: 8px 8px 3px;
   display: flex;
@@ -1256,7 +1282,7 @@ const confirmLogout = async () => {
 
 .workspace-shell__page-container {
   padding: 0;
-  background: var(--bw-neutral-canvas);
+  background: var(--tf-neutral-canvas);
 }
 
 .workspace-shell__drawer-bottom {
@@ -1276,18 +1302,18 @@ const confirmLogout = async () => {
   border-radius: 8px;
   font-weight: 500;
   font-size: 13px;
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
   transition: all 0.15s ease-in-out;
 }
 
 .workspace-shell__logout:hover {
-  color: var(--bw-neutral-ink);
-  background: color-mix(in srgb, var(--bw-neutral-ink) 4%, transparent);
+  color: var(--tf-neutral-ink);
+  background: color-mix(in srgb, var(--tf-neutral-ink) 4%, transparent);
 }
 
 .command-palette-card {
-  --shell-surface: var(--bw-neutral-surface);
-  --shell-border: var(--bw-neutral-border);
+  --shell-surface: var(--tf-neutral-surface);
+  --shell-border: var(--tf-neutral-border);
   border: 1px solid var(--shell-border);
   background: var(--shell-surface);
   border-radius: 12px !important;
@@ -1296,11 +1322,11 @@ const confirmLogout = async () => {
 }
 
 .command-palette-search-row {
-  background: var(--bw-neutral-surface);
+  background: var(--tf-neutral-surface);
 }
 
 .command-palette-search-icon {
-  color: var(--bw-neutral-chrome);
+  color: var(--tf-neutral-chrome);
 }
 
 .command-palette-input :deep(.q-field__control) {
@@ -1310,13 +1336,13 @@ const confirmLogout = async () => {
 
 .command-palette-esc-kbd {
   font-size: 10px;
-  font-family: var(--bw-font-mono);
+  font-family: var(--tf-font-mono);
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
-  background: var(--bw-neutral-canvas);
-  border: 1px solid var(--bw-neutral-border);
-  color: var(--bw-neutral-chrome);
+  background: var(--tf-neutral-canvas);
+  border: 1px solid var(--tf-neutral-border);
+  color: var(--tf-neutral-chrome);
 }
 
 .command-palette-sep {
@@ -1334,7 +1360,7 @@ const confirmLogout = async () => {
 
 .command-palette-item--active {
   background: var(--shell-accent-soft) !important;
-  color: var(--bw-neutral-ink) !important;
+  color: var(--tf-neutral-ink) !important;
 }
 
 :deep(.command-palette-match) {
@@ -1355,8 +1381,8 @@ const confirmLogout = async () => {
   width: min(92vw, 24rem);
   border-radius: 14px;
   padding: 1.5rem;
-  background: var(--bw-neutral-surface);
-  border: 1px solid var(--bw-neutral-border);
+  background: var(--tf-neutral-surface);
+  border: 1px solid var(--tf-neutral-border);
   box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
@@ -1395,19 +1421,19 @@ const confirmLogout = async () => {
 .signout-card__name {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--bw-neutral-ink);
+  color: var(--tf-neutral-ink);
   line-height: 1.2;
 }
 
 .signout-card__email {
   font-size: 0.8rem;
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
   margin-top: 0.15rem;
 }
 
 .signout-card__sep {
   height: 1px;
-  background: var(--bw-neutral-border);
+  background: var(--tf-neutral-border);
 }
 
 .signout-card__meta {
@@ -1432,7 +1458,7 @@ const confirmLogout = async () => {
 .signout-card__message {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--bw-neutral-muted);
+  color: var(--tf-neutral-muted);
   line-height: 1.5;
 }
 
@@ -1457,24 +1483,24 @@ const confirmLogout = async () => {
 }
 
 .signout-card__btn--cancel {
-  background: var(--bw-neutral-canvas);
-  color: var(--bw-neutral-ink);
-  border: 1px solid var(--bw-neutral-border);
+  background: var(--tf-neutral-canvas);
+  color: var(--tf-neutral-ink);
+  border: 1px solid var(--tf-neutral-border);
 }
 
 .signout-card__btn--cancel:hover {
-  background: color-mix(in srgb, var(--bw-neutral-ink) 5%, transparent);
+  background: color-mix(in srgb, var(--tf-neutral-ink) 5%, transparent);
 }
 
 .signout-card__btn--confirm {
-  background: var(--bw-brand-accent);
+  background: var(--tf-brand-accent);
   color: #ffffff;
   border: none;
 }
 
 .signout-card__btn--confirm:hover {
-  background: color-mix(in srgb, var(--bw-brand-accent) 85%, black);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--bw-brand-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--tf-brand-accent) 85%, black);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--tf-brand-accent) 30%, transparent);
 }
 
 /* Mini Mode Specific Styles */

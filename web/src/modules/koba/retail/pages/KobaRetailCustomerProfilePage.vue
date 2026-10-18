@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md bw-page">
+  <q-page class="q-pa-md tf-page">
     <!-- Header -->
     <div class="row items-center q-mb-md justify-between">
       <div class="row items-center q-gutter-sm">
@@ -234,7 +234,7 @@
             row-key="order_id"
             flat
             binary-state-sort
-            class="bw-table"
+            class="tf-table"
             :pagination="{ rowsPerPage: 10 }"
           >
             <template #body="sp">
@@ -478,7 +478,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.bw-page {
+.tf-page {
   background: #f8fafc;
 }
 .profile-card {
@@ -498,7 +498,7 @@ onMounted(() => {
 .order-row:hover {
   background: rgba(37, 99, 235, 0.03);
 }
-.bw-table :deep(th) {
+.tf-table :deep(th) {
   font-weight: 700;
   color: var(--q-grey-9);
   background: #f1f5f9;

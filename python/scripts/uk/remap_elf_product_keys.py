@@ -25,7 +25,7 @@ except ModuleNotFoundError:  # pragma: no cover
 ROOT_DIR = Path(__file__).resolve().parents[3]
 WEB_ENV_FILE = ROOT_DIR / "web" / ".env"
 ROOT_ENV_FILE = ROOT_DIR / ".env"
-DEFAULT_INPUT = ROOT_DIR / "web" / "public" / "uk" / "elf_data.json"
+DEFAULT_INPUT = ROOT_DIR / "python" / "data" / "uk" / "out" / "elf_data.json"
 
 VENDOR_CODE = "ELF"
 VENDOR_ID = 5
@@ -323,7 +323,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input",
         default=str(DEFAULT_INPUT),
-        help="Scraped ELF JSON path (default: web/public/uk/elf_data.json)",
+        help="Scraped ELF JSON path (default: python/data/uk/out/elf_data.json)",
     )
     parser.add_argument(
         "--parent-tenant-id",

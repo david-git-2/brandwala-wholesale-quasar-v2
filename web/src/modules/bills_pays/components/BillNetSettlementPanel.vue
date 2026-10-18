@@ -249,7 +249,7 @@ const openCreditHint = computed(() =>
 
 <style scoped lang="scss">
 .bill-net-settlement-panel {
-  border-top: 1px solid var(--bw-neutral-border, #e2e8f0);
+  border-top: 1px solid var(--tf-neutral-border, #e2e8f0);
   padding-top: 0.5rem;
 }
 
