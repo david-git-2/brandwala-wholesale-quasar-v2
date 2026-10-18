@@ -11,12 +11,7 @@
     </div>
 
     <div class="tf-loading-screen__content">
-      <img
-        class="tf-loading-screen__logo"
-        :src="logoSrc"
-        alt="TradeFlow BD"
-        decoding="async"
-      />
+      <div class="tf-loading-screen__logo" role="img" aria-label="TradeFlow BD"></div>
       <p v-if="resolvedTenantName" class="tf-loading-screen__tenant">
         {{ resolvedTenantName }}
       </p>
@@ -39,7 +34,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useQuasar } from 'quasar';
 
 export type TradeFlowLoadingScope = 'platform' | 'app' | 'shop' | 'investor';
 
@@ -65,12 +59,6 @@ const props = withDefaults(
   },
 );
 
-const $q = useQuasar();
-
-const logoSrc = computed(() =>
-  $q.dark.isActive ? '/brand/logo-dark.png' : '/brand/logo-light.png',
-);
-
 const resolvedTagline = computed(() => props.tagline ?? SCOPE_TAGLINES[props.scope]);
 
 const resolvedTenantName = computed(() => {
@@ -86,8 +74,8 @@ const resolvedTenantName = computed(() => {
 .tf-loading-screen {
   --splash-bg: var(--tf-theme-base, #f4f6f8);
   --splash-surface: var(--tf-theme-surface, #ffffff);
-  --splash-accent: var(--tf-theme-primary, #0d6b5c);
-  --splash-accent-rgb: var(--tf-theme-primary-rgb, 13 107 92);
+  --splash-accent: var(--tf-theme-primary, #1f2937);
+  --splash-accent-rgb: var(--tf-theme-primary-rgb, 31 41 55);
   --splash-ink: var(--tf-theme-ink, #0f172a);
   --splash-muted: var(--tf-theme-muted, #64748b);
   --splash-glow: rgb(var(--splash-accent-rgb) / 0.14);
@@ -149,12 +137,13 @@ const resolvedTenantName = computed(() => {
 }
 
 .tf-loading-screen__logo {
-  width: auto;
+  width: clamp(44px, 10vw, 58px);
   height: clamp(44px, 10vw, 58px);
-  max-width: min(168px, 40vw);
-  object-fit: contain;
   display: block;
   margin-top: 0.15rem;
+  background-color: var(--tf-theme-primary, var(--splash-accent));
+  -webkit-mask: url('/brand/logo-mark-light.png') center / contain no-repeat;
+  mask: url('/brand/logo-mark-light.png') center / contain no-repeat;
 }
 
 .tf-loading-screen__tenant {

@@ -35,7 +35,7 @@
       :aria-label="isLoading ? 'Connecting…' : ctaLabel"
     >
       <span class="auth-card__cta-inner">
-        <span v-if="!isLoading" class="auth-card__google-disc">
+        <span class="auth-card__google-disc">
           <svg
             class="auth-card__google-icon"
             viewBox="0 0 24 24"
@@ -62,33 +62,7 @@
           </svg>
         </span>
 
-        <svg
-          v-else
-          class="auth-card__spinner"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden="true"
-        >
-          <circle
-            class="auth-card__spinner-track"
-            cx="12"
-            cy="12"
-            r="9"
-            fill="none"
-            stroke-width="2.5"
-          />
-          <path
-            class="auth-card__spinner-arc"
-            d="M12 3a9 9 0 0 1 9 9"
-            fill="none"
-            stroke-width="2.5"
-            stroke-linecap="round"
-          />
-        </svg>
-
-        <span class="auth-card__cta-label">
-          {{ isLoading ? 'Connecting…' : ctaLabel }}
-        </span>
+        <span class="auth-card__cta-label">{{ ctaLabel }}</span>
       </span>
     </button>
 
@@ -303,27 +277,7 @@ const loginErrorMessage = computed(() => {
   letter-spacing: 0.01em;
   text-align: center;
   line-height: 1.25;
-}
-
-.auth-card__spinner {
-  width: 1.2rem;
-  height: 1.2rem;
-  animation: spin 0.85s linear infinite;
-  flex-shrink: 0;
-}
-
-.auth-card__spinner-track {
-  stroke: rgb(255 255 255 / 0.35);
-}
-
-.auth-card__spinner-arc {
-  stroke: #ffffff;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  white-space: nowrap;
 }
 
 .auth-card__secure-note {

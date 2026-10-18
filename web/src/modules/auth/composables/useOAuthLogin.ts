@@ -14,6 +14,11 @@ import {
   getTenantSlugFromRoute,
 } from 'src/modules/tenant/utils/tenantRouteContext';
 import { tenantService } from 'src/modules/tenant/services/tenantService';
+import {
+  filterCompanyTenants,
+  isCompanyTenant,
+  resolveCompanyTenant,
+} from 'src/modules/tenant/utils/tenantHierarchy';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
 import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
@@ -383,43 +388,28 @@ export function useOAuthLogin(
       return false;
     }
 
-    if (!requestedTenant) {
-      authStore.saveAccess({
-        scope: 'app',
-        matchedRole: result.matched_role,
-        user,
-        member: {
-          id: result.member_id,
-          email: result.member_email.trim().toLowerCase(),
-          role: result.matched_role,
-          actorType: 'membership',
-          name: null,
-          tenantId: null,
-          customerGroupId: null,
-          isActive: Boolean(result.member_is_active),
-          createdAt: result.member_created_at ?? null,
-          updatedAt: result.member_updated_at ?? null,
-        },
-        tenant: null,
-        customerGroup: null,
-        activeModuleKeys: [],
-        effectiveGrants: [],
-        tenantRoleId: null,
-        isAdmin: false,
-        permissionVersion: null,
-        savedAt: new Date().toISOString(),
-      });
-      tenantStore.clearSelectedTenant();
+    const pickDefaultParentTenant = () => filterCompanyTenants(availableTenants)[0] ?? null;
 
-      await router.replace({ name: 'admin-tenant-list' });
-      return true;
+    const membershipTenant = requestedTenant ?? pickDefaultParentTenant();
+
+    if (!membershipTenant) {
+      await sendBackToLogin('No tenant access found for this route', tenantListResult);
+      return false;
     }
 
     const workspaceTenant =
-      requestedTenant.parent_id != null
-        ? (availableTenants.find((tenant) => tenant.id === requestedTenant.parent_id) ??
-          requestedTenant)
-        : requestedTenant;
+      resolveCompanyTenant(membershipTenant, availableTenants) ??
+      (isCompanyTenant(membershipTenant) ? membershipTenant : null);
+
+    if (!workspaceTenant) {
+      await sendBackToLogin(
+        'App login requires a parent company workspace',
+        { membershipTenant, availableTenants },
+        'invalid_tenant',
+      );
+      return false;
+    }
+
     const selectedTenantId = workspaceTenant.id;
 
     const { data: bootstrapData, error: bootstrapError } = await supabase.rpc(

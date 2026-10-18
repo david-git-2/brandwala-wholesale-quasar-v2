@@ -15,17 +15,17 @@ export type BrandLogoScope = 'platform' | 'app' | 'shop' | 'investor';
 
 /** Scope primaries — keep in sync with `.theme-*` in `web/src/css/app.scss`. */
 export const SCOPE_THEME_PRIMARY_LIGHT: Record<BrandLogoScope, string> = {
-  platform: '#464b71',
-  app: '#488b8f',
-  shop: '#3368a0',
-  investor: '#413333',
+  platform: '#3d3a8c',
+  app: '#1f2937',
+  shop: '#2b5fa8',
+  investor: '#1e3a5f',
 };
 
 export const SCOPE_THEME_PRIMARY_DARK: Record<BrandLogoScope, string> = {
-  platform: '#118ab2',
-  app: '#5ea3a3',
-  shop: '#66a3bf',
-  investor: '#f2765e',
+  platform: '#a5a3f0',
+  app: '#e5e7eb',
+  shop: '#8bb6ee',
+  investor: '#9db4dc',
 };
 
 export const SCOPE_THEME_CANVAS_LIGHT = '#f4f6f8';
