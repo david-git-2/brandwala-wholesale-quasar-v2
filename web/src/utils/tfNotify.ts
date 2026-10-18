@@ -8,6 +8,12 @@ export type TfNotifyErrorOpts = {
 
 type TfNotifyVisual = 'success' | 'error' | 'warning' | 'info';
 
+type BaseNotifyExtra = QNotifyUpdateOptions & {
+  spinner?: boolean;
+  timeout?: number;
+  group?: QNotifyCreateOptions['group'];
+};
+
 let idCounter = 0;
 
 const DISMISS_ACTION = {
@@ -18,7 +24,7 @@ const DISMISS_ACTION = {
   'aria-label': 'Dismiss',
 };
 
-function notifyPosition(): QNotifyCreateOptions['position'] {
+function notifyPosition(): NonNullable<QNotifyCreateOptions['position']> {
   return Screen.lt.sm ? 'top' : 'top-right';
 }
 
@@ -34,6 +40,10 @@ function iconFor(visual: TfNotifyVisual): string {
     default:
       return 'ph ph-info';
   }
+}
+
+function omitUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  return Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined)) as Partial<T>;
 }
 
 function visualFromLegacy(opts: QNotifyCreateOptions): TfNotifyVisual {
@@ -67,11 +77,7 @@ function visualFromLegacy(opts: QNotifyCreateOptions): TfNotifyVisual {
   return 'info';
 }
 
-function baseNotify(
-  visual: TfNotifyVisual,
-  message: string,
-  extra: QNotifyUpdateOptions & { spinner?: boolean; timeout?: number } = {},
-) {
+function baseNotify(visual: TfNotifyVisual, message: string, extra: BaseNotifyExtra = {}) {
   const timeout =
     extra.timeout ??
     (visual === 'success'
@@ -84,21 +90,35 @@ function baseNotify(
             ? 8000
             : 4000);
 
-  const { actions: extraActions, spinner, timeout: _t, ...restExtra } = extra;
+  const {
+    actions: extraActions,
+    spinner,
+    timeout: _t,
+    group,
+    position: _position,
+    ...restExtra
+  } = extra as BaseNotifyExtra & { position?: QNotifyCreateOptions['position'] };
   const actions = extraActions ? [DISMISS_ACTION, ...extraActions] : [DISMISS_ACTION];
 
-  return Notify.create({
+  const payload: QNotifyCreateOptions = {
     message,
     position: notifyPosition(),
     timeout: spinner ? 0 : timeout,
     progress: false,
     classes: `tf-notify tf-notify--${visual}`,
-    icon: spinner ? undefined : iconFor(visual),
     spinner: spinner ?? false,
-    group: restExtra.group,
-    ...restExtra,
+    ...omitUndefined(restExtra),
     actions,
-  });
+  };
+
+  if (!spinner) {
+    payload.icon = iconFor(visual);
+  }
+  if (group !== undefined) {
+    payload.group = group;
+  }
+
+  return Notify.create(payload);
 }
 
 /** Maps legacy `$q.notify` / raw `Notify.create` options onto tf-notify styling. */
@@ -106,16 +126,35 @@ export function notifyFromQuasarOptions(opts: string | QNotifyCreateOptions) {
   const o: QNotifyCreateOptions = typeof opts === 'string' ? { message: opts } : opts;
   const message = o.message ?? '';
   const visual = visualFromLegacy(o);
-  const { type: _type, color: _color, textColor: _textColor, progress: _progress, classes: _classes, ...rest } = o;
+  const {
+    type: _type,
+    color: _color,
+    textColor: _textColor,
+    progress: _progress,
+    classes: _classes,
+    position: _position,
+    spinner: legacySpinner,
+    timeout: legacyTimeout,
+    actions: legacyActions,
+    ...rest
+  } = o;
 
-  const extraActions = o.actions?.filter((a) => a.icon !== 'close' && a.icon !== 'ph ph-x' && a['aria-label'] !== 'Dismiss');
+  const extraActions = legacyActions?.filter(
+    (a) => a.icon !== 'close' && a.icon !== 'ph ph-x' && a['aria-label'] !== 'Dismiss',
+  );
 
-  return baseNotify(visual, message, {
-    ...rest,
-    timeout: o.timeout,
-    spinner: o.spinner,
-    actions: extraActions?.length ? extraActions : undefined,
-  });
+  const extra: BaseNotifyExtra = { ...rest };
+  if (legacyTimeout !== undefined) {
+    extra.timeout = legacyTimeout;
+  }
+  if (legacySpinner !== undefined) {
+    extra.spinner = legacySpinner === true;
+  }
+  if (extraActions?.length) {
+    extra.actions = extraActions;
+  }
+
+  return baseNotify(visual, message, extra);
 }
 
 /** App-wide notifier (Quasar Notify + tf-notify styling). */
@@ -123,7 +162,7 @@ export const notify = {
   success: (message: string) => baseNotify('success', message),
   info: (message: string) => baseNotify('info', message),
   warn: (message: string, actions?: QNotifyUpdateOptions['actions']) =>
-    baseNotify('warning', message, { actions }),
+    baseNotify('warning', message, actions?.length ? { actions } : {}),
   error: (message: string, opts: TfNotifyErrorOpts = {}) => {
     const actions: QNotifyUpdateOptions['actions'] = [];
     if (opts.retry) {
@@ -140,10 +179,13 @@ export const notify = {
         handler: opts.details,
       });
     }
-    return baseNotify('error', message, {
+    const extra: BaseNotifyExtra = {
       timeout: opts.persistent ? 0 : 8000,
-      actions: actions.length ? actions : undefined,
-    });
+    };
+    if (actions.length) {
+      extra.actions = actions;
+    }
+    return baseNotify('error', message, extra);
   },
   loading: (message: string) => {
     const id = `tf-notify-loading-${++idCounter}`;

@@ -396,7 +396,7 @@ function openCreateCustomerProfileDialog() {
       }
       try {
         const created = await createCustomerProfileMutation.mutateAsync({
-          tenant_id: tenantId,
+          parent_tenant_id: tenantId,
           name: name.trim(),
         });
         showSuccessNotification(

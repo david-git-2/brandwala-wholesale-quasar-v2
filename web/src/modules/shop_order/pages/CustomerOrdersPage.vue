@@ -82,6 +82,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useCustomerOrdersQuery } from '../composables/useCustomerOrdersQuery';
 import { shopCatalogEntryPath } from '../utils/catalogShop';
 import type { CustomerOrderListItem } from '../types';
+import type { CustomerOrderListRow } from '../components/CustomerOrdersList.vue';
 import CustomerOrdersList from '../components/CustomerOrdersList.vue';
 import {
   parseOrderGlanceBucket,
@@ -133,11 +134,12 @@ const goCatalog = () => {
   void router.push(shopCatalogEntryPath(tenantSlug));
 };
 
-const goToOrderDetails = (order: CustomerOrderListItem) => {
+const goToOrderDetails = (order: CustomerOrderListItem | CustomerOrderListRow) => {
+  const row = order as CustomerOrderListItem;
   const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
   void router.push({
-    path: `${tenantSlug}/shop/orders/${order.id}`,
-    state: { shopTypeSnapshot: order.shop_type_snapshot },
+    path: `${tenantSlug}/shop/orders/${row.id}`,
+    state: { shopTypeSnapshot: row.shop_type_snapshot },
   });
 };
 

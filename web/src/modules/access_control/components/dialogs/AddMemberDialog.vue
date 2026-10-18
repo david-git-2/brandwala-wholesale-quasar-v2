@@ -8,8 +8,8 @@
               ? 'Add Viewer'
               : selectedMemberRole === 'investor'
                 ? 'Add Investor'
-                : selectedMemberRole === 'admin'
-                  ? 'Add Admin'
+                : selectedMemberRole === 'manager'
+                  ? 'Add Manager'
                   : 'Add Staff'
           }}
         </div>

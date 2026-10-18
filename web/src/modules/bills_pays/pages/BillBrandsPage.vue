@@ -51,7 +51,7 @@
             no-caps
             label="Save"
             :loading="saving"
-            :disable="!formName.trim()"
+            :disable="!formName.trim().length"
             @click="saveBrand"
           />
         </q-card-actions>
@@ -116,7 +116,7 @@ const invalidate = () => {
 };
 
 const saveBrand = async () => {
-  if (!parentTenantId.value || !formName.trim()) return;
+  if (!parentTenantId.value || !formName.value.trim()) return;
   saving.value = true;
   try {
     if (editingId.value) {

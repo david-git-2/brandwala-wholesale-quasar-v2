@@ -10,7 +10,7 @@ type DraftStockPicks = {
 };
 
 export function isDemandPickAlreadyClosed(
-  pick: Pick<DemandStockPickSelection | PreorderDemandStockPick, 'invoice_id' | 'invoiceId' | 'returned_at' | 'returnedAt'>,
+  pick: DemandStockPickSelection | PreorderDemandStockPick,
 ): boolean {
   const invoiceId =
     'invoiceId' in pick && pick.invoiceId != null
@@ -28,7 +28,7 @@ export function isDemandPickAlreadyClosed(
 }
 
 export function demandPickCloseAction(
-  pick: Pick<DemandStockPickSelection | PreorderDemandStockPick, 'close_action' | 'closeAction'>,
+  pick: DemandStockPickSelection | PreorderDemandStockPick,
 ): PreorderDemandCloseAction {
   const raw =
     'closeAction' in pick && pick.closeAction
@@ -36,7 +36,7 @@ export function demandPickCloseAction(
       : 'close_action' in pick && pick.close_action
         ? pick.close_action
         : 'take';
-  return raw ?? 'take';
+  return (raw ?? 'take') as PreorderDemandCloseAction;
 }
 
 export function demandPickMatchesCloseFilter(

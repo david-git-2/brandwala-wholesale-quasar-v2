@@ -206,7 +206,6 @@ const browseSearchQuery = computed(() => (browseSearch.value ?? '').trim());
 const browseSearchField = ref<'name' | 'barcode' | 'product_code'>('name');
 const page = ref(1);
 const accumulatedProducts = ref<Product[]>([]);
-const totalProducts = ref(0);
 
 const filterDrawerOpen = ref(false);
 const filterVendorId = ref<number | null>(null);
@@ -261,7 +260,6 @@ watch(
   (response) => {
     if (!response) return;
     const items = response.data ?? [];
-    totalProducts.value = response.meta.total;
     if (page.value === 1) {
       accumulatedProducts.value = items;
     } else {
@@ -305,7 +303,7 @@ watch([filterBrand, filterCategory, filterVendorId], () => {
 });
 
 const products = computed(() => accumulatedProducts.value);
-const hasMore = computed(() => totalProducts.value > products.value.length);
+const hasMore = computed(() => listData.value?.meta.has_more ?? false);
 const showInitialSkeleton = computed(
   () => isLoading.value && page.value === 1 && products.value.length === 0,
 );

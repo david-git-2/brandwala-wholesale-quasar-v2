@@ -35,8 +35,11 @@ export function useShopProductDetailQuery(
         listingId?.value ?? null,
       );
 
-      if (!result.success || !result.data) {
+      if (!result.success) {
         throw new Error(result.error || 'Failed to fetch product.');
+      }
+      if (!result.data) {
+        throw new Error('Failed to fetch product.');
       }
 
       const shopDetails = (result.data.meta?.shop ?? null) as Shop | null;

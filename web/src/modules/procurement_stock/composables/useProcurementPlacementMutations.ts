@@ -52,6 +52,7 @@ export function useUpsertPreorderDemandMutation(options: {
   procurementStatus: Ref<ProcurementDemandStatus> | ComputedRef<ProcurementDemandStatus>;
   search?: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
   childTenantId?: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
+  profileId?: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
   limit?: number;
   offset?: Ref<number> | ComputedRef<number>;
 }) {
@@ -78,6 +79,7 @@ export function useFillPreorderDemandPlacedQuantitiesMutation(options: {
   procurementStatus: Ref<ProcurementDemandStatus> | ComputedRef<ProcurementDemandStatus>;
   search?: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
   childTenantId?: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
+  profileId?: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
   limit?: number;
   offset?: Ref<number> | ComputedRef<number>;
 }) {
@@ -123,6 +125,7 @@ export function useSetPreorderDemandVendorMutation(options: {
   procurementStatus: Ref<ProcurementDemandStatus> | ComputedRef<ProcurementDemandStatus>;
   search?: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
   childTenantId?: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
+  profileId?: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
   limit?: number;
   offset?: Ref<number> | ComputedRef<number>;
 }) {
@@ -152,4 +155,5 @@ export type PlacementDialogTarget = {
   productName: string;
   remainingQuantity: number;
   defaultVendorId?: number | null;
+  defaultVendorCode?: string | null;
 };

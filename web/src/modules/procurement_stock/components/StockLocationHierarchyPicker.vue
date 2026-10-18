@@ -31,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch, withDefaults } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import {
   STOCK_LOCATION_KIND_LABELS,
   STOCK_LOCATION_PICK_CHAIN,

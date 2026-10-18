@@ -3,6 +3,7 @@ import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { vendorRepository } from 'src/modules/vendor/repositories/vendorRepository';
+import type { Shop } from '../types';
 
 export interface ShopListQueryParams {
   tenantId: number;

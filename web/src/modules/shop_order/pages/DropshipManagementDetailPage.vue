@@ -167,8 +167,11 @@ const {
   queryFn: async (): Promise<DropshipManagementOrderView | null> => {
     if (!authStore.tenantId) return null;
     const res = await shopOrderService.fetchDropshipManagementOrder(authStore.tenantId, orderId.value);
-    if (!res.success || !res.data) {
+    if (!res.success) {
       throw new Error(res.error ?? 'Failed to load order');
+    }
+    if (!res.data) {
+      throw new Error('Failed to load order');
     }
     return res.data;
   },

@@ -212,6 +212,7 @@ import { ref, computed, watch } from 'vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShopOrder, ShopOrderItem } from '../types';
 import { isCatalogFirstOfferLocked, isCatalogFinalOfferEditable, isCatalogStaffReadOnly } from '../utils/catalogOrderStatus';
+import { getFinalOfferUnitAmount } from '../utils/catalogPricingUtils';
 
 const props = defineProps<{
   modelValue: boolean;

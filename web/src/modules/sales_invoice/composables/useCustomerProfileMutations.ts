@@ -14,23 +14,21 @@ export function useCustomerProfileMutations() {
   const createCustomerProfileMutation = useMutation({
     mutationFn: (input: CreateCustomerProfileInput) =>
       customerProfileRepository.createCustomerProfile(input),
-    onSuccess: (data) => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: salesInvoiceQueryKeys.customerProfiles(data.tenant_id),
+        queryKey: salesInvoiceQueryKeys.customerProfiles(variables.parent_tenant_id),
       });
-      if (data.tenant_id) {
-        void queryClient.invalidateQueries({
-          queryKey: tenantQueryKeys.customerGroups(data.tenant_id),
-        });
-      }
+      void queryClient.invalidateQueries({
+        queryKey: tenantQueryKeys.customerGroups(variables.parent_tenant_id),
+      });
     },
   });
 
   const updateCustomerProfileMutation = useMutation({
     mutationFn: (input: UpdateCustomerProfileInput & { tenant_id?: number }) =>
       customerProfileRepository.updateCustomerProfile({ id: input.id, patch: input.patch }),
-    onSuccess: (data, variables) => {
-      const tenantId = data.tenant_id || variables.tenant_id;
+    onSuccess: (_data, variables) => {
+      const tenantId = variables.tenant_id;
       if (tenantId) {
         void queryClient.invalidateQueries({
           queryKey: salesInvoiceQueryKeys.customerProfiles(tenantId),

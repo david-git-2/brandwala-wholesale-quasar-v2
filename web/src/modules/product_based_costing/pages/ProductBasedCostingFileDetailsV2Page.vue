@@ -129,7 +129,7 @@
             :label="$t('product_based_costing.columns')"
             style="border-radius: 8px"
           >
-            <q-menu auto-close="false">
+            <q-menu :auto-close="false">
               <q-list style="min-width: 240px; max-height: 400px" class="q-pa-xs">
                 <q-item class="q-pb-none">
                   <q-item-section>
@@ -1738,9 +1738,9 @@ const draftValues = reactive<Record<string, Record<string, unknown>>>({});
 function getDraftValue(
   row: { id: number; raw: ProductBasedCostingItem; offer_price?: number; isOfferPriceManual?: boolean },
   field: keyof ProductBasedCostingItem,
-) {
+): string | number | null {
   if (draftValues[row.id]?.[field] !== undefined) {
-    return draftValues[row.id][field];
+    return draftValues[row.id][field] as string | number | null;
   }
   if (field === 'offer_price') {
     if (row.isOfferPriceManual && row.raw.offer_price != null) {
@@ -1754,7 +1754,9 @@ function getDraftValue(
     }
     return row.raw.quantity ?? '';
   }
-  return row.raw[field] ?? '';
+  const raw = row.raw[field];
+  if (typeof raw === 'boolean') return raw ? 1 : 0;
+  return (raw ?? '') as string | number | null;
 }
 
 function setDraftValue(row: { id: number }, field: string, val: unknown) {
@@ -2234,7 +2236,7 @@ async function applyBulkPaste() {
 async function handleDownloadExcel() {
   if (!fileId.value) return;
   const items = await productBasedCostingRepository.listProductBasedCostingItems(fileId.value);
-  void downloadExcel($q, file.value, items);
+  void downloadExcel($q, file.value ?? null, items);
 }
 
 function openPreviewAndPrint() {
@@ -2442,7 +2444,10 @@ async function handleUpdateRatesDirect(payload: {
     cargo_rate_kg_gbp: payload.cargo_rate_kg_gbp,
     profit_rate: payload.profit_rate,
     vat_rate: payload.vat_rate,
-    offer_pricing_mode: payload.offer_pricing_mode,
+    offer_pricing_mode: payload.offer_pricing_mode as
+      | 'landed_cost_plus'
+      | 'gbp_vat_then_profit'
+      | undefined,
     buy_currency_id: payload.buy_currency_id,
     sell_currency_id: payload.sell_currency_id,
   });

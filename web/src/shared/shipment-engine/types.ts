@@ -9,9 +9,9 @@
 /** Header-shaped rates used by day-one live preview (dual-path until header rates drop). */
 export interface CostingShipmentInput {
   type: 'international' | 'local' | 'transfer';
-  product_conversion_rate?: number;
-  cargo_conversion_rate?: number;
-  cargo_rate?: number;
+  product_conversion_rate?: number | null;
+  cargo_conversion_rate?: number | null;
+  cargo_rate?: number | null;
   received_weight: number | null;
   total_weight_kg?: number | null;
   transaction_rate?: number | null;

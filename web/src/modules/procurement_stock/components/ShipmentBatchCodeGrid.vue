@@ -489,7 +489,14 @@ const onColumnPasteApply = async (payload: { field: BatchCodePasteField; lines: 
 const onAddLineSubmit = async (payload: BatchCodePasteRow) => {
   if (isAddingRow.value) return;
   try {
-    await addLineFromDialog(payload);
+    await addLineFromDialog({
+      batch_id: payload.batch_id ?? null,
+      barcode: payload.barcode ?? null,
+      product_code: payload.product_code ?? null,
+      manufacturing_date: payload.manufacturing_date ?? null,
+      expire_date: payload.expire_date ?? null,
+      is_arrived: false,
+    });
     addDialogOpen.value = false;
   } catch {
     // error toast handled in composable

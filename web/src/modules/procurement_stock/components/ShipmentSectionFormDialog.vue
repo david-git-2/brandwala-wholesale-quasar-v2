@@ -167,7 +167,7 @@ const onSubmit = async () => {
   try {
     if (isEdit.value && props.section) {
       const updated = await shipmentStore.updateSection(props.section.id, {
-        vendor_id: effectiveVendorId,
+        vendor_id: effectiveVendorId ?? undefined,
         title: form.value.title.trim(),
         metadata,
       });
@@ -176,7 +176,7 @@ const onSubmit = async () => {
       const created = await shipmentStore.createSection({
         parent_tenant_id: authStore.tenantId,
         shipment_id: props.shipmentId,
-        vendor_id: effectiveVendorId,
+        vendor_id: effectiveVendorId ?? undefined,
         title: form.value.title.trim(),
         sort_order: (shipmentStore.currentShipmentSections?.length ?? 0) + 1,
         metadata,

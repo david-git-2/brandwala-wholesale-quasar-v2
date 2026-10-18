@@ -209,7 +209,7 @@ const getProductBasedCostingItemById = async (
 
     return {
       success: true,
-      data,
+      data: data ?? undefined,
     };
   } catch (error) {
     return {

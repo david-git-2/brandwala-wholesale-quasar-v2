@@ -20,7 +20,7 @@
 
     <q-menu
       v-model="menuOpen"
-      :target="anchorRef"
+      :target="anchorRef ?? undefined"
       no-focus
       no-parent-event
       fit

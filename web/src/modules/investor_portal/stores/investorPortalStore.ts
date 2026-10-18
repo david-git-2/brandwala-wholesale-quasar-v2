@@ -88,7 +88,8 @@ export const useInvestorPortalStore = defineStore('investorPortal', {
       }
 
       this.transactions = result.data ?? [];
-      this.totalTransactionsCount = result.data?.[0]?.total_count ?? 0;
+      this.totalTransactionsCount =
+        (result.data?.[0] as { total_count?: number } | undefined)?.total_count ?? 0;
       return result;
     },
 

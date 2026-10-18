@@ -4,6 +4,7 @@ import { supabase } from 'src/boot/supabase';
 import { useShopOrderStore } from '../stores/shopOrderStore';
 import { resolveDeliveryZone } from '../services/courierChargeEstimate';
 import type { ShopOrder, ShopOrderItem } from '../types';
+import type { ReturnCondition } from '../utils/dropshipReturnUtils';
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
 import { showSuccessNotification, showErrorNotification, parseSupabaseError } from 'src/utils/appFeedback';
 import {

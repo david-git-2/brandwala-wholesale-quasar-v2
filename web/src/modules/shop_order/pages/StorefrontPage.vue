@@ -240,12 +240,13 @@ const { addItemMutation, updateQtyMutation, removeItemMutation } = useShopCartMu
 
 const shopsQuery = useCustomerShopsQuery(computed(() => authStore.tenantId ?? null));
 const shops = computed(() => shopsQuery.data.value ?? []);
-const activeShopType = computed(
-  () =>
+const activeShopType = computed((): import('../types').ShopType | null => {
+  const raw =
     shopDetails.value?.shop_type ??
     shops.value.find((shop) => shop.slug === shopSlug.value)?.shop_type ??
-    null,
-);
+    null;
+  return raw as import('../types').ShopType | null;
+});
 const showFixedPriceChip = computed(() =>
   isFixedPriceCatalog(activeShopType.value, permissions.value?.can_negotiate),
 );

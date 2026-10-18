@@ -103,7 +103,7 @@ const quantity = ref(1);
 const notes = ref('');
 const vendorFilter = ref('');
 
-const { data: vendors = [], isLoading: vendorsLoading } = useQuery({
+const { data: vendorsData, isLoading: vendorsLoading } = useQuery({
   queryKey: computed(() => ['vendors', 'forPlacement', props.tenantId]),
   queryFn: () => vendorRepository.listVendors(props.tenantId),
   enabled: computed(() => props.modelValue && props.tenantId !== null),
@@ -112,7 +112,7 @@ const { data: vendors = [], isLoading: vendorsLoading } = useQuery({
 
 const vendorOptions = computed(() => {
   const needle = vendorFilter.value.trim().toLowerCase();
-  return (vendors.value as Vendor[])
+  return ((vendorsData.value ?? []) as Vendor[])
     .filter((v) => {
       if (!needle) return true;
       return (
@@ -149,7 +149,7 @@ watch(
 
 watch(selectedVendorId, (id) => {
   if (!id) return;
-  const match = (vendors.value as Vendor[]).find((v) => v.id === id);
+  const match = ((vendorsData.value ?? []) as Vendor[]).find((v) => v.id === id);
   if (match) vendorCode.value = match.code;
 });
 

@@ -473,7 +473,7 @@
       :books-tenant-id="operatingTenantId"
       :from-profile-name="profileName"
       :tenant-label="authStore.selectedTenant?.name ?? 'Our books'"
-      :channel-meta="(bill.channel_meta as Record<string, unknown> | null) ?? null"
+      :channel-meta="(bill?.channel_meta as Record<string, unknown> | null) ?? null"
       :loading="vendorRefundMutation.isPending.value"
       @submit="onVendorRefund"
     />
@@ -768,7 +768,6 @@ const canRecordPayment = computed(() => {
   const b = bill.value;
   if (!b || !isStandardBill.value) return false;
   if (b.invoice_status !== 'issued') return false;
-  if (b.invoice_status === 'voided') return false;
   if (!billProfileId.value) return false;
   return paymentDueAmount.value > 0;
 });

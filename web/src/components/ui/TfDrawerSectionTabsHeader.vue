@@ -3,7 +3,7 @@
     <TfDrawerSectionTabs
       v-model="model"
       :tabs="tabs"
-      :aria-label="ariaLabel"
+      :ariaLabel="ariaLabel"
       :count-visibility="countVisibility"
       class="col min-width-0"
     />
@@ -15,7 +15,7 @@
 import TfDrawerSectionTabs, { type TfDrawerSectionTab } from './TfDrawerSectionTabs.vue';
 
 defineProps<{
-  tabs: TfDrawerSectionTab[];
+  tabs: readonly TfDrawerSectionTab[];
   ariaLabel: string;
   countVisibility?: 'always' | 'positive';
 }>();

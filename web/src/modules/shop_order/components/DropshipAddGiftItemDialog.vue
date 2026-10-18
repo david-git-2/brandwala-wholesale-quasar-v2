@@ -140,7 +140,7 @@ const addPendingLine = (
 const addFromWarehouseHit = (hit: ShopStaffProductSearchHit) => {
   addPendingLine(
     hit.product_id,
-    hit.product_name,
+    hit.product_name ?? 'Product',
     hit.image_url ?? null,
     Number(hit.unit_cost_amount ?? 0),
   );
@@ -291,7 +291,7 @@ const warehouseSearchReady = computed(
             <q-item v-for="hit in catalogSearch.results.value" :key="hit.product_id">
               <q-item-section avatar>
                 <q-avatar v-if="hit.image_url" rounded size="40px">
-                  <img :src="hit.image_url" :alt="hit.product_name">
+                  <img :src="hit.image_url" :alt="hit.product_name ?? 'Product'">
                 </q-avatar>
                 <q-avatar v-else rounded size="40px" color="grey-3" text-color="grey-7" icon="ph ph-package" />
               </q-item-section>
@@ -343,7 +343,7 @@ const warehouseSearchReady = computed(
             separator
             class="rounded-borders gift-search-results"
           >
-            <q-item v-for="row in filteredCustomerStockRows" :key="row.product_id">
+            <q-item v-for="row in filteredCustomerStockRows" :key="row.id">
               <q-item-section>
                 <q-item-label>{{ row.product_name }}</q-item-label>
                 <q-item-label caption>{{ row.quantity_on_hand }} on hand</q-item-label>

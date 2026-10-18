@@ -33,8 +33,8 @@ export const getFirebasePublicConfig = (): FirebasePublicConfig | null => {
     apiKey,
     authDomain,
     projectId,
-    messagingSenderId,
-    appId,
+    messagingSenderId: String(messagingSenderId),
+    appId: String(appId),
   };
 };
 
@@ -104,7 +104,12 @@ const getMessagingInstance = async (): Promise<Messaging | null> => {
   const registration = await initServiceWorker(config);
 
   if (!messagingInstance) {
-    messagingInstance = getMessaging(app, { serviceWorkerRegistration: registration });
+    messagingInstance = (
+      getMessaging as (
+        app: FirebaseApp,
+        opts?: { serviceWorkerRegistration: ServiceWorkerRegistration },
+      ) => Messaging
+    )(app, { serviceWorkerRegistration: registration });
   }
 
   return messagingInstance;

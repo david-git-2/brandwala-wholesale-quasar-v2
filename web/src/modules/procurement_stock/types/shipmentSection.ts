@@ -43,9 +43,9 @@ export interface SectionFormData {
   id?: string;
   dbId?: number;
   title: string;
-  invoiceNumber?: string;
-  invoiceDate?: string;
-  notes?: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  notes: string;
 }
 
 export interface SectionViewData {

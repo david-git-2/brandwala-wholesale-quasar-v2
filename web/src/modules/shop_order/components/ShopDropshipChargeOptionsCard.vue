@@ -94,7 +94,6 @@
 </template>
 
 <script setup lang="ts">
-import { withDefaults } from 'vue';
 import { formatCartMoney } from '../utils/cartPriceUtils';
 
 export interface DropshipChargePreview {

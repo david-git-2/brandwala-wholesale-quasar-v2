@@ -90,7 +90,7 @@ const update = async (
 };
 
 const remove = async (id: number): Promise<void> => {
-  await globalShipmentCostEntryRepository.delete(id);
+  await globalShipmentCostEntryRepository.remove(id);
 };
 
 export const globalShipmentLocalCostRepository = {

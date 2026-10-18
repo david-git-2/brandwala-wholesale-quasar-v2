@@ -30,4 +30,4 @@ export {
   STOCK_AVAILABILITY_OPTIONS,
   STOCK_AVAILABILITY_LABELS,
   type StockAvailability,
-} from './stockAvailability';
+} from '../constants/stockAvailability';

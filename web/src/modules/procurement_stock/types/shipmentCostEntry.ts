@@ -1,5 +1,8 @@
 import type { Database, Json } from 'src/types/database.types';
 
+export type ShipmentCostPayeeType = 'vendor' | 'cargo_agent';
+export type ShipmentCostPaymentSource = 'cash' | 'wallet' | 'credit';
+
 export type GlobalShipmentCostBucket = Database['public']['Enums']['global_shipment_cost_bucket'];
 export type GlobalShipmentCostComponent = Database['public']['Enums']['global_shipment_cost_component'];
 
@@ -48,6 +51,8 @@ export interface CostEntryDraft {
   section_id?: number | null;
   /** Cargo display helper — computed as amount ÷ weight */
   per_kg_rate: number | null;
+  currency_id?: number | null;
+  metadata?: Json;
 }
 
 export interface CostEntriesSavePayload {

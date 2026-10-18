@@ -337,7 +337,7 @@
               :tenant-id="tenantId"
               :customer-group-id="customer?.customer_group_id ?? 0"
               :group-name="form.group_name"
-              :billing-profile-id="profileId || null"
+              :profile-id="profileId || null"
               :summary="accountSummary"
               :is-loading="accountQuery.isLoading.value"
               :is-error="accountQuery.isError.value"

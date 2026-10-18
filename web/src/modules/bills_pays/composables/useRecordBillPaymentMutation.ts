@@ -84,9 +84,9 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
           settlement_currency_code: fx.settlement_currency_code,
           foreign_amount: fx.foreign_amount,
           exchange_rate: fx.exchange_rate,
-          source_currency_code: payload.sourceCurrencyCode ?? null,
-          transaction_rate: payload.transactionRate ?? null,
-          cashbook_point_pot_id: payload.cashbookPointPotId ?? null,
+          source_currency_code: payload.sourceCurrencyCode ?? undefined,
+          transaction_rate: payload.transactionRate ?? undefined,
+          cashbook_point_pot_id: payload.cashbookPointPotId ?? undefined,
         });
       } else {
         await paysRepository.postCustomerReceipt({

@@ -1135,7 +1135,7 @@ const refreshDemandDesk = async () => {
   }
 };
 
-const { data: vendors = [], isLoading: vendorsLoading } = useQuery({
+const { data: vendorsData, isLoading: vendorsLoading } = useQuery({
   queryKey: computed(() => ['vendors', 'forDemand', parentTenantId.value]),
   queryFn: () => vendorRepository.listVendors(parentTenantId.value!),
   enabled: computed(() => parentTenantId.value !== null),
@@ -1144,7 +1144,7 @@ const { data: vendors = [], isLoading: vendorsLoading } = useQuery({
 
 const vendorOptions = computed(() => {
   const needle = vendorFilter.value.trim().toLowerCase();
-  const list = (vendors.value ?? []) as Vendor[];
+  const list = (vendorsData.value ?? []) as Vendor[];
   return list
     .filter((vendor) => {
       if (!needle) return true;
@@ -1167,7 +1167,7 @@ const filterVendors = (val: string, update: (fn: () => void) => void) => {
 
 const vendorLabel = (vendorId: number | null) => {
   if (!vendorId) return '—';
-  const match = ((vendors.value ?? []) as Vendor[]).find((vendor) => vendor.id === vendorId);
+  const match = ((vendorsData.value ?? []) as Vendor[]).find((vendor) => vendor.id === vendorId);
   return match ? match.code?.trim() || match.name : String(vendorId);
 };
 
@@ -1483,7 +1483,7 @@ const onFillPlaceQtyForGroup = async (group: ProcurementDemandGroup) => {
 
 const openBulkVendorDialog = (group: ProcurementDemandGroup) => {
   bulkVendorTargetGroup.value = group;
-  const defaultVendor = ((vendors.value ?? []) as Vendor[]).find((vendor) => vendor.is_default);
+  const defaultVendor = ((vendorsData.value ?? []) as Vendor[]).find((vendor) => vendor.is_default);
   bulkVendorId.value = defaultVendor?.id ?? null;
   bulkVendorDialogOpen.value = true;
 };

@@ -289,6 +289,8 @@ export interface Shop {
   min_available_units?: number;
   created_at: string;
   updated_at: string;
+  /** Present on `list_shops` RPC rows for pagination. */
+  total_count?: number;
 }
 
 export interface ShopCategory {
@@ -463,6 +465,8 @@ export interface CustomerOrderDetailOrder {
   final_offer_rate: number | null;
   profit_basis: 'purchase' | 'total_cost' | 'sale_price' | null;
   package_weight_kg: number | null;
+  can_see_buy_price?: boolean;
+  can_see_sell_price?: boolean;
   recipient_name: string | null;
   recipient_phone: string | null;
   recipient_phone_secondary: string | null;
@@ -493,8 +497,6 @@ export interface CustomerOrderDetailOrder {
   deduct_packing_from_margin: boolean;
   item_count: number;
   total_amount: number | null;
-  can_see_buy_price?: boolean;
-  can_see_sell_price?: boolean;
   cod_collect_amount: number | null;
   courier_name: string | null;
   courier_awb_number: string | null;
@@ -533,6 +535,9 @@ export interface ShopOrder {
   final_offer_rate?: number | null;
   profit_basis?: 'purchase' | 'total_cost' | 'sale_price' | null;
   package_weight_kg?: number | null;
+  package_weight_band?: string | null;
+  can_see_buy_price?: boolean;
+  can_see_sell_price?: boolean;
   recipient_name: string | null;
   recipient_phone: string | null;
   recipient_phone_secondary?: string | null;

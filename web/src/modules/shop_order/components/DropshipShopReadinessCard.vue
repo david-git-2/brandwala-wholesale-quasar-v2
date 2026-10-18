@@ -121,7 +121,7 @@ const checkItems = computed<CheckItem[]>(() => {
       passed: r.has_customer_group_with_members,
       actionLabel: 'Manage Customer Groups',
       routeName: 'app-customers-list',
-      routeParams: { tenantSlug: props.tenantSlug },
+      routeParams: { tenantSlug: props.tenantSlug, shopId: String(props.shopId) },
     },
     {
       id: 'billing_profile_linked',
@@ -129,7 +129,7 @@ const checkItems = computed<CheckItem[]>(() => {
       passed: r.has_billing_profile_linked,
       actionLabel: 'Link Billing Profile',
       routeName: 'app-global-billing-profiles',
-      routeParams: { tenantSlug: props.tenantSlug },
+      routeParams: { tenantSlug: props.tenantSlug, shopId: String(props.shopId) },
     },
     {
       id: 'listing_with_floor',
@@ -146,7 +146,7 @@ const checkItems = computed<CheckItem[]>(() => {
       passed: r.has_active_courier,
       actionLabel: 'Configure Couriers',
       routeName: 'app-shop-dropship-couriers-page',
-      routeParams: { tenantSlug: props.tenantSlug },
+      routeParams: { tenantSlug: props.tenantSlug, shopId: String(props.shopId) },
     },
   ];
 });

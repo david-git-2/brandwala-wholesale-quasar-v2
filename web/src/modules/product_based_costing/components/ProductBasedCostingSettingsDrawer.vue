@@ -12,7 +12,7 @@
       <TfDrawerSectionTabsHeader
         v-model="activeTab"
         :tabs="[...settingsTabs]"
-        aria-label="Costing file settings sections"
+        ariaLabel="Costing file settings sections"
       >
         <template #trailing>
           <q-btn

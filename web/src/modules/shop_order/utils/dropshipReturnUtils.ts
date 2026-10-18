@@ -3,7 +3,11 @@ import type { DropshipManagementReturnLine, DropshipReturnItemPayload } from '..
 
 export type ReturnCondition = 'perfect' | 'open_box' | 'damaged';
 
-type ReturnableLine = Pick<DropshipManagementReturnLine, 'quantity' | 'confirmed_quantity' | 'returned_quantity'>;
+type ReturnableLine = {
+  quantity?: number;
+  confirmed_quantity?: number | null;
+  returned_quantity?: number | null;
+};
 
 export function returnableQty(line: ReturnableLine): number {
   const delivered = Number(line.confirmed_quantity ?? line.quantity ?? 0);
@@ -52,8 +56,8 @@ export function mapConditionQtysToItems(
 ): Array<{ order_item_id: number; returned_qty: number; condition: ReturnCondition }> {
   const totalReturnable = items.reduce((sum, item) => sum + returnableQty({
     quantity: item.quantity ?? 0,
-    confirmed_quantity: item.confirmed_quantity,
-    returned_quantity: item.returned_quantity,
+    confirmed_quantity: item.confirmed_quantity ?? null,
+    returned_quantity: item.returned_quantity ?? null,
   }), 0);
   const requested = qtyNormal + qtyOpenBox + qtyDamaged;
   if (requested <= 0) {
@@ -73,8 +77,8 @@ export function mapConditionQtysToItems(
   for (const item of items) {
     let need = returnableQty({
       quantity: item.quantity ?? 0,
-      confirmed_quantity: item.confirmed_quantity,
-      returned_quantity: item.returned_quantity,
+      confirmed_quantity: item.confirmed_quantity ?? null,
+      returned_quantity: item.returned_quantity ?? null,
     });
     for (const condition of ['perfect', 'open_box', 'damaged'] as const) {
       if (need <= 0) break;

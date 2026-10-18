@@ -156,17 +156,18 @@ export const useTenantStore = defineStore('tenant', {
       this.persistWorkspaceState();
     },
 
-    promoteSelectedTenantToCompany(membershipPool: readonly Tenant[] = this.items) {
+    promoteSelectedTenantToCompany(membershipPool?: readonly Tenant[]) {
+      const pool = membershipPool ?? this.items;
       if (this.selectedTenantId === null) {
         return;
       }
 
       const selected =
-        membershipPool.find((tenant) => tenant.id === this.selectedTenantId) ??
+        pool.find((tenant) => tenant.id === this.selectedTenantId) ??
         this.availableAdminTenants.find((tenant) => tenant.id === this.selectedTenantId) ??
         null;
 
-      const company = resolveCompanyTenant(selected, membershipPool);
+      const company = resolveCompanyTenant(selected, pool);
 
       if (!company || company.id === this.selectedTenantId) {
         return;

@@ -17,7 +17,7 @@
           <TfDrawerSectionTabs
             v-model="quickFilter"
             :tabs="quickFilterSectionTabs"
-            aria-label="Filter shipments"
+            ariaLabel="Filter shipments"
             @update:model-value="setQuickFilter"
           />
         </template>
@@ -231,9 +231,10 @@ const quickFilterSectionTabs = computed(() =>
   })),
 );
 
-const setQuickFilter = (val: string) => {
-  quickFilter.value = val;
-  statusFilter.value = val === 'all' ? null : val;
+const setQuickFilter = (val: string | number) => {
+  const next = String(val);
+  quickFilter.value = next;
+  statusFilter.value = next === 'all' ? null : next;
   shipmentStore.page = 1;
   void loadShipments();
 };

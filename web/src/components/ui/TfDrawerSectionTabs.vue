@@ -35,7 +35,7 @@ export interface TfDrawerSectionTab {
 
 const props = withDefaults(
   defineProps<{
-    tabs: TfDrawerSectionTab[];
+    tabs: readonly TfDrawerSectionTab[];
     ariaLabel: string;
     /** When `positive`, count badge shows only if count &gt; 0. */
     countVisibility?: 'always' | 'positive';

@@ -12,7 +12,7 @@ export type ShopStaffProductSearchScope = 'shop_listings' | 'tenant_products' | 
 
 export interface ShopStaffProductSearchHit {
   product_id: number;
-  product_name: string;
+  product_name: string | null;
   available_atp?: number;
   product_code?: string | null;
   image_url?: string | null;

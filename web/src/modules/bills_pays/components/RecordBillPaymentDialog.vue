@@ -530,7 +530,9 @@ watch(
   () => props.modelValue,
   (open) => {
     if (open) {
-      void loadPaymentMeta();
+      void loadPaymentMeta((code) => {
+        methodCode.value = code;
+      });
       resetForm();
     }
   },
@@ -610,9 +612,11 @@ const submit = () => {
     methodCode: methodCode.value,
     reference: reference.value.trim() || null,
     note: note.value.trim() || null,
-    sourceCurrencyCode: props.isAp ? fx.source_currency_code : null,
-    transactionRate: props.isAp ? fx.transaction_rate : null,
-    cashbookPointPotId: props.isAp ? fx.cashbook_point_pot_id : null,
+    sourceCurrencyCode:
+      props.isAp && 'source_currency_code' in fx ? fx.source_currency_code : null,
+    transactionRate: props.isAp && 'transaction_rate' in fx ? fx.transaction_rate : null,
+    cashbookPointPotId:
+      props.isAp && 'cashbook_point_pot_id' in fx ? fx.cashbook_point_pot_id : null,
     cashbookPointId: props.isAp ? cashbookPointId.value : null,
     instrumentFields: instrumentFields.value,
   });

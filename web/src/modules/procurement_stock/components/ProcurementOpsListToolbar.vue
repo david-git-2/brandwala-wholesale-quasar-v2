@@ -10,7 +10,7 @@
         style="min-width: 220px"
         class="col-grow dense-search-input procurement-ops-toolbar__search"
         :placeholder="searchPlaceholder"
-        @update:model-value="emit('update:search', $event)"
+        @update:model-value="emit('update:search', $event == null ? $event : String($event))"
       >
         <template #prepend>
           <q-icon name="ph ph-magnifying-glass" size="16px" class="text-slate-400" />

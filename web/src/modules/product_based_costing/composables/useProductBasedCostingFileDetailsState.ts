@@ -21,7 +21,7 @@ export const fulfillmentStatuses = [
   'delivered',
 ] as const;
 
-export function normalizePbcFileStatus(status: string): string {
+export function normalizePbcFileStatus(status: string | null | undefined): string {
   const st = (status || '').toLowerCase();
   if (st === 'placing_order') return 'procuring';
   if (st === 'invoicing') return 'delivered';

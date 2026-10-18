@@ -420,8 +420,8 @@ export function useDropshipOrderForm(
 
       await updateThanaList(form.district, form.post_code);
 
-      const matchedMerchant = merchants.value.find(
-        (m) => m.merchant_name === form.sender_name || m.phone_primary === form.pickup_phone
+      const matchedMerchant = pickupLocations.value.find(
+        (m) => m.location_name === form.sender_name || m.phone_primary === form.pickup_phone,
       );
       if (matchedMerchant) {
         selectedMerchantId.value = matchedMerchant.id;

@@ -12,13 +12,13 @@
             <TfDrawerSectionTabs
               v-model="arSide"
               :tabs="arSectionTabs"
-              aria-label="Receivable or payable"
+              ariaLabel="Receivable or payable"
               @update:model-value="setArSide"
             />
             <TfDrawerSectionTabs
               v-model="statusPill"
               :tabs="statusSectionTabs"
-              aria-label="Bill status"
+              ariaLabel="Bill status"
               @update:model-value="setStatusPill"
             />
           </div>
@@ -209,11 +209,11 @@ const setArSide = (value: string | number) => {
   arSide.value = value as ArSide;
 };
 
-const onSearchTextUpdate = (value: string) => {
-  searchText.value = value;
+const onSearchTextUpdate = (value: string | null | undefined) => {
+  searchText.value = value ?? '';
   if (searchTimer) clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
-    debouncedSearch.value = value.trim();
+    debouncedSearch.value = (value ?? '').trim();
   }, 300);
 };
 

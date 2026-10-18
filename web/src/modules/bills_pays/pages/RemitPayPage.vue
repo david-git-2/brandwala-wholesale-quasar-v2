@@ -43,7 +43,7 @@
             no-caps
             label="Post remittance"
             :loading="submitting"
-            :disable="!(netAmount > 0)"
+            :disable="!(netAmount != null && netAmount > 0)"
             @click="submit"
           />
         </template>

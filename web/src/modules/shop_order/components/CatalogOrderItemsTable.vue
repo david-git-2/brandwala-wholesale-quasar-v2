@@ -643,7 +643,7 @@ const resolvedVisibleColumns = computed<string[]>(() => {
   mapped.add('status');
 
   props.visibleColumns.forEach((col) => {
-    if (validColumnNames.value.includes(col)) {
+    if (validColumnNames.value.includes(col as (typeof ALL_COLUMN_NAMES)[number])) {
       mapped.add(col);
     } else if (LEGACY_COLUMN_MAPPING[col]) {
       LEGACY_COLUMN_MAPPING[col].forEach((c) => mapped.add(c));

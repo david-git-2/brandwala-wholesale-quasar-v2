@@ -8,6 +8,10 @@ export const STOCK_AVAILABILITY_OPTIONS: Array<{ label: string; value: StockAvai
   { label: 'Unsellable', value: 'unsellable' },
 ];
 
+export const STOCK_AVAILABILITY_LABELS = Object.fromEntries(
+  STOCK_AVAILABILITY_OPTIONS.map((o) => [o.value, o.label]),
+) as Record<StockAvailability, string>;
+
 export const formatStockAvailability = (value: string | null | undefined): string => {
   if (!value) return '—';
   const opt = STOCK_AVAILABILITY_OPTIONS.find((o) => o.value === value);

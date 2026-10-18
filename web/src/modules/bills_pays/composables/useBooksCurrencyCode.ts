@@ -14,7 +14,9 @@ export function useBooksCurrencyCode() {
     const booksTenant =
       tenantStore.availableAdminTenants.find((t) => t.id === booksId) ??
       (selected.parent_id == null ? selected : null);
-    const code = booksTenant?.base_currency_code?.trim().toUpperCase();
+    const code = (booksTenant as { base_currency_code?: string | null } | null)?.base_currency_code
+      ?.trim()
+      .toUpperCase();
     return code && code.length >= 3 ? code : 'BDT';
   });
 }

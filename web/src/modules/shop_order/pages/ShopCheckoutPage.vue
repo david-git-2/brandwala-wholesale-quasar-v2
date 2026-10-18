@@ -678,12 +678,6 @@ watch(
 
 onMounted(async () => {
   await loadLocationData();
-  if (!storefrontStore.shopDetails) {
-    const lastSlug = getLastVisitedShopSlug(authStore.tenantId);
-    if (lastSlug) {
-      await storefrontStore.fetchCatalog(lastSlug, { limit: 1 });
-    }
-  }
 });
 
 const clearEndCustomerDetailsFromPhone = () => {

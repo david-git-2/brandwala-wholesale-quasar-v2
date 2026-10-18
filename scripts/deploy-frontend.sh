@@ -39,6 +39,9 @@ if ! pnpm install --frozen-lockfile; then
   pnpm install
 fi
 
+echo "Regenerating Quasar tsconfig (.quasar) after clean..."
+pnpm --filter web exec quasar prepare
+
 echo "Pre-deploy check 1/3: type-check..."
 if ! NODE_OPTIONS="--max-old-space-size=6144" pnpm --filter web type-check; then
   echo "ERROR: type-check failed. Deploy stopped. Fix the errors above and run again."

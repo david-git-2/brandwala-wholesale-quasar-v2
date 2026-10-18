@@ -1071,7 +1071,7 @@ const addLineFromStock = (row: SalesInvoiceStockItem) => {
   if (row.available_atp <= 0) return;
   const existing = lines.value.find((l) => l.global_stock_id === row.global_stock_id);
   if (existing) {
-    existing.quantity = Math.min(existing.quantity + 1, existing.available_atp);
+    existing.quantity = Math.min(existing.quantity + 1, existing.available_atp ?? 0);
     return;
   }
   lines.value.push({
@@ -1164,7 +1164,7 @@ const buildPayload = () => {
   return {
     invoice: {
       invoice_type: invoiceType,
-      profile_id: profileIdForRpc,
+      profile_id: profileIdForRpc ?? 0,
       invoice_date: invoiceDate.value,
       due_date: dueDate.value || undefined,
       discount_amount: discountAmount.value || 0,

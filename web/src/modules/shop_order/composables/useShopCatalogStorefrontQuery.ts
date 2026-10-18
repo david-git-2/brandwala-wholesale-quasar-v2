@@ -88,7 +88,7 @@ export function useShopCatalogStorefrontInfiniteQuery(
         },
       );
 
-      const rows = (result.data ?? []) as AdminCatalogRow[];
+      const rows = (result.data ?? []) as unknown as AdminCatalogRow[];
 
       return {
         items: rows.map(rowToCatalogStorefrontProduct),

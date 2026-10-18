@@ -3,6 +3,10 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import { resolveProductBasedCostingStorageTenantId } from '../utils/pbcStorageTenantId';
+import {
+  pbcFileBuyCurrencyCode,
+  pbcFileSellCurrencyCode,
+} from '../utils/pbcFileCurrencies';
 import { parseSupabaseError, showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
 import type {
   ProductBasedCostingFile,
@@ -124,6 +128,9 @@ export function useCopyProductBasedCostingFileMutation() {
         item.tenant_id ?? authStore.tenantId,
       );
 
+      if (storageTenantId == null) {
+        throw new Error('Tenant is required to copy a costing file.');
+      }
       const fileCreateResult = await productBasedCostingRepository.createProductBasedCostingFile({
         tenant_id: storageTenantId,
         name: nextName,
@@ -140,6 +147,8 @@ export function useCopyProductBasedCostingFileMutation() {
         status: 'pending',
         buy_currency_id: item.buy_currency_id,
         sell_currency_id: item.sell_currency_id,
+        buy_currency_code: pbcFileBuyCurrencyCode(item),
+        sell_currency_code: pbcFileSellCurrencyCode(item),
       });
 
       if (!fileCreateResult?.id) {

@@ -2,7 +2,7 @@ export type TenantHierarchyKind = 'parent' | 'child' | 'standalone';
 
 type TenantRef = {
   id: number;
-  parent_id: number | null;
+  parent_id?: number | null;
 };
 
 export const isCompanyTenant = (tenant: TenantRef): boolean => tenant.parent_id === null;

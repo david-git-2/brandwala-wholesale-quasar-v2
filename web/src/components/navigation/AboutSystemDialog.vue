@@ -70,7 +70,12 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
 import AppLogoMark from 'src/components/brand/AppLogoMark.vue';
+
+const route = useRoute();
+const isAppTheme = computed(() => !route.path.startsWith('/platform'));
 
 defineProps<{
   modelValue: boolean;

@@ -113,7 +113,7 @@
                   :selected-group-id="selectedCustomerGroupId"
                   :selected-group="selectedCustomerGroup"
                   :sorted-members="sortedCustomerGroupMembers"
-                  :linked-billing-profiles="linkedCustomerProfiles"
+                  :linked-customer-profiles="linkedCustomerProfiles"
                   :shop-roles="shopRoles"
                   :has-cgm-overrides-map="hasCgmOverridesMap"
                   :can-administer-customer-group="canAdministerCustomerGroup"
@@ -716,7 +716,7 @@ const submitLinkProfile = async (profileId: number) => {
       email: profile.email || null,
       phone: profile.phone || null,
       address: profile.address || null,
-      color: profile.color || null,
+      accent_color: profile.accent_color || null,
     },
   });
   if (res.success) {
@@ -733,7 +733,7 @@ const unlinkProfile = async (profile: any) => {
       email: profile.email || null,
       phone: profile.phone || null,
       address: profile.address || null,
-      color: profile.color || null,
+      accent_color: profile.accent_color || null,
     },
   });
 };

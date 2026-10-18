@@ -17,7 +17,7 @@
             <TfDrawerSectionTabs
               v-model="quickAvailability"
               :tabs="availabilitySectionTabs"
-              aria-label="Stock availability"
+              ariaLabel="Stock availability"
               @update:model-value="setQuickAvailability"
             />
             <q-select

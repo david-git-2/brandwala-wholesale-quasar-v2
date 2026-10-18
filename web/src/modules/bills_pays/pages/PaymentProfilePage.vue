@@ -118,6 +118,8 @@ import PayListRow from '../components/PayListRow.vue';
 import ProfilePayDialog from '../components/ProfilePayDialog.vue';
 import { paymentsPageRoute } from '../utils/paymentsNavigation';
 
+import type { PayTransferEntityType } from '../types/payTransferParty';
+
 const ALLOWED_TYPES = new Set(['tenant', 'customer', 'courier', 'vendor']);
 
 const authStore = useAuthStore();
@@ -146,7 +148,7 @@ const booksTenantId = computed(() => {
 const entityType = computed(() => {
   const raw = route.params.entityType;
   const t = typeof raw === 'string' ? raw : '';
-  return ALLOWED_TYPES.has(t) ? t : 'customer';
+  return (ALLOWED_TYPES.has(t) ? t : 'customer') as PayTransferEntityType;
 });
 
 const entityId = computed(() => {

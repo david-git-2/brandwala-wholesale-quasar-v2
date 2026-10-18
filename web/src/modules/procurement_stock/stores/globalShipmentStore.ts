@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { supabase } from 'src/boot/supabase';
 import {
   globalShipmentRepository,
   type FinalizeShipmentResult,
@@ -254,7 +255,10 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
                 boxes: this.currentShipmentBoxes,
               }
             : undefined;
-        this.currentShipmentSummary = await globalShipmentRepository.getShipmentSummary(shipmentId, preload);
+        this.currentShipmentSummary = await globalShipmentRepository.getShipmentSummary(
+          shipmentId,
+          preload as Parameters<typeof globalShipmentRepository.getShipmentSummary>[1],
+        );
         return this.currentShipmentSummary;
       } catch (err: unknown) {
         console.error('Failed to fetch shipment summary', err);

@@ -108,6 +108,7 @@ export type GlobalInvoiceCreated = GlobalInvoiceRow & {
 };
 
 export type GlobalInvoiceDetail = GlobalInvoiceCreated & {
+  document_kind?: string | null;
   ordered_by_party_id: number | null;
   collection_source?: InvoiceCollectionSource | null;
   shipping_charge: number;

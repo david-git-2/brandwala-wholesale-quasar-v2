@@ -21,7 +21,7 @@
             <TfDrawerSectionTabs
               v-model="quickFilter"
               :tabs="quickFilterSectionTabs"
-              aria-label="Filter costing files"
+              ariaLabel="Filter costing files"
               @update:model-value="setQuickFilter"
             />
           </div>
@@ -173,6 +173,10 @@ import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFile
 import CostingFileCard from '../components/CostingFileCard.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import type { ProductBasedCostingFile, ProductBasedCostingFileListInput } from '../types';
+import {
+  PBC_FALLBACK_BUY_CURRENCY_CODE,
+  PBC_FALLBACK_SELL_CURRENCY_CODE,
+} from '../utils/pbcFileCurrencies';
 import { useProductBasedCostingFilesQuery } from '../composables/useProductBasedCostingFilesQuery';
 import {
   useCreateProductBasedCostingFileMutation,
@@ -325,8 +329,10 @@ async function handleDialogSubmit(payload: CostingFileForm) {
       vendor_code: payload.vendor_code,
       market_code: payload.market_code,
       offer_pricing_mode: 'landed_cost_plus',
-      buy_currency_id: payload.buy_currency_id ?? undefined,
-      sell_currency_id: payload.sell_currency_id ?? undefined,
+      buy_currency_id: payload.buy_currency_id ?? 0,
+      sell_currency_id: payload.sell_currency_id ?? 0,
+      buy_currency_code: PBC_FALLBACK_BUY_CURRENCY_CODE,
+      sell_currency_code: PBC_FALLBACK_SELL_CURRENCY_CODE,
     });
   }
 }
@@ -399,10 +405,11 @@ const onDrawerStatusChange = () => {
   onApplyFilters();
 };
 
-const setQuickFilter = (value: string) => {
-  quickFilter.value = value;
-  statusFilter.value = value;
-  draftStatusFilter.value = value;
+const setQuickFilter = (value: string | number) => {
+  const next = String(value);
+  quickFilter.value = next;
+  statusFilter.value = next;
+  draftStatusFilter.value = next;
   onApplyFilters();
 };
 </script>

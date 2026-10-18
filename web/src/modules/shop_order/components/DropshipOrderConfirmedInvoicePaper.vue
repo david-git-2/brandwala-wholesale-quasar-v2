@@ -321,6 +321,7 @@ const syncCodCollectToRecipientTotal = () => {
   summary.value.cod_collect_amount = recipientGrandTotal.value;
 };
 
+type EditableChargeKey = 'delivery' | 'cod' | 'print' | 'packing';
 type NumericChargeKey = 'delivery_charge_amount' | 'cod_charge_amount' | 'print_charge_amount' | 'packing_charge_amount';
 type BooleanChargeKey = 'deduct_delivery_from_margin' | 'deduct_cod_from_margin' | 'deduct_print_from_margin' | 'deduct_packing_from_margin';
 

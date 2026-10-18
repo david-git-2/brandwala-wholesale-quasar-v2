@@ -98,7 +98,7 @@ const docChipIcon = computed(() =>
   props.group.document_type === 'shop_order' ? 'ph ph-receipt' : 'ph ph-clipboard-text',
 );
 
-defineEmits<{
+const emit = defineEmits<{
   'copy-sku': [];
   'copy-barcode': [];
 }>();

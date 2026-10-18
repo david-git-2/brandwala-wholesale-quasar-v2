@@ -134,43 +134,37 @@
       </div>
     </template>
 
-    <div
-      v-else-if="paper?.paper === 'vendor' || paper?.paper === 'material'"
-      class="column q-gutter-y-sm"
-    >
+    <div v-else-if="legacyForeignPaper" class="column q-gutter-y-sm">
       <div class="ap-bill-row">
         <span class="text-grey-7">Product invoice total</span>
-        <span class="font-mono text-weight-medium">{{ formatForeign(paper.foreign_amount) }}</span>
+        <span class="font-mono text-weight-medium">{{ formatForeign(legacyForeignPaper.foreign_amount) }}</span>
       </div>
       <div class="ap-bill-row">
         <span class="text-grey-7">Conversion rate</span>
-        <span class="font-mono">{{ formatRate(paper.conversion_rate) }}</span>
+        <span class="font-mono">{{ formatRate(legacyForeignPaper.conversion_rate) }}</span>
       </div>
       <div class="ap-bill-row text-weight-bold">
         <span>Amount (BDT)</span>
-        <span class="font-mono">{{ formatAmountBdt(paper.bdt_amount) }}</span>
+        <span class="font-mono">{{ formatAmountBdt(legacyForeignPaper.bdt_amount) }}</span>
       </div>
     </div>
 
-    <div
-      v-else-if="paper?.paper === 'cargo' || paper?.paper === 'freight'"
-      class="column q-gutter-y-sm"
-    >
+    <div v-else-if="legacyFreightPaper" class="column q-gutter-y-sm">
       <div class="ap-bill-row">
         <span class="text-grey-7">Total weight</span>
-        <span class="font-mono">{{ formatWeight(paper.weight_kg) }}</span>
+        <span class="font-mono">{{ formatWeight(legacyFreightPaper.weight_kg) }}</span>
       </div>
       <div class="ap-bill-row">
         <span class="text-grey-7">Cargo invoice price</span>
-        <span class="font-mono text-weight-medium">{{ formatForeign(paper.price) }}</span>
+        <span class="font-mono text-weight-medium">{{ formatForeign(legacyFreightPaper.price) }}</span>
       </div>
       <div class="ap-bill-row">
         <span class="text-grey-7">Conversion rate</span>
-        <span class="font-mono">{{ formatRate(paper.conversion_rate) }}</span>
+        <span class="font-mono">{{ formatRate(legacyFreightPaper.conversion_rate) }}</span>
       </div>
       <div class="ap-bill-row text-weight-bold">
         <span>Amount (BDT)</span>
-        <span class="font-mono">{{ formatAmountBdt(paper.bdt_amount) }}</span>
+        <span class="font-mono">{{ formatAmountBdt(legacyFreightPaper.bdt_amount) }}</span>
       </div>
     </div>
 
@@ -188,6 +182,8 @@ import type {
   ApBillPaperLine,
   ApBillPaperSnapshot,
   ApBillPaperBucketLines,
+  ApBillPaperForeignTotal,
+  ApBillPaperFreight,
 } from '../types/apBillPaper';
 import { apBillCurrencyGroups, parseApBillPaper } from '../utils/parseApBillPaper';
 import type { BillAdjustmentDraftRow } from '../utils/billAdjustmentParentLines';
@@ -214,6 +210,22 @@ const linePaper = computed((): ApBillPaperBucketLines | null => {
   const p = paper.value;
   if (!p || !('lines' in p) || !Array.isArray(p.lines)) return null;
   return p as ApBillPaperBucketLines;
+});
+
+const legacyForeignPaper = computed((): ApBillPaperForeignTotal | null => {
+  const p = paper.value;
+  if (p && 'foreign_amount' in p && typeof (p as { foreign_amount?: unknown }).foreign_amount === 'number') {
+    return p as ApBillPaperForeignTotal;
+  }
+  return null;
+});
+
+const legacyFreightPaper = computed((): ApBillPaperFreight | null => {
+  const p = paper.value;
+  if (p && 'price' in p && typeof (p as { price?: unknown }).price === 'number') {
+    return p as ApBillPaperFreight;
+  }
+  return null;
 });
 
 const currencyGroups = computed(() => apBillCurrencyGroups(props.channelMeta));

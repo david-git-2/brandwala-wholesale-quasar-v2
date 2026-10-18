@@ -158,8 +158,8 @@ export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManage
 
   const orderRaw = (payload.order ?? {}) as Record<string, unknown>;
   const computedRaw = (payload.computed ?? {}) as Record<string, unknown>;
-  const settlementRaw = (payload.settlement ?? {}) as Record<string, unknown>;
-  const stepRaw = (payload.step_state ?? {}) as Record<string, unknown>;
+  const settlementRaw = (payload.settlement ?? {}) as unknown as Record<string, unknown>;
+  const stepRaw = (payload.step_state ?? {}) as unknown as Record<string, unknown>;
   const fulfillmentRaw = (payload.fulfillment ?? {}) as Record<string, unknown>;
 
   const chargeLinesRaw = mapChargeLines(settlementRaw.charge_lines);

@@ -318,7 +318,7 @@ const { addItemMutation, updateQtyMutation } = useShopCartMutations();
 const shopName = computed(() => shopDetails.value?.name || shopSlug.value);
 const shopType = computed(() => shopDetails.value?.shop_type ?? null);
 const showFixedPriceChip = computed(() =>
-  isFixedPriceCatalog(shopType.value, permissions.value?.can_negotiate),
+  isFixedPriceCatalog(shopType.value, permissions.value?.can_negotiate === true),
 );
 
 const showProductUnitPrice = computed(() => {
@@ -328,7 +328,9 @@ const showProductUnitPrice = computed(() => {
   return !!permissions.value?.can_see_buy_price;
 });
 
-const showRelatedUnitPrice = (item: { unit_price_amount?: number | null }) => {
+const showRelatedUnitPrice = (item: {
+  unit_price_amount?: number | string | null;
+}) => {
   if (item.unit_price_amount == null) return false;
   if (shopType.value === 'vendor_catalog') return !!permissions.value?.can_see_buy_price;
   return !!permissions.value?.can_see_buy_price;
@@ -392,8 +394,11 @@ watch(
   { immediate: true },
 );
 
-function formatMoney(amount?: number | null, symbol?: string | null): string {
-  if (amount == null || Number.isNaN(amount)) return '-';
+function formatMoney(
+  amount?: number | string | null,
+  symbol?: string | null,
+): string {
+  if (amount == null || Number.isNaN(Number(amount))) return '-';
   const sym = symbol?.trim() || '৳';
   const formatted = Number(amount).toLocaleString('en-US', {
     minimumFractionDigits: 2,

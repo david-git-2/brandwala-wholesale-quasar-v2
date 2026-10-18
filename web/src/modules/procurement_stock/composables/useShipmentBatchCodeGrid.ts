@@ -88,6 +88,7 @@ const normalizePayload = (row: DraftRow | SavedRowDraft) => {
     batch_id: row.batch_id?.trim() || null,
     manufacturing_date: manufacturingDate,
     expire_date: expireDate,
+    is_arrived: false,
   };
 };
 

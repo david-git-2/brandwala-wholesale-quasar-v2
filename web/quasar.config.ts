@@ -98,6 +98,8 @@ export default defineConfig((ctx) => {
         extendTsConfig(tsConfig) {
           if (tsConfig.compilerOptions) {
             tsConfig.compilerOptions.noImplicitAny = false;
+            tsConfig.compilerOptions.exactOptionalPropertyTypes = false;
+            tsConfig.compilerOptions.noUncheckedIndexedAccess = false;
           }
         },
       },

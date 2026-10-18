@@ -561,12 +561,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import type {
-  CostEntryDraft,
-  CostEntriesSavePayload,
-  GlobalShipmentCostEntry,
+import { computed, ref, shallowRef, watch } from 'vue';
+import {
+  CARGO_COST_BUCKET,
+  PRODUCT_COST_BUCKET,
+  type CostEntryDraft,
+  type CostEntriesSavePayload,
+  type GlobalShipmentCostBucket,
+  type GlobalShipmentCostEntry,
 } from '../types/shipmentCostEntry';
+
+function pickCostDraftsByBucket(
+  rows: CostEntryDraft[],
+  bucket: GlobalShipmentCostBucket,
+): CostEntryDraft[] {
+  const out: CostEntryDraft[] = [];
+  for (const row of rows) {
+    if (row.cost_bucket === bucket) out.push(row);
+  }
+  return out;
+}
 import type { ShipmentSection } from '../types/shipmentSection';
 import { showErrorNotification, showSuccessNotification, showWarningNotification } from 'src/utils/appFeedback';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
@@ -601,7 +615,7 @@ const shipmentStore = useGlobalShipmentStore();
 const isStockPosted = computed(() => props.isStockPosted ?? props.isFinalized);
 const isCostsLocked = computed(() => props.isCostsLocked ?? false);
 
-const drafts = ref<CostEntryDraft[]>([]);
+const drafts = shallowRef<CostEntryDraft[]>([]);
 const localWeightKg = ref<number>(
   props.cargoKg > 0 ? Math.round(props.cargoKg * 100) / 100 : 0,
 );
@@ -610,7 +624,17 @@ const showDistributeDialog = ref(false);
 const applyingDistribution = ref(false);
 
 const sections = computed(() => shipmentStore.currentShipmentSections || []);
-const shipmentItems = computed(() => shipmentStore.currentShipmentItems || []);
+const shipmentItems = computed(
+  () =>
+    (shipmentStore.currentShipmentItems || []) as Array<{
+      id: number;
+      name: string;
+      section_id?: number | null;
+      purchase_price?: number | null;
+      ordered_quantity?: number | null;
+      weight?: number | null;
+    }>,
+);
 
 const sectionInvoiceInputs = ref<Record<number, number>>({});
 const balancingSectionId = ref<number | null>(null);
@@ -713,13 +737,10 @@ const confirmSectionBalance = async () => {
     // Sync input to target
     sectionInvoiceInputs.value[secId] = Math.round(target * 100) / 100;
 
-    const secName =
-      activeBalanceSection.value?.title ||
-      (activeBalanceSection.value as any)?.name ||
-      `Section #${secId}`;
-    showSuccessNotification(
-      `Section "${secName}" prices successfully balanced to ${target.toFixed(2)} ${props.purchaseCurrencySymbol}.`,
-    );
+    const sectionTitle = activeBalanceSection.value?.title?.trim();
+    const secName: string = sectionTitle || `Section #${secId}`;
+    const balanceMessage = `Section "${secName}" prices successfully balanced to ${target.toFixed(2)} ${props.purchaseCurrencySymbol}.`;
+    showSuccessNotification(balanceMessage);
     showSectionBalanceDialog.value = false;
   } catch (err: unknown) {
     showErrorNotification((err as Error).message || 'Failed to balance section.');
@@ -728,8 +749,8 @@ const confirmSectionBalance = async () => {
   }
 };
 
-const productRows = computed(() => drafts.value.filter((d) => d.cost_bucket === 'material'));
-const cargoRows = computed(() => drafts.value.filter((d) => d.cost_bucket === 'freight'));
+const productRows = computed(() => pickCostDraftsByBucket(drafts.value, PRODUCT_COST_BUCKET));
+const cargoRows = computed(() => pickCostDraftsByBucket(drafts.value, CARGO_COST_BUCKET));
 
 const getSectionCalculatedPurchase = (sectionId?: number | null) => {
   const items = shipmentItems.value;

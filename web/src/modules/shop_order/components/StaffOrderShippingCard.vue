@@ -29,7 +29,7 @@ const copyToClipboard = (text: string | null | undefined, label: string) => {
 const copyAllShippingDetails = () => {
   const o = props.order;
   if (!o) return;
-  const parts = [];
+  const parts: string[] = [];
   if (o.recipient_name) parts.push(`Name: ${o.recipient_name}`);
   if (o.recipient_phone) parts.push(`Phone: ${o.recipient_phone}`);
   if (o.shipping_address) parts.push(`Address: ${o.shipping_address}`);

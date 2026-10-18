@@ -70,10 +70,8 @@ export function hasDisplayableCatalogPrice(price: ShopCatalogPrice | null | unde
   return amount != null && amount > 0;
 }
 
-type CatalogPriceFields = Pick<
-  ShopCatalogItem,
-  'unit_price' | 'sell_price' | 'resell_minimum_price'
-> & {
+type CatalogPriceFields = Pick<ShopCatalogItem, 'unit_price' | 'sell_price'> &
+  Partial<Pick<ShopCatalogItem, 'resell_minimum_price'>> & {
   unit_price_amount?: number | string | null;
   unit_price_currency_id?: number | null;
   unit_price_currency_code?: string | null;
@@ -208,7 +206,7 @@ export function formatStorefrontCardPrice(
   formatMoney: (amount: unknown, symbol?: string | null) => string,
 ): string | null {
   const sell = coerceCatalogPrice(item.sell_price);
-  if (sell && sell.amount > 0) {
+  if (sell && (sell.amount ?? 0) > 0) {
     return formatMoney(sell.amount, sell.symbol ?? sell.code);
   }
 
@@ -218,7 +216,7 @@ export function formatStorefrontCardPrice(
     item.unit_price_currency_code,
     item.unit_price_currency_symbol,
   );
-  if (unit && unit.amount > 0) {
+  if (unit && (unit.amount ?? 0) > 0) {
     return formatMoney(unit.amount, unit.symbol ?? unit.code);
   }
 
@@ -230,15 +228,15 @@ export function formatStorefrontCardMinPrice(
   formatMoney: (amount: unknown, symbol?: string | null) => string,
 ): string | null {
   const resell = coerceCatalogPrice(item.resell_minimum_price);
-  if (!resell || resell.amount <= 0) return null;
+  if (!resell || (resell.amount ?? 0) <= 0) return null;
   return formatMoney(resell.amount, resell.symbol ?? resell.code);
 }
 
 export function storefrontCardPriceLabelKey(item: CatalogPriceFields): string | null {
   const sell = coerceCatalogPrice(item.sell_price);
-  if (sell && sell.amount > 0) return 'shop.sell_price';
+  if (sell && (sell.amount ?? 0) > 0) return 'shop.sell_price';
   const unit = coerceCatalogPrice(item.unit_price);
-  if (unit && unit.amount > 0) return 'shop.unit_price';
+  if (unit && (unit.amount ?? 0) > 0) return 'shop.unit_price';
   return null;
 }
 

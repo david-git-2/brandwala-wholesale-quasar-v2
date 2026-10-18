@@ -33,7 +33,7 @@ export function useDropshipFinanceHubMutations(tenantId: { value: number | null 
       courierCharge?: number;
       remittanceRef?: string;
       bankTrxId?: string;
-      cashbookPointId: number;
+      cashbookPointId?: number;
     }) => dropshipFinanceRepository.confirmCourierRemittance(params),
     onSuccess: (data) => {
       showSuccessNotification(data.message || 'Courier remittance confirmed successfully');

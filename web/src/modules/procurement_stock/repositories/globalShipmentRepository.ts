@@ -50,6 +50,8 @@ export interface ShipmentProgressFlowStage {
 
 export interface GlobalShipment {
   id: number;
+  /** Tenant-scoped display number when assigned. */
+  tenant_shipment_id?: number | null;
   parent_tenant_id: number;
   vendor_id: number;
   vendor_name?: string | null;
@@ -110,6 +112,8 @@ export interface GlobalShipmentItem {
   package_weight: number;
   barcode: string | null;
   product_code: string | null;
+  style_code?: string | null;
+  sku?: string | null;
   source_child_tenant_id: number | null;
   source_type: string | null;
   source_id: number | null;

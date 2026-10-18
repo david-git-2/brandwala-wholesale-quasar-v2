@@ -11,7 +11,7 @@
           <TfDrawerSectionTabs
             v-model="entityType"
             :tabs="typeSectionTabs"
-            aria-label="Cashbook party type"
+            ariaLabel="Cashbook party type"
             @update:model-value="setEntityType"
           />
         </template>
@@ -139,11 +139,11 @@ watch([entityType, debouncedSearch], () => {
 });
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
-const onSearchTextUpdate = (value: string) => {
-  searchText.value = value;
+const onSearchTextUpdate = (value: string | null | undefined) => {
+  searchText.value = value ?? '';
   if (searchTimer) clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
-    debouncedSearch.value = value.trim();
+    debouncedSearch.value = (value ?? '').trim();
   }, 300);
 };
 

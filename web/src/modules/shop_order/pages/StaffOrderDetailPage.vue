@@ -137,7 +137,7 @@
       v-if="currentOrder && currentOrder.profile_id"
       v-model="showBacklogDrawer"
       :tenant-id="currentOrder.tenant_id"
-      :billing-profile-id="currentOrder.profile_id"
+      :profile-id="currentOrder.profile_id"
     />
 
     <CatalogOrderSettingsDialog
@@ -860,6 +860,12 @@ const EMPTY_CATALOG_TOTALS = {
   overallFinalOfferMargin: 0,
 };
 
+const readCatalogTableField = <T,>(v: T | { value: T } | undefined, fallback: T): T => {
+  if (v === undefined || v === null) return fallback;
+  if (typeof v === 'object' && 'value' in (v as object)) return (v as { value: T }).value;
+  return v as T;
+};
+
 const catalogSummarySnapshot = computed(() => {
   const table = catalogItemsTableRef.value as {
     itemCount?: number | { value: number };
@@ -871,12 +877,12 @@ const catalogSummarySnapshot = computed(() => {
   } | null;
 
   return {
-    itemCount: Number(unref(table?.itemCount) ?? 0),
-    buyCurrencySymbol: String(unref(table?.buyCurrency) ?? buyCurrencySymbol.value),
-    sellCurrencySymbol: String(unref(table?.sellCurrency) ?? currencySymbol.value),
-    conversionRate: Number(unref(table?.FX) ?? 0),
-    cargoRate: Number(unref(table?.cargoRate) ?? 0),
-    totals: unref(table?.summaryTotals) ?? EMPTY_CATALOG_TOTALS,
+    itemCount: Number(readCatalogTableField(table?.itemCount, 0)),
+    buyCurrencySymbol: String(readCatalogTableField(table?.buyCurrency, buyCurrencySymbol.value)),
+    sellCurrencySymbol: String(readCatalogTableField(table?.sellCurrency, currencySymbol.value)),
+    conversionRate: Number(readCatalogTableField(table?.FX, 0)),
+    cargoRate: Number(readCatalogTableField(table?.cargoRate, 0)),
+    totals: readCatalogTableField(table?.summaryTotals, EMPTY_CATALOG_TOTALS),
   };
 });
 

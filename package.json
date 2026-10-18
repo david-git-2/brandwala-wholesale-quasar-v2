@@ -8,6 +8,7 @@
     "build": "pnpm --filter web build",
     "lint": "pnpm --filter web lint",
     "type-check": "pnpm --filter web type-check",
+    "frontend:check": "pnpm --filter web exec quasar prepare && NODE_OPTIONS=--max-old-space-size=6144 pnpm --filter web type-check && pnpm --filter web lint",
     "perf-budget": "pnpm --filter web run perf-budget",
     "check:contrast": "node scripts/check-contrast.mjs",
     "check:ui-colors": "node scripts/check-ui-colors.mjs",

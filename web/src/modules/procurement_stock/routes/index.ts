@@ -24,7 +24,7 @@ const PROCUREMENT_OVERVIEW_MODULE_KEYS = [
   'inventory',
 ] as const satisfies readonly ModuleKey[];
 
-const procurementOverviewGuard: NavigationGuard = (to, from, next) => {
+const procurementOverviewGuard: NavigationGuard = async (to, _from, next) => {
   const authStore = useAuthStore();
   const hasAnyProcurementAccess = PROCUREMENT_OVERVIEW_MODULE_KEYS.some((moduleKey) =>
     canAccessModule({
@@ -44,7 +44,16 @@ const procurementOverviewGuard: NavigationGuard = (to, from, next) => {
     return;
   }
 
-  return guard('global_shipment')(to, from, next);
+  const result = await guard('global_shipment')(to);
+  if (result === true) {
+    next();
+    return;
+  }
+  if (result === false) {
+    next(false);
+    return;
+  }
+  next(result);
 };
 
 const withTenantSlug = (to: { params: { tenantSlug?: string | string[] } }, path: string) => {

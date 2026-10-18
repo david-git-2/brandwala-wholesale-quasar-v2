@@ -23,7 +23,10 @@ export function useCustomerProfilesQuery(
 
   return useQuery({
     queryKey: computed(() =>
-      salesInvoiceQueryKeys.customerProfiles(tenantId.value ?? null, queryParams.value)
+      salesInvoiceQueryKeys.customerProfiles(
+        tenantId.value ?? null,
+        queryParams.value as Record<string, unknown>,
+      )
     ),
     queryFn: () => {
       if (!tenantId.value) return { data: [], meta: { total: 0, page: 1, page_size: 1000, total_pages: 1 } };

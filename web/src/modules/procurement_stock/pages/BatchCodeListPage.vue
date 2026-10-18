@@ -4,7 +4,7 @@
       <q-banner v-if="error" class="tf-status-banner bg-negative text-white q-mb-xs shrink-0">
         <div class="row items-center justify-between q-gutter-sm full-width">
           <div>{{ error }}</div>
-          <q-btn flat dense no-caps color="white" label="Retry" @click="load" />
+          <q-btn flat dense no-caps color="white" label="Retry" @click="() => void load()" />
         </div>
       </q-banner>
 

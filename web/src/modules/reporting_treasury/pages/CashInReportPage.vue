@@ -274,6 +274,14 @@ const router = useRouter();
 const { tenantSlug } = storeToRefs(useAuthStore());
 const searchText = ref('');
 
+function openInvoice(invoiceId: number | null | undefined) {
+  if (!invoiceId) return;
+  void router.push({
+    name: 'app-global-invoice-details-page',
+    params: { tenantSlug: tenantSlug.value || 'tenant', id: invoiceId },
+  });
+}
+
 const {
   entries,
   allEntries,

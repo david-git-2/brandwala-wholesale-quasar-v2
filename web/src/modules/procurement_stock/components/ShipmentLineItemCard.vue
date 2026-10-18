@@ -328,7 +328,7 @@
                   active-class="line-card__outcome-menu-chip--picked"
                   class="line-card__outcome-menu-chip"
                   :class="reasonChipClass(opt.value)"
-                  @click="emit('update-extra', row.id, { reason: opt.value })"
+                  @click="emit('update-extra', row.id, { reason: opt.value as ShipmentItemOutcome['reason'] })"
                 >
                   <q-item-section>{{ opt.label }}</q-item-section>
                 </q-item>

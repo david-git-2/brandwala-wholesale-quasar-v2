@@ -11,7 +11,7 @@
           <TfDrawerSectionTabs
             v-model="entityTab"
             :tabs="typeSectionTabs"
-            aria-label="Payment profile type"
+            ariaLabel="Payment profile type"
             @update:model-value="setEntityTab"
           />
         </template>
@@ -135,11 +135,11 @@ const setEntityTab = (value: string | number) => {
 void loadRows();
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
-const onSearchTextUpdate = (value: string) => {
-  searchText.value = value;
+const onSearchTextUpdate = (value: string | null | undefined) => {
+  searchText.value = value ?? '';
   if (searchTimer) clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
-    debouncedSearch.value = value.trim();
+    debouncedSearch.value = (value ?? '').trim();
   }, 300);
 };
 

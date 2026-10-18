@@ -245,7 +245,8 @@ const resolveProductScopeTenantId = async (tenantId: number): Promise<number> =>
 };
 
 const applyKeysetCursorFilter = (
-  query: ReturnType<typeof supabase.from>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any,
   cursor: ProductListCursor,
   ascending: boolean,
 ) => {

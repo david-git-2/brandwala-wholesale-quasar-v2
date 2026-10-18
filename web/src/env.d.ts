@@ -1,20 +1,5 @@
 /// <reference types="vite/client" />
 
-declare module 'vue' {
-  interface ComponentCustomProperties {
-    $notify: import('src/utils/tfNotify').TfNotifyApi;
-  }
-}
-
-declare module 'vue-router' {
-  interface RouteMeta {
-    breadcrumb?: string;
-    headerTitle?: string;
-    title?: string;
-    hasPageToolbar?: boolean;
-  }
-}
-
 interface ImportMetaEnv {
   readonly VITE_APP_VERSION?: string;
 }

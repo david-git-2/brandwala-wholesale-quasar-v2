@@ -83,7 +83,7 @@ const normalizeCartRpcResult = async (
     fetchPermissions && raw.cart?.shop_id
       ? await fetchCustomerShopPermissions(raw.cart.shop_id)
       : null;
-  const normalized = normalizeCartResponse(raw, permissions);
+  const normalized = normalizeCartResponse(raw as unknown as Parameters<typeof normalizeCartResponse>[0], permissions);
 
   if (!fetchPermissions) {
     return {

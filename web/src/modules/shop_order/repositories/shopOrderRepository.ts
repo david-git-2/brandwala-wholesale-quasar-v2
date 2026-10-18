@@ -69,7 +69,7 @@ const getShop = async (shopId: number, tenantId: number): Promise<Shop> => {
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error('Shop not found.');
-  const row = data as ShopDetailRow;
+  const row = data as unknown as ShopDetailRow;
   const { tenant, ...shop } = row;
   return {
     ...shop,

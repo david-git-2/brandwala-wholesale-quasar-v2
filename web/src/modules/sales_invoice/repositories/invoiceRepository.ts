@@ -58,24 +58,20 @@ const attachBillSourceContextLabels = async (rows: GlobalInvoiceRow[]): Promise<
     ),
   ];
 
-  const shopOrderQueries: Promise<{ data: unknown; error: unknown }>[] = [
-    supabase
-      .from('shop_orders')
-      .select('id, order_no, name, global_invoice_id')
-      .in('global_invoice_id', billIds),
-  ];
-  if (shopOrderIds.length) {
-    shopOrderQueries.push(
-      supabase
+  const ordersByInvoicePromise = supabase
+    .from('shop_orders')
+    .select('id, order_no, name, global_invoice_id')
+    .in('global_invoice_id', billIds);
+  const ordersByIdPromise = shopOrderIds.length
+    ? supabase
         .from('shop_orders')
         .select('id, order_no, name, global_invoice_id')
-        .in('id', shopOrderIds),
-    );
-  }
+        .in('id', shopOrderIds)
+    : Promise.resolve({ data: [] as unknown[], error: null });
 
   const [ordersByInvoiceRes, ordersByIdRes, pbcRes] = await Promise.all([
-    shopOrderQueries[0],
-    shopOrderIds.length ? shopOrderQueries[1] : Promise.resolve({ data: [], error: null }),
+    ordersByInvoicePromise,
+    ordersByIdPromise,
     supabase
       .from('product_based_costing_files')
       .select('id, name, order_for, invoice_id')

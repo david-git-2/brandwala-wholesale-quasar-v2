@@ -13,7 +13,7 @@
       <TfDrawerSectionTabsHeader
         v-model="activeTab"
         :tabs="settingsTabs"
-        aria-label="Shipment settings sections"
+        ariaLabel="Shipment settings sections"
       >
         <template #trailing>
           <q-btn
@@ -582,7 +582,7 @@
               <TfDrawerSectionTabs
                 v-model="costBucketFilter"
                 :tabs="costBucketSectionTabs"
-                aria-label="Filter cost lines by bucket"
+                ariaLabel="Filter cost lines by bucket"
                 count-visibility="positive"
               />
 
@@ -1507,6 +1507,7 @@ const addCostDialogCurrencySymbol = computed(() =>
   costRowCurrencySymbol({
     localKey: '',
     dbId: null,
+    cost_bucket: costBucketFilter.value,
     ...addCostForm.value,
   }),
 );

@@ -274,7 +274,7 @@ const onDrawerToggle = (open: boolean) => {
 const onGradeChange = (gradeId: number) => {
   const g = gradeOptions.value.find((opt) => opt.id === gradeId);
   if (!g) return;
-  const mapped = g.metadata?.maps_to_availability;
+  const mapped = g.metadata?.maps_to_availability as StockAvailability | undefined;
   if (mapped === 'unsellable' || mapped === 'held' || mapped === 'sellable') {
     targetAvailability.value = mapped;
   }

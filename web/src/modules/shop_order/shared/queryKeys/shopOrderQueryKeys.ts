@@ -39,7 +39,7 @@ export const shopOrderQueryKeys = {
   staffProductSearch: (params: {
     tenantId: number;
     shopId: number;
-    scope: 'shop_listings' | 'tenant_products';
+    scope: 'shop_listings' | 'tenant_products' | 'warehouse_stock';
     search: string;
     limit?: number;
   }) => ['shopOrder', 'staffProductSearch', params] as const,

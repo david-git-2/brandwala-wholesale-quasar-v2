@@ -32,7 +32,7 @@ const REFERENCE_OVERVIEW_MODULE_KEYS = [
   'global_reference_unit_of_measure',
 ] as const satisfies readonly ModuleKey[];
 
-const referenceOverviewGuard: NavigationGuard = (to, from, next) => {
+const referenceOverviewGuard: NavigationGuard = async (to, _from, next) => {
   const authStore = useAuthStore();
   const hasAnyReferenceAccess = REFERENCE_OVERVIEW_MODULE_KEYS.some((moduleKey) =>
     canAccessModule({
@@ -52,7 +52,16 @@ const referenceOverviewGuard: NavigationGuard = (to, from, next) => {
     return;
   }
 
-  return appGuard('global_reference_currency')(to, from, next);
+  const result = await appGuard('global_reference_currency')(to);
+  if (result === true) {
+    next();
+    return;
+  }
+  if (result === false) {
+    next(false);
+    return;
+  }
+  next(result);
 };
 
 const globalReferenceRoutes: RouteRecordRaw[] = [

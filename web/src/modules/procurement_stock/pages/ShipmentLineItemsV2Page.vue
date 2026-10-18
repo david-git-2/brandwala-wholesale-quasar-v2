@@ -652,6 +652,7 @@ import {
   requestConfirmation,
   showErrorNotification,
   showSuccessNotification,
+  showWarningNotification,
 } from 'src/utils/appFeedback';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
@@ -799,6 +800,11 @@ const {
   downloadExcel,
   startReceiveFlow,
 } = actions;
+
+const showReceivePostStock = computed(() => {
+  const status = shipmentStore.currentShipment?.status;
+  return status === 'in_transit' && !isStockPosted.value;
+});
 
 // In-Place Shipment Name Edit State
 const isEditingName = ref(false);
@@ -1713,7 +1719,7 @@ const vendorDiscountExtras = computed(() => {
 });
 
 const openVendorDiscount = (item: Record<string, unknown>) => {
-  vendorDiscountLine.value = item as GlobalShipmentItem;
+  vendorDiscountLine.value = item as unknown as GlobalShipmentItem;
   vendorDiscountDialogOpen.value = true;
 };
 
@@ -1752,26 +1758,23 @@ const onVendorDiscountSubmit = async (payload: {
   }
 };
 
-const addExtraOutcome = async (item: {
-  id: number;
-  purchase_price: number;
-  landed_cost_bdt?: number | null;
-  unitCost?: number;
-}) => {
-  addingExtraItemId.value = item.id;
+const addExtraOutcome = async (item: Record<string, unknown>) => {
+  const id = Number(item.id);
+  if (!Number.isFinite(id)) return;
+  addingExtraItemId.value = id;
   try {
     const created = await globalShipmentRepository.createShipmentItemOutcome({
       parent_tenant_id: resolveBatchParentTenantId(),
-      shipment_item_id: item.id,
+      shipment_item_id: id,
       quantity: 0,
       kind: 'sellable',
       reason: 'general',
       purchase_price: Number(item.purchase_price) || 0,
-      cost: item.landed_cost_bdt ?? item.unitCost ?? null,
+      cost: (item.landed_cost_bdt ?? item.unitCost ?? null) as number | null,
     });
     extraOutcomesByItemId.value = {
       ...extraOutcomesByItemId.value,
-      [item.id]: [...(extraOutcomesByItemId.value[item.id] ?? []), created],
+      [id]: [...(extraOutcomesByItemId.value[id] ?? []), created],
     };
   } catch (err) {
     showErrorNotification((err as Error).message || 'Could not add price');
@@ -1791,7 +1794,7 @@ const updateExtraOutcome = async (id: number, patch: Partial<ShipmentItemOutcome
   }
   try {
     const updated = await globalShipmentRepository.updateShipmentItemOutcome(id, patch, {
-      shipmentId: shipmentId.value,
+      shipmentId,
     });
     const list = extraOutcomesByItemId.value[updated.shipment_item_id] ?? [];
     extraOutcomesByItemId.value = {
@@ -1931,14 +1934,15 @@ const onAddBatchFromDialog = async (payload: { batch_id: string; expire_date: st
   }
 };
 
-const openBatchCodeDialog = (item: {
-  name: string;
-  barcode?: string | null;
-  product_code?: string | null;
-}) => {
+const openBatchCodeDialog = (item: Record<string, unknown>) => {
+  const name = typeof item.name === 'string' ? item.name : '';
   if (!shipmentLineHasBatchCodes(item)) return;
-  batchCodeDialogLine.value = item;
-  batchCodeDialogProductName.value = item.name;
+  batchCodeDialogLine.value = {
+    name,
+    barcode: (item.barcode as string | null | undefined) ?? null,
+    product_code: (item.product_code as string | null | undefined) ?? null,
+  };
+  batchCodeDialogProductName.value = name;
   batchCodeDialogOpen.value = true;
 };
 

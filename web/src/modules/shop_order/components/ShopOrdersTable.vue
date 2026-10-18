@@ -171,7 +171,7 @@ const columns = computed(() => {
     { name: 'items', label: t('shop_admin.items_label', 'Items'), field: 'item_count', align: 'right', sortable: true },
     { name: 'pricing_mode', label: t('shop_admin.col_pricing_mode', 'Mode'), field: 'is_negotiable_snapshot', align: 'center', sortable: true },
     { name: 'status', label: t('shop_admin.status', 'Status'), field: 'status', align: 'center', sortable: true },
-    { name: 'actions', label: '', field: 'actions', align: 'right' },
+    { name: 'actions', label: '', field: 'actions', align: 'right', sortable: false },
   );
 
   return cols as any[];

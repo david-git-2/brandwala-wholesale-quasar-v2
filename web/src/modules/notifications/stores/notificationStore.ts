@@ -257,7 +257,7 @@ export const useNotificationStore = defineStore('notifications', {
             this.scheduleRefresh(tenantId);
           },
         )
-        .subscribe();
+        .subscribe() as RealtimeChannel;
 
       this.visibilityHandler = () => {
         if (document.visibilityState !== 'visible') return;
@@ -274,7 +274,7 @@ export const useNotificationStore = defineStore('notifications', {
         refreshTimer = null;
       }
       if (this.channel) {
-        void supabase.removeChannel(this.channel);
+        void supabase.removeChannel(this.channel as unknown as RealtimeChannel);
         this.channel = null;
       }
 

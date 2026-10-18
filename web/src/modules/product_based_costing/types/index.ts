@@ -87,6 +87,10 @@ export interface ProductBasedCostingItem {
   product_weight: number | null;
   package_weight: number | null;
   offer_price: number | null;
+  profit_rate?: number | null;
+  website?: string | null;
+  /** Alias used in shared preview UI. */
+  confirmed_qty?: number | null;
   is_offer_price_manual?: boolean | null;
   status: string | null;
   input_type?: 'manual' | 'product_list' | null;

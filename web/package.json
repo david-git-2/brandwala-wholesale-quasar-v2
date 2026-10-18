@@ -15,7 +15,7 @@
     "build:analyze": "PERF_ANALYZE=1 node ../scripts/check-contrast.mjs && quasar build",
     "check:contrast": "node ../scripts/check-contrast.mjs",
     "check:ui-colors": "node ../scripts/check-ui-colors.mjs",
-    "type-check": "vue-tsc --noEmit",
+    "type-check": "NODE_OPTIONS=--max-old-space-size=6144 vue-tsc --noEmit",
     "perf-budget": "node scripts/perf-budget.mjs",
     "postinstall": "quasar prepare"
   },

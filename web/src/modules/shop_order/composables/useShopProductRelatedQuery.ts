@@ -32,8 +32,11 @@ export function useShopProductRelatedQuery(
         limit,
       );
 
-      if (!result.success || !result.data) {
+      if (!result.success) {
         throw new Error(result.error || 'Failed to fetch related products.');
+      }
+      if (!result.data) {
+        throw new Error('Failed to fetch related products.');
       }
 
       return result.data;

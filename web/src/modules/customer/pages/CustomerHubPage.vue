@@ -239,8 +239,12 @@ const tablePagination = computed({
   },
 });
 
-const onTableRequest = (props: { pagination: { page: number; rowsPerPage: number } }) => {
-  tablePagination.value = props.pagination;
+const onTableRequest: QTableProps['onRequest'] = (props) => {
+  tablePagination.value = {
+    page: props.pagination.page,
+    rowsPerPage: props.pagination.rowsPerPage,
+    rowsNumber: props.pagination.rowsNumber ?? totalCustomers.value,
+  };
 };
 
 const applySearch = () => {

@@ -6,7 +6,7 @@ import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
 
 const CUSTOMER_OVERVIEW_MODULE_KEYS = ['customer', 'recipient_profile'] as const satisfies readonly ModuleKey[];
 
-const customerOverviewGuard: NavigationGuard = (to, from, next) => {
+const customerOverviewGuard: NavigationGuard = async (to, _from, next) => {
   const authStore = useAuthStore();
   const hasAnyCustomerAccess = CUSTOMER_OVERVIEW_MODULE_KEYS.some((moduleKey) =>
     canAccessModule({
@@ -26,11 +26,20 @@ const customerOverviewGuard: NavigationGuard = (to, from, next) => {
     return;
   }
 
-  return createAccessGuard({
+  const result = await createAccessGuard({
     requiredScope: 'app',
     requiredModule: 'customer',
-    loginRoute: (to) => ({ name: 'login', query: { redirect: to.fullPath } }),
-  })(to, from, next);
+    loginRoute: (routeTo) => ({ name: 'login', query: { redirect: routeTo.fullPath } }),
+  })(to);
+  if (result === true) {
+    next();
+    return;
+  }
+  if (result === false) {
+    next(false);
+    return;
+  }
+  next(result);
 };
 
 const customerRoutes: RouteRecordRaw[] = [
