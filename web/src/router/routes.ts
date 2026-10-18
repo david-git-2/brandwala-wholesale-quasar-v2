@@ -24,6 +24,8 @@ import shopOrderRoutes from 'src/modules/shop_order/routes';
 import accessControlRoutes from 'src/modules/access_control/routes';
 import customerRoutes from 'src/modules/customer/routes';
 import afterSalesRoutes from 'src/modules/after_sales/routes';
+import landingRoutes from 'src/modules/landing/routes';
+import helpRoutes from 'src/modules/help/routes';
 
 const devRoutes: RouteRecordRaw[] = [
   {
@@ -60,10 +62,8 @@ const devRoutes: RouteRecordRaw[] = [
 ];
 
 const routes: RouteRecordRaw[] = [
-  {
-    path: '/',
-    redirect: '/app',
-  },
+  ...landingRoutes,
+  ...helpRoutes,
   {
     path: '/app/home',
     redirect: '/app/dashboard',

@@ -50,6 +50,7 @@ UI under `web/src/modules/` unless noted. Agent: `spec.md` + `00-gaps.md`. Surfa
 | Dashboard | [spec](features/dashboard/spec.md) | [gaps](features/dashboard/00-gaps.md) | `dashboard/` | n/a |
 | Investor | [spec](features/investor_capital/spec.md) | [gaps](features/investor_capital/00-gaps.md) | `investor_capital/`, `investor_portal/` | stub |
 | Thrift | [spec](features/thrift/spec.md) | [gaps](features/thrift/00-gaps.md) | `thrift/` | stub; live `public.sql` |
+| Landing / help (public) | [spec](features/landing/spec.md) | [gaps](features/landing/00-gaps.md) | `landing/`, `help/` | n/a |
 
 Also in code, no pack: `settings/`, `navigation/`, `featureCatalog/`.
 
