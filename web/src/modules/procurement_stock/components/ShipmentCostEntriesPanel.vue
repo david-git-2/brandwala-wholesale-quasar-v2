@@ -624,17 +624,7 @@ const showDistributeDialog = ref(false);
 const applyingDistribution = ref(false);
 
 const sections = computed(() => shipmentStore.currentShipmentSections || []);
-const shipmentItems = computed(
-  () =>
-    (shipmentStore.currentShipmentItems || []) as Array<{
-      id: number;
-      name: string;
-      section_id?: number | null;
-      purchase_price?: number | null;
-      ordered_quantity?: number | null;
-      weight?: number | null;
-    }>,
-);
+const shipmentItems = computed(() => shipmentStore.currentShipmentItems ?? []);
 
 const sectionInvoiceInputs = ref<Record<number, number>>({});
 const balancingSectionId = ref<number | null>(null);

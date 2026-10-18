@@ -1807,8 +1807,18 @@ watch(
   { immediate: true },
 );
 
-const mapEntryToCostRow = (entry: GlobalShipmentCostEntry): ShipmentCostRowDraft => {
-  const meta = (entry.metadata as Record<string, unknown> | null) ?? {};
+type CostEntryRowSource = {
+  id: number;
+  cost_bucket: GlobalShipmentCostBucket;
+  cost_component: GlobalShipmentCostComponent;
+  currency_id: number | null;
+  amount: number | null;
+  description: string | null;
+  metadata: Record<string, unknown> | null;
+};
+
+const mapEntryToCostRow = (entry: CostEntryRowSource): ShipmentCostRowDraft => {
+  const meta = entry.metadata ?? {};
   const legacyNote = typeof meta.note === 'string' ? meta.note : '';
   return {
     localKey: `db_${entry.id}`,
@@ -1822,14 +1832,25 @@ const mapEntryToCostRow = (entry: GlobalShipmentCostEntry): ShipmentCostRowDraft
 };
 
 const syncCostsFromStore = () => {
-  costRowsList.value = (shipmentStore.currentCostEntries || [])
+  const entries = shipmentStore.$state.currentCostEntries as unknown as CostEntryRowSource[];
+  costRowsList.value = [...entries]
     .map(mapEntryToCostRow)
     .filter(isVisibleCostRow)
     .sort((a, b) => (b.dbId ?? 0) - (a.dbId ?? 0));
 };
 
 watch(
-  () => [shipmentStore.currentShipment, shipmentStore.currentCostEntries],
+  () => shipmentStore.$state.currentShipment?.id,
+  () => {
+    if (!savingCosts.value) {
+      syncCostsFromStore();
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => shipmentStore.$state.currentCostEntries as unknown as CostEntryRowSource[],
   () => {
     if (!savingCosts.value) {
       syncCostsFromStore();
