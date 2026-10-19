@@ -11,7 +11,6 @@ import type { GlobalShipmentItem } from '../repositories/globalShipmentRepositor
 import type { CostEntriesSavePayload } from '../types/shipmentCostEntry';
 import type { ReturnLineDraft } from '../components/ShipmentVendorReturnCard.vue';
 import ShipmentItemFormDialog from '../components/ShipmentItemFormDialog.vue';
-import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';
 import BulkPasteDialog from '../components/BulkPasteDialog.vue';
 import type { useInboundShipmentCalculations } from './useInboundShipmentCalculations';
 import {
@@ -41,6 +40,7 @@ export function useInboundShipmentActions(options: {
   activeTab: Ref<'lines' | 'balance' | 'cost' | 'receive'>;
   calculations: ReturnType<typeof useInboundShipmentCalculations>;
   paySettleCard?: Ref<HTMLElement | null>;
+  openAddItemsDrawer?: (initialSectionId?: number | null) => void;
 }) {
   const { shipmentId, activeTab, calculations } = options;
 
@@ -673,13 +673,11 @@ export function useInboundShipmentActions(options: {
   };
 
   const openAddItems = (initialSectionId?: number | null) => {
-    $q.dialog({
-      component: AddShipmentItemsDrawer,
-      componentProps: {
-        shipmentId,
-        initialSectionId,
-      },
-    });
+    if (options.openAddItemsDrawer) {
+      options.openAddItemsDrawer(initialSectionId);
+      return;
+    }
+    showWarningNotification('Add items drawer is not available on this page.');
   };
 
   const openBulkPaste = (initialSectionId?: number | null) => {

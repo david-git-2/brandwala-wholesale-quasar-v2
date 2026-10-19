@@ -277,7 +277,7 @@
                 <span v-if="product.product_weight">
                   Wt: {{ product.product_weight }}kg
                 </span>
-                <span v-if="isAlreadyOnShipment(product)" class="text-negative text-weight-medium">
+                <span v-if="isAlreadyInTargetSection(product)" class="text-negative text-weight-medium">
                   • Already added to section
                 </span>
               </div>
@@ -294,7 +294,7 @@
                 style="width: 70px"
                 min="1"
                 step="1"
-                :disable="isAlreadyOnShipment(product) || submitting"
+                :disable="isAlreadyInTargetSection(product) || submitting"
                 @update:model-value="
                   (val) => setBrowseQty(product.id, val === '' ? null : Number(val))
                 "
@@ -310,7 +310,7 @@
                 label="Add"
                 style="min-height: 36px"
                 :loading="addingProductId === product.id"
-                :disable="isAlreadyOnShipment(product) || submitting"
+                :disable="isAlreadyInTargetSection(product) || submitting"
                 @click="addProductToShipment(product, browseQtyById[product.id])"
               />
             </q-item-section>
@@ -478,6 +478,7 @@ import { productService } from 'src/modules/products/services/productService';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import NewShipmentProductSidebar from './NewShipmentProductSidebar.vue';
+import { shipmentItemExistsInSection } from '../utils/shipmentItemSectionIdentity';
 
 export interface ShipmentCartItem {
   key: string;
@@ -548,6 +549,10 @@ const sectionOptions = computed(() => {
     value: s.id,
   }));
 });
+
+const shipmentHasSections = computed(
+  () => (shipmentStore.currentShipmentSections?.length ?? 0) > 0,
+);
 
 const submitting = ref(false);
 const addingProductId = ref<number | null>(null);
@@ -631,19 +636,18 @@ const getVendorCode = (vendorId: number | null): string | null => {
   return vendorStore.items.find((v) => v.id === vendorId)?.code ?? null;
 };
 
-const isAlreadyOnShipment = (product: ProductItem) => {
-  return shipmentStore.currentShipmentItems.some((item) => {
-    // If sections exist, only check duplicates within the same section
-    if (selectedSectionId.value != null && item.section_id !== selectedSectionId.value) {
-      return false;
-    }
-    if (item.product_id != null && item.product_id === product.id) return true;
-    return Boolean(
-      (item.barcode && item.barcode === product.barcode) ||
-      (item.product_code && item.product_code === product.product_code)
-    );
-  });
-};
+const isAlreadyInTargetSection = (product: ProductItem) =>
+  shipmentItemExistsInSection(
+    shipmentStore.currentShipmentItems,
+    {
+      product_id: product.id,
+      barcode: product.barcode,
+      product_code: product.product_code,
+      section_id: selectedSectionId.value,
+    },
+    selectedSectionId.value,
+    shipmentHasSections.value,
+  );
 
 const getSectionVendorId = (): number | null => {
   if (selectedSectionId.value) {
@@ -673,7 +677,7 @@ const buildShipmentItemPayload = (product: ProductItem, qty: number) => ({
 });
 
 const persistProductToShipment = async (product: ProductItem, qty: number) => {
-  if (isAlreadyOnShipment(product)) {
+  if (isAlreadyInTargetSection(product)) {
     return { ok: false as const, skipped: true };
   }
 
@@ -690,8 +694,13 @@ const setBrowseQty = (productId: number, qty: number | null) => {
 };
 
 const addProductToShipment = async (product: ProductItem, qty: number | null | undefined) => {
-  if (isAlreadyOnShipment(product)) {
-    $q.notify({ type: 'warning', message: `"${product.name}" is already on this shipment.` });
+  if (isAlreadyInTargetSection(product)) {
+    $q.notify({
+      type: 'warning',
+      message: shipmentHasSections.value
+        ? `"${product.name}" is already in this section.`
+        : `"${product.name}" is already on this shipment.`,
+    });
     return;
   }
 
@@ -797,7 +806,7 @@ const onBulkAddCodes = async () => {
         missing.push(code);
         continue;
       }
-      if (seen.has(product.id) || isAlreadyOnShipment(product)) {
+      if (seen.has(product.id) || isAlreadyInTargetSection(product)) {
         skipped += 1;
         continue;
       }
@@ -813,7 +822,12 @@ const onBulkAddCodes = async () => {
       bulkCodesText.value = missing.length > 0 ? missing.join('\n') : '';
     }
 
-    const skipNote = skipped > 0 ? ` ${skipped} already on shipment.` : '';
+    const skipNote =
+      skipped > 0
+        ? shipmentHasSections.value
+          ? ` ${skipped} already in this section.`
+          : ` ${skipped} already on shipment.`
+        : '';
     if (missing.length === 0 && toAdd.length > 0) {
       $q.notify({
         type: 'positive',
@@ -1015,10 +1029,11 @@ const onNewProductAdd = async (newProduct: Omit<ShipmentCartItem, 'key'>) => {
       isNewProduct: true,
     };
     const productId = (await findExistingProductId(item)) ?? (await registerProduct(item));
-    const already = shipmentStore.currentShipmentItems.some(
-      (row) =>
-        row.product_id === productId &&
-        (selectedSectionId.value == null || row.section_id === selectedSectionId.value),
+    const already = shipmentItemExistsInSection(
+      shipmentStore.currentShipmentItems,
+      { product_id: productId, section_id: selectedSectionId.value },
+      selectedSectionId.value,
+      shipmentHasSections.value,
     );
     if (already) {
       $q.notify({ type: 'warning', message: `"${item.name}" is already in this section.` });

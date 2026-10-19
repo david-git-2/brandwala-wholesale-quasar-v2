@@ -155,6 +155,43 @@ export function reorderPbcItemsInCache(
   );
 }
 
+export function updatePbcItemInCache(
+  queryClient: QueryClient,
+  fileId: number,
+  updated: ProductBasedCostingItem,
+) {
+  const mergeList = (items: ProductBasedCostingItem[]) =>
+    items.map((item) => (item.id === updated.id ? { ...item, ...updated } : item));
+
+  queryClient.setQueryData<ProductBasedCostingItem[]>(
+    productBasedCostingQueryKeys.itemsList(fileId),
+    (oldItems) => (oldItems ? mergeList(oldItems) : oldItems),
+  );
+
+  queryClient.setQueriesData<InfiniteItemsData | ProductBasedCostingItem[]>(
+    { queryKey: productBasedCostingQueryKeys.itemsRoot(fileId) },
+    (oldData) => {
+      if (Array.isArray(oldData)) {
+        return mergeList(oldData);
+      }
+
+      if (!isInfiniteItemsData(oldData)) {
+        return oldData;
+      }
+
+      return {
+        ...oldData,
+        pages: oldData.pages.map((page) => ({
+          ...page,
+          data: page.data.map((item) =>
+            item.id === updated.id ? { ...item, ...updated } : item,
+          ),
+        })),
+      };
+    },
+  );
+}
+
 function addPbcItemToCache(queryClient: QueryClient, fileId: number, item: ProductBasedCostingItem) {
   queryClient.setQueryData<ProductBasedCostingItem[]>(
     productBasedCostingQueryKeys.itemsList(fileId),
@@ -262,18 +299,8 @@ export function useUpdateProductBasedCostingItemMutation() {
     mutationFn: (payload: ProductBasedCostingItemUpdateInput) =>
       productBasedCostingRepository.updateProductBasedCostingItem(payload),
     onSuccess: (data) => {
-      showSuccessNotification('Product based costing item updated successfully.');
       if (data?.product_based_costing_file_id) {
-        queryClient.setQueryData<ProductBasedCostingItem[]>(
-          productBasedCostingQueryKeys.itemsList(data.product_based_costing_file_id),
-          (oldItems) => {
-            if (!oldItems) return [data];
-            return oldItems.map((item) => (item.id === data.id ? data : item));
-          },
-        );
-        void queryClient.invalidateQueries({
-          queryKey: productBasedCostingQueryKeys.itemsRoot(data.product_based_costing_file_id),
-        });
+        updatePbcItemInCache(queryClient, data.product_based_costing_file_id, data);
         invalidatePbcFileSummary(queryClient, data.product_based_costing_file_id);
       }
     },

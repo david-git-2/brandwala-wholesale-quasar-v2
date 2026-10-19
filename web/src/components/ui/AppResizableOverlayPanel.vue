@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body" :disabled="containInParent">
-    <Transition name="app-resizable-overlay-panel">
+    <Transition name="app-resizable-overlay-panel" appear>
       <div
         v-if="modelValue"
         class="app-resizable-overlay-panel"

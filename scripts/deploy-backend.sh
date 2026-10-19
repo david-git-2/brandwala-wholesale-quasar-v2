@@ -47,6 +47,10 @@ echo "Regenerating types from linked production..."
 mkdir -p web/src/types
 supabase_cmd gen types typescript --linked --schema public > web/src/types/database.types.ts
 
-bash "${ROOT_DIR}/scripts/record-app-release.sh" backend || true
+DEPLOY_VERSION="$(bash "${ROOT_DIR}/scripts/bump-app-release-version.sh")"
+if ! bash "${ROOT_DIR}/scripts/record-app-release.sh" backend "${DEPLOY_VERSION}"; then
+  echo "Error: migrations pushed but recording backend release version failed (check SUPABASE_SECRET_KEY in web/.env.profile.prod)." >&2
+  exit 1
+fi
 
 echo "Backend deploy succeeded."

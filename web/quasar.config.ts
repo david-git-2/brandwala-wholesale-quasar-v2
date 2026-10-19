@@ -9,6 +9,10 @@ import { defineConfig } from '#q-app';
 
 const quasarConfigDir = dirname(fileURLToPath(import.meta.url));
 const appReleaseVersion = (() => {
+  const fromEnv = process.env.VITE_APP_VERSION?.trim();
+  if (fromEnv) {
+    return fromEnv;
+  }
   try {
     const rootPkg = JSON.parse(
       readFileSync(join(quasarConfigDir, '../package.json'), 'utf8'),

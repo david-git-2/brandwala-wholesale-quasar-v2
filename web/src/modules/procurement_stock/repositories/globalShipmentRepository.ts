@@ -672,84 +672,58 @@ const applyPurchaseBalance = async (
   return data as ApplyPurchaseBalanceRpcResult;
 };
 
-const insertOrderedOutcomesForItems = async (items: GlobalShipmentItem[]): Promise<void> => {
-  if (items.length === 0) return;
-  const shipmentId = items[0]?.shipment_id;
-  if (!shipmentId) return;
-  const { data: shipment, error: shipErr } = await db
-    .from('global_shipments')
-    .select('parent_tenant_id')
-    .eq('id', shipmentId)
-    .single();
-  if (shipErr) throw shipErr;
-  const parentTenantId = Number(shipment?.parent_tenant_id);
-  if (!parentTenantId) throw new Error('Shipment parent tenant missing');
-  const rows = items.map((item) => ({
-    parent_tenant_id: parentTenantId,
-    shipment_item_id: item.id,
-    quantity: item.ordered_quantity,
-    kind: 'sellable' as const,
-    reason: 'ordered' as const,
-    purchase_price: Number(item.purchase_price) || 0,
-    cost: item.landed_cost_bdt ?? null,
-  }));
-  const { error } = await db.from('global_shipment_item_outcomes').insert(rows);
-  if (error) throw error;
-};
-
-const syncOrderedOutcomeFromLine = async (
-  item: GlobalShipmentItem,
-  payload: Partial<Pick<GlobalShipmentItem, 'ordered_quantity' | 'purchase_price' | 'landed_cost_bdt'>>,
-): Promise<void> => {
-  if (
-    payload.ordered_quantity === undefined &&
-    payload.purchase_price === undefined &&
-    payload.landed_cost_bdt === undefined
-  ) {
-    return;
-  }
-  const patch: Record<string, number | null> = {};
-  if (payload.ordered_quantity !== undefined) patch.quantity = payload.ordered_quantity;
-  if (payload.purchase_price !== undefined) patch.purchase_price = payload.purchase_price;
-  if (payload.landed_cost_bdt !== undefined) patch.cost = payload.landed_cost_bdt ?? null;
-  const { error } = await db
-    .from('global_shipment_item_outcomes')
-    .update(patch)
-    .eq('shipment_item_id', item.id)
-    .eq('reason', 'ordered');
-  if (error) throw error;
+export type CreateShipmentItemResult = {
+  item: GlobalShipmentItem;
+  orderedOutcome: ShipmentItemOutcome;
 };
 
 const createShipmentItem = async (
   payload: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at'>,
-): Promise<GlobalShipmentItem> => {
-  const { data, error } = await db
-    .from('global_shipment_items')
-    .insert([payload])
-    .select()
-    .single();
+): Promise<CreateShipmentItemResult> => {
+  const { shipment_id, ...itemFields } = payload;
+  const { data, error } = await db.rpc('add_global_shipment_item', {
+    p_shipment_id: shipment_id,
+    p_item: itemFields as Record<string, unknown>,
+  });
 
   if (error) throw error;
-  const item = data as GlobalShipmentItem;
-  await insertOrderedOutcomesForItems([item]);
-  return item;
+  const body = data as { item: GlobalShipmentItem; ordered_outcome: ShipmentItemOutcome };
+  return {
+    item: body.item,
+    orderedOutcome: body.ordered_outcome,
+  };
+};
+
+export type UpdateShipmentItemResult = {
+  items: GlobalShipmentItem[];
+  orderedOutcome: ShipmentItemOutcome | null;
+  item: GlobalShipmentItem;
 };
 
 const updateShipmentItem = async (
   id: number,
   payload: Partial<Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at' | 'shipment_id'>>,
-): Promise<GlobalShipmentItem> => {
-  const { data, error } = await db
-    .from('global_shipment_items')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
+): Promise<UpdateShipmentItemResult> => {
+  const { data, error } = await db.rpc('update_global_shipment_item', {
+    p_item_id: id,
+    p_patch: payload as Record<string, unknown>,
+  });
 
   if (error) throw error;
-  const item = data as GlobalShipmentItem;
-  await syncOrderedOutcomeFromLine(item, payload);
-  return item;
+  const body = data as {
+    items: GlobalShipmentItem[] | null;
+    ordered_outcome: ShipmentItemOutcome | null;
+  };
+  const items = body.items ?? [];
+  const item = items.find((row) => row.id === id);
+  if (!item) {
+    throw new Error('Updated shipment item not found in response');
+  }
+  return {
+    items,
+    orderedOutcome: body.ordered_outcome ?? null,
+    item,
+  };
 };
 
 const createShipmentItemsBulk = async (
@@ -763,9 +737,7 @@ const createShipmentItemsBulk = async (
   });
 
   if (error) throw error;
-  const created = (data as GlobalShipmentItem[] | null) ?? [];
-  await insertOrderedOutcomesForItems(created);
-  return created;
+  return (data as GlobalShipmentItem[] | null) ?? [];
 };
 
 const updateShipmentItemsBulk = async (

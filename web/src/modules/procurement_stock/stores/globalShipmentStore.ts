@@ -6,6 +6,7 @@ import {
   type FinalizeShipmentStockRow,
   type GlobalShipment,
   type GlobalShipmentItem,
+  type ShipmentItemOutcome,
   type SettleShipmentPayeeParams,
   type ShipmentProgressFlow,
   type ShipmentProgressFlowStage,
@@ -104,6 +105,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     currentShipment: null as GlobalShipment | null,
     currentShipmentSections: [] as ShipmentSection[],
     currentShipmentItems: [] as GlobalShipmentItem[],
+    orderedOutcomeSeedsByItemId: {} as Record<number, ShipmentItemOutcome>,
     currentShipmentBoxes: [] as GlobalShipmentBox[],
     currentShipmentStocks: [] as any[],
     currentCostEntries: [] as GlobalShipmentCostEntry[],
@@ -751,6 +753,15 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
+    takeOrderedOutcomeSeed(itemId: number): ShipmentItemOutcome | undefined {
+      const row = this.orderedOutcomeSeedsByItemId[itemId];
+      if (!row) return undefined;
+      const next = { ...this.orderedOutcomeSeedsByItemId };
+      delete next[itemId];
+      this.orderedOutcomeSeedsByItemId = next;
+      return row;
+    },
+
     mergeShipmentItems(shipmentId: number, items: GlobalShipmentItem[]) {
       if (this.currentShipment?.id !== shipmentId || items.length === 0) return;
       const itemMap = new Map(this.currentShipmentItems.map((item) => [item.id, item]));
@@ -778,13 +789,14 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
             ? (this.currentShipmentSections[0]?.id ?? null)
             : null);
 
-        const newItem = await globalShipmentRepository.createShipmentItem({
+        const { item: newItem, orderedOutcome } = await globalShipmentRepository.createShipmentItem({
           ...payload,
           section_id: defaultSectionId,
           sort_order: maxSortOrder + 1,
         });
         if (this.currentShipment?.id === payload.shipment_id) {
           this.currentShipmentItems.push(newItem);
+          this.orderedOutcomeSeedsByItemId[newItem.id] = orderedOutcome;
         }
         return newItem;
       } catch (err: unknown) {
@@ -846,20 +858,14 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
 
       try {
         const updated = await globalShipmentRepository.updateShipmentItem(id, payload);
-        if (
-          this.currentShipment?.id === updated.shipment_id &&
-          payloadTouchesCostFields(payload as Record<string, unknown>, COST_AFFECTING_ITEM_FIELDS)
-        ) {
-          this.currentShipmentItems = await reloadShipmentLineCosts(updated.shipment_id);
-        } else {
-          const syncItems = [...this.currentShipmentItems];
-          const syncIndex = syncItems.findIndex((item) => item.id === id);
-          if (syncIndex !== -1) {
-            syncItems[syncIndex] = { ...syncItems[syncIndex], ...updated };
-            this.currentShipmentItems = syncItems;
+        if (this.currentShipment?.id === updated.item.shipment_id) {
+          invalidateSharedShipmentItemsCostingCache(updated.item.shipment_id);
+          this.currentShipmentItems = updated.items;
+          if (updated.orderedOutcome) {
+            this.orderedOutcomeSeedsByItemId[id] = updated.orderedOutcome;
           }
         }
-        return updated;
+        return updated.item;
       } catch (err: unknown) {
         // Rollback optimistic update on error
         const rollbackItems = [...this.currentShipmentItems];

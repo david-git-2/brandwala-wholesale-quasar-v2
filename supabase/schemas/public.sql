@@ -3949,7 +3949,6 @@ begin
       from public.memberships m
       where m.is_active = true
         and lower(trim(m.email)) = public.current_user_email()
-        and public.membership_has_module_action(m.tenant_id, 'products', 'view')
     )
   ) then
     raise exception 'not allowed';

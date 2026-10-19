@@ -98,7 +98,7 @@ Unchanged: single row `id = 1`.
 | `backend_updated_at` | `timestamptz` |
 | `frontend_updated_at` | `timestamptz` |
 
-Version string = `git rev-parse --short HEAD` at deploy time.
+Version string = root `package.json` semver; patch bump on each successful backend or frontend deploy (`scripts/bump-app-release-version.sh`).
 
 ## Who writes
 

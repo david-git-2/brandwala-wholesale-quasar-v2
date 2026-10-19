@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Usage: record-app-release.sh backend|frontend [version]
-# Default version: semver from repo package.json (e.g. 1.0.0). Override with 2nd arg.
+# Default version: root package.json semver. Override with 2nd arg (deploy scripts bump before call).
 # Writes public.app_release_versions via PostgREST (service role).
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,12 +22,14 @@ if [[ -z "${VERSION}" ]]; then
   fi
 fi
 
-if [[ -f "${ROOT_DIR}/web/.env" ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  . "${ROOT_DIR}/web/.env"
-  set +a
-fi
+for env_file in "${ROOT_DIR}/web/.env" "${ROOT_DIR}/web/.env.profile.prod"; do
+  if [[ -f "${env_file}" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    . "${env_file}"
+    set +a
+  fi
+done
 
 BASE_URL="${SUPABASE_URL:-${VITE_SUPABASE_URL:-}}"
 API_KEY="${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
@@ -56,7 +58,7 @@ HTTP_CODE="$(
 
 if [[ "${HTTP_CODE}" != 204 && "${HTTP_CODE}" != 200 ]]; then
   echo "record-app-release: PATCH failed HTTP ${HTTP_CODE}: $(cat /tmp/record-app-release.out)" >&2
-  exit 0
+  exit 1
 fi
 
 echo "record-app-release: ${KIND}=${VERSION}"

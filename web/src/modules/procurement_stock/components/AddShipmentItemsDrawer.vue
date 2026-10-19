@@ -1,67 +1,43 @@
 <template>
-  <q-dialog
-    ref="dialogRef"
-    class="add-shipment-items-drawer-dialog"
-    maximized
-    no-shake
-    no-focus
-    allow-focus-outside
-    @hide="onDialogHide"
+  <AppResizableOverlayPanel
+    :model-value="modelValue"
+    storage-key="procurement.add-shipment-items-drawer-width"
+    :default-width="820"
+    :min-width="480"
+    :max-width="1200"
+    aria-label="Add shipment items"
+    @update:model-value="(val) => emit('update:modelValue', val)"
   >
-    <AppResizableOverlayPanel
-      :model-value="panelOpen"
-      contain-in-parent
-      storage-key="procurement.add-shipment-items-drawer-width"
-      :default-width="820"
-      :min-width="480"
-      :max-width="1200"
-      aria-label="Add shipment items"
-      @update:model-value="onPanelOpenChange"
-    >
-      <div class="drawer-card column no-wrap full-height">
-        <AddShipmentItemsPanel
-          class="col"
-          :shipment-id="shipmentId"
-          :initial-section-id="initialSectionId"
-          layout="drawer"
-          @saved="onSaved"
-          @cancel="onCancel"
-        />
-      </div>
-    </AppResizableOverlayPanel>
-  </q-dialog>
+    <div class="drawer-card column no-wrap full-height">
+      <AddShipmentItemsPanel
+        class="col"
+        :shipment-id="shipmentId"
+        :initial-section-id="initialSectionId"
+        layout="drawer"
+        @saved="onSaved"
+      />
+    </div>
+  </AppResizableOverlayPanel>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useDialogPluginComponent } from 'quasar';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import AddShipmentItemsPanel from './AddShipmentItemsPanel.vue';
 
 defineProps<{
+  modelValue: boolean;
   shipmentId: number;
   initialSectionId?: number | null | undefined;
 }>();
 
-defineEmits([...useDialogPluginComponent.emits]);
-
-const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
-
-const panelOpen = ref(true);
-
-const onPanelOpenChange = (open: boolean) => {
-  panelOpen.value = open;
-  if (!open) {
-    dialogRef.value?.hide();
-  }
-};
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean];
+  saved: [];
+}>();
 
 const onSaved = () => {
-  onDialogOK();
-};
-
-const onCancel = () => {
-  dialogRef.value?.hide();
+  emit('saved');
+  emit('update:modelValue', false);
 };
 </script>
 
@@ -72,16 +48,5 @@ const onCancel = () => {
   min-height: 0;
   overflow: hidden;
   background: #ffffff;
-}
-</style>
-
-<style>
-.add-shipment-items-drawer-dialog .q-dialog__backdrop {
-  display: none;
-}
-
-.add-shipment-items-drawer-dialog .q-dialog__inner {
-  padding: 0;
-  pointer-events: none;
 }
 </style>

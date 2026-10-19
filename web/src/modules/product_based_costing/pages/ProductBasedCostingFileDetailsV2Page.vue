@@ -71,7 +71,7 @@
               icon="ph ph-sliders-horizontal"
               color="primary"
               class="q-ml-2xs"
-              @click="ratesExpanded = !ratesExpanded"
+              @click="toggleRatesEditor"
             >
               <q-tooltip>Edit rates (FX, Cargo, Profit)</q-tooltip>
             </q-btn>
@@ -256,8 +256,8 @@
                   dense
                   outlined
                   type="number"
-                  :prefix="sellMark"
-                  :label="$t('product_based_costing.conversion_rate_fx_short', currencyI18n)"
+                  :prefix="editorSellMark"
+                  :label="$t('product_based_costing.conversion_rate_fx_short', editorCurrencyI18n)"
                   hide-bottom-space
                 />
               </div>
@@ -267,7 +267,7 @@
                   dense
                   outlined
                   type="number"
-                  :prefix="buyMark"
+                  :prefix="editorBuyMark"
                   suffix="/kg"
                   :label="$t('product_based_costing.cargo_rate_label')"
                   hide-bottom-space
@@ -328,7 +328,7 @@
               label="Cancel"
               class="rounded-sq-btn"
               style="border-radius: 8px"
-              @click="ratesExpanded = false"
+              @click="cancelRatesEdit"
             />
             <TfBtn
               variant="primary"
@@ -432,7 +432,7 @@
         <thead>
           <tr class="bg-grey-2 text-grey-9 text-weight-bold" style="font-size: 11px">
             <!-- Row Selection Header -->
-            <th class="text-center q-pa-none sticky-col" style="width: 18px; min-width: 18px; max-width: 18px">
+            <th class="text-center pbc-select-col sticky-col">
               <q-checkbox
                 :model-value="isAllRowsSelected"
                 dense
@@ -442,7 +442,7 @@
             </th>
 
             <!-- Serial # / Position -->
-            <th v-if="visibleColumnMap.sl" class="text-center sticky-col-2 q-pa-none" style="width: 36px; min-width: 36px; max-width: 36px">
+            <th v-if="visibleColumnMap.sl" class="text-center pbc-sl-col sticky-col-2">
               SL
             </th>
 
@@ -453,7 +453,21 @@
 
             <!-- Product Name -->
             <th v-if="visibleColumnMap.name" class="text-left" style="min-width: 120px; width: 120px; max-width: 120px; white-space: normal">
-              Name
+              <div class="row items-center no-wrap q-gutter-x-2xs">
+                <span>Name</span>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-copy"
+                  color="grey-7"
+                  :disable="!tableRows.length"
+                  @click.stop="copyAllLineNames"
+                >
+                  <q-tooltip>Copy all names</q-tooltip>
+                </q-btn>
+              </div>
             </th>
 
             <!-- Brand -->
@@ -672,7 +686,7 @@
               }"
             >
               <!-- Checkbox -->
-              <td class="text-center q-pa-none sticky-col" style="width: 18px; min-width: 18px; max-width: 18px">
+              <td class="text-center pbc-select-col sticky-col">
                 <q-checkbox
                   :model-value="selectedRowIds.includes(row.id)"
                   dense
@@ -684,8 +698,7 @@
               <!-- Serial / Reorder -->
               <td
                 v-if="visibleColumnMap.sl"
-                class="text-center sticky-col-2 q-pa-none sl-reorder-cell"
-                style="width: 36px; min-width: 36px; max-width: 36px"
+                class="text-center pbc-sl-col sticky-col-2 sl-reorder-cell"
                 @click.stop
               >
                 <div class="row items-center justify-center no-wrap">
@@ -861,13 +874,13 @@
                   />
                 </div>
                 <div class="text-caption text-grey-7 text-weight-normal q-mt-2xs" style="font-size: 9px">
-                  T: {{ buyMark }}{{ formatMoney(row.totalPurchasePriceGbp) }}
+                  T: {{ formatMoney(row.totalPurchasePriceGbp) }}
                 </div>
               </td>
 
               <!-- Total Purchase Price GBP -->
               <td v-if="visibleColumnMap.totalPurchasePriceGbp" class="text-center tf-ops-col-tint--price font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
-                {{ buyMark }}{{ formatMoney(row.totalPurchasePriceGbp) }}
+                {{ formatMoney(row.totalPurchasePriceGbp) }}
               </td>
 
               <!-- Product Wt (g) (Inline Edit) -->
@@ -917,32 +930,42 @@
 
               <!-- Cargo Rate -->
               <td v-if="visibleColumnMap.cargoRate" class="text-center font-mono text-caption text-grey-8" style="width: 56px; min-width: 56px">
-                {{ buyMark }}{{ formatMoney(row.cargoRate) }}
+                {{ formatMoney(row.cargoRate) }}
               </td>
 
               <!-- Cargo Cost GBP -->
               <td v-if="visibleColumnMap.cargoCostGbp" class="text-center font-mono text-caption text-grey-8" style="width: 56px; min-width: 56px">
-                {{ buyMark }}{{ formatMoney(row.cargoCostGbp) }}
+                {{ formatMoney(row.cargoCostGbp) }}
               </td>
 
               <!-- Total Cost GBP -->
               <td v-if="visibleColumnMap.totalCostGbp" class="text-center tf-ops-col-tint--cost font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
-                {{ buyMark }}{{ formatMoney(row.totalCostGbp) }}
+                {{ formatMoney(row.totalCostGbp) }}
               </td>
 
               <!-- Row Total Cost GBP -->
               <td v-if="visibleColumnMap.rowTotalCostGbp" class="text-center tf-ops-col-tint--cost font-mono text-caption text-grey-9" style="width: 56px; min-width: 56px">
-                {{ buyMark }}{{ formatMoney(row.rowTotalCostGbp) }}
+                {{ formatMoney(row.rowTotalCostGbp) }}
               </td>
 
               <!-- Cost BDT -->
               <td v-if="visibleColumnMap.costBdt" class="text-center tf-ops-col-tint--cost font-mono text-weight-bold text-grey-9" style="width: 60px; min-width: 60px">
-                {{ sellMark }}{{ formatMoney(row.costBdt) }}
+                <span class="pbc-cost-bdt-cell">
+                  {{ formatMoney(row.costBdt) }}
+                  <q-tooltip
+                    anchor="top middle"
+                    self="bottom middle"
+                    :offset="[0, 6]"
+                    class="pbc-cost-bdt-tooltip"
+                  >
+                    <pre class="pbc-cost-bdt-tooltip__pre">{{ formatCostBdtUnitBreakdown(row) }}</pre>
+                  </q-tooltip>
+                </span>
               </td>
 
               <!-- Row Total Cost BDT -->
               <td v-if="visibleColumnMap.totalCostBdt" class="text-center tf-ops-col-tint--cost font-mono text-caption text-grey-9" style="width: 60px; min-width: 60px">
-                {{ sellMark }}{{ formatMoney(row.totalCostBdt) }}
+                {{ formatMoney(row.totalCostBdt) }}
               </td>
 
               <!-- Offer Price BDT (Inline Edit) -->
@@ -990,17 +1013,17 @@
 
               <!-- Total Offer BDT -->
               <td v-if="visibleColumnMap.totalBdt" class="text-center tf-ops-col-tint--price font-mono text-weight-bold text-positive" style="width: 64px; min-width: 64px">
-                {{ sellMark }}{{ formatMoney(row.totalBdt) }}
+                {{ formatMoney(row.totalBdt) }}
               </td>
 
               <!-- Profit Per Unit BDT -->
               <td v-if="visibleColumnMap.profitPerUnitBdt" class="text-center font-mono text-caption text-teal-9 text-weight-bold" style="width: 56px; min-width: 56px">
-                {{ sellMark }}{{ formatMoney(row.profitPerUnitBdt) }}
+                {{ formatMoney(row.profitPerUnitBdt) }}
               </td>
 
               <!-- Row Total Profit BDT -->
               <td v-if="visibleColumnMap.profitBdt" class="text-center font-mono text-caption text-teal-9 text-weight-bold" style="width: 56px; min-width: 56px">
-                {{ sellMark }}{{ formatMoney(row.profitBdt) }}
+                {{ formatMoney(row.profitBdt) }}
               </td>
 
               <!-- Profit Rate % -->
@@ -1208,6 +1231,22 @@
         @updated="handleUpdated"
       />
 
+      <AddCostingItemsDrawer
+        v-if="fileId"
+        v-model="catalogDrawerOpen"
+        :file-id="fileId"
+        @saved="refreshAfterCatalogChange"
+        @browse-catalog="openAddProductCartDrawer"
+        @create-new-product="onCatalogCreateNewProduct"
+      />
+
+      <AddProductCartDrawer
+        v-if="fileId"
+        v-model="addProductCartDrawerOpen"
+        :file-id="fileId"
+        @closed="refreshAfterCatalogChange"
+      />
+
       <AppResizableOverlayPanel
         v-model="showBulkPasteDialog"
         storage-key="product_based_costing.bulk-paste-width"
@@ -1307,6 +1346,7 @@ import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfSkeletonRows from 'src/components/ui/TfSkeletonRows.vue';
 import ProductBasedCostingItemCard from '../components/ProductBasedCostingItemCard.vue';
 import AddCostingItemsDrawer from '../components/AddCostingItemsDrawer.vue';
+import AddProductCartDrawer from '../components/AddProductCartDrawer.vue';
 import { productBasedCostingService } from '../services/productBasedCostingService';
 import type { ProductBasedCostingItemUpdateInput } from '../types';
 import PbcBacklogSuggestDrawer from '../components/PbcBacklogSuggestDrawer.vue';
@@ -1331,6 +1371,7 @@ import {
   useDeleteProductBasedCostingItemMutation,
   useDeleteProductBasedCostingItemsBulkMutation,
   useUpdateProductBasedCostingItemMutation,
+  updatePbcItemInCache,
   useRecalculateOfferPricesMutation,
 } from '../composables/useProductBasedCostingItemMutations';
 import type { ProductBasedCostingItem } from '../types';
@@ -1390,6 +1431,27 @@ const handleCopyCode = (text: string, label: string) => {
     });
 };
 
+const copyAllLineNames = () => {
+  const names = tableRows.value
+    .map((row) => (row.name || '').trim())
+    .filter((name) => name.length > 0);
+  if (names.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'No product names to copy.',
+      timeout: 1500,
+    });
+    return;
+  }
+  void copyToClipboard(names.join('\n')).then(() => {
+    $q.notify({
+      type: 'positive',
+      message: `Copied ${names.length} product name${names.length === 1 ? '' : 's'}.`,
+      timeout: 1500,
+    });
+  });
+};
+
 const route = useRoute();
 const router = useRouter();
 const tenantStore = useTenantStore();
@@ -1445,6 +1507,8 @@ const showSettingsDrawer = ref(false);
 const settingsDrawerInitialTab = ref<string | undefined>(undefined);
 const showStatusOverrideDialog = ref(false);
 const showItemDialog = ref(false);
+const catalogDrawerOpen = ref(false);
+const addProductCartDrawerOpen = ref(false);
 const selectedItem = ref<ProductBasedCostingItem | null>(null);
 const updatingStatus = ref(false);
 const targetUpdatingStatus = ref<string | null>(null);
@@ -1528,13 +1592,13 @@ const deleteItemMutation = useDeleteProductBasedCostingItemMutation();
 const deleteItemsBulkMutation = useDeleteProductBasedCostingItemsBulkMutation();
 const recalculateOfferPricesMutation = useRecalculateOfferPricesMutation();
 
-// Rates
-const cargoRateValue = computed(() => file.value?.cargo_rate_kg_gbp ?? localRates.cargo_rate_kg_gbp);
-const conversionRateValue = computed(() => file.value?.conversion_rate ?? localRates.conversion_rate);
-const profitRateValue = computed(() => file.value?.profit_rate ?? localRates.profit_rate);
-const vatRateValue = computed(() => file.value?.vat_rate ?? localRates.vat_rate);
+// Rates (saved file only — draft edits stay in localRates until Save)
+const cargoRateValue = computed(() => file.value?.cargo_rate_kg_gbp ?? 0);
+const conversionRateValue = computed(() => file.value?.conversion_rate ?? 140);
+const profitRateValue = computed(() => file.value?.profit_rate ?? 25);
+const vatRateValue = computed(() => file.value?.vat_rate ?? 0);
 const offerPricingModeValue = computed(() =>
-  normalizeOfferPricingMode(file.value?.offer_pricing_mode ?? localRates.offer_pricing_mode),
+  normalizeOfferPricingMode(file.value?.offer_pricing_mode),
 );
 
 const { data: currenciesData, isLoading: loadingCurrencies } = useGlobalCurrenciesQuery();
@@ -1546,8 +1610,8 @@ const currencyOptions = computed(() =>
   })),
 );
 
-const fileBuyCurrencyCode = computed(() => pbcFileBuyCurrencyCode(file.value ?? localRates));
-const fileSellCurrencyCode = computed(() => pbcFileSellCurrencyCode(file.value ?? localRates));
+const fileBuyCurrencyCode = computed(() => pbcFileBuyCurrencyCode(file.value));
+const fileSellCurrencyCode = computed(() => pbcFileSellCurrencyCode(file.value));
 const buyMark = computed(() => pbcCurrencyMark(fileBuyCurrencyCode.value));
 const sellMark = computed(() => pbcCurrencyMark(fileSellCurrencyCode.value));
 
@@ -1556,18 +1620,97 @@ const currencyI18n = computed(() => ({
   sell: fileSellCurrencyCode.value,
 }));
 
+const currencyCodeById = (id: number | null | undefined): string | null => {
+  if (id == null) return null;
+  const row = (currenciesData.value ?? []).find((c) => c.id === id);
+  return row?.code?.trim() ? row.code.toUpperCase() : null;
+};
+
+const editorBuyCurrencyCode = computed(
+  () =>
+    currencyCodeById(localRates.buy_currency_id) ??
+    fileBuyCurrencyCode.value,
+);
+const editorSellCurrencyCode = computed(
+  () =>
+    currencyCodeById(localRates.sell_currency_id) ??
+    fileSellCurrencyCode.value,
+);
+const editorBuyMark = computed(() => pbcCurrencyMark(editorBuyCurrencyCode.value));
+const editorSellMark = computed(() => pbcCurrencyMark(editorSellCurrencyCode.value));
+const editorCurrencyI18n = computed(() => ({
+  buy: editorBuyCurrencyCode.value,
+  sell: editorSellCurrencyCode.value,
+}));
+
+function formatCostBdtUnitBreakdown(row: {
+  product_weight: number;
+  package_weight: number;
+  totalWeight: number;
+  price_gbp: number;
+  cargoRate: number;
+  cargoCostGbp: number;
+  totalCostGbp: number;
+  costBdt: number;
+}): string {
+  const fx = conversionRateValue.value || 140;
+  const kg = row.totalWeight / 1000;
+  const kgLabel = kg.toFixed(4).replace(/\.?0+$/, '');
+  const buy = buyMark.value;
+  const buyCode = fileBuyCurrencyCode.value;
+  const sellCode = fileSellCurrencyCode.value;
+
+  return [
+    'Landed cost per unit (BDT)',
+    '',
+    '1) Weight',
+    `   Product ${row.product_weight}g + package ${row.package_weight}g`,
+    `   = ${row.totalWeight}g (${kgLabel} kg)`,
+    '',
+    '2) Cargo per unit',
+    `   ${kgLabel} kg × ${formatMoney(row.cargoRate)} ${buyCode}/kg`,
+    `   = ${buy}${formatMoney(row.cargoCostGbp)}`,
+    '',
+    '3) Landed cost per unit (buy currency)',
+    `   ${buy}${formatMoney(row.price_gbp)} purchase`,
+    `   + ${buy}${formatMoney(row.cargoCostGbp)} cargo`,
+    `   = ${buy}${formatMoney(row.totalCostGbp)}`,
+    '',
+    '4) FX to sell currency',
+    `   ${buy}${formatMoney(row.totalCostGbp)} × ${fx}`,
+    `   = ${formatMoney(row.costBdt)} ${sellCode}`,
+  ].join('\n');
+}
+
+function syncLocalRatesFromFile(source: NonNullable<typeof file.value>) {
+  localRates.conversion_rate = source.conversion_rate ?? 140;
+  localRates.cargo_rate_kg_gbp = source.cargo_rate_kg_gbp ?? 0;
+  localRates.profit_rate = source.profit_rate ?? 25;
+  localRates.vat_rate = source.vat_rate ?? 0;
+  localRates.offer_pricing_mode = normalizeOfferPricingMode(source.offer_pricing_mode);
+  localRates.buy_currency_id = source.buy_currency_id ?? null;
+  localRates.sell_currency_id = source.sell_currency_id ?? null;
+}
+
+function toggleRatesEditor() {
+  if (!ratesExpanded.value && file.value) {
+    syncLocalRatesFromFile(file.value);
+  }
+  ratesExpanded.value = !ratesExpanded.value;
+}
+
+function cancelRatesEdit() {
+  if (file.value) {
+    syncLocalRatesFromFile(file.value);
+  }
+  ratesExpanded.value = false;
+}
+
 watch(
   file,
   (newFile) => {
-    if (newFile) {
-      localRates.conversion_rate = newFile.conversion_rate ?? 140;
-      localRates.cargo_rate_kg_gbp = newFile.cargo_rate_kg_gbp ?? 0;
-      localRates.profit_rate = newFile.profit_rate ?? 25;
-      localRates.vat_rate = newFile.vat_rate ?? 0;
-      localRates.offer_pricing_mode = normalizeOfferPricingMode(newFile.offer_pricing_mode);
-      localRates.buy_currency_id = newFile.buy_currency_id ?? null;
-      localRates.sell_currency_id = newFile.sell_currency_id ?? null;
-    }
+    if (!newFile || ratesExpanded.value) return;
+    syncLocalRatesFromFile(newFile);
   },
   { immediate: true },
 );
@@ -1734,6 +1877,7 @@ const tableRows = computed(() => {
 
 // Draft Values for Inline Editing
 const draftValues = reactive<Record<string, Record<string, unknown>>>({});
+const inlineSaveInFlight = new Set<string>();
 
 function getDraftValue(
   row: { id: number; raw: ProductBasedCostingItem; offer_price?: number; isOfferPriceManual?: boolean },
@@ -1772,8 +1916,11 @@ async function saveDraftValue(
   opts?: { decimals?: number },
 ) {
   if (!draftValues[row.id] || draftValues[row.id][field] === undefined) return;
+
+  const saveKey = `${row.id}:${String(field)}`;
+  if (inlineSaveInFlight.has(saveKey)) return;
+
   const rawVal = draftValues[row.id][field];
-  delete draftValues[row.id][field];
 
   let parsedVal: number | string | null = rawVal as any;
   if (typeof rawVal === 'string' && rawVal.trim() !== '') {
@@ -1792,23 +1939,49 @@ async function saveDraftValue(
     const currentPrice = row.isOfferPriceManual && row.raw.offer_price != null
       ? normalizeOfferPriceBdt(row.raw.offer_price)
       : normalizeOfferPriceBdt(row.offer_price ?? 0);
-    if (parsedVal === currentPrice) return;
+    if (parsedVal === currentPrice) {
+      delete draftValues[row.id][field];
+      return;
+    }
   } else if (row.raw[field] === parsedVal) {
+    delete draftValues[row.id][field];
     return;
   }
 
+  const previousItem = { ...row.raw };
+  const optimisticItem: ProductBasedCostingItem = {
+    ...row.raw,
+    [field]: parsedVal as ProductBasedCostingItem[keyof ProductBasedCostingItem],
+  };
+  if (field === 'offer_price') {
+    optimisticItem.is_offer_price_manual = true;
+    optimisticItem.offer_price = parsedVal != null ? Number(parsedVal) : null;
+  }
+
+  delete draftValues[row.id][field];
+  if (fileId.value) {
+    updatePbcItemInCache(queryClient, fileId.value, optimisticItem);
+  }
+
+  const payload: Partial<ProductBasedCostingItem> & { id: number } = {
+    id: row.id,
+    [field]: parsedVal,
+  };
+  if (field === 'offer_price') {
+    payload.is_offer_price_manual = true;
+    payload.offer_price = parsedVal != null ? Number(parsedVal) : null;
+  }
+
+  inlineSaveInFlight.add(saveKey);
   try {
-    const payload: Partial<ProductBasedCostingItem> & { id: number } = {
-      id: row.id,
-      [field]: parsedVal,
-    };
-    if (field === 'offer_price') {
-      payload.is_offer_price_manual = true;
-      payload.offer_price = parsedVal != null ? Number(parsedVal) : null;
-    }
     await updateItemMutation.mutateAsync(payload);
   } catch {
+    if (fileId.value) {
+      updatePbcItemInCache(queryClient, fileId.value, previousItem);
+    }
     $q.notify({ type: 'negative', message: 'Failed to update item' });
+  } finally {
+    inlineSaveInFlight.delete(saveKey);
   }
 }
 
@@ -1986,33 +2159,32 @@ async function handleConsumeBacklog(backlogIds: number[]) {
   }
 }
 
+function refreshAfterCatalogChange() {
+  if (!fileId.value) return;
+  void queryClient.invalidateQueries({
+    queryKey: productBasedCostingQueryKeys.itemsRoot(fileId.value),
+  });
+  refreshBacklog();
+}
+
 function openCatalogDialog() {
   if (!fileId.value) return;
-  $q.dialog({
-    component: AddCostingItemsDrawer,
-    componentProps: { fileId: fileId.value },
-  }).onOk((result?: { createProductName?: string }) => {
-    void queryClient.invalidateQueries({
-      queryKey: productBasedCostingQueryKeys.itemsRoot(fileId.value),
-    });
-    refreshBacklog();
-    if (result?.createProductName != null) {
-      selectedItem.value = { name: result.createProductName } as ProductBasedCostingItem;
-      showItemDialog.value = true;
-    }
-  });
+  catalogDrawerOpen.value = true;
 }
 
 function openAddProductCartPage() {
   if (!fileId.value) return;
-  const tenantSlug = tenantStore.selectedTenant?.slug ?? route.params.tenantSlug;
-  void router.push({
-    name: 'product-based-costing-add-product-cart-page',
-    params: {
-      ...(tenantSlug ? { tenantSlug } : {}),
-      id: String(fileId.value),
-    },
-  });
+  addProductCartDrawerOpen.value = true;
+}
+
+function openAddProductCartDrawer() {
+  catalogDrawerOpen.value = false;
+  addProductCartDrawerOpen.value = true;
+}
+
+function onCatalogCreateNewProduct(name: string) {
+  selectedItem.value = { name } as ProductBasedCostingItem;
+  showItemDialog.value = true;
 }
 
 const emptyBulkPasteRow = (index: number): BulkPasteGridRow => ({
@@ -2369,6 +2541,9 @@ async function handleSaveRates() {
       sell_currency_id: localRates.sell_currency_id ?? undefined,
     });
     await recalculateOfferPricesMutation.mutateAsync(fileId.value);
+    if (file.value) {
+      syncLocalRatesFromFile(file.value);
+    }
     ratesExpanded.value = false;
     $q.notify({ type: 'positive', message: 'Rates updated and prices recalculated' });
   } finally {
@@ -2869,6 +3044,60 @@ function goBackToList() {
   border-collapse: collapse;
 }
 
+.pbc-v2-markup-table th.pbc-select-col,
+.pbc-v2-markup-table td.pbc-select-col {
+  width: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  padding: 2px !important;
+  box-sizing: border-box;
+}
+
+.pbc-v2-markup-table th.pbc-sl-col,
+.pbc-v2-markup-table td.pbc-sl-col {
+  width: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  padding: 2px !important;
+  box-sizing: border-box;
+}
+
+.pbc-v2-markup-table th.pbc-select-col :deep(.q-checkbox),
+.pbc-v2-markup-table td.pbc-select-col :deep(.q-checkbox) {
+  margin: 0 auto;
+}
+
+.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background-color: var(--tf-neutral-surface) !important;
+  border-right: 1px solid var(--tf-neutral-border);
+}
+
+.pbc-v2-markup-table thead tr th.sticky-col {
+  z-index: 7;
+  background-color: var(--tf-disabled-bg) !important;
+}
+
+.sticky-col-2 {
+  position: sticky;
+  left: 32px;
+  z-index: 4;
+  background-color: var(--tf-neutral-surface) !important;
+  border-right: 1px solid var(--tf-neutral-border);
+}
+
+.pbc-v2-markup-table thead tr th.sticky-col-2 {
+  z-index: 6;
+  background-color: var(--tf-disabled-bg) !important;
+}
+
+.pbc-row-selected td.sticky-col,
+.pbc-row-selected td.sticky-col-2 {
+  background-color: var(--tf-info-soft) !important;
+}
+
 .pbc-v2-markup-table thead tr th {
   position: sticky;
   top: 0;
@@ -3099,11 +3328,11 @@ function goBackToList() {
   background-color: rgba(255, 255, 255, 0.4) !important;
 }
 
-/* Crisp Excel focus box */
+/* Crisp Excel focus — theme primary (native focus ring disabled in app.scss) */
 :deep(.excel-cell-input.q-field--focused .q-field__control) {
-  background-color: var(--tf-neutral-surface) !important;
-  border: 1.5px solid var(--tf-ops-accent-price) !important;
-  box-shadow: 0 0 0 1px var(--tf-ops-accent-price) !important;
+  background-color: var(--tf-theme-surface, var(--tf-neutral-surface)) !important;
+  border: 1.5px solid var(--tf-theme-primary, var(--q-primary)) !important;
+  box-shadow: none !important;
 }
 
 .rates-pill {
@@ -3112,6 +3341,20 @@ function goBackToList() {
   line-height: 1.2;
   padding-top: 2px;
   padding-bottom: 2px;
+}
+
+.pbc-cost-bdt-cell {
+  cursor: help;
+  border-bottom: 1px dashed color-mix(in srgb, var(--tf-neutral-muted) 55%, transparent);
+}
+
+.pbc-cost-bdt-tooltip__pre {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre;
+  text-align: left;
 }
 
 .pbc-rates-editor {

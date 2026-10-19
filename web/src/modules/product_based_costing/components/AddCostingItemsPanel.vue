@@ -338,6 +338,7 @@ import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
 import { describePbcItemMutationError } from '../composables/useProductBasedCostingItemMutations';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
+import { useProductBasedCostingFileDetailQuery } from '../composables/useProductBasedCostingFileDetailQuery';
 import { productRepository } from 'src/modules/products/repositories/productRepository';
 import { productService } from 'src/modules/products/services/productService';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
@@ -383,6 +384,9 @@ const queryClient = useQueryClient();
 const authStore = useAuthStore();
 const vendorStore = useVendorStore();
 const costingStore = useProductBasedCostingStore();
+
+const fileIdRef = computed(() => props.fileId);
+const { data: fileDetail } = useProductBasedCostingFileDetailQuery(fileIdRef);
 
 const submitting = ref(false);
 const addingProductId = ref<number | null>(null);
@@ -916,13 +920,32 @@ const onCreateMissingProduct = () => {
   emit('createNewProduct', browseSearchQuery.value);
 };
 
+const syncFilterVendorFromFile = () => {
+  if (filterVendorId.value != null) return;
+  const code = fileDetail.value?.vendor_code?.trim();
+  if (!code) return;
+  const vendor = vendorStore.items.find((v) => v.code === code);
+  if (!vendor) return;
+  filterVendorId.value = vendor.id;
+  draftVendorId.value = vendor.id;
+};
+
+watch(
+  [fileDetail, () => vendorStore.items.length],
+  () => {
+    syncFilterVendorFromFile();
+  },
+  { immediate: true },
+);
+
 onMounted(async () => {
   if (costingStore.costingItems.length === 0) {
     await costingStore.fetchProductBasedCostingItems(props.fileId);
   }
   if (authStore.tenantId && vendorStore.items.length === 0) {
-    void vendorStore.fetchVendors(authStore.tenantId);
+    await vendorStore.fetchVendors(authStore.tenantId);
   }
+  syncFilterVendorFromFile();
 });
 </script>
 

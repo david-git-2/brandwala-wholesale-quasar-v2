@@ -730,6 +730,13 @@ a:focus-visible,
   box-shadow: var(--tf-focus-ring);
 }
 
+/* Excel-style inline cells: ring on .q-field__control only (see page/component focus styles). */
+.q-field.excel-cell-input .q-field__native:focus,
+.q-field.excel-cell-input .q-field__native:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .pill-btn,
 .square-btn,
 .rounded-btn {

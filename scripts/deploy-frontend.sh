@@ -42,6 +42,10 @@ fi
 echo "Regenerating Quasar tsconfig (.quasar) after clean..."
 pnpm --filter web exec quasar prepare
 
+DEPLOY_VERSION="$(bash "${ROOT_DIR}/scripts/bump-app-release-version.sh")"
+export VITE_APP_VERSION="${DEPLOY_VERSION}"
+echo "Release version for this deploy: ${DEPLOY_VERSION}"
+
 echo "Building production bundle..."
 if ! pnpm --filter web build; then
   echo "ERROR: build failed. Deploy stopped. Fix the errors above and run again."
@@ -66,7 +70,10 @@ while [[ "${attempt}" -le "${RETRY_ATTEMPTS}" ]]; do
   echo "Deploy attempt ${attempt}/${RETRY_ATTEMPTS}..."
   if wrangler_cmd pages deploy web/dist/spa --project-name "${PROJECT_NAME}" --commit-dirty=true --skip-caching; then
     echo "Deploy succeeded."
-    bash "${ROOT_DIR}/scripts/record-app-release.sh" frontend || true
+    if ! bash "${ROOT_DIR}/scripts/record-app-release.sh" frontend "${DEPLOY_VERSION}"; then
+      echo "Error: deploy succeeded but recording frontend release version failed (check SUPABASE_SECRET_KEY in web/.env.profile.prod)." >&2
+      exit 1
+    fi
     echo "Note: web/.env is now on PRODUCTION. Run pnpm run env:local to return to Docker for daily work."
     exit 0
   fi

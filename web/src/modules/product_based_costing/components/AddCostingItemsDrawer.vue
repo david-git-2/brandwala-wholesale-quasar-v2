@@ -1,125 +1,107 @@
 <template>
-  <q-dialog ref="dialogRef" class="theme-app" @hide="onDialogHide" position="right" full-height persistent>
-    <q-card class="drawer-card column no-wrap">
-      <q-card-section class="row items-center q-py-sm q-px-md drawer-header no-wrap q-gutter-x-sm">
+  <AppResizableOverlayPanel
+    :model-value="modelValue"
+    storage-key="product_based_costing.add-items-drawer-width"
+    :default-width="680"
+    :min-width="480"
+    :max-width="1200"
+    :aria-label="$t('product_based_costing.add_products')"
+    @update:model-value="(val) => emit('update:modelValue', val)"
+  >
+    <div class="drawer-card column no-wrap full-height">
+      <div class="row items-center justify-between q-px-md q-py-sm drawer-header shrink-0 no-wrap q-gutter-x-sm">
         <div class="col min-width-0">
-          <div class="text-subtitle1 text-weight-bold drawer-header__title">
+          <div class="text-subtitle1 text-weight-bold text-grey-9">
             {{ $t('product_based_costing.add_products') }}
           </div>
-          <div class="text-caption ellipsis drawer-header__subtitle">
+          <div class="text-caption text-grey-7 ellipsis">
             {{ fileName }}
           </div>
         </div>
         <q-btn
-          unelevated
+          flat
           dense
           no-caps
-          color="white"
-          text-color="primary"
+          color="primary"
           size="sm"
           icon="ph ph-squares-four"
           :label="$t('product_based_costing.browse_catalog')"
           class="drawer-header__catalog-btn q-px-sm shrink-0"
-          @click="openBrowseCatalog"
+          @click="emit('browse-catalog')"
         />
         <q-btn
           icon="ph ph-x"
           flat
           round
           dense
-          color="white"
+          color="grey-7"
           class="shrink-0"
           aria-label="Close"
-          @click="onSaved"
+          @click="close"
         />
-      </q-card-section>
+      </div>
 
       <AddCostingItemsPanel
         class="col"
         :file-id="fileId"
         layout="drawer"
-        @saved="onSaved"
+        @saved="close"
         @create-new-product="onCreateNewProduct"
       />
-    </q-card>
-  </q-dialog>
+    </div>
+  </AppResizableOverlayPanel>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useDialogPluginComponent } from 'quasar';
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
 import AddCostingItemsPanel from './AddCostingItemsPanel.vue';
 
 const props = defineProps<{
+  modelValue: boolean;
   fileId: number;
 }>();
 
-defineEmits([...useDialogPluginComponent.emits]);
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean];
+  'create-new-product': [name: string];
+  'browse-catalog': [];
+  saved: [];
+}>();
 
-const route = useRoute();
-const router = useRouter();
-const tenantStore = useTenantStore();
-const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
 const costingStore = useProductBasedCostingStore();
 
 const fileName = computed(
   () => costingStore.item?.name ?? `Costing File #${props.fileId}`,
 );
 
-const onSaved = () => {
-  onDialogOK();
+const close = () => {
+  emit('saved');
+  emit('update:modelValue', false);
 };
 
 const onCreateNewProduct = (name: string) => {
-  onDialogOK({ createProductName: name });
-};
-
-const openBrowseCatalog = () => {
-  onDialogOK();
-  const tenantSlug = tenantStore.selectedTenant?.slug ?? route.params.tenantSlug;
-  void router.push({
-    name: 'product-based-costing-add-product-cart-page',
-    params: {
-      ...(tenantSlug ? { tenantSlug } : {}),
-      id: String(props.fileId),
-    },
-  });
+  emit('create-new-product', name);
+  emit('update:modelValue', false);
 };
 </script>
 
 <style scoped>
 .drawer-card {
-  width: 640px;
-  max-width: 95vw;
-  height: calc(100vh - 24px) !important;
-  margin: 12px;
-  border-radius: 16px !important;
-  background: var(--tf-theme-surface) !important;
-  color: var(--tf-theme-ink);
-  border: 1px solid var(--tf-theme-border);
-  box-shadow: var(--tf-theme-shadow) !important;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
+  background: var(--tf-theme-surface, #fff);
 }
 
 .drawer-header {
-  background: var(--tf-theme-primary) !important;
-  border-bottom: 1px solid rgb(0 0 0 / 0.12);
-  color: var(--tf-neutral-surface);
-}
-
-.drawer-header__title {
-  color: var(--tf-neutral-surface);
-}
-
-.drawer-header__subtitle {
-  color: rgb(255 255 255 / 0.92);
+  background: #fff;
+  border-bottom: 1px solid var(--tf-neutral-border, #e2e8f0);
 }
 
 .drawer-header__catalog-btn {
-  border-radius: 8px;
-  font-weight: 700;
+  font-weight: 600;
 }
 </style>

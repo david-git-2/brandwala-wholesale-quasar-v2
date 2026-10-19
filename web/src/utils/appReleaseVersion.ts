@@ -1,13 +1,10 @@
-const APP_VERSION = (import.meta.env.VITE_APP_VERSION as string | undefined)?.trim() || '1.0.0';
-
 const SEMVER_RE = /^v?(\d+\.\d+\.\d+)(?:[-+].*)?$/i;
-const GIT_SHA_RE = /^[0-9a-f]{7,40}$/i;
 
-/** Staff-facing label (semver), e.g. v1.0.0 */
+/** Staff-facing semver label (always vX.Y.Z when parseable). */
 export function formatReleaseVersionLabel(raw: string | null | undefined): string {
   const value = (raw ?? '').trim();
   if (!value || value === 'unknown') {
-    return `v${APP_VERSION}`;
+    return '—';
   }
 
   const semver = value.match(SEMVER_RE);
@@ -15,24 +12,17 @@ export function formatReleaseVersionLabel(raw: string | null | undefined): strin
     return `v${semver[1]}`;
   }
 
-  if (GIT_SHA_RE.test(value)) {
-    return `v${APP_VERSION}`;
-  }
-
-  return value.startsWith('v') ? value : `v${value}`;
+  return value;
 }
 
-/** Tooltip when stored value is a git build id, not semver */
-export function releaseVersionBuildHint(raw: string | null | undefined): string | undefined {
-  const value = (raw ?? '').trim();
-  if (!value || value === 'unknown') {
-    return undefined;
-  }
-  if (SEMVER_RE.test(value)) {
-    return undefined;
-  }
-  if (GIT_SHA_RE.test(value)) {
-    return `Build ${value}`;
-  }
-  return value;
+export function formatReleaseDeployedDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  const now = new Date();
+  const opts: Intl.DateTimeFormatOptions =
+    date.getFullYear() === now.getFullYear()
+      ? { month: 'short', day: 'numeric' }
+      : { month: 'short', day: 'numeric', year: '2-digit' };
+  return date.toLocaleDateString(undefined, opts);
 }

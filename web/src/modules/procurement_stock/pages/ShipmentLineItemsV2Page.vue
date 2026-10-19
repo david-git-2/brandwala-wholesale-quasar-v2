@@ -460,6 +460,12 @@
       @thumb-drag-start="startThumbDrag"
     />
 
+    <AddShipmentItemsDrawer
+      v-model="addItemsDrawerOpen"
+      :shipment-id="shipmentId"
+      :initial-section-id="addItemsInitialSectionId"
+    />
+
     <ShipmentSettingsDrawer
       v-model="settingsDrawerOpen"
       :shipment-id="shipmentId"
@@ -515,7 +521,37 @@
           <q-btn icon="ph ph-x" flat round dense color="grey-6" aria-label="Close" @click="showBulkPasteDialog = false" />
         </div>
 
-        <div class="q-px-md q-pb-sm shrink-0">
+        <div class="q-px-md q-pb-sm shrink-0 column q-gutter-y-sm">
+          <div class="row items-center q-col-gutter-sm">
+            <div v-if="activeSheetId === 'sheet_all'" class="col">
+              <q-select
+                v-model="bulkPasteSectionDbId"
+                :options="bulkPasteSectionOptions"
+                outlined
+                dense
+                emit-value
+                map-options
+                label="Section"
+                class="full-width"
+              />
+            </div>
+            <div v-else class="col text-caption text-grey-7">
+              Section: <span class="text-weight-bold text-grey-9">{{ bulkPasteSectionLabel }}</span>
+              · {{ bulkPasteTargetItems.length }} line{{ bulkPasteTargetItems.length === 1 ? '' : 's' }}
+            </div>
+            <div class="col-auto">
+              <q-btn
+                flat
+                dense
+                no-caps
+                color="primary"
+                icon="ph ph-copy"
+                label="Copy names"
+                :disable="bulkPasteTargetItems.length === 0"
+                @click="copyBulkPasteSectionNames"
+              />
+            </div>
+          </div>
           <q-select
             v-model="bulkPasteField"
             :options="bulkPasteFieldOptions"
@@ -583,7 +619,7 @@
             no-caps
             class="rounded-borders q-px-md text-weight-bold"
             :loading="bulkPasteSaving"
-            :disable="bulkPasteSaving"
+            :disable="bulkPasteSaving || bulkPasteTargetItems.length === 0"
             @click="applyBulkPaste"
           />
         </div>
@@ -645,7 +681,7 @@
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useQueryClient } from '@tanstack/vue-query';
 import { useRoute, useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
+import { useQuasar, copyToClipboard } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import {
@@ -757,10 +793,17 @@ const pageInitialLoading = computed(
   () => shipmentStore.loading && (!shipmentStore.currentShipment || shipmentStore.currentShipment.id !== shipmentId),
 );
 const calculations = useInboundShipmentCalculations();
+const addItemsDrawerOpen = ref(false);
+const addItemsInitialSectionId = ref<number | null>(null);
+
 const actions = useInboundShipmentActions({
   shipmentId,
   activeTab,
   calculations,
+  openAddItemsDrawer: (initialSectionId) => {
+    addItemsInitialSectionId.value = initialSectionId ?? null;
+    addItemsDrawerOpen.value = true;
+  },
 });
 
 const {
@@ -925,6 +968,42 @@ type BulkPasteGridRow = {
 const bulkPasteRows = ref<BulkPasteGridRow[]>([]);
 const bulkPasteFocus = ref({ row: 0, col: 0 });
 const bulkPasteCols = ['barcode', 'product_code', 'value'] as const;
+const bulkPasteSectionDbId = ref<number | null>(null);
+
+const activeSectionDbIdForSheet = computed(() => {
+  const activeSection = sheets.value.find((s) => s.id === activeSheetId.value);
+  return activeSection?.dbId ?? null;
+});
+
+const bulkPasteSectionOptions = computed(() =>
+  (shipmentStore.currentShipmentSections ?? []).map((s) => ({
+    label: s.vendor?.name ? `${s.title} (${s.vendor.name})` : s.title,
+    value: s.id,
+  })),
+);
+
+const bulkPasteEffectiveSectionDbId = computed(() => {
+  if (activeSectionDbIdForSheet.value != null) {
+    return activeSectionDbIdForSheet.value;
+  }
+  return bulkPasteSectionDbId.value;
+});
+
+const bulkPasteSectionLabel = computed(() => {
+  const id = bulkPasteEffectiveSectionDbId.value;
+  if (id == null) return 'Select a section';
+  return getSectionTitle(id);
+});
+
+const bulkPasteTargetItems = computed(() => {
+  const sectionDbId = bulkPasteEffectiveSectionDbId.value;
+  if (sectionDbId == null) return [];
+  const firstSectionDbId = shipmentStore.currentShipmentSections?.[0]?.id ?? null;
+  return displayedItems.value.filter((it) => {
+    const sid = (it.sectionId ?? it.rawItem?.section_id ?? null) as number | null;
+    return sid === sectionDbId || (sid == null && sectionDbId === firstSectionDbId);
+  });
+});
 
 const bulkPasteFieldLabel = computed(() => {
   switch (bulkPasteField.value) {
@@ -982,6 +1061,10 @@ const openBulkPasteDialog = (
   const nextField = allowed.includes(field) ? field : allowed[0];
   bulkPasteField.value = nextField;
   bulkPasteStartItem.value = startItem || null;
+  bulkPasteSectionDbId.value =
+    activeSectionDbIdForSheet.value ??
+    shipmentStore.currentShipmentSections?.[0]?.id ??
+    null;
   bulkPasteSaving.value = false;
   bulkPasteRows.value = Array.from({ length: 16 }, (_, i) => emptyBulkPasteRow(i));
   bulkPasteFocus.value = { row: 0, col: 0 };
@@ -1035,8 +1118,38 @@ const onBulkPasteGridPaste = (event: ClipboardEvent) => {
   bulkPasteRows.value = rows;
 };
 
+const copyBulkPasteSectionNames = () => {
+  const names = bulkPasteTargetItems.value
+    .map((it) => (it.name || '').trim())
+    .filter((name) => name.length > 0);
+  if (names.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'No product names in this section.',
+      position: 'bottom',
+    });
+    return;
+  }
+  void copyToClipboard(names.join('\n')).then(() => {
+    $q.notify({
+      type: 'positive',
+      message: `Copied ${names.length} product name${names.length === 1 ? '' : 's'}.`,
+      position: 'bottom',
+      timeout: 1500,
+    });
+  });
+};
+
 const applyBulkPaste = async () => {
-  const items = displayedItems.value;
+  if (bulkPasteEffectiveSectionDbId.value == null) {
+    $q.notify({
+      type: 'warning',
+      message: 'Choose a section before applying paste.',
+      position: 'bottom',
+    });
+    return;
+  }
+  const items = bulkPasteTargetItems.value;
   const field = bulkPasteField.value;
   const updates: Array<{ id: number; payload: Record<string, any> }> = [];
   let count = 0;
@@ -1187,15 +1300,8 @@ const applyBulkPaste = async () => {
 const triggerAddItems = () => {
   const activeSection = sheets.value.find((s) => s.id === activeSheetId.value);
   const activeSectionDbId = activeSection?.dbId ?? null;
-
   if (shipmentId && !isNaN(shipmentId)) {
-    $q.dialog({
-      component: AddShipmentItemsDrawer,
-      componentProps: {
-        shipmentId,
-        initialSectionId: activeSectionDbId,
-      },
-    });
+    actions.openAddItems(activeSectionDbId);
   }
 };
 
@@ -1509,6 +1615,30 @@ const landSplitAttentionForItem = (itemId: number): string | null => {
 
 const bulkApplyingLandSplits = ref(false);
 
+const mergeOutcomeRows = (rows: ShipmentItemOutcome[]) => {
+  if (rows.length === 0) return;
+  const next = { ...extraOutcomesByItemId.value };
+  for (const row of rows) {
+    const existing = next[row.shipment_item_id] ?? [];
+    if (existing.some((r) => r.id === row.id)) continue;
+    (next[row.shipment_item_id] ??= []).push(row);
+  }
+  extraOutcomesByItemId.value = next;
+};
+
+const patchOrderedOutcomeRow = (outcome: ShipmentItemOutcome) => {
+  const next = { ...extraOutcomesByItemId.value };
+  const rows = [...(next[outcome.shipment_item_id] ?? [])];
+  const idx = rows.findIndex((r) => r.reason === 'ordered');
+  if (idx >= 0) {
+    rows[idx] = outcome;
+  } else {
+    rows.push(outcome);
+  }
+  next[outcome.shipment_item_id] = rows;
+  extraOutcomesByItemId.value = next;
+};
+
 const reloadShipmentItemOutcomes = async () => {
   const ids = shipmentStore.currentShipmentItems.map((i) => i.id);
   if (ids.length === 0) {
@@ -1626,13 +1756,30 @@ watch(
 
 watch(
   () => shipmentStore.currentShipmentItems.map((i) => i.id).join(','),
-  async (key) => {
+  async (key, prevKey) => {
     const ids = key ? key.split(',').map(Number) : [];
     if (ids.length === 0) {
       extraOutcomesByItemId.value = {};
       return;
     }
     try {
+      const prevIds = prevKey ? prevKey.split(',').map(Number).filter(Boolean) : [];
+      const addedIds = prevKey ? ids.filter((id) => !prevIds.includes(id)) : [];
+      if (addedIds.length > 0) {
+        const seeded: ShipmentItemOutcome[] = [];
+        const needFetch: number[] = [];
+        for (const id of addedIds) {
+          const seed = shipmentStore.takeOrderedOutcomeSeed(id);
+          if (seed) seeded.push(seed);
+          else needFetch.push(id);
+        }
+        mergeOutcomeRows(seeded);
+        if (needFetch.length > 0) {
+          const rows = await globalShipmentRepository.listShipmentItemOutcomes(needFetch);
+          mergeOutcomeRows(rows);
+        }
+        return;
+      }
       await reloadShipmentItemOutcomes();
     } catch (err) {
       extraOutcomesByItemId.value = {};
@@ -2020,6 +2167,10 @@ const onCellDirectBlur = async (item: any, field: string) => {
       [field]: parsedVal,
     };
     await shipmentStore.updateShipmentItem(item.id, payload as any);
+    const seeded = shipmentStore.takeOrderedOutcomeSeed(item.id);
+    if (seeded) {
+      patchOrderedOutcomeRow(seeded);
+    }
     $q.notify({
       type: 'positive',
       message: 'Updated item',
@@ -2635,7 +2786,7 @@ const removeSheet = async (id: string) => {
 :deep(.excel-cell-input.q-field--focused .q-field__control) {
   background-color: var(--tf-theme-surface) !important;
   border: 1.5px solid var(--tf-theme-primary) !important;
-  box-shadow: 0 0 0 1px var(--tf-theme-primary) !important;
+  box-shadow: none !important;
 }
 
 :deep(.excel-cell-input--weight-tint .q-field__control) {
@@ -2663,6 +2814,20 @@ const removeSheet = async (id: string) => {
 :deep(.excel-cell-input--price-tint.q-field--focused .q-field__control) {
   background-color: color-mix(in srgb, var(--tf-ops-hue-price) 88%, var(--tf-theme-surface)) !important;
   border: 1.5px solid var(--tf-ops-accent-price) !important;
+  box-shadow: none !important;
+}
+
+:deep(.excel-cell-input--qty-tint .q-field__control) {
+  border-radius: 6px !important;
+  background-color: color-mix(in srgb, var(--tf-ops-hue-qty) 78%, var(--tf-theme-surface)) !important;
+  box-shadow: none !important;
+}
+:deep(.excel-cell-input--qty-tint:hover .q-field__control) {
+  background-color: color-mix(in srgb, var(--tf-ops-hue-qty) 88%, var(--tf-theme-surface)) !important;
+}
+:deep(.excel-cell-input--qty-tint.q-field--focused .q-field__control) {
+  background-color: color-mix(in srgb, var(--tf-ops-hue-qty) 88%, var(--tf-theme-surface)) !important;
+  border: 1.5px solid var(--tf-ops-accent-qty) !important;
   box-shadow: none !important;
 }
 

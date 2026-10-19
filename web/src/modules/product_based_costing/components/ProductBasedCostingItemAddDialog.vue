@@ -328,6 +328,8 @@ import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
 import SmartImage from 'src/components/SmartImage.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useProductBasedCostingFileDetailQuery } from '../composables/useProductBasedCostingFileDetailQuery';
+import { useUpdateProductBasedCostingFileMutation } from '../composables/useProductBasedCostingFileMutations';
 import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { productService } from 'src/modules/products/services/productService';
@@ -374,6 +376,13 @@ const emit = defineEmits<{
 const store = useProductBasedCostingStore();
 const productStore = useProductStore();
 const vendorStore = useVendorStore();
+const updateFileMutation = useUpdateProductBasedCostingFileMutation();
+const fileIdRef = computed(() => props.productBasedCostingFileId);
+const { data: fileDetail } = useProductBasedCostingFileDetailQuery(fileIdRef);
+
+const resolvedDefaultVendorCode = computed(
+  () => props.defaultVendorCode ?? fileDetail.value?.vendor_code ?? null,
+);
 const { data: currenciesData } = useGlobalCurrenciesQuery();
 const authStore = useAuthStore();
 const $q = useQuasar();
@@ -486,7 +495,7 @@ const getInitialForm = () => ({
   product_code: '',
   brand: null as string | null,
   category: null as string | null,
-  vendor_code: props.defaultVendorCode ?? null,
+  vendor_code: resolvedDefaultVendorCode.value ?? null,
   quantity: null as number | null,
   confirmed_quantity: null as number | null,
   web_link: '',
@@ -892,7 +901,7 @@ watch(
 );
 
 watch(
-  () => [props.defaultVendorCode, props.modelValue, props.itemData],
+  () => [resolvedDefaultVendorCode.value, props.modelValue, props.itemData],
   (values) => {
     const vendorCode = (values[0] ?? null) as string | null;
     const isOpen = Boolean(values[1]);
@@ -916,14 +925,14 @@ const onVendorChange = async () => {
   }
   await loadBrandCategoryOptions();
 
-  const result = await store.updateProductBasedCostingFile({
-    id: props.productBasedCostingFileId,
-    vendor_code: form.vendor_code,
-    market_code: resolvedMarketCode.value,
-  });
-
-  if (!result.success) {
-    return;
+  try {
+    await updateFileMutation.mutateAsync({
+      id: props.productBasedCostingFileId,
+      vendor_code: form.vendor_code,
+      market_code: resolvedMarketCode.value,
+    });
+  } catch {
+    /* mutation shows error */
   }
 };
 </script>

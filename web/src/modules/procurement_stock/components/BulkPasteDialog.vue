@@ -11,6 +11,17 @@
           </div>
         </div>
         <q-space />
+        <q-btn
+          flat
+          dense
+          no-caps
+          color="primary"
+          icon="ph ph-copy"
+          label="Copy names"
+          class="q-mr-xs"
+          :disable="currentItems.length === 0"
+          @click="copySectionProductNames"
+        />
         <q-btn icon="ph ph-x" flat round dense color="grey-7" v-close-popup />
       </q-card-section>
 
@@ -75,7 +86,7 @@
                 </q-select>
               </div>
               <div class="col-12 col-sm-6 text-caption text-dark text-weight-medium" style="color: #334155">
-                Items will be filtered or assigned to this section.
+                Paste only updates lines in this section ({{ currentItems.length }} items).
               </div>
             </div>
 
@@ -180,8 +191,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useDialogPluginComponent } from 'quasar';
+import { ref, computed, watch } from 'vue';
+import { useDialogPluginComponent, copyToClipboard, useQuasar } from 'quasar';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
 
@@ -193,19 +204,46 @@ defineEmits([...useDialogPluginComponent.emits]);
 
 const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
 const shipmentStore = useGlobalShipmentStore();
+const $q = useQuasar();
 
 const targetSectionId = ref<number | null>(props.initialSectionId ?? null);
 
+watch(
+  () => shipmentStore.currentShipmentSections,
+  (sections) => {
+    if (targetSectionId.value != null) return;
+    if (props.initialSectionId != null) {
+      targetSectionId.value = props.initialSectionId;
+      return;
+    }
+    targetSectionId.value = sections[0]?.id ?? null;
+  },
+  { immediate: true },
+);
+
 const sectionOptions = computed(() => {
   const sections = shipmentStore.currentShipmentSections ?? [];
-  return [
-    { label: 'All Sections (Sequential across shipment)', value: null },
-    ...sections.map((s) => ({
-      label: s.vendor?.name ? `${s.title} (${s.vendor.name})` : s.title,
-      value: s.id,
-    })),
-  ];
+  return sections.map((s) => ({
+    label: s.vendor?.name ? `${s.title} (${s.vendor.name})` : s.title,
+    value: s.id,
+  }));
 });
+
+const copySectionProductNames = () => {
+  const names = currentItems.value
+    .map((it) => (it.name || '').trim())
+    .filter((name) => name.length > 0);
+  if (names.length === 0) {
+    $q.notify({ type: 'warning', message: 'No product names in this section.' });
+    return;
+  }
+  void copyToClipboard(names.join('\n')).then(() => {
+    $q.notify({
+      type: 'positive',
+      message: `Copied ${names.length} product name${names.length === 1 ? '' : 's'}.`,
+    });
+  });
+};
 
 const submitting = ref(false);
 const rawPasteText = ref('');
@@ -215,12 +253,13 @@ const colMappings = ref<string[]>([]);
 
 const currentItems = computed(() => {
   const all = shipmentStore.currentShipmentItems ?? [];
-  if (targetSectionId.value == null) return all;
+  const sectionId = targetSectionId.value;
+  if (sectionId == null) return [];
   const firstSectionId = shipmentStore.currentShipmentSections[0]?.id ?? null;
   return all.filter(
     (item) =>
-      item.section_id === targetSectionId.value ||
-      (item.section_id == null && targetSectionId.value === firstSectionId),
+      item.section_id === sectionId ||
+      (item.section_id == null && sectionId === firstSectionId),
   );
 });
 
@@ -515,6 +554,10 @@ const formatPreviewValue = (val: string | null, mapping?: string): string => {
 };
 
 const onApply = async () => {
+  if (targetSectionId.value == null) {
+    $q.notify({ type: 'warning', message: 'Choose a section before applying.' });
+    return;
+  }
   if (!parsedRows.value.length || !hasValueMappings.value || applyCount.value === 0) return;
   submitting.value = true;
 

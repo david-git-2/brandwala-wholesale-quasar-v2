@@ -10089,6 +10089,10 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      add_global_shipment_item: {
+        Args: { p_item: Json; p_shipment_id: number }
+        Returns: Json
+      }
       add_pbc_backlog_to_costing_file: {
         Args: { p_backlog_ids: number[]; p_file_id: number }
         Returns: number[]
@@ -12713,6 +12717,17 @@ export type Database = {
       global_shipment_costs_are_locked: {
         Args: {
           p_ship: Database["public"]["Tables"]["global_shipments"]["Row"]
+        }
+        Returns: boolean
+      }
+      global_shipment_item_conflicts_in_section: {
+        Args: {
+          p_barcode: string
+          p_exclude_item_id?: number
+          p_product_code: string
+          p_product_id: number
+          p_section_id: number
+          p_shipment_id: number
         }
         Returns: boolean
       }
@@ -16220,6 +16235,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_global_shipment_item: {
+        Args: { p_item_id: number; p_patch: Json }
+        Returns: Json
       }
       update_global_shipment_items_order: {
         Args: { p_items: Json }

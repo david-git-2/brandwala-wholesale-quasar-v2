@@ -674,6 +674,11 @@ GRANT ALL ON FUNCTION "public"."assign_shipment_to_child"("p_parent_tenant_id" b
 
 
 
+GRANT ALL ON FUNCTION "public"."add_global_shipment_item"("p_shipment_id" bigint, "p_item" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."add_global_shipment_item"("p_shipment_id" bigint, "p_item" "jsonb") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."bulk_add_global_shipment_items"("p_shipment_id" bigint, "p_items" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."bulk_add_global_shipment_items"("p_shipment_id" bigint, "p_items" "jsonb") TO "service_role";
 
@@ -688,6 +693,11 @@ GRANT ALL ON FUNCTION "public"."bulk_allocate_shipment_stock"("p_parent_tenant_i
 
 
 GRANT ALL ON FUNCTION "public"."bulk_delete_shipment_items_by_product_id"("p_shipment_id" bigint, "p_items" "jsonb") TO "authenticated";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_global_shipment_item"("p_item_id" bigint, "p_patch" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_global_shipment_item"("p_item_id" bigint, "p_patch" "jsonb") TO "service_role";
 
 
 

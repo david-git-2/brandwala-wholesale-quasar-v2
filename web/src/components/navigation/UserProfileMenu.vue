@@ -46,19 +46,31 @@
               {{ currentRoleLabel }}
             </span>
           </div>
-          <div v-if="releaseVersions" class="user-profile-dropdown__versions q-mt-sm">
-            <span
-              class="user-profile-dropdown__version-pill"
-              :title="releaseVersionBuildHint(releaseVersions.backend_version)"
-            >
-              API {{ formatReleaseVersionLabel(releaseVersions.backend_version) }}
-            </span>
-            <span
-              class="user-profile-dropdown__version-pill"
-              :title="releaseVersionBuildHint(releaseVersions.frontend_version)"
-            >
-              App {{ formatReleaseVersionLabel(releaseVersions.frontend_version) }}
-            </span>
+          <div v-if="releaseVersions" class="user-profile-dropdown__releases q-mt-xs">
+            <div class="user-profile-dropdown__release-row">
+              <span class="user-profile-dropdown__release-kind">API</span>
+              <span class="user-profile-dropdown__release-version">
+                {{ formatReleaseVersionLabel(releaseVersions.backend_version) }}
+              </span>
+              <span
+                v-if="formatReleaseDeployedDate(releaseVersions.backend_updated_at)"
+                class="user-profile-dropdown__release-date"
+              >
+                {{ formatReleaseDeployedDate(releaseVersions.backend_updated_at) }}
+              </span>
+            </div>
+            <div class="user-profile-dropdown__release-row">
+              <span class="user-profile-dropdown__release-kind">App</span>
+              <span class="user-profile-dropdown__release-version">
+                {{ formatReleaseVersionLabel(releaseVersions.frontend_version) }}
+              </span>
+              <span
+                v-if="formatReleaseDeployedDate(releaseVersions.frontend_updated_at)"
+                class="user-profile-dropdown__release-date"
+              >
+                {{ formatReleaseDeployedDate(releaseVersions.frontend_updated_at) }}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -208,13 +220,15 @@ import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
 import { listShopLoginGroups } from 'src/modules/auth/utils/shopCustomerGroupSession';
 import { getShopSelectCompanyRouteLocation, getAppRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 import {
+  formatReleaseDeployedDate,
   formatReleaseVersionLabel,
-  releaseVersionBuildHint,
 } from 'src/utils/appReleaseVersion';
 
 type ReleaseVersions = {
   backend_version: string;
   frontend_version: string;
+  backend_updated_at: string | null;
+  frontend_updated_at: string | null;
 };
 
 const showAboutDialog = ref(false);
@@ -315,6 +329,8 @@ const loadReleaseVersions = async () => {
   releaseVersions.value = {
     backend_version: row.backend_version || 'unknown',
     frontend_version: row.frontend_version || 'unknown',
+    backend_updated_at: row.backend_updated_at ?? null,
+    frontend_updated_at: row.frontend_updated_at ?? null,
   };
 };
 
@@ -397,25 +413,49 @@ onMounted(async () => {
   line-height: 1.3;
 }
 
-.user-profile-dropdown__versions {
+.user-profile-dropdown__releases {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--tf-neutral-border) 18%, var(--tf-neutral-surface) 82%);
+  border: 1px solid color-mix(in srgb, var(--tf-neutral-border) 70%, transparent);
+  font-variant-numeric: tabular-nums;
 }
 
-.user-profile-dropdown__version-pill {
-  display: inline-flex;
-  align-items: center;
-  font-size: 10.5px;
-  line-height: 1.2;
+.user-profile-dropdown__release-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-height: 0;
+  line-height: 1.15;
+  font-size: 9.5px;
+}
+
+.user-profile-dropdown__release-kind {
+  flex: 0 0 1.65rem;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--tf-neutral-chrome);
+}
+
+.user-profile-dropdown__release-version {
+  flex: 0 0 auto;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  padding: 3px 8px;
-  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--tf-neutral-ink);
+}
+
+.user-profile-dropdown__release-date {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 9px;
+  font-weight: 500;
   color: var(--tf-neutral-muted);
-  background: color-mix(in srgb, var(--tf-neutral-border) 35%, var(--tf-neutral-surface) 65%);
-  border: 1px solid var(--tf-neutral-border);
+  text-align: right;
   white-space: nowrap;
 }
 
