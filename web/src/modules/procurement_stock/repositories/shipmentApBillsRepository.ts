@@ -61,15 +61,9 @@ const parseBucketPaid = (raw: unknown): ShipmentApBucketPaidTotals => {
   };
 };
 
-/** Pay-weighted FX for landed cost — same payload as `refresh_global_shipment_fx_from_ap_payments`. */
-export async function fetchShipmentApFxSnapshot(
-  shipmentId: number,
-): Promise<ShipmentApFxSnapshot | null> {
-  const { data, error } = await supabase.rpc('refresh_global_shipment_fx_from_ap_payments', {
-    p_shipment_id: shipmentId,
-  });
-  if (error || !data || typeof data !== 'object') return null;
-  const fx = data as Record<string, unknown>;
+export function parseShipmentApFxSnapshot(raw: unknown): ShipmentApFxSnapshot | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const fx = raw as Record<string, unknown>;
   return {
     product_conversion_rate: num(fx.product_conversion_rate, 1),
     cargo_conversion_rate: num(fx.cargo_conversion_rate, 1),
@@ -81,6 +75,42 @@ export async function fetchShipmentApFxSnapshot(
     cargo_foreign: num(fx.cargo_foreign),
     material: parseBucketPaid(fx.material),
     freight: parseBucketPaid(fx.freight),
+  };
+}
+
+export type ShipmentSettingsFinanceBundle = {
+  apBills: ShipmentApBillRow[];
+  apFx: ShipmentApFxSnapshot | null;
+  costEntries: unknown[];
+};
+
+/** Pay-weighted FX for landed cost — same payload as `refresh_global_shipment_fx_from_ap_payments`. */
+export async function fetchShipmentApFxSnapshot(
+  shipmentId: number,
+): Promise<ShipmentApFxSnapshot | null> {
+  const { data, error } = await supabase.rpc('refresh_global_shipment_fx_from_ap_payments', {
+    p_shipment_id: shipmentId,
+  });
+  if (error || !data) return null;
+  return parseShipmentApFxSnapshot(data);
+}
+
+export async function fetchShipmentSettingsFinanceBundle(
+  shipmentId: number,
+): Promise<ShipmentSettingsFinanceBundle> {
+  const { data, error } = await supabase.rpc('get_shipment_settings_finance_bundle', {
+    p_shipment_id: shipmentId,
+  });
+  if (error) throw error;
+  const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+  const apBills = Array.isArray(payload.ap_bills)
+    ? (payload.ap_bills as ShipmentApBillRow[])
+    : [];
+  const costEntries = Array.isArray(payload.cost_entries) ? payload.cost_entries : [];
+  return {
+    apBills,
+    apFx: parseShipmentApFxSnapshot(payload.ap_fx),
+    costEntries,
   };
 }
 

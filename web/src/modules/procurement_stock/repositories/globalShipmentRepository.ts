@@ -12,6 +12,8 @@ import {
   isShipmentCostsLocked,
   sumProductEntryAmount,
 } from '../utils/costEntriesCosting';
+import { parseShipmentApFxSnapshot } from './shipmentApBillsRepository';
+import type { BatchCodeItem, BatchCodeList } from './batchCodeRepository';
 
 const db = supabase as any;
 
@@ -126,10 +128,9 @@ export interface GlobalShipmentItem {
 }
 
 export interface PaginationMeta {
-  total: number;
-  page: number;
   pageSize: number;
-  totalPages: number;
+  nextCursor: number | null;
+  hasMore: boolean;
   archivedTotal?: number;
 }
 
@@ -138,11 +139,40 @@ export interface PaginatedResult<T> {
   meta: PaginationMeta;
 }
 
-type ShipmentApFxJson = {
-  product_conversion_rate?: number | string;
-  cargo_conversion_rate?: number | string;
-  cargo_rate?: number | string;
-  transaction_rate?: number | string;
+export type InboundShipmentListVendor = {
+  id: number;
+  name: string;
+  code: string;
+  market_code: string;
+  parent_tenant_id: number | null;
+  is_default: boolean;
+};
+
+export type InboundShipmentListCargoCompany = {
+  id: number;
+  name: string;
+  code: string;
+  is_default: boolean;
+};
+
+export type InboundShipmentsWorkspaceResult = PaginatedResult<GlobalShipment> & {
+  vendors: InboundShipmentListVendor[];
+  cargoCompanies: InboundShipmentListCargoCompany[];
+};
+
+const mergeShipmentApFx = (
+  shipment: GlobalShipment,
+  apFxRaw: unknown,
+): GlobalShipment => {
+  const snapshot = parseShipmentApFxSnapshot(apFxRaw);
+  if (!snapshot) return shipment;
+  return {
+    ...shipment,
+    product_conversion_rate: snapshot.product_conversion_rate,
+    cargo_conversion_rate: snapshot.cargo_conversion_rate,
+    cargo_rate: snapshot.cargo_rate,
+    transaction_rate: snapshot.transaction_rate,
+  };
 };
 
 const applyShipmentApFx = async (shipment: GlobalShipment): Promise<GlobalShipment> => {
@@ -150,18 +180,7 @@ const applyShipmentApFx = async (shipment: GlobalShipment): Promise<GlobalShipme
     p_shipment_id: shipment.id,
   });
   if (error || !data) return shipment;
-  const fx = data as ShipmentApFxJson;
-  const num = (v: number | string | undefined) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  };
-  return {
-    ...shipment,
-    product_conversion_rate: num(fx.product_conversion_rate),
-    cargo_conversion_rate: num(fx.cargo_conversion_rate),
-    cargo_rate: num(fx.cargo_rate),
-    transaction_rate: num(fx.transaction_rate),
-  };
+  return mergeShipmentApFx(shipment, data);
 };
 
 const normalizeShipment = (row: GlobalShipment & Record<string, unknown>): GlobalShipment => {
@@ -193,6 +212,10 @@ export interface ShipmentOverviewDetailsPayload {
   boxes: GlobalShipmentBox[];
   cost_entries: GlobalShipmentCostEntry[];
   flow_stages: ShipmentProgressFlowStage[];
+  item_outcomes: ShipmentItemOutcome[];
+  outcome_vendor_credits: ShipmentOutcomeVendorCredit[];
+  batch_code_list: BatchCodeList | null;
+  batch_code_items: BatchCodeItem[];
 }
 
 const getShipmentOverviewDetails = async (
@@ -205,8 +228,11 @@ const getShipmentOverviewDetails = async (
   if (error) throw error;
   if (!data) throw new Error('Shipment not found');
 
-  const raw = data as any;
-  const shipment = await applyShipmentApFx(normalizeShipment(raw.shipment));
+  const raw = data as Record<string, unknown>;
+  const shipment = mergeShipmentApFx(
+    normalizeShipment(raw.shipment as GlobalShipment & Record<string, unknown>),
+    raw.ap_fx,
+  );
 
   return {
     shipment,
@@ -215,6 +241,10 @@ const getShipmentOverviewDetails = async (
     boxes: (raw.boxes ?? []) as GlobalShipmentBox[],
     cost_entries: (raw.cost_entries ?? []) as GlobalShipmentCostEntry[],
     flow_stages: (raw.flow_stages ?? []) as ShipmentProgressFlowStage[],
+    item_outcomes: (raw.item_outcomes ?? []) as ShipmentItemOutcome[],
+    outcome_vendor_credits: (raw.outcome_vendor_credits ?? []) as ShipmentOutcomeVendorCredit[],
+    batch_code_list: (raw.batch_code_list as BatchCodeList | null) ?? null,
+    batch_code_items: (raw.batch_code_items ?? []) as BatchCodeItem[],
   };
 };
 
@@ -265,10 +295,62 @@ const getById = async (id: number): Promise<GlobalShipment> => {
   );
 };
 
+const listInboundShipmentsWorkspace = async (
+  tenantId: number,
+  pageSize: number = 20,
+  cursor: number | null = null,
+  search?: string,
+  status?: string,
+  isArchived: boolean = false,
+  vendorId?: number | null,
+  cargoCompanyId?: number | null,
+  includeReferenceData: boolean = true,
+): Promise<InboundShipmentsWorkspaceResult> => {
+  const { data, error } = await db.rpc('list_inbound_shipments_workspace', {
+    p_tenant_id: tenantId,
+    p_page_size: pageSize,
+    p_cursor: cursor,
+    p_search: search || null,
+    p_status: status || null,
+    p_is_archived: isArchived,
+    p_vendor_id: vendorId ?? null,
+    p_cargo_company_id: cargoCompanyId ?? null,
+    p_include_reference_data: includeReferenceData,
+  });
+
+  if (error) throw error;
+
+  const result = data as {
+    data: GlobalShipment[];
+    meta: {
+      page_size: number;
+      next_cursor: number | null;
+      has_more: boolean;
+      archived_total?: number;
+    };
+    vendors?: InboundShipmentListVendor[];
+    cargo_companies?: InboundShipmentListCargoCompany[];
+  };
+
+  return {
+    data: (result.data || []).map((row) =>
+      normalizeShipment(row as GlobalShipment & Record<string, unknown>),
+    ),
+    meta: {
+      pageSize: result.meta?.page_size || pageSize,
+      nextCursor: result.meta?.next_cursor ?? null,
+      hasMore: result.meta?.has_more === true,
+      archivedTotal: result.meta?.archived_total ?? 0,
+    },
+    vendors: result.vendors ?? [],
+    cargoCompanies: result.cargo_companies ?? [],
+  };
+};
+
 const listPaginated = async (
   tenantId: number,
-  page: number = 1,
   pageSize: number = 20,
+  cursor: number | null = null,
   search?: string,
   status?: string,
   isArchived: boolean = false,
@@ -277,8 +359,8 @@ const listPaginated = async (
 ): Promise<PaginatedResult<GlobalShipment>> => {
   const { data, error } = await db.rpc('list_global_shipments_paginated', {
     p_tenant_id: tenantId,
-    p_page: page,
     p_page_size: pageSize,
+    p_cursor: cursor,
     p_search: search || null,
     p_status: status || null,
     p_is_archived: isArchived,
@@ -293,10 +375,9 @@ const listPaginated = async (
   const result = data as {
     data: GlobalShipment[];
     meta: {
-      total: number;
-      page: number;
       page_size: number;
-      total_pages: number;
+      next_cursor: number | null;
+      has_more: boolean;
       archived_total?: number;
     };
   };
@@ -306,10 +387,9 @@ const listPaginated = async (
       normalizeShipment(row as GlobalShipment & Record<string, unknown>),
     ),
     meta: {
-      total: result.meta?.total || 0,
-      page: result.meta?.page || page,
       pageSize: result.meta?.page_size || pageSize,
-      totalPages: result.meta?.total_pages || 1,
+      nextCursor: result.meta?.next_cursor ?? null,
+      hasMore: result.meta?.has_more === true,
       archivedTotal: result.meta?.archived_total ?? 0,
     },
   };
@@ -1538,6 +1618,7 @@ const reorderShipmentProgressTags = async (
 export const globalShipmentRepository = {
   getById,
   getShipmentOverviewDetails,
+  listInboundShipmentsWorkspace,
   listPaginated,
   createShipment,
   createShipmentDraft,

@@ -550,8 +550,8 @@ const loadShipmentOptions = async (search?: string) => {
   try {
     const result = await globalShipmentRepository.listPaginated(
       warehouseTenantId.value,
-      1,
       50,
+      null,
       search?.trim() || undefined,
     );
     const options = result.data.map((shipment) => ({

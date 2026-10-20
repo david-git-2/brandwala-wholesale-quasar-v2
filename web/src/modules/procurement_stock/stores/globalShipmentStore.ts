@@ -11,19 +11,27 @@ import {
   type ShipmentProgressFlow,
   type ShipmentProgressFlowStage,
   type ShipmentProgressTag,
+  type ShipmentOutcomeVendorCredit,
   type ShipmentSummaryKPIs,
 } from '../repositories/globalShipmentRepository';
+import type { BatchCodeItem, BatchCodeList } from '../repositories/batchCodeRepository';
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository';
 import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxRepository';
 import { globalShipmentCostEntryRepository } from '../repositories/globalShipmentCostEntryRepository';
 import { globalShipmentLocalCostRepository } from '../repositories/globalShipmentLocalCostRepository';
-import { syncShipmentApBills } from '../repositories/shipmentApBillsRepository';
+import {
+  fetchShipmentSettingsFinanceBundle,
+  syncShipmentApBills,
+  type ShipmentApBillRow,
+  type ShipmentApFxSnapshot,
+} from '../repositories/shipmentApBillsRepository';
 import type { GlobalShipmentLocalCost } from '../types/shipmentLocalCost';
 import { shipmentSectionRepository } from '../repositories/shipmentSectionRepository';
-import type {
-  CostEntryDraft,
-  GlobalShipmentCostEntry,
-  UpsertShipmentCostEntryPayload,
+import {
+  LOCAL_COST_BUCKET,
+  type CostEntryDraft,
+  type GlobalShipmentCostEntry,
+  type UpsertShipmentCostEntryPayload,
 } from '../types/shipmentCostEntry';
 import type { SaveShipmentCostEntriesOptions } from '../repositories/globalShipmentCostEntryRepository';
 import type {
@@ -35,6 +43,8 @@ import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
 import { invalidateSharedShipmentItemsCostingCache, seedSharedShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance';
 import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBalance';
+import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import type { InboundShipmentListCargoCompany } from '../repositories/globalShipmentRepository';
 
 const COST_AFFECTING_ITEM_FIELDS = new Set([
   'product_weight',
@@ -44,6 +54,27 @@ const COST_AFFECTING_ITEM_FIELDS = new Set([
 ]);
 
 const COST_AFFECTING_SHIPMENT_FIELDS = new Set(['received_weight', 'total_weight_kg']);
+
+const localCostsFromCostEntries = (
+  entries: GlobalShipmentCostEntry[],
+  parentTenantId: number,
+): GlobalShipmentLocalCost[] =>
+  entries
+    .filter((e) => e.cost_bucket === LOCAL_COST_BUCKET && !e.is_capitalizable)
+    .map((entry) => {
+      const meta = (entry.metadata ?? {}) as { description?: string };
+      return {
+        id: entry.id,
+        parent_tenant_id: entry.parent_tenant_id ?? parentTenantId,
+        shipment_id: entry.shipment_id,
+        section_id: entry.section_id ?? null,
+        description: entry.description?.trim() || meta.description?.trim() || '',
+        amount: Number(entry.amount),
+        currency_id: entry.currency_id ?? null,
+        created_at: entry.created_at ?? '',
+        updated_at: entry.updated_at ?? '',
+      };
+    });
 
 const reloadShipmentLineCosts = async (shipmentId: number): Promise<GlobalShipmentItem[]> => {
   invalidateSharedShipmentItemsCostingCache(shipmentId);
@@ -88,10 +119,10 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     loading: false,
     saving: false,
     error: null as string | null,
-    page: 1,
-    pageSize: 20,
-    total: 0,
-    totalPages: 0,
+    pageSize: 10,
+    nextCursor: null as number | null,
+    hasMore: false,
+    listCargoCompanies: [] as InboundShipmentListCargoCompany[],
     search: '',
     statusFilter: null as string | null,
     isArchivedFilter: false,
@@ -109,9 +140,15 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     currentShipmentBoxes: [] as GlobalShipmentBox[],
     currentShipmentStocks: [] as any[],
     currentCostEntries: [] as GlobalShipmentCostEntry[],
+    currentShipmentItemOutcomes: [] as ShipmentItemOutcome[],
+    currentShipmentVendorCredits: [] as ShipmentOutcomeVendorCredit[],
+    currentBatchCodeList: null as BatchCodeList | null,
+    currentBatchCodeItems: [] as BatchCodeItem[],
+    workspaceHydratedShipmentId: null as number | null,
     currentLocalCosts: [] as GlobalShipmentLocalCost[],
     currentShipmentSummary: null as ShipmentSummaryKPIs | null,
     costEntriesLoading: false,
+    settingsFinanceLoading: false,
     costEntriesSaving: false,
     localCostsLoading: false,
     localCostsSaving: false,
@@ -126,47 +163,79 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     async fetchShipments(
       tenantId: number,
       options?: {
-        page?: number;
         pageSize?: number;
+        cursor?: number | null;
         search?: string | null;
         status?: string | null;
         vendorId?: number | null;
         cargoCompanyId?: number | null;
         isArchived?: boolean;
         append?: boolean;
+        useWorkspace?: boolean;
       },
     ) {
       this.loading = true;
       this.error = null;
       try {
-        const page = options?.page ?? this.page;
         const pageSize = options?.pageSize ?? this.pageSize;
         const search = options?.search !== undefined ? options.search : this.search;
         const status = options?.status !== undefined ? options.status : this.statusFilter;
         const isArchived = options?.isArchived !== undefined ? options.isArchived : this.isArchivedFilter;
         const vendorId = options?.vendorId ?? null;
         const cargoCompanyId = options?.cargoCompanyId ?? null;
+        const cursor = options?.append ? (options.cursor ?? this.nextCursor) : null;
+        const useWorkspace = options?.useWorkspace !== false;
 
-        const result = await globalShipmentRepository.listPaginated(
-          tenantId,
-          page,
-          pageSize,
-          search || undefined,
-          status || undefined,
-          isArchived,
-          vendorId,
-          cargoCompanyId,
-        );
+        const result = useWorkspace
+          ? await globalShipmentRepository.listInboundShipmentsWorkspace(
+              tenantId,
+              pageSize,
+              cursor,
+              search || undefined,
+              status || undefined,
+              isArchived,
+              vendorId,
+              cargoCompanyId,
+              !options?.append,
+            )
+          : await globalShipmentRepository.listPaginated(
+              tenantId,
+              pageSize,
+              cursor,
+              search || undefined,
+              status || undefined,
+              isArchived,
+              vendorId,
+              cargoCompanyId,
+            );
+
+        if (useWorkspace && 'vendors' in result && result.vendors.length > 0) {
+          const vendorStore = useVendorStore();
+          vendorStore.items = result.vendors.map((v) => ({
+            id: v.id,
+            name: v.name,
+            code: v.code,
+            market_code: v.market_code,
+            parent_tenant_id: v.parent_tenant_id,
+            is_default: v.is_default,
+            email: null,
+            phone: null,
+            address: null,
+            website: null,
+          }));
+        }
+        if (useWorkspace && 'cargoCompanies' in result && result.cargoCompanies.length > 0) {
+          this.listCargoCompanies = result.cargoCompanies;
+        }
 
         if (options?.append) {
           this.rows = [...this.rows, ...result.data];
         } else {
           this.rows = result.data;
         }
-        this.page = result.meta.page;
         this.pageSize = result.meta.pageSize;
-        this.total = result.meta.total;
-        this.totalPages = result.meta.totalPages;
+        this.nextCursor = result.meta.nextCursor;
+        this.hasMore = result.meta.hasMore;
         if (result.meta.archivedTotal !== undefined) {
           this.archivedTotal = result.meta.archivedTotal;
         }
@@ -183,16 +252,29 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     async fetchArchivedShipments(tenantId: number, search?: string) {
       this.archivedLoading = true;
       try {
-        const result = await globalShipmentRepository.listPaginated(
-          tenantId,
-          1,
-          100,
-          search || undefined,
-          undefined,
-          true,
-        );
-        this.archivedRows = result.data;
-        this.archivedTotal = result.meta.total;
+        const allArchived: GlobalShipment[] = [];
+        let cursor: number | null = null;
+        let hasMore = true;
+        let archivedBadgeTotal = 0;
+        while (hasMore) {
+          const result = await globalShipmentRepository.listPaginated(
+            tenantId,
+            100,
+            cursor,
+            search || undefined,
+            undefined,
+            true,
+          );
+          if (cursor === null && result.meta.archivedTotal !== undefined) {
+            archivedBadgeTotal = result.meta.archivedTotal;
+          }
+          allArchived.push(...result.data);
+          hasMore = result.meta.hasMore;
+          cursor = result.meta.nextCursor;
+          if (result.data.length === 0) break;
+        }
+        this.archivedRows = allArchived;
+        this.archivedTotal = archivedBadgeTotal;
         return result.data;
       } catch (err: unknown) {
         console.error('Failed to load archived shipments', err);
@@ -232,14 +314,27 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.currentShipmentBoxes = overview.boxes;
         this.currentShipmentSections = overview.sections;
         this.currentCostEntries = overview.cost_entries as any;
-        try {
-          await this.fetchLocalCosts(shipmentId);
-        } catch {
-          // Local costs are optional; do not block shipment overview.
-        }
+        this.currentShipmentItemOutcomes = overview.item_outcomes;
+        this.currentShipmentVendorCredits = overview.outcome_vendor_credits;
+        this.currentBatchCodeList = overview.batch_code_list;
+        this.currentBatchCodeItems = overview.batch_code_items;
+        this.workspaceHydratedShipmentId = shipmentId;
+        this.currentLocalCosts = localCostsFromCostEntries(
+          overview.cost_entries,
+          overview.shipment.parent_tenant_id,
+        );
 
         if (overview.shipment.progress_flow_id && overview.flow_stages?.length) {
           this.progressStagesByFlow[overview.shipment.progress_flow_id] = overview.flow_stages;
+          this.progressTags = overview.flow_stages.map((stage) => ({
+            id: stage.tag_id,
+            name: stage.name,
+            slug: stage.slug,
+            group_name: 'shipment_progress',
+            sort_order: stage.sort_order,
+            color: stage.color,
+            is_active: stage.is_active,
+          }));
         }
 
         this.currentShipmentStocks = [];
@@ -289,9 +384,39 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
+    async loadSettingsFinanceBundle(shipmentId: number): Promise<{
+      apBills: ShipmentApBillRow[];
+      apFx: ShipmentApFxSnapshot | null;
+    }> {
+      this.settingsFinanceLoading = true;
+      this.costEntriesLoading = true;
+      try {
+        const bundle = await fetchShipmentSettingsFinanceBundle(shipmentId);
+        this.currentCostEntries = bundle.costEntries as GlobalShipmentCostEntry[];
+        return { apBills: bundle.apBills, apFx: bundle.apFx };
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to load shipment finance';
+        this.currentCostEntries = [];
+        throw err;
+      } finally {
+        this.settingsFinanceLoading = false;
+        this.costEntriesLoading = false;
+      }
+    },
+
     async fetchLocalCosts(shipmentId: number) {
       this.localCostsLoading = true;
       try {
+        if (
+          this.currentShipment?.id === shipmentId &&
+          this.currentCostEntries.length > 0
+        ) {
+          this.currentLocalCosts = localCostsFromCostEntries(
+            this.currentCostEntries,
+            this.currentShipment.parent_tenant_id,
+          );
+          return this.currentLocalCosts;
+        }
         this.currentLocalCosts = await globalShipmentLocalCostRepository.listByShipmentId(shipmentId);
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load local costs';
@@ -660,7 +785,6 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         const archived = await globalShipmentRepository.archiveShipment(id);
         // Remove from active list
         this.rows = this.rows.filter((r) => r.id !== id);
-        this.total = Math.max(0, this.total - 1);
         // Add to archived list if loaded
         if (!this.archivedRows.some((r) => r.id === id)) {
           this.archivedRows.unshift(archived);
@@ -689,7 +813,6 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         // Add to active list if matching filter
         if (!this.rows.some((r) => r.id === id) && !this.isArchivedFilter) {
           this.rows.unshift(restored);
-          this.total++;
         }
         if (this.currentShipment?.id === id) {
           this.currentShipment = restored;

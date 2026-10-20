@@ -427,6 +427,49 @@
               </div>
             </div>
 
+            <q-banner
+              v-if="materialLineListMismatch"
+              dense
+              rounded
+              class="bg-orange-1 text-orange-10"
+            >
+              Material cost on the Costs tab does not match the line list purchase total.
+              Costs {{ formatMoney(currentPurchaseCurrencySymbol, materialCostFileTotal) }}
+              · Lines {{ formatMoney(currentPurchaseCurrencySymbol, lineListPurchaseTotal) }}
+              · Difference {{ formatSignedMoney(currentPurchaseCurrencySymbol, materialLineListDiff) }}
+            </q-banner>
+
+            <div
+              v-if="lineListPurchaseTotal > 0 || materialCostFileTotal > 0"
+              class="bg-white rounded-borders border-grey overflow-hidden"
+            >
+              <div class="summary-cost-row summary-cost-row--head text-xxs text-weight-bold text-grey-6 uppercase">
+                <span>Purchase totals</span>
+                <span />
+                <span class="text-right">{{ currentPurchaseCurrencySymbol }}</span>
+              </div>
+              <div class="text-xxs text-grey-7 q-px-sm q-pt-sm q-pb-xs">
+                Line list is sum of purchase price × qty. Material is the product cost on the Costs tab.
+              </div>
+              <div class="summary-cost-row">
+                <span class="text-grey-7">Line list total</span>
+                <span />
+                <span class="text-right font-mono text-weight-medium text-grey-9">
+                  {{ formatMoney(currentPurchaseCurrencySymbol, lineListPurchaseTotal) }}
+                </span>
+              </div>
+              <div class="summary-cost-row">
+                <span class="text-grey-7">Material (cost file)</span>
+                <span />
+                <span
+                  class="text-right font-mono text-weight-medium"
+                  :class="materialLineListMismatch ? 'text-orange-9' : 'text-grey-9'"
+                >
+                  {{ formatMoney(currentPurchaseCurrencySymbol, materialCostFileTotal) }}
+                </span>
+              </div>
+            </div>
+
             <div
               v-if="sectionSummaryRows.length > 0"
               class="bg-white rounded-borders border-grey overflow-hidden"
@@ -1033,7 +1076,11 @@ import type {
   ShipmentProgressFlow,
   ShipmentProgressTag,
 } from '../repositories/globalShipmentRepository';
-import { calculateLineLandedCostBdt, costingShipmentFromEntries } from 'src/shared/shipment-engine';
+import {
+  calculateLineLandedCostBdt,
+  costingShipmentFromEntries,
+  sumProductEntryAmount,
+} from 'src/shared/shipment-engine';
 import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
 import type {
   GlobalShipmentCostBucket,
@@ -1054,10 +1101,7 @@ import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composabl
 import { SHIPMENT_AP_COST_BUCKETS, shipmentApKindLabel } from '../constants/shipmentApBuckets';
 import {
   findShipmentApBill,
-  fetchShipmentApFxSnapshot,
-  listShipmentApBills,
   shipmentApBillBucket,
-  syncShipmentApBills,
   type ShipmentApBillRow,
   type ShipmentApFxSnapshot,
   type ShipmentApKind,
@@ -1326,6 +1370,43 @@ const formatMoney = (symbol: string, value: number | null | undefined) => {
   const n = Number(value) || 0;
   return `${symbol}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
+
+const formatSignedMoney = (symbol: string, value: number) => {
+  const n = Number(value) || 0;
+  const sign = n > 0 ? '+' : n < 0 ? '−' : '';
+  return `${sign}${formatMoney(symbol, Math.abs(n))}`;
+};
+
+const PURCHASE_TOTAL_TOLERANCE = 0.05;
+
+const lineListPurchaseTotal = computed(() => {
+  const t = totals?.value ?? totals;
+  return Math.round((Number(t?.goodsPurchase) || 0) * 100) / 100;
+});
+
+const materialCostFileTotal = computed(() => {
+  let materialBucket = 0;
+  for (const entry of shipmentStore.currentCostEntries) {
+    if (entry.cost_bucket === 'material') {
+      materialBucket += Number(entry.amount) || 0;
+    }
+  }
+  if (materialBucket > 0) {
+    return Math.round(materialBucket * 100) / 100;
+  }
+  return Math.round(sumProductEntryAmount(shipmentStore.currentCostEntries) * 100) / 100;
+});
+
+const materialLineListDiff = computed(
+  () => Math.round((materialCostFileTotal.value - lineListPurchaseTotal.value) * 100) / 100,
+);
+
+const materialLineListMismatch = computed(() => {
+  const material = materialCostFileTotal.value;
+  const lines = lineListPurchaseTotal.value;
+  if (material <= 0) return false;
+  return Math.abs(material - lines) > PURCHASE_TOTAL_TOLERANCE;
+});
 
 const hasSummaryCosts = computed(() => {
   const t = totals?.value ?? totals;
@@ -1788,55 +1869,43 @@ const canUseBucketInvoiceActions = computed(() => {
   return bucketHasApBillSource(bucket);
 });
 
-const loadApBills = async () => {
-  if (!props.shipmentId || Number.isNaN(props.shipmentId)) return;
+const settingsFinanceLoadedForShipmentId = ref<number | null>(null);
+const settingsFinanceLoadInFlight = ref(false);
+
+const refreshSettingsFinanceBundle = async (options?: { force?: boolean }) => {
+  const shipmentId = props.shipmentId;
+  if (!props.modelValue || !shipmentId || Number.isNaN(shipmentId)) return;
+  if (settingsFinanceLoadInFlight.value) return;
+  if (!options?.force && settingsFinanceLoadedForShipmentId.value === shipmentId) return;
+
   apBillsLoading.value = true;
+  summaryFinanceLoading.value = true;
+  settingsFinanceLoadInFlight.value = true;
   try {
-    await syncShipmentApBills(props.shipmentId);
+    const { apBills: bills, apFx } = await shipmentStore.loadSettingsFinanceBundle(shipmentId);
+    apBills.value = bills;
+    apFxSnapshot.value = apFx;
+    settingsFinanceLoadedForShipmentId.value = shipmentId;
   } catch (err) {
-    console.warn('sync_shipment_ap_bills failed', err);
-  }
-  try {
-    apBills.value = await listShipmentApBills(props.shipmentId);
-  } catch {
+    console.warn('loadSettingsFinanceBundle failed', err);
     apBills.value = [];
+    apFxSnapshot.value = null;
   } finally {
     apBillsLoading.value = false;
-  }
-};
-
-const loadApFxSnapshot = async () => {
-  if (!props.shipmentId || Number.isNaN(props.shipmentId)) return;
-  try {
-    apFxSnapshot.value = await fetchShipmentApFxSnapshot(props.shipmentId);
-  } catch {
-    apFxSnapshot.value = null;
-  }
-};
-
-const loadSummaryFinance = async () => {
-  if (!props.shipmentId || Number.isNaN(props.shipmentId)) return;
-  summaryFinanceLoading.value = true;
-  try {
-    await Promise.all([loadApBills(), loadApFxSnapshot()]);
-  } finally {
     summaryFinanceLoading.value = false;
+    settingsFinanceLoadInFlight.value = false;
   }
 };
 
 watch(
-  () => [props.modelValue, props.shipmentId, activeTab.value] as const,
-  ([open, shipmentId, tab]) => {
-    if (!open || !shipmentId) return;
-    if (tab === 'costs') {
-      void (async () => {
-        await shipmentStore.fetchCostEntries(shipmentId);
-        await loadApBills();
-      })();
+  () => [props.modelValue, props.shipmentId] as const,
+  ([open, shipmentId]) => {
+    if (!open) {
+      settingsFinanceLoadedForShipmentId.value = null;
+      return;
     }
-    if (tab === 'summary') {
-      void loadSummaryFinance();
-    }
+    if (!shipmentId) return;
+    void refreshSettingsFinanceBundle();
   },
 );
 
@@ -1852,7 +1921,7 @@ const openApBill = (billId: number) => {
 const ensureBucketApBill = async (kind: ShipmentApKind): Promise<ShipmentApBillRow | null> => {
   const linked = findShipmentApBill(apBills.value, kind);
   if (linked) return linked;
-  await loadApBills();
+  await refreshSettingsFinanceBundle({ force: true });
   return findShipmentApBill(apBills.value, kind);
 };
 
@@ -2195,8 +2264,7 @@ const confirmCostDialog = async () => {
   try {
     await shipmentStore.saveCostEntriesBatch(props.shipmentId, [payload], {});
     syncCostsFromStore();
-    void loadApBills();
-    void loadApFxSnapshot();
+    void refreshSettingsFinanceBundle({ force: true });
     const wasEdit = editingRow != null;
     closeAddCostDialog();
     $q.notify({
@@ -2230,7 +2298,7 @@ const removeCostRow = async (index: number) => {
       costRowsList.value.splice(index, 0, removed);
       return;
     }
-    void loadApBills();
+    void refreshSettingsFinanceBundle({ force: true });
   }
 };
 

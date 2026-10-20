@@ -123,10 +123,14 @@ export function useInboundShipmentActions(options: {
 
   onMounted(() => {
     void ensureVendorsLoaded();
-    if (authStore.tenantId) {
-      void shipmentStore.ensureProgressTags(authStore.tenantId);
-    }
   });
+
+  const ensureProgressTagsLazy = async () => {
+    const tenantId = authStore.tenantId;
+    if (!tenantId) return;
+    if (shipmentStore.progressFlows.length > 0) return;
+    await shipmentStore.ensureProgressTags(tenantId);
+  };
 
   const progressFlowOptions = computed(() => shipmentStore.progressFlows);
   const progressTagOptions = computed(() => shipmentStore.progressTags);
@@ -862,6 +866,7 @@ export function useInboundShipmentActions(options: {
     loadingCargo,
     ensureVendorsLoaded,
     ensureCargoLoaded,
+    ensureProgressTagsLazy,
     saveInlineName,
     saveInlineType,
     saveInlineVendor,

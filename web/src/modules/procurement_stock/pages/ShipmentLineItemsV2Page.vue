@@ -148,7 +148,7 @@
             label="Bulk Paste"
             size="sm"
             :disable="!canEditShipmentOrderLineFields && !canEditLineStructure"
-            @click="openBulkPasteDialog('purchase_price')"
+            @click="openBulkPasteDialog('all')"
           >
             <q-tooltip>Paste barcode, product code, and one column from Excel</q-tooltip>
           </q-btn>
@@ -551,7 +551,9 @@
           <div class="row items-center q-gutter-x-sm min-width-0">
             <q-avatar color="primary" text-color="white" icon="ph ph-clipboard-text" size="32px" />
             <div class="min-width-0">
-              <div class="text-subtitle1 text-weight-bold text-grey-9">Bulk Paste {{ bulkPasteFieldLabel }}</div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9">
+                Bulk Paste {{ bulkPasteField === 'all' ? 'Values' : bulkPasteFieldLabel }}
+              </div>
               <div class="text-caption text-grey-6">
                 Click a cell, then paste. Data fills from that cell, like Excel.
               </div>
@@ -605,41 +607,25 @@
 
         <div class="bulk-paste-overlay__body col q-px-md q-py-sm overflow-auto">
           <div class="bulk-paste-grid-wrap" @paste.capture="onBulkPasteGridPaste">
-            <table class="bulk-paste-grid">
+            <table class="bulk-paste-grid" :class="{ 'bulk-paste-grid--wide': bulkPasteField === 'all' }">
               <thead>
                 <tr>
-                  <th>Barcode</th>
-                  <th>Product code</th>
-                  <th>{{ bulkPasteFieldLabel }}</th>
+                  <th v-for="(col, colIdx) in bulkPasteGridColumns" :key="col">
+                    {{ bulkPasteColumnLabel(col) }}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(row, rowIdx) in bulkPasteRows" :key="row.rowKey">
-                  <td>
+                  <td v-for="(col, colIdx) in bulkPasteGridColumns" :key="col">
                     <input
-                      v-model="row.barcode"
+                      :value="bulkPasteCellValue(row, col)"
                       class="bulk-paste-cell"
+                      :class="{ 'bulk-paste-cell--value': col !== 'barcode' && col !== 'product_code' }"
                       :data-row="rowIdx"
-                      data-col="0"
-                      @focus="onBulkPasteCellFocus(rowIdx, 0)"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      v-model="row.product_code"
-                      class="bulk-paste-cell"
-                      :data-row="rowIdx"
-                      data-col="1"
-                      @focus="onBulkPasteCellFocus(rowIdx, 1)"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      v-model="row.value"
-                      class="bulk-paste-cell bulk-paste-cell--value"
-                      :data-row="rowIdx"
-                      data-col="2"
-                      @focus="onBulkPasteCellFocus(rowIdx, 2)"
+                      :data-col="colIdx"
+                      @input="onBulkPasteCellInput(row, col, $event)"
+                      @focus="onBulkPasteCellFocus(rowIdx, colIdx)"
                     />
                   </td>
                 </tr>
@@ -878,6 +864,7 @@ const {
   progressFlowOptions,
   progressTagOptions,
   progressUpdating,
+  ensureProgressTagsLazy,
   confirmLockShipmentCosts,
   downloadExcel,
   startReceiveFlow,
@@ -959,6 +946,9 @@ watch(settingsDrawerOpen, (open) => {
     if (q !== settingsDrawerTab.value) {
       void setSettingsTabRouteQuery(settingsDrawerTab.value);
     }
+    if (settingsDrawerTab.value === 'progress') {
+      void ensureProgressTagsLazy();
+    }
   } else if (settingsTabFromRoute()) {
     void setSettingsTabRouteQuery(null);
   }
@@ -972,12 +962,18 @@ const openSettingsDrawer = (tab: ShipmentSettingsDrawerTab | string = 'details')
   }
   settingsDrawerTab.value = normalized;
   settingsDrawerOpen.value = true;
+  if (normalized === 'progress') {
+    void ensureProgressTagsLazy();
+  }
 };
 
 const onSettingsDrawerTabChange = (tab: string) => {
   const normalized = normalizeSettingsDrawerTab(tab);
   if (settingsDrawerTab.value === normalized) return;
   settingsDrawerTab.value = normalized;
+  if (normalized === 'progress') {
+    void ensureProgressTagsLazy();
+  }
   if (settingsDrawerOpen.value) {
     void setSettingsTabRouteQuery(normalized);
   }
@@ -994,20 +990,75 @@ const excelBottomBarRef = ref<InstanceType<typeof ShipmentExcelBottomBar> | null
 
 // Bulk Paste Dialog State
 const showBulkPasteDialog = ref(false);
-const bulkPasteField = ref<'purchase_price' | 'ordered_quantity' | 'product_weight' | 'package_weight'>('purchase_price');
+type BulkPasteValueField =
+  | 'purchase_price'
+  | 'ordered_quantity'
+  | 'product_weight'
+  | 'package_weight';
+type BulkPasteColumnMode = BulkPasteValueField | 'all';
+
+const BULK_PASTE_VALUE_FIELDS: BulkPasteValueField[] = [
+  'purchase_price',
+  'ordered_quantity',
+  'product_weight',
+  'package_weight',
+];
+
+const bulkPasteField = ref<BulkPasteColumnMode>('all');
 const bulkPasteStartItem = ref<any>(null);
 const bulkPasteSaving = ref(false);
 type BulkPasteGridRow = {
   rowKey: string;
-  itemId: number | null;
   barcode: string;
   product_code: string;
-  value: string;
+  purchase_price: string;
+  ordered_quantity: string;
+  product_weight: string;
+  package_weight: string;
 };
 const bulkPasteRows = ref<BulkPasteGridRow[]>([]);
 const bulkPasteFocus = ref({ row: 0, col: 0 });
-const bulkPasteCols = ['barcode', 'product_code', 'value'] as const;
 const bulkPasteSectionDbId = ref<number | null>(null);
+
+const bulkPasteGridColumns = computed((): Array<'barcode' | 'product_code' | BulkPasteValueField> => {
+  if (bulkPasteField.value === 'all') {
+    return ['barcode', 'product_code', ...BULK_PASTE_VALUE_FIELDS];
+  }
+  return ['barcode', 'product_code', bulkPasteField.value];
+});
+
+const bulkPasteColumnLabel = (col: string): string => {
+  switch (col) {
+    case 'barcode':
+      return 'Barcode';
+    case 'product_code':
+      return 'Product code';
+    case 'purchase_price':
+      return 'Price';
+    case 'ordered_quantity':
+      return 'Quantity';
+    case 'product_weight':
+      return 'Product weight';
+    case 'package_weight':
+      return 'Package weight';
+    default:
+      return col;
+  }
+};
+
+const bulkPasteCellValue = (row: BulkPasteGridRow, col: string): string => {
+  if (col === 'barcode' || col === 'product_code') {
+    return row[col];
+  }
+  return row[col as BulkPasteValueField] ?? '';
+};
+
+const onBulkPasteCellInput = (row: BulkPasteGridRow, col: string, event: Event) => {
+  const value = (event.target as HTMLInputElement).value;
+  if (col === 'barcode') row.barcode = value;
+  else if (col === 'product_code') row.product_code = value;
+  else row[col as BulkPasteValueField] = value;
+};
 
 const activeSectionDbIdForSheet = computed(() => {
   const activeSection = sheets.value.find((s) => s.id === activeSheetId.value);
@@ -1060,8 +1111,9 @@ const bulkPasteFieldLabel = computed(() => {
 });
 
 const bulkPasteFieldOptions = computed(() => {
-  const options: { label: string; value: typeof bulkPasteField.value }[] = [];
+  const options: { label: string; value: BulkPasteColumnMode }[] = [];
   if (canEditShipmentOrderLineFields.value) {
+    options.push({ label: 'All columns', value: 'all' });
     options.push(
       { label: 'Price', value: 'purchase_price' },
       { label: 'Product Weight', value: 'product_weight' },
@@ -1074,10 +1126,12 @@ const bulkPasteFieldOptions = computed(() => {
 
 const emptyBulkPasteRow = (index: number): BulkPasteGridRow => ({
   rowKey: `empty-${index}`,
-  itemId: null,
   barcode: '',
   product_code: '',
-  value: '',
+  purchase_price: '',
+  ordered_quantity: '',
+  product_weight: '',
+  package_weight: '',
 });
 
 const looksLikePasteHeader = (cols: string[]): boolean => {
@@ -1087,17 +1141,22 @@ const looksLikePasteHeader = (cols: string[]): boolean => {
     joined.includes('product code') ||
     joined.includes('product_code') ||
     joined.includes('actualweight') ||
-    joined.includes('actual weight')
+    joined.includes('actual weight') ||
+    joined.includes('quantity') ||
+    joined.includes('price') ||
+    joined.includes('package weight') ||
+    joined.includes('product weight')
   );
 };
 
 const openBulkPasteDialog = (
-  field: 'purchase_price' | 'ordered_quantity' | 'product_weight' | 'package_weight' = 'purchase_price',
+  field: BulkPasteColumnMode = 'all',
   startItem?: any,
 ) => {
   const allowed = bulkPasteFieldOptions.value.map((opt) => opt.value);
   if (allowed.length === 0) return;
-  const nextField = allowed.includes(field) ? field : allowed[0];
+  const defaultField = allowed.includes('all') ? 'all' : allowed[0];
+  const nextField = allowed.includes(field) ? field : defaultField;
   bulkPasteField.value = nextField;
   bulkPasteStartItem.value = startItem || null;
   bulkPasteSectionDbId.value =
@@ -1146,11 +1205,15 @@ const onBulkPasteGridPaste = (event: ClipboardEvent) => {
     }
     const row = rows[rowIdx];
     if (!row) return;
+    const colsKeys = bulkPasteGridColumns.value;
     cols.forEach((cell, cOffset) => {
+      if (!cell.trim()) return;
       const colIdx = startCol + cOffset;
-      const key = bulkPasteCols[colIdx];
+      const key = colsKeys[colIdx];
       if (!key) return;
-      row[key] = cell;
+      if (key === 'barcode') row.barcode = cell;
+      else if (key === 'product_code') row.product_code = cell;
+      else row[key] = cell;
     });
   });
 
@@ -1198,13 +1261,15 @@ const applyBulkPaste = async () => {
   const normalizeKey = (value: string | null | undefined) =>
     (value || '').trim().replace(/^['`]+/, '').replace(/\s+/g, '').toLowerCase();
 
-  const normalizePasteNumber = (raw: string): number | null => {
+  const normalizePasteNumber = (valueField: BulkPasteValueField, raw: string): number | null => {
     if (!raw.trim()) return null;
     const val = Number(raw.replace(/[^0-9.-]/g, ''));
     if (Number.isNaN(val)) return null;
-    if (field === 'purchase_price') return Number(val.toFixed(2));
-    if (field === 'ordered_quantity') return Math.max(1, Math.round(val));
-    if (field === 'product_weight' || field === 'package_weight') return Number(val.toFixed(3));
+    if (valueField === 'purchase_price') return Number(val.toFixed(2));
+    if (valueField === 'ordered_quantity') return Math.max(1, Math.round(val));
+    if (valueField === 'product_weight' || valueField === 'package_weight') {
+      return Number(val.toFixed(3));
+    }
     return val;
   };
 
@@ -1228,35 +1293,57 @@ const applyBulkPaste = async () => {
     });
   };
 
-  const pushUpdate = (targetItem: (typeof items)[number], normalized: number) => {
+  const rowHasPasteValues = (row: BulkPasteGridRow): boolean => {
+    const fields =
+      field === 'all' ? BULK_PASTE_VALUE_FIELDS : [field as BulkPasteValueField];
+    return fields.some((f) => normalizePasteNumber(f, row[f]) !== null);
+  };
+
+  const buildPayloadFromRow = (row: BulkPasteGridRow): Partial<Record<BulkPasteValueField, number>> => {
+    const payload: Partial<Record<BulkPasteValueField, number>> = {};
+    const fields =
+      field === 'all' ? BULK_PASTE_VALUE_FIELDS : [field as BulkPasteValueField];
+    for (const f of fields) {
+      const normalized = normalizePasteNumber(f, row[f]);
+      if (normalized !== null) payload[f] = normalized;
+    }
+    return payload;
+  };
+
+  const pushUpdate = (
+    targetItem: (typeof items)[number],
+    payload: Partial<Record<BulkPasteValueField, number>>,
+  ) => {
     if (usedIds.has(targetItem.id)) return false;
+    const keys = Object.keys(payload) as BulkPasteValueField[];
+    if (keys.length === 0) return false;
     usedIds.add(targetItem.id);
-    if (field === 'purchase_price') targetItem.price = normalized;
-    if (field === 'ordered_quantity') targetItem.quantity = normalized;
-    onCellDirectInput(targetItem, field, normalized);
-    if (targetItem.rawItem) {
-      targetItem.rawItem[field] = normalized;
+    for (const key of keys) {
+      const normalized = payload[key]!;
+      if (key === 'purchase_price') targetItem.price = normalized;
+      if (key === 'ordered_quantity') targetItem.quantity = normalized;
+      onCellDirectInput(targetItem, key, normalized);
+      if (targetItem.rawItem) {
+        targetItem.rawItem[key] = normalized;
+      }
     }
     const itemId = targetItem.rawItem?.id || targetItem.id;
     if (itemId) {
-      updates.push({
-        id: itemId,
-        payload: { [field]: normalized },
-      });
+      updates.push({ id: itemId, payload: { ...payload } });
     }
     count++;
     return true;
   };
 
-  const dataRows = bulkPasteRows.value.filter((row) => normalizePasteNumber(row.value) !== null);
+  const dataRows = bulkPasteRows.value.filter((row) => rowHasPasteValues(row));
   const pasteHasKeys = dataRows.some(
     (row) => normalizeKey(row.barcode) || normalizeKey(row.product_code),
   );
 
   if (pasteHasKeys) {
     for (const row of dataRows) {
-      const normalized = normalizePasteNumber(row.value);
-      if (normalized === null) continue;
+      const payload = buildPayloadFromRow(row);
+      if (Object.keys(payload).length === 0) continue;
       const barcode = normalizeKey(row.barcode);
       const productCode = normalizeKey(row.product_code);
       if (!barcode && !productCode) {
@@ -1268,7 +1355,7 @@ const applyBulkPaste = async () => {
         skipped++;
         continue;
       }
-      pushUpdate(hits[0]!, normalized);
+      if (!pushUpdate(hits[0]!, payload)) skipped++;
     }
   } else {
     let startIndex = 0;
@@ -1277,13 +1364,13 @@ const applyBulkPaste = async () => {
       if (foundIdx !== -1) startIndex = foundIdx;
     }
     dataRows.forEach((row, i) => {
-      const normalized = normalizePasteNumber(row.value);
+      const payload = buildPayloadFromRow(row);
       const targetItem = items[startIndex + i];
-      if (!targetItem || normalized === null) {
+      if (!targetItem || Object.keys(payload).length === 0) {
         skipped++;
         return;
       }
-      if (!pushUpdate(targetItem, normalized)) skipped++;
+      if (!pushUpdate(targetItem, payload)) skipped++;
     });
   }
 
@@ -1293,7 +1380,7 @@ const applyBulkPaste = async () => {
       try {
         await shipmentStore.updateShipmentItemsBulk(shipmentId, updates);
         $q.notify({
-          message: `Successfully pasted and saved ${count} ${bulkPasteFieldLabel.value} value(s)${
+          message: `Successfully pasted and saved ${count} line update(s)${
             skipped ? ` (${skipped} unmatched)` : ''
           }`,
           color: 'positive',
@@ -1323,7 +1410,7 @@ const applyBulkPaste = async () => {
       });
     } else {
       $q.notify({
-        message: `Pasted ${count} value(s) into ${bulkPasteFieldLabel.value}`,
+        message: `Pasted ${count} line update(s)`,
         color: 'positive',
         icon: 'ph ph-clipboard-text',
         position: 'bottom',
@@ -1539,7 +1626,9 @@ const displayedItems = computed(() => {
   return [];
 });
 
-const batchCodeItemsQuery = useBatchCodeItemsByShipmentQuery(shipmentId);
+const batchCodeItemsQuery = useBatchCodeItemsByShipmentQuery(shipmentId, {
+  workspaceHydratedShipmentId: computed(() => shipmentStore.workspaceHydratedShipmentId),
+});
 
 const emptyBatchSummary: BatchCodeLineSummary = {
   compactLabel: '—',
@@ -1654,6 +1743,14 @@ const landSplitAttentionForItem = (itemId: number): string | null => {
 
 const bulkApplyingLandSplits = ref(false);
 
+const groupOutcomesByItemId = (rows: ShipmentItemOutcome[]) => {
+  const next: Record<number, ShipmentItemOutcome[]> = {};
+  for (const row of rows) {
+    (next[row.shipment_item_id] ??= []).push(row);
+  }
+  return next;
+};
+
 const mergeOutcomeRows = (rows: ShipmentItemOutcome[]) => {
   if (rows.length === 0) return;
   const next = { ...extraOutcomesByItemId.value };
@@ -1663,6 +1760,16 @@ const mergeOutcomeRows = (rows: ShipmentItemOutcome[]) => {
     (next[row.shipment_item_id] ??= []).push(row);
   }
   extraOutcomesByItemId.value = next;
+};
+
+const hydrateWorkspaceFromStore = () => {
+  if (shipmentStore.workspaceHydratedShipmentId !== shipmentId || Number.isNaN(shipmentId)) return;
+  extraOutcomesByItemId.value = groupOutcomesByItemId(shipmentStore.currentShipmentItemOutcomes);
+  shipmentVendorCredits.value = [...shipmentStore.currentShipmentVendorCredits];
+  queryClient.setQueryData(
+    procurementStockQueryKeys.batchCodeItemsByShipment(shipmentId),
+    shipmentStore.currentBatchCodeItems,
+  );
 };
 
 const patchOrderedOutcomeRow = (outcome: ShipmentItemOutcome) => {
@@ -1786,9 +1893,9 @@ const bulkApplySellableLandSplits = async () => {
 };
 
 watch(
-  () => shipmentStore.currentShipment?.id,
+  () => shipmentStore.workspaceHydratedShipmentId,
   () => {
-    void loadShipmentVendorCredits();
+    hydrateWorkspaceFromStore();
   },
   { immediate: true },
 );
@@ -1799,6 +1906,14 @@ watch(
     const ids = key ? key.split(',').map(Number) : [];
     if (ids.length === 0) {
       extraOutcomesByItemId.value = {};
+      return;
+    }
+    if (
+      !prevKey &&
+      shipmentStore.workspaceHydratedShipmentId === shipmentId &&
+      !Number.isNaN(shipmentId)
+    ) {
+      hydrateWorkspaceFromStore();
       return;
     }
     try {
@@ -2395,17 +2510,10 @@ const downloadSheetExcel = (sheet: SheetTabItem) => {
   });
 };
 
-const onSheetTabChange = async (id: string) => {
+const onSheetTabChange = (id: string) => {
   hasUserSelectedSheet.value = true;
   activeSheetId.value = id;
   selectedItemIds.value = [];
-  if (shipmentId && !isNaN(shipmentId)) {
-    try {
-      await shipmentStore.fetchShipmentDetails(shipmentId);
-    } catch (err) {
-      console.error('Failed to refresh shipment items on section switch:', err);
-    }
-  }
 };
 
 watch(
@@ -3073,6 +3181,16 @@ const removeSheet = async (id: string) => {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
+}
+
+.bulk-paste-grid--wide {
+  table-layout: auto;
+  min-width: 640px;
+}
+
+.bulk-paste-grid--wide th {
+  white-space: nowrap;
+  min-width: 88px;
 }
 
 .bulk-paste-grid th {

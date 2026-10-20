@@ -5756,31 +5756,124 @@ $$;
 ALTER FUNCTION "public"."list_global_shipment_cost_entries"("p_shipment_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_is_archived" boolean DEFAULT false, "p_vendor_id" bigint DEFAULT NULL::bigint, "p_cargo_company_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_shipment_settings_finance_bundle"("p_shipment_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_parent bigint;
+  v_cost_entries jsonb;
+  v_ap_bills jsonb;
+  v_ap_fx jsonb;
+  v_sid text;
+begin
+  select gs.parent_tenant_id into v_parent
+  from public.global_shipments gs
+  where gs.id = p_shipment_id;
+
+  if v_parent is null then
+    raise exception 'shipment not found';
+  end if;
+
+  if not (
+    public.user_can_manage_parent_tenant(v_parent)
+    or exists (
+      select 1 from public.memberships m
+      where m.tenant_id = v_parent
+        and lower(trim(m.email)) = public.current_user_email()
+        and m.is_active = true
+    )
+  ) then
+    raise exception 'not allowed';
+  end if;
+
+  perform public.ensure_global_shipment_cost_entries_from_header(p_shipment_id);
+  perform public.sync_shipment_ap_bills(p_shipment_id);
+
+  v_sid := p_shipment_id::text;
+
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'id', ce.id,
+        'shipment_id', ce.shipment_id,
+        'cost_bucket', ce.cost_bucket,
+        'cost_component', ce.cost_component,
+        'is_capitalizable', ce.is_capitalizable,
+        'description', ce.description,
+        'amount', ce.amount,
+        'currency_id', ce.currency_id,
+        'metadata', ce.metadata,
+        'section_id', ce.section_id
+      )
+      order by ce.cost_bucket, ce.cost_component, ce.id
+    ),
+    '[]'::jsonb
+  )
+  into v_cost_entries
+  from public.global_shipment_cost_entries ce
+  where ce.shipment_id = p_shipment_id;
+
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'id', b.id,
+        'invoice_no', b.invoice_no,
+        'ap_kind', b.ap_kind,
+        'source_type', b.source_type,
+        'source_id', b.source_id,
+        'source_key', b.source_key,
+        'invoice_status', b.invoice_status,
+        'payment_status', b.payment_status,
+        'total_amount', b.total_amount,
+        'due_amount', b.due_amount
+      )
+      order by b.id
+    ),
+    '[]'::jsonb
+  )
+  into v_ap_bills
+  from public.bills b
+  where b.invoice_type = 'ap'
+    and b.document_kind = 'standard'
+    and b.invoice_status <> 'voided'
+    and (
+      (b.source_type = 'shipment_cost' and b.source_id = v_sid)
+      or b.ap_shipment_id = p_shipment_id
+    )
+    and coalesce(b.source_key, b.ap_kind) in (
+      'material', 'freight', 'customs', 'handling', 'finance', 'other',
+      'vendor', 'cargo', 'local'
+    );
+
+  v_ap_fx := public._global_shipment_landed_fx_inputs(p_shipment_id);
+  v_ap_fx := v_ap_fx - 'blended_rate';
+
+  return jsonb_build_object(
+    'cost_entries', v_cost_entries,
+    'ap_bills', v_ap_bills,
+    'ap_fx', v_ap_fx
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."get_shipment_settings_finance_bundle"("p_shipment_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page_size" integer DEFAULT 20, "p_cursor" bigint DEFAULT NULL::bigint, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_is_archived" boolean DEFAULT false, "p_vendor_id" bigint DEFAULT NULL::bigint, "p_cargo_company_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $_$
 declare
-  v_total_count bigint;
   v_archived_count bigint;
   v_data jsonb;
-  v_total_pages integer;
+  v_limit integer;
+  v_fetched integer;
+  v_has_more boolean := false;
+  v_next_cursor bigint;
 begin
-  -- Total count matching query filters
-  select count(*)
-  into v_total_count
-  from public.global_shipments s
-  where s.parent_tenant_id = p_tenant_id
-    and (p_is_archived is null or s.is_archived = p_is_archived)
-    and (p_status is null or p_status = '' or p_status = '__all__' or s.status = p_status)
-    and (
-      p_search is null or p_search = '' or (
-        s.name ilike '%' || p_search || '%'
-        or (p_search ~ '^[0-9]+$' and s.tenant_shipment_id = p_search::integer)
-      )
-    )
-    and (p_vendor_id is null or s.vendor_id = p_vendor_id)
-    and (p_cargo_company_id is null or s.cargo_company_id = p_cargo_company_id);
+  v_limit := greatest(coalesce(p_page_size, 20), 1);
 
   -- Count of all archived shipments for tenant (for toolbar badge)
   select count(*)
@@ -5830,24 +5923,43 @@ begin
       )
       and (p_vendor_id is null or s.vendor_id = p_vendor_id)
       and (p_cargo_company_id is null or s.cargo_company_id = p_cargo_company_id)
+      and (p_cursor is null or s.id < p_cursor)
     order by s.id desc
-    limit p_page_size
-    offset (greatest(coalesce(p_page, 1), 1) - 1) * p_page_size
+    limit v_limit + 1
   ) q;
 
-  if v_total_count = 0 then
-    v_total_pages := 0;
+  v_fetched := coalesce(jsonb_array_length(v_data), 0);
+  if v_fetched > v_limit then
+    v_has_more := true;
+    v_data := coalesce(
+      (
+        select jsonb_agg(elem order by (elem->>'id')::bigint desc)
+        from (
+          select elem
+          from jsonb_array_elements(v_data) as elem
+          limit v_limit
+        ) trimmed
+      ),
+      '[]'::jsonb
+    );
+  end if;
+
+  if coalesce(jsonb_array_length(v_data), 0) > 0 then
+    v_next_cursor := (v_data->(jsonb_array_length(v_data) - 1)->>'id')::bigint;
   else
-    v_total_pages := ceil(v_total_count::float / p_page_size)::integer;
+    v_next_cursor := null;
+  end if;
+
+  if not v_has_more then
+    v_next_cursor := null;
   end if;
 
   return jsonb_build_object(
     'data', v_data,
     'meta', jsonb_build_object(
-      'total', v_total_count,
-      'page', greatest(coalesce(p_page, 1), 1),
-      'page_size', p_page_size,
-      'total_pages', v_total_pages,
+      'page_size', v_limit,
+      'next_cursor', v_next_cursor,
+      'has_more', v_has_more,
       'archived_total', v_archived_count
     )
   );
@@ -5855,7 +5967,155 @@ end;
 $_$;
 
 
-ALTER FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text", "p_is_archived" boolean, "p_vendor_id" bigint, "p_cargo_company_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page_size" integer, "p_cursor" bigint, "p_search" "text", "p_status" "text", "p_is_archived" boolean, "p_vendor_id" bigint, "p_cargo_company_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_inbound_shipments_workspace"("p_tenant_id" bigint, "p_page_size" integer DEFAULT 20, "p_cursor" bigint DEFAULT NULL::bigint, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_is_archived" boolean DEFAULT false, "p_vendor_id" bigint DEFAULT NULL::bigint, "p_cargo_company_id" bigint DEFAULT NULL::bigint, "p_include_reference_data" boolean DEFAULT true) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $_$
+declare
+  v_books_id bigint;
+  v_archived_count bigint;
+  v_data jsonb;
+  v_vendors jsonb := '[]'::jsonb;
+  v_cargo jsonb := '[]'::jsonb;
+  v_limit integer;
+  v_fetched integer;
+  v_has_more boolean := false;
+  v_next_cursor bigint;
+begin
+  if p_tenant_id is null then
+    raise exception 'tenant_id is required';
+  end if;
+
+  if not public.user_can_access_tenant_fetch(p_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
+  v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_limit := greatest(coalesce(p_page_size, 20), 1);
+
+  select count(*)
+  into v_archived_count
+  from public.global_shipments s
+  where s.parent_tenant_id = v_books_id
+    and s.is_archived = true;
+
+  select coalesce(jsonb_agg(row_json order by sort_id desc), '[]'::jsonb)
+  into v_data
+  from (
+    select
+      s.id as sort_id,
+      jsonb_build_object(
+        'id', s.id,
+        'name', s.name,
+        'tenant_shipment_id', s.tenant_shipment_id,
+        'vendor_id', s.vendor_id,
+        'vendor_name', v.name,
+        'vendor_code', v.code,
+        'type', s.type,
+        'status', s.status,
+        'created_at', s.created_at,
+        'cargo_company_id', s.cargo_company_id
+      ) as row_json
+    from public.global_shipments s
+    left join public.vendors v on v.id = s.vendor_id
+    where s.parent_tenant_id = v_books_id
+      and (p_is_archived is null or s.is_archived = p_is_archived)
+      and (p_status is null or p_status = '' or p_status = '__all__' or s.status = p_status)
+      and (
+        p_search is null or p_search = '' or (
+          s.name ilike '%' || p_search || '%'
+          or (p_search ~ '^[0-9]+$' and s.tenant_shipment_id = p_search::integer)
+        )
+      )
+      and (p_vendor_id is null or s.vendor_id = p_vendor_id)
+      and (p_cargo_company_id is null or s.cargo_company_id = p_cargo_company_id)
+      and (p_cursor is null or s.id < p_cursor)
+    order by s.id desc
+    limit v_limit + 1
+  ) q;
+
+  v_fetched := coalesce(jsonb_array_length(v_data), 0);
+  if v_fetched > v_limit then
+    v_has_more := true;
+    v_data := coalesce(
+      (
+        select jsonb_agg(elem order by (elem->>'id')::bigint desc)
+        from (
+          select elem
+          from jsonb_array_elements(v_data) as elem
+          limit v_limit
+        ) trimmed
+      ),
+      '[]'::jsonb
+    );
+  end if;
+
+  if coalesce(jsonb_array_length(v_data), 0) > 0 then
+    v_next_cursor := (v_data->(jsonb_array_length(v_data) - 1)->>'id')::bigint;
+  else
+    v_next_cursor := null;
+  end if;
+
+  if not v_has_more then
+    v_next_cursor := null;
+  end if;
+
+  if coalesce(p_include_reference_data, true) then
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', ven.id,
+          'name', ven.name,
+          'code', ven.code,
+          'market_code', ven.market_code,
+          'parent_tenant_id', ven.parent_tenant_id,
+          'is_default', ven.is_default
+        )
+        order by ven.id asc
+      ),
+      '[]'::jsonb
+    )
+    into v_vendors
+    from public.vendors ven
+    where ven.parent_tenant_id = v_books_id;
+
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', cc.id,
+          'name', cc.name,
+          'code', cc.code,
+          'is_default', cc.is_default
+        )
+        order by cc.is_default desc, cc.name asc
+      ),
+      '[]'::jsonb
+    )
+    into v_cargo
+    from public.cargo_companies cc
+    where cc.parent_tenant_id = v_books_id
+      and cc.is_active = true;
+  end if;
+
+  return jsonb_build_object(
+    'data', v_data,
+    'meta', jsonb_build_object(
+      'page_size', v_limit,
+      'next_cursor', v_next_cursor,
+      'has_more', v_has_more,
+      'archived_total', v_archived_count
+    ),
+    'vendors', v_vendors,
+    'cargo_companies', v_cargo
+  );
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."list_inbound_shipments_workspace"("p_tenant_id" bigint, "p_page_size" integer, "p_cursor" bigint, "p_search" "text", "p_status" "text", "p_is_archived" boolean, "p_vendor_id" bigint, "p_cargo_company_id" bigint, "p_include_reference_data" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_global_stock_allocations_paginated"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_child_tenant_id" bigint DEFAULT NULL::bigint, "p_stock_type_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
@@ -11765,6 +12025,12 @@ declare
   v_cost_entries jsonb;
   v_flow_stages jsonb;
   v_progress_flow_id bigint;
+  v_ap_fx jsonb;
+  v_item_outcomes jsonb;
+  v_outcome_vendor_credits jsonb;
+  v_batch_code_list jsonb;
+  v_batch_code_items jsonb;
+  v_batch_list_id bigint;
 begin
   select parent_tenant_id, progress_flow_id, to_jsonb(s.*)
   into v_parent, v_progress_flow_id, v_ship
@@ -11829,10 +12095,21 @@ begin
   from public.global_shipment_boxes b
   where b.shipment_id = p_shipment_id;
 
-  -- 4. Cost entries
+  -- 4. Cost entries (narrow projection)
   select coalesce(
     jsonb_agg(
-      to_jsonb(ce.*)
+      jsonb_build_object(
+        'id', ce.id,
+        'shipment_id', ce.shipment_id,
+        'cost_bucket', ce.cost_bucket,
+        'cost_component', ce.cost_component,
+        'is_capitalizable', ce.is_capitalizable,
+        'description', ce.description,
+        'amount', ce.amount,
+        'currency_id', ce.currency_id,
+        'metadata', ce.metadata,
+        'section_id', ce.section_id
+      )
       order by ce.cost_bucket asc, ce.cost_component asc, ce.id asc
     ),
     '[]'::jsonb
@@ -11867,13 +12144,100 @@ begin
     v_flow_stages := '[]'::jsonb;
   end if;
 
+  v_ap_fx := public._global_shipment_landed_fx_inputs(p_shipment_id);
+  v_ap_fx := v_ap_fx - 'blended_rate';
+
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'id', o.id,
+        'parent_tenant_id', o.parent_tenant_id,
+        'shipment_item_id', o.shipment_item_id,
+        'quantity', o.quantity,
+        'kind', o.kind,
+        'reason', o.reason,
+        'purchase_price', o.purchase_price,
+        'cost', o.cost,
+        'description', o.description,
+        'batch_label', o.batch_label
+      )
+      order by o.id asc
+    ),
+    '[]'::jsonb
+  )
+  into v_item_outcomes
+  from public.global_shipment_item_outcomes o
+  inner join public.global_shipment_items i on i.id = o.shipment_item_id
+  where i.shipment_id = p_shipment_id;
+
+  select coalesce(
+    (
+      select jsonb_agg(row_to_json(r) order by r.created_at desc)
+      from (
+        select
+          c.id,
+          c.shipment_id,
+          c.shipment_item_id,
+          c.outcome_id,
+          c.quantity,
+          c.previous_purchase_price,
+          c.new_purchase_price,
+          c.credit_amount,
+          c.created_by_email,
+          c.created_at,
+          gsi.name as item_name
+        from public.global_shipment_outcome_vendor_credits c
+        inner join public.global_shipment_items gsi on gsi.id = c.shipment_item_id
+        where c.shipment_id = p_shipment_id
+      ) r
+    ),
+    '[]'::jsonb
+  )
+  into v_outcome_vendor_credits;
+
+  v_batch_list_id := null;
+  v_batch_code_list := null;
+  v_batch_code_items := '[]'::jsonb;
+
+  select to_jsonb(bcl.*), bcl.id
+  into v_batch_code_list, v_batch_list_id
+  from public.batch_code_lists bcl
+  where bcl.shipment_id = p_shipment_id;
+
+  if v_batch_list_id is not null then
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', bci.id,
+          'list_id', bci.list_id,
+          'barcode', bci.barcode,
+          'product_code', bci.product_code,
+          'batch_id', bci.batch_id,
+          'manufacturing_date', bci.manufacturing_date,
+          'expire_date', bci.expire_date,
+          'is_arrived', bci.is_arrived
+        )
+        order by bci.id asc
+      ),
+      '[]'::jsonb
+    )
+    into v_batch_code_items
+    from public.batch_code_items bci
+    where bci.list_id = v_batch_list_id;
+  end if;
+
   return jsonb_build_object(
     'shipment', v_ship,
     'sections', v_sections,
     'items', v_items,
     'boxes', v_boxes,
     'cost_entries', v_cost_entries,
-    'flow_stages', v_flow_stages
+    'flow_stages', v_flow_stages,
+    'ap_fx', v_ap_fx,
+    'item_outcomes', v_item_outcomes,
+    'outcome_vendor_credits', v_outcome_vendor_credits,
+    'batch_code_list', v_batch_code_list,
+    'batch_code_items', v_batch_code_items
   );
 end;
 $$;

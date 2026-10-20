@@ -46,8 +46,8 @@ export function useUnifiedDashboardQuery(
       try {
         const res = await globalShipmentRepository.listPaginated(
           effectiveTenantId.value,
-          1,
           5,
+          null,
           undefined,
           undefined,
           false,

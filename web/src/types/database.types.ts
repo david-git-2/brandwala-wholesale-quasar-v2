@@ -12411,6 +12411,10 @@ export type Database = {
         Returns: Json
       }
       get_shipment_public_status: { Args: { p_token: string }; Returns: Json }
+      get_shipment_settings_finance_bundle: {
+        Args: { p_shipment_id: number }
+        Returns: Json
+      }
       get_shop_bootstrap_context: {
         Args: {
           p_customer_group_member_id?: number
@@ -13584,6 +13588,20 @@ export type Database = {
             }
             Returns: Json
           }
+      list_inbound_shipments_workspace: {
+        Args: {
+          p_cargo_company_id?: number
+          p_cursor?: number
+          p_include_reference_data?: boolean
+          p_is_archived?: boolean
+          p_page_size?: number
+          p_search?: string
+          p_status?: string
+          p_tenant_id: number
+          p_vendor_id?: number
+        }
+        Returns: Json
+      }
       list_inventory_items_with_stock: {
         Args: {
           p_filters?: Json

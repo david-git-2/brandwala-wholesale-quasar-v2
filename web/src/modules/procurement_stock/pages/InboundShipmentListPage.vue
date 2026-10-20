@@ -10,6 +10,8 @@
         :search="searchText"
         search-placeholder="Search by shipment name or ID..."
         :filter-count="activeFilterCount"
+        icon-search
+        inline-pills
         @update:search="onSearchTextUpdate"
         @open-filters="openFilterDrawer"
       >
@@ -17,33 +19,48 @@
           <TfDrawerSectionTabs
             v-model="quickFilter"
             :tabs="quickFilterSectionTabs"
-            ariaLabel="Filter shipments"
+            ariaLabel="Filter shipments by status"
             @update:model-value="setQuickFilter"
+          />
+        </template>
+        <template #pills-secondary>
+          <TfDrawerSectionTabs
+            v-model="vendorQuickFilter"
+            :tabs="vendorSectionTabs"
+            ariaLabel="Filter shipments by vendor"
+            count-visibility="positive"
+            @update:model-value="setVendorQuickFilter"
           />
         </template>
         <template #trailing>
           <q-btn
-            outline
+            flat
+            round
             dense
-            no-caps
             color="grey-8"
-            class="rounded-sq-btn text-weight-medium q-px-sm"
-            label="Archived"
             icon="ph ph-archive-box"
+            class="flex-shrink-0"
+            aria-label="Archived shipments"
             @click="openArchivedShipmentsModal"
           >
-            <span v-if="shipmentStore.archivedTotal > 0" class="archived-counter-badge q-ml-xs">
+            <q-badge
+              v-if="shipmentStore.archivedTotal > 0"
+              color="grey-7"
+              text-color="white"
+              rounded
+              floating
+            >
               {{ shipmentStore.archivedTotal }}
-            </span>
+            </q-badge>
+            <q-tooltip>Archived</q-tooltip>
           </q-btn>
           <q-btn
             color="primary"
             unelevated
             no-caps
             dense
-            class="rounded-sq-btn text-weight-bold q-px-sm"
+            class="rounded-sq-btn text-weight-bold q-px-sm flex-shrink-0"
             label="New Shipment"
-            icon="ph ph-plus"
             @click="openCreateShipment"
           />
         </template>
@@ -51,40 +68,19 @@
 
       <!-- Filter Sidebar Drawer -->
       <FilterSidebar v-model="filterDrawerOpen" title="Filter Shipments">
-        <q-select
-          v-model="draftStatusFilter"
-          :options="statusOptions"
-          outlined
-          dense
-          clearable
-          emit-value
-          map-options
-          label="Shipment Status"
-        />
-
-        <q-select
-          v-model="draftVendorFilter"
-          :options="vendorOptions"
-          outlined
-          dense
-          clearable
-          emit-value
-          map-options
-          label="Vendor"
-          :loading="loadingVendors"
-        />
-
-        <q-select
-          v-model="draftCargoCompanyFilter"
-          :options="cargoCompanyOptions"
-          outlined
-          dense
-          clearable
-          emit-value
-          map-options
-          label="Cargo company"
-          :loading="loadingCargoCompanies"
-        />
+        <div class="column q-gutter-y-md">
+          <q-select
+            v-model="draftCargoCompanyFilter"
+            :options="cargoCompanyOptions"
+            outlined
+            dense
+            clearable
+            emit-value
+            map-options
+            label="Cargo company"
+            :loading="shipmentStore.loading && !cargoCompanyOptions.length"
+          />
+        </div>
 
         <template #footer>
           <div class="row justify-end q-gutter-x-sm">
@@ -118,7 +114,12 @@
 
       <!-- Zero State (First Time) -->
       <div
-        v-else-if="!shipmentStore.rows.length && activeFilterCount === 0 && quickFilter === 'all'"
+        v-else-if="
+          !shipmentStore.rows.length &&
+          activeFilterCount === 0 &&
+          quickFilter === 'all' &&
+          vendorQuickFilter === 'all'
+        "
         class="column items-center justify-center q-pa-xl text-grey-6 empty-state-block col"
       >
         <q-icon name="ph ph-truck" size="48px" class="q-mb-sm text-grey-4" />
@@ -146,7 +147,7 @@
       <!-- Clean Linear-Style List Container -->
       <div v-else class="shipment-list-card col">
         <!-- Scrollable List of Rows -->
-        <div class="shipment-list-scroll">
+        <div ref="scrollContainerRef" class="shipment-list-scroll">
           <div
             v-for="shipment in shipmentStore.rows"
             :key="shipment.id"
@@ -180,18 +181,13 @@
             </div>
           </div>
 
-          <!-- Load More Button inside list -->
-          <div v-if="hasMore" class="row justify-center q-py-sm">
-            <q-btn
-              flat
-              dense
-              no-caps
-              :loading="loadingMore"
-              class="load-more-btn text-weight-medium text-slate-700 q-px-md"
-              label="Load more"
-              icon="ph ph-arrow-down"
-              @click="loadMoreShipments"
-            />
+          <div
+            v-if="hasMore"
+            ref="scrollSentinelRef"
+            class="shipment-list-sentinel row justify-center q-py-sm"
+            aria-hidden="true"
+          >
+            <q-spinner-dots v-if="loadingMore" color="primary" size="28px" />
           </div>
         </div>
       </div>
@@ -200,13 +196,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
-import { globalShipmentRepository } from '../repositories/globalShipmentRepository';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ProcurementOpsListToolbar from '../components/ProcurementOpsListToolbar.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
@@ -226,36 +221,23 @@ const searchText = ref(typeof route.query.search === 'string' ? route.query.sear
 const filterDrawerOpen = ref(false);
 const quickFilter = ref<string>('all');
 const statusFilter = ref<string | null>(null);
-const draftStatusFilter = ref<string | null>(null);
+const vendorQuickFilter = ref('all');
 const vendorFilter = ref<number | null>(null);
-const draftVendorFilter = ref<number | null>(null);
 const cargoCompanyFilter = ref<number | null>(null);
 const draftCargoCompanyFilter = ref<number | null>(null);
-const loadingVendors = ref(false);
-const loadingCargoCompanies = ref(false);
-const cargoCompanyOptions = ref<Array<{ label: string; value: number }>>([]);
-
-const vendorOptions = computed(() =>
-  vendorStore.items.map((v) => ({
-    label: v.is_default ? `${v.name} (default)` : v.name,
-    value: v.id,
+const cargoCompanyOptions = computed(() =>
+  shipmentStore.listCargoCompanies.map((c) => ({
+    label: `${c.name} (${c.code})`,
+    value: c.id,
   })),
 );
-
-const statusOptions = [
-  { label: 'All Statuses', value: '__all__' },
-  { label: 'Draft', value: 'draft' },
-  { label: 'In transit', value: 'in_transit' },
-  { label: 'Received', value: 'received' },
-  { label: 'Cancelled', value: 'cancelled' },
-];
 
 const draftCount = computed(() => shipmentStore.rows.filter((r) => r.status === 'draft').length);
 const inTransitCount = computed(() => shipmentStore.rows.filter((r) => r.status === 'in_transit').length);
 const receivedCount = computed(() => shipmentStore.rows.filter((r) => r.status === 'received').length);
 
 const filterTabs = computed(() => [
-  { label: 'All', value: 'all', count: shipmentStore.total },
+  { label: 'All', value: 'all', count: shipmentStore.rows.length },
   { label: 'Draft', value: 'draft', count: draftCount.value },
   { label: 'In Transit', value: 'in_transit', count: inTransitCount.value },
   { label: 'Received', value: 'received', count: receivedCount.value },
@@ -274,7 +256,25 @@ const setQuickFilter = (val: string | number) => {
   const next = String(val);
   quickFilter.value = next;
   statusFilter.value = next === 'all' ? null : next;
-  shipmentStore.page = 1;
+  void loadShipments();
+};
+
+const vendorSectionTabs = computed(() => [
+  { name: 'all', label: 'All' },
+  ...vendorStore.items.map((v) => ({
+    name: `vendor_${v.id}`,
+    label: (v.code || `V${v.id}`).toUpperCase(),
+  })),
+]);
+
+const setVendorQuickFilter = (val: string | number) => {
+  const next = String(val);
+  vendorQuickFilter.value = next;
+  if (next === 'all') {
+    vendorFilter.value = null;
+  } else if (next.startsWith('vendor_')) {
+    vendorFilter.value = Number(next.slice('vendor_'.length));
+  }
   void loadShipments();
 };
 
@@ -283,35 +283,6 @@ const getVendorName = (vendorId: number | null | undefined): string => {
   if (!vendorId) return '—';
   const found = vendorStore.items.find((v) => v.id === vendorId);
   return found ? found.name : `Vendor #${vendorId}`;
-};
-
-const loadVendorData = async () => {
-  if (!authStore.tenantId) return;
-  loadingVendors.value = true;
-  try {
-    await vendorStore.fetchVendors(authStore.tenantId, true);
-  } catch (err) {
-    console.error('Failed to load vendors', err);
-  } finally {
-    loadingVendors.value = false;
-  }
-};
-
-const loadCargoCompanies = async () => {
-  if (!authStore.tenantId) return;
-  loadingCargoCompanies.value = true;
-  try {
-    const parentTenantId = authStore.selectedTenant?.parent_id ?? authStore.tenantId;
-    const cargo = await globalShipmentRepository.listCargoCompaniesForTenant(parentTenantId);
-    cargoCompanyOptions.value = cargo.map((c) => ({
-      label: `${c.name} (${c.code})`,
-      value: c.id,
-    }));
-  } catch (err) {
-    console.error('Failed to load cargo companies', err);
-  } finally {
-    loadingCargoCompanies.value = false;
-  }
 };
 
 const formatDate = (dateStr: string | null | undefined): string => {
@@ -351,22 +322,13 @@ const getStatusIcon = (status: string | null | undefined): string => {
 
 const loadingMore = ref(false);
 
-const activeFilterCount = computed(() => {
-  let count = 0;
-  if (statusFilter.value && statusFilter.value !== '__all__') count++;
-  if (vendorFilter.value != null) count++;
-  if (cargoCompanyFilter.value != null) count++;
-  return count;
-});
+const activeFilterCount = computed(() => (cargoCompanyFilter.value != null ? 1 : 0));
 
-const hasMore = computed(() => {
-  return shipmentStore.rows.length < shipmentStore.total;
-});
+const hasMore = computed(() => shipmentStore.hasMore);
 
 const loadShipments = async () => {
   if (!authStore.tenantId) return;
   await shipmentStore.fetchShipments(authStore.tenantId, {
-    page: shipmentStore.page,
     pageSize: shipmentStore.pageSize,
     search: searchText.value.trim() || null,
     status: statusFilter.value === '__all__' ? null : statusFilter.value,
@@ -375,14 +337,22 @@ const loadShipments = async () => {
   });
 };
 
+const scrollContainerRef = ref<HTMLElement | null>(null);
+const scrollSentinelRef = ref<HTMLElement | null>(null);
+let scrollObserver: IntersectionObserver | null = null;
+
+const disconnectScrollObserver = () => {
+  scrollObserver?.disconnect();
+  scrollObserver = null;
+};
+
 const loadMoreShipments = async () => {
   if (loadingMore.value || !hasMore.value || !authStore.tenantId) return;
   loadingMore.value = true;
   try {
-    const nextPage = shipmentStore.page + 1;
     await shipmentStore.fetchShipments(authStore.tenantId, {
-      page: nextPage,
       pageSize: shipmentStore.pageSize,
+      cursor: shipmentStore.nextCursor,
       search: searchText.value.trim() || null,
       status: statusFilter.value === '__all__' ? null : statusFilter.value,
       vendorId: vendorFilter.value,
@@ -391,7 +361,25 @@ const loadMoreShipments = async () => {
     });
   } finally {
     loadingMore.value = false;
+    void nextTick(() => setupScrollObserver());
   }
+};
+
+const setupScrollObserver = () => {
+  disconnectScrollObserver();
+  if (!hasMore.value) return;
+  const root = scrollContainerRef.value;
+  const target = scrollSentinelRef.value;
+  if (!root || !target) return;
+
+  scrollObserver = new IntersectionObserver(
+    (entries) => {
+      if (!entries[0]?.isIntersecting) return;
+      void loadMoreShipments();
+    },
+    { root, rootMargin: '160px 0px', threshold: 0 },
+  );
+  scrollObserver.observe(target);
 };
 
 const onSearchTextUpdate = (val: string | null | undefined) => {
@@ -400,37 +388,24 @@ const onSearchTextUpdate = (val: string | null | undefined) => {
 };
 
 const onSearch = () => {
-  shipmentStore.page = 1;
   void loadShipments();
 };
 
 const openFilterDrawer = () => {
-  draftStatusFilter.value = statusFilter.value;
-  draftVendorFilter.value = vendorFilter.value;
   draftCargoCompanyFilter.value = cargoCompanyFilter.value;
   filterDrawerOpen.value = true;
 };
 
 const onApplyDrawerFilters = () => {
-  statusFilter.value = draftStatusFilter.value;
-  vendorFilter.value = draftVendorFilter.value;
   cargoCompanyFilter.value = draftCargoCompanyFilter.value;
-  quickFilter.value = draftStatusFilter.value || 'all';
   filterDrawerOpen.value = false;
-  shipmentStore.page = 1;
   void loadShipments();
 };
 
 const onResetFilters = () => {
-  draftStatusFilter.value = null;
-  draftVendorFilter.value = null;
   draftCargoCompanyFilter.value = null;
-  statusFilter.value = null;
-  vendorFilter.value = null;
   cargoCompanyFilter.value = null;
-  quickFilter.value = 'all';
   filterDrawerOpen.value = false;
-  shipmentStore.page = 1;
   void loadShipments();
 };
 
@@ -457,10 +432,19 @@ const openArchivedShipmentsModal = () => {
 };
 
 onMounted(() => {
-  void loadVendorData();
-  void loadCargoCompanies();
-  void loadShipments();
+  void loadShipments().then(() => nextTick(() => setupScrollObserver()));
 });
+
+onUnmounted(() => {
+  disconnectScrollObserver();
+});
+
+watch(
+  () => [hasMore.value, shipmentStore.rows.length] as const,
+  () => {
+    void nextTick(() => setupScrollObserver());
+  },
+);
 
 watch(
   () => route.query.search,
@@ -470,7 +454,6 @@ watch(
       return;
     }
     searchText.value = nextSearch;
-    shipmentStore.page = 1;
     void loadShipments();
   },
 );
@@ -492,15 +475,6 @@ watch(
 
 .rounded-sq-btn {
   border-radius: var(--tf-radius-sm, 8px);
-}
-
-.archived-counter-badge {
-  font-size: 10.5px;
-  font-weight: 600;
-  background: var(--tf-disabled-bg);
-  color: var(--tf-neutral-muted);
-  padding: 1px 6px;
-  border-radius: 4px;
 }
 
 /* Linear-Style List Container */
@@ -658,17 +632,8 @@ watch(
   background: transparent;
 }
 
-/* Load More */
-.load-more-btn {
-  background: var(--tf-disabled-bg);
-  border-radius: var(--tf-radius-sm, 8px);
-  font-size: 12px;
-  transition: all 0.15s ease;
-}
-
-.load-more-btn:hover {
-  background: var(--tf-hover-bg);
-  color: var(--tf-neutral-ink);
+.shipment-list-sentinel {
+  min-height: 40px;
 }
 
 .text-slate-400 { color: var(--tf-neutral-chrome-text); }

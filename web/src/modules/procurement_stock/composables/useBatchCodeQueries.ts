@@ -61,8 +61,17 @@ export function useBatchCodeListByShipmentQuery(
 
 export function useBatchCodeItemsByShipmentQuery(
   shipmentId: MaybeRefOrGetter<number | null | undefined>,
+  options?: {
+    /** When set to the same shipment id, skip network (overview bundle already seeded cache). */
+    workspaceHydratedShipmentId?: MaybeRefOrGetter<number | null | undefined>;
+  },
 ) {
   const resolvedShipmentId = computed(() => resolveId(shipmentId));
+  const resolvedHydratedId = computed(() =>
+    options?.workspaceHydratedShipmentId != null
+      ? resolveId(options.workspaceHydratedShipmentId)
+      : null,
+  );
 
   return useQuery({
     queryKey: computed(() =>
@@ -75,7 +84,12 @@ export function useBatchCodeItemsByShipmentQuery(
       if (!list) return [];
       return batchCodeRepository.listItemsByListId(list.id);
     },
-    enabled: computed(() => resolvedShipmentId.value !== null),
+    enabled: computed(() => {
+      const id = resolvedShipmentId.value;
+      if (id === null) return false;
+      if (resolvedHydratedId.value === id) return false;
+      return true;
+    }),
   });
 }
 
