@@ -3344,7 +3344,6 @@ function goBackToList() {
 }
 
 .pbc-cost-bdt-cell {
-  cursor: help;
   border-bottom: 1px dashed color-mix(in srgb, var(--tf-neutral-muted) 55%, transparent);
 }
 

@@ -13491,12 +13491,14 @@ export type Database = {
           }
         | {
             Args: {
+              p_cargo_company_id?: number
               p_is_archived?: boolean
               p_page?: number
               p_page_size?: number
               p_search?: string
               p_status?: string
               p_tenant_id: number
+              p_vendor_id?: number
             }
             Returns: Json
           }

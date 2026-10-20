@@ -19,7 +19,12 @@ import {
   showWarningNotification,
   requestConfirmation,
 } from 'src/utils/appFeedback';
-import { buildShipmentExcelWorkbook } from '../utils/buildShipmentExcelWorkbook';
+import {
+  buildShipmentExcelWorkbook,
+  buildShipmentExcelWorkbookMulti,
+  type ShipmentExcelBuildProgress,
+} from '../utils/buildShipmentExcelWorkbook';
+import ShipmentExcelExportProgressDialog from '../components/ShipmentExcelExportProgressDialog.vue';
 import { filterShipmentItemsBySheet } from '../utils/filterShipmentItemsBySheet';
 import {
   findLandSplitQtyMismatches,
@@ -607,7 +612,11 @@ export function useInboundShipmentActions(options: {
   const safeNamePart = (value: string) =>
     value.replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '');
 
-  const downloadExcel = async (options?: { sheetId?: string; sheetName?: string }) => {
+  const downloadExcel = async (options?: {
+    sheetId?: string;
+    sheetName?: string;
+    mode?: 'section' | 'whole';
+  }) => {
     const shipment = shipmentStore.currentShipment;
     if (!shipment) {
       showWarningNotification('No shipment loaded.');
@@ -616,60 +625,125 @@ export function useInboundShipmentActions(options: {
 
     const allItems = shipmentStore.currentShipmentItems ?? [];
     const sections = shipmentStore.currentShipmentSections ?? [];
-    const sheetId = options?.sheetId ?? 'sheet_all';
+    const mode = options?.mode ?? 'section';
+
+    const sharedWorkbookInput = {
+      shipment,
+      boxWeightSum: calculations.currentShipmentBoxesShippingTotal.value,
+      boxReceivedWeightKg: calculations.currentShipmentBoxesReceivedTotal.value,
+      boxShippingWeightKg: calculations.currentShipmentBoxesShippingTotal.value,
+      boxCount: calculations.currentShipmentBoxesCount.value,
+      purchaseCurrencySymbol: calculations.currentPurchaseCurrencySymbol.value,
+      costCurrencySymbol: calculations.currentCostCurrencySymbol.value,
+    };
+
+    const forCosting = costingShipmentFromEntries(
+      shipment,
+      shipmentStore.currentCostEntries,
+      allItems,
+    );
+
+    const fileTitle = safeNamePart(shipment.name ?? `shipment_${shipment.id}`);
+
+    let sheetInputsForWhole: Array<{
+      worksheetName: string;
+      items: GlobalShipmentItem[];
+      totals: ReturnType<typeof calculateShipmentCostSummary>;
+    }> | null = null;
+
+    if (mode === 'whole' && sections.length > 1) {
+      sheetInputsForWhole = sections
+        .map((sec) => {
+          const sheetId = `section_${sec.id}`;
+          const items = filterShipmentItemsBySheet(allItems, sheetId, sections);
+          if (items.length === 0) return null;
+          return {
+            worksheetName: sec.title || `Section ${sec.id}`,
+            items,
+            totals: calculateShipmentCostSummary(forCosting, items),
+          };
+        })
+        .filter((row): row is NonNullable<typeof row> => row != null);
+
+      if (!sheetInputsForWhole.length) {
+        showWarningNotification('No items to export.');
+        return;
+      }
+    }
+
+    const sheetId =
+      options?.sheetId ??
+      (sections.length === 1 ? `section_${sections[0].id}` : 'sheet_all');
     const sheetName =
       options?.sheetName ??
-      (sheetId === 'sheet_all' ? 'All Items' : sections.find((section) => `section_${section.id}` === sheetId)?.title ?? 'Section');
-    const items = filterShipmentItemsBySheet(allItems, sheetId, sections);
+      (sheetId === 'sheet_all'
+        ? 'All Items'
+        : sections.find((section) => `section_${section.id}` === sheetId)?.title ?? 'Section');
 
-    if (items.length === 0) {
-      showWarningNotification('No items to export for this tab.');
-      return;
+    if (!sheetInputsForWhole) {
+      const items = filterShipmentItemsBySheet(allItems, sheetId, sections);
+      if (items.length === 0) {
+        showWarningNotification('No items to export for this section.');
+        return;
+      }
     }
 
-    const loading = $q.loading.show({ message: 'Generating Excel...' });
+    const sheetSuffix =
+      sections.length > 1 && sheetId !== 'sheet_all' ? `_${safeNamePart(sheetName)}` : '';
+    const downloadFileName = sheetInputsForWhole
+      ? `${fileTitle || `shipment_${shipment.id}`}.xlsx`
+      : `${fileTitle || `shipment_${shipment.id}`}${sheetSuffix}.xlsx`;
 
-    try {
-      const forCosting = costingShipmentFromEntries(
-        shipment,
-        shipmentStore.currentCostEntries,
-        allItems,
-      );
-      const totals =
-        sheetId === 'sheet_all'
-          ? calculations.totals.value
-          : calculateShipmentCostSummary(forCosting, items);
+    $q.dialog({
+      component: ShipmentExcelExportProgressDialog,
+      componentProps: {
+        task: async (onProgress: (progress: { message: string; value: number }) => void) => {
+          const onBuildProgress = (build: ShipmentExcelBuildProgress) => {
+            onProgress({
+              message: build.message,
+              value: Math.min(0.9, build.value * 0.9),
+            });
+          };
 
-      const workbook = await buildShipmentExcelWorkbook({
-        shipment,
-        items,
-        totals,
-        boxWeightSum: calculations.currentShipmentBoxesShippingTotal.value,
-        boxReceivedWeightKg: calculations.currentShipmentBoxesReceivedTotal.value,
-        boxShippingWeightKg: calculations.currentShipmentBoxesShippingTotal.value,
-        boxCount: calculations.currentShipmentBoxesCount.value,
-        purchaseCurrencySymbol: calculations.currentPurchaseCurrencySymbol.value,
-        costCurrencySymbol: calculations.currentCostCurrencySymbol.value,
-        worksheetName: sheetName,
-      });
+          let workbook: Awaited<ReturnType<typeof buildShipmentExcelWorkbook>>;
 
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      const fileTitle = safeNamePart(shipment.name ?? `shipment_${shipment.id}`);
-      const sheetSuffix = sheetId === 'sheet_all' ? '' : `_${safeNamePart(sheetName)}`;
-      anchor.href = url;
-      anchor.download = `${fileTitle || `shipment_${shipment.id}`}${sheetSuffix}.xlsx`;
-      anchor.click();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      showErrorNotification(error instanceof Error ? error.message : 'Failed to generate Excel.');
-    } finally {
-      loading();
-    }
+          if (sheetInputsForWhole) {
+            workbook = await buildShipmentExcelWorkbookMulti(
+              { ...sharedWorkbookInput, onProgress: onBuildProgress },
+              sheetInputsForWhole,
+            );
+          } else {
+            const items = filterShipmentItemsBySheet(allItems, sheetId, sections);
+            const totals =
+              sheetId === 'sheet_all'
+                ? calculations.totals.value
+                : calculateShipmentCostSummary(forCosting, items);
+
+            workbook = await buildShipmentExcelWorkbook({
+              ...sharedWorkbookInput,
+              items,
+              totals,
+              worksheetName: sheetName,
+              onProgress: onBuildProgress,
+            });
+          }
+
+          onProgress({ message: 'Packing workbook…', value: 0.92 });
+          const buffer = await workbook.xlsx.writeBuffer();
+          onProgress({ message: 'Starting download…', value: 0.98 });
+
+          const blob = new Blob([buffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          });
+          const url = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = url;
+          anchor.download = downloadFileName;
+          anchor.click();
+          URL.revokeObjectURL(url);
+        },
+      },
+    });
   };
 
   const openAddItems = (initialSectionId?: number | null) => {

@@ -272,6 +272,8 @@ const listPaginated = async (
   search?: string,
   status?: string,
   isArchived: boolean = false,
+  vendorId?: number | null,
+  cargoCompanyId?: number | null,
 ): Promise<PaginatedResult<GlobalShipment>> => {
   const { data, error } = await db.rpc('list_global_shipments_paginated', {
     p_tenant_id: tenantId,
@@ -280,6 +282,8 @@ const listPaginated = async (
     p_search: search || null,
     p_status: status || null,
     p_is_archived: isArchived,
+    p_vendor_id: vendorId ?? null,
+    p_cargo_company_id: cargoCompanyId ?? null,
   });
 
   if (error) {

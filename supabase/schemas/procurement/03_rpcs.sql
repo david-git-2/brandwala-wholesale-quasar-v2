@@ -5756,7 +5756,7 @@ $$;
 ALTER FUNCTION "public"."list_global_shipment_cost_entries"("p_shipment_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_is_archived" boolean DEFAULT false) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_is_archived" boolean DEFAULT false, "p_vendor_id" bigint DEFAULT NULL::bigint, "p_cargo_company_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $_$
@@ -5778,7 +5778,9 @@ begin
         s.name ilike '%' || p_search || '%'
         or (p_search ~ '^[0-9]+$' and s.tenant_shipment_id = p_search::integer)
       )
-    );
+    )
+    and (p_vendor_id is null or s.vendor_id = p_vendor_id)
+    and (p_cargo_company_id is null or s.cargo_company_id = p_cargo_company_id);
 
   -- Count of all archived shipments for tenant (for toolbar badge)
   select count(*)
@@ -5826,6 +5828,8 @@ begin
           or (p_search ~ '^[0-9]+$' and s.tenant_shipment_id = p_search::integer)
         )
       )
+      and (p_vendor_id is null or s.vendor_id = p_vendor_id)
+      and (p_cargo_company_id is null or s.cargo_company_id = p_cargo_company_id)
     order by s.id desc
     limit p_page_size
     offset (greatest(coalesce(p_page, 1), 1) - 1) * p_page_size
@@ -5851,7 +5855,7 @@ end;
 $_$;
 
 
-ALTER FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text", "p_is_archived" boolean) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text", "p_is_archived" boolean, "p_vendor_id" bigint, "p_cargo_company_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_global_stock_allocations_paginated"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_child_tenant_id" bigint DEFAULT NULL::bigint, "p_stock_type_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"

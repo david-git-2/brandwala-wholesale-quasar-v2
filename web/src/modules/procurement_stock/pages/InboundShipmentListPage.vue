@@ -62,6 +62,30 @@
           label="Shipment Status"
         />
 
+        <q-select
+          v-model="draftVendorFilter"
+          :options="vendorOptions"
+          outlined
+          dense
+          clearable
+          emit-value
+          map-options
+          label="Vendor"
+          :loading="loadingVendors"
+        />
+
+        <q-select
+          v-model="draftCargoCompanyFilter"
+          :options="cargoCompanyOptions"
+          outlined
+          dense
+          clearable
+          emit-value
+          map-options
+          label="Cargo company"
+          :loading="loadingCargoCompanies"
+        />
+
         <template #footer>
           <div class="row justify-end q-gutter-x-sm">
             <q-btn flat no-caps label="Reset" color="grey-7" @click="onResetFilters" />
@@ -182,6 +206,7 @@ import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import { globalShipmentRepository } from '../repositories/globalShipmentRepository';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ProcurementOpsListToolbar from '../components/ProcurementOpsListToolbar.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
@@ -202,6 +227,20 @@ const filterDrawerOpen = ref(false);
 const quickFilter = ref<string>('all');
 const statusFilter = ref<string | null>(null);
 const draftStatusFilter = ref<string | null>(null);
+const vendorFilter = ref<number | null>(null);
+const draftVendorFilter = ref<number | null>(null);
+const cargoCompanyFilter = ref<number | null>(null);
+const draftCargoCompanyFilter = ref<number | null>(null);
+const loadingVendors = ref(false);
+const loadingCargoCompanies = ref(false);
+const cargoCompanyOptions = ref<Array<{ label: string; value: number }>>([]);
+
+const vendorOptions = computed(() =>
+  vendorStore.items.map((v) => ({
+    label: v.is_default ? `${v.name} (default)` : v.name,
+    value: v.id,
+  })),
+);
 
 const statusOptions = [
   { label: 'All Statuses', value: '__all__' },
@@ -248,10 +287,30 @@ const getVendorName = (vendorId: number | null | undefined): string => {
 
 const loadVendorData = async () => {
   if (!authStore.tenantId) return;
+  loadingVendors.value = true;
   try {
-    await vendorStore.fetchVendors(authStore.tenantId);
+    await vendorStore.fetchVendors(authStore.tenantId, true);
   } catch (err) {
     console.error('Failed to load vendors', err);
+  } finally {
+    loadingVendors.value = false;
+  }
+};
+
+const loadCargoCompanies = async () => {
+  if (!authStore.tenantId) return;
+  loadingCargoCompanies.value = true;
+  try {
+    const parentTenantId = authStore.selectedTenant?.parent_id ?? authStore.tenantId;
+    const cargo = await globalShipmentRepository.listCargoCompaniesForTenant(parentTenantId);
+    cargoCompanyOptions.value = cargo.map((c) => ({
+      label: `${c.name} (${c.code})`,
+      value: c.id,
+    }));
+  } catch (err) {
+    console.error('Failed to load cargo companies', err);
+  } finally {
+    loadingCargoCompanies.value = false;
   }
 };
 
@@ -293,7 +352,11 @@ const getStatusIcon = (status: string | null | undefined): string => {
 const loadingMore = ref(false);
 
 const activeFilterCount = computed(() => {
-  return statusFilter.value && statusFilter.value !== '__all__' ? 1 : 0;
+  let count = 0;
+  if (statusFilter.value && statusFilter.value !== '__all__') count++;
+  if (vendorFilter.value != null) count++;
+  if (cargoCompanyFilter.value != null) count++;
+  return count;
 });
 
 const hasMore = computed(() => {
@@ -307,6 +370,8 @@ const loadShipments = async () => {
     pageSize: shipmentStore.pageSize,
     search: searchText.value.trim() || null,
     status: statusFilter.value === '__all__' ? null : statusFilter.value,
+    vendorId: vendorFilter.value,
+    cargoCompanyId: cargoCompanyFilter.value,
   });
 };
 
@@ -320,6 +385,8 @@ const loadMoreShipments = async () => {
       pageSize: shipmentStore.pageSize,
       search: searchText.value.trim() || null,
       status: statusFilter.value === '__all__' ? null : statusFilter.value,
+      vendorId: vendorFilter.value,
+      cargoCompanyId: cargoCompanyFilter.value,
       append: true,
     });
   } finally {
@@ -339,11 +406,15 @@ const onSearch = () => {
 
 const openFilterDrawer = () => {
   draftStatusFilter.value = statusFilter.value;
+  draftVendorFilter.value = vendorFilter.value;
+  draftCargoCompanyFilter.value = cargoCompanyFilter.value;
   filterDrawerOpen.value = true;
 };
 
 const onApplyDrawerFilters = () => {
   statusFilter.value = draftStatusFilter.value;
+  vendorFilter.value = draftVendorFilter.value;
+  cargoCompanyFilter.value = draftCargoCompanyFilter.value;
   quickFilter.value = draftStatusFilter.value || 'all';
   filterDrawerOpen.value = false;
   shipmentStore.page = 1;
@@ -352,7 +423,11 @@ const onApplyDrawerFilters = () => {
 
 const onResetFilters = () => {
   draftStatusFilter.value = null;
+  draftVendorFilter.value = null;
+  draftCargoCompanyFilter.value = null;
   statusFilter.value = null;
+  vendorFilter.value = null;
+  cargoCompanyFilter.value = null;
   quickFilter.value = 'all';
   filterDrawerOpen.value = false;
   shipmentStore.page = 1;
@@ -383,6 +458,7 @@ const openArchivedShipmentsModal = () => {
 
 onMounted(() => {
   void loadVendorData();
+  void loadCargoCompanies();
   void loadShipments();
 });
 

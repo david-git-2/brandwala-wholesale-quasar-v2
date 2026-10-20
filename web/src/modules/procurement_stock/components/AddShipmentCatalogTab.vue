@@ -478,6 +478,9 @@ import { productService } from 'src/modules/products/services/productService';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import NewShipmentProductSidebar from './NewShipmentProductSidebar.vue';
+import BulkShipmentAddReportDialog, {
+  type BulkShipmentAddReport,
+} from './BulkShipmentAddReportDialog.vue';
 import { shipmentItemExistsInSection } from '../utils/shipmentItemSectionIdentity';
 
 export interface ShipmentCartItem {
@@ -732,6 +735,27 @@ const parseBulkCodes = (raw: string): string[] => {
   return tokens;
 };
 
+const buildDuplicateCodeEntries = (codes: string[]) => {
+  const counts = new Map<string, number>();
+  for (const code of codes) {
+    counts.set(code, (counts.get(code) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([code, count]) => ({ code, count }))
+    .sort((a, b) => a.code.localeCompare(b.code));
+};
+
+const showBulkShipmentAddReport = (report: BulkShipmentAddReport) => {
+  $q.dialog({
+    component: BulkShipmentAddReportDialog,
+    componentProps: {
+      report,
+      shipmentHasSections: shipmentHasSections.value,
+    },
+  });
+};
+
 const onBulkAddCodes = async () => {
   const codes = parseBulkCodes(bulkCodesText.value);
   if (codes.length === 0) {
@@ -779,9 +803,10 @@ const onBulkAddCodes = async () => {
     }
 
     const missing: string[] = [];
+    const alreadyOnShipment: string[] = [];
+    const duplicateCodes = buildDuplicateCodeEntries(codes);
     const toAdd: ProductItem[] = [];
     const seen = new Set<number>();
-    let skipped = 0;
     for (const rawCode of codes) {
       const code = rawCode.trim();
       const cleanId = code.replace(/^#/, '');
@@ -806,15 +831,25 @@ const onBulkAddCodes = async () => {
         missing.push(code);
         continue;
       }
-      if (seen.has(product.id) || isAlreadyInTargetSection(product)) {
-        skipped += 1;
+
+      if (seen.has(product.id)) {
         continue;
       }
+
+      if (isAlreadyInTargetSection(product)) {
+        if (!alreadyOnShipment.includes(code)) {
+          alreadyOnShipment.push(code);
+        }
+        seen.add(product.id);
+        continue;
+      }
+
       seen.add(product.id);
       toAdd.push(product);
     }
 
-    if (toAdd.length > 0) {
+    const linesAdded = toAdd.length;
+    if (linesAdded > 0) {
       await shipmentStore.addShipmentItemsBulk(
         props.shipmentId,
         toAdd.map((product) => buildShipmentItemPayload(product, qty)),
@@ -822,28 +857,14 @@ const onBulkAddCodes = async () => {
       bulkCodesText.value = missing.length > 0 ? missing.join('\n') : '';
     }
 
-    const skipNote =
-      skipped > 0
-        ? shipmentHasSections.value
-          ? ` ${skipped} already in this section.`
-          : ` ${skipped} already on shipment.`
-        : '';
-    if (missing.length === 0 && toAdd.length > 0) {
-      $q.notify({
-        type: 'positive',
-        message: `Added ${toAdd.length} item${toAdd.length === 1 ? '' : 's'}.${skipNote}`,
-      });
-    } else if (toAdd.length > 0) {
-      $q.notify({
-        type: 'warning',
-        message: `Added ${toAdd.length} item${toAdd.length === 1 ? '' : 's'}.${skipNote} ${missing.length} code(s) not found in catalog.`,
-      });
-    } else {
-      $q.notify({
-        type: 'warning',
-        message: `No new products were added.${skipNote} ${missing.length} code(s) not found.`,
-      });
-    }
+    showBulkShipmentAddReport({
+      totalParsed: codes.length,
+      linesAdded,
+      totalUnitsAdded: linesAdded * qty,
+      missing,
+      alreadyOnShipment,
+      duplicateCodes,
+    });
   } catch (err) {
     $q.notify({
       type: 'negative',

@@ -1013,7 +1013,7 @@ GRANT ALL ON FUNCTION "public"."list_global_shipment_cost_entries"("p_shipment_i
 
 
 
-GRANT ALL ON FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text", "p_is_archived" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text", "p_is_archived" boolean, "p_vendor_id" bigint, "p_cargo_company_id" bigint) TO "authenticated";
 
 REVOKE ALL ON FUNCTION public.get_procurement_dashboard_metrics(bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_procurement_dashboard_metrics(bigint) TO authenticated;

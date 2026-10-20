@@ -85,6 +85,65 @@ export const getExcelImageWidthPx = (naturalWidth: number, naturalHeight: number
   return (naturalWidth / naturalHeight) * EXCEL_IMAGE_HEIGHT_PX;
 };
 
+const EXCEL_EMU_PER_PIXEL = 9525;
+const CELL_IMAGE_PAD_PX = 8;
+
+/** Excel column width (character units) → interior width in px (Calibri 11). */
+export const excelColumnWidthCharsToPixels = (width: number) =>
+  Math.max(0, Math.round(width * 7 + 5));
+
+export const excelRowHeightPtToPixels = (heightPt: number) => heightPt * (96 / 72);
+
+export type CenteredExcelWorksheetImageAnchor = {
+  col: number;
+  /** 0-based row index */
+  row: number;
+  columnWidthChars: number;
+  rowHeightPt: number;
+  imageWidthPx: number;
+  imageHeightPx: number;
+};
+
+/** Place image centered in a single cell (row height must match rowHeightPt). */
+export function addCenteredWorksheetImage(
+  worksheet: {
+    addImage: (imageId: number, range: object) => void;
+    getRow: (rowNumber: number) => { height?: number };
+  },
+  imageId: number,
+  anchor: CenteredExcelWorksheetImageAnchor,
+): void {
+  worksheet.getRow(anchor.row + 1).height = anchor.rowHeightPt;
+
+  const cellWidthPx = excelColumnWidthCharsToPixels(anchor.columnWidthChars);
+  const cellHeightPx = excelRowHeightPtToPixels(anchor.rowHeightPt);
+  const maxWidthPx = Math.max(1, cellWidthPx - CELL_IMAGE_PAD_PX * 2);
+  const maxHeightPx = Math.max(1, cellHeightPx - CELL_IMAGE_PAD_PX * 2);
+  const scale = Math.min(
+    1,
+    maxWidthPx / Math.max(1, anchor.imageWidthPx),
+    maxHeightPx / Math.max(1, anchor.imageHeightPx),
+  );
+  const imageWidthPx = anchor.imageWidthPx * scale;
+  const imageHeightPx = anchor.imageHeightPx * scale;
+  const colOffEmu = Math.round(Math.max(0, (cellWidthPx - imageWidthPx) / 2) * EXCEL_EMU_PER_PIXEL);
+  const rowOffEmu = Math.round(
+    Math.max(0, (cellHeightPx - imageHeightPx) / 2) * EXCEL_EMU_PER_PIXEL,
+  );
+
+  // ExcelJS ignores tl.colOff / tl.rowOff; native* offsets are EMUs Excel actually uses.
+  worksheet.addImage(imageId, {
+    tl: {
+      nativeCol: anchor.col,
+      nativeColOff: colOffEmu,
+      nativeRow: anchor.row,
+      nativeRowOff: rowOffEmu,
+    },
+    ext: { width: imageWidthPx, height: imageHeightPx },
+    editAs: 'oneCell',
+  });
+}
+
 export const pixelsToExcelColumnWidth = (px: number) => Math.max(10, px / 7 + 2);
 
 export async function fetchImageForExcel(

@@ -1,10 +1,18 @@
 import type { GlobalShipment, GlobalShipmentItem } from '../repositories/globalShipmentRepository';
 import type { ShipmentCostSummary } from 'src/shared/shipment-engine';
 import {
+  addCenteredWorksheetImage,
   EXCEL_IMAGE_HEIGHT_PX,
   fetchImageForExcel,
   getExcelImageWidthPx,
 } from 'src/modules/product_based_costing/utils/excelImageExport';
+
+export type ShipmentExcelBuildProgress = {
+  phase: 'images' | 'rows' | 'summary';
+  message: string;
+  /** 0–1 progress within the current worksheet */
+  value: number;
+};
 
 export interface BuildShipmentExcelInput {
   shipment: GlobalShipment;
@@ -17,7 +25,35 @@ export interface BuildShipmentExcelInput {
   purchaseCurrencySymbol: string;
   costCurrencySymbol: string;
   worksheetName?: string;
+  onProgress?: (progress: ShipmentExcelBuildProgress) => void;
 }
+
+const yieldToUi = () => new Promise<void>((resolve) => {
+  window.setTimeout(resolve, 0);
+});
+
+const reportSheetProgress = (
+  input: BuildShipmentExcelInput,
+  phase: ShipmentExcelBuildProgress['phase'],
+  current: number,
+  total: number,
+  label: string,
+) => {
+  const safeTotal = total > 0 ? total : 1;
+  let value = 0;
+  if (phase === 'images') {
+    value = (current / safeTotal) * 0.72;
+  } else if (phase === 'rows') {
+    value = 0.72 + (current / safeTotal) * 0.23;
+  } else {
+    value = 0.98;
+  }
+  input.onProgress?.({
+    phase,
+    message: label,
+    value: Math.min(0.99, value),
+  });
+};
 
 const safeWorksheetName = (name: string) =>
   name.replace(/[\\/*?:\[\]]/g, '_').trim().slice(0, 31) || 'Shipment costing';
@@ -124,14 +160,6 @@ const CELL_BORDER = {
   bottom: THIN_BORDER,
   right: THIN_BORDER,
 };
-
-const EMU_PER_PIXEL = 9525;
-
-const excelColumnWidthToPixels = (width: number) =>
-  Math.floor(((width * 256 + Math.floor(128 / 7)) / 256) * 7);
-
-const excelRowHeightToPixels = (heightPt: number) => heightPt * (96 / 72);
-const pixelsToEmu = (px: number) => Math.round(px * EMU_PER_PIXEL);
 
 type ExcelCell = {
   fill?: { type: 'pattern'; pattern: 'solid'; fgColor: { argb: string } } | undefined;
@@ -272,9 +300,30 @@ const toNum = (value: number | null | undefined) =>
 
 const toWeight = (value: number | null | undefined) => Math.round(toNum(value));
 
-export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput) {
-  const ExcelJS = await import('exceljs');
-  const workbook = new ExcelJS.Workbook();
+const uniqueWorksheetName = (baseName: string, used: Set<string>) => {
+  let name = safeWorksheetName(baseName);
+  if (!used.has(name)) {
+    used.add(name);
+    return name;
+  }
+  let n = 2;
+  while (n < 100) {
+    const candidate = safeWorksheetName(`${baseName.slice(0, 24)}_${n}`);
+    if (!used.has(candidate)) {
+      used.add(candidate);
+      return candidate;
+    }
+    n += 1;
+  }
+  const fallback = safeWorksheetName(`Sheet_${used.size + 1}`);
+  used.add(fallback);
+  return fallback;
+};
+
+export async function appendShipmentExcelSheet(
+  workbook: { addWorksheet: (name: string) => any; addImage: (image: any) => number },
+  input: BuildShipmentExcelInput,
+): Promise<void> {
   const worksheet = workbook.addWorksheet(safeWorksheetName(input.worksheetName ?? 'Shipment costing'));
 
   const conversionRate =
@@ -302,7 +351,21 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
   });
   applyColoredColumnStyle(headerRow, ['G', 'J', 'N', 'P'], true);
 
-  const embeddedImages = await Promise.all(items.map((item) => fetchImageForExcel(item.image_url)));
+  const embeddedImages: Awaited<ReturnType<typeof fetchImageForExcel>>[] = [];
+  const imageTotal = items.length;
+  for (let i = 0; i < items.length; i += 1) {
+    embeddedImages.push(await fetchImageForExcel(items[i].image_url));
+    reportSheetProgress(
+      input,
+      'images',
+      i + 1,
+      imageTotal,
+      imageTotal > 0 ? `Loading pictures ${i + 1} of ${imageTotal}` : 'Loading pictures…',
+    );
+    if (i % 2 === 1) {
+      await yieldToUi();
+    }
+  }
   const coloredCols = Object.keys(COLORED_COLUMNS);
 
   for (const [index, item] of items.entries()) {
@@ -365,29 +428,42 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
     });
     applyCellStyle(row.getCell('T'), { numFmt: NUM_FMT_PERCENT });
     applyColoredColumnStyle(row, coloredCols);
+    applyCellStyle(row.getCell('B'), {
+      alignment: { vertical: 'middle', horizontal: 'center', wrapText: false },
+    });
+
+    row.height = DATA_ROW_HEIGHT;
+
+    if (index % 4 === 3 || index === items.length - 1) {
+      reportSheetProgress(
+        input,
+        'rows',
+        index + 1,
+        items.length,
+        items.length > 0 ? `Building rows ${index + 1} of ${items.length}` : 'Building rows…',
+      );
+      if (index % 8 === 7) {
+        await yieldToUi();
+      }
+    }
 
     const embeddedImage = embeddedImages[index];
     if (embeddedImage) {
       const imageWidthPx = getExcelImageWidthPx(embeddedImage.width, embeddedImage.height);
-      const pictureColumnWidthPx = excelColumnWidthToPixels(
-        COLUMN_WIDTHS[PICTURE_COLUMN_INDEX] ?? 13.19921875,
-      );
-      const rowHeightPx = excelRowHeightToPixels(DATA_ROW_HEIGHT);
-      const colOff = pixelsToEmu(Math.max(0, (pictureColumnWidthPx - imageWidthPx) / 2));
-      const rowOff = pixelsToEmu(Math.max(0, (rowHeightPx - EXCEL_IMAGE_HEIGHT_PX) / 2));
-
       const imageId = workbook.addImage({
         buffer: embeddedImage.buffer,
         extension: embeddedImage.extension,
       });
 
-      worksheet.addImage(imageId, {
-        tl: { col: PICTURE_COLUMN_INDEX, row: r - 1, colOff, rowOff },
-        ext: { width: imageWidthPx, height: EXCEL_IMAGE_HEIGHT_PX },
+      addCenteredWorksheetImage(worksheet, imageId, {
+        col: PICTURE_COLUMN_INDEX,
+        row: r - 1,
+        columnWidthChars: COLUMN_WIDTHS[PICTURE_COLUMN_INDEX] ?? 13.19921875,
+        rowHeightPt: DATA_ROW_HEIGHT,
+        imageWidthPx,
+        imageHeightPx: EXCEL_IMAGE_HEIGHT_PX,
       });
     }
-
-    row.height = DATA_ROW_HEIGHT;
   }
 
   const lastDataRow =
@@ -473,6 +549,8 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
     const mainCell = ws.getCell(startRow, startCol);
     mainCell.value = text;
   };
+
+  reportSheetProgress(input, 'summary', 1, 1, 'Adding summary blocks…');
 
   // Section 1: Shipment Overview (Columns B to E)
   mergeAndStyleRange(worksheet, 2, summaryStartRow, 5, summaryStartRow, 'SHIPMENT OVERVIEW', {
@@ -666,6 +744,52 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
     cellD.value = row.colD;
     cellD.border = thinBorderSet;
   });
+}
 
+export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput) {
+  const ExcelJS = await import('exceljs');
+  const workbook = new ExcelJS.Workbook();
+  await appendShipmentExcelSheet(workbook, input);
+  return workbook;
+}
+
+export type ShipmentExcelSheetInput = Pick<
+  BuildShipmentExcelInput,
+  'items' | 'totals' | 'worksheetName'
+>;
+
+export async function buildShipmentExcelWorkbookMulti(
+  shared: Omit<BuildShipmentExcelInput, 'items' | 'totals' | 'worksheetName'>,
+  sheets: ShipmentExcelSheetInput[],
+) {
+  const ExcelJS = await import('exceljs');
+  const workbook = new ExcelJS.Workbook();
+  const usedNames = new Set<string>();
+  const sheetCount = sheets.length;
+  for (let sheetIndex = 0; sheetIndex < sheets.length; sheetIndex += 1) {
+    const sheet = sheets[sheetIndex];
+    const worksheetName = uniqueWorksheetName(sheet.worksheetName ?? 'Section', usedNames);
+    const sheetLabel = sheet.worksheetName ?? `Section ${sheetIndex + 1}`;
+    await appendShipmentExcelSheet(workbook, {
+      ...shared,
+      items: sheet.items,
+      totals: sheet.totals,
+      worksheetName,
+      onProgress: shared.onProgress
+        ? (progress) => {
+            const span = 1 / sheetCount;
+            const base = sheetIndex * span;
+            shared.onProgress?.({
+              ...progress,
+              value: base + progress.value * span,
+              message:
+                sheetCount > 1
+                  ? `${sheetLabel}: ${progress.message}`
+                  : progress.message,
+            });
+          }
+        : undefined,
+    });
+  }
   return workbook;
 }

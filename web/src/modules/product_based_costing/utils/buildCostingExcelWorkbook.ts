@@ -4,6 +4,7 @@ import {
   pbcFileSellCurrencyCode,
 } from './pbcFileCurrencies';
 import {
+  addCenteredWorksheetImage,
   EXCEL_IMAGE_HEIGHT_PX,
   fetchImageForExcel,
   getExcelImageWidthPx,
@@ -115,15 +116,6 @@ const CELL_BORDER = {
   bottom: THIN_BORDER,
   right: THIN_BORDER,
 };
-
-const EMU_PER_PIXEL = 9525;
-
-const excelColumnWidthToPixels = (width: number) =>
-  Math.floor(((width * 256 + Math.floor(128 / 7)) / 256) * 7);
-
-const excelRowHeightToPixels = (heightPt: number) => heightPt * (96 / 72);
-
-const pixelsToEmu = (px: number) => Math.round(px * EMU_PER_PIXEL);
 
 type ExcelCell = {
   fill?: { type: 'pattern'; pattern: 'solid'; fgColor: { argb: string } };
@@ -334,29 +326,29 @@ export async function buildCostingExcelWorkbook(input: BuildCostingExcelInput) {
     });
     applyCellStyle(row.getCell('T'), { numFmt: NUM_FMT_PERCENT });
     applyColoredColumnStyle(row, coloredCols);
+    applyCellStyle(row.getCell('B'), {
+      alignment: { vertical: 'middle', horizontal: 'center', wrapText: false },
+    });
+
+    row.height = DATA_ROW_HEIGHT;
 
     const embeddedImage = embeddedImages[index];
     if (embeddedImage) {
       const imageWidthPx = getExcelImageWidthPx(embeddedImage.width, embeddedImage.height);
-      const pictureColumnWidthPx = excelColumnWidthToPixels(
-        COLUMN_WIDTHS[PICTURE_COLUMN_INDEX] ?? 13.19921875,
-      );
-      const rowHeightPx = excelRowHeightToPixels(DATA_ROW_HEIGHT);
-      const colOff = pixelsToEmu(Math.max(0, (pictureColumnWidthPx - imageWidthPx) / 2));
-      const rowOff = pixelsToEmu(Math.max(0, (rowHeightPx - EXCEL_IMAGE_HEIGHT_PX) / 2));
-
       const imageId = workbook.addImage({
         buffer: embeddedImage.buffer,
         extension: embeddedImage.extension,
       });
 
-      worksheet.addImage(imageId, {
-        tl: { col: PICTURE_COLUMN_INDEX, row: r - 1, colOff, rowOff },
-        ext: { width: imageWidthPx, height: EXCEL_IMAGE_HEIGHT_PX },
+      addCenteredWorksheetImage(worksheet, imageId, {
+        col: PICTURE_COLUMN_INDEX,
+        row: r - 1,
+        columnWidthChars: COLUMN_WIDTHS[PICTURE_COLUMN_INDEX] ?? 13.19921875,
+        rowHeightPt: DATA_ROW_HEIGHT,
+        imageWidthPx,
+        imageHeightPx: EXCEL_IMAGE_HEIGHT_PX,
       });
     }
-
-    row.height = DATA_ROW_HEIGHT;
   }
 
   if (items.length > 0) {

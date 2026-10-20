@@ -130,6 +130,8 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         pageSize?: number;
         search?: string | null;
         status?: string | null;
+        vendorId?: number | null;
+        cargoCompanyId?: number | null;
         isArchived?: boolean;
         append?: boolean;
       },
@@ -142,6 +144,8 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         const search = options?.search !== undefined ? options.search : this.search;
         const status = options?.status !== undefined ? options.status : this.statusFilter;
         const isArchived = options?.isArchived !== undefined ? options.isArchived : this.isArchivedFilter;
+        const vendorId = options?.vendorId ?? null;
+        const cargoCompanyId = options?.cargoCompanyId ?? null;
 
         const result = await globalShipmentRepository.listPaginated(
           tenantId,
@@ -150,6 +154,8 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           search || undefined,
           status || undefined,
           isArchived,
+          vendorId,
+          cargoCompanyId,
         );
 
         if (options?.append) {

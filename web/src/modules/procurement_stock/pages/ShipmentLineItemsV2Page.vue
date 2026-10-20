@@ -171,17 +171,56 @@
             </q-tooltip>
           </q-btn>
 
-          <q-btn
-            v-if="activeSheetId !== 'sheet_all'"
+          <q-btn-dropdown
+            v-if="hasMultipleShipmentSections"
             flat
             round
             dense
             color="grey-8"
             icon="ph ph-file-xls"
             size="sm"
-            @click="downloadActiveSheetExcel"
+            auto-close
+            :disable="!hasShipmentLineItems"
           >
-            <q-tooltip>Download Excel for the current tab</q-tooltip>
+            <q-tooltip>Download Excel</q-tooltip>
+            <q-list dense class="q-py-xs" style="min-width: 220px">
+              <q-item clickable v-ripple @click="downloadWholeShipmentExcel">
+                <q-item-section avatar style="min-width: 28px">
+                  <q-icon name="ph ph-files" size="16px" color="positive" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-caption text-weight-medium">Whole shipment</q-item-label>
+                  <q-item-label caption>One sheet per section</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-separator class="q-my-xs" />
+              <q-item
+                v-for="sec in shipmentSectionDownloadOptions"
+                :key="sec.sheetId"
+                clickable
+                v-ripple
+                @click="downloadShipmentSectionExcel(sec)"
+              >
+                <q-item-section avatar style="min-width: 28px">
+                  <q-icon name="ph ph-file-xls" size="16px" color="grey-8" />
+                </q-item-section>
+                <q-item-section class="text-caption text-weight-medium">{{ sec.name }}</q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
+
+          <q-btn
+            v-else
+            flat
+            round
+            dense
+            color="grey-8"
+            icon="ph ph-file-xls"
+            size="sm"
+            :disable="!hasShipmentLineItems"
+            @click="downloadDefaultShipmentExcel"
+          >
+            <q-tooltip>Download Excel</q-tooltip>
           </q-btn>
 
           <q-btn
@@ -2309,16 +2348,48 @@ const activeSectionDbId = computed(() => {
 const firstSectionSheetId = (sections: typeof shipmentStore.currentShipmentSections) =>
   sections?.length ? `section_${sections[0].id}` : null;
 
-const downloadActiveSheetExcel = () => {
-  const activeSheet = sheets.value.find((sheet) => sheet.id === activeSheetId.value);
+const hasShipmentLineItems = computed(
+  () => (shipmentStore.currentShipmentItems?.length ?? 0) > 0,
+);
+
+const hasMultipleShipmentSections = computed(
+  () => (shipmentStore.currentShipmentSections?.length ?? 0) > 1,
+);
+
+const shipmentSectionDownloadOptions = computed(() =>
+  (shipmentStore.currentShipmentSections ?? []).map((sec) => ({
+    sheetId: `section_${sec.id}`,
+    name: sec.title || `Section #${sec.id}`,
+  })),
+);
+
+const downloadDefaultShipmentExcel = () => {
+  void downloadExcel({ mode: 'section' });
+};
+
+const downloadWholeShipmentExcel = () => {
+  void downloadExcel({ mode: 'whole' });
+};
+
+const downloadShipmentSectionExcel = (sec: { sheetId: string; name: string }) => {
   void downloadExcel({
-    sheetId: activeSheetId.value,
-    sheetName: activeSheet?.name,
+    mode: 'section',
+    sheetId: sec.sheetId,
+    sheetName: sec.name,
   });
 };
 
 const downloadSheetExcel = (sheet: SheetTabItem) => {
+  if (sheet.id === 'sheet_all') {
+    if (hasMultipleShipmentSections.value) {
+      downloadWholeShipmentExcel();
+      return;
+    }
+    downloadDefaultShipmentExcel();
+    return;
+  }
   void downloadExcel({
+    mode: 'section',
     sheetId: sheet.id,
     sheetName: sheet.name,
   });

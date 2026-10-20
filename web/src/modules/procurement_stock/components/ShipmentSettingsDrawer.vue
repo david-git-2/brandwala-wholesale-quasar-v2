@@ -427,6 +427,57 @@
               </div>
             </div>
 
+            <div
+              v-if="sectionSummaryRows.length > 0"
+              class="bg-white rounded-borders border-grey overflow-hidden"
+            >
+              <div class="summary-cost-row summary-cost-row--head text-xxs text-weight-bold text-grey-6 uppercase">
+                <span>By section</span>
+                <span class="text-right">Units</span>
+                <span class="text-right">Buy / Landed</span>
+              </div>
+              <div class="text-xxs text-grey-7 q-px-sm q-pt-sm q-pb-xs">
+                Line totals per section (freight allocated by line weight in landed column).
+              </div>
+              <div
+                v-for="row in sectionSummaryRows"
+                :key="row.key"
+                class="summary-cost-row"
+              >
+                <span class="column min-width-0">
+                  <span class="text-grey-9 text-weight-medium ellipsis">{{ row.title }}</span>
+                  <span class="text-xxs text-grey-6">
+                    {{ row.itemCount }} {{ row.itemCount === 1 ? 'line' : 'lines' }}
+                  </span>
+                </span>
+                <span class="text-right font-mono text-caption text-grey-9">
+                  {{ row.quantity.toLocaleString() }}
+                </span>
+                <span class="text-right column items-end">
+                  <span class="font-mono text-caption text-grey-9">
+                    {{ formatMoney(currentPurchaseCurrencySymbol, row.goodsPurchase) }}
+                  </span>
+                  <span class="font-mono text-caption text-grey-7">
+                    {{ formatMoney(currentCostCurrencySymbol, row.goodsLanded) }}
+                  </span>
+                </span>
+              </div>
+              <div class="summary-cost-row summary-cost-row--total">
+                <span>Shipment total</span>
+                <span class="text-right font-mono">
+                  {{ sectionSummaryGrand.quantity.toLocaleString() }}
+                </span>
+                <span class="text-right column items-end">
+                  <span class="font-mono">
+                    {{ formatMoney(currentPurchaseCurrencySymbol, sectionSummaryGrand.goodsPurchase) }}
+                  </span>
+                  <span class="font-mono text-primary">
+                    {{ formatMoney(currentCostCurrencySymbol, sectionSummaryGrand.goodsLanded) }}
+                  </span>
+                </span>
+              </div>
+            </div>
+
             <div class="bg-white rounded-borders border-grey overflow-hidden">
               <div class="summary-cost-row summary-cost-row--head text-xxs text-weight-bold text-grey-6 uppercase">
                 <span>Cost</span>
@@ -978,9 +1029,12 @@ import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { describeBoxTotalsNetDiff, describeBoxVsInvoiceCargo } from '../utils/boxWeightVariance';
 import type {
+  GlobalShipmentItem,
   ShipmentProgressFlow,
   ShipmentProgressTag,
 } from '../repositories/globalShipmentRepository';
+import { calculateLineLandedCostBdt, costingShipmentFromEntries } from 'src/shared/shipment-engine';
+import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
 import type {
   GlobalShipmentCostBucket,
   GlobalShipmentCostComponent,
@@ -1419,6 +1473,124 @@ const courierCostPerKg = computed(() => {
   const purchase = t?.cargoPurchase ?? 0;
   if (kg <= 0 || purchase <= 0) return null;
   return Math.round((purchase / kg) * 10000) / 10000;
+});
+
+type SectionSummaryRow = {
+  key: string;
+  title: string;
+  itemCount: number;
+  quantity: number;
+  goodsPurchase: number;
+  goodsLanded: number;
+};
+
+const effectiveLineSectionId = (
+  item: GlobalShipmentItem,
+  sections: { id: number }[],
+): number | null => {
+  const sid = item.section_id ?? null;
+  if (sid != null) return sid;
+  if (sections.length > 0) return sections[0].id;
+  return null;
+};
+
+const resolveSummaryLineUnitLandedBdt = (
+  item: GlobalShipmentItem,
+  allItems: GlobalShipmentItem[],
+): number => {
+  const shipment = shipmentStore.currentShipment;
+  if (!shipment) return Number(item.purchase_price) || 0;
+
+  const forCosting = costingShipmentFromEntries(
+    shipment,
+    shipmentStore.currentCostEntries,
+    allItems,
+  );
+
+  if (isShipmentCostsLocked(shipment)) {
+    const stamped = item.landed_cost_bdt;
+    if (stamped != null && Number.isFinite(Number(stamped))) {
+      return Number(stamped);
+    }
+  }
+
+  return calculateLineLandedCostBdt(item, forCosting, allItems);
+};
+
+const aggregateSectionSummary = (
+  sectionId: number | null,
+  title: string,
+  items: GlobalShipmentItem[],
+  allItems: GlobalShipmentItem[],
+): SectionSummaryRow => {
+  const matched = items.filter(
+    (it) => effectiveLineSectionId(it, shipmentStore.currentShipmentSections ?? []) === sectionId,
+  );
+  let quantity = 0;
+  let goodsPurchase = 0;
+  let goodsLanded = 0;
+  for (const it of matched) {
+    const qty = Number(it.ordered_quantity) || 0;
+    quantity += qty;
+    goodsPurchase += (Number(it.purchase_price) || 0) * qty;
+    goodsLanded += resolveSummaryLineUnitLandedBdt(it, allItems) * qty;
+  }
+  return {
+    key: sectionId == null ? 'main' : String(sectionId),
+    title,
+    itemCount: matched.length,
+    quantity,
+    goodsPurchase: Math.round(goodsPurchase * 100) / 100,
+    goodsLanded: Math.round(goodsLanded * 100) / 100,
+  };
+};
+
+const sectionSummaryRows = computed((): SectionSummaryRow[] => {
+  const sections = shipmentStore.currentShipmentSections ?? [];
+  const items = shipmentStore.currentShipmentItems ?? [];
+  if (items.length === 0) return [];
+
+  const rows: SectionSummaryRow[] = [];
+  const seen = new Set<number | null>();
+
+  for (const sec of sections) {
+    if (seen.has(sec.id)) continue;
+    seen.add(sec.id);
+    rows.push(
+      aggregateSectionSummary(sec.id, sec.title || `Section #${sec.id}`, items, items),
+    );
+  }
+
+  const hasUnassignedOnly =
+    sections.length === 0 && items.every((it) => it.section_id == null);
+  if (hasUnassignedOnly) {
+    rows.push(aggregateSectionSummary(null, 'Main Order', items, items));
+    return rows.filter((r) => r.itemCount > 0);
+  }
+
+  const orphanSectionIds = new Set<number>();
+  for (const it of items) {
+    const sid = it.section_id ?? null;
+    if (sid != null && !sections.some((s) => s.id === sid)) {
+      orphanSectionIds.add(sid);
+    }
+  }
+  for (const sid of orphanSectionIds) {
+    if (seen.has(sid)) continue;
+    seen.add(sid);
+    rows.push(aggregateSectionSummary(sid, `Section #${sid}`, items, items));
+  }
+
+  return rows.filter((r) => r.itemCount > 0);
+});
+
+const sectionSummaryGrand = computed(() => {
+  const rows = sectionSummaryRows.value;
+  return {
+    quantity: rows.reduce((s, r) => s + r.quantity, 0),
+    goodsPurchase: Math.round(rows.reduce((s, r) => s + r.goodsPurchase, 0) * 100) / 100,
+    goodsLanded: Math.round(rows.reduce((s, r) => s + r.goodsLanded, 0) * 100) / 100,
+  };
 });
 
 const drawerTypeOptions = [
