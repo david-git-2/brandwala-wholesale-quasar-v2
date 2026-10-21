@@ -30,6 +30,13 @@ export const toNumberSafe = (value: unknown) => {
   return Number.isNaN(num) ? 0 : num;
 };
 
+/** Web £ unit price after VAT (VAT-then-£ mode). Rounded to 2 dp. */
+export const getPriceGbpWithVat = (webPriceGbp: number, vatRate: number) => {
+  const webGbp = toNumberSafe(webPriceGbp);
+  const vat = toNumberSafe(vatRate);
+  return Math.round(webGbp * (1 + vat / 100) * 100) / 100;
+};
+
 export const getUnitTotalCostGbp = ({
   priceGbp,
   productWeight,
@@ -58,7 +65,7 @@ export const calculateOfferPriceBdt = (input: OfferPriceInput) => {
   const webGbp = toNumberSafe(input.priceGbp);
   const priceGbp =
     normalizeOfferPricingMode(input.offerPricingMode) === 'gbp_vat_then_profit'
-      ? Math.round(webGbp * (1 + vatRate / 100) * 100) / 100
+      ? getPriceGbpWithVat(webGbp, vatRate)
       : webGbp;
   const costBdt = getUnitCostBdt({
     priceGbp,

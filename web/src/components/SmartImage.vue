@@ -10,16 +10,22 @@
   >
     <template v-if="!imageHidden">
       <img
+        ref="imgRef"
         :src="currentImageSrc"
         :alt="alt"
         class="smart-image__img"
-        :class="{ 'smart-image__img--loading': loadingImage }"
-        loading="lazy"
+        :class="{ 'smart-image__img--loading': loadingImage && !hideLoadingUi }"
+        :loading="imgLoading"
+        :crossorigin="useCors ? 'anonymous' : undefined"
         referrerpolicy="no-referrer"
         @error="handleImageError"
         @load="onImageLoad"
       />
-      <q-inner-loading :showing="loadingImage" color="primary" class="smart-image-loading-overlay">
+      <q-inner-loading
+        :showing="loadingImage && !hideLoadingUi"
+        color="primary"
+        class="smart-image-loading-overlay"
+      >
         <q-spinner-oval size="20px" />
       </q-inner-loading>
     </template>
@@ -96,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { showSuccessNotification } from 'src/utils/appFeedback';
@@ -111,6 +117,11 @@ const props = withDefaults(
     productId?: number | string | null | undefined;
     enableLightbox?: boolean;
     enableEdit?: boolean;
+    imgLoading?: 'lazy' | 'eager';
+    useCors?: boolean;
+    /** Screenshot export: one URL only (no direct/proxy candidate chain). */
+    singleSource?: boolean;
+    hideLoadingUi?: boolean;
   }>(),
   {
     src: '',
@@ -120,6 +131,10 @@ const props = withDefaults(
     productId: null,
     enableLightbox: true,
     enableEdit: true,
+    imgLoading: 'lazy',
+    useCors: false,
+    singleSource: false,
+    hideLoadingUi: false,
   },
 );
 
@@ -154,6 +169,14 @@ const fallbackImage =
 const imageAttempt = ref(0);
 const imageHidden = ref(false);
 const loadingImage = ref(true);
+const imgRef = ref<HTMLImageElement | null>(null);
+
+const syncLoadingFromDom = () => {
+  const el = imgRef.value;
+  if (el?.complete && el.naturalHeight > 0) {
+    loadingImage.value = false;
+  }
+};
 
 const getDriveFileId = (url: string) => {
   const m1 = url.match(/[?&]id=([^&]+)/);
@@ -184,6 +207,10 @@ const toProxyImageUrl = (url: string | null | undefined) => {
     return trimmed;
   }
 
+  if (parsed.pathname.includes('/functions/v1/image-proxy')) {
+    return trimmed;
+  }
+
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   if (!supabaseUrl) return trimmed;
 
@@ -193,6 +220,9 @@ const toProxyImageUrl = (url: string | null | undefined) => {
 const imageCandidates = computed(() => {
   const original = (props.src || '').trim();
   if (!original) return [fallbackImage];
+  if (props.singleSource) {
+    return [original, fallbackImage];
+  }
   const direct = toDirectGoogleImageUrl(original);
   const proxied = toProxyImageUrl(direct || original);
   // Put direct URL & original first so standard valid image URLs load instantly without proxy delay
@@ -220,9 +250,15 @@ watch(
     imageAttempt.value = 0;
     imageHidden.value = false;
     loadingImage.value = true;
+    void nextTick().then(syncLoadingFromDom);
   },
   { immediate: true },
 );
+
+watch(currentImageSrc, () => {
+  loadingImage.value = true;
+  void nextTick().then(syncLoadingFromDom);
+});
 
 watch(newUrl, () => {
   previewAttempt.value = 0;

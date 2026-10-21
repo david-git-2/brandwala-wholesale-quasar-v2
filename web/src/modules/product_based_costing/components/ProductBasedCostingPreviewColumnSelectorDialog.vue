@@ -80,6 +80,7 @@ import { computed } from 'vue';
 import { useDialogPluginComponent } from 'quasar';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 import { useI18n } from 'vue-i18n';
+import { DEFAULT_PBC_PREVIEW_SCREENSHOT_COLUMNS } from '../utils/pbcPreviewScreenshot';
 
 defineEmits([...useDialogPluginComponent.emits]);
 
@@ -96,6 +97,7 @@ const columnSelectorOptions = [
   { label: t('product_based_costing.preview_barcode_code'), value: 'barcodeText' },
   { label: t('product_based_costing.preview_website_link'), value: 'website' },
   { label: t('product_based_costing.preview_price_gbp'), value: 'priceGbp' },
+  { label: t('product_based_costing.preview_price_gbp_with_vat'), value: 'priceGbpWithVat' },
   { label: t('product_based_costing.preview_total_purchase_gbp'), value: 'totalPurchasePriceGbp' },
   { label: t('product_based_costing.preview_product_wt_kg'), value: 'productWeight' },
   { label: t('product_based_costing.preview_package_wt_kg'), value: 'packageWeight' },
@@ -118,17 +120,7 @@ const { visibleColumns: selectedColumns } = useMembershipColumnPreference({
   preferencePath: 'productBasedCostingPreviewPrintColumns',
   allColumnNames,
   alwaysVisibleColumns,
-  defaultVisibleColumns: [
-    'sl',
-    'image',
-    'name',
-    'brand',
-    'qty',
-    'priceGbp',
-    'productWeight',
-    'offerPriceBdt',
-    'totalBdt',
-  ],
+  defaultVisibleColumns: [...DEFAULT_PBC_PREVIEW_SCREENSHOT_COLUMNS],
 });
 
 const selectedCount = computed(() => selectedColumns.value.length);

@@ -533,6 +533,15 @@
               </div>
             </th>
 
+            <!-- Price with VAT (VAT-then-£ mode) -->
+            <th
+              v-if="showPriceGbpWithVatColumn && visibleColumnMap.priceGbpWithVat"
+              class="text-center tf-ops-col-tint--price"
+              style="width: 56px; min-width: 56px; line-height: 1.2; padding-top: 4px; padding-bottom: 4px"
+            >
+              {{ $t('product_based_costing.table_col_priceGbpWithVat', currencyI18n) }}
+            </th>
+
             <!-- Total Purchase GBP -->
             <th v-if="visibleColumnMap.totalPurchasePriceGbp" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               {{ $t('product_based_costing.table_col_totalPurchasePriceGbp', currencyI18n) }}
@@ -876,6 +885,15 @@
                 <div class="text-caption text-grey-7 text-weight-normal q-mt-2xs" style="font-size: 9px">
                   T: {{ formatMoney(row.totalPurchasePriceGbp) }}
                 </div>
+              </td>
+
+              <!-- Price with VAT GBP -->
+              <td
+                v-if="showPriceGbpWithVatColumn && visibleColumnMap.priceGbpWithVat"
+                class="text-center tf-ops-col-tint--price font-mono text-caption text-grey-9"
+                style="width: 56px; min-width: 56px"
+              >
+                {{ formatMoney(row.priceGbpWithVat) }}
               </td>
 
               <!-- Total Purchase Price GBP -->
@@ -1407,6 +1425,7 @@ import {
 } from '../utils/pbcFileStatus';
 import {
   computeProfitRatePercentOnCost,
+  getPriceGbpWithVat,
   getUnitCostBdt,
   normalizeOfferPriceBdt,
   normalizeOfferPricingMode,
@@ -1417,6 +1436,7 @@ import {
   pbcFileBuyCurrencyCode,
   pbcFileSellCurrencyCode,
 } from '../utils/pbcFileCurrencies';
+import { DEFAULT_PBC_PREVIEW_SCREENSHOT_COLUMNS } from '../utils/pbcPreviewScreenshot';
 import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 
 const props = defineProps<{
@@ -1614,6 +1634,10 @@ const offerPricingModeValue = computed(() =>
   normalizeOfferPricingMode(file.value?.offer_pricing_mode),
 );
 
+const showPriceGbpWithVatColumn = computed(
+  () => offerPricingModeValue.value === 'gbp_vat_then_profit',
+);
+
 const { data: currenciesData, isLoading: loadingCurrencies } = useGlobalCurrenciesQuery();
 
 const currencyOptions = computed(() =>
@@ -1710,9 +1734,7 @@ function formatOfferPriceBdtBreakdown(row: {
   const buy = buyMark.value;
   const sellCode = fileSellCurrencyCode.value;
   const webGbp = row.price_gbp;
-  const pricedGbp = vatMode
-    ? Math.round(webGbp * (1 + vatRate / 100) * 100) / 100
-    : webGbp;
+  const pricedGbp = vatMode ? getPriceGbpWithVat(webGbp, vatRate) : webGbp;
   const cargoGbp = vatMode
     ? ((row.product_weight + row.package_weight) / 1000) * row.cargoRate
     : row.cargoCostGbp;
@@ -1864,6 +1886,22 @@ const filteredColumnOptions = computed(() => {
   return columnSelectorOptions.filter((opt) => opt.label.toLowerCase().includes(q));
 });
 
+function syncPriceGbpWithVatColumnVisibility() {
+  if (showPriceGbpWithVatColumn.value) {
+    if (!visibleColumns.value.includes('priceGbpWithVat')) {
+      const keys = [...visibleColumns.value];
+      const idx = keys.indexOf('priceGbp');
+      if (idx >= 0) keys.splice(idx + 1, 0, 'priceGbpWithVat');
+      else keys.push('priceGbpWithVat');
+      visibleColumns.value = keys;
+    }
+  } else if (visibleColumns.value.includes('priceGbpWithVat')) {
+    visibleColumns.value = visibleColumns.value.filter((col) => col !== 'priceGbpWithVat');
+  }
+}
+
+watch(offerPricingModeValue, syncPriceGbpWithVatColumnVisibility, { immediate: true });
+
 // Table computed rows with financial values
 const tableRows = computed(() => {
   const fx = conversionRateValue.value || 140;
@@ -1919,6 +1957,7 @@ const tableRows = computed(() => {
       quantity: qty,
       confirmed_quantity: confirmedQty,
       price_gbp: priceGbp,
+      priceGbpWithVat: getPriceGbpWithVat(priceGbp, vatRateValue.value || 0),
       totalPurchasePriceGbp,
       product_weight: prodWt,
       package_weight: pkgWt,
@@ -2479,12 +2518,12 @@ async function handleDownloadExcel() {
 
 function openPreviewAndPrint() {
   if (!fileId.value) return;
-  const cols = visibleColumns.value.filter((col) => col !== 'select' && col !== 'actions');
   const previewRoute = router.resolve({
     name: 'product-based-costing-file-preview-page',
     params: { id: fileId.value },
     query: {
-      cols: cols.join(','),
+      view: 'screenshot',
+      cols: DEFAULT_PBC_PREVIEW_SCREENSHOT_COLUMNS.join(','),
     },
   });
   window.open(previewRoute.href, '_blank', 'noopener');
