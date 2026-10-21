@@ -53,20 +53,37 @@ export const getUnitCostBdt = (
 };
 
 export const calculateOfferPriceBdt = (input: OfferPriceInput) => {
-  const profitRate = input.profitRate;
-  if (normalizeOfferPricingMode(input.offerPricingMode) === 'gbp_vat_then_profit') {
-    const vatRate = toNumberSafe(input.vatRate);
-    const markedGbp =
-      Math.round(input.priceGbp * (1 + vatRate / 100) * (1 + profitRate / 100) * 100) / 100;
-    return roundBdtUpToZeroOrFive(Math.ceil(markedGbp * input.conversionRate - 1e-9));
-  }
-  const costBdt = getUnitCostBdt(input);
+  const profitRate = toNumberSafe(input.profitRate);
+  const vatRate = toNumberSafe(input.vatRate);
+  const webGbp = toNumberSafe(input.priceGbp);
+  const priceGbp =
+    normalizeOfferPricingMode(input.offerPricingMode) === 'gbp_vat_then_profit'
+      ? Math.round(webGbp * (1 + vatRate / 100) * 100) / 100
+      : webGbp;
+  const costBdt = getUnitCostBdt({
+    priceGbp,
+    productWeight: toNumberSafe(input.productWeight),
+    packageWeight: toNumberSafe(input.packageWeight),
+    cargoRate: toNumberSafe(input.cargoRate),
+    conversionRate: toNumberSafe(input.conversionRate),
+  });
   return roundBdtUpToZeroOrFive(costBdt + (costBdt * profitRate) / 100);
 };
 
 export const normalizeOfferPriceBdt = (value: unknown) => {
   const num = toNumberSafe(value);
   return num > 0 ? roundBdtUpToZeroOrFive(num) : 0;
+};
+
+/** Auto lines follow the file offer mode. Only locked rows keep stored offer. */
+export const resolveEffectiveOfferPriceBdt = (
+  item: { offer_price?: number | null; is_offer_price_manual?: boolean | null },
+  input: OfferPriceInput,
+) => {
+  if (item.is_offer_price_manual === true && item.offer_price != null) {
+    return normalizeOfferPriceBdt(item.offer_price);
+  }
+  return calculateOfferPriceBdt(input);
 };
 
 /** Markup on unit cost from achieved profit (offer − cost), not the file profit input. */

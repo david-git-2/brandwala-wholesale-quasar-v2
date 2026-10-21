@@ -291,7 +291,7 @@
             <div class="text-caption text-grey-7 q-mb-sm">
               {{
                 localRates.offer_pricing_mode === 'gbp_vat_then_profit'
-                  ? 'VAT, then profit, on the £ web price. Cargo stays in cost only.'
+                  ? 'VAT on the £ web price, then cargo, FX, and profit like cost-plus.'
                   : 'Profit is added on landed cost in ৳.'
               }}
             </div>
@@ -980,20 +980,32 @@
                     <q-tooltip>{{ $t('product_based_costing.offer_locked_tooltip') }}</q-tooltip>
                   </q-icon>
 
-                  <q-input
-                    :model-value="getDraftValue(row, 'offer_price')"
-                    type="number"
-                    step="1"
-                    dense
-                    outlined
-                    hide-bottom-space
-                    class="inline-edit-input excel-cell-input"
-                    style="max-width: 58px"
-                    input-class="text-center text-weight-bold text-positive"
-                    @update:model-value="(val) => setDraftValue(row, 'offer_price', val)"
-                    @blur="saveDraftValue(row, 'offer_price', { decimals: 0 })"
-                    @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
-                  />
+                  <span :class="{ 'pbc-cost-bdt-cell': !row.isOfferPriceManual }">
+                    <q-input
+                      :model-value="getDraftValue(row, 'offer_price')"
+                      type="number"
+                      step="1"
+                      dense
+                      outlined
+                      hide-bottom-space
+                      class="inline-edit-input excel-cell-input"
+                      style="max-width: 58px"
+                      input-class="text-center text-weight-bold text-positive"
+                      @update:model-value="(val) => setDraftValue(row, 'offer_price', val)"
+                      @blur="saveDraftValue(row, 'offer_price', { decimals: 0 })"
+                      @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                    />
+                    <q-tooltip
+                      v-if="!row.isOfferPriceManual"
+                      anchor="top middle"
+                      self="bottom middle"
+                      :offset="[0, 6]"
+                      :delay="400"
+                      class="pbc-cost-bdt-tooltip"
+                    >
+                      <pre class="pbc-cost-bdt-tooltip__pre">{{ formatOfferPriceBdtBreakdown(row) }}</pre>
+                    </q-tooltip>
+                  </span>
 
                   <q-btn
                     v-if="row.isOfferPriceManual"
@@ -1394,10 +1406,11 @@ import {
   type StaffPbcPrimaryAction,
 } from '../utils/pbcFileStatus';
 import {
-  calculateOfferPriceBdt,
   computeProfitRatePercentOnCost,
+  getUnitCostBdt,
   normalizeOfferPriceBdt,
   normalizeOfferPricingMode,
+  resolveEffectiveOfferPriceBdt,
 } from '../utils/pricing';
 import {
   pbcCurrencyMark,
@@ -1682,6 +1695,66 @@ function formatCostBdtUnitBreakdown(row: {
   ].join('\n');
 }
 
+function formatOfferPriceBdtBreakdown(row: {
+  price_gbp: number;
+  product_weight: number;
+  package_weight: number;
+  cargoRate: number;
+  cargoCostGbp: number;
+  offer_price: number;
+}): string {
+  const fx = conversionRateValue.value || 140;
+  const profitRate = profitRateValue.value || 0;
+  const vatRate = vatRateValue.value || 0;
+  const vatMode = offerPricingModeValue.value === 'gbp_vat_then_profit';
+  const buy = buyMark.value;
+  const sellCode = fileSellCurrencyCode.value;
+  const webGbp = row.price_gbp;
+  const pricedGbp = vatMode
+    ? Math.round(webGbp * (1 + vatRate / 100) * 100) / 100
+    : webGbp;
+  const cargoGbp = vatMode
+    ? ((row.product_weight + row.package_weight) / 1000) * row.cargoRate
+    : row.cargoCostGbp;
+  const landedGbp = Math.round((pricedGbp + cargoGbp) * 100) / 100;
+  const offerCostBdt = getUnitCostBdt({
+    priceGbp: pricedGbp,
+    productWeight: row.product_weight,
+    packageWeight: row.package_weight,
+    cargoRate: row.cargoRate,
+    conversionRate: fx,
+  });
+  const beforeRound = offerCostBdt + (offerCostBdt * profitRate) / 100;
+  const lines = ['Offer price per unit', ''];
+  let step = 1;
+  if (vatMode) {
+    lines.push(
+      `${step}) VAT on web price`,
+      `   ${buy}${formatMoney(webGbp)} × (1 + ${vatRate}%)`,
+      `   = ${buy}${formatMoney(pricedGbp)}`,
+      '',
+    );
+    step += 1;
+  }
+  lines.push(
+    `${step}) Add cargo`,
+    `   ${buy}${formatMoney(pricedGbp)} + ${buy}${formatMoney(cargoGbp)} cargo`,
+    `   = ${buy}${formatMoney(landedGbp)}`,
+    '',
+    `${step + 1}) FX to ${sellCode}`,
+    `   ${buy}${formatMoney(landedGbp)} × ${fx}`,
+    `   = ${formatMoney(offerCostBdt)} ${sellCode} (ceil)`,
+    '',
+    `${step + 2}) Profit ${profitRate}%`,
+    `   ${formatMoney(offerCostBdt)} + ${profitRate}%`,
+    `   = ${formatMoney(beforeRound)} ${sellCode}`,
+    '',
+    `${step + 3}) Round up to 0 or 5`,
+    `   = ${formatMoney(row.offer_price)} ${sellCode}`,
+  );
+  return lines.join('\n');
+}
+
 function syncLocalRatesFromFile(source: NonNullable<typeof file.value>) {
   localRates.conversion_rate = source.conversion_rate ?? 140;
   localRates.cargo_rate_kg_gbp = source.cargo_rate_kg_gbp ?? 0;
@@ -1816,7 +1889,8 @@ const tableRows = computed(() => {
     const totalCostBdt = rowTotalCostGbp * fx;
 
     const itemProfitRate = item.profit_rate ?? fileProfitRate;
-    const calculatedOfferPriceBdt = calculateOfferPriceBdt({
+    const isOfferPriceManual = item.is_offer_price_manual === true;
+    const offerPriceBdt = resolveEffectiveOfferPriceBdt(item, {
       priceGbp,
       productWeight: prodWt,
       packageWeight: pkgWt,
@@ -1826,14 +1900,6 @@ const tableRows = computed(() => {
       vatRate: vatRateValue.value || 0,
       offerPricingMode: offerPricingModeValue.value,
     });
-    const isOfferPriceManual =
-      item.is_offer_price_manual === true ||
-      (item.is_offer_price_manual == null &&
-        item.offer_price != null &&
-        normalizeOfferPriceBdt(item.offer_price) !== calculatedOfferPriceBdt);
-    const offerPriceBdt = isOfferPriceManual && item.offer_price != null
-      ? normalizeOfferPriceBdt(item.offer_price)
-      : calculatedOfferPriceBdt;
 
     const totalBdt = offerPriceBdt * qty;
     const profitPerUnitBdt = offerPriceBdt - costBdt;

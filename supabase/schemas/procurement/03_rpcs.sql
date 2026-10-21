@@ -7981,19 +7981,15 @@ declare
   v_profit numeric := coalesce(p_profit_rate, 0);
   v_vat numeric := coalesce(p_vat_rate, 0);
   v_unit_cost_bdt numeric;
-  v_marked_gbp numeric;
+  v_web_gbp numeric := coalesce(p_price_gbp, 0);
 begin
   if v_mode = 'gbp_vat_then_profit' then
-    v_marked_gbp := round(
-      coalesce(p_price_gbp, 0) * (1 + v_vat / 100.0) * (1 + v_profit / 100.0),
-      2
-    );
-    return public.round_bdt_up_to_zero_or_five(ceil(v_marked_gbp * v_fx - 1e-9));
+    v_web_gbp := round(v_web_gbp * (1 + v_vat / 100.0), 2);
   end if;
 
   v_unit_cost_bdt := ceil(
     round(
-      (coalesce(p_price_gbp, 0) + ((coalesce(p_product_weight, 0) + coalesce(p_package_weight, 0)) / 1000.0) * coalesce(p_cargo_rate, 0)),
+      (v_web_gbp + ((coalesce(p_product_weight, 0) + coalesce(p_package_weight, 0)) / 1000.0) * coalesce(p_cargo_rate, 0)),
       2
     ) * v_fx - 1e-9
   );
@@ -8100,9 +8096,6 @@ CREATE OR REPLACE FUNCTION "public"."get_product_based_costing_file_summary"("p_
       lm.*,
       case
         when lm.is_offer_price_manual and coalesce(lm.offer_price, 0) > 0 then
-          public.round_bdt_up_to_zero_or_five(lm.offer_price)::numeric
-        when coalesce(lm.offer_price, 0) > 0
-          and public.round_bdt_up_to_zero_or_five(lm.offer_price) is distinct from lm.calculated_offer_bdt then
           public.round_bdt_up_to_zero_or_five(lm.offer_price)::numeric
         else lm.calculated_offer_bdt
       end as effective_offer_bdt,

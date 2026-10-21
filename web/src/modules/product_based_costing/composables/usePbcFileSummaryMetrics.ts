@@ -1,9 +1,8 @@
 import { computed, type Ref } from 'vue';
 import type { ProductBasedCostingItem } from '../types';
 import {
-  calculateOfferPriceBdt,
   getUnitCostBdt,
-  normalizeOfferPriceBdt,
+  resolveEffectiveOfferPriceBdt,
   toNumberSafe,
 } from '../utils/pricing';
 
@@ -37,35 +36,10 @@ function resolveOfferPriceBdt(
   item: ProductBasedCostingItem,
   rates: RatesInput,
 ): number {
-  const priceGbp = toNumberSafe(item.price_gbp);
-  const productWeight = toNumberSafe(item.product_weight);
-  const packageWeight = toNumberSafe(item.package_weight);
-
-  if (item.is_offer_price_manual && item.offer_price != null) {
-    return normalizeOfferPriceBdt(item.offer_price);
-  }
-
-  if (item.offer_price != null && toNumberSafe(item.offer_price) > 0) {
-    const calculated = calculateOfferPriceBdt({
-      priceGbp,
-      productWeight,
-      packageWeight,
-      cargoRate: rates.cargoRate,
-      conversionRate: rates.conversionRate,
-      profitRate: rates.profitRate,
-      vatRate: rates.vatRate,
-      offerPricingMode: rates.offerPricingMode,
-    });
-    const stored = normalizeOfferPriceBdt(item.offer_price);
-    if (stored !== calculated) {
-      return stored;
-    }
-  }
-
-  return calculateOfferPriceBdt({
-    priceGbp,
-    productWeight,
-    packageWeight,
+  return resolveEffectiveOfferPriceBdt(item, {
+    priceGbp: toNumberSafe(item.price_gbp),
+    productWeight: toNumberSafe(item.product_weight),
+    packageWeight: toNumberSafe(item.package_weight),
     cargoRate: rates.cargoRate,
     conversionRate: rates.conversionRate,
     profitRate: rates.profitRate,

@@ -423,12 +423,11 @@ import SmartImage from 'src/components/SmartImage.vue';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
 import type { ProductBasedCostingFile, ProductBasedCostingItem } from '../types';
 import {
-  calculateOfferPriceBdt,
   computeProfitRatePercentOnCost,
   getUnitCostBdt,
   getUnitTotalCostGbp,
-  normalizeOfferPriceBdt,
   normalizeOfferPricingMode,
+  resolveEffectiveOfferPriceBdt,
   toNumberSafe,
 } from '../utils/pricing';
 import {
@@ -762,7 +761,7 @@ const tableRows = computed(() => {
       conversionRate,
     });
 
-    const calculatedOfferPriceBdt = calculateOfferPriceBdt({
+    const offerPriceBdt = resolveEffectiveOfferPriceBdt(item, {
       priceGbp,
       productWeight,
       packageWeight,
@@ -772,17 +771,6 @@ const tableRows = computed(() => {
       vatRate,
       offerPricingMode,
     });
-
-    const isManual =
-      item.is_offer_price_manual === true ||
-      (item.is_offer_price_manual == null &&
-        item.offer_price != null &&
-        normalizeOfferPriceBdt(item.offer_price) !== calculatedOfferPriceBdt);
-
-    const offerPriceBdt =
-      isManual && item.offer_price != null
-        ? normalizeOfferPriceBdt(item.offer_price)
-        : calculatedOfferPriceBdt;
 
     const totalBdt = offerPriceBdt * qty;
     const profitPerUnitBdt = offerPriceBdt - costBdt;
@@ -921,7 +909,7 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
       const priceGbp = item.price_gbp ?? 0;
       const productWeight = item.product_weight ?? 0;
       const packageWeight = item.package_weight ?? 0;
-      const calculatedOfferPriceBdt = calculateOfferPriceBdt({
+      const offerPriceBdt = resolveEffectiveOfferPriceBdt(item, {
         priceGbp,
         productWeight,
         packageWeight,
@@ -931,15 +919,6 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
         vatRate,
         offerPricingMode,
       });
-      const isManual =
-        item.is_offer_price_manual === true ||
-        (item.is_offer_price_manual == null &&
-          item.offer_price != null &&
-          normalizeOfferPriceBdt(item.offer_price) !== calculatedOfferPriceBdt);
-      const offerPriceBdt =
-        isManual && item.offer_price != null
-          ? normalizeOfferPriceBdt(item.offer_price)
-          : calculatedOfferPriceBdt;
       return acc + offerPriceBdt * (item.quantity ?? 0);
     }, 0);
 
@@ -962,7 +941,7 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
         cargoRate,
         conversionRate,
       });
-      const calculatedOfferPriceBdt = calculateOfferPriceBdt({
+      const offerPriceBdt = resolveEffectiveOfferPriceBdt(item, {
         priceGbp,
         productWeight,
         packageWeight,
@@ -972,15 +951,6 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
         vatRate,
         offerPricingMode,
       });
-      const isManual =
-        item.is_offer_price_manual === true ||
-        (item.is_offer_price_manual == null &&
-          item.offer_price != null &&
-          normalizeOfferPriceBdt(item.offer_price) !== calculatedOfferPriceBdt);
-      const offerPriceBdt =
-        isManual && item.offer_price != null
-          ? normalizeOfferPriceBdt(item.offer_price)
-          : calculatedOfferPriceBdt;
       const profitPerUnit = offerPriceBdt - costBdt;
       return acc + profitPerUnit * (item.quantity ?? 0);
     }, 0);

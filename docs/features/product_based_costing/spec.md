@@ -40,7 +40,7 @@ See [scopes](../../architecture/scopes.md).
 ## Rules
 
 - Landed unit cost (GBP) = web £ + cargo + package weight → FX to BDT. Cost fixed per line; offer mode changes sell only.
-- `offer_pricing_mode`: `landed_cost_plus` (default) or `gbp_vat_then_profit` (VAT then profit on web £ only).
+- `offer_pricing_mode`: `landed_cost_plus` (default) or `gbp_vat_then_profit` (VAT on web £, then cargo + FX + profit like cost-plus).
 - Buy/sell currency on file via `global_currencies` (`buy_currency_*`, `sell_currency_*`).
 
 ## Stories
