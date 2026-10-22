@@ -1,7 +1,7 @@
 {
   "name": "brandwala-wholesale-quasar-root",
   "private": true,
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Root scripts for web app and Supabase backend",
   "scripts": {
     "dev": "pnpm --filter web dev",
@@ -58,7 +58,7 @@
     "backend:all": "pnpm run backend:push:all && pnpm run db:schema"
   },
   "devDependencies": {
-    "supabase": "^2.105.0",
+    "supabase": "^2.121.0",
     "typescript": "^5.9.3",
     "vue-tsc": "^3.2.6",
     "wrangler": "^4.93.1"
