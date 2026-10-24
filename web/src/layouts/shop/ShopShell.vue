@@ -72,7 +72,7 @@
             />
           </div>
 
-          <NotificationBell scope="shop" />
+          <NotificationBell v-if="notificationsEnabled" scope="shop" />
 
           <q-btn
             v-if="canShowCartIcon && !$q.screen.xs"
@@ -207,6 +207,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import UserProfileMenu from 'src/components/navigation/UserProfileMenu.vue';
 import NotificationBell from 'src/modules/notifications/components/NotificationBell.vue';
+import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/notifications/notificationsFeature';
 import ShopHeaderProductSearch from 'src/modules/shop_order/components/ShopHeaderProductSearch.vue';
 import CatalogShopHeaderSwitcher from 'src/modules/shop_order/components/CatalogShopHeaderSwitcher.vue';
 import ShopCustomerGroupHeaderSwitcher from 'src/modules/shop_order/components/ShopCustomerGroupHeaderSwitcher.vue';

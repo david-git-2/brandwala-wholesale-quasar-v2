@@ -28,11 +28,12 @@
           @click="workspaceShellRef?.openCommandPalette()"
         />
 
-        <div class="header-divider gt-sm" />
+        <div v-if="notificationsEnabled" class="header-divider gt-sm" />
 
-        <NotificationBell />
+        <!-- Disabled via notificationsFeature.ts (prod Realtime / RPC load) -->
+        <NotificationBell v-if="notificationsEnabled" />
 
-        <div class="header-divider gt-xs" />
+        <div v-if="notificationsEnabled" class="header-divider gt-xs" />
 
         <!-- Modernized Workspace / Tenant Switcher Badge -->
         <q-btn-dropdown
@@ -115,6 +116,8 @@ import { useAppearance } from 'src/composables/useAppearance';
 import TaskSearchDialog from 'src/modules/tasks/components/TaskSearchDialog.vue';
 import GlobalStockSearchDialog from 'src/modules/global/components/GlobalStockSearchDialog.vue';
 import NotificationBell from 'src/modules/notifications/components/NotificationBell.vue';
+import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/notifications/notificationsFeature';
+
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
 const tenantPreferenceStore = useTenantPreferenceStore();

@@ -2,17 +2,32 @@ import type { RouteRecordRaw } from 'vue-router';
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 import { createShopAccessGuard } from 'src/modules/auth/guards/createShopAccessGuard';
+import { NOTIFICATIONS_ENABLED } from '../notificationsFeature';
+
+const notificationsDisabledRedirect: RouteRecordRaw['beforeEnter'] = (to) => {
+  if (NOTIFICATIONS_ENABLED) {
+    return true;
+  }
+  const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : undefined;
+  if (to.path.includes('/shop/')) {
+    return { name: 'customer-dashboard', params: { tenantSlug } };
+  }
+  return { name: 'admin-dashboard', params: { tenantSlug } };
+};
 
 const notificationRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/app/notifications',
     component: () => import('layouts/AppLayout.vue'),
-    beforeEnter: createAccessGuard({
-      loginRoute: 'admin-login-page',
-      requiredScope: 'app',
-      allowedRoles: ['admin', 'staff', 'viewer'],
-      requireTenantContext: true,
-    }),
+    beforeEnter: [
+      notificationsDisabledRedirect,
+      createAccessGuard({
+        loginRoute: 'admin-login-page',
+        requiredScope: 'app',
+        allowedRoles: ['admin', 'staff', 'viewer'],
+        requireTenantContext: true,
+      }),
+    ],
     children: [
       {
         path: '',
@@ -28,7 +43,7 @@ const notificationRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/shop/notifications',
     component: () => import('layouts/ShopLayout.vue'),
-    beforeEnter: createShopAccessGuard({ requiredModule: 'shop_order_mgmt' }),
+    beforeEnter: [notificationsDisabledRedirect, createShopAccessGuard({ requiredModule: 'shop_order_mgmt' })],
     children: [
       {
         path: '',
@@ -44,12 +59,15 @@ const notificationRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/app/settings/notifications',
     component: () => import('layouts/AppLayout.vue'),
-    beforeEnter: createAccessGuard({
-      loginRoute: 'admin-login-page',
-      requiredScope: 'app',
-      allowedRoles: ['admin', 'staff', 'viewer'],
-      requireTenantContext: true,
-    }),
+    beforeEnter: [
+      notificationsDisabledRedirect,
+      createAccessGuard({
+        loginRoute: 'admin-login-page',
+        requiredScope: 'app',
+        allowedRoles: ['admin', 'staff', 'viewer'],
+        requireTenantContext: true,
+      }),
+    ],
     children: [
       {
         path: '',

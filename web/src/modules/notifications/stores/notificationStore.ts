@@ -4,6 +4,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from 'src/boot/supabase';
 import { showErrorNotification } from 'src/utils/appFeedback';
 
+import { NOTIFICATIONS_ENABLED } from '../notificationsFeature';
 import { notificationRepository } from '../repositories/notificationRepository';
 import type { NotificationItem } from '../types';
 
@@ -230,6 +231,11 @@ export const useNotificationStore = defineStore('notifications', {
     },
 
     subscribe(userId: string, tenantId: number) {
+      if (!NOTIFICATIONS_ENABLED) {
+        this.unsubscribe();
+        return;
+      }
+
       if (
         this.subscribedUserId === userId &&
         this.subscribedTenantId === tenantId &&

@@ -169,7 +169,7 @@
           </q-item>
 
           <!-- Notifications (app scope) -->
-          <template v-if="authStore.scope === 'app'">
+          <template v-if="notificationsEnabled && authStore.scope === 'app'">
             <q-separator class="q-my-xs dropdown-sep" />
             <q-item clickable v-close-popup class="dropdown-item" data-test="profile-notifications-settings" @click="goNotificationPreferences">
               <q-item-section avatar class="q-pr-none" style="min-width: 28px">
@@ -223,6 +223,7 @@ import {
   formatReleaseDeployedDate,
   formatReleaseVersionLabel,
 } from 'src/utils/appReleaseVersion';
+import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/notifications/notificationsFeature';
 
 type ReleaseVersions = {
   backend_version: string;
