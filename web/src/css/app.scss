@@ -244,12 +244,43 @@ body.body--dark {
     --tf-theme-primary-soft: color-mix(in srgb, #9db4dc 16%, var(--tf-neutral-surface));
     --tf-theme-shadow: 0 12px 30px -12px rgb(157 180 220 / 0.28);
   }
+
+  &.theme-docs,
+  .theme-docs {
+    @include tf-quasar-brand-map;
+    --tf-theme-base: var(--tf-neutral-canvas);
+    --tf-theme-surface: var(--tf-neutral-surface);
+    --tf-theme-border: var(--tf-neutral-border);
+    --tf-theme-ink: var(--tf-neutral-ink);
+    --tf-theme-heading: var(--tf-neutral-ink);
+    --tf-theme-muted: var(--tf-neutral-muted);
+    --tf-docs-paper: var(--tf-neutral-canvas);
+    --tf-docs-heading: var(--tf-neutral-ink);
+    --tf-docs-body: var(--tf-neutral-ink);
+    --tf-docs-accent: #e0a06a;
+    --tf-docs-sage: var(--tf-docs-accent);
+    --tf-docs-plum-ink: var(--tf-docs-heading);
+    --tf-docs-code-bg: #26262b;
+    --tf-docs-callout-bg: color-mix(in srgb, #e0a06a 14%, var(--tf-neutral-surface));
+    --tf-docs-callout-border: #b89873;
+    --tf-theme-accent: #e0a06a;
+    --tf-theme-primary: #e08a5c;
+    --tf-theme-primary-hover: #eca078;
+    --tf-theme-primary-active: #f3b490;
+    --tf-theme-on-primary: #2a1810;
+    --tf-theme-primary-rgb: 224 138 92;
+    --tf-brand-accent: #e08a5c;
+    --tf-brand-accent-rgb: 224 138 92;
+    --tf-theme-primary-soft: rgb(224 138 92 / 0.12);
+    --tf-theme-shadow: 0 12px 30px -12px rgb(224 138 92 / 0.22);
+  }
 }
 
 .theme-platform,
 .theme-app,
 .theme-shop,
-.theme-investor {
+.theme-investor,
+.theme-docs {
   @include tf-quasar-brand-map;
   --tf-theme-base: var(--tf-brand-base);
   --tf-theme-surface: var(--tf-brand-surface);
@@ -346,6 +377,36 @@ body.body--dark {
   --tf-theme-primary-rgb: 30 58 95;
   --tf-theme-primary-soft: color-mix(in srgb, #faf6ee 72%, var(--tf-neutral-surface));
   --tf-theme-shadow: 0 10px 30px -4px rgba(30 58 95 / 0.12), 0 4px 12px -2px rgba(23 20 18 / 0.04);
+}
+
+/* 5. Docs Theme — terracotta actions, leather accent, warm paper */
+.theme-docs {
+  --tf-docs-paper: #faf8f5;
+  --tf-docs-heading: #1e1915;
+  --tf-docs-body: #3c342d;
+  --tf-docs-code-bg: #efe9df;
+  --tf-docs-accent: #875a34;
+  --tf-docs-callout-bg: #f3ece1;
+  --tf-docs-callout-border: #b89873;
+  --tf-docs-sage: var(--tf-docs-accent);
+  --tf-docs-plum-ink: var(--tf-docs-heading);
+
+  --tf-theme-accent: var(--tf-docs-accent);
+  --tf-theme-base: var(--tf-docs-paper);
+  --tf-theme-surface: #ffffff;
+  --tf-theme-border: #e3dacb;
+  --tf-theme-ink: var(--tf-docs-body);
+  --tf-theme-heading: var(--tf-docs-heading);
+  --tf-theme-muted: #726659;
+
+  --tf-theme-primary: #8a3f1b;
+  --tf-theme-primary-hover: #703214;
+  --tf-theme-primary-active: #57260e;
+  --tf-theme-on-primary: #ffffff;
+  --tf-theme-primary-rgb: 138 63 27;
+  --tf-theme-primary-soft: rgba(138, 63, 27, 0.08);
+
+  --tf-theme-shadow: 0 4px 20px -2px rgba(44, 36, 28, 0.06), 0 2px 6px -1px rgba(44, 36, 28, 0.04);
 }
 
 body {

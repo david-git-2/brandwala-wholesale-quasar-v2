@@ -26,6 +26,7 @@ import customerRoutes from 'src/modules/customer/routes';
 import afterSalesRoutes from 'src/modules/after_sales/routes';
 import landingRoutes from 'src/modules/landing/routes';
 import helpRoutes from 'src/modules/help/routes';
+import docsRoutes from 'src/modules/docs/routes';
 
 const devRoutes: RouteRecordRaw[] = [
   {
@@ -64,6 +65,7 @@ const devRoutes: RouteRecordRaw[] = [
 const routes: RouteRecordRaw[] = [
   ...landingRoutes,
   ...helpRoutes,
+  ...docsRoutes,
   {
     path: '/app/home',
     redirect: '/app/dashboard',
