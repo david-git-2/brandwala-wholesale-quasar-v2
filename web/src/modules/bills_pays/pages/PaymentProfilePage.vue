@@ -81,9 +81,9 @@
           </thead>
           <tbody>
             <tr v-for="line in ledgerRows" :key="`ledger-${line.id}`">
-              <td class="text-caption">{{ formatLedgerDate(line.created_at) }}</td>
+              <td class="text-caption">{{ formatCashbookLedgerDate(line.created_at) }}</td>
               <td>
-                <span>{{ line.type }}</span>
+                <span>{{ formatCashbookLedgerType(line.type) }}</span>
                 <q-badge
                   v-if="line.is_reversal"
                   dense
@@ -93,7 +93,12 @@
                   class="q-ml-xs"
                 />
               </td>
-              <td class="text-right">{{ formatAmountBdt(line.amount) }}</td>
+              <td
+                class="text-right"
+                :class="{ 'text-negative': isCashbookLedgerDeduction(line.type) }"
+              >
+                {{ formatAmountBdt(line.amount) }}
+              </td>
               <td class="text-caption">{{ line.source_type || '—' }}</td>
             </tr>
           </tbody>
@@ -117,6 +122,11 @@ import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoic
 import PayListRow from '../components/PayListRow.vue';
 import ProfilePayDialog from '../components/ProfilePayDialog.vue';
 import { paymentsPageRoute } from '../utils/paymentsNavigation';
+import {
+  formatCashbookLedgerDate,
+  formatCashbookLedgerType,
+  isCashbookLedgerDeduction,
+} from '../utils/cashbookLedgerDisplay';
 
 import type { PayTransferEntityType } from '../types/payTransferParty';
 
@@ -176,14 +186,6 @@ const openPayDialog = (direction: 'in' | 'out') => {
 const onPayPosted = () => {
   void loadHeader();
   void loadHistory();
-};
-
-const formatLedgerDate = (iso: string) => {
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
 };
 
 const openPay = (row: PayRow) => {

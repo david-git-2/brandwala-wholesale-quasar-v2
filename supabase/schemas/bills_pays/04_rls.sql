@@ -231,7 +231,25 @@ CREATE POLICY "global_invoice_items_all" ON "public"."bill_lines" TO "authentica
    FROM "public"."bills" "gi"
   WHERE ("gi"."id" = "bill_lines"."invoice_id"))));
 
-CREATE POLICY "global_invoices_select" ON "public"."bills" FOR SELECT TO "authenticated" USING (("public"."has_active_tenant_membership"("issued_by_tenant_id") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")));
+CREATE POLICY "global_invoices_select" ON "public"."bills" FOR SELECT TO "authenticated" USING ((
+  "public"."has_active_tenant_membership"("issued_by_tenant_id")
+  OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")
+  OR (
+    "invoice_type" = 'ap'::"public"."global_invoice_type"
+    AND (
+      "public"."membership_has_module_action"("parent_tenant_id", 'global_invoice'::"text", 'view'::"text")
+      OR EXISTS (
+        SELECT 1
+        FROM "public"."tenants" "ct"
+        INNER JOIN "public"."memberships" "m" ON "m"."tenant_id" = "ct"."id"
+        WHERE "ct"."parent_id" = "bills"."parent_tenant_id"
+          AND "public"."membership_email_matches_current_user"("m"."email")
+          AND "m"."is_active" = true
+          AND "public"."membership_has_module_action"("ct"."id", 'global_invoice'::"text", 'view'::"text")
+      )
+    )
+  )
+));
 
 CREATE POLICY "global_invoices_write" ON "public"."bills" TO "authenticated" USING (("public"."membership_has_module_action"("issued_by_tenant_id", 'global_invoice'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id"))) WITH CHECK (("public"."membership_has_module_action"("issued_by_tenant_id", 'global_invoice'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")));
 
@@ -502,6 +520,12 @@ GRANT ALL ON FUNCTION "public"."get_bill_net_balances"("p_bill_id" bigint) TO "a
 
 GRANT ALL ON FUNCTION "public"."get_bill_net_balances"("p_bill_id" bigint) TO "service_role";
 
+REVOKE ALL ON FUNCTION "public"."get_bill_detail_bundle"("p_tenant_id" bigint, "p_bill_id" bigint) FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "public"."get_bill_detail_bundle"("p_tenant_id" bigint, "p_bill_id" bigint) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."get_bill_detail_bundle"("p_tenant_id" bigint, "p_bill_id" bigint) TO "service_role";
+
 GRANT ALL ON FUNCTION "public"."list_bill_adjustments"("p_parent_bill_id" bigint) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."list_bill_adjustments"("p_parent_bill_id" bigint) TO "service_role";
@@ -526,6 +550,12 @@ REVOKE ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" 
 GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "service_role";
+
+REVOKE ALL ON FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) TO "service_role";
 
 REVOKE ALL ON FUNCTION "public"."post_vendor_credit_refund"("p_credit_note_id" bigint, "p_amount" numeric, "p_cashbook_point_id" bigint, "p_received_on" "date", "p_note" "text", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) FROM PUBLIC;
 

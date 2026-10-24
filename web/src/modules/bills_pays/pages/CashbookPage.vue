@@ -53,6 +53,7 @@
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import CashbookEntityRow from '../components/CashbookEntityRow.vue';
@@ -64,6 +65,7 @@ const PAGE_SIZE = 50;
 type EntityPill = 'tenant' | 'customer' | 'courier' | 'vendor';
 
 const authStore = useAuthStore();
+const tenantStore = useTenantStore();
 const route = useRoute();
 const router = useRouter();
 
@@ -72,15 +74,6 @@ const debouncedSearch = ref('');
 const entityType = ref<EntityPill>('tenant');
 const offset = ref(0);
 const accumulatedRows = ref<EntityRow[]>([]);
-
-const typeTabs: { label: string; value: EntityPill }[] = [
-  { label: 'Us', value: 'tenant' },
-  { label: 'Customer', value: 'customer' },
-  { label: 'Courier', value: 'courier' },
-  { label: 'Vendor', value: 'vendor' },
-];
-
-const typeSectionTabs = typeTabs.map((tab) => ({ name: tab.value, label: tab.label }));
 
 const operatingTenantId = computed(() => authStore.selectedTenant?.id ?? 0);
 const booksTenantId = computed(() => {
@@ -99,6 +92,24 @@ const queryParams = computed(() => ({
 }));
 
 const { tenantCashQuery, entitiesQuery } = useCashbookEntitiesQuery(queryParams);
+
+const booksTenantName = computed(() => {
+  const fromCashbook = tenantCashQuery.data.value?.name?.trim();
+  if (fromCashbook) return fromCashbook;
+  const t = authStore.selectedTenant;
+  if (!t) return 'Tenant';
+  const booksId = t.parent_id ?? t.id;
+  if (booksId === t.id) return t.name?.trim() || 'Tenant';
+  const parent = tenantStore.items.find((item) => item.id === booksId);
+  return parent?.name?.trim() || 'Tenant';
+});
+
+const typeSectionTabs = computed(() => [
+  { name: 'tenant' as EntityPill, label: booksTenantName.value },
+  { name: 'customer' as EntityPill, label: 'Customer' },
+  { name: 'courier' as EntityPill, label: 'Courier' },
+  { name: 'vendor' as EntityPill, label: 'Vendor' },
+]);
 
 const isPending = computed(() =>
   entityType.value === 'tenant' ? tenantCashQuery.isPending.value : entitiesQuery.isPending.value,

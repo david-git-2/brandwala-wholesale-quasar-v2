@@ -159,7 +159,14 @@ const listGlobalInvoices = async (
       { count: 'exact' },
     );
 
-  if (issuedByTenantId) {
+  const scopeParentId = parentTenantId ?? tenantId ?? null;
+
+  // AP (we owe) is booked on the parent; issued_by may be parent or assigned child.
+  if (arSide === 'we_owe') {
+    if (scopeParentId != null) {
+      query = query.eq('parent_tenant_id', scopeParentId);
+    }
+  } else if (issuedByTenantId) {
     query = query.eq('issued_by_tenant_id', issuedByTenantId);
   } else if (parentTenantId) {
     query = query.eq('parent_tenant_id', parentTenantId);
@@ -174,7 +181,9 @@ const listGlobalInvoices = async (
   if (paymentStatus) {
     query = query.eq('payment_status', paymentStatus);
   }
-  if (invoiceStatus) {
+  if (invoiceStatus === 'draft') {
+    query = query.in('invoice_status', ['draft', 'proforma_generated']);
+  } else if (invoiceStatus) {
     query = query.eq('invoice_status', invoiceStatus);
   }
   if (retailBillingMode === 'direct') {
@@ -190,7 +199,7 @@ const listGlobalInvoices = async (
   if (arSide === 'we_owe') {
     query = query.eq('invoice_type', 'ap');
     if (!invoiceStatus) {
-      query = query.eq('invoice_status', 'issued');
+      query = query.in('invoice_status', ['issued', 'draft', 'proforma_generated']);
     }
   } else if (arSide === 'they_owe') {
     query = query.neq('invoice_type', 'ap');
@@ -312,6 +321,31 @@ const createGlobalInvoice = async (
   if (!data) throw new Error('Global invoice was not created.');
 
   return data as GlobalInvoiceCreated;
+};
+
+export type BillDetailBundle = {
+  bill: GlobalInvoiceDetail;
+  paymentHistory: InvoicePaymentHistoryEntry[];
+  netBalances: Record<string, unknown>;
+  adjustments: Record<string, unknown>[];
+};
+
+const getBillDetailBundle = async (params: {
+  tenantId: number;
+  billId: number;
+}): Promise<BillDetailBundle> => {
+  const { data, error } = await supabase.rpc('get_bill_detail_bundle', {
+    p_tenant_id: params.tenantId,
+    p_bill_id: params.billId,
+  });
+  if (error) throw error;
+  const raw = (data ?? {}) as Record<string, unknown>;
+  return {
+    bill: raw.bill as GlobalInvoiceDetail,
+    paymentHistory: (raw.payment_history as InvoicePaymentHistoryEntry[] | null) ?? [],
+    netBalances: (raw.net_balances as Record<string, unknown>) ?? {},
+    adjustments: (raw.adjustments as Record<string, unknown>[] | null) ?? [],
+  };
 };
 
 const getGlobalInvoiceById = async (invoiceId: number): Promise<GlobalInvoiceDetail> => {
@@ -1008,6 +1042,7 @@ export const invoiceRepository = {
   generateInvoiceNumber,
   searchSalesInvoiceStock,
   getGlobalInvoiceById,
+  getBillDetailBundle,
   listGlobalInvoiceItems,
   addGlobalInvoiceItem,
   updateGlobalInvoiceItem,

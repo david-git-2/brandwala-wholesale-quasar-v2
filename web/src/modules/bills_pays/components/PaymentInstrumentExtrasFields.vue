@@ -1,6 +1,6 @@
 <template>
-  <div class="row q-col-gutter-sm">
-    <div v-if="methodFieldFlags.showBank" class="col-12">
+  <div v-if="hasVisibleFields" class="payment-instrument-extras">
+    <div v-if="methodFieldFlags.showBank">
       <BillDialogField v-if="externalLabels" :label="methodFieldFlags.bankLabel">
         <q-select
           :model-value="bdBankId"
@@ -36,7 +36,7 @@
         @update:model-value="emit('update:bdBankId', $event)"
       />
     </div>
-    <div v-if="methodFieldFlags.showChequeNumber" class="col-12 col-sm-6">
+    <div v-if="methodFieldFlags.showChequeNumber">
       <BillDialogField v-if="externalLabels" label="Cheque number">
         <q-input
           :model-value="chequeNumber"
@@ -64,7 +64,7 @@
         @update:model-value="emit('update:chequeNumber', String($event ?? ''))"
       />
     </div>
-    <div v-if="methodFieldFlags.showInstrumentDate" class="col-12 col-sm-6">
+    <div v-if="methodFieldFlags.showInstrumentDate">
       <BillDialogField v-if="externalLabels" :label="methodFieldFlags.instrumentDateLabel">
         <q-input
           :model-value="instrumentDate"
@@ -125,7 +125,7 @@
         </template>
       </q-input>
     </div>
-    <div v-if="methodFieldFlags.showInstrumentReference" class="col-12">
+    <div v-if="methodFieldFlags.showInstrumentReference">
       <BillDialogField
         v-if="externalLabels"
         :label="methodFieldFlags.instrumentReferenceLabel"
@@ -198,4 +198,26 @@ const selectedMethodMeta = computed(() => {
 });
 
 const methodFieldFlags = computed(() => paymentMethodFieldFlags(selectedMethodMeta.value));
+
+const hasVisibleFields = computed(() => {
+  const f = methodFieldFlags.value;
+  return (
+    f.showBank ||
+    f.showChequeNumber ||
+    f.showInstrumentDate ||
+    f.showInstrumentReference
+  );
+});
 </script>
+
+<style scoped lang="scss">
+.payment-instrument-extras {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  :deep(.q-field) {
+    margin-bottom: 0;
+  }
+}
+</style>

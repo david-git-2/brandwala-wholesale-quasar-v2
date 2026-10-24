@@ -13,65 +13,80 @@
         </div>
 
         <template v-else>
-          <q-select
-            v-model="fromKey"
-            :options="partySelectOptions"
-            emit-value
-            map-options
-            outlined
-            dense
-            label="From"
-            :loading="loadingPartyMeta"
+          <div
+            v-if="simplePayFlow && fromParty && toParty"
+            class="pay-transfer-summary"
           >
-            <template #option="scope">
-              <q-item v-bind="scope.itemProps">
-                <q-item-section>
-                  <q-item-label>{{ scope.opt.label }}</q-item-label>
-                  <q-item-label caption>{{ scope.opt.caption }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-          </q-select>
+            <div class="text-caption text-grey-7">{{ simpleFlowCaption }}</div>
+            <div class="text-subtitle1 text-weight-bold q-mt-xs">{{ simpleFlowLine }}</div>
+            <div v-if="simpleBalanceHint" class="text-caption text-grey-7 q-mt-xs">
+              {{ simpleBalanceHint }}
+            </div>
+          </div>
 
-          <q-select
-            v-model="toKey"
-            :options="partySelectOptions"
-            emit-value
-            map-options
-            outlined
-            dense
-            label="To"
-            :loading="loadingPartyMeta"
-          >
-            <template #option="scope">
-              <q-item v-bind="scope.itemProps">
-                <q-item-section>
-                  <q-item-label>{{ scope.opt.label }}</q-item-label>
-                  <q-item-label caption>{{ scope.opt.caption }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-          </q-select>
+          <template v-if="!simplePayFlow">
+            <q-select
+              v-model="fromKey"
+              :options="partySelectOptions"
+              emit-value
+              map-options
+              outlined
+              dense
+              label="From"
+              :loading="loadingPartyMeta"
+            >
+              <template #option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section>
+                    <q-item-label>{{ scope.opt.label }}</q-item-label>
+                    <q-item-label caption>{{ scope.opt.caption }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
 
-          <q-select
-            v-if="showPotSelector"
-            v-model="potId"
-            :options="payFromOptions"
-            emit-value
-            map-options
-            outlined
-            dense
-            label="From till (pot)"
-            hint="Till, safe, or bank"
-            :loading="payFromLoading"
-          />
+            <q-select
+              v-model="toKey"
+              :options="partySelectOptions"
+              emit-value
+              map-options
+              outlined
+              dense
+              label="To"
+              :loading="loadingPartyMeta"
+            >
+              <template #option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section>
+                    <q-item-label>{{ scope.opt.label }}</q-item-label>
+                    <q-item-label caption>{{ scope.opt.caption }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
+          </template>
 
           <q-input
             v-model.number="amount"
             outlined
             dense
             type="number"
-            label="Amount"
+            step="0.01"
+            min="0"
+            label="Amount (BDT)"
+            class="pay-transfer-amount"
+          />
+
+          <q-select
+            v-if="showPotField"
+            v-model="potId"
+            :options="payFromOptions"
+            emit-value
+            map-options
+            outlined
+            dense
+            :label="potFieldLabel"
+            :loading="payFromLoading"
           />
 
           <q-select
@@ -81,7 +96,7 @@
             map-options
             outlined
             dense
-            label="Method"
+            label="How they paid"
             :loading="loadingPaymentMeta"
           />
 
@@ -100,7 +115,13 @@
             @update:instrument-reference="instrumentReference = $event"
           />
 
-          <q-input v-model="note" outlined dense label="Notes" type="textarea" autogrow />
+          <q-input
+            v-model="note"
+            outlined
+            dense
+            label="Note (optional)"
+            type="text"
+          />
         </template>
       </q-card-section>
 
@@ -155,8 +176,10 @@ const props = withDefaults(
     parties?: PayTransferParty[];
     seedParties?: PayTransferParty[];
     loadPartiesOnOpen?: boolean;
+    /** Cashbook profile pay in/out: hide from/to pickers, show amount + method only. */
+    simplePayFlow?: boolean;
   }>(),
-  { loadPartiesOnOpen: true },
+  { loadPartiesOnOpen: true, simplePayFlow: false },
 );
 
 const emit = defineEmits<{
@@ -215,6 +238,38 @@ const submitLabel = computed(() => {
 
 const showPotSelector = computed(() => fromParty.value?.entityType === 'tenant');
 
+const simplePayFlow = computed(() => props.simplePayFlow);
+
+const simpleFlowCaption = computed(() => {
+  if (isPayIn.value) return 'You receive from';
+  if (isPayOut.value) return 'You pay out to';
+  return 'Transfer';
+});
+
+const simpleFlowLine = computed(() => {
+  if (!fromParty.value || !toParty.value) return '';
+  return `${fromParty.value.name} → ${toParty.value.name}`;
+});
+
+const simpleBalanceHint = computed(() => {
+  if (isPayIn.value && fromParty.value) {
+    if (fromParty.value.dueTotal > 0) {
+      return `On bills: ${formatAmountBdt(fromParty.value.dueTotal)} due`;
+    }
+    return `On hand: ${formatAmountBdt(fromParty.value.availableBalance)}`;
+  }
+  if (isPayOut.value && toParty.value) {
+    return `Can pay out: ${formatAmountBdt(toParty.value.availableBalance)}`;
+  }
+  return null;
+});
+
+const potFieldLabel = computed(() => {
+  if (isPayIn.value) return 'Deposit to';
+  if (isPayOut.value) return 'Pay from';
+  return 'Cash location';
+});
+
 const needsTenantPot = computed(() => isPayIn.value || isPayOut.value);
 
 const pointsContext = computed(() => ({
@@ -235,6 +290,14 @@ const {
   loading: payFromLoading,
 } = useCashbookPayFromPotSelect(points, payFromEnabled);
 
+const showPotField = computed(() => {
+  if (!needsTenantPot.value) return false;
+  if (simplePayFlow.value) {
+    return payFromOptions.value.length > 1;
+  }
+  return showPotSelector.value;
+});
+
 const partyCaption = (p: PayTransferParty) => {
   const parts = [`Have ${formatAmountBdt(p.availableBalance)}`];
   if (p.entityType !== 'tenant' && p.dueTotal > 0) {
@@ -251,9 +314,19 @@ const partySelectOptions = computed(() =>
   })),
 );
 
+const profilePartyTypes = new Set<PayTransferParty['entityType']>([
+  'customer',
+  'courier',
+  'vendor',
+]);
+
 const profilePartyForRpc = computed(() => {
-  if (isPayIn.value && fromParty.value?.entityType === 'customer') return fromParty.value;
-  if (isPayOut.value && toParty.value?.entityType === 'customer') return toParty.value;
+  if (isPayIn.value && fromParty.value && profilePartyTypes.has(fromParty.value.entityType)) {
+    return fromParty.value;
+  }
+  if (isPayOut.value && toParty.value && profilePartyTypes.has(toParty.value.entityType)) {
+    return toParty.value;
+  }
   return null;
 });
 
@@ -419,9 +492,9 @@ const submitDisabledReason = computed((): string | null => {
   if (!isPayIn.value && !isPayOut.value) {
     return 'One side must be company (tenant), the other a profile';
   }
-  if (!profilePartyForRpc.value) return 'Pay in/out needs a customer profile on the other side';
+  if (!profilePartyForRpc.value) return 'Choose a customer, vendor, or courier';
   if (needsTenantPot.value && (payFromLoading.value || !potId.value || !cashbookPointId.value)) {
-    return showPotSelector.value ? 'Choose a till (pot)' : 'Loading till…';
+    return showPotField.value ? 'Choose where cash is paid from' : 'Loading cash locations…';
   }
   if ((amount.value ?? 0) <= 0) return 'Enter an amount';
   return paymentInstrumentExtrasBlockReason(methodFlags.value, {
@@ -482,8 +555,20 @@ const submit = async () => {
 };
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .pay-transfer-card {
   width: min(520px, 92vw);
+}
+
+.pay-transfer-summary {
+  padding: 12px 14px;
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
+  border-radius: var(--tf-radius-sm, 8px);
+  background: var(--tf-neutral-surface-subtle, #f8fafc);
+}
+
+.pay-transfer-amount :deep(.q-field__native) {
+  font-size: 1.125rem;
+  font-weight: 600;
 }
 </style>

@@ -1,10 +1,10 @@
 <template>
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden bill-detail-page">
-    <div v-if="detailQuery.isPending.value" class="col flex flex-center">
+    <div v-if="bundleQuery.isPending.value" class="col flex flex-center">
       <q-spinner color="primary" size="32px" />
     </div>
 
-    <div v-else-if="detailQuery.isError.value" class="col flex flex-center text-negative">
+    <div v-else-if="bundleQuery.isError.value" class="col flex flex-center text-negative">
       {{ detailErrorMessage }}
     </div>
 
@@ -172,7 +172,7 @@
               <BillNetSettlementPanel
                 :balances="netBalances"
                 :is-ap="true"
-                :loading="netBalancesQuery.isPending.value"
+                :loading="bundleQuery.isFetching.value"
                 :channel-meta="(bill.channel_meta as Record<string, unknown> | null) ?? null"
                 :open-credit-note-nos="openApCreditNoteNos"
                 :vendor-refund-receipts="vendorRefundReceiptBuckets"
@@ -327,7 +327,7 @@
                 v-if="isStandardBill"
                 :balances="netBalances"
                 :is-ap="false"
-                :loading="netBalancesQuery.isPending.value"
+                :loading="bundleQuery.isFetching.value"
               />
             </div>
           </div>
@@ -340,7 +340,7 @@
 
         <div v-if="isStandardBill" class="q-mt-lg no-print">
           <div class="text-overline text-grey-7 q-mb-sm">Credit / debit notes</div>
-          <div v-if="adjustmentsQuery.isPending.value" class="text-caption text-grey-6">
+          <div v-if="bundleQuery.isPending.value" class="text-caption text-grey-6">
             Loading…
           </div>
           <div
@@ -393,7 +393,7 @@
 
         <div class="q-mt-lg no-print bill-payment-history">
           <div class="text-overline text-grey-7 q-mb-sm">Payment history</div>
-          <div v-if="paymentHistoryQuery.isPending.value" class="text-caption text-grey-6">
+          <div v-if="bundleQuery.isPending.value" class="text-caption text-grey-6">
             Loading…
           </div>
           <div
@@ -493,8 +493,8 @@ import {
   invoiceChannelTone,
   invoiceListStatusLabel,
 } from 'src/modules/sales_invoice/utils/invoiceListDisplay';
+import { useBillDetailBundleQuery } from '../composables/useBillDetailBundleQuery';
 import { useBillDetailQuery } from '../composables/useBillDetailQuery';
-import { useBillPaymentHistoryQuery } from '../composables/useBillPaymentHistoryQuery';
 import { useIssueApBillMutation } from '../composables/useIssueApBillMutation';
 import { useRecordBillPaymentMutation } from '../composables/useRecordBillPaymentMutation';
 import { useVoidBillMutation } from '../composables/useVoidBillMutation';
@@ -520,7 +520,6 @@ import BillAdjustmentLinesTable from '../components/BillAdjustmentLinesTable.vue
 import BillNetSettlementPanel from '../components/BillNetSettlementPanel.vue';
 import type { BillLineDisplayRow } from '../repositories/billLinesRepository';
 import { useBillAdjustmentDraft } from '../composables/useBillAdjustmentDraft';
-import { useBillAdjustmentsQuery } from '../composables/useBillAdjustmentsQuery';
 import { useCreateBillAdjustmentMutation } from '../composables/useCreateBillAdjustmentMutation';
 import { syncShipmentApBills } from 'src/modules/procurement_stock/repositories/shipmentApBillsRepository';
 import { apBillDueStoresForeignFace } from '../utils/apBillBooks';
@@ -529,7 +528,8 @@ import {
   apBillPaperCurrencyCode,
   isLegacyApPaperSnapshot,
 } from '../utils/parseApBillPaper';
-import { useBillNetBalancesQuery } from '../composables/useBillNetBalancesQuery';
+import type { BillNetBalances } from '../composables/useBillNetBalancesQuery';
+import type { BillAdjustmentRow } from '../composables/useBillAdjustmentsQuery';
 import {
   isShipmentCostApBill,
   shipmentApKindFromBill,
@@ -547,22 +547,23 @@ const billId = computed(() => {
   return Number.isFinite(id) && id > 0 ? id : null;
 });
 
-const { detailQuery, itemsQuery, billLinesQuery } = useBillDetailQuery(billId);
-const voidMutation = useVoidBillMutation(() => billId.value);
-const issueApMutation = useIssueApBillMutation(() => billId.value);
-const recordPaymentMutation = useRecordBillPaymentMutation(() => billId.value);
-const vendorRefundMutation = usePostVendorCreditRefundMutation(() => billId.value);
-const createAdjustmentMutation = useCreateBillAdjustmentMutation(() => billId.value);
-
 const operatingTenantId = computed(() => {
   const t = authStore.selectedTenant;
   if (!t?.id) return 0;
   return t.parent_id ?? t.id;
 });
 
-const paymentHistoryQuery = useBillPaymentHistoryQuery(billId, operatingTenantId);
+const bundleQuery = useBillDetailBundleQuery(billId, operatingTenantId);
+const billFromBundle = computed(() => bundleQuery.data.value?.bill);
+const { itemsQuery, billLinesQuery } = useBillDetailQuery(billId, billFromBundle);
+const voidMutation = useVoidBillMutation(() => billId.value);
+const issueApMutation = useIssueApBillMutation(() => billId.value);
+const recordPaymentMutation = useRecordBillPaymentMutation(() => billId.value);
+const vendorRefundMutation = usePostVendorCreditRefundMutation(() => billId.value);
+const createAdjustmentMutation = useCreateBillAdjustmentMutation(() => billId.value);
+
 const paymentHistoryEntries = computed(
-  () => (paymentHistoryQuery.data.value ?? []) as InvoicePaymentHistoryEntry[],
+  () => (bundleQuery.data.value?.paymentHistory ?? []) as InvoicePaymentHistoryEntry[],
 );
 
 const paymentDialogOpen = ref(false);
@@ -570,7 +571,7 @@ const vendorRefundDialogOpen = ref(false);
 const vendorRefundNoteId = ref<number | null>(null);
 const adjustmentComposerOpen = ref(false);
 
-const bill = computed(() => detailQuery.data.value as GlobalInvoiceDetail | undefined);
+const bill = computed(() => billFromBundle.value as GlobalInvoiceDetail | undefined);
 const isApBill = computed(() => bill.value?.invoice_type === 'ap');
 
 const vendorRefundReceiptBuckets = computed(() =>
@@ -611,12 +612,13 @@ const adjustmentLineRows = computed((): BillLineDisplayRow[] => {
   return [];
 });
 
-const netBalancesEnabled = computed(() => billId.value != null && billId.value > 0);
-const netBalancesQuery = useBillNetBalancesQuery(billId, netBalancesEnabled);
-const netBalances = computed(() => netBalancesQuery.data.value);
+const netBalances = computed(
+  () => bundleQuery.data.value?.netBalances as BillNetBalances | undefined,
+);
 
-const adjustmentsQuery = useBillAdjustmentsQuery(billId, isStandardBill);
-const adjustmentRows = computed(() => adjustmentsQuery.data.value ?? []);
+const adjustmentRows = computed(
+  () => (bundleQuery.data.value?.adjustments ?? []) as BillAdjustmentRow[],
+);
 
 const openApCreditNoteNos = computed(() =>
   adjustmentRows.value
@@ -793,7 +795,7 @@ const onIssueAp = async () => {
 };
 
 const detailErrorMessage = computed(() => {
-  const err = detailQuery.error.value;
+  const err = bundleQuery.error.value;
   return err instanceof Error ? err.message : 'Could not load bill.';
 });
 
@@ -843,7 +845,7 @@ watch(
     void (async () => {
       try {
         await syncShipmentApBills(b.ap_shipment_id!);
-        await detailQuery.refetch();
+        await bundleQuery.refetch();
       } catch {
         apPaperRefreshKey.value = null;
       }
@@ -916,8 +918,8 @@ const adjustmentKindLabel = (kind: string) => {
 };
 
 const onRecordPayment = async (payload: RecordBillPaymentInput) => {
-  await recordPaymentMutation.mutateAsync(payload);
   paymentDialogOpen.value = false;
+  await recordPaymentMutation.mutateAsync(payload);
 };
 
 const onVendorRefund = async (payload: PostVendorCreditRefundInput) => {

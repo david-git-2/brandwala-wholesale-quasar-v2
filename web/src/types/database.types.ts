@@ -12132,6 +12132,10 @@ export type Database = {
         Args: { p_stock_id: number; p_tenant_id: number }
         Returns: number
       }
+      get_bill_detail_bundle: {
+        Args: { p_bill_id: number; p_tenant_id: number }
+        Returns: Json
+      }
       get_bill_net_balances: { Args: { p_bill_id: number }; Returns: Json }
       get_costing_file_by_id: {
         Args: { p_id: number }
@@ -14842,6 +14846,25 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      post_ap_payout_with_allocations_snapshot: {
+        Args: {
+          p_allocations?: Json
+          p_cashbook_point_id: number
+          p_cashbook_point_pot_id?: number
+          p_exchange_rate?: number
+          p_foreign_amount?: number
+          p_instruments?: Json
+          p_note?: string
+          p_paid_on: string
+          p_profile_id: number
+          p_reference?: string
+          p_settlement_currency_code?: string
+          p_source_currency_code?: string
+          p_tenant_id: number
+          p_transaction_rate?: number
+        }
+        Returns: Json
       }
       post_customer_receipt_with_allocations: {
         Args: {

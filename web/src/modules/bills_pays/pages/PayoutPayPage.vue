@@ -428,7 +428,8 @@ const apBillDueBdt = (bill: OpenApBillRow) => {
   return apBillBooksDueBdt(bill.channel_meta, bill.due_amount, rate);
 };
 
-watch(apPayFromPotId, () => {
+watch(apSourceCurrency, (next, prev) => {
+  if (prev === next || apPayFromPotId.value == null) return;
   resetApFxAmounts();
 });
 

@@ -367,7 +367,7 @@ const listApPayProfileSummaries = async (
   return [...byProfile.values()].sort((a, b) => b.total_due - a.total_due);
 };
 
-const postApPayoutWithAllocations = async (payload: {
+export type ApPayoutWithAllocationsPayload = {
   tenant_id: number;
   profile_id: number;
   cashbook_point_id: number;
@@ -382,25 +382,57 @@ const postApPayoutWithAllocations = async (payload: {
   source_currency_code?: string;
   transaction_rate?: number | null;
   cashbook_point_pot_id?: number | null;
-}) => {
-  const { data, error } = await supabase.rpc('post_ap_payout_with_allocations', {
-    p_tenant_id: payload.tenant_id,
-    p_profile_id: payload.profile_id,
-    p_paid_on: payload.paid_on ?? localToday(),
-    p_cashbook_point_id: payload.cashbook_point_id,
-    p_note: payload.note ?? null,
-    p_reference: payload.reference ?? null,
-    p_instruments: payload.instruments,
-    p_allocations: payload.allocations.map((a) => ({ bill_id: a.bill_id, amount: a.amount })),
-    p_settlement_currency_code: payload.settlement_currency_code ?? 'BDT',
-    p_foreign_amount: payload.foreign_amount ?? null,
-    p_exchange_rate: payload.exchange_rate ?? null,
-    p_source_currency_code: payload.source_currency_code ?? null,
-    p_transaction_rate: payload.transaction_rate ?? null,
-    p_cashbook_point_pot_id: payload.cashbook_point_pot_id ?? null,
-  });
+};
+
+export type ApPayoutBillDetailSnapshot = {
+  pay: unknown;
+  bill: Record<string, unknown> | null;
+  net_balances: Record<string, unknown> | null;
+  payment_history: unknown;
+};
+
+const apPayoutRpcArgs = (payload: ApPayoutWithAllocationsPayload) => ({
+  p_tenant_id: payload.tenant_id,
+  p_profile_id: payload.profile_id,
+  p_paid_on: payload.paid_on ?? localToday(),
+  p_cashbook_point_id: payload.cashbook_point_id,
+  p_note: payload.note ?? null,
+  p_reference: payload.reference ?? null,
+  p_instruments: payload.instruments,
+  p_allocations: payload.allocations.map((a) => ({ bill_id: a.bill_id, amount: a.amount })),
+  p_settlement_currency_code: payload.settlement_currency_code ?? 'BDT',
+  p_foreign_amount: payload.foreign_amount ?? null,
+  p_exchange_rate: payload.exchange_rate ?? null,
+  p_source_currency_code: payload.source_currency_code ?? null,
+  p_transaction_rate: payload.transaction_rate ?? null,
+  p_cashbook_point_pot_id: payload.cashbook_point_pot_id ?? null,
+});
+
+const postApPayoutWithAllocations = async (payload: ApPayoutWithAllocationsPayload) => {
+  const { data, error } = await supabase.rpc(
+    'post_ap_payout_with_allocations',
+    apPayoutRpcArgs(payload),
+  );
   if (error) throw error;
   return data;
+};
+
+/** Same transaction as payout; returns bill balances + payment history for bill detail UI. */
+const postApPayoutWithAllocationsSnapshot = async (
+  payload: ApPayoutWithAllocationsPayload,
+): Promise<ApPayoutBillDetailSnapshot> => {
+  const { data, error } = await supabase.rpc(
+    'post_ap_payout_with_allocations_snapshot',
+    apPayoutRpcArgs(payload),
+  );
+  if (error) throw error;
+  const row = (data ?? {}) as Record<string, unknown>;
+  return {
+    pay: row.pay,
+    bill: (row.bill as Record<string, unknown> | null) ?? null,
+    net_balances: (row.net_balances as Record<string, unknown> | null) ?? null,
+    payment_history: row.payment_history ?? [],
+  };
 };
 
 const dispenseMiddlemanPayout = async (payload: {
@@ -455,6 +487,7 @@ export const paysRepository = {
   postCustomerReceipt,
   allocatePayToBill,
   postApPayoutWithAllocations,
+  postApPayoutWithAllocationsSnapshot,
   voidCustomerReceipt,
   dispenseMiddlemanPayout,
 };

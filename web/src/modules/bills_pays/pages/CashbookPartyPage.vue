@@ -53,12 +53,17 @@
           </thead>
           <tbody>
             <tr v-for="line in ledgerRows" :key="line.id">
-              <td>{{ formatDate(line.created_at) }}</td>
+              <td>{{ formatCashbookLedgerDate(line.created_at) }}</td>
               <td>
-                <span>{{ line.type }}</span>
+                <span>{{ formatCashbookLedgerType(line.type) }}</span>
                 <q-badge v-if="line.is_reversal" dense color="orange-2" text-color="orange-9" label="Reversal" class="q-ml-xs" />
               </td>
-              <td class="text-right">{{ formatAmountBdt(line.amount) }}</td>
+              <td
+                class="text-right"
+                :class="{ 'text-negative': isCashbookLedgerDeduction(line.type) }"
+              >
+                {{ formatAmountBdt(line.amount) }}
+              </td>
               <td class="text-right">{{ line.balance_after == null ? '—' : formatAmountBdt(line.balance_after) }}</td>
               <td class="text-caption">{{ line.cashbook_point_name || '—' }}</td>
               <td class="text-caption">{{ line.source_type || '—' }}</td>
@@ -84,6 +89,11 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 import { useCashbookPartyQuery } from '../composables/useCashbookPartyQuery';
 import { type CashbookLedgerRow } from '../repositories/cashbookRepository';
+import {
+  formatCashbookLedgerDate,
+  formatCashbookLedgerType,
+  isCashbookLedgerDeduction,
+} from '../utils/cashbookLedgerDisplay';
 
 const LEDGER_PAGE = 50;
 const ALLOWED_TYPES = new Set(['tenant', 'customer', 'courier', 'vendor']);
@@ -158,14 +168,6 @@ const onSearch = (value: string | number | null) => {
   searchTimer = setTimeout(() => {
     debouncedSearch.value = v.trim();
   }, 300);
-};
-
-const formatDate = (iso: string) => {
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
 };
 
 const routeParams = () => {

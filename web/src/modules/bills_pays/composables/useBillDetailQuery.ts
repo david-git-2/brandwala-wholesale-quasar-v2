@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { listBillLinesForInvoice } from '../repositories/billLinesRepository';
 
@@ -24,13 +25,22 @@ function isAdjustmentBill(inv: { document_kind?: string | null } | undefined): b
   return kind !== 'standard';
 }
 
-export function useBillDetailQuery(billId: Ref<number | null>) {
+export function useBillDetailQuery(
+  billId: Ref<number | null>,
+  invoice?: Ref<GlobalInvoiceDetail | undefined>,
+) {
+  const usesBundle = computed(() => invoice !== undefined);
+
   const detailQuery = useQuery({
     queryKey: computed(() => billsQueryKeys.detail(billId.value)),
     queryFn: () => invoiceRepository.getGlobalInvoiceById(billId.value!),
-    enabled: computed(() => billId.value != null && billId.value > 0),
+    enabled: computed(
+      () => !usesBundle.value && billId.value != null && billId.value > 0,
+    ),
     staleTime: 30_000,
   });
+
+  const invoiceData = computed(() => invoice?.value ?? detailQuery.data.value);
 
   const itemsQuery = useQuery({
     queryKey: computed(() => billsQueryKeys.items(billId.value)),
@@ -38,7 +48,7 @@ export function useBillDetailQuery(billId: Ref<number | null>) {
     enabled: computed(() => {
       const id = billId.value;
       if (id == null || id <= 0) return false;
-      const inv = detailQuery.data.value;
+      const inv = invoiceData.value;
       if (!inv) return false;
       return shouldLoadStockLines(inv);
     }),
@@ -51,7 +61,7 @@ export function useBillDetailQuery(billId: Ref<number | null>) {
     enabled: computed(() => {
       const id = billId.value;
       if (id == null || id <= 0) return false;
-      const inv = detailQuery.data.value;
+      const inv = invoiceData.value;
       if (!inv) return false;
       return isAdjustmentBill(inv);
     }),

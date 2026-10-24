@@ -18,8 +18,7 @@ export function useIssueApBillMutation(billId: () => number | null) {
       showSuccessNotification('Invoice issued.');
       void queryClient.invalidateQueries({ queryKey: billsQueryKeys.root });
       if (id) {
-        void queryClient.invalidateQueries({ queryKey: billsQueryKeys.detail(id) });
-        void queryClient.invalidateQueries({ queryKey: [...billsQueryKeys.detail(id), 'net-balances'] });
+        void queryClient.invalidateQueries({ queryKey: billsQueryKeys.detailBundle(id) });
         void queryClient.invalidateQueries({ queryKey: billsQueryKeys.items(id) });
       }
     },

@@ -71,6 +71,17 @@
       </div>
 
       <div
+        v-else-if="!rows.length && statusPill === 'draft'"
+        class="column items-center justify-center q-pa-xl text-grey-6 col invoice-list-card"
+      >
+        <q-icon name="ph ph-file-dashed" size="48px" class="q-mb-sm text-grey-4" />
+        <div class="text-subtitle1 text-weight-bold text-slate-800">No draft bills</div>
+        <div class="text-caption text-grey-6 q-mt-xs">
+          Unissued bills from compose or open shipment costs appear here.
+        </div>
+      </div>
+
+      <div
         v-else-if="!rows.length"
         class="column items-center justify-center text-grey-7 q-py-xl col invoice-list-card"
       >
@@ -109,7 +120,7 @@ import BillListRow from '../components/BillListRow.vue';
 import { useBillsListQuery } from '../composables/useBillsListQuery';
 import type { GlobalInvoiceRow } from 'src/modules/sales_invoice/types';
 
-type StatusPill = 'all' | 'due' | 'partial' | 'paid' | 'voided';
+type StatusPill = 'all' | 'draft' | 'due' | 'partial' | 'paid' | 'voided';
 type ArSide = 'they_owe' | 'we_owe';
 
 const PAGE_SIZE = 25;
@@ -134,6 +145,7 @@ const arTabs: { label: string; value: ArSide }[] = [
 
 const filterTabs: { label: string; value: StatusPill }[] = [
   { label: 'All', value: 'all' },
+  { label: 'Draft', value: 'draft' },
   { label: 'Due', value: 'due' },
   { label: 'Partial', value: 'partial' },
   { label: 'Paid', value: 'paid' },
@@ -161,6 +173,8 @@ const listParams = computed(() => {
     arSide: arSide.value,
   };
   switch (statusPill.value) {
+    case 'draft':
+      return { ...base, invoiceStatus: 'draft' };
     case 'due':
       return { ...base, invoiceStatus: 'issued', paymentStatus: 'due' };
     case 'partial':
@@ -245,6 +259,20 @@ const goBrands = () => {
 
 const openBill = (row: GlobalInvoiceRow) => {
   const tenantSlug = tenantSlugParam();
+  const detailRoute = {
+    name: 'app-bill-detail-page' as const,
+    params: {
+      ...(tenantSlug ? { tenantSlug } : {}),
+      billId: String(row.id),
+    },
+  };
+
+  // Shipment AP and other payables are not edited on the AR compose desk.
+  if (row.invoice_type === 'ap') {
+    router.push(detailRoute);
+    return;
+  }
+
   const isDraft =
     row.invoice_status === 'draft' || row.invoice_status === 'proforma_generated';
   if (isDraft) {
@@ -255,13 +283,7 @@ const openBill = (row: GlobalInvoiceRow) => {
     });
     return;
   }
-  router.push({
-    name: 'app-bill-detail-page',
-    params: {
-      ...(tenantSlug ? { tenantSlug } : {}),
-      billId: String(row.id),
-    },
-  });
+  router.push(detailRoute);
 };
 </script>
 

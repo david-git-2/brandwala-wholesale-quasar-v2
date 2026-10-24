@@ -83,12 +83,7 @@ export function useCreateBillAdjustmentMutation(parentBillId: () => number | nul
       void queryClient.invalidateQueries({ queryKey: billsQueryKeys.root });
       void queryClient.invalidateQueries({ queryKey: paysQueryKeys.root });
       if (id) {
-        void queryClient.invalidateQueries({ queryKey: billsQueryKeys.detail(id) });
-        void queryClient.invalidateQueries({
-          queryKey: [...billsQueryKeys.detail(id), 'net-balances'],
-        });
-        void queryClient.invalidateQueries({ queryKey: billsQueryKeys.adjustments(id) });
-        void queryClient.invalidateQueries({ queryKey: billsQueryKeys.paymentHistory(id) });
+        void queryClient.invalidateQueries({ queryKey: billsQueryKeys.detailBundle(id) });
         void queryClient.invalidateQueries({
           queryKey: [...billsQueryKeys.detail(id), 'bill-lines'],
         });

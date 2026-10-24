@@ -1,27 +1,211 @@
 <template>
   <q-dialog :model-value="modelValue" persistent @update:model-value="emit('update:modelValue', $event)">
-    <q-card class="record-bill-payment-card" style="width: min(480px, 92vw)">
+    <q-card class="record-bill-payment-card" style="width: min(440px, 92vw)">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6 text-weight-bold">{{ isAp ? 'Pay out' : 'Collect payment' }}</div>
         <q-space />
         <q-btn flat round dense icon="ph ph-x" aria-label="Close" @click="close" />
       </q-card-section>
 
-      <q-card-section class="q-gutter-y-md q-pt-sm">
-        <div class="text-body2 text-weight-bold record-bill-payment-due">
-          Due on this bill:
-          <span class="font-mono">{{ dueAmountDisplay }}</span>
-        </div>
-        <div v-if="paymentOverDue" class="text-caption text-grey-8">
-          {{ formatAmountBdt(allocToBill) }} applies to this bill.
-          {{ formatAmountBdt(paymentLeftover) }} stays unallocated on the payment.
+      <q-card-section class="q-pt-sm">
+        <div class="record-bill-payment-form">
+        <div class="record-bill-payment-summary">
+          <div class="text-caption text-grey-7">Due on this bill</div>
+          <div class="text-subtitle1 text-weight-bold font-mono q-mt-xs">{{ dueAmountDisplay }}</div>
+          <div
+            v-if="isAp && payFromPotId && !showApPayFromField"
+            class="text-caption text-grey-7 q-mt-xs"
+          >
+            Pay from {{ payFromPotLabel }}
+          </div>
         </div>
 
-        <BillDialogField label="Payment date">
-          <q-input v-model="paidOn" outlined dense mask="####-##-##" hide-bottom-space>
-            <template #prepend>
-              <BillDialogFieldIcon name="ph ph-calendar-blank" />
-            </template>
+        <div v-if="paymentOverDue" class="text-caption text-grey-8">
+          {{ formatAmountBdt(allocToBill) }} on this bill ·
+          {{ formatAmountBdt(paymentLeftover) }} unallocated
+        </div>
+
+        <template v-if="isAp">
+          <q-select
+            v-if="showApPaymentCurrencySelect"
+            v-model="apPaymentCurrency"
+            :options="settlementCurrencyOptions"
+            emit-value
+            map-options
+            outlined
+            dense
+            hide-bottom-space
+            label="Payment currency"
+          />
+
+          <div
+            v-if="apNeedsSeparateBooksFx"
+            class="record-bill-payment-split record-bill-payment-split--wide-narrow"
+          >
+              <q-input
+                v-model.number="apForeignAmount"
+                outlined
+                dense
+                type="number"
+                step="0.01"
+                min="0"
+                hide-bottom-space
+                :label="`Amount (${apPaymentCurrency})`"
+                class="record-bill-payment-amount"
+              />
+              <q-input
+                v-model.number="apBooksExchangeRate"
+                outlined
+                dense
+                type="number"
+                step="0.0001"
+                min="0"
+                hide-bottom-space
+                :label="apBooksCashRateLabel"
+              />
+          </div>
+          <template v-else-if="apNeedsBooksFx">
+            <div
+              v-if="apNeedsCurrencyShift"
+              class="record-bill-payment-split record-bill-payment-split--wide-narrow"
+            >
+              <q-input
+                v-model.number="apForeignAmount"
+                outlined
+                dense
+                type="number"
+                step="0.01"
+                min="0"
+                hide-bottom-space
+                :label="`Amount (${apPaymentCurrency})`"
+                class="record-bill-payment-amount"
+              />
+              <q-input
+                v-model.number="apTransactionRate"
+                outlined
+                dense
+                type="number"
+                step="0.0001"
+                min="0"
+                hide-bottom-space
+                :label="apPotCashRateLabel"
+              />
+            </div>
+            <q-input
+              v-else
+              v-model.number="apForeignAmount"
+              outlined
+              dense
+              type="number"
+              step="0.01"
+              min="0"
+              hide-bottom-space
+              :label="`Amount (${apPaymentCurrency})`"
+              class="record-bill-payment-amount"
+            />
+          </template>
+          <q-input
+            v-else
+            v-model.number="amountBdt"
+            outlined
+            dense
+            type="number"
+            step="0.01"
+            min="0"
+            hide-bottom-space
+            :label="`Amount (${booksCurrencyCode})`"
+            class="record-bill-payment-amount"
+          />
+
+          <div
+            v-if="apNeedsBooksFx && apComputedBooksBdt != null"
+            class="text-caption text-grey-7"
+          >
+            In books ({{ booksCurrencyCode }}): {{ formatAmountBdt(apComputedBooksBdt) }}
+          </div>
+
+          <q-select
+            v-if="showApPayFromField"
+            v-model="payFromPotId"
+            :options="payFromOptions"
+            emit-value
+            map-options
+            outlined
+            dense
+            hide-bottom-space
+            label="Pay from"
+            :loading="payFromLoading"
+          />
+        </template>
+
+        <template v-else>
+          <q-select
+            v-if="collectNeedsBooksFx || settlementCurrencyOptions.length > 1"
+            v-model="settlementCurrency"
+            :options="settlementCurrencyOptions"
+            emit-value
+            map-options
+            outlined
+            dense
+            hide-bottom-space
+            label="Payment currency"
+          />
+          <div
+            v-if="collectNeedsBooksFx"
+            class="record-bill-payment-split record-bill-payment-split--wide-narrow"
+          >
+              <q-input
+                v-model.number="foreignAmount"
+                outlined
+                dense
+                type="number"
+                step="0.01"
+                min="0"
+                hide-bottom-space
+                :label="`Amount (${settlementCurrency})`"
+                class="record-bill-payment-amount"
+              />
+              <q-input
+                v-model.number="exchangeRate"
+                outlined
+                dense
+                type="number"
+                step="0.0001"
+                min="0"
+                hide-bottom-space
+                :label="`${booksCurrencyCode} per 1 ${settlementCurrency}`"
+              />
+          </div>
+          <q-input
+            v-else
+            v-model.number="amountBdt"
+            outlined
+            dense
+            type="number"
+            step="0.01"
+            min="0"
+            hide-bottom-space
+            :label="`Amount (${booksCurrencyCode})`"
+            class="record-bill-payment-amount"
+          />
+          <div
+            v-if="collectNeedsBooksFx && computedBdtAmount != null"
+            class="text-caption text-grey-7"
+          >
+            In books ({{ booksCurrencyCode }}): {{ formatAmountBdt(computedBdtAmount) }}
+          </div>
+        </template>
+
+        <div class="record-bill-payment-split">
+          <q-input
+            v-model="paidOn"
+            outlined
+            dense
+            stack-label
+            mask="####-##-##"
+            hide-bottom-space
+            label="Date"
+          >
             <template #append>
               <q-icon name="ph ph-calendar" class="cursor-pointer">
                 <q-popup-proxy cover transition-show="scale" transition-hide="scale">
@@ -30,207 +214,6 @@
               </q-icon>
             </template>
           </q-input>
-        </BillDialogField>
-
-        <BillDialogField
-          v-if="isAp"
-          label="Pay from (location & currency)"
-          hint="Till, safe, or bank — and which cash pot"
-        >
-          <q-select
-            v-model="payFromPotId"
-            :options="payFromOptions"
-            emit-value
-            map-options
-            outlined
-            dense
-            hide-bottom-space
-            :loading="payFromLoading"
-          >
-            <template #prepend>
-              <BillDialogFieldIcon name="ph ph-wallet" />
-            </template>
-          </q-select>
-        </BillDialogField>
-
-        <template v-if="isAp">
-          <BillDialogField label="Payment currency" hint="Currency you record this pay-out in">
-            <q-select
-              v-model="apPaymentCurrency"
-              :options="settlementCurrencyOptions"
-              emit-value
-              map-options
-              outlined
-              dense
-              hide-bottom-space
-            >
-              <template #prepend>
-                <BillDialogFieldIcon name="ph ph-coins" />
-              </template>
-            </q-select>
-          </BillDialogField>
-          <p v-if="apNeedsCurrencyShift" class="text-caption text-grey-7 q-mb-none">
-            {{ apCurrencyShiftHint }}
-          </p>
-          <template v-if="apNeedsSeparateBooksFx">
-            <BillDialogField :label="`Amount (${apPaymentCurrency})`">
-              <q-input
-                v-model.number="apForeignAmount"
-                outlined
-                dense
-                type="number"
-                step="0.01"
-                hide-bottom-space
-              >
-                <template #prepend>
-                  <BillDialogFieldIcon name="ph ph-money" />
-                </template>
-              </q-input>
-            </BillDialogField>
-            <BillDialogField :label="apBooksCashRateLabel">
-              <q-input
-                v-model.number="apBooksExchangeRate"
-                outlined
-                dense
-                type="number"
-                step="0.0001"
-                hide-bottom-space
-              >
-                <template #prepend>
-                  <BillDialogFieldIcon name="ph ph-arrows-left-right" />
-                </template>
-              </q-input>
-            </BillDialogField>
-          </template>
-          <template v-else-if="apNeedsBooksFx">
-            <BillDialogField :label="`Amount (${apPaymentCurrency})`">
-              <q-input
-                v-model.number="apForeignAmount"
-                outlined
-                dense
-                type="number"
-                step="0.01"
-                hide-bottom-space
-              >
-                <template #prepend>
-                  <BillDialogFieldIcon name="ph ph-money" />
-                </template>
-              </q-input>
-            </BillDialogField>
-          </template>
-          <BillDialogField
-            v-if="apNeedsCurrencyShift"
-            :label="apPotCashRateLabel"
-            :hint="
-              apNeedsBooksFx && !apNeedsSeparateBooksFx
-                ? `Also converts to ${booksCurrencyCode} in the books`
-                : 'How much pot cash per 1 unit of payment currency'
-            "
-          >
-            <q-input
-              v-model.number="apTransactionRate"
-              outlined
-              dense
-              type="number"
-              step="0.0001"
-              hide-bottom-space
-            >
-              <template #prepend>
-                <BillDialogFieldIcon name="ph ph-arrows-left-right" />
-              </template>
-            </q-input>
-          </BillDialogField>
-          <div
-            v-if="apNeedsBooksFx && apComputedBooksBdt != null"
-            class="text-caption text-grey-8"
-          >
-            Books ({{ booksCurrencyCode }}): {{ formatAmountBdt(apComputedBooksBdt) }}
-          </div>
-          <BillDialogField v-if="!apNeedsBooksFx" :label="`Payment amount (${booksCurrencyCode})`">
-            <q-input
-              v-model.number="amountBdt"
-              outlined
-              dense
-              type="number"
-              step="0.01"
-              hide-bottom-space
-            >
-              <template #prepend>
-                <BillDialogFieldIcon name="ph ph-money" />
-              </template>
-            </q-input>
-          </BillDialogField>
-        </template>
-
-        <template v-else>
-          <BillDialogField label="Payment currency">
-            <q-select
-              v-model="settlementCurrency"
-              :options="settlementCurrencyOptions"
-              emit-value
-              map-options
-              outlined
-              dense
-              hide-bottom-space
-            >
-              <template #prepend>
-                <BillDialogFieldIcon name="ph ph-coins" />
-              </template>
-            </q-select>
-          </BillDialogField>
-          <template v-if="collectNeedsBooksFx">
-            <BillDialogField :label="`Amount (${settlementCurrency})`">
-              <q-input
-                v-model.number="foreignAmount"
-                outlined
-                dense
-                type="number"
-                step="0.01"
-                hide-bottom-space
-              >
-                <template #prepend>
-                  <BillDialogFieldIcon name="ph ph-money" />
-                </template>
-              </q-input>
-            </BillDialogField>
-            <BillDialogField :label="`${booksCurrencyCode} rate (per 1 ${settlementCurrency})`">
-              <q-input
-                v-model.number="exchangeRate"
-                outlined
-                dense
-                type="number"
-                step="0.0001"
-                hide-bottom-space
-              >
-                <template #prepend>
-                  <BillDialogFieldIcon name="ph ph-arrows-left-right" />
-                </template>
-              </q-input>
-            </BillDialogField>
-          </template>
-          <div
-            v-if="collectNeedsBooksFx && computedBdtAmount != null"
-            class="text-caption text-grey-8"
-          >
-            Books ({{ booksCurrencyCode }}): {{ formatAmountBdt(computedBdtAmount) }}
-          </div>
-          <BillDialogField v-if="!collectNeedsBooksFx" :label="`Payment amount (${booksCurrencyCode})`">
-            <q-input
-              v-model.number="amountBdt"
-              outlined
-              dense
-              type="number"
-              step="0.01"
-              hide-bottom-space
-            >
-              <template #prepend>
-                <BillDialogFieldIcon name="ph ph-money" />
-              </template>
-            </q-input>
-          </BillDialogField>
-        </template>
-
-        <BillDialogField label="Method">
           <q-select
             v-model="methodCode"
             :options="methodOptions"
@@ -239,16 +222,13 @@
             outlined
             dense
             hide-bottom-space
+            :label="isAp ? 'Method' : 'How they paid'"
             :loading="loadingPaymentMeta"
-          >
-            <template #prepend>
-              <BillDialogFieldIcon name="ph ph-credit-card" />
-            </template>
-          </q-select>
-        </BillDialogField>
+            :disable="loadingPaymentMeta && !methodOptions.length"
+          />
+        </div>
 
         <PaymentInstrumentExtrasFields
-          external-labels
           :method-code="methodCode"
           :method-options="methodOptions"
           :bd-bank-options="bdBankOptions"
@@ -263,20 +243,34 @@
           @update:instrument-reference="instrumentReference = $event"
         />
 
-        <BillDialogField label="Payment reference (optional)">
-          <q-input v-model="reference" outlined dense clearable hide-bottom-space>
-            <template #prepend>
-              <BillDialogFieldIcon name="ph ph-hash" />
-            </template>
-          </q-input>
-        </BillDialogField>
-        <BillDialogField label="Notes">
-          <q-input v-model="note" outlined dense type="textarea" autogrow hide-bottom-space>
-            <template #prepend>
-              <BillDialogFieldIcon name="ph ph-note" />
-            </template>
-          </q-input>
-        </BillDialogField>
+        <q-expansion-item
+          class="record-bill-payment-more"
+          dense
+          dense-toggle
+          expand-icon-class="text-grey-7"
+          header-class="record-bill-payment-more-header"
+          label="Reference & note (optional)"
+        >
+          <div class="q-gutter-y-sm q-pt-xs">
+            <q-input
+              v-model="reference"
+              outlined
+              dense
+              clearable
+              hide-bottom-space
+              label="Reference"
+            />
+            <q-input
+              v-model="note"
+              outlined
+              dense
+              autogrow
+              hide-bottom-space
+              label="Note"
+            />
+          </div>
+        </q-expansion-item>
+        </div>
       </q-card-section>
 
       <q-card-actions align="right" class="q-pa-md q-pt-none">
@@ -301,8 +295,6 @@
 import { computed, ref, watch } from 'vue';
 import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { formatAmountBdt, formatSettlementCurrencyAmount } from 'src/utils/currency';
-import BillDialogField from './BillDialogField.vue';
-import BillDialogFieldIcon from './BillDialogFieldIcon.vue';
 import PaymentInstrumentExtrasFields from './PaymentInstrumentExtrasFields.vue';
 import { useWholesalePaymentMethodMeta } from '../composables/useWholesalePaymentMethodMeta';
 import { useApPayoutFxFields } from '../composables/useApPayoutFxFields';
@@ -409,9 +401,7 @@ const {
   foreignAmount: apForeignAmount,
   booksExchangeRate: apBooksExchangeRate,
   transactionRate: apTransactionRate,
-  needsTransactionRate: apNeedsTransactionRate,
   needsCurrencyShift: apNeedsCurrencyShift,
-  currencyShiftHint: apCurrencyShiftHint,
   potCashRateLabel: apPotCashRateLabel,
   booksCashRateLabel: apBooksCashRateLabel,
   needsBooksFx: apNeedsBooksFx,
@@ -422,6 +412,19 @@ const {
   settlementFxPayload: apSettlementFxPayload,
   sourceFxPayload: apSourceFxPayload,
 } = useApPayoutFxFields(sourceCurrencyCode, amountBdt, booksCurrencyCode);
+
+const showApPayFromField = computed(() => payFromOptions.value.length > 1);
+
+const showApPaymentCurrencySelect = computed(() => {
+  if (!props.isAp) return false;
+  return apBillCurrencyGroups(props.channelMeta ?? null).length > 1;
+});
+
+const payFromPotLabel = computed(() => {
+  const id = payFromPotId.value;
+  const row = payFromOptions.value.find((o) => o.value === id);
+  return row?.label ?? '';
+});
 
 const { data: currenciesData } = useGlobalCurrenciesQuery();
 
@@ -460,9 +463,12 @@ watch([settlementCurrency, foreignAmount, exchangeRate], () => {
   }
 });
 
-watch(payFromPotId, () => {
-  if (props.isAp) resetApFxAmounts();
-  else {
+watch(sourceCurrencyCode, (next, prev) => {
+  if (prev === next) return;
+  if (props.isAp) {
+    if (payFromPotId.value == null) return;
+    resetApFxAmounts();
+  } else {
     foreignAmount.value = null;
     exchangeRate.value = null;
   }
@@ -511,6 +517,14 @@ const resetForm = () => {
   if (props.isAp) {
     apPaymentCurrency.value = defaultPayCur;
     resetApFxAmounts();
+    const due = Number(props.dueAmount) || 0;
+    if (due > 0 && currenciesMatch(billDueCurrencyCode.value, defaultPayCur)) {
+      if (!currenciesMatch(defaultPayCur, booksCurrencyCode.value)) {
+        apForeignAmount.value = due;
+      } else {
+        amountBdt.value = due;
+      }
+    }
   }
   foreignAmount.value = null;
   exchangeRate.value = null;
@@ -536,6 +550,7 @@ watch(
       resetForm();
     }
   },
+  { immediate: true },
 );
 
 const booksDueBdt = computed(() => {
@@ -622,3 +637,54 @@ const submit = () => {
   });
 };
 </script>
+
+<style scoped lang="scss">
+.record-bill-payment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  :deep(.q-field) {
+    margin-bottom: 0;
+  }
+}
+
+.record-bill-payment-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.record-bill-payment-split--wide-narrow {
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+}
+
+.record-bill-payment-summary {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--tf-surface-muted, rgba(0, 0, 0, 0.04));
+}
+
+.record-bill-payment-amount :deep(.q-field__native) {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.record-bill-payment-more {
+  :deep(.q-expansion-item__border) {
+    display: none;
+  }
+
+  :deep(.q-item) {
+    padding: 0;
+    min-height: 32px;
+  }
+}
+
+.record-bill-payment-more-header {
+  min-height: 32px;
+  padding-left: 0;
+  padding-right: 0;
+}
+</style>

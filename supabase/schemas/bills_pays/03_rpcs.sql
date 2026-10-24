@@ -2681,6 +2681,86 @@ $$;
 
 ALTER FUNCTION "public"."get_bill_net_balances"("p_bill_id" bigint) OWNER TO "postgres";
 
+CREATE OR REPLACE FUNCTION "public"."get_bill_detail_bundle"("p_tenant_id" bigint, "p_bill_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_parent_id bigint;
+  v_bill public.bills;
+  v_bill_json jsonb;
+  v_adjustments jsonb := '[]'::jsonb;
+begin
+  if p_tenant_id is null or p_bill_id is null then
+    raise exception 'Tenant and bill are required.';
+  end if;
+
+  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+
+  select * into v_bill from public.bills where id = p_bill_id;
+  if v_bill.id is null then
+    raise exception 'bill not found';
+  end if;
+
+  if not (v_bill.parent_tenant_id = v_parent_id or v_bill.issued_by_tenant_id = p_tenant_id) then
+    raise exception 'Invoice not found for this tenant.';
+  end if;
+
+  v_bill_json := row_to_json(v_bill)::jsonb
+    || jsonb_build_object(
+      'profiles', (
+        select jsonb_build_object(
+          'id', p.id,
+          'name', p.name,
+          'email', p.email,
+          'phone', p.phone,
+          'address', p.address,
+          'color', p.accent_color
+        )
+        from public.profiles p
+        where p.id = v_bill.profile_id
+      ),
+      'from_profile', (
+        select jsonb_build_object(
+          'id', p.id,
+          'name', p.name,
+          'email', p.email,
+          'phone', p.phone,
+          'address', p.address
+        )
+        from public.profiles p
+        where p.id = v_bill.from_profile_id
+      ),
+      'to_profile', (
+        select jsonb_build_object(
+          'id', p.id,
+          'name', p.name,
+          'email', p.email,
+          'phone', p.phone,
+          'address', p.address
+        )
+        from public.profiles p
+        where p.id = v_bill.to_profile_id
+      )
+    );
+
+  if v_bill.document_kind = 'standard'::public.bill_document_kind then
+    select coalesce(jsonb_agg(row_to_json(adj)), '[]'::jsonb)
+    into v_adjustments
+    from public.list_bill_adjustments(p_bill_id) as adj;
+  end if;
+
+  return jsonb_build_object(
+    'bill', v_bill_json,
+    'payment_history', public.list_invoice_payment_history(p_tenant_id, p_bill_id),
+    'net_balances', public.get_bill_net_balances(p_bill_id),
+    'adjustments', v_adjustments
+  );
+end;
+$$;
+
+ALTER FUNCTION "public"."get_bill_detail_bundle"("p_tenant_id" bigint, "p_bill_id" bigint) OWNER TO "postgres";
+
 CREATE OR REPLACE FUNCTION "public"."get_payee_settlement_summary"("p_tenant_id" bigint, "p_shipment_id" bigint, "p_entity_type" "text", "p_entity_id" bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -6443,6 +6523,55 @@ end;
 $$;
 
 ALTER FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_source_currency_code" "text" DEFAULT NULL::"text", "p_transaction_rate" numeric DEFAULT NULL::numeric, "p_cashbook_point_pot_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_pay public.pays;
+  v_bill_id bigint;
+begin
+  v_pay := public.post_ap_payout_with_allocations(
+    p_tenant_id,
+    p_profile_id,
+    p_paid_on,
+    p_cashbook_point_id,
+    p_note,
+    p_reference,
+    p_instruments,
+    p_allocations,
+    p_settlement_currency_code,
+    p_foreign_amount,
+    p_exchange_rate,
+    p_source_currency_code,
+    p_transaction_rate,
+    p_cashbook_point_pot_id
+  );
+
+  v_bill_id := null;
+  if p_allocations is not null and jsonb_typeof(p_allocations) = 'array' then
+    select (elem->>'bill_id')::bigint
+    into v_bill_id
+    from jsonb_array_elements(p_allocations) as elem
+    where nullif(trim(elem->>'bill_id'), '') is not null
+    limit 1;
+  end if;
+
+  if v_bill_id is null then
+    return jsonb_build_object('pay', to_jsonb(v_pay));
+  end if;
+
+  return jsonb_build_object(
+    'pay', to_jsonb(v_pay),
+    'bill', (select to_jsonb(b) from public.bills b where b.id = v_bill_id),
+    'net_balances', public.get_bill_net_balances(v_bill_id),
+    'payment_history', public.list_invoice_payment_history(p_tenant_id, v_bill_id)
+  );
+end;
+$$;
+
+ALTER FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."post_global_invoice"("p_invoice_id" bigint) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER

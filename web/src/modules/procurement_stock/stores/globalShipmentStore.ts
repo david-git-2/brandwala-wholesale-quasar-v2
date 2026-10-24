@@ -149,6 +149,8 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     currentShipmentSummary: null as ShipmentSummaryKPIs | null,
     costEntriesLoading: false,
     settingsFinanceLoading: false,
+    /** Bumped after `sync_shipment_ap_bills` so settings drawer can refresh AP bill chips. */
+    shipmentApBillsSyncGeneration: 0,
     costEntriesSaving: false,
     localCostsLoading: false,
     localCostsSaving: false,
@@ -430,6 +432,9 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     async syncShipmentApBillsQuiet(shipmentId: number) {
       try {
         await syncShipmentApBills(shipmentId);
+        if (this.currentShipment?.id === shipmentId) {
+          this.shipmentApBillsSyncGeneration += 1;
+        }
       } catch (err: unknown) {
         console.warn('sync_shipment_ap_bills failed', err);
       }
@@ -1088,16 +1093,29 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       shipmentId: number,
       itemsOrder: { id: number; sort_order: number }[],
     ) {
-      this.loading = true;
+      const orderMap = new Map(itemsOrder.map((row) => [row.id, row.sort_order]));
+      const canPatchLocal =
+        this.currentShipment?.id === shipmentId && this.currentShipmentItems.length > 0;
+      const previousItems = canPatchLocal ? [...this.currentShipmentItems] : null;
+
+      if (canPatchLocal && previousItems) {
+        this.currentShipmentItems = previousItems
+          .map((item) => ({
+            ...item,
+            sort_order: orderMap.get(item.id) ?? item.sort_order ?? 0,
+          }))
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      }
+
       this.error = null;
       try {
         await globalShipmentRepository.updateShipmentItemsOrder(itemsOrder);
-        await this.fetchShipmentDetails(shipmentId);
       } catch (err: unknown) {
+        if (previousItems) {
+          this.currentShipmentItems = previousItems;
+        }
         this.error = (err as Error).message || 'Failed to reorder shipment items';
         throw err;
-      } finally {
-        this.loading = false;
       }
     },
 
@@ -1761,6 +1779,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         const shipmentId = this.currentShipment?.id;
         if (shipmentId) {
           this.currentShipmentItems = await reloadShipmentLineCosts(shipmentId);
+          await this.syncShipmentApBillsQuiet(shipmentId);
         }
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to delete cost entry';

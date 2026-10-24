@@ -17,7 +17,7 @@ export function useVoidBillMutation(billId: () => number | null) {
       showSuccessNotification('Bill voided.');
       void queryClient.invalidateQueries({ queryKey: billsQueryKeys.root });
       if (id) {
-        void queryClient.invalidateQueries({ queryKey: billsQueryKeys.detail(id) });
+        void queryClient.invalidateQueries({ queryKey: billsQueryKeys.detailBundle(id) });
         void queryClient.invalidateQueries({ queryKey: billsQueryKeys.items(id) });
       }
     },

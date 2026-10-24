@@ -7,6 +7,8 @@
     :initial-from-key="initialFromKey"
     :initial-to-key="initialToKey"
     :seed-parties="seedParties"
+    :load-parties-on-open="false"
+    simple-pay-flow
     @update:model-value="emit('update:modelValue', $event)"
     @posted="emit('posted')"
   />
@@ -43,8 +45,17 @@ const tenantKey = computed(() => payTransferPartyKey('tenant', props.booksTenant
 const profileKey = computed(() => payTransferPartyKey(props.entityType, props.partyId));
 
 const seedParties = computed((): PayTransferParty[] => {
-  if (props.entityType === 'tenant') return [];
+  const tenantParty: PayTransferParty = {
+    key: tenantKey.value,
+    entityType: 'tenant',
+    entityId: props.booksTenantId,
+    name: props.tenantName,
+    availableBalance: 0,
+    dueTotal: 0,
+  };
+  if (props.entityType === 'tenant') return [tenantParty];
   return [
+    tenantParty,
     {
       key: profileKey.value,
       entityType: props.entityType,

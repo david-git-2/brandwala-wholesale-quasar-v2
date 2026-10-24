@@ -38,19 +38,6 @@
         class="item-img-smart"
         fallback-icon="ph ph-t-shirt"
       />
-      <q-btn
-        v-if="item.image_url"
-        flat
-        round
-        dense
-        size="xs"
-        icon="ph ph-magnifying-glass-plus"
-        class="img-expand-btn"
-        aria-label="View large photo"
-        @click.stop="emit('preview-image', item.image_url)"
-      >
-        <q-tooltip>View large photo</q-tooltip>
-      </q-btn>
     </div>
 
     <div class="line-card__product">
@@ -442,7 +429,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   'toggle-select': [id: number, selected: boolean];
   'sl-change': [item: Record<string, any>, value: string];
-  'preview-image': [url: string];
   'cell-input': [item: Record<string, any>, field: string, val: string | number | null];
   'cell-blur': [item: Record<string, any>, field: string];
   'open-batch': [item: Record<string, any>];
@@ -903,13 +889,6 @@ const onExtraNumber = (
   width: 100% !important;
   height: 100% !important;
   object-fit: contain !important;
-}
-.img-expand-btn {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  background: rgba(15, 23, 42, 0.7);
-  color: #fff !important;
 }
 .sl-input {
   width: 32px;

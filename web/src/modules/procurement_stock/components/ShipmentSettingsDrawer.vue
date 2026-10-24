@@ -1003,14 +1003,19 @@
             <div class="col-6 col-sm-6">
               <q-select
                 v-model="addCostForm.currency_id"
-                :options="currencyOptions"
+                :options="addCostCurrencyOptions"
                 emit-value
                 map-options
                 label="Currency *"
                 dense
                 outlined
+                use-input
+                input-debounce="150"
+                fill-input
+                hide-selected
                 :error="addCostFormCurrencyError"
                 error-message="Currency is required"
+                @filter="filterAddCostCurrencies"
               />
             </div>
             <div class="col-6 col-sm-6">
@@ -1166,12 +1171,43 @@ const { data: currenciesData } = useGlobalCurrenciesQuery();
 const costBucketOptions = SHIPMENT_COST_BUCKET_SELECT_OPTIONS;
 const costComponentOptions = SHIPMENT_COST_COMPONENT_SELECT_OPTIONS;
 
-const currencyOptions = computed(() =>
-  (currenciesData.value ?? []).map((c) => ({
-    label: `${c.code} (${c.symbol})`,
-    value: c.id,
-  })),
+type CostCurrencySelectOption = {
+  label: string;
+  value: number;
+  code: string;
+  name: string;
+};
+
+const allCurrencyOptions = computed((): CostCurrencySelectOption[] =>
+  (currenciesData.value ?? [])
+    .filter((c) => c.is_active)
+    .map((c) => ({
+      label: `${c.code} (${c.symbol}) — ${c.name}`,
+      value: c.id,
+      code: c.code,
+      name: c.name,
+    }))
+    .sort((a, b) => a.code.localeCompare(b.code)),
 );
+
+const addCostCurrencyFilter = ref('');
+
+const addCostCurrencyOptions = computed(() => {
+  const needle = addCostCurrencyFilter.value.trim().toLowerCase();
+  if (!needle) return allCurrencyOptions.value;
+  return allCurrencyOptions.value.filter(
+    (o) =>
+      o.code.toLowerCase().includes(needle) ||
+      o.name.toLowerCase().includes(needle) ||
+      o.label.toLowerCase().includes(needle),
+  );
+});
+
+const filterAddCostCurrencies = (val: string, update: (fn: () => void) => void) => {
+  update(() => {
+    addCostCurrencyFilter.value = val;
+  });
+};
 
 const currencySymbolById = computed(() => {
   const map = new Map<number, string>();
@@ -1754,6 +1790,7 @@ const resetAddCostForm = () => {
   };
   addCostFormAmountError.value = false;
   addCostFormCurrencyError.value = false;
+  addCostCurrencyFilter.value = '';
 };
 
 const addCostDialogCurrencySymbol = computed(() =>
@@ -1871,11 +1908,18 @@ const canUseBucketInvoiceActions = computed(() => {
 
 const settingsFinanceLoadedForShipmentId = ref<number | null>(null);
 const settingsFinanceLoadInFlight = ref(false);
+const settingsFinanceRefreshQueued = ref(false);
+
+let settingsFinanceDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let settingsFinanceCooldownUntil = 0;
 
 const refreshSettingsFinanceBundle = async (options?: { force?: boolean }) => {
   const shipmentId = props.shipmentId;
   if (!props.modelValue || !shipmentId || Number.isNaN(shipmentId)) return;
-  if (settingsFinanceLoadInFlight.value) return;
+  if (settingsFinanceLoadInFlight.value) {
+    if (options?.force) settingsFinanceRefreshQueued.value = true;
+    return;
+  }
   if (!options?.force && settingsFinanceLoadedForShipmentId.value === shipmentId) return;
 
   apBillsLoading.value = true;
@@ -1886,6 +1930,7 @@ const refreshSettingsFinanceBundle = async (options?: { force?: boolean }) => {
     apBills.value = bills;
     apFxSnapshot.value = apFx;
     settingsFinanceLoadedForShipmentId.value = shipmentId;
+    settingsFinanceCooldownUntil = Date.now() + 800;
   } catch (err) {
     console.warn('loadSettingsFinanceBundle failed', err);
     apBills.value = [];
@@ -1894,7 +1939,23 @@ const refreshSettingsFinanceBundle = async (options?: { force?: boolean }) => {
     apBillsLoading.value = false;
     summaryFinanceLoading.value = false;
     settingsFinanceLoadInFlight.value = false;
+    if (settingsFinanceRefreshQueued.value) {
+      settingsFinanceRefreshQueued.value = false;
+      void refreshSettingsFinanceBundle({ force: true });
+    }
   }
+};
+
+const scheduleSettingsFinanceRefresh = () => {
+  if (!props.modelValue || !props.shipmentId || savingCosts.value) return;
+  if (settingsFinanceLoadInFlight.value) return;
+  if (Date.now() < settingsFinanceCooldownUntil) return;
+  if (settingsFinanceDebounceTimer) clearTimeout(settingsFinanceDebounceTimer);
+  settingsFinanceDebounceTimer = setTimeout(() => {
+    settingsFinanceDebounceTimer = null;
+    if (Date.now() < settingsFinanceCooldownUntil) return;
+    void refreshSettingsFinanceBundle({ force: true });
+  }, 400);
 };
 
 watch(
@@ -1905,8 +1966,24 @@ watch(
       return;
     }
     if (!shipmentId) return;
-    void refreshSettingsFinanceBundle();
+    void refreshSettingsFinanceBundle({ force: true });
   },
+);
+
+watch(
+  () => shipmentStore.shipmentApBillsSyncGeneration,
+  () => {
+    if (!props.modelValue) return;
+    scheduleSettingsFinanceRefresh();
+  },
+);
+
+watch(
+  () => [
+    shipmentStore.currentShipment?.purchase_invoice_total,
+    shipmentStore.currentShipment?.cargo_invoice_total,
+  ],
+  () => scheduleSettingsFinanceRefresh(),
 );
 
 const openApBill = (billId: number) => {
@@ -2015,6 +2092,7 @@ const adjustWeightDifference = async () => {
 
     // 3. Refresh details
     await shipmentStore.fetchShipmentDetails(props.shipmentId);
+    void refreshSettingsFinanceBundle({ force: true });
 
     $q.notify({
       type: 'positive',
@@ -2197,6 +2275,7 @@ const cancelDeleteHold = () => {
 
 onBeforeUnmount(() => {
   clearDeleteHold();
+  if (settingsFinanceDebounceTimer) clearTimeout(settingsFinanceDebounceTimer);
 });
 
 const openAddCostDialog = () => {
@@ -2264,7 +2343,6 @@ const confirmCostDialog = async () => {
   try {
     await shipmentStore.saveCostEntriesBatch(props.shipmentId, [payload], {});
     syncCostsFromStore();
-    void refreshSettingsFinanceBundle({ force: true });
     const wasEdit = editingRow != null;
     closeAddCostDialog();
     $q.notify({
@@ -2298,7 +2376,6 @@ const removeCostRow = async (index: number) => {
       costRowsList.value.splice(index, 0, removed);
       return;
     }
-    void refreshSettingsFinanceBundle({ force: true });
   }
 };
 

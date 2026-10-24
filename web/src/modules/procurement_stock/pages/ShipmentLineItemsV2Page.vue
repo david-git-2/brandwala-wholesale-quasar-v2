@@ -447,7 +447,6 @@
               :get-draft="(field) => getCellDraftValue(item, field)"
               @toggle-select="toggleRowSelection"
               @sl-change="onSlInputChange"
-              @preview-image="openImagePreview"
               @cell-input="onCellDirectInput"
               @cell-blur="onCellDirectBlur"
               @open-batch="openBatchCodeDialog"
@@ -651,30 +650,6 @@
       </div>
     </AppResizableOverlayPanel>
 
-    <!-- Image Preview Dialog -->
-    <q-dialog v-model="showImagePreviewDialog">
-      <q-card style="max-width: 90vw; max-height: 90vh; background: transparent; box-shadow: none" class="overflow-hidden">
-        <div class="relative-position">
-          <img
-            v-if="previewImageUrl"
-            :src="previewImageUrl"
-            style="max-width: 85vw; max-height: 85vh; object-fit: contain; border-radius: 12px; display: block"
-            alt="Product Preview"
-          />
-          <q-btn
-            v-close-popup
-            icon="ph ph-x"
-            flat
-            round
-            dense
-            color="white"
-            class="absolute-top-right q-ma-sm"
-            style="background: rgba(0, 0, 0, 0.6)"
-          />
-        </div>
-      </q-card>
-    </q-dialog>
-
     <ShipmentVendorDiscountDialog
       ref="vendorDiscountDialogRef"
       v-model="vendorDiscountDialogOpen"
@@ -729,6 +704,7 @@ import type { SectionFormData, SectionViewData } from '../types/shipmentSection'
 import ShipmentStatusWorkflowBar from '../components/ShipmentStatusWorkflowBar.vue';
 import { useInboundShipmentCalculations } from '../composables/useInboundShipmentCalculations';
 import { useInboundShipmentActions } from '../composables/useInboundShipmentActions';
+import { useInboundShipmentPageBreadcrumbs } from '../composables/useInboundShipmentPageBreadcrumbs';
 import {
   calculateLineLandedCostBdt,
   calculateLineLandedCostBreakdown,
@@ -812,6 +788,7 @@ const syncSettingsDrawerFromRoute = () => {
 };
 const shipmentStore = useGlobalShipmentStore();
 const shipmentId = Number(route.params.id);
+useInboundShipmentPageBreadcrumbs(shipmentId);
 
 const activeTab = ref<'lines' | 'balance' | 'cost' | 'receive'>('lines');
 const pageInitialLoading = computed(
@@ -981,8 +958,6 @@ const onSettingsDrawerTabChange = (tab: string) => {
 
 const showAddSectionDialog = ref(false);
 const showViewSectionDialog = ref(false);
-const showImagePreviewDialog = ref(false);
-const previewImageUrl = ref<string | null>(null);
 const isEditingSection = ref(false);
 const editingSectionData = ref<SectionFormData | null>(null);
 const viewingSectionData = ref<SectionViewData | null>(null);
@@ -2341,12 +2316,6 @@ const onCellDirectBlur = async (item: any, field: string) => {
   }
 };
 
-const openImagePreview = (url?: string | null) => {
-  if (!url) return;
-  previewImageUrl.value = url;
-  showImagePreviewDialog.value = true;
-};
-
 const onSlInputChange = async (item: any, newSlValue: any) => {
   const currentIndex = displayedItems.value.findIndex((it) => it.id === item.id);
   if (currentIndex === -1) return;
@@ -2382,7 +2351,6 @@ const onSlInputChange = async (item: any, newSlValue: any) => {
     }));
     try {
       await shipmentStore.reorderShipmentItems(shipmentId, itemsOrder);
-      await shipmentStore.fetchShipmentDetails(shipmentId);
       $q.notify({
         message: `Moved item to position #${targetPos}`,
         color: 'positive',
@@ -3138,21 +3106,6 @@ const removeSheet = async (id: string) => {
   max-height: 100% !important;
   object-fit: contain !important;
   object-position: center;
-}
-
-.img-expand-btn {
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  background: rgba(15, 23, 42, 0.7);
-  color: #FFFFFF !important;
-  padding: 2px !important;
-  opacity: 0;
-  transition: opacity 0.15s ease-in-out;
-}
-
-.item-img-container:hover .img-expand-btn {
-  opacity: 1;
 }
 
 .bulk-paste-overlay {

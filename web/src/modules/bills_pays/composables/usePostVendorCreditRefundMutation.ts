@@ -48,12 +48,7 @@ export function usePostVendorCreditRefundMutation(billId: () => number | null) {
         (id): id is number => id != null && id > 0,
       );
       for (const id of [...new Set(ids)]) {
-        void queryClient.invalidateQueries({ queryKey: billsQueryKeys.detail(id) });
-        void queryClient.invalidateQueries({
-          queryKey: [...billsQueryKeys.detail(id), 'net-balances'],
-        });
-        void queryClient.invalidateQueries({ queryKey: billsQueryKeys.adjustments(id) });
-        void queryClient.invalidateQueries({ queryKey: billsQueryKeys.paymentHistory(id) });
+        void queryClient.invalidateQueries({ queryKey: billsQueryKeys.detailBundle(id) });
       }
     },
     onError: (error: unknown) => {
