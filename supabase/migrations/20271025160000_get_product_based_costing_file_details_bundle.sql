@@ -1,0 +1,109 @@
+-- PBC file details page: file + summary + customers + items page + product catalog in one RPC.
+
+CREATE OR REPLACE FUNCTION public.get_product_based_costing_file_details_bundle(
+  p_file_id bigint,
+  p_limit integer DEFAULT 25,
+  p_cursor_sort_order integer DEFAULT NULL,
+  p_cursor_id bigint DEFAULT NULL,
+  p_conversion_rate numeric DEFAULT NULL,
+  p_cargo_rate_kg_gbp numeric DEFAULT NULL,
+  p_profit_rate numeric DEFAULT NULL,
+  p_vat_rate numeric DEFAULT NULL,
+  p_offer_pricing_mode text DEFAULT NULL
+) RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+DECLARE
+  v_is_first_page boolean;
+  v_tenant_id bigint;
+  v_file jsonb := NULL;
+  v_summary jsonb := NULL;
+  v_customers jsonb := NULL;
+  v_items jsonb;
+  v_catalog jsonb := '[]'::jsonb;
+BEGIN
+  IF NOT public.can_view_costing_item(p_file_id) THEN
+    RAISE EXCEPTION 'not authorized';
+  END IF;
+
+  v_is_first_page := (p_cursor_sort_order IS NULL AND p_cursor_id IS NULL);
+
+  v_items := public.list_product_based_costing_items(
+    p_file_id,
+    p_limit,
+    p_cursor_sort_order,
+    p_cursor_id
+  );
+
+  IF v_is_first_page THEN
+    SELECT to_jsonb(f.*), f.tenant_id
+    INTO v_file, v_tenant_id
+    FROM public.product_based_costing_files f
+    WHERE f.id = p_file_id;
+
+    v_summary := public.get_product_based_costing_file_summary(
+      p_file_id,
+      p_conversion_rate,
+      p_cargo_rate_kg_gbp,
+      p_profit_rate,
+      p_vat_rate,
+      p_offer_pricing_mode
+    );
+
+    IF v_tenant_id IS NOT NULL THEN
+      SELECT coalesce(
+        jsonb_agg(
+          jsonb_build_object(
+            'customer_group_id', ca.customer_group_id,
+            'group_name', ca.group_name
+          )
+          ORDER BY ca.customer_group_id DESC
+        ),
+        '[]'::jsonb
+      )
+      INTO v_customers
+      FROM public.list_customer_accounts(v_tenant_id, NULL::text) ca;
+    ELSE
+      v_customers := '[]'::jsonb;
+    END IF;
+  END IF;
+
+  SELECT coalesce(jsonb_agg(to_jsonb(p)), '[]'::jsonb)
+  INTO v_catalog
+  FROM (
+    SELECT
+      p.id AS product_id,
+      p.languages,
+      p.country_of_origin,
+      p.available_units,
+      p.batch_code_manufacture_date,
+      p.expire_date
+    FROM public.products p
+    WHERE p.id IN (
+      SELECT DISTINCT (elem->>'product_id')::bigint
+      FROM jsonb_array_elements(coalesce(v_items->'data', '[]'::jsonb)) elem
+      WHERE coalesce(elem->>'product_id', '') ~ '^[0-9]+$'
+        AND (elem->>'product_id')::bigint > 0
+    )
+  ) p;
+
+  RETURN jsonb_build_object(
+    'file', v_file,
+    'summary', v_summary,
+    'customers', v_customers,
+    'items', v_items,
+    'product_catalog', v_catalog
+  );
+END;
+$$;
+
+ALTER FUNCTION public.get_product_based_costing_file_details_bundle(
+  bigint, integer, integer, bigint, numeric, numeric, numeric, numeric, text
+) OWNER TO postgres;
+
+GRANT ALL ON FUNCTION public.get_product_based_costing_file_details_bundle(
+  bigint, integer, integer, bigint, numeric, numeric, numeric, numeric, text
+) TO authenticated;

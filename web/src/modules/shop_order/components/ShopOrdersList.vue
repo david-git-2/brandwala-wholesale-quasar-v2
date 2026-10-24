@@ -151,6 +151,19 @@
             </span>
           </div>
         </div>
+
+        <div v-if="hasNextPage" class="row justify-center q-py-sm">
+          <q-btn
+            flat
+            dense
+            no-caps
+            :loading="isFetchingNextPage"
+            class="load-more-btn text-weight-medium q-px-md"
+            :label="$t('common.load_more', 'Load more')"
+            icon="ph ph-arrow-down"
+            @click="emit('load-more')"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -172,11 +185,14 @@ const props = defineProps<{
   isDropshipShop?: (shopId: number) => boolean;
   isParentTenant?: boolean;
   isFiltered?: boolean;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'row-click', orderId: number): void;
   (e: 'add-to-dropship', orderId: number): void;
+  (e: 'load-more'): void;
   (e: 'clear-filters'): void;
 }>();
 

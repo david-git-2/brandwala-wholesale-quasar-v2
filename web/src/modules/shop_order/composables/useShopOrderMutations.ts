@@ -14,6 +14,7 @@ export function useProcessDropshipOrderMutation() {
       if (res.success) {
         showSuccessNotification('Order opened for processing.');
         void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
+        void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.staffOrdersPageRoot() });
         void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
         const tenantId = useAuthStore().tenantId ?? 0;
         void queryClient.invalidateQueries({
@@ -45,6 +46,7 @@ export function useUpdateOrderStatusMutation() {
         applyStaffOrderDetailToCache(queryClient, tenantId, variables.orderId, data);
       }
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
+        void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.staffOrdersPageRoot() });
     },
     onError: (err: any) => {
       handleApiFailure({ success: false }, err.message || 'Failed to update order status');
@@ -80,6 +82,7 @@ export function useSubmitStaffPricingMutation() {
         void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
       }
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
+        void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.staffOrdersPageRoot() });
     },
     onError: (err: any) => {
       handleApiFailure({ success: false }, err.message || 'Failed to submit pricing');
@@ -96,6 +99,7 @@ export function useConfirmShopOrderMutation() {
       showSuccessNotification('Order confirmed successfully.');
       void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
+        void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.staffOrdersPageRoot() });
     },
     onError: (err: any) => {
       handleApiFailure({ success: false }, err.message || 'Failed to confirm order');
@@ -112,6 +116,7 @@ export function usePlaceOrderForProcurementMutation() {
       showSuccessNotification('Order placed for procurement.');
       void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
+        void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.staffOrdersPageRoot() });
     },
     onError: (err: any) => {
       handleApiFailure({ success: false }, err.message || 'Failed to place order for procurement');
@@ -128,6 +133,7 @@ export function useFulfillOrderToInvoiceMutation() {
       showSuccessNotification('Order fulfilled to invoice successfully.');
       void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
+        void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.staffOrdersPageRoot() });
     },
     onError: (err: any) => {
       handleApiFailure({ success: false }, err.message || 'Failed to fulfill order to invoice');
@@ -181,6 +187,7 @@ export function useDeleteShopOrderMutation() {
       showSuccessNotification('Order deleted successfully.');
       void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
+        void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.staffOrdersPageRoot() });
     },
     onError: (err: any) => {
       handleApiFailure({ success: false }, err.message || 'Failed to delete order');
@@ -202,6 +209,7 @@ export function useCancelDropshipOrderMutation() {
         queryKey: shopOrderQueryKeys.dropshipDetailV2(authStore.tenantId ?? 0, variables.orderId),
       });
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
+        void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.staffOrdersPageRoot() });
     },
     onError: (err: unknown) => {
       handleApiFailure(

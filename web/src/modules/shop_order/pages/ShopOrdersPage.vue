@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
-    <ShopOrdersSkeleton v-if="isLoadingOrders && !ordersData?.length" />
+    <ShopOrdersSkeleton v-if="isLoadingOrders && !orders.length" />
 
     <div v-else class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
       <ShopOrdersFilters
@@ -10,6 +10,8 @@
         v-model:shop-type-filter="shopTypeFilter"
         :shops="shops"
         :shops-loading="isLoadingShops"
+        :refreshing="isRefreshing"
+        @refresh="refresh()"
       />
 
       <div class="col" style="min-height: 0">
@@ -20,9 +22,12 @@
           :is-dropship-shop="isDropshipShop"
           :is-parent-tenant="isParentTenant"
           :is-filtered="isFiltered"
+          :has-next-page="hasNextPage"
+          :is-fetching-next-page="isFetchingNextPage"
           @row-click="goToOrderDetails"
           @add-to-dropship="addToDropshipDesk"
           @clear-filters="clearAllFilters"
+          @load-more="fetchNextPage()"
         />
       </div>
     </div>
@@ -33,8 +38,7 @@
 import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useShopListQuery } from '../composables/useShopQuery';
-import { useStaffOrdersQuery } from '../composables/useStaffOrdersQuery';
+import { useShopOrdersStaffPageQuery } from '../composables/useShopOrdersStaffPageQuery';
 import { useProcessDropshipOrderMutation } from '../composables/useShopOrderMutations';
 import ShopOrdersFilters from '../components/ShopOrdersFilters.vue';
 import ShopOrdersList from '../components/ShopOrdersList.vue';
@@ -56,13 +60,6 @@ const isParentTenant = computed(() => {
 });
 
 const selectedShopId = ref<number | null>(null);
-
-const shopParams = computed(() => ({
-  tenantId: tenantId.value,
-  parentTenantId: parentTenantId.value,
-}));
-const { data: shopsData, isLoading: isLoadingShops } = useShopListQuery(shopParams);
-const shops = computed(() => shopsData.value || []);
 
 const search = ref('');
 const statusFilter = ref<string | null>(null);
@@ -93,39 +90,43 @@ const clearAllFilters = () => {
   shopTypeFilter.value = null;
 };
 
-const orderParams = computed(() => ({
+const pageParams = computed(() => ({
   tenantId: tenantId.value,
   parentTenantId: parentTenantId.value,
   search: search.value || null,
   status: statusFilter.value || null,
   shopId: selectedShopId.value || null,
+  shopType: shopTypeFilter.value || null,
 }));
-const { data: ordersData, isLoading: isLoadingOrders } = useStaffOrdersQuery(orderParams);
 
-const shopTypeById = computed(() => {
-  const map = new Map<number, ShopType>();
-  for (const shop of shops.value) {
-    map.set(shop.id, shop.shop_type);
+const {
+  shops,
+  orders,
+  isLoadingOrders,
+  isLoadingShops,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+  isRefreshing,
+  refresh,
+} = useShopOrdersStaffPageQuery(pageParams);
+
+const isDropshipShop = (shopId: number) => {
+  const order = orders.value.find((o) => o.shop_id === shopId);
+  if (order?.shop_type_snapshot) {
+    return order.shop_type_snapshot === 'dropship';
   }
-  return map;
-});
-
-const isDropshipShop = (shopId: number) => shopTypeById.value.get(shopId) === 'dropship';
-
-const orders = computed(() => {
-  let list = ordersData.value || [];
-  if (shopTypeFilter.value) {
-    list = list.filter((order) => shopTypeById.value.get(order.shop_id) === shopTypeFilter.value);
-  }
-  return list;
-});
+  const shop = shops.value.find((s) => s.id === shopId);
+  return shop?.shop_type === 'dropship';
+};
 
 const { mutateAsync: processDropship, isPending: isProcessingDropship } = useProcessDropshipOrderMutation();
 
 const goToOrderDetails = (orderId: number) => {
   const order = orders.value.find((o) => o.id === orderId);
   const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
-  const shopType = order ? shopTypeById.value.get(order.shop_id) : null;
+  const shopType: ShopType | null | undefined =
+    order?.shop_type_snapshot ?? shops.value.find((s) => s.id === order?.shop_id)?.shop_type;
   void router.push({
     path: `${slug}/app/shop/orders/${orderId}`,
     state: { shopTypeSnapshot: shopType ?? undefined },

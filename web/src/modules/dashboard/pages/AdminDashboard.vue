@@ -6,6 +6,7 @@
         v-model:selected-brand-id="selectedBrandId"
         v-model:date-range="dateRange"
         :loading="isRefreshing || isLoading"
+        :last-refreshed-at="lastRefreshedAt"
         @refresh="handleRefresh"
       />
 
@@ -87,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import DashboardToolbar from '../components/DashboardToolbar.vue';
 import DashboardAttentionStrip, { type AttentionStripItem } from '../components/DashboardAttentionStrip.vue';
@@ -101,6 +102,11 @@ import { useDashboardAttention } from '../composables/useDashboardAttention';
 import { useDashboardSlots } from '../composables/useDashboardSlots';
 import { useAppDashboardRoutes } from '../composables/useAppDashboardRoutes';
 import { useUnifiedDashboardQuery } from '../composables/useUnifiedDashboardQuery';
+import { useDashboardBundleStore } from '../stores/dashboardBundleStore';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+
+const authStore = useAuthStore();
+const dashboardBundleStore = useDashboardBundleStore();
 
 const selectedBrandId = ref<number | null>(null);
 const dateRange = ref<string>('month');
@@ -110,11 +116,18 @@ const tenantStore = useTenantStore();
 const { stories, tenantSlug } = useDashboardSlots();
 const { items: rawAttentionItems } = useDashboardAttention();
 const routes = useAppDashboardRoutes();
-const { metrics, isLoading, refetch } = useUnifiedDashboardQuery(selectedBrandId, dateRange);
+const { metrics, isLoading, lastRefreshedAt, refetch } = useUnifiedDashboardQuery(
+  selectedBrandId,
+  dateRange,
+);
 
-onMounted(() => {
-  void tenantStore.hydrateHierarchyChildRefs();
-});
+watch(
+  () => authStore.tenantId,
+  (id) => {
+    dashboardBundleStore.loadCached(id ?? null);
+  },
+  { immediate: true },
+);
 
 // If selected brand does not belong to the active parent company tenant, reset selection
 watch(

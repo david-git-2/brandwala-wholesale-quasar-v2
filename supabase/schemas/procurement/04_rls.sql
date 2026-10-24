@@ -1136,6 +1136,9 @@ GRANT ALL ON FUNCTION "public"."get_product_based_costing_file_summary"("p_file_
 GRANT ALL ON FUNCTION "public"."get_product_based_costing_file_summary"("p_file_id" bigint, "p_conversion_rate" numeric, "p_cargo_rate_kg_gbp" numeric, "p_profit_rate" numeric, "p_vat_rate" numeric, "p_offer_pricing_mode" "text") TO "service_role";
 
 
+GRANT ALL ON FUNCTION "public"."get_product_based_costing_file_details_bundle"("p_file_id" bigint, "p_limit" integer, "p_cursor_sort_order" integer, "p_cursor_id" bigint, "p_conversion_rate" numeric, "p_cargo_rate_kg_gbp" numeric, "p_profit_rate" numeric, "p_vat_rate" numeric, "p_offer_pricing_mode" "text") TO "authenticated";
+
+
 
 GRANT ALL ON FUNCTION "public"."record_vendor_grn_payable"("p_tenant_id" bigint, "p_vendor_id" bigint, "p_amount" numeric, "p_source_id" "text", "p_metadata" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."record_vendor_grn_payable"("p_tenant_id" bigint, "p_vendor_id" bigint, "p_amount" numeric, "p_source_id" "text", "p_metadata" "jsonb") TO "service_role";

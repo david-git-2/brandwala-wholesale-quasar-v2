@@ -39,6 +39,17 @@
           </q-chip>
           <q-space />
           <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-arrows-clockwise"
+            class="shops-toolbar-icon-btn"
+            :loading="isRefreshing"
+            :aria-label="$t('common.refresh', 'Refresh')"
+            data-test="shops-refresh"
+            @click="refresh()"
+          />
+          <q-btn
             color="primary"
             unelevated
             round
@@ -139,6 +150,20 @@
               </button>
             </div>
           </div>
+
+          <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-arrows-clockwise"
+            class="shops-toolbar-icon-btn text-grey-7"
+            :loading="isRefreshing"
+            :aria-label="$t('common.refresh', 'Refresh')"
+            data-test="shops-refresh-desktop"
+            @click="refresh()"
+          >
+            <q-tooltip :delay="400">{{ $t('common.refresh', 'Refresh') }}</q-tooltip>
+          </q-btn>
 
           <q-btn
             color="primary"
@@ -425,9 +450,8 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue';
 import { useChildTenantsQuery } from 'src/modules/procurement_stock/composables/useProcurementStockQuery';
-import { useInfiniteShopListQuery, type ShopListQueryParams } from '../composables/useShopQuery';
+import { useInfiniteShopsAppPageQuery, type ShopsAppPageQueryParams } from '../composables/useShopQuery';
 import { useSaveShopMutation } from '../composables/useShopMutations';
-import { useCatalogRefreshLogQuery } from '../composables/useCatalogRefreshLogQuery';
 import { catalogRefreshDisplayForVendor } from '../utils/catalogRefreshByVendor';
 import type { Shop, ShopType, CreateShopPayload } from 'src/modules/shop_order/types';
 
@@ -481,11 +505,12 @@ const onResetDrawerFilters = () => {
   selectedChildTenantId.value = null;
 };
 
-const queryParams = computed<ShopListQueryParams>(() => {
+const queryParams = computed<ShopsAppPageQueryParams>(() => {
   const isChildSelected = selectedChildTenantId.value !== null;
   return {
     tenantId: isChildSelected ? (selectedChildTenantId.value as number) : tenantId.value,
     parentTenantId: isChildSelected ? null : parentTenantId.value,
+    catalogParentTenantId: parentTenantId.value ?? null,
     search: search.value || null,
     active: activeFilter.value,
   };
@@ -494,15 +519,16 @@ const queryParams = computed<ShopListQueryParams>(() => {
 const {
   shops,
   totalShops,
+  catalogRefreshLog,
   isLoading,
   isError,
   error,
   hasNextPage,
   isFetchingNextPage,
   fetchNextPage,
-} = useInfiniteShopListQuery(queryParams, 20);
-
-const { data: catalogRefreshRows } = useCatalogRefreshLogQuery(parentTenantId);
+  isRefreshing,
+  refresh,
+} = useInfiniteShopsAppPageQuery(queryParams, 20);
 
 const childTenantOptions = computed(() => {
   const map = new Map<number, string>();
@@ -605,7 +631,7 @@ const shopVendorLabels = (shop: Shop): string[] => {
 type VendorCatalogLine = { vendor: string; fileName: string; updatedAt: string };
 
 const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
-  const rows = catalogRefreshRows.value ?? [];
+  const rows = catalogRefreshLog.value ?? [];
   if (!rows.length) {
     return [];
   }

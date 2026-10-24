@@ -12,6 +12,9 @@ import type {
   ProductBasedCostingItemListPage,
   ProductBasedCostingItemUpdateInput,
   PbcItemProductCatalog,
+  PbcFileDetailsBundlePage,
+  PbcFileDetailsBundleCustomer,
+  PbcFileDetailsBundleProductCatalogRow,
 } from '../types';
 
 const normalizeText = (value: string | null | undefined) => {
@@ -356,6 +359,63 @@ const getProductBasedCostingFileById = async (id: number): Promise<ProductBasedC
   return data as ProductBasedCostingFile;
 };
 
+const parseItemsListEnvelope = (
+  raw: unknown,
+  fallbackLimit?: number,
+): ProductBasedCostingItemListPage => {
+  const envelope =
+    (raw as { data?: ProductBasedCostingItem[]; meta?: Record<string, unknown> } | null) ?? {};
+  const rows = (envelope.data ?? []) as ProductBasedCostingItem[];
+  const meta = envelope.meta ?? {};
+  const limit = Number(meta.limit ?? fallbackLimit ?? rows.length) || rows.length;
+  return {
+    data: rows,
+    meta: {
+      has_more: Boolean(meta.has_more),
+      next_cursor: parseItemsListCursor(meta.next_cursor),
+      limit,
+    },
+  };
+};
+
+const getProductBasedCostingFileDetailsBundle = async (
+  fileId: number,
+  opts: {
+    limit?: number;
+    cursor?: { sort_order: number; id: number } | null;
+    conversion_rate?: number | null;
+    cargo_rate_kg_gbp?: number | null;
+    profit_rate?: number | null;
+    vat_rate?: number | null;
+    offer_pricing_mode?: string | null;
+  } = {},
+): Promise<PbcFileDetailsBundlePage> => {
+  const { data, error } = await supabase.rpc('get_product_based_costing_file_details_bundle', {
+    p_file_id: fileId,
+    p_limit: opts.limit ?? 25,
+    p_cursor_sort_order: opts.cursor?.sort_order ?? undefined,
+    p_cursor_id: opts.cursor?.id ?? undefined,
+    p_conversion_rate: opts.conversion_rate ?? null,
+    p_cargo_rate_kg_gbp: opts.cargo_rate_kg_gbp ?? null,
+    p_profit_rate: opts.profit_rate ?? null,
+    p_vat_rate: opts.vat_rate ?? null,
+    p_offer_pricing_mode: opts.offer_pricing_mode ?? null,
+  });
+  if (error) {
+    throw error;
+  }
+  const raw = (data as Record<string, unknown> | null) ?? {};
+  const catalogRows =
+    (raw.product_catalog as PbcFileDetailsBundleProductCatalogRow[] | undefined) ?? [];
+  return {
+    file: (raw.file as ProductBasedCostingFile | null) ?? null,
+    summary: (raw.summary as Record<string, unknown> | null) ?? null,
+    customers: (raw.customers as PbcFileDetailsBundleCustomer[] | undefined) ?? [],
+    items: parseItemsListEnvelope(raw.items),
+    productCatalog: catalogRows,
+  };
+};
+
 const getProductBasedCostingFileSummary = async (
   fileId: number,
   rates: {
@@ -429,19 +489,7 @@ const listProductBasedCostingItemsPaginated = async (
     throw error;
   }
 
-  const envelope =
-    (data as { data?: ProductBasedCostingItem[]; meta?: Record<string, unknown> } | null) ?? {};
-  const rows = (envelope.data ?? []) as ProductBasedCostingItem[];
-  const meta = envelope.meta ?? {};
-
-  return {
-    data: rows,
-    meta: {
-      has_more: Boolean(meta.has_more),
-      next_cursor: parseItemsListCursor(meta.next_cursor),
-      limit: Number(meta.limit ?? limit) || limit,
-    },
-  };
+  return parseItemsListEnvelope(data, limit);
 };
 
 const reorderProductBasedCostingItemToPosition = async (
@@ -720,6 +768,7 @@ export const productBasedCostingRepository = {
   updateProductBasedCostingFile,
   deleteProductBasedCostingFile,
   getProductBasedCostingFileById,
+  getProductBasedCostingFileDetailsBundle,
   getProductBasedCostingFileSummary,
 
   listProductBasedCostingItems,

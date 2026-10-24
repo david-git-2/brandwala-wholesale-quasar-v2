@@ -61,6 +61,9 @@ export function useUpdateProductBasedCostingFileMutation() {
         productBasedCostingQueryKeys.fileDetail(updatedFile.id),
         updatedFile,
       );
+      void queryClient.invalidateQueries({
+        queryKey: productBasedCostingQueryKeys.fileDetailsPageRoot(updatedFile.id),
+      });
 
       // 2. Update the item in any cached files list queries
       queryClient.setQueriesData<InfiniteData<ProductBasedCostingFileListPage>>(

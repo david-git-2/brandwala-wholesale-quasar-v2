@@ -22,6 +22,7 @@ export function useSaveShopMutation() {
     },
     onSuccess: async (shop) => {
       await queryClient.invalidateQueries({ queryKey: ['shopOrder', 'shops'] });
+      await queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.shopsAppPageRoot() });
       if (shop?.id) {
         await queryClient.invalidateQueries({
           queryKey: shopOrderQueryKeys.shopDetail(shop.tenant_id, shop.id),
@@ -40,6 +41,7 @@ export function useDeleteShopMutation() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['shopOrder', 'shops'] });
+      await queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.shopsAppPageRoot() });
     },
   });
 }

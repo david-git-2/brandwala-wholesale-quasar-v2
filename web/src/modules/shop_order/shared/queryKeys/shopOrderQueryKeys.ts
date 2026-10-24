@@ -3,8 +3,28 @@ export const shopOrderQueryKeys = {
   dashboard: (tenantId: number) => ['shopOrder', 'dashboard', tenantId] as const,
   staffOrders: (params: { tenantId: number; search?: string | null; status?: string | null; shopId?: number | null }) =>
     ['shopOrder', 'staffOrders', params] as const,
+  staffOrdersPage: (params: {
+    tenantId: number;
+    parentTenantId?: number | null;
+    search?: string | null;
+    status?: string | null;
+    shopId?: number | null;
+    shopType?: string | null;
+  }) => ['shopOrder', 'staffOrdersPage', params] as const,
+  staffOrdersPageRoot: () => ['shopOrder', 'staffOrdersPage'] as const,
   shopsList: (params: { tenantId: number; search?: string | null; active?: boolean | null }) =>
     ['shopOrder', 'shops', params] as const,
+  shopsAppPage: (
+    params: {
+      tenantId: number;
+      parentTenantId?: number | null;
+      search?: string | null;
+      active?: boolean | null;
+      catalogParentTenantId?: number | null;
+    },
+    pageSize: number,
+  ) => ['shopOrder', 'shopsAppPage', { ...params, pageSize }] as const,
+  shopsAppPageRoot: () => ['shopOrder', 'shopsAppPage'] as const,
   shopDetail: (tenantId: number, shopId: number) =>
     ['shopOrder', 'shop', { tenantId, shopId }] as const,
   customerShops: (tenantId: number | null) => ['shopOrder', 'customerShops', { tenantId }] as const,

@@ -8591,6 +8591,151 @@ $$;
 ALTER FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."list_shop_orders_staff_page"("p_tenant_id" bigint, "p_parent_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 30, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_shop_id" bigint DEFAULT NULL::bigint, "p_shop_type" "text" DEFAULT NULL::"text", "p_cursor_created_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_cursor_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_limit integer := greatest(1, least(coalesce(p_limit, 30), 100));
+  v_fetch integer := v_limit + 1;
+  v_is_parent_query boolean;
+  v_shops jsonb := '[]'::jsonb;
+  v_orders jsonb := '[]'::jsonb;
+  v_has_more boolean := false;
+  v_next_cursor jsonb := null;
+BEGIN
+  IF NOT public.is_tenant_staff(p_tenant_id) THEN
+    RAISE EXCEPTION 'access denied';
+  END IF;
+
+  v_is_parent_query := (p_parent_tenant_id IS NOT NULL AND p_parent_tenant_id = p_tenant_id);
+
+  IF p_cursor_created_at IS NULL AND p_cursor_id IS NULL THEN
+    IF NOT EXISTS (
+      SELECT 1
+      FROM public.memberships m
+      WHERE (m.tenant_id = p_tenant_id OR m.tenant_id = public.resolve_parent_tenant_id(p_tenant_id))
+        AND lower(trim(m.email)) = public.current_user_email()
+        AND m.is_active = true
+    ) THEN
+      RAISE EXCEPTION 'not allowed';
+    END IF;
+
+    IF v_is_parent_query THEN
+      SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.name), '[]'::jsonb)
+      INTO v_shops
+      FROM (
+        SELECT
+          s.id,
+          s.tenant_id,
+          s.name,
+          s.slug,
+          s.shop_type,
+          coalesce(t.name, '')::text AS tenant_name
+        FROM public.shops s
+        LEFT JOIN public.tenants t ON t.id = s.tenant_id
+        WHERE (s.parent_tenant_id = p_parent_tenant_id OR s.tenant_id = p_parent_tenant_id)
+          AND s.deleted_at IS NULL
+        ORDER BY s.name
+        LIMIT 500
+      ) x;
+    ELSE
+      SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.name), '[]'::jsonb)
+      INTO v_shops
+      FROM (
+        SELECT
+          s.id,
+          s.tenant_id,
+          s.name,
+          s.slug,
+          s.shop_type,
+          coalesce(t.name, '')::text AS tenant_name
+        FROM public.shops s
+        LEFT JOIN public.tenants t ON t.id = s.tenant_id
+        WHERE s.tenant_id = p_tenant_id
+          AND s.deleted_at IS NULL
+        ORDER BY s.name
+        LIMIT 500
+      ) x;
+    END IF;
+  END IF;
+
+  WITH base AS (
+    SELECT
+      o.id,
+      o.tenant_id,
+      o.shop_id,
+      s.name AS shop_name,
+      o.customer_group_id,
+      cg.name AS customer_group_name,
+      o.order_no,
+      o.name,
+      o.shop_type_snapshot,
+      o.is_negotiable_snapshot,
+      o.status,
+      o.created_at,
+      o.updated_at,
+      (SELECT count(*)::bigint FROM public.shop_order_items WHERE order_id = o.id) AS item_count,
+      coalesce(t.name, '')::text AS tenant_name
+    FROM public.shop_orders o
+    JOIN public.shops s ON s.id = o.shop_id
+    JOIN public.customer_groups cg ON cg.id = o.customer_group_id
+    LEFT JOIN public.tenants t ON t.id = o.tenant_id
+    WHERE (
+      (v_is_parent_query AND (o.parent_tenant_id = p_parent_tenant_id OR o.tenant_id = p_parent_tenant_id))
+      OR (NOT v_is_parent_query AND o.tenant_id = p_tenant_id)
+    )
+      AND (p_status IS NULL OR o.status::text = p_status)
+      AND (p_shop_id IS NULL OR o.shop_id = p_shop_id)
+      AND (p_shop_type IS NULL OR s.shop_type::text = p_shop_type)
+      AND (
+        p_search IS NULL
+        OR o.order_no ILIKE ('%' || p_search || '%')
+        OR o.name ILIKE ('%' || p_search || '%')
+        OR s.name ILIKE ('%' || p_search || '%')
+        OR cg.name ILIKE ('%' || p_search || '%')
+        OR t.name ILIKE ('%' || p_search || '%')
+      )
+      AND (
+        p_cursor_created_at IS NULL
+        OR (o.created_at, o.id) < (p_cursor_created_at, p_cursor_id)
+      )
+    ORDER BY o.created_at DESC, o.id DESC
+    LIMIT v_fetch
+  ),
+  page AS (
+    SELECT * FROM base ORDER BY created_at DESC, id DESC LIMIT v_limit
+  ),
+  tail AS (
+    SELECT created_at, id FROM page ORDER BY created_at ASC, id ASC LIMIT 1
+  )
+  SELECT
+    coalesce(
+      (SELECT jsonb_agg(to_jsonb(p) ORDER BY p.created_at DESC, p.id DESC) FROM page p),
+      '[]'::jsonb
+    ),
+    (SELECT count(*) > v_limit FROM base),
+    CASE
+      WHEN (SELECT count(*) FROM base) > v_limit THEN
+        (SELECT jsonb_build_object('created_at', created_at, 'id', id) FROM tail)
+      ELSE NULL
+    END
+  INTO v_orders, v_has_more, v_next_cursor;
+
+  RETURN jsonb_build_object(
+    'shops', v_shops,
+    'orders', v_orders,
+    'meta', jsonb_build_object(
+      'limit', v_limit,
+      'has_more', v_has_more,
+      'next_cursor', v_next_cursor
+    )
+  );
+END;
+$$;
+ALTER FUNCTION "public"."list_shop_orders_staff_page"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint, "p_shop_type" "text", "p_cursor_created_at" timestamp with time zone, "p_cursor_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."list_shop_product_listings"("p_shop_id" bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "shop_id" bigint, "global_stock_allocation_id" bigint, "global_stock_id" bigint, "product_id" bigint, "sell_price_amount" numeric, "sell_price_currency_id" bigint, "minimum_sell_price_amount" numeric, "minimum_sell_price_currency_id" bigint, "show_quantity" boolean, "display_quantity_override" integer, "is_active" boolean, "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "product_name" "text", "product_image_url" "text", "product_barcode" "text", "product_code" "text", "product_brand" "text", "product_category" "text", "allocated_quantity" integer, "available_to_sell" integer, "unit_cost_amount" numeric, "shipment_item_id" bigint, "shipment_id" bigint)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -8797,6 +8942,196 @@ begin
 end;
 $$;
 ALTER FUNCTION "public"."list_shops"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_active" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_shops_app_page"("p_tenant_id" bigint, "p_parent_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_search" "text" DEFAULT NULL::"text", "p_active" boolean DEFAULT NULL::boolean, "p_catalog_parent_tenant_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_total bigint;
+  v_is_parent_query boolean;
+  v_limit integer := greatest(1, least(coalesce(p_limit, 20), 200));
+  v_offset integer := greatest(coalesce(p_offset, 0), 0);
+  v_shops jsonb := '[]'::jsonb;
+  v_catalog jsonb := '[]'::jsonb;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.memberships m
+    WHERE (m.tenant_id = p_tenant_id OR m.tenant_id = public.resolve_parent_tenant_id(p_tenant_id))
+      AND lower(trim(m.email)) = public.current_user_email()
+      AND m.is_active = true
+  ) THEN
+    RAISE EXCEPTION 'not allowed';
+  END IF;
+
+  v_is_parent_query := (p_parent_tenant_id IS NOT NULL AND p_parent_tenant_id = p_tenant_id);
+
+  IF v_is_parent_query THEN
+    SELECT count(*)
+    INTO v_total
+    FROM public.shops s
+    LEFT JOIN public.tenants t ON t.id = s.tenant_id
+    WHERE (s.parent_tenant_id = p_parent_tenant_id OR s.tenant_id = p_parent_tenant_id)
+      AND s.deleted_at IS NULL
+      AND (p_active IS NULL OR s.is_active = p_active)
+      AND (
+        p_search IS NULL
+        OR s.name ILIKE '%' || p_search || '%'
+        OR s.slug ILIKE '%' || p_search || '%'
+        OR t.name ILIKE '%' || p_search || '%'
+      );
+
+    SELECT coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb)
+    INTO v_shops
+    FROM (
+      SELECT
+        s.id,
+        s.tenant_id,
+        s.name,
+        s.slug,
+        s.shop_type,
+        s.vendor_code,
+        s.order_mode,
+        s.is_negotiable,
+        s.show_stock_quantity,
+        s.default_currency_id,
+        s.global_stock_type_id,
+        s.is_active,
+        s.allow_delivery,
+        s.buy_currency_id,
+        s.sell_currency_id,
+        s.pricing_method,
+        s.markup_percentage,
+        s.quantity_display_mode,
+        s.display_quantity_add,
+        s.default_print_charge_amount,
+        s.default_packing_charge_amount,
+        s.deduct_charges_from_margin,
+        s.vendor_filters,
+        s.deduct_print_from_margin,
+        s.deduct_packing_from_margin,
+        s.description,
+        s.category_ids,
+        s.created_at,
+        s.updated_at,
+        v_total AS total_count,
+        coalesce(t.name, '')::text AS tenant_name
+      FROM public.shops s
+      LEFT JOIN public.tenants t ON t.id = s.tenant_id
+      WHERE (s.parent_tenant_id = p_parent_tenant_id OR s.tenant_id = p_parent_tenant_id)
+        AND s.deleted_at IS NULL
+        AND (p_active IS NULL OR s.is_active = p_active)
+        AND (
+          p_search IS NULL
+          OR s.name ILIKE '%' || p_search || '%'
+          OR s.slug ILIKE '%' || p_search || '%'
+          OR t.name ILIKE '%' || p_search || '%'
+        )
+      ORDER BY s.name
+      LIMIT v_limit
+      OFFSET v_offset
+    ) x;
+  ELSE
+    SELECT count(*)
+    INTO v_total
+    FROM public.shops s
+    LEFT JOIN public.tenants t ON t.id = s.tenant_id
+    WHERE s.tenant_id = p_tenant_id
+      AND s.deleted_at IS NULL
+      AND (p_active IS NULL OR s.is_active = p_active)
+      AND (
+        p_search IS NULL
+        OR s.name ILIKE '%' || p_search || '%'
+        OR s.slug ILIKE '%' || p_search || '%'
+        OR t.name ILIKE '%' || p_search || '%'
+      );
+
+    SELECT coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb)
+    INTO v_shops
+    FROM (
+      SELECT
+        s.id,
+        s.tenant_id,
+        s.name,
+        s.slug,
+        s.shop_type,
+        s.vendor_code,
+        s.order_mode,
+        s.is_negotiable,
+        s.show_stock_quantity,
+        s.default_currency_id,
+        s.global_stock_type_id,
+        s.is_active,
+        s.allow_delivery,
+        s.buy_currency_id,
+        s.sell_currency_id,
+        s.pricing_method,
+        s.markup_percentage,
+        s.quantity_display_mode,
+        s.display_quantity_add,
+        s.default_print_charge_amount,
+        s.default_packing_charge_amount,
+        s.deduct_charges_from_margin,
+        s.vendor_filters,
+        s.deduct_print_from_margin,
+        s.deduct_packing_from_margin,
+        s.description,
+        s.category_ids,
+        s.created_at,
+        s.updated_at,
+        v_total AS total_count,
+        coalesce(t.name, '')::text AS tenant_name
+      FROM public.shops s
+      LEFT JOIN public.tenants t ON t.id = s.tenant_id
+      WHERE s.tenant_id = p_tenant_id
+        AND s.deleted_at IS NULL
+        AND (p_active IS NULL OR s.is_active = p_active)
+        AND (
+          p_search IS NULL
+          OR s.name ILIKE '%' || p_search || '%'
+          OR s.slug ILIKE '%' || p_search || '%'
+          OR t.name ILIKE '%' || p_search || '%'
+        )
+      ORDER BY s.name
+      LIMIT v_limit
+      OFFSET v_offset
+    ) x;
+  END IF;
+
+  IF v_offset = 0
+    AND p_catalog_parent_tenant_id IS NOT NULL
+    AND public.can_view_products_for_parent(p_catalog_parent_tenant_id)
+  THEN
+    SELECT coalesce(jsonb_agg(to_jsonb(l)), '[]'::jsonb)
+    INTO v_catalog
+    FROM (
+      SELECT
+        l.id,
+        l.parent_tenant_id,
+        l.source,
+        l.event_kind,
+        l.source_url,
+        l.file_name,
+        l.ran_at,
+        l.products_updated,
+        l.duration_seconds
+      FROM public.catalog_refresh_log l
+      WHERE l.parent_tenant_id = p_catalog_parent_tenant_id
+      ORDER BY l.ran_at DESC
+      LIMIT 200
+    ) l;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'shops', v_shops,
+    'total_count', v_total,
+    'catalog_refresh_log', v_catalog
+  );
+END;
+$$;
+ALTER FUNCTION "public"."list_shops_app_page"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_active" boolean, "p_catalog_parent_tenant_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."mark_dropship_order_returned"("p_order_id" bigint, "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_reason" "text" DEFAULT NULL::"text") RETURNS "jsonb"

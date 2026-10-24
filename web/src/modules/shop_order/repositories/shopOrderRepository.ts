@@ -11,6 +11,8 @@ import type {
   ShopCatalogRelatedResult,
   CustomerOrderListItem,
   CustomerOrderDetail,
+  StaffOrdersStaffPageResult,
+  ShopsAppPageResult,
 } from '../types';
 import type { StaffShopOrderDetailResponse } from '../types/staffShopOrderDetail';
 import {
@@ -50,6 +52,38 @@ const listShops = async (
   }
 
   return (data as Shop[] | null) ?? [];
+};
+
+const listShopsAppPage = async (
+  tenantId: number,
+  opts: {
+    parentTenantId?: number | null;
+    limit?: number;
+    offset?: number;
+    search?: string | null;
+    active?: boolean | null;
+    catalogParentTenantId?: number | null;
+  } = {},
+): Promise<ShopsAppPageResult> => {
+  const { data, error } = await supabase.rpc('list_shops_app_page', {
+    p_tenant_id: tenantId,
+    p_parent_tenant_id: opts.parentTenantId ?? null,
+    p_limit: opts.limit ?? 20,
+    p_offset: opts.offset ?? 0,
+    p_search: opts.search ?? null,
+    p_active: opts.active ?? null,
+    p_catalog_parent_tenant_id: opts.catalogParentTenantId ?? null,
+  });
+  if (error) {
+    throw error;
+  }
+  const raw = (data as Record<string, unknown> | null) ?? {};
+  return {
+    shops: (raw.shops as Shop[] | undefined) ?? [],
+    total_count: Number(raw.total_count ?? 0),
+    catalog_refresh_log:
+      (raw.catalog_refresh_log as ShopsAppPageResult['catalog_refresh_log'] | undefined) ?? [],
+  };
 };
 
 const SHOP_DETAIL_SELECT =
@@ -467,6 +501,43 @@ const listShopOrdersForStaff = async (
   });
   if (error) throw error;
   return (data as ShopOrder[] | null) ?? [];
+};
+
+const listShopOrdersStaffPage = async (
+  tenantId: number,
+  opts: {
+    parentTenantId?: number | null;
+    limit?: number;
+    search?: string | null;
+    status?: string | null;
+    shopId?: number | null;
+    shopType?: string | null;
+    cursor?: { created_at: string; id: number } | null;
+  } = {},
+): Promise<StaffOrdersStaffPageResult> => {
+  const { data, error } = await supabase.rpc('list_shop_orders_staff_page', {
+    p_tenant_id: tenantId,
+    p_parent_tenant_id: opts.parentTenantId ?? null,
+    p_limit: opts.limit ?? 30,
+    p_search: opts.search ?? null,
+    p_status: opts.status ?? null,
+    p_shop_id: opts.shopId ?? null,
+    p_shop_type: opts.shopType ?? null,
+    p_cursor_created_at: opts.cursor?.created_at ?? null,
+    p_cursor_id: opts.cursor?.id ?? null,
+  });
+  if (error) throw error;
+  const raw = (data as Record<string, unknown> | null) ?? {};
+  const meta = (raw.meta as StaffOrdersStaffPageResult['meta'] | undefined) ?? {
+    limit: opts.limit ?? 30,
+    has_more: false,
+    next_cursor: null,
+  };
+  return {
+    shops: (raw.shops as StaffOrdersStaffPageResult['shops'] | undefined) ?? [],
+    orders: (raw.orders as ShopOrder[] | undefined) ?? [],
+    meta,
+  };
 };
 
 const listDropshipShopOrdersForStaff = async (
@@ -1302,6 +1373,7 @@ const recalcShopDisplayQuantities = async (shopId: number): Promise<number> => {
 
 export const shopOrderRepository = {
   listShops,
+  listShopsAppPage,
   getShop,
   upsertShop,
   recalcShopDisplayQuantities,
@@ -1327,6 +1399,7 @@ export const shopOrderRepository = {
   listCustomerOrderBacklogItems,
   listCustomerShopOrders,
   listShopOrdersForStaff,
+  listShopOrdersStaffPage,
   listDropshipShopOrdersForStaff,
   getShopOrderById,
   getDropshipOrderDetailV2,

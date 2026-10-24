@@ -2,6 +2,8 @@
 // shop_order domain types
 // =========================================================
 
+import type { CatalogRefreshLogRow } from '../utils/catalogRefreshByVendor';
+
 export type ShopType = 'vendor_catalog' | 'fixed_price' | 'dropship';
 export type ShopOrderMode = 'procurement_intent' | 'checkout_fixed' | 'checkout_wholesale';
 export type ShopStorefrontListingStatus = 'active' | 'inactive';
@@ -254,6 +256,13 @@ export interface ShopCatalogSearchResult {
     page_size: number;
     total_pages: number;
   };
+}
+
+/** Bundled first page of app shops list (includes catalog refresh log). */
+export interface ShopsAppPageResult {
+  shops: Shop[];
+  total_count: number;
+  catalog_refresh_log: CatalogRefreshLogRow[];
 }
 
 export interface Shop {
@@ -510,6 +519,29 @@ export interface CustomerOrderDetailOrder {
 export interface CustomerOrderDetail {
   order: CustomerOrderDetailOrder;
   items: ShopOrderItem[];
+}
+
+/** Shop row bundled on the first staff orders page load (filter dropdown). */
+export type StaffOrdersPageShop = Pick<
+  Shop,
+  'id' | 'tenant_id' | 'name' | 'slug' | 'shop_type' | 'tenant_name'
+>;
+
+export interface StaffOrdersPageCursor {
+  created_at: string;
+  id: number;
+}
+
+export interface StaffOrdersPageMeta {
+  limit: number;
+  has_more: boolean;
+  next_cursor: StaffOrdersPageCursor | null;
+}
+
+export interface StaffOrdersStaffPageResult {
+  shops: StaffOrdersPageShop[];
+  orders: ShopOrder[];
+  meta: StaffOrdersPageMeta;
 }
 
 export interface ShopOrder {

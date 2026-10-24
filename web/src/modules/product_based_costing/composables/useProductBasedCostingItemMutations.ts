@@ -47,6 +47,9 @@ function invalidatePbcFileSummary(queryClient: QueryClient, fileId: number) {
   void queryClient.invalidateQueries({
     queryKey: productBasedCostingQueryKeys.fileSummaryRoot(fileId),
   });
+  void queryClient.invalidateQueries({
+    queryKey: productBasedCostingQueryKeys.fileDetailsPageRoot(fileId),
+  });
 }
 
 function removePbcItemFromCache(queryClient: QueryClient, fileId: number, itemId: number) {

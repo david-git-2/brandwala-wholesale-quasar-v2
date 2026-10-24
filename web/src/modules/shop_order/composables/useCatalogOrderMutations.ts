@@ -3,6 +3,7 @@ import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { showSuccessNotification, handleApiFailure } from 'src/utils/appFeedback';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { applyStaffOrderDetailToCache } from '../utils/staffOrderDetailCacheUtils';
+import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 
 function patchStaffOrderDetailCache(
   queryClient: ReturnType<typeof useQueryClient>,
@@ -85,6 +86,7 @@ export function useStaffPriceCatalogOrderMutation() {
       patchStaffOrderDetailCache(queryClient, variables.orderId, data);
       showSuccessNotification('Costing and staff offer prices saved (Priced)');
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.staffOrdersPageRoot() });
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to save staff pricing');

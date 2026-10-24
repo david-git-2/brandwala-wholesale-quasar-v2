@@ -476,6 +476,9 @@ GRANT ALL ON FUNCTION "public"."list_procurement_shop_order_lines"("p_parent_ten
 GRANT ALL ON FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint) TO "authenticated";
 
 
+GRANT ALL ON FUNCTION "public"."list_shop_orders_staff_page"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint, "p_shop_type" "text", "p_cursor_created_at" timestamp with time zone, "p_cursor_id" bigint) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."list_shop_product_listings"("p_shop_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_shop_storefront_listings_for_admin"("p_shop_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_shop_storefront_listing_price_calculation"("p_shop_id" bigint, "p_listing_id" bigint) TO "authenticated";
@@ -484,6 +487,9 @@ GRANT ALL ON FUNCTION "public"."set_shop_listing_group_visibility"("p_shop_id" b
 
 
 GRANT ALL ON FUNCTION "public"."list_shops"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_active" boolean) TO "authenticated";
+
+
+GRANT ALL ON FUNCTION "public"."list_shops_app_page"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_active" boolean, "p_catalog_parent_tenant_id" bigint) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."mark_dropship_order_returned"("p_order_id" bigint, "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_reason" "text") TO "authenticated";

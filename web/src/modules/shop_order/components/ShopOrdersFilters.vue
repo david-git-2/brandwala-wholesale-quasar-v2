@@ -90,6 +90,20 @@
           </template>
         </q-select>
       </div>
+
+      <q-btn
+        flat
+        round
+        dense
+        icon="ph ph-arrows-clockwise"
+        class="text-grey-7"
+        :loading="refreshing"
+        :aria-label="$t('common.refresh', 'Refresh')"
+        data-test="shop-orders-refresh"
+        @click="emit('refresh')"
+      >
+        <q-tooltip :delay="400">{{ $t('common.refresh', 'Refresh') }}</q-tooltip>
+      </q-btn>
     </div>
   </q-card>
 </template>
@@ -97,18 +111,20 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { Shop } from '../types';
+import type { StaffOrdersPageShop } from '../types';
 
 const props = defineProps<{
-  shops: Shop[];
+  shops: StaffOrdersPageShop[];
   selectedShopId: number | null;
   search: string;
   statusFilter: string | null;
   shopTypeFilter?: string | null;
   shopsLoading?: boolean;
+  refreshing?: boolean;
 }>();
 
 const emit = defineEmits<{
+  (e: 'refresh'): void;
   (e: 'update:selectedShopId', value: number | null): void;
   (e: 'update:search', value: string): void;
   (e: 'update:statusFilter', value: string | null): void;

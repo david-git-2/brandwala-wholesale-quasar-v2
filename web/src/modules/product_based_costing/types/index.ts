@@ -136,6 +136,23 @@ export type PbcItemProductCatalog = {
   expire_date: string | null;
 };
 
+export type PbcFileDetailsBundleCustomer = {
+  customer_group_id: number;
+  group_name: string;
+};
+
+export type PbcFileDetailsBundleProductCatalogRow = PbcItemProductCatalog & {
+  product_id: number;
+};
+
+export type PbcFileDetailsBundlePage = {
+  file: ProductBasedCostingFile | null;
+  summary: Record<string, unknown> | null;
+  customers: PbcFileDetailsBundleCustomer[];
+  items: ProductBasedCostingItemListPage;
+  productCatalog: PbcFileDetailsBundleProductCatalogRow[];
+};
+
 export interface ProductBasedCostingStoreState {
   items: ProductBasedCostingFile[];
   item: ProductBasedCostingFile | null;

@@ -4,10 +4,7 @@ import type { RouteLocationRaw } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
-import { useProcurementDashboardQuery } from 'src/modules/procurement_stock/composables/useProcurementDashboardQuery';
-import { useShopOrderDashboardQuery } from 'src/modules/shop_order/composables/useShopOrderDashboardQuery';
-import { useTasksDashboardQuery } from 'src/modules/tasks/composables/useTasksDashboardQuery';
-import { useInvestorCapitalDashboardQuery } from 'src/modules/investor_capital/composables/useInvestorCapitalDashboardQuery';
+import { useDashboardBundleStore } from '../stores/dashboardBundleStore';
 import {
   formatDashboardCount,
   formatDashboardMoney,
@@ -27,6 +24,8 @@ const MAX_ITEMS = 8;
 export const useDashboardAttention = () => {
   const authStore = useAuthStore();
   const tenantStore = useTenantStore();
+  const bundleStore = useDashboardBundleStore();
+  const { bundle } = storeToRefs(bundleStore);
   const { hasModuleAccess } = useModulePermissions();
   const { tenantId } = storeToRefs(authStore);
   const routes = useAppDashboardRoutes();
@@ -38,16 +37,15 @@ export const useDashboardAttention = () => {
   const canTasks = computed(() => hasModuleAccess('tasks', 'view'));
   const canInvestor = computed(() => isParent.value && hasModuleAccess('investor_capital_ledger', 'view'));
 
-  const procurementQuery = useProcurementDashboardQuery(tenantId);
-  const shopOrderQuery = useShopOrderDashboardQuery(tenantId);
-  const tasksQuery = useTasksDashboardQuery(tenantId);
-  const investorQuery = useInvestorCapitalDashboardQuery(tenantId);
-
   const items = computed<DashboardAttentionItem[]>(() => {
     const rows: DashboardAttentionItem[] = [];
+    const shop = bundle.value.shopOrder;
+    const proc = bundle.value.procurement;
+    const tasks = bundle.value.tasks;
+    const investor = bundle.value.investorCapital;
 
     if (canShopOrder.value) {
-      const pickup = shopOrderQuery.data.value?.readyForPickupCount ?? 0;
+      const pickup = shop?.readyForPickupCount ?? 0;
       if (pickup > 0) {
         rows.push({
           id: 'ready-pickup',
@@ -58,7 +56,7 @@ export const useDashboardAttention = () => {
         });
       }
 
-      const dropshipSubmitted = shopOrderQuery.data.value?.dropshipSubmitted ?? 0;
+      const dropshipSubmitted = shop?.dropshipSubmitted ?? 0;
       if (dropshipSubmitted > 0) {
         rows.push({
           id: 'dropship-submitted',
@@ -71,7 +69,7 @@ export const useDashboardAttention = () => {
     }
 
     if (canStock.value) {
-      const inTransit = procurementQuery.data.value?.inTransitCount ?? 0;
+      const inTransit = proc?.inTransitCount ?? 0;
       if (inTransit > 0) {
         rows.push({
           id: 'in-transit',
@@ -82,7 +80,7 @@ export const useDashboardAttention = () => {
         });
       }
 
-      const draft = procurementQuery.data.value?.draftCount ?? 0;
+      const draft = proc?.draftCount ?? 0;
       if (draft > 0) {
         rows.push({
           id: 'draft-shipments',
@@ -95,7 +93,7 @@ export const useDashboardAttention = () => {
     }
 
     if (canTasks.value) {
-      const overdue = tasksQuery.data.value?.overdueCount ?? 0;
+      const overdue = tasks?.overdueCount ?? 0;
       if (overdue > 0) {
         rows.push({
           id: 'overdue-tasks',
@@ -108,7 +106,7 @@ export const useDashboardAttention = () => {
     }
 
     if (canInvestor.value) {
-      const due = investorQuery.data.value?.dueToInvestors ?? 0;
+      const due = investor?.dueToInvestors ?? 0;
       if (due > 0) {
         rows.push({
           id: 'due-investors',

@@ -80,6 +80,20 @@
 
         <!-- Right Header Action Controls -->
         <div class="row items-center q-gutter-x-xs no-wrap col-auto">
+          <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-arrows-clockwise"
+            class="text-grey-7"
+            :loading="isRefreshing"
+            :aria-label="$t('common.refresh', 'Refresh')"
+            data-test="pbc-file-refresh"
+            @click="refresh()"
+          >
+            <q-tooltip :delay="400">{{ $t('common.refresh', 'Refresh') }}</q-tooltip>
+          </q-btn>
+
           <!-- Add Products Button -->
           <TfBtn
             variant="primary"
@@ -1369,7 +1383,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar, copyToClipboard } from 'quasar';
 import { useI18n } from 'vue-i18n';
-import { useQuery, useQueryClient } from '@tanstack/vue-query';
+import { useQueryClient } from '@tanstack/vue-query';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
@@ -1385,16 +1399,12 @@ import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingI
 import ProductBasedCostingSettingsDrawer, {
   type PbcSettingsDrawerAction,
 } from '../components/ProductBasedCostingSettingsDrawer.vue';
-import { usePbcFileSummaryQuery } from '../composables/usePbcFileSummaryQuery';
+import { useProductBasedCostingFileDetailsPageQuery } from '../composables/useProductBasedCostingFileDetailsPageQuery';
 import ProductBasedCostingStatusOverrideDialog from '../components/ProductBasedCostingStatusOverrideDialog.vue';
 import ProductBasedCostingStatusWorkflowBar from '../components/ProductBasedCostingStatusWorkflowBar.vue';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { customerRepository } from 'src/modules/customer/repositories/customerRepository';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
-import { useProductBasedCostingFileDetailQuery } from '../composables/useProductBasedCostingFileDetailQuery';
-import { useProductBasedCostingItemsInfiniteQuery } from '../composables/useProductBasedCostingItemsInfiniteQuery';
-import { usePbcItemProductCatalogMap } from '../composables/usePbcItemProductCatalogMap';
 import { useUpdateProductBasedCostingFileMutation } from '../composables/useProductBasedCostingFileMutations';
 import {
   reorderPbcItemsInCache,
@@ -1497,15 +1507,21 @@ const fileId = computed(() => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 });
 
-// Queries
-const { data: file, isLoading: isLoadingFile } = useProductBasedCostingFileDetailQuery(fileId);
+// Queries (single bundle RPC on first page; same RPC for load-more with cursor)
 const {
+  file,
   costingItems,
+  catalogByProductId,
+  customerAccounts,
+  summaryMetrics,
   hasMoreItems,
-  isLoading: isLoadingItems,
-  isFetchingNextPage: isFetchingMoreItems,
+  isLoadingFile,
+  isLoadingItems,
+  isFetchingMoreItems,
   fetchNextPage,
-} = useProductBasedCostingItemsInfiniteQuery(fileId);
+  isRefreshing,
+  refresh,
+} = useProductBasedCostingFileDetailsPageQuery(fileId);
 
 const PBC_ITEMS_VIEW_STORAGE_KEY = 'pbc-file-items-view';
 type PbcItemsViewMode = 'table' | 'card';
@@ -1522,8 +1538,6 @@ watch(itemsView, (mode) => {
     localStorage.setItem(PBC_ITEMS_VIEW_STORAGE_KEY, mode);
   }
 });
-
-const { catalogByProductId } = usePbcItemProductCatalogMap(fileId, costingItems);
 
 const catalogForRow = (productId: number | null) => {
   if (productId == null) return null;
@@ -1582,18 +1596,6 @@ const bulkPasteFieldLabel = computed(() => {
       return 'Values';
   }
 });
-
-const tenantIdRef = computed(() => tenantStore.selectedTenant?.id);
-const { data: customerAccountsResult } = useQuery({
-  queryKey: computed(() => ['pbc', 'customerAccounts', tenantIdRef.value]),
-  queryFn: () => {
-    if (!tenantIdRef.value) return [];
-    return customerRepository.listCustomers(tenantIdRef.value);
-  },
-  enabled: computed(() => !!tenantIdRef.value),
-  staleTime: 60 * 1000,
-});
-const customerAccounts = computed(() => customerAccountsResult.value ?? []);
 
 const ratesExpanded = ref(false);
 const savingRates = ref(false);
@@ -1809,16 +1811,6 @@ watch(
   },
   { immediate: true },
 );
-
-const summaryRates = computed(() => ({
-  cargoRate: cargoRateValue.value || 0,
-  conversionRate: conversionRateValue.value || 140,
-  profitRate: profitRateValue.value || 0,
-  vatRate: vatRateValue.value || 0,
-  offerPricingMode: offerPricingModeValue.value,
-}));
-
-const { summaryMetrics } = usePbcFileSummaryQuery(fileId, summaryRates);
 
 const totalItemsCount = computed(
   () => summaryMetrics.value.lineCount || costingItems.value.length,

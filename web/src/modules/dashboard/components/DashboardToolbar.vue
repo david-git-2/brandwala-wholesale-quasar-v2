@@ -51,6 +51,19 @@
     </div>
 
     <div class="dashboard-toolbar__right">
+      <span
+        v-if="lastRefreshedLabel"
+        class="dashboard-toolbar__refreshed text-caption text-slate-500"
+      >
+        {{ lastRefreshedLabel }}
+      </span>
+      <span
+        v-else
+        class="dashboard-toolbar__refreshed text-caption text-slate-500"
+      >
+        Not loaded — tap refresh
+      </span>
+
       <q-btn
         flat
         round
@@ -60,7 +73,7 @@
         :loading="loading"
         @click="$emit('refresh')"
       >
-        <q-tooltip>Refresh</q-tooltip>
+        <q-tooltip>Refresh dashboard</q-tooltip>
       </q-btn>
 
       <q-btn
@@ -99,12 +112,21 @@ const props = withDefaults(
     selectedBrandId: number | null;
     dateRange: string;
     loading?: boolean;
+    lastRefreshedAt?: string | null;
     customBrands?: BrandOption[];
   }>(),
   {
     loading: false,
+    lastRefreshedAt: null,
   },
 );
+
+const lastRefreshedLabel = computed(() => {
+  if (!props.lastRefreshedAt) return null;
+  const date = new Date(props.lastRefreshedAt);
+  if (Number.isNaN(date.getTime())) return null;
+  return `Updated ${date.toLocaleString()}`;
+});
 
 defineEmits<{
   (e: 'update:selectedBrandId', value: number | null): void;

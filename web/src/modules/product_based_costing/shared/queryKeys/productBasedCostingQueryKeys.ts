@@ -38,4 +38,8 @@ export const productBasedCostingQueryKeys = {
       rates.vatRate,
       rates.offerPricingMode,
     ] as const,
+  fileDetailsPageRoot: (fileId: number) =>
+    ['productBasedCosting', 'files', 'detailsPage', fileId] as const,
+  fileDetailsPage: (fileId: number, pageSize: number) =>
+    [...productBasedCostingQueryKeys.fileDetailsPageRoot(fileId), pageSize] as const,
 };

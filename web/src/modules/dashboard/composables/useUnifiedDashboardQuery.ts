@@ -1,12 +1,8 @@
 import { computed, type Ref } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useQuery } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useProcurementDashboardQuery } from 'src/modules/procurement_stock/composables/useProcurementDashboardQuery';
-import { useShopOrderDashboardQuery } from 'src/modules/shop_order/composables/useShopOrderDashboardQuery';
-import { useInvestorCapitalDashboardQuery } from 'src/modules/investor_capital/composables/useInvestorCapitalDashboardQuery';
-import { globalShipmentRepository } from 'src/modules/procurement_stock/repositories/globalShipmentRepository';
+import { useDashboardBundleStore } from '../stores/dashboardBundleStore';
 import type { UnifiedDashboardMetrics } from '../types/unifiedDashboard';
 import type { InboundShipmentItem } from '../components/DashboardStockAllocationCard.vue';
 
@@ -16,6 +12,8 @@ export function useUnifiedDashboardQuery(
 ) {
   const authStore = useAuthStore();
   const tenantStore = useTenantStore();
+  const bundleStore = useDashboardBundleStore();
+  const { bundle, loading } = storeToRefs(bundleStore);
   const { tenantId } = storeToRefs(authStore);
 
   const activeCompanyId = computed<number | null>(() => {
@@ -34,45 +32,13 @@ export function useUnifiedDashboardQuery(
     return activeCompanyId.value;
   });
 
-  const procurementQuery = useProcurementDashboardQuery(effectiveTenantId);
-  const shopOrderQuery = useShopOrderDashboardQuery(effectiveTenantId);
-  const investorQuery = useInvestorCapitalDashboardQuery(effectiveTenantId);
-
-  // Inbound active shipments live query
-  const shipmentsQuery = useQuery({
-    queryKey: computed(() => ['dashboard-active-shipments', effectiveTenantId.value]),
-    queryFn: async () => {
-      if (!effectiveTenantId.value) return [];
-      try {
-        const res = await globalShipmentRepository.listPaginated(
-          effectiveTenantId.value,
-          5,
-          null,
-          undefined,
-          undefined,
-          false,
-        );
-        return res.data || [];
-      } catch {
-        return [];
-      }
-    },
-    enabled: computed(() => !!effectiveTenantId.value),
-    staleTime: 60 * 1000,
-  });
-
-  const isLoading = computed(
-    () =>
-      procurementQuery.isLoading.value ||
-      shopOrderQuery.isLoading.value ||
-      shipmentsQuery.isLoading.value,
-  );
+  const isLoading = computed(() => loading.value);
 
   const metrics = computed<UnifiedDashboardMetrics>(() => {
-    const proc = procurementQuery.data.value;
-    const shop = shopOrderQuery.data.value;
-    const investor = investorQuery.data.value;
-    const rawShipments = shipmentsQuery.data.value || [];
+    const proc = bundle.value.procurement;
+    const shop = bundle.value.shopOrder;
+    const investor = bundle.value.investorCapital;
+    const rawShipments: InboundShipmentItem[] = [];
 
     const isBrandFiltered = selectedBrandId.value !== null;
 
@@ -82,14 +48,12 @@ export function useUnifiedDashboardQuery(
     const receivables = 0;
     const agingOver30dPct = 0;
 
-    // Warehouse Stock
     const stockValuation = proc?.sellableValueBdt ?? 0;
     const totalUnits = proc?.totalQty ?? 0;
     const availableUnits = proc?.sellableQty ?? 0;
     const allocatedUnits = proc?.heldQty ?? 0;
     const inTransitUnits = proc?.unsellableQty ?? 0;
 
-    // Fulfillment counts from shop orders
     const pendingCount = (shop?.readyForPickupCount ?? 0) + (shop?.needsQuoteCount ?? 0);
     const pendingAmount = shop?.todaySalesAmount ?? 0;
     const processingCount = shop?.processingCount ?? 0;
@@ -97,30 +61,18 @@ export function useUnifiedDashboardQuery(
     const inTransitCount = (shop?.shippedCount ?? 0) + (shop?.dropshipSubmitted ?? 0);
     const deliveredCount = shop?.todayInvoiceCount ?? 0;
 
-    // Map active shipments
-    const mappedShipments: InboundShipmentItem[] =
-      rawShipments.length > 0
-        ? rawShipments.map((s) => ({
-            id: s.id,
-            batchNo: s.name || `Batch #${s.id}`,
-            transportType: s.type === 'international' ? ('sea' as const) : ('air' as const),
-            origin: s.vendor_name || 'Inbound Port',
-            totalUnits: s.received_weight ? Math.round(s.received_weight * 10) : 100,
-            statusLabel: s.status ? s.status.replace(/_/g, ' ') : 'In Transit',
-            statusKey: s.status === 'draft' ? 'warn' : 'info',
-          }))
-        : [];
+    const childRefs =
+      bundle.value.childTenantRefs.length > 0
+        ? bundle.value.childTenantRefs
+        : tenantStore.hierarchyChildRefs;
 
-    // Brands list: child tenants that belong strictly to active parent company tenant
-    const matchingChildRefs = (tenantStore.hierarchyChildRefs ?? []).filter(
+    const matchingChildRefs = childRefs.filter(
       (ref) => activeCompanyId.value !== null && ref.parent_id === activeCompanyId.value,
     );
 
     const brandRows = matchingChildRefs.map((ref, idx) => {
       const share =
-        matchingChildRefs.length === 1
-          ? 100
-          : Math.round(100 / matchingChildRefs.length);
+        matchingChildRefs.length === 1 ? 100 : Math.round(100 / matchingChildRefs.length);
       const brandRev = Math.round(revenue * (share / 100));
       return {
         id: ref.id,
@@ -171,7 +123,7 @@ export function useUnifiedDashboardQuery(
         availableUnits,
         allocatedUnits,
         inTransitUnits,
-        shipments: mappedShipments,
+        shipments: rawShipments,
       },
 
       treasury: {
@@ -190,18 +142,25 @@ export function useUnifiedDashboardQuery(
   });
 
   const refetchAll = async () => {
-    await Promise.all([
-      procurementQuery.refetch(),
-      shopOrderQuery.refetch(),
-      investorQuery.refetch(),
-      shipmentsQuery.refetch(),
-    ]);
+    const tid = effectiveTenantId.value ?? tenantId.value;
+    if (!tid) return;
+
+    const roots = [...tenantStore.availableAdminTenants, ...tenantStore.items].filter(
+      (tenant) => tenant.parent_id === null,
+    );
+    const parentIds = [...new Set(roots.map((tenant) => tenant.id))];
+
+    const result = await bundleStore.refresh(tid, parentIds);
+    if (result.childTenantRefs.length > 0) {
+      tenantStore.hierarchyChildRefs = result.childTenantRefs;
+    }
   };
 
   return {
     metrics,
     isLoading,
+    lastRefreshedAt: computed(() => bundleStore.lastRefreshedAt),
+    hasData: computed(() => bundleStore.hasData),
     refetch: refetchAll,
   };
 }
-
