@@ -86,9 +86,25 @@ export type TenantHierarchyChildRef = {
   name?: string;
 };
 
+const CHILD_TENANT_REFS_CACHE_TTL_MS = 20 * 60 * 1000;
+
+const childTenantRefsCache = new Map<
+  string,
+  { fetchedAt: number; rows: TenantHierarchyChildRef[] }
+>();
+
+export const childTenantRefsCacheKey = (parentTenantIds: number[]) =>
+  [...parentTenantIds].sort((a, b) => a - b).join(',');
+
 const listChildTenantRefs = async (parentTenantIds: number[]): Promise<TenantHierarchyChildRef[]> => {
   if (!parentTenantIds.length) {
     return [];
+  }
+
+  const cacheKey = childTenantRefsCacheKey(parentTenantIds);
+  const cached = childTenantRefsCache.get(cacheKey);
+  if (cached && Date.now() - cached.fetchedAt < CHILD_TENANT_REFS_CACHE_TTL_MS) {
+    return cached.rows;
   }
 
   const { data, error } = await supabase.rpc('list_child_tenant_refs', {
@@ -99,11 +115,15 @@ const listChildTenantRefs = async (parentTenantIds: number[]): Promise<TenantHie
     throw error;
   }
 
-  return ((data as Array<{ id: number; parent_id: number; name?: string }> | null) ?? []).map((row) => ({
-    id: Number(row.id),
-    parent_id: Number(row.parent_id),
-    name: row.name ?? undefined,
-  }));
+  const rows =
+    ((data as Array<{ id: number; parent_id: number; name?: string }> | null) ?? []).map((row) => ({
+      id: Number(row.id),
+      parent_id: Number(row.parent_id),
+      name: row.name ?? undefined,
+    }));
+
+  childTenantRefsCache.set(cacheKey, { fetchedAt: Date.now(), rows });
+  return rows;
 };
 
 const listTenantsByMembership = async (payload?: {

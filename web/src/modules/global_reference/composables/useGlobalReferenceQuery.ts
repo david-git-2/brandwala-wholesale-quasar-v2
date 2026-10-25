@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, type ComputedRef, type Ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { globalReferenceRepository } from '../repositories/globalReferenceRepository';
 import { globalReferenceQueryKeys } from '../shared/queryKeys/globalReferenceQueryKeys';
+import { useGlobalReferenceStore } from '../stores/globalReferenceStore';
 
 const STALE_TIME = 10 * 60 * 1000; // 10 minutes cache
 const CURRENCY_STALE_TIME = 24 * 60 * 60 * 1000; // 24 hours cache for currencies
@@ -35,12 +37,28 @@ export function useMarketByCodeQuery(code: Ref<string | null | undefined> | Comp
 
 // --- Currencies ---
 export function useGlobalCurrenciesQuery() {
-  return useQuery({
+  const globalRefStore = useGlobalReferenceStore();
+  const { currencies, loadingCurrencies } = storeToRefs(globalRefStore);
+
+  const needsFetch = computed(() => currencies.value.length === 0);
+
+  const query = useQuery({
     queryKey: globalReferenceQueryKeys.currencies(),
-    queryFn: () => globalReferenceRepository.listCurrencies(),
+    queryFn: () => globalRefStore.ensureCurrenciesLoaded(),
     staleTime: CURRENCY_STALE_TIME,
     gcTime: CURRENCY_STALE_TIME,
+    enabled: needsFetch,
   });
+
+  const data = computed(() =>
+    currencies.value.length > 0 ? currencies.value : (query.data.value ?? []),
+  );
+
+  const isLoading = computed(
+    () => loadingCurrencies.value || (needsFetch.value && query.isLoading.value),
+  );
+
+  return { ...query, data, isLoading };
 }
 
 export function useCurrencyByIdQuery(id: Ref<number | null | undefined> | ComputedRef<number | null | undefined>) {

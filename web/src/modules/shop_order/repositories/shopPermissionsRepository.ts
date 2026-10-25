@@ -14,24 +14,13 @@ interface CustomerGroup {
   accent_color: string | null;
 }
 
-interface Currency {
-  id: number;
-  code: string;
-  name: string;
-}
-
-const listCustomerGroups = async (tenantId: number): Promise<CustomerGroup[]> => {
-  const { data: booksId, error: booksError } = await supabase.rpc('resolve_parent_tenant_id', {
-    p_tenant_id: tenantId,
-  });
-  if (booksError) {
-    throw booksError;
-  }
-
+const listCustomerGroupsByBooksTenantId = async (
+  booksTenantId: number,
+): Promise<CustomerGroup[]> => {
   const { data, error } = await supabase
     .from('customer_groups')
     .select('id, name, is_active, accent_color')
-    .eq('parent_tenant_id', booksId ?? tenantId)
+    .eq('parent_tenant_id', booksTenantId)
     .is('deleted_at', null)
     .order('name', { ascending: true });
 
@@ -166,26 +155,12 @@ const setListingGroupVisibility = async (
   }
 };
 
-const listCurrencies = async (): Promise<Currency[]> => {
-  const { data, error } = await supabase
-    .from('global_currencies')
-    .select('id, code, name')
-    .order('code', { ascending: true });
-
-  if (error) {
-    throw error;
-  }
-
-  return data ?? [];
-};
-
 export const shopPermissionsRepository = {
-  listCustomerGroups,
+  listCustomerGroupsByBooksTenantId,
   getProfile,
   upsertProfile,
   listAccessOverrides,
   upsertAccessOverride,
   listListingGroupVisibility,
   setListingGroupVisibility,
-  listCurrencies,
 };

@@ -252,9 +252,9 @@ import {
   useTenantMembersQuery,
   useCustomerGroupsQuery,
   useCustomerGroupMembersQuery,
-  useCustomerProfilesQuery,
   useInvestorsQuery,
 } from '../composables/useAccessControlQueries';
+import { useCustomerProfiles } from 'src/modules/sales_invoice/composables/useCustomerProfiles';
 
 // Dialog components
 import RoleFormDialog from '../components/dialogs/RoleFormDialog.vue';
@@ -366,8 +366,9 @@ const customerGroupMembersQuery = useCustomerGroupMembersQuery(selectedCustomerG
 const customerGroupMembers = computed<CustomerGroupMember[]>(() => customerGroupMembersQuery.data.value || []);
 const customerGroupMembersLoading = computed(() => customerGroupMembersQuery.isLoading.value);
 
-const customerProfilesQuery = useCustomerProfilesQuery(tenantId, isCustomerGroupsTab);
-const customerProfiles = computed(() => customerProfilesQuery.data.value || []);
+const { profiles: customerProfiles } = useCustomerProfiles(tenantId, {
+  enabled: isCustomerGroupsTab,
+});
 
 const investorsQuery = useInvestorsQuery(isTeamTab);
 const allInvestors = computed(() => investorsQuery.data.value || []);
@@ -705,7 +706,7 @@ const goToCustomerProfileCreate = () => {
 
 const submitLinkProfile = async (profileId: number) => {
   if (!selectedCustomerGroupId.value) return;
-  const profile = customerProfileStore.items.find((p) => p.id === profileId);
+  const profile = customerProfiles.value.find((p) => p.id === profileId);
   if (!profile) return;
 
   const res = await customerProfileStore.updateCustomerProfile({

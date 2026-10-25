@@ -1,17 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
-import { computed, type Ref } from 'vue';
+import { computed, type MaybeRefOrGetter, toValue, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
-export function useShopOrderDetailQuery(orderId: Ref<number>) {
+export function useShopOrderDetailQuery(
+  orderId: Ref<number>,
+  options?: { enabled?: MaybeRefOrGetter<boolean> },
+) {
   const authStore = useAuthStore();
   const tenantId = computed(() => authStore.tenantId ?? null);
+  const extraEnabled = options?.enabled;
   return useQuery({
     queryKey: computed(() => shopOrderQueryKeys.orderDetail(tenantId.value, orderId.value)),
     queryFn: () => shopOrderRepository.getShopOrderById(tenantId.value!, orderId.value),
-    enabled: computed(() => !!tenantId.value && orderId.value > 0),
+    enabled: computed(() => {
+      const base = !!tenantId.value && orderId.value > 0;
+      if (!base) return false;
+      if (extraEnabled === undefined) return true;
+      return toValue(extraEnabled);
+    }),
     staleTime: 15 * 1000,
   });
 }

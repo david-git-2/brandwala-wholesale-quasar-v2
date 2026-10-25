@@ -7,12 +7,17 @@ export interface ShopCategoryQueryParams {
   tenantId: number;
 }
 
-export function useShopCategoryListQuery(params: Ref<ShopCategoryQueryParams>) {
+export function useShopCategoryListQuery(
+  params: Ref<ShopCategoryQueryParams>,
+  options?: { enabled?: Ref<boolean> },
+) {
+  const enabledRef = options?.enabled ?? computed(() => true);
   return useQuery({
     queryKey: computed(() => shopOrderQueryKeys.categories(params.value.tenantId)),
     queryFn: () => shopCategoryRepository.listCategories(params.value.tenantId),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 20 * 60 * 1000,
     placeholderData: keepPreviousData,
-    enabled: computed(() => !!params.value.tenantId),
+    enabled: computed(() => enabledRef.value && !!params.value.tenantId),
+    refetchOnWindowFocus: false,
   });
 }

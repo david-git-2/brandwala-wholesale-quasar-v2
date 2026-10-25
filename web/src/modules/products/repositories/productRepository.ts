@@ -350,6 +350,9 @@ const listProductsFallback = async ({
   };
 };
 
+const BRANDS_CACHE_TTL_MS = 20 * 60 * 1000;
+const brandsCache = new Map<string, { fetchedAt: number; rows: string[] }>();
+
 const listBrands = async ({ vendorCode, tenantId }: ListProductLookupParams = {}): Promise<
   string[]
 > => {
@@ -358,6 +361,24 @@ const listBrands = async ({ vendorCode, tenantId }: ListProductLookupParams = {}
   }
 
   const normalizedVendorCode = normalizeText(vendorCode)?.toUpperCase() ?? null;
+  const cacheKey = `${tenantId}:${normalizedVendorCode ?? '*'}`;
+  const cached = brandsCache.get(cacheKey);
+  if (cached && Date.now() - cached.fetchedAt < BRANDS_CACHE_TTL_MS) {
+    return cached.rows;
+  }
+
+  if (normalizedVendorCode) {
+    const { readTenantSetupLookups } = await import(
+      'src/modules/shop_order/utils/tenantSetupLookupCache'
+    );
+    const fromBundle = readTenantSetupLookups(tenantId);
+    const fromVendor = fromBundle?.brandsByVendor[normalizedVendorCode];
+    if (fromVendor) {
+      brandsCache.set(cacheKey, { fetchedAt: Date.now(), rows: fromVendor });
+      return fromVendor;
+    }
+  }
+
   const { data, error } = await supabase.rpc('list_product_brands_for_tenant', {
     p_tenant_id: tenantId,
     p_vendor_code: normalizedVendorCode,
@@ -368,9 +389,11 @@ const listBrands = async ({ vendorCode, tenantId }: ListProductLookupParams = {}
     throw error;
   }
 
-  return ((data as Array<{ name: string | null }> | null) ?? [])
+  const rows = ((data as Array<{ name: string | null }> | null) ?? [])
     .map((row) => row.name?.trim() ?? '')
     .filter((brand) => brand.length > 0);
+  brandsCache.set(cacheKey, { fetchedAt: Date.now(), rows });
+  return rows;
 };
 
 const listCategories = async ({ vendorCode, tenantId }: ListProductLookupParams = {}): Promise<

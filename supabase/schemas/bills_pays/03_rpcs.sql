@@ -4072,7 +4072,10 @@ begin
     gii.line_discount_amount,
     gii.line_total_amount,
     gii.return_quantity,
-    coalesce(gsi.image_url, p.image_url) as image_url,
+    case
+      when gii.line_kind = 'stock'::text then coalesce(gsi.image_url, p.image_url)
+      else null::text
+    end as image_url,
     gsi.shipment_id,
     gsi.id as shipment_item_id,
     gsi.purchase_price,
@@ -4589,7 +4592,76 @@ $$;
 
 ALTER FUNCTION "public"."normalize_pay_settlement_fx"("p_instrument_total_bdt" numeric, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_base_currency_code" "text") OWNER TO "postgres";
 
-CREATE OR REPLACE FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_source" "text" DEFAULT 'customer_cash'::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_shop_order_id" bigint DEFAULT NULL::bigint, "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric) RETURNS "public"."pays"
+CREATE OR REPLACE FUNCTION "public"."credit_dropship_profit_from_courier_remittance"(
+  "p_tenant_id" bigint,
+  "p_profile_id" bigint,
+  "p_order_id" bigint,
+  "p_payment_id" bigint,
+  "p_amount" numeric,
+  "p_reference" "text",
+  "p_net_remitted" numeric,
+  "p_invoice_allocated" numeric
+) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_parent_id bigint;
+  v_profit_already_credited boolean := false;
+  v_amount numeric(12, 2);
+begin
+  v_amount := round(greatest(coalesce(p_amount, 0), 0), 2);
+  if v_amount <= 0 then
+    return;
+  end if;
+
+  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+
+  select exists (
+    select 1
+    from public.cashbook_entries u
+    where u.parent_tenant_id = v_parent_id
+      and u.source_type = 'shop_order'
+      and u.source_id = p_order_id::text
+      and u.entity_type in ('middleman', 'customer')
+      and u.entity_id = p_profile_id
+      and u.type = 'credit'
+      and coalesce(u.metadata ->> 'transaction_type', '') = 'dropship_profit'
+  ) into v_profit_already_credited;
+
+  if v_profit_already_credited then
+    return;
+  end if;
+
+  perform public.record_ledger_transaction(
+    p_parent_tenant_id => v_parent_id,
+    p_operating_tenant_id => p_tenant_id,
+    p_entity_type => 'customer',
+    p_entity_id => p_profile_id,
+    p_type => 'credit',
+    p_amount => v_amount,
+    p_currency_code => 'BDT',
+    p_exchange_rate => 1.000000,
+    p_source_type => 'shop_order',
+    p_source_id => p_order_id::text,
+    p_metadata => jsonb_build_object(
+      'section', 'payout_earned',
+      'transaction_type', 'dropship_profit',
+      'label', 'Dropship profit from remittance remainder',
+      'order_id', p_order_id,
+      'shop_order_id', p_order_id::text,
+      'payment_id', p_payment_id,
+      'remittance_ref', p_reference,
+      'net_remitted', p_net_remitted,
+      'invoice_allocated', p_invoice_allocated
+    )
+  );
+end;
+$$;
+
+ALTER FUNCTION "public"."credit_dropship_profit_from_courier_remittance"("p_tenant_id" bigint, "p_profile_id" bigint, "p_order_id" bigint, "p_payment_id" bigint, "p_amount" numeric, "p_reference" "text", "p_net_remitted" numeric, "p_invoice_allocated" numeric) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_source" "text" DEFAULT 'customer_cash'::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_shop_order_id" bigint DEFAULT NULL::bigint, "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_credit_dropship_profit" boolean DEFAULT true) RETURNS "public"."pays"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -4612,7 +4684,6 @@ declare
   v_alloc_amount numeric(12, 2);
   v_total_alloc numeric(12, 2) := 0.00;
   v_leftover numeric(12, 2);
-  v_profit_already_credited boolean := false;
   v_settle_currency text := 'BDT';
   v_foreign_amt numeric(12, 2);
   v_fx_rate numeric(15, 6) := 1.000000;
@@ -4839,41 +4910,16 @@ begin
 
   if v_leftover > 0 then
     if v_source = 'courier_remittance' then
-      select exists (
-        select 1
-        from public.cashbook_entries u
-        where u.parent_tenant_id = v_parent_id
-          and u.source_type = 'shop_order'
-          and u.source_id = p_shop_order_id::text
-          and u.entity_type in ('middleman', 'customer')
-          and u.entity_id = p_profile_id
-          and u.type = 'credit'
-          and coalesce(u.metadata ->> 'transaction_type', '') = 'dropship_profit'
-      ) into v_profit_already_credited;
-
-      if not v_profit_already_credited then
-        perform public.record_ledger_transaction(
-          p_parent_tenant_id => v_parent_id,
-          p_operating_tenant_id => p_tenant_id,
-          p_entity_type => 'customer',
-          p_entity_id => p_profile_id,
-          p_type => 'credit',
-          p_amount => v_leftover,
-          p_currency_code => 'BDT',
-          p_exchange_rate => 1.000000,
-          p_source_type => 'shop_order',
-          p_source_id => p_shop_order_id::text,
-          p_metadata => jsonb_build_object(
-            'section', 'payout_earned',
-            'transaction_type', 'dropship_profit',
-            'label', 'Dropship profit from remittance remainder',
-            'order_id', p_shop_order_id,
-            'shop_order_id', p_shop_order_id::text,
-            'payment_id', v_pay.id,
-            'remittance_ref', v_reference,
-            'net_remitted', v_amount,
-            'invoice_allocated', v_total_alloc
-          )
+      if coalesce(p_credit_dropship_profit, true) then
+        perform public.credit_dropship_profit_from_courier_remittance(
+          p_tenant_id,
+          p_profile_id,
+          p_shop_order_id,
+          v_pay.id,
+          v_leftover,
+          v_reference,
+          v_amount,
+          v_total_alloc
         );
       end if;
     else
@@ -4902,7 +4948,7 @@ begin
 end;
 $$;
 
-ALTER FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) OWNER TO "postgres";
+ALTER FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_credit_dropship_profit" boolean) OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."_build_shipment_ap_bucket_paper"("p_shipment_id" bigint, "p_ship" "public"."global_shipments", "p_bucket" "public"."global_shipment_cost_bucket") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE
@@ -5234,6 +5280,221 @@ $$;
 
 ALTER FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb", "p_keep_as_draft" boolean) OWNER TO "postgres";
 
+CREATE OR REPLACE FUNCTION "public"."_build_dropship_courier_ap_paper"(
+  "p_order" "public"."shop_orders",
+  "p_courier" "public"."courier_services",
+  "p_delivery" numeric,
+  "p_cod" numeric,
+  "p_total" numeric
+) RETURNS "jsonb"
+    LANGUAGE "plpgsql" IMMUTABLE
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_lines jsonb := '[]'::jsonb;
+  v_total numeric(12, 2);
+begin
+  v_total := round(coalesce(p_total, 0), 2);
+
+  if coalesce(p_delivery, 0) > 0 then
+    v_lines := v_lines || jsonb_build_array(
+      jsonb_build_object(
+        'description', 'Delivery charge',
+        'amount', round(p_delivery, 2),
+        'currency_code', 'BDT',
+        'currency_symbol', '৳'
+      )
+    );
+  end if;
+
+  if coalesce(p_cod, 0) > 0 then
+    v_lines := v_lines || jsonb_build_array(
+      jsonb_build_object(
+        'description', 'COD / cash handling',
+        'amount', round(p_cod, 2),
+        'currency_code', 'BDT',
+        'currency_symbol', '৳'
+      )
+    );
+  end if;
+
+  if jsonb_array_length(v_lines) = 0 and v_total > 0 then
+    v_lines := jsonb_build_array(
+      jsonb_build_object(
+        'description', format('Courier charges — order %s', p_order.order_no),
+        'amount', v_total,
+        'currency_code', 'BDT',
+        'currency_symbol', '৳'
+      )
+    );
+  end if;
+
+  return jsonb_build_object(
+    'paper', 'courier',
+    'lines', v_lines,
+    'currency_groups', jsonb_build_array(
+      jsonb_build_object(
+        'currency_code', 'BDT',
+        'currency_symbol', '৳',
+        'foreign_total', v_total,
+        'lines', v_lines
+      )
+    ),
+    'mixed_currencies', false,
+    'foreign_total', v_total,
+    'currency_code', 'BDT',
+    'currency_symbol', '৳',
+    'bdt_amount', v_total,
+    'order_no', p_order.order_no,
+    'courier_name', p_courier.name,
+    'courier_awb_number', p_order.courier_awb_number,
+    'tracking_url', p_order.tracking_url,
+    'recipient_name', p_order.recipient_name,
+    'recipient_phone', p_order.recipient_phone,
+    'shipping_address', p_order.shipping_address
+  );
+end;
+$$;
+
+ALTER FUNCTION "public"."_build_dropship_courier_ap_paper"("p_order" "public"."shop_orders", "p_courier" "public"."courier_services", "p_delivery" numeric, "p_cod" numeric, "p_total" numeric) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."_sync_dropship_courier_ap_bill_details"(
+  "p_bill_id" bigint,
+  "p_order_id" bigint,
+  "p_allow_line_sync" boolean DEFAULT true
+) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_bill public.bills;
+  v_order public.shop_orders;
+  v_courier public.courier_services;
+  v_delivery numeric(12, 2);
+  v_cod numeric(12, 2);
+  v_charges_total numeric(12, 2) := 0;
+  v_paper jsonb;
+  v_note text;
+  v_meta jsonb;
+begin
+  select * into v_bill from public.bills where id = p_bill_id;
+  if v_bill.id is null then
+    return;
+  end if;
+
+  select * into v_order from public.shop_orders where id = p_order_id;
+  if v_order.id is null then
+    return;
+  end if;
+
+  select * into v_courier from public.courier_services where id = v_order.courier_service_id;
+
+  v_delivery := round(coalesce(v_order.delivery_charge_amount, 0), 2);
+  v_cod := round(coalesce(v_order.cod_charge_amount, 0), 2);
+
+  v_paper := public._build_dropship_courier_ap_paper(
+    v_order,
+    v_courier,
+    v_delivery,
+    v_cod,
+    v_bill.total_amount
+  );
+
+  v_note := format(
+    'Courier AP — %s — order %s%s',
+    coalesce(v_courier.name, 'Courier'),
+    v_order.order_no,
+    case
+      when nullif(trim(coalesce(v_order.courier_awb_number, '')), '') is not null
+      then format(' (AWB %s)', trim(v_order.courier_awb_number))
+      else ''
+    end
+  );
+
+  v_meta := coalesce(v_bill.channel_meta, '{}'::jsonb) || jsonb_build_object(
+    'shop_order_id', p_order_id,
+    'order_no', v_order.order_no,
+    'courier_service_id', v_order.courier_service_id,
+    'courier_name', v_courier.name,
+    'courier_awb_number', v_order.courier_awb_number,
+    'tracking_url', v_order.tracking_url,
+    'delivery_charge_amount', v_order.delivery_charge_amount,
+    'cod_charge_amount', v_order.cod_charge_amount,
+    'courier_cost_amount', v_order.courier_cost_amount,
+    'recipient_name', v_order.recipient_name,
+    'recipient_phone', v_order.recipient_phone,
+    'shipping_address', v_order.shipping_address,
+    'ap_paper', v_paper
+  );
+
+  update public.bills
+  set
+    note = v_note,
+    recipient_name = v_order.recipient_name,
+    recipient_phone = v_order.recipient_phone,
+    recipient_address = v_order.shipping_address,
+    shipping_charge = case when p_allow_line_sync then v_delivery else shipping_charge end,
+    channel_meta = v_meta,
+    updated_at = now()
+  where id = p_bill_id;
+
+  if not p_allow_line_sync then
+    return;
+  end if;
+
+  delete from public.bill_lines
+  where invoice_id = p_bill_id
+    and line_kind = 'charge';
+
+  if v_delivery > 0 then
+    insert into public.bill_lines (
+      invoice_id, parent_tenant_id, line_kind, name_snapshot, quantity,
+      sell_price_amount, line_discount_amount, line_total_amount, books_amount,
+      currency_code, line_meta
+    ) values (
+      p_bill_id, v_bill.parent_tenant_id, 'charge', 'Delivery charge', 1,
+      v_delivery, 0, v_delivery, v_delivery,
+      coalesce(v_bill.currency_code, 'BDT'), jsonb_build_object('charge_type', 'delivery')
+    );
+    v_charges_total := v_charges_total + v_delivery;
+  end if;
+
+  if v_cod > 0 then
+    insert into public.bill_lines (
+      invoice_id, parent_tenant_id, line_kind, name_snapshot, quantity,
+      sell_price_amount, line_discount_amount, line_total_amount, books_amount,
+      currency_code, line_meta
+    ) values (
+      p_bill_id, v_bill.parent_tenant_id, 'charge', 'COD / cash handling', 1,
+      v_cod, 0, v_cod, v_cod,
+      coalesce(v_bill.currency_code, 'BDT'), jsonb_build_object('charge_type', 'cod')
+    );
+    v_charges_total := v_charges_total + v_cod;
+  end if;
+
+  if v_charges_total = 0 and coalesce(v_bill.total_amount, 0) > 0 then
+    insert into public.bill_lines (
+      invoice_id, parent_tenant_id, line_kind, name_snapshot, quantity,
+      sell_price_amount, line_discount_amount, line_total_amount, books_amount,
+      currency_code, line_meta
+    ) values (
+      p_bill_id, v_bill.parent_tenant_id, 'charge',
+      format('Courier charges — order %s', v_order.order_no), 1,
+      v_bill.total_amount, 0, v_bill.total_amount, v_bill.total_amount,
+      coalesce(v_bill.currency_code, 'BDT'), jsonb_build_object('charge_type', 'courier')
+    );
+    v_charges_total := v_bill.total_amount;
+  end if;
+
+  update public.bills
+  set charges_amount = v_charges_total,
+      updated_at = now()
+  where id = p_bill_id;
+end;
+$$;
+
+ALTER FUNCTION "public"."_sync_dropship_courier_ap_bill_details"("p_bill_id" bigint, "p_order_id" bigint, "p_allow_line_sync" boolean) OWNER TO "postgres";
+
 CREATE OR REPLACE FUNCTION "public"."upsert_dropship_courier_ap_bill"("p_order_id" bigint, "p_keep_as_draft" boolean DEFAULT false) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -5355,33 +5616,26 @@ begin
   end;
 
   if v_bill.id is null then
-    v_invoice_no := public.generate_sales_invoice_number(
-      v_order.tenant_id,
-      'ap'::public.global_invoice_type,
-      current_date
-    );
+    v_invoice_no := 'AP-CR-' || v_order.order_no;
     insert into public.bills (
       parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_date,
       invoice_status, profile_id, collection_source, payment_status,
       subtotal_amount, total_amount, due_amount, paid_amount,
       source_type, source_id, source_key, currency_code,
-      note, channel_meta, document_kind
+      note, channel_meta, document_kind,
+      recipient_name, recipient_phone, recipient_address
     ) values (
       v_parent_tenant_id, v_order.tenant_id, v_invoice_no, 'ap'::public.global_invoice_type, current_date,
       v_paper_status, v_profile_id, 'profile'::public.collection_source_type, 'due',
       v_amount, v_amount, v_amount, 0,
       'dropship_courier', p_order_id::text, 'courier', 'BDT',
-      format('Dropship order %s — courier AP', v_order.order_no),
-      jsonb_build_object(
-        'shop_order_id', p_order_id,
-        'courier_service_id', v_order.courier_service_id,
-        'delivery_charge_amount', v_order.delivery_charge_amount,
-        'cod_charge_amount', v_order.cod_charge_amount,
-        'courier_cost_amount', v_order.courier_cost_amount
-      ),
-      'standard'::public.bill_document_kind
+      format('Courier AP — %s — order %s', v_courier.name, v_order.order_no),
+      '{}'::jsonb,
+      'standard'::public.bill_document_kind,
+      v_order.recipient_name, v_order.recipient_phone, v_order.shipping_address
     )
     returning * into v_bill;
+    perform public._sync_dropship_courier_ap_bill_details(v_bill.id, p_order_id, true);
     perform public.stamp_bill_kernel_fields(v_bill.id);
     return jsonb_build_object('success', true, 'bill_id', v_bill.id, 'created', true, 'amount', v_amount);
   end if;
@@ -5401,21 +5655,36 @@ begin
       total_amount = v_amount,
       due_amount = v_amount,
       payment_status = 'due',
-      note = format('Dropship order %s — courier AP', v_order.order_no),
-      channel_meta = coalesce(channel_meta, '{}'::jsonb) || jsonb_build_object(
-        'shop_order_id', p_order_id,
-        'courier_service_id', v_order.courier_service_id,
-        'delivery_charge_amount', v_order.delivery_charge_amount,
-        'cod_charge_amount', v_order.cod_charge_amount,
-        'courier_cost_amount', v_order.courier_cost_amount
-      ),
+      recipient_name = v_order.recipient_name,
+      recipient_phone = v_order.recipient_phone,
+      recipient_address = v_order.shipping_address,
       updated_at = now()
     where id = v_bill.id;
+    perform public._sync_dropship_courier_ap_bill_details(v_bill.id, p_order_id, true);
     perform public.stamp_bill_kernel_fields(v_bill.id);
     return jsonb_build_object('success', true, 'bill_id', v_bill.id, 'revived', true, 'amount', v_amount);
   end if;
 
   if v_bill.invoice_status = 'issued'::public.global_invoice_status then
+    perform public._sync_dropship_courier_ap_bill_details(
+      v_bill.id,
+      p_order_id,
+      coalesce(v_bill.paid_amount, 0) = 0
+    );
+    if coalesce(v_bill.paid_amount, 0) = 0
+       and v_bill.invoice_no not like 'AP-CR-%' then
+      update public.bills b
+      set invoice_no = 'AP-CR-' || v_order.order_no,
+          updated_at = now()
+      where b.id = v_bill.id
+        and not exists (
+          select 1
+          from public.bills b2
+          where b2.parent_tenant_id = v_parent_tenant_id
+            and b2.invoice_no = 'AP-CR-' || v_order.order_no
+            and b2.id <> b.id
+        );
+    end if;
     return jsonb_build_object('success', true, 'bill_id', v_bill.id, 'skipped', true, 'amount', v_bill.total_amount);
   end if;
 
@@ -5444,17 +5713,13 @@ begin
       when invoice_status = 'issued'::public.global_invoice_status then invoice_status
       else v_paper_status
     end,
-    note = format('Dropship order %s — courier AP', v_order.order_no),
-    channel_meta = coalesce(channel_meta, '{}'::jsonb) || jsonb_build_object(
-      'shop_order_id', p_order_id,
-      'courier_service_id', v_order.courier_service_id,
-      'delivery_charge_amount', v_order.delivery_charge_amount,
-      'cod_charge_amount', v_order.cod_charge_amount,
-      'courier_cost_amount', v_order.courier_cost_amount
-    ),
+    recipient_name = v_order.recipient_name,
+    recipient_phone = v_order.recipient_phone,
+    recipient_address = v_order.shipping_address,
     updated_at = now()
   where id = v_bill.id;
 
+  perform public._sync_dropship_courier_ap_bill_details(v_bill.id, p_order_id, true);
   perform public.stamp_bill_kernel_fields(v_bill.id);
   return jsonb_build_object('success', true, 'bill_id', v_bill.id, 'amount', v_amount);
 end;
@@ -5462,7 +5727,157 @@ $$;
 
 ALTER FUNCTION "public"."upsert_dropship_courier_ap_bill"("p_order_id" bigint, "p_keep_as_draft" boolean) OWNER TO "postgres";
 
-CREATE OR REPLACE FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver"("p_order_id" bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."resolve_dropship_courier_ap_bill_id"(
+  "p_order_id" bigint,
+  "p_parent_tenant_id" bigint
+) RETURNS bigint
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select b.id
+  from public.bills b
+  where b.parent_tenant_id = p_parent_tenant_id
+    and b.invoice_type = 'ap'::public.global_invoice_type
+    and b.document_kind = 'standard'::public.bill_document_kind
+    and (
+      (b.source_type = 'dropship_courier' and b.source_id = p_order_id::text)
+      or (
+        b.source_type = 'shop_order'
+        and b.source_id = p_order_id::text
+        and coalesce(b.source_key, '') = 'courier'
+      )
+    )
+    and b.invoice_status <> 'voided'::public.global_invoice_status
+  order by b.id
+  limit 1;
+$$;
+
+ALTER FUNCTION "public"."resolve_dropship_courier_ap_bill_id"("p_order_id" bigint, "p_parent_tenant_id" bigint) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."settle_dropship_courier_ap_via_cod_retention"(
+  "p_ap_bill_id" bigint,
+  "p_amount" numeric,
+  "p_order_id" bigint,
+  "p_remittance_ref" "text",
+  "p_receipt_payment_id" bigint DEFAULT NULL::bigint
+) RETURNS numeric
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ap public.bills;
+  v_bal jsonb;
+  v_family_due numeric(12, 2);
+  v_remaining numeric(12, 2);
+  v_chunk numeric(12, 2);
+  v_total_settled numeric(12, 2) := 0;
+  v_bill record;
+  v_operating_tenant_id bigint;
+  v_note text;
+begin
+  if p_ap_bill_id is null then
+    return 0;
+  end if;
+
+  select * into v_ap from public.bills where id = p_ap_bill_id for update;
+  if v_ap.id is null then
+    raise exception 'courier AP bill not found';
+  end if;
+
+  if v_ap.invoice_type <> 'ap'::public.global_invoice_type then
+    raise exception 'bill is not an AP bill';
+  end if;
+
+  if v_ap.invoice_status <> 'issued'::public.global_invoice_status then
+    return 0;
+  end if;
+
+  v_bal := public.get_bill_net_balances(p_ap_bill_id);
+  v_family_due := greatest(coalesce((v_bal->>'due_amount')::numeric, 0), 0);
+  v_remaining := least(
+    round(greatest(coalesce(p_amount, 0), 0), 2),
+    v_family_due
+  );
+
+  if v_remaining <= 0 then
+    return 0;
+  end if;
+
+  v_note := format(
+    'Courier COD retention — order #%s — remittance %s',
+    p_order_id,
+    coalesce(nullif(trim(p_remittance_ref), ''), '—')
+  );
+
+  for v_bill in
+    select
+      b.id,
+      b.due_amount,
+      b.issued_by_tenant_id,
+      b.parent_tenant_id
+    from public.bills b
+    where (
+        b.id = p_ap_bill_id
+        or b.parent_bill_id = p_ap_bill_id
+      )
+      and b.invoice_status = 'issued'::public.global_invoice_status
+      and greatest(coalesce(b.due_amount, 0), 0) > 0
+    order by
+      case when b.id = p_ap_bill_id then 0 else 1 end,
+      b.id
+    for update
+  loop
+    v_chunk := least(v_remaining, greatest(coalesce(v_bill.due_amount, 0), 0));
+    if v_chunk <= 0 then
+      continue;
+    end if;
+
+    v_operating_tenant_id := coalesce(v_bill.issued_by_tenant_id, v_bill.parent_tenant_id);
+
+    insert into public.invoice_write_offs (
+      tenant_id,
+      parent_tenant_id,
+      invoice_id,
+      payment_id,
+      amount,
+      reason,
+      note,
+      approved_by
+    )
+    values (
+      v_operating_tenant_id,
+      v_bill.parent_tenant_id,
+      v_bill.id,
+      p_receipt_payment_id,
+      v_chunk,
+      'dispute_settlement',
+      v_note,
+      auth.uid()
+    );
+
+    perform public.recompute_global_invoice_payment_status(v_bill.id);
+
+    v_total_settled := v_total_settled + v_chunk;
+    v_remaining := v_remaining - v_chunk;
+
+    if v_remaining <= 0 then
+      exit;
+    end if;
+  end loop;
+
+  perform public.recompute_global_invoice_payment_status(p_ap_bill_id);
+
+  return round(v_total_settled, 2);
+end;
+$$;
+
+ALTER FUNCTION "public"."settle_dropship_courier_ap_via_cod_retention"("p_ap_bill_id" bigint, "p_amount" numeric, "p_order_id" bigint, "p_remittance_ref" "text", "p_receipt_payment_id" bigint) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver"(
+  "p_order_id" bigint,
+  "p_delivery_override" numeric DEFAULT NULL::numeric,
+  "p_cod_override" numeric DEFAULT NULL::numeric
+) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -5486,6 +5901,12 @@ declare
   v_parent_tenant_id bigint;
   v_has_adjustments boolean := false;
   v_courier_name text;
+  v_delivery_merchant numeric(12, 2);
+  v_cod_merchant numeric(12, 2);
+  v_delivery_payer text;
+  v_cod_payer text;
+  v_delivery_for_ap numeric(12, 2);
+  v_cod_for_ap numeric(12, 2);
 begin
   select * into v_order from public.shop_orders where id = p_order_id;
   if v_order.id is null then
@@ -5541,6 +5962,51 @@ begin
 
   select * into v_charges from public.get_dropship_merchant_billable_charges(p_order_id);
 
+  v_delivery_merchant := coalesce(v_charges.delivery, 0);
+  v_cod_merchant := coalesce(v_charges.cod, 0);
+
+  if p_delivery_override is not null then
+    select coalesce(cl.payer::text, 'recipient')
+    into v_delivery_payer
+    from public.dropship_order_settlements s
+    inner join public.dropship_settlement_charge_lines cl
+      on cl.settlement_id = s.id and cl.charge_type = 'delivery'::public.dropship_settlement_charge_type
+    where s.shop_order_id = p_order_id
+    limit 1;
+
+    if not found then
+      v_delivery_payer := case
+        when coalesce(v_order.deduct_delivery_from_margin, false) then 'merchant'
+        else 'recipient'
+      end;
+    end if;
+
+    if v_delivery_payer = 'merchant' then
+      v_delivery_merchant := round(coalesce(p_delivery_override, 0), 2);
+    end if;
+  end if;
+
+  if p_cod_override is not null then
+    select coalesce(cl.payer::text, 'recipient')
+    into v_cod_payer
+    from public.dropship_order_settlements s
+    inner join public.dropship_settlement_charge_lines cl
+      on cl.settlement_id = s.id and cl.charge_type = 'cod'::public.dropship_settlement_charge_type
+    where s.shop_order_id = p_order_id
+    limit 1;
+
+    if not found then
+      v_cod_payer := case
+        when coalesce(v_order.deduct_cod_from_margin, false) then 'merchant'
+        else 'recipient'
+      end;
+    end if;
+
+    if v_cod_payer = 'merchant' then
+      v_cod_merchant := round(coalesce(p_cod_override, 0), 2);
+    end if;
+  end if;
+
   v_ar_bal := public.get_bill_net_balances(v_ar.id);
   v_net_ar := round(
     coalesce((v_ar_bal->>'original_total')::numeric, 0)
@@ -5560,10 +6026,10 @@ begin
   v_wanted_ar := round(
     v_net_ar
     - v_old_ar_charges
-    + coalesce(v_charges.delivery, 0)
+    + coalesce(v_delivery_merchant, 0)
     + coalesce(v_charges.print, 0)
     + coalesce(v_charges.packing, 0)
-    + coalesce(v_charges.cod, 0),
+    + coalesce(v_cod_merchant, 0),
     2
   );
 
@@ -5571,10 +6037,10 @@ begin
 
   if abs(v_diff) >= 0.01 then
     v_parts := array[]::text[];
-    if coalesce(v_charges.delivery, 0) is distinct from coalesce(v_ar.shipping_charge, 0) then
+    if coalesce(v_delivery_merchant, 0) is distinct from coalesce(v_ar.shipping_charge, 0) then
       v_parts := array_append(
         v_parts,
-        format('Delivery %s→%s', coalesce(v_ar.shipping_charge, 0), coalesce(v_charges.delivery, 0))
+        format('Delivery %s→%s', coalesce(v_ar.shipping_charge, 0), coalesce(v_delivery_merchant, 0))
       );
     end if;
     if coalesce(v_charges.print, 0) is distinct from coalesce(v_ar.print_charge, 0) then
@@ -5589,13 +6055,13 @@ begin
         format('Packing %s→%s', coalesce(v_ar.wrapping_charge, 0), coalesce(v_charges.packing, 0))
       );
     end if;
-    if coalesce(v_charges.cod, 0) is distinct from coalesce((v_ar.channel_meta->>'cod_charge_amount')::numeric, 0) then
+    if coalesce(v_cod_merchant, 0) is distinct from coalesce((v_ar.channel_meta->>'cod_charge_amount')::numeric, 0) then
       v_parts := array_append(
         v_parts,
         format(
           'Courier COD fee %s→%s',
           coalesce((v_ar.channel_meta->>'cod_charge_amount')::numeric, 0),
-          coalesce(v_charges.cod, 0)
+          coalesce(v_cod_merchant, 0)
         )
       );
     end if;
@@ -5623,10 +6089,9 @@ begin
   end if;
 
   if v_ap.id is not null and v_ap.invoice_status = 'issued'::public.global_invoice_status then
-    v_wanted_ap := round(
-      coalesce(v_order.delivery_charge_amount, 0) + coalesce(v_order.cod_charge_amount, 0),
-      2
-    );
+    v_delivery_for_ap := coalesce(p_delivery_override, v_order.delivery_charge_amount, 0);
+    v_cod_for_ap := coalesce(p_cod_override, v_order.cod_charge_amount, 0);
+    v_wanted_ap := round(coalesce(v_delivery_for_ap, 0) + coalesce(v_cod_for_ap, 0), 2);
 
     v_ap_bal := public.get_bill_net_balances(v_ap.id);
     v_net_ap := round(
@@ -5640,23 +6105,23 @@ begin
 
     if abs(v_diff) >= 0.01 then
       v_parts := array[]::text[];
-      if coalesce(v_order.delivery_charge_amount, 0) is distinct from coalesce((v_ap.channel_meta->>'delivery_charge_amount')::numeric, 0) then
+      if coalesce(v_delivery_for_ap, 0) is distinct from coalesce((v_ap.channel_meta->>'delivery_charge_amount')::numeric, 0) then
         v_parts := array_append(
           v_parts,
           format(
             'Delivery %s→%s',
             coalesce((v_ap.channel_meta->>'delivery_charge_amount')::numeric, 0),
-            coalesce(v_order.delivery_charge_amount, 0)
+            coalesce(v_delivery_for_ap, 0)
           )
         );
       end if;
-      if coalesce(v_order.cod_charge_amount, 0) is distinct from coalesce((v_ap.channel_meta->>'cod_charge_amount')::numeric, 0) then
+      if coalesce(v_cod_for_ap, 0) is distinct from coalesce((v_ap.channel_meta->>'cod_charge_amount')::numeric, 0) then
         v_parts := array_append(
           v_parts,
           format(
             'Courier COD fee %s→%s',
             coalesce((v_ap.channel_meta->>'cod_charge_amount')::numeric, 0),
-            coalesce(v_order.cod_charge_amount, 0)
+            coalesce(v_cod_for_ap, 0)
           )
         );
       end if;
@@ -5693,7 +6158,104 @@ begin
 end;
 $$;
 
-ALTER FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver"("p_order_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver"("p_order_id" bigint, "p_delivery_override" numeric, "p_cod_override" numeric) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."preview_dropship_courier_payin_settlement"(
+  "p_order_id" bigint,
+  "p_delivery_charge" numeric,
+  "p_cod_charge" numeric,
+  "p_net_amount" numeric
+) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_order public.shop_orders;
+  v_parent_tenant_id bigint;
+  v_ar public.bills;
+  v_ap public.bills;
+  v_notes jsonb;
+  v_net numeric(12, 2);
+  v_charge numeric(12, 2);
+  v_invoice_due_after numeric(12, 2);
+  v_invoice_allocated numeric(12, 2);
+  v_ap_due_after numeric(12, 2);
+  v_ap_settled numeric(12, 2);
+  v_merchant_remainder numeric(12, 2);
+  v_ar_adj jsonb;
+  v_ap_adj jsonb;
+  v_ap_id bigint;
+begin
+  v_net := round(greatest(coalesce(p_net_amount, 0), 0), 2);
+  v_charge := round(greatest(coalesce(p_delivery_charge, 0) + coalesce(p_cod_charge, 0), 0), 2);
+
+  select * into v_order from public.shop_orders where id = p_order_id;
+  if v_order.id is null then
+    return jsonb_build_object('success', false, 'error', 'order not found');
+  end if;
+
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
+
+  v_notes := public.preview_dropship_issued_bill_notes_at_deliver(
+    p_order_id,
+    p_delivery_charge,
+    p_cod_charge
+  );
+
+  if coalesce(v_notes->>'success', 'false') <> 'true' then
+    return v_notes;
+  end if;
+
+  select * into v_ar from public.bills where id = v_order.global_invoice_id;
+  if v_ar.id is null then
+    return jsonb_build_object('success', false, 'error', 'customer invoice not found');
+  end if;
+
+  v_ar_adj := v_notes->'customer_invoice';
+  if v_ar_adj is not null and v_ar_adj <> 'null'::jsonb then
+    v_invoice_due_after := greatest(coalesce((v_ar_adj->>'wanted_net')::numeric, 0), 0)
+      - greatest(coalesce(v_ar.paid_amount, 0), 0);
+  else
+    v_invoice_due_after := greatest(coalesce(v_ar.due_amount, 0), 0);
+  end if;
+
+  v_invoice_due_after := greatest(v_invoice_due_after, 0);
+  v_invoice_allocated := least(v_net, v_invoice_due_after);
+
+  v_ap_id := public.resolve_dropship_courier_ap_bill_id(p_order_id, v_parent_tenant_id);
+  if v_ap_id is not null then
+    select * into v_ap from public.bills where id = v_ap_id;
+    v_ap_adj := v_notes->'courier_ap';
+    if v_ap_adj is not null and v_ap_adj <> 'null'::jsonb then
+      v_ap_due_after := greatest(
+        coalesce((v_ap_adj->>'wanted_net')::numeric, 0) - greatest(coalesce(v_ap.paid_amount, 0), 0),
+        0
+      );
+    else
+      v_ap_due_after := greatest(coalesce(v_ap.due_amount, 0), 0);
+    end if;
+    v_ap_settled := least(v_ap_due_after, v_charge);
+  else
+    v_ap_due_after := 0;
+    v_ap_settled := 0;
+  end if;
+
+  v_merchant_remainder := greatest(v_net - v_invoice_allocated, 0);
+
+  return v_notes || jsonb_build_object(
+    'net_amount', v_net,
+    'courier_charge', v_charge,
+    'invoice_due_after_notes', v_invoice_due_after,
+    'invoice_allocated', v_invoice_allocated,
+    'courier_ap_bill_id', v_ap_id,
+    'courier_ap_due_after_notes', v_ap_due_after,
+    'courier_ap_settled', v_ap_settled,
+    'merchant_remainder', v_merchant_remainder
+  );
+end;
+$$;
+
+ALTER FUNCTION "public"."preview_dropship_courier_payin_settlement"("p_order_id" bigint, "p_delivery_charge" numeric, "p_cod_charge" numeric, "p_net_amount" numeric) OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
@@ -7112,9 +7674,9 @@ declare
   v_credits numeric(12,2);
   v_debits numeric(12,2);
   v_due numeric(12,2);
-  v_parent_remaining numeric(12,2);
   v_child record;
   v_child_paid numeric(12,2);
+  v_child_written_off numeric(12,2);
   v_child_due numeric(12,2);
   v_child_total numeric(12,2);
 begin
@@ -7145,8 +7707,7 @@ begin
     and invoice_status = 'issued'::public.global_invoice_status;
 
   v_total := coalesce(v_bill.total_amount, 0.00);
-  v_parent_remaining := greatest(v_total - v_paid - v_written_off, 0.00);
-  v_due := greatest(v_parent_remaining - v_credits + v_debits, 0.00);
+  v_due := greatest(v_total - v_paid - v_written_off - v_credits + v_debits, 0.00);
 
   update public.bills
   set
@@ -7171,21 +7732,29 @@ begin
     select coalesce(sum(amount), 0.00) into v_child_paid
     from public.pay_allocations where global_invoice_id = v_child.id;
 
+    select coalesce(sum(amount), 0.00) into v_child_written_off
+    from public.invoice_write_offs where invoice_id = v_child.id;
+
     v_child_total := coalesce(v_child.total_amount, 0.00);
 
     if v_child.invoice_status <> 'issued'::public.global_invoice_status then
       v_child_due := 0.00;
+    elsif v_due = 0.00 and (v_written_off > 0.00 or v_paid > 0.00) then
+      v_child_due := 0.00;
     else
-      v_child_due := greatest(v_child_total - v_child_paid, 0.00);
+      v_child_due := greatest(v_child_total - v_child_paid - v_child_written_off, 0.00);
     end if;
 
     update public.bills
     set
       paid_amount = v_child_paid,
+      written_off_amount = v_child_written_off,
       due_amount = v_child_due,
       payment_status = case
         when v_child.invoice_status = 'voided'::public.global_invoice_status then 'due'
         when v_child_total <= 0.00 then 'paid'
+        when v_child_due <= 0.00 and v_child_written_off > 0.00 then 'settled_with_write_off'
+        when v_child_due <= 0.00 and v_due = 0.00 and v_written_off > 0.00 then 'settled_with_write_off'
         when v_child_due <= 0.00 and v_child_paid > 0.00 then 'paid'
         when v_child_paid > 0.00 then 'partially_paid'
         else 'due'

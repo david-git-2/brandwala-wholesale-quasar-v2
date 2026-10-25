@@ -1,4 +1,7 @@
 import { defineStore } from 'pinia';
+import { useGlobalReferenceStore } from 'src/modules/global_reference/stores/globalReferenceStore';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { resolveBooksTenantId } from 'src/modules/tenant/utils/resolveBooksTenantId';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { shopPermissionsService } from '../services/shopPermissionsService';
 import type {
@@ -15,11 +18,6 @@ interface CustomerGroup {
   accent_color: string | null;
 }
 
-interface Currency {
-  id: number;
-  code: string;
-  name: string;
-}
 
 export interface ShopPermissionsState {
   customerGroups: CustomerGroup[];
@@ -28,7 +26,7 @@ export interface ShopPermissionsState {
   loadingProfile: boolean;
   accessOverrides: ShopCustomerGroupAccess[];
   loadingAccess: boolean;
-  currencies: Currency[];
+  currencies: { id: number; code: string; name: string }[];
   loadingCurrencies: boolean;
   saving: boolean;
   error: string | null;
@@ -57,7 +55,12 @@ export const useShopPermissionsStore = defineStore('shopPermissions', {
       this.loadingGroups = true;
       this.error = null;
       try {
-        const res = await shopPermissionsService.listCustomerGroups(tenantId);
+        const tenantStore = useTenantStore();
+        const booksTenantId = resolveBooksTenantId(
+          tenantId,
+          tenantStore.selectedTenant?.parent_id,
+        );
+        const res = await shopPermissionsService.listCustomerGroups(booksTenantId);
         if (!res.success) {
           this.error = res.error;
           handleApiFailure(res, res.error);
@@ -177,16 +180,22 @@ export const useShopPermissionsStore = defineStore('shopPermissions', {
     },
 
     async fetchCurrencies() {
+      const globalRef = useGlobalReferenceStore();
+      if (globalRef.currencies.length > 0) {
+        this.currencies = globalRef.currencies.map((c) => ({
+          id: c.id,
+          code: c.code,
+          name: c.name,
+        }));
+        return;
+      }
       if (this.currencies.length > 0) return;
       this.loadingCurrencies = true;
       try {
-        const res = await shopPermissionsService.listCurrencies();
-        if (!res.success) {
-          this.error = res.error;
-          return res;
-        }
-        this.currencies = res.data ?? [];
-        return res;
+        const rows = await globalRef.ensureCurrenciesLoaded();
+        this.currencies = rows.map((c) => ({ id: c.id, code: c.code, name: c.name }));
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Failed to list currencies.';
       } finally {
         this.loadingCurrencies = false;
       }

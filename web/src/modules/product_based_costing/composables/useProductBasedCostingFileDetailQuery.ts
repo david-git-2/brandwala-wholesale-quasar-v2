@@ -2,32 +2,41 @@ import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
-import type { InfiniteData } from '@tanstack/vue-query';
-import type { ProductBasedCostingFile, ProductBasedCostingFileListPage } from '../types';
+import {
+  isPbcDetailsBundleQueryPending,
+  readPbcFileFromDetailsBundleCache,
+  readPbcFileFromListCache,
+} from '../utils/pbcDetailsBundleCache';
 
 export function useProductBasedCostingFileDetailQuery(fileId: Ref<number>) {
   const queryClient = useQueryClient();
+
+  const cachedFile = computed(() => {
+    if (!fileId.value) {
+      return undefined;
+    }
+    return (
+      readPbcFileFromDetailsBundleCache(queryClient, fileId.value)
+      ?? readPbcFileFromListCache(queryClient, fileId.value)
+    );
+  });
 
   return useQuery({
     queryKey: computed(() => productBasedCostingQueryKeys.fileDetail(fileId.value)),
     queryFn: () => productBasedCostingRepository.getProductBasedCostingFileById(fileId.value),
     staleTime: 2 * 60 * 1000,
-    enabled: computed(() => fileId.value > 0),
-    initialData: () => {
-      if (!fileId.value) return undefined;
-      const listQueries = queryClient.getQueriesData<
-        InfiniteData<ProductBasedCostingFileListPage>
-      >({
-        queryKey: ['productBasedCosting', 'files', 'list'],
-      });
-      for (const [, data] of listQueries) {
-        const pages = data?.pages ?? [];
-        for (const page of pages) {
-          const found = page.data.find((file: ProductBasedCostingFile) => file.id === fileId.value);
-          if (found) return found;
-        }
+    enabled: computed(() => {
+      if (fileId.value <= 0) {
+        return false;
       }
-      return undefined;
-    },
+      if (cachedFile.value) {
+        return false;
+      }
+      if (isPbcDetailsBundleQueryPending(queryClient, fileId.value)) {
+        return false;
+      }
+      return true;
+    }),
+    placeholderData: () => cachedFile.value,
   });
 }

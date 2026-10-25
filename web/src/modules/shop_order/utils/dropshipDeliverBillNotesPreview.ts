@@ -25,6 +25,18 @@ export type DropshipDeliverBillNotesPreview = {
   courier_ap?: DropshipBillNoteAdjustmentPreview | null;
 };
 
+export type DropshipCourierPayInSettlementSummary = {
+  netAmount: number;
+  courierCharge: number;
+  invoiceDueAfterNotes: number;
+  invoiceAllocated: number;
+  courierApSettled: number;
+  merchantRemainder: number;
+};
+
+export type DropshipCourierPayInSettlementPreview = DropshipDeliverBillNotesPreview &
+  DropshipCourierPayInSettlementSummary;
+
 function toNumber(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string' && value.trim() !== '') {
@@ -101,6 +113,24 @@ export function parseDropshipDeliverBillNotesPreview(data: unknown): DropshipDel
   return parsed;
 }
 
+export function parseDropshipCourierPayInSettlementPreview(
+  data: unknown,
+): DropshipCourierPayInSettlementPreview | null {
+  const notes = parseDropshipDeliverBillNotesPreview(data);
+  if (!notes) return null;
+  if (!data || typeof data !== 'object') return null;
+  const row = data as Record<string, unknown>;
+  return {
+    ...notes,
+    netAmount: toNumber(row.net_amount),
+    courierCharge: toNumber(row.courier_charge),
+    invoiceDueAfterNotes: toNumber(row.invoice_due_after_notes),
+    invoiceAllocated: toNumber(row.invoice_allocated),
+    courierApSettled: toNumber(row.courier_ap_settled),
+    merchantRemainder: toNumber(row.merchant_remainder),
+  };
+}
+
 export function requestDropshipMarkDeliveredConfirmation(
   preview: DropshipDeliverBillNotesPreview | null,
   options?: { orderNo?: string | null },
@@ -111,6 +141,37 @@ export function requestDropshipMarkDeliveredConfirmation(
       componentProps: {
         preview,
         orderNo: options?.orderNo ?? null,
+      },
+    })
+      .onOk(() => resolve(true))
+      .onCancel(() => resolve(false))
+      .onDismiss(() => resolve(false));
+  });
+}
+
+export function requestDropshipCourierPayInConfirmation(
+  preview: DropshipCourierPayInSettlementPreview | null,
+  options?: { orderNo?: string | null },
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    Dialog.create({
+      component: DropshipMarkDeliveredConfirmDialog,
+      componentProps: {
+        preview,
+        orderNo: options?.orderNo ?? null,
+        title: 'Confirm courier pay in',
+        confirmLabel: 'Post pay in',
+        intro:
+          'Bank in will be recorded. Customer bill and courier AP are settled from this amount; any remainder goes to the dropshipper wallet.',
+        settlementSummary: preview
+          ? {
+              netAmount: preview.netAmount,
+              courierCharge: preview.courierCharge,
+              invoiceAllocated: preview.invoiceAllocated,
+              courierApSettled: preview.courierApSettled,
+              merchantRemainder: preview.merchantRemainder,
+            }
+          : null,
       },
     })
       .onOk(() => resolve(true))

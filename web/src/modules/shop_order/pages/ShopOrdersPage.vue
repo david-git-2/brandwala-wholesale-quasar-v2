@@ -5,13 +5,14 @@
     <div v-else class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
       <ShopOrdersFilters
         v-model:selected-shop-id="selectedShopId"
-        v-model:search="search"
+        v-model:search="searchInput"
         v-model:status-filter="statusFilter"
-        v-model:shop-type-filter="shopTypeFilter"
         :shops="shops"
         :shops-loading="isLoadingShops"
         :refreshing="isRefreshing"
+        @apply-search="applySearch"
         @refresh="refresh()"
+        @create-dropship="goCreateDropshipOrder"
       />
 
       <div class="col" style="min-height: 0">
@@ -35,8 +36,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useShopOrdersStaffPageQuery } from '../composables/useShopOrdersStaffPageQuery';
 import { useProcessDropshipOrderMutation } from '../composables/useShopOrderMutations';
@@ -46,7 +47,6 @@ import ShopOrdersSkeleton from '../components/ShopOrdersSkeleton.vue';
 import type { ShopType } from '../types';
 
 const router = useRouter();
-const route = useRoute();
 const authStore = useAuthStore();
 
 const tenantId = computed(() => authStore.tenantId as number);
@@ -61,42 +61,35 @@ const isParentTenant = computed(() => {
 
 const selectedShopId = ref<number | null>(null);
 
-const search = ref('');
+const searchInput = ref('');
+const appliedSearch = ref('');
 const statusFilter = ref<string | null>(null);
-const shopTypeFilter = ref<string | null>(
-  typeof route.query.shopType === 'string' ? route.query.shopType : null,
-);
 
-watch(
-  () => route.query.shopType,
-  (value) => {
-    shopTypeFilter.value = typeof value === 'string' ? value : null;
-  },
-);
+const applySearch = () => {
+  appliedSearch.value = searchInput.value.trim();
+};
 
 const isFiltered = computed(() => {
   return Boolean(
-    search.value.trim() ||
+    appliedSearch.value ||
       statusFilter.value ||
-      selectedShopId.value !== null ||
-      shopTypeFilter.value !== null,
+      selectedShopId.value !== null,
   );
 });
 
 const clearAllFilters = () => {
-  search.value = '';
+  searchInput.value = '';
+  appliedSearch.value = '';
   statusFilter.value = null;
   selectedShopId.value = null;
-  shopTypeFilter.value = null;
 };
 
 const pageParams = computed(() => ({
   tenantId: tenantId.value,
   parentTenantId: parentTenantId.value,
-  search: search.value || null,
+  search: appliedSearch.value || null,
   status: statusFilter.value || null,
   shopId: selectedShopId.value || null,
-  shopType: shopTypeFilter.value || null,
 }));
 
 const {
@@ -133,11 +126,19 @@ const goToOrderDetails = (orderId: number) => {
   });
 };
 
+const goCreateDropshipOrder = () => {
+  const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
+  void router.push(`${slug}/app/shop/orders/create`);
+};
+
 const addToDropshipDesk = async (orderId: number) => {
   const res = await processDropship(orderId);
   if (res?.success) {
     const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
-    void router.push(`${slug}/app/shop/orders/${orderId}`);
+    void router.push({
+      path: `${slug}/app/shop/orders/${orderId}`,
+      state: { shopTypeSnapshot: 'dropship' },
+    });
   }
 };
 </script>

@@ -165,7 +165,7 @@
           <tbody>
             <tr v-for="line in lines" :key="line.id">
               <td class="preview-line-item-cell">
-                <BillLineItemDisplay :name="line.name_snapshot" :image-url="line.image_url" />
+                <BillLineItemDisplay :name="line.name_snapshot" />
               </td>
               <td class="text-right">{{ line.quantity }}</td>
               <td class="text-right">{{ formatAmountBdt(line.sell_price_amount) }}</td>

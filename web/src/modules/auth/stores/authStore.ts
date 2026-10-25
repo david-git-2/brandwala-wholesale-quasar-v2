@@ -178,6 +178,7 @@ export const useAuthStore = defineStore('auth', () => {
       schemaVersion: 4,
     };
     writeStorage(snapshot.value);
+    writeFreshnessTimestamp(Date.now());
   };
 
   const silentRebootstrap = async () => {

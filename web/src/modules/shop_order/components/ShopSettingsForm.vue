@@ -408,7 +408,13 @@ import { useI18n } from 'vue-i18n';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { showErrorNotification } from 'src/utils/appFeedback';
 import { useSaveShopMutation } from '../composables/useShopMutations';
-import type { Shop, ShopOrderMode, ShopType, UpdateShopPayload } from 'src/modules/shop_order/types';
+import type {
+  Shop,
+  ShopOrderMode,
+  ShopSetupTenantLookups,
+  ShopType,
+  UpdateShopPayload,
+} from 'src/modules/shop_order/types';
 import {
   derivedShopIsNegotiable,
   getAllowedOrderModes,
@@ -449,6 +455,7 @@ type ShopForm = {
 
 const props = defineProps<{
   shop: Shop;
+  setupLookups?: ShopSetupTenantLookups;
 }>();
 
 const { t } = useI18n();
@@ -622,17 +629,21 @@ const currencyOptions = computed(() =>
 );
 
 const categoryParams = computed(() => ({ tenantId: form.tenant_id }));
-const { data: categoryData, isLoading: loadingCategories } = useShopCategoryListQuery(categoryParams);
+const { data: categoryData, isLoading: loadingCategories } = useShopCategoryListQuery(categoryParams, {
+  enabled: computed(() => !props.setupLookups),
+});
 const categoryOptions = computed(() => {
   const selected = new Set(form.category_ids || []);
-  return (categoryData.value || [])
+  const rows = props.setupLookups?.categories ?? categoryData.value ?? [];
+  return rows
     .filter((c) => c.is_active || selected.has(c.id))
     .map((c) => ({ id: c.id, name: c.name }));
 });
 
-const vendorOptions = computed(() =>
-  vendors.value.map((v: Vendor) => ({ code: v.code, label: `${v.name} (${v.code})` })),
-);
+const vendorOptions = computed(() => {
+  const list = props.setupLookups?.vendors ?? vendors.value;
+  return list.map((v: Vendor) => ({ code: v.code, label: `${v.name} (${v.code})` }));
+});
 
 const selectedVendorCodes = computed({
   get: (): string[] => form.vendor_filters?.map((v) => v.vendor_code) ?? [],
@@ -731,7 +742,22 @@ const getVendorLabel = (code: string) => {
   return opt ? opt.label : code;
 };
 
+const applyBundledBrands = () => {
+  const map = props.setupLookups?.brandsByVendor;
+  if (!map) return;
+  for (const [code, names] of Object.entries(map)) {
+    vendorBrandsMap[code] = names;
+    vendorBrandsMap[code.toUpperCase()] = names;
+  }
+};
+
 const loadBrandsForVendor = async (vendorCode: string) => {
+  const key = vendorCode.trim().toUpperCase();
+  const fromBundle = props.setupLookups?.brandsByVendor[key];
+  if (fromBundle) {
+    vendorBrandsMap[vendorCode] = fromBundle;
+    return;
+  }
   if (vendorBrandsMap[vendorCode]) return;
   loadingBrandsMap[vendorCode] = true;
   try {
@@ -745,6 +771,10 @@ const loadBrandsForVendor = async (vendorCode: string) => {
 };
 
 const loadVendors = async () => {
+  if (props.setupLookups) {
+    vendors.value = props.setupLookups.vendors;
+    return;
+  }
   loadingVendors.value = true;
   const { vendorService } = await import('src/modules/vendor/services/vendorService');
   const result = await vendorService.listVendors(form.tenant_id);
@@ -753,11 +783,20 @@ const loadVendors = async () => {
 };
 
 void loadVendors();
+applyBundledBrands();
 if (props.shop.vendor_filters) {
   props.shop.vendor_filters.forEach((vf) => {
     void loadBrandsForVendor(vf.vendor_code);
   });
 }
+
+watch(
+  () => props.setupLookups,
+  () => {
+    void loadVendors();
+    applyBundledBrands();
+  },
+);
 
 watch(
   () => form.shop_type,

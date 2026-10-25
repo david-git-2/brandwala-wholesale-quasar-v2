@@ -330,7 +330,7 @@ import { useProductStore } from 'src/modules/products/stores/productStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useProductBasedCostingFileDetailQuery } from '../composables/useProductBasedCostingFileDetailQuery';
 import { useUpdateProductBasedCostingFileMutation } from '../composables/useProductBasedCostingFileMutations';
-import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
+import { useGlobalCurrencies } from 'src/modules/global_reference/composables/useGlobalCurrencies';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { productService } from 'src/modules/products/services/productService';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
@@ -383,7 +383,7 @@ const { data: fileDetail } = useProductBasedCostingFileDetailQuery(fileIdRef);
 const resolvedDefaultVendorCode = computed(
   () => props.defaultVendorCode ?? fileDetail.value?.vendor_code ?? null,
 );
-const { data: currenciesData } = useGlobalCurrenciesQuery();
+const { currencies } = useGlobalCurrencies();
 const authStore = useAuthStore();
 const $q = useQuasar();
 const { t } = useI18n();
@@ -549,7 +549,7 @@ const vendorOptions = computed(() => [
 ]);
 
 const gbpCurrencyId = computed(
-  () => (currenciesData.value ?? []).find((c) => c.code === 'GBP')?.id ?? null,
+  () => currencies.value.find((c) => c.code === 'GBP')?.id ?? null,
 );
 
 const resolvedMarketCode = computed(() => {

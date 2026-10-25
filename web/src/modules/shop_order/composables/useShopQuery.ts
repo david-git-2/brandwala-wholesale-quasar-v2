@@ -202,7 +202,8 @@ export function useVendorListQuery(tenantId: Ref<number>) {
   return useQuery({
     queryKey: computed(() => shopOrderQueryKeys.vendorsList(tenantId.value)),
     queryFn: () => vendorRepository.listVendors(tenantId.value),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 20 * 60 * 1000,
+    refetchOnWindowFocus: false,
     enabled: computed(() => !!tenantId.value),
   });
 }

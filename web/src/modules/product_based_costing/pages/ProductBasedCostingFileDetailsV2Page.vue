@@ -1400,6 +1400,7 @@ import ProductBasedCostingSettingsDrawer, {
   type PbcSettingsDrawerAction,
 } from '../components/ProductBasedCostingSettingsDrawer.vue';
 import { useProductBasedCostingFileDetailsPageQuery } from '../composables/useProductBasedCostingFileDetailsPageQuery';
+import { useCustomerAccounts } from 'src/modules/customer/composables/useCustomerAccounts';
 import ProductBasedCostingStatusOverrideDialog from '../components/ProductBasedCostingStatusOverrideDialog.vue';
 import ProductBasedCostingStatusWorkflowBar from '../components/ProductBasedCostingStatusWorkflowBar.vue';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
@@ -1447,7 +1448,7 @@ import {
   pbcFileSellCurrencyCode,
 } from '../utils/pbcFileCurrencies';
 import { DEFAULT_PBC_PREVIEW_SCREENSHOT_COLUMNS } from '../utils/pbcPreviewScreenshot';
-import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
+import { useGlobalCurrencies } from 'src/modules/global_reference/composables/useGlobalCurrencies';
 
 const props = defineProps<{
   id?: string | number;
@@ -1511,8 +1512,6 @@ const fileId = computed(() => {
 const {
   file,
   costingItems,
-  catalogByProductId,
-  customerAccounts,
   summaryMetrics,
   hasMoreItems,
   isLoadingFile,
@@ -1521,7 +1520,13 @@ const {
   fetchNextPage,
   isRefreshing,
   refresh,
+  catalogByProductId,
 } = useProductBasedCostingFileDetailsPageQuery(fileId);
+
+const customerTenantId = computed(
+  () => file.value?.tenant_id ?? tenantStore.selectedTenant?.id ?? null,
+);
+const { customerGroupOptions: customerAccounts } = useCustomerAccounts(customerTenantId);
 
 const PBC_ITEMS_VIEW_STORAGE_KEY = 'pbc-file-items-view';
 type PbcItemsViewMode = 'table' | 'card';
@@ -1640,10 +1645,10 @@ const showPriceGbpWithVatColumn = computed(
   () => offerPricingModeValue.value === 'gbp_vat_then_profit',
 );
 
-const { data: currenciesData, isLoading: loadingCurrencies } = useGlobalCurrenciesQuery();
+const { currencies, loadingCurrencies } = useGlobalCurrencies();
 
 const currencyOptions = computed(() =>
-  (currenciesData.value ?? []).map((c) => ({
+  currencies.value.map((c) => ({
     label: `${c.code} (${c.symbol})`,
     value: c.id,
   })),
@@ -1661,7 +1666,7 @@ const currencyI18n = computed(() => ({
 
 const currencyCodeById = (id: number | null | undefined): string | null => {
   if (id == null) return null;
-  const row = (currenciesData.value ?? []).find((c) => c.id === id);
+  const row = currencies.value.find((c) => c.id === id);
   return row?.code?.trim() ? row.code.toUpperCase() : null;
 };
 

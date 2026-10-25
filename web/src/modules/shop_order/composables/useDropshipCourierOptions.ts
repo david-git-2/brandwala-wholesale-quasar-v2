@@ -1,8 +1,7 @@
 import { computed, type MaybeRefOrGetter, toValue } from 'vue';
-import { useQuery } from '@tanstack/vue-query';
+import { storeToRefs } from 'pinia';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { dropshipCourierRepository } from '../repositories/dropshipCourierRepository';
-import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
+import { useCourierServicesStore } from '../stores/courierServicesStore';
 
 export function useDropshipCourierOptions(options: {
   tenantSlug: MaybeRefOrGetter<string | null>;
@@ -10,18 +9,13 @@ export function useDropshipCourierOptions(options: {
 }) {
   const authStore = useAuthStore();
   const tenantId = computed(() => authStore.tenantId ?? 0);
-  const tenantSlug = computed(() => toValue(options.tenantSlug));
   const orderTenantId = computed(() => toValue(options.orderTenantId) ?? tenantId.value);
 
-  const couriersQuery = useQuery({
-    queryKey: computed(() => shopOrderQueryKeys.couriers(tenantSlug.value)),
-    enabled: computed(() => tenantId.value > 0),
-    staleTime: 60_000,
-    queryFn: () => dropshipCourierRepository.listCouriers(),
-  });
+  const courierStore = useCourierServicesStore();
+  const { couriers: allCouriers, loading } = storeToRefs(courierStore);
 
   const couriers = computed(() =>
-    (couriersQuery.data.value ?? []).filter(
+    allCouriers.value.filter(
       (courier) =>
         courier.is_active &&
         (courier.tenant_id == null || courier.tenant_id === orderTenantId.value),
@@ -35,6 +29,6 @@ export function useDropshipCourierOptions(options: {
   return {
     couriers,
     courierOptions,
-    couriersQuery,
+    couriersLoading: loading,
   };
 }

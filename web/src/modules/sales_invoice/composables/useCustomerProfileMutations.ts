@@ -5,16 +5,19 @@ import {
   type DeleteCustomerProfileInput,
   type UpdateCustomerProfileInput,
 } from '../repositories/customerProfileRepository';
+import { useCustomerProfileStore } from '../stores/customerProfileStore';
 import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
 import { tenantQueryKeys } from 'src/modules/tenant/shared/queryKeys/tenantQueryKeys';
 
 export function useCustomerProfileMutations() {
   const queryClient = useQueryClient();
+  const customerProfileStore = useCustomerProfileStore();
 
   const createCustomerProfileMutation = useMutation({
     mutationFn: (input: CreateCustomerProfileInput) =>
       customerProfileRepository.createCustomerProfile(input),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      customerProfileStore.upsertInTenantCaches(data);
       void queryClient.invalidateQueries({
         queryKey: salesInvoiceQueryKeys.customerProfiles(variables.parent_tenant_id),
       });
@@ -27,7 +30,8 @@ export function useCustomerProfileMutations() {
   const updateCustomerProfileMutation = useMutation({
     mutationFn: (input: UpdateCustomerProfileInput & { tenant_id?: number }) =>
       customerProfileRepository.updateCustomerProfile({ id: input.id, patch: input.patch }),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      customerProfileStore.upsertInTenantCaches(data);
       const tenantId = variables.tenant_id;
       if (tenantId) {
         void queryClient.invalidateQueries({
@@ -45,6 +49,7 @@ export function useCustomerProfileMutations() {
     mutationFn: (input: DeleteCustomerProfileInput & { tenant_id?: number }) =>
       customerProfileRepository.deleteCustomerProfile({ id: input.id }),
     onSuccess: (_, variables) => {
+      customerProfileStore.removeFromTenantCaches(variables.id);
       if (variables.tenant_id) {
         void queryClient.invalidateQueries({
           queryKey: salesInvoiceQueryKeys.customerProfiles(variables.tenant_id),

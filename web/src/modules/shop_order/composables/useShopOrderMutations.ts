@@ -4,6 +4,7 @@ import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { applyStaffOrderDetailToCache } from '../utils/staffOrderDetailCacheUtils';
+import { invalidateDropshipOrderDetailV2 } from '../utils/dropshipOrderDetailV2CacheUtils';
 
 export function useProcessDropshipOrderMutation() {
   const queryClient = useQueryClient();
@@ -17,9 +18,7 @@ export function useProcessDropshipOrderMutation() {
         void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.staffOrdersPageRoot() });
         void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
         const tenantId = useAuthStore().tenantId ?? 0;
-        void queryClient.invalidateQueries({
-          queryKey: shopOrderQueryKeys.dropshipDetailV2(tenantId, orderId),
-        });
+        if (tenantId > 0) invalidateDropshipOrderDetailV2(tenantId, orderId);
       } else {
         handleApiFailure(res as any, res.error || 'Failed to process dropship order');
       }
@@ -205,9 +204,8 @@ export function useCancelDropshipOrderMutation() {
     onSuccess: (_, variables) => {
       showSuccessNotification('Order cancelled.');
       void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
-      void queryClient.invalidateQueries({
-        queryKey: shopOrderQueryKeys.dropshipDetailV2(authStore.tenantId ?? 0, variables.orderId),
-      });
+      const tenantId = authStore.tenantId ?? 0;
+      if (tenantId > 0) invalidateDropshipOrderDetailV2(tenantId, variables.orderId);
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
         void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.staffOrdersPageRoot() });
     },

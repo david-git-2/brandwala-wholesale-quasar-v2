@@ -2,19 +2,49 @@
   <q-dialog ref="dialogRef" @hide="onDialogHide">
     <q-card class="q-dialog-plugin" style="width: 520px; max-width: 95vw">
       <q-card-section class="row items-center q-pb-sm">
-        <div class="text-h6 text-weight-bold">Mark as delivered</div>
+        <div class="text-h6 text-weight-bold">{{ title }}</div>
         <q-space />
         <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
 
       <q-card-section class="q-pt-none q-gutter-y-md">
-        <p class="text-body2 q-ma-none">
+        <p v-if="intro" class="text-body2 q-ma-none">
+          {{ intro }}
+          <span v-if="orderNo" class="text-weight-medium"> ({{ orderNo }})</span>
+        </p>
+        <p v-else class="text-body2 q-ma-none">
           Mark this parcel as delivered?
           <span v-if="orderNo" class="text-weight-medium"> ({{ orderNo }})</span>
         </p>
-        <p class="text-caption text-grey-7 q-ma-none">
+        <p v-if="!intro" class="text-caption text-grey-7 q-ma-none">
           The customer invoice was issued at ship. Cash is recorded when the courier remits.
         </p>
+
+        <div
+          v-if="settlementSummary"
+          class="bg-grey-2 q-pa-sm rounded-borders q-gutter-y-xs"
+        >
+          <div class="text-subtitle2 text-weight-bold q-mb-xs">After pay in</div>
+          <div class="row items-center justify-between text-caption">
+            <span>Net received</span>
+            <span class="text-weight-medium">{{ formatBdt(settlementSummary.netAmount) }}</span>
+          </div>
+          <div class="row items-center justify-between text-caption text-grey-8">
+            <span>Customer bill cleared</span>
+            <span>{{ formatBdt(settlementSummary.invoiceAllocated) }}</span>
+          </div>
+          <div class="row items-center justify-between text-caption text-grey-8">
+            <span>Courier AP settled (retained)</span>
+            <span>{{ formatBdt(settlementSummary.courierApSettled) }}</span>
+          </div>
+          <q-separator />
+          <div class="row items-center justify-between text-caption">
+            <span class="text-weight-medium">Dropshipper receives</span>
+            <span class="text-positive text-subtitle2 text-weight-bold">
+              {{ formatBdt(settlementSummary.merchantRemainder) }}
+            </span>
+          </div>
+        </div>
 
         <q-banner
           v-if="previewWarning"
@@ -96,7 +126,7 @@
           outline
           no-caps
           color="primary"
-          label="Mark delivered"
+          :label="confirmLabel"
           class="text-weight-bold"
           @click="onConfirm"
         />
@@ -106,7 +136,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, withDefaults } from 'vue';
 import { useDialogPluginComponent } from 'quasar';
 import { DROPSHIP_TERM } from '../constants/dropshipTerminology';
 import {
@@ -115,10 +145,30 @@ import {
   listDropshipDeliverBillNoteAdjustments,
 } from '../utils/dropshipDeliverBillNotesPreview';
 
-const props = defineProps<{
-  preview: DropshipDeliverBillNotesPreview | null;
-  orderNo?: string | null;
-}>();
+export type DropshipPayInSettlementSummaryProps = {
+  netAmount: number;
+  courierCharge: number;
+  invoiceAllocated: number;
+  courierApSettled: number;
+  merchantRemainder: number;
+};
+
+const props = withDefaults(
+  defineProps<{
+    preview: DropshipDeliverBillNotesPreview | null;
+    orderNo?: string | null;
+    title?: string;
+    confirmLabel?: string;
+    intro?: string | null;
+    settlementSummary?: DropshipPayInSettlementSummaryProps | null;
+  }>(),
+  {
+    title: 'Mark as delivered',
+    confirmLabel: 'Mark delivered',
+    intro: null,
+    settlementSummary: null,
+  },
+);
 
 defineEmits([...useDialogPluginComponent.emits]);
 

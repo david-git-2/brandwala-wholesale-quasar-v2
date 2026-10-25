@@ -31,6 +31,8 @@ export function useDropshipFinanceHubMutations(tenantId: { value: number | null 
       orderId: number;
       netAmount: number;
       courierCharge?: number;
+      deliveryCharge?: number;
+      codCharge?: number;
       remittanceRef?: string;
       bankTrxId?: string;
       cashbookPointId?: number;

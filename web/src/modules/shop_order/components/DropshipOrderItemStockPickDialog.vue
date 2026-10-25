@@ -7,26 +7,39 @@ import {
   type ListStockForOrderItemPickMeta,
 } from '../repositories/shopOrderRepository';
 import type { ShopOrderItem } from '../types';
-import { showErrorNotification, showSuccessNotification, parseSupabaseError } from 'src/utils/appFeedback';
+import { overlayPickListWithDraft } from '../utils/dropshipPickListDraftOverlay';
+import { showErrorNotification, parseSupabaseError } from 'src/utils/appFeedback';
 
 const props = defineProps<{
   modelValue: boolean;
   orderItem: ShopOrderItem | null;
+  draftPicks: ActiveStockPick[];
 }>();
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
-  (e: 'picked'): void;
+  (e: 'draft-add', payload: { row: OrderItemPickStockRow; quantity: number }): void;
+  (e: 'draft-remove', pickId: number): void;
   (e: 'mark-unavailable'): void;
 }>();
 
-const search = ref('');
 const loading = ref(false);
-const addingStockId = ref<number | null>(null);
-const removingPickId = ref<number | null>(null);
-const rows = ref<OrderItemPickStockRow[]>([]);
-const meta = ref<ListStockForOrderItemPickMeta>({});
+const serverRows = ref<OrderItemPickStockRow[]>([]);
+const serverMeta = ref<ListStockForOrderItemPickMeta>({});
 const qtyByStockId = ref<Record<number, number>>({});
+
+const orderedQty = computed(() => props.orderItem?.quantity ?? 0);
+
+const overlaid = computed(() =>
+  overlayPickListWithDraft(
+    { data: serverRows.value, meta: serverMeta.value },
+    props.draftPicks,
+    orderedQty.value,
+  ),
+);
+
+const rows = computed(() => overlaid.value.data);
+const meta = computed(() => overlaid.value.meta);
 
 const parseNum = (value: unknown, fallback = 0) => {
   const parsed = Number(value);
@@ -34,27 +47,27 @@ const parseNum = (value: unknown, fallback = 0) => {
 };
 
 const remainingToPick = computed(() => parseNum(meta.value.remaining_to_pick));
-const orderedQty = computed(() => props.orderItem?.quantity ?? 0);
 const pickedTotal = computed(() => parseNum(meta.value.already_picked_total));
 const activePicks = computed<ActiveStockPick[]>(() => meta.value.active_picks ?? []);
 const isFullyPicked = computed(() => remainingToPick.value <= 0 && pickedTotal.value >= orderedQty.value);
+
+const tableRows = computed(() =>
+  rows.value.filter((row) => row.available_atp > 0 || (row.already_picked ?? 0) > 0),
+);
 
 const loadRows = async () => {
   if (!props.orderItem) return;
   loading.value = true;
   try {
     const result = await shopOrderRepository.listStockForOrderItemPick(props.orderItem.id, {
-      search: search.value,
       limit: 50,
     });
-    rows.value = result.data;
-    meta.value = result.meta;
+    serverRows.value = result.data;
+    serverMeta.value = result.meta;
     for (const row of result.data) {
       if (qtyByStockId.value[row.global_stock_id] == null) {
-        qtyByStockId.value[row.global_stock_id] = Math.min(
-          Math.max(remainingToPick.value, 1),
-          row.available_atp,
-        );
+        const cap = Math.max(remainingToPick.value, 1);
+        qtyByStockId.value[row.global_stock_id] = Math.min(cap, row.available_atp);
       }
     }
   } catch (err) {
@@ -64,30 +77,19 @@ const loadRows = async () => {
   }
 };
 
-const debouncedLoad = (() => {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  return () => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => void loadRows(), 300);
-  };
-})();
-
 watch(
   () => props.modelValue,
   (open) => {
     if (open && props.orderItem) {
-      search.value = '';
       qtyByStockId.value = {};
       void loadRows();
     }
   },
 );
 
-watch(search, () => debouncedLoad());
-
 const close = () => emit('update:modelValue', false);
 
-const addPick = async (row: OrderItemPickStockRow) => {
+const addPick = (row: OrderItemPickStockRow) => {
   if (!props.orderItem) return;
   const qty = Math.trunc(qtyByStockId.value[row.global_stock_id] ?? 0);
   if (qty <= 0) {
@@ -95,307 +97,182 @@ const addPick = async (row: OrderItemPickStockRow) => {
     return;
   }
   if (qty > row.available_atp) {
-    showErrorNotification(`Only ${row.available_atp} units available on this stock row.`);
+    showErrorNotification(`Only ${row.available_atp} available.`);
+    return;
+  }
+  if (qty > remainingToPick.value) {
+    showErrorNotification(`Only ${remainingToPick.value} left on this line.`);
     return;
   }
 
-  addingStockId.value = row.global_stock_id;
-  try {
-    await shopOrderRepository.addShopOrderItemStockPick(props.orderItem.id, row.global_stock_id, qty);
-    showSuccessNotification('Stock linked and held.');
-    emit('picked');
-    await loadRows();
-  } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to add pick'));
-  } finally {
-    addingStockId.value = null;
-  }
+  emit('draft-add', { row, quantity: qty });
 };
 
-const removePick = async (pickId: number) => {
-  removingPickId.value = pickId;
-  try {
-    await shopOrderRepository.removeShopOrderItemStockPick(pickId);
-    showSuccessNotification('Pick removed and stock hold released.');
-    emit('picked');
-    await loadRows();
-  } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to remove pick'));
-  } finally {
-    removingPickId.value = null;
-  }
+const removePick = (pickId: number) => {
+  emit('draft-remove', pickId);
 };
+
+const canAddRow = (row: OrderItemPickStockRow) =>
+  remainingToPick.value > 0 && row.available_atp > 0;
 </script>
 
 <template>
   <q-dialog :model-value="modelValue" persistent @update:model-value="emit('update:modelValue', $event)">
-    <q-card style="min-width: min(960px, 96vw); max-width: 1040px; border-radius: 12px">
-      <!-- Header -->
-      <q-card-section class="row items-center justify-between q-pb-sm bg-grey-1 border-bottom">
-        <div>
-          <div class="row items-center q-gutter-x-sm">
-            <span class="text-h6 text-weight-bold">Stock Picker</span>
-            <q-badge
-              :color="isFullyPicked ? 'positive' : 'orange-9'"
-              text-color="white"
-              class="text-weight-bold q-px-sm q-py-xs"
-            >
-              {{ isFullyPicked ? 'Fully Picked' : `Pending (${remainingToPick} needed)` }}
-            </q-badge>
+    <q-card class="stock-pick-dialog" style="width: min(640px, 94vw); border-radius: 12px">
+      <q-card-section class="row items-start no-wrap q-pb-sm">
+        <div class="col min-width-0">
+          <div class="text-subtitle1 text-weight-bold ellipsis">
+            {{ orderItem?.name ?? 'Pick stock' }}
           </div>
-          <div v-if="orderItem" class="text-caption text-grey-8 q-mt-xs">
-            <span class="text-weight-bold text-grey-10">{{ orderItem.name }}</span>
-            <span v-if="orderItem.sku" class="q-ml-sm">· SKU: {{ orderItem.sku }}</span>
-            <span v-if="orderItem.barcode" class="q-ml-sm">· Barcode: {{ orderItem.barcode }}</span>
-            <span class="q-ml-sm font-mono">
-              (Ordered: <strong>{{ orderedQty }}</strong> | Picked: <strong>{{ pickedTotal }}</strong> | Remaining: <strong>{{ remainingToPick }}</strong>)
-            </span>
+          <div class="text-caption text-grey-7 q-mt-xs">
+            Need {{ orderedQty }} · Picked {{ pickedTotal }}
+            <span v-if="remainingToPick > 0"> · {{ remainingToPick }} left</span>
           </div>
         </div>
-        <q-btn flat round dense icon="ph ph-x" @click="close" />
-      </q-card-section>
-
-      <!-- Active Picked Stock Section -->
-      <q-card-section v-if="activePicks.length > 0" class="q-pb-none">
-        <div class="picked-section q-pa-sm rounded-borders bg-green-1 border-green">
-          <div class="row items-center justify-between q-mb-xs">
-            <div class="row items-center q-gutter-x-xs text-weight-bold text-green-10">
-              <q-icon name="ph ph-check-circle" size="18px" color="positive" />
-              <span>Currently Picked Stock ({{ activePicks.length }} allocation{{ activePicks.length > 1 ? 's' : '' }})</span>
-            </div>
-            <span class="text-caption text-weight-medium text-green-9">
-              Total Picked: {{ pickedTotal }} / {{ orderedQty }} units
-            </span>
-          </div>
-
-          <div class="row q-col-gutter-sm q-mt-xs">
-            <div v-for="pick in activePicks" :key="pick.id" class="col-12 col-md-6">
-              <div class="active-pick-card row items-center justify-between q-pa-sm bg-white rounded-borders shadow-1">
-                <div class="column q-gutter-y-none ellipsis">
-                  <div class="row items-center q-gutter-x-xs no-wrap ellipsis">
-                    <span class="text-weight-bold text-grey-9 ellipsis">{{ pick.shipment_name }}</span>
-                    <span class="text-grey-6 font-mono text-caption">#{{ pick.global_stock_id }}</span>
-                  </div>
-                  <div class="text-caption text-grey-7">
-                    <span class="text-weight-bold text-positive">{{ pick.quantity }} units</span>
-                    <span v-if="pick.unit_cost_amount != null" class="q-ml-xs">
-                      · Cost: ৳{{ Number(pick.unit_cost_amount).toFixed(2) }}
-                    </span>
-                  </div>
-                </div>
-
-                <q-btn
-                  flat
-                  dense
-                  no-caps
-                  color="negative"
-                  icon="ph ph-trash"
-                  label="Remove"
-                  class="text-weight-bold"
-                  style="border-radius: 6px"
-                  :loading="removingPickId === pick.id"
-                  @click="removePick(pick.id)"
-                >
-                  <q-tooltip>Remove this pick and release held stock</q-tooltip>
-                </q-btn>
-              </div>
-            </div>
-          </div>
-        </div>
-      </q-card-section>
-
-      <!-- Search & Available Warehouse Stock -->
-      <q-card-section>
-        <div class="row items-center justify-between q-mb-sm">
-          <div class="text-subtitle2 text-weight-bold text-grey-8">
-            Available Sellable Stock
-          </div>
-          <span class="text-caption text-grey-6">
-            Pick stock to allocate items from received shipments
-          </span>
-        </div>
-
-        <q-input
-          v-model="search"
+        <q-chip
           dense
-          outlined
-          clearable
-          placeholder="Search by shipment name, barcode, product code…"
-          class="q-mb-md"
+          :color="isFullyPicked ? 'positive' : 'orange-9'"
+          text-color="white"
+          class="q-ml-sm"
         >
-          <template #prepend>
-            <q-icon name="ph ph-magnifying-glass" />
-          </template>
-        </q-input>
-
-        <q-table
-          flat
-          bordered
-          row-key="global_stock_id"
-          :rows="rows"
-          :columns="[
-            { name: 'shipment', label: 'Shipment', field: 'shipment_name', align: 'left' },
-            { name: 'item', label: 'Item Details', field: 'item_name', align: 'left' },
-            { name: 'atp', label: 'Available ATP', field: 'available_atp', align: 'center' },
-            { name: 'picked', label: 'Allocated', field: 'already_picked', align: 'center' },
-            { name: 'cost', label: 'Cost', field: 'unit_cost_amount', align: 'right' },
-            { name: 'qty', label: 'Pick Qty', field: 'global_stock_id', align: 'center' },
-            { name: 'action', label: 'Actions', field: 'global_stock_id', align: 'right' },
-          ]"
-          :loading="loading"
-          :pagination="{ rowsPerPage: 10 }"
-          no-data-label="No matching sellable inventory found for this product grade."
-        >
-          <template #body-cell-shipment="props">
-            <q-td :props="props">
-              <div class="text-weight-bold text-grey-9">{{ props.row.shipment_name }}</div>
-              <div class="text-caption text-grey-6 font-mono">Stock #{{ props.row.global_stock_id }}</div>
-            </q-td>
-          </template>
-
-          <template #body-cell-item="props">
-            <q-td :props="props">
-              <div class="row items-center q-gutter-x-xs">
-                <span>{{ props.row.item_name }}</span>
-                <q-badge
-                  v-if="props.row.stock_grade"
-                  :style="props.row.stock_grade.color ? { backgroundColor: props.row.stock_grade.color } : undefined"
-                  :label="props.row.stock_grade.label || props.row.stock_grade.slug"
-                />
-              </div>
-              <div v-if="props.row.product_code || props.row.barcode" class="text-caption text-grey-6">
-                <span v-if="props.row.product_code">Code: {{ props.row.product_code }}</span>
-                <span v-if="props.row.barcode" class="q-ml-xs">· Barcode: {{ props.row.barcode }}</span>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-atp="props">
-            <q-td :props="props" class="text-center">
-              <q-badge
-                :color="props.row.available_atp > 0 ? 'positive' : 'grey-5'"
-                class="text-weight-bold font-mono"
-              >
-                {{ props.row.available_atp }} units
-              </q-badge>
-            </q-td>
-          </template>
-
-          <template #body-cell-picked="props">
-            <q-td :props="props" class="text-center">
-              <q-badge
-                v-if="props.row.already_picked > 0"
-                color="blue-8"
-                text-color="white"
-                class="text-weight-bold font-mono"
-              >
-                {{ props.row.already_picked }} picked
-              </q-badge>
-              <span v-else class="text-grey-5">—</span>
-            </q-td>
-          </template>
-
-          <template #body-cell-cost="props">
-            <q-td :props="props" class="text-right font-mono">
-              ৳{{ Number(props.row.unit_cost_amount || 0).toFixed(2) }}
-            </q-td>
-          </template>
-
-          <template #body-cell-qty="props">
-            <q-td :props="props" class="text-center">
-              <q-input
-                v-model.number="qtyByStockId[props.row.global_stock_id]"
-                type="number"
-                min="1"
-                :max="props.row.available_atp"
-                dense
-                outlined
-                style="width: 72px; margin: 0 auto"
-                input-class="text-center"
-                :disable="props.row.available_atp <= 0 || remainingToPick <= 0"
-              />
-            </q-td>
-          </template>
-
-          <template #body-cell-action="props">
-            <q-td :props="props" class="text-right">
-              <div class="row items-center justify-end q-gutter-x-xs no-wrap">
-                <q-btn
-                  color="primary"
-                  unelevated
-                  no-caps
-                  dense
-                  icon="ph ph-plus"
-                  label="Pick"
-                  class="text-weight-bold q-px-sm"
-                  style="border-radius: 6px"
-                  :loading="addingStockId === props.row.global_stock_id"
-                  :disable="remainingToPick <= 0 || props.row.available_atp <= 0"
-                  @click="addPick(props.row)"
-                />
-
-                <q-btn
-                  v-if="props.row.pick_id"
-                  flat
-                  dense
-                  no-caps
-                  color="negative"
-                  icon="ph ph-trash"
-                  label="Remove"
-                  class="text-weight-bold"
-                  style="border-radius: 6px"
-                  :loading="removingPickId === props.row.pick_id"
-                  @click="removePick(props.row.pick_id)"
-                >
-                  <q-tooltip>Remove this pick allocation</q-tooltip>
-                </q-btn>
-              </div>
-            </q-td>
-          </template>
-        </q-table>
+          {{ isFullyPicked ? 'Done' : 'Pending' }}
+        </q-chip>
+        <q-btn flat round dense icon="ph ph-x" class="q-ml-xs" aria-label="Close" @click="close" />
       </q-card-section>
 
-      <!-- Footer -->
-      <q-card-actions class="row items-center justify-between q-pa-md bg-grey-1 border-top">
+      <q-separator />
+
+      <q-card-section v-if="activePicks.length" class="q-py-sm">
+        <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Allocated</div>
+        <div class="column q-gutter-y-xs">
+          <div
+            v-for="pick in activePicks"
+            :key="pick.id"
+            class="stock-pick-dialog__alloc row items-center no-wrap q-px-sm q-py-xs rounded-borders"
+          >
+            <span class="col ellipsis text-body2">
+              {{ pick.shipment_name }}
+              <span class="text-grey-6">· {{ pick.quantity }} pc</span>
+            </span>
+            <q-btn
+              flat
+              round
+              dense
+              size="sm"
+              icon="ph ph-x"
+              color="grey-7"
+              aria-label="Remove allocation"
+              @click="removePick(pick.id)"
+            />
+          </div>
+        </div>
+      </q-card-section>
+
+      <template v-if="!isFullyPicked">
+        <q-separator v-if="activePicks.length" />
+        <q-card-section class="q-pt-sm">
+          <q-table
+            flat
+            dense
+            row-key="global_stock_id"
+            :rows="tableRows"
+            :columns="[
+              { name: 'stock', label: 'Shipment', field: 'shipment_name', align: 'left' },
+              { name: 'avail', label: 'Avail', field: 'available_atp', align: 'center' },
+              { name: 'pick', label: '', field: 'global_stock_id', align: 'right' },
+            ]"
+            :loading="loading"
+            hide-pagination
+            :pagination="{ rowsPerPage: 0 }"
+            class="stock-pick-dialog__table"
+          >
+            <template #body-cell-stock="props">
+              <q-td :props="props">
+                <div class="text-body2">{{ props.row.shipment_name }}</div>
+                <div class="text-caption text-grey-6">
+                  #{{ props.row.global_stock_id }}
+                  <span v-if="props.row.already_picked > 0" class="text-positive">
+                    · {{ props.row.already_picked }} here
+                  </span>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-avail="props">
+              <q-td :props="props" class="text-center text-body2">
+                {{ props.row.available_atp }}
+              </q-td>
+            </template>
+
+            <template #body-cell-pick="props">
+              <q-td :props="props">
+                <div class="row items-center justify-end no-wrap q-gutter-x-xs">
+                  <q-input
+                    v-model.number="qtyByStockId[props.row.global_stock_id]"
+                    type="number"
+                    dense
+                    outlined
+                    min="0"
+                    :max="Math.min(props.row.available_atp, remainingToPick)"
+                    :disable="!canAddRow(props.row)"
+                    style="width: 56px"
+                    input-class="text-center"
+                  />
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    color="primary"
+                    icon="ph ph-plus"
+                    aria-label="Add"
+                    :disable="!canAddRow(props.row)"
+                    @click="addPick(props.row)"
+                  />
+                </div>
+              </q-td>
+            </template>
+
+            <template #no-data>
+              <div class="text-caption text-grey-6 q-pa-md text-center">
+                {{ loading ? 'Loading…' : 'No sellable stock found.' }}
+              </div>
+            </template>
+          </q-table>
+        </q-card-section>
+      </template>
+
+      <q-separator />
+
+      <q-card-actions align="between" class="q-px-md q-py-sm">
         <q-btn
-          v-if="activePicks.length === 0 && pickedTotal === 0"
-          unelevated
+          flat
           dense
           no-caps
-          label="Mark unavailable"
-          class="dropship-invoice-paper__action-btn dropship-invoice-paper__action-btn--unavailable text-weight-bold"
+          color="negative"
+          label="Line unavailable"
           @click="emit('mark-unavailable')"
         />
-        <span v-else />
-        <q-btn
-          unelevated
-          no-caps
-          color="primary"
-          label="Done"
-          class="text-weight-bold q-px-lg"
-          style="border-radius: 8px"
-          @click="close"
-        />
+        <q-btn unelevated no-caps color="primary" label="Done" style="border-radius: 8px" @click="close" />
       </q-card-actions>
     </q-card>
   </q-dialog>
 </template>
 
-<style scoped lang="scss">
-@import '../styles/dropship-invoice-paper.scss';
+<style scoped>
+.stock-pick-dialog__alloc {
+  background: var(--tf-theme-primary-soft, rgba(16, 185, 129, 0.08));
+  border: 1px solid var(--tf-theme-border, rgba(0, 0, 0, 0.08));
+}
 
-.border-bottom {
-  border-bottom: 1px solid #e2e8f0;
+.stock-pick-dialog__table :deep(thead tr) {
+  height: 36px;
 }
-.border-top {
-  border-top: 1px solid #e2e8f0;
+
+.stock-pick-dialog__table :deep(tbody tr) {
+  height: 48px;
 }
-.border-green {
-  border: 1px solid #86efac;
-}
-.active-pick-card {
-  border: 1px solid #e2e8f0;
-  border-left: 3px solid #10b981;
+
+body.body--dark .stock-pick-dialog__alloc {
+  background: rgba(16, 185, 129, 0.12);
 }
 </style>
-

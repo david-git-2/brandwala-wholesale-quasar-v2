@@ -45,18 +45,18 @@
 import { useI18n } from 'vue-i18n';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
-import type { ProductBasedCostingFile } from '../types';
+import type { ProductBasedCostingFileListRow } from '../types';
 import { normalizePbcFileStatus } from '../composables/useProductBasedCostingFileDetailsState';
 
 defineProps<{
-  items: ProductBasedCostingFile[];
+  items: ProductBasedCostingFileListRow[];
 }>();
 
 const emit = defineEmits<{
-  (event: 'select', item: ProductBasedCostingFile): void;
-  (event: 'copy', item: ProductBasedCostingFile): void;
-  (event: 'edit', item: ProductBasedCostingFile): void;
-  (event: 'delete', item: ProductBasedCostingFile): void;
+  (event: 'select', item: ProductBasedCostingFileListRow): void;
+  (event: 'copy', item: ProductBasedCostingFileListRow): void;
+  (event: 'edit', item: ProductBasedCostingFileListRow): void;
+  (event: 'delete', item: ProductBasedCostingFileListRow): void;
 }>();
 
 const { t, te } = useI18n();
@@ -67,19 +67,19 @@ const statusLabel = (status: string | null | undefined) => {
   return te(key) ? t(key) : value.replaceAll('_', ' ');
 };
 
-const handleSelect = (item: ProductBasedCostingFile) => {
+const handleSelect = (item: ProductBasedCostingFileListRow) => {
   emit('select', item);
 };
 
-const handleEdit = (item: ProductBasedCostingFile) => {
+const handleEdit = (item: ProductBasedCostingFileListRow) => {
   emit('edit', item);
 };
 
-const handleCopy = (item: ProductBasedCostingFile) => {
+const handleCopy = (item: ProductBasedCostingFileListRow) => {
   emit('copy', item);
 };
 
-const handleDelete = (item: ProductBasedCostingFile) => {
+const handleDelete = (item: ProductBasedCostingFileListRow) => {
   emit('delete', item);
 };
 

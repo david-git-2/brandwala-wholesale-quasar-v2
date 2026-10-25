@@ -34,14 +34,12 @@ export const useDashboardAttention = () => {
 
   const canStock = computed(() => isParent.value && hasModuleAccess('global_stock', 'view'));
   const canShopOrder = computed(() => !isParent.value && hasModuleAccess('shop_order', 'view'));
-  const canTasks = computed(() => hasModuleAccess('tasks', 'view'));
   const canInvestor = computed(() => isParent.value && hasModuleAccess('investor_capital_ledger', 'view'));
 
   const items = computed<DashboardAttentionItem[]>(() => {
     const rows: DashboardAttentionItem[] = [];
     const shop = bundle.value.shopOrder;
     const proc = bundle.value.procurement;
-    const tasks = bundle.value.tasks;
     const investor = bundle.value.investorCapital;
 
     if (canShopOrder.value) {
@@ -87,19 +85,6 @@ export const useDashboardAttention = () => {
           label: `${formatDashboardCount(draft)} batches under processing`,
           value: formatDashboardCount(draft),
           to: routes.procurementShipmentList(),
-          tone: 'warn',
-        });
-      }
-    }
-
-    if (canTasks.value) {
-      const overdue = tasks?.overdueCount ?? 0;
-      if (overdue > 0) {
-        rows.push({
-          id: 'overdue-tasks',
-          label: `${formatDashboardCount(overdue)} overdue tasks`,
-          value: formatDashboardCount(overdue),
-          to: routes.tasks(),
           tone: 'warn',
         });
       }

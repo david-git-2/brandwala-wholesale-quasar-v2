@@ -1,0 +1,8 @@
+GRANT ALL ON FUNCTION "public"."resolve_dropship_courier_ap_bill_id"("p_order_id" bigint, "p_parent_tenant_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."resolve_dropship_courier_ap_bill_id"("p_order_id" bigint, "p_parent_tenant_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."settle_dropship_courier_ap_via_cod_retention"("p_ap_bill_id" bigint, "p_amount" numeric, "p_order_id" bigint, "p_remittance_ref" "text", "p_receipt_payment_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."settle_dropship_courier_ap_via_cod_retention"("p_ap_bill_id" bigint, "p_amount" numeric, "p_order_id" bigint, "p_remittance_ref" "text", "p_receipt_payment_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."preview_dropship_courier_payin_settlement"("p_order_id" bigint, "p_delivery_charge" numeric, "p_cod_charge" numeric, "p_net_amount" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."preview_dropship_courier_payin_settlement"("p_order_id" bigint, "p_delivery_charge" numeric, "p_cod_charge" numeric, "p_net_amount" numeric) TO "service_role";
+GRANT ALL ON FUNCTION "public"."patch_dropship_courier_fees_for_remittance"("p_order_id" bigint, "p_delivery" numeric, "p_cod" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text", "p_courier_charge" numeric, "p_cashbook_point_id" bigint, "p_delivery_charge" numeric, "p_cod_charge" numeric) TO "authenticated";

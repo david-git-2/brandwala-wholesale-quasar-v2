@@ -13,7 +13,11 @@ import type {
   CustomerOrderDetail,
   StaffOrdersStaffPageResult,
   ShopsAppPageResult,
+  ShopSetupBundle,
+  ShopCategory,
 } from '../types';
+import type { ShopCustomerAccessPageBundle } from '../types/shopCustomerAccessPage';
+import type { Vendor } from 'src/modules/vendor/types';
 import type { StaffShopOrderDetailResponse } from '../types/staffShopOrderDetail';
 import {
   mapStaffShopOrderDetailToFlat,
@@ -91,6 +95,53 @@ const SHOP_DETAIL_SELECT =
 
 type ShopDetailRow = Shop & {
   tenant?: { slug: string | null } | null;
+};
+
+const mapShopSetupBundleShop = (raw: Record<string, unknown>): Shop => {
+  const tenantSlug =
+    typeof raw.tenant_slug === 'string' ? raw.tenant_slug : (raw.tenant_slug as string | null);
+  const { tenant_slug: _drop, tenant: _tenant, ...rest } = raw;
+  return {
+    ...(rest as Shop),
+    tenant_slug: tenantSlug ?? null,
+  };
+};
+
+const getShopSetupBundle = async (shopId: number, tenantId: number): Promise<ShopSetupBundle> => {
+  const { data, error } = await supabase.rpc('get_shop_setup_bundle', {
+    p_shop_id: shopId,
+    p_tenant_id: tenantId,
+  });
+  if (error) throw error;
+  const raw = (data as Record<string, unknown> | null) ?? {};
+  const brandsRaw = (raw.brands_by_vendor as Record<string, string[]> | undefined) ?? {};
+  const brandsByVendor: Record<string, string[]> = {};
+  for (const [code, names] of Object.entries(brandsRaw)) {
+    brandsByVendor[code.toUpperCase()] = names ?? [];
+  }
+  return {
+    shop: mapShopSetupBundleShop((raw.shop as Record<string, unknown>) ?? {}),
+    categories: (raw.categories as ShopCategory[] | undefined) ?? [],
+    vendors: (raw.vendors as Vendor[] | undefined) ?? [],
+    brandsByVendor,
+  };
+};
+
+const getShopCustomerAccessPage = async (
+  shopId: number,
+  tenantId: number,
+): Promise<ShopCustomerAccessPageBundle> => {
+  const { data, error } = await supabase.rpc('get_shop_customer_access_page', {
+    p_shop_id: shopId,
+    p_tenant_id: tenantId,
+  });
+  if (error) throw error;
+  const raw = (data as Record<string, unknown> | null) ?? {};
+  return {
+    customer_groups: (raw.customer_groups as ShopCustomerAccessPageBundle['customer_groups']) ?? [],
+    access_overrides:
+      (raw.access_overrides as ShopCustomerAccessPageBundle['access_overrides']) ?? [],
+  };
 };
 
 const getShop = async (shopId: number, tenantId: number): Promise<Shop> => {
@@ -587,22 +638,7 @@ const getDropshipOrderDetailV2 = async (tenantId: number, orderId: number) => {
   });
   if (error) throw error;
 
-  const mapped = mapDropshipOrderDetailV2Response(data);
-  const { data: courierBills } = await supabase
-    .from('bills')
-    .select('id, source_type, source_key')
-    .eq('source_id', String(orderId))
-    .eq('invoice_type', 'ap')
-    .neq('invoice_status', 'voided');
-
-  const courierBill =
-    (courierBills ?? []).find((row) => row.source_type === 'dropship_courier')
-    ?? (courierBills ?? []).find(
-      (row) => row.source_type === 'shop_order' && row.source_key === 'courier',
-    );
-
-  mapped.order.courier_ap_bill_id = courierBill?.id ?? mapped.order.courier_ap_bill_id ?? null;
-  return mapped;
+  return mapDropshipOrderDetailV2Response(data);
 };
 
 const getDropshipManagementOrder = async (
@@ -813,6 +849,108 @@ const saveDropshipProcessingDesk = async (input: SaveDropshipProcessingDeskInput
   if (consignmentError) throw consignmentError;
 };
 
+export type DropshipReadyForPickupDeskPayload = {
+  charges: {
+    delivery_charge_amount: number;
+    deduct_delivery_from_margin: boolean;
+    cod_charge_amount: number;
+    deduct_cod_from_margin: boolean;
+    print_charge_amount: number;
+    deduct_print_from_margin: boolean;
+    packing_charge_amount: number;
+    deduct_packing_from_margin: boolean;
+  };
+  summary: {
+    discount_amount: number;
+    cod_collect_amount: number;
+  };
+  consignment: {
+    cod_collect_amount: number;
+    package_weight_band: string;
+    delivery_zone: string;
+    sender_name: string;
+    pickup_phone: string;
+    pickup_address: string;
+    allow_open_box: boolean;
+    courier_service_id: string | null;
+    courier_awb_number: string;
+    courier_tracking_number: string;
+    tracking_url: string;
+    courier_cost_amount: number;
+    delivery_charge_amount: number;
+    cod_charge_amount: number;
+    courier_order_ref: string;
+    recipient_name: string | null;
+    recipient_phone: string | null;
+    recipient_phone_secondary: string | null;
+    shipping_address: string | null;
+    shipping_district: string | null;
+    shipping_thana: string | null;
+  };
+};
+
+const buildDropshipReadyForPickupDeskPayload = (
+  input: SaveDropshipProcessingDeskInput,
+): DropshipReadyForPickupDeskPayload => ({
+  charges: {
+    delivery_charge_amount: input.summary.delivery_charge_amount,
+    deduct_delivery_from_margin: input.summary.deduct_delivery_from_margin,
+    cod_charge_amount: input.summary.cod_charge_amount,
+    deduct_cod_from_margin: input.summary.deduct_cod_from_margin,
+    print_charge_amount: input.summary.print_charge_amount,
+    deduct_print_from_margin: input.summary.deduct_print_from_margin,
+    packing_charge_amount: input.summary.packing_charge_amount,
+    deduct_packing_from_margin: input.summary.deduct_packing_from_margin,
+  },
+  summary: {
+    discount_amount: input.summary.discount_amount,
+    cod_collect_amount: input.summary.cod_collect_amount,
+  },
+  consignment: {
+    cod_collect_amount: input.summary.cod_collect_amount,
+    package_weight_band: input.order.package_weight_band ?? 'under_1kg',
+    delivery_zone: input.deliveryZone,
+    sender_name: input.pickup.sender_name,
+    pickup_phone: input.pickup.pickup_phone,
+    pickup_address: input.pickup.pickup_address,
+    allow_open_box: input.courier.allow_open_box,
+    courier_service_id: input.courier.courier_service_id,
+    courier_awb_number: input.courier.courier_awb_number,
+    courier_tracking_number: input.courier.courier_awb_number,
+    tracking_url: input.courier.tracking_url,
+    courier_cost_amount: input.summary.delivery_charge_amount,
+    delivery_charge_amount: input.summary.delivery_charge_amount,
+    cod_charge_amount: input.summary.cod_charge_amount,
+    courier_order_ref: input.order.order_no,
+    recipient_name: input.order.recipient_name,
+    recipient_phone: input.order.recipient_phone,
+    recipient_phone_secondary: input.order.recipient_phone_secondary,
+    shipping_address: input.order.shipping_address,
+    shipping_district: input.order.shipping_district,
+    shipping_thana: input.order.shipping_thana,
+  },
+});
+
+const commitDropshipReadyForPickupBundle = async (params: {
+  tenantId: number;
+  orderId: number;
+  fulfillment: { lines: Array<{
+    order_item_id: number;
+    unavailable: boolean;
+    picks: Array<{ global_stock_id: number; quantity: number }>;
+  }> } | null;
+  desk: DropshipReadyForPickupDeskPayload | null;
+}): Promise<{ success?: boolean; error?: string; dropship_detail?: unknown }> => {
+  const { data, error } = await supabase.rpc('commit_dropship_ready_for_pickup_bundle', {
+    p_tenant_id: params.tenantId,
+    p_order_id: params.orderId,
+    p_fulfillment: params.fulfillment,
+    p_desk: params.desk,
+  });
+  if (error) throw error;
+  return (data ?? {}) as { success?: boolean; error?: string; dropship_detail?: unknown };
+};
+
 export type ActiveStockPick = {
   id: number;
   global_stock_id: number;
@@ -873,18 +1011,56 @@ const listStockForOrderItemPick = async (
   return { data: payload.data ?? [], meta: payload.meta ?? {} };
 };
 
+export type StockPickMutationResult = {
+  success?: boolean;
+  pick_id?: number;
+  confirmed_quantity?: number;
+  cod_collect_amount?: number | null;
+  order_line?: {
+    id: number;
+    confirmed_quantity?: number | null;
+    fulfillment_resolved?: boolean;
+  };
+  pick_list?: {
+    data?: OrderItemPickStockRow[];
+    meta?: ListStockForOrderItemPickMeta;
+  };
+};
+
+const parseStockPickMutationResult = (raw: unknown): StockPickMutationResult => {
+  const payload = (raw ?? {}) as Record<string, unknown>;
+  const pickListRaw = payload.pick_list as Record<string, unknown> | undefined;
+  return {
+    success: payload.success as boolean | undefined,
+    pick_id: payload.pick_id as number | undefined,
+    confirmed_quantity: payload.confirmed_quantity as number | undefined,
+    cod_collect_amount: (payload.cod_collect_amount as number | null) ?? null,
+    order_line: payload.order_line as StockPickMutationResult['order_line'],
+    pick_list: pickListRaw
+      ? {
+          data: (pickListRaw.data as OrderItemPickStockRow[] | undefined) ?? [],
+          meta: (pickListRaw.meta as ListStockForOrderItemPickMeta | undefined) ?? {},
+        }
+      : undefined,
+  };
+};
+
 const addShopOrderItemStockPick = async (
   orderItemId: number,
   globalStockId: number,
   quantity: number,
-) => {
+  opts: { search?: string | null; limit?: number; offset?: number } = {},
+): Promise<StockPickMutationResult> => {
   const { data, error } = await supabase.rpc('add_shop_order_item_stock_pick', {
     p_order_item_id: orderItemId,
     p_global_stock_id: globalStockId,
     p_quantity: quantity,
+    p_search: opts.search?.trim() || null,
+    p_limit: opts.limit ?? 50,
+    p_offset: opts.offset ?? 0,
   });
   if (error) throw error;
-  return data as { success?: boolean; confirmed_quantity?: number; cod_collect_amount?: number };
+  return parseStockPickMutationResult(data);
 };
 
 const listShopCustomerStocks = async (shopId: number, customerGroupId?: number | null) => {
@@ -980,12 +1156,18 @@ const updateDropshipOrderGiftItemCost = async (
   return data as { success?: boolean; error?: string };
 };
 
-const removeShopOrderItemStockPick = async (pickId: number) => {
+const removeShopOrderItemStockPick = async (
+  pickId: number,
+  opts: { search?: string | null; limit?: number; offset?: number } = {},
+): Promise<StockPickMutationResult> => {
   const { data, error } = await supabase.rpc('remove_shop_order_item_stock_pick', {
     p_pick_id: pickId,
+    p_search: opts.search?.trim() || null,
+    p_limit: opts.limit ?? 50,
+    p_offset: opts.offset ?? 0,
   });
   if (error) throw error;
-  return data as { success?: boolean };
+  return parseStockPickMutationResult(data);
 };
 
 const markShopOrderItemUnavailable = async (
@@ -1043,12 +1225,18 @@ const recordDropshipRecipientCallNoAnswer = async (orderId: number) => {
   return payload;
 };
 
-const confirmDropshipRecipientCall = async (orderId: number) => {
+const confirmDropshipRecipientCall = async (tenantId: number, orderId: number) => {
   const { data, error } = await supabase.rpc('confirm_dropship_recipient_call', {
     p_order_id: orderId,
+    p_tenant_id: tenantId,
   });
   if (error) throw error;
-  const payload = data as { success?: boolean; error?: string; new_status?: string };
+  const payload = data as {
+    success?: boolean;
+    error?: string;
+    new_status?: string;
+    dropship_detail?: unknown;
+  };
   if (payload.success === false) {
     throw new Error(payload.error || 'Failed to confirm recipient');
   }
@@ -1374,6 +1562,8 @@ const recalcShopDisplayQuantities = async (shopId: number): Promise<number> => {
 export const shopOrderRepository = {
   listShops,
   listShopsAppPage,
+  getShopSetupBundle,
+  getShopCustomerAccessPage,
   getShop,
   upsertShop,
   recalcShopDisplayQuantities,
@@ -1413,6 +1603,8 @@ export const shopOrderRepository = {
   recordDropshipCourierBankTransfer,
   transferDropshipResellerProfit,
   saveDropshipProcessingDesk,
+  buildDropshipReadyForPickupDeskPayload,
+  commitDropshipReadyForPickupBundle,
   listStockForOrderItemPick,
   addShopOrderItemStockPick,
   removeShopOrderItemStockPick,

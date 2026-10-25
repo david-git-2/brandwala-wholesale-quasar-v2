@@ -393,7 +393,7 @@ import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import TfDrawerSectionTabsHeader from 'src/components/ui/TfDrawerSectionTabsHeader.vue';
-import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
+import { useGlobalCurrencies } from 'src/modules/global_reference/composables/useGlobalCurrencies';
 import { normalizePbcFileStatus } from '../composables/useProductBasedCostingFileDetailsState';
 import {
   pbcCurrencyMark,
@@ -476,10 +476,10 @@ const drawerOfferPricingMode = ref('landed_cost_plus');
 const drawerBuyCurrencyId = ref<number | null>(null);
 const drawerSellCurrencyId = ref<number | null>(null);
 
-const { data: currenciesData, isLoading: loadingCurrencies } = useGlobalCurrenciesQuery();
+const { currencies, loadingCurrencies } = useGlobalCurrencies();
 
 const currencyOptions = computed(() =>
-  (currenciesData.value ?? []).map((c) => ({
+  currencies.value.map((c) => ({
     label: `${c.code} (${c.symbol}) - ${c.name}`,
     value: c.id,
   })),
@@ -489,7 +489,7 @@ const drawerBuyCurrencyCode = computed(() =>
   pbcFileBuyCurrencyCode({
     buy_currency_id: drawerBuyCurrencyId.value,
     buy_currency_code:
-      currenciesData.value?.find((c) => c.id === drawerBuyCurrencyId.value)?.code ?? null,
+      currencies.value.find((c) => c.id === drawerBuyCurrencyId.value)?.code ?? null,
   }),
 );
 
@@ -497,7 +497,7 @@ const drawerSellCurrencyCode = computed(() =>
   pbcFileSellCurrencyCode({
     sell_currency_id: drawerSellCurrencyId.value,
     sell_currency_code:
-      currenciesData.value?.find((c) => c.id === drawerSellCurrencyId.value)?.code ?? null,
+      currencies.value.find((c) => c.id === drawerSellCurrencyId.value)?.code ?? null,
   }),
 );
 

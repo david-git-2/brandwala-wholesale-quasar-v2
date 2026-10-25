@@ -9,6 +9,10 @@ import { useDropshipOrderStatusRedirect } from '../composables/useDropshipOrderS
 import DropshipOrderConfirmedInvoicePaper from '../components/DropshipOrderConfirmedInvoicePaper.vue';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import {
+  applyDropshipOrderDetailV2ToCache,
+  patchDropshipRecipientCallAttemptCount,
+} from '../utils/dropshipOrderDetailV2CacheUtils';
+import {
   showErrorNotification,
   showSuccessNotification,
   parseSupabaseError,
@@ -53,9 +57,10 @@ useDropshipOrderStatusRedirect({
 });
 
 const invalidateOrderQueries = async () => {
-  await queryClient.invalidateQueries({
-    queryKey: shopOrderQueryKeys.dropshipDetailV2(authStore.tenantId ?? 0, orderId.value),
-  });
+  const tenantId = authStore.tenantId ?? 0;
+  if (tenantId > 0) {
+    await orderDetailQuery.refetch();
+  }
   await queryClient.invalidateQueries({
     queryKey: shopOrderQueryKeys.orderDetail(authStore.tenantId ?? null, orderId.value),
   });
@@ -66,10 +71,12 @@ const logNoAnswer = async () => {
   callActionLoading.value = 'no_answer';
   try {
     const res = await shopOrderRepository.recordDropshipRecipientCallNoAnswer(order.value.id);
-    showSuccessNotification(
-      `No answer logged (${res.recipient_call_attempt_count ?? callAttemptCount.value + 1} calls).`,
-    );
-    await invalidateOrderQueries();
+    const newCount = res.recipient_call_attempt_count ?? callAttemptCount.value + 1;
+    showSuccessNotification(`No answer logged (${newCount} calls).`);
+    const tenantId = authStore.tenantId ?? 0;
+    if (tenantId > 0) {
+      patchDropshipRecipientCallAttemptCount(queryClient, tenantId, order.value.id, newCount);
+    }
   } catch (err) {
     showErrorNotification(parseSupabaseError(err, 'Failed to log call attempt'));
   } finally {
@@ -88,9 +95,12 @@ const confirmRecipient = async () => {
 
   callActionLoading.value = 'confirm';
   try {
-    await shopOrderRepository.confirmDropshipRecipientCall(order.value.id);
+    const tenantId = authStore.tenantId ?? 0;
+    const res = await shopOrderRepository.confirmDropshipRecipientCall(tenantId, order.value.id);
+    if (tenantId > 0 && res.dropship_detail) {
+      applyDropshipOrderDetailV2ToCache(tenantId, order.value.id, res.dropship_detail);
+    }
     showSuccessNotification('End customer confirmed. Order is now processing.');
-    await invalidateOrderQueries();
   } catch (err) {
     showErrorNotification(parseSupabaseError(err, 'Failed to confirm end customer'));
   } finally {

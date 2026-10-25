@@ -87,7 +87,8 @@ Post-ship: **Dropship settlement** desk; `record_dropship_courier_remittance` is
 - [x] **Customer invoice** (UI; RPC `ship_dropship_order_and_issue_merchant_bill`) — issued AR to dropshipper at ship. Amount = B2B total, not COD.
 - [x] **Courier AP** — issued we-owe at ship (`upsert_dropship_courier_ap_bill`, `source_type = dropship_courier`). COD receivable still at deliver; tenant cash on **net** remittance pay in (`record_dropship_courier_remittance` → `post_customer_receipt_with_allocations`, `source = courier_remittance`). Remittance requires the customer bill **issued**.
 - [x] **Alloc** — remittance pays customer invoice; remainder → dropshipper **cashbook** (profit), pay out later — not a second AR bill. `payout_settlement_status` stays unpaid until `dispense_middleman_payout_from_tenant`. Money is **bills + pays + cashbook** only (settlement table is ops paper). Post remittance from **settlement desk → Courier pay in** or **Payments → Pay in → Courier**; same `record_dropship_courier_remittance`.
-- [x] **Settlement desk vs bills** — autosave on the management settlement table updates the draft only. **Mark as delivered** runs `apply_dropship_issued_bill_notes_at_deliver`: issued customer AR and courier AP stay on the original paper; charge deltas vs settlement become **credit/debit notes** (`create_bill_adjustment`), not a silent rewrite of issued totals.
+- [x] **Courier pay in fees** — adjusted delivery/COD at pay in persist on order/settlement (`patch_dropship_courier_fees_for_remittance`). If issued bills differ, `apply_dropship_issued_bill_notes_at_deliver` runs in the same transaction before cash moves. Net allocates to customer AR on **due after notes**; courier AP closes up to retained fees (`settle_dropship_courier_ap_via_cod_retention`, no second cash out), including **debit/credit notes** on the AP paper. UI confirms via `preview_dropship_courier_payin_settlement` (notes + customer cleared + AP settled + **dropshipper receives**). After remittance, settlement desk shows **credited wallet profit** (net remittance − AR cleared); COD-margin on the paper may differ until pay-in.
+- [x] **Settlement desk vs bills** — settlement desk **Save** updates the draft only (no autosave). **Mark as delivered** runs `apply_dropship_issued_bill_notes_at_deliver`: issued customer AR and courier AP stay on the original paper; charge deltas vs settlement become **credit/debit notes** (`create_bill_adjustment`), not a silent rewrite of issued totals.
 
 ### US-6: Dropship gifts
 - [x] Many **gift** lines per order (`is_gift`); recipient sell/COD unchanged (excluded from resell total).
@@ -101,3 +102,8 @@ Post-ship: **Dropship settlement** desk; `record_dropship_courier_remittance` is
 
 ### US-8: Auto gifts
 - [x] Per-shop `shop_auto_gift_items` (active rows); `apply_shop_auto_gift_items` once when order enters `processing` (`auto_gifts_applied_at`). Short customer stock → skip row, show on desk.
+
+### US-9: Staff manual dropship (off-channel)
+- [x] App **Create dropship order** (`/:slug/app/shop/orders/create`): dropship shop, customer group (billing profile from group via `resolve_customer_profile_for_group`), search-add lines, recipient address; `staff_create_dropship_order` on behalf of group.
+- [x] Order enters same workflow as customer dropship (recipient call → processing → ship/issue → deliver).
+- [x] COD/delivery charge amounts remain on processing desk, not on create page.

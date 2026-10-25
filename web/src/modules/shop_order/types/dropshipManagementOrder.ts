@@ -30,6 +30,10 @@ export interface DropshipManagementSettlementState {
   merchant_payout_at: string | null;
   gift_cost_merchant_total: number;
   gift_cost_tenant_total: number;
+  /** Sum of cashbook dropship_profit credits after courier pay in */
+  dropship_profit_credited: number;
+  /** Net courier AP due (parent + notes) */
+  courier_ap_due: number;
 }
 
 export interface DropshipManagementInvoiceState {
@@ -114,6 +118,7 @@ export interface DropshipManagementOrderView {
     return_charge_amount: number;
     deduct_return_charge_from_middle_man: boolean;
     return_override_reason: string | null;
+    courier_ap_bill_id: number | null;
   };
   items: DropshipManagementReturnLine[];
   computed: {

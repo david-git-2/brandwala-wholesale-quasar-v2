@@ -2,7 +2,6 @@ import { PROCUREMENT_DASHBOARD_SLOTS } from 'src/modules/procurement_stock/dashb
 import { SHOP_ORDER_DASHBOARD_SLOTS } from 'src/modules/shop_order/dashboard/shopOrderDashboardSlots';
 import { THRIFT_DASHBOARD_SLOTS } from 'src/modules/thrift/dashboard/thriftDashboardSlots';
 import { INVESTOR_CAPITAL_DASHBOARD_SLOTS } from 'src/modules/investor_capital/dashboard/investorCapitalDashboardSlots';
-import { TASKS_DASHBOARD_SLOTS } from 'src/modules/tasks/dashboard/tasksDashboardSlots';
 import { AFTER_SALES_DASHBOARD_SLOTS } from 'src/modules/after_sales/dashboard/afterSalesDashboardSlots';
 import {
   getModuleDefinition,
@@ -26,7 +25,6 @@ const GROUP_WEIGHT: Partial<Record<ModuleKey, number>> = {
   after_sales: 15,
   universal_wallet: 20,
   investor_capital: 30,
-  tasks: 40,
   thrift: 50,
 };
 
@@ -35,7 +33,6 @@ export const DASHBOARD_SLOT_REGISTRY: readonly DashboardSlot[] = [
   ...SHOP_ORDER_DASHBOARD_SLOTS,
   ...AFTER_SALES_DASHBOARD_SLOTS,
   ...INVESTOR_CAPITAL_DASHBOARD_SLOTS,
-  ...TASKS_DASHBOARD_SLOTS,
   ...THRIFT_DASHBOARD_SLOTS,
 ];
 

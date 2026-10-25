@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import type { DropshipManagementOrderView, DropshipSettlementDraftPayload } from '../types/dropshipManagementOrder';
 import {
   buildSettlementDraftPayload,
@@ -23,7 +23,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-  autosave: [payload: DropshipSettlementDraftPayload];
+  'dirty-change': [dirty: boolean];
 }>();
 
 type SettlementFormState = DropshipSettlementFormState;
@@ -46,36 +46,37 @@ const giftCostTenantTotal = computed(() => props.data.settlement.gift_cost_tenan
 
 const resellerPurchaseCost = computed(() => props.data.settlement.reseller_purchase_cost);
 
-let suppressAutosave = false;
-let autosaveTimer: ReturnType<typeof setTimeout> | undefined;
+let savedPayloadJson = '';
+
+function snapshotPayload(payload: DropshipSettlementDraftPayload): string {
+  return JSON.stringify(payload);
+}
+
+function syncSavedBaselineFromSettlement(settlement: DropshipManagementOrderView['settlement']) {
+  savedPayloadJson = snapshotPayload(buildSettlementDraftPayload(settlementToFormState(settlement)));
+}
 
 watch(
   () => props.data,
   (nextData) => {
-    suppressAutosave = true;
     Object.assign(form, structuredClone(settlementToFormState(nextData.settlement)));
-    queueMicrotask(() => {
-      suppressAutosave = false;
-    });
+    syncSavedBaselineFromSettlement(nextData.settlement);
   },
   { immediate: true, deep: true },
 );
 
-watch(
-  form,
-  () => {
-    if (props.readonly || suppressAutosave) return;
-    if (autosaveTimer) clearTimeout(autosaveTimer);
-    autosaveTimer = setTimeout(() => {
-      emit('autosave', buildSettlementDraftPayload(form));
-    }, 450);
-  },
-  { deep: true },
-);
-
-onBeforeUnmount(() => {
-  if (autosaveTimer) clearTimeout(autosaveTimer);
+const isDirty = computed(() => {
+  if (props.readonly) return false;
+  return snapshotPayload(buildSettlementDraftPayload(form)) !== savedPayloadJson;
 });
+
+watch(
+  isDirty,
+  (dirty) => {
+    emit('dirty-change', dirty);
+  },
+  { immediate: true },
+);
 
 const standardChargeRows: Array<{
   key: string;
@@ -177,6 +178,14 @@ const companyProfit = computed(
     - giftCostTenantTotal.value,
 );
 
+const showCreditedProfit = computed(
+  () =>
+    props.data.order.status === 'payment_received'
+    && props.data.settlement.dropship_profit_credited > 0,
+);
+
+const dropshipProfitCredited = computed(() => props.data.settlement.dropship_profit_credited);
+
 const courierRows = computed(() => [
   { label: 'Delivery zone', value: props.data.courier.delivery_zone_label || '—' },
   { label: 'AWB / consignment', value: props.data.courier.courier_awb_number || '—' },
@@ -204,7 +213,7 @@ function getDraftPayload() {
   return buildSettlementDraftPayload(form);
 }
 
-defineExpose({ getDraftPayload });
+defineExpose({ getDraftPayload, isDirty });
 </script>
 
 <template>
@@ -444,10 +453,27 @@ defineExpose({ getDraftPayload });
           </template>
         </tbody>
         <tfoot>
+          <tr
+            v-if="showCreditedProfit"
+            class="dropship-mgmt-settlement-paper__total-row dropship-mgmt-settlement-paper__total-row--grand"
+          >
+            <td>Credited to dropshipper wallet</td>
+            <td class="text-grey-7 text-caption">
+              Net remittance minus customer B2B invoice cleared
+            </td>
+            <td class="dropship-mgmt-settlement-paper__amount-col text-weight-bold text-positive">
+              {{ formatMoney(dropshipProfitCredited) }}
+            </td>
+          </tr>
           <tr class="dropship-mgmt-settlement-paper__total-row">
-            <td>{{ DROPSHIP_TERM.dropshipperProfit }}</td>
+            <td>
+              {{ showCreditedProfit ? 'COD margin (settlement paper)' : DROPSHIP_TERM.dropshipperProfit }}
+            </td>
             <td class="text-grey-7">—</td>
-            <td class="dropship-mgmt-settlement-paper__amount-col text-weight-bold text-primary">
+            <td
+              class="dropship-mgmt-settlement-paper__amount-col text-weight-bold"
+              :class="showCreditedProfit ? 'text-grey-8' : 'text-primary'"
+            >
               {{ formatMoney(resellerProfit) }}
             </td>
           </tr>

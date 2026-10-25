@@ -4274,6 +4274,9 @@ isOneToOne: false
             "_assert_parent_warehouse_tenant":
 { Args: { "p_parent_tenant_id": number }; Returns: undefined
                            },
+"_build_dropship_courier_ap_paper":
+{ Args: { "p_cod": number,"p_courier": Omit<Database["public"]['Tables']["courier_services"]['Row'], Database["public"]['Tables']["courier_services"]['ComputedFields']>,"p_delivery": number,"p_order": Omit<Database["public"]['Tables']["shop_orders"]['Row'], Database["public"]['Tables']["shop_orders"]['ComputedFields']>,"p_total": number }; Returns: Json
+                           },
 "_build_shipment_ap_bucket_paper":
 { Args: { "p_bucket": Database["public"]['Enums']["global_shipment_cost_bucket"],"p_ship": Omit<Database["public"]['Tables']["global_shipments"]['Row'], Database["public"]['Tables']["global_shipments"]['ComputedFields']>,"p_shipment_id": number }; Returns: Json
                            },
@@ -4297,6 +4300,9 @@ isOneToOne: false
                            },
 "_stock_location_is_leaf":
 { Args: { "p_id": number }; Returns: boolean
+                           },
+"_sync_dropship_courier_ap_bill_details":
+{ Args: { "p_allow_line_sync"?: boolean,"p_bill_id": number,"p_order_id": number }; Returns: undefined
                            },
 "_undo_wallet_ledger_row_before_delete":
 { Args: { "p_row": Omit<Database["public"]['Tables']["cashbook_entries"]['Row'], Database["public"]['Tables']["cashbook_entries"]['ComputedFields']> }; Returns: undefined
@@ -4518,6 +4524,8 @@ isOneToOne: false
       } },
 "add_shop_order_item_stock_pick":
 { Args: { "p_global_stock_id": number,"p_order_item_id": number,"p_quantity": number }; Returns: Json
+                           } |
+{ Args: { "p_global_stock_id": number,"p_limit"?: number,"p_offset"?: number,"p_order_item_id": number,"p_quantity": number,"p_search"?: string }; Returns: Json
                            },
 "add_stock_movement_line":
 { Args: { "p_from_availability"?: Database["public"]['Enums']["stock_availability"],"p_from_grade_tag_id"?: number,"p_from_location_id"?: number,"p_movement_id": number,"p_quantity": number,"p_stock_id": number,"p_to_availability"?: Database["public"]['Enums']["stock_availability"],"p_to_grade_tag_id"?: number,"p_to_location_id"?: number }; Returns: Json
@@ -4556,6 +4564,9 @@ isOneToOne: false
                            },
 "ap_bill_channel_foreign_face":
 { Args: { "p_channel_meta": Json }; Returns: number
+                           },
+"apply_dropship_fulfillment_draft":
+{ Args: { "p_lines": Json,"p_order_id": number }; Returns: undefined
                            },
 "apply_dropship_issued_bill_notes_at_deliver":
 { Args: { "p_order_id": number }; Returns: Json
@@ -4718,6 +4729,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"assert_staff_can_place_dropship_order_on_behalf":
+{ Args: { "p_customer_group_id": number,"p_shop_id": number }; Returns: undefined
+                           },
 "assign_customer_group_member_role":
 { Args: { "p_cgm_id": number,"p_tenant_role_id": number }; Returns: {
               "added_by": number | null,
@@ -4762,6 +4776,9 @@ isOneToOne: false
                            },
 "auth_investor_id":
 { Args: Record<PropertyKey, never>; Returns: number
+                           },
+"browse_dropship_listings_for_staff_order":
+{ Args: { "p_customer_group_id": number,"p_limit"?: number,"p_search"?: string,"p_shop_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "browse_shop_catalog_for_admin":
 { Args: { "p_cursor_id"?: number,"p_cursor_name"?: string,"p_include_below_min_units"?: boolean,"p_limit"?: number,"p_search"?: string,"p_shop_id": number,"p_tenant_id": number }; Returns: Json
@@ -5063,6 +5080,9 @@ isOneToOne: false
 "close_preorder_demand_document":
 { Args: { "p_close_action": string,"p_document_id": number,"p_document_type": string,"p_tenant_id": number }; Returns: Json
                            },
+"commit_dropship_ready_for_pickup_bundle":
+{ Args: { "p_desk"?: Json,"p_fulfillment"?: Json,"p_order_id": number,"p_tenant_id": number }; Returns: Json
+                           },
 "compute_dropship_order_reseller_purchase":
 { Args: { "p_order_id": number }; Returns: {
               "order_item_quantity": number,"reseller_purchase_cost": number,"reseller_unit_purchase_cost": number
@@ -5088,6 +5108,8 @@ isOneToOne: false
                            },
 "confirm_dropship_recipient_call":
 { Args: { "p_order_id": number }; Returns: Json
+                           } |
+{ Args: { "p_order_id": number,"p_tenant_id"?: number }; Returns: Json
                            },
 "confirm_shop_order":
 { Args: { "p_order_id": number }; Returns: undefined
@@ -5442,6 +5464,9 @@ isOneToOne: false
                            } |
 { Args: { "p_address"?: string,"p_code": string,"p_currency_code"?: string,"p_email"?: string,"p_market_code": string,"p_name": string,"p_phone"?: string,"p_tenant_id": number,"p_website"?: string }; Returns: Json
                            },
+"credit_dropship_profit_from_courier_remittance":
+{ Args: { "p_amount": number,"p_invoice_allocated": number,"p_net_remitted": number,"p_order_id": number,"p_payment_id": number,"p_profile_id": number,"p_reference": string,"p_tenant_id": number }; Returns: undefined
+                           },
 "current_costing_item_actor_role":
 { Args: { "p_costing_file_id": number }; Returns: string
                            },
@@ -5686,6 +5711,9 @@ isOneToOne: false
 "get_app_dashboard_bundle":
 { Args: { "p_parent_tenant_ids"?: (number)[],"p_tenant_id": number }; Returns: Json
                            },
+"get_app_login_bundle":
+{ Args: { "p_email"?: string,"p_requested_tenant_slug"?: string }; Returns: Json
+                           },
 "get_app_release_versions":
 { Args: Record<PropertyKey, never>; Returns: {
               "backend_updated_at": string,"backend_version": string,"frontend_updated_at": string,"frontend_version": string
@@ -5892,6 +5920,12 @@ isOneToOne: false
                            } |
 { Args: { "p_listing_id"?: number,"p_product_id": number,"p_shop_slug": string,"p_tenant_id": number }; Returns: Json
                            },
+"get_shop_customer_access_page":
+{ Args: { "p_shop_id": number,"p_tenant_id": number }; Returns: Json
+                           },
+"get_shop_customer_shell_bundle":
+{ Args: { "p_tenant_id": number }; Returns: Json
+                           },
 "get_shop_effective_grants":
 { Args: { "p_customer_group_member_id": number,"p_tenant_id": number }; Returns: {
               "action": string,"module_key": string
@@ -5907,6 +5941,14 @@ isOneToOne: false
 { Args: { "p_shop_id": number }; Returns: {
               "can_add_to_cart": boolean,"can_browse": boolean,"can_negotiate": boolean,"can_place_order": boolean,"can_see_buy_price": boolean,"can_see_resell_minimum_price": boolean,"can_see_sell_price": boolean,"can_set_dropship_price": boolean,"can_view_quantity": boolean
             }[]
+                           },
+"get_shop_permissions_for_customer_group":
+{ Args: { "p_customer_group_id": number,"p_shop_id": number }; Returns: {
+              "can_add_to_cart": boolean,"can_browse": boolean,"can_negotiate": boolean,"can_place_order": boolean,"can_see_buy_price": boolean,"can_see_resell_minimum_price": boolean,"can_see_sell_price": boolean,"can_set_dropship_price": boolean,"can_view_quantity": boolean
+            }[]
+                           },
+"get_shop_setup_bundle":
+{ Args: { "p_shop_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "get_shop_storefront_listing_price_calculation":
 { Args: { "p_listing_id": number,"p_shop_id": number }; Returns: Json
@@ -6909,6 +6951,9 @@ isOneToOne: false
 "paste_batch_code_items":
 { Args: { "p_list_id": number,"p_rows": Json,"p_start_row_index": number }; Returns: Json
                            },
+"patch_dropship_courier_fees_for_remittance":
+{ Args: { "p_cod": number,"p_delivery": number,"p_order_id": number }; Returns: undefined
+                           },
 "pay_settle_shipment_costs":
 { Args: { "p_cost_entry_ids"?: (number)[],"p_shipment_id": number }; Returns: Json
                            },
@@ -7019,6 +7064,38 @@ isOneToOne: false
         to: "pays"
         isOneToOne: true
         isSetofReturn: false
+      } } |
+{ Args: { "p_allocations"?: Json,"p_credit_dropship_profit"?: boolean,"p_exchange_rate"?: number,"p_foreign_amount"?: number,"p_instruments"?: Json,"p_note"?: string,"p_profile_id": number,"p_received_on": string,"p_reference"?: string,"p_settlement_currency_code"?: string,"p_shop_order_id"?: number,"p_source"?: string,"p_tenant_id": number }; Returns: {
+              "amount": number,
+"cashbook_point_id": number | null,
+"cashbook_point_pot_id": number | null,
+"collection_source": Database["public"]['Enums']["collection_source_type"],
+"created_at": string,
+"customer_group_id": number | null,
+"exchange_rate": number,
+"foreign_amount": number | null,
+"id": number,
+"method": string | null,
+"note": string | null,
+"payment_date": string,
+"profile_id": number | null,
+"quote_currency_code": string,
+"reference": string | null,
+"settlement_currency_code": string,
+"shop_order_id": number | null,
+"source": string,
+"source_amount": number | null,
+"source_currency_code": string | null,
+"tenant_id": number,
+"transaction_rate": number | null,
+"unallocated_amount": number,
+"voided_at": string | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "pays"
+        isOneToOne: true
+        isSetofReturn: false
       } },
 "post_global_invoice":
 { Args: { "p_invoice_id": number }; Returns: undefined
@@ -7068,8 +7145,11 @@ isOneToOne: false
 "preorder_demand_invoice_items_stale":
 { Args: { "p_document_id": number,"p_document_type": string,"p_invoice_id": number }; Returns: boolean
                            },
+"preview_dropship_courier_payin_settlement":
+{ Args: { "p_cod_charge": number,"p_delivery_charge": number,"p_net_amount": number,"p_order_id": number }; Returns: Json
+                           },
 "preview_dropship_issued_bill_notes_at_deliver":
-{ Args: { "p_order_id": number }; Returns: Json
+{ Args: { "p_cod_override"?: number,"p_delivery_override"?: number,"p_order_id": number }; Returns: Json
                            },
 "preview_dropship_issued_bill_notes_at_deliver_for_staff":
 { Args: { "p_order_id": number,"p_tenant_id": number }; Returns: Json
@@ -7146,6 +7226,8 @@ isOneToOne: false
 { Args: { "p_bank_trx_id"?: string,"p_courier_charge"?: number,"p_method"?: string,"p_net_amount": number,"p_note"?: string,"p_order_id": number,"p_payment_date"?: string,"p_remittance_ref": string }; Returns: Json
                            } |
 { Args: { "p_bank_trx_id"?: string,"p_cashbook_point_id"?: number,"p_courier_charge"?: number,"p_method"?: string,"p_net_amount": number,"p_note"?: string,"p_order_id": number,"p_payment_date"?: string,"p_remittance_ref": string }; Returns: Json
+                           } |
+{ Args: { "p_bank_trx_id"?: string,"p_cashbook_point_id"?: number,"p_cod_charge"?: number,"p_courier_charge"?: number,"p_delivery_charge"?: number,"p_method"?: string,"p_net_amount": number,"p_note"?: string,"p_order_id": number,"p_payment_date"?: string,"p_remittance_ref": string }; Returns: Json
                            },
 "record_dropship_recipient_call_no_answer":
 { Args: { "p_order_id": number }; Returns: Json
@@ -7257,6 +7339,8 @@ isOneToOne: false
                            },
 "remove_shop_order_item_stock_pick":
 { Args: { "p_pick_id": number }; Returns: Json
+                           } |
+{ Args: { "p_limit"?: number,"p_offset"?: number,"p_pick_id": number,"p_search"?: string }; Returns: Json
                            },
 "reorder_shipment_progress_flow_stages":
 { Args: { "p_flow_id": number,"p_flow_stage_ids": (number)[] }; Returns: undefined
@@ -7275,6 +7359,9 @@ isOneToOne: false
                            },
 "resolve_customer_profile_for_group":
 { Args: { "p_customer_group_id": number,"p_tenant_id": number }; Returns: number
+                           },
+"resolve_dropship_courier_ap_bill_id":
+{ Args: { "p_order_id": number,"p_parent_tenant_id": number }; Returns: number
                            },
 "resolve_notification_recipient_user_ids":
 { Args: { "p_action"?: string,"p_audience": Database["public"]['Enums']["notification_audience"],"p_module_key"?: string,"p_operating_tenant_id": number,"p_parent_tenant_id": number,"p_recipient_user_ids"?: (string)[] }; Returns: (string)[]
@@ -7418,6 +7505,9 @@ isOneToOne: false
               "created_at": string,"id": number,"is_enabled": boolean,"parent_module_key": string,"submodule_key": string,"tenant_id": number,"updated_at": string
             }[]
                            },
+"settle_dropship_courier_ap_via_cod_retention":
+{ Args: { "p_amount": number,"p_ap_bill_id": number,"p_order_id": number,"p_receipt_payment_id"?: number,"p_remittance_ref": string }; Returns: number
+                           },
 "settle_shipment_payee":
 { Args: { "p_action": string,"p_amount": number,"p_entity_id": number,"p_entity_type": string,"p_exchange_rate"?: number,"p_shipment_id": number }; Returns: Json
                            },
@@ -7448,11 +7538,25 @@ isOneToOne: false
 "show_trgm":
 { Args: { "": string }; Returns: (string)[]
                            },
+"staff_add_to_shop_cart":
+{ Args: { "p_customer_group_id": number,"p_customer_sell_price_amount"?: number,"p_customer_sell_price_currency_id"?: number,"p_global_stock_allocation_id"?: number,"p_global_stock_id"?: number,"p_product_id": number,"p_quantity"?: number,"p_shop_id": number }; Returns: Json
+                           },
+"staff_assert_dropship_cart_item_access":
+{ Args: { "p_cart_item_id": number }; Returns: {
+              "cart_id": number,"customer_group_id": number,"shop_id": number,"tenant_id": number
+            }[]
+                           },
 "staff_counter_offer":
 { Args: { "p_items": Json,"p_order_id": number }; Returns: undefined
                            },
+"staff_create_dropship_order":
+{ Args: { "p_cod_charge_amount"?: number,"p_customer_group_id": number,"p_delivery_charge_amount"?: number,"p_delivery_instructions"?: string,"p_discount_amount"?: number,"p_is_prepaid"?: boolean,"p_items": Json,"p_packing_charge_amount"?: number,"p_print_charge_amount"?: number,"p_profile_id"?: number,"p_recipient_name": string,"p_recipient_pays_cod"?: boolean,"p_recipient_pays_delivery"?: boolean,"p_recipient_phone": string,"p_recipient_phone_secondary"?: string,"p_shipping_address": string,"p_shipping_district"?: string,"p_shipping_post_code"?: string,"p_shipping_thana"?: string,"p_shop_id": number }; Returns: Json
+                           },
 "staff_finalize_catalog_prices":
 { Args: { "p_items": Json,"p_order_id": number }; Returns: Json
+                           },
+"staff_get_or_create_shop_cart":
+{ Args: { "p_customer_group_id": number,"p_shop_id": number }; Returns: Json
                            },
 "staff_mark_pbc_packed":
 { Args: { "p_file_id": number }; Returns: Json
@@ -7460,14 +7564,29 @@ isOneToOne: false
 "staff_price_shop_order":
 { Args: { "p_cargo_rate"?: number,"p_fx_rate"?: number,"p_items": Json,"p_order_id": number,"p_profit_basis"?: string,"p_profit_pct"?: number }; Returns: Json
                            },
+"staff_remove_shop_cart_item":
+{ Args: { "p_cart_item_id": number }; Returns: Json
+                           },
 "staff_set_catalog_delivered_qty":
 { Args: { "p_items"?: Json,"p_order_id": number }; Returns: Json
                            },
 "staff_set_catalog_ordered_qty":
 { Args: { "p_items": Json,"p_order_id": number }; Returns: Json
                            },
+"staff_shop_cart_response_json":
+{ Args: { "p_cart_id": number }; Returns: Json
+                           },
 "staff_start_catalog_procurement":
 { Args: { "p_order_id": number }; Returns: Json
+                           },
+"staff_submit_dropship_order_from_cart":
+{ Args: { "p_cod_charge_amount"?: number,"p_customer_group_id": number,"p_delivery_charge_amount"?: number,"p_delivery_instructions"?: string,"p_discount_amount"?: number,"p_is_prepaid"?: boolean,"p_packing_charge_amount"?: number,"p_print_charge_amount"?: number,"p_profile_id"?: number,"p_recipient_name": string,"p_recipient_pays_cod"?: boolean,"p_recipient_pays_delivery"?: boolean,"p_recipient_phone": string,"p_recipient_phone_secondary"?: string,"p_shipping_address": string,"p_shipping_district"?: string,"p_shipping_post_code"?: string,"p_shipping_thana"?: string,"p_shop_id": number }; Returns: Json
+                           },
+"staff_update_shop_cart_item_price":
+{ Args: { "p_cart_item_id": number,"p_price": number }; Returns: Json
+                           },
+"staff_update_shop_cart_item_qty":
+{ Args: { "p_cart_item_id": number,"p_quantity": number }; Returns: Json
                            },
 "stamp_bill_kernel_fields":
 { Args: { "p_bill_id": number }; Returns: undefined

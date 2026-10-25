@@ -33,13 +33,15 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
     ),
     queryFn: async ({ pageParam }) => {
       const limit = params.value.pageSize ?? 24;
+      const cursor = (pageParam as ShopCatalogListCursor | null) ?? null;
+      const isFirstPage = cursor == null;
 
       const result = await shopOrderService.browseShopCatalog(tenantId.value, params.value.shopSlug, {
         search: params.value.search || null,
         category: params.value.category || null,
         brand: params.value.brand || null,
         limit,
-        cursor: (pageParam as ShopCatalogListCursor | null) ?? null,
+        cursor,
       });
 
       if (!result.success) {
@@ -48,16 +50,19 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
 
       const meta = result.data?.meta ?? {};
       const data = result.data?.data ?? [];
-      const shopDetails = meta.shop ?? null;
+      const shopDetails = isFirstPage ? (meta.shop ?? null) : null;
+      const permissions = isFirstPage
+        ? ((meta.permissions ?? null) as CustomerShopPermissions | null)
+        : null;
 
-      if (shopDetails?.id && meta.permissions) {
-        seedCustomerShopPermissions(queryClient, shopDetails.id, meta.permissions);
+      if (shopDetails?.id && permissions) {
+        seedCustomerShopPermissions(queryClient, shopDetails.id, permissions);
       }
 
       return {
         items: (data as ShopCatalogItem[]).map((item) => normalizeShopCatalogItem(item)),
         shopDetails,
-        permissions: (meta.permissions ?? null) as CustomerShopPermissions | null,
+        permissions,
         hasMore: meta.has_more ?? false,
         nextCursor: meta.next_cursor ?? null,
       };

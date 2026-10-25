@@ -6,7 +6,6 @@ import {
 } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import type {
-  PbcFileDetailsBundleCustomer,
   PbcItemProductCatalog,
   ProductBasedCostingFile,
   ProductBasedCostingItem,
@@ -48,10 +47,6 @@ export function useProductBasedCostingFileDetailsPageQuery(
     return first?.file ?? undefined;
   });
 
-  const customerAccounts = computed<PbcFileDetailsBundleCustomer[]>(() => {
-    return query.data.value?.pages[0]?.customers ?? [];
-  });
-
   const summaryMetrics = computed(() => {
     const summary = query.data.value?.pages[0]?.summary;
     if (!summary) return emptyPbcFileSummaryMetrics();
@@ -76,10 +71,10 @@ export function useProductBasedCostingFileDetailsPageQuery(
   const catalogByProductId = computed(() => {
     const map = new Map<number, PbcItemProductCatalog>();
     for (const page of query.data.value?.pages ?? []) {
-      for (const row of page.productCatalog) {
-        const id = Number(row.product_id);
-        if (!Number.isFinite(id) || id <= 0) continue;
-        map.set(id, {
+      for (const row of page.product_catalog ?? []) {
+        const productId = row.product_id;
+        if (!Number.isFinite(productId) || productId <= 0) continue;
+        map.set(productId, {
           languages: row.languages ?? null,
           country_of_origin: row.country_of_origin ?? null,
           available_units: row.available_units ?? null,
@@ -112,7 +107,6 @@ export function useProductBasedCostingFileDetailsPageQuery(
   return {
     ...query,
     file,
-    customerAccounts,
     summaryMetrics,
     costingItems,
     catalogByProductId,

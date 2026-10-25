@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
+import { invalidateTenantSetupLookups } from '../utils/tenantSetupLookupCache';
 import type { CreateShopPayload, UpdateShopPayload, Shop } from '../types';
 
 export function useSaveShopMutation() {
@@ -27,6 +28,10 @@ export function useSaveShopMutation() {
         await queryClient.invalidateQueries({
           queryKey: shopOrderQueryKeys.shopDetail(shop.tenant_id, shop.id),
         });
+        await queryClient.invalidateQueries({
+          queryKey: shopOrderQueryKeys.shopSetupBundle(shop.tenant_id, shop.id),
+        });
+        invalidateTenantSetupLookups(queryClient, shop.tenant_id);
       }
     },
   });

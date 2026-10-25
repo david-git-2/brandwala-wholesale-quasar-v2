@@ -1,11 +1,11 @@
 <template>
   <component :is="rootTag" v-bind="rootProps">
     <div
-      v-if="variant === 'card' || context === 'payin'"
+      v-if="variant === 'card'"
       class="text-subtitle1 text-weight-bold text-primary q-mb-md row items-center gap-xs"
     >
       <q-icon name="ph ph-bank" size="20px" />
-      <span>{{ context === 'payin' ? 'Courier pay in' : 'Step 2: Confirm Courier Remittance' }}</span>
+      <span>Step 2: Confirm Courier Remittance</span>
     </div>
 
     <div v-if="!selectedOrder" class="text-body2 text-grey-6 q-my-md">
@@ -25,6 +25,114 @@
       class="q-gutter-y-sm"
       @submit.prevent="handleConfirm"
     >
+      <template v-if="context === 'payin'">
+        <div class="text-subtitle2 text-weight-bold">
+          {{ selectedOrder.orderNo }}
+          <span v-if="selectedOrder.courierName" class="text-grey-7 text-body2 text-weight-regular">
+            · {{ selectedOrder.courierName }}
+          </span>
+        </div>
+        <div class="text-caption text-grey-7 q-mb-sm">
+          Expected bank in
+          <span class="text-weight-bold text-positive">{{ formatAmt(expectedFromCourier) }} BDT</span>
+          <span v-if="invoiceDue > 0">
+            · clears up to {{ formatAmt(invoiceDue) }} on customer bill
+          </span>
+        </div>
+
+        <q-input
+          v-model.number="form.netAmount"
+          type="number"
+          label="Amount received (BDT)"
+          outlined
+          dense
+          step="0.01"
+          class="soft-input"
+          :rules="[val => val > 0 || 'Required']"
+        />
+
+        <q-select
+          v-model="form.cashbookPointId"
+          :options="cashbookPointOptions"
+          emit-value
+          map-options
+          outlined
+          dense
+          label="Deposit to"
+          :loading="pointsQuery.isLoading.value"
+          :rules="[val => !!val || 'Required']"
+        />
+
+        <q-input
+          v-model="form.remittanceRef"
+          label="Reference"
+          outlined
+          dense
+          class="soft-input"
+          hint="Courier statement or batch ID"
+          :rules="[val => !!val || 'Required']"
+        />
+
+        <q-expansion-item
+          dense
+          expand-icon-class="text-grey-7"
+          header-class="q-px-none"
+          label="Adjust courier fees"
+          caption="Only if different from settlement"
+        >
+          <div class="row q-col-gutter-sm q-pt-xs">
+            <div class="col-6">
+              <q-input
+                v-model.number="form.deliveryCharge"
+                type="number"
+                label="Delivery fee"
+                outlined
+                dense
+                step="0.01"
+                @update:model-value="onDeliveryOrCodFeeEdited"
+              />
+            </div>
+            <div class="col-6">
+              <q-input
+                v-model.number="form.codCharge"
+                type="number"
+                label="COD fee"
+                outlined
+                dense
+                step="0.01"
+                @update:model-value="onDeliveryOrCodFeeEdited"
+              />
+            </div>
+          </div>
+        </q-expansion-item>
+
+        <div
+          v-if="overCod"
+          class="text-negative text-caption"
+        >
+          Received amount plus fees exceeds COD collected ({{ formatAmt(codFace()) }}).
+        </div>
+
+        <div class="row justify-end q-mt-sm">
+          <q-btn
+            type="submit"
+            color="primary"
+            unelevated
+            no-caps
+            :loading="loading || previewLoading"
+            :disable="
+              netRemitted <= 0
+              || overCod
+              || !form.remittanceRef
+              || form.netAmount <= 0
+              || !form.cashbookPointId
+            "
+            label="Post pay in"
+          />
+        </div>
+      </template>
+
+      <template v-else>
       <q-banner
         v-if="invoiceDue > 0"
         dense
@@ -34,7 +142,7 @@
         Customer invoice due: {{ formatAmt(invoiceDue) }} BDT — cleared from this pay in (up to net received).
       </q-banner>
 
-      <div v-if="variant === 'card' || context === 'payin'" class="text-subtitle2 text-weight-bold q-mb-xs">
+      <div v-if="variant === 'card'" class="text-subtitle2 text-weight-bold q-mb-xs">
         Order #{{ selectedOrder.orderNo }}
         <span v-if="selectedOrder.courierName" class="text-grey-7 text-body2 text-weight-regular">
           · {{ selectedOrder.courierName }}
@@ -190,7 +298,7 @@
           color="primary"
           unelevated
           no-caps
-          :loading="loading"
+          :loading="loading || previewLoading"
           :disable="
             netRemitted <= 0
             || overCod
@@ -198,20 +306,29 @@
             || form.netAmount <= 0
             || !form.cashbookPointId
           "
-          :label="context === 'payin' ? 'Post courier pay in' : 'Confirm Remittance'"
+          label="Confirm Remittance"
         />
       </div>
+      </template>
     </q-form>
   </component>
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, watch } from 'vue';
+import { reactive, computed, watch, ref } from 'vue';
 import { QCard } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useCashbookPointsQuery } from 'src/modules/bills_pays/composables/useCashbookPointsQuery';
-import type { FinanceHubOrderQueueItem } from '../../repositories/dropshipFinanceRepository';
+import {
+  dropshipFinanceRepository,
+  type FinanceHubOrderQueueItem,
+} from '../../repositories/dropshipFinanceRepository';
 import { expectedCourierRemittanceNet } from '../../utils/expectedCourierRemittanceNet';
+import {
+  parseDropshipCourierPayInSettlementPreview,
+  requestDropshipCourierPayInConfirmation,
+} from '../../utils/dropshipDeliverBillNotesPreview';
+import { showErrorNotification } from 'src/utils/appFeedback';
 
 const authStore = useAuthStore();
 const booksTenantId = computed(() => {
@@ -250,12 +367,16 @@ const emit = defineEmits<{
       orderId: number;
       netAmount: number;
       courierCharge: number;
+      deliveryCharge: number;
+      codCharge: number;
       remittanceRef?: string;
       bankTrxId?: string;
       cashbookPointId: number;
     },
   ): void;
 }>();
+
+const previewLoading = ref(false);
 
 const rootTag = computed(() => (props.variant === 'card' ? QCard : 'div'));
 const rootProps = computed(() =>
@@ -357,7 +478,7 @@ const overCod = computed(() => {
   return (netRemitted.value + totalCourierCharge.value) > cod + 0.01;
 });
 
-function handleConfirm() {
+async function handleConfirm() {
   if (
     !props.selectedOrder
     || netRemitted.value <= 0
@@ -366,10 +487,40 @@ function handleConfirm() {
   ) {
     return;
   }
+
+  const deliveryCharge = Math.max(0, Number(form.deliveryCharge) || 0);
+  const codCharge = Math.max(0, Number(form.codCharge) || 0);
+
+  previewLoading.value = true;
+  try {
+    const raw = await dropshipFinanceRepository.previewCourierPayInSettlement({
+      orderId: props.selectedOrder.id,
+      netAmount: netRemitted.value,
+      deliveryCharge,
+      codCharge,
+    });
+    const preview = parseDropshipCourierPayInSettlementPreview(raw);
+    if (!preview?.success) {
+      showErrorNotification(preview?.error ?? 'Could not preview pay in settlement.');
+      return;
+    }
+    const confirmed = await requestDropshipCourierPayInConfirmation(preview, {
+      orderNo: props.selectedOrder.orderNo,
+    });
+    if (!confirmed) return;
+  } catch (e) {
+    showErrorNotification(e instanceof Error ? e.message : 'Pay in preview failed.');
+    return;
+  } finally {
+    previewLoading.value = false;
+  }
+
   emit('submit', {
     orderId: props.selectedOrder.id,
     netAmount: netRemitted.value,
     courierCharge: totalCourierCharge.value,
+    deliveryCharge,
+    codCharge,
     remittanceRef: form.remittanceRef,
     bankTrxId: form.bankTrxId,
     cashbookPointId: form.cashbookPointId,

@@ -4,6 +4,7 @@ import type {
   ProductBasedCostingFile,
   ProductBasedCostingFileListInput,
   ProductBasedCostingFileListPage,
+  ProductBasedCostingFileListRow,
   ProductBasedCostingFileCreateInput,
   ProductBasedCostingFileUpdateInput,
   ProductBasedCostingItem,
@@ -13,7 +14,6 @@ import type {
   ProductBasedCostingItemUpdateInput,
   PbcItemProductCatalog,
   PbcFileDetailsBundlePage,
-  PbcFileDetailsBundleCustomer,
   PbcFileDetailsBundleProductCatalogRow,
 } from '../types';
 
@@ -265,8 +265,9 @@ const listProductBasedCostingFiles = async (
   }
 
   const envelope =
-    (data as { data?: ProductBasedCostingFile[]; meta?: Record<string, unknown> } | null) ?? {};
-  const rows = (envelope.data ?? []) as ProductBasedCostingFile[];
+    (data as { data?: ProductBasedCostingFileListRow[]; meta?: Record<string, unknown> } | null) ??
+    {};
+  const rows = (envelope.data ?? []) as ProductBasedCostingFileListRow[];
   const meta = envelope.meta ?? {};
 
   return {
@@ -405,14 +406,15 @@ const getProductBasedCostingFileDetailsBundle = async (
     throw error;
   }
   const raw = (data as Record<string, unknown> | null) ?? {};
-  const catalogRows =
-    (raw.product_catalog as PbcFileDetailsBundleProductCatalogRow[] | undefined) ?? [];
+  const catalogRaw = raw.product_catalog;
+  const product_catalog = Array.isArray(catalogRaw)
+    ? (catalogRaw as PbcFileDetailsBundleProductCatalogRow[])
+    : [];
   return {
     file: (raw.file as ProductBasedCostingFile | null) ?? null,
     summary: (raw.summary as Record<string, unknown> | null) ?? null,
-    customers: (raw.customers as PbcFileDetailsBundleCustomer[] | undefined) ?? [],
     items: parseItemsListEnvelope(raw.items),
-    productCatalog: catalogRows,
+    product_catalog,
   };
 };
 

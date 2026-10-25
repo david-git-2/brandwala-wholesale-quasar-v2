@@ -170,8 +170,11 @@ async function handleConfirmRemittance(payload: {
   orderId: number;
   netAmount: number;
   courierCharge: number;
+  deliveryCharge: number;
+  codCharge: number;
   remittanceRef?: string;
   bankTrxId?: string;
+  cashbookPointId: number;
 }) {
   const result = await confirmCourierRemittanceMutation.mutateAsync(payload);
   if (selectedOrder.value && selectedOrder.value.id === payload.orderId) {

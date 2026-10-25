@@ -170,6 +170,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import {
   useCustomerShopOrderDetailQuery,
   useSendCustomerCounterMutation,
@@ -200,6 +202,7 @@ import { customerCanSeeCatalogPrice, customerCanSeeCartLinePrices } from '../uti
 
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
 
 const orderId = computed(() => Number(route.params.id || 0));
 
@@ -215,6 +218,30 @@ const { mutate: updateCatalogOrderItem } = useUpdateCatalogOrderItemMutation();
 
 const currentOrder = computed(() => orderDetailsData.value?.order || null);
 const orderItems = ref<ShopOrderItem[]>([]);
+
+usePageBreadcrumbs(() => {
+  const slug =
+    authStore.tenantSlug ??
+    (typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null);
+  const ordersPath = slug ? `/${slug}/shop/orders` : '/shop/orders';
+  const rawNo = currentOrder.value?.order_no?.trim();
+  const lastLabel = rawNo
+    ? rawNo.startsWith('#')
+      ? rawNo
+      : `#${rawNo}`
+    : orderId.value > 0
+      ? `#${orderId.value}`
+      : 'Order';
+
+  return [
+    {
+      label: authStore.tenant?.name || 'Shop',
+      icon: 'ph ph-storefront',
+    },
+    { label: 'Orders', to: ordersPath },
+    { label: lastLabel },
+  ];
+});
 
 const isVendorCatalog = computed(() => currentOrder.value?.shop_type_snapshot === 'vendor_catalog');
 

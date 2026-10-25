@@ -1,7 +1,7 @@
 {
   "name": "brandwala-wholesale-quasar-root",
   "private": true,
-  "version": "1.0.17",
+  "version": "1.0.20",
   "description": "Root scripts for web app and Supabase backend",
   "scripts": {
     "dev": "pnpm --filter web dev",

@@ -345,6 +345,7 @@
                   v-if="line.line_kind === 'stock'"
                   :name="line.name"
                   :image-url="line.image_url"
+                  show-thumbnail
                 />
                 <div v-else-if="line.line_kind === 'charge'" class="column q-gutter-y-xs">
                   <q-select

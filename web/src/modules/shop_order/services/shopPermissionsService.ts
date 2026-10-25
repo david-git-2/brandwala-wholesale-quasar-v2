@@ -1,4 +1,6 @@
+import { appQueryClient } from 'src/query/queryClient';
 import { shopPermissionsRepository } from '../repositories/shopPermissionsRepository';
+import { fetchBooksCustomerGroupsCached } from '../utils/booksCustomerGroupsCache';
 import type {
   CustomerGroupShopProfile,
   ShopCustomerGroupAccess,
@@ -14,17 +16,11 @@ interface CustomerGroup {
   accent_color: string | null;
 }
 
-interface Currency {
-  id: number;
-  code: string;
-  name: string;
-}
-
 const listCustomerGroups = async (
-  tenantId: number,
+  booksTenantId: number,
 ): Promise<ShopServiceResult<CustomerGroup[]>> => {
   try {
-    const data = await shopPermissionsRepository.listCustomerGroups(tenantId);
+    const data = await fetchBooksCustomerGroupsCached(appQueryClient, booksTenantId);
     return { success: true, data };
   } catch (error) {
     return {
@@ -91,23 +87,10 @@ const upsertAccessOverride = async (
   }
 };
 
-const listCurrencies = async (): Promise<ShopServiceResult<Currency[]>> => {
-  try {
-    const data = await shopPermissionsRepository.listCurrencies();
-    return { success: true, data };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to list currencies.',
-    };
-  }
-};
-
 export const shopPermissionsService = {
   listCustomerGroups,
   getProfile,
   upsertProfile,
   listAccessOverrides,
   upsertAccessOverride,
-  listCurrencies,
 };

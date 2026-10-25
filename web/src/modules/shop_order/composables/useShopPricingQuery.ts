@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useGlobalReferenceStore } from 'src/modules/global_reference/stores/globalReferenceStore';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopPricingRepository } from '../repositories/shopPricingRepository';
 
@@ -36,11 +38,23 @@ export function useShopPricingCandidatesQuery(
 }
 
 export function useShopCurrenciesQuery() {
-  return useQuery({
+  const globalRefStore = useGlobalReferenceStore();
+  const { currencies } = storeToRefs(globalRefStore);
+  const needsFetch = computed(() => currencies.value.length === 0);
+
+  const query = useQuery({
     queryKey: shopOrderQueryKeys.currencies(),
     queryFn: () => shopPricingRepository.listCurrencies(),
-    staleTime: 10 * 60 * 1000,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    enabled: needsFetch,
   });
+
+  const data = computed(() =>
+    currencies.value.length > 0 ? currencies.value : (query.data.value ?? []),
+  );
+
+  return { ...query, data };
 }
 
 export function useShopPricingRuleQuery(shopId: Ref<number | null | undefined>) {

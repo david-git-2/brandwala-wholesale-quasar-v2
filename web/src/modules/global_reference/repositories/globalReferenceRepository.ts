@@ -1,37 +1,27 @@
 import { supabase } from 'src/boot/supabase';
+import { useGlobalReferenceStore } from '../stores/globalReferenceStore';
 import type { BdBank, GlobalCurrency, Market, PaymentMethod, UnitOfMeasure } from '../types';
 
-// Currencies
+// Currencies (cached in Pinia — API only when store is empty)
 const listCurrencies = async (): Promise<GlobalCurrency[]> => {
-  const { data, error } = await supabase
-    .from('global_currencies')
-    .select('*')
-    .order('code', { ascending: true });
-
-  if (error) throw error;
-  return (data as GlobalCurrency[] | null) ?? [];
+  const store = useGlobalReferenceStore();
+  return store.ensureCurrenciesLoaded();
 };
 
 const getCurrencyById = async (id: number): Promise<GlobalCurrency | null> => {
-  const { data, error } = await supabase
-    .from('global_currencies')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data as GlobalCurrency | null;
+  const store = useGlobalReferenceStore();
+  const cached = store.currencyById(id);
+  if (cached) return cached;
+  await store.ensureCurrenciesLoaded();
+  return store.currencyById(id);
 };
 
 const getCurrencyByCode = async (code: string): Promise<GlobalCurrency | null> => {
-  const { data, error } = await supabase
-    .from('global_currencies')
-    .select('*')
-    .eq('code', code.trim().toUpperCase())
-    .maybeSingle();
-
-  if (error) throw error;
-  return data as GlobalCurrency | null;
+  const store = useGlobalReferenceStore();
+  const cached = store.currencyByCode(code);
+  if (cached) return cached;
+  await store.ensureCurrenciesLoaded();
+  return store.currencyByCode(code);
 };
 
 // Markets

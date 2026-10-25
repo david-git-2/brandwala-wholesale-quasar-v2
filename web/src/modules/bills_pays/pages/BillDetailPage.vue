@@ -204,7 +204,7 @@
             <tbody>
               <tr v-for="line in lines" :key="line.id">
                 <td class="bill-line-item-cell">
-                  <BillLineItemDisplay :name="line.name_snapshot" :image-url="line.image_url" />
+                  <BillLineItemDisplay :name="line.name_snapshot" />
                 </td>
                 <td class="text-right">{{ line.quantity }}</td>
                 <td class="text-right">{{ formatAmountBdt(line.sell_price_amount) }}</td>
@@ -535,6 +535,7 @@ import {
   shipmentApKindFromBill,
   shipmentIdFromBill,
 } from '../utils/shipmentApBillSource';
+import { isDropshipCourierApBill, isDropshipManagerBill } from '../utils/dropshipManagedBill';
 
 const route = useRoute();
 const router = useRouter();
@@ -745,6 +746,7 @@ const canRecordVendorRefund = computed(() => {
   if (!isApBill.value) return false;
   const b = bill.value;
   if (!b || b.invoice_status !== 'issued') return false;
+  if (isDropshipCourierApBill(b)) return false;
   if (billDocumentKind.value === 'credit_note') {
     return Number(b.due_amount ?? 0) > 0;
   }
@@ -769,6 +771,7 @@ function openVendorRefund(noteId?: number) {
 const canRecordPayment = computed(() => {
   const b = bill.value;
   if (!b || !isStandardBill.value) return false;
+  if (isDropshipManagerBill(b)) return false;
   if (b.invoice_status !== 'issued') return false;
   if (!billProfileId.value) return false;
   return paymentDueAmount.value > 0;

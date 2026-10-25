@@ -505,10 +505,16 @@ GRANT ALL ON TABLE "public"."pays" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."pays" TO "service_role";
 
 REVOKE ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_credit_dropship_profit" boolean) FROM PUBLIC;
 
 GRANT ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_credit_dropship_profit" boolean) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) TO "service_role";
+GRANT ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_credit_dropship_profit" boolean) TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."credit_dropship_profit_from_courier_remittance"("p_tenant_id" bigint, "p_profile_id" bigint, "p_order_id" bigint, "p_payment_id" bigint, "p_amount" numeric, "p_reference" "text", "p_net_remitted" numeric, "p_invoice_allocated" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."credit_dropship_profit_from_courier_remittance"("p_tenant_id" bigint, "p_profile_id" bigint, "p_order_id" bigint, "p_payment_id" bigint, "p_amount" numeric, "p_reference" "text", "p_net_remitted" numeric, "p_invoice_allocated" numeric) TO "service_role";
 
 REVOKE ALL ON FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb", "p_keep_as_draft" boolean) FROM PUBLIC;
 
@@ -605,8 +611,14 @@ GRANT ALL ON FUNCTION "public"."sync_dropship_tenant_b2b_invoice_from_order"("p_
 
 GRANT ALL ON FUNCTION "public"."upsert_dropship_courier_ap_bill"("p_order_id" bigint, "p_keep_as_draft" boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."upsert_dropship_courier_ap_bill"("p_order_id" bigint, "p_keep_as_draft" boolean) TO "service_role";
-GRANT ALL ON FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver"("p_order_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver"("p_order_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver"("p_order_id" bigint, "p_delivery_override" numeric, "p_cod_override" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver"("p_order_id" bigint, "p_delivery_override" numeric, "p_cod_override" numeric) TO "service_role";
+GRANT ALL ON FUNCTION "public"."resolve_dropship_courier_ap_bill_id"("p_order_id" bigint, "p_parent_tenant_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."resolve_dropship_courier_ap_bill_id"("p_order_id" bigint, "p_parent_tenant_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."settle_dropship_courier_ap_via_cod_retention"("p_ap_bill_id" bigint, "p_amount" numeric, "p_order_id" bigint, "p_remittance_ref" "text", "p_receipt_payment_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."settle_dropship_courier_ap_via_cod_retention"("p_ap_bill_id" bigint, "p_amount" numeric, "p_order_id" bigint, "p_remittance_ref" "text", "p_receipt_payment_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."preview_dropship_courier_payin_settlement"("p_order_id" bigint, "p_delivery_charge" numeric, "p_cod_charge" numeric, "p_net_amount" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."preview_dropship_courier_payin_settlement"("p_order_id" bigint, "p_delivery_charge" numeric, "p_cod_charge" numeric, "p_net_amount" numeric) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) TO "service_role";

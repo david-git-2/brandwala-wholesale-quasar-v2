@@ -2,15 +2,22 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
-import { shopPermissionsService } from '../services/shopPermissionsService';
+import {
+  BOOKS_CUSTOMER_GROUPS_STALE_MS,
+  seedBooksCustomerGroups,
+} from '../utils/booksCustomerGroupsCache';
+import { resolveBooksTenantId } from 'src/modules/tenant/utils/resolveBooksTenantId';
 import type { Shop } from '../types';
 import { showErrorNotification, showSuccessNotification, parseSupabaseError } from 'src/utils/appFeedback';
 
 const props = defineProps<{ shop: Shop }>();
 
+const authStore = useAuthStore();
 const queryClient = useQueryClient();
+const scopeTenantId = computed(() => authStore.tenantId as number);
 const customerSearch = ref('');
 const customersLoading = ref(false);
 const accessRows = ref<Array<{ customer_group_id: number }>>([]);
@@ -51,17 +58,26 @@ const selectedCustomerName = computed(() => {
 });
 
 const loadCustomers = async () => {
+  if (!scopeTenantId.value) return;
   customersLoading.value = true;
   try {
-    const [accessRes, groupsRes] = await Promise.all([
-      shopPermissionsService.listAccessOverrides(props.shop.id),
-      shopPermissionsService.listCustomerGroups(props.shop.tenant_id),
-    ]);
-    if (!accessRes.success) throw new Error(accessRes.error || 'Failed to load customers');
-    if (!groupsRes.success) throw new Error(groupsRes.error || 'Failed to load groups');
-    accessRows.value = accessRes.data ?? [];
+    const bundle = await queryClient.fetchQuery({
+      queryKey: shopOrderQueryKeys.shopCustomerAccessPage(
+        scopeTenantId.value,
+        props.shop.id,
+      ),
+      queryFn: () =>
+        shopOrderRepository.getShopCustomerAccessPage(props.shop.id, scopeTenantId.value),
+      staleTime: BOOKS_CUSTOMER_GROUPS_STALE_MS,
+    });
+    seedBooksCustomerGroups(
+      queryClient,
+      resolveBooksTenantId(scopeTenantId.value, authStore.selectedTenant?.parent_id),
+      bundle.customer_groups,
+    );
+    accessRows.value = bundle.access_overrides;
     const names: Record<number, string> = {};
-    for (const g of groupsRes.data ?? []) {
+    for (const g of bundle.customer_groups) {
       names[g.id] = g.name;
     }
     groupNameById.value = names;

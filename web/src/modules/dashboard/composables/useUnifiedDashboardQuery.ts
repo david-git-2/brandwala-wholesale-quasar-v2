@@ -2,6 +2,7 @@ import { computed, type Ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { childTenantRefsCacheKey } from 'src/modules/tenant/repositories/tenantRepository';
 import { useDashboardBundleStore } from '../stores/dashboardBundleStore';
 import type { UnifiedDashboardMetrics } from '../types/unifiedDashboard';
 import type { InboundShipmentItem } from '../components/DashboardStockAllocationCard.vue';
@@ -152,7 +153,15 @@ export function useUnifiedDashboardQuery(
 
     const result = await bundleStore.refresh(tid, parentIds);
     if (result.childTenantRefs.length > 0) {
+      const roots = [...tenantStore.availableAdminTenants, ...tenantStore.items].filter(
+        (tenant) => tenant.parent_id === null,
+      );
+      const parentIds = [...new Set(roots.map((tenant) => tenant.id))];
       tenantStore.hierarchyChildRefs = result.childTenantRefs;
+      tenantStore.hierarchyChildRefsCacheKey = parentIds.length
+        ? childTenantRefsCacheKey(parentIds)
+        : '';
+      tenantStore.persistWorkspaceState();
     }
   };
 

@@ -155,7 +155,6 @@ const specializedSlots = computed(() => {
   return stories.value.filter(
     (slot) =>
       slot.moduleKey === 'thrift' ||
-      slot.moduleKey === 'tasks' ||
       slot.moduleKey === 'after_sales',
   );
 });

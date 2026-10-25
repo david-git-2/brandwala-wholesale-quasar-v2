@@ -195,7 +195,7 @@
                     class="workspace-shell__nav-item workspace-shell__nav-group-child"
                     :class="{
                       'workspace-shell__nav-item--active': isNavGroupChildActive(
-                        child.to,
+                        child,
                         link.children,
                       ),
                     }"
@@ -256,7 +256,12 @@
                         clickable
                         :to="child.to!"
                         class="workspace-shell__nav-sub-item"
-                        :class="{ 'workspace-shell__nav-item--active': isLinkActive(child.to) }"
+                        :class="{
+                          'workspace-shell__nav-item--active': isLinkActive(
+                            child.to,
+                            child.activeMatchTo,
+                          ),
+                        }"
                       >
                         <q-item-section v-if="child.icon" avatar class="q-pr-none" style="min-width: 28px">
                           <q-icon :name="child.icon" size="16px" color="grey-6" class="sub-item-icon" />
@@ -542,6 +547,8 @@ export interface WorkspaceLink {
   caption: string;
   icon: string;
   to?: string;
+  /** Longer path prefix for active state (e.g. shop detail under shops list). */
+  activeMatchTo?: string;
   target?: string;
   section?: string | undefined;
   /** Flat labeled section in the sidebar (label + always-visible children). */
@@ -602,36 +609,43 @@ const isPathMatch = (currentPath: string, to: string): boolean => {
 };
 
 /** Among sibling nav links, only the longest matching path is active (avoids /shop matching /shop/orders). */
+const navLinkMatchPath = (link: Pick<WorkspaceLink, 'to' | 'activeMatchTo'>): string | undefined =>
+  link.activeMatchTo ?? link.to;
+
 const resolveActiveNavTo = (links: WorkspaceLink[], currentPath: string): string | null => {
-  let bestMatch: string | null = null;
+  let bestMatchTo: string | null = null;
+  let bestMatchLen = 0;
 
   for (const link of links) {
-    if (!link.to || !isPathMatch(currentPath, link.to)) {
+    const matchPath = navLinkMatchPath(link);
+    if (!link.to || !matchPath || !isPathMatch(currentPath, matchPath)) {
       continue;
     }
-    if (!bestMatch || link.to.length > bestMatch.length) {
-      bestMatch = link.to;
+    if (!bestMatchTo || matchPath.length > bestMatchLen) {
+      bestMatchTo = link.to;
+      bestMatchLen = matchPath.length;
     }
   }
 
-  return bestMatch;
+  return bestMatchTo;
 };
 
-const isLinkActive = (to?: string): boolean => {
-  if (!to) return false;
-  return isPathMatch(route.path, to);
+const isLinkActive = (to?: string, activeMatchTo?: string): boolean => {
+  const matchPath = activeMatchTo ?? to;
+  if (!matchPath) return false;
+  return isPathMatch(route.path, matchPath);
 };
 
-const isNavGroupChildActive = (to?: string, siblings?: WorkspaceLink[]): boolean => {
-  if (!to || !siblings?.length) {
+const isNavGroupChildActive = (child: WorkspaceLink, siblings?: WorkspaceLink[]): boolean => {
+  if (!child.to || !siblings?.length) {
     return false;
   }
-  return resolveActiveNavTo(siblings, route.path) === to;
+  return resolveActiveNavTo(siblings, route.path) === child.to;
 };
 
 const isGroupActive = (link: WorkspaceLink): boolean => {
   if (!link.children?.length) return false;
-  return link.children.some((child) => isLinkActive(child.to));
+  return link.children.some((child) => isLinkActive(child.to, child.activeMatchTo));
 };
 
 const isBottomNavLinkActive = (link: WorkspaceLink) => {
@@ -682,7 +696,9 @@ watch(
 const autoExpandActiveGroup = () => {
   for (const link of props.links) {
     if (!link.children?.length) continue;
-    const hasActiveChild = link.children.some((child) => isLinkActive(child.to));
+    const hasActiveChild = link.children.some((child) =>
+      isLinkActive(child.to, child.activeMatchTo),
+    );
     if (hasActiveChild) {
       expandedGroups.value[link.title] = true;
     }

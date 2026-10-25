@@ -7028,9 +7028,20 @@ begin
     select
       f.created_at,
       f.id,
-      to_jsonb(f) || jsonb_build_object('customer_group_name', cg.name) as row_json
+      jsonb_build_object(
+        'id', f.id,
+        'name', f.name,
+        'order_for', f.order_for,
+        'status', f.status,
+        'created_at', f.created_at,
+        'customer_group_id', f.customer_group_id,
+        'note', f.note,
+        'vendor_code', f.vendor_code,
+        'market_code', f.market_code,
+        'buy_currency_id', f.buy_currency_id,
+        'sell_currency_id', f.sell_currency_id
+      ) as row_json
     from public.product_based_costing_files f
-    left join public.customer_groups cg on cg.id = f.customer_group_id
     where
       (p_tenant_id is null or f.tenant_id = p_tenant_id)
       and (
@@ -8183,10 +8194,8 @@ CREATE OR REPLACE FUNCTION "public"."get_product_based_costing_file_details_bund
     AS $$
 DECLARE
   v_is_first_page boolean;
-  v_tenant_id bigint;
   v_file jsonb := NULL;
   v_summary jsonb := NULL;
-  v_customers jsonb := NULL;
   v_items jsonb;
   v_catalog jsonb := '[]'::jsonb;
 BEGIN
@@ -8204,8 +8213,8 @@ BEGIN
   );
 
   IF v_is_first_page THEN
-    SELECT to_jsonb(f.*), f.tenant_id
-    INTO v_file, v_tenant_id
+    SELECT to_jsonb(f.*)
+    INTO v_file
     FROM public.product_based_costing_files f
     WHERE f.id = p_file_id;
 
@@ -8217,23 +8226,6 @@ BEGIN
       p_vat_rate,
       p_offer_pricing_mode
     );
-
-    IF v_tenant_id IS NOT NULL THEN
-      SELECT coalesce(
-        jsonb_agg(
-          jsonb_build_object(
-            'customer_group_id', ca.customer_group_id,
-            'group_name', ca.group_name
-          )
-          ORDER BY ca.customer_group_id DESC
-        ),
-        '[]'::jsonb
-      )
-      INTO v_customers
-      FROM public.list_customer_accounts(v_tenant_id, NULL::text) ca;
-    ELSE
-      v_customers := '[]'::jsonb;
-    END IF;
   END IF;
 
   SELECT coalesce(jsonb_agg(to_jsonb(p)), '[]'::jsonb)
@@ -8258,7 +8250,6 @@ BEGIN
   RETURN jsonb_build_object(
     'file', v_file,
     'summary', v_summary,
-    'customers', v_customers,
     'items', v_items,
     'product_catalog', v_catalog
   );

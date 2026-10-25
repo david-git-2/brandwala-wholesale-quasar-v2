@@ -61,7 +61,7 @@
             icon="ph ph-arrow-clockwise"
             color="grey-7"
             class="col-auto"
-            :loading="isLoading"
+            :loading="isLoading || accessPageQuery.isRefreshing.value"
             @click="reload"
           >
             <q-tooltip>Refresh</q-tooltip>
@@ -652,6 +652,11 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useCustomerGroupMutations } from 'src/modules/tenant/composables/useCustomerGroupMutations';
 import type { CustomerGroupCreateInput } from 'src/modules/tenant/types';
 import { useShopPermissionsStore } from '../stores/shopPermissionsStore';
+import { useShopCustomerAccessPageQuery } from '../composables/useShopCustomerAccessPageQuery';
+import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
+import { tenantQueryKeys } from 'src/modules/tenant/shared/queryKeys/tenantQueryKeys';
+import { useQueryClient } from '@tanstack/vue-query';
+import { resolveBooksTenantId } from 'src/modules/tenant/utils/resolveBooksTenantId';
 import type {
   UpsertAccessPayload,
   ShopCustomerGroupAccess,
@@ -680,10 +685,14 @@ const { t } = useI18n();
 const authStore = useAuthStore();
 const canAdministerCustomerGroup = useCanAdministerCustomerGroup();
 const store = useShopPermissionsStore();
+const queryClient = useQueryClient();
 const { createGroupMutation } = useCustomerGroupMutations();
 
 const tenantId = computed(() => authStore.tenantId as number);
 const shopId = computed(() => Number(route.params.shopId));
+const parentTenantId = computed(() => authStore.selectedTenant?.parent_id ?? null);
+
+const accessPageQuery = useShopCustomerAccessPageQuery(tenantId, shopId, parentTenantId);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 const shopName = ref('');
@@ -755,7 +764,7 @@ const editForm = ref<UpsertAccessPayload>({
 });
 
 const isLoading = computed(
-  () => store.loadingGroups || store.loadingAccess || store.loadingCurrencies,
+  () => accessPageQuery.isLoading.value || store.loadingCurrencies,
 );
 
 const isCreating = computed(() => createGroupMutation.isPending.value || store.saving);
@@ -864,7 +873,8 @@ const clearSearch = () => {
 };
 
 const reload = () => {
-  void load();
+  void accessPageQuery.refresh();
+  void loadShopMeta();
 };
 
 const getInitials = (name?: string | null) => {
@@ -956,7 +966,13 @@ const createThenGrant = async () => {
       admin_email: createForm.adminEmail.trim().toLowerCase(),
     } as CustomerGroupCreateInput & { admin_name: string; admin_email: string });
 
-    await store.fetchCustomerGroups(tenantId.value);
+    const booksTenantId = resolveBooksTenantId(tenantId.value, parentTenantId.value);
+    await queryClient.invalidateQueries({
+      queryKey: tenantQueryKeys.booksCustomerGroups(booksTenantId),
+    });
+    await queryClient.invalidateQueries({
+      queryKey: shopOrderQueryKeys.shopCustomerAccessPage(tenantId.value, shopId.value),
+    });
     const res = await store.saveAccessOverride(standardGrantPayload(group.id));
     if (res.success) {
       createDialogOpen.value = false;
@@ -1056,26 +1072,38 @@ const onDrawerSave = async () => {
   }
 };
 
-const load = async () => {
-  if (!tenantId.value || !shopId.value) return;
+const syncAccessPageToStore = () => {
+  const bundle = accessPageQuery.data.value;
+  if (!bundle) return;
+  store.customerGroups = bundle.customer_groups;
+  store.accessOverrides = bundle.access_overrides;
+};
+
+watch(() => accessPageQuery.data.value, syncAccessPageToStore, { immediate: true });
+
+const loadShopMeta = async () => {
+  if (!shopId.value) return;
 
   if (props.shop?.name) {
     shopName.value = props.shop.name;
     shopType.value = props.shop.shop_type;
-  } else {
-    const { data: shopData } = await supabase
-      .from('shops')
-      .select('name, shop_type')
-      .eq('id', shopId.value)
-      .single();
-    if (shopData) {
-      shopName.value = shopData.name;
-      shopType.value = shopData.shop_type;
-    }
+    return;
   }
 
-  void store.fetchCustomerGroups(tenantId.value);
-  void store.fetchAccessOverrides(shopId.value);
+  const { data: shopData } = await supabase
+    .from('shops')
+    .select('name, shop_type')
+    .eq('id', shopId.value)
+    .single();
+  if (shopData) {
+    shopName.value = shopData.name;
+    shopType.value = shopData.shop_type;
+  }
+};
+
+const load = async () => {
+  if (!tenantId.value || !shopId.value) return;
+  await loadShopMeta();
   void store.fetchCurrencies();
 };
 
@@ -1086,12 +1114,8 @@ const goBack = () => {
   });
 };
 
-watch(tenantId, (v) => {
-  if (v) void load();
-});
-
-watch(shopId, (v) => {
-  if (v) void load();
+watch([tenantId, shopId], ([t, s]) => {
+  if (t && s) void load();
 });
 
 onMounted(load);

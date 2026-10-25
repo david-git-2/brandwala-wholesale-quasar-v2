@@ -1,11 +1,9 @@
 <template>
   <q-card flat bordered class="q-pa-xs flex-shrink-0">
-    <div class="row items-center justify-between q-col-gutter-xs">
-      <div class="col-12 row items-center q-gutter-x-xs wrap">
+    <div class="row items-center q-gutter-x-xs wrap full-width">
         <q-input
           :model-value="search"
           clearable
-          debounce="350"
           dense
           outlined
           rounded
@@ -13,7 +11,9 @@
           class="col-grow col-sm-auto"
           :placeholder="$t('shop_admin.search_orders_placeholder', 'Search by Order No, recipient, shop...')"
           data-test="shop-orders-search"
-          @update:model-value="(val) => emit('update:search', (val as string) || '')"
+          @update:model-value="onSearchInput"
+          @keyup.enter="emit('apply-search')"
+          @clear="emit('apply-search')"
         >
           <template #prepend>
             <q-icon name="ph ph-magnifying-glass" size="16px" class="text-grey-6" />
@@ -27,10 +27,9 @@
           rounded
           emit-value
           map-options
-          clearable
           use-input
           input-debounce="200"
-          :label="$t('shop_admin.filter_by_shop', 'All Shops')"
+          :label="$t('shop_admin.filter_by_shop', 'Shop')"
           :options="filteredShopOptions"
           :loading="shopsLoading"
           style="min-width: 190px"
@@ -52,26 +51,6 @@
         </q-select>
 
         <q-select
-          :model-value="shopTypeFilter"
-          dense
-          outlined
-          rounded
-          emit-value
-          map-options
-          clearable
-          :label="$t('shop_admin.shop_type_filter', 'Shop Type')"
-          :options="shopTypeOptions"
-          style="min-width: 160px"
-          class="col-grow col-sm-auto"
-          data-test="shop-orders-type-filter"
-          @update:model-value="(val) => emit('update:shopTypeFilter', val)"
-        >
-          <template #prepend>
-            <q-icon name="ph ph-squares-four" size="16px" class="text-grey-6" />
-          </template>
-        </q-select>
-
-        <q-select
           :model-value="statusFilter"
           dense
           outlined
@@ -89,21 +68,30 @@
             <q-icon name="ph ph-flag" size="16px" class="text-grey-6" />
           </template>
         </q-select>
-      </div>
 
-      <q-btn
-        flat
-        round
-        dense
-        icon="ph ph-arrows-clockwise"
-        class="text-grey-7"
-        :loading="refreshing"
-        :aria-label="$t('common.refresh', 'Refresh')"
-        data-test="shop-orders-refresh"
-        @click="emit('refresh')"
-      >
-        <q-tooltip :delay="400">{{ $t('common.refresh', 'Refresh') }}</q-tooltip>
-      </q-btn>
+      <div class="row items-center no-wrap q-gutter-x-xs q-ml-auto flex-shrink-0">
+        <TfBtn
+          color="primary"
+          size="sm"
+          icon="ph ph-plus"
+          :label="$t('shop_admin.create_dropship_order', 'Create dropship order')"
+          data-test="shop-orders-create-dropship"
+          @click="emit('create-dropship')"
+        />
+        <q-btn
+          flat
+          round
+          dense
+          icon="ph ph-arrows-clockwise"
+          class="text-grey-7"
+          :loading="refreshing"
+          :aria-label="$t('common.refresh', 'Refresh')"
+          data-test="shop-orders-refresh"
+          @click="emit('refresh')"
+        >
+          <q-tooltip :delay="400">{{ $t('common.refresh', 'Refresh') }}</q-tooltip>
+        </q-btn>
+      </div>
     </div>
   </q-card>
 </template>
@@ -111,6 +99,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import TfBtn from 'src/components/ui/TfBtn.vue';
 import type { StaffOrdersPageShop } from '../types';
 
 const props = defineProps<{
@@ -118,29 +107,30 @@ const props = defineProps<{
   selectedShopId: number | null;
   search: string;
   statusFilter: string | null;
-  shopTypeFilter?: string | null;
   shopsLoading?: boolean;
   refreshing?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'refresh'): void;
+  (e: 'create-dropship'): void;
+  (e: 'apply-search'): void;
   (e: 'update:selectedShopId', value: number | null): void;
   (e: 'update:search', value: string): void;
   (e: 'update:statusFilter', value: string | null): void;
-  (e: 'update:shopTypeFilter', value: string | null): void;
 }>();
+
+const onSearchInput = (val: string | number | null) => {
+  const next = (val as string) || '';
+  emit('update:search', next);
+  if (!next) {
+    emit('apply-search');
+  }
+};
 
 const { t } = useI18n();
 
 const shopSearch = ref('');
-
-const shopTypeOptions = computed(() => [
-  { label: t('shop_admin.all_shop_types'), value: null },
-  { label: t('shop_admin.shop_type_vendor_catalog'), value: 'vendor_catalog' },
-  { label: t('shop_admin.shop_type_dropship'), value: 'dropship' },
-  { label: t('shop_admin.shop_type_fixed_price'), value: 'fixed_price' },
-]);
 
 const statusOptions = computed(() => [
   { label: t('shop_admin.all_statuses'), value: null },
@@ -162,19 +152,30 @@ const statusOptions = computed(() => [
   { label: t('shop_admin.status_cancelled'), value: 'cancelled' },
 ]);
 
-const shopOptions = computed(() =>
-  props.shops.map((shop) => ({
+const allShopsOption = computed(() => ({
+  label: t('shop_admin.all_shops'),
+  value: null as number | null,
+}));
+
+const shopOptions = computed(() => [
+  allShopsOption.value,
+  ...props.shops.map((shop) => ({
     label: shop.tenant_name ? `${shop.name} (${shop.tenant_name})` : shop.name,
     value: shop.id,
   })),
-);
+]);
 
 const filteredShopOptions = computed(() => {
   const needle = shopSearch.value.trim().toLowerCase();
   if (!needle) {
     return shopOptions.value;
   }
-  return shopOptions.value.filter((opt) => opt.label.toLowerCase().includes(needle));
+  const matchesAll =
+    allShopsOption.value.label.toLowerCase().includes(needle);
+  const shopMatches = shopOptions.value
+    .slice(1)
+    .filter((opt) => opt.label.toLowerCase().includes(needle));
+  return matchesAll ? [allShopsOption.value, ...shopMatches] : shopMatches;
 });
 
 const filterShops = (val: string, update: (cb: () => void) => void) => {

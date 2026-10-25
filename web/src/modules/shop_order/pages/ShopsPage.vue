@@ -442,9 +442,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import type { QInput } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
@@ -454,9 +454,12 @@ import { useInfiniteShopsAppPageQuery, type ShopsAppPageQueryParams } from '../c
 import { useSaveShopMutation } from '../composables/useShopMutations';
 import { catalogRefreshDisplayForVendor } from '../utils/catalogRefreshByVendor';
 import type { Shop, ShopType, CreateShopPayload } from 'src/modules/shop_order/types';
+import { useShopsListUiStore } from '../stores/shopsListUiStore';
 
 const authStore = useAuthStore();
+const route = useRoute();
 const router = useRouter();
+const shopsListUi = useShopsListUiStore();
 const { t } = useI18n();
 
 const tenantId = computed(() => authStore.tenantId as number);
@@ -474,6 +477,33 @@ const { data: childTenants, isLoading: childTenantsLoading } = useChildTenantsQu
 const search = ref<string>('');
 const activeFilter = ref<boolean | null>(null);
 const selectedChildTenantId = ref<number | null>(null);
+
+const parseBusinessTenantIdFromQuery = (): number | null => {
+  const raw = route.query.businessTenantId;
+  if (raw == null || raw === '') return null;
+  const n = Number(Array.isArray(raw) ? raw[0] : raw);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+onMounted(() => {
+  selectedChildTenantId.value =
+    parseBusinessTenantIdFromQuery() ?? shopsListUi.selectedBusinessTenantId;
+});
+
+watch(
+  () => route.query.businessTenantId,
+  () => {
+    const fromQuery = parseBusinessTenantIdFromQuery();
+    if (fromQuery !== selectedChildTenantId.value) {
+      selectedChildTenantId.value = fromQuery;
+    }
+  },
+);
+
+watch(selectedChildTenantId, (id) => {
+  shopsListUi.setSelectedBusinessTenantId(id);
+});
+
 const filterDrawerOpen = ref(false);
 const mobileSearchOpen = ref(false);
 const mobileSearchInputRef = ref<QInput | null>(null);
@@ -587,9 +617,14 @@ const openCreate = () => {
 };
 
 const goToSetup = (shopId: number) => {
+  const query: Record<string, string> = { tab: 'setup' };
+  if (selectedChildTenantId.value != null) {
+    query.businessTenantId = String(selectedChildTenantId.value);
+  }
   void router.push({
     name: 'app-shop-settings-page',
     params: { tenantSlug: tenantSlug.value, shopId: String(shopId) },
+    query,
   });
 };
 

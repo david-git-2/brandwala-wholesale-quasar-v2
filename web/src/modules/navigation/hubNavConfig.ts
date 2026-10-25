@@ -57,6 +57,8 @@ type HubPrimaryLinkDef = {
   caption: string;
   icon: string;
   routeSegment: string;
+  /** Nav highlight prefix when detail routes live under this module (e.g. shop setup). */
+  activeRouteSegment?: string;
 };
 
 type HubMoreLinkDef = {
@@ -94,6 +96,7 @@ const SHOP_ORDER_HUB = {
       caption: 'Create shops and manage storefront setup',
       icon: 'ph ph-storefront',
       routeSegment: 'shop/shops/list',
+      activeRouteSegment: 'shop/shops',
     },
     {
       navWeight: 23,
@@ -275,6 +278,9 @@ export function buildShopProcurementHubNavLinks(
       caption: primary.caption,
       icon: primary.icon,
       to: buildAppPath(tenantSlug, primary.routeSegment),
+      activeMatchTo: primary.activeRouteSegment
+        ? buildAppPath(tenantSlug, primary.activeRouteSegment)
+        : undefined,
     });
   }
 

@@ -27,7 +27,6 @@ export function useCustomerShopPermissionsQuery(shopId: Ref<number | null>) {
     },
     enabled: computed(() => !!shopId.value),
     staleTime: 30 * 1000,
-    refetchOnMount: 'always',
     initialData: () => {
       const id = shopId.value;
       if (!id) return undefined;

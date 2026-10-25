@@ -61,7 +61,7 @@
               clearable
               use-input
               input-debounce="300"
-              :loading="loadingProfiles || savingCustomerProfile"
+              :loading="loadingCustomerProfiles || savingCustomerProfile"
               class="billing-profile-select q-mt-xs"
               @filter="filterCustomerProfiles"
               @update:model-value="onCustomerProfileChange"
@@ -245,6 +245,7 @@ import type { ProductBasedCostingFile } from '../types';
 import type { CustomerProfile } from 'src/modules/sales_invoice/repositories/customerProfileRepository';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useCustomerProfileMutations } from 'src/modules/sales_invoice/composables/useCustomerProfileMutations';
+import { useCustomerProfiles } from 'src/modules/sales_invoice/composables/useCustomerProfiles';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 import {
   alwaysVisibleColumns,
@@ -260,8 +261,6 @@ const props = withDefaults(
     file: ProductBasedCostingFile | null;
     isLoading: boolean;
     visibleColumns: string[];
-    allCustomerProfiles: CustomerProfile[];
-    loadingProfiles: boolean;
     savingCustomerProfile: boolean;
     itemCount?: number;
   }>(),
@@ -284,6 +283,12 @@ const $q = useQuasar();
 const { t } = useI18n();
 const tenantStore = useTenantStore();
 const { createCustomerProfileMutation } = useCustomerProfileMutations();
+
+const profileTenantId = computed(
+  () => props.file?.tenant_id ?? tenantStore.selectedTenant?.id ?? null,
+);
+const { profiles: allCustomerProfiles, isLoading: loadingCustomerProfiles } =
+  useCustomerProfiles(profileTenantId);
 const customerProfileSearchText = ref('');
 
 const isEditingName = ref(false);
@@ -332,7 +337,7 @@ const allSelectableColumnsSelected = computed({
 });
 
 watch(
-  () => props.allCustomerProfiles,
+  allCustomerProfiles,
   (profiles) => {
     customerProfileOptions.value = profiles;
     syncSelectedCustomerProfile();
@@ -350,7 +355,7 @@ watch(
 
 function syncSelectedCustomerProfile() {
   if (props.file?.profile_id) {
-    const found = props.allCustomerProfiles.find((p) => p.id === props.file?.profile_id);
+    const found = allCustomerProfiles.value.find((p) => p.id === props.file?.profile_id);
     if (found) {
       selectedCustomerProfile.value = found;
       return;
@@ -363,10 +368,10 @@ function filterCustomerProfiles(val: string, update: (fn: () => void) => void) {
   customerProfileSearchText.value = val;
   update(() => {
     if (!val.trim()) {
-      customerProfileOptions.value = props.allCustomerProfiles;
+      customerProfileOptions.value = allCustomerProfiles.value;
     } else {
       const needle = val.toLowerCase();
-      customerProfileOptions.value = props.allCustomerProfiles.filter(
+      customerProfileOptions.value = allCustomerProfiles.value.filter(
         (p) =>
           p.name.toLowerCase().includes(needle) ||
           (p.email && p.email.toLowerCase().includes(needle)),

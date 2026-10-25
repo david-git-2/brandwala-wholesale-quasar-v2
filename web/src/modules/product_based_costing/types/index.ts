@@ -40,8 +40,24 @@ export type ProductBasedCostingFileListInput = {
   cursor?: ProductBasedCostingFilesListCursor;
 };
 
+/** Slim rows from `list_product_based_costing_files` (list + edit dialog). */
+export type ProductBasedCostingFileListRow = Pick<
+  ProductBasedCostingFile,
+  | 'id'
+  | 'name'
+  | 'order_for'
+  | 'status'
+  | 'created_at'
+  | 'customer_group_id'
+  | 'note'
+  | 'vendor_code'
+  | 'market_code'
+  | 'buy_currency_id'
+  | 'sell_currency_id'
+>;
+
 export type ProductBasedCostingFileListPage = {
-  data: ProductBasedCostingFile[];
+  data: ProductBasedCostingFileListRow[];
   meta: {
     has_more: boolean;
     next_cursor: ProductBasedCostingFilesListCursor;
@@ -148,9 +164,8 @@ export type PbcFileDetailsBundleProductCatalogRow = PbcItemProductCatalog & {
 export type PbcFileDetailsBundlePage = {
   file: ProductBasedCostingFile | null;
   summary: Record<string, unknown> | null;
-  customers: PbcFileDetailsBundleCustomer[];
   items: ProductBasedCostingItemListPage;
-  productCatalog: PbcFileDetailsBundleProductCatalogRow[];
+  product_catalog: PbcFileDetailsBundleProductCatalogRow[];
 };
 
 export interface ProductBasedCostingStoreState {

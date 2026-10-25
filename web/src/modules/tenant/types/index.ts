@@ -120,6 +120,8 @@ export interface TenantStoreState {
   availableAdminTenants: Tenant[];
   /** Child ids used only to tell parent vs standalone. Not shown in the company picker. */
   hierarchyChildRefs: Array<{ id: number; parent_id: number; name?: string }>;
+  /** Sorted parent tenant ids joined — skip RPC when unchanged. */
+  hierarchyChildRefsCacheKey: string | null;
   selectedTenantId: Tenant['id'] | null;
   selectedTenantSlug: Tenant['slug'] | null;
   loading: boolean;

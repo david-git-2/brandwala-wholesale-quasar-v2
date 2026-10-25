@@ -18,4 +18,5 @@ export const appQueryClient = new QueryClient({
 export function clearShopOrderQueryCache() {
   void appQueryClient.removeQueries({ queryKey: ['shopOrder'] });
   void appQueryClient.removeQueries({ queryKey: ['shop_order'] });
+  void appQueryClient.removeQueries({ queryKey: ['auth', 'shopLoginGroups'] });
 }

@@ -34,31 +34,6 @@
   </div>
 
   <div v-else class="orders-list-wrapper column no-wrap">
-    <!-- List Summary Bar -->
-    <div class="orders-list-meta-bar row items-center justify-between q-px-md q-py-xs flex-shrink-0">
-      <div class="row items-center q-gutter-x-sm">
-        <span class="text-caption text-weight-bold text-grey-8 font-mono">
-          {{ orders.length }} {{ orders.length === 1 ? $t('shop_admin.order_singular', 'order') : $t('shop_admin.orders_plural', 'orders') }}
-        </span>
-        <span v-if="confirmedCount > 0" class="meta-count-chip meta-count-chip--confirmed">
-          <q-icon name="ph ph-check-circle" size="12px" class="q-mr-xs" />
-          {{ confirmedCount }} {{ $t('shop_admin.status_confirmed', 'Confirmed') }}
-        </span>
-        <span v-if="inProgressCount > 0" class="meta-count-chip meta-count-chip--progress">
-          <q-icon name="ph ph-arrows-clockwise" size="12px" class="q-mr-xs" />
-          {{ inProgressCount }} {{ $t('shop_admin.in_progress', 'In Progress') }}
-        </span>
-        <span v-if="draftCount > 0" class="meta-count-chip meta-count-chip--draft">
-          <q-icon name="ph ph-pencil-simple" size="12px" class="q-mr-xs" />
-          {{ draftCount }} {{ $t('shop_admin.status_draft', 'Draft') }}
-        </span>
-      </div>
-      <div class="text-caption text-grey-5 text-xxs">
-        {{ $t('shop_admin.click_order_to_open', 'Click any order to view details') }}
-      </div>
-    </div>
-
-    <!-- Scrollable Linear List -->
     <div class="orders-list-scroll col">
       <div class="orders-list-container">
         <div
@@ -197,35 +172,6 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-
-const confirmedCount = computed(() => {
-  return props.orders.filter((o) => {
-    const norm = normalizeCatalogOrderStatus(o.status);
-    return norm === 'confirmed' || norm === 'placed' || norm === 'fulfilled' || norm === 'delivered' || norm === 'payment_received';
-  }).length;
-});
-
-const inProgressCount = computed(() => {
-  return props.orders.filter((o) => {
-    const norm = normalizeCatalogOrderStatus(o.status);
-    return (
-      norm === 'submitted' ||
-      norm === 'procuring' ||
-      norm === 'packed' ||
-      norm === 'processing' ||
-      norm === 'shipped' ||
-      norm === 'negotiating' ||
-      norm === 'priced' ||
-      norm === 'countered' ||
-      norm === 'costing_pending' ||
-      norm === 'final_offered'
-    );
-  }).length;
-});
-
-const draftCount = computed(() => {
-  return props.orders.filter((o) => normalizeCatalogOrderStatus(o.status) === 'draft').length;
-});
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '—';
@@ -411,12 +357,6 @@ const getStatusBadgeInfo = (status: string) => {
   max-height: 100%;
 }
 
-.orders-list-meta-bar {
-  background: var(--bw-neutral-surface, #f8fafc);
-  border-bottom: 1px solid var(--bw-theme-border, #e2e8f0);
-  min-height: 34px;
-}
-
 .orders-list-scroll {
   overflow-y: auto;
   min-height: 0;
@@ -483,30 +423,6 @@ const getStatusBadgeInfo = (status: string) => {
   color: #334155;
   border: 1px solid #e2e8f0;
   line-height: 1.2;
-}
-
-.meta-count-chip {
-  display: inline-flex;
-  align-items: center;
-  font-size: 10.5px;
-  font-weight: 600;
-  padding: 1.5px 6px;
-  border-radius: 4px;
-}
-
-.meta-count-chip--confirmed {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.meta-count-chip--progress {
-  background: #ede9fe;
-  color: #6b21a8;
-}
-
-.meta-count-chip--draft {
-  background: #f1f5f9;
-  color: #475569;
 }
 
 .dropship-desk-btn {
@@ -662,11 +578,6 @@ const getStatusBadgeInfo = (status: string) => {
 body.body--dark .orders-list-wrapper,
 body.body--dark .empty-orders-state {
   background: var(--tf-neutral-surface);
-  border-color: var(--tf-neutral-border);
-}
-
-body.body--dark .orders-list-meta-bar {
-  background: var(--tf-neutral-canvas);
   border-color: var(--tf-neutral-border);
 }
 

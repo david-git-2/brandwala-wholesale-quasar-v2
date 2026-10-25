@@ -29,6 +29,19 @@
           </div>
           <div class="col-auto row items-center q-gutter-sm no-wrap">
             <q-btn
+              flat
+              round
+              dense
+              icon="ph ph-arrows-clockwise"
+              class="text-grey-7"
+              :loading="isRefreshingSetup"
+              :aria-label="$t('common.refresh', 'Refresh')"
+              data-test="shop-setup-refresh"
+              @click="refreshSetup()"
+            >
+              <q-tooltip :delay="400">{{ $t('common.refresh', 'Refresh') }}</q-tooltip>
+            </q-btn>
+            <q-btn
               v-if="shop.slug"
               flat
               dense
@@ -56,7 +69,7 @@
               :shop-id="shop.id"
               :tenant-slug="tenantSlug"
             />
-            <ShopSettingsForm :shop="shop" />
+            <ShopSettingsForm :shop="shop" :setup-lookups="setupLookups" />
 
             <q-card flat class="shop-danger-zone q-mt-md">
               <q-card-section>
@@ -300,7 +313,7 @@ import ShopDropshipGiftsSettingsCard from 'src/modules/shop_order/components/Sho
 import StorefrontProductGroupCard from 'src/modules/shop_order/components/StorefrontProductGroupCard.vue';
 import ShopStorefrontAddProductDrawer from 'src/modules/shop_order/components/ShopStorefrontAddProductDrawer.vue';
 import ShopStorefrontCalculateSellPriceDrawer from 'src/modules/shop_order/components/ShopStorefrontCalculateSellPriceDrawer.vue';
-import { useShopDetailQuery } from '../composables/useShopQuery';
+import { useShopSetupBundleQuery } from '../composables/useShopSetupBundleQuery';
 import { useDeleteShopMutation } from '../composables/useShopMutations';
 import { useShopStorefrontAdminListingsInfiniteQuery } from '../composables/useShopStorefrontAdminQuery';
 import {
@@ -312,6 +325,7 @@ import {
 import { useRecalcShopDisplayQuantitiesMutation } from '../composables/useRecalcShopDisplayQuantitiesMutation';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopCatalogPath } from '../utils/catalogShop';
+import { useShopsListUiStore } from '../stores/shopsListUiStore';
 import { showSuccessNotification, showErrorNotification, requestConfirmation } from 'src/utils/appFeedback';
 import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
 import type {
@@ -344,9 +358,19 @@ const { hasModuleAccess } = useModulePermissions();
 
 const tenantId = computed(() => authStore.tenantId as number);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
+const parentTenantId = computed(() => authStore.selectedTenant?.parent_id ?? tenantId.value);
 const shopId = computed(() => Number(route.params.shopId));
+const shopsListUi = useShopsListUiStore();
 
-const { data: shop, isLoading, isError, error } = useShopDetailQuery(tenantId, shopId);
+const {
+  shop,
+  setupLookups,
+  isLoading,
+  isError,
+  error,
+  refresh: refreshSetup,
+  isRefreshing: isRefreshingSetup,
+} = useShopSetupBundleQuery(tenantId, shopId);
 const { mutate: deleteShopMutation, isPending: isDeleting } = useDeleteShopMutation();
 const deleteKeyword = ref('');
 const deleteShopName = ref('');
@@ -648,6 +672,24 @@ watch(
       void router.replace({
         params: route.params,
         query: { ...route.query, tab: 'stock' },
+      });
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => shop.value?.tenant_id,
+  (shopTenantId) => {
+    if (!shopTenantId || !parentTenantId.value) return;
+    if (shopTenantId === parentTenantId.value) return;
+    shopsListUi.setSelectedBusinessTenantId(shopTenantId);
+    const next = String(shopTenantId);
+    const current = route.query.businessTenantId;
+    if (current !== next) {
+      void router.replace({
+        params: route.params,
+        query: { ...route.query, businessTenantId: next },
       });
     }
   },

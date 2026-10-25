@@ -62,6 +62,35 @@ export const requestConfirmation = (
       .onDismiss(() => resolve(false));
   });
 
+export type UnsavedChangesChoice = 'discard' | 'stay';
+
+export const requestUnsavedChangesConfirmation = (
+  message = 'Your changes are not saved. If you leave now, you will lose them.',
+  title = 'Not saved',
+): Promise<UnsavedChangesChoice> =>
+  new Promise((resolve) => {
+    Dialog.create({
+      title,
+      message,
+      persistent: true,
+      cancel: {
+        label: 'Continue editing',
+        flat: true,
+        color: 'primary',
+        noCaps: true,
+      },
+      ok: {
+        label: 'Discard changes',
+        outline: true,
+        color: 'negative',
+        noCaps: true,
+      },
+    })
+      .onOk(() => resolve('discard'))
+      .onCancel(() => resolve('stay'))
+      .onDismiss(() => resolve('stay'));
+  });
+
 export const handleApiFailure = (
   result: ApiResultLike,
   fallbackMessage = DEFAULT_ERROR_MESSAGE,

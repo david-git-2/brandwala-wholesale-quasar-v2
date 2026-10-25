@@ -197,6 +197,8 @@ export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManage
       return_charge_amount: num(orderRaw.return_charge_amount),
       deduct_return_charge_from_middle_man: orderRaw.deduct_return_charge_from_middle_man === true,
       return_override_reason: (orderRaw.return_override_reason as string | null) ?? null,
+      courier_ap_bill_id:
+        orderRaw.courier_ap_bill_id == null ? null : num(orderRaw.courier_ap_bill_id),
     },
     items: mapReturnLines(payload.items),
     computed: {
@@ -223,6 +225,8 @@ export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManage
       merchant_payout_at: (settlementRaw.merchant_payout_at as string | null) ?? null,
       gift_cost_merchant_total: num(settlementRaw.gift_cost_merchant_total),
       gift_cost_tenant_total: num(settlementRaw.gift_cost_tenant_total),
+      dropship_profit_credited: num(settlementRaw.dropship_profit_credited),
+      courier_ap_due: num(settlementRaw.courier_ap_due),
     },
     courier: mapCourier(orderRaw, computedRaw, settlementRaw, fulfillmentRaw),
     invoice: mapInvoice(payload.invoice),

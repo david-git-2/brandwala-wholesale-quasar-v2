@@ -3,7 +3,6 @@ import { asDashboardNumber } from 'src/modules/dashboard/utils/formatDashboardMe
 import type { ProcurementDashboardMetrics } from 'src/modules/procurement_stock/repositories/procurementDashboardRepository';
 import { procurementDashboardRepository } from 'src/modules/procurement_stock/repositories/procurementDashboardRepository';
 import type { ShopOrderDashboardMetrics } from 'src/modules/shop_order/repositories/shopOrderDashboardRepository';
-import type { TasksDashboardMetrics } from 'src/modules/tasks/repositories/tasksDashboardRepository';
 import type { InvestorCapitalDashboardMetrics } from 'src/modules/investor_capital/repositories/investorCapitalDashboardRepository';
 
 import type { AppDashboardBundle, DashboardChildTenantRef } from '../types/appDashboardBundle';
@@ -95,21 +94,6 @@ const mapShopOrder = (tenantId: number, raw: Record<string, unknown> | null): Sh
   };
 };
 
-const mapTasks = (tenantId: number, raw: Record<string, unknown> | null): TasksDashboardMetrics | null => {
-  if (!raw) return null;
-  return {
-    tenantId: asDashboardNumber(raw.tenant_id) || tenantId,
-    assignedToMe: asDashboardNumber(raw.assigned_to_me),
-    overdueCount: asDashboardNumber(raw.overdue_count),
-    dueTodayCount: asDashboardNumber(raw.due_today_count),
-    unassignedCount: asDashboardNumber(raw.unassigned_count),
-    myTodo: asDashboardNumber(raw.my_todo),
-    myDoing: asDashboardNumber(raw.my_doing),
-    myStuck: asDashboardNumber(raw.my_stuck),
-    myDone: asDashboardNumber(raw.my_done),
-  };
-};
-
 const mapInvestor = (
   tenantId: number,
   raw: Record<string, unknown> | null,
@@ -155,7 +139,6 @@ const emptyBundle = (): AppDashboardBundle => ({
   refreshedAt: null,
   procurement: null,
   shopOrder: null,
-  tasks: null,
   investorCapital: null,
   childTenantRefs: [],
 });
@@ -192,7 +175,6 @@ export const appDashboardBundleRepository = {
         (raw.procurement as Record<string, unknown> | null) ?? null,
       ),
       shopOrder: mapShopOrder(tenantId, (raw.shop_order as Record<string, unknown> | null) ?? null),
-      tasks: mapTasks(tenantId, (raw.tasks as Record<string, unknown> | null) ?? null),
       investorCapital: mapInvestor(
         tenantId,
         (raw.investor_capital as Record<string, unknown> | null) ?? null,

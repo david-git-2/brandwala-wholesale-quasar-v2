@@ -155,11 +155,9 @@ import {
   useShopCategoryOptionsQuery,
 } from '../composables/useShopLookupOptionsQuery';
 import { useShopCartQuery } from '../composables/useShopCartQuery';
-import { useCustomerShopPermissionsQuery } from '../composables/useCustomerShopPermissionsQuery';
 import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
 import { useShopCartMutations } from '../composables/useShopCartMutations';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useCustomerShopsQuery } from '../composables/useShopQuery';
 import { useStorefrontState } from '../composables/useStorefrontState';
 import { rememberCatalogShop, shopCatalogProductPath, isFixedPriceCatalog } from '../utils/catalogShop';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
@@ -231,20 +229,14 @@ const { categories: categoryNames } = useShopCategoryOptionsQuery(lookupParams);
 
 const activeShopId = computed(() => shopDetails.value?.id ?? null);
 const { items: cartItems, permissions: cartPermissions } = useShopCartQuery(activeShopId);
-const { data: fetchedPermissions } = useCustomerShopPermissionsQuery(activeShopId);
 const permissions = computed<CustomerShopPermissions | null | undefined>(
-  () => catalogPermissions.value ?? cartPermissions.value ?? fetchedPermissions.value,
+  () => catalogPermissions.value ?? cartPermissions.value,
 );
 
 const { addItemMutation, updateQtyMutation, removeItemMutation } = useShopCartMutations();
 
-const shopsQuery = useCustomerShopsQuery(computed(() => authStore.tenantId ?? null));
-const shops = computed(() => shopsQuery.data.value ?? []);
 const activeShopType = computed((): import('../types').ShopType | null => {
-  const raw =
-    shopDetails.value?.shop_type ??
-    shops.value.find((shop) => shop.slug === shopSlug.value)?.shop_type ??
-    null;
+  const raw = shopDetails.value?.shop_type ?? null;
   return raw as import('../types').ShopType | null;
 });
 const showFixedPriceChip = computed(() =>

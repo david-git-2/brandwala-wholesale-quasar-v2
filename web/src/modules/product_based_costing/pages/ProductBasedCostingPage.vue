@@ -172,7 +172,7 @@ import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFileDialog.vue';
 import CostingFileCard from '../components/CostingFileCard.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
-import type { ProductBasedCostingFile, ProductBasedCostingFileListInput } from '../types';
+import type { ProductBasedCostingFileListInput, ProductBasedCostingFileListRow } from '../types';
 import {
   PBC_FALLBACK_BUY_CURRENCY_CODE,
   PBC_FALLBACK_SELL_CURRENCY_CODE,
@@ -292,7 +292,7 @@ function openCreateDialog() {
   dialogOpen.value = true;
 }
 
-function openEditDialog(row: ProductBasedCostingFile) {
+function openEditDialog(row: ProductBasedCostingFileListRow) {
   selectedRow.value = {
     id: row.id,
     name: row.name ?? '',
@@ -337,7 +337,7 @@ async function handleDialogSubmit(payload: CostingFileForm) {
   }
 }
 
-const onSelect = async (item: ProductBasedCostingFile) => {
+const onSelect = async (item: ProductBasedCostingFileListRow) => {
   await router.push({
     name: 'product-based-costing-file-details-page',
     params: {
@@ -347,7 +347,7 @@ const onSelect = async (item: ProductBasedCostingFile) => {
   });
 };
 
-const onDelete = (item: ProductBasedCostingFile) => {
+const onDelete = (item: ProductBasedCostingFileListRow) => {
   $q.dialog({
     title: t('product_based_costing.confirm_delete_title'),
     message: t('product_based_costing.confirm_delete_message', {
@@ -361,7 +361,7 @@ const onDelete = (item: ProductBasedCostingFile) => {
   });
 };
 
-const onCopy = (item: ProductBasedCostingFile) => {
+const onCopy = (item: ProductBasedCostingFileListRow) => {
   void copyCostingFile(item);
 };
 

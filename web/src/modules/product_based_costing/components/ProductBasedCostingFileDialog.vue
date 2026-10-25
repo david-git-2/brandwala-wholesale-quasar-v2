@@ -147,7 +147,7 @@ import { useCustomerMutations } from 'src/modules/customer/composables/useCustom
 import CreateCustomerDialog from 'src/modules/customer/components/CreateCustomerDialog.vue';
 import type { CustomerAccount } from 'src/modules/customer/types/customer';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
-import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
+import { useGlobalCurrencies } from 'src/modules/global_reference/composables/useGlobalCurrencies';
 
 interface CostingFileForm {
   id: number | null;
@@ -207,17 +207,17 @@ const localOpen = computed({
 const tenantStore = useTenantStore();
 const tenantId = computed(() => tenantStore.selectedTenant?.id ?? null);
 const { createCustomerMutation } = useCustomerMutations();
-const { data: currenciesData, isLoading: loadingCurrencies } = useGlobalCurrenciesQuery();
+const { currencies, loadingCurrencies } = useGlobalCurrencies();
 
 const currencyOptions = computed(() =>
-  (currenciesData.value ?? []).map((c) => ({
+  currencies.value.map((c) => ({
     label: `${c.code} (${c.symbol}) - ${c.name}`,
     value: c.id,
   })),
 );
 
 function defaultCurrencyIds() {
-  const list = currenciesData.value ?? [];
+  const list = currencies.value;
   const gbp = list.find((c) => c.code === 'GBP')?.id ?? null;
   const bdt = list.find((c) => c.code === 'BDT')?.id ?? null;
   return { gbp, bdt };
@@ -358,7 +358,7 @@ watch(
   },
 );
 
-watch(currenciesData, () => {
+watch(currencies, () => {
   if (props.modelValue) {
     applyDefaultCurrenciesIfCreate();
   }

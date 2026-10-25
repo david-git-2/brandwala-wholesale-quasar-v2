@@ -217,7 +217,7 @@ import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
 import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
-import { listShopLoginGroups } from 'src/modules/auth/utils/shopCustomerGroupSession';
+import { useShopLoginGroupsQuery } from 'src/modules/auth/composables/useShopLoginGroupsQuery';
 import { getShopSelectCompanyRouteLocation, getAppRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 import {
   formatReleaseDeployedDate,
@@ -233,9 +233,13 @@ type ReleaseVersions = {
 };
 
 const showAboutDialog = ref(false);
-const companyCount = ref(0);
 const releaseVersions = ref<ReleaseVersions | null>(null);
 const releaseVersionsLoaded = ref(false);
+
+const props = defineProps<{
+  /** When set (shop shell), avoids a separate login-groups RPC. */
+  shopLoginGroupCount?: number | null;
+}>();
 
 const emit = defineEmits<{
   (e: 'sign-out'): void;
@@ -247,7 +251,22 @@ const { locale } = useI18n();
 const { darkMode, setDarkMode, density, setDensity } = useAppearance();
 
 const isShopScope = computed(() => authStore.scope === 'shop');
-const canSwitchCompany = computed(() => isShopScope.value && companyCount.value > 1);
+const { data: shopLoginGroups } = useShopLoginGroupsQuery(
+  computed(() =>
+    isShopScope.value && props.shopLoginGroupCount == null ? authStore.tenantId : null,
+  ),
+  computed(() =>
+    isShopScope.value && props.shopLoginGroupCount == null ? authStore.user?.email : null,
+  ),
+);
+const canSwitchCompany = computed(() => {
+  if (!isShopScope.value) {
+    return false;
+  }
+  const count =
+    props.shopLoginGroupCount ?? shopLoginGroups.value?.length ?? 0;
+  return count > 1;
+});
 
 const userName = computed(() => {
   return authStore.user?.fullName || authStore.user?.email?.split('@')[0] || 'User';
@@ -335,17 +354,6 @@ const loadReleaseVersions = async () => {
   };
 };
 
-onMounted(async () => {
-  if (!isShopScope.value || !authStore.user?.email || authStore.tenantId == null) {
-    return;
-  }
-  try {
-    const groups = await listShopLoginGroups(authStore.user.email, authStore.tenantId);
-    companyCount.value = groups.length;
-  } catch {
-    companyCount.value = 0;
-  }
-});
 </script>
 
 <style scoped>

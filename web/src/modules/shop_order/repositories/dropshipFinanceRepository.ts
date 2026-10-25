@@ -73,10 +73,28 @@ export const dropshipFinanceRepository = {
     return data;
   },
 
+  async previewCourierPayInSettlement(params: {
+    orderId: number;
+    netAmount: number;
+    deliveryCharge: number;
+    codCharge: number;
+  }) {
+    const { data, error } = await supabase.rpc('preview_dropship_courier_payin_settlement', {
+      p_order_id: params.orderId,
+      p_net_amount: params.netAmount,
+      p_delivery_charge: params.deliveryCharge,
+      p_cod_charge: params.codCharge,
+    });
+    if (error) throw error;
+    return data;
+  },
+
   async confirmCourierRemittance(params: {
     orderId: number;
     netAmount: number;
     courierCharge?: number;
+    deliveryCharge?: number;
+    codCharge?: number;
     remittanceRef?: string;
     bankTrxId?: string;
     cashbookPointId?: number;
@@ -84,12 +102,22 @@ export const dropshipFinanceRepository = {
     if (!(params.netAmount > 0)) {
       throw new Error('Net remittance amount must be positive');
     }
+    const delivery =
+      params.deliveryCharge != null
+        ? params.deliveryCharge
+        : undefined;
+    const cod =
+      params.codCharge != null
+        ? params.codCharge
+        : undefined;
     const { data, error } = await supabase.rpc('record_dropship_courier_remittance', {
       p_order_id: params.orderId,
       p_net_amount: params.netAmount,
       p_remittance_ref: params.remittanceRef ?? `REMIT-${params.orderId}`,
       p_bank_trx_id: params.bankTrxId ?? null,
       p_courier_charge: params.courierCharge ?? 0,
+      p_delivery_charge: delivery ?? null,
+      p_cod_charge: cod ?? null,
       p_cashbook_point_id: params.cashbookPointId ?? null,
     });
 

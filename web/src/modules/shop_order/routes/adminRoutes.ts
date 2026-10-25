@@ -224,6 +224,12 @@ const adminRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
+        path: 'create',
+        name: 'app-shop-order-create-page',
+        component: () => import('src/modules/shop_order/pages/ManualDropshipOrderPage.vue'),
+        beforeEnter: guard('shop_order_mgmt'),
+      },
+      {
         path: ':id',
         name: 'app-shop-order-detail-page',
         component: () => import('src/modules/shop_order/pages/ShopOrderDetailHostPage.vue'),

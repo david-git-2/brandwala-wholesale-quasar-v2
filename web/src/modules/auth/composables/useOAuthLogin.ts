@@ -14,11 +14,7 @@ import {
   getTenantSlugFromRoute,
 } from 'src/modules/tenant/utils/tenantRouteContext';
 import { tenantService } from 'src/modules/tenant/services/tenantService';
-import {
-  filterCompanyTenants,
-  isCompanyTenant,
-  resolveCompanyTenant,
-} from 'src/modules/tenant/utils/tenantHierarchy';
+import { appLoginBundleRepository } from '../repositories/appLoginBundleRepository';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
 import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
@@ -328,55 +324,33 @@ export function useOAuthLogin(
     const requestedTenantSlug = normalizeTenantSlug(
       options?.tenantSlug ?? getTenantSlugFromRoute(route),
     );
-    const { data, error } = await supabase.rpc('check_login_membership', {
-      p_email: userEmail,
-      p_scope: 'app',
-    });
 
-    if (error) {
-      console.error('[auth:app] Login access check failed', error);
-      await sendBackToLogin('Login access check failed', error);
+    let bundle;
+    try {
+      bundle = await appLoginBundleRepository.fetchBundle(
+        userEmail,
+        requestedTenantSlug || null,
+      );
+    } catch (error) {
+      console.error('[auth:app] Login bundle fetch failed', error);
+      await sendBackToLogin('App login bundle fetch failed', error);
       return false;
     }
 
-    const result = Array.isArray(data) ? data[0] : data;
-
-    if (
-      !result?.has_match ||
-      result.member_id === null ||
-      !result.member_email ||
-      !result.matched_role
-    ) {
-      await sendBackToLogin('No matching membership found for this route', result);
+    if (!bundle.has_match || !bundle.login?.member_id || !bundle.login.member_email || !bundle.login.matched_role) {
+      await sendBackToLogin('No matching membership found for this route', bundle);
       return false;
     }
 
-    const tenantListResult = await tenantService.listTenantsByMembership({
-      email: userEmail,
-    });
-
-    if (!tenantListResult.success) {
-      await sendBackToLogin('App tenant list fetch failed', tenantListResult);
-      return false;
-    }
-
-    const availableTenants = tenantListResult.data ?? [];
+    const result = bundle.login;
+    const availableTenants = bundle.tenants ?? [];
 
     if (availableTenants.length === 0) {
-      await sendBackToLogin('No tenant access found for this route', tenantListResult);
+      await sendBackToLogin('No tenant access found for this route', bundle);
       return false;
     }
 
-    tenantStore.items = availableTenants;
-    tenantStore.setAvailableAdminTenants(availableTenants);
-
-    const requestedTenant = requestedTenantSlug
-      ? (availableTenants.find(
-          (tenant) => normalizeTenantSlug(tenant.slug) === requestedTenantSlug,
-        ) ?? null)
-      : null;
-
-    if (requestedTenantSlug && !requestedTenant) {
+    if (bundle.error_code === 'invalid_tenant') {
       await sendBackToLogin(
         'Requested tenant slug was not available for this app user',
         {
@@ -388,46 +362,15 @@ export function useOAuthLogin(
       return false;
     }
 
-    const pickDefaultParentTenant = () => filterCompanyTenants(availableTenants)[0] ?? null;
-
-    const membershipTenant = requestedTenant ?? pickDefaultParentTenant();
-
-    if (!membershipTenant) {
-      await sendBackToLogin('No tenant access found for this route', tenantListResult);
+    if (bundle.error_code === 'no_tenant_access' || bundle.error_code === 'no_workspace') {
+      await sendBackToLogin('No tenant access found for this route', bundle);
       return false;
     }
 
-    const workspaceTenant =
-      resolveCompanyTenant(membershipTenant, availableTenants) ??
-      (isCompanyTenant(membershipTenant) ? membershipTenant : null);
+    tenantStore.items = availableTenants;
+    tenantStore.setAvailableAdminTenants(availableTenants);
 
-    if (!workspaceTenant) {
-      await sendBackToLogin(
-        'App login requires a parent company workspace',
-        { membershipTenant, availableTenants },
-        'invalid_tenant',
-      );
-      return false;
-    }
-
-    const selectedTenantId = workspaceTenant.id;
-
-    const { data: bootstrapData, error: bootstrapError } = await supabase.rpc(
-      'get_app_bootstrap_context',
-      {
-        p_email: userEmail,
-        p_tenant_id: selectedTenantId,
-        p_membership_id: result.member_tenant_id === selectedTenantId ? result.member_id : null,
-      },
-    );
-
-    if (bootstrapError) {
-      console.error('[auth:app] Bootstrap fetch failed', bootstrapError);
-      await sendBackToLogin('App bootstrap fetch failed', bootstrapError);
-      return false;
-    }
-
-    const bootstrap = Array.isArray(bootstrapData) ? bootstrapData[0] : bootstrapData;
+    const bootstrap = bundle.bootstrap;
 
     if (
       !bootstrap ||
@@ -437,7 +380,7 @@ export function useOAuthLogin(
       !bootstrap.tenant_slug ||
       !bootstrap.member_role
     ) {
-      await sendBackToLogin('App bootstrap returned no usable context', bootstrap);
+      await sendBackToLogin('App bootstrap returned no usable context', bundle);
       return false;
     }
 

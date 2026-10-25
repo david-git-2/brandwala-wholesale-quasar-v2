@@ -10,8 +10,25 @@ import type {
 
 const normalizeVendorCode = (code: string) => code.trim().toUpperCase();
 
+const VENDORS_CACHE_TTL_MS = 20 * 60 * 1000;
+const vendorsByTenantCache = new Map<number, { fetchedAt: number; rows: Vendor[] }>();
+
 const listVendors = async (tenantId?: number | null): Promise<Vendor[]> => {
   if (typeof tenantId === 'number') {
+    const cached = vendorsByTenantCache.get(tenantId);
+    if (cached && Date.now() - cached.fetchedAt < VENDORS_CACHE_TTL_MS) {
+      return cached.rows;
+    }
+
+    const { readTenantSetupLookups } = await import(
+      'src/modules/shop_order/utils/tenantSetupLookupCache'
+    );
+    const fromBundle = readTenantSetupLookups(tenantId);
+    if (fromBundle) {
+      vendorsByTenantCache.set(tenantId, { fetchedAt: Date.now(), rows: fromBundle.vendors });
+      return fromBundle.vendors;
+    }
+
     const { data, error } = await supabase.rpc('list_vendors_for_tenant', {
       p_tenant_id: tenantId,
     });
@@ -20,7 +37,9 @@ const listVendors = async (tenantId?: number | null): Promise<Vendor[]> => {
       throw error;
     }
 
-    return (data as Vendor[] | null) ?? [];
+    const rows = (data as Vendor[] | null) ?? [];
+    vendorsByTenantCache.set(tenantId, { fetchedAt: Date.now(), rows });
+    return rows;
   }
 
   let query = supabase.from('vendors').select('*').order('id', { ascending: true });

@@ -1,4 +1,3 @@
-import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
 import type { ShopOrder, ShopOrderItem, ShopOrderItemStockPick } from '../types';
 import type { DropshipInvoiceSummaryState } from './dropshipInvoiceSummary';
 import type {
@@ -34,9 +33,6 @@ export type DropshipOrderDetailV2Response = {
   fulfillment: {
     pickup: DropshipInvoicePickupState;
     courier: DropshipInvoiceCourierState;
-  };
-  lookups: {
-    courier_services: CourierServiceRow[];
   };
   permissions: DropshipOrderDetailV2Permissions;
 };
@@ -77,7 +73,6 @@ export function mapDropshipOrderDetailV2Response(raw: unknown): DropshipOrderDet
   const fulfillmentRaw = (payload.fulfillment ?? {}) as Record<string, unknown>;
   const pickupRaw = (fulfillmentRaw.pickup ?? {}) as Record<string, unknown>;
   const courierRaw = (fulfillmentRaw.courier ?? {}) as Record<string, unknown>;
-  const lookupsRaw = (payload.lookups ?? {}) as Record<string, unknown>;
   const permissionsRaw = (payload.permissions ?? {}) as Record<string, unknown>;
 
   const order: ShopOrder & { shipping_post_code?: string | null } = {
@@ -204,9 +199,6 @@ export function mapDropshipOrderDetailV2Response(raw: unknown): DropshipOrderDet
         allow_open_box: bool(courierRaw.allow_open_box),
         cod_charge: num(courierRaw.cod_charge),
       },
-    },
-    lookups: {
-      courier_services: (lookupsRaw.courier_services as CourierServiceRow[] | null) ?? [],
     },
     permissions: {
       can_show_invoice_paper: bool(permissionsRaw.can_show_invoice_paper),

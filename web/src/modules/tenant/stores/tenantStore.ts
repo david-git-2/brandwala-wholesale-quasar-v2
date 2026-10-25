@@ -1,7 +1,10 @@
 import { defineStore } from 'pinia';
 
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
-import { tenantRepository } from '../repositories/tenantRepository';
+import {
+  childTenantRefsCacheKey,
+  tenantRepository,
+} from '../repositories/tenantRepository';
 import { tenantService } from '../services/tenantService';
 import {
   filterCompanyTenants,
@@ -18,6 +21,8 @@ import type {
 type StoredTenantWorkspace = {
   schemaVersion: 1;
   availableAdminTenants: Tenant[];
+  hierarchyChildRefs?: TenantStoreState['hierarchyChildRefs'];
+  hierarchyChildRefsCacheKey?: string | null;
   selectedTenantId: Tenant['id'] | null;
   selectedTenantSlug: Tenant['slug'] | null;
 };
@@ -71,7 +76,8 @@ export const useTenantStore = defineStore('tenant', {
   state: (): TenantStoreState => ({
     items: [],
     availableAdminTenants: filterCompanyTenants(storedWorkspace?.availableAdminTenants ?? []),
-    hierarchyChildRefs: [],
+    hierarchyChildRefs: storedWorkspace?.hierarchyChildRefs ?? [],
+    hierarchyChildRefsCacheKey: storedWorkspace?.hierarchyChildRefsCacheKey ?? null,
     selectedTenantId: storedWorkspace?.selectedTenantId ?? null,
     selectedTenantSlug: storedWorkspace?.selectedTenantSlug ?? null,
     loading: true,
@@ -95,22 +101,36 @@ export const useTenantStore = defineStore('tenant', {
   },
 
   actions: {
-    async hydrateHierarchyChildRefs() {
+    async hydrateHierarchyChildRefs(options?: { force?: boolean }) {
       const roots = [...this.availableAdminTenants, ...this.items].filter(
         (tenant) => tenant.parent_id === null,
       );
       const parentIds = [...new Set(roots.map((tenant) => tenant.id))];
+      const cacheKey = parentIds.length ? childTenantRefsCacheKey(parentIds) : '';
 
       if (!parentIds.length) {
         this.hierarchyChildRefs = [];
+        this.hierarchyChildRefsCacheKey = '';
+        this.persistWorkspaceState();
+        return;
+      }
+
+      if (
+        !options?.force &&
+        this.hierarchyChildRefsCacheKey === cacheKey &&
+        this.hierarchyChildRefsCacheKey !== null
+      ) {
         return;
       }
 
       try {
         this.hierarchyChildRefs = await tenantRepository.listChildTenantRefs(parentIds);
+        this.hierarchyChildRefsCacheKey = cacheKey;
+        this.persistWorkspaceState();
       } catch {
         // Hierarchy hide is best-effort; membership list still works.
         this.hierarchyChildRefs = [];
+        this.hierarchyChildRefsCacheKey = null;
       }
     },
 
@@ -118,6 +138,8 @@ export const useTenantStore = defineStore('tenant', {
       writeStorage({
         schemaVersion: 1,
         availableAdminTenants: this.availableAdminTenants,
+        hierarchyChildRefs: this.hierarchyChildRefs,
+        hierarchyChildRefsCacheKey: this.hierarchyChildRefsCacheKey,
         selectedTenantId: this.selectedTenantId,
         selectedTenantSlug: this.selectedTenantSlug,
       });

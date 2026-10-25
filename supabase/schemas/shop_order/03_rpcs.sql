@@ -589,13 +589,14 @@ $$;
 ALTER FUNCTION "public"."record_dropship_recipient_call_no_answer"("p_order_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."confirm_dropship_recipient_call"("p_order_id" bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."confirm_dropship_recipient_call"("p_order_id" bigint, "p_tenant_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
   v_order public.shop_orders%rowtype;
   v_advance jsonb;
+  v_staff_tenant_id bigint;
 begin
   select * into v_order from public.shop_orders where id = p_order_id for update;
   if v_order.id is null then
@@ -619,7 +620,13 @@ begin
 
   if v_order.recipient_verified_at is not null then
     v_advance := public.advance_dropship_order_status(p_order_id, 'processing'::public.shop_order_status);
-    return v_advance;
+    if coalesce((v_advance->>'success')::boolean, false) is not true then
+      return v_advance;
+    end if;
+    v_staff_tenant_id := coalesce(p_tenant_id, v_order.tenant_id);
+    return v_advance || jsonb_build_object(
+      'dropship_detail', public.get_dropship_order_detail_v2(v_staff_tenant_id, p_order_id)
+    );
   end if;
 
   update public.shop_orders
@@ -627,11 +634,18 @@ begin
   where id = p_order_id;
 
   v_advance := public.advance_dropship_order_status(p_order_id, 'processing'::public.shop_order_status);
-  return v_advance;
+  if coalesce((v_advance->>'success')::boolean, false) is not true then
+    return v_advance;
+  end if;
+
+  v_staff_tenant_id := coalesce(p_tenant_id, v_order.tenant_id);
+  return v_advance || jsonb_build_object(
+    'dropship_detail', public.get_dropship_order_detail_v2(v_staff_tenant_id, p_order_id)
+  );
 end;
 $$;
 
-ALTER FUNCTION "public"."confirm_dropship_recipient_call"("p_order_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."confirm_dropship_recipient_call"("p_order_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."apply_dropship_payout_settlement_fifo"("p_tenant_id" bigint, "p_profile_id" bigint, "p_amount" numeric) RETURNS "void"
@@ -1271,35 +1285,37 @@ begin
       )
   );
 
-  v_result := jsonb_set(v_result, '{meta, shop}', jsonb_build_object(
-    'id', v_shop_id,
-    'name', v_shop_name,
-    'slug', p_shop_slug,
-    'shop_type', v_shop_type,
-    'vendor_code', v_vendor_code,
-    'order_mode', v_order_mode,
-    'is_negotiable', v_is_negotiable,
-    'show_stock_quantity', v_show_stock_quantity,
-    'default_currency_id', v_default_currency_id,
-    'is_active', v_is_active,
-    'buy_currency_id', v_buy_currency_id,
-    'sell_currency_id', v_sell_currency_id,
-    'pricing_method', v_pricing_method,
-    'markup_percentage', v_markup_percentage,
-    'quantity_display_mode', v_quantity_display_mode,
-    'vendor_filters', v_vendor_filters
-  ));
-  v_result := jsonb_set(v_result, '{meta, permissions}', jsonb_build_object(
-    'can_browse', v_can_browse,
-    'can_see_buy_price', v_can_see_buy_price,
-    'can_see_sell_price', v_can_see_sell_price,
-    'can_see_resell_minimum_price', v_can_see_resell_minimum_price,
-    'can_add_to_cart', v_can_add_to_cart,
-    'can_place_order', v_can_place_order,
-    'can_negotiate', v_can_negotiate,
-    'can_view_quantity', v_can_view_quantity,
-    'can_set_dropship_price', v_can_set_dropship_price
-  ));
+  if v_cursor_name = '' and p_cursor_id is null then
+    v_result := jsonb_set(v_result, '{meta, shop}', jsonb_build_object(
+      'id', v_shop_id,
+      'name', v_shop_name,
+      'slug', p_shop_slug,
+      'shop_type', v_shop_type,
+      'vendor_code', v_vendor_code,
+      'order_mode', v_order_mode,
+      'is_negotiable', v_is_negotiable,
+      'show_stock_quantity', v_show_stock_quantity,
+      'default_currency_id', v_default_currency_id,
+      'is_active', v_is_active,
+      'buy_currency_id', v_buy_currency_id,
+      'sell_currency_id', v_sell_currency_id,
+      'pricing_method', v_pricing_method,
+      'markup_percentage', v_markup_percentage,
+      'quantity_display_mode', v_quantity_display_mode,
+      'vendor_filters', v_vendor_filters
+    ));
+    v_result := jsonb_set(v_result, '{meta, permissions}', jsonb_build_object(
+      'can_browse', v_can_browse,
+      'can_see_buy_price', v_can_see_buy_price,
+      'can_see_sell_price', v_can_see_sell_price,
+      'can_see_resell_minimum_price', v_can_see_resell_minimum_price,
+      'can_add_to_cart', v_can_add_to_cart,
+      'can_place_order', v_can_place_order,
+      'can_negotiate', v_can_negotiate,
+      'can_view_quantity', v_can_view_quantity,
+      'can_set_dropship_price', v_can_set_dropship_price
+    ));
+  end if;
 
   return v_result;
 end;
@@ -4692,7 +4708,7 @@ declare
   v_sell_symbol text;
   v_buy_currency_id bigint;
   v_items jsonb;
-  v_courier_services jsonb;
+  v_courier_ap_bill_id bigint;
   v_items_resell_total numeric := 0;
   v_recipient_charge_total numeric := 0;
   v_recipient_grand_total numeric := 0;
@@ -4838,17 +4854,18 @@ begin
   from public.shop_order_items soi
   where soi.order_id = v_order.id;
 
-  select coalesce(
-    jsonb_agg(
-      to_jsonb(cs.*)
-      order by cs.created_at, cs.id
-    ),
-    '[]'::jsonb
-  )
-  into v_courier_services
-  from public.courier_services cs
-  where cs.is_active = true
-    and (cs.tenant_id is null or cs.tenant_id = v_order.tenant_id);
+  select b.id
+  into v_courier_ap_bill_id
+  from public.bills b
+  where b.source_id = p_order_id::text
+    and b.invoice_type = 'ap'
+    and b.invoice_status is distinct from 'voided'
+    and (
+      b.source_type = 'dropship_courier'
+      or (b.source_type = 'shop_order' and b.source_key = 'courier')
+    )
+  order by case when b.source_type = 'dropship_courier' then 0 else 1 end, b.id
+  limit 1;
 
   return jsonb_build_object(
     'success', true,
@@ -4894,17 +4911,18 @@ begin
         'deduct_cod_from_margin', v_order.deduct_cod_from_margin,
         'deduct_delivery_from_margin', v_order.deduct_delivery_from_margin,
         'deduct_print_from_margin', v_order.deduct_print_from_margin,
-        'deduct_packing_from_margin', v_order.deduct_packing_from_margin,
+        'deduct_packing_from_margin', v_order.deduct_packing_from_margin
+      ) || jsonb_build_object(
         'cod_collect_amount', coalesce(v_order.cod_collect_amount, v_recipient_grand_total),
         'item_count', jsonb_array_length(v_items),
         'delivery_zone', v_order.delivery_zone,
         'courier_name', v_order.courier_name,
         'courier_awb_number', v_order.courier_awb_number,
         'tracking_url', v_order.tracking_url,
+        'courier_ap_bill_id', v_courier_ap_bill_id,
         'recipient_call_attempt_count', coalesce(v_order.recipient_call_attempt_count, 0),
         'recipient_verified_at', v_order.recipient_verified_at,
-        'cancel_reason', v_order.cancel_reason
-      ) || jsonb_build_object(
+        'cancel_reason', v_order.cancel_reason,
         'auto_gifts_applied_at', v_order.auto_gifts_applied_at,
         'auto_gifts_apply_result', v_order.auto_gifts_apply_result
       )
@@ -4949,9 +4967,6 @@ begin
         'allow_open_box', coalesce(v_order.allow_open_box, false),
         'cod_charge', v_order.cod_charge_amount
       )
-    ),
-    'lookups', jsonb_build_object(
-      'courier_services', v_courier_services
     ),
     'permissions', jsonb_build_object(
       'can_show_invoice_paper', v_order.status = 'confirmed',
@@ -6977,6 +6992,50 @@ $$;
 
 
 ALTER FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_shop_customer_shell_bundle"("p_tenant_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_group_id bigint;
+  v_active_carts jsonb := '[]'::jsonb;
+  v_customer_shops jsonb := '[]'::jsonb;
+  v_login_groups jsonb := '[]'::jsonb;
+begin
+  if p_tenant_id is null then
+    raise exception 'tenant required';
+  end if;
+
+  v_group_id := public.current_customer_group_id(p_tenant_id);
+  if v_group_id is null then
+    raise exception 'access denied';
+  end if;
+
+  select coalesce(jsonb_agg(to_jsonb(c)), '[]'::jsonb)
+  into v_active_carts
+  from public.list_customer_active_carts(p_tenant_id) c;
+
+  select coalesce(jsonb_agg(to_jsonb(s)), '[]'::jsonb)
+  into v_customer_shops
+  from public.list_customer_shops(p_tenant_id) s;
+
+  select coalesce(jsonb_agg(to_jsonb(g)), '[]'::jsonb)
+  into v_login_groups
+  from public.check_shop_login_access(public.current_user_email(), p_tenant_id) g
+  where g.has_match is distinct from false;
+
+  return jsonb_build_object(
+    'active_carts', v_active_carts,
+    'customer_shops', v_customer_shops,
+    'login_groups', v_login_groups
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."get_shop_customer_shell_bundle"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint) RETURNS "jsonb"
@@ -9134,6 +9193,142 @@ $$;
 ALTER FUNCTION "public"."list_shops_app_page"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_active" boolean, "p_catalog_parent_tenant_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_shop_setup_bundle"("p_shop_id" bigint, "p_tenant_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_shop jsonb;
+  v_shop_tenant_id bigint;
+  v_scope_tenant_id bigint;
+  v_categories jsonb := '[]'::jsonb;
+  v_vendors jsonb := '[]'::jsonb;
+  v_brands_by_vendor jsonb := '{}'::jsonb;
+BEGIN
+  IF p_shop_id IS NULL OR p_tenant_id IS NULL THEN
+    RAISE EXCEPTION 'shop_id and tenant_id are required';
+  END IF;
+
+  SELECT
+    to_jsonb(s) || jsonb_build_object('tenant_slug', coalesce(t.slug, '')),
+    s.tenant_id
+  INTO v_shop, v_shop_tenant_id
+  FROM public.shops s
+  LEFT JOIN public.tenants t ON t.id = s.tenant_id
+  WHERE s.id = p_shop_id
+    AND s.deleted_at IS NULL
+    AND (s.tenant_id = p_tenant_id OR s.parent_tenant_id = p_tenant_id);
+
+  IF v_shop IS NULL OR v_shop_tenant_id IS NULL THEN
+    RAISE EXCEPTION 'shop not found';
+  END IF;
+
+  IF NOT public.user_can_access_tenant_fetch(v_shop_tenant_id) THEN
+    RAISE EXCEPTION 'not allowed';
+  END IF;
+
+  v_scope_tenant_id := public.resolve_parent_tenant_id(v_shop_tenant_id);
+
+  SELECT coalesce(jsonb_agg(to_jsonb(c) ORDER BY c.name), '[]'::jsonb)
+  INTO v_categories
+  FROM public.shop_categories c
+  WHERE c.tenant_id = v_shop_tenant_id;
+
+  SELECT coalesce(jsonb_agg(to_jsonb(v) ORDER BY v.id), '[]'::jsonb)
+  INTO v_vendors
+  FROM public.list_vendors_for_tenant(v_shop_tenant_id) v;
+
+  SELECT coalesce(
+    jsonb_object_agg(upper(trim(x.vendor_code)), x.brand_names),
+    '{}'::jsonb
+  )
+  INTO v_brands_by_vendor
+  FROM (
+    SELECT
+      pb.vendor_code,
+      jsonb_agg(trim(pb.name) ORDER BY trim(pb.name))
+        FILTER (WHERE pb.name IS NOT NULL AND trim(pb.name) <> '') AS brand_names
+    FROM public.product_brands pb
+    WHERE pb.parent_tenant_id = v_scope_tenant_id
+      AND pb.vendor_code IS NOT NULL
+      AND trim(pb.vendor_code) <> ''
+    GROUP BY pb.vendor_code
+  ) x
+  WHERE x.brand_names IS NOT NULL;
+
+  RETURN jsonb_build_object(
+    'shop', v_shop,
+    'categories', v_categories,
+    'vendors', v_vendors,
+    'brands_by_vendor', v_brands_by_vendor
+  );
+END;
+$$;
+ALTER FUNCTION "public"."get_shop_setup_bundle"("p_shop_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_shop_customer_access_page"("p_shop_id" bigint, "p_tenant_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_shop_tenant_id bigint;
+  v_books_id bigint;
+  v_groups jsonb := '[]'::jsonb;
+  v_access jsonb := '[]'::jsonb;
+BEGIN
+  IF p_shop_id IS NULL OR p_tenant_id IS NULL THEN
+    RAISE EXCEPTION 'shop_id and tenant_id are required';
+  END IF;
+
+  SELECT s.tenant_id
+  INTO v_shop_tenant_id
+  FROM public.shops s
+  WHERE s.id = p_shop_id
+    AND s.deleted_at IS NULL
+    AND (s.tenant_id = p_tenant_id OR s.parent_tenant_id = p_tenant_id);
+
+  IF v_shop_tenant_id IS NULL THEN
+    RAISE EXCEPTION 'shop not found';
+  END IF;
+
+  IF NOT public.user_can_access_tenant_fetch(v_shop_tenant_id) THEN
+    RAISE EXCEPTION 'not allowed';
+  END IF;
+
+  v_books_id := public.resolve_parent_tenant_id(v_shop_tenant_id);
+
+  SELECT coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'id', cg.id,
+        'name', cg.name,
+        'is_active', cg.is_active,
+        'accent_color', cg.accent_color
+      )
+      ORDER BY cg.name
+    ),
+    '[]'::jsonb
+  )
+  INTO v_groups
+  FROM public.customer_groups cg
+  WHERE cg.parent_tenant_id = v_books_id
+    AND cg.deleted_at IS NULL;
+
+  SELECT coalesce(jsonb_agg(to_jsonb(a)), '[]'::jsonb)
+  INTO v_access
+  FROM public.shop_customer_group_access a
+  WHERE a.shop_id = p_shop_id;
+
+  RETURN jsonb_build_object(
+    'customer_groups', v_groups,
+    'access_overrides', v_access
+  );
+END;
+$$;
+ALTER FUNCTION "public"."get_shop_customer_access_page"("p_shop_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."mark_dropship_order_returned"("p_order_id" bigint, "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_reason" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -9385,7 +9580,9 @@ begin
     p_method,
     p_note,
     0.00,
-    null::bigint
+    null::bigint,
+    null::numeric,
+    null::numeric
   );
 end;
 $$;
@@ -9393,8 +9590,99 @@ $$;
 
 ALTER FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text") OWNER TO "postgres";
 
+CREATE OR REPLACE FUNCTION "public"."patch_dropship_courier_fees_for_remittance"(
+  "p_order_id" bigint,
+  "p_delivery" numeric,
+  "p_cod" numeric
+) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_order public.shop_orders;
+  v_delivery_payer text := 'recipient';
+  v_cod_payer text := 'recipient';
+  v_charge_lines jsonb;
+begin
+  if p_delivery is null or p_cod is null then
+    raise exception 'delivery and COD fees are required';
+  end if;
 
-CREATE OR REPLACE FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text" DEFAULT NULL::"text", "p_payment_date" "date" DEFAULT NULL::"date", "p_method" "text" DEFAULT 'cash'::"text", "p_note" "text" DEFAULT NULL::"text", "p_courier_charge" numeric DEFAULT 0.00, "p_cashbook_point_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+  if coalesce(p_delivery, 0) < 0 or coalesce(p_cod, 0) < 0 then
+    raise exception 'courier fees cannot be negative';
+  end if;
+
+  select * into v_order from public.shop_orders where id = p_order_id;
+  if v_order.id is null then
+    raise exception 'order not found';
+  end if;
+
+  select coalesce(cl.payer::text, 'recipient')
+  into v_delivery_payer
+  from public.dropship_order_settlements s
+  inner join public.dropship_settlement_charge_lines cl
+    on cl.settlement_id = s.id and cl.charge_type = 'delivery'::public.dropship_settlement_charge_type
+  where s.shop_order_id = p_order_id
+  limit 1;
+
+  if not found then
+    v_delivery_payer := case
+      when coalesce(v_order.deduct_delivery_from_margin, false) then 'merchant'
+      else 'recipient'
+    end;
+  end if;
+
+  select coalesce(cl.payer::text, 'recipient')
+  into v_cod_payer
+  from public.dropship_order_settlements s
+  inner join public.dropship_settlement_charge_lines cl
+    on cl.settlement_id = s.id and cl.charge_type = 'cod'::public.dropship_settlement_charge_type
+  where s.shop_order_id = p_order_id
+  limit 1;
+
+  if not found then
+    v_cod_payer := case
+      when coalesce(v_order.deduct_cod_from_margin, false) then 'merchant'
+      else 'recipient'
+    end;
+  end if;
+
+  v_charge_lines := jsonb_build_array(
+    jsonb_build_object(
+      'charge_type', 'delivery',
+      'amount', round(coalesce(p_delivery, 0), 2),
+      'payer', v_delivery_payer
+    ),
+    jsonb_build_object(
+      'charge_type', 'cod',
+      'amount', round(coalesce(p_cod, 0), 2),
+      'payer', v_cod_payer
+    )
+  );
+
+  perform public.apply_dropship_order_charge_lines(p_order_id, v_charge_lines);
+
+  update public.dropship_settlement_charge_lines cl
+  set
+    amount = case cl.charge_type
+      when 'delivery'::public.dropship_settlement_charge_type then round(coalesce(p_delivery, 0), 2)
+      when 'cod'::public.dropship_settlement_charge_type then round(coalesce(p_cod, 0), 2)
+      else cl.amount
+    end,
+    updated_at = now()
+  from public.dropship_order_settlements s
+  where cl.settlement_id = s.id
+    and s.shop_order_id = p_order_id
+    and cl.charge_type in (
+      'delivery'::public.dropship_settlement_charge_type,
+      'cod'::public.dropship_settlement_charge_type
+    );
+end;
+$$;
+
+ALTER FUNCTION "public"."patch_dropship_courier_fees_for_remittance"("p_order_id" bigint, "p_delivery" numeric, "p_cod" numeric) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text" DEFAULT NULL::"text", "p_payment_date" "date" DEFAULT NULL::"date", "p_method" "text" DEFAULT 'cash'::"text", "p_note" "text" DEFAULT NULL::"text", "p_courier_charge" numeric DEFAULT 0.00, "p_cashbook_point_id" bigint DEFAULT NULL::bigint, "p_delivery_charge" numeric DEFAULT NULL::numeric, "p_cod_charge" numeric DEFAULT NULL::numeric) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -9412,6 +9700,21 @@ declare
   v_invoice_pay numeric(12,2);
   v_remainder numeric(12,2);
   v_already_remitted boolean := false;
+  v_notes jsonb;
+  v_ap_bill_id bigint;
+  v_ap_settled numeric(12,2) := 0;
+  v_ap_bal jsonb;
+  v_ar_bal jsonb;
+  v_ap_family_due numeric(12,2) := 0;
+  v_settlement public.dropship_order_settlements;
+  v_sync_charge_lines jsonb;
+  v_sync_detail jsonb;
+  v_sync_items_resell numeric(15,2);
+  v_sync_order_discount numeric(15,2);
+  v_sync_reseller_purchase numeric(15,2);
+  v_sync_company_procurement numeric(15,2);
+  v_sync_discount_company_pay numeric(15,2);
+  v_sync_totals record;
 begin
   select * into v_order from public.shop_orders where id = p_order_id for update;
   if v_order.id is null then
@@ -9466,7 +9769,20 @@ begin
   end if;
 
   v_net := coalesce(p_net_amount, 0.00);
-  v_charge := coalesce(p_courier_charge, 0.00);
+
+  if p_delivery_charge is not null or p_cod_charge is not null then
+    if p_delivery_charge is null or p_cod_charge is null then
+      raise exception 'Both delivery and COD fees are required when overriding courier fees';
+    end if;
+    perform public.patch_dropship_courier_fees_for_remittance(
+      p_order_id,
+      p_delivery_charge,
+      p_cod_charge
+    );
+    v_charge := round(coalesce(p_delivery_charge, 0) + coalesce(p_cod_charge, 0), 2);
+  else
+    v_charge := coalesce(p_courier_charge, 0.00);
+  end if;
 
   select coalesce(s.collected_cod_amount, v_order.cod_collect_amount, 0.00)
   into v_cod
@@ -9523,7 +9839,15 @@ begin
     raise exception 'Merchant profile is required on the bill';
   end if;
 
-  v_invoice_due := greatest(coalesce(v_invoice.due_amount, 0.00), 0.00);
+  v_notes := public.apply_dropship_issued_bill_notes_at_deliver(p_order_id);
+  if coalesce(v_notes->>'success', 'false') <> 'true' then
+    raise exception '%', coalesce(v_notes->>'error', 'Failed to apply bill notes before courier pay in');
+  end if;
+
+  select * into v_invoice from public.bills where id = v_order.global_invoice_id for update;
+
+  v_ar_bal := public.get_bill_net_balances(v_invoice.id);
+  v_invoice_due := greatest(coalesce((v_ar_bal->>'due_amount')::numeric, 0.00), 0.00);
   v_invoice_pay := least(v_net, v_invoice_due);
   v_remainder := greatest(v_net - v_invoice_pay, 0.00);
 
@@ -9564,9 +9888,120 @@ begin
       when v_invoice_pay > 0 then jsonb_build_array(jsonb_build_object('bill_id', v_invoice.id, 'amount', v_invoice_pay))
       else '[]'::jsonb
     end,
-    p_shop_order_id => p_order_id
+    p_shop_order_id => p_order_id,
+    p_credit_dropship_profit => false
   );
   v_payment_id := v_pay.id;
+
+  v_ap_bill_id := public.resolve_dropship_courier_ap_bill_id(p_order_id, v_parent_tenant_id);
+  if v_ap_bill_id is not null then
+    v_ap_bal := public.get_bill_net_balances(v_ap_bill_id);
+    v_ap_family_due := greatest(coalesce((v_ap_bal->>'due_amount')::numeric, 0), 0);
+    v_ap_settled := public.settle_dropship_courier_ap_via_cod_retention(
+      v_ap_bill_id,
+      least(v_charge, v_ap_family_due),
+      p_order_id,
+      v_ref,
+      v_payment_id
+    );
+  end if;
+
+  v_ar_bal := public.get_bill_net_balances(v_invoice.id);
+  if greatest(coalesce((v_ar_bal->>'due_amount')::numeric, 0.00), 0.00) > 0.01 then
+    raise exception
+      'Customer bill must be cleared from remittance before dropshipper profit (due % BDT)',
+      (v_ar_bal->>'due_amount')::numeric;
+  end if;
+
+  if v_ap_bill_id is not null then
+    v_ap_bal := public.get_bill_net_balances(v_ap_bill_id);
+    if greatest(coalesce((v_ap_bal->>'due_amount')::numeric, 0.00), 0.00) > 0.01 then
+      raise exception
+        'Courier AP must be settled from COD retention before dropshipper profit (due % BDT)',
+        (v_ap_bal->>'due_amount')::numeric;
+    end if;
+  end if;
+
+  if v_remainder > 0 then
+    perform public.credit_dropship_profit_from_courier_remittance(
+      v_order.tenant_id,
+      v_invoice.profile_id,
+      p_order_id,
+      v_payment_id,
+      v_remainder,
+      v_ref,
+      v_net,
+      v_invoice_pay
+    );
+  end if;
+
+  select * into v_settlement
+  from public.dropship_order_settlements
+  where shop_order_id = p_order_id;
+
+  if found then
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'charge_type', cl.charge_type::text,
+          'amount', cl.amount,
+          'payer', cl.payer::text
+        )
+        order by cl.id
+      ),
+      '[]'::jsonb
+    )
+    into v_sync_charge_lines
+    from public.dropship_settlement_charge_lines cl
+    where cl.settlement_id = v_settlement.id;
+
+    v_sync_detail := public.get_dropship_order_detail_v2(v_order.tenant_id, p_order_id);
+    v_sync_items_resell := coalesce((v_sync_detail->'computed'->>'items_resell_total')::numeric, 0);
+    v_sync_order_discount := coalesce(
+      (v_sync_detail->'order'->>'discount_amount')::numeric,
+      v_order.discount_amount,
+      0
+    );
+    v_sync_discount_company_pay := coalesce(v_settlement.discount_company_pay, 0);
+
+    select rp.reseller_purchase_cost
+    into v_sync_reseller_purchase
+    from public.compute_dropship_order_reseller_purchase(p_order_id) rp;
+
+    select coalesce(
+      sum(
+        public.resolve_shop_order_item_landed_cost(
+          soi.global_stock_id,
+          soi.cost_price_amount,
+          soi.unit_list_price_amount
+        ) * soi.quantity
+      ),
+      0
+    )
+    into v_sync_company_procurement
+    from public.shop_order_items soi
+    where soi.order_id = p_order_id;
+
+    select * into v_sync_totals
+    from public.compute_dropship_settlement_totals(
+      v_sync_items_resell,
+      v_sync_order_discount,
+      v_sync_reseller_purchase,
+      v_sync_company_procurement,
+      v_sync_discount_company_pay,
+      v_sync_charge_lines
+    );
+
+    update public.dropship_order_settlements
+    set
+      remittance_at = coalesce(remittance_at, now()),
+      status = 'confirmed'::public.dropship_settlement_status,
+      total_cost = v_sync_totals.total_cost,
+      reseller_profit = v_sync_totals.reseller_profit,
+      company_profit = v_sync_totals.company_profit,
+      updated_at = now()
+    where shop_order_id = p_order_id;
+  end if;
 
   if v_invoice_pay > 0 and nullif(trim(p_note), '') is not null then
     update public.bills
@@ -9579,6 +10014,10 @@ begin
     status = 'payment_received'::public.shop_order_status,
     courier_remittance_ref = v_ref,
     courier_bank_trx_id = coalesce(nullif(trim(p_bank_trx_id), ''), courier_bank_trx_id),
+    cod_collect_amount = coalesce(
+      (select s.collected_cod_amount from public.dropship_order_settlements s where s.shop_order_id = p_order_id),
+      cod_collect_amount
+    ),
     payout_settlement_status = case
       when v_remainder > 0 then 'unpaid'
       when v_remainder <= 0 then 'paid'
@@ -9596,12 +10035,16 @@ begin
     'net_amount', v_net,
     'courier_charge', v_charge,
     'invoice_allocated', v_invoice_pay,
-    'merchant_remainder', v_remainder
+    'merchant_remainder', v_remainder,
+    'merchant_remainder_credited', v_remainder,
+    'courier_ap_bill_id', v_ap_bill_id,
+    'courier_ap_settled', v_ap_settled,
+    'bill_notes', v_notes
   );
 end;
 $$;
 
-ALTER FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text", "p_courier_charge" numeric, "p_cashbook_point_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text", "p_courier_charge" numeric, "p_cashbook_point_id" bigint, "p_delivery_charge" numeric, "p_cod_charge" numeric) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_dropship_management_order"("p_tenant_id" bigint, "p_order_id" bigint) RETURNS "jsonb"
@@ -9625,6 +10068,10 @@ declare
   v_is_returned boolean := false;
   v_gift_cost_merchant_total numeric(15,2) := 0;
   v_gift_cost_tenant_total numeric(15,2) := 0;
+  v_parent_tenant_id bigint;
+  v_courier_ap_bill_id bigint;
+  v_courier_ap_due numeric(15,2) := 0;
+  v_dropship_profit_credited numeric(15,2) := 0;
 begin
   if not public.is_tenant_staff(p_tenant_id) then
     raise exception 'access denied';
@@ -9637,6 +10084,25 @@ begin
 
   if v_order.id is null then
     raise exception 'order not found';
+  end if;
+
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
+
+  select coalesce(sum(ce.amount), 0)
+  into v_dropship_profit_credited
+  from public.cashbook_entries ce
+  where ce.parent_tenant_id = v_parent_tenant_id
+    and ce.source_type = 'shop_order'
+    and ce.source_id = p_order_id::text
+    and ce.type = 'credit'
+    and coalesce(ce.metadata->>'transaction_type', '') = 'dropship_profit';
+
+  v_courier_ap_bill_id := public.resolve_dropship_courier_ap_bill_id(p_order_id, v_parent_tenant_id);
+  if v_courier_ap_bill_id is not null then
+    v_courier_ap_due := greatest(
+      coalesce((public.get_bill_net_balances(v_courier_ap_bill_id)->>'due_amount')::numeric, 0),
+      0
+    );
   end if;
 
   select
@@ -9733,7 +10199,8 @@ begin
       'returned_at', v_order.returned_at,
       'return_charge_amount', coalesce(v_order.return_charge_amount, 0),
       'deduct_return_charge_from_middle_man', coalesce(v_order.deduct_return_charge_from_middle_man, false),
-      'return_override_reason', v_order.return_override_reason
+      'return_override_reason', v_order.return_override_reason,
+      'courier_ap_bill_id', v_courier_ap_bill_id
     ),
     'items', coalesce(v_detail->'items', '[]'::jsonb),
     'fulfillment', v_detail->'fulfillment',
@@ -9758,7 +10225,9 @@ begin
       'remittance_at', v_settlement.remittance_at,
       'merchant_payout_at', v_settlement.merchant_payout_at,
       'gift_cost_merchant_total', v_gift_cost_merchant_total,
-      'gift_cost_tenant_total', v_gift_cost_tenant_total
+      'gift_cost_tenant_total', v_gift_cost_tenant_total,
+      'dropship_profit_credited', v_dropship_profit_credited,
+      'courier_ap_due', v_courier_ap_due
     ),
     'invoice', v_invoice,
     'step_state', jsonb_build_object(
@@ -9806,7 +10275,9 @@ begin
     p_method,
     p_note,
     0.00,
-    null::bigint
+    null::bigint,
+    null::numeric,
+    null::numeric
   );
 end;
 $$;
@@ -12904,7 +13375,10 @@ $$;
 create or replace function public.add_shop_order_item_stock_pick(
   p_order_item_id bigint,
   p_global_stock_id bigint,
-  p_quantity integer
+  p_quantity integer,
+  p_search text default null,
+  p_limit integer default 50,
+  p_offset integer default 0
 )
 returns jsonb
 language plpgsql
@@ -12921,6 +13395,9 @@ declare
   v_total_picked integer := 0;
   v_pick_id bigint;
   v_grade_tag_id bigint;
+  v_confirmed_qty numeric;
+  v_fulfillment_resolved boolean;
+  v_pick_list jsonb;
 begin
   if p_quantity is null or p_quantity <= 0 then
     raise exception 'quantity must be positive';
@@ -13028,16 +13505,48 @@ begin
   perform public._recompute_shop_order_item_fulfillment(p_order_item_id);
   perform public.recompute_dropship_cod_collect_amount(v_order.id);
 
+  select
+    soi.confirmed_quantity,
+    coalesce(soi.is_fulfillment_unavailable, false)
+      or coalesce(soi.confirmed_quantity, 0) > 0
+      or (
+        coalesce(soi.is_gift, false)
+        and soi.gift_source = 'customer_stock'
+        and coalesce(soi.confirmed_quantity, 0) >= soi.quantity
+      )
+      or (coalesce(soi.is_gift, false) and soi.gift_source = 'stock')
+  into v_confirmed_qty, v_fulfillment_resolved
+  from public.shop_order_items soi
+  where soi.id = p_order_item_id;
+
+  v_pick_list := public.list_stock_for_order_item_pick(
+    p_order_item_id,
+    p_search,
+    p_limit,
+    p_offset
+  );
+
   return jsonb_build_object(
     'success', true,
     'pick_id', v_pick_id,
-    'confirmed_quantity', (select confirmed_quantity from public.shop_order_items where id = p_order_item_id),
-    'cod_collect_amount', (select cod_collect_amount from public.shop_orders where id = v_order.id)
+    'confirmed_quantity', v_confirmed_qty,
+    'cod_collect_amount', (select cod_collect_amount from public.shop_orders where id = v_order.id),
+    'order_line', jsonb_build_object(
+      'id', p_order_item_id,
+      'confirmed_quantity', v_confirmed_qty,
+      'fulfillment_resolved', v_fulfillment_resolved
+    ),
+    'pick_list', v_pick_list
   );
 end;
 $$;
 
-create or replace function public.remove_shop_order_item_stock_pick(p_pick_id bigint)
+create or replace function public.remove_shop_order_item_stock_pick(
+  p_pick_id bigint,
+  p_search text default null,
+  p_limit integer default 50,
+  p_offset integer default 0
+)
 returns jsonb
 language plpgsql
 security definer
@@ -13048,6 +13557,10 @@ declare
   v_order public.shop_orders%rowtype;
   v_stock public.global_stocks%rowtype;
   v_parent_tenant_id bigint;
+  v_order_item_id bigint;
+  v_confirmed_qty numeric;
+  v_fulfillment_resolved boolean;
+  v_pick_list jsonb;
 begin
   select * into v_pick from public.shop_order_item_stock_picks where id = p_pick_id for update;
   if v_pick.id is null then
@@ -13085,12 +13598,214 @@ begin
     end if;
   end if;
 
+  v_order_item_id := v_pick.order_item_id;
+
   delete from public.shop_order_item_stock_picks where id = p_pick_id;
 
-  perform public._recompute_shop_order_item_fulfillment(v_pick.order_item_id);
+  perform public._recompute_shop_order_item_fulfillment(v_order_item_id);
   perform public.recompute_dropship_cod_collect_amount(v_order.id);
 
-  return jsonb_build_object('success', true);
+  select
+    soi.confirmed_quantity,
+    coalesce(soi.is_fulfillment_unavailable, false)
+      or coalesce(soi.confirmed_quantity, 0) > 0
+      or (
+        coalesce(soi.is_gift, false)
+        and soi.gift_source = 'customer_stock'
+        and coalesce(soi.confirmed_quantity, 0) >= soi.quantity
+      )
+      or (coalesce(soi.is_gift, false) and soi.gift_source = 'stock')
+  into v_confirmed_qty, v_fulfillment_resolved
+  from public.shop_order_items soi
+  where soi.id = v_order_item_id;
+
+  v_pick_list := public.list_stock_for_order_item_pick(
+    v_order_item_id,
+    p_search,
+    p_limit,
+    p_offset
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'cod_collect_amount', (select cod_collect_amount from public.shop_orders where id = v_order.id),
+    'order_line', jsonb_build_object(
+      'id', v_order_item_id,
+      'confirmed_quantity', v_confirmed_qty,
+      'fulfillment_resolved', v_fulfillment_resolved
+    ),
+    'pick_list', v_pick_list
+  );
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- apply_dropship_fulfillment_draft (processing desk → server, single txn helper)
+-- ---------------------------------------------------------------------------
+create or replace function public.apply_dropship_fulfillment_draft(
+  p_order_id bigint,
+  p_lines jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_line jsonb;
+  v_pick jsonb;
+  v_item_id bigint;
+  v_unavailable boolean;
+  v_pick_id bigint;
+begin
+  if p_lines is null or jsonb_typeof(p_lines) <> 'array' then
+    return;
+  end if;
+
+  for v_line in select value from jsonb_array_elements(p_lines)
+  loop
+    v_item_id := (v_line->>'order_item_id')::bigint;
+    v_unavailable := coalesce((v_line->>'unavailable')::boolean, false);
+
+    for v_pick_id in
+      select sp.id
+      from public.shop_order_item_stock_picks sp
+      where sp.order_item_id = v_item_id
+    loop
+      perform public.remove_shop_order_item_stock_pick(v_pick_id, null, 1, 0);
+    end loop;
+
+    if v_unavailable then
+      perform public.mark_shop_order_item_unavailable(v_item_id, null, true);
+      continue;
+    end if;
+
+    if exists (
+      select 1 from public.shop_order_items soi
+      where soi.id = v_item_id and coalesce(soi.is_fulfillment_unavailable, false)
+    ) then
+      perform public.clear_shop_order_item_unavailable(v_item_id);
+    end if;
+
+    for v_pick in select value from jsonb_array_elements(coalesce(v_line->'picks', '[]'::jsonb))
+    loop
+      perform public.add_shop_order_item_stock_pick(
+        v_item_id,
+        (v_pick->>'global_stock_id')::bigint,
+        (v_pick->>'quantity')::integer,
+        null,
+        1,
+        0
+      );
+    end loop;
+  end loop;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- commit_dropship_ready_for_pickup_bundle
+-- ---------------------------------------------------------------------------
+create or replace function public.commit_dropship_ready_for_pickup_bundle(
+  p_tenant_id bigint,
+  p_order_id bigint,
+  p_fulfillment jsonb default null,
+  p_desk jsonb default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order public.shop_orders%rowtype;
+  v_advance jsonb;
+  v_cons jsonb;
+begin
+  if p_tenant_id is null or p_order_id is null then
+    return jsonb_build_object('success', false, 'error', 'tenant and order required');
+  end if;
+
+  if not public.is_tenant_staff(p_tenant_id) then
+    return jsonb_build_object('success', false, 'error', 'access denied');
+  end if;
+
+  select * into v_order from public.shop_orders where id = p_order_id for update;
+  if v_order.id is null then
+    return jsonb_build_object('success', false, 'error', 'order not found');
+  end if;
+
+  if v_order.shop_type_snapshot <> 'dropship' then
+    return jsonb_build_object('success', false, 'error', 'not a dropship order');
+  end if;
+
+  if v_order.status <> 'processing'::public.shop_order_status then
+    return jsonb_build_object(
+      'success', false,
+      'error', format('order must be processing (current: %s)', v_order.status)
+    );
+  end if;
+
+  if p_fulfillment is not null and p_fulfillment ? 'lines' then
+    perform public.apply_dropship_fulfillment_draft(p_order_id, p_fulfillment->'lines');
+  end if;
+
+  if p_desk is not null then
+    if p_desk ? 'charges' then
+      perform public.update_shop_order_charges_for_staff(p_tenant_id, p_order_id, p_desk->'charges');
+    end if;
+
+    if p_desk ? 'summary' then
+      update public.shop_orders
+      set
+        discount_amount = coalesce((p_desk->'summary'->>'discount_amount')::numeric, discount_amount),
+        cod_collect_amount = coalesce((p_desk->'summary'->>'cod_collect_amount')::numeric, cod_collect_amount),
+        updated_at = now()
+      where id = p_order_id;
+    end if;
+
+    v_cons := p_desk->'consignment';
+    if v_cons is not null and v_cons <> 'null'::jsonb then
+      perform public.update_dropship_consignment(
+        p_order_id,
+        coalesce((v_cons->>'cod_collect_amount')::numeric, 0),
+        coalesce(v_cons->>'package_weight_band', 'under_1kg'),
+        v_cons->>'item_category',
+        v_cons->>'parcel_description',
+        v_cons->>'courier_order_ref',
+        coalesce(v_cons->>'delivery_zone', 'inside_dhaka'),
+        v_cons->>'sender_name',
+        v_cons->>'pickup_phone',
+        v_cons->>'pickup_address',
+        coalesce(v_cons->>'payout_account_type', 'bank'),
+        v_cons->>'payout_account_info',
+        coalesce((v_cons->>'allow_open_box')::boolean, false),
+        v_cons->>'delivery_instruction_notes',
+        nullif(v_cons->>'courier_service_id', '')::uuid,
+        v_cons->>'courier_tracking_number',
+        v_cons->>'courier_awb_number',
+        v_cons->>'courier_consignment_id',
+        v_cons->>'tracking_url',
+        coalesce((v_cons->>'courier_cost_amount')::numeric, 0),
+        v_cons->>'recipient_name',
+        v_cons->>'recipient_phone',
+        v_cons->>'recipient_phone_secondary',
+        v_cons->>'shipping_address',
+        v_cons->>'shipping_district',
+        v_cons->>'shipping_thana',
+        nullif(v_cons->>'delivery_charge_amount', '')::numeric,
+        nullif(v_cons->>'cod_charge_amount', '')::numeric
+      );
+    end if;
+  end if;
+
+  v_advance := public.advance_dropship_order_status(p_order_id, 'ready_for_pickup'::public.shop_order_status);
+  if coalesce((v_advance->>'success')::boolean, false) is not true then
+    return v_advance;
+  end if;
+
+  return v_advance || jsonb_build_object(
+    'dropship_detail', public.get_dropship_order_detail_v2(p_tenant_id, p_order_id)
+  );
 end;
 $$;
 

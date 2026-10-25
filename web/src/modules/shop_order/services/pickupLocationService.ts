@@ -1,21 +1,16 @@
 import {
-  pickupLocationRepository,
   type PickupLocationRow,
   type CreatePickupLocationPayload,
   type UpdatePickupLocationPayload,
 } from '../repositories/pickupLocationRepository';
+import { usePickupLocationsStore } from '../stores/pickupLocationsStore';
 import type { ShopServiceResult } from '../types';
-
-let cachedLocations: PickupLocationRow[] | null = null;
 
 export const pickupLocationService = {
   async fetchLocations(opts?: { forceRefresh?: boolean }): Promise<ShopServiceResult<PickupLocationRow[]>> {
-    if (cachedLocations && !opts?.forceRefresh) {
-      return { success: true, data: cachedLocations };
-    }
+    const store = usePickupLocationsStore();
     try {
-      const locations = await pickupLocationRepository.listLocations();
-      cachedLocations = locations;
+      const locations = await store.ensureLocations(opts?.forceRefresh ?? false);
       return { success: true, data: locations };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch pickup locations.';
@@ -26,9 +21,9 @@ export const pickupLocationService = {
   async createLocation(
     payload: CreatePickupLocationPayload,
   ): Promise<ShopServiceResult<PickupLocationRow>> {
+    const store = usePickupLocationsStore();
     try {
-      const location = await pickupLocationRepository.createLocation(payload);
-      cachedLocations = null;
+      const location = await store.createLocation(payload);
       return { success: true, data: location };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create pickup location.';
@@ -40,9 +35,9 @@ export const pickupLocationService = {
     id: string,
     payload: UpdatePickupLocationPayload,
   ): Promise<ShopServiceResult<PickupLocationRow>> {
+    const store = usePickupLocationsStore();
     try {
-      const location = await pickupLocationRepository.updateLocation(id, payload);
-      cachedLocations = null;
+      const location = await store.updateLocation(id, payload);
       return { success: true, data: location };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to update pickup location.';
@@ -51,9 +46,9 @@ export const pickupLocationService = {
   },
 
   async deleteLocation(id: string): Promise<ShopServiceResult<void>> {
+    const store = usePickupLocationsStore();
     try {
-      await pickupLocationRepository.deleteLocation(id);
-      cachedLocations = null;
+      await store.deleteLocation(id);
       return { success: true, data: undefined };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to delete pickup location.';

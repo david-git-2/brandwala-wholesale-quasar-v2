@@ -10,6 +10,10 @@ import { useDropshipCourierOptions } from '../composables/useDropshipCourierOpti
 import { useDropshipOrderProcessingDesk } from '../composables/useDropshipOrderProcessingDesk';
 import { useDropshipOrderStatusRedirect } from '../composables/useDropshipOrderStatusRedirect';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useDropshipProcessingFulfillmentDraft } from '../composables/useDropshipProcessingFulfillmentDraft';
+import { applyDropshipOrderDetailV2ToCache } from '../utils/dropshipOrderDetailV2CacheUtils';
+import { isDropshipLineResolved } from '../utils/dropshipInvoiceFulfillment';
 import {
   createEmptyDropshipInvoiceSummary,
   type DropshipInvoiceSummaryState,
@@ -28,7 +32,7 @@ import {
 
 const route = useRoute();
 const router = useRouter();
-
+const authStore = useAuthStore();
 const tenantSlug = computed(() =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null,
 );
@@ -37,7 +41,33 @@ const orderId = computed(() => Number(route.params.id || 0));
 const orderDetailQuery = useDropshipOrderDetailV2Query({ tenantSlug, orderId });
 
 const order = computed(() => orderDetailQuery.data.value?.order ?? null);
-const orderItems = computed(() => orderDetailQuery.data.value?.items ?? []);
+const serverOrderItems = computed(() => orderDetailQuery.data.value?.items ?? []);
+
+const fulfillmentDraft = useDropshipProcessingFulfillmentDraft(serverOrderItems);
+const {
+  displayOrderItems,
+  hasFulfillmentDraftChanges,
+  draftPicksForItem,
+  addDraftPick,
+  removeDraftPick,
+  markDraftUnavailable,
+  clearDraftUnavailable,
+  discardFulfillmentDraft,
+  getFulfillmentCommitPayload,
+  markFulfillmentCommitted,
+  resetFromServerItems,
+} = fulfillmentDraft;
+
+const orderItems = displayOrderItems;
+
+const totalDeliveredQtyLocal = computed(() =>
+  orderItems.value.reduce((sum, item) => sum + Number(item.confirmed_quantity ?? 0), 0),
+);
+
+const allLinesResolvedLocalFromDraft = computed(() => {
+  const lines = orderItems.value.filter((item) => item.quantity > 0);
+  return lines.length > 0 && lines.every((item) => isDropshipLineResolved(item));
+});
 
 const summaryForm = ref<DropshipInvoiceSummaryState>(createEmptyDropshipInvoiceSummary());
 
@@ -74,30 +104,8 @@ const canMarkReadyForPickup = computed(
 const canCancelOrder = computed(
   () => orderDetailQuery.data.value?.permissions.can_cancel_order ?? false,
 );
-const allLinesResolved = computed(
-  () => orderDetailQuery.data.value?.computed.all_lines_resolved ?? false,
-);
-const totalDeliveredQty = computed(
-  () => orderDetailQuery.data.value?.computed.total_delivered_qty ?? 0,
-);
-
-watch(
-  () => orderDetailQuery.data.value,
-  async (detail) => {
-    if (!detail) {
-      formReady.value = false;
-      return;
-    }
-
-    formReady.value = false;
-    summaryForm.value = { ...detail.summary };
-    Object.assign(pickupForm, detail.fulfillment.pickup);
-    Object.assign(courierForm, detail.fulfillment.courier);
-    await nextTick();
-    formReady.value = true;
-  },
-  { immediate: true },
-);
+const allLinesResolved = allLinesResolvedLocalFromDraft;
+const totalDeliveredQty = totalDeliveredQtyLocal;
 
 const isLoading = computed(() => orderDetailQuery.isLoading.value);
 const loadError = computed(() => orderDetailQuery.error.value);
@@ -116,12 +124,22 @@ const processingDesk = useDropshipOrderProcessingDesk({
   totalDeliveredQty,
   formReady,
   refetchOrderDetail: () => orderDetailQuery.refetch(),
+  hasFulfillmentDraftChanges,
+  getFulfillmentCommitPayload,
+  markFulfillmentCommitted,
+  discardFulfillmentDraft,
+  onReadyForPickupCommitted: (raw) => {
+    const tenantId = authStore.tenantId ?? 0;
+    if (tenantId <= 0) return;
+    const detail = applyDropshipOrderDetailV2ToCache(tenantId, orderId.value, raw);
+    resetFromServerItems(detail.items);
+  },
 });
 
 const {
   saving,
   advancingStatus,
-  autoSaveState,
+  hasUnsavedDeskChanges,
   pickupLocationOptions,
   pendingLineNames,
   hasCourier,
@@ -133,7 +151,38 @@ const {
   advanceToReadyForPickup,
   onPickupLocationSelect,
   invalidateDetail,
+  confirmDiscardUnsavedChanges,
+  syncPersistedSnapshot,
 } = processingDesk;
+
+watch(
+  () => orderDetailQuery.data.value,
+  async (detail, previous) => {
+    if (!detail) {
+      formReady.value = false;
+      return;
+    }
+
+    const sameOrder = previous?.order.id === detail.order.id;
+    if (
+      sameOrder &&
+      formReady.value &&
+      (hasUnsavedDeskChanges.value || hasFulfillmentDraftChanges.value)
+    ) {
+      return;
+    }
+
+    formReady.value = false;
+    resetFromServerItems(detail.items);
+    summaryForm.value = { ...detail.summary };
+    Object.assign(pickupForm, detail.fulfillment.pickup);
+    Object.assign(courierForm, detail.fulfillment.courier);
+    await nextTick();
+    formReady.value = true;
+    syncPersistedSnapshot();
+  },
+  { immediate: true },
+);
 
 useDropshipOrderStatusRedirect({
   expectedView: 'processing',
@@ -152,13 +201,6 @@ const deliveryZoneLabel = computed(
     orderDetailQuery.data.value?.computed.delivery_zone_label ??
     (order.value?.shipping_district?.trim().toLowerCase() === 'dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'),
 );
-
-const autoSaveLabel = computed(() => {
-  if (autoSaveState.value === 'pending' || saving.value) return 'Saving…';
-  if (autoSaveState.value === 'error') return 'Save failed';
-  if (autoSaveState.value === 'saved') return 'All changes saved';
-  return '';
-});
 
 const onCourierChange = () => {
   const courier = selectedCourier.value;
@@ -182,57 +224,40 @@ const openPickDialog = (itemId: number) => {
 const onMarkUnavailableFromPickDialog = async () => {
   const itemId = pickTargetItem.value?.id;
   if (itemId == null) return;
-  pickDialogOpen.value = false;
-  await markUnavailable(itemId);
-};
-
-const markUnavailable = async (itemId: number) => {
   const confirmed = await requestConfirmation(
-    'Mark this line unavailable? Delivered qty will be 0. A demand bucket entry will be created by default.',
+    'Mark this line unavailable? Delivered qty will be 0. Saved when you mark ready for pickup.',
     'Mark unavailable',
     'Mark unavailable',
   );
   if (!confirmed) return;
-
-  actionLoading.value = true;
-  try {
-    await shopOrderRepository.markShopOrderItemUnavailable(itemId, null, true);
-    showSuccessNotification('Line marked unavailable.');
-    await invalidateDetail();
-  } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to mark unavailable'));
-  } finally {
-    actionLoading.value = false;
-  }
+  markDraftUnavailable(itemId);
+  pickDialogOpen.value = false;
 };
 
-const clearUnavailable = async (itemId: number) => {
-  actionLoading.value = true;
-  try {
-    await shopOrderRepository.clearShopOrderItemUnavailable(itemId);
-    showSuccessNotification('Line is pending again — you can pick stock.');
-    await invalidateDetail();
-  } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to clear unavailable'));
-  } finally {
-    actionLoading.value = false;
-  }
+const repickLine = (itemId: number) => {
+  clearDraftUnavailable(itemId);
+  openPickDialog(itemId);
 };
 
-const removePick = async (pickId: number) => {
-  actionLoading.value = true;
-  try {
-    await shopOrderRepository.removeShopOrderItemStockPick(pickId);
-    showSuccessNotification('Pick removed and hold released.');
-    await invalidateDetail();
-  } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to remove pick'));
-  } finally {
-    actionLoading.value = false;
-  }
+const onDraftAdd = (payload: { row: import('../repositories/shopOrderRepository').OrderItemPickStockRow; quantity: number }) => {
+  const itemId = pickTargetItem.value?.id;
+  if (itemId == null) return;
+  addDraftPick(itemId, payload.row, payload.quantity);
 };
 
-const onOrderCancelled = () => {
+const onDraftRemove = (pickId: number) => {
+  const itemId = pickTargetItem.value?.id;
+  if (itemId == null) return;
+  removeDraftPick(itemId, pickId);
+};
+
+const removePick = (pickId: number, itemId: number) => {
+  removeDraftPick(itemId, pickId);
+};
+
+const onOrderCancelled = async () => {
+  const ok = await confirmDiscardUnsavedChanges();
+  if (!ok) return;
   void router.push({ name: 'app-shop-dropship-orders-page' });
 };
 
@@ -347,11 +372,10 @@ const onUpdateGiftCost = async (payload: {
               {{ hasCourier ? (courierForm.courier_awb_number ? `AWB: ${courierForm.courier_awb_number}` : 'Courier selected') : 'Courier needed' }}
             </q-chip>
             <span
-              v-if="autoSaveLabel"
-              class="text-caption text-weight-medium q-ml-xs"
-              :class="autoSaveState === 'error' ? 'text-negative' : 'text-grey-6'"
+              v-if="hasUnsavedDeskChanges"
+              class="text-caption text-weight-medium text-orange-9 q-ml-xs"
             >
-              {{ autoSaveLabel }}
+              Unsaved changes — saved when you mark ready for pickup
             </span>
           </div>
 
@@ -384,8 +408,8 @@ const onUpdateGiftCost = async (payload: {
           @pickup-select="onPickupLocationSelect"
           @courier-change="onCourierChange"
           @pick-stock="openPickDialog"
-          @clear-unavailable="clearUnavailable"
-          @remove-pick="removePick"
+          @repick-line="repickLine"
+          @remove-pick="(p) => removePick(p.pickId, p.itemId)"
           @add-gift="giftDialogOpen = true"
           @remove-gift="removeGift"
           @update-gift-cost="onUpdateGiftCost"
@@ -403,8 +427,8 @@ const onUpdateGiftCost = async (payload: {
             label="Ready for pickup"
             class="text-weight-bold"
             style="border-radius: 8px; min-width: 200px"
-            :loading="advancingStatus"
-            :disable="!canAdvanceToReadyForPickup || advancingStatus"
+            :loading="advancingStatus || saving"
+            :disable="!canAdvanceToReadyForPickup || advancingStatus || saving"
             @click="advanceToReadyForPickup()"
           >
             <q-tooltip v-if="readyForPickupBlockReason">
@@ -427,7 +451,9 @@ const onUpdateGiftCost = async (payload: {
     <DropshipOrderItemStockPickDialog
       v-model="pickDialogOpen"
       :order-item="pickTargetItem"
-      @picked="invalidateDetail"
+      :draft-picks="pickTargetItem ? draftPicksForItem(pickTargetItem.id) : []"
+      @draft-add="onDraftAdd"
+      @draft-remove="onDraftRemove"
       @mark-unavailable="onMarkUnavailableFromPickDialog"
     />
 

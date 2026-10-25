@@ -55,8 +55,8 @@ const emit = defineEmits<{
   (e: 'courier-change'): void;
   (e: 'pick-stock', itemId: number): void;
   (e: 'mark-unavailable', itemId: number): void;
-  (e: 'clear-unavailable', itemId: number): void;
-  (e: 'remove-pick', pickId: number): void;
+  (e: 'repick-line', itemId: number): void;
+  (e: 'remove-pick', payload: { pickId: number; itemId: number }): void;
   (e: 'add-gift'): void;
   (e: 'remove-gift', itemId: number): void;
   (e: 'update-gift-cost', payload: {
@@ -667,14 +667,13 @@ const copyFullCourierSnippet = () => {
                         color="grey-8"
                         :label="`Cost ${formatMoney(row.giftCostAmount)} → ${row.giftChargedTo}`"
                       />
-                      <q-badge v-if="row.isUnavailable" color="negative" label="Unavailable" />
                       <q-badge
-                        v-else-if="props.showStockPickActions && row.fulfillmentResolved && row.deliveredQuantity === row.orderedQuantity"
+                        v-if="!row.isUnavailable && props.showStockPickActions && row.fulfillmentResolved && row.deliveredQuantity === row.orderedQuantity"
                         color="positive"
                         label="Picked"
                       />
                       <q-badge
-                        v-else-if="props.showStockPickActions && row.fulfillmentResolved"
+                        v-else-if="!row.isUnavailable && props.showStockPickActions && row.fulfillmentResolved"
                         color="orange-8"
                         label="Resolved"
                       />
@@ -709,7 +708,7 @@ const copyFullCourierSnippet = () => {
                           color="negative"
                           class="q-ml-sm"
                           aria-label="Remove pick"
-                          @click="emit('remove-pick', pick.id)"
+                          @click="emit('remove-pick', { pickId: pick.id, itemId: row.id })"
                         >
                           <q-tooltip>Remove picked stock (release hold)</q-tooltip>
                         </q-btn>
@@ -776,14 +775,15 @@ const copyFullCourierSnippet = () => {
                     </div>
                     <div v-else class="row items-center justify-end no-wrap">
                       <q-btn
-                        flat
+                        unelevated
                         dense
                         no-caps
-                        color="primary"
-                        label="Undo"
-                        class="dropship-invoice-paper__action-btn"
-                        @click="emit('clear-unavailable', row.id)"
-                      />
+                        label="Unavailable"
+                        class="dropship-invoice-paper__action-btn dropship-invoice-paper__action-btn--unavailable"
+                        @click="emit('repick-line', row.id)"
+                      >
+                        <q-tooltip>Repick</q-tooltip>
+                      </q-btn>
                     </div>
                   </td>
                 </tr>

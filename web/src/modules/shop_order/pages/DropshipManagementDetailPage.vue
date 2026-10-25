@@ -16,6 +16,107 @@
       </div>
 
       <template v-else>
+        <div
+          v-if="showFooterActions || (settlementDirty && !paperReadonly)"
+          class="dropship-order-detail-v2__ready-actions no-print"
+        >
+          <q-chip
+            v-if="settlementDirty && !paperReadonly"
+            dense
+            color="orange-2"
+            text-color="orange-10"
+            icon="ph ph-warning"
+            class="dropship-order-detail-v2__unsaved-chip"
+          >
+            Unsaved changes
+          </q-chip>
+          <q-btn
+            v-if="settlementDirty && !paperReadonly"
+            dense
+            unelevated
+            color="primary"
+            no-caps
+            icon="ph ph-floppy-disk"
+            label="Save"
+            class="dropship-order-detail-v2__desk-btn"
+            :loading="saveDraftLoading"
+            @click="onSaveSettlement"
+          />
+          <q-btn
+            v-if="orderData.invoice?.id"
+            dense
+            outline
+            color="primary"
+            no-caps
+            icon="ph ph-receipt"
+            label="Customer bill"
+            class="dropship-order-detail-v2__desk-btn"
+            @click="openMerchantInvoice"
+          />
+          <q-btn
+            v-if="orderData.order.courier_ap_bill_id"
+            dense
+            outline
+            color="primary"
+            no-caps
+            icon="ph ph-truck"
+            label="Courier bill"
+            class="dropship-order-detail-v2__desk-btn"
+            @click="openCourierBill"
+          />
+
+          <template v-if="deskStep === 'outcome'">
+            <q-btn
+              dense
+              color="primary"
+              unelevated
+              no-caps
+              icon="ph ph-package"
+              label="Mark as delivered"
+              class="dropship-order-detail-v2__desk-btn"
+              :disable="!orderData.step_state.can_mark_delivered"
+              :loading="actionKind === 'delivered'"
+              @click="onMarkDelivered"
+            />
+            <q-btn
+              dense
+              outline
+              color="negative"
+              no-caps
+              icon="ph ph-arrow-u-up-left"
+              label="Mark as returned"
+              class="dropship-order-detail-v2__desk-btn"
+              :disable="!orderData.step_state.can_mark_returned"
+              @click="onMarkReturned"
+            />
+          </template>
+
+          <q-btn
+            v-else-if="deskStep === 'remit'"
+            dense
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-bank"
+            label="Courier pay in"
+            class="dropship-order-detail-v2__desk-btn"
+            :loading="courierPayInSubmitting"
+            @click="onCourierPayIn"
+          />
+
+          <q-btn
+            v-else-if="orderData.step_state.can_transfer_to_reseller"
+            dense
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-hand-coins"
+            label="Pay dropshipper profit"
+            class="dropship-order-detail-v2__desk-btn"
+            @click="goToShopPayout"
+          />
+        </div>
+
         <q-banner dense rounded class="bg-blue-1 text-blue-10 dropship-order-detail-v2__info-banner no-print">
           <template #avatar>
             <q-icon name="ph ph-info" color="blue-8" />
@@ -25,89 +126,12 @@
           </div>
         </q-banner>
 
-        <div v-if="showFooterActions" class="dropship-order-detail-v2__ready-actions no-print">
-          <q-btn
-            v-if="orderData.invoice?.id && deskStep !== 'done'"
-            outline
-            color="primary"
-            no-caps
-            icon="ph ph-receipt"
-            label="View customer invoice"
-            class="text-weight-bold"
-            style="border-radius: 8px"
-            @click="openMerchantInvoice"
-          />
-
-          <template v-if="deskStep === 'outcome'">
-            <q-btn
-              color="primary"
-              unelevated
-              no-caps
-              icon="ph ph-package"
-              label="Mark as delivered"
-              class="text-weight-bold"
-              style="border-radius: 8px; min-width: 200px"
-              :disable="!orderData.step_state.can_mark_delivered"
-              :loading="actionKind === 'delivered'"
-              @click="onMarkDelivered"
-            />
-            <q-btn
-              outline
-              color="negative"
-              no-caps
-              icon="ph ph-arrow-u-up-left"
-              label="Mark as returned"
-              class="text-weight-bold"
-              style="border-radius: 8px"
-              :disable="!orderData.step_state.can_mark_returned"
-              @click="onMarkReturned"
-            />
-          </template>
-
-          <q-btn
-            v-else-if="deskStep === 'remit'"
-            color="primary"
-            unelevated
-            no-caps
-            icon="ph ph-bank"
-            label="Courier pay in"
-            class="text-weight-bold"
-            style="border-radius: 8px; min-width: 220px"
-            :loading="courierPayInSubmitting"
-            @click="onCourierPayIn"
-          />
-
-          <q-btn
-            v-else-if="orderData.step_state.can_transfer_to_reseller"
-            color="primary"
-            unelevated
-            no-caps
-            icon="ph ph-hand-coins"
-            label="Pay dropshipper profit"
-            class="text-weight-bold"
-            style="border-radius: 8px; min-width: 220px"
-            @click="goToShopPayout"
-          />
-
-          <q-btn
-            v-else-if="deskStep === 'done' && orderData.invoice?.id"
-            outline
-            color="primary"
-            no-caps
-            icon="ph ph-receipt"
-            label="View customer invoice"
-            class="text-weight-bold"
-            style="border-radius: 8px; min-width: 200px"
-            @click="openMerchantInvoice"
-          />
-        </div>
-
         <DropshipManagementSettlementPaper
           ref="paperRef"
           :data="orderData"
           :readonly="paperReadonly"
           :return-section-mode="returnSectionMode"
-          @autosave="onAutosaveDraft"
+          @dirty-change="onSettlementDirtyChange"
         />
       </template>
     </div>
@@ -116,18 +140,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, onBeforeUnmount, ref } from 'vue';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { requestConfirmation, showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import {
+  requestConfirmation,
+  requestUnsavedChangesConfirmation,
+  showErrorNotification,
+  showSuccessNotification,
+} from 'src/utils/appFeedback';
 import DropshipManagementSettlementPaper from '../components/DropshipManagementSettlementPaper.vue';
 import { shopOrderService } from '../services/shopOrderService';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
-import type {
-  DropshipManagementOrderView,
-  DropshipSettlementDraftPayload,
-} from '../types/dropshipManagementOrder';
+import type { DropshipManagementOrderView } from '../types/dropshipManagementOrder';
 import {
   parseDropshipDeliverBillNotesPreview,
   requestDropshipMarkDeliveredConfirmation,
@@ -149,6 +175,8 @@ const queryClient = useQueryClient();
 const paperRef = ref<InstanceType<typeof DropshipManagementSettlementPaper> | null>(null);
 const actionKind = ref<'delivered' | null>(null);
 const courierPayInSubmitting = ref(false);
+const settlementDirty = ref(false);
+const saveDraftLoading = ref(false);
 type ManagementDeskStep = 'outcome' | 'remit' | 'done';
 
 const orderId = computed(() => Number(route.params.id));
@@ -243,26 +271,75 @@ async function invalidateDetail() {
   await queryClient.invalidateQueries({ queryKey: detailQueryKey.value });
 }
 
-async function onAutosaveDraft(payload: DropshipSettlementDraftPayload) {
-  if (!authStore.tenantId || paperReadonly.value) return;
+function onSettlementDirtyChange(dirty: boolean) {
+  settlementDirty.value = dirty;
+}
 
-  const res = await shopOrderService.saveDropshipSettlementDraft(
-    authStore.tenantId,
-    orderId.value,
-    payload,
-  );
-  if (!res.success) {
-    showErrorNotification(res.error ?? 'Failed to save settlement.');
+async function onSaveSettlement(): Promise<boolean> {
+  if (!authStore.tenantId || paperReadonly.value) return true;
+  const payload = getPayload();
+  if (!payload) return false;
+
+  saveDraftLoading.value = true;
+  try {
+    const res = await shopOrderService.saveDropshipSettlementDraft(
+      authStore.tenantId,
+      orderId.value,
+      payload,
+    );
+    if (!res.success) {
+      showErrorNotification(res.error ?? 'Failed to save settlement.');
+      return false;
+    }
+    showSuccessNotification('Settlement saved.');
+    await invalidateDetail();
+    return true;
+  } finally {
+    saveDraftLoading.value = false;
   }
+}
+
+onBeforeRouteLeave(async () => {
+  if (!settlementDirty.value) return true;
+  const choice = await requestUnsavedChangesConfirmation();
+  return choice === 'discard';
+});
+
+const onBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (!settlementDirty.value) return;
+  event.preventDefault();
+};
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', onBeforeUnload);
+}
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('beforeunload', onBeforeUnload);
+  }
+});
+
+function openBill(billId: number) {
+  void router.push({
+    name: 'app-bill-detail-page',
+    params: {
+      ...(tenantSlug.value ? { tenantSlug: tenantSlug.value } : {}),
+      billId: String(billId),
+    },
+  });
 }
 
 function openMerchantInvoice() {
   const invoiceId = orderData.value?.invoice?.id;
   if (!invoiceId) return;
-  void router.push({
-    name: 'app-global-invoice-details-page',
-    params: { tenantSlug: tenantSlug.value, id: String(invoiceId) },
-  });
+  openBill(invoiceId);
+}
+
+function openCourierBill() {
+  const billId = orderData.value?.order.courier_ap_bill_id;
+  if (!billId) return;
+  openBill(billId);
 }
 
 async function onCourierPayIn() {
@@ -278,6 +355,8 @@ async function onCourierPayIn() {
       orderId: payload.orderId,
       netAmount: payload.netAmount,
       courierCharge: payload.courierCharge,
+      deliveryCharge: payload.deliveryCharge,
+      codCharge: payload.codCharge,
       remittanceRef: payload.remittanceRef ?? `REMIT-${payload.orderId}`,
       bankTrxId: payload.bankTrxId,
       cashbookPointId: payload.cashbookPointId,
@@ -387,8 +466,22 @@ async function onMarkReturned() {
   width: 100%;
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.35rem;
+}
+
+.dropship-order-detail-v2__unsaved-chip {
+  font-weight: 600;
+  margin-right: auto;
+}
+
+.dropship-order-detail-v2__desk-btn {
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  min-height: 32px;
+  padding: 0 10px;
 }
 </style>
 

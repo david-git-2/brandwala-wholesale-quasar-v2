@@ -9,9 +9,9 @@ import {
 } from '../utils/pbcFileCurrencies';
 import { parseSupabaseError, showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
 import type {
-  ProductBasedCostingFile,
   ProductBasedCostingFileCreateInput,
   ProductBasedCostingFileListPage,
+  ProductBasedCostingFileListRow,
   ProductBasedCostingFileUpdateInput,
 } from '../types';
 
@@ -123,12 +123,14 @@ export function useCopyProductBasedCostingFileMutation() {
   const authStore = useAuthStore();
 
   return useMutation({
-    mutationFn: async (item: ProductBasedCostingFile) => {
-      const fileName = (item.name ?? '').trim();
-      const nextName = fileName.length > 0 ? `${fileName} Copy` : `File #${item.id} Copy`;
+    mutationFn: async (item: ProductBasedCostingFileListRow) => {
+      const source = await productBasedCostingRepository.getProductBasedCostingFileById(item.id);
+
+      const fileName = (source.name ?? '').trim();
+      const nextName = fileName.length > 0 ? `${fileName} Copy` : `File #${source.id} Copy`;
       const storageTenantId = resolveProductBasedCostingStorageTenantId(
         authStore.selectedTenant,
-        item.tenant_id ?? authStore.tenantId,
+        source.tenant_id ?? authStore.tenantId,
       );
 
       if (storageTenantId == null) {
@@ -137,28 +139,28 @@ export function useCopyProductBasedCostingFileMutation() {
       const fileCreateResult = await productBasedCostingRepository.createProductBasedCostingFile({
         tenant_id: storageTenantId,
         name: nextName,
-        order_for: item.order_for ?? null,
-        customer_group_id: item.customer_group_id ?? null,
-        note: item.note ?? null,
-        vendor_code: item.vendor_code ?? null,
-        market_code: item.market_code ?? null,
-        cargo_rate_kg_gbp: item.cargo_rate_kg_gbp ?? null,
-        profit_rate: item.profit_rate ?? null,
-        vat_rate: item.vat_rate ?? null,
-        offer_pricing_mode: item.offer_pricing_mode ?? 'landed_cost_plus',
-        conversion_rate: item.conversion_rate ?? null,
+        order_for: source.order_for ?? null,
+        customer_group_id: source.customer_group_id ?? null,
+        note: source.note ?? null,
+        vendor_code: source.vendor_code ?? null,
+        market_code: source.market_code ?? null,
+        cargo_rate_kg_gbp: source.cargo_rate_kg_gbp ?? null,
+        profit_rate: source.profit_rate ?? null,
+        vat_rate: source.vat_rate ?? null,
+        offer_pricing_mode: source.offer_pricing_mode ?? 'landed_cost_plus',
+        conversion_rate: source.conversion_rate ?? null,
         status: 'pending',
-        buy_currency_id: item.buy_currency_id,
-        sell_currency_id: item.sell_currency_id,
-        buy_currency_code: pbcFileBuyCurrencyCode(item),
-        sell_currency_code: pbcFileSellCurrencyCode(item),
+        buy_currency_id: source.buy_currency_id,
+        sell_currency_id: source.sell_currency_id,
+        buy_currency_code: pbcFileBuyCurrencyCode(source),
+        sell_currency_code: pbcFileSellCurrencyCode(source),
       });
 
       if (!fileCreateResult?.id) {
         throw new Error('Failed to create copied costing file.');
       }
 
-      const sourceItems = await productBasedCostingRepository.listProductBasedCostingItems(item.id);
+      const sourceItems = await productBasedCostingRepository.listProductBasedCostingItems(source.id);
       const copiedFileId = fileCreateResult.id;
       const sortedItems = [...sourceItems].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
 

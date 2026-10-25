@@ -270,7 +270,7 @@ GRANT ALL ON FUNCTION "public"."advance_dropship_order_status"("p_order_id" bigi
 GRANT ALL ON FUNCTION "public"."record_dropship_recipient_call_no_answer"("p_order_id" bigint) TO "authenticated";
 
 
-GRANT ALL ON FUNCTION "public"."confirm_dropship_recipient_call"("p_order_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."confirm_dropship_recipient_call"("p_order_id" bigint, "p_tenant_id" bigint) TO "authenticated";
 
 
 REVOKE ALL ON FUNCTION "public"."browse_shop_catalog_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_search" "text", "p_category" "text", "p_brand" "text", "p_limit" integer, "p_cursor_name" "text", "p_cursor_id" bigint) FROM PUBLIC;
@@ -413,6 +413,16 @@ GRANT ALL ON FUNCTION "public"."get_dropship_shop_cart"("p_shop_id" bigint) TO "
 GRANT ALL ON FUNCTION "public"."get_dropship_review_cart"("p_shop_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."submit_dropship_order_from_cart"("p_shop_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_shipping_post_code" "text", "p_profile_id" bigint, "p_is_prepaid" boolean, "p_delivery_instructions" "text", "p_cod_charge_amount" numeric, "p_delivery_charge_amount" numeric, "p_print_charge_amount" numeric, "p_packing_charge_amount" numeric, "p_discount_amount" numeric, "p_recipient_pays_delivery" boolean, "p_recipient_pays_cod" boolean) TO "authenticated";
 
+GRANT ALL ON FUNCTION "public"."staff_get_or_create_shop_cart"(bigint, bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."staff_add_to_shop_cart"(bigint, bigint, bigint, bigint, integer, numeric, bigint, bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."staff_remove_shop_cart_item"(bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."staff_update_shop_cart_item_price"(bigint, numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."staff_update_shop_cart_item_qty"(bigint, integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."staff_submit_dropship_order_from_cart"(bigint, bigint, "text", "text", "text", "text", "text", "text", "text", bigint, boolean, "text", numeric, numeric, numeric, numeric, numeric, boolean, boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."staff_create_dropship_order"(bigint, bigint, jsonb, "text", "text", "text", "text", "text", "text", "text", bigint, boolean, "text", numeric, numeric, numeric, numeric, numeric, boolean, boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."browse_dropship_listings_for_staff_order"(bigint, bigint, bigint, "text", integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_shop_permissions_for_customer_group"(bigint, bigint) TO "authenticated";
+
 
 GRANT ALL ON FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint) TO "authenticated";
 
@@ -438,6 +448,9 @@ REVOKE ALL ON FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) FROM
 GRANT ALL ON FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) TO "authenticated";
 
 
+GRANT ALL ON FUNCTION "public"."get_shop_customer_shell_bundle"("p_tenant_id" bigint) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status" "text", "p_search" "text", "p_statuses" "text"[]) TO "authenticated";
 
 
@@ -446,7 +459,7 @@ GRANT ALL ON FUNCTION "public"."list_allocated_stock_for_shop"("p_shop_id" bigin
 
 
 GRANT ALL ON FUNCTION "public"."list_stock_for_order_item_pick"("p_order_item_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."add_shop_order_item_stock_pick"("p_order_item_id" bigint, "p_global_stock_id" bigint, "p_quantity" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."add_shop_order_item_stock_pick"("p_order_item_id" bigint, "p_global_stock_id" bigint, "p_quantity" integer, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_shop_customer_stocks"("p_shop_id" bigint, "p_customer_group_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."receive_shop_customer_stock"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_quantity" integer, "p_product_id" bigint, "p_item_label" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."add_dropship_order_gift_item"("p_order_id" bigint, "p_product_id" bigint, "p_quantity" integer, "p_gift_source" "text", "p_gift_cost_amount" numeric, "p_gift_cost_charged_to" "text", "p_gift_added_by" "text") TO "authenticated";
@@ -458,9 +471,10 @@ GRANT ALL ON FUNCTION "public"."delete_shop_auto_gift_item"("p_id" bigint) TO "a
 GRANT ALL ON FUNCTION "public"."apply_shop_auto_gift_items"("p_order_id" bigint) TO "authenticated";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."shop_customer_stocks" TO "authenticated";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."shop_auto_gift_items" TO "authenticated";
-GRANT ALL ON FUNCTION "public"."remove_shop_order_item_stock_pick"("p_pick_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."remove_shop_order_item_stock_pick"("p_pick_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."mark_shop_order_item_unavailable"("p_order_item_id" bigint, "p_reason" "text", "p_add_to_demand_bucket" boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."clear_shop_order_item_unavailable"("p_order_item_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."commit_dropship_ready_for_pickup_bundle"("p_tenant_id" bigint, "p_order_id" bigint, "p_fulfillment" "jsonb", "p_desk" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."cancel_shop_order_dropship"("p_order_id" bigint, "p_reason" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."recompute_dropship_cod_collect_amount"("p_order_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."mark_shop_order_item_shortfall"("p_order_item_id" bigint, "p_shortfall_qty" integer, "p_reason" "text", "p_add_to_demand_bucket" boolean) TO "authenticated";
@@ -492,6 +506,10 @@ GRANT ALL ON FUNCTION "public"."list_shops"("p_tenant_id" bigint, "p_parent_tena
 GRANT ALL ON FUNCTION "public"."list_shops_app_page"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_active" boolean, "p_catalog_parent_tenant_id" bigint) TO "authenticated";
 
 
+GRANT ALL ON FUNCTION "public"."get_shop_setup_bundle"("p_shop_id" bigint, "p_tenant_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_shop_customer_access_page"("p_shop_id" bigint, "p_tenant_id" bigint) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."mark_dropship_order_returned"("p_order_id" bigint, "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_reason" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."mark_dropship_order_returned"("p_order_id" bigint, "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_reason" "text") TO "service_role";
 
@@ -507,6 +525,8 @@ GRANT ALL ON FUNCTION "public"."record_dropship_courier_remittance"("p_order_id"
 
 
 GRANT ALL ON FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text", "p_courier_charge" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text", "p_courier_charge" numeric, "p_cashbook_point_id" bigint, "p_delivery_charge" numeric, "p_cod_charge" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."patch_dropship_courier_fees_for_remittance"("p_order_id" bigint, "p_delivery" numeric, "p_cod" numeric) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."remove_shop_cart_item"("p_cart_item_id" bigint) TO "authenticated";

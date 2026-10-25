@@ -79,20 +79,21 @@ const normalizeCartRpcResult = async (
 ): Promise<CartData> => {
   const raw = data as CartData;
   const fetchPermissions = options?.fetchPermissions ?? false;
+  const inlinePermissions = raw.permissions ?? null;
   const permissions =
-    fetchPermissions && raw.cart?.shop_id
+    inlinePermissions ??
+    (fetchPermissions && raw.cart?.shop_id
       ? await fetchCustomerShopPermissions(raw.cart.shop_id)
-      : null;
-  const normalized = normalizeCartResponse(raw as unknown as Parameters<typeof normalizeCartResponse>[0], permissions);
+      : null);
+  const normalized = normalizeCartResponse(
+    raw as unknown as Parameters<typeof normalizeCartResponse>[0],
+    permissions,
+  );
 
-  if (!fetchPermissions) {
-    return {
-      ...normalized,
-      permissions: raw.permissions ?? undefined,
-    };
-  }
-
-  return normalized;
+  return {
+    ...normalized,
+    permissions: normalized.permissions ?? inlinePermissions ?? undefined,
+  };
 };
 
 const getOrCreateCart = async (shopId: number): Promise<CartData> => {
@@ -104,7 +105,7 @@ const getOrCreateCart = async (shopId: number): Promise<CartData> => {
     throw error;
   }
 
-  return normalizeCartRpcResult(data, { fetchPermissions: true });
+  return normalizeCartRpcResult(data);
 };
 
 const addToCart = async (

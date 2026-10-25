@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { customerGroupRepository } from '../repositories/customerGroupRepository';
 import { tenantQueryKeys } from '../shared/queryKeys/tenantQueryKeys';
+import { shopOrderQueryKeys } from 'src/modules/shop_order/shared/queryKeys/shopOrderQueryKeys';
 import { salesInvoiceQueryKeys } from 'src/modules/sales_invoice/services/salesInvoiceQueryKeys';
+import { resolveBooksTenantId } from '../utils/resolveBooksTenantId';
 import type {
   CustomerGroupCreateInput,
   CustomerGroupDeleteInput,
@@ -17,6 +19,16 @@ export function useCustomerGroupMutations() {
     onSuccess: (data) => {
       void queryClient.invalidateQueries({
         queryKey: tenantQueryKeys.customerGroups(data.tenant_id),
+      });
+      const booksTenantId = resolveBooksTenantId(
+        data.tenant_id,
+        data.parent_tenant_id ?? null,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: tenantQueryKeys.booksCustomerGroups(booksTenantId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.shopCustomerAccessPageRoot(),
       });
       void queryClient.invalidateQueries({
         queryKey: salesInvoiceQueryKeys.root,

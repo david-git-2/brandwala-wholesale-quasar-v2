@@ -314,6 +314,17 @@ export interface ShopCategory {
   updated_at: string;
 }
 
+/** Shared setup lookups (vendors, categories, brands) for a tenant. */
+export type ShopSetupTenantLookups = {
+  categories: ShopCategory[];
+  vendors: import('src/modules/vendor/types').Vendor[];
+  brandsByVendor: Record<string, string[]>;
+};
+
+export type ShopSetupBundle = ShopSetupTenantLookups & {
+  shop: Shop;
+};
+
 export interface CreateShopCategoryPayload {
   tenant_id: number;
   name: string;

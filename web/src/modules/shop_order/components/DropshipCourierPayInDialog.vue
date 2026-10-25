@@ -8,10 +8,6 @@
       </q-card-section>
 
       <q-card-section class="q-pt-none">
-        <p class="text-caption text-grey-7 q-ma-none q-mb-md">
-          Net bank in from the courier (COD minus their charges). Clears the customer invoice; dropshipper
-          profit stays on cashbook until Pay out.
-        </p>
         <FinanceHubStepRemittance
           :selected-order="selectedOrder"
           :loading="loading"

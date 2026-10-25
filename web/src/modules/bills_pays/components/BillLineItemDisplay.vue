@@ -1,6 +1,7 @@
 <template>
   <div class="bill-line-item">
     <SmartImage
+      v-if="showThumbnail"
       :src="imageUrl"
       :alt="name"
       img-class="bill-line-item__thumb"
@@ -15,10 +16,15 @@
 <script setup lang="ts">
 import SmartImage from 'src/components/SmartImage.vue';
 
-defineProps<{
-  name: string;
-  imageUrl?: string | null;
-}>();
+withDefaults(
+  defineProps<{
+    name: string;
+    imageUrl?: string | null;
+    /** Thumbnails only on compose; issued bill detail/preview are text-only. */
+    showThumbnail?: boolean;
+  }>(),
+  { showThumbnail: false },
+);
 </script>
 
 <style scoped lang="scss">

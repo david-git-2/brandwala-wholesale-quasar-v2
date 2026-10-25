@@ -502,6 +502,8 @@ const submitCourierPayIn = async (payload: {
   orderId: number;
   netAmount: number;
   courierCharge: number;
+  deliveryCharge: number;
+  codCharge: number;
   remittanceRef?: string;
   bankTrxId?: string;
   cashbookPointId: number;
@@ -512,6 +514,8 @@ const submitCourierPayIn = async (payload: {
       orderId: payload.orderId,
       netAmount: payload.netAmount,
       courierCharge: payload.courierCharge,
+      deliveryCharge: payload.deliveryCharge,
+      codCharge: payload.codCharge,
       remittanceRef: payload.remittanceRef ?? `REMIT-${payload.orderId}`,
       bankTrxId: payload.bankTrxId,
       cashbookPointId: payload.cashbookPointId,

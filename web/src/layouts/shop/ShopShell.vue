@@ -93,7 +93,10 @@
             />
           </q-btn>
 
-          <UserProfileMenu @sign-out="openSignOutDialog" />
+          <UserProfileMenu
+            :shop-login-group-count="loginGroups.length"
+            @sign-out="openSignOutDialog"
+          />
         </div>
       </q-toolbar>
     </q-header>
@@ -214,14 +217,12 @@ import ShopCustomerGroupHeaderSwitcher from 'src/modules/shop_order/components/S
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useActiveShopCartsQuery } from 'src/modules/shop_order/composables/useActiveShopCartsQuery';
-import { useCustomerShopsQuery } from 'src/modules/shop_order/composables/useShopQuery';
+import { useShopCustomerShellQuery } from 'src/modules/shop_order/composables/useShopCustomerShellQuery';
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
 import { clearShopOrderQueryCache } from 'src/query/queryClient';
 import { getShopDashboardRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 import {
   bootstrapShopCustomerGroup,
-  listShopLoginGroups,
   type ShopLoginGroupRow,
 } from 'src/modules/auth/utils/shopCustomerGroupSession';
 import {
@@ -247,9 +248,12 @@ const route = useRoute();
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
 const kobaCartStore = useKobaCartStore();
-const { data: activeCarts } = useActiveShopCartsQuery();
-
-const loginGroups = ref<ShopLoginGroupRow[]>([]);
+const shellQuery = useShopCustomerShellQuery(
+  computed(() => authStore.tenantId ?? null),
+  computed(() => authStore.user?.email),
+);
+const activeCarts = computed(() => shellQuery.data.value?.active_carts ?? []);
+const loginGroups = computed(() => shellQuery.data.value?.login_groups ?? []);
 const companyName = computed(() => authStore.customerGroup?.name ?? '');
 
 const showLogoutDialog = ref(false);
@@ -304,8 +308,7 @@ const tenantName = computed(
   () => authStore.tenant?.name || authStore.selectedTenant?.name || 'Shop',
 );
 
-const shopsQuery = useCustomerShopsQuery(computed(() => authStore.tenantId ?? null));
-const customerShops = computed(() => shopsQuery.data.value ?? []);
+const customerShops = computed(() => shellQuery.data.value?.customer_shops ?? []);
 
 const catalogShopSlug = computed(() => {
   const slug = route.params.shopSlug;
@@ -460,21 +463,6 @@ const goHome = () => {
   void router.push(shopHomePath(authStore.tenantSlug));
 };
 
-const loadLoginGroups = async () => {
-  const email = authStore.user?.email;
-  const tenantId = authStore.tenantId;
-  if (!email || tenantId == null) {
-    loginGroups.value = [];
-    return;
-  }
-  try {
-    loginGroups.value = await listShopLoginGroups(email, tenantId);
-  } catch (error) {
-    console.error('[shop] Failed to list companies for header', error);
-    loginGroups.value = [];
-  }
-};
-
 const onSwitchCompany = async (group: ShopLoginGroupRow) => {
   const user = authStore.user;
   const email = user?.email;
@@ -502,14 +490,13 @@ const onSwitchCompany = async (group: ShopLoginGroupRow) => {
     tenantStore.hydrateSelectedTenantFromAuth(snapshot.tenant);
     clearShopOrderQueryCache();
     await router.replace(getShopDashboardRouteLocation(route, snapshot.tenant?.slug));
-    await loadLoginGroups();
+    void shellQuery.refetch();
   } catch (error) {
     console.error('[shop] Failed to switch company', error);
   }
 };
 
 onMounted(() => {
-  void loadLoginGroups();
   window.addEventListener('scroll', onWindowScroll, { passive: true });
 });
 
@@ -520,13 +507,6 @@ onBeforeUnmount(() => {
   }
   document.body.classList.remove(...WORKSPACE_THEME_CLASSES);
 });
-
-watch(
-  () => [authStore.user?.email, authStore.tenantId, authStore.customerGroupId] as const,
-  () => {
-    void loadLoginGroups();
-  },
-);
 
 const goToCatalog = () => {
   const tenantId = authStore.tenantId;

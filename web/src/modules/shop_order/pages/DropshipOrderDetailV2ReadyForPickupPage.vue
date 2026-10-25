@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useQuery, useQueryClient } from '@tanstack/vue-query';
+import { useQueryClient } from '@tanstack/vue-query';
+import { storeToRefs } from 'pinia';
 import DropshipOrderConfirmedInvoicePaper from '../components/DropshipOrderConfirmedInvoicePaper.vue';
 import {
   createEmptyDropshipInvoiceSummary,
@@ -19,8 +20,8 @@ import { useDropshipOrderDetailV2Query } from '../composables/useDropshipOrderDe
 import { useDropshipCourierOptions } from '../composables/useDropshipCourierOptions';
 import { useDropshipOrderStatusRedirect } from '../composables/useDropshipOrderStatusRedirect';
 import { saveDropshipV2CustomerInvoiceSnapshot } from '../utils/dropshipV2CustomerInvoiceStorage';
-import { pickupLocationRepository } from '../repositories/pickupLocationRepository';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { usePickupLocationsStore } from '../stores/pickupLocationsStore';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderService } from '../services/shopOrderService';
 import {
@@ -45,12 +46,16 @@ const tenantId = computed(() => authStore.tenantId ?? 0);
 
 const orderDetailQuery = useDropshipOrderDetailV2Query({ tenantSlug, orderId });
 
-const locationsQuery = useQuery({
-  queryKey: computed(() => shopOrderQueryKeys.pickupLocations(tenantSlug.value)),
-  enabled: computed(() => tenantId.value > 0),
-  staleTime: 60_000,
-  queryFn: () => pickupLocationRepository.listLocations(),
-});
+const pickupLocationsStore = usePickupLocationsStore();
+const { locations: pickupLocations } = storeToRefs(pickupLocationsStore);
+
+watch(
+  tenantId,
+  (id) => {
+    if (id > 0) void pickupLocationsStore.ensureLocations();
+  },
+  { immediate: true },
+);
 
 const order = computed(() => orderDetailQuery.data.value?.order ?? null);
 
@@ -111,7 +116,7 @@ useDropshipOrderStatusRedirect({
 });
 
 const pickupLocationOptions = computed(() =>
-  (locationsQuery.data.value ?? [])
+  pickupLocations.value
     .filter((location) => location.is_active)
     .map((location) => ({
       label: `${location.location_name}${location.store_name ? ` (${location.store_name})` : ''} — ${location.phone_primary}`,
@@ -179,9 +184,6 @@ const advanceToShipped = async () => {
       billCreated ? 'Shipped. Customer and courier bills issued.' : 'Shipped. Bills were already on file.',
     );
     await queryClient.invalidateQueries({
-      queryKey: shopOrderQueryKeys.dropshipDetailV2(authStore.tenantId ?? 0, orderId.value),
-    });
-    await queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.orderDetail(authStore.tenantId ?? null, orderId.value),
     });
     await orderDetailQuery.refetch();
@@ -205,6 +207,17 @@ const showShippedBillLinks = computed(
     displayStatus.value !== 'ready_for_pickup'
     && (!!order.value?.global_invoice_id || !!order.value?.courier_ap_bill_id),
 );
+
+const billDetailRoute = (billId: number | null | undefined) => {
+  if (billId == null) return { name: 'app-bills-page' as const };
+  return {
+    name: 'app-bill-detail-page' as const,
+    params: {
+      ...(tenantSlug.value ? { tenantSlug: tenantSlug.value } : {}),
+      billId: String(billId),
+    },
+  };
+};
 
 const openSettlementDesk = () => {
   if (!order.value) return;
@@ -257,7 +270,7 @@ const openSettlementDesk = () => {
             label="Customer bill"
             class="text-weight-bold"
             style="border-radius: 8px"
-            :to="{ name: 'app-global-invoice-details-page', params: { id: order.global_invoice_id } }"
+            :to="billDetailRoute(order.global_invoice_id)"
           />
           <q-btn
             v-if="showShippedBillLinks && order.courier_ap_bill_id"
@@ -268,7 +281,7 @@ const openSettlementDesk = () => {
             label="Courier bill"
             class="text-weight-bold"
             style="border-radius: 8px"
-            :to="{ name: 'app-global-invoice-details-page', params: { id: order.courier_ap_bill_id } }"
+            :to="billDetailRoute(order.courier_ap_bill_id)"
           />
           <q-btn
             v-if="showSettlementDeskLink"

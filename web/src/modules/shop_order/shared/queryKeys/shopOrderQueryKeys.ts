@@ -28,9 +28,26 @@ export const shopOrderQueryKeys = {
   shopDetail: (tenantId: number, shopId: number) =>
     ['shopOrder', 'shop', { tenantId, shopId }] as const,
   customerShops: (tenantId: number | null) => ['shopOrder', 'customerShops', { tenantId }] as const,
+  customerShell: (tenantId: number) => ['shopOrder', 'customerShell', { tenantId }] as const,
   customerShopPermissions: (shopId: number) =>
     [...shopOrderQueryKeys.root, 'customerShopPermissions', shopId] as const,
   vendorsList: (tenantId: number) => ['vendor', 'list', { tenantId }] as const,
+  tenantBrandsByVendor: (tenantId: number) =>
+    ['shopOrder', 'tenantBrandsByVendor', { tenantId }] as const,
+  shopSetupBundle: (tenantId: number, shopId: number) =>
+    ['shopOrder', 'shopSetupBundle', { tenantId, shopId }] as const,
+  shopSetupBundleRoot: () => ['shopOrder', 'shopSetupBundle'] as const,
+  staffManualDropshipCart: (shopId: number, customerGroupId: number) =>
+    ['shopOrder', 'staffManualDropshipCart', { shopId, customerGroupId }] as const,
+  staffManualDropshipBrowse: (
+    tenantId: number,
+    shopId: number,
+    customerGroupId: number,
+    search: string,
+  ) => ['shopOrder', 'staffManualDropshipBrowse', { tenantId, shopId, customerGroupId, search }] as const,
+  shopCustomerAccessPage: (tenantId: number, shopId: number) =>
+    ['shopOrder', 'shopCustomerAccessPage', { tenantId, shopId }] as const,
+  shopCustomerAccessPageRoot: () => ['shopOrder', 'shopCustomerAccessPage'] as const,
   activeCarts: (tenantId: number) => ['shopOrder', 'activeCarts', { tenantId }] as const,
   cart: (tenantId: number, shopId: number) => ['shopOrder', 'cart', { tenantId, shopId }] as const,
   dropshipCart: (tenantId: number, shopId: number) =>
