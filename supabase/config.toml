@@ -12,6 +12,9 @@ port = 54322
 # Match linked hosted project (supabase/.temp/postgres-version → 17.x).
 major_version = 17
 
+[experimental.pgdelta]
+enabled = true
+
 [db.migrations]
 schema_paths = [
   "./schemas/_extensions.sql",
@@ -28,6 +31,7 @@ schema_paths = [
   "./schemas/shop_order/03_rpcs.sql",
   "./schemas/shop_order/05_staff_manual_dropship_rpcs.sql",
   "./schemas/bills_pays/03_rpcs.sql",
+  "./schemas/investor/03_rpcs.sql",
   "./schemas/procurement/04_rls.sql",
   "./schemas/shop_order/04_rls.sql",
   "./schemas/bills_pays/04_rls.sql",
