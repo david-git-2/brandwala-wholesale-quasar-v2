@@ -17,7 +17,6 @@ except ModuleNotFoundError:  # pragma: no cover - handled at runtime
 ROOT_DIR = Path(__file__).resolve().parents[3]
 WEB_ENV_FILE = ROOT_DIR / "web" / ".env"
 ROOT_ENV_FILE = ROOT_DIR / ".env"
-SNAPSHOT_RETENTION_DAYS = 7
 
 
 def load_env_file(path: Path, overwrite: bool = False) -> None:

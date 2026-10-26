@@ -75,7 +75,7 @@ const modules = [
     domain: 'Catalog & Supply',
     submodules: '**Products**, **Brands**, **Categories** (same key, separate routes).',
     should: 'Tenant product catalog feeding orders, shipments, and invoices.',
-    current: '`products`, `product_brands`, `product_categories`, `product_sync_snapshots`. Routes `/app/products/*`.',
+    current: '`products`, `product_brands`, `product_categories`. Routes `/app/products/*`.',
     improve: 'None — stable.',
     schema: `| Table | Key fields |\n|-------|------------|\n| \`products\` | \`tenant_id\`, \`name\`, \`product_code\`, \`barcode\`, \`price_gbp\`, weights, \`vendor_id\` |\n| \`product_brands\` | \`tenant_id\`, \`name\` |\n| \`product_categories\` | \`tenant_id\`, \`name\` |`,
     tenant: 'Parent + child',

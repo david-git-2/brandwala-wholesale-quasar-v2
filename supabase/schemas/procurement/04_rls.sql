@@ -147,10 +147,6 @@ CREATE OR REPLACE TRIGGER "trg_product_categories_sync_vendor_reference_fields" 
 
 
 
-CREATE OR REPLACE TRIGGER "trg_product_sync_snapshots_sync_vendor_reference_fields" BEFORE INSERT OR UPDATE ON "public"."product_sync_snapshots" FOR EACH ROW EXECUTE FUNCTION "public"."sync_vendor_reference_fields"();
-
-
-
 CREATE OR REPLACE TRIGGER "trg_products_sync_tenant_from_vendor" BEFORE INSERT OR UPDATE OF "vendor_id" ON "public"."products" FOR EACH ROW EXECUTE FUNCTION "public"."sync_product_tenant_from_vendor"();
 
 

@@ -1,6 +1,6 @@
 # Bills & pays — spec
 
-One money pack. Layers: **bill** · **pay** · **cashbook**. Not a wallet. Numbers: [money-story](money-story.md). Gaps: [00-gaps](00-gaps.md).
+One money pack. Layers: **bill** · **pay** · **cashbook**. Not a wallet. Numbers: [money-story](money-story.md). Gaps: [00-gaps](00-gaps.md). Architecture: [kernel pack](../../kernel/README.md).
 
 ## As-built
 
@@ -11,6 +11,21 @@ One money pack. Layers: **bill** · **pay** · **cashbook**. Not a wallet. Numbe
 | SQL | **BP4 (2026-10):** tables `bills`, `bill_lines`, `pays`, `cashbook_*`; split `supabase/schemas/bills_pays/` + invoice domain |
 | Access | `app`; `shop` merchant statement |
 | Model | BW — [business-models](../../architecture/business-models.md) |
+
+## Kernel architecture (8 docs)
+
+| Doc | Description |
+| :--- | :--- |
+| [01-SYSTEM-INVARIANTS](../../kernel/01-SYSTEM-INVARIANTS.md) | Issued-bill immutability, derived AR/AP, single-currency AP, points/pots, frozen FX |
+| [02-STATE-MACHINES-AND-LIFECYCLES](../../kernel/02-STATE-MACHINES-AND-LIFECYCLES.md) | Bill states, `take`/`condition`, notes, alloc vs custody |
+| [03-TRANSACTIONS-LOCKING-AND-CONCURRENCY](../../kernel/03-TRANSACTIONS-LOCKING-AND-CONCURRENCY.md) | Isolation, `FOR UPDATE`, lock order, idempotency, alloc guards |
+| [04-RPC-AND-API-CONTRACTS](../../kernel/04-RPC-AND-API-CONTRACTS.md) | `kernel_*` RPC params, returns, errors (live names in same doc) |
+| [05-ADAPTER-INTEGRATION-GUIDE](../../kernel/05-ADAPTER-INTEGRATION-GUIDE.md) | `source_*` plugs, profiles, shipment bucket×currency, balance reads |
+| [06-ACCOUNTING-FLOWS-AND-GOLDEN-SCENARIOS](../../kernel/06-ACCOUNTING-FLOWS-AND-GOLDEN-SCENARIOS.md) | Row-level wholesale, dropship remittance, AP FX scenarios |
+| [07-TDD-AND-VERIFICATION-SUITE](../../kernel/07-TDD-AND-VERIFICATION-SUITE.md) | Invariant tests, golden pipeline, concurrency races |
+| [08-AUDIT-RECONCILIATION-AND-RUNBOOK](../../kernel/08-AUDIT-RECONCILIATION-AND-RUNBOOK.md) | Audit SQL, cheque bounce, till transfer, count variance |
+
+Index: [kernel/README.md](../../kernel/README.md). Onboarding: [00-ONBOARDING-AND-AUDIT.md](../../kernel/00-ONBOARDING-AND-AUDIT.md). Roadmap: [PHASE-A-B-IMPLEMENTATION-PLAN.md](../../kernel/PHASE-A-B-IMPLEMENTATION-PLAN.md).
 
 ## Where to look
 

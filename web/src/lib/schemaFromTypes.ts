@@ -74,7 +74,6 @@ export const SCHEMA_MODULES: { id: string; label: string; match: (name: string) 
       name === 'products' ||
       name.startsWith('product_brands') ||
       name.startsWith('product_categories') ||
-      name.startsWith('product_sync_snapshots') ||
       name === 'tags' ||
       name.startsWith('tag_categories') ||
       name === 'entity_tags' ||

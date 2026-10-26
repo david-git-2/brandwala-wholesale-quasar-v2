@@ -8,10 +8,8 @@ import os
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import timedelta
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -19,7 +17,6 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from catalog_refresh_lib import log_upload, resolve_catalog_source, resolve_upload_file_name
 from product_sync_lib import (
     ROOT_DIR,
-    SNAPSHOT_RETENTION_DAYS,
     SupabaseRestClient,
     assert_vendor_parent_scope,
     build_scope_params,
@@ -37,7 +34,6 @@ from product_sync_lib import (
     to_float_or_none,
     to_int_or_none,
     to_text,
-    utc_now,
 )
 
 DEFAULT_INPUT = ROOT_DIR / "python" / "data" / "uk" / "out" / "wts_data.json"
@@ -459,67 +455,6 @@ def main() -> int:
         )
         print("Dry run complete. No DB writes.")
         return 0
-
-    snapshot_now = utc_now()
-    snapshot_run_id = f"{snapshot_now.strftime('%Y%m%d%H%M%S')}-{uuid4().hex[:10]}"
-    snapshot_expires_at = snapshot_now + timedelta(days=SNAPSHOT_RETENTION_DAYS)
-    snapshot_rows = []
-    for row in existing_rows_full:
-        product_id = row.get("id")
-        if product_id is None:
-            continue
-        snapshot_rows.append(
-            {
-                "run_id": snapshot_run_id,
-                "captured_at": snapshot_now.isoformat(),
-                "expires_at": snapshot_expires_at.isoformat(),
-                "tenant_id": parent_tenant_id,
-                "vendor_id": row.get("vendor_id"),
-                "vendor_code": resolved_vendor_code,
-                "market_code": market_code,
-                "product_id": int(product_id),
-                "barcode": to_text(row.get("barcode")) or None,
-                "product_code": to_text(row.get("product_code")) or None,
-                "row_data": row,
-            }
-        )
-
-    print(
-        f"Snapshot run: {snapshot_run_id} | rows={len(snapshot_rows)} | retention={SNAPSHOT_RETENTION_DAYS} days",
-        flush=True,
-    )
-    print("Cleaning expired snapshots...", flush=True)
-    run_with_retries(
-        lambda: client.delete_rows(
-            "product_sync_snapshots",
-            {"expires_at": f"lt.{snapshot_now.isoformat()}"},
-        ),
-        retries=max(1, args.write_retries),
-    )
-    print("Expired snapshot cleanup complete.", flush=True)
-
-    if snapshot_rows:
-        print("Writing pre-sync snapshot rows...", flush=True)
-        snapshot_batches = chunked(snapshot_rows, max(1, args.chunk_size))
-        snapshot_total = len(snapshot_batches)
-        snapshot_start = time.perf_counter()
-        snapshot_failures = 0
-        for idx, batch in enumerate(snapshot_batches, start=1):
-            try:
-                run_with_retries(
-                    lambda b=batch: client.insert_rows("product_sync_snapshots", b),
-                    retries=max(1, args.write_retries),
-                )
-            except Exception as exc:
-                snapshot_failures += 1
-                print(f"Snapshot batch failed: {exc}", flush=True)
-            if idx % 5 == 0 or idx == snapshot_total:
-                print_progress("Snapshot batches", idx, snapshot_total, snapshot_start)
-
-        if snapshot_failures > 0:
-            raise RuntimeError(
-                f"Snapshot failed for {snapshot_failures} batch(es). Sync aborted to keep rollback safety."
-            )
 
     print("Applying scope reset (is_available=false, hazardous=false)...", flush=True)
     client.update_rows("products", scope_params, {"is_available": False, "hazardous": False})

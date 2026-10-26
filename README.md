@@ -160,27 +160,3 @@ For the **platform map**, see **[docs/README.md](docs/README.md)**. How to add d
 
 Other docs: `doc/` (domain specs), `docs/` (UI + AI workflow).
 
-## Database Optimization (Reclaiming Space)
-
-If your database size grows due to expired product sync snapshots, you can optimize it by running the following SQL queries in the Supabase Dashboard SQL Editor:
-
-```sql
--- 1. Delete all expired snapshots (older than 7 days)
-DELETE FROM public.product_sync_snapshots 
-WHERE expires_at < now();
-
--- 2. Immediately reclaim the disk space back to the OS
-VACUUM FULL public.product_sync_snapshots;
-```
-
-Alternatively, you can execute the deletion using the Supabase CLI in your terminal:
-
-```bash
-# Delete all expired snapshots
-pnpm exec supabase db query --linked "DELETE FROM public.product_sync_snapshots WHERE expires_at < now();"
-```
-
-> [!IMPORTANT]
-> **Reclaiming space (VACUUM):** The Supabase CLI `db query` command wraps executions in a transaction block, which will cause `VACUUM FULL` to fail with `ERROR: 25001: VACUUM cannot run inside a transaction block`. Always run the `VACUUM FULL` query directly in the **Supabase Dashboard SQL Editor** instead of the CLI.
-
-

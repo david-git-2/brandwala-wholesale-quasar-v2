@@ -1434,7 +1434,8 @@ input[type='number'] {
     color: var(--tf-notify-accent);
   }
 
-  .q-icon {
+  /* Phosphor notify icons use .ph / ph-* — Material Icons font breaks the glyph */
+  .q-icon:not(.ph):not([class*='ph-']) {
     font-family: 'Material Icons', sans-serif;
     font-style: normal;
     font-weight: normal;

@@ -21,6 +21,12 @@
             <q-icon name="ph ph-magnifying-glass" size="14px" />
           </template>
         </q-input>
+        <q-badge
+          v-if="itemsOnFileCount > 0"
+          color="primary"
+          class="q-mr-xs shrink-0"
+          :label="String(itemsOnFileCount)"
+        />
         <q-btn
           flat
           dense
@@ -153,7 +159,7 @@ import {
   useCreateProductBasedCostingItemMutation,
   useDeleteProductBasedCostingItemMutation,
 } from '../composables/useProductBasedCostingItemMutations';
-import { useProductsListQuery } from 'src/modules/products/composables/useProductQuery';
+import { useProductsInfiniteListQuery } from 'src/modules/products/composables/useProductQuery';
 import { productService } from 'src/modules/products/services/productService';
 import type { Product } from 'src/modules/products/types';
 import type { ProductBasedCostingItem } from '../types';
@@ -180,12 +186,11 @@ const PAGE_SIZE = 24;
 const fileIdRef = computed(() => props.fileId);
 const { data: fileItems } = useProductBasedCostingItemsQuery(fileIdRef);
 const { data: fileDetail } = useProductBasedCostingFileDetailQuery(fileIdRef);
+const itemsOnFileCount = computed(() => fileItems.value?.length ?? 0);
 
 const browseSearch = ref('');
 const browseSearchQuery = computed(() => (browseSearch.value ?? '').trim());
 const browseSearchField = ref<'name' | 'barcode' | 'product_code'>('name');
-const page = ref(1);
-const accumulatedProducts = ref<Product[]>([]);
 
 const filterDrawerOpen = ref(false);
 const filterVendorId = ref<number | null>(null);
@@ -222,34 +227,24 @@ const activeFilterCount = computed(() => {
 });
 
 const listQueryParams = computed(() => ({
-  page: page.value,
   pageSize: PAGE_SIZE,
-  search: browseSearchQuery.value || undefined,
+  search: browseSearchQuery.value || null,
   searchField: browseSearchField.value,
-  category: filterCategory.value || undefined,
-  brand: filterBrand.value || undefined,
-  tenantId: authStore.tenantId,
-  vendorCode: vendorCode.value,
+  category: filterCategory.value || null,
+  brand: filterBrand.value || null,
+  tenantId: authStore.tenantId ?? null,
+  vendorCode: vendorCode.value ?? null,
   isAvailable: true,
 }));
 
-const { data: listData, isLoading, isFetching } = useProductsListQuery(listQueryParams);
-
-watch(
-  listData,
-  (response) => {
-    if (!response) return;
-    const items = response.data ?? [];
-    if (page.value === 1) {
-      accumulatedProducts.value = items;
-    } else {
-      const existingIds = new Set(accumulatedProducts.value.map((p) => p.id));
-      const newItems = items.filter((p) => !existingIds.has(p.id));
-      accumulatedProducts.value = [...accumulatedProducts.value, ...newItems];
-    }
-  },
-  { immediate: true },
-);
+const {
+  products,
+  hasMore,
+  isLoading,
+  isFetching,
+  isFetchingNextPage,
+  fetchNextPage,
+} = useProductsInfiniteListQuery(listQueryParams);
 
 watch(browseSearch, (newVal) => {
   const query = (newVal || '').trim();
@@ -263,31 +258,25 @@ watch(browseSearch, (newVal) => {
 
     if (detectedField && browseSearchField.value !== detectedField) {
       browseSearchField.value = detectedField;
-      page.value = 1;
       return;
     }
   }
 
-  page.value = 1;
   resetScrollPosition();
 });
 
 watch(browseSearchField, () => {
-  page.value = 1;
   resetScrollPosition();
 });
 
 watch([filterBrand, filterCategory, filterVendorId], () => {
-  page.value = 1;
   resetScrollPosition();
 });
 
-const products = computed(() => accumulatedProducts.value);
-const hasMore = computed(() => listData.value?.meta.has_more ?? false);
 const showInitialSkeleton = computed(
-  () => isLoading.value && page.value === 1 && products.value.length === 0,
+  () => isLoading.value && products.value.length === 0,
 );
-const isFetchingMore = computed(() => isFetching.value && page.value > 1);
+const isFetchingMore = computed(() => isFetchingNextPage.value);
 
 watch(
   [products, hasMore, isFetching],
@@ -415,7 +404,6 @@ const onApplyFilters = () => {
   filterBrand.value = draftBrand.value;
   filterCategory.value = draftCategory.value;
   filterDrawerOpen.value = false;
-  page.value = 1;
   resetScrollPosition();
 };
 
@@ -427,19 +415,17 @@ const onResetFilters = () => {
   filterBrand.value = '';
   filterCategory.value = '';
   filterDrawerOpen.value = false;
-  page.value = 1;
   resetScrollPosition();
 };
 
 const onClearSearch = () => {
   browseSearch.value = '';
-  page.value = 1;
   resetScrollPosition();
 };
 
 const loadMore = () => {
   if (!hasMore.value || isFetching.value) return;
-  page.value += 1;
+  void fetchNextPage();
 };
 
 const onScrollLoad = () => {
@@ -464,6 +450,7 @@ const onAddToCart = async (product: Product) => {
   actionProductId.value = product.id;
   try {
     await createMutation.mutateAsync({
+      silentSuccessNotification: true,
       name: product.name || '',
       brand: product.brand || null,
       image_url: product.image_url || '',
@@ -491,7 +478,11 @@ const onRemoveFromFile = async (product: Product) => {
 
   actionProductId.value = product.id;
   try {
-    await deleteMutation.mutateAsync({ id: fileItem.id, fileId: props.fileId });
+    await deleteMutation.mutateAsync({
+      id: fileItem.id,
+      fileId: props.fileId,
+      silentSuccessNotification: true,
+    });
   } finally {
     actionProductId.value = null;
   }

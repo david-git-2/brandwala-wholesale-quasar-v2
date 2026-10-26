@@ -9,7 +9,7 @@
 | Excel upload | `pnpm run pc:uploader`, `pnpm run wts:uploader` |
 | Pipelines | `python/Makefile` — `pc`, `wts`, `wts-excel`, `elf`, `koba-retail`, `koba-wholesale`, `*-scrape`, `*-sync` |
 | Deploy | `pnpm run deploy:backend`, `pnpm run deploy:frontend` |
-| Rollback (unchanged) | `product_sync_snapshots` — not for staff UI |
+| Bad sync recovery | Re-run a corrected Excel/JSON upload, or restore `products` from a Supabase backup |
 
 ## Goal
 
@@ -123,7 +123,6 @@ Writer: `service_role` (same as product sync).
 
 | Thing | Why |
 | :--- | :--- |
-| `product_sync_snapshots` | Rollback rows; expires in 7 days |
 | JSON `meta.generatedAt` | File on disk / CDN; not the staff activity log |
 | `products.updated_at` | Per product, not per scrape/upload run |
 

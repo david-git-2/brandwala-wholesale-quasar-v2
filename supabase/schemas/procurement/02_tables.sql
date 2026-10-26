@@ -1844,11 +1844,6 @@ ALTER TABLE ONLY "public"."product_categories"
 
 
 
-ALTER TABLE ONLY "public"."product_sync_snapshots"
-    ADD CONSTRAINT "product_sync_snapshots_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON UPDATE CASCADE ON DELETE SET NULL;
-
-
-
 ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON UPDATE CASCADE ON DELETE SET NULL;
 

@@ -33685,22 +33685,6 @@ ALTER SEQUENCE "public"."product_categories_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."product_categories_id_seq" OWNED BY "public"."product_categories"."id";
 
 
-CREATE TABLE IF NOT EXISTS "public"."product_sync_snapshots" (
-    "id" bigint NOT NULL,
-    "run_id" "text" NOT NULL,
-    "captured_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "expires_at" timestamp with time zone NOT NULL,
-    "tenant_id" bigint,
-    "vendor_code" "text" NOT NULL,
-    "market_code" "text" NOT NULL,
-    "product_id" bigint NOT NULL,
-    "barcode" "text",
-    "product_code" "text",
-    "row_data" "jsonb" NOT NULL,
-    "vendor_id" bigint
-);
-
-
 CREATE TABLE IF NOT EXISTS "public"."catalog_refresh_log" (
     "id" bigint NOT NULL,
     "parent_tenant_id" bigint NOT NULL,
@@ -33724,23 +33708,6 @@ CREATE TABLE IF NOT EXISTS "public"."app_release_versions" (
     "frontend_updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     CONSTRAINT "app_release_versions_singleton" CHECK (("id" = 1))
 );
-
-
-ALTER TABLE "public"."product_sync_snapshots" OWNER TO "postgres";
-
-
-CREATE SEQUENCE IF NOT EXISTS "public"."product_sync_snapshots_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "public"."product_sync_snapshots_id_seq" OWNER TO "postgres";
-
-
-ALTER SEQUENCE "public"."product_sync_snapshots_id_seq" OWNED BY "public"."product_sync_snapshots"."id";
 
 
 CREATE SEQUENCE IF NOT EXISTS "public"."products_id_seq"
@@ -35277,9 +35244,6 @@ ALTER TABLE ONLY "public"."product_brands" ALTER COLUMN "id" SET DEFAULT "nextva
 ALTER TABLE ONLY "public"."product_categories" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."product_categories_id_seq"'::"regclass");
 
 
-ALTER TABLE ONLY "public"."product_sync_snapshots" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."product_sync_snapshots_id_seq"'::"regclass");
-
-
 ALTER TABLE ONLY "public"."products" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."products_id_seq"'::"regclass");
 
 
@@ -35674,10 +35638,6 @@ ALTER TABLE ONLY "public"."product_brands"
 
 ALTER TABLE ONLY "public"."product_categories"
     ADD CONSTRAINT "product_categories_pkey" PRIMARY KEY ("id");
-
-
-ALTER TABLE ONLY "public"."product_sync_snapshots"
-    ADD CONSTRAINT "product_sync_snapshots_pkey" PRIMARY KEY ("id");
 
 
 ALTER TABLE ONLY "public"."products"
@@ -36503,21 +36463,6 @@ CREATE INDEX "product_categories_vendor_id_value_idx" ON "public"."product_categ
 CREATE UNIQUE INDEX "product_categories_vendor_value_unique" ON "public"."product_categories" USING "btree" (COALESCE("upper"(TRIM(BOTH FROM "vendor_code")), ''::"text"), "value");
 
 
-CREATE INDEX "product_sync_snapshots_expires_at_idx" ON "public"."product_sync_snapshots" USING "btree" ("expires_at");
-
-
-CREATE INDEX "product_sync_snapshots_product_id_idx" ON "public"."product_sync_snapshots" USING "btree" ("product_id");
-
-
-CREATE INDEX "product_sync_snapshots_run_id_idx" ON "public"."product_sync_snapshots" USING "btree" ("run_id");
-
-
-CREATE INDEX "product_sync_snapshots_scope_idx" ON "public"."product_sync_snapshots" USING "btree" ("tenant_id", "vendor_code", "market_code");
-
-
-CREATE INDEX "product_sync_snapshots_vendor_id_idx" ON "public"."product_sync_snapshots" USING "btree" ("vendor_id");
-
-
 CREATE INDEX "products_barcode_idx" ON "public"."products" USING "btree" ("barcode");
 
 
@@ -37039,9 +36984,6 @@ CREATE OR REPLACE TRIGGER "trg_product_categories_sync_tenant_id" BEFORE INSERT 
 
 
 CREATE OR REPLACE TRIGGER "trg_product_categories_sync_vendor_reference_fields" BEFORE INSERT OR UPDATE ON "public"."product_categories" FOR EACH ROW EXECUTE FUNCTION "public"."sync_vendor_reference_fields"();
-
-
-CREATE OR REPLACE TRIGGER "trg_product_sync_snapshots_sync_vendor_reference_fields" BEFORE INSERT OR UPDATE ON "public"."product_sync_snapshots" FOR EACH ROW EXECUTE FUNCTION "public"."sync_vendor_reference_fields"();
 
 
 CREATE OR REPLACE TRIGGER "trg_products_set_parent_tenant_id" BEFORE INSERT OR UPDATE ON "public"."products" FOR EACH ROW EXECUTE FUNCTION "public"."set_products_catalog_parent_tenant_id"();
@@ -37717,10 +37659,6 @@ ALTER TABLE ONLY "public"."product_categories"
 
 ALTER TABLE ONLY "public"."product_categories"
     ADD CONSTRAINT "product_categories_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON UPDATE CASCADE ON DELETE SET NULL;
-
-
-ALTER TABLE ONLY "public"."product_sync_snapshots"
-    ADD CONSTRAINT "product_sync_snapshots_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 ALTER TABLE ONLY "public"."products"
@@ -41213,12 +41151,6 @@ GRANT ALL ON SEQUENCE "public"."product_brands_id_seq" TO "service_role";
 GRANT UPDATE ON SEQUENCE "public"."product_categories_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."product_categories_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."product_categories_id_seq" TO "service_role";
-
-
-GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."product_sync_snapshots" TO "service_role";
-
-
-GRANT ALL ON SEQUENCE "public"."product_sync_snapshots_id_seq" TO "service_role";
 
 
 GRANT SELECT,INSERT ON TABLE "public"."catalog_refresh_log" TO "service_role";

@@ -1,6 +1,6 @@
 # TradeFlow BD — docs index
 
-Load **this file first**. Then that module’s `spec.md` + `00-gaps.md`. Money → [bills_pays spec](features/bills_pays/spec.md) + [money-story](features/bills_pays/money-story.md). Then code. See [STRUCTURE.md](STRUCTURE.md).
+Load **this file first**. Then that module’s `spec.md` + `00-gaps.md`. Money → [bills_pays spec](features/bills_pays/spec.md) + [kernel pack](kernel/README.md) + [money-story](features/bills_pays/money-story.md). Then code. See [STRUCTURE.md](STRUCTURE.md).
 
 Missing fact → `DOC_GAP` (`.cursor/rules/docs-first.mdc`). Do not guess.
 
@@ -15,7 +15,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Who logs in where, which features? | [scopes](architecture/scopes.md) |
 | How this company sells (BW, pre-order, K-beauty, thrift) | [business-models](architecture/business-models.md) |
 | Wholesale vs dropship bill → pay (numbers) | [money-story](features/bills_pays/money-story.md) |
-| Bills vs pays vs cashbook | [bills_pays spec](features/bills_pays/spec.md) · [kernel schema](features/bills_pays/kernel-schema.md) · [kernel plan](../doc/fix/2026-10-12-bills-pays-kernel-plan.md) |
+| Bills vs pays vs cashbook | [bills_pays spec](features/bills_pays/spec.md) · [kernel architecture pack](kernel/README.md) · [kernel schema](features/bills_pays/kernel-schema.md) · [kernel plan](../doc/fix/2026-10-12-bills-pays-kernel-plan.md) |
 | What numbers go on reports (sales vs cash vs COD) | [reporting spec](features/reporting_treasury/spec.md) |
 | What is unfinished / wrong in a module? | That module’s `00-gaps.md` |
 | Catalog scrape/upload log & app versions (planned) | [products refresh & release](features/products/upload-and-release-visibility.md) |
@@ -66,7 +66,7 @@ Detail lives in the linked spec — do not duplicate here.
 | Login surfaces | [scopes](architecture/scopes.md) |
 | BW / pre-order / Koba / thrift | [business-models](architecture/business-models.md) |
 | Stock, receive, Delivery paper | [procurement spec](features/procurement_stock/spec.md) |
-| Bills, pays, cashbook, money layers | [bills_pays spec](features/bills_pays/spec.md) |
+| Bills, pays, cashbook, money layers | [bills_pays spec](features/bills_pays/spec.md) · [kernel pack](kernel/README.md) |
 | Shop / dropship channel | [shop_order spec](features/shop_order/spec.md) |
 | Investor portal v1 read-only | [investor_capital spec](features/investor_capital/spec.md) |
 | UI pattern in a module | Copy that module’s Pinia or Vue Query — do not convert |

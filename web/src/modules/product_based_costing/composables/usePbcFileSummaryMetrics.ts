@@ -179,6 +179,28 @@ export const emptyPbcFileSummaryMetrics = (): PbcFileSummaryMetrics => ({
   incompleteLineCount: 0,
 });
 
+export function mapPbcFileSummaryMetricsToRpc(
+  metrics: PbcFileSummaryMetrics,
+): PbcFileSummaryRpcRow {
+  return {
+    line_count: metrics.lineCount,
+    total_quantity: metrics.totalQuantity,
+    goods_cost_gbp: metrics.goodsCostGbp,
+    goods_cost_bdt: metrics.goodsCostBdt,
+    cargo_weight_kg: metrics.cargoWeightKg,
+    cargo_cost_gbp: metrics.cargoCostGbp,
+    cargo_cost_bdt: metrics.cargoCostBdt,
+    total_cost_gbp: metrics.totalCostGbp,
+    total_cost_bdt: metrics.totalCostBdt,
+    total_offer_price_bdt: metrics.totalOfferPriceBdt,
+    total_profit_bdt: metrics.totalProfitBdt,
+    profit_margin_percent: metrics.profitMarginPercent,
+    avg_offer_per_unit_bdt: metrics.avgOfferPerUnitBdt,
+    avg_cost_per_unit_bdt: metrics.avgCostPerUnitBdt,
+    incomplete_line_count: metrics.incompleteLineCount,
+  };
+}
+
 export function mapPbcFileSummaryFromRpc(
   row: PbcFileSummaryRpcRow | null | undefined,
 ): PbcFileSummaryMetrics {

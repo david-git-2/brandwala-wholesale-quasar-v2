@@ -17,6 +17,7 @@ docs/guides/
 docs/features/<name>/
   00-gaps.md
   spec.md                      # As-built, Scope, Where to look, stories
+docs/kernel/                   # Money kernel: 01–08 (invariants … audit runbook); see README.md
 docs/features/bills_pays/     # Extra: money-story.md, kernel-schema.md (target tables)
 docs/features/template/        # Copy for a new module.
 doc/supabase-schema.md         # Split tracker only.

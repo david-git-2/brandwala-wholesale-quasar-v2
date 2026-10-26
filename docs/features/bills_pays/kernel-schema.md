@@ -1,6 +1,6 @@
 # Bills kernel — target schema
 
-**Target.** Not live SQL. Live: `supabase/schemas/bills_pays/`. Product: [spec](spec.md). Numbers: [money-story](money-story.md). Gaps: [00-gaps](00-gaps.md). Build: [kernel plan](../../../doc/fix/2026-10-12-bills-pays-kernel-plan.md).
+**Target.** Not live SQL. Live: `supabase/schemas/bills_pays/`. Product: [spec](spec.md). Architecture: [kernel pack](../../kernel/README.md). Numbers: [money-story](money-story.md). Gaps: [00-gaps](00-gaps.md). Build: [kernel plan](../../../doc/fix/2026-10-12-bills-pays-kernel-plan.md).
 
 One money kernel. Other modules **plug in**. They do not own `bills` / `pays`. No second invoice table.
 

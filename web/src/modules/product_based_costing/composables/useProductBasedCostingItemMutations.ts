@@ -1,6 +1,11 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/vue-query';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
+import {
+  addPbcItemToDetailsBundleCache,
+  removePbcItemFromDetailsBundleCache,
+  updatePbcItemInDetailsBundleCache,
+} from '../utils/pbcDetailsBundleCache';
 import { parseSupabaseError, showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
 import type {
   ProductBasedCostingItem,
@@ -50,6 +55,26 @@ function invalidatePbcFileSummary(queryClient: QueryClient, fileId: number) {
   void queryClient.invalidateQueries({
     queryKey: productBasedCostingQueryKeys.fileDetailsPageRoot(fileId),
   });
+}
+
+function syncPbcItemCaches(
+  queryClient: QueryClient,
+  fileId: number,
+  action: 'add' | 'remove' | 'update',
+  item: ProductBasedCostingItem,
+) {
+  if (action === 'add') {
+    addPbcItemToCache(queryClient, fileId, item);
+    addPbcItemToDetailsBundleCache(queryClient, fileId, item);
+    return;
+  }
+  if (action === 'remove') {
+    removePbcItemFromCache(queryClient, fileId, item.id);
+    removePbcItemFromDetailsBundleCache(queryClient, fileId, item.id);
+    return;
+  }
+  updatePbcItemInCache(queryClient, fileId, item);
+  updatePbcItemInDetailsBundleCache(queryClient, fileId, item);
 }
 
 function removePbcItemFromCache(queryClient: QueryClient, fileId: number, itemId: number) {
@@ -276,17 +301,28 @@ const showMutationWarning = (
   showWarningDialog(described.message, described.title);
 };
 
+type CreatePbcItemVariables = ProductBasedCostingItemCreateInput & {
+  silentSuccessNotification?: boolean;
+};
+
+type DeletePbcItemVariables = DeletePbcItemInput & {
+  silentSuccessNotification?: boolean;
+};
+
 export function useCreateProductBasedCostingItemMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: ProductBasedCostingItemCreateInput) =>
-      productBasedCostingRepository.createProductBasedCostingItem(payload),
-    onSuccess: (data) => {
-      showSuccessNotification('Product based costing item created successfully.');
+    mutationFn: (variables: CreatePbcItemVariables) => {
+      const { silentSuccessNotification: _silent, ...payload } = variables;
+      return productBasedCostingRepository.createProductBasedCostingItem(payload);
+    },
+    onSuccess: (data, variables) => {
+      if (!variables.silentSuccessNotification) {
+        showSuccessNotification('Product based costing item created successfully.');
+      }
       if (data?.product_based_costing_file_id) {
-        addPbcItemToCache(queryClient, data.product_based_costing_file_id, data);
-        invalidatePbcFileSummary(queryClient, data.product_based_costing_file_id);
+        syncPbcItemCaches(queryClient, data.product_based_costing_file_id, 'add', data);
       }
     },
     onError: (error) => {
@@ -303,8 +339,7 @@ export function useUpdateProductBasedCostingItemMutation() {
       productBasedCostingRepository.updateProductBasedCostingItem(payload),
     onSuccess: (data) => {
       if (data?.product_based_costing_file_id) {
-        updatePbcItemInCache(queryClient, data.product_based_costing_file_id, data);
-        invalidatePbcFileSummary(queryClient, data.product_based_costing_file_id);
+        syncPbcItemCaches(queryClient, data.product_based_costing_file_id, 'update', data);
       }
     },
     onError: (error) => {
@@ -317,12 +352,16 @@ export function useDeleteProductBasedCostingItemMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: DeletePbcItemInput) => {
+    mutationFn: (input: DeletePbcItemVariables) => {
       const id = typeof input === 'number' ? input : input.id;
       return productBasedCostingRepository.deleteProductBasedCostingItem(id);
     },
     onSuccess: (data, input) => {
-      showSuccessNotification('Product based costing item deleted successfully.');
+      const silent =
+        typeof input === 'object' && input !== null && input.silentSuccessNotification === true;
+      if (!silent) {
+        showSuccessNotification('Product based costing item deleted successfully.');
+      }
       const fileId =
         data.product_based_costing_file_id ??
         (typeof input === 'object' ? input.fileId : undefined) ??
@@ -333,8 +372,7 @@ export function useDeleteProductBasedCostingItemMutation() {
         return;
       }
 
-      removePbcItemFromCache(queryClient, fileId, data.id);
-      invalidatePbcFileSummary(queryClient, fileId);
+      syncPbcItemCaches(queryClient, fileId, 'remove', data);
     },
     onError: (error) => {
       showMutationWarning(error, 'Failed to delete costing item.', 'remove');
@@ -348,14 +386,13 @@ export function useDeleteProductBasedCostingItemsBulkMutation() {
   return useMutation({
     mutationFn: ({ ids }: { fileId: number; ids: number[] }) =>
       productBasedCostingRepository.deleteProductBasedCostingItemsBulk(ids),
-    onSuccess: (_deletedItems, variables) => {
+    onSuccess: (deletedItems, variables) => {
       showSuccessNotification(
         `${variables.ids.length} costing item${variables.ids.length === 1 ? '' : 's'} deleted successfully.`,
       );
-      for (const id of variables.ids) {
-        removePbcItemFromCache(queryClient, variables.fileId, id);
+      for (const item of deletedItems) {
+        syncPbcItemCaches(queryClient, variables.fileId, 'remove', item);
       }
-      invalidatePbcFileSummary(queryClient, variables.fileId);
     },
     onError: (error) => {
       showMutationWarning(error, 'Failed to delete costing items.', 'remove');
@@ -371,20 +408,15 @@ export function useUpdateProductBasedCostingItemsByFileIdMutation() {
       productBasedCostingRepository.updateProductBasedCostingItemsByFileId(fileId, payload),
     onSuccess: (updatedItems, variables) => {
       if (updatedItems && updatedItems.length > 0) {
-        const byId = new Map(updatedItems.map((item) => [item.id, item]));
-        queryClient.setQueryData<ProductBasedCostingItem[]>(
-          productBasedCostingQueryKeys.itemsList(variables.fileId),
-          (oldItems) => {
-            if (!oldItems) return updatedItems;
-            return oldItems.map((item) => byId.get(item.id) ?? item);
-          },
-        );
+        for (const item of updatedItems) {
+          syncPbcItemCaches(queryClient, variables.fileId, 'update', item);
+        }
       } else {
         void queryClient.invalidateQueries({
           queryKey: productBasedCostingQueryKeys.itemsList(variables.fileId),
         });
+        invalidatePbcFileSummary(queryClient, variables.fileId);
       }
-      invalidatePbcFileSummary(queryClient, variables.fileId);
     },
     onError: (error) => {
       showMutationWarning(error, 'Failed to update costing items.');
