@@ -80,4 +80,4 @@ Detail lives in the linked spec — do not duplicate here.
 | Web | `pnpm --dir web dev` |
 | Types/lint | `pnpm --dir web type-check` / `lint` |
 | SQL on existing local DB | `pnpm run backend:local` |
-| Schema split check | `pnpm run backend:schema:diff` |
+| Schema change / split check | `pnpm run backend:schema:sync -- <name>` |

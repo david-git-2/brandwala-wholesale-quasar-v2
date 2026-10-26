@@ -1,63 +1,66 @@
 # Supabase Schema & Domain Split Guide
 
-This document is the operational developer guide for managing declarative database schemas in `supabase/schemas/` and tracking modular domain extractions.
+Declarative SQL lives in `supabase/schemas/`. Production history is anchored by [`supabase/migrations/00000000000000_baseline.sql`](../supabase/migrations/00000000000000_baseline.sql); imperative history is in [`supabase/migrations/_legacy/`](../supabase/migrations/_legacy/).
 
 ---
 
-## 📁 Declarative Schema Structure
+## Declarative layout (current)
 
-Live declarative SQL definitions reside in `supabase/schemas/`:
+| Path | Role |
+|------|------|
+| `supabase/schemas/_extensions.sql` | `pg_trgm`, `pg_net` (not in `pg_dump`) |
+| `supabase/schemas/public.sql` | Full `public` schema DDL |
+| `supabase/_domain_splits_archive/` | Pre-squash domain splits (reference only; not loaded by pg-delta) |
 
-* `_extensions.sql`: Database extensions (`uuid-ossp`, `pgcrypto`, etc.).
-* `public.sql`: Master active declarative public schema for un-split modules.
-* **Modular Domain Folders** (`supabase/schemas/<domain>/`):
-  * `01_types.sql`: Custom Postgres ENUMs and composite types.
-  * `02_tables.sql`: Table DDL, column defaults, constraints, foreign keys, and indexes.
-  * `03_rpcs.sql`: Stored procedures, business logic functions, and transactional RPCs.
-  * `04_rls.sql`: Row Level Security policies.
+`config.toml` sets `[experimental.pgdelta] enabled = true` and `schema_paths` to extensions + `public.sql` only.
 
 ---
 
-## 🗺️ Domain Schema Split Tracker
+## Schema changes
 
-Move one domain per change; delete moved objects from `public.sql` in the same change. Always run `pnpm run backend:schema:diff` before merge.
+1. Edit `supabase/schemas/public.sql` (or re-split a domain into `schemas/<domain>/` and extend `schema_paths` — see archive README).
+2. Generate a migration (does **not** apply to the DB):
 
-| Domain | Schema Folder | Status | Included Objects / Notes |
-| :--- | :--- | :--- | :--- |
-| **procurement** | `supabase/schemas/procurement/` | **Split** | Shipments, items, suppliers, purchase tracking |
-| **shop_order** | `supabase/schemas/shop_order/` | **Split** | Shops, carts, listings, orders, dropship settlement, demand buckets; deduped from `public.sql` |
-| **notifications** | `supabase/schemas/notifications/` | **Split** | Inbox, preferences, push (`03_rls.sql`, `04_rpcs.sql`) |
-| **tenants** | `supabase/schemas/tenants/` | Stub | Move from `public.sql` when changing that domain |
-| **permissions** | `supabase/schemas/permissions/` | Stub | Grants / `has_module_action` |
-| **shop** | `supabase/schemas/shop/` | Absorbed | Config + orders live in **split** `shop_order/`; no separate `public.sql` copy |
-| **tag** | `supabase/schemas/tag/` | Stub | Taxonomy |
-| **bills_pays** | `supabase/schemas/bills_pays/` | **Split** | `bills`, `bill_lines`, `bill_charges`, `pays`, `pay_instruments`, `pay_allocations`, `cashbook_accounts`, `cashbook_entries`, `profiles`, `billing_profiles`; bill/pay/cashbook RPCs. Replaces old `sales_invoice/` + wallet ledger in `public.sql` |
-| **customer** | `supabase/schemas/customer/` | Pending | Customer accounts, addresses, credit profiles |
-| **products** | `supabase/schemas/products/` | Pending | Products catalog, variations, tags, categories |
-| **reporting** | `supabase/schemas/reporting/` | Pending | Treasury, profit reports, COD reconciliation RPCs |
-| **thrift** | `supabase/schemas/thrift/` | Pending | Thrift vertical lots, processing, items |
-| **investor** | `supabase/schemas/investor/` | Pending | Investor portal, capital accounts, profit payouts |
-| **global_reference** | `supabase/schemas/global_reference/` | Pending | App settings, courier configs, soft-delete recovery |
-
----
-
-## ⚡ Core Rules for Schema Changes
-
-1. **Declarative Source of Truth**: Always modify `supabase/schemas/` first, then generate migrations using:
    ```bash
-   pnpm exec supabase db diff -f <migration_name>
+   pnpm run backend:schema:sync -- my_change_name
    ```
-2. **RPC Migrations**: When creating RPC migrations in `supabase/migrations/`, **ALWAYS** copy the function body directly from `supabase/schemas/<domain>/03_rpcs.sql`, never from older historical migrations.
-3. **Double-Entry Ledger Integrity**: Every financial transaction must be posted through `record_ledger_transaction(...)`. Never manipulate ledger balance rows directly.
-4. **Local Verification**:
+
+3. Review the new file under `supabase/migrations/`. If it contains unexpected `DROP`s, fix `public.sql` first — do not apply to prod without review.
+4. Local apply + types:
+
    ```bash
    pnpm run backend:local
    pnpm run backend:types:local
    ```
 
+5. Deploy: `pnpm run deploy:backend` after merge (human-approved migrations only).
+
+Do **not** use `supabase db diff` for declarative work; use `declarative sync`. Optional sanity check after reset: `pnpm exec supabase db diff --use-pg-delta` (should be empty).
+
+**DML only** (seeds, backfills, permission rows): hand-write a migration; sync does not see data.
+
+**RPC bodies:** copy from `public.sql` or domain `03_rpcs.sql`, never from `_legacy/` migrations.
+
+---
+
+## Local reset
+
+`pnpm run backend:reset` replays **one** baseline migration (~30–45s), not 1,389 files. Prod data: `backend:pull-prod-data` still resets from migrations then restores dumps.
+
+---
+
+## Domain split tracker (re-split from `public.sql`)
+
+| Domain | Status | Notes |
+| :--- | :--- | :--- |
+| procurement, shop_order, bills_pays, notifications | Archived splits | See `_domain_splits_archive/` |
+| tenants, permissions, tag, thrift, wallet, investor, global_reference | Stub READMEs under `schemas/` | Extract from `public.sql` when you touch the module |
+
+One domain per PR; run `backend:schema:sync` before merge.
+
 ---
 
 ## Related docs
+
 - [Documentation index](../docs/README.md)
-- [How to write docs](../docs/STRUCTURE.md)
 - [Database conventions](../docs/architecture/database.md)

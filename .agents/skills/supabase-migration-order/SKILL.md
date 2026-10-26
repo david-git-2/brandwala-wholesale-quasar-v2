@@ -132,7 +132,7 @@ If your file’s timestamp sorts **before** the create-type / create-table file,
 ## New feature DDL (normal path)
 
 1. Edit `supabase/schemas/` (not hand-written DDL migrations for features).
-2. `pnpm run backend:schema:diff` → `supabase db diff -f short_name`.
+2. `pnpm run backend:schema:sync -- short_name` (review generated SQL).
 3. Review generated migration timestamp is **after** dependencies.
 4. `pnpm run backend:local` → `pnpm run backend:types:local` (or `backend:reset` only when proving empty-DB replay).
 

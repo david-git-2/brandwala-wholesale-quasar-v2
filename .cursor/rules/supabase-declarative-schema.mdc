@@ -6,20 +6,20 @@ alwaysApply: false
 
 # Declarative schema (current SQL)
 
-`supabase/schemas/` is the **current** public schema (tables, RPCs, RLS, views, triggers). `supabase/migrations/` is history plus what production runs.
+`supabase/schemas/` is the **current** public schema (`_extensions.sql` + `public.sql`). `supabase/migrations/` holds `00000000000000_baseline.sql` plus generated deltas; `_legacy/` is archived imperative history.
 
 How-to: [doc/supabase-schema.md](../../doc/supabase-schema.md)
 
 ## Edit
 
-- Change tables / functions / policies **in `supabase/schemas/`**, not by hand-writing a new `CREATE OR REPLACE` migration.
-- Until a module is split, edit `supabase/schemas/public.sql`. Then `pnpm run backend:schema:diff`, review, then `supabase db diff -f <name>`.
-- Split: user says `split schema <domain>` — follow `.agents/skills/schema-split/SKILL.md`. Move objects into `supabase/schemas/<domain>/` and **delete the same objects from `public.sql` in the same PR**. `schemas/` must always be the full public schema or `db diff` will emit `DROP`s.
-- After a re-dump, keep `supabase/schemas/_extensions.sql` (dump omits `CREATE EXTENSION`).
+- Change tables / functions / policies in `supabase/schemas/public.sql` (or re-split domains per `schema-split` skill), not via hand-written DDL migrations.
+- Generate migrations: `pnpm run backend:schema:sync -- <name>` (`declarative sync --no-apply`). Review SQL before `backend:local` or deploy.
+- Split: user says `split schema <domain>` — follow `.agents/skills/schema-split/SKILL.md`. Update `schema_paths` in `config.toml`; do not leave duplicate DDL under `schemas/` (pg-delta scans all `*.sql` there).
+- Keep `supabase/schemas/_extensions.sql`; baseline migration also includes extensions omitted from `pg_dump`.
 
-## Do not generate from noise
+## Do not use db diff for declarative work
 
-- Preview with `pnpm run backend:schema:diff` (no `-f`). Do not commit grant/comment/`OWNER TO` noise as a migration.
+- Use `backend:schema:sync`, not `supabase db diff -f`, for schema DDL.
 - Hand-write migrations for **DML only** (seeds, backfills, permission **rows**). Diff cannot see data.
 - Do not edit already-applied migration files for features.
 - Do not `db reset` or experimental `db diff` against production. Production only gets `pnpm run deploy:backend`.

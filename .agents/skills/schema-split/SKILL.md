@@ -37,8 +37,8 @@ Name prefixes (grep `supabase/schemas/public.sql`; table names in `docs/features
 2. Write them under `supabase/schemas/<domain>/` (`01_types.sql`, `02_tables.sql`, `03_rpcs.sql`, `04_rls.sql` as needed).
 3. **Delete the same objects from `public.sql` in the same change.** No duplicates.
 4. Keep `_extensions.sql`. Do not dump into `supabase/.dumps/`.
-5. Run `pnpm run backend:schema:diff`. Allowed leftover: grant/`OWNER TO`/CHECK recast noise already known from first dump. **Not allowed:** `DROP` of other modules’ tables or functions — that means you deleted too much or left a partial schema. Fix and re-diff.
-6. Move-only: **do not** `db diff -f` / do not add a migration / do not `db push`.
+5. Add paths to `supabase/config.toml` `schema_paths` (types → tables → RPCs → RLS). Run `pnpm run backend:schema:sync -- split_<domain>`. **Not allowed:** unexpected `DROP` of other modules’ objects — fix `public.sql` and re-sync.
+6. Move-only: **do not** commit a generated migration / do not `db push`.
 7. Mark the domain **Split** in `doc/supabase-schema.md`.
 
 ## Do not
@@ -50,4 +50,4 @@ Name prefixes (grep `supabase/schemas/public.sql`; table names in `docs/features
 
 ## If the user also wants a behavior change
 
-After the split is clean: edit the **new** live file (not a hand `CREATE OR REPLACE` migration), `backend:schema:diff`, then `supabase db diff -f short_name`, strip grant/`OWNER` noise, `backend:reset`. Still no production push unless they asked.
+After the split is clean: edit the live domain files, `pnpm run backend:schema:sync -- short_name`, review SQL, `backend:local`. Still no production push unless they asked.

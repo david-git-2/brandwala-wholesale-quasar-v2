@@ -8,7 +8,7 @@ alwaysApply: false
 
 **Apply locally (default):** `pnpm run backend:local` — keeps prod snapshot data. See `.cursor/rules/supabase-local-backend.mdc`.
 
-Local `pnpm run backend:reset` / `pull-prod-data` replays **all** migrations from empty. Prod often never does. Every new migration must succeed on a clean DB — prove that with `backend:reset` when fixing ordering, not on every feature.
+Local `pnpm run backend:reset` replays **`00000000000000_baseline.sql`** plus any new migrations (not `migrations/_legacy/`). `pull-prod-data` resets from that chain then restores dumps. Prove new migrations on a clean DB with `backend:reset` when needed.
 
 **Full workflow:** `.agents/skills/supabase-migration-order/SKILL.md`
 
@@ -69,6 +69,6 @@ No `ERROR:` lines. Load prod rows once with `backend:pull-prod-data` if needed. 
 
 ## New features (DDL)
 
-Edit `supabase/schemas/` → `backend:schema:diff` → `supabase db diff -f <name>`. See `.cursor/rules/supabase-declarative-schema.mdc`.
+Edit `supabase/schemas/` → `pnpm run backend:schema:sync -- <name>`. See `.cursor/rules/supabase-declarative-schema.mdc`.
 
 Hand-write migrations for **DML only**. Prefer new forward files. Edit applied files **only** for fresh-reset ordering fixes, not for normal features.

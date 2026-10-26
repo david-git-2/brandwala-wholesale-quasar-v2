@@ -1,15 +1,14 @@
-# `supabase/schemas/` — current public schema
+# `supabase/schemas/` — declarative public schema
 
 How-to: [doc/supabase-schema.md](../../doc/supabase-schema.md)
 
-| File / folder | Status |
-|---------------|--------|
-| `_extensions.sql` | Live — extensions the dump does not emit |
-| `public.sql` | Live — remaining public schema (unsplit modules) |
-| `procurement/` | Live — shipments, stock, costing, vendors (`01_types.sql` … `04_rls.sql`) |
-| `shop_order/` | Live — shops, carts, orders, dropship (`01_types.sql` … `04_rls.sql`) |
-| `tenants/` `permissions/` `shop/` `sales_invoice/` `thrift/` `wallet/` `investor/` `global_reference/` `tag/` | Stubs — move objects here when you change that module; delete them from `public.sql` in the same PR |
+| File | Role |
+|------|------|
+| `_extensions.sql` | Extensions `pg_dump` omits (`pg_trgm`, `pg_net`) |
+| `public.sql` | Full `public` schema (source of truth with baseline migration) |
 
-Split one folder: [doc/supabase-schema.md](../../doc/supabase-schema.md). In Agent mode type `split schema tag` (or another domain).
+**Migrations:** [`migrations/00000000000000_baseline.sql`](../migrations/00000000000000_baseline.sql) matches prod at squash time; new DDL → `pnpm run backend:schema:sync -- <name>` (`--no-apply`, review SQL, then `backend:local` / deploy).
 
-`migrations/` is still what production runs. Edit here, then `pnpm run backend:schema:diff` / `supabase db diff -f …`.
+**Domain splits:** archived under [`../_domain_splits_archive/`](../_domain_splits_archive/) for re-split work. Do not put extra `*.sql` under `schemas/` unless listed in `config.toml` `schema_paths` — pg-delta loads the whole tree.
+
+Legacy replay chain: [`migrations/_legacy/`](../migrations/_legacy/).

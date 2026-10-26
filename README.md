@@ -83,7 +83,7 @@ Start local Supabase first (if not already running):
 pnpm run backend:start
 ```
 
-**Replay all migrations locally** — wipes local DB, applies every migration file, **no prod data**:
+**Replay migrations locally** — wipes local DB, applies `00000000000000_baseline.sql` plus any new migrations (**not** `migrations/_legacy/`), **no prod data**:
 
 ```bash
 pnpm run backend:reset
@@ -135,7 +135,7 @@ Requires: linked project (`pnpm run backend:link`), `psql` on your PATH. Dumps a
 2. `pnpm run env:local` and restart `pnpm run dev`
 3. **Prove migrations on empty DB (ordering fixes):** `pnpm run backend:reset` — no prod data. Fix until green.
 4. **Load prod rows once:** `pnpm run backend:pull-prod-data`
-5. **Schema/RPC change (after prod data loaded):** edit `supabase/schemas/` → `pnpm run backend:schema:diff` → `pnpm exec supabase db diff -f <name>` → review → `pnpm run backend:local` → `pnpm run backend:types:local` → when ready `pnpm run deploy:backend`. Do **not** run reset/restore-dumps for every migration. See [doc/supabase-schema.md](doc/supabase-schema.md).
+5. **Schema/RPC change (after prod data loaded):** edit `supabase/schemas/public.sql` → `pnpm run backend:schema:sync -- <name>` → review generated SQL → `pnpm run backend:local` → `pnpm run backend:types:local` → when ready `pnpm run deploy:backend`. Do **not** run reset/restore-dumps for every migration. See [doc/supabase-schema.md](doc/supabase-schema.md).
 
 **Useful scripts**
 
@@ -144,13 +144,14 @@ Requires: linked project (`pnpm run backend:link`), `psql` on your PATH. Dumps a
 | `env:local` / `env:prod` / `env:status` | Switch Quasar `web/.env` between Docker and cloud |
 | `backend:start` / `backend:stop` / `backend:status` | Docker stack lifecycle |
 | `backend:env:print` | Local URL + anon/service keys (seed `web/.env.profile.local`) |
-| `backend:reset` | Rebuild local DB from migrations only (empty business data) |
+| `backend:reset` | Rebuild local DB from baseline + new migrations (~30–45s; empty business data) |
 | `backend:local` | Apply pending migrations to local (`migration up --include-all`) |
 | `backend:pull-prod-data` | Dump linked prod → reset local → restore prod rows |
 | `backend:restore-dumps` | Reapply cached prod dump — **wipes local DB** (same as pull-prod-data with `--reuse-dumps`) |
 | `backend:types:local` | Generate types from local DB |
 | `backend:schema:dump` | Dump local public schema → `supabase/schemas/public.sql` |
-| `backend:schema:diff` | Preview schemas vs migrations (does not write a file) |
+| `backend:schema:sync` | Generate migration from declarative schemas (`--no-apply`; review before apply) |
+| `backend:schema:diff` | Alias for `backend:schema:sync` |
 | `deploy:backend` | Push migrations to **linked production** + regenerate types |
 | `deploy:frontend` | Switches to `env:prod`, builds, deploys to Cloudflare Pages |
 

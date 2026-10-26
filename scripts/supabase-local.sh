@@ -329,10 +329,11 @@ cmd_schema_dump() {
   echo "Wrote ${SCHEMA_FILE_PUBLIC}"
 }
 
-cmd_schema_diff() {
+cmd_schema_sync() {
   require_local_running
-  echo "Preview only — does not write a migration file."
-  supabase_cli db diff --schema public
+  local name="${1:-schema_change}"
+  echo "Declarative sync (--no-apply). Review migration SQL before backend:local or deploy."
+  supabase_cli db schema declarative sync -f "$name" --no-apply
 }
 
 confirm_pull() {
@@ -661,7 +662,8 @@ Commands:
                    --reuse-dumps skips remote dump (uses supabase/.dumps/)
   types:local      Generate database.types.ts from local DB
   schema:dump      Dump local public schema → supabase/schemas/public.sql
-  schema:diff      Preview schema file vs migrations (no migration file)
+  schema:sync      Generate migration from schemas vs baseline (--no-apply); optional name arg
+  schema:diff      Alias for schema:sync (declarative; not db diff)
 EOF
 }
 
@@ -679,7 +681,7 @@ main() {
     pull-prod-data) cmd_pull_prod_data "$@" ;;
     types:local) cmd_types_local "$@" ;;
     schema:dump) cmd_schema_dump "$@" ;;
-    schema:diff) cmd_schema_diff "$@" ;;
+    schema:sync|schema:diff) cmd_schema_sync "$@" ;;
     -h|--help|help|"") usage ;;
     *)
       echo "Unknown command: $cmd" >&2

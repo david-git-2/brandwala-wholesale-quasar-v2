@@ -51,7 +51,8 @@
     "backend:types": "sh -c 'mkdir -p web/src/types && pnpm exec supabase gen types typescript --project-id pqlmomdpuiajhfwwfoqw --schema public > web/src/types/database.types.ts'",
     "backend:types:local": "bash scripts/supabase-local.sh types:local",
     "backend:schema:dump": "bash scripts/supabase-local.sh schema:dump",
-    "backend:schema:diff": "bash scripts/supabase-local.sh schema:diff",
+    "backend:schema:sync": "bash scripts/supabase-local.sh schema:sync",
+    "backend:schema:diff": "bash scripts/supabase-local.sh schema:sync",
     "db:schema": "pnpm run backend:types",
     "deploy:backend": "bash scripts/deploy-backend.sh",
     "backend:all": "pnpm run backend:push:all && pnpm run db:schema"
