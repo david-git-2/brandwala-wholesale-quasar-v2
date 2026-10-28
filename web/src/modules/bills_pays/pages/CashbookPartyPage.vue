@@ -17,6 +17,13 @@
           <span>Pending {{ formatAmountBdt(detail?.pending_balance ?? 0) }}</span>
           <span>Locked {{ formatAmountBdt(detail?.locked_balance ?? 0) }}</span>
         </div>
+        <div v-if="detail?.account_class" class="text-caption text-grey-7 q-mt-xs">
+          {{
+            detail.account_class === 'tenant_asset'
+              ? 'Company cash (tenant asset)'
+              : 'Profile custody'
+          }}
+        </div>
         <div v-if="showCashPoints" class="q-mt-sm">
           <q-btn
             outline

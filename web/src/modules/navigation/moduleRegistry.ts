@@ -685,7 +685,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'universal_wallet',
-    name: 'Wallets',
+    name: 'Cashbook',
     description: 'Balances for the company, customers, suppliers, cargo, couriers, and investors.',
     navIcon: 'ph ph-wallet',
     routes: [
@@ -694,7 +694,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Cashbook',
         caption: 'Leftover balances and audit trail',
         icon: 'ph ph-wallet',
-        routeSegment: 'wallet',
+        routeSegment: 'cashbook',
         requiredAction: 'view',
       },
     ],

@@ -25,3 +25,44 @@ export function fifoFillByOldest(bills: FifoBillRow[], cash: number): Map<number
   }
   return filled;
 }
+
+export type PreApplyPool = {
+  kind: 'credit_note' | 'pay';
+  allocator_id: number;
+  pool: number;
+};
+
+export type PreApplySettlementLine = {
+  bill_id: number;
+  amount: number;
+  allocator_kind: 'credit_note' | 'pay';
+  allocator_id: number;
+};
+
+/** FIFO each pool onto bills; reduces working due after each pool. */
+export function buildPreApplySettlementLines(
+  bills: FifoBillRow[],
+  pools: PreApplyPool[],
+): PreApplySettlementLine[] {
+  const working = bills.map((b) => ({
+    id: b.id,
+    due_amount: Math.max(0, Number(b.due_amount) || 0),
+    invoice_date: b.invoice_date,
+  }));
+  const lines: PreApplySettlementLine[] = [];
+  for (const pool of pools) {
+    if (pool.pool <= 0) continue;
+    const filled = fifoFillByOldest(working, pool.pool);
+    for (const [billId, amt] of filled) {
+      lines.push({
+        bill_id: billId,
+        amount: amt,
+        allocator_kind: pool.kind,
+        allocator_id: pool.allocator_id,
+      });
+      const row = working.find((w) => w.id === billId);
+      if (row) row.due_amount = Math.max(0, row.due_amount - amt);
+    }
+  }
+  return lines;
+}

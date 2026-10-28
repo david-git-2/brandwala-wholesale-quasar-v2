@@ -66,7 +66,7 @@ unpaid --partial alloc--> partial --full alloc--> settled
 | :--- | :--- | :--- |
 | Collect / remittance | `post_customer_receipt_with_allocations` | Custody ledger |
 | AP payout | `post_ap_payout_with_allocations` | FX → landed cost refresh |
-| Merchant profit | `dispense_middleman_payout_from_tenant` (**live only**) | Target: AP `source_type=commission` + `post_money_out` ([BP24](../features/bills_pays/00-gaps.md)) |
+| Merchant profit | `post_money_out` (`source_type=commission`) | Legacy shim: `dispense_middleman_payout_from_tenant` → spine ([BP24](../features/bills_pays/00-gaps.md) shipped) |
 | Balance read | `get_bill_net_balances(bill_id)` | Target: settlements-based; prefer over `due_amount` cache |
 | Apply leftover / CN | `allocate_payment_to_global_invoice` / BP11 paths | Target: `apply_settlement_to_bill` → `bill_settlements` |
 

@@ -53,14 +53,14 @@
                   <div class="text-subtitle1 text-weight-medium ellipsis">{{ point.name }}</div>
                   <div class="text-caption text-grey-7">{{ cashbookPointKindLabel(point.kind) }}</div>
                   <div v-if="point.code" class="text-caption text-grey-6 q-mt-xs">Code {{ point.code }}</div>
-                  <div v-if="potCodesForPoint(point.id).length" class="row q-gutter-xs q-mt-sm flex-wrap">
+                  <div v-if="potsForPoint(point.id).length" class="row q-gutter-xs q-mt-sm flex-wrap">
                     <q-badge
-                      v-for="code in potCodesForPoint(point.id)"
-                      :key="code"
+                      v-for="pot in potsForPoint(point.id)"
+                      :key="pot.id"
                       dense
                       outline
                       color="grey-7"
-                      :label="code"
+                      :label="`${pot.currency_code} ${formatAmountBdt(pot.amount)}`"
                     />
                   </div>
                 </div>
@@ -98,7 +98,8 @@ import CashbookPointFormDialog from '../components/CashbookPointFormDialog.vue';
 import { useCashbookPointPotsBatchQuery } from '../composables/useCashbookPointPotsQuery';
 import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
 import { cashbookPointKindLabel } from '../constants/cashbookPointKinds';
-import type { CashbookPointRow } from '../repositories/cashbookRepository';
+import type { CashbookPointPotRow, CashbookPointRow } from '../repositories/cashbookRepository';
+import { formatAmountBdt } from 'src/utils/currency';
 
 const ALLOWED_TYPES = new Set(['tenant', 'customer', 'courier', 'vendor']);
 
@@ -145,16 +146,16 @@ const potsBatchEnabled = computed(() => isTenantContext.value && pointIds.value.
 const potsBatchQuery = useCashbookPointPotsBatchQuery(pointIds, potsBatchEnabled);
 
 const potsByPointId = computed(() => {
-  const map = new Map<number, string[]>();
+  const map = new Map<number, CashbookPointPotRow[]>();
   for (const pot of potsBatchQuery.data.value ?? []) {
     const list = map.get(pot.cashbook_point_id) ?? [];
-    list.push(pot.currency_code);
+    list.push(pot);
     map.set(pot.cashbook_point_id, list);
   }
   return map;
 });
 
-const potCodesForPoint = (pointId: number) => potsByPointId.value.get(pointId) ?? [];
+const potsForPoint = (pointId: number) => potsByPointId.value.get(pointId) ?? [];
 
 const activeCount = computed(() => points.value.filter((p) => p.is_active).length);
 

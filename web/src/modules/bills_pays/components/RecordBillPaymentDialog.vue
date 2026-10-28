@@ -25,6 +25,15 @@
           {{ formatAmountBdt(paymentLeftover) }} unallocated
         </div>
 
+        <q-banner
+          v-if="!isAp && applyOpenFirstAvailable"
+          dense
+          rounded
+          class="bg-blue-1 text-blue-10"
+        >
+          <q-checkbox v-model="applyOpenFirst" dense label="Apply open credit notes and pay leftover to this bill first" />
+        </q-banner>
+
         <template v-if="isAp">
           <q-select
             v-if="showApPaymentCurrencySelect"
@@ -139,6 +148,30 @@
         </template>
 
         <template v-else>
+          <q-select
+            v-model="collectReceivePotId"
+            :options="collectReceiveOptions"
+            emit-value
+            map-options
+            outlined
+            dense
+            hide-bottom-space
+            class="q-mb-sm"
+            label="Receive into"
+            :loading="collectReceiveLoading"
+          />
+          <q-input
+            v-if="collectPotNeedsFx"
+            v-model.number="collectTransactionRate"
+            outlined
+            dense
+            type="number"
+            step="0.0001"
+            min="0"
+            hide-bottom-space
+            class="q-mb-sm"
+            :label="`${booksCurrencyCode} per 1 ${collectPotCurrency}`"
+          />
           <q-select
             v-if="collectNeedsBooksFx || settlementCurrencyOptions.length > 1"
             v-model="settlementCurrency"
@@ -280,7 +313,7 @@
           no-caps
           color="primary"
           label="Add payment"
-          :loading="loading"
+          :loading="loading || preApplySubmitting"
           :disable="!!submitDisabledReason"
           @click="submit"
         >
@@ -314,6 +347,10 @@ import {
 import { apBillCurrencyGroups, apBillPaperConversionRate } from '../utils/parseApBillPaper';
 import { currenciesMatch } from '../utils/apPayoutFx';
 import type { RecordBillPaymentInput } from '../composables/useRecordBillPaymentMutation';
+import { billsRepository } from '../repositories/billsRepository';
+import { useApplySettlementMutation } from '../composables/useApplySettlementMutation';
+import { useBooksExchangeRateQuery } from '../composables/useBooksExchangeRateQuery';
+import { buildPreApplySettlementLines } from '../utils/fifoBillAlloc';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -355,6 +392,11 @@ const bdBankId = ref<number | null>(null);
 const chequeNumber = ref('');
 const instrumentDate = ref('');
 const instrumentReference = ref('');
+const applyOpenFirst = ref(false);
+const applyOpenFirstAvailable = ref(false);
+const preApplyPools = ref<Array<{ kind: 'credit_note' | 'pay'; allocator_id: number; pool: number }>>([]);
+const preApplySubmitting = ref(false);
+const preApplyMutation = useApplySettlementMutation({ successMessage: 'Open credit and leftover applied.' });
 const { loadingPaymentMeta, methodOptions, bdBankOptions, loadPaymentMeta } =
   useWholesalePaymentMethodMeta('bank_transfer');
 
@@ -378,6 +420,41 @@ const {
 } = useCashbookPayFromPotSelect(apPoints, payFromEnabled);
 
 const booksCurrencyCode = useBooksCurrencyCode();
+
+const collectPointsContext = computed(() => ({
+  booksTenantId: props.booksTenantId,
+  entityType: 'tenant',
+  entityId: props.booksTenantId,
+  enabled: props.modelValue && !props.isAp && props.booksTenantId > 0,
+}));
+const { pointsQuery: collectPointsQuery } = useCashbookPointsQuery(collectPointsContext);
+const collectPoints = computed(() => collectPointsQuery.data.value);
+const collectReceiveEnabled = computed(
+  () => props.modelValue && !props.isAp && props.booksTenantId > 0,
+);
+const {
+  selectedPotId: collectReceivePotId,
+  payFromOptions: collectReceiveOptions,
+  cashbookPointId: collectCashbookPointId,
+  sourceCurrencyCode: collectPotCurrency,
+  loading: collectReceiveLoading,
+} = useCashbookPayFromPotSelect(collectPoints, collectReceiveEnabled);
+
+const collectPotNeedsFx = computed(
+  () => !props.isAp && collectPotCurrency.value !== booksCurrencyCode.value,
+);
+const collectTransactionRate = ref<number | null>(null);
+const collectFxRateQuery = useBooksExchangeRateQuery(
+  computed(() => props.booksTenantId),
+  collectPotCurrency,
+  computed(() => props.modelValue && !props.isAp && collectPotNeedsFx.value),
+);
+watch(
+  () => collectFxRateQuery.data.value,
+  (rate) => {
+    if (rate != null && collectPotNeedsFx.value) collectTransactionRate.value = rate;
+  },
+);
 
 const billDueCurrencyCode = computed(() => {
   const explicit = props.dueCurrencyCode?.trim();
@@ -600,21 +677,82 @@ const submitDisabledReason = computed(() => {
     if (!payFromPotId.value) return 'Choose location and currency to pay from';
     const fxReason = validateApFxFields();
     if (fxReason) return fxReason;
-  } else if (collectNeedsBooksFx.value) {
-    if (computedBdtAmount.value == null) {
-      return `Enter payment currency amount and ${booksCurrencyCode.value} rate`;
+  } else {
+    if (collectReceiveLoading.value) return 'Loading receive-into locations…';
+    if (!collectReceivePotId.value || !collectCashbookPointId.value) {
+      return 'Choose where to receive cash';
     }
-    if (Math.round(amt * 100) !== Math.round(computedBdtAmount.value * 100)) {
-      return `Books amount (${booksCurrencyCode.value}) must match payment currency × rate`;
+    if (
+      collectPotNeedsFx.value &&
+      !(collectTransactionRate.value != null && collectTransactionRate.value > 0)
+    ) {
+      return `Enter ${booksCurrencyCode.value} rate for this currency pot`;
+    }
+    if (collectNeedsBooksFx.value) {
+      if (computedBdtAmount.value == null) {
+        return `Enter payment currency amount and ${booksCurrencyCode.value} rate`;
+      }
+      if (Math.round(amt * 100) !== Math.round(computedBdtAmount.value * 100)) {
+        return `Books amount (${booksCurrencyCode.value}) must match payment currency × rate`;
+      }
     }
   }
   return paymentInstrumentExtrasBlockReason(methodFieldFlags.value, instrumentFields.value);
 });
 
+watch(
+  () => props.modelValue,
+  async (open) => {
+    applyOpenFirst.value = false;
+    applyOpenFirstAvailable.value = false;
+    preApplyPools.value = [];
+    if (!open || props.isAp || !props.booksTenantId || !props.profileId) return;
+    try {
+      const openProfile = await billsRepository.listOpenOnProfile({
+        parentTenantId: props.booksTenantId,
+        profileId: props.profileId,
+      });
+      const pools: Array<{ kind: 'credit_note' | 'pay'; allocator_id: number; pool: number }> = [];
+      for (const cn of (openProfile.open_credit_notes ?? []) as Array<{
+        bill_id: number;
+        due_amount: number;
+      }>) {
+        const pool = Number(cn.due_amount ?? 0);
+        if (pool > 0) pools.push({ kind: 'credit_note', allocator_id: Number(cn.bill_id), pool });
+      }
+      for (const pl of (openProfile.pay_leftover ?? []) as Array<{
+        pay_id: number;
+        unallocated_amount: number;
+      }>) {
+        const pool = Number(pl.unallocated_amount ?? 0);
+        if (pool > 0) pools.push({ kind: 'pay', allocator_id: Number(pl.pay_id), pool });
+      }
+      preApplyPools.value = pools;
+      applyOpenFirstAvailable.value = pools.length > 0;
+    } catch {
+      applyOpenFirstAvailable.value = false;
+    }
+  },
+);
+
 const close = () => emit('update:modelValue', false);
 
-const submit = () => {
+const submit = async () => {
   if (submitDisabledReason.value) return;
+  if (!props.isAp && applyOpenFirst.value && preApplyPools.value.length) {
+    preApplySubmitting.value = true;
+    try {
+      const lines = buildPreApplySettlementLines(
+        [{ id: props.billId, due_amount: booksDueBdt.value, invoice_date: paidOn.value }],
+        preApplyPools.value,
+      );
+      if (lines.length) {
+        await preApplyMutation.mutateAsync({ tenantId: props.tenantId, lines });
+      }
+    } finally {
+      preApplySubmitting.value = false;
+    }
+  }
   const amt = Number(amountBdt.value);
   const fx = props.isAp
     ? { ...apSettlementFxPayload(), ...apSourceFxPayload(payFromPotId.value) }
@@ -638,12 +776,24 @@ const submit = () => {
     methodCode: methodCode.value,
     reference: reference.value.trim() || null,
     note: note.value.trim() || null,
-    sourceCurrencyCode:
-      props.isAp && 'source_currency_code' in fx ? fx.source_currency_code : null,
-    transactionRate: props.isAp && 'transaction_rate' in fx ? fx.transaction_rate : null,
-    cashbookPointPotId:
-      props.isAp && 'cashbook_point_pot_id' in fx ? fx.cashbook_point_pot_id : null,
-    cashbookPointId: props.isAp ? cashbookPointId.value : null,
+    sourceCurrencyCode: props.isAp
+      ? 'source_currency_code' in fx
+        ? fx.source_currency_code
+        : null
+      : collectPotCurrency.value,
+    transactionRate: props.isAp
+      ? 'transaction_rate' in fx
+        ? fx.transaction_rate
+        : null
+      : collectPotNeedsFx.value
+        ? collectTransactionRate.value
+        : null,
+    cashbookPointPotId: props.isAp
+      ? 'cashbook_point_pot_id' in fx
+        ? fx.cashbook_point_pot_id
+        : null
+      : collectReceivePotId.value,
+    cashbookPointId: props.isAp ? cashbookPointId.value : collectCashbookPointId.value,
     instrumentFields: instrumentFields.value,
   });
 };

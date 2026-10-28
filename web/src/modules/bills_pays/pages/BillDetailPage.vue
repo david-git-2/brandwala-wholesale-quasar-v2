@@ -30,6 +30,15 @@
             @click="applyCreditDialogOpen = true"
           />
           <q-btn
+            v-if="canApplyCustodyToBill"
+            outline
+            no-caps
+            color="primary"
+            icon="ph ph-vault"
+            label="Apply custody to bill"
+            @click="applyCustodyDialogOpen = true"
+          />
+          <q-btn
             v-if="canRecordPayment"
             unelevated
             no-caps
@@ -547,6 +556,15 @@
       :open-credit-notes="openCreditNotesForApply"
       @applied="onCreditAppliedToBill"
     />
+    <ApplyCustodyToBillDialog
+      v-if="bill && billProfileId && applyCreditTenantId"
+      v-model="applyCustodyDialogOpen"
+      :tenant-id="applyCreditTenantId"
+      :bill-id="bill.id"
+      :open-books="billOpenBooks"
+      :custody-available="profileCustodyAvailable"
+      @applied="onCreditAppliedToBill"
+    />
   </q-page>
 </template>
 
@@ -589,6 +607,8 @@ import BillAdjustmentNoteBar from '../components/BillAdjustmentNoteBar.vue';
 import BillAdjustmentLinesTable from '../components/BillAdjustmentLinesTable.vue';
 import BillNetSettlementPanel from '../components/BillNetSettlementPanel.vue';
 import ApplyCreditToBillDialog from '../components/ApplyCreditToBillDialog.vue';
+import ApplyCustodyToBillDialog from '../components/ApplyCustodyToBillDialog.vue';
+import { useCashbookPartyQuery } from '../composables/useCashbookPartyQuery';
 import type { BillLineDisplayRow } from '../repositories/billLinesRepository';
 import { useBillAdjustmentDraft } from '../composables/useBillAdjustmentDraft';
 import { useCreateBillAdjustmentMutation } from '../composables/useCreateBillAdjustmentMutation';
@@ -644,6 +664,7 @@ const paymentHistoryEntries = computed(
 
 const paymentDialogOpen = ref(false);
 const applyCreditDialogOpen = ref(false);
+const applyCustodyDialogOpen = ref(false);
 const vendorRefundDialogOpen = ref(false);
 const vendorRefundNoteId = ref<number | null>(null);
 const adjustmentComposerOpen = ref(false);
@@ -745,6 +766,33 @@ const canApplyCreditToBill = computed(() => {
   if (isDropshipCourierApBill(b)) return false;
   if (!billProfileId.value) return false;
   return Number(netBalances.value?.credit_open ?? 0) > 0 && openCreditNotesForApply.value.length > 0;
+});
+
+const billOpenBooks = computed(() => {
+  const nb = netBalances.value;
+  if (nb?.open_books != null) return Math.max(0, Number(nb.open_books));
+  return paymentDueAmount.value;
+});
+
+const custodyPartyParams = computed(() => ({
+  tenantId: applyCreditTenantId.value,
+  entityType: 'customer',
+  entityId: billProfileId.value ?? 0,
+}));
+
+const { detailQuery: profileCustodyQuery } = useCashbookPartyQuery(custodyPartyParams);
+
+const profileCustodyAvailable = computed(() =>
+  Number(profileCustodyQuery.data.value?.available_balance ?? 0),
+);
+
+const canApplyCustodyToBill = computed(() => {
+  const b = bill.value;
+  if (!b || !isStandardBill.value) return false;
+  if (b.invoice_status !== 'issued') return false;
+  if (isDropshipCourierApBill(b)) return false;
+  if (!billProfileId.value) return false;
+  return billOpenBooks.value > 0 && profileCustodyAvailable.value > 0;
 });
 
 const onCreditAppliedToBill = () => {

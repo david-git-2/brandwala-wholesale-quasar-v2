@@ -7,8 +7,8 @@ import { showErrorNotification, showSuccessNotification } from 'src/utils/appFee
 export type ApplySettlementLine = {
   bill_id: number;
   amount: number;
-  allocator_kind: 'pay' | 'credit_note';
-  allocator_id: number;
+  allocator_kind: 'pay' | 'credit_note' | 'custody_entry';
+  allocator_id?: number;
 };
 
 export function useApplySettlementMutation(options?: { successMessage?: string }) {
@@ -22,7 +22,7 @@ export function useApplySettlementMutation(options?: { successMessage?: string }
           tenant_id: payload.tenantId,
           bill_id: line.bill_id,
           allocator_kind: line.allocator_kind,
-          allocator_id: line.allocator_id,
+          allocator_id: line.allocator_id ?? 0,
           books_amount: line.amount,
         });
       }

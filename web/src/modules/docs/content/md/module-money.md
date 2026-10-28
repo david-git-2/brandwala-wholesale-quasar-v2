@@ -21,7 +21,7 @@ Grants: `global_invoice` (bills), `payments`, `universal_wallet` (cashbook). [Ac
 | --- | --- | --- |
 | **Bills** | `/:slug/app/bills` | List, compose, issue, void, print, notes |
 | **Payments** | `/:slug/app/finance/payments` | Pay **in** (collect), pay **out**, courier remittance |
-| **Cashbook** | `/:slug/app/wallet` | Tenant cash, **points** (till/safe/bank), profile leftover |
+| **Cashbook** | `/:slug/app/cashbook` | Tenant cash, **points** (till/safe/bank), profile leftover |
 
 | Payments sub-routes | Path |
 | --- | --- |

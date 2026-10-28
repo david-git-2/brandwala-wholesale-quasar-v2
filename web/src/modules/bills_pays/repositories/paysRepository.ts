@@ -84,6 +84,7 @@ export type PayDetail = PayListRow & {
     reference: string | null;
     cheque_number: string | null;
     cheque_date: string | null;
+    bounced_at: string | null;
   }>;
   allocations: PayAllocationRow[];
 };
@@ -105,7 +106,7 @@ const listPays = async (params: ListPaysParams): Promise<{ data: PayListRow[]; t
   if (profileId != null) {
     query = query.eq('profile_id', profileId);
   } else if (side === 'out') {
-    query = query.eq('source', 'ap_payout');
+    query = query.in('source', ['ap_payout', 'commission']);
   } else {
     query = query.in('source', [...PAY_IN_SOURCES]);
   }
@@ -166,7 +167,7 @@ const getPayById = async (payId: number): Promise<PayDetail> => {
 
   const { data: instruments, error: instError } = await supabase
     .from('pay_instruments')
-    .select('id, payment_method_code, amount, reference, cheque_number, cheque_date')
+    .select('id, payment_method_code, amount, reference, cheque_number, cheque_date, bounced_at')
     .eq('payment_id', payId)
     .order('sort_order', { ascending: true });
   if (instError) throw instError;
@@ -204,6 +205,7 @@ const getPayById = async (payId: number): Promise<PayDetail> => {
       reference: i.reference,
       cheque_number: i.cheque_number,
       cheque_date: i.cheque_date,
+      bounced_at: i.bounced_at ?? null,
     })),
     allocations: ((allocations as any[]) ?? []).map((a) => ({
       id: a.id,
@@ -267,6 +269,10 @@ export type PostCustomerReceiptInput = {
   exchange_rate?: number | null;
   shop_order_id?: number | null;
   idempotency_key: string;
+  cashbook_point_id?: number | null;
+  cashbook_point_pot_id?: number | null;
+  source_currency_code?: string | null;
+  transaction_rate?: number | null;
 };
 
 export const createPayIdempotencyKey = (): string => crypto.randomUUID();
@@ -286,6 +292,46 @@ const postMoneyIn = async (payload: PostCustomerReceiptInput) => {
     p_foreign_amount: payload.foreign_amount ?? null,
     p_exchange_rate: payload.exchange_rate ?? null,
     p_idempotency_key: payload.idempotency_key,
+    p_cashbook_point_id: payload.cashbook_point_id ?? null,
+    p_cashbook_point_pot_id: payload.cashbook_point_pot_id ?? null,
+    p_source_currency_code: payload.source_currency_code ?? null,
+    p_transaction_rate: payload.transaction_rate ?? null,
+  });
+  if (error) throw error;
+  return data;
+};
+
+export type PostMoneyOutInput = {
+  tenant_id: number;
+  profile_id: number;
+  paid_on?: string;
+  amount: number;
+  source?: string;
+  source_type?: string;
+  source_id?: string | null;
+  note?: string | null;
+  reference?: string | null;
+  cashbook_point_id: number;
+  cashbook_point_pot_id?: number | null;
+  payout_method?: string;
+  idempotency_key?: string;
+};
+
+const postMoneyOut = async (payload: PostMoneyOutInput) => {
+  const { data, error } = await supabase.rpc('post_money_out', {
+    p_tenant_id: payload.tenant_id,
+    p_profile_id: payload.profile_id,
+    p_paid_on: payload.paid_on ?? localToday(),
+    p_amount: payload.amount,
+    p_source: payload.source ?? 'commission',
+    p_note: payload.note ?? null,
+    p_reference: payload.reference ?? null,
+    p_cashbook_point_id: payload.cashbook_point_id,
+    p_cashbook_point_pot_id: payload.cashbook_point_pot_id ?? null,
+    p_source_type: payload.source_type ?? 'commission',
+    p_source_id: payload.source_id ?? null,
+    p_idempotency_key: payload.idempotency_key ?? null,
+    p_payout_method: payload.payout_method ?? 'bank_transfer',
   });
   if (error) throw error;
   return data;
@@ -298,6 +344,24 @@ const voidCustomerReceipt = async (tenantId: number, paymentId: number, reason: 
   const { data, error } = await supabase.rpc('void_customer_receipt', {
     p_tenant_id: tenantId,
     p_payment_id: paymentId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data;
+};
+
+const reversePay = async (paymentId: number, reason: string) => {
+  const { error } = await supabase.rpc('reverse_pay', {
+    p_payment_id: paymentId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+};
+
+const bounceChequeInstrument = async (tenantId: number, instrumentId: number, reason: string) => {
+  const { data, error } = await supabase.rpc('bounce_cheque_instrument', {
+    p_tenant_id: tenantId,
+    p_instrument_id: instrumentId,
     p_reason: reason,
   });
   if (error) throw error;
@@ -409,22 +473,18 @@ const dispenseMiddlemanPayout = async (payload: {
   reference_notes?: string | null;
   cashbook_point_id: number;
   cashbook_point_pot_id?: number | null;
-}) => {
-  const { data, error } = await supabase.rpc('dispense_middleman_payout_from_tenant', {
-    p_tenant_id: payload.tenant_id,
-    p_profile_id: payload.profile_id,
-    p_amount: payload.amount,
-    p_payout_method: payload.payout_method ?? 'bank_transfer',
-    p_reference_notes: payload.reference_notes ?? null,
-    p_cashbook_point_id: payload.cashbook_point_id,
-    p_cashbook_point_pot_id: payload.cashbook_point_pot_id ?? null,
+}) =>
+  postMoneyOut({
+    tenant_id: payload.tenant_id,
+    profile_id: payload.profile_id,
+    amount: payload.amount,
+    note: payload.reference_notes ?? null,
+    cashbook_point_id: payload.cashbook_point_id,
+    cashbook_point_pot_id: payload.cashbook_point_pot_id,
+    payout_method: payload.payout_method,
+    source: 'commission',
+    source_type: 'commission',
   });
-  if (error) throw error;
-  if (data && typeof data === 'object' && (data as { success?: boolean }).success === false) {
-    throw new Error((data as { error?: string }).error || 'Payout failed');
-  }
-  return data;
-};
 
 const allocatePayToBill = async (payload: {
   tenant_id: number;
@@ -452,10 +512,13 @@ export const paysRepository = {
   listApPayProfileSummaries,
   postCustomerReceipt,
   postMoneyIn,
+  postMoneyOut,
   createPayIdempotencyKey,
   allocatePayToBill,
   postApPayoutWithAllocations,
   postApPayoutWithAllocationsSnapshot,
   voidCustomerReceipt,
+  reversePay,
+  bounceChequeInstrument,
   dispenseMiddlemanPayout,
 };

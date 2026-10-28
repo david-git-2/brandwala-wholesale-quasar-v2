@@ -13,9 +13,12 @@ export type CollectPayPayload = {
   note?: string | null;
   reference?: string | null;
   instruments: WholesalePaymentInstrumentInput[];
-  /** Separate receipt; allocations must sum to this amount only. */
   storeCreditAllocations?: Array<{ bill_id: number; amount: number }>;
   allocations: Array<{ bill_id: number; amount: number }>;
+  cashbookPointId?: number | null;
+  cashbookPointPotId?: number | null;
+  sourceCurrencyCode?: string | null;
+  transactionRate?: number | null;
 };
 
 export function useCollectPayMutation() {
@@ -51,6 +54,10 @@ export function useCollectPayMutation() {
           instruments: payload.instruments,
           allocations: payload.allocations,
           idempotency_key: `${batchKey}:cash`,
+          cashbook_point_id: payload.cashbookPointId ?? null,
+          cashbook_point_pot_id: payload.cashbookPointPotId ?? null,
+          source_currency_code: payload.sourceCurrencyCode ?? null,
+          transaction_rate: payload.transactionRate ?? null,
         });
       }
 

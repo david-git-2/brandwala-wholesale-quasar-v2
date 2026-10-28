@@ -96,7 +96,7 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
           bd_bank_id: payload.instrumentFields.bdBankId,
           cheque_number: payload.instrumentFields.chequeNumber,
           instrument_date: payload.instrumentFields.instrumentDate,
-          cashbook_point_id: payload.isAp ? payload.cashbookPointId ?? null : null,
+          cashbook_point_id: payload.cashbookPointId ?? null,
         }),
       ];
       const due = Math.max(0, Number(payload.billDueAmount) || 0);
@@ -139,6 +139,10 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
         return snapshotResult;
       }
 
+      if (!payload.isAp && !payload.cashbookPointId) {
+        throw new Error('Choose where to receive cash.');
+      }
+
       await paysRepository.postMoneyIn({
         tenant_id: payload.tenantId,
         profile_id: payload.profileId,
@@ -150,6 +154,10 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
         allocations,
         ...fx,
         idempotency_key: idempotencyKey,
+        cashbook_point_id: payload.cashbookPointId ?? null,
+        cashbook_point_pot_id: payload.cashbookPointPotId ?? null,
+        source_currency_code: payload.sourceCurrencyCode ?? null,
+        transaction_rate: payload.transactionRate ?? null,
       });
       return null;
     },

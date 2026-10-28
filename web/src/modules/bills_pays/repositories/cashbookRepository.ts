@@ -24,6 +24,7 @@ export type CashbookPartyDetail = {
   pending_balance: number;
   locked_balance: number;
   total_balance: number;
+  account_class?: string | null;
 };
 
 export type CashbookPointRow = {
@@ -69,6 +70,7 @@ const parseDetail = (data: unknown): CashbookPartyDetail => {
       pending_balance?: number;
       locked_balance?: number;
       total_balance?: number;
+      account_class?: string;
     };
   };
   if (payload.success === false) {
@@ -82,6 +84,7 @@ const parseDetail = (data: unknown): CashbookPartyDetail => {
     pending_balance: Number(payload.account?.pending_balance ?? 0),
     locked_balance: Number(payload.account?.locked_balance ?? 0),
     total_balance: Number(payload.account?.total_balance ?? 0),
+    account_class: payload.account?.account_class ?? null,
   };
 };
 
@@ -384,6 +387,26 @@ const deleteCashbookPoint = async (tenantId: number, pointId: number): Promise<v
   }
 };
 
+const listBooksExchangeRates = async (params: {
+  parentTenantId: number;
+  quoteCurrencyCode?: string | null;
+  limit?: number;
+}) => {
+  const { data, error } = await supabase.rpc('list_books_exchange_rates', {
+    p_parent_tenant_id: params.parentTenantId,
+    p_quote_currency_code: params.quoteCurrencyCode ?? null,
+    p_limit: params.limit ?? 20,
+  });
+  if (error) throw error;
+  return (data ?? []) as Array<{
+    id: number;
+    base_currency_code: string;
+    quote_currency_code: string;
+    rate: number;
+    rate_date: string;
+  }>;
+};
+
 export const cashbookRepository = {
   listEntities,
   getTenantCashRow,
@@ -397,4 +420,5 @@ export const cashbookRepository = {
   createCashbookPoint,
   updateCashbookPoint,
   deleteCashbookPoint,
+  listBooksExchangeRates,
 };

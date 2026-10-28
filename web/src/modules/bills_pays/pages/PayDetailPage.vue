@@ -2,12 +2,12 @@
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="row items-center justify-end q-pb-sm shrink-0">
       <q-btn
-        v-if="pay && !pay.voided_at"
+        v-if="pay && canVoidPayment"
         outline
         dense
         no-caps
         color="negative"
-        label="Void receipt"
+        :label="voidButtonLabel"
         :loading="voidMutation.isPending.value"
         @click="openVoidDialog"
       />
@@ -39,8 +39,26 @@
 
         <div v-if="pay.instruments.length" class="q-mt-md">
           <div class="text-weight-medium">Instruments</div>
-          <div v-for="inst in pay.instruments" :key="inst.id" class="text-body2">
-            {{ inst.payment_method_code }} — {{ formatAmountBdt(inst.amount) }}
+          <div
+            v-for="inst in pay.instruments"
+            :key="inst.id"
+            class="row items-center justify-between q-py-xs"
+          >
+            <div class="text-body2">
+              {{ inst.payment_method_code }} — {{ formatAmountBdt(inst.amount) }}
+              <span v-if="inst.cheque_number" class="text-grey-7"> · {{ inst.cheque_number }}</span>
+              <span v-if="inst.bounced_at" class="text-negative text-weight-medium"> · Bounced</span>
+            </div>
+            <q-btn
+              v-if="canBounceInstrument(inst)"
+              flat
+              dense
+              no-caps
+              color="negative"
+              label="Mark bounced"
+              :loading="bounceMutation.isPending.value"
+              @click="openBounceDialog(inst.id)"
+            />
           </div>
         </div>
 
@@ -173,13 +191,36 @@
 
     <q-dialog v-model="voidDialogOpen">
       <q-card style="min-width: 320px">
-        <q-card-section class="text-weight-bold">Void receipt?</q-card-section>
+        <q-card-section class="text-weight-bold">{{ voidDialogTitle }}</q-card-section>
         <q-card-section>
           <q-input v-model="voidReason" outlined dense label="Reason" type="textarea" autogrow />
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat no-caps label="Cancel" v-close-popup />
           <q-btn unelevated no-caps color="negative" label="Void" @click="confirmVoid" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="bounceDialogOpen">
+      <q-card style="min-width: 320px">
+        <q-card-section class="text-weight-bold">Mark cheque bounced?</q-card-section>
+        <q-card-section class="text-body2">
+          The whole payment will be reversed (v1). Bills stay issued; amounts due go back up.
+        </q-card-section>
+        <q-card-section>
+          <q-input v-model="bounceReason" outlined dense label="Reason" type="textarea" autogrow />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancel" v-close-popup />
+          <q-btn
+            unelevated
+            no-caps
+            color="negative"
+            label="Bounce cheque"
+            :loading="bounceMutation.isPending.value"
+            @click="confirmBounce"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -195,8 +236,10 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt, formatBdtTaka, formatSettlementCurrencyAmount } from 'src/utils/currency';
 import { billsRepository } from '../repositories/billsRepository';
 import { paysRepository } from '../repositories/paysRepository';
+import type { PayDetail } from '../repositories/paysRepository';
 import { paysQueryKeys } from '../services/paysQueryKeys';
 import { useVoidPayMutation } from '../composables/useVoidPayMutation';
+import { useBounceChequeMutation } from '../composables/useBounceChequeMutation';
 import { useAllocatePayMutation } from '../composables/useAllocatePayMutation';
 import { fifoFillByOldest } from '../utils/fifoBillAlloc';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
@@ -219,6 +262,7 @@ const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const voidMutation = useVoidPayMutation();
+const bounceMutation = useBounceChequeMutation();
 const allocateMutation = useAllocatePayMutation();
 const queryClient = useQueryClient();
 
@@ -253,6 +297,37 @@ const detailQuery = useQuery({
 });
 
 const pay = computed(() => detailQuery.data.value);
+
+const VOIDABLE_SOURCES = new Set(['customer_cash', 'bank', 'ap_payout', 'commission', 'courier_remittance']);
+
+const canVoidPayment = computed(() => {
+  const p = pay.value;
+  if (!p || p.voided_at) return false;
+  if (p.source === 'store_credit' || p.method === 'wallet_credit') return false;
+  return VOIDABLE_SOURCES.has(p.source);
+});
+
+const voidButtonLabel = computed(() => {
+  const src = pay.value?.source;
+  if (src === 'ap_payout' || src === 'commission') return 'Void payout';
+  if (src === 'courier_remittance') return 'Void remittance';
+  return 'Void receipt';
+});
+
+const voidDialogTitle = computed(() => {
+  const src = pay.value?.source;
+  if (src === 'ap_payout' || src === 'commission') return 'Void payout?';
+  if (src === 'courier_remittance') return 'Void remittance?';
+  return 'Void receipt?';
+});
+
+type PayInstrumentRow = PayDetail['instruments'][number];
+
+const canBounceInstrument = (inst: PayInstrumentRow) => {
+  if (!pay.value || pay.value.voided_at) return false;
+  if (inst.bounced_at) return false;
+  return String(inst.payment_method_code ?? '').toUpperCase() === 'CHEQUE';
+};
 
 const isFxPay = computed(() => {
   const p = pay.value;
@@ -486,6 +561,9 @@ const applyLeftover = async () => {
 
 const voidDialogOpen = ref(false);
 const voidReason = ref('Corrected entry');
+const bounceDialogOpen = ref(false);
+const bounceInstrumentId = ref<number | null>(null);
+const bounceReason = ref('Cheque returned by bank');
 
 const goBack = () => {
   const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
@@ -504,8 +582,26 @@ const confirmVoid = async () => {
     tenantId: tenantId.value,
     paymentId: payId.value,
     reason: voidReason.value.trim(),
+    source: pay.value?.source,
   });
   voidDialogOpen.value = false;
+  goBack();
+};
+
+const openBounceDialog = (instrumentId: number) => {
+  bounceInstrumentId.value = instrumentId;
+  bounceReason.value = 'Cheque returned by bank';
+  bounceDialogOpen.value = true;
+};
+
+const confirmBounce = async () => {
+  if (!bounceInstrumentId.value || !bounceReason.value.trim() || !pay.value) return;
+  await bounceMutation.mutateAsync({
+    tenantId: pay.value.tenant_id,
+    instrumentId: bounceInstrumentId.value,
+    reason: bounceReason.value.trim(),
+  });
+  bounceDialogOpen.value = false;
   goBack();
 };
 </script>

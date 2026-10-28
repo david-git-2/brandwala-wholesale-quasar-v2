@@ -22,7 +22,7 @@ Grants: `global_invoice` (bills), `payments` (pay in/out). See [Scopes](/docs/sc
 | Bills | `/:slug/app/bills` | List, open, print |
 | Compose | `/:slug/app/bills/create` | New take / condition / walk-in bill |
 | Payments | `/:slug/app/finance/payments` | Collect from customer, pay out |
-| Cashbook | `/:slug/app/wallet` | Tenant cash and profile leftover |
+| Cashbook | `/:slug/app/cashbook` | Tenant cash and profile leftover |
 
 UI code lives under `bills_pays/` (legacy folder name `sales_invoice/` in older docs).
 

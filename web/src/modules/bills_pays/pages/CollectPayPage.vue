@@ -162,6 +162,42 @@
           </p>
 
           <template v-if="profileId && payDirection === 'in'">
+            <q-expansion-item
+              v-if="showPreApplySection"
+              v-model="preApplyExpanded"
+              dense
+              icon="ph ph-stack"
+              label="Apply existing credit / leftover"
+              caption="Optional — fills oldest open bills first"
+              class="q-mb-md rounded-borders collect-pre-apply"
+              header-class="text-primary"
+            >
+              <div v-if="openCreditNotes.length" class="q-pa-sm">
+                <div class="text-caption text-weight-medium q-mb-xs">Open credit notes</div>
+                <q-item v-for="cn in openCreditNotes" :key="cn.bill_id" dense tag="label">
+                  <q-item-section side>
+                    <q-checkbox v-model="cn.selected" dense />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>{{ cn.invoice_no }}</q-item-label>
+                    <q-item-label caption>Open {{ formatAmountBdt(cn.due_amount) }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </div>
+              <div v-if="payLeftovers.length" class="q-pa-sm">
+                <div class="text-caption text-weight-medium q-mb-xs">Payment leftover</div>
+                <q-item v-for="pl in payLeftovers" :key="pl.pay_id" dense tag="label">
+                  <q-item-section side>
+                    <q-checkbox v-model="pl.selected" dense />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Pay #{{ pl.pay_id }} · {{ pl.payment_date }}</q-item-label>
+                    <q-item-label caption>{{ formatAmountBdt(pl.unallocated_amount) }} unallocated</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </div>
+            </q-expansion-item>
+
             <div class="row items-center justify-between q-mb-sm">
               <div class="text-subtitle2 text-weight-medium">Allocate to bills</div>
               <div class="row items-center q-gutter-xs">
@@ -227,6 +263,30 @@
             </q-list>
 
             <q-separator class="q-mb-md" />
+
+            <q-select
+              v-model="receiveIntoPotId"
+              :options="receiveIntoOptions"
+              emit-value
+              map-options
+              outlined
+              dense
+              class="q-mb-md"
+              label="Receive into (location & currency)"
+              hint="Till, safe, or bank — company cash lands here"
+              :loading="receiveIntoLoading"
+            />
+            <q-input
+              v-if="collectPotNeedsFx"
+              v-model.number="transactionRate"
+              outlined
+              dense
+              type="number"
+              step="0.0001"
+              min="0"
+              class="q-mb-md"
+              :label="`${booksCurrencyCode} per 1 ${receiveSourceCurrency}`"
+            />
 
             <div class="text-subtitle2 text-weight-medium q-mb-sm">Payment</div>
             <div class="row q-col-gutter-sm q-mb-md">
@@ -360,7 +420,7 @@
                 no-caps
                 class="full-width"
                 label="Post receipt"
-                :loading="collectMutation.isPending.value"
+                :loading="collectMutation.isPending.value || preApplyMutation.isPending.value"
                 :disable="!canSubmit"
                 @click="submit"
               />
@@ -446,6 +506,9 @@ import { billsRepository } from '../repositories/billsRepository';
 import { paysRepository } from '../repositories/paysRepository';
 import { paysQueryKeys } from '../services/paysQueryKeys';
 import { useCollectPayMutation } from '../composables/useCollectPayMutation';
+import { useApplySettlementMutation } from '../composables/useApplySettlementMutation';
+import { useBooksCurrencyCode } from '../composables/useBooksCurrencyCode';
+import { useBooksExchangeRateQuery } from '../composables/useBooksExchangeRateQuery';
 import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
 import { useCashbookPayFromPotSelect } from '../composables/useCashbookPayFromPotSelect';
 import {
@@ -453,12 +516,15 @@ import {
   paymentInstrumentExtrasBlockReason,
   paymentMethodFieldFlags,
 } from '../utils/paymentInstrumentFields';
-import { fifoFillByOldest } from '../utils/fifoBillAlloc';
+import { fifoFillByOldest, buildPreApplySettlementLines } from '../utils/fifoBillAlloc';
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const collectMutation = useCollectPayMutation();
+const preApplyMutation = useApplySettlementMutation({
+  successMessage: 'Credit and leftover applied to bills.',
+});
 const queryClient = useQueryClient();
 const payDirection = ref<'in' | 'out'>('in');
 
@@ -558,6 +624,45 @@ const {
 const cashOutAmount = ref<number | null>(null);
 const cashOutSubmitting = ref(false);
 
+const booksCurrencyCode = useBooksCurrencyCode();
+
+const cashInPointsContext = computed(() => ({
+  booksTenantId: parentTenantId.value ?? 0,
+  entityType: 'tenant',
+  entityId: parentTenantId.value ?? 0,
+  enabled:
+    payInKind.value === 'customer' &&
+    payDirection.value === 'in' &&
+    !!profileId.value &&
+    (parentTenantId.value ?? 0) > 0,
+}));
+const { pointsQuery: cashInPointsQuery } = useCashbookPointsQuery(cashInPointsContext);
+const cashInPoints = computed(() => cashInPointsQuery.data.value);
+const cashInPayFromEnabled = computed(() => cashInPointsContext.value.enabled);
+const {
+  selectedPotId: receiveIntoPotId,
+  payFromOptions: receiveIntoOptions,
+  cashbookPointId: receivePointId,
+  sourceCurrencyCode: receiveSourceCurrency,
+  loading: receiveIntoLoading,
+} = useCashbookPayFromPotSelect(cashInPoints, cashInPayFromEnabled);
+
+const collectPotNeedsFx = computed(
+  () => receiveSourceCurrency.value !== booksCurrencyCode.value,
+);
+const transactionRate = ref<number | null>(null);
+const fxRateQuery = useBooksExchangeRateQuery(
+  computed(() => parentTenantId.value ?? 0),
+  receiveSourceCurrency,
+  collectPotNeedsFx,
+);
+watch(
+  () => fxRateQuery.data.value,
+  (rate) => {
+    if (rate != null && collectPotNeedsFx.value) transactionRate.value = rate;
+  },
+);
+
 const profileSearch = ref('');
 const profileRows = ref<CashbookEntityRow[]>([]);
 const profileId = ref<number | null>(null);
@@ -575,6 +680,46 @@ type BillAlloc = {
   sourceLabel: string | null;
 };
 const openBills = ref<BillAlloc[]>([]);
+
+type OpenCreditNoteRow = {
+  bill_id: number;
+  invoice_no: string;
+  due_amount: number;
+  selected: boolean;
+};
+type PayLeftoverRow = {
+  pay_id: number;
+  unallocated_amount: number;
+  payment_date: string;
+  selected: boolean;
+};
+const openCreditNotes = ref<OpenCreditNoteRow[]>([]);
+const payLeftovers = ref<PayLeftoverRow[]>([]);
+const preApplyExpanded = ref(false);
+
+const showPreApplySection = computed(
+  () => openCreditNotes.value.length > 0 || payLeftovers.value.length > 0,
+);
+
+const reloadOpenBills = async (profileId: number) => {
+  if (!parentTenantId.value) return;
+  const { data } = await billsRepository.listBills({
+    parentTenantId: parentTenantId.value,
+    profileId,
+    invoiceStatus: 'issued',
+    quickFilter: 'unpaid',
+    pageSize: 100,
+  });
+  openBills.value = data.map((b) => ({
+    id: b.id,
+    invoice_no: b.invoice_no,
+    invoice_date: b.invoice_date,
+    due_amount: b.due_amount,
+    selected: false,
+    allocAmount: b.due_amount,
+    sourceLabel: b.source_context_label ?? null,
+  }));
+};
 
 const receivedOn = ref(new Date().toISOString().slice(0, 10));
 const reference = ref('');
@@ -689,27 +834,43 @@ watch(payDirection, (dir) => {
   }
 });
 
-watch(profileId, async (profileId) => {
+watch(profileId, async (pid) => {
   openBills.value = [];
-  if (!profileId || !parentTenantId.value) return;
+  openCreditNotes.value = [];
+  payLeftovers.value = [];
+  if (!pid || !parentTenantId.value) return;
   loadingBills.value = true;
   try {
-    const { data } = await billsRepository.listBills({
+    await reloadOpenBills(pid);
+    const open = await billsRepository.listOpenOnProfile({
       parentTenantId: parentTenantId.value,
-      profileId: profileId,
-      invoiceStatus: 'issued',
-      quickFilter: 'unpaid',
-      pageSize: 100,
+      profileId: pid,
     });
-    openBills.value = data.map((b) => ({
-      id: b.id,
-      invoice_no: b.invoice_no,
-      invoice_date: b.invoice_date,
-      due_amount: b.due_amount,
+    openCreditNotes.value = (
+      (open.open_credit_notes ?? []) as Array<{
+        bill_id: number;
+        invoice_no: string;
+        due_amount: number;
+      }>
+    ).map((cn) => ({
+      bill_id: Number(cn.bill_id),
+      invoice_no: String(cn.invoice_no ?? ''),
+      due_amount: Number(cn.due_amount ?? 0),
       selected: false,
-      allocAmount: b.due_amount,
-      sourceLabel: b.source_context_label ?? null,
     }));
+    payLeftovers.value = (
+      (open.pay_leftover ?? []) as Array<{
+        pay_id: number;
+        unallocated_amount: number;
+        payment_date: string;
+      }>
+    ).map((pl) => ({
+      pay_id: Number(pl.pay_id),
+      unallocated_amount: Number(pl.unallocated_amount ?? 0),
+      payment_date: String(pl.payment_date ?? ''),
+      selected: false,
+    }));
+    if (showPreApplySection.value) preApplyExpanded.value = true;
   } finally {
     loadingBills.value = false;
   }
@@ -801,6 +962,11 @@ const instrumentFields = computed(() => ({
 
 const submitDisabledReason = computed((): string | null => {
   if (!profileId.value) return 'Select a billing profile';
+  if (receiveIntoLoading.value) return 'Loading receive-into locations…';
+  if (!receiveIntoPotId.value || !receivePointId.value) return 'Choose where to receive cash';
+  if (collectPotNeedsFx.value && !(transactionRate.value != null && transactionRate.value > 0)) {
+    return 'Enter the books exchange rate for this currency pot';
+  }
   if ((cashAmount.value ?? 0) <= 0) return 'Enter an amount received';
   if (selectedAllocTotal.value > (cashAmount.value ?? 0)) {
     return 'Bill allocations cannot exceed the payment amount';
@@ -829,14 +995,16 @@ const submitCashOut = async () => {
   if (!profileId.value || !canSubmitCashOut.value || !cashOutPointId.value || !cashOutPotId.value) return;
   cashOutSubmitting.value = true;
   try {
-    await paysRepository.dispenseMiddlemanPayout({
+    await paysRepository.postMoneyOut({
       tenant_id: tenantId.value,
       profile_id: profileId.value,
       amount: Number(cashOutAmount.value),
       payout_method: methodCode.value,
-      reference_notes: note.value || null,
+      note: note.value || null,
       cashbook_point_id: cashOutPointId.value,
       cashbook_point_pot_id: cashOutPotId.value,
+      source_type: 'commission',
+      source: 'commission',
     });
     showSuccessNotification('Cash out recorded.');
     void queryClient.invalidateQueries({ queryKey: paysQueryKeys.root });
@@ -850,6 +1018,32 @@ const submitCashOut = async () => {
 
 const submit = async () => {
   if (!profileId.value || !canSubmit.value) return;
+  const pools = [
+    ...openCreditNotes.value
+      .filter((c) => c.selected && c.due_amount > 0)
+      .map((c) => ({
+        kind: 'credit_note' as const,
+        allocator_id: c.bill_id,
+        pool: c.due_amount,
+      })),
+    ...payLeftovers.value
+      .filter((p) => p.selected && p.unallocated_amount > 0)
+      .map((p) => ({
+        kind: 'pay' as const,
+        allocator_id: p.pay_id,
+        pool: p.unallocated_amount,
+      })),
+  ];
+  if (pools.length) {
+    const lines = buildPreApplySettlementLines(openBills.value, pools);
+    if (lines.length) {
+      await preApplyMutation.mutateAsync({
+        tenantId: tenantId.value,
+        lines,
+      });
+      await reloadOpenBills(profileId.value);
+    }
+  }
   await collectMutation.mutateAsync({
     tenantId: tenantId.value,
     profileId: profileId.value,
@@ -864,9 +1058,14 @@ const submit = async () => {
         bd_bank_id: bdBankId.value,
         cheque_number: chequeNumber.value,
         instrument_date: instrumentDate.value,
+        cashbook_point_id: receivePointId.value,
       }),
     ],
     allocations: allocations.value,
+    cashbookPointId: receivePointId.value,
+    cashbookPointPotId: receiveIntoPotId.value,
+    sourceCurrencyCode: receiveSourceCurrency.value,
+    transactionRate: collectPotNeedsFx.value ? transactionRate.value : null,
   });
   goBack();
 };

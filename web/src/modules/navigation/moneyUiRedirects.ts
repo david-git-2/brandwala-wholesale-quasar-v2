@@ -51,7 +51,17 @@ export const moneyUiRedirectRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/:tenantSlug?/app/wallet/entity/:pathMatch(.*)*',
-    redirect: appDashboardPath,
+    redirect: (to) => {
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
+      const tail =
+        typeof to.params.pathMatch === 'string'
+          ? `/entity/${to.params.pathMatch}`
+          : Array.isArray(to.params.pathMatch)
+            ? `/entity/${to.params.pathMatch.join('/')}`
+            : '/entity';
+      const base = tenantSlug ? `/${tenantSlug}/app/cashbook` : '/app/cashbook';
+      return `${base}${tail}`;
+    },
   },
   {
     path: '/:tenantSlug?/app/finance/payments/collect/:pathMatch(.*)*',

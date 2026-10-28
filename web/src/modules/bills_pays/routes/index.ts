@@ -111,7 +111,37 @@ const billsPaysRoutes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/:tenantSlug?/app/wallet/:pathMatch(.*)*',
+    redirect: (to) => {
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
+      const tail =
+        typeof to.params.pathMatch === 'string'
+          ? `/${to.params.pathMatch}`
+          : Array.isArray(to.params.pathMatch)
+            ? `/${to.params.pathMatch.join('/')}`
+            : '';
+      const base = tenantSlug ? `/${tenantSlug}/app/cashbook` : '/app/cashbook';
+      const query =
+        to.query && Object.keys(to.query).length
+          ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
+          : '';
+      return `${base}${tail}${query}${to.hash ?? ''}`;
+    },
+  },
+  {
     path: '/:tenantSlug?/app/wallet',
+    redirect: (to) => {
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
+      const base = tenantSlug ? `/${tenantSlug}/app/cashbook` : '/app/cashbook';
+      const query =
+        to.query && Object.keys(to.query).length
+          ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
+          : '';
+      return `${base}${query}${to.hash ?? ''}`;
+    },
+  },
+  {
+    path: '/:tenantSlug?/app/cashbook',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {

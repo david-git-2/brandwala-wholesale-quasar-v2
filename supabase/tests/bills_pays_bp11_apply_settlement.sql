@@ -1,7 +1,7 @@
 -- BP11: apply_settlement_to_bill + pay leftover kernel (T4-2 contract)
 BEGIN;
 
-SELECT plan(3);
+SELECT plan(5);
 
 SELECT has_function(
   'public',
@@ -15,6 +15,12 @@ SELECT has_function(
   ARRAY['bigint', 'bigint', 'bigint', 'numeric', 'boolean']
 );
 
+SELECT has_function(
+  'public',
+  '_kernel_apply_custody_to_bill',
+  ARRAY['bigint', 'bigint', 'numeric']
+);
+
 SELECT ok(
   (
     SELECT prosrc LIKE '%allocator_kind = ''credit_note''%'
@@ -25,6 +31,17 @@ SELECT ok(
       AND p.proname = 'recompute_global_invoice_payment_status'
   ),
   'recompute_global_invoice_payment_status subtracts cross-bill CN settlements'
+);
+
+SELECT ok(
+  (
+    SELECT prosrc LIKE '%custody_entry%'
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'apply_settlement_to_bill'
+  ),
+  'apply_settlement_to_bill has custody_entry branch'
 );
 
 SELECT finish();

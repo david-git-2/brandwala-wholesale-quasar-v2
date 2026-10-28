@@ -815,7 +815,11 @@ CREATE OR REPLACE FUNCTION public.post_money_in(
   p_settlement_currency_code text DEFAULT 'BDT',
   p_foreign_amount numeric DEFAULT NULL,
   p_exchange_rate numeric DEFAULT NULL,
-  p_idempotency_key text DEFAULT NULL
+  p_idempotency_key text DEFAULT NULL,
+  p_cashbook_point_id bigint DEFAULT NULL,
+  p_cashbook_point_pot_id bigint DEFAULT NULL,
+  p_source_currency_code text DEFAULT NULL,
+  p_transaction_rate numeric DEFAULT NULL
 ) RETURNS public.pays
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -838,7 +842,11 @@ begin
     p_foreign_amount,
     p_exchange_rate,
     true,
-    p_idempotency_key
+    p_idempotency_key,
+    p_cashbook_point_id,
+    p_cashbook_point_pot_id,
+    p_source_currency_code,
+    p_transaction_rate
   );
 
   return v_pay;
@@ -861,7 +869,9 @@ CREATE OR REPLACE FUNCTION public.post_money_out(
   p_exchange_rate numeric DEFAULT NULL,
   p_source_type text DEFAULT NULL,
   p_source_id text DEFAULT NULL,
-  p_idempotency_key text DEFAULT NULL
+  p_idempotency_key text DEFAULT NULL,
+  p_cashbook_point_pot_id bigint DEFAULT NULL,
+  p_payout_method text DEFAULT 'bank_transfer'
 ) RETURNS public.pays
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -869,16 +879,21 @@ SET search_path TO public
 AS $$
 declare
   v_pay public.pays;
-  v_disp jsonb;
 begin
   if coalesce(p_source_type, '') = 'commission' or p_source = 'commission' then
-    v_disp := public.dispense_middleman_payout_from_tenant(
-      p_tenant_id, p_profile_id, p_amount, 'bank_transfer', p_note, p_cashbook_point_id, null
+    return public._kernel_post_commission_payout(
+      p_tenant_id,
+      p_profile_id,
+      p_paid_on,
+      p_amount,
+      p_note,
+      p_reference,
+      p_payout_method,
+      p_cashbook_point_id,
+      p_cashbook_point_pot_id,
+      p_source_id,
+      p_idempotency_key
     );
-    if coalesce(v_disp->>'success', 'false') <> 'true' then
-      raise exception '%', coalesce(v_disp->>'error', 'commission payout failed');
-    end if;
-    return null;
   end if;
 
   if p_cashbook_point_id is null then
@@ -958,6 +973,10 @@ begin
     return v_row;
   end if;
 
+  if p_allocator_kind = 'custody_entry' then
+    return public._kernel_apply_custody_to_bill(p_tenant_id, p_bill_id, p_books_amount);
+  end if;
+
   if p_allocator_kind <> 'credit_note' then
     raise exception 'Unsupported allocator_kind %.', p_allocator_kind;
   end if;
@@ -1031,14 +1050,25 @@ begin
 end;
 $$;
 
-CREATE OR REPLACE FUNCTION public.reverse_pay(p_payment_id bigint)
+CREATE OR REPLACE FUNCTION public.reverse_pay(p_payment_id bigint, p_reason text DEFAULT NULL)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO public
 AS $$
+declare
+  v_pay public.pays;
+  v_reason text;
 begin
-  perform public.void_customer_receipt(p_payment_id);
+  select * into v_pay from public.pays where id = p_payment_id;
+  if v_pay.id is null then
+    raise exception 'Payment not found.';
+  end if;
+  v_reason := nullif(trim(coalesce(p_reason, '')), '');
+  if v_reason is null then
+    raise exception 'A reason is required.';
+  end if;
+  perform public._kernel_reverse_payment(v_pay.tenant_id, p_payment_id, v_reason);
 end;
 $$;
 

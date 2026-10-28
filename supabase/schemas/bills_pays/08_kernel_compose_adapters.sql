@@ -25,11 +25,14 @@ declare
   v_product_code_snapshot text;
   v_assigned_child bigint;
 begin
-  v_global_stock_id := nullif(p_item_elem->>'global_stock_id', '')::bigint;
+  v_line_meta := coalesce(p_item_elem->'line_meta', '{}'::jsonb);
+  v_global_stock_id := coalesce(
+    nullif(p_item_elem->>'global_stock_id', '')::bigint,
+    nullif(v_line_meta->'stock_ref'->>'global_stock_id', '')::bigint
+  );
   v_quantity := nullif(p_item_elem->>'quantity', '')::numeric;
   v_sell_price := nullif(p_item_elem->>'sell_price_amount', '')::numeric;
   v_line_discount := coalesce(nullif(p_item_elem->>'line_discount_amount', '')::numeric, 0);
-  v_line_meta := coalesce(p_item_elem->'line_meta', '{}'::jsonb);
   v_line_kind := lower(trim(coalesce(p_item_elem->>'line_kind', '')));
 
   if v_quantity is null or v_quantity <= 0 then
@@ -115,6 +118,13 @@ begin
   v_line_total := coalesce(
     nullif(v_line_meta->>'gift_line_total_amount', '')::numeric,
     greatest((v_quantity * v_sell_price) - v_line_discount, 0)
+  );
+
+  v_line_meta := jsonb_set(
+    coalesce(v_line_meta, '{}'::jsonb),
+    '{stock_ref}',
+    jsonb_build_object('global_stock_id', v_global_stock_id),
+    true
   );
 
   insert into public.bill_lines (
@@ -1414,69 +1424,22 @@ begin
     raise exception 'Cannot issue an empty invoice';
   end if;
 
+  if exists (
+    select 1
+    from public.bill_lines bl
+    where bl.invoice_id = p_invoice_id
+      and public._bill_line_global_stock_id(bl) is not null
+  ) and not exists (
+    select 1
+    from public.stock_movements sm
+    where sm.reference_type = 'sales_invoice'
+      and sm.reference_id = p_invoice_id::text
+      and sm.is_posted = true
+  ) then
+    raise exception 'Stock must be committed before issue — call commit_wholesale_bill_stock first';
+  end if;
 
-  -- 3. Create stock movement audit record
-  v_mov_no := 'MOV-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('public.stock_movements_id_seq')::text, 6, '0');
-
-  insert into public.stock_movements (
-    tenant_id,
-    movement_no,
-    movement_type,
-    reference_type,
-    reference_id,
-    notes,
-    created_by_email,
-    is_posted,
-    posted_at
-  ) values (
-    v_parent_id,
-    v_mov_no,
-    'adjustment'::public.stock_movement_type,
-    'sales_invoice',
-    p_invoice_id::text,
-    'Issued Wholesale Invoice #' || coalesce(v_invoice.invoice_no, p_invoice_id::text),
-    public.current_user_email(),
-    true,
-    now()
-  ) returning id into v_mov_id;
-
-  -- 4. Deduct warehouse stock and record movement lines
-  for v_db_item in select * from public.bill_lines where invoice_id = p_invoice_id loop
-    v_qty := ceil(v_db_item.quantity)::integer;
-
-    select * into v_stock from public.global_stocks where id = v_db_item.global_stock_id for update;
-    if v_stock.id is not null then
-      if v_stock.quantity < v_qty then
-        raise exception 'Insufficient stock for % (requested %, available %)', v_db_item.name_snapshot, v_qty, v_stock.quantity;
-      end if;
-
-      -- Deduct from global_stocks
-      update public.global_stocks
-      set quantity = quantity - v_qty
-      where id = v_db_item.global_stock_id;
-
-      -- Insert movement line
-      insert into public.stock_movement_lines (
-        movement_id,
-        stock_id,
-        quantity,
-        from_location_id,
-        to_location_id,
-        from_availability,
-        to_availability
-      ) values (
-        v_mov_id,
-        v_db_item.global_stock_id,
-        v_qty,
-        v_stock.location_id,
-        v_stock.location_id,
-        v_stock.availability,
-        v_stock.availability
-      );
-    end if;
-  end loop;
-
-  -- 5. Mark invoice as issued (status = 'issued'::public.global_invoice_status)
+  -- Mark invoice as issued (status = 'issued'::public.global_invoice_status)
   update public.bills
   set
     invoice_status = 'issued'::public.global_invoice_status,
@@ -1581,6 +1544,6 @@ SECURITY DEFINER
 SET search_path TO public
 AS $$
 begin
-  return public._kernel_issue_wholesale_stock(p_invoice_id, p_items);
+  return public.issue_wholesale_bill(p_invoice_id, p_items);
 end;
 $$;

@@ -137,20 +137,22 @@ export const dropshipFinanceRepository = {
     cashbookPointId?: number;
     cashbookPointPotId?: number | null;
   }) {
-    const { data, error } = await supabase.rpc('dispense_middleman_payout_from_tenant', {
-      p_tenant_id: params.tenantId,
-      p_profile_id: params.profileId,
-      p_amount: params.amount,
-      p_payout_method: params.payoutMethod ?? 'bank_transfer',
-      p_reference_notes: params.referenceNotes ?? null,
-      p_cashbook_point_id: params.cashbookPointId ?? null,
-      p_cashbook_point_pot_id: params.cashbookPointPotId ?? null,
-    });
-
-    if (error) throw error;
-    if (data && data.success === false) {
-      throw new Error(data.error || 'Failed to dispense middleman payout');
+    const { paysRepository } = await import(
+      'src/modules/bills_pays/repositories/paysRepository'
+    );
+    if (!params.cashbookPointId) {
+      throw new Error('Choose a cash point for this pay out');
     }
-    return data;
+    return paysRepository.postMoneyOut({
+      tenant_id: params.tenantId,
+      profile_id: params.profileId,
+      amount: params.amount,
+      payout_method: params.payoutMethod,
+      note: params.referenceNotes ?? null,
+      cashbook_point_id: params.cashbookPointId,
+      cashbook_point_pot_id: params.cashbookPointPotId,
+      source_type: 'commission',
+      source: 'commission',
+    });
   },
 };

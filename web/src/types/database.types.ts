@@ -720,6 +720,7 @@ export type Database = {
       }
       cashbook_accounts: {
         Row: {
+          account_class: Database["public"]["Enums"]["cashbook_account_class"]
           available_balance: number
           created_at: string
           currency_code: string
@@ -733,6 +734,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_class?: Database["public"]["Enums"]["cashbook_account_class"]
           available_balance?: number
           created_at?: string
           currency_code?: string
@@ -746,6 +748,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_class?: Database["public"]["Enums"]["cashbook_account_class"]
           available_balance?: number
           created_at?: string
           currency_code?: string
@@ -4150,6 +4153,7 @@ export type Database = {
         Row: {
           amount: number
           bd_bank_id: number | null
+          bounced_at: string | null
           cashbook_point_id: number | null
           cheque_date: string | null
           cheque_number: string | null
@@ -4163,6 +4167,7 @@ export type Database = {
         Insert: {
           amount: number
           bd_bank_id?: number | null
+          bounced_at?: string | null
           cashbook_point_id?: number | null
           cheque_date?: string | null
           cheque_number?: string | null
@@ -4176,6 +4181,7 @@ export type Database = {
         Update: {
           amount?: number
           bd_bank_id?: number | null
+          bounced_at?: string | null
           cashbook_point_id?: number | null
           cheque_date?: string | null
           cheque_number?: string | null
@@ -10038,6 +10044,10 @@ export type Database = {
         Args: { p_parent_tenant_id: number }
         Returns: undefined
       }
+      _bill_line_global_stock_id: {
+        Args: { p_line: Database["public"]["Tables"]["bill_lines"]["Row"] }
+        Returns: number
+      }
       _build_dropship_courier_ap_paper: {
         Args: {
           p_cod: number
@@ -10075,6 +10085,28 @@ export type Database = {
       _kernel_advisory_shipment_money_lock: {
         Args: { p_shipment_id: number }
         Returns: undefined
+      }
+      _kernel_apply_custody_to_bill: {
+        Args: { p_bill_id: number; p_books_amount: number; p_tenant_id: number }
+        Returns: {
+          allocated_books_amount: number
+          allocated_txn_amount: number
+          allocator_id: number
+          allocator_kind: string
+          bill_id: number
+          books_rate_at_alloc: number | null
+          created_at: string
+          fx_realized_books_delta: number | null
+          id: number
+          parent_tenant_id: number
+          pay_allocation_id: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bill_settlements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       _kernel_apply_pay_leftover_to_bill: {
         Args: {
@@ -10330,6 +10362,54 @@ export type Database = {
         Args: { p_cashbook_point_id: number }
         Returns: undefined
       }
+      _kernel_post_commission_payout: {
+        Args: {
+          p_amount: number
+          p_cashbook_point_id?: number
+          p_cashbook_point_pot_id?: number
+          p_idempotency_key?: string
+          p_note?: string
+          p_paid_on: string
+          p_payout_method?: string
+          p_profile_id: number
+          p_reference?: string
+          p_source_id?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          amount: number
+          cashbook_point_id: number | null
+          cashbook_point_pot_id: number | null
+          collection_source: Database["public"]["Enums"]["collection_source_type"]
+          created_at: string
+          customer_group_id: number | null
+          exchange_rate: number
+          foreign_amount: number | null
+          id: number
+          idempotency_key: string | null
+          method: string | null
+          note: string | null
+          payment_date: string
+          profile_id: number | null
+          quote_currency_code: string
+          reference: string | null
+          settlement_currency_code: string
+          shop_order_id: number | null
+          source: string
+          source_amount: number | null
+          source_currency_code: string | null
+          tenant_id: number
+          transaction_rate: number | null
+          unallocated_amount: number
+          voided_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "pays"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _kernel_resolve_bill_id_from_alloc: {
         Args: {
           p_bill_id: number
@@ -10337,6 +10417,10 @@ export type Database = {
           p_invoice_id: number
         }
         Returns: number
+      }
+      _kernel_reverse_payment: {
+        Args: { p_payment_id: number; p_reason: string; p_tenant_id: number }
+        Returns: Json
       }
       _kernel_settlement_amounts_from_pay_alloc: {
         Args: {
@@ -11284,6 +11368,10 @@ export type Database = {
         Returns: Json
       }
       auth_investor_id: { Args: never; Returns: number }
+      bounce_cheque_instrument: {
+        Args: { p_instrument_id: number; p_reason: string; p_tenant_id: number }
+        Returns: Json
+      }
       browse_dropship_listings_for_staff_order: {
         Args: {
           p_customer_group_id: number
@@ -11738,6 +11826,10 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: Json
+      }
+      commit_wholesale_bill_stock: {
+        Args: { p_bill_id: number }
+        Returns: number
       }
       compute_dropship_order_reseller_purchase: {
         Args: { p_order_id: number }
@@ -14048,6 +14140,20 @@ export type Database = {
         }
         Returns: Json
       }
+      list_books_exchange_rates: {
+        Args: {
+          p_limit?: number
+          p_parent_tenant_id: number
+          p_quote_currency_code?: string
+        }
+        Returns: {
+          base_currency_code: string
+          id: number
+          quote_currency_code: string
+          rate: number
+          rate_date: string
+        }[]
+      }
       list_catalog_refresh_log: {
         Args: { p_limit?: number; p_parent_tenant_id: number }
         Returns: {
@@ -16082,109 +16188,220 @@ export type Database = {
         Args: { p_invoice_id: number }
         Returns: undefined
       }
-      post_money_in: {
-        Args: {
-          p_allocations?: Json
-          p_exchange_rate?: number
-          p_foreign_amount?: number
-          p_idempotency_key?: string
-          p_instruments?: Json
-          p_note?: string
-          p_profile_id: number
-          p_received_on: string
-          p_reference?: string
-          p_settlement_currency_code?: string
-          p_shop_order_id?: number
-          p_source?: string
-          p_tenant_id: number
-        }
-        Returns: {
-          amount: number
-          cashbook_point_id: number | null
-          cashbook_point_pot_id: number | null
-          collection_source: Database["public"]["Enums"]["collection_source_type"]
-          created_at: string
-          customer_group_id: number | null
-          exchange_rate: number
-          foreign_amount: number | null
-          id: number
-          idempotency_key: string | null
-          method: string | null
-          note: string | null
-          payment_date: string
-          profile_id: number | null
-          quote_currency_code: string
-          reference: string | null
-          settlement_currency_code: string
-          shop_order_id: number | null
-          source: string
-          source_amount: number | null
-          source_currency_code: string | null
-          tenant_id: number
-          transaction_rate: number | null
-          unallocated_amount: number
-          voided_at: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "pays"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      post_money_out: {
-        Args: {
-          p_allocations?: Json
-          p_amount: number
-          p_cashbook_point_id?: number
-          p_exchange_rate?: number
-          p_foreign_amount?: number
-          p_idempotency_key?: string
-          p_instruments?: Json
-          p_note?: string
-          p_paid_on: string
-          p_profile_id: number
-          p_reference?: string
-          p_settlement_currency_code?: string
-          p_source?: string
-          p_source_id?: string
-          p_source_type?: string
-          p_tenant_id: number
-        }
-        Returns: {
-          amount: number
-          cashbook_point_id: number | null
-          cashbook_point_pot_id: number | null
-          collection_source: Database["public"]["Enums"]["collection_source_type"]
-          created_at: string
-          customer_group_id: number | null
-          exchange_rate: number
-          foreign_amount: number | null
-          id: number
-          idempotency_key: string | null
-          method: string | null
-          note: string | null
-          payment_date: string
-          profile_id: number | null
-          quote_currency_code: string
-          reference: string | null
-          settlement_currency_code: string
-          shop_order_id: number | null
-          source: string
-          source_amount: number | null
-          source_currency_code: string | null
-          tenant_id: number
-          transaction_rate: number | null
-          unallocated_amount: number
-          voided_at: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "pays"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      post_money_in:
+        | {
+            Args: {
+              p_allocations?: Json
+              p_exchange_rate?: number
+              p_foreign_amount?: number
+              p_idempotency_key?: string
+              p_instruments?: Json
+              p_note?: string
+              p_profile_id: number
+              p_received_on: string
+              p_reference?: string
+              p_settlement_currency_code?: string
+              p_shop_order_id?: number
+              p_source?: string
+              p_tenant_id: number
+            }
+            Returns: {
+              amount: number
+              cashbook_point_id: number | null
+              cashbook_point_pot_id: number | null
+              collection_source: Database["public"]["Enums"]["collection_source_type"]
+              created_at: string
+              customer_group_id: number | null
+              exchange_rate: number
+              foreign_amount: number | null
+              id: number
+              idempotency_key: string | null
+              method: string | null
+              note: string | null
+              payment_date: string
+              profile_id: number | null
+              quote_currency_code: string
+              reference: string | null
+              settlement_currency_code: string
+              shop_order_id: number | null
+              source: string
+              source_amount: number | null
+              source_currency_code: string | null
+              tenant_id: number
+              transaction_rate: number | null
+              unallocated_amount: number
+              voided_at: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "pays"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_allocations?: Json
+              p_cashbook_point_id?: number
+              p_cashbook_point_pot_id?: number
+              p_exchange_rate?: number
+              p_foreign_amount?: number
+              p_idempotency_key?: string
+              p_instruments?: Json
+              p_note?: string
+              p_profile_id: number
+              p_received_on: string
+              p_reference?: string
+              p_settlement_currency_code?: string
+              p_shop_order_id?: number
+              p_source?: string
+              p_source_currency_code?: string
+              p_tenant_id: number
+              p_transaction_rate?: number
+            }
+            Returns: {
+              amount: number
+              cashbook_point_id: number | null
+              cashbook_point_pot_id: number | null
+              collection_source: Database["public"]["Enums"]["collection_source_type"]
+              created_at: string
+              customer_group_id: number | null
+              exchange_rate: number
+              foreign_amount: number | null
+              id: number
+              idempotency_key: string | null
+              method: string | null
+              note: string | null
+              payment_date: string
+              profile_id: number | null
+              quote_currency_code: string
+              reference: string | null
+              settlement_currency_code: string
+              shop_order_id: number | null
+              source: string
+              source_amount: number | null
+              source_currency_code: string | null
+              tenant_id: number
+              transaction_rate: number | null
+              unallocated_amount: number
+              voided_at: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "pays"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      post_money_out:
+        | {
+            Args: {
+              p_allocations?: Json
+              p_amount: number
+              p_cashbook_point_id?: number
+              p_exchange_rate?: number
+              p_foreign_amount?: number
+              p_idempotency_key?: string
+              p_instruments?: Json
+              p_note?: string
+              p_paid_on: string
+              p_profile_id: number
+              p_reference?: string
+              p_settlement_currency_code?: string
+              p_source?: string
+              p_source_id?: string
+              p_source_type?: string
+              p_tenant_id: number
+            }
+            Returns: {
+              amount: number
+              cashbook_point_id: number | null
+              cashbook_point_pot_id: number | null
+              collection_source: Database["public"]["Enums"]["collection_source_type"]
+              created_at: string
+              customer_group_id: number | null
+              exchange_rate: number
+              foreign_amount: number | null
+              id: number
+              idempotency_key: string | null
+              method: string | null
+              note: string | null
+              payment_date: string
+              profile_id: number | null
+              quote_currency_code: string
+              reference: string | null
+              settlement_currency_code: string
+              shop_order_id: number | null
+              source: string
+              source_amount: number | null
+              source_currency_code: string | null
+              tenant_id: number
+              transaction_rate: number | null
+              unallocated_amount: number
+              voided_at: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "pays"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_allocations?: Json
+              p_amount: number
+              p_cashbook_point_id?: number
+              p_cashbook_point_pot_id?: number
+              p_exchange_rate?: number
+              p_foreign_amount?: number
+              p_idempotency_key?: string
+              p_instruments?: Json
+              p_note?: string
+              p_paid_on: string
+              p_payout_method?: string
+              p_profile_id: number
+              p_reference?: string
+              p_settlement_currency_code?: string
+              p_source?: string
+              p_source_id?: string
+              p_source_type?: string
+              p_tenant_id: number
+            }
+            Returns: {
+              amount: number
+              cashbook_point_id: number | null
+              cashbook_point_pot_id: number | null
+              collection_source: Database["public"]["Enums"]["collection_source_type"]
+              created_at: string
+              customer_group_id: number | null
+              exchange_rate: number
+              foreign_amount: number | null
+              id: number
+              idempotency_key: string | null
+              method: string | null
+              note: string | null
+              payment_date: string
+              profile_id: number | null
+              quote_currency_code: string
+              reference: string | null
+              settlement_currency_code: string
+              shop_order_id: number | null
+              source: string
+              source_amount: number | null
+              source_currency_code: string | null
+              tenant_id: number
+              transaction_rate: number | null
+              unallocated_amount: number
+              voided_at: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "pays"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       post_sales_invoice: { Args: { p_invoice_id: number }; Returns: undefined }
       post_shipment_ap_money_out: {
         Args: {
@@ -16889,7 +17106,12 @@ export type Database = {
         Args: { p_items_qty: Json; p_outcome: string; p_shipment_id: number }
         Returns: Json
       }
-      reverse_pay: { Args: { p_payment_id: number }; Returns: undefined }
+      reverse_pay:
+        | { Args: { p_payment_id: number }; Returns: undefined }
+        | {
+            Args: { p_payment_id: number; p_reason?: string }
+            Returns: undefined
+          }
       reverse_wallet_ledger_entry_for_staff: {
         Args: {
           p_ledger_entry_id: string
@@ -19007,6 +19229,7 @@ export type Database = {
         | "cashier"
       bill_document_kind: "standard" | "credit_note" | "debit_note"
       bill_settlement_kind: "take" | "condition"
+      cashbook_account_class: "tenant_asset" | "profile_custody"
       cashbook_point_kind:
         | "drawer"
         | "safe"
@@ -19319,6 +19542,7 @@ export const Constants = {
       ],
       bill_document_kind: ["standard", "credit_note", "debit_note"],
       bill_settlement_kind: ["take", "condition"],
+      cashbook_account_class: ["tenant_asset", "profile_custody"],
       cashbook_point_kind: [
         "drawer",
         "safe",

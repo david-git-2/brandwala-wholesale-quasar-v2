@@ -95,7 +95,7 @@ Build order: [kernel plan](../../../doc/fix/2026-10-12-bills-pays-kernel-plan.md
 | Walk-in | Collect | At issue |
 | AP (per shipment cost bucket) | Pay out (`ap_payout`) | Never sales |
 
-**Pay in** → ALLOC to AR bills; remainder → profile cashbook. **UI:** Customer tab (collect) + **Courier** tab (dropship net bank in → same writer, `courier_remittance`). **Pay out:** dropship shop profit (`dispense_middleman_payout_from_tenant` — target [BP24](00-gaps.md): `source_type=commission` + `post_money_out`) or AP alloc (`post_ap_payout_with_allocations`). Inbound AP sync: `sync_shipment_ap_bills` ([WA15](00-gaps.md)).
+**Pay in** → ALLOC to AR bills; remainder → profile cashbook. **UI:** Customer tab (collect) + **Courier** tab (dropship net bank in → same writer, `courier_remittance`). **Pay out:** dropship shop profit via `post_money_out` (`source_type=commission`; legacy `dispense_middleman_payout_from_tenant` wraps spine) or AP alloc (`post_ap_payout_with_allocations`). Inbound AP sync: `sync_shipment_ap_bills` ([WA15](00-gaps.md)).
 
 ### AP paper (not AR compose)
 
@@ -126,14 +126,14 @@ UI: `ApBillPaper` on bill detail/preview when `invoice_type = ap`. **Parties on 
 - [x] US-5 Delivery paper close → bills ([SI19](00-gaps.md)).
 
 ### Pays + leftover
-- [ ] US-6 Cashbook via ledger writer only.
+- [x] US-6 Cashbook via ledger writer only; collect tags **cash point + pot** ([BP15](00-gaps.md), [BP16](00-gaps.md)).
 - [x] US-7 One pay-in writer (collect + remittance).
-- [ ] US-8 Split tender; cheque bounce v2 ([WA13](00-gaps.md)).
+- [x] US-8 Split tender at collect; **cheque bounce v1** reverses whole pay ([WA13](00-gaps.md)) — partial split-tender bounce still later.
 - [x] US-9 Merchant leftover payout; not ALLOC (remittance → cashbook; Pay out / finance hub step 3).
 - [x] US-10 Customer overpay / leftover: cashbook at collect; apply on Pay in (FIFO) or later from the payment.
 - [x] US-11 Shipment AP auto-sync; outcome qty costing; commercial credit = bill note ([BP8](00-gaps.md)).
 - [ ] US-12 Credit/debit notes on `bills`. Same RPCs for AR and AP. Desk + print ([BP8](00-gaps.md)).
 - [ ] US-13 Generic `source_type` / `source_id` / `source_key`; one upsert for adapters ([BP9](00-gaps.md)).
 - [ ] US-14 Reads: balances, pays/FX, documents by source and by profile ([BP10](00-gaps.md)).
-- [x] US-15 Apply leftover / open credit to the next bill — AR and AP ([BP11](00-gaps.md)); custody apply still open in gaps.
-- [ ] US-16 Reverse a pay; cheque bounce ([WA13](00-gaps.md)).
+- [x] US-15 Apply leftover / open credit / **profile custody** to bills — pay detail, bill detail, collect ([BP11](00-gaps.md)).
+- [x] US-16 Reverse a pay (receipt, AP payout, remittance); cheque bounce v1 ([BP12](00-gaps.md), [WA13](00-gaps.md)).

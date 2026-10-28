@@ -43,7 +43,7 @@ Tables: `bills`, `bill_lines`, `pays`, `pay_allocations`, `cashbook_entries`, `c
 
 | Step | Effect |
 | :--- | :--- |
-| `post_money_out` | **620** out; `source_type = commission`, `source_id = O`; no alloc to B1 (live: `dispense_middleman_payout_from_tenant` until [BP24](00-gaps.md)) |
+| `post_money_out` | **620** out; `source_type = commission`, `source_id = O`; no alloc to B1; returns `pays` row ([BP24](00-gaps.md)) |
 
 **Assert:** Sales = 1500; cash in = 2120; merchant custody 0 after payout.
 
@@ -153,6 +153,8 @@ Use `pg_sleep` + two sessions or stress script against local Supabase. CI nightl
 | Shipment guided CN | Lock costs → material AP issued → Shipment settings **Commercial credit note** | Bill detail opens with composer; optional `suggestedAmount` query hint only |
 | Note print | Preview issued CN/DN | Lines from `bill_lines`; reason on sheet |
 | Apply CN to second bill | Issued AR bill A with open CN; **Apply credit to another bill** → bill B | `bill_settlements` `allocator_kind=credit_note`; CN `parent_bill_id` unchanged; B due down; CN open down (T4-2) |
+| Custody to bill | Bill detail **Apply custody** when profile has custody balance | `apply_settlement_to_bill` `allocator_kind=custody_entry`; ledger custody debit |
+| Collect pre-apply | Pay in → tick open CN / leftover → Post receipt | Settlements before `post_money_in`; optional section empty OK |
 
 ### H — Apply leftover / open credit (BP11)
 
@@ -160,14 +162,32 @@ Use `pg_sleep` + two sessions or stress script against local Supabase. CI nightl
 | :--- | :--- | :--- |
 | AP payout leftover | Pay out vendor with unallocated remainder → Pay detail **Apply leftover** | `apply_settlement_to_bill` `allocator_kind=pay`; target AP bill due reduced |
 | AR collect leftover | Same on customer cash/bank pay detail | Same RPC path as AP |
-| pgTAP smoke | `supabase test db` → `bills_pays_bp11_apply_settlement.sql` | Functions exist; recompute includes CN cross-apply |
+| pgTAP smoke | `supabase test db` → `bills_pays_bp11_apply_settlement.sql` | Functions exist; custody branch; recompute includes CN cross-apply |
+
+### M — Cashbook points, FX pots, account class (BP15 + BP16 + BP21)
+
+| Case | Steps | Expect |
+| :--- | :--- | :--- |
+| Collect point | Pay in → **Receive into** → Post | `pays.cashbook_point_id` / pot set; tenant ledger at point |
+| FX pot | Non-BDT pot + books rate | Ledger line uses pot currency + frozen rate |
+| Account class | Party detail | `account_class` distinguishes tenant asset vs profile custody |
+| pgTAP | `bills_pays_bp15_collect_point.sql`, `bp16_fx_pots.sql`, `bp21_account_class.sql` | Symbols + prosrc smoke |
+
+### L — Reverse pay + cheque bounce (BP12 + WA13)
+
+| Case | Steps | Expect |
+| :--- | :--- | :--- |
+| Void AP payout | Pay detail **Void payout** on issued AP pay | `reverse_pay`; bill stays **issued**; due restored (T4-4) |
+| Void remittance | Courier remittance pay void | Same kernel; no bill void |
+| Cheque bounce | CHEQUE instrument **Mark bounced** + reason | `pay_instruments.bounced_at` set; **whole pay** reversed (v1) |
+| pgTAP | `bills_pays_bp12_reverse_pay.sql`, `bills_pays_wa13_cheque_bounce.sql` | Kernel + bounce RPC symbols |
 
 ### I — Kernel upsert adapters (BP9)
 
 | Case | Steps | Expect |
 | :--- | :--- | :--- |
 | Compose upsert | Create bill from compose desk | `upsert_draft_bill` with `adapter: compose`; default path uses `_kernel_upsert_compose_draft` |
-| Wholesale stock issue | Issue wholesale bill with stock lines | `issue_wholesale_bill` → `_kernel_issue_wholesale_stock` |
+| Wholesale stock issue | Issue wholesale bill with stock lines | `commit_wholesale_bill_stock` then `_kernel_issue_wholesale_stock` via `issue_wholesale_bill` ([BP17](00-gaps.md)) |
 | Dropship courier AP | Ship dropship order | `_kernel_upsert_dropship_courier_ap`; `source_type = dropship_courier` |
 | pgTAP smoke | `bills_pays_bp9_upsert_adapters.sql` | Kernel symbols exist; `upsert_draft_bill` prosrc has no `create_sales_invoice_from_payload` |
 
@@ -191,6 +211,24 @@ Use `pg_sleep` + two sessions or stress script against local Supabase. CI nightl
 | Wholesale return | `process_wholesale_invoice_return` on paid/partial bill | Parent `total_amount` unchanged; child `credit_note` issued; `get_bill_net_balances` open drops |
 | Dropship finalize | `finalize_dropship_return` with items | No `recompute_global_invoice_totals`; CN when return credit > 0 |
 | pgTAP | `bills_pays_bp5_return_cn.sql` | prosrc checks on return RPCs |
+
+---
+
+### N — Commission payout (BP24)
+
+| Case | Steps | Expect |
+| :--- | :--- | :--- |
+| Merchant cash out | Collect desk **Cash out** or dropship profit pay | `post_money_out` with `source_type=commission`; `pays.source=commission`; ledger + FIFO settlement |
+| pgTAP | `bills_pays_bp24_commission_payout.sql` | Kernel writer wired; no dispense in `post_money_out` body |
+
+### O — Wholesale stock before issue (BP17)
+
+| Case | Steps | Expect |
+| :--- | :--- | :--- |
+| Stock commit | `commit_wholesale_bill_stock` on draft wholesale bill | Posted movement; `global_stocks` deducted once |
+| Issue | `issue_wholesale_bill` | Status issued; kernel asserts movement when stock lines exist |
+| Line meta | New stock lines from compose | `line_meta.stock_ref.global_stock_id` dual-written |
+| pgTAP | `bills_pays_bp17_wholesale_stock_issue.sql` | RPC symbols + prosrc smoke |
 
 ---
 

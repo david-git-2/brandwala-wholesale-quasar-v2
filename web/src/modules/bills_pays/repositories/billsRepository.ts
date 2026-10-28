@@ -184,15 +184,15 @@ const voidBill = async (billId: number): Promise<void> => {
 const applySettlementToBill = async (payload: {
   tenant_id: number;
   bill_id: number;
-  allocator_kind: 'pay' | 'credit_note';
-  allocator_id: number;
+  allocator_kind: 'pay' | 'credit_note' | 'custody_entry';
+  allocator_id?: number;
   books_amount: number;
 }) => {
   const { data, error } = await supabase.rpc('apply_settlement_to_bill', {
     p_tenant_id: payload.tenant_id,
     p_bill_id: payload.bill_id,
     p_allocator_kind: payload.allocator_kind,
-    p_allocator_id: payload.allocator_id,
+    p_allocator_id: payload.allocator_id ?? 0,
     p_books_amount: payload.books_amount,
   });
   if (error) throw error;
