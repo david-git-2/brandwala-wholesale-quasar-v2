@@ -190,7 +190,16 @@
                 </q-item-section>
                 <q-item-section>
                   <q-item-label class="text-caption text-weight-medium">Whole shipment</q-item-label>
-                  <q-item-label caption>One sheet per section</q-item-label>
+                  <q-item-label caption>All Items + one sheet per section</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-item clickable v-ripple @click="downloadWholeShipmentQtyBySectionExcel">
+                <q-item-section avatar style="min-width: 28px">
+                  <q-icon name="ph ph-table" size="16px" color="positive" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-caption text-weight-medium">Whole shipment (full rows)</q-item-label>
+                  <q-item-label caption>Every sheet lists all lines; qty only on that section</q-item-label>
                 </q-item-section>
               </q-item>
               <q-separator class="q-my-xs" />
@@ -2452,6 +2461,10 @@ const downloadDefaultShipmentExcel = () => {
 
 const downloadWholeShipmentExcel = () => {
   void downloadExcel({ mode: 'whole' });
+};
+
+const downloadWholeShipmentQtyBySectionExcel = () => {
+  void downloadExcel({ mode: 'whole_all_rows' });
 };
 
 const downloadShipmentSectionExcel = (sec: { sheetId: string; name: string }) => {

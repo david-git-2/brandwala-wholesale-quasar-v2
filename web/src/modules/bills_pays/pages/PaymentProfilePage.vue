@@ -118,7 +118,7 @@ import {
   type CashbookLedgerRow,
 } from '../repositories/cashbookRepository';
 import { paysRepository, type PayListRow as PayRow } from '../repositories/paysRepository';
-import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import { billsRepository } from '../repositories/billsRepository';
 import PayListRow from '../components/PayListRow.vue';
 import ProfilePayDialog from '../components/ProfilePayDialog.vue';
 import { paymentsPageRoute } from '../utils/paymentsNavigation';
@@ -209,7 +209,7 @@ const loadHeader = async () => {
     available.value = detail.available_balance;
     dueTotal.value = 0;
     if (entityType.value !== 'tenant' && booksTenantId.value) {
-      const { data } = await invoiceRepository.listGlobalInvoices({
+      const { data } = await billsRepository.listBills({
         parentTenantId: booksTenantId.value,
         profileId: entityId.value,
         invoiceStatus: 'issued',
@@ -269,9 +269,20 @@ watch([entityType, entityId], () => {
   void loadHistory();
 });
 
+const openPayFromRouteQuery = () => {
+  const action = route.query.action;
+  if (action === 'pay-in') openPayDialog('in');
+  else if (action === 'pay-out') openPayDialog('out');
+};
+
+watch(() => route.query.action, () => {
+  openPayFromRouteQuery();
+});
+
 onMounted(() => {
   void loadHeader();
   void loadHistory();
+  openPayFromRouteQuery();
 });
 </script>
 

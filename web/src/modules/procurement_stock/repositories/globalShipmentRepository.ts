@@ -1212,63 +1212,6 @@ const returnShipmentToVendor = async (
   return data as ReturnShipmentToVendorResult;
 };
 
-export interface SettleShipmentPayeeParams {
-  shipmentId: number;
-  entityType: 'vendor' | 'cargo_company';
-  entityId: number;
-  action: 'pay' | 'record_credit' | 'use_credit';
-  amount: number;
-  exchangeRate?: number | null;
-}
-
-export interface PayeeSettlementSummary {
-  entity_type: 'vendor' | 'cargo_company';
-  entity_id: number;
-  available_bdt: number;
-  paid_bdt: number;
-  credited_bdt: number;
-  used_bdt: number;
-  recent_events: Array<{
-    id: string;
-    created_at: string;
-    action: string;
-    type: string;
-    amount_input: number;
-    exchange_rate: number;
-    base_amount: number;
-  }>;
-}
-
-export interface ListShipmentPayeeSettlementsResult {
-  vendor: PayeeSettlementSummary | null;
-  cargo_company: PayeeSettlementSummary | null;
-}
-
-const settleShipmentPayee = async (
-  params: SettleShipmentPayeeParams,
-): Promise<{ success: boolean; action: string; amount_bdt: number }> => {
-  const { data, error } = await db.rpc('settle_shipment_payee', {
-    p_shipment_id: params.shipmentId,
-    p_entity_type: params.entityType,
-    p_entity_id: params.entityId,
-    p_action: params.action,
-    p_amount: params.amount,
-    p_exchange_rate: params.exchangeRate ?? null,
-  });
-  if (error) throw error;
-  return data;
-};
-
-const listShipmentPayeeSettlements = async (
-  shipmentId: number,
-): Promise<ListShipmentPayeeSettlementsResult> => {
-  const { data, error } = await db.rpc('list_shipment_payee_settlements', {
-    p_shipment_id: shipmentId,
-  });
-  if (error) throw error;
-  return data as ListShipmentPayeeSettlementsResult;
-};
-
 const generateTrackingToken = async (shipmentId: number): Promise<string> => {
   const { data, error } = await db.rpc('generate_shipment_tracking_token', {
     p_shipment_id: shipmentId,
@@ -1680,8 +1623,6 @@ export const globalShipmentRepository = {
   setShipmentProgressFlow,
   assignShipmentToChild,
   returnShipmentToVendor,
-  settleShipmentPayee,
-  listShipmentPayeeSettlements,
   getShipmentSummary,
 };
 

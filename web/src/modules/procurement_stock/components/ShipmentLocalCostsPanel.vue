@@ -208,11 +208,8 @@ import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { ShipmentLocalCostDraft } from '../types/shipmentLocalCost';
 import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import {
-  listShipmentApBills,
-  syncShipmentApBills,
-  type ShipmentApBillRow,
-} from '../repositories/shipmentApBillsRepository';
+import type { ShipmentApBillRow } from '../repositories/shipmentApBillsRepository';
+import { billDetailRoute } from '../utils/shipmentApBillDisplay';
 import {
   showErrorNotification,
   showSuccessNotification,
@@ -228,33 +225,37 @@ const shipmentStore = useGlobalShipmentStore();
 const authStore = useAuthStore();
 const router = useRouter();
 const { data: currenciesData } = useGlobalCurrenciesQuery();
-const apBills = ref<ShipmentApBillRow[]>([]);
 const apSyncing = ref(false);
-const otherApBill = computed(() => apBills.value.find((b) => b.ap_kind === 'other') ?? null);
+const apBillsFromFinance = ref<ShipmentApBillRow[]>([]);
+const apBillsResolved = computed(() => apBillsFromFinance.value);
+
+const refreshApBillsFromStore = async () => {
+  const { apBills: bills } = await shipmentStore.loadSettingsFinanceBundle(props.shipmentId);
+  apBillsFromFinance.value = bills;
+};
+
+const otherApBill = computed(
+  () => apBillsResolved.value.find((b) => b.ap_kind === 'other' || b.source_key === 'other') ?? null,
+);
 
 const loadApBills = async () => {
   try {
-    apBills.value = await listShipmentApBills(props.shipmentId);
+    await refreshApBillsFromStore();
   } catch {
-    apBills.value = [];
+    apBillsFromFinance.value = [];
   }
 };
 
 const openApBill = (billId: number) => {
-  const tenantSlug = authStore.tenantSlug;
-  if (!tenantSlug) return;
-  void router.push({
-    name: 'app-bill-detail-page',
-    params: { tenantSlug, billId: String(billId) },
-  });
+  const route = billDetailRoute(billId, authStore.tenantSlug);
+  if (route) void router.push(route);
 };
 
 const syncLocalApBill = async () => {
   apSyncing.value = true;
   try {
     const existed = Boolean(otherApBill.value);
-    await syncShipmentApBills(props.shipmentId);
-    await loadApBills();
+    await refreshApBillsFromStore();
     const linked = otherApBill.value;
     if (!linked) {
       showErrorNotification('Add a local cost line first.');

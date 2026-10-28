@@ -233,7 +233,7 @@ Use thrift reports for thrift margins — do not map thrift COGS to BW shipment 
 | Do not use for thrift | Use instead |
 | --- | --- |
 | `global_stocks` / FIFO compose | Thrift stock + POS |
-| Bills desk `/app/sales/invoices` | Thrift sales create |
+| Bills desk `/app/bills` | Thrift sales create |
 | Procurement landed-cost lock | Thrift shipment + thrift costing rules |
 | Shop dropship | Thrift couriers + POS |
 | Koba catalog | Separate Koba module |

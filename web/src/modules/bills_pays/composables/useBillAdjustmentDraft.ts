@@ -15,7 +15,7 @@ import {
   parseRevisedInputAmount,
   remainingAfterNotes,
 } from '../utils/billAdjustmentParentLines';
-import type { BillAdjustmentRow } from './useBillAdjustmentsQuery';
+import type { BillAdjustmentRow } from '../types/billAdjustments';
 import { listBillLinesForInvoices } from '../repositories/billLinesRepository';
 
 type BillDocumentKind = Database['public']['Enums']['bill_document_kind'];

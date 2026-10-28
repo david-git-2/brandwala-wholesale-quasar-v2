@@ -10,4 +10,6 @@ export const billsQueryKeys = {
     [...billsQueryKeys.root, 'paymentHistory', billId ?? 0] as const,
   adjustments: (billId: number | null) =>
     [...billsQueryKeys.root, 'adjustments', billId ?? 0] as const,
+  brands: (parentTenantId: number | null) =>
+    [...billsQueryKeys.root, 'brands', parentTenantId ?? 0] as const,
 };

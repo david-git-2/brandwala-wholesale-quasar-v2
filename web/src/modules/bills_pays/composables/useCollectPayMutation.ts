@@ -1,5 +1,6 @@
+import { ref } from 'vue';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
-import { paysRepository } from '../repositories/paysRepository';
+import { createPayIdempotencyKey, paysRepository } from '../repositories/paysRepository';
 import { paysQueryKeys } from '../services/paysQueryKeys';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
@@ -19,9 +20,16 @@ export type CollectPayPayload = {
 
 export function useCollectPayMutation() {
   const queryClient = useQueryClient();
+  const attemptKey = ref<string | null>(null);
 
   return useMutation({
+    onMutate: () => {
+      if (!attemptKey.value) {
+        attemptKey.value = createPayIdempotencyKey();
+      }
+    },
     mutationFn: async (payload: CollectPayPayload) => {
+      const batchKey = attemptKey.value ?? createPayIdempotencyKey();
       const cashTotal = payload.instruments.reduce((s, i) => s + (Number(i.amount) || 0), 0);
       const allocTotal = payload.allocations.reduce((s, a) => s + a.amount, 0);
       const scTotal = (payload.storeCreditAllocations ?? []).reduce((s, a) => s + a.amount, 0);
@@ -33,7 +41,7 @@ export function useCollectPayMutation() {
       );
 
       if (cashTotal > 0) {
-        await paysRepository.postCustomerReceipt({
+        await paysRepository.postMoneyIn({
           tenant_id: payload.tenantId,
           profile_id: payload.profileId,
           received_on: payload.receivedOn,
@@ -42,11 +50,12 @@ export function useCollectPayMutation() {
           source: hasBank ? 'bank' : 'customer_cash',
           instruments: payload.instruments,
           allocations: payload.allocations,
+          idempotency_key: `${batchKey}:cash`,
         });
       }
 
       if (scTotal > 0) {
-        await paysRepository.postCustomerReceipt({
+        await paysRepository.postMoneyIn({
           tenant_id: payload.tenantId,
           profile_id: payload.profileId,
           received_on: payload.receivedOn,
@@ -54,8 +63,12 @@ export function useCollectPayMutation() {
           reference: payload.reference,
           source: 'store_credit',
           allocations: payload.storeCreditAllocations ?? [],
+          idempotency_key: `${batchKey}:store_credit`,
         });
       }
+    },
+    onSettled: () => {
+      attemptKey.value = null;
     },
     onSuccess: () => {
       showSuccessNotification('Payment recorded.');

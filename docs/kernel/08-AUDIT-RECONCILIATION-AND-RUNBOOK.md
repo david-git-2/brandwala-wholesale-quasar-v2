@@ -28,6 +28,50 @@ Kernel truth: `SELECT public.get_bill_net_balances(:id);` (includes notes).
 
 ---
 
+## 1b. Settlements vs pay allocations (BP18 cutover gate)
+
+Run before switching readers to `bill_settlements`. Expect **zero rows** during dual-write; after cutover, retire this query or scope to legacy backfill only.
+
+```sql
+SELECT
+  pa.id AS pay_allocation_id,
+  pa.payment_id,
+  public._kernel_resolve_bill_id_from_alloc(pa.invoice_id, pa.global_invoice_id, pa.bill_id) AS bill_id,
+  pa.amount AS alloc_books,
+  bs.allocated_books_amount AS settlement_books,
+  bs.id AS settlement_id
+FROM public.pay_allocations pa
+LEFT JOIN public.bill_settlements bs
+  ON bs.pay_allocation_id = pa.id
+  OR (
+    bs.pay_allocation_id IS NULL
+    AND bs.allocator_kind = 'pay'
+    AND bs.allocator_id = pa.payment_id
+    AND bs.bill_id = public._kernel_resolve_bill_id_from_alloc(pa.invoice_id, pa.global_invoice_id, pa.bill_id)
+    AND bs.allocated_books_amount = pa.amount
+  )
+WHERE pa.amount IS DISTINCT FROM bs.allocated_books_amount
+   OR bs.id IS NULL;
+```
+
+Per payment (same pay id, all allocs on that pay):
+
+```sql
+SELECT pa.payment_id
+FROM public.pay_allocations pa
+GROUP BY pa.payment_id
+HAVING coalesce(sum(pa.amount), 0) IS DISTINCT FROM coalesce((
+  SELECT sum(bs.allocated_books_amount)
+  FROM public.bill_settlements bs
+  WHERE bs.allocator_kind = 'pay'
+    AND bs.allocator_id = pa.payment_id
+), 0);
+```
+
+Post-cutover: allocations-vs-settlements audit is optional; kernel readers use `bill_settlements` only.
+
+---
+
 ## 2. Physical pot vs ledger
 
 ```sql
@@ -113,7 +157,7 @@ Single transaction: debit pot A, credit pot B; `source_type = point_transfer` ([
 | Dropship payout stuck | Merchant custody vs `dispense_middleman_payout_from_tenant` |
 | Double bill on order | Source plug uniqueness when BP9 live |
 
-[01-SYSTEM-INVARIANTS](01-SYSTEM-INVARIANTS.md) · [bills_pays/spec](../features/bills_pays/spec.md)
+[REFERENCE.md](REFERENCE.md) · [tests.md](../features/bills_pays/tests.md) · [bills_pays/spec](../features/bills_pays/spec.md)
 
 ---
 
@@ -129,4 +173,4 @@ Single transaction: debit pot A, credit pot B; `source_type = point_transfer` ([
 
 ## Scheduled audits (pg_cron)
 
-Optional daily job for §3 orphan-unallocated pattern — alert via `kernel_audit_log`, no auto-mutation. See [PHASE-C-SUPABASE-RUNTIME.md](PHASE-C-SUPABASE-RUNTIME.md) (C5).
+Optional daily job for §3 orphan-unallocated pattern — alert only, no auto-mutation (pg_cron when enabled).

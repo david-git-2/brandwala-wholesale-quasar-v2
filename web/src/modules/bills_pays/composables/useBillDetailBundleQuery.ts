@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
-import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import { billsRepository } from '../repositories/billsRepository';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 
 export function useBillDetailBundleQuery(
@@ -10,7 +10,7 @@ export function useBillDetailBundleQuery(
   return useQuery({
     queryKey: computed(() => billsQueryKeys.detailBundle(billId.value)),
     queryFn: () =>
-      invoiceRepository.getBillDetailBundle({
+      billsRepository.getBillDetailBundle({
         tenantId: tenantId.value!,
         billId: billId.value!,
       }),

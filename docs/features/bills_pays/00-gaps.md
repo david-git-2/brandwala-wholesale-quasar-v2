@@ -1,26 +1,59 @@
 # Bills & pays — gaps
 
-Open with [spec.md](spec.md). Types: `not_built` | `doc_wrong` | `sql_split` | `design`.
+What is **not finished** yet vs the money kernel target. Full product scope: [spec.md](spec.md). Build order for engineers: [kernel plan](../../../doc/fix/2026-10-12-bills-pays-kernel-plan.md).
 
-| ID | Type | Plan / doc | Code today | Fix |
-| :--- | :--- | :--- | :--- | :--- |
-| BP5 | not_built | Returns money via credit note; desks live | Return RPCs can shrink totals; after-sales incomplete | After-sales calls `create_bill_adjustment`; excess → cashbook |
-| BP2 | design | Rename UI/RPC off `wallet` | Routes `/app/wallet`; module `wallet/` | Copy says cashbook; full rename later |
-| BP3 | ~~design~~ | FK `profile_id`; drop `billing_profiles` | **Done (2026-10-12):** customer fields on `profiles`; `billing_profiles` dropped; RPCs use `p_profile_id` | — |
-| BP6 | ~~design~~ | Bill paper draft/issued/voided; no new proforma | ~~`proforma_generated` on desk~~ | **Done (2026-10):** backfill migration; desk treats proforma as draft in UI |
-| WA4 | ~~design~~ | One pay RPC; remittance `source` | `RemitPayPage` + `CollectPayPage`; remittance RPC → `post_customer_receipt_with_allocations` | **Done (2026-10)** |
-| WA13 | not_built | Cheque bounce | Cheques at desk | Reversing pay later |
-| WA15 | partial | Inbound shipment AP per **bucket × currency** + FX from pays ([kernel-schema](kernel-schema.md)) | `sync_shipment_ap_bills` still one bill per bucket; mixed currencies → one `mixed_currencies` paper | Split sync: `source_key` `{bucket}:{currency}`; single-currency paper per bill; void orphan slices; issue-all per bucket; AP pay-in on shipment bills |
-| BP8 | partial | Credit/debit notes in money kernel (same `bills` table) | Desk: compose notes, parent settlement panel, **Record vendor refund** (`post_vendor_credit_refund` pay-in on AP CN) | Shipment adapter on shortage; AR CN refund; apply CN to next bill (BP11); full CN/DN print |
-| BP9 | not_built | Generic source plug + one upsert/issue for adapters | `ap_shipment_id` / `shop_order_id` only | Target columns: [kernel-schema](kernel-schema.md). `source_type` + `source_id` + `source_key`; wrap shipment sync |
-| BP10 | not_built | Kernel reads: by source, by profile | Custom FX RPCs on shipment only | `list` pays/docs/balances; features do not sum allocs |
-| BP11 | partial | Apply leftover / open credit to next bill | AR collect leftover (US-10); not AP / not credit-note remainder | Same apply RPC for customer and vendor |
-| BP12 | not_built | Reverse a pay (bounce / wrong payout) | Collect void exists; AP reverse and cheque bounce open | Reverse pay; bill stays |
-| BP13 | not_built | Modular bill compose: any paper, stock optional | Compose = wholesale/walk-in stock lines only; AP only from shipment sync | Slots: party, direction, stock lines, header lines; same issue/print/notes |
-| BP14 | not_built | Modular pay desk: receive, pay out, from accounts | Collect / remittance / AP payout as separate tabs/pages | One in/out flow; instrument or cashbook (tenant / profile custody) |
-| BP15 | partial | Cash points under tenant cashbook | Points CRUD UI; `cashbook_entries.cashbook_point_id`; `record_ledger_transaction` optional point; delete clears tags | Persist `cashbook_point_id` on `pays` + `pay_instruments`; copy to ledger on collect/AP; point transfer RPC. [kernel-schema](kernel-schema.md) |
-| BP16 | partial | Place × currency pots + frozen FX pair on cash lines | Tables: `cashbook_point_pots`, `books_exchange_rates`; entry `quote_currency_code` / `rate_date` / `cashbook_point_pot_id`. Refund still posts BDT @ 1 | `record_ledger_transaction` + refund/collect/AP write cash currency onto the pot; cashbook UI shows pot amounts. Rate table = form default only |
+**Status:** `not_built` = missing · `partial` = started · `design` = naming/copy only.
 
-Kernel build: [doc/fix/2026-10-12-bills-pays-kernel-plan.md](../../../doc/fix/2026-10-12-bills-pays-kernel-plan.md).
+---
 
-Done rows (keep IDs): BP1, BP4, BP7, SI5–SI9, SI19, WA1, WA12, WA16 — see git history.
+## Spine (core money rules — finish these before new pay/bill writers)
+
+_No open BP25 items — duplicate POST with the same `idempotency_key` per books tenant returns the existing pay ([`post_money_in` / `post_money_out`](../../supabase/schemas/bills_pays/05_money_spine.sql))._
+
+---
+
+## Bills, notes, and adapters
+
+| ID | Status | In plain words |
+| :--- | :--- | :--- |
+| **BP8** | partial | Credit notes and debit notes work in the desk for many cases (compose, vendor refund on AP CN, dropship auto-note). Still missing: **shipment shortage → credit note**, **cash refund to customer** on AR CN (RPC exists, UI does not send amount), full **print** for notes, and using open CN balance on the next bill ([BP11](#pay-leftover-and-fixes)). |
+| **BP9** | partial | Generic “create/update draft bill” and “issue bill” RPCs exist. **Shop, shipment, and compose** still call their own older RPCs. Target: every feature uses the same kernel entry with `source_type` / `source_id` / `source_key`. |
+| **BP5** | not_built | **Returns** should create a credit note on the bill, not shrink the original total. After-sales does not call `create_bill_adjustment` yet. Extra refund goes to customer custody cashbook. |
+| **BP10** | not_built | Features should **list bills and pays** by source (this order, this shipment) and by profile without adding up allocations in the app. Today only some reads exist (`get_bill_net_balances`, adjustments list); shipment still uses custom filters. |
+| **BP23** | partial | Bills list page works with keyset pagination (`list_bills_desk_page`). Target **reporting view** `v_kernel_bill_summaries` for one stable “bill + due + party” shape is not built yet. |
+
+---
+
+## Shipment and adapters
+
+_No open WA15 items — shipment AP sync uses `source_key` per bucket (and `bucket:CCY` when mixed); see [procurement money-kernel wiring](../procurement_stock/money-kernel-wiring.md)._
+
+---
+
+## Pay, leftover, and fixes
+
+| ID | Status | In plain words |
+| :--- | :--- | :--- |
+| **BP11** | partial | Extra money after collect (or open credit on a note) should apply to **the next bill** the same way for customers, vendors, and AP. Today only **customer cash/bank leftover** on pay detail works; AP payout leftover and credit-note balance need one path (`apply_settlement_to_bill`). |
+| **BP12** | not_built | Undo a **wrong payout or receipt** without voiding the bill — bill stays issued, “amount still due” goes back up. Customer receipt void exists; **AP payout** and generic reverse pay do not. |
+| **WA13** | not_built | **Cheque bounced** should reverse the pay (needs [BP12](#pay-leftover-and-fixes)). Cheque fields exist at collect; bounce flow is not built. |
+
+---
+
+## Cashbook (till, safe, FX)
+
+| ID | Status | In plain words |
+| :--- | :--- | :--- |
+| **BP15** | partial | When tenant cash moves, staff pick **which till/safe** (`cashbook_point`). AP payout and vendor refund record the point. **Customer collect** often does not copy the point onto the pay row and ledger the same way. Point-to-point transfer RPC is later. |
+| **BP16** | partial | Each till holds **per-currency pots**; each cash line stores amount, currency, and frozen BDT rate. Tables exist; many paths still behave like **BDT only @ 1**. UI should show pot balances; rate table is only a form default before post. |
+| **BP21** | not_built | Cashbook accounts should be tagged **tenant money** vs **customer/vendor custody** so reports never mix “our drawer” with “their advance on file”. |
+
+---
+
+## Later cleanup
+
+| ID | Status | In plain words |
+| :--- | :--- | :--- |
+| **BP17** | not_built | **Stock FIFO** must run in the warehouse feature **before** issue bill — not inside the kernel. Line stock link should live in line meta, not a legacy column on `bill_lines`. |
+| **BP24** | not_built | Merchant profit payout still uses a **special RPC**. Target: same generic pay-out as everything else (`post_money_out` + `source_type=commission`). |
+| **BP2** | design | UI still says **wallet** in routes/modules; product name is **cashbook**. Rename when convenient — no behavior change. |

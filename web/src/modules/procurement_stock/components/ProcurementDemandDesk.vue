@@ -102,6 +102,18 @@
                   :disable="!canProfileChangeStatus || profileChangeStatusLoading"
                   @click="onProfileBulkChangeStatus"
                 />
+                <q-btn
+                  v-if="showProfileBulkVendorButton"
+                  unelevated
+                  no-caps
+                  color="primary"
+                  icon="ph ph-storefront"
+                  label="Set vendor"
+                  class="demand-profile-action-btn"
+                  :loading="bulkVendorApplying"
+                  :disable="!canProfileBulkVendor || bulkVendorApplying"
+                  @click="openProfileBulkVendorDialog"
+                />
               </div>
             </div>
             <div
@@ -442,9 +454,9 @@
     <q-dialog v-if="isBuyMode" v-model="bulkVendorDialogOpen" persistent>
       <q-card class="demand-bulk-vendor-card">
         <q-card-section>
-          <div class="text-subtitle1 text-weight-bold text-grey-9">Set vendor for all lines</div>
+          <div class="text-subtitle1 text-weight-bold text-grey-9">{{ bulkVendorDialogTitle }}</div>
           <div class="text-caption text-grey-7 q-mt-xs">
-            Applies to every line in this group. You can edit individual rows afterward.
+            {{ bulkVendorDialogHint }}
           </div>
         </q-card-section>
         <q-card-section>
@@ -633,7 +645,7 @@ const vendorFilter = ref('');
 const bulkVendorDialogOpen = ref(false);
 const bulkVendorApplying = ref(false);
 const bulkVendorId = ref<number | null>(null);
-const bulkVendorTargetGroup = ref<ProcurementDemandGroup | null>(null);
+const bulkVendorTargetGroups = ref<ProcurementDemandGroup[]>([]);
 
 const parentTenantId = computed(
   () => authStore.selectedTenant?.parent_id ?? authStore.tenantId ?? null,
@@ -1481,36 +1493,56 @@ const onFillPlaceQtyForGroup = async (group: ProcurementDemandGroup) => {
   }
 };
 
-const openBulkVendorDialog = (group: ProcurementDemandGroup) => {
-  bulkVendorTargetGroup.value = group;
+const openBulkVendorDialogForGroups = (groups: ProcurementDemandGroup[]) => {
+  if (!groups.length) return;
+  bulkVendorTargetGroups.value = groups;
   const defaultVendor = ((vendorsData.value ?? []) as Vendor[]).find((vendor) => vendor.is_default);
   bulkVendorId.value = defaultVendor?.id ?? null;
   bulkVendorDialogOpen.value = true;
 };
 
+const openBulkVendorDialog = (group: ProcurementDemandGroup) => {
+  openBulkVendorDialogForGroups([group]);
+};
+
+const openProfileBulkVendorDialog = () => {
+  openBulkVendorDialogForGroups(profileBulkVendorGroups.value);
+};
+
 const onApplyBulkVendor = async () => {
-  const group = bulkVendorTargetGroup.value;
-  if (!group || bulkVendorId.value == null) {
+  const groups = bulkVendorTargetGroups.value;
+  if (!groups.length || bulkVendorId.value == null) {
     showErrorNotification('Select a vendor.');
     return;
   }
-  const gk = groupKey(group);
   bulkVendorApplying.value = true;
-  savingGroupKeys.value = new Set(savingGroupKeys.value).add(gk);
+  const savingKeys = new Set(savingGroupKeys.value);
+  for (const group of groups) {
+    savingKeys.add(groupKey(group));
+  }
+  savingGroupKeys.value = savingKeys;
   try {
-    const result = await setVendorMutation.mutateAsync({
-      documentType: group.document_type,
-      documentId: group.document_id,
-      vendorId: bulkVendorId.value,
-    });
-    showSuccessNotification(`Vendor applied to ${result.updated_count} line(s).`);
+    let updatedTotal = 0;
+    for (const group of groups) {
+      const result = await setVendorMutation.mutateAsync({
+        documentType: group.document_type,
+        documentId: group.document_id,
+        vendorId: bulkVendorId.value,
+      });
+      updatedTotal += Number(result.updated_count) || 0;
+    }
+    const docLabel =
+      groups.length === 1 ? 'group' : `${groups.length} order(s)/file(s)`;
+    showSuccessNotification(`Vendor applied to ${updatedTotal} line(s) across ${docLabel}.`);
     bulkVendorDialogOpen.value = false;
   } catch (err) {
     showErrorNotification(parseSupabaseError(err, 'Failed to set vendor on demand lines'));
   } finally {
     bulkVendorApplying.value = false;
     const next = new Set(savingGroupKeys.value);
-    next.delete(gk);
+    for (const group of groups) {
+      next.delete(groupKey(group));
+    }
     savingGroupKeys.value = next;
   }
 };
@@ -1603,15 +1635,42 @@ const canChangeFulfillStatus = (group: ProcurementDemandGroup) =>
 
 const showProfileToolbarActions = computed(
   () =>
-    isFulfillMode.value &&
     !isFixedGroupPage.value &&
     hasDemandProfileFilter.value &&
-    fulfillProcurementStatus.value === 'procuring',
+    ((isFulfillMode.value && fulfillProcurementStatus.value === 'procuring') || isBuyMode.value),
 );
 
-const showProfileChangeStatusButton = computed(() => showProfileToolbarActions.value);
+const showProfileChangeStatusButton = computed(
+  () => showProfileToolbarActions.value && isFulfillMode.value,
+);
 
-const showProfileFillOldestStockButton = computed(() => showProfileToolbarActions.value);
+const showProfileFillOldestStockButton = computed(
+  () => showProfileToolbarActions.value && isFulfillMode.value,
+);
+
+const showProfileBulkVendorButton = computed(
+  () => showProfileToolbarActions.value && isBuyMode.value,
+);
+
+const profileBulkVendorGroups = computed(() =>
+  visibleGroups.value.filter((group) => isProcuringGroup(group)),
+);
+
+const canProfileBulkVendor = computed(() => profileBulkVendorGroups.value.length > 0);
+
+const bulkVendorDialogTitle = computed(() => {
+  const count = bulkVendorTargetGroups.value.length;
+  if (count > 1) return 'Set vendor for this profile';
+  return 'Set vendor for all lines';
+});
+
+const bulkVendorDialogHint = computed(() => {
+  const count = bulkVendorTargetGroups.value.length;
+  if (count > 1) {
+    return `Applies to every line in ${count} order(s)/file(s) shown for this profile. You can edit individual rows afterward.`;
+  }
+  return 'Applies to every line in this group. You can edit individual rows afterward.';
+});
 
 const profileFillOldestStockGroups = computed(() =>
   visibleGroups.value.filter((group) => canPickStockForGroup(group)),
@@ -2264,13 +2323,14 @@ body.body--dark .demand-table :deep(.demand-product-name) {
 }
 
 .demand-bulk-vendor-card {
-  min-width: 320px;
-  max-width: 420px;
+  min-width: 360px;
+  width: min(480px, 92vw);
 }
 
 .demand-vendor-col {
-  min-width: 150px;
-  max-width: 220px;
+  min-width: 200px;
+  max-width: 320px;
+  width: 28%;
 }
 
 .demand-field :deep(.q-field__control) {

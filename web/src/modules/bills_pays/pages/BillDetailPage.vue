@@ -521,15 +521,15 @@ import BillNetSettlementPanel from '../components/BillNetSettlementPanel.vue';
 import type { BillLineDisplayRow } from '../repositories/billLinesRepository';
 import { useBillAdjustmentDraft } from '../composables/useBillAdjustmentDraft';
 import { useCreateBillAdjustmentMutation } from '../composables/useCreateBillAdjustmentMutation';
-import { syncShipmentApBills } from 'src/modules/procurement_stock/repositories/shipmentApBillsRepository';
+import { syncShipmentApBills } from 'src/modules/procurement_stock/repositories/shipmentMoneyKernelRepository';
 import { apBillDueStoresForeignFace } from '../utils/apBillBooks';
 import {
   apBillCurrencyBalances,
   apBillPaperCurrencyCode,
   isLegacyApPaperSnapshot,
 } from '../utils/parseApBillPaper';
-import type { BillNetBalances } from '../composables/useBillNetBalancesQuery';
-import type { BillAdjustmentRow } from '../composables/useBillAdjustmentsQuery';
+import type { BillNetBalances } from '../types/billBalances';
+import type { BillAdjustmentRow } from '../types/billAdjustments';
 import {
   isShipmentCostApBill,
   shipmentApKindFromBill,
@@ -556,7 +556,11 @@ const operatingTenantId = computed(() => {
 
 const bundleQuery = useBillDetailBundleQuery(billId, operatingTenantId);
 const billFromBundle = computed(() => bundleQuery.data.value?.bill);
-const { itemsQuery, billLinesQuery } = useBillDetailQuery(billId, billFromBundle);
+const { itemsQuery, billLinesQuery } = useBillDetailQuery(
+  billId,
+  billFromBundle,
+  computed(() => bundleQuery.data.value),
+);
 const voidMutation = useVoidBillMutation(() => billId.value);
 const issueApMutation = useIssueApBillMutation(() => billId.value);
 const recordPaymentMutation = useRecordBillPaymentMutation(() => billId.value);
@@ -579,7 +583,12 @@ const vendorRefundReceiptBuckets = computed(() =>
   aggregateVendorRefundReceipts(paymentHistoryEntries.value, { isAp: isApBill.value }),
 );
 
-const lines = computed(() => (itemsQuery.data.value ?? []) as GlobalInvoiceItemRow[]);
+const lines = computed(
+  () =>
+    (bundleQuery.data.value?.stockItems ??
+      itemsQuery.data.value ??
+      []) as GlobalInvoiceItemRow[],
+);
 
 const parentDueAmount = computed(() => Number(bill.value?.due_amount ?? 0));
 
@@ -598,7 +607,7 @@ const parentInvoiceNoFromMeta = computed(() => {
 
 const adjustmentLineRows = computed((): BillLineDisplayRow[] => {
   if (!isStandardBill.value && isApBill.value) {
-    return billLinesQuery.data.value ?? [];
+    return bundleQuery.data.value?.billLines ?? billLinesQuery.data.value ?? [];
   }
   if (!isStandardBill.value && !isApBill.value) {
     return lines.value.map((line) => ({

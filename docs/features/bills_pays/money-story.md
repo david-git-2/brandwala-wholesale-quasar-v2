@@ -2,7 +2,7 @@
 
 Same SKU. Shipment cost stays on the **shipment**. GP = [shipment P&L](../reporting_treasury/spec.md).
 
-Layers: **profile · bill · pay · alloc · cashbook**. Not a wallet. Rename map: [spec](spec.md#rename-map-spec--live). Golden row-level scenarios: [06-ACCOUNTING-FLOWS-AND-GOLDEN-SCENARIOS](../../kernel/06-ACCOUNTING-FLOWS-AND-GOLDEN-SCENARIOS.md).
+Layers: **profile · bill · pay · alloc · cashbook**. Not a wallet. Rename map: [spec](spec.md#rename-map-spec--live). Golden row-level scenarios: [tests.md](tests.md).
 
 Same `bills` table. **Different paper.** Stock lines optional (header/AP/service bills still issue and pay). Delivery paper **proforma** is not issued. Pays: receive or pay out from instruments or cashbook (profile leftover = custody).
 

@@ -37,6 +37,7 @@
     "backend:link": "bash scripts/supabase-link.sh",
     "backend:link:push:types": "sh -c 'pnpm run backend:link && pnpm exec supabase db push --linked --include-all && mkdir -p web/src/types && pnpm exec supabase gen types typescript --linked --schema public > web/src/types/database.types.ts'",
     "backend:new-migration": "pnpm exec supabase migration new",
+    "backend:repair-prod-migrations": "bash scripts/repair-prod-migration-history.sh",
     "backend:push": "pnpm exec supabase db push --linked --include-all",
     "backend:push:all": "pnpm exec supabase db push --linked --include-all",
     "backend:start": "bash scripts/supabase-local.sh start",

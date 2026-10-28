@@ -1905,7 +1905,7 @@ $$;
 ALTER FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb" DEFAULT NULL::"jsonb", "p_keep_as_draft" boolean DEFAULT false) RETURNS bigint
+CREATE OR REPLACE FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb" DEFAULT NULL::"jsonb", "p_keep_as_draft" boolean DEFAULT false, "p_source_key" "text" DEFAULT NULL::"text") RETURNS bigint
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -1918,6 +1918,8 @@ declare
   v_kind_label text;
   v_meta_base jsonb;
   v_paper_status public.global_invoice_status;
+  v_plug_key text;
+  v_face_currency text;
 begin
   if p_ap_kind not in (
     'vendor', 'cargo', 'local',
@@ -1926,19 +1928,17 @@ begin
     raise exception 'Invalid ap_kind %', p_ap_kind;
   end if;
 
+  v_plug_key := coalesce(nullif(btrim(p_source_key), ''), p_ap_kind);
+  v_face_currency := upper(trim(coalesce(p_ap_paper->>'currency_code', 'BDT')));
+
   select * into v_bill
   from public.bills b
   where b.parent_tenant_id = p_parent_tenant_id
     and b.invoice_type = 'ap'::public.global_invoice_type
     and b.document_kind = 'standard'::public.bill_document_kind
-    and (
-      (
-        b.source_type = 'shipment_cost'
-        and b.source_id = p_shipment_id::text
-        and b.source_key = p_ap_kind
-      )
-      or (b.ap_shipment_id = p_shipment_id and b.ap_kind = p_ap_kind)
-    )
+    and b.source_type = 'shipment_cost'
+    and b.source_id = p_shipment_id::text
+    and b.source_key = v_plug_key
   for update;
 
   if p_profile_id is null or coalesce(p_amount, 0) <= 0 then
@@ -1978,8 +1978,13 @@ begin
       p_parent_tenant_id, p_issued_by_tenant_id, v_invoice_no, 'ap'::public.global_invoice_type, current_date,
       v_paper_status, p_profile_id, 'profile'::public.collection_source_type, 'due',
       v_target, v_target, v_target, 0,
-      p_shipment_id, p_ap_kind, 'shipment_cost', p_shipment_id::text, p_ap_kind, 'BDT',
-      format('Shipment %s — %s AP', coalesce(p_shipment_name, p_shipment_id::text), v_kind_label),
+      p_shipment_id, p_ap_kind, 'shipment_cost', p_shipment_id::text, v_plug_key, v_face_currency,
+      format(
+        'Shipment %s — %s AP%s',
+        coalesce(p_shipment_name, p_shipment_id::text),
+        v_kind_label,
+        case when v_plug_key <> p_ap_kind then ' (' || v_plug_key || ')' else '' end
+      ),
       v_meta_base,
       'standard'::public.bill_document_kind
     )
@@ -2003,9 +2008,14 @@ begin
       payment_status = 'due',
       source_type = coalesce(source_type, 'shipment_cost'),
       source_id = coalesce(source_id, p_shipment_id::text),
-      source_key = coalesce(source_key, p_ap_kind),
-      currency_code = coalesce(nullif(trim(currency_code), ''), 'BDT'),
-      note = format('Shipment %s — %s AP', coalesce(p_shipment_name, p_shipment_id::text), v_kind_label),
+      source_key = coalesce(source_key, v_plug_key),
+      currency_code = coalesce(nullif(trim(v_face_currency), ''), nullif(trim(currency_code), ''), 'BDT'),
+      note = format(
+        'Shipment %s — %s AP%s',
+        coalesce(p_shipment_name, p_shipment_id::text),
+        v_kind_label,
+        case when v_plug_key <> p_ap_kind then ' (' || v_plug_key || ')' else '' end
+      ),
       channel_meta = coalesce(channel_meta, '{}'::jsonb)
         || jsonb_build_object('ap_kind', p_ap_kind, 'shipment_id', p_shipment_id)
         || case
@@ -2036,9 +2046,14 @@ begin
     payment_status = v_status,
     source_type = coalesce(source_type, 'shipment_cost'),
     source_id = coalesce(source_id, p_shipment_id::text),
-    source_key = coalesce(source_key, p_ap_kind),
-    currency_code = coalesce(nullif(trim(currency_code), ''), 'BDT'),
-    note = format('Shipment %s — %s AP', coalesce(p_shipment_name, p_shipment_id::text), v_kind_label),
+    source_key = coalesce(source_key, v_plug_key),
+    currency_code = coalesce(nullif(trim(v_face_currency), ''), nullif(trim(currency_code), ''), 'BDT'),
+    note = format(
+      'Shipment %s — %s AP%s',
+      coalesce(p_shipment_name, p_shipment_id::text),
+      v_kind_label,
+      case when v_plug_key <> p_ap_kind then ' (' || v_plug_key || ')' else '' end
+    ),
     channel_meta = coalesce(channel_meta, '{}'::jsonb)
       || jsonb_build_object('ap_kind', p_ap_kind, 'shipment_id', p_shipment_id)
       || case
@@ -2055,7 +2070,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb", "p_keep_as_draft" boolean) OWNER TO "postgres";
+ALTER FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb", "p_keep_as_draft" boolean, "p_source_key" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."_validate_stock_location_nesting"("p_kind" "public"."stock_location_kind", "p_parent_location_id" bigint, "p_parent_tenant_id" bigint) RETURNS "void"
@@ -17270,6 +17285,21 @@ begin
     )
     and b.invoice_status = 'draft'::public.global_invoice_status;
 
+  perform public._kernel_freeze_bill_txn_face(b.id)
+  from public.bills b
+  where b.parent_tenant_id = v_invoice.parent_tenant_id
+    and b.invoice_type = 'ap'::public.global_invoice_type
+    and b.document_kind = 'standard'::public.bill_document_kind
+    and (
+      (b.source_type = 'dropship_courier' and b.source_id = p_order_id::text)
+      or (
+        b.source_type = 'shop_order'
+        and b.source_id = p_order_id::text
+        and coalesce(b.source_key, '') = 'courier'
+      )
+    )
+    and b.invoice_status = 'issued'::public.global_invoice_status;
+
   v_notes := public.apply_dropship_issued_bill_notes_at_deliver(p_order_id);
   if coalesce(v_notes->>'success', 'false') <> 'true' then
     return v_notes;
@@ -30028,6 +30058,9 @@ begin
     raise exception 'No draft AP bill to issue for bucket %', p_ap_kind;
   end if;
 
+  perform public._kernel_freeze_bill_txn_face(v_bill_id);
+  perform public.recompute_global_invoice_payment_status(v_bill_id);
+
   return v_bill_id;
 end;
 $$;
@@ -41415,7 +41448,7 @@ CREATE TABLE IF NOT EXISTS "public"."pays" (
 ALTER TABLE "public"."pays" OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_source_currency_code" "text" DEFAULT NULL::"text", "p_transaction_rate" numeric DEFAULT NULL::numeric, "p_cashbook_point_pot_id" bigint DEFAULT NULL::bigint) RETURNS "public"."pays"
+CREATE OR REPLACE FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_source_currency_code" "text" DEFAULT NULL::"text", "p_transaction_rate" numeric DEFAULT NULL::numeric, "p_cashbook_point_pot_id" bigint DEFAULT NULL::bigint, "p_idempotency_key" "text" DEFAULT NULL::"text") RETURNS "public"."pays"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -41454,6 +41487,7 @@ declare
   v_pot_id bigint := p_cashbook_point_pot_id;
   v_payment_face numeric(12, 2);
   v_base_currency text := 'BDT';
+  v_bill_ids bigint[] := '{}';
 begin
   if p_tenant_id is null then
     raise exception 'Tenant is required';
@@ -41464,6 +41498,11 @@ begin
 
   v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
   v_base_currency := public.resolve_tenant_base_currency_code(p_tenant_id);
+
+  v_pay := public._kernel_claim_pay_idempotency(v_parent_id, p_idempotency_key);
+  if v_pay.id is not null then
+    return v_pay;
+  end if;
 
   if not (
     coalesce(auth.role(), '') = 'service_role'
@@ -41582,6 +41621,33 @@ begin
 
   v_source_amount := round(v_payment_face * v_transaction_rate, 2);
 
+  if coalesce(jsonb_typeof(p_allocations), 'null') = 'array' then
+    select coalesce(array_agg(distinct x.bid order by x.bid), '{}'::bigint[])
+    into v_bill_ids
+    from (
+      select coalesce(
+        nullif(v_alloc_elem.value ->> 'bill_id', '')::bigint,
+        nullif(v_alloc_elem.value ->> 'invoice_id', '')::bigint
+      ) as bid
+      from jsonb_array_elements(p_allocations) as v_alloc_elem(value)
+    ) x
+    where x.bid is not null;
+  end if;
+
+  perform public._kernel_lock_bills(v_bill_ids);
+
+  for v_sid in
+    select distinct b.ap_shipment_id
+    from public.bills b
+    where b.id = any(v_bill_ids)
+      and b.ap_shipment_id is not null
+    order by b.ap_shipment_id asc
+  loop
+    perform public._kernel_advisory_shipment_money_lock(v_sid);
+  end loop;
+
+  perform public._kernel_lock_cashbook_point_pots(p_cashbook_point_id);
+
   insert into public.pays (
     tenant_id, profile_id, source, amount, unallocated_amount,
     payment_date, method, reference, note,
@@ -41661,24 +41727,6 @@ begin
       perform public.recompute_global_invoice_payment_status(v_bill_id);
       v_total_alloc := v_total_alloc + v_alloc_amount;
 
-      if upper(v_settle_currency) <> v_base_currency
-         and v_fx_rate > 0
-         and v_foreign_face is not null
-         and v_foreign_face > 0
-         and upper(coalesce(v_paper_currency, v_base_currency)) <> v_base_currency
-      then
-        v_books_total := round(v_foreign_face * v_fx_rate, 2);
-        v_paper := coalesce(v_channel_meta->'ap_paper', '{}'::jsonb)
-          || jsonb_build_object('conversion_rate', v_fx_rate, 'bdt_amount', v_books_total);
-        update public.bills b
-        set
-          channel_meta = jsonb_set(coalesce(b.channel_meta, '{}'::jsonb), '{ap_paper}', v_paper),
-          subtotal_amount = v_books_total,
-          total_amount = v_books_total
-        where b.id = v_bill_id;
-        perform public.recompute_global_invoice_payment_status(v_bill_id);
-      end if;
-
       if v_bill.ap_shipment_id is not null
          and not (v_bill.ap_shipment_id = any(v_shipment_ids)) then
         v_shipment_ids := array_append(v_shipment_ids, v_bill.ap_shipment_id);
@@ -41736,15 +41784,15 @@ begin
     end loop;
   end if;
 
-  return v_pay;
+  return public._kernel_finalize_pay_idempotency(v_pay.id, v_parent_id, p_idempotency_key);
 end;
 $$;
 
 
-ALTER FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint, "p_idempotency_key" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_source_currency_code" "text" DEFAULT NULL::"text", "p_transaction_rate" numeric DEFAULT NULL::numeric, "p_cashbook_point_pot_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_source_currency_code" "text" DEFAULT NULL::"text", "p_transaction_rate" numeric DEFAULT NULL::numeric, "p_cashbook_point_pot_id" bigint DEFAULT NULL::bigint, "p_idempotency_key" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -41766,7 +41814,8 @@ BEGIN
     p_exchange_rate,
     p_source_currency_code,
     p_transaction_rate,
-    p_cashbook_point_pot_id
+    p_cashbook_point_pot_id,
+    p_idempotency_key
   );
 
   v_bill_id := NULL;
@@ -42112,7 +42161,7 @@ $$;
 ALTER FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_source" "text" DEFAULT 'customer_cash'::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_shop_order_id" bigint DEFAULT NULL::bigint, "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_credit_dropship_profit" boolean DEFAULT true) RETURNS "public"."pays"
+CREATE OR REPLACE FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_source" "text" DEFAULT 'customer_cash'::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_shop_order_id" bigint DEFAULT NULL::bigint, "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_credit_dropship_profit" boolean DEFAULT true, "p_idempotency_key" "text" DEFAULT NULL::"text") RETURNS "public"."pays"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -42139,6 +42188,8 @@ declare
   v_foreign_amt numeric(12, 2);
   v_fx_rate numeric(15, 6) := 1.000000;
   v_cashbook_point_id bigint;
+  v_bill_ids bigint[] := '{}';
+  v_sid bigint;
 begin
   if p_tenant_id is null then
     raise exception 'Tenant is required';
@@ -42154,6 +42205,11 @@ begin
   end if;
 
   v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+
+  v_pay := public._kernel_claim_pay_idempotency(v_parent_id, p_idempotency_key);
+  if v_pay.id is not null then
+    return v_pay;
+  end if;
 
   if not (
     coalesce(auth.role(), '') = 'service_role'
@@ -42224,6 +42280,32 @@ begin
       public.resolve_tenant_base_currency_code(p_tenant_id)
     ) n;
   end if;
+
+
+  if coalesce(jsonb_typeof(p_allocations), 'null') = 'array' then
+    select coalesce(array_agg(distinct x.bid order by x.bid), '{}'::bigint[])
+    into v_bill_ids
+    from (
+      select coalesce(
+        nullif(v_alloc_elem.value ->> 'bill_id', '')::bigint,
+        nullif(v_alloc_elem.value ->> 'invoice_id', '')::bigint
+      ) as bid
+      from jsonb_array_elements(p_allocations) as v_alloc_elem(value)
+    ) x
+    where x.bid is not null;
+  end if;
+
+  perform public._kernel_lock_bills(v_bill_ids);
+
+  for v_sid in
+    select distinct b.ap_shipment_id
+    from public.bills b
+    where b.id = any(v_bill_ids)
+      and b.ap_shipment_id is not null
+    order by b.ap_shipment_id asc
+  loop
+    perform public._kernel_advisory_shipment_money_lock(v_sid);
+  end loop;
 
   insert into public.pays (
     tenant_id, profile_id, source, amount, unallocated_amount,
@@ -42395,12 +42477,12 @@ begin
     end if;
   end if;
 
-  return v_pay;
+  return public._kernel_finalize_pay_idempotency(v_pay.id, v_parent_id, p_idempotency_key);
 end;
 $$;
 
 
-ALTER FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_credit_dropship_profit" boolean) OWNER TO "postgres";
+ALTER FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text", "p_reference" "text", "p_source" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_shop_order_id" bigint, "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_credit_dropship_profit" boolean, "p_idempotency_key" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."post_global_invoice"("p_invoice_id" bigint) RETURNS "void"
@@ -42598,6 +42680,9 @@ begin
   update public.bills
   set invoice_status = 'issued'::public.global_invoice_status
   where id = p_invoice_id;
+
+  perform public._kernel_freeze_bill_txn_face(p_invoice_id);
+  perform public.recompute_global_invoice_payment_status(p_invoice_id);
 
   if v_invoice.invoice_type = 'retail'::public.global_invoice_type
      and v_invoice.profile_id is not null
@@ -45509,8 +45594,9 @@ begin
   select * into v_bill from public.bills where id = v_root_id for update;
   if not found then return; end if;
 
-  select coalesce(sum(amount), 0.00) into v_paid
-  from public.pay_allocations where global_invoice_id = v_root_id;
+  select coalesce(sum(bs.allocated_books_amount), 0.00) into v_paid
+  from public.bill_settlements bs
+  where bs.bill_id = v_root_id;
 
   select coalesce(sum(amount), 0.00) into v_written_off
   from public.invoice_write_offs where invoice_id = v_root_id;
@@ -45550,8 +45636,8 @@ begin
     where parent_bill_id = v_root_id
     order by id
   loop
-    select coalesce(sum(amount), 0.00) into v_child_paid
-    from public.pay_allocations where global_invoice_id = v_child.id;
+    select coalesce(sum(bs.allocated_books_amount), 0.00) into v_child_paid
+    from public.bill_settlements bs where bs.bill_id = v_child.id;
 
     select coalesce(sum(amount), 0.00) into v_child_written_off
     from public.invoice_write_offs where invoice_id = v_child.id;
@@ -46996,6 +47082,7 @@ DECLARE
   v_ledger_id uuid;
   v_entity_id bigint;
   v_point_ok boolean;
+  v_pot_id bigint;
 BEGIN
   IF p_amount <= 0 THEN
     RAISE EXCEPTION 'Transaction amount must be greater than zero.';
@@ -47039,6 +47126,16 @@ BEGIN
     IF NOT coalesce(v_point_ok, false) THEN
       RAISE EXCEPTION 'Invalid cashbook point for this account.';
     END IF;
+
+    v_pot_id := public._kernel_ensure_cashbook_point_pot(
+      p_parent_tenant_id,
+      p_cashbook_point_id,
+      coalesce(p_currency_code, 'BDT')
+    );
+    PERFORM 1
+    FROM public.cashbook_point_pots cpp
+    WHERE cpp.id = v_pot_id
+    FOR UPDATE;
   END IF;
 
   SELECT available_balance, pending_balance, locked_balance
@@ -47096,7 +47193,8 @@ BEGIN
     source_type,
     source_id,
     metadata,
-    cashbook_point_id
+    cashbook_point_id,
+    cashbook_point_pot_id
   )
   VALUES (
     p_parent_tenant_id,
@@ -47113,7 +47211,8 @@ BEGIN
     coalesce(p_source_type, 'adjustment'),
     p_source_id,
     coalesce(p_metadata, '{}'::jsonb) || jsonb_build_object('target_bucket', p_target_bucket),
-    p_cashbook_point_id
+    p_cashbook_point_id,
+    v_pot_id
   )
   RETURNING id INTO v_ledger_id;
 

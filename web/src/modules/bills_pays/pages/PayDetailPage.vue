@@ -193,7 +193,7 @@ import { paySourceToListSide, paymentsPageRoute } from '../utils/paymentsNavigat
 import { useQuery } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt, formatBdtTaka, formatSettlementCurrencyAmount } from 'src/utils/currency';
-import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import { billsRepository } from '../repositories/billsRepository';
 import { paysRepository } from '../repositories/paysRepository';
 import { paysQueryKeys } from '../services/paysQueryKeys';
 import { useVoidPayMutation } from '../composables/useVoidPayMutation';
@@ -374,7 +374,7 @@ watch(
     if (!canAllocateLater.value || !pay.value?.profile_id) return;
     loadingBills.value = true;
     try {
-      const { data } = await invoiceRepository.listGlobalInvoices({
+      const { data } = await billsRepository.listBills({
         parentTenantId: pay.value.tenant_id,
         profileId: pay.value.profile_id,
         invoiceStatus: 'issued',

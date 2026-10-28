@@ -622,8 +622,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'global_invoice',
-    name: 'Sales Invoices',
-    description: 'Desk invoices: wholesale, retail, and walk-in.',
+    name: 'Bills',
+    description: 'Issue, void, print, and compose bills.',
     navIcon: 'ph ph-receipt',
     routes: [
       {
@@ -631,7 +631,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Bills',
         caption: 'Issue, void, and print bills',
         icon: 'ph ph-receipt',
-        routeSegment: 'sales/invoices',
+        routeSegment: 'bills',
         requiredAction: 'view',
       },
     ],

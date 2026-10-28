@@ -1,16 +1,19 @@
+import { ref } from 'vue';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import {
-  paysRepository,
+  postApPayoutSnapshot,
   type ApPayoutBillDetailSnapshot,
-} from '../repositories/paysRepository';
+} from '../services/apPayoutService';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { paysQueryKeys } from '../services/paysQueryKeys';
+import { useShipmentApFinanceInvalidation } from 'src/modules/procurement_stock/composables/useShipmentApFinance';
+import { createPayIdempotencyKey, paysRepository } from '../repositories/paysRepository';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { buildWholesalePaymentInstrument } from '../utils/paymentInstrumentFields';
 import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
 import type { InvoicePaymentHistoryEntry } from 'src/modules/sales_invoice/types';
-import type { BillDetailBundle } from 'src/modules/sales_invoice/repositories/invoiceRepository';
-import type { BillNetBalances } from './useBillNetBalancesQuery';
+import type { BillDetailBundle } from '../repositories/billsRepository';
+import type { BillNetBalances } from '../types/billBalances';
 
 type InstrumentFieldValues = {
   bdBankId: number | null;
@@ -71,9 +74,17 @@ function applyApPayoutSnapshotToCache(
 
 export function useRecordBillPaymentMutation(billId: () => number | null) {
   const queryClient = useQueryClient();
+  const { invalidateAfterApPay } = useShipmentApFinanceInvalidation();
+  const attemptKey = ref<string | null>(null);
 
   return useMutation({
+    onMutate: () => {
+      if (!attemptKey.value) {
+        attemptKey.value = createPayIdempotencyKey();
+      }
+    },
     mutationFn: async (payload: RecordBillPaymentInput) => {
+      const idempotencyKey = attemptKey.value ?? createPayIdempotencyKey();
       const hasBank = ['bank_transfer', 'bank', 'cheque'].includes(
         payload.methodCode.toLowerCase(),
       );
@@ -114,17 +125,21 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
           reference: payload.reference,
           instruments,
           allocations,
+          amount: payload.amountBdt,
           settlement_currency_code: fx.settlement_currency_code,
           foreign_amount: fx.foreign_amount,
           exchange_rate: fx.exchange_rate,
           source_currency_code: payload.sourceCurrencyCode ?? undefined,
           transaction_rate: payload.transactionRate ?? undefined,
           cashbook_point_pot_id: payload.cashbookPointPotId ?? undefined,
+          shipment_id: null as number | null,
+          idempotency_key: idempotencyKey,
         };
-        return paysRepository.postApPayoutWithAllocationsSnapshot(apPayload);
+        const snapshotResult = await postApPayoutSnapshot(apPayload);
+        return snapshotResult;
       }
 
-      await paysRepository.postCustomerReceipt({
+      await paysRepository.postMoneyIn({
         tenant_id: payload.tenantId,
         profile_id: payload.profileId,
         received_on: payload.paidOn,
@@ -134,8 +149,12 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
         instruments,
         allocations,
         ...fx,
+        idempotency_key: idempotencyKey,
       });
       return null;
+    },
+    onSettled: () => {
+      attemptKey.value = null;
     },
     onSuccess: (snapshot, payload) => {
       const id = billId();
@@ -143,6 +162,9 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
 
       if (payload.isAp && snapshot && id) {
         applyApPayoutSnapshotToCache(queryClient, id, snapshot);
+        for (const sid of snapshot.shipmentIds ?? []) {
+          invalidateAfterApPay(sid);
+        }
       } else if (id) {
         void queryClient.invalidateQueries({ queryKey: billsQueryKeys.detailBundle(id) });
       }

@@ -171,7 +171,7 @@ const positionTiles = computed((): PositionTile[] => {
       label: 'Shipment AP',
       value: `−${formatAmountBdt(p.ap_payable)}`,
       caption: 'Vendor, cargo, local bills',
-      to: `${appBase.value}/sales/invoices`,
+      to: `${appBase.value}/bills`,
       valueClass: 'text-negative',
     },
     {

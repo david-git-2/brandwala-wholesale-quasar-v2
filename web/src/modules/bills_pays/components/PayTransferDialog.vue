@@ -115,6 +115,12 @@
             @update:instrument-reference="instrumentReference = $event"
           />
 
+          <PayOpenBillsAllocSection
+            v-if="showBillAlloc"
+            :rows="openBillAlloc.rows"
+            @fill-oldest="onFillOldestAlloc"
+          />
+
           <q-input
             v-model="note"
             outlined
@@ -152,8 +158,10 @@ import { useCashbookPayFromPotSelect } from '../composables/useCashbookPayFromPo
 import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
 import { useCollectPayMutation } from '../composables/useCollectPayMutation';
 import { cashbookRepository } from '../repositories/cashbookRepository';
-import { paysRepository } from '../repositories/paysRepository';
-import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import { useShipmentApFinanceInvalidation } from 'src/modules/procurement_stock/composables/useShipmentApFinance';
+import { postApPayout } from '../services/apPayoutService';
+import { createPayIdempotencyKey, paysRepository } from '../repositories/paysRepository';
+import { billsRepository } from '../repositories/billsRepository';
 import {
   buildWholesalePaymentInstrument,
   paymentInstrumentExtrasBlockReason,
@@ -164,6 +172,8 @@ import {
   payTransferPartyKey,
 } from '../types/payTransferParty';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import PayOpenBillsAllocSection from './PayOpenBillsAllocSection.vue';
+import { useOpenBillAllocations } from '../composables/useOpenBillAllocations';
 
 const props = withDefaults(
   defineProps<{
@@ -200,6 +210,7 @@ const chequeNumber = ref('');
 const instrumentDate = ref('');
 const instrumentReference = ref('');
 const submitting = ref(false);
+const { invalidateAfterApPay } = useShipmentApFinanceInvalidation();
 const collectMutation = useCollectPayMutation();
 const { loadingPaymentMeta, methodOptions, bdBankOptions, loadPaymentMeta } =
   useWholesalePaymentMethodMeta('cash');
@@ -330,8 +341,33 @@ const profilePartyForRpc = computed(() => {
   return null;
 });
 
+const allocInvoiceKind = computed<'ar' | 'ap' | null>(() => {
+  const party = profilePartyForRpc.value;
+  if (!party) return null;
+  if (isPayIn.value) return 'ar';
+  if (isPayOut.value && party.entityType === 'vendor') return 'ap';
+  return null;
+});
+
+const allocProfileId = computed(() => profilePartyForRpc.value?.entityId ?? null);
+
+const openBillAlloc = useOpenBillAllocations(
+  computed(() => props.booksTenantId),
+  allocProfileId,
+  allocInvoiceKind,
+  computed(() => props.modelValue && !!allocInvoiceKind.value),
+);
+
+const showBillAlloc = computed(
+  () => simplePayFlow.value && !!allocInvoiceKind.value && openBillAlloc.rows.value.length > 0,
+);
+
+const onFillOldestAlloc = () => {
+  openBillAlloc.fillOldestFirst(Number(amount.value) || 0);
+};
+
 const loadDueForProfile = async (profileId: number) => {
-  const { data } = await invoiceRepository.listGlobalInvoices({
+  const { data } = await billsRepository.listBills({
     parentTenantId: props.booksTenantId,
     profileId,
     invoiceStatus: 'issued',
@@ -497,6 +533,9 @@ const submitDisabledReason = computed((): string | null => {
     return showPotField.value ? 'Choose where cash is paid from' : 'Loading cash locations…';
   }
   if ((amount.value ?? 0) <= 0) return 'Enter an amount';
+  if (openBillAlloc.allocTotal.value > (amount.value ?? 0)) {
+    return 'Bill allocations cannot exceed the payment amount';
+  }
   return paymentInstrumentExtrasBlockReason(methodFlags.value, {
     bdBankId: bdBankId.value,
     chequeNumber: chequeNumber.value,
@@ -515,16 +554,46 @@ const submit = async () => {
     const localToday = () => new Date().toISOString().slice(0, 10);
     const profileId = profilePartyForRpc.value.entityId;
     if (isPayOut.value) {
-      await paysRepository.dispenseMiddlemanPayout({
-        tenant_id: props.tenantId,
-        profile_id: profileId,
-        amount: Number(amount.value),
-        payout_method: methodCode.value,
-        reference_notes: note.value || null,
-        cashbook_point_id: cashbookPointId.value,
-        cashbook_point_pot_id: potId.value,
-      });
-      showSuccessNotification('Cash out recorded.');
+      const allocs = openBillAlloc.selectedAllocations.value;
+      if (profilePartyForRpc.value?.entityType === 'vendor' && allocs.length > 0) {
+        const payoutResult = await postApPayout({
+          tenant_id: props.tenantId,
+          profile_id: profileId,
+          paid_on: localToday(),
+          note: note.value || null,
+          cashbook_point_id: cashbookPointId.value,
+          cashbook_point_pot_id: potId.value,
+          amount: Number(amount.value),
+          idempotency_key: createPayIdempotencyKey(),
+          instruments: [
+            buildWholesalePaymentInstrument({
+              payment_method_code: methodCode.value,
+              amount: Number(amount.value),
+              instrument_reference: instrumentReference.value,
+              bd_bank_id: bdBankId.value,
+              cheque_number: chequeNumber.value,
+              instrument_date: instrumentDate.value,
+              cashbook_point_id: cashbookPointId.value,
+            }),
+          ],
+          allocations: allocs,
+        });
+        for (const sid of payoutResult.shipmentIds) {
+          invalidateAfterApPay(sid);
+        }
+        showSuccessNotification('AP payout recorded.');
+      } else {
+        await paysRepository.dispenseMiddlemanPayout({
+          tenant_id: props.tenantId,
+          profile_id: profileId,
+          amount: Number(amount.value),
+          payout_method: methodCode.value,
+          reference_notes: note.value || null,
+          cashbook_point_id: cashbookPointId.value,
+          cashbook_point_pot_id: potId.value,
+        });
+        showSuccessNotification('Cash out recorded.');
+      }
     } else {
       await collectMutation.mutateAsync({
         tenantId: props.tenantId,
@@ -542,7 +611,7 @@ const submit = async () => {
             cashbook_point_id: cashbookPointId.value,
           }),
         ],
-        allocations: [],
+        allocations: openBillAlloc.selectedAllocations.value,
       });
     }
     emit('posted');

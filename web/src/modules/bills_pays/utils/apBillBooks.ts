@@ -34,7 +34,7 @@ export function apBillPaperCurrencyCode(
   return 'BDT';
 }
 
-/** Bill header due_amount still stores foreign face for unpaid FX vouchers. */
+/** AP voucher: books due from kernel `open_books`; foreign face from `open_txn` or ap_paper. */
 export function apBillDueStoresForeignFace(
   channelMeta: Record<string, unknown> | null | undefined,
   dueAmount: number,

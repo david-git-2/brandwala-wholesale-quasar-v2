@@ -12,7 +12,7 @@ const guard = (requiredModule: ModuleKey) =>
 
 const billsPaysRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/sales/invoices',
+    path: '/:tenantSlug?/app/bills',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -33,7 +33,7 @@ const billsPaysRoutes: RouteRecordRaw[] = [
         path: 'brands',
         name: 'app-bill-brands-page',
         component: () => import('../pages/BillBrandsPage.vue'),
-        meta: { hasPageToolbar: true, title: 'Invoice brands', headerTitle: 'Invoice brands' },
+        meta: { hasPageToolbar: true, title: 'Bill brands', headerTitle: 'Bill brands' },
         beforeEnter: guard('global_invoice'),
       },
       {
@@ -65,25 +65,34 @@ const billsPaysRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'collect',
-        name: 'app-collect-pay-page',
-        component: () => import('../pages/CollectPayPage.vue'),
-        meta: { hasPageToolbar: true, title: 'Pay in', headerTitle: 'Pay in' },
-        beforeEnter: guard('payments'),
+        redirect: (to) => ({
+          name: 'app-payments-page',
+          params: to.params,
+          query: { ...to.query },
+        }),
       },
       {
         path: 'remit',
         redirect: (to) => ({
-          name: 'app-collect-pay-page',
+          name: 'app-courier-remit-page',
           params: to.params,
-          query: { ...to.query, mode: 'courier' },
+          query: to.query,
         }),
       },
       {
-        path: 'payout',
-        name: 'app-payout-pay-page',
-        component: () => import('../pages/PayoutPayPage.vue'),
-        meta: { hasPageToolbar: true, title: 'Pay out', headerTitle: 'Pay out' },
+        path: 'courier-remit',
+        name: 'app-courier-remit-page',
+        component: () => import('../pages/CollectPayPage.vue'),
+        meta: { hasPageToolbar: true, title: 'Courier remittance', headerTitle: 'Courier remittance' },
         beforeEnter: guard('payments'),
+      },
+      {
+        path: 'payout',
+        redirect: (to) => ({
+          name: 'app-payments-page',
+          params: to.params,
+          query: { ...to.query, desk: 'payout' },
+        }),
       },
       {
         path: 'party/:entityType/:entityId',

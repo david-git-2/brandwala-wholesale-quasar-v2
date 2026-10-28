@@ -66,9 +66,10 @@ import { useRoute, useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import {
-  invoiceRepository,
+  billsRepository,
   type InvoiceBrand,
-} from 'src/modules/sales_invoice/repositories/invoiceRepository';
+} from '../repositories/billsRepository';
+import { billsQueryKeys } from '../services/billsQueryKeys';
 import { requestConfirmation, showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
 const authStore = useAuthStore();
@@ -83,10 +84,11 @@ const parentTenantId = computed(() => {
 });
 
 const brandsQuery = useQuery({
-  queryKey: computed(() => ['invoice_brands', parentTenantId.value]),
+  queryKey: computed(() => billsQueryKeys.brands(parentTenantId.value)),
   queryFn: () =>
-    invoiceRepository.listInvoiceBrands({ parent_tenant_id: parentTenantId.value! }),
+    billsRepository.listBillBrands({ parent_tenant_id: parentTenantId.value! }),
   enabled: computed(() => parentTenantId.value != null),
+  staleTime: 60_000,
 });
 
 const brands = computed(() => brandsQuery.data.value ?? []);
@@ -112,7 +114,7 @@ const openEdit = (brand: InvoiceBrand) => {
 };
 
 const invalidate = () => {
-  void queryClient.invalidateQueries({ queryKey: ['invoice_brands'] });
+  void queryClient.invalidateQueries({ queryKey: billsQueryKeys.root });
 };
 
 const saveBrand = async () => {
@@ -120,13 +122,13 @@ const saveBrand = async () => {
   saving.value = true;
   try {
     if (editingId.value) {
-      await invoiceRepository.updateInvoiceBrand({
+      await billsRepository.updateBillBrand({
         id: editingId.value,
         patch: { name: formName.value.trim(), address: formAddress.value.trim() },
       });
       showSuccessNotification('Brand updated.');
     } else {
-      await invoiceRepository.createInvoiceBrand({
+      await billsRepository.createBillBrand({
         parent_tenant_id: parentTenantId.value,
         name: formName.value.trim(),
         address: formAddress.value.trim(),
@@ -146,7 +148,7 @@ const confirmDelete = async (brand: InvoiceBrand) => {
   const ok = await requestConfirmation(`Delete “${brand.name}”?`, 'Delete brand');
   if (!ok) return;
   try {
-    await invoiceRepository.deleteInvoiceBrand({ id: brand.id });
+    await billsRepository.deleteBillBrand({ id: brand.id });
     showSuccessNotification('Brand deleted.');
     invalidate();
   } catch (err) {

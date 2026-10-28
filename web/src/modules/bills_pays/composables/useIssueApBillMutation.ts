@@ -1,8 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
-import {
-  issueShipmentApBillForKind,
-  type ShipmentApKind,
-} from 'src/modules/procurement_stock/repositories/shipmentApBillsRepository';
+import { issueShipmentApBillForKind } from 'src/modules/procurement_stock/repositories/shipmentMoneyKernelRepository';
+import type { ShipmentApKind } from 'src/modules/procurement_stock/repositories/shipmentApBillsRepository';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 

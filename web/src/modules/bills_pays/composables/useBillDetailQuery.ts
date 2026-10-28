@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
-import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import { billsRepository, type BillDetailBundle } from '../repositories/billsRepository';
 import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { listBillLinesForInvoice } from '../repositories/billLinesRepository';
@@ -25,15 +25,25 @@ function isAdjustmentBill(inv: { document_kind?: string | null } | undefined): b
   return kind !== 'standard';
 }
 
+function shouldLoadBillLines(inv: {
+  invoice_type: string;
+  document_kind?: string | null;
+}): boolean {
+  return isAdjustmentBill(inv) || inv.invoice_type === 'ap';
+}
+
 export function useBillDetailQuery(
   billId: Ref<number | null>,
   invoice?: Ref<GlobalInvoiceDetail | undefined>,
+  bundle?: Ref<BillDetailBundle | undefined>,
 ) {
   const usesBundle = computed(() => invoice !== undefined);
+  const bundleHasStockItems = computed(() => bundle?.value?.stockItems !== undefined);
+  const bundleHasBillLines = computed(() => bundle?.value?.billLines !== undefined);
 
   const detailQuery = useQuery({
     queryKey: computed(() => billsQueryKeys.detail(billId.value)),
-    queryFn: () => invoiceRepository.getGlobalInvoiceById(billId.value!),
+    queryFn: () => billsRepository.getBillById(billId.value!),
     enabled: computed(
       () => !usesBundle.value && billId.value != null && billId.value > 0,
     ),
@@ -44,8 +54,9 @@ export function useBillDetailQuery(
 
   const itemsQuery = useQuery({
     queryKey: computed(() => billsQueryKeys.items(billId.value)),
-    queryFn: () => invoiceRepository.listGlobalInvoiceItems(billId.value!),
+    queryFn: () => billsRepository.listBillItems(billId.value!),
     enabled: computed(() => {
+      if (bundleHasStockItems.value) return false;
       const id = billId.value;
       if (id == null || id <= 0) return false;
       const inv = invoiceData.value;
@@ -59,14 +70,15 @@ export function useBillDetailQuery(
     queryKey: computed(() => [...billsQueryKeys.detail(billId.value), 'bill-lines']),
     queryFn: () => listBillLinesForInvoice(billId.value!),
     enabled: computed(() => {
+      if (bundleHasBillLines.value) return false;
       const id = billId.value;
       if (id == null || id <= 0) return false;
       const inv = invoiceData.value;
       if (!inv) return false;
-      return isAdjustmentBill(inv);
+      return shouldLoadBillLines(inv);
     }),
     staleTime: 30_000,
   });
 
-  return { detailQuery, itemsQuery, billLinesQuery };
+  return { detailQuery, itemsQuery, billLinesQuery, invoiceData };
 }

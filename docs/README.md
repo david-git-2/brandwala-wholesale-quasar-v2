@@ -1,6 +1,6 @@
 # TradeFlow BD — docs index
 
-Load **this file first**. Then that module’s `spec.md` + `00-gaps.md`. Money → [bills_pays spec](features/bills_pays/spec.md) + [kernel pack](kernel/README.md) + [money-story](features/bills_pays/money-story.md). Then code. See [STRUCTURE.md](STRUCTURE.md).
+Load **this file first**. **Money:** [bills_pays README](features/bills_pays/README.md) → [kernel-schema](features/bills_pays/kernel-schema.md) → [REFERENCE](kernel/REFERENCE.md) → [tests](features/bills_pays/tests.md) → [spec](features/bills_pays/spec.md) + [00-gaps](features/bills_pays/00-gaps.md) if live delta matters. Other modules: `spec.md` + `00-gaps.md`. Then code. See [STRUCTURE.md](STRUCTURE.md).
 
 Missing fact → `DOC_GAP` (`.cursor/rules/docs-first.mdc`). Do not guess.
 
@@ -15,7 +15,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Who logs in where, which features? | [scopes](architecture/scopes.md) |
 | How this company sells (BW, pre-order, K-beauty, thrift) | [business-models](architecture/business-models.md) |
 | Wholesale vs dropship bill → pay (numbers) | [money-story](features/bills_pays/money-story.md) |
-| Bills vs pays vs cashbook | [bills_pays spec](features/bills_pays/spec.md) · [kernel architecture pack](kernel/README.md) · [kernel schema](features/bills_pays/kernel-schema.md) · [kernel plan](../doc/fix/2026-10-12-bills-pays-kernel-plan.md) |
+| Bills vs pays vs cashbook (target map) | [README](features/bills_pays/README.md) · [kernel-schema](features/bills_pays/kernel-schema.md) · [REFERENCE](kernel/REFERENCE.md) |
 | What numbers go on reports (sales vs cash vs COD) | [reporting spec](features/reporting_treasury/spec.md) |
 | What is unfinished / wrong in a module? | That module’s `00-gaps.md` |
 | Catalog scrape/upload log & app versions (planned) | [products refresh & release](features/products/upload-and-release-visibility.md) |

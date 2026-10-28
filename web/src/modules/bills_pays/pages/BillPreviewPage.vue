@@ -96,7 +96,7 @@
         </div>
       </template>
 
-      <template v-else-if="isApBill">
+      <template v-else-if="isApBill && !isManualComposeApBill">
         <ApBillPaper
           :channel-meta="bill.channel_meta"
           :ap-kind="bill.source_key ?? bill.ap_kind"
@@ -212,7 +212,7 @@ import { useQuery } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/sales_invoice/types';
-import { invoiceRepository, type InvoiceBrand } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import { billsRepository, type InvoiceBrand } from '../repositories/billsRepository';
 import BarcodeRenderer from 'src/modules/thrift/barcode/components/BarcodeRenderer.vue';
 import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
 import ApBillPaper from '../components/ApBillPaper.vue';
@@ -221,6 +221,7 @@ import type { BillLineDisplayRow } from '../repositories/billLinesRepository';
 import ApBillPartiesBlock from '../components/ApBillPartiesBlock.vue';
 import BillKernelSourceChips from '../components/BillKernelSourceChips.vue';
 import { useBillDetailQuery } from '../composables/useBillDetailQuery';
+import { billsQueryKeys } from '../services/billsQueryKeys';
 import { apBillCurrencyBalances } from '../utils/parseApBillPaper';
 
 const BRAND_STORAGE_KEY = 'bills_pays_last_invoice_brand_id';
@@ -244,10 +245,11 @@ const parentTenantId = computed(() => {
 });
 
 const brandsQuery = useQuery({
-  queryKey: computed(() => ['invoice_brands', parentTenantId.value]),
+  queryKey: computed(() => billsQueryKeys.brands(parentTenantId.value)),
   queryFn: () =>
-    invoiceRepository.listInvoiceBrands({ parent_tenant_id: parentTenantId.value! }),
+    billsRepository.listBillBrands({ parent_tenant_id: parentTenantId.value! }),
   enabled: computed(() => parentTenantId.value != null),
+  staleTime: 60_000,
 });
 
 const brandOptions = computed(() => brandsQuery.data.value ?? []);
@@ -280,6 +282,9 @@ watch(selectedBrandId, (id) => {
 
 const bill = computed(() => detailQuery.data.value as GlobalInvoiceDetail | undefined);
 const isApBill = computed(() => bill.value?.invoice_type === 'ap');
+const isManualComposeApBill = computed(
+  () => isApBill.value && bill.value?.source_type === 'compose',
+);
 
 const billDocumentKind = computed(() => {
   const b = bill.value as { document_kind?: string } | undefined;

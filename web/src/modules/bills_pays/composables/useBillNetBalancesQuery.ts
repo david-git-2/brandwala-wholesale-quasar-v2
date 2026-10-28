@@ -2,19 +2,11 @@ import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { supabase } from 'src/boot/supabase';
 import { billsQueryKeys } from '../services/billsQueryKeys';
+import type { BillNetBalances } from '../types/billBalances';
 
-export type BillNetBalances = {
-  bill_id: number;
-  invoice_no: string;
-  original_total: number;
-  paid_amount: number;
-  credits_issued: number;
-  debits_issued: number;
-  due_amount: number;
-  credit_open: number;
-  document_kind: string;
-};
+export type { BillNetBalances };
 
+/** Prefer `get_bill_detail_bundle` on detail; use this only when bundle is not loaded. */
 export function useBillNetBalancesQuery(billId: Ref<number | null>, enabled: Ref<boolean>) {
   return useQuery({
     queryKey: computed(() => [...billsQueryKeys.detail(billId.value), 'net-balances']),

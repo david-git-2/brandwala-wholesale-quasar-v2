@@ -20,11 +20,10 @@ import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxReposit
 import { globalShipmentCostEntryRepository } from '../repositories/globalShipmentCostEntryRepository';
 import { globalShipmentLocalCostRepository } from '../repositories/globalShipmentLocalCostRepository';
 import {
-  fetchShipmentSettingsFinanceBundle,
+  fetchShipmentMoneyKernelBundle,
   syncShipmentApBills,
-  type ShipmentApBillRow,
-  type ShipmentApFxSnapshot,
-} from '../repositories/shipmentApBillsRepository';
+} from '../repositories/shipmentMoneyKernelRepository';
+import type { ShipmentApBillRow, ShipmentApFxSnapshot } from '../repositories/shipmentApBillsRepository';
 import type { GlobalShipmentLocalCost } from '../types/shipmentLocalCost';
 import { shipmentSectionRepository } from '../repositories/shipmentSectionRepository';
 import {
@@ -393,7 +392,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       this.settingsFinanceLoading = true;
       this.costEntriesLoading = true;
       try {
-        const bundle = await fetchShipmentSettingsFinanceBundle(shipmentId);
+        const bundle = await fetchShipmentMoneyKernelBundle(shipmentId);
         this.currentCostEntries = bundle.costEntries as GlobalShipmentCostEntry[];
         return { apBills: bundle.apBills, apFx: bundle.apFx };
       } catch (err: unknown) {
@@ -1336,34 +1335,6 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         return res;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to process vendor return';
-        throw err;
-      } finally {
-        this.loading = false;
-      }
-    },
-
-    async settleShipmentPayee(params: SettleShipmentPayeeParams) {
-      this.loading = true;
-      this.error = null;
-      try {
-        const res = await globalShipmentRepository.settleShipmentPayee(params);
-        return res;
-      } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to settle shipment payee';
-        throw err;
-      } finally {
-        this.loading = false;
-      }
-    },
-
-    async listShipmentPayeeSettlements(shipmentId: number) {
-      this.loading = true;
-      this.error = null;
-      try {
-        const res = await globalShipmentRepository.listShipmentPayeeSettlements(shipmentId);
-        return res;
-      } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to list shipment payee settlements';
         throw err;
       } finally {
         this.loading = false;

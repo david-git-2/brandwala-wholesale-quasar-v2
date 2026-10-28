@@ -25,7 +25,10 @@ import {
   type ShipmentExcelBuildProgress,
 } from '../utils/buildShipmentExcelWorkbook';
 import ShipmentExcelExportProgressDialog from '../components/ShipmentExcelExportProgressDialog.vue';
-import { filterShipmentItemsBySheet } from '../utils/filterShipmentItemsBySheet';
+import {
+  filterShipmentItemsBySheet,
+  mapShipmentItemsQuantitiesBySheet,
+} from '../utils/filterShipmentItemsBySheet';
 import {
   findLandSplitQtyMismatches,
   formatLandSplitQtyGuardMessage,
@@ -44,7 +47,6 @@ export function useInboundShipmentActions(options: {
   shipmentId: number;
   activeTab: Ref<'lines' | 'balance' | 'cost' | 'receive'>;
   calculations: ReturnType<typeof useInboundShipmentCalculations>;
-  paySettleCard?: Ref<HTMLElement | null>;
   openAddItemsDrawer?: (initialSectionId?: number | null) => void;
 }) {
   const { shipmentId, activeTab, calculations } = options;
@@ -183,7 +185,6 @@ export function useInboundShipmentActions(options: {
     }
   };
 
-  const paySettling = ref(false);
   const returnSubmitting = ref(false);
   const returnOutcome = ref<'cash_refund' | 'store_credit'>('store_credit');
 
@@ -214,41 +215,6 @@ export function useInboundShipmentActions(options: {
   );
 
   const hasReturnQty = computed(() => returnLines.value.some((l) => l.return_qty > 0));
-
-  const confirmSettlePayee = async (payload: {
-    entityType: 'vendor' | 'cargo_company';
-    entityId: number;
-    action: 'pay' | 'record_credit' | 'use_credit';
-    amount: number;
-    exchangeRate?: number | null;
-  }) => {
-    paySettling.value = true;
-    try {
-      const res = await shipmentStore.settleShipmentPayee({
-        shipmentId,
-        entityType: payload.entityType,
-        entityId: payload.entityId,
-        action: payload.action,
-        amount: payload.amount,
-        exchangeRate: payload.exchangeRate ?? null,
-      });
-      const actionLabel =
-        payload.action === 'pay'
-          ? 'Payment'
-          : payload.action === 'record_credit'
-            ? 'Credit recording'
-            : 'Credit usage';
-      showSuccessNotification(
-        `${actionLabel} of ৳ ${res.amount_bdt.toLocaleString(undefined, { minimumFractionDigits: 2 })} BDT recorded.`,
-      );
-      return res;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      showErrorNotification(msg || 'Settlement failed');
-    } finally {
-      paySettling.value = false;
-    }
-  };
 
   const confirmVendorReturn = async () => {
     const items = returnLines.value
@@ -619,7 +585,7 @@ export function useInboundShipmentActions(options: {
   const downloadExcel = async (options?: {
     sheetId?: string;
     sheetName?: string;
-    mode?: 'section' | 'whole';
+    mode?: 'section' | 'whole' | 'whole_all_rows';
   }) => {
     const shipment = shipmentStore.currentShipment;
     if (!shipment) {
@@ -655,24 +621,42 @@ export function useInboundShipmentActions(options: {
       totals: ReturnType<typeof calculateShipmentCostSummary>;
     }> | null = null;
 
-    if (mode === 'whole' && sections.length > 1) {
-      sheetInputsForWhole = sections
+    const isMultiSheetExport =
+      (mode === 'whole' || mode === 'whole_all_rows') && sections.length > 1;
+
+    if (isMultiSheetExport) {
+      const combinedItems = filterShipmentItemsBySheet(allItems, 'sheet_all', sections);
+
+      const sectionSheets = sections
         .map((sec) => {
           const sheetId = `section_${sec.id}`;
-          const items = filterShipmentItemsBySheet(allItems, sheetId, sections);
-          if (items.length === 0) return null;
+          const sectionItems = filterShipmentItemsBySheet(allItems, sheetId, sections);
+          if (sectionItems.length === 0) return null;
+          const items =
+            mode === 'whole_all_rows'
+              ? mapShipmentItemsQuantitiesBySheet(combinedItems, sheetId, sections)
+              : sectionItems;
           return {
             worksheetName: sec.title || `Section ${sec.id}`,
             items,
-            totals: calculateShipmentCostSummary(forCosting, items),
+            totals: calculateShipmentCostSummary(forCosting, sectionItems),
           };
         })
         .filter((row): row is NonNullable<typeof row> => row != null);
 
-      if (!sheetInputsForWhole.length) {
+      if (!sectionSheets.length) {
         showWarningNotification('No items to export.');
         return;
       }
+
+      sheetInputsForWhole = [
+        {
+          worksheetName: 'All Items',
+          items: combinedItems,
+          totals: calculations.totals.value,
+        },
+        ...sectionSheets,
+      ];
     }
 
     const sheetId =
@@ -694,8 +678,9 @@ export function useInboundShipmentActions(options: {
 
     const sheetSuffix =
       sections.length > 1 && sheetId !== 'sheet_all' ? `_${safeNamePart(sheetName)}` : '';
+    const wholeFileSuffix = mode === 'whole_all_rows' ? '_qty_by_section' : '';
     const downloadFileName = sheetInputsForWhole
-      ? `${fileTitle || `shipment_${shipment.id}`}.xlsx`
+      ? `${fileTitle || `shipment_${shipment.id}`}${wholeFileSuffix}.xlsx`
       : `${fileTitle || `shipment_${shipment.id}`}${sheetSuffix}.xlsx`;
 
     $q.dialog({
@@ -871,14 +856,12 @@ export function useInboundShipmentActions(options: {
     saveInlineType,
     saveInlineVendor,
     saveInlineCargo,
-    paySettling,
     returnSubmitting,
     returnOutcome,
     returnOutcomeOptions,
     returnLines,
     returnLineColumns,
     hasReturnQty,
-    confirmSettlePayee,
     confirmVendorReturn,
     loadShipmentDetails,
     goBack,

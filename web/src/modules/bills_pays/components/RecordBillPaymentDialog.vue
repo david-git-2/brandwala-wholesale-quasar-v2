@@ -293,7 +293,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
+import { storeToRefs } from 'pinia';
+import { useGlobalReferenceStore } from 'src/modules/global_reference/stores/globalReferenceStore';
 import { formatAmountBdt, formatSettlementCurrencyAmount } from 'src/utils/currency';
 import PaymentInstrumentExtrasFields from './PaymentInstrumentExtrasFields.vue';
 import { useWholesalePaymentMethodMeta } from '../composables/useWholesalePaymentMethodMeta';
@@ -426,7 +427,17 @@ const payFromPotLabel = computed(() => {
   return row?.label ?? '';
 });
 
-const { data: currenciesData } = useGlobalCurrenciesQuery();
+const globalRefStore = useGlobalReferenceStore();
+const { currencies: currenciesData } = storeToRefs(globalRefStore);
+
+watch(
+  () => props.modelValue,
+  (open) => {
+    if (open && currenciesData.value.length === 0) {
+      void globalRefStore.ensureCurrenciesLoaded();
+    }
+  },
+);
 
 const settlementCurrencyOptions = computed(() => {
   const fromRef = (currenciesData.value ?? [])

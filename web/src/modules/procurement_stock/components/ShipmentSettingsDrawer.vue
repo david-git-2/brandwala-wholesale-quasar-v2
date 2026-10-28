@@ -324,8 +324,8 @@
                   <span class="text-right font-mono text-caption text-grey-9">
                     {{ formatMoney(currentCostCurrencySymbol, bill.total_amount) }}
                   </span>
-                  <span class="text-right font-mono text-caption" :class="bill.due_amount > 0 ? 'text-orange-9' : 'text-grey-7'">
-                    {{ formatMoney(currentCostCurrencySymbol, bill.due_amount) }}
+                  <span class="text-right font-mono text-caption" :class="displayDueAmount(bill) > 0 ? 'text-orange-9' : 'text-grey-7'">
+                    {{ formatMoney(currentCostCurrencySymbol, displayDueAmount(bill)) }}
                   </span>
                 </div>
                 <div class="summary-ap-bill-row summary-ap-bill-row--total">
@@ -1103,7 +1103,17 @@ import {
   SHIPMENT_COST_COMPONENT_SELECT_OPTIONS,
 } from '../constants/shipmentCostAxisOptions';
 import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
-import { SHIPMENT_AP_COST_BUCKETS, shipmentApKindLabel } from '../constants/shipmentApBuckets';
+import { SHIPMENT_AP_COST_BUCKETS } from '../constants/shipmentApBuckets';
+import {
+  apBillInvoiceLabel,
+  apBillKindLabel,
+  apBillStatusChip,
+  type ApBillStatusChip,
+  billDetailRoute,
+  displayDueAmount,
+  sumApBillsDue,
+  sumApBillsTotal,
+} from '../utils/shipmentApBillDisplay';
 import {
   findShipmentApBill,
   shipmentApBillBucket,
@@ -1529,31 +1539,6 @@ const costFileTotal = computed(() => {
   return sum;
 });
 
-type ApBillStatusChip = { label: string; color: string; textColor: string };
-
-const apBillStatusChip = (bill: ShipmentApBillRow): ApBillStatusChip | null => {
-  if (bill.invoice_status === 'draft') {
-    return { label: 'Draft', color: 'grey-2', textColor: 'grey-8' };
-  }
-  if (bill.payment_status === 'paid') {
-    return { label: 'Paid', color: 'green-1', textColor: 'green-9' };
-  }
-  if ((bill.due_amount ?? 0) > 0) {
-    return { label: 'Due', color: 'orange-1', textColor: 'orange-9' };
-  }
-  return null;
-};
-
-const apBillInvoiceLabel = (bill: ShipmentApBillRow): string => {
-  if (bill.invoice_status === 'issued' && bill.invoice_no) {
-    return bill.invoice_no;
-  }
-  if (bill.invoice_status === 'draft') {
-    return 'Draft — open bill to issue';
-  }
-  return bill.invoice_status ?? '—';
-};
-
 const summaryApBillRows = computed(() => {
   const order = new Map<string, number>();
   SHIPMENT_AP_COST_BUCKETS.forEach((k, i) => order.set(k, i));
@@ -1569,20 +1554,16 @@ const summaryApBillRows = computed(() => {
     const invoiceLabel = apBillInvoiceLabel(bill);
     return {
       ...bill,
-      kindLabel: shipmentApKindLabel(shipmentApBillBucket(bill)),
+      kindLabel: apBillKindLabel(bill),
       invoiceLabel,
       statusChip,
     };
   });
 });
 
-const apBillsGrandTotal = computed(() =>
-  summaryApBillRows.value.reduce((s, b) => s + (Number(b.total_amount) || 0), 0),
-);
+const apBillsGrandTotal = computed(() => sumApBillsTotal(apBills.value));
 
-const apBillsDueTotal = computed(() =>
-  summaryApBillRows.value.reduce((s, b) => s + (Number(b.due_amount) || 0), 0),
-);
+const apBillsDueTotal = computed(() => sumApBillsDue(apBills.value));
 
 const courierCostPerKg = computed(() => {
   const t = totals?.value ?? totals;
@@ -1987,12 +1968,8 @@ watch(
 );
 
 const openApBill = (billId: number) => {
-  const tenantSlug = authStore.tenantSlug;
-  if (!tenantSlug) return;
-  void router.push({
-    name: 'app-bill-detail-page',
-    params: { tenantSlug, billId: String(billId) },
-  });
+  const route = billDetailRoute(billId, authStore.tenantSlug);
+  if (route) void router.push(route);
 };
 
 const ensureBucketApBill = async (kind: ShipmentApKind): Promise<ShipmentApBillRow | null> => {

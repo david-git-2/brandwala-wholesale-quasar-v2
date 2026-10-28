@@ -1,31 +1,16 @@
 # Bills & pays — spec
 
-One money pack. Layers: **bill** · **pay** · **cashbook**. Not a wallet. Numbers: [money-story](money-story.md). Gaps: [00-gaps](00-gaps.md). Architecture: [kernel pack](../../kernel/README.md).
+One money pack. **Start here (target map + graphs):** [README.md](README.md). Layers: **bill** · **pay** · **cashbook**. Not a wallet. **Gaps:** [00-gaps](00-gaps.md). **Schema:** [kernel-schema](kernel-schema.md). **PR rules:** [REFERENCE](../../kernel/REFERENCE.md). **Tests:** [tests.md](tests.md). **Numbers:** [money-story](money-story.md).
 
 ## As-built
 
 | | |
 | :--- | :--- |
 | Spec | `docs/features/bills_pays/spec.md` + [00-gaps](00-gaps.md) |
-| UI | **Bills**, **Payments**, **Cashbook** in `bills_pays/` (`/app/sales/invoices`, `/app/finance/payments`, `/app/wallet`). Bills: list, compose (today stock take/condition/walk-in), print. **Target compose:** any paper, stock optional ([BP13](00-gaps.md)). **Target pay:** in/out from accounts ([BP14](00-gaps.md)). |
+| UI | **Bills**, **Payments**, **Cashbook** in `bills_pays/` (`/app/bills`, `/app/finance/payments`, `/app/wallet`). Bills: list, compose (today stock take/condition/walk-in), print. **Target compose:** any paper, stock optional ([BP13](00-gaps.md)). **Target pay:** in/out from accounts ([BP14](00-gaps.md)). |
 | SQL | **BP4 (2026-10):** tables `bills`, `bill_lines`, `pays`, `cashbook_*`; split `supabase/schemas/bills_pays/` + invoice domain |
 | Access | `app`; `shop` merchant statement |
 | Model | BW — [business-models](../../architecture/business-models.md) |
-
-## Kernel architecture (8 docs)
-
-| Doc | Description |
-| :--- | :--- |
-| [01-SYSTEM-INVARIANTS](../../kernel/01-SYSTEM-INVARIANTS.md) | Issued-bill immutability, derived AR/AP, single-currency AP, points/pots, frozen FX |
-| [02-STATE-MACHINES-AND-LIFECYCLES](../../kernel/02-STATE-MACHINES-AND-LIFECYCLES.md) | Bill states, `take`/`condition`, notes, alloc vs custody |
-| [03-TRANSACTIONS-LOCKING-AND-CONCURRENCY](../../kernel/03-TRANSACTIONS-LOCKING-AND-CONCURRENCY.md) | Isolation, `FOR UPDATE`, lock order, idempotency, alloc guards |
-| [04-RPC-AND-API-CONTRACTS](../../kernel/04-RPC-AND-API-CONTRACTS.md) | `kernel_*` RPC params, returns, errors (live names in same doc) |
-| [05-ADAPTER-INTEGRATION-GUIDE](../../kernel/05-ADAPTER-INTEGRATION-GUIDE.md) | `source_*` plugs, profiles, shipment bucket×currency, balance reads |
-| [06-ACCOUNTING-FLOWS-AND-GOLDEN-SCENARIOS](../../kernel/06-ACCOUNTING-FLOWS-AND-GOLDEN-SCENARIOS.md) | Row-level wholesale, dropship remittance, AP FX scenarios |
-| [07-TDD-AND-VERIFICATION-SUITE](../../kernel/07-TDD-AND-VERIFICATION-SUITE.md) | Invariant tests, golden pipeline, concurrency races |
-| [08-AUDIT-RECONCILIATION-AND-RUNBOOK](../../kernel/08-AUDIT-RECONCILIATION-AND-RUNBOOK.md) | Audit SQL, cheque bounce, till transfer, count variance |
-
-Index: [kernel/README.md](../../kernel/README.md). Onboarding: [00-ONBOARDING-AND-AUDIT.md](../../kernel/00-ONBOARDING-AND-AUDIT.md). Roadmap: [PHASE-A-B-IMPLEMENTATION-PLAN.md](../../kernel/PHASE-A-B-IMPLEMENTATION-PLAN.md).
 
 ## Where to look
 
@@ -70,7 +55,7 @@ FKs in RPCs/UI: `profile_id` on bills/pays and shop order; alloc `bill_id` often
 
 | Desk | Job | Code route |
 | :--- | :--- | :--- |
-| Bills | Issue / void / print / compose | `sales_invoice/` — `/app/sales/invoices` |
+| Bills | Issue / void / print / compose | `bills_pays/` + `billsRepository` — `/app/bills` |
 | Payments | Receive, pay out, from accounts | `wallet/` — `/app/finance/payments` |
 | Cashbook | Audit leftover / custody | `wallet/` — `/app/wallet` |
 
@@ -110,11 +95,11 @@ Build order: [kernel plan](../../../doc/fix/2026-10-12-bills-pays-kernel-plan.md
 | Walk-in | Collect | At issue |
 | AP (per shipment cost bucket) | Pay out (`ap_payout`) | Never sales |
 
-**Pay in** → ALLOC to AR bills; remainder → profile cashbook. **UI:** Customer tab (collect) + **Courier** tab (dropship net bank in → same writer, `courier_remittance`). **Pay out:** dropship shop profit (`dispense_middleman_payout_from_tenant`) or AP alloc (`post_ap_payout_with_allocations`). Inbound AP sync: `sync_shipment_ap_bills` ([WA15](00-gaps.md)).
+**Pay in** → ALLOC to AR bills; remainder → profile cashbook. **UI:** Customer tab (collect) + **Courier** tab (dropship net bank in → same writer, `courier_remittance`). **Pay out:** dropship shop profit (`dispense_middleman_payout_from_tenant` — target [BP24](00-gaps.md): `source_type=commission` + `post_money_out`) or AP alloc (`post_ap_payout_with_allocations`). Inbound AP sync: `sync_shipment_ap_bills` ([WA15](00-gaps.md)).
 
 ### AP paper (not AR compose)
 
-AR bills use `bill_lines` (item, qty, sell, disc). AP bills have **no** `bill_lines`. Created by `sync_shipment_ap_bills` (inbound) or `upsert_dropship_courier_ap_bill` (dropship courier, `source_type=dropship_courier`). While shipment `costs_locked` is false, bucket bills stay **`draft`** and sync updates totals; **`lock_global_shipment_costs`** runs sync then `issue_shipment_ap_bills` (`draft` → `issued`). Dropship courier AP is **`issued` at ship**. Print snapshot in `bills.channel_meta.ap_paper` (refreshed while unpaid and no pay yet).
+AR bills use `bill_lines` (item, qty, sell, disc). AP bills have **no** `bill_lines`. Created by `sync_shipment_ap_bills` (inbound) or `upsert_dropship_courier_ap_bill` (dropship courier, `source_type=dropship_courier`). While shipment `costs_locked` is false, bucket bills stay **`draft`** and sync updates totals; **`lock_global_shipment_costs`** runs sync then `issue_shipment_ap_bills` (`draft` → `issued`). **Issued** standard AP bills are immutable for face totals — sync must not rewrite them; shortage/VAT = credit note ([REFERENCE inv. 19](../../kernel/REFERENCE.md)). Dropship courier AP is **`issued` at ship**. Print snapshot in `bills.channel_meta.ap_paper` (refreshed while unpaid and no pay yet).
 
 | `ap_kind` (= cost bucket) | Print shows | Not on paper |
 | :--- | :--- | :--- |
@@ -133,8 +118,8 @@ UI: `ApBillPaper` on bill detail/preview when `invoice_type = ap`. **Parties on 
 ### Bills
 - [x] US-1 FIFO issue; print; compose (stock take/condition/walk-in).
 - [x] US-1b Trade take/condition; walk-in take; condition held until paid.
-- [ ] US-17 Modular compose: bill with or without stock; they-owe and we-owe ([BP13](00-gaps.md)).
-- [ ] US-18 Modular pay: receive / pay out from instruments or cashbook (custody) ([BP14](00-gaps.md)).
+- [x] US-17 Modular compose: bill with or without stock; they-owe and we-owe ([BP13](00-gaps.md)).
+- [x] US-18 Modular pay: receive / pay out from instruments or cashbook (custody) ([BP14](00-gaps.md)).
 - [ ] US-2 Returns emit a credit note; excess → customer cashbook. Not a silent total edit ([BP5](00-gaps.md)).
 - [ ] US-3 Never issue bill from pay.
 - [x] US-4 Dropship merchant at ship; packing slip ≠ bill.

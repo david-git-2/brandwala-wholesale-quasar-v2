@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
-import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import { billsRepository } from '../repositories/billsRepository';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
@@ -10,7 +10,7 @@ export function useVoidBillMutation(billId: () => number | null) {
     mutationFn: async () => {
       const id = billId();
       if (!id) throw new Error('Bill not found.');
-      await invoiceRepository.voidGlobalInvoice(id);
+      await billsRepository.voidBill(id);
     },
     onSuccess: () => {
       const id = billId();

@@ -1,8 +1,70 @@
 # Bills kernel — target schema
 
-**Target.** Not live SQL. Live: `supabase/schemas/bills_pays/`. Product: [spec](spec.md). Architecture: [kernel pack](../../kernel/README.md). Numbers: [money-story](money-story.md). Gaps: [00-gaps](00-gaps.md). Build: [kernel plan](../../../doc/fix/2026-10-12-bills-pays-kernel-plan.md).
+**Target.** Not live SQL. Live: `supabase/schemas/bills_pays/`. **Feature map:** [README.md](README.md). Product scope: [spec](spec.md). Numbers: [money-story](money-story.md). Gaps: [00-gaps](00-gaps.md).
 
 One money kernel. Other modules **plug in**. They do not own `bills` / `pays`. No second invoice table.
+
+---
+
+## 0. Read order (do not drift)
+
+| Role | Open (in order) |
+| :--- | :--- |
+| **Everyone** | [spec](spec.md) + [00-gaps](00-gaps.md) |
+| **Schema / RPC change** | This file + [REFERENCE](../../kernel/REFERENCE.md) + grep `supabase/schemas/` |
+| **Verify behavior** | [tests](tests.md) golden A–D |
+| **Dropship numbers** | [money-story](money-story.md) only |
+
+**Boundaries:** Features never `INSERT` kernel tables. **No FIFO inside `issue_bill`** — warehouse first, then issue ([BP17](00-gaps.md)). No domain payout RPCs — use `source_type` + `post_money_out` ([BP24](00-gaps.md)). Balances from `bill_settlements` (target) / `get_bill_net_balances` (live). Lifecycle (`draft`/`issued`/`voided`) ≠ settlement (`due`/`partial`/`paid`).
+
+**Layers:** bill (paper) → settlements → pay (cash) → cashbook (till/custody). Client calls `supabase.rpc` only; writes are `SECURITY DEFINER` + `assert_kernel_money_access`.
+
+**Money spine gate:** New pay/bill writers blocked until [BP18](00-gaps.md) cutover (audit [08 §1b](../../kernel/08-AUDIT-RECONCILIATION-AND-RUNBOOK.md)) and [BP25](00-gaps.md) idempotency. Build order: [00-gaps](00-gaps.md).
+
+### 0b. Global lock order (all money RPCs)
+
+Use one ordering in every writer that touches more than one row. Deadlocks = wrong order, not “retry forever”.
+
+| Order | Resource | When |
+| :--- | :--- | :--- |
+| 1 | `pg_advisory_xact_lock(hashtext('shipment_money:' \|\| shipment_id))` | `sync_shipment_ap_bills`, `issue_shipment_ap_bills`, AP payout / landed-cost refresh for that shipment ([WA15](00-gaps.md)) |
+| 2 | `bills` | `SELECT … FOR UPDATE` — sort locked bill ids `ORDER BY id ASC` |
+| 3 | `pays` | `FOR UPDATE` when re-allocating or reversing |
+| 4 | Profile custody `cashbook_accounts` | `FOR UPDATE ORDER BY id` |
+| 5 | `cashbook_point_pots` | `FOR UPDATE ORDER BY cashbook_point_id, currency_code` |
+
+**Pay + alloc:** always lock **target bill(s)** before reading `get_bill_net_balances` / inserting settlements. **Draft** edits use optimistic `version` / `updated_at` only on draft rows; **issued** paths use pessimistic bill locks only.
+
+**Cache columns:** `due_amount` / `payment_status` — if kept live, update only inside the same transaction as settlement inserts (or stop writing them after BP18 cutover). Never the sole guard for alloc limits.
+
+### Target write / read RPCs
+
+| RPC | Job |
+| :--- | :--- |
+| `upsert_draft_bill` / `issue_bill` / `void_bill` | Paper ([BP9](00-gaps.md)) |
+| `create_bill_adjustment` / `issue_bill_adjustment` | CN/DN |
+| `post_money_in` / `post_money_out` | Pay + optional settlements |
+| `apply_settlement_to_bill` | Custody / CN / leftover → bill (live: `apply_leftover_to_bill`, [BP18](00-gaps.md)) |
+| `reverse_pay` | Unwind pay; bill lifecycle stays issued |
+| `get_bill_net_balances`, `list_*_for_source` | Reads ([BP10](00-gaps.md)) |
+| `v_kernel_bill_summaries` | Paginated read view ([BP23](00-gaps.md)) |
+
+### Live RPCs (wired today)
+
+| Job | RPC |
+| :--- | :--- |
+| Collect + alloc | `post_customer_receipt_with_allocations` |
+| Void collect | `void_customer_receipt` |
+| Apply pay slice to bill | `allocate_payment_to_global_invoice` |
+| AP payout | `post_ap_payout_with_allocations` |
+| Merchant profit | `dispense_middleman_payout_from_tenant` (retire [BP24](00-gaps.md)) |
+| AR draft/issue | `create_sales_invoice_from_payload`, `issue_wholesale_invoice`, `post_sales_invoice` |
+| Void bill | `void_sales_invoice` |
+| CN/DN | `create_bill_adjustment`, `issue_bill_adjustment` |
+| Shipment AP | `sync_shipment_ap_bills`, `lock_global_shipment_costs`, `issue_shipment_ap_bills` |
+| Balance | `get_bill_net_balances` |
+
+Code: `web/src/modules/bills_pays/repositories/`. UI: `/app/bills`, `/app/finance/payments`, `/app/wallet`.
 
 ---
 
@@ -33,14 +95,17 @@ Every bill side is a **profile**. Tenant itself has a `tenant` (or `company`) pr
 | | `to_profile_id` | bigint FK `profiles` | **Bill to** — who is billed |
 | Paper | `document_kind` | enum | `standard` \| `credit_note` \| `debit_note` |
 | | `parent_bill_id` | bigint FK `bills` | Required iff not `standard` |
-| | `status` | enum | `draft` \| `issued` \| `voided` |
+| | `status` | enum | Target name `lifecycle_status`: `draft` \| `issued` \| `voided` (live: `invoice_status`) |
 | | `document_date` | date | |
 | | `due_date` | date | nullable |
-| Settle | `settlement_kind` | enum | `take` \| `condition`. Null on AP / fee / notes. Not `status` |
+| Settle | `settlement_kind` | enum | `take` \| `condition`. Null on AP / fee / notes. Not lifecycle/settlement status |
 | Plug | `source_type` | text | Adapter id, e.g. `shipment_cost`, `shop_order`, `compose` |
 | | `source_id` | text | Adapter row id (string so any module) |
 | | `source_key` | text | Optional slice, e.g. shipment cost bucket, or `{bucket}:{currency_code}` for shipment AP |
-| Issued money | `currency_code` | text | **Books** currency (default `BDT`). Due / paid / alloc use this |
+| Txn face | `txn_currency_code` | text | What vendor/customer sees (e.g. `USD`). One txn currency per standard AP bill ([WA15](00-gaps.md)) |
+| | `txn_total_amount` | numeric | Face in `txn_currency_code` at issue |
+| | `books_exchange_rate` | numeric | **Books per 1 txn** frozen at `issue_bill` |
+| Issued money | `currency_code` | text | **Books** currency (default `BDT`) |
 | | `subtotal_amount` | numeric | Sum of line books amounts at issue |
 | | `discount_amount` | numeric | |
 | | `total_amount` | numeric | Issued face in books currency. Never silent-edit after issue |
@@ -50,7 +115,7 @@ Every bill side is a **profile**. Tenant itself has a `tenant` (or `company`) pr
 
 **Not on header:** `invoice_type`, `ap_shipment_id`, `ap_kind`, `shop_order_id`, `retail_billing_mode`, `recipient_*`, retail charge columns, `collection_source`. Those belong in **source** or **meta** or **lines**.
 
-**Cached settlement (optional keep):** `paid_amount`, `due_amount`, `written_off_amount`, `payment_status`. UI/adapters should prefer `get_bill_net_balances`. Do not treat as source of truth.
+**Settlement status (derived or cached):** Target `settlement_status`: `unpaid` \| `partial` \| `settled` \| `over_credited`. Live: `payment_status` + optional `paid_amount`, `due_amount`, `written_off_amount`. Source of truth: sum of `bill_settlements` vs open face; prefer `get_bill_net_balances`. Do not treat cache columns as sole truth.
 
 **Direction (derived, do not store):** if `to_profile_id` is our tenant profile → **we owe** (pay out). If `from_profile_id` is our tenant profile → **they owe** (collect). Both sides can be non-tenant only if a later feature needs it; v1 always one side = tenant profile.
 
@@ -68,8 +133,21 @@ Walk-in: `take` only. AP / description-only bills: null. Who promised / extra wo
 - `from_profile_id` ≠ `to_profile_id` when both are set (null allowed until both sides exist)
 - Both profiles same `parent_tenant_id` as the bill
 - Notes: `document_kind ≠ standard` ⇒ `parent_bill_id` set; copy parent `source_*` and from/to unless the adapter overrides
-- Unique standard plug: `(parent_tenant_id, source_type, source_id, source_key)` where `document_kind = standard` and source set
+- Unique **active** standard plug (partial index, void excluded):
+
+```sql
+CREATE UNIQUE INDEX uq_active_standard_bill
+ON bills (parent_tenant_id, source_type, source_id, COALESCE(source_key, ''))
+WHERE document_kind = 'standard'
+  AND source_type IS NOT NULL
+  AND source_id IS NOT NULL
+  AND status <> 'voided';
+```
+
+  Live `bills_source_plug_uidx` may omit void filter until [BP20](00-gaps.md). Legacy `bills_ap_shipment_kind_uidx` coexists until WA15 backfill.
+
 - `settlement_kind = condition` only when the bill has stock lines and is they-owe (from = tenant)
+- `upsert_draft_bill` / `issue_bill`: require matching `version` or `updated_at` (optimistic concurrency); `SELECT … FOR UPDATE` on bill row at start of write RPCs
 
 ### `bill_lines`
 
@@ -86,17 +164,19 @@ Walk-in: `take` only. AP / description-only bills: null. Who promised / extra wo
 | `line_discount_amount` | numeric | Same currency as the line |
 | `line_total_amount` | numeric | Line total in **this line’s** `currency_code` |
 | `books_amount` | numeric | Same line in bill `currency_code` (BDT). Header totals sum this |
-| `global_stock_id` | bigint | Only `stock` |
+| `global_stock_id` | bigint | **Live only** — retire into `line_meta.stock_ref` ([BP17](00-gaps.md)) |
 | `product_id`, snapshots | | Optional |
-| `line_meta` | jsonb | Adapter extras (kg, SKU). Charge: `charge_type` (`shipping`, `wrapping`, `print`, …) |
+| `line_meta` | jsonb | Adapter extras (kg, SKU, `stock_ref`). Charge: `charge_type` (`shipping`, `wrapping`, `print`, …) |
 
-Any module may issue a bill with **only description or charge lines** (fees, AP buckets, service, shipping). Stock lines optional. FIFO only when `global_stock_id` is set. **No `bill_charges` table.**
+Any module may issue a bill with **only description or charge lines** (fees, AP buckets, service, shipping). Stock lines optional. **Warehouse FIFO runs in the feature module before `issue_bill`**, not inside the kernel. **No `bill_charges` table.**
 
 `charge` lines are commercial amounts on the same paper as stock. Header has no `shipping_charge` / `wrapping_charge` / `print_charge` / `charges_amount`.
 
 **Currency groups on one bill (compose / AR / generic adapters):** lines may use more than one `currency_code` on the same issued bill. Print / UI `GROUP BY currency_code` and `SUM(line_total_amount)` per group for display. Header `total_amount` is the books (BDT) sum of `books_amount`. FX rate lives on the **pay**, not on each line.
 
-**Shipment AP (exception):** cost rows in one **bucket** may use different currencies. `sync_shipment_ap_bills` must **not** issue one mixed-currency AP bill. Group by bucket, then by `currency_code`; **one standard bill per (bucket, currency)**. Plug: `source_type = shipment_cost`, `source_id = shipment id`, `source_key = {bucket}:{currency_code}` (e.g. `freight:GBP`). Keep `ap_kind` = bucket (`material`, `freight`, …) so pays and landed-cost rollups still key off bucket. Each bill’s paper and face amount are **single-currency** for that group. On sync, void unpaid draft/issued bills for that shipment whose `source_key` no longer matches a live group. FX for material/freight may aggregate pays across all bills with the same `ap_kind` on that shipment (weighted by paid foreign per currency).
+**Shipment AP (exception):** cost rows in one **bucket** may use different currencies. `sync_shipment_ap_bills` must **not** issue one mixed-currency AP bill. Group by bucket, then by `currency_code`; **one standard bill per (bucket, currency)**. Plug: `source_type = shipment_cost`, `source_id = shipment id`, `source_key = {bucket}:{currency_code}` (e.g. `freight:GBP`). Keep `ap_kind` = bucket (`material`, `freight`, …) so pays and landed-cost rollups still key off bucket. Each bill’s paper and face amount are **single-currency** for that group.
+
+**Sync vs issue (invariant 1):** While `lifecycle_status = draft`, sync may update line totals. **`issued` standard bills never get silent `total_amount` / txn face updates** — take `lock_global_shipment_costs` → issue; after that, commercial change = CN/DN only. On sync, void only **draft** (or unpaid pre-issue) bills whose `source_key` no longer matches; do not void bills with settlements. Hold advisory lock (§0b) for sync + AP payout on the same shipment. FX for material/freight may aggregate pays across all bills with the same `ap_kind` on that shipment (weighted by paid foreign per currency).
 
 ### `pays`
 
@@ -111,8 +191,9 @@ Any module may issue a bill with **only description or charge lines** (fees, AP 
 | `cashbook_point_id` | bigint FK `cashbook_points` | **Where this money sat** (drawer, safe, …). Required when the tenant cashbook moves. Null only for profile-custody / leftover with no point |
 | FX | `settlement_currency_code`, `foreign_amount`, `exchange_rate`, `quote_currency_code` | Pair: `exchange_rate` = **quote per 1 settlement**. Default quote `BDT`. Freeze this onto the cashbook line |
 | leftover | `unallocated_amount` | Remainder after alloc |
+| Idempotency | `idempotency_key` | Optional text; when set **unique** `(tenant_id, idempotency_key)` ([BP25](00-gaps.md)). `post_money_in` / `post_money_out` return existing `pays.id` on duplicate key — no second cashbook line |
 
-Every pay is a transaction you can ask: which point holds (or held) this amount. Ledger rows copy this id. Live `pays` does **not** have this column yet.
+Every pay is a transaction you can ask: which point holds (or held) this amount. Ledger rows copy this id. `cashbook_point_id` and `idempotency_key` are on live `pays`; idempotency is enforced in allocation writers via `_kernel_claim_pay_idempotency` ([BP25](00-gaps.md)).
 
 ### `pay_instruments`
 
@@ -131,6 +212,27 @@ If one instrument, `pays.cashbook_point_id` = that instrument’s point. If seve
 
 Direction of cash is **which bills you alloc** (from/to), not a new pay product.
 
+### `bill_settlements`
+
+Unified reductions to a bill. Pays, issued credit notes, and custody applications all insert here — **do not** move CN `parent_bill_id` to apply remainder to another bill.
+
+| Column | Type | Rule |
+| :--- | :--- | :--- |
+| `id` | bigint PK | |
+| `parent_tenant_id` | bigint | Books |
+| `bill_id` | bigint FK `bills` | Bill being reduced |
+| `allocator_kind` | text | `pay` \| `credit_note` \| `custody_entry` |
+| `allocator_id` | bigint | FK to `pays`, `bills` (CN), or `cashbook_entries` |
+| `allocated_txn_amount` | numeric | In bill `txn_currency_code` |
+| `allocated_books_amount` | numeric | In books `currency_code` |
+| `books_rate_at_alloc` | numeric | **Books per 1 txn** at settlement time ([BP19](00-gaps.md)) |
+| `fx_realized_books_delta` | numeric | `allocated_books_amount` − (`allocated_txn_amount` × parent bill `books_exchange_rate` at issue); `0` when txn currency = books |
+| `created_at` | timestamptz | Immutable row |
+
+**Balance:** `open_txn` = `txn_total_amount` ± issued notes (txn) − sum(`allocated_txn_amount`); `open_books` likewise. `get_bill_net_balances` uses this model. **COGS / landed cost** still uses pay-weighted rates on shipment; `fx_realized_books_delta` is the **books variance** at bill settlement (treasury / audit), not a second COGS engine.
+
+**Migration ([BP18](00-gaps.md)):** In one transaction: insert `bill_settlements` then mirror `pay_allocations` (or view). **Cutover** only when audit [08 §1b](../../kernel/08-AUDIT-RECONCILIATION-AND-RUNBOOK.md) returns zero rows. Then: readers use settlements only; features stop summing `pay_allocations`.
+
 ### `pay_allocations`
 
 | Column | Type | Rule |
@@ -138,11 +240,21 @@ Direction of cash is **which bills you alloc** (from/to), not a new pay product.
 | `id` | bigint PK | |
 | `payment_id` | bigint FK `pays` | |
 | `bill_id` | bigint FK `bills` | One column (drop live `invoice_id` + `global_invoice_id` pair) |
-| `amount` | numeric | > 0 |
+| `amount` | numeric | > 0 books amount |
+
+**Target:** Pay-attached slice of `bill_settlements` during migration, or view over settlements where `allocator_kind=pay`. New alloc RPCs write settlements first.
 
 ### `cashbook_accounts`
 
-Leftover and custody per tenant / profile. One row per `(parent, entity, currency_code)`. Features do not write the ledger except via kernel pay RPCs. Tenant **BDT** account remains the books running total. Foreign cash on hand lives on **pots**, not mixed into this BDT balance.
+Tenant **asset** (till/bank books header) vs **profile custody** (liability: customer/vendor advance). One row per `(parent, entity, currency_code)` with strict class.
+
+| Column | Type | Rule |
+| :--- | :--- | :--- |
+| `account_class` | enum | `tenant_asset` \| `profile_custody` ([BP21](00-gaps.md)) |
+| CHECK | | `tenant_asset` ⇒ linked point path; `profile_custody` ⇒ `profile_id` set, no point on entries |
+| Unique custody | `(tenant_id, profile_id, currency_code)` | Custody bucketed per currency |
+
+Features do not write the ledger except via kernel pay RPCs. Tenant **BDT** operating book remains books running total. Foreign cash on hand lives on **pots**, not summed with custody liabilities.
 
 ### `cashbook_points` (place — not a currency)
 
@@ -200,7 +312,33 @@ Staff pick a rate when recording a pay. Posted cash **copies** the pair onto the
 | `base_amount` | numeric | Frozen books (`amount` × rate) |
 | `rate_date` | date | When that pair was used |
 
-Pay in / pay out **must** pass a point when tenant cash moves. Writers must upsert the pot, credit/debit `pots.amount` in cash currency, and freeze the pair on the line. Collect/AP still often post BDT-only ([BP15](00-gaps.md) / [BP16](00-gaps.md)). Point-to-point transfer RPC is still open.
+Pay in / pay out **must** pass a point when tenant cash moves. **Append-only** `cashbook_entries` (`INSERT` only; reversals = offsetting insert). `cashbook_point_pots.amount` updated **only** by `AFTER INSERT` trigger on entries — writers do not `UPDATE` pots directly ([BP22](00-gaps.md)). `transfer_cashbook_point` locks pots in deterministic order (`ORDER BY cashbook_point_id, currency_code`) to avoid deadlocks. Collect/AP still often post BDT-only ([BP15](00-gaps.md) / [BP16](00-gaps.md)).
+
+---
+
+## 1b. Read projections (CQRS)
+
+Kernel tables stay private to money RPCs. Reporting and desks may `SELECT` **views** as part of the public read contract ([BP23](00-gaps.md)).
+
+### `v_kernel_bill_summaries`
+
+| Column | Rule |
+| :--- | :--- |
+| `bill_id` | PK |
+| `parent_tenant_id` | |
+| `source_type`, `source_id`, `source_key` | Adapter plug |
+| `lifecycle_status` | `draft` \| `issued` \| `voided` |
+| `settlement_status` | Derived |
+| `txn_currency_code`, `txn_total_amount`, `open_txn` | Face currency |
+| `currency_code`, `total_amount`, `open_books` | Books |
+| `due_date` | |
+| `from_profile_id`, `to_profile_id` | |
+
+Grant `SELECT` on views to `authenticated` (with RLS mirroring tenant scope). Do not grant direct `SELECT` on `bills` for feature modules.
+
+**Pagination ([BP23](00-gaps.md)):** Desks list via **keyset** `(parent_tenant_id, bill_id DESC)` (or `document_date`, `bill_id`) — no large `OFFSET` on busy tenants. Plain SQL view v1; optional **materialized** snapshot later with explicit refresh policy (nightly or post-batch) — not required for v1.
+
+**Read-your-writes:** After collect/payout, UI must refresh detail via `get_bill_net_balances` (or invalidate list query). Do not trust list `settlement_status` alone immediately after a write.
 
 ---
 
@@ -237,11 +375,18 @@ Features call kernel. They pass **from, to, source, lines**. They do not add FKs
 | RPC | Job |
 | :--- | :--- |
 | `upsert_draft_bill` | from/to, lines, source, dates, currency, `settlement_kind` |
-| `issue_bill` / `void_bill` | paper |
+| `update_draft_bill` | edit draft (wrapper → `update_sales_invoice_from_payload`) |
+| `issue_bill` / `void_bill` | paper; no warehouse |
+| `issue_wholesale_bill` / `issue_retail_bill` | FIFO wholesale / retail issue (wrappers) |
+| `get_bill_detail_bundle` | desk read: bill + history + balances + adjustments |
+| `list_bills_desk_page` | desk list: keyset on `bills.id`, slim row JSON |
 | `create_bill_adjustment` | CN/DN child |
-| pay in / pay out + alloc | `bill_id` |
-| `get_bill_net_balances` | issued ± notes − pays |
+| pay in / pay out + alloc | writes `bill_settlements` |
+| `apply_settlement_to_bill` | custody / CN / leftover → bill (live alias `apply_leftover_to_bill`) |
+| `reverse_pay` | unwind pay settlements; lifecycle unchanged |
+| `get_bill_net_balances` | face ± notes − settlements |
 | `list_bills_for_source` | all documents for one adapter row |
+| `v_kernel_bill_summaries` | paginated list / join for desks |
 
 **Do not:** new bill table per module; silent edit of issued `total_amount`; stock required; `invoice_type` as the generic classifier.
 
@@ -254,7 +399,11 @@ Features call kernel. They pass **from, to, source, lines**. They do not add FKs
 | `profile_id` | One of from/to (the counterparty). Fill the other with tenant profile |
 | `invoice_type = ap` | from = vendor/cargo, to = tenant |
 | `invoice_type` wholesale/retail/dropship | from = tenant, to = customer/shop |
-| `invoice_no` / `invoice_status` | `document_no` / `status` |
+| `invoice_no` / `invoice_status` | `document_no` / `lifecycle_status` |
+| `payment_status` | `settlement_status` (rename / map values) |
+| (none) | `txn_currency_code`, `txn_total_amount`, `books_exchange_rate` ([BP19](00-gaps.md)) |
+| `bill_lines.global_stock_id` | `line_meta.stock_ref` ([BP17](00-gaps.md)) |
+| `pay_allocations` only | `bill_settlements` + optional pay slice ([BP18](00-gaps.md)) |
 | `ap_shipment_id` + `ap_kind` | `source_type=shipment_cost`, `source_id`, `source_key` |
 | `shop_order_id` | `source_type=shop_order`, `source_id` |
 | `channel_meta.delivery_kind` | `settlement_kind` (`take` \| `condition`) |

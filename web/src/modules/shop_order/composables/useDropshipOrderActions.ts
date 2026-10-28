@@ -86,7 +86,7 @@ export function useDropshipOrderActions(
         action: () => {
           if (!order.value) return;
           void router.push({
-            name: 'app-collect-pay-page',
+            name: 'app-courier-remit-page',
             params: { tenantSlug: tenantSlug.value || undefined },
             query: {
               mode: 'courier',

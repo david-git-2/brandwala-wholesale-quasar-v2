@@ -19,8 +19,8 @@ Grants: `global_invoice` (bills), `payments` (pay in/out). See [Scopes](/docs/sc
 
 | Desk | Route | Job |
 | --- | --- | --- |
-| Bills | `/:slug/app/sales/invoices` | List, open, print |
-| Compose | `/:slug/app/sales/invoices/create` | New take / condition / walk-in bill |
+| Bills | `/:slug/app/bills` | List, open, print |
+| Compose | `/:slug/app/bills/create` | New take / condition / walk-in bill |
 | Payments | `/:slug/app/finance/payments` | Collect from customer, pay out |
 | Cashbook | `/:slug/app/wallet` | Tenant cash and profile leftover |
 

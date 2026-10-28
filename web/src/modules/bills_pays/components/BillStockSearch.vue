@@ -62,9 +62,9 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import {
-  invoiceRepository,
+  billsRepository,
   type SalesInvoiceStockItem,
-} from 'src/modules/sales_invoice/repositories/invoiceRepository';
+} from '../repositories/billsRepository';
 import { formatAmountBdt } from 'src/utils/currency';
 
 const props = defineProps<{
@@ -87,7 +87,7 @@ const runSearch = async () => {
   }
   loading.value = true;
   try {
-    const rows = await invoiceRepository.searchSalesInvoiceStock({
+    const rows = await billsRepository.searchBillStock({
       tenantId: props.tenantId,
       search: q,
       limit: 40,

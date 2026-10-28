@@ -194,6 +194,21 @@
   max-width: 280px;
 }
 
+.demand-buy-card__editors--buy {
+  display: grid;
+  grid-template-columns: 52px 118px minmax(200px, 1fr);
+  column-gap: 10px;
+  align-items: center;
+  min-width: 380px;
+  max-width: 520px;
+  width: min(520px, 42vw);
+}
+
+.demand-buy-card__editors--buy .demand-buy-card__qty {
+  width: 100%;
+  max-width: 118px;
+}
+
 .demand-buy-card__editors--fulfill-row {
   flex: 0 0 268px;
   width: 268px;
@@ -272,8 +287,18 @@
   min-width: 0;
 }
 
+.demand-buy-card__editors--buy .demand-buy-card__vendor {
+  min-width: 200px;
+  width: 100%;
+}
+
 .demand-buy-card__vendor :deep(.q-field__control) {
   height: 52px;
+}
+
+.demand-buy-card__editors--buy .demand-buy-card__vendor :deep(.q-field__native),
+.demand-buy-card__editors--buy .demand-buy-card__vendor :deep(.q-field__input) {
+  min-width: 0;
 }
 
 .demand-fulfill-pick {
@@ -311,8 +336,15 @@
     max-width: none;
   }
 
-  .demand-buy-card__qty {
-    width: 140px;
+  .demand-buy-card__editors--buy {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    grid-template-columns: 48px 1fr 1.4fr;
+  }
+
+  .demand-buy-card__editors--buy .demand-buy-card__vendor {
+    min-width: 0;
   }
 }
 

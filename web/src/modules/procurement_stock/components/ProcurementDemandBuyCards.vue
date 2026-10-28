@@ -32,7 +32,7 @@
             @copy-sku="copyProductCode(item)"
             @copy-barcode="copyBarcode(item)"
           />
-          <div class="demand-buy-card__editors row no-wrap q-gutter-sm items-center">
+          <div class="demand-buy-card__editors demand-buy-card__editors--buy row no-wrap q-gutter-sm items-center">
             <div class="demand-buy-card__need">
               <div class="demand-buy-card__need-label">Need</div>
               <div class="demand-buy-card__need-value font-mono">{{ item.quantity }}</div>

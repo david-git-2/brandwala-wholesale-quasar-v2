@@ -131,7 +131,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { formatAmountBdt } from 'src/utils/currency';
-import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
+import { storeToRefs } from 'pinia';
+import { useGlobalReferenceStore } from 'src/modules/global_reference/stores/globalReferenceStore';
 import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
 import { useCashbookPayFromPotSelect } from '../composables/useCashbookPayFromPotSelect';
 import { useBooksCurrencyCode } from '../composables/useBooksCurrencyCode';
@@ -229,7 +230,18 @@ const {
   sourceFxPayload: refundSourceFxPayload,
 } = useApPayoutFxFields(sourceCurrencyCode, amountBdt, booksCurrencyCode);
 
-const { data: currenciesData } = useGlobalCurrenciesQuery();
+const globalRefStore = useGlobalReferenceStore();
+const { currencies: currenciesData } = storeToRefs(globalRefStore);
+
+watch(
+  () => props.modelValue,
+  (open) => {
+    if (open && currenciesData.value.length === 0) {
+      void globalRefStore.ensureCurrenciesLoaded();
+    }
+  },
+);
+
 const settlementCurrencyOptions = computed(() => {
   const fromRef = (currenciesData.value ?? [])
     .filter((c) => c.is_active)

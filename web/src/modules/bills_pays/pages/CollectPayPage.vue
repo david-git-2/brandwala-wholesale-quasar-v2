@@ -442,7 +442,7 @@ import { getInitials } from 'src/modules/sales_invoice/utils/invoiceListDisplay'
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
 import { useQueryClient } from '@tanstack/vue-query';
 import { cashbookRepository, type CashbookEntityRow } from '../repositories/cashbookRepository';
-import { invoiceRepository } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import { billsRepository } from '../repositories/billsRepository';
 import { paysRepository } from '../repositories/paysRepository';
 import { paysQueryKeys } from '../services/paysQueryKeys';
 import { useCollectPayMutation } from '../composables/useCollectPayMutation';
@@ -465,7 +465,11 @@ const payDirection = ref<'in' | 'out'>('in');
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
 
 type PayInKind = 'customer' | 'courier';
-const payInKind = ref<PayInKind>(route.query.mode === 'courier' ? 'courier' : 'customer');
+const payInKind = ref<PayInKind>(
+  route.name === 'app-courier-remit-page' || route.query.mode === 'courier'
+    ? 'courier'
+    : 'customer',
+);
 const courierOrders = ref<FinanceHubOrderQueueItem[]>([]);
 const courierSelectedOrder = ref<FinanceHubOrderQueueItem | null>(null);
 const courierLoading = ref(false);
@@ -690,7 +694,7 @@ watch(profileId, async (profileId) => {
   if (!profileId || !parentTenantId.value) return;
   loadingBills.value = true;
   try {
-    const { data } = await invoiceRepository.listGlobalInvoices({
+    const { data } = await billsRepository.listBills({
       parentTenantId: parentTenantId.value,
       profileId: profileId,
       invoiceStatus: 'issued',

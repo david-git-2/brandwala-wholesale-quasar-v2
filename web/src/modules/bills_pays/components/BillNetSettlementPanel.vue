@@ -32,7 +32,7 @@
       </div>
       <div class="bill-total-row text-weight-bold">
         <span>{{ stillOwedLabel }}</span>
-        <DualAmountCell :display="dualAmount(balances.due_amount, 'due')" />
+        <DualAmountCell :display="dualAmount(stillOwedBooks, 'due')" />
       </div>
       <template v-if="isAp && refundReceiptRows.length">
         <div
@@ -68,7 +68,7 @@
 <script setup lang="ts">
 import { computed, defineComponent, h } from 'vue';
 import { formatAmountBdt, formatSettlementCurrencyAmount } from 'src/utils/currency';
-import type { BillNetBalances } from '../composables/useBillNetBalancesQuery';
+import type { BillNetBalances } from '../types/billBalances';
 import type { VendorRefundReceiptBucket } from '../utils/paymentHistoryDisplay';
 import { apBillPaperForeignTotal } from '../utils/apBillBooks';
 import {
@@ -156,6 +156,11 @@ const amountAfterNotes = computed(() => {
   return Math.round((original - credits + debits) * 100) / 100;
 });
 
+const stillOwedBooks = computed(() => {
+  if (!props.balances) return 0;
+  return Math.max(0, Number(props.balances.open_books ?? props.balances.due_amount) || 0);
+});
+
 function booksToForeignFace(books: number, hint?: 'original' | 'due'): number {
   const code = invoiceCurrency.value;
   const foreignTotal = foreignPaperTotal.value;
@@ -168,7 +173,11 @@ function booksToForeignFace(books: number, hint?: 'original' | 'due'): number {
   }
 
   if (hint === 'due' && props.balances) {
-    const dueBooks = Number(props.balances.due_amount) || 0;
+    const openTxn = props.balances.open_txn;
+    if (openTxn != null && Number.isFinite(Number(openTxn))) {
+      return Math.max(0, Number(openTxn));
+    }
+    const dueBooks = Number(props.balances.open_books ?? props.balances.due_amount) || 0;
     if (b > 0 && Math.abs(b - dueBooks) < 0.02 && Math.abs(b - foreignTotal) < 0.02) {
       return b;
     }

@@ -1,5 +1,13 @@
 import { supabase } from 'src/boot/supabase';
 import type { WholesalePaymentInstrumentInput } from 'src/modules/sales_invoice/types';
+import {
+  postApPayout,
+  postApPayoutSnapshot,
+  type ApPayoutBillDetailSnapshot,
+  type ApPayoutWithAllocationsPayload,
+} from '../services/apPayoutService';
+
+export type { ApPayoutWithAllocationsPayload, ApPayoutBillDetailSnapshot };
 
 const localToday = (): string => {
   const d = new Date();
@@ -251,16 +259,20 @@ export type PostCustomerReceiptInput = {
   received_on?: string;
   note?: string | null;
   reference?: string | null;
-  source: 'customer_cash' | 'bank' | 'store_credit';
+  source: 'customer_cash' | 'bank' | 'store_credit' | 'courier_remittance';
   instruments?: WholesalePaymentInstrumentInput[];
   allocations: Array<{ bill_id: number; amount: number }>;
   settlement_currency_code?: string;
   foreign_amount?: number | null;
   exchange_rate?: number | null;
+  shop_order_id?: number | null;
+  idempotency_key: string;
 };
 
-const postCustomerReceipt = async (payload: PostCustomerReceiptInput) => {
-  const { data, error } = await supabase.rpc('post_customer_receipt_with_allocations', {
+export const createPayIdempotencyKey = (): string => crypto.randomUUID();
+
+const postMoneyIn = async (payload: PostCustomerReceiptInput) => {
+  const { data, error } = await supabase.rpc('post_money_in', {
     p_tenant_id: payload.tenant_id,
     p_profile_id: payload.profile_id,
     p_received_on: payload.received_on ?? localToday(),
@@ -269,13 +281,18 @@ const postCustomerReceipt = async (payload: PostCustomerReceiptInput) => {
     p_source: payload.source,
     p_instruments: payload.instruments ?? [],
     p_allocations: payload.allocations,
+    p_shop_order_id: payload.shop_order_id ?? null,
     p_settlement_currency_code: payload.settlement_currency_code ?? 'BDT',
     p_foreign_amount: payload.foreign_amount ?? null,
     p_exchange_rate: payload.exchange_rate ?? null,
+    p_idempotency_key: payload.idempotency_key,
   });
   if (error) throw error;
   return data;
 };
+
+/** @deprecated Prefer postMoneyIn with idempotency_key */
+const postCustomerReceipt = async (payload: PostCustomerReceiptInput) => postMoneyIn(payload);
 
 const voidCustomerReceipt = async (tenantId: number, paymentId: number, reason: string) => {
   const { data, error } = await supabase.rpc('void_customer_receipt', {
@@ -367,71 +384,20 @@ const listApPayProfileSummaries = async (
   return [...byProfile.values()].sort((a, b) => b.total_due - a.total_due);
 };
 
-export type ApPayoutWithAllocationsPayload = {
-  tenant_id: number;
-  profile_id: number;
-  cashbook_point_id: number;
-  paid_on?: string;
-  note?: string | null;
-  reference?: string | null;
-  instruments: WholesalePaymentInstrumentInput[];
-  allocations: Array<{ bill_id: number; amount: number }>;
-  settlement_currency_code?: string;
-  foreign_amount?: number | null;
-  exchange_rate?: number | null;
-  source_currency_code?: string;
-  transaction_rate?: number | null;
-  cashbook_point_pot_id?: number | null;
-};
-
-export type ApPayoutBillDetailSnapshot = {
-  pay: unknown;
-  bill: Record<string, unknown> | null;
-  net_balances: Record<string, unknown> | null;
-  payment_history: unknown;
-};
-
-const apPayoutRpcArgs = (payload: ApPayoutWithAllocationsPayload) => ({
-  p_tenant_id: payload.tenant_id,
-  p_profile_id: payload.profile_id,
-  p_paid_on: payload.paid_on ?? localToday(),
-  p_cashbook_point_id: payload.cashbook_point_id,
-  p_note: payload.note ?? null,
-  p_reference: payload.reference ?? null,
-  p_instruments: payload.instruments,
-  p_allocations: payload.allocations.map((a) => ({ bill_id: a.bill_id, amount: a.amount })),
-  p_settlement_currency_code: payload.settlement_currency_code ?? 'BDT',
-  p_foreign_amount: payload.foreign_amount ?? null,
-  p_exchange_rate: payload.exchange_rate ?? null,
-  p_source_currency_code: payload.source_currency_code ?? null,
-  p_transaction_rate: payload.transaction_rate ?? null,
-  p_cashbook_point_pot_id: payload.cashbook_point_pot_id ?? null,
-});
-
 const postApPayoutWithAllocations = async (payload: ApPayoutWithAllocationsPayload) => {
-  const { data, error } = await supabase.rpc(
-    'post_ap_payout_with_allocations',
-    apPayoutRpcArgs(payload),
-  );
-  if (error) throw error;
-  return data;
+  const result = await postApPayout(payload);
+  return result.pay;
 };
 
-/** Same transaction as payout; returns bill balances + payment history for bill detail UI. */
 const postApPayoutWithAllocationsSnapshot = async (
   payload: ApPayoutWithAllocationsPayload,
 ): Promise<ApPayoutBillDetailSnapshot> => {
-  const { data, error } = await supabase.rpc(
-    'post_ap_payout_with_allocations_snapshot',
-    apPayoutRpcArgs(payload),
-  );
-  if (error) throw error;
-  const row = (data ?? {}) as Record<string, unknown>;
+  const result = await postApPayoutSnapshot(payload);
   return {
-    pay: row.pay,
-    bill: (row.bill as Record<string, unknown> | null) ?? null,
-    net_balances: (row.net_balances as Record<string, unknown> | null) ?? null,
-    payment_history: row.payment_history ?? [],
+    pay: result.pay,
+    bill: result.bill,
+    net_balances: result.net_balances,
+    payment_history: result.payment_history,
   };
 };
 
@@ -485,6 +451,8 @@ export const paysRepository = {
   listOpenApBillsForProfile,
   listApPayProfileSummaries,
   postCustomerReceipt,
+  postMoneyIn,
+  createPayIdempotencyKey,
   allocatePayToBill,
   postApPayoutWithAllocations,
   postApPayoutWithAllocationsSnapshot,

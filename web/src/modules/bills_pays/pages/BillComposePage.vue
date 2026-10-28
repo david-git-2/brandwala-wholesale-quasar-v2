@@ -170,8 +170,18 @@
                 <template #option="scope">
                   <q-item v-bind="scope.itemProps" dense>
                     <q-item-section>
-                      <q-item-label>{{ scope.opt.name }}</q-item-label>
-                      <q-item-label caption>
+                      <q-item-label class="row items-center no-wrap q-gutter-x-xs">
+                        <span class="ellipsis">{{ scope.opt.name }}</span>
+                        <q-chip
+                          dense
+                          :color="profileTypeChip(scope.opt).color"
+                          :text-color="profileTypeChip(scope.opt).textColor"
+                          class="q-ma-none"
+                        >
+                          {{ profileTypeChip(scope.opt).label }}
+                        </q-chip>
+                      </q-item-label>
+                      <q-item-label v-if="profilePartyCaption(scope.opt)" caption>
                         {{ profilePartyCaption(scope.opt) }}
                       </q-item-label>
                     </q-item-section>
@@ -213,8 +223,18 @@
                 <template #option="scope">
                   <q-item v-bind="scope.itemProps" dense>
                     <q-item-section>
-                      <q-item-label>{{ scope.opt.name }}</q-item-label>
-                      <q-item-label caption>
+                      <q-item-label class="row items-center no-wrap q-gutter-x-xs">
+                        <span class="ellipsis">{{ scope.opt.name }}</span>
+                        <q-chip
+                          dense
+                          :color="profileTypeChip(scope.opt).color"
+                          :text-color="profileTypeChip(scope.opt).textColor"
+                          class="q-ma-none"
+                        >
+                          {{ profileTypeChip(scope.opt).label }}
+                        </q-chip>
+                      </q-item-label>
+                      <q-item-label v-if="profilePartyCaption(scope.opt)" caption>
                         {{ profilePartyCaption(scope.opt) }}
                       </q-item-label>
                     </q-item-section>
@@ -477,10 +497,11 @@ import {
   showSuccessNotification,
 } from 'src/utils/appFeedback';
 import type { CustomerProfile } from 'src/modules/sales_invoice/repositories/customerProfileRepository';
+import { useCustomerProfiles } from 'src/modules/sales_invoice/composables/useCustomerProfiles';
 import {
-  invoiceRepository,
+  billsRepository,
   type SalesInvoiceStockItem,
-} from 'src/modules/sales_invoice/repositories/invoiceRepository';
+} from '../repositories/billsRepository';
 import BillStockSearch from '../components/BillStockSearch.vue';
 import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
 type ComposeLineKind = 'stock' | 'description' | 'charge';
@@ -586,6 +607,9 @@ const parentTenantId = computed(() => {
   if (!t) return null;
   return t.parent_id ?? t.id;
 });
+
+const { profiles: deskProfiles, profileById, ensureLoaded: ensureProfilesLoaded } =
+  useCustomerProfiles(parentTenantId, { scope: 'desk' });
 
 const documentKind = ref<BillDocumentKind>('standard');
 const parentBillId = ref<number | null>(null);
@@ -773,33 +797,51 @@ const composePartyTypes: Database['public']['Enums']['profile_party_type'][] = [
 ];
 
 const profilePartyCaption = (profile: CustomerProfile) => {
-  const type = profile.profile_type.replace(/_/g, ' ');
   const phone = profile.phone?.trim();
-  return phone ? `${type} · ${phone}` : type;
+  const email = profile.email?.trim();
+  if (phone && email) return `${phone} · ${email}`;
+  return phone || email || '';
 };
 
+const profileTypeChipStyles: Record<
+  Database['public']['Enums']['profile_party_type'],
+  { label: string; color: string; textColor: string }
+> = {
+  customer: { label: 'Customer', color: 'blue-1', textColor: 'blue-9' },
+  tenant: { label: 'Tenant', color: 'purple-1', textColor: 'purple-9' },
+  vendor: { label: 'Vendor', color: 'orange-1', textColor: 'orange-9' },
+  cargo: { label: 'Cargo', color: 'brown-1', textColor: 'brown-9' },
+  courier: { label: 'Courier', color: 'teal-1', textColor: 'teal-9' },
+  company: { label: 'Company', color: 'indigo-1', textColor: 'indigo-9' },
+  investor: { label: 'Investor', color: 'cyan-1', textColor: 'cyan-9' },
+};
+
+const profileTypeChip = (profile: CustomerProfile) => {
+  const styled = profileTypeChipStyles[profile.profile_type];
+  if (styled) return styled;
+  const label = profile.profile_type.replace(/_/g, ' ');
+  return { label, color: 'grey-2', textColor: 'grey-8' };
+};
+
+const composeProfileOptions = (): CustomerProfile[] =>
+  deskProfiles.value.filter(
+    (p) => p.is_active !== false && composePartyTypes.includes(p.profile_type),
+  );
+
 const fetchProfileOptions = async (needle: string): Promise<CustomerProfile[]> => {
-  const booksId = parentTenantId.value;
-  if (!booksId) return [];
-
-  let query = supabase
-    .from('profiles')
-    .select('*')
-    .eq('parent_tenant_id', booksId)
-    .eq('is_active', true)
-    .is('deleted_at', null)
-    .in('profile_type', composePartyTypes)
-    .order('name', { ascending: true })
-    .limit(50);
-
-  const trimmed = needle.trim();
+  if (!parentTenantId.value) return [];
+  await ensureProfilesLoaded();
+  const trimmed = needle.trim().toLowerCase();
+  let rows = composeProfileOptions();
   if (trimmed) {
-    query = query.ilike('name', `%${trimmed}%`);
+    rows = rows.filter((p) => {
+      const name = (p.name ?? '').toLowerCase();
+      const email = (p.email ?? '').toLowerCase();
+      const phone = (p.phone ?? '').toLowerCase();
+      return name.includes(trimmed) || email.includes(trimmed) || phone.includes(trimmed);
+    });
   }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data as CustomerProfile[]) ?? [];
+  return rows;
 };
 
 const mergeProfileIntoOptions = (
@@ -814,9 +856,9 @@ const ensureProfileInOptions = async (id: number | null, side: PartySide) => {
   if (id == null) return;
   const list = side === 'from' ? fromProfileOptions : toProfileOptions;
   if (list.value.some((p) => p.id === id)) return;
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle();
-  if (error || !data) return;
-  mergeProfileIntoOptions(list, data as CustomerProfile);
+  await ensureProfilesLoaded();
+  const profile = profileById(id);
+  if (profile) mergeProfileIntoOptions(list, profile);
 };
 
 const filterFromProfiles = async (val: string, update: (cb: () => void) => void) => {
@@ -841,28 +883,17 @@ const resolveTenantSideProfile = async () => {
   const issuedId = tenantId.value;
   if (!booksId || !issuedId) return;
 
-  const tenantProfileQuery = () =>
-    supabase
-      .from('profiles')
-      .select('*')
-      .eq('parent_tenant_id', booksId)
-      .eq('profile_type', 'tenant')
-      .eq('is_active', true)
-      .is('deleted_at', null);
+  await ensureProfilesLoaded();
+  const tenantRows = composeProfileOptions().filter((p) => p.profile_type === 'tenant');
+  const bySubject = (subjectId: number) =>
+    tenantRows.find((p) => p.subject_id === subjectId) ?? null;
 
-  let row: CustomerProfile | null = null;
-
-  const { data: issuedRow } = await tenantProfileQuery().eq('subject_id', issuedId).maybeSingle();
-  if (issuedRow) row = issuedRow as CustomerProfile;
-
+  let row: CustomerProfile | null = bySubject(issuedId);
   if (!row && booksId !== issuedId) {
-    const { data: parentRow } = await tenantProfileQuery().eq('subject_id', booksId).maybeSingle();
-    if (parentRow) row = parentRow as CustomerProfile;
+    row = bySubject(booksId);
   }
-
-  if (!row) {
-    const { data: fallback } = await tenantProfileQuery().limit(1).maybeSingle();
-    if (fallback) row = fallback as CustomerProfile;
+  if (!row && tenantRows.length > 0) {
+    row = tenantRows[0];
   }
 
   if (!row) return;
@@ -906,60 +937,23 @@ const filterParentBills = async (val: string, update: (cb: () => void) => void) 
   });
 };
 
-const persistManualLines = async (billId: number) => {
-  const parentId = parentTenantId.value;
-  if (!parentId) return;
+const lineMetaForPayload = (line: ComposeLine) =>
+  line.line_kind === 'charge' && line.charge_type ? { charge_type: line.charge_type } : {};
 
-  for (const line of lines.value.filter((l) => l.line_kind !== 'stock')) {
-    const lineTotal = lineTotalAmount(line);
-    const lineMeta =
-      line.line_kind === 'charge' && line.charge_type
-        ? { charge_type: line.charge_type }
-        : {};
-
-    if (line.id) {
-      const { error } = await supabase
-        .from('bill_lines')
-        .update({
-          name_snapshot: line.name,
-          quantity: line.quantity,
-          sell_price_amount: line.sell_price_amount,
-          line_discount_amount: line.line_discount_amount || 0,
-          line_total_amount: lineTotal,
-          books_amount: lineTotal,
-          line_meta: lineMeta,
-        })
-        .eq('id', line.id);
-      if (error) throw error;
-      continue;
-    }
-
-    const { data, error } = await supabase
-      .from('bill_lines')
-      .insert({
-        invoice_id: billId,
-        parent_tenant_id: parentId,
-        line_kind: line.line_kind,
-        global_stock_id: null,
-        name_snapshot: line.name,
-        quantity: line.quantity,
-        sell_price_amount: line.sell_price_amount,
-        line_discount_amount: line.line_discount_amount || 0,
-        line_total_amount: lineTotal,
-        books_amount: lineTotal,
-        currency_code: 'BDT',
-        line_meta: lineMeta,
-      })
-      .select('id')
-      .single();
-    if (error) throw error;
-    line.id = data.id;
+const mapLineToPayloadItem = (line: ComposeLine) => {
+  const item = {
+    ...(line.id ? { id: line.id } : {}),
+    line_kind: line.line_kind,
+    name_snapshot: line.name.trim(),
+    quantity: line.quantity,
+    sell_price_amount: line.sell_price_amount,
+    line_discount_amount: line.line_discount_amount || 0,
+    line_meta: lineMetaForPayload(line),
+  };
+  if (line.line_kind === 'stock' && line.global_stock_id != null) {
+    return { ...item, global_stock_id: line.global_stock_id };
   }
-
-  const { error: recomputeError } = await supabase.rpc('recompute_global_invoice_totals', {
-    p_invoice_id: billId,
-  });
-  if (recomputeError) throw recomputeError;
+  return item;
 };
 
 const lineTotalAmount = (line: ComposeLine) =>
@@ -1151,7 +1145,11 @@ const removeLine = (index: number) => {
 const buildPayload = () => {
   const walkIn = isWalkIn.value;
   const weOwe = billDirection.value === 'we_owe';
-  const invoiceType: 'wholesale' | 'retail' = walkIn ? 'retail' : 'wholesale';
+  const invoiceType: 'wholesale' | 'retail' | 'ap' = weOwe
+    ? 'ap'
+    : walkIn
+      ? 'retail'
+      : 'wholesale';
   const retailMode: 'direct' | null = walkIn ? 'direct' : null;
   const deliveryKind: 'take' | 'condition' =
     weOwe || walkIn ? 'take' : composePaperKind.value === 'condition' ? 'condition' : 'take';
@@ -1179,13 +1177,7 @@ const buildPayload = () => {
         letterhead_profile_id: letterheadId,
       },
     },
-    items: stockLines.value.map((l) => ({
-      ...(l.id ? { id: l.id } : {}),
-      global_stock_id: l.global_stock_id!,
-      quantity: l.quantity,
-      sell_price_amount: l.sell_price_amount,
-      line_discount_amount: l.line_discount_amount || 0,
-    })),
+    items: lines.value.filter(lineIsValid).map(mapLineToPayloadItem),
     issue: false,
   };
 };
@@ -1201,7 +1193,6 @@ const saveDraft = async () => {
   });
   const savedId = result.invoice_id ?? editInvoiceId.value;
   if (savedId) {
-    await persistManualLines(savedId);
     await persistBillMeta(savedId);
     await refreshBillSourcePlug(savedId);
   }
@@ -1235,7 +1226,7 @@ const voidDraft = async () => {
   if (!ok) return;
   voidingDraft.value = true;
   try {
-    await invoiceRepository.deleteGlobalInvoice(id);
+    await billsRepository.deleteDraftBill(id);
     showSuccessNotification('Draft voided.');
     await goToBillsList();
   } catch (error: unknown) {
@@ -1276,22 +1267,17 @@ const issueBill = async () => {
   const copy = issueConfirmCopy();
   const ok = await requestConfirmation(copy.body, copy.title);
   if (!ok) return;
-  const hasStock = stockLines.value.length > 0;
   const result = await composeMutation.mutateAsync({
     tenantId: tenantId.value,
     invoiceId: editInvoiceId.value,
-    payload: buildPayload(),
+    payload: { ...buildPayload(), issue: true },
     removeItemIds: removedItemIds.value,
-    issue: hasStock,
+    issue: true,
   });
   const id = result.invoice_id ?? editInvoiceId.value;
   if (!id) return;
-  await persistManualLines(id);
   await persistBillMeta(id);
   await refreshBillSourcePlug(id);
-  if (!hasStock) {
-    await invoiceRepository.postGlobalInvoice(id);
-  }
   removedItemIds.value = [];
   const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
   router.push({
@@ -1307,8 +1293,8 @@ const loadExisting = async (id: number) => {
   loadingExisting.value = true;
   try {
     const [bill, items, rawLinesRes] = await Promise.all([
-      invoiceRepository.getGlobalInvoiceById(id),
-      invoiceRepository.listGlobalInvoiceItems(id),
+      billsRepository.getBillById(id),
+      billsRepository.listBillItems(id),
       supabase
         .from('bill_lines')
         .select(
@@ -1415,19 +1401,10 @@ const loadExisting = async (id: number) => {
       composePaperKind.value = 'take';
     }
 
-    const optionRows: CustomerProfile[] = [];
-    const profileIds = [fromProfileId.value, toProfileId.value].filter(
-      (id): id is number => id != null,
-    );
-    for (const pid of profileIds) {
-      const { data: row } = await supabase.from('profiles').select('*').eq('id', pid).maybeSingle();
-      if (row) optionRows.push(row as CustomerProfile);
-    }
-    if (optionRows.length) {
-      const unique = optionRows.filter((p, i, arr) => arr.findIndex((x) => x.id === p.id) === i);
-      fromProfileOptions.value = unique;
-      toProfileOptions.value = unique;
-    }
+    await ensureProfilesLoaded();
+    const rows = composeProfileOptions();
+    fromProfileOptions.value = rows;
+    toProfileOptions.value = rows;
     const no = bill.invoice_no?.trim();
     composeBreadcrumbTitle.value = no || `Bill #${id}`;
   } finally {
@@ -1468,15 +1445,18 @@ const breadcrumbItems = computed(() => {
 watch(breadcrumbItems, (items) => setCustomBreadcrumbs(items), { immediate: true });
 onBeforeUnmount(() => clearCustomBreadcrumbs());
 
-watch(tenantId, async () => {
+const refreshComposeProfilePickers = async () => {
+  if (!parentTenantId.value) return;
+  await ensureProfilesLoaded();
   await resolveTenantSideProfile();
-  void filterFromProfiles('', (cb) => cb());
-  void filterToProfiles('', (cb) => cb());
-});
+  const rows = composeProfileOptions();
+  fromProfileOptions.value = rows;
+  toProfileOptions.value = rows;
+};
 
-void resolveTenantSideProfile();
-void filterFromProfiles('', (cb) => cb());
-void filterToProfiles('', (cb) => cb());
+watch(parentTenantId, () => {
+  void refreshComposeProfilePickers();
+}, { immediate: true });
 </script>
 
 <style scoped>

@@ -39,6 +39,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { BillListRow } from '../types/billList';
 import type { GlobalInvoiceRow } from 'src/modules/sales_invoice/types';
 import {
   invoiceChannelLabel,
@@ -50,18 +51,20 @@ import {
 import { formatAmountBdt } from 'src/utils/currency';
 
 const props = defineProps<{
-  row: GlobalInvoiceRow;
+  row: BillListRow;
 }>();
 
 defineEmits<{
-  open: [row: GlobalInvoiceRow];
+  open: [row: BillListRow];
 }>();
 
-const channelLabel = computed(() => invoiceChannelLabel(props.row));
-const channelTone = computed(() => invoiceChannelTone(props.row));
-const statusSlug = computed(() => invoiceListStatusSlug(props.row));
-const statusLabel = computed(() => invoiceListStatusLabel(props.row));
-const statusIcon = computed(() => invoiceListStatusIcon(props.row));
+const displayRow = computed(() => props.row as GlobalInvoiceRow);
+
+const channelLabel = computed(() => invoiceChannelLabel(displayRow.value));
+const channelTone = computed(() => invoiceChannelTone(displayRow.value));
+const statusSlug = computed(() => invoiceListStatusSlug(displayRow.value));
+const statusLabel = computed(() => invoiceListStatusLabel(displayRow.value));
+const statusIcon = computed(() => invoiceListStatusIcon(displayRow.value));
 const profileName = computed(
   () => props.row.profile_name || props.row.recipient_name || '—',
 );

@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import {
-  invoiceRepository,
+  billsRepository,
   type SalesInvoiceFromPayloadInput,
   type SalesInvoiceUpdatePayloadInput,
-} from 'src/modules/sales_invoice/repositories/invoiceRepository';
+} from '../repositories/billsRepository';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
@@ -28,18 +28,24 @@ export function useBillComposeMutation() {
           items: payload.items,
           remove_item_ids: removeItemIds?.length ? removeItemIds : undefined,
         };
-        const result = await invoiceRepository.updateSalesInvoiceFromPayload(
-          tenantId,
-          invoiceId,
-          updatePayload,
-        );
+        const result = await billsRepository.updateDraftBill(tenantId, invoiceId, updatePayload);
         if (issue) {
-          await invoiceRepository.postGlobalInvoice(invoiceId);
+          await billsRepository.issueBill(invoiceId, {
+            invoiceType: payload.invoice.invoice_type,
+            stockItems: payload.items
+              .filter((i) => i.global_stock_id != null && i.global_stock_id > 0)
+              .map((i) => ({
+                id: i.id,
+                global_stock_id: i.global_stock_id!,
+                quantity: i.quantity,
+                sell_price_amount: i.sell_price_amount,
+              })),
+          });
         }
         return { ...result, invoice_id: invoiceId };
       }
 
-      return invoiceRepository.createSalesInvoiceFromPayload(tenantId, {
+      return billsRepository.upsertDraftBill(tenantId, {
         ...payload,
         issue,
       });

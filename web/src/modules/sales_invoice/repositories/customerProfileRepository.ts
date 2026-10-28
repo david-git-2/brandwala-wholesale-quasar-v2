@@ -40,6 +40,23 @@ export interface CustomerProfileListPage {
   };
 }
 
+/** All active billing parties for bills desk compose (one list: tenant, customer, vendor, …). */
+const listDeskBillingProfiles = async (parentTenantId: number): Promise<CustomerProfile[]> => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .or(
+      `operating_tenant_id.eq.${parentTenantId},parent_tenant_id.eq.${parentTenantId}`,
+    )
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1000);
+
+  if (error) throw error;
+  return (data as CustomerProfile[] | null) ?? [];
+};
+
 const listCustomerProfiles = async (
   payload: CustomerProfileListQuery = {},
 ): Promise<CustomerProfileListPage> => {
@@ -182,6 +199,7 @@ const deleteCustomerProfile = async (payload: DeleteCustomerProfileInput): Promi
 };
 
 export const customerProfileRepository = {
+  listDeskBillingProfiles,
   listCustomerProfiles,
   createCustomerProfile,
   updateCustomerProfile,

@@ -51,7 +51,7 @@
       </div>
 
       <div
-        v-if="listQuery.isPending.value && !listQuery.data.value?.data.length"
+        v-if="listQuery.isPending.value && !rows.length"
         class="invoice-list-card col"
       >
         <div class="invoice-list-scroll">
@@ -97,12 +97,18 @@
               flat
               dense
               no-caps
-              :loading="listQuery.isFetching.value"
+              :loading="listQuery.isFetchingNextPage.value"
               class="load-more-btn text-weight-medium q-px-md"
               label="Load more"
               icon="ph ph-arrow-down"
               @click="loadMore"
             />
+          </div>
+          <div
+            v-else-if="rows.length"
+            class="row justify-center q-py-sm text-caption text-grey-6"
+          >
+            End of list
           </div>
         </div>
       </div>
@@ -111,19 +117,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import BillListRow from '../components/BillListRow.vue';
-import { useBillsListQuery } from '../composables/useBillsListQuery';
-import type { GlobalInvoiceRow } from 'src/modules/sales_invoice/types';
+import { useBillsListInfiniteQuery } from '../composables/useBillsListInfiniteQuery';
+import type { BillListRow as BillListRowData } from '../types/billList';
 
 type StatusPill = 'all' | 'draft' | 'due' | 'partial' | 'paid' | 'voided';
 type ArSide = 'they_owe' | 'we_owe';
-
-const PAGE_SIZE = 25;
 
 const authStore = useAuthStore();
 const route = useRoute();
@@ -133,9 +137,6 @@ const searchText = ref('');
 const debouncedSearch = ref('');
 const statusPill = ref<StatusPill>('all');
 const arSide = ref<ArSide>('they_owe');
-const page = ref(1);
-const accumulatedRows = ref<GlobalInvoiceRow[]>([]);
-
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const arTabs: { label: string; value: ArSide }[] = [
@@ -167,8 +168,6 @@ const tenantScope = computed(() => {
 const listParams = computed(() => {
   const base = {
     ...tenantScope.value,
-    page: page.value,
-    pageSize: PAGE_SIZE,
     search: debouncedSearch.value || undefined,
     arSide: arSide.value,
   };
@@ -188,35 +187,14 @@ const listParams = computed(() => {
   }
 });
 
-const listQuery = useBillsListQuery(listParams);
+const listQuery = useBillsListInfiniteQuery(listParams);
 
-const rows = computed(() => accumulatedRows.value);
-const total = computed(() => listQuery.data.value?.total ?? 0);
-const hasMore = computed(() => accumulatedRows.value.length < total.value);
+const rows = listQuery.rows;
+const hasMore = listQuery.hasMore;
 
 const listErrorMessage = computed(() => {
   const err = listQuery.error.value;
   return err instanceof Error ? err.message : 'Could not load bills.';
-});
-
-watch(
-  () => listQuery.data.value,
-  (payload) => {
-    if (!payload) return;
-    if (page.value === 1) {
-      accumulatedRows.value = payload.data;
-    } else {
-      const existingIds = new Set(accumulatedRows.value.map((r) => r.id));
-      const next = payload.data.filter((r) => !existingIds.has(r.id));
-      accumulatedRows.value = [...accumulatedRows.value, ...next];
-    }
-  },
-  { immediate: true },
-);
-
-watch([statusPill, arSide, debouncedSearch], () => {
-  page.value = 1;
-  accumulatedRows.value = [];
 });
 
 const setArSide = (value: string | number) => {
@@ -236,8 +214,8 @@ const setStatusPill = (value: string | number) => {
 };
 
 const loadMore = () => {
-  if (!hasMore.value || listQuery.isFetching.value) return;
-  page.value += 1;
+  if (!hasMore.value || listQuery.isFetchingNextPage.value) return;
+  void listQuery.fetchNextPage();
 };
 
 const tenantSlugParam = () =>
@@ -257,7 +235,7 @@ const goBrands = () => {
   });
 };
 
-const openBill = (row: GlobalInvoiceRow) => {
+const openBill = (row: BillListRowData) => {
   const tenantSlug = tenantSlugParam();
   const detailRoute = {
     name: 'app-bill-detail-page' as const,

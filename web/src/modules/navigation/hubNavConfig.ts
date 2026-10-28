@@ -222,7 +222,7 @@ const BILLS_PAYS_HUB = {
       title: 'Bills',
       caption: 'Issue, void, and print bills',
       icon: 'ph ph-receipt',
-      routeSegment: 'sales/invoices',
+      routeSegment: 'bills',
     },
     {
       navWeight: 46,

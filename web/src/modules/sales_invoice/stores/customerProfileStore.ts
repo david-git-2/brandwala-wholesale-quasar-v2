@@ -9,6 +9,7 @@ import type {
 } from '../repositories/customerProfileRepository';
 
 const loadPromises = new Map<number, Promise<CustomerProfile[]>>();
+const deskLoadPromises = new Map<number, Promise<CustomerProfile[]>>();
 
 const FULL_LIST_PAGE_SIZE = 1000;
 
@@ -22,7 +23,10 @@ function tenantIdsForProfile(profile: CustomerProfile): number[] {
 export interface CustomerProfileStoreState {
   byTenantId: Record<number, CustomerProfile[]>;
   loadedTenantIds: Record<number, true>;
+  deskProfilesByParentId: Record<number, CustomerProfile[]>;
+  loadedDeskProfileParentIds: Record<number, true>;
   loadingTenantId: number | null;
+  loadingDeskParentId: number | null;
   items: CustomerProfile[];
   total: number;
   page: number;
@@ -37,7 +41,10 @@ export const useCustomerProfileStore = defineStore('customerProfile', {
   state: (): CustomerProfileStoreState => ({
     byTenantId: {},
     loadedTenantIds: {},
+    deskProfilesByParentId: {},
+    loadedDeskProfileParentIds: {},
     loadingTenantId: null,
+    loadingDeskParentId: null,
     items: [],
     total: 0,
     page: 1,
@@ -103,6 +110,41 @@ export const useCustomerProfileStore = defineStore('customerProfile', {
       })();
 
       loadPromises.set(tenantId, promise);
+      return promise;
+    },
+
+    async ensureDeskProfilesLoaded(
+      parentTenantId: number,
+      force = false,
+    ): Promise<CustomerProfile[]> {
+      if (!force && this.loadedDeskProfileParentIds[parentTenantId]) {
+        return this.deskProfilesByParentId[parentTenantId] ?? [];
+      }
+
+      const inFlight = deskLoadPromises.get(parentTenantId);
+      if (inFlight && !force) {
+        return inFlight;
+      }
+
+      this.loadingDeskParentId = parentTenantId;
+      this.error = null;
+
+      const promise = (async () => {
+        try {
+          const rows = await customerProfileRepository.listDeskBillingProfiles(parentTenantId);
+          this.deskProfilesByParentId[parentTenantId] = rows;
+          this.loadedDeskProfileParentIds[parentTenantId] = true;
+          return rows;
+        } catch (err) {
+          this.error = err instanceof Error ? err.message : 'Failed to load billing profiles.';
+          throw err;
+        } finally {
+          this.loadingDeskParentId = null;
+          deskLoadPromises.delete(parentTenantId);
+        }
+      })();
+
+      deskLoadPromises.set(parentTenantId, promise);
       return promise;
     },
 

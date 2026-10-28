@@ -206,15 +206,28 @@ Attachments on a note, reason-code enum, aging/statement reports, cheque lifecyc
 
 ---
 
-## Order
+## Order (2026-10-27 — architecture spine first)
 
-1 (compose slots) and 2 (pay in/out from accounts) can start with today’s RPCs.  
-3 (notes desk) next to the bill page.  
-4 leftover apply.  
-5–7 kernel source + upsert + reads — before a third adapter.  
-8 shipment as client.  
-9 reverse pay.  
-10 returns → credit note.  
-11 cash pots + FX freeze (tables first; writers/UI after).
+Resolutions: [2026-10-27-bills-pays-architecture-resolutions.md](2026-10-27-bills-pays-architecture-resolutions.md).
 
-Do not start a new feature’s money path until phase 6 exists. Stock compose stays a **slot** on the bill shell.
+**Money spine (before new pay/bill writers):** BP20 → BP18 (+ audit 08 §1b) → BP25 → BP22 → BP19. Tier 1 tests in [tests.md](../../docs/features/bills_pays/tests.md).
+
+**Then product track:** BP8 notes → BP11 apply (needs BP18) → BP9 upsert → BP10 + BP23 reads → WA15 shipment (advisory lock) → BP12/WA13 reverse → BP5 returns → BP15/BP16 points (after BP22).
+
+Compose (phase 1) and pay desk (phase 2) **UI** may continue on live RPCs; **no new SECURITY DEFINER money writers** until spine cutover.
+
+Stock compose stays a **slot** on the bill shell. **BP17** FIFO outside issue, **BP21** account class, **BP24** retire dispense — see [00-gaps](../../docs/features/bills_pays/00-gaps.md).
+
+---
+
+## Phase 0 — Money spine (was “Phase 12+”)
+
+See [kernel-schema §0b](../../docs/features/bills_pays/kernel-schema.md) and [00-gaps spine table](../../docs/features/bills_pays/00-gaps.md).
+
+| ID | Deliverable |
+| :--- | :--- |
+| BP20 | Void-excluding `source_*` unique index |
+| BP18 | `bill_settlements`, dual-write, 08 §1b gate, cutover |
+| BP25 | `pays.idempotency_key` |
+| BP22 | Append-only ledger, pot trigger, lock order in RPCs |
+| BP19 | Txn face + `fx_realized_books_delta` on settlements |

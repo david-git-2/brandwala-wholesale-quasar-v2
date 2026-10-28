@@ -1,8 +1,4 @@
 import { supabase } from 'src/boot/supabase';
-import {
-  formatPbcSourceLabel,
-  formatShopOrderSourceLabel,
-} from 'src/modules/bills_pays/utils/billSourceContext';
 import { tenantRepository } from 'src/modules/tenant/repositories/tenantRepository';
 import type { GlobalStockCostingInput } from 'src/modules/global/types';
 import type {
@@ -46,86 +42,6 @@ export type ListGlobalInvoicesParams = {
 export type PaginatedGlobalInvoices = {
   data: GlobalInvoiceRow[];
   total: number;
-};
-
-const attachBillSourceContextLabels = async (rows: GlobalInvoiceRow[]): Promise<void> => {
-  if (!rows.length) return;
-
-  const billIds = rows.map((row) => row.id);
-  const shopOrderIds = [
-    ...new Set(
-      rows.map((row) => row.shop_order_id).filter((id): id is number => id != null && id > 0),
-    ),
-  ];
-
-  const ordersByInvoicePromise = supabase
-    .from('shop_orders')
-    .select('id, order_no, name, global_invoice_id')
-    .in('global_invoice_id', billIds);
-  const ordersByIdPromise = shopOrderIds.length
-    ? supabase
-        .from('shop_orders')
-        .select('id, order_no, name, global_invoice_id')
-        .in('id', shopOrderIds)
-    : Promise.resolve({ data: [] as unknown[], error: null });
-
-  const [ordersByInvoiceRes, ordersByIdRes, pbcRes] = await Promise.all([
-    ordersByInvoicePromise,
-    ordersByIdPromise,
-    supabase
-      .from('product_based_costing_files')
-      .select('id, name, order_for, invoice_id')
-      .in('invoice_id', billIds),
-  ]);
-
-  if (ordersByInvoiceRes.error) throw ordersByInvoiceRes.error;
-  if (ordersByIdRes.error) throw ordersByIdRes.error;
-  if (pbcRes.error) throw pbcRes.error;
-
-  type ShopOrderLink = {
-    id: number;
-    order_no: string;
-    name: string;
-    global_invoice_id: number | null;
-  };
-  type PbcLink = {
-    id: number;
-    name: string | null;
-    order_for: string | null;
-    invoice_id: number | null;
-  };
-
-  const orderById = new Map<number, ShopOrderLink>();
-  const orderByInvoiceId = new Map<number, ShopOrderLink>();
-  for (const res of [ordersByInvoiceRes, ordersByIdRes]) {
-    for (const order of (res.data as ShopOrderLink[] | null) ?? []) {
-      orderById.set(order.id, order);
-      if (order.global_invoice_id != null) {
-        orderByInvoiceId.set(order.global_invoice_id, order);
-      }
-    }
-  }
-
-  const pbcByInvoiceId = new Map<number, PbcLink>();
-  for (const file of (pbcRes.data as PbcLink[] | null) ?? []) {
-    if (file.invoice_id != null) {
-      pbcByInvoiceId.set(file.invoice_id, file);
-    }
-  }
-
-  for (const row of rows) {
-    const pbc = pbcByInvoiceId.get(row.id);
-    if (pbc) {
-      row.source_context_label = formatPbcSourceLabel(pbc);
-      continue;
-    }
-    const order =
-      (row.shop_order_id != null ? orderById.get(row.shop_order_id) : undefined) ??
-      orderByInvoiceId.get(row.id);
-    if (order) {
-      row.source_context_label = formatShopOrderSourceLabel(order);
-    }
-  }
 };
 
 const listGlobalInvoices = async (
@@ -291,8 +207,6 @@ const listGlobalInvoices = async (
     }
   }
 
-  await attachBillSourceContextLabels(rows);
-
   return {
     data: rows,
     total: count ?? 0,
@@ -328,6 +242,15 @@ export type BillDetailBundle = {
   paymentHistory: InvoicePaymentHistoryEntry[];
   netBalances: Record<string, unknown>;
   adjustments: Record<string, unknown>[];
+  stockItems: GlobalInvoiceItemRow[];
+  billLines: Array<{
+    id: number;
+    name_snapshot: string;
+    currency_code: string;
+    line_total_amount: number;
+    books_amount: number;
+    quantity: number;
+  }>;
 };
 
 const getBillDetailBundle = async (params: {
@@ -340,11 +263,31 @@ const getBillDetailBundle = async (params: {
   });
   if (error) throw error;
   const raw = (data ?? {}) as Record<string, unknown>;
+  const stockRaw = raw.stock_items;
+  const stockItems = Array.isArray(stockRaw)
+    ? stockRaw.map((row) => mapListGlobalInvoiceItemRow(row))
+    : [];
+  const linesRaw = raw.bill_lines;
+  const billLines = Array.isArray(linesRaw)
+    ? linesRaw.map((row) => {
+        const r = row as Record<string, unknown>;
+        return {
+          id: Number(r.id),
+          name_snapshot: String(r.name_snapshot ?? 'Line'),
+          currency_code: String(r.currency_code ?? 'BDT').toUpperCase(),
+          line_total_amount: Number(r.line_total_amount ?? 0),
+          books_amount: Number(r.books_amount ?? r.line_total_amount ?? 0),
+          quantity: Number(r.quantity ?? 1),
+        };
+      })
+    : [];
   return {
     bill: raw.bill as GlobalInvoiceDetail,
     paymentHistory: (raw.payment_history as InvoicePaymentHistoryEntry[] | null) ?? [],
     netBalances: (raw.net_balances as Record<string, unknown>) ?? {},
     adjustments: (raw.adjustments as Record<string, unknown>[] | null) ?? [],
+    stockItems,
+    billLines,
   };
 };
 
@@ -449,7 +392,8 @@ const recordCustomerProfilePayment = async (payload: {
   reference?: string | null;
   allocations: Array<{ global_invoice_id: number; amount: number }>;
 }) => {
-  const { data, error } = await supabase.rpc('post_customer_receipt_with_allocations', {
+  const idempotencyKey = crypto.randomUUID();
+  const { data, error } = await supabase.rpc('post_money_in', {
     p_tenant_id: payload.tenant_id,
     p_profile_id: payload.profile_id,
     p_received_on: payload.payment_date ?? localToday(),
@@ -462,6 +406,7 @@ const recordCustomerProfilePayment = async (payload: {
       bill_id: a.global_invoice_id,
       amount: a.amount,
     })),
+    p_idempotency_key: idempotencyKey,
   });
   if (error) throw error;
   return data;
@@ -524,20 +469,24 @@ const collectWholesaleInvoicePayment = async (payload: {
     p_note: payload.note ?? null,
   };
 
+  const batchKey = crypto.randomUUID();
+
   if (cash > 0) {
-    const { error } = await supabase.rpc('post_customer_receipt_with_allocations', {
+    const { error } = await supabase.rpc('post_money_in', {
       ...receipt,
       p_source: 'customer_cash',
       p_instruments: instruments,
       p_allocations: [{ bill_id: bill.id, amount: cash }],
+      p_idempotency_key: `${batchKey}:cash`,
     });
     if (error) throw error;
   }
   if ((payload.wallet_amount ?? 0) > 0) {
-    const { error } = await supabase.rpc('post_customer_receipt_with_allocations', {
+    const { error } = await supabase.rpc('post_money_in', {
       ...receipt,
       p_source: 'store_credit',
       p_allocations: [{ bill_id: bill.id, amount: payload.wallet_amount }],
+      p_idempotency_key: `${batchKey}:store_credit`,
     });
     if (error) throw error;
   }
@@ -760,16 +709,19 @@ const issueWholesaleInvoice = async (
 
 export type SalesInvoicePayloadItem = {
   id?: number;
-  global_stock_id: number;
+  line_kind?: 'stock' | 'description' | 'charge';
+  global_stock_id?: number;
+  name_snapshot?: string;
   quantity: number;
   sell_price_amount: number;
   line_discount_amount?: number;
+  line_meta?: Record<string, unknown>;
 };
 
 export type SalesInvoiceFromPayloadInput = {
   invoice: {
     invoice_no?: string;
-    invoice_type: 'wholesale' | 'retail';
+    invoice_type: 'wholesale' | 'retail' | 'ap';
     profile_id: number;
     invoice_date?: string;
     due_date?: string;
@@ -1038,7 +990,6 @@ const processWholesaleInvoiceReturn = async (payload: {
 
 export const invoiceRepository = {
   listGlobalInvoices,
-  createGlobalInvoice,
   generateInvoiceNumber,
   searchSalesInvoiceStock,
   getGlobalInvoiceById,
@@ -1049,7 +1000,6 @@ export const invoiceRepository = {
   updateInvoiceItemsBulk,
   applyGlobalInvoiceTargetTotal,
   recordCustomerProfilePayment,
-  recordRecipientInvoiceCollection,
   applySettlementDiscount,
   collectWholesaleInvoicePayment,
   listInvoiceCollectionHistory,
@@ -1066,7 +1016,6 @@ export const invoiceRepository = {
   createSalesInvoiceFromPayload,
   updateSalesInvoiceFromPayload,
   voidGlobalInvoice,
-  unpostGlobalInvoice,
   deleteGlobalInvoice,
   convertWholesaleDraftToRetail,
   listInvoiceBrands,
