@@ -222,15 +222,66 @@ export function useBillAdjustmentDraft(params: {
     };
   });
 
+  const excessCreditBdt = computed(() => {
+    if (params.isAp.value || kind.value !== 'credit_note') return 0;
+    const total = noteTotalBdt.value;
+    if (total <= 0) return 0;
+    const reduces = amountReducesDue.value;
+    return Math.max(0, Math.round((total - reduces) * 100) / 100);
+  });
+
+  const arRefundEligible = computed(
+    () => !params.isAp.value && kind.value === 'credit_note' && excessCreditBdt.value > 0,
+  );
+
+  const refundCashNow = ref(false);
+  const refundAmount = ref<number | null>(null);
+
+  watch(
+    () => [arRefundEligible.value, excessCreditBdt.value] as const,
+    ([eligible, excess]) => {
+      if (!eligible) {
+        refundCashNow.value = false;
+        refundAmount.value = null;
+        return;
+      }
+      if (refundCashNow.value && (refundAmount.value == null || refundAmount.value <= 0)) {
+        refundAmount.value = excess;
+      }
+    },
+  );
+
+  watch(refundCashNow, (on) => {
+    if (on && excessCreditBdt.value > 0) {
+      refundAmount.value = excessCreditBdt.value;
+    }
+    if (!on) {
+      refundAmount.value = null;
+    }
+  });
+
   const submitDisabledReason = computed(() => {
     if (noteTotalBdt.value <= 0) return 'Enter a note amount on at least one line.';
     if (!reason.value.trim()) return 'Reason is required.';
+    if (refundCashNow.value) {
+      const amt = Number(refundAmount.value) || 0;
+      if (amt <= 0) return 'Enter a refund amount.';
+      if (amt > excessCreditBdt.value + 0.001) {
+        return `Refund cannot exceed ${formatAmountBdt(excessCreditBdt.value)} open on the note.`;
+      }
+    }
     return null;
   });
 
-  function buildSubmitPayload(): CreateBillAdjustmentInput | null {
+  function buildSubmitPayload(
+    cashbookPointId?: number | null,
+  ): CreateBillAdjustmentInput | null {
     if (submitDisabledReason.value || !params.bill.value) return null;
     const lines = draftRowsToRpcLines(draftRows.value, fxRate.value);
+    const refund =
+      refundCashNow.value && (Number(refundAmount.value) || 0) > 0
+        ? Math.round(Number(refundAmount.value) * 100) / 100
+        : null;
 
     return {
       parentBillId: params.bill.value.id,
@@ -238,8 +289,11 @@ export function useBillAdjustmentDraft(params: {
       amount: noteTotalBdt.value,
       reason: reason.value.trim(),
       lines,
-      refundAmount: null,
-      cashbookPointId: null,
+      refundAmount: refund,
+      cashbookPointId:
+        refund != null && cashbookPointId != null && cashbookPointId > 0
+          ? cashbookPointId
+          : null,
     };
   }
 
@@ -271,5 +325,9 @@ export function useBillAdjustmentDraft(params: {
     buildSubmitPayload,
     defaultExtraCurrency,
     kindHint,
+    arRefundEligible,
+    excessCreditBdt,
+    refundCashNow,
+    refundAmount,
   };
 }

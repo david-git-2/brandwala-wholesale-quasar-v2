@@ -12,6 +12,11 @@ export type BillListRow = {
   retail_billing_mode?: 'account' | 'direct' | null;
   channel_meta?: Record<string, unknown> | null;
   ap_kind?: string | null;
+  lifecycle_status?: string | null;
+  settlement_status?: string | null;
+  open_books?: number | null;
+  open_txn?: number | null;
+  document_kind?: string | null;
 };
 
 export type BillsListPageCursor = number | null;

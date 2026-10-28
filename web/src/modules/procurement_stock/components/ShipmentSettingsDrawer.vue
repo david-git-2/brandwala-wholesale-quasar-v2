@@ -721,6 +721,26 @@
                     </template>
                   </div>
                   <q-btn
+                    v-if="canStartMaterialCommercialCredit"
+                    outline
+                    no-caps
+                    color="primary"
+                    icon="ph ph-file-minus"
+                    size="sm"
+                    class="rounded-sq-btn text-weight-bold"
+                    label="Commercial credit note"
+                    :loading="
+                      apBillActionBucket === 'material' && apBillActionKind === 'credit_note'
+                    "
+                    :disable="apBillsLoading"
+                    @click="goToMaterialCommercialCreditNote"
+                  >
+                    <q-tooltip>
+                      Issue an AP credit note on the issued material invoice (shortage / commercial
+                      adjustment)
+                    </q-tooltip>
+                  </q-btn>
+                  <q-btn
                     unelevated
                     no-caps
                     color="primary"
@@ -1114,6 +1134,8 @@ import {
   sumApBillsDue,
   sumApBillsTotal,
 } from '../utils/shipmentApBillDisplay';
+import { billDetailCommercialCreditRoute } from 'src/modules/bills_pays/utils/billRoutes';
+import { shipmentShortageCreditHintBdt } from '../utils/shipmentShortageCreditHint';
 import {
   findShipmentApBill,
   shipmentApBillBucket,
@@ -1828,7 +1850,7 @@ const costRowDisplayGroups = computed(() => {
 const apBills = ref<ShipmentApBillRow[]>([]);
 const apBillsLoading = ref(false);
 const apBillActionBucket = ref<ShipmentApKind | null>(null);
-const apBillActionKind = ref<'open' | null>(null);
+const apBillActionKind = ref<'open' | 'credit_note' | null>(null);
 
 const apBillForBucket = (kind: ShipmentApKind) => findShipmentApBill(apBills.value, kind);
 
@@ -1970,6 +1992,47 @@ watch(
 const openApBill = (billId: number) => {
   const route = billDetailRoute(billId, authStore.tenantSlug);
   if (route) void router.push(route);
+};
+
+const canStartMaterialCommercialCredit = computed(() => {
+  if (costBucketFilter.value !== 'material') return false;
+  if (!isShipmentCostsLocked(shipmentStore.currentShipment)) return false;
+  const bill = apBillForBucket('material');
+  return bill?.invoice_status === 'issued';
+});
+
+const goToMaterialCommercialCreditNote = async () => {
+  apBillActionBucket.value = 'material';
+  apBillActionKind.value = 'credit_note';
+  try {
+    const linked = await ensureBucketApBill('material');
+    if (!linked || linked.invoice_status !== 'issued') {
+      $q.notify({
+        type: 'warning',
+        message: 'Issue the material AP invoice after locking costs first.',
+        timeout: 2800,
+      });
+      return;
+    }
+    const items = shipmentStore.currentShipmentItems ?? [];
+    const outcomes = shipmentStore.currentShipmentItemOutcomes ?? [];
+    const hint = shipmentShortageCreditHintBdt(items, outcomes);
+    const route = billDetailCommercialCreditRoute(linked.id, authStore.tenantSlug ?? undefined, {
+      startAdjustment: '1',
+      reason: 'Shipment shortage / commercial adjustment',
+      ...(hint > 0 ? { suggestedAmount: String(hint) } : {}),
+    });
+    void router.push(route);
+  } catch (err: unknown) {
+    $q.notify({
+      type: 'negative',
+      message: (err as Error).message || 'Could not open bill for credit note',
+      timeout: 2800,
+    });
+  } finally {
+    apBillActionBucket.value = null;
+    apBillActionKind.value = null;
+  }
 };
 
 const ensureBucketApBill = async (kind: ShipmentApKind): Promise<ShipmentApBillRow | null> => {

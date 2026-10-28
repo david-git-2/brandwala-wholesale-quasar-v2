@@ -52,6 +52,40 @@
       autogrow
     />
 
+    <template v-if="arRefundEligible">
+      <q-checkbox
+        v-model="refundCashNow"
+        dense
+        label="Refund cash to customer now"
+        class="q-mb-xs"
+      />
+      <div v-if="refundCashNow" class="column q-gutter-y-sm q-mb-sm">
+        <div class="text-caption text-grey-7">
+          Open on credit note after issue: up to {{ formatAmountBdt(excessCreditBdt) }}
+        </div>
+        <q-input
+          v-model.number="refundAmount"
+          outlined
+          dense
+          type="number"
+          step="0.01"
+          min="0"
+          :max="excessCreditBdt"
+          label="Refund amount (BDT)"
+        />
+        <q-select
+          v-model="selectedPotId"
+          :options="payFromOptions"
+          emit-value
+          map-options
+          outlined
+          dense
+          label="Pay from (till / safe)"
+          :loading="payFromLoading"
+        />
+      </div>
+    </template>
+
     <div class="row justify-end q-gutter-sm">
       <q-btn flat no-caps label="Cancel" @click="emit('cancel')" />
       <q-btn
@@ -70,6 +104,10 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+import { formatAmountBdt } from 'src/utils/currency';
+import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
+import { useCashbookPayFromPotSelect } from '../composables/useCashbookPayFromPotSelect';
 import type { Database } from 'src/types/database.types';
 
 type BillDocumentKind = Database['public']['Enums']['bill_document_kind'];
@@ -82,12 +120,32 @@ type BalanceEffect = {
 
 type NoteTotalLabel = { code: string; label: string };
 
-defineProps<{
+const props = defineProps<{
   noteTotalLabels: NoteTotalLabel[];
   balanceEffect: BalanceEffect;
   submitDisabledReason: string | null;
   loading?: boolean;
+  parentTenantId?: number | null;
+  arRefundEligible?: boolean;
+  excessCreditBdt?: number;
 }>();
+
+const refundCashNow = defineModel<boolean>('refundCashNow', { default: false });
+const refundAmount = defineModel<number | null>('refundAmount', { default: null });
+
+const arRefundEligible = computed(() => props.arRefundEligible === true);
+const excessCreditBdt = computed(() => Number(props.excessCreditBdt) || 0);
+
+const pointsQuery = useCashbookPointsQuery(
+  computed(() => props.parentTenantId ?? null),
+);
+const payFromEnabled = computed(
+  () => arRefundEligible.value && refundCashNow.value && (props.parentTenantId ?? 0) > 0,
+);
+const { selectedPotId, payFromOptions, cashbookPointId, loading: payFromLoading } =
+  useCashbookPayFromPotSelect(pointsQuery.data, payFromEnabled);
+
+defineExpose({ cashbookPointId });
 
 const emit = defineEmits<{
   cancel: [];

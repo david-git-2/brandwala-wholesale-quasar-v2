@@ -335,7 +335,9 @@ const canAllocateLater = computed(
     !!pay.value &&
     !pay.value.voided_at &&
     pay.value.unallocated_amount > 0 &&
-    (pay.value.source === 'customer_cash' || pay.value.source === 'bank') &&
+    (pay.value.source === 'customer_cash' ||
+      pay.value.source === 'bank' ||
+      pay.value.source === 'ap_payout') &&
     pay.value.profile_id != null,
 );
 
@@ -374,12 +376,15 @@ watch(
     if (!canAllocateLater.value || !pay.value?.profile_id) return;
     loadingBills.value = true;
     try {
+      const isApPayout = pay.value.source === 'ap_payout';
       const { data } = await billsRepository.listBills({
         parentTenantId: pay.value.tenant_id,
         profileId: pay.value.profile_id,
         invoiceStatus: 'issued',
         quickFilter: 'unpaid',
         pageSize: 100,
+        invoiceType: isApPayout ? 'ap' : undefined,
+        arSide: isApPayout ? 'we_owe' : 'they_owe',
       });
       openBills.value = data.map((b) => ({
         id: b.id,
@@ -470,8 +475,12 @@ const applyLeftover = async () => {
   if (!pay.value || !canApplyLeftover.value) return;
   await allocateMutation.mutateAsync({
     tenantId: pay.value.tenant_id,
-    paymentId: pay.value.id,
-    lines: leftoverLines.value,
+    lines: leftoverLines.value.map((line) => ({
+      bill_id: line.bill_id,
+      amount: line.amount,
+      allocator_kind: 'pay' as const,
+      allocator_id: pay.value!.id,
+    })),
   });
 };
 

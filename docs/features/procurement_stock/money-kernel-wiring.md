@@ -67,7 +67,7 @@ post_ap_payout_with_allocations, create_sales_invoice, …
 | 4 | Pay vendor/cargo | — | `pays`, allocations, cashbook | **`post_shipment_ap_money_out`** → **`post_money_out`** |
 | 5 | Read AP + open balance | — | bills + settlements | **`get_shipment_money_kernel_bundle`** |
 | 6 | Cancel shipment | status | void unpaid AP | sync branch → **`void_bill`** |
-| 7 | Commercial fix after issue | cost/outcome (costing) | CN on AP | bills desk `create_bill_adjustment` ([BP8](../bills_pays/00-gaps.md)) |
+| 7 | Commercial fix after issue | cost/outcome (costing) | CN on AP | bills desk **guided link** from shipment material AP (`startAdjustment` query) + `create_bill_adjustment` ([BP8](../bills_pays/00-gaps.md)) |
 | 8 | Outcome vendor credit | `global_shipment_outcome_vendor_credits` | — | procurement RPC only; cash via CN/pay |
 | 9 | Balance tab wallet settle | — | — | **Blocked** — `settle_shipment_payee` retired |
 

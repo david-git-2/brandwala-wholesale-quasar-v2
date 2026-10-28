@@ -1015,11 +1015,6 @@ const persistBillMeta = async (billId: number) => {
     patch.invoice_type = 'retail';
   }
 
-  if (!isSourcePlugged.value) {
-    patch.source_type = 'compose';
-    patch.source_id = String(billId);
-  }
-
   const { error } = await supabase.from('bills').update(patch).eq('id', billId);
   if (error) throw error;
 };

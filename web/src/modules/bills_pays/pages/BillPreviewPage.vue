@@ -73,6 +73,11 @@
         </template>
       </div>
 
+      <div v-if="isAdjustmentBill && adjustmentReason" class="q-mb-md">
+        <div class="text-overline text-grey-7">Reason</div>
+        <div class="text-body2">{{ adjustmentReason }}</div>
+      </div>
+
       <template v-if="isAdjustmentBill">
         <BillAdjustmentLinesTable
           :lines="adjustmentLineRows"
@@ -315,8 +320,12 @@ const lines = computed(() => (itemsQuery.data.value ?? []) as GlobalInvoiceItemR
 
 const adjustmentLineRows = computed((): BillLineDisplayRow[] => {
   if (!isAdjustmentBill.value) return [];
+  const fromQuery = billLinesQuery.data.value;
+  if (fromQuery?.length) {
+    return fromQuery;
+  }
   if (isApBill.value) {
-    return billLinesQuery.data.value ?? [];
+    return [];
   }
   return lines.value.map((line) => ({
     id: line.id,
@@ -326,6 +335,15 @@ const adjustmentLineRows = computed((): BillLineDisplayRow[] => {
     books_amount: Number(line.line_total_amount ?? 0),
     quantity: Number(line.quantity ?? 1),
   }));
+});
+
+const adjustmentReason = computed(() => {
+  const meta = bill.value?.channel_meta as Record<string, unknown> | null;
+  const adj = meta?.adjustment as Record<string, unknown> | undefined;
+  const fromMeta = adj?.reason;
+  if (typeof fromMeta === 'string' && fromMeta.trim()) return fromMeta.trim();
+  const note = bill.value?.note?.trim();
+  return note || null;
 });
 
 const profileName = computed(

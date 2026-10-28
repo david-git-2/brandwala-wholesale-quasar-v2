@@ -135,5 +135,5 @@ UI: `ApBillPaper` on bill detail/preview when `invoice_type = ap`. **Parties on 
 - [ ] US-12 Credit/debit notes on `bills`. Same RPCs for AR and AP. Desk + print ([BP8](00-gaps.md)).
 - [ ] US-13 Generic `source_type` / `source_id` / `source_key`; one upsert for adapters ([BP9](00-gaps.md)).
 - [ ] US-14 Reads: balances, pays/FX, documents by source and by profile ([BP10](00-gaps.md)).
-- [ ] US-15 Apply leftover / open credit to the next bill — AR and AP ([BP11](00-gaps.md)).
+- [x] US-15 Apply leftover / open credit to the next bill — AR and AP ([BP11](00-gaps.md)); custody apply still open in gaps.
 - [ ] US-16 Reverse a pay; cheque bounce ([WA13](00-gaps.md)).

@@ -123,8 +123,9 @@ const upsertDraftBill = async (
   tenantId: number,
   payload: SalesInvoiceFromPayloadInput,
 ): Promise<SalesInvoiceFromPayloadResult> => {
-  const body = {
+const body = {
     tenant_id: tenantId,
+    adapter: 'compose' as const,
     ...payload,
   };
   const { data, error } = await supabase.rpc('upsert_draft_bill', {
@@ -180,12 +181,77 @@ const voidBill = async (billId: number): Promise<void> => {
   if (error) throw error;
 };
 
+const applySettlementToBill = async (payload: {
+  tenant_id: number;
+  bill_id: number;
+  allocator_kind: 'pay' | 'credit_note';
+  allocator_id: number;
+  books_amount: number;
+}) => {
+  const { data, error } = await supabase.rpc('apply_settlement_to_bill', {
+    p_tenant_id: payload.tenant_id,
+    p_bill_id: payload.bill_id,
+    p_allocator_kind: payload.allocator_kind,
+    p_allocator_id: payload.allocator_id,
+    p_books_amount: payload.books_amount,
+  });
+  if (error) throw error;
+  return data;
+};
+
 const deleteDraftBill = (billId: number) => invoiceRepository.deleteGlobalInvoice(billId);
 
 const listBillBrands = invoiceRepository.listInvoiceBrands;
 const createBillBrand = invoiceRepository.createInvoiceBrand;
 const updateBillBrand = invoiceRepository.updateInvoiceBrand;
 const deleteBillBrand = invoiceRepository.deleteInvoiceBrand;
+
+const listBillsForSource = async (params: {
+  parentTenantId: number;
+  sourceType: string;
+  sourceId: string;
+  sourceKey?: string | null;
+  includeVoided?: boolean;
+  apShipmentBucketsOnly?: boolean;
+}) => {
+  const { data, error } = await supabase.rpc('list_bills_for_source', {
+    p_parent_tenant_id: params.parentTenantId,
+    p_source_type: params.sourceType,
+    p_source_id: params.sourceId,
+    p_source_key: params.sourceKey ?? undefined,
+    p_include_voided: params.includeVoided ?? false,
+    p_ap_shipment_buckets_only: params.apShipmentBucketsOnly ?? false,
+  });
+  if (error) throw error;
+  return (data ?? []) as unknown[];
+};
+
+const listPaysForSource = async (params: {
+  parentTenantId: number;
+  sourceType: string;
+  sourceId: string;
+}) => {
+  const { data, error } = await supabase.rpc('list_pays_for_source', {
+    p_parent_tenant_id: params.parentTenantId,
+    p_source_type: params.sourceType,
+    p_source_id: params.sourceId,
+  });
+  if (error) throw error;
+  return (data ?? []) as unknown[];
+};
+
+const listOpenOnProfile = async (params: { parentTenantId: number; profileId: number }) => {
+  const { data, error } = await supabase.rpc('list_open_on_profile', {
+    p_parent_tenant_id: params.parentTenantId,
+    p_profile_id: params.profileId,
+  });
+  if (error) throw error;
+  return data as {
+    due_bills: unknown[];
+    open_credit_notes: unknown[];
+    pay_leftover: unknown[];
+  };
+};
 
 export type { BillListRow, BillsListPageCursor, BillsListPageResult, ListBillsDeskPageParams };
 
@@ -200,6 +266,10 @@ export const billsRepository = {
   updateDraftBill,
   issueBill,
   voidBill,
+  applySettlementToBill,
+  listBillsForSource,
+  listPaysForSource,
+  listOpenOnProfile,
   deleteDraftBill,
   listBillBrands,
   createBillBrand,

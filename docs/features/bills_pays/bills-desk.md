@@ -29,9 +29,9 @@ Legacy `/app/sales/invoices/*` redirects to `/app/bills/*`.
 
 | RPC | Desk |
 | :--- | :--- |
-| `upsert_draft_bill` | Create draft |
-| `update_draft_bill` | Update draft |
-| `issue_bill` / `issue_wholesale_bill` / `issue_retail_bill` | Issue |
+| `upsert_draft_bill` | Create draft — adapters: `shipment_cost`, `dropship_courier`, `shop_order`, default `compose` |
+| `update_draft_bill` | Update draft (kernel `_kernel_update_compose_draft`) |
+| `issue_bill` / `issue_wholesale_bill` / `issue_retail_bill` | Issue — wholesale stock → `_kernel_issue_wholesale_stock`; header-only → `issue_bill` |
 | `void_bill` | Void |
 | `get_bill_detail_bundle` | Detail: bill, history, balances, adjustments, `stock_items`, `bill_lines` |
 | `get_bill_net_balances` | Balances (inside bundle) |

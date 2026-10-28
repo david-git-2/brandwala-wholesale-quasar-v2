@@ -14,13 +14,7 @@ _No open BP25 items — duplicate POST with the same `idempotency_key` per books
 
 ## Bills, notes, and adapters
 
-| ID | Status | In plain words |
-| :--- | :--- | :--- |
-| **BP8** | partial | Credit notes and debit notes work in the desk for many cases (compose, vendor refund on AP CN, dropship auto-note). Still missing: **shipment shortage → credit note**, **cash refund to customer** on AR CN (RPC exists, UI does not send amount), full **print** for notes, and using open CN balance on the next bill ([BP11](#pay-leftover-and-fixes)). |
-| **BP9** | partial | Generic “create/update draft bill” and “issue bill” RPCs exist. **Shop, shipment, and compose** still call their own older RPCs. Target: every feature uses the same kernel entry with `source_type` / `source_id` / `source_key`. |
-| **BP5** | not_built | **Returns** should create a credit note on the bill, not shrink the original total. After-sales does not call `create_bill_adjustment` yet. Extra refund goes to customer custody cashbook. |
-| **BP10** | not_built | Features should **list bills and pays** by source (this order, this shipment) and by profile without adding up allocations in the app. Today only some reads exist (`get_bill_net_balances`, adjustments list); shipment still uses custom filters. |
-| **BP23** | partial | Bills list page works with keyset pagination (`list_bills_desk_page`). Target **reporting view** `v_kernel_bill_summaries` for one stable “bill + due + party” shape is not built yet. |
+_No open items — BP5 returns, BP8 desk notes, BP9 upsert adapters, BP10 kernel list reads, and BP23 bill summaries view are shipped ([tests.md](tests.md))._
 
 ---
 
@@ -34,7 +28,7 @@ _No open WA15 items — shipment AP sync uses `source_key` per bucket (and `buck
 
 | ID | Status | In plain words |
 | :--- | :--- | :--- |
-| **BP11** | partial | Extra money after collect (or open credit on a note) should apply to **the next bill** the same way for customers, vendors, and AP. Today only **customer cash/bank leftover** on pay detail works; AP payout leftover and credit-note balance need one path (`apply_settlement_to_bill`). |
+| **BP11** | partial | **Shipped:** `apply_settlement_to_bill` for **pay leftover** (customer cash/bank + **AP payout**) on pay detail and **open credit note → another standard bill** on bill detail; shared `_kernel_apply_pay_leftover_to_bill`; recompute subtracts cross-bill CN applications. **Still open:** **`custody_entry`** apply (profile custody → bill) and collect-time pick of open credit in one dialog ([kernel plan Phase 4](../../../doc/fix/2026-10-12-bills-pays-kernel-plan.md)). |
 | **BP12** | not_built | Undo a **wrong payout or receipt** without voiding the bill — bill stays issued, “amount still due” goes back up. Customer receipt void exists; **AP payout** and generic reverse pay do not. |
 | **WA13** | not_built | **Cheque bounced** should reverse the pay (needs [BP12](#pay-leftover-and-fixes)). Cheque fields exist at collect; bounce flow is not built. |
 

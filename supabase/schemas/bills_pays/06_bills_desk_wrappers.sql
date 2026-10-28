@@ -11,7 +11,7 @@ SECURITY DEFINER
 SET search_path TO public
 AS $$
 begin
-  return public.update_sales_invoice_from_payload(p_tenant_id, p_bill_id, p_payload);
+  return public._kernel_update_compose_draft(p_tenant_id, p_bill_id, p_payload);
 end;
 $$;
 
@@ -24,11 +24,8 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO public
 AS $$
-declare
-  v_bill public.bills;
 begin
-  select * into v_bill from public.issue_wholesale_invoice(p_bill_id, p_items);
-  return v_bill;
+  return public._kernel_issue_wholesale_stock(p_bill_id, p_items);
 end;
 $$;
 
@@ -111,16 +108,22 @@ begin
         'invoice_type', b.invoice_type,
         'invoice_status', b.invoice_status,
         'payment_status', b.payment_status,
+        'lifecycle_status', coalesce(ks.lifecycle_status, 'draft'),
+        'settlement_status', coalesce(ks.settlement_status, b.payment_status::text),
         'total_amount', b.total_amount,
-        'due_amount', b.due_amount,
+        'due_amount', coalesce(ks.open_books, b.due_amount),
+        'open_books', coalesce(ks.open_books, b.due_amount),
+        'open_txn', coalesce(ks.open_txn, b.due_amount),
         'recipient_name', b.recipient_name,
         'profile_name', pr.name,
         'retail_billing_mode', b.retail_billing_mode,
         'channel_meta', b.channel_meta,
-        'ap_kind', b.ap_kind
+        'ap_kind', b.ap_kind,
+        'document_kind', b.document_kind
       ) as row_json
     from public.bills b
     left join public.profiles pr on pr.id = b.profile_id
+    left join public.v_kernel_bill_summaries ks on ks.bill_id = b.id
     where
       (
         (p_ar_side = 'we_owe' and b.parent_tenant_id = v_parent_id)
@@ -157,8 +160,10 @@ begin
       and (
         p_quick_filter is null
         or p_quick_filter = ''
-        or (p_quick_filter = 'paid' and b.payment_status = 'paid')
-        or (p_quick_filter = 'unpaid' and b.payment_status <> 'paid')
+        or (p_quick_filter = 'paid' and coalesce(ks.open_books, b.due_amount) <= 0 and b.invoice_status = 'issued'::public.global_invoice_status)
+        or (p_quick_filter = 'unpaid' and coalesce(ks.open_books, b.due_amount) > 0 and b.invoice_status = 'issued'::public.global_invoice_status)
+        or (p_quick_filter = 'paid' and b.invoice_status <> 'issued'::public.global_invoice_status and b.payment_status = 'paid')
+        or (p_quick_filter = 'unpaid' and b.invoice_status <> 'issued'::public.global_invoice_status and b.payment_status <> 'paid')
       )
       and (p_cursor is null or b.id < p_cursor)
       and (

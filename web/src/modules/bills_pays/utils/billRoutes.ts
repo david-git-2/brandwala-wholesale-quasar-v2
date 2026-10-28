@@ -28,6 +28,24 @@ export function billDetailRoute(billId: number, tenantSlug?: string | null): Rou
   };
 }
 
+export type BillDetailAdjustmentQuery = {
+  startAdjustment?: '1';
+  reason?: string;
+  suggestedAmount?: string;
+};
+
+export function billDetailCommercialCreditRoute(
+  billId: number,
+  tenantSlug?: string | null,
+  query?: BillDetailAdjustmentQuery,
+): RouteLocationRaw {
+  return {
+    name: 'app-bill-detail-page',
+    params: { ...(tenantSlug ? { tenantSlug } : {}), billId: String(billId) },
+    query: query ?? {},
+  };
+}
+
 export function billPreviewRoute(billId: number, tenantSlug?: string | null): RouteLocationRaw {
   return {
     name: 'app-bill-preview-page',

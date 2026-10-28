@@ -143,6 +143,56 @@ Use `pg_sleep` + two sessions or stress script against local Supabase. CI nightl
 | :--- | :--- | :--- |
 | Header-only AR | Compose: they owe, description line only, issue | `bill_lines.line_kind = description`; no stock movement; `status = issued`; `from_profile_id` = tenant, `to_profile_id` = customer |
 | Manual AP | Compose: we owe, vendor From, description line, issue | `status = issued`; `from_profile_id` = vendor, `to_profile_id` = tenant; `source_type = compose`; pay out via Payments profile dialog |
+| Compose source plug | Save draft from compose desk | `source_type = compose`, `source_id` = bill id (server stamp) |
+
+### G — Note desk (BP8)
+
+| Case | Steps | Expect |
+| :--- | :--- | :--- |
+| AR CN + cash refund | On issued AR bill, credit note with excess over due; check refund + till; issue | `create_bill_adjustment` with `p_refund_amount`; pay `source = customer_cash`; CN `due` reduced by refund |
+| Shipment guided CN | Lock costs → material AP issued → Shipment settings **Commercial credit note** | Bill detail opens with composer; optional `suggestedAmount` query hint only |
+| Note print | Preview issued CN/DN | Lines from `bill_lines`; reason on sheet |
+| Apply CN to second bill | Issued AR bill A with open CN; **Apply credit to another bill** → bill B | `bill_settlements` `allocator_kind=credit_note`; CN `parent_bill_id` unchanged; B due down; CN open down (T4-2) |
+
+### H — Apply leftover / open credit (BP11)
+
+| Case | Steps | Expect |
+| :--- | :--- | :--- |
+| AP payout leftover | Pay out vendor with unallocated remainder → Pay detail **Apply leftover** | `apply_settlement_to_bill` `allocator_kind=pay`; target AP bill due reduced |
+| AR collect leftover | Same on customer cash/bank pay detail | Same RPC path as AP |
+| pgTAP smoke | `supabase test db` → `bills_pays_bp11_apply_settlement.sql` | Functions exist; recompute includes CN cross-apply |
+
+### I — Kernel upsert adapters (BP9)
+
+| Case | Steps | Expect |
+| :--- | :--- | :--- |
+| Compose upsert | Create bill from compose desk | `upsert_draft_bill` with `adapter: compose`; default path uses `_kernel_upsert_compose_draft` |
+| Wholesale stock issue | Issue wholesale bill with stock lines | `issue_wholesale_bill` → `_kernel_issue_wholesale_stock` |
+| Dropship courier AP | Ship dropship order | `_kernel_upsert_dropship_courier_ap`; `source_type = dropship_courier` |
+| pgTAP smoke | `bills_pays_bp9_upsert_adapters.sql` | Kernel symbols exist; `upsert_draft_bill` prosrc has no `create_sales_invoice_from_payload` |
+
+---
+
+### J — Kernel reads (BP10 + BP23)
+
+| Case | Steps | Expect |
+| :--- | :--- | :--- |
+| Source bills | `list_bills_for_source(parent, 'shipment_cost', shipment_id)` | AP standard bills + `net_balances`; shipment drawer uses same via finance bundle |
+| Profile open | `list_open_on_profile(parent, profile_id)` | `due_bills`, `open_credit_notes`, `pay_leftover` arrays |
+| Desk view | `list_bills_desk_page` row | `open_books` matches `v_kernel_bill_summaries` for issued standards |
+| pgTAP | `bills_pays_bp10_bp23_reads.sql` | View + list RPCs exist; desk + shipment wired |
+
+---
+
+### K — Returns credit notes (BP5)
+
+| Case | Steps | Expect |
+| :--- | :--- | :--- |
+| Wholesale return | `process_wholesale_invoice_return` on paid/partial bill | Parent `total_amount` unchanged; child `credit_note` issued; `get_bill_net_balances` open drops |
+| Dropship finalize | `finalize_dropship_return` with items | No `recompute_global_invoice_totals`; CN when return credit > 0 |
+| pgTAP | `bills_pays_bp5_return_cn.sql` | prosrc checks on return RPCs |
+
+---
 
 ### F — Modular pay desk (BP14)
 

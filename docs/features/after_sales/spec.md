@@ -50,4 +50,4 @@
 ### US-3: Inspection & outcomes
 - Credit, replace, repair, reject.
   - [ ] Sellable/held via `return_inbound` movements.
-  - [ ] Credit reduces invoice due first; overpay → store credit.
+  - [x] Credit via **credit note** on the parent bill (`create_bill_adjustment`); parent invoice total unchanged; overpay → store credit / payout.
