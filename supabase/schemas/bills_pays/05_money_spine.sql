@@ -250,40 +250,57 @@ begin
 end;
 $$;
 
-CREATE OR REPLACE FUNCTION public._kernel_insert_settlement_from_pay_alloc()
-RETURNS trigger
+CREATE OR REPLACE FUNCTION public._kernel_record_pay_bill_settlement(
+  p_tenant_id bigint,
+  p_payment_id bigint,
+  p_bill_id bigint,
+  p_books_amount numeric,
+  p_update_unallocated boolean DEFAULT true
+) RETURNS public.pay_allocations
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO public
 AS $$
 declare
-  v_bill_id bigint;
   v_bill public.bills;
   v_pay public.pays;
+  v_row public.pay_allocations;
+  v_settle_id bigint;
   v_txn numeric(12, 2);
   v_books numeric(12, 2);
   v_rate numeric(15, 6);
   v_delta numeric(12, 2);
+  v_parent_id bigint;
 begin
-  v_bill_id := public._kernel_resolve_bill_id_from_alloc(NEW.invoice_id, NEW.global_invoice_id, NEW.bill_id);
-  if v_bill_id is null then
-    return NEW;
+  if p_tenant_id is null or p_payment_id is null or p_bill_id is null then
+    raise exception 'Tenant, payment and bill are required.';
+  end if;
+  if coalesce(p_books_amount, 0) <= 0 then
+    raise exception 'Settlement amount must be greater than zero.';
   end if;
 
-  select * into v_bill from public.bills where id = v_bill_id;
+  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_books := round(p_books_amount, 2);
+
+  select * into v_bill from public.bills where id = p_bill_id;
   if v_bill.id is null then
-    return NEW;
+    raise exception 'Bill not found.';
+  end if;
+  if v_bill.parent_tenant_id <> v_parent_id then
+    raise exception 'Bill tenant mismatch.';
   end if;
 
-  select * into v_pay from public.pays where id = NEW.payment_id;
+  select * into v_pay from public.pays where id = p_payment_id;
+  if v_pay.id is null then
+    raise exception 'Payment not found.';
+  end if;
+  if v_pay.tenant_id <> p_tenant_id then
+    raise exception 'Payment tenant mismatch.';
+  end if;
 
   select sa.allocated_txn_amount, sa.allocated_books_amount, sa.books_rate_at_alloc, sa.fx_realized_books_delta
   into v_txn, v_books, v_rate, v_delta
-  from public._kernel_settlement_amounts_from_pay_alloc(v_bill, v_pay, NEW.amount) sa;
-
-  if exists (select 1 from public.bill_settlements where pay_allocation_id = NEW.id) then
-    return NEW;
-  end if;
+  from public._kernel_settlement_amounts_from_pay_alloc(v_bill, v_pay, v_books) sa;
 
   insert into public.bill_settlements (
     parent_tenant_id,
@@ -297,25 +314,38 @@ begin
     fx_realized_books_delta
   ) values (
     v_bill.parent_tenant_id,
-    v_bill_id,
+    p_bill_id,
     'pay',
-    NEW.payment_id,
-    NEW.id,
+    p_payment_id,
+    null,
     v_txn,
     v_books,
     v_rate,
     v_delta
-  );
+  )
+  returning id into v_settle_id;
 
-  return NEW;
+  insert into public.pay_allocations (tenant_id, payment_id, global_invoice_id, bill_id, amount)
+  values (v_parent_id, p_payment_id, p_bill_id, p_bill_id, v_books)
+  returning * into v_row;
+
+  update public.bill_settlements
+  set pay_allocation_id = v_row.id
+  where id = v_settle_id;
+
+  if p_update_unallocated then
+    update public.pays
+    set unallocated_amount = unallocated_amount - v_books
+    where id = p_payment_id;
+  end if;
+
+  perform public.recompute_global_invoice_payment_status(p_bill_id);
+
+  return v_row;
 end;
 $$;
 
-DROP TRIGGER IF EXISTS trg_pay_allocations_bill_settlements ON public.pay_allocations;
-CREATE TRIGGER trg_pay_allocations_bill_settlements
-  AFTER INSERT ON public.pay_allocations
-  FOR EACH ROW
-  EXECUTE FUNCTION public._kernel_insert_settlement_from_pay_alloc();
+-- Legacy trigger path retired at BP18-c cutover (settlements-first writer above).
 
 CREATE OR REPLACE FUNCTION public._kernel_advisory_shipment_money_lock(p_shipment_id bigint)
 RETURNS void
@@ -627,15 +657,13 @@ begin
     raise exception 'Allocation amount % exceeds bill remaining due %.', p_amount, v_due;
   end if;
 
-  insert into public.pay_allocations (tenant_id, payment_id, global_invoice_id, bill_id, amount)
-  values (p_tenant_id, p_payment_id, p_bill_id, p_bill_id, p_amount)
-  returning * into v_row;
-
-  update public.pays
-  set unallocated_amount = unallocated_amount - p_amount
-  where id = p_payment_id;
-
-  perform public.recompute_global_invoice_payment_status(p_bill_id);
+  v_row := public._kernel_record_pay_bill_settlement(
+    p_tenant_id,
+    p_payment_id,
+    p_bill_id,
+    p_amount,
+    true
+  );
 
   if v_payment.profile_id is not null
     and v_payment.source in ('customer_cash', 'bank') then
@@ -1138,6 +1166,50 @@ begin
   loop
     perform 1 from public.cashbook_point_pots where id = v_id for update;
   end loop;
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION public._kernel_lock_cashbook_points_for_transfer(
+  p_from_point_id bigint,
+  p_to_point_id bigint,
+  p_currency_code text
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+declare
+  v_ccy text := upper(trim(coalesce(p_currency_code, 'BDT')));
+  v_first bigint;
+  v_second bigint;
+begin
+  if p_from_point_id is null or p_to_point_id is null then
+    raise exception 'Both cash points are required.';
+  end if;
+  if v_ccy = '' then
+    v_ccy := 'BDT';
+  end if;
+
+  if p_from_point_id < p_to_point_id then
+    v_first := p_from_point_id;
+    v_second := p_to_point_id;
+  else
+    v_first := p_to_point_id;
+    v_second := p_from_point_id;
+  end if;
+
+  perform 1
+  from public.cashbook_point_pots cpp
+  where cpp.cashbook_point_id = v_first
+    and upper(trim(cpp.currency_code)) = v_ccy
+  order by cpp.id
+  for update;
+
+  perform 1
+  from public.cashbook_point_pots cpp
+  where cpp.cashbook_point_id = v_second
+    and upper(trim(cpp.currency_code)) = v_ccy
+  order by cpp.id
+  for update;
 end;
 $$;
 

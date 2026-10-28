@@ -52,11 +52,11 @@ begin
     );
 
     insert into public.bill_lines (
-      parent_tenant_id, invoice_id, global_stock_id, shipment_item_id, product_id,
+      parent_tenant_id, invoice_id, shipment_item_id, product_id,
       name_snapshot, barcode_snapshot, product_code_snapshot, quantity,
       sell_price_amount, line_discount_amount, line_total_amount, assigned_child_tenant_id, line_meta
     ) values (
-      p_parent_id, p_invoice_id, null, v_shipment_item_id, v_product_id,
+      p_parent_id, p_invoice_id, v_shipment_item_id, v_product_id,
       v_name_snapshot,
       nullif(trim(p_item_elem->>'barcode_snapshot'), ''),
       nullif(trim(p_item_elem->>'product_code_snapshot'), ''),
@@ -79,11 +79,11 @@ begin
     v_line_total := greatest((v_quantity * v_sell_price) - v_line_discount, 0);
 
     insert into public.bill_lines (
-      parent_tenant_id, invoice_id, line_kind, global_stock_id, name_snapshot,
+      parent_tenant_id, invoice_id, line_kind, name_snapshot,
       quantity, sell_price_amount, line_discount_amount, line_total_amount,
       currency_code, books_amount, line_meta
     ) values (
-      p_parent_id, p_invoice_id, v_line_kind, null, v_name_snapshot,
+      p_parent_id, p_invoice_id, v_line_kind, v_name_snapshot,
       v_quantity, v_sell_price, v_line_discount, v_line_total,
       upper(trim(coalesce(p_item_elem->>'currency_code', 'BDT'))),
       coalesce(nullif(p_item_elem->>'books_amount', '')::numeric, v_line_total),
@@ -128,11 +128,11 @@ begin
   );
 
   insert into public.bill_lines (
-    parent_tenant_id, invoice_id, line_kind, global_stock_id, shipment_item_id, product_id,
+    parent_tenant_id, invoice_id, line_kind, shipment_item_id, product_id,
     name_snapshot, barcode_snapshot, product_code_snapshot, quantity,
     sell_price_amount, line_discount_amount, line_total_amount, assigned_child_tenant_id, line_meta
   ) values (
-    p_parent_id, p_invoice_id, 'stock', v_global_stock_id, v_shipment_item_id, v_product_id,
+    p_parent_id, p_invoice_id, 'stock', v_shipment_item_id, v_product_id,
     v_name_snapshot, v_barcode_snapshot, v_product_code_snapshot,
     v_quantity, v_sell_price, v_line_discount, v_line_total, v_assigned_child, v_line_meta
   )
@@ -470,7 +470,6 @@ begin
       insert into public.bill_lines (
         parent_tenant_id,
         invoice_id,
-        global_stock_id,
         shipment_item_id,
         product_id,
         name_snapshot,
@@ -486,7 +485,6 @@ begin
       values (
         v_parent_id,
         v_invoice_id,
-        null,
         v_shipment_item_id,
         v_product_id,
         v_name_snapshot,
@@ -556,10 +554,17 @@ begin
       greatest((v_quantity * v_sell_price) - v_line_discount, 0)
     );
 
+    v_line_meta := jsonb_set(
+      coalesce(v_line_meta, '{}'::jsonb),
+      '{stock_ref}',
+      jsonb_build_object('global_stock_id', v_global_stock_id),
+      true
+    );
+
     insert into public.bill_lines (
       parent_tenant_id,
       invoice_id,
-      global_stock_id,
+      line_kind,
       shipment_item_id,
       product_id,
       name_snapshot,
@@ -575,7 +580,7 @@ begin
     values (
       v_parent_id,
       v_invoice_id,
-      v_global_stock_id,
+      'stock',
       v_shipment_item_id,
       v_product_id,
       v_name_snapshot,
@@ -708,6 +713,7 @@ declare
   v_barcode_snapshot text;
   v_product_code_snapshot text;
   v_assigned_child bigint;
+  v_line_meta jsonb;
   v_stock_parent bigint;
   v_db_item public.bill_lines;
   v_removed_ids bigint[] := '{}';
@@ -1011,11 +1017,17 @@ begin
         v_product_code_snapshot := coalesce(nullif(trim(v_item_elem->>'product_code_snapshot'), ''), v_product_code_snapshot);
         v_assigned_child := coalesce(nullif(v_item_elem->>'assigned_child_tenant_id', '')::bigint, v_assigned_child);
         v_line_total := greatest((v_quantity * v_sell_price) - v_line_discount, 0);
+        v_line_meta := jsonb_set(
+          coalesce(v_db_item.line_meta, '{}'::jsonb),
+          '{stock_ref}',
+          jsonb_build_object('global_stock_id', v_global_stock_id),
+          true
+        );
 
         insert into public.bill_lines (
           parent_tenant_id,
           invoice_id,
-          global_stock_id,
+          line_kind,
           shipment_item_id,
           product_id,
           name_snapshot,
@@ -1025,12 +1037,13 @@ begin
           sell_price_amount,
           line_discount_amount,
           line_total_amount,
-          assigned_child_tenant_id
+          assigned_child_tenant_id,
+          line_meta
         )
         values (
           v_parent_id,
           p_invoice_id,
-          v_global_stock_id,
+          'stock',
           v_shipment_item_id,
           v_product_id,
           v_name_snapshot,
@@ -1040,7 +1053,8 @@ begin
           v_sell_price,
           v_line_discount,
           v_line_total,
-          v_assigned_child
+          v_assigned_child,
+          v_line_meta
         )
         returning * into v_db_item;
 

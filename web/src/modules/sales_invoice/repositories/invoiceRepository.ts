@@ -520,20 +520,35 @@ const listInvoicePaymentHistory = async (params: {
 const listInvoiceCollectionHistory = async (
   invoiceId: number,
 ): Promise<InvoiceCollectionHistoryRow[]> => {
-  const { data, error } = await supabase
-    .from('pay_allocations')
-    .select('id, amount, created_at, global_payments:pays(method, note, created_at)')
-    .eq('global_invoice_id', invoiceId)
+  const { data: rows, error } = await supabase
+    .from('bill_settlements')
+    .select('id, pay_allocation_id, allocated_books_amount, created_at, allocator_id')
+    .eq('bill_id', invoiceId)
+    .eq('allocator_kind', 'pay')
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return ((data as any[]) ?? []).map((row) => ({
-    id: Number(row.id),
-    created_at: String(row.global_payments?.created_at ?? row.created_at),
-    kind: row.global_payments?.method === 'wallet_credit' ? 'wallet_credit' : 'cash',
-    method: row.global_payments?.method ?? null,
-    amount: Number(row.amount),
-    note: row.global_payments?.note ?? null,
-  }));
+  const settlements = rows ?? [];
+  if (settlements.length === 0) return [];
+
+  const payIds = [...new Set(settlements.map((r) => r.allocator_id))];
+  const { data: pays, error: payError } = await supabase
+    .from('pays')
+    .select('id, method, note, created_at')
+    .in('id', payIds);
+  if (payError) throw payError;
+  const payById = new Map((pays ?? []).map((p) => [p.id, p]));
+
+  return settlements.map((row) => {
+    const pay = payById.get(row.allocator_id);
+    return {
+      id: Number(row.pay_allocation_id ?? row.id),
+      created_at: String(pay?.created_at ?? row.created_at),
+      kind: pay?.method === 'wallet_credit' ? 'wallet_credit' : 'cash',
+      method: pay?.method ?? null,
+      amount: Number(row.allocated_books_amount),
+      note: pay?.note ?? null,
+    };
+  });
 };
 
 const createMiddleManPayout = async (payload: {
@@ -541,21 +556,23 @@ const createMiddleManPayout = async (payload: {
   profile_id: number;
   global_invoice_id: number;
   amount: number;
+  cashbook_point_id: number;
+  cashbook_point_pot_id?: number | null;
 }) => {
-  const { data, error } = await supabase.rpc('dispense_middleman_payout_from_tenant', {
-    p_tenant_id: payload.tenant_id,
-    p_profile_id: payload.profile_id,
-    p_amount: payload.amount,
-    p_payout_method: 'bank_transfer',
-    p_reference_notes: `Invoice #${payload.global_invoice_id}`,
+  const { paysRepository } = await import(
+    'src/modules/bills_pays/repositories/paysRepository'
+  );
+  return paysRepository.postMoneyOut({
+    tenant_id: payload.tenant_id,
+    profile_id: payload.profile_id,
+    amount: payload.amount,
+    note: `Invoice #${payload.global_invoice_id}`,
+    cashbook_point_id: payload.cashbook_point_id,
+    cashbook_point_pot_id: payload.cashbook_point_pot_id,
+    source_type: 'commission',
+    source: 'commission',
+    source_id: String(payload.global_invoice_id),
   });
-  if (error) throw error;
-  if (data && typeof data === 'object' && (data as { success?: boolean }).success === false) {
-    throw new Error(
-      (data as { error?: string }).error || 'Failed to dispense middleman payout',
-    );
-  }
-  return data;
 };
 
 const addGlobalReturnItem = async (payload: {

@@ -26,7 +26,7 @@
 | 14 | Custody vs tenant asset separated on `cashbook_accounts.account_class` ([BP21](../features/bills_pays/00-gaps.md)) |
 | 15 | `cashbook_entries` append-only; pots maintained by trigger; transfer locks ordered ([BP22](../features/bills_pays/00-gaps.md)) |
 | 16 | Reporting may read `v_kernel_bill_summaries`; not base kernel tables ([BP23](../features/bills_pays/00-gaps.md)) |
-| 17 | **Spine gate:** no new money writer RPC until [BP18](../features/bills_pays/00-gaps.md) cutover (audit [08 §1b](08-AUDIT-RECONCILIATION-AND-RUNBOOK.md)) + [BP25](../features/bills_pays/00-gaps.md) idempotency |
+| 17 | **Spine gate:** new money writer RPCs follow [BP25](../features/bills_pays/00-gaps.md) idempotency; [BP18‑c](../features/bills_pays/00-gaps.md) settlements cutover shipped |
 | 18 | All money RPCs follow global lock order — [kernel-schema §0b](../features/bills_pays/kernel-schema.md); pay alloc locks bill before balance read |
 | 19 | `sync_shipment_ap_bills` never silent-updates **issued** standard bill totals — draft sync only; after issue use CN/DN |
 | 20 | Multi-currency settlement records `fx_realized_books_delta` on `bill_settlements` ([BP19](../features/bills_pays/00-gaps.md)); landed cost still from paid AP rates |
@@ -66,7 +66,7 @@ unpaid --partial alloc--> partial --full alloc--> settled
 | :--- | :--- | :--- |
 | Collect / remittance | `post_customer_receipt_with_allocations` | Custody ledger |
 | AP payout | `post_ap_payout_with_allocations` | FX → landed cost refresh |
-| Merchant profit | `post_money_out` (`source_type=commission`) | Legacy shim: `dispense_middleman_payout_from_tenant` → spine ([BP24](../features/bills_pays/00-gaps.md) shipped) |
+| Merchant profit | `post_money_out` (`source_type=commission`) | `_kernel_post_commission_payout` on money spine ([BP24](../features/bills_pays/00-gaps.md) shipped) |
 | Balance read | `get_bill_net_balances(bill_id)` | Target: settlements-based; prefer over `due_amount` cache |
 | Apply leftover / CN | `allocate_payment_to_global_invoice` / BP11 paths | Target: `apply_settlement_to_bill` → `bill_settlements` |
 

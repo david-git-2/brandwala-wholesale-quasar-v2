@@ -120,6 +120,8 @@ export interface DispensePayoutPayload {
   amount: number;
   method?: string;
   trxId?: string;
+  cashbookPointId: number;
+  cashbookPointPotId?: number | null;
 }
 
 export interface DispensePayoutResult {

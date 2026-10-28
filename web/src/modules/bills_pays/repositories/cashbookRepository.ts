@@ -387,6 +387,30 @@ const deleteCashbookPoint = async (tenantId: number, pointId: number): Promise<v
   }
 };
 
+const transferCashbookPoint = async (params: {
+  tenantId: number;
+  fromPointId: number;
+  toPointId: number;
+  currencyCode: string;
+  amount: number;
+  note?: string | null;
+}) => {
+  const { data, error } = await supabase.rpc('transfer_cashbook_point', {
+    p_tenant_id: params.tenantId,
+    p_from_point_id: params.fromPointId,
+    p_to_point_id: params.toPointId,
+    p_currency_code: params.currencyCode,
+    p_amount: params.amount,
+    p_note: params.note ?? null,
+  });
+  if (error) throw error;
+  const payload = (data ?? {}) as { success?: boolean; error?: string };
+  if (payload.success === false) {
+    throw new Error(payload.error || 'Could not transfer cash.');
+  }
+  return payload;
+};
+
 const listBooksExchangeRates = async (params: {
   parentTenantId: number;
   quoteCurrencyCode?: string | null;
@@ -420,5 +444,6 @@ export const cashbookRepository = {
   createCashbookPoint,
   updateCashbookPoint,
   deleteCashbookPoint,
+  transferCashbookPoint,
   listBooksExchangeRates,
 };

@@ -583,14 +583,16 @@ const submit = async () => {
         }
         showSuccessNotification('AP payout recorded.');
       } else {
-        await paysRepository.dispenseMiddlemanPayout({
+        await paysRepository.postMoneyOut({
           tenant_id: props.tenantId,
           profile_id: profileId,
           amount: Number(amount.value),
           payout_method: methodCode.value,
-          reference_notes: note.value || null,
+          note: note.value || null,
           cashbook_point_id: cashbookPointId.value,
           cashbook_point_pot_id: potId.value,
+          source_type: 'commission',
+          source: 'commission',
         });
         showSuccessNotification('Cash out recorded.');
       }

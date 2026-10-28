@@ -72,6 +72,17 @@
                   label="Inactive"
                 />
               </div>
+              <div v-if="point.is_active && points.length > 1" class="q-mt-sm">
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  color="primary"
+                  icon="ph ph-arrows-left-right"
+                  label="Move cash"
+                  @click.stop="openTransfer(point)"
+                />
+              </div>
             </q-card-section>
           </q-card>
         </div>
@@ -87,6 +98,15 @@
       :operating-tenant-id="operatingTenantId"
       @saved="onPointSaved"
     />
+
+    <CashbookPointTransferDialog
+      v-model="transferOpen"
+      :tenant-id="operatingTenantId"
+      :from-point="transferFromPoint"
+      :points="points"
+      :pots="transferFromPots"
+      @transferred="onPointSaved"
+    />
   </q-page>
 </template>
 
@@ -95,6 +115,7 @@ import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import CashbookPointFormDialog from '../components/CashbookPointFormDialog.vue';
+import CashbookPointTransferDialog from '../components/CashbookPointTransferDialog.vue';
 import { useCashbookPointPotsBatchQuery } from '../composables/useCashbookPointPotsQuery';
 import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
 import { cashbookPointKindLabel } from '../constants/cashbookPointKinds';
@@ -183,6 +204,17 @@ const openEditPoint = (point: CashbookPointRow) => {
   pointFormMode.value = 'edit';
   editingPoint.value = point;
   pointFormOpen.value = true;
+};
+
+const transferOpen = ref(false);
+const transferFromPoint = ref<CashbookPointRow | null>(null);
+const transferFromPots = computed(() =>
+  transferFromPoint.value ? potsForPoint(transferFromPoint.value.id) : [],
+);
+
+const openTransfer = (point: CashbookPointRow) => {
+  transferFromPoint.value = point;
+  transferOpen.value = true;
 };
 </script>
 

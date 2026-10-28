@@ -173,9 +173,12 @@ const getPayById = async (payId: number): Promise<PayDetail> => {
   if (instError) throw instError;
 
   const { data: allocations, error: allocError } = await supabase
-    .from('pay_allocations')
-    .select('id, amount, global_invoice_id, bills:bills!payment_allocations_global_invoice_id_fkey(invoice_no)')
-    .eq('payment_id', payId);
+    .from('bill_settlements')
+    .select(
+      'id, pay_allocation_id, allocated_books_amount, bill_id, bills:bills!bill_settlements_bill_id_fkey(invoice_no)',
+    )
+    .eq('allocator_kind', 'pay')
+    .eq('allocator_id', payId);
   if (allocError) throw allocError;
 
   const profile = Array.isArray(pay.profiles) ? pay.profiles[0] : pay.profiles;
@@ -208,9 +211,9 @@ const getPayById = async (payId: number): Promise<PayDetail> => {
       bounced_at: i.bounced_at ?? null,
     })),
     allocations: ((allocations as any[]) ?? []).map((a) => ({
-      id: a.id,
-      amount: Number(a.amount),
-      global_invoice_id: a.global_invoice_id,
+      id: a.pay_allocation_id ?? a.id,
+      amount: Number(a.allocated_books_amount),
+      global_invoice_id: a.bill_id,
       invoice_no: a.bills?.invoice_no ?? null,
     })),
   };
@@ -465,27 +468,6 @@ const postApPayoutWithAllocationsSnapshot = async (
   };
 };
 
-const dispenseMiddlemanPayout = async (payload: {
-  tenant_id: number;
-  profile_id: number;
-  amount: number;
-  payout_method?: string;
-  reference_notes?: string | null;
-  cashbook_point_id: number;
-  cashbook_point_pot_id?: number | null;
-}) =>
-  postMoneyOut({
-    tenant_id: payload.tenant_id,
-    profile_id: payload.profile_id,
-    amount: payload.amount,
-    note: payload.reference_notes ?? null,
-    cashbook_point_id: payload.cashbook_point_id,
-    cashbook_point_pot_id: payload.cashbook_point_pot_id,
-    payout_method: payload.payout_method,
-    source: 'commission',
-    source_type: 'commission',
-  });
-
 const allocatePayToBill = async (payload: {
   tenant_id: number;
   payment_id: number;
@@ -520,5 +502,4 @@ export const paysRepository = {
   voidCustomerReceipt,
   reversePay,
   bounceChequeInstrument,
-  dispenseMiddlemanPayout,
 };

@@ -12,7 +12,7 @@ Not as-built. Product truth: [bills_pays spec](../../docs/features/bills_pays/sp
 
 | Object | Table | Notes |
 | :--- | :--- | :--- |
-| Party | `profiles` | Until [BP3](../../docs/features/bills_pays/00-gaps.md) |
+| Party | `profiles` | Profile-only ([BP3](../../docs/features/bills_pays/00-gaps.md) closed); not `customer_groups` |
 | Document | `bills` | `document_kind`: `standard` / `credit_note` / `debit_note`; notes use `parent_bill_id` |
 | Pay | `pays` + instruments + `pay_allocations` | FX on the pay |
 | Leftover | `cashbook_*` | On the profile |

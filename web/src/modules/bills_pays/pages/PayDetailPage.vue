@@ -206,7 +206,12 @@
       <q-card style="min-width: 320px">
         <q-card-section class="text-weight-bold">Mark cheque bounced?</q-card-section>
         <q-card-section class="text-body2">
-          The whole payment will be reversed (v1). Bills stay issued; amounts due go back up.
+          <template v-if="bounceWillBePartial">
+            Only this cheque slice is reversed. Other tender on the receipt stays; bill due goes up for the bounced portion.
+          </template>
+          <template v-else>
+            The whole payment will be reversed. Bills stay issued; amounts due go back up.
+          </template>
         </q-card-section>
         <q-card-section>
           <q-input v-model="bounceReason" outlined dense label="Reason" type="textarea" autogrow />
@@ -329,6 +334,12 @@ const canBounceInstrument = (inst: PayInstrumentRow) => {
   return String(inst.payment_method_code ?? '').toUpperCase() === 'CHEQUE';
 };
 
+const bounceWillBePartial = computed(() => {
+  const inst = pay.value?.instruments ?? [];
+  const active = inst.filter((i) => !i.bounced_at);
+  return active.length > 1;
+});
+
 const isFxPay = computed(() => {
   const p = pay.value;
   if (!p) return false;
@@ -421,14 +432,16 @@ const submitShopPayout = async () => {
   shopPayoutSubmitting.value = true;
   try {
     if (!shopCashbookPointId.value || !shopPayFromPotId.value) return;
-    await paysRepository.dispenseMiddlemanPayout({
+    await paysRepository.postMoneyOut({
       tenant_id: pay.value.tenant_id,
       profile_id: pay.value.profile_id,
       amount: Number(shopPayoutAmount.value),
       payout_method: shopPayoutMethod.value,
-      reference_notes: shopPayoutNotes.value || null,
+      note: shopPayoutNotes.value || null,
       cashbook_point_id: shopCashbookPointId.value,
       cashbook_point_pot_id: shopPayFromPotId.value,
+      source_type: 'commission',
+      source: 'commission',
     });
     showSuccessNotification('Shop payout recorded.');
     shopOrderPayoutSettled.value = true;
@@ -596,13 +609,15 @@ const openBounceDialog = (instrumentId: number) => {
 
 const confirmBounce = async () => {
   if (!bounceInstrumentId.value || !bounceReason.value.trim() || !pay.value) return;
-  await bounceMutation.mutateAsync({
+  const result = await bounceMutation.mutateAsync({
     tenantId: pay.value.tenant_id,
     instrumentId: bounceInstrumentId.value,
     reason: bounceReason.value.trim(),
   });
   bounceDialogOpen.value = false;
-  goBack();
+  if ((result as { partial?: boolean } | null)?.partial !== true) {
+    goBack();
+  }
 };
 </script>
 

@@ -1,7 +1,7 @@
--- WA13: cheque bounce reverses whole pay (v1)
+-- WA13: cheque bounce (whole pay v1 + partial split tender)
 BEGIN;
 
-SELECT plan(3);
+SELECT plan(4);
 
 SELECT ok(
   EXISTS (
@@ -30,6 +30,18 @@ SELECT ok(
       AND p.proname = 'bounce_cheque_instrument'
   ),
   'bounce_cheque_instrument marks bounced and calls reverse_pay'
+);
+
+SELECT ok(
+  EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'bounce_cheque_instrument'
+      AND p.prosrc LIKE '%_kernel_bounce_cheque_instrument_partial%'
+  ),
+  'bounce_cheque_instrument supports partial split-tender path'
 );
 
 SELECT finish();

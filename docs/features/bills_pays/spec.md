@@ -41,7 +41,7 @@ One money pack. **Start here (target map + graphs):** [README.md](README.md). La
 
 FKs in RPCs/UI: `profile_id` on bills/pays and shop order; alloc `bill_id` often `invoice_id`. **Cashbook** is the product name; route `/app/wallet` is legacy path only.
 
-**Profile** = money party (`profile_type` customer, merchant, …). Not `recipient_profiles` (delivery). `customer_groups` until [BP3](00-gaps.md).
+**Profile** = money party (`profile_type` customer, merchant, …). Not `recipient_profiles` (delivery). **`customer_groups`** are catalog/CRM grouping only — not on bills/pays; resolve to a **profile** for money ([BP3](00-gaps.md) closed profile-only).
 
 ## Scope
 
@@ -65,7 +65,7 @@ Paper: `draft` / `issued` / `voided`. Money: `due` / `partially_paid` / `paid`. 
 
 **Pay desk is modular.** One flow: **receive** or **pay out**, from **bank / cash instrument** or **cashbook account** (tenant cash, profile leftover = custody). Alloc to bills optional; remainder stays on that account. Courier remittance and AP payout are the same writers with a source, not separate products. Each pay (and each split-tender slice) stores **`cashbook_point_id`** so you can find where that amount is ([kernel-schema](kernel-schema.md)).
 
-**Cash points** (product label; not “location” — stock uses locations): a **place** (till, safe, bank, fintech). No currency on the point. On-hand cash is `cashbook_point_pots` (place × currency). Each ledger line freezes cash amount, currency, **BDT per 1 cash**, and books amount. Rate list `books_exchange_rates` is a default pick; posted lines do not look it up again. [kernel-schema](kernel-schema.md). Point CRUD live; FX pots not wired on refund/collect yet ([BP16](00-gaps.md)). Profile custody: no points in v1. Point-to-point transfer: later ([BP15](00-gaps.md)).
+**Cash points** (product label; not “location” — stock uses locations): a **place** (till, safe, bank, fintech). No currency on the point. On-hand cash is `cashbook_point_pots` (place × currency). Each ledger line freezes cash amount, currency, **BDT per 1 cash**, and books amount. Rate list `books_exchange_rates` is a default pick; posted lines do not look it up again. [kernel-schema](kernel-schema.md). Point CRUD live; **Move cash** between points via `transfer_cashbook_point` (same currency v1). Profile custody: no points in v1.
 
 ### Kernel (features plug in)
 
@@ -128,7 +128,7 @@ UI: `ApBillPaper` on bill detail/preview when `invoice_type = ap`. **Parties on 
 ### Pays + leftover
 - [x] US-6 Cashbook via ledger writer only; collect tags **cash point + pot** ([BP15](00-gaps.md), [BP16](00-gaps.md)).
 - [x] US-7 One pay-in writer (collect + remittance).
-- [x] US-8 Split tender at collect; **cheque bounce v1** reverses whole pay ([WA13](00-gaps.md)) — partial split-tender bounce still later.
+- [x] US-8 Split tender at collect; cheque bounce: whole pay when one instrument; **partial** when multiple ([WA13](00-gaps.md)).
 - [x] US-9 Merchant leftover payout; not ALLOC (remittance → cashbook; Pay out / finance hub step 3).
 - [x] US-10 Customer overpay / leftover: cashbook at collect; apply on Pay in (FIFO) or later from the payment.
 - [x] US-11 Shipment AP auto-sync; outcome qty costing; commercial credit = bill note ([BP8](00-gaps.md)).

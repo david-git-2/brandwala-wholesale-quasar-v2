@@ -1,17 +1,14 @@
--- BP17: wholesale stock commit before kernel issue (warehouse orchestration).
+-- BP17: sales bill stock commit before kernel issue (warehouse orchestration).
 
 CREATE OR REPLACE FUNCTION public._bill_line_global_stock_id(p_line public.bill_lines)
 RETURNS bigint
 LANGUAGE sql
 STABLE
 AS $$
-  SELECT coalesce(
-    nullif(p_line.line_meta->'stock_ref'->>'global_stock_id', '')::bigint,
-    p_line.global_stock_id
-  );
+  SELECT nullif(p_line.line_meta->'stock_ref'->>'global_stock_id', '')::bigint;
 $$;
 
-CREATE OR REPLACE FUNCTION public.commit_wholesale_bill_stock(p_bill_id bigint)
+CREATE OR REPLACE FUNCTION public.commit_sales_bill_stock(p_bill_id bigint)
 RETURNS bigint
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -80,7 +77,7 @@ begin
     'adjustment'::public.stock_movement_type,
     'sales_invoice',
     p_bill_id::text,
-    'Issued Wholesale Invoice #' || coalesce(v_invoice.invoice_no, p_bill_id::text),
+    'Issued ' || upper(v_invoice.invoice_type::text) || ' Invoice #' || coalesce(v_invoice.invoice_no, p_bill_id::text),
     public.current_user_email(),
     true,
     now()
@@ -98,6 +95,12 @@ begin
     if v_stock.id is null then
       raise exception 'Stock % not found for line %', v_stock_id, v_db_item.name_snapshot;
     end if;
+
+    if v_invoice.invoice_type = 'dropship'::public.global_invoice_type
+       and v_stock.availability <> 'held'::public.stock_availability then
+      raise exception 'dropship invoice stock % must be held before issue', v_stock_id;
+    end if;
+
     if v_stock.quantity < v_qty then
       raise exception 'Insufficient stock for % (requested %, available %)', v_db_item.name_snapshot, v_qty, v_stock.quantity;
     end if;
@@ -129,5 +132,17 @@ begin
 end;
 $$;
 
+CREATE OR REPLACE FUNCTION public.commit_wholesale_bill_stock(p_bill_id bigint)
+RETURNS bigint
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+begin
+  return public.commit_sales_bill_stock(p_bill_id);
+end;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.commit_sales_bill_stock(bigint) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.commit_wholesale_bill_stock(bigint) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public._bill_line_global_stock_id(public.bill_lines) TO authenticated, service_role;

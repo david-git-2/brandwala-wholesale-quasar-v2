@@ -383,7 +383,7 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION public.list_books_exchange_rates(bigint, text, integer) TO authenticated, service_role;
 
-CREATE OR REPLACE FUNCTION public."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" date, "p_note" text DEFAULT NULL::text, "p_reference" text DEFAULT NULL::text, "p_source" text DEFAULT 'customer_cash'::text, "p_instruments" jsonb DEFAULT '[]'::jsonb, "p_allocations" jsonb DEFAULT '[]'::jsonb, "p_shop_order_id" bigint DEFAULT NULL::bigint, "p_settlement_currency_code" text DEFAULT 'BDT'::text, "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_credit_dropship_profit" boolean DEFAULT true, "p_idempotency_key" text DEFAULT NULL::text) RETURNS public.pays
+CREATE OR REPLACE FUNCTION public."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" date, "p_note" text DEFAULT NULL::text, "p_reference" text DEFAULT NULL::text, "p_source" text DEFAULT 'customer_cash'::text, "p_instruments" jsonb DEFAULT '[]'::jsonb, "p_allocations" jsonb DEFAULT '[]'::jsonb, "p_shop_order_id" bigint DEFAULT NULL::bigint, "p_settlement_currency_code" text DEFAULT 'BDT'::text, "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_credit_dropship_profit" boolean DEFAULT true, "p_idempotency_key" text DEFAULT NULL::text, "p_cashbook_point_id" bigint DEFAULT NULL::bigint, "p_cashbook_point_pot_id" bigint DEFAULT NULL::bigint, "p_source_currency_code" text DEFAULT NULL::text, "p_transaction_rate" numeric DEFAULT NULL::numeric) RETURNS public.pays
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -647,14 +647,22 @@ begin
       if v_bill.profile_id is distinct from p_profile_id then
         raise exception 'Bill % is billed to a different profile', v_bill.invoice_no;
       end if;
-      if v_alloc_amount > coalesce(v_bill.due_amount, 0.00) then
-        raise exception 'Allocation % exceeds bill % due %', v_alloc_amount, v_bill.invoice_no, v_bill.due_amount;
+      if v_alloc_amount > coalesce(
+        (public.get_bill_net_balances(v_bill_id)->>'open_books')::numeric,
+        v_bill.due_amount,
+        0.00
+      ) then
+        raise exception 'Allocation % exceeds bill % open balance', v_alloc_amount, v_bill.invoice_no;
       end if;
 
-      insert into public.pay_allocations (tenant_id, payment_id, global_invoice_id, bill_id, amount)
-      values (v_parent_id, v_pay.id, v_bill_id, v_bill_id, v_alloc_amount);
+      perform public._kernel_record_pay_bill_settlement(
+        v_parent_id,
+        v_pay.id,
+        v_bill_id,
+        v_alloc_amount,
+        false
+      );
 
-      perform public.recompute_global_invoice_payment_status(v_bill_id);
       v_total_alloc := v_total_alloc + v_alloc_amount;
     end loop;
   end if;

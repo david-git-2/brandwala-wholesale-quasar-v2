@@ -133,11 +133,60 @@ begin
         'transaction_type', 'ap_payout_reversal',
         'label', 'Void AP payout',
         'payment_id', v_payment.id,
-        'reason', v_reason
+        'reason', v_reason,
+        'cashbook_point_pot_id', v_payment.cashbook_point_pot_id
       ),
       p_allow_overdraft => true,
       p_cashbook_point_id => coalesce(v_cashbook_point_id, v_payment.cashbook_point_id)
     );
+  elsif v_payment.source = 'commission' then
+    v_cashbook_point_id := coalesce(v_payment.cashbook_point_id, v_cashbook_point_id);
+
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => v_parent_id,
+      p_operating_tenant_id => coalesce(v_payment.tenant_id, p_tenant_id),
+      p_entity_type => 'tenant',
+      p_entity_id => v_parent_id,
+      p_type => 'credit',
+      p_amount => v_payment.amount,
+      p_currency_code => 'BDT',
+      p_exchange_rate => 1.000000,
+      p_source_type => 'payout',
+      p_source_id => v_payment.id::text,
+      p_metadata => jsonb_build_object(
+        'section', 'payments',
+        'purpose', 'void_commission_payout',
+        'transaction_type', 'profit_paid_out_reversal',
+        'label', 'Void commission payout',
+        'payment_id', v_payment.id,
+        'reason', v_reason,
+        'cashbook_point_pot_id', v_payment.cashbook_point_pot_id
+      ),
+      p_allow_overdraft => true,
+      p_cashbook_point_id => v_cashbook_point_id
+    );
+
+    if v_payment.profile_id is not null then
+      perform public.record_ledger_transaction(
+        p_parent_tenant_id => v_parent_id,
+        p_operating_tenant_id => p_tenant_id,
+        p_entity_type => 'customer',
+        p_entity_id => v_payment.profile_id,
+        p_type => 'credit',
+        p_amount => v_payment.amount,
+        p_currency_code => 'BDT',
+        p_exchange_rate => 1.000000,
+        p_source_type => 'payout',
+        p_source_id => v_payment.id::text,
+        p_metadata => jsonb_build_object(
+          'section', 'payments',
+          'purpose', 'void_commission_payout_profile',
+          'payment_id', v_payment.id,
+          'reason', v_reason
+        ),
+        p_allow_overdraft => true
+      );
+    end if;
   elsif v_payment.source in ('customer_cash', 'bank', 'courier_remittance') then
     if coalesce(v_payment.amount, 0.00) > 0.00 then
       perform public.record_ledger_transaction(
@@ -391,7 +440,172 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- WA13: cheque bounce (whole pay)
+-- WA13-p: unwind pay settlements LIFO (books cap; full rows only)
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public._kernel_unwind_pay_settlements_up_to(
+  p_payment_id bigint,
+  p_books_cap numeric
+) RETURNS numeric
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+declare
+  v_remaining numeric(12, 2);
+  v_unwound numeric(12, 2) := 0.00;
+  v_row record;
+  v_bill_ids bigint[] := '{}';
+  v_bill_id bigint;
+begin
+  if p_payment_id is null then
+    raise exception 'payment_id is required';
+  end if;
+  v_remaining := round(coalesce(p_books_cap, 0), 2);
+  if v_remaining <= 0 then
+    return 0;
+  end if;
+
+  for v_row in
+    select bs.id, bs.bill_id, bs.pay_allocation_id, bs.allocated_books_amount
+    from public.bill_settlements bs
+    where bs.allocator_kind = 'pay'
+      and bs.allocator_id = p_payment_id
+    order by bs.id desc
+  loop
+    exit when v_remaining <= 0;
+    if v_row.allocated_books_amount > v_remaining then
+      exit;
+    end if;
+
+    delete from public.bill_settlements where id = v_row.id;
+    if v_row.pay_allocation_id is not null then
+      delete from public.pay_allocations where id = v_row.pay_allocation_id;
+    end if;
+
+    v_unwound := v_unwound + v_row.allocated_books_amount;
+    v_remaining := v_remaining - v_row.allocated_books_amount;
+
+    if v_row.bill_id is not null
+       and not (v_row.bill_id = any(v_bill_ids)) then
+      v_bill_ids := array_append(v_bill_ids, v_row.bill_id);
+    end if;
+  end loop;
+
+  foreach v_bill_id in array v_bill_ids
+  loop
+    perform public.recompute_global_invoice_payment_status(v_bill_id);
+  end loop;
+
+  return v_unwound;
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION public._kernel_bounce_cheque_instrument_partial(
+  p_tenant_id bigint,
+  p_instrument_id bigint,
+  p_reason text
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+declare
+  v_inst public.pay_instruments;
+  v_pay public.pays;
+  v_parent_id bigint;
+  v_slice numeric(12, 2);
+  v_unwound numeric(12, 2);
+  v_total_alloc numeric(12, 2);
+  v_pot_id bigint;
+  v_point_id bigint;
+begin
+  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+
+  select * into v_inst from public.pay_instruments where id = p_instrument_id for update;
+  select * into v_pay from public.pays where id = v_inst.payment_id for update;
+
+  v_slice := round(coalesce(v_inst.amount, 0), 2);
+  if v_slice <= 0 then
+    raise exception 'Cheque instrument amount must be greater than zero.';
+  end if;
+
+  update public.pay_instruments
+  set bounced_at = now()
+  where id = v_inst.id;
+
+  v_unwound := public._kernel_unwind_pay_settlements_up_to(v_pay.id, v_slice);
+
+  v_point_id := coalesce(v_inst.cashbook_point_id, v_pay.cashbook_point_id);
+  v_pot_id := public._kernel_ensure_cashbook_point_pot(
+    v_parent_id,
+    v_point_id,
+    coalesce(nullif(trim(v_pay.source_currency_code), ''), 'BDT')
+  );
+
+  if v_pay.source in ('customer_cash', 'bank', 'courier_remittance') then
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => v_parent_id,
+      p_operating_tenant_id => p_tenant_id,
+      p_entity_type => 'tenant',
+      p_entity_id => v_parent_id,
+      p_type => 'debit',
+      p_amount => case
+        when coalesce(v_pay.source_currency_code, 'BDT') <> 'BDT'
+          then round(v_slice / coalesce(nullif(v_pay.transaction_rate, 0), 1), 2)
+        else v_slice
+      end,
+      p_currency_code => coalesce(nullif(trim(v_pay.source_currency_code), ''), 'BDT'),
+      p_exchange_rate => coalesce(v_pay.transaction_rate, 1.000000),
+      p_source_type => case
+        when v_pay.source = 'courier_remittance' then 'shop_order'
+        else 'sales_invoice'
+      end,
+      p_source_id => v_pay.id::text,
+      p_metadata => jsonb_build_object(
+        'section', 'payments',
+        'purpose', 'cheque_bounce_partial',
+        'transaction_type', 'cheque_bounced',
+        'label', 'Cheque bounced (partial)',
+        'payment_id', v_pay.id,
+        'instrument_id', v_inst.id,
+        'reason', p_reason,
+        'cashbook_point_pot_id', v_pot_id
+      ),
+      p_allow_overdraft => true,
+      p_cashbook_point_id => v_point_id
+    );
+  else
+    raise exception 'Partial cheque bounce not supported for payment source %.', v_pay.source;
+  end if;
+
+  select coalesce(sum(pa.amount), 0.00) into v_total_alloc
+  from public.pay_allocations pa
+  where pa.payment_id = v_pay.id;
+
+  update public.pays
+  set
+    amount = greatest(coalesce(amount, 0) - v_slice, 0),
+    unallocated_amount = greatest(coalesce(amount, 0) - v_slice - v_total_alloc, 0),
+    note = trim(
+      coalesce(note, '')
+      || case when coalesce(note, '') = '' then '' else E'\n' end
+      || '[CHEQUE BOUNCED] ' || p_reason
+    )
+  where id = v_pay.id;
+
+  return jsonb_build_object(
+    'success', true,
+    'partial', true,
+    'payment_id', v_pay.id,
+    'instrument_id', v_inst.id,
+    'books_unwound', v_unwound,
+    'slice_amount', v_slice
+  );
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- WA13: cheque bounce (whole pay or partial on split tender)
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.bounce_cheque_instrument(
   p_tenant_id bigint,
@@ -407,11 +621,18 @@ declare
   v_inst public.pay_instruments;
   v_pay public.pays;
   v_reason text;
+  v_active_count int;
+  v_parent_id bigint;
 begin
   v_reason := nullif(trim(coalesce(p_reason, '')), '');
   if v_reason is null then
     raise exception 'A reason is required.';
   end if;
+  if p_tenant_id is null then
+    raise exception 'Tenant is required.';
+  end if;
+
+  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
 
   select * into v_inst
   from public.pay_instruments
@@ -435,19 +656,37 @@ begin
     raise exception 'Payment is already voided.';
   end if;
 
-  update public.pay_instruments
-  set bounced_at = now()
-  where id = v_inst.id;
+  if v_pay.tenant_id <> v_parent_id then
+    raise exception 'Payment tenant mismatch.';
+  end if;
 
-  perform public.reverse_pay(
-    v_pay.id,
-    'Cheque bounced: ' || v_reason
-  );
+  select count(*)::int into v_active_count
+  from public.pay_instruments pi
+  where pi.payment_id = v_pay.id
+    and pi.bounced_at is null;
 
-  return jsonb_build_object(
-    'success', true,
-    'payment_id', v_pay.id,
-    'instrument_id', v_inst.id
+  if v_active_count <= 1 then
+    update public.pay_instruments
+    set bounced_at = now()
+    where id = v_inst.id;
+
+    perform public.reverse_pay(
+      v_pay.id,
+      'Cheque bounced: ' || v_reason
+    );
+
+    return jsonb_build_object(
+      'success', true,
+      'partial', false,
+      'payment_id', v_pay.id,
+      'instrument_id', v_inst.id
+    );
+  end if;
+
+  return public._kernel_bounce_cheque_instrument_partial(
+    p_tenant_id,
+    p_instrument_id,
+    v_reason
   );
 end;
 $$;

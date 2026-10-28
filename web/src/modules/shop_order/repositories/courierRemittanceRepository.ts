@@ -187,20 +187,30 @@ export const courierRemittanceRepository = {
   },
 
   async dispensePayout(payload: DispensePayoutPayload): Promise<DispensePayoutResult> {
-    const { data, error } = await supabase.rpc('dispense_middleman_payout_from_tenant', {
-      p_tenant_id: payload.tenantId,
-      p_profile_id: payload.profileId,
-      p_amount: payload.amount,
-      p_payout_method: payload.method ?? 'bank_transfer',
-      p_reference_notes: payload.trxId ? `Trx: ${payload.trxId}` : null,
-    });
-
-    if (error) {
-      console.error('[courierRemittanceRepository.dispensePayout error]:', error);
-      throw error;
+    const { paysRepository } = await import(
+      'src/modules/bills_pays/repositories/paysRepository'
+    );
+    if (!payload.cashbookPointId) {
+      throw new Error('Choose a cash point for this pay out');
     }
-
-    return data as DispensePayoutResult;
+    const pay = await paysRepository.postMoneyOut({
+      tenant_id: payload.tenantId,
+      profile_id: payload.profileId,
+      amount: payload.amount,
+      payout_method: payload.method,
+      note: payload.trxId ? `Trx: ${payload.trxId}` : null,
+      cashbook_point_id: payload.cashbookPointId,
+      cashbook_point_pot_id: payload.cashbookPointPotId,
+      source_type: 'commission',
+      source: 'commission',
+    });
+    return {
+      success: true,
+      profile_id: payload.profileId,
+      amount: payload.amount,
+      new_balance: 0,
+      payment_id: pay?.id,
+    } as DispensePayoutResult;
   },
 
   async fetchMerchantPayoutSummaries(tenantId: number): Promise<MerchantPayoutSummary[]> {

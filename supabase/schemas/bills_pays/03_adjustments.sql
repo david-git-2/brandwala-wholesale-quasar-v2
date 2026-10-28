@@ -31,6 +31,7 @@ declare
   v_books numeric(12, 2);
   v_line_kind text;
   v_stock_id bigint;
+  v_pot_id bigint;
   v_lines_sum numeric(12, 2) := 0.00;
 begin
   if p_parent_bill_id is null then
@@ -181,8 +182,7 @@ begin
         line_total_amount,
         currency_code,
         books_amount,
-        line_meta,
-        global_stock_id
+        line_meta
       ) values (
         v_parent.parent_tenant_id,
         v_row.id,
@@ -196,11 +196,18 @@ begin
         v_books,
         coalesce(v_line_elem -> 'line_meta', '{}'::jsonb)
           || case
+            when v_stock_id is not null
+            then jsonb_build_object(
+              'stock_ref',
+              jsonb_build_object('global_stock_id', v_stock_id)
+            )
+            else '{}'::jsonb
+          end
+          || case
             when nullif(trim(coalesce(v_line_elem ->> 'parent_line_id', '')), '') is not null
             then jsonb_build_object('parent_line_id', v_line_elem ->> 'parent_line_id')
             else '{}'::jsonb
-          end,
-        v_stock_id
+          end
       );
     end loop;
   end if;
@@ -246,6 +253,12 @@ begin
       else 'customer_cash'
     end;
 
+    v_pot_id := public._kernel_ensure_cashbook_point_pot(
+      v_parent.parent_tenant_id,
+      p_cashbook_point_id,
+      'BDT'
+    );
+
     insert into public.pays (
       tenant_id,
       profile_id,
@@ -255,7 +268,10 @@ begin
       payment_date,
       method,
       note,
-      cashbook_point_id
+      cashbook_point_id,
+      cashbook_point_pot_id,
+      source_currency_code,
+      transaction_rate
     ) values (
       v_parent.parent_tenant_id,
       v_parent.profile_id,
@@ -265,7 +281,10 @@ begin
       current_date,
       'cash',
       v_reason,
-      p_cashbook_point_id
+      p_cashbook_point_id,
+      v_pot_id,
+      'BDT',
+      1.000000
     )
     returning * into v_pay;
 
@@ -283,21 +302,14 @@ begin
       p_cashbook_point_id
     );
 
-    insert into public.pay_allocations (
-      tenant_id,
-      payment_id,
-      global_invoice_id,
-      bill_id,
-      amount
-    ) values (
+    perform public._kernel_record_pay_bill_settlement(
       v_parent.parent_tenant_id,
       v_pay.id,
       v_row.id,
-      v_row.id,
-      v_refund
+      v_refund,
+      false
     );
 
-    perform public.recompute_global_invoice_payment_status(v_row.id);
     perform public.recompute_global_invoice_payment_status(v_parent.id);
 
     perform public.record_ledger_transaction(
@@ -324,7 +336,10 @@ begin
         'credit_note_id', v_row.id,
         'credit_note_no', v_row.invoice_no,
         'parent_bill_id', v_parent.id,
-        'parent_invoice_no', v_parent.invoice_no
+        'parent_invoice_no', v_parent.invoice_no,
+        'cashbook_point_pot_id', v_pot_id,
+        'source_currency_code', coalesce(v_pay.source_currency_code, 'BDT'),
+        'transaction_rate', coalesce(v_pay.transaction_rate, 1.000000)
       ),
       p_allow_overdraft => true,
       p_cashbook_point_id => p_cashbook_point_id

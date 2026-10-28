@@ -28,6 +28,9 @@ jobs:
           version: latest
       - run: supabase start
       - run: supabase db reset
+      - run: supabase test db
+        env:
+          SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
       - run: supabase db diff --use-pg-delta
         env:
           SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io

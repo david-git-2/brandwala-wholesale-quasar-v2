@@ -1,7 +1,7 @@
 {
   "name": "brandwala-wholesale-quasar-root",
   "private": true,
-  "version": "1.0.26",
+  "version": "1.0.28",
   "description": "Root scripts for web app and Supabase backend",
   "scripts": {
     "dev": "pnpm --filter web dev",
@@ -45,6 +45,7 @@
     "backend:status": "bash scripts/supabase-local.sh status",
     "backend:reset": "bash scripts/supabase-local.sh reset",
     "backend:local": "bash scripts/supabase-local.sh migrate",
+    "backend:test": "supabase test db",
     "backend:configure-dispatch": "bash scripts/supabase-local.sh configure-dispatch",
     "backend:env:print": "bash scripts/supabase-local.sh env:print",
     "backend:pull-prod-data": "bash scripts/supabase-local.sh pull-prod-data",

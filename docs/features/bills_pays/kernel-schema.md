@@ -19,7 +19,7 @@ One money kernel. Other modules **plug in**. They do not own `bills` / `pays`. N
 
 **Layers:** bill (paper) → settlements → pay (cash) → cashbook (till/custody). Client calls `supabase.rpc` only; writes are `SECURITY DEFINER` + `assert_kernel_money_access`.
 
-**Money spine gate:** New pay/bill writers blocked until [BP18](00-gaps.md) cutover (audit [08 §1b](../../kernel/08-AUDIT-RECONCILIATION-AND-RUNBOOK.md)) and [BP25](00-gaps.md) idempotency. Build order: [00-gaps](00-gaps.md).
+**Money spine gate:** New pay/bill writers use `_kernel_record_pay_bill_settlement` / [BP25](00-gaps.md) idempotency; [BP18‑c](00-gaps.md) cutover shipped. Build order: [00-gaps](00-gaps.md).
 
 ### 0b. Global lock order (all money RPCs)
 
@@ -231,7 +231,7 @@ Unified reductions to a bill. Pays, issued credit notes, and custody application
 
 **Balance:** `open_txn` = `txn_total_amount` ± issued notes (txn) − sum(`allocated_txn_amount`); `open_books` likewise. `get_bill_net_balances` uses this model. **COGS / landed cost** still uses pay-weighted rates on shipment; `fx_realized_books_delta` is the **books variance** at bill settlement (treasury / audit), not a second COGS engine.
 
-**Migration ([BP18](00-gaps.md)):** In one transaction: insert `bill_settlements` then mirror `pay_allocations` (or view). **Cutover** only when audit [08 §1b](../../kernel/08-AUDIT-RECONCILIATION-AND-RUNBOOK.md) returns zero rows. Then: readers use settlements only; features stop summing `pay_allocations`.
+**Migration ([BP18](00-gaps.md)):** Shipped (`20261031140000_bp18_settlements_cutover`). Pay→bill writes use `_kernel_record_pay_bill_settlement` (insert `bill_settlements`, mirror `pay_allocations`). Readers use settlements; audit [08 §1b](../../kernel/08-AUDIT-RECONCILIATION-AND-RUNBOOK.md) stays zero on prod.
 
 ### `pay_allocations`
 
@@ -384,11 +384,15 @@ Features call kernel. They pass **from, to, source, lines**. They do not add FKs
 | pay in / pay out + alloc | writes `bill_settlements` |
 | `apply_settlement_to_bill` | custody / CN / leftover → bill (live alias `apply_leftover_to_bill`) |
 | `reverse_pay` | unwind pay settlements; lifecycle unchanged |
+| `transfer_cashbook_point` | move cash between two tenant points (same currency v1); append-only ledger; no `pays` row |
+| `bounce_cheque_instrument` | one CHEQUE slice: whole pay if single instrument; else partial (LIFO settlement unwind, pay stays open) |
 | `get_bill_net_balances` | face ± notes − settlements |
 | `list_bills_for_source` | all documents for one adapter row |
 | `v_kernel_bill_summaries` | paginated list / join for desks |
 
-**Do not:** new bill table per module; silent edit of issued `total_amount`; stock required; `invoice_type` as the generic classifier.
+**Point transfer (BP15‑t):** v1 is **same currency only** — debit `from` pot and credit `to` pot in one logical transfer (`source_type = point_transfer`, shared transfer id). Both points’ pots are locked in ascending `cashbook_point_id` order before balance reads. Grant: `collect_payment`.
+
+**Cheque bounce partial (WA13‑p):** when a pay has **more than one** active instrument, bouncing one CHEQUE reverses ledger for that instrument’s **books** amount only, unwinds `bill_settlements` **newest first (LIFO)** up to that cap (full settlement rows only), reduces `pays.amount`, and does **not** set `voided_at`. Single-instrument pays still call `reverse_pay` (whole receipt).
 
 ---
 

@@ -33,7 +33,6 @@ CREATE TABLE IF NOT EXISTS "public"."bill_lines" (
     "id" bigint NOT NULL,
     "parent_tenant_id" bigint NOT NULL,
     "invoice_id" bigint NOT NULL,
-    "global_stock_id" bigint,
     "shipment_item_id" bigint,
     "product_id" bigint,
     "name_snapshot" "text" NOT NULL,
@@ -269,7 +268,7 @@ CREATE OR REPLACE VIEW "public"."global_invoice_items" WITH ("security_invoker"=
     "parent_tenant_id" AS "tenant_id",
     "parent_tenant_id",
     "invoice_id",
-    "global_stock_id",
+    (("line_meta" -> 'stock_ref'::"text") ->> 'global_stock_id'::"text")::bigint AS "global_stock_id",
     "shipment_item_id",
     "product_id",
     "name_snapshot",
@@ -651,7 +650,7 @@ CREATE INDEX "bills_parent_bill_id_idx" ON "public"."bills" USING "btree" ("pare
 
 CREATE INDEX "bills_ap_shipment_id_idx" ON "public"."bills" USING "btree" ("ap_shipment_id") WHERE ("invoice_type" = 'ap'::"public"."global_invoice_type");
 
-CREATE INDEX "global_invoice_items_global_stock_id_idx" ON "public"."bill_lines" USING "btree" ("global_stock_id");
+CREATE INDEX "global_invoice_items_global_stock_id_idx" ON "public"."bill_lines" USING "btree" (((("line_meta" -> 'stock_ref'::"text") ->> 'global_stock_id'::"text")::bigint)) WHERE (("line_meta" -> 'stock_ref'::"text") ->> 'global_stock_id'::"text") IS NOT NULL;
 
 CREATE INDEX "global_invoice_items_invoice_id_idx" ON "public"."bill_lines" USING "btree" ("invoice_id");
 

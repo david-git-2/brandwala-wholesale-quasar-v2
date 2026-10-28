@@ -206,53 +206,6 @@ begin
 end;
 $$;
 
-CREATE OR REPLACE FUNCTION public.dispense_middleman_payout_from_tenant(
-  p_tenant_id bigint,
-  p_profile_id bigint,
-  p_amount numeric,
-  p_payout_method text DEFAULT 'bank_transfer',
-  p_reference_notes text DEFAULT NULL,
-  p_cashbook_point_id bigint DEFAULT NULL,
-  p_cashbook_point_pot_id bigint DEFAULT NULL
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO public
-AS $$
-declare
-  v_pay public.pays;
-begin
-  v_pay := public._kernel_post_commission_payout(
-    p_tenant_id,
-    p_profile_id,
-    current_date,
-    p_amount,
-    p_reference_notes,
-    null,
-    p_payout_method,
-    p_cashbook_point_id,
-    p_cashbook_point_pot_id,
-    null,
-    null
-  );
-
-  return jsonb_build_object(
-    'success', true,
-    'payout_id', v_pay.id::text,
-    'payment_id', v_pay.id,
-    'profile_id', p_profile_id,
-    'amount', p_amount
-  );
-exception
-  when others then
-    return jsonb_build_object('success', false, 'error', sqlerrm);
-end;
-$$;
-
 GRANT EXECUTE ON FUNCTION public._kernel_post_commission_payout(
   bigint, bigint, date, numeric, text, text, text, bigint, bigint, text, text
-) TO authenticated, service_role;
-
-GRANT EXECUTE ON FUNCTION public.dispense_middleman_payout_from_tenant(
-  bigint, bigint, numeric, text, text, bigint, bigint
 ) TO authenticated, service_role;

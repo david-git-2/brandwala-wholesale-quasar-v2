@@ -6,4 +6,4 @@
 | CU5 | ~~not_built~~ | Collect from cashbook party | ~~Wallet tab removed~~ | **Done (2026-10):** Cashbook party → Pay in → Collect |
 | CU2 | ~~doc_wrong~~ | ACs `[ ]` | Hub UI shipped | **Done (2026-10):** non-wallet ACs ticked in spec |
 | CU3 | not_built | Split tender collect | Single-method collect | Instrument lines + WA13 bounce later |
-| CU4 | ~~design~~ | Customer = profile | `customer_groups` + `profiles` (`profile_type = customer`) | **Done** with [BP3](../bills_pays/00-gaps.md) |
+| CU4 | ~~design~~ | Customer = profile | `customer_groups` + `profiles` (`profile_type = customer`) | **Done** — profile-only money party ([BP3](../bills_pays/00-gaps.md) closed; groups are not parties) |

@@ -15,7 +15,12 @@ export function useBounceChequeMutation() {
       );
     },
     onSuccess: (data) => {
-      showSuccessNotification('Cheque marked bounced; payment reversed.');
+      const partial = (data as { partial?: boolean } | null)?.partial === true;
+      showSuccessNotification(
+        partial
+          ? 'Cheque bounced; only that tender was reversed. The rest of the receipt stays open.'
+          : 'Cheque marked bounced; payment reversed.',
+      );
       void queryClient.invalidateQueries({ queryKey: paysQueryKeys.root });
       const payId = (data as { payment_id?: number })?.payment_id;
       if (payId) {

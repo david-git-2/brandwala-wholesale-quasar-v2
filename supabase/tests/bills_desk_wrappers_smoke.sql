@@ -1,11 +1,27 @@
--- Smoke: desk wrapper functions exist and delegate (no fixture bill required for compile)
+-- Smoke: desk wrapper EXECUTE grants
 BEGIN;
-SELECT pg_catalog.has_function_privilege('authenticated', 'public.update_draft_bill(bigint, bigint, jsonb)', 'EXECUTE') AS can_update_draft;
-SELECT pg_catalog.has_function_privilege('authenticated', 'public.issue_wholesale_bill(bigint, jsonb)', 'EXECUTE') AS can_issue_wholesale;
-SELECT pg_catalog.has_function_privilege('authenticated', 'public.issue_retail_bill(bigint)', 'EXECUTE') AS can_issue_retail;
-SELECT pg_catalog.has_function_privilege(
-  'authenticated',
-  'public.list_bills_desk_page(bigint, bigint, text, text, text, text, text, integer, bigint)',
-  'EXECUTE'
-) AS can_list_bills_desk;
+SELECT plan(4);
+
+SELECT ok(
+  pg_catalog.has_function_privilege('authenticated', 'public.update_draft_bill(bigint, bigint, jsonb)', 'EXECUTE'),
+  'update_draft_bill executable'
+);
+SELECT ok(
+  pg_catalog.has_function_privilege('authenticated', 'public.issue_wholesale_bill(bigint, jsonb)', 'EXECUTE'),
+  'issue_wholesale_bill executable'
+);
+SELECT ok(
+  pg_catalog.has_function_privilege('authenticated', 'public.issue_retail_bill(bigint)', 'EXECUTE'),
+  'issue_retail_bill executable'
+);
+SELECT ok(
+  pg_catalog.has_function_privilege(
+    'authenticated',
+    'public.list_bills_desk_page(bigint, bigint, text, text, text, text, text, integer, bigint)',
+    'EXECUTE'
+  ),
+  'list_bills_desk_page executable'
+);
+
+SELECT finish();
 ROLLBACK;

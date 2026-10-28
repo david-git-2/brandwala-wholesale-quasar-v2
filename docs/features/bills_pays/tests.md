@@ -2,7 +2,7 @@
 
 **Job:** Regression baselines and what to automate. Narrative: [money-story](money-story.md). Rules: [kernel REFERENCE](../../kernel/REFERENCE.md). Product: [spec](spec.md).
 
-**As-built:** Most coverage is manual + audit SQL in [08 runbook](../../kernel/08-AUDIT-RECONCILIATION-AND-RUNBOOK.md). pgTAP / CI golden fixtures are **not_built** — implement against this doc.
+**As-built:** pgTAP smoke + **kernel golden** fixtures in [`supabase/tests/`](../../../supabase/tests/) (`000_money_kernel_bootstrap.sql`, `001_cross_module_golden_helpers.sql`, `golden_bills_pays_*.sql`, `tier1_bills_pays_invariants.sql`). CI: `pnpm run backend:test`. Scenarios **A/B** automated in `golden_bills_pays_a_dropship_remittance.sql` and `golden_bills_pays_b_shipment_ap_fx.sql`.
 
 **Target fixtures** ([kernel-schema](kernel-schema.md)): assert `bills.status` (`issued` \| `draft` \| `voided`), `from_profile_id` / `to_profile_id`, and `(source_type, source_id, source_key)` — not legacy `invoice_status`, `invoice_type`, `shop_order_id`, or `shop_orders.global_invoice_id`. Pay writers: `post_money_in` / `post_money_out` ([BP24](00-gaps.md)); live RPC names in parentheses below where code still lags.
 
@@ -102,7 +102,7 @@ Run in transaction + `ROLLBACK` or isolated DB (`backend:reset` fixture).
 | Negative pot / ledger | CHECK violation on insert |
 | Credit note without parent | RPC raises |
 | `cross_tenant_denied` (each money RPC) | Tenant A session cannot act on tenant B bill/pay |
-| **BP18** settlements vs allocations | [08 §1b](../../kernel/08-AUDIT-RECONCILIATION-AND-RUNBOOK.md) returns **zero rows**; pgTAP [`bills_pays_bp18_settlements.sql`](../../../supabase/tests/bills_pays_bp18_settlements.sql) |
+| **BP18** settlements vs allocations | [08 §1b](../../kernel/08-AUDIT-RECONCILIATION-AND-RUNBOOK.md) returns **zero rows** on prod after cutover; pgTAP [`bills_pays_bp18_settlements.sql`](../../../supabase/tests/bills_pays_bp18_settlements.sql) (no alloc→settle trigger; `_kernel_record_pay_bill_settlement`) |
 | **BP25** duplicate `idempotency_key` | Second `post_money_in` same key → same `pays.id`; one cashbook movement |
 | **Issued** AP sync | `sync_shipment_ap_bills` does not change `total_amount` on `status = issued` standard bills |
 
@@ -171,7 +171,12 @@ Use `pg_sleep` + two sessions or stress script against local Supabase. CI nightl
 | Collect point | Pay in → **Receive into** → Post | `pays.cashbook_point_id` / pot set; tenant ledger at point |
 | FX pot | Non-BDT pot + books rate | Ledger line uses pot currency + frozen rate |
 | Account class | Party detail | `account_class` distinguishes tenant asset vs profile custody |
-| pgTAP | `bills_pays_bp15_collect_point.sql`, `bp16_fx_pots.sql`, `bp21_account_class.sql` | Symbols + prosrc smoke |
+| pgTAP | `bills_pays_bp15_collect_point.sql`, `bp16_fx_pots.sql`, `bp21_account_class.sql`, `bills_pays_bp15_transfer.sql` | Symbols + prosrc smoke; point transfer RPC |
+| Point transfer | Cashbook **Move cash** between two active points | Same currency; pots net zero; no pay row |
+| Golden **A** | `golden_bills_pays_a_dropship_remittance.sql` | Dropship remittance 2120 → bill 1500 + custody ~620 |
+| Golden **B** | `golden_bills_pays_b_shipment_ap_fx.sql` | Shipment AP USD/GBP sync + freight pay @ 155.50 + FX refresh |
+| Golden **D** | `golden_bills_pays_d_wholesale_take.sql` | Issue AR + collect → due 0 |
+| Golden **C** | `golden_bills_pays_c_custody_offset.sql` | Overpay + custody apply + cash on second bill |
 
 ### L — Reverse pay + cheque bounce (BP12 + WA13)
 
@@ -179,8 +184,9 @@ Use `pg_sleep` + two sessions or stress script against local Supabase. CI nightl
 | :--- | :--- | :--- |
 | Void AP payout | Pay detail **Void payout** on issued AP pay | `reverse_pay`; bill stays **issued**; due restored (T4-4) |
 | Void remittance | Courier remittance pay void | Same kernel; no bill void |
-| Cheque bounce | CHEQUE instrument **Mark bounced** + reason | `pay_instruments.bounced_at` set; **whole pay** reversed (v1) |
-| pgTAP | `bills_pays_bp12_reverse_pay.sql`, `bills_pays_wa13_cheque_bounce.sql` | Kernel + bounce RPC symbols |
+| Cheque bounce (single) | CHEQUE instrument **Mark bounced** on one-instrument pay | Whole pay reversed via `reverse_pay` |
+| Cheque bounce (split) | Multi-instrument pay; bounce one CHEQUE | Instrument `bounced_at`; partial ledger + LIFO settlement unwind; pay not voided |
+| pgTAP | `bills_pays_bp12_reverse_pay.sql`, `bills_pays_wa13_cheque_bounce.sql`, `golden_bills_pays_t4_4_reverse_pay.sql`, `golden_bills_pays_t4_2_cn_cross_apply.sql` | Kernel + bounce + golden T4-2/T4-4 |
 
 ### I — Kernel upsert adapters (BP9)
 
@@ -219,16 +225,28 @@ Use `pg_sleep` + two sessions or stress script against local Supabase. CI nightl
 | Case | Steps | Expect |
 | :--- | :--- | :--- |
 | Merchant cash out | Collect desk **Cash out** or dropship profit pay | `post_money_out` with `source_type=commission`; `pays.source=commission`; ledger + FIFO settlement |
-| pgTAP | `bills_pays_bp24_commission_payout.sql` | Kernel writer wired; no dispense in `post_money_out` body |
+| pgTAP | `bills_pays_bp24_commission_payout.sql` | Kernel writer wired; **`dispense_middleman_payout_from_tenant` absent** |
 
 ### O — Wholesale stock before issue (BP17)
 
 | Case | Steps | Expect |
 | :--- | :--- | :--- |
-| Stock commit | `commit_wholesale_bill_stock` on draft wholesale bill | Posted movement; `global_stocks` deducted once |
-| Issue | `issue_wholesale_bill` | Status issued; kernel asserts movement when stock lines exist |
-| Line meta | New stock lines from compose | `line_meta.stock_ref.global_stock_id` dual-written |
-| pgTAP | `bills_pays_bp17_wholesale_stock_issue.sql` | RPC symbols + prosrc smoke |
+| Stock commit | `commit_sales_bill_stock` on draft bill (wholesale take / retail) | Posted movement; `global_stocks` deducted once |
+| Issue | `issue_wholesale_bill` / `post_sales_invoice` take path | Status issued; commit idempotent |
+| Line meta | Compose / adjustment stock lines | **`line_meta.stock_ref.global_stock_id` only** (no physical column) |
+| pgTAP | `bills_pays_bp17_wholesale_stock_issue.sql` | `commit_sales_bill_stock` + issue wrappers |
+
+### P — Ledger pot audit (BP16‑r)
+
+| RPC / path | Tenant cash leg | Pot metadata |
+| :--- | :--- | :--- |
+| `_kernel_reverse_payment` · `commission` | Credit tenant (void payout) | `cashbook_point_pot_id` from pay |
+| `_kernel_reverse_payment` · `ap_payout` | Credit tenant | `cashbook_point_pot_id` from pay |
+| `create_bill_adjustment` · credit note cash refund | Debit tenant | `_kernel_ensure_cashbook_point_pot` + FX fields on pay |
+| `post_money_in` / `post_ap_payout_with_allocations` | Collect / AP payout | Already wired in `12_cashbook_wiring` / BP25 |
+| Returns wallet / profile-only legs | No point | Pot not required (documented skip) |
+
+| pgTAP | `bills_pays_bp16_ledger_pots.sql` | prosrc smoke + column drop |
 
 ---
 
@@ -241,12 +259,12 @@ Use `pg_sleep` + two sessions or stress script against local Supabase. CI nightl
 
 ---
 
-## CI (target)
+## CI (as-built)
 
 | Job | Scope |
 | :--- | :--- |
-| `backend:reset` | Migrations replay (existing) |
-| `supabase test db` | Tier 1 + 2 on PR touching `bills_pays/` schemas or `supabase/tests/`; **BP18/BP25** tests required before spine cutover PR |
+| `backend:reset` | Migrations replay (GitHub `supabase-db.yml`) |
+| `pnpm run backend:test` / `supabase test db` | Full [`supabase/tests/`](../../../supabase/tests/) after reset |
 | Nightly | Tier 3 optional |
 
 ---
