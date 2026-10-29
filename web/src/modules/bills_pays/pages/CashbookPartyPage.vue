@@ -73,7 +73,9 @@
               </td>
               <td class="text-right">{{ line.balance_after == null ? '—' : formatAmountBdt(line.balance_after) }}</td>
               <td class="text-caption">{{ line.cashbook_point_name || '—' }}</td>
-              <td class="text-caption">{{ line.source_type || '—' }}</td>
+              <td class="text-caption">
+                <CashbookLedgerSourceCell :line="line" @open-pay="openPayById" />
+              </td>
             </tr>
           </tbody>
         </q-markup-table>
@@ -95,6 +97,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 import { useCashbookPartyQuery } from '../composables/useCashbookPartyQuery';
+import CashbookLedgerSourceCell from '../components/CashbookLedgerSourceCell.vue';
 import { type CashbookLedgerRow } from '../repositories/cashbookRepository';
 import {
   formatCashbookLedgerDate,
@@ -190,6 +193,13 @@ const goManageLocations = () => {
       entityType: entityType.value,
       entityId: String(entityId.value),
     },
+  });
+};
+
+const openPayById = (payId: number) => {
+  router.push({
+    name: 'app-pay-detail-page',
+    params: { ...routeParams(), payId: String(payId) },
   });
 };
 </script>

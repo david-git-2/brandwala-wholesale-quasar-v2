@@ -30,16 +30,17 @@
         <q-input
           v-else
           ref="searchInputRef"
-          :model-value="search"
+          :model-value="searchOnEnter ? draftSearch : search"
           outlined
           dense
-          debounce="300"
+          :debounce="searchOnEnter ? 0 : 300"
           clearable
           style="min-width: 220px"
           class="dense-search-input procurement-ops-toolbar__search"
           :class="{ 'col-grow': !inlinePills }"
           :placeholder="searchPlaceholder"
           @update:model-value="onSearchInput"
+          @keyup.enter="onSearchEnter"
           @blur="onSearchBlur"
         >
           <template #prepend>
@@ -48,6 +49,7 @@
         </q-input>
         <slot name="toolbar-extra" />
         <q-btn
+          v-if="showFilters"
           flat
           round
           dense
@@ -93,16 +95,21 @@ const props = withDefaults(
     search: string | null | undefined;
     searchPlaceholder?: string;
     filterCount?: number;
+    showFilters?: boolean;
     /** Show a search icon first; expand to input on click (shipment list). */
     iconSearch?: boolean;
     /** Status tabs on the same row as search and actions. */
     inlinePills?: boolean;
+    /** Apply search to parent only on Enter (and clear), not while typing. */
+    searchOnEnter?: boolean;
   }>(),
   {
     searchPlaceholder: 'Search…',
     filterCount: 0,
+    showFilters: true,
     iconSearch: false,
     inlinePills: false,
+    searchOnEnter: false,
   },
 );
 
@@ -113,12 +120,26 @@ const emit = defineEmits<{
 
 const searchFieldOpen = ref(!props.iconSearch);
 const searchInputRef = ref<QInput | null>(null);
+const draftSearch = ref(String(props.search ?? ''));
 
 watch(
   () => props.search,
   (value) => {
-    if (props.iconSearch && (value ?? '').trim()) {
+    const next = String(value ?? '');
+    if (props.searchOnEnter) {
+      draftSearch.value = next;
+    }
+    if (props.iconSearch && next.trim()) {
       searchFieldOpen.value = true;
+    }
+  },
+);
+
+watch(
+  () => props.searchOnEnter,
+  (onEnter) => {
+    if (onEnter) {
+      draftSearch.value = String(props.search ?? '');
     }
   },
 );
@@ -131,7 +152,19 @@ const openSearchField = () => {
 };
 
 const onSearchInput = (value: string | number | null) => {
+  if (props.searchOnEnter) {
+    draftSearch.value = value == null ? '' : String(value);
+    if (value == null || value === '') {
+      emit('update:search', '');
+    }
+    return;
+  }
   emit('update:search', value == null ? value : String(value));
+};
+
+const onSearchEnter = () => {
+  if (!props.searchOnEnter) return;
+  emit('update:search', draftSearch.value.trim());
 };
 
 const onSearchBlur = () => {

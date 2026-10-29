@@ -1,5 +1,9 @@
 <template>
-  <div class="invoice-list-item" @click="$emit('open', row)">
+  <div
+    class="invoice-list-item"
+    :class="{ 'invoice-list-item--nested': nested, 'invoice-list-item--tree-parent': treeParent }"
+    @click="$emit('open', row)"
+  >
     <div class="invoice-info">
       <div class="invoice-title-line">
         <span class="invoice-name">{{ row.invoice_no }}</span>
@@ -50,9 +54,18 @@ import {
 } from 'src/modules/sales_invoice/utils/invoiceListDisplay';
 import { formatAmountBdt } from 'src/utils/currency';
 
-const props = defineProps<{
-  row: BillListRow;
-}>();
+const props = withDefaults(
+  defineProps<{
+    row: BillListRow;
+    nested?: boolean;
+    /** Parent row with nested credit/debit notes on the current page. */
+    treeParent?: boolean;
+  }>(),
+  {
+    nested: false,
+    treeParent: false,
+  },
+);
 
 defineEmits<{
   open: [row: BillListRow];

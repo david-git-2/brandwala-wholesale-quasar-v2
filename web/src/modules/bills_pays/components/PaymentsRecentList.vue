@@ -3,8 +3,9 @@
     <ProcurementOpsListToolbar
       :search="searchText"
       search-placeholder="Pay #, reference, note…"
-      :filter-count="0"
-      @update:search="onSearchTextUpdate"
+      :show-filters="false"
+      search-on-enter
+      @update:search="onSearchApply"
     >
       <template #pills>
         <TfDrawerSectionTabs
@@ -63,7 +64,6 @@ const router = useRouter();
 type SideTab = PaymentsListSide;
 
 const searchText = ref('');
-const debouncedSearch = ref('');
 const sideTab = ref<SideTab>('in');
 const rows = ref<PayRow[]>([]);
 const isPending = ref(false);
@@ -81,14 +81,8 @@ const booksTenantId = computed(() => {
   return t.parent_id ?? t.id;
 });
 
-let searchTimer: ReturnType<typeof setTimeout> | undefined;
-
-const onSearchTextUpdate = (value: string) => {
-  searchText.value = value;
-  if (searchTimer) clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    debouncedSearch.value = value.trim();
-  }, 300);
+const onSearchApply = (value: string | null | undefined) => {
+  searchText.value = (value ?? '').trim();
 };
 
 const onSideTabChange = (value: string | number) => {
@@ -104,7 +98,7 @@ const loadRows = async () => {
       tenantId: operatingTenantId.value,
       booksTenantId: booksTenantId.value,
       side: sideTab.value,
-      search: debouncedSearch.value || undefined,
+      search: searchText.value || undefined,
       page: 1,
       pageSize: 50,
     });
@@ -117,7 +111,7 @@ const loadRows = async () => {
   }
 };
 
-watch([operatingTenantId, booksTenantId, sideTab, debouncedSearch], () => {
+watch([operatingTenantId, booksTenantId, sideTab, searchText], () => {
   void loadRows();
 });
 

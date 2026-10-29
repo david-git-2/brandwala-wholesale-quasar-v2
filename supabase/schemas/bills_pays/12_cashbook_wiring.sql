@@ -28,6 +28,18 @@ ALTER TABLE public.cashbook_accounts ADD CONSTRAINT cashbook_accounts_class_enti
   OR (account_class = 'profile_custody'::public.cashbook_account_class AND entity_type <> 'tenant')
 );
 
+CREATE OR REPLACE FUNCTION public.cashbook_staff_can_view(p_tenant_id bigint) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO public
+    AS $$
+  SELECT
+    public.is_superadmin()
+    OR public.membership_has_module_action(public.resolve_parent_tenant_id(p_tenant_id), 'cashbook', 'view')
+    OR public.membership_has_module_action(p_tenant_id, 'cashbook', 'view')
+    OR public.membership_has_module_action(public.resolve_parent_tenant_id(p_tenant_id), 'payments', 'view')
+    OR public.membership_has_module_action(p_tenant_id, 'payments', 'view')
+    OR public.user_can_manage_parent_tenant(public.resolve_parent_tenant_id(p_tenant_id));
+$$;
 
 CREATE OR REPLACE FUNCTION public."get_cashbook_account_balances"("p_tenant_id" bigint, "p_entity_type" text, "p_entity_id" bigint, "p_currency_code" text DEFAULT 'BDT'::text) RETURNS jsonb
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
@@ -90,7 +102,11 @@ BEGIN
   v_operating_id := p_tenant_id;
   v_entity_id := p_entity_id;
 
-  IF NOT public.cashbook_staff_can_view(p_tenant_id) THEN
+  IF NOT (
+    public.cashbook_staff_can_view(p_tenant_id)
+    OR public.membership_has_module_action(v_books_id, 'payments', 'view')
+    OR public.membership_has_module_action(p_tenant_id, 'payments', 'view')
+  ) THEN
     RETURN jsonb_build_object('success', false, 'error', 'access denied');
   END IF;
 

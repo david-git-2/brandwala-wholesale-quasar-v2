@@ -17,6 +17,7 @@ export type BillListRow = {
   open_books?: number | null;
   open_txn?: number | null;
   document_kind?: string | null;
+  parent_bill_id?: number | null;
 };
 
 export type BillsListPageCursor = number | null;

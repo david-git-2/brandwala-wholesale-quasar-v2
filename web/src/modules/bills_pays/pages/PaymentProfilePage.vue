@@ -4,12 +4,12 @@
       <q-btn flat dense no-caps icon="ph ph-arrow-left" label="Payments" @click="goBack" />
     </div>
 
-    <div v-if="loadingHeader" class="col flex flex-center">
+    <div v-if="profileQuery.isPending.value && !profileQuery.data.value" class="col flex flex-center">
       <q-spinner color="primary" size="32px" />
     </div>
 
-    <div v-else-if="headerError" class="col flex flex-center text-negative">
-      {{ headerError }}
+    <div v-else-if="profileQuery.isError.value" class="col flex flex-center text-negative">
+      {{ profileError }}
     </div>
 
     <div v-else class="col column no-wrap overflow-hidden q-gutter-y-sm">
@@ -55,9 +55,10 @@
 
       <div class="text-subtitle2 text-weight-medium q-px-xs">Transaction history</div>
 
-      <div v-if="historyError" class="text-negative q-px-sm">{{ historyError }}</div>
-
-      <div v-else-if="historyLoading && !payRows.length && !ledgerRows.length" class="col flex flex-center">
+      <div
+        v-if="!payRows.length && !ledgerRows.length && profileQuery.isFetching.value"
+        class="col flex flex-center"
+      >
         <q-spinner color="primary" size="28px" />
       </div>
 
@@ -76,6 +77,7 @@
               <th class="text-left">Date</th>
               <th class="text-left">Type</th>
               <th class="text-right">Amount</th>
+              <th class="text-left">Point</th>
               <th class="text-left">Source</th>
             </tr>
           </thead>
@@ -99,7 +101,10 @@
               >
                 {{ formatAmountBdt(line.amount) }}
               </td>
-              <td class="text-caption">{{ line.source_type || '—' }}</td>
+              <td class="text-caption">{{ line.cashbook_point_name || '—' }}</td>
+              <td class="text-caption">
+                <CashbookLedgerSourceCell :line="line" @open-pay="openPayById" />
+              </td>
             </tr>
           </tbody>
         </q-markup-table>
@@ -109,17 +114,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
-import {
-  cashbookRepository,
-  type CashbookLedgerRow,
-} from '../repositories/cashbookRepository';
-import { paysRepository, type PayListRow as PayRow } from '../repositories/paysRepository';
-import { billsRepository } from '../repositories/billsRepository';
+import type { PayListRow as PayRow } from '../repositories/paysRepository';
 import PayListRow from '../components/PayListRow.vue';
+import CashbookLedgerSourceCell from '../components/CashbookLedgerSourceCell.vue';
 import ProfilePayDialog from '../components/ProfilePayDialog.vue';
 import { paymentsPageRoute } from '../utils/paymentsNavigation';
 import {
@@ -127,6 +129,8 @@ import {
   formatCashbookLedgerType,
   isCashbookLedgerDeduction,
 } from '../utils/cashbookLedgerDisplay';
+import { usePaymentProfileQuery } from '../composables/usePaymentProfileQuery';
+import { cashbookQueryKeys } from '../services/cashbookQueryKeys';
 
 import type { PayTransferEntityType } from '../types/payTransferParty';
 
@@ -135,16 +139,8 @@ const ALLOWED_TYPES = new Set(['tenant', 'customer', 'courier', 'vendor']);
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
+const queryClient = useQueryClient();
 
-const loadingHeader = ref(true);
-const headerError = ref<string | null>(null);
-const partyName = ref('');
-const available = ref(0);
-const dueTotal = ref(0);
-const payRows = ref<PayRow[]>([]);
-const ledgerRows = ref<CashbookLedgerRow[]>([]);
-const historyLoading = ref(false);
-const historyError = ref<string | null>(null);
 const payDialogOpen = ref(false);
 const payDirection = ref<'in' | 'out'>('in');
 
@@ -167,6 +163,27 @@ const entityId = computed(() => {
   return Number.isFinite(id) && id > 0 ? id : 0;
 });
 
+const profileParams = computed(() => ({
+  tenantId: tenantId.value,
+  entityType: entityType.value,
+  entityId: entityId.value,
+  ledgerLimit: 50,
+  paysLimit: 50,
+}));
+
+const profileQuery = usePaymentProfileQuery(profileParams);
+
+const profileError = computed(() => {
+  const err = profileQuery.error.value;
+  return err instanceof Error ? err.message : 'Could not load profile.';
+});
+
+const partyName = computed(() => profileQuery.data.value?.detail.name ?? '—');
+const available = computed(() => profileQuery.data.value?.detail.available_balance ?? 0);
+const dueTotal = computed(() => profileQuery.data.value?.dueTotal ?? 0);
+const payRows = computed(() => profileQuery.data.value?.pays ?? []);
+const ledgerRows = computed(() => profileQuery.data.value?.ledger ?? []);
+
 const tenantSlug = computed(() =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined,
 );
@@ -183,101 +200,31 @@ const openPayDialog = (direction: 'in' | 'out') => {
   payDialogOpen.value = true;
 };
 
-const onPayPosted = () => {
-  void loadHeader();
-  void loadHistory();
-};
-
-const openPay = (row: PayRow) => {
-  router.push({
-    name: 'app-pay-detail-page',
-    params: { ...routeParams(), payId: String(row.id) },
-  });
-};
-
-const loadHeader = async () => {
-  if (!tenantId.value || !entityId.value) return;
-  loadingHeader.value = true;
-  headerError.value = null;
-  try {
-    const detail = await cashbookRepository.getPartyDetail(
+const invalidateProfile = () => {
+  void queryClient.invalidateQueries({
+    queryKey: cashbookQueryKeys.paymentProfile(
       tenantId.value,
       entityType.value,
       entityId.value,
-    );
-    partyName.value = detail.name;
-    available.value = detail.available_balance;
-    dueTotal.value = 0;
-    if (entityType.value !== 'tenant' && booksTenantId.value) {
-      const { data } = await billsRepository.listBills({
-        parentTenantId: booksTenantId.value,
-        profileId: entityId.value,
-        invoiceStatus: 'issued',
-        quickFilter: 'unpaid',
-        pageSize: 100,
-      });
-      dueTotal.value = data.reduce((sum, bill) => sum + (Number(bill.due_amount) || 0), 0);
-    }
-  } catch (e) {
-    headerError.value = e instanceof Error ? e.message : 'Could not load profile.';
-  } finally {
-    loadingHeader.value = false;
-  }
+      { ledgerLimit: 50, paysLimit: 50 },
+    ),
+  });
 };
 
-const loadHistory = async () => {
-  if (!tenantId.value || !entityId.value) {
-    payRows.value = [];
-    ledgerRows.value = [];
-    return;
-  }
-  historyLoading.value = true;
-  historyError.value = null;
-  try {
-    const ledgerEntityId =
-      entityType.value === 'tenant' ? booksTenantId.value : entityId.value;
-    ledgerRows.value = await cashbookRepository.listLedger({
-      tenantId: tenantId.value,
-      entityType: entityType.value,
-      entityId: ledgerEntityId,
-      limit: 50,
-    });
-
-    if (entityType.value === 'customer') {
-      const { data } = await paysRepository.listPays({
-        tenantId: tenantId.value,
-        booksTenantId: booksTenantId.value,
-        profileId: entityId.value,
-        page: 1,
-        pageSize: 50,
-      });
-      payRows.value = data;
-    } else if (entityType.value === 'vendor' || entityType.value === 'courier') {
-      const { data } = await paysRepository.listPays({
-        tenantId: tenantId.value,
-        booksTenantId: booksTenantId.value,
-        profileId: entityId.value,
-        side: 'out',
-        page: 1,
-        pageSize: 50,
-      });
-      payRows.value = data;
-    } else {
-      payRows.value = [];
-    }
-  } catch (e) {
-    historyError.value = e instanceof Error ? e.message : 'Could not load history.';
-    payRows.value = [];
-    ledgerRows.value = [];
-  } finally {
-    historyLoading.value = false;
-  }
+const onPayPosted = () => {
+  invalidateProfile();
 };
 
-watch([entityType, entityId], () => {
-  void loadHeader();
-  void loadHistory();
-});
+const openPay = (row: PayRow) => {
+  openPayById(row.id);
+};
+
+const openPayById = (payId: number) => {
+  router.push({
+    name: 'app-pay-detail-page',
+    params: { ...routeParams(), payId: String(payId) },
+  });
+};
 
 const openPayFromRouteQuery = () => {
   const action = route.query.action;
@@ -287,13 +234,7 @@ const openPayFromRouteQuery = () => {
 
 watch(() => route.query.action, () => {
   openPayFromRouteQuery();
-});
-
-onMounted(() => {
-  void loadHeader();
-  void loadHistory();
-  openPayFromRouteQuery();
-});
+}, { immediate: true });
 </script>
 
 <style scoped lang="scss">

@@ -49,6 +49,9 @@ const DOMAIN_GROUPS: Record<string, string> = {
   finance: 'Finance',
 };
 
+/** Under `/app/finance/*` — URL folder only; crumbs match top-level modules. */
+const FINANCE_URL_PREFIX_MODULES = new Set(['reports']);
+
 const ENTITY_MAP: Record<
   string,
   { label: string; singular: string; defaultSubPath?: string | undefined; skipIdCrumb?: boolean }
@@ -238,6 +241,14 @@ export function useBreadcrumbs() {
     if (segments.length === 0) {
       items.push({ label: 'Dashboard' });
       return items;
+    }
+
+    if (
+      segments[0] === 'finance' &&
+      segments[1] &&
+      FINANCE_URL_PREFIX_MODULES.has(segments[1])
+    ) {
+      segments.shift();
     }
 
     const prefix =

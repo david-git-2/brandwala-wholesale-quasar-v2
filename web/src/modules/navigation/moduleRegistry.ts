@@ -740,7 +740,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         title: 'Payments',
         caption: 'Cash in and cash out',
         icon: 'ph ph-credit-card',
-        routeSegment: 'finance/payments',
+        routeSegment: 'payments',
         requiredAction: 'view',
       },
     ],

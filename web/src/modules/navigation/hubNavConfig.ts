@@ -230,7 +230,7 @@ const BILLS_PAYS_HUB = {
       title: 'Payments',
       caption: 'Cash in and cash out',
       icon: 'ph ph-credit-card',
-      routeSegment: 'finance/payments',
+      routeSegment: 'payments',
     },
     {
       navWeight: 47,

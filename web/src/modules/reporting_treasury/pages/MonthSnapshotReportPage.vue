@@ -179,7 +179,7 @@ const positionTiles = computed((): PositionTile[] => {
       label: 'Dropshipper balance',
       value: `−${formatAmountBdt(p.merchant_payable)}`,
       caption: 'Dropshipper profit on cashbook',
-      to: `${appBase.value}/finance/payments`,
+      to: `${appBase.value}/payments`,
       valueClass: 'text-negative',
     },
     {

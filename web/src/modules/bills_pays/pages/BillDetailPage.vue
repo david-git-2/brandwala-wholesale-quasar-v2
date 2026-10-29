@@ -531,7 +531,7 @@
     </div>
 
     <RecordBillPaymentDialog
-      v-if="bill && billProfileId"
+      v-if="bill && billProfileId && paymentDialogOpen"
       v-model="paymentDialogOpen"
       :bill-id="bill.id"
       :due-amount="paymentDueAmount"
@@ -812,6 +812,9 @@ const billProfileId = computed(() => {
 
 const paymentDueAmount = computed(() => {
   const nb = netBalances.value;
+  if (isApBill.value && apBillSettlementCurrency.value) {
+    if (nb?.open_txn != null) return Math.max(0, Number(nb.open_txn));
+  }
   if (nb?.due_amount != null) return Math.max(0, Number(nb.due_amount));
   return Math.max(0, Number(bill.value?.due_amount ?? 0));
 });
@@ -968,6 +971,7 @@ watch(
 const paymentDueCurrencyCode = computed(() => {
   const b = bill.value;
   if (!b) return null;
+  if (apBillSettlementCurrency.value) return apBillSettlementCurrency.value;
   const due = paymentDueAmount.value;
   const meta = (b.channel_meta as Record<string, unknown> | null) ?? null;
   if (isApBill.value && apBillDueStoresForeignFace(meta, due)) {

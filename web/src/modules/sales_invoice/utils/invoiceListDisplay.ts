@@ -1,7 +1,23 @@
 import { shipmentApKindLabel } from 'src/modules/procurement_stock/constants/shipmentApBuckets';
 import type { GlobalInvoiceRow } from '../types';
 
+export const billDocumentKindLabel = (kind?: string | null) => {
+  if (kind === 'credit_note') return 'Credit note';
+  if (kind === 'debit_note') return 'Debit note';
+  return null;
+};
+
+export const billDocumentKindTone = (kind?: string | null) => {
+  if (kind === 'credit_note') return { color: 'teal-1', textColor: 'teal-9' };
+  if (kind === 'debit_note') return { color: 'amber-1', textColor: 'amber-10' };
+  return null;
+};
+
 export const invoiceChannelLabel = (row: GlobalInvoiceRow) => {
+  const docLabel = billDocumentKindLabel(
+    (row as GlobalInvoiceRow & { document_kind?: string | null }).document_kind,
+  );
+  if (docLabel) return docLabel;
   if (row.invoice_type === 'ap') {
     return shipmentApKindLabel(row.ap_kind);
   }
@@ -14,6 +30,10 @@ export const invoiceChannelLabel = (row: GlobalInvoiceRow) => {
 };
 
 export const invoiceChannelTone = (row: GlobalInvoiceRow) => {
+  const docTone = billDocumentKindTone(
+    (row as GlobalInvoiceRow & { document_kind?: string | null }).document_kind,
+  );
+  if (docTone) return docTone;
   if (row.invoice_type === 'ap') return { color: 'brown-1', textColor: 'brown-9' };
   if (row.invoice_type === 'wholesale') return { color: 'purple-1', textColor: 'purple-9' };
   if (row.invoice_type === 'dropship') return { color: 'orange-1', textColor: 'orange-9' };

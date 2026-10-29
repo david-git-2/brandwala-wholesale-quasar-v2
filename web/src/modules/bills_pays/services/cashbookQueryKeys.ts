@@ -14,4 +14,11 @@ export const cashbookQueryKeys = {
     [...cashbookQueryKeys.root, 'points', cashbookAccountId ?? 0] as const,
   pointPots: (pointId: number | null) =>
     [...cashbookQueryKeys.root, 'point_pots', pointId ?? 0] as const,
+  paymentProfile: (
+    tenantId: number | null,
+    entityType: string,
+    entityId: number | null,
+    params: Record<string, unknown>,
+  ) =>
+    [...cashbookQueryKeys.root, 'payment_profile', tenantId ?? 0, entityType, entityId ?? 0, params] as const,
 };

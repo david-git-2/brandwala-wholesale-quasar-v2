@@ -1,6 +1,7 @@
 import { supabase } from 'src/boot/supabase';
 import type { CashbookPointKind } from '../constants/cashbookPointKinds';
 import { cashbookPointCodeFromName, uniqueCashbookPointCode } from '../utils/cashbookPointCode';
+import type { PayListRow } from '../repositories/paysRepository';
 
 export type CashbookEntityType = 'customer' | 'courier' | 'vendor';
 
@@ -132,6 +133,67 @@ const getTenantCashRow = async (tenantId: number, booksTenantId: number): Promis
   };
 };
 
+export type CashbookPaymentProfileBundle = {
+  detail: CashbookPartyDetail;
+  dueTotal: number;
+  ledger: CashbookLedgerRow[];
+  pays: PayListRow[];
+};
+
+const mapLedgerJsonRow = (row: Record<string, unknown>): CashbookLedgerRow => ({
+  id: String(row.id ?? ''),
+  type: String(row.type ?? ''),
+  amount: Number(row.amount ?? 0),
+  balance_after: row.balance_after == null ? null : Number(row.balance_after),
+  source_type: (row.source_type as string | null) ?? null,
+  source_id: (row.source_id as string | null) ?? null,
+  created_at: String(row.created_at ?? ''),
+  is_reversal: Boolean(row.is_reversal),
+  metadata: (row.metadata as Record<string, unknown> | null) ?? null,
+  cashbook_point_id: row.cashbook_point_id == null ? null : Number(row.cashbook_point_id),
+  cashbook_point_name: (row.cashbook_point_name as string | null) ?? null,
+});
+
+const mapPayJsonRow = (row: Record<string, unknown>): PayListRow => ({
+  id: Number(row.id),
+  payment_date: String(row.payment_date ?? ''),
+  amount: Number(row.amount ?? 0),
+  unallocated_amount: Number(row.unallocated_amount ?? 0),
+  source: String(row.source ?? ''),
+  method: (row.method as string | null) ?? null,
+  reference: (row.reference as string | null) ?? null,
+  note: (row.note as string | null) ?? null,
+  voided_at: (row.voided_at as string | null) ?? null,
+  profile_id: row.profile_id == null ? null : Number(row.profile_id),
+  profile_name: (row.profile_name as string | null) ?? null,
+  shop_order_id: row.shop_order_id == null ? null : Number(row.shop_order_id),
+  settlement_currency_code: String(row.settlement_currency_code ?? 'BDT'),
+  foreign_amount: row.foreign_amount == null ? null : Number(row.foreign_amount),
+  exchange_rate: Number(row.exchange_rate ?? 1),
+});
+
+const parsePaymentProfileBundle = (data: unknown): CashbookPaymentProfileBundle => {
+  const payload = (data ?? {}) as {
+    success?: boolean;
+    error?: string;
+    due_total?: number;
+    ledger?: unknown[];
+    pays?: unknown[];
+  };
+  if (payload.success === false) {
+    throw new Error(payload.error || 'Could not load payment profile.');
+  }
+  const detail = parseDetail(data);
+  const ledger = ((payload.ledger as Record<string, unknown>[] | null) ?? []).map(mapLedgerJsonRow);
+  const pays = ((payload.pays as Record<string, unknown>[] | null) ?? []).map(mapPayJsonRow);
+  return {
+    detail,
+    dueTotal: Number(payload.due_total ?? 0),
+    ledger,
+    pays,
+  };
+};
+
 const getPartyDetail = async (
   tenantId: number,
   entityType: string,
@@ -145,6 +207,25 @@ const getPartyDetail = async (
   });
   if (error) throw error;
   return parseDetail(data);
+};
+
+const getPaymentProfileForStaff = async (params: {
+  tenantId: number;
+  entityType: string;
+  entityId: number;
+  ledgerLimit?: number;
+  paysLimit?: number;
+}): Promise<CashbookPaymentProfileBundle> => {
+  const { data, error } = await supabase.rpc('get_payment_profile_for_staff', {
+    p_tenant_id: params.tenantId,
+    p_entity_type: params.entityType,
+    p_entity_id: params.entityId,
+    p_currency_code: 'BDT',
+    p_ledger_limit: params.ledgerLimit ?? 50,
+    p_pays_limit: params.paysLimit ?? 50,
+  });
+  if (error) throw error;
+  return parsePaymentProfileBundle(data);
 };
 
 const listLedger = async (params: {
@@ -435,6 +516,7 @@ export const cashbookRepository = {
   listEntities,
   getTenantCashRow,
   getPartyDetail,
+  getPaymentProfileForStaff,
   listLedger,
   findCashbookAccountId,
   listCashbookPoints,

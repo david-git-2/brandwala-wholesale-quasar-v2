@@ -14,15 +14,15 @@
         <ProcurementOpsListToolbar
           :search="searchText"
           search-placeholder="Search profile…"
-          :filter-count="0"
-          @update:search="onSearchTextUpdate"
+          :show-filters="false"
+          search-on-enter
+          @update:search="onSearchApply"
         >
           <template #pills>
             <TfDrawerSectionTabs
               v-model="entityTab"
               :tabs="typeSectionTabs"
               aria-label="Payment profile type"
-              @update:model-value="setEntityTab"
             />
           </template>
         </ProcurementOpsListToolbar>
@@ -66,35 +66,42 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import CashbookEntityRow from '../components/CashbookEntityRow.vue';
 import PaymentsRecentList from '../components/PaymentsRecentList.vue';
 import {
-  cashbookRepository,
-  type CashbookEntityRow as EntityRow,
-} from '../repositories/cashbookRepository';
+  prefetchCashbookProfileLists,
+  useCashbookEntitiesQuery,
+} from '../composables/useCashbookEntitiesQuery';
+import type { CashbookEntityRow as EntityRow } from '../repositories/cashbookRepository';
+import {
+  parsePaymentsDeskView,
+  parsePaymentsProfileTab,
+  type PaymentsDeskView,
+  type PaymentsProfileTab,
+} from '../utils/paymentsNavigation';
+
+const PROFILE_LIST_LIMIT = 200;
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
+const queryClient = useQueryClient();
 
-type DeskTab = 'profiles' | 'recent';
-type EntityTab = 'tenant' | 'customer' | 'courier' | 'vendor';
+type DeskTab = PaymentsDeskView;
+type EntityTab = PaymentsProfileTab;
 
-const deskTab = ref<DeskTab>('profiles');
+const deskTab = ref<DeskTab>(parsePaymentsDeskView(route.query.view));
 const deskTabs = [
   { name: 'profiles' as const, label: 'Profiles' },
   { name: 'recent' as const, label: 'Recent pays' },
 ];
 
 const searchText = ref('');
-const debouncedSearch = ref('');
-const entityTab = ref<EntityTab>('customer');
-const rows = ref<EntityRow[]>([]);
-const isPending = ref(false);
-const listError = ref<string | null>(null);
+const entityTab = ref<EntityTab>(parsePaymentsProfileTab(route.query.profile));
 
 const typeTabs: { label: string; value: EntityTab }[] = [
   { label: 'Tenant', value: 'tenant' },
@@ -112,55 +119,73 @@ const booksTenantId = computed(() => {
   return t.parent_id ?? t.id;
 });
 
-const loadRows = async () => {
-  if (!operatingTenantId.value) return;
-  isPending.value = true;
-  listError.value = null;
-  try {
-    if (entityTab.value === 'tenant') {
-      rows.value = [
-        await cashbookRepository.getTenantCashRow(operatingTenantId.value, booksTenantId.value),
-      ];
-    } else {
-      rows.value = await cashbookRepository.listEntities({
-        tenantId: operatingTenantId.value,
-        entityType: entityTab.value,
-        search: debouncedSearch.value || undefined,
-        limit: 200,
-      });
-    }
-  } catch (e) {
-    listError.value = e instanceof Error ? e.message : 'Could not load profiles.';
-    rows.value = [];
-  } finally {
-    isPending.value = false;
+const queryParams = computed(() => ({
+  tenantId: operatingTenantId.value,
+  booksTenantId: booksTenantId.value,
+  entityType: entityTab.value,
+  search: searchText.value || undefined,
+  limit: PROFILE_LIST_LIMIT,
+}));
+
+const { tenantCashQuery, entitiesQuery } = useCashbookEntitiesQuery(queryParams);
+
+const isPending = computed(() =>
+  entityTab.value === 'tenant' ? tenantCashQuery.isPending.value : entitiesQuery.isPending.value,
+);
+
+const listError = computed(() => {
+  const err =
+    entityTab.value === 'tenant' ? tenantCashQuery.error.value : entitiesQuery.error.value;
+  return err instanceof Error ? err.message : err ? 'Could not load profiles.' : null;
+});
+
+const rows = computed<EntityRow[]>(() => {
+  if (entityTab.value === 'tenant') {
+    const row = tenantCashQuery.data.value;
+    return row ? [row] : [];
   }
-};
-
-watch(debouncedSearch, () => {
-  if (deskTab.value === 'profiles') void loadRows();
+  return entitiesQuery.data.value ?? [];
 });
 
-watch(deskTab, (tab) => {
-  if (tab === 'profiles') void loadRows();
-});
-
-const setEntityTab = (value: string | number) => {
-  const next = value as EntityTab;
-  if (entityTab.value === next) return;
-  entityTab.value = next;
-  void loadRows();
+const warmProfileListCache = () => {
+  if (!operatingTenantId.value || deskTab.value !== 'profiles') return;
+  prefetchCashbookProfileLists(queryClient, operatingTenantId.value, booksTenantId.value, {
+    search: searchText.value || undefined,
+    limit: PROFILE_LIST_LIMIT,
+  });
 };
 
-void loadRows();
+watch([operatingTenantId, deskTab, searchText], warmProfileListCache, { immediate: true });
 
-let searchTimer: ReturnType<typeof setTimeout> | null = null;
-const onSearchTextUpdate = (value: string | null | undefined) => {
-  searchText.value = value ?? '';
-  if (searchTimer) clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    debouncedSearch.value = (value ?? '').trim();
-  }, 300);
+let syncingTabsFromRoute = false;
+
+watch(
+  () => [route.query.view, route.query.profile] as const,
+  ([view, profile]) => {
+    syncingTabsFromRoute = true;
+    deskTab.value = parsePaymentsDeskView(view);
+    entityTab.value = parsePaymentsProfileTab(profile);
+    syncingTabsFromRoute = false;
+  },
+);
+
+watch([deskTab, entityTab], ([view, profile]) => {
+  if (syncingTabsFromRoute) return;
+  const nextView = view === 'recent' ? 'recent' : 'profiles';
+  if (route.query.view === nextView && route.query.profile === profile) return;
+  void router.replace({
+    name: 'app-payments-page',
+    params: route.params,
+    query: {
+      ...route.query,
+      view: nextView,
+      profile,
+    },
+  });
+}, { immediate: true });
+
+const onSearchApply = (value: string | null | undefined) => {
+  searchText.value = (value ?? '').trim();
 };
 
 const selectProfile = (row: EntityRow) => {

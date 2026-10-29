@@ -120,7 +120,8 @@ begin
         'retail_billing_mode', b.retail_billing_mode,
         'channel_meta', b.channel_meta,
         'ap_kind', b.ap_kind,
-        'document_kind', b.document_kind
+        'document_kind', b.document_kind,
+        'parent_bill_id', b.parent_bill_id
       ) as row_json
     from public.bills b
     left join public.profiles pr on pr.id = b.profile_id

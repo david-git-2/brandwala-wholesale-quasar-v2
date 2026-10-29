@@ -53,7 +53,7 @@ const billsPaysRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/finance/payments',
+    path: '/:tenantSlug?/app/payments',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {

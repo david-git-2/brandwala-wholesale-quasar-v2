@@ -24,6 +24,37 @@
   overflow-y: auto;
 }
 
+.invoice-list-item--nested {
+  position: relative;
+  padding-left: 2.25rem;
+  background: var(--tf-neutral-subtle, #f8fafc);
+  min-height: 46px;
+}
+
+.invoice-list-item--nested::before {
+  content: '';
+  position: absolute;
+  left: 1.15rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--tf-neutral-border, #e2e8f0);
+  border-radius: 1px;
+}
+
+.bill-list-tree-group .invoice-list-item--tree-parent {
+  border-bottom-color: transparent;
+}
+
+.bill-list-tree-group .invoice-list-item--nested:last-child,
+.bill-list-tree-group .invoice-list-item--tree-parent:only-child {
+  border-bottom: 1px solid var(--tf-neutral-border, #f1f5f9);
+}
+
+.bill-list-tree-group:not(:last-child) .invoice-list-item--nested:last-child {
+  border-bottom: 1px solid var(--tf-neutral-border, #f1f5f9);
+}
+
 .invoice-list-item {
   display: flex;
   align-items: center;

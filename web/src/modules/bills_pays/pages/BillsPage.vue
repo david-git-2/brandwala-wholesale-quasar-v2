@@ -91,7 +91,20 @@
 
       <div v-else class="invoice-list-card col">
         <div class="invoice-list-scroll">
-          <BillListRow v-for="row in rows" :key="row.id" :row="row" @open="openBill" />
+          <div v-for="node in treeNodes" :key="node.row.id" class="bill-list-tree-group">
+            <BillListRow
+              :row="node.row"
+              :tree-parent="node.children.length > 0"
+              @open="openBill"
+            />
+            <BillListRow
+              v-for="child in node.children"
+              :key="child.id"
+              :row="child"
+              nested
+              @open="openBill"
+            />
+          </div>
           <div v-if="hasMore" class="row justify-center q-py-sm">
             <q-btn
               flat
@@ -124,6 +137,7 @@ import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import BillListRow from '../components/BillListRow.vue';
 import { useBillsListInfiniteQuery } from '../composables/useBillsListInfiniteQuery';
+import { buildBillListTree } from '../utils/billListTree';
 import type { BillListRow as BillListRowData } from '../types/billList';
 
 type StatusPill = 'all' | 'draft' | 'due' | 'partial' | 'paid' | 'voided';
@@ -191,6 +205,8 @@ const listQuery = useBillsListInfiniteQuery(listParams);
 
 const rows = listQuery.rows;
 const hasMore = listQuery.hasMore;
+
+const treeNodes = computed(() => buildBillListTree(rows.value));
 
 const listErrorMessage = computed(() => {
   const err = listQuery.error.value;
