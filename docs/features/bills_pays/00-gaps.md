@@ -10,7 +10,7 @@ When you ship a row, delete it or strike through like [shop_order/00-gaps.md](..
 
 ## Shipped (kernel track)
 
-These initiatives are **live in prod** (migrations through `20261101120000_phase3_cashbook_edges`, backend **1.0.28**). pgTAP + golden: [tests.md](tests.md). Local/CI also applies `20261102120000_phase4_post_customer_receipt_signature.sql` when pushed.
+These initiatives are **live in prod** (migrations through `20261103120100_cashbook_balances_account_class`, backend **1.0.28**). pgTAP + golden: [tests.md](tests.md).
 
 | Area | IDs | Assert in tests |
 | :--- | :--- | :--- |
@@ -25,32 +25,23 @@ These initiatives are **live in prod** (migrations through `20261101120000_phase
 | Phase 3 edges | BP15‑t, WA13‑p | §M point transfer; §L split-tender cheque bounce |
 | Phase 4 golden | **T‑golden** (kernel) | `golden_bills_pays_*`, `tier1_bills_pays_invariants.sql`, `backend:test` in CI |
 | **T‑golden‑A/B** | dropship remittance + shipment AP FX | `golden_bills_pays_a_dropship_remittance.sql`, `golden_bills_pays_b_shipment_ap_fx.sql`, `001_cross_module_golden_helpers.sql` |
-| Phase 5 decision | **BP3** | **Profile-only** — `customer_groups` are not money parties; bills/pays use `profiles` only ([spec](spec.md)) |
+| Phase 5 | **BP3**, **BP2‑r** | **BP3:** profile-only money parties ([spec](spec.md)). **BP2‑r:** grant **`cashbook`**, staff RPCs **`_*_cashbook_*`** (`20261103120000_phase5_cashbook_module_rename.sql`, `20261103120100_cashbook_balances_account_class.sql`) |
 
 ---
 
-## Open gaps — by phase
+## Open gaps
 
-Ship **in order** unless noted.
+**Kernel track:** none.
 
-**T-golden-A/B follow-up:** None.
+**T‑golden‑A/B follow-up:** none.
 
-### Phase 5 — Naming and money parties (cross-module)
-
-**Goal:** Product language and grants match “cashbook” (**BP2‑r** only).
-
-| ID | Status | In plain words |
-| :--- | :--- | :--- |
-| **BP2‑r** | partial | Rename **`universal_wallet`** grant, **`list_wallet_*`** RPCs (bootstrap migration). Routes already **`/app/cashbook`**. |
-
-**Out:** No “wallet” in user-facing module keys. ~~**BP3**~~ — **closed:** stay **profile-only**; no group-level money party.
+Cosmetic-only renames still deferred (not blocking): DB constraint/index names `universal_wallet_ledger_*` on `cashbook_entries`, legacy `/app/wallet` redirect, dropship metadata `wallet_*` strings — see Phase 5 plan out-of-scope notes.
 
 ---
 
 ## Phase map (one screen)
 
 ```text
-Phase 5  BP2-r                         cashbook rename (grants/RPCs)
+Phases 1–5 (kernel track) — shipped
+Next work — product gaps outside this doc (BP13/BP14 desks, etc.) in spec + kernel plan
 ```
-
-**One big release?** Phase **5** is grants/bootstrap — keep separate unless you want a wide change in the same week.

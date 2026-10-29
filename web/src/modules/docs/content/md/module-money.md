@@ -13,7 +13,7 @@ Sell modules plug in with `source_type` / `source_id`; they do not own pay rows 
 | **platform** | — |
 | **investor** | Read-only capital views — no pays, no withdraw v1 |
 
-Grants: `global_invoice` (bills), `payments`, `universal_wallet` (cashbook). [Access kernel](/docs/kernels#access-kernel).
+Grants: `global_invoice` (bills), `payments`, `cashbook`. [Access kernel](/docs/kernels#access-kernel).
 
 ## Three desks
 

@@ -4874,6 +4874,30 @@ isOneToOne: false
 "_sync_dropship_courier_ap_bill_details":
 { Args: { "p_allow_line_sync"?: boolean,"p_bill_id": number,"p_order_id": number }; Returns: undefined
                            },
+"_test_bootstrap_dropship_golden_a":
+{ Args: { "p_ctx": Json }; Returns: Json
+                           },
+"_test_bootstrap_shipment_ap_fx":
+{ Args: { "p_tenant_id": number }; Returns: Json
+                           },
+"_test_enable_tenant_module":
+{ Args: { "p_module_key": string,"p_tenant_id": number }; Returns: undefined
+                           },
+"_test_ensure_global_currency":
+{ Args: { "p_code": string,"p_name"?: string,"p_symbol"?: string }; Returns: number
+                           },
+"_test_fund_cashbook_pot":
+{ Args: { "p_amount": number,"p_currency_code"?: string,"p_point_id": number,"p_tenant_id": number }; Returns: undefined
+                           },
+"_test_issue_ar_bill":
+{ Args: { "p_amount": number,"p_customer_profile_id": number,"p_invoice_no"?: string,"p_tenant_id": number }; Returns: number
+                           },
+"_test_money_kernel_bootstrap":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"_test_pgtap_auth":
+{ Args: Record<PropertyKey, never>; Returns: undefined
+                           },
 "_undo_wallet_ledger_row_before_delete":
 { Args: { "p_row": Omit<Database["public"]['Tables']["cashbook_entries"]['Row'], Database["public"]['Tables']["cashbook_entries"]['ComputedFields']> }; Returns: undefined
                            },
@@ -5655,6 +5679,15 @@ isOneToOne: false
 "canonicalize_dropship_order_wallet_source_ids":
 { Args: { "p_order_id": number }; Returns: undefined
                            },
+"cashbook_books_tenant_id":
+{ Args: { "p_tenant_id": number }; Returns: number
+                           },
+"cashbook_staff_can_edit":
+{ Args: { "p_tenant_id": number }; Returns: boolean
+                           },
+"cashbook_staff_can_view":
+{ Args: { "p_tenant_id": number }; Returns: boolean
+                           },
 "ceil_thrift_retail_price":
 { Args: { "p_price": number }; Returns: number
                            },
@@ -6343,6 +6376,18 @@ isOneToOne: false
 "get_bill_net_balances":
 { Args: { "p_bill_id": number }; Returns: Json
                            },
+"get_cashbook_account_balances":
+{ Args: { "p_currency_code"?: string,"p_entity_id": number,"p_entity_type": string,"p_tenant_id": number }; Returns: Json
+                           },
+"get_cashbook_dashboard_summary":
+{ Args: { "p_tenant_id": number }; Returns: Json
+                           },
+"get_cashbook_detail_for_staff":
+{ Args: { "p_currency_code"?: string,"p_entity_id": number,"p_entity_type": string,"p_tenant_id": number }; Returns: Json
+                           },
+"get_cashbook_entity_statement":
+{ Args: { "p_end_date"?: string,"p_entity_id": number,"p_entity_type": string,"p_start_date"?: string,"p_tenant_id": number }; Returns: Json
+                           },
 "get_costing_file_by_id":
 { Args: { "p_id": number }; Returns: {
               "admin_profit_rate": number,"cargo_rate_1kg": number,"cargo_rate_2kg": number,"conversion_rate": number,"created_at": string,"created_by_email": string,"customer_group_id": number,"default_shipment_id": number,"id": number,"market": string,"name": string,"status": Database["public"]['Enums']["costing_file_status"],"tenant_id": number,"updated_at": string
@@ -6648,18 +6693,6 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
-"get_wallet_account_balances":
-{ Args: { "p_currency_code"?: string,"p_entity_id": number,"p_entity_type": string,"p_tenant_id": number }; Returns: Json
-                           },
-"get_wallet_dashboard_summary":
-{ Args: { "p_tenant_id": number }; Returns: Json
-                           },
-"get_wallet_detail_for_staff":
-{ Args: { "p_currency_code"?: string,"p_entity_id": number,"p_entity_type": string,"p_tenant_id": number }; Returns: Json
-                           },
-"get_wallet_entity_statement":
-{ Args: { "p_end_date"?: string,"p_entity_id": number,"p_entity_type": string,"p_start_date"?: string,"p_tenant_id": number }; Returns: Json
-                           },
 "global_search_tasks":
 { Args: { "p_query": string }; Returns: {
               "content": string,"created_at": string,"created_by_email": string,"due_date": string,"id": number,"parent_id": number,"priority": string,"start_date": string,"status": string,"tenant_id": number,"tenant_name": string,"title": string,"type": string,"updated_at": string
@@ -7077,6 +7110,16 @@ isOneToOne: false
 "list_books_exchange_rates":
 { Args: { "p_limit"?: number,"p_parent_tenant_id": number,"p_quote_currency_code"?: string }; Returns: {
               "base_currency_code": string,"id": number,"quote_currency_code": string,"rate": number,"rate_date": string
+            }[]
+                           },
+"list_cashbook_entities_for_staff":
+{ Args: { "p_currency_code"?: string,"p_entity_type": string,"p_limit"?: number,"p_offset"?: number,"p_search"?: string,"p_tenant_id": number }; Returns: {
+              "available_balance": number,"caption": string,"code": string,"entity_id": number,"entity_type": string,"has_wallet_activity": boolean,"locked_balance": number,"name": string,"operating_tenant_id": number,"pending_balance": number,"source_uuid": string,"total_balance": number
+            }[]
+                           },
+"list_cashbook_ledger_for_staff":
+{ Args: { "p_entity_id": number,"p_entity_type": string,"p_limit"?: number,"p_offset"?: number,"p_operating_tenant_id"?: number,"p_search"?: string,"p_tenant_id": number }; Returns: {
+              "amount": number,"balance_after": number,"base_amount": number,"cashbook_point_id": number,"cashbook_point_name": string,"created_at": string,"currency_code": string,"entity_id": number,"entity_type": string,"exchange_rate": number,"id": string,"is_reversal": boolean,"metadata": Json,"operating_tenant_id": number,"parent_tenant_id": number,"reversed_entry_id": string,"source_id": string,"source_type": string,"type": string
             }[]
                            },
 "list_catalog_refresh_log":
@@ -7589,16 +7632,6 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
-"list_wallet_entities_for_staff":
-{ Args: { "p_currency_code"?: string,"p_entity_type": string,"p_limit"?: number,"p_offset"?: number,"p_search"?: string,"p_tenant_id": number }; Returns: {
-              "available_balance": number,"caption": string,"code": string,"entity_id": number,"entity_type": string,"has_wallet_activity": boolean,"locked_balance": number,"name": string,"operating_tenant_id": number,"pending_balance": number,"source_uuid": string,"total_balance": number
-            }[]
-                           },
-"list_wallet_ledger_for_staff":
-{ Args: { "p_entity_id": number,"p_entity_type": string,"p_limit"?: number,"p_offset"?: number,"p_operating_tenant_id"?: number,"p_search"?: string,"p_tenant_id": number }; Returns: {
-              "amount": number,"balance_after": number,"base_amount": number,"cashbook_point_id": number,"cashbook_point_name": string,"created_at": string,"currency_code": string,"entity_id": number,"entity_type": string,"exchange_rate": number,"id": string,"is_reversal": boolean,"metadata": Json,"operating_tenant_id": number,"parent_tenant_id": number,"reversed_entry_id": string,"source_id": string,"source_type": string,"type": string
-            }[]
-                           },
 "lock_global_shipment_costs":
 { Args: { "p_shipment_id": number }; Returns: {
               "archived_at": string | null,
@@ -8217,6 +8250,9 @@ isOneToOne: false
 "reconcile_single_order_remittance":
 { Args: { "p_courier_charge"?: number,"p_order_id": number }; Returns: Json
                            },
+"record_cashbook_manual_transaction_for_staff":
+{ Args: { "p_action_type": string,"p_amount": number,"p_category"?: string,"p_counterparty_entity_id"?: number,"p_counterparty_entity_type"?: string,"p_currency_code"?: string,"p_exchange_rate"?: number,"p_note"?: string,"p_payment_method"?: string,"p_primary_entity_id": number,"p_primary_entity_type": string,"p_reference_id"?: string,"p_target_bucket"?: string,"p_tenant_id": number }; Returns: Json
+                           },
 "record_dropship_courier_bank_transfer":
 { Args: { "p_order_id": number,"p_payload": Json,"p_tenant_id": number }; Returns: Json
                            },
@@ -8308,9 +8344,6 @@ isOneToOne: false
 "record_vendor_payment_outflow":
 { Args: { "p_amount": number,"p_note"?: string,"p_payment_method"?: string,"p_reference"?: string,"p_tenant_id": number,"p_vendor_id": number }; Returns: Json
                            },
-"record_wallet_manual_transaction_for_staff":
-{ Args: { "p_action_type": string,"p_amount": number,"p_category"?: string,"p_counterparty_entity_id"?: number,"p_counterparty_entity_type"?: string,"p_currency_code"?: string,"p_exchange_rate"?: number,"p_note"?: string,"p_payment_method"?: string,"p_primary_entity_id": number,"p_primary_entity_type": string,"p_reference_id"?: string,"p_target_bucket"?: string,"p_tenant_id": number }; Returns: Json
-                           },
 "refresh_global_shipment_fx_from_ap_payments":
 { Args: { "p_shipment_id": number }; Returns: Json
                            },
@@ -8400,13 +8433,13 @@ isOneToOne: false
 "return_shipment_to_vendor":
 { Args: { "p_items_qty": Json,"p_outcome": string,"p_shipment_id": number }; Returns: Json
                            },
+"reverse_cashbook_ledger_entry_for_staff":
+{ Args: { "p_ledger_entry_id": string,"p_reason": string,"p_reference_id"?: string,"p_tenant_id": number }; Returns: Json
+                           },
 "reverse_pay":
 { Args: { "p_payment_id": number }; Returns: undefined
                            } |
 { Args: { "p_payment_id": number,"p_reason"?: string }; Returns: undefined
-                           },
-"reverse_wallet_ledger_entry_for_staff":
-{ Args: { "p_ledger_entry_id": string,"p_reason": string,"p_reference_id"?: string,"p_tenant_id": number }; Returns: Json
                            },
 "revert_thrift_sales_invoice":
 { Args: { "p_force"?: boolean,"p_invoice_id": number,"p_notes"?: string,"p_reason": string,"p_return_courier_amount"?: number,"p_reverted_by"?: string,"p_tenant_id": number }; Returns: Json
@@ -9585,15 +9618,6 @@ isOneToOne: false
                            },
 "void_sales_invoice":
 { Args: { "p_invoice_id": number }; Returns: undefined
-                           },
-"wallet_books_tenant_id":
-{ Args: { "p_tenant_id": number }; Returns: number
-                           },
-"wallet_staff_can_edit":
-{ Args: { "p_tenant_id": number }; Returns: boolean
-                           },
-"wallet_staff_can_view":
-{ Args: { "p_tenant_id": number }; Returns: boolean
                            }
           }
           Enums: {

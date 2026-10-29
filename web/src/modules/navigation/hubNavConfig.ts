@@ -37,7 +37,7 @@ export const REFERENCE_HUB_MODULE_KEYS: readonly ModuleKey[] = [
 export const BILLS_PAYS_HUB_MODULE_KEYS: readonly ModuleKey[] = [
   'global_invoice',
   'payments',
-  'universal_wallet',
+  'cashbook',
 ];
 
 export type WeightedWorkspaceLink = WorkspaceLink & { navWeight: number };
@@ -234,7 +234,7 @@ const BILLS_PAYS_HUB = {
     },
     {
       navWeight: 47,
-      moduleKey: 'universal_wallet' as ModuleKey,
+      moduleKey: 'cashbook' as ModuleKey,
       title: 'Cashbook',
       caption: 'Leftover balances and audit trail',
       icon: 'ph ph-wallet',

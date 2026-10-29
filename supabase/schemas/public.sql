@@ -6084,20 +6084,20 @@ $$;
 ALTER FUNCTION "public"."auto_enable_investor_capital_for_root_tenant"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."auto_enable_universal_wallet_for_new_tenant"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."auto_enable_cashbook_for_new_tenant"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 begin
   insert into public.tenant_modules (tenant_id, module_key, is_active)
-  values (NEW.id, 'universal_wallet', true)
+  values (NEW.id, 'cashbook', true)
   on conflict (tenant_id, module_key) do update set is_active = true;
   return NEW;
 end;
 $$;
 
 
-ALTER FUNCTION "public"."auto_enable_universal_wallet_for_new_tenant"() OWNER TO "postgres";
+ALTER FUNCTION "public"."auto_enable_cashbook_for_new_tenant"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."browse_dropship_listings_for_staff_order"("p_tenant_id" bigint, "p_shop_id" bigint, "p_customer_group_id" bigint, "p_search" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 24) RETURNS "jsonb"
@@ -14696,7 +14696,7 @@ DECLARE
 BEGIN
   v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
 
-  IF NOT public.wallet_staff_can_edit(p_tenant_id) THEN
+  IF NOT public.cashbook_staff_can_edit(p_tenant_id) THEN
     RETURN jsonb_build_object('success', false, 'error', 'access denied');
   END IF;
 
@@ -20089,7 +20089,7 @@ begin
   v_parent_tenant_id := public.resolve_parent_tenant_id(p_tenant_id);
   v_is_parent_scope := (p_tenant_id = v_parent_tenant_id);
 
-  v_summary := public.get_wallet_dashboard_summary(p_tenant_id);
+  v_summary := public.get_cashbook_dashboard_summary(p_tenant_id);
 
   with finance_orders as (
     select
@@ -21898,7 +21898,7 @@ begin
   where si.investor_id = p_investor_id and si.status = 'active';
 
   select coalesce((
-    public.get_wallet_account_balances(p_tenant_id, 'investor', p_investor_id, 'BDT')
+    public.get_cashbook_account_balances(p_tenant_id, 'investor', p_investor_id, 'BDT')
       ->> 'available_balance'
   )::numeric, 0) into v_wallet_available;
 
@@ -21962,7 +21962,7 @@ begin
   where si.investor_id = p_investor_id and si.status = 'active';
 
   select coalesce((
-    public.get_wallet_account_balances(v_investor.tenant_id, 'investor', p_investor_id, v_currency)
+    public.get_cashbook_account_balances(v_investor.tenant_id, 'investor', p_investor_id, v_currency)
       ->> 'available_balance'
   )::numeric, 0) into v_wallet_available;
 
@@ -26316,8 +26316,8 @@ begin
   end if;
 
   if not (
-    public.membership_has_module_action(p_tenant_id, 'universal_wallet', 'view')
-    or public.membership_has_module_action(v_books_id, 'universal_wallet', 'view')
+    public.membership_has_module_action(p_tenant_id, 'cashbook', 'view')
+    or public.membership_has_module_action(v_books_id, 'cashbook', 'view')
   ) then
     raise exception 'Not authorized';
   end if;
@@ -28289,7 +28289,7 @@ $$;
 ALTER FUNCTION "public"."get_vendor_for_tenant"("p_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_wallet_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text" DEFAULT 'BDT'::"text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_cashbook_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text" DEFAULT 'BDT'::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -28317,7 +28317,8 @@ BEGIN
       coalesce(w.available_balance, 0.0000)
       + coalesce(w.pending_balance, 0.0000)
       + coalesce(w.locked_balance, 0.0000)
-    )
+    ),
+    'account_class', coalesce(w.account_class::text, case when p_entity_type = 'tenant' then 'tenant_asset' else 'profile_custody' end)
   )
   INTO v_result
   FROM (SELECT 1) dummy
@@ -28332,10 +28333,10 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."get_wallet_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."get_cashbook_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_wallet_dashboard_summary"("p_tenant_id" bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_cashbook_dashboard_summary"("p_tenant_id" bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -28352,7 +28353,7 @@ begin
   v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
 
   if not (
-    public.wallet_staff_can_view(p_tenant_id)
+    public.cashbook_staff_can_view(p_tenant_id)
     or public.membership_has_module_action(v_books_id, 'payments', 'view')
     or public.membership_has_module_action(p_tenant_id, 'payments', 'view')
     or public.is_tenant_staff(p_tenant_id)
@@ -28424,10 +28425,10 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."get_wallet_dashboard_summary"("p_tenant_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."get_cashbook_dashboard_summary"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_wallet_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text" DEFAULT 'BDT'::"text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_cashbook_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text" DEFAULT 'BDT'::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -28445,7 +28446,7 @@ BEGIN
   v_operating_id := p_tenant_id;
   v_entity_id := p_entity_id;
 
-  IF NOT public.wallet_staff_can_view(p_tenant_id) THEN
+  IF NOT public.cashbook_staff_can_view(p_tenant_id) THEN
     RETURN jsonb_build_object('success', false, 'error', 'access denied');
   END IF;
 
@@ -28501,7 +28502,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'invalid entity_type');
   END IF;
 
-  v_account := public.get_wallet_account_balances(v_books_id, p_entity_type, v_entity_id, p_currency_code);
+  v_account := public.get_cashbook_account_balances(v_books_id, p_entity_type, v_entity_id, p_currency_code);
 
   RETURN jsonb_build_object(
     'success', true,
@@ -28523,18 +28524,18 @@ BEGIN
       'total_balance', coalesce((v_account->>'total_balance')::numeric, 0)
     ),
     'permissions', jsonb_build_object(
-      'can_record_manual', public.wallet_staff_can_edit(p_tenant_id),
-      'can_reverse', public.wallet_staff_can_edit(p_tenant_id)
+      'can_record_manual', public.cashbook_staff_can_edit(p_tenant_id),
+      'can_reverse', public.cashbook_staff_can_edit(p_tenant_id)
     )
   );
 END;
 $$;
 
 
-ALTER FUNCTION "public"."get_wallet_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."get_cashbook_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_wallet_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_end_date" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_cashbook_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_end_date" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     AS $$
 DECLARE
@@ -28612,7 +28613,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."get_wallet_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) OWNER TO "postgres";
+ALTER FUNCTION "public"."get_cashbook_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."global_invoices_default_issued_by_tenant_id"() RETURNS "trigger"
@@ -33501,7 +33502,7 @@ begin
     ), 0.00)::numeric as deployed_capital,
     (
       coalesce((
-        public.get_wallet_account_balances(p_tenant_id, 'investor', i.id, i.currency_code)
+        public.get_cashbook_account_balances(p_tenant_id, 'investor', i.id, i.currency_code)
           ->> 'available_balance'
       )::numeric, 0.00)
       - coalesce((
@@ -39395,7 +39396,7 @@ $$;
 ALTER FUNCTION "public"."list_vendors_for_tenant"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_wallet_entities_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_search" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 100, "p_offset" integer DEFAULT 0, "p_currency_code" "text" DEFAULT 'BDT'::"text") RETURNS TABLE("entity_id" bigint, "entity_type" "text", "name" "text", "code" "text", "caption" "text", "available_balance" numeric, "pending_balance" numeric, "locked_balance" numeric, "total_balance" numeric, "source_uuid" "uuid", "operating_tenant_id" bigint, "has_wallet_activity" boolean)
+CREATE OR REPLACE FUNCTION "public"."list_cashbook_entities_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_search" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 100, "p_offset" integer DEFAULT 0, "p_currency_code" "text" DEFAULT 'BDT'::"text") RETURNS TABLE("entity_id" bigint, "entity_type" "text", "name" "text", "code" "text", "caption" "text", "available_balance" numeric, "pending_balance" numeric, "locked_balance" numeric, "total_balance" numeric, "source_uuid" "uuid", "operating_tenant_id" bigint, "has_wallet_activity" boolean)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -39410,7 +39411,7 @@ BEGIN
   END IF;
 
   v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
-  IF NOT public.wallet_staff_can_view(p_tenant_id) THEN
+  IF NOT public.cashbook_staff_can_view(p_tenant_id) THEN
     RETURN;
   END IF;
 
@@ -39541,10 +39542,10 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."list_wallet_entities_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_search" "text", "p_limit" integer, "p_offset" integer, "p_currency_code" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."list_cashbook_entities_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_search" "text", "p_limit" integer, "p_offset" integer, "p_currency_code" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_wallet_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text" DEFAULT NULL::"text", "p_operating_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "parent_tenant_id" bigint, "operating_tenant_id" bigint, "entity_type" "text", "entity_id" bigint, "type" "text", "amount" numeric, "currency_code" "text", "exchange_rate" numeric, "base_amount" numeric, "balance_after" numeric, "source_type" "text", "source_id" "text", "metadata" "jsonb", "created_at" timestamp with time zone, "is_reversal" boolean, "reversed_entry_id" "uuid", "cashbook_point_id" bigint, "cashbook_point_name" "text")
+CREATE OR REPLACE FUNCTION "public"."list_cashbook_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text" DEFAULT NULL::"text", "p_operating_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "parent_tenant_id" bigint, "operating_tenant_id" bigint, "entity_type" "text", "entity_id" bigint, "type" "text", "amount" numeric, "currency_code" "text", "exchange_rate" numeric, "base_amount" numeric, "balance_after" numeric, "source_type" "text", "source_id" "text", "metadata" "jsonb", "created_at" timestamp with time zone, "is_reversal" boolean, "reversed_entry_id" "uuid", "cashbook_point_id" bigint, "cashbook_point_name" "text")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -39557,7 +39558,7 @@ BEGIN
   v_entity_id := p_entity_id;
   IF p_entity_type = 'tenant' THEN v_entity_id := v_books_id; END IF;
 
-  IF NOT public.wallet_staff_can_view(p_tenant_id) THEN RETURN; END IF;
+  IF NOT public.cashbook_staff_can_view(p_tenant_id) THEN RETURN; END IF;
 
   v_search := nullif(trim(p_search), '');
 
@@ -39604,7 +39605,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."list_wallet_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text", "p_operating_tenant_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_cashbook_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text", "p_operating_tenant_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."lock_global_shipment_costs"("p_shipment_id" bigint) RETURNS "public"."global_shipments"
@@ -47557,7 +47558,7 @@ $$;
 ALTER FUNCTION "public"."record_vendor_payment_outflow"("p_tenant_id" bigint, "p_vendor_id" bigint, "p_amount" numeric, "p_payment_method" "text", "p_reference" "text", "p_note" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."record_wallet_manual_transaction_for_staff"("p_tenant_id" bigint, "p_action_type" "text", "p_primary_entity_type" "text", "p_primary_entity_id" bigint, "p_amount" numeric, "p_currency_code" "text" DEFAULT 'BDT'::"text", "p_exchange_rate" numeric DEFAULT 1.000000, "p_category" "text" DEFAULT NULL::"text", "p_payment_method" "text" DEFAULT NULL::"text", "p_reference_id" "text" DEFAULT NULL::"text", "p_note" "text" DEFAULT NULL::"text", "p_counterparty_entity_type" "text" DEFAULT NULL::"text", "p_counterparty_entity_id" bigint DEFAULT NULL::bigint, "p_target_bucket" "text" DEFAULT 'available'::"text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."record_cashbook_manual_transaction_for_staff"("p_tenant_id" bigint, "p_action_type" "text", "p_primary_entity_type" "text", "p_primary_entity_id" bigint, "p_amount" numeric, "p_currency_code" "text" DEFAULT 'BDT'::"text", "p_exchange_rate" numeric DEFAULT 1.000000, "p_category" "text" DEFAULT NULL::"text", "p_payment_method" "text" DEFAULT NULL::"text", "p_reference_id" "text" DEFAULT NULL::"text", "p_note" "text" DEFAULT NULL::"text", "p_counterparty_entity_type" "text" DEFAULT NULL::"text", "p_counterparty_entity_id" bigint DEFAULT NULL::bigint, "p_target_bucket" "text" DEFAULT 'available'::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -47572,7 +47573,7 @@ DECLARE
   v_primary_entity_id bigint;
   v_counterparty_id bigint;
 BEGIN
-  IF NOT public.wallet_staff_can_edit(p_tenant_id) THEN
+  IF NOT public.cashbook_staff_can_edit(p_tenant_id) THEN
     RETURN jsonb_build_object('success', false, 'error', 'access denied');
   END IF;
 
@@ -47680,13 +47681,13 @@ BEGIN
   RETURN jsonb_build_object(
     'success', true,
     'ledger_entry_ids', to_jsonb(v_ledger_ids),
-    'primary_account', public.get_wallet_account_balances(v_books_id, p_primary_entity_type, v_primary_entity_id, p_currency_code)
+    'primary_account', public.get_cashbook_account_balances(v_books_id, p_primary_entity_type, v_primary_entity_id, p_currency_code)
   );
 END;
 $$;
 
 
-ALTER FUNCTION "public"."record_wallet_manual_transaction_for_staff"("p_tenant_id" bigint, "p_action_type" "text", "p_primary_entity_type" "text", "p_primary_entity_id" bigint, "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_category" "text", "p_payment_method" "text", "p_reference_id" "text", "p_note" "text", "p_counterparty_entity_type" "text", "p_counterparty_entity_id" bigint, "p_target_bucket" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."record_cashbook_manual_transaction_for_staff"("p_tenant_id" bigint, "p_action_type" "text", "p_primary_entity_type" "text", "p_primary_entity_id" bigint, "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_category" "text", "p_payment_method" "text", "p_reference_id" "text", "p_note" "text", "p_counterparty_entity_type" "text", "p_counterparty_entity_id" bigint, "p_target_bucket" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."refresh_costing_file_item_calculations_for_file"() RETURNS "trigger"
@@ -49595,7 +49596,7 @@ $$;
 ALTER FUNCTION "public"."return_shipment_to_vendor"("p_shipment_id" bigint, "p_items_qty" "jsonb", "p_outcome" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."reverse_wallet_ledger_entry_for_staff"("p_tenant_id" bigint, "p_ledger_entry_id" "uuid", "p_reason" "text", "p_reference_id" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."reverse_cashbook_ledger_entry_for_staff"("p_tenant_id" bigint, "p_ledger_entry_id" "uuid", "p_reason" "text", "p_reference_id" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -49607,7 +49608,7 @@ DECLARE
   v_meta jsonb;
   v_entry jsonb;
 BEGIN
-  IF NOT public.wallet_staff_can_edit(p_tenant_id) THEN
+  IF NOT public.cashbook_staff_can_edit(p_tenant_id) THEN
     RETURN jsonb_build_object('success', false, 'error', 'access denied');
   END IF;
 
@@ -49664,7 +49665,7 @@ BEGIN
   RETURN jsonb_build_object(
     'success', true,
     'reversal_entry_id', v_reversal_id,
-    'account', public.get_wallet_account_balances(
+    'account', public.get_cashbook_account_balances(
       v_books_id, v_orig.entity_type, v_orig.entity_id, v_orig.currency_code
     )
   );
@@ -49672,7 +49673,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."reverse_wallet_ledger_entry_for_staff"("p_tenant_id" bigint, "p_ledger_entry_id" "uuid", "p_reason" "text", "p_reference_id" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."reverse_cashbook_ledger_entry_for_staff"("p_tenant_id" bigint, "p_ledger_entry_id" "uuid", "p_reason" "text", "p_reference_id" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."revert_thrift_sales_invoice"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_reason" "text", "p_reverted_by" "text" DEFAULT 'cashier'::"text", "p_notes" "text" DEFAULT NULL::"text", "p_force" boolean DEFAULT false, "p_return_courier_amount" numeric DEFAULT 0.00) RETURNS "jsonb"
@@ -63357,7 +63358,7 @@ $$;
 ALTER FUNCTION "public"."void_sales_invoice"("p_invoice_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."wallet_books_tenant_id"("p_tenant_id" bigint) RETURNS bigint
+CREATE OR REPLACE FUNCTION "public"."cashbook_books_tenant_id"("p_tenant_id" bigint) RETURNS bigint
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -63365,37 +63366,37 @@ CREATE OR REPLACE FUNCTION "public"."wallet_books_tenant_id"("p_tenant_id" bigin
 $$;
 
 
-ALTER FUNCTION "public"."wallet_books_tenant_id"("p_tenant_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."cashbook_books_tenant_id"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."wallet_staff_can_edit"("p_tenant_id" bigint) RETURNS boolean
+CREATE OR REPLACE FUNCTION "public"."cashbook_staff_can_edit"("p_tenant_id" bigint) RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
   SELECT
     public.is_superadmin()
-    OR public.membership_has_module_action(public.resolve_parent_tenant_id(p_tenant_id), 'universal_wallet', 'edit')
-    OR public.membership_has_module_action(p_tenant_id, 'universal_wallet', 'edit')
+    OR public.membership_has_module_action(public.resolve_parent_tenant_id(p_tenant_id), 'cashbook', 'edit')
+    OR public.membership_has_module_action(p_tenant_id, 'cashbook', 'edit')
     OR public.user_can_manage_parent_tenant(public.resolve_parent_tenant_id(p_tenant_id));
 $$;
 
 
-ALTER FUNCTION "public"."wallet_staff_can_edit"("p_tenant_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."cashbook_staff_can_edit"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."wallet_staff_can_view"("p_tenant_id" bigint) RETURNS boolean
+CREATE OR REPLACE FUNCTION "public"."cashbook_staff_can_view"("p_tenant_id" bigint) RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
   SELECT
     public.is_superadmin()
-    OR public.membership_has_module_action(public.resolve_parent_tenant_id(p_tenant_id), 'universal_wallet', 'view')
-    OR public.membership_has_module_action(p_tenant_id, 'universal_wallet', 'view')
+    OR public.membership_has_module_action(public.resolve_parent_tenant_id(p_tenant_id), 'cashbook', 'view')
+    OR public.membership_has_module_action(p_tenant_id, 'cashbook', 'view')
     OR public.user_can_manage_parent_tenant(public.resolve_parent_tenant_id(p_tenant_id));
 $$;
 
 
-ALTER FUNCTION "public"."wallet_staff_can_view"("p_tenant_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."cashbook_staff_can_view"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."activity_logs" (
@@ -70189,7 +70190,7 @@ CREATE OR REPLACE TRIGGER "trg_auto_enable_investor_capital" AFTER INSERT ON "pu
 
 
 
-CREATE OR REPLACE TRIGGER "trg_auto_enable_universal_wallet" AFTER INSERT ON "public"."tenants" FOR EACH ROW EXECUTE FUNCTION "public"."auto_enable_universal_wallet_for_new_tenant"();
+CREATE OR REPLACE TRIGGER "trg_auto_enable_cashbook" AFTER INSERT ON "public"."tenants" FOR EACH ROW EXECUTE FUNCTION "public"."auto_enable_cashbook_for_new_tenant"();
 
 
 
@@ -75164,9 +75165,9 @@ GRANT ALL ON FUNCTION "public"."auto_enable_investor_capital_for_root_tenant"() 
 
 
 
-GRANT ALL ON FUNCTION "public"."auto_enable_universal_wallet_for_new_tenant"() TO "anon";
-GRANT ALL ON FUNCTION "public"."auto_enable_universal_wallet_for_new_tenant"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."auto_enable_universal_wallet_for_new_tenant"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."auto_enable_cashbook_for_new_tenant"() TO "anon";
+GRANT ALL ON FUNCTION "public"."auto_enable_cashbook_for_new_tenant"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."auto_enable_cashbook_for_new_tenant"() TO "service_role";
 
 
 
@@ -76801,27 +76802,27 @@ GRANT ALL ON FUNCTION "public"."get_vendor_for_tenant"("p_id" bigint, "p_tenant_
 
 
 
-GRANT ALL ON FUNCTION "public"."get_wallet_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_wallet_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_wallet_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_cashbook_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_cashbook_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_cashbook_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_wallet_dashboard_summary"("p_tenant_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."get_wallet_dashboard_summary"("p_tenant_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_wallet_dashboard_summary"("p_tenant_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_cashbook_dashboard_summary"("p_tenant_id" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_cashbook_dashboard_summary"("p_tenant_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_cashbook_dashboard_summary"("p_tenant_id" bigint) TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_wallet_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_wallet_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_wallet_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_cashbook_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_cashbook_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_cashbook_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_wallet_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "anon";
-GRANT ALL ON FUNCTION "public"."get_wallet_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_wallet_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_cashbook_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_cashbook_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_cashbook_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "service_role";
 
 
 
@@ -77765,15 +77766,15 @@ GRANT ALL ON FUNCTION "public"."list_vendors_for_tenant"("p_tenant_id" bigint) T
 
 
 
-GRANT ALL ON FUNCTION "public"."list_wallet_entities_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_search" "text", "p_limit" integer, "p_offset" integer, "p_currency_code" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."list_wallet_entities_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_search" "text", "p_limit" integer, "p_offset" integer, "p_currency_code" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."list_wallet_entities_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_search" "text", "p_limit" integer, "p_offset" integer, "p_currency_code" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."list_cashbook_entities_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_search" "text", "p_limit" integer, "p_offset" integer, "p_currency_code" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."list_cashbook_entities_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_search" "text", "p_limit" integer, "p_offset" integer, "p_currency_code" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_cashbook_entities_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_search" "text", "p_limit" integer, "p_offset" integer, "p_currency_code" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."list_wallet_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text", "p_operating_tenant_id" bigint, "p_limit" integer, "p_offset" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."list_wallet_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text", "p_operating_tenant_id" bigint, "p_limit" integer, "p_offset" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."list_wallet_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text", "p_operating_tenant_id" bigint, "p_limit" integer, "p_offset" integer) TO "service_role";
+GRANT ALL ON FUNCTION "public"."list_cashbook_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text", "p_operating_tenant_id" bigint, "p_limit" integer, "p_offset" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."list_cashbook_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text", "p_operating_tenant_id" bigint, "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_cashbook_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text", "p_operating_tenant_id" bigint, "p_limit" integer, "p_offset" integer) TO "service_role";
 
 
 
@@ -78341,9 +78342,9 @@ GRANT ALL ON FUNCTION "public"."record_vendor_payment_outflow"("p_tenant_id" big
 
 
 
-GRANT ALL ON FUNCTION "public"."record_wallet_manual_transaction_for_staff"("p_tenant_id" bigint, "p_action_type" "text", "p_primary_entity_type" "text", "p_primary_entity_id" bigint, "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_category" "text", "p_payment_method" "text", "p_reference_id" "text", "p_note" "text", "p_counterparty_entity_type" "text", "p_counterparty_entity_id" bigint, "p_target_bucket" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."record_wallet_manual_transaction_for_staff"("p_tenant_id" bigint, "p_action_type" "text", "p_primary_entity_type" "text", "p_primary_entity_id" bigint, "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_category" "text", "p_payment_method" "text", "p_reference_id" "text", "p_note" "text", "p_counterparty_entity_type" "text", "p_counterparty_entity_id" bigint, "p_target_bucket" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."record_wallet_manual_transaction_for_staff"("p_tenant_id" bigint, "p_action_type" "text", "p_primary_entity_type" "text", "p_primary_entity_id" bigint, "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_category" "text", "p_payment_method" "text", "p_reference_id" "text", "p_note" "text", "p_counterparty_entity_type" "text", "p_counterparty_entity_id" bigint, "p_target_bucket" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."record_cashbook_manual_transaction_for_staff"("p_tenant_id" bigint, "p_action_type" "text", "p_primary_entity_type" "text", "p_primary_entity_id" bigint, "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_category" "text", "p_payment_method" "text", "p_reference_id" "text", "p_note" "text", "p_counterparty_entity_type" "text", "p_counterparty_entity_id" bigint, "p_target_bucket" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."record_cashbook_manual_transaction_for_staff"("p_tenant_id" bigint, "p_action_type" "text", "p_primary_entity_type" "text", "p_primary_entity_id" bigint, "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_category" "text", "p_payment_method" "text", "p_reference_id" "text", "p_note" "text", "p_counterparty_entity_type" "text", "p_counterparty_entity_id" bigint, "p_target_bucket" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."record_cashbook_manual_transaction_for_staff"("p_tenant_id" bigint, "p_action_type" "text", "p_primary_entity_type" "text", "p_primary_entity_id" bigint, "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_category" "text", "p_payment_method" "text", "p_reference_id" "text", "p_note" "text", "p_counterparty_entity_type" "text", "p_counterparty_entity_id" bigint, "p_target_bucket" "text") TO "service_role";
 
 
 
@@ -78542,9 +78543,9 @@ GRANT ALL ON FUNCTION "public"."return_shipment_to_vendor"("p_shipment_id" bigin
 
 
 
-GRANT ALL ON FUNCTION "public"."reverse_wallet_ledger_entry_for_staff"("p_tenant_id" bigint, "p_ledger_entry_id" "uuid", "p_reason" "text", "p_reference_id" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."reverse_wallet_ledger_entry_for_staff"("p_tenant_id" bigint, "p_ledger_entry_id" "uuid", "p_reason" "text", "p_reference_id" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."reverse_wallet_ledger_entry_for_staff"("p_tenant_id" bigint, "p_ledger_entry_id" "uuid", "p_reason" "text", "p_reference_id" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."reverse_cashbook_ledger_entry_for_staff"("p_tenant_id" bigint, "p_ledger_entry_id" "uuid", "p_reason" "text", "p_reference_id" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."reverse_cashbook_ledger_entry_for_staff"("p_tenant_id" bigint, "p_ledger_entry_id" "uuid", "p_reason" "text", "p_reference_id" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."reverse_cashbook_ledger_entry_for_staff"("p_tenant_id" bigint, "p_ledger_entry_id" "uuid", "p_reason" "text", "p_reference_id" "text") TO "service_role";
 
 
 
@@ -79869,21 +79870,21 @@ GRANT ALL ON FUNCTION "public"."void_sales_invoice"("p_invoice_id" bigint) TO "s
 
 
 
-GRANT ALL ON FUNCTION "public"."wallet_books_tenant_id"("p_tenant_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."wallet_books_tenant_id"("p_tenant_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."wallet_books_tenant_id"("p_tenant_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."cashbook_books_tenant_id"("p_tenant_id" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."cashbook_books_tenant_id"("p_tenant_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cashbook_books_tenant_id"("p_tenant_id" bigint) TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."wallet_staff_can_edit"("p_tenant_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."wallet_staff_can_edit"("p_tenant_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."wallet_staff_can_edit"("p_tenant_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."cashbook_staff_can_edit"("p_tenant_id" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."cashbook_staff_can_edit"("p_tenant_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cashbook_staff_can_edit"("p_tenant_id" bigint) TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."wallet_staff_can_view"("p_tenant_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."wallet_staff_can_view"("p_tenant_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."wallet_staff_can_view"("p_tenant_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."cashbook_staff_can_view"("p_tenant_id" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."cashbook_staff_can_view"("p_tenant_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cashbook_staff_can_view"("p_tenant_id" bigint) TO "service_role";
 
 
 

@@ -453,19 +453,19 @@ REVOKE ALL ON FUNCTION "public"."get_sales_invoice_dashboard_metrics"("p_tenant_
 
 GRANT ALL ON FUNCTION "public"."get_sales_invoice_dashboard_metrics"("p_tenant_id" bigint) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."get_wallet_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_cashbook_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."get_wallet_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_cashbook_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."get_wallet_dashboard_summary"("p_tenant_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_cashbook_dashboard_summary"("p_tenant_id" bigint) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."get_wallet_dashboard_summary"("p_tenant_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_cashbook_dashboard_summary"("p_tenant_id" bigint) TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."get_wallet_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_cashbook_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."get_wallet_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_cashbook_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."get_wallet_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_cashbook_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."insert_global_payment_instruments"("p_payment_id" bigint, "p_instruments" "jsonb") TO "authenticated";
 
@@ -495,9 +495,9 @@ GRANT ALL ON FUNCTION "public"."list_invoice_payment_history"("p_tenant_id" bigi
 
 GRANT ALL ON FUNCTION "public"."list_invoice_payment_history"("p_tenant_id" bigint, "p_invoice_id" bigint) TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."list_wallet_entities_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_search" "text", "p_limit" integer, "p_offset" integer, "p_currency_code" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_cashbook_entities_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_search" "text", "p_limit" integer, "p_offset" integer, "p_currency_code" "text") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."list_wallet_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text", "p_operating_tenant_id" bigint, "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_cashbook_ledger_for_staff"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_search" "text", "p_operating_tenant_id" bigint, "p_limit" integer, "p_offset" integer) TO "authenticated";
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."pays" TO "anon";
 

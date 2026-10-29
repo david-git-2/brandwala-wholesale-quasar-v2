@@ -23,7 +23,7 @@ const GROUP_WEIGHT: Partial<Record<ModuleKey, number>> = {
   shop_order: 1,
   sales_invoice: 10,
   after_sales: 15,
-  universal_wallet: 20,
+  cashbook: 20,
   investor_capital: 30,
   thrift: 50,
 };

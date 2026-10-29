@@ -95,7 +95,7 @@ const listEntities = async (params: {
   limit?: number;
   offset?: number;
 }): Promise<CashbookEntityRow[]> => {
-  const { data, error } = await supabase.rpc('list_wallet_entities_for_staff', {
+  const { data, error } = await supabase.rpc('list_cashbook_entities_for_staff', {
     p_tenant_id: params.tenantId,
     p_entity_type: params.entityType,
     p_search: params.search ?? null,
@@ -137,7 +137,7 @@ const getPartyDetail = async (
   entityType: string,
   entityId: number,
 ): Promise<CashbookPartyDetail> => {
-  const { data, error } = await supabase.rpc('get_wallet_detail_for_staff', {
+  const { data, error } = await supabase.rpc('get_cashbook_detail_for_staff', {
     p_tenant_id: tenantId,
     p_entity_type: entityType,
     p_entity_id: entityId,
@@ -155,7 +155,7 @@ const listLedger = async (params: {
   limit?: number;
   offset?: number;
 }): Promise<CashbookLedgerRow[]> => {
-  const { data, error } = await supabase.rpc('list_wallet_ledger_for_staff', {
+  const { data, error } = await supabase.rpc('list_cashbook_ledger_for_staff', {
     p_tenant_id: params.tenantId,
     p_entity_type: params.entityType,
     p_entity_id: params.entityId,

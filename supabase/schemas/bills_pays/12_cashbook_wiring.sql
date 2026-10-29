@@ -29,7 +29,7 @@ ALTER TABLE public.cashbook_accounts ADD CONSTRAINT cashbook_accounts_class_enti
 );
 
 
-CREATE OR REPLACE FUNCTION public."get_wallet_account_balances"("p_tenant_id" bigint, "p_entity_type" text, "p_entity_id" bigint, "p_currency_code" text DEFAULT 'BDT'::text) RETURNS jsonb
+CREATE OR REPLACE FUNCTION public."get_cashbook_account_balances"("p_tenant_id" bigint, "p_entity_type" text, "p_entity_id" bigint, "p_currency_code" text DEFAULT 'BDT'::text) RETURNS jsonb
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -72,7 +72,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public."get_wallet_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" text, "p_entity_id" bigint, "p_currency_code" text DEFAULT 'BDT'::text) RETURNS jsonb
+CREATE OR REPLACE FUNCTION public."get_cashbook_detail_for_staff"("p_tenant_id" bigint, "p_entity_type" text, "p_entity_id" bigint, "p_currency_code" text DEFAULT 'BDT'::text) RETURNS jsonb
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -90,7 +90,7 @@ BEGIN
   v_operating_id := p_tenant_id;
   v_entity_id := p_entity_id;
 
-  IF NOT public.wallet_staff_can_view(p_tenant_id) THEN
+  IF NOT public.cashbook_staff_can_view(p_tenant_id) THEN
     RETURN jsonb_build_object('success', false, 'error', 'access denied');
   END IF;
 
@@ -146,7 +146,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'invalid entity_type');
   END IF;
 
-  v_account := public.get_wallet_account_balances(v_books_id, p_entity_type, v_entity_id, p_currency_code);
+  v_account := public.get_cashbook_account_balances(v_books_id, p_entity_type, v_entity_id, p_currency_code);
 
   RETURN jsonb_build_object(
     'success', true,
@@ -169,8 +169,8 @@ BEGIN
       'account_class', coalesce(v_account->>'account_class', case when p_entity_type = 'tenant' then 'tenant_asset' else 'profile_custody' end)
     ),
     'permissions', jsonb_build_object(
-      'can_record_manual', public.wallet_staff_can_edit(p_tenant_id),
-      'can_reverse', public.wallet_staff_can_edit(p_tenant_id)
+      'can_record_manual', public.cashbook_staff_can_edit(p_tenant_id),
+      'can_reverse', public.cashbook_staff_can_edit(p_tenant_id)
     )
   );
 END;
@@ -370,7 +370,7 @@ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO public
 AS $$
 BEGIN
   IF p_parent_tenant_id IS NULL THEN RAISE EXCEPTION 'parent_tenant_id is required'; END IF;
-  IF NOT public.wallet_staff_can_view(p_parent_tenant_id) THEN RAISE EXCEPTION 'not allowed'; END IF;
+  IF NOT public.cashbook_staff_can_view(p_parent_tenant_id) THEN RAISE EXCEPTION 'not allowed'; END IF;
   RETURN QUERY
   SELECT DISTINCT ON (upper(r.quote_currency_code))
     r.id, r.base_currency_code, r.quote_currency_code, r.rate, r.rate_date

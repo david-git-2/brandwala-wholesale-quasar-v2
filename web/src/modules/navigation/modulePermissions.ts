@@ -343,7 +343,7 @@ export const canAccessModule = ({
       moduleKey === 'investor_capital_ledger' ||
       moduleKey === 'investor_shipment_share' ||
       moduleKey === 'investor_portal' ||
-      moduleKey === 'universal_wallet' ||
+      moduleKey === 'cashbook' ||
       moduleKey === 'invoice_brand';
     if (blockedOnChild) {
       return false;
@@ -481,7 +481,7 @@ export const resolveModuleAccess = ({
       moduleKey === 'investor_capital_ledger' ||
       moduleKey === 'investor_shipment_share' ||
       moduleKey === 'investor_portal' ||
-      moduleKey === 'universal_wallet' ||
+      moduleKey === 'cashbook' ||
       moduleKey === 'invoice_brand';
   }
 

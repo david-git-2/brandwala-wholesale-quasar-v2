@@ -27,9 +27,9 @@ SELECT ok(
     SELECT prosrc LIKE '%account_class%'
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public' AND p.proname = 'get_wallet_account_balances'
+    WHERE n.nspname = 'public' AND p.proname = 'get_cashbook_account_balances'
   ),
-  'get_wallet_account_balances returns account_class'
+  'get_cashbook_account_balances returns account_class'
 );
 
 SELECT finish();

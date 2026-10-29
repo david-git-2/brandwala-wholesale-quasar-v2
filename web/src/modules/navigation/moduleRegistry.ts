@@ -63,7 +63,7 @@ export type ModuleKey =
   | 'billing_profile'
   | 'billing_profile_wallet'
   | 'recipient_profile'
-  | 'universal_wallet'
+  | 'cashbook'
   | 'after_sales';
 
 export type ModuleAction =
@@ -684,7 +684,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     routes: [],
   },
   {
-    key: 'universal_wallet',
+    key: 'cashbook',
     name: 'Cashbook',
     description: 'Balances for the company, customers, suppliers, cargo, couriers, and investors.',
     navIcon: 'ph ph-wallet',

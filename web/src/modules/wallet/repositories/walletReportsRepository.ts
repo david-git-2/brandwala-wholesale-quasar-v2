@@ -6,7 +6,7 @@ export const walletReportsRepository = {
    * Fetch structured statement report for an entity within a date range.
    */
   async fetchEntityStatement(params: WalletStatementParams): Promise<WalletEntityStatement> {
-    const { data, error } = await supabase.rpc('get_wallet_entity_statement', {
+    const { data, error } = await supabase.rpc('get_cashbook_entity_statement', {
       p_tenant_id: params.tenantId,
       p_entity_type: params.entityType,
       p_entity_id: params.entityId,

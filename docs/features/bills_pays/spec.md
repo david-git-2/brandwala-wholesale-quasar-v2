@@ -7,9 +7,9 @@ One money pack. **Start here (target map + graphs):** [README.md](README.md). La
 | | |
 | :--- | :--- |
 | Spec | `docs/features/bills_pays/spec.md` + [00-gaps](00-gaps.md) |
-| UI | **Bills**, **Payments**, **Cashbook** in `bills_pays/` (`/app/bills`, `/app/finance/payments`, `/app/wallet`). Bills: list, compose (today stock take/condition/walk-in), print. **Target compose:** any paper, stock optional ([BP13](00-gaps.md)). **Target pay:** in/out from accounts ([BP14](00-gaps.md)). |
+| UI | **Bills**, **Payments**, **Cashbook** in `bills_pays/` (`/app/bills`, `/app/finance/payments`, `/app/cashbook`; `/app/wallet` redirects). Bills: list, compose (today stock take/condition/walk-in), print. **Target compose:** any paper, stock optional ([BP13](00-gaps.md)). **Target pay:** in/out from accounts ([BP14](00-gaps.md)). |
 | SQL | **BP4 (2026-10):** tables `bills`, `bill_lines`, `pays`, `cashbook_*`; split `supabase/schemas/bills_pays/` + invoice domain |
-| Access | `app`; `shop` merchant statement |
+| Access | `app`; module grant **`cashbook`** (desk + staff RPCs); `shop` merchant statement |
 | Model | BW — [business-models](../../architecture/business-models.md) |
 
 ## Where to look
@@ -57,7 +57,7 @@ FKs in RPCs/UI: `profile_id` on bills/pays and shop order; alloc `bill_id` often
 | :--- | :--- | :--- |
 | Bills | Issue / void / print / compose | `bills_pays/` + `billsRepository` — `/app/bills` |
 | Payments | Receive, pay out, from accounts | `wallet/` — `/app/finance/payments` |
-| Cashbook | Audit leftover / custody | `wallet/` — `/app/wallet` |
+| Cashbook | Audit leftover / custody | `bills_pays/` — `/app/cashbook` |
 
 Paper: `draft` / `issued` / `voided`. Money: `due` / `partially_paid` / `paid`. **Document:** `standard` / `credit_note` / `debit_note` on the same `bills` row (`parent_bill_id` on notes). `bills.note` is a comment, not a credit note. **Settle:** `take` (sell now, pay later) vs `condition` (sales when paid) — target column `settlement_kind` ([kernel-schema](kernel-schema.md)); live `channel_meta.delivery_kind`. Trade compose: one kind per bill. Walk-in: take only. Proforma = Delivery paper, not a bill.
 
