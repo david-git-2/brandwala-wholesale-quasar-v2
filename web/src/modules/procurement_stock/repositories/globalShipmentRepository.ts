@@ -465,23 +465,6 @@ const createShipmentDraft = async (
   return normalizeShipment(data as GlobalShipment & Record<string, unknown>);
 };
 
-const listCargoCompaniesForTenant = async (
-  tenantId: number,
-): Promise<Array<{ id: number; name: string; code: string; is_default: boolean }>> => {
-  const { data, error } = await db
-    .from('cargo_companies')
-    .select('id, name, code, is_default')
-    .eq('parent_tenant_id', tenantId)
-    .eq('is_active', true)
-    .order('is_default', { ascending: false })
-    .order('name', { ascending: true });
-
-  if (error) throw error;
-  return (
-    (data as Array<{ id: number; name: string; code: string; is_default: boolean }> | null) ?? []
-  );
-};
-
 const updateShipment = async (
   id: number,
   payload: Partial<Omit<GlobalShipment, 'id' | 'created_at' | 'updated_at' | 'parent_tenant_id'>>,
@@ -1565,7 +1548,6 @@ export const globalShipmentRepository = {
   listPaginated,
   createShipment,
   createShipmentDraft,
-  listCargoCompaniesForTenant,
   updateShipment,
   lockShipmentCosts,
   archiveShipment,

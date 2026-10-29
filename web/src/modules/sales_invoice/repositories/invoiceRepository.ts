@@ -262,6 +262,10 @@ const getBillDetailBundle = async (params: {
     p_bill_id: params.billId,
   });
   if (error) throw error;
+  return parseBillDetailBundleFromRpc(data);
+};
+
+export function parseBillDetailBundleFromRpc(data: unknown): BillDetailBundle {
   const raw = (data ?? {}) as Record<string, unknown>;
   const stockRaw = raw.stock_items;
   const stockItems = Array.isArray(stockRaw)

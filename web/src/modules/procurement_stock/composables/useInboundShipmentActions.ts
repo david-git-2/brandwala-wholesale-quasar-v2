@@ -1,13 +1,11 @@
 import { ref, computed, watch, onMounted, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar, type QTableColumn } from 'quasar';
-import { useQuery } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
-import { globalShipmentRepository } from '../repositories/globalShipmentRepository';
-import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
-import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
+import { useCargoCompanyStore } from '../stores/cargoCompanyStore';
+import { globalShipmentRepository, type GlobalShipmentItem } from '../repositories/globalShipmentRepository';
 import type { CostEntriesSavePayload } from '../types/shipmentCostEntry';
 import type { ReturnLineDraft } from '../components/ShipmentVendorReturnCard.vue';
 import ShipmentItemFormDialog from '../components/ShipmentItemFormDialog.vue';
@@ -56,6 +54,7 @@ export function useInboundShipmentActions(options: {
   const authStore = useAuthStore();
   const vendorStore = useVendorStore();
   const shipmentStore = useGlobalShipmentStore();
+  const cargoCompanyStore = useCargoCompanyStore();
 
   const updatingStatus = ref(false);
   const targetUpdatingStatus = ref<string | null>(null);
@@ -93,38 +92,34 @@ export function useInboundShipmentActions(options: {
     () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
   );
 
-  const { data: cargoCompaniesData, isLoading: loadingCargo } = useQuery({
-    queryKey: computed(() =>
-      procurementStockQueryKeys.cargoCompanies(parentTenantId.value ?? 0, false),
-    ),
-    queryFn: async () => {
-      if (!parentTenantId.value) return [];
-      return await globalShipmentRepository.listCargoCompaniesForTenant(parentTenantId.value);
-    },
-    staleTime: 10 * 60 * 1000,
-    enabled: computed(() => !!parentTenantId.value),
-  });
-
-  const ensureCargoLoaded = async () => {
-    // No-op: TanStack query automatically fetches and caches
+  const loadingCargo = computed(() => cargoCompanyStore.loading);
+  const ensureCargoCompaniesLoaded = async () => {
+    if (!parentTenantId.value) return;
+    if (
+      cargoCompanyStore.items.length > 0 &&
+      cargoCompanyStore.cachedParentTenantId === parentTenantId.value
+    ) {
+      return;
+    }
+    try {
+      await cargoCompanyStore.ensureCompaniesLoaded(parentTenantId.value);
+    } catch (err) {
+      console.error('Failed to load cargo companies', err);
+    }
   };
 
-  const cargoOptions = computed(() =>
-    (cargoCompaniesData.value ?? []).map((c) => ({
-      label: `${c.name} (${c.code})`,
-      value: c.id,
-    })),
-  );
+  const cargoOptions = computed(() => cargoCompanyStore.selectOptions);
 
   const currentCargoLabel = computed(() => {
     const cId = shipmentStore.currentShipment?.cargo_company_id;
     if (!cId) return 'Cargo: None';
-    const found = (cargoCompaniesData.value ?? []).find((c) => c.id === cId);
+    const found = cargoCompanyStore.items.find((c) => c.id === cId);
     return found ? `Cargo: ${found.name}` : `Cargo #${cId}`;
   });
 
   onMounted(() => {
     void ensureVendorsLoaded();
+    void ensureCargoCompaniesLoaded();
   });
 
   const ensureProgressTagsLazy = async () => {
@@ -850,7 +845,7 @@ export function useInboundShipmentActions(options: {
     currentCargoLabel,
     loadingCargo,
     ensureVendorsLoaded,
-    ensureCargoLoaded,
+    ensureCargoCompaniesLoaded,
     ensureProgressTagsLazy,
     saveInlineName,
     saveInlineType,

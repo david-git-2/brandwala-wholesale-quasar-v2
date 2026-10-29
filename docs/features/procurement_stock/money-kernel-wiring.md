@@ -48,7 +48,7 @@ post_ap_payout_with_allocations, create_sales_invoice, …
 | `_shipment_money_advisory_lock` | `pg_advisory_xact_lock` | `shipment_id` | — |
 | `sync_shipment_ap_bills` | lock → `_upsert_shipment_ap_bill` (draft); cancel/legacy → `void_bill` | `shipment_id` | `{ success, bills \| cancelled }` |
 | `issue_shipment_ap_bills` | lock → `issue_bill` per draft AP | `shipment_id` | count issued |
-| `issue_shipment_ap_bill_for_kind` | lock → `issue_bill` one bucket | `shipment_id`, `ap_kind` | `bill_id` |
+| `issue_shipment_ap_bill_for_kind` | lock → `issue_bill` one bucket → `get_bill_detail_bundle` | `shipment_id`, `ap_kind` | desk **jsonb bundle** (same shape as `get_bill_detail_bundle`) |
 | `get_shipment_money_kernel_bundle` | `get_shipment_settings_finance_bundle` + `get_bill_net_balances` per AP | `shipment_id` | cost entries, AP rows + `net_balances`, FX, `kernel` meta |
 | `post_shipment_ap_money_out` | lock → `post_money_out` | shipment + same args as `post_money_out` | `pays` row |
 | `settle_shipment_payee` | **Retired** — raises | — | use Payments + `post_shipment_ap_money_out` |

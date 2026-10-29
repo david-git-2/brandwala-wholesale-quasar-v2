@@ -11,7 +11,20 @@ import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composabl
 import type { GlobalCurrency } from 'src/modules/global_reference/types';
 export function useInboundShipmentCalculations() {
   const shipmentStore = useGlobalShipmentStore();
-  const { data: currenciesData, isLoading: loadingCurrencies } = useGlobalCurrenciesQuery();
+
+  const needsCurrencies = computed(() => {
+    if (shipmentStore.currentShipmentItems.length > 0) return true;
+    if (shipmentStore.currentCostEntries.length > 0) return true;
+    const shipment = shipmentStore.currentShipment;
+    if (!shipment) return false;
+    return Boolean(
+      shipment.shipment_purchase_currency_id || shipment.shipment_cost_currency_id,
+    );
+  });
+
+  const { data: currenciesData, isLoading: loadingCurrencies } = useGlobalCurrenciesQuery({
+    enabled: needsCurrencies,
+  });
 
   const currenciesList = computed<GlobalCurrency[]>(() => currenciesData.value ?? []);
 

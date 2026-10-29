@@ -80,6 +80,17 @@ Bills/pays is independent. Features call it; they do not own pays.
 | Reverse pay | Bounce / wrong pay; do not edit the bill ([WA13](00-gaps.md)) |
 | `get_bill_net_balances` + list by source | Original ± notes − pays. Features do not re-sum allocs. |
 
+### Correcting a posted payment (wrong amount or FX)
+
+Posted pays and cashbook lines are **append-only**. There is no edit-in-place.
+
+1. **`reverse_pay`** (UI: **Correct payment** on bill payment history, pay detail, or void with reason) — unwinds settlements and cashbook; bill stays **issued**; due reopens.
+2. **Post a new pay** with the correct amount and rate (same collect / AP payout dialog). Prefill shows the voided values as a starting point only.
+3. Wrong **bill face** (total, lines) → **credit_note** / **debit_note**, not payment edit alone.
+4. Split-tender **one cheque** wrong → **Mark bounced** on that instrument (partial unwind), not whole-pay correct.
+
+Grant: `payments` · `void`. Store-credit / wallet-credit application pays are not voidable from this flow.
+
 Build order: [kernel plan](../../../doc/fix/2026-10-12-bills-pays-kernel-plan.md).
 
 **Adapter (shipment):** cost buckets → AP drafts. FX from pays. After issue, do not edit that bucket; shortage/VAT → credit note, then costing follows the note. **Unpaid issued:** still a note (no silent amend of the original total).

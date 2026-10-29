@@ -119,6 +119,7 @@ export async function postApPayoutSnapshot(
       p_source_currency_code: args.p_source_currency_code,
       p_transaction_rate: args.p_transaction_rate,
       p_cashbook_point_pot_id: args.p_cashbook_point_pot_id,
+      p_idempotency_key: args.p_idempotency_key,
     });
     if (error) throw error;
     const row = (data ?? {}) as Record<string, unknown>;

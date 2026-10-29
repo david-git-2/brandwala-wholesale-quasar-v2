@@ -55,9 +55,6 @@ export const procurementStockQueryKeys = {
   stockLocations: (tenantId: number, includeInactive?: boolean) =>
     ['procurementStock', 'stockLocations', { tenantId, includeInactive }] as const,
 
-  cargoCompanies: (tenantId: number, includeInactive?: boolean) =>
-    ['procurementStock', 'cargoCompanies', { tenantId, includeInactive }] as const,
-
   shipmentCostEntries: (shipmentId: number) =>
     ['procurementStock', 'shipmentCostEntries', { shipmentId }] as const,
 

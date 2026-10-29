@@ -192,6 +192,7 @@ DECLARE
   v_entity_id bigint;
   v_point_ok boolean;
   v_pot_id bigint;
+  v_pot_amt numeric(12, 2);
 BEGIN
   IF p_amount <= 0 THEN
     RAISE EXCEPTION 'Transaction amount must be greater than zero.';
@@ -247,6 +248,21 @@ BEGIN
     FROM public.cashbook_point_pots cpp
     WHERE cpp.id = v_pot_id
     FOR UPDATE;
+
+    IF p_type = 'debit' THEN
+      SELECT cpp.amount
+      INTO v_pot_amt
+      FROM public.cashbook_point_pots cpp
+      WHERE cpp.id = v_pot_id;
+
+      IF coalesce(v_pot_amt, 0) < p_amount THEN
+        IF NOT coalesce(p_allow_overdraft, false) THEN
+          RAISE EXCEPTION 'Insufficient cash in till (available: %, requested: %).',
+            coalesce(v_pot_amt, 0), p_amount;
+        END IF;
+        v_pot_id := NULL;
+      END IF;
+    END IF;
   END IF;
 
   SELECT available_balance, pending_balance, locked_balance
@@ -259,6 +275,10 @@ BEGIN
     IF p_type = 'credit' THEN
       v_avail := v_avail + p_amount;
     ELSE
+      IF v_avail < p_amount AND NOT coalesce(p_allow_overdraft, false) THEN
+        RAISE EXCEPTION 'Insufficient available balance (available: %, requested debit: %).',
+          v_avail, p_amount;
+      END IF;
       v_avail := v_avail - p_amount;
     END IF;
     v_new_balance := v_avail;

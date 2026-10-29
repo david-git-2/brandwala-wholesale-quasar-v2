@@ -1,56 +1,64 @@
 <template>
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden invoice-list-stack">
-      <ProcurementOpsListToolbar
-        :search="searchText"
-        search-placeholder="Search profile…"
-        :filter-count="0"
-        @update:search="onSearchTextUpdate"
-      >
-        <template #pills>
-          <TfDrawerSectionTabs
-            v-model="entityTab"
-            :tabs="typeSectionTabs"
-            ariaLabel="Payment profile type"
-            @update:model-value="setEntityTab"
-          />
-        </template>
-      </ProcurementOpsListToolbar>
+      <TfDrawerSectionTabs
+        v-model="deskTab"
+        :tabs="deskTabs"
+        aria-label="Payments desk view"
+        class="shrink-0"
+      />
 
-      <div v-if="listError" class="tf-status-banner bg-negative text-white q-pa-sm rounded-borders">
-        {{ listError }}
-      </div>
+      <PaymentsRecentList v-if="deskTab === 'recent'" />
 
-      <div
-        v-if="isPending && !rows.length"
-        class="invoice-list-card col"
-      >
-        <div class="invoice-list-scroll">
-          <div v-for="n in 6" :key="n" class="invoice-list-item invoice-list-item--skeleton">
-            <q-skeleton type="text" width="60%" />
+      <template v-else>
+        <ProcurementOpsListToolbar
+          :search="searchText"
+          search-placeholder="Search profile…"
+          :filter-count="0"
+          @update:search="onSearchTextUpdate"
+        >
+          <template #pills>
+            <TfDrawerSectionTabs
+              v-model="entityTab"
+              :tabs="typeSectionTabs"
+              aria-label="Payment profile type"
+              @update:model-value="setEntityTab"
+            />
+          </template>
+        </ProcurementOpsListToolbar>
+
+        <div v-if="listError" class="tf-status-banner bg-negative text-white q-pa-sm rounded-borders">
+          {{ listError }}
+        </div>
+
+        <div v-if="isPending && !rows.length" class="invoice-list-card col">
+          <div class="invoice-list-scroll">
+            <div v-for="n in 6" :key="n" class="invoice-list-item invoice-list-item--skeleton">
+              <q-skeleton type="text" width="60%" />
+            </div>
           </div>
         </div>
-      </div>
 
-      <div
-        v-else-if="!rows.length"
-        class="column items-center justify-center q-pa-xl text-grey-6 col invoice-list-card"
-      >
-        <q-icon name="ph ph-users" size="48px" class="q-mb-sm text-grey-4" />
-        <div class="text-subtitle1 text-weight-bold text-slate-800">No profiles</div>
-      </div>
+        <div
+          v-else-if="!rows.length"
+          class="column items-center justify-center q-pa-xl text-grey-6 col invoice-list-card"
+        >
+          <q-icon name="ph ph-users" size="48px" class="q-mb-sm text-grey-4" />
+          <div class="text-subtitle1 text-weight-bold text-slate-800">No profiles</div>
+        </div>
 
-      <div v-else class="invoice-list-card payments-list-card">
-        <div class="invoice-list-scroll">
-          <div
-            v-for="row in rows"
-            :key="`${row.entity_type}-${row.entity_id}`"
-            class="profile-row-wrap"
-          >
-            <CashbookEntityRow :row="row" @open="selectProfile" />
+        <div v-else class="invoice-list-card payments-list-card">
+          <div class="invoice-list-scroll">
+            <div
+              v-for="row in rows"
+              :key="`${row.entity_type}-${row.entity_id}`"
+              class="profile-row-wrap"
+            >
+              <CashbookEntityRow :row="row" @open="selectProfile" />
+            </div>
           </div>
         </div>
-      </div>
+      </template>
     </div>
   </q-page>
 </template>
@@ -62,6 +70,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import CashbookEntityRow from '../components/CashbookEntityRow.vue';
+import PaymentsRecentList from '../components/PaymentsRecentList.vue';
 import {
   cashbookRepository,
   type CashbookEntityRow as EntityRow,
@@ -71,7 +80,14 @@ const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 
+type DeskTab = 'profiles' | 'recent';
 type EntityTab = 'tenant' | 'customer' | 'courier' | 'vendor';
+
+const deskTab = ref<DeskTab>('profiles');
+const deskTabs = [
+  { name: 'profiles' as const, label: 'Profiles' },
+  { name: 'recent' as const, label: 'Recent pays' },
+];
 
 const searchText = ref('');
 const debouncedSearch = ref('');
@@ -122,7 +138,11 @@ const loadRows = async () => {
 };
 
 watch(debouncedSearch, () => {
-  void loadRows();
+  if (deskTab.value === 'profiles') void loadRows();
+});
+
+watch(deskTab, (tab) => {
+  if (tab === 'profiles') void loadRows();
 });
 
 const setEntityTab = (value: string | number) => {
@@ -154,7 +174,6 @@ const selectProfile = (row: EntityRow) => {
     },
   });
 };
-
 </script>
 
 <style scoped lang="scss">

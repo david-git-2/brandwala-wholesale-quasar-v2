@@ -17,13 +17,18 @@ type ShipmentCostFlags = {
 };
 
 /** Stock posted to warehouse (receive complete). */
-export function isShipmentStockPosted(shipment: ShipmentCostFlags): boolean {
+export function isShipmentStockPosted(
+  shipment: ShipmentCostFlags | null | undefined,
+): boolean {
+  if (!shipment) return false;
   return shipment.stock_ready === true || shipment.status === 'received';
 }
 
 /** Books frozen — no further cost/weight/rate edits. */
-export function isShipmentCostsLocked(shipment: ShipmentCostFlags): boolean {
-  return shipment.costs_locked === true;
+export function isShipmentCostsLocked(
+  shipment: ShipmentCostFlags | null | undefined,
+): boolean {
+  return shipment?.costs_locked === true;
 }
 
 /** @deprecated Use isShipmentStockPosted */

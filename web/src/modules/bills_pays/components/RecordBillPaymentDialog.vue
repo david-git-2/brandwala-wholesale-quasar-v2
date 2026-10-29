@@ -1,7 +1,14 @@
 <template>
-  <q-dialog :model-value="modelValue" persistent @update:model-value="emit('update:modelValue', $event)">
-    <q-card class="record-bill-payment-card" style="width: min(440px, 92vw)">
-      <q-card-section class="row items-center q-pb-none">
+  <component
+    :is="embedded ? 'div' : 'q-dialog'"
+    v-bind="embedded ? undefined : dialogBind"
+  >
+    <q-card
+      class="record-bill-payment-card"
+      :class="{ 'record-bill-payment-card--embedded': embedded }"
+      :style="embedded ? undefined : { width: 'min(440px, 92vw)' }"
+    >
+      <q-card-section v-if="!embedded" class="row items-center q-pb-none">
         <div class="text-h6 text-weight-bold">{{ isAp ? 'Pay out' : 'Collect payment' }}</div>
         <q-space />
         <q-btn flat round dense icon="ph ph-x" aria-label="Close" @click="close" />
@@ -9,6 +16,18 @@
 
       <q-card-section class="q-pt-sm">
         <div class="record-bill-payment-form">
+        <q-banner
+          v-if="replacingPayId"
+          dense
+          rounded
+          class="record-bill-payment-replace-banner"
+        >
+          <template #avatar>
+            <q-icon name="ph ph-warning" color="warning" />
+          </template>
+          Replacing voided pay #{{ replacingPayId }}. Check amount and rate, then post the new payment.
+        </q-banner>
+
         <div class="record-bill-payment-summary">
           <div class="text-caption text-grey-7">Due on this bill</div>
           <div class="text-subtitle1 text-weight-bold font-mono q-mt-xs">{{ dueAmountDisplay }}</div>
@@ -321,7 +340,7 @@
         </q-btn>
       </q-card-actions>
     </q-card>
-  </q-dialog>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -347,6 +366,7 @@ import {
 import { apBillCurrencyGroups, apBillPaperConversionRate } from '../utils/parseApBillPaper';
 import { currenciesMatch } from '../utils/apPayoutFx';
 import type { RecordBillPaymentInput } from '../composables/useRecordBillPaymentMutation';
+import type { PayCorrectionSnapshot } from '../types/payCorrectionSnapshot';
 import { billsRepository } from '../repositories/billsRepository';
 import { useApplySettlementMutation } from '../composables/useApplySettlementMutation';
 import { useBooksExchangeRateQuery } from '../composables/useBooksExchangeRateQuery';
@@ -354,6 +374,7 @@ import { buildPreApplySettlementLines } from '../utils/fifoBillAlloc';
 
 const props = defineProps<{
   modelValue: boolean;
+  embedded?: boolean;
   dueAmount: number;
   /** Bill header due currency (e.g. GBP on AP voucher, BDT on AR). */
   dueCurrencyCode?: string | null;
@@ -365,12 +386,24 @@ const props = defineProps<{
   isAp: boolean;
   channelMeta?: Record<string, unknown> | null;
   loading?: boolean;
+  shipmentId?: number | null;
+  replacingPayId?: number | null;
+  prefillSnapshot?: PayCorrectionSnapshot | null;
 }>();
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean];
   submit: [payload: RecordBillPaymentInput];
+  cancel: [];
 }>();
+
+const dialogActive = computed(() => props.modelValue || !!props.embedded);
+
+const dialogBind = computed(() => ({
+  modelValue: props.modelValue,
+  persistent: true,
+  'onUpdate:modelValue': (value: boolean) => emit('update:modelValue', value),
+}));
 
 const localToday = () => {
   const d = new Date();
@@ -397,19 +430,19 @@ const applyOpenFirstAvailable = ref(false);
 const preApplyPools = ref<Array<{ kind: 'credit_note' | 'pay'; allocator_id: number; pool: number }>>([]);
 const preApplySubmitting = ref(false);
 const preApplyMutation = useApplySettlementMutation({ successMessage: 'Open credit and leftover applied.' });
-const { loadingPaymentMeta, methodOptions, bdBankOptions, loadPaymentMeta } =
-  useWholesalePaymentMethodMeta('bank_transfer');
+const { loadingPaymentMeta, methodOptions, bdBankOptions, syncPaymentMetaDefaults } =
+  useWholesalePaymentMethodMeta('bank_transfer', () => dialogActive.value);
 
 const pointsContext = computed(() => ({
   booksTenantId: props.booksTenantId,
   entityType: 'tenant',
   entityId: props.booksTenantId,
-  enabled: props.modelValue && props.isAp && props.booksTenantId > 0,
+  enabled: dialogActive.value && props.isAp && props.booksTenantId > 0,
 }));
 const { pointsQuery } = useCashbookPointsQuery(pointsContext);
 const apPoints = computed(() => pointsQuery.data.value);
 const payFromEnabled = computed(
-  () => props.modelValue && props.isAp && props.booksTenantId > 0,
+  () => dialogActive.value && props.isAp && props.booksTenantId > 0,
 );
 const {
   selectedPotId: payFromPotId,
@@ -425,12 +458,12 @@ const collectPointsContext = computed(() => ({
   booksTenantId: props.booksTenantId,
   entityType: 'tenant',
   entityId: props.booksTenantId,
-  enabled: props.modelValue && !props.isAp && props.booksTenantId > 0,
+  enabled: dialogActive.value && !props.isAp && props.booksTenantId > 0,
 }));
 const { pointsQuery: collectPointsQuery } = useCashbookPointsQuery(collectPointsContext);
 const collectPoints = computed(() => collectPointsQuery.data.value);
 const collectReceiveEnabled = computed(
-  () => props.modelValue && !props.isAp && props.booksTenantId > 0,
+  () => dialogActive.value && !props.isAp && props.booksTenantId > 0,
 );
 const {
   selectedPotId: collectReceivePotId,
@@ -447,7 +480,7 @@ const collectTransactionRate = ref<number | null>(null);
 const collectFxRateQuery = useBooksExchangeRateQuery(
   computed(() => props.booksTenantId),
   collectPotCurrency,
-  computed(() => props.modelValue && !props.isAp && collectPotNeedsFx.value),
+  computed(() => dialogActive.value && !props.isAp && collectPotNeedsFx.value),
 );
 watch(
   () => collectFxRateQuery.data.value,
@@ -508,7 +541,7 @@ const globalRefStore = useGlobalReferenceStore();
 const { currencies: currenciesData } = storeToRefs(globalRefStore);
 
 watch(
-  () => props.modelValue,
+  () => dialogActive.value,
   (open) => {
     if (open && currenciesData.value.length === 0) {
       void globalRefStore.ensureCurrenciesLoaded();
@@ -628,17 +661,82 @@ const resetForm = () => {
   resetInstrumentFields();
 };
 
+const applyCorrectionPrefill = (snap: PayCorrectionSnapshot) => {
+  const datePart = snap.paymentDate?.slice(0, 10);
+  if (datePart) paidOn.value = datePart;
+
+  const settle = snap.settlementCurrencyCode || booksCurrencyCode.value;
+  settlementCurrency.value = settle;
+
+  if (props.isAp) {
+    apPaymentCurrency.value = settle;
+    if (snap.foreignAmount != null && snap.foreignAmount > 0) {
+      apForeignAmount.value = snap.foreignAmount;
+    }
+    if (snap.transactionRate != null && snap.transactionRate > 0) {
+      apTransactionRate.value = snap.transactionRate;
+    }
+    if (snap.exchangeRate > 0 && snap.exchangeRate !== 1) {
+      apBooksExchangeRate.value = snap.exchangeRate;
+    }
+    if (snap.amountBdt > 0) {
+      amountBdt.value = snap.amountBdt;
+    }
+  } else {
+    if (snap.foreignAmount != null && snap.foreignAmount > 0) {
+      foreignAmount.value = snap.foreignAmount;
+    }
+    if (snap.exchangeRate > 0) {
+      exchangeRate.value = snap.exchangeRate;
+    }
+    if (collectPotNeedsFx.value && snap.transactionRate != null && snap.transactionRate > 0) {
+      collectTransactionRate.value = snap.transactionRate;
+    }
+    if (snap.amountBdt > 0) {
+      amountBdt.value = snap.amountBdt;
+    }
+  }
+
+  if (snap.instrumentMethodCode) {
+    methodCode.value = snap.instrumentMethodCode.toLowerCase();
+  }
+  if (snap.reference) {
+    reference.value = snap.reference;
+  }
+
+  const potId = snap.cashbookPointPotId;
+  if (potId != null) {
+    payFromPotId.value = potId;
+    collectReceivePotId.value = potId;
+  }
+};
+
 watch(
-  () => props.modelValue,
+  () => dialogActive.value,
   (open) => {
     if (open) {
-      void loadPaymentMeta((code) => {
+      syncPaymentMetaDefaults((code) => {
         methodCode.value = code;
       });
       resetForm();
+      const snap = props.prefillSnapshot;
+      if (snap) {
+        applyCorrectionPrefill(snap);
+      }
     }
   },
   { immediate: true },
+);
+
+watch(
+  () => [dialogActive.value, payFromLoading.value, collectReceiveLoading.value, props.prefillSnapshot] as const,
+  ([open, apLoad, collectLoad, snap]) => {
+    if (!open || !snap?.cashbookPointPotId) return;
+    if (props.isAp && apLoad) return;
+    if (!props.isAp && collectLoad) return;
+    payFromPotId.value = snap.cashbookPointPotId;
+    collectReceivePotId.value = snap.cashbookPointPotId;
+  },
 );
 
 const booksDueBdt = computed(() => {
@@ -701,7 +799,7 @@ const submitDisabledReason = computed(() => {
 });
 
 watch(
-  () => props.modelValue,
+  () => dialogActive.value,
   async (open) => {
     applyOpenFirst.value = false;
     applyOpenFirstAvailable.value = false;
@@ -735,7 +833,13 @@ watch(
   },
 );
 
-const close = () => emit('update:modelValue', false);
+const close = () => {
+  if (props.embedded) {
+    emit('cancel');
+    return;
+  }
+  emit('update:modelValue', false);
+};
 
 const submit = async () => {
   if (submitDisabledReason.value) return;
@@ -766,6 +870,7 @@ const submit = async () => {
     billId: props.billId,
     isAp: props.isAp,
     profileId: props.profileId,
+    shipmentId: props.shipmentId ?? null,
     paidOn: paidOn.value,
     amountBdt: amt,
     billDueAmount: booksDueBdt.value,
@@ -808,6 +913,12 @@ const submit = async () => {
   :deep(.q-field) {
     margin-bottom: 0;
   }
+}
+
+.record-bill-payment-replace-banner {
+  background: var(--tf-attention-soft);
+  color: var(--tf-neutral-ink);
+  border: 1px solid var(--tf-neutral-border);
 }
 
 .record-bill-payment-split {

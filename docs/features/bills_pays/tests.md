@@ -183,6 +183,7 @@ Use `pg_sleep` + two sessions or stress script against local Supabase. CI nightl
 | Case | Steps | Expect |
 | :--- | :--- | :--- |
 | Void AP payout | Pay detail **Void payout** on issued AP pay | `reverse_pay`; bill stays **issued**; due restored (T4-4) |
+| Correct payment (UI) | Bill **Payment history → Correct** or pay detail **Correct amount or rate** → void + re-post | Same as void + new pay; T4-4 settlement axis. **Network:** open Correct uses bundle history only (no pay REST); void → one `get_bill_detail_bundle`; re-post AP skips extra `bills` shipment lookup when bill already loaded |
 | Void remittance | Courier remittance pay void | Same kernel; no bill void |
 | Cheque bounce (single) | CHEQUE instrument **Mark bounced** on one-instrument pay | Whole pay reversed via `reverse_pay` |
 | Cheque bounce (split) | Multi-instrument pay; bounce one CHEQUE | Instrument `bounced_at`; partial ledger + LIFO settlement unwind; pay not voided |

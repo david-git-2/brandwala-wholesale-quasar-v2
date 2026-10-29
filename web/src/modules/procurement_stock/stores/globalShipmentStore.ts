@@ -43,7 +43,7 @@ import { invalidateSharedShipmentItemsCostingCache, seedSharedShipmentItemsCosti
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance';
 import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBalance';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
-import type { InboundShipmentListCargoCompany } from '../repositories/globalShipmentRepository';
+import { useCargoCompanyStore } from './cargoCompanyStore';
 
 const COST_AFFECTING_ITEM_FIELDS = new Set([
   'product_weight',
@@ -121,7 +121,6 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     pageSize: 10,
     nextCursor: null as number | null,
     hasMore: false,
-    listCargoCompanies: [] as InboundShipmentListCargoCompany[],
     search: '',
     statusFilter: null as string | null,
     isArchivedFilter: false,
@@ -148,6 +147,10 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     currentShipmentSummary: null as ShipmentSummaryKPIs | null,
     costEntriesLoading: false,
     settingsFinanceLoading: false,
+    settingsFinanceCachedShipmentId: null as number | null,
+    settingsFinanceCachedApBills: [] as ShipmentApBillRow[],
+    settingsFinanceCachedApFx: null as ShipmentApFxSnapshot | null,
+    settingsFinanceCachedCostEntries: [] as GlobalShipmentCostEntry[],
     /** Bumped after `sync_shipment_ap_bills` so settings drawer can refresh AP bill chips. */
     shipmentApBillsSyncGeneration: 0,
     costEntriesSaving: false,
@@ -226,7 +229,8 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           }));
         }
         if (useWorkspace && 'cargoCompanies' in result && result.cargoCompanies.length > 0) {
-          this.listCargoCompanies = result.cargoCompanies;
+          const cargoCompanyStore = useCargoCompanyStore();
+          cargoCompanyStore.seedFromListReference(tenantId, result.cargoCompanies);
         }
 
         if (options?.append) {
@@ -305,7 +309,18 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
-    async fetchShipmentDetails(shipmentId: number) {
+    async fetchShipmentDetails(
+      shipmentId: number,
+      options?: { force?: boolean; skipIfHydrated?: boolean },
+    ) {
+      if (
+        !options?.force &&
+        options?.skipIfHydrated &&
+        this.workspaceHydratedShipmentId === shipmentId &&
+        this.currentShipment?.id === shipmentId
+      ) {
+        return;
+      }
       this.loading = true;
       this.error = null;
       try {
@@ -385,15 +400,32 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
-    async loadSettingsFinanceBundle(shipmentId: number): Promise<{
+    async loadSettingsFinanceBundle(
+      shipmentId: number,
+      options?: { force?: boolean },
+    ): Promise<{
       apBills: ShipmentApBillRow[];
       apFx: ShipmentApFxSnapshot | null;
     }> {
+      if (
+        !options?.force &&
+        this.settingsFinanceCachedShipmentId === shipmentId
+      ) {
+        this.currentCostEntries = this.settingsFinanceCachedCostEntries as GlobalShipmentCostEntry[];
+        return {
+          apBills: this.settingsFinanceCachedApBills,
+          apFx: this.settingsFinanceCachedApFx,
+        };
+      }
       this.settingsFinanceLoading = true;
       this.costEntriesLoading = true;
       try {
         const bundle = await fetchShipmentMoneyKernelBundle(shipmentId);
         this.currentCostEntries = bundle.costEntries as GlobalShipmentCostEntry[];
+        this.settingsFinanceCachedShipmentId = shipmentId;
+        this.settingsFinanceCachedApBills = bundle.apBills;
+        this.settingsFinanceCachedApFx = bundle.apFx;
+        this.settingsFinanceCachedCostEntries = bundle.costEntries as GlobalShipmentCostEntry[];
         return { apBills: bundle.apBills, apFx: bundle.apFx };
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load shipment finance';
@@ -434,6 +466,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         if (this.currentShipment?.id === shipmentId) {
           this.shipmentApBillsSyncGeneration += 1;
         }
+        this.settingsFinanceCachedShipmentId = null;
       } catch (err: unknown) {
         console.warn('sync_shipment_ap_bills failed', err);
       }

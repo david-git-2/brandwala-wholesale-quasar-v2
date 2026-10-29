@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
+import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { batchCodeRepository } from '../repositories/batchCodeRepository';
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
 
@@ -88,6 +89,9 @@ export function useBatchCodeItemsByShipmentQuery(
       const id = resolvedShipmentId.value;
       if (id === null) return false;
       if (resolvedHydratedId.value === id) return false;
+      const shipmentStore = useGlobalShipmentStore();
+      if (shipmentStore.loading) return false;
+      if (shipmentStore.workspaceHydratedShipmentId !== id) return false;
       return true;
     }),
   });

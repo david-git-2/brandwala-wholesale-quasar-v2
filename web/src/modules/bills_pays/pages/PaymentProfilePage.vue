@@ -252,6 +252,16 @@ const loadHistory = async () => {
         pageSize: 50,
       });
       payRows.value = data;
+    } else if (entityType.value === 'vendor' || entityType.value === 'courier') {
+      const { data } = await paysRepository.listPays({
+        tenantId: tenantId.value,
+        booksTenantId: booksTenantId.value,
+        profileId: entityId.value,
+        side: 'out',
+        page: 1,
+        pageSize: 50,
+      });
+      payRows.value = data;
     } else {
       payRows.value = [];
     }

@@ -18023,13 +18023,15 @@ begin
   if v_phone is not null and v_code is not null then
     select cg.name
     into v_phone_group
-    from public.billing_profiles bp
-    left join public.customer_groups cg on cg.id = bp.customer_group_id
-    where bp.parent_tenant_id = v_books_id
-      and bp.phone_country_code = v_code
-      and bp.phone = v_phone
+    from public.profiles pr
+    left join public.customer_groups cg on cg.id = pr.customer_group_id
+    where pr.profile_type = 'customer'::public.profile_party_type
+      and pr.parent_tenant_id = v_books_id
+      and pr.phone_country_code = v_code
+      and pr.phone = v_phone
+      and pr.is_phone_unique
       and (cg.id is null or cg.deleted_at is null)
-    order by bp.id
+    order by pr.id
     limit 1;
   end if;
 
@@ -19178,23 +19180,19 @@ begin
   end if;
 
   select
-    coalesce(array_agg(bp.id order by
-      case when bp.tenant_id = v_group_tenant_id then 0 else 1 end,
-      bp.id
+    coalesce(array_agg(pr.id order by
+      case when pr.operating_tenant_id = v_group_tenant_id then 0 else 1 end,
+      pr.id
     ), '{}'::bigint[]),
-    (array_agg(bp.id order by
-      case when bp.tenant_id = v_group_tenant_id then 0 else 1 end,
-      bp.id
+    (array_agg(pr.id order by
+      case when pr.operating_tenant_id = v_group_tenant_id then 0 else 1 end,
+      pr.id
     ))[1]
   into v_bp_ids, v_profile_id
-  from public.profiles bp
-  where bp.customer_group_id = p_customer_group_id
-    and (
-      bp.tenant_id = v_books_id
-      or bp.tenant_id in (
-        select t.id from public.tenants t where t.parent_id = v_books_id
-      )
-    );
+  from public.profiles pr
+  where pr.customer_group_id = p_customer_group_id
+    and pr.profile_type = 'customer'::public.profile_party_type
+    and pr.parent_tenant_id = v_books_id;
 
   if v_profile_id is null then
     return jsonb_build_object(
@@ -41842,7 +41840,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint, "p_idempotency_key" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" "date", "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_source" "text" DEFAULT 'customer_cash'::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_shop_order_id" bigint DEFAULT NULL::bigint, "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric) RETURNS "public"."pays"
@@ -44822,13 +44820,13 @@ begin
 
   update public.bill_lines bl
   set
-    global_stock_id = null,
+    line_meta = bl.line_meta - 'stock_ref',
     shipment_item_id = null,
     updated_at = now()
   where bl.shipment_item_id in (
     select id from public.global_shipment_items where shipment_id = p_id
   )
-  or bl.global_stock_id in (
+  or nullif(bl.line_meta->'stock_ref'->>'global_stock_id', '')::bigint in (
     select gs.id
     from public.global_stocks gs
     inner join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
@@ -47084,6 +47082,7 @@ DECLARE
   v_entity_id bigint;
   v_point_ok boolean;
   v_pot_id bigint;
+  v_pot_amt numeric(12, 2);
 BEGIN
   IF p_amount <= 0 THEN
     RAISE EXCEPTION 'Transaction amount must be greater than zero.';
@@ -47137,6 +47136,21 @@ BEGIN
     FROM public.cashbook_point_pots cpp
     WHERE cpp.id = v_pot_id
     FOR UPDATE;
+
+    IF p_type = 'debit' THEN
+      SELECT cpp.amount
+      INTO v_pot_amt
+      FROM public.cashbook_point_pots cpp
+      WHERE cpp.id = v_pot_id;
+
+      IF coalesce(v_pot_amt, 0) < p_amount THEN
+        IF NOT coalesce(p_allow_overdraft, false) THEN
+          RAISE EXCEPTION 'Insufficient cash in till (available: %, requested: %).',
+            coalesce(v_pot_amt, 0), p_amount;
+        END IF;
+        v_pot_id := NULL;
+      END IF;
+    END IF;
   END IF;
 
   SELECT available_balance, pending_balance, locked_balance
@@ -47149,6 +47163,10 @@ BEGIN
     IF p_type = 'credit' THEN
       v_avail := v_avail + p_amount;
     ELSE
+      IF v_avail < p_amount AND NOT coalesce(p_allow_overdraft, false) THEN
+        RAISE EXCEPTION 'Insufficient available balance (available: %, requested debit: %).',
+          v_avail, p_amount;
+      END IF;
       v_avail := v_avail - p_amount;
     END IF;
     v_new_balance := v_avail;
@@ -78021,10 +78039,10 @@ GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" b
 
 
 
-REVOKE ALL ON FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint, "p_idempotency_key" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint, "p_idempotency_key" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint, "p_idempotency_key" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."post_ap_payout_with_allocations_snapshot"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text", "p_reference" "text", "p_instruments" "jsonb", "p_allocations" "jsonb", "p_settlement_currency_code" "text", "p_foreign_amount" numeric, "p_exchange_rate" numeric, "p_source_currency_code" "text", "p_transaction_rate" numeric, "p_cashbook_point_pot_id" bigint, "p_idempotency_key" "text") TO "service_role";
 
 
 

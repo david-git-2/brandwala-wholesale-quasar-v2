@@ -217,6 +217,7 @@ import ShopCustomerGroupHeaderSwitcher from 'src/modules/shop_order/components/S
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { useActiveShopCartsQuery } from 'src/modules/shop_order/composables/useActiveShopCartsQuery';
 import { useShopCustomerShellQuery } from 'src/modules/shop_order/composables/useShopCustomerShellQuery';
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
 import { clearShopOrderQueryCache } from 'src/query/queryClient';
@@ -252,7 +253,8 @@ const shellQuery = useShopCustomerShellQuery(
   computed(() => authStore.tenantId ?? null),
   computed(() => authStore.user?.email),
 );
-const activeCarts = computed(() => shellQuery.data.value?.active_carts ?? []);
+const { data: activeCartsData } = useActiveShopCartsQuery();
+const activeCarts = computed(() => activeCartsData.value ?? []);
 const loginGroups = computed(() => shellQuery.data.value?.login_groups ?? []);
 const companyName = computed(() => authStore.customerGroup?.name ?? '');
 

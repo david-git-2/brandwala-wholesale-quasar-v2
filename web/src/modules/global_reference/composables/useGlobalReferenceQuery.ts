@@ -36,11 +36,14 @@ export function useMarketByCodeQuery(code: Ref<string | null | undefined> | Comp
 }
 
 // --- Currencies ---
-export function useGlobalCurrenciesQuery() {
+export function useGlobalCurrenciesQuery(options?: {
+  enabled?: Ref<boolean> | ComputedRef<boolean>;
+}) {
   const globalRefStore = useGlobalReferenceStore();
   const { currencies, loadingCurrencies } = storeToRefs(globalRefStore);
 
-  const needsFetch = computed(() => currencies.value.length === 0);
+  const externalEnabled = options?.enabled ?? computed(() => true);
+  const needsFetch = computed(() => externalEnabled.value && currencies.value.length === 0);
 
   const query = useQuery({
     queryKey: globalReferenceQueryKeys.currencies(),

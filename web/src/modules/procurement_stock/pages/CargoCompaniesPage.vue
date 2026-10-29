@@ -181,7 +181,7 @@ const filteredRows = computed(() => {
 const reload = async () => {
   if (!tenantId.value) return;
   try {
-    await store.fetchCompanies(tenantId.value, true);
+    await store.fetchCompanies(tenantId.value, true, true);
   } catch (err: unknown) {
     showErrorNotification((err as Error).message || 'Failed to load cargo companies');
   }

@@ -78,7 +78,7 @@
             emit-value
             map-options
             label="Cargo company"
-            :loading="shipmentStore.loading && !cargoCompanyOptions.length"
+            :loading="cargoCompanyStore.loading && !cargoCompanyOptions.length"
           />
         </div>
 
@@ -202,6 +202,7 @@ import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import { useCargoCompanyStore } from '../stores/cargoCompanyStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ProcurementOpsListToolbar from '../components/ProcurementOpsListToolbar.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
@@ -211,6 +212,7 @@ import { formatGlobalShipmentStatus } from '../constants/shipmentStatus';
 
 const authStore = useAuthStore();
 const shipmentStore = useGlobalShipmentStore();
+const cargoCompanyStore = useCargoCompanyStore();
 const vendorStore = useVendorStore();
 const router = useRouter();
 const route = useRoute();
@@ -225,12 +227,7 @@ const vendorQuickFilter = ref('all');
 const vendorFilter = ref<number | null>(null);
 const cargoCompanyFilter = ref<number | null>(null);
 const draftCargoCompanyFilter = ref<number | null>(null);
-const cargoCompanyOptions = computed(() =>
-  shipmentStore.listCargoCompanies.map((c) => ({
-    label: `${c.name} (${c.code})`,
-    value: c.id,
-  })),
-);
+const cargoCompanyOptions = computed(() => cargoCompanyStore.selectOptions);
 
 const draftCount = computed(() => shipmentStore.rows.filter((r) => r.status === 'draft').length);
 const inTransitCount = computed(() => shipmentStore.rows.filter((r) => r.status === 'in_transit').length);
@@ -418,7 +415,6 @@ const openCreateShipment = () => {
   $q.dialog({
     component: ShipmentFormDialog,
   }).onOk((created: { id?: number } | undefined) => {
-    void loadShipments();
     if (created?.id) {
       viewDetails(created.id);
     }
@@ -431,7 +427,15 @@ const openArchivedShipmentsModal = () => {
   });
 };
 
+const parentTenantId = computed(
+  () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
+);
+
 onMounted(() => {
+  if (authStore.tenantId && vendorStore.items.length === 0) {
+    void vendorStore.fetchVendors(authStore.tenantId);
+  }
+  void cargoCompanyStore.ensureCompaniesLoaded(parentTenantId.value);
   void loadShipments().then(() => nextTick(() => setupScrollObserver()));
 });
 

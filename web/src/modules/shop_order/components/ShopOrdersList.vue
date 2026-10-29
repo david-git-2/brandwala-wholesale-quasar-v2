@@ -93,7 +93,7 @@
                 </span>
 
                 <!-- Customer Group Pill -->
-                <span v-if="order.customer_group_name" class="meta-pill meta-pill--group">
+                <span v-if="showCustomerGroupPill(order)" class="meta-pill meta-pill--group">
                   <q-icon name="ph ph-users" size="12px" class="q-mr-xs text-grey-6" />
                   <span class="ellipsis" style="max-width: 130px">{{ order.customer_group_name }}</span>
                 </span>
@@ -178,16 +178,20 @@ const formatDate = (dateStr: string) => {
   return date.formatDate(dateStr, 'D MMM YYYY, HH:mm');
 };
 
-/** Dropship `order.name` is "Order for {end customer}"; list title uses dropshipper (customer group). */
+/** Staff list title: company (customer group), not `Order for {recipient}`. */
 const orderListPrimaryLabel = (order: ShopOrder): string => {
-  if (order.shop_type_snapshot === 'dropship') {
-    const customer = order.customer_group_name?.trim();
-    if (customer) return customer;
-    return order.shop_name || t('shop_admin.untitled_order', 'Order');
-  }
-  if (order.name?.trim()) return order.name.trim();
+  const groupName = order.customer_group_name?.trim();
+  if (groupName) return groupName;
+
   if (order.recipient_name?.trim()) return order.recipient_name.trim();
+  if (order.name?.trim()) return order.name.trim();
   return order.shop_name || t('shop_admin.untitled_order', 'Order');
+};
+
+const showCustomerGroupPill = (order: ShopOrder): boolean => {
+  const groupName = order.customer_group_name?.trim();
+  if (!groupName) return false;
+  return orderListPrimaryLabel(order) !== groupName;
 };
 
 const copyOrderNo = (orderNo: string) => {

@@ -514,6 +514,7 @@
     />
 
     <ShipmentSettingsDrawer
+      v-if="settingsDrawerOpen"
       v-model="settingsDrawerOpen"
       :shipment-id="shipmentId"
       :calculations="calculations"
@@ -701,7 +702,7 @@ import {
 } from 'src/utils/appFeedback';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
-import { useCargoCompaniesQuery } from '../composables/useProcurementStockQuery';
+import { useCargoCompanyStore } from '../stores/cargoCompanyStore';
 import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';
 import ShipmentLineItemCard from '../components/ShipmentLineItemCard.vue';
 import ShipmentExcelBottomBar, { type SheetTabItem } from '../components/ShipmentExcelBottomBar.vue';
@@ -935,7 +936,7 @@ watch(settingsDrawerOpen, (open) => {
     if (settingsDrawerTab.value === 'progress') {
       void ensureProgressTagsLazy();
     }
-  } else if (settingsTabFromRoute()) {
+  } else if (settingsTabFromRoute() && route.name === 'app-procurement-shipment-details') {
     void setSettingsTabRouteQuery(null);
   }
 });
@@ -1417,19 +1418,12 @@ const triggerAddItems = () => {
 
 const authStore = useAuthStore();
 const vendorStore = useVendorStore();
+const cargoCompanyStore = useCargoCompanyStore();
 const currentTenantId = computed(
   () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
 );
-const { data: cargoData } = useCargoCompaniesQuery(currentTenantId);
 
-const cargoCompanies = computed(() => cargoData.value ?? []);
-
-const cargoOptions = computed(() =>
-  cargoCompanies.value.map((c) => ({
-    label: `${c.name} (${c.code})`,
-    value: c.id,
-  })),
-);
+const cargoOptions = computed(() => cargoCompanyStore.selectOptions);
 
 const vendorOptions = computed(() =>
   vendorStore.items.map((v) => ({
@@ -1614,6 +1608,13 @@ const batchCodeItemsQuery = useBatchCodeItemsByShipmentQuery(shipmentId, {
   workspaceHydratedShipmentId: computed(() => shipmentStore.workspaceHydratedShipmentId),
 });
 
+const batchCodeItemsForShipment = computed(() => {
+  if (shipmentStore.workspaceHydratedShipmentId === shipmentId) {
+    return shipmentStore.currentBatchCodeItems;
+  }
+  return batchCodeItemsQuery.data.value ?? [];
+});
+
 const emptyBatchSummary: BatchCodeLineSummary = {
   compactLabel: '—',
   summaryLabel: '—',
@@ -1645,7 +1646,7 @@ const batchCodeDialogRows = computed<BatchCodeMatchTableRow[]>(() => {
   if (!batchCodeDialogLine.value) return [];
   const matches = matchBatchItemsForShipmentLine(
     batchCodeDialogLine.value,
-    batchCodeItemsQuery.data.value ?? [],
+    batchCodeItemsForShipment.value,
   );
   return batchMatchTableRows(matches);
 });
@@ -2159,6 +2160,9 @@ const ensureBatchCodeListForShipment = async (): Promise<number> => {
 const patchBatchItemsByShipment = (updater: (items: BatchCodeItem[]) => BatchCodeItem[]) => {
   const key = procurementStockQueryKeys.batchCodeItemsByShipment(shipmentId);
   queryClient.setQueryData<BatchCodeItem[]>(key, (old) => updater(old ?? []));
+  if (shipmentStore.workspaceHydratedShipmentId === shipmentId) {
+    shipmentStore.currentBatchCodeItems = updater(shipmentStore.currentBatchCodeItems);
+  }
 };
 
 const patchBatchItemInListCache = (updated: BatchCodeItem) => {
@@ -2169,7 +2173,7 @@ const patchBatchItemInListCache = (updated: BatchCodeItem) => {
 };
 
 const onToggleBatchArrivedFromDialog = async (itemId: number, value: boolean) => {
-  const current = (batchCodeItemsQuery.data.value ?? []).find((row) => row.id === itemId);
+  const current = batchCodeItemsForShipment.value.find((row) => row.id === itemId);
   if (!current || current.is_arrived === value || batchCodeDialogTogglingId.value !== null) return;
 
   batchCodeDialogTogglingId.value = itemId;
@@ -2232,7 +2236,7 @@ const openBatchCodeDialog = (item: Record<string, unknown>) => {
 };
 
 const batchSummaryByItemId = computed(() =>
-  buildBatchSummaryMapForLines(displayedItems.value, batchCodeItemsQuery.data.value ?? []),
+  buildBatchSummaryMapForLines(displayedItems.value, batchCodeItemsForShipment.value),
 );
 
 const batchSummaryForItem = (item: { id: number }) =>
@@ -2552,7 +2556,12 @@ const onTableScroll = () => {
 
 onMounted(() => {
   if (shipmentId && !isNaN(shipmentId)) {
-    void shipmentStore.fetchShipmentDetails(shipmentId);
+    void shipmentStore.fetchShipmentDetails(shipmentId, { skipIfHydrated: true }).then(() => {
+      queryClient.setQueryData(
+        procurementStockQueryKeys.batchCodeItemsByShipment(shipmentId),
+        shipmentStore.currentBatchCodeItems,
+      );
+    });
   }
   updateScrollbarFromTable();
   window.addEventListener('resize', updateScrollbarFromTable);

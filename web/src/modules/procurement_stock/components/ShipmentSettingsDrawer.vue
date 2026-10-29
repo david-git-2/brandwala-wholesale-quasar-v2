@@ -1929,7 +1929,10 @@ const refreshSettingsFinanceBundle = async (options?: { force?: boolean }) => {
   summaryFinanceLoading.value = true;
   settingsFinanceLoadInFlight.value = true;
   try {
-    const { apBills: bills, apFx } = await shipmentStore.loadSettingsFinanceBundle(shipmentId);
+    const { apBills: bills, apFx } = await shipmentStore.loadSettingsFinanceBundle(
+      shipmentId,
+      { force: options?.force },
+    );
     apBills.value = bills;
     apFxSnapshot.value = apFx;
     settingsFinanceLoadedForShipmentId.value = shipmentId;
@@ -1969,7 +1972,7 @@ watch(
       return;
     }
     if (!shipmentId) return;
-    void refreshSettingsFinanceBundle({ force: true });
+    void refreshSettingsFinanceBundle({ force: false });
   },
 );
 
@@ -1991,7 +1994,10 @@ watch(
 
 const openApBill = (billId: number) => {
   const route = billDetailRoute(billId, authStore.tenantSlug);
-  if (route) void router.push(route);
+  if (!route) return;
+  // Navigate before closing the drawer. Closing first runs parent watch that
+  // router.replace()s shipment query and can abort this push.
+  void router.push(route);
 };
 
 const canStartMaterialCommercialCredit = computed(() => {

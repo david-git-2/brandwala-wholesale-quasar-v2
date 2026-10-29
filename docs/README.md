@@ -18,6 +18,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Bills vs pays vs cashbook (target map) | [README](features/bills_pays/README.md) · [kernel-schema](features/bills_pays/kernel-schema.md) · [REFERENCE](kernel/REFERENCE.md) |
 | What numbers go on reports (sales vs cash vs COD) | [reporting spec](features/reporting_treasury/spec.md) |
 | What is unfinished / wrong in a module? | That module’s `00-gaps.md` |
+| Product roadmap (Now / Next / Later) | [ROADMAP.md](ROADMAP.md) · feature IDs in [BACKLOG.md](BACKLOG.md) |
 | Catalog scrape/upload log & app versions (planned) | [products refresh & release](features/products/upload-and-release-visibility.md) |
 | Prod Disk IO Budget warning (25 Oct 2026) | [fix note](../doc/fix/2026-10-25-prod-disk-io-budget.md) |
 | Where is the code / SQL? | [Module map](#module-map) |

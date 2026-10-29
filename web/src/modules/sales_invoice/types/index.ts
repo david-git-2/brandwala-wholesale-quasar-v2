@@ -31,6 +31,10 @@ export type InvoicePaymentHistoryEntry = {
   instruments: InvoicePaymentHistoryInstrument[];
   /** pays.source — e.g. ap_payout, customer_cash */
   payment_source?: string | null;
+  payment_reference?: string | null;
+  cashbook_point_pot_id?: number | null;
+  transaction_rate?: number | null;
+  source_currency_code?: string | null;
   /** Child note when this row is rolled up onto the parent bill. */
   related_invoice_no?: string | null;
   related_document_kind?: string | null;

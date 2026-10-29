@@ -27,6 +27,7 @@ export type RecordBillPaymentInput = {
   billId: number;
   isAp: boolean;
   profileId: number;
+  shipmentId?: number | null;
   cashbookPointId?: number | null;
   paidOn: string;
   amountBdt: number;
@@ -132,7 +133,7 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
           source_currency_code: payload.sourceCurrencyCode ?? undefined,
           transaction_rate: payload.transactionRate ?? undefined,
           cashbook_point_pot_id: payload.cashbookPointPotId ?? undefined,
-          shipment_id: null as number | null,
+          shipment_id: payload.shipmentId ?? null,
           idempotency_key: idempotencyKey,
         };
         const snapshotResult = await postApPayoutSnapshot(apPayload);

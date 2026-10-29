@@ -21,6 +21,7 @@ export function useBillDetailBundleQuery(
         tenantId.value != null &&
         tenantId.value > 0,
     ),
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
   });
 }

@@ -77,6 +77,10 @@ export type PayAllocationRow = {
 export type PayDetail = PayListRow & {
   tenant_id: number;
   customer_group_id: number | null;
+  cashbook_point_id: number | null;
+  cashbook_point_pot_id: number | null;
+  transaction_rate: number | null;
+  source_currency_code: string | null;
   instruments: Array<{
     id: number;
     payment_method_code: string;
@@ -159,7 +163,7 @@ const getPayById = async (payId: number): Promise<PayDetail> => {
   const { data: pay, error: payError } = await supabase
     .from('pays')
     .select(
-      'id, payment_date, amount, unallocated_amount, source, method, reference, note, voided_at, profile_id, shop_order_id, tenant_id, customer_group_id, settlement_currency_code, foreign_amount, exchange_rate, profiles:profiles!pays_profile_id_fkey(name)',
+      'id, payment_date, amount, unallocated_amount, source, method, reference, note, voided_at, profile_id, shop_order_id, tenant_id, customer_group_id, settlement_currency_code, foreign_amount, exchange_rate, cashbook_point_id, cashbook_point_pot_id, transaction_rate, source_currency_code, profiles:profiles!pays_profile_id_fkey(name)',
     )
     .eq('id', payId)
     .single();
@@ -201,6 +205,10 @@ const getPayById = async (payId: number): Promise<PayDetail> => {
     settlement_currency_code: pay.settlement_currency_code ?? 'BDT',
     foreign_amount: pay.foreign_amount,
     exchange_rate: pay.exchange_rate ?? 1,
+    cashbook_point_id: pay.cashbook_point_id ?? null,
+    cashbook_point_pot_id: pay.cashbook_point_pot_id ?? null,
+    transaction_rate: pay.transaction_rate ?? null,
+    source_currency_code: pay.source_currency_code ?? null,
     instruments: (instruments ?? []).map((i) => ({
       id: i.id,
       payment_method_code: i.payment_method_code,

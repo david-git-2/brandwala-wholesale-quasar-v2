@@ -110,7 +110,7 @@ Code today stamps only material+freight ([PS13](00-gaps.md)).
 ### US-5 Archive / US-6 Batch code
 - List archive; optional batch analyze per shipment.
 - **Archive** hides shipment and related `global_stocks` from operational views (`archive_shipment` / `unarchive_shipment`).
-- **Purge** (`purge_archived_shipment`): only when `is_archived`; any status; deletes shipment and cascaded stock. Bill lines and similar FKs use `ON DELETE SET NULL` on `global_stock_id` so issued invoices keep line snapshots.
+- **Purge** (`purge_archived_shipment`): only when `is_archived`; any status; deletes shipment and cascaded stock. Bill lines unlink via `shipment_item_id = null` and clearing `line_meta.stock_ref` so issued invoices keep line snapshots; return items still null physical `global_stock_id`.
 
 ## Allocations (retire)
 

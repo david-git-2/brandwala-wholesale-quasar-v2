@@ -1,4 +1,6 @@
 import { supabase } from 'src/boot/supabase';
+import type { BillDetailBundle } from 'src/modules/bills_pays/repositories/billsRepository';
+import { parseBillDetailBundleFromRpc } from 'src/modules/sales_invoice/repositories/invoiceRepository';
 import type { BillNetBalances } from 'src/modules/bills_pays/types/billBalances';
 import type { ShipmentApKind } from '../constants/shipmentApBuckets';
 import {
@@ -58,13 +60,13 @@ export async function syncShipmentApBills(shipmentId: number): Promise<void> {
 export async function issueShipmentApBillForKind(
   shipmentId: number,
   apKind: ShipmentApKind,
-): Promise<number> {
+): Promise<BillDetailBundle> {
   const { data, error } = await supabase.rpc('issue_shipment_ap_bill_for_kind', {
     p_shipment_id: shipmentId,
     p_ap_kind: apKind,
   });
   if (error) throw error;
-  return Number(data);
+  return parseBillDetailBundleFromRpc(data);
 }
 
 export type { ShipmentApFxSnapshot };

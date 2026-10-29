@@ -7,26 +7,6 @@ const ONE_HOUR = 60 * 60 * 1000;
 const TWENTY_MINUTES = 20 * 60 * 1000;
 
 /**
- * Cargo Companies query cached for 20 minutes
- */
-export function useCargoCompaniesQuery(
-  tenantId: Ref<number | null | undefined> | ComputedRef<number | null | undefined> | number | null | undefined,
-) {
-  const resolvedTenantId = computed(() => {
-    const raw = unref(tenantId);
-    return raw && !isNaN(Number(raw)) ? Number(raw) : null;
-  });
-
-  return useQuery({
-    queryKey: computed(() => procurementStockQueryKeys.cargoCompanies(resolvedTenantId.value!)),
-    queryFn: () => globalShipmentRepository.listCargoCompaniesForTenant(resolvedTenantId.value!),
-    enabled: computed(() => resolvedTenantId.value !== null),
-    staleTime: TWENTY_MINUTES,
-    gcTime: TWENTY_MINUTES * 2,
-  });
-}
-
-/**
  * Shipment Progress Flows query cached for 1 hour
  */
 export function useShipmentProgressFlowsQuery(

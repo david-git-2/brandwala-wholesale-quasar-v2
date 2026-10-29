@@ -1,5 +1,5 @@
 import { useQuery, keepPreviousData } from '@tanstack/vue-query';
-import { computed, type Ref } from 'vue';
+import { computed, unref, type ComputedRef, type Ref } from 'vue';
 import { cashbookRepository } from '../repositories/cashbookRepository';
 import { cashbookQueryKeys } from '../services/cashbookQueryKeys';
 
@@ -12,7 +12,26 @@ export type CashbookPartyParams = {
   ledgerLimit?: number;
 };
 
-export function useCashbookPartyQuery(params: Ref<CashbookPartyParams>) {
+type CashbookPartyQueryOptions = {
+  /** Default true (Cashbook party page). Bill detail only needs detail. */
+  fetchLedger?: boolean;
+  enabled?: Ref<boolean> | ComputedRef<boolean>;
+};
+
+export function useCashbookPartyQuery(
+  params: Ref<CashbookPartyParams>,
+  options?: CashbookPartyQueryOptions,
+) {
+  const fetchLedger = options?.fetchLedger ?? true;
+  const externalEnabled = computed(() => unref(options?.enabled ?? true));
+
+  const partyReady = computed(
+    () =>
+      externalEnabled.value &&
+      !!params.value.tenantId &&
+      !!params.value.entityId,
+  );
+
   const detailQuery = useQuery({
     queryKey: computed(() =>
       cashbookQueryKeys.detail(params.value.tenantId, params.value.entityType, params.value.entityId),
@@ -23,8 +42,9 @@ export function useCashbookPartyQuery(params: Ref<CashbookPartyParams>) {
         params.value.entityType,
         params.value.entityId,
       ),
-    enabled: computed(() => !!params.value.tenantId && !!params.value.entityId),
-    staleTime: 30_000,
+    enabled: partyReady,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
 
   const ledgerQuery = useQuery({
@@ -44,8 +64,9 @@ export function useCashbookPartyQuery(params: Ref<CashbookPartyParams>) {
         offset: params.value.ledgerOffset,
         limit: params.value.ledgerLimit,
       }),
-    enabled: computed(() => !!params.value.tenantId && !!params.value.entityId),
-    staleTime: 30_000,
+    enabled: computed(() => fetchLedger && partyReady.value),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     placeholderData: keepPreviousData,
   });
 

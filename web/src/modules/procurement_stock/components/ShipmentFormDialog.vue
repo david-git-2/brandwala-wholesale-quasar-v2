@@ -248,11 +248,9 @@ import { useDialogPluginComponent, useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import { useCargoCompanyStore } from '../stores/cargoCompanyStore';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
-import {
-  globalShipmentRepository,
-  type GlobalShipment,
-} from '../repositories/globalShipmentRepository';
+import type { GlobalShipment } from '../repositories/globalShipmentRepository';
 
 const props = defineProps<{
   shipment?: GlobalShipment;
@@ -266,6 +264,11 @@ const $q = useQuasar();
 const authStore = useAuthStore();
 const vendorStore = useVendorStore();
 const shipmentStore = useGlobalShipmentStore();
+const cargoCompanyStore = useCargoCompanyStore();
+
+const parentTenantId = computed(
+  () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
+);
 
 const isEdit = computed(() => !!props.shipment);
 const submitting = ref(false);
@@ -304,8 +307,8 @@ const form = ref({
 const currencyOptions = ref<Array<{ label: string; value: number }>>([]);
 const loadingCurrencies = ref(false);
 const loadingVendors = ref(false);
-const loadingCargo = ref(false);
-const cargoOptions = ref<Array<{ label: string; value: number }>>([]);
+const cargoOptions = computed(() => cargoCompanyStore.selectOptions);
+const loadingCargo = computed(() => cargoCompanyStore.loading);
 
 const vendorOptions = computed(() =>
   vendorStore.items.map((v) => ({
@@ -318,7 +321,7 @@ onMounted(async () => {
   if (authStore.tenantId) {
     loadingVendors.value = true;
     try {
-      await vendorStore.fetchVendors(authStore.tenantId, true);
+      await vendorStore.fetchVendors(authStore.tenantId);
       if (!isEdit.value) {
         const defaultVendor = vendorStore.items.find((v) => v.is_default);
         if (defaultVendor) {
@@ -345,23 +348,15 @@ onMounted(async () => {
     } finally {
       loadingCurrencies.value = false;
     }
-  } else if (authStore.tenantId) {
-    loadingCargo.value = true;
+  } else if (parentTenantId.value) {
     try {
-      const parentTenantId = authStore.selectedTenant?.parent_id ?? authStore.tenantId;
-      const cargo = await globalShipmentRepository.listCargoCompaniesForTenant(parentTenantId);
-      cargoOptions.value = cargo.map((c) => ({
-        label: `${c.name} (${c.code})`,
-        value: c.id,
-      }));
-      const defaultCargo = cargo.find((c) => c.is_default);
+      await cargoCompanyStore.ensureCompaniesLoaded(parentTenantId.value);
+      const defaultCargo = cargoCompanyStore.defaultCompany;
       if (defaultCargo) {
         form.value.cargo_company_id = defaultCargo.id;
       }
     } catch (err: unknown) {
       console.error('Failed to load cargo companies', err);
-    } finally {
-      loadingCargo.value = false;
     }
   }
 

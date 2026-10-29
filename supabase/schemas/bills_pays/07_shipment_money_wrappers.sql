@@ -41,7 +41,6 @@ $$;
 CREATE OR REPLACE FUNCTION public.get_shipment_money_kernel_bundle(p_shipment_id bigint)
 RETURNS jsonb
 LANGUAGE plpgsql
-STABLE
 SECURITY DEFINER
 SET search_path TO public
 AS $$
@@ -160,7 +159,8 @@ CREATE OR REPLACE FUNCTION public.post_shipment_ap_money_out_snapshot(
   p_exchange_rate numeric DEFAULT NULL,
   p_source_currency_code text DEFAULT NULL,
   p_transaction_rate numeric DEFAULT NULL,
-  p_cashbook_point_pot_id bigint DEFAULT NULL
+  p_cashbook_point_pot_id bigint DEFAULT NULL,
+  p_idempotency_key text DEFAULT NULL
 ) RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -187,7 +187,8 @@ begin
     p_exchange_rate,
     p_source_currency_code,
     p_transaction_rate,
-    p_cashbook_point_pot_id
+    p_cashbook_point_pot_id,
+    p_idempotency_key
   );
 end;
 $$;
@@ -250,7 +251,7 @@ CREATE OR REPLACE FUNCTION public.issue_shipment_ap_bill_for_kind(
   p_shipment_id bigint,
   p_ap_kind text
 )
-RETURNS bigint
+RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO public
@@ -314,7 +315,7 @@ begin
     raise exception 'No draft AP bill to issue for bucket %', p_ap_kind;
   end if;
 
-  return v_last_issued;
+  return public.get_bill_detail_bundle(v_parent, v_last_issued);
 end;
 $$;
 
@@ -686,5 +687,5 @@ GRANT EXECUTE ON FUNCTION public.post_shipment_ap_money_out(
   bigint[], bigint, bigint, date, numeric, text, text, text, bigint, jsonb, jsonb, text, numeric, numeric, text, text, text
 ) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.post_shipment_ap_money_out_snapshot(
-  bigint[], bigint, bigint, date, bigint, text, text, jsonb, jsonb, text, numeric, numeric, text, numeric, bigint
+  bigint[], bigint, bigint, date, bigint, text, text, jsonb, jsonb, text, numeric, numeric, text, numeric, bigint, text
 ) TO authenticated, service_role;

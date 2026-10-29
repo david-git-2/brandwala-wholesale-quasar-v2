@@ -1,79 +1,165 @@
 <template>
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
-    <div class="row items-center justify-end q-pb-sm shrink-0">
-      <q-btn
-        v-if="pay && canVoidPayment"
-        outline
-        dense
-        no-caps
-        color="negative"
-        :label="voidButtonLabel"
-        :loading="voidMutation.isPending.value"
-        @click="openVoidDialog"
-      />
-    </div>
-
     <div v-if="detailQuery.isPending.value" class="col flex flex-center">
       <q-spinner color="primary" size="32px" />
     </div>
     <div v-else-if="pay" class="col overflow-auto">
-      <div class="pay-form-card q-pa-md q-gutter-y-sm">
-        <div class="text-h6 text-weight-bold">Pay #{{ pay.id }}</div>
-        <div class="text-caption text-grey-7">{{ pay.payment_date }} · {{ pay.source }}</div>
-        <div v-if="pay.voided_at" class="text-negative text-weight-medium">Voided</div>
-        <div>Profile: {{ pay.profile_name || '—' }}</div>
-        <div v-if="isFxPay">
-          Amount:
-          {{ formatSettlementCurrencyAmount(pay.foreign_amount, pay.settlement_currency_code) }}
-        </div>
-        <div v-else>Amount: {{ formatBdtTaka(pay.amount) }}</div>
-        <div
-          v-if="isFxPay"
-          class="text-body2 text-grey-8"
-        >
-          {{ formatBdtTaka(pay.amount) }} @ {{ pay.exchange_rate }} BDT/{{ pay.settlement_currency_code }}
-        </div>
-        <div v-if="pay.unallocated_amount > 0">Leftover: {{ formatAmountBdt(pay.unallocated_amount) }}</div>
-        <div v-if="pay.reference">Ref: {{ pay.reference }}</div>
-        <div v-if="pay.note">Note: {{ pay.note }}</div>
+      <div class="pay-detail-shell">
+        <TfBtn
+          variant="tertiary"
+          size="sm"
+          icon="ph ph-arrow-left"
+          label="Back to payments"
+          class="q-mb-sm"
+          @click="goBack"
+        />
 
-        <div v-if="pay.instruments.length" class="q-mt-md">
-          <div class="text-weight-medium">Instruments</div>
-          <div
-            v-for="inst in pay.instruments"
-            :key="inst.id"
-            class="row items-center justify-between q-py-xs"
-          >
-            <div class="text-body2">
-              {{ inst.payment_method_code }} — {{ formatAmountBdt(inst.amount) }}
-              <span v-if="inst.cheque_number" class="text-grey-7"> · {{ inst.cheque_number }}</span>
-              <span v-if="inst.bounced_at" class="text-negative text-weight-medium"> · Bounced</span>
+        <q-card flat bordered class="pay-detail-card">
+          <div class="pay-detail-header">
+            <div class="pay-detail-header__main">
+              <div class="row items-center wrap q-gutter-xs">
+                <span class="pay-detail-title">Pay #{{ pay.id }}</span>
+                <span class="pay-detail-type-chip">{{ paySourceLabel }}</span>
+                <TfStatusBadge v-if="pay.voided_at" status="cancelled" label="Voided" />
+              </div>
+              <div class="pay-detail-meta">
+                <span>{{ pay.payment_date }}</span>
+                <span class="pay-detail-meta-dot" aria-hidden="true">·</span>
+                <span>{{ pay.profile_name || 'No profile' }}</span>
+              </div>
             </div>
-            <q-btn
-              v-if="canBounceInstrument(inst)"
-              flat
-              dense
-              no-caps
-              color="negative"
-              label="Mark bounced"
-              :loading="bounceMutation.isPending.value"
-              @click="openBounceDialog(inst.id)"
+            <div v-if="!pay.voided_at" class="pay-detail-header__actions row q-gutter-sm">
+              <TfBtn
+                v-if="canCorrectPayment"
+                variant="primary"
+                size="sm"
+                icon="ph ph-arrows-clockwise"
+                label="Correct amount or rate"
+                :loading="correctPaymentVoiding"
+                @click="onOpenCorrectPayment"
+              />
+              <TfBtn
+                v-if="canVoidPayment"
+                variant="danger-trigger"
+                size="sm"
+                :label="voidButtonLabel"
+                :loading="voidMutation.isPending.value"
+                @click="openVoidDialog"
+              />
+            </div>
+          </div>
+
+          <div
+            v-if="payCorrectionHint"
+            class="pay-detail-hint"
+            :class="payCorrectionHintTone === 'blocked' ? 'pay-detail-hint--blocked' : 'pay-detail-hint--info'"
+          >
+            <q-icon
+              :name="payCorrectionHintTone === 'blocked' ? 'ph ph-lock' : 'ph ph-info'"
+              size="18px"
+              class="pay-detail-hint__icon"
             />
+            <span>{{ payCorrectionHint }}</span>
           </div>
-        </div>
 
-        <div v-if="pay.allocations.length" class="q-mt-md">
-          <div class="text-weight-medium">Allocations</div>
-          <div v-for="alloc in pay.allocations" :key="alloc.id" class="text-body2">
-            {{ alloc.invoice_no || alloc.global_invoice_id }} — {{ formatAllocAmount(alloc.amount) }}
+          <div class="pay-detail-amount">
+            <div v-if="isFxPay" class="pay-detail-amount__stack">
+              <div class="pay-detail-amount__primary tf-num">
+                {{ formatSettlementCurrencyAmount(pay.foreign_amount, pay.settlement_currency_code) }}
+              </div>
+              <div class="pay-detail-amount__fx tf-num">
+                {{ formatBdtTaka(pay.amount) }}
+                <span class="pay-detail-amount__rate">
+                  @ {{ pay.exchange_rate }} BDT/{{ pay.settlement_currency_code }}
+                </span>
+              </div>
+            </div>
+            <div v-else class="pay-detail-amount__primary tf-num">
+              {{ formatBdtTaka(pay.amount) }}
+            </div>
+            <div v-if="pay.unallocated_amount > 0" class="pay-detail-leftover">
+              Unallocated {{ formatAmountBdt(pay.unallocated_amount) }}
+            </div>
           </div>
-        </div>
 
-        <template v-if="canDispenseShopPayout">
-          <q-separator class="q-mt-md" />
-          <q-banner dense rounded class="bg-blue-1 text-blue-10 q-mt-md">
-            Remittance profit is on the shop cashbook. Pay it out here — do not allocate to another bill.
-          </q-banner>
+          <dl v-if="pay.reference || pay.note" class="pay-detail-meta-grid">
+            <template v-if="pay.reference">
+              <dt>Reference</dt>
+              <dd>{{ pay.reference }}</dd>
+            </template>
+            <template v-if="pay.note">
+              <dt>Note</dt>
+              <dd>{{ pay.note }}</dd>
+            </template>
+          </dl>
+
+          <section v-if="pay.instruments.length" class="pay-detail-section">
+            <div class="pay-detail-section__label">Instruments</div>
+            <q-markup-table flat dense bordered class="pay-detail-table">
+              <thead>
+                <tr>
+                  <th class="text-left">Method</th>
+                  <th class="text-right">Amount</th>
+                  <th class="text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="inst in pay.instruments" :key="inst.id">
+                  <td>
+                    <span class="text-weight-medium">{{ inst.payment_method_code }}</span>
+                    <span v-if="inst.cheque_number" class="pay-detail-table__sub">
+                      · {{ inst.cheque_number }}
+                    </span>
+                    <TfStatusBadge
+                      v-if="inst.bounced_at"
+                      status="cancelled"
+                      label="Bounced"
+                      class="q-ml-xs"
+                    />
+                  </td>
+                  <td class="text-right tf-num">{{ formatAmountBdt(inst.amount) }}</td>
+                  <td class="text-right">
+                    <TfBtn
+                      v-if="canBounceInstrument(inst)"
+                      variant="danger-trigger"
+                      size="sm"
+                      label="Mark bounced"
+                      :loading="bounceMutation.isPending.value"
+                      @click="openBounceDialog(inst.id)"
+                    />
+                    <span v-else class="pay-detail-table__muted">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </section>
+
+          <section v-if="pay.allocations.length" class="pay-detail-section">
+            <div class="pay-detail-section__label">Applied to bills</div>
+            <q-list bordered separator class="rounded-borders pay-detail-alloc-list">
+              <q-item v-for="alloc in pay.allocations" :key="alloc.id" dense>
+                <q-item-section>
+                  <TfBtn
+                    v-if="alloc.global_invoice_id"
+                    variant="link"
+                    size="sm"
+                    :label="alloc.invoice_no || `Bill #${alloc.global_invoice_id}`"
+                    @click="goToBill(alloc.global_invoice_id)"
+                  />
+                  <span v-else>{{ alloc.invoice_no || alloc.global_invoice_id }}</span>
+                </q-item-section>
+                <q-item-section side class="tf-num text-weight-medium">
+                  {{ formatAllocAmount(alloc.amount) }}
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </section>
+
+          <section v-if="canDispenseShopPayout" class="pay-detail-section">
+            <div class="pay-detail-hint pay-detail-hint--info q-mb-sm" style="margin: 0">
+              <q-icon name="ph ph-info" size="18px" class="pay-detail-hint__icon" />
+              <span>Remittance profit is on the shop cashbook. Pay it out here — do not allocate to another bill.</span>
+            </div>
           <q-select
             v-model="shopPayFromPotId"
             :options="shopPayFromOptions"
@@ -112,34 +198,31 @@
             autogrow
             class="q-mt-sm"
           />
-          <q-btn
-            unelevated
-            color="primary"
-            no-caps
+          <TfBtn
+            variant="primary"
             class="full-width q-mt-md"
             label="Pay out to shop"
             :loading="shopPayoutSubmitting"
             :disable="!canSubmitShopPayout"
             @click="submitShopPayout"
           />
-        </template>
+          </section>
 
-        <template v-if="canAllocateLater">
-          <q-separator class="q-mt-md" />
-          <div class="row items-center justify-between q-mt-md">
-            <div class="text-weight-medium">Apply leftover to bills</div>
-            <q-btn
-              flat
-              dense
-              no-caps
-              color="primary"
+        <section v-if="canAllocateLater" class="pay-detail-section">
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="pay-detail-section__label q-mb-none">Apply leftover to bills</div>
+            <TfBtn
+              variant="link"
+              size="sm"
               label="Fill oldest first"
               :disable="!openBills.length"
               @click="fillOldestFirst"
             />
           </div>
-          <div v-if="loadingBills" class="text-grey-7 q-py-sm">Loading bills…</div>
-          <div v-else-if="!openBills.length" class="text-grey-7 q-py-sm">No open bills for this profile.</div>
+          <div v-if="loadingBills" class="text-body2" style="color: var(--tf-neutral-muted)">Loading bills…</div>
+          <div v-else-if="!openBills.length" class="text-body2" style="color: var(--tf-neutral-muted)">
+            No open bills for this profile.
+          </div>
           <q-list v-else bordered separator class="rounded-borders q-mt-sm">
             <q-item v-for="bill in openBills" :key="bill.id">
               <q-item-section side top>
@@ -167,25 +250,23 @@
               </q-item-section>
             </q-item>
           </q-list>
-          <q-banner
+          <div
             v-if="allocOverLeftover"
-            dense
-            rounded
-            class="bg-orange-1 text-orange-10 q-mt-sm"
+            class="pay-detail-hint pay-detail-hint--blocked q-mt-sm"
+            style="margin-left: 0; margin-right: 0"
           >
             Selections exceed leftover {{ formatAmountBdt(pay.unallocated_amount) }}.
-          </q-banner>
-          <q-btn
-            unelevated
-            color="primary"
-            no-caps
+          </div>
+          <TfBtn
+            variant="primary"
             class="full-width q-mt-md"
             label="Apply leftover"
             :loading="allocateMutation.isPending.value"
             :disable="!canApplyLeftover"
             @click="applyLeftover"
           />
-        </template>
+        </section>
+        </q-card>
       </div>
     </div>
 
@@ -229,6 +310,14 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <CorrectPaymentDialog
+      v-model="correctPaymentDialogOpen"
+      :pay="correctPaymentDisplayPay"
+      :loading="correctPaymentVoiding"
+      @confirm="onConfirmCorrectPaymentVoid"
+      @cancel="onCancelCorrectPayment"
+    />
   </q-page>
 </template>
 
@@ -246,8 +335,15 @@ import { paysQueryKeys } from '../services/paysQueryKeys';
 import { useVoidPayMutation } from '../composables/useVoidPayMutation';
 import { useBounceChequeMutation } from '../composables/useBounceChequeMutation';
 import { useAllocatePayMutation } from '../composables/useAllocatePayMutation';
+import CorrectPaymentDialog from '../components/CorrectPaymentDialog.vue';
+import { useCorrectPaymentFlow } from '../composables/useCorrectPaymentFlow';
+import { usePaymentsVoidAccess } from '../composables/usePaymentsVoidAccess';
+import { isPayVoidable } from '../utils/payVoidability';
+import type { PayCorrectionSnapshot } from '../types/payCorrectionSnapshot';
 import { fifoFillByOldest } from '../utils/fifoBillAlloc';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import TfBtn from 'src/components/ui/TfBtn.vue';
+import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
 import { useQueryClient } from '@tanstack/vue-query';
 import { supabase } from 'src/boot/supabase';
 import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
@@ -303,13 +399,79 @@ const detailQuery = useQuery({
 
 const pay = computed(() => detailQuery.data.value);
 
-const VOIDABLE_SOURCES = new Set(['customer_cash', 'bank', 'ap_payout', 'commission', 'courier_remittance']);
+const paymentsVoidAccess = usePaymentsVoidAccess();
 
-const canVoidPayment = computed(() => {
+const primaryBillId = computed(() => pay.value?.allocations[0]?.global_invoice_id ?? null);
+
+const {
+  dialogOpen: correctPaymentDialogOpen,
+  voiding: correctPaymentVoiding,
+  displayPay: correctPaymentDisplayPay,
+  openCorrect: openCorrectPayment,
+  closeDialog: closeCorrectPaymentDialog,
+  confirmVoid: confirmCorrectPaymentVoid,
+} = useCorrectPaymentFlow({
+  billId: primaryBillId,
+  onVoided: async (snapshot: PayCorrectionSnapshot) => {
+    const billId = primaryBillId.value;
+    const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+    if (billId) {
+      await router.push({
+        name: 'app-bill-detail-page',
+        params: {
+          ...(tenantSlug ? { tenantSlug } : {}),
+          billId: String(billId),
+        },
+        state: { payCorrectionPrefill: snapshot },
+      });
+      return;
+    }
+    goBack();
+  },
+});
+
+const payIsVoidableBySource = computed(() => {
   const p = pay.value;
-  if (!p || p.voided_at) return false;
-  if (p.source === 'store_credit' || p.method === 'wallet_credit') return false;
-  return VOIDABLE_SOURCES.has(p.source);
+  if (!p) return false;
+  return isPayVoidable({ source: p.source, method: p.method, voidedAt: p.voided_at });
+});
+
+const canVoidPayment = computed(() => paymentsVoidAccess.value && payIsVoidableBySource.value);
+
+const canCorrectPayment = computed(() => canVoidPayment.value);
+
+const paySourceLabel = computed(() => {
+  const s = pay.value?.source;
+  if (s === 'ap_payout') return 'AP pay out';
+  if (s === 'courier_remittance') return 'Remittance';
+  if (s === 'commission') return 'Commission payout';
+  if (s === 'store_credit') return 'Store credit';
+  if (s === 'bank') return 'Bank receipt';
+  if (s === 'customer_cash') return 'Customer receipt';
+  return s?.replace(/_/g, ' ') ?? 'Payment';
+});
+
+const payCorrectionHint = computed(() => {
+  const p = pay.value;
+  if (!p || p.voided_at) return null;
+  if (p.source === 'store_credit' || p.method === 'wallet_credit') {
+    return 'Store-credit payments cannot be corrected on this screen.';
+  }
+  if (!paymentsVoidAccess.value && payIsVoidableBySource.value) {
+    return 'You need payments void permission to correct this pay.';
+  }
+  if (canCorrectPayment.value) {
+    return 'Posted payments cannot be edited inline. Correct amount or rate voids this pay and opens the bill to enter again.';
+  }
+  return null;
+});
+
+const payCorrectionHintTone = computed((): 'info' | 'blocked' => {
+  const p = pay.value;
+  if (!p) return 'info';
+  if (p.source === 'store_credit' || p.method === 'wallet_credit') return 'blocked';
+  if (!paymentsVoidAccess.value && payIsVoidableBySource.value) return 'blocked';
+  return 'info';
 });
 
 const voidButtonLabel = computed(() => {
@@ -584,6 +746,30 @@ const goBack = () => {
   router.push(paymentsPageRoute(tenantSlug, side));
 };
 
+const goToBill = (billId: number) => {
+  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  router.push({
+    name: 'app-bill-detail-page',
+    params: {
+      ...(tenantSlug ? { tenantSlug } : {}),
+      billId: String(billId),
+    },
+  });
+};
+
+const onOpenCorrectPayment = () => {
+  if (!payId.value) return;
+  void openCorrectPayment(payId.value);
+};
+
+const onConfirmCorrectPaymentVoid = (reason: string) => {
+  void confirmCorrectPaymentVoid(reason);
+};
+
+const onCancelCorrectPayment = () => {
+  closeCorrectPaymentDialog();
+};
+
 const openVoidDialog = () => {
   voidReason.value = 'Corrected entry';
   voidDialogOpen.value = true;
@@ -621,15 +807,192 @@ const confirmBounce = async () => {
 };
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .page-fixed-layout {
   height: calc(100vh - 55px);
 }
-.pay-form-card {
-  max-width: 720px;
+
+.pay-detail-shell {
+  max-width: 640px;
   margin: 0 auto;
-  background: var(--tf-neutral-surface, #fff);
-  border: 1px solid var(--tf-neutral-border, #e7e1d8);
-  border-radius: 8px;
+  padding-bottom: var(--tf-space-md, 16px);
+}
+
+.pay-detail-card {
+  background: var(--tf-neutral-surface);
+  border-radius: var(--tf-radius-sm, 8px);
+  overflow: hidden;
+}
+
+.pay-detail-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--tf-neutral-border);
+}
+
+.pay-detail-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--tf-neutral-ink);
+  letter-spacing: -0.02em;
+}
+
+.pay-detail-type-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tf-neutral-chrome-text);
+  background: var(--tf-neutral-canvas);
+  border: 1px solid var(--tf-neutral-border);
+  border-radius: var(--tf-radius-sm, 8px);
+}
+
+.pay-detail-meta {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--tf-neutral-muted);
+}
+
+.pay-detail-meta-dot {
+  margin: 0 6px;
+  opacity: 0.6;
+}
+
+.pay-detail-header__actions {
+  flex-shrink: 0;
+}
+
+.pay-detail-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  border-radius: var(--tf-radius-sm, 8px);
+  border: 1px solid var(--tf-neutral-border);
+}
+
+.pay-detail-hint--info {
+  background: var(--tf-progress-soft, var(--tf-neutral-canvas));
+  color: var(--tf-neutral-ink);
+}
+
+.pay-detail-hint--blocked {
+  background: var(--tf-attention-soft);
+  color: var(--tf-neutral-ink);
+}
+
+.pay-detail-hint__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  opacity: 0.85;
+}
+
+.pay-detail-amount {
+  padding: 16px;
+  border-bottom: 1px solid var(--tf-neutral-border);
+}
+
+.pay-detail-amount__primary {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--tf-neutral-ink);
+  line-height: 1.2;
+}
+
+.pay-detail-amount__fx {
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--tf-neutral-ink);
+}
+
+.pay-detail-amount__rate {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--tf-neutral-muted);
+}
+
+.pay-detail-leftover {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tf-neutral-chrome-text);
+}
+
+.pay-detail-meta-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--tf-neutral-border);
+  font-size: 13px;
+}
+
+.pay-detail-meta-grid dt {
+  margin: 0;
+  color: var(--tf-neutral-muted);
+  font-weight: 500;
+}
+
+.pay-detail-meta-grid dd {
+  margin: 0;
+  color: var(--tf-neutral-ink);
+}
+
+.pay-detail-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--tf-neutral-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.pay-detail-section__label {
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tf-neutral-chrome-text);
+}
+
+.pay-detail-table {
+  background: var(--tf-neutral-surface);
+
+  :deep(thead tr th) {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--tf-neutral-chrome-text);
+    background: var(--tf-neutral-canvas);
+  }
+}
+
+.pay-detail-table__sub {
+  font-size: 12px;
+  color: var(--tf-neutral-muted);
+}
+
+.pay-detail-table__muted {
+  font-size: 12px;
+  color: var(--tf-neutral-muted);
+}
+
+.pay-detail-alloc-list {
+  background: var(--tf-neutral-surface);
 }
 </style>
