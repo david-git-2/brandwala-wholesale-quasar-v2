@@ -1,5 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router';
-import './registerSite';
+import '../registerSite';
 
 const topicPage = () => import('src/modules/docs/pages/DocsTopicPage.vue');
 

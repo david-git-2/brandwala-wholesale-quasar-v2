@@ -25,10 +25,36 @@
       </div>
 
       <div class="row items-center justify-end q-gutter-x-xs no-wrap workflow-trailing">
+        <q-btn
+          outline
+          dense
+          no-caps
+          color="primary"
+          class="text-weight-bold q-px-sm"
+          icon="ph ph-clipboard-text"
+          label="Bulk Paste"
+          size="sm"
+          :disable="!canBulkPaste"
+          @click="emit('open-bulk-paste')"
+        >
+          <q-tooltip>Paste barcode, product code, and values from Excel</q-tooltip>
+        </q-btn>
         <CatalogOrderColumnSelectorButton
           :visible-columns="visibleColumns"
           @update:visible-columns="emit('update:visible-columns', $event)"
         />
+        <q-btn
+          flat
+          round
+          dense
+          color="grey-8"
+          icon="ph ph-file-xls"
+          size="sm"
+          :disable="!canDownloadExcel"
+          @click="emit('download-excel')"
+        >
+          <q-tooltip>Download Excel</q-tooltip>
+        </q-btn>
         <q-btn
           flat
           round
@@ -50,18 +76,23 @@ import { computed } from 'vue';
 import type { ShopOrder } from '../types';
 import CatalogOrderColumnSelectorButton from './CatalogOrderColumnSelectorButton.vue';
 import OrderPricingModeBadge from './OrderPricingModeBadge.vue';
-import { getStaffCatalogStatusLabel, normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
+import { getStaffCatalogStatusLabel, isCatalogStaffReadOnly, normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
   order: ShopOrder | null;
   isLoading?: boolean;
   visibleColumns?: string[];
+  canDownloadExcel?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'update:visible-columns', columns: string[]): void;
+  (e: 'download-excel'): void;
   (e: 'open-settings'): void;
+  (e: 'open-bulk-paste'): void;
 }>();
+
+const canBulkPaste = computed(() => !isCatalogStaffReadOnly(props.order?.status));
 
 const statusLabel = computed(() => getStaffCatalogStatusLabel(props.order?.status));
 

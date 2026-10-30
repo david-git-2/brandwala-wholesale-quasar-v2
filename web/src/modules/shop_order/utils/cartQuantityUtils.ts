@@ -1,23 +1,24 @@
 import type { ShopType } from '../types';
 
+/** Catalog shop default step / minimum when product MOQ is ≤ this value. */
+export const VENDOR_CATALOG_DEFAULT_MOQ = 6;
+
 type MoqSource = {
   minimum_order_quantity?: number | null;
   minimum_quantity?: number | null;
   moq?: number | null;
 };
 
-/** vendor_catalog uses product MOQ; fixed_price and dropship always step by 1. */
+/** fixed_price / dropship step by 1. vendor_catalog: min 6, or product MOQ when > 6. */
 export function resolveShopCartItemMoq(
   item: MoqSource,
   shopType?: ShopType | null,
 ): number {
   if (shopType !== 'vendor_catalog') return 1;
 
-  const productMoq = Number(item.minimum_order_quantity ?? item.moq ?? 0);
-  if (productMoq > 1) return productMoq;
-
-  const storedMin = Number(item.minimum_quantity ?? 0);
-  return storedMin > 0 ? storedMin : 1;
+  const productMoq = Math.floor(Number(item.minimum_order_quantity ?? item.moq ?? 0)) || 0;
+  if (productMoq > VENDOR_CATALOG_DEFAULT_MOQ) return productMoq;
+  return VENDOR_CATALOG_DEFAULT_MOQ;
 }
 
 export function adjustQtyByMoq(currentQty: number, delta: number, moq: number): number {

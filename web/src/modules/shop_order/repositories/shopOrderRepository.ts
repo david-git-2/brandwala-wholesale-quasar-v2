@@ -1492,6 +1492,35 @@ const updateCatalogOrderItemForStaff = async (
   return parseStaffShopOrderDetailResponse(data);
 };
 
+export type CatalogOrderItemStaffUpdatePayload = {
+  product_weight_gm?: number | null;
+  package_weight_gm?: number | null;
+  weight_kg?: number | null;
+  cost_price_amount?: number | null;
+  staff_offer_amount?: number | null;
+  is_first_offer_manual?: boolean | null;
+  final_price_amount?: number | null;
+  is_final_offer_manual?: boolean | null;
+  customer_offer_amount?: number | null;
+  customer_offer_currency_id?: number | null;
+  confirmed_quantity?: number | null;
+  quantity?: number | null;
+};
+
+const bulkUpdateCatalogOrderItemsForStaff = async (
+  tenantId: number,
+  orderId: number,
+  updates: Array<{ item_id: number; payload: CatalogOrderItemStaffUpdatePayload }>,
+): Promise<StaffShopOrderDetailResponse> => {
+  const { data, error } = await supabase.rpc('bulk_update_catalog_order_items_for_staff', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_updates: updates as unknown as Record<string, unknown>,
+  });
+  if (error) throw error;
+  return parseStaffShopOrderDetailResponse(data);
+};
+
 /** Customer-scope inline edits (shop RLS). Staff catalog edits use updateCatalogOrderItemForStaff. */
 const updateCatalogOrderItem = async (
   orderId: number,
@@ -1625,6 +1654,7 @@ export const shopOrderRepository = {
   updateCatalogOrderRates,
   updateCatalogOrderItem,
   updateCatalogOrderItemForStaff,
+  bulkUpdateCatalogOrderItemsForStaff,
   listShopCustomerStocks,
   receiveShopCustomerStock,
   listShopAutoGiftItems,

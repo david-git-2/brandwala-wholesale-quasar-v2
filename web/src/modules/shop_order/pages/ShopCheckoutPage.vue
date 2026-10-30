@@ -438,6 +438,7 @@ import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recip
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { getLastVisitedShopSlug } from '../utils/catalogShop';
 import { customerCanSeeCartLinePrices } from '../utils/catalogPriceUtils';
+import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 import {
   getBDDistricts,
   getBDUpazilas,
@@ -769,8 +770,7 @@ const submitOrder = async () => {
     }
   } else {
     for (const item of items.value) {
-      const itemAny = item as any;
-      const minQty = itemAny.minimum_quantity || itemAny.minimum_order_quantity || itemAny.moq || 1;
+      const minQty = resolveShopCartItemMoq(item, shopType.value);
       if (item.quantity < minQty) {
         showErrorNotification(
           `Minimum order quantity for ${item.name} is ${minQty}. Current quantity: ${item.quantity}.`,

@@ -48,6 +48,16 @@
               flat
               no-caps
               align="left"
+              icon="ph ph-file-xls"
+              label="Download Excel"
+              class="rounded-sq-btn action-list-btn"
+              :disable="!canDownloadExcel"
+              @click="emit('download-excel')"
+            />
+            <q-btn
+              flat
+              no-caps
+              align="left"
               icon="ph ph-arrows-clockwise"
               label="Override status…"
               class="rounded-sq-btn action-list-btn"
@@ -100,10 +110,12 @@ defineProps<{
   totals: CatalogOrderSummaryTotals;
   showCancel?: boolean;
   isDeleting?: boolean;
+  canDownloadExcel?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
+  (e: 'download-excel'): void;
   (e: 'override-status'): void;
   (e: 'cancel-order'): void;
 }>();

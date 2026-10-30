@@ -23,8 +23,11 @@
             :order="currentOrder"
             :is-loading="isLoading"
             :visible-columns="catalogVisibleColumns"
+            :can-download-excel="canDownloadCatalogExcel"
             @update:visible-columns="onCatalogVisibleColumnsUpdate"
+            @download-excel="handleCatalogDownloadExcel"
             @open-settings="showCatalogSettingsDialog = true"
+            @open-bulk-paste="openCatalogBulkPaste"
           />
           <CatalogOrderRatesBar
             variant="compact"
@@ -79,6 +82,14 @@
           </CatalogOrderStaffActions>
         </div>
       </template>
+
+      <CatalogOrderBulkPastePanel
+        v-if="currentOrder"
+        ref="catalogBulkPasteRef"
+        :order="currentOrder"
+        :items="orderItems"
+        :save-updates="saveCatalogBulkPasteUpdates"
+      />
 
       <!-- OTHER SHOP TYPES (Dropship/Fixed) -->
       <div v-else class="q-gutter-y-md">
@@ -151,6 +162,8 @@
       :totals="catalogSummarySnapshot.totals"
       :show-cancel="currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled'"
       :is-deleting="isDeletingOrder"
+      :can-download-excel="canDownloadCatalogExcel"
+      @download-excel="handleCatalogDownloadExcel"
       @override-status="onCatalogSettingsOverrideStatus"
       @cancel-order="onCatalogSettingsCancelOrder"
     />
@@ -184,11 +197,13 @@ import {
 import {
   useSaveCatalogRatesMutation,
   useUpdateCatalogOrderItemMutation,
+  useBulkUpdateCatalogOrderItemsMutation,
   useStaffPriceCatalogOrderMutation,
   useStaffFinalizeCatalogPricesMutation,
   useStaffStartCatalogProcurementMutation,
   useStaffSetCatalogDeliveredQtyMutation,
 } from '../composables/useCatalogOrderMutations';
+import { useCatalogOrderExcelDownload } from '../composables/useCatalogOrderExcelDownload';
 import {
   calculateItemFirstOfferPrice,
   calculateItemFinalOfferPrice,
@@ -202,6 +217,7 @@ import {
   type StaffCatalogPrimaryAction,
 } from '../utils/catalogOrderStatus';
 import { requestConfirmation } from 'src/utils/appFeedback';
+import type { CatalogBulkPasteUpdate } from '../composables/useCatalogOrderBulkPaste';
 
 import StaffOrderHeader from '../components/StaffOrderHeader.vue';
 import StaffOrderStatusWorkflow from '../components/StaffOrderStatusWorkflow.vue';
@@ -211,6 +227,7 @@ import StaffOrderShippingCard from '../components/StaffOrderShippingCard.vue';
 import StaffOrderDetailSkeleton from '../components/StaffOrderDetailSkeleton.vue';
 
 import CatalogOrderWorkflowBar from '../components/CatalogOrderWorkflowBar.vue';
+import CatalogOrderBulkPastePanel from '../components/CatalogOrderBulkPastePanel.vue';
 import CatalogOrderRatesBar from '../components/CatalogOrderRatesBar.vue';
 import CatalogOrderItemsTable from '../components/CatalogOrderItemsTable.vue';
 import CatalogOrderStaffActions from '../components/CatalogOrderStaffActions.vue';
@@ -224,6 +241,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const { t } = useI18n();
 const $q = useQuasar();
+const { downloadCatalogOrderExcel } = useCatalogOrderExcelDownload();
 
 const orderId = computed(() => Number(route.params.id || 0));
 
@@ -250,6 +268,7 @@ const { mutate: processDropshipOrder, isPending: isProcessingDropship } = usePro
 // Catalog Specific Mutations
 const { mutate: saveCatalogRates, isPending: isSavingRates } = useSaveCatalogRatesMutation();
 const { mutate: updateCatalogOrderItem } = useUpdateCatalogOrderItemMutation();
+const { mutateAsync: bulkUpdateCatalogOrderItems } = useBulkUpdateCatalogOrderItemsMutation();
 const { mutate: staffPriceCatalog, isPending: isStaffPricingCatalog } = useStaffPriceCatalogOrderMutation();
 const { mutate: staffFinalizeCatalog, isPending: isStaffFinalizingCatalog } =
   useStaffFinalizeCatalogPricesMutation();
@@ -293,9 +312,32 @@ const handleUpdateCatalogOrderItem = ({
 const showBacklogDrawer = ref(false);
 const showStatusOverrideDialog = ref(false);
 const showCatalogSettingsDialog = ref(false);
+const catalogBulkPasteRef = ref<InstanceType<typeof CatalogOrderBulkPastePanel> | null>(null);
+
+const openCatalogBulkPaste = () => {
+  catalogBulkPasteRef.value?.openBulkPasteDialog('all');
+};
+
+const saveCatalogBulkPasteUpdates = async (updates: CatalogBulkPasteUpdate[]) => {
+  const tenantId = authStore.tenantId;
+  if (!tenantId || !orderId.value) {
+    throw new Error('Tenant context required.');
+  }
+  await bulkUpdateCatalogOrderItems({
+    tenantId,
+    orderId: orderId.value,
+    updates,
+  });
+};
 
 const targetUpdatingStatus = ref<string | null>(null);
 const orderItems = ref<any[]>([]);
+
+const canDownloadCatalogExcel = computed(() => orderItems.value.length > 0);
+
+function handleCatalogDownloadExcel() {
+  void downloadCatalogOrderExcel($q, currentOrder.value, orderItems.value);
+}
 
 const catalogAllColumnNames = [
   'sl',

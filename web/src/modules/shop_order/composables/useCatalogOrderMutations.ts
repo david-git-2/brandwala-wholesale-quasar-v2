@@ -227,3 +227,42 @@ export function useUpdateCatalogOrderItemMutation() {
     },
   });
 }
+
+export function useBulkUpdateCatalogOrderItemsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      tenantId,
+      orderId,
+      updates,
+    }: {
+      tenantId: number;
+      orderId: number;
+      updates: Array<{
+        item_id: number;
+        payload: {
+          product_weight_gm?: number | null;
+          package_weight_gm?: number | null;
+          weight_kg?: number | null;
+          cost_price_amount?: number | null;
+          staff_offer_amount?: number | null;
+          is_first_offer_manual?: boolean | null;
+          quantity?: number | null;
+        };
+      }>;
+    }) =>
+      shopOrderRepository.bulkUpdateCatalogOrderItemsForStaff(tenantId, orderId, updates),
+    onSuccess: (data, variables) => {
+      applyStaffOrderDetailToCache(
+        queryClient,
+        variables.tenantId,
+        variables.orderId,
+        data,
+      );
+    },
+    onError: (err: unknown) => {
+      handleApiFailure(err, 'Failed to save bulk paste');
+    },
+  });
+}

@@ -247,6 +247,7 @@ import type { ShopOrderItem, ShopOrder, CustomerOrderDetailOrder } from '../type
 import { getFirstOfferUnitAmount } from '../utils/catalogPricingUtils';
 import { normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
 import { customerCanSeeOrderLineTotal } from '../utils/catalogPriceUtils';
+import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 
 const props = defineProps<{
   item: ShopOrderItem;
@@ -433,11 +434,9 @@ const effectiveUnitPrice = computed(() => {
   return Number(props.item.unit_sell_price_amount || props.item.unit_list_price_amount || 0);
 });
 
-const minQtyStep = computed(() => {
-  const itemAny = props.item as any;
-  const step = itemAny.minimum_order_quantity ?? itemAny.minimum_quantity ?? itemAny.moq ?? 1;
-  return Math.max(1, Number(step) || 1);
-});
+const minQtyStep = computed(() =>
+  resolveShopCartItemMoq(props.item, props.order?.shop_type_snapshot ?? 'vendor_catalog'),
+);
 
 const calculatedLineTotal = computed(() => {
   const qty = showQuantityStepper.value || isConfirmedOrBeyond.value

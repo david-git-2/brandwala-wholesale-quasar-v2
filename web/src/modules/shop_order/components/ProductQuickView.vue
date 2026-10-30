@@ -96,11 +96,7 @@
 
           <!-- MOQ Warning -->
           <q-banner
-            v-if="
-              product &&
-              (product.minimum_order_quantity || product.moq) &&
-              (product.minimum_order_quantity || product.moq) > 1
-            "
+            v-if="product && minQty > 1"
             dense
             rounded
             class="bg-warning-soft text-warning-dark border-warning"
@@ -109,7 +105,7 @@
               <q-icon name="ph ph-info" color="warning" size="20px" />
             </template>
             <div class="text-caption text-weight-medium">
-              {{ $t('shop.moq_notice', { count: product.minimum_order_quantity || product.moq }) }}
+              {{ $t('shop.moq_notice', { count: minQty }) }}
             </div>
           </q-banner>
 
