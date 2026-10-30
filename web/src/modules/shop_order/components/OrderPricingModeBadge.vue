@@ -1,6 +1,12 @@
 <template>
   <div
-    v-if="visible"
+    v-if="visible && variant === 'text'"
+    class="order-pricing-mode-text"
+  >
+    {{ label }}
+  </div>
+  <div
+    v-else-if="visible"
     class="order-pricing-mode-badge"
     :class="isNegotiable ? 'mode-negotiable' : 'mode-fixed'"
   >
@@ -18,10 +24,14 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { ShopType } from '../types';
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   isNegotiable: boolean;
   shopType?: ShopType | string | null;
-}>();
+  variant?: 'badge' | 'text';
+}>(),
+  { variant: 'badge' },
+);
 
 const { t } = useI18n();
 
@@ -54,9 +64,19 @@ const label = computed(() =>
 }
 
 .mode-fixed {
-  background: #f1f5f9;
-  color: #334155;
-  border: 1px solid #cbd5e1;
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 0;
+  font-weight: 500;
+}
+
+.order-pricing-mode-text {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #6b7280;
 }
 
 body.body--dark .mode-negotiable {

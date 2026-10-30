@@ -30,7 +30,7 @@
             no-caps
             dense
             class="shop-shell__labeled-btn"
-            :class="{ 'shop-shell__labeled-btn--active': isCatalogNavActive }"
+            :class="{ 'shop-shell__labeled-btn--segment-active': isCatalogNavActive }"
             icon="ph ph-storefront"
             :label="$t('navigation.catalog')"
             data-test="shop-header-catalog-btn"
@@ -41,7 +41,7 @@
             no-caps
             dense
             class="shop-shell__labeled-btn"
-            :class="{ 'shop-shell__labeled-btn--active': isOrdersNavActive }"
+            :class="{ 'shop-shell__labeled-btn--segment-active': isOrdersNavActive }"
             icon="ph ph-clipboard-text"
             :label="$t('navigation.orders')"
             data-test="shop-header-orders-btn"
@@ -89,6 +89,7 @@
               color="negative"
               floating
               rounded
+              class="shop-shell__cart-badge"
               :label="cartItemCount"
             />
           </q-btn>
@@ -654,6 +655,9 @@ defineExpose({
   align-items: center;
   justify-content: center;
   gap: 0.15rem;
+  padding: 0.2rem;
+  border-radius: 10px;
+  background: #f1f5f9;
 }
 
 .shop-shell__tenant-link {
@@ -694,7 +698,7 @@ defineExpose({
   align-items: center;
   justify-self: end;
   justify-content: flex-end;
-  gap: 0.15rem;
+  gap: 0.35rem;
   min-width: 0;
 }
 
@@ -723,26 +727,40 @@ defineExpose({
 }
 
 .shop-shell__labeled-btn {
-  min-height: 36px;
-  padding: 0.3rem 0.65rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
+  min-height: 34px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--shop-shell-ink);
-  background: color-mix(in srgb, var(--shop-shell-border) 35%, transparent);
+  color: #64748b;
+  background: transparent !important;
 }
 
 .shop-shell__labeled-btn :deep(.q-icon) {
   font-size: 1rem;
-  color: var(--shop-shell-ink);
+  color: #64748b;
 }
 
 .shop-shell__labeled-btn :deep(.q-btn__content) {
   gap: 0.3rem;
 }
 
-.shop-shell__labeled-btn--active {
-  background: var(--shop-shell-accent-soft);
+.shop-shell__labeled-btn--segment-active {
+  background: #fff !important;
+  color: var(--tf-theme-primary, #2b5fa8) !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+}
+
+.shop-shell__labeled-btn--segment-active :deep(.q-icon) {
+  color: var(--tf-theme-primary, #2b5fa8) !important;
+}
+
+.shop-shell__cart-badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  min-width: 1.1rem;
+  min-height: 1.1rem;
+  padding: 0 0.2rem;
 }
 
 @media (max-width: 1023px) {
@@ -753,9 +771,9 @@ defineExpose({
 
   .shop-shell__labeled-btn {
     min-width: 40px;
-    min-height: 40px;
+    min-height: 34px;
     padding: 0.3rem;
-    border-radius: 999px;
+    border-radius: 8px;
   }
 
   .shop-shell__labeled-btn :deep(.q-btn__label),

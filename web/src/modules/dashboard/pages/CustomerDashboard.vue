@@ -1,6 +1,6 @@
 <template>
-  <q-page class="tf-page theme-shop">
-    <div class="q-gutter-y-md">
+  <q-page class="tf-page theme-shop shop-home-page">
+    <div class="shop-home-page__inner q-gutter-y-md">
       <CustomerDashboardSkeleton v-if="dashboardQuery.isLoading.value" />
 
       <q-banner v-else-if="dashboardError" class="tf-status-banner bg-negative text-white" rounded>
@@ -8,24 +8,14 @@
       </q-banner>
 
       <template v-else>
-        <CustomerDashboardHero
-          :tenant-name="tenantName"
+        <CustomerDashboardQuickAction @start="startNewOrder" />
+
+        <CustomerDashboardTopSection
           :total-products="totalProducts"
           :total-brands="totalBrands"
-        />
-
-        <div
-          v-if="shops.length === 0"
-          class="column items-center justify-center q-pa-xl text-center empty-state-block floating-surface"
-        >
-          <q-icon name="ph ph-storefront" size="56px" color="grey-4" class="q-mb-sm" />
-          <div class="text-subtitle1 text-weight-bold">{{ $t('customer_dashboard.no_shops_title') }}</div>
-          <p class="text-body2 text-grey-6 q-mb-none">{{ $t('customer_dashboard.no_shops_sub') }}</p>
-        </div>
-
-        <CustomerDashboardShopsGrid
-          v-else
+          :total-orders-placed="orderGlanceTotal"
           :shops="shops"
+          :shop-stats="shopStats"
           @open-shop="openShop"
         />
 
@@ -34,15 +24,11 @@
           :categories="categories"
         />
 
-        <section v-if="shops.length > 0" class="shop-home-section q-gutter-y-md">
-          <h2 class="shop-home-section__title q-my-none">
-            {{ $t('customer_dashboard.glance_title') }}
-          </h2>
-
-          <CustomerDashboardStatusStrip :segments="orderSegments" />
-
-          <CustomerDashboardRecentOrders :recent-orders="recentOrders" />
-        </section>
+        <CustomerDashboardOrdersPanel
+          v-if="shops.length > 0"
+          :segments="orderSegments"
+          :recent-orders="recentOrders"
+        />
       </template>
     </div>
   </q-page>
@@ -57,23 +43,23 @@ import type { CustomerAccessibleShop } from 'src/modules/shop_order/repositories
 import {
   getLastVisitedShopId,
   rememberCatalogShop,
+  resolveCatalogShop,
+  shopCatalogEntryPath,
   shopCatalogPath,
 } from 'src/modules/shop_order/utils/catalogShop';
 import { useCustomerDashboardQuery } from '../composables/useCustomerDashboardQuery';
+import { useCustomerShopPortalStatsQuery } from '../composables/useCustomerShopPortalStatsQuery';
+import { buildShopPortalStats } from '../utils/shopPortalStats';
 
-import CustomerDashboardHero from '../components/CustomerDashboardHero.vue';
-import CustomerDashboardShopsGrid from '../components/CustomerDashboardShopsGrid.vue';
+import CustomerDashboardQuickAction from '../components/CustomerDashboardQuickAction.vue';
+import CustomerDashboardTopSection from '../components/CustomerDashboardTopSection.vue';
 import CustomerDashboardCategories from '../components/CustomerDashboardCategories.vue';
-import CustomerDashboardRecentOrders from '../components/CustomerDashboardRecentOrders.vue';
+import CustomerDashboardOrdersPanel from '../components/CustomerDashboardOrdersPanel.vue';
 import CustomerDashboardSkeleton from '../components/CustomerDashboardSkeleton.vue';
-import CustomerDashboardStatusStrip from '../components/CustomerDashboardStatusStrip.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
 
-const tenantName = computed(
-  () => authStore.tenant?.name || authStore.selectedTenant?.name || 'Shop',
-);
 const tenantBase = computed(() => (authStore.tenantSlug ? `/${authStore.tenantSlug}/shop` : '/shop'));
 const tenantId = computed(() => authStore.tenantId ?? null);
 
@@ -88,15 +74,26 @@ watch(
 );
 
 const dashboardQuery = useCustomerDashboardQuery(tenantId);
+const portalStatsQuery = useCustomerShopPortalStatsQuery(tenantId);
+
 const dashboard = computed(() => dashboardQuery.data.value);
 const dashboardError = computed(() => (dashboardQuery.error.value as Error | null)?.message || null);
 
 const shops = computed(() => dashboard.value?.shops ?? []);
 const categories = computed(() => dashboard.value?.categories ?? []);
 const orderSegments = computed(() => dashboard.value?.order_glance.segments ?? null);
+const orderGlanceTotal = computed(() => orderSegments.value?.total ?? 0);
 const recentOrders = computed(() => dashboard.value?.recent_orders ?? []);
 const totalProducts = computed(() => dashboard.value?.catalog_glance.total_products ?? 0);
 const totalBrands = computed(() => dashboard.value?.catalog_glance.total_brands ?? 0);
+
+const shopStats = computed(() =>
+  buildShopPortalStats(
+    shops.value,
+    dashboard.value?.active_carts ?? [],
+    portalStatsQuery.data.value ?? [],
+  ),
+);
 
 const rememberShop = (shop: CustomerAccessibleShop) => {
   if (tenantId.value) {
@@ -116,6 +113,16 @@ const openShop = (shop: CustomerAccessibleShop) => {
   if (!shop?.slug) return;
   rememberShop(shop);
   void router.push(browsePath(shop));
+};
+
+const startNewOrder = () => {
+  const shop = resolveCatalogShop(tenantId.value, shops.value);
+  if (shop?.slug) {
+    rememberShop(shop);
+    void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug));
+    return;
+  }
+  void router.push(shopCatalogEntryPath(authStore.tenantSlug));
 };
 
 </script>

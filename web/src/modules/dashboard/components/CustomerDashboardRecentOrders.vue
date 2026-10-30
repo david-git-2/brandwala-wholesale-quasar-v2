@@ -1,8 +1,8 @@
 <template>
   <div>
-    <h3 class="shop-home-section__subtitle q-my-none q-mb-sm">
+    <h2 class="shop-home-section__title q-my-none q-mb-sm">
       {{ $t('customer_dashboard.recent_orders_title') }}
-    </h3>
+    </h2>
 
     <CustomerOrdersList
       :orders="displayOrders"
@@ -49,13 +49,6 @@ const goToOrderDetails = (order: CustomerOrderListRow) => {
 </script>
 
 <style scoped>
-.shop-home-section__subtitle {
-  text-align: center;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--tf-shop-plum);
-}
-
 .recent-orders-cta {
   border-radius: var(--tf-radius-sm) !important;
   background: var(--tf-shop-blue) !important;
