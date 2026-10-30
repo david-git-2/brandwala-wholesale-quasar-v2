@@ -29,18 +29,22 @@
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { findDocsNavContext } from '../content/nav';
+import { useDocsSite } from '../site/useDocsSite';
 
 const route = useRoute();
-const ctx = computed(() => findDocsNavContext(typeof route.name === 'string' ? route.name : null));
+const site = useDocsSite();
+const ctx = computed(() =>
+  findDocsNavContext(typeof route.name === 'string' ? route.name : null, site.value.nav),
+);
 const previous = computed(() => ctx.value.previous);
 const next = computed(() => ctx.value.next);
 const sourceLabel = computed(() => {
   const file = route.meta.docsMd;
   if (typeof file === 'string' && file) {
-    return `web/src/modules/docs/content/md/${file}`;
+    return `${site.value.contentEditPathPrefix}${file}`;
   }
-  if (route.name === 'docs-overview') {
-    return 'web/src/modules/docs/content/md/what-is-tradeflow.md';
+  if (route.name === site.value.overviewRouteName && site.value.overviewEditPath) {
+    return site.value.overviewEditPath;
   }
   return '';
 });

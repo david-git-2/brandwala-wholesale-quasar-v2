@@ -13,11 +13,18 @@
           @click="leftOpen = !leftOpen"
         />
         <q-toolbar-title>
-          <router-link to="/docs" class="docs-layout__product">
-            Platform guide
+          <router-link :to="site.basePath" class="docs-layout__product">
+            {{ site.productTitle }}
           </router-link>
           <div v-if="crumb" class="docs-layout__crumb">{{ crumb }}</div>
         </q-toolbar-title>
+        <router-link
+          v-if="siblingSite"
+          :to="siblingSite.basePath"
+          class="docs-layout__sibling gt-xs"
+        >
+          {{ siblingSiteLabel }}
+        </router-link>
         <q-btn
           v-if="showPageTocMobile"
           flat
@@ -25,9 +32,10 @@
           round
           :ripple="false"
           icon="ph ph-list-bullets"
-          aria-label="On this page"
+          :aria-label="tocDrawerOpen ? 'Close on this page' : 'On this page'"
+          :aria-expanded="tocDrawerOpen"
           class="docs-layout__icon-btn"
-          @click="tocDrawerOpen = true"
+          @click="tocDrawerOpen = !tocDrawerOpen"
         />
         <q-btn
           flat
@@ -81,6 +89,19 @@
       :width="300"
       class="docs-layout__toc-drawer"
     >
+      <div class="docs-layout__toc-drawer-header">
+        <span class="docs-layout__toc-drawer-title">On this page</span>
+        <q-btn
+          flat
+          dense
+          round
+          :ripple="false"
+          icon="ph ph-x"
+          aria-label="Close on this page"
+          class="docs-layout__icon-btn"
+          @click="tocDrawerOpen = false"
+        />
+      </div>
       <div class="docs-layout__toc-drawer-inner">
         <DocsToc :items="tocDisplayItems" />
       </div>
@@ -94,7 +115,7 @@
             outlined
             dense
             autofocus
-            placeholder="Search the guide"
+            :placeholder="site.searchPlaceholder"
             @keyup.esc="searchOpen = false"
           >
             <template #prepend>
@@ -119,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRoute } from 'vue-router';
 import { useAppearance } from 'src/composables/useAppearance';
@@ -127,6 +148,8 @@ import DocsNavList from '../components/DocsNavList.vue';
 import DocsToc from '../components/DocsToc.vue';
 import { flattenDocsNav, findDocsNavContext } from '../content/nav';
 import { provideDocsToc, type DocsTocItem } from '../composables/useDocsToc';
+import { getDocsSite } from '../site/registry';
+import { DOCS_SITE_KEY, resolveDocsSiteKey, siblingDocsSite } from '../site/useDocsSite';
 
 const $q = useQuasar();
 const route = useRoute();
@@ -140,8 +163,22 @@ const searchOpen = ref(false);
 const searchQuery = ref('');
 const tocDrawerOpen = ref(false);
 
+function siteKeyFromRoute() {
+  for (let i = route.matched.length - 1; i >= 0; i -= 1) {
+    const key = route.matched[i]?.meta.docsSiteKey;
+    if (key != null) return resolveDocsSiteKey(key);
+  }
+  return resolveDocsSiteKey('platform');
+}
+
+const site = computed(() => getDocsSite(siteKeyFromRoute()));
+provide(DOCS_SITE_KEY, site);
+
+const siblingSite = computed(() => siblingDocsSite(site.value));
+const siblingSiteLabel = computed(() => site.value.siblingLabel ?? siblingSite.value?.productTitle ?? '');
+
 const pageSupportsOutline = computed(() => {
-  if (route.name === 'docs-overview') return true;
+  if (route.name === site.value.overviewRouteName) return true;
   const md = route.meta.docsMd;
   return typeof md === 'string' && md.length > 0;
 });
@@ -150,9 +187,7 @@ const showPageToc = computed(() => $q.screen.gt.md && pageSupportsOutline.value)
 const showPageTocMobile = computed(() => !$q.screen.gt.md && pageSupportsOutline.value);
 
 watch(tocItems, (items) => {
-  if (items.length > 0) {
-    tocDisplayItems.value = items;
-  }
+  tocDisplayItems.value = items;
 });
 
 watch(
@@ -164,7 +199,10 @@ watch(
 );
 
 const crumb = computed(() => {
-  const ctx = findDocsNavContext(typeof route.name === 'string' ? route.name : null);
+  const ctx = findDocsNavContext(
+    typeof route.name === 'string' ? route.name : null,
+    site.value.nav,
+  );
   if (!ctx.current) return '';
   if (ctx.current.group) return `${ctx.current.group} / ${ctx.current.label}`;
   return ctx.current.label;
@@ -172,7 +210,7 @@ const crumb = computed(() => {
 
 const searchHits = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
-  const items = flattenDocsNav();
+  const items = flattenDocsNav(site.value.nav);
   if (!q) return items;
   return items.filter((item) => item.label.toLowerCase().includes(q));
 });
@@ -222,6 +260,9 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 onMounted(() => {
+  toc.registerCloseMobileOutline(() => {
+    tocDrawerOpen.value = false;
+  });
   window.addEventListener('keydown', onKeydown);
 });
 
@@ -254,6 +295,19 @@ onUnmounted(() => {
   color: var(--tf-theme-primary);
 }
 
+.docs-layout__sibling {
+  margin-right: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tf-theme-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.docs-layout__sibling:hover {
+  color: var(--tf-theme-primary);
+}
+
 .docs-layout__crumb {
   font-size: 12px;
   color: var(--tf-theme-muted);
@@ -264,6 +318,7 @@ onUnmounted(() => {
 }
 
 .docs-layout__product:focus-visible,
+.docs-layout__sibling:focus-visible,
 .docs-layout__icon-btn:focus-visible {
   outline: none;
   box-shadow: var(--tf-focus-ring);
@@ -305,14 +360,34 @@ onUnmounted(() => {
   background: var(--tf-theme-base);
 }
 
+.docs-layout__toc-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 8px 8px 16px;
+  border-bottom: 1px solid var(--tf-theme-border);
+}
+
+.docs-layout__toc-drawer-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tf-theme-muted);
+}
+
 .docs-layout__toc-drawer-inner {
-  padding: 16px;
+  padding: 8px 16px 16px;
 }
 
 .docs-layout__toc-drawer-inner :deep(.docs-toc) {
   border-left: 0;
   padding-left: 0;
   max-height: none;
+}
+
+.docs-layout__toc-drawer-inner :deep(.docs-toc__label) {
+  display: none;
 }
 
 .docs-search {

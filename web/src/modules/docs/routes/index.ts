@@ -158,7 +158,7 @@ const docsRoutes: RouteRecordRaw[] = [
   {
     path: '/docs',
     component: () => import('../layouts/DocsLayout.vue'),
-    meta: { public: true },
+    meta: { public: true, docsSiteKey: 'platform' },
     children: docsChildRoutes,
   },
 ];

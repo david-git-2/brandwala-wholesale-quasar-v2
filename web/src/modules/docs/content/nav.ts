@@ -32,8 +32,11 @@ export function flattenDocsNav(entries: DocsNavEntry[] = docsNav): DocsNavFlatIt
   return items;
 }
 
-export function findDocsNavContext(routeName: string | symbol | null | undefined) {
-  const items = flattenDocsNav();
+export function findDocsNavContext(
+  routeName: string | symbol | null | undefined,
+  entries: DocsNavEntry[] = docsNav,
+) {
+  const items = flattenDocsNav(entries);
   const index = items.findIndex((item) => item.name === routeName);
   const current = index >= 0 ? items[index] : undefined;
   return {

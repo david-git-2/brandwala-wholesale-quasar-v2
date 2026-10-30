@@ -118,13 +118,14 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/app/tenants` : '/app/tenants'),
   },
   {
-    title: 'Help Center',
-    caption: 'How-to guides for your workspace',
-    icon: 'ph ph-question',
+    title: 'Operating manual',
+    caption: 'Staff procedures and step-by-step guides',
+    icon: 'ph ph-book-open-text',
     navWeight: NAV_WEIGHT.help,
     scopes: ['app'],
     allowedRoles: ['admin', 'staff', 'viewer'],
-    route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/app/help` : '/app/help'),
+    target: '_blank',
+    route: () => '/operating-manual',
   },
   {
     title: 'Home',

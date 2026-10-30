@@ -12,6 +12,8 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 
 | Question | Open |
 | :--- | :--- |
+| Daily staff workflows (operating manual) | App `/operating-manual` · [manual README](manual/README.md) |
+| Platform guide (kernels, modules) | App `/docs` |
 | Who logs in where, which features? | [scopes](architecture/scopes.md) |
 | How this company sells (BW, pre-order, K-beauty, thrift) | [business-models](architecture/business-models.md) |
 | Wholesale vs dropship bill → pay (numbers) | [money-story](features/bills_pays/money-story.md) |

@@ -1,7 +1,7 @@
 <template>
   <nav class="docs-nav" aria-label="Docs">
     <ul class="docs-nav__list">
-      <template v-for="(entry, index) in docsNav" :key="index">
+      <template v-for="(entry, index) in navEntries" :key="index">
         <li v-if="isDocsNavGroup(entry)" class="docs-nav__group">
           <div class="docs-nav__group-label">{{ entry.label }}</div>
           <ul class="docs-nav__list docs-nav__list--nested">
@@ -31,10 +31,14 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { docsNav, isDocsNavGroup } from '../content/nav';
+import { isDocsNavGroup } from '../content/nav';
+import { useDocsSite } from '../site/useDocsSite';
 
 const route = useRoute();
+const site = useDocsSite();
+const navEntries = computed(() => site.value.nav);
 
 function isCurrent(name: string) {
   return route.name === name;

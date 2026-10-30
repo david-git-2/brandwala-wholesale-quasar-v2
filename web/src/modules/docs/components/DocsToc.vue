@@ -29,8 +29,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue';
 import {
+  DOCS_TOC_KEY,
   groupDocsTocItems,
   type DocsTocItem,
 } from '../composables/useDocsToc';
@@ -38,6 +39,8 @@ import {
 const props = defineProps<{
   items: DocsTocItem[];
 }>();
+
+const tocApi = inject(DOCS_TOC_KEY, null);
 
 const groups = computed(() => groupDocsTocItems(props.items));
 
@@ -51,6 +54,7 @@ function onClick(event: MouseEvent, id: string) {
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   activeId.value = id;
   history.replaceState(null, '', `#${id}`);
+  tocApi?.closeMobileOutline();
 }
 
 function observe(items: DocsTocItem[]) {

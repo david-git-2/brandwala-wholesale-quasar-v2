@@ -14,6 +14,8 @@ docs/architecture/
   state.md
 docs/guides/
   ui-standards.md
+docs/manual/
+  README.md                    # Index only; live copy in web operating_manual module
 docs/features/<name>/
   00-gaps.md
   spec.md                      # As-built, Scope, Where to look, stories
@@ -30,7 +32,7 @@ Do **not** add `doc/<module>/*.md`. Do **not** add `docs/architecture/*` copies 
 
 | Step | Load | Do not load |
 | :--- | :--- | :--- |
-| 1 | `docs/README.md` | Every module at once |
+| 1 | `docs/README.md` | Every module at once; **`docs/manual/`** and **`web/src/modules/operating_manual/`** (unless user asked for operating manual / staff SOP) |
 | 2 | That module’s `spec.md` + `00-gaps.md` | Other modules |
 | 3 | `scopes.md` / `business-models.md` if the task is “where / how they sell” | `doc/brand-theme.md` |
 | 4 | Grep `supabase/schemas/` + `web/src/modules/<name>/` for tables, RPCs, wiring | `supabase/migrations/` |

@@ -10,12 +10,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { getDocsMarkdown } from '../content/docsMarkdownRegistry';
 import DocsMarkdown from '../components/DocsMarkdown.vue';
 import DocsPageShell from '../components/DocsPageShell.vue';
 import { extractMarkdownTitle } from '../utils/parsePlatformVpcMd';
+import { useDocsSite } from '../site/useDocsSite';
 
 const route = useRoute();
+const site = useDocsSite();
 
 const docsFile = computed(() => {
   const raw = route.meta.docsMd;
@@ -25,7 +26,7 @@ const docsFile = computed(() => {
 const fullMarkdown = computed(() => {
   const file = docsFile.value;
   if (!file) return '';
-  return getDocsMarkdown(file) ?? '';
+  return site.value.getMarkdown(file) ?? '';
 });
 
 const hasMarkdownTitle = computed(() => Boolean(extractMarkdownTitle(fullMarkdown.value)));

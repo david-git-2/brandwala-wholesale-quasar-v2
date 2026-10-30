@@ -10,13 +10,18 @@ type DocsTocApi = {
   items: Ref<DocsTocItem[]>;
   setOwnerItems: (owner: string, next: DocsTocItem[]) => void;
   clearAllOwners: () => void;
+  closeMobileOutline: () => void;
+  registerCloseMobileOutline: (fn: () => void) => void;
 };
 
 const DOCS_TOC_KEY: InjectionKey<DocsTocApi> = Symbol('docs-toc');
 
+export { DOCS_TOC_KEY };
+
 export function provideDocsToc() {
   const owners = new Map<string, DocsTocItem[]>();
   const items = ref<DocsTocItem[]>([]);
+  let closeMobileOutlineFn: (() => void) | null = null;
 
   function rebuild() {
     items.value = [...owners.values()].flat();
@@ -35,6 +40,12 @@ export function provideDocsToc() {
       rebuild();
     },
     clearAllOwners,
+    closeMobileOutline() {
+      closeMobileOutlineFn?.();
+    },
+    registerCloseMobileOutline(fn) {
+      closeMobileOutlineFn = fn;
+    },
   };
 
   provide(DOCS_TOC_KEY, api);
