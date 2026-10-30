@@ -4402,6 +4402,15 @@ isOneToOne: false
             "_assert_parent_warehouse_tenant":
 { Args: { "p_parent_tenant_id": number }; Returns: undefined
                            },
+"_assert_shipment_ap_allocations_payable":
+{ Args: { "p_allocations": Json }; Returns: undefined
+                           },
+"_assert_shipment_ap_issue_allowed":
+{ Args: { "p_shipment_id": number }; Returns: undefined
+                           },
+"_assert_shipment_ap_payable":
+{ Args: { "p_shipment_id": number }; Returns: undefined
+                           },
 "_bill_line_global_stock_id":
 { Args: { "p_line": Omit<Database["public"]['Tables']["bill_lines"]['Row'], Database["public"]['Tables']["bill_lines"]['ComputedFields']> }; Returns: number
                            },

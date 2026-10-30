@@ -1873,7 +1873,7 @@ const activeBucketInvoiceStatus = computed(() => {
     };
   }
   if (bill.invoice_status === 'draft') {
-    return { label: 'Draft — open bill to issue', chip: null };
+    return { label: 'Draft — lock costs on shipment to issue', chip: null };
   }
   return {
     label: apBillInvoiceLabel(bill),

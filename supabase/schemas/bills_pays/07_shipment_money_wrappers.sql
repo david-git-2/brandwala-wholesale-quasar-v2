@@ -38,6 +38,109 @@ begin
 end;
 $$;
 
+CREATE OR REPLACE FUNCTION public._assert_shipment_ap_issue_allowed(p_shipment_id bigint)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+declare
+  v_ship public.global_shipments;
+begin
+  if p_shipment_id is null then
+    raise exception 'shipment_id is required';
+  end if;
+
+  select * into v_ship from public.global_shipments where id = p_shipment_id;
+  if v_ship.id is null then
+    raise exception 'Shipment % not found', p_shipment_id;
+  end if;
+
+  if v_ship.status not in ('in_transit', 'received') then
+    raise exception 'Shipment % must be in transit or received before issuing AP bills', p_shipment_id;
+  end if;
+
+  if not coalesce(v_ship.costs_locked, false) then
+    raise exception 'Shipment % costs are not locked; use Lock costs on the shipment first', p_shipment_id;
+  end if;
+
+  if current_setting('app.shipment_ap_issue', true) is distinct from '1'
+     and coalesce(auth.role(), '') is distinct from 'service_role' then
+    raise exception 'Issue shipment AP only via lock_global_shipment_costs on the shipment';
+  end if;
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION public._assert_shipment_ap_payable(p_shipment_id bigint)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+declare
+  v_ship public.global_shipments;
+begin
+  if p_shipment_id is null then
+    raise exception 'shipment_id is required';
+  end if;
+
+  select * into v_ship from public.global_shipments where id = p_shipment_id;
+  if v_ship.id is null then
+    raise exception 'Shipment % not found', p_shipment_id;
+  end if;
+
+  if v_ship.status in ('draft', 'cancelled') then
+    raise exception 'Shipment % must be in transit or received before AP payout', p_shipment_id;
+  end if;
+
+  if not coalesce(v_ship.costs_locked, false) then
+    raise exception 'Shipment % costs are not locked; lock and issue AP before payout', p_shipment_id;
+  end if;
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION public._assert_shipment_ap_allocations_payable(p_allocations jsonb)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+declare
+  v_elem jsonb;
+  v_bill_id bigint;
+  v_bill public.bills;
+begin
+  if p_allocations is null or jsonb_typeof(p_allocations) <> 'array' then
+    return;
+  end if;
+
+  for v_elem in select value from jsonb_array_elements(p_allocations)
+  loop
+    v_bill_id := nullif(v_elem->>'bill_id', '')::bigint;
+    if v_bill_id is null then
+      continue;
+    end if;
+
+    select * into v_bill from public.bills where id = v_bill_id;
+    if v_bill.id is null then
+      raise exception 'Allocation bill % not found', v_bill_id;
+    end if;
+
+    if v_bill.invoice_type = 'ap'::public.global_invoice_type
+       and v_bill.source_type = 'shipment_cost'
+       and v_bill.invoice_status <> 'issued'::public.global_invoice_status then
+      raise exception 'Bill % must be issued before shipment AP payout', v_bill_id;
+    end if;
+
+    if v_bill.ap_shipment_id is not null then
+      perform public._assert_shipment_ap_payable(v_bill.ap_shipment_id);
+    elsif v_bill.source_type = 'shipment_cost' and nullif(trim(v_bill.source_id), '') is not null then
+      perform public._assert_shipment_ap_payable(nullif(trim(v_bill.source_id), '')::bigint);
+    end if;
+  end loop;
+end;
+$$;
+
 CREATE OR REPLACE FUNCTION public.get_shipment_money_kernel_bundle(p_shipment_id bigint)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -111,12 +214,23 @@ declare
   v_pay public.pays;
   v_sid text;
   v_primary bigint;
+  v_sid_loop bigint;
 begin
   if p_shipment_ids is null or coalesce(array_length(p_shipment_ids, 1), 0) = 0 then
     raise exception 'shipment_ids is required';
   end if;
 
   perform public._shipment_money_lock_shipment_ids(p_shipment_ids);
+
+  for v_sid_loop in
+    select distinct x.id
+    from unnest(p_shipment_ids) as x(id)
+    where x.id is not null
+  loop
+    perform public._assert_shipment_ap_payable(v_sid_loop);
+  end loop;
+
+  perform public._assert_shipment_ap_allocations_payable(p_allocations);
 
   select min(x.id) into v_primary from unnest(p_shipment_ids) as x(id) where x.id is not null;
   v_sid := coalesce(nullif(trim(p_source_id), ''), v_primary::text);
@@ -166,12 +280,24 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO public
 AS $$
+declare
+  v_sid_loop bigint;
 begin
   if p_shipment_ids is null or coalesce(array_length(p_shipment_ids, 1), 0) = 0 then
     raise exception 'shipment_ids is required';
   end if;
 
   perform public._shipment_money_lock_shipment_ids(p_shipment_ids);
+
+  for v_sid_loop in
+    select distinct x.id
+    from unnest(p_shipment_ids) as x(id)
+    where x.id is not null
+  loop
+    perform public._assert_shipment_ap_payable(v_sid_loop);
+  end loop;
+
+  perform public._assert_shipment_ap_allocations_payable(p_allocations);
 
   return public.post_ap_payout_with_allocations_snapshot(
     p_tenant_id,
@@ -223,6 +349,7 @@ begin
     raise exception 'Permission denied';
   end if;
 
+  perform public._assert_shipment_ap_issue_allowed(p_shipment_id);
   perform public._shipment_money_advisory_lock(p_shipment_id);
 
   for v_bill_id in
@@ -256,66 +383,9 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO public
 AS $$
-declare
-  v_parent bigint;
-  v_bill_id bigint;
-  v_issued public.bills;
-  v_last_issued bigint;
 begin
-  if p_ap_kind not in (
-    'vendor', 'cargo', 'local',
-    'material', 'freight', 'customs', 'handling', 'finance', 'other'
-  ) then
-    raise exception 'Invalid ap_kind %', p_ap_kind;
-  end if;
-
-  select gs.parent_tenant_id into v_parent
-  from public.global_shipments gs
-  where gs.id = p_shipment_id;
-
-  if v_parent is null then
-    raise exception 'Shipment % not found', p_shipment_id;
-  end if;
-
-  if not (
-    coalesce(auth.role(), '') = 'service_role'
-    or public.user_can_manage_parent_tenant(v_parent)
-  ) then
-    raise exception 'Permission denied';
-  end if;
-
-  perform public._shipment_money_advisory_lock(p_shipment_id);
-
-  for v_bill_id in
-    select b.id
-    from public.bills b
-    where b.parent_tenant_id = v_parent
-      and b.invoice_type = 'ap'::public.global_invoice_type
-      and b.document_kind = 'standard'::public.bill_document_kind
-      and b.invoice_status = 'draft'::public.global_invoice_status
-      and coalesce(b.total_amount, 0) > 0
-      and (
-        (
-          b.source_type = 'shipment_cost'
-          and b.source_id = p_shipment_id::text
-          and (
-            b.source_key = p_ap_kind
-            or b.source_key like p_ap_kind || ':%'
-          )
-        )
-        or (b.ap_shipment_id = p_shipment_id and b.ap_kind = p_ap_kind)
-      )
-    order by b.id asc
-  loop
-    v_issued := public.issue_bill(v_bill_id);
-    v_last_issued := v_issued.id;
-  end loop;
-
-  if v_last_issued is null then
-    raise exception 'No draft AP bill to issue for bucket %', p_ap_kind;
-  end if;
-
-  return public.get_bill_detail_bundle(v_parent, v_last_issued);
+  raise exception 'issue_shipment_ap_bill_for_kind is retired. Use lock_global_shipment_costs on shipment % to sync and issue all AP bills.',
+    p_shipment_id;
 end;
 $$;
 

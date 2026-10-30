@@ -250,7 +250,7 @@
 
           <!-- Lock costs (after receive, before books freeze) -->
           <q-btn
-            v-if="isStockPosted && !isCostsLocked"
+            v-if="canLockShipmentCosts"
             outline
             dense
             no-caps
@@ -833,6 +833,12 @@ const isShipmentReceived = computed(
 );
 
 const canAddSplit = computed(() => shipmentStore.currentShipment?.status === 'in_transit');
+
+const canLockShipmentCosts = computed(() => {
+  const status = shipmentStore.currentShipment?.status;
+  const okStatus = status === 'in_transit' || status === 'received';
+  return okStatus && isStockPosted.value && !isCostsLocked.value;
+});
 
 const canEditSplits = computed(
   () =>

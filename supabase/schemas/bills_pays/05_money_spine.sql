@@ -738,6 +738,15 @@ begin
     raise exception 'only draft bills can be issued';
   end if;
 
+  if v_bill.ap_shipment_id is not null
+     and v_bill.invoice_type = 'ap'::public.global_invoice_type then
+    perform public._assert_shipment_ap_issue_allowed(v_bill.ap_shipment_id);
+  elsif v_bill.invoice_type = 'ap'::public.global_invoice_type
+    and v_bill.source_type = 'shipment_cost'
+    and nullif(trim(v_bill.source_id), '') is not null then
+    perform public._assert_shipment_ap_issue_allowed(nullif(trim(v_bill.source_id), '')::bigint);
+  end if;
+
   update public.bills
   set
     invoice_status = 'issued'::public.global_invoice_status,

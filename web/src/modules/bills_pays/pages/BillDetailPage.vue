@@ -39,14 +39,17 @@
             @click="applyCustodyDialogOpen = true"
           />
           <q-btn
-            v-if="canRecordPayment"
+            v-if="canShowRecordPayment"
             unelevated
             no-caps
             color="primary"
             icon="ph ph-wallet"
             label="Add payment"
+            :disable="!!shipmentApPayBlockedReason"
             @click="openAddPayment"
-          />
+          >
+            <q-tooltip v-if="shipmentApPayBlockedReason">{{ shipmentApPayBlockedReason }}</q-tooltip>
+          </q-btn>
           <q-btn
             v-if="canRecordVendorRefund"
             outline
@@ -55,16 +58,6 @@
             icon="ph ph-arrow-down-left"
             label="Record vendor refund"
             @click="openVendorRefund()"
-          />
-          <q-btn
-            v-if="canIssueAp"
-            unelevated
-            no-caps
-            color="primary"
-            icon="ph ph-file-arrow-up"
-            label="Issue invoice"
-            :loading="issueApMutation.isPending.value"
-            @click="onIssueAp"
           />
           <q-btn
             v-if="canVoid"
@@ -615,8 +608,8 @@ import {
 } from 'src/modules/sales_invoice/utils/invoiceListDisplay';
 import { useBillDetailBundleQuery } from '../composables/useBillDetailBundleQuery';
 import { useBillDetailQuery } from '../composables/useBillDetailQuery';
-import { useIssueApBillMutation } from '../composables/useIssueApBillMutation';
 import { useRecordBillPaymentMutation } from '../composables/useRecordBillPaymentMutation';
+import { useShipmentApPayGateQuery } from '../composables/useShipmentApPayGateQuery';
 import { useVoidBillMutation } from '../composables/useVoidBillMutation';
 import type { RecordBillPaymentInput } from '../composables/useRecordBillPaymentMutation';
 import type { InvoicePaymentHistoryEntry } from 'src/modules/sales_invoice/types';
@@ -659,7 +652,6 @@ import type { BillNetBalances } from '../types/billBalances';
 import type { BillAdjustmentRow } from '../types/billAdjustments';
 import {
   isShipmentCostApBill,
-  shipmentApKindFromBill,
   shipmentIdFromBill,
 } from '../utils/shipmentApBillSource';
 import { isDropshipCourierApBill, isDropshipManagerBill } from '../utils/dropshipManagedBill';
@@ -689,7 +681,6 @@ const { itemsQuery, billLinesQuery } = useBillDetailQuery(
   computed(() => bundleQuery.data.value),
 );
 const voidMutation = useVoidBillMutation(() => billId.value);
-const issueApMutation = useIssueApBillMutation(() => billId.value);
 const recordPaymentMutation = useRecordBillPaymentMutation(() => billId.value);
 const vendorRefundMutation = usePostVendorCreditRefundMutation(() => billId.value);
 const createAdjustmentMutation = useCreateBillAdjustmentMutation(() => billId.value);
@@ -719,6 +710,14 @@ const parentTenantId = computed(() => Number(bill.value?.parent_tenant_id ?? 0) 
 const bill = computed(() => billFromBundle.value as GlobalInvoiceDetail | undefined);
 const isApBill = computed(() => bill.value?.invoice_type === 'ap');
 const billShipmentId = computed(() => shipmentIdFromBill(bill.value) ?? null);
+
+const shipmentApPayGateShipmentId = computed(() => {
+  const b = bill.value;
+  if (!b || !isShipmentCostApBill(b)) return null;
+  return billShipmentId.value;
+});
+const { payBlockedReason: shipmentApPayBlockedReason } =
+  useShipmentApPayGateQuery(shipmentApPayGateShipmentId);
 
 const vendorRefundReceiptBuckets = computed(() =>
   aggregateVendorRefundReceipts(paymentHistoryEntries.value, { isAp: isApBill.value }),
@@ -1041,25 +1040,7 @@ const canRecordPayment = computed(() => {
   return paymentDueAmount.value > 0;
 });
 
-const canIssueAp = computed(() => {
-  const b = bill.value;
-  if (!b || b.invoice_type !== 'ap') return false;
-  if (b.invoice_status !== 'draft') return false;
-  if (!isShipmentCostApBill(b)) return false;
-  if (!shipmentIdFromBill(b) || !shipmentApKindFromBill(b)) return false;
-  return Number(b.total_amount ?? 0) > 0;
-});
-
-const onIssueAp = async () => {
-  const b = bill.value;
-  const shipmentId = shipmentIdFromBill(b);
-  const apKind = shipmentApKindFromBill(b);
-  if (!canIssueAp.value || shipmentId == null || !apKind) return;
-  await issueApMutation.mutateAsync({
-    shipmentId,
-    apKind,
-  });
-};
+const canShowRecordPayment = computed(() => canRecordPayment.value);
 
 const detailErrorMessage = computed(() => {
   const err = bundleQuery.error.value;

@@ -431,7 +431,9 @@ BEGIN
     RAISE EXCEPTION 'golden B sync_shipment_ap_bills failed: %', v_sync;
   END IF;
 
+  PERFORM set_config('app.shipment_ap_issue', '1', true);
   PERFORM public.issue_shipment_ap_bills(v_shipment_id);
+  PERFORM set_config('app.shipment_ap_issue', '0', true);
 
   v_sync := jsonb_build_object('success', true);
 

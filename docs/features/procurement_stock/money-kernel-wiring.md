@@ -63,8 +63,8 @@ post_ap_payout_with_allocations, create_sales_invoice, …
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | Save cost rows | `global_shipment_cost_entries` | — | save batch RPC → `sync_shipment_ap_bills` |
 | 2 | Sync AP | — | draft `bills` | `sync_shipment_ap_bills` → `_upsert_shipment_ap_bill` |
-| 3 | Lock costs | `costs_locked` | issued AP | `lock_global_shipment_costs` → sync + `issue_shipment_ap_bills` → **`issue_bill`** |
-| 4 | Pay vendor/cargo | — | `pays`, allocations, cashbook | **`post_shipment_ap_money_out`** → **`post_money_out`** |
+| 3 | Lock costs | `costs_locked` | issued AP | **`lock_global_shipment_costs`** (shipment **`in_transit` or `received`**, stock posted) → sync → session `app.shipment_ap_issue` → **`issue_shipment_ap_bills`** → **`issue_bill`**. No Bill-desk issue; **`issue_shipment_ap_bill_for_kind` retired**. |
+| 4 | Pay vendor/cargo | — | `pays`, allocations, cashbook | **`post_shipment_ap_money_out`** only when shipment **`in_transit`/`received`**, **`costs_locked`**, bills **issued** → **`post_money_out`** |
 | 5 | Read AP + open balance | — | bills + settlements | **`get_shipment_money_kernel_bundle`** |
 | 6 | Cancel shipment | status | void unpaid AP | sync branch → **`void_bill`** |
 | 7 | Commercial fix after issue | cost/outcome (costing) | CN on AP | bills desk **guided link** from shipment material AP (`startAdjustment` query) + `create_bill_adjustment` ([BP8](../bills_pays/00-gaps.md)) |
@@ -77,7 +77,7 @@ post_ap_payout_with_allocations, create_sales_invoice, …
 
 | Layer | Path | Role |
 | :--- | :--- | :--- |
-| Read RPC | `procurement_stock/repositories/shipmentMoneyKernelRepository.ts` | `fetchShipmentMoneyKernelBundle`, `syncShipmentApBills`, `issueShipmentApBillForKind` |
+| Read RPC | `procurement_stock/repositories/shipmentMoneyKernelRepository.ts` | `fetchShipmentMoneyKernelBundle`, `syncShipmentApBills` (do not call retired `issueShipmentApBillForKind`) |
 | Types / find | `procurement_stock/repositories/shipmentApBillsRepository.ts` | `ShipmentApBillRow`, `findShipmentApBill` |
 | Display | `procurement_stock/utils/shipmentApBillDisplay.ts` | due, chips, bill route |
 | Finance state | `procurement_stock/stores/globalShipmentStore.ts` | `loadSettingsFinanceBundle` (one load = SQL sync) |
