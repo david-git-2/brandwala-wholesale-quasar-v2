@@ -1,9 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { customerGroupRepository } from '../repositories/customerGroupRepository';
 import { tenantQueryKeys } from '../shared/queryKeys/tenantQueryKeys';
-import { shopOrderQueryKeys } from 'src/modules/shop_order/shared/queryKeys/shopOrderQueryKeys';
 import { salesInvoiceQueryKeys } from 'src/modules/sales_invoice/services/salesInvoiceQueryKeys';
 import { resolveBooksTenantId } from '../utils/resolveBooksTenantId';
+import {
+  appendCustomerGroupToAccessPageCaches,
+  toBooksCustomerGroupRow,
+} from 'src/modules/shop_order/utils/shopCustomerAccessPageCache';
+import { appendBooksCustomerGroup } from 'src/modules/shop_order/utils/booksCustomerGroupsCache';
 import type {
   CustomerGroupCreateInput,
   CustomerGroupDeleteInput,
@@ -24,12 +28,9 @@ export function useCustomerGroupMutations() {
         data.tenant_id,
         data.parent_tenant_id ?? null,
       );
-      void queryClient.invalidateQueries({
-        queryKey: tenantQueryKeys.booksCustomerGroups(booksTenantId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: shopOrderQueryKeys.shopCustomerAccessPageRoot(),
-      });
+      const groupRow = toBooksCustomerGroupRow(data);
+      appendBooksCustomerGroup(queryClient, booksTenantId, groupRow);
+      appendCustomerGroupToAccessPageCaches(queryClient, groupRow);
       void queryClient.invalidateQueries({
         queryKey: salesInvoiceQueryKeys.root,
       });

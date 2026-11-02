@@ -11,3 +11,17 @@
 | PS12 | ~~partial~~ | Cost entries = record only; AP on bucket bills | **Done (2026-10):** settle columns dropped; `pay_settle_shipment_costs` stub; FX from AP pays ([WA15](../bills_pays/00-gaps.md)) |
 | PS13 | partial | Unit stamp = capitalizable rows, split per [spec US-1](spec.md) | `stamp_global_shipment_landed_costs` / `calculate_landed_unit_cost` use only material + freight + blended FX | Add customs/handling/finance/other BDT pools; section-scoped rows; UI `calculateLineLandedCostBdt` same formula |
 | PS14 | not_built | AP sync: one bill per bucket **× currency** ([spec US-1](spec.md), [WA15](../bills_pays/00-gaps.md)) | One AP bill per bucket; multi-currency bucket → mixed invoice | Same as WA15 SQL/UI; shipment summary copy (“one bill per bucket”) |
+| PS15 | design | Customer delivery / FO entity (trips) | Header + `stock_picks` JSON only | target: [preorder-fulfillment-flow Ch 4–6 § G1](../../preorder-fulfillment-flow.md) |
+| PS16 | design | Mark delivered guards open picks / bills | `staff_set_catalog_delivered_qty` whole order | target: [Ch 8 § G2](../../preorder-fulfillment-flow.md) |
+| PS17 | design | Partially delivered header / customer state | `procuring` \| `packed` \| `delivered` only | target: [Ch 8–9 § G3](../../preorder-fulfillment-flow.md) |
+| PS18 | design | Rename or split allocated vs customer-delivered qty | `preorder_demand.delivered_quantity` = pick sum | target: [App B § G4](../../preorder-fulfillment-flow.md) |
+| PS19 | design | Delivered queue on Delivery paper UI | RPC `delivered`; fulfill tabs procuring+packed only | target: [Ch 8 § G5](../../preorder-fulfillment-flow.md) |
+| PS20 | design | Promise date / ATP on backorder | Demand bucket + PBC backlog; no dates | target: [Ch 2 § G6](../../preorder-fulfillment-flow.md) |
+| PS21 | design | Short-pick / WMS exception on Delivery paper | Pick UI only | target: [Ch 5.2 § G7](../../preorder-fulfillment-flow.md) |
+| PS22 | design | Partial line cancel after partial close | No flow in catalog/PBC close path | target: [Ch 8.2 § G8](../../preorder-fulfillment-flow.md) |
+| PS23 | design | Partial customer pay (no installment schedule) | Bills support `partially_paid`; no plan entity | target: [Ch 9 § G9](../../preorder-fulfillment-flow.md) |
+| PS24 | design | Trace picked stock to inbound shipment | No FK on delivery line | target: [Ch 3.4 / App B § G10](../../preorder-fulfillment-flow.md) |
+| PS25 | design | Condition consignment at customer | Condition bill at close only | target: [Ch 10 § G11](../../preorder-fulfillment-flow.md) |
+| PS26 | design | Same-trip door return + invoice for accepted | Return → sellable in as-built | target: [Ch 7 § G12](../../preorder-fulfillment-flow.md) |
+| PS27 | design | Customer notification per delivery trip | Order-level notify only | target: [Ch 6–7 § G13](../../preorder-fulfillment-flow.md) |
+| PS28 | design | Investor profit visible in fulfillment story | `shipment_investments` on inbound only | target: [Ch 3.5 § G14](../../preorder-fulfillment-flow.md) · [investor_capital spec](../investor_capital/spec.md) |

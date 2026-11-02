@@ -630,6 +630,10 @@ export default {
   status_payment_received: 'Payment Received',
   order_lines: 'Order Lines',
   negotiation_round: 'Negotiation Round:',
+  send_first_offer_confirm_negotiable:
+    'Send the first offer to the customer? They can accept or counter each line.',
+  send_first_offer_confirm_accept_only:
+    'Send the first offer to the customer? They can review your prices and accept each line (no counter-offers).',
   customer_offer: 'Customer Offer:',
   middle_man_cost: 'Middle-man Cost:',
   catalog_sell_price: 'Catalog Sell Price',

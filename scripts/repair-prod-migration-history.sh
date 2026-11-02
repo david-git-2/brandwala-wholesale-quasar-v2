@@ -6,7 +6,7 @@
 #
 # Usage:
 #   pnpm run backend:repair-prod-migrations          # repair only
-#   pnpm run backend:repair-prod-migrations -- deploy # repair then deploy:backend
+#   pnpm run backend:repair-prod-migrations -- deploy # repair then backend:prod
 #
 # Requires SUPABASE_ACCESS_TOKEN in web/.env.profile.prod (via env-switch prod).
 
@@ -123,7 +123,7 @@ fi
 echo "Ensuring baseline 00000000000000 is recorded as applied (history only)..."
 supabase_cmd migration repair --linked --status applied 00000000000000 --yes
 
-echo "Repair complete. Next: pnpm run backend:push  or  pnpm run deploy:backend"
+echo "Repair complete. Next: pnpm run backend:push  or  pnpm run backend:prod"
 echo "If db push fails with 'already exists', mark that migration applied:"
 echo "  supabase migration repair --linked --status applied <version> --yes"
 

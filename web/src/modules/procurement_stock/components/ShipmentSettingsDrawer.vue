@@ -1265,18 +1265,22 @@ watch(activeTab, (tab) => {
 });
 
 const navigateToShipmentPage = (routeName: string) => {
-  emit('update:modelValue', false);
-  const tenantSlug = authStore.tenantSlug;
+  const current = router.currentRoute.value;
+  const tenantSlug =
+    authStore.tenantSlug ??
+    (typeof current.params.tenantSlug === 'string' ? current.params.tenantSlug : undefined);
+
+  const params: { id: number; tenantSlug?: string } = { id: props.shipmentId };
   if (tenantSlug) {
-    void router.push({
-      name: routeName,
-      params: { tenantSlug, id: props.shipmentId },
-    });
-    return;
+    params.tenantSlug = tenantSlug;
   }
+
+  // Navigate before closing the drawer. Closing first races with
+  // ShipmentLineItemsV2Page clearing ?settingsTab via router.replace and can abort this push.
   void router.push({
     name: routeName,
-    params: { id: props.shipmentId },
+    params,
+    query: {},
   });
 };
 

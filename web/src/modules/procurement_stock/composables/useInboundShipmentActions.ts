@@ -550,13 +550,11 @@ export function useInboundShipmentActions(options: {
     }
     if (status === 'in_transit') {
       return {
-        message: 'Review sellable splits, post to stock, then status becomes Received.',
-        label: 'Receive & post stock',
+        message: 'Complete land splits, then set status to Received to post stock.',
+        label: 'Received',
         disabled: false,
         reason: '',
-        action: () => {
-          void startReceiveFlow();
-        },
+        action: () => changeStatus('received'),
       };
     }
     return {

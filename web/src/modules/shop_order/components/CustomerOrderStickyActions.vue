@@ -40,7 +40,21 @@
           <span class="text-caption text-amber-9 text-weight-medium">{{ waitLabel }}</span>
         </div>
 
-        <div class="order-action-bar__cta">
+        <div class="order-action-bar__cta column q-gutter-sm">
+          <q-btn
+            v-if="hasUnsavedQtyEdits"
+            outline
+            color="primary"
+            no-caps
+            unelevated
+            class="action-btn full-width text-weight-bold"
+            :label="$t('shop.save_cart_changes')"
+            :loading="isSavingQty && !isSubmittingCounter && !isConfirming"
+            :disable="isSubmittingCounter || isConfirming"
+            data-test="customer-order-save-qty"
+            @click="emit('save-qty-changes')"
+          />
+
           <template v-if="status === 'priced' && isNegotiable">
             <q-btn
               unelevated
@@ -123,18 +137,23 @@ const props = withDefaults(
     isSubmittingCounter?: boolean;
     isConfirming?: boolean;
     canShowTotal?: boolean;
+    hasUnsavedQtyEdits?: boolean;
+    isSavingQty?: boolean;
   }>(),
   {
     decidedCount: 0,
     totalItems: 0,
     negotiateRound: null,
     canShowTotal: true,
+    hasUnsavedQtyEdits: false,
+    isSavingQty: false,
   },
 );
 
 const emit = defineEmits<{
   (e: 'submit-counter'): void;
   (e: 'confirm-order'): void;
+  (e: 'save-qty-changes'): void;
 }>();
 
 const normalizedStatus = computed(() => normalizeCatalogOrderStatus(props.status));

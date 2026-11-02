@@ -1583,6 +1583,11 @@ input[type='number'] {
 }
 
 /* Notify — tf-notify (global via tfNotify / appFeedback) */
+.q-notifications__list--top-right {
+  top: max(12px, env(safe-area-inset-top, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+}
+
 @media (max-width: 599px) {
   .q-notifications__list--top-right {
     top: max(8px, env(safe-area-inset-top, 0px));
@@ -1614,7 +1619,7 @@ input[type='number'] {
   }
 
   .q-notification__content {
-    padding: 10px 8px 10px 16px !important;
+    padding: 10px 12px 10px 16px !important;
     align-items: center;
     gap: 10px;
   }
@@ -1644,8 +1649,8 @@ input[type='number'] {
   }
 
   .q-notification__actions {
-    padding: 0 !important;
-    margin-left: 8px;
+    padding: 0 12px 0 0 !important;
+    margin-left: 4px;
   }
 
   .q-notification__actions .q-btn {

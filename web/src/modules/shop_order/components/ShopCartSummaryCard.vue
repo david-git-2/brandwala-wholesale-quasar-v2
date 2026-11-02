@@ -104,12 +104,30 @@
         </div>
       </template>
 
-      <span class="full-width block">
+      <div class="column q-gutter-sm full-width">
+        <q-btn
+          v-if="hasUnsavedEdits"
+          color="primary"
+          outline
+          no-caps
+          unelevated
+          class="full-width square-btn"
+          :label="$t('shop.save_cart_changes')"
+          :loading="isSaving && !placingOrder"
+          :disable="hasFloorViolation || placingOrder"
+          data-test="shop-cart-save-changes"
+          @click="$emit('save-cart-changes')"
+        >
+          <q-tooltip v-if="hasFloorViolation">
+            {{ $t('shop.cart_price_below_floor') }}
+          </q-tooltip>
+        </q-btn>
+
         <q-btn
           color="primary"
           unelevated
           no-caps
-          class="full-width"
+          class="full-width square-btn"
           :label="$t(checkoutLabelKey)"
           :loading="isSaving || placingOrder"
           :disable="checkoutDisabled"
@@ -119,7 +137,7 @@
         <q-tooltip v-if="checkoutDisabled && checkoutDisabledReason">
           {{ $t(checkoutDisabledReason) }}
         </q-tooltip>
-      </span>
+      </div>
     </q-card-section>
   </q-card>
 </template>
@@ -150,6 +168,8 @@ defineProps<{
   recipientGrandTotal: number;
   isSaving: boolean;
   placingOrder: boolean;
+  hasUnsavedEdits: boolean;
+  hasFloorViolation: boolean;
   checkoutDisabled: boolean;
   checkoutDisabledReason: string;
   checkoutLabelKey: string;
@@ -157,6 +177,7 @@ defineProps<{
 
 defineEmits<{
   (e: 'handle-button-click'): void;
+  (e: 'save-cart-changes'): void;
 }>();
 </script>
 

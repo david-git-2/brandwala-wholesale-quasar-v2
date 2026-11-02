@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Usage:
-#   pnpm run deploy:backend
+#   pnpm run backend:prod
 #
 # Requires SUPABASE_ACCESS_TOKEN (+ SUPABASE_PROJECT_REF) in web/.env.profile.prod.
 

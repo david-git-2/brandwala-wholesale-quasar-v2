@@ -183,6 +183,13 @@ export function useInboundShipmentCalculations() {
     return shipment.status === 'draft' || shipment.status === 'in_transit';
   });
 
+  /** Receive land splits (outcomes): in_transit only; not blocked by costs_locked. */
+  const canEditLandSplits = computed(() => {
+    const shipment = shipmentStore.currentShipment;
+    if (!shipment || shipment.status === 'cancelled') return false;
+    return shipment.status === 'in_transit';
+  });
+
   /** US-8: local costs until shipment close; not blocked by costs_locked. */
   const canEditLocalCosts = computed(() => {
     const shipment = shipmentStore.currentShipment;
@@ -231,6 +238,7 @@ export function useInboundShipmentCalculations() {
     canEditLineStructure,
     canEditLineCostFields,
     canEditShipmentOrderLineFields,
+    canEditLandSplits,
     canEditLocalCosts,
     hasLineItems,
     weightNeedsAttention,

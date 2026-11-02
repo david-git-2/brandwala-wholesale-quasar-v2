@@ -61,7 +61,6 @@
               :can-see-catalog-price="canSeeCatalogPrices"
               :can-see-offer-prices="canSeeOfferPrices"
               @update:quantity="handleQuantityUpdate"
-              @save-quantity="handleSaveQuantity"
               @update:customer-offer="handleCustomerOfferUpdate"
               @save-item-counter="handleSaveItemCounter"
             />
@@ -83,6 +82,9 @@
               :can-submit-counter="isAllItemsDecided"
               :is-submitting-counter="isSendingCounter"
               :is-confirming="isConfirming"
+              :has-unsaved-qty-edits="hasUnsavedQtyEdits"
+              :is-saving-qty="isSavingQty"
+              @save-qty-changes="saveAllQuantityEdits"
               @submit-counter="submitCounterOffer"
               @confirm-order="confirmOrder"
             />
@@ -214,10 +216,12 @@ const skeletonVariant = computed<'catalog' | 'dropship'>(() => {
 const { data: orderDetailsData, isLoading, isError, error } = useCustomerShopOrderDetailQuery(orderId);
 const { mutate: sendCustomerCounter, isPending: isSendingCounter } = useSendCustomerCounterMutation();
 const { mutate: confirmCustomerOrder, isPending: isConfirming } = useCustomerConfirmOrderMutation();
-const { mutate: updateCatalogOrderItem } = useUpdateCatalogOrderItemMutation();
+const { mutate: updateCatalogOrderItem, mutateAsync: updateCatalogOrderItemAsync, isPending: isSavingQty } =
+  useUpdateCatalogOrderItemMutation();
 
 const currentOrder = computed(() => orderDetailsData.value?.order || null);
 const orderItems = ref<ShopOrderItem[]>([]);
+const savedItemQuantities = ref<Record<number, number>>({});
 
 usePageBreadcrumbs(() => {
   const slug =
@@ -276,9 +280,29 @@ watch(
   (newData) => {
     if (newData) {
       orderItems.value = JSON.parse(JSON.stringify(newData.items || []));
+      const saved: Record<number, number> = {};
+      for (const item of orderItems.value) {
+        saved[item.id] = item.quantity;
+      }
+      savedItemQuantities.value = saved;
     }
   },
   { immediate: true },
+);
+
+const canEditItemQuantity = (item: ShopOrderItem) => {
+  const status = normalizedStatus.value;
+  const negotiable = !!currentOrder.value?.is_negotiable_snapshot;
+  return status === 'final_offered' || (status === 'priced' && !negotiable);
+};
+
+const hasUnsavedQtyEdits = computed(() =>
+  orderItems.value.some(
+    (item) =>
+      canEditItemQuantity(item)
+      && savedItemQuantities.value[item.id] !== undefined
+      && item.quantity !== savedItemQuantities.value[item.id],
+  ),
 );
 
 const displayOrderItems = computed(() => {
@@ -426,6 +450,11 @@ const resolveCustomerOfferCurrencyId = (item: ShopOrderItem): number => {
 const submitCounterOffer = async () => {
   if (!orderId.value) return;
 
+  if (hasUnsavedQtyEdits.value) {
+    await saveAllQuantityEdits();
+    if (hasUnsavedQtyEdits.value) return;
+  }
+
   const confirmed = await requestConfirmation(
     'Send your response for all items? If you accepted every line, the order will be confirmed. If you countered any line, staff will send a final offer.',
     'Send my response',
@@ -446,6 +475,11 @@ const submitCounterOffer = async () => {
 const confirmOrder = async () => {
   if (!orderId.value) return;
 
+  if (hasUnsavedQtyEdits.value) {
+    await saveAllQuantityEdits();
+    if (hasUnsavedQtyEdits.value) return;
+  }
+
   const confirmed = await requestConfirmation(
     'Are you sure you want to confirm this order? Once confirmed, the order will proceed to processing and fulfillment.',
     'Confirm Order',
@@ -464,21 +498,27 @@ const handleQuantityUpdate = ({ itemId, quantity }: { itemId: number; quantity: 
   }
 };
 
-const handleSaveQuantity = ({ itemId, quantity }: { itemId: number; quantity: number }) => {
-  if (!orderId.value) return;
-  handleQuantityUpdate({ itemId, quantity });
+const saveAllQuantityEdits = async () => {
+  if (!orderId.value || !hasUnsavedQtyEdits.value || isSavingQty.value) return;
 
-  const targetItem = orderItems.value.find((i) => i.id === itemId);
-  if (!targetItem) return;
+  const dirtyItems = orderItems.value.filter(
+    (item) =>
+      canEditItemQuantity(item)
+      && savedItemQuantities.value[item.id] !== undefined
+      && item.quantity !== savedItemQuantities.value[item.id],
+  );
 
-  updateCatalogOrderItem({
-    orderId: orderId.value,
-    itemId,
-    productId: targetItem.product_id,
-    payload: {
-      quantity,
-    },
-  });
+  for (const targetItem of dirtyItems) {
+    await updateCatalogOrderItemAsync({
+      orderId: orderId.value,
+      itemId: targetItem.id,
+      productId: targetItem.product_id,
+      payload: {
+        quantity: targetItem.quantity,
+      },
+    });
+    savedItemQuantities.value[targetItem.id] = targetItem.quantity;
+  }
 };
 
 const handleCustomerOfferUpdate = ({ itemId, amount }: { itemId: number; amount: number }) => {

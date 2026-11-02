@@ -83,9 +83,7 @@
             :format-buyer-item-total="formatBuyerItemTotal"
             :is-item-price-below-floor="isItemPriceBelowFloor"
             @update-price-local="updatePriceLocal"
-            @save-item-price="saveItemPrice"
             @adjust-qty-local="adjustItemQtyLocal"
-            @save-item-qty="saveItemQty"
             @remove-item="removeItem"
           />
         </div>
@@ -109,9 +107,12 @@
             :recipient-grand-total="recipientGrandTotal"
             :is-saving="isSaving"
             :placing-order="placingOrder"
+            :has-unsaved-edits="hasUnsavedEdits"
+            :has-floor-violation="hasFloorViolation"
             :checkout-disabled="checkoutDisabled"
             :checkout-disabled-reason="checkoutDisabledReason"
             :checkout-label-key="checkoutLabelKey"
+            @save-cart-changes="saveAllCartEdits"
             @handle-button-click="handleButtonClick"
           />
         </div>
@@ -182,6 +183,8 @@ const {
   goBack,
   isSaving,
   placingOrder,
+  hasUnsavedEdits,
+  hasFloorViolation,
   handleButtonClick,
   checkoutDisabled,
   checkoutDisabledReason,
@@ -193,9 +196,8 @@ const {
   getItemQty,
   getItemPrice,
   adjustItemQtyLocal,
-  saveItemQty,
+  saveAllCartEdits,
   updatePriceLocal,
-  saveItemPrice,
   removeItem,
   formatUnitPrice,
   formatItemTotal,

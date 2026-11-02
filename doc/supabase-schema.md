@@ -33,7 +33,7 @@ Declarative SQL lives in `supabase/schemas/`. Production history is anchored by 
    pnpm run backend:types:local
    ```
 
-5. Deploy: `pnpm run deploy:backend` after merge (human-approved migrations only).
+5. Deploy: `pnpm run backend:prod` after merge (human-approved migrations only).
 
 Do **not** use `supabase db diff` for declarative work; use `declarative sync`. Optional sanity check after reset: `pnpm exec supabase db diff --use-pg-delta` (should be empty).
 

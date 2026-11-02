@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Usage:
-#   pnpm run deploy:frontend
-#   pnpm run deploy:frontend -- tradeflowbd
+#   pnpm run frontend:prod
+#   pnpm run frontend:prod -- tradeflowbd
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"

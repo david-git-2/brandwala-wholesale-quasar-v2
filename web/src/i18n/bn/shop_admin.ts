@@ -617,6 +617,10 @@ export default {
   status_payment_received: 'পেমেন্ট পাওয়া গেছে',
   order_lines: 'অর্ডার লাইন',
   negotiation_round: 'দরকষাকষি রাউন্ড:',
+  send_first_offer_confirm_negotiable:
+    'গ্রাহককে প্রথম অফার পাঠাবেন? তারা প্রতিটি লাইন গ্রহণ বা কাউন্টার করতে পারবেন।',
+  send_first_offer_confirm_accept_only:
+    'গ্রাহককে প্রথম অফার পাঠাবেন? তারা আপনার দাম দেখে প্রতিটি লাইন গ্রহণ করতে পারবেন (কাউন্টার অফার নেই)।',
   customer_offer: 'কাস্টমার অফার:',
   middle_man_cost: 'মধ্যস্থতাকারীর খরচ:',
   catalog_sell_price: 'ক্যাটালগ বিক্রয়মূল্য',

@@ -113,8 +113,8 @@ const monthTiles = computed(() => [
   {
     label: 'Gross profit',
     value: formatAmountBdt(kpis.value?.gross_profit ?? 0),
-    caption: 'Sales minus COGS',
-    to: `${reportsBase.value}/invoice-profit`,
+    caption: 'Shipment P&L (month rollup)',
+    to: `${reportsBase.value}/shipment-profit`,
   },
   {
     label: 'Cash in',
@@ -150,7 +150,7 @@ const positionTiles = computed((): PositionTile[] => {
       label: 'With courier',
       value: formatAmountBdt(p.courier_holding),
       caption: 'Courier cashbook balance',
-      to: `${reportsBase.value}/courier-cod`,
+      to: `${appBase.value}/payments/courier-remit`,
     },
     {
       group: 'We will get',
@@ -164,7 +164,7 @@ const positionTiles = computed((): PositionTile[] => {
       label: 'COD not remitted',
       value: formatAmountBdt(p.cod_unremitted),
       caption: 'Delivered dropship, not in bank yet',
-      to: `${reportsBase.value}/courier-cod`,
+      to: `${appBase.value}/payments/courier-remit`,
     },
     {
       group: 'We owe',
@@ -187,7 +187,7 @@ const positionTiles = computed((): PositionTile[] => {
       label: 'Customer credit',
       value: `−${formatAmountBdt(p.customer_store_credit)}`,
       caption: 'Store credit on cashbook',
-      to: `${appBase.value}/wallet`,
+      to: `${appBase.value}/cashbook`,
       valueClass: 'text-negative',
     },
   ];

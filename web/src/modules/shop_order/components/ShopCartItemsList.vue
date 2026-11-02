@@ -51,22 +51,6 @@
                 />
                 <span>{{ $t('customer_dashboard.min_sell', { price: formatMinSellPrice(item) }) }}</span>
               </div>
-              <q-btn
-                v-if="editedPrices[item.id] !== undefined && editedPrices[item.id] !== getItemSellAmount(item)"
-                color="primary"
-                size="xs"
-                unelevated
-                no-caps
-                class="square-btn q-px-sm self-start q-mt-xs"
-                :label="$t('shop.save_price')"
-                :loading="isSaving"
-                :disable="isItemPriceBelowFloor(item)"
-                @click="$emit('save-item-price', item)"
-              >
-                <q-tooltip v-if="isItemPriceBelowFloor(item)">
-                  {{ $t('shop.cart_price_below_floor') }}
-                </q-tooltip>
-              </q-btn>
             </div>
           </div>
         </q-item-section>
@@ -96,17 +80,6 @@
                 @click="$emit('adjust-qty-local', item, getItemMinQty(item))"
               />
             </div>
-            <q-btn
-              v-if="editedQuantities[item.id] !== undefined && editedQuantities[item.id] !== item.quantity"
-              color="primary"
-              size="xs"
-              unelevated
-              no-caps
-              class="square-btn q-px-sm"
-              :label="$t('shop.save_qty')"
-              :loading="isSaving"
-              @click="$emit('save-item-qty', item)"
-            />
           </div>
         </q-item-section>
 
@@ -176,7 +149,6 @@ import {
   cartPriceSymbol,
   formatCartPriceAmount,
   getCartItemMinSellAmount,
-  getCartItemSellAmount,
 } from '../utils/cartPriceUtils';
 
 const props = defineProps<{
@@ -203,16 +175,12 @@ const props = defineProps<{
 
 defineEmits<{
   (e: 'update-price-local', item: ShopCartItem, val: string | number | null): void;
-  (e: 'save-item-price', item: ShopCartItem): void;
   (e: 'adjust-qty-local', item: ShopCartItem, delta: number): void;
-  (e: 'save-item-qty', item: ShopCartItem): void;
   (e: 'remove-item', item: ShopCartItem): void;
 }>();
 
 const sellPriceSymbol = (item: ShopCartItem) =>
   cartPriceSymbol(item.sell_price ?? item.unit_price);
-
-const getItemSellAmount = (item: ShopCartItem) => getCartItemSellAmount(item);
 
 const formatMinSellPrice = (item: ShopCartItem) =>
   formatCartPriceAmount(getCartItemMinSellAmount(item), item.resell_minimum_price);

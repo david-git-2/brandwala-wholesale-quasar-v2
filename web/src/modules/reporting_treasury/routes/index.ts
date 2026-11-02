@@ -84,14 +84,7 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'reports/invoice-profit',
-        name: 'app-finance-invoice-profit-report-page',
-        component: () => import('../pages/InvoiceProfitReportPage.vue'),
-        beforeEnter: guard('reporting_treasury'),
-        meta: {
-          title: 'Invoice / product profit',
-          headerTitle: 'Invoice / product profit',
-          breadcrumb: 'Invoice / product profit',
-        },
+        redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/finance/reports/shipment-profit`,
       },
       {
         path: 'reports/shipment-profit',
@@ -106,10 +99,11 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'reports/courier-cod',
-        name: 'app-finance-courier-cod-report-page',
-        component: () => import('../pages/CourierCodReportPage.vue'),
-        beforeEnter: guard('reporting_treasury'),
-        meta: { title: 'Courier COD', headerTitle: 'Courier COD', breadcrumb: 'Courier COD' },
+        redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/payments/courier-remit`,
+      },
+      {
+        path: 'reports/wallet',
+        redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/finance/reports`,
       },
       {
         path: 'reports/month-snapshot',

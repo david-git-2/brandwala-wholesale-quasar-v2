@@ -28,85 +28,85 @@
       class="col overflow-auto hide-native-scrollbar catalog-table-scroll"
       @scroll="onTableScroll"
     >
-      <table class="pbc-v2-markup-table" style="min-width: 1400px; width: 100%">
+      <table class="pbc-v2-markup-table bg-white" style="min-width: 1100px; width: 100%">
         <thead>
           <tr class="text-weight-bold catalog-table-header">
-            <th v-if="isColVisible('sl')" class="text-center sticky-col-2 q-pa-none" style="width: 40px; min-width: 40px">SL</th>
+            <th v-if="isColVisible('sl')" class="text-center sticky-col-2 pbc-sl-col q-pa-none" style="width: 36px; min-width: 36px">SL</th>
             <th v-if="isColVisible('image')" class="text-center pbc-image-col" style="width: 0.85in; min-width: 0.85in">Image</th>
             <th v-if="isColVisible('name')" class="text-left" style="min-width: 180px; width: 180px">Name</th>
             <th v-if="isColVisible('brand')" class="text-center" style="width: 90px; min-width: 90px">Brand</th>
-            <th v-if="isColVisible('note')" class="text-center" style="width: 110px; min-width: 110px">Note</th>
+            <th v-if="isColVisible('note')" class="text-center" style="width: 72px; min-width: 72px">Note</th>
             <th v-if="isColVisible('code_barcode_id')" class="text-left" style="width: 130px; min-width: 130px">Codes</th>
-            <th v-if="isColVisible('qty_customer')" class="text-center bw-ops-col-tint--qty" style="width: 72px; min-width: 72px">
+            <th v-if="isColVisible('qty_customer')" class="text-center tf-ops-col-tint--qty" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('qty_customer', 'Qty') }}</span>
             </th>
-            <th v-if="isColVisible('purchase_price_unit')" class="text-center bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('purchase_price_unit')" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('purchase_price_unit', 'Price') }}</span>
             </th>
-            <th v-if="isColVisible('purchase_price_total')" class="text-center bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('purchase_price_total')" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('purchase_price_total', 'Total') }}</span>
             </th>
-            <th v-if="isColVisible('product_weight_gm')" class="text-center bw-ops-col-tint--weight" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('product_weight_gm')" class="text-center tf-ops-col-tint--weight" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('product_weight_gm', 'Product Wt') }}</span>
             </th>
-            <th v-if="isColVisible('package_weight_gm')" class="text-center bw-ops-col-tint--weight" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('package_weight_gm')" class="text-center tf-ops-col-tint--weight" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('package_weight_gm', 'Pkg Wt') }}</span>
             </th>
-            <th v-if="isColVisible('total_weight_gm')" class="text-center bw-ops-col-tint--weight" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('total_weight_gm')" class="text-center tf-ops-col-tint--weight" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('total_weight_gm', 'Total Wt') }}</span>
             </th>
-            <th v-if="isColVisible('cargo_rate')" class="text-center" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('cargo_rate')" class="text-center" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('cargo_rate', 'Cargo') }}</span>
             </th>
-            <th v-if="isColVisible('cargo_cost_unit_purchase')" class="text-center" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('cargo_cost_unit_purchase')" class="text-center" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('cargo_cost_unit_purchase', 'Cargo Cost') }}</span>
             </th>
-            <th v-if="isColVisible('landed_cost_unit_purchase')" class="text-center bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('landed_cost_unit_purchase')" class="text-center tf-ops-col-tint--cost" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('landed_cost_unit_purchase', 'Cost') }}</span>
             </th>
-            <th v-if="isColVisible('landed_cost_row_purchase')" class="text-center bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('landed_cost_row_purchase')" class="text-center tf-ops-col-tint--cost" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('landed_cost_row_purchase', 'Row') }}</span>
             </th>
-            <th v-if="isColVisible('landed_cost_unit_sell')" class="text-center bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('landed_cost_unit_sell')" class="text-center tf-ops-col-tint--cost" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('landed_cost_unit_sell', 'Cost') }}</span>
             </th>
-            <th v-if="isColVisible('landed_cost_row_sell')" class="text-center bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('landed_cost_row_sell')" class="text-center tf-ops-col-tint--cost" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('landed_cost_row_sell', 'Row') }}</span>
             </th>
-            <th v-if="isColVisible('first_offer_unit')" class="text-center bw-ops-col-tint--price" style="width: 110px; min-width: 110px">
+            <th v-if="isColVisible('first_offer_unit')" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('first_offer_unit', '1st Offer') }}</span>
             </th>
-            <th v-if="isColVisible('first_offer_row')" class="text-center bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('first_offer_row')" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('first_offer_row', 'Row') }}</span>
             </th>
-            <th v-if="isColVisible('first_offer_margin')" class="text-center" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('first_offer_margin')" class="text-center" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('first_offer_margin', 'Margin') }}</span>
             </th>
-            <th v-if="isColVisible('counter_offer_unit')" class="text-center bw-ops-col-tint--price" style="width: 110px; min-width: 110px">
+            <th v-if="isColVisible('counter_offer_unit')" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('counter_offer_unit', 'Counter') }}</span>
             </th>
-            <th v-if="isColVisible('counter_offer_row')" class="text-center bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('counter_offer_row')" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('counter_offer_row', 'Row') }}</span>
             </th>
-            <th v-if="isColVisible('counter_offer_margin')" class="text-center" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('counter_offer_margin')" class="text-center" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('counter_offer_margin', 'Margin') }}</span>
             </th>
-            <th v-if="isColVisible('final_offer_unit')" class="text-center bw-ops-col-tint--price" style="width: 110px; min-width: 110px">
+            <th v-if="isColVisible('final_offer_unit')" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('final_offer_unit', 'Final') }}</span>
             </th>
-            <th v-if="isColVisible('final_offer_row')" class="text-center bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('final_offer_row')" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('final_offer_row', 'Row') }}</span>
             </th>
-            <th v-if="isColVisible('final_offer_margin')" class="text-center" style="width: 88px; min-width: 88px">
+            <th v-if="isColVisible('final_offer_margin')" class="text-center" style="width: 56px; min-width: 56px">
               <span class="header-label-wrap">{{ formatTableHeaderLabel('final_offer_margin', 'Margin') }}</span>
             </th>
-            <th v-if="isColVisible('status')" class="text-center" style="width: 100px; min-width: 100px">Status</th>
+            <th v-if="isColVisible('status')" class="text-center" style="width: 65px; min-width: 65px">Status</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(row, rowIndex) in filteredRows" :key="row.id" class="pbc-row">
             <!-- 1. SL -->
-            <td v-if="isColVisible('sl')" class="text-center text-weight-bold sticky-col-2 font-mono" style="width: 40px; min-width: 40px">
+            <td v-if="isColVisible('sl')" class="text-center text-weight-bold sticky-col-2 pbc-sl-col font-mono" style="width: 36px; min-width: 36px">
               {{ rowIndex + 1 }}
             </td>
 
@@ -218,12 +218,12 @@
             </td>
 
             <!-- 7. Qty (Customer) -->
-            <td v-if="isColVisible('qty_customer')" class="text-center text-weight-bold font-mono bw-ops-col-tint--qty" style="width: 72px; min-width: 72px">
+            <td v-if="isColVisible('qty_customer')" class="text-center text-weight-bold font-mono tf-ops-col-tint--qty" style="width: 56px; min-width: 56px">
               {{ row.quantity }}
             </td>
 
             <!-- 8. Purchase Price Unit -->
-            <td v-if="isColVisible('purchase_price_unit')" class="text-center bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('purchase_price_unit')" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               <span
                 v-if="isFirstOfferLocked"
                 class="font-mono text-weight-bold text-green-10"
@@ -239,7 +239,7 @@
                 hide-bottom-space
                 input-class="text-center font-mono text-weight-bold text-green-10"
                 class="inline-edit-input excel-cell-input"
-                style="max-width: 80px"
+                style="max-width: 56px"
                 min="0"
                 step="0.01"
                 @blur="onItemCostBlur(row)"
@@ -248,12 +248,12 @@
             </td>
 
             <!-- 11. Total Purchase Price -->
-            <td v-if="isColVisible('purchase_price_total')" class="text-center font-mono text-weight-bold text-grey-9 bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('purchase_price_total')" class="text-center font-mono text-weight-bold text-grey-9 tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               {{ formatAmount((row.cost_price_amount || 0) * row.quantity) }}
             </td>
 
             <!-- 12. Product Weight (gm) -->
-            <td v-if="isColVisible('product_weight_gm')" class="text-center font-mono bw-ops-col-tint--weight" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('product_weight_gm')" class="text-center font-mono tf-ops-col-tint--weight" style="width: 56px; min-width: 56px">
               <span v-if="isStaffReadOnly" class="font-mono">
                 {{ Math.round(row.product_weight_gm ?? getProductWeightGm(row)) }}
               </span>
@@ -266,7 +266,7 @@
                 hide-bottom-space
                 input-class="text-center font-mono"
                 class="inline-edit-input excel-cell-input"
-                style="max-width: 80px"
+                style="max-width: 56px"
                 min="0"
                 step="1"
                 @update:model-value="(val) => { row.product_weight_gm = Number(val) || 0; }"
@@ -277,7 +277,7 @@
             </td>
 
             <!-- 13. Package Weight (gm) -->
-            <td v-if="isColVisible('package_weight_gm')" class="text-center font-mono bw-ops-col-tint--weight" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('package_weight_gm')" class="text-center font-mono tf-ops-col-tint--weight" style="width: 56px; min-width: 56px">
               <span v-if="isStaffReadOnly" class="font-mono">
                 {{ Math.round(row.package_weight_gm ?? getPackageWeightGm(row)) }}
               </span>
@@ -290,7 +290,7 @@
                 hide-bottom-space
                 input-class="text-center font-mono"
                 class="inline-edit-input excel-cell-input"
-                style="max-width: 80px"
+                style="max-width: 56px"
                 min="0"
                 step="1"
                 @update:model-value="(val) => { row.package_weight_gm = Number(val) || 0; }"
@@ -301,42 +301,42 @@
             </td>
 
             <!-- 14. Total Weight (gm) -->
-            <td v-if="isColVisible('total_weight_gm')" class="text-center font-mono text-caption text-grey-9 bw-ops-col-tint--weight" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('total_weight_gm')" class="text-center font-mono text-caption text-grey-9 tf-ops-col-tint--weight" style="width: 56px; min-width: 56px">
               {{ Math.round(getTotalWeightGm(row)) }} g
             </td>
 
             <!-- 15. Cargo Rate -->
-            <td v-if="isColVisible('cargo_rate')" class="text-center font-mono text-grey-8 text-caption" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('cargo_rate')" class="text-center font-mono text-grey-8 text-caption" style="width: 56px; min-width: 56px">
               {{ cargoRate.toFixed(2) }} /kg
             </td>
 
             <!-- 16. Cargo Cost (Purchase Currency) / Unit -->
-            <td v-if="isColVisible('cargo_cost_unit_purchase')" class="text-center font-mono text-weight-medium text-caption" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('cargo_cost_unit_purchase')" class="text-center font-mono text-weight-medium text-caption" style="width: 56px; min-width: 56px">
               {{ formatAmount(getCargoCostUnitPurchase(row)) }}
             </td>
 
             <!-- 17. Total Cost (Purchase Cost) / Unit -->
-            <td v-if="isColVisible('landed_cost_unit_purchase')" class="text-center font-mono text-weight-bold text-grey-9 bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('landed_cost_unit_purchase')" class="text-center font-mono text-weight-bold text-grey-9 tf-ops-col-tint--cost" style="width: 56px; min-width: 56px">
               {{ formatAmount(getLandedCostUnitPurchase(row)) }}
             </td>
 
             <!-- 18. Row Total Cost (Purchase) -->
-            <td v-if="isColVisible('landed_cost_row_purchase')" class="text-center font-mono text-weight-bold text-grey-9 bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('landed_cost_row_purchase')" class="text-center font-mono text-weight-bold text-grey-9 tf-ops-col-tint--cost" style="width: 56px; min-width: 56px">
               {{ formatAmount(getLandedCostRowPurchase(row)) }}
             </td>
 
             <!-- 19. Cost (Selling Currency) / Unit -->
-            <td v-if="isColVisible('landed_cost_unit_sell')" class="text-center font-mono text-weight-bold text-grey-9 bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('landed_cost_unit_sell')" class="text-center font-mono text-weight-bold text-grey-9 tf-ops-col-tint--cost" style="width: 56px; min-width: 56px">
               {{ formatAmount(getLandedCostUnitSell(row)) }}
             </td>
 
             <!-- 20. Row Total Cost (Selling Currency) -->
-            <td v-if="isColVisible('landed_cost_row_sell')" class="text-center font-mono text-weight-bold text-grey-9 bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('landed_cost_row_sell')" class="text-center font-mono text-weight-bold text-grey-9 tf-ops-col-tint--cost" style="width: 56px; min-width: 56px">
               {{ formatAmount(getLandedCostRowSell(row)) }}
             </td>
 
             <!-- 21. First Offer Unit (Selling Currency) -->
-            <td v-if="isColVisible('first_offer_unit')" class="text-center bw-ops-col-tint--price" style="width: 110px; min-width: 110px">
+            <td v-if="isColVisible('first_offer_unit')" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               <span
                 v-if="isFirstOfferLocked"
                 class="text-deep-purple-9 text-weight-bold font-mono"
@@ -387,32 +387,32 @@
             </td>
 
             <!-- 22. First Offer Row Total -->
-            <td v-if="isColVisible('first_offer_row')" class="text-center font-mono text-weight-bold text-grey-9 bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('first_offer_row')" class="text-center font-mono text-weight-bold text-grey-9 tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               {{ formatAmount(getFirstOfferUnitAmount(row) * row.quantity) }}
             </td>
 
             <!-- 23. First Offer Margin % -->
-            <td v-if="isColVisible('first_offer_margin')" class="text-center font-mono text-weight-bold" style="width: 88px; min-width: 88px" :class="getMarginColorClass(getFirstOfferMargin(row))">
+            <td v-if="isColVisible('first_offer_margin')" class="text-center font-mono text-weight-bold" style="width: 56px; min-width: 56px" :class="getMarginColorClass(getFirstOfferMargin(row))">
               {{ getFirstOfferMargin(row).toFixed(1) }}%
             </td>
 
             <!-- 24. Counter Offer Unit -->
-            <td v-if="isColVisible('counter_offer_unit')" class="text-center font-mono text-weight-bold text-orange-9 bw-ops-col-tint--price" style="width: 110px; min-width: 110px">
+            <td v-if="isColVisible('counter_offer_unit')" class="text-center font-mono text-weight-bold text-orange-9 tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               {{ row.customer_offer_amount != null ? formatAmount(row.customer_offer_amount) : '—' }}
             </td>
 
             <!-- 25. Counter Offer Row Total -->
-            <td v-if="isColVisible('counter_offer_row')" class="text-center font-mono text-weight-bold text-orange-8 bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('counter_offer_row')" class="text-center font-mono text-weight-bold text-orange-8 tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               {{ row.customer_offer_amount != null ? formatAmount(row.customer_offer_amount * row.quantity) : '—' }}
             </td>
 
             <!-- 26. Counter Offer Margin % -->
-            <td v-if="isColVisible('counter_offer_margin')" class="text-center font-mono text-weight-bold" style="width: 88px; min-width: 88px" :class="getMarginColorClass(getCounterOfferMargin(row))">
+            <td v-if="isColVisible('counter_offer_margin')" class="text-center font-mono text-weight-bold" style="width: 56px; min-width: 56px" :class="getMarginColorClass(getCounterOfferMargin(row))">
               {{ row.customer_offer_amount != null ? `${getCounterOfferMargin(row).toFixed(1)}%` : '—' }}
             </td>
 
             <!-- 27. Final Offer Unit -->
-            <td v-if="isColVisible('final_offer_unit')" class="text-center bw-ops-col-tint--price" style="width: 110px; min-width: 110px">
+            <td v-if="isColVisible('final_offer_unit')" class="text-center tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               <span
                 v-if="!isFinalOfferEditable"
                 class="text-green-10 text-weight-bold font-mono"
@@ -463,17 +463,17 @@
             </td>
 
             <!-- 28. Final Offer Row Total -->
-            <td v-if="isColVisible('final_offer_row')" class="text-center font-mono text-weight-bold text-positive bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+            <td v-if="isColVisible('final_offer_row')" class="text-center font-mono text-weight-bold text-positive tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
               {{ formatAmount(getFinalOfferUnitAmount(row) * row.quantity) }}
             </td>
 
             <!-- 29. Final Offer Margin % -->
-            <td v-if="isColVisible('final_offer_margin')" class="text-center font-mono text-weight-bold" style="width: 88px; min-width: 88px" :class="getMarginColorClass(getFinalOfferMargin(row))">
+            <td v-if="isColVisible('final_offer_margin')" class="text-center font-mono text-weight-bold" style="width: 56px; min-width: 56px" :class="getMarginColorClass(getFinalOfferMargin(row))">
               {{ `${getFinalOfferMargin(row).toFixed(1)}%` }}
             </td>
 
             <!-- 30. Status -->
-            <td v-if="isColVisible('status')" class="text-center" style="width: 100px; min-width: 100px">
+            <td v-if="isColVisible('status')" class="text-center" style="width: 65px; min-width: 65px">
               <q-chip dense outline :color="getItemStatusColor(row)" class="text-caption text-weight-bold status-chip">
                 {{ getItemStatusLabel(row) }}
               </q-chip>
@@ -1124,9 +1124,9 @@ defineExpose({
   position: sticky;
   top: 0;
   z-index: 5;
-  background-color: var(--tf-neutral-canvas) !important;
-  color: var(--tf-neutral-chrome-text) !important;
-  border-bottom: 1px solid var(--tf-neutral-border-strong);
+  background-color: var(--tf-disabled-bg) !important;
+  color: var(--tf-neutral-ink) !important;
+  border-bottom: 1px solid var(--tf-neutral-border);
   padding: 4px 6px !important;
   font-size: 11px;
 }
@@ -1137,30 +1137,36 @@ defineExpose({
   min-height: 44px;
   height: auto;
   vertical-align: middle;
+  font-size: 12px;
 }
 
-.pbc-v2-markup-table th.bw-ops-col-tint--price,
-.pbc-v2-markup-table td.bw-ops-col-tint--price {
-  background-color: var(--tf-success-soft) !important;
+/* Ops column tints — same pattern as PBC file details v2 */
+.pbc-v2-markup-table th.tf-ops-col-tint--price,
+.pbc-v2-markup-table td.tf-ops-col-tint--price {
+  background-color: var(--tf-ops-hue-price) !important;
+  box-shadow: inset 2px 0 0 var(--tf-ops-accent-price);
 }
 
-.pbc-v2-markup-table th.bw-ops-col-tint--cost,
-.pbc-v2-markup-table td.bw-ops-col-tint--cost {
-  background-color: var(--tf-warning-soft) !important;
+.pbc-v2-markup-table th.tf-ops-col-tint--cost,
+.pbc-v2-markup-table td.tf-ops-col-tint--cost {
+  background-color: var(--tf-ops-hue-cost) !important;
+  box-shadow: inset 2px 0 0 var(--tf-ops-accent-cost);
 }
 
-.pbc-v2-markup-table th.bw-ops-col-tint--qty,
-.pbc-v2-markup-table td.bw-ops-col-tint--qty {
-  background-color: var(--tf-info-soft) !important;
+.pbc-v2-markup-table th.tf-ops-col-tint--qty,
+.pbc-v2-markup-table td.tf-ops-col-tint--qty {
+  background-color: var(--tf-ops-hue-qty) !important;
+  box-shadow: inset 2px 0 0 var(--tf-ops-accent-qty);
 }
 
-.pbc-v2-markup-table th.bw-ops-col-tint--weight,
-.pbc-v2-markup-table td.bw-ops-col-tint--weight {
-  background-color: var(--tf-theme-primary-soft) !important;
+.pbc-v2-markup-table th.tf-ops-col-tint--weight,
+.pbc-v2-markup-table td.tf-ops-col-tint--weight {
+  background-color: var(--tf-ops-hue-weight) !important;
+  box-shadow: inset 2px 0 0 var(--tf-ops-accent-weight);
 }
 
 .pbc-row:hover {
-  background-color: var(--tf-hover-bg) !important;
+  background-color: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%) !important;
 }
 
 .pbc-row:hover td {
@@ -1177,7 +1183,16 @@ defineExpose({
 
 .pbc-v2-markup-table thead tr th.sticky-col-2 {
   z-index: 6;
-  background-color: var(--tf-neutral-canvas) !important;
+  background-color: var(--tf-disabled-bg) !important;
+}
+
+.pbc-v2-markup-table th.pbc-sl-col,
+.pbc-v2-markup-table td.pbc-sl-col {
+  width: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  padding: 2px !important;
+  box-sizing: border-box;
 }
 
 .pbc-image-cell {
@@ -1324,9 +1339,9 @@ defineExpose({
 }
 
 .col-info-meta {
-  width: 110px;
-  min-width: 110px;
-  max-width: 110px;
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
   text-align: center !important;
   white-space: normal !important;
   word-break: break-word !important;

@@ -118,6 +118,33 @@ export function useShopCartPageLogic(
     delete editedQuantities.value[item.id];
   };
 
+  const saveAllCartEdits = async () => {
+    if (!selectedShopId.value || !hasUnsavedEdits.value || hasFloorViolation.value) return;
+
+    const shopId = selectedShopId.value;
+    const qtyIds = Object.keys(editedQuantities.value).map(Number);
+    const priceIds = Object.keys(editedPrices.value).map(Number);
+
+    for (const cartItemId of qtyIds) {
+      const quantity = editedQuantities.value[cartItemId];
+      if (quantity === undefined) continue;
+      await updateQtyMutation.mutateAsync({ cartItemId, quantity, shopId });
+    }
+
+    for (const cartItemId of priceIds) {
+      const price = editedPrices.value[cartItemId];
+      if (price === undefined || Number.isNaN(price)) continue;
+      const item = items.value.find((row) => row.id === cartItemId);
+      if (!item) continue;
+      const minSell = getCartItemMinSellAmount(item);
+      if (minSell > 0 && price < minSell) continue;
+      await updatePriceMutation.mutateAsync({ cartItemId, price, shopId });
+    }
+
+    editedQuantities.value = {};
+    editedPrices.value = {};
+  };
+
   const updatePriceLocal = (item: any, val: string | number | null) => {
     if (val === '' || val === null) {
       editedPrices.value[item.id] = 0;
@@ -166,12 +193,10 @@ export function useShopCartPageLogic(
       itemCount.value === 0 ||
       isSaving.value ||
       placingOrder.value ||
-      hasUnsavedEdits.value ||
       hasFloorViolation.value,
   );
 
   const checkoutDisabledReason = computed(() => {
-    if (hasUnsavedEdits.value) return 'shop.cart_save_edits_first';
     if (hasFloorViolation.value) return 'shop.cart_price_below_floor';
     if (itemCount.value === 0) return 'shop.cart_empty';
     return '';
@@ -187,7 +212,15 @@ export function useShopCartPageLogic(
   );
 
   const handleButtonClick = async () => {
-    if (checkoutDisabled.value) return;
+    if (itemCount.value === 0 || isSaving.value || placingOrder.value || hasFloorViolation.value) {
+      return;
+    }
+
+    if (hasUnsavedEdits.value) {
+      await saveAllCartEdits();
+      if (hasUnsavedEdits.value) return;
+    }
+
     if (placesOrderFromCart.value) {
       const confirmed = await requestConfirmation(
         t('shop.place_order_confirm_message'),
@@ -341,6 +374,8 @@ export function useShopCartPageLogic(
     goBack,
     isSaving,
     placingOrder,
+    hasUnsavedEdits,
+    hasFloorViolation,
     handleButtonClick,
     checkoutDisabled,
     checkoutDisabledReason,
@@ -353,6 +388,7 @@ export function useShopCartPageLogic(
     getItemPrice,
     adjustItemQtyLocal,
     saveItemQty,
+    saveAllCartEdits,
     updatePriceLocal,
     saveItemPrice,
     removeItem,

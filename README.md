@@ -71,7 +71,7 @@ Common environment variables:
 
 ### Local Supabase (Docker) — keep production safe
 
-Day-to-day schema/RPC work should hit **local Docker**, not the linked remote. Production remains the target only for intentional `pnpm run deploy:backend`.
+Day-to-day schema/RPC work should hit **local Docker**, not the linked remote. Production remains the target only for intentional `pnpm run backend:prod`.
 
 **Prerequisites:** Docker Desktop running; repo Supabase CLI (`pnpm install` at root); project already linkable (`pnpm run backend:login` + `pnpm run backend:link`).
 
@@ -135,7 +135,7 @@ Requires: linked project (`pnpm run backend:link`), `psql` on your PATH. Dumps a
 2. `pnpm run env:local` and restart `pnpm run dev`
 3. **Prove migrations on empty DB (ordering fixes):** `pnpm run backend:reset` — no prod data. Fix until green.
 4. **Load prod rows once:** `pnpm run backend:pull-prod-data`
-5. **Schema/RPC change (after prod data loaded):** edit `supabase/schemas/public.sql` → `pnpm run backend:schema:sync -- <name>` → review generated SQL → `pnpm run backend:local` → `pnpm run backend:types:local` → when ready `pnpm run deploy:backend`. Do **not** run reset/restore-dumps for every migration. See [doc/supabase-schema.md](doc/supabase-schema.md).
+5. **Schema/RPC change (after prod data loaded):** edit `supabase/schemas/public.sql` → `pnpm run backend:schema:sync -- <name>` → review generated SQL → `pnpm run backend:local` → `pnpm run backend:types:local` → when ready `pnpm run backend:prod`. Do **not** run reset/restore-dumps for every migration. See [doc/supabase-schema.md](doc/supabase-schema.md).
 
 **Useful scripts**
 
@@ -152,8 +152,8 @@ Requires: linked project (`pnpm run backend:link`), `psql` on your PATH. Dumps a
 | `backend:schema:dump` | Dump local public schema → `supabase/schemas/public.sql` |
 | `backend:schema:sync` | Generate migration from declarative schemas (`--no-apply`; review before apply) |
 | `backend:schema:diff` | Alias for `backend:schema:sync` |
-| `deploy:backend` | Push migrations to **linked production** + regenerate types |
-| `deploy:frontend` | Switches to `env:prod`, builds, deploys to Cloudflare Pages |
+| `backend:prod` | Push migrations to **linked production** + regenerate types |
+| `frontend:prod` | Switches to `env:prod`, builds, deploys to Cloudflare Pages |
 
 Do not run experimental SQL against the linked remote while iterating locally.
 

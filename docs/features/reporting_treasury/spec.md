@@ -5,10 +5,10 @@
 | | |
 | :--- | :--- |
 | Spec | `docs/features/reporting_treasury/spec.md` + [00-gaps](00-gaps.md) |
-| UI | `reporting_treasury/`; pays in `wallet/` |
+| UI | `reporting_treasury/`; pays in `cashbook/` / `payments/` |
 | SQL | Report RPCs in `public.sql` |
 | Access | `app`; parent books |
-| Role | **Read** sales, cash, COD ops, cashbook — do not post pays |
+| Role | **Read** sales, cash, cashbook — do not post pays |
 
 ## Where to look
 
@@ -16,15 +16,15 @@
 | :--- | :--- |
 | Report RPCs | Grep `get_tenant_`, `report` in `public.sql` / types |
 | Pages | `web/src/modules/reporting_treasury/pages/` |
-| Collect (out of scope) | `wallet/` Payments routes |
+| Collect (out of scope) | Payments / cashbook routes |
 
 ## Scope
 
 | | |
 | :--- | :--- |
 | Surfaces | `app` |
-| In | Eight report views + month snapshot; CSV export |
-| Out | Creating invoices; posting pays/remittance; editing shipments; shadow P&L |
+| In | Five finance report views + CSV export; see [REPORTS_PLAN.md](../../../REPORTS_PLAN.md) |
+| Out | Creating invoices; posting pays/remittance; editing shipments; invoice-line profit report; wallet liability report; courier COD report |
 
 Money: [bills_pays spec](../bills_pays/spec.md). Numbers: [money-story](../bills_pays/money-story.md).
 
@@ -36,7 +36,6 @@ Money: [bills_pays spec](../bills_pays/spec.md). Numbers: [money-story](../bills
 | Gross profit | **Shipment P&L** (not invoice-line cost) | Shipment period |
 | Cash in | Receipts | Receipt date |
 | AR | Take `due_amount` firm; condition due not guaranteed | As-of |
-| COD ops | Order COD vs remittance | Delivered / remitted |
 | Payable | Cashbook splits | As-of |
 
 Dropship: sales = merchant total, not COD face. Sales reports filter `invoice_type`.
@@ -46,20 +45,18 @@ Dropship: sales = merchant total, not COD face. Sales reports filter `invoice_ty
 ### US-1: Shipment P&L
 - Invoice lines → lots → shipment; cost = landed + local ([procurement US-8](../procurement_stock/spec.md)).
 - [ ] Local costs in P&L ([RT18](00-gaps.md)).
-- [ ] No invoice-line COGS RPCs ([RT19](00-gaps.md)).
 
-### US-2: Eight views
+### US-2: Five finance views
 
-| # | View | Question |
-| :--- | :--- | :--- |
-| 1 | Invoice book | Bills issued |
-| 2 | Invoice sales | Billed totals in period |
-| 3 | Customer dues | Who owes bills |
-| 4 | Cash in | Bank/till receipts |
-| 5 | Courier COD | Face vs remitted |
-| 6 | Cashbook liability | Merchant / customer / courier owed |
-| 7 | Shipment P&L | Batch payoff |
-| 8 | Money position (month snapshot route) | **As-of:** bank/till, courier holding, AR, COD unremitted, AP, shop leftover, customer credit, net buffer. **Month:** sales, GP, cash in. Drill-down tiles only — no collect on this page. |
+| # | View | Question | Route |
+| :--- | :--- | :--- | :--- |
+| 1 | Shipment P&L | Batch payoff | `/app/finance/reports/shipment-profit` |
+| 2 | Cash in | Bank/till receipts | `/app/finance/reports/cash-in` |
+| 3 | Customer dues | Who owes bills | `/app/finance/reports/customer-dues` |
+| 4 | Invoice book | Bills issued | `/app/finance/reports/invoice-book` |
+| 5 | Money position | As-of buffer + month KPIs; drill to desks | `/app/finance/reports/month-snapshot` |
+
+**Retired:** invoice/product profit, wallet liability, courier COD finance reports — see [REPORTS_PLAN.md](../../../REPORTS_PLAN.md).
 
 ### US-3: Reporting does not collect
 - [x] Collect on Payments desk only; report routes read-only.

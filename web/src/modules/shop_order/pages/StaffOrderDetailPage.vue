@@ -405,79 +405,12 @@ const { visibleColumns: rawCatalogVisibleColumns } = useMembershipColumnPreferen
   defaultVisibleColumns: catalogDefaultVisibleColumns,
 });
 
-const processingModeColumns = [
-  'sl',
-  'image',
-  'name',
-  'brand',
-  'note',
-  'code_barcode_id',
-  'qty_customer',
-  'purchase_price_unit',
-  'purchase_price_total',
-  'product_weight_gm',
-  'package_weight_gm',
-  'total_weight_gm',
-  'cargo_cost_unit_purchase',
-  'landed_cost_unit_purchase',
-  'landed_cost_row_purchase',
-  'landed_cost_unit_sell',
-  'landed_cost_row_sell',
-  'first_offer_unit',
-  'first_offer_row',
-  'first_offer_margin',
-  'status',
-];
-
-const counteredModeColumns = [
-  'sl',
-  'image',
-  'name',
-  'purchase_price_unit',
-  'landed_cost_unit_sell',
-  'first_offer_unit',
-  'counter_offer_unit',
-  'counter_offer_margin',
-  'final_offer_unit',
-  'final_offer_margin',
-  'status',
-];
-
-const confirmedModeColumns = [
-  'sl',
-  'image',
-  'name',
-  'brand',
-  'code_barcode_id',
-  'qty_customer',
-  'status',
-];
-
-const procuringModeColumns = [...confirmedModeColumns];
-
-const readyForShipmentModeColumns = [...confirmedModeColumns];
-
 const catalogOrderStatus = computed(() =>
   normalizeCatalogOrderStatus(currentOrder.value?.status),
 );
 
 const catalogVisibleColumns = computed<string[]>({
   get: () => {
-    if (catalogOrderStatus.value === 'submitted') {
-      return processingModeColumns;
-    }
-    if (catalogOrderStatus.value === 'countered') {
-      return counteredModeColumns;
-    }
-    if (catalogOrderStatus.value === 'confirmed') {
-      return confirmedModeColumns;
-    }
-    if (catalogOrderStatus.value === 'procuring') {
-      return procuringModeColumns;
-    }
-    if (catalogOrderStatus.value === 'packed') {
-      return readyForShipmentModeColumns;
-    }
     if (catalogOrderStatus.value === 'priced') {
       const hiddenInPriced = [
         'counter_offer_unit',
@@ -550,6 +483,12 @@ const catalogPrimaryDisabledReason = computed(() => {
   return '';
 });
 
+const sendFirstOfferConfirmMessage = computed(() =>
+  currentOrder.value?.is_negotiable_snapshot
+    ? t('shop_admin.send_first_offer_confirm_negotiable')
+    : t('shop_admin.send_first_offer_confirm_accept_only'),
+);
+
 function buildStaffOfferPayload() {
   return orderItems.value.map((item) => ({
     id: item.id,
@@ -611,7 +550,7 @@ const handleCatalogPrimaryAction = async (action: StaffCatalogPrimaryAction) => 
 
   if (action === 'send_first_offer') {
     const ok = await requestConfirmation(
-      'Send the first offer to the customer? They will be able to accept or counter each line.',
+      sendFirstOfferConfirmMessage.value,
       'Send first offer',
       'Send offer',
     );

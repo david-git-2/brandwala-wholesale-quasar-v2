@@ -22,4 +22,4 @@ How-to: [doc/supabase-schema.md](../../doc/supabase-schema.md)
 - Use `backend:schema:sync`, not `supabase db diff -f`, for schema DDL.
 - Hand-write migrations for **DML only** (seeds, backfills, permission **rows**). Diff cannot see data.
 - Do not edit already-applied migration files for features.
-- Do not `db reset` or experimental `db diff` against production. Production only gets `pnpm run deploy:backend`.
+- Do not `db reset` or experimental `db diff` against production. Production only gets `pnpm run backend:prod`.

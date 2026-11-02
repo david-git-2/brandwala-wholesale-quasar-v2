@@ -1,199 +1,200 @@
 <template>
-  <q-page class="receive-shipment-page bg-grey-1 column no-wrap" style="height: calc(100vh - 55px); overflow: hidden">
-    <!-- Header -->
-    <div class="receive-top-section bg-white border-bottom q-px-lg q-py-md shrink-0 shadow-xs">
-      <div class="row items-center justify-between wrap q-gutter-y-sm">
-        <div class="row items-center q-gutter-sm col-grow" style="min-width: 0">
+  <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
+    <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
+      <div class="receive-toolbar row items-center justify-between no-wrap q-px-xs shrink-0">
+        <div class="row items-center q-gutter-sm col" style="min-width: 0">
           <q-btn
             icon="ph ph-arrow-left"
             flat
             round
             dense
             color="grey-8"
+            aria-label="Back to shipment"
             @click="goBack"
           >
             <q-tooltip>Back to shipment</q-tooltip>
           </q-btn>
-          <div class="ellipsis">
-            <div class="text-subtitle1 text-weight-bolder text-grey-9 ellipsis">
-              Receive &amp; post to stock
+          <div class="ellipsis" style="min-width: 0">
+            <div class="text-subtitle2 text-weight-bold ellipsis" style="color: var(--tf-neutral-ink)">
+              Post to warehouse
             </div>
-            <div class="text-caption text-grey-7 ellipsis">
+            <div class="text-caption ellipsis" style="color: var(--tf-neutral-muted)">
               {{ shipmentName }}
-              <span v-if="extras.length">
-                · {{ totalExtraQty }} unit<span v-if="totalExtraQty !== 1">s</span> on
-                {{ extras.length }} sellable split<span v-if="extras.length !== 1">s</span>
-              </span>
             </div>
           </div>
         </div>
 
-        <div class="row items-center q-gutter-md no-wrap">
-          <q-banner
-            v-if="extras.length"
-            dense
-            rounded
-            class="bg-blue-1 text-blue-10 q-py-xs q-px-sm"
-            style="max-width: 420px"
-          >
-            Posting marks the shipment <strong>Received</strong> and puts units in the default bin.
-          </q-banner>
-          <div class="row items-center q-gutter-md text-caption text-grey-7">
-            <span>
-              Extra qty:
-              <span class="text-weight-bold text-primary">{{ totalExtraQty }}</span>
-            </span>
-          </div>
-          <q-btn
-            flat
-            label="Cancel"
-            color="grey-8"
-            no-caps
-            dense
-            class="rounded-sq-btn"
-            style="border-radius: 8px"
-            @click="goBack"
-          />
-          <q-btn
-            color="primary"
-            unelevated
+        <div class="row items-center q-gutter-sm no-wrap shrink-0">
+          <TfBtn variant="tertiary" label="Cancel" @click="goBack" />
+          <TfBtn
+            variant="primary"
             icon="ph ph-check-circle"
-            label="Post to Stock"
-            no-caps
-            dense
-            class="rounded-sq-btn text-weight-bold"
-            style="border-radius: 8px"
+            label="Post to stock"
             :loading="submitting"
-            :disable="!isValid || submitting"
+            :disable="!isValid || submitting || loading"
             @click="onConfirmReceive"
           />
         </div>
       </div>
 
-      <q-banner v-if="error" class="bg-negative text-white rounded-borders q-mt-sm q-py-xs">
+      <div
+        v-if="!loading && !error && (extras.length || vendorCreditRows.length)"
+        class="receive-summary row items-center q-gutter-sm q-px-xs shrink-0 wrap"
+      >
+        <div class="receive-hint row items-center no-wrap q-gutter-x-xs">
+          <q-icon name="ph ph-info" size="16px" aria-hidden="true" />
+          <span>
+            Sets shipment to <strong>Received</strong> and puts units in the default put-away bin.
+          </span>
+        </div>
+        <q-space class="gt-xs" />
+        <div class="row items-center q-gutter-sm no-wrap">
+          <span class="receive-stat">
+            <span class="receive-stat__label">Lines</span>
+            <span class="receive-stat__value">{{ extras.length }}</span>
+          </span>
+          <span class="receive-stat">
+            <span class="receive-stat__label">Units</span>
+            <span class="receive-stat__value tf-num">{{ totalExtraQty }}</span>
+          </span>
+          <span v-if="vendorCreditRows.length" class="receive-stat">
+            <span class="receive-stat__label">Credits</span>
+            <span class="receive-stat__value">{{ vendorCreditRows.length }}</span>
+          </span>
+        </div>
+      </div>
+
+      <q-banner
+        v-if="error"
+        class="tf-status-banner bg-negative text-white flex-shrink-0"
+        dense
+        rounded
+      >
         <template #avatar>
-          <q-icon name="ph ph-warning-circle" size="20px" />
+          <q-icon name="ph ph-warning-circle" />
         </template>
-        {{ error }}
+        <span class="receive-error-text">{{ error }}</span>
       </q-banner>
-    </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="col row justify-center items-center bg-white">
-      <q-spinner color="primary" size="3em" />
-      <div class="text-grey-7 q-ml-md">Loading shipment lines...</div>
-    </div>
+      <div
+        v-if="loading"
+        class="col row justify-center items-center receive-panel"
+      >
+        <q-spinner color="primary" size="2.5em" />
+        <span class="q-ml-sm text-caption" style="color: var(--tf-neutral-muted)">
+          Loading receive lines…
+        </span>
+      </div>
 
-    <!-- Table -->
-    <div
-      v-else
-      class="receive-table-section col overflow-auto q-pa-none bg-white hide-native-scrollbar"
-      style="overflow-x: auto; overflow-y: auto"
-    >
-      <q-markup-table flat class="receive-post-table shipment-items-markup-table bg-white">
-        <thead>
-          <tr>
-            <th class="receive-post-table__sl">#</th>
-            <th class="receive-post-table__img">Image</th>
-            <th class="receive-post-table__name">Product</th>
-            <th class="receive-post-table__code">Code</th>
-            <th class="receive-post-table__qty text-right">Qty</th>
-            <th class="receive-post-table__impact">Stock impact</th>
-            <th class="receive-post-table__reason">Land reason</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="(row, index) in extras"
-            :key="`extra-${row.id}`"
-            class="receive-post-table__row"
-          >
-            <td class="receive-post-table__sl text-center font-mono text-weight-bold text-grey-7">
-              {{ index + 1 }}
-            </td>
+      <div
+        v-else
+        class="col overflow-auto receive-panel hide-native-scrollbar"
+      >
+        <TfEmptyState
+          v-if="extras.length === 0 && vendorCreditRows.length === 0 && !error"
+          icon="ph ph-package"
+          title="Nothing to post yet"
+          message="Add sellable land splits on the shipment line sheet, then set status to Received."
+        >
+          <TfBtn variant="secondary" label="Back to shipment" @click="goBack" />
+        </TfEmptyState>
 
-            <td class="receive-post-table__img">
-              <div class="receive-post-table__thumb">
-                <SmartImage
-                  :src="row.image_url"
-                  :alt="row.item_name"
-                  img-class="receive-post-table__thumb-img"
-                  fallback-icon="ph ph-t-shirt"
-                />
-              </div>
-            </td>
+        <q-markup-table
+          v-else-if="extras.length || vendorCreditRows.length"
+          flat
+          bordered
+          dense
+          class="receive-post-table full-width"
+        >
+          <thead>
+            <tr>
+              <th class="receive-post-table__sl">#</th>
+              <th class="receive-post-table__img">Image</th>
+              <th class="receive-post-table__name">Product</th>
+              <th class="receive-post-table__code">Code</th>
+              <th class="receive-post-table__qty text-right">Qty</th>
+              <th class="receive-post-table__impact">Impact</th>
+              <th class="receive-post-table__reason">Land reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(row, index) in extras"
+              :key="`extra-${row.id}`"
+            >
+              <td class="receive-post-table__sl text-center tf-num text-weight-medium">
+                {{ index + 1 }}
+              </td>
+              <td class="receive-post-table__img">
+                <div class="receive-post-table__thumb">
+                  <SmartImage
+                    :src="row.image_url"
+                    :alt="row.item_name"
+                    img-class="receive-post-table__thumb-img"
+                    fallback-icon="ph ph-t-shirt"
+                  />
+                </div>
+              </td>
+              <td class="receive-post-table__name">
+                <div class="receive-post-table__product-name">{{ row.item_name }}</div>
+              </td>
+              <td class="receive-post-table__code font-mono">
+                <span v-if="row.product_code">{{ row.product_code }}</span>
+                <span v-else class="text-grey-6">—</span>
+              </td>
+              <td class="receive-post-table__qty text-right tf-num text-weight-bold">
+                {{ row.quantity }}
+              </td>
+              <td class="receive-post-table__impact">
+                <TfStatusBadge status="received" label="Goes to stock" />
+              </td>
+              <td class="receive-post-table__reason text-caption">
+                {{ formatOutcomeReason(row.reason) }}
+              </td>
+            </tr>
 
-            <td class="receive-post-table__name">
-              <div class="receive-post-table__product-name">{{ row.item_name }}</div>
-            </td>
-
-            <td class="receive-post-table__code font-mono text-caption">
-              <span v-if="row.product_code" class="text-grey-9">{{ row.product_code }}</span>
-              <span v-else class="text-grey-5">—</span>
-            </td>
-
-            <td class="receive-post-table__qty text-right font-mono text-weight-bold">
-              {{ row.quantity }}
-            </td>
-            <td class="receive-post-table__impact text-center text-caption">
-              {{ formatOutcomeKind(row.kind) }}
-            </td>
-            <td class="receive-post-table__reason text-center text-caption">
-              {{ formatOutcomeReason(row.reason) }}
-            </td>
-          </tr>
-
-          <tr
-            v-for="(row, index) in vendorCreditRows"
-            :key="`vc-${row.id}`"
-            class="receive-post-table__row receive-post-table__row--vendor-credit"
-          >
-            <td class="receive-post-table__sl text-center font-mono text-weight-bold text-grey-7">
-              {{ extras.length + index + 1 }}
-            </td>
-
-            <td class="receive-post-table__img">
-              <div class="receive-post-table__thumb">
-                <SmartImage
-                  :src="row.image_url"
-                  :alt="row.item_name"
-                  img-class="receive-post-table__thumb-img"
-                  fallback-icon="ph ph-t-shirt"
-                />
-              </div>
-            </td>
-
-            <td class="receive-post-table__name">
-              <div class="receive-post-table__product-name">{{ row.item_name }}</div>
-            </td>
-
-            <td class="receive-post-table__code font-mono text-caption">
-              <span v-if="row.product_code" class="text-grey-9">{{ row.product_code }}</span>
-              <span v-else class="text-grey-5">—</span>
-            </td>
-
-            <td class="receive-post-table__qty text-right font-mono text-weight-bold">
-              {{ row.quantity }}
-            </td>
-            <td class="receive-post-table__impact text-center text-caption text-teal-9">
-              Vendor credit
-            </td>
-            <td class="receive-post-table__reason text-center text-caption">
-              {{ purchaseCurrencySymbol }}{{ formatMoney(row.previous_purchase_price) }}
-              → {{ formatMoney(row.new_purchase_price) }}
-              <span class="text-teal-9 text-weight-medium">
-                (−{{ purchaseCurrencySymbol }}{{ formatMoney(row.credit_amount) }})
-              </span>
-            </td>
-          </tr>
-
-          <tr v-if="extras.length === 0 && vendorCreditRows.length === 0">
-            <td colspan="7" class="text-center text-grey-6 q-py-xl">
-              Add receive extras on the shipment line page first (not ordered paper rows).
-            </td>
-          </tr>
-        </tbody>
-      </q-markup-table>
+            <tr
+              v-for="(row, index) in vendorCreditRows"
+              :key="`vc-${row.id}`"
+              class="receive-post-table__row--vendor-credit"
+            >
+              <td class="receive-post-table__sl text-center tf-num text-weight-medium">
+                {{ extras.length + index + 1 }}
+              </td>
+              <td class="receive-post-table__img">
+                <div class="receive-post-table__thumb">
+                  <SmartImage
+                    :src="row.image_url"
+                    :alt="row.item_name"
+                    img-class="receive-post-table__thumb-img"
+                    fallback-icon="ph ph-t-shirt"
+                  />
+                </div>
+              </td>
+              <td class="receive-post-table__name">
+                <div class="receive-post-table__product-name">{{ row.item_name }}</div>
+              </td>
+              <td class="receive-post-table__code font-mono">
+                <span v-if="row.product_code">{{ row.product_code }}</span>
+                <span v-else class="text-grey-6">—</span>
+              </td>
+              <td class="receive-post-table__qty text-right tf-num text-weight-bold">
+                {{ row.quantity }}
+              </td>
+              <td class="receive-post-table__impact">
+                <TfStatusBadge status="attention" label="Vendor credit" />
+              </td>
+              <td class="receive-post-table__reason text-caption">
+                {{ purchaseCurrencySymbol }}{{ formatMoney(row.previous_purchase_price) }}
+                → {{ formatMoney(row.new_purchase_price) }}
+                <span class="text-weight-medium" style="color: var(--tf-success)">
+                  (−{{ purchaseCurrencySymbol }}{{ formatMoney(row.credit_amount) }})
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+      </div>
     </div>
   </q-page>
 </template>
@@ -202,6 +203,9 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import SmartImage from 'src/components/SmartImage.vue';
+import TfBtn from 'src/components/ui/TfBtn.vue';
+import TfEmptyState from 'src/components/ui/TfEmptyState.vue';
+import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import {
   globalShipmentRepository,
@@ -210,7 +214,7 @@ import {
 } from '../repositories/globalShipmentRepository';
 import { useInboundShipmentCalculations } from '../composables/useInboundShipmentCalculations';
 import { showSuccessNotification, showErrorNotification, requestConfirmation } from 'src/utils/appFeedback';
-import { formatOutcomeKind, formatOutcomeReason } from '../constants/shipmentOutcomeLabels';
+import { formatOutcomeReason } from '../constants/shipmentOutcomeLabels';
 import {
   findLandSplitQtyMismatches,
   formatLandSplitQtyGuardMessage,
@@ -378,39 +382,78 @@ const onConfirmReceive = async () => {
 </script>
 
 <style scoped>
-.border-bottom {
-  border-bottom: 1px solid #e2e8f0;
+.receive-panel {
+  background: var(--tf-neutral-surface);
+  border: 1px solid var(--tf-neutral-border);
+  border-radius: var(--tf-radius-sm);
 }
-.border-grey {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+
+.receive-toolbar {
+  border-bottom: 1px solid var(--tf-neutral-border);
+  padding-bottom: 6px;
 }
-.shrink-0 {
+
+.receive-hint {
+  flex: 1 1 280px;
+  min-width: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--tf-neutral-muted);
+  background: var(--tf-info-soft);
+  border: 1px solid var(--tf-neutral-border);
+  border-radius: var(--tf-radius-sm);
+}
+
+.receive-hint .q-icon {
+  color: var(--tf-info);
   flex-shrink: 0;
 }
-.avatar-soft-sq {
-  border-radius: 6px;
+
+.receive-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--tf-neutral-border);
+  border-radius: var(--tf-radius-sm);
+  background: var(--tf-neutral-surface);
 }
-.text-xxs {
+
+.receive-stat__label {
   font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tf-neutral-chrome-text);
 }
+
+.receive-stat__value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--tf-neutral-ink);
+}
+
+.receive-error-text {
+  white-space: pre-line;
+}
+
 .font-mono {
-  font-family: monospace;
+  font-family: var(--tf-font-mono, monospace);
+  font-size: 12px;
 }
-.rounded-sq-btn {
-  border-radius: 8px;
-}
+
 .hide-native-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
 .hide-native-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
 .receive-post-table {
-  width: 100%;
-  min-width: 880px;
+  min-width: 720px;
   table-layout: fixed;
 }
 
@@ -418,57 +461,62 @@ const onConfirmReceive = async () => {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  background: var(--tf-neutral-surface);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--tf-neutral-chrome, #64748b);
-  padding: 8px 6px !important;
-  border-bottom: 1px solid var(--tf-theme-border, #e2e8f0);
+  color: var(--tf-neutral-chrome-text);
+  padding: 8px !important;
+  border-bottom: 1px solid var(--tf-neutral-border);
   vertical-align: bottom;
 }
 
 .receive-post-table tbody td {
-  padding: 6px !important;
-  vertical-align: top;
-  border-bottom: 1px solid var(--tf-theme-border, #e2e8f0);
+  padding: 8px !important;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--tf-neutral-border);
 }
 
 .receive-post-table__sl {
-  width: 36px;
+  width: 40px;
 }
+
 .receive-post-table__img {
-  width: 1in;
+  width: 72px;
 }
+
 .receive-post-table__name {
-  width: auto;
-  min-width: 200px;
+  min-width: 160px;
 }
+
 .receive-post-table__code {
-  width: 110px;
+  width: 112px;
 }
+
 .receive-post-table__qty {
   width: 72px;
 }
+
 .receive-post-table__impact {
-  width: 120px;
-}
-.receive-post-table__row--vendor-credit {
-  background: rgba(13, 148, 136, 0.06);
+  width: 140px;
 }
 
 .receive-post-table__reason {
-  width: 120px;
+  width: min(220px, 28vw);
+}
+
+.receive-post-table__row--vendor-credit {
+  background: color-mix(in srgb, var(--tf-success) 8%, var(--tf-neutral-surface));
 }
 
 .receive-post-table__thumb {
-  width: 1in;
-  height: 1in;
-  border-radius: 8px;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--tf-radius-sm);
   overflow: hidden;
-  border: 1px solid var(--tf-theme-border, #e2e8f0);
-  background: var(--tf-neutral-surface-subtle, #f1f5f9);
+  border: 1px solid var(--tf-neutral-border);
+  background: var(--tf-neutral-canvas);
 }
 
 .receive-post-table__thumb :deep(.receive-post-table__thumb-img),
@@ -480,73 +528,9 @@ const onConfirmReceive = async () => {
 
 .receive-post-table__product-name {
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.35;
-  color: var(--tf-theme-ink, #171412);
+  color: var(--tf-neutral-ink);
   word-break: break-word;
-}
-
-.shipment-items-markup-table th,
-.shipment-items-markup-table td {
-  padding: 4px 4px !important;
-}
-
-.shipment-items-markup-table th.tf-ops-col-tint--qty,
-.shipment-items-markup-table td.tf-ops-col-tint--qty {
-  background-color: #d0e6ff !important;
-  box-shadow: inset 2px 0 0 #2563eb;
-}
-
-.shipment-items-markup-table th.tf-ops-col-tint--received,
-.shipment-items-markup-table td.tf-ops-col-tint--received {
-  background-color: #daf3e4 !important;
-  box-shadow: inset 2px 0 0 #059669;
-}
-
-.shipment-items-markup-table tr.row-variance td {
-  background-color: #fff7ed !important;
-}
-
-.shipment-items-markup-table tr:hover td {
-  filter: brightness(0.98);
-}
-
-:deep(.inline-edit-input input[type='number']::-webkit-outer-spin-button),
-:deep(.inline-edit-input input[type='number']::-webkit-inner-spin-button) {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-:deep(.inline-edit-input input[type='number']) {
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-
-:deep(.inline-edit-input .q-field__control) {
-  height: 28px !important;
-  min-height: 28px !important;
-  padding: 0 4px !important;
-}
-
-:deep(.excel-cell-input .q-field__control) {
-  border-radius: 0 !important;
-  border: none !important;
-  background-color: transparent !important;
-  transition: all 0.1s ease-in-out;
-}
-
-:deep(.excel-cell-input .q-field__control:before),
-:deep(.excel-cell-input .q-field__control:after) {
-  border: none !important;
-}
-
-:deep(.excel-cell-input:hover .q-field__control) {
-  background-color: rgba(255, 255, 255, 0.4) !important;
-}
-
-:deep(.excel-cell-input.q-field--focused .q-field__control) {
-  background-color: #ffffff !important;
-  border: 1.5px solid #059669 !important;
-  box-shadow: 0 0 0 1px #059669 !important;
 }
 </style>

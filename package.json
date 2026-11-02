@@ -1,7 +1,7 @@
 {
   "name": "brandwala-wholesale-quasar-root",
   "private": true,
-  "version": "1.0.37",
+  "version": "1.0.40",
   "description": "Root scripts for web app and Supabase backend",
   "scripts": {
     "dev": "pnpm --filter web dev",
@@ -28,7 +28,7 @@
     "python:clean:ml-names": "python3 python/scripts/uk/move_ml_to_end.py --input python/data/uk/out/pc_data.json --fields name",
     "python:sync:pc": "python3 python/scripts/uk/sync_pc_products_to_supabase.py --input python/data/uk/out/pc_data.json --vendor PC --market GB",
     "python:sync:wts": "python3 python/scripts/uk/sync_wts_products_to_supabase.py --input python/data/uk/out/wts_data.json --market GB --parent-tenant-id 15 --tenant-id 10 --vendor-id 4",
-    "deploy:frontend": "bash scripts/deploy-frontend.sh",
+    "frontend:prod": "bash scripts/deploy-frontend.sh",
     "env:local": "bash scripts/env-switch.sh local",
     "env:prod": "bash scripts/env-switch.sh prod",
     "env:status": "bash scripts/env-switch.sh status",
@@ -56,7 +56,7 @@
     "backend:schema:sync": "bash scripts/supabase-local.sh schema:sync",
     "backend:schema:diff": "bash scripts/supabase-local.sh schema:sync",
     "db:schema": "pnpm run backend:types",
-    "deploy:backend": "bash scripts/deploy-backend.sh",
+    "backend:prod": "bash scripts/deploy-backend.sh",
     "backend:all": "pnpm run backend:push:all && pnpm run db:schema"
   },
   "devDependencies": {

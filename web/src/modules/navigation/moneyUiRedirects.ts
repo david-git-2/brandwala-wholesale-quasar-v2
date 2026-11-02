@@ -123,7 +123,10 @@ export const moneyUiRedirectRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/:tenantSlug?/app/finance/reports/wallet',
-    redirect: appDashboardPath,
+    redirect: (to) => {
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
+      return tenantSlug ? `/${tenantSlug}/app/finance/reports` : '/app/finance/reports';
+    },
   },
 ];
 

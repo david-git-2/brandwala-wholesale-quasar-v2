@@ -232,22 +232,6 @@
             <q-tooltip>Download Excel</q-tooltip>
           </q-btn>
 
-          <q-btn
-            v-if="showReceivePostStock"
-            color="primary"
-            unelevated
-            dense
-            no-caps
-            size="sm"
-            class="q-px-sm rounded-sq-btn text-weight-bold"
-            style="border-radius: 8px"
-            icon="ph ph-package"
-            label="Receive & post stock"
-            @click="startReceiveFlow()"
-          >
-            <q-tooltip>Review splits and add sellable qty to the warehouse</q-tooltip>
-          </q-btn>
-
           <!-- Lock costs (after receive, before books freeze) -->
           <q-btn
             v-if="canLockShipmentCosts"
@@ -826,6 +810,7 @@ const {
   canEditLineStructure,
   canEditLineCostFields,
   canEditShipmentOrderLineFields,
+  canEditLandSplits,
 } = calculations;
 
 const isShipmentReceived = computed(
@@ -840,11 +825,7 @@ const canLockShipmentCosts = computed(() => {
   return okStatus && isStockPosted.value && !isCostsLocked.value;
 });
 
-const canEditSplits = computed(
-  () =>
-    shipmentStore.currentShipment?.status === 'in_transit' &&
-    canEditShipmentOrderLineFields.value,
-);
+const canEditSplits = canEditLandSplits;
 
 const {
   openEditItem,
@@ -860,13 +841,7 @@ const {
   ensureProgressTagsLazy,
   confirmLockShipmentCosts,
   downloadExcel,
-  startReceiveFlow,
 } = actions;
-
-const showReceivePostStock = computed(() => {
-  const status = shipmentStore.currentShipment?.status;
-  return status === 'in_transit' && !isStockPosted.value;
-});
 
 // In-Place Shipment Name Edit State
 const isEditingName = ref(false);

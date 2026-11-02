@@ -202,17 +202,6 @@
               class="touch-stepper-btn border-green"
               @click="updateQuantity(quantity + minQtyStep)"
             />
-            <q-btn
-              v-if="isQtyChanged"
-              unelevated
-              color="positive"
-              dense
-              no-caps
-              class="q-px-sm text-caption text-weight-bold q-ml-xs"
-              style="height: 38px; border-radius: 8px;"
-              label="Save"
-              @click="saveQuantity"
-            />
           </div>
         </div>
       </div>
@@ -271,7 +260,6 @@ const canSeeLineTotal = computed(() =>
 
 const emit = defineEmits<{
   (e: 'update:quantity', payload: { itemId: number; quantity: number }): void;
-  (e: 'save-quantity', payload: { itemId: number; quantity: number }): void;
   (e: 'update:customerOffer', payload: { itemId: number; amount: number }): void;
   (e: 'save-item-counter', payload: { itemId: number; amount: number }): void;
 }>();
@@ -448,11 +436,7 @@ const calculatedLineTotal = computed(() => {
 const updateQuantity = (val: number) => {
   const bounded = Math.max(0, val);
   quantity.value = bounded;
-};
-
-const saveQuantity = () => {
-  initialQty.value = quantity.value;
-  emit('save-quantity', { itemId: props.item.id, quantity: quantity.value });
+  emit('update:quantity', { itemId: props.item.id, quantity: bounded });
 };
 
 const onQtyInput = (val: any) => {

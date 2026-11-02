@@ -653,10 +653,8 @@ import { useCustomerGroupMutations } from 'src/modules/tenant/composables/useCus
 import type { CustomerGroupCreateInput } from 'src/modules/tenant/types';
 import { useShopPermissionsStore } from '../stores/shopPermissionsStore';
 import { useShopCustomerAccessPageQuery } from '../composables/useShopCustomerAccessPageQuery';
-import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
-import { tenantQueryKeys } from 'src/modules/tenant/shared/queryKeys/tenantQueryKeys';
 import { useQueryClient } from '@tanstack/vue-query';
-import { resolveBooksTenantId } from 'src/modules/tenant/utils/resolveBooksTenantId';
+import { upsertAccessOverrideInAccessPageCache } from '../utils/shopCustomerAccessPageCache';
 import type {
   UpsertAccessPayload,
   ShopCustomerGroupAccess,
@@ -945,9 +943,22 @@ const switchAddToCreate = () => {
   openCreateDialog();
 };
 
+const saveAccessAndSyncCache = async (payload: UpsertAccessPayload) => {
+  const res = await store.saveAccessOverride(payload);
+  if (res.success && res.data && tenantId.value && payload.shop_id) {
+    upsertAccessOverrideInAccessPageCache(
+      queryClient,
+      tenantId.value,
+      payload.shop_id,
+      res.data,
+    );
+  }
+  return res;
+};
+
 const addSelectedGroup = async () => {
   if (!selectedGroupId.value) return;
-  const res = await store.saveAccessOverride(standardGrantPayload(selectedGroupId.value));
+  const res = await saveAccessAndSyncCache(standardGrantPayload(selectedGroupId.value));
   if (res.success) {
     addDialogOpen.value = false;
     selectedGroupId.value = null;
@@ -966,14 +977,7 @@ const createThenGrant = async () => {
       admin_email: createForm.adminEmail.trim().toLowerCase(),
     } as CustomerGroupCreateInput & { admin_name: string; admin_email: string });
 
-    const booksTenantId = resolveBooksTenantId(tenantId.value, parentTenantId.value);
-    await queryClient.invalidateQueries({
-      queryKey: tenantQueryKeys.booksCustomerGroups(booksTenantId),
-    });
-    await queryClient.invalidateQueries({
-      queryKey: shopOrderQueryKeys.shopCustomerAccessPage(tenantId.value, shopId.value),
-    });
-    const res = await store.saveAccessOverride(standardGrantPayload(group.id));
+    const res = await saveAccessAndSyncCache(standardGrantPayload(group.id));
     if (res.success) {
       createDialogOpen.value = false;
     }
@@ -996,7 +1000,13 @@ const removeAccess = async (group: { id: number; name: string }) => {
     const payload = standardGrantPayload(group.id);
     payload.status = false;
     const res = await store.revokeAccessOverride(payload);
-    if (res.success) {
+    if (res.success && res.data) {
+      upsertAccessOverrideInAccessPageCache(
+        queryClient,
+        tenantId.value,
+        shopId.value,
+        res.data,
+      );
       if (selectedDetailsGroup.value?.id === group.id) {
         groupDetailsOpen.value = false;
         selectedDetailsGroup.value = null;
@@ -1066,7 +1076,7 @@ const onDrawerSave = async () => {
   if (shopType.value === 'vendor_catalog') {
     editForm.value.price_tier_code = null;
   }
-  const res = await store.saveAccessOverride(editForm.value);
+  const res = await saveAccessAndSyncCache(editForm.value);
   if (res.success) {
     drawerOpen.value = false;
   }

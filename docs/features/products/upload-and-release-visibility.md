@@ -8,7 +8,7 @@
 | Spec parent | [spec.md](spec.md) |
 | Excel upload | `pnpm run pc:uploader`, `pnpm run wts:uploader` |
 | Pipelines | `python/Makefile` — `pc`, `wts`, `wts-excel`, `elf`, `koba-retail`, `koba-wholesale`, `*-scrape`, `*-sync` |
-| Deploy | `pnpm run deploy:backend`, `pnpm run deploy:frontend` |
+| Deploy | `pnpm run backend:prod`, `pnpm run frontend:prod` |
 | Bad sync recovery | Re-run a corrected Excel/JSON upload, or restore `products` from a Supabase backup |
 
 ## Goal

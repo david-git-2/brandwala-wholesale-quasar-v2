@@ -23,7 +23,7 @@ Dropship is a **channel of BW**, not a fourth company type. Investor portal is r
 
 ```text
 Pre-order (PBC / catalog quote)
-        ↓ demand + inbound shipment
+        ↓ demand + inbound shipment — [preorder-fulfillment-flow](../preorder-fulfillment-flow.md)
 BW warehouse (global_stocks) → wholesale invoice / stock-backed shop / dropship
 
 K-beauty (koba_*)     ← separate catalog & orders

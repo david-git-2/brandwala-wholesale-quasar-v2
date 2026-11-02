@@ -71,7 +71,7 @@ Theme: **Procurement & shipment truth**
 | PS7–PS8 | Vendor credits vs profit; non-capitalizable costs in landed math | Q1 2027 |
 | PS13–PS14 | Full bucket landed stamp; one AP bill per bucket × currency | Q1 2027 |
 | PS10 | Shipment close guard + read-only UI when closed | Q1 2027 |
-| RT18–RT19 | Shipment P&L minus non-capitalizable rows; GP aligned to landed + local | Q1 2027 |
+| RT18 | Shipment P&L minus non-capitalizable rows | Q1 2027 |
 
 Outcome targeted: Shipment summary, AP bills, and treasury reports tell the same COGS story.
 

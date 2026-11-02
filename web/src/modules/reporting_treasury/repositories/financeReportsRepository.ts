@@ -1,11 +1,8 @@
 import { supabase } from 'src/boot/supabase';
 import type {
-  CourierCodReportPayload,
   CustomerDuesReportPayload,
   InvoiceBookReportPayload,
-  InvoiceProfitReportPayload,
   MonthSnapshotReportPayload,
-  WalletLiabilityReportPayload,
 } from '../types/financeReportTypes';
 
 function downloadCsv(filename: string, headers: string[], rows: (string | number)[][]) {
@@ -79,78 +76,6 @@ export const financeReportsRepository = {
     });
     if (error) throw error;
     return (data as InvoiceBookReportPayload) ?? emptyInvoiceBook();
-  },
-
-  async fetchInvoiceProfitReport(params: {
-    tenantId: number;
-    startDate?: string | null;
-    endDate?: string | null;
-    search?: string | null;
-    issuedByTenantId?: number | null;
-    invoiceType?: string | null;
-    invoiceId?: number | null;
-    page?: number;
-    pageSize?: number;
-    skipCount?: boolean;
-  }): Promise<InvoiceProfitReportPayload> {
-    const { data, error } = await supabase.rpc('get_tenant_invoice_profit_report', {
-      p_tenant_id: params.tenantId,
-      p_start_date: params.startDate ?? undefined,
-      p_end_date: params.endDate ?? undefined,
-      p_search: params.search?.trim() || undefined,
-      p_issued_by_tenant_id: params.issuedByTenantId ?? undefined,
-      p_invoice_type: params.invoiceType ?? undefined,
-      p_invoice_id: params.invoiceId ?? undefined,
-      p_page: params.page ?? 1,
-      p_page_size: params.pageSize ?? 50,
-      p_skip_count: params.skipCount ?? true,
-    });
-    if (error) throw error;
-    return (data as InvoiceProfitReportPayload) ?? emptyInvoiceProfit();
-  },
-
-  async fetchWalletLiabilityReport(params: {
-    tenantId: number;
-    startDate?: string | null;
-    endDate?: string | null;
-    search?: string | null;
-    page?: number;
-    pageSize?: number;
-    skipCount?: boolean;
-  }): Promise<WalletLiabilityReportPayload> {
-    const { data, error } = await supabase.rpc('get_tenant_wallet_liability_report', {
-      p_tenant_id: params.tenantId,
-      p_start_date: params.startDate ?? undefined,
-      p_end_date: params.endDate ?? undefined,
-      p_search: params.search?.trim() || undefined,
-      p_page: params.page ?? 1,
-      p_page_size: params.pageSize ?? 50,
-      p_skip_count: params.skipCount ?? true,
-    });
-    if (error) throw error;
-    return (data as WalletLiabilityReportPayload) ?? emptyWalletLiability();
-  },
-
-  async fetchCourierCodReport(params: {
-    tenantId: number;
-    startDate?: string | null;
-    endDate?: string | null;
-    courierServiceId?: string | null;
-    page?: number;
-    pageSize?: number;
-    skipCount?: boolean;
-  }): Promise<CourierCodReportPayload> {
-    const { data, error } = await supabase.rpc('get_tenant_courier_cod_report', {
-      p_tenant_id: params.tenantId,
-      p_start_date: params.startDate ?? undefined,
-      p_end_date: params.endDate ?? undefined,
-      p_courier_service_id: params.courierServiceId ?? undefined,
-      p_page: params.page ?? 1,
-      p_page_size: params.pageSize ?? 50,
-      p_skip_count: params.skipCount ?? true,
-    });
-    if (error) throw error;
-    return (data as CourierCodReportPayload) ?? emptyCourierCod();
   },
 
   async fetchMonthSnapshotReport(params: {
@@ -227,52 +152,6 @@ export const financeReportsRepository = {
     );
   },
 
-  exportInvoiceProfitCsv(payload: InvoiceProfitReportPayload) {
-    downloadCsv(
-      'invoice-profit.csv',
-      ['Invoice', 'Date', 'Customer', 'Net Qty', 'Revenue', 'COGS', 'GP', 'Margin %'],
-      payload.rows.map((r) => [
-        r.invoice_no,
-        r.invoice_date,
-        r.customer_name,
-        r.net_qty,
-        r.net_revenue,
-        r.cogs,
-        r.realized_gp,
-        r.gp_margin_pct,
-      ]),
-    );
-  },
-
-  exportWalletLiabilityCsv(payload: WalletLiabilityReportPayload) {
-    downloadCsv(
-      'wallet-liability.csv',
-      ['Customer', 'Phone', 'Credit Issued', 'Credit Applied', 'Outstanding'],
-      payload.rows.map((r) => [
-        r.name,
-        r.phone ?? '',
-        r.credit_issued,
-        r.credit_applied,
-        r.outstanding,
-      ]),
-    );
-  },
-
-  exportCourierCodCsv(payload: CourierCodReportPayload) {
-    downloadCsv(
-      'courier-cod.csv',
-      ['Courier', 'Delivered COD', 'Remitted', 'Unremitted', 'Short/Over', 'Orders'],
-      payload.rows.map((r) => [
-        r.courier_name,
-        r.delivered_cod,
-        r.remitted,
-        r.unremitted,
-        r.short_over,
-        r.order_count,
-      ]),
-    );
-  },
-
   exportMonthSnapshotCsv(payload: MonthSnapshotReportPayload) {
     const rows: Array<[string, number]> = [
       ['Net Sales', payload.kpis.net_sales],
@@ -328,43 +207,6 @@ function emptyInvoiceBook(): InvoiceBookReportPayload {
       still_due: 0,
       invoice_count: 0,
     },
-    rows: [],
-    page: 1,
-    page_size: 50,
-    total_count: null,
-  };
-}
-
-function emptyInvoiceProfit(): InvoiceProfitReportPayload {
-  return {
-    totals: {
-      net_sold_qty: 0,
-      net_revenue: 0,
-      cogs: 0,
-      realized_gp: 0,
-      gp_margin_pct: 0,
-      invoice_count: 0,
-    },
-    rows: [],
-    page: 1,
-    page_size: 50,
-    total_count: null,
-  };
-}
-
-function emptyWalletLiability(): WalletLiabilityReportPayload {
-  return {
-    totals: { credit_issued: 0, credit_applied: 0, outstanding: 0, customer_count: 0 },
-    rows: [],
-    page: 1,
-    page_size: 50,
-    total_count: null,
-  };
-}
-
-function emptyCourierCod(): CourierCodReportPayload {
-  return {
-    totals: { delivered_cod: 0, remitted: 0, unremitted: 0, short_over: 0, order_count: 0 },
     rows: [],
     page: 1,
     page_size: 50,

@@ -51,7 +51,7 @@ pnpm run backend:local
 | Situation | Command |
 |-----------|---------|
 | Local DB changed | `pnpm run backend:types:local` (also runs at end of `backend:local`) |
-| After `deploy:backend` / remote push | `pnpm run backend:types` (linked project) |
+| After `backend:prod` / remote push | `pnpm run backend:types` (linked project) |
 
 ## Anti-patterns (caused real data loss)
 

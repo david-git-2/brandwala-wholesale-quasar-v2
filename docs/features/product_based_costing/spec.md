@@ -16,7 +16,7 @@
 | :--- | :--- |
 | Tables | Grep `pbc_`, `product_based_costing` in `public.sql` |
 | File details UI | `ProductBasedCostingFileDetailsV2Page` |
-| Demand handoff | [procurement spec](../procurement_stock/spec.md) US-4 |
+| Demand handoff | [procurement spec](../procurement_stock/spec.md) US-4 · [preorder-fulfillment-flow](../../preorder-fulfillment-flow.md) |
 
 ## Scope
 

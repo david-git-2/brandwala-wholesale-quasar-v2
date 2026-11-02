@@ -1,38 +1,38 @@
 # Reports plan
 
-Product list for **parent-level finance reporting** (wholesale, wallet, procurement, dropship). Not Thrift, Koba, or product-based costing — those have their own report surfaces.
+Product list for **parent-level finance reporting** (wholesale, procurement, dropship). Not Thrift, Koba, or product-based costing — those have their own report surfaces.
 
-**Eight reports.** Filters and drill-downs live on these pages — not 31 separate screens.
+**Five reports.** Filters and drill-downs live on these pages — not 31 separate screens.
 
-**Global rule:** every money report shows **billed**, **returned**, **collected cash**, **wallet applied**, and **still due** as separate numbers. Do not mix them.
+**Global rule:** every money report shows **billed**, **returned**, **collected cash**, **cashbook applied**, and **still due** as separate numbers. Do not mix them.
 
-**Status (2026-09):** routes, hub tiles, RPCs, and UI live under `/app/finance/reports/*`. Cash in and shipment profit were first; customer dues, invoice book, invoice profit, wallet, courier COD, and month snapshot follow the same compact report layout.
+**Money story:** [docs/features/bills_pays/money-story.md](docs/features/bills_pays/money-story.md). **Gross profit = shipment P&L** (batch view), not invoice-line COGS. Shipment spend = procurement cost rows + AP bills on the batch.
+
+**Status (2026-11):** routes, hub tiles, RPCs, and UI live under `/app/finance/reports/*`. Shipment profit is the primary margin report.
 
 ---
 
-## The eight reports
+## The five reports
 
 | # | Report | What it does (high level) | Route |
 |---|--------|---------------------------|-------|
-| 1 | **Cash in** | Answers “what money hit the till?” Shows tenant-wallet **credits only** (cash, bank, remit) by day and payment method. Excludes store-credit apply and payouts. | `/app/finance/reports/cash-in` |
-| 2 | **Customer dues** | Answers “who do I chase today?” Live snapshot of wholesale customers who owe, with aging buckets and credit-limit flags. One row per billing profile. | `/app/finance/reports/customer-dues` |
-| 3 | **Invoice book** | Answers “what did we sell?” The sales ledger — invoices issued in a date range, with paid, due, returned, and settlement status per invoice. | `/app/finance/reports/invoice-book` |
-| 4 | **Invoice / product profit** | Answers “are we selling at a loss?” Sell price vs cost snapshot per invoice line and SKU, after returns. Invoice-level margin view. | `/app/finance/reports/invoice-profit` |
-| 5 | **Shipment cost & profit** | Answers “was this import batch worth it?” One shipment as a mini P&L: landed cost, sold GP so far, unsold stock value, damage/shrink, and projected GP if the rest clears. | `/app/finance/reports/shipment-profit` |
-| 6 | **Wallet** | Answers “how much store credit do we owe customers?” Credit issued in, applied on invoices, and outstanding liability. Wallet is a debt, not cash. | `/app/finance/reports/wallet` |
-| 7 | **Courier COD** | Answers “did the courier remit what they collected?” Delivered COD vs bank deposits, short/over per courier batch. Only needed when dropship is active. | `/app/finance/reports/courier-cod` |
-| 8 | **Month snapshot** | Answers “how did the month go?” Owner one-pager: net sales, cost, gross profit, cash collected, AR outstanding, wallet liability, stock still in shipments. | `/app/finance/reports/month-snapshot` |
+| 1 | **Shipment cost & profit** | Answers “was this import batch worth it?” One shipment as a mini P&L: landed cost, sold GP so far, unsold stock value, damage/shrink, and projected GP if the rest clears. | `/app/finance/reports/shipment-profit` |
+| 2 | **Cash in** | Answers “what money hit the till?” Tenant **receipts** (cash, bank, remit) by day and method. Excludes cashbook apply-only movements and payouts. | `/app/finance/reports/cash-in` |
+| 3 | **Customer dues** | Answers “who do I chase today?” Live snapshot of wholesale customers who owe, with aging buckets and credit-limit flags. One row per billing profile. | `/app/finance/reports/customer-dues` |
+| 4 | **Invoice book** | Answers “what did we sell?” The sales ledger — invoices issued in a date range, with paid, due, returned, and settlement status per invoice. | `/app/finance/reports/invoice-book` |
+| 5 | **Money position** | Answers “how did the month go?” Owner one-pager: net sales, GP, cash collected, AR outstanding, as-of position tiles (bank, courier holding, AP, cashbook credits). Drill-down to desks, not collect. | `/app/finance/reports/month-snapshot` |
 
-### Spec deep-dives
+---
 
-- Report 1: [`doc/reporting_treasury/CASH_IN.md`](doc/reporting_treasury/CASH_IN.md)
-- Report 2: [`doc/reporting_treasury/CUSTOMER_DUES.md`](doc/reporting_treasury/CUSTOMER_DUES.md)
-- Report 3: [`doc/reporting_treasury/INVOICE_BOOK.md`](doc/reporting_treasury/INVOICE_BOOK.md)
-- Report 4: [`doc/reporting_treasury/INVOICE_PROFIT.md`](doc/reporting_treasury/INVOICE_PROFIT.md)
-- Report 5: [`doc/reporting_treasury/SHIPMENT_PROFIT.md`](doc/reporting_treasury/SHIPMENT_PROFIT.md)
-- Report 6: [`doc/reporting_treasury/WALLET_REPORT.md`](doc/reporting_treasury/WALLET_REPORT.md)
-- Report 7: [`doc/reporting_treasury/COURIER_COD.md`](doc/reporting_treasury/COURIER_COD.md)
-- Report 8: [`doc/reporting_treasury/MONTH_SNAPSHOT.md`](doc/reporting_treasury/MONTH_SNAPSHOT.md)
+## Retired (not finance hub reports)
+
+| Former report | Why dropped | Where the need lives |
+|---------------|-------------|----------------------|
+| Invoice / product profit | GP authority is **shipment P&L**, not invoice-line COGS | Shipment profit (#1) |
+| Wallet liability | Kernel uses **profile cashbook**, not a wallet report | Payments / cashbook desks |
+| Courier COD | Dropship reconciliation is ops, not parent finance v1 | Courier remit desk; cash in (net remittance) |
+
+Legacy URLs redirect to the reports hub or the relevant desk.
 
 ---
 
@@ -44,28 +44,25 @@ Product list for **parent-level finance reporting** (wholesale, wallet, procurem
 | Koba orders | Koba module (no finance report v1) |
 | Product-based costing backlog | PBC module |
 | Investor profit & capital yield | Investor portal + `/app/capital` (`get_investor_capital_report`) |
-| Day-to-day ops | Invoice list, dropship desk, wallet statement, dashboards |
+| Day-to-day ops | Invoice list, dropship desk, cashbook statement, dashboards |
 
-**Skip as its own report:** aging, staff collections, write-offs, slow SKU, RTO. Put them as tabs or columns on reports 2, 5, or 7.
+**Skip as its own report:** aging, staff collections, write-offs, slow SKU, RTO. Put them as tabs or columns on reports 3 or 1.
 
 ---
 
 ## Build order
 
-1. Customer dues (2)
-2. Cash in (1)
-3. Shipment cost & profit (5)
-4. Invoice / product profit (4)
-5. Invoice book (3)
-6. Wallet (6)
-7. Courier COD (7) — if dropship
-8. Month snapshot (8)
+1. Shipment cost & profit (1)
+2. Cash in (2)
+3. Customer dues (3)
+4. Invoice book (4)
+5. Money position (5)
 
-Shipment cost & profit (5) is the **batch** view. Invoice / product profit (4) is the **sale** view. Need both.
+Shipment cost & profit is the **batch** view and the only margin authority for wholesale GP.
 
 ---
 
-## Report 5 detail — shipment cost & profit
+## Report 1 detail — shipment cost & profit
 
 One import / batch is a mini business.
 
@@ -99,10 +96,9 @@ Cash/dues stay separate. A shipment can be profitable and still leave you broke 
 
 ---
 
-## Nav homes (how the eight sit together)
+## Nav homes (how the five sit together)
 
-1. **Cash & dues** — reports 1, 2, 6
-2. **Sales** — report 3
-3. **Profit** — reports 4, 5
-4. **Courier** — report 7 (dropship only)
-5. **Owner snapshot** — report 8
+1. **Profit** — report 1 (shipment)
+2. **Cash & dues** — reports 2, 3
+3. **Sales** — report 4
+4. **Owner snapshot** — report 5

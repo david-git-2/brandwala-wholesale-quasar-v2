@@ -1,0 +1,84 @@
+---
+description: In-scope cleanup only; behavior-preserving, reviewable diffs. Always active.
+globs:
+alwaysApply: true
+---
+
+# Code Cleanliness — Reviewable Diffs First
+
+Clean code matters less than **reviewable, behavior-preserving diffs**. Apply this
+to every change.
+
+## Overrides
+
+When the user **explicitly** asks for cleanup, refactor, UI pass, or schema
+split (e.g. `/refactor-page-ui`, “extract to a new file”, “clean up this module”),
+that task overrides the restrictions below for the work they named.
+
+## Scope
+
+- Clean up **only the code you are directly touching**: the function, method, or
+  class you are already editing to complete the task.
+- Do **not** refactor, rename, move, or reformat code outside that scope — even if
+  it is clearly messy.
+- Do **not** rename public APIs, exported symbols, config keys, DB columns, or
+  anything another file imports, unless the task explicitly requires it.
+
+## What "clean" means here (allowed in-scope)
+
+- Remove dead code and unused imports/variables you created or that your change
+  made unreachable.
+- Remove commented-out code blocks.
+- Fix inconsistent naming *within the code you touched*.
+- Remove duplication you introduced or that your change directly duplicates.
+- Keep the touched area consistent with the surrounding file's existing style.
+
+## Behavior preservation
+
+- Cleanup must not change behavior. No "while I was in there" logic changes.
+- If tests exist, they must pass after your change. If a cleanup would require
+  changing a test's expectations, stop — that is a behavior change, not a cleanup.
+- Prefer mechanical fixes from tooling (formatter, linter, type checker) over
+  hand-editing style.
+
+## When you find larger mess
+
+- **Report it, don't fix it.** Add a short note listing the files/issues you noticed
+  and why they're a problem.
+- Do not fold a large refactor into a feature change. If a refactor is genuinely
+  required to complete the task, say so first and propose it as a separate step.
+
+## Modularization (in-scope only)
+
+- Extraction is a **refactor, not cleanup** — apply it sparingly and only inside the
+  code you are already editing.
+- Extract a helper **only when** the code you are adding would otherwise make the
+  touched function materially harder to read: deep nesting, a second distinct
+  responsibility, or a block already duplicated inside your own diff.
+- Prefer **local** extraction: a private function/method in the same file. Follow the
+  repo's existing module/package conventions — do not invent new directories, files,
+  layers, or abstractions.
+- **Never**, as part of a feature change: create new files, move code between files,
+  split or merge classes, introduce interfaces/base classes, or change module
+  boundaries. Propose that as a separate task instead.
+- Extraction must be behavior-preserving: same inputs/outputs, same error paths, same
+  side-effect order, no change to what's exported. Tests must pass unchanged.
+- If the extraction requires editing a caller outside the code you were asked to
+  change, stop and propose it — that is a cross-file refactor.
+
+## Diff hygiene
+
+- A change should have one purpose. If the diff contains both a behavior change
+  and unrelated cleanup, split it.
+- Never let cleanup make the diff larger than the actual task, unless the task
+  *is* cleanup.
+- If unsure whether something is in scope, leave it and ask.
+
+## Self-check before finishing
+
+1. Did I modify any file I wasn't required to touch? If yes, revert it.
+2. Does every cleanup line sit inside code I was already editing?
+3. Do tests still pass, with no test expectation changes?
+4. Is the diff still reviewable in one pass?
+5. Did I create or move files, or change module boundaries? If yes, was it strictly
+   necessary, in-scope, and proposed first?

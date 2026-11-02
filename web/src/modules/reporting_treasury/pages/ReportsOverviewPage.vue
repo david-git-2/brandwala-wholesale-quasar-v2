@@ -27,6 +27,19 @@ const base = computed(() => `/${tenantSlug.value || 'tenant'}/app/finance/report
 
 const reportGroups: HubLinkGroup[] = [
   {
+    key: 'profit',
+    title: 'Profit',
+    items: [
+      {
+        key: 'shipment-profit',
+        title: 'Shipment profit',
+        caption: 'One batch: landed cost, sold, GP.',
+        icon: 'ph ph-package',
+        iconTone: 'buy',
+      },
+    ],
+  },
+  {
     key: 'cash-and-dues',
     title: 'Cash and dues',
     items: [
@@ -60,39 +73,6 @@ const reportGroups: HubLinkGroup[] = [
     ],
   },
   {
-    key: 'profit',
-    title: 'Profit',
-    items: [
-      {
-        key: 'invoice-profit',
-        title: 'Invoice profit',
-        caption: 'Sell vs cost after returns, by SKU.',
-        icon: 'ph ph-chart-line-up',
-        iconTone: 'primary',
-      },
-      {
-        key: 'shipment-profit',
-        title: 'Shipment profit',
-        caption: 'One batch: landed cost, sold, GP.',
-        icon: 'ph ph-package',
-        iconTone: 'buy',
-      },
-    ],
-  },
-  {
-    key: 'courier',
-    title: 'Courier',
-    items: [
-      {
-        key: 'courier-cod',
-        title: 'Courier COD',
-        caption: 'Delivered vs remitted, short or over.',
-        icon: 'ph ph-truck',
-        iconTone: 'cod',
-      },
-    ],
-  },
-  {
     key: 'owner-snapshot',
     title: 'Owner snapshot',
     items: [
@@ -111,9 +91,7 @@ const pathByKey: Record<string, string> = {
   'customer-dues': 'customer-dues',
   'cash-in': 'cash-in',
   'invoice-book': 'invoice-book',
-  'invoice-profit': 'invoice-profit',
   'shipment-profit': 'shipment-profit',
-  'courier-cod': 'courier-cod',
   'month-snapshot': 'month-snapshot',
 };
 

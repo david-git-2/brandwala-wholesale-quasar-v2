@@ -100,7 +100,7 @@ Must end with `Finished supabase db reset` and **no** `ERROR:` lines. Then optio
 
 ```bash
 pnpm run backend:pull-prod-data   # once — loads prod rows; do not repeat after every migration
-pnpm run deploy:backend           # prod push — only when intentional
+pnpm run backend:prod           # prod push — only when intentional
 ```
 
 See `.cursor/rules/supabase-local-backend.mdc` — never auto-run `backend:reset` or `backend:restore-dumps` when applying a new migration on an existing local DB.

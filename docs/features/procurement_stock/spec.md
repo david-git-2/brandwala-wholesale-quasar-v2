@@ -19,6 +19,7 @@
 | ERD / columns | `/dev/document` → **Schema** → Procurement |
 | Tables, types, RLS, RPCs | `supabase/schemas/procurement/` — grep `03_rpcs.sql` for bodies |
 | Pages / wiring | `web/src/modules/procurement_stock/pages/` + grep `procurementStockQueryKeys` |
+| Full pre-order flow (catalog + PBC → delivery paper) | [preorder-fulfillment-flow](../../preorder-fulfillment-flow.md) |
 
 ## Scope
 

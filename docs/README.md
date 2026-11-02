@@ -16,6 +16,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Platform guide (kernels, modules) | App `/docs` |
 | Who logs in where, which features? | [scopes](architecture/scopes.md) |
 | How this company sells (BW, pre-order, K-beauty, thrift) | [business-models](architecture/business-models.md) |
+| Pre-order flow (target ops story; as-built snapshot) | [preorder-fulfillment-flow](preorder-fulfillment-flow.md) · [as-built](preorder-fulfillment-flow-as-built.md) |
 | Wholesale vs dropship bill → pay (numbers) | [money-story](features/bills_pays/money-story.md) |
 | Bills vs pays vs cashbook (target map) | [README](features/bills_pays/README.md) · [kernel-schema](features/bills_pays/kernel-schema.md) · [REFERENCE](kernel/REFERENCE.md) |
 | What numbers go on reports (sales vs cash vs COD) | [reporting spec](features/reporting_treasury/spec.md) |
