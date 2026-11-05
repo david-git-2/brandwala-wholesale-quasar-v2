@@ -19,6 +19,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Pre-order flow (target ops story; as-built snapshot) | [preorder-fulfillment-flow](preorder-fulfillment-flow.md) · [as-built](preorder-fulfillment-flow-as-built.md) |
 | Wholesale vs dropship bill → pay (numbers) | [money-story](features/bills_pays/money-story.md) |
 | Bills vs pays vs cashbook (target map) | [README](features/bills_pays/README.md) · [kernel-schema](features/bills_pays/kernel-schema.md) · [REFERENCE](kernel/REFERENCE.md) |
+| Warehouse stock movements (spine) | [stock-spine](kernel/stock-spine.md) · [kernel pack](kernel/README.md) |
 | What numbers go on reports (sales vs cash vs COD) | [reporting spec](features/reporting_treasury/spec.md) |
 | What is unfinished / wrong in a module? | That module’s `00-gaps.md` |
 | Product roadmap (Now / Next / Later) | [ROADMAP.md](ROADMAP.md) · feature IDs in [BACKLOG.md](BACKLOG.md) |
@@ -27,6 +28,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Where is the code / SQL? | [Module map](#module-map) |
 | Tables / RPCs / button wiring | `supabase/schemas/` + module code |
 | Login / grants | [tenant_auth spec](features/tenant_auth/spec.md) |
+| Collapse `parent_tenant_id` into `tenant_id` | [tenant-id-cutover](architecture/tenant-id-cutover.md) |
 | List page look | [ui-standards](guides/ui-standards.md) |
 | Pinia vs Vue Query / toasts | [state](architecture/state.md) |
 | Change the database | [database](architecture/database.md) + [split tracker](../doc/supabase-schema.md) |
@@ -69,7 +71,7 @@ Detail lives in the linked spec — do not duplicate here.
 | :--- | :--- |
 | Login surfaces | [scopes](architecture/scopes.md) |
 | BW / pre-order / Koba / thrift | [business-models](architecture/business-models.md) |
-| Stock, receive, Delivery paper | [procurement spec](features/procurement_stock/spec.md) |
+| Stock, receive, Delivery paper | [procurement spec](features/procurement_stock/spec.md) · [stock spine](kernel/stock-spine.md) |
 | Bills, pays, cashbook, money layers | [bills_pays spec](features/bills_pays/spec.md) · [kernel pack](kernel/README.md) |
 | Shop / dropship channel | [shop_order spec](features/shop_order/spec.md) |
 | Investor portal v1 read-only | [investor_capital spec](features/investor_capital/spec.md) |

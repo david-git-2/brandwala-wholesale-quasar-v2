@@ -36,6 +36,8 @@ const props = defineProps<{
   productName: string;
   needQuantity: number;
   initialPicks?: DemandStockPickSelection[];
+  /** Delivery paper: qty fields only; Apply commits picks (no per-lot Add). */
+  hidePerLotAddButton?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -89,34 +91,52 @@ const loadRows = async () => {
   }
 };
 
-const selectedTotal = computed(() =>
-  committedPicks.value.reduce((sum, pick) => sum + pick.quantity, 0),
-);
+const selectedTotal = computed(() => {
+  if (props.hidePerLotAddButton) {
+    return stockRows.value.reduce((sum, row) => {
+      const q = Math.trunc(qtyByStockId.value[row.global_stock_id] ?? 0);
+      return sum + (q > 0 ? q : 0);
+    }, 0);
+  }
+  return committedPicks.value.reduce((sum, pick) => sum + pick.quantity, 0);
+});
 
-const remainingToPick = computed(() => Math.max(0, props.needQuantity - selectedTotal.value));
-
-const canApply = computed(
-  () =>
+const canApply = computed(() => {
+  if (props.hidePerLotAddButton) {
+    return selectedTotal.value > 0;
+  }
+  return (
     committedPicks.value.length > 0 &&
     committedPicks.value.every((pick) => Number(pick.quantity) > 0) &&
-    selectedTotal.value > 0,
-);
+    selectedTotal.value > 0
+  );
+});
 
 const applyDisabledReason = computed(() => {
   if (canApply.value) return '';
+  if (props.hidePerLotAddButton) return 'Enter a quantity on at least one lot';
   if (!committedPicks.value.length) return 'Enter a quantity and tap Add on a lot';
   return 'Each pick needs a quantity greater than zero';
 });
 
-const committedQty = (stockId: number) =>
-  committedPicks.value
+const remainingToPick = computed(() => Math.max(0, props.needQuantity - selectedTotal.value));
+
+const committedQty = (stockId: number) => {
+  if (props.hidePerLotAddButton) {
+    const q = Math.trunc(qtyByStockId.value[stockId] ?? 0);
+    return q > 0 ? q : 0;
+  }
+  return committedPicks.value
     .filter((pick) => pick.globalStockId === stockId)
     .reduce((sum, pick) => sum + pick.quantity, 0);
+};
 
 const resetQtyDefaults = () => {
   const nextQty: Record<number, number | null> = {};
   for (const row of stockRows.value) {
-    const added = committedQty(row.global_stock_id);
+    const added = committedPicks.value
+      .filter((pick) => pick.globalStockId === row.global_stock_id)
+      .reduce((sum, pick) => sum + pick.quantity, 0);
     nextQty[row.global_stock_id] = added > 0 ? added : null;
   }
   qtyByStockId.value = nextQty;
@@ -124,8 +144,14 @@ const resetQtyDefaults = () => {
 
 watch(
   () => props.modelValue,
-  (open) => {
-    if (!open) return;
+  (open, wasOpen) => {
+    if (!open) {
+      if (wasOpen) {
+        stockRows.value = [];
+        qtyByStockId.value = {};
+      }
+      return;
+    }
     committedPicks.value = (props.initialPicks ?? []).map((pick) => ({
       ...pick,
       clientKey: pick.clientKey || createDemandPickClientKey(),
@@ -196,7 +222,43 @@ const removePick = (stockId: number) => {
   emitCurrentPicks();
 };
 
+const buildPicksFromQtyInputs = (): DemandStockPickSelection[] | null => {
+  const picks: DemandStockPickSelection[] = [];
+  for (const row of stockRows.value) {
+    const qty = Math.trunc(qtyByStockId.value[row.global_stock_id] ?? 0);
+    if (qty <= 0) continue;
+    if (qty > row.available_atp) {
+      showErrorNotification(`Only ${row.available_atp} units available on ${row.shipment_name}.`);
+      return null;
+    }
+    const existing = committedPicks.value.find((pick) => pick.globalStockId === row.global_stock_id);
+    picks.push({
+      clientKey: existing?.clientKey ?? createDemandPickClientKey(),
+      globalStockId: row.global_stock_id,
+      shipmentName: row.shipment_name,
+      locationName: row.location_name,
+      quantity: qty,
+      initialQuantity: qty,
+      closeAction: existing?.closeAction ?? null,
+      isCloseSplit: existing?.isCloseSplit ?? false,
+      invoiceId: existing?.invoiceId ?? null,
+      returnedAt: existing?.returnedAt ?? null,
+    });
+  }
+  return picks;
+};
+
 const apply = () => {
+  if (props.hidePerLotAddButton) {
+    const picks = buildPicksFromQtyInputs();
+    if (!picks || picks.length === 0) return;
+    emit('apply', {
+      picks,
+      totalQuantity: picks.reduce((sum, p) => sum + p.quantity, 0),
+    });
+    close();
+    return;
+  }
   if (!canApply.value) return;
   emitCurrentPicks();
   close();
@@ -304,6 +366,7 @@ const formatCost = (n: number) =>
                 @update:model-value="(v) => setQty(row.global_stock_id, v, row.available_atp)"
               />
               <q-btn
+                v-if="!hidePerLotAddButton"
                 unelevated
                 no-caps
                 color="primary"

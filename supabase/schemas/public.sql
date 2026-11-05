@@ -6001,6 +6001,8 @@ CREATE OR REPLACE FUNCTION "public"."assign_tenant_shipment_id"() RETURNS "trigg
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
+declare
+  v_code text;
 begin
   if new.tenant_id is null then
     raise exception 'tenant_id is required for shipments';
@@ -6011,7 +6013,8 @@ begin
   end if;
 
   if new.tenant_shipment_id is null then
-    new.tenant_shipment_id := public.next_tenant_scoped_counter(new.tenant_id, 'shipment');
+    v_code := public.next_document_number(new.tenant_id, 'shipment', null::text, now());
+    new.tenant_shipment_id := split_part(v_code, '-', 2)::integer;
   end if;
 
   return new;
@@ -6945,7 +6948,7 @@ begin
   end if;
 
   if p_invoice_no is null or trim(p_invoice_no) = '' then
-    v_invoice_no := 'INV-DS-' || v_order.order_no;
+    v_invoice_no := public.next_document_number(v_order.tenant_id, 'dropship_b2b_invoice', null::text, now());
   else
     v_invoice_no := trim(p_invoice_no);
   end if;
@@ -8889,16 +8892,28 @@ begin
   end if;
 
   v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
-  v_invoice_no := 'INV-DS-' || v_order.order_no;
+  v_invoice_no := null;
+  if v_order.global_invoice_id is not null then
+    select i.invoice_no into v_invoice_no
+    from public.bills i
+    where i.id = v_order.global_invoice_id;
+  end if;
 
   update public.cashbook_entries u
   set
     source_id = p_order_id::text,
     metadata = coalesce(u.metadata, '{}'::jsonb)
-      || jsonb_build_object('order_id', p_order_id, 'invoice_no', v_invoice_no)
+      || jsonb_build_object(
+        'order_id', p_order_id,
+        'invoice_no', coalesce(v_invoice_no, v_order.order_no)
+      )
   where u.source_type = 'shop_order'
     and u.parent_tenant_id = v_parent_tenant_id
-    and u.source_id in (v_invoice_no, v_order.order_no);
+    and u.source_id in (
+      coalesce(v_invoice_no, ''),
+      v_order.order_no,
+      'INV-DS-' || v_order.order_no
+    );
 
   if v_order.global_invoice_id is not null then
     update public.cashbook_entries u
@@ -10349,7 +10364,7 @@ begin
     raise exception 'insufficient stock quantity (requested %, available %)', p_quantity, v_stock.quantity;
   end if;
 
-  v_mov_no := 'MOV-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('public.stock_movements_id_seq')::text, 6, '0');
+  v_mov_no := public.next_stock_movement_number(p_tenant_id, 'stock_movement');
 
   insert into public.stock_movements (
     tenant_id,
@@ -10499,16 +10514,15 @@ begin
     raise exception 'amount must be greater than zero';
   end if;
 
-  v_no := public.generate_sales_invoice_number(
+  v_no := public.next_document_number(
     v_parent.issued_by_tenant_id,
-    v_parent.invoice_type,
-    current_date
+    case
+      when v_kind = 'credit_note'::public.bill_document_kind then 'credit_note'
+      else 'debit_note'
+    end,
+    public.map_global_invoice_type_to_sub_type(v_parent.invoice_type),
+    (current_date::timestamp AT TIME ZONE public._document_number_tenant_timezone(v_parent.issued_by_tenant_id, 'UTC'))
   );
-  if v_kind = 'credit_note'::public.bill_document_kind then
-    v_no := regexp_replace(v_no, '^INV-', 'INV-CN-');
-  else
-    v_no := regexp_replace(v_no, '^INV-', 'INV-DN-');
-  end if;
 
   v_status := case when coalesce(p_issue, true)
     then 'issued'::public.global_invoice_status
@@ -12573,7 +12587,7 @@ begin
     raise exception 'not authorized';
   end if;
 
-  v_no := 'SM-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('stock_movements_id_seq')::text, 6, '0');
+  v_no := public.next_stock_movement_number(p_tenant_id, 'stock_movement_manual');
 
   insert into public.stock_movements (
     tenant_id, movement_no, movement_type, reference_type, reference_id, notes, created_by_email
@@ -18125,7 +18139,7 @@ begin
     end if;
   end if;
 
-  v_invoice_no := 'INV-SO-' || v_order.order_no;
+  v_invoice_no := public.generate_sales_invoice_number(v_order.tenant_id, v_invoice_type, current_date);
 
   for v_item in
     select *
@@ -18209,14 +18223,307 @@ $$;
 ALTER FUNCTION "public"."fulfill_shop_order_to_invoice"("p_order_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."_document_number_tenant_timezone"("p_tenant_id" bigint, "p_fallback" "text" DEFAULT 'UTC'::"text") RETURNS "text"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT COALESCE(
+    NULLIF(btrim(t.preference->>'timezone'), ''),
+    NULLIF(btrim(p_fallback), ''),
+    'UTC'::text
+  )
+  FROM public.tenants t
+  WHERE t.id = p_tenant_id;
+$$;
+
+
+ALTER FUNCTION "public"."_document_number_tenant_timezone"("p_tenant_id" bigint, "p_fallback" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."_resolve_document_number_config"("p_tenant_id" bigint, "p_doc_type" "text") RETURNS "public"."document_number_configs"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  cfg public.document_number_configs%ROWTYPE;
+BEGIN
+  SELECT * INTO cfg
+  FROM public.document_number_configs
+  WHERE doc_type = p_doc_type
+    AND is_active
+    AND (tenant_id = p_tenant_id OR tenant_id IS NULL)
+  ORDER BY tenant_id NULLS LAST
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'no number config for doc_type=%', p_doc_type;
+  END IF;
+
+  RETURN cfg;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."_resolve_document_number_config"("p_tenant_id" bigint, "p_doc_type" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."_document_number_format"("cfg" "public"."document_number_configs", "p_sub_type" "text", "p_period" "text", "p_seq" bigint) RETURNS "text"
+    LANGUAGE "plpgsql" IMMUTABLE
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_sub text;
+BEGIN
+  v_sub := CASE cfg.sub_type_mode
+    WHEN 'invoice_type'::text THEN upper(COALESCE(p_sub_type, ''))
+    WHEN 'literal'::text THEN COALESCE(cfg.sub_type_literal, '')
+    ELSE ''
+  END;
+
+  RETURN concat_ws(
+    cfg.separator,
+    cfg.prefix,
+    NULLIF(v_sub, ''),
+    NULLIF(p_period, ''),
+    lpad(p_seq::text, cfg.padding, '0')
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."_document_number_format"("cfg" "public"."document_number_configs", "p_sub_type" "text", "p_period" "text", "p_seq" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."map_global_invoice_type_to_sub_type"("p_invoice_type" "public"."global_invoice_type") RETURNS "text"
+    LANGUAGE "plpgsql" IMMUTABLE
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  CASE p_invoice_type
+    WHEN 'wholesale'::public.global_invoice_type THEN RETURN 'WS';
+    WHEN 'retail'::public.global_invoice_type THEN RETURN 'RT';
+    WHEN 'dropship'::public.global_invoice_type THEN RETURN 'DS';
+    ELSE RAISE EXCEPTION 'invoice_type % cannot map to document sub_type', p_invoice_type;
+  END CASE;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."map_global_invoice_type_to_sub_type"("p_invoice_type" "public"."global_invoice_type") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."next_document_number"("p_tenant_id" bigint, "p_doc_type" "text", "p_sub_type" "text" DEFAULT NULL::"text", "p_at" timestamp with time zone DEFAULT "now"()) RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  cfg public.document_number_configs%ROWTYPE;
+  v_tz text;
+  v_local timestamp;
+  v_period text;
+  v_sub text;
+  v_seq bigint;
+BEGIN
+  IF p_tenant_id IS NULL THEN
+    RAISE EXCEPTION 'tenant_id is required';
+  END IF;
+
+  IF p_doc_type IS NULL OR btrim(p_doc_type) = '' THEN
+    RAISE EXCEPTION 'doc_type is required';
+  END IF;
+
+  cfg := public._resolve_document_number_config(p_tenant_id, p_doc_type);
+  v_tz := public._document_number_tenant_timezone(p_tenant_id, cfg.timezone);
+  v_local := p_at AT TIME ZONE v_tz;
+
+  v_period := CASE cfg.period
+    WHEN 'day'::text THEN to_char(v_local, 'YYMMDD')
+    WHEN 'month'::text THEN to_char(v_local, 'YYMM')
+    WHEN 'year'::text THEN to_char(v_local, 'YYYY')
+    ELSE ''
+  END;
+
+  v_sub := CASE cfg.sub_type_mode
+    WHEN 'invoice_type'::text THEN upper(COALESCE(p_sub_type, ''))
+    WHEN 'literal'::text THEN COALESCE(cfg.sub_type_literal, '')
+    ELSE ''
+  END;
+
+  INSERT INTO public.document_number_counters (tenant_id, doc_type, sub_type, period_key, last_value)
+  VALUES (p_tenant_id, p_doc_type, v_sub, v_period, 1)
+  ON CONFLICT (tenant_id, doc_type, sub_type, period_key)
+  DO UPDATE
+    SET last_value = public.document_number_counters.last_value + 1,
+        updated_at = now()
+  RETURNING last_value INTO v_seq;
+
+  RETURN public._document_number_format(cfg, p_sub_type, v_period, v_seq);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."next_document_number"("p_tenant_id" bigint, "p_doc_type" "text", "p_sub_type" "text", "p_at" timestamp with time zone) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."peek_document_number"("p_tenant_id" bigint, "p_doc_type" "text", "p_sub_type" "text" DEFAULT NULL::"text", "p_at" timestamp with time zone DEFAULT "now"()) RETURNS "text"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  cfg public.document_number_configs%ROWTYPE;
+  v_tz text;
+  v_local timestamp;
+  v_period text;
+  v_sub text;
+  v_seq bigint;
+BEGIN
+  IF p_tenant_id IS NULL THEN
+    RAISE EXCEPTION 'tenant_id is required';
+  END IF;
+
+  cfg := public._resolve_document_number_config(p_tenant_id, p_doc_type);
+  v_tz := public._document_number_tenant_timezone(p_tenant_id, cfg.timezone);
+  v_local := p_at AT TIME ZONE v_tz;
+
+  v_period := CASE cfg.period
+    WHEN 'day'::text THEN to_char(v_local, 'YYMMDD')
+    WHEN 'month'::text THEN to_char(v_local, 'YYMM')
+    WHEN 'year'::text THEN to_char(v_local, 'YYYY')
+    ELSE ''
+  END;
+
+  v_sub := CASE cfg.sub_type_mode
+    WHEN 'invoice_type'::text THEN upper(COALESCE(p_sub_type, ''))
+    WHEN 'literal'::text THEN COALESCE(cfg.sub_type_literal, '')
+    ELSE ''
+  END;
+
+  SELECT c.last_value + 1 INTO v_seq
+  FROM public.document_number_counters c
+  WHERE c.tenant_id = p_tenant_id
+    AND c.doc_type = p_doc_type
+    AND c.sub_type = v_sub
+    AND c.period_key = v_period;
+
+  v_seq := COALESCE(v_seq, 1);
+
+  RETURN public._document_number_format(cfg, p_sub_type, v_period, v_seq);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."peek_document_number"("p_tenant_id" bigint, "p_doc_type" "text", "p_sub_type" "text", "p_at" timestamp with time zone) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."next_stock_movement_number"("p_tenant_id" bigint, "p_doc_type" "text" DEFAULT 'stock_movement'::"text") RETURNS "text"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT public.next_document_number(p_tenant_id, p_doc_type, NULL::text, now());
+$$;
+
+
+ALTER FUNCTION "public"."next_stock_movement_number"("p_tenant_id" bigint, "p_doc_type" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."backfill_document_number_counters_from_sales_invoice_counters"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_count integer := 0;
+BEGIN
+  INSERT INTO public.document_number_counters (tenant_id, doc_type, sub_type, period_key, last_value)
+  SELECT
+    sic.tenant_id,
+    'sales_invoice',
+    CASE sic.invoice_type
+      WHEN 'wholesale'::public.global_invoice_type THEN 'WS'
+      WHEN 'retail'::public.global_invoice_type THEN 'RT'
+      WHEN 'dropship'::public.global_invoice_type THEN 'DS'
+      ELSE 'WS'
+    END,
+    substring(sic.date_key from 3 for 4),
+    max(sic.last_value)
+  FROM public.sales_invoice_counters sic
+  WHERE sic.invoice_type <> 'ap'::public.global_invoice_type
+  GROUP BY
+    sic.tenant_id,
+    CASE sic.invoice_type
+      WHEN 'wholesale'::public.global_invoice_type THEN 'WS'
+      WHEN 'retail'::public.global_invoice_type THEN 'RT'
+      WHEN 'dropship'::public.global_invoice_type THEN 'DS'
+      ELSE 'WS'
+    END,
+    substring(sic.date_key from 3 for 4)
+  ON CONFLICT (tenant_id, doc_type, sub_type, period_key)
+  DO UPDATE SET last_value = GREATEST(public.document_number_counters.last_value, EXCLUDED.last_value);
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."backfill_document_number_counters_from_sales_invoice_counters"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."backfill_document_number_counters_from_tenant_shipments"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_count integer := 0;
+BEGIN
+  INSERT INTO public.document_number_counters (tenant_id, doc_type, sub_type, period_key, last_value)
+  SELECT
+    h.tenant_id,
+    'shipment',
+    '',
+    '',
+    GREATEST(
+      h.max_shipment_id,
+      coalesce((
+        SELECT tsc.last_value
+        FROM public.tenant_scoped_counters tsc
+        WHERE tsc.tenant_id = h.tenant_id
+          AND tsc.scope = 'shipment'
+      ), 0)
+    )
+  FROM (
+    SELECT u.tenant_id, max(u.max_shipment_id) AS max_shipment_id
+    FROM (
+      SELECT gs.parent_tenant_id AS tenant_id, max(gs.tenant_shipment_id)::bigint AS max_shipment_id
+      FROM public.global_shipments gs
+      WHERE gs.parent_tenant_id IS NOT NULL
+        AND gs.tenant_shipment_id IS NOT NULL
+      GROUP BY gs.parent_tenant_id
+      UNION ALL
+      SELECT s.tenant_id, max(s.tenant_shipment_id)::bigint AS max_shipment_id
+      FROM public.shipments s
+      GROUP BY s.tenant_id
+    ) u
+    GROUP BY u.tenant_id
+  ) h
+  ON CONFLICT (tenant_id, doc_type, sub_type, period_key)
+  DO UPDATE SET last_value = GREATEST(public.document_number_counters.last_value, EXCLUDED.last_value);
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."backfill_document_number_counters_from_tenant_shipments"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."generate_sales_invoice_number"("p_tenant_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_date" "date" DEFAULT CURRENT_DATE) RETURNS "text"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 DECLARE
-  v_type_code text;
-  v_date_key text;
-  v_next bigint;
+  v_at timestamptz;
+  v_sub text;
 BEGIN
   IF p_tenant_id IS NULL THEN
     RAISE EXCEPTION 'tenant_id is required';
@@ -18226,24 +18533,14 @@ BEGIN
     RAISE EXCEPTION 'invoice_type is required';
   END IF;
 
-  v_type_code := CASE p_invoice_type
-    WHEN 'wholesale'::public.global_invoice_type THEN 'WS'
-    WHEN 'retail'::public.global_invoice_type THEN 'RT'
-    WHEN 'dropship'::public.global_invoice_type THEN 'DS'
-    ELSE 'INV'
-  END;
+  v_at := (COALESCE(p_date, CURRENT_DATE)::timestamp AT TIME ZONE public._document_number_tenant_timezone(p_tenant_id, 'UTC'));
 
-  v_date_key := to_char(COALESCE(p_date, CURRENT_DATE), 'YYYYMMDD');
+  IF p_invoice_type = 'ap'::public.global_invoice_type THEN
+    RETURN public.next_document_number(p_tenant_id, 'ap_bill', NULL::text, v_at);
+  END IF;
 
-  INSERT INTO public.sales_invoice_counters (tenant_id, invoice_type, date_key, last_value)
-  VALUES (p_tenant_id, p_invoice_type, v_date_key, 1)
-  ON CONFLICT (tenant_id, invoice_type, date_key)
-  DO UPDATE
-    SET last_value = public.sales_invoice_counters.last_value + 1,
-        updated_at = now()
-  RETURNING last_value INTO v_next;
-
-  RETURN 'INV-' || v_type_code || '-' || v_date_key || '-' || lpad(v_next::text, 4, '0');
+  v_sub := public.map_global_invoice_type_to_sub_type(p_invoice_type);
+  RETURN public.next_document_number(p_tenant_id, 'sales_invoice', v_sub, v_at);
 END;
 $$;
 
@@ -18291,11 +18588,8 @@ CREATE OR REPLACE FUNCTION "public"."generate_shop_order_number"("p_tenant_id" b
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-declare
-  v_order_no text;
 begin
-  v_order_no := 'ORD-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(floor(random() * 100000)::text, 5, '0');
-  return v_order_no;
+  return public.next_document_number(p_tenant_id, 'shop_order', null::text, now());
 end;
 $$;
 
@@ -30178,7 +30472,7 @@ begin
 
 
   -- 3. Create stock movement audit record
-  v_mov_no := 'MOV-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('public.stock_movements_id_seq')::text, 6, '0');
+  v_mov_no := public.next_stock_movement_number(v_parent_id, 'stock_movement');
 
   insert into public.stock_movements (
     tenant_id,
@@ -40509,6 +40803,14 @@ begin
     raise exception 'invalid scope: %', p_scope;
   end if;
 
+  if p_scope = 'shipment' then
+    return split_part(
+      public.next_document_number(p_tenant_id, 'shipment', null::text, now()),
+      '-',
+      2
+    )::bigint;
+  end if;
+
   insert into public.tenant_scoped_counters (tenant_id, scope, last_value)
   values (p_tenant_id, p_scope, 1)
   on conflict (tenant_id, scope)
@@ -42612,7 +42914,7 @@ begin
       end if;
     end loop;
   else
-    v_mov_no := 'MOV-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('public.stock_movements_id_seq')::text, 6, '0');
+    v_mov_no := public.next_stock_movement_number(v_parent_id, 'stock_movement');
 
     insert into public.stock_movements (
       tenant_id,
@@ -42774,7 +43076,7 @@ begin
   v_stamped := public.stamp_global_shipment_landed_costs(p_shipment_id);
   perform public._stamp_global_shipment_outcome_costs(p_shipment_id);
 
-  v_mov_no := 'RP-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('public.stock_movements_id_seq')::text, 6, '0');
+  v_mov_no := public.next_stock_movement_number(v_parent, 'receive_putaway');
 
   insert into public.stock_movements (
     tenant_id,
@@ -44929,16 +45231,23 @@ begin
   if v_invoice_id is null and v_order.shop_type_snapshot = 'dropship' then
     select i.id into v_invoice_id
     from public.bills i
-    where i.parent_tenant_id = v_order.tenant_id
-      and i.invoice_no = 'INV-DS-' || v_order.order_no
-      and not exists (
-        select 1
-        from public.shop_orders o2
-        where o2.global_invoice_id = i.id
-          and o2.id <> v_order.id
-      )
+    where i.shop_order_id = p_order_id
     order by i.id desc
     limit 1;
+
+    if v_invoice_id is null then
+      select i.id into v_invoice_id
+      from public.bills i
+      where i.invoice_no = 'INV-DS-' || v_order.order_no
+        and not exists (
+          select 1
+          from public.shop_orders o2
+          where o2.global_invoice_id = i.id
+            and o2.id <> v_order.id
+        )
+      order by i.id desc
+      limit 1;
+    end if;
   end if;
 
   if v_invoice_id is not null then
@@ -49505,7 +49814,7 @@ begin
     tenant_id, movement_no, movement_type, reference_type, reference_id, notes, created_by_email
   ) values (
     v_ship.parent_tenant_id,
-    'VR-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('stock_movements_id_seq')::text, 6, '0'),
+    public.next_stock_movement_number(v_ship.parent_tenant_id, 'vendor_return'),
     'return_inbound',
     'shipment_return',
     p_shipment_id::text,
@@ -65562,6 +65871,57 @@ CREATE TABLE IF NOT EXISTS "public"."sales_invoice_counters" (
 ALTER TABLE "public"."sales_invoice_counters" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."document_number_configs" (
+    "id" bigint NOT NULL,
+    "tenant_id" bigint,
+    "doc_type" "text" NOT NULL,
+    "prefix" "text" NOT NULL,
+    "sub_type_mode" "text" DEFAULT 'none'::"text" NOT NULL,
+    "sub_type_literal" "text",
+    "date_format" "text",
+    "period" "text" NOT NULL,
+    "padding" smallint DEFAULT 4 NOT NULL,
+    "separator" "text" DEFAULT '-'::"text" NOT NULL,
+    "timezone" "text" DEFAULT 'UTC'::"text" NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    CONSTRAINT "document_number_configs_padding_check" CHECK (("padding" >= 1)),
+    CONSTRAINT "document_number_configs_period_check" CHECK (("period" = ANY (ARRAY['day'::"text", 'month'::"text", 'year'::"text", 'none'::"text"]))),
+    CONSTRAINT "document_number_configs_sub_type_mode_check" CHECK (("sub_type_mode" = ANY (ARRAY['none'::"text", 'invoice_type'::"text", 'literal'::"text"])))
+);
+
+
+ALTER TABLE "public"."document_number_configs" OWNER TO "postgres";
+
+
+CREATE SEQUENCE IF NOT EXISTS "public"."document_number_configs_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE "public"."document_number_configs_id_seq" OWNER TO "postgres";
+
+
+ALTER SEQUENCE "public"."document_number_configs_id_seq" OWNED BY "public"."document_number_configs"."id";
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."document_number_counters" (
+    "tenant_id" bigint NOT NULL,
+    "doc_type" "text" NOT NULL,
+    "sub_type" "text" DEFAULT ''::"text" NOT NULL,
+    "period_key" "text" NOT NULL,
+    "last_value" bigint DEFAULT 0 NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "document_number_counters_last_value_check" CHECK (("last_value" >= 0))
+);
+
+
+ALTER TABLE "public"."document_number_counters" OWNER TO "postgres";
+
+
 CREATE SEQUENCE IF NOT EXISTS "public"."shipment_investments_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -67468,6 +67828,10 @@ ALTER TABLE ONLY "public"."costing_files" ALTER COLUMN "id" SET DEFAULT "nextval
 
 
 
+ALTER TABLE ONLY "public"."document_number_configs" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."document_number_configs_id_seq"'::"regclass");
+
+
+
 ALTER TABLE ONLY "public"."customer_group_member_grants" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."customer_group_member_grants_id_seq"'::"regclass");
 
 
@@ -68282,6 +68646,16 @@ ALTER TABLE ONLY "public"."sales_invoice_counters"
 
 
 
+ALTER TABLE ONLY "public"."document_number_configs"
+    ADD CONSTRAINT "document_number_configs_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."document_number_counters"
+    ADD CONSTRAINT "document_number_counters_pkey" PRIMARY KEY ("tenant_id", "doc_type", "sub_type", "period_key");
+
+
+
 ALTER TABLE ONLY "public"."bills"
     ADD CONSTRAINT "sales_invoices_parent_tenant_id_invoice_no_key" UNIQUE ("parent_tenant_id", "invoice_no");
 
@@ -68853,6 +69227,14 @@ CREATE INDEX "bills_to_profile_id_idx" ON "public"."bills" USING "btree" ("to_pr
 
 
 CREATE INDEX "books_exchange_rates_lookup_idx" ON "public"."books_exchange_rates" USING "btree" ("parent_tenant_id", "quote_currency_code", "rate_date" DESC);
+
+
+
+CREATE UNIQUE INDEX "document_number_configs_default_doc_type_idx" ON "public"."document_number_configs" USING "btree" ("doc_type") WHERE ("tenant_id" IS NULL);
+
+
+
+CREATE UNIQUE INDEX "document_number_configs_tenant_doc_type_idx" ON "public"."document_number_configs" USING "btree" ("tenant_id", "doc_type") WHERE ("tenant_id" IS NOT NULL);
 
 
 
@@ -70668,6 +71050,10 @@ CREATE OR REPLACE TRIGGER "trg_sales_invoice_counters_set_updated_at" BEFORE UPD
 
 
 
+CREATE OR REPLACE TRIGGER "trg_document_number_counters_set_updated_at" BEFORE UPDATE ON "public"."document_number_counters" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_shipment_investments_set_updated_at" BEFORE UPDATE ON "public"."shipment_investments" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
@@ -71943,6 +72329,16 @@ ALTER TABLE ONLY "public"."recipient_profiles"
 
 ALTER TABLE ONLY "public"."sales_invoice_counters"
     ADD CONSTRAINT "sales_invoice_counters_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."document_number_configs"
+    ADD CONSTRAINT "document_number_configs_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."document_number_counters"
+    ADD CONSTRAINT "document_number_counters_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
 
@@ -76268,6 +76664,19 @@ GRANT ALL ON FUNCTION "public"."generate_shipment_tracking_token"("p_shipment_id
 GRANT ALL ON FUNCTION "public"."generate_shop_order_number"("p_tenant_id" bigint, "p_shop_id" bigint) TO "anon";
 GRANT ALL ON FUNCTION "public"."generate_shop_order_number"("p_tenant_id" bigint, "p_shop_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."generate_shop_order_number"("p_tenant_id" bigint, "p_shop_id" bigint) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."next_document_number"(bigint, text, text, timestamp with time zone) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."next_document_number"(bigint, text, text, timestamp with time zone) TO "service_role";
+GRANT ALL ON FUNCTION "public"."peek_document_number"(bigint, text, text, timestamp with time zone) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."peek_document_number"(bigint, text, text, timestamp with time zone) TO "service_role";
+GRANT ALL ON FUNCTION "public"."map_global_invoice_type_to_sub_type"("public"."global_invoice_type") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."map_global_invoice_type_to_sub_type"("public"."global_invoice_type") TO "service_role";
+GRANT ALL ON FUNCTION "public"."next_stock_movement_number"(bigint, text) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."next_stock_movement_number"(bigint, text) TO "service_role";
+GRANT ALL ON FUNCTION "public"."backfill_document_number_counters_from_sales_invoice_counters"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."backfill_document_number_counters_from_tenant_shipments"() TO "service_role";
 
 
 
@@ -80671,6 +81080,15 @@ GRANT ALL ON SEQUENCE "public"."recipient_profiles_id_seq" TO "service_role";
 GRANT ALL ON TABLE "public"."sales_invoice_counters" TO "anon";
 GRANT ALL ON TABLE "public"."sales_invoice_counters" TO "authenticated";
 GRANT ALL ON TABLE "public"."sales_invoice_counters" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."document_number_configs" TO "anon";
+GRANT ALL ON TABLE "public"."document_number_configs" TO "authenticated";
+GRANT ALL ON TABLE "public"."document_number_configs" TO "service_role";
+GRANT ALL ON TABLE "public"."document_number_counters" TO "anon";
+GRANT ALL ON TABLE "public"."document_number_counters" TO "authenticated";
+GRANT ALL ON TABLE "public"."document_number_counters" TO "service_role";
 
 
 

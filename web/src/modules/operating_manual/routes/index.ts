@@ -19,6 +19,16 @@ const operatingManualRoutes: RouteRecordRaw[] = [
           public: true,
         },
       },
+      {
+        path: 'document-numbering',
+        name: 'operating-manual-document-numbering',
+        component: topicPage,
+        meta: {
+          title: 'Document numbers',
+          docsMd: 'document-numbering.md',
+          public: true,
+        },
+      },
     ],
   },
 ];

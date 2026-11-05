@@ -19,7 +19,7 @@ docs/manual/
 docs/features/<name>/
   00-gaps.md
   spec.md                      # As-built, Scope, Where to look, stories
-docs/kernel/                   # Money: README.md, REFERENCE.md, 08-AUDIT runbook
+docs/kernel/                   # Money + stock: README.md, REFERENCE.md, stock-spine.md, 08-AUDIT runbook
 docs/features/bills_pays/     # README.md (target map + graphs); kernel-schema.md; money-story.md; tests.md
 docs/features/template/        # Copy for a new module.
 doc/supabase-schema.md         # Split tracker only.

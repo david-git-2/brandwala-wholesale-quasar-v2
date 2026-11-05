@@ -1,0 +1,27 @@
+CREATE FUNCTION public.user_can_access_tenant_fetch (
+  p_tenant_id bigint
+)
+  RETURNS boolean
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path TO 'public'
+  AS $function$
+  select
+    public.is_superadmin()
+    or public.user_can_manage_parent_tenant(p_tenant_id)
+    or exists (
+      select 1
+      from public.memberships m
+      where m.tenant_id = p_tenant_id
+        and lower(trim(m.email)) = public.current_user_email()
+        and m.is_active = true
+    )
+    or public.current_customer_group_id(p_tenant_id) is not null;
+$function$;
+
+GRANT ALL ON FUNCTION public.user_can_access_tenant_fetch(bigint) TO anon;
+
+GRANT ALL ON FUNCTION public.user_can_access_tenant_fetch(bigint) TO authenticated;
+
+GRANT ALL ON FUNCTION public.user_can_access_tenant_fetch(bigint) TO service_role;

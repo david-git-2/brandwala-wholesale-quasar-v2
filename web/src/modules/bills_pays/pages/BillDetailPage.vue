@@ -12,6 +12,16 @@
       <div class="bill-detail-card q-pa-md">
         <div class="bill-page-actions row items-center justify-end q-gutter-sm no-print q-mb-md">
           <q-btn
+            v-if="canIssueDeliveryCloseDraft"
+            unelevated
+            no-caps
+            color="primary"
+            icon="ph ph-check-circle"
+            label="Issue"
+            :loading="issueDeliveryCloseMutation.isPending.value"
+            @click="onIssueDeliveryCloseDraft"
+          />
+          <q-btn
             v-if="canAddAdjustment && !adjustmentComposerOpen"
             outline
             no-caps
@@ -596,10 +606,18 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
+import {
+  billDraftComposeRoute,
+  billOpensOnDetailNotComposeDesk,
+  isDeliveryPaperOutcomeBillSource,
+} from '../utils/billRoutes';
+import { billsRepository } from '../repositories/billsRepository';
+import { billsQueryKeys } from '../services/billsQueryKeys';
 import { formatAmountBdt, formatBdtTaka } from 'src/utils/currency';
-import { showErrorNotification, requestConfirmation } from 'src/utils/appFeedback';
+import { showErrorNotification, showSuccessNotification, requestConfirmation } from 'src/utils/appFeedback';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow, GlobalInvoiceRow } from 'src/modules/sales_invoice/types';
 import {
   invoiceChannelLabel,
@@ -658,6 +676,7 @@ import { isDropshipCourierApBill, isDropshipManagerBill } from '../utils/dropshi
 
 const route = useRoute();
 const router = useRouter();
+const queryClient = useQueryClient();
 const authStore = useAuthStore();
 const { setCustomBreadcrumbs, clearCustomBreadcrumbs } = useBreadcrumbs();
 
@@ -947,6 +966,65 @@ const canAddAdjustment = computed(() => {
   return b.invoice_status === 'issued';
 });
 
+const isDeliveryCloseBill = computed(() =>
+  isDeliveryPaperOutcomeBillSource(bill.value?.source_type, bill.value?.source_key ?? null),
+);
+
+const canIssueDeliveryCloseDraft = computed(() => {
+  const b = bill.value;
+  if (!b || !isDeliveryCloseBill.value || isApBill.value) return false;
+  if (b.invoice_status !== 'draft' && b.invoice_status !== 'proforma_generated') return false;
+  return lines.value.some((l) => l.global_stock_id != null && Number(l.quantity) > 0);
+});
+
+const issueDeliveryCloseMutation = useMutation({
+  mutationFn: async () => {
+    const id = billId.value;
+    const b = bill.value;
+    if (id == null || !b) throw new Error('Bill not loaded');
+    const stockItems = lines.value
+      .filter((l) => l.global_stock_id != null && Number(l.quantity) > 0)
+      .map((l) => ({
+        id: l.id,
+        global_stock_id: l.global_stock_id!,
+        quantity: Number(l.quantity),
+        sell_price_amount: Number(l.sell_price_amount),
+      }));
+    await billsRepository.issueBill(id, {
+      invoiceType: (b.invoice_type ?? 'wholesale') as 'wholesale' | 'retail' | 'ap',
+      stockItems,
+    });
+  },
+  onSuccess: async () => {
+    showSuccessNotification('Bill issued.');
+    const id = billId.value;
+    if (id != null) {
+      await queryClient.invalidateQueries({ queryKey: billsQueryKeys.detailBundle(id) });
+      await queryClient.invalidateQueries({ queryKey: billsQueryKeys.detail(id) });
+      await queryClient.invalidateQueries({ queryKey: billsQueryKeys.items(id) });
+    }
+    await bundleQuery.refetch();
+  },
+  onError: (err: unknown) => {
+    showErrorNotification(err instanceof Error ? err.message : 'Could not issue bill.');
+  },
+});
+
+const onIssueDeliveryCloseDraft = async () => {
+  const b = bill.value;
+  const settle = (b as { settlement_kind?: string } | undefined)?.settlement_kind;
+  const isCondition = settle === 'condition';
+  const ok = await requestConfirmation(
+    isCondition
+      ? 'Stock moves to held. Sales count when this bill is paid. Collect on Payments.'
+      : 'Sellable stock will leave inventory when you issue. You can collect payment later on Payments.',
+    isCondition ? 'Issue this condition bill?' : 'Issue this bill?',
+    'Issue',
+  );
+  if (!ok) return;
+  await issueDeliveryCloseMutation.mutateAsync();
+};
+
 watch(
   () =>
     [
@@ -1075,6 +1153,20 @@ const breadcrumbItems = computed(() => {
 });
 
 watch(breadcrumbItems, (items) => setCustomBreadcrumbs(items), { immediate: true });
+
+watch(
+  () => bill.value,
+  (b) => {
+    if (!b || bundleQuery.isPending.value) return;
+    if (b.invoice_type === 'ap') return;
+    if (b.invoice_status !== 'draft' && b.invoice_status !== 'proforma_generated') return;
+    const id = billId.value;
+    if (id == null || id <= 0) return;
+    if (billOpensOnDetailNotComposeDesk(b)) return;
+    void router.replace(billDraftComposeRoute(id, authStore.tenantSlug));
+  },
+);
+
 onMounted(() => {
   const state = history.state as { payCorrectionPrefill?: PayCorrectionSnapshot } | null;
   const prefill = state?.payCorrectionPrefill;

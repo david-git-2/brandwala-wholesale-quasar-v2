@@ -66,7 +66,7 @@ Dropship: pick → ship+issue both bills → deliver → remittance pay in. Late
 ### US-2: Catalog negotiation
 - [x] `submitted` → `priced` → `countered` → `final_offered` → `confirmed`.
 - [x] Confirmed qty locks for demand desk.
-- [x] Staff catalog order detail (`app/shop/orders/:id`, vendor catalog): **Download Excel** exports the same PBC-format costing workbook client-side (mapped from order lines + rates).
+- [x] Staff catalog order detail (`app/shop/orders/:id`, vendor catalog): **Download Excel** exports the same PBC-format costing workbook client-side (mapped from order lines + rates). Menu: **With images** / **Without images**. Workbook includes a **Product ID** column (all PBC-format Excel exports).
 
 ### US-3: Dropship fulfillment
 - [x] Pick at `processing` → `shop_order_item_stock_picks`.

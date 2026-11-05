@@ -1,15 +1,14 @@
 <template>
   <q-btn
     flat
+    round
     dense
-    no-caps
-    color="primary"
+    color="grey-8"
     icon="ph ph-columns"
-    label="Columns"
-    class="q-px-sm"
-    style="border-radius: 8px"
+    size="sm"
     aria-label="Choose table columns"
   >
+    <q-tooltip>Choose table columns</q-tooltip>
     <q-menu anchor="bottom end" self="top end" class="shadow-4">
       <q-list style="min-width: 280px; max-height: 420px" class="q-pa-xs">
         <q-item class="q-pb-none">

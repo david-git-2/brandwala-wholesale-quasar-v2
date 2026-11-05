@@ -619,7 +619,7 @@ export default {
   status_final_offered: 'Final Offered',
   status_confirmed: 'Confirmed',
   status_procuring: 'Procuring',
-  status_packed: 'Packed',
+  status_dispatch: 'Dispatch',
   status_ordered: 'Ordered',
   status_placed: 'Placed',
   status_fulfilled: 'Fulfilled',

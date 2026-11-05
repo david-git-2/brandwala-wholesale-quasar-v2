@@ -1,7 +1,7 @@
 <template>
-  <ProcurementDemandDesk mode="buy" />
+  <ProcurementDemandBuyDesk />
 </template>
 
 <script setup lang="ts">
-import ProcurementDemandDesk from '../components/ProcurementDemandDesk.vue';
+import ProcurementDemandBuyDesk from '../components/ProcurementDemandBuyDesk.vue';
 </script>

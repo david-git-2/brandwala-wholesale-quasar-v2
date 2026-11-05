@@ -13,6 +13,8 @@ import {
 export type BuildCostingExcelInput = {
   file: ProductBasedCostingFile;
   items: ProductBasedCostingItem[];
+  /** Default true. When false, skips image fetch/embed and uses compact row height. */
+  includeImages?: boolean;
 };
 
 const FILL_WHITE = 'FFFFFFFF';
@@ -29,6 +31,7 @@ const FONT_SIZE = 10;
 const SPACER_ROW_HEIGHT = 28.5;
 const HEADER_ROW_HEIGHT = 86.25;
 const DATA_ROW_HEIGHT = 100;
+const DATA_ROW_HEIGHT_NO_IMAGES = 30;
 const FOOTER_ROW_HEIGHT = 30;
 const FIRST_DATA_ROW_NUMBER = 3;
 
@@ -57,6 +60,7 @@ const buildHeaders = (buyCode: string, sellCode: string) =>
     'REMARKS',
     'Barcode',
     'Product code',
+    'Product ID',
   ] as const;
 
 const COLUMN_LETTERS = [
@@ -83,12 +87,13 @@ const COLUMN_LETTERS = [
   'U',
   'V',
   'W',
+  'X',
 ] as const;
 
 const COLUMN_WIDTHS = [
   3.6640625, 13.19921875, 16.19921875, 8.19921875, 8.19921875, 6.46484375, 6.46484375, 7.59765625,
   6.06640625, 7.86328125, 6.59765625, 7.796875, 7.46484375, 8.19921875, 8.19921875, 7.86328125, 6,
-  9.19921875, 8.19921875, 8, 10, 8.6640625, 8.6640625,
+  9.19921875, 8.19921875, 8, 10, 8.6640625, 8.6640625, 8.6640625,
 ];
 
 const COLORED_COLUMNS: Record<string, string> = {
@@ -247,6 +252,8 @@ export async function buildCostingExcelWorkbook(input: BuildCostingExcelInput) {
   const conversionRate = input.file.conversion_rate ?? 140;
   const cargoRate = input.file.cargo_rate_kg_gbp ?? 0;
   const items = input.items;
+  const includeImages = input.includeImages !== false;
+  const dataRowHeight = includeImages ? DATA_ROW_HEIGHT : DATA_ROW_HEIGHT_NO_IMAGES;
 
   COLUMN_WIDTHS.forEach((width, index) => {
     worksheet.getColumn(index + 1).width = width;
@@ -263,7 +270,9 @@ export async function buildCostingExcelWorkbook(input: BuildCostingExcelInput) {
   });
   applyColoredColumnStyle(headerRow, ['G', 'J', 'N', 'P'], true);
 
-  const embeddedImages = await Promise.all(items.map((item) => fetchImageForExcel(item.image_url)));
+  const embeddedImages = includeImages
+    ? await Promise.all(items.map((item) => fetchImageForExcel(item.image_url)))
+    : items.map(() => null);
 
   const coloredCols = Object.keys(COLORED_COLUMNS);
 
@@ -293,6 +302,7 @@ export async function buildCostingExcelWorkbook(input: BuildCostingExcelInput) {
       item.note ?? '',
       item.barcode ?? '',
       item.product_code ?? '',
+      item.product_id ?? '',
     ]);
 
     row.getCell('H').value = { formula: `F${r}+G${r}` };
@@ -330,10 +340,10 @@ export async function buildCostingExcelWorkbook(input: BuildCostingExcelInput) {
       alignment: { vertical: 'middle', horizontal: 'center', wrapText: false },
     });
 
-    row.height = DATA_ROW_HEIGHT;
+    row.height = dataRowHeight;
 
     const embeddedImage = embeddedImages[index];
-    if (embeddedImage) {
+    if (includeImages && embeddedImage) {
       const imageWidthPx = getExcelImageWidthPx(embeddedImage.width, embeddedImage.height);
       const imageId = workbook.addImage({
         buffer: embeddedImage.buffer,
@@ -344,7 +354,7 @@ export async function buildCostingExcelWorkbook(input: BuildCostingExcelInput) {
         col: PICTURE_COLUMN_INDEX,
         row: r - 1,
         columnWidthChars: COLUMN_WIDTHS[PICTURE_COLUMN_INDEX] ?? 13.19921875,
-        rowHeightPt: DATA_ROW_HEIGHT,
+        rowHeightPt: dataRowHeight,
         imageWidthPx,
         imageHeightPx: EXCEL_IMAGE_HEIGHT_PX,
       });

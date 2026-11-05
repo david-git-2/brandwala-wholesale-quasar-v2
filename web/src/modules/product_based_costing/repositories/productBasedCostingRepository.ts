@@ -719,6 +719,18 @@ const addCostingItemToShipment = async (
   return data;
 };
 
+const markPbcClosed = async (fileId: number) => {
+  const { data, error } = await supabase.rpc('staff_close_pbc_procurement', {
+    p_file_id: fileId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
 const markPbcReadyForShipment = async (fileId: number) => {
   const { data, error } = await supabase.rpc('staff_mark_pbc_packed', {
     p_file_id: fileId,
@@ -787,5 +799,6 @@ export const productBasedCostingRepository = {
   recalculateProductBasedCostingFileOfferPrices,
   addCostingItemToShipment,
   markPbcReadyForShipment,
+  markPbcClosed,
   listProductCatalogByIds,
 };

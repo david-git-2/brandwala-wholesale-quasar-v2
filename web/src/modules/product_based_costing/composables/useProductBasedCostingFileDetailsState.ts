@@ -9,22 +9,27 @@ export const workflowStatuses = [
   'offered',
   'confirmed',
   'procuring',
-  'packed',
+  'dispatch',
   'delivered',
+  'closed',
 ] as const;
 
 export const quoteStatuses = ['pending', 'offered'] as const;
 export const fulfillmentStatuses = [
   'confirmed',
   'procuring',
-  'packed',
+  'dispatch',
   'delivered',
+  'closed',
 ] as const;
 
 export function normalizePbcFileStatus(status: string | null | undefined): string {
   const st = (status || '').toLowerCase();
   if (st === 'placing_order') return 'procuring';
+  if (st === 'packed') return 'dispatch';
+  if (st === 'ready_for_shipment') return 'dispatch';
   if (st === 'invoicing') return 'delivered';
+  if (st === 'completed') return 'closed';
   return st;
 }
 
@@ -117,10 +122,12 @@ export function formatStatusLabel(value: string): string {
       return 'Confirmed';
     case 'procuring':
       return 'Procuring';
-    case 'packed':
-      return 'Ready for Shipment';
+    case 'dispatch':
+      return 'Dispatch';
     case 'delivered':
       return 'Delivered';
+    case 'closed':
+      return 'Closed';
     case 'cancelled':
       return 'Cancelled';
     default:
@@ -155,7 +162,7 @@ export function getFileStatusHint(value: string): StatusHint | null {
         when: 'You are buying the goods',
         does: 'Type how many you got for each item.',
       };
-    case 'packed':
+    case 'dispatch':
       return {
         when: 'You know how many you got',
         does: 'Put those items on a shipment.',
@@ -236,7 +243,7 @@ export function getStatusColor(st: string): string {
       return 'blue-9';
     case 'procuring':
       return 'indigo-8';
-    case 'packed':
+    case 'dispatch':
       return 'green-8';
     case 'delivered':
       return 'teal-9';
@@ -268,7 +275,7 @@ export function getDefaultVisibleColumnsForStatus(fileStatus: string): string[] 
         'status',
       ];
     case 'procuring':
-    case 'packed':
+    case 'dispatch':
       return [...baseCols, 'confirmedQty', 'barcodeText', 'status'];
     case 'delivered':
       return [...allColumnNames];

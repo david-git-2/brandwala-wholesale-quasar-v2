@@ -1414,6 +1414,21 @@ body.theme-shop {
   box-shadow: inset 2px 0 0 var(--tf-ops-accent-qty);
 }
 
+.tf-ops-col-tint--accept {
+  background: color-mix(in srgb, var(--tf-success-soft) 88%, var(--tf-theme-surface)) !important;
+  box-shadow: inset 2px 0 0 var(--tf-success);
+}
+
+.tf-ops-col-tint--condition {
+  background: color-mix(in srgb, var(--tf-warning-soft) 88%, var(--tf-theme-surface)) !important;
+  box-shadow: inset 2px 0 0 var(--tf-warning);
+}
+
+.tf-ops-col-tint--reject {
+  background: color-mix(in srgb, var(--tf-error-soft) 88%, var(--tf-theme-surface)) !important;
+  box-shadow: inset 2px 0 0 var(--tf-error);
+}
+
 .status-dot {
   display: inline-block;
   width: 7px;

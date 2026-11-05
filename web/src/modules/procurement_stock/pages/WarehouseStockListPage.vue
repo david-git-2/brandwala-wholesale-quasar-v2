@@ -297,7 +297,7 @@ import {
   WAREHOUSE_STOCK_GROUP_BY_OPTIONS,
   type WarehouseStockGroupBy,
 } from '../constants/warehouseStockList';
-import { tagRepository } from 'src/modules/tag/repositories/tagRepository';
+import { useTagStore } from 'src/modules/tag/stores/tagStore';
 import type { Tag } from 'src/modules/tag/types';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ProcurementOpsListToolbar from '../components/ProcurementOpsListToolbar.vue';
@@ -748,7 +748,7 @@ onMounted(async () => {
     await stockLocationStore.fetchLocations(warehouseTenantId.value);
   }
   try {
-    gradeTags.value = await tagRepository.listTagsForCategory({
+    gradeTags.value = await useTagStore().ensureTagsForCategory({
       moduleKey: 'stock_grade',
       code: 'warehouse',
     });

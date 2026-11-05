@@ -103,8 +103,10 @@ function isStatusDisabled(st: string): boolean {
 .pbc-chip--offered { --pbc-c: var(--tf-pbc-offered); }
 .pbc-chip--confirmed { --pbc-c: var(--tf-pbc-confirmed); }
 .pbc-chip--procuring { --pbc-c: var(--tf-pbc-procuring); }
+.pbc-chip--dispatch { --pbc-c: var(--tf-pbc-packed); }
 .pbc-chip--packed { --pbc-c: var(--tf-pbc-packed); }
 .pbc-chip--delivered { --pbc-c: var(--tf-pbc-delivered); }
+.pbc-chip--closed { --pbc-c: var(--tf-grey-7, #616161); }
 .pbc-chip--cancelled { --pbc-c: var(--tf-pbc-cancelled); }
 .status-chip-btn--passed {
   color: var(--pbc-c);

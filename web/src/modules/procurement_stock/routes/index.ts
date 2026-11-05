@@ -124,6 +124,12 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/ProcurementDemandPage.vue'),
         beforeEnter: guard('procurement_demand'),
       },
+      {
+        path: 'document/:documentType/:documentId',
+        name: 'app-procurement-demand-document',
+        component: () => import('../pages/ProcurementDemandBuyDocumentPage.vue'),
+        beforeEnter: guard('procurement_demand'),
+      },
     ],
   },
   {

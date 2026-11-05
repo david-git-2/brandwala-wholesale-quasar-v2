@@ -15,14 +15,16 @@ export type StaffCatalogPrimaryAction =
   | 'send_first_offer'
   | 'send_final_offer'
   | 'start_procurement'
-  | 'mark_delivered';
+  | 'mark_delivered'
+  | 'mark_closed';
 
 /** Map legacy statuses onto the catalog negotiation model. */
 export function normalizeCatalogOrderStatus(status: string | null | undefined): string {
   const st = String(status || 'submitted');
   if (st === 'costing_pending') return 'submitted';
   if (st === 'negotiating') return 'priced';
-  if (st === 'ordered') return 'packed';
+  if (st === 'ordered') return 'dispatch';
+  if (st === 'packed') return 'dispatch';
   return st;
 }
 
@@ -31,7 +33,14 @@ export function mapStatusToProgressKey(
   isNegotiable: boolean,
 ): CatalogProgressKey {
   const st = normalizeCatalogOrderStatus(status);
-  if (st === 'procuring' || st === 'packed' || st === 'delivered') return 'fulfillment';
+  if (
+    st === 'procuring' ||
+    st === 'dispatch' ||
+    st === 'delivered' ||
+    st === 'closed'
+  ) {
+    return 'fulfillment';
+  }
   if (!isNegotiable && st === 'countered') return 'priced';
   if (!isNegotiable && st === 'final_offered') return 'priced';
   if (CATALOG_NEGOTIATION_PROGRESS_KEYS.includes(st as CatalogProgressKey)) {
@@ -48,8 +57,23 @@ const STAFF_STATUS_LABELS: Record<string, string> = {
   final_offered: 'Final offer sent — awaiting confirmation',
   confirmed: 'Confirmed — start procurement',
   procuring: 'Procuring',
-  packed: 'Packed',
+  dispatch: 'Dispatch',
   delivered: 'Delivered',
+  closed: 'Closed',
+  cancelled: 'Cancelled',
+};
+
+/** Compact labels for workflow chips and tight order-detail UI. */
+const STAFF_STATUS_SHORT_LABELS: Record<string, string> = {
+  submitted: 'Costing',
+  priced: 'Offer sent',
+  countered: 'Countered',
+  final_offered: 'Final offer',
+  confirmed: 'Confirmed',
+  procuring: 'Procuring',
+  dispatch: 'Dispatch',
+  delivered: 'Delivered',
+  closed: 'Closed',
   cancelled: 'Cancelled',
 };
 
@@ -60,8 +84,9 @@ const CUSTOMER_STATUS_LABELS: Record<string, string> = {
   final_offered: 'Confirm price & quantity',
   confirmed: 'Order confirmed',
   procuring: "We're sourcing your items",
-  packed: 'Ready to ship',
+  dispatch: 'Out for delivery',
   delivered: 'Delivered',
+  closed: 'Complete',
   cancelled: 'Cancelled',
 };
 
@@ -86,6 +111,11 @@ const PROGRESS_CUSTOMER_LABELS: Record<CatalogProgressKey, string> = {
 export function getStaffCatalogStatusLabel(status: string | null | undefined): string {
   const st = normalizeCatalogOrderStatus(status);
   return STAFF_STATUS_LABELS[st] ?? st.replace(/_/g, ' ');
+}
+
+export function getStaffCatalogStatusShortLabel(status: string | null | undefined): string {
+  const st = normalizeCatalogOrderStatus(status);
+  return STAFF_STATUS_SHORT_LABELS[st] ?? getStaffCatalogStatusLabel(status);
 }
 
 export function getCustomerCatalogStatusLabel(status: string | null | undefined): string {
@@ -120,8 +150,10 @@ export function getStaffCatalogPrimaryAction(
       return 'send_final_offer';
     case 'confirmed':
       return 'start_procurement';
-    case 'packed':
+    case 'dispatch':
       return 'mark_delivered';
+    case 'delivered':
+      return 'mark_closed';
     default:
       return null;
   }
@@ -137,8 +169,164 @@ export function getStaffCatalogPrimaryActionLabel(action: StaffCatalogPrimaryAct
       return 'Start procurement';
     case 'mark_delivered':
       return 'Mark delivered';
+    case 'mark_closed':
+      return 'Close order';
     default:
       return '';
+  }
+}
+
+export function getStaffCatalogPrimaryActionTargetStatus(action: StaffCatalogPrimaryAction): string {
+  switch (action) {
+    case 'send_first_offer':
+      return 'priced';
+    case 'send_final_offer':
+      return 'final_offered';
+    case 'start_procurement':
+      return 'procuring';
+    case 'mark_delivered':
+      return 'delivered';
+    case 'mark_closed':
+      return 'closed';
+    default:
+      return 'submitted';
+  }
+}
+
+/** Staff header workflow chips (negotiation + fulfillment), same order as customer sequence. */
+export function getCatalogStaffWorkflowStatuses(isNegotiable: boolean): string[] {
+  return getCustomerCatalogStatusSequence(isNegotiable);
+}
+
+const CATALOG_STAFF_WORKFLOW_CHIP_READ_ONLY = new Set([
+  'submitted',
+  'priced',
+  'countered',
+  'final_offered',
+  'confirmed',
+  'procuring',
+]);
+
+/** Through procuring, workflow chips are labels only; dispatch onward (and cancelled) stay clickable. */
+export function isCatalogStaffWorkflowStatusChipClickable(statusKey: string): boolean {
+  const st = normalizeCatalogOrderStatus(statusKey);
+  if (st === 'cancelled') return true;
+  return !CATALOG_STAFF_WORKFLOW_CHIP_READ_ONLY.has(st);
+}
+
+/** Sticky footer primary action — negotiation steps only; fulfillment uses workflow chips / gear. */
+export function showCatalogStaffFooterPrimaryAction(status: string | null | undefined): boolean {
+  const st = normalizeCatalogOrderStatus(status);
+  if (st === 'cancelled') return false;
+  return !isCatalogCustomerFulfillmentPhase(st);
+}
+
+export type CatalogWorkflowStatusConfirmation = {
+  title: string;
+  message: string;
+  okLabel: string;
+  okColor?: 'primary' | 'negative' | 'warning';
+};
+
+function isBackwardCatalogWorkflowStep(
+  current: string,
+  next: string,
+  isNegotiable: boolean,
+): boolean {
+  const steps = getCatalogStaffWorkflowStatuses(isNegotiable);
+  const cur = normalizeCatalogOrderStatus(current);
+  const nxt = normalizeCatalogOrderStatus(next);
+  const ci = steps.indexOf(cur);
+  const ni = steps.indexOf(nxt);
+  if (ci < 0 || ni < 0) return false;
+  return ni < ci;
+}
+
+/** User-facing copy for workflow chip or primary-action status changes. */
+export function getCatalogWorkflowStatusConfirmation(
+  current: string,
+  next: string,
+  options?: {
+    orderNo?: string | null;
+    isNegotiable?: boolean;
+    firstOfferConfirmMessage?: string;
+  },
+): CatalogWorkflowStatusConfirmation {
+  const cur = normalizeCatalogOrderStatus(current);
+  const nxt = normalizeCatalogOrderStatus(next);
+  const isNegotiable = options?.isNegotiable ?? true;
+  const orderRef = options?.orderNo ? `Order ${options.orderNo}` : 'This order';
+  const targetLabel = getStaffCatalogStatusLabel(nxt);
+
+  if (nxt === 'cancelled') {
+    return {
+      title: 'Cancel order?',
+      message: `${orderRef} will be marked cancelled. The customer will no longer be able to proceed with this order.`,
+      okLabel: 'Mark cancelled',
+      okColor: 'negative',
+    };
+  }
+
+  if (isBackwardCatalogWorkflowStep(cur, nxt, isNegotiable)) {
+    return {
+      title: 'Change order status?',
+      message: `${orderRef} will move back to “${targetLabel}”. Use only to fix a mistake. This does not undo stock moves, delivery papers, or bills.`,
+      okLabel: `Set to ${targetLabel}`,
+      okColor: 'warning',
+    };
+  }
+
+  switch (nxt) {
+    case 'priced':
+      return {
+        title: 'Send first offer?',
+        message:
+          options?.firstOfferConfirmMessage ??
+          `${orderRef} will move to “Offer sent”. The customer can review prices and quantities.`,
+        okLabel: 'Send offer',
+      };
+    case 'final_offered':
+      return {
+        title: 'Send final offer?',
+        message: `${orderRef} will move to “Final offer sent”. The customer must confirm or counter.`,
+        okLabel: 'Send final offer',
+      };
+    case 'confirmed':
+      return {
+        title: 'Confirm order?',
+        message: `${orderRef} will be marked confirmed and ready for procurement.`,
+        okLabel: 'Confirm',
+      };
+    case 'procuring':
+      return {
+        title: 'Start procurement?',
+        message: `${orderRef} will move to procuring. Demand lines open on the procurement desk for buying and stock picks.`,
+        okLabel: 'Start procurement',
+      };
+    case 'dispatch':
+      return {
+        title: 'Mark dispatch?',
+        message: `${orderRef} will move to dispatch. Create delivery papers from the gear menu when picks are ready.`,
+        okLabel: 'Mark dispatch',
+      };
+    case 'delivered':
+      return {
+        title: 'Mark delivered?',
+        message: `${orderRef} will be marked delivered. Confirm only when fulfillment is complete.`,
+        okLabel: 'Mark delivered',
+      };
+    case 'closed':
+      return {
+        title: 'Close order?',
+        message: `${orderRef} will be closed. Use when billing and delivery are finished.`,
+        okLabel: 'Close order',
+      };
+    default:
+      return {
+        title: 'Change order status?',
+        message: `${orderRef} will move to “${targetLabel}”.`,
+        okLabel: 'Confirm',
+      };
   }
 }
 
@@ -151,11 +339,12 @@ export function getCustomerCatalogStatusSequence(isNegotiable: boolean): string[
       'final_offered',
       'confirmed',
       'procuring',
-      'packed',
+      'dispatch',
       'delivered',
+      'closed',
     ];
   }
-  return ['submitted', 'priced', 'confirmed', 'procuring', 'packed', 'delivered'];
+  return ['submitted', 'priced', 'confirmed', 'procuring', 'dispatch', 'delivered', 'closed'];
 }
 
 /** Lock purchase price, rates, and 1st offer once an offer is sent or negotiation advances. */
@@ -164,10 +353,15 @@ export function isCatalogFirstOfferLocked(status: string | null | undefined): bo
   return st === 'priced' || st === 'countered' || st === 'final_offered';
 }
 
-/** Customer-facing "On the way" step (procuring through delivered). */
+/** Customer-facing "On the way" step (procuring through closed). */
 export function isCatalogCustomerFulfillmentPhase(status: string | null | undefined): boolean {
   const st = normalizeCatalogOrderStatus(status);
-  return st === 'procuring' || st === 'packed' || st === 'delivered';
+  return st === 'procuring' || st === 'dispatch' || st === 'delivered' || st === 'closed';
+}
+
+/** Gear drawer Bills tab — same fulfillment window as delivery papers (outcome bills exist before “delivered”). */
+export function canShowCatalogOrderBillsTab(status: string | null | undefined): boolean {
+  return isCatalogCustomerFulfillmentPhase(status);
 }
 
 /** Effective qty shown to the customer after confirm (0 = line rejected). */

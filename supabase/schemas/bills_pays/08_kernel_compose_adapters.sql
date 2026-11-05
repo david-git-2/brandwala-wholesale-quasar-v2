@@ -413,7 +413,7 @@ begin
 
   select * into v_invoice
   from public.create_sales_invoice(
-    v_tenant_id => v_tenant_id,
+    p_tenant_id => v_tenant_id,
     p_invoice_no => coalesce(nullif(trim(v_inv->>'invoice_no'), ''), ''),
     p_invoice_type => v_invoice_type,
     p_profile_id => nullif(v_inv->>'profile_id', '')::bigint,

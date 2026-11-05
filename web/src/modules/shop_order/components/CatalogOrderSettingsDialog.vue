@@ -1,31 +1,34 @@
 <template>
-  <q-dialog
+  <AppResizableOverlayPanel
     :model-value="modelValue"
-    position="right"
-    transition-show="jump-left"
-    transition-hide="jump-right"
+    storage-key="shop_order.catalog-settings-drawer-width"
+    :default-width="520"
+    :min-width="360"
+    :max-width="960"
+    aria-label="Catalog order settings"
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
-    <q-card
-      class="column no-wrap bg-white q-ma-md rounded-borders-lg overflow-hidden shadow-10"
-      style="width: 480px; max-width: 95vw; height: calc(100vh - 32px); border-radius: 16px"
-    >
-      <div class="bg-grey-1 border-bottom q-px-sm">
-        <q-tabs
-          v-model="activeTab"
-          dense
-          no-caps
-          active-color="primary"
-          indicator-color="primary"
-          align="justify"
-          class="text-grey-7 text-weight-medium"
-        >
-          <q-tab name="summary" label="Summary" icon="ph ph-chart-pie-slice" />
-          <q-tab name="actions" label="Actions" icon="ph ph-dots-three-outline" />
-        </q-tabs>
-      </div>
+    <div class="column full-height no-wrap overflow-hidden catalog-settings-drawer">
+      <TfDrawerSectionTabsHeader
+        v-model="activeTab"
+        :tabs="[...visibleSettingsTabs]"
+        aria-label="Catalog order settings sections"
+      >
+        <template #trailing>
+          <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-x"
+            color="grey-7"
+            aria-label="Close settings"
+            class="catalog-settings-drawer__close shrink-0"
+            @click="emit('update:modelValue', false)"
+          />
+        </template>
+      </TfDrawerSectionTabsHeader>
 
-      <q-tab-panels v-model="activeTab" animated class="col bg-white overflow-auto">
+      <q-tab-panels v-model="activeTab" animated class="col bg-white catalog-settings-drawer-panels">
         <q-tab-panel name="summary" class="q-pa-none bg-white">
           <CatalogOrderItemsSummaryCards
             :item-count="itemCount"
@@ -37,6 +40,90 @@
           />
         </q-tab-panel>
 
+        <q-tab-panel name="status" class="q-pa-md bg-white">
+          <div class="column q-gutter-y-md">
+            <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
+              <q-icon name="ph ph-traffic-signal" size="18px" color="primary" />
+              <span>Status</span>
+            </div>
+
+            <CatalogOrderProgressBar v-if="order" :order="order" variant="staff" />
+
+            <div class="q-pa-sm bg-grey-1 rounded-borders row items-center justify-between">
+              <div>
+                <div class="text-caption text-grey-6">Current status</div>
+                <div class="text-weight-bold text-subtitle2">{{ currentStatusLabel }}</div>
+              </div>
+              <q-badge
+                rounded
+                dense
+                class="text-weight-bold q-px-sm q-py-2xs text-caption"
+                :color="statusBadge.color"
+                :text-color="statusBadge.textColor"
+              >
+                {{ currentStatusLabel }}
+              </q-badge>
+            </div>
+
+            <CatalogOrderStatusWorkflowBar
+              v-if="order"
+              :status="order.status"
+              :is-negotiable="!!order.is_negotiable_snapshot"
+              :updating="statusUpdating"
+              :target-status="targetStatus"
+              @update-status="emit('update-status', $event)"
+            />
+
+            <CatalogOrderStaffActions
+              v-if="order"
+              variant="card"
+              :status="order.status"
+              :is-primary-loading="isPrimaryLoading"
+              :primary-disabled="primaryDisabled"
+              :primary-disabled-reason="primaryDisabledReason"
+              @primary-action="emit('primary-action', $event)"
+            />
+
+            <q-btn
+              flat
+              no-caps
+              color="grey-8"
+              icon="ph ph-arrows-clockwise"
+              label="Override status…"
+              class="rounded-sq-btn text-weight-medium"
+              @click="emit('override-status')"
+            />
+          </div>
+        </q-tab-panel>
+
+        <q-tab-panel name="bills" class="q-pa-md bg-white">
+          <CatalogOrderBillsPanel
+            v-if="order"
+            :parent-tenant-id="billsParentTenantId ?? null"
+            :order-id="order.id"
+            :enabled="billsListEnabled"
+            @open-bill="(bill) => emit('open-bill', bill)"
+          />
+        </q-tab-panel>
+
+        <q-tab-panel name="delivery" class="q-pa-md bg-white">
+          <div v-if="!showDeliveryPapers" class="text-body2 text-grey-7">
+            Delivery papers are available once the order is procuring or in fulfillment (dispatch,
+            delivered, or closed).
+          </div>
+          <DocumentDeliveryPaperChips
+            v-else-if="order"
+            layout="section"
+            document-type="shop_order"
+            :tenant-id="deliveryPaperTenantId"
+            :document-id="order.id"
+            :enabled="deliveryPapersEnabled"
+            :allow-create="allowCreateDeliveryPaper"
+            @open-paper="(id) => emit('open-delivery-paper', id)"
+            @created="(id) => emit('open-delivery-paper', id)"
+          />
+        </q-tab-panel>
+
         <q-tab-panel name="actions" class="q-pa-md bg-white">
           <div class="column q-gutter-y-sm">
             <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs q-mb-sm">
@@ -44,25 +131,37 @@
               <span>Order actions</span>
             </div>
 
-            <q-btn
+            <q-btn-dropdown
               flat
               no-caps
               align="left"
               icon="ph ph-file-xls"
               label="Download Excel"
               class="rounded-sq-btn action-list-btn"
+              auto-close
               :disable="!canDownloadExcel"
-              @click="emit('download-excel')"
-            />
-            <q-btn
-              flat
-              no-caps
-              align="left"
-              icon="ph ph-arrows-clockwise"
-              label="Override status…"
-              class="rounded-sq-btn action-list-btn"
-              @click="emit('override-status')"
-            />
+            >
+              <q-list dense class="q-py-xs" style="min-width: 220px">
+                <q-item clickable v-ripple @click="emit('download-excel', { includeImages: true })">
+                  <q-item-section avatar style="min-width: 28px">
+                    <q-icon name="ph ph-image" size="16px" color="positive" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-caption text-weight-medium">With images</q-item-label>
+                    <q-item-label caption>Product pictures in column B</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-item clickable v-ripple @click="emit('download-excel', { includeImages: false })">
+                  <q-item-section avatar style="min-width: 28px">
+                    <q-icon name="ph ph-table" size="16px" color="grey-8" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-caption text-weight-medium">Without images</q-item-label>
+                    <q-item-label caption>Faster export, compact rows</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-btn-dropdown>
             <q-btn
               v-if="showCancel"
               flat
@@ -78,13 +177,27 @@
           </div>
         </q-tab-panel>
       </q-tab-panels>
-    </q-card>
-  </q-dialog>
+    </div>
+  </AppResizableOverlayPanel>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
+import TfDrawerSectionTabsHeader from 'src/components/ui/TfDrawerSectionTabsHeader.vue';
 import CatalogOrderItemsSummaryCards from './CatalogOrderItemsSummaryCards.vue';
+import CatalogOrderProgressBar from './CatalogOrderProgressBar.vue';
+import CatalogOrderStatusWorkflowBar from './CatalogOrderStatusWorkflowBar.vue';
+import CatalogOrderStaffActions from './CatalogOrderStaffActions.vue';
+import DocumentDeliveryPaperChips from 'src/modules/procurement_stock/components/DocumentDeliveryPaperChips.vue';
+import CatalogOrderBillsPanel from './CatalogOrderBillsPanel.vue';
+import {
+  getStaffCatalogStatusLabel,
+  normalizeCatalogOrderStatus,
+  type StaffCatalogPrimaryAction,
+} from '../utils/catalogOrderStatus';
+import type { ShopOrder } from '../types';
+import type { ShopOrderBillListItem } from '../types/shopOrderBillList';
 
 export type CatalogOrderSummaryTotals = {
   totalQuantity: number;
@@ -100,8 +213,9 @@ export type CatalogOrderSummaryTotals = {
   overallFinalOfferMargin: number;
 };
 
-defineProps<{
+const props = defineProps<{
   modelValue: boolean;
+  order: ShopOrder | null;
   itemCount: number;
   buyCurrencySymbol: string;
   sellCurrencySymbol: string;
@@ -111,21 +225,86 @@ defineProps<{
   showCancel?: boolean;
   isDeleting?: boolean;
   canDownloadExcel?: boolean;
+  statusUpdating?: boolean;
+  targetStatus?: string | null;
+  isPrimaryLoading?: boolean;
+  primaryDisabled?: boolean;
+  primaryDisabledReason?: string;
+  deliveryPaperTenantId?: number | null;
+  billsParentTenantId?: number | null;
+  showDeliveryPapers?: boolean;
+  allowCreateDeliveryPaper?: boolean;
 }>();
+
+const deliveryPapersEnabled = computed(
+  () =>
+    !!props.modelValue &&
+    !!props.showDeliveryPapers &&
+    props.deliveryPaperTenantId != null &&
+    !!props.order?.id,
+);
+
+const billsListEnabled = computed(
+  () =>
+    showBillsTab.value &&
+    !!props.modelValue &&
+    props.billsParentTenantId != null &&
+    !!props.order?.id,
+);
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
-  (e: 'download-excel'): void;
+  (e: 'download-excel', payload: { includeImages: boolean }): void;
   (e: 'override-status'): void;
   (e: 'cancel-order'): void;
+  (e: 'update-status', status: string): void;
+  (e: 'primary-action', action: StaffCatalogPrimaryAction): void;
+  (e: 'open-delivery-paper', paperId: number): void;
+  (e: 'open-bill', bill: ShopOrderBillListItem): void;
 }>();
 
-const activeTab = ref('summary');
+const settingsTabs = [
+  { name: 'summary', label: 'Summary', icon: 'ph ph-chart-pie-slice' },
+  { name: 'status', label: 'Status', icon: 'ph ph-traffic-signal' },
+  { name: 'bills', label: 'Bills', icon: 'ph ph-receipt' },
+  { name: 'delivery', label: 'Delivery', icon: 'ph ph-truck' },
+  { name: 'actions', label: 'Actions', icon: 'ph ph-dots-three-outline' },
+] as const;
+
+const showBillsTab = computed(() => !!props.showDeliveryPapers);
+
+const visibleSettingsTabs = computed(() =>
+  settingsTabs.filter((tab) => tab.name !== 'bills' || showBillsTab.value),
+);
+
+const activeTab = ref<(typeof settingsTabs)[number]['name']>('summary');
+
+watch(showBillsTab, (visible) => {
+  if (!visible && activeTab.value === 'bills') {
+    activeTab.value = 'summary';
+  }
+});
+
+const currentStatusLabel = computed(() => getStaffCatalogStatusLabel(props.order?.status));
+
+const statusBadge = computed(() => {
+  const st = normalizeCatalogOrderStatus(props.order?.status);
+  if (st === 'confirmed' || st === 'dispatch' || st === 'delivered' || st === 'closed') {
+    return { color: 'green-1', textColor: 'green-9' };
+  }
+  if (st === 'priced' || st === 'final_offered' || st === 'procuring') {
+    return { color: 'blue-1', textColor: 'blue-9' };
+  }
+  if (st === 'cancelled') {
+    return { color: 'red-1', textColor: 'red-9' };
+  }
+  return { color: 'orange-1', textColor: 'orange-9' };
+});
 </script>
 
 <style scoped>
-.border-bottom {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+.catalog-settings-drawer-panels {
+  min-height: 0;
 }
 
 .rounded-sq-btn {

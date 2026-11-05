@@ -230,6 +230,17 @@ const adminRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
+        path: ':id/delivery-paper/:paperId',
+        name: 'app-shop-order-delivery-paper-page',
+        component: () =>
+          import('src/modules/procurement_stock/pages/DeliveryPaperDetailPage.vue'),
+        props: (route) => ({
+          documentType: 'shop_order' as const,
+          documentId: Number(route.params.id),
+        }),
+        beforeEnter: guard('shop_order_mgmt'),
+      },
+      {
         path: ':id',
         name: 'app-shop-order-detail-page',
         component: () => import('src/modules/shop_order/pages/ShopOrderDetailHostPage.vue'),

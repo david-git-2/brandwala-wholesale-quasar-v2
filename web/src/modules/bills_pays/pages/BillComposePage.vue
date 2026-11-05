@@ -1293,7 +1293,7 @@ const loadExisting = async (id: number) => {
       supabase
         .from('bill_lines')
         .select(
-          'id, line_kind, name_snapshot, quantity, sell_price_amount, line_discount_amount, global_stock_id, line_meta',
+          'id, line_kind, name_snapshot, quantity, sell_price_amount, line_discount_amount, line_meta',
         )
         .eq('invoice_id', id)
         .order('id'),
@@ -1363,12 +1363,16 @@ const loadExisting = async (id: number) => {
     const mappedLines: ComposeLine[] = rawLines.map((row) => {
       const kind = (row.line_kind ?? 'stock') as ComposeLineKind;
       const stockItem = stockItemById.get(row.id);
-      const lineMeta = row.line_meta as { charge_type?: string } | null;
+      const lineMeta = row.line_meta as { charge_type?: string; stock_ref?: { global_stock_id?: number } } | null;
       return {
         key: `item-${row.id}`,
         id: row.id,
         line_kind: kind,
-        global_stock_id: row.global_stock_id ?? undefined,
+        global_stock_id:
+          stockItem?.global_stock_id ??
+          (lineMeta?.stock_ref?.global_stock_id != null
+            ? Number(lineMeta.stock_ref.global_stock_id)
+            : undefined),
         name: row.name_snapshot,
         image_url: stockItem?.image_url ?? null,
         available_atp: stockItem?.available_atp ?? row.quantity,
@@ -1402,6 +1406,10 @@ const loadExisting = async (id: number) => {
     toProfileOptions.value = rows;
     const no = bill.invoice_no?.trim();
     composeBreadcrumbTitle.value = no || `Bill #${id}`;
+  } catch (err) {
+    showErrorNotification(
+      err instanceof Error ? err.message : 'Could not load this bill for editing.',
+    );
   } finally {
     loadingExisting.value = false;
   }

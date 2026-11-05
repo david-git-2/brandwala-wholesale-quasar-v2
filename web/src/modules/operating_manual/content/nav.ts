@@ -6,4 +6,9 @@ export const operatingManualNav: DocsNavEntry[] = [
     name: 'operating-manual-overview',
     path: '/operating-manual',
   },
+  {
+    label: 'Document numbers',
+    name: 'operating-manual-document-numbering',
+    path: '/operating-manual/document-numbering',
+  },
 ];

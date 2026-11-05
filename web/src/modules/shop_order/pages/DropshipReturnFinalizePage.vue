@@ -242,7 +242,7 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { tagRepository } from 'src/modules/tag/repositories/tagRepository';
+import { useTagStore } from 'src/modules/tag/stores/tagStore';
 import type { Tag } from 'src/modules/tag/types';
 import type { StockAvailability } from 'src/modules/procurement_stock/constants/stockAvailability';
 import { STOCK_AVAILABILITY_OPTIONS } from 'src/modules/procurement_stock/constants/stockAvailability';
@@ -264,6 +264,7 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const queryClient = useQueryClient();
+const tagStore = useTagStore();
 
 const orderId = computed(() => Number(route.params.id));
 const isSubmitting = ref(false);
@@ -347,11 +348,9 @@ watch(
     returnReasonNote.value = formState.returnReasonNote;
     deductFromMerchant.value = true;
 
-    if (gradeTags.value.length === 0) {
-      gradeTags.value = await tagRepository
-        .listTagsForCategory({ moduleKey: 'stock_grade', code: 'warehouse' })
-        .catch(() => [] as Tag[]);
-    }
+    gradeTags.value = await tagStore
+      .ensureTagsForCategory({ moduleKey: 'stock_grade', code: 'warehouse' })
+      .catch(() => [] as Tag[]);
 
     const standardGradeId =
       gradeTags.value.find((t) => t.slug === 'standard')?.id

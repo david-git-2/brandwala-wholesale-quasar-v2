@@ -686,6 +686,8 @@ received ──► (inventory value) ──► (COGS + revenue as trips close) �
 
 ## Appendix B — Data model
 
+**Implemented (2026-11):** outbound trip tables are **`delivery_paper`** + **`delivery_paper_line`** (same roles as `customer_deliveries` / `customer_delivery_lines` below). Vendor buy lines: **`preorder_demand.vendor_placements`** jsonb `[{ vendor_code, quantity }]`. Legacy **`stock_picks`** still dual-writes into delivery paper lines until UI retires picks JSON.
+
 ### `preorder_demand` (UPDATED) ✦ ◆
 
 | Field | Change | Meaning |

@@ -2,7 +2,7 @@ import { supabase } from 'src/boot/supabase';
 import { productBasedCostingRepository } from 'src/modules/product_based_costing/repositories/productBasedCostingRepository';
 import { shopOrderRepository } from 'src/modules/shop_order/repositories/shopOrderRepository';
 
-export type ProcurementDemandStatus = 'procuring' | 'packed' | 'delivered';
+export type ProcurementDemandStatus = 'procuring' | 'dispatch' | 'delivered' | 'closed';
 
 export type ProcurementDemandDocumentType = 'shop_order' | 'pbc_costing_file';
 
@@ -15,6 +15,11 @@ export interface ProcurementDemandVendor {
 }
 
 export type PreorderDemandCloseAction = 'take' | 'condition' | 'return';
+
+export interface PreorderVendorPlacement {
+  vendor_code: string;
+  quantity: number;
+}
 
 export interface PreorderDemandStockPick {
   global_stock_id: number;
@@ -39,6 +44,13 @@ export type ClosePreorderDemandDocumentResult = {
   error?: string;
 };
 
+export type ApplyDeliveryPaperOutcomeAllocation = {
+  preorder_demand_id: number;
+  global_stock_id: number;
+  quantity: number;
+  grade_tag_id?: number | null;
+};
+
 export interface ProcurementDemandItem {
   source_type: ProcurementDemandSourceType;
   source_id: number;
@@ -59,10 +71,69 @@ export interface ProcurementDemandItem {
   preorder_demand_id?: number | null;
   vendor_id?: number | null;
   placed_quantity?: number;
+  vendor_placements?: PreorderVendorPlacement[];
   delivered_quantity?: number;
   remaining_quantity?: number;
   remaining_to_deliver?: number;
   stock_picks?: PreorderDemandStockPick[];
+  /** Per-unit customer sell price (first offer or final offer on negotiable shop orders). */
+  unit_sell_price_amount?: number | null;
+  is_negotiable_snapshot?: boolean | null;
+}
+
+export interface ProcurementDemandBuyDocument {
+  document_type: ProcurementDemandDocumentType;
+  document_id: number;
+  document_name?: string | null;
+  shop_order_no?: string | null;
+  document_status: string;
+  customer_group_id?: number | null;
+  customer_group_name?: string | null;
+  profile_id?: number | null;
+  profile_name?: string | null;
+  vendor: ProcurementDemandVendor | null;
+  invoice_id?: number | null;
+  line_count: number;
+  under_ordered_line_count: number;
+  has_under_ordered_lines: boolean;
+}
+
+export interface ProcurementDemandBuyDocumentsMeta {
+  tenant_id: number;
+  document_count: number;
+  line_count: number;
+  total_document_count: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
+export interface ProcurementDemandBuyDocumentsResponse {
+  meta: ProcurementDemandBuyDocumentsMeta;
+  documents: ProcurementDemandBuyDocument[];
+}
+
+export interface ListProcurementDemandBuyDocumentsParams {
+  tenantId: number;
+  search?: string | null;
+  childTenantId?: number | null;
+  limit?: number;
+  offset?: number;
+}
+
+export interface GetProcurementDemandBuyDocumentParams {
+  tenantId: number;
+  documentType: ProcurementDemandDocumentType;
+  documentId: number;
+  search?: string | null;
+  limit?: number;
+  cursor?: ProcurementDemandGroupItemsCursor | null;
+}
+
+export interface ProcurementDemandBuyDocumentResponse {
+  document: ProcurementDemandBuyDocument;
+  items: ProcurementDemandItem[];
+  meta: ProcurementDemandGroupItemsMeta;
 }
 
 export interface ProcurementDemandGroup {
@@ -151,6 +222,7 @@ export interface UpsertPreorderDemandParams {
   sourceId: number;
   vendorId?: number | null;
   placedQuantity?: number | null;
+  vendorPlacements?: PreorderVendorPlacement[] | null;
   stockPicks?: PreorderDemandStockPick[] | null;
   notes?: string | null;
 }
@@ -202,12 +274,133 @@ export interface PreorderDemandRow {
   vendor_id: number | null;
   placed_quantity: number;
   delivered_quantity: number;
+  vendor_placements: PreorderVendorPlacement[];
   stock_picks: PreorderDemandStockPick[];
   notes: string | null;
   updated_by_user_id: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export type DeliveryPaperStatus = 'draft' | 'packed' | 'dispatched' | 'delivered' | 'cancelled';
+
+export interface DeliveryPaperSummary {
+  id: number;
+  status: DeliveryPaperStatus;
+  created_at: string;
+  updated_at: string;
+  delivery_date: string | null;
+  note: string | null;
+  line_count: number;
+}
+
+export interface DeliveryPaperHeader {
+  id: number;
+  status: DeliveryPaperStatus;
+  source_type: ProcurementDemandDocumentType;
+  source_id: number;
+  profile_id: number | null;
+  profile_name: string | null;
+  document_name: string | null;
+  shop_order_no: string | null;
+  created_at: string;
+  updated_at: string;
+  delivery_date: string | null;
+  note: string | null;
+  close_bills?: DeliveryPaperCloseBill[];
+}
+
+export interface DeliveryPaperCloseBill {
+  id: number;
+  invoice_no: string | null;
+  invoice_status: string | null;
+  settlement_kind?: string | null;
+}
+
+export interface DeliveryPaperDetailItem extends ProcurementDemandItem {
+  /** Packed on sibling delivery papers for the same document line (excludes this paper). */
+  packed_on_other_delivery_papers?: number;
+  /** Order remaining minus packed on other papers; cap for picks on this paper. */
+  remaining_to_pack?: number;
+  paper_picks?: Array<{
+    line_id?: number;
+    client_key?: string;
+    global_stock_id: number;
+    quantity: number;
+    close_action?: string | null;
+    line_status?: string;
+    is_close_split?: boolean;
+    shipment_name?: string | null;
+    location_name?: string | null;
+    invoice_id?: number | null;
+    returned_at?: string | null;
+    is_applied?: boolean;
+  }>;
+}
+
+export interface DeliveryPaperDetailResponse {
+  paper: DeliveryPaperHeader;
+  items: DeliveryPaperDetailItem[];
+  meta: Record<string, unknown>;
+}
+
+export interface SaveDeliveryPaperDetailItem {
+  preorder_demand_id: number;
+  splits: Array<{ quantity: number; status: string }>;
+  picks?: Array<{ global_stock_id: number; quantity: number }>;
+  note?: string | null;
+}
+
+const listProcurementDemandBuyDocuments = async (
+  params: ListProcurementDemandBuyDocumentsParams,
+): Promise<ProcurementDemandBuyDocumentsResponse> => {
+  const { data, error } = await supabase.rpc('list_procurement_demand_buy_documents', {
+    p_tenant_id: params.tenantId,
+    p_search: params.search ?? null,
+    p_child_tenant_id: params.childTenantId ?? null,
+    p_limit: params.limit ?? 50,
+    p_offset: params.offset ?? 0,
+  });
+
+  if (error) throw error;
+
+  const payload = (data ?? { meta: {}, documents: [] }) as ProcurementDemandBuyDocumentsResponse;
+  payload.documents = (payload.documents ?? []).map((doc) => ({
+    ...doc,
+    document_name: doc.document_name?.trim() || null,
+    line_count: doc.line_count ?? 0,
+    under_ordered_line_count: doc.under_ordered_line_count ?? 0,
+    has_under_ordered_lines: Boolean(doc.has_under_ordered_lines),
+  }));
+  return payload;
+};
+
+const getProcurementDemandBuyDocument = async (
+  params: GetProcurementDemandBuyDocumentParams,
+): Promise<ProcurementDemandBuyDocumentResponse> => {
+  const { data, error } = await supabase.rpc('get_procurement_demand_buy_document', {
+    p_tenant_id: params.tenantId,
+    p_document_type: params.documentType,
+    p_document_id: params.documentId,
+    p_search: params.search ?? null,
+    p_limit: params.limit ?? 50,
+    p_cursor_source_id: params.cursor?.source_id ?? null,
+  });
+
+  if (error) throw error;
+
+  const payload = (data ?? {}) as ProcurementDemandBuyDocumentResponse;
+  const meta = payload.meta ?? ({} as ProcurementDemandGroupItemsMeta);
+  return {
+    document: payload.document,
+    items: payload.items ?? [],
+    meta: {
+      ...meta,
+      next_cursor: parseDemandGroupItemsCursor(meta.next_cursor),
+      has_more: Boolean(meta.has_more),
+    },
+  };
+};
 
 const listProcurementDemandGroups = async (
   params: ListProcurementDemandGroupsParams,
@@ -329,6 +522,7 @@ const upsertPreorderDemand = async (
     p_source_id: params.sourceId,
     p_vendor_id: params.vendorId ?? null,
     p_placed_quantity: params.placedQuantity ?? null,
+    p_vendor_placements: params.vendorPlacements ?? null,
     p_stock_picks: params.stockPicks ?? null,
     p_notes: params.notes ?? null,
   });
@@ -420,7 +614,125 @@ const markDemandGroupReadyForShipment = async (
   await productBasedCostingRepository.markPbcReadyForShipment(group.document_id);
 };
 
+const createDeliveryPaperForDocument = async (params: {
+  tenantId: number;
+  documentType: ProcurementDemandDocumentType;
+  documentId: number;
+}): Promise<{ id: number; status: DeliveryPaperStatus; created_at: string }> => {
+  const { data, error } = await supabase.rpc('create_delivery_paper_for_document', {
+    p_tenant_id: params.tenantId,
+    p_document_type: params.documentType,
+    p_document_id: params.documentId,
+  });
+  if (error) throw error;
+  return data as { id: number; status: DeliveryPaperStatus; created_at: string };
+};
+
+const listDeliveryPapersForDocument = async (params: {
+  tenantId: number;
+  documentType: ProcurementDemandDocumentType;
+  documentId: number;
+}): Promise<DeliveryPaperSummary[]> => {
+  const { data, error } = await supabase.rpc('list_delivery_papers_for_document', {
+    p_tenant_id: params.tenantId,
+    p_document_type: params.documentType,
+    p_document_id: params.documentId,
+  });
+  if (error) throw error;
+  const payload = (data ?? { papers: [] }) as { papers?: DeliveryPaperSummary[] };
+  return payload.papers ?? [];
+};
+
+const getDeliveryPaperDetail = async (params: {
+  tenantId: number;
+  deliveryPaperId: number;
+}): Promise<DeliveryPaperDetailResponse> => {
+  const { data, error } = await supabase.rpc('get_delivery_paper_detail', {
+    p_tenant_id: params.tenantId,
+    p_delivery_paper_id: params.deliveryPaperId,
+  });
+  if (error) throw error;
+  const payload = (data ?? {}) as DeliveryPaperDetailResponse;
+  return {
+    paper: payload.paper,
+    items: payload.items ?? [],
+    meta: payload.meta ?? {},
+  };
+};
+
+const saveDeliveryPaperDetail = async (params: {
+  tenantId: number;
+  deliveryPaperId: number;
+  items: SaveDeliveryPaperDetailItem[];
+}): Promise<{ success: boolean; line_count: number; status: DeliveryPaperStatus }> => {
+  const { data, error } = await supabase.rpc('save_delivery_paper_detail', {
+    p_tenant_id: params.tenantId,
+    p_delivery_paper_id: params.deliveryPaperId,
+    p_items: params.items,
+  });
+  if (error) throw error;
+  return (data ?? { success: false, line_count: 0, status: 'draft' }) as {
+    success: boolean;
+    line_count: number;
+    status: DeliveryPaperStatus;
+  };
+};
+
+const deleteDeliveryPaper = async (params: {
+  tenantId: number;
+  deliveryPaperId: number;
+}): Promise<{ success: boolean; id: number }> => {
+  const { data, error } = await supabase.rpc('delete_delivery_paper', {
+    p_tenant_id: params.tenantId,
+    p_delivery_paper_id: params.deliveryPaperId,
+  });
+  if (error) throw error;
+  return (data ?? { success: false, id: params.deliveryPaperId }) as {
+    success: boolean;
+    id: number;
+  };
+};
+
+const updateDeliveryPaperStatus = async (params: {
+  tenantId: number;
+  deliveryPaperId: number;
+  status: DeliveryPaperStatus;
+}): Promise<{ success: boolean; status: DeliveryPaperStatus }> => {
+  const { data, error } = await supabase.rpc('update_delivery_paper_status', {
+    p_tenant_id: params.tenantId,
+    p_delivery_paper_id: params.deliveryPaperId,
+    p_status: params.status,
+  });
+  if (error) throw error;
+  return (data ?? { success: false, status: params.status }) as {
+    success: boolean;
+    status: DeliveryPaperStatus;
+  };
+};
+
+const applyDeliveryPaperOutcome = async (params: {
+  tenantId: number;
+  deliveryPaperId: number;
+  closeAction: PreorderDemandCloseAction;
+  allocations: ApplyDeliveryPaperOutcomeAllocation[];
+}): Promise<ClosePreorderDemandDocumentResult> => {
+  const { data, error } = await supabase.rpc('apply_delivery_paper_outcome', {
+    p_tenant_id: params.tenantId,
+    p_delivery_paper_id: params.deliveryPaperId,
+    p_close_action: params.closeAction,
+    p_allocations: params.allocations,
+  });
+  if (error) throw error;
+  const result = (data ?? {}) as ClosePreorderDemandDocumentResult;
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to apply delivery paper outcome');
+  }
+  return result;
+};
+
 export const procurementDemandRepository = {
+  listProcurementDemandBuyDocuments,
+  getProcurementDemandBuyDocument,
   listProcurementDemandGroups,
   listProcurementDemandGroupItems,
   listProcurementFulfillGroups,
@@ -431,6 +743,13 @@ export const procurementDemandRepository = {
   setPreorderDemandVendorForDocument,
   markDemandGroupReadyForShipment,
   closePreorderDemandDocument,
+  createDeliveryPaperForDocument,
+  listDeliveryPapersForDocument,
+  getDeliveryPaperDetail,
+  saveDeliveryPaperDetail,
+  deleteDeliveryPaper,
+  updateDeliveryPaperStatus,
+  applyDeliveryPaperOutcome,
 };
 
 export const getItemNeedQuantity = (item: ProcurementDemandItem): number =>

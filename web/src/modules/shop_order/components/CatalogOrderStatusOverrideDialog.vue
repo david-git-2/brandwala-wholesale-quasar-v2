@@ -66,7 +66,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { ShopOrder } from '../types';
-import { getStaffCatalogStatusLabel, normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
+import { getStaffCatalogStatusLabel, getStaffCatalogStatusShortLabel, normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -86,8 +86,9 @@ const CATALOG_OVERRIDE_STATUSES = [
   'final_offered',
   'confirmed',
   'procuring',
-  'packed',
+  'dispatch',
   'delivered',
+  'closed',
   'cancelled',
 ] as const;
 
@@ -99,10 +100,15 @@ const currentStatusLabel = computed(() =>
 );
 
 const statusOptions = computed(() =>
-  CATALOG_OVERRIDE_STATUSES.map((value) => ({
-    label: getStaffCatalogStatusLabel(value),
-    value,
-  })),
+  CATALOG_OVERRIDE_STATUSES.map((value) => {
+    const short = getStaffCatalogStatusShortLabel(value);
+    const long = getStaffCatalogStatusLabel(value);
+    return {
+      label: short,
+      value,
+      ...(short !== long ? { caption: long } : {}),
+    };
+  }),
 );
 
 const canSubmit = computed(

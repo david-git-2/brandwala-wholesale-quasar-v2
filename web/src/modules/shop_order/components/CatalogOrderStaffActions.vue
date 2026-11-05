@@ -2,22 +2,26 @@
   <q-card
     flat
     :bordered="variant !== 'footer'"
-    :class="variant === 'footer' ? 'catalog-staff-actions catalog-staff-actions--footer q-px-md q-py-xs' : 'catalog-staff-actions q-pa-md'"
+    :class="variant === 'footer' ? 'catalog-staff-actions catalog-staff-actions--footer q-px-sm q-py-none' : 'catalog-staff-actions q-pa-md'"
   >
-    <div class="row items-center justify-between no-wrap q-gutter-x-sm">
+    <div
+      class="row items-center no-wrap q-gutter-x-sm"
+      :class="showPrimaryAction ? 'justify-between' : 'justify-end'"
+    >
       <div class="col-auto row items-center q-gutter-sm no-wrap">
         <q-btn
-          v-if="primaryAction"
+          v-if="showPrimaryAction"
           unelevated
           dense
+          size="sm"
           color="primary"
           no-caps
           icon-right="ph ph-arrow-right"
-          class="text-weight-bold q-px-md action-btn"
+          :class="primaryBtnClass"
           :label="primaryActionLabel"
           :loading="isPrimaryLoading"
           :disable="primaryDisabled"
-          @click="emit('primary-action', primaryAction)"
+          @click="emit('primary-action', primaryAction!)"
         >
           <q-tooltip v-if="primaryDisabledReason">{{ primaryDisabledReason }}</q-tooltip>
         </q-btn>
@@ -35,6 +39,7 @@ import { computed } from 'vue';
 import {
   getStaffCatalogPrimaryAction,
   getStaffCatalogPrimaryActionLabel,
+  showCatalogStaffFooterPrimaryAction,
   type StaffCatalogPrimaryAction,
 } from '../utils/catalogOrderStatus';
 
@@ -57,6 +62,20 @@ const emit = defineEmits<{
 }>();
 
 const primaryAction = computed(() => getStaffCatalogPrimaryAction(props.status));
+
+const showPrimaryAction = computed(() => {
+  if (!primaryAction.value) return false;
+  if (props.variant === 'footer' && !showCatalogStaffFooterPrimaryAction(props.status)) {
+    return false;
+  }
+  return true;
+});
+
+const primaryBtnClass = computed(() =>
+  props.variant === 'footer'
+    ? 'text-weight-medium action-btn action-btn--footer'
+    : 'text-weight-bold q-px-md action-btn',
+);
 
 const primaryActionLabel = computed(() =>
   primaryAction.value ? getStaffCatalogPrimaryActionLabel(primaryAction.value) : '',
@@ -85,5 +104,16 @@ const primaryActionLabel = computed(() =>
 
 .action-btn {
   border-radius: 8px;
+}
+
+.action-btn--footer {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.action-btn--footer :deep(.q-icon) {
+  font-size: 14px;
 }
 </style>

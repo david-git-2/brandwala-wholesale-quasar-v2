@@ -24,6 +24,8 @@ declare
   v_mov_no text;
   v_parent_id bigint;
   v_has_stock boolean := false;
+  v_delivery_paper_id bigint;
+  v_skip_deduct boolean;
 begin
   select * into v_invoice from public.bills where id = p_bill_id for update;
   if v_invoice.id is null then
@@ -34,6 +36,8 @@ begin
   end if;
 
   v_parent_id := coalesce(v_invoice.parent_tenant_id, v_invoice.issued_by_tenant_id);
+
+  v_delivery_paper_id := nullif(trim(coalesce(v_invoice.channel_meta->>'delivery_paper_id', '')), '')::bigint;
 
   select sm.id
   into v_mov_id
@@ -59,7 +63,7 @@ begin
     return null;
   end if;
 
-  v_mov_no := 'MOV-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('public.stock_movements_id_seq')::text, 6, '0');
+  v_mov_no := public.next_stock_movement_number(v_parent_id, 'stock_movement');
 
   insert into public.stock_movements (
     tenant_id,
@@ -99,6 +103,32 @@ begin
     if v_invoice.invoice_type = 'dropship'::public.global_invoice_type
        and v_stock.availability <> 'held'::public.stock_availability then
       raise exception 'dropship invoice stock % must be held before issue', v_stock_id;
+    end if;
+
+    v_skip_deduct := (
+      v_delivery_paper_id is not null
+      and public.stock_dispatch_deduct_covers(v_delivery_paper_id, v_stock_id, v_qty)
+    );
+
+    if v_skip_deduct then
+      insert into public.stock_movement_lines (
+        movement_id,
+        stock_id,
+        quantity,
+        from_location_id,
+        to_location_id,
+        from_availability,
+        to_availability
+      ) values (
+        v_mov_id,
+        v_stock_id,
+        v_qty,
+        v_stock.location_id,
+        v_stock.location_id,
+        v_stock.availability,
+        v_stock.availability
+      );
+      continue;
     end if;
 
     if v_stock.quantity < v_qty then

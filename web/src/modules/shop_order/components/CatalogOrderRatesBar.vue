@@ -105,32 +105,61 @@
     </div>
   </q-card>
 
-  <div v-else class="catalog-rates-compact q-pt-xs">
-    <div class="row items-center justify-center">
-      <div class="rates-pill row items-center q-gutter-x-xs q-px-sm q-py-2xs bg-grey-2 rounded-borders text-caption text-grey-8 font-mono">
-        <span><strong>FX:</strong> {{ conversion_rate ?? '—' }}</span>
-        <span class="text-grey-4">|</span>
-        <span><strong>Cargo:</strong> {{ buyCurrency }}{{ cargo_rate ?? '—' }}/kg</span>
-        <span class="text-grey-4">|</span>
-        <span><strong>1st Offer:</strong> {{ first_offer_rate ?? profit_rate ?? '—' }}%</span>
-        <span class="text-grey-4">|</span>
-        <span><strong>Basis:</strong> {{ profitBasisLabel }}</span>
-        <q-btn
-          flat
-          round
-          dense
-          size="xs"
-          icon="ph ph-sliders-horizontal"
-          color="primary"
-          class="q-ml-2xs"
-          @click="ratesExpanded = !ratesExpanded"
-        >
-          <q-tooltip>Edit rates (FX, Cargo, Profit)</q-tooltip>
-        </q-btn>
+  <div
+    v-else
+    :class="
+      compactLayout === 'header'
+        ? 'catalog-rates-compact--header'
+        : 'catalog-rates-compact q-pb-xs'
+    "
+  >
+    <div
+      :class="
+        compactLayout === 'header'
+          ? 'catalog-rates-compact__pill-row'
+          : 'row items-center'
+      "
+    >
+      <div class="rates-pill row items-center no-wrap bg-grey-2 rounded-borders text-caption text-grey-8 font-mono">
+        <span class="rates-pill__segment">
+          <span class="rates-pill__lbl">FX:</span>
+          <span class="rates-pill__val">{{ conversion_rate ?? '—' }}</span>
+        </span>
+        <span class="rates-pill__segment">
+          <span class="rates-pill__lbl">Cargo:</span>
+          <span class="rates-pill__val">{{ buyCurrency }}{{ cargo_rate ?? '—' }}/kg</span>
+        </span>
+        <span class="rates-pill__segment">
+          <span class="rates-pill__lbl">1st Offer:</span>
+          <span class="rates-pill__val">{{ first_offer_rate ?? profit_rate ?? '—' }}%</span>
+        </span>
+        <span class="rates-pill__segment rates-pill__segment--basis">
+          <span class="rates-pill__lbl">Basis:</span>
+          <span class="rates-pill__val">{{ profitBasisLabel }}</span>
+          <q-btn
+            flat
+            round
+            dense
+            size="xs"
+            icon="ph ph-sliders-horizontal"
+            color="primary"
+            class="rates-pill__edit"
+            @click="ratesExpanded = !ratesExpanded"
+          >
+            <q-tooltip>Edit rates (FX, Cargo, Profit)</q-tooltip>
+          </q-btn>
+        </span>
       </div>
     </div>
 
-    <div v-if="ratesExpanded" class="q-pt-sm q-pb-xs border-top q-mt-xs">
+    <div
+      v-if="ratesExpanded"
+      :class="
+        compactLayout === 'header'
+          ? 'catalog-rates-compact__editor q-pt-sm q-pb-xs border-top'
+          : 'q-pt-sm q-pb-xs border-top q-mt-xs'
+      "
+    >
       <div class="row items-center justify-between q-col-gutter-sm">
         <div class="col-12 col-md-2">
           <q-input
@@ -238,8 +267,10 @@ const props = withDefaults(
     order: ShopOrder | null;
     saving?: boolean;
     variant?: 'card' | 'compact';
+    /** `header`: pill sits in order header row; editor spans full width below. */
+    compactLayout?: 'stack' | 'header';
   }>(),
-  { variant: 'card' },
+  { variant: 'card', compactLayout: 'stack' },
 );
 
 const emit = defineEmits<{
@@ -394,5 +425,67 @@ function cancelCompactEdit() {
 
 .rounded-sq-btn {
   border-radius: 8px !important;
+}
+
+.rates-pill {
+  gap: 0;
+  padding: 4px 6px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.rates-pill__segment {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0 10px;
+  border-right: 1px solid rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+}
+
+.rates-pill__segment:first-child {
+  padding-left: 4px;
+}
+
+.rates-pill__segment:last-child {
+  border-right: none;
+  padding-right: 4px;
+}
+
+.rates-pill__segment--basis {
+  align-items: center;
+  gap: 6px;
+}
+
+.rates-pill__lbl {
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.rates-pill__val {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rates-pill__edit {
+  flex-shrink: 0;
+}
+
+.catalog-rates-compact--header {
+  display: contents;
+}
+
+.catalog-rates-compact__pill-row {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.catalog-rates-compact__editor {
+  grid-column: 1 / -1;
+  grid-row: 2;
 }
 </style>

@@ -147,7 +147,7 @@ export function useStaffSetCatalogOrderedQtyMutation() {
     }) => shopOrderRepository.staffSetCatalogOrderedQty(orderId, items),
     onSuccess: (data, variables) => {
       patchStaffOrderDetailCache(queryClient, variables.orderId, data);
-      showSuccessNotification('Order marked ready for shipment');
+      showSuccessNotification('Order marked dispatch');
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to mark order ready for shipment');
@@ -167,6 +167,22 @@ export function useStaffSetCatalogDeliveredQtyMutation() {
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to mark order delivered');
+    },
+  });
+}
+
+export function useStaffCloseCatalogProcurementMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (orderId: number) =>
+      shopOrderRepository.staffCloseCatalogProcurement(orderId),
+    onSuccess: (data, orderId) => {
+      patchStaffOrderDetailCache(queryClient, orderId, data);
+      showSuccessNotification('Order closed');
+    },
+    onError: (err: any) => {
+      handleApiFailure(err, 'Failed to close order');
     },
   });
 }

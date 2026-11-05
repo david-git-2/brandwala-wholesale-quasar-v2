@@ -16,8 +16,9 @@
 | PS17 | design | Partially delivered header / customer state | `procuring` \| `packed` \| `delivered` only | target: [Ch 8–9 § G3](../../preorder-fulfillment-flow.md) |
 | PS18 | design | Rename or split allocated vs customer-delivered qty | `preorder_demand.delivered_quantity` = pick sum | target: [App B § G4](../../preorder-fulfillment-flow.md) |
 | PS19 | design | Delivered queue on Delivery paper UI | RPC `delivered`; fulfill tabs procuring+packed only | target: [Ch 8 § G5](../../preorder-fulfillment-flow.md) |
+| PS29 | doc_wrong | Delivery paper **v2** outcome close is **paper-scoped** (`apply_delivery_paper_outcome`; column qty + grade on reject) | Shipped on detail page; fulfill desk still **document** `close_preorder_demand_document` | Align [preorder-fulfillment-flow](../../preorder-fulfillment-flow.md) / PS19 if it reads doc-only for DP |
 | PS20 | design | Promise date / ATP on backorder | Demand bucket + PBC backlog; no dates | target: [Ch 2 § G6](../../preorder-fulfillment-flow.md) |
-| PS21 | design | Short-pick / WMS exception on Delivery paper | Pick UI only | target: [Ch 5.2 § G7](../../preorder-fulfillment-flow.md) |
+| PS21 | partial | Short-pick / WMS exception on Delivery paper | RPC + table shipped ([PS32](00-gaps.md)); pick UI only | FE short-pick on delivery paper detail |
 | PS22 | design | Partial line cancel after partial close | No flow in catalog/PBC close path | target: [Ch 8.2 § G8](../../preorder-fulfillment-flow.md) |
 | PS23 | design | Partial customer pay (no installment schedule) | Bills support `partially_paid`; no plan entity | target: [Ch 9 § G9](../../preorder-fulfillment-flow.md) |
 | PS24 | design | Trace picked stock to inbound shipment | No FK on delivery line | target: [Ch 3.4 / App B § G10](../../preorder-fulfillment-flow.md) |
@@ -25,3 +26,9 @@
 | PS26 | design | Same-trip door return + invoice for accepted | Return → sellable in as-built | target: [Ch 7 § G12](../../preorder-fulfillment-flow.md) |
 | PS27 | design | Customer notification per delivery trip | Order-level notify only | target: [Ch 6–7 § G13](../../preorder-fulfillment-flow.md) |
 | PS28 | design | Investor profit visible in fulfillment story | `shipment_investments` on inbound only | target: [Ch 3.5 § G14](../../preorder-fulfillment-flow.md) · [investor_capital spec](../investor_capital/spec.md) |
+| PS30 | partial | Cycle count UI + blind / location-scoped workflows | RPCs `create_stock_physical_count` … `approve_stock_physical_count` | Warehouse count pages; optional `receive_rollback` RPC |
+| PS31 | partial | Dispatch stock-out + COGS snapshot on trip line | **`dispatch_delivery_paper`** + line `unit_cost_landed_snapshot`; idempotent bill commit | **Done (2026-11):** RPCs shipped; FE dispatch button pending |
+| PS32 | partial | Short-pick exception on delivery paper | `record_delivery_paper_short_pick` + `delivery_paper_pick_exceptions` | FE short-pick dialog ([PS21](00-gaps.md) backend done) |
+| PS33 | ~~partial~~ | RTV uses `vendor_return` movement type | **Done:** `post_stock_movement` + `return_shipment_to_vendor` | — |
+| PS34 | doc_wrong | Inbound QC as separate WMS module | QC = shipment extras + `post_shipment_outcome_stock` | [stock-spine Tier 2](../../kernel/stock-spine.md) |
+| PS35 | design | `customer_deliveries` entity vs delivery paper | Paper is as-built trip; no `customer_deliveries` table | target: [PS15](00-gaps.md) · rename docs only |

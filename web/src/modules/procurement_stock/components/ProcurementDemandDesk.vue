@@ -673,7 +673,7 @@ const fulfillProcurementStatus = ref<ProcurementDemandStatus>('procuring');
 
 const fulfillStatusTabOptions = [
   { label: 'Procuring', value: 'procuring' as ProcurementDemandStatus },
-  { label: 'Packed', value: 'packed' as ProcurementDemandStatus },
+  { label: 'Dispatch', value: 'dispatch' as ProcurementDemandStatus },
 ];
 
 const procurementStatus = computed<ProcurementDemandStatus>(() =>
@@ -682,7 +682,7 @@ const procurementStatus = computed<ProcurementDemandStatus>(() =>
 
 const deskPageTitle = computed(() => {
   if (isBuyMode.value) return 'Demand paper';
-  if (fulfillProcurementStatus.value === 'packed') return 'Delivery paper — packed';
+  if (fulfillProcurementStatus.value === 'dispatch') return 'Delivery paper — dispatch';
   return 'Delivery paper';
 });
 
@@ -690,7 +690,7 @@ const deskPageSubtitle = computed(() => {
   if (isBuyMode.value) {
     return 'Open each customer document below. Enter placed qty (what you ordered) and choose a vendor on every line.';
   }
-  if (fulfillProcurementStatus.value === 'packed') {
+  if (fulfillProcurementStatus.value === 'dispatch') {
     return 'Review stock picks and close lines (take or condition) when ready.';
   }
   return 'Assign warehouse stock to each line. Expand a document to pick lots.';
@@ -703,7 +703,7 @@ const canPickStockForGroup = (group: ProcurementDemandGroup) =>
   isFulfillMode.value && group.document_status === 'procuring';
 
 const onlyPackedTabLinesWithStock = computed(
-  () => isFulfillMode.value && fulfillProcurementStatus.value === 'packed',
+  () => isFulfillMode.value && fulfillProcurementStatus.value === 'dispatch',
 );
 
 const hasDemandProfileFilter = computed(() => demandProfileFilterId.value != null);
@@ -732,7 +732,7 @@ const useFulfillLineCards = computed(
 );
 
 const isPackedCloseMode = (group: ProcurementDemandGroup) =>
-  onlyPackedTabLinesWithStock.value && group.document_status === 'packed';
+  onlyPackedTabLinesWithStock.value && group.document_status === 'dispatch';
 
 const closeActionOptions = [
   { label: 'Take', value: 'take' as const },
@@ -986,7 +986,7 @@ watch(
 );
 
 const allocatedColumnLabel = computed(() => {
-  if (isFulfillMode.value && fulfillProcurementStatus.value === 'packed') {
+  if (isFulfillMode.value && fulfillProcurementStatus.value === 'dispatch') {
     return 'Going out / close';
   }
   return 'Allocated';
@@ -1055,7 +1055,7 @@ const showDemandProfileBar = computed(
     (isBuyMode.value || isFulfillMode.value) &&
     !isFixedGroupPage.value &&
     demandProfileFacets.value.length > 0 &&
-    !(isFulfillMode.value && fulfillProcurementStatus.value === 'packed'),
+    !(isFulfillMode.value && fulfillProcurementStatus.value === 'dispatch'),
 );
 
 watch(demandProfileFacets, (facets) => {
@@ -1078,7 +1078,7 @@ const stubFixedGroup = (): ProcurementDemandGroup | null => {
     document_type: fixed.documentType,
     document_id: fixed.documentId,
     document_name: name || null,
-    document_status: 'packed',
+    document_status: 'dispatch',
     customer_group_name: null,
     profile_id: null,
     profile_name: null,
@@ -1712,19 +1712,19 @@ const onChangeGroupStatus = async (group: ProcurementDemandGroup) => {
   if (!isProcuringGroup(group)) return;
 
   const ok = await requestConfirmation(
-    `Mark ${groupTitle(group)} as packed?`,
-    'Mark packed',
-    'Mark packed',
+    `Mark ${groupTitle(group)} as dispatch?`,
+    'Mark dispatch',
+    'Mark dispatch',
   );
   if (!ok) return;
 
   try {
     await markGroupPacked(group);
-    showSuccessNotification('Marked packed.');
-    fulfillProcurementStatus.value = 'packed';
+    showSuccessNotification('Marked dispatch.');
+    fulfillProcurementStatus.value = 'dispatch';
     await refreshDemandDesk();
   } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to mark packed'));
+    showErrorNotification(parseSupabaseError(err, 'Failed to mark dispatch'));
   }
 };
 
@@ -1734,10 +1734,10 @@ const onProfileBulkChangeStatus = async () => {
 
   const message =
     groups.length === 1
-      ? `Mark ${groupTitle(groups[0])} as packed?`
-      : `Mark ${groups.length} order(s)/file(s) for this profile as packed?`;
+      ? `Mark ${groupTitle(groups[0])} as dispatch?`
+      : `Mark ${groups.length} order(s)/file(s) for this profile as dispatch?`;
 
-  const ok = await requestConfirmation(message, 'Mark packed', 'Mark packed');
+  const ok = await requestConfirmation(message, 'Mark dispatch', 'Mark dispatch');
   if (!ok) return;
 
   profileBulkStatusRunning.value = true;
@@ -1746,12 +1746,12 @@ const onProfileBulkChangeStatus = async () => {
       await markGroupPacked(group);
     }
     showSuccessNotification(
-      groups.length === 1 ? 'Marked packed.' : `Marked ${groups.length} document(s) packed.`,
+      groups.length === 1 ? 'Marked dispatch.' : `Marked ${groups.length} document(s) dispatch.`,
     );
-    fulfillProcurementStatus.value = 'packed';
+    fulfillProcurementStatus.value = 'dispatch';
     await refreshDemandDesk();
   } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to mark packed'));
+    showErrorNotification(parseSupabaseError(err, 'Failed to mark dispatch'));
   } finally {
     profileBulkStatusRunning.value = false;
   }
@@ -1766,7 +1766,7 @@ const openFulfillGroupPage = (group: ProcurementDemandGroup) => {
       documentId: String(group.document_id),
     },
     query: {
-      status: 'packed',
+      status: 'dispatch',
       documentName: group.document_name?.trim() || undefined,
     },
   });
@@ -1776,7 +1776,7 @@ const goBackFromFixedGroup = () => {
   void router.push({
     name: 'app-procurement-fulfill',
     params: { tenantSlug: authStore.tenantSlug || '' },
-    query: { status: 'packed' },
+    query: { status: 'dispatch' },
   });
 };
 
@@ -1924,11 +1924,11 @@ const onSavePackedPicks = async (
 const syncFulfillTabFromRoute = () => {
   if (!isFulfillMode.value) return;
   if (isFixedGroupPage.value) {
-    fulfillProcurementStatus.value = 'packed';
+    fulfillProcurementStatus.value = 'dispatch';
     return;
   }
   const status = route.query.status;
-  if (status === 'packed' || status === 'procuring') {
+  if (status === 'dispatch' || status === 'procuring') {
     fulfillProcurementStatus.value = status;
   }
 };

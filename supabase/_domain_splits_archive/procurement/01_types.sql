@@ -150,7 +150,8 @@ CREATE TYPE "public"."stock_movement_type" AS ENUM (
     'return_inbound',
     'receive_rollback',
     'vendor_return',
-    'grade_change'
+    'grade_change',
+    'issue_outbound'
 );
 
 

@@ -74,6 +74,22 @@ export const procurementStockQueryKeys = {
     offset?: number;
   }) => ['procurementStock', 'childStockAtp', params] as const,
 
+  demandBuyDocuments: (params: {
+    tenantId: number;
+    search?: string | null;
+    childTenantId?: number | null;
+    limit?: number;
+    offset?: number;
+  }) => ['procurementStock', 'demandBuyDocuments', params] as const,
+
+  demandBuyDocument: (params: {
+    tenantId: number;
+    documentType: string;
+    documentId: number;
+    search?: string | null;
+    limit?: number;
+  }) => ['procurementStock', 'demandBuyDocument', params] as const,
+
   demandGroups: (params: {
     tenantId: number;
     procurementStatus: string;
@@ -108,6 +124,15 @@ export const procurementStockQueryKeys = {
     search?: string | null;
     limit?: number;
   }) => ['procurementStock', 'fulfillGroupItems', params] as const,
+
+  deliveryPapersForDocument: (params: {
+    tenantId: number;
+    documentType: string;
+    documentId: number;
+  }) => ['procurementStock', 'deliveryPapersForDocument', params] as const,
+
+  deliveryPaperDetail: (params: { tenantId: number; deliveryPaperId: number }) =>
+    ['procurementStock', 'deliveryPaperDetail', params] as const,
 
   dashboard: (tenantId: number) => ['procurementStock', 'dashboard', tenantId] as const,
 

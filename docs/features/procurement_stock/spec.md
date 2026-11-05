@@ -15,6 +15,7 @@
 
 | Need | Path |
 | :--- | :--- |
+| **Stock spine** (Tier 1/2 warehouse actions, RPC index, dispatch vs issue) | [docs/kernel/stock-spine.md](../../kernel/stock-spine.md) |
 | Inbound ↔ money kernel (actions, RPCs, gaps) | [money-kernel-wiring.md](money-kernel-wiring.md) |
 | ERD / columns | `/dev/document` → **Schema** → Procurement |
 | Tables, types, RLS, RPCs | `supabase/schemas/procurement/` — grep `03_rpcs.sql` for bodies |
@@ -106,7 +107,12 @@ Code today stamps only material+freight ([PS13](00-gaps.md)).
 - Bins leaf; tree warehouse → zone → shelf → level → bin (+ returns root). `list_global_stocks_groups` for grouped list.
 
 ### US-4 Demand & Delivery paper
-- Routes: `procurement/demand`, `procurement/fulfill` (`preorder_demand`). Sources: shop order + PBC lines. Entering **procuring** writes one demand row per line with the orderer's `profile_id` (not staff-edited). **Packed** close: take / condition → bills via `close_preorder_demand_document` (`source_type=delivery_close`, `settlement_kind=take|condition`). Return → warehouse sellable (no bill) ([PS6](00-gaps.md) done). Not dropship desk ([shop_order](../shop_order/spec.md) US-3).
+- Routes: `procurement/demand` (buy), `procurement/fulfill` (delivery paper / picks). Sources: vendor-catalog shop order + PBC lines in **procuring**.
+- **Delivery paper (2026-11):** While a catalog order or PBC file is **procuring** (or lines still have quantity to deliver), staff see **Create** + chips (`DP-{id}`) on the order/file page. Chip opens **delivery paper detail** (shop/PBC routes): all document lines, stock picks, qty + take/condition/return splits, top **Save** → `save_delivery_paper_detail` (draft header only; **`delivery_paper_line.splits`** jsonb `[{ quantity, status, invoice_id?, returned_at? }]` per stock lot). Picks live on paper lines only (not mirrored into `preorder_demand.stock_picks` on save).
+- **Status edit rules:** **draft** — pick stock only; **packed** / **dispatched** — edit Accepted / Condition / Rejected column qty (Save required); **delivered** / **cancelled** — line/outcome columns read-only; **header status** may still change on **delivered** (not on **cancelled**). From **packed** onward, unpicked lines are hidden.
+- **Outcome buttons (packed / dispatched):** **Accept**, **Condition**, **Reject** use the matching **column qty** on each visible row (staff must **Save** unsaved column edits first). FE FIFO-allocates column qty across **packed** lots on each line, then RPC **`apply_delivery_paper_outcome`** (paper-scoped; not `close_preorder_demand_document` on the whole document). **Accept** → draft bill (`take`); **Condition** → draft condition bill; **Reject** → warehouse return via stock movement with **warehouse grade per returned lot** (`grade_tag_id` on each allocation). Accept/condition stamp `invoice_id` on the outcome split in jsonb. **Qty cap:** only **pending** planned outcome qty (column minus already-applied splits with `invoice_id` / `returned_at`) must fit **remaining packed**; applied qty is locked. **Save** (packed/dispatched) writes planned qty on the null-stock planning row; **apply** reconciles that row after each outcome action.
+- **Demand buy page** (`ProcurementDemandBuyDesk`): list RPC `list_procurement_demand_buy_documents` (procuring only; `has_under_ordered_lines` / `under_ordered_line_count` computed in SQL). Expand one document → detail RPC `get_procurement_demand_buy_document` (paginated items). **Need** = confirmed qty on shop/PBC line; **vendor orders** = `preorder_demand.vendor_placements` jsonb `[{ vendor_code, quantity }]`. Save via `upsert_preorder_demand(p_vendor_placements)` — **manual Save only**; route / document switch confirms discard if dirty.
+- Entering **procuring** still seeds `preorder_demand` per line (`ensure_preorder_demand_for_procuring_document`). **Fulfill desk** still closes at **document** scope via **`close_preorder_demand_document`** (Packed tab). **Delivery paper v2** closes outcomes per paper via **`apply_delivery_paper_outcome`**. Not dropship desk ([shop_order](../shop_order/spec.md) US-3).
 
 ### US-5 Archive / US-6 Batch code
 - List archive; optional batch analyze per shipment.

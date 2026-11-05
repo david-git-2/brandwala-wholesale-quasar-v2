@@ -631,6 +631,19 @@ const getShopOrderById = async (
   return mapStaffShopOrderDetailToFlat(parseStaffShopOrderDetailResponse(data));
 };
 
+const listShopOrderDeliveryPaperQtyByItem = async (
+  tenantId: number,
+  orderId: number,
+) => {
+  const { data, error } = await supabase.rpc('list_shop_order_delivery_paper_qty_by_item', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+  const payload = (data ?? {}) as { by_order_item_id?: Record<string, unknown[]> };
+  return payload.by_order_item_id ?? {};
+};
+
 const getDropshipOrderDetailV2 = async (tenantId: number, orderId: number) => {
   const { data, error } = await supabase.rpc('get_dropship_order_detail_v2', {
     p_tenant_id: tenantId,
@@ -1451,6 +1464,16 @@ const staffSetCatalogDeliveredQty = async (
   return parseStaffShopOrderDetailResponse(data);
 };
 
+const staffCloseCatalogProcurement = async (
+  orderId: number,
+): Promise<StaffShopOrderDetailResponse> => {
+  const { data, error } = await supabase.rpc('staff_close_catalog_procurement', {
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+  return parseStaffShopOrderDetailResponse(data);
+};
+
 const listCustomerOrderBacklogItems = async (
   tenantId: number,
   profileId: number,
@@ -1615,12 +1638,14 @@ export const shopOrderRepository = {
   staffStartCatalogProcurement,
   staffSetCatalogOrderedQty,
   staffSetCatalogDeliveredQty,
+  staffCloseCatalogProcurement,
   listCustomerOrderBacklogItems,
   listCustomerShopOrders,
   listShopOrdersForStaff,
   listShopOrdersStaffPage,
   listDropshipShopOrdersForStaff,
   getShopOrderById,
+  listShopOrderDeliveryPaperQtyByItem,
   getDropshipOrderDetailV2,
   getDropshipManagementOrder,
   saveDropshipSettlementDraft,

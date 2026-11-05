@@ -562,7 +562,7 @@ const customerGroupOptions = computed(() => {
 
 const statusColor = computed(() => {
   const st = normalizedStatus.value;
-  if (st === 'confirmed' || st === 'packed' || st === 'delivered') {
+  if (st === 'confirmed' || st === 'dispatch' || st === 'delivered' || st === 'closed') {
     return { color: 'green-1', textColor: 'green-9' };
   }
   if (st === 'offered' || st === 'procuring') {

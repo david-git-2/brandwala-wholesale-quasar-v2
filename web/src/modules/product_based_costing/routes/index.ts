@@ -47,6 +47,17 @@ const productBasedCostingRoutes: RouteRecordRaw[] = [
         meta: { hasPageToolbar: true },
       },
       {
+        path: ':id/delivery-paper/:paperId',
+        name: 'product-based-costing-delivery-paper-page',
+        component: () =>
+          import('src/modules/procurement_stock/pages/DeliveryPaperDetailPage.vue'),
+        props: (route) => ({
+          documentType: 'pbc_costing_file' as const,
+          documentId: Number(route.params.id),
+        }),
+        meta: { hasPageToolbar: true },
+      },
+      {
         path: ':id',
         name: 'product-based-costing-file-details-page',
         component: () => import('../pages/ProductBasedCostingFileDetailsV2Page.vue'),

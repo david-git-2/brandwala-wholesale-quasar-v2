@@ -24,15 +24,16 @@
             :is-loading="isLoading"
             :visible-columns="catalogVisibleColumns"
             :can-download-excel="canDownloadCatalogExcel"
+            :updating="isCatalogWorkflowUpdating"
+            :target-status="catalogTargetUpdatingStatus"
+            :is-refreshing="isReloadingOrder"
+            :saving-rates="isSavingRates"
             @update:visible-columns="onCatalogVisibleColumnsUpdate"
             @download-excel="handleCatalogDownloadExcel"
+            @refresh="reloadOrderDetails"
             @open-settings="showCatalogSettingsDialog = true"
             @open-bulk-paste="openCatalogBulkPaste"
-          />
-          <CatalogOrderRatesBar
-            variant="compact"
-            :order="currentOrder"
-            :saving="isSavingRates"
+            @update-status="onCatalogWorkflowStatusClick"
             @save-rates="handleSaveRates"
             @change-rates="handleChangeRates"
           />
@@ -154,6 +155,7 @@
     <CatalogOrderSettingsDialog
       v-if="currentOrder"
       v-model="showCatalogSettingsDialog"
+      :order="currentOrder"
       :item-count="catalogSummarySnapshot.itemCount"
       :buy-currency-symbol="catalogSummarySnapshot.buyCurrencySymbol"
       :sell-currency-symbol="catalogSummarySnapshot.sellCurrencySymbol"
@@ -163,9 +165,22 @@
       :show-cancel="currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled'"
       :is-deleting="isDeletingOrder"
       :can-download-excel="canDownloadCatalogExcel"
+      :status-updating="isCatalogWorkflowUpdating"
+      :target-status="catalogTargetUpdatingStatus"
+      :is-primary-loading="isCatalogPrimaryLoading"
+      :primary-disabled="catalogPrimaryDisabled"
+      :primary-disabled-reason="catalogPrimaryDisabledReason"
+      :delivery-paper-tenant-id="deliveryPaperParentTenantId"
+      :bills-parent-tenant-id="deliveryPaperParentTenantId"
+      :show-delivery-papers="canShowDeliveryPapers"
+      :allow-create-delivery-paper="canCreateDeliveryPaper"
       @download-excel="handleCatalogDownloadExcel"
       @override-status="onCatalogSettingsOverrideStatus"
       @cancel-order="onCatalogSettingsCancelOrder"
+      @update-status="onCatalogWorkflowStatusClick"
+      @primary-action="handleCatalogPrimaryAction"
+      @open-delivery-paper="onOpenDeliveryPaperFromDrawer"
+      @open-bill="onOpenBillFromDrawer"
     />
 
     <CatalogOrderStatusOverrideDialog
@@ -185,6 +200,8 @@ import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useShopOrderDetailQuery } from '../composables/useShopOrderDetailQuery';
+import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
+import { useQueryClient } from '@tanstack/vue-query';
 import {
   useUpdateOrderStatusMutation,
   useSubmitStaffPricingMutation,
@@ -202,6 +219,8 @@ import {
   useStaffFinalizeCatalogPricesMutation,
   useStaffStartCatalogProcurementMutation,
   useStaffSetCatalogDeliveredQtyMutation,
+  useStaffCloseCatalogProcurementMutation,
+  useStaffSetCatalogOrderedQtyMutation,
 } from '../composables/useCatalogOrderMutations';
 import { useCatalogOrderExcelDownload } from '../composables/useCatalogOrderExcelDownload';
 import {
@@ -213,10 +232,11 @@ import {
 import {
   isCatalogFirstOfferLocked,
   getStaffCatalogPrimaryAction,
+  getStaffCatalogPrimaryActionTargetStatus,
+  getCatalogWorkflowStatusConfirmation,
   normalizeCatalogOrderStatus,
   type StaffCatalogPrimaryAction,
 } from '../utils/catalogOrderStatus';
-import { requestConfirmation } from 'src/utils/appFeedback';
 import type { CatalogBulkPasteUpdate } from '../composables/useCatalogOrderBulkPaste';
 
 import StaffOrderHeader from '../components/StaffOrderHeader.vue';
@@ -228,12 +248,17 @@ import StaffOrderDetailSkeleton from '../components/StaffOrderDetailSkeleton.vue
 
 import CatalogOrderWorkflowBar from '../components/CatalogOrderWorkflowBar.vue';
 import CatalogOrderBulkPastePanel from '../components/CatalogOrderBulkPastePanel.vue';
-import CatalogOrderRatesBar from '../components/CatalogOrderRatesBar.vue';
 import CatalogOrderItemsTable from '../components/CatalogOrderItemsTable.vue';
 import CatalogOrderStaffActions from '../components/CatalogOrderStaffActions.vue';
 import CatalogOrderStatusOverrideDialog from '../components/CatalogOrderStatusOverrideDialog.vue';
 import CatalogOrderSettingsDialog from '../components/CatalogOrderSettingsDialog.vue';
 import CatalogBacklogDrawer from '../components/CatalogBacklogDrawer.vue';
+import {
+  canCreateDocumentDeliveryPaper,
+  canShowDocumentDeliveryPapers,
+} from 'src/modules/procurement_stock/utils/documentDeliveryPapers';
+import { billDetailRoute } from 'src/modules/bills_pays/utils/billRoutes';
+import type { ShopOrderBillListItem } from '../types/shopOrderBillList';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 
 const route = useRoute();
@@ -250,12 +275,73 @@ const skeletonVariant = computed<'catalog' | 'dropship'>(() => {
   return state?.shopTypeSnapshot === 'vendor_catalog' ? 'catalog' : 'dropship';
 });
 
-const { data: orderDetailsData, isLoading, isError, error } = useShopOrderDetailQuery(orderId);
+const { data: orderDetailsData, isLoading, isError, error, refetch, isFetching } =
+  useShopOrderDetailQuery(orderId);
+const queryClient = useQueryClient();
+
+const isReloadingOrder = computed(
+  () => isFetching.value && !!orderDetailsData.value && !isLoading.value,
+);
+
 const currentOrder = computed(() => orderDetailsData.value?.order || null);
 
 const isCatalogShop = computed(
   () => currentOrder.value?.shop_type_snapshot === 'vendor_catalog',
 );
+
+const deliveryPaperParentTenantId = computed(
+  () => authStore.selectedTenant?.parent_id ?? authStore.tenantId ?? null,
+);
+
+const reloadOrderDetails = async () => {
+  await refetch();
+  await queryClient.invalidateQueries({
+    queryKey: shopOrderQueryKeys.deliveryPaperQtyByOrderItemRoot(),
+  });
+  const parentId = deliveryPaperParentTenantId.value;
+  if (parentId != null && orderId.value > 0) {
+    await queryClient.invalidateQueries({
+      queryKey: shopOrderQueryKeys.billsForShopOrder(parentId, orderId.value),
+    });
+  }
+};
+
+const canShowDeliveryPapers = computed(() => {
+  if (!isCatalogShop.value || !currentOrder.value) return false;
+  const st = normalizeCatalogOrderStatus(currentOrder.value.status);
+  const demandLines = orderItems.value.map((item) => ({
+    quantity: item.confirmed_quantity ?? item.quantity ?? 0,
+    delivered_quantity: item.delivered_quantity ?? 0,
+    remaining_to_deliver: item.remaining_to_deliver,
+  }));
+  return canShowDocumentDeliveryPapers(st, demandLines);
+});
+
+const canCreateDeliveryPaper = computed(() => {
+  if (!currentOrder.value) return false;
+  return canCreateDocumentDeliveryPaper(normalizeCatalogOrderStatus(currentOrder.value.status));
+});
+
+const openDeliveryPaper = (paperId: number) => {
+  void router.push({
+    name: 'app-shop-order-delivery-paper-page',
+    params: {
+      tenantSlug: authStore.tenantSlug || '',
+      id: String(orderId.value),
+      paperId: String(paperId),
+    },
+  });
+};
+
+const onOpenDeliveryPaperFromDrawer = (paperId: number) => {
+  showCatalogSettingsDialog.value = false;
+  openDeliveryPaper(paperId);
+};
+
+const onOpenBillFromDrawer = (bill: ShopOrderBillListItem) => {
+  showCatalogSettingsDialog.value = false;
+  void router.push(billDetailRoute(bill.id, authStore.tenantSlug || undefined));
+};
 
 const { mutate: updateOrderStatus, isPending: isUpdatingStatus } = useUpdateOrderStatusMutation();
 const { mutate: submitStaffPricing, isPending: isSubmittingPricing } = useSubmitStaffPricingMutation();
@@ -276,6 +362,19 @@ const { mutate: staffStartProcurement, isPending: isStaffStartingProcurement } =
   useStaffStartCatalogProcurementMutation();
 const { mutate: staffSetDeliveredQty, isPending: isStaffMarkingDelivered } =
   useStaffSetCatalogDeliveredQtyMutation();
+const { mutate: staffCloseCatalogProcurement, isPending: isStaffClosingCatalog } =
+  useStaffCloseCatalogProcurementMutation();
+const { mutate: staffMarkDispatch, isPending: isStaffMarkingDispatch } =
+  useStaffSetCatalogOrderedQtyMutation();
+
+const catalogTargetUpdatingStatus = ref<string | null>(null);
+
+const isCatalogWorkflowUpdating = computed(
+  () =>
+    isUpdatingStatus.value ||
+    isCatalogPrimaryLoading.value ||
+    isStaffMarkingDispatch.value,
+);
 
 const handleUpdateCatalogOrderItem = ({
   itemId,
@@ -335,8 +434,10 @@ const orderItems = ref<any[]>([]);
 
 const canDownloadCatalogExcel = computed(() => orderItems.value.length > 0);
 
-function handleCatalogDownloadExcel() {
-  void downloadCatalogOrderExcel($q, currentOrder.value, orderItems.value);
+function handleCatalogDownloadExcel(payload: { includeImages: boolean }) {
+  void downloadCatalogOrderExcel($q, currentOrder.value, orderItems.value, {
+    includeImages: payload.includeImages,
+  });
 }
 
 const catalogAllColumnNames = [
@@ -443,7 +544,8 @@ const isCatalogPrimaryLoading = computed(
     isStaffPricingCatalog.value ||
     isStaffFinalizingCatalog.value ||
     isStaffStartingProcurement.value ||
-    isStaffMarkingDelivered.value,
+    isStaffMarkingDelivered.value ||
+    isStaffClosingCatalog.value,
 );
 
 const catalogPrimaryDisabled = computed(() => {
@@ -545,46 +647,181 @@ const handleStatusOverride = ({
   );
 };
 
+const confirmCatalogWorkflowStatusChange = (
+  currentStatus: string,
+  nextStatus: string,
+): Promise<boolean> =>
+  new Promise((resolve) => {
+    const conf = getCatalogWorkflowStatusConfirmation(currentStatus, nextStatus, {
+      orderNo: currentOrder.value?.order_no,
+      isNegotiable: !!currentOrder.value?.is_negotiable_snapshot,
+      firstOfferConfirmMessage: sendFirstOfferConfirmMessage.value,
+    });
+    $q.dialog({
+      title: conf.title,
+      message: conf.message,
+      cancel: { label: 'Cancel', flat: true, color: 'grey-7' },
+      ok: {
+        label: conf.okLabel,
+        color: conf.okColor ?? 'primary',
+        unelevated: true,
+      },
+      persistent: true,
+    })
+      .onOk(() => resolve(true))
+      .onCancel(() => resolve(false))
+      .onDismiss(() => resolve(false));
+  });
+
+const executeCatalogWorkflowStatusChange = async (normalizedNext: string, rawNext: string) => {
+  if (!orderId.value || !currentOrder.value) return;
+
+  catalogTargetUpdatingStatus.value = normalizedNext;
+
+  const current = normalizeCatalogOrderStatus(currentOrder.value.status);
+
+  if (normalizedNext === 'cancelled') {
+    updateOrderStatus(
+      { orderId: orderId.value, status: 'cancelled' },
+      { onSettled: () => { catalogTargetUpdatingStatus.value = null; } },
+    );
+    return;
+  }
+
+  if (normalizedNext === 'dispatch' && current === 'procuring') {
+    staffMarkDispatch(
+      { orderId: orderId.value, items: [] },
+      { onSettled: () => { catalogTargetUpdatingStatus.value = null; } },
+    );
+    return;
+  }
+
+  const primaryAction = getStaffCatalogPrimaryAction(currentOrder.value.status);
+  const primaryTarget = primaryAction
+    ? normalizeCatalogOrderStatus(getStaffCatalogPrimaryActionTargetStatus(primaryAction))
+    : null;
+
+  if (primaryAction && primaryTarget === normalizedNext) {
+    await runCatalogPrimaryActionMutation(primaryAction, () => {
+      catalogTargetUpdatingStatus.value = null;
+    });
+    return;
+  }
+
+  if (normalizedNext === 'delivered') {
+    staffSetDeliveredQty(
+      { orderId: orderId.value },
+      { onSettled: () => { catalogTargetUpdatingStatus.value = null; } },
+    );
+    return;
+  }
+
+  if (normalizedNext === 'closed') {
+    staffCloseCatalogProcurement(orderId.value, {
+      onSettled: () => { catalogTargetUpdatingStatus.value = null; },
+    });
+    return;
+  }
+
+  if (normalizedNext === 'procuring') {
+    staffStartProcurement(orderId.value, {
+      onSettled: () => { catalogTargetUpdatingStatus.value = null; },
+    });
+    return;
+  }
+
+  if (normalizedNext === 'priced') {
+    staffPriceCatalog(
+      {
+        orderId: orderId.value,
+        items: buildStaffOfferPayload(),
+        profitBasis: currentOrder.value?.profit_basis,
+      },
+      { onSettled: () => { catalogTargetUpdatingStatus.value = null; } },
+    );
+    return;
+  }
+
+  if (normalizedNext === 'final_offered') {
+    staffFinalizeCatalog(
+      {
+        orderId: orderId.value,
+        items: buildFinalOfferPayload(),
+      },
+      { onSettled: () => { catalogTargetUpdatingStatus.value = null; } },
+    );
+    return;
+  }
+
+  updateOrderStatus(
+    { orderId: orderId.value, status: rawNext },
+    { onSettled: () => { catalogTargetUpdatingStatus.value = null; } },
+  );
+};
+
+const runCatalogPrimaryActionMutation = (
+  action: StaffCatalogPrimaryAction,
+  onSettled?: () => void,
+) => {
+  if (!orderId.value || !currentOrder.value) return;
+
+  const settled = { onSettled: () => onSettled?.() };
+
+  switch (action) {
+    case 'send_first_offer':
+      staffPriceCatalog(
+        {
+          orderId: orderId.value,
+          items: buildStaffOfferPayload(),
+          profitBasis: currentOrder.value.profit_basis,
+        },
+        settled,
+      );
+      break;
+    case 'send_final_offer':
+      staffFinalizeCatalog(
+        {
+          orderId: orderId.value,
+          items: buildFinalOfferPayload(),
+        },
+        settled,
+      );
+      break;
+    case 'start_procurement':
+      staffStartProcurement(orderId.value, settled);
+      break;
+    case 'mark_delivered':
+      staffSetDeliveredQty({ orderId: orderId.value }, settled);
+      break;
+    case 'mark_closed':
+      staffCloseCatalogProcurement(orderId.value, settled);
+      break;
+  }
+};
+
 const handleCatalogPrimaryAction = async (action: StaffCatalogPrimaryAction) => {
-  if (!orderId.value) return;
+  if (!orderId.value || !currentOrder.value) return;
+  const target = normalizeCatalogOrderStatus(getStaffCatalogPrimaryActionTargetStatus(action));
+  const ok = await confirmCatalogWorkflowStatusChange(currentOrder.value.status, target);
+  if (!ok) return;
+  await executeCatalogWorkflowStatusChange(target, target);
+};
 
-  if (action === 'send_first_offer') {
-    const ok = await requestConfirmation(
-      sendFirstOfferConfirmMessage.value,
-      'Send first offer',
-      'Send offer',
-    );
-    if (!ok) return;
-    staffPriceCatalog({
-      orderId: orderId.value,
-      items: buildStaffOfferPayload(),
-      profitBasis: currentOrder.value?.profit_basis,
-    });
+const onCatalogWorkflowStatusClick = async (nextStatus: string) => {
+  if (!orderId.value || !currentOrder.value) return;
+  const normalized = normalizeCatalogOrderStatus(nextStatus);
+  const current = normalizeCatalogOrderStatus(currentOrder.value.status);
+  if (current === normalized || isCatalogWorkflowUpdating.value) return;
+
+  if (current === 'cancelled' && normalized !== 'cancelled') {
+    showStatusOverrideDialog.value = true;
     return;
   }
 
-  if (action === 'send_final_offer') {
-    const ok = await requestConfirmation(
-      'Send the final offer to the customer?',
-      'Send final offer',
-      'Send final offer',
-    );
-    if (!ok) return;
-    staffFinalizeCatalog({
-      orderId: orderId.value,
-      items: buildFinalOfferPayload(),
-    });
-    return;
-  }
+  const ok = await confirmCatalogWorkflowStatusChange(currentOrder.value.status, normalized);
+  if (!ok) return;
 
-  if (action === 'start_procurement') {
-    staffStartProcurement(orderId.value);
-    return;
-  }
-
-  if (action === 'mark_delivered') {
-    staffSetDeliveredQty({ orderId: orderId.value });
-  }
+  await executeCatalogWorkflowStatusChange(normalized, nextStatus);
 };
 
 const onCatalogVisibleColumnsUpdate = (columns: string[]) => {

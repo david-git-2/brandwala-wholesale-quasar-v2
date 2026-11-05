@@ -92,16 +92,15 @@ begin
     raise exception 'amount must be greater than zero';
   end if;
 
-  v_no := public.generate_sales_invoice_number(
+  v_no := public.next_document_number(
     v_parent.issued_by_tenant_id,
-    v_parent.invoice_type,
-    current_date
+    case
+      when v_kind = 'credit_note'::public.bill_document_kind then 'credit_note'
+      else 'debit_note'
+    end,
+    public.map_global_invoice_type_to_sub_type(v_parent.invoice_type),
+    (current_date::timestamp AT TIME ZONE public._document_number_tenant_timezone(v_parent.issued_by_tenant_id, 'UTC'))
   );
-  if v_kind = 'credit_note'::public.bill_document_kind then
-    v_no := regexp_replace(v_no, '^INV-', 'INV-CN-');
-  else
-    v_no := regexp_replace(v_no, '^INV-', 'INV-DN-');
-  end if;
 
   v_status := case
     when coalesce(p_issue, true) then 'issued'::public.global_invoice_status

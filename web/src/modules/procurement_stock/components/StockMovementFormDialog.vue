@@ -197,7 +197,7 @@ import {
   formatStockAvailability,
   type StockAvailability,
 } from '../constants/stockAvailability';
-import { tagRepository } from 'src/modules/tag/repositories/tagRepository';
+import { useTagStore } from 'src/modules/tag/stores/tagStore';
 import type { Tag } from 'src/modules/tag/types';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
@@ -228,6 +228,7 @@ const creating = ref(false);
 const stockRows = ref<GlobalStock[]>([]);
 const locations = ref<StockLocation[]>([]);
 const gradeOptions = ref<Tag[]>([]);
+const tagStore = useTagStore();
 
 const form = reactive({
   movement_type: 'location_transfer' as StockMovementType,
@@ -285,7 +286,7 @@ const loadData = async () => {
             true,
           ),
       stockLocationRepository.listStockLocations(props.tenantId),
-      tagRepository.listTagsForCategory({ moduleKey: 'stock_grade', code: 'warehouse' }),
+      tagStore.ensureTagsForCategory({ moduleKey: 'stock_grade', code: 'warehouse' }),
     ]);
     stockRows.value = stockRes.data;
     locations.value = locRes;

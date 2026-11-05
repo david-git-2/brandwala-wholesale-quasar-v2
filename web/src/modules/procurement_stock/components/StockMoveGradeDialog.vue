@@ -168,7 +168,7 @@ import {
   formatStockAvailability,
   type StockAvailability,
 } from '../constants/stockAvailability';
-import { tagRepository } from 'src/modules/tag/repositories/tagRepository';
+import { useTagStore } from 'src/modules/tag/stores/tagStore';
 import type { Tag } from 'src/modules/tag/types';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 
@@ -238,7 +238,7 @@ const canSubmit = computed(() => {
 
 const fetchSystemGrades = async () => {
   try {
-    gradeOptions.value = await tagRepository.listTagsForCategory({
+    gradeOptions.value = await useTagStore().ensureTagsForCategory({
       moduleKey: 'stock_grade',
       code: 'warehouse',
     });

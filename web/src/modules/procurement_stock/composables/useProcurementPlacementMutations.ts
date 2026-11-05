@@ -12,6 +12,8 @@ import {
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
 
 function invalidateDemandDeskQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandBuyDocuments'] });
+  void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandBuyDocument'] });
   void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroups'] });
   void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroupItems'] });
   void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'fulfillGroups'] });

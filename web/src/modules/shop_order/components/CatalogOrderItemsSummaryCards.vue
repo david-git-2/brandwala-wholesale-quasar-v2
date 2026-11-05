@@ -1,112 +1,109 @@
 <template>
   <div class="catalog-order-summary q-pa-md q-pt-sm">
-    <div class="text-subtitle1 text-weight-bold q-mb-sm text-grey-9 row items-center">
-      <q-icon name="ph ph-chart-line-up" class="q-mr-xs text-primary" size="20px" />
+    <div class="text-subtitle2 text-weight-bold q-mb-md text-grey-9 row items-center">
+      <q-icon name="ph ph-chart-line-up" class="q-mr-xs text-primary" size="18px" />
       Order totals
     </div>
 
-    <div class="row q-col-gutter-md">
-      <div class="col-12 col-md-4">
-        <q-card flat bordered class="q-pa-md fill-height metric-card bg-surface-subtle">
-          <div class="row items-center q-mb-md">
-            <div class="metric-icon-badge bg-amber-subtle text-amber-10 q-mr-sm">
-              <q-icon name="ph ph-stack" size="18px" />
-            </div>
-            <div class="text-subtitle2 text-weight-bold text-amber-10">Quantities</div>
-          </div>
-          <div class="q-gutter-y-sm">
-            <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Items</span>
-              <span class="text-body2 text-weight-bold text-grey-9">{{ itemCount }}</span>
-            </div>
-            <q-separator light />
-            <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Customer qty</span>
-              <span class="text-body2 text-weight-bold text-grey-9">{{ formatQty(totals.totalQuantity) }}</span>
-            </div>
-            <q-separator light />
-          </div>
-        </q-card>
+    <div class="summary-hero row q-col-gutter-sm q-mb-md">
+      <div class="col-6 col-sm-3">
+        <div class="summary-hero__tile">
+          <div class="summary-hero__lbl">Line items</div>
+          <div class="summary-hero__val">{{ itemCount }}</div>
+        </div>
       </div>
-
-      <div class="col-12 col-md-4">
-        <q-card flat bordered class="q-pa-md fill-height metric-card bg-surface-subtle">
-          <div class="row items-center q-mb-md">
-            <div class="metric-icon-badge bg-teal-subtle text-teal-9 q-mr-sm">
-              <q-icon name="ph ph-currency-circle-dollar" size="18px" />
-            </div>
-            <div class="text-subtitle2 text-weight-bold text-teal-9">Cost summary</div>
-          </div>
-          <div class="q-gutter-y-sm">
-            <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Total purchase ({{ buyCurrencySymbol }})</span>
-              <span class="text-body2 text-weight-bold text-green-9">{{ buyCurrencySymbol }}{{ formatMoney(totals.grandTotalPurchasePrice) }}</span>
-            </div>
-            <q-separator light />
-            <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Landed cost ({{ buyCurrencySymbol }})</span>
-              <span class="text-body2 text-weight-bold text-teal-9">{{ buyCurrencySymbol }}{{ formatMoney(totals.grandTotalLandedPurchase) }}</span>
-            </div>
-            <q-separator light />
-            <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Landed cost ({{ sellCurrencySymbol }})</span>
-              <span class="text-body2 text-weight-bold text-teal-9">{{ sellCurrencySymbol }}{{ formatMoney(totals.grandTotalLandedSell) }}</span>
-            </div>
-            <q-separator light />
-            <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Total weight</span>
-              <span class="text-body2 text-weight-medium text-grey-8">{{ formatWeight(totals.totalWeightGm) }}</span>
-            </div>
-            <q-separator light />
-            <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">FX · Cargo rate</span>
-              <span class="text-body2 text-weight-medium text-grey-8">{{ conversionRate }} · {{ cargoRate }}/kg</span>
-            </div>
-          </div>
-        </q-card>
+      <div class="col-6 col-sm-3">
+        <div class="summary-hero__tile">
+          <div class="summary-hero__lbl">Customer qty</div>
+          <div class="summary-hero__val">{{ formatQty(totals.totalQuantity) }}</div>
+        </div>
       </div>
-
-      <div class="col-12 col-md-4">
-        <q-card flat bordered class="q-pa-md fill-height metric-card bg-surface-subtle">
-          <div class="row items-center q-mb-md">
-            <div class="metric-icon-badge bg-purple-subtle text-deep-purple-9 q-mr-sm">
-              <q-icon name="ph ph-tag" size="18px" />
+      <div class="col-12 col-sm-6">
+        <div class="summary-hero__tile summary-hero__tile--accent">
+          <div class="row items-center justify-between no-wrap q-gutter-x-sm">
+            <div class="min-width-0">
+              <div class="summary-hero__lbl">Final offer ({{ sellCurrencySymbol }})</div>
+              <div class="summary-hero__val summary-hero__val--lg">
+                {{ sellCurrencySymbol }}{{ formatMoney(totals.grandTotalFinalOffer) }}
+              </div>
             </div>
-            <div class="text-subtitle2 text-weight-bold text-deep-purple-9">Offer totals</div>
+            <q-badge
+              v-if="finalMarginLabel"
+              color="green-2"
+              text-color="green-9"
+              class="text-weight-bold q-px-sm"
+            >
+              {{ finalMarginLabel }}
+            </q-badge>
           </div>
-          <div class="q-gutter-y-sm">
-            <div class="summary-offer-row summary-offer-row--first">
-              <div class="row justify-between items-center">
-                <span class="text-caption text-weight-medium">1st offer ({{ sellCurrencySymbol }})</span>
-                <span class="text-body2 text-weight-bold text-deep-purple-9">{{ sellCurrencySymbol }}{{ formatMoney(totals.grandTotalFirstOffer) }}</span>
-              </div>
-              <div class="text-caption text-grey-7 text-right">Margin {{ formatPercent(totals.overallFirstOfferMargin) }}</div>
-            </div>
-            <q-separator light />
-            <div class="summary-offer-row summary-offer-row--counter">
-              <div class="row justify-between items-center">
-                <span class="text-caption text-weight-medium">Counter offer ({{ sellCurrencySymbol }})</span>
-                <span class="text-body2 text-weight-bold text-orange-9">{{ sellCurrencySymbol }}{{ formatMoney(totals.grandTotalCounterOffer) }}</span>
-              </div>
-              <div class="text-caption text-grey-7 text-right">Margin {{ formatPercent(totals.overallCounterOfferMargin) }}</div>
-            </div>
-            <q-separator light />
-            <div class="summary-offer-row summary-offer-row--final">
-              <div class="row justify-between items-center">
-                <span class="text-caption text-weight-medium">Final offer ({{ sellCurrencySymbol }})</span>
-                <span class="text-body2 text-weight-bold text-positive">{{ sellCurrencySymbol }}{{ formatMoney(totals.grandTotalFinalOffer) }}</span>
-              </div>
-              <div class="text-caption text-grey-7 text-right">Margin {{ formatPercent(totals.overallFinalOfferMargin) }}</div>
-            </div>
-          </div>
-        </q-card>
+        </div>
       </div>
     </div>
+
+    <q-card flat bordered class="summary-section q-mb-sm">
+      <div class="summary-section__head">
+        <q-icon name="ph ph-currency-circle-dollar" size="16px" class="text-teal-8" />
+        <span>Purchase &amp; landed</span>
+      </div>
+      <dl class="summary-dl">
+        <div class="summary-dl__row">
+          <dt>Purchase total</dt>
+          <dd>{{ buyCurrencySymbol }}{{ formatMoney(totals.grandTotalPurchasePrice) }}</dd>
+        </div>
+        <div class="summary-dl__row">
+          <dt>Landed total (purchase currency)</dt>
+          <dd>{{ buyCurrencySymbol }}{{ formatMoney(totals.grandTotalLandedPurchase) }}</dd>
+        </div>
+        <div class="summary-dl__row">
+          <dt>Landed total (sell currency)</dt>
+          <dd>{{ sellCurrencySymbol }}{{ formatMoney(totals.grandTotalLandedSell) }}</dd>
+        </div>
+        <div class="summary-dl__row summary-dl__row--muted">
+          <dt>Total weight</dt>
+          <dd>{{ formatWeight(totals.totalWeightGm) }}</dd>
+        </div>
+      </dl>
+      <div class="summary-rates text-caption text-grey-7">
+        FX {{ conversionRate }} · Cargo {{ buyCurrencySymbol }}{{ cargoRate }}/kg
+      </div>
+    </q-card>
+
+    <q-card flat bordered class="summary-section">
+      <div class="summary-section__head">
+        <q-icon name="ph ph-tag" size="16px" class="text-deep-purple-8" />
+        <span>Offer breakdown</span>
+      </div>
+      <dl class="summary-dl">
+        <div class="summary-dl__row">
+          <dt>1st offer</dt>
+          <dd>
+            <span class="summary-dl__amount">{{ sellCurrencySymbol }}{{ formatMoney(totals.grandTotalFirstOffer) }}</span>
+            <span v-if="firstMarginLabel" class="summary-dl__meta">{{ firstMarginLabel }}</span>
+          </dd>
+        </div>
+        <div v-if="hasCounterOffer" class="summary-dl__row">
+          <dt>Counter offer</dt>
+          <dd>
+            <span class="summary-dl__amount">{{ sellCurrencySymbol }}{{ formatMoney(totals.grandTotalCounterOffer) }}</span>
+            <span v-if="counterMarginLabel" class="summary-dl__meta">{{ counterMarginLabel }}</span>
+          </dd>
+        </div>
+        <div class="summary-dl__row summary-dl__row--emphasis">
+          <dt>Final offer</dt>
+          <dd>
+            <span class="summary-dl__amount">{{ sellCurrencySymbol }}{{ formatMoney(totals.grandTotalFinalOffer) }}</span>
+            <span v-if="finalMarginLabel" class="summary-dl__meta">{{ finalMarginLabel }}</span>
+          </dd>
+        </div>
+      </dl>
+    </q-card>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { computed } from 'vue';
+
+const props = defineProps<{
   itemCount: number;
   buyCurrencySymbol: string;
   sellCurrencySymbol: string;
@@ -127,6 +124,8 @@ defineProps<{
   };
 }>();
 
+const hasCounterOffer = computed(() => Number(props.totals.grandTotalCounterOffer || 0) > 0);
+
 function formatMoney(value: number) {
   return Number(value || 0).toLocaleString(undefined, {
     minimumFractionDigits: 2,
@@ -139,69 +138,158 @@ function formatQty(value: number) {
 }
 
 function formatWeight(value: number) {
-  return `${Number(value || 0).toLocaleString()} g`;
+  const gm = Number(value || 0);
+  if (gm >= 1000) {
+    return `${(gm / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} kg (${gm.toLocaleString()} g)`;
+  }
+  return `${gm.toLocaleString()} g`;
 }
 
-function formatPercent(value: number) {
-  return `${Number(value || 0).toFixed(1)}%`;
+function marginLabel(offerTotal: number, marginPct: number): string | null {
+  if (Number(offerTotal || 0) <= 0) return null;
+  return `Margin ${Number(marginPct || 0).toFixed(1)}%`;
 }
+
+const firstMarginLabel = computed(() =>
+  marginLabel(props.totals.grandTotalFirstOffer, props.totals.overallFirstOfferMargin),
+);
+const counterMarginLabel = computed(() =>
+  marginLabel(props.totals.grandTotalCounterOffer, props.totals.overallCounterOfferMargin),
+);
+const finalMarginLabel = computed(() =>
+  marginLabel(props.totals.grandTotalFinalOffer, props.totals.overallFinalOfferMargin),
+);
 </script>
 
 <style scoped lang="scss">
-.metric-card {
-  border-radius: 10px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.metric-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
-}
-
-.metric-icon-badge {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.bg-surface-subtle {
-  background: rgba(248, 250, 252, 0.9);
-}
-
-.bg-amber-subtle {
-  background: rgba(255, 193, 7, 0.12);
-}
-
-.bg-teal-subtle {
-  background: rgba(13, 148, 136, 0.1);
-}
-
-.bg-purple-subtle {
-  background: rgba(123, 31, 162, 0.1);
-}
-
-.summary-offer-row {
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-
-.summary-offer-row--first {
-  background: #f3e5f5;
-}
-
-.summary-offer-row--counter {
-  background: #fff8f0;
-}
-
-.summary-offer-row--final {
-  background: #e8f5e9;
-}
-
 .catalog-order-summary {
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-  background: #fafbfc;
+  border-top: 1px solid var(--tf-neutral-border, rgba(0, 0, 0, 0.08));
+  background: var(--tf-neutral-canvas, #fafbfc);
+}
+
+.summary-hero__tile {
+  border: 1px solid var(--tf-neutral-border, rgba(0, 0, 0, 0.1));
+  border-radius: 8px;
+  background: var(--tf-neutral-surface, #fff);
+  padding: 10px 12px;
+  min-height: 100%;
+}
+
+.summary-hero__tile--accent {
+  border-color: color-mix(in srgb, var(--q-positive) 35%, var(--tf-neutral-border, #e0e0e0));
+  background: color-mix(in srgb, var(--q-positive) 6%, var(--tf-neutral-surface, #fff));
+}
+
+.summary-hero__lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tf-neutral-muted, #64748b);
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+.summary-hero__val {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--tf-neutral-ink, #1e293b);
+  line-height: 1.2;
+}
+
+.summary-hero__val--lg {
+  font-size: 20px;
+}
+
+.summary-section {
+  border-radius: 8px;
+  background: var(--tf-neutral-surface, #fff);
+  overflow: hidden;
+}
+
+.summary-section__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tf-neutral-ink, #334155);
+  border-bottom: 1px solid var(--tf-neutral-border, rgba(0, 0, 0, 0.08));
+  background: color-mix(in srgb, var(--tf-neutral-canvas, #f8fafc) 80%, transparent);
+}
+
+.summary-dl {
+  margin: 0;
+  padding: 4px 0;
+}
+
+.summary-dl__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--tf-neutral-border, rgba(0, 0, 0, 0.06));
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.summary-dl__row--muted dd {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.summary-dl__row--emphasis {
+  background: color-mix(in srgb, var(--q-positive) 8%, transparent);
+
+  dt {
+    font-weight: 700;
+  }
+
+  .summary-dl__amount {
+    font-size: 15px;
+  }
+}
+
+.summary-dl__row dt {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tf-neutral-muted, #64748b);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.summary-dl__row dd {
+  margin: 0;
+  text-align: right;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--tf-neutral-ink, #0f172a);
+}
+
+.summary-dl__amount {
+  display: block;
+}
+
+.summary-dl__meta {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tf-neutral-muted, #64748b);
+  margin-top: 2px;
+}
+
+.summary-rates {
+  padding: 8px 12px 10px;
+  border-top: 1px dashed var(--tf-neutral-border, rgba(0, 0, 0, 0.08));
+}
+
+.min-width-0 {
+  min-width: 0;
 }
 </style>

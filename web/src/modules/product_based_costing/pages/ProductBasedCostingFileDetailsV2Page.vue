@@ -226,6 +226,17 @@
         </span>
       </div>
 
+      <DocumentDeliveryPaperChips
+        class="q-px-md q-pb-xs"
+        :tenant-id="deliveryPaperParentTenantId"
+        document-type="pbc_costing_file"
+        :document-id="fileId"
+        :enabled="canShowDeliveryPapers"
+        :allow-create="canCreateDeliveryPaper"
+        @open-paper="openDeliveryPaper"
+        @created="openDeliveryPaper"
+      />
+
       <!-- Expandable Inline Rates Editor Bar -->
       <div v-if="ratesExpanded" class="pbc-rates-editor">
         <div class="pbc-rates-editor__grid">
@@ -1403,6 +1414,11 @@ import { useProductBasedCostingFileDetailsPageQuery } from '../composables/usePr
 import { useCustomerAccounts } from 'src/modules/customer/composables/useCustomerAccounts';
 import ProductBasedCostingStatusOverrideDialog from '../components/ProductBasedCostingStatusOverrideDialog.vue';
 import ProductBasedCostingStatusWorkflowBar from '../components/ProductBasedCostingStatusWorkflowBar.vue';
+import DocumentDeliveryPaperChips from 'src/modules/procurement_stock/components/DocumentDeliveryPaperChips.vue';
+import {
+  canCreateDocumentDeliveryPaper,
+  canShowDocumentDeliveryPapers,
+} from 'src/modules/procurement_stock/utils/documentDeliveryPapers';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
@@ -2529,6 +2545,32 @@ function openPreviewAndPrint() {
 // Status & Workflow Actions
 const status = computed(() => normalizePbcFileStatus(file.value?.status || 'pending'));
 
+const deliveryPaperParentTenantId = computed(
+  () => tenantStore.selectedTenant?.parent_id ?? tenantStore.selectedTenant?.id ?? null,
+);
+
+const canShowDeliveryPapers = computed(() => {
+  if (!fileId.value) return false;
+  const demandLines = costingItems.value.map((item) => ({
+    quantity: item.confirmed_quantity ?? item.quantity ?? 0,
+    delivered_quantity: 0,
+  }));
+  return canShowDocumentDeliveryPapers(status.value, demandLines);
+});
+
+const canCreateDeliveryPaper = computed(() => canCreateDocumentDeliveryPaper(status.value));
+
+const openDeliveryPaper = (paperId: number) => {
+  void router.push({
+    name: 'product-based-costing-delivery-paper-page',
+    params: {
+      tenantSlug: tenantStore.selectedTenant?.slug ?? route.params.tenantSlug,
+      id: String(fileId.value),
+      paperId: String(paperId),
+    },
+  });
+};
+
 const incompleteOfferItemCount = computed(
   () =>
     costingItems.value.filter((item) => {
@@ -2785,19 +2827,41 @@ async function applyStatus(nextStatus: string) {
   }
 }
 
+async function markPbcClosed() {
+  if (!fileId.value || updatingStatus.value) return;
+  updatingStatus.value = true;
+  targetUpdatingStatus.value = 'closed';
+  try {
+    await productBasedCostingRepository.markPbcClosed(fileId.value);
+    visibleColumns.value = getDefaultVisibleColumnsForStatus('closed');
+    await queryClient.invalidateQueries({
+      queryKey: productBasedCostingQueryKeys.fileDetail(fileId.value),
+    });
+    $q.notify({ type: 'positive', message: t('product_based_costing.action_mark_closed') });
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: (error as Error).message || 'Failed to close costing file',
+    });
+  } finally {
+    updatingStatus.value = false;
+    targetUpdatingStatus.value = null;
+  }
+}
+
 async function markReadyForShipment() {
   if (!fileId.value || updatingStatus.value) return;
   updatingStatus.value = true;
-  targetUpdatingStatus.value = 'packed';
+  targetUpdatingStatus.value = 'dispatch';
   try {
     await productBasedCostingRepository.markPbcReadyForShipment(fileId.value);
-    visibleColumns.value = getDefaultVisibleColumnsForStatus('packed');
+    visibleColumns.value = getDefaultVisibleColumnsForStatus('dispatch');
     await queryClient.invalidateQueries({
       queryKey: productBasedCostingQueryKeys.fileDetail(fileId.value),
     });
     $q.notify({
       type: 'positive',
-      message: t('product_based_costing.action_mark_packed'),
+      message: t('product_based_costing.action_mark_dispatch'),
     });
   } catch (error) {
     $q.notify({
@@ -2824,8 +2888,12 @@ function handlePbcPrimaryAction(action: StaffPbcPrimaryAction) {
     });
     return;
   }
-  if (action === 'mark_packed') {
+  if (action === 'mark_dispatch') {
     void markReadyForShipment();
+    return;
+  }
+  if (action === 'mark_closed') {
+    void markPbcClosed();
     return;
   }
   void applyStatus(nextStatus);
@@ -2861,7 +2929,7 @@ function onWorkflowStatusClick(nextStatus: string) {
     cancel: true,
     persistent: true,
   }).onOk(() => {
-    if (normalized === 'packed' && status.value === 'procuring') {
+    if (normalized === 'dispatch' && status.value === 'procuring') {
       void markReadyForShipment();
     } else {
       void applyStatus(normalized);

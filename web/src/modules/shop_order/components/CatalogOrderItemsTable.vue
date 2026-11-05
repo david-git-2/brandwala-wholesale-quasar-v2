@@ -1,26 +1,35 @@
 <template>
   <div class="catalog-items-table column no-wrap col">
     <div class="row items-center justify-between q-px-md q-py-sm catalog-toolbar border-bottom shrink-0">
-      <div class="row items-center q-gutter-x-sm">
-        <span class="text-caption text-weight-bold text-grey-8">Quantity:</span>
-        <q-btn-toggle
-          v-model="quantityFilter"
-          dense
-          unelevated
-          no-caps
-          :ripple="false"
-          toggle-color="primary"
-          :options="[
-            { label: 'Has quantity', value: 'non_zero' },
-            { label: 'Zero quantity', value: 'zero' },
-            { label: 'All items', value: 'all' },
-          ]"
-          class="catalog-qty-toggle"
-        />
-      </div>
       <div class="text-caption text-grey-7">
         Showing {{ filteredRows.length }} of {{ items.length }} items
       </div>
+      <q-btn flat round dense size="sm" color="grey-8" icon="ph ph-funnel" aria-label="Quantity filter">
+        <q-tooltip>{{ quantityFilterTooltip }}</q-tooltip>
+        <q-menu anchor="bottom right" self="top right">
+            <q-list dense style="min-width: 168px">
+              <q-item
+                v-for="opt in quantityFilterOptions"
+                :key="opt.value"
+                v-close-popup
+                clickable
+                :active="quantityFilter === opt.value"
+                active-class="bg-grey-2 text-weight-medium"
+                @click="quantityFilter = opt.value"
+              >
+                <q-item-section avatar class="catalog-qty-filter-check">
+                  <q-icon
+                    v-if="quantityFilter === opt.value"
+                    name="ph ph-check"
+                    size="16px"
+                    color="primary"
+                  />
+                </q-item-section>
+                <q-item-section>{{ opt.label }}</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+      </q-btn>
     </div>
 
     <div
@@ -34,6 +43,20 @@
             <th v-if="isColVisible('sl')" class="text-center sticky-col-2 pbc-sl-col q-pa-none" style="width: 36px; min-width: 36px">SL</th>
             <th v-if="isColVisible('image')" class="text-center pbc-image-col" style="width: 0.85in; min-width: 0.85in">Image</th>
             <th v-if="isColVisible('name')" class="text-left" style="min-width: 180px; width: 180px">Name</th>
+            <th
+              v-if="isColVisible('qty_confirmed')"
+              class="text-center tf-ops-col-tint--qty"
+              style="width: 72px; min-width: 72px"
+            >
+              Confirmed<br />Qty
+            </th>
+            <th
+              v-if="isColVisible('delivery_papers')"
+              class="text-left"
+              style="min-width: 200px; width: 240px"
+            >
+              Delivery papers
+            </th>
             <th v-if="isColVisible('brand')" class="text-center" style="width: 90px; min-width: 90px">Brand</th>
             <th v-if="isColVisible('note')" class="text-center" style="width: 72px; min-width: 72px">Note</th>
             <th v-if="isColVisible('code_barcode_id')" class="text-left" style="width: 130px; min-width: 130px">Codes</th>
@@ -139,6 +162,67 @@
                   <q-tooltip>Copy Item Name</q-tooltip>
                 </q-btn>
               </div>
+            </td>
+
+            <td
+              v-if="isColVisible('qty_confirmed')"
+              class="text-center text-weight-bold font-mono tf-ops-col-tint--qty"
+              style="width: 72px; min-width: 72px"
+            >
+              {{ getConfirmedQty(row) }}
+            </td>
+
+            <td v-if="isColVisible('delivery_papers')" class="catalog-dispatch-papers-cell text-left">
+              <q-spinner-dots
+                v-if="deliveryPaperQtyLoading"
+                size="16px"
+                color="primary"
+              />
+              <span v-else-if="deliveryPaperQtyError" class="text-caption text-negative">
+                Could not load
+              </span>
+              <div
+                v-else-if="entriesForOrderItem(row.id).length"
+                class="column q-gutter-y-xs"
+              >
+                <button
+                  v-for="entry in entriesForOrderItem(row.id)"
+                  :key="entry.delivery_paper_id"
+                  type="button"
+                  class="catalog-dispatch-paper-chip column items-stretch"
+                  @click="openDeliveryPaper(entry.delivery_paper_id)"
+                >
+                  <div class="row items-center no-wrap q-gutter-x-xs catalog-dispatch-paper-chip__head">
+                    <span class="font-mono text-caption text-weight-bold">DP-{{ entry.delivery_paper_id }}</span>
+                    <TfStatusBadge
+                      class="catalog-dispatch-paper-chip__status"
+                      :status="entry.paper_status"
+                      :label="entry.paper_status"
+                    />
+                  </div>
+                  <div class="row items-center wrap catalog-dispatch-paper-chip__metrics">
+                    <span class="catalog-dispatch-paper-chip__metric">
+                      <span class="catalog-dispatch-paper-chip__lbl">Pk</span>
+                      <span class="catalog-dispatch-paper-chip__val">{{
+                        catalogOrderDeliveryPaperPackedDisplay(entry)
+                      }}</span>
+                    </span>
+                    <span class="catalog-dispatch-paper-chip__metric">
+                      <span class="catalog-dispatch-paper-chip__lbl">Ac</span>
+                      <span class="catalog-dispatch-paper-chip__val">{{ entry.accepted_qty }}</span>
+                    </span>
+                    <span class="catalog-dispatch-paper-chip__metric">
+                      <span class="catalog-dispatch-paper-chip__lbl">Cd</span>
+                      <span class="catalog-dispatch-paper-chip__val">{{ entry.conditioned_qty }}</span>
+                    </span>
+                    <span class="catalog-dispatch-paper-chip__metric">
+                      <span class="catalog-dispatch-paper-chip__lbl">Rt</span>
+                      <span class="catalog-dispatch-paper-chip__val">{{ entry.rejected_qty }}</span>
+                    </span>
+                  </div>
+                </button>
+              </div>
+              <span v-else class="text-caption text-grey-6">—</span>
             </td>
 
             <!-- 4. Brand -->
@@ -489,8 +573,13 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { useQuasar, copyToClipboard } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
+import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useCatalogOrderDeliveryPaperQtyByItem } from '../composables/useCatalogOrderDeliveryPaperQtyByItem';
+import { catalogOrderDeliveryPaperPackedDisplay } from '../types/catalogOrderDeliveryPaperQty';
 import type { ShopOrder, ShopOrderItem } from '../types';
 import {
   getProductWeightGm as catalogGetProductWeightGm,
@@ -541,6 +630,16 @@ const emit = defineEmits<{
 }>();
 
 const $q = useQuasar();
+const router = useRouter();
+const authStore = useAuthStore();
+
+const DISPATCH_TABLE_COLUMNS = [
+  'sl',
+  'image',
+  'name',
+  'qty_confirmed',
+  'delivery_papers',
+] as const;
 
 function emitItemUpdate(item: ShopOrderItem, payload: Record<string, any>) {
   emit('update-item', {
@@ -655,7 +754,27 @@ const resolvedVisibleColumns = computed<string[]>(() => {
 
 
 function isColVisible(colKey: string): boolean {
+  if (isDispatchTableView.value) {
+    return (DISPATCH_TABLE_COLUMNS as readonly string[]).includes(colKey);
+  }
   return resolvedVisibleColumns.value.includes(colKey);
+}
+
+function getConfirmedQty(item: ShopOrderItem): number {
+  return Math.max(0, Number(item.confirmed_quantity ?? item.quantity ?? 0) || 0);
+}
+
+function openDeliveryPaper(paperId: number) {
+  const orderId = props.order?.id;
+  if (!orderId) return;
+  void router.push({
+    name: 'app-shop-order-delivery-paper-page',
+    params: {
+      tenantSlug: authStore.tenantSlug || '',
+      id: String(orderId),
+      paperId: String(paperId),
+    },
+  });
 }
 
 function formatTableHeaderLabel(colName: string, fallback: string): string {
@@ -689,6 +808,19 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
 }
 
 const status = computed(() => props.order?.status || 'submitted');
+const isDispatchTableView = computed(
+  () => normalizeCatalogOrderStatus(status.value) === 'dispatch',
+);
+
+const { entriesForOrderItem, isLoading: deliveryPaperQtyLoading, isError: deliveryPaperQtyError } =
+  useCatalogOrderDeliveryPaperQtyByItem({
+    tenantId: computed(
+      () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
+    ),
+    orderId: computed(() => props.order?.id ?? null),
+    enabled: isDispatchTableView,
+  });
+
 const isCostingMode = computed(() => normalizeCatalogOrderStatus(status.value) === 'submitted');
 const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(status.value));
 const isFinalOfferEditable = computed(() => isCatalogFinalOfferEditable(status.value));
@@ -799,6 +931,17 @@ function getFinalOfferMargin(item: ShopOrderItem): number {
 }
 
 const quantityFilter = ref<'non_zero' | 'zero' | 'all'>('non_zero');
+
+const quantityFilterOptions = [
+  { label: 'Has quantity', value: 'non_zero' as const },
+  { label: 'Zero quantity', value: 'zero' as const },
+  { label: 'All items', value: 'all' as const },
+];
+
+const quantityFilterTooltip = computed(() => {
+  const opt = quantityFilterOptions.find((o) => o.value === quantityFilter.value);
+  return opt ? `Quantity: ${opt.label}` : 'Quantity filter';
+});
 
 const getItemLineQuantity = (item: ShopOrderItem): number => Number(item.quantity ?? 0);
 
@@ -1086,15 +1229,13 @@ defineExpose({
   background-color: var(--tf-neutral-canvas);
 }
 
-.catalog-qty-toggle {
-  border: 1px solid var(--tf-neutral-border-strong);
-  border-radius: var(--tf-radius-sm);
-  background-color: var(--tf-neutral-surface);
+.catalog-qty-filter-check {
+  min-width: 28px;
 }
 
-.catalog-qty-toggle :deep(.q-btn:not(.bg-primary)) {
-  background-color: transparent;
-  color: var(--tf-neutral-ink);
+.catalog-qty-filter-check :deep(.q-item__section--avatar) {
+  min-width: 28px;
+  padding-right: 0;
 }
 
 .catalog-items-table .text-grey-6,
@@ -1360,5 +1501,73 @@ defineExpose({
   white-space: normal;
   line-height: 1.2;
   text-align: center;
+}
+
+.catalog-dispatch-papers-cell {
+  min-width: 200px;
+  max-width: 300px;
+  vertical-align: top;
+}
+
+.catalog-dispatch-paper-chip {
+  border: 1px solid var(--tf-neutral-border);
+  border-radius: var(--tf-radius-sm);
+  background: var(--tf-neutral-surface);
+  padding: 6px 8px;
+  gap: 4px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  max-width: 100%;
+}
+
+.catalog-dispatch-paper-chip__head {
+  flex-shrink: 0;
+}
+
+.catalog-dispatch-paper-chip__status :deep(.tf-status-badge) {
+  padding: 1px 4px;
+}
+
+.catalog-dispatch-paper-chip__status :deep(.tf-status-badge span:last-child) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.catalog-dispatch-paper-chip__metrics {
+  gap: 6px 10px;
+  line-height: 1.2;
+}
+
+.catalog-dispatch-paper-chip__metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-family: ui-monospace, monospace;
+  white-space: nowrap;
+}
+
+.catalog-dispatch-paper-chip__lbl {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--tf-neutral-muted, rgba(0, 0, 0, 0.55));
+  letter-spacing: 0.02em;
+}
+
+.catalog-dispatch-paper-chip__val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tf-neutral-ink, inherit);
+}
+
+.catalog-dispatch-paper-chip:hover {
+  background: var(--tf-neutral-surface-hover, rgba(0, 0, 0, 0.03));
 }
 </style>

@@ -10,8 +10,9 @@ export type StaffPbcPrimaryAction =
   | 'send_offer'
   | 'confirm_order'
   | 'start_procurement'
-  | 'mark_packed'
-  | 'mark_delivered';
+  | 'mark_dispatch'
+  | 'mark_delivered'
+  | 'mark_closed';
 
 export function mapPbcStatusToProgressKey(status: string | null | undefined): PbcProgressStepKey {
   const st = normalizePbcFileStatus(status || 'pending');
@@ -54,9 +55,11 @@ export function getStaffPbcPrimaryAction(
     case 'confirmed':
       return 'start_procurement';
     case 'procuring':
-      return 'mark_packed';
-    case 'packed':
+      return 'mark_dispatch';
+    case 'dispatch':
       return 'mark_delivered';
+    case 'delivered':
+      return 'mark_closed';
     default:
       return null;
   }
@@ -70,10 +73,12 @@ export function getStaffPbcPrimaryActionTargetStatus(action: StaffPbcPrimaryActi
       return 'confirmed';
     case 'start_procurement':
       return 'procuring';
-    case 'mark_packed':
-      return 'packed';
+    case 'mark_dispatch':
+      return 'dispatch';
     case 'mark_delivered':
       return 'delivered';
+    case 'mark_closed':
+      return 'closed';
     default:
       return 'pending';
   }
@@ -81,7 +86,7 @@ export function getStaffPbcPrimaryActionTargetStatus(action: StaffPbcPrimaryActi
 
 export function isPbcTerminalStatus(status: string | null | undefined): boolean {
   const st = normalizePbcFileStatus(status);
-  return st === 'delivered' || st === 'cancelled';
+  return st === 'closed' || st === 'cancelled';
 }
 
 export function isPbcRatesEditable(status: string | null | undefined): boolean {
@@ -100,10 +105,12 @@ export function pbcFileStatusWorkflowColor(status: string): string {
       return 'teal-7';
     case 'procuring':
       return 'indigo-7';
-    case 'packed':
+    case 'dispatch':
       return 'purple-7';
     case 'delivered':
       return 'green-7';
+    case 'closed':
+      return 'grey-8';
     case 'cancelled':
       return 'negative';
     default:

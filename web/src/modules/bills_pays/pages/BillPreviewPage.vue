@@ -351,19 +351,12 @@ const profileName = computed(
 );
 
 const goBack = () => {
-  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
-  const id = billId.value;
-  if (!id) {
-    router.push({ name: 'app-bills-page', params: tenantSlug ? { tenantSlug } : {} });
+  if (typeof window !== 'undefined' && window.history.length > 1) {
+    router.back();
     return;
   }
-  router.push({
-    name: 'app-bill-detail-page',
-    params: {
-      ...(tenantSlug ? { tenantSlug } : {}),
-      billId: String(id),
-    },
-  });
+  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  router.push({ name: 'app-bills-page', params: tenantSlug ? { tenantSlug } : {} });
 };
 
 const goBrands = () => {
