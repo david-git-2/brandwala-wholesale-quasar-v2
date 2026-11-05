@@ -50,6 +50,7 @@
           @update:visible-columns="onCatalogVisibleColumnsUpdate"
           @update-item="handleUpdateCatalogOrderItem"
           @table-scroll="updateCatalogScrollbar"
+          @load-more-items="loadMoreOrderItems"
         />
 
         <div class="staff-order-catalog-footer shrink-0 bg-white border-top shadow-xs">
@@ -275,7 +276,7 @@ const skeletonVariant = computed<'catalog' | 'dropship'>(() => {
   return state?.shopTypeSnapshot === 'vendor_catalog' ? 'catalog' : 'dropship';
 });
 
-const { data: orderDetailsData, isLoading, isError, error, refetch, isFetching } =
+const { data: orderDetailsData, isLoading, isError, error, refetch, isFetching, hasNextItemsPage, isFetchingNextItemsPage, fetchNextItemsPage } =
   useShopOrderDetailQuery(orderId);
 const queryClient = useQueryClient();
 
@@ -304,6 +305,11 @@ const reloadOrderDetails = async () => {
       queryKey: shopOrderQueryKeys.billsForShopOrder(parentId, orderId.value),
     });
   }
+};
+
+const loadMoreOrderItems = async () => {
+  if (!hasNextItemsPage.value || isFetchingNextItemsPage.value) return;
+  await fetchNextItemsPage();
 };
 
 const canShowDeliveryPapers = computed(() => {

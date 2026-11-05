@@ -40,7 +40,7 @@ begin
     v_allowed := public.is_tenant_staff(p_tenant_id);
   end if;
   if not coalesce(v_allowed, false) then raise exception 'access denied'; end if;
-  if v_status not in ('procuring', 'packed', 'delivered') then
+  if v_status not in ('procuring', 'dispatch', 'delivered', 'closed') then
     raise exception 'invalid procurement status: %', v_status;
   end if;
 
@@ -304,7 +304,7 @@ begin
     v_allowed := public.is_tenant_staff(p_tenant_id);
   end if;
   if not coalesce(v_allowed, false) then raise exception 'access denied'; end if;
-  if v_status not in ('procuring', 'packed', 'delivered') then
+  if v_status not in ('procuring', 'dispatch', 'delivered', 'closed') then
     raise exception 'invalid procurement status: %', v_status;
   end if;
 

@@ -18,7 +18,7 @@ import type {
 } from '../types';
 import type { ShopCustomerAccessPageBundle } from '../types/shopCustomerAccessPage';
 import type { Vendor } from 'src/modules/vendor/types';
-import type { StaffShopOrderDetailResponse } from '../types/staffShopOrderDetail';
+import type { StaffShopOrderDetailResponse, StaffShopOrderItemsPageCursor } from '../types/staffShopOrderDetail';
 import {
   mapStaffShopOrderDetailToFlat,
   parseStaffShopOrderDetailResponse,
@@ -613,13 +613,21 @@ const listDropshipShopOrdersForStaff = async (
 const getShopOrderById = async (
   tenantId: number,
   orderId: number,
+  opts: {
+    itemsLimit?: number | null;
+    itemsCursor?: StaffShopOrderItemsPageCursor | null;
+  } = {},
 ): Promise<{
   order: ShopOrder & { shop_sell_currency_id?: number | null; shop_buy_currency_id?: number | null };
   items: ShopOrderItem[];
+  itemsMeta: StaffShopOrderDetailResponse['items_meta'];
 }> => {
   const { data, error } = await supabase.rpc('get_shop_order_for_staff', {
     p_tenant_id: tenantId,
     p_order_id: orderId,
+    p_items_limit: opts.itemsLimit ?? null,
+    p_items_cursor_created_at: opts.itemsCursor?.created_at ?? null,
+    p_items_cursor_id: opts.itemsCursor?.id ?? null,
   });
   if (error) throw error;
 

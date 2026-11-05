@@ -294,6 +294,35 @@ export interface DeliveryPaperSummary {
   line_count: number;
 }
 
+export interface FulfillDeliveryPaperListItem extends DeliveryPaperSummary {
+  source_type: ProcurementDemandDocumentType;
+  source_id: number;
+  shop_order_no: string | null;
+  document_name: string | null;
+  profile_id: number | null;
+  profile_name: string | null;
+}
+
+export interface FulfillDeliveryPapersResponse {
+  meta: {
+    tenant_id: number;
+    procurement_status: string;
+    total_count: number;
+    limit: number;
+    offset: number;
+    has_more: boolean;
+  };
+  papers: FulfillDeliveryPaperListItem[];
+}
+
+export interface ListFulfillDeliveryPapersParams {
+  tenantId: number;
+  procurementStatus?: ProcurementDemandStatus;
+  search?: string | null;
+  limit?: number;
+  offset?: number;
+}
+
 export interface DeliveryPaperHeader {
   id: number;
   status: DeliveryPaperStatus;
@@ -628,6 +657,24 @@ const createDeliveryPaperForDocument = async (params: {
   return data as { id: number; status: DeliveryPaperStatus; created_at: string };
 };
 
+const listDeliveryPapersForFulfillPage = async (
+  params: ListFulfillDeliveryPapersParams,
+): Promise<FulfillDeliveryPapersResponse> => {
+  const { data, error } = await supabase.rpc('list_delivery_papers_for_fulfill_page', {
+    p_tenant_id: params.tenantId,
+    p_procurement_status: params.procurementStatus ?? 'procuring',
+    p_search: params.search ?? null,
+    p_limit: params.limit ?? 50,
+    p_offset: params.offset ?? 0,
+  });
+
+  if (error) throw error;
+
+  const payload = (data ?? { meta: {}, papers: [] }) as FulfillDeliveryPapersResponse;
+  payload.papers = payload.papers ?? [];
+  return payload;
+};
+
 const listDeliveryPapersForDocument = async (params: {
   tenantId: number;
   documentType: ProcurementDemandDocumentType;
@@ -736,6 +783,7 @@ export const procurementDemandRepository = {
   listProcurementDemandGroups,
   listProcurementDemandGroupItems,
   listProcurementFulfillGroups,
+  listDeliveryPapersForFulfillPage,
   listProcurementFulfillGroupItems,
   upsertPreorderDemand,
   fillPreorderDemandPlacedQuantitiesForDocument,

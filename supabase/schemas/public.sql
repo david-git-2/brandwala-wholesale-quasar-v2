@@ -63572,7 +63572,7 @@ ALTER SEQUENCE "public"."global_currencies_id_seq" OWNED BY "public"."global_cur
 
 
 
-CREATE OR REPLACE VIEW "public"."global_invoice_items" WITH ("security_invoker"='false') AS
+CREATE OR REPLACE VIEW "public"."global_invoice_items" WITH ("security_invoker"='true') AS
  SELECT "id",
     "tenant_id",
 
@@ -63666,7 +63666,7 @@ ALTER SEQUENCE "public"."global_payment_instruments_id_seq" OWNED BY "public"."p
 
 
 
-CREATE OR REPLACE VIEW "public"."global_return_items" WITH ("security_invoker"='false') AS
+CREATE OR REPLACE VIEW "public"."global_return_items" WITH ("security_invoker"='true') AS
  SELECT "id",
 
     "tenant_id",
@@ -73210,6 +73210,15 @@ CREATE POLICY "recipient_profiles_write" ON "public"."recipient_profiles" TO "au
 ALTER TABLE "public"."sales_invoice_counters" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."document_number_configs" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."document_number_counters" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."tenant_scoped_counters" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."sales_return_items" ENABLE ROW LEVEL SECURITY;
 
 
@@ -80015,11 +80024,7 @@ GRANT ALL ON TABLE "public"."sales_invoice_counters" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."document_number_configs" TO "anon";
-GRANT ALL ON TABLE "public"."document_number_configs" TO "authenticated";
 GRANT ALL ON TABLE "public"."document_number_configs" TO "service_role";
-GRANT ALL ON TABLE "public"."document_number_counters" TO "anon";
-GRANT ALL ON TABLE "public"."document_number_counters" TO "authenticated";
 GRANT ALL ON TABLE "public"."document_number_counters" TO "service_role";
 
 
@@ -80306,8 +80311,6 @@ GRANT ALL ON SEQUENCE "public"."tenant_roles_id_seq" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."tenant_scoped_counters" TO "anon";
-GRANT ALL ON TABLE "public"."tenant_scoped_counters" TO "authenticated";
 GRANT ALL ON TABLE "public"."tenant_scoped_counters" TO "service_role";
 
 

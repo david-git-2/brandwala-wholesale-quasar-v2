@@ -25,7 +25,7 @@ CREATE FUNCTION public.list_customer_accounts (
 declare
   v_books_id bigint;
 begin
-  v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_books_id := public.resolve_books_tenant_id(p_tenant_id);
 
   return query
   select
@@ -45,18 +45,18 @@ begin
   from public.customer_groups cg
   left join public.profiles bp
     on bp.customer_group_id = cg.id
-   and bp.parent_tenant_id = v_books_id
+   and bp.tenant_id = v_books_id
   left join (
     select cgm.customer_group_id as c_group_id, count(*) as cnt
     from public.customer_group_members cgm
     group by cgm.customer_group_id
   ) mem on mem.c_group_id = cg.id
   left join public.cashbook_accounts wa
-    on wa.parent_tenant_id = v_books_id
+    on wa.tenant_id = v_books_id
    and wa.entity_type = 'customer'
    and wa.entity_id = bp.id
    and wa.currency_code = 'BDT'
-  where cg.parent_tenant_id = v_books_id
+  where cg.tenant_id = v_books_id
     and cg.deleted_at is null
     and (
       p_search is null

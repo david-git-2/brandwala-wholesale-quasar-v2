@@ -142,4 +142,16 @@ export interface StaffShopOrderDetailItem {
 export interface StaffShopOrderDetailResponse {
   order: StaffShopOrderDetailOrder;
   items: StaffShopOrderDetailItem[];
+  items_meta?: StaffShopOrderItemsPageMeta | null;
+}
+
+export interface StaffShopOrderItemsPageCursor {
+  created_at: string;
+  id: number;
+}
+
+export interface StaffShopOrderItemsPageMeta {
+  limit: number;
+  has_more: boolean;
+  next_cursor: StaffShopOrderItemsPageCursor | null;
 }

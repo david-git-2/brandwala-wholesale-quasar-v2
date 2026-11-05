@@ -1,6 +1,9 @@
 CREATE FUNCTION public.get_shop_order_for_staff (
   p_tenant_id bigint,
-  p_order_id  bigint
+  p_order_id  bigint,
+  p_items_limit integer DEFAULT NULL::integer,
+  p_items_cursor_created_at timestamp with time zone DEFAULT NULL::timestamp with time zone,
+  p_items_cursor_id bigint DEFAULT NULL::bigint
 )
   RETURNS jsonb
   LANGUAGE plpgsql
@@ -22,6 +25,10 @@ declare
   v_total_amount numeric;
   v_collection_source public.collection_source_type;
   v_items jsonb;
+  v_items_limit integer;
+  v_items_fetch integer;
+  v_items_has_more boolean := false;
+  v_items_next_cursor jsonb := null;
   v_invoices jsonb;
   v_shipments jsonb;
   v_order_json jsonb;
@@ -43,7 +50,7 @@ begin
     raise exception 'order not found';
   end if;
 
-  if v_order.tenant_id is distinct from p_tenant_id and v_order.parent_tenant_id is distinct from p_tenant_id then
+  if v_order.tenant_id is distinct from p_tenant_id then
     raise exception 'tenant mismatch';
   end if;
 
@@ -125,8 +132,15 @@ begin
     where soi.order_id = v_order.id
   ) x;
 
-  select coalesce(
-    jsonb_agg(
+  if p_items_limit is not null then
+    v_items_limit := greatest(1, least(p_items_limit, 100));
+    v_items_fetch := v_items_limit + 1;
+  end if;
+
+  with item_source as (
+    select
+      soi.created_at as item_created_at,
+      soi.id as item_id,
       jsonb_build_object(
         'id', soi.id,
         'order_id', soi.order_id,
@@ -245,18 +259,47 @@ begin
           )
           else null
         end
+      ) as item_json
+    from public.shop_order_items soi
+    left join public.products p on p.id = soi.product_id
+    left join public.global_stocks gs on gs.id = soi.global_stock_id
+    left join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+    left join public.global_shipments gship on gship.id = gsi.shipment_id
+    where soi.order_id = v_order.id
+      and (
+        p_items_cursor_created_at is null
+        or (soi.created_at, soi.id) > (p_items_cursor_created_at, p_items_cursor_id)
       )
-      order by soi.created_at, soi.id
-    ),
-    '[]'::jsonb
+    order by soi.created_at, soi.id
+    limit case when v_items_fetch is not null then v_items_fetch end
+  ),
+  item_page as (
+    select *
+    from item_source
+    order by item_created_at, item_id
+    limit case when v_items_limit is not null then v_items_limit end
+  ),
+  item_tail as (
+    select item_created_at, item_id
+    from item_page
+    order by item_created_at desc, item_id desc
+    limit 1
   )
-  into v_items
-  from public.shop_order_items soi
-  left join public.products p on p.id = soi.product_id
-  left join public.global_stocks gs on gs.id = soi.global_stock_id
-  left join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
-  left join public.global_shipments gship on gship.id = gsi.shipment_id
-  where soi.order_id = v_order.id;
+  select
+    coalesce(
+      (select jsonb_agg(ip.item_json order by ip.item_created_at, ip.item_id) from item_page ip),
+      '[]'::jsonb
+    ),
+    case
+      when v_items_limit is not null then (select count(*) > v_items_limit from item_source)
+      else false
+    end,
+    case
+      when v_items_limit is not null and (select count(*) from item_source) > v_items_limit then
+        (select jsonb_build_object('created_at', item_created_at, 'id', item_id) from item_tail)
+      else null
+    end
+  into v_items, v_items_has_more, v_items_next_cursor;
 
   v_order_json := jsonb_build_object(
     'id', v_order.id,
@@ -405,13 +448,21 @@ begin
 
   return jsonb_build_object(
     'order', v_order_json,
-    'items', v_items
+    'items', v_items,
+    'items_meta', case
+      when p_items_limit is not null then jsonb_build_object(
+        'limit', v_items_limit,
+        'has_more', v_items_has_more,
+        'next_cursor', v_items_next_cursor
+      )
+      else null
+    end
   );
 end;
 $function$;
 
-GRANT ALL ON FUNCTION public.get_shop_order_for_staff(bigint, bigint) TO anon;
+GRANT ALL ON FUNCTION public.get_shop_order_for_staff(bigint, bigint, integer, timestamp with time zone, bigint) TO anon;
 
-GRANT ALL ON FUNCTION public.get_shop_order_for_staff(bigint, bigint) TO authenticated;
+GRANT ALL ON FUNCTION public.get_shop_order_for_staff(bigint, bigint, integer, timestamp with time zone, bigint) TO authenticated;
 
-GRANT ALL ON FUNCTION public.get_shop_order_for_staff(bigint, bigint) TO service_role;
+GRANT ALL ON FUNCTION public.get_shop_order_for_staff(bigint, bigint, integer, timestamp with time zone, bigint) TO service_role;

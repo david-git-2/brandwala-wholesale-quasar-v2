@@ -197,8 +197,16 @@
         </q-inner-loading>
 
         <div ref="demandTableScrollRef" class="col treasury-table-wrap q-px-sm q-pb-sm">
+          <FulfillDeliveryPapersTable
+            v-if="showFulfillDeliveryPapersTable"
+            class="q-mb-md"
+            :papers="fulfillDeliveryPapers"
+            :loading="isFulfillPapersLoading"
+            @open-paper="openFulfillDeliveryPaper"
+          />
+
           <div
-            v-if="!isLoading && visibleGroups.length === 0"
+            v-if="showMainDeskEmpty"
             class="column items-center justify-center full-height text-grey-7 q-pa-lg"
           >
             <q-icon name="ph ph-clipboard-text" size="40px" class="q-mb-sm" />
@@ -543,6 +551,8 @@ import {
 } from '../utils/demandClosePickFilter';
 import { useProcurementDemandGroupsQuery } from '../composables/useProcurementDemandGroupsQuery';
 import { useProcurementFulfillGroupsQuery } from '../composables/useProcurementFulfillGroupsQuery';
+import { useFulfillDeliveryPapersQuery } from '../composables/useFulfillDeliveryPapersQuery';
+import FulfillDeliveryPapersTable from './FulfillDeliveryPapersTable.vue';
 import {
   useFillPreorderDemandOldestStockMutation,
   useFillPreorderDemandPlacedQuantitiesMutation,
@@ -557,6 +567,7 @@ import {
   type ProcurementDemandGroup,
   type ProcurementDemandItem,
   type ProcurementDemandStatus,
+  type FulfillDeliveryPaperListItem,
 } from '../repositories/procurementDemandRepository';
 type ItemDraft = {
   vendorId: number | null;
@@ -1017,11 +1028,48 @@ const {
   enabled: isFulfillMode,
 });
 
-const isLoading = computed(() =>
-  isFulfillMode.value ? isFulfillLoading.value : isDemandLoading.value,
+const showFulfillDeliveryPapersTable = computed(
+  () => isFulfillMode.value && !isFixedGroupPage.value && listTenantId.value != null,
 );
-const isFetching = computed(() =>
-  isFulfillMode.value ? isFulfillFetching.value : isDemandFetching.value,
+
+const {
+  data: fulfillPapersData,
+  isLoading: isFulfillPapersLoading,
+  isFetching: isFulfillPapersFetching,
+  refetch: refetchFulfillPapers,
+} = useFulfillDeliveryPapersQuery({
+  tenantId: listTenantId,
+  procurementStatus: fulfillProcurementStatus,
+  search: debouncedSearch,
+  enabled: showFulfillDeliveryPapersTable,
+});
+
+const fulfillDeliveryPapers = computed(() => fulfillPapersData.value?.papers ?? []);
+
+const isLoading = computed(() => {
+  if (isFulfillMode.value) {
+    const listPage = !isFixedGroupPage.value;
+    return (
+      isFulfillLoading.value || (listPage && isFulfillPapersLoading.value)
+    );
+  }
+  return isDemandLoading.value;
+});
+const isFetching = computed(() => {
+  if (isFulfillMode.value) {
+    const listPage = !isFixedGroupPage.value;
+    return (
+      isFulfillFetching.value || (listPage && isFulfillPapersFetching.value)
+    );
+  }
+  return isDemandFetching.value;
+});
+
+const showMainDeskEmpty = computed(
+  () =>
+    !isLoading.value &&
+    visibleGroups.value.length === 0 &&
+    (!showFulfillDeliveryPapersTable.value || fulfillDeliveryPapers.value.length === 0),
 );
 
 const groups = computed(() => {
@@ -1139,7 +1187,10 @@ const markReadyMutation = useMarkDemandGroupReadyMutation();
 
 const refreshDemandDesk = async () => {
   if (isFulfillMode.value) {
-    await refetchFulfillGroups();
+    await Promise.all([
+      refetchFulfillGroups(),
+      showFulfillDeliveryPapersTable.value ? refetchFulfillPapers() : Promise.resolve(),
+    ]);
     void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'fulfillGroupItems'] });
   } else {
     await refetchDemandGroups();
@@ -1768,6 +1819,29 @@ const openFulfillGroupPage = (group: ProcurementDemandGroup) => {
     query: {
       status: 'dispatch',
       documentName: group.document_name?.trim() || undefined,
+    },
+  });
+};
+
+const openFulfillDeliveryPaper = (paper: FulfillDeliveryPaperListItem) => {
+  const tenantSlug = authStore.tenantSlug || '';
+  if (paper.source_type === 'shop_order') {
+    void router.push({
+      name: 'app-shop-order-delivery-paper-page',
+      params: {
+        tenantSlug,
+        id: String(paper.source_id),
+        paperId: String(paper.id),
+      },
+    });
+    return;
+  }
+  void router.push({
+    name: 'product-based-costing-delivery-paper-page',
+    params: {
+      tenantSlug,
+      id: String(paper.source_id),
+      paperId: String(paper.id),
     },
   });
 };

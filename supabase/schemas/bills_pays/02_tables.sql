@@ -261,7 +261,7 @@ ALTER TABLE "public"."books_exchange_rates" OWNER TO "postgres";
 
 COMMENT ON TABLE "public"."books_exchange_rates" IS 'Default FX pick: rate = base (BDT) per 1 quote (e.g. GBP). Posted pays copy the pair onto the ledger line.';
 
-CREATE OR REPLACE VIEW "public"."global_invoice_items" WITH ("security_invoker"='false') AS
+CREATE OR REPLACE VIEW "public"."global_invoice_items" WITH ("security_invoker"='true') AS
  SELECT "id",
     "tenant_id",
 
@@ -339,7 +339,7 @@ ALTER SEQUENCE "public"."global_payment_instruments_id_seq" OWNER TO "postgres";
 
 ALTER SEQUENCE "public"."global_payment_instruments_id_seq" OWNED BY "public"."pay_instruments"."id";
 
-CREATE OR REPLACE VIEW "public"."global_return_items" WITH ("security_invoker"='false') AS
+CREATE OR REPLACE VIEW "public"."global_return_items" WITH ("security_invoker"='true') AS
  SELECT "id",
 
     "tenant_id",

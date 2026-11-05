@@ -24,7 +24,11 @@ function offerCurrencyId(o: StaffOrderOffer | null | undefined): number | null {
 
 export function mapStaffShopOrderDetailToFlat(
   payload: StaffShopOrderDetailResponse,
-): { order: ShopOrder; items: ShopOrderItem[] } {
+): {
+  order: ShopOrder;
+  items: ShopOrderItem[];
+  itemsMeta: StaffShopOrderDetailResponse['items_meta'];
+} {
   const o = payload.order;
   const shop = o.shop;
   const customer = o.customer;
@@ -138,7 +142,7 @@ export function mapStaffShopOrderDetailToFlat(
 
   const items: ShopOrderItem[] = payload.items.map(mapStaffShopOrderDetailItemToFlat);
 
-  return { order: order as ShopOrder, items };
+  return { order: order as ShopOrder, items, itemsMeta: payload.items_meta ?? null };
 }
 
 function mapStaffShopOrderDetailItemToFlat(item: StaffShopOrderDetailItem): ShopOrderItem {

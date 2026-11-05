@@ -117,6 +117,14 @@ export const procurementStockQueryKeys = {
     offset?: number;
   }) => ['procurementStock', 'fulfillGroups', params] as const,
 
+  fulfillDeliveryPapers: (params: {
+    tenantId: number;
+    procurementStatus: string;
+    search?: string | null;
+    limit?: number;
+    offset?: number;
+  }) => ['procurementStock', 'fulfillDeliveryPapers', params] as const,
+
   fulfillGroupItems: (params: {
     tenantId: number;
     documentType: string;

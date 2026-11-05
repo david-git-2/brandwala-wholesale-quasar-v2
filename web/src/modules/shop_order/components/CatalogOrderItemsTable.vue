@@ -610,6 +610,7 @@ const emit = defineEmits<{
   (e: 'open-column-selector'): void;
   (e: 'update:visible-columns', columns: string[]): void;
   (e: 'table-scroll'): void;
+  (e: 'load-more-items'): void;
   (
     e: 'update-item',
     payload: {
@@ -685,8 +686,13 @@ const ALL_COLUMN_NAMES = [
 
 const tableScrollContainerRef = ref<HTMLElement | null>(null);
 
-function onTableScroll() {
+function onTableScroll(event: Event) {
   emit('table-scroll');
+  const el = event.target as HTMLElement | null;
+  if (!el) return;
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 240) {
+    emit('load-more-items');
+  }
 }
 
 const defaultVisibleColumns = [

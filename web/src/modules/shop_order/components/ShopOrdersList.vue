@@ -35,19 +35,20 @@
 
   <div v-else class="orders-list-wrapper column no-wrap">
     <div class="orders-list-scroll col">
-      <div class="orders-list-container">
-        <div
-          v-for="order in orders"
-          :key="order.id"
-          class="order-list-row row items-center justify-between no-wrap cursor-pointer"
-          :class="getOrderRowClass(order.status)"
-          :data-test="`shop-order-item-${order.id}`"
-          tabindex="0"
-          role="button"
-          @click="emit('row-click', order.id)"
-          @keydown.enter="emit('row-click', order.id)"
-          @keydown.space.prevent="emit('row-click', order.id)"
-        >
+      <q-infinite-scroll :offset="250" @load="onInfiniteLoad">
+        <div class="orders-list-container">
+          <div
+            v-for="order in orders"
+            :key="order.id"
+            class="order-list-row row items-center justify-between no-wrap cursor-pointer"
+            :class="getOrderRowClass(order.status)"
+            :data-test="`shop-order-item-${order.id}`"
+            tabindex="0"
+            role="button"
+            @click="emit('row-click', order.id)"
+            @keydown.enter="emit('row-click', order.id)"
+            @keydown.space.prevent="emit('row-click', order.id)"
+          >
           <!-- Left Section: Status indicator, Order No, Name & Inline Metadata -->
           <div class="order-main-info col min-width-0 row items-center no-wrap">
             <div class="order-details-block column col min-width-0 justify-center">
@@ -126,20 +127,14 @@
             </span>
           </div>
         </div>
-
-        <div v-if="hasNextPage" class="row justify-center q-py-sm">
-          <q-btn
-            flat
-            dense
-            no-caps
-            :loading="isFetchingNextPage"
-            class="load-more-btn text-weight-medium q-px-md"
-            :label="$t('common.load_more', 'Load more')"
-            icon="ph ph-arrow-down"
-            @click="emit('load-more')"
-          />
         </div>
-      </div>
+
+        <template v-if="hasNextPage" #loading>
+          <div class="row justify-center q-py-sm">
+            <q-spinner color="primary" size="24px" />
+          </div>
+        </template>
+      </q-infinite-scroll>
     </div>
   </div>
 </template>
@@ -167,9 +162,21 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'row-click', orderId: number): void;
   (e: 'add-to-dropship', orderId: number): void;
-  (e: 'load-more'): void;
+  (e: 'load-more', done: (stop?: boolean) => void): void;
   (e: 'clear-filters'): void;
 }>();
+
+const onInfiniteLoad = (_index: number, done: (stop?: boolean) => void) => {
+  if (props.isFetchingNextPage) {
+    done();
+    return;
+  }
+  if (!props.hasNextPage) {
+    done(true);
+    return;
+  }
+  emit('load-more', done);
+};
 
 const { t } = useI18n();
 

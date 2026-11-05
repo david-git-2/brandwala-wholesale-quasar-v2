@@ -25,8 +25,7 @@ ALTER TABLE public.tenant_scoped_counters
 ALTER TABLE public.tenant_scoped_counters
   ADD CONSTRAINT tenant_scoped_counters_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
 
-GRANT ALL ON public.tenant_scoped_counters TO anon;
+ALTER TABLE public.tenant_scoped_counters ENABLE ROW LEVEL SECURITY;
 
-GRANT ALL ON public.tenant_scoped_counters TO authenticated;
-
-GRANT ALL ON public.tenant_scoped_counters TO service_role;
+REVOKE ALL ON TABLE public.tenant_scoped_counters FROM PUBLIC, anon, authenticated;
+GRANT ALL ON TABLE public.tenant_scoped_counters TO service_role;

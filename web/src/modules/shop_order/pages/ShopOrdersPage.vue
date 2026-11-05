@@ -28,7 +28,7 @@
           @row-click="goToOrderDetails"
           @add-to-dropship="addToDropshipDesk"
           @clear-filters="clearAllFilters"
-          @load-more="fetchNextPage()"
+          @load-more="onLoadMoreOrders"
         />
       </div>
     </div>
@@ -103,6 +103,15 @@ const {
   isRefreshing,
   refresh,
 } = useShopOrdersStaffPageQuery(pageParams);
+
+const onLoadMoreOrders = async (done: (stop?: boolean) => void) => {
+  if (!hasNextPage.value) {
+    done(true);
+    return;
+  }
+  await fetchNextPage();
+  done(!hasNextPage.value);
+};
 
 const isDropshipShop = (shopId: number) => {
   const order = orders.value.find((o) => o.shop_id === shopId);
