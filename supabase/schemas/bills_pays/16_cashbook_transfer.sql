@@ -41,7 +41,7 @@ begin
     v_ccy := 'BDT';
   end if;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
 
   if not public.membership_has_module_action(p_tenant_id, 'payments', 'collect_payment') then
     raise exception 'Permission denied.';
@@ -50,7 +50,7 @@ begin
   select * into v_from
   from public.cashbook_points cp
   where cp.id = p_from_point_id
-    and cp.parent_tenant_id = v_parent_id
+    and cp.tenant_id = v_parent_id
     and cp.is_active = true;
 
   if v_from.id is null then
@@ -60,7 +60,7 @@ begin
   select * into v_to
   from public.cashbook_points cp
   where cp.id = p_to_point_id
-    and cp.parent_tenant_id = v_parent_id
+    and cp.tenant_id = v_parent_id
     and cp.is_active = true;
 
   if v_to.id is null then
@@ -77,7 +77,7 @@ begin
   );
 
   perform public.record_ledger_transaction(
-    p_parent_tenant_id => v_parent_id,
+    p_tenant_id => v_parent_id,
     p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'tenant',
     p_entity_id => v_parent_id,
@@ -102,7 +102,7 @@ begin
   );
 
   perform public.record_ledger_transaction(
-    p_parent_tenant_id => v_parent_id,
+    p_tenant_id => v_parent_id,
     p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'tenant',
     p_entity_id => v_parent_id,

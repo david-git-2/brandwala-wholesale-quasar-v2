@@ -108,7 +108,7 @@ const listChildTenantRefs = async (parentTenantIds: number[]): Promise<TenantHie
   }
 
   const { data, error } = await supabase.rpc('list_child_tenant_refs', {
-    p_parent_tenant_ids: parentTenantIds,
+    p_tenant_ids: parentTenantIds,
   });
 
   if (error) {
@@ -418,7 +418,7 @@ const previewPurgeData = async (payload: {
   targetChildId?: number | null;
 }): Promise<TenantPurgePreviewCounts> => {
   const { data, error } = await (supabase.rpc as any)('preview_tenant_data_purge', {
-    p_parent_tenant_id: payload.parentTenantId,
+    p_tenant_id: payload.parentTenantId,
     p_scope: payload.scope,
     p_target_child_id: payload.targetChildId ?? null,
   });
@@ -445,7 +445,7 @@ const purgeOperationalData = async (payload: {
   targetChildId?: number | null;
 }): Promise<TenantPurgeResult> => {
   const { data, error } = await (supabase.rpc as any)('purge_tenant_operational_data', {
-    p_parent_tenant_id: payload.parentTenantId,
+    p_tenant_id: payload.parentTenantId,
     p_scope: payload.scope,
     p_confirmation_slug: payload.confirmationSlug,
     p_target_child_id: payload.targetChildId ?? null,

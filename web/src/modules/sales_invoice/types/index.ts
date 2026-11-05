@@ -43,7 +43,7 @@ export type InvoicePaymentHistoryEntry = {
 export type GlobalInvoiceRow = {
   id: number;
   tenant_id?: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   issued_by_tenant_id: number;
   issued_by_tenant_name?: string | null;
   invoice_no: string;
@@ -175,7 +175,7 @@ export type InvoiceChargeLineRow = {
 export type BusinessPartyRow = {
   id: number;
   tenant_id: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   name: string;
   party_type: string;
   phone: string | null;

@@ -32,7 +32,7 @@ export interface GlobalStockGroupsListResult {
 
 export interface GlobalStock {
   id: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   shipment_item_id: number;
   shipment_id: number;
   stock_type_id?: number | null;
@@ -254,7 +254,7 @@ const fetchStocksByShipmentItem = async (shipmentItemId: number): Promise<Global
 
 const saveStockSplits = async (
   stockRows: Array<{
-    parent_tenant_id: number;
+    tenant_id: number;
     shipment_item_id: number;
     stock_type_id?: number;
     availability?: Database['public']['Enums']['stock_availability'];

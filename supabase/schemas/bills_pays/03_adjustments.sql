@@ -67,7 +67,7 @@ begin
 
   if not (
     coalesce(auth.role(), '') = 'service_role'
-    or public.user_can_manage_parent_tenant(v_parent.parent_tenant_id)
+    or public.user_can_manage_books_tenant(v_parent.tenant_id)
     or public.membership_has_module_action(v_parent.issued_by_tenant_id, 'global_invoice', 'edit')
   ) then
     raise exception 'Permission denied';
@@ -108,7 +108,7 @@ begin
   end;
 
   insert into public.bills (
-    parent_tenant_id,
+    tenant_id,
     issued_by_tenant_id,
     invoice_no,
     invoice_type,
@@ -128,7 +128,7 @@ begin
     ap_kind,
     channel_meta
   ) values (
-    v_parent.parent_tenant_id,
+    v_parent.tenant_id,
     v_parent.issued_by_tenant_id,
     v_no,
     v_parent.invoice_type,
@@ -171,7 +171,7 @@ begin
       v_stock_id := nullif(trim(coalesce(v_line_elem ->> 'global_stock_id', '')), '')::bigint;
 
       insert into public.bill_lines (
-        parent_tenant_id,
+        tenant_id,
         invoice_id,
         line_kind,
         name_snapshot,
@@ -183,7 +183,7 @@ begin
         books_amount,
         line_meta
       ) values (
-        v_parent.parent_tenant_id,
+        v_parent.tenant_id,
         v_row.id,
         v_line_kind,
         coalesce(nullif(trim(coalesce(v_line_elem ->> 'name_snapshot', '')), ''), 'Adjustment line'),
@@ -235,9 +235,9 @@ begin
       join public.cashbook_accounts ca on ca.id = cp.cashbook_account_id
       where cp.id = p_cashbook_point_id
         and cp.is_active = true
-        and ca.parent_tenant_id = v_parent.parent_tenant_id
+        and ca.tenant_id = v_parent.tenant_id
         and ca.entity_type = 'tenant'
-        and ca.entity_id = v_parent.parent_tenant_id
+        and ca.entity_id = v_parent.tenant_id
     ) then
       raise exception 'Invalid cash point for this tenant';
     end if;
@@ -253,7 +253,7 @@ begin
     end;
 
     v_pot_id := public._kernel_ensure_cashbook_point_pot(
-      v_parent.parent_tenant_id,
+      v_parent.tenant_id,
       p_cashbook_point_id,
       'BDT'
     );
@@ -272,7 +272,7 @@ begin
       source_currency_code,
       transaction_rate
     ) values (
-      v_parent.parent_tenant_id,
+      v_parent.tenant_id,
       v_parent.profile_id,
       v_pay_source,
       v_refund,
@@ -302,7 +302,7 @@ begin
     );
 
     perform public._kernel_record_pay_bill_settlement(
-      v_parent.parent_tenant_id,
+      v_parent.tenant_id,
       v_pay.id,
       v_row.id,
       v_refund,
@@ -312,10 +312,10 @@ begin
     perform public.recompute_global_invoice_payment_status(v_parent.id);
 
     perform public.record_ledger_transaction(
-      p_parent_tenant_id => v_parent.parent_tenant_id,
+      p_tenant_id => v_parent.tenant_id,
       p_operating_tenant_id => v_parent.issued_by_tenant_id,
       p_entity_type => 'tenant',
-      p_entity_id => v_parent.parent_tenant_id,
+      p_entity_id => v_parent.tenant_id,
       p_type => 'debit',
       p_amount => v_refund,
       p_currency_code => 'BDT',

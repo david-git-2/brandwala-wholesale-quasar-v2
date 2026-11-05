@@ -771,25 +771,15 @@ const onRecipientFormSubmit = async () => {
   const districtVal = recipientForm.district.trim() || null;
   const thanaVal = recipientForm.thana.trim() || null;
 
-  const payload = isParentTenant.value
-    ? {
-        parent_tenant_id: tenantId.value,
-        name: recipientForm.name.trim(),
-        phone: recipientForm.phone.trim(),
-        address: recipientForm.address.trim(),
-        secondary_phone: secondary,
-        district: districtVal,
-        thana: thanaVal,
-      }
-    : {
-        tenant_id: tenantId.value,
-        name: recipientForm.name.trim(),
-        phone: recipientForm.phone.trim(),
-        address: recipientForm.address.trim(),
-        secondary_phone: secondary,
-        district: districtVal,
-        thana: thanaVal,
-      };
+  const payload = {
+    tenant_id: tenantId.value,
+    name: recipientForm.name.trim(),
+    phone: recipientForm.phone.trim(),
+    address: recipientForm.address.trim(),
+    secondary_phone: secondary,
+    district: districtVal,
+    thana: thanaVal,
+  };
 
   const res = await recipientStore.upsertByPhone(payload);
   if (res.success) {

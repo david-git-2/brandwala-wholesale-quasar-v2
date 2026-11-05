@@ -9,7 +9,7 @@ export type NotificationItem = {
   link_path: string | null;
   entity_type: string | null;
   entity_id: string | null;
-  parent_tenant_id: number;
+  tenant_id: number;
   operating_tenant_id: number | null;
   operating_tenant_name: string | null;
   created_at: string;

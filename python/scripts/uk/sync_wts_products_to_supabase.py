@@ -57,17 +57,21 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("PY_PRODUCTS_MARKET_CODE", "GB"),
         help="Market code scope (default: PY_PRODUCTS_MARKET_CODE or GB).",
     )
-    parser.add_argument(
-        "--parent-tenant-id",
-        dest="parent_tenant_id",
-        default=os.getenv("PY_PRODUCTS_PARENT_TENANT_ID", "15").strip() or "15",
-        help="Warehouse parent tenant id (default: 15).",
-    )
+    books_default = (
+        os.getenv("PY_PRODUCTS_TENANT_ID") or os.getenv("PY_PRODUCTS_PARENT_TENANT_ID") or "15"
+    ).strip() or "15"
     parser.add_argument(
         "--tenant-id",
-        dest="tenant_id",
-        default=os.getenv("PY_PRODUCTS_TENANT_ID", "").strip(),
-        help="Who ran the sync (inserted_by_tenant_id). Defaults to parent tenant id.",
+        dest="books_tenant_id",
+        type=int,
+        default=int(books_default),
+        help=f"Books warehouse tenant id (default: {books_default}).",
+    )
+    parser.add_argument(
+        "--inserted-by-tenant-id",
+        dest="inserted_by_tenant_id",
+        default=os.getenv("PY_PRODUCTS_INSERTED_BY_TENANT_ID", "").strip(),
+        help="Who ran the sync (inserted_by_tenant_id). Defaults to books tenant id.",
     )
     parser.add_argument(
         "--vendor-id",
@@ -128,7 +132,7 @@ def build_wts_sync_payloads(
     vendor_code: str,
     vendor_id: int,
     market_code: str,
-    parent_tenant_id: int,
+    tenant_id: int,
     inserted_by_tenant_id: int,
     gbp_currency_id: int,
 ) -> tuple[dict[str, Any], dict[str, Any]] | None:
@@ -147,7 +151,7 @@ def build_wts_sync_payloads(
     price = to_float_or_none(row.get("price"))
 
     insert_payload: dict[str, Any] = {
-        "parent_tenant_id": parent_tenant_id,
+        "tenant_id": tenant_id,
         "inserted_by_tenant_id": inserted_by_tenant_id,
         "vendor_id": vendor_id,
         "vendor_code": vendor_code,
@@ -173,7 +177,7 @@ def build_wts_sync_payloads(
     update_payload: dict[str, Any] = {}
     for key, value in insert_payload.items():
         if key in (
-            "parent_tenant_id",
+            "tenant_id",
             "inserted_by_tenant_id",
             "vendor_id",
             "vendor_code",
@@ -283,16 +287,13 @@ def main() -> int:
     args = parse_args()
     sync_started = time.perf_counter()
 
-    parent_raw = to_text(args.parent_tenant_id) or "15"
-    if not (parent_raw.isdigit() and int(parent_raw) > 0):
-        raise SystemExit("parent tenant id must be a positive integer (default 15).")
-    parent_tenant_id = int(parent_raw)
-    inserted_raw = to_text(args.tenant_id)
+    tenant_id = int(args.books_tenant_id)
+    inserted_raw = to_text(args.inserted_by_tenant_id)
     inserted_by_tenant_id = (
-        int(inserted_raw) if inserted_raw.isdigit() and int(inserted_raw) > 0 else parent_tenant_id
+        int(inserted_raw) if inserted_raw.isdigit() and int(inserted_raw) > 0 else tenant_id
     )
     print(
-        f"Using parent_tenant_id={parent_tenant_id}, "
+        f"Using tenant_id={tenant_id}, "
         f"inserted_by_tenant_id={inserted_by_tenant_id}",
         flush=True,
     )
@@ -331,7 +332,7 @@ def main() -> int:
             f"Vendor market={vendor_market_code}, input market={market_code}."
         )
 
-    assert_vendor_parent_scope(vendor_row, parent_tenant_id, resolved_vendor_id)
+    assert_vendor_parent_scope(vendor_row, tenant_id, resolved_vendor_id)
 
     rows = load_products(input_path)
     barcode_counts: dict[str, int] = {}
@@ -344,7 +345,7 @@ def main() -> int:
             resolved_vendor_code,
             resolved_vendor_id,
             market_code,
-            parent_tenant_id,
+            tenant_id,
             inserted_by_tenant_id,
             gbp_currency_id,
         )
@@ -358,7 +359,7 @@ def main() -> int:
         deduped_updates[barcode_key] = update_payload
 
     existing_rows_full = fetch_all_scoped_products_full(
-        client, resolved_vendor_id, market_code, parent_tenant_id
+        client, resolved_vendor_id, market_code, tenant_id
     )
     existing_rows = [
         {
@@ -404,7 +405,7 @@ def main() -> int:
                 )
                 updates.append((row_id, final_update_payload))
         else:
-            insert_payload["parent_tenant_id"] = parent_tenant_id
+            insert_payload["tenant_id"] = tenant_id
             insert_payload["inserted_by_tenant_id"] = inserted_by_tenant_id
             insert_payload["vendor_id"] = resolved_vendor_id
             insert_payload["vendor_code"] = resolved_vendor_code
@@ -415,7 +416,7 @@ def main() -> int:
                 insert_payload["image_url"] = donor_url
             inserts.append(insert_payload)
 
-    scope_params = build_scope_params(resolved_vendor_id, market_code, parent_tenant_id)
+    scope_params = build_scope_params(resolved_vendor_id, market_code, tenant_id)
 
     print(f"Input rows: {len(rows)}")
     print(f"Deduped rows: {len(deduped_inserts)}")
@@ -431,7 +432,7 @@ def main() -> int:
         "Scope: "
         f"vendor_code={resolved_vendor_code} vendor_id={resolved_vendor_id} "
         f"market={market_code} "
-        f"parent_tenant_id={parent_tenant_id} "
+        f"tenant_id={tenant_id} "
         f"inserted_by_tenant_id={inserted_by_tenant_id}"
     )
     print("Image handling: preserve existing DB image_url; Excel input never supplies images.")
@@ -451,7 +452,7 @@ def main() -> int:
             chunk_size=max(1, args.chunk_size),
             dry_run=True,
             write_retries=max(1, args.write_retries),
-            parent_tenant_id=parent_tenant_id,
+            tenant_id=tenant_id,
         )
         print("Dry run complete. No DB writes.")
         return 0
@@ -468,7 +469,7 @@ def main() -> int:
         chunk_size=max(1, args.chunk_size),
         dry_run=False,
         write_retries=max(1, args.write_retries),
-        parent_tenant_id=parent_tenant_id,
+        tenant_id=tenant_id,
     )
 
     updates_total = len(updates)
@@ -535,7 +536,7 @@ def main() -> int:
     if not args.dry_run:
         log_upload(
             source=resolve_catalog_source(args.catalog_source, "wts"),
-            parent_tenant_id=parent_tenant_id,
+            tenant_id=tenant_id,
             file_name=resolve_upload_file_name(args.upload_file_name, Path(args.input_path)),
             products_updated=products_updated,
             duration_seconds=int(time.perf_counter() - sync_started),

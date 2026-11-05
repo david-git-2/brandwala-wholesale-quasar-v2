@@ -17,7 +17,7 @@ const listByParentTenantId = async (parentTenantId: number): Promise<BatchCodeLi
     .select(
       '*, shipment:global_shipments(id, name, tenant_shipment_id), batch_code_items(count)',
     )
-    .eq('parent_tenant_id', parentTenantId)
+    .eq('tenant_id', parentTenantId)
     .order('updated_at', { ascending: false });
 
   if (error) throw error;

@@ -1,8 +1,7 @@
 -- Preview only. Apply: tenant_id_copy_parent_apply.sql
 -- Scope: parent_tenant_id = 15 (BW). Child tenant_id in {10, 11} or null.
 -- Does not touch other companies (local customer_groups 8 / 17 stay).
-
-\set ON_ERROR_STOP on
+-- Dashboard: paste whole file (no psql \set lines).
 
 SELECT 'scope_tenants' AS step, id, name, parent_id
 FROM public.tenants

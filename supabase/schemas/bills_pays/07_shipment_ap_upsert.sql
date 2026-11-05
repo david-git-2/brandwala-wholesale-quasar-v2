@@ -1,7 +1,7 @@
 -- Shipment AP draft upsert (sync adapter). Called from sync_shipment_ap_bills / upsert_draft_bill adapter.
 
 CREATE OR REPLACE FUNCTION public._upsert_shipment_ap_bill(
-  p_parent_tenant_id bigint,
+  p_tenant_id bigint,
   p_issued_by_tenant_id bigint,
   p_shipment_id bigint,
   p_shipment_name text,
@@ -43,7 +43,7 @@ begin
 
   select * into v_bill
   from public.bills b
-  where b.parent_tenant_id = p_parent_tenant_id
+  where b.tenant_id = p_tenant_id
     and b.invoice_type = 'ap'::public.global_invoice_type
     and b.document_kind = 'standard'::public.bill_document_kind
     and b.source_type = 'shipment_cost'
@@ -90,13 +90,13 @@ begin
       current_date
     );
     insert into public.bills (
-      parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_date,
+      tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_date,
       invoice_status, profile_id, collection_source, payment_status,
       subtotal_amount, total_amount, due_amount, paid_amount,
       ap_shipment_id, ap_kind, source_type, source_id, source_key, currency_code,
       note, channel_meta, document_kind
     ) values (
-      p_parent_tenant_id, p_issued_by_tenant_id, v_invoice_no, 'ap'::public.global_invoice_type, current_date,
+      p_tenant_id, p_issued_by_tenant_id, v_invoice_no, 'ap'::public.global_invoice_type, current_date,
       v_paper_status, p_profile_id, 'profile'::public.collection_source_type, 'due',
       v_target, v_target, v_target, 0,
       p_shipment_id, p_ap_kind, 'shipment_cost', p_shipment_id::text, v_plug_key, v_face_currency,

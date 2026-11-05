@@ -8,7 +8,7 @@ export type StockLocationKind =
 
 export interface StockLocation {
   id: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   code: string;
   name: string;
   kind: StockLocationKind;

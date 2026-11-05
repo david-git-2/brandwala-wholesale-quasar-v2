@@ -180,7 +180,7 @@ export function useShipmentBoxWeightGrid(shipmentId: number) {
     savingAdd.value = true;
     try {
       await globalShipmentBoxRepository.create({
-        parent_tenant_id: resolveParentTenantId(),
+        tenant_id: resolveParentTenantId(),
         shipment_id: shipmentId,
         box_number: addForm.box_number.trim(),
         received_weight: toWeight(addForm.received_weight),

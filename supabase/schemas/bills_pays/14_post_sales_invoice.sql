@@ -27,8 +27,8 @@ begin
     raise exception 'cannot post an empty invoice';
   end if;
 
-  v_eff_tenant_id := coalesce(v_invoice.issued_by_tenant_id, v_invoice.parent_tenant_id);
-  v_parent_id := coalesce(v_invoice.parent_tenant_id, v_invoice.issued_by_tenant_id);
+  v_eff_tenant_id := coalesce(v_invoice.issued_by_tenant_id, v_invoice.tenant_id);
+  v_parent_id := coalesce(v_invoice.tenant_id, v_invoice.issued_by_tenant_id);
 
   if v_invoice.invoice_type = 'wholesale'::public.global_invoice_type then
     if v_invoice.profile_id is null then

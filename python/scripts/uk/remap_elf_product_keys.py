@@ -30,7 +30,7 @@ DEFAULT_INPUT = ROOT_DIR / "python" / "data" / "uk" / "out" / "elf_data.json"
 VENDOR_CODE = "ELF"
 VENDOR_ID = 5
 MARKET_CODE = "GB"
-DEFAULT_PARENT_TENANT_ID = 15
+DEFAULT_TENANT_ID = 15
 
 # Strip common ELF image / SKU prefixes when comparing model codes
 PREFIX_RE = re.compile(
@@ -221,17 +221,17 @@ class SupabaseRestClient:
             raise RuntimeError(f"UPDATE {table} id={row_id} failed ({resp.status_code}): {resp.text}")
 
 
-def fetch_elf_products(client: SupabaseRestClient, parent_tenant_id: int) -> list[dict[str, Any]]:
+def fetch_elf_products(client: SupabaseRestClient, tenant_id: int) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     offset = 0
     limit = 1000
     while True:
         params: dict[str, Any] = {
-            "select": "id,parent_tenant_id,product_code,barcode,name,image_url,vendor_code,vendor_id,market_code",
+            "select": "id,tenant_id,product_code,barcode,name,image_url,vendor_code,vendor_id,market_code",
             "vendor_code": f"eq.{VENDOR_CODE}",
             "vendor_id": f"eq.{VENDOR_ID}",
             "market_code": f"eq.{MARKET_CODE}",
-            "parent_tenant_id": f"eq.{parent_tenant_id}",
+            "tenant_id": f"eq.{tenant_id}",
             "order": "id.asc",
             "limit": str(limit),
             "offset": str(offset),
@@ -326,10 +326,10 @@ def parse_args() -> argparse.Namespace:
         help="Scraped ELF JSON path (default: python/data/uk/out/elf_data.json)",
     )
     parser.add_argument(
-        "--parent-tenant-id",
+        "--tenant-id",
         type=int,
-        default=DEFAULT_PARENT_TENANT_ID,
-        help=f"Warehouse parent tenant id (default: {DEFAULT_PARENT_TENANT_ID})",
+        default=DEFAULT_TENANT_ID,
+        help=f"Warehouse parent tenant id (default: {DEFAULT_TENANT_ID})",
     )
     parser.add_argument(
         "--apply",
@@ -362,10 +362,10 @@ def main() -> None:
     client = SupabaseRestClient(supabase_url, supabase_key)
     scraped = load_scraped(input_path)
     by_key, by_product_code = build_scrape_indexes(scraped)
-    db_rows = fetch_elf_products(client, args.parent_tenant_id)
+    db_rows = fetch_elf_products(client, args.tenant_id)
 
     print(
-        f"Parent tenant {args.parent_tenant_id} | vendor {VENDOR_CODE} (id={VENDOR_ID}) | market {MARKET_CODE}"
+        f"Parent tenant {args.tenant_id} | vendor {VENDOR_CODE} (id={VENDOR_ID}) | market {MARKET_CODE}"
     )
     print(f"DB products: {len(db_rows)}")
     print(f"Scraped products: {len(scraped)}")
@@ -496,7 +496,7 @@ def main() -> None:
         report_path.write_text(
             json.dumps(
                 {
-                    "parent_tenant_id": args.parent_tenant_id,
+                    "tenant_id": args.tenant_id,
                     "mode": "apply" if args.apply else "dry-run",
                     "planned": planned,
                     "skipped_same": skipped_same,

@@ -90,7 +90,7 @@ WITH (security_invoker = true)
 AS
 SELECT
   b.id AS bill_id,
-  b.parent_tenant_id,
+  b.tenant_id,
   b.issued_by_tenant_id,
   b.source_type,
   b.source_id,
@@ -137,7 +137,7 @@ LEFT JOIN LATERAL public._kernel_bill_open_components(coalesce(b.parent_bill_id,
 -- list_bills_for_source (BP10)
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.list_bills_for_source(
-  p_parent_tenant_id bigint,
+  p_tenant_id bigint,
   p_source_type text,
   p_source_id text,
   p_source_key text DEFAULT NULL,
@@ -155,8 +155,8 @@ declare
   v_sid bigint;
   v_rows jsonb;
 begin
-  if p_parent_tenant_id is null then
-    raise exception 'parent_tenant_id is required';
+  if p_tenant_id is null then
+    raise exception 'tenant_id is required';
   end if;
   if nullif(trim(coalesce(p_source_type, '')), '') is null then
     raise exception 'source_type is required';
@@ -165,10 +165,10 @@ begin
     raise exception 'source_id is required';
   end if;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_parent_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
 
   if not (
-    public.user_can_manage_parent_tenant(v_parent_id)
+    public.user_can_manage_books_tenant(v_parent_id)
     or public.membership_has_module_action(v_parent_id, 'global_invoice', 'view')
   ) then
     raise exception 'not allowed';
@@ -200,7 +200,7 @@ begin
   )
   into v_rows
   from public.bills b
-  where b.parent_tenant_id = v_parent_id
+  where b.tenant_id = v_parent_id
     and (p_include_voided or b.invoice_status <> 'voided'::public.global_invoice_status)
     and (
       (b.source_type = p_source_type and b.source_id = p_source_id)
@@ -254,7 +254,7 @@ $$;
 -- list_pays_for_source (BP10)
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.list_pays_for_source(
-  p_parent_tenant_id bigint,
+  p_tenant_id bigint,
   p_source_type text,
   p_source_id text
 )
@@ -269,15 +269,15 @@ declare
   v_order_id bigint;
   v_rows jsonb;
 begin
-  if p_parent_tenant_id is null then
-    raise exception 'parent_tenant_id is required';
+  if p_tenant_id is null then
+    raise exception 'tenant_id is required';
   end if;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_parent_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
   v_order_id := nullif(trim(p_source_id), '')::bigint;
 
   if not (
-    public.user_can_manage_parent_tenant(v_parent_id)
+    public.user_can_manage_books_tenant(v_parent_id)
     or public.membership_has_module_action(v_parent_id, 'global_invoice', 'view')
   ) then
     raise exception 'not allowed';
@@ -323,7 +323,7 @@ begin
         join public.bills b on b.id = bs.bill_id
         where bs.allocator_kind = 'pay'
           and bs.allocator_id = p.id
-          and b.parent_tenant_id = v_parent_id
+          and b.tenant_id = v_parent_id
           and (
             (b.source_type = p_source_type and b.source_id = p_source_id)
             or (
@@ -346,7 +346,7 @@ $$;
 -- list_open_on_profile (BP10)
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.list_open_on_profile(
-  p_parent_tenant_id bigint,
+  p_tenant_id bigint,
   p_profile_id bigint
 )
 RETURNS jsonb
@@ -361,14 +361,14 @@ declare
   v_open_credits jsonb;
   v_leftover jsonb;
 begin
-  if p_parent_tenant_id is null or p_profile_id is null then
-    raise exception 'parent_tenant_id and profile_id are required';
+  if p_tenant_id is null or p_profile_id is null then
+    raise exception 'tenant_id and profile_id are required';
   end if;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_parent_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
 
   if not (
-    public.user_can_manage_parent_tenant(v_parent_id)
+    public.user_can_manage_books_tenant(v_parent_id)
     or public.membership_has_module_action(v_parent_id, 'global_invoice', 'view')
   ) then
     raise exception 'not allowed';
@@ -390,7 +390,7 @@ begin
   )
   into v_due_bills
   from public.v_kernel_bill_summaries s
-  where s.parent_tenant_id = v_parent_id
+  where s.tenant_id = v_parent_id
     and s.document_kind = 'standard'::public.bill_document_kind
     and s.lifecycle_status = 'issued'
     and s.open_books > 0
@@ -414,7 +414,7 @@ begin
   )
   into v_open_credits
   from public.v_kernel_bill_summaries s
-  where s.parent_tenant_id = v_parent_id
+  where s.tenant_id = v_parent_id
     and s.document_kind = 'credit_note'::public.bill_document_kind
     and s.lifecycle_status = 'issued'
     and s.open_books > 0
@@ -471,13 +471,13 @@ BEGIN
     RAISE EXCEPTION 'Tenant and invoice are required.';
   END IF;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
 
   IF NOT EXISTS (
     SELECT 1
     FROM public.bills si
     WHERE si.id = p_invoice_id
-      AND (si.parent_tenant_id = v_parent_id OR si.issued_by_tenant_id = p_tenant_id)
+      AND (si.tenant_id = v_parent_id OR si.issued_by_tenant_id = p_tenant_id)
   ) THEN
     RAISE EXCEPTION 'Invoice not found for this tenant.';
   END IF;
@@ -647,12 +647,12 @@ SECURITY DEFINER
 SET search_path TO public
 AS $$
 DECLARE
-  v_parent_tenant_id bigint;
+  v_books_tenant_id bigint;
   v_issued_by bigint;
   v_invoice_status public.global_invoice_status;
 BEGIN
-  SELECT parent_tenant_id, issued_by_tenant_id, invoice_status
-  INTO v_parent_tenant_id, v_issued_by, v_invoice_status
+  SELECT tenant_id, issued_by_tenant_id, invoice_status
+  INTO v_books_tenant_id, v_issued_by, v_invoice_status
   FROM public.bills
   WHERE public.bills.id = p_invoice_id;
 
@@ -661,7 +661,7 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.user_can_manage_parent_tenant(v_parent_tenant_id)
+    public.user_can_manage_books_tenant(v_books_tenant_id)
     OR public.has_active_tenant_membership(v_issued_by)
     OR public.membership_has_module_action(v_issued_by, 'global_invoice', 'view')
   ) THEN

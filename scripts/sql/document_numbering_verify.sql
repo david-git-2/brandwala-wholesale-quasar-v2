@@ -27,11 +27,11 @@ FROM public.document_number_counters dnc
 JOIN (
   SELECT u.tenant_id, max(u.max_shipment_id) AS max_shipment_id
   FROM (
-    SELECT gs.parent_tenant_id AS tenant_id, max(gs.tenant_shipment_id)::bigint AS max_shipment_id
+    SELECT gs.tenant_id, max(gs.tenant_shipment_id)::bigint AS max_shipment_id
     FROM public.global_shipments gs
-    WHERE gs.parent_tenant_id IS NOT NULL
+    WHERE gs.tenant_id IS NOT NULL
       AND gs.tenant_shipment_id IS NOT NULL
-    GROUP BY gs.parent_tenant_id
+    GROUP BY gs.tenant_id
     UNION ALL
     SELECT s.tenant_id, max(s.tenant_shipment_id)::bigint AS max_shipment_id
     FROM public.shipments s

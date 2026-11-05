@@ -4,7 +4,7 @@ const db = supabase as any;
 
 export interface GlobalStockType {
   id: number;
-  parent_tenant_id: number | null;
+  tenant_id: number | null;
   description: string;
   is_sellable: boolean;
   sort_order: number;
@@ -13,13 +13,13 @@ export interface GlobalStockType {
 }
 
 const listStockTypes = async (parentTenantId: number | null): Promise<GlobalStockType[]> => {
-  // Return system-wide types (parent_tenant_id is null) plus tenant-specific ones
+  // Return system-wide types (tenant_id is null) plus tenant-specific ones
   const query = db.from('global_stock_types').select('*');
 
   if (parentTenantId) {
-    query.or(`parent_tenant_id.is.null,parent_tenant_id.eq.${parentTenantId}`);
+    query.or(`tenant_id.is.null,tenant_id.eq.${parentTenantId}`);
   } else {
-    query.is('parent_tenant_id', null);
+    query.is('tenant_id', null);
   }
 
   const { data, error } = await query.order('sort_order', { ascending: true });
@@ -40,7 +40,7 @@ const createStockType = async (
     .from('global_stock_types')
     .insert([
       {
-        parent_tenant_id: parentTenantId,
+        tenant_id: parentTenantId,
         description: payload.description.trim(),
         is_sellable: payload.is_sellable,
         sort_order: payload.sort_order,

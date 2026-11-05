@@ -101,9 +101,9 @@ const listChildStockAllocations = async (
   const { data, error } = await supabase
     .from('child_tenant_stock_allocations')
     .select(
-      'id, parent_tenant_id, child_tenant_id, stock_id, status, quantity, is_display_only, created_at, updated_at',
+      'id, tenant_id, child_tenant_id, stock_id, status, quantity, is_display_only, created_at, updated_at',
     )
-    .eq('parent_tenant_id', parentTenantId)
+    .eq('tenant_id', parentTenantId)
     .eq('status', status ?? 'excellent');
 
   if (error) throw error;
@@ -135,20 +135,18 @@ const getAllocationReconciliation = async (
 };
 
 const upsertChildStockAllocation = async (payload: {
-  parent_tenant_id: number;
+  tenant_id: number;
   child_tenant_id: number;
   stock_id: number;
   quantity: number;
   status?: StockNetworkQuery['status'];
   is_display_only?: boolean;
 }): Promise<ChildStockAllocationRow> => {
-  const { data, error } = await supabase.rpc('upsert_child_stock_allocation', {
-    p_parent_tenant_id: payload.parent_tenant_id,
+  const { data, error } = await supabase.rpc('upsert_global_stock_allocation', {
+    p_tenant_id: payload.tenant_id,
     p_child_tenant_id: payload.child_tenant_id,
     p_stock_id: payload.stock_id,
     p_quantity: payload.quantity,
-    p_status: payload.status ?? 'excellent',
-    p_is_display_only: payload.is_display_only ?? true,
   });
 
   if (error) throw error;

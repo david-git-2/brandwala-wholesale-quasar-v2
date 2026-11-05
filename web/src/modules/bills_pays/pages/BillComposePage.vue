@@ -919,7 +919,7 @@ const filterParentBills = async (val: string, update: (cb: () => void) => void) 
   let query = supabase
     .from('bills')
     .select('id, invoice_no, invoice_date')
-    .eq('parent_tenant_id', parentTenantId.value)
+    .eq('tenant_id', parentTenantId.value)
     .eq('document_kind', 'standard')
     .eq('invoice_status', 'issued')
     .order('invoice_date', { ascending: false })

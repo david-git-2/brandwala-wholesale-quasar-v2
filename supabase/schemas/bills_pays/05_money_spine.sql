@@ -7,7 +7,7 @@
 DROP INDEX IF EXISTS public.bills_source_plug_uidx;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_active_standard_bill
-  ON public.bills (parent_tenant_id, source_type, source_id, COALESCE(source_key, ''::text))
+  ON public.bills (tenant_id, source_type, source_id, COALESCE(source_key, ''::text))
   WHERE document_kind = 'standard'::public.bill_document_kind
     AND source_type IS NOT NULL
     AND source_id IS NOT NULL
@@ -18,7 +18,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_active_standard_bill
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.bill_settlements (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  parent_tenant_id bigint NOT NULL REFERENCES public.tenants (id),
+  tenant_id bigint NOT NULL REFERENCES public.tenants (id),
   bill_id bigint NOT NULL REFERENCES public.bills (id) ON DELETE RESTRICT,
   allocator_kind text NOT NULL CHECK (allocator_kind IN ('pay', 'credit_note', 'custody_entry')),
   allocator_id bigint NOT NULL,
@@ -61,7 +61,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS pays_tenant_idempotency_uidx
   WHERE idempotency_key IS NOT NULL;
 
 CREATE OR REPLACE FUNCTION public._kernel_claim_pay_idempotency(
-  p_parent_tenant_id bigint,
+  p_tenant_id bigint,
   p_key text
 ) RETURNS public.pays
 LANGUAGE plpgsql
@@ -77,12 +77,12 @@ begin
   end if;
 
   perform pg_advisory_xact_lock(
-    hashtext('pay_idem:' || p_parent_tenant_id::text || ':' || v_key)
+    hashtext('pay_idem:' || p_tenant_id::text || ':' || v_key)
   );
 
   select * into v_pay
   from public.pays p
-  where p.tenant_id = p_parent_tenant_id
+  where p.tenant_id = p_tenant_id
     and p.idempotency_key = v_key
   limit 1;
 
@@ -92,7 +92,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION public._kernel_finalize_pay_idempotency(
   p_pay_id bigint,
-  p_parent_tenant_id bigint,
+  p_tenant_id bigint,
   p_key text
 ) RETURNS public.pays
 LANGUAGE plpgsql
@@ -116,7 +116,7 @@ begin
     when unique_violation then
       select * into v_pay
       from public.pays p
-      where p.tenant_id = p_parent_tenant_id
+      where p.tenant_id = p_tenant_id
         and p.idempotency_key = v_key
       limit 1;
       return v_pay;
@@ -279,14 +279,14 @@ begin
     raise exception 'Settlement amount must be greater than zero.';
   end if;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
   v_books := round(p_books_amount, 2);
 
   select * into v_bill from public.bills where id = p_bill_id;
   if v_bill.id is null then
     raise exception 'Bill not found.';
   end if;
-  if v_bill.parent_tenant_id <> v_parent_id then
+  if v_bill.tenant_id <> v_parent_id then
     raise exception 'Bill tenant mismatch.';
   end if;
 
@@ -303,7 +303,7 @@ begin
   from public._kernel_settlement_amounts_from_pay_alloc(v_bill, v_pay, v_books) sa;
 
   insert into public.bill_settlements (
-    parent_tenant_id,
+    tenant_id,
     bill_id,
     allocator_kind,
     allocator_id,
@@ -313,7 +313,7 @@ begin
     books_rate_at_alloc,
     fx_realized_books_delta
   ) values (
-    v_bill.parent_tenant_id,
+    v_bill.tenant_id,
     p_bill_id,
     'pay',
     p_payment_id,
@@ -610,7 +610,7 @@ begin
     raise exception 'Allocation amount must be greater than zero.';
   end if;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
   perform public._kernel_lock_bills(array[p_bill_id]);
 
   select * into v_payment from public.pays where id = p_payment_id for update;
@@ -628,7 +628,7 @@ begin
 
   select * into v_invoice from public.bills where id = p_bill_id;
   if not found then raise exception 'Bill not found.'; end if;
-  if v_invoice.parent_tenant_id <> v_parent_id then raise exception 'Bill tenant mismatch.'; end if;
+  if v_invoice.tenant_id <> v_parent_id then raise exception 'Bill tenant mismatch.'; end if;
   if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
     raise exception 'Bill % is not issued', v_invoice.invoice_no;
   end if;
@@ -668,7 +668,7 @@ begin
   if v_payment.profile_id is not null
     and v_payment.source in ('customer_cash', 'bank') then
     perform public.record_ledger_transaction(
-      p_parent_tenant_id => p_tenant_id,
+      p_tenant_id => p_tenant_id,
       p_operating_tenant_id => p_tenant_id,
       p_entity_type => 'customer',
       p_entity_id => v_payment.profile_id,
@@ -794,7 +794,7 @@ begin
 
   if coalesce(p_payload->>'adapter', '') = 'shipment_cost' then
     v_bill_id := public._upsert_shipment_ap_bill(
-      nullif(p_payload->>'parent_tenant_id', '')::bigint,
+      nullif(p_payload->>'tenant_id', '')::bigint,
       nullif(p_payload->>'issued_by_tenant_id', '')::bigint,
       nullif(p_payload->>'shipment_id', '')::bigint,
       p_payload->>'shipment_name',
@@ -990,7 +990,7 @@ begin
     raise exception 'Settlement amount must be greater than zero.';
   end if;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
 
   if p_allocator_kind = 'pay' then
     perform public._kernel_lock_bills(array[p_bill_id]);
@@ -1022,7 +1022,7 @@ begin
 
   select * into v_bill from public.bills where id = p_bill_id;
   if v_bill.id is null then raise exception 'Target bill not found.'; end if;
-  if v_bill.parent_tenant_id <> v_parent_id then raise exception 'Target bill tenant mismatch.'; end if;
+  if v_bill.tenant_id <> v_parent_id then raise exception 'Target bill tenant mismatch.'; end if;
   if v_bill.invoice_status <> 'issued'::public.global_invoice_status then
     raise exception 'Target bill is not issued.';
   end if;
@@ -1036,7 +1036,7 @@ begin
 
   select * into v_cn from public.bills where id = p_allocator_id;
   if v_cn.id is null then raise exception 'Credit note not found.'; end if;
-  if v_cn.parent_tenant_id <> v_parent_id then raise exception 'Credit note tenant mismatch.'; end if;
+  if v_cn.tenant_id <> v_parent_id then raise exception 'Credit note tenant mismatch.'; end if;
   if v_cn.document_kind <> 'credit_note'::public.bill_document_kind then
     raise exception 'Allocator is not a credit note.';
   end if;
@@ -1068,10 +1068,10 @@ begin
   from public._kernel_settlement_amounts_from_pay_alloc(v_bill, null, p_books_amount) sa;
 
   insert into public.bill_settlements (
-    parent_tenant_id, bill_id, allocator_kind, allocator_id,
+    tenant_id, bill_id, allocator_kind, allocator_id,
     allocated_txn_amount, allocated_books_amount, books_rate_at_alloc, fx_realized_books_delta
   ) values (
-    v_bill.parent_tenant_id, p_bill_id, p_allocator_kind, p_allocator_id,
+    v_bill.tenant_id, p_bill_id, p_allocator_kind, p_allocator_id,
     v_txn, v_books, v_rate, v_delta
   )
   returning * into v_row;
@@ -1125,7 +1125,7 @@ end;
 $$;
 
 CREATE OR REPLACE FUNCTION public._kernel_ensure_cashbook_point_pot(
-  p_parent_tenant_id bigint,
+  p_tenant_id bigint,
   p_cashbook_point_id bigint,
   p_currency_code text
 ) RETURNS bigint
@@ -1145,9 +1145,9 @@ begin
   end if;
 
   insert into public.cashbook_point_pots (
-    parent_tenant_id, cashbook_point_id, currency_code, amount
+    tenant_id, cashbook_point_id, currency_code, amount
   ) values (
-    p_parent_tenant_id, p_cashbook_point_id, v_ccy, 0
+    p_tenant_id, p_cashbook_point_id, v_ccy, 0
   )
   on conflict (cashbook_point_id, currency_code)
   do update set updated_at = now()

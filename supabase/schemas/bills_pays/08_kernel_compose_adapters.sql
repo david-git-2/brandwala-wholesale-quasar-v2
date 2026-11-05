@@ -52,7 +52,7 @@ begin
     );
 
     insert into public.bill_lines (
-      parent_tenant_id, invoice_id, shipment_item_id, product_id,
+      tenant_id, invoice_id, shipment_item_id, product_id,
       name_snapshot, barcode_snapshot, product_code_snapshot, quantity,
       sell_price_amount, line_discount_amount, line_total_amount, assigned_child_tenant_id, line_meta
     ) values (
@@ -79,7 +79,7 @@ begin
     v_line_total := greatest((v_quantity * v_sell_price) - v_line_discount, 0);
 
     insert into public.bill_lines (
-      parent_tenant_id, invoice_id, line_kind, name_snapshot,
+      tenant_id, invoice_id, line_kind, name_snapshot,
       quantity, sell_price_amount, line_discount_amount, line_total_amount,
       currency_code, books_amount, line_meta
     ) values (
@@ -94,7 +94,7 @@ begin
   end if;
 
   select
-    gs.parent_tenant_id, gs.shipment_item_id, gsi.name, gsi.barcode, gsi.product_code,
+    gs.tenant_id, gs.shipment_item_id, gsi.name, gsi.barcode, gsi.product_code,
     sh.assigned_child_tenant_id, p.id
   into
     v_stock_parent, v_shipment_item_id, v_name_snapshot, v_barcode_snapshot,
@@ -128,7 +128,7 @@ begin
   );
 
   insert into public.bill_lines (
-    parent_tenant_id, invoice_id, line_kind, shipment_item_id, product_id,
+    tenant_id, invoice_id, line_kind, shipment_item_id, product_id,
     name_snapshot, barcode_snapshot, product_code_snapshot, quantity,
     sell_price_amount, line_discount_amount, line_total_amount, assigned_child_tenant_id, line_meta
   ) values (
@@ -162,11 +162,11 @@ declare
   v_invoice_date date;
 begin
   v_issued_by := p_tenant_id;
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
   v_invoice_date := coalesce(p_invoice_date, CURRENT_DATE);
 
   if not (
-    public.user_can_manage_parent_tenant(v_parent_id)
+    public.user_can_manage_books_tenant(v_parent_id)
     or exists (
       select 1 from public.memberships m
       where (m.tenant_id = p_tenant_id or m.tenant_id = v_parent_id)
@@ -262,7 +262,7 @@ begin
   end if;
 
   insert into public.bills (
-    parent_tenant_id,
+    tenant_id,
     issued_by_tenant_id,
     invoice_no,
     invoice_type,
@@ -428,7 +428,7 @@ begin
   );
 
   v_invoice_id := v_invoice.id;
-  v_parent_id := v_invoice.parent_tenant_id;
+  v_parent_id := v_invoice.tenant_id;
 
   update public.bills
   set
@@ -468,7 +468,7 @@ begin
       );
 
       insert into public.bill_lines (
-        parent_tenant_id,
+        tenant_id,
         invoice_id,
         shipment_item_id,
         product_id,
@@ -513,7 +513,7 @@ begin
     end if;
 
     select
-      gs.parent_tenant_id,
+      gs.tenant_id,
       gs.shipment_item_id,
       gsi.name,
       gsi.barcode,
@@ -562,7 +562,7 @@ begin
     );
 
     insert into public.bill_lines (
-      parent_tenant_id,
+      tenant_id,
       invoice_id,
       line_kind,
       shipment_item_id,
@@ -779,7 +779,7 @@ begin
     return jsonb_build_object('success', false, 'error', 'nothing to update', 'code', 'EMPTY_PAYLOAD');
   end if;
 
-  v_parent_id := v_invoice.parent_tenant_id;
+  v_parent_id := v_invoice.tenant_id;
 
   if v_inv_patch is not null and jsonb_typeof(v_inv_patch) = 'object' and v_inv_patch <> '{}'::jsonb then
     if v_inv_patch ? 'profile_id' and nullif(v_inv_patch->>'profile_id', '') is not null then
@@ -977,7 +977,7 @@ begin
         end if;
 
         select
-          gs.parent_tenant_id,
+          gs.tenant_id,
           gs.shipment_item_id,
           gsi.name,
           gsi.barcode,
@@ -1025,7 +1025,7 @@ begin
         );
 
         insert into public.bill_lines (
-          parent_tenant_id,
+          tenant_id,
           invoice_id,
           line_kind,
           shipment_item_id,
@@ -1107,7 +1107,7 @@ begin
     'payment_status', v_invoice.payment_status,
     'invoice', jsonb_build_object(
       'id', v_invoice.id,
-      'parent_tenant_id', v_invoice.parent_tenant_id,
+      'tenant_id', v_invoice.tenant_id,
       'issued_by_tenant_id', v_invoice.issued_by_tenant_id,
       'invoice_type', v_invoice.invoice_type,
       'invoice_no', v_invoice.invoice_no,
@@ -1147,7 +1147,7 @@ CREATE OR REPLACE FUNCTION public._kernel_upsert_dropship_courier_ap(p_order_id 
     AS $$
 declare
   v_order public.shop_orders;
-  v_parent_tenant_id bigint;
+  v_books_tenant_id bigint;
   v_profile_id bigint;
   v_bill public.bills;
   v_amount numeric(12, 2);
@@ -1171,7 +1171,7 @@ begin
     return jsonb_build_object('success', false, 'error', 'courier is required');
   end if;
 
-  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
+  v_books_tenant_id := public.resolve_books_tenant_id(v_order.tenant_id);
 
   select * into v_courier
   from public.courier_services cs
@@ -1186,7 +1186,7 @@ begin
   where t.id = v_order.tenant_id;
 
   perform public.upsert_profile_for_party(
-    v_parent_tenant_id,
+    v_books_tenant_id,
     'tenant'::public.profile_party_type,
     v_order.tenant_id,
     coalesce(v_tenant_name, 'Tenant'),
@@ -1202,14 +1202,14 @@ begin
 
   select p.id into v_profile_id
   from public.profiles p
-  where p.parent_tenant_id = v_parent_tenant_id
+  where p.tenant_id = v_books_tenant_id
     and p.profile_type = 'courier'::public.profile_party_type
     and p.subject_id = v_courier.wallet_entity_id
   limit 1;
 
   if v_profile_id is null then
     v_profile_id := public.upsert_profile_for_party(
-      v_parent_tenant_id,
+      v_books_tenant_id,
       'courier'::public.profile_party_type,
       v_courier.wallet_entity_id,
       v_courier.name,
@@ -1243,7 +1243,7 @@ begin
 
   select * into v_bill
   from public.bills b
-  where b.parent_tenant_id = v_parent_tenant_id
+  where b.tenant_id = v_books_tenant_id
     and b.invoice_type = 'ap'::public.global_invoice_type
     and b.document_kind = 'standard'::public.bill_document_kind
     and (
@@ -1264,14 +1264,14 @@ begin
   if v_bill.id is null then
     v_invoice_no := 'AP-CR-' || v_order.order_no;
     insert into public.bills (
-      parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_date,
+      tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_date,
       invoice_status, profile_id, collection_source, payment_status,
       subtotal_amount, total_amount, due_amount, paid_amount,
       source_type, source_id, source_key, currency_code,
       note, channel_meta, document_kind,
       recipient_name, recipient_phone, recipient_address
     ) values (
-      v_parent_tenant_id, v_order.tenant_id, v_invoice_no, 'ap'::public.global_invoice_type, current_date,
+      v_books_tenant_id, v_order.tenant_id, v_invoice_no, 'ap'::public.global_invoice_type, current_date,
       v_paper_status, v_profile_id, 'profile'::public.collection_source_type, 'due',
       v_amount, v_amount, v_amount, 0,
       'dropship_courier', p_order_id::text, 'courier', 'BDT',
@@ -1326,7 +1326,7 @@ begin
         and not exists (
           select 1
           from public.bills b2
-          where b2.parent_tenant_id = v_parent_tenant_id
+          where b2.tenant_id = v_books_tenant_id
             and b2.invoice_no = 'AP-CR-' || v_order.order_no
             and b2.id <> b.id
         );
@@ -1405,8 +1405,8 @@ begin
     raise exception 'Billing profile is required for wholesale invoices';
   end if;
 
-  v_eff_tenant_id := coalesce(v_invoice.issued_by_tenant_id, v_invoice.parent_tenant_id);
-  v_parent_id := coalesce(v_invoice.parent_tenant_id, v_invoice.issued_by_tenant_id);
+  v_eff_tenant_id := coalesce(v_invoice.issued_by_tenant_id, v_invoice.tenant_id);
+  v_parent_id := coalesce(v_invoice.tenant_id, v_invoice.issued_by_tenant_id);
 
   -- 1. Optionally apply batch quantity/price updates from dialog payload
   if p_items is not null and jsonb_typeof(p_items) = 'array' and jsonb_array_length(p_items) > 0 then

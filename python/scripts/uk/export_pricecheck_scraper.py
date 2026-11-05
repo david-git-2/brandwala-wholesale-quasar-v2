@@ -15,7 +15,7 @@ from playwright.sync_api import sync_playwright
 # Paths relative to this script
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-from catalog_refresh_lib import log_scrape, resolve_parent_tenant_id
+from catalog_refresh_lib import log_scrape, resolve_tenant_id
 ROOT_DIR = SCRIPT_DIR.parents[2]
 WEB_ENV_FILE = ROOT_DIR / "web" / ".env"
 ROOT_ENV_FILE = ROOT_DIR / ".env"
@@ -434,7 +434,7 @@ def main():
     print(f"✅ Manifest written to {manifest_path}")
     log_scrape(
         source="pc_pricecheck",
-        parent_tenant_id=resolve_parent_tenant_id(None, 15),
+        tenant_id=resolve_tenant_id(None, 15),
         products_updated=len(products),
         duration_seconds=int(time.perf_counter() - scrape_started),
     )

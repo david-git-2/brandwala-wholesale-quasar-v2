@@ -13,10 +13,10 @@
 WITH shipment_needed AS (
   SELECT u.tenant_id, max(u.max_shipment_id)::bigint AS needed_last_value
   FROM (
-    SELECT gs.parent_tenant_id AS tenant_id, max(gs.tenant_shipment_id)::bigint AS max_shipment_id
+    SELECT gs.tenant_id, max(gs.tenant_shipment_id)::bigint AS max_shipment_id
     FROM public.global_shipments gs
-    WHERE gs.parent_tenant_id IS NOT NULL AND gs.tenant_shipment_id IS NOT NULL
-    GROUP BY gs.parent_tenant_id
+    WHERE gs.tenant_id IS NOT NULL AND gs.tenant_shipment_id IS NOT NULL
+    GROUP BY gs.tenant_id
     UNION ALL
     SELECT s.tenant_id, max(s.tenant_shipment_id)::bigint
     FROM public.shipments s

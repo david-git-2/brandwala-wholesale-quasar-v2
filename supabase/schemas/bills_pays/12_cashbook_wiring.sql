@@ -34,11 +34,11 @@ CREATE OR REPLACE FUNCTION public.cashbook_staff_can_view(p_tenant_id bigint) RE
     AS $$
   SELECT
     public.is_superadmin()
-    OR public.membership_has_module_action(public.resolve_parent_tenant_id(p_tenant_id), 'cashbook', 'view')
+    OR public.membership_has_module_action(public.resolve_books_tenant_id(p_tenant_id), 'cashbook', 'view')
     OR public.membership_has_module_action(p_tenant_id, 'cashbook', 'view')
-    OR public.membership_has_module_action(public.resolve_parent_tenant_id(p_tenant_id), 'payments', 'view')
+    OR public.membership_has_module_action(public.resolve_books_tenant_id(p_tenant_id), 'payments', 'view')
     OR public.membership_has_module_action(p_tenant_id, 'payments', 'view')
-    OR public.user_can_manage_parent_tenant(public.resolve_parent_tenant_id(p_tenant_id));
+    OR public.user_can_manage_books_tenant(public.resolve_books_tenant_id(p_tenant_id));
 $$;
 
 CREATE OR REPLACE FUNCTION public."get_cashbook_account_balances"("p_tenant_id" bigint, "p_entity_type" text, "p_entity_id" bigint, "p_currency_code" text DEFAULT 'BDT'::text) RETURNS jsonb
@@ -50,14 +50,14 @@ DECLARE
   v_books_id bigint;
   v_entity_id bigint;
 BEGIN
-  v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_books_id := public.resolve_books_tenant_id(p_tenant_id);
   v_entity_id := p_entity_id;
   IF p_entity_type = 'tenant' THEN
     v_entity_id := v_books_id;
   END IF;
 
   SELECT jsonb_build_object(
-    'parent_tenant_id', v_books_id,
+    'tenant_id', v_books_id,
     'tenant_id', v_books_id,
     'entity_type', p_entity_type,
     'entity_id', v_entity_id,
@@ -75,7 +75,7 @@ BEGIN
   INTO v_result
   FROM (SELECT 1) dummy
   LEFT JOIN public.cashbook_accounts w
-    ON w.parent_tenant_id = v_books_id
+    ON w.tenant_id = v_books_id
    AND w.entity_type = p_entity_type
    AND w.entity_id = v_entity_id
    AND w.currency_code = coalesce(p_currency_code, 'BDT');
@@ -98,7 +98,7 @@ DECLARE
   v_entity_id bigint;
   v_account jsonb;
 BEGIN
-  v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_books_id := public.resolve_books_tenant_id(p_tenant_id);
   v_operating_id := p_tenant_id;
   v_entity_id := p_entity_id;
 
@@ -134,13 +134,13 @@ BEGIN
   ELSIF p_entity_type = 'vendor' THEN
     SELECT v.name, v.code, nullif(trim(concat_ws(' • ', v.phone, v.email)), '')
     INTO v_name, v_code, v_caption
-    FROM public.vendors v WHERE v.id = p_entity_id AND v.parent_tenant_id = v_books_id;
+    FROM public.vendors v WHERE v.id = p_entity_id AND v.tenant_id = v_books_id;
     IF v_name IS NULL THEN RETURN jsonb_build_object('success', false, 'error', 'entity not found'); END IF;
 
   ELSIF p_entity_type = 'cargo_company' THEN
     SELECT c.name, c.code, nullif(trim(concat_ws(' • ', c.phone, c.email)), '')
     INTO v_name, v_code, v_caption
-    FROM public.cargo_companies c WHERE c.id = p_entity_id AND c.parent_tenant_id = v_books_id;
+    FROM public.cargo_companies c WHERE c.id = p_entity_id AND c.tenant_id = v_books_id;
     IF v_name IS NULL THEN RETURN jsonb_build_object('success', false, 'error', 'entity not found'); END IF;
 
   ELSIF p_entity_type = 'courier' THEN
@@ -192,7 +192,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public."record_ledger_transaction"("p_parent_tenant_id" bigint, "p_operating_tenant_id" bigint, "p_entity_type" text, "p_entity_id" bigint, "p_type" text, "p_amount" numeric, "p_currency_code" text DEFAULT 'BDT'::text, "p_exchange_rate" numeric DEFAULT 1.000000, "p_source_type" text DEFAULT 'adjustment'::text, "p_source_id" text DEFAULT NULL::text, "p_metadata" jsonb DEFAULT '{}'::jsonb, "p_target_bucket" text DEFAULT 'available'::text, "p_allow_overdraft" boolean DEFAULT false, "p_cashbook_point_id" bigint DEFAULT NULL::bigint) RETURNS jsonb
+CREATE OR REPLACE FUNCTION public."record_ledger_transaction"("p_tenant_id" bigint, "p_operating_tenant_id" bigint, "p_entity_type" text, "p_entity_id" bigint, "p_type" text, "p_amount" numeric, "p_currency_code" text DEFAULT 'BDT'::text, "p_exchange_rate" numeric DEFAULT 1.000000, "p_source_type" text DEFAULT 'adjustment'::text, "p_source_id" text DEFAULT NULL::text, "p_metadata" jsonb DEFAULT '{}'::jsonb, "p_target_bucket" text DEFAULT 'available'::text, "p_allow_overdraft" boolean DEFAULT false, "p_cashbook_point_id" bigint DEFAULT NULL::bigint) RETURNS jsonb
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -223,21 +223,21 @@ BEGIN
   END IF;
 
   v_entity_id := p_entity_id;
-  IF p_entity_type = 'tenant' AND v_entity_id IS DISTINCT FROM p_parent_tenant_id THEN
-    v_entity_id := p_parent_tenant_id;
+  IF p_entity_type = 'tenant' AND v_entity_id IS DISTINCT FROM p_tenant_id THEN
+    v_entity_id := p_tenant_id;
   END IF;
 
   INSERT INTO public.cashbook_accounts (
-    tenant_id, parent_tenant_id, entity_type, entity_id, currency_code,
+    tenant_id, tenant_id, entity_type, entity_id, currency_code,
     available_balance, pending_balance, locked_balance, account_class
   )
   VALUES (
-    p_parent_tenant_id, p_parent_tenant_id, p_entity_type, v_entity_id,
+    p_tenant_id, p_tenant_id, p_entity_type, v_entity_id,
     coalesce(p_currency_code, 'BDT'), 0.0000, 0.0000, 0.0000,
     CASE WHEN p_entity_type = 'tenant' THEN 'tenant_asset'::public.cashbook_account_class
          ELSE 'profile_custody'::public.cashbook_account_class END
   )
-  ON CONFLICT (parent_tenant_id, entity_type, entity_id, currency_code)
+  ON CONFLICT (tenant_id, entity_type, entity_id, currency_code)
   DO UPDATE SET updated_at = now()
   RETURNING id, available_balance, pending_balance, locked_balance
   INTO v_account_id, v_avail, v_pend, v_lock;
@@ -247,7 +247,7 @@ BEGIN
       SELECT 1
       FROM public.cashbook_points cp
       WHERE cp.id = p_cashbook_point_id
-        AND cp.parent_tenant_id = p_parent_tenant_id
+        AND cp.tenant_id = p_tenant_id
         AND cp.cashbook_account_id = v_account_id
         AND cp.is_active = true
     ) INTO v_point_ok;
@@ -256,7 +256,7 @@ BEGIN
     END IF;
 
     v_pot_id := public._kernel_ensure_cashbook_point_pot(
-      p_parent_tenant_id,
+      p_tenant_id,
       p_cashbook_point_id,
       coalesce(p_currency_code, 'BDT')
     );
@@ -319,7 +319,7 @@ BEGIN
     available_balance = v_avail,
     pending_balance = v_pend,
     locked_balance = v_lock,
-    tenant_id = p_parent_tenant_id,
+    tenant_id = p_tenant_id,
     updated_at = now()
   WHERE id = v_account_id;
 
@@ -327,7 +327,7 @@ BEGIN
 
   INSERT INTO public.cashbook_entries (
     tenant_id,
-    parent_tenant_id,
+    tenant_id,
     operating_tenant_id,
     entity_type,
     entity_id,
@@ -344,8 +344,8 @@ BEGIN
     cashbook_point_pot_id
   )
   VALUES (
-    p_parent_tenant_id,
-    p_parent_tenant_id,
+    p_tenant_id,
+    p_tenant_id,
     p_operating_tenant_id,
     p_entity_type,
     v_entity_id,
@@ -365,9 +365,9 @@ BEGIN
 
   SELECT jsonb_build_object(
     'id', id,
-    'parent_tenant_id', parent_tenant_id,
+    'tenant_id', tenant_id,
     'operating_tenant_id', operating_tenant_id,
-    'tenant_id', parent_tenant_id,
+    'tenant_id', tenant_id,
     'entity_type', entity_type,
     'entity_id', entity_id,
     'type', type,
@@ -391,7 +391,7 @@ $$;
 
 
 CREATE OR REPLACE FUNCTION public.list_books_exchange_rates(
-  p_parent_tenant_id bigint,
+  p_tenant_id bigint,
   p_quote_currency_code text DEFAULT NULL,
   p_limit integer DEFAULT 50
 )
@@ -405,13 +405,13 @@ RETURNS TABLE (
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO public
 AS $$
 BEGIN
-  IF p_parent_tenant_id IS NULL THEN RAISE EXCEPTION 'parent_tenant_id is required'; END IF;
-  IF NOT public.cashbook_staff_can_view(p_parent_tenant_id) THEN RAISE EXCEPTION 'not allowed'; END IF;
+  IF p_tenant_id IS NULL THEN RAISE EXCEPTION 'tenant_id is required'; END IF;
+  IF NOT public.cashbook_staff_can_view(p_tenant_id) THEN RAISE EXCEPTION 'not allowed'; END IF;
   RETURN QUERY
   SELECT DISTINCT ON (upper(r.quote_currency_code))
     r.id, r.base_currency_code, r.quote_currency_code, r.rate, r.rate_date
   FROM public.books_exchange_rates r
-  WHERE r.parent_tenant_id = public.resolve_parent_tenant_id(p_parent_tenant_id)
+  WHERE r.tenant_id = public.resolve_books_tenant_id(p_tenant_id)
     AND (p_quote_currency_code IS NULL OR upper(r.quote_currency_code) = upper(p_quote_currency_code))
   ORDER BY upper(r.quote_currency_code), r.rate_date DESC, r.id DESC
   LIMIT greatest(1, least(coalesce(p_limit, 50), 200));
@@ -471,7 +471,7 @@ begin
     raise exception 'Courier remittance requires a shop order';
   end if;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
 
   v_pay := public._kernel_claim_pay_idempotency(v_parent_id, p_idempotency_key);
   if v_pay.id is not null then
@@ -480,7 +480,7 @@ begin
 
   if not (
     coalesce(auth.role(), '') = 'service_role'
-    or public.user_can_manage_parent_tenant(v_parent_id)
+    or public.user_can_manage_books_tenant(v_parent_id)
     or public.membership_has_module_action(p_tenant_id, 'payments', 'collect_payment')
     or exists (
       select 1 from public.memberships m
@@ -495,7 +495,7 @@ begin
 
   if not exists (
     select 1 from public.profiles pr
-    where pr.id = p_profile_id and pr.parent_tenant_id = v_parent_id
+    where pr.id = p_profile_id and pr.tenant_id = v_parent_id
   ) then
     raise exception 'Profile % does not belong to these books', p_profile_id;
   end if;
@@ -572,7 +572,7 @@ begin
       join public.cashbook_accounts ca on ca.id = cp.cashbook_account_id
       where cp.id = v_cashbook_point_id
         and cp.is_active = true
-        and ca.parent_tenant_id = v_parent_id
+        and ca.tenant_id = v_parent_id
         and ca.entity_type = 'tenant'
         and ca.entity_id = v_parent_id
     ) then
@@ -587,7 +587,7 @@ begin
     into v_source_currency
     from public.cashbook_point_pots cpp
     where cpp.cashbook_point_id = v_cashbook_point_id
-      and cpp.parent_tenant_id = v_parent_id
+      and cpp.tenant_id = v_parent_id
     order by case when upper(cpp.currency_code) = v_base_currency then 0 else 1 end, cpp.id
     limit 1;
   end if;
@@ -674,7 +674,7 @@ begin
       if v_bill.id is null then
         raise exception 'Bill % not found', v_bill_id;
       end if;
-      if v_bill.parent_tenant_id <> v_parent_id then
+      if v_bill.tenant_id <> v_parent_id then
         raise exception 'Bill % belongs to other books', v_bill_id;
       end if;
       if v_bill.invoice_status <> 'issued'::public.global_invoice_status then
@@ -731,7 +731,7 @@ begin
     end if;
 
     perform public.record_ledger_transaction(
-      p_parent_tenant_id => v_parent_id,
+      p_tenant_id => v_parent_id,
       p_operating_tenant_id => p_tenant_id,
       p_entity_type => 'tenant',
       p_entity_id => v_parent_id,
@@ -769,7 +769,7 @@ begin
     );
   elsif v_source = 'store_credit' then
     perform public.record_ledger_transaction(
-      p_parent_tenant_id => v_parent_id,
+      p_tenant_id => v_parent_id,
       p_operating_tenant_id => p_tenant_id,
       p_entity_type => 'customer',
       p_entity_id => p_profile_id,
@@ -806,7 +806,7 @@ begin
       end if;
     else
       perform public.record_ledger_transaction(
-        p_parent_tenant_id => v_parent_id,
+        p_tenant_id => v_parent_id,
         p_operating_tenant_id => p_tenant_id,
         p_entity_type => 'customer',
         p_entity_id => p_profile_id,

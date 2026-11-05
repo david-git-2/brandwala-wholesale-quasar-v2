@@ -1795,7 +1795,7 @@ const bulkApplySellableLandSplits = async () => {
     landed_cost_bdt?: number | null;
   }> = [];
   const gapRows: Array<{
-    parent_tenant_id: number;
+    tenant_id: number;
     shipment_item_id: number;
     quantity: number;
     kind: 'sellable';
@@ -1822,7 +1822,7 @@ const bulkApplySellableLandSplits = async () => {
     }
 
     gapRows.push({
-      parent_tenant_id: parentTenantId,
+      tenant_id: parentTenantId,
       shipment_item_id: item.id,
       quantity: gap,
       kind: 'sellable',
@@ -2031,7 +2031,7 @@ const addExtraOutcome = async (item: Record<string, unknown>) => {
   addingExtraItemId.value = id;
   try {
     const created = await globalShipmentRepository.createShipmentItemOutcome({
-      parent_tenant_id: resolveBatchParentTenantId(),
+      tenant_id: resolveBatchParentTenantId(),
       shipment_item_id: id,
       quantity: 0,
       kind: 'sellable',
@@ -2124,7 +2124,7 @@ const ensureBatchCodeListForShipment = async (): Promise<number> => {
   const created = await createBatchListMutation.mutateAsync({
     parentTenantId,
     payload: {
-      parent_tenant_id: parentTenantId,
+      tenant_id: parentTenantId,
       shipment_id: shipmentId,
     },
     relations: {
@@ -2668,10 +2668,10 @@ const onSaveSectionSheet = async (data: SectionFormData) => {
     let createdDbId: number | undefined;
     if (shipmentId && !isNaN(shipmentId)) {
       try {
-        const parentTenantId = currentTenantId.value ?? shipmentStore.currentShipment?.parent_tenant_id;
+        const parentTenantId = currentTenantId.value ?? shipmentStore.currentShipment?.tenant_id;
         const vendorId = shipmentStore.currentShipment?.vendor_id ?? shipmentStore.currentShipmentSections[0]?.vendor_id;
         const created = await shipmentStore.createSection({
-          parent_tenant_id: parentTenantId ?? undefined,
+          tenant_id: parentTenantId ?? undefined,
           shipment_id: shipmentId,
           vendor_id: vendorId ?? undefined,
           title: data.title,

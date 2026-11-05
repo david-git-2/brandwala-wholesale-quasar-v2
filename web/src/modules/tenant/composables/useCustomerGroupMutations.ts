@@ -24,10 +24,7 @@ export function useCustomerGroupMutations() {
       void queryClient.invalidateQueries({
         queryKey: tenantQueryKeys.customerGroups(data.tenant_id),
       });
-      const booksTenantId = resolveBooksTenantId(
-        data.tenant_id,
-        data.parent_tenant_id ?? null,
-      );
+      const booksTenantId = resolveBooksTenantId(data.tenant_id);
       const groupRow = toBooksCustomerGroupRow(data);
       appendBooksCustomerGroup(queryClient, booksTenantId, groupRow);
       appendCustomerGroupToAccessPageCaches(queryClient, groupRow);

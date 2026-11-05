@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS "public"."cashbook_entries" (
     "source_id" "text",
     "metadata" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
     "operating_tenant_id" bigint NOT NULL,
     "cashbook_point_id" bigint,
     "cashbook_point_pot_id" bigint,
@@ -31,7 +30,7 @@ ALTER TABLE "public"."cashbook_entries" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."bill_lines" (
     "id" bigint NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
     "invoice_id" bigint NOT NULL,
     "shipment_item_id" bigint,
     "product_id" bigint,
@@ -63,7 +62,7 @@ ALTER TABLE "public"."bill_lines" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."sales_return_items" (
     "id" bigint NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
     "invoice_id" bigint NOT NULL,
     "invoice_item_id" bigint NOT NULL,
     "global_stock_id" bigint,
@@ -95,7 +94,7 @@ ALTER TABLE "public"."pay_allocations" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."bills" (
     "id" bigint NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
     "invoice_no" "text" NOT NULL,
     "invoice_type" "public"."global_invoice_type" DEFAULT 'wholesale'::"public"."global_invoice_type" NOT NULL,
     "invoice_date" "date" DEFAULT CURRENT_DATE NOT NULL,
@@ -155,7 +154,7 @@ CREATE TABLE IF NOT EXISTS "public"."bills" (
 
 ALTER TABLE "public"."bills" OWNER TO "postgres";
 
-COMMENT ON TABLE "public"."bills" IS 'Bills (spec). parent_tenant_id = parent books/stock, issued_by_tenant_id = selling child. Channel extras (COD, fulfillment) live in channel_meta.';
+COMMENT ON TABLE "public"."bills" IS 'Bills (spec). tenant_id = parent books/stock, issued_by_tenant_id = selling child. Channel extras (COD, fulfillment) live in channel_meta.';
 
 CREATE TABLE IF NOT EXISTS "public"."pays" (
     "id" bigint NOT NULL,
@@ -203,7 +202,6 @@ CREATE TABLE IF NOT EXISTS "public"."cashbook_accounts" (
     "locked_balance" numeric(18,4) DEFAULT 0.0000 NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
     CONSTRAINT "wallet_accounts_available_non_negative" CHECK ((("available_balance" >= (0)::numeric) OR ("entity_type" = 'tenant'::"text")))
 );
 
@@ -211,7 +209,7 @@ ALTER TABLE "public"."cashbook_accounts" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."cashbook_points" (
     "id" bigint NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
     "cashbook_account_id" bigint NOT NULL,
     "code" "text" NOT NULL,
     "name" "text" NOT NULL,
@@ -231,7 +229,7 @@ COMMENT ON TABLE "public"."cashbook_points" IS 'Place for tenant-held cash (till
 
 CREATE TABLE IF NOT EXISTS "public"."cashbook_point_pots" (
     "id" bigint NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
     "cashbook_point_id" bigint NOT NULL,
     "currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
     "amount" numeric(18,4) DEFAULT 0.0000 NOT NULL,
@@ -247,7 +245,7 @@ COMMENT ON TABLE "public"."cashbook_point_pots" IS 'On-hand cash at a point in o
 
 CREATE TABLE IF NOT EXISTS "public"."books_exchange_rates" (
     "id" bigint NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
     "base_currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
     "quote_currency_code" "text" NOT NULL,
     "rate" numeric(18,6) NOT NULL,
@@ -265,8 +263,8 @@ COMMENT ON TABLE "public"."books_exchange_rates" IS 'Default FX pick: rate = bas
 
 CREATE OR REPLACE VIEW "public"."global_invoice_items" WITH ("security_invoker"='false') AS
  SELECT "id",
-    "parent_tenant_id" AS "tenant_id",
-    "parent_tenant_id",
+    "tenant_id",
+
     "invoice_id",
     (("line_meta" -> 'stock_ref'::"text") ->> 'global_stock_id'::"text")::bigint AS "global_stock_id",
     "shipment_item_id",
@@ -343,8 +341,8 @@ ALTER SEQUENCE "public"."global_payment_instruments_id_seq" OWNED BY "public"."p
 
 CREATE OR REPLACE VIEW "public"."global_return_items" WITH ("security_invoker"='false') AS
  SELECT "id",
-    "parent_tenant_id",
-    "parent_tenant_id" AS "tenant_id",
+
+    "tenant_id",
     "invoice_id",
     "invoice_item_id",
     "global_stock_id",
@@ -370,7 +368,7 @@ ALTER SEQUENCE "public"."global_return_items_id_seq" OWNED BY "public"."sales_re
 
 CREATE TABLE IF NOT EXISTS "public"."invoice_brands" (
     "id" bigint NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
     "name" "text" NOT NULL,
     "address" "text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -393,7 +391,7 @@ ALTER SEQUENCE "public"."invoice_brands_id_seq" OWNED BY "public"."invoice_brand
 CREATE TABLE IF NOT EXISTS "public"."invoice_write_offs" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
     "invoice_id" bigint NOT NULL,
     "payment_id" bigint,
     "amount" numeric(12,2) NOT NULL,
@@ -440,7 +438,7 @@ ALTER SEQUENCE "public"."payments_id_seq" OWNED BY "public"."pays"."id";
 
 CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "id" bigint NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
     "profile_type" "public"."profile_party_type" DEFAULT 'customer'::"public"."profile_party_type" NOT NULL,
     "subject_id" bigint NOT NULL,
     "name" "text" NOT NULL,
@@ -481,7 +479,7 @@ CREATE TABLE IF NOT EXISTS "public"."recipient_profiles" (
     "district" "text",
     "thana" "text",
     "addresses" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
-    "parent_tenant_id" bigint
+    "tenant_id" bigint
 );
 
 ALTER TABLE "public"."recipient_profiles" OWNER TO "postgres";
@@ -575,7 +573,7 @@ ALTER TABLE ONLY "public"."sales_return_items"
     ADD CONSTRAINT "global_return_items_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."invoice_brands"
-    ADD CONSTRAINT "invoice_brands_parent_tenant_id_name_key" UNIQUE ("parent_tenant_id", "name");
+    ADD CONSTRAINT "invoice_brands_tenant_id_name_key" UNIQUE ("tenant_id", "name");
 
 ALTER TABLE ONLY "public"."invoice_brands"
     ADD CONSTRAINT "invoice_brands_pkey" PRIMARY KEY ("id");
@@ -590,7 +588,7 @@ ALTER TABLE ONLY "public"."pays"
     ADD CONSTRAINT "payments_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."profiles"
-    ADD CONSTRAINT "profiles_party_unique" UNIQUE ("parent_tenant_id", "profile_type", "subject_id");
+    ADD CONSTRAINT "profiles_party_unique" UNIQUE ("tenant_id", "profile_type", "subject_id");
 
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profiles_pkey" PRIMARY KEY ("id");
@@ -602,7 +600,7 @@ ALTER TABLE ONLY "public"."sales_invoice_counters"
     ADD CONSTRAINT "sales_invoice_counters_pkey" PRIMARY KEY ("tenant_id", "invoice_type", "date_key");
 
 ALTER TABLE ONLY "public"."bills"
-    ADD CONSTRAINT "sales_invoices_parent_tenant_id_invoice_no_key" UNIQUE ("parent_tenant_id", "invoice_no");
+    ADD CONSTRAINT "sales_invoices_tenant_id_invoice_no_key" UNIQUE ("tenant_id", "invoice_no");
 
 ALTER TABLE ONLY "public"."cashbook_entries"
     ADD CONSTRAINT "universal_wallet_ledger_pkey" PRIMARY KEY ("id");
@@ -632,7 +630,7 @@ CREATE INDEX "profiles_customer_group_id_idx" ON "public"."profiles" USING "btre
 
 CREATE INDEX "profiles_operating_tenant_id_idx" ON "public"."profiles" USING "btree" ("operating_tenant_id") WHERE ("profile_type" = 'customer'::"public"."profile_party_type");
 
-CREATE UNIQUE INDEX "profiles_customer_parent_phone_uidx" ON "public"."profiles" USING "btree" ("parent_tenant_id", "phone_country_code", "phone") WHERE (("profile_type" = 'customer'::"public"."profile_party_type") AND ("phone" IS NOT NULL) AND ("btrim"("phone") <> ''::"text") AND "is_phone_unique");
+CREATE UNIQUE INDEX "profiles_customer_parent_phone_uidx" ON "public"."profiles" USING "btree" ("tenant_id", "phone_country_code", "phone") WHERE (("profile_type" = 'customer'::"public"."profile_party_type") AND ("phone" IS NOT NULL) AND ("btrim"("phone") <> ''::"text") AND "is_phone_unique");
 
 CREATE INDEX "bills_profile_id_idx" ON "public"."bills" USING "btree" ("profile_id");
 
@@ -656,7 +654,7 @@ CREATE INDEX "global_invoice_items_invoice_id_idx" ON "public"."bill_lines" USIN
 
 CREATE INDEX "global_invoices_issued_by_tenant_id_idx" ON "public"."bills" USING "btree" ("issued_by_tenant_id");
 
-CREATE INDEX "global_invoices_parent_tenant_id_idx" ON "public"."bills" USING "btree" ("parent_tenant_id");
+CREATE INDEX "global_invoices_tenant_id_idx" ON "public"."bills" USING "btree" ("tenant_id");
 
 CREATE INDEX "global_invoices_recipient_profile_id_idx" ON "public"."bills" USING "btree" ("recipient_profile_id");
 
@@ -678,13 +676,13 @@ CREATE INDEX "idx_global_payments_shop_order_id" ON "public"."pays" USING "btree
 
 CREATE INDEX "idx_invoice_write_offs_invoice_id" ON "public"."invoice_write_offs" USING "btree" ("invoice_id");
 
-CREATE INDEX "idx_invoice_write_offs_parent_tenant_id" ON "public"."invoice_write_offs" USING "btree" ("parent_tenant_id");
+CREATE INDEX "idx_invoice_write_offs_tenant_id" ON "public"."invoice_write_offs" USING "btree" ("tenant_id");
 
 CREATE INDEX "idx_invoice_write_offs_payment_id" ON "public"."invoice_write_offs" USING "btree" ("payment_id");
 
 CREATE INDEX "idx_invoice_write_offs_tenant_id" ON "public"."invoice_write_offs" USING "btree" ("tenant_id");
 
-CREATE INDEX "idx_sales_invoices_scoping" ON "public"."bills" USING "btree" ("parent_tenant_id", "issued_by_tenant_id", "invoice_status", "invoice_date");
+CREATE INDEX "idx_sales_invoices_scoping" ON "public"."bills" USING "btree" ("tenant_id", "issued_by_tenant_id", "invoice_status", "invoice_date");
 
 CREATE INDEX "idx_sales_invoices_shop_order_id" ON "public"."bills" USING "btree" ("shop_order_id");
 
@@ -694,13 +692,13 @@ CREATE INDEX "idx_universal_wallet_ledger_source" ON "public"."cashbook_entries"
 
 CREATE INDEX "idx_uwl_operating_source" ON "public"."cashbook_entries" USING "btree" ("operating_tenant_id", "source_type", "source_id");
 
-CREATE INDEX "idx_uwl_parent_book_lookup" ON "public"."cashbook_entries" USING "btree" ("parent_tenant_id", "entity_type", "entity_id", "created_at" DESC, "id" DESC);
+CREATE INDEX "idx_uwl_parent_book_lookup" ON "public"."cashbook_entries" USING "btree" ("tenant_id", "entity_type", "entity_id", "created_at" DESC, "id" DESC);
 
-CREATE INDEX "idx_uwl_parent_operating_created" ON "public"."cashbook_entries" USING "btree" ("parent_tenant_id", "operating_tenant_id", "created_at" DESC);
+CREATE INDEX "idx_uwl_parent_operating_created" ON "public"."cashbook_entries" USING "btree" ("tenant_id", "operating_tenant_id", "created_at" DESC);
 
 CREATE INDEX "idx_wallet_accounts_tenant_entity" ON "public"."cashbook_accounts" USING "btree" ("tenant_id", "entity_type", "entity_id");
 
-CREATE INDEX "cashbook_points_parent_tenant_id_idx" ON "public"."cashbook_points" USING "btree" ("parent_tenant_id");
+CREATE INDEX "cashbook_points_tenant_id_idx" ON "public"."cashbook_points" USING "btree" ("tenant_id");
 
 CREATE INDEX "cashbook_points_account_active_idx" ON "public"."cashbook_points" USING "btree" ("cashbook_account_id", "sort_order") WHERE ("is_active" = true);
 
@@ -708,11 +706,11 @@ CREATE INDEX "cashbook_entries_point_lookup_idx" ON "public"."cashbook_entries" 
 
 CREATE INDEX "cashbook_entries_pot_lookup_idx" ON "public"."cashbook_entries" USING "btree" ("cashbook_point_pot_id", "created_at" DESC) WHERE ("cashbook_point_pot_id" IS NOT NULL);
 
-CREATE INDEX "cashbook_point_pots_parent_tenant_id_idx" ON "public"."cashbook_point_pots" USING "btree" ("parent_tenant_id");
+CREATE INDEX "cashbook_point_pots_tenant_id_idx" ON "public"."cashbook_point_pots" USING "btree" ("tenant_id");
 
-CREATE INDEX "books_exchange_rates_lookup_idx" ON "public"."books_exchange_rates" USING "btree" ("parent_tenant_id", "quote_currency_code", "rate_date" DESC);
+CREATE INDEX "books_exchange_rates_lookup_idx" ON "public"."books_exchange_rates" USING "btree" ("tenant_id", "quote_currency_code", "rate_date" DESC);
 
-CREATE INDEX "invoice_brands_parent_tenant_id_idx" ON "public"."invoice_brands" USING "btree" ("parent_tenant_id");
+CREATE INDEX "invoice_brands_tenant_id_idx" ON "public"."invoice_brands" USING "btree" ("tenant_id");
 
 CREATE INDEX "payment_allocations_commerce_invoice_id_idx" ON "public"."pay_allocations" USING "btree" ("commerce_invoice_id");
 
@@ -730,15 +728,15 @@ CREATE INDEX "payments_tenant_id_idx" ON "public"."pays" USING "btree" ("tenant_
 
 CREATE INDEX "pays_profile_id_idx" ON "public"."pays" USING "btree" ("profile_id");
 
-CREATE UNIQUE INDEX "profiles_parent_phone_uidx" ON "public"."profiles" USING "btree" ("parent_tenant_id", "phone_country_code", "phone") WHERE (("phone" IS NOT NULL) AND ("btrim"("phone") <> ''::"text") AND "is_phone_unique");
+CREATE UNIQUE INDEX "profiles_parent_phone_uidx" ON "public"."profiles" USING "btree" ("tenant_id", "phone_country_code", "phone") WHERE (("phone" IS NOT NULL) AND ("btrim"("phone") <> ''::"text") AND "is_phone_unique");
 
-CREATE INDEX "profiles_parent_tenant_id_idx" ON "public"."profiles" USING "btree" ("parent_tenant_id");
+CREATE INDEX "profiles_tenant_id_idx" ON "public"."profiles" USING "btree" ("tenant_id");
 
 CREATE INDEX "profiles_profile_type_idx" ON "public"."profiles" USING "btree" ("profile_type");
 
 CREATE INDEX "recipient_profiles_name_idx" ON "public"."recipient_profiles" USING "btree" ("name");
 
-CREATE INDEX "recipient_profiles_parent_tenant_id_idx" ON "public"."recipient_profiles" USING "btree" ("parent_tenant_id");
+CREATE INDEX "recipient_profiles_tenant_id_idx" ON "public"."recipient_profiles" USING "btree" ("tenant_id");
 
 CREATE INDEX "recipient_profiles_tenant_id_idx" ON "public"."recipient_profiles" USING "btree" ("tenant_id");
 
@@ -746,4 +744,4 @@ CREATE UNIQUE INDEX "recipient_profiles_tenant_phone_uidx" ON "public"."recipien
 
 CREATE UNIQUE INDEX "sales_invoices_shop_order_id_uidx" ON "public"."bills" USING "btree" ("shop_order_id") WHERE ("shop_order_id" IS NOT NULL);
 
-CREATE UNIQUE INDEX "uq_wallet_accounts_parent_book" ON "public"."cashbook_accounts" USING "btree" ("parent_tenant_id", "entity_type", "entity_id", "currency_code");
+CREATE UNIQUE INDEX "uq_wallet_accounts_parent_book" ON "public"."cashbook_accounts" USING "btree" ("tenant_id", "entity_type", "entity_id", "currency_code");

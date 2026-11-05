@@ -39,9 +39,9 @@ def parse_args() -> argparse.Namespace:
         help="Market code scope (default: GB).",
     )
     parser.add_argument(
-        "--parent-tenant-id",
+        "--tenant-id",
         type=int,
-        default=int(os.getenv("PY_PRODUCTS_PARENT_TENANT_ID", "15")),
+        default=int(os.getenv("PY_PRODUCTS_TENANT_ID", "15")),
         help="Warehouse parent tenant ID (default: 15).",
     )
     return parser.parse_args()
@@ -63,7 +63,7 @@ def main() -> int:
 
     print(
         f"Fetching WTS products for vendor_id={args.vendor_id}, "
-        f"market={args.market_code}, parent_tenant_id={args.parent_tenant_id}...",
+        f"market={args.market_code}, tenant_id={args.tenant_id}...",
         flush=True,
     )
 
@@ -71,7 +71,7 @@ def main() -> int:
         client,
         vendor_id=args.vendor_id,
         market_code=args.market_code,
-        parent_tenant_id=args.parent_tenant_id,
+        tenant_id=args.tenant_id,
     )
 
     print(f"Total products found: {len(rows)}\n")

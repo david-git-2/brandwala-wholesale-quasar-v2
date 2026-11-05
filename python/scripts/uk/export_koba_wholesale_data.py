@@ -18,7 +18,7 @@ import sys
 BASE_URL = "https://www.kobainternational.com/wp-json/wc/store/v1/products"
 ROOT_DIR = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from catalog_refresh_lib import add_parent_tenant_argument, log_scrape
+from catalog_refresh_lib import add_tenant_argument, log_scrape, tenant_id_from_args
 load_dotenv(ROOT_DIR / ".env")
 load_dotenv(ROOT_DIR / "web" / ".env")
 DEFAULT_OUTFILE = ROOT_DIR / "python" / "data" / "uk" / "out" / "koba_wholesale_data.json"
@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
         default=0,
         help="Limit scraping to N products (0 for unlimited; useful for testing)",
     )
-    add_parent_tenant_argument(parser, 10)
+    add_tenant_argument(parser, 10)
     return parser.parse_args()
 
 def login_session(session: requests.Session, email: str, password: str):
@@ -348,7 +348,7 @@ def main():
     print(f"\n✅ Successfully saved {len(all_products)} raw products to {outfile}")
     log_scrape(
         source="koba_wholesale",
-        parent_tenant_id=int(args.parent_tenant_id),
+        tenant_id=tenant_id_from_args(args, 10),
         products_updated=len(all_products),
         duration_seconds=int(time.perf_counter() - scrape_started),
     )

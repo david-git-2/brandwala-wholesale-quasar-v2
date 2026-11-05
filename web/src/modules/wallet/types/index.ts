@@ -22,7 +22,7 @@ export type UniversalWalletSection =
 export interface UniversalWalletLedgerEntry {
   id: string;
   tenant_id: number;
-  parent_tenant_id?: number;
+  tenant_id?: number;
   operating_tenant_id?: number;
   entity_type: UniversalWalletEntityType;
   entity_id: number;

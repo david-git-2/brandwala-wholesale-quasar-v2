@@ -37,7 +37,7 @@ export type StockNetworkRow = GlobalStockCostingInput & {
   product_code: string | null;
   image_url: string | null;
   shipment_name: string | null;
-  parent_tenant_id: number;
+  tenant_id: number;
   holding_tenant_id: number;
   holding_tenant_name: string | null;
   allocated_qty: number;
@@ -81,7 +81,7 @@ export type AllocationReconciliationRow = {
 
 export type ChildStockAllocationRow = {
   id: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   child_tenant_id: number;
   stock_id: number;
   status: string;
@@ -120,7 +120,7 @@ export type GlobalStockListPage = {
 export type GlobalStockRow = GlobalStockCostingInput & {
   id: number;
   tenant_id: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   name: string;
   product_id: number | null;
   barcode: string | null;
@@ -138,7 +138,7 @@ export type GlobalStockRow = GlobalStockCostingInput & {
 export type GlobalLedgerRow = {
   id: number;
   tenant_id: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   entry_date: string;
   quantity: number;
   cost_amount: number;

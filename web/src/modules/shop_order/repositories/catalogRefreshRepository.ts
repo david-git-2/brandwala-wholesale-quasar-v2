@@ -6,7 +6,7 @@ export async function listCatalogRefreshLog(
   limit = 200,
 ): Promise<CatalogRefreshLogRow[]> {
   const { data, error } = await supabase.rpc('list_catalog_refresh_log', {
-    p_parent_tenant_id: parentTenantId,
+    p_tenant_id: parentTenantId,
     p_limit: limit,
   });
   if (error) {

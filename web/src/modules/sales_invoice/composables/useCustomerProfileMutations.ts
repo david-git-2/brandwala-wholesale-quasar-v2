@@ -19,10 +19,10 @@ export function useCustomerProfileMutations() {
     onSuccess: (data, variables) => {
       customerProfileStore.upsertInTenantCaches(data);
       void queryClient.invalidateQueries({
-        queryKey: salesInvoiceQueryKeys.customerProfiles(variables.parent_tenant_id),
+        queryKey: salesInvoiceQueryKeys.customerProfiles(variables.tenant_id),
       });
       void queryClient.invalidateQueries({
-        queryKey: tenantQueryKeys.customerGroups(variables.parent_tenant_id),
+        queryKey: tenantQueryKeys.customerGroups(variables.tenant_id),
       });
     },
   });

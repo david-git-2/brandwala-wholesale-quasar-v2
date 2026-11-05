@@ -16,7 +16,7 @@ import requests
 BASE_URL = "https://elfinternationalltd.com/wp-json/wc/store/v1/products"
 ROOT_DIR = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from catalog_refresh_lib import add_parent_tenant_argument, log_scrape
+from catalog_refresh_lib import add_tenant_argument, log_scrape, tenant_id_from_args
 DEFAULT_OUT_JSON = ROOT_DIR / "python" / "data" / "uk" / "out" / "elf_data.json"
 DEFAULT_OUT_MANIFEST = ROOT_DIR / "python" / "data" / "uk" / "out" / "elf_manifest.json"
 
@@ -51,7 +51,7 @@ def parse_args() -> argparse.Namespace:
         default=0,
         help="Limit to N products (0 = unlimited)",
     )
-    add_parent_tenant_argument(parser, 15)
+    add_tenant_argument(parser, 15)
     return parser.parse_args()
 
 
@@ -238,7 +238,7 @@ def main() -> None:
     print(f"Manifest: {out_manifest}")
     log_scrape(
         source="elf",
-        parent_tenant_id=int(args.parent_tenant_id),
+        tenant_id=tenant_id_from_args(args, 15),
         products_updated=len(products),
         duration_seconds=int(time.perf_counter() - scrape_started),
     )

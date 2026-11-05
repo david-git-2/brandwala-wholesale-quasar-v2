@@ -41,7 +41,7 @@ export type AfterSalesPolicySnapshot = {
 
 export type AfterSalesPolicyProgram = {
   id: string;
-  parent_tenant_id: number;
+  tenant_id: number;
   name: string;
   program: AfterSalesProgram;
   is_active: boolean;
@@ -89,7 +89,7 @@ export type AfterSalesCase = {
   source_channel: AfterSalesSourceChannel;
   reason_code: AfterSalesReasonCode;
   program: AfterSalesProgram;
-  parent_tenant_id: number;
+  tenant_id: number;
   operating_tenant_id: number;
   operating_tenant_name: string;
   sales_invoice_id: number | null;
@@ -144,7 +144,7 @@ export type MockDropshipOrder = {
 };
 
 export type CreateWholesaleCasePayload = {
-  parent_tenant_id: number;
+  tenant_id: number;
   operating_tenant_id: number;
   operating_tenant_name: string;
   sales_invoice_id: number;
@@ -160,7 +160,7 @@ export type CreateWholesaleCasePayload = {
 };
 
 export type CreateDropshipCasePayload = {
-  parent_tenant_id: number;
+  tenant_id: number;
   operating_tenant_id: number;
   operating_tenant_name: string;
   shop_order_id: number;

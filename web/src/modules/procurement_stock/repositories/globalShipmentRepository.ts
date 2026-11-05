@@ -54,7 +54,7 @@ export interface GlobalShipment {
   id: number;
   /** Tenant-scoped display number when assigned. */
   tenant_shipment_id?: number | null;
-  parent_tenant_id: number;
+  tenant_id: number;
   vendor_id: number;
   vendor_name?: string | null;
   vendor_code?: string | null;
@@ -144,7 +144,7 @@ export type InboundShipmentListVendor = {
   name: string;
   code: string;
   market_code: string;
-  parent_tenant_id: number | null;
+  tenant_id: number | null;
   is_default: boolean;
 };
 
@@ -454,7 +454,7 @@ const createShipmentDraft = async (
   },
 ): Promise<GlobalShipment> => {
   const { data, error } = await db.rpc('create_shipment_draft', {
-    p_parent_tenant_id: tenantId,
+    p_tenant_id: tenantId,
     p_name: payload.name.trim(),
     p_type: payload.type,
     p_vendor_id: payload.vendor_id ?? null,
@@ -467,7 +467,7 @@ const createShipmentDraft = async (
 
 const updateShipment = async (
   id: number,
-  payload: Partial<Omit<GlobalShipment, 'id' | 'created_at' | 'updated_at' | 'parent_tenant_id'>>,
+  payload: Partial<Omit<GlobalShipment, 'id' | 'created_at' | 'updated_at' | 'tenant_id'>>,
 ): Promise<GlobalShipment> => {
   const { data, error } = await db
     .from('global_shipments')
@@ -909,7 +909,7 @@ const listChildProcurementLines = async (
   offset: number = 0,
 ) => {
   const { data, error } = await db.rpc('list_child_procurement_lines', {
-    p_parent_tenant_id: parentTenantId,
+    p_tenant_id: parentTenantId,
     p_child_tenant_id: childTenantId || null,
     p_search: search || null,
     p_limit: limit,
@@ -1162,7 +1162,7 @@ const assignShipmentToChild = async (
   shipmentId: number,
 ): Promise<{ shipment_id: number; assigned_child_tenant_id: number | null }> => {
   const { data, error } = await db.rpc('assign_shipment_to_child', {
-    p_parent_tenant_id: parentTenantId,
+    p_tenant_id: parentTenantId,
     p_child_tenant_id: childTenantId,
     p_shipment_id: shipmentId,
   });
@@ -1412,7 +1412,7 @@ export type ShipmentOutcomeReason =
 
 export interface ShipmentItemOutcome {
   id: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   shipment_item_id: number;
   quantity: number;
   kind: ShipmentOutcomeKind;
@@ -1438,7 +1438,7 @@ const listShipmentItemOutcomes = async (
 
 const createShipmentItemOutcomesBulk = async (
   rows: Array<{
-    parent_tenant_id: number;
+    tenant_id: number;
     shipment_item_id: number;
     quantity: number;
     kind: ShipmentOutcomeKind;
@@ -1457,7 +1457,7 @@ const createShipmentItemOutcomesBulk = async (
 };
 
 const createShipmentItemOutcome = async (payload: {
-  parent_tenant_id: number;
+  tenant_id: number;
   shipment_item_id: number;
   quantity: number;
   kind: ShipmentOutcomeKind;
@@ -1488,7 +1488,7 @@ const ensureReceivedGeneralOutcomes = async (
   const toInsert = items
     .filter((item) => !hasGeneral.has(item.id))
     .map((item) => ({
-      parent_tenant_id: parentTenantId,
+      tenant_id: parentTenantId,
       shipment_item_id: item.id,
       quantity: item.ordered_quantity,
       kind: 'sellable' as const,

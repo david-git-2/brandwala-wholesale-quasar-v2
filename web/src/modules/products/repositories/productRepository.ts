@@ -32,26 +32,26 @@ const applyProductInsertScope = async (
   resolvedParentByTenant: Map<number, number>,
 ): Promise<ProductCreateInput> => {
   const insertedBy = payload.inserted_by_tenant_id ?? null;
-  let parentTenantId = payload.parent_tenant_id ?? null;
+  let scopeTenantId = payload.tenant_id ?? null;
 
-  if (parentTenantId == null && insertedBy != null) {
+  if (scopeTenantId == null && insertedBy != null) {
     let cached = resolvedParentByTenant.get(insertedBy);
     if (cached === undefined) {
       cached = await resolveProductScopeTenantId(insertedBy);
       resolvedParentByTenant.set(insertedBy, cached);
     }
-    parentTenantId = cached;
+    scopeTenantId = cached;
   }
 
   return {
     ...payload,
-    parent_tenant_id: parentTenantId,
+    tenant_id: scopeTenantId,
     inserted_by_tenant_id: insertedBy,
   };
 };
 
 const buildProductPayload = (payload: ProductCreateInput) => ({
-  parent_tenant_id: payload.parent_tenant_id ?? null,
+  tenant_id: payload.tenant_id ?? null,
   inserted_by_tenant_id: payload.inserted_by_tenant_id ?? null,
   product_code: normalizeText(payload.product_code),
   barcode: normalizeText(payload.barcode),
@@ -79,8 +79,8 @@ const buildProductPayload = (payload: ProductCreateInput) => ({
 const buildProductUpdatePayload = (payload: Omit<ProductUpdateInput, 'id'>) => {
   const updateData: Record<string, unknown> = {};
 
-  if ('parent_tenant_id' in payload) {
-    updateData.parent_tenant_id = payload.parent_tenant_id ?? null;
+  if ('tenant_id' in payload) {
+    updateData.tenant_id = payload.tenant_id ?? null;
   }
 
   if ('inserted_by_tenant_id' in payload) {
@@ -231,7 +231,7 @@ const resolveProductScopeTenantId = async (tenantId: number): Promise<number> =>
     return parentTenantIdCache.get(tenantId)!;
   }
 
-  const { data, error } = await supabase.rpc('resolve_parent_tenant_id', {
+  const { data, error } = await supabase.rpc('resolve_books_tenant_id', {
     p_tenant_id: tenantId,
   });
 
@@ -283,7 +283,7 @@ const listProductsFallback = async ({
 
   if (tenantId !== null && tenantId !== undefined) {
     const scopeTenantId = await resolveProductScopeTenantId(tenantId);
-    query = query.eq('parent_tenant_id', scopeTenantId);
+    query = query.eq('tenant_id', scopeTenantId);
   }
 
   if (normalizedCategory) {
@@ -789,7 +789,7 @@ const lookupProductsByCodes = async ({
     const { data, error } = await supabase
       .from('products')
       .select('*')
-      .eq('parent_tenant_id', scopeTenantId)
+      .eq('tenant_id', scopeTenantId)
       .or(clauses.join(','));
 
     if (error) throw error;

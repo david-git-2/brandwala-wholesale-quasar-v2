@@ -35,7 +35,7 @@ begin
     raise exception 'Only draft or proforma invoices can commit stock';
   end if;
 
-  v_parent_id := coalesce(v_invoice.parent_tenant_id, v_invoice.issued_by_tenant_id);
+  v_parent_id := coalesce(v_invoice.tenant_id, v_invoice.issued_by_tenant_id);
 
   v_delivery_paper_id := nullif(trim(coalesce(v_invoice.channel_meta->>'delivery_paper_id', '')), '')::bigint;
 

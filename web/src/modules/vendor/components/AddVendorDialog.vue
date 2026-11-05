@@ -106,7 +106,7 @@ type VendorForm = {
   name: string;
   code: string;
   market_code: string;
-  parent_tenant_id: number | null;
+  tenant_id: number | null;
   email: string | null;
   phone: string | null;
   address: string | null;
@@ -135,7 +135,7 @@ const getDefaultForm = (): VendorForm => ({
   name: '',
   code: '',
   market_code: '',
-  parent_tenant_id: props.tenantId,
+  tenant_id: props.tenantId,
   email: null,
   phone: null,
   address: null,
@@ -226,7 +226,7 @@ watch(
         }
       : {
           ...getDefaultForm(),
-          parent_tenant_id: tenantId,
+          tenant_id: tenantId,
         };
 
     Object.assign(form, next);
@@ -246,7 +246,7 @@ const onSave = () => {
     name: form.name.trim(),
     code: normalizedCode.value,
     market_code: form.market_code.trim().toUpperCase(),
-    parent_tenant_id: form.parent_tenant_id,
+    tenant_id: form.tenant_id,
     email: form.email?.trim() || null,
     phone: form.phone?.trim() || null,
     address: form.address?.trim() || null,

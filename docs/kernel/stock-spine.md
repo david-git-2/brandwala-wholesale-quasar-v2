@@ -128,7 +128,7 @@ Counter sales **without** a delivery paper still deduct only on `commit_sales_bi
 | RPC | Args (summary) | Idempotency |
 | :--- | :--- | :--- |
 | `post_shipment_outcome_stock` | `p_shipment_id`, `p_stock_rows?` | Incremental post; auth at public wrapper only |
-| `_stock_spine_receive_shipment_outcomes` | internal — same args | Called after `user_can_manage_parent_tenant` |
+| `_stock_spine_receive_shipment_outcomes` | internal — same args | Called after `user_can_manage_books_tenant` |
 | `create_and_post_stock_movement` | tenant, stock, qty, to_* , type, notes, reference | New movement each call |
 | `create_stock_movement` / `add_stock_movement_line` / `post_stock_movement` | desk draft | Post once per movement id |
 | `mark_delivery_paper_packed` | tenant, paper id | Re-call on `packed` ok |

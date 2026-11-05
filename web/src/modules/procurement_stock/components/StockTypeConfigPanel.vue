@@ -80,16 +80,16 @@
           :loading="store.loading"
           :pagination="{ rowsPerPage: 10 }"
         >
-          <template #body-cell-parent_tenant_id="props">
+          <template #body-cell-tenant_id="props">
             <q-td :props="props">
               <q-chip
                 dense
                 square
-                :color="props.row.parent_tenant_id ? 'blue-1' : 'orange-1'"
-                :text-color="props.row.parent_tenant_id ? 'blue-9' : 'orange-9'"
+                :color="props.row.tenant_id ? 'blue-1' : 'orange-1'"
+                :text-color="props.row.tenant_id ? 'blue-9' : 'orange-9'"
                 class="text-weight-bold text-caption"
               >
-                {{ props.row.parent_tenant_id ? 'Custom' : 'System' }}
+                {{ props.row.tenant_id ? 'Custom' : 'System' }}
               </q-chip>
             </q-td>
           </template>
@@ -106,7 +106,7 @@
 
           <template #body-cell-actions="props">
             <q-td :props="props" align="right">
-              <template v-if="props.row.parent_tenant_id !== null">
+              <template v-if="props.row.tenant_id !== null">
                 <q-btn
                   flat
                   round
@@ -163,9 +163,9 @@ const columns: QTableColumn[] = [
     sortable: true,
   },
   {
-    name: 'parent_tenant_id',
+    name: 'tenant_id',
     label: 'Scope',
-    field: 'parent_tenant_id',
+    field: 'tenant_id',
     align: 'left',
     sortable: true,
   },

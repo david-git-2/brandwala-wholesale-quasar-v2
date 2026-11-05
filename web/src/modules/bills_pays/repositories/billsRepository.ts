@@ -83,7 +83,7 @@ const listBillsPage = async (
   }
 
   const { data, error } = await supabase.rpc('list_bills_desk_page', {
-    p_parent_tenant_id: parentTenantId,
+    p_tenant_id: parentTenantId,
     p_issued_by_tenant_id: params.issuedByTenantId ?? undefined,
     p_ar_side: params.arSide ?? undefined,
     p_invoice_status: params.invoiceStatus ?? undefined,
@@ -215,7 +215,7 @@ const listBillsForSource = async (params: {
   apShipmentBucketsOnly?: boolean;
 }) => {
   const { data, error } = await supabase.rpc('list_bills_for_source', {
-    p_parent_tenant_id: params.parentTenantId,
+    p_tenant_id: params.parentTenantId,
     p_source_type: params.sourceType,
     p_source_id: params.sourceId,
     p_source_key: params.sourceKey ?? undefined,
@@ -232,7 +232,7 @@ const listPaysForSource = async (params: {
   sourceId: string;
 }) => {
   const { data, error } = await supabase.rpc('list_pays_for_source', {
-    p_parent_tenant_id: params.parentTenantId,
+    p_tenant_id: params.parentTenantId,
     p_source_type: params.sourceType,
     p_source_id: params.sourceId,
   });
@@ -242,7 +242,7 @@ const listPaysForSource = async (params: {
 
 const listOpenOnProfile = async (params: { parentTenantId: number; profileId: number }) => {
   const { data, error } = await supabase.rpc('list_open_on_profile', {
-    p_parent_tenant_id: params.parentTenantId,
+    p_tenant_id: params.parentTenantId,
     p_profile_id: params.profileId,
   });
   if (error) throw error;

@@ -45,7 +45,7 @@ const listVendors = async (tenantId?: number | null): Promise<Vendor[]> => {
   let query = supabase.from('vendors').select('*').order('id', { ascending: true });
 
   if (tenantId === null) {
-    query = query.is('parent_tenant_id', null);
+    query = query.is('tenant_id', null);
   }
 
   const { data, error } = await query;
@@ -74,7 +74,7 @@ const getVendorById = async (id: number, tenantId?: number | null): Promise<Vend
   let query = supabase.from('vendors').select('*').eq('id', id);
 
   if (tenantId === null) {
-    query = query.is('parent_tenant_id', null);
+    query = query.is('tenant_id', null);
   }
 
   const { data, error } = await query.maybeSingle();
@@ -111,9 +111,9 @@ const isVendorCodeAvailable = async (
     .eq('code', candidateCode);
 
   if (typeof parentTenantId === 'number') {
-    query = query.eq('parent_tenant_id', parentTenantId);
+    query = query.eq('tenant_id', parentTenantId);
   } else if (parentTenantId === null) {
-    query = query.is('parent_tenant_id', null);
+    query = query.is('tenant_id', null);
   }
 
   if (typeof excludeId === 'number') {
@@ -138,7 +138,7 @@ const createVendor = async (payload: VendorCreateInput): Promise<Vendor> => {
         name: payload.name.trim(),
         code: vendorCode,
         market_code: payload.market_code.trim().toUpperCase(),
-        parent_tenant_id: payload.parent_tenant_id,
+        tenant_id: payload.tenant_id,
         email: payload.email?.trim() || null,
         phone: payload.phone?.trim() || null,
         address: payload.address?.trim() || null,
@@ -167,7 +167,7 @@ const updateVendor = async (payload: VendorUpdateInput): Promise<Vendor> => {
       name: payload.name.trim(),
       code: vendorCode,
       market_code: payload.market_code.trim().toUpperCase(),
-      parent_tenant_id: payload.parent_tenant_id,
+      tenant_id: payload.tenant_id,
       email: payload.email?.trim() || null,
       phone: payload.phone?.trim() || null,
       address: payload.address?.trim() || null,
@@ -175,10 +175,10 @@ const updateVendor = async (payload: VendorUpdateInput): Promise<Vendor> => {
     })
     .eq('id', payload.id);
 
-  if (typeof payload.parent_tenant_id === 'number') {
-    query = query.eq('parent_tenant_id', payload.parent_tenant_id);
-  } else if (payload.parent_tenant_id === null) {
-    query = query.is('parent_tenant_id', null);
+  if (typeof payload.tenant_id === 'number') {
+    query = query.eq('tenant_id', payload.tenant_id);
+  } else if (payload.tenant_id === null) {
+    query = query.is('tenant_id', null);
   }
 
   const { data, error } = await query.select().single();
@@ -197,10 +197,10 @@ const updateVendor = async (payload: VendorUpdateInput): Promise<Vendor> => {
 const deleteVendor = async (payload: VendorDeleteInput): Promise<void> => {
   let query = supabase.from('vendors').delete().eq('id', payload.id);
 
-  if (typeof payload.parent_tenant_id === 'number') {
-    query = query.eq('parent_tenant_id', payload.parent_tenant_id);
-  } else if (payload.parent_tenant_id === null) {
-    query = query.is('parent_tenant_id', null);
+  if (typeof payload.tenant_id === 'number') {
+    query = query.eq('tenant_id', payload.tenant_id);
+  } else if (payload.tenant_id === null) {
+    query = query.is('tenant_id', null);
   }
 
   const { error } = await query;

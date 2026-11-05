@@ -2,7 +2,7 @@ import { date } from 'quasar';
 
 export type CatalogRefreshLogRow = {
   id: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   source: string;
   event_kind: string;
   source_url: string | null;

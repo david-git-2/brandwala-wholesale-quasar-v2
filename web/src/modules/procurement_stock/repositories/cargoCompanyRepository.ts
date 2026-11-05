@@ -16,7 +16,7 @@ const listCargoCompanies = async (
   let query = db
     .from('cargo_companies')
     .select('*')
-    .eq('parent_tenant_id', tenantId)
+    .eq('tenant_id', tenantId)
     .order('is_default', { ascending: false })
     .order('name', { ascending: true });
 
@@ -37,7 +37,7 @@ const isCodeAvailable = async (
   let query = db
     .from('cargo_companies')
     .select('id', { count: 'exact', head: true })
-    .eq('parent_tenant_id', parentTenantId)
+    .eq('tenant_id', parentTenantId)
     .eq('code', normalizeCode(code));
 
   if (typeof excludeId === 'number') {
@@ -51,7 +51,7 @@ const isCodeAvailable = async (
 
 const createCargoCompany = async (payload: CargoCompanyCreateInput): Promise<CargoCompany> => {
   const { data, error } = await db.rpc('create_cargo_company_with_wallet', {
-    p_tenant_id: payload.parent_tenant_id,
+    p_tenant_id: payload.tenant_id,
     p_name: payload.name.trim(),
     p_code: normalizeCode(payload.code),
     p_email: payload.email?.trim() || null,
@@ -78,7 +78,7 @@ const updateCargoCompany = async (payload: CargoCompanyUpdateInput): Promise<Car
       ...(typeof payload.is_active === 'boolean' ? { is_active: payload.is_active } : {}),
     })
     .eq('id', payload.id)
-    .eq('parent_tenant_id', payload.parent_tenant_id)
+    .eq('tenant_id', payload.tenant_id)
     .select('*')
     .single();
 
@@ -91,7 +91,7 @@ const deleteCargoCompany = async (id: number, parentTenantId: number): Promise<v
     .from('cargo_companies')
     .select('id, is_default, code')
     .eq('id', id)
-    .eq('parent_tenant_id', parentTenantId)
+    .eq('tenant_id', parentTenantId)
     .maybeSingle();
 
   if (fetchError) throw fetchError;
@@ -100,7 +100,7 @@ const deleteCargoCompany = async (id: number, parentTenantId: number): Promise<v
     throw new Error('Cannot delete the default cargo company.');
   }
 
-  const { error } = await db.from('cargo_companies').delete().eq('id', id).eq('parent_tenant_id', parentTenantId);
+  const { error } = await db.from('cargo_companies').delete().eq('id', id).eq('tenant_id', parentTenantId);
   if (error) throw error;
 };
 

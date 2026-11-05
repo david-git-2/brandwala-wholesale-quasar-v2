@@ -4,7 +4,7 @@ CREATE OR REPLACE TRIGGER "trg_customer_profiles_admin_email_unique_per_tenant" 
 
 CREATE OR REPLACE TRIGGER "trg_customer_profiles_normalize_phone" BEFORE INSERT OR UPDATE OF "phone" ON "public"."profiles" FOR EACH ROW WHEN (("new"."profile_type" = 'customer'::"public"."profile_party_type")) EXECUTE FUNCTION "public"."trg_customer_profiles_normalize_phone"();
 
-CREATE OR REPLACE TRIGGER "trg_customer_profiles_sync_operating_tenant" BEFORE INSERT OR UPDATE OF "operating_tenant_id", "parent_tenant_id" ON "public"."profiles" FOR EACH ROW WHEN (("new"."profile_type" = 'customer'::"public"."profile_party_type")) EXECUTE FUNCTION "public"."trg_customer_profiles_sync_operating_tenant"();
+CREATE OR REPLACE TRIGGER "trg_customer_profiles_sync_operating_tenant" BEFORE INSERT OR UPDATE OF "operating_tenant_id", "tenant_id" ON "public"."profiles" FOR EACH ROW WHEN (("new"."profile_type" = 'customer'::"public"."profile_party_type")) EXECUTE FUNCTION "public"."trg_customer_profiles_sync_operating_tenant"();
 
 CREATE OR REPLACE TRIGGER "trg_cargo_companies_sync_profile" AFTER INSERT OR UPDATE ON "public"."cargo_companies" FOR EACH ROW EXECUTE FUNCTION "public"."trg_sync_profile_from_cargo_company"();
 
@@ -26,7 +26,7 @@ CREATE OR REPLACE TRIGGER "trg_invoice_brands_set_updated_at" BEFORE UPDATE ON "
 
 CREATE OR REPLACE TRIGGER "trg_profiles_set_updated_at" BEFORE UPDATE ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
-CREATE OR REPLACE TRIGGER "trg_recipient_profiles_set_parent_tenant_id" BEFORE INSERT OR UPDATE OF "tenant_id" ON "public"."recipient_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_parent_tenant_id_from_tenant"();
+CREATE OR REPLACE TRIGGER "trg_recipient_profiles_set_books_tenant_id" BEFORE INSERT OR UPDATE OF "tenant_id" ON "public"."recipient_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_books_tenant_id_from_tenant"();
 
 CREATE OR REPLACE TRIGGER "trg_recipient_profiles_set_updated_at" BEFORE UPDATE ON "public"."recipient_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
@@ -68,7 +68,7 @@ ALTER TABLE ONLY "public"."bill_lines"
     ADD CONSTRAINT "global_invoice_items_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."bills"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."bill_lines"
-    ADD CONSTRAINT "global_invoice_items_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "global_invoice_items_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."bill_lines"
     ADD CONSTRAINT "global_invoice_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
@@ -80,7 +80,7 @@ ALTER TABLE ONLY "public"."bills"
     ADD CONSTRAINT "global_invoices_issued_by_tenant_id_fkey" FOREIGN KEY ("issued_by_tenant_id") REFERENCES "public"."tenants"("id");
 
 ALTER TABLE ONLY "public"."bills"
-    ADD CONSTRAINT "global_invoices_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "global_invoices_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."bills"
     ADD CONSTRAINT "global_invoices_recipient_profile_id_fkey" FOREIGN KEY ("recipient_profile_id") REFERENCES "public"."recipient_profiles"("id") ON DELETE RESTRICT;
@@ -113,10 +113,10 @@ ALTER TABLE ONLY "public"."sales_return_items"
     ADD CONSTRAINT "global_return_items_invoice_item_id_fkey" FOREIGN KEY ("invoice_item_id") REFERENCES "public"."bill_lines"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."sales_return_items"
-    ADD CONSTRAINT "global_return_items_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "global_return_items_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."invoice_brands"
-    ADD CONSTRAINT "invoice_brands_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "invoice_brands_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."invoice_write_offs"
     ADD CONSTRAINT "invoice_write_offs_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "auth"."users"("id");
@@ -125,7 +125,7 @@ ALTER TABLE ONLY "public"."invoice_write_offs"
     ADD CONSTRAINT "invoice_write_offs_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."bills"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."invoice_write_offs"
-    ADD CONSTRAINT "invoice_write_offs_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "invoice_write_offs_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."invoice_write_offs"
     ADD CONSTRAINT "invoice_write_offs_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "public"."pays"("id") ON DELETE SET NULL;
@@ -158,10 +158,10 @@ ALTER TABLE ONLY "public"."pay_allocations"
     ADD CONSTRAINT "pay_allocations_bill_id_fkey" FOREIGN KEY ("bill_id") REFERENCES "public"."bills"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."profiles"
-    ADD CONSTRAINT "profiles_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE RESTRICT;
+    ADD CONSTRAINT "profiles_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE RESTRICT;
 
 ALTER TABLE ONLY "public"."recipient_profiles"
-    ADD CONSTRAINT "recipient_profiles_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE SET NULL;
+    ADD CONSTRAINT "recipient_profiles_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."recipient_profiles"
     ADD CONSTRAINT "recipient_profiles_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE SET NULL;
@@ -176,19 +176,19 @@ ALTER TABLE ONLY "public"."cashbook_entries"
     ADD CONSTRAINT "universal_wallet_ledger_operating_tenant_id_fkey" FOREIGN KEY ("operating_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."cashbook_entries"
-    ADD CONSTRAINT "universal_wallet_ledger_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "universal_wallet_ledger_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."cashbook_entries"
     ADD CONSTRAINT "universal_wallet_ledger_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."cashbook_accounts"
-    ADD CONSTRAINT "wallet_accounts_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "wallet_accounts_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."cashbook_accounts"
     ADD CONSTRAINT "wallet_accounts_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id");
 
 ALTER TABLE ONLY "public"."cashbook_points"
-    ADD CONSTRAINT "cashbook_points_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "cashbook_points_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."cashbook_points"
     ADD CONSTRAINT "cashbook_points_cashbook_account_id_fkey" FOREIGN KEY ("cashbook_account_id") REFERENCES "public"."cashbook_accounts"("id") ON DELETE CASCADE;
@@ -203,13 +203,13 @@ ALTER TABLE ONLY "public"."cashbook_entries"
     ADD CONSTRAINT "cashbook_entries_cashbook_point_pot_id_fkey" FOREIGN KEY ("cashbook_point_pot_id") REFERENCES "public"."cashbook_point_pots"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."cashbook_point_pots"
-    ADD CONSTRAINT "cashbook_point_pots_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "cashbook_point_pots_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."cashbook_point_pots"
     ADD CONSTRAINT "cashbook_point_pots_cashbook_point_id_fkey" FOREIGN KEY ("cashbook_point_id") REFERENCES "public"."cashbook_points"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."books_exchange_rates"
-    ADD CONSTRAINT "books_exchange_rates_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "books_exchange_rates_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 ALTER TABLE "public"."bill_lines" ENABLE ROW LEVEL SECURITY;
 
@@ -233,16 +233,16 @@ CREATE POLICY "global_invoice_items_all" ON "public"."bill_lines" TO "authentica
 
 CREATE POLICY "global_invoices_select" ON "public"."bills" FOR SELECT TO "authenticated" USING ((
   "public"."has_active_tenant_membership"("issued_by_tenant_id")
-  OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")
+  OR "public"."user_can_manage_books_tenant"("tenant_id")
   OR (
     "invoice_type" = 'ap'::"public"."global_invoice_type"
     AND (
-      "public"."membership_has_module_action"("parent_tenant_id", 'global_invoice'::"text", 'view'::"text")
+      "public"."membership_has_module_action"("tenant_id", 'global_invoice'::"text", 'view'::"text")
       OR EXISTS (
         SELECT 1
         FROM "public"."tenants" "ct"
         INNER JOIN "public"."memberships" "m" ON "m"."tenant_id" = "ct"."id"
-        WHERE "ct"."parent_id" = "bills"."parent_tenant_id"
+        WHERE "ct"."parent_id" = "bills"."tenant_id"
           AND "public"."membership_email_matches_current_user"("m"."email")
           AND "m"."is_active" = true
           AND "public"."membership_has_module_action"("ct"."id", 'global_invoice'::"text", 'view'::"text")
@@ -251,7 +251,7 @@ CREATE POLICY "global_invoices_select" ON "public"."bills" FOR SELECT TO "authen
   )
 ));
 
-CREATE POLICY "global_invoices_write" ON "public"."bills" TO "authenticated" USING (("public"."membership_has_module_action"("issued_by_tenant_id", 'global_invoice'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id"))) WITH CHECK (("public"."membership_has_module_action"("issued_by_tenant_id", 'global_invoice'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")));
+CREATE POLICY "global_invoices_write" ON "public"."bills" TO "authenticated" USING (("public"."membership_has_module_action"("issued_by_tenant_id", 'global_invoice'::"text", 'edit'::"text") OR "public"."user_can_manage_books_tenant"("tenant_id"))) WITH CHECK (("public"."membership_has_module_action"("issued_by_tenant_id", 'global_invoice'::"text", 'edit'::"text") OR "public"."user_can_manage_books_tenant"("tenant_id")));
 
 CREATE POLICY "global_return_items_all" ON "public"."sales_return_items" TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."bills" "gi"
@@ -261,23 +261,23 @@ CREATE POLICY "global_return_items_all" ON "public"."sales_return_items" TO "aut
 
 ALTER TABLE "public"."invoice_brands" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "invoice_brands_delete" ON "public"."invoice_brands" FOR DELETE TO "authenticated" USING (("public"."membership_has_module_action"("parent_tenant_id", 'invoice_brand'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")));
+CREATE POLICY "invoice_brands_delete" ON "public"."invoice_brands" FOR DELETE TO "authenticated" USING (("public"."membership_has_module_action"("tenant_id", 'invoice_brand'::"text", 'edit'::"text") OR "public"."user_can_manage_books_tenant"("tenant_id")));
 
-CREATE POLICY "invoice_brands_insert" ON "public"."invoice_brands" FOR INSERT TO "authenticated" WITH CHECK (("public"."membership_has_module_action"("parent_tenant_id", 'invoice_brand'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")));
+CREATE POLICY "invoice_brands_insert" ON "public"."invoice_brands" FOR INSERT TO "authenticated" WITH CHECK (("public"."membership_has_module_action"("tenant_id", 'invoice_brand'::"text", 'edit'::"text") OR "public"."user_can_manage_books_tenant"("tenant_id")));
 
-CREATE POLICY "invoice_brands_select" ON "public"."invoice_brands" FOR SELECT TO "authenticated" USING (("public"."has_active_tenant_membership"("parent_tenant_id") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")));
+CREATE POLICY "invoice_brands_select" ON "public"."invoice_brands" FOR SELECT TO "authenticated" USING (("public"."has_active_tenant_membership"("tenant_id") OR "public"."user_can_manage_books_tenant"("tenant_id")));
 
-CREATE POLICY "invoice_brands_update" ON "public"."invoice_brands" FOR UPDATE TO "authenticated" USING (("public"."membership_has_module_action"("parent_tenant_id", 'invoice_brand'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id"))) WITH CHECK (("public"."membership_has_module_action"("parent_tenant_id", 'invoice_brand'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")));
+CREATE POLICY "invoice_brands_update" ON "public"."invoice_brands" FOR UPDATE TO "authenticated" USING (("public"."membership_has_module_action"("tenant_id", 'invoice_brand'::"text", 'edit'::"text") OR "public"."user_can_manage_books_tenant"("tenant_id"))) WITH CHECK (("public"."membership_has_module_action"("tenant_id", 'invoice_brand'::"text", 'edit'::"text") OR "public"."user_can_manage_books_tenant"("tenant_id")));
 
 ALTER TABLE "public"."invoice_write_offs" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "invoice_write_offs_select" ON "public"."invoice_write_offs" FOR SELECT TO "authenticated" USING (((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "invoice_write_offs"."parent_tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))) OR (EXISTS ( SELECT 1
+  WHERE (("m"."tenant_id" = "invoice_write_offs"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))) OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "invoice_write_offs"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
 
-CREATE POLICY "invoice_write_offs_write" ON "public"."invoice_write_offs" TO "authenticated" USING (("public"."membership_has_module_action"("parent_tenant_id", 'global_invoice'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'global_invoice'::"text", 'edit'::"text"))) WITH CHECK (("public"."membership_has_module_action"("parent_tenant_id", 'global_invoice'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'global_invoice'::"text", 'edit'::"text")));
+CREATE POLICY "invoice_write_offs_write" ON "public"."invoice_write_offs" TO "authenticated" USING (("public"."membership_has_module_action"("tenant_id", 'global_invoice'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'global_invoice'::"text", 'edit'::"text"))) WITH CHECK (("public"."membership_has_module_action"("tenant_id", 'global_invoice'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'global_invoice'::"text", 'edit'::"text")));
 
 ALTER TABLE "public"."pay_allocations" ENABLE ROW LEVEL SECURITY;
 
@@ -315,17 +315,17 @@ ALTER TABLE "public"."pays" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "profiles_select" ON "public"."profiles" FOR SELECT TO "authenticated" USING (("public"."has_active_tenant_membership"("parent_tenant_id") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id") OR (EXISTS ( SELECT 1
+CREATE POLICY "profiles_select" ON "public"."profiles" FOR SELECT TO "authenticated" USING (("public"."has_active_tenant_membership"("tenant_id") OR "public"."user_can_manage_books_tenant"("tenant_id") OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "profiles"."parent_tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND "m"."is_active")))));
+  WHERE (("m"."tenant_id" = "profiles"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND "m"."is_active")))));
 
-CREATE POLICY "profiles_write" ON "public"."profiles" TO "authenticated" USING ("public"."membership_has_module_action"("parent_tenant_id", 'billing_profile'::"text", 'edit'::"text")) WITH CHECK ("public"."membership_has_module_action"("parent_tenant_id", 'billing_profile'::"text", 'edit'::"text"));
+CREATE POLICY "profiles_write" ON "public"."profiles" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'billing_profile'::"text", 'edit'::"text")) WITH CHECK ("public"."membership_has_module_action"("tenant_id", 'billing_profile'::"text", 'edit'::"text"));
 
 ALTER TABLE "public"."recipient_profiles" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "recipient_profiles_select" ON "public"."recipient_profiles" FOR SELECT TO "authenticated" USING (("public"."has_active_tenant_membership"("tenant_id") OR (("parent_tenant_id" IS NOT NULL) AND ("public"."has_active_tenant_membership"("parent_tenant_id") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")))));
+CREATE POLICY "recipient_profiles_select" ON "public"."recipient_profiles" FOR SELECT TO "authenticated" USING (("public"."has_active_tenant_membership"("tenant_id") OR "public"."user_can_manage_books_tenant"("tenant_id")));
 
-CREATE POLICY "recipient_profiles_write" ON "public"."recipient_profiles" TO "authenticated" USING (("public"."membership_has_module_action"("tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'customer'::"text", 'edit'::"text") OR (("parent_tenant_id" IS NOT NULL) AND ("public"."membership_has_module_action"("parent_tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("parent_tenant_id", 'customer'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id"))))) WITH CHECK (("public"."membership_has_module_action"("tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'customer'::"text", 'edit'::"text") OR (("parent_tenant_id" IS NOT NULL) AND ("public"."membership_has_module_action"("parent_tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("parent_tenant_id", 'customer'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")))));
+CREATE POLICY "recipient_profiles_write" ON "public"."recipient_profiles" TO "authenticated" USING (("public"."membership_has_module_action"("tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'customer'::"text", 'edit'::"text") OR "public"."user_can_manage_books_tenant"("tenant_id"))) WITH CHECK (("public"."membership_has_module_action"("tenant_id", 'recipient_profile'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'customer'::"text", 'edit'::"text") OR "public"."user_can_manage_books_tenant"("tenant_id")));
 
 ALTER TABLE "public"."sales_invoice_counters" ENABLE ROW LEVEL SECURITY;
 
@@ -517,7 +517,7 @@ GRANT ALL ON FUNCTION "public"."post_customer_receipt_with_allocations"("p_tenan
 GRANT ALL ON FUNCTION "public"."credit_dropship_profit_from_courier_remittance"("p_tenant_id" bigint, "p_profile_id" bigint, "p_order_id" bigint, "p_payment_id" bigint, "p_amount" numeric, "p_reference" "text", "p_net_remitted" numeric, "p_invoice_allocated" numeric) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."credit_dropship_profit_from_courier_remittance"("p_tenant_id" bigint, "p_profile_id" bigint, "p_order_id" bigint, "p_payment_id" bigint, "p_amount" numeric, "p_reference" "text", "p_net_remitted" numeric, "p_invoice_allocated" numeric) TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."_upsert_shipment_ap_bill"("p_parent_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb", "p_keep_as_draft" boolean, "p_source_key" "text") FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."_upsert_shipment_ap_bill"("p_tenant_id" bigint, "p_issued_by_tenant_id" bigint, "p_shipment_id" bigint, "p_shipment_name" "text", "p_ap_kind" "text", "p_profile_id" bigint, "p_amount" numeric, "p_ap_paper" "jsonb", "p_keep_as_draft" boolean, "p_source_key" "text") FROM PUBLIC;
 
 GRANT ALL ON FUNCTION "public"."issue_bill_adjustment"("p_adjustment_id" bigint) TO "authenticated";
 
@@ -592,7 +592,7 @@ GRANT ALL ON FUNCTION "public"."delete_cashbook_point_for_staff"("p_tenant_id" b
 
 GRANT ALL ON FUNCTION "public"."delete_cashbook_point_for_staff"("p_tenant_id" bigint, "p_point_id" bigint) TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."record_ledger_transaction"("p_parent_tenant_id" bigint, "p_operating_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_type" "text", "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_source_type" "text", "p_source_id" "text", "p_metadata" "jsonb", "p_target_bucket" "text", "p_allow_overdraft" boolean, "p_cashbook_point_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."record_ledger_transaction"("p_tenant_id" bigint, "p_operating_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_type" "text", "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_source_type" "text", "p_source_id" "text", "p_metadata" "jsonb", "p_target_bucket" "text", "p_allow_overdraft" boolean, "p_cashbook_point_id" bigint) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."record_recipient_invoice_collection"("p_global_invoice_id" bigint, "p_amount" numeric, "p_payment_date" "date", "p_method" "text", "p_reference" "text", "p_note" "text") TO "authenticated";
 
@@ -614,8 +614,8 @@ GRANT ALL ON FUNCTION "public"."upsert_dropship_courier_ap_bill"("p_order_id" bi
 GRANT ALL ON FUNCTION "public"."upsert_dropship_courier_ap_bill"("p_order_id" bigint, "p_keep_as_draft" boolean) TO "service_role";
 GRANT ALL ON FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver"("p_order_id" bigint, "p_delivery_override" numeric, "p_cod_override" numeric) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."preview_dropship_issued_bill_notes_at_deliver"("p_order_id" bigint, "p_delivery_override" numeric, "p_cod_override" numeric) TO "service_role";
-GRANT ALL ON FUNCTION "public"."resolve_dropship_courier_ap_bill_id"("p_order_id" bigint, "p_parent_tenant_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."resolve_dropship_courier_ap_bill_id"("p_order_id" bigint, "p_parent_tenant_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."resolve_dropship_courier_ap_bill_id"("p_order_id" bigint, "p_tenant_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."resolve_dropship_courier_ap_bill_id"("p_order_id" bigint, "p_tenant_id" bigint) TO "service_role";
 GRANT ALL ON FUNCTION "public"."settle_dropship_courier_ap_via_cod_retention"("p_ap_bill_id" bigint, "p_amount" numeric, "p_order_id" bigint, "p_remittance_ref" "text", "p_receipt_payment_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."settle_dropship_courier_ap_via_cod_retention"("p_ap_bill_id" bigint, "p_amount" numeric, "p_order_id" bigint, "p_remittance_ref" "text", "p_receipt_payment_id" bigint) TO "service_role";
 GRANT ALL ON FUNCTION "public"."preview_dropship_courier_payin_settlement"("p_order_id" bigint, "p_delivery_charge" numeric, "p_cod_charge" numeric, "p_net_amount" numeric) TO "authenticated";
@@ -654,7 +654,7 @@ GRANT ALL ON FUNCTION "public"."update_payment_instrument_details"("p_tenant_id"
 
 GRANT ALL ON FUNCTION "public"."update_sales_invoice_from_payload"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_payload" "jsonb") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."upsert_profile_for_party"("p_parent_tenant_id" bigint, "p_profile_type" "public"."profile_party_type", "p_subject_id" bigint, "p_name" "text", "p_email" "text", "p_phone" "text", "p_phone_country_code" "text", "p_address" "text", "p_is_phone_unique" boolean, "p_accent_color" "text", "p_is_active" boolean, "p_deleted_at" timestamp with time zone) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."upsert_profile_for_party"("p_books_tenant_id" bigint, "p_profile_type" "public"."profile_party_type", "p_subject_id" bigint, "p_name" "text", "p_email" "text", "p_phone" "text", "p_phone_country_code" "text", "p_address" "text", "p_is_phone_unique" boolean, "p_accent_color" "text", "p_is_active" boolean, "p_deleted_at" timestamp with time zone) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."void_customer_receipt"("p_tenant_id" bigint, "p_payment_id" bigint, "p_reason" "text") TO "authenticated";
 

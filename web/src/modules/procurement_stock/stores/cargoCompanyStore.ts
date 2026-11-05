@@ -18,7 +18,7 @@ const mapReferenceToCompany = (
   row: InboundShipmentListCargoCompany,
 ): CargoCompany => ({
   id: row.id,
-  parent_tenant_id: tenantId,
+  tenant_id: tenantId,
   name: row.name,
   code: row.code,
   is_default: row.is_default,
@@ -111,7 +111,7 @@ export const useCargoCompanyStore = defineStore('cargo_company', {
       this.error = null;
       try {
         const row = await cargoCompanyRepository.createCargoCompany(payload);
-        this.cachedParentTenantId = payload.parent_tenant_id;
+        this.cachedParentTenantId = payload.tenant_id;
         this.items = sortCompanies([row, ...this.items.filter((c) => c.id !== row.id)]);
         return row;
       } catch (err: unknown) {
@@ -127,7 +127,7 @@ export const useCargoCompanyStore = defineStore('cargo_company', {
       this.error = null;
       try {
         const row = await cargoCompanyRepository.updateCargoCompany(payload);
-        this.cachedParentTenantId = payload.parent_tenant_id;
+        this.cachedParentTenantId = payload.tenant_id;
         this.items = sortCompanies(this.items.map((c) => (c.id === row.id ? row : c)));
         return row;
       } catch (err: unknown) {

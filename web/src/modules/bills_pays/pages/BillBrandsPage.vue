@@ -86,7 +86,7 @@ const parentTenantId = computed(() => {
 const brandsQuery = useQuery({
   queryKey: computed(() => billsQueryKeys.brands(parentTenantId.value)),
   queryFn: () =>
-    billsRepository.listBillBrands({ parent_tenant_id: parentTenantId.value! }),
+    billsRepository.listBillBrands({ tenant_id: parentTenantId.value! }),
   enabled: computed(() => parentTenantId.value != null),
   staleTime: 60_000,
 });
@@ -129,7 +129,7 @@ const saveBrand = async () => {
       showSuccessNotification('Brand updated.');
     } else {
       await billsRepository.createBillBrand({
-        parent_tenant_id: parentTenantId.value,
+        tenant_id: parentTenantId.value,
         name: formName.value.trim(),
         address: formAddress.value.trim(),
       });

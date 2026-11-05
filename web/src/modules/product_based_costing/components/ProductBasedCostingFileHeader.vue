@@ -401,7 +401,7 @@ function openCreateCustomerProfileDialog() {
       }
       try {
         const created = await createCustomerProfileMutation.mutateAsync({
-          parent_tenant_id: tenantId,
+          tenant_id: tenantId,
           name: name.trim(),
         });
         showSuccessNotification(

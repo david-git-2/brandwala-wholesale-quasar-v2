@@ -28,7 +28,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Where is the code / SQL? | [Module map](#module-map) |
 | Tables / RPCs / button wiring | `supabase/schemas/` + module code |
 | Login / grants | [tenant_auth spec](features/tenant_auth/spec.md) |
-| Collapse `parent_tenant_id` into `tenant_id` | [tenant-id-cutover](architecture/tenant-id-cutover.md) |
+| Collapse `parent_tenant_id` into `tenant_id` | [tenant-id-cutover](architecture/tenant-id-cutover.md) — local phases **1–10** done; **prod = phase 11** |
 | List page look | [ui-standards](guides/ui-standards.md) |
 | Pinia vs Vue Query / toasts | [state](architecture/state.md) |
 | Change the database | [database](architecture/database.md) + [split tracker](../doc/supabase-schema.md) |

@@ -4,7 +4,7 @@ export interface ChildStockAtpRow {
   shipment_id: number;
   shipment_name: string;
   tenant_shipment_id?: number | null;
-  parent_tenant_id?: number;
+  tenant_id?: number;
   status: string;
   received_date: string | null;
   total_ordered_qty: number;

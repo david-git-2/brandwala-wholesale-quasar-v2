@@ -152,7 +152,7 @@ export const appDashboardBundleRepository = {
   ): Promise<AppDashboardBundle> {
     const { data, error } = await supabase.rpc('get_app_dashboard_bundle', {
       p_tenant_id: tenantId,
-      p_parent_tenant_ids: parentTenantIds.length ? parentTenantIds : null,
+      p_tenant_ids: parentTenantIds.length ? parentTenantIds : null,
     });
 
     if (error) {

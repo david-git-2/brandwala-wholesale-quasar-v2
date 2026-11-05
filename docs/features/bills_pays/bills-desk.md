@@ -42,7 +42,7 @@ Legacy `/app/sales/invoices/*` redirects to `/app/bills/*`.
 
 ### Bills list (`BillsPage`)
 
-- **RPC:** `list_bills_desk_page(p_parent_tenant_id, p_issued_by_tenant_id?, p_ar_side?, filters…, p_page_size?, p_cursor?)`
+- **RPC:** `list_bills_desk_page(p_tenant_id, p_issued_by_tenant_id?, p_ar_side?, filters…, p_page_size?, p_cursor?)`
 - **Response:** `{ data: BillListRow[], meta: { has_more, next_cursor } }` — no total count.
 - **UI:** `useBillsListInfiniteQuery` → Load more; fields match [`types/billList.ts`](../../../web/src/modules/bills_pays/types/billList.ts).
 

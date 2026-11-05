@@ -18,7 +18,7 @@ begin
     raise exception 'shipment not found';
   end if;
 
-  if not public.user_can_manage_parent_tenant(v_ship.parent_tenant_id) then
+  if not public.user_can_manage_books_tenant(v_ship.tenant_id) then
     raise exception 'not allowed';
   end if;
 

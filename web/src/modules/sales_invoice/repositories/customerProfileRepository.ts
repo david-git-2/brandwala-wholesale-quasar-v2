@@ -3,7 +3,7 @@ import type { Database } from 'src/types/supabase';
 
 export type CustomerProfile = Database['public']['Tables']['profiles']['Row'];
 export type CreateCustomerProfileInput = {
-  parent_tenant_id: number;
+  tenant_id: number;
   operating_tenant_id?: number;
   name: string;
   email?: string | null;
@@ -46,7 +46,7 @@ const listDeskBillingProfiles = async (parentTenantId: number): Promise<Customer
     .from('profiles')
     .select('*')
     .or(
-      `operating_tenant_id.eq.${parentTenantId},parent_tenant_id.eq.${parentTenantId}`,
+      `operating_tenant_id.eq.${parentTenantId},tenant_id.eq.${parentTenantId}`,
     )
     .eq('is_active', true)
     .is('deleted_at', null)
@@ -72,7 +72,7 @@ const listCustomerProfiles = async (
 
   if (typeof payload.tenant_id === 'number') {
     query = query.or(
-      `operating_tenant_id.eq.${payload.tenant_id},parent_tenant_id.eq.${payload.tenant_id}`,
+      `operating_tenant_id.eq.${payload.tenant_id},tenant_id.eq.${payload.tenant_id}`,
     );
   }
 
@@ -98,7 +98,7 @@ const createCustomerProfile = async (
   payload: CreateCustomerProfileInput,
 ): Promise<CustomerProfile> => {
   let customerGroupId = payload.customer_group_id ?? null;
-  const booksId = payload.parent_tenant_id;
+  const booksId = payload.tenant_id;
   const operatingTenantId = payload.operating_tenant_id ?? booksId;
 
   if (!customerGroupId) {
@@ -154,7 +154,7 @@ const createCustomerProfile = async (
     .from('profiles')
     .insert([
       {
-        parent_tenant_id: booksId,
+        tenant_id: booksId,
         operating_tenant_id: operatingTenantId,
         profile_type: 'customer',
         subject_id: customerGroupId ?? booksId,

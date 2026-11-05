@@ -3,7 +3,7 @@ export type Vendor = {
   name: string;
   code: string;
   market_code: string;
-  parent_tenant_id: number | null;
+  tenant_id: number | null;
   is_default: boolean;
   email: string | null;
   phone: string | null;
@@ -23,7 +23,7 @@ export type VendorCreateInput = {
   name: string;
   code: string;
   market_code: string;
-  parent_tenant_id: number | null;
+  tenant_id: number | null;
   email?: string | null;
   phone?: string | null;
   address?: string | null;
@@ -36,7 +36,7 @@ export type VendorUpdateInput = VendorCreateInput & {
 
 export type VendorDeleteInput = {
   id: number;
-  parent_tenant_id?: number | null;
+  tenant_id?: number | null;
 };
 
 export type VendorServiceResult<T> = {

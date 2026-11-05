@@ -29,7 +29,7 @@ INPUT_JSON = ROOT_DIR / "python" / "data" / "uk" / "out" / "pc_scraped_data.json
 PC_VENDOR_ID = 3
 PC_VENDOR_CODE = "PC"
 MARKET_CODE = "GB"
-PARENT_TENANT_ID = 15
+TENANT_ID = 15
 INSERTED_BY_TENANT_ID = 10
 
 def load_env_file(path: Path) -> None:
@@ -155,7 +155,7 @@ def ensure_lookups(client: SupabaseRestClient, products: list[dict[str, Any]]) -
                     "name": b_name,
                     "vendor_id": PC_VENDOR_ID,
                     "vendor_code": PC_VENDOR_CODE,
-                    "parent_tenant_id": PARENT_TENANT_ID,
+                    "tenant_id": TENANT_ID,
                 })
 
         if c_name:
@@ -166,7 +166,7 @@ def ensure_lookups(client: SupabaseRestClient, products: list[dict[str, Any]]) -
                     "name": c_name,
                     "vendor_id": PC_VENDOR_ID,
                     "vendor_code": PC_VENDOR_CODE,
-                    "parent_tenant_id": PARENT_TENANT_ID,
+                    "tenant_id": TENANT_ID,
                 })
 
     if missing_brands:
@@ -243,7 +243,7 @@ def main():
             "select": "id,barcode,product_code",
             "vendor_id": f"eq.{PC_VENDOR_ID}",
             "market_code": f"eq.{MARKET_CODE}",
-            "parent_tenant_id": f"eq.{PARENT_TENANT_ID}",
+            "tenant_id": f"eq.{TENANT_ID}",
             "limit": str(limit),
             "offset": str(offset),
         }
@@ -268,7 +268,7 @@ def main():
     client.update_rows("products", {
         "vendor_id": f"eq.{PC_VENDOR_ID}",
         "market_code": f"eq.{MARKET_CODE}",
-        "parent_tenant_id": f"eq.{PARENT_TENANT_ID}",
+        "tenant_id": f"eq.{TENANT_ID}",
     }, {"is_available": False})
 
     # 4. Prepare updates and inserts
@@ -308,7 +308,7 @@ def main():
             # New product: insert it
             insert_payload = dict(payload)
             insert_payload.update({
-                "parent_tenant_id": PARENT_TENANT_ID,
+                "tenant_id": TENANT_ID,
                 "inserted_by_tenant_id": INSERTED_BY_TENANT_ID,
                 "vendor_id": PC_VENDOR_ID,
                 "vendor_code": PC_VENDOR_CODE,
@@ -383,7 +383,7 @@ def main():
         products_updated += len(inserts)
     log_upload(
         source="pc_pricecheck",
-        parent_tenant_id=PARENT_TENANT_ID,
+        tenant_id=TENANT_ID,
         file_name=INPUT_JSON.name,
         products_updated=products_updated,
         duration_seconds=int(time.perf_counter() - sync_started),

@@ -71,7 +71,7 @@ const listGlobalInvoices = async (
   let query = supabase
     .from('bills')
     .select(
-      'id, parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, profile_id:profile_id, shop_order_id, retail_billing_mode, channel_meta, recipient_name, created_by, created_at, profiles:profiles!bills_profile_id_fkey(name, email, color:accent_color), issued_by:tenants!global_invoices_issued_by_tenant_id_fkey(name)',
+      'id, tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, profile_id:profile_id, shop_order_id, retail_billing_mode, channel_meta, recipient_name, created_by, created_at, profiles:profiles!bills_profile_id_fkey(name, email, color:accent_color), issued_by:tenants!global_invoices_issued_by_tenant_id_fkey(name)',
       { count: 'exact' },
     );
 
@@ -80,14 +80,14 @@ const listGlobalInvoices = async (
   // AP (we owe) is booked on the parent; issued_by may be parent or assigned child.
   if (arSide === 'we_owe') {
     if (scopeParentId != null) {
-      query = query.eq('parent_tenant_id', scopeParentId);
+      query = query.eq('tenant_id', scopeParentId);
     }
   } else if (issuedByTenantId) {
     query = query.eq('issued_by_tenant_id', issuedByTenantId);
   } else if (parentTenantId) {
-    query = query.eq('parent_tenant_id', parentTenantId);
+    query = query.eq('tenant_id', parentTenantId);
   } else if (tenantId) {
-    query = query.eq('parent_tenant_id', tenantId);
+    query = query.eq('tenant_id', tenantId);
   }
 
   if (createdBy) {
@@ -847,7 +847,7 @@ const updateInvoiceItemsBulk = async (
 
 export type InvoiceBrand = {
   id: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   name: string;
   address: string;
   created_at?: string;
@@ -857,12 +857,12 @@ export type InvoiceBrand = {
 export type CreateInvoiceBrandInput = Omit<InvoiceBrand, 'id' | 'created_at' | 'updated_at'>;
 
 const listInvoiceBrands = async (
-  payload: { parent_tenant_id?: number; tenant_id?: number } = {},
+  payload: { tenant_id?: number; tenant_id?: number } = {},
 ): Promise<(InvoiceBrand & { tenants?: { name: string } })[]> => {
   let query = supabase.from('invoice_brands').select('*, tenants(name)');
-  const targetParentTenantId = payload.parent_tenant_id ?? payload.tenant_id;
+  const targetParentTenantId = payload.tenant_id ?? payload.tenant_id;
   if (typeof targetParentTenantId === 'number') {
-    query = query.eq('parent_tenant_id', targetParentTenantId);
+    query = query.eq('tenant_id', targetParentTenantId);
   }
   const { data, error } = await query.order('name', { ascending: true });
   if (error) throw error;
@@ -881,7 +881,7 @@ const createInvoiceBrand = async (payload: CreateInvoiceBrandInput): Promise<Inv
 
 const updateInvoiceBrand = async (payload: {
   id: number;
-  patch: Partial<Omit<InvoiceBrand, 'id' | 'parent_tenant_id' | 'created_at' | 'updated_at'>>;
+  patch: Partial<Omit<InvoiceBrand, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>>;
 }): Promise<InvoiceBrand> => {
   const { data, error } = await supabase
     .from('invoice_brands')

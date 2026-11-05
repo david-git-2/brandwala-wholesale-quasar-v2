@@ -31,7 +31,7 @@ export type CashbookPartyDetail = {
 export type CashbookPointRow = {
   id: number;
   cashbook_account_id: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   code: string;
   name: string;
   kind: CashbookPointKind;
@@ -42,7 +42,7 @@ export type CashbookPointRow = {
 export type CashbookPointPotRow = {
   id: number;
   cashbook_point_id: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   currency_code: string;
   amount: number;
 };
@@ -270,7 +270,7 @@ const findCashbookAccountId = async (params: {
   const { data, error } = await supabase
     .from('cashbook_accounts')
     .select('id')
-    .eq('parent_tenant_id', params.booksTenantId)
+    .eq('tenant_id', params.booksTenantId)
     .eq('entity_type', params.entityType)
     .eq('entity_id', entityId)
     .eq('currency_code', params.currencyCode ?? 'BDT')
@@ -282,7 +282,7 @@ const findCashbookAccountId = async (params: {
 const listCashbookPoints = async (cashbookAccountId: number): Promise<CashbookPointRow[]> => {
   const { data, error } = await supabase
     .from('cashbook_points')
-    .select('id, cashbook_account_id, parent_tenant_id, code, name, kind, is_active, sort_order')
+    .select('id, cashbook_account_id, tenant_id, code, name, kind, is_active, sort_order')
     .eq('cashbook_account_id', cashbookAccountId)
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true });
@@ -290,7 +290,7 @@ const listCashbookPoints = async (cashbookAccountId: number): Promise<CashbookPo
   return (data ?? []).map((row) => ({
     id: row.id,
     cashbook_account_id: row.cashbook_account_id,
-    parent_tenant_id: row.parent_tenant_id,
+    tenant_id: row.tenant_id,
     code: row.code,
     name: row.name,
     kind: row.kind,
@@ -341,13 +341,13 @@ const normalizePotCurrencyCodes = (codes: string[]): string[] => {
 const mapPointPotRow = (row: {
   id: number;
   cashbook_point_id: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   currency_code: string;
   amount: number | string | null;
 }): CashbookPointPotRow => ({
   id: row.id,
   cashbook_point_id: row.cashbook_point_id,
-  parent_tenant_id: row.parent_tenant_id,
+  tenant_id: row.tenant_id,
   currency_code: row.currency_code,
   amount: Number(row.amount ?? 0),
 });
@@ -355,7 +355,7 @@ const mapPointPotRow = (row: {
 const listCashbookPointPots = async (pointId: number): Promise<CashbookPointPotRow[]> => {
   const { data, error } = await supabase
     .from('cashbook_point_pots')
-    .select('id, cashbook_point_id, parent_tenant_id, currency_code, amount')
+    .select('id, cashbook_point_id, tenant_id, currency_code, amount')
     .eq('cashbook_point_id', pointId)
     .order('currency_code', { ascending: true });
   if (error) throw error;
@@ -366,7 +366,7 @@ const listCashbookPointPotsForPoints = async (pointIds: number[]): Promise<Cashb
   if (!pointIds.length) return [];
   const { data, error } = await supabase
     .from('cashbook_point_pots')
-    .select('id, cashbook_point_id, parent_tenant_id, currency_code, amount')
+    .select('id, cashbook_point_id, tenant_id, currency_code, amount')
     .in('cashbook_point_id', pointIds)
     .order('currency_code', { ascending: true });
   if (error) throw error;
@@ -381,7 +381,7 @@ const insertCashbookPointPots = async (
   const codes = normalizePotCurrencyCodes(currencyCodes);
   const { error } = await supabase.from('cashbook_point_pots').insert(
     codes.map((currency_code) => ({
-      parent_tenant_id: parentTenantId,
+      tenant_id: parentTenantId,
       cashbook_point_id: pointId,
       currency_code,
       amount: 0,
@@ -427,7 +427,7 @@ const createCashbookPoint = async (input: {
   const { data, error } = await supabase
     .from('cashbook_points')
     .insert({
-      parent_tenant_id: input.parentTenantId,
+      tenant_id: input.parentTenantId,
       cashbook_account_id: input.cashbookAccountId,
       code,
       name: input.name.trim(),
@@ -498,7 +498,7 @@ const listBooksExchangeRates = async (params: {
   limit?: number;
 }) => {
   const { data, error } = await supabase.rpc('list_books_exchange_rates', {
-    p_parent_tenant_id: params.parentTenantId,
+    p_tenant_id: params.parentTenantId,
     p_quote_currency_code: params.quoteCurrencyCode ?? null,
     p_limit: params.limit ?? 20,
   });

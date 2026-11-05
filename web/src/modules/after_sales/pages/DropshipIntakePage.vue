@@ -202,7 +202,7 @@ const onSubmit = async () => {
   try {
     const parentId = tenant.parent_id ?? tenant.id;
     const created = await afterSalesRepositoryStub.createDropshipCase({
-      parent_tenant_id: parentId,
+      tenant_id: parentId,
       operating_tenant_id: tenant.id,
       operating_tenant_name: tenant.name,
       shop_order_id: order.id,

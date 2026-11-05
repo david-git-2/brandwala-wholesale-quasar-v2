@@ -40,7 +40,6 @@ export const useRecipientProfileStore = defineStore('recipientProfile', {
 
     async upsertByPhone(payload: {
       tenant_id?: number | null;
-      parent_tenant_id?: number | null;
       name: string;
       phone: string;
       secondary_phone?: string | null;

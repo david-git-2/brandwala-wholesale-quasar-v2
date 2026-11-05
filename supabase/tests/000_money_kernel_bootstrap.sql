@@ -205,7 +205,7 @@ BEGIN
   END IF;
   v_pot_id := public._kernel_ensure_cashbook_point_pot(v_parent_id, p_point_id, upper(p_currency_code));
   PERFORM public.record_ledger_transaction(
-    p_parent_tenant_id => v_parent_id,
+      p_tenant_id => v_parent_id,
     p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'tenant',
     p_entity_id => v_parent_id,

@@ -24,7 +24,7 @@ PRODUCTS_PATH = "/dashboard/products"
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from catalog_refresh_lib import add_parent_tenant_argument, log_scrape
+from catalog_refresh_lib import add_tenant_argument, log_scrape, tenant_id_from_args
 load_dotenv(ROOT_DIR / ".env")
 load_dotenv(ROOT_DIR / "web" / ".env")
 DEFAULT_OUTFILE = ROOT_DIR / "python" / "data" / "uk" / "out" / "koba_retail_data.json"
@@ -63,7 +63,7 @@ def parse_args() -> argparse.Namespace:
         default=0,
         help="Products per page (default: use site default)",
     )
-    add_parent_tenant_argument(parser, 10)
+    add_tenant_argument(parser, 10)
     return parser.parse_args()
 
 def extract_brand(name: str) -> str:
@@ -446,7 +446,7 @@ def main():
     print(f"\n✅ Successfully saved {len(deduped_raw)} raw products to {outfile}")
     log_scrape(
         source="koba_retail",
-        parent_tenant_id=int(args.parent_tenant_id),
+        tenant_id=tenant_id_from_args(args, 10),
         products_updated=len(deduped_raw),
         duration_seconds=int(time.perf_counter() - scrape_started),
     )

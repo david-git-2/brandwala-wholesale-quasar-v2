@@ -82,7 +82,7 @@ const filterCases = (
   let rows =
     import.meta.env.DEV
       ? [...cases]
-      : cases.filter((c) => c.parent_tenant_id === parentId);
+      : cases.filter((c) => c.tenant_id === parentId);
 
   if (isChildView && !import.meta.env.DEV) {
     rows = rows.filter((c) => c.operating_tenant_id === tenantId);
@@ -133,7 +133,7 @@ export const afterSalesRepositoryStub = {
     const scoped = import.meta.env.DEV
       ? mockAfterSalesState.cases
       : mockAfterSalesState.cases.filter(
-          (c) => c.parent_tenant_id === resolveParentTenantId(tenantId),
+          (c) => c.tenant_id === resolveParentTenantId(tenantId),
         );
     return computeHubSummary(scoped);
   },
@@ -178,7 +178,7 @@ export const afterSalesRepositoryStub = {
 
     const normalized: AfterSalesPolicyProgram = {
       ...policy,
-      parent_tenant_id: parentTenantId,
+      tenant_id: parentTenantId,
       allowed_outcomes: [...policy.allowed_outcomes],
     };
 
@@ -235,7 +235,7 @@ export const afterSalesRepositoryStub = {
       source_channel: 'wholesale',
       reason_code: payload.reason_code,
       program: program.program,
-      parent_tenant_id: payload.parent_tenant_id,
+      tenant_id: payload.tenant_id,
       operating_tenant_id: payload.operating_tenant_id,
       operating_tenant_name: payload.operating_tenant_name,
       sales_invoice_id: payload.sales_invoice_id,
@@ -292,7 +292,7 @@ export const afterSalesRepositoryStub = {
       source_channel: 'dropship',
       reason_code: payload.reason_code,
       program: program.program,
-      parent_tenant_id: payload.parent_tenant_id,
+      tenant_id: payload.tenant_id,
       operating_tenant_id: payload.operating_tenant_id,
       operating_tenant_name: payload.operating_tenant_name,
       sales_invoice_id: null,

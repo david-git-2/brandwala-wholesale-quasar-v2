@@ -83,7 +83,7 @@ where o.shipment_item_id = i.id
 -- 3. Insert `ordered` for every line that still has none
 -- ---------------------------------------------------------------------------
 insert into public.global_shipment_item_outcomes (
-  parent_tenant_id,
+  tenant_id,
   shipment_item_id,
   quantity,
   kind,
@@ -92,7 +92,7 @@ insert into public.global_shipment_item_outcomes (
   cost
 )
 select
-  s.parent_tenant_id,
+  s.tenant_id,
   i.id,
   i.ordered_quantity,
   'sellable'::public.global_shipment_outcome_kind,

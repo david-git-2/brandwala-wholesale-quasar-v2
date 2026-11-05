@@ -21,24 +21,39 @@ SCRAPE_URLS: dict[str, str] = {
 }
 
 
-def add_parent_tenant_argument(parser: Any, default: int) -> None:
+def _env_tenant_default(fallback: int) -> int:
+    raw = to_text(os.getenv("PY_PRODUCTS_TENANT_ID"))
+    if raw:
+        return env_int("PY_PRODUCTS_TENANT_ID", fallback)
+    return env_int("PY_PRODUCTS_PARENT_TENANT_ID", fallback)
+
+
+def add_tenant_argument(parser: Any, default: int) -> None:
+    resolved_default = _env_tenant_default(default)
     parser.add_argument(
-        "--parent-tenant-id",
-        dest="parent_tenant_id",
+        "--tenant-id",
+        dest="tenant_id",
         type=int,
-        default=env_int("PY_PRODUCTS_PARENT_TENANT_ID", default),
-        help=f"Warehouse parent tenant id used on product sync (default: {default}).",
+        default=resolved_default,
+        help=f"Books tenant id for product scope (default: {resolved_default} from env).",
     )
 
 
-def resolve_parent_tenant_id(raw: Any, default: int) -> int:
+def tenant_id_from_args(args: Any, default: int) -> int:
+    explicit = getattr(args, "tenant_id", None)
+    if explicit is not None:
+        return int(explicit)
+    return _env_tenant_default(default)
+
+
+def resolve_tenant_id(raw: Any, default: int) -> int:
     if raw is None:
-        return env_int("PY_PRODUCTS_PARENT_TENANT_ID", default)
+        return _env_tenant_default(default)
     try:
         value = int(raw)
-        return value if value > 0 else default
+        return value if value > 0 else _env_tenant_default(default)
     except (TypeError, ValueError):
-        return default
+        return _env_tenant_default(default)
 
 
 def resolve_upload_file_name(explicit: str | None, input_path: Path | None = None) -> str:
@@ -68,7 +83,7 @@ def _client() -> SupabaseRestClient | None:
 
 def log_catalog_refresh(
     *,
-    parent_tenant_id: int,
+    tenant_id: int,
     source: str,
     event_kind: str,
     products_updated: int | None,
@@ -81,7 +96,7 @@ def log_catalog_refresh(
         if client is None:
             return
         row: dict[str, Any] = {
-            "parent_tenant_id": int(parent_tenant_id),
+            "tenant_id": int(tenant_id),
             "source": to_text(source).lower(),
             "event_kind": event_kind,
             "products_updated": products_updated,
@@ -105,7 +120,7 @@ def log_catalog_refresh(
         client.insert_rows("catalog_refresh_log", [row])
         print(
             "catalog_refresh_log: "
-            f"{event_kind} source={row['source']} parent={parent_tenant_id} "
+            f"{event_kind} source={row['source']} tenant_id={tenant_id} "
             f"products_updated={products_updated} duration_seconds={duration_seconds}",
             flush=True,
         )
@@ -116,13 +131,13 @@ def log_catalog_refresh(
 def log_scrape(
     *,
     source: str,
-    parent_tenant_id: int,
+    tenant_id: int,
     products_updated: int,
     duration_seconds: int | None,
     source_url: str | None = None,
 ) -> None:
     log_catalog_refresh(
-        parent_tenant_id=parent_tenant_id,
+        tenant_id=tenant_id,
         source=source,
         event_kind="scrape",
         products_updated=products_updated,
@@ -134,13 +149,13 @@ def log_scrape(
 def log_upload(
     *,
     source: str,
-    parent_tenant_id: int,
+    tenant_id: int,
     file_name: str,
     products_updated: int,
     duration_seconds: int | None,
 ) -> None:
     log_catalog_refresh(
-        parent_tenant_id=parent_tenant_id,
+        tenant_id=tenant_id,
         source=source,
         event_kind="upload",
         products_updated=products_updated,

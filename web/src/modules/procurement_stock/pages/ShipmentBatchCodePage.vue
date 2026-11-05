@@ -94,7 +94,7 @@ const ensureList = async () => {
     const created = await createListMutation.mutateAsync({
       parentTenantId: parentTenantId.value,
       payload: {
-        parent_tenant_id: parentTenantId.value,
+        tenant_id: parentTenantId.value,
         shipment_id: shipmentId.value,
       },
       relations: {

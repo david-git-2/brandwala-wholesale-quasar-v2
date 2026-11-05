@@ -217,7 +217,7 @@ const onSave = async (payload: {
     if (payload.id != null) {
       await store.updateCompany({
         id: payload.id,
-        parent_tenant_id: tenantId.value,
+        tenant_id: tenantId.value,
         name: payload.name,
         code: payload.code,
         email: payload.email,
@@ -229,7 +229,7 @@ const onSave = async (payload: {
       showSuccessNotification('Cargo company updated');
     } else {
       await store.createCompany({
-        parent_tenant_id: tenantId.value,
+        tenant_id: tenantId.value,
         name: payload.name,
         code: payload.code,
         email: payload.email,

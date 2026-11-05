@@ -86,17 +86,21 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("PY_PRODUCTS_MARKET_CODE", "GB"),
         help="Market code scope (default: PY_PRODUCTS_MARKET_CODE or GB).",
     )
-    parser.add_argument(
-        "--parent-tenant-id",
-        dest="parent_tenant_id",
-        default=os.getenv("PY_PRODUCTS_PARENT_TENANT_ID", "15").strip() or "15",
-        help="Warehouse parent tenant id (default: 15).",
-    )
+    books_default = (
+        os.getenv("PY_PRODUCTS_TENANT_ID") or os.getenv("PY_PRODUCTS_PARENT_TENANT_ID") or "15"
+    ).strip() or "15"
     parser.add_argument(
         "--tenant-id",
-        dest="tenant_id",
-        default=os.getenv("PY_PRODUCTS_TENANT_ID", "").strip(),
-        help="Optional. Who ran the sync (inserted_by_tenant_id). Defaults to parent tenant id.",
+        dest="books_tenant_id",
+        type=int,
+        default=int(books_default),
+        help=f"Books warehouse tenant id (default: {books_default}).",
+    )
+    parser.add_argument(
+        "--inserted-by-tenant-id",
+        dest="inserted_by_tenant_id",
+        default=os.getenv("PY_PRODUCTS_INSERTED_BY_TENANT_ID", "").strip(),
+        help="Who ran the sync (inserted_by_tenant_id). Defaults to books tenant id.",
     )
     parser.add_argument(
         "--vendor-id",
@@ -226,7 +230,7 @@ def build_sync_payloads(
     vendor_code: str,
     vendor_id: int,
     market_code: str,
-    parent_tenant_id: int,
+    tenant_id: int,
     inserted_by_tenant_id: int,
     gbp_currency_id: int,
 ) -> tuple[dict[str, Any], dict[str, Any]] | None:
@@ -247,7 +251,7 @@ def build_sync_payloads(
     # Insert payload can include null-capable values for new rows.
     image_url = row.get("imageUrl") or row.get("image_url") or row.get("original_image_url") or row.get("image")
     insert_payload: dict[str, Any] = {
-        "parent_tenant_id": parent_tenant_id,
+        "tenant_id": tenant_id,
         "inserted_by_tenant_id": inserted_by_tenant_id,
         "vendor_id": vendor_id,
         "vendor_code": vendor_code,
@@ -276,7 +280,7 @@ def build_sync_payloads(
     update_payload: dict[str, Any] = {}
     for key, value in insert_payload.items():
         if key in (
-            "parent_tenant_id",
+            "tenant_id",
             "inserted_by_tenant_id",
             "vendor_id",
             "vendor_code",
@@ -349,16 +353,13 @@ def main() -> int:
     sync_started = time.perf_counter()
     switch_web_env_to_prod()
 
-    parent_raw = to_text(args.parent_tenant_id) or "15"
-    if not (parent_raw.isdigit() and int(parent_raw) > 0):
-        raise SystemExit("parent tenant id must be a positive integer (default 15).")
-    parent_tenant_id = int(parent_raw)
-    inserted_raw = to_text(args.tenant_id)
+    tenant_id = int(args.books_tenant_id)
+    inserted_raw = to_text(args.inserted_by_tenant_id)
     inserted_by_tenant_id = (
-        int(inserted_raw) if inserted_raw.isdigit() and int(inserted_raw) > 0 else parent_tenant_id
+        int(inserted_raw) if inserted_raw.isdigit() and int(inserted_raw) > 0 else tenant_id
     )
     print(
-        f"Using parent_tenant_id={parent_tenant_id}, "
+        f"Using tenant_id={tenant_id}, "
         f"inserted_by_tenant_id={inserted_by_tenant_id}",
         flush=True,
     )
@@ -401,7 +402,7 @@ def main() -> int:
         resolved_vendor_id = PC_VENDOR_ID
     else:
         vendor_row = ensure_vendor_exists(
-            client, vendor_code, market_code, parent_tenant_id, args.dry_run
+            client, vendor_code, market_code, tenant_id, args.dry_run
         )
         resolved_vendor_id = vendor_row["id"]
 
@@ -415,7 +416,7 @@ def main() -> int:
         )
 
     if int(resolved_vendor_id) > 0:
-        assert_vendor_parent_scope(vendor_row, parent_tenant_id, int(resolved_vendor_id))
+        assert_vendor_parent_scope(vendor_row, tenant_id, int(resolved_vendor_id))
 
     rows = load_products(input_path)
     key_counts: dict[tuple[str, str], int] = {}
@@ -428,7 +429,7 @@ def main() -> int:
             resolved_vendor_code,
             resolved_vendor_id,
             market_code,
-            parent_tenant_id,
+            tenant_id,
             inserted_by_tenant_id,
             gbp_currency_id,
         )
@@ -441,9 +442,9 @@ def main() -> int:
         deduped_inserts[key] = insert_payload
         deduped_updates[key] = update_payload
 
-    scope_params = build_scope_params(resolved_vendor_id, market_code, parent_tenant_id)
+    scope_params = build_scope_params(resolved_vendor_id, market_code, tenant_id)
     existing_rows_full = fetch_all_scoped_products_full(
-        client, resolved_vendor_id, market_code, parent_tenant_id
+        client, resolved_vendor_id, market_code, tenant_id
     )
     existing_rows = [
         {
@@ -506,7 +507,7 @@ def main() -> int:
                     if not normalize_nullable_text(db_image_url):
                         existing_excel_needs_image.add((row_id, key))
         else:
-            insert_payload["parent_tenant_id"] = parent_tenant_id
+            insert_payload["tenant_id"] = tenant_id
             insert_payload["inserted_by_tenant_id"] = inserted_by_tenant_id
             insert_payload["vendor_id"] = resolved_vendor_id
             insert_payload["vendor_code"] = resolved_vendor_code
@@ -527,7 +528,7 @@ def main() -> int:
         "Scope: "
         f"vendor_code={resolved_vendor_code} vendor_id={resolved_vendor_id} "
         f"market={market_code} "
-        f"parent_tenant_id={parent_tenant_id} "
+        f"tenant_id={tenant_id} "
         f"inserted_by_tenant_id={inserted_by_tenant_id}"
     )
     print(f"Image upload phase: local_dir={images_dir}")
@@ -549,7 +550,7 @@ def main() -> int:
             chunk_size=max(1, args.chunk_size),
             dry_run=True,
             write_retries=max(1, args.write_retries),
-            parent_tenant_id=parent_tenant_id,
+            tenant_id=tenant_id,
         )
         print("Dry run complete. No DB writes.")
         return 0
@@ -577,7 +578,7 @@ def main() -> int:
         chunk_size=max(1, args.chunk_size),
         dry_run=False,
         write_retries=max(1, args.write_retries),
-        parent_tenant_id=parent_tenant_id,
+        tenant_id=tenant_id,
     )
 
     updates_total = len(updates)
@@ -652,10 +653,10 @@ def main() -> int:
         limit = 1000
         while True:
             params: dict[str, Any] = {
-                "select": "id,barcode,product_code,parent_tenant_id",
+                "select": "id,barcode,product_code,tenant_id",
                 "vendor_id": f"eq.{resolved_vendor_id}",
                 "market_code": f"eq.{market_code}",
-                "parent_tenant_id": f"eq.{parent_tenant_id}",
+                "tenant_id": f"eq.{tenant_id}",
                 "limit": str(limit),
                 "offset": str(offset),
             }
@@ -770,7 +771,7 @@ def main() -> int:
     if not args.dry_run:
         log_upload(
             source=resolve_catalog_source(args.catalog_source, vendor_code.lower()),
-            parent_tenant_id=parent_tenant_id,
+            tenant_id=tenant_id,
             file_name=resolve_upload_file_name(args.upload_file_name, input_path),
             products_updated=products_updated,
             duration_seconds=int(time.perf_counter() - sync_started),

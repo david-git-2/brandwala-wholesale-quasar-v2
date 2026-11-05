@@ -17,7 +17,7 @@ from pathlib import Path
 # Paths relative to this script
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-from catalog_refresh_lib import add_parent_tenant_argument, log_scrape
+from catalog_refresh_lib import add_tenant_argument, log_scrape, tenant_id_from_args
 ROOT_DIR = SCRIPT_DIR.parents[2]
 WEB_ENV_FILE = ROOT_DIR / "web" / ".env"
 ROOT_ENV_FILE = ROOT_DIR / ".env"
@@ -440,7 +440,7 @@ def main():
     parser.add_argument("--cache-file", default=str(DEFAULT_CACHE_JSON), help="Cache JSON path")
     parser.add_argument("--no-cache", action="store_true", help="Bypass caching and force-scrape all products.")
     parser.add_argument("--vendor-id", type=int, default=4, help="Vendor ID (default: 4)")
-    add_parent_tenant_argument(parser, 15)
+    add_tenant_argument(parser, 15)
     args = parser.parse_args()
 
     out_json = Path(args.output).expanduser().resolve()
@@ -595,7 +595,7 @@ def main():
     t_total = time.perf_counter() - t0
     log_scrape(
         source="wts",
-        parent_tenant_id=int(args.parent_tenant_id),
+        tenant_id=tenant_id_from_args(args, 15),
         products_updated=len(products),
         duration_seconds=int(t_total),
     )

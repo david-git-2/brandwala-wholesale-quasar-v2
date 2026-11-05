@@ -1,7 +1,7 @@
 {
   "name": "brandwala-wholesale-quasar-root",
   "private": true,
-  "version": "1.0.44",
+  "version": "1.0.47",
   "description": "Root scripts for web app and Supabase backend",
   "scripts": {
     "dev": "pnpm --filter web dev",
@@ -26,8 +26,8 @@
     "python:taxonomy:pc": "python3 python/scripts/uk/export_pc_taxonomy.py --input python/data/uk/out/pc_data.json",
     "python:clean:vat-names": "python3 python/scripts/uk/remove_vat_from_names.py --input python/data/uk/out/pc_data.json",
     "python:clean:ml-names": "python3 python/scripts/uk/move_ml_to_end.py --input python/data/uk/out/pc_data.json --fields name",
-    "python:sync:pc": "python3 python/scripts/uk/sync_pc_products_to_supabase.py --input python/data/uk/out/pc_data.json --vendor PC --market GB",
-    "python:sync:wts": "python3 python/scripts/uk/sync_wts_products_to_supabase.py --input python/data/uk/out/wts_data.json --market GB --parent-tenant-id 15 --tenant-id 10 --vendor-id 4",
+    "python:sync:pc": "python3 python/scripts/uk/sync_pc_products_to_supabase.py --input python/data/uk/out/pc_data.json --vendor PC --market GB --tenant-id 15 --vendor-id 3",
+    "python:sync:wts": "python3 python/scripts/uk/sync_wts_products_to_supabase.py --input python/data/uk/out/wts_data.json --market GB --tenant-id 15 --inserted-by-tenant-id 10 --vendor-id 4",
     "frontend:prod": "bash scripts/deploy-frontend.sh",
     "env:local": "bash scripts/env-switch.sh local",
     "env:prod": "bash scripts/env-switch.sh prod",

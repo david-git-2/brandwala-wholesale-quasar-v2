@@ -21,7 +21,7 @@ Staff in the **app** see recent catalog **scrapes** and **uploads**, plus live *
 | Upload | File name, upload date/time, products updated, runtime (seconds) |
 | Release | `backend_version`, `frontend_version` (+ when each last changed) |
 
-`parent_tenant_id` on every refresh row = **the same value the pipeline uses for product sync** (`--parent-tenant-id` on `sync_*_products_to_supabase.py`), read from the script args/env — not a UI guess.
+`tenant_id` on every refresh row = **the same value the pipeline uses for product sync** (`--tenant-id` on `sync_*_products_to_supabase.py`, alias `--parent-tenant-id` one release), read from the script args/env — not a UI guess.
 
 ## Scope
 
@@ -38,7 +38,7 @@ One row per **scrape** or **upload** run (when that step finishes).
 | Column | Type | Notes |
 | :--- | :--- | :--- |
 | `id` | `bigserial` | PK |
-| `parent_tenant_id` | `bigint` | From script: `args.parent_tenant_id` / `--parent-tenant-id` / `PY_PRODUCTS_PARENT_TENANT_ID` — **must match** the sync that owns that vendor scope |
+| `tenant_id` | `bigint` | From script: `tenant_id_from_args` / `--tenant-id` / `PY_PRODUCTS_TENANT_ID` (fallback `PY_PRODUCTS_PARENT_TENANT_ID`) — **must match** the sync that owns that vendor scope |
 | `source` | `text` | Stable key — see [Source registry](#source-registry) |
 | `event_kind` | `text` | `'scrape'` \| `'upload'` |
 | `source_url` | `text` | **Scrape:** catalog site base URL (see registry). **Upload:** null |
@@ -49,7 +49,7 @@ One row per **scrape** or **upload** run (when that step finishes).
 
 Check: `(event_kind = 'scrape' and source_url is not null and file_name is null)` OR `(event_kind = 'upload' and file_name is not null)`.
 
-Index: `(parent_tenant_id, source, event_kind, ran_at desc)`.
+Index: `(tenant_id, source, event_kind, ran_at desc)`.
 
 ### `products_updated` meaning
 
@@ -60,16 +60,16 @@ Index: `(parent_tenant_id, source, event_kind, ran_at desc)`.
 
 Scrape-only Makefile targets (`wts-scrape`, `elf-scrape`, …) log **scrape** only. Full targets (`wts`, `pc`, …) log **upload** when Excel was used, or log **scrape** then **sync counts on a second upload/sync row** only when sync runs in the same invocation — prefer **one upload row** after full `make pc` / `make wts-excel` with sync totals; **one scrape row** after `*-scrape` with JSON count.
 
-### `parent_tenant_id` by pipeline
+### `tenant_id` by pipeline
 
 Use the **sync** flag from `python/Makefile` (same as product inserts):
 
-| `source` | `--parent-tenant-id` (typical) |
-| :--- | :--- |
-| `pc`, `wts`, `wts_excel`, `elf` | `15` (`PC_SYNC_FLAGS` / `WTS_SYNC_FLAGS` / `elf` target) |
-| `koba_retail`, `koba_wholesale` | `10` (`koba-*-sync`) |
+| `source` | `--tenant-id` (typical) | WTS / ELF inserted-by |
+| :--- | :--- | :--- |
+| `pc`, `wts`, `wts_excel`, `elf` | `15` (`PC_SYNC_FLAGS` / `WTS_SYNC_FLAGS` / `elf` target) | WTS/ELF: `--inserted-by-tenant-id 10` when child scope differs |
+| `koba_retail`, `koba_wholesale` | `10` (`koba-*-sync`) | — |
 
-Scrape scripts that do not parse `--parent-tenant-id` today should accept the same flag (or `PY_PRODUCTS_PARENT_TENANT_ID`) **only for logging**, using the value from the paired sync row in the Makefile.
+Scrape scripts accept `--tenant-id` (or deprecated `--parent-tenant-id` / `PY_PRODUCTS_*` env) **for logging**, using the value from the paired sync row in the Makefile.
 
 ### Source registry
 
@@ -104,7 +104,7 @@ Version string = root `package.json` semver; patch bump on each successful backe
 
 | Event | Where | Row |
 | :--- | :--- | :--- |
-| Scrape finished | End of each `export_*` script (or shared helper) | `event_kind = scrape`, `source_url`, `products_updated`, `duration_seconds`, `parent_tenant_id` from args/env |
+| Scrape finished | End of each `export_*` script (or shared helper) | `event_kind = scrape`, `source_url`, `products_updated`, `duration_seconds`, `tenant_id` from args/env |
 | Excel upload + sync | Streamlit after save + sync, or end of `sync_*` after `make pc` / `wts-excel` | `event_kind = upload`, `file_name`, sync insert+update totals, `duration_seconds` |
 | Backend / frontend deploy | `deploy-backend.sh` / `deploy-frontend.sh` | Upsert `app_release_versions` |
 
@@ -114,7 +114,7 @@ Writer: `service_role` (same as product sync).
 
 | RPC (examples) | Returns |
 | :--- | :--- |
-| `list_catalog_refresh_log(p_parent_tenant_id, p_limit)` | Recent scrape + upload rows for that parent |
+| `list_catalog_refresh_log(p_tenant_id, p_limit)` | Recent scrape + upload rows for that books tenant |
 | `get_app_release_versions()` | Backend + frontend version strings and dates |
 
 `SECURITY DEFINER`; grant to catalog admins (same as products area).
@@ -130,7 +130,7 @@ Writer: `service_role` (same as product sync).
 
 - [x] Migration: `catalog_refresh_log` + `app_release_versions` seed
 - [x] Shared Python helper: `python/scripts/uk/catalog_refresh_lib.py`
-- [x] `parent_tenant_id` from sync args / scrape `--parent-tenant-id` / Makefile
+- [x] `tenant_id` from sync args / scrape `--tenant-id` / Makefile
 - [x] `duration_seconds` + `products_updated` on scrape and sync
 - [x] Streamlit sets `CATALOG_UPLOAD_FILE_NAME` + `CATALOG_REFRESH_SOURCE`
 - [x] `scripts/record-app-release.sh` from `deploy-backend.sh` / `deploy-frontend.sh`

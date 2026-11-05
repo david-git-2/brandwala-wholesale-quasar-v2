@@ -2,8 +2,7 @@
 -- Preview first: tenant_id_copy_parent.sql
 -- Replica role: shops/shop_orders triggers must not NULL parent_tenant_id.
 -- Prod: abort unless 15 is root and 10 + 11 are its children.
-
-\set ON_ERROR_STOP on
+-- Dashboard: paste whole file (no psql \set lines).
 
 DO $$
 BEGIN

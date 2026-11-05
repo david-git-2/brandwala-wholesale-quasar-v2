@@ -48,7 +48,7 @@ begin
     raise exception 'Profile is required';
   end if;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
   v_base_currency := public.resolve_tenant_base_currency_code(p_tenant_id);
 
   v_pay := public._kernel_claim_pay_idempotency(v_parent_id, p_idempotency_key);
@@ -58,7 +58,7 @@ begin
 
   if not (
     coalesce(auth.role(), '') = 'service_role'
-    or public.user_can_manage_parent_tenant(v_parent_id)
+    or public.user_can_manage_books_tenant(v_parent_id)
     or public.membership_has_module_action(p_tenant_id, 'payments', 'collect_payment')
     or exists (
       select 1 from public.memberships m
@@ -73,7 +73,7 @@ begin
 
   if not exists (
     select 1 from public.profiles pr
-    where pr.id = p_profile_id and pr.parent_tenant_id = v_parent_id
+    where pr.id = p_profile_id and pr.tenant_id = v_parent_id
   ) then
     raise exception 'Profile % does not belong to these books', p_profile_id;
   end if;
@@ -88,7 +88,7 @@ begin
     join public.cashbook_accounts ca on ca.id = cp.cashbook_account_id
     where cp.id = p_cashbook_point_id
       and cp.is_active = true
-      and ca.parent_tenant_id = v_parent_id
+      and ca.tenant_id = v_parent_id
       and ca.entity_type = 'tenant'
       and ca.entity_id = v_parent_id
   ) then
@@ -140,7 +140,7 @@ begin
     into v_source_currency
     from public.cashbook_point_pots cpp
     where cpp.cashbook_point_id = p_cashbook_point_id
-      and cpp.parent_tenant_id = v_parent_id
+      and cpp.tenant_id = v_parent_id
     order by case when upper(cpp.currency_code) = 'BDT' then 0 else 1 end, cpp.id
     limit 1;
   end if;
@@ -150,7 +150,7 @@ begin
     into v_pot_id
     from public.cashbook_point_pots cpp
     where cpp.cashbook_point_id = p_cashbook_point_id
-      and cpp.parent_tenant_id = v_parent_id
+      and cpp.tenant_id = v_parent_id
       and upper(cpp.currency_code) = v_source_currency
     limit 1;
   end if;
@@ -231,7 +231,7 @@ begin
       if v_bill.id is null then
         raise exception 'Bill % not found', v_bill_id;
       end if;
-      if v_bill.parent_tenant_id <> v_parent_id then
+      if v_bill.tenant_id <> v_parent_id then
         raise exception 'Bill % belongs to other books', v_bill_id;
       end if;
       if v_bill.invoice_type <> 'ap'::public.global_invoice_type then
@@ -301,7 +301,7 @@ begin
   returning * into v_pay;
 
   perform public.record_ledger_transaction(
-    p_parent_tenant_id => v_parent_id,
+    p_tenant_id => v_parent_id,
     p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'tenant',
     p_entity_id => v_parent_id,

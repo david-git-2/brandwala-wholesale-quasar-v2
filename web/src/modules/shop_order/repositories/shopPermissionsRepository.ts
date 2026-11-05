@@ -20,7 +20,7 @@ const listCustomerGroupsByBooksTenantId = async (
   const { data, error } = await supabase
     .from('customer_groups')
     .select('id, name, is_active, accent_color')
-    .eq('parent_tenant_id', booksTenantId)
+    .eq('tenant_id', booksTenantId)
     .is('deleted_at', null)
     .order('name', { ascending: true });
 

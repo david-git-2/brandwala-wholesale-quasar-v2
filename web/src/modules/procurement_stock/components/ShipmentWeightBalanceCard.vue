@@ -753,7 +753,7 @@ const addBox = async () => {
     if (!parentTenantId) throw new Error('No tenant found');
 
     await globalShipmentBoxRepository.create({
-      parent_tenant_id: parentTenantId,
+      tenant_id: parentTenantId,
       shipment_id: props.shipmentId,
       box_number: num,
       received_weight: recv ?? 0,

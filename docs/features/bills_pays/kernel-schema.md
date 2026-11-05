@@ -75,7 +75,7 @@ Code: `web/src/modules/bills_pays/repositories/`. UI: `/app/bills`, `/app/financ
 | Column | Type | Rule |
 | :--- | :--- | :--- |
 | `id` | bigint PK | |
-| `parent_tenant_id` | bigint | Books owner |
+| `tenant_id` | bigint | Books owner |
 | `profile_type` | enum | `tenant`, `customer`, `company`, `vendor`, `cargo`, `courier`, `investor` |
 | `subject_id` | bigint | Unique with type |
 | `name` | text | Print name |
@@ -88,9 +88,9 @@ Every bill side is a **profile**. Tenant itself has a `tenant` (or `company`) pr
 | Group | Column | Type | Rule |
 | :--- | :--- | :--- | :--- |
 | Identity | `id` | bigint PK | |
-| | `parent_tenant_id` | bigint | Books |
+| | `tenant_id` | bigint | Books |
 | | `issued_by_tenant_id` | bigint | Child that issued |
-| | `document_no` | text | Unique per `parent_tenant_id` |
+| | `document_no` | text | Unique per `tenant_id` |
 | From / to | `from_profile_id` | bigint FK `profiles` | **Bill from** — who issues / claims |
 | | `to_profile_id` | bigint FK `profiles` | **Bill to** — who is billed |
 | Paper | `document_kind` | enum | `standard` \| `credit_note` \| `debit_note` |
@@ -131,13 +131,13 @@ Walk-in: `take` only. AP / description-only bills: null. Who promised / extra wo
 **Checks**
 
 - `from_profile_id` ≠ `to_profile_id` when both are set (null allowed until both sides exist)
-- Both profiles same `parent_tenant_id` as the bill
+- Both profiles same `tenant_id` as the bill
 - Notes: `document_kind ≠ standard` ⇒ `parent_bill_id` set; copy parent `source_*` and from/to unless the adapter overrides
 - Unique **active** standard plug (partial index, void excluded):
 
 ```sql
 CREATE UNIQUE INDEX uq_active_standard_bill
-ON bills (parent_tenant_id, source_type, source_id, COALESCE(source_key, ''))
+ON bills (tenant_id, source_type, source_id, COALESCE(source_key, ''))
 WHERE document_kind = 'standard'
   AND source_type IS NOT NULL
   AND source_id IS NOT NULL
@@ -155,7 +155,7 @@ WHERE document_kind = 'standard'
 | :--- | :--- | :--- |
 | `id` | bigint PK | |
 | `bill_id` | bigint FK `bills` | CASCADE (live name today: `invoice_id`) |
-| `parent_tenant_id` | bigint | |
+| `tenant_id` | bigint | |
 | `line_kind` | text | `stock` \| `description` \| `charge` |
 | `name_snapshot` | text | Always |
 | `quantity` | numeric | `description` / `charge` may be `1` |
@@ -219,7 +219,7 @@ Unified reductions to a bill. Pays, issued credit notes, and custody application
 | Column | Type | Rule |
 | :--- | :--- | :--- |
 | `id` | bigint PK | |
-| `parent_tenant_id` | bigint | Books |
+| `tenant_id` | bigint | Books |
 | `bill_id` | bigint FK `bills` | Bill being reduced |
 | `allocator_kind` | text | `pay` \| `credit_note` \| `custody_entry` |
 | `allocator_id` | bigint | FK to `pays`, `bills` (CN), or `cashbook_entries` |
@@ -263,7 +263,7 @@ Till / safe / bank / fintech under a **tenant** cashbook. Not a stock location. 
 | Column | Type | Rule |
 | :--- | :--- | :--- |
 | `id` | bigint PK | |
-| `parent_tenant_id` | bigint | |
+| `tenant_id` | bigint | |
 | `cashbook_account_id` | bigint FK `cashbook_accounts` | Tenant **BDT** operating book (header). Pots are extra |
 | `code` | text | Unique per account |
 | `name` | text | e.g. UK cash, Wise |
@@ -279,7 +279,7 @@ Running **cash** in one currency at one point. Do **not** store a single FX rate
 | Column | Type | Rule |
 | :--- | :--- | :--- |
 | `id` | bigint PK | |
-| `parent_tenant_id` | bigint | |
+| `tenant_id` | bigint | |
 | `cashbook_point_id` | bigint FK `cashbook_points` | CASCADE |
 | `currency_code` | text | Cash currency (`GBP`, `BDT`, …). Codes from `global_currencies` |
 | `amount` | numeric | On-hand in **this** currency. ≥ 0 |
@@ -292,7 +292,7 @@ Staff pick a rate when recording a pay. Posted cash **copies** the pair onto the
 | Column | Type | Rule |
 | :--- | :--- | :--- |
 | `id` | bigint PK | |
-| `parent_tenant_id` | bigint | |
+| `tenant_id` | bigint | |
 | `base_currency_code` | text | Always books (`BDT` v1) |
 | `quote_currency_code` | text | Foreign (`GBP`) |
 | `rate` | numeric | **base per 1 quote** (155.5 BDT per 1 GBP) |
@@ -325,7 +325,7 @@ Kernel tables stay private to money RPCs. Reporting and desks may `SELECT` **vie
 | Column | Rule |
 | :--- | :--- |
 | `bill_id` | PK |
-| `parent_tenant_id` | |
+| `tenant_id` | |
 | `source_type`, `source_id`, `source_key` | Adapter plug |
 | `lifecycle_status` | `draft` \| `issued` \| `voided` |
 | `settlement_status` | Derived |
@@ -336,7 +336,7 @@ Kernel tables stay private to money RPCs. Reporting and desks may `SELECT` **vie
 
 Grant `SELECT` on views to `authenticated` (with RLS mirroring tenant scope). Do not grant direct `SELECT` on `bills` for feature modules.
 
-**Pagination ([BP23](00-gaps.md)):** Desks list via **keyset** `(parent_tenant_id, bill_id DESC)` (or `document_date`, `bill_id`) — no large `OFFSET` on busy tenants. Plain SQL view v1; optional **materialized** snapshot later with explicit refresh policy (nightly or post-batch) — not required for v1.
+**Pagination ([BP23](00-gaps.md)):** Desks list via **keyset** `(tenant_id, bill_id DESC)` (or `document_date`, `bill_id`) — no large `OFFSET` on busy tenants. Plain SQL view v1; optional **materialized** snapshot later with explicit refresh policy (nightly or post-batch) — not required for v1.
 
 **Read-your-writes:** After collect/payout, UI must refresh detail via `get_bill_net_balances` (or invalidate list query). Do not trust list `settlement_status` alone immediately after a write.
 

@@ -15,7 +15,7 @@ export const stockNetworkAvailableQty = (row: StockNetworkRow): number => {
 export const mapStockNetworkToGlobalStockRow = (row: StockNetworkRow): GlobalStockRow => ({
   id: row.global_stock_id,
   tenant_id: row.holding_tenant_id,
-  parent_tenant_id: row.parent_tenant_id,
+  tenant_id: row.tenant_id,
   name: row.name,
   shipment_id: row.shipment_id,
   shipment_item_id: row.shipment_item_id,

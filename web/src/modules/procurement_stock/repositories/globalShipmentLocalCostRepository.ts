@@ -6,7 +6,7 @@ import type { GlobalShipmentLocalCost } from '../types/shipmentLocalCost';
 import { globalShipmentCostEntryRepository } from './globalShipmentCostEntryRepository';
 
 export type UpsertShipmentLocalCostPayload = {
-  parent_tenant_id: number;
+  tenant_id: number;
   shipment_id: number;
   description: string;
   amount: number;
@@ -18,7 +18,7 @@ const mapEntryToLocal = (entry: GlobalShipmentCostEntry): GlobalShipmentLocalCos
   const meta = (entry.metadata ?? {}) as { description?: string };
   return {
     id: entry.id,
-    parent_tenant_id: entry.parent_tenant_id,
+    tenant_id: entry.tenant_id,
     shipment_id: entry.shipment_id,
     section_id: entry.section_id,
     description: entry.description?.trim() || meta.description?.trim() || '',

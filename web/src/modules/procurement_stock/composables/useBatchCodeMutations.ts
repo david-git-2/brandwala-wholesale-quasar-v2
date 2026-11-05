@@ -59,7 +59,7 @@ const resolveParentTenantId = (
   listId: number,
 ): number | null => {
   const detail = queryClient.getQueryData<BatchCodeListRow>(listKey(listId));
-  return detail?.parent_tenant_id ?? null;
+  return detail?.tenant_id ?? null;
 };
 
 export function useBatchCodeItemMutations(listId: MaybeRefOrGetter<number>) {

@@ -25,7 +25,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'invalid entity_type');
   END IF;
 
-  v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_books_id := public.resolve_books_tenant_id(p_tenant_id);
 
   IF NOT (
     public.cashbook_staff_can_view(p_tenant_id)
@@ -71,7 +71,7 @@ BEGIN
       l.id AS sort_id
     FROM public.cashbook_entries l
     LEFT JOIN public.cashbook_points cp ON cp.id = l.cashbook_point_id
-    WHERE l.parent_tenant_id = v_books_id
+    WHERE l.tenant_id = v_books_id
       AND l.entity_type = p_entity_type
       AND l.entity_id = v_ledger_entity_id
     ORDER BY l.created_at DESC, l.id DESC
@@ -82,7 +82,7 @@ BEGIN
     SELECT coalesce(sum(b.due_amount), 0::numeric)
     INTO v_due_total
     FROM public.bills b
-    WHERE b.parent_tenant_id = v_books_id
+    WHERE b.tenant_id = v_books_id
       AND b.profile_id = p_entity_id
       AND b.invoice_status = 'issued'
       AND coalesce(b.payment_status, '') <> 'paid';

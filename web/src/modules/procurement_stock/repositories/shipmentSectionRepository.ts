@@ -41,7 +41,7 @@ const create = async (payload: CreateShipmentSectionPayload): Promise<ShipmentSe
     .from('global_shipment_sections')
     .insert([
       {
-        parent_tenant_id: payload.parent_tenant_id,
+        tenant_id: payload.tenant_id,
         shipment_id: payload.shipment_id,
         vendor_id: payload.vendor_id,
         title: payload.title.trim(),

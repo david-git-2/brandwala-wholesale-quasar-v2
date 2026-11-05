@@ -252,7 +252,7 @@ const parentTenantId = computed(() => {
 const brandsQuery = useQuery({
   queryKey: computed(() => billsQueryKeys.brands(parentTenantId.value)),
   queryFn: () =>
-    billsRepository.listBillBrands({ parent_tenant_id: parentTenantId.value! }),
+    billsRepository.listBillBrands({ tenant_id: parentTenantId.value! }),
   enabled: computed(() => parentTenantId.value != null),
   staleTime: 60_000,
 });

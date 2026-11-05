@@ -51,7 +51,7 @@ GRANT EXECUTE ON FUNCTION public.issue_retail_bill(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.issue_retail_bill(bigint) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.list_bills_desk_page(
-  p_parent_tenant_id bigint,
+  p_tenant_id bigint,
   p_issued_by_tenant_id bigint DEFAULT NULL,
   p_ar_side text DEFAULT NULL,
   p_invoice_status text DEFAULT NULL,
@@ -76,15 +76,15 @@ declare
   v_next_cursor bigint;
   v_search text;
 begin
-  if p_parent_tenant_id is null then
-    raise exception 'parent_tenant_id is required';
+  if p_tenant_id is null then
+    raise exception 'tenant_id is required';
   end if;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_parent_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
 
   if not (
     public.membership_has_module_action(v_parent_id, 'global_invoice', 'view')
-    or public.user_can_manage_parent_tenant(v_parent_id)
+    or public.user_can_manage_books_tenant(v_parent_id)
     or (
       p_issued_by_tenant_id is not null
       and public.has_active_tenant_membership(p_issued_by_tenant_id)
@@ -128,7 +128,7 @@ begin
     left join public.v_kernel_bill_summaries ks on ks.bill_id = b.id
     where
       (
-        (p_ar_side = 'we_owe' and b.parent_tenant_id = v_parent_id)
+        (p_ar_side = 'we_owe' and b.tenant_id = v_parent_id)
         or (
           coalesce(p_ar_side, '') is distinct from 'we_owe'
           and p_issued_by_tenant_id is not null
@@ -137,7 +137,7 @@ begin
         or (
           coalesce(p_ar_side, '') is distinct from 'we_owe'
           and p_issued_by_tenant_id is null
-          and b.parent_tenant_id = v_parent_id
+          and b.tenant_id = v_parent_id
         )
       )
       and (coalesce(p_ar_side, '') is distinct from 'we_owe' or b.invoice_type = 'ap'::public.global_invoice_type)
@@ -265,14 +265,14 @@ BEGIN
     RAISE EXCEPTION 'Tenant and bill are required.';
   END IF;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
 
   SELECT * INTO v_bill FROM public.bills WHERE id = p_bill_id;
   IF v_bill.id IS NULL THEN
     RAISE EXCEPTION 'bill not found';
   END IF;
 
-  IF NOT (v_bill.parent_tenant_id = v_parent_id OR v_bill.issued_by_tenant_id = p_tenant_id) THEN
+  IF NOT (v_bill.tenant_id = v_parent_id OR v_bill.issued_by_tenant_id = p_tenant_id) THEN
     RAISE EXCEPTION 'Invoice not found for this tenant.';
   END IF;
 

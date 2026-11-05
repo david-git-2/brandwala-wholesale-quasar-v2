@@ -724,7 +724,7 @@ const vendorRefundNoteId = ref<number | null>(null);
 const adjustmentComposerOpen = ref(false);
 const arAdjustmentNoteBarRef = ref<InstanceType<typeof BillAdjustmentNoteBar> | null>(null);
 
-const parentTenantId = computed(() => Number(bill.value?.parent_tenant_id ?? 0) || null);
+const parentTenantId = computed(() => Number(bill.value?.tenant_id ?? 0) || null);
 
 const bill = computed(() => billFromBundle.value as GlobalInvoiceDetail | undefined);
 const isApBill = computed(() => bill.value?.invoice_type === 'ap');

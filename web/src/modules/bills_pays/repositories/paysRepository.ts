@@ -404,7 +404,7 @@ const listOpenApBillsForProfile = async (
   const { data, error } = await supabase
     .from('bills')
     .select('id, invoice_no, due_amount, total_amount, ap_kind, ap_shipment_id, note, channel_meta')
-    .eq('parent_tenant_id', parentTenantId)
+    .eq('tenant_id', parentTenantId)
     .eq('invoice_type', 'ap')
     .eq('profile_id', profileId)
     .eq('invoice_status', 'issued')
@@ -422,7 +422,7 @@ const listApPayProfileSummaries = async (
   const { data, error } = await supabase
     .from('bills')
     .select('profile_id, due_amount, profiles:profiles!bills_profile_id_fkey(name, profile_type)')
-    .eq('parent_tenant_id', parentTenantId)
+    .eq('tenant_id', parentTenantId)
     .eq('invoice_type', 'ap')
     .eq('invoice_status', 'issued')
     .gt('due_amount', 0);

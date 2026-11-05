@@ -69,8 +69,8 @@ begin
 
   v_parent_total := v_invoice.total_amount;
   v_charge := greatest(coalesce(p_return_charge_amount, 0.00), 0.00);
-  v_eff_tenant_id := coalesce(v_invoice.issued_by_tenant_id, v_invoice.parent_tenant_id);
-  v_parent_id := coalesce(v_invoice.parent_tenant_id, v_invoice.issued_by_tenant_id);
+  v_eff_tenant_id := coalesce(v_invoice.issued_by_tenant_id, v_invoice.tenant_id);
+  v_parent_id := coalesce(v_invoice.tenant_id, v_invoice.issued_by_tenant_id);
   v_reason := coalesce(nullif(trim(p_note), ''), 'Wholesale invoice return');
 
   for v_item_elem in select * from jsonb_array_elements(p_items) loop
@@ -123,7 +123,7 @@ begin
     );
 
     insert into public.sales_return_items (
-      parent_tenant_id,
+      tenant_id,
       invoice_id,
       invoice_item_id,
       global_stock_id,
@@ -336,7 +336,7 @@ CREATE OR REPLACE FUNCTION public."finalize_dropship_return"(p_order_id bigint, 
 declare
   v_order record;
   v_invoice record;
-  v_parent_tenant_id bigint;
+  v_books_tenant_id bigint;
   v_ref text;
   v_item_elem jsonb;
   v_order_item_id bigint;
@@ -377,10 +377,10 @@ begin
   end if;
 
   v_currency := 'BDT';
-  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
+  v_books_tenant_id := public.resolve_books_tenant_id(v_order.tenant_id);
 
   if not (
-    public.user_can_manage_parent_tenant(v_parent_tenant_id)
+    public.user_can_manage_books_tenant(v_books_tenant_id)
     or exists (
       select 1 from public.memberships m
       where m.tenant_id = v_order.tenant_id
@@ -396,7 +396,7 @@ begin
   if v_ref is not null then
     select id into v_existing_ref_order_id
     from public.shop_orders
-    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
+    where tenant_id = public.resolve_books_tenant_id(v_order.tenant_id)
       and return_ref = v_ref;
 
     if v_existing_ref_order_id is not null then
@@ -430,7 +430,7 @@ begin
   if v_profile_id is null and v_order.customer_group_id is not null then
     select id into v_profile_id
     from public.profiles
-    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
+    where tenant_id = public.resolve_books_tenant_id(v_order.tenant_id)
       and customer_group_id = v_order.customer_group_id
     order by is_default desc, created_at asc
     limit 1;
@@ -490,10 +490,10 @@ begin
 
       if v_stock.id is not null then
         perform public.create_and_post_stock_movement(
-          v_parent_tenant_id,
+          v_books_tenant_id,
           v_stock.id,
           ceil(v_returned_qty)::integer,
-          public.default_returns_stock_location_id(v_parent_tenant_id),
+          public.default_returns_stock_location_id(v_books_tenant_id),
           v_to_availability,
           v_grade_tag_id,
           'return_inbound'::public.stock_movement_type,
@@ -517,11 +517,11 @@ begin
         if v_invoice_item.id is not null then
           -- global_return_items schema: quantity + return_charge_amount only (no return_amount / face / accounting)
           insert into public.global_return_items (
-            tenant_id, parent_tenant_id, invoice_id, invoice_item_id, global_stock_id,
+            tenant_id, tenant_id, invoice_id, invoice_item_id, global_stock_id,
             quantity, return_charge_amount, note
           )
           values (
-            v_invoice.parent_tenant_id, v_invoice.parent_tenant_id, v_invoice.id, v_invoice_item.id, v_order_item.global_stock_id,
+            v_invoice.tenant_id, v_invoice.tenant_id, v_invoice.id, v_invoice_item.id, v_order_item.global_stock_id,
             v_returned_qty, 0.00, coalesce(p_override_reason, 'Dropship return finalization')
           );
 
@@ -565,7 +565,7 @@ begin
 
   select exists (
     select 1 from public.cashbook_entries
-    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
+    where tenant_id = public.resolve_books_tenant_id(v_order.tenant_id)
       and source_type = 'shop_order'
       and source_id = p_order_id::text
       and metadata->>'purpose' = 'tenant_remittance_received'
@@ -575,7 +575,7 @@ begin
   select coalesce(sum(case when type = 'credit' then base_amount else -base_amount end), 0)
   into v_billed
   from public.cashbook_entries
-  where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
+  where tenant_id = public.resolve_books_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and entity_type = 'customer'
@@ -586,7 +586,7 @@ begin
   v_billed := greatest(-v_billed, 0);
   v_has_billed := v_billed > 0 or exists (
     select 1 from public.cashbook_entries
-    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
+    where tenant_id = public.resolve_books_tenant_id(v_order.tenant_id)
       and source_type = 'shop_order'
       and source_id = p_order_id::text
       and metadata->>'transaction_type' = 'invoice_billed'
@@ -595,7 +595,7 @@ begin
   select coalesce(sum(case when type = 'credit' then base_amount else -base_amount end), 0)
   into v_profit
   from public.cashbook_entries
-  where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
+  where tenant_id = public.resolve_books_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and entity_type in ('customer', 'middleman')
@@ -608,7 +608,7 @@ begin
   select coalesce(sum(case when type = 'credit' then base_amount else -base_amount end), 0)
   into v_revenue
   from public.cashbook_entries
-  where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
+  where tenant_id = public.resolve_books_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and entity_type = 'tenant'
@@ -621,7 +621,7 @@ begin
   select coalesce((metadata->>'net_remitted')::numeric, amount, 0)
   into v_remit_net
   from public.cashbook_entries
-  where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
+  where tenant_id = public.resolve_books_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and metadata->>'purpose' = 'tenant_remittance_received'
@@ -630,7 +630,7 @@ begin
   select coalesce((metadata->>'courier_charge')::numeric, amount, 0)
   into v_courier_charge
   from public.cashbook_entries
-  where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
+  where tenant_id = public.resolve_books_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and metadata->>'purpose' = 'tenant_courier_charge'
@@ -645,7 +645,7 @@ begin
      )
   then
     perform public.record_ledger_transaction(
-      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_tenant_id => public.resolve_books_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'customer',
       p_entity_id => v_profile_id,
@@ -684,7 +684,7 @@ begin
 
     if v_billed > 0 then
       perform public.record_ledger_transaction(
-        p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+        p_tenant_id => public.resolve_books_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
         p_entity_type => 'customer',
         p_entity_id => v_profile_id,
@@ -709,7 +709,7 @@ begin
           and metadata->>'transaction_type' = 'invoice_collection'
       ) then
         perform public.record_ledger_transaction(
-          p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+          p_tenant_id => public.resolve_books_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
           p_entity_type => 'customer',
           p_entity_id => v_profile_id,
@@ -751,7 +751,7 @@ begin
   then
     select coalesce(sum(base_amount), 0) into v_billed
     from public.cashbook_entries
-    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
+    where tenant_id = public.resolve_books_tenant_id(v_order.tenant_id)
       and source_type = 'shop_order'
       and source_id = p_order_id::text
       and entity_type = 'customer'
@@ -761,7 +761,7 @@ begin
 
     if v_billed > 0 then
       perform public.record_ledger_transaction(
-        p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+        p_tenant_id => public.resolve_books_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
         p_entity_type => 'customer',
         p_entity_id => v_profile_id,
@@ -791,7 +791,7 @@ begin
      )
   then
     perform public.record_ledger_transaction(
-      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_tenant_id => public.resolve_books_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'customer',
       p_entity_id => v_profile_id,
@@ -820,10 +820,10 @@ begin
      )
   then
     perform public.record_ledger_transaction(
-      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_tenant_id => public.resolve_books_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'tenant',
-      p_entity_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_entity_id => public.resolve_books_tenant_id(v_order.tenant_id),
       p_type => 'debit',
       p_amount => v_revenue,
       p_currency_code => v_currency,
@@ -850,10 +850,10 @@ begin
        )
     then
       perform public.record_ledger_transaction(
-        p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+        p_tenant_id => public.resolve_books_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
         p_entity_type => 'tenant',
-        p_entity_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+        p_entity_id => public.resolve_books_tenant_id(v_order.tenant_id),
         p_type => 'debit',
         p_amount => v_remit_net,
         p_currency_code => v_currency,
@@ -879,10 +879,10 @@ begin
        )
     then
       perform public.record_ledger_transaction(
-        p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+        p_tenant_id => public.resolve_books_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
         p_entity_type => 'tenant',
-        p_entity_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+        p_entity_id => public.resolve_books_tenant_id(v_order.tenant_id),
         p_type => 'credit',
         p_amount => v_courier_charge,
         p_currency_code => v_currency,
@@ -913,7 +913,7 @@ begin
      )
   then
     perform public.record_ledger_transaction(
-      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_tenant_id => public.resolve_books_tenant_id(v_order.tenant_id),
       p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'customer',
       p_entity_id => v_profile_id,

@@ -198,7 +198,7 @@ def fetch_all_scoped_products_full(
     client: SupabaseRestClient,
     vendor_id: int,
     market_code: str,
-    parent_tenant_id: int,
+    tenant_id: int,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     offset = 0
@@ -208,7 +208,7 @@ def fetch_all_scoped_products_full(
             "select": "*",
             "vendor_id": f"eq.{vendor_id}",
             "market_code": f"eq.{market_code}",
-            "parent_tenant_id": f"eq.{parent_tenant_id}",
+            "tenant_id": f"eq.{tenant_id}",
             "limit": str(limit),
             "offset": str(offset),
         }
@@ -223,12 +223,12 @@ def fetch_all_scoped_products_full(
 def build_scope_params(
     vendor_id: int,
     market_code: str,
-    parent_tenant_id: int,
+    tenant_id: int,
 ) -> dict[str, Any]:
     return {
         "vendor_id": f"eq.{vendor_id}",
         "market_code": f"eq.{market_code}",
-        "parent_tenant_id": f"eq.{parent_tenant_id}",
+        "tenant_id": f"eq.{tenant_id}",
     }
 
 
@@ -236,18 +236,18 @@ def ensure_vendor_exists(
     client: SupabaseRestClient,
     vendor_code: str,
     market_code: str,
-    parent_tenant_id: int,
+    tenant_id: int,
     dry_run: bool,
 ) -> dict[str, Any]:
-    preferred_code = f"{vendor_code}-{parent_tenant_id}".upper()
-    candidate_codes = [vendor_code, f"{vendor_code}-{parent_tenant_id}"]
+    preferred_code = f"{vendor_code}-{tenant_id}".upper()
+    candidate_codes = [vendor_code, f"{vendor_code}-{tenant_id}"]
 
     code_filter = ",".join(candidate_codes)
     params = {
-        "select": "id,code,parent_tenant_id,market_code",
+        "select": "id,code,tenant_id,market_code",
         "code": f"in.({code_filter})",
         "market_code": f"eq.{market_code}",
-        "parent_tenant_id": f"eq.{parent_tenant_id}",
+        "tenant_id": f"eq.{tenant_id}",
         "limit": "50",
     }
 
@@ -266,15 +266,15 @@ def ensure_vendor_exists(
         "name": vendor_code,
         "code": vendor_code,
         "market_code": market_code,
-        "parent_tenant_id": parent_tenant_id,
+        "tenant_id": tenant_id,
     }
     if dry_run:
         print(f"[dry-run] would create missing vendor: {payload}")
-        preview_code = f"{vendor_code}-{parent_tenant_id}"
+        preview_code = f"{vendor_code}-{tenant_id}"
         return {
             "id": -1,
             "code": preview_code,
-            "parent_tenant_id": parent_tenant_id,
+            "tenant_id": tenant_id,
             "market_code": market_code,
         }
 
@@ -301,7 +301,7 @@ def get_vendor_by_id(
     rows = client.get_rows(
         "vendors",
         {
-            "select": "id,code,parent_tenant_id,market_code",
+            "select": "id,code,tenant_id,market_code",
             "id": f"eq.{vendor_id}",
             "limit": "1",
         },
@@ -316,18 +316,18 @@ def get_vendor_by_id(
 
 def assert_vendor_parent_scope(
     vendor_row: dict[str, Any],
-    parent_tenant_id: int,
+    tenant_id: int,
     vendor_id: int,
 ) -> None:
-    vendor_parent = to_int_or_none(vendor_row.get("parent_tenant_id"))
-    if vendor_parent is None:
+    vendor_books = to_int_or_none(vendor_row.get("tenant_id"))
+    if vendor_books is None:
         raise RuntimeError(
-            f"Vendor id={vendor_id} has no parent_tenant_id. Fix vendor row before sync."
+            f"Vendor id={vendor_id} has no tenant_id. Fix vendor row before sync."
         )
-    if vendor_parent != parent_tenant_id:
+    if vendor_books != tenant_id:
         raise ValueError(
-            f"Vendor id={vendor_id} parent_tenant_id={vendor_parent} "
-            f"does not match --parent-tenant-id={parent_tenant_id}."
+            f"Vendor id={vendor_id} tenant_id={vendor_books} "
+            f"does not match --tenant-id={tenant_id}."
         )
 
 
@@ -411,7 +411,7 @@ def ensure_lookup_rows_for_new_inserts(
     chunk_size: int,
     dry_run: bool,
     write_retries: int,
-    parent_tenant_id: int,
+    tenant_id: int,
 ) -> None:
     if not inserts:
         return
@@ -436,7 +436,7 @@ def ensure_lookup_rows_for_new_inserts(
                     "name": brand_name,
                     "vendor_id": vendor_id,
                     "vendor_code": vendor_code,
-                    "parent_tenant_id": parent_tenant_id,
+                    "tenant_id": tenant_id,
                 })
 
         if category_name:
@@ -447,7 +447,7 @@ def ensure_lookup_rows_for_new_inserts(
                     "name": category_name,
                     "vendor_id": vendor_id,
                     "vendor_code": vendor_code,
-                    "parent_tenant_id": parent_tenant_id,
+                    "tenant_id": tenant_id,
                 })
 
     if dry_run:

@@ -15,7 +15,7 @@ const FULL_LIST_PAGE_SIZE = 1000;
 
 function tenantIdsForProfile(profile: CustomerProfile): number[] {
   const ids = new Set<number>();
-  if (typeof profile.parent_tenant_id === 'number') ids.add(profile.parent_tenant_id);
+  if (typeof profile.tenant_id === 'number') ids.add(profile.tenant_id);
   if (typeof profile.operating_tenant_id === 'number') ids.add(profile.operating_tenant_id);
   return [...ids];
 }

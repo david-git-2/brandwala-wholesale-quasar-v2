@@ -9,7 +9,7 @@ const listStockLocations = async (
   includeInactive = true,
 ): Promise<StockLocation[]> => {
   const { data, error } = await db.rpc('list_stock_locations', {
-    p_parent_tenant_id: parentTenantId,
+    p_tenant_id: parentTenantId,
     p_include_inactive: includeInactive,
   });
   if (error) throw error;
@@ -21,7 +21,7 @@ const upsertStockLocation = async (
   payload: UpsertStockLocationPayload,
 ): Promise<StockLocation> => {
   const { data, error } = await db.rpc('upsert_stock_location', {
-    p_parent_tenant_id: parentTenantId,
+    p_tenant_id: parentTenantId,
     p_code: payload.code,
     p_name: payload.name,
     p_kind: payload.kind,

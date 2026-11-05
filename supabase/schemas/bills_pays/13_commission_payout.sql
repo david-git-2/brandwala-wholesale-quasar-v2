@@ -31,7 +31,7 @@ SET search_path TO public
 AS $$
 declare
   v_profile public.profiles;
-  v_parent_tenant_id bigint;
+  v_books_tenant_id bigint;
   v_pot_id bigint := p_cashbook_point_pot_id;
   v_pay public.pays;
   v_existing public.pays;
@@ -62,9 +62,9 @@ begin
     raise exception 'Permission denied for tenant %', p_tenant_id;
   end if;
 
-  v_parent_tenant_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_books_tenant_id := public.resolve_books_tenant_id(p_tenant_id);
 
-  v_existing := public._kernel_claim_pay_idempotency(v_parent_tenant_id, p_idempotency_key);
+  v_existing := public._kernel_claim_pay_idempotency(v_books_tenant_id, p_idempotency_key);
   if v_existing.id is not null then
     return v_existing;
   end if;
@@ -88,9 +88,9 @@ begin
     join public.cashbook_accounts ca on ca.id = cp.cashbook_account_id
     where cp.id = p_cashbook_point_id
       and cp.is_active = true
-      and ca.parent_tenant_id = v_parent_tenant_id
+      and ca.tenant_id = v_books_tenant_id
       and ca.entity_type = 'tenant'
-      and ca.entity_id = v_parent_tenant_id
+      and ca.entity_id = v_books_tenant_id
   ) then
     raise exception 'Invalid cash point for this tenant';
   end if;
@@ -100,7 +100,7 @@ begin
     into v_pot_id
     from public.cashbook_point_pots cpp
     where cpp.cashbook_point_id = p_cashbook_point_id
-      and cpp.parent_tenant_id = v_parent_tenant_id
+      and cpp.tenant_id = v_books_tenant_id
     order by case when upper(cpp.currency_code) = 'BDT' then 0 else 1 end, cpp.id
     limit 1;
   end if;
@@ -128,7 +128,7 @@ begin
     cashbook_point_id,
     cashbook_point_pot_id
   ) values (
-    v_parent_tenant_id,
+    v_books_tenant_id,
     p_profile_id,
     'commission',
     round(p_amount, 2),
@@ -148,10 +148,10 @@ begin
   v_ledger_source_id := coalesce(nullif(btrim(p_source_id), ''), v_pay.id::text);
 
   perform public.record_ledger_transaction(
-    p_parent_tenant_id => v_parent_tenant_id,
+    p_tenant_id => v_books_tenant_id,
     p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'tenant',
-    p_entity_id => v_parent_tenant_id,
+    p_entity_id => v_books_tenant_id,
     p_type => 'debit',
     p_amount => round(p_amount, 2),
     p_currency_code => 'BDT',
@@ -175,7 +175,7 @@ begin
   );
 
   perform public.record_ledger_transaction(
-    p_parent_tenant_id => v_parent_tenant_id,
+    p_tenant_id => v_books_tenant_id,
     p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'customer',
     p_entity_id => p_profile_id,
@@ -202,7 +202,7 @@ begin
     round(p_amount, 2)
   );
 
-  return public._kernel_finalize_pay_idempotency(v_pay.id, v_parent_tenant_id, p_idempotency_key);
+  return public._kernel_finalize_pay_idempotency(v_pay.id, v_books_tenant_id, p_idempotency_key);
 end;
 $$;
 

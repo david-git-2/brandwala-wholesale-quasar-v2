@@ -334,7 +334,7 @@ begin
     raise exception 'shipment_id is required';
   end if;
 
-  select gs.parent_tenant_id into v_parent
+  select gs.tenant_id into v_parent
   from public.global_shipments gs
   where gs.id = p_shipment_id;
 
@@ -344,7 +344,7 @@ begin
 
   if not (
     coalesce(auth.role(), '') = 'service_role'
-    or public.user_can_manage_parent_tenant(v_parent)
+    or public.user_can_manage_books_tenant(v_parent)
   ) then
     raise exception 'Permission denied';
   end if;
@@ -355,7 +355,7 @@ begin
   for v_bill_id in
     select b.id
     from public.bills b
-    where b.parent_tenant_id = v_parent
+    where b.tenant_id = v_parent
       and b.invoice_type = 'ap'::public.global_invoice_type
       and b.document_kind = 'standard'::public.bill_document_kind
       and b.invoice_status = 'draft'::public.global_invoice_status
@@ -432,12 +432,12 @@ begin
     raise exception 'Shipment % not found', p_shipment_id;
   end if;
 
-  v_parent := v_ship.parent_tenant_id;
+  v_parent := v_ship.tenant_id;
   v_issued_by := coalesce(v_ship.assigned_child_tenant_id, v_parent);
 
   if not (
     coalesce(auth.role(), '') = 'service_role'
-    or public.user_can_manage_parent_tenant(v_parent)
+    or public.user_can_manage_books_tenant(v_parent)
   ) then
     raise exception 'Permission denied';
   end if;
@@ -445,7 +445,7 @@ begin
   if v_ship.vendor_id is not null then
     select pr.id into v_vendor_profile
     from public.profiles pr
-    where pr.parent_tenant_id = v_parent
+    where pr.tenant_id = v_parent
       and pr.profile_type = 'vendor'::public.profile_party_type
       and pr.subject_id = v_ship.vendor_id;
   end if;
@@ -453,7 +453,7 @@ begin
   if v_ship.cargo_company_id is not null then
     select pr.id into v_cargo_profile
     from public.profiles pr
-    where pr.parent_tenant_id = v_parent
+    where pr.tenant_id = v_parent
       and pr.profile_type = 'cargo'::public.profile_party_type
       and pr.subject_id = v_ship.cargo_company_id;
   end if;
@@ -474,7 +474,7 @@ begin
     for v_void_id in
       select b.id
       from public.bills b
-      where b.parent_tenant_id = v_parent
+      where b.tenant_id = v_parent
         and b.ap_shipment_id = p_shipment_id
         and b.invoice_type = 'ap'::public.global_invoice_type
         and b.document_kind = 'standard'::public.bill_document_kind
@@ -508,7 +508,7 @@ begin
       for v_void_id in
         select b.id
         from public.bills b
-        where b.parent_tenant_id = v_parent
+        where b.tenant_id = v_parent
           and b.source_type = 'shipment_cost'
           and b.source_id = p_shipment_id::text
           and b.invoice_type = 'ap'::public.global_invoice_type
@@ -568,7 +568,7 @@ begin
           jsonb_build_object(
             'tenant_id', v_issued_by,
             'adapter', 'shipment_cost',
-            'parent_tenant_id', v_parent,
+            'tenant_id', v_parent,
             'issued_by_tenant_id', v_issued_by,
             'shipment_id', p_shipment_id,
             'shipment_name', v_ship.name,
@@ -592,7 +592,7 @@ begin
   for v_void_id in
     select b.id
     from public.bills b
-    where b.parent_tenant_id = v_parent
+    where b.tenant_id = v_parent
       and b.source_type = 'shipment_cost'
       and b.source_id = p_shipment_id::text
       and b.invoice_type = 'ap'::public.global_invoice_type
@@ -612,7 +612,7 @@ begin
   for v_void_id in
     select b.id
     from public.bills b
-    where b.parent_tenant_id = v_parent
+    where b.tenant_id = v_parent
       and b.ap_shipment_id = p_shipment_id
       and b.invoice_type = 'ap'::public.global_invoice_type
       and b.document_kind = 'standard'::public.bill_document_kind
@@ -643,7 +643,7 @@ declare
   v_elem jsonb;
   v_slim jsonb := '[]'::jsonb;
 begin
-  select gs.parent_tenant_id into v_parent
+  select gs.tenant_id into v_parent
   from public.global_shipments gs
   where gs.id = p_shipment_id;
 
@@ -652,7 +652,7 @@ begin
   end if;
 
   if not (
-    public.user_can_manage_parent_tenant(v_parent)
+    public.user_can_manage_books_tenant(v_parent)
     or exists (
       select 1 from public.memberships m
       where m.tenant_id = v_parent

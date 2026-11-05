@@ -18,7 +18,7 @@ WTS_XLSX = ROOT_DIR / "python" / "data" / "uk" / "wts_data.xlsx"
 WTS_JSON = ROOT_DIR / "python" / "data" / "uk" / "out" / "wts_data.json"
 
 DEFAULT_HEADER_ROW = 1
-DEFAULT_PARENT_TENANT_ID = 15
+DEFAULT_TENANT_ID = 15
 DEFAULT_INSERTED_BY_TENANT_ID = 10
 
 
@@ -126,7 +126,7 @@ st.write(
     "Every listed header must exist. Each row needs **ProdCode**, **Barcode**, and **Product Description**. "
     "**Each** is the unit price. **Pack** is MOQ. **Available** is multiplied by **Pack** (`available_units = Available * Pack`). "
     "Rows with **Available <= 0** are filtered out. Products in the file are marked available on sync; scoped WTS products not in the file are marked unavailable. "
-    "Warehouse parent tenant defaults to **15**."
+    "Books warehouse tenant defaults to **15**."
 )
 
 uploaded = st.file_uploader("Drop a WTS spreadsheet", type=["xlsx"])
@@ -181,11 +181,11 @@ if uploaded is not None:
         if missing:
             st.error("Missing required header(s): " + ", ".join(missing))
 
-parent_tenant_id = st.number_input(
+tenant_id = st.number_input(
     "Parent tenant id",
     min_value=1,
     step=1,
-    value=env_positive_int("PY_PRODUCTS_PARENT_TENANT_ID") or DEFAULT_PARENT_TENANT_ID,
+    value=env_positive_int("PY_PRODUCTS_TENANT_ID") or DEFAULT_TENANT_ID,
     help="Warehouse HQ tenant. Default 15.",
 )
 
@@ -206,7 +206,7 @@ log_box = st.empty()
 
 if run and uploaded is not None:
     missing = [col["excel"] for col in REQUIRED_WTS_COLUMNS if col["key"] not in found_headers]
-    if int(parent_tenant_id) < 1:
+    if int(tenant_id) < 1:
         st.error("Parent tenant id is required.")
     elif int(inserted_by_tenant_id) < 1:
         st.error("Inserted by tenant id is required.")
@@ -220,12 +220,12 @@ if run and uploaded is not None:
 
         export_flags = f"--header-row {int(header_row)}"
         sync_flags = (
-            f"--parent-tenant-id {int(parent_tenant_id)} "
+            f"--tenant-id {int(tenant_id)} "
             f"--tenant-id {int(inserted_by_tenant_id)}"
         )
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
-        env["PY_PRODUCTS_PARENT_TENANT_ID"] = str(int(parent_tenant_id))
+        env["PY_PRODUCTS_TENANT_ID"] = str(int(tenant_id))
         env["PY_PRODUCTS_TENANT_ID"] = str(int(inserted_by_tenant_id))
         env["CATALOG_REFRESH_SOURCE"] = "wts_excel"
         env["CATALOG_UPLOAD_FILE_NAME"] = uploaded.name or "wts_data.xlsx"

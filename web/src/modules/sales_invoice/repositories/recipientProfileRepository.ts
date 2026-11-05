@@ -10,7 +10,6 @@ const mapProfileJson = (data: Record<string, unknown> | null): RecipientProfile 
   return {
     id: Number(data.id),
     tenant_id: data.tenant_id != null ? Number(data.tenant_id) : null,
-    parent_tenant_id: data.parent_tenant_id != null ? Number(data.parent_tenant_id) : null,
     name: (data.name as string | null) ?? '',
     phone: (data.phone as string | null) ?? '',
     secondary_phone: (data.secondary_phone as string | null) ?? null,
@@ -28,15 +27,11 @@ const mapProfileJson = (data: Record<string, unknown> | null): RecipientProfile 
 };
 
 export const recipientProfileRepository = {
-  async list(tenantId: number, isParent?: boolean): Promise<RecipientProfile[]> {
-    let query = supabase
+  async list(tenantId: number, _isParent?: boolean): Promise<RecipientProfile[]> {
+    const query = supabase
       .from('recipient_profiles')
-      .select('*, tenants:tenant_id(name)');
-    if (isParent) {
-      query = query.eq('parent_tenant_id', tenantId);
-    } else {
-      query = query.eq('tenant_id', tenantId);
-    }
+      .select('*, tenants:tenant_id(name)')
+      .eq('tenant_id', tenantId);
     const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []).map((row: any) => ({
@@ -56,7 +51,7 @@ export const recipientProfileRepository = {
 
   async upsertByPhone(payload: {
     tenant_id?: number | null;
-    parent_tenant_id?: number | null;
+    tenant_id?: number | null;
     name: string;
     phone: string;
     secondary_phone?: string | null;
@@ -64,8 +59,8 @@ export const recipientProfileRepository = {
     district?: string | null;
     thana?: string | null;
   }): Promise<RecipientProfile> {
-    const targetTenantId = payload.parent_tenant_id ?? payload.tenant_id;
-    if (!targetTenantId) throw new Error('Tenant ID or Parent Tenant ID is required');
+    const targetTenantId = payload.tenant_id ?? payload.tenant_id;
+    if (!targetTenantId) throw new Error('Tenant ID is required');
     const { data, error } = await supabase.rpc('upsert_recipient_profile_by_phone', {
       p_tenant_id: targetTenantId,
       p_name: payload.name,

@@ -42,7 +42,7 @@ See [scopes](../../architecture/scopes.md).
 - In-app bell + optional FCM web push.
   - [ ] Realtime via Supabase subscriptions.
   - [ ] FCM via Edge Functions for opted-in browsers.
-  - [ ] Parent-tenant scope (`parent_tenant_id`).
+  - [ ] Books tenant scope (`tenant_id`).
 
 ### US-2: Operational tasks
 - Assign tasks with due dates linked to domain records.

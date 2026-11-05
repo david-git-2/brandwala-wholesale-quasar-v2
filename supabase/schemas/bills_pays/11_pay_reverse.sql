@@ -36,7 +36,7 @@ begin
     raise exception 'A reason is required to void a payment.';
   end if;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
 
   select * into v_payment
   from public.pays
@@ -117,7 +117,7 @@ begin
     limit 1;
 
     perform public.record_ledger_transaction(
-      p_parent_tenant_id => v_parent_id,
+      p_tenant_id => v_parent_id,
       p_operating_tenant_id => coalesce(v_payment.tenant_id, p_tenant_id),
       p_entity_type => 'tenant',
       p_entity_id => v_parent_id,
@@ -143,7 +143,7 @@ begin
     v_cashbook_point_id := coalesce(v_payment.cashbook_point_id, v_cashbook_point_id);
 
     perform public.record_ledger_transaction(
-      p_parent_tenant_id => v_parent_id,
+      p_tenant_id => v_parent_id,
       p_operating_tenant_id => coalesce(v_payment.tenant_id, p_tenant_id),
       p_entity_type => 'tenant',
       p_entity_id => v_parent_id,
@@ -168,7 +168,7 @@ begin
 
     if v_payment.profile_id is not null then
       perform public.record_ledger_transaction(
-        p_parent_tenant_id => v_parent_id,
+        p_tenant_id => v_parent_id,
         p_operating_tenant_id => p_tenant_id,
         p_entity_type => 'customer',
         p_entity_id => v_payment.profile_id,
@@ -190,7 +190,7 @@ begin
   elsif v_payment.source in ('customer_cash', 'bank', 'courier_remittance') then
     if coalesce(v_payment.amount, 0.00) > 0.00 then
       perform public.record_ledger_transaction(
-        p_parent_tenant_id => v_parent_id,
+        p_tenant_id => v_parent_id,
         p_operating_tenant_id => p_tenant_id,
         p_entity_type => 'tenant',
         p_entity_id => v_parent_id,
@@ -224,7 +224,7 @@ begin
     if v_leftover > 0.00 and v_payment.profile_id is not null
        and v_payment.source in ('customer_cash', 'bank') then
       perform public.record_ledger_transaction(
-        p_parent_tenant_id => v_parent_id,
+        p_tenant_id => v_parent_id,
         p_operating_tenant_id => p_tenant_id,
         p_entity_type => 'customer',
         p_entity_id => v_payment.profile_id,
@@ -346,7 +346,7 @@ begin
     raise exception 'Permission denied.';
   end if;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
   v_books := round(coalesce(p_books_amount, 0), 2);
   if v_books <= 0 then
     raise exception 'Amount must be greater than zero.';
@@ -356,7 +356,7 @@ begin
 
   select * into v_bill from public.bills where id = p_bill_id;
   if v_bill.id is null then raise exception 'Bill not found.'; end if;
-  if v_bill.parent_tenant_id <> v_parent_id then raise exception 'Bill tenant mismatch.'; end if;
+  if v_bill.tenant_id <> v_parent_id then raise exception 'Bill tenant mismatch.'; end if;
   if v_bill.profile_id is null then raise exception 'Bill has no profile.'; end if;
   if v_bill.invoice_status <> 'issued'::public.global_invoice_status then
     raise exception 'Bill is not issued.';
@@ -378,7 +378,7 @@ begin
   select coalesce(ca.available_balance, 0)
   into v_avail
   from public.cashbook_accounts ca
-  where ca.parent_tenant_id = v_parent_id
+  where ca.tenant_id = v_parent_id
     and ca.entity_type = 'customer'
     and ca.entity_id = v_bill.profile_id
     and ca.currency_code = 'BDT';
@@ -390,7 +390,7 @@ begin
   v_source_key := 'custody_apply:' || p_bill_id::text || ':' || gen_random_uuid()::text;
 
   v_ledger := public.record_ledger_transaction(
-    p_parent_tenant_id => v_parent_id,
+    p_tenant_id => v_parent_id,
     p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'customer',
     p_entity_id => v_bill.profile_id,
@@ -418,10 +418,10 @@ begin
   from public._kernel_settlement_amounts_from_pay_alloc(v_bill, null, v_books) sa;
 
   insert into public.bill_settlements (
-    parent_tenant_id, bill_id, allocator_kind, allocator_id,
+    tenant_id, bill_id, allocator_kind, allocator_id,
     allocated_txn_amount, allocated_books_amount, books_rate_at_alloc, fx_realized_books_delta
   ) values (
-    v_bill.parent_tenant_id, p_bill_id, 'custody_entry', v_anchor,
+    v_bill.tenant_id, p_bill_id, 'custody_entry', v_anchor,
     v_txn, v_books, v_rate, v_delta
   )
   returning * into v_row;
@@ -519,7 +519,7 @@ declare
   v_pot_id bigint;
   v_point_id bigint;
 begin
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
 
   select * into v_inst from public.pay_instruments where id = p_instrument_id for update;
   select * into v_pay from public.pays where id = v_inst.payment_id for update;
@@ -544,7 +544,7 @@ begin
 
   if v_pay.source in ('customer_cash', 'bank', 'courier_remittance') then
     perform public.record_ledger_transaction(
-      p_parent_tenant_id => v_parent_id,
+      p_tenant_id => v_parent_id,
       p_operating_tenant_id => p_tenant_id,
       p_entity_type => 'tenant',
       p_entity_id => v_parent_id,
@@ -632,7 +632,7 @@ begin
     raise exception 'Tenant is required.';
   end if;
 
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
 
   select * into v_inst
   from public.pay_instruments

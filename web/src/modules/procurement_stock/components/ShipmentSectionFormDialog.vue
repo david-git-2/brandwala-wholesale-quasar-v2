@@ -174,7 +174,7 @@ const onSubmit = async () => {
       onDialogOK(updated);
     } else {
       const created = await shipmentStore.createSection({
-        parent_tenant_id: authStore.tenantId,
+        tenant_id: authStore.tenantId,
         shipment_id: props.shipmentId,
         vendor_id: effectiveVendorId ?? undefined,
         title: form.value.title.trim(),

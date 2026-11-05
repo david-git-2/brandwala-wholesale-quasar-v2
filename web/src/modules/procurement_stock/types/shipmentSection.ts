@@ -10,7 +10,7 @@ export interface ShipmentSectionMetadata {
 
 export interface ShipmentSection {
   id: number;
-  parent_tenant_id: number;
+  tenant_id: number;
   shipment_id: number;
   vendor_id: number;
   vendor?: Vendor | null;
@@ -24,7 +24,7 @@ export interface ShipmentSection {
 }
 
 export interface CreateShipmentSectionPayload {
-  parent_tenant_id?: number;
+  tenant_id?: number;
   shipment_id: number;
   vendor_id?: number;
   title: string;

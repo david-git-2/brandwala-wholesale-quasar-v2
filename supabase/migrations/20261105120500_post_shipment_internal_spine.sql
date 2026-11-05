@@ -1,7 +1,7 @@
 -- Inbound receive: internal _stock_spine_* layer (no changes to post_stock_movement / create_and_post_stock_movement).
 
 CREATE OR REPLACE FUNCTION public._stock_spine_upsert_receive_lot(
-  p_parent_tenant_id bigint,
+  p_tenant_id bigint,
   p_shipment_item_id bigint,
   p_outcome_id bigint,
   p_stock_type_id bigint,
@@ -33,7 +33,7 @@ BEGIN
     location_id,
     grade_tag_id
   ) VALUES (
-    p_parent_tenant_id,
+    p_tenant_id,
     p_shipment_item_id,
     p_outcome_id,
     p_stock_type_id,

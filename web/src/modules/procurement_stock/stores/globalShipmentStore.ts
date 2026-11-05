@@ -64,7 +64,7 @@ const localCostsFromCostEntries = (
       const meta = (entry.metadata ?? {}) as { description?: string };
       return {
         id: entry.id,
-        parent_tenant_id: entry.parent_tenant_id ?? parentTenantId,
+        tenant_id: entry.tenant_id ?? parentTenantId,
         shipment_id: entry.shipment_id,
         section_id: entry.section_id ?? null,
         description: entry.description?.trim() || meta.description?.trim() || '',
@@ -220,7 +220,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
             name: v.name,
             code: v.code,
             market_code: v.market_code,
-            parent_tenant_id: v.parent_tenant_id,
+            tenant_id: v.tenant_id,
             is_default: v.is_default,
             email: null,
             phone: null,
@@ -337,7 +337,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.workspaceHydratedShipmentId = shipmentId;
         this.currentLocalCosts = localCostsFromCostEntries(
           overview.cost_entries,
-          overview.shipment.parent_tenant_id,
+          overview.shipment.tenant_id,
         );
 
         if (overview.shipment.progress_flow_id && overview.flow_stages?.length) {
@@ -446,7 +446,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         ) {
           this.currentLocalCosts = localCostsFromCostEntries(
             this.currentCostEntries,
-            this.currentShipment.parent_tenant_id,
+            this.currentShipment.tenant_id,
           );
           return this.currentLocalCosts;
         }
@@ -510,7 +510,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           else this.currentLocalCosts.push(saved);
         } else {
           saved = await globalShipmentLocalCostRepository.create({
-            parent_tenant_id: shipment.parent_tenant_id,
+            tenant_id: shipment.tenant_id,
             shipment_id: shipmentId,
             description: trimmed,
             amount: payload.amount,
@@ -788,7 +788,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     async updateShipment(
       id: number,
       payload: Partial<
-        Omit<GlobalShipment, 'id' | 'created_at' | 'updated_at' | 'parent_tenant_id'>
+        Omit<GlobalShipment, 'id' | 'created_at' | 'updated_at' | 'tenant_id'>
       >,
     ) {
       this.loading = true;
@@ -1598,9 +1598,9 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       try {
         const shipment = this.currentShipment?.id === payload.shipment_id ? this.currentShipment : null;
         const parentTenantId =
-          payload.parent_tenant_id ??
-          shipment?.parent_tenant_id ??
-          (this.currentShipmentSections[0]?.parent_tenant_id as number | undefined);
+          payload.tenant_id ??
+          shipment?.tenant_id ??
+          (this.currentShipmentSections[0]?.tenant_id as number | undefined);
 
         if (!parentTenantId) {
           throw new Error('Tenant ID is required to create a section');
@@ -1622,7 +1622,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
 
         const newSection = await shipmentSectionRepository.create({
           ...payload,
-          parent_tenant_id: parentTenantId,
+          tenant_id: parentTenantId,
           vendor_id: vendorId,
           sort_order: payload.sort_order ?? maxSortOrder + 1,
         });
