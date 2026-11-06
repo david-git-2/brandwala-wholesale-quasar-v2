@@ -42,38 +42,34 @@
     <div
       v-for="order in orders"
       :key="order.id"
-      class="order-table-dashboard__row order-table-dashboard__row--body"
+      class="order-table-dashboard__row order-table-dashboard__row--body cursor-pointer"
+      role="button"
+      tabindex="0"
       :data-test="`customer-order-row-${order.id}`"
+      @click="emit('select', order)"
+      @keydown.enter.prevent="emit('select', order)"
+      @keydown.space.prevent="emit('select', order)"
     >
       <div class="order-table-dashboard__id-cell">
-        <button
-          type="button"
-          class="order-table-dashboard__link order-table-dashboard__id"
-          @click="emit('select', order)"
-        >
-          {{ order.order_no }}
-        </button>
-        <OrderPricingModeBadge
-          v-if="showPricingBadge"
-          :variant="pricingBadgeVariant"
-          :is-negotiable="!!order.is_negotiable_snapshot"
-          :shop-type="order.shop_type_snapshot"
-        />
+        <div class="order-table-dashboard__id-row">
+          <span class="order-table-dashboard__id">
+            {{ order.order_no }}
+          </span>
+          <OrderPricingModeBadge
+            v-if="showPricingBadge"
+            :variant="pricingBadgeVariant"
+            :subtle-fixed="pricingBadgeSubtleFixed"
+            :is-negotiable="!!order.is_negotiable_snapshot"
+            :shop-type="order.shop_type_snapshot"
+          />
+        </div>
       </div>
-      <button
-        type="button"
-        class="order-table-dashboard__link order-table-dashboard__shop ellipsis"
-        @click="emit('select', order)"
-      >
+      <span class="order-table-dashboard__shop ellipsis">
         {{ order.shop_name }}
-      </button>
-      <button
-        type="button"
-        class="order-table-dashboard__link order-table-dashboard__date"
-        @click="emit('select', order)"
-      >
+      </span>
+      <span class="order-table-dashboard__date tf-num">
         {{ formatDate(order.created_at) }}
-      </button>
+      </span>
       <div class="order-table-dashboard__status">
         <span class="order-status-pill" :class="statusPillClass(order.status)">
           {{ statusLabel(order.status) }}
@@ -168,6 +164,8 @@ const props = withDefaults(
     showCopyButton?: boolean;
     showPricingBadge?: boolean;
     pricingBadgeVariant?: 'badge' | 'text';
+    /** Softer fixed-pricing chip in table layout (shop orders page). */
+    pricingBadgeSubtleFixed?: boolean;
     layout?: 'default' | 'dashboard' | 'page';
   }>(),
   {
@@ -176,6 +174,7 @@ const props = withDefaults(
     showCopyButton: true,
     showPricingBadge: true,
     pricingBadgeVariant: 'badge',
+    pricingBadgeSubtleFixed: false,
     layout: 'default',
   },
 );
@@ -224,7 +223,11 @@ const statusPillClass = (status: string) => {
   if (status === 'submitted') return 'order-status-pill--submitted';
   if (isWaitingStatus(status)) return 'order-status-pill--attention';
   if (status === 'cancelled' || status === 'returned') return 'order-status-pill--bad';
-  return 'order-status-pill--progress';
+  if (status === 'shipped') return 'order-status-pill--shipped';
+  if (status === 'packed' || status === 'processing' || status === 'procuring' || status === 'placed') {
+    return 'order-status-pill--progress';
+  }
+  return 'order-status-pill--neutral';
 };
 </script>
 
@@ -232,7 +235,8 @@ const statusPillClass = (status: string) => {
 .order-table-card {
   border-radius: 12px;
   background: var(--tf-theme-surface);
-  box-shadow: var(--tf-theme-shadow, 0 2px 8px rgba(0, 0, 0, 0.04));
+  border: 1px solid #e2e8f0;
+  box-shadow: none;
 }
 
 .order-table-card--empty {
@@ -277,14 +281,30 @@ const statusPillClass = (status: string) => {
   text-align: left;
 }
 
+.order-table-dashboard--page .order-table-dashboard__row {
+  grid-template-columns:
+    minmax(0, 25%)
+    minmax(0, 1fr)
+    7.5rem
+    minmax(6.5rem, auto);
+}
+
 .order-table-dashboard__row--head {
   padding: 0 0 0.5rem;
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--shop-home-date, #666);
-  border-bottom: 1px solid rgb(0 0 0 / 0.06);
+  color: var(--tf-neutral-chrome-text);
+  border-bottom: 1px solid var(--tf-neutral-border);
+}
+
+.order-table-dashboard--page .order-table-dashboard__row--head {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  border-bottom-color: #e2e8f0;
 }
 
 .order-table-dashboard__row--head span:last-child,
@@ -295,23 +315,36 @@ const statusPillClass = (status: string) => {
 .order-table-dashboard__row--body {
   padding: 0.5rem 0;
   align-items: center;
-  border-bottom: 1px solid rgb(0 0 0 / 0.05);
+  border-bottom: 1px solid var(--tf-neutral-border);
+  cursor: pointer;
+  transition: background-color var(--tf-dur-fast, 120ms) var(--tf-ease, ease);
 }
 
 .order-table-dashboard--page .order-table-dashboard__row--head {
-  border-bottom-color: #e5e7eb;
+  border-bottom-color: var(--tf-neutral-border);
 }
 
 .order-table-dashboard--page .order-table-dashboard__row--body {
-  padding: 0.55rem 0.2rem;
-  margin: 0 -0.2rem;
-  border-radius: 6px;
-  border-bottom-color: #e5e7eb;
-  transition: background-color 0.15s ease;
+  padding: 0.55rem 0.35rem;
+  margin: 0 -0.35rem;
+  border-radius: var(--tf-radius-sm);
+  border-bottom-color: #e2e8f0;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.order-table-dashboard__row--body:focus-visible {
+  outline: 2px solid var(--q-primary);
+  outline-offset: -2px;
 }
 
 .order-table-dashboard--page .order-table-dashboard__row--body:hover {
-  background: #f9fafb;
+  background: rgb(248 250 252 / 0.7);
+}
+
+body.body--dark .order-table-dashboard--page .order-table-dashboard__row--body:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .order-table-dashboard__link {
@@ -321,6 +354,12 @@ const statusPillClass = (status: string) => {
   font: inherit;
   text-align: inherit;
   color: inherit;
+  cursor: pointer;
+}
+
+.order-table-dashboard__row--body .order-table-dashboard__id,
+.order-table-dashboard__row--body .order-table-dashboard__shop,
+.order-table-dashboard__row--body .order-table-dashboard__date {
   cursor: pointer;
 }
 
@@ -336,19 +375,59 @@ const statusPillClass = (status: string) => {
   min-width: 0;
 }
 
+.order-table-dashboard__id-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .order-table-dashboard__id {
   font-weight: 500;
-  color: var(--shop-home-ink-strong, #111);
+  color: var(--tf-neutral-ink);
+}
+
+.order-table-dashboard--page .order-table-dashboard__id {
+  font-weight: 600;
+  color: #0f172a;
+  transition: color var(--tf-dur-fast, 120ms) var(--tf-ease, ease);
+}
+
+.order-table-dashboard--page .order-table-dashboard__row--body:hover .order-table-dashboard__id {
+  color: var(--tf-theme-primary);
+}
+
+body.body--dark .order-table-dashboard--page .order-table-dashboard__id {
+  color: var(--tf-neutral-ink);
 }
 
 .order-table-dashboard__shop {
-  color: var(--shop-home-ink, #1a1a1a);
+  font-size: 0.875rem;
+  color: var(--tf-neutral-ink);
+}
+
+.order-table-dashboard--page .order-table-dashboard__shop {
+  color: #475569;
+}
+
+body.body--dark .order-table-dashboard--page .order-table-dashboard__shop {
+  color: var(--tf-neutral-muted);
 }
 
 .order-table-dashboard__date {
-  font-weight: 500;
-  color: #4b5563;
   font-size: 0.875rem;
+  color: var(--tf-neutral-muted);
+}
+
+.order-table-dashboard--page .order-table-dashboard__date {
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+
+body.body--dark .order-table-dashboard--page .order-table-dashboard__date {
+  color: var(--tf-neutral-muted);
 }
 
 .order-table-dashboard__status {
@@ -360,34 +439,102 @@ const statusPillClass = (status: string) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 4.75rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-  color: #fff;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25;
   white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.order-table-dashboard--page .order-status-pill {
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .order-status-pill--confirmed {
-  background: #1a7f4b;
+  color: #047857;
+  background: #ecfdf5;
+  border-color: rgb(167 243 208 / 0.6);
 }
 
 .order-status-pill--submitted {
-  background: #2b5fa8;
+  color: #0369a1;
+  background: #f0f9ff;
+  border-color: rgb(186 230 253 / 0.6);
 }
 
 .order-status-pill--attention {
-  background: #b45309;
+  color: #b45309;
+  background: #fffbeb;
+  border-color: rgb(253 230 138 / 0.6);
+}
+
+.order-status-pill--shipped {
+  color: #334155;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
 }
 
 .order-status-pill--bad {
-  background: #b83a3a;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: rgb(252 165 165 / 0.55);
 }
 
 .order-status-pill--progress {
-  background: #4b5563;
+  color: #4338ca;
+  background: #eef2ff;
+  border-color: rgb(199 210 254 / 0.65);
+}
+
+.order-status-pill--neutral {
+  color: #475569;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+body.body--dark .order-status-pill--confirmed {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+body.body--dark .order-status-pill--submitted {
+  color: #7dd3fc;
+  background: rgba(14, 165, 233, 0.14);
+  border-color: rgba(14, 165, 233, 0.35);
+}
+
+body.body--dark .order-status-pill--attention {
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+body.body--dark .order-status-pill--shipped {
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+body.body--dark .order-status-pill--bad {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+body.body--dark .order-status-pill--progress {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+body.body--dark .order-status-pill--neutral {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.25);
 }
 </style>

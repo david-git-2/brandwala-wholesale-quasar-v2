@@ -8,10 +8,13 @@
   <div
     v-else-if="visible"
     class="order-pricing-mode-badge"
-    :class="isNegotiable ? 'mode-negotiable' : 'mode-fixed'"
+    :class="
+      isNegotiable ? 'mode-negotiable' : subtleFixed ? 'mode-fixed mode-fixed--subtle' : 'mode-fixed'
+    "
   >
     <q-icon
-      :name="isNegotiable ? 'ph ph-arrows-left-right' : 'ph ph-lock'"
+      v-if="isNegotiable"
+      name="ph ph-arrows-left-right"
       size="12px"
       class="q-mr-xs"
     />
@@ -29,6 +32,8 @@ const props = withDefaults(
   isNegotiable: boolean;
   shopType?: ShopType | string | null;
   variant?: 'badge' | 'text';
+  /** Softer "Fixed" chip for dense tables (shop orders list). */
+  subtleFixed?: boolean;
 }>(),
   { variant: 'badge' },
 );
@@ -64,10 +69,25 @@ const label = computed(() =>
 }
 
 .mode-fixed {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--tf-disabled-bg);
+  color: var(--tf-neutral-muted);
   border: 0;
   font-weight: 500;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: var(--tf-radius-sm);
+  line-height: 1.25;
+}
+
+.mode-fixed--subtle {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border: 0;
+  font-weight: 500;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  line-height: 1.2;
 }
 
 .order-pricing-mode-text {
@@ -89,5 +109,10 @@ body.body--dark .mode-fixed {
   background: rgba(100, 116, 139, 0.15);
   color: #cbd5e1;
   border-color: rgba(100, 116, 139, 0.3);
+}
+
+body.body--dark .mode-fixed--subtle {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
 }
 </style>

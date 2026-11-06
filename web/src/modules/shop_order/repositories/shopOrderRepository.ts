@@ -622,13 +622,25 @@ const getShopOrderById = async (
   items: ShopOrderItem[];
   itemsMeta: StaffShopOrderDetailResponse['items_meta'];
 }> => {
-  const { data, error } = await supabase.rpc('get_shop_order_for_staff', {
+  const rpcArgs: {
+    p_tenant_id: number;
+    p_order_id: number;
+    p_items_limit?: number;
+    p_items_cursor_created_at?: string;
+    p_items_cursor_id?: number;
+  } = {
     p_tenant_id: tenantId,
     p_order_id: orderId,
-    p_items_limit: opts.itemsLimit ?? null,
-    p_items_cursor_created_at: opts.itemsCursor?.created_at ?? null,
-    p_items_cursor_id: opts.itemsCursor?.id ?? null,
-  });
+  };
+  if (opts.itemsLimit != null) {
+    rpcArgs.p_items_limit = opts.itemsLimit;
+  }
+  if (opts.itemsCursor?.created_at != null && opts.itemsCursor.id != null) {
+    rpcArgs.p_items_cursor_created_at = opts.itemsCursor.created_at;
+    rpcArgs.p_items_cursor_id = opts.itemsCursor.id;
+  }
+
+  const { data, error } = await supabase.rpc('get_shop_order_for_staff', rpcArgs);
   if (error) throw error;
 
   return mapStaffShopOrderDetailToFlat(parseStaffShopOrderDetailResponse(data));
@@ -1328,6 +1340,34 @@ const deleteShopOrder = async (orderId: number): Promise<void> => {
   if (error) throw error;
 };
 
+const isRpcMissingInSchemaCache = (error: { code?: string; message?: string } | null) => {
+  if (!error) return false;
+  if (error.code === 'PGRST202') return true;
+  const msg = error.message ?? '';
+  return msg.includes('schema cache') && msg.includes('Could not find the function');
+};
+
+const deleteShopOrderItemsForStaff = async (
+  orderId: number,
+  orderItemIds: number[],
+): Promise<void> => {
+  if (!orderItemIds.length) return;
+  const bulk = await supabase.rpc('delete_shop_order_items_for_staff', {
+    p_order_id: orderId,
+    p_order_item_ids: orderItemIds,
+  });
+  if (!bulk.error) return;
+
+  if (isRpcMissingInSchemaCache(bulk.error)) {
+    for (const orderItemId of orderItemIds) {
+      const one = await supabase.rpc('delete_shop_order_item', { p_order_item_id: orderItemId });
+      if (one.error) throw one.error;
+    }
+    return;
+  }
+  throw bulk.error;
+};
+
 const processDropshipShopOrder = async (orderId: number): Promise<{ success: boolean; order_id?: number; new_status?: string; error?: string }> => {
   const { data, error } = await supabase.rpc('process_dropship_shop_order', {
     p_order_id: orderId,
@@ -1674,6 +1714,7 @@ export const shopOrderRepository = {
   placeShopOrderForProcurement,
   fulfillShopOrderToInvoice,
   deleteShopOrder,
+  deleteShopOrderItemsForStaff,
   updateOrderCharges,
   processDropshipShopOrder,
   updateOrderStatus,

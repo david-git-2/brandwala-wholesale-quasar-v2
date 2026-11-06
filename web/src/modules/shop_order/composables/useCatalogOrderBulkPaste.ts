@@ -51,6 +51,7 @@ export type CatalogBulkPasteUpdate = {
 export function useCatalogOrderBulkPaste(options: {
   order: Ref<ShopOrder | null>;
   items: Ref<ShopOrderItem[]>;
+  loadAllItemsForPaste: () => Promise<ShopOrderItem[]>;
   saveUpdates: (updates: CatalogBulkPasteUpdate[]) => Promise<void>;
 }) {
   const $q = useQuasar();
@@ -59,6 +60,8 @@ export function useCatalogOrderBulkPaste(options: {
   const bulkPasteSaving = ref(false);
   const bulkPasteRows = ref<BulkPasteGridRow[]>([]);
   const bulkPasteFocus = ref({ row: 0, col: 0 });
+  const pasteMatchItems = ref<ShopOrderItem[] | null>(null);
+  const pasteMatchOrderId = ref<number | null>(null);
 
   const orderStatus = computed(() => options.order.value?.status ?? 'submitted');
   const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(orderStatus.value));
@@ -67,7 +70,24 @@ export function useCatalogOrderBulkPaste(options: {
 
   const canBulkPaste = computed(() => !isStaffReadOnly.value);
 
-  const bulkPasteTargetItems = computed(() => options.items.value);
+  const bulkPasteTargetItems = computed(
+    () => pasteMatchItems.value ?? options.items.value,
+  );
+
+  async function ensurePasteMatchItems(): Promise<ShopOrderItem[]> {
+    const orderId = options.order.value?.id ?? null;
+    if (
+      orderId != null &&
+      pasteMatchOrderId.value === orderId &&
+      pasteMatchItems.value !== null
+    ) {
+      return pasteMatchItems.value;
+    }
+    const loaded = await options.loadAllItemsForPaste();
+    pasteMatchItems.value = loaded;
+    pasteMatchOrderId.value = orderId;
+    return loaded;
+  }
 
   const allowedValueFields = computed((): CatalogBulkPasteValueField[] => {
     if (isFirstOfferLocked.value) return WEIGHT_ONLY_FIELDS;
@@ -150,7 +170,19 @@ export function useCatalogOrderBulkPaste(options: {
     bulkPasteSaving.value = false;
     bulkPasteRows.value = Array.from({ length: 16 }, (_, i) => emptyBulkPasteRow(i));
     bulkPasteFocus.value = { row: 0, col: 0 };
+    pasteMatchItems.value = null;
+    pasteMatchOrderId.value = null;
     showBulkPasteDialog.value = true;
+    void ensurePasteMatchItems().catch((err: unknown) => {
+      console.error('Failed to load order lines for bulk paste:', err);
+      $q.notify({
+        message: `Could not load all order lines: ${(err as Error)?.message || 'error'}`,
+        color: 'negative',
+        icon: 'ph ph-warning-circle',
+        position: 'bottom',
+        timeout: 2500,
+      });
+    });
     void nextTick(() => {
       const el = document.querySelector(
         '.catalog-bulk-paste-cell[data-row="0"][data-col="0"]',
@@ -307,12 +339,28 @@ export function useCatalogOrderBulkPaste(options: {
   }
 
   async function applyBulkPaste() {
-    const items = bulkPasteTargetItems.value;
     const field = bulkPasteField.value;
     const updates: CatalogBulkPasteUpdate[] = [];
     let count = 0;
     let skipped = 0;
     const usedIds = new Set<number>();
+
+    bulkPasteSaving.value = true;
+    let items: ShopOrderItem[];
+    try {
+      items = await ensurePasteMatchItems();
+    } catch (err: unknown) {
+      bulkPasteSaving.value = false;
+      console.error('Failed to load order lines for bulk paste:', err);
+      $q.notify({
+        message: `Could not load all order lines: ${(err as Error)?.message || 'error'}`,
+        color: 'negative',
+        icon: 'ph ph-warning-circle',
+        position: 'bottom',
+        timeout: 2500,
+      });
+      return;
+    }
 
     const itemCodes = (it: ShopOrderItem) => ({
       barcode: normalizeKey(it.barcode),
@@ -392,6 +440,7 @@ export function useCatalogOrderBulkPaste(options: {
     }
 
     if (updates.length === 0) {
+      bulkPasteSaving.value = false;
       $q.notify({
         message: skipped > 0 ? `No rows updated (${skipped} unmatched)` : 'No values to apply',
         color: 'warning',
@@ -402,7 +451,6 @@ export function useCatalogOrderBulkPaste(options: {
       return;
     }
 
-    bulkPasteSaving.value = true;
     try {
       await options.saveUpdates(updates);
       $q.notify({

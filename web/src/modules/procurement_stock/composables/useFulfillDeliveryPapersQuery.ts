@@ -2,14 +2,16 @@ import { useQuery } from '@tanstack/vue-query';
 import { computed, type ComputedRef, type Ref, unref } from 'vue';
 import {
   procurementDemandRepository,
-  type ProcurementDemandStatus,
+  type FulfillDeliveryPapersListStatus,
 } from '../repositories/procurementDemandRepository';
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
 import { STALE_STANDARD } from 'src/query/staleTimes';
 
 export function useFulfillDeliveryPapersQuery(options: {
   tenantId: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
-  procurementStatus: Ref<ProcurementDemandStatus> | ComputedRef<ProcurementDemandStatus>;
+  procurementStatus:
+    | Ref<FulfillDeliveryPapersListStatus>
+    | ComputedRef<FulfillDeliveryPapersListStatus>;
   search?: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
   limit?: number;
   offset?: Ref<number> | ComputedRef<number>;

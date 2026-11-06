@@ -35,7 +35,7 @@
               <p class="demand-desk-intro__subtitle">{{ deskPageSubtitle }}</p>
             </header>
             <div
-              v-if="isFulfillMode"
+              v-if="isFulfillMode && !isFulfillPapersListPage"
               class="demand-desk-toolbar__status col-shrink"
             >
               <div class="demand-filter-segment" role="group" aria-label="Fulfillment status">
@@ -213,7 +213,7 @@
             <div class="text-body2">{{ emptyMessage }}</div>
           </div>
 
-          <div v-else-if="useFulfillLineCards && listTenantId" class="demand-buy-card-grid">
+          <div v-else-if="!isFulfillPapersListPage && useFulfillLineCards && listTenantId" class="demand-buy-card-grid">
             <ProcurementDemandFulfillCards
               v-for="group in visibleGroups"
               :key="groupKey(group)"
@@ -272,7 +272,7 @@
             />
           </div>
 
-          <div v-else class="demand-groups-stack column no-wrap">
+          <div v-else-if="!isFulfillPapersListPage" class="demand-groups-stack column no-wrap">
             <article
               v-for="group in visibleGroups"
               :key="groupKey(group)"
@@ -568,6 +568,7 @@ import {
   type ProcurementDemandItem,
   type ProcurementDemandStatus,
   type FulfillDeliveryPaperListItem,
+  type FulfillDeliveryPapersListStatus,
 } from '../repositories/procurementDemandRepository';
 type ItemDraft = {
   vendorId: number | null;
@@ -623,6 +624,14 @@ const { t, te } = useI18n();
 const isBuyMode = computed(() => props.mode === 'buy');
 const isFulfillMode = computed(() => props.mode === 'fulfill');
 const isFixedGroupPage = computed(() => props.fixedDocument != null);
+
+const isFulfillPapersListPage = computed(
+  () => isFulfillMode.value && !isFixedGroupPage.value,
+);
+
+const fulfillPapersProcurementStatus = computed((): FulfillDeliveryPapersListStatus =>
+  isFulfillPapersListPage.value ? 'all' : fulfillProcurementStatus.value,
+);
 
 const isChildWorkspace = computed(() => authStore.selectedTenant?.parent_id != null);
 const tableColCount = computed(() => (isBuyMode.value ? 7 : 6));
@@ -693,6 +702,7 @@ const procurementStatus = computed<ProcurementDemandStatus>(() =>
 
 const deskPageTitle = computed(() => {
   if (isBuyMode.value) return 'Demand paper';
+  if (isFulfillPapersListPage.value) return 'Delivery paper';
   if (fulfillProcurementStatus.value === 'dispatch') return 'Delivery paper — dispatch';
   return 'Delivery paper';
 });
@@ -700,6 +710,9 @@ const deskPageTitle = computed(() => {
 const deskPageSubtitle = computed(() => {
   if (isBuyMode.value) {
     return 'Open each customer document below. Enter placed qty (what you ordered) and choose a vendor on every line.';
+  }
+  if (isFulfillPapersListPage.value) {
+    return 'Open a delivery paper to pick stock, pack, and close outcomes.';
   }
   if (fulfillProcurementStatus.value === 'dispatch') {
     return 'Review stock picks and close lines (take or condition) when ready.';
@@ -1025,7 +1038,7 @@ const {
   tenantId: listTenantId,
   procurementStatus: fulfillProcurementStatus,
   search: debouncedSearch,
-  enabled: isFulfillMode,
+  enabled: computed(() => isFulfillMode.value && isFixedGroupPage.value),
 });
 
 const showFulfillDeliveryPapersTable = computed(
@@ -1039,7 +1052,7 @@ const {
   refetch: refetchFulfillPapers,
 } = useFulfillDeliveryPapersQuery({
   tenantId: listTenantId,
-  procurementStatus: fulfillProcurementStatus,
+  procurementStatus: fulfillPapersProcurementStatus,
   search: debouncedSearch,
   enabled: showFulfillDeliveryPapersTable,
 });
@@ -1048,6 +1061,7 @@ const fulfillDeliveryPapers = computed(() => fulfillPapersData.value?.papers ?? 
 
 const isLoading = computed(() => {
   if (isFulfillMode.value) {
+    if (isFulfillPapersListPage.value) return isFulfillPapersLoading.value;
     const listPage = !isFixedGroupPage.value;
     return (
       isFulfillLoading.value || (listPage && isFulfillPapersLoading.value)
@@ -1057,6 +1071,7 @@ const isLoading = computed(() => {
 });
 const isFetching = computed(() => {
   if (isFulfillMode.value) {
+    if (isFulfillPapersListPage.value) return isFulfillPapersFetching.value;
     const listPage = !isFixedGroupPage.value;
     return (
       isFulfillFetching.value || (listPage && isFulfillPapersFetching.value)
@@ -1065,12 +1080,16 @@ const isFetching = computed(() => {
   return isDemandFetching.value;
 });
 
-const showMainDeskEmpty = computed(
-  () =>
+const showMainDeskEmpty = computed(() => {
+  if (isFulfillPapersListPage.value) {
+    return !isLoading.value && fulfillDeliveryPapers.value.length === 0;
+  }
+  return (
     !isLoading.value &&
     visibleGroups.value.length === 0 &&
-    (!showFulfillDeliveryPapersTable.value || fulfillDeliveryPapers.value.length === 0),
-);
+    (!showFulfillDeliveryPapersTable.value || fulfillDeliveryPapers.value.length === 0)
+  );
+});
 
 const groups = computed(() => {
   if (isFulfillMode.value) return fulfillData.value?.groups ?? [];
@@ -1824,23 +1843,10 @@ const openFulfillGroupPage = (group: ProcurementDemandGroup) => {
 };
 
 const openFulfillDeliveryPaper = (paper: FulfillDeliveryPaperListItem) => {
-  const tenantSlug = authStore.tenantSlug || '';
-  if (paper.source_type === 'shop_order') {
-    void router.push({
-      name: 'app-shop-order-delivery-paper-page',
-      params: {
-        tenantSlug,
-        id: String(paper.source_id),
-        paperId: String(paper.id),
-      },
-    });
-    return;
-  }
   void router.push({
-    name: 'product-based-costing-delivery-paper-page',
+    name: 'app-procurement-fulfill-delivery-paper-page',
     params: {
-      tenantSlug,
-      id: String(paper.source_id),
+      tenantSlug: authStore.tenantSlug || '',
       paperId: String(paper.id),
     },
   });

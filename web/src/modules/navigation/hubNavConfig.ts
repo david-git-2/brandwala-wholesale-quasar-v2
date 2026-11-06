@@ -139,7 +139,7 @@ const PROCUREMENT_STOCK_HUB = {
       title: 'Delivery paper',
       caption: 'Pick stock; close as take, condition, or return',
       icon: 'ph ph-package',
-      routeSegment: 'procurement/fulfill',
+      routeSegment: 'procurement/delivery-paper',
     },
     {
       navWeight: 31,
@@ -167,7 +167,7 @@ const PROCUREMENT_STOCK_HUB = {
     hubModuleKeys: PROCUREMENT_HUB_MODULE_KEYS,
     primaryRouteSegments: [
       'procurement/demand',
-      'procurement/fulfill',
+      'procurement/delivery-paper',
       'procurement/shipment/list',
       'procurement/stock',
     ],

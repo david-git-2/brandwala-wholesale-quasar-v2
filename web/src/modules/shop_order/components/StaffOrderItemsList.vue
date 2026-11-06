@@ -1,5 +1,8 @@
 <script setup lang="ts">
-defineProps<{
+import { computed } from 'vue';
+
+const props = withDefaults(
+  defineProps<{
   order: any;
   orderItems: any[];
   currencySymbol: string;
@@ -10,7 +13,16 @@ defineProps<{
   isConfirmingOrder?: boolean;
   isPlacingProcurement?: boolean;
   isFulfillingToInvoice?: boolean;
-}>();
+  canDeleteLines?: boolean;
+  selectedLineIds?: number[];
+  isRemovingLines?: boolean;
+}>(),
+  {
+    canDeleteLines: false,
+    selectedLineIds: () => [],
+    isRemovingLines: false,
+  },
+);
 
 const emit = defineEmits<{
   (e: 'delete-order'): void;
@@ -18,7 +30,36 @@ const emit = defineEmits<{
   (e: 'confirm-order'): void;
   (e: 'place-procurement'): void;
   (e: 'fulfill-invoice'): void;
+  (e: 'update:selectedLineIds', ids: number[]): void;
+  (e: 'remove-selected-lines'): void;
 }>();
+
+const selectedIdSet = computed(() => new Set(props.selectedLineIds ?? []));
+
+const allLinesSelected = computed(() => {
+  if (!props.canDeleteLines || !props.orderItems?.length) return false;
+  return props.orderItems.every((it: { id: number }) => selectedIdSet.value.has(it.id));
+});
+
+function isLineSelected(id: number): boolean {
+  return selectedIdSet.value.has(id);
+}
+
+function toggleLine(id: number, val: boolean) {
+  const next = new Set(props.selectedLineIds ?? []);
+  if (val) next.add(id);
+  else next.delete(id);
+  emit('update:selectedLineIds', [...next]);
+}
+
+function toggleSelectAll(val: boolean) {
+  const ids = props.orderItems.map((it: { id: number }) => it.id);
+  if (ids.length === 0) return;
+  const next = new Set(props.selectedLineIds ?? []);
+  if (val) ids.forEach((id) => next.add(id));
+  else ids.forEach((id) => next.delete(id));
+  emit('update:selectedLineIds', [...next]);
+}
 </script>
 
 <template>
@@ -34,8 +75,50 @@ const emit = defineEmits<{
         </div>
       </q-card-section>
 
+      <q-card-section
+        v-if="canDeleteLines && (selectedLineIds?.length ?? 0) > 0"
+        class="q-px-lg q-pt-sm q-pb-none row items-center justify-end"
+      >
+        <q-btn
+          outline
+          dense
+          no-caps
+          color="negative"
+          icon="ph ph-trash"
+          :loading="isRemovingLines"
+          :label="$t('shop_admin.remove_selected_lines')"
+          @click="emit('remove-selected-lines')"
+        />
+      </q-card-section>
+
       <q-list separator>
+        <q-item v-if="canDeleteLines" class="q-px-lg q-py-sm staff-order-lines-select-row">
+          <q-item-section side class="staff-order-line-select-cell">
+            <q-checkbox
+              dense
+              size="xs"
+              :model-value="allLinesSelected"
+              :disable="!orderItems.length"
+              color="primary"
+              :aria-label="$t('shop_admin.select_lines_hint')"
+              @update:model-value="toggleSelectAll"
+            />
+          </q-item-section>
+          <q-item-section>
+            <span class="text-caption text-grey-7">{{ $t('shop_admin.select_lines_hint') }}</span>
+          </q-item-section>
+        </q-item>
         <q-item v-for="item in orderItems" :key="item.id" class="q-py-md q-px-lg">
+          <q-item-section v-if="canDeleteLines" side class="staff-order-line-select-cell" @click.stop>
+            <q-checkbox
+              dense
+              size="xs"
+              :model-value="isLineSelected(item.id)"
+              color="primary"
+              :aria-label="$t('shop_admin.select_lines_hint')"
+              @update:model-value="(v: boolean) => toggleLine(item.id, v)"
+            />
+          </q-item-section>
           <q-item-section avatar>
             <q-avatar size="50px" rounded class="bg-grey-2">
               <q-img v-if="item.image_url" :src="item.image_url" />
@@ -184,5 +267,17 @@ const emit = defineEmits<{
 
 .counter-input :deep(.q-field__control) {
   border-radius: 8px;
+}
+
+.staff-order-line-select-cell {
+  min-width: 28px;
+  max-width: 32px;
+  padding-right: 4px !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.staff-order-line-select-cell :deep(.q-checkbox) {
+  margin: -4px 0;
 }
 </style>

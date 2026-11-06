@@ -1,8 +1,18 @@
 <template>
   <div class="catalog-items-table column no-wrap col">
     <div class="row items-center justify-between q-px-md q-py-sm catalog-toolbar border-bottom shrink-0">
-      <div class="text-caption text-grey-7">
-        Showing {{ filteredRows.length }} of {{ items.length }} items
+      <div class="row items-center q-gutter-sm">
+        <q-btn
+          v-if="canDeleteLines && (selectedLineIds?.length ?? 0) > 0"
+          dense
+          outline
+          no-caps
+          color="negative"
+          size="sm"
+          icon="ph ph-trash"
+          :label="t('shop_admin.remove_selected_lines')"
+          @click="emit('remove-selected-lines')"
+        />
       </div>
       <q-btn flat round dense size="sm" color="grey-8" icon="ph ph-funnel" aria-label="Quantity filter">
         <q-tooltip>{{ quantityFilterTooltip }}</q-tooltip>
@@ -37,10 +47,32 @@
       class="col overflow-auto hide-native-scrollbar catalog-table-scroll"
       @scroll="onTableScroll"
     >
-      <table class="pbc-v2-markup-table bg-white" style="min-width: 1100px; width: 100%">
+        <table class="pbc-v2-markup-table bg-white" style="min-width: 1100px; width: 100%">
         <thead>
           <tr class="text-weight-bold catalog-table-header">
-            <th v-if="isColVisible('sl')" class="text-center sticky-col-2 pbc-sl-col q-pa-none" style="width: 36px; min-width: 36px">SL</th>
+            <th
+              v-if="canDeleteLines"
+              class="text-center sticky-col-select pbc-select-col q-pa-none"
+              style="width: 30px; min-width: 30px"
+            >
+              <q-checkbox
+                dense
+                size="xs"
+                :model-value="allFilteredRowsSelected"
+                :disable="filteredRows.length === 0"
+                color="primary"
+                :aria-label="t('shop_admin.select_lines_hint')"
+                @update:model-value="toggleSelectAllFiltered"
+              />
+            </th>
+            <th
+              v-if="isColVisible('sl')"
+              class="text-center sticky-col-2 pbc-sl-col q-pa-none"
+              :class="{ 'sticky-col-2--offset': canDeleteLines }"
+              style="width: 36px; min-width: 36px"
+            >
+              SL
+            </th>
             <th v-if="isColVisible('image')" class="text-center pbc-image-col" style="width: 0.85in; min-width: 0.85in">Image</th>
             <th v-if="isColVisible('name')" class="text-left" style="min-width: 180px; width: 180px">Name</th>
             <th
@@ -128,8 +160,28 @@
         </thead>
         <tbody>
           <tr v-for="(row, rowIndex) in filteredRows" :key="row.id" class="pbc-row">
+            <td
+              v-if="canDeleteLines"
+              class="text-center sticky-col-select pbc-select-col q-pa-none"
+              style="width: 30px; min-width: 30px"
+              @click.stop
+            >
+              <q-checkbox
+                dense
+                size="xs"
+                :model-value="isLineSelected(row.id)"
+                color="primary"
+                :aria-label="t('shop_admin.select_lines_hint')"
+                @update:model-value="(v: boolean) => toggleLineSelected(row.id, v)"
+              />
+            </td>
             <!-- 1. SL -->
-            <td v-if="isColVisible('sl')" class="text-center text-weight-bold sticky-col-2 pbc-sl-col font-mono" style="width: 36px; min-width: 36px">
+            <td
+              v-if="isColVisible('sl')"
+              class="text-center text-weight-bold sticky-col-2 pbc-sl-col font-mono"
+              :class="{ 'sticky-col-2--offset': canDeleteLines }"
+              style="width: 36px; min-width: 36px"
+            >
               {{ rowIndex + 1 }}
             </td>
 
@@ -574,6 +626,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useQuasar, copyToClipboard } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
@@ -598,19 +651,31 @@ import {
 } from '../utils/catalogPricingUtils';
 import { normalizeCatalogOrderStatus, isCatalogFirstOfferLocked, isCatalogFinalOfferEditable, isCatalogStaffReadOnly, getCatalogItemNegotiationStatusLabel } from '../utils/catalogOrderStatus';
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   order: ShopOrder | null;
   items: ShopOrderItem[];
   currencySymbol?: string;
   buyCurrencySymbol?: string;
   visibleColumns?: string[];
-}>();
+  /** Show row checkboxes and header select-all for staff line removal */
+  canDeleteLines?: boolean;
+  /** Selected order_item ids (v-model) */
+  selectedLineIds?: number[];
+}>(),
+  {
+    canDeleteLines: false,
+    selectedLineIds: () => [],
+  },
+);
 
 const emit = defineEmits<{
   (e: 'open-column-selector'): void;
   (e: 'update:visible-columns', columns: string[]): void;
   (e: 'table-scroll'): void;
   (e: 'load-more-items'): void;
+  (e: 'remove-selected-lines'): void;
+  (e: 'update:selectedLineIds', ids: number[]): void;
   (
     e: 'update-item',
     payload: {
@@ -630,6 +695,7 @@ const emit = defineEmits<{
   ): void;
 }>();
 
+const { t } = useI18n();
 const $q = useQuasar();
 const router = useRouter();
 const authStore = useAuthStore();
@@ -971,6 +1037,36 @@ const filteredRows = computed(() => {
     return quantityFilter.value === 'non_zero' ? hasQty : !hasQty;
   });
 });
+
+const selectedIdSet = computed(() => new Set(props.selectedLineIds ?? []));
+
+const allFilteredRowsSelected = computed(() => {
+  if (!props.canDeleteLines || filteredRows.value.length === 0) return false;
+  return filteredRows.value.every((r) => selectedIdSet.value.has(r.id));
+});
+
+function isLineSelected(id: number): boolean {
+  return selectedIdSet.value.has(id);
+}
+
+function toggleLineSelected(id: number, val: boolean) {
+  const next = new Set(props.selectedLineIds ?? []);
+  if (val) next.add(id);
+  else next.delete(id);
+  emit('update:selectedLineIds', [...next]);
+}
+
+function toggleSelectAllFiltered(val: boolean) {
+  const ids = filteredRows.value.map((r) => r.id);
+  if (ids.length === 0) return;
+  const next = new Set(props.selectedLineIds ?? []);
+  if (val) {
+    ids.forEach((id) => next.add(id));
+  } else {
+    ids.forEach((id) => next.delete(id));
+  }
+  emit('update:selectedLineIds', [...next]);
+}
 
 function getMarginColorClass(margin: number): string {
   if (margin >= 20) return 'text-positive';
@@ -1320,12 +1416,29 @@ defineExpose({
   filter: brightness(0.98);
 }
 
+.sticky-col-select {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background-color: var(--tf-neutral-surface) !important;
+  border-right: 1px solid var(--tf-neutral-border);
+}
+
+.pbc-v2-markup-table thead tr th.sticky-col-select {
+  z-index: 7;
+  background-color: var(--tf-disabled-bg) !important;
+}
+
 .sticky-col-2 {
   position: sticky;
   left: 0;
   z-index: 4;
   background-color: var(--tf-neutral-surface) !important;
   border-right: 1px solid var(--tf-neutral-border);
+}
+
+.sticky-col-2--offset {
+  left: 30px;
 }
 
 .pbc-v2-markup-table thead tr th.sticky-col-2 {
@@ -1340,6 +1453,19 @@ defineExpose({
   max-width: 36px;
   padding: 2px !important;
   box-sizing: border-box;
+}
+
+.pbc-v2-markup-table th.pbc-select-col,
+.pbc-v2-markup-table td.pbc-select-col {
+  width: 30px;
+  min-width: 30px;
+  max-width: 30px;
+  padding: 0 1px !important;
+  box-sizing: border-box;
+}
+
+.pbc-v2-markup-table .pbc-select-col :deep(.q-checkbox) {
+  margin: -2px 0;
 }
 
 .pbc-image-cell {

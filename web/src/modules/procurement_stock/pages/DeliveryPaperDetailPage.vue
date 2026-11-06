@@ -167,10 +167,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import {
   parseSupabaseError,
@@ -215,8 +216,8 @@ import { getDeliveryPaperLinePickCap } from '../utils/deliveryPaperRemainingQty'
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
 
 const props = defineProps<{
-  documentType: ProcurementDemandDocumentType;
-  documentId: number;
+  documentType?: ProcurementDemandDocumentType;
+  documentId?: number;
 }>();
 
 const route = useRoute();
@@ -289,8 +290,8 @@ const {
 } = useDeliveryPaperDetail({
   tenantId: parentTenantId,
   deliveryPaperId: paperId,
-  expectedDocumentType: computed(() => props.documentType),
-  expectedDocumentId: computed(() => props.documentId),
+  expectedDocumentType: computed(() => props.documentType ?? null),
+  expectedDocumentId: computed(() => props.documentId ?? null),
 });
 
 const canChangePaperStatus = computed(() =>
@@ -329,6 +330,45 @@ const pageTitle = computed(() => {
       ? paper.value.shop_order_no || `Order #${paper.value.source_id}`
       : paper.value.document_name || `PBC-${paper.value.source_id}`;
   return `DP-${paper.value.id} · ${refLabel}`;
+});
+
+const isFulfillHubPaperRoute = computed(
+  () => route.name === 'app-procurement-fulfill-delivery-paper-page',
+);
+
+const { setCustomBreadcrumbs, clearCustomBreadcrumbs } = useBreadcrumbs();
+
+const fulfillHubBreadcrumbItems = computed(() => {
+  if (!isFulfillHubPaperRoute.value) return null;
+  const tenantSlug = authStore.tenantSlug || (route.params.tenantSlug as string | undefined);
+  const procurementHub = tenantSlug ? `/${tenantSlug}/app/procurement` : '/app/procurement';
+  const deliveryPaperList = tenantSlug
+    ? `/${tenantSlug}/app/procurement/delivery-paper`
+    : '/app/procurement/delivery-paper';
+  const leaf =
+    paper.value != null ? `DP-${paper.value.id}` : paperId.value != null ? `DP-${paperId.value}` : 'Delivery paper';
+  return [
+    {
+      label: authStore.selectedTenant?.name || 'Workspace',
+      icon: 'ph ph-buildings',
+    },
+    { label: 'Procurement', to: procurementHub },
+    { label: 'Delivery paper', to: deliveryPaperList },
+    { label: leaf },
+  ];
+});
+
+watch(
+  fulfillHubBreadcrumbItems,
+  (items) => {
+    if (items) setCustomBreadcrumbs(items);
+    else clearCustomBreadcrumbs();
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => {
+  if (isFulfillHubPaperRoute.value) clearCustomBreadcrumbs();
 });
 
 const closeBillChips = computed((): DeliveryPaperCloseBill[] => paper.value?.close_bills ?? []);
@@ -490,17 +530,27 @@ const onDeletePaper = async () => {
 };
 
 const goBack = () => {
-  if (props.documentType === 'shop_order') {
+  const tenantSlug = authStore.tenantSlug || '';
+  if (route.name === 'app-procurement-fulfill-delivery-paper-page') {
     void router.push({
-      name: 'app-shop-order-detail-page',
-      params: { tenantSlug: authStore.tenantSlug || '', id: String(props.documentId) },
+      name: 'app-procurement-fulfill',
+      params: { tenantSlug },
     });
     return;
   }
-  void router.push({
-    name: 'product-based-costing-file-details-page',
-    params: { tenantSlug: authStore.tenantSlug || '', id: String(props.documentId) },
-  });
+  if (props.documentType === 'shop_order' && props.documentId != null) {
+    void router.push({
+      name: 'app-shop-order-detail-page',
+      params: { tenantSlug, id: String(props.documentId) },
+    });
+    return;
+  }
+  if (props.documentId != null) {
+    void router.push({
+      name: 'product-based-costing-file-details-page',
+      params: { tenantSlug, id: String(props.documentId) },
+    });
+  }
 };
 
 onBeforeRouteLeave(async () => {

@@ -47,10 +47,13 @@
           :currency-symbol="currencySymbol"
           :buy-currency-symbol="buyCurrencySymbol"
           :visible-columns="catalogVisibleColumns"
+          :can-delete-lines="canDeleteOrderLines"
+          v-model:selected-line-ids="selectedOrderLineIds"
           @update:visible-columns="onCatalogVisibleColumnsUpdate"
           @update-item="handleUpdateCatalogOrderItem"
           @table-scroll="updateCatalogScrollbar"
           @load-more-items="loadMoreOrderItems"
+          @remove-selected-lines="confirmRemoveSelectedOrderLines"
         />
 
         <div class="staff-order-catalog-footer shrink-0 bg-white border-top shadow-xs">
@@ -90,6 +93,7 @@
         ref="catalogBulkPasteRef"
         :order="currentOrder"
         :items="orderItems"
+        :load-all-items-for-paste="loadAllOrderItemsForBulkPaste"
         :save-updates="saveCatalogBulkPasteUpdates"
       />
 
@@ -118,6 +122,9 @@
               :currency-symbol="currencySymbol"
               :can-action="canAction"
               :can-fulfill="canFulfill"
+              :can-delete-lines="canDeleteOrderLines"
+              v-model:selected-line-ids="selectedOrderLineIds"
+              :is-removing-lines="isRemovingOrderLines"
               :is-deleting-order="isDeletingOrder"
               :is-submitting-pricing="isSubmittingPricing"
               :is-confirming-order="isConfirmingOrder"
@@ -126,6 +133,7 @@
               @submit-pricing="handleSubmitStaffPricing"
               @confirm-order="handleConfirmOrder"
               @place-procurement="handlePlaceForProcurement"
+              @remove-selected-lines="confirmRemoveSelectedOrderLines"
             />
           </div>
 
@@ -239,6 +247,7 @@ import {
   type StaffCatalogPrimaryAction,
 } from '../utils/catalogOrderStatus';
 import type { CatalogBulkPasteUpdate } from '../composables/useCatalogOrderBulkPaste';
+import { shopOrderRepository } from '../repositories/shopOrderRepository';
 
 import StaffOrderHeader from '../components/StaffOrderHeader.vue';
 import StaffOrderStatusWorkflow from '../components/StaffOrderStatusWorkflow.vue';
@@ -261,6 +270,7 @@ import {
 import { billDetailRoute } from 'src/modules/bills_pays/utils/billRoutes';
 import type { ShopOrderBillListItem } from '../types/shopOrderBillList';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
+import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 
 const route = useRoute();
 const router = useRouter();
@@ -433,6 +443,15 @@ const saveCatalogBulkPasteUpdates = async (updates: CatalogBulkPasteUpdate[]) =>
     orderId: orderId.value,
     updates,
   });
+};
+
+const loadAllOrderItemsForBulkPaste = async () => {
+  const tenantId = authStore.tenantId;
+  if (!tenantId || !orderId.value) {
+    throw new Error('Tenant context required.');
+  }
+  const { items } = await shopOrderRepository.getShopOrderById(tenantId, orderId.value);
+  return items;
 };
 
 const targetUpdatingStatus = ref<string | null>(null);
@@ -835,6 +854,18 @@ const onCatalogVisibleColumnsUpdate = (columns: string[]) => {
 };
 
 watch(
+  orderItems,
+  (items) => {
+    const valid = new Set(items.map((i: { id: number }) => i.id));
+    const next = selectedOrderLineIds.value.filter((id) => valid.has(id));
+    if (next.length !== selectedOrderLineIds.value.length) {
+      selectedOrderLineIds.value = next;
+    }
+  },
+  { deep: true },
+);
+
+watch(
   () => orderDetailsData.value,
   (newData) => {
     if (newData) {
@@ -902,6 +933,71 @@ const canFulfill = computed(() => {
   if (!o || o.status !== 'confirmed') return false;
   return o.shop_type_snapshot === 'vendor_catalog';
 });
+
+const selectedOrderLineIds = ref<number[]>([]);
+const isRemovingOrderLines = ref(false);
+
+/** Match `delete_shop_order_items_for_staff` RPC — lines editable through procurement / pre-ship processing only */
+const ORDER_STATUSES_ALLOW_DELETE_LINES: readonly string[] = [
+  'draft',
+  'submitted',
+  'costing_pending',
+  'negotiating',
+  'priced',
+  'countered',
+  'final_offered',
+  'confirmed',
+  'placed',
+  'procuring',
+  'processing',
+];
+
+const canDeleteOrderLines = computed(() => {
+  const o = currentOrder.value;
+  if (!o) return false;
+  if (orderItems.value.length <= 1) return false;
+  return ORDER_STATUSES_ALLOW_DELETE_LINES.includes(String(o.status));
+});
+
+const confirmRemoveSelectedOrderLines = () => {
+  const ids = [...selectedOrderLineIds.value];
+  if (!ids.length) return;
+  const total = orderItems.value.length;
+  if (ids.length >= total) {
+    $q.notify({ type: 'warning', message: t('shop_admin.cannot_remove_last_line') });
+    return;
+  }
+  $q.dialog({
+    title: t('shop_admin.remove_customer_order_items_title'),
+    message: t('shop_admin.delete_order_lines_confirm', { count: ids.length }),
+    persistent: true,
+    ok: {
+      label: t('shop_admin.delete'),
+      color: 'negative',
+      flat: true,
+    },
+    cancel: {
+      label: t('shop_admin.cancel'),
+      flat: true,
+    },
+  }).onOk(async () => {
+    isRemovingOrderLines.value = true;
+    try {
+      if (!orderId.value) return;
+      await shopOrderRepository.deleteShopOrderItemsForStaff(orderId.value, ids);
+      showSuccessNotification(t('shop_admin.order_lines_removed'));
+      selectedOrderLineIds.value = [];
+      await reloadOrderDetails();
+    } catch (e: unknown) {
+      handleApiFailure(
+        { success: false },
+        e instanceof Error ? e.message : 'Failed to remove lines',
+      );
+    } finally {
+      isRemovingOrderLines.value = false;
+    }
+  });
+};
 
 const changeOrderStatus = (newStatus: string) => {
   if (!orderId.value || !currentOrder.value) return;

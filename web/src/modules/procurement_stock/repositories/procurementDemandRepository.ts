@@ -4,6 +4,9 @@ import { shopOrderRepository } from 'src/modules/shop_order/repositories/shopOrd
 
 export type ProcurementDemandStatus = 'procuring' | 'dispatch' | 'delivered' | 'closed';
 
+/** Fulfill hub delivery-papers list filter (includes all papers). */
+export type FulfillDeliveryPapersListStatus = ProcurementDemandStatus | 'all';
+
 export type ProcurementDemandDocumentType = 'shop_order' | 'pbc_costing_file';
 
 export type ProcurementDemandSourceType = 'shop_order_item' | 'pbc_costing_item';
@@ -317,7 +320,7 @@ export interface FulfillDeliveryPapersResponse {
 
 export interface ListFulfillDeliveryPapersParams {
   tenantId: number;
-  procurementStatus?: ProcurementDemandStatus;
+  procurementStatus?: FulfillDeliveryPapersListStatus;
   search?: string | null;
   limit?: number;
   offset?: number;

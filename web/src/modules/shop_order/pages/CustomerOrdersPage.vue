@@ -1,49 +1,38 @@
 <template>
   <q-page class="tf-page theme-shop customer-orders-page">
     <div class="customer-orders-page__inner">
-      <q-card flat class="shop-home-card customer-orders-panel q-pa-md">
-        <div class="customer-orders-toolbar row items-center q-col-gutter-sm">
-          <div class="col-grow">
-            <q-input
-              v-model="searchQuery"
-              dense
-              outlined
-              clearable
-              hide-bottom-space
-              class="customer-orders-toolbar__field"
-              :placeholder="$t('shop_admin.orders_search_placeholder')"
-            >
-              <template #prepend>
-                <q-icon name="ph ph-magnifying-glass" />
-              </template>
-            </q-input>
-          </div>
-          <div class="col-12 col-sm-auto customer-orders-toolbar__filter">
-            <q-select
-              :model-value="selectedBucket"
-              dense
-              outlined
-              emit-value
-              map-options
-              hide-bottom-space
-              class="customer-orders-toolbar__field"
-              :options="bucketOptions"
-              :label="$t('shop_admin.bucket_filter')"
-              data-test="orders-bucket-filter"
-              @update:model-value="setBucket"
-            />
-          </div>
+      <div class="customer-orders-toolbar row items-end justify-end q-mb-md">
+        <div class="col-12 col-sm-auto customer-orders-toolbar__filter">
+          <q-select
+            :model-value="selectedBucket"
+            dense
+            outlined
+            emit-value
+            map-options
+            hide-bottom-space
+            class="customer-orders-toolbar__field customer-orders-toolbar__select"
+            :options="bucketOptions"
+            data-test="orders-bucket-filter"
+            @update:model-value="setBucket"
+          >
+            <template #selected>
+              <span class="customer-orders-toolbar__select-value ellipsis">
+                {{ bucketSelectedLabel }}
+              </span>
+            </template>
+          </q-select>
         </div>
+      </div>
 
-        <div class="customer-orders-panel__divider" aria-hidden="true" />
-
+      <div class="customer-orders-table-card">
         <CustomerOrdersList
           v-if="isLoading"
           layout="page"
           :orders="[]"
           loading
           :show-pricing-badge="true"
-          pricing-badge-variant="text"
+          pricing-badge-variant="badge"
+          pricing-badge-subtle-fixed
           :show-copy-button="false"
         />
 
@@ -59,7 +48,7 @@
         </div>
 
         <div
-          v-else-if="filteredOrders.length === 0"
+          v-else-if="orders.length === 0"
           class="column items-center justify-center customer-orders-empty q-pa-xl text-center"
         >
           <q-icon name="ph ph-receipt" size="80px" color="grey-4" class="q-mb-md" />
@@ -84,17 +73,18 @@
           layout="page"
           :orders="listRows"
           :show-pricing-badge="true"
-          pricing-badge-variant="text"
+          pricing-badge-variant="badge"
+          pricing-badge-subtle-fixed
           :show-copy-button="false"
           @select="goToOrderDetails"
         />
-      </q-card>
+      </div>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import {
@@ -115,8 +105,6 @@ const statusBucket = computed(() => parseOrderGlanceBucket(route.query.bucket));
 const { data: rawOrders, isLoading, isError, error } = useCustomerOrdersQuery(statusBucket);
 const orders = computed(() => rawOrders.value ?? []);
 
-const searchQuery = ref('');
-
 const bucketOptions = computed(() => [
   { label: t('shop_admin.bucket_all'), value: 'all' },
   { label: t('customer_dashboard.glance_needs_you'), value: 'needs_you' },
@@ -126,18 +114,15 @@ const bucketOptions = computed(() => [
 
 const selectedBucket = computed(() => statusBucket.value ?? 'all');
 
-const hasListFilter = computed(
-  () => Boolean(statusBucket.value) || Boolean(searchQuery.value.trim()),
-);
-
-const filteredOrders = computed(() => {
-  const q = searchQuery.value.toLowerCase().trim();
-  if (!q) return orders.value;
-  return orders.value.filter((o) => o.order_no?.toLowerCase().includes(q));
+const bucketSelectedLabel = computed(() => {
+  const match = bucketOptions.value.find((opt) => opt.value === selectedBucket.value);
+  return match?.label ?? t('shop_admin.bucket_all');
 });
 
+const hasListFilter = computed(() => Boolean(statusBucket.value));
+
 const listRows = computed(() =>
-  filteredOrders.value.map((order) => ({
+  orders.value.map((order) => ({
     id: order.id,
     order_no: order.order_no,
     shop_name: order.shop_name,
@@ -184,10 +169,19 @@ export default {
 </script>
 
 <style scoped>
+.customer-orders-page {
+  background: #f8fafc;
+}
+
+body.body--dark .customer-orders-page {
+  background: var(--tf-neutral-canvas);
+}
+
 .customer-orders-page__inner {
   width: 100%;
   max-width: 1200px;
   margin-inline: auto;
+  padding: 0.75rem 0.75rem 1.25rem;
 }
 
 .customer-orders-toolbar__filter {
@@ -196,12 +190,32 @@ export default {
 
 .customer-orders-toolbar__field :deep(.q-field__control) {
   min-height: 40px;
-  border-radius: 8px;
+  height: 40px;
+  border-radius: 12px;
 }
 
-.customer-orders-panel__divider {
-  margin: 0.75rem 0 0.65rem;
-  border-top: 1px solid #e5e7eb;
+.customer-orders-toolbar__select :deep(.q-field__native) {
+  min-height: 40px;
+}
+
+.customer-orders-toolbar__select-value {
+  display: block;
+  width: 100%;
+  font-size: 0.875rem;
+  color: var(--tf-neutral-ink);
+}
+
+.customer-orders-table-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem 1rem 1rem;
+  min-height: 0;
+}
+
+body.body--dark .customer-orders-table-card {
+  background: var(--tf-neutral-surface);
+  border-color: var(--tf-neutral-border);
 }
 
 .customer-orders-empty {

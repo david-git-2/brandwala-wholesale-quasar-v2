@@ -16,7 +16,7 @@
               Bulk Paste {{ bulkPasteField === 'all' ? 'Values' : bulkPasteFieldLabel }}
             </div>
             <div class="text-caption text-grey-6">
-              Click a cell, then paste. Data fills from that cell, like Excel.
+              Matches against all order lines (not only loaded table rows).
             </div>
           </div>
         </div>
@@ -126,6 +126,7 @@ import {
 const props = defineProps<{
   order: ShopOrder | null;
   items: ShopOrderItem[];
+  loadAllItemsForPaste: () => Promise<ShopOrderItem[]>;
   saveUpdates: (updates: CatalogBulkPasteUpdate[]) => Promise<void>;
 }>();
 
@@ -150,6 +151,7 @@ const {
 } = useCatalogOrderBulkPaste({
   order: toRef(props, 'order'),
   items: toRef(props, 'items'),
+  loadAllItemsForPaste: () => props.loadAllItemsForPaste(),
   saveUpdates: (updates) => props.saveUpdates(updates),
 });
 

@@ -39,7 +39,7 @@ BEGIN
     RAISE EXCEPTION 'access denied';
   END IF;
 
-  IF v_status NOT IN ('procuring', 'dispatch', 'delivered', 'closed') THEN
+  IF v_status NOT IN ('procuring', 'dispatch', 'delivered', 'closed', 'all') THEN
     RAISE EXCEPTION 'invalid procurement status: %', v_status;
   END IF;
 
@@ -93,14 +93,20 @@ BEGIN
           AND o.id IS NOT NULL
           AND o.shop_type_snapshot = 'vendor_catalog'
           AND o.tenant_id IN (SELECT tenant_id FROM tenant_scope)
-          AND public.normalize_shop_order_procurement_status(o.status) = v_status
+          AND (
+            v_status = 'all'
+            OR public.normalize_shop_order_procurement_status(o.status) = v_status
+          )
         )
         OR (
           dp.source_type = 'pbc_costing_file'::public.delivery_paper_source_type
           AND f.id IS NOT NULL
           AND f.profile_id IS NOT NULL
           AND f.tenant_id IN (SELECT tenant_id FROM tenant_scope)
-          AND public.normalize_pbc_procurement_status(f.status) = v_status
+          AND (
+            v_status = 'all'
+            OR public.normalize_pbc_procurement_status(f.status) = v_status
+          )
         )
       )
       AND (

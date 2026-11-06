@@ -21,7 +21,7 @@
         </tr>
         <tr v-else-if="papers.length === 0">
           <td colspan="7" class="text-center text-grey-7 q-py-md text-caption">
-            No delivery papers for this tab yet.
+            No delivery papers yet.
           </td>
         </tr>
         <tr

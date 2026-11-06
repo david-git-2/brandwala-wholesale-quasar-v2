@@ -24,9 +24,7 @@ begin
   end if;
 
   select * into v_order from public.shop_orders where id = p_order_id;
-  if not found
-     or (v_order.tenant_id is distinct from p_tenant_id
-         and v_order.parent_tenant_id is distinct from p_tenant_id) then
+  if not found or v_order.tenant_id is distinct from p_tenant_id then
     raise exception 'order not found';
   end if;
 

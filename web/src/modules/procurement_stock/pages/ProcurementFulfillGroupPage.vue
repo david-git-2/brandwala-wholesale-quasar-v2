@@ -51,13 +51,9 @@ const breadcrumbItems = computed(() => {
     authStore.selectedTenant?.slug ||
     (route.params.tenantSlug as string | undefined);
   const procurementHub = tenantSlug ? `/${tenantSlug}/app/procurement` : '/app/procurement';
-  const fulfillList = tenantSlug
-    ? `/${tenantSlug}/app/procurement/fulfill`
-    : '/app/procurement/fulfill';
-  const status =
-    typeof route.query.status === 'string' && route.query.status.trim()
-      ? route.query.status.trim()
-      : 'packed';
+  const deliveryPaperList = tenantSlug
+    ? `/${tenantSlug}/app/procurement/delivery-paper`
+    : '/app/procurement/delivery-paper';
 
   return [
     {
@@ -65,7 +61,7 @@ const breadcrumbItems = computed(() => {
       icon: 'ph ph-buildings',
     },
     { label: 'Procurement', to: procurementHub },
-    { label: 'Delivery paper', to: { path: fulfillList, query: { status } } },
+    { label: 'Delivery paper', to: deliveryPaperList },
     { label: fulfillGroupLeafLabel.value },
   ];
 });

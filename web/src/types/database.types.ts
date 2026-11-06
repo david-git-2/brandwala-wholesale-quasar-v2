@@ -6406,6 +6406,12 @@ isOneToOne: false
 "delete_shop_order":
 { Args: { "p_order_id": number }; Returns: undefined
                            },
+"delete_shop_order_item":
+{ Args: { "p_order_item_id": number }; Returns: undefined
+                           },
+"delete_shop_order_items_for_staff":
+{ Args: { "p_order_id": number,"p_order_item_ids": (number)[] }; Returns: undefined
+                           },
 "delete_shop_product_listing":
 { Args: { "p_listing_id": number,"p_tenant_id": number }; Returns: boolean
                            },

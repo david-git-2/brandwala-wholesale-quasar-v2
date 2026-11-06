@@ -56,6 +56,9 @@ const ENTITY_MAP: Record<
   string,
   { label: string; singular: string; defaultSubPath?: string | undefined; skipIdCrumb?: boolean }
 > = {
+  demand: { label: 'Demand', singular: 'Demand' },
+  fulfill: { label: 'Delivery paper', singular: 'Delivery paper' },
+  'delivery-paper': { label: 'Delivery paper', singular: 'Delivery paper' },
   shipment: { label: 'Shipments', singular: 'Shipment' },
   'inbound-shipments': { label: 'Inbound Shipments', singular: 'Shipment' },
   inbound: { label: 'Inbound Shipments', singular: 'Shipment' },
@@ -124,7 +127,7 @@ const ACTION_OVERRIDES: Record<string, Record<string, string>> = {
 const PATH_PREFIX_SEGMENTS = new Set(['sales']);
 
 /** Path segments omitted from the breadcrumb trail (URL still includes them). */
-const HIDDEN_SEGMENTS = new Set(['v2']);
+const HIDDEN_SEGMENTS = new Set(['v2', 'paper']);
 
 /** Labels shown but not linked — no dedicated list/index route. */
 const NON_PAGE_SEGMENTS = new Set(['group', 'party', 'product', 'points']);

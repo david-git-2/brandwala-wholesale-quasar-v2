@@ -133,7 +133,21 @@ const procurementStockRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/procurement/fulfill',
+    path: '/:tenantSlug?/app/procurement/fulfill/:rest(.*)*',
+    redirect: (to) => {
+      const rest = Array.isArray(to.params.rest)
+        ? to.params.rest.join('/')
+        : typeof to.params.rest === 'string'
+          ? to.params.rest
+          : '';
+      return withTenantSlug(
+        to,
+        `/app/procurement/delivery-paper${rest ? `/${rest}` : ''}`,
+      );
+    },
+  },
+  {
+    path: '/:tenantSlug?/app/procurement/delivery-paper',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -141,6 +155,7 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         name: 'app-procurement-fulfill',
         component: () => import('../pages/ProcurementFulfillPage.vue'),
         beforeEnter: guard('procurement_fulfill'),
+        meta: { breadcrumb: 'Delivery paper' },
       },
       {
         path: 'group/:documentType/:documentId',
@@ -148,7 +163,17 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/ProcurementFulfillGroupPage.vue'),
         beforeEnter: guard('procurement_fulfill'),
       },
+      {
+        path: 'paper/:paperId',
+        name: 'app-procurement-fulfill-delivery-paper-page',
+        component: () => import('../pages/DeliveryPaperDetailPage.vue'),
+        beforeEnter: guard('procurement_fulfill'),
+      },
     ],
+  },
+  {
+    path: '/:tenantSlug?/app/procurement/fulfill',
+    redirect: (to) => withTenantSlug(to, '/app/procurement/delivery-paper'),
   },
   {
     path: '/:tenantSlug?/app/procurement/shipment',
