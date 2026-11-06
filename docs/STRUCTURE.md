@@ -14,6 +14,7 @@ docs/architecture/
   state.md
 docs/guides/
   ui-standards.md
+  cloudflare-pages-deploy.md   # frontend:prod, Wrangler token + account id
 docs/manual/
   README.md                    # Index only; live copy in web operating_manual module
 docs/features/<name>/

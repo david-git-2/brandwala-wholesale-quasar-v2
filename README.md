@@ -153,7 +153,7 @@ Requires: linked project (`pnpm run backend:link`), `psql` on your PATH. Dumps a
 | `backend:schema:sync` | Generate migration from declarative schemas (`--no-apply`; review before apply) |
 | `backend:schema:diff` | Alias for `backend:schema:sync` |
 | `backend:prod` | Push migrations to **linked production** + regenerate types |
-| `frontend:prod` | Switches to `env:prod`, builds, deploys to Cloudflare Pages |
+| `frontend:prod` | Switches to `env:prod`, builds, deploys to Cloudflare Pages — see [docs/guides/cloudflare-pages-deploy.md](docs/guides/cloudflare-pages-deploy.md) |
 
 Do not run experimental SQL against the linked remote while iterating locally.
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Progress on stderr so IDE / pnpm log capture still shows lines (stdout can be fully buffered).
+deploy_log() { printf '%s\n' "$*" >&2; }
 
 # Usage:
 #   pnpm run frontend:prod
@@ -38,6 +40,87 @@ wrangler_cmd() {
   else
     pnpm exec wrangler "$@"
   fi
+}
+
+# Do not run `wrangler logout` + `wrangler login` every deploy: login blocks on OAuth and looks
+# "stuck" in IDE terminals; use an existing session, or CLOUDFLARE_API_TOKEN / CF_API_TOKEN.
+ensure_cloudflare_auth() {
+  if [[ "${CF_FORCE_WRANGLER_LOGIN:-}" == "true" ]]; then
+    echo "CF_FORCE_WRANGLER_LOGIN=true — running wrangler login (browser OAuth)..."
+    wrangler_cmd login
+    return 0
+  fi
+
+  # API-only + account id: Wrangler whoami often needs "Account read" or fails to list accounts; deploy still works with CLOUDFLARE_ACCOUNT_ID set.
+  local has_token=0
+  if [[ -n "${CLOUDFLARE_API_TOKEN:-}" || -n "${CF_API_TOKEN:-}" ]]; then
+    has_token=1
+  fi
+  if [[ "${has_token}" -eq 1 && -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
+    deploy_log "Cloudflare: API token + CLOUDFLARE_ACCOUNT_ID set — skipping wrangler whoami (token may be Pages-only)."
+    return 0
+  fi
+
+  # Do not redirect whoami to /dev/null — a slow or hanging API looks like a freeze after the version banner.
+  local whoami_timeout="${CF_WRANGLER_WHOAMI_TIMEOUT_SECONDS:-90}"
+  deploy_log "Checking Cloudflare session (wrangler whoami, ${whoami_timeout}s max) — can take a bit if the network is slow."
+  set +e
+  local whoami_tmp
+  whoami_tmp="$(mktemp)"
+  # Capture output so Wrangler’s stdout is not lost to pnpm/IDE pipe buffering while whoami runs in the background.
+  ( wrangler_cmd whoami >"${whoami_tmp}" 2>&1 ) &
+  local whoami_pid=$!
+  local waited=0
+  while kill -0 "${whoami_pid}" 2>/dev/null && [[ "${waited}" -lt "${whoami_timeout}" ]]; do
+    sleep 1
+    waited=$((waited + 1))
+    if (( waited % 5 == 0 )); then
+      deploy_log "  … still waiting for wrangler whoami (${waited}s / ${whoami_timeout}s)"
+    fi
+  done
+  local whoami_code
+  if kill -0 "${whoami_pid}" 2>/dev/null; then
+    echo "Error: wrangler whoami did not finish within ${whoami_timeout}s (network, DNS, or Cloudflare API)." >&2
+    kill "${whoami_pid}" 2>/dev/null || true
+    wait "${whoami_pid}" 2>/dev/null || true
+    whoami_code=124
+  else
+    wait "${whoami_pid}"
+    whoami_code=$?
+  fi
+  if [[ -s "${whoami_tmp}" ]]; then
+    cat "${whoami_tmp}" >&2
+  fi
+  rm -f "${whoami_tmp}"
+  set -e
+  if [[ "${whoami_code}" -eq 0 ]]; then
+    deploy_log "Cloudflare: session OK."
+    return 0
+  fi
+
+  if [[ "${whoami_code}" -eq 124 ]]; then
+    echo "Tip: try again on a stable network, or set CLOUDFLARE_API_TOKEN and retry." >&2
+    exit 1
+  fi
+
+  if [[ -n "${CLOUDFLARE_API_TOKEN:-}" || -n "${CF_API_TOKEN:-}" ]]; then
+    echo "Error: an API token is set but wrangler whoami failed (exit ${whoami_code})." >&2
+    echo "  Add CLOUDFLARE_ACCOUNT_ID to web/.env.profile.prod (Workers & Pages → overview → Account ID), or give the token Account → Account Settings → Read." >&2
+    echo "  Or fix CLOUDFLARE_API_TOKEN / network/DNS." >&2
+    exit 1
+  fi
+
+  if [[ -t 1 ]]; then
+    echo "Cloudflare: not logged in. Running wrangler login — finish OAuth in the browser if it opens."
+    wrangler_cmd login
+    return 0
+  fi
+
+  echo "Error: Cloudflare CLI is not logged in and this is not an interactive terminal." >&2
+  echo "  Run once in Terminal.app or iTerm: cd repo && wrangler login" >&2
+  echo "  Or set CLOUDFLARE_API_TOKEN (or CF_API_TOKEN) in web/.env.profile.prod for CI / IDE deploys." >&2
+  echo "  Or set CF_FORCE_WRANGLER_LOGIN=true to force browser login from a TTY." >&2
+  exit 1
 }
 
 # Heartbeat on stderr while a command runs (Wrangler upload is often silent for minutes).
@@ -129,18 +212,33 @@ if [[ "${CLEAN_DIST}" == "true" ]]; then
 fi
 
 wrangler_cmd --version
-echo ""
+deploy_log ""
+deploy_log "Next: Cloudflare auth check, then Pages upload (upload prints progress dots every 2s)."
+deploy_log ""
 
-echo "Logging out of Cloudflare so you can pick the right account..."
-run_wrangler_with_progress "Cloudflare logout" wrangler_cmd logout || true
-echo "Opening Cloudflare login in your browser — complete it there if prompted."
-run_wrangler_with_progress "Cloudflare login" wrangler_cmd login
-echo ""
+ensure_cloudflare_auth
+deploy_log ""
 
 DIST_FILES="$(find web/dist/spa -type f 2>/dev/null | wc -l | tr -d ' ')"
 DIST_MB="$(du -sm web/dist/spa 2>/dev/null | cut -f1)"
 echo "Upload bundle: ${DIST_FILES} files, ~${DIST_MB} MB → project ${PROJECT_NAME}"
 echo ""
+
+# Wrangler pages deploy refuses session/OAuth in non-TTY environments (Cursor IDE, CI). API token required.
+if [[ -z "${CLOUDFLARE_API_TOKEN:-}" && -z "${CF_API_TOKEN:-}" ]] && ! [[ -t 1 ]]; then
+  deploy_log "Error: this shell has no TTY. Wrangler needs CLOUDFLARE_API_TOKEN or CF_API_TOKEN for Pages deploy."
+  deploy_log "  Put the token in web/.env.profile.prod (then pnpm run frontend:prod loads web/.env), or export it in your shell."
+  deploy_log "  Create token: https://developers.cloudflare.com/fundamentals/api/get-started/create-token/"
+  exit 1
+fi
+
+if [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
+  export CLOUDFLARE_ACCOUNT_ID
+fi
+
+if [[ (-n "${CLOUDFLARE_API_TOKEN:-}" || -n "${CF_API_TOKEN:-}") && -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]] && ! [[ -t 1 ]]; then
+  deploy_log "Tip: set CLOUDFLARE_ACCOUNT_ID in web/.env.profile.prod if deploy fails with \"retrieve account IDs\" (Workers & Pages → your account → Account ID on the right)."
+fi
 
 WRANGLER_DEPLOY_LOG="$(mktemp)"
 trap 'rm -f "${WRANGLER_DEPLOY_LOG}"' EXIT
@@ -170,6 +268,16 @@ while [[ "${attempt}" -le "${RETRY_ATTEMPTS}" ]]; do
     fi
     print_frontend_deploy_success "${DEPLOY_VERSION}" "${WRANGLER_DEPLOY_LOG}"
     exit 0
+  fi
+
+  if [[ -f "${WRANGLER_DEPLOY_LOG}" ]] && grep -q 'non-interactive' "${WRANGLER_DEPLOY_LOG}" 2>/dev/null && grep -q 'CLOUDFLARE_API_TOKEN' "${WRANGLER_DEPLOY_LOG}" 2>/dev/null; then
+    deploy_log "Pages deploy cannot succeed without CLOUDFLARE_API_TOKEN in this environment — not retrying."
+    exit 1
+  fi
+
+  if [[ -f "${WRANGLER_DEPLOY_LOG}" ]] && grep -q 'retrieve account IDs' "${WRANGLER_DEPLOY_LOG}" 2>/dev/null; then
+    deploy_log "Wrangler could not resolve account — set CLOUDFLARE_ACCOUNT_ID in web/.env.profile.prod or add Account → Read to the API token. Not retrying."
+    exit 1
   fi
 
   if [[ "${attempt}" -ge "${RETRY_ATTEMPTS}" ]]; then

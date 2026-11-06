@@ -30,6 +30,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Login / grants | [tenant_auth spec](features/tenant_auth/spec.md) |
 | Collapse `parent_tenant_id` into `tenant_id` | [tenant-id-cutover](architecture/tenant-id-cutover.md) — local phases **1–10** done; **prod = phase 11** |
 | List page look | [ui-standards](guides/ui-standards.md) |
+| Deploy web to Cloudflare Pages (`frontend:prod`) | [cloudflare-pages-deploy](guides/cloudflare-pages-deploy.md) |
 | Pinia vs Vue Query / toasts | [state](architecture/state.md) |
 | Change the database | [database](architecture/database.md) + [split tracker](../doc/supabase-schema.md) |
 | Add a new doc / module | [STRUCTURE](STRUCTURE.md) |
