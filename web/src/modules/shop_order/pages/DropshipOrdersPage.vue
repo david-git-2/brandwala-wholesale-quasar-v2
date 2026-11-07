@@ -211,10 +211,9 @@ const selectedStatus = ref<string>('all');
 const actionOrderId = ref<number | null>(null);
 const actionKind = ref<'delete' | 'cancel' | null>(null);
 
-const PRE_DELETE_STATUSES = new Set(['submitted', 'draft', 'placed']);
 const CANCEL_STATUSES = new Set(['submitted', 'draft', 'placed', 'confirmed', 'processing', 'ready_for_pickup']);
 
-const canHardDeleteFromList = (status: string) => PRE_DELETE_STATUSES.has(status);
+const canHardDeleteFromList = (status: string) => status === 'cancelled';
 const canCancelOrderFromList = (status: string) => CANCEL_STATUSES.has(status);
 
 const statusOptions = [

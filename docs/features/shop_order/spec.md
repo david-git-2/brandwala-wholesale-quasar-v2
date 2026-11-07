@@ -108,3 +108,17 @@ Post-ship: **Dropship settlement** desk; `record_dropship_courier_remittance` is
 - [x] App **Create dropship order** (`/:slug/app/shop/orders/create`): dropship shop, customer group (billing profile from group via `resolve_customer_profile_for_group`), search-add lines, recipient address; `staff_create_dropship_order` on behalf of group.
 - [x] Order enters same workflow as customer dropship (recipient call → processing → ship/issue → deliver).
 - [x] COD/delivery charge amounts remain on processing desk, not on create page.
+
+### US-10: Staff manual vendor catalog (backfill / on behalf)
+- [x] App **Create catalog order** (`/:slug/app/shop/orders/create-catalog`) — **two tabs**: **Create order** (standard) and **Old order** (backfill).
+- [x] **Create order** tab: `vendor_catalog` shop (optional filter), customer group, product search, line qty only; `staff_create_vendor_catalog_order` with `p_create_mode = standard`; order `submitted`, negotiable per shop × group.
+- [x] **Old order** tab: same headers + **order rates** (FX, cargo, **profit rate %**, profit basis), **initial status** default `procuring` (select `procuring` \| `delivered` \| `closed`), per-line **qty + sell price to customer**; `p_create_mode = old_order`; **`is_negotiable_snapshot = false`**, **`catalog_manual_price_entry = true`**; RPC stamps `profit_rate`, `first_offer_rate`, and `final_offer_rate` from that single %; lines get manual final/customer sell prices.
+- [x] **`hidden_from_customer`** (default **true** on manual create): customer list/detail omit; staff list “Staff only” chip; detail **Settings → Actions** toggle via `update_shop_order_hidden_from_customer_for_staff`.
+- [x] **`catalog_manual_price_entry`**: staff list “Manual prices” chip when set from old-order tab.
+- [x] **`placement_scope`** (`shop` \| `app`) on `shop_orders`: `shop` = customer cart checkout; `app` = staff manual catalog or dropship create. **`created_by_email`** = logged-in user at create. Exposed on customer shop list/detail (when not `hidden_from_customer`) and staff orders list.
+- [x] Required **order date** (`p_recorded_at`) for sort/backfill timestamps; bulk add on each tab (old tab: code, qty, sell price).
+
+### US-11: Delete cancelled orders (staff)
+- [x] Hard delete only when `status = cancelled` (`delete_shop_order`); blocks replacement targets and non-cancelled rows.
+- [x] Cascade: financial purge, preorder demand for order lines, customer backlog rows, stock un-allocation, picks/items/order (dropship restock trigger unchanged).
+- [x] Staff orders list header **Delete** → `/:slug/app/shop/orders/cancelled` page (cancelled-only list, select + confirm + `delete_shop_orders_for_staff`, batch max 100). Detail and dropship list delete aligned to cancelled-only.

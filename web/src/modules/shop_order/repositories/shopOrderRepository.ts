@@ -44,6 +44,7 @@ const listShops = async (
 ): Promise<Shop[]> => {
   const { data, error } = await supabase.rpc('list_shops', {
     p_tenant_id: tenantId,
+    p_parent_tenant_id: opts.parentTenantId ?? null,
     p_limit: opts.limit ?? 200,
     p_offset: opts.offset ?? 0,
     p_search: opts.search ?? null,
@@ -566,6 +567,7 @@ const listShopOrdersStaffPage = async (
 ): Promise<StaffOrdersStaffPageResult> => {
   const { data, error } = await supabase.rpc('list_shop_orders_staff_page', {
     p_tenant_id: tenantId,
+    p_parent_tenant_id: opts.parentTenantId ?? null,
     p_limit: opts.limit ?? 30,
     p_search: opts.search ?? null,
     p_status: opts.status ?? null,
@@ -1312,6 +1314,20 @@ const fulfillShopOrderToInvoice = async (orderId: number): Promise<void> => {
   if (error) throw error;
 };
 
+const updateOrderHiddenFromCustomer = async (
+  tenantId: number,
+  orderId: number,
+  hiddenFromCustomer: boolean,
+): Promise<StaffShopOrderDetailResponse> => {
+  const { data, error } = await supabase.rpc('update_shop_order_hidden_from_customer_for_staff', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_hidden_from_customer: hiddenFromCustomer,
+  });
+  if (error) throw error;
+  return parseStaffShopOrderDetailResponse(data);
+};
+
 const updateOrderCharges = async (
   tenantId: number,
   orderId: number,
@@ -1340,6 +1356,32 @@ const deleteShopOrder = async (orderId: number): Promise<void> => {
     p_order_id: orderId,
   });
   if (error) throw error;
+};
+
+export type DeleteShopOrdersForStaffResult = {
+  deleted_count: number;
+  deleted_ids: number[];
+};
+
+const deleteShopOrdersForStaff = async (
+  tenantId: number,
+  orderIds: number[],
+): Promise<DeleteShopOrdersForStaffResult> => {
+  if (!orderIds.length) {
+    return { deleted_count: 0, deleted_ids: [] };
+  }
+  const { data, error } = await supabase.rpc('delete_shop_orders_for_staff', {
+    p_tenant_id: tenantId,
+    p_order_ids: orderIds,
+  });
+  if (error) throw error;
+  const row = (data ?? {}) as Record<string, unknown>;
+  const deletedIds = Array.isArray(row.deleted_ids)
+    ? (row.deleted_ids as number[])
+    : [];
+  const deletedCount =
+    typeof row.deleted_count === 'number' ? row.deleted_count : deletedIds.length;
+  return { deleted_count: deletedCount, deleted_ids: deletedIds };
 };
 
 const isRpcMissingInSchemaCache = (error: { code?: string; message?: string } | null) => {
@@ -1716,8 +1758,10 @@ export const shopOrderRepository = {
   placeShopOrderForProcurement,
   fulfillShopOrderToInvoice,
   deleteShopOrder,
+  deleteShopOrdersForStaff,
   deleteShopOrderItemsForStaff,
   updateOrderCharges,
+  updateOrderHiddenFromCustomer,
   processDropshipShopOrder,
   updateOrderStatus,
   getShopCurrencies,

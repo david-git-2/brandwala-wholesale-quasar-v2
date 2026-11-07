@@ -119,7 +119,7 @@ begin
     recipient_name, recipient_phone, recipient_phone_secondary,
     shipping_address, shipping_district, shipping_thana,
     recipient_profile_id, profile_id,
-    created_by_email,
+    created_by_email, placement_scope,
     cod_charge_amount, delivery_charge_amount, print_charge_amount, packing_charge_amount, discount_amount,
     is_prepaid_snapshot, delivery_instructions, deduct_charges_from_margin,
     deduct_cod_from_margin, deduct_delivery_from_margin, deduct_print_from_margin, deduct_packing_from_margin
@@ -134,6 +134,7 @@ begin
     nullif(trim(coalesce(p_shipping_address, '')), ''), nullif(trim(coalesce(p_shipping_district, '')), ''), nullif(trim(coalesce(p_shipping_thana, '')), ''),
     v_recipient_profile_id, v_profile_id,
     public.current_user_email(),
+    'shop',
     p_cod_charge_amount, p_delivery_charge_amount, p_print_charge_amount, p_packing_charge_amount, p_discount_amount,
     p_is_prepaid, p_delivery_instructions, v_shop.deduct_charges_from_margin,
     false, false, v_shop.deduct_print_from_margin, v_shop.deduct_packing_from_margin

@@ -194,6 +194,27 @@ export function useDeleteShopOrderMutation() {
   });
 }
 
+export function useDeleteShopOrdersForStaffMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ tenantId, orderIds }: { tenantId: number; orderIds: number[] }) =>
+      shopOrderRepository.deleteShopOrdersForStaff(tenantId, orderIds),
+    onSuccess: (result) => {
+      const n = result.deleted_count;
+      showSuccessNotification(
+        n === 1 ? 'Deleted 1 cancelled order.' : `Deleted ${n} cancelled orders.`,
+      );
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
+      void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.staffOrdersPageRoot() });
+    },
+    onError: (err: any) => {
+      handleApiFailure({ success: false }, err.message || 'Failed to delete orders');
+    },
+  });
+}
+
 export function useCancelDropshipOrderMutation() {
   const queryClient = useQueryClient();
   const authStore = useAuthStore();

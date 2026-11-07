@@ -29,11 +29,28 @@
               outlined
               emit-value
               map-options
+              use-input
+              fill-input
+              hide-selected
+              input-debounce="200"
               :loading="booksCustomerGroupsQuery.isLoading.value"
-              :options="customerGroupSelectOptions"
+              :options="filteredCustomerGroupSelectOptions"
               :label="$t('shop_admin.manual_order_customer_group', 'Customer group')"
               data-test="manual-dropship-group"
-            />
+              @filter="filterCustomerGroups"
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey-6">
+                    {{
+                      booksCustomerGroupsQuery.isLoading.value
+                        ? $t('common.loading', 'Loading…')
+                        : $t('shop_admin.no_customer_groups', 'No customer groups yet.')
+                    }}
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
         </div>
       </q-card>
@@ -164,7 +181,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -237,6 +254,20 @@ const contextReady = computed(
 const customerGroupSelectOptions = computed(() =>
   customerGroupOptions.value.map((g) => ({ label: g.name, value: g.id })),
 );
+
+const customerGroupFilterNeedle = ref('');
+
+const filteredCustomerGroupSelectOptions = computed(() => {
+  const needle = customerGroupFilterNeedle.value.trim().toLowerCase();
+  if (!needle) return customerGroupSelectOptions.value;
+  return customerGroupSelectOptions.value.filter((opt) => opt.label.toLowerCase().includes(needle));
+});
+
+const filterCustomerGroups = (val: string, update: (cb: () => void) => void) => {
+  update(() => {
+    customerGroupFilterNeedle.value = val;
+  });
+};
 
 const onAddListing = (row: StaffDropshipListingRow) => {
   try {

@@ -64,9 +64,14 @@
           />
         </div>
       </div>
-      <span class="order-table-dashboard__shop ellipsis">
-        {{ order.shop_name }}
-      </span>
+      <div class="column min-width-0">
+        <span class="order-table-dashboard__shop ellipsis">
+          {{ order.shop_name }}
+        </span>
+        <span v-if="placementCaption(order)" class="text-caption text-grey-7 ellipsis">
+          {{ placementCaption(order) }}
+        </span>
+      </div>
       <span class="order-table-dashboard__date tf-num">
         {{ formatDate(order.created_at) }}
       </span>
@@ -113,6 +118,9 @@
                 />
               </div>
               <span class="text-caption text-grey-6 ellipsis">{{ order.shop_name }}</span>
+              <span v-if="placementCaption(order)" class="text-caption text-grey-7 ellipsis">
+                {{ placementCaption(order) }}
+              </span>
             </div>
             <div class="column text-right">
               <span class="text-caption text-grey-6">{{ formatDate(order.created_at) }}</span>
@@ -142,6 +150,7 @@ import {
 } from 'src/modules/dashboard/utils/customerDashboardStatus';
 import type { ShopOrderStatus, ShopType } from '../types';
 import OrderPricingModeBadge from './OrderPricingModeBadge.vue';
+import { orderPlacementCaption } from '../utils/orderPlacementCaption';
 
 export type CustomerOrderListRow = {
   id: number;
@@ -153,6 +162,8 @@ export type CustomerOrderListRow = {
   created_at: string;
   shop_type_snapshot?: ShopType | string | null;
   is_negotiable_snapshot?: boolean;
+  placement_scope?: 'shop' | 'app';
+  created_by_email?: string;
 };
 
 const props = withDefaults(
@@ -193,6 +204,9 @@ const tableLayoutClass = computed(() => ({
 const { t, te } = useI18n();
 
 const formatDate = (dateStr: string) => date.formatDate(dateStr, 'D MMM YYYY');
+
+const placementCaption = (order: CustomerOrderListRow) =>
+  orderPlacementCaption(t, order.placement_scope, order.created_by_email);
 
 const copyOrderNo = (orderNo: string) => {
   void copyToClipboard(orderNo).then(() => {

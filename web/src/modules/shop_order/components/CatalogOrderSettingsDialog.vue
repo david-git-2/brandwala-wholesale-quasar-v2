@@ -9,12 +9,14 @@
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
     <div class="column full-height no-wrap overflow-hidden catalog-settings-drawer">
-      <TfDrawerSectionTabsHeader
+      <TfFolderTabs
         v-model="activeTab"
-        :tabs="[...visibleSettingsTabs]"
+        :tabs="folderSettingsTabs"
         aria-label="Catalog order settings sections"
+        inset
+        class="col catalog-settings-folder-tabs"
       >
-        <template #trailing>
+        <template #header-trailing>
           <q-btn
             flat
             round
@@ -26,10 +28,8 @@
             @click="emit('update:modelValue', false)"
           />
         </template>
-      </TfDrawerSectionTabsHeader>
 
-      <q-tab-panels v-model="activeTab" animated class="col bg-white catalog-settings-drawer-panels">
-        <q-tab-panel name="summary" class="q-pa-none bg-white">
+        <div v-show="activeTab === 'summary'" class="catalog-settings-tab-pane q-pa-none">
           <CatalogOrderItemsSummaryCards
             :item-count="itemCount"
             :buy-currency-symbol="buyCurrencySymbol"
@@ -38,9 +38,9 @@
             :cargo-rate="cargoRate"
             :totals="totals"
           />
-        </q-tab-panel>
+        </div>
 
-        <q-tab-panel name="status" class="q-pa-md bg-white">
+        <div v-show="activeTab === 'status'" class="catalog-settings-tab-pane">
           <div class="column q-gutter-y-md">
             <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
               <q-icon name="ph ph-traffic-signal" size="18px" color="primary" />
@@ -94,9 +94,9 @@
               @click="emit('override-status')"
             />
           </div>
-        </q-tab-panel>
+        </div>
 
-        <q-tab-panel name="bills" class="q-pa-md bg-white">
+        <div v-show="activeTab === 'bills'" class="catalog-settings-tab-pane">
           <CatalogOrderBillsPanel
             v-if="order"
             :parent-tenant-id="billsParentTenantId ?? null"
@@ -104,9 +104,9 @@
             :enabled="billsListEnabled"
             @open-bill="(bill) => emit('open-bill', bill)"
           />
-        </q-tab-panel>
+        </div>
 
-        <q-tab-panel name="delivery" class="q-pa-md bg-white">
+        <div v-show="activeTab === 'delivery'" class="catalog-settings-tab-pane">
           <div v-if="!showDeliveryPapers" class="text-body2 text-grey-7">
             Delivery papers are available once the order is procuring or in fulfillment (dispatch,
             delivered, or closed).
@@ -122,13 +122,34 @@
             @open-paper="(id) => emit('open-delivery-paper', id)"
             @created="(id) => emit('open-delivery-paper', id)"
           />
-        </q-tab-panel>
+        </div>
 
-        <q-tab-panel name="actions" class="q-pa-md bg-white">
+        <div v-show="activeTab === 'actions'" class="catalog-settings-tab-pane">
           <div class="column q-gutter-y-sm">
             <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs q-mb-sm">
               <q-icon name="ph ph-dots-three-outline" size="18px" color="primary" />
               <span>Order actions</span>
+            </div>
+
+            <div
+              v-if="order?.shop_type_snapshot === 'vendor_catalog'"
+              class="q-pa-sm rounded-borders border-grey-3 q-mb-sm"
+            >
+              <q-toggle
+                :model-value="!!order.hidden_from_customer"
+                :disable="hiddenFromCustomerSaving"
+                :label="$t('shop_admin.manual_catalog_hide_from_customer', 'Hide from customer storefront')"
+                data-test="catalog-order-hidden-from-customer"
+                @update:model-value="(val) => emit('update-hidden-from-customer', !!val)"
+              />
+              <div class="text-caption text-grey-7 q-mt-xs">
+                {{
+                  $t(
+                    'shop_admin.order_hidden_from_customer_hint',
+                    'When on, the customer does not see this order in their storefront.',
+                  )
+                }}
+              </div>
             </div>
 
             <q-btn-dropdown
@@ -175,8 +196,8 @@
               @click="emit('cancel-order')"
             />
           </div>
-        </q-tab-panel>
-      </q-tab-panels>
+        </div>
+      </TfFolderTabs>
     </div>
   </AppResizableOverlayPanel>
 </template>
@@ -184,7 +205,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
-import TfDrawerSectionTabsHeader from 'src/components/ui/TfDrawerSectionTabsHeader.vue';
+import TfFolderTabs from 'src/components/ui/TfFolderTabs.vue';
 import CatalogOrderItemsSummaryCards from './CatalogOrderItemsSummaryCards.vue';
 import CatalogOrderProgressBar from './CatalogOrderProgressBar.vue';
 import CatalogOrderStatusWorkflowBar from './CatalogOrderStatusWorkflowBar.vue';
@@ -234,6 +255,7 @@ const props = defineProps<{
   billsParentTenantId?: number | null;
   showDeliveryPapers?: boolean;
   allowCreateDeliveryPaper?: boolean;
+  hiddenFromCustomerSaving?: boolean;
 }>();
 
 const deliveryPapersEnabled = computed(
@@ -261,6 +283,7 @@ const emit = defineEmits<{
   (e: 'primary-action', action: StaffCatalogPrimaryAction): void;
   (e: 'open-delivery-paper', paperId: number): void;
   (e: 'open-bill', bill: ShopOrderBillListItem): void;
+  (e: 'update-hidden-from-customer', hidden: boolean): void;
 }>();
 
 const settingsTabs = [
@@ -275,6 +298,10 @@ const showBillsTab = computed(() => !!props.showDeliveryPapers);
 
 const visibleSettingsTabs = computed(() =>
   settingsTabs.filter((tab) => tab.name !== 'bills' || showBillsTab.value),
+);
+
+const folderSettingsTabs = computed(() =>
+  visibleSettingsTabs.value.map((tab) => ({ name: tab.name, label: tab.label })),
 );
 
 const activeTab = ref<(typeof settingsTabs)[number]['name']>('summary');
@@ -303,8 +330,12 @@ const statusBadge = computed(() => {
 </script>
 
 <style scoped>
-.catalog-settings-drawer-panels {
+.catalog-settings-folder-tabs {
   min-height: 0;
+}
+
+.catalog-settings-tab-pane {
+  min-width: 0;
 }
 
 .rounded-sq-btn {

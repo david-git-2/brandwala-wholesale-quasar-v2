@@ -25,9 +25,8 @@ BEGIN
   END IF;
 
   IF NOT public.membership_has_module_action(v_shop.tenant_id, 'shop_order_mgmt', 'edit')
-     AND NOT (
-       v_shop.parent_tenant_id IS NOT NULL
-       AND public.membership_has_module_action(v_shop.parent_tenant_id, 'shop_order_mgmt', 'edit')
+     AND NOT public.membership_has_module_action(
+       public.resolve_parent_tenant_id(v_shop.tenant_id), 'shop_order_mgmt', 'edit'
      )
      AND NOT public.is_superadmin() THEN
     RAISE EXCEPTION 'not allowed';
@@ -39,7 +38,7 @@ BEGIN
     WHERE cg.id = p_customer_group_id
       AND cg.is_active = true
       AND cg.deleted_at IS NULL
-      AND coalesce(cg.parent_tenant_id, cg.tenant_id) = public.resolve_parent_tenant_id(v_shop.tenant_id)
+      AND cg.tenant_id = public.resolve_parent_tenant_id(v_shop.tenant_id)
   ) THEN
     RAISE EXCEPTION 'customer group not found';
   END IF;

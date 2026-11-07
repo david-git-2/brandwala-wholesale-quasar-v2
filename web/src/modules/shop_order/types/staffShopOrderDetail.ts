@@ -27,6 +27,9 @@ export interface StaffShopOrderDetailOrder {
   fulfilled_at: string | null;
   global_invoice_id: number | null;
   collection_source: string | null;
+  hidden_from_customer?: boolean;
+  catalog_manual_price_entry?: boolean;
+  placement_scope?: 'shop' | 'app';
   shop: {
     id: number;
     name: string | null;

@@ -38,10 +38,25 @@
       <q-infinite-scroll :offset="250" @load="onInfiniteLoad">
         <div class="orders-list-container">
           <div
+            v-if="bulkDeleteSelection && hasSelectableOnPage"
+            class="order-bulk-select-bar row items-center no-wrap q-px-sm q-py-xs q-gutter-x-sm"
+          >
+            <q-checkbox
+              dense
+              :model-value="allCancelledSelected"
+              :indeterminate="someCancelledSelected && !allCancelledSelected"
+              :aria-label="$t('shop_admin.bulk_delete_select_all_cancelled', 'Select all cancelled on this page')"
+              @update:model-value="toggleSelectAllCancelled"
+            />
+            <span class="text-caption text-grey-7">
+              {{ $t('shop_admin.bulk_delete_select_hint', 'Select cancelled orders to delete permanently') }}
+            </span>
+          </div>
+          <div
             v-for="order in orders"
             :key="order.id"
-            class="order-list-row row items-center justify-between no-wrap cursor-pointer"
-            :class="getOrderRowClass(order.status)"
+            class="order-list-row cursor-pointer"
+            :class="{ 'order-list-row--with-check': isOrderSelectable(order) }"
             :data-test="`shop-order-item-${order.id}`"
             tabindex="0"
             role="button"
@@ -49,17 +64,22 @@
             @keydown.enter="emit('row-click', order.id)"
             @keydown.space.prevent="emit('row-click', order.id)"
           >
-          <!-- Left Section: Status indicator, Order No, Name & Inline Metadata -->
-          <div class="order-main-info col min-width-0 row items-center no-wrap">
-            <div class="order-details-block column col min-width-0 justify-center">
-              <span class="order-name text-weight-bold text-grey-9 ellipsis">
-                {{ orderListPrimaryLabel(order) }}
-              </span>
+            <div v-if="isOrderSelectable(order)" class="order-list-row__check">
+              <q-checkbox
+                dense
+                :model-value="selectedIdSet.has(order.id)"
+                :aria-label="$t('shop_admin.bulk_delete_select_order', 'Select order for deletion')"
+                @update:model-value="(on) => toggleOrderSelection(order.id, on)"
+                @click.stop
+              />
+            </div>
 
-              <div class="row items-center no-wrap q-gutter-x-xs q-mt-xxs">
-                <span class="order-no font-mono text-caption text-grey-7 ellipsis">
-                  {{ order.order_no }}
-                </span>
+            <div class="order-list-row__col order-list-row__col--identity min-width-0">
+              <div class="order-card__title ellipsis">
+                {{ orderListPrimaryLabel(order) }}
+              </div>
+              <div class="order-card__reference row items-center no-wrap min-width-0">
+                <span class="order-card__order-no font-mono ellipsis">{{ order.order_no }}</span>
                 <q-btn
                   flat
                   dense
@@ -67,7 +87,7 @@
                   size="xs"
                   color="grey-6"
                   icon="ph ph-copy"
-                  class="order-copy-btn"
+                  class="order-copy-btn flex-shrink-0"
                   :aria-label="$t('shop_admin.copy_order_no', 'Copy Order No')"
                   @click.stop="copyOrderNo(order.order_no)"
                 >
@@ -75,58 +95,67 @@
                     {{ $t('shop_admin.copy_order_no', 'Copy Order No') }}
                   </q-tooltip>
                 </q-btn>
-                <span class="order-date text-caption text-grey-6">
-                  {{ formatDate(order.created_at) }}
-                </span>
+                <span class="order-card__dot" aria-hidden="true">·</span>
+                <span class="order-card__timestamp flex-shrink-0">{{ formatListTimestamp(order.created_at) }}</span>
               </div>
+            </div>
 
-              <div class="order-meta-line row items-center wrap q-gutter-xs text-caption q-mt-xs">
-                <!-- Shop Name Pill -->
-                <span class="meta-pill meta-pill--shop">
-                  <q-icon name="ph ph-storefront" size="12px" class="q-mr-xs text-grey-6" />
-                  <span class="ellipsis" style="max-width: 140px">{{ order.shop_name }}</span>
+            <div class="order-list-row__col order-list-row__col--ops min-width-0">
+              <div class="order-card__ops-line ellipsis">
+                <span>{{ order.shop_name || '—' }}</span>
+                <template v-if="placementChannelLabel(order)">
+                  <span class="order-card__dot" aria-hidden="true">·</span>
+                  <span>{{ placementChannelLabel(order) }}</span>
+                </template>
+                <template v-if="isParentTenant && order.tenant_name">
+                  <span class="order-card__dot" aria-hidden="true">·</span>
+                  <span class="order-card__tenant-hint">{{ order.tenant_name }}</span>
+                </template>
+              </div>
+              <div class="order-card__ops-line ellipsis">
+                <span>
+                  {{ order.item_count ?? 0 }}
+                  {{ order.item_count === 1 ? $t('shop_admin.item_singular', 'item') : $t('shop_admin.items_plural', 'items') }}
                 </span>
+                <template v-if="orderActorDisplay(order)">
+                  <span class="order-card__dot" aria-hidden="true">·</span>
+                  <span class="order-card__actor">
+                    {{ orderActorDisplay(order) }}
+                    <q-tooltip v-if="order.created_by_email" anchor="top middle" self="bottom middle">
+                      {{ order.created_by_email }}
+                    </q-tooltip>
+                  </span>
+                </template>
+              </div>
+            </div>
 
-                <!-- Tenant Badge if Parent Tenant -->
-                <span v-if="isParentTenant && order.tenant_name" class="meta-pill meta-pill--tenant">
-                  <q-icon name="ph ph-buildings" size="12px" class="q-mr-xs text-grey-6" />
-                  <span class="ellipsis" style="max-width: 120px">{{ order.tenant_name }}</span>
-                </span>
-
-                <!-- Customer Group Pill -->
-                <span v-if="showCustomerGroupPill(order)" class="meta-pill meta-pill--group">
-                  <q-icon name="ph ph-users" size="12px" class="q-mr-xs text-grey-6" />
-                  <span class="ellipsis" style="max-width: 130px">{{ order.customer_group_name }}</span>
-                </span>
-
-                <!-- Items Count Badge -->
-                <span class="meta-pill meta-pill--items">
-                  <q-icon name="ph ph-package" size="12px" class="q-mr-xs text-grey-6" />
-                  {{ order.item_count ?? 0 }} {{ order.item_count === 1 ? 'item' : 'items' }}
-                </span>
-
-                <!-- Pricing Mode Badge (Fixed / Negotiable) -->
-                <OrderPricingModeBadge
-                  v-if="order.shop_type_snapshot"
-                  :is-negotiable="!!order.is_negotiable_snapshot"
-                  :shop-type="order.shop_type_snapshot"
+            <div class="order-list-row__col order-list-row__col--status">
+              <TfStatusBadge
+                :status="order.status"
+                :label="statusLabel(order.status)"
+              />
+              <div
+                v-if="hasSecondaryFlags(order)"
+                class="order-card__flags column items-end q-gutter-y-xs"
+              >
+                <TfStatusBadge
+                  v-if="showNegotiableFlag(order)"
+                  status="negotiating"
+                  :label="$t('shop_admin.order_pricing_negotiable', 'Negotiable')"
+                />
+                <TfStatusBadge
+                  v-if="order.hidden_from_customer"
+                  status="on_hold"
+                  :label="$t('shop_admin.order_hidden_from_customer', 'Staff only')"
+                />
+                <TfStatusBadge
+                  v-if="order.catalog_manual_price_entry"
+                  status="costing_pending"
+                  :label="$t('shop_admin.catalog_manual_price_entry', 'Manual prices')"
                 />
               </div>
             </div>
           </div>
-
-          <!-- Right Section: Status Pill -->
-          <div class="order-aside-actions row items-center no-wrap flex-shrink-0">
-            <!-- Order Status Badge -->
-            <span
-              class="order-status-badge"
-              :class="getStatusBadgeInfo(order.status).className"
-            >
-              <q-icon :name="getStatusBadgeInfo(order.status).icon" size="13px" class="q-mr-xs" />
-              <span>{{ getStatusBadgeInfo(order.status).label }}</span>
-            </span>
-          </div>
-        </div>
         </div>
 
         <template v-if="hasNextPage" #loading>
@@ -144,27 +173,76 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { date, copyToClipboard } from 'quasar';
 import { showSuccessNotification } from 'src/utils/appFeedback';
+import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
 import type { ShopOrder } from '../types';
-import OrderPricingModeBadge from './OrderPricingModeBadge.vue';
 import { normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
 
-const props = defineProps<{
-  orders: ShopOrder[];
-  isLoadingOrders: boolean;
-  isProcessingDropship: boolean;
-  isDropshipShop?: (shopId: number) => boolean;
-  isParentTenant?: boolean;
-  isFiltered?: boolean;
-  hasNextPage?: boolean;
-  isFetchingNextPage?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    orders: ShopOrder[];
+    isLoadingOrders: boolean;
+    isProcessingDropship: boolean;
+    isDropshipShop?: (shopId: number) => boolean;
+    isParentTenant?: boolean;
+    isFiltered?: boolean;
+    hasNextPage?: boolean;
+    isFetchingNextPage?: boolean;
+    selectedOrderIds?: number[];
+    bulkDeleteSelection?: boolean;
+  }>(),
+  {
+    selectedOrderIds: () => [],
+    bulkDeleteSelection: false,
+  },
+);
 
 const emit = defineEmits<{
   (e: 'row-click', orderId: number): void;
   (e: 'add-to-dropship', orderId: number): void;
   (e: 'load-more', done: (stop?: boolean) => void): void;
   (e: 'clear-filters'): void;
+  (e: 'update:selectedOrderIds', ids: number[]): void;
 }>();
+
+const selectedIdSet = computed(() => new Set(props.selectedOrderIds ?? []));
+
+function isOrderSelectable(order: ShopOrder): boolean {
+  if (props.bulkDeleteSelection) return true;
+  return order.status === 'cancelled';
+}
+
+const selectableOrdersOnPage = computed(() => props.orders.filter((o) => isOrderSelectable(o)));
+
+const hasSelectableOnPage = computed(() => selectableOrdersOnPage.value.length > 0);
+
+const allCancelledSelected = computed(() => {
+  const selectable = selectableOrdersOnPage.value;
+  if (!selectable.length) return false;
+  return selectable.every((o) => selectedIdSet.value.has(o.id));
+});
+
+const someCancelledSelected = computed(() =>
+  selectableOrdersOnPage.value.some((o) => selectedIdSet.value.has(o.id)),
+);
+
+function toggleOrderSelection(orderId: number, selected: boolean) {
+  const next = new Set(props.selectedOrderIds ?? []);
+  if (selected) next.add(orderId);
+  else next.delete(orderId);
+  emit('update:selectedOrderIds', Array.from(next));
+}
+
+function toggleSelectAllCancelled(selectAll: boolean) {
+  const selectableIds = selectableOrdersOnPage.value.map((o) => o.id);
+  if (!selectAll) {
+    const next = (props.selectedOrderIds ?? []).filter((id) => !selectableIds.includes(id));
+    emit('update:selectedOrderIds', next);
+    return;
+  }
+  const next = new Set(props.selectedOrderIds ?? []);
+  for (const id of selectableIds) next.add(id);
+  emit('update:selectedOrderIds', Array.from(next));
+}
 
 const onInfiniteLoad = (_index: number, done: (stop?: boolean) => void) => {
   if (props.isFetchingNextPage) {
@@ -180,10 +258,37 @@ const onInfiniteLoad = (_index: number, done: (stop?: boolean) => void) => {
 
 const { t } = useI18n();
 
-const formatDate = (dateStr: string) => {
+const formatListTimestamp = (dateStr: string) => {
   if (!dateStr) return '—';
-  return date.formatDate(dateStr, 'D MMM YYYY, HH:mm');
+  return date.formatDate(dateStr, 'D MMM, HH:mm');
 };
+
+const placementChannelLabel = (order: ShopOrder): string | null => {
+  if (order.placement_scope === 'app') {
+    return t('shop_admin.placement_channel_mobile_app', 'Mobile App');
+  }
+  if (order.placement_scope === 'shop') {
+    return t('shop_admin.placement_channel_shopfront', 'Shopfront');
+  }
+  return null;
+};
+
+const orderActorDisplay = (order: ShopOrder): string | null => {
+  const email = (order.created_by_email || '').trim();
+  if (!email) return null;
+  const at = email.indexOf('@');
+  if (at > 0) return email.slice(0, at);
+  return email;
+};
+
+const showNegotiableFlag = (order: ShopOrder): boolean => {
+  if (!order.is_negotiable_snapshot) return false;
+  const shopType = order.shop_type_snapshot;
+  return shopType === 'vendor_catalog' || shopType === 'fixed_price';
+};
+
+const hasSecondaryFlags = (order: ShopOrder): boolean =>
+  showNegotiableFlag(order) || Boolean(order.hidden_from_customer) || Boolean(order.catalog_manual_price_entry);
 
 /** Staff list title: company (customer group), not `Order for {recipient}`. */
 const orderListPrimaryLabel = (order: ShopOrder): string => {
@@ -195,175 +300,62 @@ const orderListPrimaryLabel = (order: ShopOrder): string => {
   return order.shop_name || t('shop_admin.untitled_order', 'Order');
 };
 
-const showCustomerGroupPill = (order: ShopOrder): boolean => {
-  const groupName = order.customer_group_name?.trim();
-  if (!groupName) return false;
-  return orderListPrimaryLabel(order) !== groupName;
-};
-
 const copyOrderNo = (orderNo: string) => {
   void copyToClipboard(orderNo).then(() => {
     showSuccessNotification(t('shop_admin.order_no_copied', 'Order number copied'));
   });
 };
 
-const getOrderRowClass = (status: string) => {
-  const norm = normalizeCatalogOrderStatus(status);
-  switch (norm) {
-    case 'confirmed':
-    case 'delivered':
-    case 'payment_received':
-    case 'fulfilled':
-      return 'order-row--success';
-    case 'submitted':
-    case 'procuring':
-      return 'order-row--info';
-    case 'placed':
-    case 'packed':
-    case 'shipped':
-    case 'processing':
-      return 'order-row--purple';
-    case 'costing_pending':
-    case 'negotiating':
-    case 'countered':
-    case 'priced':
-    case 'final_offered':
-      return 'order-row--warning';
-    case 'cancelled':
-    case 'returned':
-      return 'order-row--danger';
-    case 'draft':
-    default:
-      return 'order-row--neutral';
-  }
-};
-
-const getStatusBadgeInfo = (status: string) => {
+const statusLabel = (status: string) => {
   const norm = normalizeCatalogOrderStatus(status);
   switch (norm) {
     case 'draft':
-      return {
-        label: t('shop_admin.status_draft', 'Draft'),
-        icon: 'ph ph-pencil-simple',
-        className: 'status-draft',
-      };
+      return t('shop_admin.status_draft', 'Draft');
     case 'submitted':
-      return {
-        label: t('shop_admin.status_submitted', 'Submitted'),
-        icon: 'ph ph-paper-plane-tilt',
-        className: 'status-submitted',
-      };
+      return t('shop_admin.status_submitted', 'Submitted');
     case 'costing_pending':
-      return {
-        label: t('shop_admin.status_costing_pending', 'Costing Pending'),
-        icon: 'ph ph-clock',
-        className: 'status-costing-pending',
-      };
+      return t('shop_admin.status_costing_pending', 'Costing Pending');
     case 'negotiating':
-      return {
-        label: t('shop_admin.status_negotiating', 'Negotiating'),
-        icon: 'ph ph-arrows-left-right',
-        className: 'status-negotiating',
-      };
+      return t('shop_admin.status_negotiating', 'Negotiating');
     case 'countered':
-      return {
-        label: t('shop_admin.status_countered', 'Countered'),
-        icon: 'ph ph-arrow-counter-clockwise',
-        className: 'status-negotiating',
-      };
+      return t('shop_admin.status_countered', 'Countered');
     case 'priced':
-      return {
-        label: t('shop_admin.status_priced', 'Priced'),
-        icon: 'ph ph-tag',
-        className: 'status-priced',
-      };
+      return t('shop_admin.status_priced', 'Priced');
     case 'final_offered':
-      return {
-        label: t('shop_admin.status_final_offered', 'Final Offered'),
-        icon: 'ph ph-handshake',
-        className: 'status-final-offered',
-      };
+      return t('shop_admin.status_final_offered', 'Final Offered');
     case 'confirmed':
-      return {
-        label: t('shop_admin.status_confirmed', 'Confirmed'),
-        icon: 'ph ph-check-circle',
-        className: 'status-confirmed',
-      };
+      return t('shop_admin.status_confirmed', 'Confirmed');
     case 'procuring':
-      return {
-        label: t('shop_admin.status_procuring', 'Procuring'),
-        icon: 'ph ph-package',
-        className: 'status-procuring',
-      };
+      return t('shop_admin.status_procuring', 'Procuring');
     case 'packed':
-      return {
-        label: t('shop_admin.status_packed', 'Packed'),
-        icon: 'ph ph-box-arrow-up',
-        className: 'status-ready',
-      };
+      return t('shop_admin.status_packed', 'Packed');
     case 'placed':
-      return {
-        label: t('shop_admin.status_placed', 'Placed'),
-        icon: 'ph ph-tray',
-        className: 'status-placed',
-      };
+      return t('shop_admin.status_placed', 'Placed');
     case 'fulfilled':
-      return {
-        label: t('shop_admin.status_fulfilled', 'Fulfilled'),
-        icon: 'ph ph-check-square-offset',
-        className: 'status-fulfilled',
-      };
+      return t('shop_admin.status_fulfilled', 'Fulfilled');
     case 'processing':
-      return {
-        label: t('shop_admin.status_processing', 'Processing'),
-        icon: 'ph ph-arrows-clockwise',
-        className: 'status-processing',
-      };
+      return t('shop_admin.status_processing', 'Processing');
     case 'shipped':
-      return {
-        label: t('shop_admin.status_shipped', 'Shipped'),
-        icon: 'ph ph-truck',
-        className: 'status-shipped',
-      };
+      return t('shop_admin.status_shipped', 'Shipped');
     case 'delivered':
-      return {
-        label: t('shop_admin.status_delivered', 'Delivered'),
-        icon: 'ph ph-house-line',
-        className: 'status-delivered',
-      };
+      return t('shop_admin.status_delivered', 'Delivered');
     case 'payment_received':
-      return {
-        label: t('shop_admin.status_payment_received', 'Payment Received'),
-        icon: 'ph ph-currency-dollar',
-        className: 'status-payment',
-      };
+      return t('shop_admin.status_payment_received', 'Payment Received');
     case 'cancelled':
-      return {
-        label: t('shop_admin.status_cancelled', 'Cancelled'),
-        icon: 'ph ph-x-circle',
-        className: 'status-cancelled',
-      };
+      return t('shop_admin.status_cancelled', 'Cancelled');
     case 'returned':
-      return {
-        label: t('shop_admin.status_returned', 'Returned'),
-        icon: 'ph ph-arrow-u-up-left',
-        className: 'status-returned',
-      };
+      return t('shop_admin.status_returned', 'Returned');
     default:
-      return {
-        label: (status || 'Unknown').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-        icon: 'ph ph-circle',
-        className: 'status-draft',
-      };
+      return (status || 'Unknown').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   }
 };
 </script>
 
 <style scoped>
 .orders-list-wrapper {
-  background: var(--bw-theme-surface, #ffffff);
-  border: 1px solid var(--bw-theme-border, #e2e8f0);
-  border-radius: 10px;
+  background: var(--tf-neutral-surface);
+  border: 1px solid var(--tf-neutral-border);
+  border-radius: var(--tf-radius-sm, 8px);
   overflow: hidden;
   max-height: 100%;
 }
@@ -379,188 +371,131 @@ const getStatusBadgeInfo = (status: string) => {
 }
 
 .order-list-row {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--bw-theme-border, #f1f5f9);
-  transition: all 0.15s ease-in-out;
-  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.2fr) auto;
+  column-gap: 20px;
+  row-gap: 4px;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--tf-neutral-border);
+  background: var(--tf-neutral-surface);
+  transition:
+    background-color var(--tf-dur-fast, 0.15s) ease,
+    border-color var(--tf-dur-fast, 0.15s) ease;
+}
+
+.order-list-row--with-check {
+  grid-template-columns: auto minmax(0, 1.05fr) minmax(0, 1.2fr) auto;
 }
 
 .order-list-row:last-child {
   border-bottom: none;
 }
 
-.order-list-row:hover {
-  background-color: var(--bw-theme-primary-soft, #f8fafc);
+.order-list-row:hover,
+.order-list-row:focus-within {
+  background: var(--tf-hover-bg);
 }
 
 .order-list-row:focus-visible {
-  outline: 2px solid var(--q-primary);
+  outline: 2px solid var(--tf-theme-primary, var(--q-primary));
   outline-offset: -2px;
 }
 
-/* Typography */
-.order-no {
-  font-size: 11px;
+.order-list-row__check {
+  display: flex;
+  align-items: center;
+}
+
+.order-list-row__col--identity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-list-row__col--ops {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-list-row__col--status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 108px;
+}
+
+.order-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--tf-neutral-ink, #0f172a);
+}
+
+.order-card__reference {
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.order-card__order-no {
+  font-size: 13px;
   letter-spacing: 0.02em;
+  color: var(--tf-neutral-ink, #334155);
+}
+
+.order-card__timestamp {
+  color: var(--tf-neutral-muted, #64748b);
+}
+
+.order-card__dot {
+  color: var(--tf-neutral-border-strong, #cbd5e1);
+  margin: 0 2px;
+}
+
+.order-card__ops-line {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--tf-neutral-muted, #64748b);
+}
+
+.order-card__tenant-hint {
+  font-size: 12px;
+  color: var(--tf-neutral-chrome-text, #94a3b8);
+}
+
+.order-card__actor {
+  color: var(--tf-neutral-ink, #475569);
 }
 
 .order-copy-btn {
-  opacity: 0.6;
-  transition: opacity 0.15s ease;
+  opacity: 0.55;
+  transition: opacity var(--tf-dur-fast, 0.15s) ease;
 }
 
-.order-list-row:hover .order-copy-btn {
+.order-list-row:hover .order-copy-btn,
+.order-list-row:focus-within .order-copy-btn {
   opacity: 1;
 }
 
-.order-date {
-  font-size: 11px;
-}
-
-.order-name {
-  font-size: 13.5px;
-  color: var(--bw-neutral-chrome, #0f172a);
-}
-
-/* Meta Pills */
-.meta-pill {
-  display: inline-flex;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 2px 7px;
-  border-radius: 5px;
-  background: #f1f5f9;
-  color: #334155;
-  border: 1px solid #e2e8f0;
-  line-height: 1.2;
-}
-
-.dropship-desk-btn {
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  padding: 2px 8px;
-}
-
-.dropship-desk-btn:hover {
-  background: #dbeafe;
-}
-
-/* Status Badges */
-.order-status-badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  padding: 3px 8px;
-  border-radius: 6px;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.status-draft {
-  background: #f8fafc;
-  color: #475569;
-  border: 1px solid #cbd5e1;
-}
-
-.status-submitted {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
-}
-
-.status-costing-pending {
-  background: #fff7ed;
-  color: #c2410c;
-  border: 1px solid #fed7aa;
-}
-
-.status-negotiating {
-  background: #fffbeb;
-  color: #b45309;
-  border: 1px solid #fde68a;
-}
-
-.status-priced {
-  background: #ecfeff;
-  color: #0e7490;
-  border: 1px solid #a5f3fc;
-}
-
-.status-final-offered {
-  background: #faf5ff;
-  color: #7e22ce;
-  border: 1px solid #e9d5ff;
-}
-
-.status-confirmed,
-.status-placed {
-  background: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
-}
-
-.status-procuring {
-  background: #eef2ff;
-  color: #3730a3;
-  border: 1px solid #c7d2fe;
-}
-
-.status-ready {
-  background: #f5f3ff;
-  color: #5b21b6;
-  border: 1px solid #ddd6fe;
-}
-
-.status-fulfilled {
-  background: #f0fdfa;
-  color: #0f766e;
-  border: 1px solid #99f6e4;
-}
-
-.status-processing {
-  background: #fbf7ff;
-  color: #6b21a8;
-  border: 1px solid #e9d5ff;
-}
-
-.status-shipped {
-  background: #f0f9ff;
-  color: #0369a1;
-  border: 1px solid #bae6fd;
-}
-
-.status-delivered,
-.status-payment {
-  background: #ecfdf5;
-  color: #047857;
-  border: 1px solid #a7f3d0;
-}
-
-.status-cancelled,
-.status-returned {
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
+.order-card__flags {
+  max-width: 220px;
 }
 
 /* Empty State */
 .empty-orders-state {
-  background: var(--bw-theme-surface, #ffffff);
-  border: 1px solid var(--bw-theme-border, #e2e8f0);
-  border-radius: 10px;
+  background: var(--tf-neutral-surface);
+  border: 1px solid var(--tf-neutral-border);
+  border-radius: var(--tf-radius-sm, 8px);
 }
 
 .empty-icon-wrap {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: #f1f5f9;
+  background: var(--tf-status-wait-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -570,7 +505,7 @@ const getStatusBadgeInfo = (status: string) => {
   border-radius: 8px;
   font-weight: 600;
   font-size: 12px;
-  border: 1px solid var(--bw-theme-border, #cbd5e1);
+  border: 1px solid var(--tf-neutral-border-strong);
 }
 
 .font-mono {
@@ -596,122 +531,32 @@ body.body--dark .order-list-row {
   border-color: var(--tf-neutral-border);
 }
 
-body.body--dark .order-list-row:hover {
-  background-color: rgba(255, 255, 255, 0.04);
+body.body--dark .order-card__title {
+  color: var(--tf-neutral-ink);
 }
 
-body.body--dark .empty-icon-wrap {
-  background: #262626;
+body.body--dark .order-card__ops-line,
+body.body--dark .order-card__timestamp {
+  color: var(--tf-neutral-muted);
 }
 
-body.body--dark .meta-pill {
-  background: rgba(255, 255, 255, 0.06);
-  color: #cbd5e1;
-  border-color: rgba(255, 255, 255, 0.1);
-}
+@media (max-width: 768px) {
+  .order-list-row,
+  .order-list-row--with-check {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 10px;
+  }
 
-body.body--dark .dropship-desk-btn {
-  background: rgba(59, 130, 246, 0.15);
-  color: #93c5fd;
-  border-color: rgba(59, 130, 246, 0.3);
-}
-
-body.body--dark .status-draft {
-  background: rgba(148, 163, 184, 0.12);
-  color: #cbd5e1;
-  border-color: rgba(148, 163, 184, 0.25);
-}
-
-body.body--dark .status-submitted {
-  background: rgba(59, 130, 246, 0.14);
-  color: #93c5fd;
-  border-color: rgba(59, 130, 246, 0.3);
-}
-
-body.body--dark .status-costing-pending {
-  background: rgba(249, 115, 22, 0.14);
-  color: #fdba74;
-  border-color: rgba(249, 115, 22, 0.3);
-}
-
-body.body--dark .status-negotiating {
-  background: rgba(245, 158, 11, 0.14);
-  color: #fcd34d;
-  border-color: rgba(245, 158, 11, 0.3);
-}
-
-body.body--dark .status-priced {
-  background: rgba(6, 182, 212, 0.14);
-  color: #67e8f9;
-  border-color: rgba(6, 182, 212, 0.3);
-}
-
-body.body--dark .status-final-offered {
-  background: rgba(168, 85, 247, 0.14);
-  color: #d8b4fe;
-  border-color: rgba(168, 85, 247, 0.3);
-}
-
-body.body--dark .status-confirmed,
-body.body--dark .status-placed {
-  background: rgba(34, 197, 94, 0.14);
-  color: #86efac;
-  border-color: rgba(34, 197, 94, 0.3);
-}
-
-body.body--dark .status-procuring {
-  background: rgba(99, 102, 241, 0.14);
-  color: #a5b4fc;
-  border-color: rgba(99, 102, 241, 0.3);
-}
-
-body.body--dark .status-ready {
-  background: rgba(139, 92, 246, 0.14);
-  color: #c4b5fd;
-  border-color: rgba(139, 92, 246, 0.3);
-}
-
-body.body--dark .status-fulfilled {
-  background: rgba(20, 184, 166, 0.14);
-  color: #5eead4;
-  border-color: rgba(20, 184, 166, 0.3);
-}
-
-body.body--dark .status-processing {
-  background: rgba(147, 51, 234, 0.14);
-  color: #d8b4fe;
-  border-color: rgba(147, 51, 234, 0.3);
-}
-
-body.body--dark .status-shipped {
-  background: rgba(14, 165, 233, 0.14);
-  color: #7dd3fc;
-  border-color: rgba(14, 165, 233, 0.3);
-}
-
-body.body--dark .status-delivered,
-body.body--dark .status-payment {
-  background: rgba(16, 185, 129, 0.14);
-  color: #6ee7b7;
-  border-color: rgba(16, 185, 129, 0.3);
-}
-
-body.body--dark .status-cancelled,
-body.body--dark .status-returned {
-  background: rgba(239, 68, 68, 0.14);
-  color: #fca5a5;
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
-@media (max-width: 600px) {
-  .order-list-row {
-    flex-direction: column;
+  .order-list-row__col--status {
     align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
     gap: 8px;
   }
-  .order-aside-actions {
-    width: 100%;
-    justify-content: space-between;
+
+  .order-card__flags {
+    justify-content: flex-start;
+    max-width: none;
   }
 }
 </style>

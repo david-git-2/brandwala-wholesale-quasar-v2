@@ -55,7 +55,10 @@ BEGIN
           coalesce(t.name, '')::text AS tenant_name
         FROM public.shops s
         LEFT JOIN public.tenants t ON t.id = s.tenant_id
-        WHERE (s.parent_tenant_id = p_parent_tenant_id OR s.tenant_id = p_parent_tenant_id)
+        WHERE (
+          s.tenant_id = p_parent_tenant_id
+          OR s.tenant_id IN (SELECT public.list_child_tenant_ids(p_parent_tenant_id))
+        )
           AND s.deleted_at IS NULL
         ORDER BY s.name
         LIMIT 500
@@ -96,6 +99,10 @@ BEGIN
       o.status,
       o.created_at,
       o.updated_at,
+      o.hidden_from_customer,
+      o.catalog_manual_price_entry,
+      o.placement_scope,
+      o.created_by_email,
       (SELECT count(*)::bigint FROM public.shop_order_items WHERE order_id = o.id) AS item_count,
       coalesce(t.name, '')::text AS tenant_name
     FROM public.shop_orders o
@@ -103,7 +110,13 @@ BEGIN
     JOIN public.customer_groups cg ON cg.id = o.customer_group_id
     LEFT JOIN public.tenants t ON t.id = o.tenant_id
     WHERE (
-      (v_is_parent_query AND (o.parent_tenant_id = p_parent_tenant_id OR o.tenant_id = p_parent_tenant_id))
+      (
+        v_is_parent_query
+        AND (
+          o.tenant_id = p_parent_tenant_id
+          OR o.tenant_id IN (SELECT public.list_child_tenant_ids(p_parent_tenant_id))
+        )
+      )
       OR (NOT v_is_parent_query AND o.tenant_id = p_tenant_id)
     )
       AND (p_status IS NULL OR o.status::text = p_status)

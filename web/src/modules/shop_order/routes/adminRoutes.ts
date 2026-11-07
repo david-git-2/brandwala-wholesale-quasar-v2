@@ -224,9 +224,21 @@ const adminRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
+        path: 'cancelled',
+        name: 'app-shop-orders-cancelled-page',
+        component: () => import('src/modules/shop_order/pages/CancelledShopOrdersPage.vue'),
+        beforeEnter: guard('shop_order_mgmt'),
+      },
+      {
         path: 'create',
         name: 'app-shop-order-create-page',
         component: () => import('src/modules/shop_order/pages/ManualDropshipOrderPage.vue'),
+        beforeEnter: guard('shop_order_mgmt'),
+      },
+      {
+        path: 'create-catalog',
+        name: 'app-shop-order-create-catalog-page',
+        component: () => import('src/modules/shop_order/pages/ManualCatalogOrderPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {

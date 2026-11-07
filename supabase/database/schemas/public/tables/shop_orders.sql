@@ -88,8 +88,17 @@ CREATE TABLE public.shop_orders (
   recipient_verified_at                timestamp with time zone,
   cancel_reason                        text,
   auto_gifts_applied_at                timestamp with time zone,
-  auto_gifts_apply_result              jsonb
+  auto_gifts_apply_result              jsonb,
+  hidden_from_customer                 boolean                       DEFAULT false NOT NULL,
+  catalog_manual_price_entry           boolean                       DEFAULT false NOT NULL,
+  placement_scope                      text                          DEFAULT 'shop'::text NOT NULL
 );
+
+COMMENT ON COLUMN public.shop_orders.hidden_from_customer IS 'When true, order is omitted from customer storefront lists and detail (staff-recorded / backfill).';
+
+COMMENT ON COLUMN public.shop_orders.catalog_manual_price_entry IS 'True when staff backfilled catalog order with manually entered customer sell prices (old-order create tab).';
+
+COMMENT ON COLUMN public.shop_orders.placement_scope IS 'shop = customer storefront cart checkout; app = tenant staff manual create on behalf of customer group.';
 
 CREATE UNIQUE INDEX shop_orders_order_no_unique_idx ON public.shop_orders (tenant_id, order_no);
 
@@ -160,6 +169,9 @@ ALTER TABLE public.shop_orders
 ALTER TABLE public.shop_orders
   ADD CONSTRAINT shop_orders_payout_settlement_status_check
     CHECK (payout_settlement_status IS NULL OR (payout_settlement_status = ANY (ARRAY['unpaid'::text, 'partial'::text, 'paid'::text])));
+
+ALTER TABLE public.shop_orders
+  ADD CONSTRAINT shop_orders_placement_scope_check CHECK (placement_scope = ANY (ARRAY['shop'::text, 'app'::text]));
 
 ALTER TABLE public.shop_orders
   ADD CONSTRAINT shop_orders_pkey PRIMARY KEY (id);

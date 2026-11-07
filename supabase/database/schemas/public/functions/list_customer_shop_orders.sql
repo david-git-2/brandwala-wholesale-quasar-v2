@@ -19,7 +19,9 @@ CREATE FUNCTION public.list_customer_shop_orders (
     sell_currency_id       bigint,
     currency_symbol        text,
     total_amount           numeric,
-    created_at             timestamp with time zone
+    created_at             timestamp with time zone,
+    placement_scope        text,
+    created_by_email       text
   )
   LANGUAGE plpgsql
   STABLE
@@ -100,7 +102,9 @@ BEGIN
         )::numeric
       ELSE NULL
     END AS total_amount,
-    o.created_at
+    o.created_at,
+    o.placement_scope,
+    o.created_by_email
   FROM public.shop_orders o
   JOIN public.shops s ON s.id = o.shop_id
   LEFT JOIN public.shop_carts c ON c.id = o.cart_id
@@ -112,6 +116,7 @@ BEGIN
   LEFT JOIN public.global_currencies gc ON gc.id = s.sell_currency_id
   WHERE o.tenant_id = p_tenant_id
     AND o.customer_group_id = v_group_id
+    AND NOT o.hidden_from_customer
     AND o.status IS DISTINCT FROM 'draft'
     AND (
       p_status_bucket IS NULL

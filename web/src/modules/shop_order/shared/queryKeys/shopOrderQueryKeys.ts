@@ -46,6 +46,13 @@ export const shopOrderQueryKeys = {
     customerGroupId: number,
     search: string,
   ) => ['shopOrder', 'staffManualDropshipBrowse', { tenantId, shopId, customerGroupId, search }] as const,
+  staffManualCatalogBrowse: (
+    tenantId: number,
+    shopId: number,
+    search: string,
+    shopScopeKey = '',
+  ) =>
+    ['shopOrder', 'staffManualCatalogBrowse', { tenantId, shopId, search, shopScopeKey }] as const,
   shopCustomerAccessPage: (tenantId: number, shopId: number) =>
     ['shopOrder', 'shopCustomerAccessPage', { tenantId, shopId }] as const,
   shopCustomerAccessPageRoot: () => ['shopOrder', 'shopCustomerAccessPage'] as const,

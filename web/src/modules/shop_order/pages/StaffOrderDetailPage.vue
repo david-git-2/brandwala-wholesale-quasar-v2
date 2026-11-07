@@ -183,7 +183,9 @@
       :bills-parent-tenant-id="deliveryPaperParentTenantId"
       :show-delivery-papers="canShowDeliveryPapers"
       :allow-create-delivery-paper="canCreateDeliveryPaper"
+      :hidden-from-customer-saving="isUpdatingHiddenFromCustomer"
       @download-excel="handleCatalogDownloadExcel"
+      @update-hidden-from-customer="onCatalogHiddenFromCustomerChange"
       @override-status="onCatalogSettingsOverrideStatus"
       @cancel-order="onCatalogSettingsCancelOrder"
       @update-status="onCatalogWorkflowStatusClick"
@@ -222,6 +224,7 @@ import {
 } from '../composables/useShopOrderMutations';
 import {
   useSaveCatalogRatesMutation,
+  useUpdateShopOrderHiddenFromCustomerMutation,
   useUpdateCatalogOrderItemMutation,
   useBulkUpdateCatalogOrderItemsMutation,
   useStaffPriceCatalogOrderMutation,
@@ -369,6 +372,17 @@ const { mutate: processDropshipOrder, isPending: isProcessingDropship } = usePro
 
 // Catalog Specific Mutations
 const { mutate: saveCatalogRates, isPending: isSavingRates } = useSaveCatalogRatesMutation();
+const { mutate: updateHiddenFromCustomer, isPending: isUpdatingHiddenFromCustomer } =
+  useUpdateShopOrderHiddenFromCustomerMutation();
+
+const onCatalogHiddenFromCustomerChange = (hidden: boolean) => {
+  if (!currentOrder.value) return;
+  updateHiddenFromCustomer({
+    tenantId: currentOrder.value.tenant_id,
+    orderId: currentOrder.value.id,
+    hiddenFromCustomer: hidden,
+  });
+};
 const { mutate: updateCatalogOrderItem } = useUpdateCatalogOrderItemMutation();
 const { mutateAsync: bulkUpdateCatalogOrderItems } = useBulkUpdateCatalogOrderItemsMutation();
 const { mutate: staffPriceCatalog, isPending: isStaffPricingCatalog } = useStaffPriceCatalogOrderMutation();
@@ -1095,8 +1109,10 @@ const addToDropshipDesk = () => {
 const confirmDeleteOrder = () => {
   $q.dialog({
     title: t('shop_admin.delete_order'),
-    message:
-      'Are you sure you want to delete this order? This action is permanent and cannot be undone.',
+    message: t(
+      'shop_admin.delete_cancelled_order_confirm',
+      'This cancelled order will be permanently removed. This cannot be undone.',
+    ),
     persistent: true,
     ok: {
       label: t('shop_admin.delete'),

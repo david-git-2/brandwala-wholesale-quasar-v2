@@ -196,7 +196,7 @@ BEGIN
     shop_type_snapshot, order_mode_snapshot, is_negotiable_snapshot, status, negotiate_round,
     recipient_name, recipient_phone, recipient_phone_secondary,
     shipping_address, shipping_district, shipping_thana,
-    recipient_profile_id, profile_id, created_by_email,
+    recipient_profile_id, profile_id, created_by_email, placement_scope,
     cod_charge_amount, delivery_charge_amount, print_charge_amount, packing_charge_amount, discount_amount,
     is_prepaid_snapshot, delivery_instructions, deduct_charges_from_margin,
     deduct_cod_from_margin, deduct_delivery_from_margin, deduct_print_from_margin, deduct_packing_from_margin
@@ -209,7 +209,7 @@ BEGIN
     nullif(trim(coalesce(p_shipping_address, '')), ''),
     nullif(trim(coalesce(p_shipping_district, '')), ''),
     nullif(trim(coalesce(p_shipping_thana, '')), ''),
-    v_recipient_profile_id, v_profile_id, public.current_user_email(),
+    v_recipient_profile_id, v_profile_id, public.current_user_email(), 'app',
     coalesce(p_cod_charge_amount, 0), coalesce(p_delivery_charge_amount, 0),
     coalesce(p_print_charge_amount, 0), coalesce(p_packing_charge_amount, 0), coalesce(p_discount_amount, 0),
     coalesce(p_is_prepaid, false), nullif(trim(coalesce(p_delivery_instructions, '')), ''),

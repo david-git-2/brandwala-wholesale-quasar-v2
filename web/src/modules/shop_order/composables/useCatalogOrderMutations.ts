@@ -282,3 +282,26 @@ export function useBulkUpdateCatalogOrderItemsMutation() {
     },
   });
 }
+
+export function useUpdateShopOrderHiddenFromCustomerMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      tenantId,
+      orderId,
+      hiddenFromCustomer,
+    }: {
+      tenantId: number;
+      orderId: number;
+      hiddenFromCustomer: boolean;
+    }) => shopOrderRepository.updateOrderHiddenFromCustomer(tenantId, orderId, hiddenFromCustomer),
+    onSuccess: (data, variables) => {
+      applyStaffOrderDetailToCache(queryClient, variables.tenantId, variables.orderId, data);
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.staffOrdersPageRoot() });
+    },
+    onError: (err: unknown) => {
+      handleApiFailure(err, 'Failed to update customer visibility');
+    },
+  });
+}

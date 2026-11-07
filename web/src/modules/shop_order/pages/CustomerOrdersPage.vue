@@ -132,6 +132,8 @@ const listRows = computed(() =>
     created_at: order.created_at,
     shop_type_snapshot: order.shop_type_snapshot,
     is_negotiable_snapshot: order.is_negotiable_snapshot,
+    placement_scope: order.placement_scope,
+    created_by_email: order.created_by_email,
   })),
 );
 

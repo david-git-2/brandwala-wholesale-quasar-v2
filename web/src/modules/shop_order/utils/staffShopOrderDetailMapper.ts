@@ -99,6 +99,10 @@ export function mapStaffShopOrderDetailToFlat(
     item_count: totals.item_count,
     total_amount: totals.amount,
     collection_source: o.collection_source,
+    hidden_from_customer: o.hidden_from_customer ?? false,
+    catalog_manual_price_entry: o.catalog_manual_price_entry ?? false,
+    placement_scope:
+      o.placement_scope === 'app' || o.placement_scope === 'shop' ? o.placement_scope : undefined,
     cod_collect_amount: (payout.cod_collect_amount as number | null) ?? null,
     courier_name: (courier.name as string | null) ?? null,
     courier_awb_number: (courier.awb_number as string | null) ?? null,

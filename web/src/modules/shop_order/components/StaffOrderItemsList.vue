@@ -198,7 +198,7 @@ function toggleSelectAll(val: boolean) {
     <div class="q-mt-md row items-center justify-between">
       <div>
         <q-btn
-          v-if="order.status !== 'fulfilled'"
+          v-if="order.status === 'cancelled'"
           outline
           color="negative"
           no-caps

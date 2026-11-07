@@ -17,6 +17,14 @@
             :is-negotiable="!!order.is_negotiable_snapshot"
             :shop-type="order.shop_type_snapshot"
           />
+          <q-badge
+            v-if="order.catalog_manual_price_entry"
+            outline
+            color="grey-7"
+            class="text-caption q-px-xs"
+          >
+            {{ $t('shop_admin.catalog_manual_price_entry', 'Manual prices') }}
+          </q-badge>
         </div>
 
         <CatalogOrderRatesBar

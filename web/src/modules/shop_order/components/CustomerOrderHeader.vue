@@ -58,6 +58,7 @@ import {
 } from '../utils/catalogOrderStatus';
 import CatalogOrderProgressBar from './CatalogOrderProgressBar.vue';
 import OrderPricingModeBadge from './OrderPricingModeBadge.vue';
+import { orderPlacementCaption } from '../utils/orderPlacementCaption';
 
 const props = defineProps<{
   order: any;
@@ -80,6 +81,14 @@ const metaLine = computed(() => {
   }
   if (props.order?.shop_type_snapshot) {
     parts.push(t(customerShopTypeI18nKey(props.order.shop_type_snapshot)));
+  }
+  const placement = orderPlacementCaption(
+    t,
+    props.order?.placement_scope,
+    props.order?.created_by_email,
+  );
+  if (placement) {
+    parts.push(placement);
   }
   return parts.join(' · ');
 });

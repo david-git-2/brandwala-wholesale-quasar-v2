@@ -50,6 +50,10 @@ begin
     raise exception 'order not found';
   end if;
 
+  if v_order.hidden_from_customer then
+    raise exception 'order not found';
+  end if;
+
   select
     s.name,
     s.slug,
@@ -238,7 +242,9 @@ begin
       'payout_settlement_status', v_order.payout_settlement_status,
       'cancel_reason', v_order.cancel_reason,
       'recipient_call_attempt_count', coalesce(v_order.recipient_call_attempt_count, 0),
-      'recipient_verified_at', v_order.recipient_verified_at
+      'recipient_verified_at', v_order.recipient_verified_at,
+      'placement_scope', v_order.placement_scope,
+      'created_by_email', v_order.created_by_email
     );
 
   return jsonb_build_object(

@@ -204,6 +204,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: row;
   max-width: 96vw;
+  overflow: hidden;
   border: 1px solid var(--tf-theme-border, #e2e8f0);
   box-shadow: -8px 0 32px rgba(15, 23, 42, 0.12);
   pointer-events: auto;
@@ -224,30 +225,14 @@ onUnmounted(() => {
 }
 
 .app-resizable-overlay-panel__resize {
-  flex: 0 0 10px;
-  width: 10px;
+  flex: 0 0 12px;
+  width: 12px;
   cursor: col-resize;
   touch-action: none;
-  background: transparent;
   position: relative;
   z-index: 1;
-}
-
-.app-resizable-overlay-panel__resize::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 4px;
-  width: 2px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--tf-theme-border, #e2e8f0) 70%, transparent);
-  transition: background-color 0.15s ease;
-}
-
-.app-resizable-overlay-panel__resize:hover::after,
-.app-resizable-overlay-panel__resize:active::after {
-  background: var(--q-primary, #059669);
+  border-right: 1px solid var(--tf-neutral-border);
+  background: color-mix(in srgb, var(--tf-neutral-muted) 5%, var(--tf-neutral-surface));
 }
 
 .app-resizable-overlay-panel__anchor {
@@ -281,6 +266,11 @@ onUnmounted(() => {
     transparent 2px,
     transparent 5px
   );
+}
+
+.app-resizable-overlay-panel__resize:hover,
+.app-resizable-overlay-panel__resize:active {
+  border-right-color: color-mix(in srgb, var(--q-primary, #059669) 35%, var(--tf-neutral-border));
 }
 
 .app-resizable-overlay-panel__resize:hover .app-resizable-overlay-panel__anchor,

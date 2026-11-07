@@ -445,6 +445,8 @@ export type ShopOrderStatus =
   | 'payment_received'
   | 'reseller_paid';
 
+export type ShopOrderPlacementScope = 'shop' | 'app';
+
 export interface CustomerOrderListItem {
   id: number;
   shop_id: number;
@@ -461,6 +463,8 @@ export interface CustomerOrderListItem {
   total_amount: number | null;
   currency_symbol: string | null;
   created_at: string;
+  placement_scope?: ShopOrderPlacementScope;
+  created_by_email?: string;
 }
 
 export interface CustomerOrderDetailOrder {
@@ -525,6 +529,8 @@ export interface CustomerOrderDetailOrder {
   cancel_reason?: string | null;
   recipient_call_attempt_count?: number;
   recipient_verified_at?: string | null;
+  placement_scope?: ShopOrderPlacementScope;
+  created_by_email?: string;
 }
 
 export interface CustomerOrderDetail {
@@ -613,6 +619,9 @@ export interface ShopOrder {
   deduct_print_from_margin?: boolean;
   deduct_packing_from_margin?: boolean;
   item_count?: number;
+  hidden_from_customer?: boolean;
+  catalog_manual_price_entry?: boolean;
+  placement_scope?: ShopOrderPlacementScope;
   total_amount?: number;
   cod_collect_amount?: number | null;
   courier_name?: string | null;

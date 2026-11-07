@@ -7,7 +7,7 @@ CREATE FUNCTION public.delete_shop_order (
   SET search_path TO 'public'
   AS $function$
 declare
-  v_order public.shop_orders;
+  v_order public.shop_orders%rowtype;
   v_item record;
   v_allocation_id bigint;
   v_stock_id bigint;
@@ -21,12 +21,12 @@ begin
     raise exception 'Order not found';
   end if;
 
-  if not public.is_tenant_staff(v_order.tenant_id) and not (v_order.parent_tenant_id is not null and public.is_tenant_staff(v_order.parent_tenant_id)) then
+  if not public.is_tenant_staff(v_order.tenant_id) then
     raise exception 'Access denied';
   end if;
 
-  if v_order.status = 'fulfilled' then
-    raise exception 'Cannot delete a fulfilled order';
+  if v_order.status <> 'cancelled'::public.shop_order_status then
+    raise exception 'Only cancelled orders can be deleted';
   end if;
 
   if exists (
@@ -38,6 +38,17 @@ begin
   end if;
 
   perform public.purge_shop_order_financial_artifacts(p_order_id);
+
+  delete from public.preorder_demand
+  where source_type = 'shop_order_item'::public.preorder_demand_source_type
+    and source_id in (
+      select i.id
+      from public.shop_order_items i
+      where i.order_id = p_order_id
+    );
+
+  delete from public.customer_order_backlog_items
+  where order_id = p_order_id;
 
   for v_item in select * from public.shop_order_items where order_id = p_order_id loop
     v_allocation_id := v_item.global_stock_allocation_id;

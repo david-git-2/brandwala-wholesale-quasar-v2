@@ -16,6 +16,8 @@
         @apply-search="applySearch"
         @refresh="refresh()"
         @create-dropship="goCreateDropshipOrder"
+        @create-catalog="goCreateCatalogOrder"
+        @open-cancelled-delete="goCancelledOrdersDeletePage"
       />
 
       <div class="col" style="min-height: 0">
@@ -134,6 +136,11 @@ const isDropshipShop = (shopId: number) => {
 
 const { mutateAsync: processDropship, isPending: isProcessingDropship } = useProcessDropshipOrderMutation();
 
+const goCancelledOrdersDeletePage = () => {
+  const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
+  void router.push(`${slug}/app/shop/orders/cancelled`);
+};
+
 const goToOrderDetails = (orderId: number) => {
   const order = orders.value.find((o) => o.id === orderId);
   const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
@@ -148,6 +155,11 @@ const goToOrderDetails = (orderId: number) => {
 const goCreateDropshipOrder = () => {
   const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
   void router.push(`${slug}/app/shop/orders/create`);
+};
+
+const goCreateCatalogOrder = () => {
+  const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
+  void router.push(`${slug}/app/shop/orders/create-catalog`);
 };
 
 const addToDropshipDesk = async (orderId: number) => {
