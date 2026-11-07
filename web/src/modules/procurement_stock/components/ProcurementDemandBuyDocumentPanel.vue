@@ -46,6 +46,50 @@
             <q-icon name="ph ph-magnifying-glass" />
           </template>
         </q-input>
+
+        <div
+          class="row items-center no-wrap q-gutter-x-sm q-mt-sm demand-bulk-bar"
+        >
+          <q-checkbox
+            dense
+            :model-value="allVisibleLinesSelected"
+            :indeterminate="someVisibleLinesSelected && !allVisibleLinesSelected"
+            label="All loaded lines"
+            class="demand-bulk-bar__select-all"
+            @update:model-value="onToggleSelectAllLines"
+          />
+          <span v-if="selectedLineCount > 0" class="text-caption text-grey-7 col-shrink">
+            {{ selectedLineCount }} selected
+          </span>
+          <q-select
+            v-model="bulkVendorCode"
+            :options="bulkVendorCodeOptions"
+            option-value="code"
+            option-label="label"
+            emit-value
+            map-options
+            outlined
+            dense
+            options-dense
+            hide-bottom-space
+            clearable
+            use-input
+            input-debounce="200"
+            placeholder="Vendor"
+            class="demand-bulk-bar__vendor min-width-0"
+            @filter="onBulkFilterVendors"
+          />
+          <q-btn
+            unelevated
+            no-caps
+            dense
+            color="primary"
+            label="Bulk update"
+            class="col-shrink"
+            :disable="!bulkVendorCode?.trim() || selectedLineCount === 0"
+            @click="applyBulkVendor"
+          />
+        </div>
       </q-card>
 
       <div class="col scroll-y-min">
@@ -60,9 +104,11 @@
           :items="detailItems"
           :line-drafts="lineDrafts"
           :vendor-code-options="vendorCodeOptions"
+          :selected-line-keys="selectedLineKeys"
           :is-fetching-next-page="detailQuery.isFetchingNextPage.value"
           @filter-vendors="filterVendors"
           @update-draft="onUpdateLineDraft"
+          @toggle-line-select="onToggleLineSelect"
           @load-more="onLoadMoreItems"
         />
       </div>
@@ -164,6 +210,10 @@ const pageTitle = computed(() => {
 const lineDrafts = reactive<Record<string, DemandBuyLineDraft>>({});
 const baselineByLine = reactive<Record<string, string>>({});
 
+const selectedLineKeys = reactive<Record<string, boolean>>({});
+const bulkVendorFilter = ref('');
+const bulkVendorCode = ref<string | null>(null);
+
 const vendorFilter = ref('');
 const { data: vendorsData } = useQuery({
   queryKey: computed(() => ['vendors', 'demandBuyDoc', parentTenantId.value]),
@@ -190,6 +240,80 @@ const filterVendors = (val: string, update: (fn: () => void) => void) => {
   });
 };
 
+const bulkVendorCodeOptions = computed(() => {
+  const needle = bulkVendorFilter.value.trim().toLowerCase();
+  return ((vendorsData.value ?? []) as Vendor[])
+    .filter((v) => {
+      if (!needle) return true;
+      return v.name.toLowerCase().includes(needle) || v.code.toLowerCase().includes(needle);
+    })
+    .map((v) => ({
+      code: v.code.trim(),
+      label: v.code.trim() || v.name,
+    }));
+});
+
+const onBulkFilterVendors = (val: string, update: (fn: () => void) => void) => {
+  update(() => {
+    bulkVendorFilter.value = val;
+  });
+};
+
+const visibleLineKeys = computed(() => detailItems.value.map((i) => itemDraftKey(i)));
+
+const allVisibleLinesSelected = computed(() => {
+  const keys = visibleLineKeys.value;
+  return keys.length > 0 && keys.every((k) => selectedLineKeys[k]);
+});
+
+const someVisibleLinesSelected = computed(() =>
+  visibleLineKeys.value.some((k) => selectedLineKeys[k]),
+);
+
+const selectedLineCount = computed(
+  () => visibleLineKeys.value.filter((k) => selectedLineKeys[k]).length,
+);
+
+const onToggleSelectAllLines = (val: boolean) => {
+  for (const key of visibleLineKeys.value) {
+    if (val) selectedLineKeys[key] = true;
+    else delete selectedLineKeys[key];
+  }
+};
+
+const onToggleLineSelect = (item: ProcurementDemandItem, selected: boolean) => {
+  const key = itemDraftKey(item);
+  if (selected) selectedLineKeys[key] = true;
+  else delete selectedLineKeys[key];
+};
+
+const lineNeedQty = (item: ProcurementDemandItem) =>
+  item.need_quantity ?? item.quantity ?? 0;
+
+const applyBulkVendor = () => {
+  const code = bulkVendorCode.value?.trim();
+  if (!code) {
+    showErrorNotification('Choose a vendor.');
+    return;
+  }
+  const keys = visibleLineKeys.value.filter((k) => selectedLineKeys[k]);
+  if (keys.length === 0) {
+    showErrorNotification('Select at least one line.');
+    return;
+  }
+  const keySet = new Set(keys);
+  for (const item of detailItems.value) {
+    const key = itemDraftKey(item);
+    if (!keySet.has(key)) continue;
+    const need = lineNeedQty(item);
+    if (need <= 0) continue;
+    lineDrafts[key] = cloneLineDraft({
+      placements: [{ vendorCode: code, quantity: need }],
+    });
+  }
+  showSuccessNotification(`Vendor set on ${keys.length} line(s). Save to persist.`);
+};
+
 const syncDraftsFromItems = (items: ProcurementDemandItem[]) => {
   for (const item of items) {
     const key = itemDraftKey(item);
@@ -205,6 +329,8 @@ watch(detailItems, (items) => syncDraftsFromItems(items), { immediate: true });
 watch([documentType, documentId], () => {
   for (const key of Object.keys(lineDrafts)) delete lineDrafts[key];
   for (const key of Object.keys(baselineByLine)) delete baselineByLine[key];
+  for (const key of Object.keys(selectedLineKeys)) delete selectedLineKeys[key];
+  bulkVendorCode.value = null;
 });
 
 const documentDirty = computed(() =>
@@ -328,3 +454,17 @@ const breadcrumbItems = computed(() => {
 watch(breadcrumbItems, (items) => setCustomBreadcrumbs(items), { immediate: true });
 onBeforeUnmount(() => clearCustomBreadcrumbs());
 </script>
+
+<style scoped lang="scss">
+.demand-bulk-bar {
+  flex-wrap: wrap;
+}
+.demand-bulk-bar__select-all {
+  flex: 0 0 auto;
+}
+.demand-bulk-bar__vendor {
+  flex: 1 1 160px;
+  min-width: 140px;
+  max-width: 220px;
+}
+</style>

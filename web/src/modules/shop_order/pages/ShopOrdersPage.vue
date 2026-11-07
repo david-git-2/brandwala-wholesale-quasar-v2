@@ -5,10 +5,13 @@
     <div v-else class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
       <ShopOrdersFilters
         v-model:selected-shop-id="selectedShopId"
+        v-model:selected-profile-id="selectedProfileId"
         v-model:search="searchInput"
         v-model:status-filter="statusFilter"
         :shops="shops"
+        :profiles="customerProfiles"
         :shops-loading="isLoadingShops"
+        :profiles-loading="isLoadingProfiles"
         :refreshing="isRefreshing"
         @apply-search="applySearch"
         @refresh="refresh()"
@@ -39,6 +42,7 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useCustomerProfiles } from 'src/modules/sales_invoice/composables/useCustomerProfiles';
 import { useShopOrdersStaffPageQuery } from '../composables/useShopOrdersStaffPageQuery';
 import { useProcessDropshipOrderMutation } from '../composables/useShopOrderMutations';
 import ShopOrdersFilters from '../components/ShopOrdersFilters.vue';
@@ -60,6 +64,9 @@ const isParentTenant = computed(() => {
 });
 
 const selectedShopId = ref<number | null>(null);
+const selectedProfileId = ref<number | null>(null);
+
+const { profiles: customerProfiles, isLoading: isLoadingProfiles } = useCustomerProfiles(parentTenantId);
 
 const searchInput = ref('');
 const appliedSearch = ref('');
@@ -73,7 +80,8 @@ const isFiltered = computed(() => {
   return Boolean(
     appliedSearch.value ||
       statusFilter.value ||
-      selectedShopId.value !== null,
+      selectedShopId.value !== null ||
+      selectedProfileId.value !== null,
   );
 });
 
@@ -82,6 +90,7 @@ const clearAllFilters = () => {
   appliedSearch.value = '';
   statusFilter.value = null;
   selectedShopId.value = null;
+  selectedProfileId.value = null;
 };
 
 const pageParams = computed(() => ({
@@ -90,6 +99,7 @@ const pageParams = computed(() => ({
   search: appliedSearch.value || null,
   status: statusFilter.value || null,
   shopId: selectedShopId.value || null,
+  profileId: selectedProfileId.value || null,
 }));
 
 const {

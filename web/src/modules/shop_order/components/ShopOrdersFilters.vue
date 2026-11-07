@@ -51,6 +51,40 @@
         </q-select>
 
         <q-select
+          :model-value="selectedProfileId"
+          dense
+          outlined
+          rounded
+          emit-value
+          map-options
+          use-input
+          input-debounce="200"
+          :label="$t('shop_admin.filter_by_profile', 'Profile')"
+          :options="filteredProfileOptions"
+          :loading="profilesLoading"
+          style="min-width: 190px"
+          class="col-grow col-sm-auto"
+          data-test="shop-orders-profile-filter"
+          @filter="filterProfiles"
+          @update:model-value="(val) => emit('update:selectedProfileId', val)"
+        >
+          <template #prepend>
+            <q-icon name="ph ph-user" size="16px" class="text-grey-6" />
+          </template>
+          <template #no-option>
+            <q-item>
+              <q-item-section class="text-grey-6">
+                {{
+                  profilesLoading
+                    ? $t('shop_admin.loading_orders')
+                    : $t('shop_admin.no_profiles_found', 'No profiles found')
+                }}
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+
+        <q-select
           :model-value="statusFilter"
           dense
           outlined
@@ -100,14 +134,18 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import TfBtn from 'src/components/ui/TfBtn.vue';
+import type { CustomerProfile } from 'src/modules/sales_invoice/repositories/customerProfileRepository';
 import type { StaffOrdersPageShop } from '../types';
 
 const props = defineProps<{
   shops: StaffOrdersPageShop[];
+  profiles: CustomerProfile[];
   selectedShopId: number | null;
+  selectedProfileId: number | null;
   search: string;
   statusFilter: string | null;
   shopsLoading?: boolean;
+  profilesLoading?: boolean;
   refreshing?: boolean;
 }>();
 
@@ -116,6 +154,7 @@ const emit = defineEmits<{
   (e: 'create-dropship'): void;
   (e: 'apply-search'): void;
   (e: 'update:selectedShopId', value: number | null): void;
+  (e: 'update:selectedProfileId', value: number | null): void;
   (e: 'update:search', value: string): void;
   (e: 'update:statusFilter', value: string | null): void;
 }>();
@@ -131,6 +170,15 @@ const onSearchInput = (val: string | number | null) => {
 const { t } = useI18n();
 
 const shopSearch = ref('');
+const profileSearch = ref('');
+
+const formatProfileLabel = (profile: CustomerProfile) => {
+  const name = (profile.name || '').trim() || `Profile #${profile.id}`;
+  const phone = (profile.phone || '').trim();
+  const email = (profile.email || '').trim();
+  const secondary = phone || email;
+  return secondary ? `${name} (${secondary})` : name;
+};
 
 const statusOptions = computed(() => [
   { label: t('shop_admin.all_statuses'), value: null },
@@ -181,6 +229,37 @@ const filteredShopOptions = computed(() => {
 const filterShops = (val: string, update: (cb: () => void) => void) => {
   update(() => {
     shopSearch.value = val;
+  });
+};
+
+const allProfilesOption = computed(() => ({
+  label: t('shop_admin.all_profiles', 'All profiles'),
+  value: null as number | null,
+}));
+
+const profileOptions = computed(() => [
+  allProfilesOption.value,
+  ...props.profiles.map((profile) => ({
+    label: formatProfileLabel(profile),
+    value: profile.id,
+  })),
+]);
+
+const filteredProfileOptions = computed(() => {
+  const needle = profileSearch.value.trim().toLowerCase();
+  if (!needle) {
+    return profileOptions.value;
+  }
+  const matchesAll = allProfilesOption.value.label.toLowerCase().includes(needle);
+  const profileMatches = profileOptions.value
+    .slice(1)
+    .filter((opt) => opt.label.toLowerCase().includes(needle));
+  return matchesAll ? [allProfilesOption.value, ...profileMatches] : profileMatches;
+});
+
+const filterProfiles = (val: string, update: (cb: () => void) => void) => {
+  update(() => {
+    profileSearch.value = val;
   });
 };
 </script>

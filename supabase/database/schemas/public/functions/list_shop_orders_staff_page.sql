@@ -6,6 +6,7 @@ CREATE FUNCTION public.list_shop_orders_staff_page (
   p_status            text                     DEFAULT NULL::text,
   p_shop_id           bigint                   DEFAULT NULL::bigint,
   p_shop_type         text                     DEFAULT NULL::text,
+  p_profile_id        bigint                   DEFAULT NULL::bigint,
   p_cursor_created_at timestamp with time zone DEFAULT NULL::timestamp WITH time zone,
   p_cursor_id         bigint                   DEFAULT NULL::bigint
 )
@@ -108,6 +109,7 @@ BEGIN
       AND (p_status IS NULL OR o.status::text = p_status)
       AND (p_shop_id IS NULL OR o.shop_id = p_shop_id)
       AND (p_shop_type IS NULL OR s.shop_type::text = p_shop_type)
+      AND (p_profile_id IS NULL OR o.profile_id = p_profile_id)
       AND (
         p_search IS NULL
         OR o.order_no ILIKE ('%' || p_search || '%')
@@ -154,8 +156,8 @@ BEGIN
 END;
 $function$;
 
-GRANT ALL ON FUNCTION public.list_shop_orders_staff_page(bigint, bigint, integer, text, text, bigint, text, timestamp WITH time zone, bigint) TO anon;
+GRANT ALL ON FUNCTION public.list_shop_orders_staff_page(bigint, bigint, integer, text, text, bigint, text, bigint, timestamp WITH time zone, bigint) TO anon;
 
-GRANT ALL ON FUNCTION public.list_shop_orders_staff_page(bigint, bigint, integer, text, text, bigint, text, timestamp WITH time zone, bigint) TO authenticated;
+GRANT ALL ON FUNCTION public.list_shop_orders_staff_page(bigint, bigint, integer, text, text, bigint, text, bigint, timestamp WITH time zone, bigint) TO authenticated;
 
-GRANT ALL ON FUNCTION public.list_shop_orders_staff_page(bigint, bigint, integer, text, text, bigint, text, timestamp WITH time zone, bigint) TO service_role;
+GRANT ALL ON FUNCTION public.list_shop_orders_staff_page(bigint, bigint, integer, text, text, bigint, text, bigint, timestamp WITH time zone, bigint) TO service_role;

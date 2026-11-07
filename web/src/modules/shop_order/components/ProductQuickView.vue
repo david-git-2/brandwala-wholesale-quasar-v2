@@ -45,7 +45,6 @@
             </q-carousel>
             <div v-else class="column flex-center product-media-placeholder py-xl" style="height: 280px">
               <q-icon name="ph ph-image-square" size="48px" color="grey-4" />
-              <div class="text-caption text-grey-5 q-mt-xs">{{ $t('shop.no_image_available') }}</div>
             </div>
           </div>
 

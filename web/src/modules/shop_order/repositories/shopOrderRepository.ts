@@ -560,6 +560,7 @@ const listShopOrdersStaffPage = async (
     status?: string | null;
     shopId?: number | null;
     shopType?: string | null;
+    profileId?: number | null;
     cursor?: { created_at: string; id: number } | null;
   } = {},
 ): Promise<StaffOrdersStaffPageResult> => {
@@ -570,6 +571,7 @@ const listShopOrdersStaffPage = async (
     p_status: opts.status ?? null,
     p_shop_id: opts.shopId ?? null,
     p_shop_type: opts.shopType ?? null,
+    p_profile_id: opts.profileId ?? null,
     p_cursor_created_at: opts.cursor?.created_at ?? null,
     p_cursor_id: opts.cursor?.id ?? null,
   });

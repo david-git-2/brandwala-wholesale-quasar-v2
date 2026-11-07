@@ -37,10 +37,7 @@
                   />
                 </div>
                 <div v-else class="flex flex-center text-grey-6" style="height: 200px">
-                  <div class="column items-center">
-                    <q-icon name="ph ph-image" size="48px" />
-                    <div class="text-caption q-mt-sm">No Image Preview</div>
-                  </div>
+                  <q-icon name="ph ph-image-square" size="48px" color="grey-5" />
                 </div>
               </div>
 

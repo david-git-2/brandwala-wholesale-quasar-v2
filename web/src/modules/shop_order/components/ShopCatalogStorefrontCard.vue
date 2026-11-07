@@ -12,9 +12,6 @@
       </div>
       <div v-else class="catalog-storefront-card__image-fallback column items-center justify-center">
         <q-icon name="ph ph-image-square" size="32px" color="grey-5" />
-        <span class="text-caption text-grey-6 q-mt-xs">
-          {{ $t('shop_admin.storefront_product_no_image') }}
-        </span>
       </div>
     </div>
 

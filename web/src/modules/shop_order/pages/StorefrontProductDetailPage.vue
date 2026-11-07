@@ -30,7 +30,6 @@
               />
               <div v-else class="product-detail__image-fallback column flex-center">
                 <q-icon name="ph ph-image-square" size="48px" color="grey-4" />
-                <span class="text-caption text-grey-6 q-mt-xs">{{ $t('shop.no_image_available') }}</span>
               </div>
             </div>
           </div>

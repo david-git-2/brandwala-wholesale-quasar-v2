@@ -16,10 +16,7 @@
               />
             </div>
             <div v-else class="flex flex-center text-grey-6" style="height: 160px">
-              <div class="column items-center">
-                <q-icon name="ph ph-image" size="40px" />
-                <div class="text-caption q-mt-sm">{{ $t('shop_admin.storefront_product_no_image') }}</div>
-              </div>
+              <q-icon name="ph ph-image-square" size="40px" color="grey-5" />
             </div>
           </div>
 

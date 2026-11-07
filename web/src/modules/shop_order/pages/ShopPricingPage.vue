@@ -1394,9 +1394,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9e9e9e;
-  font-size: 11px;
   border: 1px dashed #bdbdbd;
+}
+
+.table-image-box :deep(.table-image-placeholder-1inch .smart-image__fallback-icon) {
+  font-size: 28px;
 }
 
 .col-name {

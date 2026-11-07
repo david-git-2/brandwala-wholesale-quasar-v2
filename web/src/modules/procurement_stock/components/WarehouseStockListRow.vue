@@ -179,8 +179,9 @@ const emit = defineEmits<{
 }
 
 .warehouse-list-thumb :deep(.smart-image__fallback) {
-  font-size: 10px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 2px;
 }
 

@@ -36,8 +36,7 @@
                   style="max-width: 100%; max-height: 100%; object-fit: contain"
                 />
                 <div v-else class="column items-center text-grey-6">
-                  <q-icon name="ph ph-image" size="32px" />
-                  <div class="text-caption">No Image</div>
+                  <q-icon name="ph ph-image-square" size="32px" color="grey-5" />
                 </div>
               </div>
               <q-input

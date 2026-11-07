@@ -10,6 +10,7 @@ export const shopOrderQueryKeys = {
     status?: string | null;
     shopId?: number | null;
     shopType?: string | null;
+    profileId?: number | null;
   }) => ['shopOrder', 'staffOrdersPage', params] as const,
   staffOrdersPageRoot: () => ['shopOrder', 'staffOrdersPage'] as const,
   shopsList: (params: { tenantId: number; search?: string | null; active?: boolean | null }) =>

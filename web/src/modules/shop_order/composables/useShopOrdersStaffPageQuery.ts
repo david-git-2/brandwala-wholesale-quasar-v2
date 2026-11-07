@@ -13,6 +13,7 @@ export interface ShopOrdersStaffPageQueryParams {
   status?: string | null;
   shopId?: number | null;
   shopType?: string | null;
+  profileId?: number | null;
 }
 
 export function useShopOrdersStaffPageQuery(params: Ref<ShopOrdersStaffPageQueryParams>) {
@@ -28,6 +29,7 @@ export function useShopOrdersStaffPageQuery(params: Ref<ShopOrdersStaffPageQuery
         status: params.value.status ?? null,
         shopId: params.value.shopId ?? null,
         shopType: params.value.shopType ?? null,
+        profileId: params.value.profileId ?? null,
         limit: STAFF_ORDERS_PAGE_SIZE,
         cursor,
       });

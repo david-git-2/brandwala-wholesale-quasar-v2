@@ -31,7 +31,9 @@
     </template>
 
     <template v-else>
-      <div class="smart-image__fallback">No Image</div>
+      <div class="smart-image__fallback" role="img" :aria-label="alt">
+        <q-icon name="ph ph-image-square" class="smart-image__fallback-icon" />
+      </div>
     </template>
 
     <!-- Admin Image Edit Button -->
@@ -80,7 +82,11 @@
               @error="handlePreviewError"
               @load="previewError = false"
             />
-            <div v-else class="text-grey-6 text-caption">No image preview</div>
+            <q-icon
+              v-else
+              name="ph ph-image-square"
+              class="smart-image__fallback-icon smart-image__preview-fallback-icon"
+            />
           </div>
         </q-card-section>
 
@@ -163,9 +169,6 @@ const newUrl = ref('');
 const previewError = ref(false);
 const updating = ref(false);
 
-const fallbackImage =
-  'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 800 450%27%3E%3Crect width=%27800%27 height=%27450%27 fill=%27%23f3efe9%27/%3E%3Ctext x=%27400%27 y=%27228%27 text-anchor=%27middle%27 font-family=%27Arial, sans-serif%27 font-size=%2732%27 fill=%27%23746655%27%3ENo Image%3C/text%3E%3C/svg%3E';
-
 const imageAttempt = ref(0);
 const imageHidden = ref(false);
 const loadingImage = ref(true);
@@ -219,18 +222,18 @@ const toProxyImageUrl = (url: string | null | undefined) => {
 
 const imageCandidates = computed(() => {
   const original = (props.src || '').trim();
-  if (!original) return [fallbackImage];
+  if (!original) return [];
   if (props.singleSource) {
-    return [original, fallbackImage];
+    return [original];
   }
   const direct = toDirectGoogleImageUrl(original);
   const proxied = toProxyImageUrl(direct || original);
   // Put direct URL & original first so standard valid image URLs load instantly without proxy delay
-  return [...new Set([direct, original, proxied, fallbackImage].filter(Boolean))];
+  return [...new Set([direct, original, proxied].filter(Boolean))];
 });
 
 const currentImageSrc = computed(() => {
-  return imageCandidates.value[imageAttempt.value] || fallbackImage;
+  return imageCandidates.value[imageAttempt.value] || '';
 });
 
 const previewAttempt = ref(0);
@@ -244,16 +247,20 @@ const previewImageSrc = computed(() => {
   return previewCandidates.value[previewAttempt.value] || '';
 });
 
-watch(
-  () => props.src,
-  () => {
-    imageAttempt.value = 0;
-    imageHidden.value = false;
-    loadingImage.value = true;
-    void nextTick().then(syncLoadingFromDom);
-  },
-  { immediate: true },
-);
+const syncImageStateFromSrc = () => {
+  const original = (props.src || '').trim();
+  imageAttempt.value = 0;
+  if (!original) {
+    imageHidden.value = true;
+    loadingImage.value = false;
+    return;
+  }
+  imageHidden.value = false;
+  loadingImage.value = true;
+  void nextTick().then(syncLoadingFromDom);
+};
+
+watch(() => props.src, syncImageStateFromSrc, { immediate: true });
 
 watch(currentImageSrc, () => {
   loadingImage.value = true;
@@ -270,6 +277,11 @@ const onImageLoad = () => {
 };
 
 const handleImageError = () => {
+  if (imageCandidates.value.length === 0) {
+    imageHidden.value = true;
+    loadingImage.value = false;
+    return;
+  }
   if (imageAttempt.value < imageCandidates.value.length - 1) {
     imageAttempt.value += 1;
     return;
@@ -366,9 +378,17 @@ const onUpdate = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #eef2f6;
-  color: #78909c;
+  background: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
   border-radius: inherit;
+}
+
+.smart-image__fallback-icon {
+  font-size: clamp(18px, 35%, 32px);
+  color: var(--tf-neutral-muted);
+}
+
+.smart-image__preview-fallback-icon {
+  font-size: 40px;
 }
 
 .border-grey {

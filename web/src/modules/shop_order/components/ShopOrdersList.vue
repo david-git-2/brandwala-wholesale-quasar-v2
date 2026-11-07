@@ -17,7 +17,7 @@
     <p class="text-caption text-grey-6 q-mt-xs q-mb-md" style="max-width: 360px">
       {{
         isFiltered
-          ? $t('shop_admin.no_orders_match_desc', 'Try adjusting your search query, shop selector, or status filters.')
+          ? $t('shop_admin.no_orders_match_desc', 'Try adjusting your search, shop, profile, or status filters.')
           : $t('shop_admin.orders_empty_desc', 'When customers place orders from your storefronts, they will appear here.')
       }}
     </p>

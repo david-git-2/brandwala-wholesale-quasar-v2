@@ -11,64 +11,83 @@
       :pagination="{ rowsPerPage: 0 }"
       class="demand-buy-lines__table"
     >
-      <template #body="props">
-        <q-tr :props="props">
-          <q-td key="product" :props="props" class="demand-buy-lines__product">
+      <template #body="bp">
+        <q-tr :props="bp">
+          <q-td key="select" :props="bp" class="demand-buy-lines__select">
+            <q-checkbox
+              dense
+              :model-value="!!props.selectedLineKeys[bp.row.rowKey]"
+              @update:model-value="(v) => toggleLineSelect(bp.row, v)"
+            />
+          </q-td>
+          <q-td key="product" :props="bp" class="demand-buy-lines__product">
             <div class="row no-wrap items-center q-gutter-x-sm">
               <SmartImage
-                :src="props.row.image_url"
-                :alt="props.row.name"
+                :src="bp.row.image_url"
+                :alt="bp.row.name"
                 img-class="demand-buy-lines__thumb"
                 fallback-class="demand-buy-lines__thumb-fallback"
                 :enable-edit="false"
               />
               <div class="min-width-0">
-                <div class="text-weight-medium ellipsis">{{ props.row.name }}</div>
+                <div class="text-weight-medium ellipsis">{{ bp.row.name }}</div>
                 <div
-                  v-if="props.row.product_code"
+                  v-if="bp.row.product_code"
                   class="demand-buy-lines__meta text-caption text-grey-7 font-mono cursor-pointer"
                   role="button"
                   tabindex="0"
-                  :title="`Copy SKU ${props.row.product_code}`"
-                  @click.stop="copySku(props.row.product_code)"
-                  @keydown.enter.stop="copySku(props.row.product_code)"
+                  :title="`Copy SKU ${bp.row.product_code}`"
+                  @click.stop="copySku(bp.row.product_code)"
+                  @keydown.enter.stop="copySku(bp.row.product_code)"
                 >
                   <q-icon name="ph ph-hash" size="12px" class="col-shrink" />
-                  <span class="ellipsis">{{ props.row.product_code }}</span>
+                  <span class="ellipsis">{{ bp.row.product_code }}</span>
                 </div>
                 <div
-                  v-if="props.row.barcode"
+                  v-if="bp.row.barcode"
                   class="demand-buy-lines__meta text-caption text-grey-7 font-mono cursor-pointer"
                   role="button"
                   tabindex="0"
-                  :title="`Copy barcode ${props.row.barcode}`"
-                  @click.stop="copyBarcode(props.row.barcode)"
-                  @keydown.enter.stop="copyBarcode(props.row.barcode)"
+                  :title="`Copy barcode ${bp.row.barcode}`"
+                  @click.stop="copyBarcode(bp.row.barcode)"
+                  @keydown.enter.stop="copyBarcode(bp.row.barcode)"
                 >
                   <q-icon name="ph ph-barcode" size="12px" class="col-shrink" />
-                  <span class="ellipsis">{{ props.row.barcode }}</span>
+                  <span class="ellipsis">{{ bp.row.barcode }}</span>
                 </div>
               </div>
             </div>
           </q-td>
-          <q-td key="need" :props="props" class="text-right tf-num font-mono">
-            {{ needQty(props.row) }}
+          <q-td key="need" :props="bp" class="text-right tf-num font-mono">
+            {{ needQty(bp.row) }}
           </q-td>
-          <q-td key="placed" :props="props" class="text-right tf-num font-mono">
-            {{ sumPlacementDraftQty(getDraft(props.row).placements) }}
+          <q-td key="placed" :props="bp" class="text-right tf-num font-mono">
+            {{ sumPlacementDraftQty(getDraft(bp.row).placements) }}
           </q-td>
-          <q-td key="remaining" :props="props" class="text-right tf-num font-mono">
-            {{ Math.max(needQty(props.row) - sumPlacementDraftQty(getDraft(props.row).placements), 0) }}
+          <q-td key="remaining" :props="bp" class="text-right tf-num font-mono">
+            {{ Math.max(needQty(bp.row) - sumPlacementDraftQty(getDraft(bp.row).placements), 0) }}
           </q-td>
-          <q-td key="vendors" :props="props" class="demand-buy-lines__vendors">
+          <q-td key="vendors" :props="bp" class="demand-buy-lines__vendors">
             <div class="demand-buy-lines__placement-stack">
               <div
-                v-for="(row, idx) in getDraft(props.row).placements"
-                :key="`${props.row.rowKey}-pl-${idx}`"
+                v-for="(pl, idx) in getDraft(bp.row).placements"
+                :key="`${bp.row.rowKey}-pl-${idx}`"
                 class="demand-buy-lines__placement-row"
               >
+                <q-input
+                  :model-value="pl.quantity"
+                  type="number"
+                  min="0"
+                  outlined
+                  dense
+                  hide-bottom-space
+                  placeholder="Qty"
+                  class="demand-buy-lines__qty"
+                  input-class="tf-num font-mono text-center"
+                  @update:model-value="(v) => onQtyChange(bp.row, idx, v)"
+                />
                 <q-select
-                  :model-value="row.vendorCode || null"
+                  :model-value="pl.vendorCode || null"
                   :options="vendorCodeOptions"
                   option-value="code"
                   option-label="label"
@@ -83,22 +102,10 @@
                   input-debounce="200"
                   class="demand-buy-lines__vendor-select"
                   @filter="onFilterVendors"
-                  @update:model-value="(v) => onVendorCodeChange(props.row, idx, v)"
-                />
-                <q-input
-                  :model-value="row.quantity"
-                  type="number"
-                  min="0"
-                  outlined
-                  dense
-                  hide-bottom-space
-                  placeholder="Qty"
-                  class="demand-buy-lines__qty"
-                  input-class="tf-num font-mono text-center"
-                  @update:model-value="(v) => onQtyChange(props.row, idx, v)"
+                  @update:model-value="(v) => onVendorCodeChange(bp.row, idx, v)"
                 />
                 <q-btn
-                  v-if="getDraft(props.row).placements.length > 1"
+                  v-if="getDraft(bp.row).placements.length > 1"
                   flat
                   round
                   dense
@@ -107,7 +114,7 @@
                   color="grey-8"
                   class="demand-buy-lines__remove-vendor"
                   aria-label="Remove vendor row"
-                  @click="removePlacementRow(props.row, idx)"
+                  @click="removePlacementRow(bp.row, idx)"
                 />
               </div>
               <q-btn
@@ -119,7 +126,7 @@
                 icon="ph ph-plus"
                 aria-label="Add vendor"
                 class="demand-buy-lines__add-vendor"
-                @click="addPlacementRow(props.row)"
+                @click="addPlacementRow(bp.row)"
               />
             </div>
           </q-td>
@@ -151,12 +158,14 @@ const props = defineProps<{
   items: ProcurementDemandItem[];
   lineDrafts: Record<string, DemandBuyLineDraft>;
   vendorCodeOptions: Array<{ code: string; label: string }>;
+  selectedLineKeys: Record<string, boolean>;
   isFetchingNextPage?: boolean;
 }>();
 
 const emit = defineEmits<{
   'filter-vendors': [val: string, update: (fn: () => void) => void];
   'update-draft': [item: ProcurementDemandItem, draft: DemandBuyLineDraft];
+  'toggle-line-select': [item: ProcurementDemandItem, selected: boolean];
   'load-more': [];
 }>();
 
@@ -164,6 +173,7 @@ const scrollSentinelRef = ref<HTMLElement | null>(null);
 let scrollObserver: IntersectionObserver | null = null;
 
 const columns = [
+  { name: 'select', label: '', field: 'rowKey', align: 'left' as const },
   { name: 'product', label: 'Product', field: 'name', align: 'left' as const },
   { name: 'need', label: 'Need', field: 'quantity', align: 'right' as const },
   { name: 'placed', label: 'Placed', align: 'right' as const },
@@ -233,6 +243,11 @@ const copyField = (label: string, value: string) => {
 const copySku = (value: string) => copyField('SKU', value);
 const copyBarcode = (value: string) => copyField('Barcode', value);
 
+const toggleLineSelect = (row: ItemRow, selected: boolean) => {
+  const { rowKey: _rk, ...item } = row;
+  emit('toggle-line-select', item as ProcurementDemandItem, selected);
+};
+
 watch(scrollSentinelRef, (el) => {
   scrollObserver?.disconnect();
   scrollObserver = null;
@@ -282,6 +297,11 @@ defineExpose({ tableRows });
   gap: 4px;
   max-width: 100%;
   margin-top: 2px;
+}
+.demand-buy-lines__select {
+  width: 40px;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 .demand-buy-lines__product {
   min-width: 160px;

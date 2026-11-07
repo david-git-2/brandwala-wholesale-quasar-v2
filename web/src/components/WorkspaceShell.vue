@@ -123,6 +123,15 @@
         <q-space />
 
         <div class="workspace-shell__actions">
+          <q-chip
+            v-if="isLocalBackend"
+            dense
+            square
+            outline
+            class="workspace-shell__env-chip"
+          >
+            Local
+          </q-chip>
           <slot name="header-extra" />
         </div>
       </q-toolbar>
@@ -541,6 +550,20 @@ import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
 import AppLogoMark from 'src/components/brand/AppLogoMark.vue';
 
 const showAboutDialog = ref(false);
+
+const isLocalBackend = computed(() => {
+  const raw = import.meta.env.VITE_SUPABASE_URL;
+  if (!raw) {
+    return false;
+  }
+  try {
+    const { hostname } = new URL(raw);
+    const h = hostname.toLowerCase();
+    return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1';
+  } catch {
+    return false;
+  }
+});
 
 export interface WorkspaceLink {
   title: string;
@@ -1100,6 +1123,17 @@ const confirmLogout = async () => {
   flex: 0 0 auto;
   min-width: 0;
   gap: 0.5rem;
+}
+
+.workspace-shell__env-chip {
+  --q-primary: var(--tf-neutral-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  height: 22px;
+  border-color: var(--tf-neutral-border-strong);
+  color: var(--tf-neutral-muted);
 }
 
 @media (max-width: 1023px) {
