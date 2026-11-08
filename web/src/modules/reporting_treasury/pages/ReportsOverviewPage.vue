@@ -27,13 +27,13 @@ const base = computed(() => `/${tenantSlug.value || 'tenant'}/app/finance/report
 
 const reportGroups: HubLinkGroup[] = [
   {
-    key: 'profit',
-    title: 'Profit',
+    key: 'shipments',
+    title: 'Shipments',
     items: [
       {
-        key: 'shipment-profit',
-        title: 'Shipment profit',
-        caption: 'One batch: landed cost, sold, GP.',
+        key: 'shipment-report',
+        title: 'Shipment report',
+        caption: 'All batches — open one for details.',
         icon: 'ph ph-package',
         iconTone: 'buy',
       },
@@ -91,7 +91,7 @@ const pathByKey: Record<string, string> = {
   'customer-dues': 'customer-dues',
   'cash-in': 'cash-in',
   'invoice-book': 'invoice-book',
-  'shipment-profit': 'shipment-profit',
+  'shipment-report': 'shipment-report',
   'month-snapshot': 'month-snapshot',
 };
 

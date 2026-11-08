@@ -42,7 +42,20 @@ Dropship: sales = merchant total, not COD face. Sales reports filter `invoice_ty
 
 ## Stories
 
-### US-1: Shipment P&L
+### US-1: Shipment report
+- List: all inbound shipments (`list_inbound_shipments_workspace`) at `/app/finance/reports/shipment-report`.
+- Detail: admin checklist at `/app/finance/reports/shipment-report/:shipmentId` (no per-product item table):
+  - **At a glance:** total cost, total sell, receive loss (BDT), profit/loss + margin %, unpaid customer total, warehouse value (BDT).
+  - **Pieces:** should arrive, arrived, loss, stalled (held), remaining (sellable), sold.
+  - **Exchange rates** when payments exist.
+  - **Cost by type** (all AP kinds) + expandable supplier bills; correct currency symbols.
+  - **Sell:** total + each **issued** invoice line (bill no, product, qty, BDT).
+  - **Not paid yet:** customers with issued bills tied to this batch and open due &gt; 0.
+  - Links to procurement shipment and bills when grants allow.
+- Sell attribution: `bill_lines.shipment_item_id` when set (stamped on delivery-paper close via stock pick or product resolution); else `coalesce(gii.shipment_item_id, global_stocks.shipment_item_id, shipment line by product_id)`. **issued only** (not draft+paid).
+- Delivery-paper take bills: `apply_delivery_paper_outcome` + `_insert_bill_line_from_compose_payload` set `shipment_item_id` and `line_meta.shipment_ref` `{ shipment_id, shipment_item_id }`.
+- Receive loss = missing+damaged qty × `landed_cost_bdt`; profit = sell − total cost (loss shown, not subtracted twice).
+- RPC: `get_tenant_shipment_report_detail` + aligned sales join in `get_tenant_shipment_profit_report`.
 - Invoice lines → lots → shipment; cost = landed + local ([procurement US-8](../procurement_stock/spec.md)).
 - [ ] Local costs in P&L ([RT18](00-gaps.md)).
 
@@ -50,7 +63,7 @@ Dropship: sales = merchant total, not COD face. Sales reports filter `invoice_ty
 
 | # | View | Question | Route |
 | :--- | :--- | :--- | :--- |
-| 1 | Shipment P&L | Batch payoff | `/app/finance/reports/shipment-profit` |
+| 1 | Shipment report | Batch list + payoff detail | `/app/finance/reports/shipment-report` |
 | 2 | Cash in | Bank/till receipts | `/app/finance/reports/cash-in` |
 | 3 | Customer dues | Who owes bills | `/app/finance/reports/customer-dues` |
 | 4 | Invoice book | Bills issued | `/app/finance/reports/invoice-book` |

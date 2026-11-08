@@ -1,4 +1,4 @@
-CREATE FUNCTION public.get_tenant_shipment_profit_report (
+CREATE OR REPLACE FUNCTION public.get_tenant_shipment_profit_report (
   p_tenant_id   bigint,
   p_shipment_id bigint                   DEFAULT NULL::bigint,
   p_search      text                     DEFAULT NULL::text,
@@ -124,12 +124,25 @@ BEGIN
         coalesce(sum((gii.quantity - gii.return_quantity) * coalesce(gsi.landed_cost_bdt, 0)), 0) AS cogs
       FROM public.global_invoice_items gii
       JOIN public.bills si ON si.id = gii.invoice_id
+      LEFT JOIN public.global_stocks gs ON gs.id = gii.global_stock_id
       LEFT JOIN LATERAL (
         SELECT coalesce(sum(x.line_total_amount), 0.00) AS inv_line_subtotal
         FROM public.global_invoice_items x
         WHERE x.invoice_id = gii.invoice_id
       ) invagg ON true
-      WHERE gii.shipment_item_id = gsi.id
+      WHERE gsi.id = coalesce(
+          gii.shipment_item_id,
+          gs.shipment_item_id,
+          (
+            SELECT gsi_fb.id
+            FROM public.global_shipment_items gsi_fb
+            WHERE gsi_fb.shipment_id = gsi.shipment_id
+              AND gsi_fb.product_id IS NOT NULL
+              AND gsi_fb.product_id = gii.product_id
+            ORDER BY gsi_fb.id
+            LIMIT 1
+          )
+        )
         AND si.invoice_status = 'issued'
     ) sales ON true
 

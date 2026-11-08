@@ -1,4 +1,4 @@
-CREATE FUNCTION public.apply_delivery_paper_outcome (
+CREATE OR REPLACE FUNCTION public.apply_delivery_paper_outcome (
   p_tenant_id         bigint,
   p_delivery_paper_id bigint,
   p_close_action      text,
@@ -48,6 +48,10 @@ DECLARE
   v_order_recipient_name text;
   v_order_recipient_phone text;
   v_order_shipping_address text;
+  v_order_item_id bigint;
+  v_shipment_item_id bigint;
+  v_shipment_id bigint;
+  v_shipment_ref jsonb;
 BEGIN
   PERFORM public.delivery_paper_assert_tenant_access(p_tenant_id);
 
@@ -131,6 +135,10 @@ BEGIN
   FOR v_elem IN SELECT value FROM jsonb_array_elements(p_allocations) LOOP
     v_qty := coalesce(nullif(v_elem->>'quantity', '')::integer, 0);
     v_grade_tag_id := nullif(v_elem->>'grade_tag_id', '')::bigint;
+    v_order_item_id := NULL;
+    v_shipment_item_id := NULL;
+    v_shipment_id := NULL;
+    v_shipment_ref := '{}'::jsonb;
 
     IF v_qty <= 0 THEN
       RAISE EXCEPTION 'each allocation requires a positive quantity';
@@ -205,10 +213,26 @@ BEGIN
     IF v_close_action IN ('take', 'condition') THEN
       v_bill_stock_id := public.delivery_paper_line_resolvable_bill_stock_id(v_line);
       IF v_bill_stock_id IS NOT NULL THEN
+        SELECT gs.shipment_item_id, gsi.shipment_id
+        INTO v_shipment_item_id, v_shipment_id
+        FROM public.global_stocks gs
+        LEFT JOIN public.global_shipment_items gsi ON gsi.id = gs.shipment_item_id
+        WHERE gs.id = v_bill_stock_id;
+
         v_items := v_items || jsonb_build_array(jsonb_build_object(
           'global_stock_id', v_bill_stock_id,
           'quantity', v_qty,
-          'sell_price_amount', v_sell_price
+          'sell_price_amount', v_sell_price,
+          'shipment_item_id', v_shipment_item_id,
+          'line_meta', CASE
+            WHEN v_shipment_item_id IS NOT NULL THEN jsonb_build_object(
+              'shipment_ref', jsonb_build_object(
+                'shipment_item_id', v_shipment_item_id,
+                'shipment_id', v_shipment_id
+              )
+            )
+            ELSE '{}'::jsonb
+          END
         ));
       ELSE
         v_product_id := NULL;
@@ -217,11 +241,13 @@ BEGIN
         v_product_code_snapshot := NULL;
         IF v_doc_type = 'shop_order' THEN
           SELECT
+            oi.id,
             oi.product_id,
             coalesce(nullif(trim(oi.name), ''), nullif(trim(p.name), ''), 'Item'),
             nullif(trim(p.barcode), ''),
             nullif(trim(p.product_code), '')
           INTO
+            v_order_item_id,
             v_product_id,
             v_name_snapshot,
             v_barcode_snapshot,
@@ -230,6 +256,14 @@ BEGIN
           INNER JOIN public.shop_order_items oi ON oi.id = pd.source_id
           LEFT JOIN public.products p ON p.id = oi.product_id
           WHERE pd.id = v_demand_id;
+
+          v_shipment_ref := public.resolve_shipment_item_for_shop_order_product(
+            v_parent_tenant_id,
+            v_order_item_id,
+            v_product_id
+          );
+          v_shipment_item_id := nullif(v_shipment_ref ->> 'shipment_item_id', '')::bigint;
+          v_shipment_id := nullif(v_shipment_ref ->> 'shipment_id', '')::bigint;
         ELSIF v_doc_type = 'pbc_costing_file' THEN
           SELECT
             pci.product_id,
@@ -253,7 +287,17 @@ BEGIN
           'name_snapshot', coalesce(v_name_snapshot, 'Item'),
           'barcode_snapshot', v_barcode_snapshot,
           'product_code_snapshot', v_product_code_snapshot,
-          'line_kind', 'stock'
+          'line_kind', 'stock',
+          'shipment_item_id', v_shipment_item_id,
+          'line_meta', CASE
+            WHEN v_shipment_item_id IS NOT NULL THEN jsonb_build_object(
+              'shipment_ref', jsonb_build_object(
+                'shipment_item_id', v_shipment_item_id,
+                'shipment_id', v_shipment_id
+              )
+            )
+            ELSE '{}'::jsonb
+          END
         ));
       END IF;
     END IF;

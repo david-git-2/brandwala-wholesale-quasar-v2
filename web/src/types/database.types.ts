@@ -6656,6 +6656,9 @@ isOneToOne: false
 "find_customer_create_conflict":
 { Args: { "p_group_name"?: string,"p_phone"?: string,"p_phone_country_code"?: string,"p_tenant_id": number }; Returns: Json
                            },
+"format_assigned_document_number":
+{ Args: { "p_at"?: string,"p_doc_type": string,"p_seq": number,"p_tenant_id": number }; Returns: string
+                           },
 "fulfill_shop_order_to_invoice":
 { Args: { "p_order_id": number }; Returns: undefined
                            },
@@ -6996,6 +6999,9 @@ isOneToOne: false
                            },
 "get_tenant_shipment_profit_report":
 { Args: { "p_end_date"?: string,"p_page"?: number,"p_page_size"?: number,"p_search"?: string,"p_shipment_id"?: number,"p_start_date"?: string,"p_tenant_id": number }; Returns: Json
+                           },
+"get_tenant_shipment_report_detail":
+{ Args: { "p_shipment_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "get_tenant_wallet_liability_report":
 { Args: { "p_end_date"?: string,"p_page"?: number,"p_page_size"?: number,"p_search"?: string,"p_skip_count"?: boolean,"p_start_date"?: string,"p_tenant_id": number }; Returns: Json
@@ -8856,6 +8862,9 @@ isOneToOne: false
                            },
 "resolve_parent_tenant_id":
 { Args: { "p_tenant_id": number }; Returns: number
+                           },
+"resolve_shipment_item_for_shop_order_product":
+{ Args: { "p_books_tenant_id": number,"p_product_id": number,"p_shop_order_item_id": number }; Returns: Json
                            },
 "resolve_shop_can_see_buy_price":
 { Args: { "p_access_can_see_buy_price": boolean,"p_access_can_see_sell_price": boolean,"p_profile_default_can_see_buy_price": boolean,"p_profile_default_can_see_sell_price": boolean,"p_shop_type": Database["public"]['Enums']["shop_type_enum"] }; Returns: boolean

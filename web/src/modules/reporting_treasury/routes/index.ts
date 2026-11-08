@@ -84,17 +84,32 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'reports/invoice-profit',
-        redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/finance/reports/shipment-profit`,
+        redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/finance/reports/shipment-report`,
       },
       {
         path: 'reports/shipment-profit',
-        name: 'app-finance-shipment-profit-report-page',
-        component: () => import('../pages/ShipmentProfitReportPage.vue'),
+        redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/finance/reports/shipment-report`,
+      },
+      {
+        path: 'reports/shipment-report',
+        name: 'app-finance-shipment-report-page',
+        component: () => import('../pages/ShipmentReportPage.vue'),
         beforeEnter: guard('reporting_treasury'),
         meta: {
-          title: 'Shipment cost and profit',
-          headerTitle: 'Shipment cost and profit',
-          breadcrumb: 'Shipment cost and profit',
+          title: 'Shipment report',
+          headerTitle: 'Shipment report',
+          breadcrumb: 'Shipment report',
+        },
+      },
+      {
+        path: 'reports/shipment-report/:shipmentId',
+        name: 'app-finance-shipment-report-detail-page',
+        component: () => import('../pages/ShipmentReportDetailPage.vue'),
+        beforeEnter: guard('reporting_treasury'),
+        meta: {
+          title: 'Shipment report detail',
+          headerTitle: 'Shipment report',
+          breadcrumb: 'Detail',
         },
       },
       {

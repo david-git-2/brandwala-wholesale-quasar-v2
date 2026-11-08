@@ -52,6 +52,16 @@ begin
         'id', s.id,
         'name', s.name,
         'tenant_shipment_id', s.tenant_shipment_id,
+        'shipment_no', CASE
+          WHEN s.tenant_shipment_id IS NOT NULL THEN
+            public.format_assigned_document_number(
+              v_books_id,
+              'shipment',
+              s.tenant_shipment_id::bigint,
+              s.created_at
+            )
+          ELSE NULL
+        END,
         'vendor_id', s.vendor_id,
         'vendor_name', v.name,
         'vendor_code', v.code,

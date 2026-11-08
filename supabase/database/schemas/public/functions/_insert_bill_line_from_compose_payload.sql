@@ -1,4 +1,4 @@
-CREATE FUNCTION public._insert_bill_line_from_compose_payload (
+CREATE OR REPLACE FUNCTION public._insert_bill_line_from_compose_payload (
   p_parent_id  bigint,
   p_invoice_id bigint,
   p_item_elem  jsonb
@@ -9,6 +9,7 @@ CREATE FUNCTION public._insert_bill_line_from_compose_payload (
   SET search_path TO 'public'
   AS $function$
 declare
+  v_shipment_id bigint;
   v_global_stock_id bigint;
   v_quantity numeric;
   v_sell_price numeric;
@@ -72,16 +73,34 @@ begin
     v_product_id := nullif(p_item_elem->>'product_id', '')::bigint;
     if v_product_id is not null
        and lower(trim(coalesce(p_item_elem->>'line_kind', 'stock'))) = 'stock' then
+      v_shipment_item_id := nullif(p_item_elem->>'shipment_item_id', '')::bigint;
       v_name_snapshot := coalesce(nullif(trim(p_item_elem->>'name_snapshot'), ''), 'Item');
       v_barcode_snapshot := nullif(trim(p_item_elem->>'barcode_snapshot'), '');
       v_product_code_snapshot := nullif(trim(p_item_elem->>'product_code_snapshot'), '');
       v_line_total := greatest((v_quantity * v_sell_price) - v_line_discount, 0);
+      if v_shipment_item_id is not null then
+        select gsi.shipment_id into v_shipment_id
+        from public.global_shipment_items gsi
+        where gsi.id = v_shipment_item_id;
+        v_line_meta := jsonb_set(
+          coalesce(v_line_meta, '{}'::jsonb),
+          '{shipment_ref}',
+          jsonb_build_object(
+            'shipment_item_id', v_shipment_item_id,
+            'shipment_id', coalesce(
+              nullif(p_item_elem->>'shipment_id', '')::bigint,
+              v_shipment_id
+            )
+          ),
+          true
+        );
+      end if;
       insert into public.bill_lines (
-        parent_tenant_id, invoice_id, line_kind, product_id,
+        parent_tenant_id, invoice_id, line_kind, shipment_item_id, product_id,
         name_snapshot, barcode_snapshot, product_code_snapshot,
         quantity, sell_price_amount, line_discount_amount, line_total_amount, line_meta
       ) values (
-        p_parent_id, p_invoice_id, 'stock', v_product_id,
+        p_parent_id, p_invoice_id, 'stock', v_shipment_item_id, v_product_id,
         v_name_snapshot, v_barcode_snapshot, v_product_code_snapshot,
         v_quantity, v_sell_price, v_line_discount, v_line_total, v_line_meta
       )
@@ -145,6 +164,21 @@ begin
     jsonb_build_object('global_stock_id', v_global_stock_id),
     true
   );
+
+  if v_shipment_item_id is not null then
+    select gsi.shipment_id into v_shipment_id
+    from public.global_shipment_items gsi
+    where gsi.id = v_shipment_item_id;
+    v_line_meta := jsonb_set(
+      v_line_meta,
+      '{shipment_ref}',
+      jsonb_build_object(
+        'shipment_item_id', v_shipment_item_id,
+        'shipment_id', v_shipment_id
+      ),
+      true
+    );
+  end if;
 
   insert into public.bill_lines (
     parent_tenant_id, invoice_id, line_kind, shipment_item_id, product_id,

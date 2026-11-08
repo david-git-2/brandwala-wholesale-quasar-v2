@@ -114,7 +114,7 @@ const monthTiles = computed(() => [
     label: 'Gross profit',
     value: formatAmountBdt(kpis.value?.gross_profit ?? 0),
     caption: 'Shipment P&L (month rollup)',
-    to: `${reportsBase.value}/shipment-profit`,
+    to: `${reportsBase.value}/shipment-report`,
   },
   {
     label: 'Cash in',
