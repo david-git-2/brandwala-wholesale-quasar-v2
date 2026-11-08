@@ -216,6 +216,7 @@ export interface ShipmentOverviewDetailsPayload {
   outcome_vendor_credits: ShipmentOutcomeVendorCredit[];
   batch_code_list: BatchCodeList | null;
   batch_code_items: BatchCodeItem[];
+  ap_bills?: unknown;
 }
 
 const getShipmentOverviewDetails = async (
@@ -245,6 +246,7 @@ const getShipmentOverviewDetails = async (
     outcome_vendor_credits: (raw.outcome_vendor_credits ?? []) as ShipmentOutcomeVendorCredit[],
     batch_code_list: (raw.batch_code_list as BatchCodeList | null) ?? null,
     batch_code_items: (raw.batch_code_items ?? []) as BatchCodeItem[],
+    ap_bills: raw.ap_bills,
   };
 };
 

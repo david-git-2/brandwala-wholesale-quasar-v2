@@ -30,6 +30,7 @@ declare
   v_face_currency text;
   v_base_note text;
   v_note text;
+  v_books_target numeric(12, 2);
 begin
   if p_ap_kind not in (
     'vendor', 'cargo', 'local',
@@ -65,6 +66,11 @@ begin
   end if;
 
   v_target := round(p_amount, 2);
+  v_books_target := v_target;
+  if upper(v_face_currency) not in ('', 'BDT')
+     and upper(v_face_currency) <> upper(public.resolve_tenant_base_currency_code(p_tenant_id)) then
+    v_books_target := coalesce(nullif((p_ap_paper->>'bdt_amount')::numeric, 0), 0);
+  end if;
   v_kind_label := initcap(replace(p_ap_kind, '_', ' '));
   v_meta_base := jsonb_build_object('ap_kind', p_ap_kind, 'shipment_id', p_shipment_id);
   if p_ap_paper is not null then
@@ -98,7 +104,7 @@ begin
     ) values (
       p_tenant_id, p_issued_by_tenant_id, v_invoice_no, 'ap'::public.global_invoice_type, current_date,
       v_paper_status, p_profile_id, 'profile'::public.collection_source_type, 'due',
-      v_target, v_target, v_target, 0,
+      v_books_target, v_books_target, v_books_target, 0,
       p_shipment_id, p_ap_kind, 'shipment_cost', p_shipment_id::text, v_plug_key, v_face_currency,
       v_base_note,
       v_meta_base,
@@ -135,9 +141,9 @@ begin
     set
       invoice_status = v_paper_status,
       profile_id = p_profile_id,
-      subtotal_amount = v_target,
-      total_amount = v_target,
-      due_amount = v_target,
+      subtotal_amount = v_books_target,
+      total_amount = v_books_target,
+      due_amount = v_books_target,
       payment_status = 'due',
       source_type = coalesce(source_type, 'shipment_cost'),
       source_id = coalesce(source_id, p_shipment_id::text),
@@ -159,17 +165,18 @@ begin
 
   v_old_total := round(coalesce(v_bill.total_amount, 0), 2);
   v_note := coalesce(nullif(trim(v_bill.note), ''), v_base_note);
-  if v_old_total is distinct from v_target then
+  if v_old_total is distinct from v_books_target then
     v_note := v_note || format(
-      E'\nCost sync %s: %s → %s %s',
+      E'\nCost sync %s: %s → %s books (face %s %s)',
       to_char(current_date, 'YYYY-MM-DD'),
       v_old_total,
+      v_books_target,
       v_target,
       v_face_currency
     );
   end if;
 
-  v_due := greatest(v_target - coalesce(v_bill.paid_amount, 0), 0);
+  v_due := greatest(v_books_target - coalesce(v_bill.paid_amount, 0), 0);
   v_status := case
     when v_due <= 0 then 'paid'
     when coalesce(v_bill.paid_amount, 0) > 0 then 'partially_paid'
@@ -179,8 +186,8 @@ begin
   update public.bills
   set
     profile_id = p_profile_id,
-    subtotal_amount = v_target,
-    total_amount = v_target,
+    subtotal_amount = v_books_target,
+    total_amount = v_books_target,
     due_amount = v_due,
     payment_status = v_status,
     source_type = coalesce(source_type, 'shipment_cost'),

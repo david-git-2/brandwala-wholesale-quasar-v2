@@ -50,6 +50,145 @@ GRANT EXECUTE ON FUNCTION public.issue_wholesale_bill(bigint, jsonb) TO service_
 GRANT EXECUTE ON FUNCTION public.issue_retail_bill(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.issue_retail_bill(bigint) TO service_role;
 
+CREATE OR REPLACE FUNCTION public.issue_ap_bill_from_desk(p_bill_id bigint)
+RETURNS public.bills
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+declare
+  v_bill public.bills;
+  v_result public.bills;
+begin
+  select * into v_bill from public.bills where id = p_bill_id for update;
+  if v_bill.id is null then
+    raise exception 'bill not found';
+  end if;
+
+  if v_bill.invoice_type is distinct from 'ap'::public.global_invoice_type then
+    raise exception 'Only AP bills can be issued from the bills desk';
+  end if;
+
+  if v_bill.document_kind is distinct from 'standard'::public.bill_document_kind then
+    raise exception 'Only standard AP bills can be issued from the bills desk';
+  end if;
+
+  if v_bill.invoice_status is distinct from 'draft'::public.global_invoice_status then
+    raise exception 'Only draft AP bills can be issued from the bills desk';
+  end if;
+
+  if coalesce(v_bill.total_amount, 0) <= 0 then
+    raise exception 'Bill total must be greater than zero';
+  end if;
+
+  if not public.user_can_manage_books_tenant(v_bill.tenant_id) then
+    raise exception 'Permission denied';
+  end if;
+
+  perform set_config('app.bill_desk_issue_shipment_ap', '1', true);
+  perform set_config('app.shipment_ap_issue', '1', true);
+  begin
+    v_result := public.issue_bill(p_bill_id);
+  exception
+    when others then
+      perform set_config('app.bill_desk_issue_shipment_ap', '0', true);
+      perform set_config('app.shipment_ap_issue', '0', true);
+      raise;
+  end;
+  perform set_config('app.bill_desk_issue_shipment_ap', '0', true);
+  perform set_config('app.shipment_ap_issue', '0', true);
+
+  if v_result.ap_shipment_id is not null then
+    update public.bills b
+    set
+      source_type = coalesce(nullif(btrim(b.source_type), ''), 'shipment_cost'),
+      source_id = coalesce(nullif(btrim(b.source_id), ''), b.ap_shipment_id::text),
+      ap_kind = coalesce(
+        nullif(btrim(b.ap_kind), ''),
+        nullif(btrim(b.channel_meta->>'ap_kind'), ''),
+        case
+          when split_part(coalesce(b.source_key, ''), ':', 1) in (
+            'material', 'freight', 'customs', 'handling', 'finance', 'other',
+            'vendor', 'cargo', 'local'
+          ) then split_part(b.source_key, ':', 1)
+          else null
+        end
+      ),
+      updated_at = now()
+    where b.id = p_bill_id;
+
+    select * into v_result from public.bills where id = p_bill_id;
+    perform public.stamp_bill_kernel_fields(p_bill_id);
+  end if;
+
+  return v_result;
+end;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.issue_ap_bill_from_desk(bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.issue_ap_bill_from_desk(bigint) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.patch_bill_dates_from_desk(
+  p_tenant_id bigint,
+  p_bill_id bigint,
+  p_invoice_date date,
+  p_due_date date DEFAULT NULL,
+  p_touch_due_date boolean DEFAULT false
+)
+RETURNS public.bills
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+declare
+  v_bill public.bills;
+  v_parent_id bigint;
+begin
+  if p_tenant_id is null or p_bill_id is null then
+    raise exception 'tenant_id and bill_id are required';
+  end if;
+
+  if p_invoice_date is null then
+    raise exception 'invoice_date is required';
+  end if;
+
+  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
+
+  select * into v_bill from public.bills where id = p_bill_id for update;
+  if v_bill.id is null then
+    raise exception 'bill not found';
+  end if;
+
+  if not (v_bill.tenant_id = v_parent_id or v_bill.issued_by_tenant_id = p_tenant_id) then
+    raise exception 'Invoice not found for this tenant.';
+  end if;
+
+  if not public.user_can_manage_books_tenant(v_bill.tenant_id) then
+    raise exception 'Permission denied';
+  end if;
+
+  if v_bill.invoice_status = 'voided'::public.global_invoice_status then
+    raise exception 'Cannot change dates on a voided bill';
+  end if;
+
+  update public.bills
+  set
+    invoice_date = p_invoice_date,
+    due_date = case
+      when p_touch_due_date then p_due_date
+      else due_date
+    end,
+    updated_at = now()
+  where id = p_bill_id
+  returning * into v_bill;
+
+  return v_bill;
+end;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.patch_bill_dates_from_desk(bigint, bigint, date, date, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.patch_bill_dates_from_desk(bigint, bigint, date, date, boolean) TO service_role;
+
 CREATE OR REPLACE FUNCTION public.list_bills_desk_page(
   p_tenant_id bigint,
   p_issued_by_tenant_id bigint DEFAULT NULL,

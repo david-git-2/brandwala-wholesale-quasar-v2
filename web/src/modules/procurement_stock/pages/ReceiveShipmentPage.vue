@@ -24,9 +24,10 @@
           </div>
         </div>
 
-        <div class="row items-center q-gutter-sm no-wrap shrink-0">
-          <TfBtn variant="tertiary" label="Cancel" @click="goBack" />
+        <div class="row items-center q-gutter-sm no-wrap shrink-0 receive-toolbar__actions">
+          <TfBtn size="md" variant="tertiary" label="Cancel" @click="goBack" />
           <TfBtn
+            size="md"
             variant="primary"
             icon="ph ph-check-circle"
             label="Post to stock"
@@ -391,6 +392,12 @@ const onConfirmReceive = async () => {
 .receive-toolbar {
   border-bottom: 1px solid var(--tf-neutral-border);
   padding-bottom: 6px;
+}
+
+.receive-toolbar__actions :deep(.tf-btn) {
+  min-height: 36px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .receive-hint {

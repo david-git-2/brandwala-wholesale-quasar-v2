@@ -38,6 +38,9 @@ DECLARE
   v_bill_source_type text;
   v_bill_source_id text;
   v_bill_source_key text;
+  v_bill_stock_id bigint;
+  v_product_id bigint;
+  v_name_snapshot text;
 BEGIN
   PERFORM public.delivery_paper_assert_tenant_access(p_tenant_id);
 
@@ -106,28 +109,28 @@ BEGIN
   v_outcome_status := public.delivery_paper_close_action_to_split_status(v_close_action);
 
   FOR v_elem IN SELECT value FROM jsonb_array_elements(p_allocations) LOOP
-    v_demand_id := nullif(v_elem->>'preorder_demand_id', '')::bigint;
-    v_stock_id := nullif(v_elem->>'global_stock_id', '')::bigint;
     v_qty := coalesce(nullif(v_elem->>'quantity', '')::integer, 0);
     v_grade_tag_id := nullif(v_elem->>'grade_tag_id', '')::bigint;
 
-    IF v_demand_id IS NULL OR v_stock_id IS NULL OR v_qty <= 0 THEN
-      RAISE EXCEPTION 'each allocation requires preorder_demand_id, global_stock_id, and quantity';
+    IF v_qty <= 0 THEN
+      RAISE EXCEPTION 'each allocation requires a positive quantity';
+    END IF;
+
+    IF v_close_action = 'return'
+       AND nullif(v_elem->>'delivery_paper_line_id', '') IS NOT NULL THEN
+      RAISE EXCEPTION 'return allocations require global_stock_id, not delivery_paper_line_id';
     END IF;
 
     IF v_close_action = 'return' AND v_grade_tag_id IS NULL THEN
       RAISE EXCEPTION 'grade_tag_id is required for return allocations';
     END IF;
 
-    SELECT dpl.* INTO v_line
-    FROM public.delivery_paper_line dpl
-    WHERE dpl.delivery_paper_id = p_delivery_paper_id
-      AND dpl.preorder_demand_id = v_demand_id
-      AND dpl.global_stock_id = v_stock_id
-    FOR UPDATE;
+    v_line := public.delivery_paper_line_lock_for_outcome(p_delivery_paper_id, v_elem);
+    v_demand_id := v_line.preorder_demand_id;
+    v_stock_id := coalesce(v_line.global_stock_id, v_line.dispatched_global_stock_id);
 
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'delivery paper line not found for demand % stock %', v_demand_id, v_stock_id;
+    IF v_close_action = 'return' AND v_stock_id IS NULL THEN
+      RAISE EXCEPTION 'return requires a resolvable stock lot on delivery paper line %', v_line.id;
     END IF;
 
     IF public.delivery_paper_line_packed_qty(v_line.splits) < v_qty THEN
@@ -180,11 +183,38 @@ BEGIN
     END IF;
 
     IF v_close_action IN ('take', 'condition') THEN
-      v_items := v_items || jsonb_build_array(jsonb_build_object(
-        'global_stock_id', v_stock_id,
-        'quantity', v_qty,
-        'sell_price_amount', v_sell_price
-      ));
+      v_bill_stock_id := public.delivery_paper_line_resolvable_bill_stock_id(v_line);
+      IF v_bill_stock_id IS NOT NULL THEN
+        v_items := v_items || jsonb_build_array(jsonb_build_object(
+          'global_stock_id', v_bill_stock_id,
+          'quantity', v_qty,
+          'sell_price_amount', v_sell_price
+        ));
+      ELSE
+        v_product_id := NULL;
+        v_name_snapshot := NULL;
+        IF v_doc_type = 'shop_order' THEN
+          SELECT oi.product_id, coalesce(nullif(trim(oi.name), ''), nullif(trim(p.name), ''), 'Item')
+          INTO v_product_id, v_name_snapshot
+          FROM public.preorder_demand pd
+          INNER JOIN public.shop_order_items oi ON oi.id = pd.source_id
+          LEFT JOIN public.products p ON p.id = oi.product_id
+          WHERE pd.id = v_demand_id;
+        ELSIF v_doc_type = 'pbc_costing_file' THEN
+          SELECT pci.product_id, coalesce(nullif(trim(p.name), ''), 'Item')
+          INTO v_product_id, v_name_snapshot
+          FROM public.preorder_demand pd
+          INNER JOIN public.product_based_costing_items pci ON pci.id = pd.source_id
+          LEFT JOIN public.products p ON p.id = pci.product_id
+          WHERE pd.id = v_demand_id;
+        END IF;
+        v_items := v_items || jsonb_build_array(jsonb_build_object(
+          'quantity', v_qty,
+          'sell_price_amount', v_sell_price,
+          'product_id', v_product_id,
+          'name_snapshot', coalesce(v_name_snapshot, 'Item')
+        ));
+      END IF;
     END IF;
 
     v_pick_count := v_pick_count + 1;
@@ -271,17 +301,12 @@ BEGIN
   END IF;
 
   FOR v_elem IN SELECT value FROM jsonb_array_elements(p_allocations) LOOP
-    v_demand_id := nullif(v_elem->>'preorder_demand_id', '')::bigint;
-    v_stock_id := nullif(v_elem->>'global_stock_id', '')::bigint;
     v_qty := coalesce(nullif(v_elem->>'quantity', '')::integer, 0);
     v_grade_tag_id := nullif(v_elem->>'grade_tag_id', '')::bigint;
 
-    SELECT dpl.* INTO v_line
-    FROM public.delivery_paper_line dpl
-    WHERE dpl.delivery_paper_id = p_delivery_paper_id
-      AND dpl.preorder_demand_id = v_demand_id
-      AND dpl.global_stock_id = v_stock_id
-    FOR UPDATE;
+    v_line := public.delivery_paper_line_lock_for_outcome(p_delivery_paper_id, v_elem);
+    v_demand_id := v_line.preorder_demand_id;
+    v_stock_id := coalesce(v_line.global_stock_id, v_line.dispatched_global_stock_id);
 
     IF v_close_action = 'return' THEN
       SELECT * INTO v_stock

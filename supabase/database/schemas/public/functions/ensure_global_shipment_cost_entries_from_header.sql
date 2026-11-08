@@ -34,7 +34,7 @@ begin
   v_cargo_amt := coalesce(v_ship.cargo_invoice_total, 0);
 
   insert into public.global_shipment_cost_entries (
-    parent_tenant_id,
+    tenant_id,
     shipment_id,
     cost_bucket,
     cost_component,
@@ -43,7 +43,7 @@ begin
     currency_id,
     metadata
   ) values (
-    v_ship.parent_tenant_id,
+    v_ship.tenant_id,
     p_shipment_id,
     'material',
     'subtotal',
@@ -55,7 +55,7 @@ begin
 
   if v_cargo_amt > 0 then
     insert into public.global_shipment_cost_entries (
-      parent_tenant_id,
+      tenant_id,
       shipment_id,
       cost_bucket,
       cost_component,
@@ -64,7 +64,7 @@ begin
       currency_id,
       metadata
     ) values (
-      v_ship.parent_tenant_id,
+      v_ship.tenant_id,
       p_shipment_id,
       'freight',
       'subtotal',

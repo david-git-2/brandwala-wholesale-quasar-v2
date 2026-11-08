@@ -29,7 +29,8 @@ import {
 } from '../utils/filterShipmentItemsBySheet';
 import {
   findLandSplitQtyMismatches,
-  formatLandSplitQtyGuardMessage,
+  formatLandSplitQtyGuardDialogHtml,
+  landSplitQtyGuardDialogTitle,
 } from '../utils/landSplitQtyGuard';
 import { calculateShipmentCostSummary, costingShipmentFromEntries } from 'src/shared/shipment-engine';
 import {
@@ -274,8 +275,9 @@ export function useInboundShipmentActions(options: {
       const qtyIssues = findLandSplitQtyMismatches(items, outcomes);
       if (qtyIssues.length > 0) {
         $q.dialog({
-          title: 'Land splits incomplete',
-          message: formatLandSplitQtyGuardMessage(qtyIssues),
+          title: landSplitQtyGuardDialogTitle(qtyIssues.length),
+          message: formatLandSplitQtyGuardDialogHtml(qtyIssues),
+          html: true,
           ok: { label: 'OK', flat: true },
         });
         return;

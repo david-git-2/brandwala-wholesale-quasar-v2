@@ -180,12 +180,44 @@
     </div>
     <template v-if="showOutcomeColumns">
       <div class="line-card__paper-tag">Paper</div>
-      <div class="line-card__paper-tag">—</div>
+      <div class="line-card__land-reason-cell" @click.stop>
+        <span class="line-card__paper-tag line-card__paper-tag--inline">—</span>
+        <q-btn
+          v-if="canAddSplit"
+          flat
+          dense
+          no-caps
+          size="sm"
+          color="primary"
+          icon="ph ph-plus"
+          label="Add split"
+          class="line-card__split-btn"
+          :disable="!canEditSplits"
+          :loading="addingExtra"
+          @click="emit('add-extra', item)"
+        >
+          <q-tooltip>Missing, damaged, or good qty when goods land</q-tooltip>
+        </q-btn>
+        <q-btn
+          v-if="canShowVendorDiscount"
+          flat
+          dense
+          no-caps
+          size="sm"
+          color="deep-orange-9"
+          icon="ph ph-tag"
+          label="Vendor credit"
+          :disable="!canEditLineCostFields"
+          @click="emit('open-vendor-discount', item)"
+        >
+          <q-tooltip>Log vendor price credit (does not move stock)</q-tooltip>
+        </q-btn>
+      </div>
       <div />
     </template>
 
     <div
-      v-if="showActionsColumn"
+      v-if="showActionsColumn && !showOutcomeColumns"
       class="line-card__trailing-actions"
       @click.stop
     >
@@ -567,12 +599,8 @@ const onExtraNumber = (
   --metric-tail-cols: 68px 68px 76px 76px 60px 96px;
 }
 .line-card--outcomes {
-  --line-cols: 22px 32px 1in minmax(200px, 1fr) 68px 68px 76px 76px 60px 92px 104px 24px;
-  --metric-tail-cols: 68px 68px 76px 76px 60px 92px 104px 24px;
-}
-.line-card--outcomes.line-card--actions {
-  --line-cols: 22px 32px 1in minmax(200px, 1fr) 68px 68px 76px 76px 60px 92px 104px 24px 96px;
-  --metric-tail-cols: 68px 68px 76px 76px 60px 92px 104px 24px 96px;
+  --line-cols: 22px 32px 1in minmax(200px, 1fr) 68px 68px 76px 76px 60px 92px minmax(120px, auto) 28px;
+  --metric-tail-cols: 68px 68px 76px 76px 60px 92px minmax(120px, auto) 28px;
 }
 .line-card--selected {
   box-shadow: inset 3px 0 0 var(--tf-theme-primary);
@@ -646,6 +674,18 @@ const onExtraNumber = (
 }
 .line-card__product-actions {
   margin-top: 2px;
+}
+.line-card__land-reason-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px 6px;
+  min-height: var(--line-card-value-h);
+  min-width: 0;
+}
+.line-card__paper-tag--inline {
+  flex: 0 0 auto;
 }
 .line-card__trailing-actions {
   display: flex;

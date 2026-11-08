@@ -322,7 +322,7 @@
                     </div>
                   </div>
                   <span class="text-right font-mono text-caption text-grey-9">
-                    {{ formatMoney(currentCostCurrencySymbol, bill.total_amount) }}
+                    {{ formatMoney(currentCostCurrencySymbol, displayBillTotal(bill)) }}
                   </span>
                   <span class="text-right font-mono text-caption" :class="displayDueAmount(bill) > 0 ? 'text-orange-9' : 'text-grey-7'">
                     {{ formatMoney(currentCostCurrencySymbol, displayDueAmount(bill)) }}
@@ -689,7 +689,7 @@
                   label="Add cost"
                   size="sm"
                   class="rounded-sq-btn text-weight-bold"
-                  :disable="!canEditCostLines"
+                  :disable="!canAddCostInActiveBucket"
                   @click="openAddCostDialog"
                 />
                 <div class="row items-center q-gutter-sm shrink-0">
@@ -760,6 +760,61 @@
               </div>
 
               <div
+                v-if="apBillsLoading && activeBucketApBillRows.length === 0"
+                class="text-caption text-grey-6 q-pa-sm rounded-borders bg-grey-1 border-grey"
+              >
+                Loading invoices for this bucket…
+              </div>
+              <div
+                v-else-if="activeBucketApBillRows.length > 0"
+                class="bg-white rounded-borders border-grey overflow-hidden"
+              >
+                <div class="summary-cost-row summary-cost-row--head text-xxs text-weight-bold text-grey-6 uppercase">
+                  <span>Invoices (this bucket)</span>
+                  <span class="text-right">Total</span>
+                  <span class="text-right">Due</span>
+                </div>
+                <div
+                  v-for="bill in activeBucketApBillRows"
+                  :key="bill.id"
+                  class="summary-ap-bill-row cursor-pointer"
+                  role="button"
+                  tabindex="0"
+                  @click="openApBill(bill.id)"
+                  @keyup.enter="openApBill(bill.id)"
+                >
+                  <div class="column q-gutter-y-2xs min-width-0">
+                    <div class="text-caption text-weight-medium text-grey-9 ellipsis">
+                      {{ bill.kindLabel }}
+                    </div>
+                    <div class="text-xxs text-grey-6 ellipsis">
+                      {{ bill.invoiceLabel }}
+                      <q-chip
+                        v-if="bill.statusChip"
+                        dense
+                        square
+                        size="sm"
+                        :color="bill.statusChip.color"
+                        :text-color="bill.statusChip.textColor"
+                        class="q-ml-xs q-ma-none"
+                      >
+                        {{ bill.statusChip.label }}
+                      </q-chip>
+                    </div>
+                  </div>
+                  <span class="text-right font-mono text-caption text-grey-9">
+                    {{ formatMoney(currentCostCurrencySymbol, displayBillTotal(bill)) }}
+                  </span>
+                  <span
+                    class="text-right font-mono text-caption"
+                    :class="displayDueAmount(bill) > 0 ? 'text-orange-9' : 'text-grey-7'"
+                  >
+                    {{ formatMoney(currentCostCurrencySymbol, displayDueAmount(bill)) }}
+                  </span>
+                </div>
+              </div>
+
+              <div
                 v-if="!hasVisibleCostRows"
                 class="text-caption text-grey-6 q-pa-sm rounded-borders bg-grey-1 border-grey"
               >
@@ -801,7 +856,10 @@
                       {{ row.description }}
                     </div>
                   </div>
-                  <div class="col-auto row items-center q-gutter-x-xs shrink-0">
+                  <div
+                    v-if="canEditCostLineInBucket(row.cost_bucket)"
+                    class="col-auto row items-center q-gutter-x-xs shrink-0"
+                  >
                     <q-btn
                       flat
                       round
@@ -809,7 +867,6 @@
                       size="sm"
                       color="primary"
                       icon="ph ph-pencil-simple"
-                      :disable="!canEditCostLines"
                       aria-label="Edit cost line"
                       @click="openEditCostDialog(row)"
                     />
@@ -821,7 +878,6 @@
                       color="negative"
                       class="cost-line-delete-btn"
                       :class="{ 'cost-line-delete-btn--holding': deleteHoldKey === row.localKey }"
-                      :disable="!canEditCostLines"
                       aria-label="Hold to remove cost line"
                       @click.prevent
                       @mousedown.prevent="startDeleteHold(row.localKey, rowIndex)"
@@ -1130,6 +1186,7 @@ import {
   apBillStatusChip,
   type ApBillStatusChip,
   billDetailRoute,
+  displayBillTotal,
   displayDueAmount,
   sumApBillsDue,
   sumApBillsTotal,
@@ -1403,13 +1460,6 @@ const isCostsLockedFlag = computed(() => Boolean(unref(isCostsLocked)));
 const isStockPostedFlag = computed(() => Boolean(unref(isStockPosted)));
 const canEditCostsFlag = computed(() => Boolean(unref(canEditCosts)));
 
-/** Plain booleans for Quasar props (nested calculation refs do not always unwrap). */
-const canEditCostLines = computed(() => {
-  if (isCurrentShipmentArchived.value) return false;
-  if (!shipmentStore.currentShipment) return false;
-  return canEditCostsFlag.value;
-});
-
 const boxTotalsNetDiff = computed(() =>
   describeBoxTotalsNetDiff(
     currentShipmentBoxesReceivedTotal.value,
@@ -1568,7 +1618,7 @@ const costFileTotal = computed(() => {
 const summaryApBillRows = computed(() => {
   const order = new Map<string, number>();
   SHIPMENT_AP_COST_BUCKETS.forEach((k, i) => order.set(k, i));
-  const sorted = [...apBills.value].sort((a, b) => {
+  const sorted = [...shipmentApBills.value].sort((a, b) => {
     const ak = shipmentApBillBucket(a) ?? '';
     const bk = shipmentApBillBucket(b) ?? '';
     const ai = order.get(ak) ?? 99;
@@ -1587,9 +1637,9 @@ const summaryApBillRows = computed(() => {
   });
 });
 
-const apBillsGrandTotal = computed(() => sumApBillsTotal(apBills.value));
+const apBillsGrandTotal = computed(() => sumApBillsTotal(shipmentApBills.value));
 
-const apBillsDueTotal = computed(() => sumApBillsDue(apBills.value));
+const apBillsDueTotal = computed(() => sumApBillsDue(shipmentApBills.value));
 
 const courierCostPerKg = computed(() => {
   const t = totals?.value ?? totals;
@@ -1853,10 +1903,89 @@ const costRowDisplayGroups = computed(() => {
 
 const apBills = ref<ShipmentApBillRow[]>([]);
 const apBillsLoading = ref(false);
+
+const shipmentApBills = computed((): ShipmentApBillRow[] => {
+  if (shipmentStore.settingsFinanceCachedShipmentId === props.shipmentId) {
+    return shipmentStore.settingsFinanceCachedApBills;
+  }
+  return apBills.value;
+});
+
+const shipmentApBillsReady = computed(
+  () => shipmentStore.settingsFinanceCachedShipmentId === props.shipmentId,
+);
+
+/** Plain booleans for Quasar props (nested calculation refs do not always unwrap). */
+const canEditCostLines = computed(() => {
+  if (isCurrentShipmentArchived.value) return false;
+  if (!shipmentStore.currentShipment) return false;
+  return canEditCostsFlag.value;
+});
+
+const apBillLocksCostEdits = (bill: ShipmentApBillRow): boolean => {
+  if (bill.invoice_status === 'draft' || bill.invoice_status === 'voided') return false;
+  return true;
+};
+
 const apBillActionBucket = ref<ShipmentApKind | null>(null);
 const apBillActionKind = ref<'open' | 'credit_note' | null>(null);
 
-const apBillForBucket = (kind: ShipmentApKind) => findShipmentApBill(apBills.value, kind);
+const apBillForBucket = (kind: ShipmentApKind) => findShipmentApBill(shipmentApBills.value, kind);
+
+const apBillMatchesCostBucket = (
+  bill: ShipmentApBillRow,
+  bucket: GlobalShipmentCostBucket,
+): boolean => {
+  if (shipmentApBillBucket(bill) === bucket) return true;
+  if (bill.ap_kind === bucket) return true;
+  const keyPrefix = (bill.source_key ?? '').split(':')[0];
+  return keyPrefix === bucket;
+};
+
+const bucketHasLockedApBill = (bucket: GlobalShipmentCostBucket): boolean => {
+  if (
+    shipmentApBills.value.some(
+      (b) => apBillLocksCostEdits(b) && apBillMatchesCostBucket(b, bucket),
+    )
+  ) {
+    return true;
+  }
+  const unbucketedIssued = shipmentApBills.value.filter(
+    (b) => apBillLocksCostEdits(b) && !shipmentApBillBucket(b),
+  );
+  return unbucketedIssued.length === 1 && bucket === 'material';
+};
+
+const activeBucketApBillRows = computed(() => {
+  const bucket = costBucketFilter.value;
+  const matched = summaryApBillRows.value.filter((bill) => apBillMatchesCostBucket(bill, bucket));
+  if (matched.length > 0) return matched;
+  const unbucketedIssued = summaryApBillRows.value.filter(
+    (b) => !shipmentApBillBucket(b) && apBillLocksCostEdits(b),
+  );
+  if (unbucketedIssued.length === 1 && bucket === 'material') {
+    return unbucketedIssued;
+  }
+  return matched;
+});
+
+/** Pencil / delete on a saved cost line (not Add cost). */
+const canEditCostLineInBucket = (bucket: GlobalShipmentCostBucket): boolean => {
+  if (!canEditCostLines.value) return false;
+  if (apBillsLoading.value || shipmentStore.settingsFinanceLoading) return false;
+  if (!shipmentApBillsReady.value && shipmentApBills.value.length === 0) return false;
+  return !bucketHasLockedApBill(bucket);
+};
+
+/** New cost lines in buckets without an issued AP bill. */
+const canAddCostInBucket = (bucket: GlobalShipmentCostBucket): boolean => {
+  if (!canEditCostLines.value) return false;
+  return !bucketHasLockedApBill(bucket);
+};
+
+const canAddCostInActiveBucket = computed(() =>
+  canAddCostInBucket(costBucketFilter.value),
+);
 
 const openBucketBillLabel = (kind: ShipmentApKind) => {
   const bill = apBillForBucket(kind);
@@ -1933,9 +2062,16 @@ const refreshSettingsFinanceBundle = async (options?: { force?: boolean }) => {
   summaryFinanceLoading.value = true;
   settingsFinanceLoadInFlight.value = true;
   try {
+    const contextTenantId =
+      (shipmentStore.currentShipment?.id === shipmentId
+        ? shipmentStore.currentShipment.tenant_id
+        : null) ??
+      authStore.selectedTenant?.parent_id ??
+      authStore.selectedTenant?.id ??
+      null;
     const { apBills: bills, apFx } = await shipmentStore.loadSettingsFinanceBundle(
       shipmentId,
-      { force: options?.force },
+      { force: options?.force, contextTenantId },
     );
     apBills.value = bills;
     apFxSnapshot.value = apFx;
@@ -1943,8 +2079,13 @@ const refreshSettingsFinanceBundle = async (options?: { force?: boolean }) => {
     settingsFinanceCooldownUntil = Date.now() + 800;
   } catch (err) {
     console.warn('loadSettingsFinanceBundle failed', err);
-    apBills.value = [];
-    apFxSnapshot.value = null;
+    if (shipmentStore.settingsFinanceCachedShipmentId === shipmentId) {
+      apBills.value = [...shipmentStore.settingsFinanceCachedApBills];
+      apFxSnapshot.value = shipmentStore.settingsFinanceCachedApFx;
+    } else {
+      apBills.value = [];
+      apFxSnapshot.value = null;
+    }
   } finally {
     apBillsLoading.value = false;
     summaryFinanceLoading.value = false;
@@ -1976,7 +2117,12 @@ watch(
       return;
     }
     if (!shipmentId) return;
-    void refreshSettingsFinanceBundle({ force: false });
+    if (shipmentStore.settingsFinanceCachedShipmentId === shipmentId) {
+      apBills.value = [...shipmentStore.settingsFinanceCachedApBills];
+      apFxSnapshot.value = shipmentStore.settingsFinanceCachedApFx;
+      settingsFinanceLoadedForShipmentId.value = shipmentId;
+    }
+    void refreshSettingsFinanceBundle({ force: true });
   },
 );
 
@@ -2046,10 +2192,10 @@ const goToMaterialCommercialCreditNote = async () => {
 };
 
 const ensureBucketApBill = async (kind: ShipmentApKind): Promise<ShipmentApBillRow | null> => {
-  const linked = findShipmentApBill(apBills.value, kind);
+  const linked = findShipmentApBill(shipmentApBills.value, kind);
   if (linked) return linked;
   await refreshSettingsFinanceBundle({ force: true });
-  return findShipmentApBill(apBills.value, kind);
+  return findShipmentApBill(shipmentApBills.value, kind);
 };
 
 const goToBucketBill = async (kind: ShipmentApKind) => {
@@ -2301,7 +2447,8 @@ const clearDeleteHold = () => {
 };
 
 const startDeleteHold = (localKey: string, rowIndex: number) => {
-  if (!canEditCostLines.value) return;
+  const row = costRowsList.value[rowIndex];
+  if (!row || !canEditCostLineInBucket(row.cost_bucket)) return;
   clearDeleteHold();
   deleteHoldKey.value = localKey;
   deleteHoldTargetIndex.value = rowIndex;
@@ -2329,14 +2476,14 @@ onBeforeUnmount(() => {
 });
 
 const openAddCostDialog = () => {
-  if (!canEditCostLines.value) return;
+  if (!canAddCostInActiveBucket.value) return;
   editingCostLocalKey.value = null;
   resetAddCostForm();
   showAddCostDialog.value = true;
 };
 
 const openEditCostDialog = (row: ShipmentCostRowDraft) => {
-  if (!canEditCostLines.value) return;
+  if (!canEditCostLineInBucket(row.cost_bucket)) return;
   editingCostLocalKey.value = row.localKey;
   addCostForm.value = {
     cost_component: row.cost_component,
@@ -2356,7 +2503,6 @@ const closeAddCostDialog = () => {
 
 const confirmCostDialog = async () => {
   if (!props.shipmentId || isNaN(props.shipmentId) || costDialogSaving.value) return;
-  if (!canEditCostLines.value) return;
 
   const raw = addCostForm.value.amount;
   const amt = raw != null ? Number(raw) : NaN;
@@ -2376,6 +2522,9 @@ const confirmCostDialog = async () => {
     ? costRowsList.value.find((r) => r.localKey === editingCostLocalKey.value)
     : null;
   const bucket = editingRow?.cost_bucket ?? costBucketFilter.value;
+  if (editingRow) {
+    if (!canEditCostLineInBucket(bucket)) return;
+  } else if (!canAddCostInBucket(bucket)) return;
   const roundedAmt = Math.round(amt * 100) / 100;
 
   const payload: UpsertShipmentCostEntryPayload = {

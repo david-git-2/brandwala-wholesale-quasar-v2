@@ -53,7 +53,7 @@ begin
     inner join public.global_shipments gship on gship.id = gsi.shipment_id
     left join public.stock_locations sl on sl.id = gs.location_id
     left join public.tags tg on tg.id = gs.grade_tag_id
-    where gs.parent_tenant_id = p_tenant_id
+    where gs.tenant_id = p_tenant_id
       and gs.is_archived = false
       and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
       and (

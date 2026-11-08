@@ -21,11 +21,11 @@ begin
   select * into v_shipment from public.global_shipments where id = p_global_shipment_id;
   if v_shipment.id is null then raise exception 'global shipment not found'; end if;
 
-  if not public.user_can_manage_parent_tenant(v_shipment.parent_tenant_id) then
+  if not public.user_can_manage_parent_tenant(v_shipment.tenant_id) then
     raise exception 'not allowed';
   end if;
 
-  v_pnl := public.get_shipment_pnl(v_shipment.parent_tenant_id, p_global_shipment_id);
+  v_pnl := public.get_shipment_pnl(v_shipment.tenant_id, p_global_shipment_id);
   v_buy := coalesce((v_pnl -> 'totals' ->> 'landed_cost')::numeric, 0.00);
   v_profit := coalesce((v_pnl -> 'totals' ->> 'gross_profit')::numeric, 0.00);
 
@@ -73,7 +73,7 @@ begin
     if v_computed_profit > 0 and v_status = 'realized' then
       if not exists (
         select 1 from public.cashbook_entries
-        where tenant_id = v_shipment.parent_tenant_id
+        where tenant_id = v_shipment.tenant_id
           and entity_type = 'investor'
           and entity_id = v_inv.investor_id
           and source_type = 'vendor_purchase'
@@ -81,7 +81,7 @@ begin
           and metadata->>'purpose' = 'shipment_investor_profit'
       ) then
         perform public.record_ledger_transaction(
-          p_parent_tenant_id => v_shipment.parent_tenant_id, p_operating_tenant_id => coalesce(v_shipment.assigned_child_tenant_id, v_shipment.parent_tenant_id),
+          p_parent_tenant_id => v_shipment.tenant_id, p_operating_tenant_id => coalesce(v_shipment.assigned_child_tenant_id, v_shipment.tenant_id),
           p_entity_type => 'investor',
           p_entity_id => v_inv.investor_id,
           p_type => 'credit',

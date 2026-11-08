@@ -1,5 +1,5 @@
 CREATE FUNCTION public._stock_spine_upsert_receive_lot (
-  p_parent_tenant_id bigint,
+  p_tenant_id bigint,
   p_shipment_item_id bigint,
   p_outcome_id       bigint,
   p_stock_type_id    bigint,
@@ -21,7 +21,7 @@ BEGIN
   END IF;
 
   INSERT INTO public.global_stocks (
-    parent_tenant_id,
+    tenant_id,
     shipment_item_id,
     outcome_id,
     stock_type_id,
@@ -31,7 +31,7 @@ BEGIN
     location_id,
     grade_tag_id
   ) VALUES (
-    p_parent_tenant_id,
+    p_tenant_id,
     p_shipment_item_id,
     p_outcome_id,
     p_stock_type_id,

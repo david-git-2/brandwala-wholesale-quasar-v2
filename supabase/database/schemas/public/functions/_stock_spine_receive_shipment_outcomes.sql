@@ -28,7 +28,7 @@ BEGIN
     RAISE EXCEPTION 'shipment not found';
   END IF;
 
-  v_parent := v_ship.parent_tenant_id;
+  v_parent := v_ship.tenant_id;
 
   IF v_ship.status = 'cancelled' THEN
     RAISE EXCEPTION 'shipment is cancelled';
@@ -117,7 +117,7 @@ BEGIN
 
     IF NOT EXISTS (
       SELECT 1 FROM public.stock_locations sl
-      WHERE sl.id = v_loc AND sl.parent_tenant_id = v_parent AND sl.is_active = true
+      WHERE sl.id = v_loc AND sl.tenant_id = v_parent AND sl.is_active = true
         AND public._stock_location_is_leaf(v_loc)
     ) THEN
       RAISE EXCEPTION 'invalid put-away location';

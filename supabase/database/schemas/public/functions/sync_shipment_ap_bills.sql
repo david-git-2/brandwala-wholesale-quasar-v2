@@ -43,7 +43,7 @@ begin
     raise exception 'Shipment % not found', p_shipment_id;
   end if;
 
-  v_parent := v_ship.parent_tenant_id;
+  v_parent := v_ship.tenant_id;
   v_issued_by := coalesce(v_ship.assigned_child_tenant_id, v_parent);
 
   if not (
@@ -56,7 +56,7 @@ begin
   if v_ship.vendor_id is not null then
     select pr.id into v_vendor_profile
     from public.profiles pr
-    where pr.parent_tenant_id = v_parent
+    where pr.tenant_id = v_parent
       and pr.profile_type = 'vendor'::public.profile_party_type
       and pr.subject_id = v_ship.vendor_id;
   end if;
@@ -64,7 +64,7 @@ begin
   if v_ship.cargo_company_id is not null then
     select pr.id into v_cargo_profile
     from public.profiles pr
-    where pr.parent_tenant_id = v_parent
+    where pr.tenant_id = v_parent
       and pr.profile_type = 'cargo'::public.profile_party_type
       and pr.subject_id = v_ship.cargo_company_id;
   end if;
@@ -85,7 +85,7 @@ begin
     for v_void_id in
       select b.id
       from public.bills b
-      where b.parent_tenant_id = v_parent
+      where b.tenant_id = v_parent
         and b.ap_shipment_id = p_shipment_id
         and b.invoice_type = 'ap'::public.global_invoice_type
         and b.document_kind = 'standard'::public.bill_document_kind
@@ -119,7 +119,7 @@ begin
       for v_void_id in
         select b.id
         from public.bills b
-        where b.parent_tenant_id = v_parent
+        where b.tenant_id = v_parent
           and b.source_type = 'shipment_cost'
           and b.source_id = p_shipment_id::text
           and b.invoice_type = 'ap'::public.global_invoice_type
@@ -203,7 +203,7 @@ begin
   for v_void_id in
     select b.id
     from public.bills b
-    where b.parent_tenant_id = v_parent
+        where b.tenant_id = v_parent
       and b.source_type = 'shipment_cost'
       and b.source_id = p_shipment_id::text
       and b.invoice_type = 'ap'::public.global_invoice_type
@@ -223,7 +223,7 @@ begin
   for v_void_id in
     select b.id
     from public.bills b
-    where b.parent_tenant_id = v_parent
+        where b.tenant_id = v_parent
       and b.ap_shipment_id = p_shipment_id
       and b.invoice_type = 'ap'::public.global_invoice_type
       and b.document_kind = 'standard'::public.bill_document_kind

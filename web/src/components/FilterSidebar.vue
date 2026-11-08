@@ -2,10 +2,11 @@
   <AppResizableOverlayPanel
     :model-value="modelValue"
     :default-width="defaultWidthPx"
-    :min-width="280"
-    :max-width="960"
+    :min-width="minWidthPx"
+    :max-width="maxWidthPx"
     :storage-key="storageKey"
     :z-index="zIndex"
+    :resizable="resizable"
     :aria-label="title"
     @update:model-value="emit('update:modelValue', $event)"
   >
@@ -42,11 +43,17 @@ const props = withDefaults(
     zIndex?: number | undefined;
     /** Persist panel width in localStorage when set */
     storageKey?: string | undefined;
+    maxWidth?: number;
+    minWidth?: number;
+    resizable?: boolean;
   }>(),
   {
     title: 'Filters',
     width: 'min(320px, 92vw)',
     zIndex: 6000,
+    maxWidth: 960,
+    minWidth: 280,
+    resizable: true,
   },
 );
 
@@ -64,6 +71,8 @@ function parseWidthPx(width: string): number {
 }
 
 const defaultWidthPx = computed(() => parseWidthPx(props.width ?? 'min(320px, 92vw)'));
+const maxWidthPx = computed(() => props.maxWidth);
+const minWidthPx = computed(() => props.minWidth);
 </script>
 
 <style scoped>

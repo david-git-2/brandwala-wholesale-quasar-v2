@@ -1677,7 +1677,7 @@ const showOutcomeColumns = computed(
 );
 
 const showLineActionsColumn = computed(
-  () => canAddSplit.value || isShipmentReceived.value,
+  () => (canAddSplit.value || isShipmentReceived.value) && !showOutcomeColumns.value,
 );
 
 const allShipmentOutcomesFlat = computed(() =>
@@ -2809,10 +2809,7 @@ const removeSheet = async (id: string) => {
   grid-template-columns: 22px 32px 1in minmax(220px, 1fr) 68px 68px 76px 76px 60px 96px;
 }
 .line-sheet-head--outcomes {
-  grid-template-columns: 22px 32px 1in minmax(200px, 1fr) 68px 68px 76px 76px 60px 92px 104px 24px;
-}
-.line-sheet-head--outcomes.line-sheet-head--actions {
-  grid-template-columns: 22px 32px 1in minmax(200px, 1fr) 68px 68px 76px 76px 60px 92px 104px 24px 96px;
+  grid-template-columns: 22px 32px 1in minmax(200px, 1fr) 68px 68px 76px 76px 60px 92px minmax(120px, auto) 28px;
 }
 .line-sheet-head__select {
   justify-self: center;

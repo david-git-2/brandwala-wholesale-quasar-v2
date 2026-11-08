@@ -30,7 +30,7 @@ begin
     raise exception 'shipment not found';
   end if;
 
-  if not public.user_can_manage_parent_tenant(v_shipment.parent_tenant_id) then
+  if not public.user_can_manage_parent_tenant(v_shipment.tenant_id) then
     raise exception 'not allowed';
   end if;
 
@@ -40,7 +40,7 @@ begin
     from public.order_items oi
     inner join public.orders o on o.id = oi.order_id
     where oi.id = p_source_id
-      and o.parent_tenant_id = v_shipment.parent_tenant_id
+      and o.parent_tenant_id = v_shipment.tenant_id
       and oi.shipment_id is null;
 
     if v_child_tenant_id is null then
@@ -97,7 +97,7 @@ begin
     inner join public.product_based_costing_files pcf on pcf.id = pci.product_based_costing_file_id
     inner join public.tenants t on t.id = pcf.tenant_id
     where pci.id = p_source_id
-      and t.parent_id = v_shipment.parent_tenant_id
+      and t.parent_id = v_shipment.tenant_id
       and pci.assigned_shipment_id is null;
 
     if v_child_tenant_id is null then
@@ -154,7 +154,7 @@ begin
     inner join public.shop_orders o on o.id = oi.order_id
     inner join public.tenants t on t.id = o.tenant_id
     where oi.id = p_source_id
-      and t.parent_id = v_shipment.parent_tenant_id
+      and t.parent_id = v_shipment.tenant_id
       and oi.procurement_pulled = false
       and o.status = 'placed';
 

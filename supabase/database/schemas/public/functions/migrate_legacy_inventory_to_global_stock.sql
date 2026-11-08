@@ -25,7 +25,7 @@ begin
 
     insert into public.global_stocks (
       tenant_id,
-      parent_tenant_id,
+      tenant_id,
       name,
       cost,
       image_url,

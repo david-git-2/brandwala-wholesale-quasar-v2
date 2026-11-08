@@ -117,7 +117,9 @@ BEGIN
         DELETE FROM public.delivery_paper_line dpl
         WHERE dpl.delivery_paper_id = p_delivery_paper_id
           AND dpl.preorder_demand_id = v_demand_id
-          AND dpl.global_stock_id IS NULL;
+          AND dpl.global_stock_id IS NULL
+          AND dpl.dispatched_global_stock_id IS NULL
+          AND public.delivery_paper_line_packed_qty(dpl.splits) = 0;
 
         IF jsonb_array_length(v_item_splits) > 0 THEN
           INSERT INTO public.delivery_paper_line (

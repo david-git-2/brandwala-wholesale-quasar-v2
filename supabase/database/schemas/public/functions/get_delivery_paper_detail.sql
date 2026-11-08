@@ -116,7 +116,7 @@ BEGIN
       SELECT
         dpl.id AS line_id,
         ('dpl-' || dpl.id::text || '-' || split.ord::text) AS client_key,
-        dpl.global_stock_id,
+        public.delivery_paper_line_resolvable_bill_stock_id(dpl) AS global_stock_id,
         (split.elem->>'quantity')::integer AS quantity,
         split.elem->>'status' AS line_status,
         (split.ord > 1) AS is_close_split,
@@ -130,7 +130,8 @@ BEGIN
         ) AS is_applied,
         split.ord AS split_ord
       FROM public.delivery_paper_line dpl
-      LEFT JOIN public.global_stocks gs ON gs.id = dpl.global_stock_id
+      LEFT JOIN public.global_stocks gs
+        ON gs.id = public.delivery_paper_line_resolvable_bill_stock_id(dpl)
       LEFT JOIN public.global_shipment_items gsi ON gsi.id = gs.shipment_item_id
       LEFT JOIN public.global_shipments sh ON sh.id = gsi.shipment_id
       LEFT JOIN public.stock_locations sl ON sl.id = gs.location_id

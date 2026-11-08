@@ -26,7 +26,7 @@ begin
     return new;
   end if;
 
-  if not public.user_can_manage_parent_tenant(v_ship.parent_tenant_id) then
+  if not public.user_can_manage_parent_tenant(v_ship.tenant_id) then
     return new;
   end if;
 

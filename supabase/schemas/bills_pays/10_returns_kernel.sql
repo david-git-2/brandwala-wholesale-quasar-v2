@@ -517,11 +517,11 @@ begin
         if v_invoice_item.id is not null then
           -- global_return_items schema: quantity + return_charge_amount only (no return_amount / face / accounting)
           insert into public.global_return_items (
-            tenant_id, tenant_id, invoice_id, invoice_item_id, global_stock_id,
+            tenant_id, invoice_id, invoice_item_id, global_stock_id,
             quantity, return_charge_amount, note
           )
           values (
-            v_invoice.tenant_id, v_invoice.tenant_id, v_invoice.id, v_invoice_item.id, v_order_item.global_stock_id,
+            v_invoice.tenant_id, v_invoice.id, v_invoice_item.id, v_order_item.global_stock_id,
             v_returned_qty, 0.00, coalesce(p_override_reason, 'Dropship return finalization')
           );
 

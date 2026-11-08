@@ -57,38 +57,65 @@ const issueLabel = (issue: LandSplitQtyIssue): string => {
   return issue.name;
 };
 
-/** One line for dialogs / banners. */
+/** One line for plain-text banners (matches row chip: "Split X of Y"). */
 export const describeLandSplitIssue = (issue: LandSplitQtyIssue): string => {
   const label = issueLabel(issue);
-  if (issue.splitQty === 0) {
-    return `${label}: no land splits yet (ordered ${issue.orderedQty})`;
-  }
-  if (issue.splitQty < issue.orderedQty) {
-    const gap = issue.orderedQty - issue.splitQty;
-    return `${label}: split ${issue.splitQty} / ordered ${issue.orderedQty} (add ${gap} — e.g. Missing)`;
-  }
-  const over = issue.splitQty - issue.orderedQty;
-  return `${label}: split ${issue.splitQty} / ordered ${issue.orderedQty} (reduce by ${over})`;
+  return `${label}: ${issue.splitQty} of ${issue.orderedQty}`;
 };
 
 /** Short hint on the line card. */
 export const describeLandSplitIssueShort = (issue: LandSplitQtyIssue): string => {
-  if (issue.splitQty === 0) return `Needs land splits for ${issue.orderedQty} ordered`;
-  if (issue.splitQty < issue.orderedQty) {
-    return `Split ${issue.splitQty} / ${issue.orderedQty} — add ${issue.orderedQty - issue.splitQty}`;
-  }
-  return `Split ${issue.splitQty} / ${issue.orderedQty} — reduce by ${issue.splitQty - issue.orderedQty}`;
+  return `Split ${issue.splitQty} of ${issue.orderedQty}`;
+};
+
+const escapeLandSplitHtml = (raw: string): string =>
+  raw
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+export const landSplitQtyGuardDialogTitle = (issueCount: number): string => {
+  if (issueCount === 1) return 'One product still needs quantities';
+  return `${issueCount} products still need quantities`;
 };
 
 export const formatLandSplitQtyGuardMessage = (issues: LandSplitQtyIssue[]): string => {
-  const lines = issues.map((issue) => `• ${describeLandSplitIssue(issue)}`);
   const max = 12;
-  const shown = lines.slice(0, max);
-  const extra = lines.length > max ? `\n• …and ${lines.length - max} more product(s)` : '';
-  return (
-    'These products need land splits before receive:\n\n' +
-    shown.join('\n') +
-    extra +
-    '\n\nAdd splits on each line (Missing/damaged for leftover). The app will not auto-fill.'
-  );
+  const shown = issues
+    .slice(0, max)
+    .map((issue) => `• ${describeLandSplitIssue(issue)}`);
+  const extra =
+    issues.length > max ? `• …and ${issues.length - max} more` : '';
+  return [
+    'On each product, enter how many units you received. Good + missing + damaged must add up to the order qty.',
+    '',
+    'Still to fix:',
+    ...shown,
+    extra,
+    '',
+    'Open each line → Add split. Short count? use Missing or Damaged for the rest.',
+  ]
+    .filter((line) => line !== '')
+    .join('\n');
+};
+
+/** Structured copy for Quasar dialog (`html: true`). */
+export const formatLandSplitQtyGuardDialogHtml = (issues: LandSplitQtyIssue[]): string => {
+  const max = 12;
+  const listItems = issues.slice(0, max).map((issue) => {
+    const label = escapeLandSplitHtml(issueLabel(issue));
+    return `<li><strong>${label}</strong> — ${issue.splitQty} of ${issue.orderedQty}</li>`;
+  });
+  const extra =
+    issues.length > max
+      ? `<li class="text-grey-7">…and ${issues.length - max} more</li>`
+      : '';
+  return [
+    '<p class="q-mb-sm">You can’t receive until each product shows how many units arrived.',
+    'The numbers must add up to what you ordered (use <strong>Missing</strong> or <strong>Damaged</strong> if you got less).</p>',
+    '<p class="text-weight-medium q-mb-xs q-mt-md">These lines:</p>',
+    `<ul class="q-pl-md q-my-sm">${listItems.join('')}${extra}</ul>`,
+    '<p class="q-mb-none text-grey-8">Go back to the list → open the product → <strong>Add split</strong>.</p>',
+  ].join('');
 };

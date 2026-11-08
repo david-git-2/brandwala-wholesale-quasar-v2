@@ -36,7 +36,7 @@ begin
     raise exception 'outcome must be cash_refund or store_credit';
   end if;
 
-  if not public.has_active_tenant_membership(v_ship.parent_tenant_id)
+  if not public.has_active_tenant_membership(v_ship.tenant_id)
      and not public.is_superadmin() then
     raise exception 'not authorized';
   end if;
@@ -46,7 +46,7 @@ begin
   insert into public.stock_movements (
     tenant_id, movement_no, movement_type, reference_type, reference_id, notes, created_by_email
   ) values (
-    v_ship.parent_tenant_id,
+    v_ship.tenant_id,
     'VR-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('stock_movements_id_seq')::text, 6, '0'),
     'vendor_return'::public.stock_movement_type,
     'shipment_return',
@@ -67,7 +67,7 @@ begin
       from public.global_stocks gs
       join public.global_stock_types gst on gst.id = gs.stock_type_id
       where gs.shipment_item_id = v_shipment_item_id
-        and gs.parent_tenant_id = v_ship.parent_tenant_id
+        and gs.tenant_id = v_ship.tenant_id
         and gst.is_sellable = true
         and gs.availability = 'sellable'::public.stock_availability
       order by gs.quantity desc, gs.id
@@ -104,9 +104,9 @@ begin
 
   if p_outcome = 'cash_refund' then
     v_ledger := public.record_ledger_transaction(
-      p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
+      p_parent_tenant_id => v_ship.tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.tenant_id),
       p_entity_type => 'tenant',
-      p_entity_id => v_ship.parent_tenant_id,
+      p_entity_id => v_ship.tenant_id,
       p_type => 'credit',
       p_amount => v_amount,
       p_currency_code => 'BDT',
@@ -116,7 +116,7 @@ begin
     );
     if v_vendor_id is not null then
       perform public.record_ledger_transaction(
-        p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
+        p_parent_tenant_id => v_ship.tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.tenant_id),
         p_entity_type => 'vendor',
         p_entity_id => v_vendor_id,
         p_type => 'debit',
@@ -129,7 +129,7 @@ begin
     end if;
   else
     v_ledger := public.record_ledger_transaction(
-      p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
+      p_parent_tenant_id => v_ship.tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.tenant_id),
       p_entity_type => 'vendor',
       p_entity_id => v_vendor_id,
       p_type => 'credit',

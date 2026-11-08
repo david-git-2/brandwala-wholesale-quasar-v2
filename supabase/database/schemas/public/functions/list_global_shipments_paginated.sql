@@ -23,7 +23,7 @@ begin
   select count(*)
   into v_total_count
   from public.global_shipments s
-  where s.parent_tenant_id = p_tenant_id
+  where s.tenant_id = p_tenant_id
     and (p_is_archived is null or s.is_archived = p_is_archived)
     and (p_status is null or p_status = '' or p_status = '__all__' or s.status = p_status)
     and (
@@ -38,7 +38,7 @@ begin
   select count(*)
   into v_archived_count
   from public.global_shipments s
-  where s.parent_tenant_id = p_tenant_id
+  where s.tenant_id = p_tenant_id
     and s.is_archived = true;
 
   select coalesce(jsonb_agg(row_json order by sort_id desc), '[]'::jsonb)
@@ -71,7 +71,7 @@ begin
     left join public.tags t
       on t.id = s.progress_tag_id
      and t.group_name = 'shipment_progress'
-    where s.parent_tenant_id = p_tenant_id
+    where s.tenant_id = p_tenant_id
       and (p_is_archived is null or s.is_archived = p_is_archived)
       and (p_status is null or p_status = '' or p_status = '__all__' or s.status = p_status)
       and (
@@ -127,7 +127,7 @@ begin
   select count(*)
   into v_total_count
   from public.global_shipments s
-  where s.parent_tenant_id = p_tenant_id
+  where s.tenant_id = p_tenant_id
     and (p_status is null or p_status = '' or p_status = '__all__' or s.status = p_status)
     and (
       p_search is null or p_search = '' or (
@@ -162,7 +162,7 @@ begin
     left join public.tags t
       on t.id = s.progress_tag_id
      and t.group_name = 'shipment_progress'
-    where s.parent_tenant_id = p_tenant_id
+    where s.tenant_id = p_tenant_id
       and (p_status is null or p_status = '' or p_status = '__all__' or s.status = p_status)
       and (
         p_search is null or p_search = '' or (

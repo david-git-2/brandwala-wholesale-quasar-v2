@@ -10,7 +10,7 @@ CREATE FUNCTION public.post_shipment_outcome_stock (
 DECLARE
   v_parent bigint;
 BEGIN
-  SELECT parent_tenant_id INTO v_parent
+  SELECT tenant_id INTO v_parent
   FROM public.global_shipments
   WHERE id = p_shipment_id;
 

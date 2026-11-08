@@ -24,7 +24,7 @@ begin
     raise exception 'shipment not found';
   end if;
 
-  if not public.user_can_manage_parent_tenant(v_ship.parent_tenant_id) then
+  if not public.user_can_manage_parent_tenant(v_ship.tenant_id) then
     raise exception 'not allowed';
   end if;
 
@@ -57,7 +57,7 @@ begin
     end if;
   else
     insert into public.global_shipment_cost_entries (
-      parent_tenant_id,
+      tenant_id,
       shipment_id,
       cost_bucket,
       cost_component,
@@ -68,7 +68,7 @@ begin
       metadata,
       section_id
     ) values (
-      v_ship.parent_tenant_id,
+      v_ship.tenant_id,
       p_shipment_id,
       p_cost_bucket,
       p_cost_component,

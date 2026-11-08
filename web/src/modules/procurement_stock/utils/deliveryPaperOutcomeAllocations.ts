@@ -10,7 +10,8 @@ export type DeliveryPaperOutcomeField = 'accepted' | 'conditioned' | 'rejected';
 
 export type DeliveryPaperOutcomeAllocation = {
   preorder_demand_id: number;
-  global_stock_id: number;
+  global_stock_id?: number | null;
+  delivery_paper_line_id?: number;
   quantity: number;
   grade_tag_id?: number | null;
   /** UI display */
@@ -36,7 +37,7 @@ export const deliveryPaperOutcomeCloseAction = outcomeFieldToCloseAction;
 
 export type PackedLotRow = {
   line_id: number;
-  global_stock_id: number;
+  global_stock_id: number | null;
   quantity: number;
   shipment_name: string | null;
 };
@@ -45,12 +46,13 @@ export const packedLotsFromItem = (item: DeliveryPaperDetailItem): PackedLotRow[
   const rows: PackedLotRow[] = [];
   for (const pick of item.paper_picks ?? []) {
     if ((pick.line_status ?? '').toLowerCase() !== 'packed') continue;
-    if (pick.global_stock_id == null) continue;
     const qty = Math.max(0, Math.trunc(Number(pick.quantity ?? 0)));
     if (qty <= 0) continue;
+    const lineId = pick.line_id;
+    if (lineId == null && pick.global_stock_id == null) continue;
     rows.push({
-      line_id: pick.line_id ?? pick.global_stock_id,
-      global_stock_id: pick.global_stock_id,
+      line_id: lineId ?? pick.global_stock_id ?? 0,
+      global_stock_id: pick.global_stock_id ?? null,
       quantity: qty,
       shipment_name: pick.shipment_name ?? null,
     });
@@ -79,9 +81,10 @@ export const buildOutcomeAllocations = (params: {
       if (take <= 0) continue;
       remaining -= take;
       out.push({
-        clientKey: `${item.preorder_demand_id}-${lot.global_stock_id}-${lot.line_id}`,
+        clientKey: `${item.preorder_demand_id}-${lot.line_id}-${lot.global_stock_id ?? 0}`,
         preorder_demand_id: item.preorder_demand_id,
-        global_stock_id: lot.global_stock_id,
+        ...(lot.global_stock_id != null ? { global_stock_id: lot.global_stock_id } : {}),
+        delivery_paper_line_id: lot.line_id,
         quantity: take,
         product_name: item.name,
         shipment_name: lot.shipment_name,

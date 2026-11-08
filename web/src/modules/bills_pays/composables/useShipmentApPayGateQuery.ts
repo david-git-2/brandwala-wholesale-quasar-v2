@@ -32,9 +32,6 @@ export function useShipmentApPayGateQuery(shipmentId: Ref<number | null | undefi
     if (row.status === 'draft' || row.status === 'cancelled') {
       return 'Set the shipment to in transit (or received) before recording AP payout.';
     }
-    if (!row.costs_locked) {
-      return 'Lock shipment costs on the shipment page to issue AP bills before payout.';
-    }
     return null;
   });
 

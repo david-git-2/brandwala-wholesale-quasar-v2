@@ -21,6 +21,7 @@ import { globalShipmentCostEntryRepository } from '../repositories/globalShipmen
 import { globalShipmentLocalCostRepository } from '../repositories/globalShipmentLocalCostRepository';
 import {
   fetchShipmentMoneyKernelBundle,
+  parseShipmentApBillRows,
   syncShipmentApBills,
 } from '../repositories/shipmentMoneyKernelRepository';
 import type { ShipmentApBillRow, ShipmentApFxSnapshot } from '../repositories/shipmentApBillsRepository';
@@ -354,6 +355,20 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         }
 
         this.currentShipmentStocks = [];
+
+        if (overview.ap_bills != null) {
+          const overviewAp = overview.ap_bills;
+          this.settingsFinanceCachedShipmentId = shipmentId;
+          this.settingsFinanceCachedApBills = parseShipmentApBillRows(overviewAp);
+        }
+
+        void this.loadSettingsFinanceBundle(shipmentId, {
+          force: Boolean(options?.force),
+          contextTenantId: overview.shipment.tenant_id,
+        }).catch((err: unknown) => {
+          console.warn('preload shipment finance bundle failed', err);
+        });
+
         return overview;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load shipment details';
@@ -402,7 +417,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
 
     async loadSettingsFinanceBundle(
       shipmentId: number,
-      options?: { force?: boolean },
+      options?: { force?: boolean; contextTenantId?: number | null },
     ): Promise<{
       apBills: ShipmentApBillRow[];
       apFx: ShipmentApFxSnapshot | null;
@@ -420,7 +435,10 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       this.settingsFinanceLoading = true;
       this.costEntriesLoading = true;
       try {
-        const bundle = await fetchShipmentMoneyKernelBundle(shipmentId);
+        const contextTenantId =
+          options?.contextTenantId ??
+          (this.currentShipment?.id === shipmentId ? this.currentShipment.tenant_id : null);
+        const bundle = await fetchShipmentMoneyKernelBundle(shipmentId, contextTenantId);
         this.currentCostEntries = bundle.costEntries as GlobalShipmentCostEntry[];
         this.settingsFinanceCachedShipmentId = shipmentId;
         this.settingsFinanceCachedApBills = bundle.apBills;

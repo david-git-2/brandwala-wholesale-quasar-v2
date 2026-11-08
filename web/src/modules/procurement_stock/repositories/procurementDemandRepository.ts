@@ -49,7 +49,8 @@ export type ClosePreorderDemandDocumentResult = {
 
 export type ApplyDeliveryPaperOutcomeAllocation = {
   preorder_demand_id: number;
-  global_stock_id: number;
+  global_stock_id?: number | null;
+  delivery_paper_line_id?: number;
   quantity: number;
   grade_tag_id?: number | null;
 };

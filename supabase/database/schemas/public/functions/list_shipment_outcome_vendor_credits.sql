@@ -10,7 +10,7 @@ CREATE FUNCTION public.list_shipment_outcome_vendor_credits (
 declare
   v_parent bigint;
 begin
-  select parent_tenant_id into v_parent
+  select tenant_id into v_parent
   from public.global_shipments
   where id = p_shipment_id;
 

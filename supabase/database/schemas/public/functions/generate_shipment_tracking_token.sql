@@ -19,7 +19,7 @@ begin
     raise exception 'shipment not found';
   end if;
 
-  if not public.has_active_tenant_membership(v_ship.parent_tenant_id)
+  if not public.has_active_tenant_membership(v_ship.tenant_id)
      and not public.is_superadmin() then
     raise exception 'not authorized';
   end if;

@@ -30,7 +30,7 @@ begin
     raise exception 'shipment not found';
   end if;
 
-  v_parent := v_ship.parent_tenant_id;
+  v_parent := v_ship.tenant_id;
   if not public.user_can_manage_parent_tenant(v_parent) then
     raise exception 'not allowed';
   end if;

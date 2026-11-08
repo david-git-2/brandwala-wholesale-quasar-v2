@@ -12,14 +12,14 @@
       <div class="bill-detail-card q-pa-md">
         <div class="bill-page-actions row items-center justify-end q-gutter-sm no-print q-mb-md">
           <q-btn
-            v-if="canIssueDeliveryCloseDraft"
+            v-if="canIssueDeliveryCloseDraft || canIssueApDraft"
             unelevated
             no-caps
             color="primary"
             icon="ph ph-check-circle"
             label="Issue"
-            :loading="issueDeliveryCloseMutation.isPending.value"
-            @click="onIssueDeliveryCloseDraft"
+            :loading="issueDeliveryCloseMutation.isPending.value || issueApDraftMutation.isPending.value"
+            @click="onIssueDraftBill"
           />
           <q-btn
             v-if="canAddAdjustment && !adjustmentComposerOpen"
@@ -103,10 +103,55 @@
                 {{ adjustmentReason }}
               </div>
               <div class="text-caption text-grey-7 q-mt-xs">
-                {{ channelLabel }} · {{ bill.invoice_date }}
-                <span v-if="bill.due_date"> · Due {{ bill.due_date }}</span>
+                {{ channelLabel }}
                 <span v-if="bill.currency_code"> · {{ bill.currency_code }}</span>
               </div>
+              <div class="text-caption text-grey-7 q-mt-xs">
+                <button
+                  v-if="canEditBillDates"
+                  type="button"
+                  class="bill-date-link"
+                  @click="openBillDateEditor('invoice')"
+                >
+                  {{ bill.invoice_date }}
+                </button>
+                <span v-else>{{ bill.invoice_date }}</span>
+                <template v-if="bill.due_date || canEditBillDates">
+                  <span> · Due </span>
+                  <button
+                    v-if="canEditBillDates"
+                    type="button"
+                    class="bill-date-link"
+                    @click="openBillDateEditor('due')"
+                  >
+                    {{ bill.due_date ?? 'Set date' }}
+                  </button>
+                  <span v-else-if="bill.due_date">{{ bill.due_date }}</span>
+                </template>
+              </div>
+
+              <q-dialog v-model="billDateEditorOpen" class="no-print">
+                <q-card flat bordered class="bill-date-editor-card">
+                  <q-card-section class="text-subtitle2 text-weight-medium">
+                    {{ billDateEditorTitle }}
+                  </q-card-section>
+                  <q-card-section class="q-pt-none">
+                    <q-date v-model="billDateEditorDraft" mask="YYYY-MM-DD" minimal />
+                  </q-card-section>
+                  <q-card-actions align="right" class="q-gutter-sm">
+                    <q-btn flat no-caps label="Cancel" @click="closeBillDateEditor" />
+                    <q-btn
+                      unelevated
+                      no-caps
+                      color="primary"
+                      label="Change date"
+                      :loading="patchBillDatesMutation.isPending.value"
+                      :disable="!billDateEditorDraft"
+                      @click="confirmBillDateEditor"
+                    />
+                  </q-card-actions>
+                </q-card>
+              </q-dialog>
             </div>
             <BillKernelSourceChips
               v-if="isApBill"
@@ -659,6 +704,7 @@ import { useCashbookPartyQuery } from '../composables/useCashbookPartyQuery';
 import type { BillLineDisplayRow } from '../repositories/billLinesRepository';
 import { useBillAdjustmentDraft } from '../composables/useBillAdjustmentDraft';
 import { useCreateBillAdjustmentMutation } from '../composables/useCreateBillAdjustmentMutation';
+import { usePatchBillDatesMutation } from '../composables/usePatchBillDatesMutation';
 import { syncShipmentApBills } from 'src/modules/procurement_stock/repositories/shipmentMoneyKernelRepository';
 import { apBillDueStoresForeignFace } from '../utils/apBillBooks';
 import {
@@ -700,6 +746,7 @@ const { itemsQuery, billLinesQuery } = useBillDetailQuery(
   computed(() => bundleQuery.data.value),
 );
 const voidMutation = useVoidBillMutation(() => billId.value);
+const patchBillDatesMutation = usePatchBillDatesMutation(() => billId.value);
 const recordPaymentMutation = useRecordBillPaymentMutation(() => billId.value);
 const vendorRefundMutation = usePostVendorCreditRefundMutation(() => billId.value);
 const createAdjustmentMutation = useCreateBillAdjustmentMutation(() => billId.value);
@@ -727,6 +774,75 @@ const arAdjustmentNoteBarRef = ref<InstanceType<typeof BillAdjustmentNoteBar> | 
 const parentTenantId = computed(() => Number(bill.value?.tenant_id ?? 0) || null);
 
 const bill = computed(() => billFromBundle.value as GlobalInvoiceDetail | undefined);
+
+type BillDateEditorTarget = 'invoice' | 'due';
+
+const billDateEditorOpen = ref(false);
+const billDateEditorTarget = ref<BillDateEditorTarget>('invoice');
+const billDateEditorDraft = ref('');
+
+const canEditBillDates = computed(() => {
+  const b = bill.value;
+  if (!b || b.invoice_status === 'voided') return false;
+  return operatingTenantId.value > 0;
+});
+
+const billDateEditorTitle = computed(() =>
+  billDateEditorTarget.value === 'invoice' ? 'Change invoice date' : 'Change due date',
+);
+
+const openBillDateEditor = (target: BillDateEditorTarget) => {
+  const b = bill.value;
+  if (!b) return;
+  billDateEditorTarget.value = target;
+  if (target === 'invoice') {
+    billDateEditorDraft.value = b.invoice_date?.slice(0, 10) ?? '';
+  } else {
+    billDateEditorDraft.value =
+      b.due_date?.slice(0, 10) ?? b.invoice_date?.slice(0, 10) ?? '';
+  }
+  billDateEditorOpen.value = true;
+};
+
+const closeBillDateEditor = () => {
+  billDateEditorOpen.value = false;
+};
+
+const confirmBillDateEditor = async () => {
+  const id = billId.value;
+  const tenantId = operatingTenantId.value;
+  const b = bill.value;
+  if (!id || !tenantId || !b || !billDateEditorDraft.value.trim()) return;
+
+  const invoiceDate = b.invoice_date?.slice(0, 10) ?? '';
+  if (billDateEditorTarget.value === 'invoice') {
+    if (billDateEditorDraft.value === invoiceDate) {
+      closeBillDateEditor();
+      return;
+    }
+    await patchBillDatesMutation.mutateAsync({
+      tenantId,
+      billId: id,
+      invoiceDate: billDateEditorDraft.value,
+      touchDueDate: false,
+    });
+  } else {
+    const dueNorm = b.due_date?.slice(0, 10) ?? null;
+    if (billDateEditorDraft.value === dueNorm) {
+      closeBillDateEditor();
+      return;
+    }
+    await patchBillDatesMutation.mutateAsync({
+      tenantId,
+      billId: id,
+      invoiceDate,
+      dueDate: billDateEditorDraft.value,
+      touchDueDate: true,
+    });
+  }
+  closeBillDateEditor();
+};
+
 const isApBill = computed(() => bill.value?.invoice_type === 'ap');
 const billShipmentId = computed(() => shipmentIdFromBill(bill.value) ?? null);
 
@@ -977,6 +1093,14 @@ const canIssueDeliveryCloseDraft = computed(() => {
   return lines.value.some((l) => l.global_stock_id != null && Number(l.quantity) > 0);
 });
 
+const canIssueApDraft = computed(() => {
+  const b = bill.value;
+  if (!b || !isApBill.value || !isStandardBill.value) return false;
+  if (isDropshipCourierApBill(b)) return false;
+  if (b.invoice_status !== 'draft' && b.invoice_status !== 'proforma_generated') return false;
+  return Number(b.total_amount ?? 0) > 0;
+});
+
 const issueDeliveryCloseMutation = useMutation({
   mutationFn: async () => {
     const id = billId.value;
@@ -1009,6 +1133,46 @@ const issueDeliveryCloseMutation = useMutation({
     showErrorNotification(err instanceof Error ? err.message : 'Could not issue bill.');
   },
 });
+
+const issueApDraftMutation = useMutation({
+  mutationFn: async () => {
+    const id = billId.value;
+    if (id == null) throw new Error('Bill not loaded');
+    await billsRepository.issueApBillFromDesk(id);
+  },
+  onSuccess: async () => {
+    showSuccessNotification('Bill issued.');
+    const id = billId.value;
+    if (id != null) {
+      await queryClient.invalidateQueries({ queryKey: billsQueryKeys.detailBundle(id) });
+      await queryClient.invalidateQueries({ queryKey: billsQueryKeys.detail(id) });
+    }
+    await bundleQuery.refetch();
+  },
+  onError: (err: unknown) => {
+    showErrorNotification(err instanceof Error ? err.message : 'Could not issue bill.');
+  },
+});
+
+const onIssueApDraft = async () => {
+  const ok = await requestConfirmation(
+    'No sales on this paper. Pay out later on Payments.',
+    'Issue this payable bill?',
+    'Issue',
+  );
+  if (!ok) return;
+  await issueApDraftMutation.mutateAsync();
+};
+
+const onIssueDraftBill = async () => {
+  if (canIssueDeliveryCloseDraft.value) {
+    await onIssueDeliveryCloseDraft();
+    return;
+  }
+  if (canIssueApDraft.value) {
+    await onIssueApDraft();
+  }
+};
 
 const onIssueDeliveryCloseDraft = async () => {
   const b = bill.value;
@@ -1486,6 +1650,28 @@ const submitAdjustment = async () => {
   padding: 0 14px;
 }
 
+.bill-date-link {
+  appearance: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--tf-theme-primary);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  cursor: pointer;
+  background: transparent;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration-color: currentColor;
+  }
+}
+
+.bill-date-editor-card {
+  min-width: 280px;
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -1503,6 +1689,12 @@ const submitAdjustment = async () => {
   .bill-detail-card {
     border: none;
     box-shadow: none;
+  }
+
+  .bill-date-link {
+    color: inherit;
+    text-decoration: none;
+    cursor: default;
   }
 }
 </style>

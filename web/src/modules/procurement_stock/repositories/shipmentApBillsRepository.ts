@@ -11,6 +11,7 @@ export type ShipmentApBillRow = {
   id: number;
   invoice_no: string;
   ap_kind: ShipmentApKind | null;
+  ap_shipment_id?: number | null;
   source_type: string | null;
   source_id: string | null;
   source_key: string | null;
@@ -98,13 +99,24 @@ export type ShipmentSettingsFinanceBundle = {
   costEntries: unknown[];
 };
 
+const isLockedShipmentApBill = (bill: ShipmentApBillRow): boolean =>
+  bill.invoice_status !== 'draft' && bill.invoice_status !== 'voided';
+
 export function findShipmentApBill(
   bills: ShipmentApBillRow[],
   kind: ShipmentApKind,
   opts?: { currencyCode?: string | null },
 ): ShipmentApBillRow | null {
   const matches = bills.filter((b) => shipmentApBillBucket(b) === kind);
-  if (matches.length === 0) return null;
+  if (matches.length === 0) {
+    const unbucketedIssued = bills.filter(
+      (b) => !shipmentApBillBucket(b) && isLockedShipmentApBill(b),
+    );
+    if (unbucketedIssued.length === 1 && kind === 'material') {
+      return unbucketedIssued[0];
+    }
+    return null;
+  }
   if (matches.length === 1) return matches[0];
   const ccy = opts?.currencyCode?.trim().toUpperCase();
   if (ccy) {

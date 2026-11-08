@@ -22,6 +22,7 @@
           @keydown.escape="close"
         >
           <div
+            v-if="resizable"
             class="app-resizable-overlay-panel__resize"
             role="separator"
             aria-orientation="vertical"
@@ -57,6 +58,8 @@ const props = withDefaults(
     zIndex?: number;
     /** Keep overlay in parent DOM (e.g. inside q-dialog) instead of teleporting to body */
     containInParent?: boolean;
+    /** Show drag handle to resize panel width */
+    resizable?: boolean;
   }>(),
   {
     side: 'right',
@@ -66,6 +69,7 @@ const props = withDefaults(
     ariaLabel: 'Side panel',
     zIndex: 6000,
     containInParent: false,
+    resizable: true,
   },
 );
 

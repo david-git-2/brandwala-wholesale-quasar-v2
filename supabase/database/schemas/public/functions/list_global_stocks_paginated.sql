@@ -33,7 +33,7 @@ begin
   inner join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
   inner join public.global_shipments gship on gship.id = gsi.shipment_id
   left join public.global_stock_types gst on gst.id = gs.stock_type_id
-  where gs.parent_tenant_id = p_tenant_id
+  where gs.tenant_id = p_tenant_id
     and gs.is_archived = false
     and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
     and (
@@ -61,7 +61,7 @@ begin
   from (
     select
       gs.id,
-      gs.parent_tenant_id,
+      gs.tenant_id,
       gs.shipment_item_id,
       gs.stock_type_id,
       gs.quantity,
@@ -97,7 +97,7 @@ begin
     left join public.global_stock_types gst on gst.id = gs.stock_type_id
     left join public.stock_locations sl on sl.id = gs.location_id
     left join public.global_shipment_item_outcomes o on o.id = gs.outcome_id
-    where gs.parent_tenant_id = p_tenant_id
+    where gs.tenant_id = p_tenant_id
       and gs.is_archived = false
       and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
       and (
@@ -175,7 +175,7 @@ begin
   inner join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
   inner join public.global_shipments gship on gship.id = gsi.shipment_id
   left join public.global_stock_types gst on gst.id = gs.stock_type_id
-  where gs.parent_tenant_id = p_tenant_id
+  where gs.tenant_id = p_tenant_id
     and gs.is_archived = false
     and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
     and (p_availability is null or gs.availability = p_availability)
@@ -201,7 +201,7 @@ begin
   from (
     select
       gs.id,
-      gs.parent_tenant_id,
+      gs.tenant_id,
       gs.shipment_item_id,
       gs.stock_type_id,
       gs.quantity,
@@ -233,7 +233,7 @@ begin
     left join public.global_stock_types gst on gst.id = gs.stock_type_id
     left join public.stock_locations sl on sl.id = gs.location_id
     left join public.global_shipment_item_outcomes o on o.id = gs.outcome_id
-    where gs.parent_tenant_id = p_tenant_id
+    where gs.tenant_id = p_tenant_id
       and gs.is_archived = false
       and (p_stock_type_id is null or gs.stock_type_id = p_stock_type_id)
       and (p_availability is null or gs.availability = p_availability)

@@ -25,7 +25,7 @@ BEGIN
     RAISE EXCEPTION 'shipment not found';
   END IF;
 
-  IF NOT public.user_can_manage_parent_tenant(v_ship.parent_tenant_id) THEN
+  IF NOT public.user_can_manage_parent_tenant(v_ship.tenant_id) THEN
     RAISE EXCEPTION 'not allowed';
   END IF;
 

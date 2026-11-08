@@ -1,177 +1,16 @@
 <template>
-  <q-card flat bordered class="q-pa-xs flex-shrink-0">
-    <div class="row items-center q-gutter-x-xs no-wrap full-width justify-end">
-      <div
-        class="row items-center no-wrap q-gutter-x-xs flex-shrink-0"
-        :class="{ 'col-grow': searchFieldOpen }"
-      >
-        <q-btn
-          v-if="!searchFieldOpen"
-          flat
-          round
-          dense
-          icon="ph ph-magnifying-glass"
-          class="text-grey-7"
-          :aria-label="$t('shop_admin.search_orders', 'Search orders')"
-          data-test="shop-orders-search-toggle"
-          @click="openSearchField"
-        >
-          <q-tooltip :delay="400">
-            {{
-              $t(
-                'shop_admin.search_orders_tooltip',
-                'Search by order number, recipient, or shop',
-              )
-            }}
-          </q-tooltip>
-        </q-btn>
-        <q-input
-          v-else
-          ref="searchInputRef"
-          :model-value="search"
-          clearable
-          dense
-          outlined
-          hide-bottom-space
-          style="min-width: 220px"
-          class="col-grow orders-toolbar-search"
-          :placeholder="$t('shop_admin.search_orders_placeholder', 'Search by Order No, recipient, shop...')"
-          data-test="shop-orders-search"
-          @update:model-value="onSearchInput"
-          @keyup.enter="emit('apply-search')"
-          @clear="emit('apply-search')"
-          @blur="onSearchBlur"
-        >
-          <template #prepend>
-            <q-icon name="ph ph-magnifying-glass" size="16px" class="text-grey-6" />
-          </template>
-        </q-input>
-        <q-btn
-          flat
-          round
-          dense
-          icon="ph ph-funnel"
-          class="text-grey-7"
-          :aria-label="$t('shop_admin.filter_orders', 'Filter orders')"
-          data-test="shop-orders-filter-menu"
-        >
-          <q-badge
-            v-if="activeFilterCount > 0"
-            color="primary"
-            rounded
-            floating
-            :label="String(activeFilterCount)"
-          />
-          <q-tooltip :delay="400">
-            {{
-              $t(
-                'shop_admin.filter_orders_tooltip',
-                'Filter by shop, customer profile, and order status',
-              )
-            }}
-          </q-tooltip>
-          <q-menu
-            v-model="filterMenuOpen"
-            anchor="bottom right"
-            self="top right"
-            @before-show="syncDraftFromApplied"
-          >
-            <div class="orders-filter-menu q-pa-sm column q-gutter-y-sm">
-              <q-select
-                v-model="draftShopId"
-                dense
-                outlined
-                hide-bottom-space
-                emit-value
-                map-options
-                use-input
-                input-debounce="200"
-                :label="$t('shop_admin.filter_by_shop', 'Shop')"
-                :options="filteredShopOptions"
-                :loading="shopsLoading"
-                data-test="shop-orders-shop-filter"
-                @filter="filterShops"
-              >
-                <template #prepend>
-                  <q-icon name="ph ph-storefront" size="16px" class="text-grey-6" />
-                </template>
-                <template #no-option>
-                  <q-item>
-                    <q-item-section class="text-grey-6">
-                      {{ shopsLoading ? $t('shop_admin.loading_orders') : $t('shop_admin.no_shops_found') }}
-                    </q-item-section>
-                  </q-item>
-                </template>
-              </q-select>
-
-              <q-select
-                v-model="draftProfileId"
-                dense
-                outlined
-                hide-bottom-space
-                emit-value
-                map-options
-                use-input
-                input-debounce="200"
-                :label="$t('shop_admin.filter_by_profile', 'Profile')"
-                :options="filteredProfileOptions"
-                :loading="profilesLoading"
-                data-test="shop-orders-profile-filter"
-                @filter="filterProfiles"
-              >
-                <template #prepend>
-                  <q-icon name="ph ph-user" size="16px" class="text-grey-6" />
-                </template>
-                <template #no-option>
-                  <q-item>
-                    <q-item-section class="text-grey-6">
-                      {{
-                        profilesLoading
-                          ? $t('shop_admin.loading_orders')
-                          : $t('shop_admin.no_profiles_found', 'No profiles found')
-                      }}
-                    </q-item-section>
-                  </q-item>
-                </template>
-              </q-select>
-
-              <q-select
-                v-if="showStatusFilter"
-                v-model="draftStatusFilter"
-                dense
-                outlined
-                hide-bottom-space
-                emit-value
-                map-options
-                :label="$t('shop_admin.filter_by_status', 'Status')"
-                :options="statusOptions"
-                data-test="shop-orders-status-filter"
-              >
-                <template #prepend>
-                  <q-icon name="ph ph-flag" size="16px" class="text-grey-6" />
-                </template>
-              </q-select>
-
-              <div class="row items-center justify-end q-gutter-x-xs q-pt-xs">
-                <TfBtn
-                  flat
-                  size="sm"
-                  :label="$t('common.reset', 'Reset')"
-                  data-test="shop-orders-filter-reset"
-                  @click="resetDraftFilters"
-                />
-                <TfBtn
-                  color="primary"
-                  size="sm"
-                  :label="$t('shop_admin.apply_filters', 'Apply filters')"
-                  data-test="shop-orders-filter-apply"
-                  @click="applyDraftFilters"
-                />
-              </div>
-            </div>
-          </q-menu>
-        </q-btn>
-
+  <div>
+    <ProcurementOpsListToolbar
+      :search="search"
+      :search-placeholder="$t('shop_admin.search_orders_placeholder', 'Search by Order No, recipient, shop...')"
+      :filter-count="activeFilterCount"
+      icon-search
+      search-on-enter
+      data-test="shop-orders-toolbar"
+      @update:search="onToolbarSearch"
+      @open-filters="filterDrawerOpen = true"
+    >
+      <template #trailing>
         <q-btn
           v-if="showCancelledDeleteEntry"
           flat
@@ -254,16 +93,166 @@
             {{ $t('shop_admin.reload_orders_tooltip', 'Reload the order list') }}
           </q-tooltip>
         </q-btn>
-      </div>
+      </template>
+    </ProcurementOpsListToolbar>
+
+    <div
+      v-if="hasVisibleChips"
+      class="row items-center q-gutter-xs q-px-xs flex-shrink-0 wrap shop-orders-active-filters"
+    >
+      <q-chip
+        v-if="search.trim()"
+        removable
+        dense
+        outline
+        color="primary"
+        data-test="shop-orders-chip-search"
+        @remove="clearSearchChip"
+      >
+        {{ $t('shop_admin.filter_chip_search', 'Search') }}: {{ search.trim() }}
+      </q-chip>
+      <q-chip
+        v-if="selectedShopId !== null && selectedShopLabel"
+        removable
+        dense
+        outline
+        color="primary"
+        data-test="shop-orders-chip-shop"
+        @remove="emit('update:selectedShopId', null)"
+      >
+        {{ $t('shop_admin.filter_by_shop', 'Shop') }}: {{ selectedShopLabel }}
+      </q-chip>
+      <q-chip
+        v-if="selectedProfileId !== null && selectedProfileLabel"
+        removable
+        dense
+        outline
+        color="primary"
+        data-test="shop-orders-chip-profile"
+        @remove="emit('update:selectedProfileId', null)"
+      >
+        {{ $t('shop_admin.filter_by_profile', 'Profile') }}: {{ selectedProfileLabel }}
+      </q-chip>
+      <q-chip
+        v-if="showStatusFilter && statusFilter && statusFilterLabel"
+        removable
+        dense
+        outline
+        color="primary"
+        data-test="shop-orders-chip-status"
+        @remove="emit('update:statusFilter', null)"
+      >
+        {{ $t('shop_admin.filter_by_status', 'Status') }}: {{ statusFilterLabel }}
+      </q-chip>
     </div>
-  </q-card>
+
+    <FilterSidebar
+      v-model="filterDrawerOpen"
+      :title="$t('shop_admin.filter_orders', 'Filter orders')"
+      width="360px"
+      :max-width="400"
+      :resizable="false"
+      storage-key="shop-staff-orders-filter"
+    >
+      <div class="column q-gutter-y-md">
+        <q-select
+          v-model="draftShopId"
+          dense
+          outlined
+          hide-bottom-space
+          emit-value
+          map-options
+          use-input
+          input-debounce="200"
+          :label="$t('shop_admin.filter_by_shop', 'Shop')"
+          :options="filteredShopOptions"
+          :loading="shopsLoading"
+          data-test="shop-orders-shop-filter"
+          @filter="filterShops"
+        >
+          <template #no-option>
+            <q-item>
+              <q-item-section class="text-grey-6">
+                {{ shopsLoading ? $t('shop_admin.loading_orders') : $t('shop_admin.no_shops_found') }}
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+
+        <q-select
+          v-model="draftProfileId"
+          dense
+          outlined
+          hide-bottom-space
+          emit-value
+          map-options
+          use-input
+          input-debounce="200"
+          :label="$t('shop_admin.filter_by_profile', 'Profile')"
+          :options="filteredProfileOptions"
+          :loading="profilesLoading"
+          data-test="shop-orders-profile-filter"
+          @filter="filterProfiles"
+        >
+          <template #no-option>
+            <q-item>
+              <q-item-section class="text-grey-6">
+                {{
+                  profilesLoading
+                    ? $t('shop_admin.loading_orders')
+                    : $t('shop_admin.no_profiles_found', 'No profiles found')
+                }}
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+
+        <q-select
+          v-if="showStatusFilter"
+          v-model="draftStatusFilter"
+          dense
+          outlined
+          hide-bottom-space
+          emit-value
+          map-options
+          :label="$t('shop_admin.filter_by_status', 'Status')"
+          :options="statusOptions"
+          data-test="shop-orders-status-filter"
+        />
+      </div>
+
+      <template #footer>
+        <div class="column full-width q-gutter-sm shop-orders-filter-drawer__footer">
+          <q-btn
+            unelevated
+            no-caps
+            color="primary"
+            class="full-width"
+            padding="10px 16px"
+            :label="$t('shop_admin.apply_filters', 'Apply filters')"
+            data-test="shop-orders-filter-apply"
+            @click="applyDraftFilters"
+          />
+          <q-btn
+            flat
+            no-caps
+            color="grey-7"
+            class="full-width"
+            :label="$t('common.reset', 'Reset')"
+            data-test="shop-orders-filter-reset"
+            @click="resetDraftFilters"
+          />
+        </div>
+      </template>
+    </FilterSidebar>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
-import type { QInput } from 'quasar';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import TfBtn from 'src/components/ui/TfBtn.vue';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
+import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
 import type { CustomerProfile } from 'src/modules/sales_invoice/repositories/customerProfileRepository';
 import type { StaffOrdersPageShop } from '../types';
 
@@ -301,45 +290,29 @@ const emit = defineEmits<{
   (e: 'update:statusFilter', value: string | null): void;
 }>();
 
-const onSearchInput = (val: string | number | null) => {
-  const next = (val as string) || '';
+const onToolbarSearch = (value: string | null | undefined) => {
+  const next = (value ?? '').trim();
   emit('update:search', next);
-  if (!next) {
-    emit('apply-search');
-  }
+  emit('apply-search');
 };
 
-const searchFieldOpen = ref(Boolean(props.search.trim()));
-const searchInputRef = ref<QInput | null>(null);
-
-watch(
-  () => props.search,
-  (value) => {
-    if (value.trim()) {
-      searchFieldOpen.value = true;
-    }
-  },
-);
-
-const openSearchField = () => {
-  searchFieldOpen.value = true;
-  void nextTick(() => {
-    searchInputRef.value?.focus();
-  });
-};
-
-const onSearchBlur = () => {
-  if (!props.search.trim()) {
-    searchFieldOpen.value = false;
-  }
+const clearSearchChip = () => {
+  emit('update:search', '');
+  emit('apply-search');
 };
 
 const { t } = useI18n();
 
-const filterMenuOpen = ref(false);
+const filterDrawerOpen = ref(false);
 const draftShopId = ref<number | null>(null);
 const draftProfileId = ref<number | null>(null);
 const draftStatusFilter = ref<string | null>(null);
+
+watch(filterDrawerOpen, (open) => {
+  if (open) {
+    syncDraftFromApplied();
+  }
+});
 
 const syncDraftFromApplied = () => {
   draftShopId.value = props.selectedShopId;
@@ -357,7 +330,7 @@ const applyDraftFilters = () => {
   emit('update:selectedShopId', draftShopId.value);
   emit('update:selectedProfileId', draftProfileId.value);
   emit('update:statusFilter', draftStatusFilter.value);
-  filterMenuOpen.value = false;
+  filterDrawerOpen.value = false;
 };
 
 const activeFilterCount = computed(() => {
@@ -367,6 +340,14 @@ const activeFilterCount = computed(() => {
   if (props.showStatusFilter && props.statusFilter) n += 1;
   return n;
 });
+
+const hasVisibleChips = computed(
+  () =>
+    Boolean(props.search.trim()) ||
+    props.selectedShopId !== null ||
+    props.selectedProfileId !== null ||
+    (props.showStatusFilter && Boolean(props.statusFilter)),
+);
 
 const shopSearch = ref('');
 const profileSearch = ref('');
@@ -398,6 +379,25 @@ const statusOptions = computed(() => [
   { label: t('shop_admin.status_fulfilled'), value: 'fulfilled' },
   { label: t('shop_admin.status_cancelled'), value: 'cancelled' },
 ]);
+
+const selectedShopLabel = computed(() => {
+  if (props.selectedShopId === null) return '';
+  const shop = props.shops.find((s) => s.id === props.selectedShopId);
+  if (!shop) return `#${props.selectedShopId}`;
+  return shop.tenant_name ? `${shop.name} (${shop.tenant_name})` : shop.name;
+});
+
+const selectedProfileLabel = computed(() => {
+  if (props.selectedProfileId === null) return '';
+  const profile = props.profiles.find((p) => p.id === props.selectedProfileId);
+  return profile ? formatProfileLabel(profile) : `#${props.selectedProfileId}`;
+});
+
+const statusFilterLabel = computed(() => {
+  if (!props.statusFilter) return '';
+  const opt = statusOptions.value.find((o) => o.value === props.statusFilter);
+  return opt?.label ?? props.statusFilter;
+});
 
 const allShopsOption = computed(() => ({
   label: t('shop_admin.all_shops'),
@@ -463,13 +463,12 @@ const filterProfiles = (val: string, update: (cb: () => void) => void) => {
 </script>
 
 <style scoped>
-.orders-filter-menu {
-  min-width: 280px;
-  max-width: min(360px, 92vw);
+.shop-orders-active-filters {
+  min-width: 0;
 }
 
-.orders-toolbar-search {
-  min-width: 0;
-  max-width: 100%;
+.shop-orders-filter-drawer__footer :deep(.q-btn) {
+  min-height: 42px;
+  font-weight: 600;
 }
 </style>

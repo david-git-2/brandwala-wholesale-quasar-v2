@@ -216,14 +216,23 @@ begin
 
   if v_foreign is not null and v_foreign > 0 and v_paper_ccy is not null and btrim(v_paper_ccy) <> '' then
     v_rate := case
-      when v_foreign > 0 then round(coalesce(v_bill.total_amount, 0) / v_foreign, 6)
-      else 1.000000
+      when v_foreign > 0 and coalesce(v_bill.total_amount, 0) > 0
+        then round(v_bill.total_amount / v_foreign, 6)
+      else null
     end;
     update public.bills
     set
       txn_currency_code = coalesce(txn_currency_code, upper(btrim(v_paper_ccy))),
       txn_total_amount = coalesce(txn_total_amount, v_foreign),
-      books_exchange_rate = coalesce(books_exchange_rate, coalesce(nullif(v_rate, 0), 1.000000)),
+      books_exchange_rate = coalesce(
+        books_exchange_rate,
+        v_rate,
+        case
+          when upper(btrim(v_paper_ccy)) = upper(public.resolve_tenant_base_currency_code(v_bill.tenant_id))
+            then 1.000000
+          else null
+        end
+      ),
       due_amount = case
         when invoice_status = 'issued'::public.global_invoice_status
           then greatest(coalesce(total_amount, 0) - coalesce(paid_amount, 0), 0)

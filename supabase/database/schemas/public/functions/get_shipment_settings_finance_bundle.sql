@@ -15,7 +15,7 @@ declare
   v_elem jsonb;
   v_slim jsonb := '[]'::jsonb;
 begin
-  select gs.parent_tenant_id into v_parent
+  select gs.tenant_id into v_parent
   from public.global_shipments gs
   where gs.id = p_shipment_id;
 

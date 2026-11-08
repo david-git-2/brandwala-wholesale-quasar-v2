@@ -99,6 +99,13 @@ BEGIN
     RAISE EXCEPTION 'no stock lines to dispatch on paper %', p_delivery_paper_id;
   END IF;
 
+  UPDATE public.delivery_paper_line dpl
+  SET
+    dispatched_global_stock_id = dpl.global_stock_id,
+    updated_at = now()
+  WHERE dpl.delivery_paper_id = p_delivery_paper_id
+    AND dpl.global_stock_id IS NOT NULL;
+
   PERFORM public.post_stock_movement(v_mov_id);
 
   UPDATE public.delivery_paper dp

@@ -131,7 +131,7 @@ begin
               where id = v_stock.id;
             else
               insert into public.global_stocks (
-                parent_tenant_id,
+                tenant_id,
                 shipment_item_id,
                 stock_type_id,
                 quantity,
@@ -140,7 +140,7 @@ begin
                 location_id,
                 grade_tag_id
               ) values (
-                v_stock.parent_tenant_id,
+                v_stock.tenant_id,
                 v_stock.shipment_item_id,
                 v_stock.stock_type_id,
                 v_move_qty,
@@ -174,7 +174,7 @@ begin
           v_target_avail := coalesce(v_line.to_availability, 'held'::public.stock_availability);
           v_target_loc := coalesce(
             v_line.to_location_id,
-            public.default_returns_stock_location_id(v_stock.parent_tenant_id)
+            public.default_returns_stock_location_id(v_stock.tenant_id)
           );
           v_target_grade := coalesce(
             v_line.to_grade_tag_id,
@@ -195,7 +195,7 @@ begin
             where id = v_target_stock.id;
           else
             insert into public.global_stocks (
-              parent_tenant_id,
+              tenant_id,
               shipment_item_id,
               stock_type_id,
               quantity,
@@ -204,7 +204,7 @@ begin
               location_id,
               grade_tag_id
             ) values (
-              v_stock.parent_tenant_id,
+              v_stock.tenant_id,
               v_stock.shipment_item_id,
               v_stock.stock_type_id,
               v_move_qty,

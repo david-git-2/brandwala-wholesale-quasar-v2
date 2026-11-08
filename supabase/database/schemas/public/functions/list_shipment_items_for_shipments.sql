@@ -29,10 +29,10 @@ begin
   inner join public.global_shipments gs on gs.id = gsi.shipment_id
   where gsi.shipment_id = any(p_shipment_ids)
     and (
-      public.user_can_manage_parent_tenant(gs.parent_tenant_id)
+      public.user_can_manage_parent_tenant(gs.tenant_id)
       or exists (
         select 1 from public.memberships m
-        where m.tenant_id = gs.parent_tenant_id
+        where m.tenant_id = gs.tenant_id
           and lower(trim(m.email)) = public.current_user_email()
           and m.is_active = true
       )

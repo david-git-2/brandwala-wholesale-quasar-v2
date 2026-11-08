@@ -22,7 +22,7 @@ declare
   v_batch_code_items jsonb;
   v_batch_list_id bigint;
 begin
-  select parent_tenant_id, progress_flow_id, to_jsonb(s.*)
+  select tenant_id, progress_flow_id, to_jsonb(s.*)
   into v_parent, v_progress_flow_id, v_ship
   from public.global_shipments s
   where s.id = p_shipment_id;
@@ -141,7 +141,7 @@ begin
     jsonb_agg(
       jsonb_build_object(
         'id', o.id,
-        'parent_tenant_id', o.parent_tenant_id,
+        'tenant_id', o.tenant_id,
         'shipment_item_id', o.shipment_item_id,
         'quantity', o.quantity,
         'kind', o.kind,

@@ -3,6 +3,7 @@ CREATE TABLE public.delivery_paper_line (
   delivery_paper_id         bigint                   NOT NULL,
   preorder_demand_id        bigint                   NOT NULL,
   global_stock_id           bigint,
+  dispatched_global_stock_id bigint,
   note                      text,
   created_at                timestamp with time zone DEFAULT now() NOT NULL,
   updated_at                timestamp with time zone DEFAULT now() NOT NULL,
@@ -18,7 +19,7 @@ CREATE UNIQUE INDEX delivery_paper_line_paper_demand_stock_uidx ON public.delive
   WHERE global_stock_id IS NOT NULL;
 
 CREATE UNIQUE INDEX delivery_paper_line_paper_demand_no_stock_uidx ON public.delivery_paper_line (delivery_paper_id, preorder_demand_id)
-  WHERE global_stock_id IS NULL;
+  WHERE global_stock_id IS NULL AND dispatched_global_stock_id IS NULL;
 
 CREATE TRIGGER trg_delivery_paper_line_set_updated_at
   BEFORE UPDATE ON public.delivery_paper_line
@@ -47,7 +48,7 @@ ALTER TABLE public.delivery_paper_line
   ADD CONSTRAINT delivery_paper_line_splits_valid CHECK (public.validate_delivery_paper_line_splits(splits));
 
 ALTER TABLE public.delivery_paper_line
-  ADD CONSTRAINT delivery_paper_line_global_stock_id_fkey FOREIGN KEY (global_stock_id) REFERENCES public.global_stocks(id);
+  ADD CONSTRAINT delivery_paper_line_global_stock_id_fkey FOREIGN KEY (global_stock_id) REFERENCES public.global_stocks(id) ON DELETE SET NULL;
 
 ALTER TABLE public.delivery_paper_line
   ADD CONSTRAINT delivery_paper_line_preorder_demand_id_fkey FOREIGN KEY (preorder_demand_id) REFERENCES public.preorder_demand(id) ON DELETE CASCADE;

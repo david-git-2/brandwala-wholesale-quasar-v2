@@ -24,7 +24,7 @@ declare
   v_disposition_available boolean := false;
 begin
   -- Resolve parent tenant to enforce access
-  if public.resolve_parent_tenant_id(p_tenant_id) <> (select parent_tenant_id from public.global_shipments where id = p_shipment_id) then
+  if public.resolve_parent_tenant_id(p_tenant_id) <> (select tenant_id from public.global_shipments where id = p_shipment_id) then
     raise exception 'unauthorized tenant access to shipment';
   end if;
 

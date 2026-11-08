@@ -5,9 +5,25 @@ import { shipmentApBillBucket } from '../repositories/shipmentApBillsRepository'
 
 export type ApBillStatusChip = { label: string; color: string; textColor: string };
 
+export function displayBillTotal(bill: ShipmentApBillRow): number {
+  const nb = bill.net_balances;
+  const booksTotal = Number(bill.total_amount) || 0;
+  if (booksTotal > 0) return booksTotal;
+  if (nb?.original_total != null && nb.original_total > 0) return nb.original_total;
+  const openTxn = nb?.open_txn ?? 0;
+  const paid = nb?.paid_amount ?? 0;
+  if (openTxn > 0 || paid > 0) return openTxn + paid;
+  return booksTotal;
+}
+
 export function displayDueAmount(bill: ShipmentApBillRow): number {
-  const kernelDue = bill.net_balances?.due_amount;
-  if (kernelDue != null && Number.isFinite(kernelDue)) return kernelDue;
+  const nb = bill.net_balances;
+  const openBooks = nb?.open_books;
+  if (openBooks != null && openBooks > 0) return openBooks;
+  const openTxn = nb?.open_txn;
+  if (openTxn != null && openTxn > 0) return openTxn;
+  const kernelDue = nb?.due_amount;
+  if (kernelDue != null && Number.isFinite(kernelDue) && kernelDue > 0) return kernelDue;
   return Number(bill.due_amount) || 0;
 }
 
@@ -57,5 +73,5 @@ export function sumApBillsDue(bills: ShipmentApBillRow[]): number {
 }
 
 export function sumApBillsTotal(bills: ShipmentApBillRow[]): number {
-  return bills.reduce((s, b) => s + (Number(b.total_amount) || 0), 0);
+  return bills.reduce((s, b) => s + displayBillTotal(b), 0);
 }

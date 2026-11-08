@@ -21,10 +21,6 @@ begin
   if v_ship.status in ('draft', 'cancelled') then
     raise exception 'Shipment % must be in transit or received before AP payout', p_shipment_id;
   end if;
-
-  if not coalesce(v_ship.costs_locked, false) then
-    raise exception 'Shipment % costs are not locked; lock and issue AP before payout', p_shipment_id;
-  end if;
 end;
 $function$;
 

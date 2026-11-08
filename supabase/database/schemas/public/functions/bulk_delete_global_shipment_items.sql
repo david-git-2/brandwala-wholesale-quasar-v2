@@ -21,7 +21,7 @@ begin
   end if;
 
   -- 1. Check parent tenant & permissions
-  select parent_tenant_id into v_parent
+  select tenant_id into v_parent
   from public.global_shipments
   where id = p_shipment_id;
 

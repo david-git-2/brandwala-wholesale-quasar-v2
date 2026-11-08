@@ -143,7 +143,7 @@ BEGIN
       WHERE gs.shipment_item_id = gsi.id
     ) inv ON true
 
-    WHERE s.parent_tenant_id = v_books_id
+    WHERE s.tenant_id = v_books_id
       AND (p_shipment_id IS NULL OR s.id = p_shipment_id)
       AND (p_start_date IS NULL OR s.created_at >= p_start_date)
       AND (p_end_date IS NULL OR s.created_at <= p_end_date)

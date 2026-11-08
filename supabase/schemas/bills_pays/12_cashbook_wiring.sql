@@ -228,11 +228,11 @@ BEGIN
   END IF;
 
   INSERT INTO public.cashbook_accounts (
-    tenant_id, tenant_id, entity_type, entity_id, currency_code,
+    tenant_id, entity_type, entity_id, currency_code,
     available_balance, pending_balance, locked_balance, account_class
   )
   VALUES (
-    p_tenant_id, p_tenant_id, p_entity_type, v_entity_id,
+    p_tenant_id, p_entity_type, v_entity_id,
     coalesce(p_currency_code, 'BDT'), 0.0000, 0.0000, 0.0000,
     CASE WHEN p_entity_type = 'tenant' THEN 'tenant_asset'::public.cashbook_account_class
          ELSE 'profile_custody'::public.cashbook_account_class END
@@ -327,7 +327,6 @@ BEGIN
 
   INSERT INTO public.cashbook_entries (
     tenant_id,
-    tenant_id,
     operating_tenant_id,
     entity_type,
     entity_id,
@@ -344,7 +343,6 @@ BEGIN
     cashbook_point_pot_id
   )
   VALUES (
-    p_tenant_id,
     p_tenant_id,
     p_operating_tenant_id,
     p_entity_type,
@@ -367,7 +365,6 @@ BEGIN
     'id', id,
     'tenant_id', tenant_id,
     'operating_tenant_id', operating_tenant_id,
-    'tenant_id', tenant_id,
     'entity_type', entity_type,
     'entity_id', entity_id,
     'type', type,

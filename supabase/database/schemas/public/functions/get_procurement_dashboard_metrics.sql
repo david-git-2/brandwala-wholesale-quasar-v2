@@ -40,7 +40,7 @@ BEGIN
   INTO v_sellable, v_held, v_unsellable, v_total, v_value
   FROM public.global_stocks gs
   JOIN public.global_shipment_items gsi ON gsi.id = gs.shipment_item_id
-  WHERE gs.parent_tenant_id = v_books_id
+  WHERE gs.tenant_id = v_books_id
     AND gs.is_archived = false;
 
   SELECT
@@ -49,7 +49,7 @@ BEGIN
     coalesce(count(*) FILTER (WHERE s.status = 'received'), 0)
   INTO v_in_transit, v_draft, v_received
   FROM public.global_shipments s
-  WHERE s.parent_tenant_id = v_books_id
+  WHERE s.tenant_id = v_books_id
     AND s.is_archived = false;
 
   SELECT coalesce(jsonb_agg(row_to_json(g) ORDER BY g.qty DESC), '[]'::jsonb)
@@ -58,7 +58,7 @@ BEGIN
     SELECT coalesce(t.name, 'Ungraded') AS name, sum(gs.quantity)::bigint AS qty
     FROM public.global_stocks gs
     LEFT JOIN public.tags t ON t.id = gs.grade_tag_id
-    WHERE gs.parent_tenant_id = v_books_id
+    WHERE gs.tenant_id = v_books_id
       AND gs.is_archived = false
       AND gs.quantity > 0
     GROUP BY coalesce(t.name, 'Ungraded')
@@ -77,7 +77,7 @@ BEGIN
         ELSE 4
       END AS sort_key
     FROM public.global_shipments s
-    WHERE s.parent_tenant_id = v_books_id
+    WHERE s.tenant_id = v_books_id
       AND s.is_archived = false
       AND s.status <> 'cancelled'
     GROUP BY s.status
@@ -91,7 +91,7 @@ BEGIN
       sum(gs.quantity)::bigint AS qty
     FROM public.global_stocks gs
     LEFT JOIN public.stock_locations sl ON sl.id = gs.location_id
-    WHERE gs.parent_tenant_id = v_books_id
+    WHERE gs.tenant_id = v_books_id
       AND gs.is_archived = false
       AND gs.quantity > 0
     GROUP BY coalesce(sl.name, 'Unlocated')

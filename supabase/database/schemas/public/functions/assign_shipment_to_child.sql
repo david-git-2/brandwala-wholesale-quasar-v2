@@ -1,7 +1,7 @@
 CREATE FUNCTION public.assign_shipment_to_child (
-  p_parent_tenant_id bigint,
-  p_child_tenant_id  bigint,
-  p_shipment_id      bigint
+  p_tenant_id       bigint,
+  p_child_tenant_id bigint,
+  p_shipment_id     bigint
 )
   RETURNS jsonb
   LANGUAGE plpgsql
@@ -15,7 +15,7 @@ begin
   select * into v_ship
   from public.global_shipments
   where id = p_shipment_id
-    and parent_tenant_id = p_parent_tenant_id
+    and tenant_id = p_tenant_id
   for update;
 
   if not found then
@@ -26,7 +26,7 @@ begin
     raise exception 'shipment must be received before assignment';
   end if;
 
-  if not public.has_active_tenant_membership(p_parent_tenant_id)
+  if not public.has_active_tenant_membership(p_tenant_id)
      and not public.is_superadmin() then
     raise exception 'not authorized';
   end if;
@@ -35,7 +35,7 @@ begin
     select exists(
       select 1 from public.tenants t
       where t.id = p_child_tenant_id
-        and (t.id = p_parent_tenant_id or t.parent_id = p_parent_tenant_id)
+        and (t.id = p_tenant_id or t.parent_id = p_tenant_id)
     ) into v_child_exists;
 
     if not v_child_exists then

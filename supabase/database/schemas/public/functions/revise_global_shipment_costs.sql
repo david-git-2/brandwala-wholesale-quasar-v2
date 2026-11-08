@@ -18,7 +18,7 @@ begin
     raise exception 'shipment not found';
   end if;
 
-  if not public.user_can_manage_parent_tenant(v_ship.parent_tenant_id) then
+  if not public.user_can_manage_parent_tenant(v_ship.tenant_id) then
     raise exception 'not allowed';
   end if;
 
@@ -58,7 +58,7 @@ begin
   for v_entry in select value from jsonb_array_elements(p_entries)
   loop
     insert into public.global_shipment_cost_entries (
-      parent_tenant_id,
+      tenant_id,
       shipment_id,
       cost_bucket,
       cost_component,
@@ -67,7 +67,7 @@ begin
       currency_id,
       metadata
     ) values (
-      v_ship.parent_tenant_id,
+      v_ship.tenant_id,
       p_shipment_id,
       (v_entry->>'cost_bucket')::public.global_shipment_cost_bucket,
       (v_entry->>'cost_component')::public.global_shipment_cost_component,

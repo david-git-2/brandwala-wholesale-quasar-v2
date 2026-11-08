@@ -19,7 +19,7 @@ begin
     raise exception 'shipment_id is required';
   end if;
 
-  select s.parent_tenant_id
+  select s.tenant_id
   into v_parent_tenant_id
   from public.global_shipments s
   where s.id = p_shipment_id;
@@ -90,7 +90,7 @@ begin
     returning * into v_new_item;
 
     insert into public.global_shipment_item_outcomes (
-      parent_tenant_id,
+      tenant_id,
       shipment_item_id,
       quantity,
       kind,

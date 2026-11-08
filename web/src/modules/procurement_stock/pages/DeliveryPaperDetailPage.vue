@@ -479,11 +479,14 @@ const runInvoiceOutcome = async (field: 'accepted' | 'conditioned') => {
   try {
     const result = await applyOutcome({
       field,
-      allocations: rows.map(({ preorder_demand_id, global_stock_id, quantity }) => ({
-        preorder_demand_id,
-        global_stock_id,
-        quantity,
-      })),
+      allocations: rows.map(
+        ({ preorder_demand_id, global_stock_id, delivery_paper_line_id, quantity }) => ({
+          preorder_demand_id,
+          quantity,
+          ...(delivery_paper_line_id != null ? { delivery_paper_line_id } : {}),
+          ...(global_stock_id != null ? { global_stock_id } : {}),
+        }),
+      ),
     });
     if (result.invoice_id) {
       void router.push(billDetailRoute(result.invoice_id, authStore.tenantSlug));

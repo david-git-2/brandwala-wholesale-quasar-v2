@@ -260,10 +260,9 @@ begin
           v_alloc_amount := round(v_alloc_amount * v_fx_rate, 2);
         end if;
 
-        if abs(coalesce(v_bill.due_amount, 0) - v_foreign_face) < 0.02 then
+        v_effective_due := coalesce(v_bill.due_amount, 0);
+        if v_effective_due <= v_foreign_face + 0.01 then
           v_effective_due := round(v_foreign_face * v_fx_rate, 2);
-        else
-          v_effective_due := coalesce(v_bill.due_amount, 0);
         end if;
       else
         v_effective_due := coalesce(v_bill.due_amount, 0);

@@ -28,11 +28,11 @@ begin
 
   v_vendor_id := v_ship.vendor_id;
   if v_vendor_id is null then
-    v_vendor_id := public.ensure_default_vendor(v_ship.parent_tenant_id);
+    v_vendor_id := public.ensure_default_vendor(v_ship.tenant_id);
   end if;
 
   insert into public.global_shipment_sections (
-    parent_tenant_id,
+    tenant_id,
     shipment_id,
     vendor_id,
     title,
@@ -40,7 +40,7 @@ begin
     metadata
   )
   values (
-    v_ship.parent_tenant_id,
+    v_ship.tenant_id,
     p_shipment_id,
     v_vendor_id,
     'Section 1',

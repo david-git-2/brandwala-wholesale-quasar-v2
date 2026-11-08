@@ -15,7 +15,7 @@ begin
     raise exception 'shipment_id is required';
   end if;
 
-  select gs.parent_tenant_id into v_parent
+  select gs.tenant_id into v_parent
   from public.global_shipments gs
   where gs.id = p_shipment_id;
 
@@ -36,7 +36,7 @@ begin
   for v_bill_id in
     select b.id
     from public.bills b
-    where b.parent_tenant_id = v_parent
+    where b.tenant_id = v_parent
       and b.invoice_type = 'ap'::public.global_invoice_type
       and b.document_kind = 'standard'::public.bill_document_kind
       and b.invoice_status = 'draft'::public.global_invoice_status

@@ -17,14 +17,14 @@ BEGIN
     RAISE EXCEPTION 'shipment not found';
   END IF;
 
-  IF NOT public.has_active_tenant_membership(v_ship.parent_tenant_id)
+  IF NOT public.has_active_tenant_membership(v_ship.tenant_id)
      AND NOT public.is_superadmin() THEN
     RAISE EXCEPTION 'not authorized';
   END IF;
 
   RETURN jsonb_build_object(
-    'vendor', public.get_payee_settlement_summary(v_ship.parent_tenant_id, p_shipment_id, 'vendor', v_ship.vendor_id),
-    'cargo_company', public.get_payee_settlement_summary(v_ship.parent_tenant_id, p_shipment_id, 'cargo_company', v_ship.cargo_company_id)
+    'vendor', public.get_payee_settlement_summary(v_ship.tenant_id, p_shipment_id, 'vendor', v_ship.vendor_id),
+    'cargo_company', public.get_payee_settlement_summary(v_ship.tenant_id, p_shipment_id, 'cargo_company', v_ship.cargo_company_id)
   );
 END;
 $function$;

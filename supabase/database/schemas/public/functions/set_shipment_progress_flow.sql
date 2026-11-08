@@ -29,11 +29,11 @@ begin
     raise exception 'flow not found';
   end if;
 
-  if v_flow.tenant_id <> v_ship.parent_tenant_id then
+  if v_flow.tenant_id <> v_ship.tenant_id then
     raise exception 'flow tenant mismatch';
   end if;
 
-  if not public.has_active_tenant_membership(v_ship.parent_tenant_id)
+  if not public.has_active_tenant_membership(v_ship.tenant_id)
      and not public.is_superadmin() then
     raise exception 'not authorized';
   end if;

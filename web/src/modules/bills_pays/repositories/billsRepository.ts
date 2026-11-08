@@ -151,6 +151,41 @@ const updateDraftBill = async (
   return parsePayloadRpcResult(data);
 };
 
+const issueApBillFromDesk = async (billId: number): Promise<void> => {
+  const { error } = await supabase.rpc('issue_ap_bill_from_desk', { p_bill_id: billId });
+  if (error) throw error;
+};
+
+export type PatchBillDatesResult = {
+  invoice_date: string;
+  due_date: string | null;
+};
+
+const patchBillDates = async (params: {
+  tenantId: number;
+  billId: number;
+  invoiceDate: string;
+  dueDate?: string | null;
+  touchDueDate: boolean;
+}): Promise<PatchBillDatesResult> => {
+  const { data, error } = await supabase.rpc('patch_bill_dates_from_desk', {
+    p_tenant_id: params.tenantId,
+    p_bill_id: params.billId,
+    p_invoice_date: params.invoiceDate,
+    p_due_date: params.dueDate ?? undefined,
+    p_touch_due_date: params.touchDueDate,
+  });
+  if (error) throw error;
+  if (!data) throw new Error('patch_bill_dates_from_desk returned no row');
+  const row = data as { invoice_date?: string; due_date?: string | null };
+  const dueRaw = row.due_date;
+  return {
+    invoice_date: String(row.invoice_date ?? params.invoiceDate).slice(0, 10),
+    due_date:
+      dueRaw != null && String(dueRaw).trim() !== '' ? String(dueRaw).slice(0, 10) : null,
+  };
+};
+
 const issueBill = async (billId: number, options: IssueBillOptions): Promise<void> => {
   const type = options.invoiceType;
   const hasStock =
@@ -265,6 +300,8 @@ export const billsRepository = {
   upsertDraftBill,
   updateDraftBill,
   issueBill,
+  issueApBillFromDesk,
+  patchBillDates,
   voidBill,
   applySettlementToBill,
   listBillsForSource,

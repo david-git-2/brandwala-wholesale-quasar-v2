@@ -166,15 +166,31 @@ begin
   end if;
 
   v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
+  v_sid := nullif(trim(p_source_id), '')::bigint;
 
   if not (
     public.user_can_manage_books_tenant(v_parent_id)
     or public.membership_has_module_action(v_parent_id, 'global_invoice', 'view')
+    or (
+      p_source_type = 'shipment_cost'
+      and v_sid is not null
+      and exists (
+        select 1
+        from public.global_shipments gs
+        where gs.id = v_sid
+          and public.resolve_books_tenant_id(gs.tenant_id) = v_parent_id
+      )
+      and exists (
+        select 1
+        from public.memberships m
+        where m.tenant_id = v_parent_id
+          and lower(trim(m.email)) = public.current_user_email()
+          and m.is_active = true
+      )
+    )
   ) then
     raise exception 'not allowed';
   end if;
-
-  v_sid := nullif(trim(p_source_id), '')::bigint;
 
   select coalesce(
     jsonb_agg(
@@ -183,7 +199,12 @@ begin
         'invoice_no', b.invoice_no,
         'invoice_type', b.invoice_type,
         'document_kind', b.document_kind,
-        'ap_kind', b.ap_kind,
+        'ap_kind', coalesce(
+          nullif(btrim(b.ap_kind), ''),
+          nullif(btrim(b.channel_meta->>'ap_kind'), ''),
+          nullif(split_part(coalesce(b.source_key, ''), ':', 1), '')
+        ),
+        'ap_shipment_id', b.ap_shipment_id,
         'source_type', b.source_type,
         'source_id', b.source_id,
         'source_key', b.source_key,
@@ -239,7 +260,19 @@ begin
     and (p_source_key is null or b.source_key = p_source_key)
     and (
       not p_ap_shipment_buckets_only
-      or coalesce(b.source_key, b.ap_kind) in (
+      or (
+        p_source_type = 'shipment_cost'
+        and v_sid is not null
+        and b.invoice_type = 'ap'::public.global_invoice_type
+        and b.document_kind = 'standard'::public.bill_document_kind
+        and b.ap_shipment_id = v_sid
+      )
+      or coalesce(
+        nullif(btrim(b.ap_kind), ''),
+        nullif(btrim(b.channel_meta->>'ap_kind'), ''),
+        nullif(btrim(b.source_key), ''),
+        split_part(coalesce(b.source_key, ''), ':', 1)
+      ) in (
         'material', 'freight', 'customs', 'handling', 'finance', 'other',
         'vendor', 'cargo', 'local'
       )

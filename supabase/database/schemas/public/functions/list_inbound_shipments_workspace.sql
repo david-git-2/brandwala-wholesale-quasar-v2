@@ -40,7 +40,7 @@ begin
   select count(*)
   into v_archived_count
   from public.global_shipments s
-  where s.parent_tenant_id = v_books_id
+  where s.tenant_id = v_books_id
     and s.is_archived = true;
 
   select coalesce(jsonb_agg(row_json order by sort_id desc), '[]'::jsonb)
@@ -62,7 +62,7 @@ begin
       ) as row_json
     from public.global_shipments s
     left join public.vendors v on v.id = s.vendor_id
-    where s.parent_tenant_id = v_books_id
+    where s.tenant_id = v_books_id
       and (p_is_archived is null or s.is_archived = p_is_archived)
       and (p_status is null or p_status = '' or p_status = '__all__' or s.status = p_status)
       and (
@@ -112,7 +112,7 @@ begin
           'name', ven.name,
           'code', ven.code,
           'market_code', ven.market_code,
-          'parent_tenant_id', ven.parent_tenant_id,
+          'tenant_id', ven.tenant_id,
           'is_default', ven.is_default
         )
         order by ven.id asc
@@ -121,7 +121,7 @@ begin
     )
     into v_vendors
     from public.vendors ven
-    where ven.parent_tenant_id = v_books_id;
+    where ven.tenant_id = v_books_id;
 
     select coalesce(
       jsonb_agg(
@@ -137,7 +137,7 @@ begin
     )
     into v_cargo
     from public.cargo_companies cc
-    where cc.parent_tenant_id = v_books_id
+    where cc.tenant_id = v_books_id
       and cc.is_active = true;
   end if;
 

@@ -56,6 +56,10 @@ begin
     raise exception 'Shipment % not found', p_shipment_id;
   end if;
 
+  if current_setting('app.bill_desk_issue_shipment_ap', true) = '1' then
+    return;
+  end if;
+
   if v_ship.status not in ('in_transit', 'received') then
     raise exception 'Shipment % must be in transit or received before issuing AP bills', p_shipment_id;
   end if;
@@ -91,10 +95,6 @@ begin
 
   if v_ship.status in ('draft', 'cancelled') then
     raise exception 'Shipment % must be in transit or received before AP payout', p_shipment_id;
-  end if;
-
-  if not coalesce(v_ship.costs_locked, false) then
-    raise exception 'Shipment % costs are not locked; lock and issue AP before payout', p_shipment_id;
   end if;
 end;
 $$;
@@ -568,7 +568,7 @@ begin
           jsonb_build_object(
             'tenant_id', v_issued_by,
             'adapter', 'shipment_cost',
-            'tenant_id', v_parent,
+            'parent_tenant_id', v_parent,
             'issued_by_tenant_id', v_issued_by,
             'shipment_id', p_shipment_id,
             'shipment_name', v_ship.name,
@@ -626,6 +626,68 @@ begin
 
   return jsonb_build_object('success', true, 'bills', v_bills);
 end;
+$$;
+
+CREATE OR REPLACE FUNCTION public._list_shipment_cost_ap_bills_json(
+  p_books_tenant_id bigint,
+  p_shipment_id bigint,
+  p_include_voided boolean DEFAULT false
+)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'id', b.id,
+        'invoice_no', b.invoice_no,
+        'invoice_type', b.invoice_type,
+        'document_kind', b.document_kind,
+        'ap_kind', coalesce(
+          nullif(btrim(b.ap_kind), ''),
+          nullif(btrim(b.channel_meta->>'ap_kind'), ''),
+          nullif(split_part(coalesce(b.source_key, ''), ':', 1), '')
+        ),
+        'ap_shipment_id', b.ap_shipment_id,
+        'source_type', b.source_type,
+        'source_id', b.source_id,
+        'source_key', b.source_key,
+        'invoice_status', b.invoice_status,
+        'payment_status', b.payment_status,
+        'total_amount', b.total_amount,
+        'due_amount', b.due_amount,
+        'parent_bill_id', b.parent_bill_id,
+        'net_balances', public.get_bill_net_balances(b.id)
+      )
+      order by b.id
+    ),
+    '[]'::jsonb
+  )
+  from public.bills b
+  where b.tenant_id = p_books_tenant_id
+    and (p_include_voided or b.invoice_status <> 'voided'::public.global_invoice_status)
+    and b.invoice_type = 'ap'::public.global_invoice_type
+    and b.document_kind = 'standard'::public.bill_document_kind
+    and (
+      (b.source_type = 'shipment_cost' and b.source_id = p_shipment_id::text)
+      or b.ap_shipment_id = p_shipment_id
+    )
+    and (
+      b.ap_shipment_id = p_shipment_id
+      or coalesce(
+        nullif(btrim(b.ap_kind), ''),
+        nullif(btrim(b.channel_meta->>'ap_kind'), ''),
+        nullif(btrim(b.source_key), ''),
+        split_part(coalesce(b.source_key, ''), ':', 1)
+      ) in (
+        'material', 'freight', 'customs', 'handling', 'finance', 'other',
+        'vendor', 'cargo', 'local'
+      )
+      or coalesce(b.source_key, '') ~ '^(material|freight|customs|handling|finance|other|vendor|cargo|local):'
+    );
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_shipment_settings_finance_bundle(p_shipment_id bigint)
@@ -693,7 +755,7 @@ begin
   for v_elem in
     select value
     from jsonb_array_elements(
-      public.list_bills_for_source(v_parent, 'shipment_cost', v_sid, null, false, true)
+      public._list_shipment_cost_ap_bills_json(v_parent, p_shipment_id, false)
     )
   loop
     v_slim := v_slim || jsonb_build_array(
@@ -706,11 +768,18 @@ begin
         'source_key', v_elem->'source_key',
         'invoice_status', v_elem->'invoice_status',
         'payment_status', v_elem->'payment_status',
-        'total_amount', v_elem->'total_amount',
+        'total_amount', coalesce(
+          nullif(v_elem->>'total_amount', '')::numeric,
+          nullif(v_elem->'net_balances'->>'open_txn', '')::numeric,
+          0
+        ),
         'due_amount', coalesce(
-          v_elem->'net_balances'->'open_books',
-          v_elem->'due_amount'
-        )
+          nullif(v_elem->'net_balances'->>'open_books', '')::numeric,
+          nullif(v_elem->'net_balances'->>'open_txn', '')::numeric,
+          nullif(v_elem->>'due_amount', '')::numeric,
+          0
+        ),
+        'net_balances', v_elem->'net_balances'
       )
     );
   end loop;
