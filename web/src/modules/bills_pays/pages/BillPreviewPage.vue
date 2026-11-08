@@ -49,17 +49,18 @@
         <template v-else>
           <div class="col-5">
             <div class="text-overline text-grey-7">From</div>
-            <div class="text-h6 text-weight-bold">{{ selectedBrand?.name || '—' }}</div>
-            <div v-if="selectedBrand?.address" class="text-body2 text-grey-8 q-mt-xs whitespace-pre-line">
-              {{ selectedBrand.address }}
+            <div class="text-h6 text-weight-bold">{{ fromPartyName }}</div>
+            <div v-if="fromPartyAddress" class="text-body2 text-grey-8 q-mt-xs whitespace-pre-line">
+              {{ fromPartyAddress }}
             </div>
           </div>
           <div class="col-4">
             <div class="text-overline text-grey-7">To</div>
-            <div class="text-subtitle1 text-weight-bold">{{ profileName }}</div>
-            <div v-if="bill.profiles?.address" class="text-caption text-grey-7 whitespace-pre-line">
-              {{ bill.profiles.address }}
+            <div class="text-subtitle1 text-weight-bold">{{ toPartyName }}</div>
+            <div v-if="toPartyAddress" class="text-caption text-grey-7 whitespace-pre-line">
+              {{ toPartyAddress }}
             </div>
+            <div v-if="toPartyPhone" class="text-caption text-grey-7">{{ toPartyPhone }}</div>
           </div>
           <div class="col-auto text-right">
             <div v-if="documentTitle" class="text-subtitle1 text-weight-bold">{{ documentTitle }}</div>
@@ -348,6 +349,34 @@ const adjustmentReason = computed(() => {
 
 const profileName = computed(
   () => bill.value?.profiles?.name || bill.value?.recipient_name || '—',
+);
+
+const fromPartyName = computed(
+  () => bill.value?.from_profile?.name || selectedBrand.value?.name || '—',
+);
+const fromPartyAddress = computed(
+  () => bill.value?.from_profile?.address ?? selectedBrand.value?.address ?? null,
+);
+const toPartyName = computed(
+  () =>
+    bill.value?.to_profile?.name
+    || bill.value?.profiles?.name
+    || bill.value?.recipient_name
+    || '—',
+);
+const toPartyAddress = computed(
+  () =>
+    bill.value?.to_profile?.address
+    ?? bill.value?.profiles?.address
+    ?? bill.value?.recipient_address
+    ?? null,
+);
+const toPartyPhone = computed(
+  () =>
+    bill.value?.to_profile?.phone
+    ?? bill.value?.profiles?.phone
+    ?? bill.value?.recipient_phone
+    ?? null,
 );
 
 const goBack = () => {

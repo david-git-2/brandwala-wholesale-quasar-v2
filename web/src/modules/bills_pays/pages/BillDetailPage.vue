@@ -170,18 +170,7 @@
 
         <div class="q-mb-md">
           <ApBillPartiesBlock v-if="isApBill" :bill="bill" />
-          <div v-else class="row q-col-gutter-md">
-            <div class="col-12 col-sm-6">
-              <div class="text-overline text-grey-7">To</div>
-              <div class="text-subtitle2 text-weight-medium">{{ profileName }}</div>
-              <div v-if="bill.profiles?.email" class="text-caption text-grey-7">
-                {{ bill.profiles.email }}
-              </div>
-              <div v-if="bill.profiles?.address" class="text-caption text-grey-7">
-                {{ bill.profiles.address }}
-              </div>
-            </div>
-          </div>
+          <ArBillPartiesBlock v-else :bill="bill" />
         </div>
 
         <template v-if="isApBill && !isStandardBill">
@@ -685,6 +674,7 @@ import {
 import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
 import ApBillPaper from '../components/ApBillPaper.vue';
 import ApBillPartiesBlock from '../components/ApBillPartiesBlock.vue';
+import ArBillPartiesBlock from '../components/ArBillPartiesBlock.vue';
 import BillKernelSourceChips from '../components/BillKernelSourceChips.vue';
 import RecordBillPaymentDialog from '../components/RecordBillPaymentDialog.vue';
 import CorrectBillPaymentDialog from '../components/CorrectBillPaymentDialog.vue';

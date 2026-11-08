@@ -41,6 +41,13 @@ DECLARE
   v_bill_stock_id bigint;
   v_product_id bigint;
   v_name_snapshot text;
+  v_barcode_snapshot text;
+  v_product_code_snapshot text;
+  v_shop_order_id bigint;
+  v_order_no text;
+  v_order_recipient_name text;
+  v_order_recipient_phone text;
+  v_order_shipping_address text;
 BEGIN
   PERFORM public.delivery_paper_assert_tenant_access(p_tenant_id);
 
@@ -81,9 +88,22 @@ BEGIN
   END IF;
 
   IF v_doc_type = 'shop_order' THEN
-    SELECT o.tenant_id, o.global_invoice_id
-    INTO v_operating_tenant_id, v_global_invoice_id
-    FROM public.shop_orders o
+    v_shop_order_id := v_paper.source_id;
+    SELECT
+      o.tenant_id,
+      o.global_invoice_id,
+      o.order_no,
+      o.recipient_name,
+      o.recipient_phone,
+      o.shipping_address
+    INTO
+      v_operating_tenant_id,
+      v_global_invoice_id,
+      v_order_no,
+      v_order_recipient_name,
+      v_order_recipient_phone,
+      v_order_shipping_address
+  FROM public.shop_orders o
     WHERE o.id = v_paper.source_id
       AND o.shop_type_snapshot = 'vendor_catalog';
     IF v_operating_tenant_id IS NULL THEN
@@ -193,16 +213,34 @@ BEGIN
       ELSE
         v_product_id := NULL;
         v_name_snapshot := NULL;
+        v_barcode_snapshot := NULL;
+        v_product_code_snapshot := NULL;
         IF v_doc_type = 'shop_order' THEN
-          SELECT oi.product_id, coalesce(nullif(trim(oi.name), ''), nullif(trim(p.name), ''), 'Item')
-          INTO v_product_id, v_name_snapshot
+          SELECT
+            oi.product_id,
+            coalesce(nullif(trim(oi.name), ''), nullif(trim(p.name), ''), 'Item'),
+            nullif(trim(p.barcode), ''),
+            nullif(trim(p.product_code), '')
+          INTO
+            v_product_id,
+            v_name_snapshot,
+            v_barcode_snapshot,
+            v_product_code_snapshot
           FROM public.preorder_demand pd
           INNER JOIN public.shop_order_items oi ON oi.id = pd.source_id
           LEFT JOIN public.products p ON p.id = oi.product_id
           WHERE pd.id = v_demand_id;
         ELSIF v_doc_type = 'pbc_costing_file' THEN
-          SELECT pci.product_id, coalesce(nullif(trim(p.name), ''), 'Item')
-          INTO v_product_id, v_name_snapshot
+          SELECT
+            pci.product_id,
+            coalesce(nullif(trim(p.name), ''), 'Item'),
+            nullif(trim(p.barcode), ''),
+            nullif(trim(p.product_code), '')
+          INTO
+            v_product_id,
+            v_name_snapshot,
+            v_barcode_snapshot,
+            v_product_code_snapshot
           FROM public.preorder_demand pd
           INNER JOIN public.product_based_costing_items pci ON pci.id = pd.source_id
           LEFT JOIN public.products p ON p.id = pci.product_id
@@ -212,7 +250,10 @@ BEGIN
           'quantity', v_qty,
           'sell_price_amount', v_sell_price,
           'product_id', v_product_id,
-          'name_snapshot', coalesce(v_name_snapshot, 'Item')
+          'name_snapshot', coalesce(v_name_snapshot, 'Item'),
+          'barcode_snapshot', v_barcode_snapshot,
+          'product_code_snapshot', v_product_code_snapshot,
+          'line_kind', 'stock'
         ));
       END IF;
     END IF;
@@ -223,9 +264,17 @@ BEGIN
 
   IF v_close_action IN ('take', 'condition') THEN
     v_payload := jsonb_build_object(
+      'shop_order_id', v_shop_order_id,
       'invoice', jsonb_build_object(
         'invoice_type', 'wholesale',
         'profile_id', v_profile_id,
+        'recipient_name', v_order_recipient_name,
+        'recipient_phone', v_order_recipient_phone,
+        'recipient_address', v_order_shipping_address,
+        'note', CASE
+          WHEN v_order_no IS NOT NULL THEN 'Delivery paper #' || p_delivery_paper_id::text || ' · ' || v_order_no
+          ELSE 'Delivery paper #' || p_delivery_paper_id::text
+        END,
         'channel_meta', jsonb_build_object('delivery_kind', v_close_action)
       ),
       'items', v_items,
@@ -258,6 +307,7 @@ BEGIN
         source_type = v_bill_source_type,
         source_id = v_bill_source_id,
         source_key = v_bill_source_key,
+        shop_order_id = coalesce(v_shop_order_id, shop_order_id),
         settlement_kind = v_close_action::public.bill_settlement_kind,
         channel_meta = coalesce(channel_meta, '{}'::jsonb)
           || jsonb_build_object(
@@ -275,6 +325,7 @@ BEGIN
           source_type = v_bill_source_type,
           source_id = v_bill_source_id,
           source_key = v_bill_source_key || ':' || v_invoice_id::text,
+          shop_order_id = coalesce(v_shop_order_id, shop_order_id),
           settlement_kind = v_close_action::public.bill_settlement_kind,
           channel_meta = coalesce(channel_meta, '{}'::jsonb)
             || jsonb_build_object(

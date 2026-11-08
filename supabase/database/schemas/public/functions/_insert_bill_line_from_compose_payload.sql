@@ -69,6 +69,25 @@ begin
   end if;
 
   if v_global_stock_id is null then
+    v_product_id := nullif(p_item_elem->>'product_id', '')::bigint;
+    if v_product_id is not null
+       and lower(trim(coalesce(p_item_elem->>'line_kind', 'stock'))) = 'stock' then
+      v_name_snapshot := coalesce(nullif(trim(p_item_elem->>'name_snapshot'), ''), 'Item');
+      v_barcode_snapshot := nullif(trim(p_item_elem->>'barcode_snapshot'), '');
+      v_product_code_snapshot := nullif(trim(p_item_elem->>'product_code_snapshot'), '');
+      v_line_total := greatest((v_quantity * v_sell_price) - v_line_discount, 0);
+      insert into public.bill_lines (
+        parent_tenant_id, invoice_id, line_kind, product_id,
+        name_snapshot, barcode_snapshot, product_code_snapshot,
+        quantity, sell_price_amount, line_discount_amount, line_total_amount, line_meta
+      ) values (
+        p_parent_id, p_invoice_id, 'stock', v_product_id,
+        v_name_snapshot, v_barcode_snapshot, v_product_code_snapshot,
+        v_quantity, v_sell_price, v_line_discount, v_line_total, v_line_meta
+      )
+      returning id into v_created_item_id;
+      return v_created_item_id;
+    end if;
     if v_line_kind = '' then
       v_line_kind := 'description';
     end if;
