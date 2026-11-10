@@ -1,6 +1,9 @@
 import { supabase } from 'src/boot/supabase';
 import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
-import type { ShipmentApKind } from 'src/modules/procurement_stock/repositories/shipmentApBillsRepository';
+import {
+  resolveShipmentApBillKind,
+  type ShipmentApKind,
+} from 'src/modules/procurement_stock/repositories/shipmentApBillsRepository';
 
 export type BillShipmentPlug = {
   id: number;
@@ -30,8 +33,7 @@ export function shipmentIdFromBill(
 
 export function shipmentApKindFromBill(bill: GlobalInvoiceDetail | undefined): ShipmentApKind | null {
   if (!bill) return null;
-  const key = (bill.source_key ?? bill.ap_kind)?.trim();
-  return key ? (key as ShipmentApKind) : null;
+  return resolveShipmentApBillKind(bill.source_key, bill.ap_kind);
 }
 
 export function isShipmentCostApBill(bill: GlobalInvoiceDetail | undefined): boolean {

@@ -51,8 +51,7 @@
                 <q-icon name="ph ph-wallet" size="28px" class="text-primary q-mt-xs" />
                 <div class="col min-width-0">
                   <div class="text-subtitle1 text-weight-medium ellipsis">{{ point.name }}</div>
-                  <div class="text-caption text-grey-7">{{ cashbookPointKindLabel(point.kind) }}</div>
-                  <div v-if="point.code" class="text-caption text-grey-6 q-mt-xs">Code {{ point.code }}</div>
+                  <div v-if="point.code" class="text-caption text-grey-6">Code {{ point.code }}</div>
                   <div v-if="potsForPoint(point.id).length" class="row q-gutter-xs q-mt-sm flex-wrap">
                     <q-badge
                       v-for="pot in potsForPoint(point.id)"
@@ -118,7 +117,6 @@ import CashbookPointFormDialog from '../components/CashbookPointFormDialog.vue';
 import CashbookPointTransferDialog from '../components/CashbookPointTransferDialog.vue';
 import { useCashbookPointPotsBatchQuery } from '../composables/useCashbookPointPotsQuery';
 import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
-import { cashbookPointKindLabel } from '../constants/cashbookPointKinds';
 import type { CashbookPointPotRow, CashbookPointRow } from '../repositories/cashbookRepository';
 import { formatAmountBdt } from 'src/utils/currency';
 
@@ -159,7 +157,7 @@ const { pointsQuery, cashbookAccountId } = useCashbookPointsQuery(pointsContext)
 
 const points = computed(() => {
   const list = pointsQuery.data.value ?? [];
-  return [...list].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+  return [...list].sort((a, b) => a.name.localeCompare(b.name));
 });
 
 const pointIds = computed(() => points.value.map((p) => p.id));

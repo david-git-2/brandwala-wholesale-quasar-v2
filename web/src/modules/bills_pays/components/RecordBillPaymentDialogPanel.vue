@@ -2,10 +2,14 @@
   <q-card
       class="record-bill-payment-card"
       :class="{ 'record-bill-payment-card--embedded': embedded }"
-      :style="embedded ? undefined : { width: 'min(440px, 92vw)' }"
+      :style="embedded ? undefined : { width: isAp ? 'min(500px, 94vw)' : 'min(440px, 92vw)' }"
     >
       <q-card-section v-if="!embedded" class="row items-center q-pb-none">
-        <div class="text-h6 text-weight-bold">{{ isAp ? 'Pay out' : 'Collect payment' }}</div>
+        <div>
+          <div class="text-h6 text-weight-bold">Payment</div>
+          <div v-if="isAp" class="text-caption text-grey-7">Pay out</div>
+          <div v-else class="text-caption text-grey-7">Collect on bill</div>
+        </div>
         <q-space />
         <q-btn flat round dense icon="ph ph-x" aria-label="Close" @click="close" />
       </q-card-section>
@@ -27,12 +31,6 @@
         <div class="record-bill-payment-summary">
           <div class="text-caption text-grey-7">Due on this bill</div>
           <div class="text-subtitle1 text-weight-bold font-mono q-mt-xs">{{ dueAmountDisplay }}</div>
-          <div
-            v-if="isAp && payFromPotId && !showApPayFromField"
-            class="text-caption text-grey-7 q-mt-xs"
-          >
-            Pay from {{ payFromPotLabel }}
-          </div>
         </div>
 
         <div v-if="paymentOverDue" class="text-caption text-grey-8">
@@ -174,17 +172,19 @@
             In books ({{ booksCurrencyCode }}): {{ formatAmountBdt(apBooksAmountPreview) }}
           </div>
 
-          <q-select
-            v-if="showApPayFromField"
+          <PaymentLegPotChips
             v-model="payFromPotId"
-            :options="payFromOptions"
-            emit-value
-            map-options
-            outlined
-            dense
-            hide-bottom-space
-            label="Pay from"
-            :loading="payFromLoading"
+            leg-label="From"
+            :party-name="payFromPartyName"
+            :options="fromLegChipOptions"
+            :loading="fromLegLoading"
+          />
+          <PaymentLegPotChips
+            v-model="payToPotId"
+            leg-label="To"
+            :party-name="payToPartyName"
+            :options="toLegChipOptions"
+            :loading="toLegLoading"
           />
         </template>
 
@@ -344,6 +344,16 @@
             />
           </div>
         </q-expansion-item>
+
+        <q-btn
+          v-if="isAp"
+          flat
+          no-caps
+          color="primary"
+          icon="ph ph-plus"
+          label="Add money to pot"
+          class="full-width q-mt-sm"
+        />
         </div>
       </q-card-section>
 
@@ -370,9 +380,11 @@ import { storeToRefs } from 'pinia';
 import { useGlobalReferenceStore } from 'src/modules/global_reference/stores/globalReferenceStore';
 import { formatAmountBdt, formatSettlementCurrencyAmount } from 'src/utils/currency';
 import PaymentInstrumentExtrasFields from './PaymentInstrumentExtrasFields.vue';
+import PaymentLegPotChips from './PaymentLegPotChips.vue';
 import { useWholesalePaymentMethodMeta } from '../composables/useWholesalePaymentMethodMeta';
 import { useApPayoutFxFields } from '../composables/useApPayoutFxFields';
 import { useBooksCurrencyCode } from '../composables/useBooksCurrencyCode';
+import { useCashbookLegPots } from '../composables/useCashbookLegPots';
 import { useCashbookPayFromPotSelect } from '../composables/useCashbookPayFromPotSelect';
 import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
 import {
@@ -409,6 +421,12 @@ const props = defineProps<{
   shipmentId?: number | null;
   replacingPayId?: number | null;
   prefillSnapshot?: PayCorrectionSnapshot | null;
+  /** Cash leaves this profile (bill `to_profile` on AP). */
+  payFromProfileId?: number | null;
+  payFromProfileName?: string | null;
+  /** Cash arrives at this profile (bill `from_profile` on AP). */
+  payToProfileId?: number | null;
+  payToProfileName?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -447,24 +465,32 @@ const preApplyMutation = useApplySettlementMutation({ successMessage: 'Open cred
 const { loadingPaymentMeta, methodOptions, bdBankOptions, syncPaymentMetaDefaults } =
   useWholesalePaymentMethodMeta('bank_transfer', () => dialogActive.value);
 
-const pointsContext = computed(() => ({
-  booksTenantId: props.booksTenantId,
-  entityType: 'tenant',
-  entityId: props.booksTenantId,
-  enabled: dialogActive.value && props.isAp && props.booksTenantId > 0,
-}));
-const { pointsQuery } = useCashbookPointsQuery(pointsContext);
-const apPoints = computed(() => pointsQuery.data.value);
-const payFromEnabled = computed(
+const payFromPartyName = computed(
+  () => props.payFromProfileName?.trim() || 'Payer',
+);
+const payToPartyName = computed(() => props.payToProfileName?.trim() || 'Payee');
+
+const apLegsEnabled = computed(
   () => dialogActive.value && props.isAp && props.booksTenantId > 0,
 );
+
+const payFromProfileIdRef = computed(() => props.payFromProfileId ?? null);
+const payToProfileIdRef = computed(() => props.payToProfileId ?? null);
+const booksTenantIdRef = computed(() => props.booksTenantId);
+
 const {
   selectedPotId: payFromPotId,
-  payFromOptions,
+  chipOptions: fromLegChipOptions,
   cashbookPointId,
   sourceCurrencyCode,
-  loading: payFromLoading,
-} = useCashbookPayFromPotSelect(apPoints, payFromEnabled);
+  loading: fromLegLoading,
+} = useCashbookLegPots(payFromProfileIdRef, booksTenantIdRef, apLegsEnabled);
+
+const {
+  selectedPotId: payToPotId,
+  chipOptions: toLegChipOptions,
+  loading: toLegLoading,
+} = useCashbookLegPots(payToProfileIdRef, booksTenantIdRef, apLegsEnabled);
 
 const booksCurrencyCode = useBooksCurrencyCode();
 
@@ -561,17 +587,9 @@ const syncApPaymentCurrencyFromBill = () => {
   settlementCurrency.value = cur;
 };
 
-const showApPayFromField = computed(() => payFromOptions.value.length > 1);
-
 const showApPaymentCurrencySelect = computed(() => {
   if (!props.isAp) return false;
   return apBillCurrencyGroups(props.channelMeta ?? null).length > 1;
-});
-
-const payFromPotLabel = computed(() => {
-  const id = payFromPotId.value;
-  const row = payFromOptions.value.find((o) => o.value === id);
-  return row?.label ?? '';
 });
 
 const globalRefStore = useGlobalReferenceStore();
@@ -770,7 +788,7 @@ watch(
 );
 
 watch(
-  () => [dialogActive.value, payFromLoading.value, collectReceiveLoading.value, props.prefillSnapshot] as const,
+  () => [dialogActive.value, fromLegLoading.value, collectReceiveLoading.value, props.prefillSnapshot] as const,
   ([open, apLoad, collectLoad, snap]) => {
     if (!open || !snap?.cashbookPointPotId) return;
     if (props.isAp && apLoad) return;
@@ -843,8 +861,9 @@ const submitDisabledReason = computed(() => {
   const amt = Number(amountBdt.value);
   if (!amt || amt <= 0) return 'Enter a payment amount';
   if (props.isAp) {
-    if (payFromLoading.value) return 'Loading pay-from locations…';
-    if (!payFromPotId.value) return 'Choose location and currency to pay from';
+    if (fromLegLoading.value || toLegLoading.value) return 'Loading cash points…';
+    if (!payFromPotId.value) return 'Choose a from pot';
+    if (!payToPotId.value) return 'Choose a to pot';
     const fxReason = validateApFxFields() ?? validateApForeignPayFields();
     if (fxReason) return fxReason;
   } else {

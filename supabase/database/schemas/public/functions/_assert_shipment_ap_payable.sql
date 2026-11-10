@@ -17,10 +17,6 @@ begin
   if v_ship.id is null then
     raise exception 'Shipment % not found', p_shipment_id;
   end if;
-
-  if v_ship.status in ('draft', 'cancelled') then
-    raise exception 'Shipment % must be in transit or received before AP payout', p_shipment_id;
-  end if;
 end;
 $function$;
 

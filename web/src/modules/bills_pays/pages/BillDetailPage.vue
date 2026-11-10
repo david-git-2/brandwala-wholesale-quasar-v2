@@ -55,11 +55,8 @@
             color="primary"
             icon="ph ph-wallet"
             label="Add payment"
-            :disable="!!shipmentApPayBlockedReason"
             @click="openAddPayment"
-          >
-            <q-tooltip v-if="shipmentApPayBlockedReason">{{ shipmentApPayBlockedReason }}</q-tooltip>
-          </q-btn>
+          />
           <q-btn
             v-if="canRecordVendorRefund"
             outline
@@ -579,6 +576,10 @@
       :is-ap="isApBill"
       :channel-meta="(bill.channel_meta as Record<string, unknown> | null) ?? null"
       :shipment-id="billShipmentId"
+      :pay-from-profile-id="paymentPayFromProfileId"
+      :pay-from-profile-name="paymentPayFromProfileName"
+      :pay-to-profile-id="paymentPayToProfileId"
+      :pay-to-profile-name="paymentPayToProfileName"
       :loading="recordPaymentMutation.isPending.value"
       :replacing-pay-id="replacingPayId"
       :prefill-snapshot="paymentPrefillSnapshot"
@@ -597,6 +598,10 @@
       :is-ap="isApBill"
       :channel-meta="(bill.channel_meta as Record<string, unknown> | null) ?? null"
       :shipment-id="billShipmentId"
+      :pay-from-profile-id="paymentPayFromProfileId"
+      :pay-from-profile-name="paymentPayFromProfileName"
+      :pay-to-profile-id="paymentPayToProfileId"
+      :pay-to-profile-name="paymentPayToProfileName"
       :record-loading="recordPaymentMutation.isPending.value"
       @voided="onCorrectPaymentVoided"
       @submit="onRecordPayment"
@@ -661,7 +666,6 @@ import {
 import { useBillDetailBundleQuery } from '../composables/useBillDetailBundleQuery';
 import { useBillDetailQuery } from '../composables/useBillDetailQuery';
 import { useRecordBillPaymentMutation } from '../composables/useRecordBillPaymentMutation';
-import { useShipmentApPayGateQuery } from '../composables/useShipmentApPayGateQuery';
 import { useVoidBillMutation } from '../composables/useVoidBillMutation';
 import type { RecordBillPaymentInput } from '../composables/useRecordBillPaymentMutation';
 import type { InvoicePaymentHistoryEntry } from 'src/modules/sales_invoice/types';
@@ -701,13 +705,11 @@ import {
   apBillCurrencyBalances,
   apBillPaperCurrencyCode,
   isLegacyApPaperSnapshot,
+  parseApBillPaper,
 } from '../utils/parseApBillPaper';
 import type { BillNetBalances } from '../types/billBalances';
 import type { BillAdjustmentRow } from '../types/billAdjustments';
-import {
-  isShipmentCostApBill,
-  shipmentIdFromBill,
-} from '../utils/shipmentApBillSource';
+import { shipmentIdFromBill } from '../utils/shipmentApBillSource';
 import { isDropshipCourierApBill, isDropshipManagerBill } from '../utils/dropshipManagedBill';
 
 const route = useRoute();
@@ -835,14 +837,6 @@ const confirmBillDateEditor = async () => {
 
 const isApBill = computed(() => bill.value?.invoice_type === 'ap');
 const billShipmentId = computed(() => shipmentIdFromBill(bill.value) ?? null);
-
-const shipmentApPayGateShipmentId = computed(() => {
-  const b = bill.value;
-  if (!b || !isShipmentCostApBill(b)) return null;
-  return billShipmentId.value;
-});
-const { payBlockedReason: shipmentApPayBlockedReason } =
-  useShipmentApPayGateQuery(shipmentApPayGateShipmentId);
 
 const vendorRefundReceiptBuckets = computed(() =>
   aggregateVendorRefundReceipts(paymentHistoryEntries.value, { isAp: isApBill.value }),
@@ -1050,6 +1044,25 @@ const profileName = computed(
   () => bill.value?.profiles?.name || bill.value?.recipient_name || '—',
 );
 
+/** AP pay cash leaves tenant (`to` on bill paper). */
+const paymentPayFromProfileId = computed(() => bill.value?.to_profile_id ?? null);
+const paymentPayFromProfileName = computed(
+  () =>
+    bill.value?.to_profile?.name?.trim() ||
+    authStore.selectedTenant?.name ||
+    'Tenant',
+);
+/** AP pay cash arrives at vendor (`from` on bill paper). */
+const paymentPayToProfileId = computed(
+  () => bill.value?.from_profile_id ?? billProfileId.value ?? null,
+);
+const paymentPayToProfileName = computed(
+  () =>
+    bill.value?.from_profile?.name?.trim() ||
+    profileName.value ||
+    'Payee',
+);
+
 const channelLabel = computed(() =>
   bill.value ? invoiceChannelLabel(bill.value as GlobalInvoiceRow) : '',
 );
@@ -1083,12 +1096,20 @@ const canIssueDeliveryCloseDraft = computed(() => {
   return lines.value.some((l) => l.global_stock_id != null && Number(l.quantity) > 0);
 });
 
+const apDraftBooksTotal = (b: GlobalInvoiceDetail): number => {
+  const books = Number(b.total_amount ?? 0);
+  if (books > 0) return books;
+  const paper = parseApBillPaper(b.channel_meta as Record<string, unknown> | null, null);
+  const fromPaper = Number(paper?.bdt_amount ?? 0);
+  return fromPaper > 0 ? fromPaper : books;
+};
+
 const canIssueApDraft = computed(() => {
   const b = bill.value;
   if (!b || !isApBill.value || !isStandardBill.value) return false;
   if (isDropshipCourierApBill(b)) return false;
   if (b.invoice_status !== 'draft' && b.invoice_status !== 'proforma_generated') return false;
-  return Number(b.total_amount ?? 0) > 0;
+  return apDraftBooksTotal(b) > 0;
 });
 
 const issueDeliveryCloseMutation = useMutation({
@@ -1312,7 +1333,6 @@ watch(
   () => bill.value,
   (b) => {
     if (!b || bundleQuery.isPending.value) return;
-    if (b.invoice_type === 'ap') return;
     if (b.invoice_status !== 'draft' && b.invoice_status !== 'proforma_generated') return;
     const id = billId.value;
     if (id == null || id <= 0) return;

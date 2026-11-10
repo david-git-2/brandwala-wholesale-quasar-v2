@@ -692,126 +692,26 @@
                   :disable="!canAddCostInActiveBucket"
                   @click="openAddCostDialog"
                 />
-                <div class="row items-center q-gutter-sm shrink-0">
-                  <div
-                    class="row items-center q-gutter-xs cost-lines-invoice-status"
-                    aria-live="polite"
-                  >
-                    <span class="text-xxs text-weight-bold text-grey-6 uppercase">Invoice</span>
-                    <q-spinner-dots
-                      v-if="apBillsLoading"
-                      size="14px"
-                      color="grey-6"
-                    />
-                    <template v-else>
-                      <span class="text-caption text-weight-medium text-grey-9">
-                        {{ activeBucketInvoiceStatus.label }}
-                      </span>
-                      <q-chip
-                        v-if="activeBucketInvoiceStatus.chip"
-                        dense
-                        square
-                        size="sm"
-                        :color="activeBucketInvoiceStatus.chip.color"
-                        :text-color="activeBucketInvoiceStatus.chip.textColor"
-                        class="q-ma-none"
-                      >
-                        {{ activeBucketInvoiceStatus.chip.label }}
-                      </q-chip>
-                    </template>
-                  </div>
-                  <q-btn
-                    v-if="canStartMaterialCommercialCredit"
-                    outline
-                    no-caps
-                    color="primary"
-                    icon="ph ph-file-minus"
-                    size="sm"
-                    class="rounded-sq-btn text-weight-bold"
-                    label="Commercial credit note"
-                    :loading="
-                      apBillActionBucket === 'material' && apBillActionKind === 'credit_note'
-                    "
-                    :disable="apBillsLoading"
-                    @click="goToMaterialCommercialCreditNote"
-                  >
-                    <q-tooltip>
-                      Issue an AP credit note on the issued material invoice (shortage / commercial
-                      adjustment)
-                    </q-tooltip>
-                  </q-btn>
-                  <q-btn
-                    unelevated
-                    no-caps
-                    color="primary"
-                    icon="ph ph-receipt"
-                    size="sm"
-                    class="rounded-sq-btn text-weight-bold"
-                    :label="openBucketBillLabel(costBucketFilter)"
-                    :loading="apBillActionBucket === costBucketFilter && apBillActionKind === 'open'"
-                    :disable="apBillsLoading || !canUseBucketInvoiceActions"
-                    @click="goToBucketBill(costBucketFilter)"
-                  >
-                    <q-tooltip v-if="!canUseBucketInvoiceActions">
-                      Save cost lines with amounts for this bucket first
-                    </q-tooltip>
-                  </q-btn>
-                </div>
-              </div>
-
-              <div
-                v-if="apBillsLoading && activeBucketApBillRows.length === 0"
-                class="text-caption text-grey-6 q-pa-sm rounded-borders bg-grey-1 border-grey"
-              >
-                Loading invoices for this bucket…
-              </div>
-              <div
-                v-else-if="activeBucketApBillRows.length > 0"
-                class="bg-white rounded-borders border-grey overflow-hidden"
-              >
-                <div class="summary-cost-row summary-cost-row--head text-xxs text-weight-bold text-grey-6 uppercase">
-                  <span>Invoices (this bucket)</span>
-                  <span class="text-right">Total</span>
-                  <span class="text-right">Due</span>
-                </div>
-                <div
-                  v-for="bill in activeBucketApBillRows"
-                  :key="bill.id"
-                  class="summary-ap-bill-row cursor-pointer"
-                  role="button"
-                  tabindex="0"
-                  @click="openApBill(bill.id)"
-                  @keyup.enter="openApBill(bill.id)"
+                <q-btn
+                  v-if="canStartMaterialCommercialCredit"
+                  outline
+                  no-caps
+                  color="primary"
+                  icon="ph ph-file-minus"
+                  size="sm"
+                  class="rounded-sq-btn text-weight-bold shrink-0"
+                  label="Commercial credit note"
+                  :loading="
+                    apBillActionBucket === 'material' && apBillActionKind === 'credit_note'
+                  "
+                  :disable="apBillsLoading"
+                  @click="goToMaterialCommercialCreditNote"
                 >
-                  <div class="column q-gutter-y-2xs min-width-0">
-                    <div class="text-caption text-weight-medium text-grey-9 ellipsis">
-                      {{ bill.kindLabel }}
-                    </div>
-                    <div class="text-xxs text-grey-6 ellipsis">
-                      {{ bill.invoiceLabel }}
-                      <q-chip
-                        v-if="bill.statusChip"
-                        dense
-                        square
-                        size="sm"
-                        :color="bill.statusChip.color"
-                        :text-color="bill.statusChip.textColor"
-                        class="q-ml-xs q-ma-none"
-                      >
-                        {{ bill.statusChip.label }}
-                      </q-chip>
-                    </div>
-                  </div>
-                  <span class="text-right font-mono text-caption text-grey-9">
-                    {{ formatMoney(currentCostCurrencySymbol, displayBillTotal(bill)) }}
-                  </span>
-                  <span
-                    class="text-right font-mono text-caption"
-                    :class="displayDueAmount(bill) > 0 ? 'text-orange-9' : 'text-grey-7'"
-                  >
-                    {{ formatMoney(currentCostCurrencySymbol, displayDueAmount(bill)) }}
-                  </span>
-                </div>
+                  <q-tooltip>
+                    Issue an AP credit note on the issued material invoice (shortage / commercial
+                    adjustment)
+                  </q-tooltip>
+                </q-btn>
               </div>
 
               <div
@@ -856,11 +756,59 @@
                       {{ row.description }}
                     </div>
                   </div>
-                  <div
-                    v-if="canEditCostLineInBucket(row.cost_bucket)"
-                    class="col-auto row items-center q-gutter-x-xs shrink-0"
-                  >
+                  <div class="col-auto row items-center q-gutter-x-xs shrink-0">
                     <q-btn
+                      v-if="costEntryApBillId(row.metadata)"
+                      flat
+                      round
+                      dense
+                      size="sm"
+                      color="primary"
+                      icon="ph ph-receipt"
+                      aria-label="Open payable"
+                      @click="openCostEntryBill(row)"
+                    >
+                      <q-tooltip>Open invoice</q-tooltip>
+                    </q-btn>
+                    <q-btn
+                      v-else-if="canIssueCostEntryInvoice(row)"
+                      flat
+                      round
+                      dense
+                      size="sm"
+                      color="primary"
+                      class="cost-line-hold-btn cost-line-issue-btn"
+                      :class="{ 'cost-line-hold-btn--holding': issueHoldKey === row.localKey }"
+                      aria-label="Hold to create invoice"
+                      @click.prevent
+                      @mousedown.prevent="startIssueHold(row.localKey, rowIndex)"
+                      @mouseup="cancelIssueHold"
+                      @mouseleave="cancelIssueHold"
+                      @touchstart.prevent="startIssueHold(row.localKey, rowIndex)"
+                      @touchend="cancelIssueHold"
+                      @touchcancel="cancelIssueHold"
+                      @contextmenu.prevent
+                    >
+                      <q-circular-progress
+                        v-if="issueHoldKey === row.localKey"
+                        :value="issueHoldProgress"
+                        size="26px"
+                        :thickness="0.22"
+                        color="primary"
+                        track-color="grey-3"
+                        class="cost-line-hold-btn__ring"
+                      />
+                      <span
+                        v-if="issueHoldKey === row.localKey"
+                        class="cost-line-hold-btn__count text-primary text-weight-bold"
+                      >
+                        {{ issueHoldSecondsLeft }}
+                      </span>
+                      <q-icon v-else name="ph ph-paper-plane-tilt" size="14px" />
+                      <q-tooltip>Hold {{ issueHoldSecondsTotal }}s to create invoice</q-tooltip>
+                    </q-btn>
+                    <q-btn
+                      v-if="canEditCostRow(row)"
                       flat
                       round
                       dense
@@ -871,13 +819,14 @@
                       @click="openEditCostDialog(row)"
                     />
                     <q-btn
+                      v-if="canEditCostRow(row)"
                       flat
                       round
                       dense
                       size="sm"
                       color="negative"
-                      class="cost-line-delete-btn"
-                      :class="{ 'cost-line-delete-btn--holding': deleteHoldKey === row.localKey }"
+                      class="cost-line-hold-btn cost-line-delete-btn"
+                      :class="{ 'cost-line-hold-btn--holding': deleteHoldKey === row.localKey }"
                       aria-label="Hold to remove cost line"
                       @click.prevent
                       @mousedown.prevent="startDeleteHold(row.localKey, rowIndex)"
@@ -895,11 +844,11 @@
                         :thickness="0.22"
                         color="negative"
                         track-color="grey-3"
-                        class="cost-line-delete-btn__ring"
+                        class="cost-line-hold-btn__ring"
                       />
                       <span
                         v-if="deleteHoldKey === row.localKey"
-                        class="cost-line-delete-btn__count text-negative text-weight-bold"
+                        class="cost-line-hold-btn__count text-negative text-weight-bold"
                       >
                         {{ deleteHoldSecondsLeft }}
                       </span>
@@ -1184,14 +1133,18 @@ import {
   apBillInvoiceLabel,
   apBillKindLabel,
   apBillStatusChip,
-  type ApBillStatusChip,
   billDetailRoute,
   displayBillTotal,
   displayDueAmount,
   sumApBillsDue,
   sumApBillsTotal,
 } from '../utils/shipmentApBillDisplay';
-import { billDetailCommercialCreditRoute } from 'src/modules/bills_pays/utils/billRoutes';
+import { billDetailCommercialCreditRoute, billDetailRoute as apBillDetailRoute } from 'src/modules/bills_pays/utils/billRoutes';
+import {
+  costEntryApBillId,
+  costEntryHasIssuedInvoice,
+} from '../utils/shipmentCostEntryInvoice';
+import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { shipmentShortageCreditHintBdt } from '../utils/shipmentShortageCreditHint';
 import {
   findShipmentApBill,
@@ -1453,12 +1406,14 @@ const {
   isStockPosted,
   isCostsLocked,
   canEditCosts,
+  canEditShipmentCostMatrix,
   weightNeedsAttention,
 } = props.calculations;
 
 const isCostsLockedFlag = computed(() => Boolean(unref(isCostsLocked)));
 const isStockPostedFlag = computed(() => Boolean(unref(isStockPosted)));
 const canEditCostsFlag = computed(() => Boolean(unref(canEditCosts)));
+const canEditShipmentCostMatrixFlag = computed(() => Boolean(unref(canEditShipmentCostMatrix)));
 
 const boxTotalsNetDiff = computed(() =>
   describeBoxTotalsNetDiff(
@@ -1790,6 +1745,7 @@ type ShipmentCostRowDraft = {
   currency_id: number | null;
   amount: number | null;
   description: string;
+  metadata?: Record<string, unknown> | null;
 };
 
 const newCostRowKey = () => `cost-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -1919,16 +1875,14 @@ const shipmentApBillsReady = computed(
 const canEditCostLines = computed(() => {
   if (isCurrentShipmentArchived.value) return false;
   if (!shipmentStore.currentShipment) return false;
-  return canEditCostsFlag.value;
+  return canEditShipmentCostMatrixFlag.value;
 });
 
-const apBillLocksCostEdits = (bill: ShipmentApBillRow): boolean => {
-  if (bill.invoice_status === 'draft' || bill.invoice_status === 'voided') return false;
-  return true;
-};
+const apBillLocksCostEdits = (bill: ShipmentApBillRow): boolean =>
+  bill.invoice_status === 'issued';
 
 const apBillActionBucket = ref<ShipmentApKind | null>(null);
-const apBillActionKind = ref<'open' | 'credit_note' | null>(null);
+const apBillActionKind = ref<'credit_note' | null>(null);
 
 const apBillForBucket = (kind: ShipmentApKind) => findShipmentApBill(shipmentApBills.value, kind);
 
@@ -1956,91 +1910,25 @@ const bucketHasLockedApBill = (bucket: GlobalShipmentCostBucket): boolean => {
   return unbucketedIssued.length === 1 && bucket === 'material';
 };
 
-const activeBucketApBillRows = computed(() => {
-  const bucket = costBucketFilter.value;
-  const matched = summaryApBillRows.value.filter((bill) => apBillMatchesCostBucket(bill, bucket));
-  if (matched.length > 0) return matched;
-  const unbucketedIssued = summaryApBillRows.value.filter(
-    (b) => !shipmentApBillBucket(b) && apBillLocksCostEdits(b),
-  );
-  if (unbucketedIssued.length === 1 && bucket === 'material') {
-    return unbucketedIssued;
-  }
-  return matched;
-});
-
-/** Pencil / delete on a saved cost line (not Add cost). */
-const canEditCostLineInBucket = (bucket: GlobalShipmentCostBucket): boolean => {
+const canEditCostRow = (row: ShipmentCostRowDraft): boolean => {
   if (!canEditCostLines.value) return false;
-  if (apBillsLoading.value || shipmentStore.settingsFinanceLoading) return false;
-  if (!shipmentApBillsReady.value && shipmentApBills.value.length === 0) return false;
-  return !bucketHasLockedApBill(bucket);
+  if (row.dbId == null) return false;
+  return !costEntryHasIssuedInvoice(row.metadata);
+};
+
+const canIssueCostEntryInvoice = (row: ShipmentCostRowDraft): boolean => {
+  if (!canEditCostLines.value || row.dbId == null) return false;
+  if (costEntryHasIssuedInvoice(row.metadata)) return false;
+  const amt = Number(row.amount ?? 0);
+  return Number.isFinite(amt) && amt > 0;
 };
 
 /** New cost lines in buckets without an issued AP bill. */
-const canAddCostInBucket = (bucket: GlobalShipmentCostBucket): boolean => {
-  if (!canEditCostLines.value) return false;
-  return !bucketHasLockedApBill(bucket);
-};
+const canAddCostInBucket = (bucket: GlobalShipmentCostBucket): boolean => canEditCostLines.value;
 
 const canAddCostInActiveBucket = computed(() =>
   canAddCostInBucket(costBucketFilter.value),
 );
-
-const openBucketBillLabel = (kind: ShipmentApKind) => {
-  const bill = apBillForBucket(kind);
-  if (bill?.invoice_no) return `Open ${bill.invoice_no}`;
-  return 'Open invoice';
-};
-
-const activeBucketInvoiceStatus = computed(() => {
-  const kind = costBucketFilter.value;
-  const bill = apBillForBucket(kind);
-  if (!bill) {
-    const canSync = bucketHasApBillSource(kind);
-    return {
-      label: canSync ? 'Not synced' : 'No bill',
-      chip: canSync
-        ? ({ label: 'Pending', color: 'grey-2', textColor: 'grey-8' } satisfies ApBillStatusChip)
-        : null,
-    };
-  }
-  if (bill.invoice_status === 'draft') {
-    return { label: 'Draft — lock costs on shipment to issue', chip: null };
-  }
-  return {
-    label: apBillInvoiceLabel(bill),
-    chip: apBillStatusChip(bill),
-  };
-});
-
-/** Saved cost lines or header totals that `sync_shipment_ap_bills` can turn into a bill. */
-const bucketHasApBillSource = (bucket: GlobalShipmentCostBucket): boolean => {
-  const entries = shipmentStore.currentCostEntries ?? [];
-  const hasSavedLines = entries.some(
-    (e) =>
-      e.cost_bucket === bucket &&
-      e.currency_id != null &&
-      Number(e.amount) > 0,
-  );
-  if (hasSavedLines) return true;
-
-  const ship = shipmentStore.currentShipment;
-  if (!ship) return false;
-  if (bucket === 'material') {
-    return Number(ship.purchase_invoice_total) > 0;
-  }
-  if (bucket === 'freight') {
-    return Number(ship.cargo_invoice_total) > 0;
-  }
-  return false;
-};
-
-const canUseBucketInvoiceActions = computed(() => {
-  const bucket = costBucketFilter.value;
-  if (apBillForBucket(bucket)) return true;
-  return bucketHasApBillSource(bucket);
-});
 
 const settingsFinanceLoadedForShipmentId = ref<number | null>(null);
 const settingsFinanceLoadInFlight = ref(false);
@@ -2198,32 +2086,6 @@ const ensureBucketApBill = async (kind: ShipmentApKind): Promise<ShipmentApBillR
   return findShipmentApBill(shipmentApBills.value, kind);
 };
 
-const goToBucketBill = async (kind: ShipmentApKind) => {
-  apBillActionBucket.value = kind;
-  apBillActionKind.value = 'open';
-  try {
-    const linked = await ensureBucketApBill(kind);
-    if (!linked) {
-      $q.notify({
-        type: 'warning',
-        message: 'No invoice for this bucket yet. Save cost lines with amounts first.',
-        timeout: 2500,
-      });
-      return;
-    }
-    openApBill(linked.id);
-  } catch (err: unknown) {
-    $q.notify({
-      type: 'negative',
-      message: (err as Error).message || 'Could not open invoice',
-      timeout: 2500,
-    });
-  } finally {
-    apBillActionBucket.value = null;
-    apBillActionKind.value = null;
-  }
-};
-
 const costRowCurrencySymbol = (row: ShipmentCostRowDraft): string => {
   if (row.currency_id != null) {
     return currencySymbolById.value.get(row.currency_id) ?? currentCostCurrencySymbol.value;
@@ -2343,6 +2205,7 @@ const mapEntryToCostRow = (entry: CostEntryRowSource): ShipmentCostRowDraft => {
     currency_id: entry.currency_id ?? defaultCostLineCurrencyId.value,
     amount: entry.amount != null ? Number(entry.amount) : null,
     description: entry.description?.trim() || legacyNote,
+    metadata: { ...meta },
   };
 };
 
@@ -2422,8 +2285,71 @@ const onProgressSelect = (value: number | null | undefined) => {
   emit('update-progress', value ?? null);
 };
 
-const DELETE_HOLD_MS = 2500;
-const deleteHoldSecondsTotal = Math.ceil(DELETE_HOLD_MS / 1000);
+const COST_LINE_HOLD_MS = 2500;
+const issueHoldSecondsTotal = Math.ceil(COST_LINE_HOLD_MS / 1000);
+const deleteHoldSecondsTotal = issueHoldSecondsTotal;
+const issueHoldKey = ref<string | null>(null);
+const issueHoldProgress = ref(0);
+const issueHoldTargetIndex = ref<number | null>(null);
+let issueHoldTimer: ReturnType<typeof setInterval> | null = null;
+let issueHoldStartedAt = 0;
+
+const issueHoldSecondsLeft = computed(() => {
+  if (!issueHoldKey.value) return issueHoldSecondsTotal;
+  const remainingMs = COST_LINE_HOLD_MS * (1 - issueHoldProgress.value / 100);
+  return Math.max(1, Math.ceil(remainingMs / 1000));
+});
+
+const clearIssueHold = () => {
+  if (issueHoldTimer) {
+    clearInterval(issueHoldTimer);
+    issueHoldTimer = null;
+  }
+  issueHoldKey.value = null;
+  issueHoldProgress.value = 0;
+  issueHoldTargetIndex.value = null;
+};
+
+const startIssueHold = (localKey: string, rowIndex: number) => {
+  const row = costRowsList.value[rowIndex];
+  if (!row || !canIssueCostEntryInvoice(row)) return;
+  clearDeleteHold();
+  clearIssueHold();
+  issueHoldKey.value = localKey;
+  issueHoldTargetIndex.value = rowIndex;
+  issueHoldStartedAt = Date.now();
+  issueHoldTimer = setInterval(() => {
+    const elapsed = Date.now() - issueHoldStartedAt;
+    issueHoldProgress.value = Math.min(100, (elapsed / COST_LINE_HOLD_MS) * 100);
+    if (elapsed >= COST_LINE_HOLD_MS) {
+      const idx = issueHoldTargetIndex.value;
+      clearIssueHold();
+      if (idx != null) {
+        void issueCostRowByIndex(idx);
+      }
+    }
+  }, 40);
+};
+
+const cancelIssueHold = () => {
+  clearIssueHold();
+};
+
+const issueCostRowByIndex = async (index: number) => {
+  const row = costRowsList.value[index];
+  const entryId = row?.dbId;
+  if (!entryId || !props.shipmentId || !row || !canIssueCostEntryInvoice(row)) return;
+  try {
+    await shipmentStore.issueCostEntryInvoice(props.shipmentId, entryId);
+    showSuccessNotification('Invoice created.');
+    syncCostsFromStore();
+    void refreshSettingsFinanceBundle({ force: true });
+  } catch (err: unknown) {
+    showErrorNotification((err as Error).message || 'Could not create invoice');
+  }
+};
+
+const DELETE_HOLD_MS = COST_LINE_HOLD_MS;
 const deleteHoldKey = ref<string | null>(null);
 const deleteHoldProgress = ref(0);
 const deleteHoldTargetIndex = ref<number | null>(null);
@@ -2448,7 +2374,8 @@ const clearDeleteHold = () => {
 
 const startDeleteHold = (localKey: string, rowIndex: number) => {
   const row = costRowsList.value[rowIndex];
-  if (!row || !canEditCostLineInBucket(row.cost_bucket)) return;
+  if (!row || !canEditCostRow(row)) return;
+  clearIssueHold();
   clearDeleteHold();
   deleteHoldKey.value = localKey;
   deleteHoldTargetIndex.value = rowIndex;
@@ -2471,9 +2398,18 @@ const cancelDeleteHold = () => {
 };
 
 onBeforeUnmount(() => {
+  clearIssueHold();
   clearDeleteHold();
   if (settingsFinanceDebounceTimer) clearTimeout(settingsFinanceDebounceTimer);
 });
+
+const openCostEntryBill = (row: ShipmentCostRowDraft) => {
+  const billId = costEntryApBillId(row.metadata);
+  if (!billId) return;
+  const route = apBillDetailRoute(billId, authStore.tenantSlug);
+  if (!route) return;
+  void router.push(route);
+};
 
 const openAddCostDialog = () => {
   if (!canAddCostInActiveBucket.value) return;
@@ -2483,7 +2419,7 @@ const openAddCostDialog = () => {
 };
 
 const openEditCostDialog = (row: ShipmentCostRowDraft) => {
-  if (!canEditCostLineInBucket(row.cost_bucket)) return;
+  if (!canEditCostRow(row)) return;
   editingCostLocalKey.value = row.localKey;
   addCostForm.value = {
     cost_component: row.cost_component,
@@ -2523,7 +2459,7 @@ const confirmCostDialog = async () => {
     : null;
   const bucket = editingRow?.cost_bucket ?? costBucketFilter.value;
   if (editingRow) {
-    if (!canEditCostLineInBucket(bucket)) return;
+    if (!canEditCostRow(editingRow)) return;
   } else if (!canAddCostInBucket(bucket)) return;
   const roundedAmt = Math.round(amt * 100) / 100;
 
@@ -2637,7 +2573,7 @@ const saveShipmentWeightIfChanged = async () => {
   padding-top: 2px;
 }
 
-.cost-line-delete-btn {
+.cost-line-hold-btn {
   width: 28px;
   height: 28px;
   min-height: 28px;
@@ -2645,21 +2581,25 @@ const saveShipmentWeightIfChanged = async () => {
   user-select: none;
 }
 
-.cost-line-delete-btn__ring {
+.cost-line-hold-btn__ring {
   position: absolute;
   inset: 0;
   margin: auto;
 }
 
-.cost-line-delete-btn__count {
+.cost-line-hold-btn__count {
   position: relative;
   z-index: 1;
   font-size: 11px;
   line-height: 1;
 }
 
-.cost-line-delete-btn--holding {
+.cost-line-delete-btn.cost-line-hold-btn--holding {
   background: color-mix(in srgb, var(--q-negative) 10%, transparent);
+}
+
+.cost-line-issue-btn.cost-line-hold-btn--holding {
+  background: color-mix(in srgb, var(--tf-theme-primary, var(--q-primary)) 12%, transparent);
 }
 
 .shipment-settings-drawer-panels {

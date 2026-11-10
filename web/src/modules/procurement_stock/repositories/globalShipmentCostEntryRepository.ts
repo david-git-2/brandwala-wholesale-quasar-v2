@@ -105,6 +105,16 @@ const remove = async (id: number): Promise<void> => {
   if (error) throw error;
 };
 
+const issueCostEntryAp = async (costEntryId: number): Promise<{ id: number }> => {
+  const { data, error } = await db.rpc('issue_shipment_cost_entry_ap', {
+    p_cost_entry_id: costEntryId,
+  });
+  if (error) throw error;
+  const row = data as { id?: number } | null;
+  if (!row?.id) throw new Error('issue_shipment_cost_entry_ap returned no bill');
+  return { id: row.id };
+};
+
 /** Post-finalize only — replaces entries and re-stamps landed_cost_bdt. No wallet. */
 const revise = async (
   shipmentId: number,
@@ -125,4 +135,5 @@ export const globalShipmentCostEntryRepository = {
   upsert,
   remove,
   revise,
+  issueCostEntryAp,
 };

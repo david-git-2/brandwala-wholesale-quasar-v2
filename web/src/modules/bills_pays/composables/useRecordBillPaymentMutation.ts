@@ -5,6 +5,7 @@ import {
   type ApPayoutBillDetailSnapshot,
 } from '../services/apPayoutService';
 import { billsQueryKeys } from '../services/billsQueryKeys';
+import { cashbookQueryKeys } from '../services/cashbookQueryKeys';
 import { paysQueryKeys } from '../services/paysQueryKeys';
 import { useShipmentApFinanceInvalidation } from 'src/modules/procurement_stock/composables/useShipmentApFinance';
 import { createPayIdempotencyKey, paysRepository } from '../repositories/paysRepository';
@@ -180,6 +181,7 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
 
       void queryClient.invalidateQueries({ queryKey: billsQueryKeys.root, refetchType: 'none' });
       void queryClient.invalidateQueries({ queryKey: paysQueryKeys.root, refetchType: 'none' });
+      void queryClient.invalidateQueries({ queryKey: cashbookQueryKeys.root });
     },
     onError: (error: unknown) => {
       showErrorNotification(error instanceof Error ? error.message : 'Could not record payment.');

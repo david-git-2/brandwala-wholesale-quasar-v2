@@ -35,4 +35,4 @@ Nav modules in code use `app` | `shop` only (`moduleRegistry`). Platform and inv
 
 **Out of all shop/investor:** warehouse bins, landed-cost lock, schema split, platform tenant provision.
 
-Module **in/out** detail lives on that pack’s `spec.md` → Scope. Tables, RPCs, and button wiring: grep `supabase/schemas/` and `web/src/modules/<name>/`. **Bills & pays:** `docs/features/bills_pays/spec.md`. App code: `sales_invoice/` + `wallet/`.
+Module **in/out** detail lives on that pack’s `spec.md` → Scope. Tables, RPCs, and button wiring: grep `supabase/schemas/` and `web/src/modules/<name>/`. **Bills & pays:** `docs/features/bills_pays/money-spine.md`. App code: `sales_invoice/` + `wallet/`.

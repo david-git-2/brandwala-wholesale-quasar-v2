@@ -26,7 +26,7 @@
 | In | Five finance report views + CSV export; see [REPORTS_PLAN.md](../../../REPORTS_PLAN.md) |
 | Out | Creating invoices; posting pays/remittance; editing shipments; invoice-line profit report; wallet liability report; courier COD report |
 
-Money: [bills_pays spec](../bills_pays/spec.md). Numbers: [money-story](../bills_pays/money-story.md).
+Money: [money-spine](../bills_pays/money-spine.md).
 
 ## Locked: money layers
 
@@ -44,7 +44,8 @@ Dropship: sales = merchant total, not COD face. Sales reports filter `invoice_ty
 
 ### US-1: Shipment report
 - List: all inbound shipments (`list_inbound_shipments_workspace`) at `/app/finance/reports/shipment-report`.
-- Detail: admin checklist at `/app/finance/reports/shipment-report/:shipmentId` (no per-product item table):
+- Detail UI: sticky **KPI strip** (cost / sell / profit), **story row** (quantity bar + cost-vs-sell bars), **cost by type** (share bars + FX chips + supplier bills expand), **sales tabs** (sell | not paid when due &gt; 0).
+- Detail data at `/app/finance/reports/shipment-report/:shipmentId` (no per-product item table):
   - **At a glance:** total cost, total sell, receive loss (BDT), profit/loss + margin %, unpaid customer total, warehouse value (BDT).
   - **Pieces:** should arrive, arrived, loss, stalled (held), remaining (sellable), sold.
   - **Exchange rates** when payments exist.

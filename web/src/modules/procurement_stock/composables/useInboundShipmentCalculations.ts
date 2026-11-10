@@ -173,6 +173,15 @@ export function useInboundShipmentCalculations() {
     return true;
   });
 
+  /** Cost matrix in shipment settings — editable until that bucket’s AP is issued (not blocked by costs_locked). */
+  const canEditShipmentCostMatrix = computed(() => {
+    const shipment = shipmentStore.currentShipment;
+    if (!shipment) return false;
+    if (shipment.status === 'cancelled' || shipment.is_archived) return false;
+    if (shipment.is_closed === true) return false;
+    return true;
+  });
+
   const canEditLineCostFields = computed(() => canEditCosts.value);
 
   /** Paper line only: purchase price, ordered qty, weights — draft and in_transit only. */
@@ -235,6 +244,7 @@ export function useInboundShipmentCalculations() {
     isEditable,
     isCostFinalized,
     canEditCosts,
+    canEditShipmentCostMatrix,
     canEditLineStructure,
     canEditLineCostFields,
     canEditShipmentOrderLineFields,

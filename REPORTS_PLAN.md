@@ -6,7 +6,7 @@ Product list for **parent-level finance reporting** (wholesale, procurement, dro
 
 **Global rule:** every money report shows **billed**, **returned**, **collected cash**, **cashbook applied**, and **still due** as separate numbers. Do not mix them.
 
-**Money story:** [docs/features/bills_pays/money-story.md](docs/features/bills_pays/money-story.md). **Gross profit = shipment P&L** (batch view), not invoice-line COGS. Shipment spend = procurement cost rows + AP bills on the batch.
+**Money story:** [money-spine.md](docs/features/bills_pays/money-spine.md). **Gross profit = shipment P&L** (batch view), not invoice-line COGS. Shipment spend = procurement cost rows + AP bills on the batch.
 
 **Status (2026-11):** routes, hub tiles, RPCs, and UI live under `/app/finance/reports/*`. Shipment profit is the primary margin report.
 

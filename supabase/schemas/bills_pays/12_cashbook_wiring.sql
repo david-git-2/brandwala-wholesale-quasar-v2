@@ -49,6 +49,7 @@ DECLARE
   v_result jsonb;
   v_books_id bigint;
   v_entity_id bigint;
+  v_profile_id bigint;
 BEGIN
   v_books_id := public.resolve_books_tenant_id(p_tenant_id);
   v_entity_id := p_entity_id;
@@ -56,15 +57,19 @@ BEGIN
     v_entity_id := v_books_id;
   END IF;
 
+  v_profile_id := public._kernel_cashbook_money_profile_id(v_books_id, p_entity_type, p_entity_id);
+
   SELECT jsonb_build_object(
     'tenant_id', v_books_id,
-    'tenant_id', v_books_id,
+    'profile_id', w.profile_id,
     'entity_type', p_entity_type,
     'entity_id', v_entity_id,
     'currency_code', coalesce(w.currency_code, p_currency_code),
     'available_balance', coalesce(w.available_balance, 0.0000),
     'pending_balance', coalesce(w.pending_balance, 0.0000),
     'locked_balance', coalesce(w.locked_balance, 0.0000),
+    'default_cashbook_point_id', w.default_cashbook_point_id,
+    'default_cashbook_point_pot_id', w.default_cashbook_point_pot_id,
     'total_balance', (
       coalesce(w.available_balance, 0.0000)
       + coalesce(w.pending_balance, 0.0000)
@@ -76,9 +81,15 @@ BEGIN
   FROM (SELECT 1) dummy
   LEFT JOIN public.cashbook_accounts w
     ON w.tenant_id = v_books_id
-   AND w.entity_type = p_entity_type
-   AND w.entity_id = v_entity_id
-   AND w.currency_code = coalesce(p_currency_code, 'BDT');
+   AND w.currency_code = coalesce(p_currency_code, 'BDT')
+   AND (
+     (v_profile_id IS NOT NULL AND w.profile_id = v_profile_id)
+     OR (
+       w.profile_id IS NULL
+       AND w.entity_type = p_entity_type
+       AND w.entity_id = v_entity_id
+     )
+   );
 
   RETURN v_result;
 END;
@@ -209,6 +220,8 @@ DECLARE
   v_point_ok boolean;
   v_pot_id bigint;
   v_pot_amt numeric(12, 2);
+  v_profile_id bigint;
+  v_account_class public.cashbook_account_class;
 BEGIN
   IF p_amount <= 0 THEN
     RAISE EXCEPTION 'Transaction amount must be greater than zero.';
@@ -227,20 +240,39 @@ BEGIN
     v_entity_id := p_tenant_id;
   END IF;
 
+  v_profile_id := public._kernel_cashbook_money_profile_id(p_tenant_id, p_entity_type, p_entity_id);
+  v_account_class := CASE
+    WHEN p_entity_type = 'tenant' THEN 'tenant_asset'::public.cashbook_account_class
+    ELSE 'profile_custody'::public.cashbook_account_class
+  END;
+
+  IF v_profile_id IS NOT NULL THEN
+    PERFORM public.ensure_cashbook_account_for_profile(v_profile_id, coalesce(p_currency_code, 'BDT'));
+  END IF;
+
   INSERT INTO public.cashbook_accounts (
     tenant_id, entity_type, entity_id, currency_code,
-    available_balance, pending_balance, locked_balance, account_class
+    available_balance, pending_balance, locked_balance, account_class, profile_id
   )
   VALUES (
     p_tenant_id, p_entity_type, v_entity_id,
     coalesce(p_currency_code, 'BDT'), 0.0000, 0.0000, 0.0000,
-    CASE WHEN p_entity_type = 'tenant' THEN 'tenant_asset'::public.cashbook_account_class
-         ELSE 'profile_custody'::public.cashbook_account_class END
+    v_account_class,
+    v_profile_id
   )
   ON CONFLICT (tenant_id, entity_type, entity_id, currency_code)
-  DO UPDATE SET updated_at = now()
+  DO UPDATE SET
+    profile_id = coalesce(public.cashbook_accounts.profile_id, excluded.profile_id),
+    updated_at = now()
   RETURNING id, available_balance, pending_balance, locked_balance
   INTO v_account_id, v_avail, v_pend, v_lock;
+
+  IF v_profile_id IS NOT NULL AND v_account_id IS NOT NULL THEN
+    UPDATE public.cashbook_accounts ca
+    SET profile_id = coalesce(ca.profile_id, v_profile_id)
+    WHERE ca.id = v_account_id
+      AND ca.profile_id IS NULL;
+  END IF;
 
   IF p_cashbook_point_id IS NOT NULL THEN
     SELECT EXISTS (
@@ -416,7 +448,7 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION public.list_books_exchange_rates(bigint, text, integer) TO authenticated, service_role;
 
-CREATE OR REPLACE FUNCTION public."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" date, "p_note" text DEFAULT NULL::text, "p_reference" text DEFAULT NULL::text, "p_source" text DEFAULT 'customer_cash'::text, "p_instruments" jsonb DEFAULT '[]'::jsonb, "p_allocations" jsonb DEFAULT '[]'::jsonb, "p_shop_order_id" bigint DEFAULT NULL::bigint, "p_settlement_currency_code" text DEFAULT 'BDT'::text, "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_credit_dropship_profit" boolean DEFAULT true, "p_idempotency_key" text DEFAULT NULL::text, "p_cashbook_point_id" bigint DEFAULT NULL::bigint, "p_cashbook_point_pot_id" bigint DEFAULT NULL::bigint, "p_source_currency_code" text DEFAULT NULL::text, "p_transaction_rate" numeric DEFAULT NULL::numeric) RETURNS public.pays
+CREATE OR REPLACE FUNCTION public."post_customer_receipt_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_received_on" date, "p_note" text DEFAULT NULL::text, "p_reference" text DEFAULT NULL::text, "p_source" text DEFAULT 'customer_cash'::text, "p_instruments" jsonb DEFAULT '[]'::jsonb, "p_allocations" jsonb DEFAULT '[]'::jsonb, "p_shop_order_id" bigint DEFAULT NULL::bigint, "p_settlement_currency_code" text DEFAULT 'BDT'::text, "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_credit_dropship_profit" boolean DEFAULT true, "p_idempotency_key" text DEFAULT NULL::text, "p_cashbook_point_id" bigint DEFAULT NULL::bigint, "p_cashbook_point_pot_id" bigint DEFAULT NULL::bigint, "p_source_currency_code" text DEFAULT NULL::text, "p_transaction_rate" numeric DEFAULT NULL::numeric, "p_from_profile_id" bigint DEFAULT NULL::bigint, "p_to_profile_id" bigint DEFAULT NULL::bigint, "p_description" text DEFAULT NULL::text) RETURNS public.pays
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -454,6 +486,10 @@ declare
   v_ledger_rate numeric(15, 6);
   v_bill_ids bigint[] := '{}';
   v_sid bigint;
+  v_from_profile_id bigint;
+  v_to_profile_id bigint;
+  v_pay_description text;
+  v_legacy_profile_id bigint;
 begin
   if p_tenant_id is null then
     raise exception 'Tenant is required';
@@ -637,13 +673,27 @@ begin
     perform public._kernel_lock_cashbook_point_pots(v_cashbook_point_id);
   end if;
 
+  select e.from_profile_id, e.to_profile_id, e.description, e.legacy_profile_id
+  into v_from_profile_id, v_to_profile_id, v_pay_description, v_legacy_profile_id
+  from public._kernel_resolve_pay_profile_endpoints(
+    v_parent_id,
+    v_source,
+    p_profile_id,
+    p_from_profile_id,
+    p_to_profile_id,
+    p_description,
+    v_note
+  ) e;
+
   insert into public.pays (
-    tenant_id, profile_id, source, amount, unallocated_amount,
+    tenant_id, profile_id, from_profile_id, to_profile_id, description,
+    source, amount, unallocated_amount,
     payment_date, method, reference, note, shop_order_id,
     settlement_currency_code, foreign_amount, exchange_rate, quote_currency_code,
     cashbook_point_id, source_currency_code, transaction_rate, source_amount, cashbook_point_pot_id
   ) values (
-    v_parent_id, p_profile_id, v_source, v_amount, v_amount,
+    v_parent_id, coalesce(v_legacy_profile_id, p_profile_id), v_from_profile_id, v_to_profile_id, nullif(v_pay_description, ''),
+    v_source, v_amount, v_amount,
     v_received_on, v_header_method, v_reference, v_note, p_shop_order_id,
     v_settle_currency, v_foreign_amt, v_fx_rate, v_base_currency,
     v_cashbook_point_id, v_source_currency, v_transaction_rate, v_source_amount, v_pot_id

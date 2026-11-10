@@ -4,15 +4,12 @@ CREATE TABLE public.cashbook_points (
   cashbook_account_id     bigint                     NOT NULL,
   code                    text                       NOT NULL,
   name                    text                       NOT NULL,
-  kind                    public.cashbook_point_kind DEFAULT 'drawer'::public.cashbook_point_kind NOT NULL,
-  custodian_membership_id bigint,
   is_active               boolean                    DEFAULT true NOT NULL,
-  sort_order              integer                    DEFAULT 0 NOT NULL,
   created_at              timestamp with time zone   DEFAULT now() NOT NULL,
   updated_at              timestamp with time zone   DEFAULT now() NOT NULL
 );
 
-CREATE INDEX cashbook_points_account_active_idx ON public.cashbook_points (cashbook_account_id, sort_order)
+CREATE INDEX cashbook_points_account_active_idx ON public.cashbook_points (cashbook_account_id)
   WHERE is_active = true;
 
 CREATE INDEX cashbook_points_parent_tenant_id_idx ON public.cashbook_points (parent_tenant_id);
@@ -41,9 +38,6 @@ ALTER TABLE public.cashbook_points
 
 ALTER TABLE public.cashbook_points
   ADD CONSTRAINT cashbook_points_pkey PRIMARY KEY (id);
-
-ALTER TABLE public.cashbook_points
-  ADD CONSTRAINT cashbook_points_custodian_membership_id_fkey FOREIGN KEY (custodian_membership_id) REFERENCES public.memberships(id) ON DELETE SET NULL;
 
 ALTER TABLE public.cashbook_points
   ADD CONSTRAINT cashbook_points_parent_tenant_id_fkey FOREIGN KEY (parent_tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;

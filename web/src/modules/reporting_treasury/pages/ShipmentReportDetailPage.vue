@@ -14,12 +14,21 @@
         label="Back"
         :to="listRoute"
       />
-      <span v-if="detail?.header?.shipment_name" class="text-subtitle2 text-weight-bold q-ml-sm ellipsis">
-        {{ detail.header.shipment_name }}
-      </span>
-      <span v-if="detail?.header?.shipment_no" class="text-caption text-grey-7 font-mono q-ml-xs">
-        {{ detail.header.shipment_no }}
-      </span>
+      <div class="column q-ml-sm" style="min-width: 0">
+        <div class="row items-center no-wrap q-gutter-x-xs">
+          <span v-if="detail?.header?.shipment_name" class="text-subtitle2 text-weight-bold ellipsis">
+            {{ detail.header.shipment_name }}
+          </span>
+          <TfStatusBadge
+            v-if="detail?.header?.shipment_status"
+            :status="detail.header.shipment_status"
+          />
+        </div>
+        <div class="row items-center q-gutter-x-sm text-caption text-grey-7">
+          <span v-if="detail?.header?.shipment_no" class="font-mono">{{ detail.header.shipment_no }}</span>
+          <span v-if="detail?.header?.vendor_name">{{ detail.header.vendor_name }}</span>
+        </div>
+      </div>
     </template>
 
     <template #toolbar-actions>
@@ -36,270 +45,258 @@
       />
     </template>
 
-    <div v-if="!isLoading && detail" class="detail-scroll column q-gutter-y-sm q-pa-xs">
-      <!-- At a glance -->
-      <q-card flat bordered class="q-pa-md glance-card">
-        <div class="section-title q-mb-md">At a glance</div>
-        <div class="row q-col-gutter-md">
-          <div class="col-6 col-sm-4 col-lg-2">
-            <div class="metric-label">Total cost</div>
-            <div class="metric-val tf-num">{{ formatMoney(matrix.total_cost_bdt, 'BDT') }}</div>
-            <div
-              v-for="c in matrix.total_cost_by_currency"
-              :key="c.currency_code"
-              class="metric-sub tf-num"
-            >
-              {{ formatMoney(c.amount, c.currency_code) }}
+    <template #kpi>
+      <ShipmentReportKpiStrip
+        v-if="detail"
+        :matrix="matrix"
+        :warehouse-value-bdt="qty.warehouse_value_bdt"
+      />
+    </template>
+
+    <div v-if="!isLoading && detail" class="detail-scroll">
+      <div class="detail-inner column q-gutter-y-md">
+        <!-- Story row -->
+        <q-card flat bordered class="q-pa-md report-card">
+          <div class="row q-col-gutter-lg">
+            <div class="col-12 col-md-6">
+              <ShipmentReportQuantityStory :qty="qty" />
+            </div>
+            <div class="col-12 col-md-6">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm">Cost vs sell</div>
+              <div class="q-mb-sm">
+                <div class="row items-center justify-between text-caption text-grey-7 q-mb-xs">
+                  <span>Total cost</span>
+                  <span class="tf-num">{{ formatMoney(matrix.total_cost_bdt, 'BDT') }}</span>
+                </div>
+                <q-linear-progress
+                  :value="moneyBarScale > 0 ? matrix.total_cost_bdt / moneyBarScale : 0"
+                  size="8px"
+                  rounded
+                  color="grey-7"
+                  track-color="grey-3"
+                />
+              </div>
+              <div class="q-mb-sm">
+                <div class="row items-center justify-between text-caption text-grey-7 q-mb-xs">
+                  <span>Total sell</span>
+                  <span class="tf-num text-primary">{{ formatMoney(matrix.total_sell_bdt, 'BDT') }}</span>
+                </div>
+                <q-linear-progress
+                  :value="moneyBarScale > 0 ? matrix.total_sell_bdt / moneyBarScale : 0"
+                  size="8px"
+                  rounded
+                  color="primary"
+                  track-color="grey-3"
+                />
+              </div>
+              <p v-if="matrix.receive_loss_bdt > 0" class="text-caption text-grey-7 q-mb-none">
+                Receive loss (info): {{ formatMoney(matrix.receive_loss_bdt, 'BDT') }}
+              </p>
             </div>
           </div>
-          <div class="col-6 col-sm-4 col-lg-2">
-            <div class="metric-label">Total sell</div>
-            <div class="metric-val tf-num text-primary">
-              {{ formatMoney(matrix.total_sell_bdt, 'BDT') }}
+        </q-card>
+
+        <!-- Cost -->
+        <q-card flat bordered class="q-pa-md report-card">
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="text-subtitle2 text-weight-bold">Cost by type</div>
+            <div v-if="showExchangeRates" class="row q-gutter-xs">
+              <q-chip v-if="showProductRate" dense size="sm" class="tf-num">
+                Goods {{ formatRate(exchangeRates?.product_rate) }}
+              </q-chip>
+              <q-chip v-if="showFreightRate" dense size="sm" class="tf-num">
+                Flight {{ formatRate(exchangeRates?.freight_rate) }}
+              </q-chip>
+              <q-chip v-if="showBlendedRate" dense size="sm" class="tf-num">
+                Blended {{ formatRate(exchangeRates?.blended_rate) }}
+              </q-chip>
             </div>
           </div>
-          <div class="col-6 col-sm-4 col-lg-2">
-            <div class="metric-label">Receive loss</div>
-            <div class="metric-val tf-num text-warning">
-              {{ formatMoney(matrix.receive_loss_bdt, 'BDT') }}
-            </div>
-          </div>
-          <div class="col-6 col-sm-4 col-lg-2">
-            <div class="metric-label">Profit / loss</div>
-            <div
-              class="metric-val tf-num"
-              :class="matrix.profit_loss_bdt >= 0 ? 'text-positive' : 'text-negative'"
-            >
-              {{ formatMoney(matrix.profit_loss_bdt, 'BDT') }}
-            </div>
-            <div class="metric-sub">{{ matrix.profit_loss_pct }}% of sell</div>
-          </div>
-          <div class="col-6 col-sm-4 col-lg-2">
-            <div class="metric-label">Customers not paid</div>
-            <div class="metric-val tf-num">{{ formatMoney(matrix.unpaid_total_bdt, 'BDT') }}</div>
-          </div>
-          <div class="col-6 col-sm-4 col-lg-2">
-            <div class="metric-label">Warehouse value</div>
-            <div class="metric-val tf-num">{{ formatMoney(qty.warehouse_value_bdt, 'BDT') }}</div>
-          </div>
-        </div>
-      </q-card>
+          <q-list v-if="detail.cost_buckets.length" dense separator class="q-mb-sm">
+            <q-item v-for="bucket in detail.cost_buckets" :key="bucket.ap_kind" class="q-px-none column">
+              <div class="row items-center full-width q-mb-xs">
+                <div class="col">
+                  <q-item-label class="text-weight-medium">{{ bucket.label }}</q-item-label>
+                  <q-item-label caption class="row q-gutter-x-sm">
+                    <span
+                      v-for="(leg, idx) in foreignLegsFor(bucket)"
+                      :key="`${bucket.ap_kind}-${leg.currency_code}-${idx}`"
+                      class="tf-num"
+                    >
+                      {{ formatMoney(leg.amount, leg.currency_code) }}
+                    </span>
+                    <span v-if="!foreignLegsFor(bucket).length" class="text-grey-6">—</span>
+                  </q-item-label>
+                </div>
+                <div class="col-auto text-weight-bold tf-num">
+                  {{ formatMoney(bucket.bdt_amount, 'BDT') }}
+                </div>
+              </div>
+              <q-linear-progress
+                :value="bucketShare(bucket)"
+                size="4px"
+                rounded
+                color="primary"
+                track-color="grey-3"
+              />
+            </q-item>
+          </q-list>
+          <div v-else class="text-caption text-grey-6 q-py-sm">No supplier bills linked yet.</div>
 
-      <!-- Pieces -->
-      <q-card flat bordered class="q-pa-sm">
-        <div class="section-title q-mb-sm">Pieces</div>
-        <div class="row q-col-gutter-sm">
-          <div class="col-4 col-sm-2">
-            <div class="metric-label">Should arrive</div>
-            <div class="metric-val tf-num">{{ qty.should_arrive }}</div>
-          </div>
-          <div class="col-4 col-sm-2">
-            <div class="metric-label">Arrived</div>
-            <div class="metric-val tf-num">{{ qty.arrived }}</div>
-          </div>
-          <div class="col-4 col-sm-2">
-            <div class="metric-label">Loss</div>
-            <div class="metric-val tf-num">{{ qty.loss_at_shipment }}</div>
-          </div>
-          <div class="col-4 col-sm-2">
-            <div class="metric-label">Stalled (held)</div>
-            <div class="metric-val tf-num">{{ qty.warehouse_stalled }}</div>
-          </div>
-          <div class="col-4 col-sm-2">
-            <div class="metric-label">Remaining</div>
-            <div class="metric-val tf-num">{{ qty.warehouse_remaining }}</div>
-          </div>
-          <div class="col-4 col-sm-2">
-            <div class="metric-label">Sold</div>
-            <div class="metric-val tf-num">{{ qty.sold }}</div>
-          </div>
-        </div>
-      </q-card>
-
-      <!-- Exchange rates -->
-      <q-card v-if="showExchangeRates" flat bordered class="q-pa-sm">
-        <div class="section-title q-mb-xs">Exchange rates</div>
-        <div class="row q-col-gutter-sm">
-          <div v-if="showProductRate" class="col-4">
-            <div class="metric-label">Goods</div>
-            <div class="metric-val tf-num">{{ formatRate(exchangeRates?.product_rate) }}</div>
-          </div>
-          <div v-if="showFreightRate" class="col-4">
-            <div class="metric-label">Flight</div>
-            <div class="metric-val tf-num">{{ formatRate(exchangeRates?.freight_rate) }}</div>
-          </div>
-          <div v-if="showBlendedRate" class="col-4">
-            <div class="metric-label">Blended</div>
-            <div class="metric-val tf-num">{{ formatRate(exchangeRates?.blended_rate) }}</div>
-          </div>
-        </div>
-      </q-card>
-
-      <!-- Cost by type -->
-      <q-card flat bordered class="q-pa-sm">
-        <div class="section-title q-mb-sm">Cost by type</div>
-        <q-list v-if="detail.cost_buckets.length" dense separator>
-          <q-item v-for="bucket in detail.cost_buckets" :key="bucket.ap_kind" class="q-px-none">
-            <q-item-section>
-              <q-item-label class="text-weight-medium">{{ bucket.label }}</q-item-label>
-              <q-item-label caption class="row q-gutter-x-sm">
-                <span
-                  v-for="(leg, idx) in foreignLegsFor(bucket)"
-                  :key="`${bucket.ap_kind}-${leg.currency_code}-${idx}`"
-                  class="tf-num"
-                >
-                  {{ formatMoney(leg.amount, leg.currency_code) }}
-                </span>
-                <span v-if="!foreignLegsFor(bucket).length" class="text-grey-6">—</span>
-              </q-item-label>
-            </q-item-section>
-            <q-item-section side>
-              <div class="text-weight-bold tf-num">{{ formatMoney(bucket.bdt_amount, 'BDT') }}</div>
-            </q-item-section>
-          </q-item>
-        </q-list>
-        <div v-else class="text-caption text-grey-6 q-py-sm">No supplier bills linked yet.</div>
-
-        <q-expansion-item
-          v-if="detail.ap_bills.length"
-          dense
-          header-class="text-caption text-grey-8 q-px-none"
-          label="All supplier bills"
-          class="q-mt-sm"
-        >
-          <q-table
-            flat
-            bordered
+          <q-expansion-item
+            v-if="detail.ap_bills.length"
             dense
-            :rows="detail.ap_bills"
-            :columns="apColumns"
-            row-key="id"
-            hide-pagination
-            :pagination="{ rowsPerPage: 0 }"
-            class="detail-table q-mt-xs"
+            header-class="text-caption text-grey-8 q-px-none"
+            label="All supplier bills"
           >
-            <template #body-cell-invoice_no="props">
-              <q-td :props="props">
-                <router-link
-                  v-if="canViewBills"
-                  :to="billRoute(props.row.id)"
-                  class="text-primary text-weight-medium"
-                  @click.stop
-                >
-                  {{ props.row.invoice_no }}
-                </router-link>
-                <span v-else>{{ props.row.invoice_no }}</span>
-              </q-td>
-            </template>
-            <template #body-cell-txn="props">
-              <q-td :props="props" class="tf-num text-right">
-                {{ formatMoney(props.row.txn_total_amount, txnCode(props.row)) }}
-              </q-td>
-            </template>
-            <template #body-cell-total_amount="props">
-              <q-td :props="props" class="tf-num text-right">
-                {{ formatMoney(props.row.total_amount, 'BDT') }}
-              </q-td>
-            </template>
-          </q-table>
-        </q-expansion-item>
-      </q-card>
+            <q-table
+              flat
+              bordered
+              dense
+              :rows="detail.ap_bills"
+              :columns="apColumns"
+              row-key="id"
+              hide-pagination
+              :pagination="{ rowsPerPage: 0 }"
+              class="detail-table q-mt-xs"
+            >
+              <template #body-cell-invoice_no="props">
+                <q-td :props="props">
+                  <router-link
+                    v-if="canViewBills"
+                    :to="billRoute(props.row.id)"
+                    class="text-primary text-weight-medium"
+                    @click.stop
+                  >
+                    {{ props.row.invoice_no }}
+                  </router-link>
+                  <span v-else>{{ props.row.invoice_no }}</span>
+                </q-td>
+              </template>
+              <template #body-cell-txn="props">
+                <q-td :props="props" class="tf-num text-right">
+                  {{ formatMoney(props.row.txn_total_amount, txnCode(props.row)) }}
+                </q-td>
+              </template>
+              <template #body-cell-total_amount="props">
+                <q-td :props="props" class="tf-num text-right">
+                  {{ formatMoney(props.row.total_amount, 'BDT') }}
+                </q-td>
+              </template>
+            </q-table>
+          </q-expansion-item>
+        </q-card>
 
-      <!-- Sell -->
-      <q-card flat bordered class="q-pa-sm">
-        <div class="row items-center justify-between q-mb-sm">
-          <div class="section-title">Sell</div>
-          <div class="text-subtitle2 text-weight-bold tf-num">
-            {{ formatMoney(matrix.total_sell_bdt, 'BDT') }}
-          </div>
-        </div>
-        <q-table
-          v-if="detail.sell_lines.length"
-          flat
-          bordered
-          dense
-          :rows="detail.sell_lines"
-          :columns="sellColumns"
-          row-key="invoice_item_id"
-          hide-pagination
-          :pagination="{ rowsPerPage: 0 }"
-          class="detail-table"
-        >
-          <template #body-cell-invoice_no="props">
-            <q-td :props="props">
-              <router-link
-                v-if="canViewBills"
-                :to="billRoute(props.row.bill_id)"
-                class="text-primary text-weight-medium"
-                @click.stop
+        <!-- Sales -->
+        <q-card flat bordered class="q-pa-md report-card">
+          <q-tabs
+            v-model="salesTab"
+            dense
+            class="text-grey-8"
+            active-color="primary"
+            indicator-color="primary"
+            align="left"
+            narrow-indicator
+          >
+            <q-tab
+              name="sell"
+              :label="`Sell · ${formatMoney(matrix.total_sell_bdt, 'BDT')}`"
+              no-caps
+            />
+            <q-tab
+              v-if="showUnpaidTab"
+              name="unpaid"
+              :label="`Not paid · ${formatMoney(matrix.unpaid_total_bdt, 'BDT')}`"
+              no-caps
+            />
+          </q-tabs>
+          <q-separator />
+          <q-tab-panels v-model="salesTab" animated>
+            <q-tab-panel name="sell" class="q-pa-none q-pt-sm">
+              <q-table
+                v-if="detail.sell_lines.length"
+                flat
+                bordered
+                dense
+                :rows="detail.sell_lines"
+                :columns="sellColumns"
+                row-key="invoice_item_id"
+                hide-pagination
+                :pagination="{ rowsPerPage: 0 }"
+                class="detail-table"
               >
-                {{ props.row.invoice_no }}
-              </router-link>
-              <span v-else>{{ props.row.invoice_no }}</span>
-            </q-td>
-          </template>
-          <template #body-cell-amount_bdt="props">
-            <q-td :props="props" class="tf-num text-right">
-              {{ formatMoney(props.row.amount_bdt, 'BDT') }}
-            </q-td>
-          </template>
-        </q-table>
-        <div v-else class="text-caption text-grey-6 q-py-sm">
-          No issued sales from this batch yet.
-        </div>
-      </q-card>
-
-      <!-- Not paid yet -->
-      <q-card flat bordered class="q-pa-sm">
-        <div class="row items-center justify-between q-mb-sm">
-          <div class="section-title">Not paid yet</div>
-          <div class="text-subtitle2 text-weight-bold tf-num">
-            {{ formatMoney(matrix.unpaid_total_bdt, 'BDT') }}
-          </div>
-        </div>
-        <q-table
-          v-if="detail.unpaid_customers.length"
-          flat
-          bordered
-          dense
-          :rows="detail.unpaid_customers"
-          :columns="unpaidColumns"
-          row-key="bill_id"
-          hide-pagination
-          :pagination="{ rowsPerPage: 0 }"
-          class="detail-table"
-        >
-          <template #body-cell-invoice_no="props">
-            <q-td :props="props">
-              <router-link
-                v-if="canViewBills"
-                :to="billRoute(props.row.bill_id)"
-                class="text-primary text-weight-medium"
-                @click.stop
+                <template #body-cell-invoice_no="props">
+                  <q-td :props="props">
+                    <router-link
+                      v-if="canViewBills"
+                      :to="billRoute(props.row.bill_id)"
+                      class="text-primary text-weight-medium"
+                      @click.stop
+                    >
+                      {{ props.row.invoice_no }}
+                    </router-link>
+                    <span v-else>{{ props.row.invoice_no }}</span>
+                  </q-td>
+                </template>
+                <template #body-cell-amount_bdt="props">
+                  <q-td :props="props" class="tf-num text-right">
+                    {{ formatMoney(props.row.amount_bdt, 'BDT') }}
+                  </q-td>
+                </template>
+              </q-table>
+              <div v-else class="text-caption text-grey-6 q-py-sm">
+                No issued sales from this batch yet.
+              </div>
+            </q-tab-panel>
+            <q-tab-panel v-if="showUnpaidTab" name="unpaid" class="q-pa-none q-pt-sm">
+              <q-table
+                v-if="detail.unpaid_customers.length"
+                flat
+                bordered
+                dense
+                :rows="detail.unpaid_customers"
+                :columns="unpaidColumns"
+                row-key="bill_id"
+                hide-pagination
+                :pagination="{ rowsPerPage: 0 }"
+                class="detail-table"
               >
-                {{ props.row.invoice_no }}
-              </router-link>
-              <span v-else>{{ props.row.invoice_no }}</span>
-            </q-td>
-          </template>
-          <template #body-cell-open_bdt="props">
-            <q-td :props="props" class="tf-num text-right">
-              {{ formatMoney(props.row.open_bdt, 'BDT') }}
-            </q-td>
-          </template>
-        </q-table>
-        <div v-else class="text-caption text-grey-6 q-py-sm">No open customer dues for this batch.</div>
-      </q-card>
+                <template #body-cell-invoice_no="props">
+                  <q-td :props="props">
+                    <router-link
+                      v-if="canViewBills"
+                      :to="billRoute(props.row.bill_id)"
+                      class="text-primary text-weight-medium"
+                      @click.stop
+                    >
+                      {{ props.row.invoice_no }}
+                    </router-link>
+                    <span v-else>{{ props.row.invoice_no }}</span>
+                  </q-td>
+                </template>
+                <template #body-cell-open_bdt="props">
+                  <q-td :props="props" class="tf-num text-right">
+                    {{ formatMoney(props.row.open_bdt, 'BDT') }}
+                  </q-td>
+                </template>
+              </q-table>
+            </q-tab-panel>
+          </q-tab-panels>
+        </q-card>
+      </div>
     </div>
   </FinanceReportFrame>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import type { QTableColumn } from 'quasar';
 import { storeToRefs } from 'pinia';
+import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
 import FinanceReportFrame from '../components/FinanceReportFrame.vue';
+import ShipmentReportKpiStrip from '../components/ShipmentReportKpiStrip.vue';
+import ShipmentReportQuantityStory from '../components/ShipmentReportQuantityStory.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatSettlementCurrencyAmount } from 'src/utils/currency';
 import { useShipmentReportDetail } from '../composables/useShipmentReportDetail';
@@ -313,6 +310,8 @@ import type {
 const route = useRoute();
 const authStore = useAuthStore();
 const { tenantSlug } = storeToRefs(authStore);
+
+const salesTab = ref<'sell' | 'unpaid'>('sell');
 
 const shipmentId = computed(() => {
   const raw = route.params.shipmentId;
@@ -340,6 +339,16 @@ const matrix = computed(() => detail.value?.profit_matrix ?? {
   unpaid_total_bdt: 0,
   profit_loss_bdt: 0,
   profit_loss_pct: 0,
+});
+
+const moneyBarScale = computed(() =>
+  Math.max(matrix.value.total_cost_bdt, matrix.value.total_sell_bdt, 1),
+);
+
+const showUnpaidTab = computed(() => matrix.value.unpaid_total_bdt > 0.009);
+
+watch(showUnpaidTab, (on) => {
+  if (!on && salesTab.value === 'unpaid') salesTab.value = 'sell';
 });
 
 const exchangeRates = computed(() => detail.value?.exchange_rates ?? null);
@@ -377,6 +386,12 @@ function formatRate(rate: number | null | undefined) {
 
 function formatMoney(amount: number | null | undefined, currencyCode: string) {
   return formatSettlementCurrencyAmount(amount, currencyCode);
+}
+
+function bucketShare(bucket: ShipmentReportCostBucket) {
+  const total = matrix.value.total_cost_bdt;
+  if (total <= 0) return 0;
+  return Math.min(1, bucket.bdt_amount / total);
 }
 
 function foreignLegsFor(bucket: ShipmentReportCostBucket) {
@@ -450,35 +465,16 @@ const unpaidColumns: QTableColumn<ShipmentReportUnpaidCustomer>[] = [
   max-height: 100%;
 }
 
-.glance-card {
-  background: var(--tf-neutral-chrome);
+.detail-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px;
+  width: 100%;
 }
 
-.section-title {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--tf-neutral-muted);
-}
-
-.metric-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--tf-neutral-muted);
-}
-
-.metric-val {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--tf-neutral-ink);
-}
-
-.metric-sub {
-  font-size: 11px;
-  color: var(--tf-neutral-muted);
+.report-card {
+  background: var(--tf-neutral-surface);
+  border-radius: var(--tf-radius-md, 12px);
 }
 
 .detail-table :deep(thead tr th) {

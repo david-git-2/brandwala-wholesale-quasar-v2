@@ -1,6 +1,6 @@
 -- BP18-c: AP payout (settlements-first alloc)
 
-CREATE OR REPLACE FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_source_currency_code" "text" DEFAULT NULL::"text", "p_transaction_rate" numeric DEFAULT NULL::numeric, "p_cashbook_point_pot_id" bigint DEFAULT NULL::bigint, "p_idempotency_key" "text" DEFAULT NULL::"text") RETURNS "public"."pays"
+CREATE OR REPLACE FUNCTION "public"."post_ap_payout_with_allocations"("p_tenant_id" bigint, "p_profile_id" bigint, "p_paid_on" "date", "p_cashbook_point_id" bigint, "p_note" "text" DEFAULT NULL::"text", "p_reference" "text" DEFAULT NULL::"text", "p_instruments" "jsonb" DEFAULT '[]'::"jsonb", "p_allocations" "jsonb" DEFAULT '[]'::"jsonb", "p_settlement_currency_code" "text" DEFAULT 'BDT'::"text", "p_foreign_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_source_currency_code" "text" DEFAULT NULL::"text", "p_transaction_rate" numeric DEFAULT NULL::numeric, "p_cashbook_point_pot_id" bigint DEFAULT NULL::bigint, "p_idempotency_key" "text" DEFAULT NULL::"text", "p_from_profile_id" bigint DEFAULT NULL::bigint, "p_to_profile_id" bigint DEFAULT NULL::bigint, "p_description" "text" DEFAULT NULL::"text") RETURNS "public"."pays"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -40,6 +40,10 @@ declare
   v_payment_face numeric(12, 2);
   v_base_currency text := 'BDT';
   v_bill_ids bigint[] := '{}';
+  v_from_profile_id bigint;
+  v_to_profile_id bigint;
+  v_pay_description text;
+  v_legacy_profile_id bigint;
 begin
   if p_tenant_id is null then
     raise exception 'Tenant is required';
@@ -200,13 +204,27 @@ begin
 
   perform public._kernel_lock_cashbook_point_pots(p_cashbook_point_id);
 
+  select e.from_profile_id, e.to_profile_id, e.description, e.legacy_profile_id
+  into v_from_profile_id, v_to_profile_id, v_pay_description, v_legacy_profile_id
+  from public._kernel_resolve_pay_profile_endpoints(
+    v_parent_id,
+    'ap_payout',
+    p_profile_id,
+    p_from_profile_id,
+    p_to_profile_id,
+    p_description,
+    v_note
+  ) e;
+
   insert into public.pays (
-    tenant_id, profile_id, source, amount, unallocated_amount,
+    tenant_id, profile_id, from_profile_id, to_profile_id, description,
+    source, amount, unallocated_amount,
     payment_date, method, reference, note,
     settlement_currency_code, foreign_amount, exchange_rate, quote_currency_code, cashbook_point_id,
     source_currency_code, transaction_rate, source_amount, cashbook_point_pot_id
   ) values (
-    v_parent_id, p_profile_id, 'ap_payout', v_amount, 0,
+    v_parent_id, coalesce(v_legacy_profile_id, p_profile_id), v_from_profile_id, v_to_profile_id, nullif(v_pay_description, ''),
+    'ap_payout', v_amount, 0,
     v_received_on, v_header_method, v_reference, v_note,
     v_settle_currency, v_foreign_amt, v_fx_rate, v_base_currency, p_cashbook_point_id,
     v_source_currency, v_transaction_rate, v_source_amount, v_pot_id

@@ -1,9 +1,8 @@
 import { supabase } from 'src/boot/supabase';
-import type { CashbookPointKind } from '../constants/cashbookPointKinds';
 import { cashbookPointCodeFromName, uniqueCashbookPointCode } from '../utils/cashbookPointCode';
 import type { PayListRow } from '../repositories/paysRepository';
 
-export type CashbookEntityType = 'customer' | 'courier' | 'vendor';
+export type CashbookEntityType = 'customer' | 'courier' | 'vendor' | 'cargo_company' | 'investor';
 
 export type CashbookEntityRow = {
   entity_id: number;
@@ -34,9 +33,7 @@ export type CashbookPointRow = {
   tenant_id: number;
   code: string;
   name: string;
-  kind: CashbookPointKind;
   is_active: boolean;
-  sort_order: number;
 };
 
 export type CashbookPointPotRow = {
@@ -160,6 +157,10 @@ const mapPayJsonRow = (row: Record<string, unknown>): PayListRow => ({
   amount: Number(row.amount ?? 0),
   unallocated_amount: Number(row.unallocated_amount ?? 0),
   source: String(row.source ?? ''),
+  direction: row.direction === 'out' ? 'out' : row.direction === 'in' ? 'in' : undefined,
+  counterparty_name: (row.counterparty_name as string | null) ?? null,
+  cashbook_point_id: row.cashbook_point_id == null ? null : Number(row.cashbook_point_id),
+  cashbook_point_name: (row.cashbook_point_name as string | null) ?? null,
   method: (row.method as string | null) ?? null,
   reference: (row.reference as string | null) ?? null,
   note: (row.note as string | null) ?? null,
@@ -170,6 +171,11 @@ const mapPayJsonRow = (row: Record<string, unknown>): PayListRow => ({
   settlement_currency_code: String(row.settlement_currency_code ?? 'BDT'),
   foreign_amount: row.foreign_amount == null ? null : Number(row.foreign_amount),
   exchange_rate: Number(row.exchange_rate ?? 1),
+  related_invoice_no: (row.related_invoice_no as string | null) ?? null,
+  perspective:
+    row.perspective === 'tenant' || row.perspective === 'party'
+      ? row.perspective
+      : undefined,
 });
 
 const parsePaymentProfileBundle = (data: unknown): CashbookPaymentProfileBundle => {
@@ -279,12 +285,25 @@ const findCashbookAccountId = async (params: {
   return data?.id ?? null;
 };
 
+const findCashbookAccountIdByProfile = async (
+  booksTenantId: number,
+  profileId: number,
+): Promise<number | null> => {
+  const { data, error } = await supabase
+    .from('cashbook_accounts')
+    .select('id')
+    .eq('tenant_id', booksTenantId)
+    .eq('profile_id', profileId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.id ?? null;
+};
+
 const listCashbookPoints = async (cashbookAccountId: number): Promise<CashbookPointRow[]> => {
   const { data, error } = await supabase
     .from('cashbook_points')
-    .select('id, cashbook_account_id, tenant_id, code, name, kind, is_active, sort_order')
+    .select('id, cashbook_account_id, tenant_id, code, name, is_active')
     .eq('cashbook_account_id', cashbookAccountId)
-    .order('sort_order', { ascending: true })
     .order('name', { ascending: true });
   if (error) throw error;
   return (data ?? []).map((row) => ({
@@ -293,9 +312,7 @@ const listCashbookPoints = async (cashbookAccountId: number): Promise<CashbookPo
     tenant_id: row.tenant_id,
     code: row.code,
     name: row.name,
-    kind: row.kind,
     is_active: row.is_active,
-    sort_order: row.sort_order,
   }));
 };
 
@@ -420,7 +437,6 @@ const createCashbookPoint = async (input: {
   parentTenantId: number;
   cashbookAccountId: number;
   name: string;
-  kind: CashbookPointKind;
   currencyCodes: string[];
 }): Promise<number> => {
   const code = await resolvePointCode(input.cashbookAccountId, input.name);
@@ -431,7 +447,6 @@ const createCashbookPoint = async (input: {
       cashbook_account_id: input.cashbookAccountId,
       code,
       name: input.name.trim(),
-      kind: input.kind,
       is_active: true,
     })
     .select('id')
@@ -446,7 +461,7 @@ const createCashbookPoint = async (input: {
 const updateCashbookPoint = async (
   pointId: number,
   cashbookAccountId: number,
-  patch: Partial<Pick<CashbookPointRow, 'name' | 'code' | 'kind' | 'is_active' | 'sort_order'>>,
+  patch: Partial<Pick<CashbookPointRow, 'name' | 'code' | 'is_active'>>,
 ): Promise<void> => {
   const payload: Record<string, unknown> = { ...patch, updated_at: new Date().toISOString() };
   if (patch.name) {
@@ -512,13 +527,57 @@ const listBooksExchangeRates = async (params: {
   }>;
 };
 
+export type ProfileActivityKind = 'payments' | 'custody' | 'bills';
+
+export type ProfileActivityResult = {
+  kind: ProfileActivityKind;
+  items: unknown[];
+  nextCursor: string | null;
+};
+
+const listProfileActivity = async (params: {
+  tenantId: number;
+  entityType: string;
+  entityId: number;
+  kind: ProfileActivityKind;
+  limit?: number;
+  cursor?: string | null;
+}): Promise<ProfileActivityResult> => {
+  const { data, error } = await supabase.rpc('list_profile_activity_for_staff', {
+    p_tenant_id: params.tenantId,
+    p_entity_type: params.entityType,
+    p_entity_id: params.entityId,
+    p_kind: params.kind,
+    p_limit: params.limit ?? 50,
+    p_cursor: params.cursor ?? null,
+  });
+  if (error) throw error;
+  const payload = (data ?? {}) as {
+    success?: boolean;
+    error?: string;
+    kind?: ProfileActivityKind;
+    items?: unknown[];
+    next_cursor?: string | null;
+  };
+  if (payload.success === false) {
+    throw new Error(payload.error || 'Could not load profile activity.');
+  }
+  return {
+    kind: (payload.kind as ProfileActivityKind) ?? params.kind,
+    items: payload.items ?? [],
+    nextCursor: payload.next_cursor ?? null,
+  };
+};
+
 export const cashbookRepository = {
   listEntities,
   getTenantCashRow,
   getPartyDetail,
   getPaymentProfileForStaff,
+  listProfileActivity,
   listLedger,
   findCashbookAccountId,
+  findCashbookAccountIdByProfile,
   listCashbookPoints,
   listCashbookPointPots,
   listCashbookPointPotsForPoints,

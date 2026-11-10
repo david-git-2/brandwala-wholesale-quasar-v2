@@ -1,6 +1,6 @@
 # Bills/pays kernel — plug plan
 
-Not as-built. Product truth: [bills_pays spec](../../docs/features/bills_pays/spec.md), [gaps](../../docs/features/bills_pays/00-gaps.md), [money-story](../../docs/features/bills_pays/money-story.md). Pay dialog / AP issue: [bill-pay-dialog-and-credits](2026-10-12-bill-pay-dialog-and-credits.md).
+Not as-built. Product truth: [money-spine](../../docs/features/bills_pays/money-spine.md). Pay dialog / AP issue: [bill-pay-dialog-and-credits](2026-10-12-bill-pay-dialog-and-credits.md).
 
 **Job:** one money kernel other features plug into. They create paper and **read** pays/notes. They do not own `pays`.
 
@@ -222,7 +222,7 @@ Stock compose stays a **slot** on the bill shell. **BP17** FIFO outside issue, *
 
 ## Phase 0 — Money spine (was “Phase 12+”)
 
-See [kernel-schema §0b](../../docs/features/bills_pays/kernel-schema.md) and [00-gaps spine table](../../docs/features/bills_pays/00-gaps.md).
+See [money-spine](../../docs/features/bills_pays/money-spine.md).
 
 | ID | Deliverable |
 | :--- | :--- |

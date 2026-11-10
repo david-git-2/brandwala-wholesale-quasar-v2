@@ -486,7 +486,7 @@ After staff **issue** the delivery bill (`draft` → `issued`):
 | :--- | :--- | :--- |
 | Customer pays part | Pay-in + allocation | `payment_status` → **`partially_paid`** |
 | Customer pays again | More allocations | Until **`paid`** |
-| Overpay | Profile **cashbook** custody | [money-story take example](features/bills_pays/money-story.md) |
+| Overpay | Profile **cashbook** custody | [money-spine take example](features/bills_pays/money-spine.md#worked-examples) |
 | Condition stock sold | Pay-in against condition lines | Sales in reports when **paid** ([reporting_treasury spec](features/reporting_treasury/spec.md)) |
 
 **G9:** No installment **scheduler** — customer pays in parts freely; staff track on Bills / Payments. Future dated installment plan = new entity (out of scope).

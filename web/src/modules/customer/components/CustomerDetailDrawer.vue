@@ -87,7 +87,7 @@
 
                 <div>
                   <label class="field-label">Accent color</label>
-                  <div class="color-field row no-wrap items-center q-gutter-sm">
+                  <div class="color-field row no-wrap items-center">
                     <button
                       type="button"
                       class="color-swatch"
@@ -102,19 +102,14 @@
                         transition-hide="scale"
                         @hide="autoSaveGeneral"
                       >
-                        <q-color v-model="form.accent_color" no-header-tabs />
+                        <q-color
+                          v-model="form.accent_color"
+                          no-header-tabs
+                          no-footer
+                          default-view="palette"
+                        />
                       </q-popup-proxy>
                     </button>
-                    <q-input
-                      v-model="form.accent_color"
-                      outlined
-                      dense
-                      class="col soft-input"
-                      :readonly="!canAdministerCustomerGroup"
-                      :loading="isSavingGeneral"
-                      @blur="autoSaveGeneral"
-                      @keyup.enter.prevent="autoSaveGeneral"
-                    />
                   </div>
                 </div>
 
@@ -134,28 +129,27 @@
 
               <div class="form-section form-section--divider column q-gutter-y-md">
                 <div class="section-heading">Billing profile</div>
+                <div class="text-caption text-grey-7">
+                  Profile name matches the customer group name. Edit the group name above to change it on bills.
+                </div>
 
                 <div>
-                  <label class="field-label">Contact name *</label>
+                  <label class="field-label">Profile name</label>
                   <q-input
-                    v-model="form.admin_name"
+                    :model-value="form.group_name"
                     outlined
                     dense
                     class="soft-input"
-                    :readonly="!canAdministerCustomerGroup"
-                    :loading="isSavingGeneral"
-                    :rules="[(val) => !!val?.trim() || 'Contact name is required']"
-                    @blur="autoSaveGeneral"
-                    @keyup.enter.prevent="autoSaveGeneral"
+                    readonly
                   />
                 </div>
 
                 <div>
                   <label class="field-label">Phone *</label>
-                  <div class="phone-fuse">
+                  <div class="row no-wrap q-gutter-sm phone-row">
                     <q-select
                       v-model="form.phone_country_code"
-                      borderless
+                      outlined
                       dense
                       emit-value
                       map-options
@@ -163,7 +157,7 @@
                       hide-bottom-space
                       input-debounce="0"
                       :options="filteredCountries"
-                      class="phone-fuse__country"
+                      class="soft-input phone-row__country"
                       dropdown-icon="ph ph-caret-down"
                       :disable="!canAdministerCustomerGroup"
                       @filter="filterCountries"
@@ -178,13 +172,12 @@
                         </q-item>
                       </template>
                     </q-select>
-                    <div class="phone-fuse__sep" />
                     <q-input
                       :model-value="form.phone"
-                      borderless
+                      outlined
                       dense
                       hide-bottom-space
-                      class="phone-fuse__number col"
+                      class="soft-input col"
                       inputmode="tel"
                       placeholder="National number — press Enter"
                       :readonly="!canAdministerCustomerGroup"
@@ -331,19 +324,18 @@
             </div>
           </q-tab-panel>
 
-          <!-- TAB 3: Account (dues + wallet position) -->
+          <!-- TAB 3: Payment account (cashbook spine) -->
           <q-tab-panel name="account" class="q-pa-none">
-            <CustomerAccountTab
+            <ProfileOperatingAccountPanel
+              v-if="profileId"
               :tenant-id="tenantId"
-              :customer-group-id="customer?.customer_group_id ?? 0"
-              :group-name="form.group_name"
-              :profile-id="profileId || null"
-              :summary="accountSummary"
-              :is-loading="accountQuery.isLoading.value"
-              :is-error="accountQuery.isError.value"
-              :error="accountQuery.error.value"
-              @refresh="onRefreshAccount"
-              @action-complete="onAccountActionComplete"
+              :books-tenant-id="booksTenantId"
+              entity-type="customer"
+              :entity-id="profileId"
+              :party-name="profileName"
+              :tenant-name="tenantName"
+              :tenant-slug="tenantSlug"
+              :active="accountTabActive"
             />
           </q-tab-panel>
 
@@ -461,15 +453,9 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import type { QSelectProps } from 'quasar';
-import { useQueryClient } from '@tanstack/vue-query';
 import type { CustomerAccount, CustomerGroupMember } from '../types/customer';
-import {
-  useCustomerMembersQuery,
-  useCustomerMutations,
-  useCustomerAccountQuery,
-} from '../composables/useCustomerQuery';
-import { customerQueryKeys } from '../services/customerQueryKeys';
-import CustomerAccountTab from './CustomerAccountTab.vue';
+import { useCustomerMembersQuery, useCustomerMutations } from '../composables/useCustomerQuery';
+import ProfileOperatingAccountPanel from 'src/modules/bills_pays/components/ProfileOperatingAccountPanel.vue';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 import { useCanAdministerCustomerGroup } from '../composables/useCanAdministerCustomerGroup';
 import { customerRepository } from '../repositories/customerRepository';
@@ -478,6 +464,8 @@ import {
   nationalPhoneDigits,
   phoneCountrySelectOptions,
 } from 'src/utils/phoneCountryCodes';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useRoute } from 'vue-router';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -496,9 +484,8 @@ const activeTab = ref<'general' | 'members' | 'account'>('general');
 const drawerTabs = [
   { name: 'general' as const, label: 'General', icon: 'ph ph-user-circle' },
   { name: 'members' as const, label: 'Members', icon: 'ph ph-users-three' },
-  { name: 'account' as const, label: 'Account', icon: 'ph ph-scale' },
+  { name: 'account' as const, label: 'Payment account', icon: 'ph ph-wallet' },
 ];
-const queryClient = useQueryClient();
 const {
   updateCustomerMutation,
   deleteCustomerGroupMutation,
@@ -541,27 +528,22 @@ const onConfirmDeleteCustomer = async () => {
 };
 
 const customerGroupId = computed(() => props.customer?.customer_group_id ?? null);
+const authStore = useAuthStore();
+const route = useRoute();
 const profileId = computed(() => props.customer?.profile_id ?? 0);
-const accountTabActive = computed(() => activeTab.value === 'account' && props.modelValue);
-const accountQuery = useCustomerAccountQuery(
-  computed(() => props.tenantId),
-  customerGroupId,
-  accountTabActive,
+const profileName = computed(() => props.customer?.group_name ?? 'Customer');
+const booksTenantId = computed(() => {
+  const t = authStore.selectedTenant;
+  if (!t) return props.tenantId;
+  return t.parent_id ?? t.id;
+});
+const tenantName = computed(() => authStore.selectedTenant?.name ?? 'Company');
+const tenantSlug = computed(() =>
+  typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined,
 );
-const accountSummary = computed(() => accountQuery.data.value);
+const accountTabActive = computed(() => activeTab.value === 'account' && props.modelValue);
 const membersQuery = useCustomerMembersQuery(customerGroupId);
 const members = computed(() => membersQuery.data.value ?? []);
-
-const onRefreshAccount = () => {
-  void accountQuery.refetch();
-};
-
-const onAccountActionComplete = async () => {
-  await Promise.all([
-    accountQuery.refetch(),
-    queryClient.invalidateQueries({ queryKey: customerQueryKeys.root }),
-  ]);
-};
 
 const isSavingGeneral = ref(false);
 const isCheckingName = ref(false);
@@ -577,7 +559,6 @@ const selectedMemberId = ref<number | null>(null);
 
 const form = reactive({
   group_name: '',
-  admin_name: '',
   phone: '',
   phone_country_code: DEFAULT_PHONE_COUNTRY_DIAL,
   address: '',
@@ -648,7 +629,6 @@ watch(
   (newCust) => {
     if (newCust) {
       form.group_name = newCust.group_name;
-      form.admin_name = newCust.admin_name;
       const parsedPhone = parseListedPhone(newCust.phone);
       form.phone = parsedPhone.phone;
       form.phone_country_code = parsedPhone.phone_country_code;
@@ -689,7 +669,6 @@ const isGeneralDirty = computed(() => {
   const parsedPhone = parseListedPhone(props.customer.phone);
   return (
     form.group_name !== props.customer.group_name ||
-    form.admin_name !== props.customer.admin_name ||
     form.phone !== parsedPhone.phone ||
     form.phone_country_code !== parsedPhone.phone_country_code ||
     (form.address || '') !== (props.customer.address || '') ||
@@ -745,7 +724,7 @@ const saveGeneralInfo = async (options?: { silent?: boolean }) => {
   if (!props.customer) return;
   if (!isGeneralDirty.value) return;
   const phone = nationalPhoneDigits(form.phone);
-  if (!form.group_name.trim() || !form.admin_name.trim() || !phone) {
+  if (!form.group_name.trim() || !phone) {
     return;
   }
   if (isSavingGeneral.value || isCheckingName.value || isCheckingPhone.value) return;
@@ -760,11 +739,11 @@ const saveGeneralInfo = async (options?: { silent?: boolean }) => {
       customer_group_id: props.customer.customer_group_id,
       profile_id: props.customer.profile_id,
       group_name: form.group_name.trim(),
-      admin_name: form.admin_name.trim(),
+      admin_name: form.group_name.trim(),
       email: props.customer.email?.trim() || null,
       phone,
       phone_country_code: form.phone_country_code,
-      address: form.address.trim() || null,
+      address: (form.address || '').trim() || null,
       accent_color: form.accent_color.trim() || '#B45F34',
       is_active: canAdministerCustomerGroup.value
         ? form.is_active
@@ -977,66 +956,13 @@ const deleteMember = async (member: CustomerGroupMember) => {
   height: auto;
 }
 
-.phone-fuse {
-  display: flex;
-  align-items: stretch;
-  min-height: 40px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  background: #ffffff;
+.phone-row {
+  width: 100%;
 }
 
-.phone-fuse :deep(.q-field) {
-  margin-bottom: 0;
-}
-
-.phone-fuse :deep(.q-field__control) {
-  min-height: 40px;
-  height: 40px;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.phone-fuse :deep(.q-field__control:before),
-.phone-fuse :deep(.q-field__control:after) {
-  border: none !important;
-}
-
-.phone-fuse__country {
-  width: 88px;
-  flex: 0 0 88px;
-}
-
-.phone-fuse__country :deep(.q-field__control) {
-  padding-left: 12px;
-  padding-right: 0;
-}
-
-.phone-fuse__country :deep(.q-field__native) {
-  font-weight: 500;
-  min-width: 0;
-}
-
-.phone-fuse__country :deep(.q-field__append) {
-  padding-left: 0;
-}
-
-.phone-fuse__number :deep(.q-field__control) {
-  padding-left: 12px;
-  padding-right: 12px;
-}
-
-.phone-fuse__number :deep(.q-field__native) {
-  font-weight: 500;
-}
-
-.phone-fuse__sep {
-  width: 1px;
-  flex-shrink: 0;
-  align-self: stretch;
-  background: #e2e8f0;
+.phone-row__country {
+  width: 128px;
+  flex: 0 0 128px;
 }
 
 .color-field {
@@ -1092,15 +1018,6 @@ body.body--dark .drawer-tabs__item--active {
 
 body.body--dark .form-section--divider {
   border-top-color: #2e2e2e;
-}
-
-body.body--dark .phone-fuse {
-  background: #1c1c1c;
-  border-color: #334155;
-}
-
-body.body--dark .phone-fuse__sep {
-  background: #334155;
 }
 
 body.body--dark .soft-input :deep(.q-field--outlined .q-field__control:before) {

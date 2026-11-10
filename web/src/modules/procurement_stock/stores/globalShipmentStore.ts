@@ -331,6 +331,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.currentShipmentBoxes = overview.boxes;
         this.currentShipmentSections = overview.sections;
         this.currentCostEntries = overview.cost_entries as any;
+        this.settingsFinanceCachedCostEntries = overview.cost_entries as GlobalShipmentCostEntry[];
         this.currentShipmentItemOutcomes = overview.item_outcomes;
         this.currentShipmentVendorCredits = overview.outcome_vendor_credits;
         this.currentBatchCodeList = overview.batch_code_list;
@@ -426,7 +427,12 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         !options?.force &&
         this.settingsFinanceCachedShipmentId === shipmentId
       ) {
-        this.currentCostEntries = this.settingsFinanceCachedCostEntries as GlobalShipmentCostEntry[];
+        if (
+          this.settingsFinanceCachedCostEntries.length > 0 ||
+          this.currentCostEntries.length === 0
+        ) {
+          this.currentCostEntries = this.settingsFinanceCachedCostEntries as GlobalShipmentCostEntry[];
+        }
         return {
           apBills: this.settingsFinanceCachedApBills,
           apFx: this.settingsFinanceCachedApFx,
@@ -447,7 +453,6 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         return { apBills: bundle.apBills, apFx: bundle.apFx };
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load shipment finance';
-        this.currentCostEntries = [];
         throw err;
       } finally {
         this.settingsFinanceLoading = false;
@@ -613,10 +618,6 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         throw new Error('Shipment not loaded');
       }
 
-      if (isShipmentCostsLocked(shipment)) {
-        throw new Error('Shipment costs are locked');
-      }
-
       this.costEntriesSaving = true;
       this.error = null;
       try {
@@ -626,6 +627,9 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           options,
         );
         this.currentCostEntries = result.cost_entries as any;
+        if (this.settingsFinanceCachedShipmentId === shipmentId) {
+          this.settingsFinanceCachedCostEntries = result.cost_entries as GlobalShipmentCostEntry[];
+        }
         this.currentShipmentItems = result.items;
         seedSharedShipmentItemsCostingCache(shipmentId, result.items);
         if (result.shipment && this.currentShipment?.id === shipmentId) {
@@ -642,10 +646,28 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
             received_weight: result.shipment.received_weight ?? total,
           };
         }
-        await this.syncShipmentApBillsQuiet(shipmentId);
         return result;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to save cost entries';
+        throw err;
+      } finally {
+        this.costEntriesSaving = false;
+      }
+    },
+
+    async issueCostEntryInvoice(shipmentId: number, costEntryId: number) {
+      this.costEntriesSaving = true;
+      this.error = null;
+      try {
+        await globalShipmentCostEntryRepository.issueCostEntryAp(costEntryId);
+        const refreshed = await globalShipmentCostEntryRepository.listByShipmentId(shipmentId);
+        this.currentCostEntries = refreshed;
+        if (this.settingsFinanceCachedShipmentId === shipmentId) {
+          this.settingsFinanceCachedCostEntries = refreshed as GlobalShipmentCostEntry[];
+        }
+        this.shipmentApBillsSyncGeneration += 1;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to create invoice';
         throw err;
       } finally {
         this.costEntriesSaving = false;

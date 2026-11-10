@@ -1,4 +1,4 @@
--- Bills kernel (docs/features/bills_pays/kernel-schema.md):
+-- Bills kernel (docs/features/bills_pays/money-spine.md):
 -- from/to profiles, source plug, settlement_kind, line currency/kind,
 -- pay cash point, alloc bill_id. Fold bill_charges into bill_lines.
 

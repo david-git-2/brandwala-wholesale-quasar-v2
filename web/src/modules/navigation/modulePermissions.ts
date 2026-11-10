@@ -65,11 +65,14 @@ const resolveTenantForModuleAccess = (
 const isAfterSalesDevModule = (moduleKey: ModuleKey): boolean =>
   import.meta.env.DEV && moduleKey === 'after_sales';
 
+const isPeopleDevModule = (moduleKey: ModuleKey): boolean =>
+  import.meta.env.DEV && moduleKey === 'people';
+
 const isTenantModuleActive = (
   moduleKey: ModuleKey,
   activeModuleKeys: readonly string[],
 ): boolean => {
-  if (isAfterSalesDevModule(moduleKey)) {
+  if (isAfterSalesDevModule(moduleKey) || isPeopleDevModule(moduleKey)) {
     return true;
   }
 

@@ -24,6 +24,10 @@ export type PayListRow = {
   amount: number;
   unallocated_amount: number;
   source: string;
+  direction?: 'in' | 'out';
+  counterparty_name?: string | null;
+  cashbook_point_id?: number | null;
+  cashbook_point_name?: string | null;
   method: string | null;
   reference: string | null;
   note: string | null;
@@ -34,6 +38,8 @@ export type PayListRow = {
   settlement_currency_code: string;
   foreign_amount: number | null;
   exchange_rate: number;
+  related_invoice_no?: string | null;
+  perspective?: 'tenant' | 'party';
 };
 
 export type ListPaysParams = {
@@ -284,6 +290,11 @@ export type PostCustomerReceiptInput = {
   cashbook_point_pot_id?: number | null;
   source_currency_code?: string | null;
   transaction_rate?: number | null;
+  purpose_code?: string | null;
+  amount?: number | null;
+  source_type?: string | null;
+  source_id?: string | null;
+  counterparty_name?: string | null;
 };
 
 export const createPayIdempotencyKey = (): string => crypto.randomUUID();
@@ -307,6 +318,11 @@ const postMoneyIn = async (payload: PostCustomerReceiptInput) => {
     p_cashbook_point_pot_id: payload.cashbook_point_pot_id ?? null,
     p_source_currency_code: payload.source_currency_code ?? null,
     p_transaction_rate: payload.transaction_rate ?? null,
+    p_purpose_code: payload.purpose_code ?? null,
+    p_source_type: payload.source_type ?? null,
+    p_source_id: payload.source_id ?? null,
+    p_counterparty_name: payload.counterparty_name ?? null,
+    p_amount: payload.amount ?? null,
   });
   if (error) throw error;
   return data;
@@ -326,6 +342,8 @@ export type PostMoneyOutInput = {
   cashbook_point_pot_id?: number | null;
   payout_method?: string;
   idempotency_key?: string;
+  purpose_code?: string | null;
+  counterparty_name?: string | null;
 };
 
 const postMoneyOut = async (payload: PostMoneyOutInput) => {
@@ -343,6 +361,8 @@ const postMoneyOut = async (payload: PostMoneyOutInput) => {
     p_source_id: payload.source_id ?? null,
     p_idempotency_key: payload.idempotency_key ?? null,
     p_payout_method: payload.payout_method ?? 'bank_transfer',
+    p_purpose_code: payload.purpose_code ?? null,
+    p_counterparty_name: payload.counterparty_name ?? null,
   });
   if (error) throw error;
   return data;

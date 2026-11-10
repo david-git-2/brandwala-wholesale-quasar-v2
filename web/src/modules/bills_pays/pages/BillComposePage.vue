@@ -506,6 +506,9 @@ import BillStockSearch from '../components/BillStockSearch.vue';
 import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
 type ComposeLineKind = 'stock' | 'description' | 'charge';
 import { useBillComposeMutation } from '../composables/useBillComposeMutation';
+import { billDetailRoute } from '../utils/billRoutes';
+import { isShipmentCostApBill } from '../utils/shipmentApBillSource';
+import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
 import type { Database } from 'src/types/supabase';
 
 type BillDocumentKind = Database['public']['Enums']['bill_document_kind'];
@@ -1310,6 +1313,11 @@ const loadExisting = async (id: number) => {
           billId: String(id),
         },
       });
+      return;
+    }
+    if (isShipmentCostApBill(bill as GlobalInvoiceDetail)) {
+      const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+      router.replace(billDetailRoute(id, tenantSlug));
       return;
     }
     const meta = bill.channel_meta as {

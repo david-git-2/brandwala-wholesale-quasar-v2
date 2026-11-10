@@ -1,6 +1,6 @@
 # Shipment inbound money (target)
 
-Not as-built. Spec today: [procurement](../../docs/features/procurement_stock/spec.md) US-1 / US-8, [bills_pays](../../docs/features/bills_pays/spec.md) AP paper, [money-story inbound AP](../../docs/features/bills_pays/money-story.md).
+Not as-built. Spec today: [procurement](../../docs/features/procurement_stock/spec.md) US-1 / US-8, [money-spine](../../docs/features/bills_pays/money-spine.md) AP paper.
 
 ## Jobs
 

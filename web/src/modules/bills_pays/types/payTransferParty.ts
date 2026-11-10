@@ -1,4 +1,4 @@
-export type PayTransferEntityType = 'tenant' | 'customer' | 'courier' | 'vendor';
+export type PayTransferEntityType = 'tenant' | 'customer' | 'courier' | 'vendor' | 'cargo_company';
 
 export type PayTransferParty = {
   key: string;

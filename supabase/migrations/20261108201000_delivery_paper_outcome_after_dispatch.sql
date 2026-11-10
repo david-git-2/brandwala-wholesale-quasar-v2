@@ -1084,27 +1084,36 @@ GRANT ALL ON FUNCTION public.apply_delivery_paper_outcome(bigint, bigint, text, 
 
 GRANT ALL ON FUNCTION public.apply_delivery_paper_outcome(bigint, bigint, text, jsonb) TO service_role;
 -- Repair DP-3 (SO-261108-0001): restore packed lot splits + separate outcome plan rows.
-UPDATE public.delivery_paper_line dpl
-SET
-  splits = jsonb_build_array(jsonb_build_object('status', 'packed', 'quantity', v.qty)),
-  dispatched_global_stock_id = -dpl.id,
-  updated_at = now()
-FROM (VALUES (45::bigint, 298), (46::bigint, 1199)) AS v(id, qty)
-WHERE dpl.id = v.id AND dpl.delivery_paper_id = 3;
+-- Tenant-specific row repair; skip when paper 3 is absent (e.g. prod / fresh reset).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.delivery_paper dp WHERE dp.id = 3) THEN
+    RETURN;
+  END IF;
 
-INSERT INTO public.delivery_paper_line (
-  delivery_paper_id, preorder_demand_id, global_stock_id, dispatched_global_stock_id, splits
-)
-SELECT 3, v.demand_id, NULL, NULL, v.splits::jsonb
-FROM (VALUES
-  (268::bigint, '[{"status":"accepted","quantity":298}]'),
-  (269::bigint, '[{"status":"accepted","quantity":1199}]')
-) AS v(demand_id, splits)
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.delivery_paper_line dpl
-  WHERE dpl.delivery_paper_id = 3
-    AND dpl.preorder_demand_id = v.demand_id
-    AND dpl.global_stock_id IS NULL
-    AND dpl.dispatched_global_stock_id IS NULL
-    AND public.delivery_paper_line_packed_qty(dpl.splits) = 0
-);
+  UPDATE public.delivery_paper_line dpl
+  SET
+    splits = jsonb_build_array(jsonb_build_object('status', 'packed', 'quantity', v.qty)),
+    dispatched_global_stock_id = -dpl.id,
+    updated_at = now()
+  FROM (VALUES (45::bigint, 298), (46::bigint, 1199)) AS v(id, qty)
+  WHERE dpl.id = v.id
+    AND dpl.delivery_paper_id = 3;
+
+  INSERT INTO public.delivery_paper_line (
+    delivery_paper_id, preorder_demand_id, global_stock_id, dispatched_global_stock_id, splits
+  )
+  SELECT 3, v.demand_id, NULL, NULL, v.splits::jsonb
+  FROM (VALUES
+    (268::bigint, '[{"status":"accepted","quantity":298}]'),
+    (269::bigint, '[{"status":"accepted","quantity":1199}]')
+  ) AS v(demand_id, splits)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM public.delivery_paper_line dpl
+    WHERE dpl.delivery_paper_id = 3
+      AND dpl.preorder_demand_id = v.demand_id
+      AND dpl.global_stock_id IS NULL
+      AND dpl.dispatched_global_stock_id IS NULL
+      AND public.delivery_paper_line_packed_qty(dpl.splits) = 0
+  );
+END $$;

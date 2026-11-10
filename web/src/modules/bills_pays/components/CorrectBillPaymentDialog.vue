@@ -82,6 +82,10 @@
           :channel-meta="channelMeta"
           :loading="recordLoading"
           :shipment-id="shipmentId"
+          :pay-from-profile-id="payFromProfileId"
+          :pay-from-profile-name="payFromProfileName"
+          :pay-to-profile-id="payToProfileId"
+          :pay-to-profile-name="payToProfileName"
           :replacing-pay-id="replacingPayId"
           :prefill-snapshot="prefillSnapshot"
           @submit="onPaymentSubmit"
@@ -121,6 +125,10 @@ const props = defineProps<{
   isAp: boolean;
   channelMeta?: Record<string, unknown> | null;
   shipmentId?: number | null;
+  payFromProfileId?: number | null;
+  payFromProfileName?: string | null;
+  payToProfileId?: number | null;
+  payToProfileName?: string | null;
   recordLoading?: boolean;
 }>();
 

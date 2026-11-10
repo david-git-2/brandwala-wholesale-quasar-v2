@@ -41,16 +41,6 @@ CREATE TYPE "public"."bill_settlement_kind" AS ENUM (
 
 ALTER TYPE "public"."bill_settlement_kind" OWNER TO "postgres";
 
-CREATE TYPE "public"."cashbook_point_kind" AS ENUM (
-    'drawer',
-    'safe',
-    'bank_counter',
-    'mobile',
-    'other'
-);
-
-ALTER TYPE "public"."cashbook_point_kind" OWNER TO "postgres";
-
 CREATE TYPE "public"."global_invoice_type" AS ENUM (
     'wholesale',
     'retail',

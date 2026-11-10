@@ -85,10 +85,15 @@ export function isDeliveryPaperOutcomeBillSource(
 
 export function billOpensOnDetailNotComposeDesk(bill: {
   invoice_status?: string | null;
+  invoice_type?: string | null;
   source_type?: string | null;
   source_key?: string | null;
+  ap_shipment_id?: number | null;
 }): boolean {
   const st = bill.invoice_status;
   if (st !== 'draft' && st !== 'proforma_generated') return false;
+  if (bill.invoice_type === 'ap') return true;
+  if (bill.source_type === 'shipment_cost') return true;
+  if (bill.ap_shipment_id != null) return true;
   return isDeliveryPaperOutcomeBillSource(bill.source_type, bill.source_key);
 }

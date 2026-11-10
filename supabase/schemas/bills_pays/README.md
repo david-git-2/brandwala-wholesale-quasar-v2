@@ -1,6 +1,6 @@
 # `bills_pays` declarative SQL (kernel)
 
-**Product map:** [docs/features/bills_pays/README.md](../../../docs/features/bills_pays/README.md)
+**Product map:** [money-spine.md](../../../docs/features/bills_pays/money-spine.md)
 
 | File | Role |
 | :--- | :--- |

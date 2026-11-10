@@ -96,10 +96,10 @@ BEGIN
   RETURNING id INTO v_account_id;
 
   INSERT INTO public.cashbook_points (
-    parent_tenant_id, cashbook_account_id, code, name, kind, is_active, sort_order
+    parent_tenant_id, cashbook_account_id, code, name, is_active
   )
   VALUES (
-    v_tenant_id, v_account_id, 'TILL1', 'pgTAP Till', 'drawer'::public.cashbook_point_kind, true, 0
+    v_tenant_id, v_account_id, 'TILL1', 'pgTAP Till', true
   )
   RETURNING id INTO v_point_id;
 

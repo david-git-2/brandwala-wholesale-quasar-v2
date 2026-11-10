@@ -508,7 +508,7 @@ Each phase: **Goal**, **Files**, **Change**, **Do not**, **Done when**. One agen
 
 **Goal:** No product `parent_tenant_id` except `tenants.parent_id`.
 
-**Files:** leftover trigger/index; [kernel-schema](../features/bills_pays/kernel-schema.md); [bills-desk](../features/bills_pays/bills-desk.md); [stock-spine](../kernel/stock-spine.md); [upload-and-release-visibility](../features/products/upload-and-release-visibility.md); shop_order / procurement / products / customer / after_sales / notifications `spec.md` if they name the column; this file (mark phases done). `scripts/generate-module-section.mjs`. After-sales mocks `web/src/modules/after_sales/fixtures/mockAfterSales.ts`.
+**Files:** leftover trigger/index; [money-spine](../features/bills_pays/money-spine.md); [stock-spine](../kernel/stock-spine.md); [upload-and-release-visibility](../features/products/upload-and-release-visibility.md); shop_order / procurement / products / customer / after_sales / notifications `spec.md` if they name the column; this file (mark phases done). `scripts/generate-module-section.mjs`. After-sales mocks `web/src/modules/after_sales/fixtures/mockAfterSales.ts`.
 
 **Change:** Delete dead aliases. Docs say books owner = `tenant_id`. SQL: `20261106120000_tenant_id_phase10_cleanup.sql` renames books RPCs; deprecated `*_parent_tenant_*` SQL wrappers remain in DB until a later drop (not in declarative schema).
 

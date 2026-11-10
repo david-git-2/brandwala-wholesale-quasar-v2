@@ -188,6 +188,7 @@ const props = withDefaults(
     loadPartiesOnOpen?: boolean;
     /** Cashbook profile pay in/out: hide from/to pickers, show amount + method only. */
     simplePayFlow?: boolean;
+    purposeCode?: string;
   }>(),
   { loadPartiesOnOpen: true, simplePayFlow: false },
 );
@@ -523,6 +524,13 @@ const methodFlags = computed(() => {
 });
 
 const submitDisabledReason = computed((): string | null => {
+  if (props.purposeCode === 'deposit' || props.purposeCode === 'owner_withdraw') {
+    if (needsTenantPot.value && (payFromLoading.value || !potId.value || !cashbookPointId.value)) {
+      return showPotField.value ? 'Choose till or bank' : 'Loading cash locations…';
+    }
+    if ((amount.value ?? 0) <= 0) return 'Enter an amount';
+    return null;
+  }
   if (!fromParty.value || !toParty.value) return 'Choose from and to';
   if (fromKey.value === toKey.value) return 'From and to must differ';
   if (!isPayIn.value && !isPayOut.value) {
@@ -547,11 +555,48 @@ const submitDisabledReason = computed((): string | null => {
 const close = () => emit('update:modelValue', false);
 
 const submit = async () => {
-  if (submitDisabledReason.value || !profilePartyForRpc.value) return;
+  if (submitDisabledReason.value && !props.purposeCode) return;
   if (!cashbookPointId.value || !potId.value) return;
   submitting.value = true;
   try {
     const localToday = () => new Date().toISOString().slice(0, 10);
+    if (props.purposeCode === 'deposit') {
+      await paysRepository.postMoneyIn({
+        tenant_id: props.tenantId,
+        profile_id: props.booksTenantId,
+        received_on: localToday(),
+        note: note.value || null,
+        source: 'bank',
+        instruments: [],
+        allocations: [],
+        idempotency_key: createPayIdempotencyKey(),
+        cashbook_point_id: cashbookPointId.value,
+        cashbook_point_pot_id: potId.value,
+        purpose_code: 'deposit',
+        amount: Number(amount.value),
+      });
+      showSuccessNotification('Deposit recorded.');
+      emit('posted');
+      close();
+      return;
+    }
+    if (props.purposeCode === 'owner_withdraw') {
+      await paysRepository.postMoneyOut({
+        tenant_id: props.tenantId,
+        profile_id: props.booksTenantId,
+        amount: Number(amount.value),
+        cashbook_point_id: cashbookPointId.value,
+        cashbook_point_pot_id: potId.value,
+        source: 'ap_payout',
+        purpose_code: 'owner_withdraw',
+        idempotency_key: createPayIdempotencyKey(),
+      });
+      showSuccessNotification('Withdrawal recorded.');
+      emit('posted');
+      close();
+      return;
+    }
+    if (!profilePartyForRpc.value) return;
     const profileId = profilePartyForRpc.value.entityId;
     if (isPayOut.value) {
       const allocs = openBillAlloc.selectedAllocations.value;

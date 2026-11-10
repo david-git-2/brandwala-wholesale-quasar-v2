@@ -64,7 +64,8 @@ export type ModuleKey =
   | 'billing_profile_wallet'
   | 'recipient_profile'
   | 'cashbook'
-  | 'after_sales';
+  | 'after_sales'
+  | 'people';
 
 export type ModuleAction =
   | 'view'
@@ -648,6 +649,22 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Returns, replacement, and warranty cases',
         icon: 'ph ph-headset',
         routeSegment: 'after-sales',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'people',
+    name: 'People',
+    description: 'Team members and people directory.',
+    navIcon: 'ph ph-identification-badge',
+    routes: [
+      {
+        scope: 'app',
+        title: 'People',
+        caption: 'Team members and directory',
+        icon: 'ph ph-identification-badge',
+        routeSegment: 'people',
         requiredAction: 'view',
       },
     ],

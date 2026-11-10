@@ -9,15 +9,6 @@
 
       <q-card-section class="column q-gutter-y-sm q-pt-sm">
         <q-input v-model="form.name" outlined dense label="Name" autofocus />
-        <q-select
-          v-model="form.kind"
-          :options="CASHBOOK_POINT_KIND_OPTIONS"
-          emit-value
-          map-options
-          outlined
-          dense
-          label="Kind"
-        />
         <q-checkbox v-if="isEdit" v-model="form.isActive" dense label="Active" />
 
         <div class="text-subtitle2 text-weight-medium q-mt-sm">Currency pots</div>
@@ -104,10 +95,6 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { requestConfirmation, showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
-import {
-  CASHBOOK_POINT_KIND_OPTIONS,
-  type CashbookPointKind,
-} from '../constants/cashbookPointKinds';
 import { cashbookRepository, type CashbookPointRow } from '../repositories/cashbookRepository';
 
 type PotRow = {
@@ -142,7 +129,6 @@ const isEdit = computed(() => props.mode === 'edit');
 
 const form = reactive({
   name: '',
-  kind: 'drawer' as CashbookPointKind,
   isActive: true,
 });
 
@@ -208,12 +194,10 @@ const loadPotsForEdit = async () => {
 const resetForm = async () => {
   if (props.mode === 'edit' && props.point) {
     form.name = props.point.name;
-    form.kind = props.point.kind;
     form.isActive = props.point.is_active;
     await loadPotsForEdit();
   } else {
     form.name = '';
-    form.kind = 'drawer';
     form.isActive = true;
     resetPotRows(['BDT']);
   }
@@ -264,14 +248,12 @@ const onSubmit = async () => {
         parentTenantId: props.parentTenantId,
         cashbookAccountId: props.cashbookAccountId,
         name,
-        kind: form.kind,
         currencyCodes,
       });
       showSuccessNotification('Cash point added.');
     } else if (props.point) {
       await cashbookRepository.updateCashbookPoint(props.point.id, props.cashbookAccountId, {
         name,
-        kind: form.kind,
         is_active: form.isActive,
       });
       await cashbookRepository.syncCashbookPointPots(props.parentTenantId, props.point.id, currencyCodes);

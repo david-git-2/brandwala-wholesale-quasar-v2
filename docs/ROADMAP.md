@@ -45,7 +45,7 @@ Theme: **Bills desk polish** (URLs, API boundary, fetch discipline)
 | Desk wrapper RPCs | `update_draft_bill`, `issue_wholesale_bill`, `issue_retail_bill` — no edits to frozen money spine | Q4 2026 |
 | Route tree | `/app/bills/*` with redirects from legacy sales/invoice paths | Q4 2026 |
 | `billsRepository` | Desk calls kernel + wrappers only; store-first profiles/currency | Q4 2026 |
-| `bills-desk.md` | Per-page API contract for agents and QA | Q4 2026 |
+| Bills desk API catalog | In [money-spine.md](features/bills_pays/money-spine.md) (as-built routes) | — |
 
 Outcome targeted: Staff and deep links say “bill” everywhere; the web layer never calls legacy invoice RPC names directly.
 
@@ -118,6 +118,6 @@ Living document — reviewed each quarter. Feature-level IDs and fix steps live 
 | Module unfinished rows | Each `docs/features/<module>/00-gaps.md` |
 | Money build order (engineers) | [doc/fix/2026-10-12-bills-pays-kernel-plan.md](../doc/fix/2026-10-12-bills-pays-kernel-plan.md) |
 | Bills desk execution plan | [.cursor/plans/bills_desk_nav_apis_619be984.plan.md](../.cursor/plans/bills_desk_nav_apis_619be984.plan.md) |
-| Money target map | [features/bills_pays/README.md](features/bills_pays/README.md) |
+| Money target map | [money-spine.md](features/bills_pays/money-spine.md) |
 | How to sell (BW / pre-order / Koba / thrift) | [architecture/business-models.md](architecture/business-models.md) |
 | Doc index | [README.md](README.md) |

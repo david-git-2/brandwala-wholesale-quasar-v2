@@ -24,6 +24,8 @@ begin
     null
   );
 
+  perform public.ensure_tenant_default_money_profiles(v_books_id);
+
   return new;
 end;
 $function$;

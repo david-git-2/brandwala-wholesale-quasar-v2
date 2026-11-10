@@ -193,9 +193,6 @@ ALTER TABLE ONLY "public"."cashbook_points"
 ALTER TABLE ONLY "public"."cashbook_points"
     ADD CONSTRAINT "cashbook_points_cashbook_account_id_fkey" FOREIGN KEY ("cashbook_account_id") REFERENCES "public"."cashbook_accounts"("id") ON DELETE CASCADE;
 
-ALTER TABLE ONLY "public"."cashbook_points"
-    ADD CONSTRAINT "cashbook_points_custodian_membership_id_fkey" FOREIGN KEY ("custodian_membership_id") REFERENCES "public"."memberships"("id") ON DELETE SET NULL;
-
 ALTER TABLE ONLY "public"."cashbook_entries"
     ADD CONSTRAINT "cashbook_entries_cashbook_point_id_fkey" FOREIGN KEY ("cashbook_point_id") REFERENCES "public"."cashbook_points"("id") ON DELETE SET NULL;
 

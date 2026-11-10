@@ -92,10 +92,6 @@ begin
   if v_ship.id is null then
     raise exception 'Shipment % not found', p_shipment_id;
   end if;
-
-  if v_ship.status in ('draft', 'cancelled') then
-    raise exception 'Shipment % must be in transit or received before AP payout', p_shipment_id;
-  end if;
 end;
 $$;
 
@@ -726,7 +722,6 @@ begin
   end if;
 
   perform public.ensure_global_shipment_cost_entries_from_header(p_shipment_id);
-  perform public.sync_shipment_ap_bills(p_shipment_id);
 
   v_sid := p_shipment_id::text;
 

@@ -12045,6 +12045,7 @@ begin
   if v_parent_id is null then
     perform public.ensure_default_vendor(v_id);
     perform public.ensure_default_cargo_company(v_id);
+    perform public.ensure_tenant_default_money_profiles(v_id);
   end if;
 
   return query
@@ -57104,6 +57105,8 @@ begin
     coalesce(new.is_active, true),
     null
   );
+
+  perform public.ensure_tenant_default_money_profiles(v_books_id);
 
   return new;
 end;

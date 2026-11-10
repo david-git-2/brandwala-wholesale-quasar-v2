@@ -24,6 +24,7 @@ import shopOrderRoutes from 'src/modules/shop_order/routes';
 import accessControlRoutes from 'src/modules/access_control/routes';
 import customerRoutes from 'src/modules/customer/routes';
 import afterSalesRoutes from 'src/modules/after_sales/routes';
+import peopleRoutes from 'src/modules/people/routes';
 import landingRoutes from 'src/modules/landing/routes';
 import helpRoutes from 'src/modules/help/routes';
 import docsRoutes from 'src/modules/docs/routes';
@@ -139,6 +140,7 @@ const routes: RouteRecordRaw[] = [
   ...accessControlRoutes,
   ...customerRoutes,
   ...afterSalesRoutes,
+  ...peopleRoutes,
 
   // Dev-only pages (local). Not registered in production, so Vite drops their code from the build.
   ...(import.meta.env.DEV ? devRoutes : []),

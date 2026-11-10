@@ -1,6 +1,6 @@
 # TradeFlow BD — docs index
 
-Load **this file first**. **Money:** [bills_pays README](features/bills_pays/README.md) → [kernel-schema](features/bills_pays/kernel-schema.md) → [REFERENCE](kernel/REFERENCE.md) → [tests](features/bills_pays/tests.md) → [spec](features/bills_pays/spec.md) + [00-gaps](features/bills_pays/00-gaps.md) if live delta matters. Other modules: `spec.md` + `00-gaps.md`. Then code. See [STRUCTURE.md](STRUCTURE.md).
+Load **this file first**. **Money:** [money-spine.md](features/bills_pays/money-spine.md) (only doc). PR card: [REFERENCE](kernel/REFERENCE.md). Tests: [tests.md](features/bills_pays/tests.md) → `supabase/tests/`. Other modules: `spec.md` + `00-gaps.md`. Then code. See [STRUCTURE.md](STRUCTURE.md).
 
 Missing fact → `DOC_GAP` (`.cursor/rules/docs-first.mdc`). Do not guess.
 
@@ -17,8 +17,8 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Who logs in where, which features? | [scopes](architecture/scopes.md) |
 | How this company sells (BW, pre-order, K-beauty, thrift) | [business-models](architecture/business-models.md) |
 | Pre-order flow (target ops story; as-built snapshot) | [preorder-fulfillment-flow](preorder-fulfillment-flow.md) · [as-built](preorder-fulfillment-flow-as-built.md) |
-| Wholesale vs dropship bill → pay (numbers) | [money-story](features/bills_pays/money-story.md) |
-| Bills vs pays vs cashbook (target map) | [README](features/bills_pays/README.md) · [kernel-schema](features/bills_pays/kernel-schema.md) · [REFERENCE](kernel/REFERENCE.md) |
+| **All money spine details** | [money-spine](features/bills_pays/money-spine.md) |
+| Money PR / invariants | [kernel REFERENCE](kernel/REFERENCE.md) |
 | Warehouse stock movements (spine) | [stock-spine](kernel/stock-spine.md) · [kernel pack](kernel/README.md) |
 | What numbers go on reports (sales vs cash vs COD) | [reporting spec](features/reporting_treasury/spec.md) |
 | What is unfinished / wrong in a module? | That module’s `00-gaps.md` |
@@ -49,7 +49,7 @@ UI under `web/src/modules/` unless noted. Agent: `spec.md` + `00-gaps.md`. Surfa
 | Procurement | [spec](features/procurement_stock/spec.md) | [gaps](features/procurement_stock/00-gaps.md) | `procurement_stock/`, `vendor/` | **split** `procurement/` |
 | Products | [spec](features/products/spec.md) | [gaps](features/products/00-gaps.md) | `products/` | `public.sql` |
 | Pre-order (PBC) | [spec](features/product_based_costing/spec.md) | [gaps](features/product_based_costing/00-gaps.md) | `product_based_costing/`, `costingFile/` | `public.sql` |
-| **Bills & pays** | [spec](features/bills_pays/spec.md) | [gaps](features/bills_pays/00-gaps.md) | desks: `sales_invoice/`, `wallet/` (code names) | invoice split; pays in `public.sql` |
+| **Bills & pays** | [money-spine](features/bills_pays/money-spine.md) | [gaps → spine](features/bills_pays/00-gaps.md) | desks: `sales_invoice/`, `wallet/` (code names) | invoice split; pays in `public.sql` |
 | After-sales | [spec](features/after_sales/spec.md) | [gaps](features/after_sales/00-gaps.md) | `after_sales/` | invoice + shop_order RPCs |
 | Shop / dropship | [spec](features/shop_order/spec.md) | [gaps](features/shop_order/00-gaps.md) | `shop_order/` | **split** `shop_order/` |
 | Customer | [spec](features/customer/spec.md) | [gaps](features/customer/00-gaps.md) | `customer/` | `public.sql` |
@@ -73,7 +73,7 @@ Detail lives in the linked spec — do not duplicate here.
 | Login surfaces | [scopes](architecture/scopes.md) |
 | BW / pre-order / Koba / thrift | [business-models](architecture/business-models.md) |
 | Stock, receive, Delivery paper | [procurement spec](features/procurement_stock/spec.md) · [stock spine](kernel/stock-spine.md) |
-| Bills, pays, cashbook, money layers | [bills_pays spec](features/bills_pays/spec.md) · [kernel pack](kernel/README.md) |
+| Bills, pays, cashbook, money layers | [money-spine](features/bills_pays/money-spine.md) |
 | Shop / dropship channel | [shop_order spec](features/shop_order/spec.md) |
 | Investor portal v1 read-only | [investor_capital spec](features/investor_capital/spec.md) |
 | UI pattern in a module | Copy that module’s Pinia or Vue Query — do not convert |

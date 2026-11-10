@@ -181,6 +181,9 @@ CREATE TABLE IF NOT EXISTS "public"."pays" (
     "transaction_rate" numeric(15,6),
     "source_amount" numeric(12,2),
     "cashbook_point_pot_id" bigint,
+    "from_profile_id" bigint,
+    "to_profile_id" bigint,
+    "description" text,
     CONSTRAINT "payments_amount_check" CHECK (("amount" >= (0)::numeric)),
     CONSTRAINT "pays_exchange_rate_positive" CHECK (("exchange_rate" > (0)::numeric)),
     CONSTRAINT "pays_settlement_fx_check" CHECK (((("settlement_currency_code" = 'BDT'::"text") AND ("foreign_amount" IS NULL) AND ("exchange_rate" = 1.000000)) OR (("settlement_currency_code" <> 'BDT'::"text") AND ("foreign_amount" IS NOT NULL) AND ("foreign_amount" > (0)::numeric) AND ("exchange_rate" > (0)::numeric)))),
@@ -196,10 +199,13 @@ CREATE TABLE IF NOT EXISTS "public"."cashbook_accounts" (
     "tenant_id" bigint NOT NULL,
     "entity_type" "text" NOT NULL,
     "entity_id" bigint NOT NULL,
+    "profile_id" bigint,
     "currency_code" "text" DEFAULT 'BDT'::"text" NOT NULL,
     "available_balance" numeric(18,4) DEFAULT 0.0000 NOT NULL,
     "pending_balance" numeric(18,4) DEFAULT 0.0000 NOT NULL,
     "locked_balance" numeric(18,4) DEFAULT 0.0000 NOT NULL,
+    "default_cashbook_point_id" bigint,
+    "default_cashbook_point_pot_id" bigint,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     CONSTRAINT "wallet_accounts_available_non_negative" CHECK ((("available_balance" >= (0)::numeric) OR ("entity_type" = 'tenant'::"text")))
@@ -213,10 +219,7 @@ CREATE TABLE IF NOT EXISTS "public"."cashbook_points" (
     "cashbook_account_id" bigint NOT NULL,
     "code" "text" NOT NULL,
     "name" "text" NOT NULL,
-    "kind" "public"."cashbook_point_kind" DEFAULT 'drawer'::"public"."cashbook_point_kind" NOT NULL,
-    "custodian_membership_id" bigint,
     "is_active" boolean DEFAULT true NOT NULL,
-    "sort_order" integer DEFAULT 0 NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     CONSTRAINT "cashbook_points_code_trimmed" CHECK (("btrim"("code") <> ''::"text")),
@@ -700,7 +703,7 @@ CREATE INDEX "idx_wallet_accounts_tenant_entity" ON "public"."cashbook_accounts"
 
 CREATE INDEX "cashbook_points_tenant_id_idx" ON "public"."cashbook_points" USING "btree" ("tenant_id");
 
-CREATE INDEX "cashbook_points_account_active_idx" ON "public"."cashbook_points" USING "btree" ("cashbook_account_id", "sort_order") WHERE ("is_active" = true);
+CREATE INDEX "cashbook_points_account_active_idx" ON "public"."cashbook_points" USING "btree" ("cashbook_account_id") WHERE ("is_active" = true);
 
 CREATE INDEX "cashbook_entries_point_lookup_idx" ON "public"."cashbook_entries" USING "btree" ("cashbook_point_id", "created_at" DESC) WHERE ("cashbook_point_id" IS NOT NULL);
 
@@ -727,6 +730,8 @@ CREATE INDEX "payments_payment_date_idx" ON "public"."pays" USING "btree" ("paym
 CREATE INDEX "payments_tenant_id_idx" ON "public"."pays" USING "btree" ("tenant_id");
 
 CREATE INDEX "pays_profile_id_idx" ON "public"."pays" USING "btree" ("profile_id");
+CREATE INDEX "pays_from_profile_id_idx" ON "public"."pays" USING "btree" ("from_profile_id");
+CREATE INDEX "pays_to_profile_id_idx" ON "public"."pays" USING "btree" ("to_profile_id");
 
 CREATE UNIQUE INDEX "profiles_parent_phone_uidx" ON "public"."profiles" USING "btree" ("tenant_id", "phone_country_code", "phone") WHERE (("phone" IS NOT NULL) AND ("btrim"("phone") <> ''::"text") AND "is_phone_unique");
 

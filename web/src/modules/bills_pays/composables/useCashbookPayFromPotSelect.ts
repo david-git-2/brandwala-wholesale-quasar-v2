@@ -1,5 +1,4 @@
 import { computed, ref, watch, type Ref } from 'vue';
-import { cashbookPointKindLabel } from '../constants/cashbookPointKinds';
 import type { CashbookPointRow } from '../repositories/cashbookRepository';
 import { useCashbookPointPotsBatchQuery } from './useCashbookPointPotsQuery';
 
@@ -32,9 +31,7 @@ export function useCashbookPayFromPotSelect(
     return pots
       .map((pot) => {
         const point = pointById.value.get(pot.cashbook_point_id);
-        const pointLabel = point
-          ? `${point.name} (${cashbookPointKindLabel(point.kind)})`
-          : 'Location';
+        const pointLabel = point?.name ?? 'Location';
         return {
           label: `${pointLabel} — ${pot.currency_code}`,
           value: pot.id,

@@ -22,18 +22,42 @@ export type ShipmentApBillRow = {
   net_balances?: BillNetBalances;
 };
 
-export const shipmentApBillBucket = (bill: ShipmentApBillRow): ShipmentApKind | null => {
-  const key = bill.source_key ?? bill.ap_kind;
+/** Cost bucket / legacy AP kind from `source_key` + `ap_kind` (incl. per-line `entry:{id}` bills). */
+export const resolveShipmentApBillKind = (
+  sourceKey: string | null | undefined,
+  apKind: string | null | undefined,
+): ShipmentApKind | null => {
+  const sk = sourceKey?.trim();
+  const ak = apKind?.trim();
+  if (sk?.toLowerCase().startsWith('entry:')) {
+    if (!ak) return null;
+    return ak as ShipmentApKind;
+  }
+  const key = sk ?? ak;
   if (!key) return null;
-  const bucket = key.includes(':') ? key.split(':')[0] : key;
+  const prefix = key.includes(':') ? key.split(':')[0] : key;
   if (
-    (SHIPMENT_AP_COST_BUCKETS as readonly string[]).includes(bucket)
-    || (LEGACY_SHIPMENT_AP_KINDS as readonly string[]).includes(bucket)
+    (SHIPMENT_AP_COST_BUCKETS as readonly string[]).includes(prefix)
+    || (LEGACY_SHIPMENT_AP_KINDS as readonly string[]).includes(
+      prefix as (typeof LEGACY_SHIPMENT_AP_KINDS)[number],
+    )
   ) {
-    return bucket as ShipmentApKind;
+    return prefix as ShipmentApKind;
+  }
+  if (
+    ak
+    && ((SHIPMENT_AP_COST_BUCKETS as readonly string[]).includes(ak)
+      || (LEGACY_SHIPMENT_AP_KINDS as readonly string[]).includes(
+        ak as (typeof LEGACY_SHIPMENT_AP_KINDS)[number],
+      ))
+  ) {
+    return ak as ShipmentApKind;
   }
   return key as ShipmentApKind;
 };
+
+export const shipmentApBillBucket = (bill: ShipmentApBillRow): ShipmentApKind | null =>
+  resolveShipmentApBillKind(bill.source_key, bill.ap_kind);
 
 export const shipmentApBillPlugCurrency = (bill: ShipmentApBillRow): string | null => {
   const key = bill.source_key ?? bill.ap_kind;

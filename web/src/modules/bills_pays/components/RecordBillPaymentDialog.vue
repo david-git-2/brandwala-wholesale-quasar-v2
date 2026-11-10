@@ -46,6 +46,10 @@ const props = defineProps<{
   shipmentId?: number | null;
   replacingPayId?: number | null;
   prefillSnapshot?: PayCorrectionSnapshot | null;
+  payFromProfileId?: number | null;
+  payFromProfileName?: string | null;
+  payToProfileId?: number | null;
+  payToProfileName?: string | null;
 }>();
 
 const emit = defineEmits<{

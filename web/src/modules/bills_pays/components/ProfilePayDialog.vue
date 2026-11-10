@@ -9,6 +9,7 @@
     :seed-parties="seedParties"
     :load-parties-on-open="false"
     simple-pay-flow
+    :purpose-code="props.purposeCode"
     @update:model-value="emit('update:modelValue', $event)"
     @posted="emit('posted')"
   />
@@ -26,7 +27,7 @@ import {
 const props = defineProps<{
   modelValue: boolean;
   direction: 'in' | 'out';
-  entityType: PayTransferEntityType;
+  entityType: PayTransferEntityType | 'investor' | 'cargo_company';
   partyName: string;
   partyId: number;
   tenantId: number;
@@ -34,6 +35,7 @@ const props = defineProps<{
   tenantName: string;
   available: number;
   dueTotal: number;
+  purposeCode?: string;
 }>();
 
 const emit = defineEmits<{
