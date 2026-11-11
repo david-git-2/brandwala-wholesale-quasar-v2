@@ -5,7 +5,7 @@ Findings from the kernel doc review are **encoded** in:
 | Doc | What changed |
 | :--- | :--- |
 | [00-gaps](../../docs/features/bills_pays/00-gaps.md) | **Money spine** build order (BP18/BP20/BP25/BP22/BP19) gates new pay/bill writers |
-| [money-spine](../../docs/features/bills_pays/money-spine.md) | Global lock order, idempotency, settlement FX columns, BP18 cutover gate, CQRS pagination |
+| [money-spine](../../docs/features/bills_pays/money-spine-v2/README.md) | Global lock order, idempotency, settlement FX columns, BP18 cutover gate, CQRS pagination |
 | [tests](../../docs/features/bills_pays/tests.md) | Tier 1: reconciliation + idempotency; T4-1 tied to BP19 |
 | [REFERENCE](../../docs/kernel/REFERENCE.md) | Invariants 17–20; concurrency table |
 | [08 runbook](../../docs/kernel/08-AUDIT-RECONCILIATION-AND-RUNBOOK.md) | §1b settlements vs allocations reconciliation |

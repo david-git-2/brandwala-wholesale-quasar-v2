@@ -158,7 +158,7 @@ Keep as-built specs in `docs/features/<module>/spec.md`. Do not clone them.
 | Module catalogue | Same | One card per module |
 | VPC pack | Product / sales | Canvases above |
 | Kernel brief (4 short pages) | Architect | Invariants |
-| Money story | Finance / impl | Already: `docs/features/bills_pays/money-spine.md` |
+| Money story | Finance / impl | Already: `docs/features/bills_pays/money-spine-v2/README.md` |
 | Adapter map | Architect | `source_type` / from / to |
 | Scopes matrix | Anyone | Already: `docs/architecture/scopes.md` |
 | Sales-model sheet | Product | Already: `docs/architecture/business-models.md` |

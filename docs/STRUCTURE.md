@@ -21,7 +21,7 @@ docs/features/<name>/
   00-gaps.md
   spec.md                      # As-built, Scope, Where to look, stories
 docs/kernel/                   # Money + stock: README.md, REFERENCE.md, stock-spine.md, 08-AUDIT runbook
-docs/features/bills_pays/     # money-spine.md (canonical); tests.md → fixtures; spec.md / 00-gaps.md stubs → spine
+docs/features/bills_pays/     # money-spine-v2/ (canonical); tests.md → fixtures; spec.md / 00-gaps.md stubs → v2
 docs/features/template/        # Copy for a new module.
 doc/supabase-schema.md         # Split tracker only.
 doc/fix/                       # Dated one-off fix notes. Not product truth.

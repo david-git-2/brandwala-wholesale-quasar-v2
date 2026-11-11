@@ -8,7 +8,7 @@
 | Adapter SQL | `supabase/schemas/bills_pays/07_shipment_money_wrappers.sql` (migration `20261028150000_*`) |
 | Spine (do not edit for shipment) | `supabase/schemas/bills_pays/05_money_spine.sql` — `issue_bill`, `void_bill`, `post_money_out`, … |
 | Procurement truth | [spec.md](spec.md) US-1 / US-8, [00-gaps.md](00-gaps.md) |
-| Kernel product | [money-spine.md](../bills_pays/money-spine.md) |
+| Kernel product | [money-spine-v2](../bills_pays/money-spine-v2/README.md) |
 | Web | `shipmentMoneyKernelRepository`, `useShipmentApFinance`, `apPayoutService` — see module map below |
 
 ## Scope

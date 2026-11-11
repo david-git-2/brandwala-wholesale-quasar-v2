@@ -1,98 +1,59 @@
 # Money kernel — PR checklist
 
-**Full spine (layers, flows, cases, gaps, examples):** [money-spine.md](../features/bills_pays/money-spine.md).
+**Full spine:** [money-spine-v2](../features/bills_pays/money-spine-v2/README.md).
 
-**Tests:** [tests.md](../features/bills_pays/tests.md) · **Ops SQL:** [08-AUDIT-RECONCILIATION-AND-RUNBOOK.md](08-AUDIT-RECONCILIATION-AND-RUNBOOK.md). Live SQL: `supabase/schemas/bills_pays/`.
+**Module RPCs:** [04-module-rpcs.md](../features/bills_pays/money-spine-v2/04-module-rpcs.md).
 
-**Live vs target:** Rules below are the contract; DB may lag — see [money-spine § Gaps](../features/bills_pays/money-spine.md#gaps-open).
+**Tests:** [tests.md](../features/bills_pays/tests.md) · v2 cases [03-tests.md](../features/bills_pays/money-spine-v2/03-tests.md).
+
+**Ops SQL:** [08-AUDIT-RECONCILIATION-AND-RUNBOOK.md](08-AUDIT-RECONCILIATION-AND-RUNBOOK.md). Live SQL: `supabase/schemas/bills_pays/` (may lag v2 until cutover).
 
 ---
 
-## Invariants (money PR checklist)
+## Invariants (v2)
 
 | # | Rule |
 | :--- | :--- |
-| 1 | Issued bill: no silent `UPDATE` of `total_amount`, parties, txn/books currency — use CN/DN children only |
-| 2 | AR/AP from direction (`from`/`to` tenant profile), not stored `is_ar` |
-| 3 | No new feature FK to `bills` / `pays` — use `(source_type, source_id, source_key)` |
-| 4 | One issued AP bill = one currency per bucket |
-| 5 | FX frozen on `cashbook_entries` at post time; bill txn/books pair frozen at issue |
-| 6 | Tenant cash pays need `cashbook_point_id` |
-| 7 | Overpay → profile custody; apply to next bill, not a second invoice |
-| 8 | No warehouse / FIFO inside `issue_bill` — feature orchestrates first |
-| 9 | No domain-specific payout RPCs in kernel — `source_type` + generic bill/pay |
-| 10 | Issued void blocked when settlements or issued CN/DN exist; commercial fix → CN not void |
-| 11 | Lifecycle (`draft`/`issued`/`voided`) separate from settlement; `reverse_pay` only moves settlement |
-| 12 | Balances from `bill_settlements`; features do not sum allocations in app |
-| 13 | Partial unique plug excludes `voided` |
-| 14 | Custody vs tenant asset separated on `cashbook_accounts.account_class` |
-| 15 | `cashbook_entries` append-only; pots maintained by trigger; transfer locks ordered |
-| 16 | Reporting may read `v_kernel_bill_summaries`; not base kernel tables |
-| 17 | New money writer RPCs: `pays.idempotency_key` per tenant |
-| 18 | All money RPCs follow global lock order; pay alloc locks bill before balance read |
-| 19 | `sync_shipment_ap_bills` never silent-updates **issued** standard bill totals |
-| 20 | Multi-currency settlement records `fx_realized_books_delta` on `bill_settlements` |
+| 1 | Features call RPCs only — no table DML on pots / pays / bills / settlements / events |
+| 2 | Writers: `SECURITY DEFINER` + `SET search_path` + `assert_kernel_money_access` |
+| 3 | Pot `amount` only via `fn_pays_apply` (I4–I5) |
+| 4 | Posted pays immutable except void (I6); void needs to-pot credit still present (I20) |
+| 5 | Bill parties = payer/payee: `from_profile_id` debtor, `to_profile_id` creditor |
+| 6 | Cash pay: from-pot owned by `bill.from_profile_id`; payment same currency; `exchange_rate=1` |
+| 7 | AP: pass vendor `to_pot` (kernel default to-pot is wrong for vendor custody) |
+| 8 | `credit_note`: no cash pay, no write-off; apply via `rpc_apply_document_settlement` only |
+| 9 | CN parties = swap of parent; parent issued/partial/paid/written_off |
+| 10 | Settlements: `pay` \| `document`; multi-bill pay = one pays + N pay rows |
+| 11 | `paid+due+written_off=total` unless voided (I10–I11) |
+| 12 | Totals freeze if bill is settle target **or** document source (I21) |
+| 13 | Void settlement may reopen `paid/partial → issued` (T4 reverse paths) |
+| 14 | `rpc_void_bill` refuses multi-bill pays — void pays first (I23) |
+| 15 | Idempotency: pays unique while **posted**; bills exclude voided; settlements deleted on void |
+| 16 | Transfer credit = `round(amount×rate,4)` on post and void (I22) |
+| 17 | Lock order: bills by id ASC → pots by id ASC → pays |
+| 18 | No feature FK to `bills`/`pays` — use `(source_type, source_id, source_key)` |
+| 19 | One AP bill = one currency (feature orchestration) |
+| 20 | Do not call `rpc_allocate_invoice_no` from features |
 
 ---
 
-## Bill lifecycle
+## Writers (v2 names)
 
-**Lifecycle** (never backward): `draft` → `issued` → `voided` (guarded).
-
-**Settlement** (from `bill_settlements`): `unpaid` → `partial` → `settled`; `reverse_pay` moves settlement only.
-
-| `settlement_kind` | Revenue | Stock |
-| :--- | :--- | :--- |
-| `take` | At **issue** | Feature commits FIFO **before** `issue_bill` |
-| `condition` | When **paid** | Per condition path |
-| `null` (AP) | COGS via shipment | None |
-
-**Do not** issue a bill from the pay desk. **Do not** store `paid` on lifecycle.
-
----
-
-## Pay flows (writers)
-
-| Flow | Live writer | Overflow / notes |
-| :--- | :--- | :--- |
-| Collect / remittance | `post_customer_receipt_with_allocations` | Custody ledger |
-| AP payout | `post_ap_payout_with_allocations` | FX → landed cost refresh |
-| Merchant profit | `post_money_out` (`commission`) | `_kernel_post_commission_payout` |
-| Balance read | `get_bill_net_balances(bill_id)` | Prefer over `due_amount` cache |
-| Apply leftover / CN | `apply_settlement_to_bill` | `bill_settlements` |
-
----
-
-## Concurrency
-
-| Topic | Rule |
+| Need | RPC |
 | :--- | :--- |
-| Isolation | READ COMMITTED; `FOR UPDATE` inside RPC |
-| Lock order | Bills, stock in feature RPCs, shipment lock paths |
-| Multi-row | Lock ids `ORDER BY id ASC`; pots `ORDER BY cashbook_point_id, currency_code` |
-| Idempotency | `pays.idempotency_key` per tenant |
-| Shipment money | Advisory `shipment_money:{id}` |
-| Pots | No direct `UPDATE` on `cashbook_point_pots` from writers |
-
----
-
-## Adapter plug matrix
-
-| Feature | `source_type` | `source_key` (examples) |
-| :--- | :--- | :--- |
-| Wholesale / POS | `compose` | — |
-| Shipment AP | `shipment_cost` | `material:USD`, `freight:GBP` |
-| Dropship | `shop_order` | merchant bill / courier AP |
-| Commission payout | `commission` | order id |
-| Delivery close | `delivery_close` | — |
-
-Legacy FKs (`shop_order_id`, `global_invoice_id`): retire, do not extend.
+| Cash in/out | `rpc_deposit` / `rpc_withdraw` |
+| Transfer / FX | `rpc_transfer_same_profile` / `rpc_transfer_p2p` |
+| Pay bill(s) | `rpc_pay_bill` / `rpc_pay_bills` |
+| Credit note apply | `rpc_apply_document_settlement` / `rpc_void_document_settlement` |
+| Reverse / correct cash | `rpc_void_pays` / `rpc_update_pays` (single-bill) |
+| Bill lifecycle | `rpc_create_bill` / `rpc_issue_bill` / `rpc_void_bill` / `rpc_write_off_bill` |
+| Provision pots | `rpc_provision_cashbook_currency` / `rpc_provision_tenant_cashbook` |
 
 ---
 
 ## Money PR checklist (before merge)
 
 - [ ] Invariants 1–20 above
-- [ ] `assert_kernel_money_access` in new `SECURITY DEFINER` money RPCs
-- [ ] Golden scenario updated if flow changed — [tests.md](../features/bills_pays/tests.md)
+- [ ] New writers match [02-actions.md](../features/bills_pays/money-spine-v2/02-actions.md)
+- [ ] Golden / v2 case updated if flow changed
 - [ ] Audit SQL on local seed — [08](08-AUDIT-RECONCILIATION-AND-RUNBOOK.md)

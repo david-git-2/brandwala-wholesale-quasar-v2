@@ -1,6 +1,6 @@
 # Bill pay dialog + credits (target)
 
-Not as-built. Complements [2026-10-10 inbound money](2026-10-10-shipment-inbound-money.md). Spec: [money-spine](../../docs/features/bills_pays/money-spine.md) AP paper / pays / vendor credit, [procurement](../../docs/features/procurement_stock/spec.md) US-7 / lock. Gaps: [WA15](../../docs/features/bills_pays/00-gaps.md), [PS8](../../docs/features/procurement_stock/00-gaps.md).
+Not as-built. Complements [2026-10-10 inbound money](2026-10-10-shipment-inbound-money.md). Spec: [money-spine](../../docs/features/bills_pays/money-spine-v2/README.md) AP paper / pays / vendor credit, [procurement](../../docs/features/procurement_stock/spec.md) US-7 / lock. Gaps: [WA15](../../docs/features/bills_pays/00-gaps.md), [PS8](../../docs/features/procurement_stock/00-gaps.md).
 
 ## Jobs
 

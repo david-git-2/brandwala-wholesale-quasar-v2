@@ -2,7 +2,7 @@
 
 ## Money
 
-**Single reference:** [money-spine.md](../features/bills_pays/money-spine.md).
+**Single reference:** [money-spine-v2](../features/bills_pays/money-spine-v2/README.md).
 
 | Also | Doc |
 | :--- | :--- |

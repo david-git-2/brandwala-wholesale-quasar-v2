@@ -26,7 +26,7 @@
 | In | Five finance report views + CSV export; see [REPORTS_PLAN.md](../../../REPORTS_PLAN.md) |
 | Out | Creating invoices; posting pays/remittance; editing shipments; invoice-line profit report; wallet liability report; courier COD report |
 
-Money: [money-spine](../bills_pays/money-spine.md).
+Money: [money-spine](../bills_pays/money-spine-v2/README.md).
 
 ## Locked: money layers
 

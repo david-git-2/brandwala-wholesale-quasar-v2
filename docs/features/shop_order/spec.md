@@ -28,7 +28,7 @@
 | In | Shops, carts, catalog/dropship orders, pricing, stock pick, pickup locations, reseller payout, dropship gifts, shop customer stock, auto gifts |
 | Out | Warehouse receive; Koba/thrift; wholesale invoice desk; catalog pack-out on **Delivery paper**; parent invoice engine for dropship |
 
-Dropship: pick → ship+issue both bills → deliver → remittance pay in. Later amount changes = credit/debit notes. Packing slip ≠ `sales_invoices` row. Catalog delivery: Delivery paper + optional proforma; close take/condition/return; then bills. Numbers: [money-spine](../bills_pays/money-spine.md#worked-examples). End-to-end map: [preorder-fulfillment-flow](../../preorder-fulfillment-flow.md).
+Dropship: pick → ship+issue both bills → deliver → remittance pay in. Later amount changes = credit/debit notes. Packing slip ≠ `sales_invoices` row. Catalog delivery: Delivery paper + optional proforma; close take/condition/return; then bills. Numbers: [money-spine](../bills_pays/money-spine-v2/README.md). End-to-end map: [preorder-fulfillment-flow](../../preorder-fulfillment-flow.md).
 
 ## Terminology (UI & docs)
 
@@ -84,7 +84,7 @@ Post-ship: **Dropship settlement** desk; `record_dropship_courier_remittance` is
 - [x] Reseller sees `cancel_reason` on shop order detail when `cancelled`.
 
 ### US-5: Dropship money layers
-- [x] **Recipient** — COD face on order only; not a `bills` row ([money-spine](../bills_pays/money-spine.md)).
+- [x] **Recipient** — COD face on order only; not a `bills` row ([money-spine](../bills_pays/money-spine-v2/README.md)).
 - [x] **Customer invoice** (UI; RPC `ship_dropship_order_and_issue_merchant_bill`) — issued AR to dropshipper at ship. Amount = B2B total, not COD.
 - [x] **Courier AP** — issued we-owe at ship (`upsert_dropship_courier_ap_bill`, `source_type = dropship_courier`). COD receivable still at deliver; tenant cash on **net** remittance pay in (`record_dropship_courier_remittance` → `post_customer_receipt_with_allocations`, `source = courier_remittance`). Remittance requires the customer bill **issued**.
 - [x] **Alloc** — remittance pays customer invoice; remainder → dropshipper **cashbook** (profit), pay out later — not a second AR bill. `payout_settlement_status` stays unpaid until `dispense_middleman_payout_from_tenant`. Money is **bills + pays + cashbook** only (settlement table is ops paper). Post remittance from **settlement desk → Courier pay in** or **Payments → Pay in → Courier**; same `record_dropship_courier_remittance`.

@@ -1,7 +1,7 @@
 # Wholesale order → invoice → payment fix
 
 **Date:** 2026-09-18  
-**Target:** [money-spine](../docs/features/bills_pays/money-spine.md)
+**Target:** [money-spine](../docs/features/bills_pays/money-spine-v2/README.md)
 
 ## Broken (as-built before fix)
 
