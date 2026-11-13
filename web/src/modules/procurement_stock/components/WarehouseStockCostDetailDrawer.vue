@@ -116,7 +116,7 @@ import FilterSidebar from 'src/components/FilterSidebar.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import {
   calculateLineLandedCostBreakdown,
-  costingShipmentFromEntries,
+  costingShipmentForPreview,
 } from 'src/shared/shipment-engine';
 import { formatLineLandedCostTooltip } from '../utils/lineLandedCostTooltip';
 import { formatGlobalShipmentStatus } from '../constants/shipmentStatus';
@@ -195,9 +195,10 @@ const purchaseSym = computed(() => {
 
 const costingShipment = computed(() => {
   if (!overview.value) return null;
-  return costingShipmentFromEntries(
+  return costingShipmentForPreview(
     overview.value.shipment,
     overview.value.cost_entries as never,
+    overview.value.ap_fx,
     overview.value.items,
   );
 });

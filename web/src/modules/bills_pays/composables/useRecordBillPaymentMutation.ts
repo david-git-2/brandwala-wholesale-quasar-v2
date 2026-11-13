@@ -1,77 +1,67 @@
 import { ref } from 'vue';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
-import {
-  postApPayoutSnapshot,
-  type ApPayoutBillDetailSnapshot,
-} from '../services/apPayoutService';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { cashbookQueryKeys } from '../services/cashbookQueryKeys';
 import { paysQueryKeys } from '../services/paysQueryKeys';
 import { useShipmentApFinanceInvalidation } from 'src/modules/procurement_stock/composables/useShipmentApFinance';
-import { createPayIdempotencyKey, paysRepository } from '../repositories/paysRepository';
+import { createPayIdempotencyKey } from '../repositories/paysRepository';
+import { moneyKernelRepository } from '../repositories/moneyKernelRepository';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
-import { buildWholesalePaymentInstrument } from '../utils/paymentInstrumentFields';
-import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
-import type { InvoicePaymentHistoryEntry } from 'src/modules/sales_invoice/types';
-import type { BillDetailBundle } from '../repositories/billsRepository';
-import type { BillNetBalances } from '../types/billBalances';
-
-type InstrumentFieldValues = {
-  bdBankId: number | null;
-  chequeNumber: string;
-  instrumentDate: string;
-  instrumentReference: string;
-};
 
 export type RecordBillPaymentInput = {
   tenantId: number;
   billId: number;
   isAp: boolean;
-  profileId: number;
+  /** Bill debtor (`from_profile_id`) — kernel payer. */
+  payerProfileId: number;
   shipmentId?: number | null;
-  cashbookPointId?: number | null;
   paidOn: string;
-  amountBdt: number;
-  /** Bill due at submit time; allocation is capped here when payment is higher. */
+  paymentAmount: number;
   billDueAmount: number;
   settlementCurrencyCode: string;
-  /** Parent books currency; FX omitted when settlement matches this. */
-  booksCurrencyCode?: string;
-  foreignAmount: number | null;
-  exchangeRate: number | null;
-  sourceCurrencyCode?: string | null;
-  transactionRate?: number | null;
-  cashbookPointPotId?: number | null;
+  /** Cash bundle debited (AP: tenant pot; AR: customer pot after in-memory credit). */
+  fromPotId: number;
+  /** From bill detail bundle leg — avoids extra balance RPCs. */
+  fromPotCurrencyCode?: string;
+  fromPotAvailableBalance?: number | null;
+  toPotId?: number | null;
   methodCode: string;
   reference: string | null;
   note: string | null;
-  instrumentFields: InstrumentFieldValues;
 };
 
-function applyApPayoutSnapshotToCache(
-  queryClient: ReturnType<typeof useQueryClient>,
-  billId: number,
-  snapshot: ApPayoutBillDetailSnapshot,
-) {
-  queryClient.setQueryData<BillDetailBundle | undefined>(
-    billsQueryKeys.detailBundle(billId),
-    (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        bill: snapshot.bill
-          ? ({ ...old.bill, ...snapshot.bill } as GlobalInvoiceDetail)
-          : old.bill,
-        netBalances: snapshot.net_balances
-          ? (snapshot.net_balances as BillNetBalances)
-          : old.netBalances,
-        paymentHistory:
-          snapshot.payment_history != null
-            ? (snapshot.payment_history as InvoicePaymentHistoryEntry[])
-            : old.paymentHistory,
-      };
-    },
-  );
+async function resolveFromPotForPay(
+  payload: RecordBillPaymentInput,
+  allocAmount: number,
+  idempotencyKey: string,
+): Promise<number> {
+  const settle = payload.settlementCurrencyCode.trim().toUpperCase() || 'BDT';
+  let fromPotId = payload.fromPotId;
+
+  const potCur =
+    (payload.fromPotCurrencyCode ?? settle).trim().toUpperCase() || settle;
+
+  if (potCur !== settle) {
+    const provisioned = await moneyKernelRepository.provisionCashbookCurrency(
+      payload.tenantId,
+      payload.payerProfileId,
+      settle,
+    );
+    const targetPotId = provisioned.pot_id;
+    if (targetPotId == null) {
+      throw new Error('Could not open a cash bundle in the bill currency.');
+    }
+    await moneyKernelRepository.transferSameProfile({
+      tenantId: payload.tenantId,
+      fromPotId,
+      toPotId: targetPotId,
+      amount: allocAmount,
+      idempotencyKey: `${idempotencyKey}-fx`,
+    });
+    fromPotId = targetPotId;
+  }
+
+  return fromPotId;
 }
 
 export function useRecordBillPaymentMutation(billId: () => number | null) {
@@ -87,96 +77,94 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
     },
     mutationFn: async (payload: RecordBillPaymentInput) => {
       const idempotencyKey = attemptKey.value ?? createPayIdempotencyKey();
-      const hasBank = ['bank_transfer', 'bank', 'cheque'].includes(
-        payload.methodCode.toLowerCase(),
-      );
-      const instruments = [
-        buildWholesalePaymentInstrument({
-          payment_method_code: payload.methodCode,
-          amount: payload.amountBdt,
-          instrument_reference: payload.instrumentFields.instrumentReference,
-          bd_bank_id: payload.instrumentFields.bdBankId,
-          cheque_number: payload.instrumentFields.chequeNumber,
-          instrument_date: payload.instrumentFields.instrumentDate,
-          cashbook_point_id: payload.cashbookPointId ?? null,
-        }),
-      ];
+      if (!payload.fromPotId) {
+        throw new Error(payload.isAp ? 'Choose which cash point pays this out.' : 'Choose where cash is received.');
+      }
+
       const due = Math.max(0, Number(payload.billDueAmount) || 0);
-      const allocAmount = Math.min(payload.amountBdt, due);
-      const allocations =
-        allocAmount > 0 ? [{ bill_id: payload.billId, amount: allocAmount }] : [];
-      const booksBase = (payload.booksCurrencyCode ?? 'BDT').trim().toUpperCase();
-      const settle = (payload.settlementCurrencyCode ?? booksBase).trim().toUpperCase();
-      const needsBooksFx = settle !== booksBase;
-      const fx = {
-        settlement_currency_code: payload.settlementCurrencyCode,
-        foreign_amount: needsBooksFx ? payload.foreignAmount : null,
-        exchange_rate: needsBooksFx ? payload.exchangeRate : null,
-      };
+      const allocAmount = Math.min(payload.paymentAmount, due);
+      if (allocAmount <= 0) {
+        throw new Error('Payment amount must be greater than zero.');
+      }
 
-      if (payload.isAp) {
-        if (!payload.cashbookPointId) {
-          throw new Error('Choose which cash point pays this out.');
+      const settle = payload.settlementCurrencyCode.trim().toUpperCase() || 'BDT';
+      const allocations = [{ bill_id: payload.billId, amount: allocAmount }];
+
+      let fromPotId = payload.fromPotId;
+
+      if (!payload.isAp) {
+        const provisioned = await moneyKernelRepository.provisionCashbookCurrency(
+          payload.tenantId,
+          payload.payerProfileId,
+          settle,
+        );
+        const customerPotId = provisioned.pot_id;
+        if (customerPotId == null) {
+          throw new Error('Could not open customer cash bundle for this currency.');
         }
-        const apPayload = {
-          tenant_id: payload.tenantId,
-          profile_id: payload.profileId,
-          cashbook_point_id: payload.cashbookPointId,
-          paid_on: payload.paidOn,
-          note: payload.note,
-          reference: payload.reference,
-          instruments,
-          allocations,
-          amount: payload.amountBdt,
-          settlement_currency_code: fx.settlement_currency_code,
-          foreign_amount: fx.foreign_amount,
-          exchange_rate: fx.exchange_rate,
-          source_currency_code: payload.sourceCurrencyCode ?? undefined,
-          transaction_rate: payload.transactionRate ?? undefined,
-          cashbook_point_pot_id: payload.cashbookPointPotId ?? undefined,
-          shipment_id: payload.shipmentId ?? null,
-          idempotency_key: idempotencyKey,
-        };
-        const snapshotResult = await postApPayoutSnapshot(apPayload);
-        return snapshotResult;
+        await moneyKernelRepository.deposit({
+          tenantId: payload.tenantId,
+          profileId: payload.payerProfileId,
+          amount: allocAmount,
+          currencyCode: settle,
+          potId: customerPotId,
+          idempotencyKey: `${idempotencyKey}-collect`,
+          meta: {
+            paid_on: payload.paidOn,
+            reference: payload.reference,
+            note: payload.note,
+          },
+        });
+        fromPotId = customerPotId;
       }
 
-      if (!payload.isAp && !payload.cashbookPointId) {
-        throw new Error('Choose where to receive cash.');
+      fromPotId = await resolveFromPotForPay(
+        { ...payload, fromPotId },
+        allocAmount,
+        idempotencyKey,
+      );
+
+      const available =
+        payload.fromPotAvailableBalance != null
+          ? Number(payload.fromPotAvailableBalance)
+          : null;
+      if (available != null && available < allocAmount) {
+        throw new Error(
+          `Not enough balance in this cash bundle (${available} ${settle}, need ${allocAmount}). Add money first.`,
+        );
       }
 
-      await paysRepository.postMoneyIn({
-        tenant_id: payload.tenantId,
-        profile_id: payload.profileId,
-        received_on: payload.paidOn,
-        note: payload.note,
-        reference: payload.reference,
-        source: hasBank ? 'bank' : 'customer_cash',
-        instruments,
+      await moneyKernelRepository.payBills({
+        tenantId: payload.tenantId,
+        payerProfileId: payload.payerProfileId,
+        fromPotId,
+        amount: allocAmount,
         allocations,
-        ...fx,
-        idempotency_key: idempotencyKey,
-        cashbook_point_id: payload.cashbookPointId ?? null,
-        cashbook_point_pot_id: payload.cashbookPointPotId ?? null,
-        source_currency_code: payload.sourceCurrencyCode ?? null,
-        transaction_rate: payload.transactionRate ?? null,
+        toPotId: payload.toPotId ?? undefined,
+        meta: {
+          paid_on: payload.paidOn,
+          method_code: payload.methodCode,
+          reference: payload.reference,
+          note: payload.note,
+          shipment_id: payload.shipmentId ?? null,
+        },
+        idempotencyKey,
       });
-      return null;
+
+      return { shipmentId: payload.shipmentId ?? null };
     },
     onSettled: () => {
       attemptKey.value = null;
     },
-    onSuccess: (snapshot, payload) => {
+    onSuccess: (result, payload) => {
       const id = billId();
       showSuccessNotification('Payment recorded.');
 
-      if (payload.isAp && snapshot && id) {
-        applyApPayoutSnapshotToCache(queryClient, id, snapshot);
-        for (const sid of snapshot.shipmentIds ?? []) {
-          invalidateAfterApPay(sid);
-        }
-      } else if (id) {
+      if (id) {
         void queryClient.invalidateQueries({ queryKey: billsQueryKeys.detailBundle(id) });
+      }
+      if (payload.isAp && result?.shipmentId) {
+        invalidateAfterApPay(result.shipmentId);
       }
 
       void queryClient.invalidateQueries({ queryKey: billsQueryKeys.root, refetchType: 'none' });

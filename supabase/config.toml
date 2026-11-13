@@ -27,9 +27,10 @@ schema_paths = [
   "./schemas/money_kernel_v2/24_money_kernel_rpcs_write.sql",
   "./schemas/money_kernel_v2/25_money_kernel_rpcs_read.sql",
   "./schemas/money_kernel_v2/26_money_kernel_grants.sql",
-  "./schemas/money_kernel_v2/27_money_kernel_cashbook_lots.sql",
-  "./schemas/money_kernel_v2/27_money_kernel_cashbook_lots_helpers.sql",
-  "./schemas/money_kernel_v2/28_money_kernel_lot_triggers.sql",
+  "./schemas/money_kernel_v2/27_money_kernel_cash_bundles.sql",
+  "./schemas/money_kernel_v2/27_money_kernel_cash_bundles_helpers.sql",
+  "./schemas/money_kernel_v2/28_money_kernel_bundle_triggers.sql",
+  "./schemas/money_kernel_v2/29_money_kernel_bundle_grants.sql",
 ]
 
 [studio]

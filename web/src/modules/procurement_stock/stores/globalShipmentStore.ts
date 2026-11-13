@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { supabase } from 'src/boot/supabase';
 import {
   globalShipmentRepository,
+  mergeShipmentApFxSnapshot,
   type FinalizeShipmentResult,
   type FinalizeShipmentStockRow,
   type GlobalShipment,
@@ -17,7 +18,10 @@ import {
 import type { BatchCodeItem, BatchCodeList } from '../repositories/batchCodeRepository';
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository';
 import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxRepository';
-import { globalShipmentCostEntryRepository } from '../repositories/globalShipmentCostEntryRepository';
+import {
+  globalShipmentCostEntryRepository,
+  SHIPMENT_COST_ENTRIES_RETIRED_MESSAGE,
+} from '../repositories/globalShipmentCostEntryRepository';
 import {
   parseShipmentApIssueParties,
   type ShipmentApIssueParties,
@@ -38,16 +42,13 @@ import {
   type UpsertShipmentCostEntryPayload,
 } from '../types/shipmentCostEntry';
 import type { SaveShipmentCostEntriesOptions } from '../repositories/globalShipmentCostEntryRepository';
-import {
-  mergeShipmentApBillIntoList,
-  shipmentApBillRowFromCostEntryIssue,
-} from '../utils/shipmentCostEntryApIssueCache';
+import { mergeShipmentApBillIntoList } from '../utils/shipmentCostEntryApIssueCache';
 import {
   shipmentApBillV2Repository,
   type CreateShipmentApBillPayload,
 } from '../repositories/shipmentApBillV2Repository';
-import { moneyKernelRepository } from 'src/modules/bills_pays/repositories/moneyKernelRepository';
 import type { ShipmentApKind } from '../constants/shipmentApBuckets';
+import type { ShipmentMoneyKernelBundle } from '../repositories/shipmentMoneyKernelRepository';
 import type {
   CreateShipmentSectionPayload,
   ShipmentSection,
@@ -68,6 +69,14 @@ const COST_AFFECTING_ITEM_FIELDS = new Set([
 ]);
 
 const COST_AFFECTING_SHIPMENT_FIELDS = new Set(['received_weight', 'total_weight_kg']);
+
+/** Weight-only header edits must not run sync_shipment_ap_bills (can mint legacy AP drafts from header totals). */
+const SHIPMENT_WEIGHT_ONLY_UPDATE_FIELDS = new Set(['received_weight', 'total_weight_kg']);
+
+const isShipmentWeightOnlyUpdate = (payload: Record<string, unknown>): boolean => {
+  const keys = Object.keys(payload).filter((key) => payload[key] !== undefined);
+  return keys.length > 0 && keys.every((key) => SHIPMENT_WEIGHT_ONLY_UPDATE_FIELDS.has(key));
+};
 
 const localCostsFromCostEntries = (
   entries: GlobalShipmentCostEntry[],
@@ -93,6 +102,22 @@ const localCostsFromCostEntries = (
 const reloadShipmentLineCosts = async (shipmentId: number): Promise<GlobalShipmentItem[]> => {
   invalidateSharedShipmentItemsCostingCache(shipmentId);
   return globalShipmentRepository.listShipmentItems(shipmentId);
+};
+
+const apFxHasPayments = (apFx: ShipmentApFxSnapshot | null): boolean =>
+  (apFx?.material?.payment_count ?? 0) + (apFx?.freight?.payment_count ?? 0) > 0;
+
+const apFxRatesEqual = (
+  a: ShipmentApFxSnapshot | null,
+  b: ShipmentApFxSnapshot | null,
+): boolean => {
+  if (!a || !b) return a === b;
+  return (
+    a.product_conversion_rate === b.product_conversion_rate
+    && a.cargo_conversion_rate === b.cargo_conversion_rate
+    && a.cargo_rate === b.cargo_rate
+    && a.transaction_rate === b.transaction_rate
+  );
 };
 
 const draftToUpsertPayload = (
@@ -372,10 +397,15 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
 
         this.currentShipmentStocks = [];
 
+        const prevApFx =
+          this.settingsFinanceCachedShipmentId === shipmentId
+            ? this.settingsFinanceCachedApFx
+            : null;
+        this.settingsFinanceCachedShipmentId = shipmentId;
+        this.settingsFinanceCachedApFx = overview.ap_fx;
+        void this.maybeRestampLandedCostsAfterApFx(shipmentId, overview.ap_fx, prevApFx);
         if (overview.ap_bills != null) {
-          const overviewAp = overview.ap_bills;
-          this.settingsFinanceCachedShipmentId = shipmentId;
-          this.settingsFinanceCachedApBills = parseShipmentApBillRows(overviewAp);
+          this.settingsFinanceCachedApBills = parseShipmentApBillRows(overview.ap_bills);
         }
         this.settingsFinanceCachedApIssueParties = parseShipmentApIssueParties(
           overview.ap_issue_parties,
@@ -406,6 +436,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
                 items: this.currentShipmentItems,
                 cost_entries: this.currentCostEntries,
                 boxes: this.currentShipmentBoxes,
+                apFx: this.settingsFinanceCachedApFx,
               }
             : undefined;
         this.currentShipmentSummary = await globalShipmentRepository.getShipmentSummary(
@@ -422,13 +453,11 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     async fetchCostEntries(shipmentId: number) {
       this.costEntriesLoading = true;
       try {
-        await globalShipmentCostEntryRepository.ensureFromHeader(shipmentId);
-        this.currentCostEntries =
-          (await globalShipmentCostEntryRepository.listByShipmentId(shipmentId)) as any;
-      } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to load cost entries';
         this.currentCostEntries = [];
-        throw err;
+        if (this.settingsFinanceCachedShipmentId === shipmentId) {
+          this.settingsFinanceCachedCostEntries = [];
+        }
+        return this.currentCostEntries;
       } finally {
         this.costEntriesLoading = false;
       }
@@ -464,6 +493,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         const contextTenantId =
           options?.contextTenantId ??
           (this.currentShipment?.id === shipmentId ? this.currentShipment.tenant_id : null);
+        const prevApFx = this.settingsFinanceCachedApFx;
         const bundle = await fetchShipmentMoneyKernelBundle(shipmentId, contextTenantId);
         this.currentCostEntries = bundle.costEntries as GlobalShipmentCostEntry[];
         this.settingsFinanceCachedShipmentId = shipmentId;
@@ -471,6 +501,10 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.settingsFinanceCachedApFx = bundle.apFx;
         this.settingsFinanceCachedCostEntries = bundle.costEntries as GlobalShipmentCostEntry[];
         this.settingsFinanceCachedApIssueParties = bundle.apIssueParties;
+        if (this.currentShipment?.id === shipmentId) {
+          this.currentShipment = mergeShipmentApFxSnapshot(this.currentShipment, bundle.apFx);
+        }
+        void this.maybeRestampLandedCostsAfterApFx(shipmentId, bundle.apFx, prevApFx);
         return {
           apBills: bundle.apBills,
           apFx: bundle.apFx,
@@ -644,41 +678,19 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         throw new Error('Shipment not loaded');
       }
 
-      this.costEntriesSaving = true;
-      this.error = null;
-      try {
-        const result = await globalShipmentCostEntryRepository.saveBatch(
-          shipmentId,
-          entries,
-          options,
-        );
-        this.currentCostEntries = result.cost_entries as any;
-        if (this.settingsFinanceCachedShipmentId === shipmentId) {
-          this.settingsFinanceCachedCostEntries = result.cost_entries as GlobalShipmentCostEntry[];
-        }
-        this.currentShipmentItems = result.items;
-        seedSharedShipmentItemsCostingCache(shipmentId, result.items);
-        if (result.shipment && this.currentShipment?.id === shipmentId) {
-          const total =
-            result.shipment.total_weight_kg ??
-            result.shipment.received_weight ??
-            this.currentShipment.total_weight_kg ??
-            this.currentShipment.received_weight ??
-            null;
-          this.currentShipment = {
-            ...this.currentShipment,
-            ...result.shipment,
-            total_weight_kg: total,
-            received_weight: result.shipment.received_weight ?? total,
-          };
-        }
-        return result;
-      } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to save cost entries';
-        throw err;
-      } finally {
-        this.costEntriesSaving = false;
+      const weightOnly =
+        entries.length === 0 &&
+        (options.receivedWeight != null || options.totalWeightKg != null);
+      if (weightOnly) {
+        const next =
+          options.totalWeightKg ?? options.receivedWeight ?? null;
+        return this.updateShipment(shipmentId, {
+          received_weight: next,
+          total_weight_kg: next,
+        });
       }
+
+      throw new Error(SHIPMENT_COST_ENTRIES_RETIRED_MESSAGE);
     },
 
     kernelApBillRowFromRpc(
@@ -793,63 +805,54 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
+    applySettingsFinanceBundle(shipmentId: number, bundle: ShipmentMoneyKernelBundle) {
+      const prevApFx = this.settingsFinanceCachedApFx;
+      this.settingsFinanceCachedShipmentId = shipmentId;
+      this.settingsFinanceCachedApBills = bundle.apBills;
+      this.settingsFinanceCachedApFx = bundle.apFx;
+      this.settingsFinanceCachedApIssueParties = bundle.apIssueParties;
+      if (bundle.costEntries.length > 0) {
+        this.currentCostEntries = bundle.costEntries as GlobalShipmentCostEntry[];
+        this.settingsFinanceCachedCostEntries = bundle.costEntries as GlobalShipmentCostEntry[];
+      }
+      if (this.currentShipment?.id === shipmentId) {
+        this.currentShipment = mergeShipmentApFxSnapshot(this.currentShipment, bundle.apFx);
+      }
+      void this.maybeRestampLandedCostsAfterApFx(shipmentId, bundle.apFx, prevApFx);
+    },
+
+    async maybeRestampLandedCostsAfterApFx(
+      shipmentId: number,
+      apFx: ShipmentApFxSnapshot | null,
+      previousApFx: ShipmentApFxSnapshot | null,
+    ) {
+      if (!apFx || !apFxHasPayments(apFx)) return;
+      if (apFxRatesEqual(apFx, previousApFx)) return;
+      const shipment = this.currentShipment;
+      if (!shipment || shipment.id !== shipmentId) return;
+      if (isShipmentCostsLocked(shipment)) return;
+      try {
+        await globalShipmentRepository.stampShipmentLandedCosts(shipmentId);
+        this.currentShipmentItems = await reloadShipmentLineCosts(shipmentId);
+      } catch (err: unknown) {
+        console.warn('stamp landed costs after ap fx failed', err);
+      }
+    },
+
     async issueShipmentApBillDraft(shipmentId: number, billId: number) {
       const shipment = this.currentShipment;
       if (!shipment || shipment.id !== shipmentId) throw new Error('Shipment not loaded');
-      const existing = this.settingsFinanceCachedApBills.find((b) => b.id === billId);
-      const result = await moneyKernelRepository.issueBill(shipment.tenant_id, billId);
-      const bucket = (existing?.ap_kind ?? 'material') as ShipmentApKind;
-      const row = this.kernelApBillRowFromRpc(shipmentId, bucket, result as Record<string, unknown>, 'issued');
-      if (this.settingsFinanceCachedShipmentId === shipmentId) {
-        this.settingsFinanceCachedApBills = mergeShipmentApBillIntoList(
-          this.settingsFinanceCachedApBills,
-          row,
-        );
-      }
-      return result;
+      const bundle = await shipmentApBillV2Repository.issue(shipmentId, billId);
+      this.applySettingsFinanceBundle(shipmentId, bundle);
+      return bundle;
     },
 
-    async issueCostEntryInvoice(shipmentId: number, costEntryId: number) {
+    async issueCostEntryInvoice(shipmentId: number, _costEntryId: number) {
       const shipment = this.currentShipment;
       if (!shipment || shipment.id !== shipmentId) {
         throw new Error('Shipment not loaded');
       }
-      const entry = this.currentCostEntries.find((e) => e.id === costEntryId);
-      if (!entry) throw new Error('Cost entry not found');
-
-      this.costEntriesSaving = true;
-      this.error = null;
-      try {
-        const issued = await globalShipmentCostEntryRepository.issueCostEntryApViaMoneyKernel(
-          costEntryId,
-        );
-        const stampMeta = {
-          ap_bill_id: issued.bill_id,
-          ap_bill_issued_at: new Date().toISOString(),
-          money_kernel_v2: true,
-        };
-        this.currentCostEntries = this.currentCostEntries.map((row) =>
-          row.id === costEntryId
-            ? {
-                ...row,
-                metadata: { ...(row.metadata ?? {}), ...stampMeta },
-              }
-            : row,
-        ) as GlobalShipmentCostEntry[];
-        if (this.settingsFinanceCachedShipmentId === shipmentId) {
-          this.settingsFinanceCachedCostEntries = this.currentCostEntries;
-          const apBillRow = shipmentApBillRowFromCostEntryIssue(issued, entry);
-          this.settingsFinanceCachedApBills = mergeShipmentApBillIntoList(
-            this.settingsFinanceCachedApBills,
-            apBillRow,
-          );
-        }
-      } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to create invoice';
-        throw err;
-      } finally {
-        this.costEntriesSaving = false;
-      }
+      throw new Error(SHIPMENT_COST_ENTRIES_RETIRED_MESSAGE);
     },
 
     async lockShipmentCosts(shipmentId: number) {
@@ -1023,7 +1026,9 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         if (index !== -1) {
           this.rows[index] = updated;
         }
-        await this.syncShipmentApBillsQuiet(id);
+        if (!isShipmentWeightOnlyUpdate(payload as Record<string, unknown>)) {
+          await this.syncShipmentApBillsQuiet(id);
+        }
         return updated;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to update shipment';

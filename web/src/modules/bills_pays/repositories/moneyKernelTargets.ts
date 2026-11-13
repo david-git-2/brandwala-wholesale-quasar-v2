@@ -12,6 +12,7 @@ export const MONEY_KERNEL_WRITE_RPC = {
   applyDocumentSettlement: 'rpc_apply_document_settlement',
   voidDocumentSettlement: 'rpc_void_document_settlement',
   voidPays: 'rpc_void_pays',
+  revertPays: 'rpc_revert_pays',
   updatePays: 'rpc_update_pays',
   createBill: 'rpc_create_bill',
   issueBill: 'rpc_issue_bill',

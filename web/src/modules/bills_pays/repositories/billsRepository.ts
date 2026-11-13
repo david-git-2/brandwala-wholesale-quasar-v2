@@ -19,6 +19,11 @@ import type {
   BillsListPageResult,
   ListBillsDeskPageParams,
 } from '../types/billList';
+import { moneyKernelRepository } from './moneyKernelRepository';
+import {
+  buildKernelCreateBillPayload,
+  buildKernelUpdateDraftPayload,
+} from '../utils/kernelComposeBillPayload';
 
 export type {
   BillDetailBundle,
@@ -120,6 +125,66 @@ const listBillItems = (billId: number) => invoiceRepository.listGlobalInvoiceIte
 
 const searchBillStock = (params: Parameters<typeof invoiceRepository.searchSalesInvoiceStock>[0]) =>
   invoiceRepository.searchSalesInvoiceStock(params);
+
+const kernelCreateResultToPayload = (data: {
+  bill_id?: number;
+  invoice_no?: string;
+  status?: string;
+  total_amount?: number;
+  due_amount?: number;
+}): SalesInvoiceFromPayloadResult => ({
+  success: true,
+  invoice_id: data.bill_id,
+  invoice_no: data.invoice_no,
+  invoice_status: data.status === 'issued' ? 'issued' : 'draft',
+  payment_status: data.status === 'issued' ? 'due' : 'draft',
+  total_amount: data.total_amount,
+  due_amount: data.due_amount,
+  paid_amount: 0,
+});
+
+const upsertKernelComposeDraft = async (
+  tenantId: number,
+  payload: SalesInvoiceFromPayloadInput,
+  autoIssue: boolean,
+): Promise<SalesInvoiceFromPayloadResult> => {
+  const body = buildKernelCreateBillPayload(tenantId, payload, { autoIssue });
+  const created = await moneyKernelRepository.createBill(body);
+  if (!created.bill_id) throw new Error(created.error ?? 'rpc_create_bill failed');
+  if (autoIssue && created.status !== 'issued') {
+    const issued = await moneyKernelRepository.issueBill(tenantId, created.bill_id);
+    return kernelCreateResultToPayload({ ...created, ...issued, status: issued.status ?? 'issued' });
+  }
+  return kernelCreateResultToPayload(created);
+};
+
+const updateKernelComposeDraft = async (
+  tenantId: number,
+  billId: number,
+  payload: SalesInvoiceUpdatePayloadInput,
+): Promise<SalesInvoiceFromPayloadResult> => {
+  const body = buildKernelUpdateDraftPayload({
+    invoice: {
+      invoice_type: 'wholesale',
+      profile_id: 0,
+      ...payload.invoice,
+    },
+    items: payload.items ?? [],
+    issue: false,
+  });
+  const updated = await moneyKernelRepository.updateDraftBillV2(tenantId, billId, body);
+  return kernelCreateResultToPayload({
+    bill_id: billId,
+    invoice_no: updated.invoice_no,
+    status: updated.status ?? 'draft',
+    total_amount: updated.total_amount,
+    due_amount: updated.due_amount,
+  });
+};
+
+const issueKernelComposeBill = async (tenantId: number, billId: number) => {
+  await moneyKernelRepository.issueBill(tenantId, billId);
+};
 
 const upsertDraftBill = async (
   tenantId: number,
@@ -229,13 +294,7 @@ const voidBill = async (
   options?: { tenantId?: number; spine?: 'legacy' | 'kernel' },
 ): Promise<void> => {
   if (options?.spine === 'kernel' && options.tenantId) {
-    const { error } = await supabase.rpc('rpc_void_bill', {
-      p_tenant_id: options.tenantId,
-      p_bill_id: billId,
-      p_reason: null,
-      p_reverse_payments: true,
-    });
-    if (error) throw error;
+    await moneyKernelRepository.voidKernelBill(options.tenantId, billId, null, true);
     return;
   }
   const { error } = await supabase.rpc('void_bill', { p_bill_id: billId });
@@ -249,6 +308,14 @@ const applySettlementToBill = async (payload: {
   allocator_id?: number;
   books_amount: number;
 }) => {
+  if (payload.allocator_kind === 'credit_note' && payload.allocator_id) {
+    return moneyKernelRepository.applyDocumentSettlement({
+      tenantId: payload.tenant_id,
+      sourceBillId: payload.allocator_id,
+      targetBillId: payload.bill_id,
+      amount: payload.books_amount,
+    });
+  }
   const { data, error } = await supabase.rpc('apply_settlement_to_bill', {
     p_tenant_id: payload.tenant_id,
     p_bill_id: payload.bill_id,
@@ -324,6 +391,9 @@ export const billsRepository = {
   listBillItems,
   searchBillStock,
   upsertDraftBill,
+  upsertKernelComposeDraft,
+  updateKernelComposeDraft,
+  issueKernelComposeBill,
   updateDraftBill,
   issueBill,
   issueApBillFromDesk,

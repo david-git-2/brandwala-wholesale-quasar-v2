@@ -949,7 +949,7 @@ import type {
 } from '../repositories/globalShipmentRepository';
 import {
   calculateLineLandedCostBdt,
-  costingShipmentFromEntries,
+  costingShipmentForPreview,
   sumProductEntryAmount,
 } from 'src/shared/shipment-engine';
 import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
@@ -1075,21 +1075,15 @@ const globalCurrencyMetaByCode = computed(() => {
   return byCode;
 });
 
-/** Add/Edit cost dialog — options match money_kernel.currencies; values stay global_currencies ids for the row FK. */
+/** Add/Edit cost dialog — active money currencies from list_global_currencies. */
 const allCurrencyOptions = computed((): CostCurrencySelectOption[] =>
   (moneyKernelCurrenciesData.value ?? [])
-    .map((c) => {
-      const global = globalCurrencyMetaByCode.value.get(c.code.toUpperCase());
-      if (global == null) return null;
-      const sym = global.symbol;
-      return {
-        label: `${c.code} (${sym}) — ${c.name}`,
-        value: global.id,
-        code: c.code,
-        name: c.name,
-      };
-    })
-    .filter((o): o is CostCurrencySelectOption => o != null)
+    .map((c) => ({
+      label: `${c.code} (${c.symbol || c.code}) — ${c.name}`,
+      value: c.id,
+      code: c.code,
+      name: c.name,
+    }))
     .sort((a, b) => a.code.localeCompare(b.code)),
 );
 
@@ -1517,9 +1511,10 @@ const resolveSummaryLineUnitLandedBdt = (
   const shipment = shipmentStore.currentShipment;
   if (!shipment) return Number(item.purchase_price) || 0;
 
-  const forCosting = costingShipmentFromEntries(
+  const forCosting = costingShipmentForPreview(
     shipment,
     shipmentStore.currentCostEntries,
+    shipmentStore.settingsFinanceCachedApFx,
     allItems,
   );
 
@@ -2267,7 +2262,8 @@ const onShipmentApBillIssue = async (billId: number) => {
   try {
     await shipmentStore.issueShipmentApBillDraft(props.shipmentId, billId);
     showSuccessNotification('Bill issued.');
-    await refreshShipmentApBills();
+    apBills.value = [...shipmentStore.settingsFinanceCachedApBills];
+    apFxSnapshot.value = shipmentStore.settingsFinanceCachedApFx;
   } catch (e: unknown) {
     showErrorNotification((e as Error).message || 'Could not issue bill');
   }
@@ -2284,19 +2280,8 @@ const onShipmentApBillVoid = async (billId: number) => {
   }
 };
 
-const issueCostRowByIndex = async (index: number) => {
-  const row = costRowsList.value[index];
-  const entryId = row?.dbId;
-  if (!entryId || !props.shipmentId || !row || !canIssueCostEntryInvoice(row)) return;
-  try {
-    await shipmentStore.issueCostEntryInvoice(props.shipmentId, entryId);
-    showSuccessNotification('Invoice created.');
-    syncCostsFromStore();
-    apBills.value = [...shipmentStore.settingsFinanceCachedApBills];
-    apFxSnapshot.value = shipmentStore.settingsFinanceCachedApFx;
-  } catch (err: unknown) {
-    showErrorNotification((err as Error).message || 'Could not create invoice');
-  }
+const issueCostRowByIndex = async (_index: number) => {
+  showErrorNotification('Issue cost AP from the bills list on the Costs tab.');
 };
 
 const DELETE_HOLD_MS = COST_LINE_HOLD_MS;
@@ -2388,66 +2373,13 @@ const closeAddCostDialog = () => {
 };
 
 const confirmCostDialog = async () => {
-  if (!props.shipmentId || isNaN(props.shipmentId) || costDialogSaving.value) return;
-
-  const raw = addCostForm.value.amount;
-  const amt = raw != null ? Number(raw) : NaN;
-  if (Number.isNaN(amt) || amt < 0) {
-    addCostFormAmountError.value = true;
-    return;
-  }
-  addCostFormAmountError.value = false;
-
-  if (addCostForm.value.currency_id == null) {
-    addCostFormCurrencyError.value = true;
-    return;
-  }
-  addCostFormCurrencyError.value = false;
-
-  const editingRow = editingCostLocalKey.value
-    ? costRowsList.value.find((r) => r.localKey === editingCostLocalKey.value)
-    : null;
-  const bucket = editingRow?.cost_bucket ?? costBucketFilter.value;
-  if (editingRow) {
-    if (!canEditCostRow(editingRow)) return;
-  } else if (!canAddCostInBucket(bucket)) return;
-  const roundedAmt = Math.round(amt * 100) / 100;
-
-  const payload: UpsertShipmentCostEntryPayload = {
-    shipment_id: props.shipmentId,
-    id: editingRow?.dbId ?? null,
-    cost_bucket: bucket,
-    cost_component: addCostForm.value.cost_component,
-    currency_id: addCostForm.value.currency_id,
-    amount: roundedAmt,
-    description: addCostForm.value.description.trim() || null,
-  };
-
-  costDialogSaving.value = true;
-  savingCosts.value = true;
-  try {
-    await shipmentStore.saveCostEntriesBatch(props.shipmentId, [payload], {});
-    syncCostsFromStore();
-    const wasEdit = editingRow != null;
-    closeAddCostDialog();
-    $q.notify({
-      message: wasEdit ? 'Cost line updated' : 'Cost line added',
-      color: 'positive',
-      icon: 'ph ph-check-circle',
-      timeout: 1000,
-    });
-  } catch (err: unknown) {
-    console.error('Failed to save cost line:', err);
-    $q.notify({
-      message: 'Failed to save cost line',
-      color: 'negative',
-      icon: 'ph ph-warning-circle',
-      timeout: 1500,
-    });
-  } finally {
-    costDialogSaving.value = false;
-    savingCosts.value = false;
-  }
+  $q.notify({
+    message: 'Cost lines are saved as AP bills on this tab. Use Add bill instead.',
+    color: 'warning',
+    icon: 'ph ph-info',
+    timeout: 2500,
+  });
+  closeAddCostDialog();
 };
 
 const removeCostRow = async (index: number) => {
@@ -2481,9 +2413,9 @@ const saveShipmentWeightIfChanged = async () => {
 
   savingWeight.value = true;
   try {
-    await shipmentStore.saveCostEntriesBatch(props.shipmentId, [], {
-      receivedWeight: nextWeight,
-      totalWeightKg: nextWeight,
+    await shipmentStore.updateShipment(props.shipmentId, {
+      received_weight: nextWeight,
+      total_weight_kg: nextWeight,
     });
     $q.notify({
       message: 'Weight saved',

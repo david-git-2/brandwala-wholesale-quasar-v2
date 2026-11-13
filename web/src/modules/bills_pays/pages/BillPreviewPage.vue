@@ -33,6 +33,8 @@
               :source-type="bill.source_type"
               :source-id="bill.source_id"
               :source-key="bill.source_key ?? bill.ap_kind"
+              :ap-kind="bill.ap_kind"
+              :shipment-id="billShipmentId"
             />
           </div>
           <div class="col-auto text-right">
@@ -229,6 +231,7 @@ import BillKernelSourceChips from '../components/BillKernelSourceChips.vue';
 import { useBillDetailQuery } from '../composables/useBillDetailQuery';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { apBillCurrencyBalances } from '../utils/parseApBillPaper';
+import { shipmentIdFromBill } from '../utils/shipmentApBillSource';
 
 const BRAND_STORAGE_KEY = 'bills_pays_last_invoice_brand_id';
 
@@ -287,6 +290,7 @@ watch(selectedBrandId, (id) => {
 });
 
 const bill = computed(() => detailQuery.data.value as GlobalInvoiceDetail | undefined);
+const billShipmentId = computed(() => shipmentIdFromBill(bill.value) ?? null);
 const isApBill = computed(() => bill.value?.invoice_type === 'ap');
 const isManualComposeApBill = computed(
   () => isApBill.value && bill.value?.source_type === 'compose',

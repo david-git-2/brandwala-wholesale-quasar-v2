@@ -78,10 +78,13 @@ Money uses the **same global catalog** as stock, shipments, and shop — not a d
 | `id` | PK — target FK on bundles and pays |
 | `code` | Unique ISO-like code (`BDT`, `GBP`, `USD`) — joins `books_exchange_rates` |
 | `symbol` | UI label (`৳`, `£`, `$`) |
+| `minor_units` | Decimal places for amount entry (BDT/USD/GBP = 2) |
 | `name`, `country` | Display |
 | `is_active`, `is_system` | Desk may list via `list_global_currencies`; only active rows for new money rows |
 
-**Cutover (live SQL today):** `money_kernel.currencies` + `list_money_kernel_currencies` still exist. **Target:** drop kernel catalog; FK kernel rows to `global_currencies`; wallet/desk calls **`list_global_currencies`** (same as procurement).
+**Money-active catalog:** only **BDT, USD, GBP** are `is_active = true` for new cash/bundle rows; other `global_currencies` rows stay in the table (other modules FK them) with `is_active = false`.
+
+**Cutover:** drop `money_kernel.currencies`; FK kernel rows to `global_currencies`; desk/wallet use **`list_global_currencies`** (includes `minor_units`).
 
 | Where used | Field (target) |
 | :--- | :--- |
@@ -176,6 +179,7 @@ Bill paper and settlements: [bills/spec.md § What each table does](../bills/spe
 | `id` | FK on bundles and pays (**target**) |
 | `code` | ISO code; joins `books_exchange_rates` |
 | `symbol` | Desk display |
+| `minor_units` | Decimal places (2 for BDT/USD/GBP) |
 | `name`, `country` | Labels |
 | `is_active` | Exclude from new cash rows when false |
 | `is_system` | Protect seed rows |
@@ -284,6 +288,10 @@ All writes via `public.rpc_*` only.
 | Amount | `50000` |
 | Currency | `BDT` |
 | Server `books_rate` | `1` |
+| `p_location_code` | Optional; default `main`. Used when `p_pot_id` is null to open/credit at that cash location. |
+| `p_pot_id` | Optional; when set, credit that bundle (same currency). When null, server opens a tranche at `p_location_code` (or resolves rate for FX). |
+
+**RPC return (JSON):** `pays_id`, `kind`, `pot_id` and `cash_bundle_id` (same id), `amount`, `currency_code`, `books_amount`, `balance_after`, `payment_date`, `status`, `idempotent`.
 
 **Before:** no bundle, or existing BDT bundle @ 1 with `amount = 200000`.
 
@@ -440,6 +448,7 @@ Pure wallet moves use deposit / withdraw / transfer only. **`kind=payment`** on 
 | Currency pick list | **`list_global_currencies`** (replaces `list_money_kernel_currencies`) |
 | Bundle balance | `rpc_get_pot_balance`, `rpc_get_pot_balances` → bundle ids |
 | Ledger | `rpc_profile_transactions` |
+| People / desk activity | `list_profile_activity_for_staff` — kernel `deposit` / `withdrawal` / `transfer` **and** `payment` (bill settlements). Kernel rows map to desk list fields: `amount` = BDT `books_amount`, `foreign_amount` = currency `amount` when `currency_code` ≠ BDT. |
 
 ---
 

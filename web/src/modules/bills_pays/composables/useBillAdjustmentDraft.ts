@@ -29,6 +29,7 @@ function formatForeignAmount(amount: number): string {
 
 export function useBillAdjustmentDraft(params: {
   bill: Ref<GlobalInvoiceDetail | undefined>;
+  booksTenantId: Ref<number>;
   stockLines: Ref<GlobalInvoiceItemRow[]>;
   isAp: Ref<boolean>;
   parentDueAmount: Ref<number>;
@@ -285,6 +286,7 @@ export function useBillAdjustmentDraft(params: {
 
     return {
       parentBillId: params.bill.value.id,
+      tenantId: params.booksTenantId.value,
       kind: kind.value,
       amount: noteTotalBdt.value,
       reason: reason.value.trim(),

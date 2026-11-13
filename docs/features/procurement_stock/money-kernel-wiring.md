@@ -66,7 +66,7 @@ post_ap_payout_with_allocations, create_sales_invoice, …
 
 | # | Action | Procurement store | Kernel store | Adapter / spine |
 | :--- | :--- | :--- | :--- | :--- |
-| 1 | Save cost rows | `global_shipment_cost_entries` | — | save batch RPC → `sync_shipment_ap_bills` |
+| 1 | Save draft AP (Costs tab) | — | `money_kernel.bills` | **`update_shipment_ap_bill_v2`** / **`create_shipment_ap_bill_v2`** |
 | 2 | Sync AP | — | draft `bills` | `sync_shipment_ap_bills` → `_upsert_shipment_ap_bill` |
 | 3 | Lock costs | `costs_locked` | issued AP | **`lock_global_shipment_costs`** (shipment **`in_transit` or `received`**, stock posted) → sync → session `app.shipment_ap_issue` → **`issue_shipment_ap_bills`** → **`issue_bill`**. No Bill-desk issue; **`issue_shipment_ap_bill_for_kind` retired**. |
 | 4 | Pay vendor/cargo | — | `pays`, allocations, cashbook | **`post_shipment_ap_money_out`** only when shipment **`in_transit`/`received`**, **`costs_locked`**, bills **issued** → **`post_money_out`** |

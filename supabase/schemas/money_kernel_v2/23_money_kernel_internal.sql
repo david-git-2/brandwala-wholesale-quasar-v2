@@ -259,6 +259,54 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.profile_auto_provisions_cashbook(p_profile_id bigint)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.profiles pr
+    WHERE pr.id = p_profile_id
+      AND pr.is_active = true
+      AND pr.deleted_at IS NULL
+      AND pr.cashbook_enabled = true
+      AND pr.profile_type IN (
+        'tenant'::public.profile_party_type,
+        'customer'::public.profile_party_type,
+        'investor'::public.profile_party_type
+      )
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_provision_profile_cashbook_defaults(
+  p_books_tenant_id bigint,
+  p_profile_id bigint
+)
+RETURNS bigint
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, money_kernel, pg_temp
+AS $$
+DECLARE
+  v_account_id bigint;
+BEGIN
+  IF p_books_tenant_id IS NULL OR p_profile_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+  IF NOT public.profile_auto_provisions_cashbook(p_profile_id) THEN
+    RETURN NULL;
+  END IF;
+
+  v_account_id :=
+    public.fn_provision_kernel_cashbook_for_profile_row(p_books_tenant_id, p_profile_id);
+  PERFORM public.ensure_cashbook_account_for_profile(p_profile_id, 'BDT');
+  RETURN v_account_id;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.fn_provision_kernel_cashbook_for_profile_row(
   p_books_tenant_id bigint,
   p_profile_id bigint
@@ -276,63 +324,68 @@ BEGIN
   IF p_books_tenant_id IS NULL OR p_profile_id IS NULL THEN
     RETURN NULL;
   END IF;
+  IF NOT public.profile_auto_provisions_cashbook(p_profile_id) THEN
+    RETURN NULL;
+  END IF;
 
   SELECT ca.id INTO v_account_id
-  FROM money_kernel.cashbook_accounts ca
+  FROM money_kernel.cashbooks ca
   WHERE ca.tenant_id = p_books_tenant_id
-    AND ca.entity_type = 'profile'
-    AND ca.entity_id = p_profile_id
+    AND ca.profile_id = p_profile_id
   LIMIT 1;
 
   IF v_account_id IS NULL THEN
-    INSERT INTO money_kernel.cashbook_accounts
-      (tenant_id, entity_type, entity_id, profile_id)
-    VALUES
-      (p_books_tenant_id, 'profile', p_profile_id, p_profile_id)
+    INSERT INTO money_kernel.cashbooks (tenant_id, profile_id)
+    VALUES (p_books_tenant_id, p_profile_id)
     RETURNING id INTO v_account_id;
   END IF;
 
   SELECT cp.id INTO v_point_id
-  FROM money_kernel.cashbook_points cp
-  WHERE cp.cashbook_account_id = v_account_id
-    AND cp.code = 'main'
+  FROM money_kernel.cash_locations cp
+  WHERE cp.cashbook_id = v_account_id
+    AND cp.location_code = 'main'
   LIMIT 1;
 
   IF v_point_id IS NULL THEN
-    INSERT INTO money_kernel.cashbook_points
-      (tenant_id, cashbook_account_id, code, name)
+    INSERT INTO money_kernel.cash_locations
+      (tenant_id, cashbook_id, location_code, name)
     VALUES
       (p_books_tenant_id, v_account_id, 'main', 'Main')
     RETURNING id INTO v_point_id;
   END IF;
 
   SELECT pp.id INTO v_lot_id
-  FROM money_kernel.cashbook_lots pp
-  WHERE pp.cashbook_point_id = v_point_id
+  FROM money_kernel.cash_bundles pp
+  WHERE pp.cash_location_id = v_point_id
     AND pp.currency_code = 'BDT'
     AND pp.books_rate = 1
+    AND pp.closed_at IS NULL
   ORDER BY pp.id
   LIMIT 1;
 
   IF v_lot_id IS NULL THEN
-    v_lot_id := money_kernel.fn_open_cashbook_lot(
+    v_lot_id := money_kernel.fn_open_cash_bundle(
       p_books_tenant_id, v_point_id, 'BDT', 1::numeric(15, 6), NULL
     );
   END IF;
 
-  UPDATE money_kernel.cashbook_accounts
-     SET default_cashbook_lot_id = coalesce(default_cashbook_lot_id, v_lot_id)
+  UPDATE money_kernel.cashbooks
+     SET default_cash_bundle_id = coalesce(default_cash_bundle_id, v_lot_id)
    WHERE id = v_account_id;
 
   RETURN v_account_id;
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.fn_provision_kernel_cashbook_currency(bigint, bigint, text);
+DROP FUNCTION IF EXISTS public.fn_provision_kernel_cashbook_currency(bigint, bigint, text, text);
+
 CREATE OR REPLACE FUNCTION public.fn_provision_kernel_cashbook_currency(
   p_books_tenant_id bigint,
-  p_profile_id    bigint,
-  p_currency_code text,
-  p_point_code    text DEFAULT 'main'
+  p_profile_id      bigint,
+  p_currency_code   text,
+  p_point_code      text DEFAULT 'main',
+  p_books_rate      numeric DEFAULT NULL
 )
 RETURNS bigint
 LANGUAGE plpgsql
@@ -341,6 +394,7 @@ SET search_path = money_kernel, public, pg_temp
 AS $$
 DECLARE
   v_ccy text;
+  v_rate numeric(15, 6);
   v_account_id bigint;
   v_point_id   bigint;
   v_lot_id     bigint;
@@ -354,27 +408,35 @@ BEGIN
     v_ccy := 'BDT';
   END IF;
 
+  IF v_ccy = 'BDT' THEN
+    v_rate := 1;
+  ELSIF p_books_rate IS NOT NULL AND p_books_rate > 0 THEN
+    v_rate := p_books_rate;
+  ELSE
+    v_rate := money_kernel.fn_resolve_books_rate(p_books_tenant_id, v_ccy);
+  END IF;
+
   v_account_id := public.fn_provision_kernel_cashbook_for_profile_row(p_books_tenant_id, p_profile_id);
   IF v_account_id IS NULL THEN
     RETURN NULL;
   END IF;
 
   SELECT cp.id INTO v_point_id
-  FROM money_kernel.cashbook_points cp
-  WHERE cp.cashbook_account_id = v_account_id
-    AND cp.code = p_point_code
+  FROM money_kernel.cash_locations cp
+  WHERE cp.cashbook_id = v_account_id
+    AND cp.location_code = p_point_code
   LIMIT 1;
 
   IF v_point_id IS NULL THEN
-    INSERT INTO money_kernel.cashbook_points
-      (tenant_id, cashbook_account_id, code, name)
+    INSERT INTO money_kernel.cash_locations
+      (tenant_id, cashbook_id, location_code, name)
     VALUES
       (p_books_tenant_id, v_account_id, p_point_code, initcap(p_point_code))
     RETURNING id INTO v_point_id;
   END IF;
 
-  v_lot_id := money_kernel.fn_open_cashbook_lot(
-    p_books_tenant_id, v_point_id, v_ccy, 1::numeric(15, 6), NULL
+  v_lot_id := money_kernel.fn_open_cash_bundle(
+    p_books_tenant_id, v_point_id, v_ccy, v_rate, NULL
   );
 
   RETURN v_lot_id;
@@ -388,17 +450,14 @@ SECURITY DEFINER
 SET search_path = public, money_kernel, pg_temp
 AS $$
 BEGIN
-  IF NEW.is_active IS DISTINCT FROM true OR NEW.deleted_at IS NOT NULL THEN
-    RETURN NEW;
-  END IF;
-  PERFORM public.fn_provision_kernel_cashbook_for_profile_row(NEW.tenant_id, NEW.id);
+  PERFORM public.fn_provision_profile_cashbook_defaults(NEW.tenant_id, NEW.id);
   RETURN NEW;
 END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_provision_kernel_cashbook_for_profile ON public.profiles;
 CREATE TRIGGER trg_provision_kernel_cashbook_for_profile
-  AFTER INSERT ON public.profiles
+  AFTER INSERT OR UPDATE OF cashbook_enabled, is_active, deleted_at ON public.profiles
   FOR EACH ROW
   EXECUTE FUNCTION public.trg_provision_kernel_cashbook_for_profile();
 

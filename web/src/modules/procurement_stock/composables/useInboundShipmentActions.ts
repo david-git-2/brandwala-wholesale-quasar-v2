@@ -32,7 +32,7 @@ import {
   formatLandSplitQtyGuardDialogHtml,
   landSplitQtyGuardDialogTitle,
 } from '../utils/landSplitQtyGuard';
-import { calculateShipmentCostSummary, costingShipmentFromEntries } from 'src/shared/shipment-engine';
+import { calculateShipmentCostSummary, costingShipmentForPreview } from 'src/shared/shipment-engine';
 import {
   formatGlobalShipmentStatus,
   isGlobalShipmentStatus,
@@ -602,9 +602,10 @@ export function useInboundShipmentActions(options: {
       costCurrencySymbol: calculations.currentCostCurrencySymbol.value,
     };
 
-    const forCosting = costingShipmentFromEntries(
+    const forCosting = costingShipmentForPreview(
       shipment,
       shipmentStore.currentCostEntries,
+      shipmentStore.settingsFinanceCachedApFx,
       allItems,
     );
 

@@ -4,6 +4,7 @@ CREATE TABLE public.global_currencies (
   country    text                     NOT NULL,
   code       text                     NOT NULL,
   symbol     text                     NOT NULL,
+  minor_units smallint                DEFAULT 2 NOT NULL,
   is_active  boolean                  DEFAULT true NOT NULL,
   created_at timestamp with time zone DEFAULT now() NOT NULL,
   updated_at timestamp with time zone DEFAULT now() NOT NULL,

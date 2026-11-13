@@ -56,7 +56,7 @@ BEGIN
     PERFORM set_config('money.pot_writer', '1', true);
 
     IF NEW.from_pot_id IS NOT NULL THEN
-      UPDATE money_kernel.cashbook_point_pots
+      UPDATE money_kernel.cash_bundles
          SET amount     = amount - NEW.amount,
              updated_at = now()
        WHERE id = NEW.from_pot_id
@@ -67,7 +67,7 @@ BEGIN
           NEW.from_pot_id, NEW.id, NEW.amount;
       END IF;
       SELECT amount INTO v_from_bal
-        FROM money_kernel.cashbook_point_pots
+        FROM money_kernel.cash_bundles
        WHERE id = NEW.from_pot_id;
     END IF;
 
@@ -76,12 +76,12 @@ BEGIN
         WHEN NEW.kind = 'transfer' THEN round(NEW.amount * NEW.exchange_rate, 4)
         ELSE NEW.amount
       END;
-      UPDATE money_kernel.cashbook_point_pots
+      UPDATE money_kernel.cash_bundles
          SET amount     = amount + v_to_credit,
              updated_at = now()
        WHERE id = NEW.to_pot_id;
       SELECT amount INTO v_to_bal
-        FROM money_kernel.cashbook_point_pots
+        FROM money_kernel.cash_bundles
        WHERE id = NEW.to_pot_id;
     END IF;
 
@@ -98,7 +98,7 @@ BEGIN
     PERFORM set_config('money.pot_writer', '1', true);
 
     IF OLD.from_pot_id IS NOT NULL THEN
-      UPDATE money_kernel.cashbook_point_pots
+      UPDATE money_kernel.cash_bundles
          SET amount     = amount + OLD.amount,
              updated_at = now()
        WHERE id = OLD.from_pot_id;
@@ -109,7 +109,7 @@ BEGIN
         WHEN OLD.kind = 'transfer' THEN round(OLD.amount * OLD.exchange_rate, 4)
         ELSE OLD.amount
       END;
-      UPDATE money_kernel.cashbook_point_pots
+      UPDATE money_kernel.cash_bundles
          SET amount     = amount - v_to_credit,
              updated_at = now()
        WHERE id = OLD.to_pot_id
@@ -147,8 +147,8 @@ BEGIN
 
   IF NEW.status = 'voided' THEN
     IF NEW.amount           <> OLD.amount
-       OR NEW.from_pot_id   IS DISTINCT FROM OLD.from_pot_id
-       OR NEW.to_pot_id     IS DISTINCT FROM OLD.to_pot_id
+       OR NEW.from_cash_bundle_id IS DISTINCT FROM OLD.from_cash_bundle_id
+       OR NEW.to_cash_bundle_id   IS DISTINCT FROM OLD.to_cash_bundle_id
        OR NEW.currency_code <> OLD.currency_code
        OR NEW.exchange_rate <> OLD.exchange_rate
        OR NEW.books_amount  <> OLD.books_amount
@@ -167,12 +167,41 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- T1 snapshot write after INSERT (posted → posted, pot_writer set)
   IF NEW.status = 'posted' AND OLD.status = 'posted'
-     AND current_setting('money.pot_writer', true) = '1'
+     AND current_setting('money.revert_writer', true) = '1' THEN
+    IF NEW.amount                <> OLD.amount
+       OR NEW.from_cash_bundle_id IS DISTINCT FROM OLD.from_cash_bundle_id
+       OR NEW.to_cash_bundle_id   IS DISTINCT FROM OLD.to_cash_bundle_id
+       OR NEW.currency_code       <> OLD.currency_code
+       OR NEW.exchange_rate       <> OLD.exchange_rate
+       OR NEW.books_amount        <> OLD.books_amount
+       OR NEW.books_rate          <> OLD.books_rate
+       OR NEW.kind                 <> OLD.kind
+       OR NEW.tenant_id            <> OLD.tenant_id
+       OR NEW.payment_date         <> OLD.payment_date
+       OR NEW.created_by           IS DISTINCT FROM OLD.created_by
+       OR NEW.refs                 IS DISTINCT FROM OLD.refs
+       OR NEW.idempotency_key      IS DISTINCT FROM OLD.idempotency_key
+       OR NEW.request_hash         IS DISTINCT FROM OLD.request_hash
+       OR NEW.status               IS DISTINCT FROM OLD.status
+       OR NEW.voided_at            IS DISTINCT FROM OLD.voided_at
+       OR NEW.voided_by            IS DISTINCT FROM OLD.voided_by
+       OR NOT (NEW.meta @> OLD.meta) THEN
+      RAISE EXCEPTION
+        'revert pays % may only add meta (revert_reason, reverted_at, reversal_pays_id)', OLD.id;
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  -- T1 snapshot write after deferred fn_pays_apply (bundle_writer or legacy pot_writer)
+  IF NEW.status = 'posted' AND OLD.status = 'posted'
+     AND (
+       current_setting('money.pot_writer', true) = '1'
+       OR current_setting('money.bundle_writer', true) = '1'
+     )
      AND NEW.amount           = OLD.amount
-     AND NEW.from_pot_id      IS NOT DISTINCT FROM OLD.from_pot_id
-     AND NEW.to_pot_id        IS NOT DISTINCT FROM OLD.to_pot_id
+     AND NEW.from_cash_bundle_id IS NOT DISTINCT FROM OLD.from_cash_bundle_id
+     AND NEW.to_cash_bundle_id   IS NOT DISTINCT FROM OLD.to_cash_bundle_id
      AND NEW.currency_code    = OLD.currency_code
      AND NEW.exchange_rate    = OLD.exchange_rate
      AND NEW.books_amount     = OLD.books_amount
@@ -205,37 +234,7 @@ CREATE TRIGGER trg_pays_guard_immutable
   FOR EACH ROW
   EXECUTE FUNCTION money_kernel.fn_pays_guard_immutable();
 
--- ---------------------------------------------------------------------------
--- T3 — trg_pot_guard
--- ---------------------------------------------------------------------------
-
-CREATE OR REPLACE FUNCTION money_kernel.fn_pot_guard()
-RETURNS trigger
-LANGUAGE plpgsql
-SET search_path = money_kernel, pg_temp
-AS $$
-BEGIN
-  IF TG_OP = 'INSERT' THEN
-    IF NEW.amount IS DISTINCT FROM 0 THEN
-      RAISE EXCEPTION 'pot_insert_requires_zero_amount';
-    END IF;
-    RETURN NEW;
-  END IF;
-
-  IF TG_OP = 'UPDATE' AND OLD.amount IS DISTINCT FROM NEW.amount THEN
-    IF current_setting('money.pot_writer', true) IS DISTINCT FROM '1' THEN
-      RAISE EXCEPTION
-        'cashbook_point_pots.amount may only be modified by fn_pays_apply';
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_pot_guard
-  BEFORE INSERT OR UPDATE OF amount ON money_kernel.cashbook_point_pots
-  FOR EACH ROW
-  EXECUTE FUNCTION money_kernel.fn_pot_guard();
+-- T3 bundle amount guard: see money_kernel_v2/28_money_kernel_bundle_triggers.sql (fn_bundle_guard / trg_bundle_guard).
 
 -- ---------------------------------------------------------------------------
 -- T4 — trg_bills_guard_financial_spine
@@ -597,25 +596,15 @@ LANGUAGE plpgsql
 SET search_path = money_kernel, pg_temp
 AS $$
 BEGIN
-  IF NEW.entity_type = 'profile' THEN
-    IF NEW.profile_id IS NULL OR NEW.profile_id <> NEW.entity_id THEN
-      RAISE EXCEPTION
-        'cashbook_accounts.profile_id (%) must equal entity_id (%) when entity_type=profile',
-        NEW.profile_id, NEW.entity_id;
-    END IF;
-  ELSE
-    IF NEW.profile_id IS NOT NULL THEN
-      RAISE EXCEPTION
-        'cashbook_accounts.profile_id must be NULL when entity_type=% (got %)',
-        NEW.entity_type, NEW.profile_id;
-    END IF;
+  IF NEW.profile_id IS NULL THEN
+    RAISE EXCEPTION 'cashbooks.profile_id is required';
   END IF;
   RETURN NEW;
 END;
 $$;
 
 CREATE TRIGGER trg_validate_profile_link
-  BEFORE INSERT OR UPDATE ON money_kernel.cashbook_accounts
+  BEFORE INSERT OR UPDATE ON money_kernel.cashbooks
   FOR EACH ROW
   EXECUTE FUNCTION money_kernel.fn_validate_profile_link();
 
@@ -631,10 +620,10 @@ AS $$
 BEGIN
   IF NEW.default_cashbook_point_pot_id IS NOT NULL THEN
     PERFORM 1
-      FROM money_kernel.cashbook_point_pots pp
-      JOIN money_kernel.cashbook_points pt ON pt.id = pp.cashbook_point_id
+      FROM money_kernel.cash_bundles pp
+      JOIN money_kernel.cash_locations pt ON pt.id = pp.cash_location_id
      WHERE pp.id = NEW.default_cashbook_point_pot_id
-       AND pt.cashbook_account_id = NEW.id;
+       AND pt.cashbook_id = NEW.id;
     IF NOT FOUND THEN
       RAISE EXCEPTION
         'default_cashbook_point_pot_id % does not belong to account %',
@@ -647,7 +636,7 @@ $$;
 
 CREATE TRIGGER trg_validate_default_pot
   BEFORE INSERT OR UPDATE OF default_cashbook_point_pot_id
-  ON money_kernel.cashbook_accounts
+  ON money_kernel.cashbooks
   FOR EACH ROW
   EXECUTE FUNCTION money_kernel.fn_validate_default_pot();
 
@@ -749,18 +738,18 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER trg_tenant_id_immutable_cashbook_accounts
-  BEFORE UPDATE OF tenant_id ON money_kernel.cashbook_accounts
+CREATE TRIGGER trg_tenant_id_immutable_cashbooks
+  BEFORE UPDATE OF tenant_id ON money_kernel.cashbooks
   FOR EACH ROW
   EXECUTE FUNCTION money_kernel.fn_tenant_id_immutable();
 
-CREATE TRIGGER trg_tenant_id_immutable_cashbook_points
-  BEFORE UPDATE OF tenant_id ON money_kernel.cashbook_points
+CREATE TRIGGER trg_tenant_id_immutable_cash_locations
+  BEFORE UPDATE OF tenant_id ON money_kernel.cash_locations
   FOR EACH ROW
   EXECUTE FUNCTION money_kernel.fn_tenant_id_immutable();
 
-CREATE TRIGGER trg_tenant_id_immutable_cashbook_point_pots
-  BEFORE UPDATE OF tenant_id ON money_kernel.cashbook_point_pots
+CREATE TRIGGER trg_tenant_id_immutable_cash_bundles
+  BEFORE UPDATE OF tenant_id ON money_kernel.cash_bundles
   FOR EACH ROW
   EXECUTE FUNCTION money_kernel.fn_tenant_id_immutable();
 

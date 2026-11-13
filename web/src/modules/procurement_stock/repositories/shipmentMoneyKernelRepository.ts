@@ -1,8 +1,5 @@
 import { supabase } from 'src/boot/supabase';
-import {
-  billsRepository,
-  type BillDetailBundle,
-} from 'src/modules/bills_pays/repositories/billsRepository';
+import type { BillDetailBundle } from 'src/modules/bills_pays/repositories/billsRepository';
 import { parseBillDetailBundleFromRpc } from 'src/modules/sales_invoice/repositories/invoiceRepository';
 import type { BillNetBalances } from 'src/modules/bills_pays/types/billBalances';
 import {
@@ -87,66 +84,13 @@ export const parseShipmentApBillRows = (raw: unknown): ShipmentApBillRow[] => {
     .filter((row) => Number.isFinite(row.id) && row.id > 0);
 };
 
-const isShipmentLinkedApRow = (
-  raw: unknown,
-  shipmentId: number,
-): boolean => {
-  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-  if (o.invoice_type !== 'ap' || o.document_kind !== 'standard') return false;
-  const sid = String(shipmentId);
-  if (o.source_type === 'shipment_cost' && String(o.source_id ?? '') === sid) return true;
-  if (Number(o.ap_shipment_id) === shipmentId) return true;
-  return false;
-};
-
-const mergeApBillRows = (...groups: ShipmentApBillRow[][]): ShipmentApBillRow[] => {
-  const byId = new Map<number, ShipmentApBillRow>();
-  for (const group of groups) {
-    for (const row of group) {
-      if (!Number.isFinite(row.id) || row.id <= 0) continue;
-      byId.set(row.id, row);
-    }
-  }
-  return [...byId.values()];
-};
-
-async function loadApBillsForShipment(
-  shipmentId: number,
-  contextTenantId: number | null | undefined,
-  fromBundle: ShipmentApBillRow[],
-): Promise<ShipmentApBillRow[]> {
-  if (!contextTenantId) return fromBundle;
-  try {
-    const looseRaw = await billsRepository.listBillsForSource({
-      parentTenantId: contextTenantId,
-      sourceType: 'shipment_cost',
-      sourceId: String(shipmentId),
-      apShipmentBucketsOnly: false,
-    });
-    const listed = mergeApBillRows(
-      (Array.isArray(looseRaw) ? looseRaw : [])
-        .filter((row) => isShipmentLinkedApRow(row, shipmentId))
-        .map(parseShipmentApBillRow),
-    );
-    return mergeApBillRows(fromBundle, listed);
-  } catch {
-    return fromBundle;
-  }
-}
-
-export async function fetchShipmentMoneyKernelBundle(
-  shipmentId: number,
-  contextTenantId?: number | null,
-): Promise<ShipmentMoneyKernelBundle> {
-  const { data, error } = await supabase.rpc('get_shipment_money_kernel_bundle', {
-    p_shipment_id: shipmentId,
-  });
-  if (error) throw error;
+export function parseShipmentMoneyKernelBundlePayload(
+  data: unknown,
+): ShipmentMoneyKernelBundle {
   const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
-  const bundleApBills = Array.isArray(payload.ap_bills)
+  const apBills = Array.isArray(payload.ap_bills)
     ? payload.ap_bills.map(parseShipmentApBillRow)
     : [];
-  const apBills = await loadApBillsForShipment(shipmentId, contextTenantId, bundleApBills);
   const costEntries = Array.isArray(payload.cost_entries) ? payload.cost_entries : [];
   return {
     apBills,
@@ -154,6 +98,31 @@ export async function fetchShipmentMoneyKernelBundle(
     costEntries,
     apIssueParties: parseShipmentApIssueParties(payload.ap_issue_parties),
   };
+}
+
+export async function fetchShipmentMoneyKernelBundle(
+  shipmentId: number,
+  _contextTenantId?: number | null,
+): Promise<ShipmentMoneyKernelBundle> {
+  const { data, error } = await supabase.rpc('get_shipment_money_kernel_bundle', {
+    p_shipment_id: shipmentId,
+  });
+  if (error) throw error;
+  return parseShipmentMoneyKernelBundlePayload(data);
+}
+
+export async function issueShipmentApBillV2(
+  shipmentId: number,
+  billId: number,
+): Promise<ShipmentMoneyKernelBundle> {
+  const { data, error } = await supabase.rpc('issue_shipment_ap_bill_v2', {
+    p_shipment_id: shipmentId,
+    p_bill_id: billId,
+  });
+  if (error) throw error;
+  const root = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+  const finance = root.finance_bundle ?? root;
+  return parseShipmentMoneyKernelBundlePayload(finance);
 }
 
 export async function syncShipmentApBills(shipmentId: number): Promise<void> {

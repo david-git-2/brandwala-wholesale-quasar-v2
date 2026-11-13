@@ -1,13 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
-import { supabase } from 'src/boot/supabase';
 import type { Database } from 'src/types/database.types';
+import type { Json } from 'src/types/database.types';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { paysQueryKeys } from '../services/paysQueryKeys';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import type { BillAdjustmentRpcLine } from '../utils/billAdjustmentParentLines';
+import { moneyKernelRepository } from '../repositories/moneyKernelRepository';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
 export type CreateBillAdjustmentInput = {
   parentBillId: number;
+  tenantId: number;
   kind: Database['public']['Enums']['bill_document_kind'];
   amount: number;
   reason: string;
@@ -18,64 +21,61 @@ export type CreateBillAdjustmentInput = {
 
 export function useCreateBillAdjustmentMutation(parentBillId: () => number | null) {
   const queryClient = useQueryClient();
+  const authStore = useAuthStore();
 
   return useMutation({
     mutationFn: async (payload: CreateBillAdjustmentInput) => {
-      const baseArgs = {
-        p_parent_bill_id: payload.parentBillId,
-        p_kind: payload.kind,
-        p_amount: payload.amount,
-        p_reason: payload.reason,
-        p_issue: true,
-      };
+      const tenantId =
+        payload.tenantId
+        ?? authStore.selectedTenant?.parent_tenant_id
+        ?? authStore.selectedTenant?.id
+        ?? 0;
+      if (!tenantId) throw new Error('Tenant not ready.');
 
-      const refund =
-        payload.refundAmount != null && payload.refundAmount > 0 ? payload.refundAmount : null;
+      const kind = payload.kind === 'debit_note' ? 'debit_note' : 'credit_note';
       const rpcLines =
         payload.lines?.length
           ? payload.lines.map((line) => ({
-              line_kind: line.line_kind,
-              name_snapshot: line.name_snapshot,
+              item_kind: line.line_kind ?? 'charge',
+              description: line.name_snapshot,
               quantity: line.quantity,
-              currency_code: line.currency_code,
-              line_total_amount: line.line_total_amount,
-              books_amount: line.books_amount,
-              ...(line.parent_line_id != null
-                ? { parent_line_id: String(line.parent_line_id) }
-                : {}),
-              ...(line.global_stock_id != null
-                ? { global_stock_id: String(line.global_stock_id) }
-                : {}),
+              unit_price: line.line_total_amount / Math.max(line.quantity, 1),
+              line_total: line.line_total_amount,
+              meta: {
+                currency_code: line.currency_code,
+                books_amount: line.books_amount,
+                parent_line_id: line.parent_line_id,
+                global_stock_id: line.global_stock_id,
+              },
             }))
-          : null;
+          : [
+              {
+                item_kind: 'charge',
+                description: payload.reason,
+                quantity: 1,
+                unit_price: payload.amount,
+                line_total: payload.amount,
+              },
+            ];
 
-      const extendedArgs =
-        rpcLines?.length || refund != null
-          ? {
-              ...baseArgs,
-              ...(refund != null
-                ? {
-                    p_refund_amount: refund,
-                    p_cashbook_point_id: payload.cashbookPointId ?? null,
-                  }
-                : {}),
-              ...(rpcLines?.length ? { p_lines: rpcLines } : {}),
-            }
-          : null;
+      const body = {
+        tenant_id: tenantId,
+        kind,
+        parent_bill_id: payload.parentBillId,
+        note: payload.reason,
+        auto_issue: true,
+        meta: { reason: payload.reason },
+        lines: rpcLines,
+      } as Json;
 
-      const isMissingRpc = (err: { code?: string; message?: string } | null) =>
-        err?.code === 'PGRST202' ||
-        (err?.message ?? '').includes('Could not find the function public.create_bill_adjustment');
-
-      if (extendedArgs) {
-        const { data, error } = await supabase.rpc('create_bill_adjustment', extendedArgs);
-        if (!error) return data;
-        if (!isMissingRpc(error)) throw error;
+      const created = await moneyKernelRepository.createBill(body);
+      if (!created.bill_id) {
+        throw new Error(created.error ?? 'Could not create credit/debit note.');
       }
-
-      const { data, error } = await supabase.rpc('create_bill_adjustment', baseArgs);
-      if (error) throw error;
-      return data;
+      if (created.status !== 'issued') {
+        await moneyKernelRepository.issueBill(tenantId, created.bill_id);
+      }
+      return created;
     },
     onSuccess: () => {
       const id = parentBillId();

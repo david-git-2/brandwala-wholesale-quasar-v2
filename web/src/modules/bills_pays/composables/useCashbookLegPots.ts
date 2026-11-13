@@ -1,8 +1,8 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
 import type { CashbookPointRow } from '../repositories/cashbookRepository';
-import { moneyKernelRepository } from '../repositories/moneyKernelRepository';
 import { cashbookQueryKeys } from '../services/cashbookQueryKeys';
+import { moneyKernelRepository } from '../repositories/moneyKernelRepository';
 import { formatAmountBdt } from 'src/utils/currency';
 import type { BillPayCashbookLeg } from '../types/billPayCashbookLegs';
 
@@ -13,18 +13,31 @@ export type CashbookLegPotChipOption = {
   currencyCode: string;
   pointName: string;
   balanceDisplay: string;
+  amount: number;
+  booksRate: number | null;
+  drawerGroup: string | null;
+};
+
+export type CashbookLegLocationSection = {
+  pointId: number;
+  pointName: string;
+  pots: CashbookLegPotChipOption[];
+};
+
+type LegPotRow = {
+  id: number;
+  cashbook_point_id: number;
+  currency_code: string;
+  amount: number;
+  books_rate: number | null;
+  drawer_group: string | null;
 };
 
 type LegPotsQueryData = {
   accountId: number;
   defaultPotId: number | null;
   points: CashbookPointRow[];
-  pots: Array<{
-    id: number;
-    cashbook_point_id: number;
-    currency_code: string;
-    amount: number;
-  }>;
+  pots: LegPotRow[];
 };
 
 function mapBundledLeg(leg: BillPayCashbookLeg): LegPotsQueryData {
@@ -45,94 +58,64 @@ function mapBundledLeg(leg: BillPayCashbookLeg): LegPotsQueryData {
       cashbook_point_id: pot.cashbook_point_id,
       currency_code: pot.currency_code,
       amount: pot.amount,
+      books_rate: pot.books_rate,
+      drawer_group: pot.drawer_group,
     })),
+  };
+}
+
+async function fetchKernelProfilePots(
+  booksTenantId: number,
+  profileId: number,
+): Promise<LegPotsQueryData> {
+  try {
+    await moneyKernelRepository.provisionCashbookCurrency(booksTenantId, profileId, 'BDT');
+  } catch {
+    /* view-only */
+  }
+  const balances = await moneyKernelRepository.getPotBalances(booksTenantId, [profileId], null);
+  const rows = balances.rows ?? [];
+  const mainPointId = 1;
+  const pots: LegPotRow[] = rows
+    .map((row) => {
+      const potId = Number(row.pot_id);
+      if (!Number.isFinite(potId) || potId <= 0) return null;
+      return {
+        id: potId,
+        cashbook_point_id: mainPointId,
+        currency_code: String(row.currency_code ?? 'BDT').trim().toUpperCase(),
+        amount: Number(row.amount ?? 0),
+        books_rate: null,
+        drawer_group: null,
+      };
+    })
+    .filter((p): p is LegPotRow => p != null);
+
+  return {
+    accountId: 0,
+    defaultPotId: pots[0]?.id ?? null,
+    points: [
+      {
+        id: mainPointId,
+        cashbook_account_id: 0,
+        tenant_id: booksTenantId,
+        code: 'main',
+        name: 'Main',
+        is_active: true,
+      },
+    ],
+    pots,
   };
 }
 
 function legFromBundle(
   bundledLeg: BillPayCashbookLeg | null | undefined,
   profileId: number | null | undefined,
-  currency: string,
 ): LegPotsQueryData | null {
   if (bundledLeg == null || profileId == null || profileId <= 0) return null;
   if (bundledLeg.profile_id !== profileId) return null;
-  const legCurrency = currency.trim().toUpperCase() || 'BDT';
-  const hasCurrencyPot = bundledLeg.pots.some((p) => p.currency_code === legCurrency);
-  if (!hasCurrencyPot && bundledLeg.pots.length > 0) {
-    return null;
-  }
+  if (!bundledLeg.pots.length && !bundledLeg.points.length) return null;
   return mapBundledLeg(bundledLeg);
-}
-
-async function fetchLegPots(
-  booksTenantId: number,
-  profileId: number,
-  currency: string,
-): Promise<LegPotsQueryData> {
-  const legCurrency = currency.trim().toUpperCase() || 'BDT';
-  let accountId = 0;
-  let defaultPotId: number | null = null;
-
-  try {
-    const provision = await moneyKernelRepository.provisionCashbookCurrency(
-      booksTenantId,
-      profileId,
-      legCurrency,
-    );
-    accountId = Number(provision.cashbook_account_id) || 0;
-    defaultPotId = Number(provision.pot_id) || null;
-  } catch {
-    /* view-only users rely on existing kernel pots */
-  }
-
-  const balances = await moneyKernelRepository.getPotBalances(
-    booksTenantId,
-    [profileId],
-    null,
-  );
-  const rows = balances.rows ?? [];
-
-  const pointById = new Map<number, CashbookPointRow>();
-  const pots: LegPotsQueryData['pots'] = [];
-
-  for (const row of rows) {
-    const potId = Number(row.pot_id);
-    if (!Number.isFinite(potId) || potId <= 0) continue;
-    const detail = await moneyKernelRepository.getPotBalanceById(booksTenantId, potId);
-    const pointId = Number(detail.cashbook_point_id);
-    if (!Number.isFinite(pointId) || pointId <= 0) continue;
-    if (!pointById.has(pointId)) {
-      pointById.set(pointId, {
-        id: pointId,
-        cashbook_account_id: accountId,
-        tenant_id: booksTenantId,
-        code: 'main',
-        name: 'Main',
-        is_active: true,
-      });
-    }
-    const cur = String(detail.currency_code ?? row.currency_code ?? 'BDT').trim().toUpperCase();
-    pots.push({
-      id: potId,
-      cashbook_point_id: pointId,
-      currency_code: cur,
-      amount: Number(detail.amount ?? row.amount ?? 0),
-    });
-    if (cur === legCurrency) {
-      defaultPotId = defaultPotId ?? potId;
-    }
-  }
-
-  if (!accountId && pots.length === 0) {
-    throw new Error(`No kernel cashbook pots for profile ${profileId}`);
-  }
-
-  return {
-    accountId,
-    defaultPotId,
-    points: [...pointById.values()],
-    pots,
-  };
 }
 
 /** Points + pots for one money profile (chip labels include on-hand amount). */
@@ -142,8 +125,13 @@ export function useCashbookLegPots(
   enabled: Ref<boolean>,
   preferredCurrencyCode?: Ref<string>,
   bundledLeg?: Ref<BillPayCashbookLeg | null | undefined>,
+  /** When no bill bundle leg, load pots from kernel (e.g. People deposit/withdraw). */
+  kernelFetchWhenEmpty?: Ref<boolean>,
+  /** Paying leg: only bundles with on-hand balance in the bill currency. */
+  positiveBalanceOnly?: Ref<boolean>,
 ) {
   const selectedPotId = ref<number | null>(null);
+  const pendingSelectPotId = ref<number | null>(null);
 
   const legCurrency = computed(() => {
     const raw = preferredCurrencyCode?.value ?? 'BDT';
@@ -158,7 +146,18 @@ export function useCashbookLegPots(
       profileId.value > 0,
   );
 
-  const legPotsQuery = useQuery({
+  const bundledLegData = computed(() =>
+    legFromBundle(bundledLeg?.value, profileId.value ?? null),
+  );
+
+  const kernelLegPotsEnabled = computed(
+    () =>
+      accountLookupEnabled.value
+      && bundledLegData.value == null
+      && kernelFetchWhenEmpty?.value === true,
+  );
+
+  const kernelLegPotsQuery = useQuery({
     queryKey: computed(() =>
       [
         ...cashbookQueryKeys.root,
@@ -166,22 +165,33 @@ export function useCashbookLegPots(
         booksTenantId.value,
         profileId.value ?? 0,
         legCurrency.value,
-        bundledLeg?.value?.pots?.length ?? -1,
       ] as const,
     ),
-    queryFn: async (): Promise<LegPotsQueryData> => {
-      const pid = profileId.value!;
-      const fromBundle = legFromBundle(bundledLeg?.value, pid, legCurrency.value);
-      if (fromBundle) return fromBundle;
-      return fetchLegPots(booksTenantId.value, pid, legCurrency.value);
-    },
-    enabled: accountLookupEnabled,
+    queryFn: async (): Promise<LegPotsQueryData> =>
+      fetchKernelProfilePots(booksTenantId.value, profileId.value!),
+    enabled: kernelLegPotsEnabled,
     staleTime: 60_000,
   });
 
-  const defaultPotId = computed(() => legPotsQuery.data.value?.defaultPotId ?? null);
+  const emptyLegPots = computed((): LegPotsQueryData => ({
+    accountId: bundledLeg?.value?.cashbook_account_id ?? 0,
+    defaultPotId: null,
+    points: [],
+    pots: [],
+  }));
+
+  /** Bill bundle legs stay live in the parent cache (e.g. after Add money deposit). */
+  const legPotsData = computed((): LegPotsQueryData => {
+    if (bundledLegData.value) return bundledLegData.value;
+    if (kernelFetchWhenEmpty?.value) {
+      return kernelLegPotsQuery.data.value ?? emptyLegPots.value;
+    }
+    return emptyLegPots.value;
+  });
+
+  const defaultPotId = computed(() => legPotsData.value.defaultPotId ?? null);
   const activePoints = computed(() =>
-    (legPotsQuery.data.value?.points ?? []).filter((p) => p.is_active),
+    (legPotsData.value.points ?? []).filter((p) => p.is_active),
   );
 
   const pointById = computed(() => {
@@ -199,12 +209,22 @@ export function useCashbookLegPots(
     for (const pot of leg.pots) {
       if (pot.point_name) map.set(pot.cashbook_point_id, pot.point_name);
     }
+    for (const point of leg.points) {
+      map.set(point.id, point.name);
+    }
     return map;
   });
 
   const chipOptions = computed((): CashbookLegPotChipOption[] => {
-    const pots = legPotsQuery.data.value?.pots ?? [];
+    const pots = legPotsData.value.pots ?? [];
+    const requireFunds = positiveBalanceOnly?.value === true;
     return pots
+      .filter((pot) => {
+        const cur = pot.currency_code.trim().toUpperCase();
+        if (cur !== legCurrency.value) return false;
+        if (requireFunds && !(Number(pot.amount) > 0.009)) return false;
+        return true;
+      })
       .map((pot) => {
         const point = pointById.value.get(pot.cashbook_point_id);
         const pointLabel =
@@ -220,15 +240,31 @@ export function useCashbookLegPots(
           currencyCode: cur,
           pointName: pointLabel,
           balanceDisplay,
+          amount: pot.amount,
+          booksRate: pot.books_rate,
+          drawerGroup: pot.drawer_group,
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label));
   });
 
+  const locationSections = computed((): CashbookLegLocationSection[] => {
+    const sectionMap = new Map<number, CashbookLegLocationSection>();
+    for (const opt of chipOptions.value) {
+      let section = sectionMap.get(opt.pointId);
+      if (!section) {
+        section = { pointId: opt.pointId, pointName: opt.pointName, pots: [] };
+        sectionMap.set(opt.pointId, section);
+      }
+      section.pots.push(opt);
+    }
+    return [...sectionMap.values()].sort((a, b) => a.pointName.localeCompare(b.pointName));
+  });
+
   const selectedPot = computed(() => {
     const id = selectedPotId.value;
     if (id == null) return null;
-    return (legPotsQuery.data.value?.pots ?? []).find((p) => p.id === id) ?? null;
+    return (legPotsData.value.pots ?? []).find((p) => p.id === id) ?? null;
   });
 
   const cashbookPointId = computed(() => selectedPot.value?.cashbook_point_id ?? null);
@@ -238,6 +274,16 @@ export function useCashbookLegPots(
   );
 
   const syncDefaultPot = () => {
+    const pending = pendingSelectPotId.value;
+    if (pending != null) {
+      const options = chipOptions.value;
+      if (options.some((o) => o.value === pending)) {
+        selectedPotId.value = pending;
+        pendingSelectPotId.value = null;
+        return;
+      }
+    }
+
     const options = chipOptions.value;
     if (!options.length) {
       selectedPotId.value = null;
@@ -259,16 +305,27 @@ export function useCashbookLegPots(
 
   watch([chipOptions, profileId, defaultPotId, legCurrency], syncDefaultPot, { immediate: true });
 
+  const selectPotAfterRefresh = (potId: number) => {
+    pendingSelectPotId.value = potId;
+    syncDefaultPot();
+  };
+
   const loading = computed(() => {
     if (!accountLookupEnabled.value) return false;
-    return legPotsQuery.isLoading.value;
+    if (bundledLegData.value) return false;
+    return kernelLegPotsQuery.isLoading.value;
   });
+
+  const selectedPotBalance = computed(() => selectedPot.value?.amount ?? null);
 
   return {
     selectedPotId,
     chipOptions,
+    locationSections,
     cashbookPointId,
     sourceCurrencyCode,
+    selectedPotBalance,
+    selectPotAfterRefresh,
     loading,
   };
 }

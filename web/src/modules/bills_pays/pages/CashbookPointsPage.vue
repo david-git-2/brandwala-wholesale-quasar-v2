@@ -120,7 +120,7 @@ import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
 import type { CashbookPointPotRow, CashbookPointRow } from '../repositories/cashbookRepository';
 import { formatAmountBdt } from 'src/utils/currency';
 
-const ALLOWED_TYPES = new Set(['tenant', 'customer', 'courier', 'vendor']);
+const ALLOWED_TYPES = new Set(['tenant', 'customer', 'courier', 'vendor', 'investor']);
 
 const authStore = useAuthStore();
 const route = useRoute();
@@ -144,13 +144,17 @@ const entityId = computed(() => {
   return Number.isFinite(id) && id > 0 ? id : 0;
 });
 
-const isTenantContext = computed(() => entityType.value === 'tenant' && entityId.value > 0);
+const isCashbookContext = computed(
+  () =>
+  ['tenant', 'customer', 'investor'].includes(entityType.value)
+  && entityId.value > 0,
+);
 
 const pointsContext = computed(() => ({
   booksTenantId: booksTenantId.value,
   entityType: entityType.value,
   entityId: entityId.value,
-  enabled: isTenantContext.value,
+  enabled: isCashbookContext.value,
 }));
 
 const { pointsQuery, cashbookAccountId } = useCashbookPointsQuery(pointsContext);
@@ -161,7 +165,7 @@ const points = computed(() => {
 });
 
 const pointIds = computed(() => points.value.map((p) => p.id));
-const potsBatchEnabled = computed(() => isTenantContext.value && pointIds.value.length > 0);
+const potsBatchEnabled = computed(() => isCashbookContext.value && pointIds.value.length > 0);
 const potsBatchQuery = useCashbookPointPotsBatchQuery(pointIds, potsBatchEnabled);
 
 const potsByPointId = computed(() => {

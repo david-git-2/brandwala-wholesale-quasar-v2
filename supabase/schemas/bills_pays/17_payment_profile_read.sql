@@ -97,6 +97,12 @@ AS $$
     'voided_at', py.voided_at,
     'from_profile_id', py.from_profile_id,
     'to_profile_id', py.to_profile_id,
+    'from_profile_name', (
+      SELECT pr.name FROM public.profiles pr WHERE pr.id = py.from_profile_id
+    ),
+    'to_profile_name', (
+      SELECT pr.name FROM public.profiles pr WHERE pr.id = py.to_profile_id
+    ),
     'description', py.description,
     'profile_id', py.profile_id,
     'profile_name', (SELECT pr.name FROM public.profiles pr WHERE pr.id = py.profile_id),
@@ -122,6 +128,103 @@ AS $$
     ),
     'perspective', p_perspective
   );
+$$;
+
+CREATE OR REPLACE FUNCTION public._kernel_bundle_owner_profile_id(p_bundle_id bigint)
+RETURNS bigint
+LANGUAGE sql
+STABLE
+SET search_path = money_kernel, public, pg_temp
+AS $$
+  SELECT a.profile_id
+    FROM money_kernel.cash_bundles cb
+    JOIN money_kernel.cash_locations cl ON cl.id = cb.cash_location_id
+    JOIN money_kernel.cashbooks a ON a.id = cl.cashbook_id
+   WHERE cb.id = p_bundle_id
+   LIMIT 1;
+$$;
+
+CREATE OR REPLACE FUNCTION public._kernel_profile_pay_row_json(
+  py money_kernel.pays,
+  p_viewed_profile_id bigint
+) RETURNS jsonb
+LANGUAGE sql
+STABLE
+SET search_path = money_kernel, public, pg_temp
+AS $$
+  WITH prof AS (
+    SELECT
+      coalesce(
+        py.from_profile_id,
+        public._kernel_bundle_owner_profile_id(py.from_cash_bundle_id)
+      ) AS from_pid,
+      coalesce(
+        py.to_profile_id,
+        public._kernel_bundle_owner_profile_id(py.to_cash_bundle_id),
+        CASE
+          WHEN py.kind = 'payment' THEN (
+            SELECT b.to_profile_id
+              FROM money_kernel.bill_settlements bs
+              JOIN money_kernel.bills b
+                ON b.id = bs.bill_id AND b.tenant_id = py.tenant_id
+             WHERE bs.pays_id = py.id
+               AND bs.settlement_kind = 'pay'
+             ORDER BY bs.id
+             LIMIT 1
+          )
+          ELSE NULL
+        END
+      ) AS to_pid
+  )
+  SELECT jsonb_build_object(
+    'id', py.id,
+    'spine', 'kernel',
+    'kernel_kind', py.kind,
+    'payment_date', py.payment_date,
+    'amount', coalesce(
+      py.books_amount,
+      round(
+        py.amount * coalesce(nullif(py.books_rate, 0), py.exchange_rate, 1),
+        4
+      )
+    ),
+    'unallocated_amount', 0,
+    'source', 'kernel_' || py.kind,
+    'direction', CASE
+      WHEN py.kind = 'deposit' THEN 'in'
+      WHEN py.kind = 'withdrawal' THEN 'out'
+      WHEN p_viewed_profile_id IS NOT NULL AND prof.from_pid = p_viewed_profile_id THEN 'out'
+      ELSE 'in'
+    END,
+    'method', null,
+    'reference', null,
+    'note', coalesce(py.meta->>'note', py.meta->>'revert_reason'),
+    'voided_at', null,
+    'from_profile_id', prof.from_pid,
+    'to_profile_id', prof.to_pid,
+    'from_profile_name', (SELECT pr.name FROM public.profiles pr WHERE pr.id = prof.from_pid),
+    'to_profile_name', (SELECT pr.name FROM public.profiles pr WHERE pr.id = prof.to_pid),
+    'description', CASE py.kind
+      WHEN 'deposit' THEN 'Deposit'
+      WHEN 'withdrawal' THEN 'Withdrawal'
+      WHEN 'transfer' THEN 'Transfer'
+      ELSE py.kind
+    END,
+    'profile_id', p_viewed_profile_id,
+    'profile_name', (SELECT pr.name FROM public.profiles pr WHERE pr.id = p_viewed_profile_id),
+    'settlement_currency_code', coalesce(py.currency_code, 'BDT'),
+    'foreign_amount', CASE
+      WHEN upper(coalesce(py.currency_code, 'BDT')) <> 'BDT' THEN py.amount
+      ELSE NULL
+    END,
+    'exchange_rate', coalesce(nullif(py.books_rate, 0), py.exchange_rate, 1),
+    'reverted_at', py.meta->>'reverted_at',
+    'revert_reason', py.meta->>'revert_reason',
+    'is_reversal', (py.refs ? 'reverses_pays_id'),
+    'reverses_pays_id', nullif(py.refs->>'reverses_pays_id', '')::bigint,
+    'perspective', 'party'
+  )
+  FROM prof;
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_payment_profile_for_staff(
@@ -324,7 +427,94 @@ BEGIN
   IF p_kind = 'payments' THEN
     v_cursor_pay_id := NULLIF(btrim(coalesce(p_cursor, '')), '')::bigint;
 
-    IF p_entity_type = 'tenant' THEN
+    IF v_money_profile_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM money_kernel.cashbooks a
+      WHERE a.tenant_id = v_books_id AND a.profile_id = v_money_profile_id
+    ) THEN
+      SELECT coalesce(jsonb_agg(row_data ORDER BY sort_payment_date DESC, sort_id DESC), '[]'::jsonb)
+      INTO v_items
+      FROM (
+        SELECT merged.row_data, merged.sort_payment_date, merged.sort_id
+        FROM (
+          SELECT
+            public._kernel_profile_pay_row_json(py, v_money_profile_id) AS row_data,
+            py.payment_date AS sort_payment_date,
+            py.id AS sort_id
+          FROM money_kernel.pays py
+          WHERE py.tenant_id = v_books_id
+            AND py.kind IN ('deposit', 'withdrawal', 'transfer', 'payment')
+            AND py.status = 'posted'
+            AND (
+              py.from_profile_id = v_money_profile_id
+              OR py.to_profile_id = v_money_profile_id
+              OR EXISTS (
+                SELECT 1
+                  FROM money_kernel.bill_settlements bs
+                  JOIN money_kernel.bills b
+                    ON b.id = bs.bill_id AND b.tenant_id = py.tenant_id
+                 WHERE bs.pays_id = py.id
+                   AND bs.settlement_kind = 'pay'
+                   AND (
+                     b.from_profile_id = v_money_profile_id
+                     OR b.to_profile_id = v_money_profile_id
+                   )
+              )
+              OR py.from_cash_bundle_id IN (
+                SELECT cb.id
+                  FROM money_kernel.cash_bundles cb
+                  JOIN money_kernel.cash_locations cl ON cl.id = cb.cash_location_id
+                  JOIN money_kernel.cashbooks a ON a.id = cl.cashbook_id
+                 WHERE a.tenant_id = v_books_id
+                   AND a.profile_id = v_money_profile_id
+              )
+              OR py.to_cash_bundle_id IN (
+                SELECT cb.id
+                  FROM money_kernel.cash_bundles cb
+                  JOIN money_kernel.cash_locations cl ON cl.id = cb.cash_location_id
+                  JOIN money_kernel.cashbooks a ON a.id = cl.cashbook_id
+                 WHERE a.tenant_id = v_books_id
+                   AND a.profile_id = v_money_profile_id
+              )
+            )
+
+          UNION ALL
+
+          SELECT
+            public._kernel_pay_row_json(
+              py,
+              CASE
+                WHEN p_entity_type = 'tenant' THEN public._kernel_pay_direction_tenant(py.source)
+                ELSE public._kernel_pay_direction_party(py.source, p_entity_type)
+              END,
+              CASE
+                WHEN p_entity_type = 'tenant' THEN
+                  coalesce((SELECT pr.name FROM public.profiles pr WHERE pr.id = py.profile_id), '')
+                ELSE NULL
+              END,
+              CASE WHEN p_entity_type = 'tenant' THEN 'tenant' ELSE 'party' END
+            ) AS row_data,
+            py.payment_date AS sort_payment_date,
+            py.id AS sort_id
+          FROM public.pays py
+          WHERE py.tenant_id = v_books_id
+            AND py.voided_at IS NULL
+            AND (
+              p_entity_type = 'tenant'
+              OR py.from_profile_id = v_money_profile_id
+              OR py.to_profile_id = v_money_profile_id
+              OR (
+                py.from_profile_id IS NULL
+                AND py.to_profile_id IS NULL
+                AND py.profile_id = v_money_profile_id
+              )
+            )
+        ) merged
+        WHERE v_cursor_pay_id IS NULL OR merged.sort_id < v_cursor_pay_id
+        ORDER BY merged.sort_payment_date DESC, merged.sort_id DESC
+        LIMIT v_lim + 1
+      ) pay_rows;
+
+    ELSIF p_entity_type = 'tenant' THEN
       SELECT coalesce(jsonb_agg(row_data ORDER BY sort_payment_date DESC, sort_id DESC), '[]'::jsonb)
       INTO v_items
       FROM (
@@ -349,29 +539,62 @@ BEGIN
       SELECT coalesce(jsonb_agg(row_data ORDER BY sort_payment_date DESC, sort_id DESC), '[]'::jsonb)
       INTO v_items
       FROM (
-        SELECT
-          public._kernel_pay_row_json(
-            py,
-            public._kernel_pay_direction_party(py.source, p_entity_type),
-            NULL,
-            'party'
-          ) AS row_data,
-          py.payment_date AS sort_payment_date,
-          py.id AS sort_id
-        FROM public.pays py
-        WHERE py.tenant_id = v_books_id
-          AND (
-            py.from_profile_id = coalesce(v_money_profile_id, p_entity_id)
-            OR py.to_profile_id = coalesce(v_money_profile_id, p_entity_id)
-            OR (
-              py.from_profile_id IS NULL
-              AND py.to_profile_id IS NULL
-              AND py.profile_id = coalesce(v_money_profile_id, p_entity_id)
+        SELECT merged.row_data, merged.sort_payment_date, merged.sort_id
+        FROM (
+          SELECT
+            public._kernel_profile_pay_row_json(
+              py,
+              coalesce(v_money_profile_id, p_entity_id)
+            ) AS row_data,
+            py.payment_date AS sort_payment_date,
+            py.id AS sort_id
+          FROM money_kernel.pays py
+          WHERE py.tenant_id = v_books_id
+            AND py.kind = 'payment'
+            AND py.status = 'posted'
+            AND (
+              py.from_profile_id = coalesce(v_money_profile_id, p_entity_id)
+              OR py.to_profile_id = coalesce(v_money_profile_id, p_entity_id)
+              OR EXISTS (
+                SELECT 1
+                  FROM money_kernel.bill_settlements bs
+                  JOIN money_kernel.bills b
+                    ON b.id = bs.bill_id AND b.tenant_id = py.tenant_id
+                 WHERE bs.pays_id = py.id
+                   AND bs.settlement_kind = 'pay'
+                   AND (
+                     b.from_profile_id = coalesce(v_money_profile_id, p_entity_id)
+                     OR b.to_profile_id = coalesce(v_money_profile_id, p_entity_id)
+                   )
+              )
             )
-          )
-          AND py.voided_at IS NULL
-          AND (v_cursor_pay_id IS NULL OR py.id < v_cursor_pay_id)
-        ORDER BY py.payment_date DESC, py.id DESC
+
+          UNION ALL
+
+          SELECT
+            public._kernel_pay_row_json(
+              py,
+              public._kernel_pay_direction_party(py.source, p_entity_type),
+              NULL,
+              'party'
+            ) AS row_data,
+            py.payment_date AS sort_payment_date,
+            py.id AS sort_id
+          FROM public.pays py
+          WHERE py.tenant_id = v_books_id
+            AND (
+              py.from_profile_id = coalesce(v_money_profile_id, p_entity_id)
+              OR py.to_profile_id = coalesce(v_money_profile_id, p_entity_id)
+              OR (
+                py.from_profile_id IS NULL
+                AND py.to_profile_id IS NULL
+                AND py.profile_id = coalesce(v_money_profile_id, p_entity_id)
+              )
+            )
+            AND py.voided_at IS NULL
+        ) merged
+        WHERE v_cursor_pay_id IS NULL OR merged.sort_id < v_cursor_pay_id
+        ORDER BY merged.sort_payment_date DESC, merged.sort_id DESC
         LIMIT v_lim + 1
       ) pay_rows;
     END IF;

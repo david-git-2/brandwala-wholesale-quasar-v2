@@ -6,6 +6,7 @@ import {
 } from '../repositories/billsRepository';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import { composePayloadHasStock } from '../utils/kernelComposeBillPayload';
 
 export type BillComposeSaveArgs = {
   tenantId: number;
@@ -21,8 +22,26 @@ export function useBillComposeMutation() {
   return useMutation({
     mutationFn: async (args: BillComposeSaveArgs) => {
       const { tenantId, invoiceId, payload, removeItemIds, issue } = args;
+      const useKernel = !composePayloadHasStock(payload);
 
       if (invoiceId) {
+        if (useKernel) {
+          const updatePayload: SalesInvoiceUpdatePayloadInput = {
+            invoice: payload.invoice,
+            items: payload.items,
+            remove_item_ids: removeItemIds?.length ? removeItemIds : undefined,
+          };
+          const result = await billsRepository.updateKernelComposeDraft(
+            tenantId,
+            invoiceId,
+            updatePayload,
+          );
+          if (issue) {
+            await billsRepository.issueKernelComposeBill(tenantId, invoiceId);
+          }
+          return { ...result, invoice_id: invoiceId };
+        }
+
         const updatePayload: SalesInvoiceUpdatePayloadInput = {
           invoice: payload.invoice,
           items: payload.items,
@@ -43,6 +62,10 @@ export function useBillComposeMutation() {
           });
         }
         return { ...result, invoice_id: invoiceId };
+      }
+
+      if (useKernel) {
+        return billsRepository.upsertKernelComposeDraft(tenantId, payload, issue);
       }
 
       return billsRepository.upsertDraftBill(tenantId, {

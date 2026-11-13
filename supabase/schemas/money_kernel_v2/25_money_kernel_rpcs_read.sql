@@ -93,8 +93,8 @@ BEGIN
       'payment_status',         p.status,
       'payment_amount',         p.amount,
       'payment_currency',       p.currency_code,
-      'from_lot_id',            p.from_lot_id,
-      'to_lot_id',              p.to_lot_id,
+      'from_cash_bundle_id',            p.from_cash_bundle_id,
+      'to_cash_bundle_id',              p.to_cash_bundle_id,
       'payment_meta',           p.meta,
       'settled_at',             bs.created_at
     ) ORDER BY bs.created_at DESC), '[]'::jsonb)
@@ -472,20 +472,23 @@ CREATE OR REPLACE FUNCTION public.rpc_get_pot_balance(
   p_currency     text    DEFAULT 'BDT'
 ) RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
 AS $$
 DECLARE
-  v_pot     money_kernel.cashbook_lots;
-  v_account cashbook_accounts;
+  v_pot     money_kernel.cash_bundles;
+  v_account money_kernel.cashbooks;
 BEGIN
   IF p_tenant_id IS NULL THEN
     RAISE EXCEPTION 'invalid_arguments: tenant_id required';
   END IF;
 
+  PERFORM money_kernel.assert_kernel_money_read(p_tenant_id);
+
   IF p_pot_id IS NOT NULL THEN
     -- Lookup by pot id
     SELECT pp.* INTO v_pot
-      FROM money_kernel.cashbook_lots pp
+      FROM money_kernel.cash_bundles pp
       WHERE pp.id = p_pot_id AND pp.tenant_id = p_tenant_id;
     IF NOT FOUND THEN
       RAISE EXCEPTION 'not_found: pot % in tenant %', p_pot_id, p_tenant_id;
@@ -493,23 +496,23 @@ BEGIN
 
     -- Resolve entity for the response
     SELECT a.* INTO v_account
-      FROM money_kernel.cashbook_points pt
-      JOIN money_kernel.cashbook_accounts a ON a.id = pt.cashbook_account_id
-     WHERE pt.id = v_pot.cashbook_point_id;
+      FROM money_kernel.cash_locations pt
+      JOIN money_kernel.cashbooks a ON a.id = pt.cashbook_id
+     WHERE pt.id = v_pot.cash_location_id;
 
   ELSIF p_entity_type IS NOT NULL AND p_entity_id IS NOT NULL THEN
     -- Lookup by entity + currency (uses default pot pointer first)
     SELECT pp.* INTO v_pot
-      FROM money_kernel.cashbook_accounts a
-      LEFT JOIN money_kernel.cashbook_lots pp_default
-        ON pp_default.id = a.default_cashbook_lot_id
-      JOIN money_kernel.cashbook_points pt ON pt.cashbook_account_id = a.id
-      JOIN money_kernel.cashbook_lots pp ON pp.cashbook_point_id = pt.id
+      FROM money_kernel.cashbooks a
+      LEFT JOIN money_kernel.cash_bundles pp_default
+        ON pp_default.id = a.default_cash_bundle_id
+      JOIN money_kernel.cash_locations pt ON pt.cashbook_id = a.id
+      JOIN money_kernel.cash_bundles pp ON pp.cash_location_id = pt.id
      WHERE a.tenant_id = p_tenant_id
-       AND a.entity_type = p_entity_type
-       AND a.entity_id = p_entity_id
+       AND p_entity_type = 'profile'
+       AND a.profile_id = p_entity_id
        AND pp.currency_code = p_currency
-     ORDER BY (a.default_cashbook_lot_id = pp.id) DESC, pp.id ASC
+     ORDER BY (a.default_cash_bundle_id = pp.id) DESC, pp.id ASC
      LIMIT 1;
 
     IF NOT FOUND THEN
@@ -517,9 +520,8 @@ BEGIN
         'not_found: no % pot for entity %/%', p_currency, p_entity_type, p_entity_id;
     END IF;
 
-    SELECT * INTO v_account FROM money_kernel.cashbook_accounts
-      WHERE tenant_id = p_tenant_id AND entity_type = p_entity_type
-        AND entity_id = p_entity_id;
+    SELECT * INTO v_account FROM money_kernel.cashbooks
+      WHERE tenant_id = p_tenant_id AND profile_id = p_entity_id;
 
   ELSE
     RAISE EXCEPTION
@@ -529,9 +531,8 @@ BEGIN
   RETURN jsonb_build_object(
     'pot_id',          v_pot.id,
     'tenant_id',       v_pot.tenant_id,
-    'cashbook_point_id', v_pot.cashbook_point_id,
-    'entity_type',     v_account.entity_type,
-    'entity_id',       v_account.entity_id,
+    'cash_location_id', v_pot.cash_location_id,
+    'profile_id',      v_account.profile_id,
     'currency_code',   v_pot.currency_code,
     'amount',          v_pot.amount,
     'updated_at',      v_pot.updated_at,
@@ -552,7 +553,8 @@ CREATE OR REPLACE FUNCTION public.rpc_get_pot_balances(
   p_currencies   text[]  DEFAULT NULL
 ) RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
 AS $$
 DECLARE
   v_rows jsonb;
@@ -561,21 +563,23 @@ BEGIN
     RAISE EXCEPTION 'invalid_arguments: tenant_id required';
   END IF;
 
+  PERFORM money_kernel.assert_kernel_money_read(p_tenant_id);
+
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
     'pot_id',        pp.id,
-    'entity_type',   a.entity_type,
-    'entity_id',     a.entity_id,
+    'profile_id',    a.profile_id,
     'currency_code', pp.currency_code,
     'amount',        pp.amount,
     'updated_at',    pp.updated_at
-  ) ORDER BY a.entity_id, pp.currency_code), '[]'::jsonb)
+  ) ORDER BY a.profile_id, pp.currency_code), '[]'::jsonb)
   INTO v_rows
-  FROM money_kernel.cashbook_lots pp
-  JOIN money_kernel.cashbook_points   pt ON pt.id = pp.cashbook_point_id
-  JOIN money_kernel.cashbook_accounts a  ON a.id  = pt.cashbook_account_id
+  FROM money_kernel.cash_bundles pp
+  JOIN money_kernel.cash_locations   pt ON pt.id = pp.cash_location_id
+  JOIN money_kernel.cashbooks a  ON a.id  = pt.cashbook_id
   WHERE pp.tenant_id = p_tenant_id
-    AND a.entity_type = p_entity_type
-    AND (p_entity_ids IS NULL OR a.entity_id = ANY(p_entity_ids))
+    AND pp.closed_at IS NULL
+    AND (p_entity_type IS NULL OR p_entity_type = 'profile')
+    AND (p_entity_ids IS NULL OR a.profile_id = ANY(p_entity_ids))
     AND (p_currencies IS NULL OR pp.currency_code = ANY(p_currencies));
 
   RETURN jsonb_build_object(
@@ -587,6 +591,59 @@ BEGIN
       'entity_ids',  p_entity_ids,
       'currencies',  p_currencies
     )
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.rpc_list_profile_cashbook_bundles(
+  p_tenant_id bigint,
+  p_profile_id bigint
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
+AS $$
+DECLARE
+  v_bundles jsonb;
+BEGIN
+  IF p_tenant_id IS NULL OR p_profile_id IS NULL THEN
+    RAISE EXCEPTION 'invalid_arguments: tenant_id and profile_id required';
+  END IF;
+
+  PERFORM public.money_kernel_assert_profile_in_tenant(p_tenant_id, p_profile_id);
+  PERFORM money_kernel.assert_kernel_money_read(p_tenant_id);
+
+  SELECT coalesce(jsonb_agg(
+    jsonb_build_object(
+      'bundle_id', pp.id,
+      'cash_location_id', pp.cash_location_id,
+      'location_code', pt.location_code,
+      'location_name', pt.name,
+      'desk_point_id', cp.id,
+      'currency_code', upper(btrim(pp.currency_code)),
+      'amount', pp.amount,
+      'books_rate', pp.books_rate
+    )
+    ORDER BY pt.name, pp.currency_code, pp.books_rate, pp.id
+  ), '[]'::jsonb)
+  INTO v_bundles
+  FROM money_kernel.cash_bundles pp
+  JOIN money_kernel.cash_locations pt ON pt.id = pp.cash_location_id
+  JOIN money_kernel.cashbooks ca ON ca.id = pt.cashbook_id
+  LEFT JOIN public.cashbook_accounts acc
+    ON acc.profile_id = ca.profile_id
+   AND acc.tenant_id = ca.tenant_id
+   AND upper(btrim(acc.currency_code)) = upper(btrim(pp.currency_code))
+  LEFT JOIN public.cashbook_points cp
+    ON cp.cashbook_account_id = acc.id
+   AND cp.code = pt.location_code
+  WHERE ca.tenant_id = p_tenant_id
+    AND ca.profile_id = p_profile_id
+    AND pp.closed_at IS NULL;
+
+  RETURN jsonb_build_object(
+    'profile_id', p_profile_id,
+    'bundles', v_bundles
   );
 END;
 $$;
@@ -636,12 +693,11 @@ BEGIN
 
   WITH my_pots AS (
     SELECT pp.id AS pot_id, pp.currency_code, pp.amount AS current_balance
-      FROM money_kernel.cashbook_lots pp
-      JOIN money_kernel.cashbook_points    pt ON pt.id = pp.cashbook_point_id
-      JOIN money_kernel.cashbook_accounts  a  ON a.id  = pt.cashbook_account_id
+      FROM money_kernel.cash_bundles pp
+      JOIN money_kernel.cash_locations    pt ON pt.id = pp.cash_location_id
+      JOIN money_kernel.cashbooks  a  ON a.id  = pt.cashbook_id
      WHERE a.tenant_id = p_tenant_id
-       AND a.entity_type = 'profile'
-       AND a.entity_id = p_profile_id
+       AND a.profile_id = p_profile_id
        AND (p_pot_id IS NULL OR pp.id = p_pot_id)
        AND (p_currency_code IS NULL OR pp.currency_code = p_currency_code)
   ),
@@ -653,11 +709,11 @@ BEGIN
            p.amount           AS leg_amount,
            -p.amount          AS signed_amount,
            CASE WHEN p.status = 'posted' THEN -p.amount ELSE 0 END AS signed_for_balance,
-           p.to_lot_id        AS other_pot_id
+           p.to_cash_bundle_id        AS other_pot_id
       FROM money_kernel.pays p
-      JOIN my_pots mp ON mp.pot_id = p.from_lot_id
+      JOIN my_pots mp ON mp.pot_id = p.from_cash_bundle_id
      WHERE p.tenant_id = p_tenant_id
-       AND p.from_lot_id IS NOT NULL
+       AND p.from_cash_bundle_id IS NOT NULL
        AND (p_include_voided OR p.status = 'posted')
        AND (p_from_date IS NULL OR p.payment_date >= p_from_date)
        AND (p_to_date   IS NULL OR p.payment_date <= p_to_date)
@@ -678,11 +734,11 @@ BEGIN
                 THEN (CASE WHEN p.kind = 'transfer'
                            THEN p.amount * p.exchange_rate ELSE p.amount END)
                 ELSE 0 END,
-           p.from_lot_id
+           p.from_cash_bundle_id
       FROM money_kernel.pays p
-      JOIN my_pots mp ON mp.pot_id = p.to_lot_id
+      JOIN my_pots mp ON mp.pot_id = p.to_cash_bundle_id
      WHERE p.tenant_id = p_tenant_id
-       AND p.to_lot_id IS NOT NULL
+       AND p.to_cash_bundle_id IS NOT NULL
        AND (p_include_voided OR p.status = 'posted')
        AND (p_from_date IS NULL OR p.payment_date >= p_from_date)
        AND (p_to_date   IS NULL OR p.payment_date <= p_to_date)
@@ -772,11 +828,11 @@ BEGIN
               'id',       a.entity_id,
               'name',     COALESCE(pr.name, t.name, a.entity_type)
             )
-            FROM money_kernel.cashbook_lots pp
-            JOIN money_kernel.cashbook_points    pt ON pt.id = pp.cashbook_point_id
-            JOIN money_kernel.cashbook_accounts  a  ON a.id  = pt.cashbook_account_id
-            LEFT JOIN public.profiles      pr ON pr.id = a.entity_id AND a.entity_type = 'profile' AND pr.tenant_id = a.tenant_id
-            LEFT JOIN public.tenants       t  ON t.id  = a.entity_id AND a.entity_type = 'tenant'
+            FROM money_kernel.cash_bundles pp
+            JOIN money_kernel.cash_locations    pt ON pt.id = pp.cash_location_id
+            JOIN money_kernel.cashbooks  a  ON a.id  = pt.cashbook_id
+            LEFT JOIN public.profiles      pr ON pr.id = a.profile_id AND pr.tenant_id = a.tenant_id
+            LEFT JOIN public.tenants       t  ON t.id = a.profile_id AND pr.profile_type = 'tenant'
             WHERE pp.id = pd.other_pot_id
           )
         END,
@@ -830,25 +886,30 @@ BEGIN
 END;
 $$;
 
+-- Deprecated: use public.list_global_currencies(). Kept for desk cutover callers.
 CREATE OR REPLACE FUNCTION public.list_money_kernel_currencies()
 RETURNS jsonb
 LANGUAGE sql
 STABLE
 SECURITY INVOKER
-SET search_path = money_kernel, public, pg_temp
+SET search_path = public, pg_temp
 AS $$
   SELECT COALESCE(
     jsonb_agg(
       jsonb_build_object(
+        'id',          c.id,
         'code',        c.code,
         'minor_units', c.minor_units,
-        'name',        c.name
+        'name',        c.name,
+        'symbol',      c.symbol,
+        'country',     c.country
       )
       ORDER BY c.code
     ),
     '[]'::jsonb
   )
-  FROM money_kernel.currencies c;
+  FROM public.global_currencies c
+  WHERE c.is_active = true;
 $$;
 
 DROP VIEW IF EXISTS public.v_bills_unified;
@@ -950,42 +1011,7 @@ SELECT
 FROM money_kernel.bill_events e
 JOIN money_kernel.bills b ON b.id = e.bill_id;
 
-CREATE OR REPLACE VIEW public.v_pot_balances
-  WITH (security_invoker = true)
-AS
-SELECT
-  pp.id                AS pot_id,
-  pp.tenant_id,
-  a.id                 AS cashbook_account_id,
-  a.entity_type,
-  a.entity_id,
-  pt.id                AS cashbook_point_id,
-  pt.code              AS point_code,
-  pt.name              AS point_name,
-  pp.currency_code,
-  pp.amount,
-  pp.created_at,
-  pp.updated_at,
-  (a.default_cashbook_lot_id = pp.id) AS is_default_lot,
-
-  -- Entity display resolution
-  COALESCE(pr.name, t.name, a.entity_type) AS entity_name,
-  pr.profile_type,
-  pr.phone,
-  pr.email,
-
-  -- Container totals
-  (
-    SELECT COUNT(*)
-    FROM money_kernel.cashbook_lots pp2
-    JOIN money_kernel.cashbook_points    pt2 ON pt2.id = pp2.cashbook_point_id
-    WHERE pt2.cashbook_account_id = a.id
-  )                    AS pots_in_account
-FROM money_kernel.cashbook_lots pp
-JOIN money_kernel.cashbook_points pt    ON pt.id = pp.cashbook_point_id
-JOIN money_kernel.cashbook_accounts a   ON a.id  = pt.cashbook_account_id
-LEFT JOIN public.profiles pr      ON pr.id = a.entity_id AND a.entity_type = 'profile' AND pr.tenant_id = a.tenant_id
-LEFT JOIN public.tenants  t       ON t.id  = a.entity_id AND a.entity_type = 'tenant';
+DROP VIEW IF EXISTS public.v_pot_balances;
 
 CREATE OR REPLACE VIEW public.v_pot_balances
   WITH (security_invoker = true)
@@ -993,30 +1019,29 @@ AS
 SELECT
   pp.id                AS pot_id,
   pp.tenant_id,
-  a.id                 AS cashbook_account_id,
-  a.entity_type,
-  a.entity_id,
-  pt.id                AS cashbook_point_id,
-  pt.code              AS point_code,
+  a.id                 AS cashbook_id,
+  a.profile_id,
+  pt.id                AS cash_location_id,
+  pt.location_code              AS point_code,
   pt.name              AS point_name,
   pp.currency_code,
   pp.amount,
   pp.created_at,
   pp.updated_at,
-  (a.default_cashbook_lot_id = pp.id) AS is_default_lot,
-  COALESCE(pr.name, t.name, a.entity_type) AS entity_name,
+  (a.default_cash_bundle_id = pp.id) AS is_default_lot,
+  COALESCE(pr.name, t.name, 'profile') AS entity_name,
   pr.profile_type,
   pr.phone,
   pr.email,
   COALESCE(cnt.pots_in_account, 0) AS pots_in_account
-FROM money_kernel.cashbook_lots pp
-JOIN money_kernel.cashbook_points pt    ON pt.id = pp.cashbook_point_id
-JOIN money_kernel.cashbook_accounts a   ON a.id  = pt.cashbook_account_id
-LEFT JOIN public.profiles pr      ON pr.id = a.entity_id AND a.entity_type = 'profile' AND pr.tenant_id = a.tenant_id
-LEFT JOIN public.tenants  t       ON t.id  = a.entity_id AND a.entity_type = 'tenant'
+FROM money_kernel.cash_bundles pp
+JOIN money_kernel.cash_locations pt    ON pt.id = pp.cash_location_id
+JOIN money_kernel.cashbooks a   ON a.id  = pt.cashbook_id
+LEFT JOIN public.profiles pr      ON pr.id = a.profile_id AND pr.tenant_id = a.tenant_id
+LEFT JOIN public.tenants  t       ON t.id = pr.subject_id AND pr.profile_type = 'tenant'
 LEFT JOIN (
-  SELECT pt2.cashbook_account_id, COUNT(*) AS pots_in_account
-  FROM money_kernel.cashbook_points pt2
-  JOIN money_kernel.cashbook_lots pp2 ON pp2.cashbook_point_id = pt2.id
-  GROUP BY pt2.cashbook_account_id
-) cnt ON cnt.cashbook_account_id = a.id;
+  SELECT pt2.cashbook_id, COUNT(*) AS pots_in_account
+  FROM money_kernel.cash_locations pt2
+  JOIN money_kernel.cash_bundles pp2 ON pp2.cash_location_id = pt2.id
+  GROUP BY pt2.cashbook_id
+) cnt ON cnt.cashbook_id = a.id;

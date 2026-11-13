@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { GlobalShipment } from '../repositories/globalShipmentRepository';
-import { calculateShipmentCostSummary, costingShipmentFromEntries } from 'src/shared/shipment-engine';
+import { calculateShipmentCostSummary, costingShipmentForPreview } from 'src/shared/shipment-engine';
 import {
   isShipmentStockPosted,
   isShipmentCostsLocked,
@@ -103,9 +103,10 @@ export function useInboundShipmentCalculations() {
         lineLandedCostTotal: 0,
       };
     }
-    const forCosting = costingShipmentFromEntries(
+    const forCosting = costingShipmentForPreview(
       shipment,
       shipmentStore.currentCostEntries,
+      shipmentStore.settingsFinanceCachedApFx,
       items,
     );
     return calculateShipmentCostSummary(forCosting, items);
@@ -131,9 +132,10 @@ export function useInboundShipmentCalculations() {
   const shipmentForLiveCosting = computed(() => {
     const shipment = shipmentStore.currentShipment;
     if (!shipment) return null;
-    const fromEntries = costingShipmentFromEntries(
+    const fromEntries = costingShipmentForPreview(
       shipment,
       shipmentStore.currentCostEntries,
+      shipmentStore.settingsFinanceCachedApFx,
       shipmentStore.currentShipmentItems,
     );
     return {

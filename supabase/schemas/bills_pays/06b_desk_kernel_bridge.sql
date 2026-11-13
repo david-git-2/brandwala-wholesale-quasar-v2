@@ -195,14 +195,12 @@ BEGIN
   END;
 
   PERFORM public.fn_provision_kernel_cashbook_for_profile_row(p_books_tenant_id, p_bill_profile_id);
-  PERFORM public.fn_provision_kernel_cashbook_currency(p_books_tenant_id, p_bill_profile_id, v_ccy);
 
-  SELECT ca.id, ca.default_cashbook_point_pot_id
+  SELECT ca.id, ca.default_cash_bundle_id
   INTO v_account_id, v_default_pot
-  FROM money_kernel.cashbook_accounts ca
+  FROM money_kernel.cashbooks ca
   WHERE ca.tenant_id = p_books_tenant_id
-    AND ca.entity_type = 'profile'
-    AND ca.entity_id = p_bill_profile_id
+    AND ca.profile_id = p_bill_profile_id
   LIMIT 1;
 
   IF v_account_id IS NULL THEN
@@ -210,11 +208,12 @@ BEGIN
   END IF;
 
   SELECT pp.id INTO v_ccy_pot
-  FROM money_kernel.cashbook_point_pots pp
-  JOIN money_kernel.cashbook_points pt ON pt.id = pp.cashbook_point_id
-  WHERE pt.cashbook_account_id = v_account_id
+  FROM money_kernel.cash_bundles pp
+  JOIN money_kernel.cash_locations pt ON pt.id = pp.cash_location_id
+  WHERE pt.cashbook_id = v_account_id
     AND upper(trim(pp.currency_code)) = v_ccy
-  ORDER BY pt.code, pp.id
+    AND pp.closed_at IS NULL
+  ORDER BY pt.location_code, pp.id
   LIMIT 1;
 
   v_default_pot := coalesce(v_ccy_pot, v_default_pot);
@@ -222,35 +221,39 @@ BEGIN
   SELECT coalesce(jsonb_agg(
     jsonb_build_object(
       'id', cp.id,
-      'code', cp.code,
+      'code', cp.location_code,
       'name', cp.name,
       'is_active', true
     )
     ORDER BY cp.name, cp.id
   ), '[]'::jsonb)
   INTO v_points
-  FROM money_kernel.cashbook_points cp
-  WHERE cp.cashbook_account_id = v_account_id;
+  FROM money_kernel.cash_locations cp
+  WHERE cp.cashbook_id = v_account_id;
 
   SELECT coalesce(jsonb_agg(
     jsonb_build_object(
       'id', pp.id,
-      'cashbook_point_id', pp.cashbook_point_id,
+      'cash_location_id', pp.cash_location_id,
+      'cashbook_point_id', pp.cash_location_id,
       'currency_code', upper(trim(pp.currency_code)),
       'amount', pp.amount,
-      'point_code', pt.code,
+      'books_rate', pp.books_rate,
+      'drawer_group', pp.drawer_group,
+      'point_code', pt.location_code,
       'point_name', pt.name
     )
     ORDER BY pt.name, pp.currency_code, pp.id
   ), '[]'::jsonb)
   INTO v_pots
-  FROM money_kernel.cashbook_point_pots pp
-  JOIN money_kernel.cashbook_points pt ON pt.id = pp.cashbook_point_id
-  WHERE pt.cashbook_account_id = v_account_id;
+  FROM money_kernel.cash_bundles pp
+  JOIN money_kernel.cash_locations pt ON pt.id = pp.cash_location_id
+  WHERE pt.cashbook_id = v_account_id
+    AND pp.closed_at IS NULL;
 
   RETURN jsonb_build_object(
     'profile_id', p_bill_profile_id,
-    'cashbook_account_id', v_account_id,
+    'cashbook_id', v_account_id,
     'default_pot_id', v_default_pot,
     'points', v_points,
     'pots', v_pots
@@ -570,68 +573,6 @@ BEGIN
           'id', b.id,
           'invoice_no', b.invoice_no,
           'invoice_date', b.invoice_date,
-          'invoice_type', b.invoice_type::text,
-          'invoice_status', b.invoice_status::text,
-          'payment_status', b.payment_status::text,
-          'total_amount', b.total_amount,
-          'due_amount', COALESCE(ks.open_books, b.due_amount),
-          'currency_code', upper(COALESCE(b.currency_code, 'BDT')),
-          'from_profile_id', b.from_profile_id,
-          'from_profile_name', from_pr.name,
-          'from_profile_type', from_pr.profile_type::text,
-          'to_profile_id', b.to_profile_id,
-          'to_profile_name', to_pr.name,
-          'to_profile_type', to_pr.profile_type::text,
-          'profile_name', to_pr.name,
-          'ap_kind', b.ap_kind,
-          'document_kind', b.document_kind::text,
-          'parent_bill_id', b.parent_bill_id,
-          'spine', 'legacy',
-          'kind', NULL,
-          'list_status', public._desk_list_status_slug(
-            b.invoice_status::text,
-            b.payment_status::text,
-            COALESCE(ks.open_books, b.due_amount),
-            NULL
-          )
-        ) AS row_json
-      FROM public.bills b
-      INNER JOIN public.profiles to_pr
-        ON to_pr.id = b.to_profile_id AND to_pr.tenant_id = v_parent_id
-      LEFT JOIN public.profiles from_pr
-        ON from_pr.id = b.from_profile_id AND from_pr.tenant_id = v_parent_id
-      LEFT JOIN public.v_kernel_bill_summaries ks ON ks.bill_id = b.id
-      WHERE b.tenant_id = v_parent_id
-        AND (v_to_type IS NULL OR to_pr.profile_type::text = v_to_type)
-        AND (p_from_profile_id IS NULL OR b.from_profile_id = p_from_profile_id)
-        AND (p_payment_status IS NULL OR b.payment_status::text = p_payment_status)
-        AND (
-          p_invoice_status IS NULL
-          OR (
-            p_invoice_status = 'draft'
-            AND b.invoice_status IN ('draft', 'proforma_generated')
-          )
-          OR (
-            p_invoice_status <> 'draft'
-            AND b.invoice_status::text = p_invoice_status
-          )
-        )
-        AND (
-          p_quick_filter IS NULL OR p_quick_filter = ''
-          OR (p_quick_filter = 'paid' AND COALESCE(ks.open_books, b.due_amount) <= 0 AND b.invoice_status = 'issued')
-          OR (p_quick_filter = 'paid' AND b.payment_status = 'paid')
-          OR (p_quick_filter = 'unpaid' AND COALESCE(ks.open_books, b.due_amount) > 0 AND b.invoice_status = 'issued')
-        )
-        AND (p_cursor IS NULL OR b.id < p_cursor)
-
-      UNION ALL
-
-      SELECT
-        b.id AS sort_id,
-        jsonb_build_object(
-          'id', b.id,
-          'invoice_no', b.invoice_no,
-          'invoice_date', b.invoice_date,
           'invoice_type', public._desk_kernel_kind_invoice_type(b.kind),
           'invoice_status', CASE b.status WHEN 'draft' THEN 'draft' WHEN 'voided' THEN 'voided' ELSE 'issued' END,
           'payment_status', public._desk_kernel_status_payment(b.status, b.due_amount),
@@ -663,7 +604,6 @@ BEGIN
       LEFT JOIN public.profiles from_pr
         ON from_pr.id = b.from_profile_id AND from_pr.tenant_id = b.tenant_id
       WHERE b.tenant_id = v_parent_id
-        AND NOT EXISTS (SELECT 1 FROM public.bills pb WHERE pb.id = b.id)
         AND (v_to_type IS NULL OR to_pr.profile_type::text = v_to_type)
         AND (p_from_profile_id IS NULL OR b.from_profile_id = p_from_profile_id)
         AND (p_payment_status IS NULL OR public._desk_kernel_status_payment(b.status, b.due_amount) = p_payment_status)

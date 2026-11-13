@@ -357,7 +357,7 @@ export type CashbookLegAccountPrep = {
   defaultPotId: number | null;
 };
 
-/** Ensures office point + currency pot and default pointers (DB: ensure_cashbook_account_for_profile). */
+/** Ensures main point + currency pot and default pointers (DB: ensure_cashbook_account_for_profile). */
 const ensureCashbookAccountForProfile = async (
   profileId: number,
   currencyCode: string,

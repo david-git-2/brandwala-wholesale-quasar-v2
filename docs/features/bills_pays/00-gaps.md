@@ -27,11 +27,11 @@
 
 Docs: [money spec](../money/spec.md). **`money_kernel.cashbook_lots`** + **`pay_lot_lines`** replaced **`cashbook_point_pots`**. **`rpc_pay_bills.p_lot_debits`** supports manual multi-lot pay.
 
-**Still open:** `public.pays` / `post_ap_payout_*` / pay UI still use **pot** ids and shapes; wire desk + `pay_cashbook_legs` to list lots with `books_rate`.
+**Pay dialog (as-built 2026-11):** `get_bill_detail_bundle.pay_cashbook_legs` lists **locations + bundles** (`books_rate`, `drawer_group`) for picker; UI = location dropdown then bundle chips; balances from bundle, not standalone pot-RPC reads. **Still open:** `public.pays` / `post_ap_payout_*` legacy paths; multi-bundle `p_bundle_debits` in pay UI.
 
 ### Payment dialog — FX, deposit, partial pays (planned)
 
-Full plan: [bridge/spec.md § Payment dialog](../money_bill_bridge/spec.md#payment-dialog). **As-built:** bill pay dialog shows **Exchange rate** when pot currency ≠ bill currency (or separate books FX) and sends rates on submit (Phase 1). **Still open:** balance check + nested deposit (Phase 2); kernel I7b vs desk AP FX (see plan).
+Full plan: [bridge/spec.md § Payment dialog](../money_bill_bridge/spec.md#payment-dialog). **As-built:** FX from books rates, no manual rate input (Phase 1); **Add money** top-up / new bundle via deposit (Phase 2); location → bundle picker; pay amount = bill due (no Payment amount field). **Still open:** partial-pay UX polish (Phase 3); kernel I7b vs desk AP FX edge cases.
 
 ### AP `from_profile_id` / `to_profile_id` (kernel)
 
@@ -39,7 +39,7 @@ On `money_kernel.bills`, **from = payer (tenant on AP)**, **to = payee (vendor/c
 
 ### Desk list (as-built 2026-11)
 
-- **List:** `list_bills_desk_page(p_to_profile_type, p_from_profile_id, status filters)` — legacy + kernel merge; no `ar_side` / search.
+- **List:** `list_bills_desk_page(p_to_profile_type, p_from_profile_id, status filters)` — kernel-only (`money_kernel.bills`); no `ar_side` / search.
 - **Detail:** `get_bill_detail_bundle` falls back to `_get_bill_detail_bundle_from_kernel` when `public.bills` row missing.
 - **Void (kernel):** `BillDetailPage` → `rpc_void_bill` when bundle `bill.spine = kernel`.
 - **Legacy rows** without `to_profile_id` do not appear on payee-type tabs until backfilled.

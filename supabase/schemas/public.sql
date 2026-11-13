@@ -31703,11 +31703,11 @@ $$;
 ALTER FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status" "text", "p_search" "text", "p_statuses" "text"[]) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_global_currencies"() RETURNS TABLE("id" bigint, "name" "text", "country" "text", "code" "text", "symbol" "text")
+CREATE OR REPLACE FUNCTION "public"."list_global_currencies"() RETURNS TABLE("id" bigint, "name" "text", "country" "text", "code" "text", "symbol" "text", "minor_units" smallint)
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-  select gc.id, gc.name, gc.country, gc.code, gc.symbol
+  select gc.id, gc.name, gc.country, gc.code, gc.symbol, gc.minor_units
   from public.global_currencies gc
   where gc.is_active = true
   order by gc.code asc;
@@ -63737,6 +63737,7 @@ CREATE TABLE IF NOT EXISTS "public"."global_currencies" (
     "country" "text" NOT NULL,
     "code" "text" NOT NULL,
     "symbol" "text" NOT NULL,
+    "minor_units" smallint DEFAULT 2 NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -65036,7 +65037,8 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "customer_group_id" bigint,
-    "operating_tenant_id" bigint
+    "operating_tenant_id" bigint,
+    "cashbook_enabled" boolean DEFAULT true NOT NULL
 );
 
 

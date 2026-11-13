@@ -3,45 +3,69 @@
     <span class="text-caption text-grey-7 text-uppercase text-weight-bold" style="letter-spacing: 0.04em">
       Source
     </span>
-    <q-chip v-if="sourceType" dense outline class="bill-kernel-source-chip">
-      <span class="text-weight-medium">{{ sourceTypeLabel }}</span>
-    </q-chip>
-    <q-chip v-if="sourceId" dense outline class="bill-kernel-source-chip">
-      ID {{ sourceId }}
-    </q-chip>
-    <q-chip v-if="sourceKey" dense outline class="bill-kernel-source-chip">
-      {{ sourceKeyLabel }}
+    <q-chip
+      v-for="(chip, idx) in displayChips"
+      :key="idx"
+      dense
+      outline
+      class="bill-kernel-source-chip"
+    >
+      <span class="text-weight-medium">{{ chip }}</span>
     </q-chip>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { shipmentApKindLabel } from 'src/modules/procurement_stock/constants/shipmentApBuckets';
+import { useBillSourceShipmentName } from '../composables/useBillSourceShipmentName';
+import {
+  formatBillKernelSourceEntityFallback,
+  formatBillKernelSourceKey,
+  formatBillKernelSourceType,
+} from '../utils/formatBillKernelSource';
 
 const props = defineProps<{
   sourceType?: string | null;
   sourceId?: string | null;
   sourceKey?: string | null;
+  apKind?: string | null;
+  /** Resolved inbound shipment id (preferred over parsing `source_id`). */
+  shipmentId?: number | null;
 }>();
 
 const show = computed(
   () => Boolean(props.sourceType?.trim() || props.sourceId?.trim() || props.sourceKey?.trim()),
 );
 
-const sourceTypeLabel = computed(() => {
-  const t = props.sourceType?.trim();
-  if (t === 'shipment_cost') return 'Shipment cost';
-  if (t === 'shop_order') return 'Shop order';
-  if (t === 'compose') return 'Compose';
-  return t ?? '—';
+const shipmentId = computed(() => {
+  if (props.sourceType !== 'shipment_cost') return null;
+  if (props.shipmentId != null && Number(props.shipmentId) > 0) return Number(props.shipmentId);
+  const id = Number(props.sourceId);
+  return Number.isFinite(id) && id > 0 ? id : null;
 });
 
-const sourceKeyLabel = computed(() => {
-  const key = props.sourceKey?.trim();
-  if (!key) return '';
-  if (props.sourceType === 'shipment_cost') return shipmentApKindLabel(key);
-  return key;
+const { shipmentName } = useBillSourceShipmentName(shipmentId);
+
+const displayChips = computed(() => {
+  const chips: string[] = [];
+  const typeLabel = formatBillKernelSourceType(props.sourceType);
+  if (typeLabel) chips.push(typeLabel);
+
+  if (props.sourceType === 'shipment_cost') {
+    const name = shipmentName.value?.trim();
+    if (name) chips.push(name);
+    const bucket = formatBillKernelSourceKey(props.sourceType, props.sourceKey, props.apKind);
+    if (bucket) chips.push(bucket);
+    return chips;
+  }
+
+  const entity = formatBillKernelSourceEntityFallback(props.sourceType, props.sourceId);
+  if (entity) chips.push(entity);
+
+  const keyLabel = formatBillKernelSourceKey(props.sourceType, props.sourceKey, props.apKind);
+  if (keyLabel) chips.push(keyLabel);
+
+  return chips;
 });
 </script>
 

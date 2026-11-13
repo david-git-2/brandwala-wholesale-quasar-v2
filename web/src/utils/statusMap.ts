@@ -11,7 +11,7 @@ const GROUPS: Record<TfStatusGroup, string[]> = {
     'pending', 'offered', 'low_stock', 'submitted', 'costing_pending', 'negotiating',
     'countered', 'priced', 'final_offered', 'partial', 'unpaid',
   ],
-  progress: ['confirmed', 'placed', 'procuring', 'processing', 'packed', 'shipped', 'active', 'accepted', 'converted'],
+  progress: ['confirmed', 'placed', 'procuring', 'processing', 'packed', 'shipped', 'active', 'accepted', 'converted', 'issued'],
   done: ['delivered', 'completed', 'fulfilled', 'payment_received', 'paid', 'in_stock', 'received'],
   bad: ['cancelled', 'rejected', 'returned', 'overdue', 'failed', 'out_of_stock'],
 };

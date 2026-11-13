@@ -5,7 +5,7 @@ import type { ShipmentSection } from '../types/shipmentSection';
 import type { GlobalShipmentCostEntry } from '../types/shipmentCostEntry';
 import {
   calculateShipmentCostSummary,
-  costingShipmentFromEntries,
+  costingShipmentForPreview,
 } from 'src/shared/shipment-engine';
 import {
   isShipmentStockPosted,
@@ -160,11 +160,10 @@ export type InboundShipmentsWorkspaceResult = PaginatedResult<GlobalShipment> & 
   cargoCompanies: InboundShipmentListCargoCompany[];
 };
 
-const mergeShipmentApFx = (
+export const mergeShipmentApFxSnapshot = (
   shipment: GlobalShipment,
-  apFxRaw: unknown,
+  snapshot: ReturnType<typeof parseShipmentApFxSnapshot>,
 ): GlobalShipment => {
-  const snapshot = parseShipmentApFxSnapshot(apFxRaw);
   if (!snapshot) return shipment;
   return {
     ...shipment,
@@ -174,6 +173,11 @@ const mergeShipmentApFx = (
     transaction_rate: snapshot.transaction_rate,
   };
 };
+
+export const mergeShipmentApFx = (
+  shipment: GlobalShipment,
+  apFxRaw: unknown,
+): GlobalShipment => mergeShipmentApFxSnapshot(shipment, parseShipmentApFxSnapshot(apFxRaw));
 
 const applyShipmentApFx = async (shipment: GlobalShipment): Promise<GlobalShipment> => {
   const { data, error } = await supabase.rpc('refresh_global_shipment_fx_from_ap_payments', {
@@ -218,6 +222,7 @@ export interface ShipmentOverviewDetailsPayload {
   batch_code_items: BatchCodeItem[];
   ap_bills?: unknown;
   ap_issue_parties?: unknown;
+  ap_fx: ReturnType<typeof parseShipmentApFxSnapshot>;
 }
 
 const getShipmentOverviewDetails = async (
@@ -249,7 +254,15 @@ const getShipmentOverviewDetails = async (
     batch_code_items: (raw.batch_code_items ?? []) as BatchCodeItem[],
     ap_bills: raw.ap_bills,
     ap_issue_parties: raw.ap_issue_parties,
+    ap_fx: parseShipmentApFxSnapshot(raw.ap_fx),
   };
+};
+
+const stampShipmentLandedCosts = async (shipmentId: number): Promise<void> => {
+  const { error } = await db.rpc('stamp_global_shipment_landed_costs', {
+    p_shipment_id: shipmentId,
+  });
+  if (error) throw error;
 };
 
 const getById = async (id: number): Promise<GlobalShipment> => {
@@ -641,12 +654,14 @@ const getShipmentSummary = async (
     items?: GlobalShipmentItem[];
     cost_entries?: GlobalShipmentCostEntry[];
     boxes?: GlobalShipmentBox[];
+    apFx?: ReturnType<typeof parseShipmentApFxSnapshot>;
   },
 ): Promise<ShipmentSummaryKPIs> => {
   let shipment = preload?.shipment;
   let items = preload?.items;
   let costEntries = preload?.cost_entries;
   let boxes = preload?.boxes;
+  let apFx = preload?.apFx ?? null;
 
   if (!shipment || !items || !costEntries || !boxes) {
     const overview = await getShipmentOverviewDetails(shipmentId);
@@ -654,6 +669,7 @@ const getShipmentSummary = async (
     items = items ?? overview.items;
     costEntries = costEntries ?? overview.cost_entries;
     boxes = boxes ?? overview.boxes;
+    apFx = apFx ?? overview.ap_fx;
   }
 
   const totalLines = items.length;
@@ -668,7 +684,12 @@ const getShipmentSummary = async (
   const cargoWeightKg = Number(shipment.total_weight_kg ?? shipment.received_weight) || 0;
   const hasCargoWeight = cargoWeightKg > 0;
 
-  const costingShipment = costingShipmentFromEntries(shipment, costEntries as any, items);
+  const costingShipment = costingShipmentForPreview(
+    shipment,
+    costEntries as any,
+    apFx,
+    items,
+  );
   const costSummary = calculateShipmentCostSummary(costingShipment, items);
 
   const productCostEntriesTotal = sumProductEntryAmount(costEntries as any);
@@ -1610,5 +1631,6 @@ export const globalShipmentRepository = {
   assignShipmentToChild,
   returnShipmentToVendor,
   getShipmentSummary,
+  stampShipmentLandedCosts,
 };
 

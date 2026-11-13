@@ -5,6 +5,7 @@
 export {
   effectiveRateForType,
   costingShipmentFromEntries,
+  costingShipmentForPreview,
   sumEntryAmount,
   sumProductEntryAmount,
   productCostEntries,

@@ -84,7 +84,7 @@ flowchart TB
 
 ## Table schemas (fields)
 
-Live `bills.currency_code` → `money_kernel.currencies` today; **target** → `public.global_currencies.id` ([money spec](../money/spec.md)).
+`bills.currency_code` / `currency_id` → `public.global_currencies` ([money spec](../money/spec.md)). `money_kernel.currencies` dropped.
 
 ### `money_kernel.bill_kind_registry`
 
@@ -316,7 +316,7 @@ If needed, consumers poll `money_kernel.money_outbox` by `xid` (at-least-once). 
 | ID | Type | Plan / doc | Code today | Fix |
 | :--- | :--- | :--- | :--- | :--- |
 | B1 | not_built | Shipment AP on kernel bills | Adjunct Option A in this spec | Costs tab + drop `global_shipment_cost_entries` |
-| B2 | doc_wrong | Desk dual-read legacy + kernel | `list_bills_desk_page` merge | [bills_pays/00-gaps.md](../bills_pays/00-gaps.md) |
+| B2 | shipped | Desk list kernel-only | `list_bills_desk_page` → `money_kernel.bills` only | [bills_pays/00-gaps.md](../bills_pays/00-gaps.md) |
 | B3 | sql_split | Logical bills owner | DDL in `money_kernel_v2` | Future schema split |
 | B4 | cutover | Drop `bill_events` | Table + T5/T6 triggers + `v_bill_events` | Migration; remove event includes from `rpc_get_bill` |
 

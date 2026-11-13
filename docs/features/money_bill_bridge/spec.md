@@ -118,7 +118,7 @@ All other money/bills RPCs: [money/spec.md](../money/spec.md) · [bills/spec.md]
 - Sum of allocations ≤ `p_amount`; leftover may stay **unapplied** on pays.
 - Never pay `credit_note` kind with this RPC.
 
-**Target rename:** `p_from_pot_id` / `p_lot_debits` → bundle ids; derive payee bundle from `to_profile_id` + currency when counterparty has no cashbook ([money](../money/spec.md) vendors).
+**Target rename:** `p_from_pot_id` / `p_lot_debits` → bundle ids. **AP vendor** (`cashbook_enabled=false`): **no** payee bundle credit; stamp `pays.to_profile_id` = bill creditor ([money](../money/spec.md)). **AR / cashbook payee:** credit payee bundle when `p_to_pot_id` omitted and payee has `cashbook_enabled=true`.
 
 ---
 
@@ -130,7 +130,7 @@ All other money/bills RPCs: [money/spec.md](../money/spec.md) · [bills/spec.md]
 | Overpay per bill | Each alloc ≤ that bill’s `due_amount` |
 | Multi-bill void bill | `rpc_void_bill` refuses if on multi-bill pays — void pays first |
 | Correct multi-bill pay | `rpc_void_pays` + `rpc_pay_bills` — not `rpc_update_pays` |
-| AP payee | Derive credit lot/bundle from `to_profile_id` + currency (Option C) |
+| AP payee | Debit payer bundle only; `to_cash_bundle_id` NULL; `from_profile_id` / `to_profile_id` on pays = tenant / vendor |
 | Books | Settlement books sum ≤ pays.books_amount; 0.01 tolerance on books only (D1) |
 
 ---
@@ -158,9 +158,9 @@ Paper invariants: [bills/spec.md](../bills/spec.md). Cash invariants: [money/spe
 
 | Phase | Goal | Status |
 | :---: | :--- | :--- |
-| 1 — FX | Show **Exchange rate** when pot currency ≠ bill currency; wire like `CollectPayPage` | Partial (see gaps) |
-| 2 — Top up | Block pay if insufficient; **Add money** → deposit; refresh balance | Not built |
-| 3 — Chunks | Show remaining due; partial pays until zero | UX polish |
+| 1 — FX | Rate from `books_exchange_rates` (auto); no manual **Exchange rate** input on pay dialog | Shipped |
+| 2 — Top up | Block pay if insufficient; **Add money** → deposit; refresh balance | **Shipped** — selected bundle or **new bundle** via `rpc_deposit` with null `p_pot_id` (opens on Main at books rate) |
+| 3 — Chunks | Pay uses due from summary (no Payment amount input); partial-pay UX polish later | Due-only shipped; partial polish open |
 
 **Rules:** One payment = **one** from-pot/bundle; two pots = two payments. Reports use BDT via `books_amount` / `exchange_rate` on pays.
 
@@ -174,7 +174,7 @@ Paper invariants: [bills/spec.md](../bills/spec.md). Cash invariants: [money/spe
 | :--- | :--- | :--- | :--- |
 | TC-PAY-01 | Issued AR due 1000; customer pot 1000 | `rpc_pay_bill` 1000 | Bill `paid`; pots move |
 | TC-PAY-02 | AP partial | `rpc_pay_bill` 200 | Bill `partial` |
-| TC-PAY-03b | AP; omit `p_to_pot_id` | `rpc_pay_bill` | Derived payee lot/bundle |
+| TC-PAY-03b | AP vendor; omit `p_to_pot_id` | `rpc_pay_bill` | Debit payer bundle only; pays stamped tenant→vendor; no vendor wallet credit |
 | TC-PAY-04 | Bills due 300 + 200 | `rpc_pay_bills` | One pays; two settlements |
 | TC-PAY-05 | Alloc > due | pay | `invalid_amount` |
 | TC-PAY-07 | Allocs sum > pays amount | `rpc_pay_bills` | `invalid_amount` |
@@ -196,7 +196,7 @@ Full matrix (cash + document + guards): `supabase/tests/` and [bills_pays/tests.
 
 | ID | Type | Plan | Code today | Fix |
 | :--- | :--- | :--- | :--- | :--- |
-| BR1 | not_built | Pay dialog Phase 2 (top-up deposit) | — | [§ Payment dialog](#payment-dialog) |
+| BR1 | shipped | Pay dialog Phase 2 (top-up deposit) | `MoneyPayDialog` Add money panel | [§ Payment dialog](#payment-dialog) |
 | BR2 | not_built | `p_lot_debits` / `p_bundle_debits` in pay UI | Kernel live | [bills_pays/00-gaps](../bills_pays/00-gaps.md) |
 | BR3 | doc_wrong | Settlement recon vs legacy `pay_allocations` | Cutover | [bills_pays/08-AUDIT](../bills_pays/08-AUDIT-RECONCILIATION-AND-RUNBOOK.md) |
 

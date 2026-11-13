@@ -379,6 +379,48 @@ export const effectiveRateForType = (
  * Maps cost entries → header-shaped CostingShipmentInput for live preview.
  * Blended / transaction rate stays computed — never written as an input.
  */
+export type ShipmentApFxRates = {
+  product_conversion_rate?: number;
+  cargo_conversion_rate?: number;
+  cargo_rate?: number;
+  transaction_rate?: number | null;
+};
+
+export function costingShipmentFromApFx(
+  shipment: CostingShipmentInput,
+  apFx: ShipmentApFxRates | null | undefined,
+  items: CostingLineItemInput[],
+): CostingShipmentInput {
+  if (!apFx) {
+    return costingShipmentFromEntries(shipment, [], items);
+  }
+  const merged: CostingShipmentInput = {
+    ...shipment,
+    product_conversion_rate:
+      apFx.product_conversion_rate ?? shipment.product_conversion_rate ?? 1,
+    cargo_conversion_rate: apFx.cargo_conversion_rate ?? shipment.cargo_conversion_rate ?? 1,
+    cargo_rate: apFx.cargo_rate ?? shipment.cargo_rate ?? 0,
+    transaction_rate: apFx.transaction_rate ?? shipment.transaction_rate ?? null,
+  };
+  return costingShipmentFromEntries(merged, [], items);
+}
+
+/** Prefer kernel ap_fx when cost entries are empty (Option A). */
+export function costingShipmentForPreview(
+  shipment: CostingShipmentInput,
+  entries: CostEntryInput[],
+  apFx: ShipmentApFxRates | null | undefined,
+  items: CostingLineItemInput[],
+): CostingShipmentInput {
+  if (entries?.length > 0) {
+    return costingShipmentFromEntries(shipment, entries, items);
+  }
+  if (apFx) {
+    return costingShipmentFromApFx(shipment, apFx, items);
+  }
+  return costingShipmentFromEntries(shipment, entries, items);
+}
+
 export function costingShipmentFromEntries(
   shipment: CostingShipmentInput,
   entries: CostEntryInput[],

@@ -35,44 +35,48 @@
       No bills in this bucket yet. Use Create bill to record currency and component amounts.
     </div>
 
-  <div
+  <article
     v-for="bill in visibleBills"
     :key="bill.id"
-    class="q-pa-sm bg-grey-1 rounded-borders border-grey column q-gutter-y-xs"
+    class="shipment-ap-bill-card column q-mb-sm"
+    data-test="shipment-ap-bill-card"
   >
-    <div class="row items-center no-wrap q-gutter-sm">
-      <div class="col min-width-0">
-        <div class="text-caption text-weight-bold text-grey-9 ellipsis">
+    <header class="shipment-ap-bill-card__header row items-start no-wrap q-gutter-sm">
+      <div class="col min-width-0 column q-gutter-y-xs">
+        <div class="text-subtitle2 text-weight-bold text-grey-9 ellipsis">
           {{ bill.invoice_no || `Bill #${bill.id}` }}
         </div>
-        <div class="text-xxs text-grey-6">
-          {{ plugCurrency(bill) }}
-          · Bill total {{ formatMoney(bill.total_amount) }}
+        <div class="row items-center q-gutter-xs wrap">
+          <TfStatusBadge
+            :status="bill.invoice_status"
+            :label="invoiceStatusLabel(bill)"
+          />
+          <TfStatusBadge
+            v-if="paymentBadgesById.get(bill.id)"
+            :status="paymentBadgesById.get(bill.id)!.status"
+            :label="paymentBadgesById.get(bill.id)!.label"
+          />
         </div>
-        <div
-          v-if="bill.cost_lines?.length"
-          class="column q-gutter-y-xxs q-mt-xs"
-        >
-          <div
-            v-for="(cl, clIdx) in bill.cost_lines"
-            :key="`${bill.id}-${clIdx}`"
-            class="text-xxs text-grey-7 row no-wrap justify-between q-gutter-sm"
-          >
-            <span class="ellipsis">{{ costComponentLabel(cl.cost_component) }}</span>
-            <span class="text-weight-medium">{{ formatMoney(cl.amount) }}</span>
-          </div>
+        <div class="text-caption text-grey-7">
+          <span class="text-weight-medium text-grey-9">{{ plugCurrency(bill) }}</span>
+          · Total
+          <span class="tf-num text-weight-medium text-grey-9">{{ formatMoney(displayBillTotal(bill)) }}</span>
+          <template v-if="showBillDue(bill)">
+            · Due
+            <span class="tf-num text-weight-medium text-orange-9">{{ formatMoney(displayDueAmount(bill)) }}</span>
+          </template>
         </div>
       </div>
-      <TfStatusBadge :status="bill.invoice_status" :label="statusLabel(bill)" />
-      <div class="row q-gutter-x-xs shrink-0">
+      <div class="row q-gutter-x-xs shrink-0 items-center">
         <q-btn
           v-if="bill.invoice_status === 'draft' && canEdit"
-          flat
+          unelevated
           dense
           no-caps
           size="sm"
           color="primary"
           label="Issue"
+          class="rounded-sq-btn"
           :loading="actingBillId === bill.id && actionKind === 'issue'"
           @click="emitIssue(bill)"
         />
@@ -101,17 +105,16 @@
         <q-btn
           flat
           dense
-          no-caps
+          round
           size="sm"
           color="primary"
-          label="View"
           icon="ph ph-eye"
           aria-label="View bill details"
           @click="emitOpen(bill.id)"
         />
       </div>
-    </div>
-  </div>
+    </header>
+  </article>
 
   <q-dialog v-model="dialogOpen" persistent>
     <q-card flat bordered class="column shipment-ap-bill-dialog">
@@ -209,6 +212,11 @@ import {
   shipmentApBillV2Repository,
   type ShipmentApBillLineInput,
 } from '../repositories/shipmentApBillV2Repository';
+import { requestConfirmation } from 'src/utils/appFeedback';
+import {
+  displayBillTotal,
+  displayDueAmount,
+} from '../utils/shipmentApBillDisplay';
 
 const props = defineProps<{
   shipmentId: number;
@@ -282,8 +290,46 @@ const plugCurrency = (bill: ShipmentApBillRow) =>
 const formatMoney = (n: number) =>
   Number.isFinite(n) ? n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
 
-const statusLabel = (bill: ShipmentApBillRow) =>
-  bill.invoice_status === 'draft' ? 'Draft' : bill.invoice_status;
+const invoiceStatusLabel = (bill: ShipmentApBillRow) => {
+  const s = bill.invoice_status?.trim().toLowerCase();
+  if (s === 'draft') return 'Draft';
+  if (s === 'issued') return 'Issued';
+  if (s === 'voided') return 'Voided';
+  return bill.invoice_status ?? '—';
+};
+
+const resolvePaymentStatusBadge = (bill: ShipmentApBillRow): { status: string; label: string } | null => {
+  if (bill.invoice_status !== 'issued') return null;
+  const due = displayDueAmount(bill);
+  const total = displayBillTotal(bill);
+  if (bill.payment_status === 'paid' || due <= 0.009) {
+    return { status: 'paid', label: 'Paid' };
+  }
+  const paid = Math.max(0, total - due);
+  if (due > 0.009 && paid > 0.009) {
+    return { status: 'partial', label: 'Partially paid' };
+  }
+  const raw = bill.payment_status?.trim().toLowerCase();
+  if (raw === 'due' || raw === 'unpaid') {
+    return { status: 'unpaid', label: 'Due' };
+  }
+  return { status: bill.payment_status ?? 'unpaid', label: raw ? titleCase(raw) : 'Due' };
+};
+
+const paymentBadgesById = computed(() => {
+  const map = new Map<number, { status: string; label: string }>();
+  for (const bill of visibleBills.value) {
+    const badge = resolvePaymentStatusBadge(bill);
+    if (badge) map.set(bill.id, badge);
+  }
+  return map;
+});
+
+const showBillDue = (bill: ShipmentApBillRow) =>
+  bill.invoice_status === 'issued' && displayDueAmount(bill) > 0.009;
+
+const titleCase = (s: string) =>
+  s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 const resetForm = () => {
   formCurrency.value = props.defaultCurrency ?? 'GBP';
@@ -375,7 +421,14 @@ const submitDialog = async () => {
   }
 };
 
-const emitIssue = (bill: ShipmentApBillRow) => {
+const emitIssue = async (bill: ShipmentApBillRow) => {
+  const label = bill.invoice_no?.trim() || `Bill #${bill.id}`;
+  const ok = await requestConfirmation(
+    `Issue ${label}? After issue, draft line edits are locked.`,
+    'Issue bill',
+    'Issue',
+  );
+  if (!ok) return;
   actingBillId.value = bill.id;
   actionKind.value = 'issue';
   emit('issue', bill.id);
@@ -400,7 +453,19 @@ watch(
 );
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+.shipment-ap-bill-card {
+  padding: var(--tf-space-md, 12px);
+  border-radius: var(--tf-radius-md, 12px);
+  border: 1px solid var(--tf-neutral-border, rgba(0, 0, 0, 0.12));
+  background: var(--tf-neutral-surface, #fff);
+  gap: 4px;
+}
+
+.shipment-ap-bill-card__header {
+  width: 100%;
+}
+
 .shipment-ap-bill-dialog {
   width: min(560px, 92vw);
   max-width: 560px;

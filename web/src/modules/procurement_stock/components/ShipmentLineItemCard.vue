@@ -145,7 +145,7 @@
         class="line-card__num-fill line-card__num-fill--cost font-mono"
         :class="{ 'line-card__num-fill--has-tip': unitCostTooltip }"
       >
-        {{ (item.landed_cost_bdt ?? item.unitCost ?? 0).toFixed(2) }}
+        {{ displayUnitCostBdt().toFixed(2) }}
         <q-tooltip
           v-if="unitCostTooltip"
           max-width="340px"
@@ -453,6 +453,7 @@ const props = defineProps<{
   showActionsColumn: boolean;
   landSplitAttention?: string | null;
   unitCostTooltip?: string | null;
+  preferLiveUnitCost?: boolean;
   batchSummary: { compactLabel: string; lineCount: number; toneClass: string };
   addingExtra: boolean;
   getDraft: (field: string) => string | number | null;
@@ -514,8 +515,16 @@ const reasonChipClass = (reason: string) => {
   }
 };
 
-const orderedUnitCost = () =>
-  Number(props.item.landed_cost_bdt ?? props.item.unitCost ?? 0) || 0;
+const displayUnitCostBdt = (): number => {
+  const stamped = props.item.landed_cost_bdt;
+  const live = props.item.unitCost;
+  const pick = props.preferLiveUnitCost
+    ? (live ?? stamped)
+    : (stamped ?? live);
+  return Number(pick ?? 0) || 0;
+};
+
+const orderedUnitCost = () => displayUnitCostBdt();
 
 const scaledUnitCostBdt = (purchasePrice: number) => {
   const orderedPrice = Number(props.getDraft('purchase_price') ?? props.item.purchase_price) || 0;

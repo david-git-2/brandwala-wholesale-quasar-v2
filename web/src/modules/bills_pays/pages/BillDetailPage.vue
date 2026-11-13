@@ -155,6 +155,8 @@
               :source-type="bill.source_type"
               :source-id="bill.source_id"
               :source-key="bill.source_key ?? bill.ap_kind"
+              :ap-kind="bill.ap_kind"
+              :shipment-id="billShipmentId"
             />
           </div>
           <q-badge
@@ -566,6 +568,8 @@
       :to-party-name="payToPartyName"
       :from-pot-options="fromPotOptions"
       :to-pot-options="toPotOptions"
+      :from-pot-sections="fromPotSections"
+      :to-pot-sections="toPotSections"
       :from-pot-loading="fromPotLoading"
       :to-pot-loading="toPotLoading"
       :allocation-rows="moneyPayAllocationRows"
@@ -575,7 +579,30 @@
       :books-currency-code="moneyPayBooksCurrencyCode"
       :books-tenant-id="moneyPayBooksTenantId"
       :loading="recordPaymentMutation.isPending.value"
+      :pay-pot-balance="payPotBalance"
+      :pay-balance-shortfall="payBalanceShortfall"
       @submit="onMoneyPaySubmit"
+      @amount-change="onPayAmountPreview"
+      @open-deposit="openPayDepositDialog"
+    />
+    <MoneyPayDialog
+      v-if="bill && payDepositProfileId"
+      v-model="payDepositDialogOpen"
+      kind="deposit"
+      leg-layout="profile_cash"
+      title="Deposit"
+      :subtitle="`Add ${paymentDueCurrencyCode} before paying`"
+      :from-party-name="payFromPartyName"
+      :to-party-name="payFromPartyName"
+      :profile-id="payDepositProfileId"
+      :operating-tenant-id="operatingTenantId"
+      :books-tenant-id="moneyPayBooksTenantId"
+      :books-currency-code="moneyPayBooksCurrencyCode"
+      :prefill="payDepositPrefill"
+      :field-flags="payDepositFieldFlags"
+      :default-method-code="PROFILE_CASH_DEFAULT_METHOD"
+      :loading="payDepositMutation.isPending.value"
+      @submit="onPayDepositSubmit"
     />
     <RecordVendorCreditRefundDialog
       v-if="vendorRefundTargetId"
@@ -652,6 +679,7 @@ import BillKernelSourceChips from '../components/BillKernelSourceChips.vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import MoneyPayDialog from '../components/MoneyPayDialog.vue';
 import { useBillDetailMoneyPayDialog } from '../composables/useBillDetailMoneyPayDialog';
+import { PROFILE_CASH_DEFAULT_METHOD } from 'src/modules/people/constants/profileCashMovementMethods';
 import RecordVendorCreditRefundDialog from '../components/RecordVendorCreditRefundDialog.vue';
 import { usePostVendorCreditRefundMutation } from '../composables/usePostVendorCreditRefundMutation';
 import type { PostVendorCreditRefundInput } from '../composables/usePostVendorCreditRefundMutation';
@@ -976,6 +1004,7 @@ const {
   refundAmount,
 } = useBillAdjustmentDraft({
   bill,
+  booksTenantId: operatingTenantId,
   stockLines: lines,
   isAp: isApBill,
   parentDueAmount,
@@ -1220,12 +1249,24 @@ const {
   moneyPayPrefill,
   fromPotOptions,
   toPotOptions,
+  fromPotSections,
+  toPotSections,
   fromPotLoading,
   toPotLoading,
   payFromPartyName,
   payToPartyName,
   booksCurrencyCode: moneyPayBooksCurrencyCode,
   operatingTenantId: moneyPayBooksTenantId,
+  payPotBalance,
+  payBalanceShortfall,
+  onPayAmountPreview,
+  payDepositDialogOpen,
+  payDepositPrefill,
+  payDepositFieldFlags,
+  payDepositProfileId,
+  openPayDepositDialog,
+  onPayDepositSubmit,
+  payDepositMutation,
 } = useBillDetailMoneyPayDialog({
   billId,
   bill,

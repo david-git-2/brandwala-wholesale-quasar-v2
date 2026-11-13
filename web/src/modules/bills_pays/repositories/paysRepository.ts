@@ -40,6 +40,17 @@ export type PayListRow = {
   exchange_rate: number;
   related_invoice_no?: string | null;
   perspective?: 'tenant' | 'party';
+  from_profile_id?: number | null;
+  to_profile_id?: number | null;
+  from_profile_name?: string | null;
+  to_profile_name?: string | null;
+  description?: string | null;
+  spine?: 'kernel' | 'desk';
+  kernel_kind?: string | null;
+  reverted_at?: string | null;
+  revert_reason?: string | null;
+  is_reversal?: boolean;
+  reverses_pays_id?: number | null;
 };
 
 export type ListPaysParams = {

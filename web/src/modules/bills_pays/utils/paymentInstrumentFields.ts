@@ -48,17 +48,19 @@ export const paymentInstrumentExtrasBlockReason = (
     instrumentReference: string;
   },
 ): string | null => {
-  const missing: string[] = [];
-  if (flags.bankRequired && fields.bdBankId == null) missing.push('bank');
-  if (flags.chequeNumberRequired && !fields.chequeNumber.trim()) missing.push('cheque number');
-  if (flags.instrumentDateRequired && !fields.instrumentDate.trim()) missing.push('cheque date');
-  if (missing.length) return `Fill in: ${missing.join(', ')}`;
+  if (flags.bankRequired && fields.bdBankId == null) return 'Next: choose a bank';
+  if (flags.chequeNumberRequired && !fields.chequeNumber.trim()) {
+    return 'Next: enter cheque number';
+  }
+  if (flags.instrumentDateRequired && !fields.instrumentDate.trim()) {
+    return 'Next: enter cheque date';
+  }
   if (
     flags.bankOrReferenceRequired &&
     fields.bdBankId == null &&
     !fields.instrumentReference.trim()
   ) {
-    return 'Select a bank or enter a transaction reference';
+    return 'Next: choose a bank or enter a transaction reference';
   }
   return null;
 };

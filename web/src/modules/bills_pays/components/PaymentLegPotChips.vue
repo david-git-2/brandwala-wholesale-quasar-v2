@@ -1,77 +1,112 @@
 <template>
-  <div class="payment-leg-pot-cards">
-    <div class="payment-leg-pot-cards__heading">
-      <span class="payment-leg-pot-cards__leg">{{ legLabel }}</span>
-      <span class="payment-leg-pot-cards__party">{{ partyName }}</span>
+  <div class="payment-leg-location-picker">
+    <div class="payment-leg-location-picker__heading">
+      <span class="payment-leg-location-picker__leg">{{ legLabel }}</span>
+      <span class="payment-leg-location-picker__party">{{ partyName }}</span>
     </div>
 
-    <div v-if="loading" class="payment-leg-pot-cards__loading">
-      <div class="payment-leg-pot-cards__grid">
-        <q-skeleton
-          v-for="n in 2"
-          :key="n"
-          type="rect"
-          height="96px"
-          class="payment-leg-pot-cards__skeleton"
+    <div v-if="loading" class="payment-leg-location-picker__loading">
+      <q-skeleton type="rect" height="40px" class="q-mb-sm" />
+      <q-skeleton type="rect" height="56px" />
+      <span class="payment-leg-location-picker__loading-text">Loading cash…</span>
+    </div>
+
+    <div v-else-if="!displaySections.length" class="payment-leg-location-picker__empty">
+      No matching locations for this bill currency.
+    </div>
+
+    <template v-else>
+      <BillDialogField label="Location">
+        <q-select
+          v-model="locationPointId"
+          outlined
+          dense
+          emit-value
+          map-options
+          :options="locationOptions"
+          hide-bottom-space
+          data-test="money-pay-location-select"
         />
-      </div>
-      <span class="payment-leg-pot-cards__loading-text">Loading accounts…</span>
-    </div>
+      </BillDialogField>
 
-    <div v-else-if="!pointGroups.length" class="payment-leg-pot-cards__empty">
-      No cash points for this party yet.
-    </div>
-
-    <div v-else class="payment-leg-pot-cards__grid" role="listbox" :aria-label="legLabel">
-      <section
-        v-for="group in pointGroups"
-        :key="group.pointId"
-        class="payment-leg-pot-cards__point"
-        :class="{
-          'payment-leg-pot-cards__point--active': selectedPointId === group.pointId,
-        }"
+      <div
+        v-if="locationPointId != null"
+        class="payment-leg-location-picker__bundles q-mt-md"
       >
-        <div class="payment-leg-pot-cards__point-name">
-          {{ group.pointName }}
+        <div class="payment-leg-location-picker__bundles-label">
+          Bundle
         </div>
+
         <div
-          class="payment-leg-pot-cards__pots"
-          role="group"
-          :aria-label="`${group.pointName} balances`"
+          v-if="!bundlesAtLocation.length"
+          class="payment-leg-location-picker__empty"
+        >
+          No matching bundles at this location.
+        </div>
+
+        <div
+          v-else
+          class="payment-leg-location-picker__pots"
+          role="listbox"
+          aria-label="Bundle"
         >
           <button
-            v-for="pot in group.pots"
+            v-for="pot in bundlesAtLocation"
             :key="pot.value"
             type="button"
             role="option"
             :aria-selected="modelValue === pot.value"
-            class="payment-leg-pot-cards__pot"
-            :class="{ 'payment-leg-pot-cards__pot--selected': modelValue === pot.value }"
+            class="payment-leg-location-picker__pot"
+            :class="{
+              'payment-leg-location-picker__pot--selected': modelValue === pot.value,
+            }"
+            data-test="money-pay-bundle-option"
             @click="emit('update:modelValue', pot.value)"
           >
-            <span class="payment-leg-pot-cards__pot-currency">{{ pot.currencyCode }}</span>
-            <span class="payment-leg-pot-cards__pot-balance tf-num">{{ potBalance(pot) }}</span>
+            <span class="payment-leg-location-picker__pot-currency">
+              {{ pot.currencyCode }}
+            </span>
+            <span class="payment-leg-location-picker__pot-balance tf-num">
+              {{ potBalance(pot) }}
+            </span>
+            <span
+              v-if="booksRateLabel(pot)"
+              class="payment-leg-location-picker__pot-rate text-caption"
+            >
+              {{ booksRateLabel(pot) }}
+            </span>
+            <span
+              v-if="pot.drawerGroup?.trim()"
+              class="payment-leg-location-picker__pot-group text-caption"
+            >
+              {{ pot.drawerGroup }}
+            </span>
           </button>
         </div>
-      </section>
-    </div>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { CashbookLegPotChipOption } from '../composables/useCashbookLegPots';
+import { computed, ref, watch } from 'vue';
+import BillDialogField from './BillDialogField.vue';
+import type {
+  CashbookLegLocationSection,
+  CashbookLegPotChipOption,
+} from '../composables/useCashbookLegPots';
 
 const props = defineProps<{
   legLabel: string;
   partyName: string;
   options: CashbookLegPotChipOption[];
+  sections?: CashbookLegLocationSection[];
   modelValue: number | null;
   loading?: boolean;
 }>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: number];
+  'update:modelValue': [value: number | null];
 }>();
 
 type PointGroup = {
@@ -80,7 +115,7 @@ type PointGroup = {
   pots: CashbookLegPotChipOption[];
 };
 
-const pointGroups = computed((): PointGroup[] => {
+const fallbackSections = computed((): PointGroup[] => {
   const byPoint = new Map<number, PointGroup>();
   for (const opt of props.options) {
     const pointId = opt.pointId;
@@ -95,16 +130,84 @@ const pointGroups = computed((): PointGroup[] => {
   for (const group of byPoint.values()) {
     group.pots.sort((a, b) => a.currencyCode.localeCompare(b.currencyCode));
   }
-  return [...byPoint.values()].sort((a, b) =>
-    a.pointName.localeCompare(b.pointName),
-  );
+  return [...byPoint.values()].sort((a, b) => a.pointName.localeCompare(b.pointName));
 });
 
-const selectedPointId = computed(() => {
-  const id = props.modelValue;
-  if (id == null) return null;
-  const opt = props.options.find((o) => o.value === id);
-  return opt?.pointId ?? null;
+const displaySections = computed(() =>
+  props.sections?.length ? props.sections : fallbackSections.value,
+);
+
+const locationOptions = computed(() =>
+  displaySections.value.map((s) => ({
+    label: s.pointName,
+    value: s.pointId,
+  })),
+);
+
+const locationPointId = ref<number | null>(null);
+
+const bundlesAtLocation = computed((): CashbookLegPotChipOption[] => {
+  const pointId = locationPointId.value;
+  if (pointId == null) return [];
+  const section = displaySections.value.find((s) => s.pointId === pointId);
+  return section?.pots ?? [];
+});
+
+function pointIdForPot(potId: number | null): number | null {
+  if (potId == null) return null;
+  return props.options.find((o) => o.value === potId)?.pointId ?? null;
+}
+
+function pickBundleForLocation(pointId: number, preferredPotId: number | null): number | null {
+  const section = displaySections.value.find((s) => s.pointId === pointId);
+  const pots = section?.pots ?? [];
+  if (!pots.length) return null;
+  if (preferredPotId != null && pots.some((p) => p.value === preferredPotId)) {
+    return preferredPotId;
+  }
+  return pots[0]?.value ?? null;
+}
+
+function syncLocationFromSelection() {
+  const sections = displaySections.value;
+  if (!sections.length) {
+    locationPointId.value = null;
+    return;
+  }
+  const fromPot = pointIdForPot(props.modelValue);
+  if (fromPot != null && sections.some((s) => s.pointId === fromPot)) {
+    locationPointId.value = fromPot;
+    return;
+  }
+  if (
+    locationPointId.value != null
+    && sections.some((s) => s.pointId === locationPointId.value)
+  ) {
+    return;
+  }
+  locationPointId.value = sections[0].pointId;
+}
+
+watch(
+  [displaySections, () => props.modelValue],
+  () => {
+    syncLocationFromSelection();
+  },
+  { immediate: true },
+);
+
+watch(locationPointId, (pointId, prevPointId) => {
+  if (pointId == null) {
+    if (props.modelValue != null) emit('update:modelValue', null);
+    return;
+  }
+  if (pointId === prevPointId && pointIdForPot(props.modelValue) === pointId) {
+    return;
+  }
+  const next = pickBundleForLocation(pointId, props.modelValue);
+  if (next !== props.modelValue) {
+    emit('update:modelValue', next);
+  }
 });
 
 function potBalance(opt: CashbookLegPotChipOption): string {
@@ -115,10 +218,17 @@ function potBalance(opt: CashbookLegPotChipOption): string {
   const parts = opt.label.split(' · ');
   return parts.length > 1 ? parts.slice(1).join(' · ') : '0.00';
 }
+
+function booksRateLabel(opt: CashbookLegPotChipOption): string | null {
+  const rate = opt.booksRate;
+  if (rate == null || !Number.isFinite(rate)) return null;
+  if (Math.abs(rate - 1) < 0.0001) return null;
+  return `@ ${rate}`;
+}
 </script>
 
 <style scoped lang="scss">
-.payment-leg-pot-cards__heading {
+.payment-leg-location-picker__heading {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -126,7 +236,7 @@ function potBalance(opt: CashbookLegPotChipOption): string {
   margin-bottom: 10px;
 }
 
-.payment-leg-pot-cards__leg {
+.payment-leg-location-picker__leg {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -135,7 +245,7 @@ function potBalance(opt: CashbookLegPotChipOption): string {
   flex-shrink: 0;
 }
 
-.payment-leg-pot-cards__party {
+.payment-leg-location-picker__party {
   font-size: 12px;
   font-weight: 500;
   color: var(--tf-neutral-muted, #64748b);
@@ -146,70 +256,38 @@ function potBalance(opt: CashbookLegPotChipOption): string {
   white-space: nowrap;
 }
 
-.payment-leg-pot-cards__grid {
-  display: flex;
-  flex-direction: column;
-  gap: var(--tf-space-sm, 8px);
-}
-
-.payment-leg-pot-cards__skeleton {
-  border-radius: var(--tf-radius-sm, 8px);
-}
-
-.payment-leg-pot-cards__loading-text {
+.payment-leg-location-picker__loading-text {
   display: block;
   margin-top: 6px;
   font-size: 12px;
   color: var(--tf-neutral-muted, #475569);
 }
 
-.payment-leg-pot-cards__empty {
+.payment-leg-location-picker__empty {
   font-size: 12px;
   color: var(--tf-neutral-muted, #475569);
 }
 
-.payment-leg-pot-cards__point {
-  border: 1px solid var(--tf-neutral-border, #e2e8f0);
-  border-radius: var(--tf-radius-sm, 8px);
-  background: var(--tf-neutral-surface, #fff);
-  padding: 12px 14px;
-  transition:
-    border-color var(--tf-dur-fast, 0.12s) var(--tf-ease, ease),
-    background-color var(--tf-dur-fast, 0.12s) var(--tf-ease, ease);
-
-  &--active {
-    border-width: 2px;
-    padding: 11px 13px;
-    border-color: var(--tf-theme-primary, #0d6b5c);
-    background: color-mix(
-      in srgb,
-      var(--tf-theme-primary, #0d6b5c) 6%,
-      var(--tf-neutral-surface, #fff)
-    );
-  }
-}
-
-.payment-leg-pot-cards__point-name {
-  font-size: 13px;
+.payment-leg-location-picker__bundles-label {
+  margin-bottom: 8px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--tf-neutral-ink, #0f172a);
-  line-height: 1.35;
-  margin-bottom: 10px;
+  color: var(--tf-neutral-ink, #171412);
 }
 
-.payment-leg-pot-cards__pots {
+.payment-leg-location-picker__pots {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.payment-leg-pot-cards__pot {
+.payment-leg-location-picker__pot {
   appearance: none;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  min-width: 0;
+  min-width: 6.5rem;
   margin: 0;
   padding: 8px 12px;
   cursor: pointer;
@@ -236,7 +314,7 @@ function potBalance(opt: CashbookLegPotChipOption): string {
   }
 }
 
-.payment-leg-pot-cards__pot-currency {
+.payment-leg-location-picker__pot-currency {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -244,9 +322,15 @@ function potBalance(opt: CashbookLegPotChipOption): string {
   color: var(--tf-neutral-muted, #64748b);
 }
 
-.payment-leg-pot-cards__pot-balance {
+.payment-leg-location-picker__pot-balance {
   font-size: 13px;
   font-weight: 600;
   color: var(--tf-neutral-ink, #0f172a);
+}
+
+.payment-leg-location-picker__pot-rate,
+.payment-leg-location-picker__pot-group {
+  color: var(--tf-neutral-muted, #64748b);
+  line-height: 1.2;
 }
 </style>

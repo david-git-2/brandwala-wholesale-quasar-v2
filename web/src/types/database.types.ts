@@ -1015,14 +1015,14 @@ isOneToOne: false
                   ]
                 },"global_currencies": {
                   Row: {
-                    "code": string,"country": string,"created_at": string,"id": number,"is_active": boolean,"is_system": boolean,"name": string,"symbol": string,"updated_at": string
+                    "code": string,"country": string,"created_at": string,"id": number,"is_active": boolean,"is_system": boolean,"minor_units": number,"name": string,"symbol": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "code": string,"country": string,"created_at"?: string,"id"?: number,"is_active"?: boolean,"is_system"?: boolean,"name": string,"symbol": string,"updated_at"?: string
+                    "code": string,"country": string,"created_at"?: string,"id"?: number,"is_active"?: boolean,"is_system"?: boolean,"minor_units"?: number,"name": string,"symbol": string,"updated_at"?: string
                   }
                   Update: {
-                    "code"?: string,"country"?: string,"created_at"?: string,"id"?: number,"is_active"?: boolean,"is_system"?: boolean,"name"?: string,"symbol"?: string,"updated_at"?: string
+                    "code"?: string,"country"?: string,"created_at"?: string,"id"?: number,"is_active"?: boolean,"is_system"?: boolean,"minor_units"?: number,"name"?: string,"symbol"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -2369,14 +2369,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "accent_color": string | null,"address": string | null,"created_at": string,"customer_group_id": number | null,"deleted_at": string | null,"email": string | null,"id": number,"is_active": boolean,"is_phone_unique": boolean,"name": string,"operating_tenant_id": number | null,"phone": string | null,"phone_country_code": string,"profile_type": Database["public"]['Enums']["profile_party_type"],"subject_id": number,"tenant_id": number,"updated_at": string
+                    "accent_color": string | null,"address": string | null,"cashbook_enabled": boolean,"created_at": string,"customer_group_id": number | null,"deleted_at": string | null,"email": string | null,"id": number,"is_active": boolean,"is_phone_unique": boolean,"name": string,"operating_tenant_id": number | null,"phone": string | null,"phone_country_code": string,"profile_type": Database["public"]['Enums']["profile_party_type"],"subject_id": number,"tenant_id": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "accent_color"?: string | null,"address"?: string | null,"created_at"?: string,"customer_group_id"?: number | null,"deleted_at"?: string | null,"email"?: string | null,"id"?: number,"is_active"?: boolean,"is_phone_unique"?: boolean,"name": string,"operating_tenant_id"?: number | null,"phone"?: string | null,"phone_country_code"?: string,"profile_type"?: Database["public"]['Enums']["profile_party_type"],"subject_id": number,"tenant_id": number,"updated_at"?: string
+                    "accent_color"?: string | null,"address"?: string | null,"cashbook_enabled"?: boolean,"created_at"?: string,"customer_group_id"?: number | null,"deleted_at"?: string | null,"email"?: string | null,"id"?: number,"is_active"?: boolean,"is_phone_unique"?: boolean,"name": string,"operating_tenant_id"?: number | null,"phone"?: string | null,"phone_country_code"?: string,"profile_type"?: Database["public"]['Enums']["profile_party_type"],"subject_id": number,"tenant_id": number,"updated_at"?: string
                   }
                   Update: {
-                    "accent_color"?: string | null,"address"?: string | null,"created_at"?: string,"customer_group_id"?: number | null,"deleted_at"?: string | null,"email"?: string | null,"id"?: number,"is_active"?: boolean,"is_phone_unique"?: boolean,"name"?: string,"operating_tenant_id"?: number | null,"phone"?: string | null,"phone_country_code"?: string,"profile_type"?: Database["public"]['Enums']["profile_party_type"],"subject_id"?: number,"tenant_id"?: number,"updated_at"?: string
+                    "accent_color"?: string | null,"address"?: string | null,"cashbook_enabled"?: boolean,"created_at"?: string,"customer_group_id"?: number | null,"deleted_at"?: string | null,"email"?: string | null,"id"?: number,"is_active"?: boolean,"is_phone_unique"?: boolean,"name"?: string,"operating_tenant_id"?: number | null,"phone"?: string | null,"phone_country_code"?: string,"profile_type"?: Database["public"]['Enums']["profile_party_type"],"subject_id"?: number,"tenant_id"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -4590,6 +4590,14 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"v_pot_balances": {
+                  Row: {
+                    "amount": number | null,"cash_location_id": number | null,"cashbook_id": number | null,"created_at": string | null,"currency_code": string | null,"email": string | null,"entity_name": string | null,"is_default_lot": boolean | null,"phone": string | null,"point_code": string | null,"point_name": string | null,"pot_id": number | null,"pots_in_account": number | null,"profile_id": number | null,"profile_type": Database["public"]['Enums']["profile_party_type"] | null,"tenant_id": number | null,"updated_at": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
                 }
           }
           Functions: {
@@ -4654,6 +4662,9 @@ isOneToOne: false
                            },
 "_desk_profile_json_public":
 { Args: { "p_profile_id": number }; Returns: Json
+                           },
+"_desk_sync_point_currencies_from_kernel":
+{ Args: { "p_location_code": string,"p_profile_id": number }; Returns: undefined
                            },
 "_document_number_format":
 { Args: { "cfg": Omit<Database["public"]['Tables']["document_number_configs"]['Row'], Database["public"]['Tables']["document_number_configs"]['ComputedFields']>,"p_period": string,"p_seq": number,"p_sub_type": string }; Returns: string
@@ -4737,6 +4748,9 @@ isOneToOne: false
                            },
 "_kernel_bounce_cheque_instrument_partial":
 { Args: { "p_instrument_id": number,"p_reason": string,"p_tenant_id": number }; Returns: Json
+                           },
+"_kernel_bundle_owner_profile_id":
+{ Args: { "p_bundle_id": number }; Returns: number
                            },
 "_kernel_cashbook_axes_for_profile":
 { Args: { "p_profile_id": number }; Returns: {
@@ -5090,6 +5104,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"_kernel_profile_pay_row_json":
+{ Args: { "p_viewed_profile_id": number,"py": Omit<Database["public"]['Tables']["pays"]['Row'], Database["public"]['Tables']["pays"]['ComputedFields']> }; Returns: Json
+                           },
 "_kernel_purpose_from_source":
 { Args: { "p_source": string }; Returns: string
                            },
@@ -6933,9 +6950,12 @@ isOneToOne: false
 { Args: { "p_group_name"?: string,"p_phone"?: string,"p_phone_country_code"?: string,"p_tenant_id": number }; Returns: Json
                            },
 "fn_provision_kernel_cashbook_currency":
-{ Args: { "p_books_tenant_id": number,"p_currency_code": string,"p_point_code"?: string,"p_profile_id": number }; Returns: number
+{ Args: { "p_books_rate"?: number,"p_books_tenant_id": number,"p_currency_code": string,"p_point_code"?: string,"p_profile_id": number }; Returns: number
                            },
 "fn_provision_kernel_cashbook_for_profile_row":
+{ Args: { "p_books_tenant_id": number,"p_profile_id": number }; Returns: number
+                           },
+"fn_provision_profile_cashbook_defaults":
 { Args: { "p_books_tenant_id": number,"p_profile_id": number }; Returns: number
                            },
 "format_assigned_document_number":
@@ -7598,6 +7618,9 @@ isOneToOne: false
 "issue_shipment_ap_bill_for_kind":
 { Args: { "p_ap_kind": string,"p_shipment_id": number }; Returns: Json
                            },
+"issue_shipment_ap_bill_v2":
+{ Args: { "p_bill_id": number,"p_shipment_id": number }; Returns: Json
+                           },
 "issue_shipment_ap_bills":
 { Args: { "p_shipment_id": number }; Returns: number
                            },
@@ -7979,7 +8002,7 @@ isOneToOne: false
                            },
 "list_global_currencies":
 { Args: Record<PropertyKey, never>; Returns: {
-              "code": string,"country": string,"id": number,"name": string,"symbol": string
+              "code": string,"country": string,"id": number,"minor_units": number,"name": string,"symbol": string
             }[]
                            },
 "list_global_inventory_items_with_stock":
@@ -9146,6 +9169,9 @@ isOneToOne: false
 "process_wholesale_invoice_return":
 { Args: { "p_invoice_id": number,"p_items": Json,"p_note"?: string,"p_payout_account_id"?: number,"p_refund_method"?: string,"p_return_charge_amount"?: number }; Returns: Json
                            },
+"profile_auto_provisions_cashbook":
+{ Args: { "p_profile_id": number }; Returns: boolean
+                           },
 "profile_valid_for_issuer":
 { Args: { "p_issued_by_tenant_id": number,"p_profile_id": number }; Returns: boolean
                            },
@@ -9418,11 +9444,14 @@ isOneToOne: false
 "rpc_apply_document_settlement":
 { Args: { "p_amount": number,"p_idempotency_key"?: string,"p_source_bill_id": number,"p_target_bill_id": number,"p_tenant_id": number }; Returns: Json
                            },
+"rpc_close_cash_bundle":
+{ Args: { "p_bundle_id": number,"p_idempotency_key"?: string,"p_meta"?: Json,"p_profile_id": number,"p_tenant_id": number }; Returns: Json
+                           },
 "rpc_create_bill":
 { Args: { "p_payload": Json }; Returns: Json
                            },
 "rpc_deposit":
-{ Args: { "p_amount": number,"p_currency_code"?: string,"p_idempotency_key"?: string,"p_meta"?: Json,"p_pot_id"?: number,"p_profile_id": number,"p_tenant_id": number }; Returns: Json
+{ Args: { "p_amount": number,"p_books_rate"?: number,"p_currency_code"?: string,"p_idempotency_key"?: string,"p_location_code"?: string,"p_meta"?: Json,"p_pot_id"?: number,"p_profile_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "rpc_get_bill":
 { Args: { "p_bill_id": number,"p_include"?: (string)[],"p_tenant_id": number }; Returns: Json
@@ -9439,23 +9468,31 @@ isOneToOne: false
 "rpc_list_bill_kinds":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"rpc_list_profile_cashbook_bundles":
+{ Args: { "p_profile_id": number,"p_tenant_id": number }; Returns: Json
+                           },
 "rpc_pay_bill":
 { Args: { "p_amount": number,"p_bill_id": number,"p_from_pot_id": number,"p_idempotency_key"?: string,"p_meta"?: Json,"p_payer_profile_id": number,"p_tenant_id": number,"p_to_pot_id"?: number }; Returns: Json
                            },
 "rpc_pay_bills":
-{ Args: { "p_allocations": Json,"p_amount": number,"p_from_pot_id": number,"p_idempotency_key"?: string,"p_meta"?: Json,"p_payer_profile_id": number,"p_tenant_id": number,"p_to_pot_id"?: number }; Returns: Json
+{ Args: { "p_allocations": Json,"p_amount": number,"p_bundle_debits"?: Json,"p_from_pot_id": number,"p_idempotency_key"?: string,"p_meta"?: Json,"p_payer_profile_id": number,"p_tenant_id": number,"p_to_pot_id"?: number }; Returns: Json
                            },
 "rpc_profile_transactions":
 { Args: { "p_bill_id"?: number,"p_currency_code"?: string,"p_cursor"?: Json,"p_from_date"?: string,"p_include_voided"?: boolean,"p_kind"?: string,"p_limit"?: number,"p_pot_id"?: number,"p_profile_id": number,"p_tenant_id": number,"p_to_date"?: string }; Returns: Json
                            },
 "rpc_provision_cashbook_currency":
 { Args: { "p_currency_code": string,"p_point_code"?: string,"p_profile_id": number,"p_tenant_id": number }; Returns: Json
+                           } |
+{ Args: { "p_books_rate"?: number,"p_currency_code": string,"p_point_code"?: string,"p_profile_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "rpc_provision_tenant_cashbook":
 { Args: { "p_currency_code"?: string,"p_tenant_id": number }; Returns: Json
                            },
 "rpc_query_bills":
 { Args: { "p_changed_since"?: string,"p_counterparty_profile_id"?: number,"p_counterparty_tenant_id"?: number,"p_cursor"?: Json,"p_due_before"?: string,"p_from_date"?: string,"p_group_by"?: string,"p_has_due"?: boolean,"p_include"?: (string)[],"p_include_voided"?: boolean,"p_invoice_no"?: string,"p_kinds"?: (string)[],"p_limit"?: number,"p_order_by"?: string,"p_parent_bill_id"?: number,"p_source_id"?: string,"p_source_key"?: string,"p_source_type"?: string,"p_statuses"?: (string)[],"p_tenant_id": number,"p_to_date"?: string }; Returns: Json
+                           },
+"rpc_revert_pays":
+{ Args: { "p_idempotency_key"?: string,"p_pays_id": number,"p_reason": string,"p_tenant_id": number }; Returns: Json
                            },
 "rpc_transfer_p2p":
 { Args: { "p_amount": number,"p_from_pot_id": number,"p_idempotency_key"?: string,"p_meta"?: Json,"p_tenant_id": number,"p_to_pot_id": number }; Returns: Json

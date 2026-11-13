@@ -1,6 +1,7 @@
 import { supabase } from 'src/boot/supabase';
 import type { Json } from 'src/types/database.types';
 import type { ShipmentApKind } from '../constants/shipmentApBuckets';
+import { issueShipmentApBillV2 } from './shipmentMoneyKernelRepository';
 
 export type ShipmentApBillLineInput = {
   cost_component: string;
@@ -76,5 +77,9 @@ export const shipmentApBillV2Repository = {
     });
     if (error) throw error;
     return data as Record<string, unknown>;
+  },
+
+  async issue(shipmentId: number, billId: number) {
+    return issueShipmentApBillV2(shipmentId, billId);
   },
 };

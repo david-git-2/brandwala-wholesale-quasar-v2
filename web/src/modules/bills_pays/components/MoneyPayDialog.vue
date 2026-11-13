@@ -37,68 +37,72 @@
                 &nbsp;
               </div>
               <div class="money-pay-dialog__section-body money-pay-dialog__stack">
-                <MoneyPayDialogAmountBlock
-                  :amount="amount"
-                  :currency-code="amountCurrencyCode"
-                  :due-amount="summary?.dueAmount"
-                  :books-preview-label="summary?.booksPreviewLabel"
-                  :unallocated-amount="paymentOverAlloc ? unallocatedAmount : null"
-                  :show-error="amountShowError"
-                  @update:amount="(v) => (amount = v)"
-                  @fill-due="onFillDue"
-                  @blur="amountTouched = true"
+                <ProfileCashMovementLegPicker
+                  v-if="isProfileCashLeg"
+                  v-model:currency-code="profileLegCurrency"
+                  v-model:amount="amount"
+                  v-model:location-point-id="profileLegLocationPointId"
+                  v-model:bundle-id="profileLegBundleId"
+                  v-model:books-rate="profileLegBooksRate"
+                  v-model:deposit-requires-bundle-pick="profileLegDepositRequiresBundlePick"
+                  :books-tenant-id="booksTenantId ?? 0"
+                  :operating-tenant-id="operatingTenantId ?? 0"
+                  :profile-id="profileId ?? null"
+                  :kind="kind"
+                  :enabled="dialogOpen"
+                  :amount-show-error="amountShowError"
+                  :lock-currency="lockProfileCurrency"
+                  :prefill-location-label="props.prefill?.legLocationPointLabel ?? null"
                 />
 
-                <BillDialogField
-                  v-if="showTransactionRateField"
-                  :label="transactionRateLabel"
+                <div
+                  v-if="displayPayBalanceShortfall > 0"
+                  class="money-pay-dialog__balance-warning q-mb-sm"
                 >
-                  <q-input
-                    v-model.number="transactionRate"
-                    outlined
-                    dense
-                    type="number"
-                    step="0.0001"
-                    min="0"
-                    hide-bottom-space
-                    :hint="transactionRateHint"
-                    data-test="money-pay-exchange-rate"
-                  />
-                </BillDialogField>
+                  <div class="text-caption text-negative">
+                    Need {{ displayPayBalanceShortfall.toFixed(2) }} more in the selected bundle.
+                  </div>
+                </div>
 
-                <BillDialogField
-                  v-if="showBooksExchangeRateField"
-                  :label="booksExchangeRateLabel"
-                >
-                  <q-input
-                    v-model.number="booksExchangeRate"
-                    outlined
-                    dense
-                    type="number"
-                    step="0.0001"
-                    min="0"
-                    hide-bottom-space
-                    data-test="money-pay-books-exchange-rate"
-                  />
-                </BillDialogField>
-
-                <div v-if="showFromLeg" data-test="money-pay-from-pot">
+                <div v-if="showFromLeg && !isProfileCashLeg" data-test="money-pay-from-pot">
                   <PaymentLegPotChips
                     v-model="fromPotId"
-                    leg-label="From point"
+                    leg-label="From location"
                     :party-name="fromPartyName"
                     :options="fromPotOptions"
+                    :sections="fromPotSections"
                     :loading="fromPotLoading"
+                  />
+                  <div
+                    v-if="displayPayPotBalance != null"
+                    class="text-caption text-grey-7 q-mt-xs"
+                  >
+                    Available: {{ displayPayPotBalance.toFixed(2) }} {{ amountCurrencyCode }}
+                  </div>
+                </div>
+
+                <div v-if="showToLeg && !isProfileCashLeg" data-test="money-pay-to-pot">
+                  <PaymentLegPotChips
+                    v-model="toPotId"
+                    leg-label="To location"
+                    :party-name="toPartyName"
+                    :options="toPotOptions"
+                    :sections="toPotSections"
+                    :loading="toPotLoading"
                   />
                 </div>
 
-                <div v-if="showToLeg" data-test="money-pay-to-pot">
-                  <PaymentLegPotChips
-                    v-model="toPotId"
-                    leg-label="To point"
-                    :party-name="toPartyName"
-                    :options="toPotOptions"
-                    :loading="toPotLoading"
+                <div
+                  v-if="showAddMoneyPanel"
+                  class="money-pay-dialog__add-money q-mt-sm"
+                >
+                  <TfBtn
+                    variant="secondary"
+                    size="sm"
+                    icon="ph ph-plus"
+                    label="Add money"
+                    data-test="money-pay-add-money-open"
+                    @click="emit('openDeposit')"
                   />
                 </div>
 
@@ -140,7 +144,7 @@
                 <BillDialogField v-if="showInstrument" :label="methodLabel">
                   <q-select
                     v-model="methodCode"
-                    :options="methodOptions"
+                    :options="resolvedMethodOptions"
                     emit-value
                     map-options
                     outlined
@@ -170,6 +174,27 @@
                   />
                 </BillDialogField>
 
+                <PaymentInstrumentExtrasFields
+                  v-if="showInstrument && showRequiredInstrumentExtras"
+                  external-labels
+                  omit-bank
+                  omit-instrument-reference
+                  :omit-instrument-date="!methodFieldFlags.instrumentDateRequired"
+                  :omit-cheque-number="!methodFieldFlags.chequeNumberRequired"
+                  :method-code="methodCode"
+                  :method-options="methodOptions"
+                  :bd-bank-options="bdBankOptions"
+                  :loading="loadingPaymentMeta"
+                  :bd-bank-id="bdBankId"
+                  :cheque-number="chequeNumber"
+                  :instrument-date="instrumentDate"
+                  :instrument-reference="instrumentReference"
+                  @update:bd-bank-id="(v) => (bdBankId = v)"
+                  @update:cheque-number="(v) => (chequeNumber = v)"
+                  @update:instrument-date="(v) => (instrumentDate = v)"
+                  @update:instrument-reference="(v) => (instrumentReference = v)"
+                />
+
                 <q-expansion-item
                   v-if="showOptionalDetails"
                   v-model="optionalDetailsOpen"
@@ -181,9 +206,11 @@
                 >
                   <div class="money-pay-dialog__optional-body q-gutter-y-md">
                     <PaymentInstrumentExtrasFields
-                      v-if="showInstrument"
+                      v-if="showInstrument && showOptionalInstrumentExtras"
                       external-labels
                       omit-bank
+                      :omit-cheque-number="methodFieldFlags.chequeNumberRequired"
+                      :omit-instrument-date="methodFieldFlags.instrumentDateRequired"
                       :method-code="methodCode"
                       :method-options="methodOptions"
                       :bd-bank-options="bdBankOptions"
@@ -259,7 +286,12 @@ import PaymentInstrumentExtrasFields from './PaymentInstrumentExtrasFields.vue';
 import PaymentLegPotChips from './PaymentLegPotChips.vue';
 import PayOpenBillsAllocSection from './PayOpenBillsAllocSection.vue';
 import MoneyPayDialogSummary from './MoneyPayDialogSummary.vue';
-import MoneyPayDialogAmountBlock from './MoneyPayDialogAmountBlock.vue';
+import ProfileCashMovementLegPicker from 'src/modules/people/components/ProfileCashMovementLegPicker.vue';
+import { useProfileCashMovementLegData } from 'src/modules/people/composables/useProfileCashMovementLegData';
+import {
+  isProfileCashMovementMethod,
+  sortProfileCashMovementMethods,
+} from 'src/modules/people/constants/profileCashMovementMethods';
 import { useWholesalePaymentMethodMeta } from '../composables/useWholesalePaymentMethodMeta';
 import { useMoneyPayDialogForm } from '../composables/useMoneyPayDialogForm';
 import { useMoneyPayDialogFx } from '../composables/useMoneyPayDialogFx';
@@ -272,6 +304,7 @@ import type {
   MoneyPaySubmitPayload,
   MoneyPaySummaryContext,
 } from '../types/moneyPayDialog';
+import type { CashbookLegLocationSection } from '../composables/useCashbookLegPots';
 
 const props = withDefaults(
   defineProps<{
@@ -287,6 +320,8 @@ const props = withDefaults(
     toPartyName?: string;
     fromPotOptions?: CashbookLegPotChipOption[];
     toPotOptions?: CashbookLegPotChipOption[];
+    fromPotSections?: CashbookLegLocationSection[];
+    toPotSections?: CashbookLegLocationSection[];
     fromPotLoading?: boolean;
     toPotLoading?: boolean;
     allocationRows?: OpenBillAllocRow[];
@@ -296,6 +331,11 @@ const props = withDefaults(
     defaultMethodCode?: string;
     booksCurrencyCode?: string;
     booksTenantId?: number | null;
+    payPotBalance?: number | null;
+    payBalanceShortfall?: number;
+    legLayout?: 'default' | 'profile_cash';
+    profileId?: number | null;
+    operatingTenantId?: number | null;
   }>(),
   {
     kind: 'payment',
@@ -309,6 +349,8 @@ const props = withDefaults(
     toPartyName: 'Payee',
     fromPotOptions: () => [],
     toPotOptions: () => [],
+    fromPotSections: () => [],
+    toPotSections: () => [],
     fromPotLoading: false,
     toPotLoading: false,
     allocationRows: () => [],
@@ -318,6 +360,11 @@ const props = withDefaults(
     defaultMethodCode: 'bank_transfer',
     booksCurrencyCode: 'BDT',
     booksTenantId: null,
+    payPotBalance: null,
+    payBalanceShortfall: 0,
+    legLayout: 'default',
+    profileId: null,
+    operatingTenantId: null,
   },
 );
 
@@ -325,9 +372,33 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean];
   submit: [payload: MoneyPaySubmitPayload];
   cancel: [];
+  amountChange: [amount: number];
+  openDeposit: [];
 }>();
 
+const profileLegCurrency = ref('BDT');
+const profileLegLocationPointId = ref<number | null>(null);
+const profileLegBundleId = ref<number | null>(null);
+const profileLegBooksRate = ref<number | null>(null);
+const profileLegDepositRequiresBundlePick = ref(false);
+
+const isProfileCashLeg = computed(
+  () =>
+    props.legLayout === 'profile_cash'
+    && (props.kind === 'deposit' || props.kind === 'withdrawal'),
+);
+
+const resolvedMethodOptions = computed(() => {
+  if (!isProfileCashLeg.value) return methodOptions.value;
+  const filtered = methodOptions.value.filter(isProfileCashMovementMethod);
+  return sortProfileCashMovementMethods(filtered.length ? filtered : methodOptions.value);
+});
+
 const dialogOpen = computed(() => props.modelValue);
+
+const lockProfileCurrency = computed(
+  () => isProfileCashLeg.value && !!props.prefill?.currencyCode?.trim(),
+);
 const kindRef = toRef(props, 'kind');
 const fieldFlagsRef = toRef(props, 'fieldFlags');
 const prefillRef = toRef(props, 'prefill');
@@ -359,8 +430,6 @@ const {
   showDate,
   showReferenceNote,
   showSummary,
-  paymentOverAlloc,
-  unallocatedAmount,
   submitDisabledReason,
   methodFieldFlags,
   buildPayload,
@@ -376,18 +445,53 @@ const {
   lockBillId: lockBillIdRef,
 });
 
-const amountCurrencyRef = computed(() => props.amountCurrencyCode ?? 'BDT');
+const showAddMoneyPanel = computed(
+  () => props.kind === 'payment' && showFromLeg.value,
+);
+
+const selectedFromPotOption = computed(() => {
+  if (props.kind !== 'payment' || !showFromLeg.value) return null;
+  const id = fromPotId.value;
+  if (id == null) return null;
+  return props.fromPotOptions.find((o) => o.value === id) ?? null;
+});
+
+const displayPayPotBalance = computed((): number | null => {
+  const opt = selectedFromPotOption.value;
+  if (opt != null && Number.isFinite(Number(opt.amount))) {
+    return Number(opt.amount);
+  }
+  return props.payPotBalance ?? null;
+});
+
+const displayPayBalanceShortfall = computed((): number => {
+  if (props.kind !== 'payment' || !showFromLeg.value) {
+    return props.payBalanceShortfall ?? 0;
+  }
+  const bal = displayPayPotBalance.value;
+  if (bal == null) return props.payBalanceShortfall ?? 0;
+  const need = Number(amount.value);
+  if (!Number.isFinite(need) || need <= 0) return props.payBalanceShortfall ?? 0;
+  return Math.max(0, need - bal);
+});
+
+const amountCurrencyRef = computed(() => {
+  if (isProfileCashLeg.value) {
+    return profileLegCurrency.value?.trim().toUpperCase() || 'BDT';
+  }
+  return props.amountCurrencyCode ?? 'BDT';
+});
 const booksCurrencyRef = computed(() => props.booksCurrencyCode ?? 'BDT');
 const booksTenantIdRef = computed(() => props.booksTenantId ?? 0);
+const profileIdRef = computed(() => props.profileId ?? null);
+const profileLegDataEnabled = computed(() => dialogOpen.value && isProfileCashLeg.value);
+const profileLegData = useProfileCashMovementLegData(
+  booksTenantIdRef,
+  profileIdRef,
+  profileLegDataEnabled,
+);
 
 const {
-  transactionRate,
-  booksExchangeRate,
-  showTransactionRateField,
-  showBooksExchangeRateField,
-  transactionRateLabel,
-  transactionRateHint,
-  booksExchangeRateLabel,
   validateFx,
   settlementFxFields,
   sourceFxFields,
@@ -404,10 +508,46 @@ const {
   booksTenantId: booksTenantIdRef,
 });
 
+const profileLegDisabledReason = computed((): string | null => {
+  if (!isProfileCashLeg.value) return null;
+  if (profileLegLocationPointId.value == null) {
+    return props.kind === 'deposit' ? 'Choose a deposit location.' : 'Choose a withdraw location.';
+  }
+  const legCurrency = profileLegCurrency.value?.trim().toUpperCase() || 'BDT';
+  if (props.kind === 'deposit') {
+    if (profileLegDepositRequiresBundlePick.value) {
+      if (profileLegBundleId.value == null || profileLegBundleId.value <= 0) {
+        return 'Next: choose a bundle.';
+      }
+      return null;
+    }
+    if (legCurrency !== 'BDT') {
+      const rate = Number(profileLegBooksRate.value);
+      if (!Number.isFinite(rate) || rate <= 0) return 'Next: enter a books rate for a new bundle.';
+    }
+    return null;
+  }
+  if (profileLegBundleId.value == null || profileLegBundleId.value <= 0) {
+    return 'Choose a bundle.';
+  }
+  return null;
+});
+
 const submitDisabledReasonResolved = computed(() => {
   const base = submitDisabledReason.value;
   if (base) return base;
-  return validateFx();
+  const profileLeg = profileLegDisabledReason.value;
+  if (profileLeg) return profileLeg;
+  const fx = validateFx();
+  if (fx) return fx;
+  if (props.kind === 'payment' && displayPayBalanceShortfall.value > 0) {
+    return 'Add money to cover the payment amount.';
+  }
+  return null;
+});
+
+watch(amount, (v) => {
+  emit('amountChange', Number(v) || 0);
 });
 
 const kindTitles: Record<MoneyPayKind, string> = {
@@ -437,7 +577,9 @@ const methodLabel = computed(() => {
 
 const submitLabelResolved = computed(() => {
   if (props.submitLabel?.trim()) return props.submitLabel.trim();
-  if (props.kind === 'deposit') return 'Post receipt';
+  if (props.kind === 'deposit') {
+    return isProfileCashLeg.value ? 'Deposit' : 'Post receipt';
+  }
   if (props.kind === 'withdrawal') return 'Cash out';
   if (props.kind === 'transfer') return 'Post transfer';
   return 'Add payment';
@@ -452,6 +594,18 @@ watch(dialogOpen, (open) => {
     amountTouched.value = false;
     submitAttempted.value = false;
     optionalDetailsOpen.value = false;
+    const prefillCcy = props.prefill?.currencyCode?.trim().toUpperCase();
+    profileLegCurrency.value = prefillCcy || 'BDT';
+    profileLegLocationPointId.value = props.prefill?.legLocationPointId ?? null;
+    const prefillBundleId = props.prefill?.toPotId;
+    const allowPrefillBundle =
+      !prefillCcy || prefillCcy === 'BDT' || props.kind !== 'deposit';
+    profileLegBundleId.value =
+      allowPrefillBundle && prefillBundleId != null && prefillBundleId > 0
+        ? prefillBundleId
+        : null;
+    profileLegBooksRate.value = prefillCcy && prefillCcy !== 'BDT' ? null : 1;
+    profileLegDepositRequiresBundlePick.value = false;
   }
 });
 
@@ -462,19 +616,34 @@ const amountShowError = computed(
 const footerHint = computed(() => {
   const reason = submitDisabledReasonResolved.value;
   if (!reason) return null;
-  if (reason === 'Enter an amount greater than zero.') return null;
+  // Profile cash legs show amount errors on their own field.
+  if (reason === 'Next: enter an amount greater than zero.' && isProfileCashLeg.value) {
+    return null;
+  }
   return reason;
+});
+
+const showRequiredInstrumentExtras = computed(() => {
+  if (!showInstrument) return false;
+  const f = methodFieldFlags.value;
+  return (
+    (f.showChequeNumber && f.chequeNumberRequired)
+    || (f.showInstrumentDate && f.instrumentDateRequired)
+  );
+});
+
+const showOptionalInstrumentExtras = computed(() => {
+  if (!showInstrument) return false;
+  const f = methodFieldFlags.value;
+  return (
+    f.showInstrumentReference
+    || (f.showInstrumentDate && !f.instrumentDateRequired)
+  );
 });
 
 const showOptionalDetails = computed(() => {
   if (showReferenceNote) return true;
-  if (!showInstrument) return false;
-  const f = methodFieldFlags.value;
-  return (
-    f.showChequeNumber ||
-    f.showInstrumentDate ||
-    f.showInstrumentReference
-  );
+  return showOptionalInstrumentExtras.value;
 });
 
 const close = () => {
@@ -485,22 +654,45 @@ const close = () => {
   emit('cancel');
 };
 
-const onFillDue = () => {
-  const due = props.summary?.dueAmount;
-  if (due != null && due > 0) amount.value = due;
-};
-
 const onSubmit = () => {
   submitAttempted.value = true;
   if (submitDisabledReasonResolved.value) return;
   const base = buildPayload();
   const { exchangeRate } = settlementFxFields();
   const { sourceCurrencyCode, transactionRate: txnRate } = sourceFxFields();
+  const legCurrency = profileLegCurrency.value?.trim().toUpperCase() || null;
+  const profilePotId = profileLegBundleId.value;
+  const depositPotId =
+    isProfileCashLeg.value
+    && props.kind === 'deposit'
+    && profileLegDepositRequiresBundlePick.value
+      ? profilePotId
+      : null;
   emit('submit', {
     ...base,
     exchangeRate,
     transactionRate: txnRate,
-    sourceCurrencyCode,
+    sourceCurrencyCode: isProfileCashLeg.value ? legCurrency : sourceCurrencyCode,
+    legCurrencyCode: isProfileCashLeg.value ? legCurrency : null,
+    legLocationPointId:
+      isProfileCashLeg.value ? profileLegLocationPointId.value : null,
+    legLocationCode: isProfileCashLeg.value
+      ? profileLegData.pointById(profileLegLocationPointId.value)?.code?.trim() || 'main'
+      : null,
+    legBooksRate:
+      isProfileCashLeg.value
+      && props.kind === 'deposit'
+      && legCurrency !== 'BDT'
+        ? Number(profileLegBooksRate.value) || null
+        : null,
+    fromPotId:
+      isProfileCashLeg.value && props.kind === 'withdrawal'
+        ? profilePotId
+        : base.fromPotId,
+    toPotId:
+      isProfileCashLeg.value && props.kind === 'deposit'
+        ? depositPotId
+        : base.toPotId,
   });
 };
 </script>

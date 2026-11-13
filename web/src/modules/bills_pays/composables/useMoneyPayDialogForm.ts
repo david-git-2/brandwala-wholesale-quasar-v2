@@ -101,6 +101,22 @@ export function useMoneyPayDialogForm(options: {
 
   const methodFieldFlags = computed(() => paymentMethodFieldFlags(selectedMethodMeta.value));
 
+  const resolvePayAmount = (): number => {
+    const pay = Number(amount.value);
+    if (Number.isFinite(pay) && pay > 0) return pay;
+    const pre = Number(options.prefill.value?.amount);
+    if (Number.isFinite(pre) && pre > 0) return pre;
+    const lockId = options.lockBillId.value;
+    if (lockId != null) {
+      const row =
+        allocationRows.value.find((r) => r.id === lockId)
+        ?? options.initialAllocationRows.value.find((r) => r.id === lockId);
+      const due = Number(row?.allocAmount ?? row?.due_amount);
+      if (Number.isFinite(due) && due > 0) return due;
+    }
+    return 0;
+  };
+
   const resetForm = () => {
     const p = options.prefill.value;
     amount.value = p?.amount ?? null;
@@ -133,6 +149,17 @@ export function useMoneyPayDialogForm(options: {
     (open) => {
       if (open) resetForm();
     },
+    { immediate: true },
+  );
+
+  watch(
+    () => options.prefill.value?.fromPotId,
+    (potId) => {
+      if (!options.dialogOpen.value || options.kind.value !== 'payment') return;
+      if (potId != null && potId > 0) {
+        fromPotId.value = potId;
+      }
+    },
   );
 
   const instrumentFields = (): MoneyPayInstrumentFields => ({
@@ -143,14 +170,14 @@ export function useMoneyPayDialogForm(options: {
   });
 
   const submitDisabledReason = computed((): string | null => {
-    const pay = Number(amount.value);
-    if (!Number.isFinite(pay) || pay <= 0) return 'Enter an amount greater than zero.';
+    const pay = resolvePayAmount();
+    if (pay <= 0) return 'Next: enter an amount greater than zero.';
 
     if (showFromLeg.value && (fromPotId.value == null || fromPotId.value <= 0)) {
-      return 'Choose which pot cash leaves.';
+      return 'Next: choose which bundle cash leaves from.';
     }
     if (showToLeg.value && (toPotId.value == null || toPotId.value <= 0)) {
-      return 'Choose which pot receives cash.';
+      return 'Next: choose which bundle receives cash.';
     }
     if (showFromLeg.value && showToLeg.value && fromPotId.value === toPotId.value) {
       return 'From and to pot must differ.';
@@ -184,13 +211,13 @@ export function useMoneyPayDialogForm(options: {
       if (extrasReason) return extrasReason;
     }
 
-    if (showDate.value && !paymentDate.value.trim()) return 'Enter payment date.';
+    if (showDate.value && !paymentDate.value.trim()) return 'Next: enter payment date.';
 
     return null;
   });
 
   const buildPayload = (): MoneyPaySubmitPayload => {
-    const pay = Number(amount.value) || 0;
+    const pay = resolvePayAmount();
     let allocations = selectedAllocations.value;
     const lockId = options.lockBillId.value;
     if (options.kind.value === 'payment' && lockId != null && allocations.length === 0) {
@@ -213,7 +240,7 @@ export function useMoneyPayDialogForm(options: {
   };
 
   const fillOldestAllocations = () => {
-    const pay = Number(amount.value) || 0;
+    const pay = resolvePayAmount();
     if (pay <= 0) return;
     const filled = fifoFillByOldest(
       allocationRows.value.map((r) => ({ id: r.id, due_amount: r.due_amount })),

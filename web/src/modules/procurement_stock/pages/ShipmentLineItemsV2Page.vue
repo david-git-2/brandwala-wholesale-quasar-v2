@@ -435,6 +435,7 @@
               :show-actions-column="showLineActionsColumn"
               :land-split-attention="landSplitAttentionForItem(item.id)"
               :unit-cost-tooltip="item.unitCostTooltip"
+              :prefer-live-unit-cost="preferLiveUnitCost"
               :batch-summary="batchSummaryForItem(item)"
               :adding-extra="addingExtraItemId === item.id"
               :get-draft="(field) => getCellDraftValue(item, field)"
@@ -702,7 +703,7 @@ import { useInboundShipmentPageBreadcrumbs } from '../composables/useInboundShip
 import {
   calculateLineLandedCostBdt,
   calculateLineLandedCostBreakdown,
-  costingShipmentFromEntries,
+  costingShipmentForPreview,
 } from 'src/shared/shipment-engine';
 import { formatLineLandedCostTooltip } from '../utils/lineLandedCostTooltip';
 import {
@@ -824,6 +825,8 @@ const canLockShipmentCosts = computed(() => {
   const okStatus = status === 'in_transit' || status === 'received';
   return okStatus && isStockPosted.value && !isCostsLocked.value;
 });
+
+const preferLiveUnitCost = computed(() => !isCostsLocked.value);
 
 const canEditSplits = canEditLandSplits;
 
@@ -1480,9 +1483,10 @@ const resolveLineUnitCostBdt = (
   }
 
   if (!isShipmentCostsLocked(shipment)) {
-    const forCosting = costingShipmentFromEntries(
+    const forCosting = costingShipmentForPreview(
       shipment,
       shipmentStore.currentCostEntries,
+      shipmentStore.settingsFinanceCachedApFx,
       allItems,
     );
     return calculateLineLandedCostBdt(item, forCosting, allItems);
@@ -1493,9 +1497,10 @@ const resolveLineUnitCostBdt = (
     return Number(stamped);
   }
 
-  const forCosting = costingShipmentFromEntries(
+  const forCosting = costingShipmentForPreview(
     shipment,
     shipmentStore.currentCostEntries,
+    shipmentStore.settingsFinanceCachedApFx,
     allItems,
   );
   return calculateLineLandedCostBdt(item, forCosting, allItems);
@@ -1508,6 +1513,7 @@ const displayedItems = computed(() => {
   const shipment = shipmentStore.currentShipment;
   const cargoWeightKg =
     shipment?.total_weight_kg ?? shipment?.received_weight ?? null;
+  const costsLocked = isShipmentCostsLocked(shipment);
   void costEntries;
   void cargoWeightKg;
   if (storeItems && storeItems.length > 0) {
@@ -1529,7 +1535,12 @@ const displayedItems = computed(() => {
       const unitCost = resolveLineUnitCostBdt(item, storeItems);
       const forCostingTooltip =
         shipment != null
-          ? costingShipmentFromEntries(shipment, costEntries, storeItems)
+          ? costingShipmentForPreview(
+              shipment,
+              costEntries,
+              shipmentStore.settingsFinanceCachedApFx,
+              storeItems,
+            )
           : null;
       const unitCostTooltip =
         forCostingTooltip != null
@@ -1565,7 +1576,7 @@ const displayedItems = computed(() => {
         received_quantity: item.received_quantity ?? null,
         product_weight: item.product_weight,
         package_weight: item.package_weight,
-        landed_cost_bdt: item.landed_cost_bdt ?? unitCost,
+        landed_cost_bdt: costsLocked ? (item.landed_cost_bdt ?? unitCost) : unitCost,
         category: getSectionTitle(item.section_id),
         sectionId: item.section_id ?? null,
         vendor: vendorName,
@@ -1809,7 +1820,9 @@ const bulkApplySellableLandSplits = async () => {
     if (!item) continue;
     const gap = issue.orderedQty - issue.splitQty;
     const purchasePrice = Number(item.purchase_price) || 0;
-    const cost = item.landed_cost_bdt ?? resolveLineUnitCostBdt(item, shipmentStore.currentShipmentItems);
+    const cost = preferLiveUnitCost.value
+      ? resolveLineUnitCostBdt(item, shipmentStore.currentShipmentItems)
+      : (item.landed_cost_bdt ?? resolveLineUnitCostBdt(item, shipmentStore.currentShipmentItems));
 
     if (issue.splitQty === 0) {
       fullQtyItems.push({
@@ -2037,7 +2050,11 @@ const addExtraOutcome = async (item: Record<string, unknown>) => {
       kind: 'sellable',
       reason: 'general',
       purchase_price: Number(item.purchase_price) || 0,
-      cost: (item.landed_cost_bdt ?? item.unitCost ?? null) as number | null,
+      cost: (
+        preferLiveUnitCost.value
+          ? (item.unitCost ?? item.landed_cost_bdt)
+          : (item.landed_cost_bdt ?? item.unitCost)
+      ) as number | null,
     });
     extraOutcomesByItemId.value = {
       ...extraOutcomesByItemId.value,

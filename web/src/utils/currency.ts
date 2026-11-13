@@ -47,7 +47,7 @@ export const formatAmountBdt = (
 export const formatBdtTaka = (value: number | string | null | undefined): string =>
   `৳${formatAmountBdt(value)}`;
 
-const SETTLEMENT_CURRENCY_SYMBOL: Record<string, string> = {
+export const SETTLEMENT_CURRENCY_SYMBOL: Record<string, string> = {
   BDT: '৳',
   GBP: '£',
   USD: '$',

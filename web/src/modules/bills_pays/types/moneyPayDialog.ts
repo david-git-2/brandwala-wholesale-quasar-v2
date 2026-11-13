@@ -1,5 +1,8 @@
 import type { OpenBillAllocRow } from '../composables/useOpenBillAllocations';
-import type { CashbookLegPotChipOption } from '../composables/useCashbookLegPots';
+import type {
+  CashbookLegLocationSection,
+  CashbookLegPotChipOption,
+} from '../composables/useCashbookLegPots';
 
 export type MoneyPayKind = 'payment' | 'deposit' | 'withdrawal' | 'transfer';
 
@@ -31,6 +34,16 @@ export type MoneyPaySubmitPayload = {
   /** Pot debit FX when pot currency ≠ bill currency. */
   transactionRate?: number | null;
   sourceCurrencyCode?: string | null;
+  /** Selected leg currency (profile cash deposit / withdraw). */
+  legCurrencyCode?: string | null;
+  /** Desk point id for profile deposit / withdraw. */
+  legLocationPointId?: number | null;
+  /** Desk location name for prefill before profile points query loads. */
+  legLocationPointLabel?: string | null;
+  /** Cash location code (desk point `code`) when depositing without explicit bundle id. */
+  legLocationCode?: string | null;
+  /** Books rate (BDT per 1 unit) when opening a new FX tranche on deposit. */
+  legBooksRate?: number | null;
 };
 
 /** Read-only header block for payment / pay modes */
@@ -49,6 +62,8 @@ export type MoneyPayDialogLegProps = {
   toPartyName?: string;
   fromPotOptions?: CashbookLegPotChipOption[];
   toPotOptions?: CashbookLegPotChipOption[];
+  fromPotSections?: CashbookLegLocationSection[];
+  toPotSections?: CashbookLegLocationSection[];
   fromPotLoading?: boolean;
   toPotLoading?: boolean;
 };
@@ -71,4 +86,8 @@ export type MoneyPayDialogPrefill = {
   reference?: string | null;
   note?: string | null;
   allocationRows?: OpenBillAllocRow[];
+  /** Profile cash deposit / withdraw — lock currency picker when set. */
+  currencyCode?: string | null;
+  legLocationPointId?: number | null;
+  legLocationPointLabel?: string | null;
 };
