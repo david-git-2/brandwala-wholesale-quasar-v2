@@ -49,13 +49,13 @@
             @click="applyCustodyDialogOpen = true"
           />
           <q-btn
-            v-if="canShowRecordPayment"
+            v-if="canRecordPayment"
             unelevated
             no-caps
             color="primary"
             icon="ph ph-wallet"
             label="Add payment"
-            @click="openAddPayment"
+            @click="openMoneyPayDialog()"
           />
           <q-btn
             v-if="canRecordVendorRefund"
@@ -206,6 +206,7 @@
             :channel-meta="bill.channel_meta"
             :ap-kind="bill.source_key ?? bill.ap_kind"
             :total-amount="bill.total_amount"
+            :desk-bill-lines="bundleQuery.data.value?.billLines"
             :note-edit-mode="adjustmentComposerOpen"
             :draft-rows="draftRows"
             @add-extra-line="(code) => addExtraRow(code)"
@@ -548,15 +549,6 @@
                   label="Open"
                   @click.stop="goToPayment(entry.payment_id)"
                 />
-                <TfBtn
-                  v-if="canCorrectHistoryEntry(entry)"
-                  variant="secondary"
-                  color="warning"
-                  size="sm"
-                  label="Correct"
-                  :disable="!canUseCorrectPayment"
-                  @click.stop="onCorrectPayment(entry)"
-                />
               </q-item-section>
             </q-item>
           </q-list>
@@ -564,47 +556,26 @@
       </div>
     </div>
 
-    <RecordBillPaymentDialog
-      v-if="bill && billProfileId && paymentDialogOpen"
-      v-model="paymentDialogOpen"
-      :bill-id="bill.id"
-      :due-amount="paymentDueAmount"
-      :due-currency-code="paymentDueCurrencyCode"
-      :profile-id="billProfileId"
-      :tenant-id="operatingTenantId"
-      :books-tenant-id="operatingTenantId"
-      :is-ap="isApBill"
-      :channel-meta="(bill.channel_meta as Record<string, unknown> | null) ?? null"
-      :shipment-id="billShipmentId"
-      :pay-from-profile-id="paymentPayFromProfileId"
-      :pay-from-profile-name="paymentPayFromProfileName"
-      :pay-to-profile-id="paymentPayToProfileId"
-      :pay-to-profile-name="paymentPayToProfileName"
+    <MoneyPayDialog
+      v-if="bill && billProfileId && moneyPayDialogOpen"
+      v-model="moneyPayDialogOpen"
+      kind="payment"
+      :summary="moneyPaySummary"
+      :amount-currency-code="paymentDueCurrencyCode"
+      :from-party-name="payFromPartyName"
+      :to-party-name="payToPartyName"
+      :from-pot-options="fromPotOptions"
+      :to-pot-options="toPotOptions"
+      :from-pot-loading="fromPotLoading"
+      :to-pot-loading="toPotLoading"
+      :allocation-rows="moneyPayAllocationRows"
+      :lock-bill-id="bill.id"
+      :prefill="moneyPayPrefill"
+      :field-flags="moneyPayFieldFlags"
+      :books-currency-code="moneyPayBooksCurrencyCode"
+      :books-tenant-id="moneyPayBooksTenantId"
       :loading="recordPaymentMutation.isPending.value"
-      :replacing-pay-id="replacingPayId"
-      :prefill-snapshot="paymentPrefillSnapshot"
-      @submit="onRecordPayment"
-    />
-    <CorrectBillPaymentDialog
-      v-if="bill && billProfileId"
-      v-model="correctBillPaymentOpen"
-      :history-entry="correctPaymentHistoryEntry"
-      :bill-id="bill.id"
-      :due-amount="paymentDueAmount"
-      :due-currency-code="paymentDueCurrencyCode"
-      :profile-id="billProfileId"
-      :tenant-id="operatingTenantId"
-      :books-tenant-id="operatingTenantId"
-      :is-ap="isApBill"
-      :channel-meta="(bill.channel_meta as Record<string, unknown> | null) ?? null"
-      :shipment-id="billShipmentId"
-      :pay-from-profile-id="paymentPayFromProfileId"
-      :pay-from-profile-name="paymentPayFromProfileName"
-      :pay-to-profile-id="paymentPayToProfileId"
-      :pay-to-profile-name="paymentPayToProfileName"
-      :record-loading="recordPaymentMutation.isPending.value"
-      @voided="onCorrectPaymentVoided"
-      @submit="onRecordPayment"
+      @submit="onMoneyPaySubmit"
     />
     <RecordVendorCreditRefundDialog
       v-if="vendorRefundTargetId"
@@ -643,7 +614,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -665,9 +636,7 @@ import {
 } from 'src/modules/sales_invoice/utils/invoiceListDisplay';
 import { useBillDetailBundleQuery } from '../composables/useBillDetailBundleQuery';
 import { useBillDetailQuery } from '../composables/useBillDetailQuery';
-import { useRecordBillPaymentMutation } from '../composables/useRecordBillPaymentMutation';
 import { useVoidBillMutation } from '../composables/useVoidBillMutation';
-import type { RecordBillPaymentInput } from '../composables/useRecordBillPaymentMutation';
 import type { InvoicePaymentHistoryEntry } from 'src/modules/sales_invoice/types';
 import {
   aggregateVendorRefundReceipts,
@@ -680,12 +649,9 @@ import ApBillPaper from '../components/ApBillPaper.vue';
 import ApBillPartiesBlock from '../components/ApBillPartiesBlock.vue';
 import ArBillPartiesBlock from '../components/ArBillPartiesBlock.vue';
 import BillKernelSourceChips from '../components/BillKernelSourceChips.vue';
-import RecordBillPaymentDialog from '../components/RecordBillPaymentDialog.vue';
-import CorrectBillPaymentDialog from '../components/CorrectBillPaymentDialog.vue';
-import { usePaymentsVoidAccess } from '../composables/usePaymentsVoidAccess';
-import { isPayVoidable } from '../utils/payVoidability';
 import TfBtn from 'src/components/ui/TfBtn.vue';
-import type { PayCorrectionSnapshot } from '../types/payCorrectionSnapshot';
+import MoneyPayDialog from '../components/MoneyPayDialog.vue';
+import { useBillDetailMoneyPayDialog } from '../composables/useBillDetailMoneyPayDialog';
 import RecordVendorCreditRefundDialog from '../components/RecordVendorCreditRefundDialog.vue';
 import { usePostVendorCreditRefundMutation } from '../composables/usePostVendorCreditRefundMutation';
 import type { PostVendorCreditRefundInput } from '../composables/usePostVendorCreditRefundMutation';
@@ -732,25 +698,26 @@ const operatingTenantId = computed(() => {
 
 const bundleQuery = useBillDetailBundleQuery(billId, operatingTenantId);
 const billFromBundle = computed(() => bundleQuery.data.value?.bill);
+const payCashbookLegs = computed(() => bundleQuery.data.value?.payCashbookLegs ?? null);
+const billSpine = computed((): 'legacy' | 'kernel' => {
+  const raw = billFromBundle.value as { spine?: string } | undefined;
+  return raw?.spine === 'kernel' ? 'kernel' : 'legacy';
+});
 const { itemsQuery, billLinesQuery } = useBillDetailQuery(
   billId,
   billFromBundle,
   computed(() => bundleQuery.data.value),
 );
-const voidMutation = useVoidBillMutation(() => billId.value);
+const voidMutation = useVoidBillMutation(
+  () => billId.value,
+  () => ({
+    tenantId: operatingTenantId.value,
+    spine: billSpine.value,
+  }),
+);
 const patchBillDatesMutation = usePatchBillDatesMutation(() => billId.value);
-const recordPaymentMutation = useRecordBillPaymentMutation(() => billId.value);
 const vendorRefundMutation = usePostVendorCreditRefundMutation(() => billId.value);
 const createAdjustmentMutation = useCreateBillAdjustmentMutation(() => billId.value);
-
-const correctPaymentHistoryEntry = ref<InvoicePaymentHistoryEntry | null>(null);
-const correctBillPaymentOpen = ref(false);
-
-const paymentsVoidAccess = usePaymentsVoidAccess();
-
-const paymentDialogOpen = ref(false);
-const replacingPayId = ref<number | null>(null);
-const paymentPrefillSnapshot = ref<PayCorrectionSnapshot | null>(null);
 
 const paymentHistoryEntries = computed(
   () => (bundleQuery.data.value?.paymentHistory ?? []) as InvoicePaymentHistoryEntry[],
@@ -1044,25 +1011,6 @@ const profileName = computed(
   () => bill.value?.profiles?.name || bill.value?.recipient_name || '—',
 );
 
-/** AP pay cash leaves tenant (`to` on bill paper). */
-const paymentPayFromProfileId = computed(() => bill.value?.to_profile_id ?? null);
-const paymentPayFromProfileName = computed(
-  () =>
-    bill.value?.to_profile?.name?.trim() ||
-    authStore.selectedTenant?.name ||
-    'Tenant',
-);
-/** AP pay cash arrives at vendor (`from` on bill paper). */
-const paymentPayToProfileId = computed(
-  () => bill.value?.from_profile_id ?? billProfileId.value ?? null,
-);
-const paymentPayToProfileName = computed(
-  () =>
-    bill.value?.from_profile?.name?.trim() ||
-    profileName.value ||
-    'Payee',
-);
-
 const channelLabel = computed(() =>
   bill.value ? invoiceChannelLabel(bill.value as GlobalInvoiceRow) : '',
 );
@@ -1149,7 +1097,10 @@ const issueApDraftMutation = useMutation({
   mutationFn: async () => {
     const id = billId.value;
     if (id == null) throw new Error('Bill not loaded');
-    await billsRepository.issueApBillFromDesk(id);
+    await billsRepository.issueApBillFromDesk(id, {
+      tenantId: operatingTenantId.value,
+      spine: billSpine.value,
+    });
   },
   onSuccess: async () => {
     showSuccessNotification('Bill issued.');
@@ -1220,20 +1171,6 @@ watch(
   { immediate: true },
 );
 
-const paymentDueCurrencyCode = computed(() => {
-  const b = bill.value;
-  if (!b) return null;
-  if (apBillSettlementCurrency.value) return apBillSettlementCurrency.value;
-  const due = paymentDueAmount.value;
-  const meta = (b.channel_meta as Record<string, unknown> | null) ?? null;
-  if (isApBill.value && apBillDueStoresForeignFace(meta, due)) {
-    return apBillPaperCurrencyCode(meta);
-  }
-  const header = String(b.currency_code ?? '').trim();
-  if (header) return header.toUpperCase();
-  return 'BDT';
-});
-
 const vendorRefundTargetId = computed(() => {
   if (vendorRefundNoteId.value) return vendorRefundNoteId.value;
   if (isApBill.value && billDocumentKind.value === 'credit_note') return billId.value;
@@ -1256,6 +1193,58 @@ const vendorRefundOpenAmount = computed(() => {
   }
   const row = adjustmentRows.value.find((r) => r.id === id);
   return Math.max(0, Number(row?.due_amount ?? 0));
+});
+
+const paymentDueCurrencyCode = computed(() => {
+  const b = bill.value;
+  if (!b) return 'BDT';
+  if (apBillSettlementCurrency.value) return apBillSettlementCurrency.value;
+  const due = paymentDueAmount.value;
+  const meta = (b.channel_meta as Record<string, unknown> | null) ?? null;
+  if (isApBill.value && apBillDueStoresForeignFace(meta, due)) {
+    return apBillPaperCurrencyCode(meta);
+  }
+  const header = String(b.currency_code ?? '').trim();
+  if (header) return header.toUpperCase();
+  return 'BDT';
+});
+
+const {
+  dialogOpen: moneyPayDialogOpen,
+  openMoneyPayDialog,
+  onMoneyPaySubmit,
+  recordPaymentMutation,
+  moneyPayFieldFlags,
+  moneyPaySummary,
+  moneyPayAllocationRows,
+  moneyPayPrefill,
+  fromPotOptions,
+  toPotOptions,
+  fromPotLoading,
+  toPotLoading,
+  payFromPartyName,
+  payToPartyName,
+  booksCurrencyCode: moneyPayBooksCurrencyCode,
+  operatingTenantId: moneyPayBooksTenantId,
+} = useBillDetailMoneyPayDialog({
+  billId,
+  bill,
+  operatingTenantId,
+  isApBill,
+  billProfileId,
+  paymentDueAmount,
+  paymentDueCurrencyCode,
+  billShipmentId,
+  payCashbookLegs,
+});
+
+const canRecordPayment = computed(() => {
+  const b = bill.value;
+  if (!b || !isStandardBill.value) return false;
+  if (isDropshipManagerBill(b)) return false;
+  if (b.invoice_status !== 'issued') return false;
+  if (!billProfileId.value) return false;
+  return paymentDueAmount.value > 0;
 });
 
 const canRecordVendorRefund = computed(() => {
@@ -1283,17 +1272,6 @@ function openVendorRefund(noteId?: number) {
   }
   vendorRefundDialogOpen.value = true;
 }
-
-const canRecordPayment = computed(() => {
-  const b = bill.value;
-  if (!b || !isStandardBill.value) return false;
-  if (isDropshipManagerBill(b)) return false;
-  if (b.invoice_status !== 'issued') return false;
-  if (!billProfileId.value) return false;
-  return paymentDueAmount.value > 0;
-});
-
-const canShowRecordPayment = computed(() => canRecordPayment.value);
 
 const detailErrorMessage = computed(() => {
   const err = bundleQuery.error.value;
@@ -1340,16 +1318,6 @@ watch(
     void router.replace(billDraftComposeRoute(id, authStore.tenantSlug));
   },
 );
-
-onMounted(() => {
-  const state = history.state as { payCorrectionPrefill?: PayCorrectionSnapshot } | null;
-  const prefill = state?.payCorrectionPrefill;
-  if (prefill?.paymentId) {
-    replacingPayId.value = prefill.paymentId;
-    paymentPrefillSnapshot.value = prefill;
-    paymentDialogOpen.value = true;
-  }
-});
 
 onBeforeUnmount(() => clearCustomBreadcrumbs());
 
@@ -1431,50 +1399,6 @@ const paymentHistoryAmountSubline = (entry: InvoicePaymentHistoryEntry): string 
   return null;
 };
 
-const canCorrectHistoryEntry = (entry: InvoicePaymentHistoryEntry) => {
-  if (!entry.payment_id || entry.voided_at) return false;
-  if (entry.entry_type === 'write_off') return false;
-  if (entry.method === 'wallet_credit' || entry.payment_source === 'store_credit') return false;
-  if (entry.payment_source) {
-    return isPayVoidable({
-      source: entry.payment_source,
-      method: entry.method,
-      voidedAt: entry.voided_at,
-    });
-  }
-  // list_invoice_payment_history may omit pays.source; button still shown — dialog validates.
-  return true;
-};
-
-const canUseCorrectPayment = computed(() => paymentsVoidAccess.value);
-
-const onCorrectPayment = (entry: InvoicePaymentHistoryEntry) => {
-  if (!canUseCorrectPayment.value) {
-    showErrorNotification('You need payments void permission to correct a payment.');
-    return;
-  }
-  if (!canCorrectHistoryEntry(entry)) {
-    showErrorNotification('This payment cannot be corrected here.');
-    return;
-  }
-  correctPaymentHistoryEntry.value = entry;
-  correctBillPaymentOpen.value = true;
-};
-
-const onCorrectPaymentVoided = async () => {
-  await bundleQuery.refetch();
-};
-
-const clearPaymentCorrectionPrefill = () => {
-  replacingPayId.value = null;
-  paymentPrefillSnapshot.value = null;
-};
-
-const openAddPayment = () => {
-  clearPaymentCorrectionPrefill();
-  paymentDialogOpen.value = true;
-};
-
 const goToPayment = (paymentId: number) => {
   const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
   router.push({
@@ -1501,14 +1425,6 @@ const adjustmentKindLabel = (kind: string) => {
   if (kind === 'credit_note') return 'Credit note';
   if (kind === 'debit_note') return 'Debit note';
   return kind;
-};
-
-const onRecordPayment = async (payload: RecordBillPaymentInput) => {
-  paymentDialogOpen.value = false;
-  correctBillPaymentOpen.value = false;
-  correctPaymentHistoryEntry.value = null;
-  await recordPaymentMutation.mutateAsync(payload);
-  clearPaymentCorrectionPrefill();
 };
 
 const onVendorRefund = async (payload: PostVendorCreditRefundInput) => {

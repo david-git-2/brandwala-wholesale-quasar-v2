@@ -44,11 +44,7 @@ begin
   where id = p_shipment_id
   returning * into v_ship;
 
-  perform public.sync_shipment_ap_bills(p_shipment_id);
-
-  perform set_config('app.shipment_ap_issue', '1', true);
-  perform public.issue_shipment_ap_bills(p_shipment_id);
-  perform set_config('app.shipment_ap_issue', '0', true);
+  perform public.issue_shipment_ap_drafts_v2(p_shipment_id);
 
   return v_ship;
 end;

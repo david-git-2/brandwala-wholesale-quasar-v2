@@ -8,6 +8,7 @@
       <div class="invoice-title-line">
         <span class="invoice-name">{{ row.invoice_no }}</span>
         <q-badge
+          v-if="showChannelBadge"
           dense
           :color="channelTone.color"
           :text-color="channelTone.textColor"
@@ -73,14 +74,44 @@ defineEmits<{
 
 const displayRow = computed(() => props.row as GlobalInvoiceRow);
 
+const isDeskRow = computed(() => Boolean(props.row.list_status));
+
+const showChannelBadge = computed(() => !isDeskRow.value);
+
 const channelLabel = computed(() => invoiceChannelLabel(displayRow.value));
 const channelTone = computed(() => invoiceChannelTone(displayRow.value));
-const statusSlug = computed(() => invoiceListStatusSlug(displayRow.value));
-const statusLabel = computed(() => invoiceListStatusLabel(displayRow.value));
+
+const deskStatusLabels: Record<string, string> = {
+  draft: 'Draft',
+  due: 'Due',
+  partial: 'Partial',
+  paid: 'Paid',
+  voided: 'Voided',
+};
+
+const statusSlug = computed(() => {
+  const desk = props.row.list_status;
+  if (desk) return desk;
+  return invoiceListStatusSlug(displayRow.value);
+});
+
+const statusLabel = computed(() => {
+  const desk = props.row.list_status;
+  if (desk) return deskStatusLabels[desk] ?? desk;
+  return invoiceListStatusLabel(displayRow.value);
+});
+
 const statusIcon = computed(() => invoiceListStatusIcon(displayRow.value));
-const profileName = computed(
-  () => props.row.profile_name || props.row.recipient_name || '—',
-);
+
+const profileName = computed(() => {
+  const from = props.row.from_profile_name?.trim();
+  const to =
+    props.row.to_profile_name?.trim() ||
+    props.row.profile_name?.trim() ||
+    props.row.recipient_name?.trim();
+  if (from || to) return `${from || '—'} → ${to || '—'}`;
+  return props.row.profile_name?.trim() || '—';
+});
 </script>
 
 <style scoped lang="scss">

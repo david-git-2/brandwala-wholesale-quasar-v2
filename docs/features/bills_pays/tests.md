@@ -1,7 +1,7 @@
 # Bills & pays — tests redirect
 
-**v2 cases:** [03-tests.md](money-spine-v2/03-tests.md). **Kernel:** [money-spine-v2](money-spine-v2/README.md).
+**Bridge cases:** [bridge/spec.md § Test matrix](../money_bill_bridge/spec.md#test-matrix). **Atlas:** [bridge/spec.md § Atlas](../money_bill_bridge/spec.md#atlas).
 
 **Live fixtures:** `supabase/tests/golden_bills_pays_*.sql`, `tier1_bills_pays_invariants.sql`, `bills_pays_bp18_settlements.sql`. **CI:** `pnpm run backend:test`.
 
-**PR checklist:** [kernel REFERENCE](../../kernel/REFERENCE.md).
+**PR checklist:** [money spec](../money/spec.md#pr-checklist).

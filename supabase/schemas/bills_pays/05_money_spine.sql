@@ -334,13 +334,14 @@ begin
   )
   returning id into v_settle_id;
 
-  insert into public.pay_allocations (tenant_id, payment_id, global_invoice_id, bill_id, amount)
-  values (v_parent_id, p_payment_id, p_bill_id, p_bill_id, v_books)
-  returning * into v_row;
-
-  update public.bill_settlements
-  set pay_allocation_id = v_row.id
-  where id = v_settle_id;
+  -- v2 cutover: settlements-only; pay_allocations retired (see docs/features/bills/spec.md#legacy-cutover)
+  v_row.id := v_settle_id;
+  v_row.tenant_id := v_parent_id;
+  v_row.payment_id := p_payment_id;
+  v_row.global_invoice_id := p_bill_id;
+  v_row.bill_id := p_bill_id;
+  v_row.amount := v_books;
+  v_row.created_at := now();
 
   if p_update_unallocated then
     update public.pays
@@ -440,7 +441,7 @@ declare
 begin
   select * into v_bill from public.bills where id = p_bill_id;
   if v_bill.id is null then
-    raise exception 'bill not found';
+    return public._desk_kernel_net_balances_json(p_bill_id);
   end if;
 
   select * into v_root
@@ -673,31 +674,6 @@ begin
     p_amount,
     true
   );
-
-  if v_payment.profile_id is not null
-    and v_payment.source in ('customer_cash', 'bank') then
-    perform public.record_ledger_transaction(
-      p_tenant_id => p_tenant_id,
-      p_operating_tenant_id => p_tenant_id,
-      p_entity_type => 'customer',
-      p_entity_id => v_payment.profile_id,
-      p_type => 'debit',
-      p_amount => p_amount,
-      p_currency_code => 'BDT',
-      p_exchange_rate => 1.000000,
-      p_source_type => 'sales_invoice',
-      p_source_id => p_payment_id::text,
-      p_allow_overdraft => false,
-      p_metadata => jsonb_build_object(
-        'section', 'payments',
-        'purpose', 'apply_store_credit',
-        'transaction_type', 'wallet_credit',
-        'label', 'Applied leftover to bill',
-        'payment_id', p_payment_id,
-        'bill_id', p_bill_id
-      )
-    );
-  end if;
 
   return v_row;
 end;
@@ -1003,7 +979,7 @@ begin
 
   if p_allocator_kind = 'pay' then
     perform public._kernel_lock_bills(array[p_bill_id]);
-    v_alloc := public._kernel_apply_pay_leftover_to_bill(
+    perform public._kernel_apply_pay_leftover_to_bill(
       p_tenant_id,
       p_allocator_id,
       p_bill_id,
@@ -1012,7 +988,12 @@ begin
     );
     select bs.* into v_row
     from public.bill_settlements bs
-    where bs.pay_allocation_id = v_alloc.id;
+    where bs.tenant_id = v_parent_id
+      and bs.bill_id = p_bill_id
+      and bs.allocator_kind = 'pay'
+      and bs.allocator_id = p_allocator_id
+    order by bs.id desc
+    limit 1;
     if v_row.id is null then
       raise exception 'Settlement row missing after pay allocation.';
     end if;

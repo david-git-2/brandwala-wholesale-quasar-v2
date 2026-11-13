@@ -82,14 +82,16 @@ const listBillsPage = async (
     return { data: [], meta: { has_more: false, next_cursor: null } };
   }
 
+  const toType =
+    params.toProfileType && params.toProfileType !== 'all' ? params.toProfileType : undefined;
+
   const { data, error } = await supabase.rpc('list_bills_desk_page', {
     p_tenant_id: parentTenantId,
-    p_issued_by_tenant_id: params.issuedByTenantId ?? undefined,
-    p_ar_side: params.arSide ?? undefined,
+    p_to_profile_type: toType,
+    p_from_profile_id: params.fromProfileId ?? undefined,
     p_invoice_status: params.invoiceStatus ?? undefined,
     p_payment_status: params.paymentStatus ?? undefined,
     p_quick_filter: params.quickFilter ?? undefined,
-    p_search: params.search?.trim() || undefined,
     p_page_size: params.pageSize ?? 25,
     p_cursor: cursor ?? undefined,
   });
@@ -151,7 +153,18 @@ const updateDraftBill = async (
   return parsePayloadRpcResult(data);
 };
 
-const issueApBillFromDesk = async (billId: number): Promise<void> => {
+const issueApBillFromDesk = async (
+  billId: number,
+  options?: { tenantId?: number; spine?: 'legacy' | 'kernel' },
+): Promise<void> => {
+  if (options?.spine === 'kernel' && options.tenantId) {
+    const { error } = await supabase.rpc('rpc_issue_bill', {
+      p_tenant_id: options.tenantId,
+      p_bill_id: billId,
+    });
+    if (error) throw error;
+    return;
+  }
   const { error } = await supabase.rpc('issue_ap_bill_from_desk', { p_bill_id: billId });
   if (error) throw error;
 };
@@ -211,7 +224,20 @@ const issueBill = async (billId: number, options: IssueBillOptions): Promise<voi
   if (error) throw error;
 };
 
-const voidBill = async (billId: number): Promise<void> => {
+const voidBill = async (
+  billId: number,
+  options?: { tenantId?: number; spine?: 'legacy' | 'kernel' },
+): Promise<void> => {
+  if (options?.spine === 'kernel' && options.tenantId) {
+    const { error } = await supabase.rpc('rpc_void_bill', {
+      p_tenant_id: options.tenantId,
+      p_bill_id: billId,
+      p_reason: null,
+      p_reverse_payments: true,
+    });
+    if (error) throw error;
+    return;
+  }
   const { error } = await supabase.rpc('void_bill', { p_bill_id: billId });
   if (error) throw error;
 };

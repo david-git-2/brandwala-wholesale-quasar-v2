@@ -15,7 +15,7 @@
 
 | Need | Path |
 | :--- | :--- |
-| **Stock spine** (Tier 1/2 warehouse actions, RPC index, dispatch vs issue) | [docs/kernel/stock-spine.md](../../kernel/stock-spine.md) |
+| **Stock spine** (Tier 1/2 warehouse actions, RPC index, dispatch vs issue) | [stock-spine.md](stock-spine.md) |
 | Inbound ↔ money kernel (actions, RPCs, gaps) | [money-kernel-wiring.md](money-kernel-wiring.md) |
 | ERD / columns | `/dev/document` → **Schema** → Procurement |
 | Tables, types, RLS, RPCs | `supabase/schemas/procurement/` — grep `03_rpcs.sql` for bodies |
@@ -72,8 +72,8 @@ Lots mirror kind/reason; warehouse grades via tags — do not write splits back 
 ## User stories
 
 ### US-1 Shipment, sections, landed costs
-- Four statuses; sections + cost entries (`section_id` optional). Record only — `sync_shipment_ap_bills` after save ([WA15](../bills_pays/00-gaps.md)). After a bucket bill is **issued**, money changes go through bills/pays (credit/debit notes), not cost-row edits.
-- **AP bills:** one bill per **cost bucket × currency**, not one bill per bucket. Cost lines in the same bucket with different `currency_id` (or shipment default currency) become separate AP bills. Do **not** create a single “mixed currency” invoice for one bucket. Kernel plug: `source_key` = `{bucket}:{currency_code}`; `ap_kind` stays the bucket name for pays and landed-cost ([money-spine](../bills_pays/money-spine-v2/README.md)).
+- Four statuses; sections optional. **International Costs tab = kernel AP bill list** per bucket (`create_shipment_ap_bill_v2`, draft Issue/Edit/Delete; `global_shipments.buckets` index). Lock → `issue_shipment_ap_drafts_v2`. Landed stamp reads capitalizable **bill lines** ([bills spec § Shipment cost AP](../bills/spec.md#shipment-cost-ap)). Local/domestic shipments may still use legacy cost rows until cutover. After a bucket bill is **issued**, money changes go through bills/pays (credit/debit notes), not worksheet edits.
+- **AP bills:** one bill per **cost bucket × currency**, not one bill per bucket. Cost lines in the same bucket with different `currency_id` (or shipment default currency) become separate AP bills. Do **not** create a single “mixed currency” invoice for one bucket. Kernel plug: `source_key` = `{bucket}:{currency_code}`; `ap_kind` stays the bucket name for pays and landed-cost ([bridge § Atlas](../money_bill_bridge/spec.md#atlas)).
 - Each row is `global_shipment_cost_entries`: **bucket** (`material` \| `freight` \| `customs` \| `handling` \| `finance` \| `other`) × **component** (`subtotal` \| `carriage` \| `vat_tax` \| `misc`), plus `description`, `amount` in the row’s currency, optional `currency_id`, `section_id`, `metadata`.
 - **`is_capitalizable`:** `true` → included in landed unit cost (BDT stamp); `false` → shipment P&L / local opex only (fines, refundable VAT, misc tips when not capitalized). No extra VAT leftover rule — leftover on stock only if that row’s flag is on.
 - Matrix examples: material+subtotal = goods invoice; freight+subtotal = ocean/air base; customs+`vat_tax` = CD/RD/AIT; handling+`misc` = gate labor; finance+`misc` = SWIFT; other+`misc` = dock tips (cap flag per row). Cash settlement is on bills/pays only (not on cost rows).

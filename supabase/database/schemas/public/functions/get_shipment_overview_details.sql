@@ -1,4 +1,4 @@
-CREATE FUNCTION public.get_shipment_overview_details (
+CREATE OR REPLACE FUNCTION public.get_shipment_overview_details (
   p_shipment_id bigint
 )
   RETURNS jsonb
@@ -13,6 +13,7 @@ declare
   v_items jsonb;
   v_boxes jsonb;
   v_cost_entries jsonb;
+  v_ap_bills jsonb;
   v_flow_stages jsonb;
   v_progress_flow_id bigint;
   v_ap_fx jsonb;
@@ -43,10 +44,9 @@ begin
     raise exception 'not allowed';
   end if;
 
-  -- Ensure cost entries from header are synced
-  perform public.ensure_global_shipment_cost_entries_from_header(p_shipment_id);
-
   perform public.ensure_global_shipment_default_section(p_shipment_id);
+
+  v_cost_entries := '[]'::jsonb;
 
   -- 1. Sections with vendor info
   select coalesce(
@@ -85,28 +85,7 @@ begin
   from public.global_shipment_boxes b
   where b.shipment_id = p_shipment_id;
 
-  -- 4. Cost entries (narrow projection)
-  select coalesce(
-    jsonb_agg(
-      jsonb_build_object(
-        'id', ce.id,
-        'shipment_id', ce.shipment_id,
-        'cost_bucket', ce.cost_bucket,
-        'cost_component', ce.cost_component,
-        'is_capitalizable', ce.is_capitalizable,
-        'description', ce.description,
-        'amount', ce.amount,
-        'currency_id', ce.currency_id,
-        'metadata', ce.metadata,
-        'section_id', ce.section_id
-      )
-      order by ce.cost_bucket asc, ce.cost_component asc, ce.id asc
-    ),
-    '[]'::jsonb
-  )
-  into v_cost_entries
-  from public.global_shipment_cost_entries ce
-  where ce.shipment_id = p_shipment_id;
+  v_ap_bills := public._list_shipment_cost_ap_bills_json(v_parent, p_shipment_id, false);
 
   -- 5. Flow stages if flow assigned
   if v_progress_flow_id is not null then
@@ -224,6 +203,8 @@ begin
     'cost_entries', v_cost_entries,
     'flow_stages', v_flow_stages,
     'ap_fx', v_ap_fx,
+    'ap_bills', v_ap_bills,
+    'ap_issue_parties', public._resolve_shipment_cost_ap_kernel_parties(p_shipment_id),
     'item_outcomes', v_item_outcomes,
     'outcome_vendor_credits', v_outcome_vendor_credits,
     'batch_code_list', v_batch_code_list,

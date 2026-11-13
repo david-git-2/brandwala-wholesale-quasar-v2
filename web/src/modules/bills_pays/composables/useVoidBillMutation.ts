@@ -3,14 +3,18 @@ import { billsRepository } from '../repositories/billsRepository';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
-export function useVoidBillMutation(billId: () => number | null) {
+export function useVoidBillMutation(
+  billId: () => number | null,
+  options?: () => { tenantId?: number; spine?: 'legacy' | 'kernel' },
+) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async () => {
       const id = billId();
       if (!id) throw new Error('Bill not found.');
-      await billsRepository.voidBill(id);
+      const opts = options?.();
+      await billsRepository.voidBill(id, opts);
     },
     onSuccess: () => {
       const id = billId();

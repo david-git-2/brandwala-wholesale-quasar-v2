@@ -168,7 +168,7 @@ Payload fields:
 ## Docs
 
 - [`money-spine.md`](docs/features/bills_pays/money-spine.md): AP spine writer = dual profile + dual pot + dual ledger + optional atomic from-prefund; writers table lists params.
-- [`REFERENCE.md`](docs/kernel/REFERENCE.md): one-line PR checklist for new payout params and no overdraft-on-implicit-pot when from-pot explicit.
+- [`money/spec.md`](docs/features/money/spec.md): one-line PR checklist for new payout params and no overdraft-on-implicit-pot when from-pot explicit.
 - Thin UI note in [`tests.md`](docs/features/bills_pays/tests.md) or golden test for dual entry.
 
 ## Out of scope

@@ -1,5 +1,10 @@
 <template>
   <div class="row q-col-gutter-md">
+    <div :class="showCounterparty ? 'col-12 col-sm-6' : 'col-12'">
+      <div class="text-overline text-grey-7">{{ tenantLabel }}</div>
+      <div class="text-subtitle2 text-weight-medium">{{ tenantName }}</div>
+      <div class="text-caption text-grey-7 q-mt-xs">Amount is paid out by the tenant.</div>
+    </div>
     <div v-if="showCounterparty" class="col-12 col-sm-6">
       <div class="text-overline text-grey-7">{{ counterpartyLabel }}</div>
       <div class="text-subtitle2 text-weight-medium">{{ counterpartyName }}</div>
@@ -7,11 +12,6 @@
       <div v-if="counterpartyAddress" class="text-caption text-grey-7 whitespace-pre-line">
         {{ counterpartyAddress }}
       </div>
-    </div>
-    <div :class="showCounterparty ? 'col-12 col-sm-6' : 'col-12'">
-      <div class="text-overline text-grey-7">{{ tenantLabel }}</div>
-      <div class="text-subtitle2 text-weight-medium">{{ tenantName }}</div>
-      <div class="text-caption text-grey-7 q-mt-xs">Amount is paid out by the tenant.</div>
     </div>
   </div>
 </template>

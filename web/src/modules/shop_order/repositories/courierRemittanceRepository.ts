@@ -226,18 +226,6 @@ export const courierRemittanceRepository = {
 
     if (!profiles || profiles.length === 0) return [];
 
-    // Fetch universal wallet ledger balances for middleman (& customer compat) entities
-    const { data: ledger, error: ledgerErr } = await supabase
-      .from('cashbook_entries')
-      .select('entity_id, type, amount')
-      .eq('tenant_id', tenantId)
-      .in('entity_type', ['middleman', 'customer']);
-
-    if (ledgerErr) {
-      console.error('[courierRemittanceRepository.fetchMerchantPayoutSummaries ledger error]:', ledgerErr);
-      throw ledgerErr;
-    }
-
     const summaryMap = new Map<number, MerchantPayoutSummary>();
     profiles.forEach((p) => {
       summaryMap.set(p.id, {
@@ -251,17 +239,33 @@ export const courierRemittanceRepository = {
       });
     });
 
-    (ledger ?? []).forEach((entry) => {
-      const entityId = Number(entry.entity_id || 0);
-      const item = summaryMap.get(entityId);
-      if (!item) return;
+    const balanceResults = await Promise.all(
+      profiles.map(async (p) => {
+        const { data, error } = await supabase.rpc('get_cashbook_account_balances', {
+          p_tenant_id: tenantId,
+          p_entity_type: 'customer',
+          p_entity_id: p.id,
+          p_currency_code: 'BDT',
+        });
+        if (error) {
+          console.error(
+            '[courierRemittanceRepository.fetchMerchantPayoutSummaries balance error]:',
+            error,
+          );
+          throw error;
+        }
+        return { profileId: p.id, balances: data as Record<string, unknown> | null };
+      }),
+    );
 
-      const amt = Number(entry.amount || 0);
-      if (entry.type === 'credit') {
-        item.available_balance += amt;
-      } else if (entry.type === 'debit') {
-        item.available_balance -= amt;
-      }
+    balanceResults.forEach(({ profileId, balances }) => {
+      const item = summaryMap.get(profileId);
+      if (!item || !balances) return;
+
+      const available = Number(balances.available_balance ?? 0);
+      const locked = Number(balances.locked_balance ?? 0);
+      item.available_balance = available;
+      item.locked_margin = locked;
     });
 
     return Array.from(summaryMap.values());

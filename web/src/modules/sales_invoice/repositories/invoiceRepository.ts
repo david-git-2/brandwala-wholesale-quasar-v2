@@ -11,7 +11,8 @@ import type {
   InvoicePaymentHistoryEntry,
   WholesalePaymentInstrumentInput,
 } from '../types';
-
+import type { BillPayCashbookLegs } from 'src/modules/bills_pays/types/billPayCashbookLegs';
+import { parseBillPayCashbookLegsFromRpc } from 'src/modules/bills_pays/types/billPayCashbookLegs';
 
 const localToday = (): string => {
   const d = new Date();
@@ -251,6 +252,7 @@ export type BillDetailBundle = {
     books_amount: number;
     quantity: number;
   }>;
+  payCashbookLegs: BillPayCashbookLegs | null;
 };
 
 const getBillDetailBundle = async (params: {
@@ -292,6 +294,7 @@ export function parseBillDetailBundleFromRpc(data: unknown): BillDetailBundle {
     adjustments: (raw.adjustments as Record<string, unknown>[] | null) ?? [],
     stockItems,
     billLines,
+    payCashbookLegs: parseBillPayCashbookLegsFromRpc(raw.pay_cashbook_legs),
   };
 };
 

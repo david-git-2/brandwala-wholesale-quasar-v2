@@ -15,13 +15,22 @@ docs/architecture/
 docs/guides/
   ui-standards.md
   cloudflare-pages-deploy.md   # frontend:prod, Wrangler token + account id
-docs/manual/
-  README.md                    # Index only; live copy in web operating_manual module
+docs/product-scenarios/        # Product-decision catalogs (not staff SOP)
+  README.md                    # Index + read order + scenario template
+  roles.md                     # System roles (Who names for catalogs)
+  money-flow-guide.md          # Money scenarios
+  investor-shipment-guide.md   # Investor capital + profit share
+  shipment-guide.md            # Goods / warehouse / trips
+  shop-and-orders-guide.md     # Three storefront types
+  courier-dispatch-guide.md    # Last-mile + COD risk
+  money-flow-pnl-product-review.md  # Must/Should/Defer/Out board
 docs/features/<name>/
   00-gaps.md
   spec.md                      # As-built, Scope, Where to look, stories
-docs/kernel/                   # Money + stock: README.md, REFERENCE.md, stock-spine.md, 08-AUDIT runbook
-docs/features/bills_pays/     # money-spine-v2/ (canonical); tests.md → fixtures; spec.md / 00-gaps.md stubs → v2
+docs/features/money/spec.md    # Cash accounts, lots, pays (single doc)
+docs/features/bills/             # Obligation paper — spec.md (+ 00-gaps, backfill SQL)
+docs/features/money_bill_bridge/ # spec.md (+ 00-gaps; 00-atlas redirect)
+docs/features/bills_pays/     # Desk redirect + tests.md; money-spine-v2/ redirects only
 docs/features/template/        # Copy for a new module.
 doc/supabase-schema.md         # Split tracker only.
 doc/fix/                       # Dated one-off fix notes. Not product truth.
@@ -33,7 +42,7 @@ Do **not** add `doc/<module>/*.md`. Do **not** add `docs/architecture/*` copies 
 
 | Step | Load | Do not load |
 | :--- | :--- | :--- |
-| 1 | `docs/README.md` | Every module at once; **`docs/manual/`** and **`web/src/modules/operating_manual/`** (unless user asked for operating manual / staff SOP) |
+| 1 | `docs/README.md` | Every module at once; **`web/src/modules/operating_manual/`** unless user asked for staff SOP; **`docs/product-scenarios/`** unless user asked for product scenarios / what-to-build coverage |
 | 2 | That module’s `spec.md` + `00-gaps.md` | Other modules |
 | 3 | `scopes.md` / `business-models.md` if the task is “where / how they sell” | `doc/brand-theme.md` |
 | 4 | Grep `supabase/schemas/` + `web/src/modules/<name>/` for tables, RPCs, wiring | `supabase/migrations/` |

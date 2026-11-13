@@ -4,8 +4,15 @@ import {
   SHIPMENT_AP_COST_BUCKETS,
   type ShipmentApKind,
 } from '../constants/shipmentApBuckets';
+import type { ShipmentApIssueParties } from '../types/shipmentApIssueParties';
 
 export type { ShipmentApKind };
+
+export type ShipmentApBillCostLine = {
+  cost_component: string;
+  amount: number;
+  description?: string | null;
+};
 
 export type ShipmentApBillRow = {
   id: number;
@@ -20,6 +27,7 @@ export type ShipmentApBillRow = {
   total_amount: number;
   due_amount: number;
   net_balances?: BillNetBalances;
+  cost_lines?: ShipmentApBillCostLine[];
 };
 
 /** Cost bucket / legacy AP kind from `source_key` + `ap_kind` (incl. per-line `entry:{id}` bills). */
@@ -121,6 +129,7 @@ export type ShipmentSettingsFinanceBundle = {
   apBills: ShipmentApBillRow[];
   apFx: ShipmentApFxSnapshot | null;
   costEntries: unknown[];
+  apIssueParties: ShipmentApIssueParties | null;
 };
 
 const isLockedShipmentApBill = (bill: ShipmentApBillRow): boolean =>

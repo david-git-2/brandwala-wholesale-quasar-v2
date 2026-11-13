@@ -22,30 +22,7 @@
             Open due <strong>{{ formatAmountBdt(dueTotal) }}</strong>
           </span>
         </div>
-        <div v-if="showActions" class="row q-gutter-sm q-mt-md">
-          <q-btn unelevated dense no-caps color="primary" label="Pay in" @click="openPayDialog('in')" />
-          <q-btn outline dense no-caps color="primary" label="Pay out" @click="openPayDialog('out')" />
-          <template v-if="entityType === 'tenant'">
-            <q-btn flat dense no-caps color="primary" label="Deposit" @click="openTenantMoney('deposit')" />
-            <q-btn flat dense no-caps color="primary" label="Withdraw" @click="openTenantMoney('withdraw')" />
-          </template>
-        </div>
       </div>
-
-      <ProfilePayDialog
-        v-model="payDialogOpen"
-        :direction="payDirection"
-        :entity-type="entityType"
-        :party-name="partyName"
-        :party-id="entityId"
-        :tenant-id="tenantId"
-        :books-tenant-id="booksTenantId"
-        :tenant-name="tenantName"
-        :available="available"
-        :due-total="dueTotal"
-        :purpose-code="payPurposeCode"
-        @posted="onPosted"
-      />
 
       <q-tabs
         v-model="activeKind"
@@ -117,16 +94,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { useQueryClient } from '@tanstack/vue-query';
 import { formatAmountBdt } from 'src/utils/currency';
-import ProfilePayDialog from './ProfilePayDialog.vue';
 import PayListRow from './PayListRow.vue';
 import { usePaymentProfileQuery } from '../composables/usePaymentProfileQuery';
 import { useProfileActivityQuery } from '../composables/useProfileActivityQuery';
 import type { ProfileActivityKind } from '../repositories/cashbookRepository';
 import type { PayListRow as PayRow } from '../repositories/paysRepository';
 import type { CashbookLedgerRow } from '../repositories/cashbookRepository';
-import { cashbookQueryKeys } from '../services/cashbookQueryKeys';
 import {
   formatCashbookLedgerDate,
   formatCashbookLedgerType,
@@ -156,11 +130,7 @@ const props = withDefaults(
 );
 
 const router = useRouter();
-const queryClient = useQueryClient();
 const activeKind = ref<ProfileActivityKind>('payments');
-const payDialogOpen = ref(false);
-const payDirection = ref<'in' | 'out'>('in');
-const payPurposeCode = ref<string | undefined>(undefined);
 
 const profileParams = computed(() => ({
   tenantId: props.tenantId,
@@ -250,39 +220,6 @@ watch(activeKind, () => {
     void activityQuery.refetch();
   }
 });
-
-const invalidateAll = () => {
-  void queryClient.invalidateQueries({
-    queryKey: cashbookQueryKeys.paymentProfile(
-      props.tenantId,
-      props.entityType,
-      props.entityId,
-      { ledgerLimit: 50, paysLimit: 50 },
-    ),
-  });
-  void queryClient.invalidateQueries({
-    queryKey: cashbookQueryKeys.profileActivity(
-      props.tenantId,
-      props.entityType,
-      props.entityId,
-      activeKind.value,
-    ),
-  });
-};
-
-const openPayDialog = (direction: 'in' | 'out') => {
-  payPurposeCode.value = undefined;
-  payDirection.value = direction;
-  payDialogOpen.value = true;
-};
-
-const openTenantMoney = (kind: 'deposit' | 'withdraw') => {
-  payPurposeCode.value = kind === 'deposit' ? 'deposit' : 'owner_withdraw';
-  payDirection.value = kind === 'deposit' ? 'in' : 'out';
-  payDialogOpen.value = true;
-};
-
-const onPosted = () => invalidateAll();
 
 const openPay = (row: PayRow) => {
   if (!props.tenantSlug) return;

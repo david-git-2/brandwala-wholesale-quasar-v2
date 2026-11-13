@@ -502,11 +502,12 @@ const allocatePayToBill = async (payload: {
   bill_id: number;
   amount: number;
 }) => {
-  const { data, error } = await supabase.rpc('allocate_payment_to_global_invoice', {
+  const { data, error } = await supabase.rpc('apply_settlement_to_bill', {
     p_tenant_id: payload.tenant_id,
-    p_payment_id: payload.payment_id,
-    p_global_invoice_id: payload.bill_id,
-    p_amount: payload.amount,
+    p_bill_id: payload.bill_id,
+    p_allocator_kind: 'pay',
+    p_allocator_id: payload.payment_id,
+    p_books_amount: payload.amount,
   });
   if (error) throw error;
   return data;

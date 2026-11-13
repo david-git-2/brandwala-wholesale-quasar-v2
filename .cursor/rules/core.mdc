@@ -65,7 +65,7 @@ response that gets piped back into context.
 ## 7. Context-Loading Discipline
 
 - Read only what you need to answer. If the user named a function, read that file — not its 12 neighbors.
-- Do not load the **operating manual** (`docs/manual/`, `web/src/modules/operating_manual/content/md/`) unless the user explicitly asked — see `docs-first.mdc`.
+- Do not load **staff SOP** (`web/src/modules/operating_manual/content/md/`) or **product-scenarios** (`docs/product-scenarios/`) unless the user explicitly asked — see `docs-first.mdc`.
 - For files > 500 lines, read targeted ranges (use offset/limit) or use search instead of full read.
 - Never paste a file into the response just to "show context" — refer to it by path and line range.
 - Never include lock files, generated bundles, or vendored dependencies in context.

@@ -1,19 +1,22 @@
 <template>
   <div class="ap-bill-paper">
-    <template v-if="linePaper">
-      <div v-if="linePaper.weight_kg != null && linePaper.weight_kg > 0" class="ap-bill-row q-mb-sm">
+    <template v-if="displayLinePaper">
+      <div
+        v-if="displayLinePaper.weight_kg != null && displayLinePaper.weight_kg > 0"
+        class="ap-bill-row q-mb-sm"
+      >
         <span class="text-grey-7">Total weight</span>
-        <span class="font-mono">{{ formatWeight(linePaper.weight_kg) }}</span>
+        <span class="font-mono">{{ formatWeight(displayLinePaper.weight_kg) }}</span>
       </div>
 
       <div
-        v-for="(group, gIdx) in currencyGroups"
+        v-for="(group, gIdx) in displayCurrencyGroups"
         :key="`${group.currency_code}-${gIdx}`"
         class="ap-bill-currency-group"
         :class="{ 'q-mt-md': gIdx > 0 }"
       >
         <div
-          v-if="currencyGroups.length > 1"
+          v-if="displayCurrencyGroups.length > 1"
           class="text-caption text-weight-bold text-grey-8 q-mb-xs text-uppercase"
           style="letter-spacing: 0.04em"
         >
@@ -100,7 +103,7 @@
         </div>
       </div>
 
-      <div v-if="currencyGroups.length === 0" class="text-caption text-grey-6 q-py-sm">
+      <div v-if="displayCurrencyGroups.length === 0" class="text-caption text-grey-6 q-py-sm">
         No line detail on file. Re-sync from shipment to refresh.
       </div>
 
@@ -124,13 +127,13 @@
         />
       </div>
 
-      <div v-if="showLegacyConversion(linePaper)" class="ap-bill-row q-mt-sm">
+      <div v-if="showLegacyConversion(displayLinePaper)" class="ap-bill-row q-mt-sm">
         <span class="text-grey-7">Conversion rate</span>
-        <span class="font-mono">{{ formatRate(linePaper.conversion_rate!) }}</span>
+        <span class="font-mono">{{ formatRate(displayLinePaper!.conversion_rate!) }}</span>
       </div>
-      <div v-if="showLegacyBdtDue(linePaper)" class="ap-bill-row text-weight-bold">
+      <div v-if="showLegacyBdtDue(displayLinePaper)" class="ap-bill-row text-weight-bold">
         <span>Amount (BDT)</span>
-        <span class="font-mono">{{ formatAmountBdt(linePaper.bdt_amount) }}</span>
+        <span class="font-mono">{{ formatAmountBdt(displayLinePaper!.bdt_amount) }}</span>
       </div>
     </template>
 
@@ -189,12 +192,20 @@ import { apBillCurrencyGroups, parseApBillPaper } from '../utils/parseApBillPape
 import type { BillAdjustmentDraftRow } from '../utils/billAdjustmentParentLines';
 import { apLineDraftKey, parseNoteInputAmount } from '../utils/billAdjustmentParentLines';
 
+export type ApBillDeskLineRow = {
+  name_snapshot: string;
+  line_total_amount: number;
+  currency_code?: string;
+};
+
 const props = defineProps<{
   channelMeta?: Record<string, unknown> | null;
   apKind?: string | null;
   totalAmount?: number | null;
   noteEditMode?: boolean;
   draftRows?: BillAdjustmentDraftRow[];
+  /** Kernel bill detail bundle lines when channel_meta has no ap_paper. */
+  deskBillLines?: ApBillDeskLineRow[];
 }>();
 
 const emit = defineEmits<{
@@ -211,6 +222,31 @@ const linePaper = computed((): ApBillPaperBucketLines | null => {
   if (!p || !('lines' in p) || !Array.isArray(p.lines)) return null;
   return p as ApBillPaperBucketLines;
 });
+
+const kernelDeskPaper = computed((): ApBillPaperBucketLines | null => {
+  const rows = props.deskBillLines?.filter((l) => Number(l.line_total_amount) > 0) ?? [];
+  if (rows.length === 0) return null;
+  const ccy = (rows[0]?.currency_code ?? 'BDT').toUpperCase();
+  const foreignTotal = rows.reduce((s, l) => s + Number(l.line_total_amount), 0);
+  return {
+    paper: props.apKind ?? 'material',
+    lines: rows.map((l) => ({
+      description: l.name_snapshot?.trim() || 'Line',
+      amount: Number(l.line_total_amount),
+      currency_code: ccy,
+      currency_symbol: ccy,
+    })),
+    currency_code: ccy,
+    currency_symbol: ccy,
+    foreign_total: foreignTotal,
+    bdt_amount: Number(props.totalAmount ?? foreignTotal),
+    mixed_currencies: false,
+  };
+});
+
+const displayLinePaper = computed(
+  (): ApBillPaperBucketLines | null => linePaper.value ?? kernelDeskPaper.value,
+);
 
 const legacyForeignPaper = computed((): ApBillPaperForeignTotal | null => {
   const p = paper.value;
@@ -229,6 +265,22 @@ const legacyFreightPaper = computed((): ApBillPaperFreight | null => {
 });
 
 const currencyGroups = computed(() => apBillCurrencyGroups(props.channelMeta));
+
+const displayCurrencyGroups = computed((): ApBillPaperCurrencyGroup[] => {
+  const fromMeta = currencyGroups.value;
+  if (fromMeta.length > 0) return fromMeta;
+  const p = kernelDeskPaper.value;
+  if (!p?.lines?.length) return [];
+  const code = (p.currency_code ?? p.lines[0]?.currency_code ?? 'BDT').toUpperCase();
+  return [
+    {
+      currency_code: code,
+      currency_symbol: p.currency_symbol ?? code,
+      foreign_total: p.foreign_total ?? p.bdt_amount ?? 0,
+      lines: p.lines,
+    },
+  ];
+});
 
 const apTotalDraft = computed(() => props.draftRows?.find((r) => r.key === 'ap-total'));
 
@@ -315,7 +367,8 @@ const formatNoteGroupTotal = (group: ApBillPaperCurrencyGroup, gIdx: number) => 
   return sym ? `${sym}${formatted}` : formatted;
 };
 
-const showLegacyConversion = (p: ApBillPaperBucketLines) => {
+const showLegacyConversion = (p: ApBillPaperBucketLines | null) => {
+  if (!p) return false;
   const rate = p.conversion_rate;
   if (rate == null || rate <= 0) return false;
   if (Math.abs(rate - 1) < 0.0001 && (p.currency_code === 'BDT' || !p.currency_code)) return false;
@@ -324,7 +377,7 @@ const showLegacyConversion = (p: ApBillPaperBucketLines) => {
   return foreign > 0 && bdt > 0 && Math.abs(foreign - bdt) > 0.01;
 };
 
-const showLegacyBdtDue = (p: ApBillPaperBucketLines) => showLegacyConversion(p);
+const showLegacyBdtDue = (p: ApBillPaperBucketLines | null) => showLegacyConversion(p);
 </script>
 
 <style scoped lang="scss">

@@ -20,6 +20,16 @@ enabled = true
 schema_paths = [
   "./schemas/_extensions.sql",
   "./schemas/public.sql",
+  "./schemas/money_kernel_v2/20_money_kernel_schema.sql",
+  "./schemas/money_kernel_v2/21_money_kernel_tables.sql",
+  "./schemas/money_kernel_v2/22_money_kernel_triggers.sql",
+  "./schemas/money_kernel_v2/23_money_kernel_internal.sql",
+  "./schemas/money_kernel_v2/24_money_kernel_rpcs_write.sql",
+  "./schemas/money_kernel_v2/25_money_kernel_rpcs_read.sql",
+  "./schemas/money_kernel_v2/26_money_kernel_grants.sql",
+  "./schemas/money_kernel_v2/27_money_kernel_cashbook_lots.sql",
+  "./schemas/money_kernel_v2/27_money_kernel_cashbook_lots_helpers.sql",
+  "./schemas/money_kernel_v2/28_money_kernel_lot_triggers.sql",
 ]
 
 [studio]

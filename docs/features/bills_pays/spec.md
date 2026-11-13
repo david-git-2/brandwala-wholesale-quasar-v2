@@ -1,11 +1,16 @@
-# Bills & pays — spec redirect
+# Bills & pays — redirect
 
-**Money kernel (target):** [money-spine-v2](money-spine-v2/README.md).
+Desks still live under `web/src/modules/bills_pays/` and `sales_invoice/`. **Docs** split into three packs:
 
-| Stub | Use |
+| Pack | Spec |
 | :--- | :--- |
-| Overview / decisions | [00-overview.md](money-spine-v2/00-overview.md) |
-| RPCs for other modules | [04-module-rpcs.md](money-spine-v2/04-module-rpcs.md) |
-| Schema / actions / tests | [01](money-spine-v2/01-schema.md) · [02](money-spine-v2/02-actions.md) · [03](money-spine-v2/03-tests.md) |
-| PR invariants card | [kernel REFERENCE](../../kernel/REFERENCE.md) |
-| Live SQL (today) | `supabase/schemas/bills_pays/` |
+| **Atlas (start)** | [money_bill_bridge/spec.md § Atlas](../money_bill_bridge/spec.md#atlas) |
+| Money | [money/spec.md](../money/spec.md) |
+| Bills | [bills/spec.md](../bills/spec.md) |
+| Bridge | [money_bill_bridge/spec.md](../money_bill_bridge/spec.md) |
+
+| Also | Doc |
+| :--- | :--- |
+| Desk / cutover gaps | [00-gaps.md](00-gaps.md) |
+| Golden tests | [tests.md](tests.md) |
+| Live SQL | `supabase/schemas/money_kernel_v2/` |

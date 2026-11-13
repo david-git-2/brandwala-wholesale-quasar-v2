@@ -1,50 +1,56 @@
 <template>
-  <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
-    <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden invoice-list-stack">
-      <ProcurementOpsListToolbar
-        :search="searchText"
-        search-placeholder="Search bill no, profile, or ID…"
-        :filter-count="0"
-        @update:search="onSearchTextUpdate"
-      >
-        <template #pills>
-          <div class="row items-center q-gutter-x-sm no-wrap">
-            <TfDrawerSectionTabs
-              v-model="arSide"
-              :tabs="arSectionTabs"
-              ariaLabel="Receivable or payable"
-              @update:model-value="setArSide"
-            />
-            <TfDrawerSectionTabs
-              v-model="statusPill"
-              :tabs="statusSectionTabs"
-              ariaLabel="Bill status"
-              @update:model-value="setStatusPill"
+  <q-page class="q-pa-sm page-fixed-layout column no-wrap">
+    <div class="column no-wrap full-height bills-page-root">
+      <q-card flat bordered class="q-pa-xs flex-shrink-0 bills-page-toolbar">
+        <div class="row items-center justify-between bills-toolbar-row">
+          <div class="row items-center bills-toolbar-actions">
+            <q-btn-toggle
+              v-model="cardLayout"
+              unelevated
+              dense
+              no-caps
+              toggle-color="primary"
+              :options="layoutOptions"
+              class="bills-layout-toggle"
             />
           </div>
-        </template>
-        <template #trailing>
-          <q-btn
-            flat
-            dense
-            no-caps
-            icon="ph ph-palette"
-            label="Brands"
-            class="text-slate-600"
-            @click="goBrands"
-          />
-          <q-btn
-            v-if="arSide === 'they_owe'"
-            unelevated
-            dense
-            no-caps
-            color="primary"
-            icon="ph ph-plus"
-            label="New bill"
-            @click="goCompose"
-          />
-        </template>
-      </ProcurementOpsListToolbar>
+          <div class="row items-center bills-toolbar-actions">
+            <q-btn
+              flat
+              round
+              dense
+              icon="ph ph-funnel"
+              class="text-slate-500"
+              aria-label="Filters"
+              @click="filterDrawerOpen = true"
+            >
+              <q-badge v-if="filterCount > 0" color="primary" rounded floating>
+                {{ filterCount }}
+              </q-badge>
+              <q-tooltip>Filters</q-tooltip>
+            </q-btn>
+            <q-btn
+              unelevated
+              round
+              dense
+              color="primary"
+              icon="ph ph-plus"
+              aria-label="Bill"
+            >
+              <q-tooltip>Bill</q-tooltip>
+            </q-btn>
+            <q-btn flat dense no-caps label="Brands" class="text-slate-600" />
+          </div>
+        </div>
+      </q-card>
+
+      <div class="bills-page-tabs flex-shrink-0 min-width-0">
+        <TfDrawerSectionTabs
+          v-model="toProfileTab"
+          :tabs="toProfileTabs"
+          aria-label="Payee profile type"
+        />
+      </div>
 
       <div v-if="listQuery.isError.value" class="tf-status-banner bg-negative text-white q-pa-sm rounded-borders">
         {{ listErrorMessage }}
@@ -52,138 +58,178 @@
 
       <div
         v-if="listQuery.isPending.value && !rows.length"
-        class="invoice-list-card col"
+        class="col min-width-0 bills-content-col"
+        :class="{ 'bills-content-col--list': cardLayout === 'list' }"
       >
-        <div class="invoice-list-scroll">
-          <div v-for="n in 8" :key="n" class="invoice-list-item invoice-list-item--skeleton">
-            <q-skeleton type="text" width="60%" />
+        <div v-if="cardLayout === 'list'" class="invoice-list-card">
+          <div class="invoice-list-scroll">
+            <div
+              v-for="n in 8"
+              :key="n"
+              class="invoice-list-item invoice-list-item--skeleton"
+            >
+              <q-skeleton type="text" width="55%" />
+            </div>
           </div>
         </div>
-      </div>
-
-      <div
-        v-else-if="!rows.length && !debouncedSearch && statusPill === 'all'"
-        class="column items-center justify-center q-pa-xl text-grey-6 col invoice-list-card"
-      >
-        <q-icon name="ph ph-receipt" size="48px" class="q-mb-sm text-grey-4" />
-        <div class="text-subtitle1 text-weight-bold text-slate-800">No bills yet</div>
-        <div class="text-caption text-grey-6 q-mt-xs">Issued bills from trade, retail, and dropship appear here.</div>
-      </div>
-
-      <div
-        v-else-if="!rows.length && statusPill === 'draft'"
-        class="column items-center justify-center q-pa-xl text-grey-6 col invoice-list-card"
-      >
-        <q-icon name="ph ph-file-dashed" size="48px" class="q-mb-sm text-grey-4" />
-        <div class="text-subtitle1 text-weight-bold text-slate-800">No draft bills</div>
-        <div class="text-caption text-grey-6 q-mt-xs">
-          Unissued bills from compose or open shipment costs appear here.
+        <div v-else class="bills-cards-scroll bills-cards--grid">
+          <q-skeleton
+            v-for="n in 6"
+            :key="n"
+            type="rect"
+            height="88px"
+            class="rounded-borders bills-card-skeleton"
+          />
         </div>
       </div>
 
       <div
         v-else-if="!rows.length"
-        class="column items-center justify-center text-grey-7 q-py-xl col invoice-list-card"
+        class="column items-center justify-center q-pa-xl text-grey-6 col"
       >
-        <q-icon name="ph ph-magnifying-glass" size="36px" class="q-mb-xs text-grey-4" />
-        <div class="text-subtitle2 text-weight-medium">No bills match</div>
+        <q-icon name="ph ph-receipt" size="48px" class="q-mb-sm text-grey-4" />
+        <div class="text-subtitle1 text-weight-bold text-slate-800">No bills match</div>
+        <div class="text-caption text-grey-6 q-mt-xs">Try another payee tab or filter.</div>
       </div>
 
-      <div v-else class="invoice-list-card col">
-        <div class="invoice-list-scroll">
-          <div v-for="node in treeNodes" :key="node.row.id" class="bill-list-tree-group">
+      <div
+        v-else
+        class="col min-width-0 bills-content-col"
+        :class="{ 'bills-content-col--list': cardLayout === 'list' }"
+      >
+        <div v-if="cardLayout === 'list'" class="invoice-list-card">
+          <div class="invoice-list-scroll">
             <BillListRow
-              :row="node.row"
-              :tree-parent="node.children.length > 0"
+              v-for="row in rows"
+              :key="row.id"
+              :row="row"
               @open="openBill"
             />
-            <BillListRow
-              v-for="child in node.children"
-              :key="child.id"
-              :row="child"
-              nested
-              @open="openBill"
-            />
+            <div v-if="hasMore" class="row justify-center q-py-sm">
+              <q-btn
+                flat
+                dense
+                no-caps
+                class="load-more-btn q-px-md"
+                :loading="listQuery.isFetchingNextPage.value"
+                label="Load more"
+                icon="ph ph-arrow-down"
+                @click="loadMore"
+              />
+            </div>
           </div>
-          <div v-if="hasMore" class="row justify-center q-py-sm">
+        </div>
+        <div v-else class="bills-cards-scroll bills-cards--grid">
+          <BillListCard
+            v-for="row in rows"
+            :key="row.id"
+            :row="row"
+            @open="openBill"
+          />
+          <div v-if="hasMore" class="bills-load-more row justify-center q-py-sm">
             <q-btn
               flat
               dense
               no-caps
               :loading="listQuery.isFetchingNextPage.value"
-              class="load-more-btn text-weight-medium q-px-md"
               label="Load more"
               icon="ph ph-arrow-down"
               @click="loadMore"
             />
           </div>
-          <div
-            v-else-if="rows.length"
-            class="row justify-center q-py-sm text-caption text-grey-6"
-          >
-            End of list
-          </div>
         </div>
       </div>
     </div>
+
+    <BillsListFilterDrawer
+      v-model="filterDrawerOpen"
+      :status="statusPill"
+      :from-profile-id="fromProfileId"
+      :from-options="partyOptions"
+      @apply="onApplyFilters"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
+import { useMembershipPreference } from 'src/modules/membership/composables/useMembershipPreference';
+import { MEMBERSHIP_UI_PATHS } from 'src/modules/membership/types/preferences';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
+import BillListCard from '../components/BillListCard.vue';
 import BillListRow from '../components/BillListRow.vue';
+import BillsListFilterDrawer from '../components/BillsListFilterDrawer.vue';
 import { useBillsListInfiniteQuery } from '../composables/useBillsListInfiniteQuery';
-import { buildBillListTree } from '../utils/billListTree';
-import type { BillListRow as BillListRowData } from '../types/billList';
-
-type StatusPill = 'all' | 'draft' | 'due' | 'partial' | 'paid' | 'voided';
-type ArSide = 'they_owe' | 'we_owe';
+import { useDeskBillPartyOptions } from '../composables/useDeskBillPartyOptions';
+import type {
+  BillListRow as BillListRowData,
+  BillToProfileTypeTab,
+  StatusPill,
+} from '../types/billList';
+import { billOpensOnDetailNotComposeDesk } from '../utils/billRoutes';
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 
-const searchText = ref('');
-const debouncedSearch = ref('');
+type CardLayoutMode = 'grid' | 'list';
+
+const filterDrawerOpen = ref(false);
+const { value: cardLayout } = useMembershipPreference<CardLayoutMode>({
+  path: MEMBERSHIP_UI_PATHS.billsPaysListCardLayout,
+  defaultValue: 'list',
+});
+watch(
+  cardLayout,
+  (mode) => {
+    if (mode !== 'grid' && mode !== 'list') {
+      cardLayout.value = 'list';
+    }
+  },
+  { flush: 'sync' },
+);
+const layoutOptions = [
+  { value: 'grid' as const, icon: 'ph ph-squares-four' },
+  { value: 'list' as const, icon: 'ph ph-list' },
+];
+const toProfileTab = ref<BillToProfileTypeTab>('all');
 const statusPill = ref<StatusPill>('all');
-const arSide = ref<ArSide>('they_owe');
-let searchTimer: ReturnType<typeof setTimeout> | null = null;
+const fromProfileId = ref<number | null>(null);
 
-const arTabs: { label: string; value: ArSide }[] = [
-  { label: 'They owe', value: 'they_owe' },
-  { label: 'We owe', value: 'we_owe' },
-];
+const toProfileTabs = [
+  { name: 'all', label: 'All' },
+  { name: 'tenant', label: 'Tenant' },
+  { name: 'customer', label: 'Customer' },
+  { name: 'company', label: 'Company' },
+  { name: 'vendor', label: 'Vendor' },
+  { name: 'cargo', label: 'Cargo' },
+  { name: 'courier', label: 'Courier' },
+  { name: 'investor', label: 'Investor' },
+] as const;
 
-const filterTabs: { label: string; value: StatusPill }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'Draft', value: 'draft' },
-  { label: 'Due', value: 'due' },
-  { label: 'Partial', value: 'partial' },
-  { label: 'Paid', value: 'paid' },
-  { label: 'Voided', value: 'voided' },
-];
-
-const arSectionTabs = arTabs.map((tab) => ({ name: tab.value, label: tab.label }));
-const statusSectionTabs = filterTabs.map((tab) => ({ name: tab.value, label: tab.label }));
-
-const tenantScope = computed(() => {
+const parentTenantId = computed(() => {
   const tenant = authStore.selectedTenant;
-  if (!tenant?.id) return { parentTenantId: null as number | null, issuedByTenantId: null as number | null };
-  if (tenant.parent_id) {
-    return { parentTenantId: tenant.parent_id, issuedByTenantId: tenant.id };
-  }
-  return { parentTenantId: tenant.id, issuedByTenantId: null };
+  if (!tenant?.id) return null;
+  return tenant.parent_id ?? tenant.id;
+});
+
+const partyQuery = useDeskBillPartyOptions(parentTenantId);
+const partyOptions = computed(() => partyQuery.data.value ?? []);
+
+const filterCount = computed(() => {
+  let n = 0;
+  if (statusPill.value !== 'all') n += 1;
+  if (fromProfileId.value != null) n += 1;
+  return n;
 });
 
 const listParams = computed(() => {
   const base = {
-    ...tenantScope.value,
-    search: debouncedSearch.value || undefined,
-    arSide: arSide.value,
+    parentTenantId: parentTenantId.value,
+    toProfileType: toProfileTab.value,
+    fromProfileId: fromProfileId.value,
   };
   switch (statusPill.value) {
     case 'draft':
@@ -202,31 +248,17 @@ const listParams = computed(() => {
 });
 
 const listQuery = useBillsListInfiniteQuery(listParams);
-
 const rows = listQuery.rows;
 const hasMore = listQuery.hasMore;
-
-const treeNodes = computed(() => buildBillListTree(rows.value));
 
 const listErrorMessage = computed(() => {
   const err = listQuery.error.value;
   return err instanceof Error ? err.message : 'Could not load bills.';
 });
 
-const setArSide = (value: string | number) => {
-  arSide.value = value as ArSide;
-};
-
-const onSearchTextUpdate = (value: string | null | undefined) => {
-  searchText.value = value ?? '';
-  if (searchTimer) clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    debouncedSearch.value = (value ?? '').trim();
-  }, 300);
-};
-
-const setStatusPill = (value: string | number) => {
-  statusPill.value = value as StatusPill;
+const onApplyFilters = (payload: { status: StatusPill; fromProfileId: number | null }) => {
+  statusPill.value = payload.status;
+  fromProfileId.value = payload.fromProfileId;
 };
 
 const loadMore = () => {
@@ -236,20 +268,6 @@ const loadMore = () => {
 
 const tenantSlugParam = () =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
-
-const goCompose = () => {
-  router.push({
-    name: 'app-bill-compose-page',
-    params: tenantSlugParam() ? { tenantSlug: tenantSlugParam() } : {},
-  });
-};
-
-const goBrands = () => {
-  router.push({
-    name: 'app-bill-brands-page',
-    params: tenantSlugParam() ? { tenantSlug: tenantSlugParam() } : {},
-  });
-};
 
 const openBill = (row: BillListRowData) => {
   const tenantSlug = tenantSlugParam();
@@ -261,31 +279,138 @@ const openBill = (row: BillListRowData) => {
     },
   };
 
-  // Shipment AP and other payables are not edited on the AR compose desk.
-  if (row.invoice_type === 'ap') {
-    router.push(detailRoute);
+  if (
+    billOpensOnDetailNotComposeDesk({
+      invoice_status: row.invoice_status,
+      invoice_type: row.invoice_type,
+      source_type: row.kind === 'shipment_cost_ap' ? 'shipment_cost' : null,
+      ap_kind: row.ap_kind,
+    })
+  ) {
+    void router.push(detailRoute);
     return;
   }
 
   const isDraft =
     row.invoice_status === 'draft' || row.invoice_status === 'proforma_generated';
-  if (isDraft) {
-    router.push({
+  if (isDraft && row.invoice_type !== 'ap') {
+    void router.push({
       name: 'app-bill-compose-page',
       params: tenantSlug ? { tenantSlug } : {},
       query: { id: String(row.id) },
     });
     return;
   }
-  router.push(detailRoute);
+  void router.push(detailRoute);
 };
 </script>
 
 <style scoped lang="scss">
 @import 'src/modules/sales_invoice/styles/invoice-list.scss';
 
-.page-fixed-layout {
-  height: calc(100vh - 55px);
+.bills-content-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
+.bills-content-col--list .invoice-list-card {
+  flex: 1 1 0%;
+  min-height: 0;
+}
+
+.page-fixed-layout {
+  height: calc(100vh - 55px);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+  box-sizing: border-box;
+}
+
+.bills-page-root {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+  gap: 8px;
+}
+
+.bills-page-toolbar {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.bills-toolbar-row {
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.bills-toolbar-actions {
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bills-page-tabs {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+
+  :deep(.tf-drawer-section-tabs__scroll) {
+    overflow-x: clip;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  :deep(.tf-drawer-section-tabs__track) {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+.bills-cards-scroll {
+  overflow-x: clip;
+  overflow-y: auto;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  align-content: start;
+  box-sizing: border-box;
+}
+
+.bills-cards--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (min-width: 520px) {
+  .bills-cards--grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+}
+
+.bills-card-skeleton {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.bills-layout-toggle :deep(.q-btn) {
+  min-width: 32px;
+  padding: 4px 6px;
+}
+
+.bills-load-more {
+  grid-column: 1 / -1;
+  width: 100%;
+}
 </style>

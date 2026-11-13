@@ -30,15 +30,6 @@
             </div>
             <div v-if="!pay.voided_at" class="pay-detail-header__actions row q-gutter-sm">
               <TfBtn
-                v-if="canCorrectPayment"
-                variant="primary"
-                size="sm"
-                icon="ph ph-arrows-clockwise"
-                label="Correct amount or rate"
-                :loading="correctPaymentVoiding"
-                @click="onOpenCorrectPayment"
-              />
-              <TfBtn
                 v-if="canVoidPayment"
                 variant="danger-trigger"
                 size="sm"
@@ -311,13 +302,6 @@
       </q-card>
     </q-dialog>
 
-    <CorrectPaymentDialog
-      v-model="correctPaymentDialogOpen"
-      :pay="correctPaymentDisplayPay"
-      :loading="correctPaymentVoiding"
-      @confirm="onConfirmCorrectPaymentVoid"
-      @cancel="onCancelCorrectPayment"
-    />
   </q-page>
 </template>
 
@@ -335,11 +319,8 @@ import { paysQueryKeys } from '../services/paysQueryKeys';
 import { useVoidPayMutation } from '../composables/useVoidPayMutation';
 import { useBounceChequeMutation } from '../composables/useBounceChequeMutation';
 import { useAllocatePayMutation } from '../composables/useAllocatePayMutation';
-import CorrectPaymentDialog from '../components/CorrectPaymentDialog.vue';
-import { useCorrectPaymentFlow } from '../composables/useCorrectPaymentFlow';
 import { usePaymentsVoidAccess } from '../composables/usePaymentsVoidAccess';
 import { isPayVoidable } from '../utils/payVoidability';
-import type { PayCorrectionSnapshot } from '../types/payCorrectionSnapshot';
 import { fifoFillByOldest } from '../utils/fifoBillAlloc';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import TfBtn from 'src/components/ui/TfBtn.vue';
@@ -401,35 +382,6 @@ const pay = computed(() => detailQuery.data.value);
 
 const paymentsVoidAccess = usePaymentsVoidAccess();
 
-const primaryBillId = computed(() => pay.value?.allocations[0]?.global_invoice_id ?? null);
-
-const {
-  dialogOpen: correctPaymentDialogOpen,
-  voiding: correctPaymentVoiding,
-  displayPay: correctPaymentDisplayPay,
-  openCorrect: openCorrectPayment,
-  closeDialog: closeCorrectPaymentDialog,
-  confirmVoid: confirmCorrectPaymentVoid,
-} = useCorrectPaymentFlow({
-  billId: primaryBillId,
-  onVoided: async (snapshot: PayCorrectionSnapshot) => {
-    const billId = primaryBillId.value;
-    const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
-    if (billId) {
-      await router.push({
-        name: 'app-bill-detail-page',
-        params: {
-          ...(tenantSlug ? { tenantSlug } : {}),
-          billId: String(billId),
-        },
-        state: { payCorrectionPrefill: snapshot },
-      });
-      return;
-    }
-    goBack();
-  },
-});
-
 const payIsVoidableBySource = computed(() => {
   const p = pay.value;
   if (!p) return false;
@@ -437,8 +389,6 @@ const payIsVoidableBySource = computed(() => {
 });
 
 const canVoidPayment = computed(() => paymentsVoidAccess.value && payIsVoidableBySource.value);
-
-const canCorrectPayment = computed(() => canVoidPayment.value);
 
 const paySourceLabel = computed(() => {
   const s = pay.value?.source;
@@ -459,9 +409,6 @@ const payCorrectionHint = computed(() => {
   }
   if (!paymentsVoidAccess.value && payIsVoidableBySource.value) {
     return 'You need payments void permission to correct this pay.';
-  }
-  if (canCorrectPayment.value) {
-    return 'Posted payments cannot be edited inline. Correct amount or rate voids this pay and opens the bill to enter again.';
   }
   return null;
 });
@@ -755,19 +702,6 @@ const goToBill = (billId: number) => {
       billId: String(billId),
     },
   });
-};
-
-const onOpenCorrectPayment = () => {
-  if (!payId.value) return;
-  void openCorrectPayment(payId.value);
-};
-
-const onConfirmCorrectPaymentVoid = (reason: string) => {
-  void confirmCorrectPaymentVoid(reason);
-};
-
-const onCancelCorrectPayment = () => {
-  closeCorrectPaymentDialog();
 };
 
 const openVoidDialog = () => {

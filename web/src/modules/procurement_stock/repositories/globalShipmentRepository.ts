@@ -217,6 +217,7 @@ export interface ShipmentOverviewDetailsPayload {
   batch_code_list: BatchCodeList | null;
   batch_code_items: BatchCodeItem[];
   ap_bills?: unknown;
+  ap_issue_parties?: unknown;
 }
 
 const getShipmentOverviewDetails = async (
@@ -247,6 +248,7 @@ const getShipmentOverviewDetails = async (
     batch_code_list: (raw.batch_code_list as BatchCodeList | null) ?? null,
     batch_code_items: (raw.batch_code_items ?? []) as BatchCodeItem[],
     ap_bills: raw.ap_bills,
+    ap_issue_parties: raw.ap_issue_parties,
   };
 };
 

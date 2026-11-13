@@ -12,10 +12,12 @@ import {
 } from '../constants/shipmentApBuckets';
 import {
   parseShipmentApFxSnapshot,
+  type ShipmentApBillCostLine,
   type ShipmentApBillRow,
   type ShipmentApFxSnapshot,
   type ShipmentSettingsFinanceBundle,
 } from './shipmentApBillsRepository';
+import { parseShipmentApIssueParties } from '../types/shipmentApIssueParties';
 
 export type ShipmentMoneyKernelBundle = ShipmentSettingsFinanceBundle;
 
@@ -55,7 +57,27 @@ export const parseShipmentApBillRow = (raw: unknown): ShipmentApBillRow => {
     due_amount: Number(o.due_amount) || 0,
     net_balances:
       nb && typeof nb === 'object' ? (nb as BillNetBalances) : undefined,
+    cost_lines: parseShipmentApBillCostLines(o.cost_lines),
   };
+};
+
+const parseShipmentApBillCostLines = (raw: unknown): ShipmentApBillCostLine[] | undefined => {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const lines = raw
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const row = item as Record<string, unknown>;
+      const amount = Number(row.amount);
+      const cost_component = String(row.cost_component ?? 'misc');
+      if (!Number.isFinite(amount) || amount <= 0) return null;
+      return {
+        cost_component,
+        amount,
+        description: (row.description as string | null) ?? null,
+      } satisfies ShipmentApBillCostLine;
+    })
+    .filter((line): line is ShipmentApBillCostLine => line != null);
+  return lines.length > 0 ? lines : undefined;
 };
 
 export const parseShipmentApBillRows = (raw: unknown): ShipmentApBillRow[] => {
@@ -95,23 +117,13 @@ async function loadApBillsForShipment(
 ): Promise<ShipmentApBillRow[]> {
   if (!contextTenantId) return fromBundle;
   try {
-    const listParams = {
+    const looseRaw = await billsRepository.listBillsForSource({
       parentTenantId: contextTenantId,
       sourceType: 'shipment_cost',
       sourceId: String(shipmentId),
-    } as const;
-    const [strictRaw, looseRaw] = await Promise.all([
-      billsRepository.listBillsForSource({
-        ...listParams,
-        apShipmentBucketsOnly: true,
-      }),
-      billsRepository.listBillsForSource({
-        ...listParams,
-        apShipmentBucketsOnly: false,
-      }),
-    ]);
+      apShipmentBucketsOnly: false,
+    });
     const listed = mergeApBillRows(
-      Array.isArray(strictRaw) ? strictRaw.map(parseShipmentApBillRow) : [],
       (Array.isArray(looseRaw) ? looseRaw : [])
         .filter((row) => isShipmentLinkedApRow(row, shipmentId))
         .map(parseShipmentApBillRow),
@@ -140,6 +152,7 @@ export async function fetchShipmentMoneyKernelBundle(
     apBills,
     apFx: parseShipmentApFxSnapshot(payload.ap_fx),
     costEntries,
+    apIssueParties: parseShipmentApIssueParties(payload.ap_issue_parties),
   };
 }
 

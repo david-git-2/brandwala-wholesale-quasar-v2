@@ -299,6 +299,100 @@ const findCashbookAccountIdByProfile = async (
   return data?.id ?? null;
 };
 
+/** Mirrors `public._kernel_cashbook_axes_for_profile` for client account lookup. */
+const cashbookAxesForProfile = (
+  profile: { profile_type: string; subject_id: number },
+  profileId: number,
+): { entityType: string; entityId: number } => {
+  switch (profile.profile_type) {
+    case 'tenant':
+      return { entityType: 'tenant', entityId: profile.subject_id };
+    case 'vendor':
+      return { entityType: 'vendor', entityId: profile.subject_id };
+    case 'cargo':
+      return { entityType: 'cargo_company', entityId: profile.subject_id };
+    case 'courier':
+      return { entityType: 'courier', entityId: profile.subject_id };
+    case 'investor':
+      return { entityType: 'investor', entityId: profile.subject_id };
+    case 'customer':
+    default:
+      return { entityType: 'customer', entityId: profileId };
+  }
+};
+
+/** Profile id first; fall back to legacy entity-keyed cashbook_accounts (see ensure_cashbook_account_for_profile). */
+const resolveCashbookAccountIdForProfile = async (
+  booksTenantId: number,
+  profileId: number,
+): Promise<number | null> => {
+  const byProfile = await findCashbookAccountIdByProfile(booksTenantId, profileId);
+  if (byProfile) return byProfile;
+
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('profile_type, subject_id, tenant_id')
+    .eq('id', profileId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!profile) return null;
+
+  const { entityType, entityId } = cashbookAxesForProfile(profile, profileId);
+
+  const { data: accounts, error: accError } = await supabase
+    .from('cashbook_accounts')
+    .select('id, currency_code')
+    .eq('tenant_id', booksTenantId)
+    .eq('entity_type', entityType)
+    .eq('entity_id', entityId)
+    .order('currency_code', { ascending: true });
+  if (accError) throw accError;
+  if (!accounts?.length) return null;
+  const bdt = accounts.find((a) => a.currency_code === 'BDT');
+  return (bdt ?? accounts[0]).id;
+};
+
+export type CashbookLegAccountPrep = {
+  accountId: number;
+  defaultPotId: number | null;
+};
+
+/** Ensures office point + currency pot and default pointers (DB: ensure_cashbook_account_for_profile). */
+const ensureCashbookAccountForProfile = async (
+  profileId: number,
+  currencyCode: string,
+): Promise<number> => {
+  const ccy = currencyCode.trim().toUpperCase() || 'BDT';
+  const { data, error } = await supabase.rpc('ensure_cashbook_account_for_profile', {
+    p_profile_id: profileId,
+    p_currency_code: ccy,
+  });
+  if (error) throw error;
+  if (data == null) {
+    throw new Error('ensure_cashbook_account_for_profile returned no account id');
+  }
+  return data;
+};
+
+const getCashbookAccountDefaultPotId = async (cashbookAccountId: number): Promise<number | null> => {
+  const { data, error } = await supabase
+    .from('cashbook_accounts')
+    .select('default_cashbook_point_pot_id')
+    .eq('id', cashbookAccountId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.default_cashbook_point_pot_id ?? null;
+};
+
+const prepareCashbookLegForProfile = async (
+  profileId: number,
+  currencyCode: string,
+): Promise<CashbookLegAccountPrep> => {
+  const accountId = await ensureCashbookAccountForProfile(profileId, currencyCode);
+  const defaultPotId = await getCashbookAccountDefaultPotId(accountId);
+  return { accountId, defaultPotId };
+};
+
 const listCashbookPoints = async (cashbookAccountId: number): Promise<CashbookPointRow[]> => {
   const { data, error } = await supabase
     .from('cashbook_points')
@@ -578,6 +672,9 @@ export const cashbookRepository = {
   listLedger,
   findCashbookAccountId,
   findCashbookAccountIdByProfile,
+  resolveCashbookAccountIdForProfile,
+  ensureCashbookAccountForProfile,
+  prepareCashbookLegForProfile,
   listCashbookPoints,
   listCashbookPointPots,
   listCashbookPointPotsForPoints,

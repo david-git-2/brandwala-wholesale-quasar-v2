@@ -18,6 +18,10 @@ import type { BatchCodeItem, BatchCodeList } from '../repositories/batchCodeRepo
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository';
 import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxRepository';
 import { globalShipmentCostEntryRepository } from '../repositories/globalShipmentCostEntryRepository';
+import {
+  parseShipmentApIssueParties,
+  type ShipmentApIssueParties,
+} from '../types/shipmentApIssueParties';
 import { globalShipmentLocalCostRepository } from '../repositories/globalShipmentLocalCostRepository';
 import {
   fetchShipmentMoneyKernelBundle,
@@ -34,6 +38,16 @@ import {
   type UpsertShipmentCostEntryPayload,
 } from '../types/shipmentCostEntry';
 import type { SaveShipmentCostEntriesOptions } from '../repositories/globalShipmentCostEntryRepository';
+import {
+  mergeShipmentApBillIntoList,
+  shipmentApBillRowFromCostEntryIssue,
+} from '../utils/shipmentCostEntryApIssueCache';
+import {
+  shipmentApBillV2Repository,
+  type CreateShipmentApBillPayload,
+} from '../repositories/shipmentApBillV2Repository';
+import { moneyKernelRepository } from 'src/modules/bills_pays/repositories/moneyKernelRepository';
+import type { ShipmentApKind } from '../constants/shipmentApBuckets';
 import type {
   CreateShipmentSectionPayload,
   ShipmentSection,
@@ -152,6 +166,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     settingsFinanceCachedApBills: [] as ShipmentApBillRow[],
     settingsFinanceCachedApFx: null as ShipmentApFxSnapshot | null,
     settingsFinanceCachedCostEntries: [] as GlobalShipmentCostEntry[],
+    settingsFinanceCachedApIssueParties: null as ShipmentApIssueParties | null,
     /** Bumped after `sync_shipment_ap_bills` so settings drawer can refresh AP bill chips. */
     shipmentApBillsSyncGeneration: 0,
     costEntriesSaving: false,
@@ -362,6 +377,9 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           this.settingsFinanceCachedShipmentId = shipmentId;
           this.settingsFinanceCachedApBills = parseShipmentApBillRows(overviewAp);
         }
+        this.settingsFinanceCachedApIssueParties = parseShipmentApIssueParties(
+          overview.ap_issue_parties,
+        );
 
         void this.loadSettingsFinanceBundle(shipmentId, {
           force: Boolean(options?.force),
@@ -422,6 +440,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     ): Promise<{
       apBills: ShipmentApBillRow[];
       apFx: ShipmentApFxSnapshot | null;
+      apIssueParties: ShipmentApIssueParties | null;
     }> {
       if (
         !options?.force &&
@@ -436,6 +455,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         return {
           apBills: this.settingsFinanceCachedApBills,
           apFx: this.settingsFinanceCachedApFx,
+          apIssueParties: this.settingsFinanceCachedApIssueParties,
         };
       }
       this.settingsFinanceLoading = true;
@@ -450,7 +470,12 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.settingsFinanceCachedApBills = bundle.apBills;
         this.settingsFinanceCachedApFx = bundle.apFx;
         this.settingsFinanceCachedCostEntries = bundle.costEntries as GlobalShipmentCostEntry[];
-        return { apBills: bundle.apBills, apFx: bundle.apFx };
+        this.settingsFinanceCachedApIssueParties = bundle.apIssueParties;
+        return {
+          apBills: bundle.apBills,
+          apFx: bundle.apFx,
+          apIssueParties: bundle.apIssueParties,
+        };
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load shipment finance';
         throw err;
@@ -490,6 +515,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           this.shipmentApBillsSyncGeneration += 1;
         }
         this.settingsFinanceCachedShipmentId = null;
+        this.settingsFinanceCachedApIssueParties = null;
       } catch (err: unknown) {
         console.warn('sync_shipment_ap_bills failed', err);
       }
@@ -655,17 +681,169 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
+    kernelApBillRowFromRpc(
+      shipmentId: number,
+      bucket: ShipmentApKind,
+      result: Record<string, unknown>,
+      statusOverride?: string,
+    ): ShipmentApBillRow {
+      const total = Number(result.total_amount);
+      const due = Number(result.due_amount);
+      return {
+        id: Number(result.bill_id),
+        invoice_no: String(result.invoice_no ?? ''),
+        ap_kind: bucket,
+        ap_shipment_id: shipmentId,
+        source_type: 'shipment_cost',
+        source_id: String(shipmentId),
+        source_key: String(result.source_key ?? `${bucket}`),
+        invoice_status: String(statusOverride ?? result.status ?? 'draft'),
+        payment_status: null,
+        total_amount: Number.isFinite(total) ? total : 0,
+        due_amount: Number.isFinite(due) ? due : 0,
+      };
+    },
+
+    async createShipmentApBillV2(
+      shipmentId: number,
+      bucket: ShipmentApKind,
+      payload: CreateShipmentApBillPayload,
+    ) {
+      const shipment = this.currentShipment;
+      if (!shipment || shipment.id !== shipmentId) throw new Error('Shipment not loaded');
+      this.costEntriesSaving = true;
+      try {
+        const result = await shipmentApBillV2Repository.create(shipmentId, bucket, payload);
+        const row = this.kernelApBillRowFromRpc(shipmentId, bucket, result);
+        const rpcLines = result.cost_lines;
+        if (Array.isArray(rpcLines) && rpcLines.length > 0) {
+          row.cost_lines = (rpcLines as Record<string, unknown>[]).map((l) => ({
+            cost_component: String(l.cost_component ?? 'misc'),
+            amount: Number(l.amount) || 0,
+            description: (l.description as string | null) ?? null,
+          }));
+        } else {
+          row.cost_lines = payload.lines
+            .filter((l) => Number(l.amount) > 0)
+            .map((l) => ({
+              cost_component: l.cost_component,
+              amount: Number(l.amount),
+              description: l.description ?? null,
+            }));
+        }
+        if (this.settingsFinanceCachedShipmentId === shipmentId) {
+          this.settingsFinanceCachedApBills = mergeShipmentApBillIntoList(
+            this.settingsFinanceCachedApBills,
+            row,
+          );
+        }
+        return result;
+      } finally {
+        this.costEntriesSaving = false;
+      }
+    },
+
+    async updateShipmentApBillV2(
+      shipmentId: number,
+      billId: number,
+      payload: Partial<CreateShipmentApBillPayload>,
+    ) {
+      const shipment = this.currentShipment;
+      if (!shipment || shipment.id !== shipmentId) throw new Error('Shipment not loaded');
+      this.costEntriesSaving = true;
+      try {
+        const result = await shipmentApBillV2Repository.update(shipmentId, billId, payload);
+        const existing = this.settingsFinanceCachedApBills.find((b) => b.id === billId);
+        const bucket = (existing?.ap_kind ?? 'material') as ShipmentApKind;
+        const row = this.kernelApBillRowFromRpc(shipmentId, bucket, result);
+        const rpcLines = result.cost_lines;
+        if (Array.isArray(rpcLines) && rpcLines.length > 0) {
+          row.cost_lines = (rpcLines as Record<string, unknown>[]).map((l) => ({
+            cost_component: String(l.cost_component ?? 'misc'),
+            amount: Number(l.amount) || 0,
+            description: (l.description as string | null) ?? null,
+          }));
+        } else if (payload.lines?.length) {
+          row.cost_lines = payload.lines
+            .filter((l) => Number(l.amount) > 0)
+            .map((l) => ({
+              cost_component: l.cost_component,
+              amount: Number(l.amount),
+              description: l.description ?? null,
+            }));
+        }
+        if (this.settingsFinanceCachedShipmentId === shipmentId) {
+          this.settingsFinanceCachedApBills = mergeShipmentApBillIntoList(
+            this.settingsFinanceCachedApBills,
+            row,
+          );
+        }
+        return result;
+      } finally {
+        this.costEntriesSaving = false;
+      }
+    },
+
+    async voidShipmentApBillV2(shipmentId: number, billId: number) {
+      await shipmentApBillV2Repository.voidDraft(shipmentId, billId);
+      if (this.settingsFinanceCachedShipmentId === shipmentId) {
+        this.settingsFinanceCachedApBills = this.settingsFinanceCachedApBills.filter(
+          (b) => b.id !== billId,
+        );
+      }
+    },
+
+    async issueShipmentApBillDraft(shipmentId: number, billId: number) {
+      const shipment = this.currentShipment;
+      if (!shipment || shipment.id !== shipmentId) throw new Error('Shipment not loaded');
+      const existing = this.settingsFinanceCachedApBills.find((b) => b.id === billId);
+      const result = await moneyKernelRepository.issueBill(shipment.tenant_id, billId);
+      const bucket = (existing?.ap_kind ?? 'material') as ShipmentApKind;
+      const row = this.kernelApBillRowFromRpc(shipmentId, bucket, result as Record<string, unknown>, 'issued');
+      if (this.settingsFinanceCachedShipmentId === shipmentId) {
+        this.settingsFinanceCachedApBills = mergeShipmentApBillIntoList(
+          this.settingsFinanceCachedApBills,
+          row,
+        );
+      }
+      return result;
+    },
+
     async issueCostEntryInvoice(shipmentId: number, costEntryId: number) {
+      const shipment = this.currentShipment;
+      if (!shipment || shipment.id !== shipmentId) {
+        throw new Error('Shipment not loaded');
+      }
+      const entry = this.currentCostEntries.find((e) => e.id === costEntryId);
+      if (!entry) throw new Error('Cost entry not found');
+
       this.costEntriesSaving = true;
       this.error = null;
       try {
-        await globalShipmentCostEntryRepository.issueCostEntryAp(costEntryId);
-        const refreshed = await globalShipmentCostEntryRepository.listByShipmentId(shipmentId);
-        this.currentCostEntries = refreshed;
+        const issued = await globalShipmentCostEntryRepository.issueCostEntryApViaMoneyKernel(
+          costEntryId,
+        );
+        const stampMeta = {
+          ap_bill_id: issued.bill_id,
+          ap_bill_issued_at: new Date().toISOString(),
+          money_kernel_v2: true,
+        };
+        this.currentCostEntries = this.currentCostEntries.map((row) =>
+          row.id === costEntryId
+            ? {
+                ...row,
+                metadata: { ...(row.metadata ?? {}), ...stampMeta },
+              }
+            : row,
+        ) as GlobalShipmentCostEntry[];
         if (this.settingsFinanceCachedShipmentId === shipmentId) {
-          this.settingsFinanceCachedCostEntries = refreshed as GlobalShipmentCostEntry[];
+          this.settingsFinanceCachedCostEntries = this.currentCostEntries;
+          const apBillRow = shipmentApBillRowFromCostEntryIssue(issued, entry);
+          this.settingsFinanceCachedApBills = mergeShipmentApBillIntoList(
+            this.settingsFinanceCachedApBills,
+            apBillRow,
+          );
         }
-        this.shipmentApBillsSyncGeneration += 1;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to create invoice';
         throw err;

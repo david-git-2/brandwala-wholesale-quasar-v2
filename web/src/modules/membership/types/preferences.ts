@@ -14,6 +14,9 @@ export interface MembershipPreferenceSchema {
       staffCatalogVisibleColumns?: string[];
       pricingListingsVisibleColumns?: string[];
     };
+    billsPays?: {
+      listCardLayout?: 'grid' | 'list';
+    };
     appearance?: {
       darkMode?: boolean;
       density?: 'comfortable' | 'compact';
@@ -29,6 +32,7 @@ export const MEMBERSHIP_UI_PATHS = {
   procurementShipmentDetailsColumns: ['ui', 'procurementShipment', 'detailsVisibleColumns'],
   shopOrderStaffCatalogVisibleColumns: ['ui', 'shopOrder', 'staffCatalogVisibleColumns'],
   shopOrderPricingListingsColumns: ['ui', 'shopOrder', 'pricingListingsVisibleColumns'],
+  billsPaysListCardLayout: ['ui', 'billsPays', 'listCardLayout'],
   uiAppearanceDarkMode: ['ui', 'appearance', 'darkMode'],
   uiAppearanceDensity: ['ui', 'appearance', 'density'],
   uiAppearanceNavPinned: ['ui', 'appearance', 'navPinned'],

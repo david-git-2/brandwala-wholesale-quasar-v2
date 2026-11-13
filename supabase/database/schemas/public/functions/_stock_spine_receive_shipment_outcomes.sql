@@ -1,4 +1,4 @@
-CREATE FUNCTION public._stock_spine_receive_shipment_outcomes (
+CREATE OR REPLACE FUNCTION public._stock_spine_receive_shipment_outcomes (
   p_shipment_id bigint,
   p_stock_rows  jsonb  DEFAULT NULL::jsonb
 )
@@ -36,14 +36,6 @@ BEGIN
 
   IF coalesce(v_ship.is_closed, false) THEN
     RAISE EXCEPTION 'shipment is closed';
-  END IF;
-
-  PERFORM public.ensure_global_shipment_cost_entries_from_header(p_shipment_id);
-
-  IF NOT EXISTS (
-    SELECT 1 FROM public.global_shipment_cost_entries WHERE shipment_id = p_shipment_id
-  ) THEN
-    RAISE EXCEPTION 'shipment has no cost entries';
   END IF;
 
   v_stamped := public.stamp_global_shipment_landed_costs(p_shipment_id);

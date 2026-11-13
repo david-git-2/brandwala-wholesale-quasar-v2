@@ -16,12 +16,11 @@ export function useBillsListInfiniteQuery(params: Ref<BillsListInfiniteQueryPara
   const query = useInfiniteQuery({
     queryKey: computed(() =>
       billsQueryKeys.list(params.value.parentTenantId, {
-        issuedByTenantId: params.value.issuedByTenantId,
-        arSide: params.value.arSide,
+        toProfileType: params.value.toProfileType,
+        fromProfileId: params.value.fromProfileId,
         invoiceStatus: params.value.invoiceStatus,
         paymentStatus: params.value.paymentStatus,
         quickFilter: params.value.quickFilter,
-        search: params.value.search,
       }),
     ),
     queryFn: async ({ pageParam }) => {

@@ -1,6 +1,6 @@
 # `bills_pays` declarative SQL (kernel)
 
-**Product map:** [money-spine-v2](../../../docs/features/bills_pays/money-spine-v2/README.md)
+**Product map:** [bridge spec](../../../docs/features/money_bill_bridge/spec.md#atlas)
 
 | File | Role |
 | :--- | :--- |
@@ -23,7 +23,10 @@
 | `15_pay_payout_alloc.sql` | BP18‑c — `post_ap_payout_with_allocations` (settlements-first alloc) |
 | `09_wholesale_stock_issue.sql` | BP17 — `commit_sales_bill_stock`, `commit_wholesale_bill_stock`, `_bill_line_global_stock_id` |
 | `04_rls.sql` | RLS (archive reference) |
+| `99_legacy_kernel_cutover.sql` | Deprecation comments, REVOKE client DML, staged DROP (money-spine-v2) |
 
 Edit `05_money_spine.sql` first, then add a forward migration that applies the same DDL or run `pnpm run backend:schema:sync` after adding this folder to `schema_paths`.
+
+**Money spine v2 (parallel kernel):** declarative SQL lives in [`../money_kernel_v2/`](../money_kernel_v2/) (on `schema_paths` in `config.toml`). Forward migration: `20261111210000_money_spine_v2_kernel.sql`.
 
 Legacy RPC bodies remain in `schemas/public.sql` until domain split; new kernel surface lives in `05_money_spine.sql`.

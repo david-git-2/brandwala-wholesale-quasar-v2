@@ -8,7 +8,7 @@
 | Adapter SQL | `supabase/schemas/bills_pays/07_shipment_money_wrappers.sql` (migration `20261028150000_*`) |
 | Spine (do not edit for shipment) | `supabase/schemas/bills_pays/05_money_spine.sql` — `issue_bill`, `void_bill`, `post_money_out`, … |
 | Procurement truth | [spec.md](spec.md) US-1 / US-8, [00-gaps.md](00-gaps.md) |
-| Kernel product | [money-spine-v2](../bills_pays/money-spine-v2/README.md) |
+| Kernel product | [bridge § Atlas](../money_bill_bridge/spec.md#atlas) |
 | Web | `shipmentMoneyKernelRepository`, `useShipmentApFinance`, `apPayoutService` — see module map below |
 
 ## Scope
@@ -34,7 +34,7 @@ post_ap_payout_with_allocations, create_sales_invoice, …
 
 | Layer | Owns |
 | :--- | :--- |
-| Procurement | `global_shipment_cost_entries`, `costs_locked`, outcomes, landed stamp **inputs** |
+| Procurement | `global_shipments.buckets`, kernel `shipment_cost_ap` bills/lines, `costs_locked`, outcomes, landed stamp **inputs** |
 | **Adapters** | Map shipment id + buckets → spine calls; advisory lock `shipment_money:{id}` |
 | **Spine** | `issue_bill`, `void_bill`, `post_money_out`, `get_bill_net_balances` |
 | Legacy (inside spine) | AP draft upsert still in `_upsert_shipment_ap_bill` until BP9 AP payload exists |
@@ -49,11 +49,16 @@ post_ap_payout_with_allocations, create_sales_invoice, …
 | `sync_shipment_ap_bills` | lock → `_upsert_shipment_ap_bill` (draft); cancel/legacy → `void_bill` | `shipment_id` | `{ success, bills \| cancelled }` |
 | `issue_shipment_ap_bills` | lock → `issue_bill` per draft AP | `shipment_id` | count issued |
 | `issue_shipment_ap_bill_for_kind` | lock → `issue_bill` one bucket → `get_bill_detail_bundle` | `shipment_id`, `ap_kind` | desk **jsonb bundle** (same shape as `get_bill_detail_bundle`) |
-| `get_shipment_money_kernel_bundle` | `get_shipment_settings_finance_bundle` + `get_bill_net_balances` per AP | `shipment_id` | cost entries, AP rows + `net_balances`, FX, `kernel` meta |
+| `get_shipment_money_kernel_bundle` | `get_shipment_settings_finance_bundle` + `get_bill_net_balances` per AP | `shipment_id` | `buckets`, AP rows + `net_balances`, FX, `ap_issue_parties`, `kernel` meta |
+| `create_shipment_ap_bill_v2` | parties → `rpc_create_bill` (draft, N lines) → append `buckets` | `shipment_id`, `bucket`, payload `{ currency_code, lines[] }` | `{ bill_id, total_amount, cost_lines[], … }` |
+| `update_shipment_ap_bill_v2` | → `rpc_update_draft_bill_v2` | `shipment_id`, `bill_id`, payload | bill summary |
+| `void_shipment_ap_bill_v2` | → `rpc_void_bill` + remove `buckets` row | `shipment_id`, `bill_id` | void summary |
 | `post_shipment_ap_money_out` | lock → `post_money_out` | shipment + same args as `post_money_out` | `pays` row |
 | `settle_shipment_payee` | **Retired** — raises | — | use Payments + `post_shipment_ap_money_out` |
 
-**UI:** `loadSettingsFinanceBundle` → `get_shipment_money_kernel_bundle` only. AP pay → `apPayoutService` → `post_shipment_ap_money_out(_snapshot)` when allocation bills tie to a shipment; else legacy payout RPC inside the service. Do **not** call `listShipmentApBills`, `settle_shipment_payee`, or `post_ap_payout_*` from pages/components.
+**UI:** `loadSettingsFinanceBundle` → `get_shipment_money_kernel_bundle` only. Finance bundle **`ap_bills`** rows include **`cost_lines`** (from `money_kernel.bill_lines`) for draft list + edit. International Costs tab → **`ShipmentApBillsPanel`** → `create_shipment_ap_bill_v2` / `update_shipment_ap_bill_v2` / `void_shipment_ap_bill_v2` / `rpc_issue_bill` per draft (do **not** build kernel payloads in the browser beyond line amounts). Patch `settingsFinanceCachedApBills` from RPC responses; refetch bundle after create/issue/void when needed.
+
+**Desk reads:** `get_bill_detail_bundle` and `list_bills_desk_page` merge **legacy `public.bills` + `money_kernel.bills`** (see `06b_desk_kernel_bridge.sql`). App **Bills** list: payee-type tabs + filter drawer (status, from profile); kernel-only rows include `spine: kernel`. AP pay → `apPayoutService` → `post_shipment_ap_money_out(_snapshot)` when allocation bills tie to a shipment; else legacy payout RPC inside the service. Do **not** call `listShipmentApBills`, `settle_shipment_payee`, or `post_ap_payout_*` from pages/components.
 
 ---
 
@@ -91,8 +96,11 @@ post_ap_payout_with_allocations, create_sales_invoice, …
 
 ## Kernel plug fields
 
+Shipment cost AP **payload and stored rows** (agreed vs open, immutability, example shipment 50): [bills spec § Shipment cost AP](../bills/spec.md#shipment-cost-ap).
+
 | Field | Value |
 | :--- | :--- |
+| `source_entity` | `public.global_shipments` |
 | `source_type` | `shipment_cost` |
 | `source_id` | shipment id (string) |
 | `source_key` | bucket name today; target `{bucket}:{currency}` ([WA15](../bills_pays/00-gaps.md)) |

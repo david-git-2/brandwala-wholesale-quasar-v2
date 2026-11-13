@@ -177,7 +177,10 @@ begin
         'source_type', 'shipment_cost',
         'source_id', p_shipment_id::text,
         'pay_out_rpc', 'post_shipment_ap_money_out',
-        'issue_rpc', 'issue_bill'
+        'create_ap_bill_rpc', 'create_shipment_ap_bill_v2',
+        'update_ap_bill_rpc', 'update_shipment_ap_bill_v2',
+        'void_ap_bill_rpc', 'void_shipment_ap_bill_v2',
+        'issue_draft_rpc', 'issue_shipment_ap_drafts_v2'
       )
     );
 end;
@@ -633,57 +636,964 @@ RETURNS jsonb
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path TO public
+SET search_path = money_kernel, public, pg_temp
 AS $$
-  select coalesce(
-    jsonb_agg(
-      jsonb_build_object(
-        'id', b.id,
-        'invoice_no', b.invoice_no,
-        'invoice_type', b.invoice_type,
-        'document_kind', b.document_kind,
-        'ap_kind', coalesce(
-          nullif(btrim(b.ap_kind), ''),
-          nullif(btrim(b.channel_meta->>'ap_kind'), ''),
-          nullif(split_part(coalesce(b.source_key, ''), ':', 1), '')
-        ),
-        'ap_shipment_id', b.ap_shipment_id,
-        'source_type', b.source_type,
-        'source_id', b.source_id,
-        'source_key', b.source_key,
-        'invoice_status', b.invoice_status,
-        'payment_status', b.payment_status,
-        'total_amount', b.total_amount,
-        'due_amount', b.due_amount,
-        'parent_bill_id', b.parent_bill_id,
-        'net_balances', public.get_bill_net_balances(b.id)
-      )
-      order by b.id
-    ),
+  SELECT COALESCE(
+    jsonb_agg(row_data ORDER BY (row_data->>'id')::bigint),
     '[]'::jsonb
   )
-  from public.bills b
-  where b.tenant_id = p_books_tenant_id
-    and (p_include_voided or b.invoice_status <> 'voided'::public.global_invoice_status)
-    and b.invoice_type = 'ap'::public.global_invoice_type
-    and b.document_kind = 'standard'::public.bill_document_kind
-    and (
-      (b.source_type = 'shipment_cost' and b.source_id = p_shipment_id::text)
-      or b.ap_shipment_id = p_shipment_id
-    )
-    and (
-      b.ap_shipment_id = p_shipment_id
-      or coalesce(
-        nullif(btrim(b.ap_kind), ''),
-        nullif(btrim(b.channel_meta->>'ap_kind'), ''),
-        nullif(btrim(b.source_key), ''),
-        split_part(coalesce(b.source_key, ''), ':', 1)
-      ) in (
-        'material', 'freight', 'customs', 'handling', 'finance', 'other',
-        'vendor', 'cargo', 'local'
+  FROM (
+    SELECT jsonb_build_object(
+      'id', b.id,
+      'invoice_no', b.invoice_no,
+      'invoice_type', b.invoice_type,
+      'document_kind', b.document_kind,
+      'ap_kind', COALESCE(
+        NULLIF(btrim(b.ap_kind), ''),
+        NULLIF(btrim(b.channel_meta->>'ap_kind'), ''),
+        NULLIF(split_part(COALESCE(b.source_key, ''), ':', 1), '')
+      ),
+      'ap_shipment_id', b.ap_shipment_id,
+      'source_type', b.source_type,
+      'source_id', b.source_id,
+      'source_key', b.source_key,
+      'invoice_status', b.invoice_status,
+      'payment_status', b.payment_status,
+      'total_amount', b.total_amount,
+      'due_amount', b.due_amount,
+      'parent_bill_id', b.parent_bill_id,
+      'net_balances', public.get_bill_net_balances(b.id)
+    ) AS row_data
+    FROM public.bills b
+    WHERE b.tenant_id = p_books_tenant_id
+      AND (p_include_voided OR b.invoice_status <> 'voided'::public.global_invoice_status)
+      AND b.invoice_type = 'ap'::public.global_invoice_type
+      AND b.document_kind = 'standard'::public.bill_document_kind
+      AND (
+        (b.source_type = 'shipment_cost' AND b.source_id = p_shipment_id::text)
+        OR b.ap_shipment_id = p_shipment_id
       )
-      or coalesce(b.source_key, '') ~ '^(material|freight|customs|handling|finance|other|vendor|cargo|local):'
+      AND (
+        b.ap_shipment_id = p_shipment_id
+        OR COALESCE(
+          NULLIF(btrim(b.ap_kind), ''),
+          NULLIF(btrim(b.channel_meta->>'ap_kind'), ''),
+          NULLIF(btrim(b.source_key), ''),
+          split_part(COALESCE(b.source_key, ''), ':', 1)
+        ) IN (
+          'material', 'freight', 'customs', 'handling', 'finance', 'other',
+          'vendor', 'cargo', 'local'
+        )
+        OR COALESCE(b.source_key, '') ~ '^(material|freight|customs|handling|finance|other|vendor|cargo|local):'
+      )
+
+    UNION ALL
+
+    SELECT jsonb_build_object(
+      'id', kb.id,
+      'invoice_no', kb.invoice_no,
+      'invoice_type', 'ap',
+      'document_kind', 'standard',
+      'ap_kind', COALESCE(kb.meta->>'ap_kind', split_part(COALESCE(kb.source_key, ''), ':', 1)),
+      'ap_shipment_id', (kb.meta->>'shipment_id')::bigint,
+      'source_type', kb.source_type,
+      'source_id', kb.source_id,
+      'source_key', kb.source_key,
+      'invoice_status', CASE kb.status WHEN 'voided' THEN 'voided' WHEN 'draft' THEN 'draft' ELSE 'issued' END,
+      'payment_status', public._desk_kernel_status_payment(kb.status, kb.due_amount),
+      'total_amount', kb.total_amount,
+      'due_amount', kb.due_amount,
+      'parent_bill_id', kb.parent_bill_id,
+      'net_balances', public._desk_kernel_net_balances_json(kb.id),
+      'cost_lines', COALESCE((
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'cost_component', COALESCE(NULLIF(btrim(bl.meta->>'cost_component'), ''), 'misc'),
+            'amount', bl.line_total,
+            'description', bl.description
+          )
+          ORDER BY bl.line_no
+        )
+        FROM money_kernel.bill_lines bl
+        WHERE bl.tenant_id = kb.tenant_id
+          AND bl.bill_id = kb.id
+      ), '[]'::jsonb)
+    ) AS row_data
+    FROM money_kernel.bills kb
+    WHERE kb.tenant_id = p_books_tenant_id
+      AND kb.kind = 'shipment_cost_ap'
+      AND kb.source_type = 'shipment_cost'
+      AND kb.source_id = p_shipment_id::text
+      AND (p_include_voided OR kb.status <> 'voided')
+      AND NOT EXISTS (SELECT 1 FROM public.bills pb WHERE pb.id = kb.id)
+  ) merged;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Shipment cost entry AP v2 (money_kernel.bills via rpc_create_bill)
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public._shipment_cost_ap_ensure_public_from_profile(p_books_tenant_id bigint)
+RETURNS bigint
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+DECLARE
+  v_id bigint;
+  v_name text;
+BEGIN
+  v_id := public._kernel_tenant_mirror_profile_id(p_books_tenant_id);
+  IF v_id IS NOT NULL THEN
+    RETURN v_id;
+  END IF;
+
+  SELECT t.name INTO v_name FROM public.tenants t WHERE t.id = p_books_tenant_id;
+  RETURN public.upsert_profile_for_party(
+    p_books_tenant_id,
+    'tenant'::public.profile_party_type,
+    p_books_tenant_id,
+    COALESCE(v_name, 'Tenant #' || p_books_tenant_id::text),
+    NULL, NULL, '+880', NULL, false, NULL, true, NULL
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public._shipment_cost_ap_ensure_public_to_profile(
+  p_books_tenant_id bigint,
+  p_ship       public.global_shipments,
+  p_bucket     public.global_shipment_cost_bucket,
+  OUT profile_id bigint,
+  OUT diagnostic text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+DECLARE
+  v_name text;
+BEGIN
+  profile_id := NULL;
+  diagnostic := NULL;
+
+  IF p_bucket = 'material'::public.global_shipment_cost_bucket THEN
+    IF p_ship.vendor_id IS NULL THEN
+      diagnostic := 'shipment vendor_id is required for material AP';
+      RETURN;
+    END IF;
+    SELECT pr.id INTO profile_id
+      FROM public.profiles pr
+     WHERE pr.tenant_id = p_books_tenant_id
+       AND pr.profile_type = 'vendor'::public.profile_party_type
+       AND pr.subject_id = p_ship.vendor_id
+       AND pr.is_active = true
+       AND pr.deleted_at IS NULL
+     LIMIT 1;
+    IF profile_id IS NULL THEN
+      SELECT v.name INTO v_name FROM public.vendors v WHERE v.id = p_ship.vendor_id;
+      profile_id := public.upsert_profile_for_party(
+        p_books_tenant_id,
+        'vendor'::public.profile_party_type,
+        p_ship.vendor_id,
+        COALESCE(v_name, 'Vendor #' || p_ship.vendor_id::text),
+        NULL, NULL, '+880', NULL, false, NULL, true, NULL
+      );
+    END IF;
+    RETURN;
+  END IF;
+
+  IF p_bucket IN ('freight'::public.global_shipment_cost_bucket, 'customs'::public.global_shipment_cost_bucket) THEN
+    IF p_ship.cargo_company_id IS NULL THEN
+      diagnostic := 'shipment cargo_company_id is required for freight/customs AP';
+      RETURN;
+    END IF;
+    SELECT pr.id INTO profile_id
+      FROM public.profiles pr
+     WHERE pr.tenant_id = p_books_tenant_id
+       AND pr.profile_type = 'cargo'::public.profile_party_type
+       AND pr.subject_id = p_ship.cargo_company_id
+       AND pr.is_active = true
+       AND pr.deleted_at IS NULL
+     LIMIT 1;
+    IF profile_id IS NULL THEN
+      SELECT c.name INTO v_name FROM public.cargo_companies c WHERE c.id = p_ship.cargo_company_id;
+      profile_id := public.upsert_profile_for_party(
+        p_books_tenant_id,
+        'cargo'::public.profile_party_type,
+        p_ship.cargo_company_id,
+        COALESCE(v_name, 'Cargo #' || p_ship.cargo_company_id::text),
+        NULL, NULL, '+880', NULL, false, NULL, true, NULL
+      );
+    END IF;
+    RETURN;
+  END IF;
+
+  SELECT t.name INTO v_name FROM public.tenants t WHERE t.id = p_books_tenant_id;
+  profile_id := public.upsert_profile_for_party(
+    p_books_tenant_id,
+    'company'::public.profile_party_type,
+    p_books_tenant_id,
+    'Local opex',
+    NULL, NULL, '+880', NULL, false, NULL, true, NULL
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public._resolve_shipment_cost_ap_kernel_parties(p_shipment_id bigint)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
+AS $$
+DECLARE
+  v_ship public.global_shipments%ROWTYPE;
+  v_parent bigint;
+  v_from_profile bigint;
+  v_buckets text[] := ARRAY[
+    'material', 'freight', 'customs', 'handling', 'finance', 'other'
+  ];
+  v_bucket text;
+  v_bucket_enum public.global_shipment_cost_bucket;
+  v_to_profile bigint;
+  v_diag text;
+  v_payees jsonb := '{}'::jsonb;
+BEGIN
+  SELECT * INTO v_ship FROM public.global_shipments WHERE id = p_shipment_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'shipment not found';
+  END IF;
+
+  v_parent := v_ship.tenant_id;
+
+  BEGIN
+    v_from_profile := public._shipment_cost_ap_ensure_public_from_profile(v_parent);
+    IF v_from_profile IS NOT NULL THEN
+      PERFORM money_kernel.ensure_profile_for_public_party(v_parent, v_from_profile);
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    v_from_profile := NULL;
+  END;
+
+  FOREACH v_bucket IN ARRAY v_buckets
+  LOOP
+    v_bucket_enum := v_bucket::public.global_shipment_cost_bucket;
+    SELECT tp.profile_id, tp.diagnostic
+      INTO v_to_profile, v_diag
+      FROM public._shipment_cost_ap_ensure_public_to_profile(v_parent, v_ship, v_bucket_enum) tp;
+
+    IF v_to_profile IS NOT NULL THEN
+      BEGIN
+        PERFORM money_kernel.ensure_profile_for_public_party(v_parent, v_to_profile);
+      EXCEPTION WHEN OTHERS THEN
+        v_diag := COALESCE(v_diag, SQLERRM);
+        v_to_profile := NULL;
+      END;
+    END IF;
+
+    v_payees := v_payees || jsonb_build_object(
+      v_bucket,
+      jsonb_build_object(
+        'profile_id', v_to_profile,
+        'ready', (v_to_profile IS NOT NULL AND v_from_profile IS NOT NULL),
+        'diagnostic', v_diag
+      )
     );
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'books_tenant_id', v_parent,
+    'from_profile_id', v_from_profile,
+    'payees_by_bucket', v_payees
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.issue_shipment_cost_entry_ap_v2(p_cost_entry_id bigint)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
+AS $$
+DECLARE
+  v_entry public.global_shipment_cost_entries%ROWTYPE;
+  v_ship public.global_shipments%ROWTYPE;
+  v_parent bigint;
+  v_parties jsonb;
+  v_from_kernel bigint;
+  v_to_kernel bigint;
+  v_currency_code text;
+  v_paper jsonb;
+  v_amount numeric(18, 4);
+  v_desc text;
+  v_payload jsonb;
+  v_result jsonb;
+  v_bill_id bigint;
+  v_invoice_no text;
+  v_ap_kind text;
+BEGIN
+  IF p_cost_entry_id IS NULL THEN
+    RAISE EXCEPTION 'cost_entry_id is required';
+  END IF;
+
+  SELECT * INTO v_entry
+    FROM public.global_shipment_cost_entries
+   WHERE id = p_cost_entry_id
+   FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'cost entry not found';
+  END IF;
+
+  SELECT * INTO v_ship
+    FROM public.global_shipments
+   WHERE id = v_entry.shipment_id
+   FOR UPDATE;
+
+  v_parent := v_ship.tenant_id;
+
+  IF NOT public.user_can_manage_books_tenant(v_parent) THEN
+    RAISE EXCEPTION 'Permission denied';
+  END IF;
+
+  PERFORM public._assert_shipment_cost_entry_mutable(p_cost_entry_id);
+
+  IF COALESCE(v_entry.amount, 0) <= 0 THEN
+    RAISE EXCEPTION 'cost amount must be greater than zero';
+  END IF;
+
+  IF COALESCE(v_entry.metadata->>'ap_bill_id', '') <> '' THEN
+    RAISE EXCEPTION 'cost entry already has ap_bill_id';
+  END IF;
+
+  v_parties := public._resolve_shipment_cost_ap_kernel_parties(v_ship.id);
+  v_from_kernel := NULLIF(v_parties->>'from_profile_id', '')::bigint;
+  v_ap_kind := v_entry.cost_bucket::text;
+  v_to_kernel := NULLIF(v_parties->'payees_by_bucket'->v_ap_kind->>'profile_id', '')::bigint;
+
+  IF v_from_kernel IS NULL OR v_to_kernel IS NULL THEN
+    RAISE EXCEPTION 'invalid_arguments: AP parties not ready for bucket % (% )',
+      v_ap_kind,
+      COALESCE(v_parties->'payees_by_bucket'->v_ap_kind->>'diagnostic', 'missing profile');
+  END IF;
+
+  SELECT upper(coalesce(gc.code, 'BDT')) INTO v_currency_code
+    FROM public.global_currencies gc
+   WHERE gc.id = COALESCE(
+     v_entry.currency_id,
+     v_ship.shipment_cost_currency_id,
+     v_ship.shipment_purchase_currency_id
+   );
+
+  IF v_currency_code IS NULL OR v_currency_code = '' THEN
+    v_currency_code := 'BDT';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM money_kernel.currencies c WHERE c.code = v_currency_code
+  ) THEN
+    RAISE EXCEPTION 'invalid_arguments: currency % not in money_kernel.currencies', v_currency_code;
+  END IF;
+
+  v_paper := public._build_shipment_ap_cost_entry_paper(v_entry, v_ship);
+  v_amount := round(COALESCE((v_paper->>'foreign_total')::numeric, v_entry.amount), 2);
+
+  v_desc := COALESCE(
+    NULLIF(trim(v_entry.description), ''),
+    NULLIF(trim(v_entry.metadata->>'description'), ''),
+  initcap(replace(v_entry.cost_component::text, '_', ' '))
+  );
+
+  v_payload := jsonb_build_object(
+    'tenant_id', v_parent,
+    'kind', 'shipment_cost_ap',
+    'source_entity', 'public.global_shipments',
+    'source_type', 'shipment_cost',
+    'source_id', v_ship.id::text,
+    'source_key', v_ap_kind,
+    'idempotency_key', 'shipment-' || v_ship.id::text || '-bucket-' || v_ap_kind || '-issue',
+    'currency_code', v_currency_code,
+    'from_profile_id', v_from_kernel,
+    'to_profile_id', v_to_kernel,
+    'counterparty_profile_id', v_to_kernel,
+    'auto_issue', true,
+    'note', 'Shipment ' || COALESCE(v_ship.name, v_ship.id::text) || ' — '
+            || initcap(v_ap_kind) || ' AP (entry:' || v_entry.id::text || ')',
+    'meta', jsonb_build_object(
+      'ap_kind', v_ap_kind,
+      'shipment_id', v_ship.id,
+      'ap_paper', v_paper
+    ),
+    'lines', jsonb_build_array(
+      jsonb_build_object(
+        'item_kind', 'charge',
+        'description', v_desc,
+        'quantity', 1,
+        'unit_price', v_amount,
+        'line_total', v_amount,
+        'meta', jsonb_build_object('cost_entry_id', v_entry.id)
+      )
+    )
+  );
+
+  v_result := public.rpc_create_bill(v_payload);
+  v_bill_id := NULLIF(v_result->>'bill_id', '')::bigint;
+  v_invoice_no := v_result->>'invoice_no';
+
+  IF v_bill_id IS NULL THEN
+    RAISE EXCEPTION 'rpc_create_bill returned no bill_id';
+  END IF;
+
+  UPDATE public.global_shipment_cost_entries
+     SET metadata = COALESCE(metadata, '{}'::jsonb)
+       || jsonb_build_object(
+         'ap_bill_id', v_bill_id,
+         'ap_bill_issued_at', to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+         'money_kernel_v2', true
+       ),
+         updated_at = now()
+   WHERE id = p_cost_entry_id;
+
+  RETURN v_result
+    || jsonb_build_object(
+      'cost_entry_id', p_cost_entry_id,
+      'source_entity', 'public.global_shipments',
+      'source_type', 'shipment_cost',
+      'source_id', v_ship.id::text,
+      'source_key', v_ap_kind,
+      'ap_kind', v_ap_kind
+    );
+END;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Option A: shipment AP bills (kernel drafts) + buckets index
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public._shipment_ap_bucket_is_valid(p_bucket text)
+RETURNS boolean
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT p_bucket IN (
+    'material', 'freight', 'customs', 'handling', 'finance', 'other',
+    'vendor', 'cargo', 'local'
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public._shipment_buckets_append(
+  p_shipment_id bigint,
+  p_bucket text,
+  p_bill_id bigint,
+  p_currency_code text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+DECLARE
+  v_ship public.global_shipments%ROWTYPE;
+  v_buckets jsonb;
+  v_elem jsonb;
+BEGIN
+  IF NOT public._shipment_ap_bucket_is_valid(p_bucket) THEN
+    RAISE EXCEPTION 'invalid_arguments: unknown bucket %', p_bucket;
+  END IF;
+
+  SELECT * INTO v_ship FROM public.global_shipments WHERE id = p_shipment_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'shipment not found';
+  END IF;
+
+  v_buckets := COALESCE(v_ship.buckets, '[]'::jsonb);
+
+  FOR v_elem IN SELECT value FROM jsonb_array_elements(v_buckets)
+  LOOP
+    IF (v_elem->>'bill_id')::bigint = p_bill_id THEN
+      RAISE EXCEPTION 'invalid_arguments: bill % already indexed on shipment', p_bill_id;
+    END IF;
+  END LOOP;
+
+  v_buckets := v_buckets || jsonb_build_array(
+    jsonb_build_object(
+      'bucket', p_bucket,
+      'bill_id', p_bill_id,
+      'currency_code', upper(p_currency_code)
+    )
+  );
+
+  UPDATE public.global_shipments
+     SET buckets = v_buckets,
+         updated_at = now()
+   WHERE id = p_shipment_id;
+
+  RETURN v_buckets;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public._shipment_buckets_remove(p_shipment_id bigint, p_bill_id bigint)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+DECLARE
+  v_buckets jsonb;
+BEGIN
+  SELECT COALESCE(buckets, '[]'::jsonb) INTO v_buckets
+    FROM public.global_shipments
+   WHERE id = p_shipment_id
+   FOR UPDATE;
+
+  v_buckets := COALESCE(
+    (
+      SELECT jsonb_agg(elem)
+      FROM jsonb_array_elements(v_buckets) elem
+      WHERE (elem->>'bill_id')::bigint IS DISTINCT FROM p_bill_id
+    ),
+    '[]'::jsonb
+  );
+
+  UPDATE public.global_shipments
+     SET buckets = v_buckets,
+         updated_at = now()
+   WHERE id = p_shipment_id;
+
+  RETURN v_buckets;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public._shipment_bill_belongs_to_shipment(
+  p_shipment_id bigint,
+  p_bill_id bigint
+)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
+AS $$
+DECLARE
+  v_found boolean := false;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM jsonb_array_elements(
+      COALESCE((SELECT buckets FROM public.global_shipments WHERE id = p_shipment_id), '[]'::jsonb)
+    ) elem
+    WHERE (elem->>'bill_id')::bigint = p_bill_id
+  ) INTO v_found;
+  IF v_found THEN
+    RETURN true;
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM money_kernel.bills b
+     WHERE b.id = p_bill_id
+       AND b.kind = 'shipment_cost_ap'
+       AND b.source_type = 'shipment_cost'
+       AND b.source_id = p_shipment_id::text
+  ) INTO v_found;
+
+  RETURN v_found;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.create_shipment_ap_bill_v2(
+  p_shipment_id bigint,
+  p_bucket text,
+  p_payload jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
+AS $$
+DECLARE
+  v_ship public.global_shipments%ROWTYPE;
+  v_parent bigint;
+  v_parties jsonb;
+  v_from_kernel bigint;
+  v_to_kernel bigint;
+  v_currency_code text;
+  v_ap_kind text;
+  v_source_key text;
+  v_suffix text;
+  v_lines jsonb := '[]'::jsonb;
+  v_line jsonb;
+  v_line_obj jsonb;
+  v_amount numeric(18, 4);
+  v_component text;
+  v_desc text;
+  v_payload jsonb;
+  v_result jsonb;
+  v_bill_id bigint;
+BEGIN
+  IF p_shipment_id IS NULL OR p_bucket IS NULL THEN
+    RAISE EXCEPTION 'shipment_id and bucket are required';
+  END IF;
+
+  PERFORM public._shipment_money_advisory_lock(p_shipment_id);
+
+  SELECT * INTO v_ship FROM public.global_shipments WHERE id = p_shipment_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'shipment not found';
+  END IF;
+
+  v_parent := v_ship.tenant_id;
+  IF NOT public.user_can_manage_books_tenant(v_parent) THEN
+    RAISE EXCEPTION 'Permission denied';
+  END IF;
+
+  IF public.global_shipment_costs_are_locked(v_ship) THEN
+    RAISE EXCEPTION 'shipment costs are locked';
+  END IF;
+
+  IF NOT public._shipment_ap_bucket_is_valid(p_bucket) THEN
+    RAISE EXCEPTION 'invalid_arguments: unknown bucket %', p_bucket;
+  END IF;
+
+  v_ap_kind := lower(btrim(p_bucket));
+  v_currency_code := upper(COALESCE(NULLIF(btrim(p_payload->>'currency_code'), ''), 'BDT'));
+
+  IF NOT EXISTS (SELECT 1 FROM money_kernel.currencies c WHERE c.code = v_currency_code) THEN
+    RAISE EXCEPTION 'invalid_arguments: currency % not in money_kernel.currencies', v_currency_code;
+  END IF;
+
+  v_parties := public._resolve_shipment_cost_ap_kernel_parties(v_ship.id);
+  v_from_kernel := NULLIF(v_parties->>'from_profile_id', '')::bigint;
+  v_to_kernel := NULLIF(v_parties->'payees_by_bucket'->v_ap_kind->>'profile_id', '')::bigint;
+
+  IF v_from_kernel IS NULL OR v_to_kernel IS NULL THEN
+    RAISE EXCEPTION 'invalid_arguments: AP parties not ready for bucket % (%)',
+      v_ap_kind,
+      COALESCE(v_parties->'payees_by_bucket'->v_ap_kind->>'diagnostic', 'missing profile');
+  END IF;
+
+  FOR v_line IN SELECT * FROM jsonb_array_elements(COALESCE(p_payload->'lines', '[]'::jsonb))
+  LOOP
+    v_amount := round(COALESCE((v_line->>'amount')::numeric, (v_line->>'unit_price')::numeric, 0), 2);
+    IF v_amount <= 0 THEN
+      CONTINUE;
+    END IF;
+    v_component := COALESCE(NULLIF(btrim(v_line->>'cost_component'), ''), 'misc');
+    v_desc := COALESCE(
+      NULLIF(btrim(v_line->>'description'), ''),
+      initcap(replace(v_component, '_', ' '))
+    );
+    v_line_obj := jsonb_build_object(
+      'item_kind', 'charge',
+      'description', v_desc,
+      'quantity', 1,
+      'unit_price', v_amount,
+      'line_total', v_amount,
+      'meta', jsonb_build_object(
+        'cost_component', v_component,
+        'is_capitalizable', COALESCE((v_line->>'is_capitalizable')::boolean, true),
+        'shipment_id', v_ship.id
+      )
+    );
+    v_lines := v_lines || jsonb_build_array(v_line_obj);
+  END LOOP;
+
+  IF jsonb_array_length(v_lines) = 0 THEN
+    RAISE EXCEPTION 'invalid_arguments: at least one positive amount line required';
+  END IF;
+
+  v_suffix := NULLIF(btrim(p_payload->>'source_key_suffix'), '');
+  IF v_suffix IS NULL THEN
+    v_suffix := substr(replace(gen_random_uuid()::text, '-', ''), 1, 8);
+  END IF;
+  v_source_key := v_ap_kind || ':' || v_currency_code || ':' || v_suffix;
+
+  v_payload := jsonb_build_object(
+    'tenant_id', v_parent,
+    'kind', 'shipment_cost_ap',
+    'source_entity', 'public.global_shipments',
+    'source_type', 'shipment_cost',
+    'source_id', v_ship.id::text,
+    'source_key', v_source_key,
+    'idempotency_key', 'shipment-' || v_ship.id::text || '-ap-' || v_source_key,
+    'currency_code', v_currency_code,
+    'from_profile_id', v_from_kernel,
+    'to_profile_id', v_to_kernel,
+    'counterparty_profile_id', v_to_kernel,
+    'auto_issue', false,
+    'note', COALESCE(
+      p_payload->>'note',
+      'Shipment ' || COALESCE(v_ship.name, v_ship.id::text) || ' — ' || initcap(v_ap_kind) || ' AP'
+    ),
+    'meta', jsonb_build_object(
+      'ap_kind', v_ap_kind,
+      'shipment_id', v_ship.id,
+      'bucket', v_ap_kind
+    ),
+    'lines', v_lines
+  );
+
+  v_result := public.rpc_create_bill(v_payload);
+  v_bill_id := NULLIF(v_result->>'bill_id', '')::bigint;
+  IF v_bill_id IS NULL THEN
+    RAISE EXCEPTION 'rpc_create_bill returned no bill_id';
+  END IF;
+
+  PERFORM public._shipment_buckets_append(p_shipment_id, v_ap_kind, v_bill_id, v_currency_code);
+
+  RETURN v_result
+    || jsonb_build_object(
+      'shipment_id', p_shipment_id,
+      'bucket', v_ap_kind,
+      'ap_kind', v_ap_kind,
+      'source_key', v_source_key,
+      'cost_lines', COALESCE((
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'cost_component', COALESCE(NULLIF(btrim(bl.meta->>'cost_component'), ''), 'misc'),
+            'amount', bl.line_total,
+            'description', bl.description
+          )
+          ORDER BY bl.line_no
+        )
+        FROM money_kernel.bill_lines bl
+        WHERE bl.tenant_id = v_parent
+          AND bl.bill_id = v_bill_id
+      ), '[]'::jsonb)
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.update_shipment_ap_bill_v2(
+  p_shipment_id bigint,
+  p_bill_id bigint,
+  p_payload jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
+AS $$
+DECLARE
+  v_ship public.global_shipments%ROWTYPE;
+  v_parent bigint;
+  v_bill money_kernel.bills;
+  v_lines jsonb := '[]'::jsonb;
+  v_line jsonb;
+  v_line_obj jsonb;
+  v_amount numeric(18, 4);
+  v_component text;
+  v_desc text;
+  v_update_payload jsonb;
+  v_result jsonb;
+BEGIN
+  IF p_shipment_id IS NULL OR p_bill_id IS NULL THEN
+    RAISE EXCEPTION 'shipment_id and bill_id are required';
+  END IF;
+
+  PERFORM public._shipment_money_advisory_lock(p_shipment_id);
+
+  SELECT * INTO v_ship FROM public.global_shipments WHERE id = p_shipment_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'shipment not found';
+  END IF;
+
+  v_parent := v_ship.tenant_id;
+  IF NOT public.user_can_manage_books_tenant(v_parent) THEN
+    RAISE EXCEPTION 'Permission denied';
+  END IF;
+
+  IF public.global_shipment_costs_are_locked(v_ship) THEN
+    RAISE EXCEPTION 'shipment costs are locked';
+  END IF;
+
+  IF NOT public._shipment_bill_belongs_to_shipment(p_shipment_id, p_bill_id) THEN
+    RAISE EXCEPTION 'bill % is not linked to shipment %', p_bill_id, p_shipment_id;
+  END IF;
+
+  SELECT * INTO v_bill FROM money_kernel.bills
+   WHERE id = p_bill_id AND tenant_id = v_parent;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'bill not found';
+  END IF;
+  IF v_bill.status <> 'draft' THEN
+    RAISE EXCEPTION 'only draft bills can be edited';
+  END IF;
+
+  IF p_payload ? 'lines' THEN
+    FOR v_line IN SELECT * FROM jsonb_array_elements(p_payload->'lines')
+    LOOP
+      v_amount := round(COALESCE((v_line->>'amount')::numeric, (v_line->>'unit_price')::numeric, 0), 2);
+      IF v_amount <= 0 THEN
+        CONTINUE;
+      END IF;
+      v_component := COALESCE(NULLIF(btrim(v_line->>'cost_component'), ''), 'misc');
+      v_desc := COALESCE(
+        NULLIF(btrim(v_line->>'description'), ''),
+        initcap(replace(v_component, '_', ' '))
+      );
+      v_line_obj := jsonb_build_object(
+        'item_kind', 'charge',
+        'description', v_desc,
+        'quantity', 1,
+        'unit_price', v_amount,
+        'line_total', v_amount,
+        'meta', jsonb_build_object(
+          'cost_component', v_component,
+          'is_capitalizable', COALESCE((v_line->>'is_capitalizable')::boolean, true),
+          'shipment_id', p_shipment_id
+        )
+      );
+      v_lines := v_lines || jsonb_build_array(v_line_obj);
+    END LOOP;
+
+    IF jsonb_array_length(v_lines) = 0 THEN
+      RAISE EXCEPTION 'invalid_arguments: at least one positive amount line required';
+    END IF;
+  END IF;
+
+  v_update_payload := COALESCE(p_payload, '{}'::jsonb);
+  IF jsonb_array_length(v_lines) > 0 THEN
+    v_update_payload := v_update_payload || jsonb_build_object('lines', v_lines);
+  END IF;
+
+  v_result := public.rpc_update_draft_bill_v2(v_parent, p_bill_id, v_update_payload);
+
+  RETURN v_result
+    || jsonb_build_object(
+      'shipment_id', p_shipment_id,
+      'bill_id', p_bill_id,
+      'cost_lines', COALESCE((
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'cost_component', COALESCE(NULLIF(btrim(bl.meta->>'cost_component'), ''), 'misc'),
+            'amount', bl.line_total,
+            'description', bl.description
+          )
+          ORDER BY bl.line_no
+        )
+        FROM money_kernel.bill_lines bl
+        WHERE bl.tenant_id = v_parent
+          AND bl.bill_id = p_bill_id
+      ), '[]'::jsonb)
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.void_shipment_ap_bill_v2(p_shipment_id bigint, p_bill_id bigint)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
+AS $$
+DECLARE
+  v_parent bigint;
+  v_bill money_kernel.bills;
+  v_result jsonb;
+BEGIN
+  PERFORM public._shipment_money_advisory_lock(p_shipment_id);
+
+  SELECT tenant_id INTO v_parent FROM public.global_shipments WHERE id = p_shipment_id FOR UPDATE;
+  IF v_parent IS NULL THEN
+    RAISE EXCEPTION 'shipment not found';
+  END IF;
+
+  IF NOT public.user_can_manage_books_tenant(v_parent) THEN
+    RAISE EXCEPTION 'Permission denied';
+  END IF;
+
+  IF NOT public._shipment_bill_belongs_to_shipment(p_shipment_id, p_bill_id) THEN
+    RAISE EXCEPTION 'bill % is not linked to shipment %', p_bill_id, p_shipment_id;
+  END IF;
+
+  SELECT * INTO v_bill FROM money_kernel.bills
+   WHERE id = p_bill_id AND tenant_id = v_parent;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'bill not found';
+  END IF;
+  IF v_bill.status <> 'draft' THEN
+    RAISE EXCEPTION 'only draft bills can be deleted (voided)';
+  END IF;
+
+  v_result := public.rpc_void_bill(v_parent, p_bill_id);
+  PERFORM public._shipment_buckets_remove(p_shipment_id, p_bill_id);
+
+  RETURN v_result || jsonb_build_object('shipment_id', p_shipment_id, 'bill_id', p_bill_id);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.issue_shipment_ap_drafts_v2(p_shipment_id bigint)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
+AS $$
+DECLARE
+  v_parent bigint;
+  v_buckets jsonb;
+  v_elem jsonb;
+  v_bill_id bigint;
+  v_bill money_kernel.bills;
+  v_issued jsonb := '[]'::jsonb;
+  v_result jsonb;
+BEGIN
+  SELECT tenant_id, COALESCE(buckets, '[]'::jsonb)
+    INTO v_parent, v_buckets
+    FROM public.global_shipments
+   WHERE id = p_shipment_id
+   FOR UPDATE;
+
+  IF v_parent IS NULL THEN
+    RAISE EXCEPTION 'shipment not found';
+  END IF;
+
+  IF NOT public.user_can_manage_books_tenant(v_parent) THEN
+    RAISE EXCEPTION 'Permission denied';
+  END IF;
+
+  FOR v_elem IN SELECT value FROM jsonb_array_elements(v_buckets)
+  LOOP
+    v_bill_id := NULLIF(v_elem->>'bill_id', '')::bigint;
+    IF v_bill_id IS NULL THEN
+      CONTINUE;
+    END IF;
+
+    SELECT * INTO v_bill FROM money_kernel.bills
+     WHERE id = v_bill_id AND tenant_id = v_parent;
+
+    IF NOT FOUND OR v_bill.status IN ('voided', 'issued', 'partial', 'paid', 'written_off') THEN
+      CONTINUE;
+    END IF;
+
+    IF v_bill.status = 'draft' THEN
+      v_result := public.rpc_issue_bill(v_parent, v_bill_id);
+      v_issued := v_issued || jsonb_build_array(v_result);
+    END IF;
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'shipment_id', p_shipment_id,
+    'issued', v_issued
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public._shipment_kernel_capitalizable_bucket_total(
+  p_shipment_id bigint,
+  p_bucket text
+)
+RETURNS numeric
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
+AS $$
+  SELECT COALESCE(SUM(bl.line_total), 0)
+    FROM money_kernel.bills b
+    JOIN money_kernel.bill_lines bl ON bl.bill_id = b.id AND bl.tenant_id = b.tenant_id
+   WHERE b.kind = 'shipment_cost_ap'
+     AND b.source_type = 'shipment_cost'
+     AND b.source_id = p_shipment_id::text
+     AND b.status <> 'voided'
+     AND COALESCE(b.meta->>'ap_kind', split_part(COALESCE(b.source_key, ''), ':', 1)) = p_bucket
+     AND COALESCE((bl.meta->>'is_capitalizable')::boolean, true) = true;
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_shipment_settings_finance_bundle(p_shipment_id bigint)
@@ -694,6 +1604,7 @@ SET search_path TO public
 AS $$
 declare
   v_parent bigint;
+  v_buckets jsonb;
   v_cost_entries jsonb;
   v_ap_bills jsonb;
   v_ap_fx jsonb;
@@ -701,7 +1612,8 @@ declare
   v_elem jsonb;
   v_slim jsonb := '[]'::jsonb;
 begin
-  select gs.tenant_id into v_parent
+  select gs.tenant_id, coalesce(gs.buckets, '[]'::jsonb)
+    into v_parent, v_buckets
   from public.global_shipments gs
   where gs.id = p_shipment_id;
 
@@ -721,31 +1633,8 @@ begin
     raise exception 'not allowed';
   end if;
 
-  perform public.ensure_global_shipment_cost_entries_from_header(p_shipment_id);
-
+  v_cost_entries := '[]'::jsonb;
   v_sid := p_shipment_id::text;
-
-  select coalesce(
-    jsonb_agg(
-      jsonb_build_object(
-        'id', ce.id,
-        'shipment_id', ce.shipment_id,
-        'cost_bucket', ce.cost_bucket,
-        'cost_component', ce.cost_component,
-        'is_capitalizable', ce.is_capitalizable,
-        'description', ce.description,
-        'amount', ce.amount,
-        'currency_id', ce.currency_id,
-        'metadata', ce.metadata,
-        'section_id', ce.section_id
-      )
-      order by ce.cost_bucket, ce.cost_component, ce.id
-    ),
-    '[]'::jsonb
-  )
-  into v_cost_entries
-  from public.global_shipment_cost_entries ce
-  where ce.shipment_id = p_shipment_id;
 
   for v_elem in
     select value
@@ -774,7 +1663,8 @@ begin
           nullif(v_elem->>'due_amount', '')::numeric,
           0
         ),
-        'net_balances', v_elem->'net_balances'
+        'net_balances', v_elem->'net_balances',
+        'cost_lines', coalesce(v_elem->'cost_lines', '[]'::jsonb)
       )
     );
   end loop;
@@ -784,9 +1674,11 @@ begin
   v_ap_fx := v_ap_fx - 'blended_rate';
 
   return jsonb_build_object(
+    'buckets', v_buckets,
     'cost_entries', v_cost_entries,
     'ap_bills', v_ap_bills,
-    'ap_fx', v_ap_fx
+    'ap_fx', v_ap_fx,
+    'ap_issue_parties', public._resolve_shipment_cost_ap_kernel_parties(p_shipment_id)
   );
 end;
 $$;
@@ -817,6 +1709,11 @@ $$;
 GRANT EXECUTE ON FUNCTION public._shipment_money_advisory_lock(bigint) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public._shipment_money_lock_shipment_ids(bigint[]) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_shipment_money_kernel_bundle(bigint) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public._resolve_shipment_cost_ap_kernel_parties(bigint) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.create_shipment_ap_bill_v2(bigint, text, jsonb) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.update_shipment_ap_bill_v2(bigint, bigint, jsonb) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.void_shipment_ap_bill_v2(bigint, bigint) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.issue_shipment_ap_drafts_v2(bigint) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.post_shipment_ap_money_out(
   bigint[], bigint, bigint, date, numeric, text, text, text, bigint, jsonb, jsonb, text, numeric, numeric, text, text, text
 ) TO authenticated, service_role;

@@ -5,7 +5,6 @@ import type {
   UpsertShipmentCostEntryPayload,
 } from '../types/shipmentCostEntry';
 import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
-
 const db = supabase as any;
 
 export interface SaveShipmentCostEntriesOptions {
@@ -105,14 +104,33 @@ const remove = async (id: number): Promise<void> => {
   if (error) throw error;
 };
 
-const issueCostEntryAp = async (costEntryId: number): Promise<{ id: number }> => {
-  const { data, error } = await db.rpc('issue_shipment_cost_entry_ap', {
+export type IssueShipmentCostEntryApV2Result = {
+  bill_id?: number | string;
+  invoice_no?: string;
+  status?: string;
+  total_amount?: number | string;
+  due_amount?: number | string;
+  cost_entry_id?: number | string;
+  source_type?: string;
+  source_id?: string;
+  source_key?: string;
+  ap_kind?: string;
+};
+
+/** Create + issue AP via adapter RPC (kernel profiles + rpc_create_bill server-side). */
+const issueCostEntryApViaMoneyKernel = async (
+  costEntryId: number,
+): Promise<IssueShipmentCostEntryApV2Result & { bill_id: number }> => {
+  const { data, error } = await db.rpc('issue_shipment_cost_entry_ap_v2', {
     p_cost_entry_id: costEntryId,
   });
   if (error) throw error;
-  const row = data as { id?: number } | null;
-  if (!row?.id) throw new Error('issue_shipment_cost_entry_ap returned no bill');
-  return { id: row.id };
+  const result = (data ?? {}) as IssueShipmentCostEntryApV2Result;
+  const billId = Number(result.bill_id);
+  if (!Number.isFinite(billId) || billId <= 0) {
+    throw new Error('issue_shipment_cost_entry_ap_v2 returned no bill_id');
+  }
+  return { ...result, bill_id: billId };
 };
 
 /** Post-finalize only — replaces entries and re-stamps landed_cost_bdt. No wallet. */
@@ -135,5 +153,5 @@ export const globalShipmentCostEntryRepository = {
   upsert,
   remove,
   revise,
-  issueCostEntryAp,
+  issueCostEntryApViaMoneyKernel,
 };

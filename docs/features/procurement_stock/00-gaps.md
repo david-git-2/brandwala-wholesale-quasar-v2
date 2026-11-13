@@ -11,6 +11,7 @@
 | PS12 | ~~partial~~ | Cost entries = record only; AP on bucket bills | **Done (2026-10):** settle columns dropped; `pay_settle_shipment_costs` stub; FX from AP pays ([WA15](../bills_pays/00-gaps.md)) |
 | PS13 | partial | Unit stamp = capitalizable rows, split per [spec US-1](spec.md) | `stamp_global_shipment_landed_costs` / `calculate_landed_unit_cost` use only material + freight + blended FX | Add customs/handling/finance/other BDT pools; section-scoped rows; UI `calculateLineLandedCostBdt` same formula |
 | PS14 | not_built | AP sync: one bill per bucket **× currency** ([spec US-1](spec.md), [WA15](../bills_pays/00-gaps.md)) | One AP bill per bucket; multi-currency bucket → mixed invoice | Same as WA15 SQL/UI; shipment summary copy (“one bill per bucket”) |
+| PS35 | shipped | **Option A (as-built):** International Costs = kernel AP bill list; `buckets`; P4 dropped `global_shipment_cost_entries` | Entry grid + per-row issue | [bills spec § Shipment cost AP](../bills/spec.md#shipment-cost-ap) · local/domestic cost grid still in UI but needs PS8 wiring without cost_entries |
 | PS15 | design | Customer delivery / FO entity (trips) | Header + `stock_picks` JSON only | target: [preorder-fulfillment-flow Ch 4–6 § G1](../../preorder-fulfillment-flow.md) |
 | PS16 | design | Mark delivered guards open picks / bills | `staff_set_catalog_delivered_qty` whole order | target: [Ch 8 § G2](../../preorder-fulfillment-flow.md) |
 | PS17 | design | Partially delivered header / customer state | `procuring` \| `packed` \| `delivered` only | target: [Ch 8–9 § G3](../../preorder-fulfillment-flow.md) |
@@ -30,5 +31,5 @@
 | PS31 | partial | Dispatch stock-out + COGS snapshot on trip line | **`dispatch_delivery_paper`** + line `unit_cost_landed_snapshot`; idempotent bill commit | **Done (2026-11):** RPCs shipped; FE dispatch button pending |
 | PS32 | partial | Short-pick exception on delivery paper | `record_delivery_paper_short_pick` + `delivery_paper_pick_exceptions` | FE short-pick dialog ([PS21](00-gaps.md) backend done) |
 | PS33 | ~~partial~~ | RTV uses `vendor_return` movement type | **Done:** `post_stock_movement` + `return_shipment_to_vendor` | — |
-| PS34 | doc_wrong | Inbound QC as separate WMS module | QC = shipment extras + `post_shipment_outcome_stock` | [stock-spine Tier 2](../../kernel/stock-spine.md) |
+| PS34 | doc_wrong | Inbound QC as separate WMS module | QC = shipment extras + `post_shipment_outcome_stock` | [stock-spine Tier 2](stock-spine.md) |
 | PS35 | design | `customer_deliveries` entity vs delivery paper | Paper is as-built trip; no `customer_deliveries` table | target: [PS15](00-gaps.md) · rename docs only |

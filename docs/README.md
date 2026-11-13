@@ -1,6 +1,6 @@
 # TradeFlow BD — docs index
 
-Load **this file first**. **Money:** [money-spine-v2](features/bills_pays/money-spine-v2/README.md). PR card: [REFERENCE](kernel/REFERENCE.md). Tests: [tests.md](features/bills_pays/tests.md) → `supabase/tests/`. Other modules: `spec.md` + `00-gaps.md`. Then code. See [STRUCTURE.md](STRUCTURE.md).
+Load **this file first**. **Money system:** [bridge spec § Atlas](features/money_bill_bridge/spec.md#atlas) · [money](features/money/spec.md) · [bills](features/bills/spec.md) · [bridge](features/money_bill_bridge/spec.md). Tests: [tests.md](features/bills_pays/tests.md) → `supabase/tests/`. Other modules: `spec.md` + `00-gaps.md`. Then code. See [STRUCTURE.md](STRUCTURE.md).
 
 Missing fact → `DOC_GAP` (`.cursor/rules/docs-first.mdc`). Do not guess.
 
@@ -12,14 +12,18 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 
 | Question | Open |
 | :--- | :--- |
-| Daily staff workflows (operating manual) | App `/operating-manual` · [manual README](manual/README.md) |
+| Daily staff workflows (operating manual) | App `/operating-manual` only (`web/src/modules/operating_manual/`) |
+| Product scenario catalogs (what to cover / build) | [product-scenarios README](product-scenarios/README.md) |
 | Platform guide (kernels, modules) | App `/docs` |
 | Who logs in where, which features? | [scopes](architecture/scopes.md) |
 | How this company sells (BW, pre-order, K-beauty, thrift) | [business-models](architecture/business-models.md) |
 | Pre-order flow (target ops story; as-built snapshot) | [preorder-fulfillment-flow](preorder-fulfillment-flow.md) · [as-built](preorder-fulfillment-flow-as-built.md) |
-| **All money spine details** | [money-spine-v2](features/bills_pays/money-spine-v2/README.md) |
-| Money PR / invariants | [kernel REFERENCE](kernel/REFERENCE.md) |
-| Warehouse stock movements (spine) | [stock-spine](kernel/stock-spine.md) · [kernel pack](kernel/README.md) |
+| **Money system — atlas** | [bridge spec § Atlas](features/money_bill_bridge/spec.md#atlas) |
+| Cash / lots / treasury | [money](features/money/spec.md) |
+| Bills / AP / AR paper | [bills](features/bills/spec.md) |
+| Pay ↔ bill settle | [bridge](features/money_bill_bridge/spec.md) |
+| Document numbering | [architecture/document-numbering](architecture/document-numbering.md) |
+| Warehouse stock movements (spine) | [stock-spine](features/procurement_stock/stock-spine.md) |
 | What numbers go on reports (sales vs cash vs COD) | [reporting spec](features/reporting_treasury/spec.md) |
 | What is unfinished / wrong in a module? | That module’s `00-gaps.md` |
 | Product roadmap (Now / Next / Later) | [ROADMAP.md](ROADMAP.md) · feature IDs in [BACKLOG.md](BACKLOG.md) |
@@ -49,7 +53,10 @@ UI under `web/src/modules/` unless noted. Agent: `spec.md` + `00-gaps.md`. Surfa
 | Procurement | [spec](features/procurement_stock/spec.md) | [gaps](features/procurement_stock/00-gaps.md) | `procurement_stock/`, `vendor/` | **split** `procurement/` |
 | Products | [spec](features/products/spec.md) | [gaps](features/products/00-gaps.md) | `products/` | `public.sql` |
 | Pre-order (PBC) | [spec](features/product_based_costing/spec.md) | [gaps](features/product_based_costing/00-gaps.md) | `product_based_costing/`, `costingFile/` | `public.sql` |
-| **Bills & pays** | [money-spine-v2](features/bills_pays/money-spine-v2/README.md) | [gaps](features/bills_pays/00-gaps.md) | desks: `sales_invoice/`, `wallet/` (code names) | `supabase/schemas/bills_pays/` (live may lag v2) |
+| **Money** (cash) | [spec](features/money/spec.md) | — | `wallet/` | `supabase/schemas/money_kernel_v2/` |
+| **Bills** (paper) | [spec](features/bills/spec.md) | [gaps](features/bills/00-gaps.md) | `sales_invoice/`, AP desks | `supabase/schemas/money_kernel_v2/` |
+| **Money↔bill bridge** | [spec](features/money_bill_bridge/spec.md) | [gaps](features/money_bill_bridge/00-gaps.md) | pay dialogs | `supabase/schemas/money_kernel_v2/` |
+| **Bills & pays (desks)** | [redirect](features/bills_pays/spec.md) | [gaps](features/bills_pays/00-gaps.md) | `sales_invoice/`, `wallet/`, `bills_pays/` | same |
 | After-sales | [spec](features/after_sales/spec.md) | [gaps](features/after_sales/00-gaps.md) | `after_sales/` | invoice + shop_order RPCs |
 | Shop / dropship | [spec](features/shop_order/spec.md) | [gaps](features/shop_order/00-gaps.md) | `shop_order/` | **split** `shop_order/` |
 | Customer | [spec](features/customer/spec.md) | [gaps](features/customer/00-gaps.md) | `customer/` | `public.sql` |
@@ -72,8 +79,8 @@ Detail lives in the linked spec — do not duplicate here.
 | :--- | :--- |
 | Login surfaces | [scopes](architecture/scopes.md) |
 | BW / pre-order / Koba / thrift | [business-models](architecture/business-models.md) |
-| Stock, receive, Delivery paper | [procurement spec](features/procurement_stock/spec.md) · [stock spine](kernel/stock-spine.md) |
-| Bills, pays, cashbook, money layers | [money-spine-v2](features/bills_pays/money-spine-v2/README.md) |
+| Stock, receive, Delivery paper | [procurement spec](features/procurement_stock/spec.md) · [stock spine](features/procurement_stock/stock-spine.md) |
+| Bills, pays, cashbook, money layers | [bridge spec § Atlas](features/money_bill_bridge/spec.md#atlas) |
 | Shop / dropship channel | [shop_order spec](features/shop_order/spec.md) |
 | Investor portal v1 read-only | [investor_capital spec](features/investor_capital/spec.md) |
 | UI pattern in a module | Copy that module’s Pinia or Vue Query — do not convert |
