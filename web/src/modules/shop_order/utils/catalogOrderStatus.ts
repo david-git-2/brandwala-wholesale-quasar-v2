@@ -397,7 +397,18 @@ export function isCatalogStaffReadOnly(status: string | null | undefined): boole
 
 /** Staff may edit final-offer prices only after the customer counters. */
 export function isCatalogFinalOfferEditable(status: string | null | undefined): boolean {
+  if (isCatalogOfferPriceLocked(status)) return false;
   return normalizeCatalogOrderStatus(status) === 'countered';
+}
+
+/** 1st/final offer unit prices are frozen once procurement (fulfillment) has started. */
+export function isCatalogOfferPriceLocked(status: string | null | undefined): boolean {
+  return isCatalogCustomerFulfillmentPhase(status);
+}
+
+/** FX / cargo / profit rates cannot change after procurement has started. */
+export function isCatalogRatesLocked(status: string | null | undefined): boolean {
+  return isCatalogOfferPriceLocked(status);
 }
 
 /** Procured qty is managed on the procurement demand desk, not on the order page. */

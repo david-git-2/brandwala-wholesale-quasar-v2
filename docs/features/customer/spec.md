@@ -15,7 +15,7 @@
 | Need | Path |
 | :--- | :--- |
 | Tables, RPCs | Grep `customer_groups`, `create_customer_account` in `public.sql` |
-| Money party | [bills_pays spec](../bills_pays/spec.md) — `profiles` (`profile_type = customer`) |
+| Money party | [money spec](../money/spec.md) — `profiles` (`profile_type = customer`) |
 | Pages | `web/src/modules/customer/pages/` |
 | Recipient profiles | Same hub; `parentModuleKey: customer` |
 
@@ -25,7 +25,7 @@
 | :--- | :--- |
 | Surfaces | `app` hub; `shop` as **group members** (not recipients) |
 | In | Customer group (who pays), **profile** (bill-to), members, dues. **Recipient profiles** (parcel) in same hub |
-| Out | Shop orders; ledger posting ([bills_pays](../bills_pays/spec.md)); no separate `recipient/` pack |
+| Out | Shop orders; ledger posting ([bridge](../money_bill_bridge/spec.md)); no separate `recipient/` pack |
 
 Customer ≠ recipient: group/wallet vs delivery name/phone/address. Invoice/dropship dialogs pick a recipient.
 

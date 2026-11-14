@@ -16,7 +16,7 @@
 | Need | Path |
 | :--- | :--- |
 | **Stock spine** (Tier 1/2 warehouse actions, RPC index, dispatch vs issue) | [stock-spine.md](stock-spine.md) |
-| Inbound ↔ money kernel (actions, RPCs, gaps) | [money-kernel-wiring.md](money-kernel-wiring.md) |
+| Inbound ↔ money kernel | Below **Inbound ↔ money**; AP shape [bills § Shipment cost AP](../bills/spec.md#shipment-cost-ap); gaps [bills_pays/00-gaps](../bills_pays/00-gaps.md) |
 | ERD / columns | `/dev/document` → **Schema** → Procurement |
 | Tables, types, RLS, RPCs | `supabase/schemas/procurement/` — grep `03_rpcs.sql` for bodies |
 | Pages / wiring | `web/src/modules/procurement_stock/pages/` + grep `procurementStockQueryKeys` |
@@ -29,6 +29,20 @@
 | Surfaces | `app` only |
 | In | Shipments, sections, landed + **local costs**, bins, `global_stocks`, movements, vendors, outcomes, close, Demand / **Delivery paper** |
 | Out | Shop/Koba/thrift/PBC formulas; invoice issue; cost entries ≠ wallet pay. Retire allocations ([PS9](00-gaps.md)). Shelf damage = **movement**, not new inbound general row. |
+
+## Inbound ↔ money
+
+Procurement never DMLs kernel tables. Wrappers: `supabase/schemas/bills_pays/07_shipment_money_wrappers.sql`. Product: [bridge § Atlas](../money_bill_bridge/spec.md#atlas).
+
+| Job | RPC / layer |
+| :--- | :--- |
+| Sync / issue AP drafts | `sync_shipment_ap_bills`, `issue_shipment_ap_bills` |
+| Costs tab draft CRUD | `create_shipment_ap_bill_v2`, `update_shipment_ap_bill_v2`, `void_shipment_ap_bill_v2` |
+| Read balances + AP list | `get_shipment_money_kernel_bundle` |
+| Pay vendor on shipment | `post_shipment_ap_money_out` (via `apPayoutService`) |
+| Bill shape / `source_*` | [bills § Shipment cost AP](../bills/spec.md#shipment-cost-ap) |
+| Web entry | `shipmentMoneyKernelRepository`, `globalShipmentStore.loadSettingsFinanceBundle` |
+| Cutover gaps | [bills_pays/00-gaps](../bills_pays/00-gaps.md) WA15, BP8, BP9 |
 
 ## Status, flags, receive
 

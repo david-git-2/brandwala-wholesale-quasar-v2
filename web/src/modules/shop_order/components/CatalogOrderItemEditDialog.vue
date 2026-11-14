@@ -211,7 +211,7 @@
 import { ref, computed, watch } from 'vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShopOrder, ShopOrderItem } from '../types';
-import { isCatalogFirstOfferLocked, isCatalogFinalOfferEditable, isCatalogStaffReadOnly } from '../utils/catalogOrderStatus';
+import { isCatalogFirstOfferLocked, isCatalogFinalOfferEditable, isCatalogOfferPriceLocked, isCatalogStaffReadOnly } from '../utils/catalogOrderStatus';
 import { getFinalOfferUnitAmount } from '../utils/catalogPricingUtils';
 
 const props = defineProps<{
@@ -233,7 +233,10 @@ const FX = computed(() => props.order?.conversion_rate ?? 140);
 const cargoRate = computed(() => props.order?.cargo_rate ?? 0);
 const profitRate = computed(() => props.order?.profit_rate ?? 25);
 const profitBasis = computed(() => props.order?.profit_basis || 'total_cost');
-const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(props.order?.status));
+const isOfferPriceLocked = computed(() => isCatalogOfferPriceLocked(props.order?.status));
+const isFirstOfferLocked = computed(
+  () => isCatalogFirstOfferLocked(props.order?.status) || isOfferPriceLocked.value,
+);
 const isFinalOfferEditable = computed(() => isCatalogFinalOfferEditable(props.order?.status));
 const isStaffReadOnly = computed(() => isCatalogStaffReadOnly(props.order?.status));
 

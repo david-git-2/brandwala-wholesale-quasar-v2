@@ -7,7 +7,7 @@
 | Spec | `docs/features/investor_capital/spec.md` + [00-gaps](00-gaps.md) |
 | UI | `investor_capital/`, `investor_portal/` |
 | SQL | Stub `investor/`; live `investors`, `shipment_investments` in `public.sql` / procurement tables |
-| Cash | [bills_pays spec](../bills_pays/spec.md) — `entity_type = investor` via `record_ledger_transaction` |
+| Cash | [money spec](../money/spec.md) — `entity_type = investor` via `record_ledger_transaction` |
 | Access | `investor` read-only portal; staff in `app` |
 
 ## Where to look

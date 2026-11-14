@@ -17,7 +17,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Platform guide (kernels, modules) | App `/docs` |
 | Who logs in where, which features? | [scopes](architecture/scopes.md) |
 | How this company sells (BW, pre-order, K-beauty, thrift) | [business-models](architecture/business-models.md) |
-| Pre-order flow (target ops story; as-built snapshot) | [preorder-fulfillment-flow](preorder-fulfillment-flow.md) · [as-built](preorder-fulfillment-flow-as-built.md) |
+| Pre-order flow (target ops story — load only for that task) | [preorder-fulfillment-flow](preorder-fulfillment-flow.md) |
 | **Money system — atlas** | [bridge spec § Atlas](features/money_bill_bridge/spec.md#atlas) |
 | Cash / lots / treasury | [money](features/money/spec.md) |
 | Bills / AP / AR paper | [bills](features/bills/spec.md) |
@@ -32,7 +32,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Where is the code / SQL? | [Module map](#module-map) |
 | Tables / RPCs / button wiring | `supabase/schemas/` + module code |
 | Login / grants | [tenant_auth spec](features/tenant_auth/spec.md) |
-| Collapse `parent_tenant_id` into `tenant_id` | [tenant-id-cutover](architecture/tenant-id-cutover.md) — local phases **1–10** done; **prod = phase 11** |
+| Collapse `parent_tenant_id` into `tenant_id` (prod phase 11 only) | [tenant-id-cutover](architecture/tenant-id-cutover.md) — do not load unless running that cutover |
 | List page look | [ui-standards](guides/ui-standards.md) |
 | Deploy web to Cloudflare Pages (`frontend:prod`) | [cloudflare-pages-deploy](guides/cloudflare-pages-deploy.md) |
 | Pinia vs Vue Query / toasts | [state](architecture/state.md) |
@@ -55,8 +55,8 @@ UI under `web/src/modules/` unless noted. Agent: `spec.md` + `00-gaps.md`. Surfa
 | Pre-order (PBC) | [spec](features/product_based_costing/spec.md) | [gaps](features/product_based_costing/00-gaps.md) | `product_based_costing/`, `costingFile/` | `public.sql` |
 | **Money** (cash) | [spec](features/money/spec.md) | — | `wallet/` | `supabase/schemas/money_kernel_v2/` |
 | **Bills** (paper) | [spec](features/bills/spec.md) | [gaps](features/bills/00-gaps.md) | `sales_invoice/`, AP desks | `supabase/schemas/money_kernel_v2/` |
-| **Money↔bill bridge** | [spec](features/money_bill_bridge/spec.md) | [gaps](features/money_bill_bridge/00-gaps.md) | pay dialogs | `supabase/schemas/money_kernel_v2/` |
-| **Bills & pays (desks)** | [redirect](features/bills_pays/spec.md) | [gaps](features/bills_pays/00-gaps.md) | `sales_invoice/`, `wallet/`, `bills_pays/` | same |
+| **Money↔bill bridge** | [spec](features/money_bill_bridge/spec.md) | [gaps](features/money_bill_bridge/spec.md#gaps) | pay dialogs | `supabase/schemas/money_kernel_v2/` |
+| **Bills & pays (desks)** | [atlas](features/money_bill_bridge/spec.md#atlas) | [gaps](features/bills_pays/00-gaps.md) | `sales_invoice/`, `wallet/`, `bills_pays/` | same |
 | After-sales | [spec](features/after_sales/spec.md) | [gaps](features/after_sales/00-gaps.md) | `after_sales/` | invoice + shop_order RPCs |
 | Shop / dropship | [spec](features/shop_order/spec.md) | [gaps](features/shop_order/00-gaps.md) | `shop_order/` | **split** `shop_order/` |
 | Customer | [spec](features/customer/spec.md) | [gaps](features/customer/00-gaps.md) | `customer/` | `public.sql` |

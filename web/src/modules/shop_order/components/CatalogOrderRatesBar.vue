@@ -20,8 +20,8 @@
           step="0.01"
           class="bg-white soft-input"
           label="Conversion Rate (FX)"
-          :readonly="isFirstOfferLocked"
-          :class="{ 'bg-grey-2': isFirstOfferLocked }"
+          :readonly="isRateInputsLocked"
+          :class="{ 'bg-grey-2': isRateInputsLocked }"
           @update:model-value="onRateChange"
         />
       </div>
@@ -35,8 +35,8 @@
           step="0.01"
           class="bg-white soft-input"
           label="Cargo Rate (kg/GBP)"
-          :readonly="isFirstOfferLocked"
-          :class="{ 'bg-grey-2': isFirstOfferLocked }"
+          :readonly="isRateInputsLocked"
+          :class="{ 'bg-grey-2': isRateInputsLocked }"
           @update:model-value="onRateChange"
         />
       </div>
@@ -50,8 +50,8 @@
           step="0.01"
           class="bg-white soft-input"
           label="1st Offer Profit Rate (%)"
-          :readonly="isFirstOfferLocked"
-          :class="{ 'bg-grey-2': isFirstOfferLocked }"
+          :readonly="isRateInputsLocked"
+          :class="{ 'bg-grey-2': isRateInputsLocked }"
           @update:model-value="onRateChange"
         />
       </div>
@@ -65,8 +65,8 @@
           step="0.01"
           class="bg-white soft-input"
           label="Final Offer Profit Rate (%)"
-          :readonly="isStaffReadOnly"
-          :class="{ 'bg-grey-2': isStaffReadOnly }"
+          :readonly="isRateInputsLocked || isStaffReadOnly"
+          :class="{ 'bg-grey-2': isRateInputsLocked || isStaffReadOnly }"
           @update:model-value="onRateChange"
         />
       </div>
@@ -81,8 +81,8 @@
           :options="basisOptions"
           class="bg-white soft-input"
           label="Profit Basis"
-          :readonly="isFirstOfferLocked"
-          :disable="isFirstOfferLocked"
+          :readonly="isRateInputsLocked"
+          :disable="isRateInputsLocked"
           @update:model-value="onRateChange"
         />
       </div>
@@ -96,10 +96,11 @@
           class="full-width q-py-xs"
           label="Apply Rates"
           :loading="saving"
-          :disable="isStaffReadOnly"
+          :disable="isRateSaveDisabled"
           @click="onSave"
         >
-          <q-tooltip v-if="isStaffReadOnly">Rates are locked while the customer reviews the offer</q-tooltip>
+          <q-tooltip v-if="isRatesLocked">Rates are locked after procurement has started</q-tooltip>
+          <q-tooltip v-else-if="isStaffReadOnly">Rates are locked while the customer reviews the offer</q-tooltip>
         </q-btn>
       </div>
     </div>
@@ -137,6 +138,7 @@
           <span class="rates-pill__lbl">Basis:</span>
           <span class="rates-pill__val">{{ profitBasisLabel }}</span>
           <q-btn
+            v-if="!isRatesLocked"
             flat
             round
             dense
@@ -171,7 +173,7 @@
             prefix="৳"
             label="FX Rate"
             hide-bottom-space
-            :readonly="isFirstOfferLocked"
+            :readonly="isRateInputsLocked"
             @update:model-value="onRateChange"
           />
         </div>
@@ -186,7 +188,7 @@
             suffix="/kg"
             label="Cargo Rate"
             hide-bottom-space
-            :readonly="isFirstOfferLocked"
+            :readonly="isRateInputsLocked"
             @update:model-value="onRateChange"
           />
         </div>
@@ -200,7 +202,7 @@
             suffix="%"
             label="1st Offer Profit %"
             hide-bottom-space
-            :readonly="isFirstOfferLocked"
+            :readonly="isRateInputsLocked"
             @update:model-value="onRateChange"
           />
         </div>
@@ -214,7 +216,7 @@
             suffix="%"
             label="Final Offer Profit %"
             hide-bottom-space
-            :readonly="isStaffReadOnly"
+            :readonly="isRateInputsLocked || isStaffReadOnly"
             @update:model-value="onRateChange"
           />
         </div>
@@ -228,8 +230,8 @@
             :options="basisOptions"
             label="Profit Basis"
             hide-bottom-space
-            :readonly="isFirstOfferLocked"
-            :disable="isFirstOfferLocked"
+            :readonly="isRateInputsLocked"
+            :disable="isRateInputsLocked"
             @update:model-value="onRateChange"
           />
         </div>
@@ -243,7 +245,7 @@
             label="Save Rates"
             class="rounded-sq-btn q-px-sm"
             :loading="saving"
-            :disable="isStaffReadOnly"
+            :disable="isRateSaveDisabled"
             @click="onSave"
           />
         </div>
@@ -259,6 +261,7 @@ import type { ShopOrder } from '../types';
 import {
   normalizeCatalogOrderStatus,
   isCatalogFirstOfferLocked,
+  isCatalogRatesLocked,
   isCatalogStaffReadOnly,
 } from '../utils/catalogOrderStatus';
 
@@ -313,7 +316,14 @@ const showFinalOfferRate = computed(
 );
 
 const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(props.order?.status));
+const isRatesLocked = computed(() => isCatalogRatesLocked(props.order?.status));
 const isStaffReadOnly = computed(() => isCatalogStaffReadOnly(props.order?.status));
+const isRateInputsLocked = computed(
+  () => isFirstOfferLocked.value || isRatesLocked.value,
+);
+const isRateSaveDisabled = computed(
+  () => isStaffReadOnly.value || isRatesLocked.value,
+);
 
 const basisOptions = [
   { label: 'Total Cost', value: 'total_cost' },
@@ -334,6 +344,9 @@ watch(
       first_offer_rate.value = newOrder.first_offer_rate ?? null;
       final_offer_rate.value = newOrder.final_offer_rate ?? null;
       profit_basis.value = (newOrder.profit_basis as 'purchase' | 'total_cost') || 'total_cost';
+      if (isCatalogRatesLocked(newOrder.status)) {
+        ratesExpanded.value = false;
+      }
     }
   },
   { immediate: true },
@@ -347,7 +360,7 @@ const formulaExplanation = computed(() => {
 });
 
 function onRateChange() {
-  if (isStaffReadOnly.value) {
+  if (isRatesLocked.value || isStaffReadOnly.value) {
     return;
   }
 
@@ -374,7 +387,7 @@ function onRateChange() {
 }
 
 function onSave() {
-  if (isStaffReadOnly.value) {
+  if (isRatesLocked.value || isStaffReadOnly.value) {
     return;
   }
 

@@ -28,6 +28,17 @@ begin
     raise exception 'order not found';
   end if;
 
+  if v_order.status in (
+    'procuring'::public.shop_order_status,
+    'dispatch'::public.shop_order_status,
+    'delivered'::public.shop_order_status,
+    'closed'::public.shop_order_status,
+    'ordered'::public.shop_order_status,
+    'packed'::public.shop_order_status
+  ) and p_payload ?| array['staff_offer_amount', 'final_price_amount', 'is_first_offer_manual', 'is_final_offer_manual'] then
+    raise exception 'offer prices cannot be changed after procurement has started';
+  end if;
+
   update public.shop_order_items soi
   set
     weight_kg = case when p_payload ? 'weight_kg' then (p_payload->>'weight_kg')::numeric else soi.weight_kg end,

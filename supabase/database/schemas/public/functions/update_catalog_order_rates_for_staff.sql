@@ -26,6 +26,17 @@ begin
     raise exception 'order not found';
   end if;
 
+  if v_order.status in (
+    'procuring'::public.shop_order_status,
+    'dispatch'::public.shop_order_status,
+    'delivered'::public.shop_order_status,
+    'closed'::public.shop_order_status,
+    'ordered'::public.shop_order_status,
+    'packed'::public.shop_order_status
+  ) then
+    raise exception 'order rates cannot be changed after procurement has started';
+  end if;
+
   update public.shop_orders o
   set
     conversion_rate = case when p_payload ? 'conversion_rate' then (p_payload->>'conversion_rate')::numeric else o.conversion_rate end,

@@ -243,6 +243,8 @@ import {
 } from '../utils/catalogPricingUtils';
 import {
   isCatalogFirstOfferLocked,
+  isCatalogOfferPriceLocked,
+  isCatalogRatesLocked,
   getStaffCatalogPrimaryAction,
   getStaffCatalogPrimaryActionTargetStatus,
   getCatalogWorkflowStatusConfirmation,
@@ -417,17 +419,28 @@ const handleUpdateCatalogOrderItem = ({
 }) => {
   if (!orderId.value) return;
 
-  let nextPayload = payload;
-  if (isCatalogFirstOfferLocked(currentOrder.value?.status)) {
+  let nextPayload = payload ?? {};
+  const orderStatus = currentOrder.value?.status;
+  if (isCatalogOfferPriceLocked(orderStatus)) {
+    const {
+      staff_offer_amount: _staff,
+      final_price_amount: _final,
+      is_first_offer_manual: _firstManual,
+      is_final_offer_manual: _finalManual,
+      ...rest
+    } = nextPayload;
+    nextPayload = rest;
+  }
+  if (isCatalogFirstOfferLocked(orderStatus)) {
     const {
       cost_price_amount: _cost,
       staff_offer_amount: _staff,
       is_first_offer_manual: _manual,
       ...rest
-    } = payload ?? {};
+    } = nextPayload;
     nextPayload = rest;
-    if (!Object.keys(nextPayload).length) return;
   }
+  if (!Object.keys(nextPayload).length) return;
 
   updateCatalogOrderItem({
     tenantId: authStore.tenantId,
@@ -1036,7 +1049,9 @@ const recalculateOffers = (rates: {
   final_offer_rate?: number | null;
   profit_basis: 'purchase' | 'total_cost';
 }) => {
+  const offerPriceLocked = isCatalogOfferPriceLocked(currentOrder.value?.status);
   const firstOfferLocked = isCatalogFirstOfferLocked(currentOrder.value?.status);
+  if (offerPriceLocked) return;
   orderItems.value.forEach((item) => {
     if (!firstOfferLocked && !item.is_first_offer_manual) {
       item.staff_offer_amount = calculateItemFirstOfferPrice(
@@ -1078,6 +1093,7 @@ const handleChangeRates = (payload: {
   final_offer_rate: number | null;
   profit_basis: 'purchase' | 'total_cost';
 }) => {
+  if (isCatalogRatesLocked(currentOrder.value?.status)) return;
   recalculateOffers(payload);
 };
 
@@ -1090,6 +1106,7 @@ const handleSaveRates = (payload: {
   profit_basis: 'purchase' | 'total_cost';
 }) => {
   if (!orderId.value) return;
+  if (isCatalogRatesLocked(currentOrder.value?.status)) return;
   recalculateOffers(payload);
   saveCatalogRates({ orderId: orderId.value, payload });
 };

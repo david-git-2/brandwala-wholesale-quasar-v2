@@ -11,7 +11,7 @@
 | Dispatch deduct | `dispatch_delivery_paper` — `issue_outbound` movement, `reference_type=delivery_paper` |
 | Sales deduct | `commit_sales_bill_stock` — skips qty when dispatch already posted for linked paper (BP17) |
 | Product scope | **BW** parent-tenant warehouse only — not Koba/thrift ([business-models](../architecture/business-models.md)) |
-| Procurement UX | [spec](spec.md) · inbound money → [money-kernel-wiring](money-kernel-wiring.md) |
+| Procurement UX | [spec](spec.md) · inbound money → spec **Inbound ↔ money** |
 | Trip document | **`delivery_paper`** is the as-built outbound trip (not `customer_deliveries`; see [PS15](../features/procurement_stock/00-gaps.md)) |
 
 ## Scope
@@ -183,6 +183,6 @@ FE wiring for dispatch / cycle count / short-pick RPCs: follow-up after backend 
 | [Money kernel README](README.md) | Bills/pays — orthogonal |
 | [procurement_stock spec](../features/procurement_stock/spec.md) US-2–US-4 | Shipment, demand, delivery paper |
 | [00-gaps](../features/procurement_stock/00-gaps.md) PS30–PS35 | Residual WMS / trip design |
-| [preorder-fulfillment-flow-as-built.md](../preorder-fulfillment-flow-as-built.md) | Target trip narrative vs delivery paper |
+| [preorder-fulfillment-flow.md](../../preorder-fulfillment-flow.md) | Target trip narrative vs delivery paper (load only for that task) |
 
 **Future:** declarative `supabase/schemas/procurement/05_stock_spine.sql`; unify `commit_sales_bill_stock` post path with `create_and_post_stock_movement` (BP17‑r).

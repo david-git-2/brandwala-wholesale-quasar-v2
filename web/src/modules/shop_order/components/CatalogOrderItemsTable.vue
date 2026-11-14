@@ -649,7 +649,7 @@ import {
   getFinalOfferUnitAmount as catalogGetFinalOfferUnitAmount,
   getFinalOfferMargin as catalogGetFinalOfferMargin,
 } from '../utils/catalogPricingUtils';
-import { normalizeCatalogOrderStatus, isCatalogFirstOfferLocked, isCatalogFinalOfferEditable, isCatalogStaffReadOnly, getCatalogItemNegotiationStatusLabel } from '../utils/catalogOrderStatus';
+import { normalizeCatalogOrderStatus, isCatalogFirstOfferLocked, isCatalogFinalOfferEditable, isCatalogOfferPriceLocked, isCatalogStaffReadOnly, getCatalogItemNegotiationStatusLabel } from '../utils/catalogOrderStatus';
 
 const props = withDefaults(
   defineProps<{
@@ -894,7 +894,10 @@ const { entriesForOrderItem, isLoading: deliveryPaperQtyLoading, isError: delive
   });
 
 const isCostingMode = computed(() => normalizeCatalogOrderStatus(status.value) === 'submitted');
-const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(status.value));
+const isOfferPriceLocked = computed(() => isCatalogOfferPriceLocked(status.value));
+const isFirstOfferLocked = computed(
+  () => isCatalogFirstOfferLocked(status.value) || isOfferPriceLocked.value,
+);
 const isFinalOfferEditable = computed(() => isCatalogFinalOfferEditable(status.value));
 const isStaffReadOnly = computed(() => isCatalogStaffReadOnly(status.value));
 
@@ -938,7 +941,7 @@ function getLandedCostRowSell(item: ShopOrderItem): number {
 }
 
 function getFirstOfferUnitAmount(item: ShopOrderItem): number {
-  if (item.is_first_offer_manual) {
+  if (item.is_first_offer_manual || isOfferPriceLocked.value) {
     return Number(item.staff_offer_amount || 0);
   }
   const calc = calculateItemOffer(item);
@@ -975,6 +978,9 @@ function getCounterOfferMargin(item: ShopOrderItem): number {
 }
 
 function getFinalOfferUnitAmount(item: ShopOrderItem): number {
+  if (isOfferPriceLocked.value) {
+    return Number(item.final_price_amount ?? item.staff_offer_amount ?? 0);
+  }
   return catalogGetFinalOfferUnitAmount(
     item,
     {

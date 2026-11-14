@@ -6,7 +6,7 @@ The [roadmap](ROADMAP.md) stays thematic. This file is the **feature-level** ind
 
 | Module | Gaps file | Spec |
 |--------|-----------|------|
-| Bills & pays | [00-gaps.md](features/bills_pays/00-gaps.md) | [spec.md](features/bills_pays/spec.md) |
+| Bills & pays | [00-gaps.md](features/bills_pays/00-gaps.md) | [atlas](features/money_bill_bridge/spec.md#atlas) · [money](features/money/spec.md) · [bills](features/bills/spec.md) |
 | Procurement & stock | [00-gaps.md](features/procurement_stock/00-gaps.md) | [spec.md](features/procurement_stock/spec.md) |
 | Shop / dropship | [00-gaps.md](features/shop_order/00-gaps.md) | [spec.md](features/shop_order/spec.md) |
 | Reporting & treasury | [00-gaps.md](features/reporting_treasury/00-gaps.md) | [spec.md](features/reporting_treasury/spec.md) |

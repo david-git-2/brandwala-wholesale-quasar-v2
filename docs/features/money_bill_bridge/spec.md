@@ -66,19 +66,7 @@ flowchart LR
 
 ---
 
-## `bill_settlements` (bridge fields)
-
-| Field | Purpose |
-| :--- | :--- |
-| `bill_id` | Bill whose `due_amount` drops |
-| `settlement_kind` | `pay` \| `document` |
-| `pays_id` | Set when `pay`; FK → `pays` |
-| `source_bill_id` | Set when `document` (credit note bill) |
-| `allocated_amount` | Amount in **bill currency** |
-| `allocated_books_amount` | BDT slice for this allocation (Σ ≤ `pays.books_amount`, D1) |
-| `idempotency_key` | Optional; permanent per tenant |
-
-**Document** rows are created by bills RPCs, not `rpc_pay_bills`.
+**`bill_settlements`:** `settlement_kind` `pay` \| `document`; `pays_id` or `source_bill_id`; `allocated_amount` in bill currency. DDL: `money_kernel_v2/`. Document rows = bills RPCs only.
 
 ---
 
@@ -94,31 +82,7 @@ All other money/bills RPCs: [money/spec.md](../money/spec.md) · [bills/spec.md]
 
 ### `rpc_pay_bills` (contract)
 
-**Signature (live):** `supabase/schemas/money_kernel_v2/24_money_kernel_rpcs_write.sql`
-
-| Param | Purpose |
-| :--- | :--- |
-| `p_tenant_id` | Tenant |
-| `p_payer_profile_id` | Must match each bill’s `from_profile_id` (debtor) |
-| `p_from_pot_id` | Debit lot/bundle (today: lot id) |
-| `p_amount` | Pay header amount (> 0) |
-| `p_allocations` | JSON array: `[{ "bill_id", "amount" }, …]` — unique `bill_id`, max 200 |
-| `p_to_pot_id` | Optional; must equal **derived** payee lot/bundle (payee profile + bill currency) |
-| `p_lot_debits` | Optional multi-lot debits (`[{ "lot_id", "amount" }, …]`) — split-FX |
-| `p_meta` | Extra json on pays |
-| `p_idempotency_key` | Permanent; replay returns same pays if params match |
-
-**One transaction:** lock bills (ascending id) → lock lots/bundles → insert `pays` → insert `pay_lot_lines` / lines → insert `bill_settlements` → triggers update `bills.paid/due/status`.
-
-**Rules:**
-
-- All bills in one call: same `to_profile_id` (payee) — I32.
-- `from_lot_id` ≠ `to_lot_id` on pays — I30.
-- Bill currency = movement currency; `exchange_rate = 1` on payment — I7b. FX first via `rpc_transfer_p2p`.
-- Sum of allocations ≤ `p_amount`; leftover may stay **unapplied** on pays.
-- Never pay `credit_note` kind with this RPC.
-
-**Target rename:** `p_from_pot_id` / `p_lot_debits` → bundle ids. **AP vendor** (`cashbook_enabled=false`): **no** payee bundle credit; stamp `pays.to_profile_id` = bill creditor ([money](../money/spec.md)). **AR / cashbook payee:** credit payee bundle when `p_to_pot_id` omitted and payee has `cashbook_enabled=true`.
+Grep `24_money_kernel_rpcs_write.sql`. Core: `p_payer_profile_id`, `p_from_pot_id` / `p_lot_debits`, `p_amount`, `p_allocations` (`bill_id` + `amount`, max 200), optional `p_to_pot_id`, idempotency key. One transaction: lock bills → lock lots/bundles → pays + lines + `bill_settlements`. Rules: I30/I32, I7b same currency, no `credit_note`, AP vendor = debit payer only ([money](../money/spec.md)).
 
 ---
 
@@ -168,27 +132,9 @@ Paper invariants: [bills/spec.md](../bills/spec.md). Cash invariants: [money/spe
 
 ---
 
-## Test matrix
+## Test matrix {#test-matrix}
 
-| Id | Given | Action | Expect |
-| :--- | :--- | :--- | :--- |
-| TC-PAY-01 | Issued AR due 1000; customer pot 1000 | `rpc_pay_bill` 1000 | Bill `paid`; pots move |
-| TC-PAY-02 | AP partial | `rpc_pay_bill` 200 | Bill `partial` |
-| TC-PAY-03b | AP vendor; omit `p_to_pot_id` | `rpc_pay_bill` | Debit payer bundle only; pays stamped tenant→vendor; no vendor wallet credit |
-| TC-PAY-04 | Bills due 300 + 200 | `rpc_pay_bills` | One pays; two settlements |
-| TC-PAY-05 | Alloc > due | pay | `invalid_amount` |
-| TC-PAY-07 | Allocs sum > pays amount | `rpc_pay_bills` | `invalid_amount` |
-| TC-PAY-09 | Pot USD, bill BDT | pay | `invalid_arguments` (I7b) |
-| TC-PAY-10 | Posted pay | `rpc_void_pays` | Pots + due restored |
-| TC-PAY-10c | Credit already spent | `rpc_void_pays` | I20 reject |
-| TC-PAY-11 | Bill = credit_note | `rpc_pay_bill` | reject |
-| TC-PAY-15 | Duplicate bill_id in allocs | `rpc_pay_bills` | reject |
-| TC-PAY-18 | Multi-bill; different payees | `rpc_pay_bills` | I32 reject |
-| TC-PAY-19 | from_pot = to_pot | pay | I30 reject |
-| TC-DOC-02 | CN + parent | `rpc_apply_document_settlement` | Document row; no pays |
-| TC-BILL-04b | Multi-bill pays | `rpc_void_bill` | reject |
-
-Full matrix (cash + document + guards): `supabase/tests/` and [bills_pays/tests.md](../bills_pays/tests.md).
+Canonical ids: [bills_pays/tests.md](../bills_pays/tests.md) · golden SQL `supabase/tests/golden_money_spine_v2_*.sql`. Cover pay/void, multi-bill, I7b currency mismatch, CN document apply, multi-bill void guard.
 
 ---
 
@@ -198,7 +144,7 @@ Full matrix (cash + document + guards): `supabase/tests/` and [bills_pays/tests.
 | :--- | :--- | :--- | :--- | :--- |
 | BR1 | shipped | Pay dialog Phase 2 (top-up deposit) | `MoneyPayDialog` Add money panel | [§ Payment dialog](#payment-dialog) |
 | BR2 | not_built | `p_lot_debits` / `p_bundle_debits` in pay UI | Kernel live | [bills_pays/00-gaps](../bills_pays/00-gaps.md) |
-| BR3 | doc_wrong | Settlement recon vs legacy `pay_allocations` | Cutover | [bills_pays/08-AUDIT](../bills_pays/08-AUDIT-RECONCILIATION-AND-RUNBOOK.md) |
+| BR3 | doc_wrong | Settlement recon vs legacy `pay_allocations` | Cutover | [§ Test matrix](#test-matrix) · `supabase/tests/` |
 
 ---
 

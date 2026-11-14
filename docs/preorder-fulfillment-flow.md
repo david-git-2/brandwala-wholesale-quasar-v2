@@ -4,8 +4,8 @@
 | :--- | :--- |
 | **Purpose** | Single **product + ops truth** for pre-order / BW: what staff and customers experience from confirm → pay, trip by trip. |
 | **Not in this doc** | SQL migrations, sprint status, or “already built in prod.” Those live in code, [00-gaps](features/procurement_stock/00-gaps.md), and the as-built story. |
-| **As-built (code today)** | [preorder-fulfillment-flow-as-built.md](preorder-fulfillment-flow-as-built.md) — where the live flow diverges (**G1–G8** there; **G9–G14** only in this target story). |
-| **Story doc status** | **Ch 1–10 narrative locked** in this file. Gaps **G1–G14** = “real story says X; as-built still Y” until engineering ships the target model. |
+| **As-built vs target** | Gap IDs **PS15–PS28** in [procurement_stock/00-gaps.md](features/procurement_stock/00-gaps.md) — live code vs this story. |
+| **Story doc status** | **Ch 1–10 narrative locked** in this file. Do not load unless the task is pre-order / delivery paper flow. |
 
 Read top to bottom: demand → buy → **inbound shipment(s)** → **delivery paper per trip** → **door truth** → **one bill per trip** → **partial pays** → header closes when nothing left to deliver.
 
@@ -515,7 +515,7 @@ stateDiagram-v2
 
 **G11:** Consignment at customer uses `condition_status` + movements — specified here; as-built lacks ledger (**PS25**).
 
-Unpaid condition is **not** counted as sales until paid ([bills_pays spec](features/bills_pays/spec.md) US-1b).
+Unpaid condition is **not** counted as sales until paid ([bills spec](features/bills/spec.md)).
 
 ---
 
@@ -641,7 +641,7 @@ Shapes below are **target contract** (bigint IDs like live `shop_orders`, `preor
 
 ## Appendix C — Target capabilities (RPC / kernel names)
 
-Names the **real story** expects at each step. As-built equivalents are in [as-built Appendix C](preorder-fulfillment-flow-as-built.md).
+Names the **real story** expects at each step. Live equivalents: grep procurement RPCs + [procurement 00-gaps](features/procurement_stock/00-gaps.md) PS15–PS28.
 
 | Capability | Chapter | Role in the story |
 | :--- | :--- | :--- |
