@@ -29,18 +29,22 @@ Docs: [money spec](../money/spec.md). **`money_kernel.cashbook_lots`** + **`pay_
 
 **Pay dialog (as-built 2026-11):** `get_bill_detail_bundle.pay_cashbook_legs` lists **locations + bundles** (`books_rate`, `drawer_group`) for picker; UI = location dropdown then bundle chips; balances from bundle, not standalone pot-RPC reads. **Still open:** `public.pays` / `post_ap_payout_*` legacy paths; multi-bundle `p_bundle_debits` in pay UI.
 
-### Payment dialog — FX, deposit, partial pays (planned)
+### Payment dialog — FX, deposit, partial pays
 
-Full plan: [bridge/spec.md § Payment dialog](../money_bill_bridge/spec.md#payment-dialog). **As-built:** FX from books rates, no manual rate input (Phase 1); **Add money** top-up / new bundle via deposit (Phase 2); location → bundle picker; pay amount = bill due (no Payment amount field). **Still open:** partial-pay UX polish (Phase 3); kernel I7b vs desk AP FX edge cases.
+Full plan: [bridge/spec.md § Payment dialog](../money_bill_bridge/spec.md#payment-dialog). **As-built:** FX from books rates (Phase 1); **Add money** top-up / new bundle (Phase 2); editable payment amount ≤ bill due, in words, partial **Paying now** summary (Phase 3). **Still open:** kernel I7b vs desk AP FX edge cases.
 
 ### AP `from_profile_id` / `to_profile_id` (kernel)
 
 On `money_kernel.bills`, **from = payer (tenant on AP)**, **to = payee (vendor/cargo)**. Pay UI `pay_cashbook_legs` and `MoneyPayDialog` map **From pot → from**, **To pot → to** — no AP swap. Shipment AP bills created with document orientation (vendor on `from`) were backfilled in `20261112220000_ap_pay_cashbook_legs_spine_orientation.sql`.
 
+### Desk AR From/To labels (as-built 2026-11)
+
+Kernel stores **debtor → creditor** (`from_profile_id` / `to_profile_id`). Desk **AR** list/detail/preview show document flow **issuer (tenant) → customer** by mapping **From = `to_profile`**, **To = `from_profile`**. AP list keeps payer → payee order on kernel columns.
+
 ### Desk list (as-built 2026-11)
 
 - **List:** `list_bills_desk_page(p_to_profile_type, p_from_profile_id, status filters)` — kernel-only (`money_kernel.bills`); no `ar_side` / search.
-- **Detail:** `get_bill_detail_bundle` falls back to `_get_bill_detail_bundle_from_kernel` when `public.bills` row missing.
+- **Detail:** `get_bill_detail_bundle` / `get_bill_desk_row` — kernel-only; `public.bills` is a **read view** over `money_kernel.bills` (legacy table dropped 2026-11-14).
 - **Void (kernel):** `BillDetailPage` → `rpc_void_bill` when bundle `bill.spine = kernel`.
 - **Legacy rows** without `to_profile_id` do not appear on payee-type tabs until backfilled.
 

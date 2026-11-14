@@ -24,6 +24,8 @@
           v-if="showSummary"
           :visible="showSummary"
           :context="summary"
+          :pay-amount="billPaymentAmount"
+          :pay-currency-code="amountCurrencyRef"
           class="money-pay-dialog__summary"
         />
 
@@ -37,6 +39,36 @@
                 &nbsp;
               </div>
               <div class="money-pay-dialog__section-body money-pay-dialog__stack">
+                <div
+                  v-if="isProfileCashLeg && kind === 'deposit'"
+                  class="money-pay-dialog__deposit-target"
+                  data-test="money-pay-deposit-profile"
+                >
+                  <div class="money-pay-dialog__deposit-target-label">Deposit to profile</div>
+                  <div class="money-pay-dialog__deposit-target-name">{{ fromPartyName }}</div>
+                  <div class="money-pay-dialog__deposit-target-hint">
+                    Money is credited to this party&apos;s cashbook at the location you choose below.
+                  </div>
+                </div>
+
+                <MoneyPayDialogAmountBlock
+                  v-if="showBillPaymentAmount"
+                  :amount="amount"
+                  :currency-code="amountCurrencyRef"
+                  :max-amount="billDueAmount"
+                  :show-error="amountShowError"
+                  data-test="money-pay-bill-amount"
+                  @update:amount="onBillAmountUpdate"
+                  @blur="amountTouched = true"
+                />
+                <p
+                  v-if="showBillPaymentAmount"
+                  class="text-caption text-grey-7 q-mb-none"
+                >
+                  Can be less than bill due, but not more. This amount moves from the payer bundle to the
+                  receive bundle.
+                </p>
+
                 <ProfileCashMovementLegPicker
                   v-if="isProfileCashLeg"
                   v-model:currency-code="profileLegCurrency"
@@ -56,15 +88,10 @@
                 />
 
                 <div
-                  v-if="displayPayBalanceShortfall > 0"
-                  class="money-pay-dialog__balance-warning q-mb-sm"
+                  v-if="showFromLeg && !isProfileCashLeg"
+                  class="q-mb-md"
+                  data-test="money-pay-from-pot"
                 >
-                  <div class="text-caption text-negative">
-                    Need {{ displayPayBalanceShortfall.toFixed(2) }} more in the selected bundle.
-                  </div>
-                </div>
-
-                <div v-if="showFromLeg && !isProfileCashLeg" data-test="money-pay-from-pot">
                   <PaymentLegPotChips
                     v-model="fromPotId"
                     leg-label="From location"
@@ -79,6 +106,36 @@
                   >
                     Available: {{ displayPayPotBalance.toFixed(2) }} {{ amountCurrencyCode }}
                   </div>
+                  <div
+                    v-if="showAddMoneyPanel"
+                    class="money-pay-dialog__add-money q-mt-sm"
+                  >
+                    <TfBtn
+                      variant="secondary"
+                      size="sm"
+                      icon="ph ph-plus"
+                      label="Add money"
+                      data-test="money-pay-add-money-open"
+                      @click="emit('openDeposit')"
+                    />
+                  </div>
+                  <div
+                    v-if="displayPayBalanceShortfall > 0"
+                    class="money-pay-dialog__balance-warning q-mt-sm"
+                  >
+                    <div class="text-caption text-negative">
+                      Payment is {{ displayPayBalanceShortfall.toFixed(2) }} above this bundle.
+                      Lower the amount (partial pay is fine) or add money.
+                    </div>
+                    <TfBtn
+                      v-if="maxPayableFromBundle != null"
+                      variant="link"
+                      size="sm"
+                      class="q-mt-xs q-px-none"
+                      :label="`Use max from bundle (${maxPayableFromBundle.toFixed(2)})`"
+                      @click="onUseMaxFromBundle"
+                    />
+                  </div>
                 </div>
 
                 <div v-if="showToLeg && !isProfileCashLeg" data-test="money-pay-to-pot">
@@ -90,20 +147,19 @@
                     :sections="toPotSections"
                     :loading="toPotLoading"
                   />
-                </div>
-
-                <div
-                  v-if="showAddMoneyPanel"
-                  class="money-pay-dialog__add-money q-mt-sm"
-                >
-                  <TfBtn
-                    variant="secondary"
-                    size="sm"
-                    icon="ph ph-plus"
-                    label="Add money"
-                    data-test="money-pay-add-money-open"
-                    @click="emit('openDeposit')"
-                  />
+                  <div
+                    v-if="showCreateToBundle"
+                    class="money-pay-dialog__add-money q-mt-sm"
+                  >
+                    <TfBtn
+                      variant="secondary"
+                      size="sm"
+                      icon="ph ph-plus"
+                      label="New bundle"
+                      data-test="money-pay-new-receive-bundle"
+                      @click="emit('openReceiveBundleDeposit')"
+                    />
+                  </div>
                 </div>
 
                 <PayOpenBillsAllocSection
@@ -160,15 +216,10 @@
                   v-if="showInstrument && methodFieldFlags.showBank"
                   :label="methodFieldFlags.bankLabel"
                 >
-                  <q-select
+                  <BdBankSelect
                     v-model="bdBankId"
                     :options="bdBankOptions"
-                    emit-value
-                    map-options
-                    outlined
-                    dense
                     :clearable="!methodFieldFlags.bankRequired"
-                    hide-bottom-space
                     :loading="loadingPaymentMeta"
                     data-test="money-pay-bank"
                   />
@@ -282,10 +333,12 @@
 import { computed, ref, toRef, watch } from 'vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import BillDialogField from './BillDialogField.vue';
+import BdBankSelect from './BdBankSelect.vue';
 import PaymentInstrumentExtrasFields from './PaymentInstrumentExtrasFields.vue';
 import PaymentLegPotChips from './PaymentLegPotChips.vue';
 import PayOpenBillsAllocSection from './PayOpenBillsAllocSection.vue';
 import MoneyPayDialogSummary from './MoneyPayDialogSummary.vue';
+import MoneyPayDialogAmountBlock from './MoneyPayDialogAmountBlock.vue';
 import ProfileCashMovementLegPicker from 'src/modules/people/components/ProfileCashMovementLegPicker.vue';
 import { useProfileCashMovementLegData } from 'src/modules/people/composables/useProfileCashMovementLegData';
 import {
@@ -374,6 +427,7 @@ const emit = defineEmits<{
   cancel: [];
   amountChange: [amount: number];
   openDeposit: [];
+  openReceiveBundleDeposit: [];
 }>();
 
 const profileLegCurrency = ref('BDT');
@@ -445,8 +499,45 @@ const {
   lockBillId: lockBillIdRef,
 });
 
+const showBillPaymentAmount = computed(
+  () => props.kind === 'payment' && !isProfileCashLeg.value,
+);
+
+const billDueAmount = computed(() => {
+  const due = props.summary?.dueAmount;
+  return due != null && Number.isFinite(due) && due > 0 ? due : null;
+});
+
+const billPaymentAmount = computed(() => {
+  const pay = Number(amount.value);
+  return Number.isFinite(pay) && pay > 0 ? pay : null;
+});
+
+const onBillAmountUpdate = (v: number | null) => {
+  amount.value = v;
+};
+
+const maxPayableFromBundle = computed(() => {
+  if (!showFromLeg.value || props.kind !== 'payment') return null;
+  const bal = displayPayPotBalance.value;
+  const due = billDueAmount.value;
+  if (bal == null || bal <= 0) return null;
+  if (due != null && due > 0) return Math.min(bal, due);
+  return bal;
+});
+
+const onUseMaxFromBundle = () => {
+  if (maxPayableFromBundle.value != null) {
+    amount.value = maxPayableFromBundle.value;
+  }
+};
+
 const showAddMoneyPanel = computed(
   () => props.kind === 'payment' && showFromLeg.value,
+);
+
+const showCreateToBundle = computed(
+  () => props.kind === 'payment' && props.fieldFlags?.showCreateToBundle === true,
 );
 
 const selectedFromPotOption = computed(() => {
@@ -541,7 +632,7 @@ const submitDisabledReasonResolved = computed(() => {
   const fx = validateFx();
   if (fx) return fx;
   if (props.kind === 'payment' && displayPayBalanceShortfall.value > 0) {
-    return 'Add money to cover the payment amount.';
+    return 'Lower the payment amount or add money to the payer bundle.';
   }
   return null;
 });
@@ -722,6 +813,39 @@ const onSubmit = () => {
   font-size: 12px;
   color: var(--tf-neutral-muted, #475569);
   margin-top: 2px;
+}
+
+.money-pay-dialog__deposit-target {
+  padding: 12px 14px;
+  border-radius: var(--tf-radius-sm, 8px);
+  border: 1px solid var(--tf-neutral-border, #e2e8f0);
+  background: color-mix(
+    in srgb,
+    var(--tf-theme-primary, #0d6b5c) 5%,
+    var(--tf-neutral-canvas, #f8fafc)
+  );
+}
+
+.money-pay-dialog__deposit-target-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tf-neutral-chrome-text, #5b6b80);
+}
+
+.money-pay-dialog__deposit-target-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tf-neutral-ink, #0f172a);
+  margin-top: 4px;
+}
+
+.money-pay-dialog__deposit-target-hint {
+  font-size: 12px;
+  color: var(--tf-neutral-muted, #64748b);
+  margin-top: 6px;
+  line-height: 1.35;
 }
 
 .money-pay-dialog__close {

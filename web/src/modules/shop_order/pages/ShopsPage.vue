@@ -185,38 +185,23 @@
         </q-banner>
 
         <!-- Skeleton Loading State -->
-        <div v-if="isLoading && !shops.length" class="clean-list-card col column no-wrap overflow-hidden">
-          <div class="shops-list-meta-bar row items-center justify-between q-px-md q-py-xs flex-shrink-0">
-            <q-skeleton type="text" width="80px" height="18px" />
-            <q-skeleton type="text" width="140px" height="14px" />
-          </div>
-          <div class="clean-list-scroll col">
-            <div
-              v-for="n in 6"
-              :key="n"
-              class="clean-list-item clean-list-item--skeleton"
-            >
-              <div class="item-main-info row items-center no-wrap">
-                <q-skeleton type="QAvatar" size="36px" class="rounded-borders q-mr-sm" />
-                <div class="item-info">
-                  <q-skeleton type="text" width="160px" height="16px" class="q-mb-xs" />
-                  <div class="row items-center q-gutter-x-xs">
-                    <q-skeleton type="rect" width="60px" height="18px" class="rounded-borders" />
-                    <q-skeleton type="rect" width="70px" height="18px" class="rounded-borders" />
-                  </div>
-                </div>
-              </div>
-              <div class="item-aside row items-center">
-                <q-skeleton type="QBadge" width="65px" height="22px" class="rounded-borders" />
-              </div>
+        <TfEntityListShell
+          v-if="isLoading && !shops.length"
+          root-class="col column no-wrap overflow-hidden"
+        >
+          <template #header>
+            <div class="shops-list-meta-bar row items-center justify-between q-px-md q-py-xs">
+              <q-skeleton type="text" width="80px" height="18px" />
+              <q-skeleton type="text" width="140px" height="14px" />
             </div>
-          </div>
-        </div>
+          </template>
+          <TfEntityListRow v-for="n in 6" :key="n" skeleton />
+        </TfEntityListShell>
 
         <!-- Empty State (No Shops Found) -->
         <div
           v-else-if="!shops.length"
-          class="clean-list-card col column items-center justify-center text-center q-pa-xl"
+          class="tf-entity-list-card col column items-center justify-center text-center q-pa-xl"
         >
           <q-avatar size="56px" color="grey-3" text-color="grey-9" class="q-mb-md">
             <q-icon name="ph ph-storefront" size="28px" />
@@ -250,133 +235,107 @@
         </div>
 
         <!-- Linear List -->
-        <div v-else class="clean-list-card column no-wrap overflow-hidden">
-          <!-- List Summary / Meta Bar -->
-          <div class="shops-list-meta-bar row items-center justify-between q-px-md q-py-xs flex-shrink-0">
-            <div class="row items-center q-gutter-x-sm">
-              <span class="text-caption text-weight-bold text-grey-8 font-mono">
-                {{ totalShops }} {{ totalShops === 1 ? 'shop' : 'shops' }}
-              </span>
-              <span v-if="activeCount > 0" class="meta-count-chip meta-count-chip--public">
-                <span class="meta-dot-indicator bg-positive" />
-                {{ activeCount }} {{ $t('shop_admin.public') }}
-              </span>
-              <span v-if="draftCount > 0" class="meta-count-chip meta-count-chip--draft">
-                <span class="meta-dot-indicator bg-grey-6" />
-                {{ draftCount }} {{ $t('shop_admin.draft') }}
-              </span>
-            </div>
-            <div class="text-caption text-grey-5 text-xxs">
-              Click any shop to manage storefront
-            </div>
-          </div>
-
-          <!-- Scrollable List Container -->
-          <div class="clean-list-scroll col">
-            <div
-              v-for="shop in shops"
-              :key="shop.id"
-              class="clean-list-item row items-center justify-between no-wrap cursor-pointer"
-              :class="shop.is_active ? 'shop-row--public' : 'shop-row--draft'"
-              :data-test="`shop-item-${shop.id}`"
-              tabindex="0"
-              role="button"
-              @click="goToSetup(shop.id)"
-              @keydown.enter="goToSetup(shop.id)"
-              @keydown.space.prevent="goToSetup(shop.id)"
-            >
-              <!-- Left Section: Avatar, Title, Slug & Metadata -->
-              <div class="item-main-info row items-center no-wrap min-width-0 col">
-                <q-avatar
-                  size="36px"
-                  class="shop-avatar flex-shrink-0 q-mr-sm"
-                  icon="ph ph-storefront"
-                />
-
-                <div class="item-info column min-width-0 col">
-                  <!-- Title Row -->
-                  <div class="row items-center no-wrap q-gutter-x-xs ellipsis q-mb-xs">
-                    <span class="shop-name text-weight-bold text-grey-9 ellipsis">
-                      {{ shop.name }}
-                    </span>
-                    <span class="shop-dot" aria-hidden="true">·</span>
-                    <span class="shop-slug text-grey-6 font-mono ellipsis">
-                      {{ shop.slug }}
-                    </span>
-                  </div>
-
-                  <!-- Description / Meta Strip -->
-                  <div class="row items-center wrap q-gutter-xs text-caption">
-                    <!-- Shop Type Pill -->
-                    <span class="meta-pill meta-pill--type">
-                      {{ shopTypeLabel(shop.shop_type) }}
-                    </span>
-
-                    <!-- Vendor Filters Pill -->
-                    <template v-if="shopVendorLabels(shop).length">
-                      <span
-                        v-for="vendor in shopVendorLabels(shop)"
-                        :key="vendor"
-                        class="meta-pill meta-pill--vendor"
-                      >
-                        <q-icon name="ph ph-tag" size="11px" class="q-mr-xs text-grey-6" />
-                        {{ vendor }}
-                      </span>
-                    </template>
-                  </div>
-
-                  <div
-                    v-if="shopVendorCatalogLines(shop).length"
-                    class="shop-catalog-meta row wrap q-gutter-xs q-mt-xs"
-                  >
-                    <span
-                      v-for="line in shopVendorCatalogLines(shop)"
-                      :key="line.vendor"
-                      class="meta-catalog-update"
-                      :title="`${line.vendor}: ${line.fileName} (${line.updatedAt})`"
-                    >
-                      <span class="meta-catalog-update__vendor">{{ line.vendor }}</span>
-                      <span class="meta-catalog-update__file">
-                        <q-icon name="ph ph-file-xls" size="13px" class="meta-catalog-update__icon" />
-                        <span class="meta-catalog-update__file-text">{{ line.fileName }}</span>
-                      </span>
-                      <span class="meta-catalog-update__date">
-                        <q-icon name="ph ph-calendar-blank" size="13px" class="meta-catalog-update__icon" />
-                        {{ line.updatedAt }}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Right Section: Status Pill -->
-              <div class="item-aside row items-center no-wrap flex-shrink-0">
-                <!-- Status Badge -->
-                <span
-                  class="shops-status"
-                  :class="shop.is_active ? 'shops-status--public' : 'shops-status--draft'"
-                >
-                  <span class="shops-status__dot" aria-hidden="true" />
-                  {{ shop.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
+        <TfEntityListShell v-else root-class="shops-list-shell column no-wrap overflow-hidden">
+          <template #header>
+            <div class="shops-list-meta-bar row items-center justify-between q-px-md q-py-xs">
+              <div class="row items-center q-gutter-x-sm">
+                <span class="text-caption text-weight-bold text-grey-8 font-mono">
+                  {{ totalShops }} {{ totalShops === 1 ? 'shop' : 'shops' }}
+                </span>
+                <span v-if="activeCount > 0" class="meta-count-chip meta-count-chip--public">
+                  <span class="meta-dot-indicator bg-positive" />
+                  {{ activeCount }} {{ $t('shop_admin.public') }}
+                </span>
+                <span v-if="draftCount > 0" class="meta-count-chip meta-count-chip--draft">
+                  <span class="meta-dot-indicator bg-grey-6" />
+                  {{ draftCount }} {{ $t('shop_admin.draft') }}
                 </span>
               </div>
+              <div class="text-caption text-grey-5 text-xxs">
+                Click any shop to manage storefront
+              </div>
             </div>
-
-            <!-- Load More Button -->
-            <div v-if="hasNextPage" class="row justify-center q-py-sm">
-              <q-btn
-                flat
-                dense
-                no-caps
-                :loading="isFetchingNextPage"
-                class="load-more-btn text-weight-medium q-px-md"
-                label="Load more"
-                icon="ph ph-arrow-down"
-                @click="fetchNextPage()"
-              />
-            </div>
+          </template>
+          <TfEntityListRow
+            v-for="shop in shops"
+            :key="shop.id"
+            class="shop-entity-row"
+            :class="shop.is_active ? 'shop-row--public' : 'shop-row--draft'"
+            :data-test="`shop-item-${shop.id}`"
+            :show-chevron="false"
+            @click="goToSetup(shop.id)"
+          >
+            <template #avatar>
+              <q-icon name="ph ph-storefront" size="20px" aria-hidden="true" />
+            </template>
+            <template #title>
+              <span class="shop-name text-weight-bold text-grey-9 ellipsis">{{ shop.name }}</span>
+              <span class="shop-dot q-px-xs" aria-hidden="true">·</span>
+              <span class="shop-slug text-grey-6 font-mono ellipsis">{{ shop.slug }}</span>
+            </template>
+            <template #meta>
+              <div class="column q-gutter-y-xs">
+                <div class="row items-center wrap q-gutter-xs text-caption">
+                  <span class="meta-pill meta-pill--type">
+                    {{ shopTypeLabel(shop.shop_type) }}
+                  </span>
+                  <template v-if="shopVendorLabels(shop).length">
+                    <span
+                      v-for="vendor in shopVendorLabels(shop)"
+                      :key="vendor"
+                      class="meta-pill meta-pill--vendor"
+                    >
+                      <q-icon name="ph ph-tag" size="11px" class="q-mr-xs text-grey-6" />
+                      {{ vendor }}
+                    </span>
+                  </template>
+                </div>
+                <div
+                  v-if="shopVendorCatalogLines(shop).length"
+                  class="shop-catalog-meta row wrap q-gutter-xs"
+                >
+                  <span
+                    v-for="line in shopVendorCatalogLines(shop)"
+                    :key="line.vendor"
+                    class="meta-catalog-update"
+                    :title="`${line.vendor}: ${line.fileName} (${line.updatedAt})`"
+                  >
+                    <span class="meta-catalog-update__vendor">{{ line.vendor }}</span>
+                    <span class="meta-catalog-update__file">
+                      <q-icon name="ph ph-file-xls" size="13px" class="meta-catalog-update__icon" />
+                      <span class="meta-catalog-update__file-text">{{ line.fileName }}</span>
+                    </span>
+                    <span class="meta-catalog-update__date">
+                      <q-icon name="ph ph-calendar-blank" size="13px" class="meta-catalog-update__icon" />
+                      {{ line.updatedAt }}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </template>
+            <template #aside>
+              <span
+                class="shops-status"
+                :class="shop.is_active ? 'shops-status--public' : 'shops-status--draft'"
+              >
+                <span class="shops-status__dot" aria-hidden="true" />
+                {{ shop.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
+              </span>
+            </template>
+          </TfEntityListRow>
+          <div v-if="hasNextPage" class="row justify-center q-py-sm">
+            <q-btn
+              flat
+              dense
+              no-caps
+              :loading="isFetchingNextPage"
+              class="load-more-btn text-weight-medium q-px-md"
+              label="Load more"
+              icon="ph ph-arrow-down"
+              @click="fetchNextPage()"
+            />
           </div>
-        </div>
+        </TfEntityListShell>
       </div>
     </div>
 
@@ -455,6 +414,8 @@ import { useSaveShopMutation } from '../composables/useShopMutations';
 import { catalogRefreshDisplayForVendor } from '../utils/catalogRefreshByVendor';
 import type { Shop, ShopType, CreateShopPayload } from 'src/modules/shop_order/types';
 import { useShopsListUiStore } from '../stores/shopsListUiStore';
+import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
+import TfEntityListShell from 'src/components/ui/TfEntityListShell.vue';
 
 const authStore = useAuthStore();
 const route = useRoute();
@@ -687,7 +648,8 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
 
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@import 'src/css/tf-entity-list.scss';
 .min-height-0 {
   min-height: 0;
 }
@@ -854,12 +816,9 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
   min-height: 36px;
 }
 
-/* Linear List Card & Scroll Structure */
-.clean-list-card {
-  background: var(--tf-theme-surface, #ffffff);
-  border: 1px solid var(--tf-theme-border, #e2e8f0);
-  border-radius: var(--tf-radius-md, 10px);
+.shops-list-shell {
   max-height: 100%;
+  border-radius: var(--tf-radius-md, 10px);
 }
 
 .shops-list-meta-bar {
@@ -894,32 +853,13 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
   color: #64748b;
 }
 
-.clean-list-scroll {
-  flex: 1 1 0%;
-  min-height: 0;
-  overflow-y: auto;
+.shop-entity-row :deep(.tf-entity-list-item__meta) {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
 }
 
-.clean-list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.65rem 1rem;
-  border-bottom: 1px solid var(--tf-theme-border, #f1f5f9);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  min-height: 54px;
-}
-
-.clean-list-item:last-child {
-  border-bottom: none;
-}
-
-.clean-list-item:hover {
-  background: color-mix(in srgb, #f8fafc 80%, transparent);
-}
-
-.clean-list-item:hover .shop-name {
+.shop-entity-row:hover :deep(.shop-name) {
   color: var(--tf-theme-primary, #4f46e5);
 }
 
@@ -930,12 +870,6 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
 
 .shop-row--draft {
   background: #ffffff;
-}
-
-.shop-avatar {
-  background: color-mix(in srgb, var(--tf-theme-primary-soft, #eef2ff) 70%, #fff 30%);
-  color: var(--tf-theme-primary, #4f46e5);
-  border-radius: var(--tf-radius-sm, 8px);
 }
 
 .shop-name {
@@ -1102,14 +1036,6 @@ const shopVendorCatalogLines = (shop: Shop): VendorCatalogLine[] => {
   font-size: 12px;
 }
 
-.clean-list-item--skeleton {
-  cursor: default;
-}
-
-.clean-list-item--skeleton:hover {
-  background: transparent;
-}
-
 .text-xxs {
   font-size: 11px;
 }
@@ -1120,22 +1046,9 @@ body.body--dark .shops-toolbar {
   border-color: var(--tf-neutral-border);
 }
 
-body.body--dark .clean-list-card {
-  background: var(--tf-neutral-surface);
-  border-color: var(--tf-neutral-border);
-}
-
 body.body--dark .shops-list-meta-bar {
   background: var(--tf-neutral-canvas);
   border-color: var(--tf-neutral-border);
-}
-
-body.body--dark .clean-list-item {
-  border-color: var(--tf-neutral-border);
-}
-
-body.body--dark .clean-list-item:hover {
-  background: rgba(255, 255, 255, 0.04);
 }
 
 body.body--dark .shop-row--public {
@@ -1144,11 +1057,6 @@ body.body--dark .shop-row--public {
 
 body.body--dark .shop-row--draft {
   background: var(--tf-neutral-surface);
-}
-
-body.body--dark .shop-avatar {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--tf-theme-primary);
 }
 
 body.body--dark .shops-segmented {

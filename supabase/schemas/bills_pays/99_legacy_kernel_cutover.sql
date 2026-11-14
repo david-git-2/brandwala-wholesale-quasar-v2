@@ -24,6 +24,7 @@ REVOKE INSERT, UPDATE, DELETE ON public.pay_allocations FROM authenticated;
 REVOKE INSERT, UPDATE, DELETE ON public.cashbook_entries FROM authenticated;
 
 -- Phase 2 (after backfill + UI on rpc_*): uncomment and sync migration
+-- public.bills / bill_lines physical tables dropped in 20261114250000_drop_public_bills_kernel_views.sql (kernel views).
 -- DROP TABLE IF EXISTS public.pay_allocations CASCADE;
 -- DROP TABLE IF EXISTS public.pay_instruments CASCADE;
 -- DROP TABLE IF EXISTS public.money_purposes CASCADE;

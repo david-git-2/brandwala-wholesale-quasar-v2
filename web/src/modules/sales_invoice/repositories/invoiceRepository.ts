@@ -238,20 +238,26 @@ const createGlobalInvoice = async (
   return data as GlobalInvoiceCreated;
 };
 
+export type BillDetailBundleLine = {
+  id: number;
+  name_snapshot: string;
+  currency_code: string;
+  line_total_amount: number;
+  books_amount: number;
+  quantity: number;
+  sell_price_amount?: number | null;
+  global_stock_id?: number | null;
+  product_id?: number | null;
+  shipment_item_id?: number | null;
+};
+
 export type BillDetailBundle = {
   bill: GlobalInvoiceDetail;
   paymentHistory: InvoicePaymentHistoryEntry[];
   netBalances: Record<string, unknown>;
   adjustments: Record<string, unknown>[];
   stockItems: GlobalInvoiceItemRow[];
-  billLines: Array<{
-    id: number;
-    name_snapshot: string;
-    currency_code: string;
-    line_total_amount: number;
-    books_amount: number;
-    quantity: number;
-  }>;
+  billLines: BillDetailBundleLine[];
   payCashbookLegs: BillPayCashbookLegs | null;
 };
 
@@ -284,6 +290,13 @@ export function parseBillDetailBundleFromRpc(data: unknown): BillDetailBundle {
           line_total_amount: Number(r.line_total_amount ?? 0),
           books_amount: Number(r.books_amount ?? r.line_total_amount ?? 0),
           quantity: Number(r.quantity ?? 1),
+          sell_price_amount:
+            r.sell_price_amount == null ? null : Number(r.sell_price_amount),
+          global_stock_id:
+            r.global_stock_id == null ? null : Number(r.global_stock_id),
+          product_id: r.product_id == null ? null : Number(r.product_id),
+          shipment_item_id:
+            r.shipment_item_id == null ? null : Number(r.shipment_item_id),
         };
       })
     : [];
@@ -299,19 +312,13 @@ export function parseBillDetailBundleFromRpc(data: unknown): BillDetailBundle {
 };
 
 const getGlobalInvoiceById = async (invoiceId: number): Promise<GlobalInvoiceDetail> => {
-  const { data, error } = await supabase
-    .from('bills')
-    .select(
-      `*,
-      profile_id:profile_id,
-      profiles:profiles!bills_profile_id_fkey(id, name, email, phone, address, color:accent_color),
-      from_profile:profiles!bills_from_profile_id_fkey(id, name, email, phone, address),
-      to_profile:profiles!bills_to_profile_id_fkey(id, name, email, phone, address)`,
-    )
-    .eq('id', invoiceId)
-    .single();
-
+  const { data, error } = await supabase.rpc('get_bill_desk_row', {
+    p_bill_id: invoiceId,
+  });
   if (error) throw error;
+  if (!data || typeof data !== 'object') {
+    throw new Error('Bill not found');
+  }
   return data as GlobalInvoiceDetail;
 };
 
@@ -459,12 +466,12 @@ const collectWholesaleInvoicePayment = async (payload: {
   note?: string | null;
   received_on?: string | null;
 }) => {
-  const { data: bill, error: billError } = await supabase
-    .from('bills')
-    .select('id, issued_by_tenant_id, profile_id')
-    .eq('id', payload.invoice_id)
-    .single();
-  if (billError) throw billError;
+  const billRow = await getGlobalInvoiceById(payload.invoice_id);
+  const bill = {
+    id: billRow.id,
+    issued_by_tenant_id: billRow.issued_by_tenant_id ?? billRow.tenant_id,
+    profile_id: billRow.profile_id,
+  };
   if (!bill.profile_id) throw new Error('Bill has no profile.');
 
   const instruments = (payload.instruments ?? []).filter((line) => (Number(line.amount) || 0) > 0);
@@ -829,7 +836,9 @@ const unpostGlobalInvoice = async (invoiceId: number): Promise<void> => {
 };
 
 const deleteGlobalInvoice = async (invoiceId: number): Promise<void> => {
-  const { error } = await supabase.from('bills').delete().eq('id', invoiceId);
+  const { error } = await supabase.rpc('delete_draft_bill_from_desk', {
+    p_bill_id: invoiceId,
+  });
   if (error) throw error;
 };
 

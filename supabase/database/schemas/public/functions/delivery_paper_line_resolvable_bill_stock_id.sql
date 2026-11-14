@@ -6,16 +6,12 @@ CREATE FUNCTION public.delivery_paper_line_resolvable_bill_stock_id (
   STABLE
   AS $function$
   SELECT CASE
-    WHEN p_line.global_stock_id IS NOT NULL
-      AND EXISTS (
-        SELECT 1 FROM public.global_stocks gs WHERE gs.id = p_line.global_stock_id
-      ) THEN p_line.global_stock_id
-    WHEN p_line.dispatched_global_stock_id IS NOT NULL
-      AND p_line.dispatched_global_stock_id > 0
-      AND EXISTS (
-        SELECT 1 FROM public.global_stocks gs WHERE gs.id = p_line.dispatched_global_stock_id
-      ) THEN p_line.dispatched_global_stock_id
-    ELSE NULL::bigint
+    WHEN p_line.global_stock_id IS NOT NULL AND p_line.global_stock_id > 0 THEN
+      p_line.global_stock_id
+  WHEN p_line.dispatched_global_stock_id IS NOT NULL
+    AND p_line.dispatched_global_stock_id > 0 THEN
+    p_line.dispatched_global_stock_id
+  ELSE NULL::bigint
   END;
 $function$;
 

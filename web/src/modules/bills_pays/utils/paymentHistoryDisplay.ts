@@ -1,5 +1,18 @@
 import type { InvoicePaymentHistoryEntry } from 'src/modules/sales_invoice/types';
+import type { PayListRow } from '../repositories/paysRepository';
 import { formatBdtTaka, formatSettlementCurrencyAmount } from 'src/utils/currency';
+
+const paymentHistoryInstrumentDetail = (entry: InvoicePaymentHistoryEntry): string | null => {
+  const parts: string[] = [];
+  for (const inst of entry.instruments ?? []) {
+    const bits: string[] = [];
+    if (inst.bank_name?.trim()) bits.push(inst.bank_name.trim());
+    if (inst.cheque_number?.trim()) bits.push(`Chq ${inst.cheque_number.trim()}`);
+    if (inst.reference?.trim()) bits.push(inst.reference.trim());
+    if (bits.length) parts.push(bits.join(' · '));
+  }
+  return parts.length ? parts.join('; ') : null;
+};
 
 /** Currency the cash actually moved in (payment row), not the bill’s invoice currency. */
 export const paymentHistorySettlementCode = (
@@ -22,6 +35,9 @@ export const isForeignSettlementPaymentHistory = (
  * while pay_allocations.amount was already BDT.
  */
 export const paymentHistoryReceiptBdt = (entry: InvoicePaymentHistoryEntry): number => {
+  if (entry.entry_type === 'write_off') {
+    return Math.max(0, Number(entry.amount) || 0);
+  }
   const allocBdt = Number(entry.amount) || 0;
   const receiptBdt = Number(entry.receipt_amount) || 0;
   const rate = Number(entry.exchange_rate) || 1;
@@ -134,6 +150,56 @@ export const paymentHistoryEntryCaption = (
   const method = entry.method?.replace(/_/g, ' ') ?? 'Payment';
   return method;
 };
+
+/** Secondary line on bill payment history — reference, bank/cheque, note, or contextual caption. */
+export const paymentHistoryListSubtitle = (
+  entry: InvoicePaymentHistoryEntry,
+  opts?: { isAp?: boolean },
+): string | null => {
+  const ref = entry.payment_reference?.trim();
+  if (ref) return ref;
+
+  const instrumentLine = paymentHistoryInstrumentDetail(entry);
+  if (instrumentLine) return instrumentLine;
+
+  const note = entry.note?.trim();
+  if (note) return note;
+
+  const cap = paymentHistoryEntryCaption(entry, opts);
+  const method = (entry.method ?? 'Payment').replace(/_/g, ' ').toLowerCase();
+  if (entry.entry_type === 'write_off') return entry.write_off_reason?.trim() || cap;
+  if (cap.toLowerCase() === method) return null;
+  if (cap.toLowerCase() === 'payment') return null;
+  return cap;
+};
+
+export function paymentHistoryEntryToPayListRow(
+  entry: InvoicePaymentHistoryEntry,
+  profileId: number | null,
+): PayListRow | null {
+  const id = entry.payment_id;
+  if (id == null) return null;
+
+  const code = paymentHistorySettlementCode(entry);
+  return {
+    id,
+    payment_date: entry.payment_date,
+    amount: paymentHistoryReceiptBdt(entry),
+    unallocated_amount: 0,
+    source: entry.payment_source?.trim() || 'customer_cash',
+    method: entry.method,
+    reference: entry.payment_reference?.trim() || null,
+    note: entry.note,
+    voided_at: entry.voided_at,
+    profile_id: profileId,
+    profile_name: null,
+    shop_order_id: null,
+    settlement_currency_code: code,
+    foreign_amount: entry.foreign_amount ?? null,
+    exchange_rate: Number(entry.exchange_rate) || 1,
+    spine: entry.payment_source === 'kernel' ? 'kernel' : 'desk',
+  };
+}
 
 export type VendorRefundReceiptBucket = {
   currencyCode: string;

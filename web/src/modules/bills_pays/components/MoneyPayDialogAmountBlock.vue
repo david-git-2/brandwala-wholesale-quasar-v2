@@ -14,18 +14,9 @@
         hide-bottom-space
         data-test="money-pay-amount"
         class="money-pay-dialog-amount__input"
-        :class="{ 'money-pay-dialog-amount__input--with-action': showFillDue }"
         @update:model-value="onAmount"
         @blur="emit('blur')"
       />
-      <button
-        v-if="showFillDue"
-        type="button"
-        class="money-pay-dialog-amount__full-due"
-        @click="emit('fillDue')"
-      >
-        Full due
-      </button>
     </div>
     <div
       v-if="errorMessage"
@@ -33,6 +24,9 @@
       role="alert"
     >
       {{ errorMessage }}
+    </div>
+    <div v-if="amountInWords" class="money-pay-dialog-amount__words" aria-live="polite">
+      {{ amountInWords }}
     </div>
     <div v-if="booksPreviewLabel" class="money-pay-dialog-amount__meta">
       {{ booksPreviewLabel }}
@@ -45,12 +39,14 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { formatAmountInWords } from 'src/utils/amountInWords';
 import { formatAmountBdt } from 'src/utils/currency';
 
 const props = defineProps<{
   amount: number | null;
   currencyCode?: string | null;
-  dueAmount?: number | null;
+  /** Maximum allowed (e.g. bill due). */
+  maxAmount?: number | null;
   booksPreviewLabel?: string | null;
   unallocatedAmount?: number | null;
   showError?: boolean;
@@ -58,23 +54,35 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:amount': [value: number | null];
-  fillDue: [];
   blur: [];
 }>();
 
-const amountLabel = computed(() => {
-  const code = (props.currencyCode ?? 'BDT').trim() || 'BDT';
-  return `Payment amount (${code})`;
-});
+const currencyCode = computed(() => (props.currencyCode ?? 'BDT').trim() || 'BDT');
 
-const showFillDue = computed(
-  () => props.dueAmount != null && props.dueAmount > 0,
-);
+const amountLabel = computed(() => `Payment amount (${currencyCode.value})`);
+
+const amountInWords = computed(() => {
+  const pay = Number(props.amount);
+  if (!Number.isFinite(pay) || pay <= 0) return null;
+  return formatAmountInWords(pay, currencyCode.value);
+});
 
 const unallocatedHint = computed(() => {
   const u = props.unallocatedAmount;
   if (u == null || u <= 0.009) return null;
   return `${formatAmountBdt(u)} unallocated on this payment`;
+});
+
+const amountCap = computed(() => {
+  const cap = props.maxAmount;
+  return cap != null && cap > 0 ? cap : null;
+});
+
+const amountOverCap = computed(() => {
+  const pay = Number(props.amount);
+  const cap = amountCap.value;
+  if (cap == null || !Number.isFinite(pay) || pay <= 0) return false;
+  return pay > cap + 0.009;
 });
 
 const amountInvalid = computed(() => {
@@ -83,6 +91,7 @@ const amountInvalid = computed(() => {
 });
 
 const errorMessage = computed(() => {
+  if (amountOverCap.value) return 'Cannot pay more than bill due.';
   if (!props.showError || !amountInvalid.value) return null;
   return 'Enter an amount greater than zero';
 });
@@ -124,38 +133,23 @@ const onAmount = (raw: string | number | null) => {
     font-variant-numeric: tabular-nums;
   }
 
-  &--with-action :deep(input) {
-    padding-right: 5.5rem;
-  }
-}
-
-.money-pay-dialog-amount__full-due {
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 1;
-  appearance: none;
-  border: 0;
-  background: transparent;
-  padding: 2px 0;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--tf-neutral-muted, #64748b);
-  cursor: pointer;
-  text-decoration: none;
-  white-space: nowrap;
-
-  &:hover {
-    color: var(--tf-theme-primary, #0d6b5c);
-    text-decoration: underline;
-  }
 }
 
 .money-pay-dialog-amount__error {
   margin-top: 6px;
   font-size: 12px;
   color: var(--tf-danger, #b91c1c);
+}
+
+.money-pay-dialog-amount__words {
+  margin-top: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--tf-neutral-ink, #334155);
+  background: var(--tf-neutral-canvas, #f8fafc);
+  border: 1px solid var(--tf-neutral-border, #e2e8f0);
+  border-radius: var(--tf-radius-sm, 8px);
 }
 
 .money-pay-dialog-amount__meta {

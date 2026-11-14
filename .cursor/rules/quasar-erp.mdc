@@ -10,7 +10,7 @@ Tokens: `web/src/css/app.scss`. Status map: `web/src/utils/statusMap.ts`. Layout
 
 ## Shared components (`web/src/components/ui/`)
 
-`TfBtn` button · `TfStatusBadge` status · `TfConfirmDialog` confirm · `TfDrawerSectionTabs` / `TfDrawerSectionTabsHeader` (segmented pill tabs — drawers + list filters) · `TfTabs` underline tabs (rare) · `TfSegmented` legacy · `TfSideSheet` right panel (420/560/720) · `TfEmptyState` · `useNotify()` toast.
+`TfBtn` button · `TfStatusBadge` status · `TfConfirmDialog` confirm · `TfDrawerSectionTabs` / `TfDrawerSectionTabsHeader` (segmented pill tabs — drawers + list filters) · `TfTabs` underline tabs (rare) · `TfSegmented` legacy · `TfSideSheet` right panel (420/560/720) · `TfEmptyState` · `TfEntityListShell` / `TfEntityListRow` (browse entity lists) · `useNotify()` toast.
 
 ## Color (central — never choose colors in a page)
 

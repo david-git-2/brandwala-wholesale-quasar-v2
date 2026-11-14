@@ -629,6 +629,52 @@ export type ProfileActivityResult = {
   nextCursor: string | null;
 };
 
+export type ProfileKernelPayBundleDetail = {
+  bundle_id?: number;
+  location_code?: string;
+  location_name?: string;
+  currency_code?: string;
+  amount?: number;
+};
+
+export type ProfileKernelPayAllocation = {
+  bill_id: number;
+  invoice_no: string | null;
+  amount: number;
+};
+
+export type ProfileKernelPayDetail = {
+  success: boolean;
+  error?: string;
+  spine: 'kernel';
+  id: number;
+  kind: string;
+  status: string;
+  payment_date: string;
+  created_at: string;
+  amount: number;
+  books_amount: number;
+  currency_code: string;
+  books_rate: number;
+  exchange_rate: number;
+  from_profile_id: number | null;
+  to_profile_id: number | null;
+  from_profile_name: string | null;
+  to_profile_name: string | null;
+  from_bundle: ProfileKernelPayBundleDetail | null;
+  to_bundle: ProfileKernelPayBundleDetail | null;
+  from_balance_after: number | null;
+  to_balance_after: number | null;
+  meta: Record<string, unknown>;
+  refs: Record<string, unknown>;
+  reverted_at: string | null;
+  revert_reason: string | null;
+  is_reversal: boolean;
+  reverses_pays_id: number | null;
+  bank_name: string | null;
+  allocations: ProfileKernelPayAllocation[];
+};
+
 const listProfileActivity = async (params: {
   tenantId: number;
   entityType: string;
@@ -663,12 +709,29 @@ const listProfileActivity = async (params: {
   };
 };
 
+const getProfileKernelPayDetail = async (
+  tenantId: number,
+  paysId: number,
+): Promise<ProfileKernelPayDetail> => {
+  const { data, error } = await supabase.rpc('get_profile_kernel_pay_detail_for_staff', {
+    p_tenant_id: tenantId,
+    p_pays_id: paysId,
+  });
+  if (error) throw error;
+  const payload = (data ?? {}) as ProfileKernelPayDetail & { success?: boolean; error?: string };
+  if (payload.success === false) {
+    throw new Error(payload.error || 'Could not load payment detail.');
+  }
+  return payload;
+};
+
 export const cashbookRepository = {
   listEntities,
   getTenantCashRow,
   getPartyDetail,
   getPaymentProfileForStaff,
   listProfileActivity,
+  getProfileKernelPayDetail,
   listLedger,
   findCashbookAccountId,
   findCashbookAccountIdByProfile,

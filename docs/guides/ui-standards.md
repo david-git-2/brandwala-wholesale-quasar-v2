@@ -100,6 +100,13 @@ All operational dashboard and list pages must adhere to the **Non-Scrolling Page
 
 Copy **`InboundShipmentListPage.vue`**, not overview pages with `AppPageHeader`.
 
+### Browse row lists (customers, shops, similar)
+
+- Shell: `TfEntityListShell.vue` — bordered card, internal scroll, optional `#header` / `#footer`.
+- Row: `TfEntityListRow.vue` — slots: `avatar`, `title`, `meta`, `aside`; prop `active` for selection; default trailing chevron.
+- Styles: `web/src/css/tf-entity-list.scss` (token colors only; no row shadow or hover lift).
+- Reference: `CustomerOverviewPage.vue`, design system “Row list” on `DesignSystemPage.vue`.
+
 ### Layout Rules:
 1. **Zero In-Page Headers**: Never render redundant in-page `<h1>` or `text-overline` banner blocks. Top breadcrumbs provide context and page titles.
 2. **Fixed Viewport**: Page height locked to `calc(100vh - 55px)` with `overflow: hidden`.

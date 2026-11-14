@@ -1,45 +1,58 @@
 <template>
-  <div class="column no-wrap col overflow-hidden">
+  <div class="column no-wrap col overflow-hidden min-height-0">
     <q-input
       v-model="search"
       dense
       outlined
       clearable
+      hide-bottom-space
       :placeholder="`Search ${entityLabel}…`"
       class="q-mb-sm"
-    />
-    <q-list v-if="rows.length" bordered separator class="col overflow-auto">
-      <q-item
+    >
+      <template #prepend>
+        <q-icon name="ph ph-magnifying-glass" size="18px" class="text-grey-5" />
+      </template>
+    </q-input>
+
+    <TfEntityListShell v-if="loading && !rows.length" root-class="col">
+      <TfEntityListRow v-for="n in 6" :key="n" skeleton />
+    </TfEntityListShell>
+
+    <div
+      v-else-if="!rows.length"
+      class="tf-entity-list-card col column items-center justify-center text-center q-pa-xl"
+    >
+      <q-icon name="ph ph-tray" size="36px" class="text-grey-5 q-mb-sm" />
+      <div class="text-subtitle2 text-weight-medium text-grey-8">No {{ entityLabel }} found</div>
+    </div>
+
+    <TfEntityListShell v-else root-class="col">
+      <TfEntityListRow
         v-for="row in rows"
         :key="row.id"
-        clickable
-        v-ripple
+        :show-chevron="false"
         @click="openRow(row)"
       >
-        <q-item-section>
-          <q-item-label>{{ row.name }}</q-item-label>
-          <q-item-label v-if="row.subtitle" caption>{{ row.subtitle }}</q-item-label>
-        </q-item-section>
-        <q-item-section side class="row items-center q-gutter-xs no-wrap">
-          <q-item-label v-if="row.balance != null" class="tf-num q-mr-sm">
+        <template #avatar>{{ getInitials(row.name) }}</template>
+        <template #title>
+          <span class="tf-entity-list-item__name">{{ row.name }}</span>
+        </template>
+        <template v-if="row.meta" #meta>{{ row.meta }}</template>
+        <template #aside>
+          <span v-if="row.balance != null" class="tf-num text-weight-medium q-mr-xs">
             {{ formatAmountBdt(row.balance) }}
-          </q-item-label>
-          <ProfileCashbookActionBar
-            v-if="showCashActions"
-            @click.stop
-            @deposit="onRowDeposit(row)"
-            @withdraw="onRowWithdraw(row)"
-            @locations="onRowLocations(row)"
-          />
-        </q-item-section>
-      </q-item>
-    </q-list>
-    <div v-else-if="!loading" class="text-caption text-grey-6 text-center q-pa-lg">
-      No {{ entityLabel }} found.
-    </div>
-    <div v-else class="row justify-center q-pa-lg">
-      <q-spinner color="primary" size="2em" />
-    </div>
+          </span>
+          <div @click.stop>
+            <ProfileCashbookActionBar
+              v-if="showCashActions"
+              @deposit="onRowDeposit(row)"
+              @withdraw="onRowWithdraw(row)"
+              @locations="onRowLocations(row)"
+            />
+          </div>
+        </template>
+      </TfEntityListRow>
+    </TfEntityListShell>
 
     <AppResizableOverlayPanel
       v-model="drawerOpen"
@@ -65,6 +78,7 @@
             color="grey-7"
             aria-label="Close"
             class="shrink-0"
+            :ripple="false"
             @click="drawerOpen = false"
           />
         </div>
@@ -122,13 +136,23 @@ import { cashbookRepository } from 'src/modules/bills_pays/repositories/cashbook
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import ProfileOperatingAccountPanel from 'src/modules/bills_pays/components/ProfileOperatingAccountPanel.vue';
 import MoneyPayDialog from 'src/modules/bills_pays/components/MoneyPayDialog.vue';
+import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
+import TfEntityListShell from 'src/components/ui/TfEntityListShell.vue';
 import ProfileCashbookActionBar from './ProfileCashbookActionBar.vue';
 import ProfileCashLocationsPanel from './ProfileCashLocationsPanel.vue';
 import { useProfileCashMovementDialog } from '../composables/useProfileCashMovementDialog';
 import { PROFILE_CASH_DEFAULT_METHOD } from '../constants/profileCashMovementMethods';
 import { isProfileCashbookEnabled } from '../utils/profileCashbookEnabled';
 import { formatAmountBdt } from 'src/utils/currency';
+import { getInitials } from 'src/modules/sales_invoice/utils/invoiceListDisplay';
 import type { PayTransferEntityType } from 'src/modules/bills_pays/types/payTransferParty';
+
+type PartyRow = {
+  id: number;
+  name: string;
+  meta?: string;
+  balance?: number;
+};
 
 const props = defineProps<{
   entityType: PayTransferEntityType | 'investor' | 'cargo_company';
@@ -138,7 +162,7 @@ const props = defineProps<{
 const authStore = useAuthStore();
 const route = useRoute();
 const search = ref('');
-const rows = ref<Array<{ id: number; name: string; subtitle?: string; balance?: number }>>([]);
+const rows = ref<PartyRow[]>([]);
 const loading = ref(false);
 const drawerOpen = ref(false);
 const selected = ref<{ id: number; name: string } | null>(null);
@@ -188,6 +212,11 @@ const {
   active: drawerOpen,
 });
 
+const partyMeta = (caption: string | null, code: string | null) => {
+  const parts = [caption?.trim(), code?.trim()].filter(Boolean) as string[];
+  return parts.length ? parts.join(' · ') : undefined;
+};
+
 const load = async () => {
   if (!tenantId.value) return;
   loading.value = true;
@@ -201,7 +230,7 @@ const load = async () => {
     rows.value = list.map((r) => ({
       id: r.entity_id,
       name: r.name,
-      subtitle: r.entity_type,
+      meta: partyMeta(r.caption, r.code),
       balance: r.available_balance,
     }));
   } finally {
@@ -238,9 +267,11 @@ const onRowLocations = (row: { id: number; name: string }) => {
 };
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@import 'src/css/tf-entity-list.scss';
+
 .people-party-drawer {
-  background: #fff;
+  background: var(--tf-neutral-surface);
   min-height: 0;
 }
 

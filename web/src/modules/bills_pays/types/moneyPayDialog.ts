@@ -75,6 +75,8 @@ export type MoneyPayDialogFieldFlags = {
   showInstrument?: boolean;
   showDate?: boolean;
   showReferenceNote?: boolean;
+  /** AR dual cashbook: deposit to open/select tenant receive bundle */
+  showCreateToBundle?: boolean;
 };
 
 export type MoneyPayDialogPrefill = {

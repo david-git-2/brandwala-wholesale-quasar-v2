@@ -11,7 +11,7 @@ CREATE OR REPLACE FUNCTION public.get_tenant_shipment_profit_report (
   LANGUAGE plpgsql
   STABLE
   SECURITY DEFINER
-  SET search_path TO 'public'
+  SET search_path TO 'public', 'money_kernel'
   AS $function$
 DECLARE
   v_books_id bigint;
@@ -109,41 +109,42 @@ BEGIN
     -- Subquery for aggregated sales per shipment item
     LEFT JOIN LATERAL (
       SELECT
-        coalesce(sum(gii.quantity), 0) AS sold_qty,
-        coalesce(sum(gii.return_quantity), 0) AS returned_qty,
-        coalesce(sum(gii.quantity - gii.return_quantity), 0) AS net_sold_qty,
+        coalesce(sum(bl.quantity), 0) AS sold_qty,
+        0::numeric AS returned_qty,
+        coalesce(sum(bl.quantity), 0) AS net_sold_qty,
         coalesce(sum(
-          gii.sell_price_amount * (gii.quantity - coalesce(gii.return_quantity, 0))
-          - coalesce(gii.line_discount_amount, 0) * (greatest(gii.quantity - gii.return_quantity, 0) / nullif(gii.quantity, 0))
+          bl.line_total
           - CASE
-            WHEN si.invoice_type = 'dropship'::public.global_invoice_type THEN 0.00
-            ELSE (coalesce(si.discount_amount, 0.00) + coalesce(si.written_off_amount, 0.00))
-              * (gii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
+            WHEN si.kind = 'sales_invoice_dropship' THEN 0.00
+            ELSE coalesce(si.written_off_amount, 0.00)
+              * (bl.line_total / nullif(si.total_amount, 0.00))
           END
         ), 0) AS sold_revenue,
-        coalesce(sum((gii.quantity - gii.return_quantity) * coalesce(gsi.landed_cost_bdt, 0)), 0) AS cogs
-      FROM public.global_invoice_items gii
-      JOIN public.bills si ON si.id = gii.invoice_id
-      LEFT JOIN public.global_stocks gs ON gs.id = gii.global_stock_id
-      LEFT JOIN LATERAL (
-        SELECT coalesce(sum(x.line_total_amount), 0.00) AS inv_line_subtotal
-        FROM public.global_invoice_items x
-        WHERE x.invoice_id = gii.invoice_id
-      ) invagg ON true
-      WHERE gsi.id = coalesce(
-          gii.shipment_item_id,
+        coalesce(sum(bl.quantity * coalesce(gsi.landed_cost_bdt, 0)), 0) AS cogs
+      FROM money_kernel.bill_lines bl
+      JOIN money_kernel.bills si ON si.id = bl.bill_id
+      LEFT JOIN public.global_stocks gs ON gs.id = bl.global_stock_id
+      WHERE si.tenant_id = v_books_id
+        AND si.status IN ('issued', 'partial', 'paid')
+        AND si.kind IN (
+          'sales_invoice_wholesale',
+          'sales_invoice_retail',
+          'sales_invoice_dropship'
+        )
+        AND gsi.id = coalesce(
+          bl.shipment_item_id,
+          nullif(bl.meta->'shipment_ref'->>'shipment_item_id', '')::bigint,
           gs.shipment_item_id,
           (
             SELECT gsi_fb.id
             FROM public.global_shipment_items gsi_fb
             WHERE gsi_fb.shipment_id = gsi.shipment_id
               AND gsi_fb.product_id IS NOT NULL
-              AND gsi_fb.product_id = gii.product_id
+              AND gsi_fb.product_id = bl.product_id
             ORDER BY gsi_fb.id
             LIMIT 1
           )
         )
-        AND si.invoice_status = 'issued'
     ) sales ON true
 
     -- Subquery for inventory breakdown per shipment item

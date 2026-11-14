@@ -75,6 +75,9 @@ Running example (investor catalog **SHP-INV-001**): funding 1,000,000 → sales 
 | ADM1 / FP* / VC* | Three shop playbooks | Type picks path; no mix | Sales, Customer | Must | Shop |
 | DS3–DS9 | Dropship order life | Call → ship → remittance → payout | Dropship desk, Curia | Must | Shop |
 | CD1–CD6 / CD13–CD16 / CD19 | Courier + remittance | Phone risk; consign; track ≠ money | Dropship desk, Curia, Finance | Must | Courier |
+| DL10–DL16 | Failed delivery life | Refused/not received → restock; reverse supply; return fee | Dropship desk, Warehouse, Finance, Curia | Must | Dropship lifecycle |
+| DL20–DL23 | Post-delivery return | RMA; credit note; wallet hold/clawback | Support, Finance, Dropship desk | Must | Dropship lifecycle |
+| DL30 | COD remittance variance | Short/over vs expected net | Finance, Dropship desk, Curia | Must | Dropship lifecycle |
 | — | Full balance sheet / statutory pack in app | — | Admin, Finance | **Defer** | — |
 | — | Hard dual-approve every pay beyond permissions | — | Admin, Finance | **Defer** | Money P4 stays in catalog |
 | — | Thrift (or other model) inside this money board | — | — | **Out** | Different sales model |
@@ -118,6 +121,9 @@ Catalogs already have the stories. These rows mean the **app** behaves right.
 | M13 | Goods in transit (S22) | Open / in transit — not fake shelf stock |
 | M14 | Dropship settle + COD (T1, S6, CU*, DS*, CD*) | Order-by-order clearing; no regression |
 | M15 | Reports catalogue honest (S23) | Live reports match catalogue; no double-profit views |
+| M16 | Failed delivery settle (DL10–DL16, CU4, S10) | Returned consignment → restock/grade; credit/reverse supply; return fee on dropshipper; no orphan wallet profit |
+| M17 | Post-delivery return (DL20–DL23) | After-sales case → credit note + restock; wallet hold before payout; clawback after payout without deleting history |
+| M18 | COD variance (DL30, CU3) | Remittance short/over logged; dropshipper payable adjusted with approval when needed |
 
 **Should next (after Must):** INV2, INV4, INV19/SH12, SH10, SH15/S7, H3, S16, R19, R20, INV20–INV21.
 
@@ -130,7 +136,7 @@ Catalogs already have the stories. These rows mean the **app** behaves right.
 1. Confirm hybrid + locked rules.  
 2. Walk the board table — lock Cover? on each row.  
 3. Answer open questions (or owner + date).  
-4. Rank M1–M15 for the next build plan.  
+4. Rank M1–M18 for the next build plan.  
 5. Confirm Defer / Out rows.
 
 New cases: add to the right catalog first → refresh this board → then build.

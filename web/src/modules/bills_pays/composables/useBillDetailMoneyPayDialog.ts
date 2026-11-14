@@ -21,6 +21,7 @@ import type {
 import type { BillPayCashbookLegs } from '../types/billPayCashbookLegs';
 import { moneyKernelRepository } from '../repositories/moneyKernelRepository';
 import { createPayIdempotencyKey } from '../repositories/paysRepository';
+import { buildKernelPayMovementMeta } from '../utils/kernelPayMovementMeta';
 
 export function useBillDetailMoneyPayDialog(options: {
   billId: ComputedRef<number | null>;
@@ -95,6 +96,28 @@ export function useBillDetailMoneyPayDialog(options: {
 
   const bundledArToLeg = computed(() => bundledApToLeg.value);
 
+  const bundledArFromLeg = computed(() => {
+    const legs = options.payCashbookLegs?.value;
+    if (!legs || !bundleLegsReady.value) return null;
+    return legs.from_leg;
+  });
+
+  const arPayerProfileId = computed(
+    () =>
+      options.bill.value?.from_profile_id
+      ?? options.bill.value?.from_profile?.id
+      ?? options.billProfileId.value
+      ?? null,
+  );
+
+  const arDualCashbook = computed(
+    () =>
+      !options.isApBill.value
+      && bundleLegsReady.value
+      && bundledArFromLeg.value != null
+      && bundledArToLeg.value != null,
+  );
+
   const {
     selectedPotId: apFromPotId,
     chipOptions: apFromPotOptions,
@@ -128,10 +151,32 @@ export function useBillDetailMoneyPayDialog(options: {
   );
 
   const {
+    selectedPotId: arFromPotId,
+    chipOptions: arFromPotOptions,
+    locationSections: arFromLocationSections,
+    loading: arFromPotLoading,
+    selectedPotBalance: arFromPotBalance,
+    sourceCurrencyCode: arFromPotCurrency,
+    cashbookPointId: arFromCashbookPointId,
+    selectPotAfterRefresh: selectArFromPotAfterRefresh,
+  } = useCashbookLegPots(
+    arPayerProfileId,
+    legBooksTenantId,
+    arLegsEnabled,
+    options.paymentDueCurrencyCode,
+    bundledArFromLeg,
+    undefined,
+    // Collect: show payer bundles at $0 so staff can pick a bundle and use Add money.
+    computed(() => false),
+  );
+
+  const {
     selectedPotId: arToPotId,
     chipOptions: arToPotOptions,
     locationSections: arToLocationSections,
     loading: arToPotLoading,
+    cashbookPointId: arToCashbookPointId,
+    selectPotAfterRefresh: selectArToPotAfterRefresh,
   } = useCashbookLegPots(
     arReceiveProfileId,
     legBooksTenantId,
@@ -140,21 +185,27 @@ export function useBillDetailMoneyPayDialog(options: {
     bundledArToLeg,
   );
 
-  const fromPotOptions = computed(() =>
-    options.isApBill.value ? apFromPotOptions.value : [],
-  );
+  const fromPotOptions = computed(() => {
+    if (options.isApBill.value) return apFromPotOptions.value;
+    if (arDualCashbook.value) return arFromPotOptions.value;
+    return [];
+  });
   const toPotOptions = computed(() =>
     options.isApBill.value ? apToPotOptions.value : arToPotOptions.value,
   );
-  const fromPotSections = computed(() =>
-    options.isApBill.value ? apFromLocationSections.value : [],
-  );
+  const fromPotSections = computed(() => {
+    if (options.isApBill.value) return apFromLocationSections.value;
+    if (arDualCashbook.value) return arFromLocationSections.value;
+    return [];
+  });
   const toPotSections = computed(() =>
     options.isApBill.value ? apToLocationSections.value : arToLocationSections.value,
   );
-  const fromPotLoading = computed(() =>
-    options.isApBill.value ? apFromPotLoading.value : false,
-  );
+  const fromPotLoading = computed(() => {
+    if (options.isApBill.value) return apFromPotLoading.value;
+    if (arDualCashbook.value) return arFromPotLoading.value;
+    return false;
+  });
   const toPotLoading = computed(() =>
     options.isApBill.value ? apToPotLoading.value : arToPotLoading.value,
   );
@@ -185,6 +236,14 @@ export function useBillDetailMoneyPayDialog(options: {
     if (options.isApBill.value) {
       return { showAllocations: false, showToLeg: false };
     }
+    if (arDualCashbook.value) {
+      return {
+        showFromLeg: true,
+        showToLeg: true,
+        showAllocations: false,
+        showCreateToBundle: true,
+      };
+    }
     return { showFromLeg: false, showAllocations: false };
   });
 
@@ -212,17 +271,28 @@ export function useBillDetailMoneyPayDialog(options: {
     ];
   });
 
-  const moneyPayPrefill = computed(() => ({
-    amount: options.paymentDueAmount.value > 0 ? options.paymentDueAmount.value : null,
-    fromPotId: options.isApBill.value ? apFromPotId.value : null,
-    toPotId: options.isApBill.value ? apToPotId.value : arToPotId.value,
-  }));
-
+  type PayDepositPurpose = 'from_top_up' | 'to_new_bundle';
+  const payDepositPurpose = ref<PayDepositPurpose>('from_top_up');
   const payDepositDialogOpen = ref(false);
 
   const payDepositDefaultLocationPointId = computed(() => {
+    if (payDepositPurpose.value === 'to_new_bundle' && arToCashbookPointId.value != null) {
+      return arToCashbookPointId.value;
+    }
+    if (options.isApBill.value && apFromCashbookPointId.value != null) {
+      return apFromCashbookPointId.value;
+    }
+    if (arDualCashbook.value && arFromCashbookPointId.value != null) {
+      return arFromCashbookPointId.value;
+    }
     if (apFromCashbookPointId.value != null) return apFromCashbookPointId.value;
-    const leg = options.isApBill.value ? bundledApFromLeg.value : bundledArToLeg.value;
+    const leg = options.isApBill.value
+      ? bundledApFromLeg.value
+      : payDepositPurpose.value === 'to_new_bundle'
+        ? bundledArToLeg.value
+        : arDualCashbook.value
+          ? bundledArFromLeg.value
+          : bundledArToLeg.value;
     const points = leg?.points ?? [];
     if (!points.length) return null;
     const main = points.find(
@@ -235,7 +305,13 @@ export function useBillDetailMoneyPayDialog(options: {
   const payDepositDefaultLocationPointLabel = computed(() => {
     const pointId = payDepositDefaultLocationPointId.value;
     if (pointId == null) return null;
-    const leg = options.isApBill.value ? bundledApFromLeg.value : bundledApToLeg.value;
+    const leg = options.isApBill.value
+      ? bundledApFromLeg.value
+      : payDepositPurpose.value === 'to_new_bundle'
+        ? bundledArToLeg.value
+        : arDualCashbook.value
+          ? bundledArFromLeg.value
+          : bundledArToLeg.value;
     const point = leg?.points?.find((p) => p.id === pointId);
     const name = point?.name?.trim();
     if (name) return name;
@@ -259,17 +335,45 @@ export function useBillDetailMoneyPayDialog(options: {
       legLocationPointId: payDepositDefaultLocationPointId.value,
       legLocationPointLabel: payDepositDefaultLocationPointLabel.value,
       toPotId:
-        ccy === 'BDT' && options.isApBill.value ? apFromPotId.value : null,
-      amount: due > 0 ? due : null,
+        payDepositPurpose.value === 'to_new_bundle'
+          ? null
+          : ccy === 'BDT' && options.isApBill.value
+            ? apFromPotId.value
+            : null,
+      amount:
+        payDepositPurpose.value === 'to_new_bundle'
+          ? null
+          : due > 0
+            ? due
+            : null,
       methodCode: PROFILE_CASH_DEFAULT_METHOD,
     };
   });
 
-  const payDepositProfileId = computed(() =>
-    options.isApBill.value ? apPayFromProfileId.value : arReceiveProfileId.value,
-  );
+  const payDepositProfileId = computed(() => {
+    if (payDepositPurpose.value === 'to_new_bundle') {
+      return arReceiveProfileId.value;
+    }
+    if (options.isApBill.value) return apPayFromProfileId.value;
+    if (arDualCashbook.value) return arPayerProfileId.value;
+    return arReceiveProfileId.value;
+  });
+
+  const payDepositPartyName = computed(() => {
+    if (payDepositPurpose.value === 'to_new_bundle') {
+      return payToPartyName.value;
+    }
+    if (options.isApBill.value) {
+      return payFromPartyName.value;
+    }
+    if (arDualCashbook.value) {
+      return payFromPartyName.value;
+    }
+    return payToPartyName.value;
+  });
 
   const openPayDepositDialog = () => {
+    payDepositPurpose.value = 'from_top_up';
     if (payDepositProfileId.value == null) {
       showErrorNotification('Cash profile not ready for deposit.');
       return;
@@ -277,17 +381,75 @@ export function useBillDetailMoneyPayDialog(options: {
     payDepositDialogOpen.value = true;
   };
 
-  const payPotBalance = computed(() => {
-    if (!options.isApBill.value || apFromPotId.value == null) return null;
-    const bal = apFromPotBalance.value;
-    return bal != null ? Number(bal) : null;
+  const openPayReceiveBundleDeposit = () => {
+    payDepositPurpose.value = 'to_new_bundle';
+    if (arReceiveProfileId.value == null) {
+      showErrorNotification('Tenant cash profile not ready.');
+      return;
+    }
+    payDepositDialogOpen.value = true;
+  };
+
+  const payDepositDialogSubtitle = computed(() => {
+    const ccy = options.paymentDueCurrencyCode.value.trim().toUpperCase() || 'BDT';
+    const name = payDepositPartyName.value.trim();
+    if (payDepositPurpose.value === 'to_new_bundle') {
+      return name
+        ? `Open a receive bundle on ${name}'s cashbook`
+        : 'Open a receive bundle on the tenant cashbook';
+    }
+    return name
+      ? `Add ${ccy} to ${name}'s cashbook before paying`
+      : `Add ${ccy} before paying`;
   });
-  const payPotBalanceLoading = computed(() => apFromPotLoading.value);
+
+  const payPotBalance = computed(() => {
+    if (options.isApBill.value) {
+      if (apFromPotId.value == null) return null;
+      const bal = apFromPotBalance.value;
+      return bal != null ? Number(bal) : null;
+    }
+    if (arDualCashbook.value) {
+      if (arFromPotId.value == null) return null;
+      const bal = arFromPotBalance.value;
+      return bal != null ? Number(bal) : null;
+    }
+    return null;
+  });
+
+  const moneyPayPrefill = computed(() => {
+    const due = options.paymentDueAmount.value;
+    let amount: number | null = due > 0 ? due : null;
+    if (
+      amount != null
+      && (options.isApBill.value || arDualCashbook.value)
+    ) {
+      const bal = payPotBalance.value;
+      if (bal != null && bal > 0 && bal < amount) {
+        amount = bal;
+      }
+    }
+    return {
+      amount,
+      fromPotId: options.isApBill.value
+        ? apFromPotId.value
+        : arDualCashbook.value
+          ? arFromPotId.value
+          : null,
+      toPotId: options.isApBill.value ? apToPotId.value : arToPotId.value,
+    };
+  });
+
+  const payPotBalanceLoading = computed(() => {
+    if (options.isApBill.value) return apFromPotLoading.value;
+    if (arDualCashbook.value) return arFromPotLoading.value;
+    return false;
+  });
 
   const payAmountForBalance = ref(0);
 
   const payBalanceShortfall = computed(() => {
-    if (!options.isApBill.value) return 0;
+    if (!options.isApBill.value && !arDualCashbook.value) return 0;
     if (payPotBalance.value == null) return 0;
     const need = payAmountForBalance.value;
     if (need <= 0) return 0;
@@ -332,12 +494,9 @@ export function useBillDetailMoneyPayDialog(options: {
         locationCode: selectedPotId != null && selectedPotId > 0 ? null : locationCode,
         booksRate: payload.legBooksRate ?? null,
         idempotencyKey: createPayIdempotencyKey(),
-        meta: {
+        meta: buildKernelPayMovementMeta(payload, {
           source: 'bill_pay_top_up',
-          paid_on: payload.paymentDate,
-          reference: payload.reference,
-          note: payload.note,
-        },
+        }),
       });
       return {
         deposit,
@@ -363,7 +522,13 @@ export function useBillDetailMoneyPayDialog(options: {
       });
       const newPotId = result.deposit.pot_id;
       if (Number.isFinite(newPotId) && newPotId > 0) {
-        selectApFromPotAfterRefresh(newPotId);
+        if (payDepositPurpose.value === 'to_new_bundle') {
+          selectArToPotAfterRefresh(newPotId);
+        } else if (options.isApBill.value) {
+          selectApFromPotAfterRefresh(newPotId);
+        } else if (arDualCashbook.value) {
+          selectArFromPotAfterRefresh(newPotId);
+        }
       }
     },
     onError: (error: unknown) => {
@@ -394,9 +559,24 @@ export function useBillDetailMoneyPayDialog(options: {
     }
 
     const isAp = options.isApBill.value;
-    const fromPotId = isAp ? payload.fromPotId : payload.toPotId;
+    const dual = arDualCashbook.value;
+    let fromPotId: number | null;
+    if (isAp) {
+      fromPotId = payload.fromPotId;
+    } else if (dual) {
+      fromPotId = payload.fromPotId;
+    } else {
+      fromPotId = payload.toPotId;
+    }
     if (fromPotId == null) {
-      throw new Error(isAp ? 'Choose which cash point pays this out.' : 'Choose where to receive cash.');
+      throw new Error(
+        isAp || dual
+          ? 'Choose which cash bundle pays from.'
+          : 'Choose where to receive cash.',
+      );
+    }
+    if (dual && (payload.toPotId == null || payload.toPotId <= 0)) {
+      throw new Error('Choose which cash bundle receives the payment.');
     }
 
     const settlement =
@@ -413,12 +593,22 @@ export function useBillDetailMoneyPayDialog(options: {
       billDueAmount: options.paymentDueAmount.value,
       settlementCurrencyCode: settlement,
       fromPotId,
-      fromPotCurrencyCode: isAp ? apFromPotCurrency.value : undefined,
-      fromPotAvailableBalance: isAp ? apFromPotBalance.value : undefined,
-      toPotId: isAp ? payload.toPotId : payload.toPotId,
+      fromPotCurrencyCode: isAp
+        ? apFromPotCurrency.value
+        : dual
+          ? arFromPotCurrency.value
+          : undefined,
+      fromPotAvailableBalance: isAp
+        ? apFromPotBalance.value
+        : dual
+          ? arFromPotBalance.value
+          : undefined,
+      toPotId: payload.toPotId,
+      skipCustomerAutoDeposit: !isAp && dual,
       methodCode: payload.methodCode,
       reference: payload.reference,
       note: payload.note,
+      instrumentFields: payload.instrumentFields,
     };
   };
 
@@ -453,11 +643,15 @@ export function useBillDetailMoneyPayDialog(options: {
     payBalanceShortfall,
     onPayAmountPreview,
     payDepositDialogOpen,
+    payDepositDialogSubtitle,
+    payDepositPartyName,
     payDepositPrefill,
     payDepositFieldFlags,
     payDepositProfileId,
     openPayDepositDialog,
+    openPayReceiveBundleDeposit,
     onPayDepositSubmit,
     payDepositMutation,
+    arDualCashbook,
   };
 }

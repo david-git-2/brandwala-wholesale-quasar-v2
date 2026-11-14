@@ -31,6 +31,7 @@ schema_paths = [
   "./schemas/money_kernel_v2/27_money_kernel_cash_bundles_helpers.sql",
   "./schemas/money_kernel_v2/28_money_kernel_bundle_triggers.sql",
   "./schemas/money_kernel_v2/29_money_kernel_bundle_grants.sql",
+  "./schemas/reporting/01_customer_report_rpcs.sql",
 ]
 
 [studio]

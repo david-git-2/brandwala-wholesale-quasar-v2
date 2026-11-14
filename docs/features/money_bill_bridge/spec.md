@@ -124,7 +124,9 @@ Paper invariants: [bills/spec.md](../bills/spec.md). Cash invariants: [money/spe
 | :---: | :--- | :--- |
 | 1 — FX | Rate from `books_exchange_rates` (auto); no manual **Exchange rate** input on pay dialog | Shipped |
 | 2 — Top up | Block pay if insufficient; **Add money** → deposit; refresh balance | **Shipped** — selected bundle or **new bundle** via `rpc_deposit` with null `p_pot_id` (opens on Main at books rate) |
-| 3 — Chunks | Pay uses due from summary (no Payment amount input); partial-pay UX polish later | Due-only shipped; partial polish open |
+| 3 — Chunks | Editable **Payment amount** (≤ bill due); amount in words; **Paying now** in summary when partial | Shipped |
+
+**AR collect:** When `pay_cashbook_legs` has **both** `from_leg` and `to_leg` (customer + tenant cashbooks), the dialog shows **From** (customer bundle, balance + Add money) and **To** (tenant receive bundle + New bundle deposit). Legacy AR (no customer cashbook) keeps **To-only** receive and synthetic customer deposit on submit.
 
 **Rules:** One payment = **one** from-pot/bundle; two pots = two payments. Reports use BDT via `books_amount` / `exchange_rate` on pays.
 

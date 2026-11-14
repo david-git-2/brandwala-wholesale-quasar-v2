@@ -12,13 +12,18 @@
       <div class="profile-operating-panel__header q-pa-md">
         <div class="text-subtitle1 text-weight-bold">{{ partyName }}</div>
         <div class="row q-gutter-md q-mt-xs text-body2">
-          <span v-if="entityType !== 'tenant'">
-            Has with us <strong>{{ formatAmountBdt(available) }}</strong>
+          <span v-if="entityType === 'tenant'">
+            Cash <strong>{{ formatAmountBdt(accountBalance) }}</strong>
+          </span>
+          <span v-else-if="cashbookEnabled" class="row items-center no-wrap q-gutter-xs">
+            Current balance
+            <q-spinner v-if="kernelBundlesLoading" color="primary" size="14px" />
+            <strong v-else>{{ formatAmountBdt(accountBalance) }}</strong>
           </span>
           <span v-else>
-            Cash <strong>{{ formatAmountBdt(available) }}</strong>
+            Has with us <strong>{{ formatAmountBdt(available) }}</strong>
           </span>
-          <span v-if="entityType !== 'tenant' && dueTotal > 0">
+          <span v-if="entityType !== 'tenant' && !cashbookEnabled && dueTotal > 0">
             Open due <strong>{{ formatAmountBdt(dueTotal) }}</strong>
           </span>
         </div>
@@ -28,9 +33,33 @@
         >
           Payment history only — no cashbook wallet on this party.
         </div>
+        <div
+          v-else-if="cashbookEnabled && activeBundlesWithBalance.length"
+          class="column q-gutter-y-xs q-mt-sm"
+        >
+          <div class="text-caption text-weight-bold text-uppercase text-grey-7">
+            Active bundles
+          </div>
+          <div class="row q-gutter-sm flex-wrap">
+            <div
+              v-for="bundle in activeBundlesWithBalance"
+              :key="bundle.bundleId"
+              class="profile-operating-panel__bundle-chip column q-px-sm q-py-xs"
+            >
+              <span class="text-caption text-grey-8">
+                {{ bundleLocationLabel(bundle) }}
+              </span>
+              <span class="text-body2 text-weight-medium text-grey-9">
+                {{ bundle.currencyCode }}
+                {{ formatAmountBdt(bundle.amount) }}
+              </span>
+            </div>
+          </div>
+        </div>
         <ProfileCashbookActionBar
-          v-if="showActions && cashbookEnabled"
+          v-if="showMovementBar"
           class="q-mt-sm"
+          :show-locations="showLocationsAction"
           @deposit="openDeposit"
           @withdraw="openWithdraw"
           @locations="openLocations"
@@ -63,6 +92,7 @@
           :can-revert="canRevertRow(row)"
           :revert-loading="revertPendingId === row.id && revertMutation.isPending.value"
           @revert="openRevertDialog"
+          @details="openPayDetailDialog"
         />
         <div v-if="!displayPays.length && !activityQuery.isPending.value" class="text-caption text-grey-6 text-center q-py-lg">
           No transactions yet.
@@ -83,7 +113,7 @@
     </template>
 
     <ProfileCashLocationsPanel
-      v-if="showActions && cashbookEnabled"
+      v-if="showActions && showMovementActions && cashbookEnabled"
       v-model="locationsPanelOpen"
       :books-tenant-id="booksTenantId"
       :operating-tenant-id="tenantId"
@@ -97,8 +127,17 @@
       @confirm="confirmRevert"
     />
 
+    <ProfilePayDetailDialog
+      v-model="payDetailDialogOpen"
+      :operating-tenant-id="tenantId"
+      :row="payDetailRow"
+      :viewed-profile-id="viewedProfileId"
+      :viewed-profile-display-name="partyName"
+      :amount-mode="amountViewMode"
+    />
+
     <MoneyPayDialog
-      v-if="showActions && cashbookEnabled"
+      v-if="showMovementBar"
       v-model="dialogOpen"
       leg-layout="profile_cash"
       :kind="dialogKind"
@@ -118,10 +157,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { formatAmountBdt } from 'src/utils/currency';
 import ProfilePayTransactionRow from './ProfilePayTransactionRow.vue';
 import ProfilePayRevertDialog from './ProfilePayRevertDialog.vue';
+import ProfilePayDetailDialog from './ProfilePayDetailDialog.vue';
 import MoneyPayDialog from './MoneyPayDialog.vue';
 import { usePaymentsVoidAccess } from '../composables/usePaymentsVoidAccess';
 import { useProfilePayRevertMutation } from '../composables/useProfilePayRevertMutation';
@@ -132,6 +172,8 @@ import { useProfileCashMovementDialog } from 'src/modules/people/composables/use
 import { PROFILE_CASH_DEFAULT_METHOD } from 'src/modules/people/constants/profileCashMovementMethods';
 import { usePaymentProfileQuery } from '../composables/usePaymentProfileQuery';
 import { useProfileActivityQuery } from '../composables/useProfileActivityQuery';
+import { useProfileCashbookBundlesQuery } from 'src/modules/people/composables/useProfileCashbookBundlesQuery';
+import type { ProfileCashbookBundleRow } from 'src/modules/people/types/profileCashbookBundle';
 import { useCurrencySymbolMap } from '../composables/useCurrencySymbolMap';
 import type { PayAmountDisplayMode } from '../utils/payListDisplay';
 import type { PayListRow as PayRow } from '../repositories/paysRepository';
@@ -149,6 +191,8 @@ const props = withDefaults(
     tenantName?: string;
     active?: boolean;
     showActions?: boolean;
+    showMovementActions?: boolean;
+    showLocationsAction?: boolean;
     tenantSlug?: string;
   }>(),
   {
@@ -156,12 +200,16 @@ const props = withDefaults(
     tenantName: 'Company',
     active: true,
     showActions: true,
+    showMovementActions: true,
+    showLocationsAction: true,
     tenantSlug: undefined,
   },
 );
 
 const paymentsVoidAccess = usePaymentsVoidAccess();
 const revertMutation = useProfilePayRevertMutation();
+const payDetailDialogOpen = ref(false);
+const payDetailRow = ref<PayRow | null>(null);
 const revertDialogOpen = ref(false);
 const revertTargetId = ref<number | null>(null);
 const revertPendingId = ref<number | null>(null);
@@ -180,6 +228,7 @@ const {
   openLocations,
   locationsPanelOpen,
   resolvedProfileId,
+  ensureProfileId,
   onMoneyPaySubmit,
   movementMutation,
 } = useProfileCashMovementDialog({
@@ -191,6 +240,10 @@ const {
   tenantSlug: movementTenantSlug,
   active: movementActive,
 });
+
+const showMovementBar = computed(
+  () => props.showActions && props.showMovementActions && cashbookEnabled.value,
+);
 
 const movementFieldFlags = computed(() => ({
   showAllocations: false,
@@ -222,6 +275,77 @@ const activityParams = computed(() => ({
 const activityEnabled = computed(() => !!props.active && props.entityId > 0);
 const activityQuery = useProfileActivityQuery(activityParams, activityEnabled);
 
+const kernelProfileId = computed((): number | null => {
+  if (!cashbookEnabled.value) return null;
+  const resolved = resolvedProfileId.value;
+  if (resolved != null && resolved > 0) return resolved;
+  if (
+    props.entityType === 'customer'
+    || props.entityType === 'investor'
+    || props.entityType === 'courier'
+  ) {
+    return props.entityId > 0 ? props.entityId : null;
+  }
+  return null;
+});
+
+const booksTenantIdRef = computed(() => props.booksTenantId);
+const kernelProfileIdRef = computed(() => kernelProfileId.value);
+const kernelBundlesEnabled = computed(
+  () => !!props.active && cashbookEnabled.value && kernelProfileId.value != null,
+);
+
+const kernelBundlesQuery = useProfileCashbookBundlesQuery(
+  booksTenantIdRef,
+  kernelProfileIdRef,
+  kernelBundlesEnabled,
+);
+
+watch(
+  () => props.active && cashbookEnabled.value,
+  (on) => {
+    if (on) void ensureProfileId();
+  },
+  { immediate: true },
+);
+
+function bundleBooksBdt(bundle: ProfileCashbookBundleRow): number {
+  const amt = Number(bundle.amount);
+  if (!Number.isFinite(amt)) return 0;
+  if (bundle.currencyCode === 'BDT') return amt;
+  const rate = Number(bundle.booksRate);
+  return amt * (Number.isFinite(rate) && rate > 0 ? rate : 1);
+}
+
+function bundleLocationLabel(bundle: ProfileCashbookBundleRow): string {
+  const name = bundle.locationName?.trim();
+  if (name) return name;
+  const code = bundle.locationCode?.trim();
+  return code || 'Location';
+}
+
+const activeBundlesWithBalance = computed(() =>
+  (kernelBundlesQuery.data.value ?? [])
+    .filter((b) => b.amount > 0.009)
+    .sort((a, b) => {
+      const loc = bundleLocationLabel(a).localeCompare(bundleLocationLabel(b));
+      if (loc !== 0) return loc;
+      return a.currencyCode.localeCompare(b.currencyCode);
+    }),
+);
+
+const kernelBooksBalanceBdt = computed(() =>
+  activeBundlesWithBalance.value.reduce((sum, b) => sum + bundleBooksBdt(b), 0),
+);
+
+const kernelBundlesLoading = computed(
+  () =>
+    cashbookEnabled.value
+    && kernelBundlesEnabled.value
+    && kernelBundlesQuery.isPending.value
+    && !kernelBundlesQuery.data.value,
+);
+
 const amountViewMode = ref<PayAmountDisplayMode>('bdt');
 const amountViewOptions = [
   { label: 'BDT equivalent', value: 'bdt' as const },
@@ -239,6 +363,16 @@ const viewedProfileId = computed(() => resolvedProfileId.value ?? null);
 const bundle = computed(() => profileQuery.data.value ?? null);
 const available = computed(() => bundle.value?.detail.available_balance ?? 0);
 const dueTotal = computed(() => bundle.value?.dueTotal ?? 0);
+const accountBalance = computed(() => {
+  if (cashbookEnabled.value && kernelBundlesQuery.data.value) {
+    return kernelBooksBalanceBdt.value;
+  }
+  const detail = bundle.value?.detail;
+  if (!detail) return 0;
+  const total = Number(detail.total_balance);
+  if (Number.isFinite(total) && total > 0) return total;
+  return Number(detail.available_balance ?? 0);
+});
 
 const initialLoading = computed(
   () =>
@@ -292,6 +426,11 @@ function canRevertRow(row: PayRow): boolean {
 const openRevertDialog = (row: PayRow) => {
   revertTargetId.value = row.id;
   revertDialogOpen.value = true;
+};
+
+const openPayDetailDialog = (row: PayRow) => {
+  payDetailRow.value = row;
+  payDetailDialogOpen.value = true;
 };
 
 const confirmRevert = async (reason: string) => {
@@ -360,5 +499,12 @@ const loadMorePays = () => {
   bottom: 0;
   background: #fff;
   border-top: 1px solid var(--tf-neutral-border, #e7e1d8);
+}
+
+.profile-operating-panel__bundle-chip {
+  min-width: 6.5rem;
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
+  border-radius: 8px;
+  background: #fff;
 }
 </style>

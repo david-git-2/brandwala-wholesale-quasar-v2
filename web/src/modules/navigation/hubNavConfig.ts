@@ -224,22 +224,6 @@ const BILLS_PAYS_HUB = {
       icon: 'ph ph-receipt',
       routeSegment: 'bills',
     },
-    {
-      navWeight: 46,
-      moduleKey: 'payments' as ModuleKey,
-      title: 'Payments',
-      caption: 'Cash in and cash out',
-      icon: 'ph ph-credit-card',
-      routeSegment: 'payments',
-    },
-    {
-      navWeight: 47,
-      moduleKey: 'cashbook' as ModuleKey,
-      title: 'Cashbook',
-      caption: 'Leftover balances and audit trail',
-      icon: 'ph ph-wallet',
-      routeSegment: 'wallet',
-    },
   ] satisfies HubPrimaryLinkDef[],
 };
 

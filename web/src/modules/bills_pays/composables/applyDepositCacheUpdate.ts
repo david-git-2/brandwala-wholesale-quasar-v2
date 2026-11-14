@@ -3,6 +3,7 @@ import type { BillDetailBundle } from 'src/modules/sales_invoice/repositories/in
 import type { BillPayCashbookLeg } from '../types/billPayCashbookLegs';
 import { type DepositRpcResult, parseDepositRpcResult } from '../repositories/moneyKernelRepository';
 import { billsQueryKeys } from '../services/billsQueryKeys';
+import { cashbookQueryKeys } from '../services/cashbookQueryKeys';
 import { profileCashbookBundlesQueryKey } from 'src/modules/people/composables/useProfileCashbookBundlesQuery';
 import type { ProfileCashbookBundleRow } from 'src/modules/people/types/profileCashbookBundle';
 
@@ -121,4 +122,47 @@ export function applyDepositCacheFromRpc(
   const deposit = parseDepositRpcResult(input.rpc);
   applyDepositCacheUpdate(queryClient, { ...input, deposit });
   return deposit;
+}
+
+/** Refetch operating account, bundles, locations, and pay dialog legs for one profile. */
+export function invalidateProfileCashbookStaffQueries(
+  queryClient: QueryClient,
+  input: {
+    operatingTenantId: number;
+    booksTenantId: number;
+    entityType: string;
+    entityId: number;
+    profileId: number;
+  },
+): void {
+  if (input.operatingTenantId <= 0 || input.entityId <= 0 || input.profileId <= 0) return;
+  const { operatingTenantId, booksTenantId, entityType, entityId, profileId } = input;
+
+  void queryClient.invalidateQueries({
+    queryKey: [
+      ...cashbookQueryKeys.root,
+      'payment_profile',
+      operatingTenantId,
+      entityType,
+      entityId,
+    ],
+  });
+  void queryClient.invalidateQueries({
+    queryKey: [
+      ...cashbookQueryKeys.root,
+      'profile_activity',
+      operatingTenantId,
+      entityType,
+      entityId,
+    ],
+  });
+  void queryClient.invalidateQueries({
+    queryKey: profileCashbookBundlesQueryKey(booksTenantId, profileId),
+  });
+  void queryClient.invalidateQueries({
+    queryKey: [...cashbookQueryKeys.root, 'leg_pots', booksTenantId, profileId],
+  });
+  void queryClient.invalidateQueries({
+    queryKey: [...cashbookQueryKeys.root, 'account_profile', booksTenantId, profileId],
+  });
 }

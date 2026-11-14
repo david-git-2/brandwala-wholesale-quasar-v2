@@ -44,10 +44,10 @@ const reportGroups: HubLinkGroup[] = [
     title: 'Cash and dues',
     items: [
       {
-        key: 'customer-dues',
-        title: 'Customer dues',
-        caption: 'Who owes, how old, credit limit.',
-        icon: 'ph ph-timer',
+        key: 'customers',
+        title: 'Customers',
+        caption: 'Browse customers — dues, pays, orders.',
+        icon: 'ph ph-users-three',
         iconTone: 'cod',
       },
       {
@@ -88,7 +88,7 @@ const reportGroups: HubLinkGroup[] = [
 ];
 
 const pathByKey: Record<string, string> = {
-  'customer-dues': 'customer-dues',
+  customers: 'customers',
   'cash-in': 'cash-in',
   'invoice-book': 'invoice-book',
   'shipment-report': 'shipment-report',

@@ -7,13 +7,15 @@ CREATE OR REPLACE FUNCTION public.apply_delivery_paper_outcome (
   RETURNS jsonb
   LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path TO 'public'
+  SET search_path TO 'public', 'money_kernel'
   AS $function$
 DECLARE
   v_paper public.delivery_paper%rowtype;
   v_close_action text := lower(trim(coalesce(p_close_action, '')));
   v_operating_tenant_id bigint;
   v_parent_tenant_id bigint;
+  v_books_tenant_id bigint;
+  v_tenant_self_profile bigint;
   v_profile_id bigint;
   v_doc_type text;
   v_items jsonb := '[]'::jsonb;
@@ -33,8 +35,6 @@ DECLARE
   v_stock public.global_stocks%rowtype;
   v_outcome_status text;
   v_new_splits jsonb;
-  v_global_invoice_id bigint;
-  v_pbc_invoice_id bigint;
   v_bill_source_type text;
   v_bill_source_id text;
   v_bill_source_key text;
@@ -52,6 +52,13 @@ DECLARE
   v_shipment_item_id bigint;
   v_shipment_id bigint;
   v_shipment_ref jsonb;
+  v_kernel_lines jsonb := '[]'::jsonb;
+  v_line_item jsonb;
+  v_line_desc text;
+  v_bill_entity text;
+  v_bill_note text;
+  v_kernel_item_kind text;
+  v_kernel_stock_id bigint;
 BEGIN
   PERFORM public.delivery_paper_assert_tenant_access(p_tenant_id);
 
@@ -95,14 +102,12 @@ BEGIN
     v_shop_order_id := v_paper.source_id;
     SELECT
       o.tenant_id,
-      o.global_invoice_id,
       o.order_no,
       o.recipient_name,
       o.recipient_phone,
       o.shipping_address
     INTO
       v_operating_tenant_id,
-      v_global_invoice_id,
       v_order_no,
       v_order_recipient_name,
       v_order_recipient_phone,
@@ -114,8 +119,8 @@ BEGIN
       RAISE EXCEPTION 'shop order not found';
     END IF;
   ELSIF v_doc_type = 'pbc_costing_file' THEN
-    SELECT f.tenant_id, f.invoice_id
-    INTO v_operating_tenant_id, v_pbc_invoice_id
+    SELECT f.tenant_id
+    INTO v_operating_tenant_id
     FROM public.product_based_costing_files f
     WHERE f.id = v_paper.source_id;
     IF v_operating_tenant_id IS NULL THEN
@@ -213,11 +218,40 @@ BEGIN
     IF v_close_action IN ('take', 'condition') THEN
       v_bill_stock_id := public.delivery_paper_line_resolvable_bill_stock_id(v_line);
       IF v_bill_stock_id IS NOT NULL THEN
-        SELECT gs.shipment_item_id, gsi.shipment_id
-        INTO v_shipment_item_id, v_shipment_id
+        SELECT gs.shipment_item_id, gsi.shipment_id, gs.product_id
+        INTO v_shipment_item_id, v_shipment_id, v_product_id
         FROM public.global_stocks gs
         LEFT JOIN public.global_shipment_items gsi ON gsi.id = gs.shipment_item_id
         WHERE gs.id = v_bill_stock_id;
+
+        IF v_shipment_item_id IS NULL AND v_doc_type = 'shop_order' THEN
+          SELECT oi.product_id
+          INTO v_product_id
+          FROM public.preorder_demand pd
+          INNER JOIN public.shop_order_items oi ON oi.id = pd.source_id
+          WHERE pd.id = v_demand_id;
+
+          IF v_product_id IS NOT NULL AND v_line.unit_cost_landed_snapshot IS NOT NULL THEN
+            SELECT gsi.id, gsi.shipment_id
+            INTO v_shipment_item_id, v_shipment_id
+            FROM public.global_shipment_items gsi
+            WHERE gsi.tenant_id = v_parent_tenant_id
+              AND gsi.product_id = v_product_id
+              AND gsi.landed_cost_bdt = v_line.unit_cost_landed_snapshot
+            ORDER BY gsi.shipment_id DESC, gsi.id DESC
+            LIMIT 1;
+          END IF;
+
+          IF v_shipment_item_id IS NULL AND v_product_id IS NOT NULL THEN
+            v_shipment_ref := public.resolve_shipment_item_for_shop_order_product(
+              v_books_tenant_id,
+              NULL,
+              v_product_id
+            );
+            v_shipment_item_id := nullif(v_shipment_ref ->> 'shipment_item_id', '')::bigint;
+            v_shipment_id := nullif(v_shipment_ref ->> 'shipment_id', '')::bigint;
+          END IF;
+        END IF;
 
         v_items := v_items || jsonb_build_array(jsonb_build_object(
           'global_stock_id', v_bill_stock_id,
@@ -307,91 +341,139 @@ BEGIN
   END LOOP;
 
   IF v_close_action IN ('take', 'condition') THEN
-    v_payload := jsonb_build_object(
-      'shop_order_id', v_shop_order_id,
-      'invoice', jsonb_build_object(
-        'invoice_type', 'wholesale',
-        'profile_id', v_profile_id,
-        'recipient_name', v_order_recipient_name,
-        'recipient_phone', v_order_recipient_phone,
-        'recipient_address', v_order_shipping_address,
-        'note', CASE
-          WHEN v_order_no IS NOT NULL THEN 'Delivery paper #' || p_delivery_paper_id::text || ' · ' || v_order_no
-          ELSE 'Delivery paper #' || p_delivery_paper_id::text
-        END,
-        'channel_meta', jsonb_build_object('delivery_kind', v_close_action)
-      ),
-      'items', v_items,
-      'issue', false
-    );
+  IF jsonb_array_length(v_items) = 0 THEN
+    RAISE EXCEPTION 'no bill lines for take or condition';
+  END IF;
 
-    v_result := public.create_sales_invoice_from_payload(v_operating_tenant_id, v_payload);
-
-    IF coalesce(v_result->>'success', 'false') <> 'true' THEN
-      RAISE EXCEPTION '%', coalesce(v_result->>'error', 'failed to create close invoice');
+    v_books_tenant_id := public.resolve_books_tenant_id(v_operating_tenant_id);
+    v_tenant_self_profile := public._kernel_tenant_mirror_profile_id(v_books_tenant_id);
+    IF v_tenant_self_profile IS NULL THEN
+      RAISE EXCEPTION 'tenant profile required for wholesale bill';
     END IF;
 
-    v_invoice_id := (v_result->>'invoice_id')::bigint;
-    v_invoice_no := v_result->>'invoice_no';
+    FOR v_line_item IN SELECT value FROM jsonb_array_elements(v_items) LOOP
+      v_line_desc := nullif(trim(v_line_item->>'name_snapshot'), '');
+      IF v_line_desc IS NULL
+         AND nullif(v_line_item->>'global_stock_id', '') IS NOT NULL THEN
+        SELECT coalesce(nullif(trim(gsi.name), ''), 'Item')
+        INTO v_line_desc
+        FROM public.global_stocks gs
+        LEFT JOIN public.global_shipment_items gsi ON gsi.id = gs.shipment_item_id
+        WHERE gs.id = nullif(v_line_item->>'global_stock_id', '')::bigint;
+      END IF;
+      v_line_desc := coalesce(v_line_desc, 'Item');
 
+      v_kernel_stock_id := nullif(v_line_item->>'global_stock_id', '')::bigint;
+      v_shipment_item_id := nullif(v_line_item->>'shipment_item_id', '')::bigint;
+      v_shipment_id := nullif(v_line_item->'line_meta'->'shipment_ref'->>'shipment_id', '')::bigint;
+      IF v_shipment_item_id IS NULL THEN
+        v_shipment_item_id := nullif(
+          v_line_item->'line_meta'->'shipment_ref'->>'shipment_item_id',
+          ''
+        )::bigint;
+      END IF;
+      v_product_id := nullif(v_line_item->>'product_id', '')::bigint;
+
+      IF v_kernel_stock_id IS NOT NULL
+         AND (v_shipment_item_id IS NULL OR v_shipment_id IS NULL) THEN
+        SELECT
+          coalesce(v_shipment_item_id, gs.shipment_item_id),
+          coalesce(v_shipment_id, gsi.shipment_id),
+          coalesce(v_product_id, gs.product_id)
+        INTO v_shipment_item_id, v_shipment_id, v_product_id
+        FROM public.global_stocks gs
+        LEFT JOIN public.global_shipment_items gsi ON gsi.id = gs.shipment_item_id
+        WHERE gs.id = v_kernel_stock_id;
+      END IF;
+
+      IF v_shipment_item_id IS NULL AND v_product_id IS NOT NULL THEN
+        v_shipment_ref := public.resolve_shipment_item_for_shop_order_product(
+          v_books_tenant_id,
+          NULL,
+          v_product_id
+        );
+        v_shipment_item_id := nullif(v_shipment_ref ->> 'shipment_item_id', '')::bigint;
+        v_shipment_id := coalesce(
+          v_shipment_id,
+          nullif(v_shipment_ref ->> 'shipment_id', '')::bigint
+        );
+      END IF;
+
+      v_kernel_item_kind := CASE
+        WHEN v_kernel_stock_id IS NOT NULL AND v_shipment_item_id IS NOT NULL THEN 'stock'
+        ELSE 'charge'
+      END;
+
+      v_kernel_lines := v_kernel_lines || jsonb_build_array(
+        jsonb_build_object(
+          'item_kind', v_kernel_item_kind,
+          'description', v_line_desc,
+          'quantity', coalesce((v_line_item->>'quantity')::numeric, 0),
+          'unit_price', coalesce((v_line_item->>'sell_price_amount')::numeric, 0),
+          'product_id', v_product_id,
+          'global_stock_id', v_kernel_stock_id,
+          'shipment_item_id', v_shipment_item_id,
+          'shipment_id', v_shipment_id,
+          'meta', coalesce(v_line_item->'line_meta', '{}'::jsonb)
+            || CASE
+              WHEN v_kernel_stock_id IS NOT NULL THEN
+                jsonb_build_object(
+                  'stock_ref', jsonb_build_object(
+                    'global_stock_id', v_kernel_stock_id
+                  )
+                )
+              ELSE '{}'::jsonb
+            END
+        )
+      );
+    END LOOP;
 
     IF v_doc_type = 'shop_order' THEN
       v_bill_source_type := 'shop_order';
       v_bill_source_id := v_paper.source_id::text;
       v_bill_source_key := format('delivery_paper:%s:%s', p_delivery_paper_id, v_close_action);
+      v_bill_entity := 'public.shop_orders';
     ELSE
       v_bill_source_type := 'delivery_close';
       v_bill_source_id := p_delivery_paper_id::text;
       v_bill_source_key := v_close_action;
+      v_bill_entity := 'public.delivery_paper';
     END IF;
 
-    BEGIN
-      UPDATE public.bills
-      SET
-        source_type = v_bill_source_type,
-        source_id = v_bill_source_id,
-        source_key = v_bill_source_key,
-        shop_order_id = coalesce(v_shop_order_id, shop_order_id),
-        settlement_kind = v_close_action::public.bill_settlement_kind,
-        channel_meta = coalesce(channel_meta, '{}'::jsonb)
-          || jsonb_build_object(
-            'delivery_kind', v_close_action,
-            'document_type', v_doc_type,
-            'document_id', v_paper.source_id,
-            'delivery_paper_id', p_delivery_paper_id
-          ),
-        updated_at = now()
-      WHERE id = v_invoice_id;
-    EXCEPTION
-      WHEN unique_violation THEN
-        UPDATE public.bills
-        SET
-          source_type = v_bill_source_type,
-          source_id = v_bill_source_id,
-          source_key = v_bill_source_key || ':' || v_invoice_id::text,
-          shop_order_id = coalesce(v_shop_order_id, shop_order_id),
-          settlement_kind = v_close_action::public.bill_settlement_kind,
-          channel_meta = coalesce(channel_meta, '{}'::jsonb)
-            || jsonb_build_object(
-              'delivery_kind', v_close_action,
-              'document_type', v_doc_type,
-              'document_id', v_paper.source_id,
-              'delivery_paper_id', p_delivery_paper_id
-            ),
-          updated_at = now()
-        WHERE id = v_invoice_id;
+    v_bill_note := CASE
+      WHEN v_order_no IS NOT NULL THEN 'Delivery paper #' || p_delivery_paper_id::text || ' · ' || v_order_no
+      ELSE 'Delivery paper #' || p_delivery_paper_id::text
     END;
 
-    PERFORM public.stamp_bill_kernel_fields(v_invoice_id);
+    v_payload := jsonb_build_object(
+      'tenant_id', v_books_tenant_id,
+      'kind', 'sales_invoice_wholesale',
+      'source_entity', v_bill_entity,
+      'source_type', v_bill_source_type,
+      'source_id', v_bill_source_id,
+      'source_key', v_bill_source_key,
+      'idempotency_key', format('delivery-paper-%s-%s', p_delivery_paper_id, v_close_action),
+      'currency_code', 'BDT',
+      'from_profile_id', v_profile_id,
+      'to_profile_id', v_tenant_self_profile,
+      'counterparty_profile_id', v_profile_id,
+      'note', v_bill_note,
+      'meta', jsonb_build_object(
+        'delivery_kind', v_close_action,
+        'document_type', v_doc_type,
+        'document_id', v_paper.source_id,
+        'delivery_paper_id', p_delivery_paper_id,
+        'shop_order_id', v_shop_order_id
+      ),
+      'lines', v_kernel_lines
+    );
 
-    IF v_doc_type = 'shop_order' AND v_close_action = 'take' AND v_global_invoice_id IS NULL THEN
-      UPDATE public.shop_orders
-      SET global_invoice_id = v_invoice_id, updated_at = now()
-      WHERE id = v_paper.source_id AND global_invoice_id IS NULL;
-    ELSIF v_doc_type = 'pbc_costing_file' AND v_close_action = 'take' AND v_pbc_invoice_id IS NULL THEN
-      UPDATE public.product_based_costing_files
-      SET invoice_id = v_invoice_id, updated_at = now()
-      WHERE id = v_paper.source_id AND invoice_id IS NULL;
+    v_result := public.rpc_create_bill(v_payload);
+    v_invoice_id := nullif(v_result->>'bill_id', '')::bigint;
+    v_invoice_no := v_result->>'invoice_no';
+
+    IF v_invoice_id IS NULL THEN
+      RAISE EXCEPTION 'rpc_create_bill returned no bill_id';
     END IF;
   END IF;
 

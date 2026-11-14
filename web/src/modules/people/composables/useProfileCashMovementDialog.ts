@@ -6,7 +6,11 @@ import { moneyKernelRepository } from 'src/modules/bills_pays/repositories/money
 import { createPayIdempotencyKey } from 'src/modules/bills_pays/repositories/paysRepository';
 import { cashbookQueryKeys } from 'src/modules/bills_pays/services/cashbookQueryKeys';
 import type { MoneyPayKind, MoneyPaySubmitPayload } from 'src/modules/bills_pays/types/moneyPayDialog';
-import { applyDepositCacheUpdate } from 'src/modules/bills_pays/composables/applyDepositCacheUpdate';
+import { buildKernelPayMovementMeta } from 'src/modules/bills_pays/utils/kernelPayMovementMeta';
+import {
+  applyDepositCacheUpdate,
+  invalidateProfileCashbookStaffQueries,
+} from 'src/modules/bills_pays/composables/applyDepositCacheUpdate';
 import { isProfileCashbookEnabled } from '../utils/profileCashbookEnabled';
 
 async function resolveMoneyProfileId(
@@ -113,12 +117,9 @@ export function useProfileCashMovementDialog(options: {
         || payload.sourceCurrencyCode?.trim().toUpperCase()
         || 'BDT';
       const key = createPayIdempotencyKey();
-      const meta = {
+      const meta = buildKernelPayMovementMeta(payload, {
         source: 'people_cash_movement',
-        method_code: payload.methodCode,
-        reference: payload.reference,
-        note: payload.note,
-      };
+      });
 
       if (dialogKind.value === 'deposit') {
         if (payload.legLocationPointId == null) throw new Error('Choose a deposit location.');
@@ -164,6 +165,10 @@ export function useProfileCashMovementDialog(options: {
     onSuccess: (result) => {
       showSuccessNotification(dialogKind.value === 'deposit' ? 'Deposit posted.' : 'Withdrawal posted.');
       dialogOpen.value = false;
+      const pid =
+        result && typeof result === 'object' && 'profileId' in result
+          ? Number(result.profileId)
+          : profileId.value;
       if (result && typeof result === 'object' && 'kind' in result && result.kind === 'deposit') {
         applyDepositCacheUpdate(queryClient, {
           booksTenantId: result.booksTenantId,
@@ -172,6 +177,15 @@ export function useProfileCashMovementDialog(options: {
           legLocationPointId: result.legLocationPointId,
           legBooksRate: result.legBooksRate,
           deposit: result.deposit,
+        });
+      }
+      if (pid != null && pid > 0) {
+        invalidateProfileCashbookStaffQueries(queryClient, {
+          operatingTenantId: options.tenantId.value,
+          booksTenantId: options.booksTenantId.value,
+          entityType: options.entityType.value,
+          entityId: options.entityId.value,
+          profileId: pid,
         });
       } else {
         void queryClient.invalidateQueries({ queryKey: cashbookQueryKeys.root });
@@ -194,6 +208,7 @@ export function useProfileCashMovementDialog(options: {
     dialogKind,
     locationsPanelOpen,
     resolvedProfileId,
+    ensureProfileId,
     openDeposit,
     openWithdraw,
     openLocations,

@@ -1,4 +1,4 @@
-CREATE FUNCTION public.get_delivery_paper_detail (
+CREATE OR REPLACE FUNCTION public.get_delivery_paper_detail (
   p_tenant_id         bigint,
   p_delivery_paper_id bigint
 )
@@ -6,7 +6,7 @@ CREATE FUNCTION public.get_delivery_paper_detail (
   LANGUAGE plpgsql
   STABLE
   SECURITY DEFINER
-  SET search_path TO 'public'
+  SET search_path TO 'public', 'money_kernel'
   AS $function$
 DECLARE
   v_paper public.delivery_paper%rowtype;
@@ -14,6 +14,7 @@ DECLARE
   v_document_name text;
   v_shop_order_no text;
   v_profile_name text;
+  v_books_tenant_id bigint;
   v_close_bills jsonb := '[]'::jsonb;
   v_items_payload jsonb;
   v_items jsonb := '[]'::jsonb;
@@ -49,27 +50,59 @@ BEGIN
   FROM public.profiles pr
   WHERE pr.id = v_paper.profile_id;
 
+  v_books_tenant_id := public.resolve_books_tenant_id(p_tenant_id);
+
   SELECT coalesce(
     jsonb_agg(
       jsonb_build_object(
-        'id', b.id,
-        'invoice_no', b.invoice_no,
-        'invoice_status', b.invoice_status,
-        'settlement_kind', b.settlement_kind
+        'id', row_data.bill_id,
+        'invoice_no', row_data.invoice_no,
+        'invoice_status', row_data.invoice_status,
+        'settlement_kind', row_data.settlement_kind
       )
-      ORDER BY b.id
+      ORDER BY row_data.bill_id
     ),
     '[]'::jsonb
   )
   INTO v_close_bills
-  FROM public.bills b
-  WHERE (
-    (b.source_type = 'delivery_close' AND b.source_id = p_delivery_paper_id::text)
-    OR (
-      b.source_type = 'shop_order'
-      AND coalesce(b.source_key, '') LIKE ('delivery_paper:' || p_delivery_paper_id::text || ':%')
+  FROM (
+    SELECT
+      b.id AS bill_id,
+      b.invoice_no,
+      b.invoice_status::text AS invoice_status,
+      b.settlement_kind::text AS settlement_kind
+    FROM public.bills b
+    WHERE (
+      (b.source_type = 'delivery_close' AND b.source_id = p_delivery_paper_id::text)
+      OR (
+        b.source_type = 'shop_order'
+        AND coalesce(b.source_key, '') LIKE ('delivery_paper:' || p_delivery_paper_id::text || ':%')
+      )
     )
-  );
+    UNION ALL
+    SELECT
+      kb.id AS bill_id,
+      kb.invoice_no,
+      CASE kb.status
+        WHEN 'draft' THEN 'draft'
+        WHEN 'voided' THEN 'voided'
+        ELSE 'issued'
+      END AS invoice_status,
+      coalesce(
+        nullif(kb.meta->>'delivery_kind', ''),
+        split_part(coalesce(kb.source_key, ''), ':', 3)
+      ) AS settlement_kind
+    FROM money_kernel.bills kb
+    WHERE kb.tenant_id = v_books_tenant_id
+      AND kb.status <> 'voided'
+      AND (
+        (kb.source_type = 'delivery_close' AND kb.source_id = p_delivery_paper_id::text)
+        OR (
+          kb.source_type = 'shop_order'
+          AND coalesce(kb.source_key, '') LIKE ('delivery_paper:' || p_delivery_paper_id::text || ':%')
+        )
+      )
+  ) AS row_data;
 
   v_items_payload := public.list_procurement_demand_group_items(
     p_tenant_id,

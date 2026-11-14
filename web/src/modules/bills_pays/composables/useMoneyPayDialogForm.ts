@@ -173,6 +173,17 @@ export function useMoneyPayDialogForm(options: {
     const pay = resolvePayAmount();
     if (pay <= 0) return 'Next: enter an amount greater than zero.';
 
+    const lockId = options.lockBillId.value;
+    if (options.kind.value === 'payment' && lockId != null) {
+      const dueRow =
+        allocationRows.value.find((r) => r.id === lockId)
+        ?? options.initialAllocationRows.value.find((r) => r.id === lockId);
+      const due = Number(dueRow?.due_amount);
+      if (Number.isFinite(due) && due > 0 && pay > due + 0.009) {
+        return 'Payment cannot exceed bill due.';
+      }
+    }
+
     if (showFromLeg.value && (fromPotId.value == null || fromPotId.value <= 0)) {
       return 'Next: choose which bundle cash leaves from.';
     }

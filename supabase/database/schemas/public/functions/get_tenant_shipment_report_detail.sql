@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION public.get_tenant_shipment_report_detail (
   LANGUAGE plpgsql
   STABLE
   SECURITY DEFINER
-  SET search_path TO 'public'
+  SET search_path TO 'public', 'money_kernel'
   AS $function$
 DECLARE
   v_books_id bigint;
@@ -108,46 +108,31 @@ BEGIN
         'id', b.id,
         'invoice_no', b.invoice_no,
         'ap_kind', coalesce(
-          nullif(btrim(b.ap_kind), ''),
-          nullif(btrim(b.channel_meta->>'ap_kind'), ''),
+          nullif(btrim(b.meta->>'ap_kind'), ''),
           nullif(split_part(coalesce(b.source_key, ''), ':', 1), '')
         ),
-        'invoice_status', b.invoice_status,
-        'payment_status', b.payment_status,
+        'invoice_status', b.status,
+        'payment_status', public._desk_kernel_status_payment(b.status, b.due_amount),
         'currency_code', b.currency_code,
-        'txn_currency_code', coalesce(nullif(btrim(b.txn_currency_code), ''), b.currency_code),
-        'txn_total_amount', coalesce(b.txn_total_amount, b.total_amount),
-        'books_exchange_rate', b.books_exchange_rate,
+        'txn_currency_code', coalesce(nullif(btrim(b.meta->>'txn_currency_code'), ''), b.currency_code),
+        'txn_total_amount', coalesce((b.meta->>'txn_total_amount')::numeric(18, 4), b.total_amount),
+        'books_exchange_rate', (b.meta->>'books_exchange_rate')::numeric(18, 4),
         'total_amount', b.total_amount,
         'due_amount', b.due_amount,
-        'open_books', coalesce((public.get_bill_net_balances(b.id)->>'open_books')::numeric, b.due_amount)
+        'open_books', coalesce((public._desk_kernel_net_balances_json(b.id)->>'open_books')::numeric, b.due_amount)
       )
       ORDER BY b.id
     ),
     '[]'::jsonb
   )
   INTO v_ap_bills
-  FROM public.bills b
+  FROM money_kernel.bills b
   WHERE b.tenant_id = v_books_id
-    AND b.invoice_status <> 'voided'::public.global_invoice_status
-    AND b.invoice_type = 'ap'::public.global_invoice_type
-    AND b.document_kind = 'standard'::public.bill_document_kind
+    AND b.status <> 'voided'
+    AND b.kind = 'shipment_cost_ap'
     AND (
       (b.source_type = 'shipment_cost' AND b.source_id = p_shipment_id::text)
-      OR b.ap_shipment_id = p_shipment_id
-    )
-    AND (
-      b.ap_shipment_id = p_shipment_id
-      OR coalesce(
-        nullif(btrim(b.ap_kind), ''),
-        nullif(btrim(b.channel_meta->>'ap_kind'), ''),
-        nullif(btrim(b.source_key), ''),
-        split_part(coalesce(b.source_key, ''), ':', 1)
-      ) IN (
-        'material', 'freight', 'customs', 'handling', 'finance', 'other',
-        'vendor', 'cargo', 'local'
-      )
-      OR coalesce(b.source_key, '') ~ '^(material|freight|customs|handling|finance|other|vendor|cargo|local):'
+      OR (b.meta->>'shipment_id')::bigint = p_shipment_id
     );
 
   SELECT coalesce(
@@ -165,31 +150,21 @@ BEGIN
   INTO v_ap_totals
   FROM (
     SELECT
-      coalesce(nullif(btrim(b.txn_currency_code), ''), nullif(btrim(b.currency_code), ''), 'BDT') AS currency_code,
+      coalesce(
+        nullif(btrim(b.meta->>'txn_currency_code'), ''),
+        nullif(btrim(b.currency_code), ''),
+        'BDT'
+      ) AS currency_code,
       count(*)::int AS bill_count,
-      coalesce(sum(coalesce(b.txn_total_amount, b.total_amount)), 0)::numeric(18,4) AS txn_total_amount,
+      coalesce(sum(coalesce((b.meta->>'txn_total_amount')::numeric(18, 4), b.total_amount)), 0)::numeric(18,4) AS txn_total_amount,
       coalesce(sum(b.total_amount), 0)::numeric(18,4) AS books_total_amount
-    FROM public.bills b
+    FROM money_kernel.bills b
     WHERE b.tenant_id = v_books_id
-      AND b.invoice_status <> 'voided'::public.global_invoice_status
-      AND b.invoice_type = 'ap'::public.global_invoice_type
-      AND b.document_kind = 'standard'::public.bill_document_kind
+      AND b.status <> 'voided'
+      AND b.kind = 'shipment_cost_ap'
       AND (
         (b.source_type = 'shipment_cost' AND b.source_id = p_shipment_id::text)
-        OR b.ap_shipment_id = p_shipment_id
-      )
-      AND (
-        b.ap_shipment_id = p_shipment_id
-        OR coalesce(
-          nullif(btrim(b.ap_kind), ''),
-          nullif(btrim(b.channel_meta->>'ap_kind'), ''),
-          nullif(btrim(b.source_key), ''),
-          split_part(coalesce(b.source_key, ''), ':', 1)
-        ) IN (
-          'material', 'freight', 'customs', 'handling', 'finance', 'other',
-          'vendor', 'cargo', 'local'
-        )
-        OR coalesce(b.source_key, '') ~ '^(material|freight|customs|handling|finance|other|vendor|cargo|local):'
+        OR (b.meta->>'shipment_id')::bigint = p_shipment_id
       )
     GROUP BY 1
   ) g;
@@ -199,54 +174,50 @@ BEGIN
       b.id AS bill_id,
       b.invoice_no,
       b.invoice_date,
-      b.invoice_type,
+      public._desk_kernel_kind_invoice_type(b.kind) AS invoice_type,
       b.currency_code,
-      b.profile_id,
-      coalesce(p.name, b.recipient_name, 'Customer') AS customer_name,
+      b.from_profile_id AS profile_id,
+      coalesce(p.name, 'Customer') AS customer_name,
       coalesce(sum(
-        gii.sell_price_amount * (gii.quantity - coalesce(gii.return_quantity, 0))
-        - coalesce(gii.line_discount_amount, 0) * (
-          greatest(gii.quantity - coalesce(gii.return_quantity, 0), 0)::numeric
-          / nullif(gii.quantity, 0)
-        )
+        bl.line_total
         - CASE
-          WHEN b.invoice_type = 'dropship'::public.global_invoice_type THEN 0.00
-          ELSE (coalesce(b.discount_amount, 0.00) + coalesce(b.written_off_amount, 0.00))
-            * (gii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
+          WHEN b.kind = 'sales_invoice_dropship' THEN 0.00
+          ELSE coalesce(b.written_off_amount, 0.00)
+            * (bl.line_total / nullif(b.total_amount, 0.00))
         END
       ), 0)::numeric(18,4) AS attributed_revenue_bdt,
-      coalesce(sum(gii.quantity - coalesce(gii.return_quantity, 0)), 0)::int AS attributed_qty
-    FROM public.global_invoice_items gii
-    JOIN public.bills b ON b.id = gii.invoice_id
-    LEFT JOIN public.global_stocks gs ON gs.id = gii.global_stock_id
+      coalesce(sum(bl.quantity), 0)::int AS attributed_qty
+    FROM money_kernel.bill_lines bl
+    JOIN money_kernel.bills b ON b.id = bl.bill_id
+    LEFT JOIN public.global_stocks gs ON gs.id = bl.global_stock_id
     JOIN public.global_shipment_items gsi
       ON gsi.shipment_id = p_shipment_id
      AND gsi.id = coalesce(
-       gii.shipment_item_id,
+       bl.shipment_item_id,
+       nullif(bl.meta->'shipment_ref'->>'shipment_item_id', '')::bigint,
        gs.shipment_item_id,
        (
          SELECT gsi_fb.id
          FROM public.global_shipment_items gsi_fb
          WHERE gsi_fb.shipment_id = p_shipment_id
            AND gsi_fb.product_id IS NOT NULL
-           AND gsi_fb.product_id = gii.product_id
+           AND gsi_fb.product_id = bl.product_id
          ORDER BY gsi_fb.id
          LIMIT 1
        )
      )
-    LEFT JOIN public.profiles p ON p.id = b.profile_id
-    LEFT JOIN LATERAL (
-      SELECT coalesce(sum(x.line_total_amount), 0.00) AS inv_line_subtotal
-      FROM public.global_invoice_items x
-      WHERE x.invoice_id = b.id
-    ) invagg ON true
+    LEFT JOIN public.profiles p ON p.id = b.from_profile_id
     WHERE gsi.shipment_id = p_shipment_id
       AND b.tenant_id = v_books_id
-      AND b.invoice_status = 'issued'::public.global_invoice_status
-      AND b.invoice_type <> 'ap'::public.global_invoice_type
+      AND b.status IN ('issued', 'partial', 'paid')
+      AND b.kind IN (
+        'sales_invoice_wholesale',
+        'sales_invoice_retail',
+        'sales_invoice_dropship'
+      )
     GROUP BY
-      b.id, b.invoice_no, b.invoice_date, b.invoice_type, b.currency_code, b.profile_id, p.name, b.recipient_name
-    HAVING coalesce(sum(gii.quantity - coalesce(gii.return_quantity, 0)), 0) > 0
+      b.id, b.invoice_no, b.invoice_date, b.kind, b.currency_code, b.from_profile_id, p.name
+    HAVING coalesce(sum(bl.quantity), 0) > 0
   )
   SELECT
     coalesce(
@@ -329,35 +300,24 @@ BEGIN
   WITH shipment_ap AS (
     SELECT
       b.total_amount,
-      coalesce(b.txn_total_amount, b.total_amount) AS txn_total,
-      coalesce(nullif(btrim(b.txn_currency_code), ''), nullif(btrim(b.currency_code), ''), 'BDT') AS txn_ccy,
+      coalesce((b.meta->>'txn_total_amount')::numeric(18, 4), b.total_amount) AS txn_total,
       coalesce(
-        nullif(btrim(b.ap_kind), ''),
-        nullif(btrim(b.channel_meta->>'ap_kind'), ''),
+        nullif(btrim(b.meta->>'txn_currency_code'), ''),
+        nullif(btrim(b.currency_code), ''),
+        'BDT'
+      ) AS txn_ccy,
+      coalesce(
+        nullif(btrim(b.meta->>'ap_kind'), ''),
         nullif(split_part(coalesce(b.source_key, ''), ':', 1), ''),
         'other'
       ) AS ap_kind
-    FROM public.bills b
+    FROM money_kernel.bills b
     WHERE b.tenant_id = v_books_id
-      AND b.invoice_status <> 'voided'::public.global_invoice_status
-      AND b.invoice_type = 'ap'::public.global_invoice_type
-      AND b.document_kind = 'standard'::public.bill_document_kind
+      AND b.status <> 'voided'
+      AND b.kind = 'shipment_cost_ap'
       AND (
         (b.source_type = 'shipment_cost' AND b.source_id = p_shipment_id::text)
-        OR b.ap_shipment_id = p_shipment_id
-      )
-      AND (
-        b.ap_shipment_id = p_shipment_id
-        OR coalesce(
-          nullif(btrim(b.ap_kind), ''),
-          nullif(btrim(b.channel_meta->>'ap_kind'), ''),
-          nullif(btrim(b.source_key), ''),
-          split_part(coalesce(b.source_key, ''), ':', 1)
-        ) IN (
-          'material', 'freight', 'customs', 'handling', 'finance', 'other',
-          'vendor', 'cargo', 'local'
-        )
-        OR coalesce(b.source_key, '') ~ '^(material|freight|customs|handling|finance|other|vendor|cargo|local):'
+        OR (b.meta->>'shipment_id')::bigint = p_shipment_id
       )
   ),
   kind_bdt AS (
@@ -486,48 +446,44 @@ BEGIN
     SELECT
       b.id AS bill_id,
       b.invoice_no,
-      gii.id AS invoice_item_id,
-      coalesce(nullif(btrim(gsi.name), ''), nullif(btrim(gii.name_snapshot), ''), 'Item') AS product_name,
-      greatest(gii.quantity - coalesce(gii.return_quantity, 0), 0)::int AS qty,
+      bl.id AS invoice_item_id,
+      coalesce(nullif(btrim(gsi.name), ''), nullif(btrim(bl.description), ''), 'Item') AS product_name,
+      greatest(bl.quantity, 0)::int AS qty,
       (
-        gii.sell_price_amount * (gii.quantity - coalesce(gii.return_quantity, 0))
-        - coalesce(gii.line_discount_amount, 0) * (
-          greatest(gii.quantity - coalesce(gii.return_quantity, 0), 0)::numeric
-          / nullif(gii.quantity, 0)
-        )
+        bl.line_total
         - CASE
-          WHEN b.invoice_type = 'dropship'::public.global_invoice_type THEN 0.00
-          ELSE (coalesce(b.discount_amount, 0.00) + coalesce(b.written_off_amount, 0.00))
-            * (gii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
+          WHEN b.kind = 'sales_invoice_dropship' THEN 0.00
+          ELSE coalesce(b.written_off_amount, 0.00)
+            * (bl.line_total / nullif(b.total_amount, 0.00))
         END
       )::numeric(18,4) AS amount_bdt
-    FROM public.global_invoice_items gii
-    JOIN public.bills b ON b.id = gii.invoice_id
-    LEFT JOIN public.global_stocks gs ON gs.id = gii.global_stock_id
+    FROM money_kernel.bill_lines bl
+    JOIN money_kernel.bills b ON b.id = bl.bill_id
+    LEFT JOIN public.global_stocks gs ON gs.id = bl.global_stock_id
     JOIN public.global_shipment_items gsi
       ON gsi.shipment_id = p_shipment_id
      AND gsi.id = coalesce(
-       gii.shipment_item_id,
+       bl.shipment_item_id,
+       nullif(bl.meta->'shipment_ref'->>'shipment_item_id', '')::bigint,
        gs.shipment_item_id,
        (
          SELECT gsi_fb.id
          FROM public.global_shipment_items gsi_fb
          WHERE gsi_fb.shipment_id = p_shipment_id
            AND gsi_fb.product_id IS NOT NULL
-           AND gsi_fb.product_id = gii.product_id
+           AND gsi_fb.product_id = bl.product_id
          ORDER BY gsi_fb.id
          LIMIT 1
        )
      )
-    LEFT JOIN LATERAL (
-      SELECT coalesce(sum(x.line_total_amount), 0.00) AS inv_line_subtotal
-      FROM public.global_invoice_items x
-      WHERE x.invoice_id = b.id
-    ) invagg ON true
     WHERE gsi.shipment_id = p_shipment_id
       AND b.tenant_id = v_books_id
-      AND b.invoice_status = 'issued'::public.global_invoice_status
-      AND b.invoice_type <> 'ap'::public.global_invoice_type
+      AND b.status IN ('issued', 'partial', 'paid')
+      AND b.kind IN (
+        'sales_invoice_wholesale',
+        'sales_invoice_retail',
+        'sales_invoice_dropship'
+      )
   )
   SELECT
     coalesce(
@@ -553,37 +509,42 @@ BEGIN
     SELECT DISTINCT ON (b.id)
       b.id AS bill_id,
       b.invoice_no,
-      coalesce(p.name, b.recipient_name, 'Customer') AS customer_name,
-      b.payment_status,
+      coalesce(p.name, 'Customer') AS customer_name,
+      public._desk_kernel_status_payment(b.status, b.due_amount) AS payment_status,
       coalesce(
-        (public.get_bill_net_balances(b.id) ->> 'open_books')::numeric(18,4),
+        (public._desk_kernel_net_balances_json(b.id) ->> 'open_books')::numeric(18,4),
         b.due_amount,
         0
       ) AS open_bdt
-    FROM public.global_invoice_items gii
-    JOIN public.bills b ON b.id = gii.invoice_id
-    LEFT JOIN public.global_stocks gs ON gs.id = gii.global_stock_id
+    FROM money_kernel.bill_lines bl
+    JOIN money_kernel.bills b ON b.id = bl.bill_id
+    LEFT JOIN public.global_stocks gs ON gs.id = bl.global_stock_id
     JOIN public.global_shipment_items gsi
       ON gsi.shipment_id = p_shipment_id
      AND gsi.id = coalesce(
-       gii.shipment_item_id,
+       bl.shipment_item_id,
+       nullif(bl.meta->'shipment_ref'->>'shipment_item_id', '')::bigint,
        gs.shipment_item_id,
        (
          SELECT gsi_fb.id
          FROM public.global_shipment_items gsi_fb
          WHERE gsi_fb.shipment_id = p_shipment_id
            AND gsi_fb.product_id IS NOT NULL
-           AND gsi_fb.product_id = gii.product_id
+           AND gsi_fb.product_id = bl.product_id
          ORDER BY gsi_fb.id
          LIMIT 1
        )
      )
-    LEFT JOIN public.profiles p ON p.id = b.profile_id
+    LEFT JOIN public.profiles p ON p.id = b.from_profile_id
     WHERE gsi.shipment_id = p_shipment_id
       AND b.tenant_id = v_books_id
-      AND b.invoice_status = 'issued'::public.global_invoice_status
-      AND b.invoice_type <> 'ap'::public.global_invoice_type
-      AND greatest(gii.quantity - coalesce(gii.return_quantity, 0), 0) > 0
+      AND b.status IN ('issued', 'partial', 'paid')
+      AND b.kind IN (
+        'sales_invoice_wholesale',
+        'sales_invoice_retail',
+        'sales_invoice_dropship'
+      )
+      AND bl.quantity > 0
     ORDER BY b.id, b.invoice_no
   )
   SELECT
@@ -611,29 +572,19 @@ BEGIN
 
   WITH shipment_ap AS (
     SELECT
-      coalesce(nullif(btrim(b.txn_currency_code), ''), nullif(btrim(b.currency_code), ''), 'BDT') AS txn_ccy,
-      coalesce(b.txn_total_amount, b.total_amount) AS txn_total
-    FROM public.bills b
+      coalesce(
+        nullif(btrim(b.meta->>'txn_currency_code'), ''),
+        nullif(btrim(b.currency_code), ''),
+        'BDT'
+      ) AS txn_ccy,
+      coalesce((b.meta->>'txn_total_amount')::numeric(18, 4), b.total_amount) AS txn_total
+    FROM money_kernel.bills b
     WHERE b.tenant_id = v_books_id
-      AND b.invoice_status <> 'voided'::public.global_invoice_status
-      AND b.invoice_type = 'ap'::public.global_invoice_type
-      AND b.document_kind = 'standard'::public.bill_document_kind
+      AND b.status <> 'voided'
+      AND b.kind = 'shipment_cost_ap'
       AND (
         (b.source_type = 'shipment_cost' AND b.source_id = p_shipment_id::text)
-        OR b.ap_shipment_id = p_shipment_id
-      )
-      AND (
-        b.ap_shipment_id = p_shipment_id
-        OR coalesce(
-          nullif(btrim(b.ap_kind), ''),
-          nullif(btrim(b.channel_meta->>'ap_kind'), ''),
-          nullif(btrim(b.source_key), ''),
-          split_part(coalesce(b.source_key, ''), ':', 1)
-        ) IN (
-          'material', 'freight', 'customs', 'handling', 'finance', 'other',
-          'vendor', 'cargo', 'local'
-        )
-        OR coalesce(b.source_key, '') ~ '^(material|freight|customs|handling|finance|other|vendor|cargo|local):'
+        OR (b.meta->>'shipment_id')::bigint = p_shipment_id
       )
   ),
   by_ccy AS (

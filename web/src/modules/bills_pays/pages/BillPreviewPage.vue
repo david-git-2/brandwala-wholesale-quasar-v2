@@ -356,28 +356,31 @@ const profileName = computed(
 );
 
 const fromPartyName = computed(
-  () => bill.value?.from_profile?.name || selectedBrand.value?.name || '—',
+  () =>
+    bill.value?.to_profile?.name
+    || selectedBrand.value?.name
+    || '—',
 );
 const fromPartyAddress = computed(
-  () => bill.value?.from_profile?.address ?? selectedBrand.value?.address ?? null,
+  () => bill.value?.to_profile?.address ?? selectedBrand.value?.address ?? null,
 );
 const toPartyName = computed(
   () =>
-    bill.value?.to_profile?.name
+    bill.value?.from_profile?.name
     || bill.value?.profiles?.name
     || bill.value?.recipient_name
     || '—',
 );
 const toPartyAddress = computed(
   () =>
-    bill.value?.to_profile?.address
+    bill.value?.from_profile?.address
     ?? bill.value?.profiles?.address
     ?? bill.value?.recipient_address
     ?? null,
 );
 const toPartyPhone = computed(
   () =>
-    bill.value?.to_profile?.phone
+    bill.value?.from_profile?.phone
     ?? bill.value?.profiles?.phone
     ?? bill.value?.recipient_phone
     ?? null,

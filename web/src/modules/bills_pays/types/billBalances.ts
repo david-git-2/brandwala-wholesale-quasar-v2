@@ -4,6 +4,7 @@ export type BillNetBalances = {
   invoice_no: string;
   original_total: number;
   paid_amount: number;
+  written_off_amount?: number;
   credits_issued: number;
   debits_issued: number;
   due_amount: number;

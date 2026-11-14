@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { globalRepository } from 'src/modules/global/repositories/globalRepository';
-import type { StockNetworkRow } from 'src/modules/global/types';
+import type { StockNetworkQuery, StockNetworkRow } from 'src/modules/global/types';
 import { parseSupabaseError, showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { createDemandPickClientKey } from '../utils/demandStockPickClientKey';
 
+type StockMatchMode = 'product_id' | 'name_fallback' | 'manual_search';
+
 export type DemandStockPickRow = {
   global_stock_id: number;
+  product_name: string;
   shipment_name: string;
   location_name: string;
   grade_label: string;
@@ -50,9 +53,20 @@ const qtyByStockId = ref<Record<number, number | null>>({});
 const committedPicks = ref<DemandStockPickSelection[]>([]);
 const addingStockId = ref<number | null>(null);
 const stockRows = ref<DemandStockPickRow[]>([]);
+const matchMode = ref<StockMatchMode>('product_id');
+const stockSearchQuery = ref('');
+
+const canLoadStock = computed(
+  () =>
+    props.tenantId != null &&
+    (props.productId != null || props.productName.trim().length > 0),
+);
+
+const showAlternateMatchNote = computed(() => matchMode.value !== 'product_id');
 
 const mapNetworkRow = (row: StockNetworkRow): DemandStockPickRow => ({
   global_stock_id: row.global_stock_id,
+  product_name: row.name?.trim() || '—',
   shipment_name: row.shipment_name ?? '—',
   location_name: row.location_name ?? row.holding_tenant_name ?? '—',
   grade_label: row.is_pickable ? 'Sellable' : 'Not pickable',
@@ -60,29 +74,76 @@ const mapNetworkRow = (row: StockNetworkRow): DemandStockPickRow => ({
   unit_cost_amount: Number(row.purchase_price ?? 0),
 });
 
+const filterPickableRows = (data: StockNetworkRow[]) =>
+  data
+    .filter((row) => row.is_pickable && (row.available_atp ?? 0) > 0)
+    .map(mapNetworkRow);
+
+const baseNetworkQuery = (tenantId: number): Omit<StockNetworkQuery, 'product_id' | 'search' | 'search_field'> => ({
+  context_tenant_id: tenantId,
+  mode: 'search',
+  status: 'excellent',
+  exclude_zero_qty: true,
+  page: 1,
+  page_size: 100,
+  skip_count: true,
+});
+
+const fetchPickableStock = async (query: StockNetworkQuery) => {
+  const result = await globalRepository.searchStockNetwork(query);
+  return filterPickableRows(result.data);
+};
+
 const loadRows = async () => {
-  if (!props.tenantId || !props.productId) {
+  if (!canLoadStock.value || props.tenantId == null) {
     stockRows.value = [];
+    matchMode.value = 'product_id';
     return;
   }
 
+  const tenantId = props.tenantId;
+  const manualSearch = stockSearchQuery.value.trim();
+
   loading.value = true;
   try {
-    const result = await globalRepository.searchStockNetwork({
-      context_tenant_id: props.tenantId,
-      mode: 'search',
-      product_id: props.productId,
-      search: null,
-      status: 'excellent',
-      exclude_zero_qty: true,
-      page: 1,
-      page_size: 100,
-      skip_count: true,
-    });
+    if (manualSearch) {
+      stockRows.value = await fetchPickableStock({
+        ...baseNetworkQuery(tenantId),
+        product_id: null,
+        search: manualSearch,
+        search_field: 'all',
+      });
+      matchMode.value = 'manual_search';
+      return;
+    }
 
-    stockRows.value = result.data
-      .filter((row) => row.is_pickable && (row.available_atp ?? 0) > 0)
-      .map(mapNetworkRow);
+    if (props.productId != null) {
+      const byProductId = await fetchPickableStock({
+        ...baseNetworkQuery(tenantId),
+        product_id: props.productId,
+        search: null,
+      });
+      if (byProductId.length > 0) {
+        stockRows.value = byProductId;
+        matchMode.value = 'product_id';
+        return;
+      }
+    }
+
+    const lineName = props.productName.trim();
+    if (lineName) {
+      stockRows.value = await fetchPickableStock({
+        ...baseNetworkQuery(tenantId),
+        product_id: null,
+        search: lineName,
+        search_field: 'name',
+      });
+      matchMode.value = 'name_fallback';
+      return;
+    }
+
+    stockRows.value = [];
+    matchMode.value = 'product_id';
   } catch (err) {
     stockRows.value = [];
     showErrorNotification(parseSupabaseError(err, 'Failed to load stock'));
@@ -90,6 +151,23 @@ const loadRows = async () => {
     loading.value = false;
   }
 };
+
+const onStockSearchInput = (value: string | number | null) => {
+  stockSearchQuery.value = String(value ?? '').trimStart();
+  void loadRows().then(resetQtyDefaults);
+};
+
+const noLineIdentity = computed(
+  () => props.productId == null && !props.productName.trim(),
+);
+
+const emptyStockMessage = computed(() => {
+  if (noLineIdentity.value) return '';
+  if (props.productId != null && matchMode.value === 'product_id' && !stockSearchQuery.value.trim()) {
+    return 'No pickable stock for this product.';
+  }
+  return 'No pickable stock for this name. Try another search.';
+});
 
 const selectedTotal = computed(() => {
   if (props.hidePerLotAddButton) {
@@ -149,6 +227,8 @@ watch(
       if (wasOpen) {
         stockRows.value = [];
         qtyByStockId.value = {};
+        stockSearchQuery.value = '';
+        matchMode.value = 'product_id';
       }
       return;
     }
@@ -296,13 +376,37 @@ const formatCost = (n: number) =>
         </div>
       </q-card-section>
 
+      <q-card-section v-if="canLoadStock" class="q-pt-none q-pb-sm">
+        <q-input
+          v-model="stockSearchQuery"
+          dense
+          outlined
+          hide-bottom-space
+          clearable
+          debounce="300"
+          placeholder="Search stock"
+          aria-label="Search stock by name, barcode, or code"
+          @update:model-value="onStockSearchInput"
+        >
+          <template #prepend>
+            <q-icon name="ph ph-magnifying-glass" size="18px" />
+          </template>
+        </q-input>
+        <div
+          v-if="showAlternateMatchNote && !loading"
+          class="text-caption text-grey-8 q-mt-sm"
+        >
+          Showing stock matched by name or search — lots may use a different product id than this line.
+        </div>
+      </q-card-section>
+
       <q-card-section class="q-pt-none pick-lots-scroll">
         <div v-if="loading" class="flex flex-center q-py-xl">
           <q-spinner color="primary" size="32px" />
         </div>
 
         <div
-          v-else-if="!productId"
+          v-else-if="noLineIdentity"
           class="text-center text-grey-7 q-py-lg text-body2"
         >
           This line has no product id.
@@ -312,7 +416,7 @@ const formatCost = (n: number) =>
           v-else-if="!stockRows.length"
           class="text-center text-grey-7 q-py-lg text-body2"
         >
-          No pickable stock for this product.
+          {{ emptyStockMessage }}
         </div>
 
         <div v-else class="column q-gutter-y-sm">
@@ -326,6 +430,9 @@ const formatCost = (n: number) =>
               <div class="col min-width-0">
                 <div class="text-subtitle2 text-weight-medium ellipsis">
                   {{ row.shipment_name }}
+                </div>
+                <div class="text-caption text-grey-8 ellipsis q-mt-xs">
+                  {{ row.product_name }}
                 </div>
                 <div class="row items-center q-gutter-xs q-mt-xs flex-wrap">
                   <span class="pick-meta">

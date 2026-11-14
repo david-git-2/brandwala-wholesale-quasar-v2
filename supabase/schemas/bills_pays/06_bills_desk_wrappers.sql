@@ -22,12 +22,66 @@ CREATE OR REPLACE FUNCTION public.issue_wholesale_bill(
 RETURNS public.bills
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO public
+SET search_path TO public, money_kernel, pg_temp
 AS $$
-begin
-  perform public.commit_wholesale_bill_stock(p_bill_id);
-  return public._kernel_issue_wholesale_stock(p_bill_id, p_items);
-end;
+DECLARE
+  v_invoice public.bills;
+  v_kernel money_kernel.bills;
+BEGIN
+  SELECT * INTO v_kernel
+  FROM money_kernel.bills
+  WHERE id = p_bill_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'bill not found';
+  END IF;
+
+  IF v_kernel.kind NOT IN ('sales_invoice_wholesale', 'sales_invoice_dropship') THEN
+    RAISE EXCEPTION 'Only wholesale sales bills can be issued via issue_wholesale_bill';
+  END IF;
+
+  IF v_kernel.status IS DISTINCT FROM 'draft' THEN
+    RAISE EXCEPTION 'Only draft bills can be issued';
+  END IF;
+
+  IF NOT public.user_can_manage_books_tenant(v_kernel.tenant_id) THEN
+    RAISE EXCEPTION 'Permission denied';
+  END IF;
+
+  PERFORM public._kernel_backfill_stock_bill_lines(p_bill_id);
+  PERFORM public.commit_wholesale_bill_stock(p_bill_id);
+  PERFORM public.rpc_issue_bill(v_kernel.tenant_id, p_bill_id);
+
+  SELECT * INTO v_kernel FROM money_kernel.bills WHERE id = p_bill_id;
+
+  v_invoice.id := v_kernel.id;
+  v_invoice.tenant_id := v_kernel.tenant_id;
+  v_invoice.issued_by_tenant_id := v_kernel.tenant_id;
+  v_invoice.invoice_type := CASE v_kernel.kind
+    WHEN 'sales_invoice_dropship' THEN 'dropship'::public.global_invoice_type
+    ELSE 'wholesale'::public.global_invoice_type
+  END;
+  v_invoice.invoice_status := 'issued'::public.global_invoice_status;
+  v_invoice.payment_status := public._desk_kernel_status_payment(v_kernel.status, v_kernel.due_amount);
+  v_invoice.document_kind := 'standard'::public.bill_document_kind;
+  v_invoice.invoice_no := v_kernel.invoice_no;
+  v_invoice.invoice_date := v_kernel.invoice_date;
+  v_invoice.due_date := v_kernel.due_date;
+  v_invoice.total_amount := v_kernel.total_amount;
+  v_invoice.due_amount := v_kernel.due_amount;
+  v_invoice.paid_amount := coalesce(v_kernel.paid_amount, 0);
+  v_invoice.from_profile_id := v_kernel.from_profile_id;
+  v_invoice.to_profile_id := v_kernel.to_profile_id;
+  v_invoice.profile_id := v_kernel.counterparty_profile_id;
+  v_invoice.source_type := v_kernel.source_type;
+  v_invoice.source_id := v_kernel.source_id;
+  v_invoice.source_key := v_kernel.source_key;
+  v_invoice.currency_code := v_kernel.currency_code;
+  v_invoice.note := v_kernel.note;
+
+  RETURN v_invoice;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.issue_retail_bill(p_bill_id bigint)
@@ -63,67 +117,6 @@ DECLARE
   v_issue  jsonb;
   v_shipment_id bigint;
 BEGIN
-  SELECT * INTO v_bill FROM public.bills WHERE id = p_bill_id FOR UPDATE;
-
-  IF v_bill.id IS NOT NULL THEN
-    IF v_bill.invoice_type IS DISTINCT FROM 'ap'::public.global_invoice_type THEN
-      RAISE EXCEPTION 'Only AP bills can be issued from the bills desk';
-    END IF;
-
-    IF v_bill.document_kind IS DISTINCT FROM 'standard'::public.bill_document_kind THEN
-      RAISE EXCEPTION 'Only standard AP bills can be issued from the bills desk';
-    END IF;
-
-    IF v_bill.invoice_status IS DISTINCT FROM 'draft'::public.global_invoice_status THEN
-      RAISE EXCEPTION 'Only draft AP bills can be issued from the bills desk';
-    END IF;
-
-    IF COALESCE(v_bill.total_amount, 0) <= 0 THEN
-      RAISE EXCEPTION 'Bill total must be greater than zero';
-    END IF;
-
-    IF NOT public.user_can_manage_books_tenant(v_bill.tenant_id) THEN
-      RAISE EXCEPTION 'Permission denied';
-    END IF;
-
-    PERFORM set_config('app.bill_desk_issue_shipment_ap', '1', true);
-    PERFORM set_config('app.shipment_ap_issue', '1', true);
-    BEGIN
-      v_result := public.issue_bill(p_bill_id);
-    EXCEPTION
-      WHEN OTHERS THEN
-        PERFORM set_config('app.bill_desk_issue_shipment_ap', '0', true);
-        PERFORM set_config('app.shipment_ap_issue', '0', true);
-        RAISE;
-    END;
-    PERFORM set_config('app.bill_desk_issue_shipment_ap', '0', true);
-    PERFORM set_config('app.shipment_ap_issue', '0', true);
-
-    IF v_result.ap_shipment_id IS NOT NULL THEN
-      UPDATE public.bills b
-         SET source_type = COALESCE(NULLIF(BTRIM(b.source_type), ''), 'shipment_cost'),
-             source_id = COALESCE(NULLIF(BTRIM(b.source_id), ''), b.ap_shipment_id::text),
-             ap_kind = COALESCE(
-               NULLIF(BTRIM(b.ap_kind), ''),
-               NULLIF(BTRIM(b.channel_meta->>'ap_kind'), ''),
-               CASE
-                 WHEN split_part(COALESCE(b.source_key, ''), ':', 1) IN (
-                   'material', 'freight', 'customs', 'handling', 'finance', 'other',
-                   'vendor', 'cargo', 'local'
-                 ) THEN split_part(b.source_key, ':', 1)
-                 ELSE NULL
-               END
-             ),
-             updated_at = NOW()
-       WHERE b.id = p_bill_id;
-
-      SELECT * INTO v_result FROM public.bills WHERE id = p_bill_id;
-      PERFORM public.stamp_bill_kernel_fields(p_bill_id);
-    END IF;
-
-    RETURN v_result;
-  END IF;
-
   SELECT * INTO v_kernel
     FROM money_kernel.bills
    WHERE id = p_bill_id
@@ -187,7 +180,7 @@ BEGIN
   v_result.invoice_type := 'ap'::public.global_invoice_type;
   v_result.document_kind := 'standard'::public.bill_document_kind;
   v_result.invoice_status := 'issued'::public.global_invoice_status;
-  v_result.payment_status := 'due'::public.global_payment_status;
+  v_result.payment_status := 'due';
   v_result.total_amount := v_kernel.total_amount;
   v_result.due_amount := v_kernel.due_amount;
   v_result.paid_amount := COALESCE(v_kernel.paid_amount, 0);

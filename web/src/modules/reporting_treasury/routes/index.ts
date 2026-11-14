@@ -70,10 +70,21 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'reports/customer-dues',
-        name: 'app-finance-customer-dues-report-page',
-        component: () => import('../pages/CustomerDuesReportPage.vue'),
+        redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/finance/reports/customers`,
+      },
+      {
+        path: 'reports/customers',
+        name: 'app-finance-customers-report-page',
+        component: () => import('../pages/CustomersReportPage.vue'),
         beforeEnter: guard('reporting_treasury'),
-        meta: { title: 'Customer dues', headerTitle: 'Customer dues', breadcrumb: 'Customer dues' },
+        meta: { title: 'Customers', headerTitle: 'Customers', breadcrumb: 'Customers' },
+      },
+      {
+        path: 'reports/customers/:customerGroupId',
+        name: 'app-finance-customers-report-detail-page',
+        component: () => import('../pages/CustomerReportDetailPage.vue'),
+        beforeEnter: guard('reporting_treasury'),
+        meta: { title: 'Customer report', headerTitle: 'Customers', breadcrumb: 'Detail' },
       },
       {
         path: 'reports/invoice-book',

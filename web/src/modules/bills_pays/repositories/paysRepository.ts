@@ -106,6 +106,8 @@ export type PayDetail = PayListRow & {
     cheque_number: string | null;
     cheque_date: string | null;
     bounced_at: string | null;
+    bd_bank_id?: number | null;
+    bd_bank_name?: string | null;
   }>;
   allocations: PayAllocationRow[];
 };
@@ -188,7 +190,9 @@ const getPayById = async (payId: number): Promise<PayDetail> => {
 
   const { data: instruments, error: instError } = await supabase
     .from('pay_instruments')
-    .select('id, payment_method_code, amount, reference, cheque_number, cheque_date, bounced_at')
+    .select(
+      'id, payment_method_code, amount, reference, cheque_number, cheque_date, bounced_at, bd_bank_id, bd_banks(name)',
+    )
     .eq('payment_id', payId)
     .order('sort_order', { ascending: true });
   if (instError) throw instError;
@@ -226,15 +230,20 @@ const getPayById = async (payId: number): Promise<PayDetail> => {
     cashbook_point_pot_id: pay.cashbook_point_pot_id ?? null,
     transaction_rate: pay.transaction_rate ?? null,
     source_currency_code: pay.source_currency_code ?? null,
-    instruments: (instruments ?? []).map((i) => ({
-      id: i.id,
-      payment_method_code: i.payment_method_code,
-      amount: Number(i.amount),
-      reference: i.reference,
-      cheque_number: i.cheque_number,
-      cheque_date: i.cheque_date,
-      bounced_at: i.bounced_at ?? null,
-    })),
+    instruments: (instruments ?? []).map((i) => {
+      const bank = Array.isArray(i.bd_banks) ? i.bd_banks[0] : i.bd_banks;
+      return {
+        id: i.id,
+        payment_method_code: i.payment_method_code,
+        amount: Number(i.amount),
+        reference: i.reference,
+        cheque_number: i.cheque_number,
+        cheque_date: i.cheque_date,
+        bounced_at: i.bounced_at ?? null,
+        bd_bank_id: i.bd_bank_id ?? null,
+        bd_bank_name: (bank as { name?: string } | null | undefined)?.name ?? null,
+      };
+    }),
     allocations: ((allocations as any[]) ?? []).map((a) => ({
       id: a.pay_allocation_id ?? a.id,
       amount: Number(a.allocated_books_amount),
@@ -432,62 +441,24 @@ const listOpenApBillsForProfile = async (
   parentTenantId: number,
   profileId: number,
 ): Promise<OpenApBillRow[]> => {
-  const { data, error } = await supabase
-    .from('bills')
-    .select('id, invoice_no, due_amount, total_amount, ap_kind, ap_shipment_id, note, channel_meta')
-    .eq('tenant_id', parentTenantId)
-    .eq('invoice_type', 'ap')
-    .eq('profile_id', profileId)
-    .eq('invoice_status', 'issued')
-    .gt('due_amount', 0)
-    .order('invoice_date', { ascending: true });
-
+  const { data, error } = await supabase.rpc('list_open_ap_bills_for_profile', {
+    p_tenant_id: parentTenantId,
+    p_profile_id: profileId,
+  });
   if (error) throw error;
-  return (data ?? []) as OpenApBillRow[];
+  return ((data as OpenApBillRow[] | null) ?? []) as OpenApBillRow[];
 };
 
 const listApPayProfileSummaries = async (
   parentTenantId: number,
   search?: string,
 ): Promise<ApPayProfileSummary[]> => {
-  const { data, error } = await supabase
-    .from('bills')
-    .select('profile_id, due_amount, profiles:profiles!bills_profile_id_fkey(name, profile_type)')
-    .eq('tenant_id', parentTenantId)
-    .eq('invoice_type', 'ap')
-    .eq('invoice_status', 'issued')
-    .gt('due_amount', 0);
-
+  const { data, error } = await supabase.rpc('list_ap_pay_profile_summaries', {
+    p_tenant_id: parentTenantId,
+    p_search: search?.trim() || undefined,
+  });
   if (error) throw error;
-
-  type Raw = {
-    profile_id: number | null;
-    due_amount: number;
-    profiles?: { name: string; profile_type: string } | { name: string; profile_type: string }[] | null;
-  };
-
-  const byProfile = new Map<number, ApPayProfileSummary>();
-  for (const row of (data as Raw[] | null) ?? []) {
-    if (row.profile_id == null) continue;
-    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-    const name = profile?.name ?? `Profile #${row.profile_id}`;
-    if (search?.trim() && !name.toLowerCase().includes(search.trim().toLowerCase())) {
-      continue;
-    }
-    const existing = byProfile.get(row.profile_id);
-    if (existing) {
-      existing.total_due += Number(row.due_amount) || 0;
-    } else {
-      byProfile.set(row.profile_id, {
-        profile_id: row.profile_id,
-        name,
-        profile_type: profile?.profile_type ?? '',
-        total_due: Number(row.due_amount) || 0,
-      });
-    }
-  }
-
-  return [...byProfile.values()].sort((a, b) => b.total_due - a.total_due);
+  return ((data as ApPayProfileSummary[] | null) ?? []) as ApPayProfileSummary[];
 };
 
 const postApPayoutWithAllocations = async (payload: ApPayoutWithAllocationsPayload) => {

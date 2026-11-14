@@ -40,6 +40,8 @@ export type {
 
 export type IssueBillOptions = {
   invoiceType: 'wholesale' | 'retail' | 'ap' | string;
+  spine?: 'legacy' | 'kernel';
+  tenantId?: number;
   stockItems?: Array<{
     id?: number;
     global_stock_id: number;
@@ -269,6 +271,25 @@ const issueBill = async (billId: number, options: IssueBillOptions): Promise<voi
   const hasStock =
     (options.stockItems?.length ?? 0) > 0 &&
     options.stockItems!.some((i) => i.global_stock_id > 0 && i.quantity > 0);
+
+  if (options.spine === 'kernel' && (type === 'wholesale' || type === 'dropship')) {
+    const { error } = await supabase.rpc('issue_wholesale_bill', {
+      p_bill_id: billId,
+      p_items: hasStock
+        ? ((options.stockItems ?? null) as unknown as Record<string, unknown>)
+        : null,
+    });
+    if (error) throw error;
+    return;
+  }
+
+  if (options.spine === 'kernel' && type === 'ap' && options.tenantId) {
+    await issueApBillFromDesk(billId, {
+      spine: 'kernel',
+      tenantId: options.tenantId,
+    });
+    return;
+  }
 
   if (type === 'retail') {
     const { error } = await supabase.rpc('issue_retail_bill', { p_bill_id: billId });

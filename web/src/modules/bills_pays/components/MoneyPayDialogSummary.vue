@@ -6,6 +6,15 @@
         <div v-if="dueDisplay" class="money-pay-dialog-summary__due font-mono tf-num">
           {{ dueDisplay }}
         </div>
+        <div
+          v-if="payingNowDisplay"
+          class="money-pay-dialog-summary__paying-now q-mt-xs"
+        >
+          <span class="money-pay-dialog-summary__overline">Paying now</span>
+          <span class="money-pay-dialog-summary__paying-now-amount font-mono tf-num">
+            {{ payingNowDisplay }}
+          </span>
+        </div>
       </div>
       <span
         v-if="context?.modeCaption"
@@ -50,14 +59,38 @@ import type { MoneyPaySummaryContext } from '../types/moneyPayDialog';
 const props = defineProps<{
   visible: boolean;
   context?: MoneyPaySummaryContext | null;
+  payAmount?: number | null;
+  payCurrencyCode?: string | null;
 }>();
+
+const currencyCode = computed(() => {
+  const fromCtx = props.context?.dueCurrencyCode?.trim();
+  if (fromCtx) return fromCtx;
+  const fromProp = props.payCurrencyCode?.trim();
+  return fromProp || 'BDT';
+});
 
 const dueDisplay = computed(() => {
   const c = props.context;
   const due = c?.dueAmount;
   if (due == null || !Number.isFinite(due)) return null;
-  const code = (c?.dueCurrencyCode ?? 'BDT').trim() || 'BDT';
-  return formatSettlementCurrencyAmount(due, code);
+  return formatSettlementCurrencyAmount(due, currencyCode.value);
+});
+
+const payingNowDisplay = computed(() => {
+  const due = props.context?.dueAmount;
+  const pay = props.payAmount;
+  if (
+    due == null
+    || pay == null
+    || !Number.isFinite(due)
+    || !Number.isFinite(pay)
+    || pay <= 0
+    || pay >= due - 0.009
+  ) {
+    return null;
+  }
+  return formatSettlementCurrencyAmount(pay, currencyCode.value);
 });
 </script>
 
@@ -100,6 +133,18 @@ const dueDisplay = computed(() => {
   line-height: 1.15;
   color: var(--tf-neutral-ink, #0f172a);
   margin-top: 4px;
+}
+
+.money-pay-dialog-summary__paying-now {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.money-pay-dialog-summary__paying-now-amount {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--tf-theme-primary, #0d6b5c);
 }
 
 .money-pay-dialog-summary__mode-badge {

@@ -14,6 +14,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | :--- | :--- |
 | Daily staff workflows (operating manual) | App `/operating-manual` only (`web/src/modules/operating_manual/`) |
 | Product scenario catalogs (what to cover / build) | [product-scenarios README](product-scenarios/README.md) |
+| Dropship lifecycle (COD, failed delivery, returns) | [dropship-lifecycle-guide](product-scenarios/dropship-lifecycle-guide.md) |
 | Platform guide (kernels, modules) | App `/docs` |
 | Who logs in where, which features? | [scopes](architecture/scopes.md) |
 | How this company sells (BW, pre-order, K-beauty, thrift) | [business-models](architecture/business-models.md) |
@@ -62,7 +63,7 @@ UI under `web/src/modules/` unless noted. Agent: `spec.md` + `00-gaps.md`. Surfa
 | Customer | [spec](features/customer/spec.md) | [gaps](features/customer/00-gaps.md) | `customer/` | `public.sql` |
 | Reporting | [spec](features/reporting_treasury/spec.md) | [gaps](features/reporting_treasury/00-gaps.md) | `reporting_treasury/` | `public.sql` |
 | Notifications | [spec](features/notifications/spec.md) | [gaps](features/notifications/00-gaps.md) | `notifications/`, `tasks/` | **split** `notifications/` |
-| Dashboard | [spec](features/dashboard/spec.md) | [gaps](features/dashboard/00-gaps.md) | `dashboard/` | n/a |
+| Dashboard (app = Today’s plan) | [spec](features/dashboard/spec.md) | [gaps](features/dashboard/00-gaps.md) | `dashboard/` | `get_app_dashboard_bundle` |
 | Investor | [spec](features/investor_capital/spec.md) | [gaps](features/investor_capital/00-gaps.md) | `investor_capital/`, `investor_portal/` | stub |
 | Thrift | [spec](features/thrift/spec.md) | [gaps](features/thrift/00-gaps.md) | `thrift/` | stub; live `public.sql` |
 | Landing / help (public) | [spec](features/landing/spec.md) | [gaps](features/landing/00-gaps.md) | `landing/`, `help/` | n/a |

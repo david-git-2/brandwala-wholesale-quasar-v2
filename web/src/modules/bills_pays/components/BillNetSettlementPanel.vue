@@ -30,6 +30,10 @@
         <span>{{ paidLabel }}</span>
         <DualAmountCell :display="dualAmount(balances.paid_amount)" />
       </div>
+      <div v-if="writtenOffAmount > 0" class="bill-total-row text-grey-8">
+        <span>Written off</span>
+        <DualAmountCell :display="dualAmount(writtenOffAmount)" />
+      </div>
       <div class="bill-total-row text-weight-bold">
         <span>{{ stillOwedLabel }}</span>
         <DualAmountCell :display="dualAmount(stillOwedBooks, 'due')" />
@@ -154,6 +158,11 @@ const amountAfterNotes = computed(() => {
   const credits = Number(props.balances.credits_issued) || 0;
   const debits = Number(props.balances.debits_issued) || 0;
   return Math.round((original - credits + debits) * 100) / 100;
+});
+
+const writtenOffAmount = computed(() => {
+  if (!props.balances) return 0;
+  return Math.max(0, Number(props.balances.written_off_amount) || 0);
 });
 
 const stillOwedBooks = computed(() => {

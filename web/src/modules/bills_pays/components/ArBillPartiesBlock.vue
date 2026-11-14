@@ -22,36 +22,48 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
 
 const props = defineProps<{
   bill: GlobalInvoiceDetail;
 }>();
 
-const fromName = computed(
-  () => props.bill.from_profile?.name || '—',
-);
-const fromEmail = computed(() => props.bill.from_profile?.email ?? null);
-const fromAddress = computed(() => props.bill.from_profile?.address ?? null);
+const authStore = useAuthStore();
 
+/** Document From = issuer (creditor / tenant). Kernel `to_profile_id`. */
+const fromName = computed(
+  () =>
+    props.bill.to_profile?.name?.trim()
+    || authStore.selectedTenant?.name
+    || '—',
+);
+const fromEmail = computed(() => props.bill.to_profile?.email ?? null);
+const fromAddress = computed(() => props.bill.to_profile?.address ?? null);
+
+/** Document To = customer (debtor). Kernel `from_profile_id`. */
 const toName = computed(
   () =>
-    props.bill.to_profile?.name
+    props.bill.from_profile?.name?.trim()
     || props.bill.profiles?.name
     || props.bill.recipient_name
     || '—',
 );
 const toEmail = computed(
-  () => props.bill.to_profile?.email ?? props.bill.profiles?.email ?? null,
+  () => props.bill.from_profile?.email ?? props.bill.profiles?.email ?? null,
 );
 const toAddress = computed(
   () =>
-    props.bill.to_profile?.address
+    props.bill.from_profile?.address
     ?? props.bill.profiles?.address
     ?? props.bill.recipient_address
     ?? null,
 );
 const toPhone = computed(
-  () => props.bill.to_profile?.phone ?? props.bill.profiles?.phone ?? props.bill.recipient_phone ?? null,
+  () =>
+    props.bill.from_profile?.phone
+    ?? props.bill.profiles?.phone
+    ?? props.bill.recipient_phone
+    ?? null,
 );
 </script>

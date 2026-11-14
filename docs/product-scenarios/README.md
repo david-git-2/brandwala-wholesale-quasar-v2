@@ -23,12 +23,13 @@
 | Investor | Capital, profit share, withdraw / reinvest (sold + cash ready) | [investor-shipment-guide.md](investor-shipment-guide.md) |
 | Shipment | Goods in, warehouse, trips | [shipment-guide.md](shipment-guide.md) |
 | Shop & orders | Shop types and orders | [shop-and-orders-guide.md](shop-and-orders-guide.md) |
+| Dropship lifecycle | COD order life, failed delivery, post-delivery return | [dropship-lifecycle-guide.md](dropship-lifecycle-guide.md) |
 | Courier | Last-mile Bangladesh, COD risk | [courier-dispatch-guide.md](courier-dispatch-guide.md) |
 | Decision board | Must / Should / Defer / Out + backlog | [money-flow-pnl-product-review.md](money-flow-pnl-product-review.md) |
 
 **Locked investor rule:** capital in + share of shipment profit — not a loan with interest. Pay-out only when the shipment is fully sold and cash is ready.
 
-**Pointers (do not duplicate):** money SH3/SH4/SH11–SH14 → investor INV*; shipment IN12 → investor; shop DS7 / courier CD16 → money CU*/S6/T1.
+**Pointers (do not duplicate):** money SH3/SH4/SH11–SH14 → investor INV*; shipment IN12 → investor; shop DS7 / courier CD16 → money CU*/S6/T1; full dropship life / failed delivery / RMA → [dropship-lifecycle-guide.md](dropship-lifecycle-guide.md) (**DL***).
 
 ---
 

@@ -637,9 +637,9 @@
       <section class="ds-section">
         <h2 class="ds-section__title">Row list</h2>
         <p class="ds-note">
-          Browse pages that are not ops spreadsheets use stacked rows, not
-          <code>q-table</code>. One card per record. Avatar, two-line identity, status pill,
-          tabular money, overflow. Radius 12px. Hover lifts. Selected uses primary-soft.
+          Browse pages use <code>TfEntityListShell</code> + <code>TfEntityListRow</code> (one bordered
+          card, divider rows). Avatar, two-line identity, status pill, tabular money, overflow menu.
+          Hover uses row tint only (no lift or shadow). Selected uses primary-soft.
         </p>
         <div class="ds-entity-list">
           <div class="ds-entity-list__toolbar">
@@ -666,41 +666,41 @@
               data-test="entity-list-create"
             />
           </div>
-          <ul class="ds-entity-list__stack" role="list">
-            <li v-for="row in listRows" :key="row.id">
-              <div
-                class="ds-entity-row"
-                :class="{ 'ds-entity-row--active': listSelectedId === row.id }"
-                role="button"
-                tabindex="0"
-                :data-test="`entity-row-${row.id}`"
-                @click="listSelectedId = row.id"
-                @keydown.enter="listSelectedId = row.id"
-              >
-                <span class="ds-entity-row__avatar" aria-hidden="true">{{ initials(row.group_name) }}</span>
-                <span class="ds-entity-row__body">
-                  <span class="ds-entity-row__name">{{ row.group_name }}</span>
-                  <span class="ds-entity-row__meta">
-                    {{
-                      [row.admin_name, row.address, `${row.member_count} members`]
-                        .filter(Boolean)
-                        .join(' · ')
-                    }}
-                  </span>
-                </span>
-                <span class="ds-entity-row__side">
+          <TfEntityListShell>
+            <TfEntityListRow
+              v-for="row in listRows"
+              :key="row.id"
+              :active="listSelectedId === row.id"
+              :show-chevron="false"
+              :data-test="`entity-row-${row.id}`"
+              @click="listSelectedId = row.id"
+            >
+              <template #avatar>{{ initials(row.group_name) }}</template>
+              <template #title>
+                <span class="tf-entity-list-item__name">{{ row.group_name }}</span>
+              </template>
+              <template #meta>
+                {{
+                  [row.admin_name, row.address, `${row.member_count} members`]
+                    .filter(Boolean)
+                    .join(' · ')
+                }}
+              </template>
+              <template #aside>
+                <div class="column items-end q-mr-xs">
                   <span
-                    class="ds-entity-row__money tf-tabular"
-                    :class="{ 'ds-entity-row__money--neg': row.wallet < 0 }"
+                    class="ds-hub-numeric"
+                    :class="{ 'text-negative': row.wallet < 0 }"
                   >
                     {{ formatBdt(row.wallet) }}
                   </span>
-                  <span
-                    class="ds-hub-status"
-                    :class="row.active ? 'ds-hub-status--active' : 'ds-hub-status--inactive'"
-                  >
-                    {{ row.active ? 'Active' : 'Inactive' }}
-                  </span>
+                  <span class="text-caption tf-text-muted" style="font-size: 11px">Wallet</span>
+                </div>
+                <span
+                  class="ds-hub-status"
+                  :class="row.active ? 'ds-hub-status--active' : 'ds-hub-status--inactive'"
+                >
+                  {{ row.active ? 'Active' : 'Inactive' }}
                 </span>
                 <q-btn
                   flat
@@ -723,9 +723,9 @@
                     </q-list>
                   </q-menu>
                 </q-btn>
-              </div>
-            </li>
-          </ul>
+              </template>
+            </TfEntityListRow>
+          </TfEntityListShell>
         </div>
       </section>
 
@@ -1231,6 +1231,8 @@ import type { ChartData, ChartOptions } from 'chart.js';
 import { applyDarkMode } from 'src/composables/useAppearance';
 import AppLogoMark from 'src/components/brand/AppLogoMark.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
+import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
+import TfEntityListShell from 'src/components/ui/TfEntityListShell.vue';
 import ShipmentExcelBottomBar from 'src/modules/procurement_stock/components/ShipmentExcelBottomBar.vue';
 import {
   ensureDashboardChartsRegistered,
@@ -2230,118 +2232,6 @@ watch(mode, (val) => {
   align-items: center;
   gap: 0.75rem;
   margin-bottom: 12px;
-}
-
-.ds-entity-list__stack {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.ds-entity-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--tf-theme-border);
-  border-radius: 12px;
-  background: var(--tf-theme-surface);
-  color: var(--tf-theme-ink);
-  cursor: pointer;
-  text-align: left;
-  transition:
-    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.2s ease,
-    border-color 0.2s ease,
-    background-color 0.2s ease;
-}
-
-.ds-entity-row:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--tf-theme-shadow);
-  border-color: color-mix(in srgb, var(--tf-theme-primary) 28%, var(--tf-theme-border));
-}
-
-.ds-entity-row:focus-visible {
-  outline: 2px solid var(--tf-theme-primary);
-  outline-offset: 2px;
-}
-
-.ds-entity-row--active {
-  background: var(--tf-theme-primary-soft);
-  border-color: color-mix(in srgb, var(--tf-theme-primary) 38%, var(--tf-theme-border));
-}
-
-.ds-entity-row__avatar {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  background: var(--tf-theme-primary-soft);
-  color: var(--tf-theme-primary);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.ds-entity-row__body {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.ds-entity-row__name {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ds-entity-row__meta {
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--tf-theme-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ds-entity-row__side {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-}
-
-.ds-entity-row__money {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--tf-theme-ink);
-}
-
-.ds-entity-row__money--neg {
-  color: var(--tf-error);
-}
-
-@media (max-width: 640px) {
-  .ds-entity-row {
-    flex-wrap: wrap;
-  }
-
-  .ds-entity-row__side {
-    margin-left: 52px;
-    align-items: flex-start;
-  }
 }
 
 .ds-chart-grid {

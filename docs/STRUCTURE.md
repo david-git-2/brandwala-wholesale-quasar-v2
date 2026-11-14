@@ -22,6 +22,7 @@ docs/product-scenarios/        # Product-decision catalogs (not staff SOP)
   investor-shipment-guide.md   # Investor capital + profit share
   shipment-guide.md            # Goods / warehouse / trips
   shop-and-orders-guide.md     # Three storefront types
+  dropship-lifecycle-guide.md  # COD dropship life + fail/return cases
   courier-dispatch-guide.md    # Last-mile + COD risk
   money-flow-pnl-product-review.md  # Must/Should/Defer/Out board
 docs/features/<name>/

@@ -7,7 +7,10 @@ IMMUTABLE
 AS $$
   SELECT CASE
     WHEN p_kind IN ('shipment_cost_ap', 'dropship_courier_ap') THEN 'ap'
-    WHEN p_kind LIKE 'sales_invoice_%' THEN 'ar'
+    WHEN p_kind = 'sales_invoice_wholesale' THEN 'wholesale'
+    WHEN p_kind = 'sales_invoice_retail' THEN 'retail'
+    WHEN p_kind = 'sales_invoice_dropship' THEN 'dropship'
+    WHEN p_kind LIKE 'sales_invoice_%' THEN 'wholesale'
     WHEN p_kind IN ('credit_note', 'debit_note') THEN 'ar'
     ELSE 'ap'
   END;
@@ -68,23 +71,41 @@ SET search_path = money_kernel, public, pg_temp
 AS $$
 DECLARE
   v_b money_kernel.bills;
+  v_credits numeric(18, 4);
+  v_debits numeric(18, 4);
+  v_credit_open numeric(18, 4);
 BEGIN
   SELECT * INTO v_b FROM money_kernel.bills WHERE id = p_bill_id;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'bill not found';
   END IF;
+
+  SELECT COALESCE(SUM(total_amount) FILTER (WHERE kind = 'credit_note'), 0),
+         COALESCE(SUM(total_amount) FILTER (WHERE kind = 'debit_note'), 0),
+         COALESCE(SUM(due_amount) FILTER (WHERE kind = 'credit_note'), 0)
+    INTO v_credits, v_debits, v_credit_open
+  FROM money_kernel.bills
+  WHERE parent_bill_id = p_bill_id
+    AND tenant_id = v_b.tenant_id
+    AND kind IN ('credit_note', 'debit_note')
+    AND status NOT IN ('voided', 'draft');
+
   RETURN jsonb_build_object(
     'bill_id', v_b.id,
     'invoice_no', v_b.invoice_no,
     'original_total', v_b.total_amount,
     'paid_amount', v_b.paid_amount,
-    'credits_issued', 0,
-    'debits_issued', 0,
+    'written_off_amount', COALESCE(v_b.written_off_amount, 0),
+    'credits_issued', v_credits,
+    'debits_issued', v_debits,
     'due_amount', v_b.due_amount,
     'open_books', v_b.due_amount,
     'open_txn', v_b.due_amount,
-    'credit_open', 0,
-    'document_kind', 'standard'
+    'credit_open', v_credit_open,
+    'document_kind', CASE
+      WHEN v_b.kind IN ('credit_note', 'debit_note') THEN v_b.kind
+      ELSE 'standard'
+    END
   );
 END;
 $$;
@@ -99,33 +120,71 @@ STABLE
 SECURITY DEFINER
 SET search_path = money_kernel, public, pg_temp
 AS $$
-  SELECT COALESCE(jsonb_agg(
-    jsonb_build_object(
-      'entry_type', 'payment',
-      'entry_id', bs.id,
-      'payment_id', bs.pays_id,
-      'payment_date', COALESCE(p.payment_date, bs.created_at::date),
-      'amount', bs.allocated_amount,
-      'receipt_amount', bs.allocated_amount,
-      'voided_at', CASE WHEN p.status = 'voided' THEN p.updated_at ELSE NULL END,
-      'method', NULL,
-      'note', p.meta->>'note',
-      'write_off_reason', NULL,
-      'settlement_currency_code', p.currency_code,
-      'foreign_amount', p.amount,
-      'exchange_rate', p.exchange_rate,
-      'instruments', '[]'::jsonb,
-      'payment_source', 'kernel',
-      'related_invoice_no', NULL,
-      'related_document_kind', NULL
-    )
-    ORDER BY bs.created_at DESC
-  ), '[]'::jsonb)
-  FROM money_kernel.bill_settlements bs
-  LEFT JOIN money_kernel.pays p ON p.id = bs.pays_id
-  WHERE bs.bill_id = p_bill_id
-    AND bs.tenant_id = p_tenant_id
-    AND bs.settlement_kind = 'pay';
+  SELECT COALESCE(jsonb_agg(row_obj ORDER BY sort_at DESC, entry_id DESC), '[]'::jsonb)
+  FROM (
+    SELECT
+      jsonb_build_object(
+        'entry_type', 'payment',
+        'entry_id', bs.id,
+        'payment_id', bs.pays_id,
+        'payment_date', COALESCE(p.payment_date, bs.created_at::date),
+        'amount', bs.allocated_amount,
+        'receipt_amount', bs.allocated_amount,
+        'voided_at', CASE WHEN p.status = 'voided' THEN p.updated_at ELSE NULL END,
+        'method', NULL,
+        'note', p.meta->>'note',
+        'write_off_reason', NULL,
+        'settlement_currency_code', p.currency_code,
+        'foreign_amount', p.amount,
+        'exchange_rate', p.exchange_rate,
+        'instruments', '[]'::jsonb,
+        'payment_source', 'kernel',
+        'related_invoice_no', NULL,
+        'related_document_kind', NULL
+      ) AS row_obj,
+      bs.created_at AS sort_at,
+      bs.id AS entry_id
+    FROM money_kernel.bill_settlements bs
+    LEFT JOIN money_kernel.pays p ON p.id = bs.pays_id
+    WHERE bs.bill_id = p_bill_id
+      AND bs.tenant_id = p_tenant_id
+      AND bs.settlement_kind = 'pay'
+
+    UNION ALL
+
+    SELECT
+      jsonb_build_object(
+        'entry_type', 'write_off',
+        'entry_id', b.id,
+        'payment_id', NULL,
+        'payment_date', COALESCE(
+          NULLIF(trim(b.meta->>'last_write_off_at'), '')::date,
+          b.updated_at::date
+        ),
+        'amount', b.written_off_amount,
+        'receipt_amount', 0,
+        'voided_at', NULL,
+        'method', 'write_off',
+        'note', b.meta->>'last_write_off_reason',
+        'write_off_reason', b.meta->>'last_write_off_reason',
+        'settlement_currency_code', b.currency_code,
+        'foreign_amount', NULL,
+        'exchange_rate', 1,
+        'instruments', '[]'::jsonb,
+        'payment_source', 'kernel',
+        'related_invoice_no', NULL,
+        'related_document_kind', NULL
+      ) AS row_obj,
+      COALESCE(
+        NULLIF(trim(b.meta->>'last_write_off_at'), '')::timestamptz,
+        b.updated_at
+      ) AS sort_at,
+      b.id AS entry_id
+    FROM money_kernel.bills b
+    WHERE b.id = p_bill_id
+      AND b.tenant_id = p_tenant_id
+      AND COALESCE(b.written_off_amount, 0) > 0
+  ) hist;
 $$;
 
 CREATE OR REPLACE FUNCTION public._desk_profile_json_public(p_profile_id bigint)
@@ -311,6 +370,7 @@ DECLARE
   v_bill_json jsonb;
   v_bill_lines jsonb := '[]'::jsonb;
   v_adjustments jsonb := '[]'::jsonb;
+  v_stock_items jsonb := '[]'::jsonb;
   v_ap_kind text;
 BEGIN
   v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
@@ -353,6 +413,7 @@ BEGIN
     'total_amount', v_b.total_amount,
     'due_amount', v_b.due_amount,
     'paid_amount', v_b.paid_amount,
+    'written_off_amount', COALESCE(v_b.written_off_amount, 0),
     'currency_code', v_b.currency_code,
     'from_profile_id', v_b.from_profile_id,
     'to_profile_id', v_b.to_profile_id,
@@ -362,7 +423,8 @@ BEGIN
     'source_key', v_b.source_key,
     'parent_bill_id', v_b.parent_bill_id,
     'ap_kind', v_ap_kind,
-    'channel_meta', jsonb_build_object('ap_kind', v_ap_kind, 'money_kernel_v2', true),
+    'channel_meta', coalesce(v_b.meta, '{}'::jsonb) || jsonb_build_object('money_kernel_v2', true),
+    'settlement_kind', nullif(v_b.meta->>'delivery_kind', ''),
     'note', v_b.note,
     'spine', 'kernel',
     'kernel_kind', v_b.kind
@@ -380,7 +442,11 @@ BEGIN
       'currency_code', upper(v_b.currency_code),
       'line_total_amount', bl.line_total,
       'books_amount', bl.line_total,
-      'quantity', bl.quantity
+      'quantity', bl.quantity,
+      'sell_price_amount', bl.unit_price,
+      'global_stock_id', bl.global_stock_id,
+      'product_id', bl.product_id,
+      'shipment_item_id', bl.shipment_item_id
     )
     ORDER BY bl.line_no
   ), '[]'::jsonb)
@@ -405,12 +471,55 @@ BEGIN
     AND c.kind IN ('credit_note', 'debit_note')
     AND c.status <> 'voided';
 
+  IF v_b.kind LIKE 'sales_invoice_%' THEN
+    SELECT COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', bl.id,
+          'invoice_id', p_bill_id,
+          'global_stock_id', COALESCE(bl.global_stock_id, 0),
+          'name_snapshot', COALESCE(bl.description, 'Line'),
+          'quantity', bl.quantity,
+          'sell_price_amount', COALESCE(bl.unit_price, 0),
+          'line_discount_amount', 0,
+          'line_total_amount', bl.line_total,
+          'return_quantity', 0
+        )
+        ORDER BY bl.line_no
+      ),
+      '[]'::jsonb
+    )
+    INTO v_stock_items
+    FROM money_kernel.bill_lines bl
+    WHERE bl.bill_id = p_bill_id
+      AND bl.tenant_id = v_parent_id;
+  ELSE
+    SELECT COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', bl.id,
+          'global_stock_id', bl.global_stock_id,
+          'quantity', bl.quantity,
+          'sell_price_amount', bl.unit_price
+        )
+        ORDER BY bl.line_no
+      ),
+      '[]'::jsonb
+    )
+    INTO v_stock_items
+    FROM money_kernel.bill_lines bl
+    WHERE bl.bill_id = p_bill_id
+      AND bl.tenant_id = v_parent_id
+      AND bl.global_stock_id IS NOT NULL
+      AND bl.quantity > 0;
+  END IF;
+
   RETURN jsonb_build_object(
     'bill', v_bill_json,
     'payment_history', public._desk_kernel_payment_history_json(v_parent_id, p_bill_id),
     'net_balances', public._desk_kernel_net_balances_json(p_bill_id),
     'adjustments', v_adjustments,
-    'stock_items', '[]'::jsonb,
+    'stock_items', v_stock_items,
     'bill_lines', v_bill_lines,
     'pay_cashbook_legs', public._desk_bill_pay_cashbook_legs_json(
       p_tenant_id,
@@ -433,92 +542,12 @@ VOLATILE
 SECURITY DEFINER
 SET search_path = money_kernel, public, pg_temp
 AS $$
-DECLARE
-  v_parent_id bigint;
-  v_bill public.bills;
-  v_bill_json jsonb;
-  v_adjustments jsonb := '[]'::jsonb;
-  v_stock_items jsonb := '[]'::jsonb;
-  v_bill_lines jsonb := '[]'::jsonb;
 BEGIN
   IF p_tenant_id IS NULL OR p_bill_id IS NULL THEN
     RAISE EXCEPTION 'Tenant and bill are required.';
   END IF;
 
-  v_parent_id := public.resolve_books_tenant_id(p_tenant_id);
-
-  SELECT * INTO v_bill FROM public.bills WHERE id = p_bill_id;
-  IF v_bill.id IS NULL THEN
-    RETURN public._get_bill_detail_bundle_from_kernel(p_tenant_id, p_bill_id);
-  END IF;
-
-  IF NOT (v_bill.tenant_id = v_parent_id OR v_bill.issued_by_tenant_id = p_tenant_id) THEN
-    RAISE EXCEPTION 'Invoice not found for this tenant.';
-  END IF;
-
-  v_bill_json := row_to_json(v_bill)::jsonb
-    || jsonb_build_object(
-      'spine', 'legacy',
-      'profiles', public._desk_profile_json_public(v_bill.profile_id),
-      'from_profile', public._desk_profile_json_public(v_bill.from_profile_id),
-      'to_profile', public._desk_profile_json_public(v_bill.to_profile_id)
-    );
-
-  IF v_bill.document_kind = 'standard'::public.bill_document_kind THEN
-    SELECT coalesce(jsonb_agg(row_to_json(adj)), '[]'::jsonb)
-    INTO v_adjustments
-    FROM public.list_bill_adjustments(p_bill_id) AS adj;
-  END IF;
-
-  IF v_bill.invoice_type <> 'ap'::public.global_invoice_type
-    AND v_bill.document_kind IN (
-      'standard'::public.bill_document_kind,
-      'credit_note'::public.bill_document_kind,
-      'debit_note'::public.bill_document_kind
-    )
-  THEN
-    SELECT coalesce(jsonb_agg(row_to_json(li)), '[]'::jsonb)
-    INTO v_stock_items
-    FROM public.list_global_invoice_items(p_bill_id) AS li;
-  END IF;
-
-  IF v_bill.invoice_type = 'ap'::public.global_invoice_type
-    OR v_bill.document_kind <> 'standard'::public.bill_document_kind
-  THEN
-    SELECT coalesce(
-      jsonb_agg(
-        jsonb_build_object(
-          'id', bl.id,
-          'name_snapshot', bl.name_snapshot,
-          'currency_code', upper(coalesce(bl.currency_code, 'BDT')),
-          'line_total_amount', bl.line_total_amount,
-          'books_amount', coalesce(bl.books_amount, bl.line_total_amount),
-          'quantity', bl.quantity
-        )
-        ORDER BY bl.id
-      ),
-      '[]'::jsonb
-    )
-    INTO v_bill_lines
-    FROM public.bill_lines bl
-    WHERE bl.invoice_id = p_bill_id;
-  END IF;
-
-  RETURN jsonb_build_object(
-    'bill', v_bill_json,
-    'payment_history', public.list_invoice_payment_history(p_tenant_id, p_bill_id),
-    'net_balances', public.get_bill_net_balances(p_bill_id),
-    'adjustments', v_adjustments,
-    'stock_items', v_stock_items,
-    'bill_lines', v_bill_lines,
-    'pay_cashbook_legs', public._desk_bill_pay_cashbook_legs_json(
-      p_tenant_id,
-      v_bill.invoice_type::text,
-      v_bill.from_profile_id,
-      v_bill.to_profile_id,
-      coalesce(nullif(trim(v_bill.currency_code), ''), 'BDT')
-    )
-  );
+  RETURN public._get_bill_detail_bundle_from_kernel(p_tenant_id, p_bill_id);
 END;
 $$;
 

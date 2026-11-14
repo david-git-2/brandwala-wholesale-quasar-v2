@@ -327,18 +327,13 @@
                 />
               </div>
               <div v-if="methodFieldFlags.showBank" class="col-12">
-                <q-select
+                <BdBankSelect
                   v-model="bdBankId"
                   :options="bdBankOptions"
-                  emit-value
-                  map-options
-                  outlined
-                  dense
                   :clearable="!methodFieldFlags.bankRequired"
                   :label="methodFieldFlags.bankLabel"
                   :loading="loadingPaymentMeta"
                   :rules="methodFieldFlags.bankRequired ? [(v) => v != null || 'Required'] : undefined"
-                  hide-bottom-space
                 />
               </div>
               <div v-if="methodFieldFlags.showChequeNumber" class="col-12 col-sm-6">
@@ -511,6 +506,7 @@ import { useBooksCurrencyCode } from '../composables/useBooksCurrencyCode';
 import { useBooksExchangeRateQuery } from '../composables/useBooksExchangeRateQuery';
 import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
 import { useCashbookPayFromPotSelect } from '../composables/useCashbookPayFromPotSelect';
+import BdBankSelect from '../components/BdBankSelect.vue';
 import {
   buildWholesalePaymentInstrument,
   paymentInstrumentExtrasBlockReason,

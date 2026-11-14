@@ -51,30 +51,16 @@
       />
     </div>
 
-    <div
+    <TfEntityListShell
       v-if="customersQuery.isLoading.value && !customers.length"
-      class="clean-list-card col"
+      root-class="col"
     >
-      <div class="clean-list-scroll">
-        <div
-          v-for="n in 6"
-          :key="n"
-          class="clean-list-item clean-list-item--skeleton"
-        >
-          <div class="item-main-info row items-center no-wrap">
-            <q-skeleton type="QAvatar" size="32px" class="q-mr-sm" />
-            <div class="item-info">
-              <q-skeleton type="text" width="180px" height="18px" class="q-mb-xs" />
-              <q-skeleton type="text" width="280px" height="13px" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      <TfEntityListRow v-for="n in 6" :key="n" skeleton />
+    </TfEntityListShell>
 
     <div
       v-else-if="!customers.length && appliedSearch"
-      class="column items-center justify-center text-center text-grey-7 q-py-xl col clean-list-card"
+      class="column items-center justify-center text-center text-grey-7 q-py-xl col tf-entity-list-card"
     >
       <q-icon name="ph ph-magnifying-glass" size="36px" class="q-mb-xs text-grey-5" />
       <div class="text-subtitle2 text-weight-medium">No matching customers found</div>
@@ -106,35 +92,40 @@
       />
     </div>
 
-    <div v-else class="clean-list-card col column no-wrap">
-      <div class="clean-list-scroll" :class="{ 'opacity-60': customersQuery.isFetching.value }">
-        <CustomerGroupListCard
-          v-for="customer in customers"
-          :key="customer.customer_group_id"
-          :customer="customer"
-          :initials="getInitials(customer.group_name)"
-          @open="openCustomerDrawer(customer)"
-        />
-      </div>
-      <div v-if="totalPages > 1" class="row justify-center q-pa-sm customer-list-pagination">
-        <q-pagination
-          v-model="pagination.page"
-          :max="totalPages"
-          :max-pages="7"
-          direction-links
-          boundary-links
-          :ripple="false"
-          color="primary"
-          active-design="outline"
-          size="sm"
-        />
-      </div>
-    </div>
+    <TfEntityListShell
+      v-else
+      root-class="col"
+      :scroll-class="{ 'opacity-60': customersQuery.isFetching.value }"
+    >
+      <CustomerGroupListCard
+        v-for="customer in customers"
+        :key="customer.customer_group_id"
+        :customer="customer"
+        :initials="getInitials(customer.group_name)"
+        @open="openCustomerDrawer(customer)"
+      />
+      <template v-if="totalPages > 1" #footer>
+        <div class="row justify-center q-pa-sm">
+          <q-pagination
+            v-model="pagination.page"
+            :max="totalPages"
+            :max-pages="7"
+            direction-links
+            boundary-links
+            :ripple="false"
+            color="primary"
+            active-design="outline"
+            size="sm"
+          />
+        </div>
+      </template>
+    </TfEntityListShell>
 
     <CustomerDetailDrawer
       v-model="drawerOpen"
       :customer="selectedCustomer"
       :tenant-id="tenantId"
+      @deleted="onDrawerCustomerDeleted"
     />
 
     <CreateCustomerDialog
@@ -148,14 +139,21 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useCustomerListQuery, useCustomerMutations } from '../composables/useCustomerQuery';
 import type { CustomerAccount } from '../types/customer';
 import CustomerDetailDrawer from './CustomerDetailDrawer.vue';
+import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
+import TfEntityListShell from 'src/components/ui/TfEntityListShell.vue';
 import CustomerGroupListCard from './CustomerGroupListCard.vue';
 import CreateCustomerDialog from './CreateCustomerDialog.vue';
 import { useCanAdministerCustomerGroup } from '../composables/useCanAdministerCustomerGroup';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import {
+  clearCustomerDrawerQuery,
+  useRestoreCustomerDrawerFromQuery,
+} from '../composables/useCustomerDrawerRouteQuery';
 
 withDefaults(
   defineProps<{
@@ -165,6 +163,8 @@ withDefaults(
   { fillHeight: true },
 );
 
+const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const canAdministerCustomerGroup = useCanAdministerCustomerGroup();
 
@@ -230,10 +230,23 @@ const onCreateCustomer = async (payload: {
   }
 };
 
+const onDrawerCustomerDeleted = () => {
+  drawerOpen.value = false;
+  selectedCustomer.value = null;
+  clearCustomerDrawerQuery(router, route);
+};
+
 const openCustomerDrawer = (customer: CustomerAccount) => {
   selectedCustomer.value = customer;
   drawerOpen.value = true;
 };
+
+useRestoreCustomerDrawerFromQuery({
+  tenantId,
+  customers,
+  selectedCustomer,
+  drawerOpen,
+});
 
 const getInitials = (name?: string | null) => {
   if (!name) return 'C';
@@ -246,7 +259,7 @@ const getInitials = (name?: string | null) => {
 </script>
 
 <style scoped lang="scss">
-@import '../styles/customer-clean-list.scss';
+@import 'src/css/tf-entity-list.scss';
 
 .customer-group-list--fill {
   height: 100%;

@@ -157,7 +157,7 @@ const positionTiles = computed((): PositionTile[] => {
       label: 'Customer bills due',
       value: formatAmountBdt(p.ar_outstanding),
       caption: 'Open AR (not AP)',
-      to: `${reportsBase.value}/customer-dues`,
+      to: `${reportsBase.value}/customers`,
     },
     {
       group: 'We will get',

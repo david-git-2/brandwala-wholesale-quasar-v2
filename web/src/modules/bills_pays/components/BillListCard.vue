@@ -61,7 +61,8 @@ const chipLabel = computed(() => {
 const partyLine = computed(() => {
   const from = props.row.from_profile_name?.trim() || '—';
   const to = props.row.to_profile_name?.trim() || props.row.profile_name?.trim() || '—';
-  return `${from} → ${to}`;
+  const isAp = props.row.invoice_type === 'ap';
+  return isAp ? `${from} → ${to}` : `${to} → ${from}`;
 });
 
 const formatMoney = (amount: number) => {

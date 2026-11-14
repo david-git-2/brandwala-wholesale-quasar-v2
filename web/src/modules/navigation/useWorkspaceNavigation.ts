@@ -144,6 +144,7 @@ const EXCLUDED_APP_MODULE_KEYS = new Set<ModuleKey>([
   ...getProcurementFamilyModuleKeys(),
   ...getReferenceFamilyModuleKeys(),
   ...getBillsPaysFamilyModuleKeys(),
+  'vendor',
 ]);
 
 const getBaseWorkspaceLinks = ({

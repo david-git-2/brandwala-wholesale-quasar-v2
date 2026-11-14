@@ -169,7 +169,7 @@ Who names: [roles.md](roles.md). Documents: shop order, packing/delivery slip, s
 
 ### 3.4 Dropship shop
 
-Money bodies for COD / supply invoice / remittance → [money-flow-guide.md](money-flow-guide.md) (**T1**, **S6**, **CU2**, **CU4**, **S10**). Courier risk → courier catalog.
+End-to-end lifecycle (happy path, not received, post-delivery return) → [dropship-lifecycle-guide.md](dropship-lifecycle-guide.md) (**DL***). Money bodies for COD / supply invoice / remittance → [money-flow-guide.md](money-flow-guide.md) (**T1**, **S6**, **CU2**, **CU4**, **S10**). Courier risk → courier catalog.
 ### DS1 — Reseller checkout
 - **What’s happening:** Dropshipper buys wholesale; must give end-customer details.
 - **Example:** End price 25k; our supply 18k at ship.

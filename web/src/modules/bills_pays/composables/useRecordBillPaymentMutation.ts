@@ -6,6 +6,8 @@ import { paysQueryKeys } from '../services/paysQueryKeys';
 import { useShipmentApFinanceInvalidation } from 'src/modules/procurement_stock/composables/useShipmentApFinance';
 import { createPayIdempotencyKey } from '../repositories/paysRepository';
 import { moneyKernelRepository } from '../repositories/moneyKernelRepository';
+import type { MoneyPayInstrumentFields } from '../types/moneyPayDialog';
+import { buildKernelPayMovementMeta } from '../utils/kernelPayMovementMeta';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
 export type RecordBillPaymentInput = {
@@ -25,9 +27,12 @@ export type RecordBillPaymentInput = {
   fromPotCurrencyCode?: string;
   fromPotAvailableBalance?: number | null;
   toPotId?: number | null;
+  /** AR: customer has cashbook — debit selected bundle, no synthetic deposit */
+  skipCustomerAutoDeposit?: boolean;
   methodCode: string;
   reference: string | null;
   note: string | null;
+  instrumentFields?: MoneyPayInstrumentFields;
 };
 
 async function resolveFromPotForPay(
@@ -92,7 +97,7 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
 
       let fromPotId = payload.fromPotId;
 
-      if (!payload.isAp) {
+      if (!payload.isAp && !payload.skipCustomerAutoDeposit) {
         const provisioned = await moneyKernelRepository.provisionCashbookCurrency(
           payload.tenantId,
           payload.payerProfileId,
@@ -109,11 +114,16 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
           currencyCode: settle,
           potId: customerPotId,
           idempotencyKey: `${idempotencyKey}-collect`,
-          meta: {
-            paid_on: payload.paidOn,
-            reference: payload.reference,
-            note: payload.note,
-          },
+          meta: buildKernelPayMovementMeta(
+            {
+              methodCode: payload.methodCode,
+              reference: payload.reference,
+              note: payload.note,
+              paymentDate: payload.paidOn,
+              instrumentFields: payload.instrumentFields,
+            },
+            { source: 'bill_pay_collect' },
+          ),
         });
         fromPotId = customerPotId;
       }
@@ -141,13 +151,19 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
         amount: allocAmount,
         allocations,
         toPotId: payload.toPotId ?? undefined,
-        meta: {
-          paid_on: payload.paidOn,
-          method_code: payload.methodCode,
-          reference: payload.reference,
-          note: payload.note,
-          shipment_id: payload.shipmentId ?? null,
-        },
+        meta: buildKernelPayMovementMeta(
+          {
+            methodCode: payload.methodCode,
+            reference: payload.reference,
+            note: payload.note,
+            paymentDate: payload.paidOn,
+            instrumentFields: payload.instrumentFields,
+          },
+          {
+            source: 'bill_pay',
+            shipment_id: payload.shipmentId ?? null,
+          },
+        ),
         idempotencyKey,
       });
 

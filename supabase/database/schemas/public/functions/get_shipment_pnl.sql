@@ -1,4 +1,4 @@
-CREATE FUNCTION public.get_shipment_pnl (
+CREATE OR REPLACE FUNCTION public.get_shipment_pnl (
   p_tenant_id   bigint,
   p_shipment_id bigint
 )
@@ -6,7 +6,7 @@ CREATE FUNCTION public.get_shipment_pnl (
   LANGUAGE plpgsql
   STABLE
   SECURITY DEFINER
-  SET search_path TO 'public'
+  SET search_path TO 'public', 'money_kernel'
   AS $function$
 declare
   v_shipment jsonb;
@@ -49,14 +49,14 @@ begin
     select
       si.*,
       public.calculate_landed_unit_cost(si.id) as landed_unit_cost,
-      coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_qty,
-      coalesce(public.calculate_landed_unit_cost(si.id), 0) * coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_cost,
+      coalesce(sum(bl.quantity), 0) as sold_qty,
+      coalesce(public.calculate_landed_unit_cost(si.id), 0) * coalesce(sum(bl.quantity), 0) as sold_cost,
       coalesce(sum(
-        ii.sell_price_amount * (ii.quantity - coalesce(ii.return_quantity, 0))
+        bl.line_total
         - case
-          when inv.invoice_type = 'dropship'::public.global_invoice_type then 0.00
-          else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.written_off_amount, 0.00))
-            * (ii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
+          when inv.kind = 'sales_invoice_dropship' then 0.00
+          else coalesce(inv.written_off_amount, 0.00)
+            * (bl.line_total / nullif(inv.total_amount, 0.00))
         end
       ), 0) as revenue,
       coalesce(disp.sellable_qty, 0) as sellable_qty,
@@ -69,15 +69,21 @@ begin
       (coalesce(disp.stolen_qty, 0) * public.calculate_landed_unit_cost(si.id))::numeric(12,2) as stolen_value,
       (coalesce(disp.box_damage_qty, 0) * public.calculate_landed_unit_cost(si.id))::numeric(12,2) as box_damage_value,
       (coalesce(disp.expired_qty, 0) * public.calculate_landed_unit_cost(si.id))::numeric(12,2) as expired_value,
-      (si.ordered_quantity - coalesce(sum(ii.quantity - ii.return_quantity), 0) - coalesce(disp.sellable_qty, 0) - coalesce(disp.stolen_qty, 0) - coalesce(disp.box_damage_qty, 0) - coalesce(disp.expired_qty, 0) - coalesce(disp.reserved_qty, 0)) as reconciliation_gap
+      (si.ordered_quantity - coalesce(sum(bl.quantity), 0) - coalesce(disp.sellable_qty, 0) - coalesce(disp.stolen_qty, 0) - coalesce(disp.box_damage_qty, 0) - coalesce(disp.expired_qty, 0) - coalesce(disp.reserved_qty, 0)) as reconciliation_gap
     from public.global_shipment_items si
-    left join public.global_invoice_items ii on ii.shipment_item_id = si.id
-    left join public.bills inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
-    left join lateral (
-      select coalesce(sum(x.line_total_amount), 0.00) as inv_line_subtotal
-      from public.global_invoice_items x
-      where x.invoice_id = ii.invoice_id
-    ) invagg on true
+    left join money_kernel.bill_lines bl
+      on coalesce(
+        bl.shipment_item_id,
+        nullif(bl.meta->'shipment_ref'->>'shipment_item_id', '')::bigint
+      ) = si.id
+    left join money_kernel.bills inv
+      on inv.id = bl.bill_id
+     and inv.status in ('issued', 'partial', 'paid')
+     and inv.kind in (
+       'sales_invoice_wholesale',
+       'sales_invoice_retail',
+       'sales_invoice_dropship'
+     )
     left join lateral (
       select
         coalesce(sum(gs.quantity) filter (where gst.is_sellable = true), 0) as sellable_qty,
@@ -118,29 +124,35 @@ begin
     select
       public.calculate_landed_unit_cost(si.id) as landed_unit_cost,
       si.ordered_quantity as received_qty,
-      coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_qty,
-      coalesce(public.calculate_landed_unit_cost(si.id), 0) * coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_cost,
+      coalesce(sum(bl.quantity), 0) as sold_qty,
+      coalesce(public.calculate_landed_unit_cost(si.id), 0) * coalesce(sum(bl.quantity), 0) as sold_cost,
       coalesce(sum(
-        ii.sell_price_amount * (ii.quantity - coalesce(ii.return_quantity, 0))
+        bl.line_total
         - case
-          when inv.invoice_type = 'dropship'::public.global_invoice_type then 0.00
-          else (coalesce(inv.discount_amount, 0.00) + coalesce(inv.written_off_amount, 0.00))
-            * (ii.line_total_amount / nullif(invagg.inv_line_subtotal, 0.00))
+          when inv.kind = 'sales_invoice_dropship' then 0.00
+          else coalesce(inv.written_off_amount, 0.00)
+            * (bl.line_total / nullif(inv.total_amount, 0.00))
         end
       ), 0) as revenue,
       coalesce(disp.sellable_qty, 0) as sellable_qty,
       coalesce(disp.stolen_qty, 0) as stolen_qty,
       coalesce(disp.box_damage_qty, 0) as box_damage_qty,
       coalesce(disp.expired_qty, 0) as expired_qty,
-      (si.ordered_quantity - coalesce(sum(ii.quantity - ii.return_quantity), 0) - coalesce(disp.sellable_qty, 0) - coalesce(disp.stolen_qty, 0) - coalesce(disp.box_damage_qty, 0) - coalesce(disp.expired_qty, 0) - coalesce(disp.reserved_qty, 0)) as reconciliation_gap
+      (si.ordered_quantity - coalesce(sum(bl.quantity), 0) - coalesce(disp.sellable_qty, 0) - coalesce(disp.stolen_qty, 0) - coalesce(disp.box_damage_qty, 0) - coalesce(disp.expired_qty, 0) - coalesce(disp.reserved_qty, 0)) as reconciliation_gap
     from public.global_shipment_items si
-    left join public.global_invoice_items ii on ii.shipment_item_id = si.id
-    left join public.bills inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
-    left join lateral (
-      select coalesce(sum(x.line_total_amount), 0.00) as inv_line_subtotal
-      from public.global_invoice_items x
-      where x.invoice_id = ii.invoice_id
-    ) invagg on true
+    left join money_kernel.bill_lines bl
+      on coalesce(
+        bl.shipment_item_id,
+        nullif(bl.meta->'shipment_ref'->>'shipment_item_id', '')::bigint
+      ) = si.id
+    left join money_kernel.bills inv
+      on inv.id = bl.bill_id
+     and inv.status in ('issued', 'partial', 'paid')
+     and inv.kind in (
+       'sales_invoice_wholesale',
+       'sales_invoice_retail',
+       'sales_invoice_dropship'
+     )
     left join lateral (
       select
         coalesce(sum(gs.quantity) filter (where gst.is_sellable = true), 0) as sellable_qty,

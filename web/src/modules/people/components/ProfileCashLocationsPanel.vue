@@ -1,5 +1,6 @@
 <template>
   <AppResizableOverlayPanel
+    v-if="!embedded"
     v-model="open"
     storage-key="people.cash-locations-drawer-width"
     :default-width="520"
@@ -29,94 +30,40 @@
 
       <q-separator />
 
-      <div class="cash-locations-drawer__body col scroll q-pa-md">
-        <div class="row justify-end q-mb-md">
-          <TfBtn
-            variant="primary"
-            size="sm"
-            icon="ph ph-plus"
-            label="Add location"
-            data-test="profile-cash-locations-add"
-            @click="openAddDialog"
-          />
-        </div>
-
-        <div v-if="loading" class="row justify-center q-pa-lg">
-          <q-spinner color="primary" size="28px" />
-        </div>
-        <div v-else-if="loadError" class="text-negative text-body2">
-          {{ loadError }}
-        </div>
-        <TfEmptyState
-          v-else-if="!points.length"
-          icon="ph ph-map-pin"
-          title="No locations yet"
-          message="Add a till, safe, or bank counter."
-        />
-        <div v-else class="tf-entity-grid">
-          <q-card
-            v-for="point in points"
-            :key="point.id"
-            flat
-            bordered
-            class="cash-location-card"
-            :class="{ 'cash-location-card--inactive': !point.is_active }"
-          >
-            <q-card-section class="column q-gutter-y-sm">
-              <div class="row items-center no-wrap q-gutter-x-sm">
-                <q-icon name="ph ph-map-pin" size="20px" class="text-primary shrink-0" />
-                <div class="col min-width-0 row items-center q-gutter-x-xs no-wrap">
-                  <span class="text-subtitle2 text-weight-medium ellipsis">{{ point.name }}</span>
-                  <q-badge
-                    v-if="!point.is_active"
-                    dense
-                    color="grey-3"
-                    text-color="grey-8"
-                    label="Inactive"
-                  />
-                </div>
-                <div class="row no-wrap q-gutter-xs shrink-0">
-                  <TfBtn
-                    variant="icon"
-                    icon="ph ph-stack-plus"
-                    aria-label="Add bundle"
-                    @click="openBundleDialog(point)"
-                  />
-                  <TfBtn
-                    variant="icon"
-                    icon="ph ph-pencil-simple"
-                    aria-label="Edit location"
-                    @click="openEditDialog(point)"
-                  />
-                  <TfBtn
-                    v-if="canDeletePoint(point)"
-                    variant="icon"
-                    icon="ph ph-trash"
-                    color="negative"
-                    aria-label="Delete location"
-                    :loading="deletingPointId === point.id"
-                    @click="confirmDeletePoint(point)"
-                  />
-                </div>
-              </div>
-              <div
-                v-if="bundlesForPoint(point).length"
-                class="row q-gutter-sm flex-wrap"
-              >
-                <ProfileLocationBundleBox
-                  v-for="bundle in bundlesForPoint(point)"
-                  :key="bundle.bundleId"
-                  :bundle="bundle"
-                  :deleting="deletingBundleId === bundle.bundleId"
-                  @delete="confirmDeleteBundle(bundle)"
-                />
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
-      </div>
+      <ProfileCashLocationsPanelBody
+        :loading="loading"
+        :load-error="loadError"
+        :points="points"
+        :deleting-point-id="deletingPointId"
+        :deleting-bundle-id="deletingBundleId"
+        :bundles-for-point="bundlesForPoint"
+        :can-delete-point="canDeletePoint"
+        @add-location="openAddDialog"
+        @add-bundle="openBundleDialog"
+        @edit-point="openEditDialog"
+        @delete-point="confirmDeletePoint"
+        @delete-bundle="confirmDeleteBundle"
+      />
     </div>
   </AppResizableOverlayPanel>
+
+  <ProfileCashLocationsPanelBody
+    v-else
+    embedded
+    class="profile-cash-locations-embedded"
+    :loading="loading"
+    :load-error="loadError"
+    :points="points"
+    :deleting-point-id="deletingPointId"
+    :deleting-bundle-id="deletingBundleId"
+    :bundles-for-point="bundlesForPoint"
+    :can-delete-point="canDeletePoint"
+    @add-location="openAddDialog"
+    @add-bundle="openBundleDialog"
+    @edit-point="openEditDialog"
+    @delete-point="confirmDeletePoint"
+    @delete-bundle="confirmDeleteBundle"
+  />
 
   <q-dialog v-model="formDialogOpen" persistent>
     <q-card class="profile-cash-location-form-dialog">
@@ -178,7 +125,7 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfEmptyState from 'src/components/ui/TfEmptyState.vue';
-import ProfileLocationBundleBox from './ProfileLocationBundleBox.vue';
+import ProfileCashLocationsPanelBody from './ProfileCashLocationsPanelBody.vue';
 import ProfileCashbookBundleCreateDialog from './ProfileCashbookBundleCreateDialog.vue';
 import type { CashbookPointRow } from 'src/modules/bills_pays/repositories/cashbookRepository';
 import { cashbookRepository } from 'src/modules/bills_pays/repositories/cashbookRepository';
@@ -194,14 +141,19 @@ import { useCashbookPointsForProfileQuery } from '../composables/useCashbookPoin
 import { useProfileCashbookBundlesQuery } from '../composables/useProfileCashbookBundlesQuery';
 import type { ProfileCashbookBundleRow } from '../types/profileCashbookBundle';
 
-const props = defineProps<{
-  booksTenantId: number;
-  operatingTenantId: number;
-  profileId: number | null;
-  partyName?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    booksTenantId: number;
+    operatingTenantId: number;
+    profileId: number | null;
+    partyName?: string;
+    embedded?: boolean;
+    active?: boolean;
+  }>(),
+  { embedded: false, active: false },
+);
 
-const open = defineModel<boolean>({ required: true });
+const open = defineModel<boolean>({ default: false });
 
 const queryClient = useQueryClient();
 const formName = ref('');
@@ -214,7 +166,8 @@ const deletingBundleId = ref<number | null>(null);
 const bundleDialogOpen = ref(false);
 const bundlePoint = ref<CashbookPointRow | null>(null);
 
-const enabled = computed(() => open.value && props.profileId != null);
+const panelActive = computed(() => (props.embedded ? props.active : open.value));
+const enabled = computed(() => panelActive.value && props.profileId != null);
 const profileIdRef = computed(() => props.profileId);
 const booksTenantIdRef = computed(() => props.booksTenantId);
 

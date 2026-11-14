@@ -346,6 +346,22 @@ const applyDocumentSettlement = async (input: {
   return (data as Record<string, unknown> | null) ?? {};
 };
 
+const writeOffBill = async (input: {
+  tenantId: number;
+  billId: number;
+  amount: number;
+  reason: string;
+}): Promise<Record<string, unknown>> => {
+  const { data, error } = await db.rpc(MONEY_KERNEL_WRITE_RPC.writeOffBill, {
+    p_tenant_id: input.tenantId,
+    p_bill_id: input.billId,
+    p_amount: input.amount,
+    p_reason: input.reason,
+  });
+  if (error) throw error;
+  return (data as Record<string, unknown> | null) ?? {};
+};
+
 const voidKernelBill = async (
   tenantId: number,
   billId: number,
@@ -393,5 +409,6 @@ export const moneyKernelRepository = {
   transferP2p,
   transferSameProfile,
   applyDocumentSettlement,
+  writeOffBill,
   voidKernelBill,
 };

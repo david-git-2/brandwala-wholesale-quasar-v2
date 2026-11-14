@@ -52,16 +52,18 @@ export function buildKernelCreateBillPayload(
   const channelMeta = (inv.channel_meta ?? {}) as Record<string, unknown>;
   const letterheadProfileId = channelMeta.letterhead_profile_id;
 
+  const tenantCreditorId =
+    typeof letterheadProfileId === 'number' ? letterheadProfileId : undefined;
+  const counterpartyId = inv.profile_id > 0 ? inv.profile_id : undefined;
+
   let fromProfileId: number | undefined;
   let toProfileId: number | undefined;
   if (invoiceType === 'ap') {
-    fromProfileId = inv.profile_id > 0 ? inv.profile_id : undefined;
-    toProfileId =
-      typeof letterheadProfileId === 'number' ? letterheadProfileId : undefined;
+    fromProfileId = tenantCreditorId;
+    toProfileId = counterpartyId;
   } else {
-    toProfileId = inv.profile_id > 0 ? inv.profile_id : undefined;
-    fromProfileId =
-      typeof letterheadProfileId === 'number' ? letterheadProfileId : undefined;
+    fromProfileId = counterpartyId;
+    toProfileId = tenantCreditorId;
   }
 
   const meta: Record<string, unknown> = {

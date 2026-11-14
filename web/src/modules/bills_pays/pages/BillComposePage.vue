@@ -1018,8 +1018,22 @@ const persistBillMeta = async (billId: number) => {
     patch.invoice_type = 'retail';
   }
 
-  const { error } = await supabase.from('bills').update(patch).eq('id', billId);
-  if (error) throw error;
+  const booksId = parentTenantId.value ?? tenantId.value;
+  if (!booksId) throw new Error('Tenant is required');
+
+  await billsRepository.updateDraftBill(booksId, billId, {
+    invoice: {
+      ...patch,
+      ...(isSourcePlugged.value
+        ? {
+            source_type: sourceType.value ?? undefined,
+            source_id: sourceId.value ?? undefined,
+            source_key: sourceKey.value ?? undefined,
+          }
+        : {}),
+    },
+    items: [],
+  });
 };
 
 const lineTotal = (line: ComposeLine) => lineTotalAmount(line);

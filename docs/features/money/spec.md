@@ -52,7 +52,7 @@ Money, bills, and pays all key party identity through **`public.profiles`**, sco
 
 **Pays:** `from_profile_id` and `to_profile_id` on the header. Null on a side = external (bank, cash drawer handoff, anonymous). When `cashbook_enabled=false` on a profile, lines touch only the **other** side’s cashbook (e.g. debit tenant bundles; no credit row on vendor).
 
-**Provision:** On insert/update of a profile with `cashbook_enabled`, server ensures cashbook + default location (`main`) + default BDT bundle (today: `trg_provision_kernel_cashbook_for_profile` → maps to cashbook provision after cutover).
+**Provision:** On insert/update of a profile with `cashbook_enabled` (tenant, customer, courier, investor), `trg_provision_kernel_cashbook_for_profile` provisions under `resolve_books_tenant_id(profile.tenant_id)`: `money_kernel.cashbooks` + location `main` + default BDT bundle (`books_rate = 1`).
 
 **Not a profile:** `recipient_profiles` — delivery recipients without a wallet; dropship money stays on the **customer** (dropshipper) profile + bills.
 

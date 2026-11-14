@@ -24,6 +24,16 @@
           <span class="profile-pay-row__currency text-h6 text-weight-bold">{{ amountParts.symbol }}</span>
           <span class="profile-pay-row__amount text-h6 text-weight-bold">{{ amountParts.amount }}</span>
         </div>
+        <q-btn
+          flat
+          round
+          dense
+          size="sm"
+          icon="ph ph-info"
+          color="grey-7"
+          aria-label="Transaction details"
+          @click="$emit('details', row)"
+        />
         <TfBtn
           v-if="canRevert"
           variant="danger-trigger"
@@ -67,7 +77,7 @@ const props = withDefaults(
   },
 );
 
-defineEmits<{ revert: [row: PayListRow] }>();
+defineEmits<{ revert: [row: PayListRow]; details: [row: PayListRow] }>();
 
 const fromToLine = computed(() =>
   payFromToLine(props.row, props.viewedProfileId, props.viewedProfileDisplayName),

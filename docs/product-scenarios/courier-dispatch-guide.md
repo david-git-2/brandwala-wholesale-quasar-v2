@@ -1,7 +1,7 @@
 # Courier dispatch
 
 Product-decision catalog for **last-mile Bangladesh dropship** (Steadfast / Pathao / RedX), tracking, and COD risk before dispatch.  
-**Pairs with:** [roles.md](roles.md) · [shop-and-orders-guide.md](shop-and-orders-guide.md) (**DS3–DS9**) · [money-flow-guide.md](money-flow-guide.md) (**CU***, **S6**, **T1**, **R9**) · [decision board](money-flow-pnl-product-review.md).
+**Pairs with:** [roles.md](roles.md) · [dropship-lifecycle-guide.md](dropship-lifecycle-guide.md) (**DL10–DL16**) · [shop-and-orders-guide.md](shop-and-orders-guide.md) (**DS3–DS9**) · [money-flow-guide.md](money-flow-guide.md) (**CU***, **S6**, **T1**, **R9**) · [decision board](money-flow-pnl-product-review.md).
 
 > **Scope:** Dropship reseller orders only. Fixed-price and catalog shops do not use this playbook. Inbound import cargo ≠ this last-mile story ([shipment-guide.md](shipment-guide.md)).
 
@@ -148,7 +148,7 @@ Money bodies → [money-flow-guide.md](money-flow-guide.md). Shop ship → **DS5
 - **Who:** Dropship desk · Warehouse / Inventory Manager · Curia · Dropshipper · End customer
 - **Need in product:** Returned status; restock/damage (shop **DS9**); phone stats worsen for CD1.
 - **Cover?:** Must
-- **Watch out:** Fees + stock path.
+- **Watch out:** Fees + stock path; full money + restock story → [dropship-lifecycle-guide.md](dropship-lifecycle-guide.md) **DL11–DL14**.
 ### CD15 — Tracking mismatch dispute
 - **What’s happening:** Courier says delivered; customer denies.
 - **Example:** Ticket with consignment id + timeline + raw events.
@@ -186,7 +186,7 @@ Money bodies → [money-flow-guide.md](money-flow-guide.md). Shop ship → **DS5
 - **Who:** Dropship desk · Approver / Manager · Curia · Dropshipper
 - **Need in product:** New row; old superseded — never two active IDs.
 - **Cover?:** Must
-- **Watch out:** One live consignment.
+- **Watch out:** One live consignment; second-attempt policy → **DL15** in [dropship-lifecycle-guide.md](dropship-lifecycle-guide.md).
 
 ### 3.6 Provider notes
 

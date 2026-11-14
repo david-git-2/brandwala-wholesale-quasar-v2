@@ -17,6 +17,7 @@
       @click="emit('withdraw')"
     />
     <TfBtn
+      v-if="showLocations"
       variant="secondary"
       size="sm"
       icon="ph ph-map-pin"
@@ -29,6 +30,13 @@
 
 <script setup lang="ts">
 import TfBtn from 'src/components/ui/TfBtn.vue';
+
+withDefaults(
+  defineProps<{
+    showLocations?: boolean;
+  }>(),
+  { showLocations: true },
+);
 
 const emit = defineEmits<{
   deposit: [];

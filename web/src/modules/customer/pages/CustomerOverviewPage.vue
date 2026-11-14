@@ -27,8 +27,8 @@
           >
             <q-icon name="ph ph-identification-badge" size="16px" class="q-mr-xs" />
             <span class="tab-btn__label">Recipients</span>
-            <span v-if="recipientItems.length > 0" class="tab-btn__badge q-ml-xs">
-              {{ recipientItems.length }}
+            <span v-if="recipientItemCount > 0" class="tab-btn__badge q-ml-xs">
+              {{ recipientItemCount }}
             </span>
           </button>
         </div>
@@ -91,35 +91,14 @@
           </div>
 
           <!-- Customer Skeleton Loading State -->
-          <div
-            v-if="isCustomersLoading && !customers.length"
-            class="clean-list-card col"
-          >
-            <div class="clean-list-scroll">
-              <div
-                v-for="n in 6"
-                :key="n"
-                class="clean-list-item clean-list-item--skeleton"
-              >
-                <div class="item-main-info row items-center no-wrap">
-                  <q-skeleton type="QAvatar" size="32px" class="q-mr-sm" />
-                  <div class="item-info">
-                    <q-skeleton type="text" width="180px" height="18px" class="q-mb-xs" />
-                    <q-skeleton type="text" width="280px" height="13px" />
-                  </div>
-                </div>
-                <div class="item-aside">
-                  <q-skeleton type="rect" width="90px" height="24px" class="rounded-borders q-mr-sm" />
-                  <q-skeleton type="QBadge" width="60px" height="20px" class="rounded-borders" />
-                </div>
-              </div>
-            </div>
-          </div>
+          <TfEntityListShell v-if="isCustomersLoading && !customers.length" root-class="col">
+            <TfEntityListRow v-for="n in 6" :key="n" skeleton />
+          </TfEntityListShell>
 
           <!-- Customer Zero State (No Customers) -->
           <div
             v-else-if="!customers.length && !appliedCustomerSearch"
-            class="column items-center justify-center q-pa-xl text-center col clean-list-card"
+            class="column items-center justify-center q-pa-xl text-center col tf-entity-list-card"
           >
             <q-avatar size="56px" color="grey-3" text-color="grey-9" class="q-mb-md">
               <q-icon name="ph ph-users" size="28px" />
@@ -144,7 +123,7 @@
           <!-- Customer No Search Matches State -->
           <div
             v-else-if="!customers.length"
-            class="column items-center justify-center text-center text-grey-7 q-py-xl col clean-list-card"
+            class="column items-center justify-center text-center text-grey-7 q-py-xl col tf-entity-list-card"
           >
             <q-icon name="ph ph-magnifying-glass" size="36px" class="q-mb-xs text-grey-4" />
             <div class="text-subtitle2 text-weight-medium text-slate-800">No matching customers found</div>
@@ -160,254 +139,56 @@
           </div>
 
           <!-- Customer Linear-Style List Container -->
-          <div v-else class="clean-list-card col">
-            <div class="clean-list-scroll">
-              <div
-                v-for="customer in customers"
-                :key="customer.customer_group_id"
-                class="clean-list-item"
-                @click="openCustomerDrawer(customer)"
-              >
-                <!-- Left Side: Avatar + Group Name + Inline Meta -->
-                <div class="item-main-info row items-center no-wrap">
-                  <q-avatar size="32px" class="item-avatar flex-shrink-0 q-mr-sm">
-                    {{ getInitials(customer.group_name) }}
-                  </q-avatar>
-                  <div class="item-info">
-                    <div class="item-title-line">
-                      <span class="item-name">{{ customer.group_name }}</span>
-                      <span v-if="customer.admin_name" class="meta-subtext">({{ customer.admin_name }})</span>
-                    </div>
-                    <div class="item-meta-line">
-                      <span v-if="customer.email" class="meta-item">{{ customer.email }}</span>
-                      <span v-if="customer.email && customer.phone" class="meta-dot">·</span>
-                      <span v-if="customer.phone" class="meta-item">{{ customer.phone }}</span>
-                      <span v-if="(customer.email || customer.phone) && customer.address" class="meta-dot">·</span>
-                      <span v-if="customer.address" class="meta-item meta-address">{{ customer.address }}</span>
-                      <span class="meta-dot">·</span>
-                      <span class="meta-item">{{ customer.member_count }} {{ customer.member_count === 1 ? 'member' : 'members' }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Right Side: Wallet Balance + Status + Chevron -->
-                <div class="item-aside">
-                  <div class="column items-end q-mr-xs">
-                    <span
-                      class="numeric-cell text-weight-bold"
-                      :class="customer.wallet_available_balance >= 0 ? 'text-slate-800' : 'text-negative'"
-                    >
-                      {{ formatBdt(customer.wallet_available_balance) }}
-                    </span>
-                    <span class="text-caption text-grey-6" style="font-size: 11px">Wallet Balance</span>
-                  </div>
-
+          <TfEntityListShell v-else root-class="col">
+            <TfEntityListRow
+              v-for="customer in customers"
+              :key="customer.customer_group_id"
+              @click="openCustomerDrawer(customer)"
+            >
+              <template #avatar>{{ getInitials(customer.group_name) }}</template>
+              <template #title>
+                <span class="tf-entity-list-item__name">{{ customer.group_name }}</span>
+                <span v-if="customer.admin_name" class="tf-entity-list-item__subtitle">
+                  ({{ customer.admin_name }})
+                </span>
+              </template>
+              <template #meta>{{ customerBrowseMeta(customer) }}</template>
+              <template #aside>
+                <div class="column items-end q-mr-xs">
                   <span
-                    class="status-pill"
-                    :class="customer.is_active ? 'status-pill--active' : 'status-pill--inactive'"
+                    class="numeric-cell text-weight-bold"
+                    :class="customer.wallet_available_balance >= 0 ? 'text-slate-800' : 'text-negative'"
                   >
-                    {{ customer.is_active ? 'Active' : 'Inactive' }}
+                    {{ formatBdt(customer.wallet_available_balance) }}
                   </span>
-
-                  <q-icon name="ph ph-caret-right" size="16px" class="item-chevron" />
+                  <span class="text-caption text-grey-6" style="font-size: 11px">Wallet Balance</span>
                 </div>
-              </div>
-
-              <!-- Load More Button inside list -->
-              <div v-if="hasMoreCustomers" class="row justify-center q-py-sm">
-                <q-btn
-                  flat
-                  dense
-                  no-caps
-                  :loading="isFetchingNextPage"
-                  class="load-more-btn text-weight-medium text-slate-700 q-px-md"
-                  label="Load more"
-                  icon="ph ph-arrow-down"
-                  @click="fetchNextPage()"
-                />
-              </div>
+                <span
+                  class="status-pill"
+                  :class="customer.is_active ? 'status-pill--active' : 'status-pill--inactive'"
+                >
+                  {{ customer.is_active ? 'Active' : 'Inactive' }}
+                </span>
+              </template>
+            </TfEntityListRow>
+            <div v-if="hasMoreCustomers" class="row justify-center q-py-sm">
+              <q-btn
+                flat
+                dense
+                no-caps
+                :loading="isFetchingNextPage"
+                class="load-more-btn text-weight-medium text-slate-700 q-px-md"
+                label="Load more"
+                icon="ph ph-arrow-down"
+                @click="fetchNextPage()"
+              />
             </div>
-          </div>
+          </TfEntityListShell>
         </div>
 
-        <!-- 2. RECIPIENT TAB -->
-        <div
+        <RecipientListPanel
           v-else-if="activeTab === 'recipient' && hasRecipientAccess"
-          class="column no-wrap full-height min-height-0"
-        >
-          <!-- Recipient Toolbar -->
-          <div class="customer-toolbar row items-center no-wrap q-gutter-sm q-mb-sm">
-            <q-input
-              v-model="recipientSearchText"
-              outlined
-              dense
-              placeholder="Search by recipient name, phone, district, or address..."
-              class="search-box col"
-            >
-              <template #prepend>
-                <q-icon name="ph ph-magnifying-glass" size="18px" class="text-grey-5" />
-              </template>
-              <template #append v-if="recipientSearchText">
-                <q-icon
-                  name="ph ph-x"
-                  size="16px"
-                  class="cursor-pointer text-grey-5"
-                  @click="recipientSearchText = ''"
-                />
-              </template>
-            </q-input>
-
-            <q-select
-              v-if="isParentTenant && childTenantOptions.length > 1"
-              v-model="selectedChildTenantId"
-              :options="childTenantOptions"
-              option-value="value"
-              option-label="label"
-              emit-value
-              map-options
-              outlined
-              dense
-              options-dense
-              class="col-auto dense-tenant-select"
-              style="min-width: 170px"
-              aria-label="Filter by child tenant"
-            >
-              <template #prepend>
-                <q-icon name="ph ph-buildings" size="16px" class="text-grey-6" />
-              </template>
-            </q-select>
-
-            <q-btn
-              flat
-              round
-              dense
-              icon="ph ph-arrow-clockwise"
-              color="grey-7"
-              class="col-auto"
-              :loading="recipientStore.loading"
-              @click="loadRecipients"
-            >
-              <q-tooltip>Refresh</q-tooltip>
-            </q-btn>
-
-            <q-btn
-              unelevated
-              color="primary"
-              icon="ph ph-plus"
-              label="Create Recipient"
-              no-caps
-              dense
-              class="action-btn text-weight-bold col-auto q-px-sm"
-              @click="openCreateRecipientDialog"
-            />
-          </div>
-
-          <!-- Recipient Skeleton Loading State -->
-          <div
-            v-if="recipientStore.loading && !recipientItems.length"
-            class="clean-list-card col"
-          >
-            <div class="clean-list-scroll">
-              <div
-                v-for="n in 6"
-                :key="n"
-                class="clean-list-item clean-list-item--skeleton"
-              >
-                <div class="item-main-info row items-center no-wrap">
-                  <q-skeleton type="QAvatar" size="32px" class="q-mr-sm" />
-                  <div class="item-info">
-                    <q-skeleton type="text" width="180px" height="18px" class="q-mb-xs" />
-                    <q-skeleton type="text" width="300px" height="13px" />
-                  </div>
-                </div>
-                <div class="item-aside">
-                  <q-skeleton type="QBtn" size="xs" width="20px" height="20px" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Recipient Zero State (No Profiles) -->
-          <div
-            v-else-if="!recipientItems.length"
-            class="column items-center justify-center q-pa-xl text-center col clean-list-card"
-          >
-            <q-avatar size="56px" color="grey-3" text-color="grey-9" class="q-mb-md">
-              <q-icon name="ph ph-identification-badge" size="28px" />
-            </q-avatar>
-            <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-xs">
-              No Recipient Profiles Found
-            </div>
-            <p class="text-caption text-grey-6 q-mb-md" style="max-width: 380px">
-              Manage saved delivery addresses and end-customer profiles for retail and dropship invoices.
-            </p>
-            <q-btn
-              unelevated
-              color="primary"
-              icon="ph ph-plus"
-              label="Create Recipient"
-              no-caps
-              dense
-              class="action-btn text-weight-bold q-px-md"
-              @click="openCreateRecipientDialog"
-            />
-          </div>
-
-          <!-- Recipient No Filter Matches State -->
-          <div
-            v-else-if="!filteredRecipientItems.length"
-            class="column items-center justify-center text-center text-grey-7 q-py-xl col clean-list-card"
-          >
-            <q-icon name="ph ph-funnel" size="36px" class="q-mb-xs text-grey-4" />
-            <div class="text-subtitle2 text-weight-medium text-slate-800">No recipient profiles found</div>
-            <div class="text-caption text-grey-6 q-mt-xs">Try searching with a different keyword or select all child tenants.</div>
-          </div>
-
-          <!-- Recipient Linear-Style List Container -->
-          <div v-else class="clean-list-card col">
-            <div class="clean-list-scroll">
-              <div
-                v-for="row in filteredRecipientItems"
-                :key="row.id"
-                class="clean-list-item"
-                @click="openRecipientDrawer(row)"
-              >
-                <!-- Left Side: Avatar + Recipient Name + Meta Line -->
-                <div class="item-main-info row items-center no-wrap">
-                  <q-avatar size="32px" class="item-avatar flex-shrink-0 q-mr-sm">
-                    {{ getInitials(row.name) }}
-                  </q-avatar>
-                  <div class="item-info">
-                    <div class="item-title-line">
-                      <span class="item-name">{{ row.name }}</span>
-                      <span
-                        v-if="isParentTenant && row.tenant_name"
-                        class="tenant-tag q-ml-xs"
-                      >
-                        <q-icon name="ph ph-buildings" size="12px" class="q-mr-2xs" />
-                        {{ row.tenant_name }}
-                      </span>
-                    </div>
-                    <div class="item-meta-line">
-                      <span class="meta-item">{{ row.phone }}</span>
-                      <span v-if="row.secondary_phone" class="meta-dot">·</span>
-                      <span v-if="row.secondary_phone" class="meta-item">Alt: {{ row.secondary_phone }}</span>
-                      <span v-if="row.district || row.thana" class="meta-dot">·</span>
-                      <span v-if="row.district || row.thana" class="meta-item">{{ [row.district, row.thana].filter(Boolean).join(', ') }}</span>
-                      <span v-if="row.address" class="meta-dot">·</span>
-                      <span v-if="row.address" class="meta-item meta-address">{{ row.address }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Right Side: Chevron -->
-                <div class="item-aside">
-                  <q-icon name="ph ph-caret-right" size="16px" class="item-chevron" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        />
       </div>
     </div>
 
@@ -426,127 +207,29 @@
       @create="onCreateCustomer"
     />
 
-    <!-- Recipient Detail Drawer -->
-    <RecipientDetailDrawer
-      v-model="recipientDrawerOpen"
-      :recipient="selectedRecipient"
-      :is-parent-tenant="isParentTenant"
-      @deleted="onDrawerRecipientDeleted"
-    />
-
-    <!-- Recipient Create Dialog -->
-    <q-dialog v-model="recipientDialogOpen" persistent>
-      <q-card style="min-width: 480px; border-radius: 12px">
-        <q-card-section class="row items-center q-pb-none">
-          <div>
-            <div class="text-subtitle1 text-weight-bold">
-              Create Recipient Profile
-            </div>
-            <div class="text-caption text-grey-6">Fill in courier-ready delivery details below</div>
-          </div>
-          <q-space />
-          <q-btn v-close-popup icon="ph ph-x" flat round dense aria-label="Close" />
-        </q-card-section>
-
-        <q-form @submit.prevent="onRecipientFormSubmit">
-          <q-card-section class="q-gutter-sm">
-            <q-input
-              v-model="recipientForm.name"
-              label="Recipient Name *"
-              outlined
-              dense
-              class="soft-input"
-              lazy-rules
-              :rules="[(val) => (val && val.trim().length > 0) || 'Name is required']"
-            />
-            <div class="row q-col-gutter-sm">
-              <div class="col-6">
-                <q-input
-                  v-model="recipientForm.phone"
-                  label="Primary Phone *"
-                  outlined
-                  dense
-                  class="soft-input"
-                  lazy-rules
-                  :rules="[(val) => (val && val.trim().length > 0) || 'Phone is required']"
-                />
-              </div>
-              <div class="col-6">
-                <q-input
-                  v-model="recipientForm.secondary_phone"
-                  label="Secondary Phone"
-                  outlined
-                  dense
-                  class="soft-input"
-                />
-              </div>
-            </div>
-            <div class="row q-col-gutter-sm">
-              <div class="col-6">
-                <q-input
-                  v-model="recipientForm.district"
-                  label="District *"
-                  outlined
-                  dense
-                  class="soft-input"
-                />
-              </div>
-              <div class="col-6">
-                <q-input
-                  v-model="recipientForm.thana"
-                  label="Thana / Upazila *"
-                  outlined
-                  dense
-                  class="soft-input"
-                />
-              </div>
-            </div>
-            <q-input
-              v-model="recipientForm.address"
-              label="Delivery Address *"
-              outlined
-              dense
-              type="textarea"
-              rows="3"
-              class="soft-input"
-              lazy-rules
-              :rules="[(val) => (val && val.trim().length > 0) || 'Address is required']"
-            />
-          </q-card-section>
-
-          <q-card-actions align="right" class="q-pa-md">
-            <q-btn flat no-caps label="Cancel" v-close-popup class="action-btn" />
-            <q-btn
-              color="primary"
-              no-caps
-              unelevated
-              label="Create Profile"
-              :loading="recipientStore.saving"
-              type="submit"
-              class="action-btn px-md text-weight-medium"
-            />
-          </q-card-actions>
-        </q-form>
-      </q-card>
-    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import { useInfiniteCustomerListQuery, useCustomerMutations } from '../composables/useCustomerQuery';
 import type { CustomerAccount } from '../types/customer';
 import CustomerDetailDrawer from '../components/CustomerDetailDrawer.vue';
-import RecipientDetailDrawer from '../components/RecipientDetailDrawer.vue';
+import {
+  clearCustomerDrawerQuery,
+  useRestoreCustomerDrawerFromQuery,
+} from '../composables/useCustomerDrawerRouteQuery';
 import CreateCustomerDialog from '../components/CreateCustomerDialog.vue';
+import RecipientListPanel from '../components/RecipientListPanel.vue';
+import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
+import TfEntityListShell from 'src/components/ui/TfEntityListShell.vue';
 import { useCanAdministerCustomerGroup } from '../composables/useCanAdministerCustomerGroup';
 import { useInvoiceWorkspace } from 'src/modules/sales_invoice/composables/useInvoiceWorkspace';
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
-import type { RecipientProfile } from 'src/types/recipientProfile';
+import { getInitials } from 'src/modules/sales_invoice/utils/invoiceListDisplay';
 import {
   showErrorNotification,
   showSuccessNotification,
@@ -557,12 +240,12 @@ type ActiveTab = 'customer' | 'recipient';
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
-const tenantStore = useTenantStore();
 const tenantId = computed(() => authStore.tenantId as number);
 const { hasModuleAccess } = useModulePermissions();
 const { isParentTenant } = useInvoiceWorkspace();
 const canAdministerCustomerGroup = useCanAdministerCustomerGroup();
 const recipientStore = useRecipientProfileStore();
+const recipientItemCount = computed(() => recipientStore.items.length);
 
 const hasCustomerAccess = computed(() => hasModuleAccess('customer', 'view'));
 const hasRecipientAccess = computed(
@@ -662,141 +345,19 @@ const onCreateCustomer = async (payload: {
 const onDrawerCustomerDeleted = () => {
   drawerOpen.value = false;
   selectedCustomer.value = null;
+  clearCustomerDrawerQuery(router, route);
 };
+
+useRestoreCustomerDrawerFromQuery({
+  tenantId,
+  customers,
+  selectedCustomer,
+  drawerOpen,
+});
 
 const openCustomerDrawer = (customer: CustomerAccount) => {
   selectedCustomer.value = customer;
   drawerOpen.value = true;
-};
-
-/* ----------------------------------------------------
-   RECIPIENT TAB LOGIC
----------------------------------------------------- */
-const recipientSearchText = ref('');
-const recipientDialogOpen = ref(false);
-const recipientDrawerOpen = ref(false);
-const selectedRecipient = ref<RecipientProfile | null>(null);
-
-const recipientForm = reactive({
-  name: '',
-  phone: '',
-  secondary_phone: '',
-  district: 'Dhaka',
-  thana: 'Uttara',
-  address: '',
-});
-
-const recipientItems = computed(() => recipientStore.items);
-
-const selectedChildTenantId = ref<number | null>(null);
-
-const childTenantOptions = computed(() => {
-  const map = new Map<number, string>();
-  for (const item of recipientItems.value) {
-    if (item.tenant_id && item.tenant_name) {
-      map.set(item.tenant_id, item.tenant_name);
-    }
-  }
-  for (const t of tenantStore.items) {
-    if (t.parent_id === tenantId.value) {
-      map.set(t.id, t.name);
-    }
-  }
-  const options: { label: string; value: number | null }[] = [
-    { label: 'All Child Tenants', value: null },
-  ];
-  for (const [id, name] of map.entries()) {
-    options.push({ label: name, value: id });
-  }
-  return options;
-});
-
-const filteredRecipientItems = computed(() => {
-  const search = recipientSearchText.value.trim().toLowerCase();
-  return recipientItems.value.filter((row) => {
-    if (selectedChildTenantId.value !== null && row.tenant_id !== selectedChildTenantId.value) {
-      return false;
-    }
-    if (!search) return true;
-    return [
-      row.name,
-      row.phone,
-      row.address,
-      row.district || '',
-      row.thana || '',
-      row.secondary_phone || '',
-      row.tenant_name || '',
-    ].some((val) => val.toLowerCase().includes(search));
-  });
-});
-
-const loadRecipients = async () => {
-  if (!tenantId.value) return;
-  await recipientStore.fetchRecipientProfiles(tenantId.value, isParentTenant.value);
-};
-
-watch(
-  () => [tenantId.value, activeTab.value, isParentTenant.value] as const,
-  ([newTenantId, newTab]) => {
-    if (newTenantId && newTab === 'recipient' && hasRecipientAccess.value) {
-      void loadRecipients();
-    }
-  },
-);
-
-const openCreateRecipientDialog = () => {
-  recipientForm.name = '';
-  recipientForm.phone = '';
-  recipientForm.secondary_phone = '';
-  recipientForm.district = 'Dhaka';
-  recipientForm.thana = 'Uttara';
-  recipientForm.address = '';
-  recipientDialogOpen.value = true;
-};
-
-const openRecipientDrawer = (recipient: RecipientProfile) => {
-  selectedRecipient.value = recipient;
-  recipientDrawerOpen.value = true;
-};
-
-const onDrawerRecipientDeleted = () => {
-  recipientDrawerOpen.value = false;
-  selectedRecipient.value = null;
-};
-
-const onRecipientFormSubmit = async () => {
-  if (!tenantId.value) return;
-
-  const secondary = recipientForm.secondary_phone.trim() || null;
-  const districtVal = recipientForm.district.trim() || null;
-  const thanaVal = recipientForm.thana.trim() || null;
-
-  const payload = {
-    tenant_id: tenantId.value,
-    name: recipientForm.name.trim(),
-    phone: recipientForm.phone.trim(),
-    address: recipientForm.address.trim(),
-    secondary_phone: secondary,
-    district: districtVal,
-    thana: thanaVal,
-  };
-
-  const res = await recipientStore.upsertByPhone(payload);
-  if (res.success) {
-    recipientDialogOpen.value = false;
-  }
-};
-
-/* ----------------------------------------------------
-   HELPERS & LIFECYCLE
----------------------------------------------------- */
-const getInitials = (name?: string | null) => {
-  if (!name) return 'C';
-  const parts = name.trim().split(/\s+/);
-  const first = parts[0] || '';
-  const last = parts[parts.length - 1] || '';
-  if (parts.length === 1) return first.charAt(0).toUpperCase() || 'C';
-  return ((first.charAt(0) || '') + (last.charAt(0) || '')).toUpperCase() || 'C';
 };
 
 const formatBdt = (val?: number | null) => {
@@ -804,15 +365,26 @@ const formatBdt = (val?: number | null) => {
   return `${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} BDT`;
 };
 
+const customerBrowseMeta = (customer: CustomerAccount) => {
+  const parts: string[] = [];
+  if (customer.email) parts.push(customer.email);
+  if (customer.phone) parts.push(customer.phone);
+  if (customer.address) parts.push(customer.address);
+  const members =
+    customer.member_count === 1 ? '1 member' : `${customer.member_count} members`;
+  parts.push(members);
+  return parts.join(' · ');
+};
+
 onMounted(() => {
   initTab();
-  if (hasRecipientAccess.value) {
-    void loadRecipients();
+  if (hasRecipientAccess.value && tenantId.value) {
+    void recipientStore.fetchRecipientProfiles(tenantId.value, isParentTenant.value);
   }
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .customer-overview-page {
   background: var(--tf-brand-base, #eef0f4);
   height: calc(100vh - 55px);
@@ -907,134 +479,7 @@ onMounted(() => {
   border-color: #cbd5e1;
 }
 
-.clean-list-card {
-  flex: 1 1 0%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--tf-neutral-surface, #ffffff);
-  border: 1px solid var(--tf-neutral-border, #e2e8f0);
-  border-radius: var(--tf-radius-sm, 8px);
-  overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-}
-
-.clean-list-scroll {
-  flex: 1 1 0%;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.clean-list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.65rem 1rem;
-  border-bottom: 1px solid var(--tf-neutral-border, #f1f5f9);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  min-height: 52px;
-}
-
-.clean-list-item:hover {
-  background: var(--tf-hover-bg);
-}
-
-.clean-list-item:hover .item-name {
-  color: var(--tf-neutral-ink);
-}
-
-.clean-list-item:hover .item-chevron {
-  color: var(--tf-neutral-ink);
-  transform: translateX(2px);
-}
-
-.item-main-info {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.item-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.item-title-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.item-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1e293b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  letter-spacing: -0.01em;
-}
-
-.item-meta-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  color: #64748b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.meta-item {
-  font-weight: 400;
-}
-
-.meta-address {
-  max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.meta-subtext {
-  font-size: 12px;
-  color: #64748b;
-  font-weight: normal;
-}
-
-.meta-dot {
-  color: #94a3b8;
-  font-weight: 700;
-}
-
-.item-aside {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-shrink: 0;
-  margin-left: 1rem;
-}
-
-.item-avatar {
-  background: #e2e8f0;
-  color: #475569;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 6px;
-}
-
-.tenant-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 1.5px 6px;
-  border-radius: 4px;
-  background: #f1f5f9;
-  color: #334155;
-  font-size: 11px;
-  font-weight: 500;
-}
+@import 'src/css/tf-entity-list.scss';
 
 .status-pill {
   display: inline-flex;
@@ -1057,19 +502,6 @@ onMounted(() => {
   color: #64748b;
 }
 
-.item-chevron {
-  color: #94a3b8;
-  transition: all 0.15s ease;
-}
-
-.clean-list-item--skeleton {
-  cursor: default;
-}
-
-.clean-list-item--skeleton:hover {
-  background: transparent;
-}
-
 .load-more-btn {
   background: #f1f5f9;
   border-radius: var(--tf-radius-sm, 8px);
@@ -1085,14 +517,6 @@ onMounted(() => {
 .numeric-cell {
   font-variant-numeric: tabular-nums;
   font-size: 13px;
-}
-
-.soft-input :deep(.q-field__control) {
-  border-radius: 8px;
-}
-
-.dense-tenant-select :deep(.q-field__control) {
-  border-radius: 8px;
 }
 
 /* Dark mode */
@@ -1123,19 +547,6 @@ body.body--dark .tab-btn__badge {
   color: #94a3b8;
 }
 
-body.body--dark .clean-list-card {
-  background: #1e1e1e;
-  border-color: #2e2e2e;
-}
-
-body.body--dark .clean-list-item {
-  border-bottom-color: #2a2a2a;
-}
-
-body.body--dark .clean-list-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
 body.body--dark .load-more-btn {
   background: #262626;
   color: #f1f5f9;
@@ -1143,20 +554,6 @@ body.body--dark .load-more-btn {
 
 body.body--dark .load-more-btn:hover {
   background: #333333;
-}
-
-body.body--dark .item-name {
-  color: #f1f5f9;
-}
-
-body.body--dark .item-avatar {
-  background: #334155;
-  color: #e2e8f0;
-}
-
-body.body--dark .tenant-tag {
-  background: #2a2a2a;
-  color: #94a3b8;
 }
 
 body.body--dark .status-pill--inactive {

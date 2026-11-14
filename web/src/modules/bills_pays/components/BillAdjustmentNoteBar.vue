@@ -12,7 +12,7 @@
           :options="kindOptions"
         />
       </div>
-      <div class="col-12 col-sm-auto text-body2">
+      <div v-if="kind !== 'write_off'" class="col-12 col-sm-auto text-body2">
         <template v-if="noteTotalLabels.length">
           <span v-for="(item, idx) in noteTotalLabels" :key="item.code">
             <template v-if="idx > 0"> · </template>
@@ -26,6 +26,19 @@
         </template>
       </div>
     </div>
+
+    <q-input
+      v-if="kind === 'write_off'"
+      v-model.number="writeOffAmount"
+      outlined
+      dense
+      class="q-mb-sm"
+      type="number"
+      step="0.01"
+      min="0"
+      :max="parentDueAmount"
+      label="Write-off amount (BDT)"
+    />
 
     <q-banner
       v-if="balanceEffect.title"
@@ -92,7 +105,7 @@
         unelevated
         no-caps
         color="primary"
-        label="Issue note"
+        :label="submitLabel"
         :loading="loading"
         :disable="!!submitDisabledReason"
         @click="emit('submit')"
@@ -108,9 +121,7 @@ import { computed } from 'vue';
 import { formatAmountBdt } from 'src/utils/currency';
 import { useCashbookPointsQuery } from '../composables/useCashbookPointsQuery';
 import { useCashbookPayFromPotSelect } from '../composables/useCashbookPayFromPotSelect';
-import type { Database } from 'src/types/database.types';
-
-type BillDocumentKind = Database['public']['Enums']['bill_document_kind'];
+import type { BillAdjustmentUiKind } from '../composables/useBillAdjustmentDraft';
 
 type BalanceEffect = {
   direction: 'increase' | 'decrease' | 'neutral';
@@ -128,6 +139,7 @@ const props = defineProps<{
   parentTenantId?: number | null;
   arRefundEligible?: boolean;
   excessCreditBdt?: number;
+  parentDueAmount?: number;
 }>();
 
 const refundCashNow = defineModel<boolean>('refundCashNow', { default: false });
@@ -136,14 +148,27 @@ const refundAmount = defineModel<number | null>('refundAmount', { default: null 
 const arRefundEligible = computed(() => props.arRefundEligible === true);
 const excessCreditBdt = computed(() => Number(props.excessCreditBdt) || 0);
 
-const pointsQuery = useCashbookPointsQuery(
-  computed(() => props.parentTenantId ?? null),
-);
-const payFromEnabled = computed(
-  () => arRefundEligible.value && refundCashNow.value && (props.parentTenantId ?? 0) > 0,
-);
+const parentId = computed(() => Number(props.parentTenantId ?? 0) || 0);
+
+const cashbookPointsContext = computed(() => {
+  const enabled =
+    arRefundEligible.value && refundCashNow.value && parentId.value > 0;
+  return {
+    booksTenantId: parentId.value,
+    entityType: 'tenant',
+    entityId: parentId.value,
+    enabled,
+  };
+});
+
+const { pointsQuery } = useCashbookPointsQuery(cashbookPointsContext);
+
+const cashbookPoints = computed(() => pointsQuery.data.value ?? []);
+
+const payFromEnabled = computed(() => cashbookPointsContext.value.enabled);
+
 const { selectedPotId, payFromOptions, cashbookPointId, loading: payFromLoading } =
-  useCashbookPayFromPotSelect(pointsQuery.data, payFromEnabled);
+  useCashbookPayFromPotSelect(cashbookPoints, payFromEnabled);
 
 defineExpose({ cashbookPointId });
 
@@ -152,11 +177,22 @@ const emit = defineEmits<{
   submit: [];
 }>();
 
-const kind = defineModel<BillDocumentKind>('kind', { required: true });
+const kind = defineModel<BillAdjustmentUiKind>('kind', { required: true });
 const reason = defineModel<string>('reason', { required: true });
+const writeOffAmount = defineModel<number | null>('writeOffAmount', { default: null });
 
-const kindOptions: Array<{ label: string; value: BillDocumentKind }> = [
-  { label: 'Credit note', value: 'credit_note' },
-  { label: 'Debit note', value: 'debit_note' },
-];
+const parentDueAmount = computed(() => Math.max(0, Number(props.parentDueAmount ?? 0)));
+
+const kindOptions = computed(() => {
+  const options: Array<{ label: string; value: BillAdjustmentUiKind }> = [
+    { label: 'Credit note', value: 'credit_note' },
+    { label: 'Debit note', value: 'debit_note' },
+  ];
+  if (parentDueAmount.value > 0) {
+    options.push({ label: 'Write-off', value: 'write_off' });
+  }
+  return options;
+});
+
+const submitLabel = computed(() => (kind.value === 'write_off' ? 'Write off' : 'Issue note'));
 </script>

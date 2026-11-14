@@ -276,6 +276,7 @@ AS $$
       AND pr.profile_type IN (
         'tenant'::public.profile_party_type,
         'customer'::public.profile_party_type,
+        'courier'::public.profile_party_type,
         'investor'::public.profile_party_type
       )
   );
@@ -450,7 +451,10 @@ SECURITY DEFINER
 SET search_path = public, money_kernel, pg_temp
 AS $$
 BEGIN
-  PERFORM public.fn_provision_profile_cashbook_defaults(NEW.tenant_id, NEW.id);
+  PERFORM public.fn_provision_profile_cashbook_defaults(
+    public.resolve_books_tenant_id(NEW.tenant_id),
+    NEW.id
+  );
   RETURN NEW;
 END;
 $$;

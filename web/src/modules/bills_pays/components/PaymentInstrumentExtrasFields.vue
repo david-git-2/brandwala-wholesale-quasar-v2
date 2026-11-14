@@ -2,35 +2,25 @@
   <div v-if="hasVisibleFields" class="payment-instrument-extras">
     <div v-if="methodFieldFlags.showBank && !omitBank">
       <BillDialogField v-if="externalLabels" :label="methodFieldFlags.bankLabel">
-        <q-select
+        <BdBankSelect
           :model-value="bdBankId"
           :options="bdBankOptions"
-          emit-value
-          map-options
-          outlined
-          dense
           :clearable="!methodFieldFlags.bankRequired"
           :loading="loading"
-          hide-bottom-space
           @update:model-value="emit('update:bdBankId', $event)"
         >
           <template #prepend>
             <BillDialogFieldIcon name="ph ph-bank" />
           </template>
-        </q-select>
+        </BdBankSelect>
       </BillDialogField>
-      <q-select
+      <BdBankSelect
         v-else
         :model-value="bdBankId"
         :options="bdBankOptions"
-        emit-value
-        map-options
-        outlined
-        dense
         :clearable="!methodFieldFlags.bankRequired"
         :label="methodFieldFlags.bankLabel"
         :loading="loading"
-        hide-bottom-space
         @update:model-value="emit('update:bdBankId', $event)"
       />
     </div>
@@ -161,6 +151,7 @@
 import { computed } from 'vue';
 import BillDialogField from './BillDialogField.vue';
 import BillDialogFieldIcon from './BillDialogFieldIcon.vue';
+import BdBankSelect from './BdBankSelect.vue';
 import { paymentMethodFieldFlags } from '../utils/paymentInstrumentFields';
 
 const props = withDefaults(

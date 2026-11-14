@@ -104,6 +104,8 @@ Cash RPCs (`rpc_deposit`, `rpc_pay_bills`, …): [money](../money/spec.md) · [b
 
 `rpc_create_bill`: `source_entity`, `source_type`, `source_id`, `source_key` (parent + discriminator). List: `rpc_query_bills` `p_source_*`. No DML; no `rpc_allocate_invoice_no` from features.
 
+**Delivery paper AR:** `apply_delivery_paper_outcome` (take / condition) calls **`rpc_create_bill`** with `kind = sales_invoice_wholesale`, stock lines, `source_key` `delivery_paper:{id}:take|condition` (shop order: `source_entity = public.shop_orders`; PBC: `public.delivery_paper`). Draft only; issue via **`rpc_issue_bill`** / desk after stock commit.
+
 ## Shipment cost AP (Option A) {#shipment-cost-ap}
 
 One kernel bill per **bucket × currency** (`source_key` e.g. `material:GBP`). Costs tab → draft/issue on kernel; retire `global_shipment_cost_entries` after cutover. Wiring: [procurement spec](../procurement_stock/spec.md) · [PS35](../procurement_stock/00-gaps.md).
@@ -156,6 +158,8 @@ Cash invariants (I5, I7, …): [money/spec.md](../money/spec.md).
 
 | Legacy | v2 |
 | :--- | :--- |
+| `public.bills` | `money_kernel.bills` |
+| `public.bill_lines` / `global_invoice_items` | `money_kernel.bill_lines` |
 | `pay_allocations` | `bill_settlements` |
 | `post_money_in` / `out` | `rpc_deposit` / `rpc_withdraw` |
 | `upsert_draft_bill` / `issue_bill` | `rpc_create_bill` / `rpc_issue_bill` |

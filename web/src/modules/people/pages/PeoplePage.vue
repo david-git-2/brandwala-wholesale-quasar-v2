@@ -42,10 +42,11 @@
         <PeoplePartyListPanel entity-type="investor" entity-label="investors" />
       </q-card-section>
 
-      <q-card-section v-else class="people-page__placeholder" :data-active-tab="activeTab">
-        <div class="text-body2 text-grey-7 text-center q-pa-lg">
-          End-customer (dropship recipient) money is not tracked here — see the shop order only.
-        </div>
+      <q-card-section
+        v-else-if="activeTab === 'end_customer'"
+        class="col column no-wrap q-pa-sm overflow-hidden"
+      >
+        <RecipientListPanel :fill-height="false" />
       </q-card-section>
     </q-card>
   </q-page>
@@ -62,6 +63,7 @@ import TfDrawerSectionTabs, {
 import CustomerGroupListPanel from 'src/modules/customer/components/CustomerGroupListPanel.vue';
 import ProfileOperatingAccountPanel from 'src/modules/bills_pays/components/ProfileOperatingAccountPanel.vue';
 import PeoplePartyListPanel from '../components/PeoplePartyListPanel.vue';
+import RecipientListPanel from 'src/modules/customer/components/RecipientListPanel.vue';
 
 const PEOPLE_TABS = ['tenant', 'customer', 'curia', 'cargo', 'vendor', 'investor', 'end_customer'] as const;
 type PeopleTab = (typeof PEOPLE_TABS)[number];
@@ -126,8 +128,3 @@ const sectionTabs: readonly TfDrawerSectionTab[] = [
 ];
 </script>
 
-<style scoped>
-.people-page__placeholder {
-  min-height: 12rem;
-}
-</style>
