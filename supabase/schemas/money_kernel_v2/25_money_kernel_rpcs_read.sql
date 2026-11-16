@@ -7,7 +7,8 @@ CREATE OR REPLACE FUNCTION public.rpc_get_bill(
     -- any subset of: lines | settlements | events | meta_expanded
 ) RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
 AS $$
 DECLARE
   v_bill money_kernel.bills;
@@ -20,6 +21,8 @@ BEGIN
   IF p_tenant_id IS NULL OR p_bill_id IS NULL THEN
     RAISE EXCEPTION 'invalid_arguments: tenant_id and bill_id are required';
   END IF;
+
+  PERFORM money_kernel.assert_kernel_money_read(p_tenant_id);
 
   SELECT * INTO v_bill FROM money_kernel.bills
     WHERE id = p_bill_id AND tenant_id = p_tenant_id;
@@ -74,7 +77,8 @@ BEGIN
       'meta',              bl.meta
     ) ORDER BY bl.line_no), '[]'::jsonb)
     INTO v_lines
-    FROM money_kernel.bill_lines bl WHERE bl.bill_id = p_bill_id;
+    FROM money_kernel.bill_lines bl
+    WHERE bl.bill_id = p_bill_id AND bl.tenant_id = p_tenant_id;
 
     v_result := v_result || jsonb_build_object('lines', v_lines);
   END IF;
@@ -100,8 +104,8 @@ BEGIN
     ) ORDER BY bs.created_at DESC), '[]'::jsonb)
     INTO v_settlements
     FROM money_kernel.bill_settlements bs
-    LEFT JOIN money_kernel.pays p ON p.id = bs.pays_id
-    WHERE bs.bill_id = p_bill_id;
+    LEFT JOIN money_kernel.pays p ON p.id = bs.pays_id AND p.tenant_id = p_tenant_id
+    WHERE bs.bill_id = p_bill_id AND bs.tenant_id = p_tenant_id;
 
     v_result := v_result || jsonb_build_object('settlements', v_settlements);
   END IF;
@@ -116,7 +120,8 @@ BEGIN
       'created_at', be.created_at
     ) ORDER BY be.created_at DESC, be.id DESC), '[]'::jsonb)
     INTO v_events
-    FROM money_kernel.bill_events be WHERE be.bill_id = p_bill_id;
+    FROM money_kernel.bill_events be
+    WHERE be.bill_id = p_bill_id AND be.tenant_id = p_tenant_id;
 
     v_result := v_result || jsonb_build_object('events', v_events);
   END IF;

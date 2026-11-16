@@ -397,7 +397,6 @@ AS $$
 declare
   v_ship public.global_shipments;
   v_parent bigint;
-  v_issued_by bigint;
   v_vendor_profile bigint;
   v_cargo_profile bigint;
   v_local_profile bigint;
@@ -431,8 +430,7 @@ begin
     raise exception 'Shipment % not found', p_shipment_id;
   end if;
 
-  v_parent := v_ship.tenant_id;
-  v_issued_by := coalesce(v_ship.assigned_child_tenant_id, v_parent);
+  v_parent := public._shipment_money_workspace_tenant(p_shipment_id);
 
   if not (
     coalesce(auth.role(), '') = 'service_role'
@@ -550,7 +548,7 @@ begin
       if coalesce(v_amt, 0) <= 0 or v_profile is null then
         v_bill_id := public._upsert_shipment_ap_bill(
           v_parent,
-          v_issued_by,
+          v_parent,
           p_shipment_id,
           v_ship.name,
           v_bucket::text,
@@ -565,10 +563,10 @@ begin
         into v_bill_id
         from public.upsert_draft_bill(
           jsonb_build_object(
-            'tenant_id', v_issued_by,
+            'tenant_id', v_parent,
             'adapter', 'shipment_cost',
             'parent_tenant_id', v_parent,
-            'issued_by_tenant_id', v_issued_by,
+            'issued_by_tenant_id', v_parent,
             'shipment_id', p_shipment_id,
             'shipment_name', v_ship.name,
             'ap_kind', v_bucket::text,
@@ -705,6 +703,8 @@ AS $$
       'due_amount', kb.due_amount,
       'parent_bill_id', kb.parent_bill_id,
       'net_balances', public._desk_kernel_net_balances_json(kb.id),
+      'section_id', NULLIF(kb.meta->>'section_id', '')::bigint,
+      'section_title', NULLIF(btrim(kb.meta->>'section_title'), ''),
       'cost_lines', COALESCE((
         SELECT jsonb_agg(
           jsonb_build_object(
@@ -732,6 +732,38 @@ $$;
 -- ---------------------------------------------------------------------------
 -- Shipment cost entry AP v2 (money_kernel.bills via rpc_create_bill)
 -- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public._shipment_money_workspace_tenant(p_shipment_id bigint)
+RETURNS bigint
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_workspace bigint;
+  v_ship_tenant bigint;
+BEGIN
+  v_workspace := public.current_tenant_id();
+  IF v_workspace IS NULL AND COALESCE(auth.role(), '') IS DISTINCT FROM 'service_role' THEN
+    RAISE EXCEPTION 'workspace tenant required (x-selected-tenant-id header)';
+  END IF;
+
+  SELECT gs.tenant_id INTO v_ship_tenant
+  FROM public.global_shipments gs
+  WHERE gs.id = p_shipment_id;
+
+  IF v_ship_tenant IS NULL THEN
+    RAISE EXCEPTION 'shipment not found';
+  END IF;
+
+  IF v_workspace IS NOT NULL AND v_ship_tenant IS DISTINCT FROM v_workspace THEN
+    RAISE EXCEPTION 'shipment % is not in workspace tenant %', p_shipment_id, v_workspace;
+  END IF;
+
+  RETURN COALESCE(v_workspace, v_ship_tenant);
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION public._shipment_cost_ap_ensure_public_from_profile(p_books_tenant_id bigint)
 RETURNS bigint
@@ -847,7 +879,7 @@ SET search_path = money_kernel, public, pg_temp
 AS $$
 DECLARE
   v_ship public.global_shipments%ROWTYPE;
-  v_parent bigint;
+  v_workspace bigint;
   v_from_profile bigint;
   v_buckets text[] := ARRAY[
     'material', 'freight', 'customs', 'handling', 'finance', 'other'
@@ -863,12 +895,12 @@ BEGIN
     RAISE EXCEPTION 'shipment not found';
   END IF;
 
-  v_parent := v_ship.tenant_id;
+  v_workspace := public._shipment_money_workspace_tenant(p_shipment_id);
 
   BEGIN
-    v_from_profile := public._shipment_cost_ap_ensure_public_from_profile(v_parent);
+    v_from_profile := public._shipment_cost_ap_ensure_public_from_profile(v_workspace);
     IF v_from_profile IS NOT NULL THEN
-      PERFORM money_kernel.ensure_profile_for_public_party(v_parent, v_from_profile);
+      PERFORM money_kernel.ensure_profile_for_public_party(v_workspace, v_from_profile);
     END IF;
   EXCEPTION WHEN OTHERS THEN
     v_from_profile := NULL;
@@ -879,11 +911,11 @@ BEGIN
     v_bucket_enum := v_bucket::public.global_shipment_cost_bucket;
     SELECT tp.profile_id, tp.diagnostic
       INTO v_to_profile, v_diag
-      FROM public._shipment_cost_ap_ensure_public_to_profile(v_parent, v_ship, v_bucket_enum) tp;
+      FROM public._shipment_cost_ap_ensure_public_to_profile(v_workspace, v_ship, v_bucket_enum) tp;
 
     IF v_to_profile IS NOT NULL THEN
       BEGIN
-        PERFORM money_kernel.ensure_profile_for_public_party(v_parent, v_to_profile);
+        PERFORM money_kernel.ensure_profile_for_public_party(v_workspace, v_to_profile);
       EXCEPTION WHEN OTHERS THEN
         v_diag := COALESCE(v_diag, SQLERRM);
         v_to_profile := NULL;
@@ -901,7 +933,7 @@ BEGIN
   END LOOP;
 
   RETURN jsonb_build_object(
-    'books_tenant_id', v_parent,
+    'books_tenant_id', v_workspace,
     'from_profile_id', v_from_profile,
     'payees_by_bucket', v_payees
   );
@@ -1021,10 +1053,9 @@ AS $$
 DECLARE
   v_found boolean := false;
   v_parent bigint;
-  v_issued_by bigint;
 BEGIN
-  SELECT gs.tenant_id, COALESCE(gs.assigned_child_tenant_id, gs.tenant_id)
-    INTO v_parent, v_issued_by
+  SELECT gs.tenant_id
+    INTO v_parent
   FROM public.global_shipments gs
   WHERE gs.id = p_shipment_id;
 
@@ -1056,7 +1087,7 @@ BEGIN
       SELECT 1
       FROM public.bills b
       WHERE b.id = p_bill_id
-        AND b.tenant_id IN (v_parent, v_issued_by)
+        AND b.tenant_id = v_parent
         AND b.invoice_type = 'ap'::public.global_invoice_type
         AND b.document_kind = 'standard'::public.bill_document_kind
         AND (
@@ -1067,6 +1098,42 @@ BEGIN
   END IF;
 
   RETURN COALESCE(v_found, false);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public._shipment_ap_bill_require_section_meta(
+  p_shipment_id bigint,
+  p_meta jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_section_id bigint;
+  v_title text;
+BEGIN
+  v_section_id := NULLIF(btrim(COALESCE(p_meta->>'section_id', '')), '')::bigint;
+  IF v_section_id IS NULL THEN
+    RAISE EXCEPTION 'invalid_arguments: meta.section_id is required';
+  END IF;
+
+  SELECT gss.title INTO v_title
+  FROM public.global_shipment_sections gss
+  WHERE gss.id = v_section_id
+    AND gss.shipment_id = p_shipment_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'invalid_arguments: section % does not belong to shipment %',
+      v_section_id, p_shipment_id;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'section_id', v_section_id,
+    'section_title', COALESCE(NULLIF(btrim(p_meta->>'section_title'), ''), v_title)
+  );
 END;
 $$;
 
@@ -1082,7 +1149,7 @@ SET search_path = money_kernel, public, pg_temp
 AS $$
 DECLARE
   v_ship public.global_shipments%ROWTYPE;
-  v_parent bigint;
+  v_workspace bigint;
   v_parties jsonb;
   v_from_kernel bigint;
   v_to_kernel bigint;
@@ -1099,10 +1166,16 @@ DECLARE
   v_payload jsonb;
   v_result jsonb;
   v_bill_id bigint;
+  v_section_meta jsonb;
 BEGIN
   IF p_shipment_id IS NULL OR p_bucket IS NULL THEN
     RAISE EXCEPTION 'shipment_id and bucket are required';
   END IF;
+
+  v_section_meta := public._shipment_ap_bill_require_section_meta(
+    p_shipment_id,
+    COALESCE(p_payload->'meta', '{}'::jsonb)
+  );
 
   PERFORM public._shipment_money_advisory_lock(p_shipment_id);
 
@@ -1111,8 +1184,8 @@ BEGIN
     RAISE EXCEPTION 'shipment not found';
   END IF;
 
-  v_parent := v_ship.tenant_id;
-  IF NOT public.user_can_manage_books_tenant(v_parent) THEN
+  v_workspace := public._shipment_money_workspace_tenant(p_shipment_id);
+  IF NOT public.user_can_manage_books_tenant(v_workspace) THEN
     RAISE EXCEPTION 'Permission denied';
   END IF;
 
@@ -1178,7 +1251,7 @@ BEGIN
   v_source_key := v_ap_kind || ':' || v_currency_code || ':' || v_suffix;
 
   v_payload := jsonb_build_object(
-    'tenant_id', v_parent,
+    'tenant_id', v_workspace,
     'kind', 'shipment_cost_ap',
     'source_entity', 'public.global_shipments',
     'source_type', 'shipment_cost',
@@ -1198,7 +1271,7 @@ BEGIN
       'ap_kind', v_ap_kind,
       'shipment_id', v_ship.id,
       'bucket', v_ap_kind
-    ),
+    ) || v_section_meta,
     'lines', v_lines
   );
 
@@ -1226,7 +1299,7 @@ BEGIN
           ORDER BY bl.line_no
         )
         FROM money_kernel.bill_lines bl
-        WHERE bl.tenant_id = v_parent
+        WHERE bl.tenant_id = v_workspace
           AND bl.bill_id = v_bill_id
       ), '[]'::jsonb)
     );
@@ -1245,20 +1318,27 @@ SET search_path = money_kernel, public, pg_temp
 AS $$
 DECLARE
   v_ship public.global_shipments%ROWTYPE;
-  v_parent bigint;
+  v_workspace bigint;
   v_bill money_kernel.bills;
   v_lines jsonb := '[]'::jsonb;
   v_line jsonb;
   v_line_obj jsonb;
+  v_bl money_kernel.bill_lines;
   v_amount numeric(18, 4);
   v_component text;
   v_desc text;
   v_update_payload jsonb;
   v_result jsonb;
+  v_section_meta jsonb;
 BEGIN
   IF p_shipment_id IS NULL OR p_bill_id IS NULL THEN
     RAISE EXCEPTION 'shipment_id and bill_id are required';
   END IF;
+
+  v_section_meta := public._shipment_ap_bill_require_section_meta(
+    p_shipment_id,
+    COALESCE(p_payload->'meta', '{}'::jsonb)
+  );
 
   PERFORM public._shipment_money_advisory_lock(p_shipment_id);
 
@@ -1267,8 +1347,8 @@ BEGIN
     RAISE EXCEPTION 'shipment not found';
   END IF;
 
-  v_parent := v_ship.tenant_id;
-  IF NOT public.user_can_manage_books_tenant(v_parent) THEN
+  v_workspace := public._shipment_money_workspace_tenant(p_shipment_id);
+  IF NOT public.user_can_manage_books_tenant(v_workspace) THEN
     RAISE EXCEPTION 'Permission denied';
   END IF;
 
@@ -1281,7 +1361,7 @@ BEGIN
   END IF;
 
   SELECT * INTO v_bill FROM money_kernel.bills
-   WHERE id = p_bill_id AND tenant_id = v_parent;
+   WHERE id = p_bill_id AND tenant_id = v_workspace;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'bill not found';
   END IF;
@@ -1319,14 +1399,33 @@ BEGIN
     IF jsonb_array_length(v_lines) = 0 THEN
       RAISE EXCEPTION 'invalid_arguments: at least one positive amount line required';
     END IF;
+  ELSE
+    FOR v_bl IN
+      SELECT * FROM money_kernel.bill_lines bl
+       WHERE bl.bill_id = p_bill_id AND bl.tenant_id = v_workspace
+       ORDER BY bl.line_no
+    LOOP
+      v_lines := v_lines || jsonb_build_array(
+        jsonb_build_object(
+          'item_kind', v_bl.item_kind,
+          'description', v_bl.description,
+          'quantity', v_bl.quantity,
+          'unit_price', v_bl.unit_price,
+          'line_total', v_bl.line_total,
+          'meta', v_bl.meta
+        )
+      );
+    END LOOP;
+    IF jsonb_array_length(v_lines) = 0 THEN
+      RAISE EXCEPTION 'invalid_arguments: bill has no lines to update';
+    END IF;
   END IF;
 
   v_update_payload := COALESCE(p_payload, '{}'::jsonb);
-  IF jsonb_array_length(v_lines) > 0 THEN
-    v_update_payload := v_update_payload || jsonb_build_object('lines', v_lines);
-  END IF;
+  v_update_payload := v_update_payload || jsonb_build_object('lines', v_lines);
+  v_update_payload := v_update_payload || jsonb_build_object('meta', v_section_meta);
 
-  v_result := public.rpc_update_draft_bill_v2(v_parent, p_bill_id, v_update_payload);
+  v_result := public.rpc_update_draft_bill_v2(v_workspace, p_bill_id, v_update_payload);
 
   RETURN v_result
     || jsonb_build_object(
@@ -1342,7 +1441,7 @@ BEGIN
           ORDER BY bl.line_no
         )
         FROM money_kernel.bill_lines bl
-        WHERE bl.tenant_id = v_parent
+        WHERE bl.tenant_id = v_workspace
           AND bl.bill_id = p_bill_id
       ), '[]'::jsonb)
     );
@@ -1356,23 +1455,20 @@ SECURITY DEFINER
 SET search_path = money_kernel, public, pg_temp
 AS $$
 DECLARE
-  v_parent bigint;
-  v_issued_by bigint;
+  v_workspace bigint;
   v_bill money_kernel.bills;
   v_legacy public.bills;
 BEGIN
   PERFORM public._shipment_money_advisory_lock(p_shipment_id);
 
-  SELECT gs.tenant_id, COALESCE(gs.assigned_child_tenant_id, gs.tenant_id)
-    INTO v_parent, v_issued_by
+  PERFORM 1
   FROM public.global_shipments gs
   WHERE gs.id = p_shipment_id
   FOR UPDATE;
-  IF v_parent IS NULL THEN
-    RAISE EXCEPTION 'shipment not found';
-  END IF;
 
-  IF NOT public.user_can_manage_books_tenant(v_parent) THEN
+  v_workspace := public._shipment_money_workspace_tenant(p_shipment_id);
+
+  IF NOT public.user_can_manage_books_tenant(v_workspace) THEN
     RAISE EXCEPTION 'Permission denied';
   END IF;
 
@@ -1381,7 +1477,7 @@ BEGIN
   END IF;
 
   SELECT * INTO v_bill FROM money_kernel.bills
-   WHERE id = p_bill_id AND tenant_id = v_parent
+   WHERE id = p_bill_id AND tenant_id = v_workspace
    FOR UPDATE;
   IF FOUND THEN
     IF v_bill.status <> 'draft' THEN
@@ -1394,15 +1490,20 @@ BEGIN
       RAISE EXCEPTION 'cannot delete bill with settlements';
     END IF;
 
-    PERFORM public.assert_kernel_money_access(v_parent, 'void');
+    PERFORM public.assert_kernel_money_access(v_workspace, 'void');
     PERFORM public._shipment_buckets_remove(p_shipment_id, p_bill_id);
 
+    PERFORM money_kernel.fn_kernel_settlement_delete_allowed();
+
+    DELETE FROM money_kernel.bill_lines
+     WHERE bill_id = p_bill_id AND tenant_id = v_bill.tenant_id;
+
     DELETE FROM money_kernel.bills
-     WHERE id = p_bill_id AND tenant_id = v_parent;
+     WHERE id = p_bill_id AND tenant_id = v_bill.tenant_id;
 
     DELETE FROM public.bills pb
      WHERE pb.id = p_bill_id
-       AND pb.tenant_id IN (v_parent, v_issued_by)
+       AND pb.tenant_id = v_workspace
        AND pb.invoice_status = 'draft'::public.global_invoice_status
        AND NOT EXISTS (
          SELECT 1 FROM public.bill_settlements bs WHERE bs.bill_id = pb.id
@@ -1419,7 +1520,7 @@ BEGIN
   SELECT * INTO v_legacy
   FROM public.bills b
   WHERE b.id = p_bill_id
-    AND b.tenant_id IN (v_parent, v_issued_by)
+    AND b.tenant_id = v_workspace
     AND b.invoice_type = 'ap'::public.global_invoice_type
     AND b.document_kind = 'standard'::public.bill_document_kind
     AND (
@@ -1463,22 +1564,21 @@ SECURITY DEFINER
 SET search_path = money_kernel, public, pg_temp
 AS $$
 DECLARE
-  v_parent bigint;
+  v_workspace bigint;
   v_bill money_kernel.bills;
   v_issue jsonb;
   v_bundle jsonb;
 BEGIN
   PERFORM public._shipment_money_advisory_lock(p_shipment_id);
 
-  SELECT tenant_id INTO v_parent
-    FROM public.global_shipments
+  PERFORM 1
+  FROM public.global_shipments
    WHERE id = p_shipment_id
    FOR UPDATE;
-  IF v_parent IS NULL THEN
-    RAISE EXCEPTION 'shipment not found';
-  END IF;
 
-  IF NOT public.user_can_manage_books_tenant(v_parent) THEN
+  v_workspace := public._shipment_money_workspace_tenant(p_shipment_id);
+
+  IF NOT public.user_can_manage_books_tenant(v_workspace) THEN
     RAISE EXCEPTION 'Permission denied';
   END IF;
 
@@ -1488,7 +1588,7 @@ BEGIN
 
   SELECT * INTO v_bill
     FROM money_kernel.bills
-   WHERE id = p_bill_id AND tenant_id = v_parent
+   WHERE id = p_bill_id AND tenant_id = v_workspace
    FOR UPDATE;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'bill not found';
@@ -1504,7 +1604,7 @@ BEGIN
     PERFORM set_config('app.bill_desk_issue_shipment_ap', '1', true);
     PERFORM set_config('app.shipment_ap_issue', '1', true);
     BEGIN
-      v_issue := public.rpc_issue_bill(v_parent, p_bill_id);
+      v_issue := public.rpc_issue_bill(v_workspace, p_bill_id);
     EXCEPTION
       WHEN OTHERS THEN
         PERFORM set_config('app.bill_desk_issue_shipment_ap', '0', true);
@@ -1540,7 +1640,7 @@ SECURITY DEFINER
 SET search_path = money_kernel, public, pg_temp
 AS $$
 DECLARE
-  v_parent bigint;
+  v_workspace bigint;
   v_buckets jsonb;
   v_elem jsonb;
   v_bill_id bigint;
@@ -1548,17 +1648,19 @@ DECLARE
   v_issued jsonb := '[]'::jsonb;
   v_result jsonb;
 BEGIN
-  SELECT tenant_id, COALESCE(buckets, '[]'::jsonb)
-    INTO v_parent, v_buckets
+  SELECT COALESCE(buckets, '[]'::jsonb)
+    INTO v_buckets
     FROM public.global_shipments
    WHERE id = p_shipment_id
    FOR UPDATE;
 
-  IF v_parent IS NULL THEN
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'shipment not found';
   END IF;
 
-  IF NOT public.user_can_manage_books_tenant(v_parent) THEN
+  v_workspace := public._shipment_money_workspace_tenant(p_shipment_id);
+
+  IF NOT public.user_can_manage_books_tenant(v_workspace) THEN
     RAISE EXCEPTION 'Permission denied';
   END IF;
 
@@ -1570,14 +1672,14 @@ BEGIN
     END IF;
 
     SELECT * INTO v_bill FROM money_kernel.bills
-     WHERE id = v_bill_id AND tenant_id = v_parent;
+     WHERE id = v_bill_id AND tenant_id = v_workspace;
 
     IF NOT FOUND OR v_bill.status IN ('voided', 'issued', 'partial', 'paid', 'written_off') THEN
       CONTINUE;
     END IF;
 
     IF v_bill.status = 'draft' THEN
-      v_result := public.rpc_issue_bill(v_parent, v_bill_id);
+      v_result := public.rpc_issue_bill(v_workspace, v_bill_id);
       v_issued := v_issued || jsonb_build_array(v_result);
     END IF;
   END LOOP;
@@ -1617,7 +1719,7 @@ SECURITY DEFINER
 SET search_path TO public
 AS $$
 declare
-  v_parent bigint;
+  v_workspace bigint;
   v_buckets jsonb;
   v_cost_entries jsonb;
   v_ap_bills jsonb;
@@ -1626,20 +1728,22 @@ declare
   v_elem jsonb;
   v_slim jsonb := '[]'::jsonb;
 begin
-  select gs.tenant_id, coalesce(gs.buckets, '[]'::jsonb)
-    into v_parent, v_buckets
+  select coalesce(gs.buckets, '[]'::jsonb)
+    into v_buckets
   from public.global_shipments gs
   where gs.id = p_shipment_id;
 
-  if v_parent is null then
+  if not found then
     raise exception 'shipment not found';
   end if;
 
+  v_workspace := public._shipment_money_workspace_tenant(p_shipment_id);
+
   if not (
-    public.user_can_manage_books_tenant(v_parent)
+    public.user_can_manage_books_tenant(v_workspace)
     or exists (
       select 1 from public.memberships m
-      where m.tenant_id = v_parent
+      where m.tenant_id = v_workspace
         and lower(trim(m.email)) = public.current_user_email()
         and m.is_active = true
     )
@@ -1653,7 +1757,7 @@ begin
   for v_elem in
     select value
     from jsonb_array_elements(
-      public._list_shipment_cost_ap_bills_json(v_parent, p_shipment_id, false)
+      public._list_shipment_cost_ap_bills_json(v_workspace, p_shipment_id, false)
     )
   loop
     v_slim := v_slim || jsonb_build_array(
@@ -1678,6 +1782,8 @@ begin
           0
         ),
         'net_balances', v_elem->'net_balances',
+        'section_id', v_elem->'section_id',
+        'section_title', v_elem->'section_title',
         'cost_lines', coalesce(v_elem->'cost_lines', '[]'::jsonb)
       )
     );
@@ -1720,6 +1826,7 @@ begin
 end;
 $$;
 
+GRANT EXECUTE ON FUNCTION public._shipment_money_workspace_tenant(bigint) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public._shipment_money_advisory_lock(bigint) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public._shipment_money_lock_shipment_ids(bigint[]) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_shipment_money_kernel_bundle(bigint) TO authenticated, service_role;

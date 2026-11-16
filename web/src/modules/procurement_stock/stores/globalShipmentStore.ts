@@ -698,9 +698,25 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       bucket: ShipmentApKind,
       result: Record<string, unknown>,
       statusOverride?: string,
+      section?: { section_id?: number | null; section_title?: string | null },
     ): ShipmentApBillRow {
       const total = Number(result.total_amount);
       const due = Number(result.due_amount);
+      const resultMeta =
+        result.meta && typeof result.meta === 'object'
+          ? (result.meta as Record<string, unknown>)
+          : {};
+      const sectionIdRaw = section?.section_id ?? resultMeta.section_id;
+      const sectionId =
+        sectionIdRaw != null && Number.isFinite(Number(sectionIdRaw))
+          ? Number(sectionIdRaw)
+          : null;
+      const sectionTitleRaw =
+        section?.section_title ?? resultMeta.section_title;
+      const sectionTitle =
+        typeof sectionTitleRaw === 'string' && sectionTitleRaw.trim() !== ''
+          ? sectionTitleRaw.trim()
+          : null;
       return {
         id: Number(result.bill_id),
         invoice_no: String(result.invoice_no ?? ''),
@@ -713,6 +729,8 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         payment_status: null,
         total_amount: Number.isFinite(total) ? total : 0,
         due_amount: Number.isFinite(due) ? due : 0,
+        section_id: sectionId,
+        section_title: sectionTitle,
       };
     },
 
@@ -726,7 +744,10 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       this.costEntriesSaving = true;
       try {
         const result = await shipmentApBillV2Repository.create(shipmentId, bucket, payload);
-        const row = this.kernelApBillRowFromRpc(shipmentId, bucket, result);
+        const row = this.kernelApBillRowFromRpc(shipmentId, bucket, result, undefined, {
+          section_id: payload.meta.section_id,
+          section_title: payload.meta.section_title ?? null,
+        });
         const rpcLines = result.cost_lines;
         if (Array.isArray(rpcLines) && rpcLines.length > 0) {
           row.cost_lines = (rpcLines as Record<string, unknown>[]).map((l) => ({
@@ -767,7 +788,11 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         const result = await shipmentApBillV2Repository.update(shipmentId, billId, payload);
         const existing = this.settingsFinanceCachedApBills.find((b) => b.id === billId);
         const bucket = (existing?.ap_kind ?? 'material') as ShipmentApKind;
-        const row = this.kernelApBillRowFromRpc(shipmentId, bucket, result);
+        const row = this.kernelApBillRowFromRpc(shipmentId, bucket, result, undefined, {
+          section_id: payload.meta?.section_id ?? existing?.section_id ?? null,
+          section_title:
+            payload.meta?.section_title ?? existing?.section_title ?? null,
+        });
         const rpcLines = result.cost_lines;
         if (Array.isArray(rpcLines) && rpcLines.length > 0) {
           row.cost_lines = (rpcLines as Record<string, unknown>[]).map((l) => ({
@@ -1552,26 +1577,6 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         await this.fetchShipmentDetails(shipmentId);
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to rollback shipment';
-        throw err;
-      } finally {
-        this.loading = false;
-      }
-    },
-
-    async assignShipmentToChild(parentTenantId: number, childTenantId: number | null, shipmentId: number) {
-      this.loading = true;
-      this.error = null;
-      try {
-        const res = await globalShipmentRepository.assignShipmentToChild(parentTenantId, childTenantId, shipmentId);
-        if (this.currentShipment?.id === shipmentId) {
-          this.currentShipment = {
-            ...this.currentShipment,
-            assigned_child_tenant_id: childTenantId,
-          };
-        }
-        return res;
-      } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to assign shipment to child';
         throw err;
       } finally {
         this.loading = false;

@@ -433,9 +433,14 @@
           </div>
         </template>
 
-        <div v-if="bill.note" class="q-mt-md">
+        <div v-if="shipmentCostBillSectionLabel" class="q-mt-md">
+          <div class="text-overline text-grey-7">Shipment section</div>
+          <div class="text-body2 text-grey-9">{{ shipmentCostBillSectionLabel }}</div>
+        </div>
+
+        <div v-if="hasBillComment" class="q-mt-md bill-detail-note">
           <div class="text-overline text-grey-7">Note</div>
-          <div class="text-body2">{{ bill.note }}</div>
+          <div class="rich-text-body text-body2 text-grey-9" v-html="billCommentHtml" />
         </div>
 
         <div v-if="isStandardBill" class="q-mt-lg no-print">
@@ -700,6 +705,10 @@ import type { BillAdjustmentRow } from '../types/billAdjustments';
 import { shipmentIdFromBill } from '../utils/shipmentApBillSource';
 import { isDropshipCourierApBill, isDropshipManagerBill } from '../utils/dropshipManagedBill';
 import { kernelBillLinesToStockRows } from '../utils/kernelBillLinesToStockRows';
+import {
+  billNoteHasVisibleContent,
+  billNoteHtml,
+} from '../utils/billNoteDisplay';
 
 const route = useRoute();
 const router = useRouter();
@@ -761,6 +770,22 @@ const arAdjustmentNoteBarRef = ref<InstanceType<typeof BillAdjustmentNoteBar> | 
 const parentTenantId = computed(() => Number(bill.value?.tenant_id ?? 0) || null);
 
 const bill = computed(() => billFromBundle.value as GlobalInvoiceDetail | undefined);
+
+const billCommentHtml = computed(() => billNoteHtml(bill.value?.note));
+const hasBillComment = computed(() => billNoteHasVisibleContent(bill.value?.note));
+
+const shipmentCostBillSectionLabel = computed(() => {
+  const meta = bill.value?.channel_meta as Record<string, unknown> | null | undefined;
+  if (!meta) return null;
+  const title =
+    typeof meta.section_title === 'string' && meta.section_title.trim() !== ''
+      ? meta.section_title.trim()
+      : null;
+  if (title) return title;
+  const sid = meta.section_id;
+  if (sid != null && String(sid).trim() !== '') return `Section #${sid}`;
+  return null;
+});
 
 type BillDateEditorTarget = 'invoice' | 'due';
 
@@ -1647,6 +1672,19 @@ const submitAdjustment = async () => {
     text-decoration: none;
     cursor: default;
   }
+}
+
+.bill-detail-note .rich-text-body :deep(p) {
+  margin-top: 0;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.bill-detail-note .rich-text-body :deep(ul),
+.bill-detail-note .rich-text-body :deep(ol) {
+  padding-left: 20px;
+  margin-top: 0;
+  margin-bottom: 8px;
 }
 </style>
 

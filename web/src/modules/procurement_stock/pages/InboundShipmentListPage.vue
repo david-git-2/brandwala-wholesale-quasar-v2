@@ -427,15 +427,13 @@ const openArchivedShipmentsModal = () => {
   });
 };
 
-const parentTenantId = computed(
-  () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
-);
+const workspaceTenantId = computed(() => authStore.tenantId ?? null);
 
 onMounted(() => {
   if (authStore.tenantId && vendorStore.items.length === 0) {
     void vendorStore.fetchVendors(authStore.tenantId);
   }
-  void cargoCompanyStore.ensureCompaniesLoaded(parentTenantId.value);
+  void cargoCompanyStore.ensureCompaniesLoaded(workspaceTenantId.value);
   void loadShipments().then(() => nextTick(() => setupScrollObserver()));
 });
 

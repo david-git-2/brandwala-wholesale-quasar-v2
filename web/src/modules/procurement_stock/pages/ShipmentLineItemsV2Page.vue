@@ -1403,9 +1403,7 @@ const triggerAddItems = () => {
 const authStore = useAuthStore();
 const vendorStore = useVendorStore();
 const cargoCompanyStore = useCargoCompanyStore();
-const currentTenantId = computed(
-  () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
-);
+const currentTenantId = computed(() => authStore.tenantId ?? null);
 
 const cargoOptions = computed(() => cargoCompanyStore.selectOptions);
 
@@ -1648,9 +1646,7 @@ const batchCodeDialogCanAdd = computed(
 );
 
 const resolveBatchParentTenantId = (): number => {
-  const currentTenant =
-    tenantStore.selectedTenant ?? tenantStore.items.find((t) => t.id === authStore.tenantId);
-  const tenantId = currentTenant?.parent_id ?? authStore.tenantId;
+  const tenantId = authStore.tenantId;
   if (!tenantId) throw new Error('No tenant found');
   return tenantId;
 };

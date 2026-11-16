@@ -4770,6 +4770,9 @@ isOneToOne: false
 "_set_global_stocks_archived_for_shipment":
 { Args: { "p_archive": boolean,"p_shipment_id": number }; Returns: undefined
                            },
+"_shipment_ap_bill_require_section_meta":
+{ Args: { "p_meta": Json,"p_shipment_id": number }; Returns: Json
+                           },
 "_shipment_ap_bucket_is_valid":
 { Args: { "p_bucket": string }; Returns: boolean
                            },
@@ -4799,6 +4802,9 @@ isOneToOne: false
                            },
 "_shipment_money_lock_shipment_ids":
 { Args: { "p_shipment_ids": (number)[] }; Returns: undefined
+                           },
+"_shipment_money_workspace_tenant":
+{ Args: { "p_shipment_id": number }; Returns: number
                            },
 "_stamp_global_shipment_outcome_costs":
 { Args: { "p_shipment_id": number }; Returns: number

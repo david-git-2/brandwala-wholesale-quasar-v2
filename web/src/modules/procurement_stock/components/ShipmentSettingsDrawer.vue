@@ -667,7 +667,8 @@
 
             <ShipmentApBillsPanel
               :shipment-id="shipmentId"
-              :books-tenant-id="shipmentStore.currentShipment?.tenant_id ?? null"
+              :tenant-id="shipmentApWorkspaceTenantId"
+              :sections="shipmentStore.currentShipmentSections ?? []"
               :bills="shipmentApBills"
               :can-edit="canEditApBillsWorksheet"
               :loading="shipmentStore.settingsFinanceLoading || shipmentStore.costEntriesSaving"
@@ -989,7 +990,7 @@ import {
 import { isCostBucketApIssueReady } from '../types/shipmentApIssueParties';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import ShipmentApBillsPanel from './ShipmentApBillsPanel.vue';
-import type { ShipmentApBillLineInput } from '../repositories/shipmentApBillV2Repository';
+import type { CreateShipmentApBillPayload } from '../repositories/shipmentApBillV2Repository';
 import { shipmentShortageCreditHintBdt } from '../utils/shipmentShortageCreditHint';
 import {
   findShipmentApBill,
@@ -1033,6 +1034,10 @@ const emit = defineEmits<{
 }>();
 
 const authStore = useAuthStore();
+/** Workspace tenant from header (`x-selected-tenant-id`); kernel bills use same id. */
+const shipmentApWorkspaceTenantId = computed(
+  () => authStore.tenantId ?? shipmentStore.currentShipment?.tenant_id ?? null,
+);
 const { hasModuleAccess } = useModulePermissions();
 const canViewInvestorShipmentShare = computed(() =>
   hasModuleAccess('investor_shipment_share', 'view'),
@@ -1840,10 +1845,7 @@ const refreshSettingsFinanceBundle = async (options?: { force?: boolean }) => {
     const contextTenantId =
       (shipmentStore.currentShipment?.id === shipmentId
         ? shipmentStore.currentShipment.tenant_id
-        : null) ??
-      authStore.selectedTenant?.parent_id ??
-      authStore.selectedTenant?.id ??
-      null;
+        : null) ?? authStore.tenantId ?? null;
     const { apBills: bills, apFx } = await shipmentStore.loadSettingsFinanceBundle(
       shipmentId,
       { force: options?.force, contextTenantId },
@@ -2231,7 +2233,7 @@ const refreshShipmentApBills = async () => {
 
 const onShipmentApBillCreate = async (
   bucket: ShipmentApKind,
-  payload: { currency_code: string; lines: ShipmentApBillLineInput[] },
+  payload: CreateShipmentApBillPayload,
 ) => {
   if (!props.shipmentId) return;
   try {
@@ -2245,7 +2247,7 @@ const onShipmentApBillCreate = async (
 
 const onShipmentApBillUpdate = async (
   billId: number,
-  payload: { lines: ShipmentApBillLineInput[] },
+  payload: Pick<CreateShipmentApBillPayload, 'lines' | 'note' | 'meta'>,
 ) => {
   if (!props.shipmentId) return;
   try {

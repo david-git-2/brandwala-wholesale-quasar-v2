@@ -24,6 +24,7 @@
         size="sm"
         class="rounded-sq-btn text-weight-bold"
         padding="sm md"
+        :disable="sectionOptions.length === 0"
         @click="openAddDialog"
       />
     </div>
@@ -45,6 +46,13 @@
       <div class="col min-width-0 column q-gutter-y-xs">
         <div class="text-subtitle2 text-weight-bold text-grey-9 ellipsis">
           {{ bill.invoice_no || `Bill #${bill.id}` }}
+        </div>
+        <div
+          v-if="billSectionLabel(bill)"
+          class="text-caption text-grey-8 ellipsis"
+        >
+          <span class="text-grey-6">Section ·</span>
+          {{ billSectionLabel(bill) }}
         </div>
         <div class="row items-center q-gutter-xs wrap">
           <TfStatusBadge
@@ -127,7 +135,26 @@
           <span class="text-weight-medium text-grey-9">{{ activeBucketLabel }}</span>
         </div>
       </q-card-section>
-      <q-card-section class="column q-gutter-y-sm q-pt-none">
+      <q-card-section class="column q-gutter-y-sm q-pt-none shipment-ap-bill-dialog__body">
+        <q-select
+          v-model="formSectionId"
+          :options="sectionOptions"
+          label="Section *"
+          outlined
+          dense
+          emit-value
+          map-options
+          :loading="sectionsPreparing"
+          :disable="sectionsPreparing"
+          :rules="[() => formSectionId != null || 'Section is required']"
+          hide-bottom-space
+        />
+        <div
+          v-if="!sectionsPreparing && sectionOptions.length === 0"
+          class="text-caption text-negative"
+        >
+          Add a shipment section (or set a vendor on the shipment) before creating a bill.
+        </div>
         <q-select
           v-model="formCurrency"
           :options="currencyOptions"
@@ -173,6 +200,16 @@
           size="sm"
           @click="addFormLine"
         />
+        <div class="column q-gutter-y-xs">
+          <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.04em">
+            Note
+          </div>
+          <RichTextEditor
+            v-model="formNote"
+            min-height="5.5rem"
+            :with-table="false"
+          />
+        </div>
       </q-card-section>
       <q-card-actions align="right" class="q-px-md q-pb-md q-pt-none">
         <q-btn flat no-caps label="Cancel" color="grey-8" @click="closeDialog" />
@@ -195,6 +232,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import RichTextEditor from 'src/components/ui/RichTextEditor.vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
@@ -208,28 +246,38 @@ import {
   shipmentApBillPlugCurrency,
   type ShipmentApBillRow,
 } from '../repositories/shipmentApBillsRepository';
+import type { ShipmentSection } from '../types/shipmentSection';
 import {
   shipmentApBillV2Repository,
+  type CreateShipmentApBillPayload,
   type ShipmentApBillLineInput,
 } from '../repositories/shipmentApBillV2Repository';
-import { requestConfirmation } from 'src/utils/appFeedback';
+import { requestConfirmation, showErrorNotification } from 'src/utils/appFeedback';
 import {
   displayBillTotal,
   displayDueAmount,
 } from '../utils/shipmentApBillDisplay';
+import {
+  billNoteHasVisibleContent,
+  billNoteHtml,
+} from 'src/modules/bills_pays/utils/billNoteDisplay';
+import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+
+const shipmentStore = useGlobalShipmentStore();
 
 const props = defineProps<{
   shipmentId: number;
-  booksTenantId?: number | null;
+  tenantId?: number | null;
   bills: ShipmentApBillRow[];
   canEdit: boolean;
   loading?: boolean;
   defaultCurrency?: string;
+  sections?: ShipmentSection[];
 }>();
 
 const emit = defineEmits<{
-  create: [bucket: ShipmentApKind, payload: { currency_code: string; lines: ShipmentApBillLineInput[] }];
-  update: [billId: number, payload: { lines: ShipmentApBillLineInput[] }];
+  create: [bucket: ShipmentApKind, payload: CreateShipmentApBillPayload];
+  update: [billId: number, payload: Pick<CreateShipmentApBillPayload, 'lines' | 'note' | 'meta'>];
   issue: [billId: number];
   void: [billId: number];
   open: [billId: number];
@@ -255,6 +303,34 @@ const formCurrency = ref(props.defaultCurrency ?? 'GBP');
 const formLines = ref<ShipmentApBillLineInput[]>([
   { cost_component: 'subtotal', amount: 0 },
 ]);
+const formNote = ref('');
+const formSectionId = ref<number | null>(null);
+const sectionsPreparing = ref(false);
+
+const billShipmentSections = computed((): ShipmentSection[] => {
+  const storeSections = shipmentStore.currentShipmentSections ?? [];
+  const storeForShipment =
+    storeSections.length > 0
+    && storeSections.every((s) => s.shipment_id === props.shipmentId)
+      ? storeSections
+      : [];
+  if (storeForShipment.length > 0) return storeForShipment;
+  const fromProps = props.sections ?? [];
+  if (
+    fromProps.length > 0
+    && fromProps.every((s) => s.shipment_id === props.shipmentId)
+  ) {
+    return fromProps;
+  }
+  return [];
+});
+
+const sectionOptions = computed(() =>
+  billShipmentSections.value.map((s) => ({
+    label: s.title?.trim() || `Section #${s.id}`,
+    value: s.id,
+  })),
+);
 
 const activeBucketLabel = computed(() =>
   shipmentApKindLabel(activeBucket.value).replace(' AP', ''),
@@ -280,8 +356,21 @@ const visibleBills = computed(() =>
   ),
 );
 
-const formValid = computed(() =>
-  formLines.value.some((l) => Number(l.amount) > 0) && Boolean(formCurrency.value),
+const billSectionLabel = (bill: ShipmentApBillRow): string | null => {
+  const titled = bill.section_title?.trim();
+  if (titled) return titled;
+  const sid = bill.section_id;
+  if (sid == null || !Number.isFinite(sid)) return null;
+  const match = billShipmentSections.value.find((s) => s.id === sid);
+  return match?.title?.trim() || `Section #${sid}`;
+};
+
+const formValid = computed(
+  () =>
+    formSectionId.value != null
+    && sectionOptions.value.length > 0
+    && formLines.value.some((l) => Number(l.amount) > 0)
+    && Boolean(formCurrency.value),
 );
 
 const plugCurrency = (bill: ShipmentApBillRow) =>
@@ -331,15 +420,63 @@ const showBillDue = (bill: ShipmentApBillRow) =>
 const titleCase = (s: string) =>
   s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
+const billNotePayload = (html: string): string | undefined => {
+  const trimmed = billNoteHtml(html);
+  if (!billNoteHasVisibleContent(trimmed)) return undefined;
+  return trimmed;
+};
+
 const resetForm = () => {
   formCurrency.value = props.defaultCurrency ?? 'GBP';
   formLines.value = [{ cost_component: 'subtotal', amount: 0 }];
+  formNote.value = '';
+  formSectionId.value = null;
   editBillId.value = null;
 };
 
-const openAddDialog = () => {
+const pickDefaultSectionId = (): number | null => {
+  const opts = sectionOptions.value;
+  if (opts.length === 1) return opts[0].value;
+  return null;
+};
+
+const buildSectionMeta = () => {
+  const sectionId = formSectionId.value;
+  if (sectionId == null) return null;
+  const match = billShipmentSections.value.find((s) => s.id === sectionId);
+  return {
+    section_id: sectionId,
+    section_title: match?.title?.trim() || null,
+  };
+};
+
+const ensureSectionsForBillDialog = async () => {
+  sectionsPreparing.value = true;
+  try {
+    let sections = await shipmentStore.fetchShipmentSections(props.shipmentId);
+    if (sections.length > 0) return;
+    if (shipmentStore.currentShipment?.id !== props.shipmentId) {
+      await shipmentStore.fetchShipmentDetails(props.shipmentId);
+    }
+    sections = shipmentStore.currentShipmentSections ?? [];
+    if (sections.length > 0) return;
+    const vendorId = shipmentStore.currentShipment?.vendor_id;
+    if (!vendorId) return;
+    await shipmentStore.createSection({
+      shipment_id: props.shipmentId,
+      title: 'Main order',
+      vendor_id: vendorId,
+    });
+  } finally {
+    sectionsPreparing.value = false;
+  }
+};
+
+const openAddDialog = async () => {
   resetForm();
   dialogOpen.value = true;
+  await ensureSectionsForBillDialog();
+  formSectionId.value = pickDefaultSectionId();
 };
 
 const costComponentLabel = (component: string) =>
@@ -367,6 +504,10 @@ const ensureComponentOption = (component: string) => {
 const openEditDialog = async (bill: ShipmentApBillRow) => {
   editBillId.value = bill.id;
   formCurrency.value = shipmentApBillPlugCurrency(bill) ?? props.defaultCurrency ?? 'GBP';
+  formNote.value = '';
+  formSectionId.value = null;
+  dialogOpen.value = true;
+  await ensureSectionsForBillDialog();
   let lines: ShipmentApBillLineInput[] =
     bill.cost_lines?.map((cl) => ({
       cost_component: cl.cost_component,
@@ -374,11 +515,19 @@ const openEditDialog = async (bill: ShipmentApBillRow) => {
       description: cl.description ?? null,
     })) ?? [];
 
-  if (lines.length === 0 && props.booksTenantId) {
+  if (props.tenantId) {
     try {
-      lines = await shipmentApBillV2Repository.loadDraftCostLines(props.booksTenantId, bill.id);
-    } catch {
-      lines = [];
+      const draft = await shipmentApBillV2Repository.loadDraftBillForEdit(
+        props.tenantId,
+        bill.id,
+      );
+      formNote.value = draft.note ?? '';
+      formSectionId.value = draft.sectionId ?? pickDefaultSectionId();
+      if (lines.length === 0 && draft.lines.length > 0) {
+        lines = draft.lines;
+      }
+    } catch (err: unknown) {
+      showErrorNotification((err as Error).message || 'Could not load draft bill details');
     }
   }
 
@@ -388,7 +537,9 @@ const openEditDialog = async (bill: ShipmentApBillRow) => {
     lines.forEach((l) => ensureComponentOption(l.cost_component));
     formLines.value = mapCostLinesToForm(lines);
   }
-  dialogOpen.value = true;
+  if (formSectionId.value == null) {
+    formSectionId.value = pickDefaultSectionId();
+  }
 };
 
 const closeDialog = () => {
@@ -405,14 +556,23 @@ const submitDialog = async () => {
     .filter((l) => Number(l.amount) > 0)
     .map((l) => ({ ...l, amount: Number(l.amount) }));
   if (lines.length === 0) return;
+  const note = billNotePayload(formNote.value);
+  const sectionMeta = buildSectionMeta();
+  if (!sectionMeta) return;
   saving.value = true;
   try {
     if (editBillId.value) {
-      emit('update', editBillId.value, { lines });
+      emit('update', editBillId.value, {
+        lines,
+        note: note ?? '',
+        meta: sectionMeta,
+      });
     } else {
       emit('create', activeBucket.value, {
         currency_code: formCurrency.value,
         lines,
+        meta: sectionMeta,
+        ...(note != null ? { note } : {}),
       });
     }
     closeDialog();
@@ -469,5 +629,10 @@ watch(
 .shipment-ap-bill-dialog {
   width: min(560px, 92vw);
   max-width: 560px;
+}
+
+.shipment-ap-bill-dialog__body {
+  max-height: min(72vh, 560px);
+  overflow-y: auto;
 }
 </style>

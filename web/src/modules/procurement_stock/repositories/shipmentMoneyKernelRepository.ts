@@ -54,6 +54,14 @@ export const parseShipmentApBillRow = (raw: unknown): ShipmentApBillRow => {
     due_amount: Number(o.due_amount) || 0,
     net_balances:
       nb && typeof nb === 'object' ? (nb as BillNetBalances) : undefined,
+    section_id:
+      o.section_id != null && Number.isFinite(Number(o.section_id))
+        ? Number(o.section_id)
+        : null,
+    section_title:
+      typeof o.section_title === 'string' && o.section_title.trim() !== ''
+        ? o.section_title.trim()
+        : null,
     cost_lines: parseShipmentApBillCostLines(o.cost_lines),
   };
 };

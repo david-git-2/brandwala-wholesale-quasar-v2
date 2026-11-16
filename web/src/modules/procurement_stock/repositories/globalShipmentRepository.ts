@@ -926,40 +926,6 @@ const checkShipmentItemStockReferences = async (itemId: number): Promise<boolean
   return (data && data.length > 0) || false;
 };
 
-const listChildProcurementLines = async (
-  parentTenantId: number,
-  childTenantId?: number | null,
-  search?: string | null,
-  limit: number = 100,
-  offset: number = 0,
-) => {
-  const { data, error } = await db.rpc('list_child_procurement_lines', {
-    p_tenant_id: parentTenantId,
-    p_child_tenant_id: childTenantId || null,
-    p_search: search || null,
-    p_limit: limit,
-    p_offset: offset,
-  });
-
-  if (error) throw error;
-  return data;
-};
-
-const addChildLineToParentShipment = async (
-  parentShipmentId: number,
-  sourceType: string,
-  sourceId: number,
-) => {
-  const { data, error } = await db.rpc('add_child_line_to_parent_shipment', {
-    p_parent_shipment_id: parentShipmentId,
-    p_source_type: sourceType,
-    p_source_id: sourceId,
-  });
-
-  if (error) throw error;
-  return data;
-};
-
 export interface FinalizeShipmentStockRow {
   shipment_item_id: number;
   stock_type_id?: number;
@@ -1179,20 +1145,6 @@ const setShipmentProgressTag = async (
   if (error) throw error;
   const result = data as { progress_tag?: ShipmentProgressTag | null };
   return result?.progress_tag ?? null;
-};
-
-const assignShipmentToChild = async (
-  parentTenantId: number,
-  childTenantId: number | null,
-  shipmentId: number,
-): Promise<{ shipment_id: number; assigned_child_tenant_id: number | null }> => {
-  const { data, error } = await db.rpc('assign_shipment_to_child', {
-    p_tenant_id: parentTenantId,
-    p_child_tenant_id: childTenantId,
-    p_shipment_id: shipmentId,
-  });
-  if (error) throw error;
-  return data;
 };
 
 export interface ReturnShipmentItemQty {
@@ -1599,8 +1551,6 @@ export const globalShipmentRepository = {
   updateShipmentItemsOrder,
   applyWeightBalance,
   applyPurchaseBalance,
-  listChildProcurementLines,
-  addChildLineToParentShipment,
   finalizeShipment,
   postShipmentOutcomeStock,
   restampShipmentOnHand,
@@ -1628,7 +1578,6 @@ export const globalShipmentRepository = {
   archiveShipmentProgressFlowStage,
   reorderShipmentProgressFlowStages,
   setShipmentProgressFlow,
-  assignShipmentToChild,
   returnShipmentToVendor,
   getShipmentSummary,
   stampShipmentLandedCosts,

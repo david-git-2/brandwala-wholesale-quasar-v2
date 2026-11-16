@@ -89,21 +89,19 @@ export function useInboundShipmentActions(options: {
     return found ? found.name : `Vendor #${vId}`;
   });
 
-  const parentTenantId = computed(
-    () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
-  );
+  const workspaceTenantId = computed(() => authStore.tenantId ?? null);
 
   const loadingCargo = computed(() => cargoCompanyStore.loading);
   const ensureCargoCompaniesLoaded = async () => {
-    if (!parentTenantId.value) return;
+    if (!workspaceTenantId.value) return;
     if (
       cargoCompanyStore.items.length > 0 &&
-      cargoCompanyStore.cachedParentTenantId === parentTenantId.value
+      cargoCompanyStore.cachedParentTenantId === workspaceTenantId.value
     ) {
       return;
     }
     try {
-      await cargoCompanyStore.ensureCompaniesLoaded(parentTenantId.value);
+      await cargoCompanyStore.ensureCompaniesLoaded(workspaceTenantId.value);
     } catch (err) {
       console.error('Failed to load cargo companies', err);
     }

@@ -27,6 +27,8 @@ export type ShipmentApBillRow = {
   total_amount: number;
   due_amount: number;
   net_balances?: BillNetBalances;
+  section_id?: number | null;
+  section_title?: string | null;
   cost_lines?: ShipmentApBillCostLine[];
 };
 
@@ -67,10 +69,13 @@ export const resolveShipmentApBillKind = (
 export const shipmentApBillBucket = (bill: ShipmentApBillRow): ShipmentApKind | null =>
   resolveShipmentApBillKind(bill.source_key, bill.ap_kind);
 
+/** Currency from `source_key` (`{bucket}:{currency}` or `{bucket}:{currency}:{suffix}`). */
 export const shipmentApBillPlugCurrency = (bill: ShipmentApBillRow): string | null => {
   const key = bill.source_key ?? bill.ap_kind;
   if (!key || !key.includes(':')) return null;
-  return key.split(':').slice(1).join(':').toUpperCase();
+  const parts = key.split(':').map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  return parts[1].toUpperCase();
 };
 
 export type ShipmentApBucketPaidTotals = {
@@ -153,10 +158,7 @@ export function findShipmentApBill(
   if (matches.length === 1) return matches[0];
   const ccy = opts?.currencyCode?.trim().toUpperCase();
   if (ccy) {
-    const byCurrency = matches.find((b) => {
-      const plug = (b.source_key ?? b.ap_kind ?? '').toUpperCase();
-      return plug === `${kind}:${ccy}` || plug === `${kind.toUpperCase()}:${ccy}`;
-    });
+    const byCurrency = matches.find((b) => shipmentApBillPlugCurrency(b) === ccy);
     if (byCurrency) return byCurrency;
   }
   return matches[0];

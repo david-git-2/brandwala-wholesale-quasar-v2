@@ -193,8 +193,9 @@ BEGIN
   IF v_b.status IS DISTINCT FROM 'draft' THEN
     RAISE EXCEPTION 'Only draft bills can be deleted';
   END IF;
-  DELETE FROM money_kernel.bill_lines WHERE bill_id = p_bill_id;
-  DELETE FROM money_kernel.bills WHERE id = p_bill_id;
+  PERFORM money_kernel.fn_kernel_settlement_delete_allowed();
+  DELETE FROM money_kernel.bill_lines WHERE bill_id = p_bill_id AND tenant_id = v_b.tenant_id;
+  DELETE FROM money_kernel.bills WHERE id = p_bill_id AND tenant_id = v_b.tenant_id;
 END;
 $$;
 

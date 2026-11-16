@@ -328,6 +328,11 @@ LANGUAGE plpgsql
 SET search_path = money_kernel, pg_temp
 AS $$
 BEGIN
+  IF TG_OP = 'DELETE'
+     AND current_setting('money.allow_kernel_delete', true) = '1' THEN
+    RETURN OLD;
+  END IF;
+
   RAISE EXCEPTION
     'bill_events is append-only; cannot UPDATE or DELETE row id=%', OLD.id;
 END;

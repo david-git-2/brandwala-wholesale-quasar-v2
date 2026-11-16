@@ -633,7 +633,6 @@ const fulfillPapersProcurementStatus = computed((): FulfillDeliveryPapersListSta
   isFulfillPapersListPage.value ? 'all' : fulfillProcurementStatus.value,
 );
 
-const isChildWorkspace = computed(() => authStore.selectedTenant?.parent_id != null);
 const tableColCount = computed(() => (isBuyMode.value ? 7 : 6));
 const emptyMessage = computed(() =>
   isBuyMode.value ? 'No demand lines.' : 'No delivery paper lines.',
@@ -667,26 +666,13 @@ const bulkVendorApplying = ref(false);
 const bulkVendorId = ref<number | null>(null);
 const bulkVendorTargetGroups = ref<ProcurementDemandGroup[]>([]);
 
-const parentTenantId = computed(
-  () => authStore.selectedTenant?.parent_id ?? authStore.tenantId ?? null,
-);
+const workspaceTenantId = computed(() => authStore.tenantId ?? null);
 
-const listTenantId = computed(() => {
-  if (isBuyMode.value) return parentTenantId.value;
-  if (isChildWorkspace.value) return authStore.tenantId ?? null;
-  return parentTenantId.value;
-});
+const listTenantId = computed(() => workspaceTenantId.value);
 
-const warehouseTenantId = computed(() => parentTenantId.value);
+const warehouseTenantId = computed(() => workspaceTenantId.value);
 
-const mutationTenantId = computed(() => {
-  if (isFulfillMode.value && isChildWorkspace.value) {
-    return authStore.tenantId ?? null;
-  }
-  return parentTenantId.value;
-});
-
-const listChildTenantId = computed(() => null);
+const mutationTenantId = computed(() => workspaceTenantId.value);
 
 const demandProcurementStatus = ref<ProcurementDemandStatus>('procuring');
 const fulfillProcurementStatus = ref<ProcurementDemandStatus>('procuring');
@@ -1025,7 +1011,6 @@ const {
   tenantId: listTenantId,
   procurementStatus: demandProcurementStatus,
   search: debouncedSearch,
-  childTenantId: listChildTenantId,
   enabled: isBuyMode,
 });
 
@@ -1178,7 +1163,6 @@ const upsertMutation = useUpsertPreorderDemandMutation({
   tenantId: mutationTenantId,
   procurementStatus,
   search: debouncedSearch,
-  childTenantId: listChildTenantId,
   profileId: demandProfileFilterId,
 });
 
@@ -1190,7 +1174,6 @@ const fillPlacedQtyMutation = useFillPreorderDemandPlacedQuantitiesMutation({
   tenantId: mutationTenantId,
   procurementStatus,
   search: debouncedSearch,
-  childTenantId: listChildTenantId,
   profileId: demandProfileFilterId,
 });
 
@@ -1198,7 +1181,6 @@ const setVendorMutation = useSetPreorderDemandVendorMutation({
   tenantId: mutationTenantId,
   procurementStatus,
   search: debouncedSearch,
-  childTenantId: listChildTenantId,
   profileId: demandProfileFilterId,
 });
 
@@ -1218,9 +1200,9 @@ const refreshDemandDesk = async () => {
 };
 
 const { data: vendorsData, isLoading: vendorsLoading } = useQuery({
-  queryKey: computed(() => ['vendors', 'forDemand', parentTenantId.value]),
-  queryFn: () => vendorRepository.listVendors(parentTenantId.value!),
-  enabled: computed(() => parentTenantId.value !== null),
+  queryKey: computed(() => ['vendors', 'forDemand', workspaceTenantId.value]),
+  queryFn: () => vendorRepository.listVendors(workspaceTenantId.value!),
+  enabled: computed(() => workspaceTenantId.value !== null),
   staleTime: 60_000,
 });
 

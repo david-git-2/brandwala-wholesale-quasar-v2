@@ -90,7 +90,7 @@ const procurementStockRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/:tenantSlug?/app/stock/:rest(.*)*',
-    redirect: (to) => withTenantSlug(to, '/app/procurement/child-stock'),
+    redirect: (to) => withTenantSlug(to, '/app/procurement/stock'),
   },
   {
     path: '/:tenantSlug?/app/procurement/stock/allocate/:rest(.*)*',
@@ -98,7 +98,7 @@ const procurementStockRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/:tenantSlug?/app/procurement/tenant-stock/:rest(.*)*',
-    redirect: (to) => withTenantSlug(to, '/app/procurement/child-stock'),
+    redirect: (to) => withTenantSlug(to, '/app/procurement/stock'),
   },
 
   // Active Routes
@@ -322,18 +322,6 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         name: 'app-procurement-cargo-companies',
         component: () => import('../pages/CargoCompaniesPage.vue'),
         beforeEnter: guard('cargo_company'),
-      },
-    ],
-  },
-  {
-    path: '/:tenantSlug?/app/procurement/child-stock',
-    component: () => import('layouts/AppLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'app-procurement-child-stock',
-        component: () => import('../pages/ChildStockPage.vue'),
-        beforeEnter: guard('inventory'),
       },
     ],
   },

@@ -204,7 +204,10 @@
         </div>
       </template>
 
-      <div v-if="bill.note" class="q-mt-md text-caption">{{ bill.note }}</div>
+      <div v-if="hasBillComment" class="q-mt-md bill-preview-note">
+        <div class="text-overline text-grey-7">Note</div>
+        <div class="rich-text-body text-caption text-grey-9" v-html="billCommentHtml" />
+      </div>
 
       <div class="q-mt-lg flex flex-center column">
         <BarcodeRenderer :value="bill.invoice_no" :height="48" :display-value="true" />
@@ -232,6 +235,10 @@ import { useBillDetailQuery } from '../composables/useBillDetailQuery';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { apBillCurrencyBalances } from '../utils/parseApBillPaper';
 import { shipmentIdFromBill } from '../utils/shipmentApBillSource';
+import {
+  billNoteHasVisibleContent,
+  billNoteHtml,
+} from '../utils/billNoteDisplay';
 
 const BRAND_STORAGE_KEY = 'bills_pays_last_invoice_brand_id';
 
@@ -290,6 +297,9 @@ watch(selectedBrandId, (id) => {
 });
 
 const bill = computed(() => detailQuery.data.value as GlobalInvoiceDetail | undefined);
+
+const billCommentHtml = computed(() => billNoteHtml(bill.value?.note));
+const hasBillComment = computed(() => billNoteHasVisibleContent(bill.value?.note));
 const billShipmentId = computed(() => shipmentIdFromBill(bill.value) ?? null);
 const isApBill = computed(() => bill.value?.invoice_type === 'ap');
 const isManualComposeApBill = computed(
@@ -452,6 +462,21 @@ const onPrint = () => {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
+}
+</style>
+
+<style lang="scss" scoped>
+.bill-preview-note .rich-text-body :deep(p) {
+  margin-top: 0;
+  margin-bottom: 6px;
+  line-height: 1.45;
+}
+
+.bill-preview-note .rich-text-body :deep(ul),
+.bill-preview-note .rich-text-body :deep(ol) {
+  padding-left: 18px;
+  margin-top: 0;
+  margin-bottom: 6px;
 }
 </style>
 

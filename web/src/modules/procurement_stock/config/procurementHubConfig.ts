@@ -14,15 +14,6 @@ export type ProcurementMoreLinkDef = {
 
 export const PROCUREMENT_MORE_LINKS: ProcurementMoreLinkDef[] = [
   {
-    key: 'child-stock',
-    moduleKey: 'inventory',
-    path: 'child-stock',
-    title: 'Shop Stock',
-    caption: 'Stock this shop can sell from received shipments.',
-    icon: 'ph ph-package',
-    weight: 10,
-  },
-  {
     key: 'movements',
     moduleKey: 'global_stock_movement',
     path: 'movements',

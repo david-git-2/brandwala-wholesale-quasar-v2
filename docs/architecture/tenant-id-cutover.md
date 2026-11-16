@@ -109,6 +109,7 @@ Phase detail is at the bottom: [Agent phase detail](#agent-phase-detail).
 | RLS + ~318 SQL function **bodies** (not only 47 args) | grep `parent_tenant_id` in `public.sql` | **4** (dual) then **8** (parent-only) |
 | Reporting / thrift / koba **web** / investor / settings / docs UI | no `parent_tenant_id` in those web modules today | **out** unless grep finds a new hit |
 | Company tree | `tenants.parent_id` | **never change** |
+| Procurement shipment Costs AP (2026) | `money_kernel.bills.tenant_id` | workspace `current_tenant_id()` only; child assign / child lines RPCs retired |
 
 ## As-built (local DB, 2026-11-05)
 

@@ -10,11 +10,17 @@ export type ShipmentApBillLineInput = {
   is_capitalizable?: boolean;
 };
 
+export type ShipmentApBillSectionMeta = {
+  section_id: number;
+  section_title?: string | null;
+};
+
 export type CreateShipmentApBillPayload = {
   currency_code: string;
   lines: ShipmentApBillLineInput[];
   note?: string | null;
   source_key_suffix?: string | null;
+  meta: ShipmentApBillSectionMeta;
 };
 
 const db = supabase as any;
@@ -59,15 +65,53 @@ export const shipmentApBillV2Repository = {
     return data as Record<string, unknown>;
   },
 
-  async loadDraftCostLines(booksTenantId: number, billId: number): Promise<ShipmentApBillLineInput[]> {
+  async loadDraftCostLines(tenantId: number, billId: number): Promise<ShipmentApBillLineInput[]> {
     const { data, error } = await db.rpc('rpc_get_bill', {
-      p_tenant_id: booksTenantId,
+      p_tenant_id: tenantId,
       p_bill_id: billId,
       p_include: ['lines'],
     });
     if (error) throw error;
     const payload = data as Record<string, unknown> | null;
     return mapRpcBillLinesToInputs(payload?.lines);
+  },
+
+  async loadDraftBillForEdit(
+    tenantId: number,
+    billId: number,
+  ): Promise<{
+    lines: ShipmentApBillLineInput[];
+    note: string | null;
+    sectionId: number | null;
+    sectionTitle: string | null;
+  }> {
+    const { data, error } = await db.rpc('rpc_get_bill', {
+      p_tenant_id: tenantId,
+      p_bill_id: billId,
+      p_include: ['lines'],
+    });
+    if (error) throw error;
+    const payload = data as Record<string, unknown> | null;
+    const rawNote = payload?.note;
+    const note =
+      typeof rawNote === 'string' && rawNote.trim() !== '' ? rawNote : null;
+    const billMeta =
+      payload?.meta && typeof payload.meta === 'object'
+        ? (payload.meta as Record<string, unknown>)
+        : {};
+    const sectionRaw = billMeta.section_id;
+    const sectionId =
+      sectionRaw != null && Number.isFinite(Number(sectionRaw)) ? Number(sectionRaw) : null;
+    const sectionTitle =
+      typeof billMeta.section_title === 'string' && billMeta.section_title.trim() !== ''
+        ? billMeta.section_title.trim()
+        : null;
+    return {
+      lines: mapRpcBillLinesToInputs(payload?.lines),
+      note,
+      sectionId,
+      sectionTitle,
+    };
   },
 
   async voidDraft(shipmentId: number, billId: number) {
