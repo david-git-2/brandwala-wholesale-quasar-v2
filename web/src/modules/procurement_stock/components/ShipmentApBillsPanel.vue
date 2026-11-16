@@ -24,7 +24,6 @@
         size="sm"
         class="rounded-sq-btn text-weight-bold"
         padding="sm md"
-        :disable="sectionOptions.length === 0"
         @click="openAddDialog"
       />
     </div>
@@ -47,13 +46,6 @@
         <div class="text-subtitle2 text-weight-bold text-grey-9 ellipsis">
           {{ bill.invoice_no || `Bill #${bill.id}` }}
         </div>
-        <div
-          v-if="billSectionLabel(bill)"
-          class="text-caption text-grey-8 ellipsis"
-        >
-          <span class="text-grey-6">Section ·</span>
-          {{ billSectionLabel(bill) }}
-        </div>
         <div class="row items-center q-gutter-xs wrap">
           <TfStatusBadge
             :status="bill.invoice_status"
@@ -64,6 +56,13 @@
             :status="paymentBadgesById.get(bill.id)!.status"
             :label="paymentBadgesById.get(bill.id)!.label"
           />
+        </div>
+        <div
+          v-if="displayBillSectionName(bill)"
+          class="text-caption text-grey-7 ellipsis"
+        >
+          <span class="text-grey-6">Section :</span>
+          <span class="text-weight-medium text-grey-9">{{ displayBillSectionName(bill) }}</span>
         </div>
         <div class="text-caption text-grey-7">
           <span class="text-weight-medium text-grey-9">{{ plugCurrency(bill) }}</span>
@@ -137,24 +136,19 @@
       </q-card-section>
       <q-card-section class="column q-gutter-y-sm q-pt-none shipment-ap-bill-dialog__body">
         <q-select
+          v-if="sectionOptions.length > 0"
           v-model="formSectionId"
           :options="sectionOptions"
-          label="Section *"
+          label="Section (optional)"
           outlined
           dense
           emit-value
           map-options
+          clearable
           :loading="sectionsPreparing"
           :disable="sectionsPreparing"
-          :rules="[() => formSectionId != null || 'Section is required']"
           hide-bottom-space
         />
-        <div
-          v-if="!sectionsPreparing && sectionOptions.length === 0"
-          class="text-caption text-negative"
-        >
-          Add a shipment section (or set a vendor on the shipment) before creating a bill.
-        </div>
         <q-select
           v-model="formCurrency"
           :options="currencyOptions"
@@ -231,7 +225,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import RichTextEditor from 'src/components/ui/RichTextEditor.vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
@@ -356,6 +350,8 @@ const visibleBills = computed(() =>
   ),
 );
 
+const sectionLabelByBillId = ref(new Map<number, string>());
+
 const billSectionLabel = (bill: ShipmentApBillRow): string | null => {
   const titled = bill.section_title?.trim();
   if (titled) return titled;
@@ -365,11 +361,59 @@ const billSectionLabel = (bill: ShipmentApBillRow): string | null => {
   return match?.title?.trim() || `Section #${sid}`;
 };
 
+const displayBillSectionName = (bill: ShipmentApBillRow): string | null =>
+  sectionLabelByBillId.value.get(bill.id) ?? billSectionLabel(bill);
+
+const enrichBillSectionNames = async (bills: ShipmentApBillRow[]) => {
+  if (!props.tenantId || bills.length === 0) return;
+  await shipmentStore.fetchShipmentSections(props.shipmentId);
+  const next = new Map(sectionLabelByBillId.value);
+  const pending: Promise<void>[] = [];
+  for (const bill of bills) {
+    const fromRow = billSectionLabel(bill);
+    if (fromRow) {
+      next.set(bill.id, fromRow);
+      continue;
+    }
+    if (next.has(bill.id)) continue;
+    pending.push(
+      shipmentApBillV2Repository
+        .loadDraftBillForEdit(props.tenantId, bill.id)
+        .then((draft) => {
+          if (draft.sectionTitle?.trim()) {
+            next.set(bill.id, draft.sectionTitle.trim());
+            return;
+          }
+          if (draft.sectionId == null) return;
+          const match = billShipmentSections.value.find((s) => s.id === draft.sectionId);
+          next.set(
+            bill.id,
+            match?.title?.trim() || `Section #${draft.sectionId}`,
+          );
+        })
+        .catch(() => undefined),
+    );
+  }
+  await Promise.all(pending);
+  sectionLabelByBillId.value = next;
+};
+
+onMounted(() => {
+  void shipmentStore.fetchShipmentSections(props.shipmentId);
+});
+
+watch(
+  () => [props.tenantId, visibleBills.value] as const,
+  ([tenantId, bills]) => {
+    if (!tenantId || bills.length === 0) return;
+    void enrichBillSectionNames(bills);
+  },
+  { immediate: true },
+);
+
 const formValid = computed(
   () =>
-    formSectionId.value != null
-    && sectionOptions.value.length > 0
-    && formLines.value.some((l) => Number(l.amount) > 0)
+    formLines.value.some((l) => Number(l.amount) > 0)
     && Boolean(formCurrency.value),
 );
 
@@ -414,8 +458,11 @@ const paymentBadgesById = computed(() => {
   return map;
 });
 
-const showBillDue = (bill: ShipmentApBillRow) =>
-  bill.invoice_status === 'issued' && displayDueAmount(bill) > 0.009;
+const showBillDue = (bill: ShipmentApBillRow) => {
+  if (bill.invoice_status !== 'issued') return false;
+  if (resolvePaymentStatusBadge(bill)?.status === 'paid') return false;
+  return displayDueAmount(bill) > 0.009;
+};
 
 const titleCase = (s: string) =>
   s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -434,15 +481,11 @@ const resetForm = () => {
   editBillId.value = null;
 };
 
-const pickDefaultSectionId = (): number | null => {
-  const opts = sectionOptions.value;
-  if (opts.length === 1) return opts[0].value;
-  return null;
-};
-
-const buildSectionMeta = () => {
+const buildSectionMeta = (): CreateShipmentApBillPayload['meta'] => {
   const sectionId = formSectionId.value;
-  if (sectionId == null) return null;
+  if (sectionId == null) {
+    return { section_id: null, section_title: null };
+  }
   const match = billShipmentSections.value.find((s) => s.id === sectionId);
   return {
     section_id: sectionId,
@@ -476,7 +519,6 @@ const openAddDialog = async () => {
   resetForm();
   dialogOpen.value = true;
   await ensureSectionsForBillDialog();
-  formSectionId.value = pickDefaultSectionId();
 };
 
 const costComponentLabel = (component: string) =>
@@ -522,7 +564,7 @@ const openEditDialog = async (bill: ShipmentApBillRow) => {
         bill.id,
       );
       formNote.value = draft.note ?? '';
-      formSectionId.value = draft.sectionId ?? pickDefaultSectionId();
+      formSectionId.value = draft.sectionId ?? null;
       if (lines.length === 0 && draft.lines.length > 0) {
         lines = draft.lines;
       }
@@ -536,9 +578,6 @@ const openEditDialog = async (bill: ShipmentApBillRow) => {
   } else {
     lines.forEach((l) => ensureComponentOption(l.cost_component));
     formLines.value = mapCostLinesToForm(lines);
-  }
-  if (formSectionId.value == null) {
-    formSectionId.value = pickDefaultSectionId();
   }
 };
 
@@ -558,7 +597,6 @@ const submitDialog = async () => {
   if (lines.length === 0) return;
   const note = billNotePayload(formNote.value);
   const sectionMeta = buildSectionMeta();
-  if (!sectionMeta) return;
   saving.value = true;
   try {
     if (editBillId.value) {

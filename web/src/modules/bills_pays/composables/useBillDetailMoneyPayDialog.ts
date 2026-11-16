@@ -1,7 +1,12 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { PROFILE_CASH_DEFAULT_METHOD } from 'src/modules/people/constants/profileCashMovementMethods';
-import { applyDepositCacheUpdate } from './applyDepositCacheUpdate';
+import {
+  applyDepositCacheUpdate,
+  invalidateProfileCashbookStaffQueries,
+} from './applyDepositCacheUpdate';
+import { useBillPayCashbookLegsStore } from '../stores/billPayCashbookLegsStore';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -18,7 +23,6 @@ import type {
   MoneyPaySubmitPayload,
   MoneyPaySummaryContext,
 } from '../types/moneyPayDialog';
-import type { BillPayCashbookLegs } from '../types/billPayCashbookLegs';
 import { moneyKernelRepository } from '../repositories/moneyKernelRepository';
 import { createPayIdempotencyKey } from '../repositories/paysRepository';
 import { buildKernelPayMovementMeta } from '../utils/kernelPayMovementMeta';
@@ -32,10 +36,13 @@ export function useBillDetailMoneyPayDialog(options: {
   paymentDueAmount: ComputedRef<number>;
   paymentDueCurrencyCode: ComputedRef<string>;
   billShipmentId: ComputedRef<number | null>;
-  payCashbookLegs?: ComputedRef<BillPayCashbookLegs | null | undefined>;
+  booksTenantId: ComputedRef<number>;
+  staffOperatingTenantId: ComputedRef<number>;
 }) {
   const authStore = useAuthStore();
   const queryClient = useQueryClient();
+  const payCashbookLegsStore = useBillPayCashbookLegsStore();
+  const { payCashbookLegs } = storeToRefs(payCashbookLegsStore);
   const dialogOpen = ref(false);
   const booksCurrencyCode = useBooksCurrencyCode();
   const recordPaymentMutation = useRecordBillPaymentMutation(() => options.billId.value);
@@ -65,14 +72,39 @@ export function useBillDetailMoneyPayDialog(options: {
       ?? null,
   );
 
-  const legBooksTenantId = computed(() => options.operatingTenantId.value);
+  const arPayerProfileId = computed(
+    () =>
+      options.bill.value?.from_profile_id
+      ?? options.bill.value?.from_profile?.id
+      ?? options.billProfileId.value
+      ?? null,
+  );
+
+  const legBooksTenantId = computed(() => options.booksTenantId.value);
 
   const bundleLegsReady = computed(() => {
-    const legs = options.payCashbookLegs?.value;
+    const legs = payCashbookLegs.value;
     if (!legs) return false;
     const dueCur = options.paymentDueCurrencyCode.value.trim().toUpperCase() || 'BDT';
-    return legs.currency_code === dueCur;
+    const legCur = legs.currency_code.trim().toUpperCase() || 'BDT';
+    if (legCur === dueCur) return true;
+    const hasDuePot = (leg: typeof legs.from_leg) =>
+      leg?.pots.some((p) => p.currency_code.trim().toUpperCase() === dueCur) ?? false;
+    return hasDuePot(legs.from_leg) || hasDuePot(legs.to_leg);
   });
+
+  const storeLegForProfile = (
+    side: 'from' | 'to',
+    profileId: ComputedRef<number | null | undefined>,
+  ) =>
+    computed(() => {
+      const legs = payCashbookLegs.value;
+      const pid = profileId.value;
+      if (!legs || pid == null || pid <= 0) return null;
+      const leg = side === 'from' ? legs.from_leg : legs.to_leg;
+      if (!leg || leg.profile_id !== pid) return null;
+      return leg;
+    });
 
   const apLegsEnabled = computed(
     () => options.isApBill.value && legBooksTenantId.value > 0 && dialogOpen.value,
@@ -82,33 +114,10 @@ export function useBillDetailMoneyPayDialog(options: {
     () => !options.isApBill.value && legBooksTenantId.value > 0 && dialogOpen.value,
   );
 
-  const bundledApFromLeg = computed(() => {
-    const legs = options.payCashbookLegs?.value;
-    if (!legs || !bundleLegsReady.value) return null;
-    return legs.from_leg;
-  });
-
-  const bundledApToLeg = computed(() => {
-    const legs = options.payCashbookLegs?.value;
-    if (!legs || !bundleLegsReady.value) return null;
-    return legs.to_leg;
-  });
-
-  const bundledArToLeg = computed(() => bundledApToLeg.value);
-
-  const bundledArFromLeg = computed(() => {
-    const legs = options.payCashbookLegs?.value;
-    if (!legs || !bundleLegsReady.value) return null;
-    return legs.from_leg;
-  });
-
-  const arPayerProfileId = computed(
-    () =>
-      options.bill.value?.from_profile_id
-      ?? options.bill.value?.from_profile?.id
-      ?? options.billProfileId.value
-      ?? null,
-  );
+  const bundledApFromLeg = storeLegForProfile('from', apPayFromProfileId);
+  const bundledApToLeg = storeLegForProfile('to', apPayToProfileId);
+  const bundledArToLeg = storeLegForProfile('to', arReceiveProfileId);
+  const bundledArFromLeg = storeLegForProfile('from', arPayerProfileId);
 
   const arDualCashbook = computed(
     () =>
@@ -462,9 +471,9 @@ export function useBillDetailMoneyPayDialog(options: {
 
   const payDepositMutation = useMutation({
     mutationFn: async (payload: MoneyPaySubmitPayload) => {
-      const tenantId = options.operatingTenantId.value;
+      const booksTenantId = options.booksTenantId.value;
       const profileId = payDepositProfileId.value;
-      if (!tenantId || profileId == null) {
+      if (!booksTenantId || profileId == null) {
         throw new Error('Cash profile not ready.');
       }
       const amount = Number(payload.amount);
@@ -486,7 +495,7 @@ export function useBillDetailMoneyPayDialog(options: {
         payload.legLocationCode?.trim()
         || undefined;
       const deposit = await moneyKernelRepository.deposit({
-        tenantId,
+        tenantId: booksTenantId,
         profileId,
         amount,
         currencyCode: currency,
@@ -500,7 +509,7 @@ export function useBillDetailMoneyPayDialog(options: {
       });
       return {
         deposit,
-        tenantId,
+        booksTenantId,
         profileId,
         billId: options.billId.value,
         locationCode: locationCode ?? null,
@@ -512,7 +521,7 @@ export function useBillDetailMoneyPayDialog(options: {
       showSuccessNotification('Deposit posted.');
       payDepositDialogOpen.value = false;
       applyDepositCacheUpdate(queryClient, {
-        booksTenantId: result.tenantId,
+        booksTenantId: result.booksTenantId,
         profileId: result.profileId,
         billId: result.billId,
         locationCode: result.locationCode,
@@ -520,6 +529,30 @@ export function useBillDetailMoneyPayDialog(options: {
         legBooksRate: result.legBooksRate,
         deposit: result.deposit,
       });
+      const staffOperatingId = options.staffOperatingTenantId.value;
+      const booksId = result.booksTenantId;
+      let entityType = 'tenant';
+      let entityId = booksId;
+      if (payDepositPurpose.value === 'to_new_bundle') {
+        entityType = 'tenant';
+        entityId = booksId;
+      } else if (options.isApBill.value) {
+        entityType = 'tenant';
+        entityId = booksId;
+      } else if (arDualCashbook.value) {
+        entityType = 'customer';
+        const subjectId = options.bill.value?.from_profile?.subject_id;
+        entityId = subjectId != null ? Number(subjectId) : 0;
+      }
+      if (staffOperatingId > 0 && entityId > 0) {
+        invalidateProfileCashbookStaffQueries(queryClient, {
+          operatingTenantId: staffOperatingId,
+          booksTenantId: booksId,
+          entityType,
+          entityId,
+          profileId: result.profileId,
+        });
+      }
       const newPotId = result.deposit.pot_id;
       if (Number.isFinite(newPotId) && newPotId > 0) {
         if (payDepositPurpose.value === 'to_new_bundle') {

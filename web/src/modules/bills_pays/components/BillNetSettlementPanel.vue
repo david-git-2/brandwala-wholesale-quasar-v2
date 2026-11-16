@@ -6,7 +6,7 @@
       class="text-caption text-grey-7 q-mb-xs bill-total-row"
     >
       <span>Rate</span>
-      <span class="font-mono">{{ invoiceRate }} BDT per 1 {{ invoiceCurrency }}</span>
+      <span class="font-mono">{{ invoiceRate }} BDT per 1 {{ invoiceCurrencyLabel }}</span>
     </div>
     <div v-if="loading" class="text-caption text-grey-6">Loading balances…</div>
     <template v-else-if="balances">
@@ -71,7 +71,11 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h } from 'vue';
-import { formatAmountBdt, formatSettlementCurrencyAmount } from 'src/utils/currency';
+import {
+  formatAmountBdt,
+  formatSettlementCurrencyAmount,
+  settlementCurrencyDisplayLabel,
+} from 'src/utils/currency';
 import type { BillNetBalances } from '../types/billBalances';
 import type { VendorRefundReceiptBucket } from '../utils/paymentHistoryDisplay';
 import { apBillPaperForeignTotal } from '../utils/apBillBooks';
@@ -107,6 +111,7 @@ const props = defineProps<{
   isAp: boolean;
   loading?: boolean;
   channelMeta?: Record<string, unknown> | null;
+  settlementCurrencyCode?: string | null;
   /** Issued credit notes with due &gt; 0 (for “still open on …”). */
   openCreditNoteNos?: string[];
   /** Cash refunds grouped by settlement currency (from payment history). */
@@ -137,19 +142,34 @@ const refundReceiptRows = computed(() => {
 
 function refundRowLabel(currencyCode: string): string {
   if (currencyCode === 'BDT') return 'Refund received from vendor';
-  return `Refund received (${currencyCode})`;
+  return `Refund received (${settlementCurrencyDisplayLabel(currencyCode)})`;
 }
 
-const invoiceCurrency = computed(() =>
-  props.isAp ? apBillPaperCurrencyCode(props.channelMeta ?? null) : 'BDT',
-);
+const invoiceCurrency = computed(() => {
+  const fromProp = props.settlementCurrencyCode?.trim().toUpperCase();
+  if (fromProp && fromProp !== 'BDT') return fromProp;
+  return props.isAp ? apBillPaperCurrencyCode(props.channelMeta ?? null) : 'BDT';
+});
+
+const invoiceCurrencyLabel = computed(() => settlementCurrencyDisplayLabel(invoiceCurrency.value));
+
 const invoiceRate = computed(() => apBillPaperConversionRate(props.channelMeta ?? null));
-const foreignPaperTotal = computed(() =>
-  Math.max(0, Number(apBillPaperForeignTotal(props.channelMeta ?? null) ?? 0)),
-);
+const foreignPaperTotal = computed(() => {
+  const fromPaper = Math.max(0, Number(apBillPaperForeignTotal(props.channelMeta ?? null) ?? 0));
+  if (fromPaper > 0) return fromPaper;
+  if (invoiceCurrency.value !== 'BDT' && props.balances) {
+    const original = Math.max(0, Number(props.balances.original_total) || 0);
+    if (original > 0) return original;
+  }
+  return 0;
+});
 
 const isDualCurrency = computed(
   () => props.isAp && invoiceCurrency.value !== 'BDT' && foreignPaperTotal.value > 0,
+);
+
+const foreignFaceOnly = computed(
+  () => props.isAp && invoiceCurrency.value !== 'BDT' && !isDualCurrency.value,
 );
 
 const amountAfterNotes = computed(() => {
@@ -197,10 +217,13 @@ function booksToForeignFace(books: number, hint?: 'original' | 'due'): number {
 
 function dualAmount(books: number, hint?: 'original' | 'due'): DualAmountDisplay {
   const b = Number(books) || 0;
+  const code = invoiceCurrency.value;
+  if (foreignFaceOnly.value) {
+    return { primary: formatSettlementCurrencyAmount(b, code), secondary: null };
+  }
   if (!isDualCurrency.value) {
     return { primary: formatAmountBdt(b), secondary: null };
   }
-  const code = invoiceCurrency.value;
   const fx = booksToForeignFace(b, hint);
   return {
     primary: formatSettlementCurrencyAmount(fx, code),
@@ -225,11 +248,14 @@ const notesAdjustmentCaption = computed(() => {
 
 function formatNoteDelta(label: string, books: number, subtract: boolean): string {
   const sign = subtract ? '−' : '+';
+  const code = invoiceCurrency.value;
+  if (foreignFaceOnly.value) {
+    return `${label} ${sign}${formatSettlementCurrencyAmount(books, code)}`;
+  }
   if (!isDualCurrency.value) {
     return `${label} ${sign}${formatAmountBdt(books)}`;
   }
   const fx = booksToForeignFace(books);
-  const code = invoiceCurrency.value;
   return `${label} ${sign}${formatSettlementCurrencyAmount(fx, code)} (${formatAmountBdt(books)})`;
 }
 

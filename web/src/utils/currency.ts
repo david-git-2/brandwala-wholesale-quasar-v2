@@ -54,6 +54,22 @@ export const SETTLEMENT_CURRENCY_SYMBOL: Record<string, string> = {
   EUR: '€',
 };
 
+/** Symbol for UI labels — ignores `currency_symbol` when it is the ISO code. */
+export const resolveSettlementCurrencySymbol = (
+  currencyCode: string,
+  currencySymbol?: string | null,
+): string | null => {
+  const code = (currencyCode || 'BDT').trim().toUpperCase();
+  const sym = currencySymbol?.trim();
+  if (sym && sym.toUpperCase() !== code) return sym;
+  return SETTLEMENT_CURRENCY_SYMBOL[code] ?? null;
+};
+
+export const settlementCurrencyDisplayLabel = (
+  currencyCode: string,
+  currencySymbol?: string | null,
+): string => resolveSettlementCurrencySymbol(currencyCode, currencySymbol) ?? (currencyCode || 'BDT').trim().toUpperCase();
+
 /** Foreign or BDT settlement leg — never uses ৳ unless currency is BDT. */
 export const formatSettlementCurrencyAmount = (
   value: number | string | null | undefined,
@@ -62,7 +78,7 @@ export const formatSettlementCurrencyAmount = (
 ): string => {
   const code = (currencyCode || 'BDT').toUpperCase();
   const formatted = formatAmountBdt(value);
-  const sym = currencySymbol?.trim() || SETTLEMENT_CURRENCY_SYMBOL[code];
+  const sym = resolveSettlementCurrencySymbol(code, currencySymbol);
   if (sym) return `${sym}${formatted}`;
   return `${formatted} ${code}`;
 };

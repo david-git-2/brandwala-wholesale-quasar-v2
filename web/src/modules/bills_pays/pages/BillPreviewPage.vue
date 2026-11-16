@@ -45,7 +45,9 @@
             </div>
             <div class="text-caption text-grey-7">{{ bill.invoice_date }}</div>
             <div v-if="bill.due_date" class="text-caption">Due {{ bill.due_date }}</div>
-            <div v-if="bill.currency_code" class="text-caption text-grey-7">{{ bill.currency_code }}</div>
+            <div v-if="billSettlementCurrencyLabel" class="text-caption text-grey-7">
+              {{ billSettlementCurrencyLabel }}
+            </div>
           </div>
         </template>
         <template v-else>
@@ -123,14 +125,16 @@
                   class="text-caption text-weight-bold text-grey-8 q-mb-xs text-uppercase"
                   style="letter-spacing: 0.04em"
                 >
-                  {{ group.currency_code }}
+                  {{ settlementCurrencyDisplayLabel(group.currency_code) }}
                 </div>
                 <div class="total-row">
                   <span>Total</span><span class="font-mono">{{ group.totalLabel }}</span>
                 </div>
                 <div v-if="group.conversionRate" class="total-row text-caption text-grey-7">
                   <span>Rate</span>
-                  <span class="font-mono">{{ group.conversionRate }} BDT per 1 {{ group.currency_code }}</span>
+                  <span class="font-mono">
+                    {{ group.conversionRate }} BDT per 1 {{ settlementCurrencyDisplayLabel(group.currency_code) }}
+                  </span>
                 </div>
                 <div class="total-row">
                   <span>Paid</span>
@@ -221,7 +225,7 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuery } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { formatAmountBdt } from 'src/utils/currency';
+import { formatAmountBdt, settlementCurrencyDisplayLabel } from 'src/utils/currency';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/sales_invoice/types';
 import { billsRepository, type InvoiceBrand } from '../repositories/billsRepository';
 import BarcodeRenderer from 'src/modules/thrift/barcode/components/BarcodeRenderer.vue';
@@ -330,6 +334,12 @@ const apCurrencyBalances = computed(() => {
     bill.value.paid_amount,
     bill.value.due_amount,
   );
+});
+
+const billSettlementCurrencyLabel = computed(() => {
+  const code = apCurrencyBalances.value?.[0]?.currency_code ?? bill.value?.currency_code;
+  if (!code) return null;
+  return settlementCurrencyDisplayLabel(code);
 });
 const lines = computed(() => (itemsQuery.data.value ?? []) as GlobalInvoiceItemRow[]);
 

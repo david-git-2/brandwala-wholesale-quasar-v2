@@ -772,6 +772,43 @@ const setSettingsTabRouteQuery = async (tab: ShipmentSettingsDrawerTab | null) =
   await router.replace({ query: nextQuery });
 };
 
+const SECTION_ROUTE_ALL = 'all';
+
+const sectionFromRoute = (): string | undefined => {
+  const q = route.query.section;
+  return typeof q === 'string' && q.trim() ? q.trim() : undefined;
+};
+
+const sheetIdFromRouteSection = (
+  raw: string | undefined,
+  sections: Array<{ id: number }> | null | undefined,
+): string | null => {
+  if (!raw?.trim()) return null;
+  const v = raw.trim();
+  if (v.toLowerCase() === SECTION_ROUTE_ALL) return 'sheet_all';
+  const id = Number(v);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  if (sections?.some((s) => s.id === id)) return `section_${id}`;
+  return null;
+};
+
+const routeSectionFromSheetId = (sheetId: string): string | null => {
+  if (sheetId === 'sheet_all') return SECTION_ROUTE_ALL;
+  const match = /^section_(\d+)$/.exec(sheetId);
+  return match?.[1] ?? null;
+};
+
+const setSectionRouteQuery = async (sheetId: string) => {
+  const nextQuery = { ...route.query };
+  const mapped = routeSectionFromSheetId(sheetId);
+  if (mapped) {
+    nextQuery.section = mapped;
+  } else {
+    delete nextQuery.section;
+  }
+  await router.replace({ query: nextQuery });
+};
+
 const syncSettingsDrawerFromRoute = () => {
   const fromQuery = settingsTabFromRoute();
   if (fromQuery) {
@@ -2493,7 +2530,22 @@ const onSheetTabChange = (id: string) => {
   hasUserSelectedSheet.value = true;
   activeSheetId.value = id;
   selectedItemIds.value = [];
+  void setSectionRouteQuery(id);
 };
+
+const syncActiveSheetFromRoute = () => {
+  const sections = shipmentStore.currentShipmentSections;
+  if (!sections?.length) return;
+  const fromRoute = sheetIdFromRouteSection(sectionFromRoute(), sections);
+  if (!fromRoute) return;
+  if (!sheets.value.some((s) => s.id === fromRoute)) return;
+  if (activeSheetId.value === fromRoute) return;
+  hasUserSelectedSheet.value = true;
+  activeSheetId.value = fromRoute;
+  selectedItemIds.value = [];
+};
+
+watch(() => route.query.section, syncActiveSheetFromRoute);
 
 watch(
   () => shipmentStore.currentShipmentSections,
@@ -2512,10 +2564,22 @@ watch(
       ];
       sheets.value = generated;
       const defaultSectionId = firstSectionSheetId(sections);
+      const fromRoute = sheetIdFromRouteSection(sectionFromRoute(), sections);
+
+      if (fromRoute && generated.some((s) => s.id === fromRoute)) {
+        hasUserSelectedSheet.value = true;
+        activeSheetId.value = fromRoute;
+        return;
+      }
+
       const activeStillValid = generated.some((s) => s.id === activeSheetId.value);
 
       if (!activeStillValid) {
-        activeSheetId.value = defaultSectionId ?? 'sheet_all';
+        const next = defaultSectionId ?? 'sheet_all';
+        activeSheetId.value = next;
+        if (hasUserSelectedSheet.value) {
+          void setSectionRouteQuery(next);
+        }
       } else if (!hasUserSelectedSheet.value && activeSheetId.value === 'sheet_all' && defaultSectionId) {
         activeSheetId.value = defaultSectionId;
       }
@@ -2710,8 +2774,10 @@ const onSaveSectionSheet = async (data: SectionFormData) => {
     }
 
     if (createdDbId) {
+      const sheetId = `section_${createdDbId}`;
       hasUserSelectedSheet.value = true;
-      activeSheetId.value = `section_${createdDbId}`;
+      activeSheetId.value = sheetId;
+      void setSectionRouteQuery(sheetId);
     }
     setTimeout(() => excelBottomBarRef.value?.scrollToTab('end'), 50);
   }

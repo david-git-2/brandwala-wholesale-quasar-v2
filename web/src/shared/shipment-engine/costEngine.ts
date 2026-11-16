@@ -358,6 +358,17 @@ const sumByType = (entries: CostEntryInput[], costType: string): number => {
   return total;
 };
 
+/** Sum of freight-bucket (cargo) cost lines — used for £/kg preview. */
+export function sumFreightBucketAmount(entries: CostEntryInput[]): number {
+  let total = 0;
+  for (const e of entries) {
+    if (e.cost_bucket === 'freight' || entryCostType(e) === 'cargo') {
+      total += Number(e.amount) || 0;
+    }
+  }
+  return total;
+}
+
 /** Money-weighted average FX for a cost_type (total BDT ÷ total foreign on matching rows). */
 export const effectiveRateForType = (
   entries: CostEntryInput[],
@@ -430,7 +441,7 @@ export function costingShipmentFromEntries(
   const headerProductRate = shipment.product_conversion_rate ?? 1.0;
   const headerCargoRate = shipment.cargo_conversion_rate ?? 1.0;
   const productAmount = hasEntries ? sumByType(entries, 'product') : 0;
-  const cargoAmount = hasEntries ? sumByType(entries, 'cargo') : 0;
+  const cargoAmount = hasEntries ? sumFreightBucketAmount(entries) : 0;
   const productRate =
     productAmount > 0
       ? effectiveRateForType(entries, 'product', headerProductRate)

@@ -1117,7 +1117,7 @@ DECLARE
 BEGIN
   v_section_id := NULLIF(btrim(COALESCE(p_meta->>'section_id', '')), '')::bigint;
   IF v_section_id IS NULL THEN
-    RAISE EXCEPTION 'invalid_arguments: meta.section_id is required';
+    RETURN jsonb_build_object('section_id', null, 'section_title', null);
   END IF;
 
   SELECT gss.title INTO v_title

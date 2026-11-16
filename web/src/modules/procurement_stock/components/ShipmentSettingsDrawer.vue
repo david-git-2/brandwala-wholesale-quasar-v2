@@ -180,12 +180,23 @@
               <div class="text-h5 text-weight-bolder font-mono text-primary q-mt-xs">
                 {{ formatMoney(currentCostCurrencySymbol, totals.totalCost) }}
               </div>
-              <div class="text-caption text-grey-7 q-mt-xs">
-                <template v-if="summaryPreviewTransactionRate != null">
-                  Line preview rate {{ currentCostCurrencySymbol }}{{ summaryPreviewTransactionRate.toFixed(4) }}
-                  / {{ currentPurchaseCurrencySymbol }}
-                </template>
-                <template v-else>Line preview rate needs product prices and freight</template>
+              <div class="row items-center no-wrap q-gutter-x-xs q-mt-xs">
+                <div class="text-caption text-grey-7">
+                  <template v-if="summaryPreviewTransactionRate != null">
+                    Line preview rate {{ currentCostCurrencySymbol }}{{ summaryPreviewTransactionRate.toFixed(4) }}
+                    / {{ currentPurchaseCurrencySymbol }}
+                  </template>
+                  <template v-else>Line preview rate needs product prices and freight</template>
+                </div>
+                <TfBtn
+                  v-if="summaryPreviewTransactionRate != null && linePreviewRateBreakdown"
+                  variant="icon"
+                  size="sm"
+                  icon="ph ph-info"
+                  aria-label="How line preview rate is calculated"
+                  class="line-preview-rate-info-btn"
+                  @click="linePreviewRateDialogOpen = true"
+                />
               </div>
             </div>
 
@@ -248,8 +259,8 @@
             <div class="bg-white rounded-borders border-grey overflow-hidden">
               <div class="summary-cost-row summary-cost-row--head text-xxs text-weight-bold text-grey-6 uppercase">
                 <span>Cost file total</span>
-                <span class="text-right" />
-                <span class="text-right">Amount</span>
+                <span class="text-right">By currency</span>
+                <span class="text-right">Buy ({{ currentPurchaseCurrencySymbol }})</span>
               </div>
               <div class="text-xxs text-grey-7 q-px-sm q-pt-sm q-pb-xs">
                 Sum of all cost lines on the Costs tab (recorded shipment costs, not cash paid yet).
@@ -259,10 +270,19 @@
                 :key="row.bucket"
                 class="summary-cost-row"
               >
-                <span class="text-grey-7">{{ row.label }}</span>
-                <span />
+                <span class="text-grey-7">{{ bucketSummaryLabel(row.bucket) }}</span>
+                <span class="column text-xxs text-grey-6 min-width-0">
+                  <span
+                    v-for="leg in row.foreignLegs"
+                    :key="`${row.bucket}-${leg.currency_code}`"
+                    class="font-mono"
+                  >
+                    {{ leg.currency_code }} {{ formatForeignLegAmount(leg.amount) }}
+                  </span>
+                  <span v-if="row.foreignLegs.length === 0">—</span>
+                </span>
                 <span class="text-right font-mono text-weight-medium text-grey-9">
-                  {{ formatMoney(currentCostCurrencySymbol, row.amount) }}
+                  {{ formatMoney(currentPurchaseCurrencySymbol, row.buyInPurchaseCurrency) }}
                 </span>
               </div>
               <div v-if="costFileBucketRows.length === 0" class="q-pa-sm text-caption text-grey-6">
@@ -272,7 +292,7 @@
                 <span>File total</span>
                 <span />
                 <span class="text-right font-mono text-primary">
-                  {{ formatMoney(currentCostCurrencySymbol, costFileTotal) }}
+                  {{ formatMoney(currentPurchaseCurrencySymbol, costFileTotal) }}
                 </span>
               </div>
             </div>
@@ -474,18 +494,23 @@
               v-if="sectionSummaryRows.length > 0"
               class="bg-white rounded-borders border-grey overflow-hidden"
             >
-              <div class="summary-cost-row summary-cost-row--head text-xxs text-weight-bold text-grey-6 uppercase">
+              <div
+                class="summary-section-row summary-section-row--head text-xxs text-weight-bold text-grey-6 uppercase"
+              >
                 <span>By section</span>
                 <span class="text-right">Units</span>
-                <span class="text-right">Buy / Landed</span>
+                <span class="text-right">Kg</span>
+                <span class="text-right">Product</span>
+                <span class="text-right">Freight</span>
+                <span class="text-right">Landed</span>
               </div>
               <div class="text-xxs text-grey-7 q-px-sm q-pt-sm q-pb-xs">
-                Line totals per section (freight allocated by line weight in landed column).
+                Product and freight in buy currency; landed includes allocated freight (BDT).
               </div>
               <div
                 v-for="row in sectionSummaryRows"
                 :key="row.key"
-                class="summary-cost-row"
+                class="summary-section-row"
               >
                 <span class="column min-width-0">
                   <span class="text-grey-9 text-weight-medium ellipsis">{{ row.title }}</span>
@@ -496,62 +521,71 @@
                 <span class="text-right font-mono text-caption text-grey-9">
                   {{ row.quantity.toLocaleString() }}
                 </span>
-                <span class="text-right column items-end">
-                  <span class="font-mono text-caption text-grey-9">
-                    {{ formatMoney(currentPurchaseCurrencySymbol, row.goodsPurchase) }}
-                  </span>
-                  <span class="font-mono text-caption text-grey-7">
-                    {{ formatMoney(currentCostCurrencySymbol, row.goodsLanded) }}
-                  </span>
+                <span class="text-right font-mono text-caption text-grey-9">
+                  {{ row.weightKg.toFixed(2) }}
+                </span>
+                <span class="text-right font-mono text-caption text-grey-9">
+                  {{ formatMoney(currentPurchaseCurrencySymbol, row.goodsPurchase) }}
+                </span>
+                <span class="text-right font-mono text-caption text-grey-9">
+                  {{ formatMoney(currentPurchaseCurrencySymbol, row.freightPurchase) }}
+                </span>
+                <span class="text-right font-mono text-caption text-primary">
+                  {{ formatMoney(currentCostCurrencySymbol, row.goodsLanded) }}
                 </span>
               </div>
-              <div class="summary-cost-row summary-cost-row--total">
+              <div class="summary-section-row summary-section-row--total">
                 <span>Shipment total</span>
                 <span class="text-right font-mono">
                   {{ sectionSummaryGrand.quantity.toLocaleString() }}
                 </span>
-                <span class="text-right column items-end">
-                  <span class="font-mono">
-                    {{ formatMoney(currentPurchaseCurrencySymbol, sectionSummaryGrand.goodsPurchase) }}
-                  </span>
-                  <span class="font-mono text-primary">
-                    {{ formatMoney(currentCostCurrencySymbol, sectionSummaryGrand.goodsLanded) }}
-                  </span>
+                <span class="text-right font-mono">
+                  {{ sectionSummaryGrand.weightKg.toFixed(2) }}
+                </span>
+                <span class="text-right font-mono">
+                  {{ formatMoney(currentPurchaseCurrencySymbol, sectionSummaryGrand.goodsPurchase) }}
+                </span>
+                <span class="text-right font-mono">
+                  {{ formatMoney(currentPurchaseCurrencySymbol, sectionSummaryGrand.freightPurchase) }}
+                </span>
+                <span class="text-right font-mono text-primary">
+                  {{ formatMoney(currentCostCurrencySymbol, sectionSummaryGrand.goodsLanded) }}
                 </span>
               </div>
             </div>
 
             <div class="bg-white rounded-borders border-grey overflow-hidden">
               <div class="summary-cost-row summary-cost-row--head text-xxs text-weight-bold text-grey-6 uppercase">
-                <span>Cost</span>
+                <span>Cost by bucket</span>
                 <span class="text-right">Buy ({{ currentPurchaseCurrencySymbol }})</span>
                 <span class="text-right">Landed ({{ currentCostCurrencySymbol }})</span>
               </div>
-              <div class="summary-cost-row">
-                <span class="text-grey-7">Product</span>
+              <div class="text-xxs text-grey-7 q-px-sm q-pt-sm q-pb-xs">
+                Worksheet buckets with preview landed (capitalizable rows). BDT column uses material / freight FX.
+              </div>
+              <div
+                v-for="row in landedCostBucketRows"
+                :key="`landed-${row.bucket}`"
+                class="summary-cost-row"
+              >
+                <span class="text-grey-7">{{ bucketSummaryLabel(row.bucket) }}</span>
                 <span class="text-right font-mono text-weight-medium text-grey-9">
-                  {{ formatMoney(currentPurchaseCurrencySymbol, totals.goodsPurchase) }}
+                  {{ formatMoney(currentPurchaseCurrencySymbol, row.buyInPurchaseCurrency) }}
                 </span>
                 <span class="text-right font-mono text-weight-medium text-grey-9">
-                  {{ formatMoney(currentCostCurrencySymbol, totals.goodsCost) }}
+                  {{ formatMoney(currentCostCurrencySymbol, row.bdtPreview) }}
                 </span>
               </div>
-              <div class="summary-cost-row">
-                <span class="text-grey-7">Cargo</span>
-                <span class="text-right font-mono text-weight-medium text-grey-9">
-                  {{ formatMoney(currentPurchaseCurrencySymbol, totals.cargoPurchase) }}
-                </span>
-                <span class="text-right font-mono text-weight-medium text-grey-9">
-                  {{ formatMoney(currentCostCurrencySymbol, totals.cargoCost) }}
-                </span>
+              <div v-if="landedCostBucketRows.length === 0" class="q-pa-sm text-caption text-grey-6">
+                No bucket costs yet.
               </div>
               <div class="summary-courier-row">
                 <div class="text-xxs text-weight-bold uppercase" style="letter-spacing: 0.4px">
-                  Courier cost in GBP/kg
+                  Freight per kg ({{ currentPurchaseCurrencySymbol }})
                 </div>
                 <div class="text-subtitle1 text-weight-bolder font-mono">
-                  <template v-if="courierCostPerKg != null">
-                    {{ currentPurchaseCurrencySymbol }}{{ courierCostPerKg.toFixed(4) }}
+                  <template v-if="freightPerKgPreview != null && freightPerKgPreview > 0">
+                    {{ currentPurchaseCurrencySymbol }}{{ freightPerKgPreview.toFixed(4) }}
                     <span class="text-caption text-weight-medium">/ kg</span>
                   </template>
                   <template v-else>—</template>
@@ -560,10 +594,10 @@
               <div class="summary-cost-row summary-cost-row--total">
                 <span>Total</span>
                 <span class="text-right font-mono">
-                  {{ formatMoney(currentPurchaseCurrencySymbol, totals.totalPurchase) }}
+                  {{ formatMoney(currentPurchaseCurrencySymbol, bucketBuyGrandTotal) }}
                 </span>
                 <span class="text-right font-mono text-primary">
-                  {{ formatMoney(currentCostCurrencySymbol, totals.totalCost) }}
+                  {{ formatMoney(currentCostCurrencySymbol, bucketLandedGrandTotal) }}
                 </span>
               </div>
             </div>
@@ -929,13 +963,21 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <ShipmentLinePreviewRateDialog
+      v-model="linePreviewRateDialogOpen"
+      :breakdown="linePreviewRateBreakdown"
+    />
   </AppResizableOverlayPanel>
 </template>
 
 <script setup lang="ts">
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
+import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import TfDrawerSectionTabsHeader from 'src/components/ui/TfDrawerSectionTabsHeader.vue';
+import ShipmentLinePreviewRateDialog from './ShipmentLinePreviewRateDialog.vue';
+import { buildLinePreviewRateBreakdown } from '../utils/linePreviewRateBreakdown';
 import { ref, computed, watch, unref, onBeforeUnmount } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
@@ -954,6 +996,14 @@ import {
   sumProductEntryAmount,
 } from 'src/shared/shipment-engine';
 import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
+import {
+  aggregateCostEntriesByBucket,
+  aggregateSectionLines,
+  applyMaterialLineListFallback,
+  sumBucketBdtPreview,
+  sumBucketBuyInPurchase,
+  freightPerKgFromBucketSummary,
+} from '../utils/shipmentCostBucketSummary';
 import type {
   GlobalShipmentCostBucket,
   GlobalShipmentCostComponent,
@@ -1266,6 +1316,7 @@ const confirmDeleteFromDrawer = () => {
 
 const {
   totals,
+  transactionRateWeightLabel,
   currentShipmentBoxesReceivedTotal,
   currentShipmentBoxesShippingTotal,
   currentShipmentBoxesCount,
@@ -1336,6 +1387,12 @@ const formatMoney = (symbol: string, value: number | null | undefined) => {
   return `${symbol}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
+const formatForeignLegAmount = (value: number) =>
+  Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const bucketSummaryLabel = (bucket: GlobalShipmentCostBucket) =>
+  costBucketOptions.find((o) => o.value === bucket)?.label ?? bucket;
+
 const formatSignedMoney = (symbol: string, value: number) => {
   const n = Number(value) || 0;
   const sign = n > 0 ? '+' : n < 0 ? '−' : '';
@@ -1383,6 +1440,8 @@ const summaryPreviewTransactionRate = computed(() => {
   const rate = t?.transactionRate;
   return rate != null && rate > 0 ? rate : null;
 });
+
+const linePreviewRateDialogOpen = ref(false);
 
 const apFxSnapshot = ref<ShipmentApFxSnapshot | null>(null);
 const summaryFinanceLoading = ref(false);
@@ -1434,27 +1493,95 @@ const paymentTransactionRate = computed(() => {
   return null;
 });
 
-const costFileBucketRows = computed(() => {
-  const sums = new Map<GlobalShipmentCostBucket, number>();
-  for (const bill of shipmentApBills.value) {
-    if (bill.invoice_status === 'voided') continue;
-    const bucket = bill.ap_kind as GlobalShipmentCostBucket | null;
-    if (!bucket) continue;
-    sums.set(bucket, (sums.get(bucket) ?? 0) + (Number(bill.total_amount) || 0));
-  }
-  return SHIPMENT_AP_COST_BUCKETS.map((bucket) => {
-    const amount = sums.get(bucket) ?? 0;
-    if (amount <= 0) return null;
-    const label = costBucketOptions.find((o) => o.value === bucket)?.label ?? bucket;
-    return { bucket, label, amount };
-  }).filter((row): row is { bucket: GlobalShipmentCostBucket; label: string; amount: number } =>
-    row != null,
+const summaryCostingPreview = computed(() => {
+  const shipment = shipmentStore.currentShipment;
+  if (!shipment) return null;
+  return costingShipmentForPreview(
+    shipment,
+    shipmentStore.currentCostEntries,
+    shipmentStore.settingsFinanceCachedApFx,
+    shipmentStore.currentShipmentItems,
   );
 });
 
-const costFileTotal = computed(() =>
-  costFileBucketRows.value.reduce((s, r) => s + r.amount, 0),
+const linePreviewRateBreakdown = computed(() => {
+  const rate = summaryPreviewTransactionRate.value;
+  const t = totals?.value ?? totals;
+  const forCosting = summaryCostingPreview.value;
+  if (rate == null || !t || !forCosting) return null;
+  const weightNote = String(unref(transactionRateWeightLabel) ?? '');
+  return buildLinePreviewRateBreakdown({
+    rate,
+    totals: t,
+    forCosting,
+    items: shipmentStore.currentShipmentItems ?? [],
+    apFx: apFxSnapshot.value ?? shipmentStore.settingsFinanceCachedApFx,
+    weightNote,
+    purchaseSymbol: currentPurchaseCurrencySymbol.value,
+    costSymbol: currentCostCurrencySymbol.value,
+  });
+});
+
+const bucketSummaryCurrencyResolver = computed(() => {
+  const purchaseId = shipmentStore.currentShipment?.shipment_purchase_currency_id ?? null;
+  const costId = shipmentStore.currentShipment?.shipment_cost_currency_id ?? null;
+  const fallbackCode = currentPurchaseCurrencyCode.value;
+  return {
+    purchaseCurrencyId: purchaseId,
+    costCurrencyId: costId,
+    codeById: (currencyId: number | null | undefined) => {
+      if (currencyId == null) return fallbackCode;
+      const c = currenciesData.value?.find((row) => row.id === currencyId);
+      return (c?.code ?? fallbackCode).toUpperCase();
+    },
+  };
+});
+
+const bucketSummaryRows = computed(() => {
+  const preview = summaryCostingPreview.value;
+  if (!preview) return [];
+  const entries = shipmentStore.currentCostEntries.map((e) => ({
+    cost_bucket: e.cost_bucket,
+    amount: Number(e.amount) || 0,
+    currency_id: e.currency_id ?? null,
+    is_capitalizable: e.is_capitalizable,
+  }));
+  let rows = aggregateCostEntriesByBucket(
+    entries,
+    preview,
+    bucketSummaryCurrencyResolver.value,
+  );
+  rows = applyMaterialLineListFallback(
+    rows,
+    lineListPurchaseTotal.value,
+    preview,
+    currentPurchaseCurrencyCode.value,
+  );
+  return rows;
+});
+
+const hasBucketSummaryActivity = (row: (typeof bucketSummaryRows.value)[number]) =>
+  row.buyInPurchaseCurrency > 0 || row.bdtPreview > 0 || row.foreignLegs.length > 0;
+
+const costFileBucketRows = computed(() =>
+  bucketSummaryRows.value.filter(hasBucketSummaryActivity),
 );
+
+const costFileTotal = computed(() => sumBucketBuyInPurchase(bucketSummaryRows.value));
+
+const landedCostBucketRows = computed(() =>
+  bucketSummaryRows.value.filter(hasBucketSummaryActivity),
+);
+
+const bucketBuyGrandTotal = computed(() => sumBucketBuyInPurchase(landedCostBucketRows.value));
+
+const bucketLandedGrandTotal = computed(() => sumBucketBdtPreview(landedCostBucketRows.value));
+
+const freightPerKgPreview = computed(() => {
+  const t = totals?.value ?? totals;
+  const weightKg = Number(t?.cargoWeightKg) || 0;
+  return freightPerKgFromBucketSummary(bucketSummaryRows.value, weightKg);
+});
 
 const summaryApBillRows = computed(() => {
   const order = new Map<string, number>();
@@ -1482,20 +1609,15 @@ const apBillsGrandTotal = computed(() => sumApBillsTotal(shipmentApBills.value))
 
 const apBillsDueTotal = computed(() => sumApBillsDue(shipmentApBills.value));
 
-const courierCostPerKg = computed(() => {
-  const t = totals?.value ?? totals;
-  const kg = t?.cargoWeightKg ?? 0;
-  const purchase = t?.cargoPurchase ?? 0;
-  if (kg <= 0 || purchase <= 0) return null;
-  return Math.round((purchase / kg) * 10000) / 10000;
-});
-
 type SectionSummaryRow = {
   key: string;
   title: string;
   itemCount: number;
   quantity: number;
+  weightKg: number;
   goodsPurchase: number;
+  freightPurchase: number;
+  freightLanded: number;
   goodsLanded: number;
 };
 
@@ -1542,22 +1664,32 @@ const aggregateSectionSummary = (
   const matched = items.filter(
     (it) => effectiveLineSectionId(it, shipmentStore.currentShipmentSections ?? []) === sectionId,
   );
-  let quantity = 0;
-  let goodsPurchase = 0;
-  let goodsLanded = 0;
-  for (const it of matched) {
-    const qty = Number(it.ordered_quantity) || 0;
-    quantity += qty;
-    goodsPurchase += (Number(it.purchase_price) || 0) * qty;
-    goodsLanded += resolveSummaryLineUnitLandedBdt(it, allItems) * qty;
-  }
+  const shipment = shipmentStore.currentShipment;
+  const forCosting =
+    shipment != null
+      ? costingShipmentForPreview(
+          shipment,
+          shipmentStore.currentCostEntries,
+          shipmentStore.settingsFinanceCachedApFx,
+          allItems,
+        )
+      : ({
+          type: 'international' as const,
+          product_conversion_rate: 1,
+          cargo_conversion_rate: 1,
+          cargo_rate: 0,
+          received_weight: null,
+        });
+  const metrics = aggregateSectionLines(
+    matched,
+    forCosting,
+    allItems,
+    resolveSummaryLineUnitLandedBdt,
+  );
   return {
     key: sectionId == null ? 'main' : String(sectionId),
     title,
-    itemCount: matched.length,
-    quantity,
-    goodsPurchase: Math.round(goodsPurchase * 100) / 100,
-    goodsLanded: Math.round(goodsLanded * 100) / 100,
+    ...metrics,
   };
 };
 
@@ -1602,10 +1734,14 @@ const sectionSummaryRows = computed((): SectionSummaryRow[] => {
 
 const sectionSummaryGrand = computed(() => {
   const rows = sectionSummaryRows.value;
+  const round2 = (n: number) => Math.round(n * 100) / 100;
   return {
     quantity: rows.reduce((s, r) => s + r.quantity, 0),
-    goodsPurchase: Math.round(rows.reduce((s, r) => s + r.goodsPurchase, 0) * 100) / 100,
-    goodsLanded: Math.round(rows.reduce((s, r) => s + r.goodsLanded, 0) * 100) / 100,
+    weightKg: round2(rows.reduce((s, r) => s + r.weightKg, 0)),
+    goodsPurchase: round2(rows.reduce((s, r) => s + r.goodsPurchase, 0)),
+    freightPurchase: round2(rows.reduce((s, r) => s + r.freightPurchase, 0)),
+    freightLanded: round2(rows.reduce((s, r) => s + r.freightLanded, 0)),
+    goodsLanded: round2(rows.reduce((s, r) => s + r.goodsLanded, 0)),
   };
 });
 
@@ -2541,6 +2677,25 @@ const saveShipmentWeightIfChanged = async () => {
   padding: 8px 12px;
 }
 .summary-cost-row--total {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #1e293b;
+}
+.summary-section-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) repeat(5, minmax(0, 0.65fr));
+  gap: 6px;
+  align-items: center;
+  padding: 10px 10px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 12px;
+}
+.summary-section-row--head {
+  border-top: none;
+  background: #f8fafc;
+  padding: 8px 10px;
+}
+.summary-section-row--total {
   background: #f8fafc;
   font-weight: 700;
   color: #1e293b;

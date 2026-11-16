@@ -192,6 +192,8 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     settingsFinanceCachedApFx: null as ShipmentApFxSnapshot | null,
     settingsFinanceCachedCostEntries: [] as GlobalShipmentCostEntry[],
     settingsFinanceCachedApIssueParties: null as ShipmentApIssueParties | null,
+    /** True after `get_shipment_money_kernel_bundle` succeeded (not overview preload). */
+    settingsFinanceKernelBundleLoaded: false,
     /** Bumped after `sync_shipment_ap_bills` so settings drawer can refresh AP bill chips. */
     shipmentApBillsSyncGeneration: 0,
     costEntriesSaving: false,
@@ -402,6 +404,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
             ? this.settingsFinanceCachedApFx
             : null;
         this.settingsFinanceCachedShipmentId = shipmentId;
+        this.settingsFinanceKernelBundleLoaded = false;
         this.settingsFinanceCachedApFx = overview.ap_fx;
         void this.maybeRestampLandedCostsAfterApFx(shipmentId, overview.ap_fx, prevApFx);
         if (overview.ap_bills != null) {
@@ -473,14 +476,10 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     }> {
       if (
         !options?.force &&
-        this.settingsFinanceCachedShipmentId === shipmentId
+        this.settingsFinanceCachedShipmentId === shipmentId &&
+        this.settingsFinanceKernelBundleLoaded
       ) {
-        if (
-          this.settingsFinanceCachedCostEntries.length > 0 ||
-          this.currentCostEntries.length === 0
-        ) {
-          this.currentCostEntries = this.settingsFinanceCachedCostEntries as GlobalShipmentCostEntry[];
-        }
+        this.currentCostEntries = this.settingsFinanceCachedCostEntries as GlobalShipmentCostEntry[];
         return {
           apBills: this.settingsFinanceCachedApBills,
           apFx: this.settingsFinanceCachedApFx,
@@ -501,6 +500,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.settingsFinanceCachedApFx = bundle.apFx;
         this.settingsFinanceCachedCostEntries = bundle.costEntries as GlobalShipmentCostEntry[];
         this.settingsFinanceCachedApIssueParties = bundle.apIssueParties;
+        this.settingsFinanceKernelBundleLoaded = true;
         if (this.currentShipment?.id === shipmentId) {
           this.currentShipment = mergeShipmentApFxSnapshot(this.currentShipment, bundle.apFx);
         }

@@ -17,6 +17,8 @@ export function displayBillTotal(bill: ShipmentApBillRow): number {
 }
 
 export function displayDueAmount(bill: ShipmentApBillRow): number {
+  const payStatus = bill.payment_status?.trim().toLowerCase();
+  if (payStatus === 'paid') return 0;
   const nb = bill.net_balances;
   const openBooks = nb?.open_books;
   if (openBooks != null && openBooks > 0) return openBooks;

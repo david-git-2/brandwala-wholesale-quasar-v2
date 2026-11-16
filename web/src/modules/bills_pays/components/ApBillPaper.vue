@@ -20,7 +20,7 @@
           class="text-caption text-weight-bold text-grey-8 q-mb-xs text-uppercase"
           style="letter-spacing: 0.04em"
         >
-          {{ group.currency_code }}
+          {{ currencyGroupLabel(group) }}
         </div>
 
         <q-markup-table v-if="group.lines.length" flat dense class="ap-bill-lines">
@@ -29,7 +29,7 @@
               <th class="text-left">Description</th>
               <th class="text-right">Amount</th>
               <th v-if="noteEditMode" class="text-right note-amount-col">
-                Revised ({{ group.currency_code || 'BDT' }})
+                Revised ({{ currencyGroupLabel(group) }})
               </th>
             </tr>
           </thead>
@@ -98,7 +98,7 @@
         </div>
 
         <div v-if="!noteEditMode" class="ap-bill-row text-weight-bold q-mt-sm">
-          <span>Total ({{ group.currency_code }})</span>
+          <span>Total ({{ currencyGroupLabel(group) }})</span>
           <span class="font-mono">{{ formatGroupTotal(group) }}</span>
         </div>
       </div>
@@ -179,7 +179,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { formatAmountBdt } from 'src/utils/currency';
+import {
+  formatAmountBdt,
+  formatSettlementCurrencyAmount,
+  settlementCurrencyDisplayLabel,
+} from 'src/utils/currency';
 import type {
   ApBillPaperCurrencyGroup,
   ApBillPaperLine,
@@ -234,10 +238,8 @@ const kernelDeskPaper = computed((): ApBillPaperBucketLines | null => {
       description: l.name_snapshot?.trim() || 'Line',
       amount: Number(l.line_total_amount),
       currency_code: ccy,
-      currency_symbol: ccy,
     })),
     currency_code: ccy,
-    currency_symbol: ccy,
     foreign_total: foreignTotal,
     bdt_amount: Number(props.totalAmount ?? foreignTotal),
     mixed_currencies: false,
@@ -275,7 +277,7 @@ const displayCurrencyGroups = computed((): ApBillPaperCurrencyGroup[] => {
   return [
     {
       currency_code: code,
-      currency_symbol: p.currency_symbol ?? code,
+      currency_symbol: p.currency_symbol,
       foreign_total: p.foreign_total ?? p.bdt_amount ?? 0,
       lines: p.lines,
     },
@@ -303,15 +305,23 @@ function onNoteAmount(row: BillAdjustmentDraftRow, value: number | null) {
 const formatForeign = (n: number) =>
   Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const currencyGroupLabel = (group: ApBillPaperCurrencyGroup) =>
+  settlementCurrencyDisplayLabel(group.currency_code || 'BDT', group.currency_symbol);
+
+const formatForeignAmount = (
+  amount: number,
+  currencyCode: string,
+  currencySymbol?: string | null,
+) => formatSettlementCurrencyAmount(amount, currencyCode, currencySymbol);
+
 const formatRate = (n: number) =>
   Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
 const formatWeight = (n: number) => `${Number(n).toLocaleString(undefined, { maximumFractionDigits: 3 })} kg`;
 
 const formatLineAmount = (line: ApBillPaperLine, group: ApBillPaperCurrencyGroup) => {
-  const sym = line.currency_symbol || group.currency_symbol || '';
-  const formatted = formatForeign(line.amount);
-  return sym ? `${sym}${formatted}` : formatted;
+  const code = (line.currency_code ?? group.currency_code ?? 'BDT').toUpperCase();
+  return formatForeignAmount(line.amount, code, line.currency_symbol ?? group.currency_symbol);
 };
 
 function formatDraftOrLineAmount(
@@ -324,10 +334,9 @@ function formatDraftOrLineAmount(
   if (props.noteEditMode && d?.maxAmount != null) {
     const rem = d.maxAmount;
     const orig = Number(d.originalAmount ?? line.amount);
-    const formatted = formatForeign(rem);
     const prefix = orig > rem + 0.001 ? 'left ' : '';
-    const sym = line.currency_symbol || group.currency_symbol || '';
-    return prefix + (sym ? `${sym}${formatted}` : formatted);
+    const code = (line.currency_code ?? group.currency_code ?? 'BDT').toUpperCase();
+    return prefix + formatForeignAmount(rem, code, line.currency_symbol ?? group.currency_symbol);
   }
   return formatLineAmount(line, group);
 }
@@ -339,9 +348,8 @@ function groupInvoiceTotal(group: ApBillPaperCurrencyGroup): number {
 }
 
 const formatGroupTotal = (group: ApBillPaperCurrencyGroup) => {
-  const sym = group.currency_symbol || '';
-  const formatted = formatForeign(groupInvoiceTotal(group));
-  return sym ? `${sym}${formatted}` : formatted;
+  const code = (group.currency_code ?? 'BDT').toUpperCase();
+  return formatForeignAmount(groupInvoiceTotal(group), code, group.currency_symbol);
 };
 
 function noteSumForGroup(gIdx: number, group: ApBillPaperCurrencyGroup): number {
@@ -362,9 +370,8 @@ function noteSumForGroup(gIdx: number, group: ApBillPaperCurrencyGroup): number 
 }
 
 const formatNoteGroupTotal = (group: ApBillPaperCurrencyGroup, gIdx: number) => {
-  const sym = group.currency_symbol || '';
-  const formatted = formatForeign(noteSumForGroup(gIdx, group));
-  return sym ? `${sym}${formatted}` : formatted;
+  const code = (group.currency_code ?? 'BDT').toUpperCase();
+  return formatForeignAmount(noteSumForGroup(gIdx, group), code, group.currency_symbol);
 };
 
 const showLegacyConversion = (p: ApBillPaperBucketLines | null) => {

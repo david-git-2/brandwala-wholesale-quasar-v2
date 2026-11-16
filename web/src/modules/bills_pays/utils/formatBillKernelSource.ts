@@ -1,5 +1,6 @@
 import { shipmentApKindLabel } from 'src/modules/procurement_stock/constants/shipmentApBuckets';
 import { resolveShipmentApBillKind } from 'src/modules/procurement_stock/repositories/shipmentApBillsRepository';
+import { settlementCurrencyDisplayLabel } from 'src/utils/currency';
 
 const SHIPMENT_BUCKET_SHORT: Record<string, string> = {
   vendor: 'Vendor',
@@ -45,7 +46,9 @@ export function formatBillKernelSourceKey(
     const parts = key?.split(':') ?? [];
     const currency = parts[1]?.trim().toUpperCase();
     const bucket = bucketShortLabel(kind ?? parts[0] ?? kindFallback);
-    if (bucket && currency && currency.length === 3) return `${bucket} · ${currency}`;
+    if (bucket && currency && currency.length === 3) {
+      return `${bucket} · ${settlementCurrencyDisplayLabel(currency)}`;
+    }
     if (bucket) return bucket;
     return kindFallback ? shipmentApKindLabel(kindFallback) : null;
   }

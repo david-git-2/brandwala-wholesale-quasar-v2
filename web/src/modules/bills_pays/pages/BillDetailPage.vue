@@ -92,7 +92,7 @@
               </div>
               <div class="text-caption text-grey-7 q-mt-xs">
                 {{ channelLabel }}
-                <span v-if="bill.currency_code"> · {{ bill.currency_code }}</span>
+                <span v-if="billSettlementCurrencyLabel"> · {{ billSettlementCurrencyLabel }}</span>
               </div>
               <div class="text-caption text-grey-7 q-mt-xs">
                 <button
@@ -234,6 +234,7 @@
                 :is-ap="true"
                 :loading="bundleQuery.isFetching.value"
                 :channel-meta="(bill.channel_meta as Record<string, unknown> | null) ?? null"
+                :settlement-currency-code="apBillSettlementCurrency ?? bill.currency_code ?? null"
                 :open-credit-note-nos="openApCreditNoteNos"
                 :vendor-refund-receipts="vendorRefundReceiptBuckets"
               />
@@ -650,7 +651,7 @@ import {
 } from '../utils/billRoutes';
 import { billsRepository } from '../repositories/billsRepository';
 import { billsQueryKeys } from '../services/billsQueryKeys';
-import { formatAmountBdt, formatBdtTaka } from 'src/utils/currency';
+import { formatAmountBdt, formatBdtTaka, settlementCurrencyDisplayLabel } from 'src/utils/currency';
 import { showErrorNotification, showSuccessNotification, requestConfirmation } from 'src/utils/appFeedback';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow, GlobalInvoiceRow } from 'src/modules/sales_invoice/types';
 import {
@@ -679,6 +680,7 @@ import BillKernelSourceChips from '../components/BillKernelSourceChips.vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import MoneyPayDialog from '../components/MoneyPayDialog.vue';
 import { useBillDetailMoneyPayDialog } from '../composables/useBillDetailMoneyPayDialog';
+import { useBillPayCashbookLegsStore } from '../stores/billPayCashbookLegsStore';
 import { PROFILE_CASH_DEFAULT_METHOD } from 'src/modules/people/constants/profileCashMovementMethods';
 import RecordVendorCreditRefundDialog from '../components/RecordVendorCreditRefundDialog.vue';
 import { usePostVendorCreditRefundMutation } from '../composables/usePostVendorCreditRefundMutation';
@@ -722,15 +724,33 @@ const billId = computed(() => {
   return Number.isFinite(id) && id > 0 ? id : null;
 });
 
+const staffOperatingTenantId = computed(() => authStore.selectedTenant?.id ?? 0);
+
 const operatingTenantId = computed(() => {
   const t = authStore.selectedTenant;
   if (!t?.id) return 0;
   return t.parent_id ?? t.id;
 });
 
+const booksTenantId = operatingTenantId;
+
 const bundleQuery = useBillDetailBundleQuery(billId, operatingTenantId);
 const billFromBundle = computed(() => bundleQuery.data.value?.bill);
-const payCashbookLegs = computed(() => bundleQuery.data.value?.payCashbookLegs ?? null);
+
+const payCashbookLegsStore = useBillPayCashbookLegsStore();
+
+watch(
+  () => bundleQuery.data.value?.payCashbookLegs,
+  (legs) => {
+    payCashbookLegsStore.syncFromBundleQuery(billId.value, legs);
+  },
+  { immediate: true },
+);
+
+watch(billId, (id) => {
+  if (id == null) payCashbookLegsStore.clear();
+});
+
 const billSpine = computed((): 'legacy' | 'kernel' => {
   const raw = billFromBundle.value as { spine?: string } | undefined;
   return raw?.spine === 'kernel' ? 'kernel' : 'legacy';
@@ -1040,8 +1060,19 @@ const apBillSettlementCurrency = computed(() => {
     return apCurrencyBalances.value[0].currency_code;
   }
   if (!isApBill.value || !bill.value) return null;
-  const code = apBillPaperCurrencyCode(bill.value.channel_meta as Record<string, unknown> | null);
-  return code !== 'BDT' ? code : null;
+  const fromPaper = apBillPaperCurrencyCode(bill.value.channel_meta as Record<string, unknown> | null);
+  if (fromPaper !== 'BDT') return fromPaper;
+  const header = String(bill.value.currency_code ?? '').trim().toUpperCase();
+  if (header && header !== 'BDT') return header;
+  const deskCcy = bundleQuery.data.value?.billLines?.[0]?.currency_code?.trim().toUpperCase();
+  if (deskCcy && deskCcy !== 'BDT') return deskCcy;
+  return null;
+});
+
+const billSettlementCurrencyLabel = computed(() => {
+  const code = apBillSettlementCurrency.value ?? bill.value?.currency_code;
+  if (!code) return null;
+  return settlementCurrencyDisplayLabel(code);
 });
 
 const profileName = computed(
@@ -1302,8 +1333,17 @@ const {
   paymentDueAmount,
   paymentDueCurrencyCode,
   billShipmentId,
-  payCashbookLegs,
+  booksTenantId,
+  staffOperatingTenantId,
 });
+
+watch(
+  () => bundleQuery.data.value?.payCashbookLegs,
+  (legs) => {
+    if (moneyPayDialogOpen.value || payDepositDialogOpen.value) return;
+    payCashbookLegsStore.replaceFromBundleQuery(billId.value, legs);
+  },
+);
 
 const canRecordPayment = computed(() => {
   const b = bill.value;
@@ -1386,7 +1426,10 @@ watch(
   },
 );
 
-onBeforeUnmount(() => clearCustomBreadcrumbs());
+onBeforeUnmount(() => {
+  payCashbookLegsStore.clear();
+  clearCustomBreadcrumbs();
+});
 
 const apPaperRefreshKey = ref<string | null>(null);
 

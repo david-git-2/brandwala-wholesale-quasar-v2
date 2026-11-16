@@ -11,7 +11,7 @@ export type ShipmentApBillLineInput = {
 };
 
 export type ShipmentApBillSectionMeta = {
-  section_id: number;
+  section_id?: number | null;
   section_title?: string | null;
 };
 
