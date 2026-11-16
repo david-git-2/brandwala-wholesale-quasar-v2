@@ -180,181 +180,96 @@
               <div class="text-h5 text-weight-bolder font-mono text-primary q-mt-xs">
                 {{ formatMoney(currentCostCurrencySymbol, totals.totalCost) }}
               </div>
-              <div class="row items-center no-wrap q-gutter-x-xs q-mt-xs">
-                <div class="text-caption text-grey-7">
-                  <template v-if="summaryPreviewTransactionRate != null">
-                    Line preview rate {{ currentCostCurrencySymbol }}{{ summaryPreviewTransactionRate.toFixed(4) }}
-                    / {{ currentPurchaseCurrencySymbol }}
-                  </template>
-                  <template v-else>Line preview rate needs product prices and freight</template>
-                </div>
-                <TfBtn
-                  v-if="summaryPreviewTransactionRate != null && linePreviewRateBreakdown"
-                  variant="icon"
-                  size="sm"
-                  icon="ph ph-info"
-                  aria-label="How line preview rate is calculated"
-                  class="line-preview-rate-info-btn"
-                  @click="linePreviewRateDialogOpen = true"
-                />
+              <div
+                v-if="showPaymentFxSection && summaryBillsGrandBdt > 0"
+                class="text-caption text-grey-7 q-mt-xs"
+              >
+                AP bills {{ formatMoney(currentCostCurrencySymbol, summaryBillsGrandBdt) }}
+                (preview uses paid pools where available)
               </div>
             </div>
 
-            <div
-              v-if="showPaymentFxSection"
-              class="bg-white q-pa-sm rounded-borders border-grey column q-gutter-y-sm"
-            >
-              <div class="row items-center justify-between">
+            <div class="bg-white rounded-borders border-grey overflow-hidden column">
+              <div class="row items-center justify-between q-px-sm q-pt-sm">
                 <div class="text-xxs text-weight-bold text-grey-6 uppercase" style="letter-spacing: 0.5px">
-                  Payment FX (weighted average)
+                  Bills by bucket
                 </div>
                 <q-spinner-dots v-if="summaryFinanceLoading" color="primary" size="20px" />
               </div>
-              <div class="text-xxs text-grey-7 summary-fx-hint">
-                Taka paid ÷ foreign paid on AP bills (weighted).
+              <div class="text-xxs text-grey-7 q-px-sm q-pb-xs">
+                Invoice · amount in bill currency · converted to {{ currentCostCurrencySymbol }} (books).
               </div>
-              <div class="summary-fx-grid">
-                <div class="summary-fx-card">
-                  <div class="summary-fx-card__label">Material</div>
-                  <div class="summary-fx-card__rate text-grey-9">
-                    <template v-if="materialPaymentFx.hasPayments">
-                      {{ currentCostCurrencySymbol }}{{ materialPaymentFx.rate.toFixed(4) }}/{{ currentPurchaseCurrencySymbol }}
-                    </template>
-                    <template v-else>—</template>
-                  </div>
-                  <div v-if="materialPaymentFx.hasPayments" class="summary-fx-card__sub">
-                    {{ formatMoney(currentCostCurrencySymbol, materialPaymentFx.bdtPaid) }} /
-                    {{ formatMoney(currentPurchaseCurrencySymbol, materialPaymentFx.foreignPaid) }}
-                  </div>
-                </div>
-                <div class="summary-fx-card">
-                  <div class="summary-fx-card__label">Freight</div>
-                  <div class="summary-fx-card__rate text-grey-9">
-                    <template v-if="freightPaymentFx.hasPayments">
-                      {{ currentCostCurrencySymbol }}{{ freightPaymentFx.rate.toFixed(4) }}/{{ currentPurchaseCurrencySymbol }}
-                    </template>
-                    <template v-else>—</template>
-                  </div>
-                  <div v-if="freightPaymentFx.hasPayments" class="summary-fx-card__sub">
-                    {{ formatMoney(currentCostCurrencySymbol, freightPaymentFx.bdtPaid) }} /
-                    {{ formatMoney(currentPurchaseCurrencySymbol, freightPaymentFx.foreignPaid) }}
-                  </div>
-                </div>
-                <div class="summary-fx-card summary-fx-card--blend">
-                  <div class="summary-fx-card__label">Txn blend</div>
-                  <div class="summary-fx-card__rate text-primary">
-                    <template v-if="paymentTransactionRate != null">
-                      {{ currentCostCurrencySymbol }}{{ paymentTransactionRate.toFixed(4) }}/{{ currentPurchaseCurrencySymbol }}
-                    </template>
-                    <template v-else>—</template>
-                  </div>
-                  <div v-if="paymentTransactionRate != null" class="summary-fx-card__sub">
-                    {{ formatMoney(currentCostCurrencySymbol, paymentBlendBdt) }} /
-                    {{ formatMoney(currentPurchaseCurrencySymbol, paymentBlendForeign) }}
-                  </div>
-                </div>
+              <div class="summary-bill-table-head text-xxs text-weight-bold text-grey-6 uppercase">
+                <span>Invoice</span>
+                <span class="text-right">Origin</span>
+                <span class="text-right">{{ currentCostCurrencySymbol }}</span>
               </div>
-            </div>
-
-            <div class="bg-white rounded-borders border-grey overflow-hidden">
-              <div class="summary-cost-row summary-cost-row--head text-xxs text-weight-bold text-grey-6 uppercase">
-                <span>Cost file total</span>
-                <span class="text-right">By currency</span>
-                <span class="text-right">Buy ({{ currentPurchaseCurrencySymbol }})</span>
-              </div>
-              <div class="text-xxs text-grey-7 q-px-sm q-pt-sm q-pb-xs">
-                Sum of all cost lines on the Costs tab (recorded shipment costs, not cash paid yet).
-              </div>
-              <div
-                v-for="row in costFileBucketRows"
-                :key="row.bucket"
-                class="summary-cost-row"
-              >
-                <span class="text-grey-7">{{ bucketSummaryLabel(row.bucket) }}</span>
-                <span class="column text-xxs text-grey-6 min-width-0">
-                  <span
-                    v-for="leg in row.foreignLegs"
-                    :key="`${row.bucket}-${leg.currency_code}`"
-                    class="font-mono"
-                  >
-                    {{ leg.currency_code }} {{ formatForeignLegAmount(leg.amount) }}
-                  </span>
-                  <span v-if="row.foreignLegs.length === 0">—</span>
-                </span>
-                <span class="text-right font-mono text-weight-medium text-grey-9">
-                  {{ formatMoney(currentPurchaseCurrencySymbol, row.buyInPurchaseCurrency) }}
-                </span>
-              </div>
-              <div v-if="costFileBucketRows.length === 0" class="q-pa-sm text-caption text-grey-6">
-                No cost lines yet.
-              </div>
-              <div class="summary-cost-row summary-cost-row--total">
-                <span>File total</span>
-                <span />
-                <span class="text-right font-mono text-primary">
-                  {{ formatMoney(currentPurchaseCurrencySymbol, costFileTotal) }}
-                </span>
-              </div>
-            </div>
-
-            <div class="bg-white rounded-borders border-grey overflow-hidden">
-              <div class="summary-cost-row summary-cost-row--head text-xxs text-weight-bold text-grey-6 uppercase">
-                <span>AP bills</span>
-                <span class="text-right">Bill total</span>
-                <span class="text-right">Due</span>
-              </div>
-              <div class="text-xxs text-grey-7 q-px-sm q-pt-sm q-pb-xs">
-                One bill per cost bucket after sync. Pay on Bills &amp; Pays to update payment FX above.
-              </div>
-              <template v-if="summaryFinanceLoading && summaryApBillRows.length === 0">
+              <template v-if="summaryFinanceLoading && summaryBillsByBucket.length === 0">
                 <div class="q-pa-md text-center text-caption text-grey-6">Loading bills…</div>
               </template>
-              <template v-else-if="summaryApBillRows.length === 0">
+              <template v-else-if="summaryBillsByBucket.length === 0">
                 <div class="q-pa-sm text-caption text-grey-6">No AP bills yet. Save costs to sync bills.</div>
               </template>
               <template v-else>
                 <div
-                  v-for="bill in summaryApBillRows"
-                  :key="bill.id"
-                  class="summary-ap-bill-row cursor-pointer"
-                  role="button"
-                  tabindex="0"
-                  @click="openApBill(bill.id)"
-                  @keyup.enter="openApBill(bill.id)"
+                  v-for="group in summaryBillsByBucket"
+                  :key="group.bucket"
+                  class="summary-bucket-group"
                 >
-                  <div class="column q-gutter-y-2xs min-width-0">
-                    <div class="text-caption text-weight-medium text-grey-9 ellipsis">
-                      {{ bill.kindLabel }}
-                    </div>
-                    <div class="text-xxs text-grey-6 ellipsis">
-                      {{ bill.invoiceLabel }}
+                  <div class="summary-bucket-group__title text-caption text-weight-bold text-grey-8 q-px-sm q-pt-sm">
+                    {{ group.label }}
+                  </div>
+                  <div
+                    v-for="row in group.rows"
+                    :key="row.id"
+                    class="summary-bill-table-row cursor-pointer"
+                    role="button"
+                    tabindex="0"
+                    @click="openApBill(row.id)"
+                    @keyup.enter="openApBill(row.id)"
+                  >
+                    <span class="column min-width-0">
+                      <span class="text-caption text-grey-9 ellipsis">{{ row.invoiceLabel }}</span>
                       <q-chip
-                        v-if="bill.statusChip"
+                        v-if="row.statusChip"
                         dense
                         square
                         size="sm"
-                        :color="bill.statusChip.color"
-                        :text-color="bill.statusChip.textColor"
-                        class="q-ml-xs q-ma-none"
+                        :color="row.statusChip.color"
+                        :text-color="row.statusChip.textColor"
+                        class="q-mt-2xs q-ma-none self-start"
                       >
-                        {{ bill.statusChip.label }}
+                        {{ row.statusChip.label }}
                       </q-chip>
-                    </div>
+                    </span>
+                    <span class="text-right font-mono text-caption text-grey-9">
+                      {{ row.originCode }}
+                      {{ formatForeignLegAmount(row.originAmount) }}
+                    </span>
+                    <span class="text-right font-mono text-caption text-grey-9">
+                      {{ formatMoney(currentCostCurrencySymbol, row.bdtAmount) }}
+                    </span>
                   </div>
-                  <span class="text-right font-mono text-caption text-grey-9">
-                    {{ formatMoney(currentCostCurrencySymbol, displayBillTotal(bill)) }}
-                  </span>
-                  <span class="text-right font-mono text-caption" :class="displayDueAmount(bill) > 0 ? 'text-orange-9' : 'text-grey-7'">
-                    {{ formatMoney(currentCostCurrencySymbol, displayDueAmount(bill)) }}
-                  </span>
+                  <div class="summary-bill-table-row summary-bill-table-row--subtotal">
+                    <span class="text-weight-medium text-grey-8">Subtotal</span>
+                    <span class="column text-right text-caption font-mono text-grey-7">
+                      <span
+                        v-for="leg in group.originLegs"
+                        :key="`${group.bucket}-${leg.currency_code}`"
+                      >
+                        {{ leg.currency_code }} {{ formatForeignLegAmount(leg.amount) }}
+                      </span>
+                    </span>
+                    <span class="text-right font-mono text-caption text-weight-bold">
+                      {{ formatMoney(currentCostCurrencySymbol, group.bdtSubtotal) }}
+                    </span>
+                  </div>
                 </div>
-                <div class="summary-ap-bill-row summary-ap-bill-row--total">
-                  <span class="text-weight-bold">Bills total</span>
-                  <span class="text-right font-mono text-weight-bold">
-                    {{ formatMoney(currentCostCurrencySymbol, apBillsGrandTotal) }}
-                  </span>
-                  <span class="text-right font-mono text-weight-bold text-orange-9">
-                    {{ formatMoney(currentCostCurrencySymbol, apBillsDueTotal) }}
+                <div class="summary-bill-table-row summary-bill-table-row--total">
+                  <span class="text-weight-bold">All bills</span>
+                  <span />
+                  <span class="text-right font-mono text-weight-bold text-primary">
+                    {{ formatMoney(currentCostCurrencySymbol, summaryBillsGrandBdt) }}
                   </span>
                 </div>
               </template>
@@ -365,78 +280,27 @@
                 Weight
               </div>
               <div class="row q-col-gutter-sm">
-                <div class="col-6">
-                  <div class="text-xxs text-grey-6">Units</div>
+                <div class="col-4">
+                  <div class="text-xxs text-grey-6">Total weight</div>
                   <div class="text-caption text-weight-bold font-mono text-grey-9">
-                    {{ totals.quantity.toLocaleString() }} pcs
+                    {{ summaryTotalWeightKg.toFixed(2) }} kg
                   </div>
                 </div>
-                <div class="col-6">
-                  <div class="text-xxs text-grey-6">Packaging</div>
-                  <div class="text-caption text-weight-bold font-mono text-grey-9">
-                    {{ totals.packagingWeightKg.toFixed(2) }} kg
-                  </div>
-                </div>
-                <div class="col-6">
-                  <div class="text-xxs text-grey-6">Invoice cargo</div>
-                  <div class="text-caption text-weight-bold font-mono text-grey-9">
-                    {{ (totals.cargoWeightKg || 0).toFixed(2) }} kg
-                  </div>
-                  <div class="text-xxs text-grey-5">Used for freight</div>
-                </div>
-                <div class="col-6">
-                  <div class="text-xxs text-grey-6">Box received</div>
+                <div class="col-4">
+                  <div class="text-xxs text-grey-6">Total box weight</div>
                   <div class="text-caption text-weight-bold font-mono text-grey-9">
                     {{ currentShipmentBoxesReceivedTotal.toFixed(2) }} kg
                   </div>
-                  <div class="text-xxs text-grey-5">
+                  <div v-if="currentShipmentBoxesCount > 0" class="text-xxs text-grey-5">
                     {{ currentShipmentBoxesCount }}
                     {{ currentShipmentBoxesCount === 1 ? 'box' : 'boxes' }}
                   </div>
                 </div>
-                <div class="col-6">
-                  <div class="text-xxs text-grey-6">Box shipping</div>
+                <div class="col-4">
+                  <div class="text-xxs text-grey-6">Units</div>
                   <div class="text-caption text-weight-bold font-mono text-grey-9">
-                    {{ currentShipmentBoxesShippingTotal.toFixed(2) }} kg
+                    {{ totals.quantity.toLocaleString() }} pcs
                   </div>
-                </div>
-                <div
-                  v-if="currentShipmentBoxesCount > 0"
-                  class="col-12 q-mt-xs q-pa-sm rounded-borders bg-grey-1 column q-gutter-y-sm"
-                >
-                  <div>
-                    <div class="text-caption text-weight-bold font-mono text-grey-9">
-                      {{ boxTotalsNetDiff.formulaLabel }} =
-                      {{ boxTotalsNetDiff.signedKgLabel }}
-                    </div>
-                    <div class="text-xxs text-grey-7 q-mt-2xs">
-                      {{ boxTotalsNetDiff.explanation }}
-                    </div>
-                  </div>
-                  <template v-if="invoiceCargoKg > 0">
-                    <q-separator />
-                    <div class="text-xxs text-weight-bold text-grey-6 uppercase">
-                      vs invoice cargo ({{ invoiceCargoKg.toFixed(2) }} kg)
-                    </div>
-                    <div>
-                      <div class="text-caption text-weight-bold font-mono text-grey-9">
-                        {{ boxShippingVsInvoice.formulaLabel }} =
-                        {{ boxShippingVsInvoice.signedKgLabel }}
-                      </div>
-                      <div class="text-xxs text-grey-7 q-mt-2xs">
-                        {{ boxShippingVsInvoice.explanation }}
-                      </div>
-                    </div>
-                    <div>
-                      <div class="text-caption text-weight-bold font-mono text-grey-9">
-                        {{ boxReceivedVsInvoice.formulaLabel }} =
-                        {{ boxReceivedVsInvoice.signedKgLabel }}
-                      </div>
-                      <div class="text-xxs text-grey-7 q-mt-2xs">
-                        {{ boxReceivedVsInvoice.explanation }}
-                      </div>
-                    </div>
-                  </template>
                 </div>
               </div>
               <div
@@ -447,70 +311,22 @@
               </div>
             </div>
 
-            <q-banner
-              v-if="materialLineListMismatch"
-              dense
-              rounded
-              class="bg-orange-1 text-orange-10"
-            >
-              Material cost on the Costs tab does not match the line list purchase total.
-              Costs {{ formatMoney(currentPurchaseCurrencySymbol, materialCostFileTotal) }}
-              · Lines {{ formatMoney(currentPurchaseCurrencySymbol, lineListPurchaseTotal) }}
-              · Difference {{ formatSignedMoney(currentPurchaseCurrencySymbol, materialLineListDiff) }}
-            </q-banner>
-
-            <div
-              v-if="lineListPurchaseTotal > 0 || materialCostFileTotal > 0"
-              class="bg-white rounded-borders border-grey overflow-hidden"
-            >
-              <div class="summary-cost-row summary-cost-row--head text-xxs text-weight-bold text-grey-6 uppercase">
-                <span>Purchase totals</span>
-                <span />
-                <span class="text-right">{{ currentPurchaseCurrencySymbol }}</span>
-              </div>
-              <div class="text-xxs text-grey-7 q-px-sm q-pt-sm q-pb-xs">
-                Line list is sum of purchase price × qty. Material is the product cost on the Costs tab.
-              </div>
-              <div class="summary-cost-row">
-                <span class="text-grey-7">Line list total</span>
-                <span />
-                <span class="text-right font-mono text-weight-medium text-grey-9">
-                  {{ formatMoney(currentPurchaseCurrencySymbol, lineListPurchaseTotal) }}
-                </span>
-              </div>
-              <div class="summary-cost-row">
-                <span class="text-grey-7">Material (cost file)</span>
-                <span />
-                <span
-                  class="text-right font-mono text-weight-medium"
-                  :class="materialLineListMismatch ? 'text-orange-9' : 'text-grey-9'"
-                >
-                  {{ formatMoney(currentPurchaseCurrencySymbol, materialCostFileTotal) }}
-                </span>
-              </div>
-            </div>
-
             <div
               v-if="sectionSummaryRows.length > 0"
               class="bg-white rounded-borders border-grey overflow-hidden"
             >
               <div
-                class="summary-section-row summary-section-row--head text-xxs text-weight-bold text-grey-6 uppercase"
+                class="summary-section-row summary-section-row--compact summary-section-row--head text-xxs text-weight-bold text-grey-6 uppercase"
               >
-                <span>By section</span>
+                <span>Section</span>
                 <span class="text-right">Units</span>
                 <span class="text-right">Kg</span>
-                <span class="text-right">Product</span>
-                <span class="text-right">Freight</span>
                 <span class="text-right">Landed</span>
-              </div>
-              <div class="text-xxs text-grey-7 q-px-sm q-pt-sm q-pb-xs">
-                Product and freight in buy currency; landed includes allocated freight (BDT).
               </div>
               <div
                 v-for="row in sectionSummaryRows"
                 :key="row.key"
-                class="summary-section-row"
+                class="summary-section-row summary-section-row--compact"
               >
                 <span class="column min-width-0">
                   <span class="text-grey-9 text-weight-medium ellipsis">{{ row.title }}</span>
@@ -524,17 +340,11 @@
                 <span class="text-right font-mono text-caption text-grey-9">
                   {{ row.weightKg.toFixed(2) }}
                 </span>
-                <span class="text-right font-mono text-caption text-grey-9">
-                  {{ formatMoney(currentPurchaseCurrencySymbol, row.goodsPurchase) }}
-                </span>
-                <span class="text-right font-mono text-caption text-grey-9">
-                  {{ formatMoney(currentPurchaseCurrencySymbol, row.freightPurchase) }}
-                </span>
                 <span class="text-right font-mono text-caption text-primary">
                   {{ formatMoney(currentCostCurrencySymbol, row.goodsLanded) }}
                 </span>
               </div>
-              <div class="summary-section-row summary-section-row--total">
+              <div class="summary-section-row summary-section-row--compact summary-section-row--total">
                 <span>Shipment total</span>
                 <span class="text-right font-mono">
                   {{ sectionSummaryGrand.quantity.toLocaleString() }}
@@ -542,63 +352,71 @@
                 <span class="text-right font-mono">
                   {{ sectionSummaryGrand.weightKg.toFixed(2) }}
                 </span>
-                <span class="text-right font-mono">
-                  {{ formatMoney(currentPurchaseCurrencySymbol, sectionSummaryGrand.goodsPurchase) }}
-                </span>
-                <span class="text-right font-mono">
-                  {{ formatMoney(currentPurchaseCurrencySymbol, sectionSummaryGrand.freightPurchase) }}
-                </span>
                 <span class="text-right font-mono text-primary">
                   {{ formatMoney(currentCostCurrencySymbol, sectionSummaryGrand.goodsLanded) }}
                 </span>
               </div>
             </div>
 
-            <div class="bg-white rounded-borders border-grey overflow-hidden">
-              <div class="summary-cost-row summary-cost-row--head text-xxs text-weight-bold text-grey-6 uppercase">
-                <span>Cost by bucket</span>
-                <span class="text-right">Buy ({{ currentPurchaseCurrencySymbol }})</span>
-                <span class="text-right">Landed ({{ currentCostCurrencySymbol }})</span>
+            <div
+              v-if="showPaymentFxSection"
+              class="bg-white q-pa-sm rounded-borders border-grey"
+            >
+              <div class="text-xxs text-weight-bold text-grey-6 uppercase q-mb-sm" style="letter-spacing: 0.5px">
+                Rates
               </div>
-              <div class="text-xxs text-grey-7 q-px-sm q-pt-sm q-pb-xs">
-                Worksheet buckets with preview landed (capitalizable rows). BDT column uses material / freight FX.
+              <div class="summary-rates-table">
+                <div class="summary-rates-row">
+                  <span class="text-grey-7">Material conversion rate</span>
+                  <span class="font-mono text-grey-9 text-right">
+                    <template v-if="summaryMaterialRate != null && summaryMaterialRate > 0">
+                      1 {{ currentPurchaseCurrencySymbol }} =
+                      {{ currentCostCurrencySymbol }}{{ summaryMaterialRate.toFixed(4) }}
+                    </template>
+                    <template v-else>—</template>
+                  </span>
+                </div>
+                <div class="summary-rates-row">
+                  <span class="text-grey-7">Freight per kg</span>
+                  <span class="font-mono text-grey-9 text-right">
+                    <template v-if="summaryFreightBdtPerKg != null && summaryFreightBdtPerKg > 0">
+                      {{ currentCostCurrencySymbol }}{{ summaryFreightBdtPerKg.toFixed(2) }} / kg
+                    </template>
+                    <template v-else>—</template>
+                  </span>
+                </div>
+                <div v-if="summaryRates.handlingPerUnit > 0" class="summary-rates-row">
+                  <span class="text-grey-7">Handling per unit</span>
+                  <span class="font-mono text-grey-9 text-right">
+                    {{ currentCostCurrencySymbol }}{{ summaryRates.handlingPerUnit.toFixed(2) }}
+                  </span>
+                </div>
+                <div v-if="summaryRates.otherPerUnit > 0" class="summary-rates-row">
+                  <span class="text-grey-7">Other per unit</span>
+                  <span class="font-mono text-grey-9 text-right">
+                    {{ currentCostCurrencySymbol }}{{ summaryRates.otherPerUnit.toFixed(2) }}
+                  </span>
+                </div>
+                <div v-if="summaryRates.financePerUnit > 0" class="summary-rates-row">
+                  <span class="text-grey-7">Finance per unit</span>
+                  <span class="font-mono text-grey-9 text-right">
+                    {{ currentCostCurrencySymbol }}{{ summaryRates.financePerUnit.toFixed(2) }}
+                  </span>
+                </div>
+                <div v-if="summaryRates.customsPool > 0" class="summary-rates-row">
+                  <span class="text-grey-7">Customs pool</span>
+                  <span class="font-mono text-grey-9 text-right">
+                    {{ currentCostCurrencySymbol }}{{ formatForeignLegAmount(summaryRates.customsPool) }}
+                  </span>
+                </div>
               </div>
               <div
-                v-for="row in landedCostBucketRows"
-                :key="`landed-${row.bucket}`"
-                class="summary-cost-row"
+                v-if="paymentTransactionRate != null"
+                class="text-xxs text-grey-6 q-mt-sm"
               >
-                <span class="text-grey-7">{{ bucketSummaryLabel(row.bucket) }}</span>
-                <span class="text-right font-mono text-weight-medium text-grey-9">
-                  {{ formatMoney(currentPurchaseCurrencySymbol, row.buyInPurchaseCurrency) }}
-                </span>
-                <span class="text-right font-mono text-weight-medium text-grey-9">
-                  {{ formatMoney(currentCostCurrencySymbol, row.bdtPreview) }}
-                </span>
-              </div>
-              <div v-if="landedCostBucketRows.length === 0" class="q-pa-sm text-caption text-grey-6">
-                No bucket costs yet.
-              </div>
-              <div class="summary-courier-row">
-                <div class="text-xxs text-weight-bold uppercase" style="letter-spacing: 0.4px">
-                  Freight per kg ({{ currentPurchaseCurrencySymbol }})
-                </div>
-                <div class="text-subtitle1 text-weight-bolder font-mono">
-                  <template v-if="freightPerKgPreview != null && freightPerKgPreview > 0">
-                    {{ currentPurchaseCurrencySymbol }}{{ freightPerKgPreview.toFixed(4) }}
-                    <span class="text-caption text-weight-medium">/ kg</span>
-                  </template>
-                  <template v-else>—</template>
-                </div>
-              </div>
-              <div class="summary-cost-row summary-cost-row--total">
-                <span>Total</span>
-                <span class="text-right font-mono">
-                  {{ formatMoney(currentPurchaseCurrencySymbol, bucketBuyGrandTotal) }}
-                </span>
-                <span class="text-right font-mono text-primary">
-                  {{ formatMoney(currentCostCurrencySymbol, bucketLandedGrandTotal) }}
-                </span>
+                All-foreign average (reports only, not on SKUs):
+                1 {{ currentPurchaseCurrencySymbol }} =
+                {{ currentCostCurrencySymbol }}{{ paymentTransactionRate.toFixed(4) }}
               </div>
             </div>
           </div>
@@ -1032,6 +850,10 @@ import {
   sumApBillsDue,
   sumApBillsTotal,
 } from '../utils/shipmentApBillDisplay';
+import {
+  buildSummaryApBillsByBucket,
+  summaryApBillsGrandBdt,
+} from '../utils/shipmentSummaryApBills';
 import { billDetailCommercialCreditRoute, billDetailRoute as apBillDetailRoute } from 'src/modules/bills_pays/utils/billRoutes';
 import {
   costEntryApBillId,
@@ -1446,6 +1268,10 @@ const linePreviewRateDialogOpen = ref(false);
 const apFxSnapshot = ref<ShipmentApFxSnapshot | null>(null);
 const summaryFinanceLoading = ref(false);
 
+const effectiveApFx = computed(
+  () => apFxSnapshot.value ?? shipmentStore.settingsFinanceCachedApFx,
+);
+
 const isInternationalShipment = computed(
   () => shipmentStore.currentShipment?.type === 'international',
 );
@@ -1453,7 +1279,7 @@ const isInternationalShipment = computed(
 const showPaymentFxSection = computed(() => isInternationalShipment.value);
 
 const materialPaymentFx = computed(() => {
-  const m = apFxSnapshot.value?.material;
+  const m = effectiveApFx.value?.material;
   const hasPayments = (m?.payment_count ?? 0) > 0;
   return {
     hasPayments,
@@ -1464,7 +1290,7 @@ const materialPaymentFx = computed(() => {
 });
 
 const freightPaymentFx = computed(() => {
-  const f = apFxSnapshot.value?.freight;
+  const f = effectiveApFx.value?.freight;
   const hasPayments = (f?.payment_count ?? 0) > 0;
   return {
     hasPayments,
@@ -1475,15 +1301,15 @@ const freightPaymentFx = computed(() => {
 });
 
 const paymentBlendBdt = computed(
-  () => (apFxSnapshot.value?.goods_bdt ?? 0) + (apFxSnapshot.value?.freight_bdt ?? 0),
+  () => (effectiveApFx.value?.goods_bdt ?? 0) + (effectiveApFx.value?.freight_bdt ?? 0),
 );
 
 const paymentBlendForeign = computed(
-  () => (apFxSnapshot.value?.product_foreign ?? 0) + (apFxSnapshot.value?.cargo_foreign ?? 0),
+  () => (effectiveApFx.value?.product_foreign ?? 0) + (effectiveApFx.value?.cargo_foreign ?? 0),
 );
 
 const paymentTransactionRate = computed(() => {
-  const fromSnapshot = apFxSnapshot.value?.transaction_rate;
+  const fromSnapshot = effectiveApFx.value?.transaction_rate;
   if (fromSnapshot != null && fromSnapshot > 0) return fromSnapshot;
   const fromShipment = shipmentStore.currentShipment?.transaction_rate;
   if (fromShipment != null && fromShipment > 0) return Number(fromShipment);
@@ -1491,6 +1317,59 @@ const paymentTransactionRate = computed(() => {
     return paymentBlendBdt.value / paymentBlendForeign.value;
   }
   return null;
+});
+
+const summaryMaterialRate = computed((): number | null => {
+  const fx = effectiveApFx.value;
+  const top = fx?.product_conversion_rate;
+  if (top != null && top > 0 && top !== 1) return top;
+  const m = fx?.material;
+  if (m && m.conversion_rate > 0 && (m.payment_count > 0 || m.bdt_paid > 0)) {
+    return m.conversion_rate;
+  }
+  const preview = summaryCostingPreview.value;
+  const fromPreview = preview?.product_conversion_rate;
+  if (fromPreview != null && fromPreview > 0) return fromPreview;
+  const header = shipmentStore.currentShipment?.product_conversion_rate;
+  if (header != null && header > 0) return Number(header);
+  return null;
+});
+
+const summaryFreightBdtPerKg = computed((): number | null => {
+  const fx = effectiveApFx.value;
+  const direct = fx?.freight_bdt_per_kg;
+  if (direct != null && direct > 0) return direct;
+  const freightBdt = fx?.freight_bdt ?? fx?.freight?.bdt_paid ?? 0;
+  const kg = fx?.kg_basis ?? summaryTotalWeightKg.value;
+  if (freightBdt > 0 && kg > 0) return freightBdt / kg;
+  const preview = summaryCostingPreview.value;
+  const fromPreview = preview?.freight_bdt_per_kg;
+  if (fromPreview != null && fromPreview > 0) return fromPreview;
+  return null;
+});
+
+const summaryBillsByBucket = computed(() => buildSummaryApBillsByBucket(shipmentApBills.value));
+
+const summaryBillsGrandBdt = computed(() => summaryApBillsGrandBdt(summaryBillsByBucket.value));
+
+const summaryTotalWeightKg = computed(() => {
+  const t = totals?.value ?? totals;
+  const pack = Number(t?.packagingWeightKg) || 0;
+  const cargo = Number(t?.cargoWeightKg) || 0;
+  return pack > 0 ? pack : cargo;
+});
+
+const summaryRates = computed(() => {
+  const t = totals?.value ?? totals;
+  const qty = Number(t?.quantity) || 0;
+  const fx = effectiveApFx.value;
+  const div = (pool: number) => (qty > 0 ? Math.round((pool / qty) * 100) / 100 : 0);
+  return {
+    handlingPerUnit: fx ? div(fx.handling.bdt_paid) : 0,
+    otherPerUnit: fx ? div(fx.other.bdt_paid) : 0,
+    financePerUnit: fx ? div(fx.finance.bdt_paid) : 0,
+    customsPool: fx?.customs.bdt_paid ?? 0,
+  };
 });
 
 const summaryCostingPreview = computed(() => {
@@ -2699,6 +2578,49 @@ const saveShipmentWeightIfChanged = async () => {
   background: #f8fafc;
   font-weight: 700;
   color: #1e293b;
+}
+.summary-section-row--compact {
+  grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 0.75fr));
+}
+.summary-bill-table-head,
+.summary-bill-table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border-top: 1px solid #e2e8f0;
+}
+.summary-bill-table-head {
+  border-top: none;
+  background: #f8fafc;
+}
+.summary-bill-table-row--subtotal {
+  background: #fafafa;
+  font-size: 12px;
+}
+.summary-bill-table-row--total {
+  background: #f8fafc;
+  font-weight: 700;
+}
+.summary-bill-table-row:hover:not(.summary-bill-table-row--subtotal):not(.summary-bill-table-row--total) {
+  background: var(--tf-hover-bg);
+}
+.summary-bucket-group__title {
+  background: #f1f5f9;
+  border-top: 1px solid #e2e8f0;
+}
+.summary-rates-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.summary-rates-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
 }
 .summary-courier-row {
   display: flex;

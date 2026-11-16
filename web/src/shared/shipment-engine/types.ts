@@ -6,6 +6,8 @@
  * (finalize / revise RPCs).
  */
 
+import type { LandedCostPools } from './landedCostBdtEngine';
+
 /** Header-shaped rates used by day-one live preview (dual-path until header rates drop). */
 export interface CostingShipmentInput {
   type: 'international' | 'local' | 'transfer';
@@ -15,6 +17,10 @@ export interface CostingShipmentInput {
   received_weight: number | null;
   total_weight_kg?: number | null;
   transaction_rate?: number | null;
+  /** BDT pools from AP pays — enables calc-doc landed engine when set. */
+  landed_pools?: LandedCostPools | null;
+  material_foreign?: number | null;
+  freight_bdt_per_kg?: number | null;
 }
 
 export interface CostingLineItemInput {

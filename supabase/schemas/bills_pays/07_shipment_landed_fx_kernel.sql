@@ -46,7 +46,12 @@ BEGIN
       ),
       0
     ),
-    coalesce(sum(round(bs.allocated_amount, 2)), 0),
+    coalesce(
+      sum(round(bs.allocated_amount, 2)) filter (
+        where upper(coalesce(b.currency_code, 'BDT')) <> 'BDT'
+      ),
+      0
+    ),
     count(DISTINCT p.id)::integer
   INTO v_bdt_kernel, v_foreign_kernel, v_count_kernel
   FROM money_kernel.bills b
@@ -122,6 +127,10 @@ AS $$
 DECLARE
   v_mat jsonb;
   v_fre jsonb;
+  v_customs jsonb;
+  v_handling jsonb;
+  v_finance jsonb;
+  v_other jsonb;
   v_prod_rate numeric := 1;
   v_cargo_fx numeric := 1;
   v_product_foreign numeric := 0;
@@ -130,7 +139,10 @@ DECLARE
   v_freight_bdt numeric := 0;
   v_blended numeric := 1;
   v_kg numeric := 0;
+  v_pack_kg numeric := 0;
+  v_kg_basis numeric := 0;
   v_cargo_per_kg numeric := 0;
+  v_freight_bdt_per_kg numeric := 0;
   v_mat_count integer := 0;
   v_fre_count integer := 0;
   v_entry_material numeric := 0;
@@ -138,6 +150,10 @@ DECLARE
 BEGIN
   v_mat := public.shipment_ap_bucket_paid_totals(p_shipment_id, 'material');
   v_fre := public.shipment_ap_bucket_paid_totals(p_shipment_id, 'freight');
+  v_customs := public.shipment_ap_bucket_paid_totals(p_shipment_id, 'customs');
+  v_handling := public.shipment_ap_bucket_paid_totals(p_shipment_id, 'handling');
+  v_finance := public.shipment_ap_bucket_paid_totals(p_shipment_id, 'finance');
+  v_other := public.shipment_ap_bucket_paid_totals(p_shipment_id, 'other');
 
   v_mat_count := coalesce((v_mat ->> 'payment_count')::integer, 0);
   v_fre_count := coalesce((v_fre ->> 'payment_count')::integer, 0);
@@ -176,8 +192,8 @@ BEGIN
     v_cargo_foreign := v_entry_freight;
   END IF;
 
-  v_goods_bdt := round(v_product_foreign * v_prod_rate, 2);
-  v_freight_bdt := round(v_cargo_foreign * v_cargo_fx, 2);
+  v_goods_bdt := coalesce((v_mat ->> 'bdt_paid')::numeric, round(v_product_foreign * v_prod_rate, 2));
+  v_freight_bdt := coalesce((v_fre ->> 'bdt_paid')::numeric, 0);
 
   IF (v_product_foreign + v_cargo_foreign) > 0 THEN
     v_blended := round((v_goods_bdt + v_freight_bdt) / (v_product_foreign + v_cargo_foreign), 6);
@@ -185,18 +201,35 @@ BEGIN
     v_blended := 1;
   END IF;
 
+  SELECT coalesce(sum(
+    ((coalesce(gsi.product_weight, 0) + coalesce(gsi.package_weight, 0)) * gsi.ordered_quantity) / 1000.0
+  ), 0)
+    INTO v_pack_kg
+    FROM public.global_shipment_items gsi
+   WHERE gsi.shipment_id = p_shipment_id;
+
   SELECT coalesce(gs.total_weight_kg, gs.received_weight, 0)
     INTO v_kg
     FROM public.global_shipments gs
    WHERE gs.id = p_shipment_id;
 
-  IF coalesce(v_kg, 0) > 0 AND v_cargo_foreign > 0 THEN
-    v_cargo_per_kg := round(v_cargo_foreign / v_kg, 6);
+  v_kg_basis := CASE WHEN v_pack_kg > 0 THEN v_pack_kg ELSE coalesce(v_kg, 0) END;
+
+  IF coalesce(v_kg_basis, 0) > 0 AND v_cargo_foreign > 0 THEN
+    v_cargo_per_kg := round(v_cargo_foreign / v_kg_basis, 6);
+  END IF;
+
+  IF coalesce(v_kg_basis, 0) > 0 AND v_freight_bdt > 0 THEN
+    v_freight_bdt_per_kg := round(v_freight_bdt / v_kg_basis, 6);
   END IF;
 
   RETURN jsonb_build_object(
     'material', v_mat,
     'freight', v_fre,
+    'customs', v_customs,
+    'handling', v_handling,
+    'finance', v_finance,
+    'other', v_other,
     'goods_bdt', v_goods_bdt,
     'freight_bdt', v_freight_bdt,
     'product_foreign', v_product_foreign,
@@ -204,6 +237,8 @@ BEGIN
     'product_conversion_rate', v_prod_rate,
     'cargo_conversion_rate', v_cargo_fx,
     'cargo_rate', v_cargo_per_kg,
+    'freight_bdt_per_kg', v_freight_bdt_per_kg,
+    'kg_basis', v_kg_basis,
     'transaction_rate', v_blended,
     'blended_rate', v_blended
   );

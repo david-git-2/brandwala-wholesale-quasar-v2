@@ -402,13 +402,13 @@ Each row is **bucket** × **component** (`subtotal`, `carriage`, `vat_tax`, `mis
 | Bucket | Typical content | On unit stamp (target) |
 | --- | --- | --- |
 | `material` | Vendor goods invoice | Goods value × product rate |
-| `freight` | Ocean/air freight | Weight share × cargo FX |
+| `freight` | Ocean/air freight | Line kg × **freight BDT per kg** |
 | `customs` | CD, RD, AIT | CIF Taka share on line |
 | `handling` | Gate, labor | Qty share |
 | `finance` | SWIFT, bank fees | Goods Taka share |
 | `other` | Dock tips, misc | Qty when capitalized |
 
-As-built today stamps **material + freight** only; other buckets are spec target (procurement **PS13** partial). Reporting GP still uses shipment P&L, not guessed invoice COGS.
+**Stamp + preview algorithm** (pools, surplus, all buckets): [Shipment rate calculations](/docs/features/procurement_stock/shipment-rate-calculations.md). Reporting GP uses shipment P&L, not guessed invoice COGS.
 
 ### Money adapter (AP bills)
 
@@ -440,28 +440,13 @@ sequenceDiagram
   LC->>LC: restamp lot unit cost
 ```
 
-### FX (from pays, not shipment header)
+### FX and unit stamp
 
-FX is **not** stored on `global_shipments`. Paid AP on **material** and **freight** buckets drive:
+FX is **not** on the shipment header. Paid capitalizable AP builds **BDT pools** per bucket; material rate and freight BDT/kg feed SKU stamp. **All-foreign average** is reporting only.
 
-| Rate | Meaning |
-| --- | --- |
-| **Product rate** | BDT paid on material ÷ foreign paid on material |
-| **Cargo FX** | Same for freight bucket |
-| **Cargo per kg** | Freight foreign ÷ shipment gross kg |
-| **Transaction rate** | Blended material + freight (for display; stamp uses product + cargo rules separately) |
+Full steps (golden rules, surplus, CIF customs): [Shipment rate calculations](/docs/features/procurement_stock/shipment-rate-calculations.md).
 
-`post_ap_payout_with_allocations` triggers **restamp** after pay. Leftover on an FX payout is BDT minus (foreign alloc × rate).
-
-### Unit stamp rule (summary)
-
-Per SKU line on the shipment:
-
-- Goods BDT = `purchase_price` × **product rate** (not whole line at blended rate).
-- Freight share = line gross kg share of freight foreign × **cargo FX**.
-- Customs/handling/finance/other follow bucket split rules when implemented — do not run everything through the goods+cargo blend.
-
-Outcomes (`global_shipment_item_outcomes`) can **restamp on-hand** when vendor price drops after receive.
+`post_ap_payout_with_allocations` triggers **restamp** after pay. Outcomes (`global_shipment_item_outcomes`) can **restamp on-hand** when vendor price drops after receive.
 
 ### Three worked patterns
 

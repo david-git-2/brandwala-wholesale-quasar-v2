@@ -1583,6 +1583,13 @@ const displayedItems = computed(() => {
               calculateLineLandedCostBreakdown(item, forCostingTooltip, storeItems),
               currentPurchaseCurrencySymbol.value,
               currentCostCurrencySymbol.value,
+              {
+                quantity: oQty,
+                productName: item.name,
+                unitKg:
+                  ((Number(item.product_weight) || 0) + (Number(item.package_weight) || 0)) / 1000,
+                freightBdtPerKg: forCostingTooltip.freight_bdt_per_kg ?? null,
+              },
             )
           : null;
       const totalCost = unitCost * oQty;

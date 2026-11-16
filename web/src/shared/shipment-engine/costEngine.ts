@@ -8,6 +8,8 @@ import type {
   CostingShipmentInput,
   ShipmentCostSummary,
 } from './types';
+import { buildShipmentLandedPlan, lineLandedFromPlan } from './landedCostBdtEngine';
+import { landedPoolsFromApFx } from './landedCostPools';
 
 export type {
   CostEntryInput,
@@ -210,7 +212,31 @@ export type LineLandedCostBreakdown = {
   transactionRate: number | null;
   productConversionRate: number | null;
   cargoConversionRate: number | null;
+  goodsBdtPerUnit?: number;
+  surplusBdtPerUnit?: number;
+  freightBdtPerUnit?: number;
+  customsBdtPerUnit?: number;
+  handlingBdtPerUnit?: number;
+  financeBdtPerUnit?: number;
+  otherBdtPerUnit?: number;
+  unitCif?: number;
   landedCostBdt: number;
+};
+
+export type { LandedCostPools } from './landedCostBdtEngine';
+export { buildShipmentLandedPlan, lineLandedFromPlan } from './landedCostBdtEngine';
+export { landedPoolsFromApFx, costingShipmentWithLandedPools } from './landedCostPools';
+
+const usePoolLandedEngine = (shipment: CostingShipmentInput): boolean =>
+  shipment.landed_pools != null && shipment.type !== 'local';
+
+const lineIndex = (
+  items: CostingLineItemInput[] | undefined,
+  item: CostingLineItemInput,
+): number => {
+  if (!items?.length) return 0;
+  const idx = items.indexOf(item);
+  return idx >= 0 ? idx : 0;
 };
 
 export const calculateLineLandedCostBreakdown = (
@@ -258,6 +284,36 @@ export const calculateLineLandedCostBreakdown = (
   const productConv = shipment.product_conversion_rate || 1.0;
   const cargoConv = shipment.cargo_conversion_rate || 1.0;
   const transactionRate = getCalculatedTransactionRate(shipment, items ?? []);
+
+  if (usePoolLandedEngine(shipment) && items && items.length > 0 && shipment.landed_pools) {
+    const plan = buildShipmentLandedPlan(
+      items,
+      shipment,
+      shipment.landed_pools,
+      shipment.material_foreign ?? 0,
+      productConv,
+    );
+    const parts = lineLandedFromPlan(plan, lineIndex(items, item));
+    const freightBdtPerUnit = parts?.freightBdtPerUnit ?? 0;
+    return {
+      purchasePricePerUnit,
+      cargoSharePerUnit: freightBdtPerUnit,
+      basePerUnit,
+      transactionRate,
+      productConversionRate: plan.materialRate,
+      cargoConversionRate: cargoConv,
+      goodsBdtPerUnit: parts?.goodsBdtPerUnit,
+      surplusBdtPerUnit: parts?.surplusBdtPerUnit,
+      freightBdtPerUnit,
+      customsBdtPerUnit: parts?.customsBdtPerUnit,
+      handlingBdtPerUnit: parts?.handlingBdtPerUnit,
+      financeBdtPerUnit: parts?.financeBdtPerUnit,
+      otherBdtPerUnit: parts?.otherBdtPerUnit,
+      unitCif: parts?.unitCif,
+      landedCostBdt: parts?.unitLanded ?? 0,
+    };
+  }
+
   const landedCostBdt = purchasePricePerUnit * productConv + cargoSharePerUnit * cargoConv;
 
   return {
@@ -320,6 +376,9 @@ export function calculateShipmentCostSummary(
     lineLandedCostTotal += calculateLineLandedCostBdt(item, shipment, items) * qty;
   }
 
+  const poolTotal =
+    usePoolLandedEngine(shipment) && lineLandedCostTotal > 0 ? lineLandedCostTotal : totalCost;
+
   return {
     quantity,
     packagingWeightKg,
@@ -329,7 +388,7 @@ export function calculateShipmentCostSummary(
     totalPurchase,
     goodsCost,
     cargoCost,
-    totalCost,
+    totalCost: poolTotal,
     transactionRate,
     lineLandedCostTotal,
   };
@@ -412,6 +471,15 @@ export function costingShipmentFromApFx(
     cargo_conversion_rate: apFx.cargo_conversion_rate ?? shipment.cargo_conversion_rate ?? 1,
     cargo_rate: apFx.cargo_rate ?? shipment.cargo_rate ?? 0,
     transaction_rate: apFx.transaction_rate ?? shipment.transaction_rate ?? null,
+    landed_pools:
+      'material' in apFx && (apFx as { material?: unknown }).material
+        ? landedPoolsFromApFx(apFx as Parameters<typeof landedPoolsFromApFx>[0])
+        : shipment.landed_pools,
+    material_foreign:
+      (apFx as { product_foreign?: number }).product_foreign ?? shipment.material_foreign,
+    freight_bdt_per_kg:
+      (apFx as { freight_bdt_per_kg?: number | null }).freight_bdt_per_kg ??
+      shipment.freight_bdt_per_kg,
   };
   return costingShipmentFromEntries(merged, [], items);
 }

@@ -45,7 +45,7 @@ Kernel stores **debtor → creditor** (`from_profile_id` / `to_profile_id`). Des
 
 - **List:** `list_bills_desk_page(p_to_profile_type, p_from_profile_id, status filters)` — kernel-only (`money_kernel.bills`); no `ar_side` / search.
 - **Detail:** `get_bill_detail_bundle` / `get_bill_desk_row` — kernel-only; `public.bills` is a **read view** over `money_kernel.bills` (legacy table dropped 2026-11-14).
-- **Void (kernel):** `BillDetailPage` → `rpc_void_bill` when bundle `bill.spine = kernel`.
+- **Cancel bill (kernel):** `BillDetailPage` → **Cancel bill** dialog → `rpc_void_bill` with `p_reverse_payments = true` (voids pays + document settles, then marks bill voided). Works for unpaid, partial, and fully paid; legacy spine still voids only when `paid_amount = 0`.
 - **Legacy rows** without `to_profile_id` do not appear on payee-type tabs until backfilled.
 
 ### Web — direct table read

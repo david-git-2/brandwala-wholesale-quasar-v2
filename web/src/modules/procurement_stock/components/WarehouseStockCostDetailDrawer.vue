@@ -231,7 +231,15 @@ const breakdownText = computed(() => {
     costingShipment.value,
     allItems,
   );
-  return formatLineLandedCostTooltip(breakdown, purchaseSym.value, '৳');
+  const unitKg =
+    ((Number(props.stockRow.product_weight) || 0) + (Number(props.stockRow.package_weight) || 0)) /
+    1000;
+  return formatLineLandedCostTooltip(breakdown, purchaseSym.value, '৳', {
+    quantity: props.stockRow.ordered_quantity,
+    productName: props.stockRow.item_name,
+    unitKg,
+    freightBdtPerKg: costingShipment.value?.freight_bdt_per_kg ?? null,
+  });
 });
 
 const shipmentRoute = computed(() => {

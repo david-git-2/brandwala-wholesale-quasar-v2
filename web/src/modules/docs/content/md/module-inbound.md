@@ -135,7 +135,7 @@ sequenceDiagram
   LC->>LC: stamp lot unit cost
 ```
 
-Detail: [Landed cost kernel](/docs/kernels#landed-cost-kernel). As-built stamp uses **material + freight** buckets first (spec **PS13** partial for other buckets).
+Detail: [Landed cost kernel](/docs/kernels#landed-cost-kernel). Stamp follows [shipment rate calculations](/docs/features/procurement_stock/shipment-rate-calculations.md) (BDT pools, all capitalizable buckets).
 
 ## Receive → warehouse
 

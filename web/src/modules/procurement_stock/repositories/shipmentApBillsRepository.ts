@@ -92,10 +92,16 @@ export type ShipmentApFxSnapshot = {
   transaction_rate: number;
   goods_bdt: number;
   freight_bdt: number;
+  freight_bdt_per_kg: number;
+  kg_basis: number;
   product_foreign: number;
   cargo_foreign: number;
   material: ShipmentApBucketPaidTotals;
   freight: ShipmentApBucketPaidTotals;
+  customs: ShipmentApBucketPaidTotals;
+  handling: ShipmentApBucketPaidTotals;
+  finance: ShipmentApBucketPaidTotals;
+  other: ShipmentApBucketPaidTotals;
 };
 
 const num = (v: unknown, fallback = 0): number => {
@@ -123,10 +129,16 @@ export function parseShipmentApFxSnapshot(raw: unknown): ShipmentApFxSnapshot | 
     transaction_rate: num(fx.transaction_rate ?? fx.blended_rate, 1),
     goods_bdt: num(fx.goods_bdt),
     freight_bdt: num(fx.freight_bdt),
+    freight_bdt_per_kg: num(fx.freight_bdt_per_kg),
+    kg_basis: num(fx.kg_basis),
     product_foreign: num(fx.product_foreign),
     cargo_foreign: num(fx.cargo_foreign),
     material: parseBucketPaid(fx.material),
     freight: parseBucketPaid(fx.freight),
+    customs: parseBucketPaid(fx.customs),
+    handling: parseBucketPaid(fx.handling),
+    finance: parseBucketPaid(fx.finance),
+    other: parseBucketPaid(fx.other),
   };
 }
 

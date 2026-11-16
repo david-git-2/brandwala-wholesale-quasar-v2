@@ -328,7 +328,10 @@ BEGIN
     (SELECT currency_code FROM money_kernel.cash_bundles WHERE id = p_from_pot_id),
     (SELECT currency_code FROM money_kernel.cash_bundles WHERE id = p_to_pot_id),
     p_tenant_id);
-  v_books_rate := money_kernel.fn_resolve_books_rate(p_tenant_id, COALESCE(p_currency_code, 'BDT'));
+  v_books_rate := money_kernel.fn_resolve_books_rate(
+    p_tenant_id,
+    COALESCE((SELECT currency_code FROM money_kernel.cash_bundles WHERE id = p_from_pot_id), 'BDT')
+  );
   PERFORM public.assert_kernel_money_access(p_tenant_id, 'withdraw');
 
   IF p_amount <= 0 THEN RAISE EXCEPTION 'invalid_amount'; END IF;
@@ -488,7 +491,10 @@ BEGIN
     (SELECT currency_code FROM money_kernel.cash_bundles WHERE id = p_from_pot_id),
     (SELECT currency_code FROM money_kernel.cash_bundles WHERE id = p_to_pot_id),
     p_tenant_id);
-  v_books_rate := money_kernel.fn_resolve_books_rate(p_tenant_id, COALESCE(p_currency_code, 'BDT'));
+  v_books_rate := money_kernel.fn_resolve_books_rate(
+    p_tenant_id,
+    COALESCE((SELECT currency_code FROM money_kernel.cash_bundles WHERE id = p_from_pot_id), 'BDT')
+  );
   PERFORM public.assert_kernel_money_access(p_tenant_id, 'withdraw');
 
   IF p_amount <= 0 THEN RAISE EXCEPTION 'invalid_amount'; END IF;
@@ -937,10 +943,16 @@ DECLARE
   v_books_rate numeric(15,6);
   v_exchange_rate numeric(15,6);
 BEGIN
-
-  v_books_rate := money_kernel.fn_resolve_books_rate(p_tenant_id, COALESCE(p_currency_code, 'BDT'));
-  v_exchange_rate := 1;
   PERFORM public.assert_kernel_money_access(p_tenant_id);
+
+  v_books_rate := COALESCE(
+    NULLIF((SELECT books_rate FROM money_kernel.cash_bundles WHERE id = p_from_pot_id), 0),
+    money_kernel.fn_resolve_books_rate(
+      p_tenant_id,
+      COALESCE((SELECT currency_code FROM money_kernel.cash_bundles WHERE id = p_from_pot_id), 'BDT')
+    )
+  );
+  v_exchange_rate := 1;
 
   IF v_exchange_rate IS DISTINCT FROM 1 THEN
     RAISE EXCEPTION 'invalid_rate: exchange_rate must be 1 for kind=payment (I7b)';
@@ -1118,6 +1130,7 @@ BEGIN
    ORDER BY id
    FOR UPDATE;
 
+  PERFORM money_kernel.fn_kernel_settlement_delete_allowed();
   DELETE FROM money_kernel.bill_settlements WHERE id = p_settlement_id;
 
   RETURN jsonb_build_object(
@@ -1140,8 +1153,6 @@ SECURITY DEFINER
 SET search_path = money_kernel, public, pg_temp
 AS $$
 DECLARE
-  v_books_rate numeric(15,6);
-  v_exchange_rate numeric(15,6);
   v_pays money_kernel.pays;
   v_from_bal  numeric(18,4);
   v_to_bal    numeric(18,4);
@@ -1150,9 +1161,6 @@ DECLARE
   v_lot_ids   bigint[];
   v_to_credit numeric(18,4);
 BEGIN
-
-  v_books_rate := money_kernel.fn_resolve_books_rate(p_tenant_id, COALESCE(p_currency_code, 'BDT'));
-  v_exchange_rate := 1;
   PERFORM public.assert_kernel_money_access(p_tenant_id, 'void');
 
   -- Peek pays (no lock) so we can follow bills → pots → pays lock order
@@ -1215,6 +1223,7 @@ BEGIN
     END IF;
   END IF;
 
+  PERFORM money_kernel.fn_kernel_settlement_delete_allowed();
   DELETE FROM money_kernel.bill_settlements
    WHERE pays_id = p_pays_id AND settlement_kind = 'pay';
 
@@ -1450,9 +1459,6 @@ v_old       pays;
   v_bill_ids  bigint[];
   v_new_refs  jsonb;
 BEGIN
-
-  v_books_rate := money_kernel.fn_resolve_books_rate(p_tenant_id, COALESCE(p_currency_code, 'BDT'));
-  v_exchange_rate := 1;
   PERFORM public.assert_kernel_money_access(p_tenant_id);
 
   -- Idempotency before locks
@@ -1486,6 +1492,12 @@ BEGIN
   IF v_old.status = 'voided' THEN
     RAISE EXCEPTION 'invalid_state: pays % already voided', p_pays_id;
   END IF;
+
+  v_books_rate := COALESCE(
+    NULLIF(v_old.books_rate, 0),
+    money_kernel.fn_resolve_books_rate(p_tenant_id, COALESCE(v_old.currency_code, 'BDT'))
+  );
+  v_exchange_rate := COALESCE(NULLIF(v_old.exchange_rate, 0), 1);
 
   -- Multi-bill payment: void + rpc_pay_bills (this RPC re-settles at most one bill)
   IF (
@@ -1576,6 +1588,7 @@ BEGIN
   END IF;
 
   -- Reverse old
+  PERFORM money_kernel.fn_kernel_settlement_delete_allowed();
   DELETE FROM money_kernel.bill_settlements
    WHERE pays_id = p_pays_id AND settlement_kind = 'pay';
   UPDATE money_kernel.pays

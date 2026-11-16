@@ -2,6 +2,9 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { billsRepository } from '../repositories/billsRepository';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import { formatBillVoidErrorMessage } from '../utils/formatBillVoidErrorMessage';
+
+export type VoidBillMutationInput = { reason?: string | null };
 
 export function useVoidBillMutation(
   billId: () => number | null,
@@ -10,15 +13,15 @@ export function useVoidBillMutation(
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (input?: VoidBillMutationInput) => {
       const id = billId();
       if (!id) throw new Error('Bill not found.');
       const opts = options?.();
-      await billsRepository.voidBill(id, opts);
+      await billsRepository.voidBill(id, { ...opts, reason: input?.reason });
     },
     onSuccess: () => {
       const id = billId();
-      showSuccessNotification('Bill voided.');
+      showSuccessNotification('Bill cancelled.');
       void queryClient.invalidateQueries({ queryKey: billsQueryKeys.root });
       if (id) {
         void queryClient.invalidateQueries({ queryKey: billsQueryKeys.detailBundle(id) });
@@ -26,8 +29,7 @@ export function useVoidBillMutation(
       }
     },
     onError: (error: unknown) => {
-      const message = error instanceof Error ? error.message : 'Could not void bill.';
-      showErrorNotification(message);
+      showErrorNotification(formatBillVoidErrorMessage(error));
     },
   });
 }

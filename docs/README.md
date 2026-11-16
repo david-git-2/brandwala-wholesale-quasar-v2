@@ -25,6 +25,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`.
 | Pay ↔ bill settle | [bridge](features/money_bill_bridge/spec.md) |
 | Document numbering | [architecture/document-numbering](architecture/document-numbering.md) |
 | Warehouse stock movements (spine) | [stock-spine](features/procurement_stock/stock-spine.md) |
+| Shipment rate + product BDT cost calculations | [shipment-rate-calculations](features/procurement_stock/shipment-rate-calculations.md) |
 | What numbers go on reports (sales vs cash vs COD) | [reporting spec](features/reporting_treasury/spec.md) |
 | What is unfinished / wrong in a module? | That module’s `00-gaps.md` |
 | Product roadmap (Now / Next / Later) | [ROADMAP.md](ROADMAP.md) · feature IDs in [BACKLOG.md](BACKLOG.md) |

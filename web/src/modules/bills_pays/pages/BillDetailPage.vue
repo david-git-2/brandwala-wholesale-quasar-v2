@@ -63,9 +63,9 @@
             no-caps
             color="negative"
             icon="ph ph-prohibit"
-            label="Void"
+            label="Cancel bill"
             :loading="voidMutation.isPending.value"
-            @click="onVoid"
+            @click="openCancelBillDialog"
           />
           <q-btn
             unelevated
@@ -635,6 +635,17 @@
       :viewed-profile-id="billProfileId"
       :viewed-profile-display-name="profileName"
     />
+    <BillCancelConfirmDialog
+      v-if="bill"
+      v-model="cancelBillDialogOpen"
+      :bill="cancelBillSnapshot"
+      :payments="cancelDialogPayments"
+      :settlement-currency-code="apBillSettlementCurrency ?? bill.currency_code ?? null"
+      :is-ap="isApBill"
+      :open-credit-note-count="openLinkedCreditNoteCount"
+      :confirm-loading="voidMutation.isPending.value"
+      @confirm="onConfirmCancelBill"
+    />
   </q-page>
 </template>
 
@@ -689,6 +700,9 @@ import BillAdjustmentNoteBar from '../components/BillAdjustmentNoteBar.vue';
 import BillAdjustmentLinesTable from '../components/BillAdjustmentLinesTable.vue';
 import BillNetSettlementPanel from '../components/BillNetSettlementPanel.vue';
 import ApplyCreditToBillDialog from '../components/ApplyCreditToBillDialog.vue';
+import BillCancelConfirmDialog from '../components/BillCancelConfirmDialog.vue';
+import type { BillCancelConfirmSnapshot } from '../components/BillCancelConfirmDialog.vue';
+import { usePaymentsVoidAccess } from '../composables/usePaymentsVoidAccess';
 import type { BillLineDisplayRow } from '../repositories/billLinesRepository';
 import { useBillAdjustmentDraft } from '../composables/useBillAdjustmentDraft';
 import { useCreateBillAdjustmentMutation } from '../composables/useCreateBillAdjustmentMutation';
@@ -783,6 +797,8 @@ const paymentHistoryEntries = computed(
 
 const applyCreditDialogOpen = ref(false);
 const vendorRefundDialogOpen = ref(false);
+const cancelBillDialogOpen = ref(false);
+const paymentsVoidAccess = usePaymentsVoidAccess();
 const vendorRefundNoteId = ref<number | null>(null);
 const adjustmentComposerOpen = ref(false);
 const arAdjustmentNoteBarRef = ref<InstanceType<typeof BillAdjustmentNoteBar> | null>(null);
@@ -1095,11 +1111,55 @@ const statusLabel = computed(() => {
   return base;
 });
 
-const canVoid = computed(
-  () =>
-    bill.value?.invoice_status === 'issued' &&
-    Number(bill.value.paid_amount ?? 0) === 0,
+const livePaymentHistoryEntries = computed(() =>
+  paymentHistoryEntries.value.filter(
+    (e) =>
+      !e.voided_at &&
+      e.payment_id != null &&
+      e.entry_type !== 'write_off',
+  ),
 );
+
+const openLinkedCreditNoteCount = computed(
+  () =>
+    adjustmentRows.value.filter(
+      (r) => r.document_kind === 'credit_note' && r.invoice_status !== 'voided',
+    ).length,
+);
+
+const cancelDialogPayments = computed(() => livePaymentHistoryEntries.value);
+
+const cancelBillSnapshot = computed((): BillCancelConfirmSnapshot | null => {
+  const b = bill.value;
+  if (!b) return null;
+  const code =
+    (apBillSettlementCurrency.value ?? b.currency_code ?? 'BDT').trim().toUpperCase();
+  return {
+    invoiceNo: b.invoice_no,
+    totalAmount: Number(b.total_amount ?? 0),
+    paidAmount: Number(b.paid_amount ?? 0),
+    dueAmount: Number(b.due_amount ?? 0),
+    writtenOffAmount: Number(
+      (b as { written_off_amount?: number }).written_off_amount ?? netBalances.value?.written_off_amount ?? 0,
+    ),
+    currencyCode: code,
+  };
+});
+
+const canVoid = computed(() => {
+  const b = bill.value;
+  if (!b || b.invoice_status === 'voided') return false;
+  if (!isStandardBill.value) return false;
+  if (b.invoice_status === 'draft' || b.invoice_status === 'proforma_generated') return false;
+  if (billSpine.value === 'legacy') {
+    return b.invoice_status === 'issued' && Number(b.paid_amount ?? 0) === 0;
+  }
+  if (b.invoice_status !== 'issued') return false;
+  if (livePaymentHistoryEntries.value.length > 0 && !paymentsVoidAccess.value) {
+    return false;
+  }
+  return true;
+});
 
 const canAddAdjustment = computed(() => {
   const b = bill.value;
@@ -1469,14 +1529,19 @@ const onPrint = () => {
   });
 };
 
-const onVoid = async () => {
+const openCancelBillDialog = () => {
   if (!canVoid.value) return;
-  const ok = await requestConfirmation(
-    'Stock on this bill will be restored. This cannot be undone.',
-    'Void this bill?',
-  );
-  if (!ok) return;
-  await voidMutation.mutateAsync();
+  cancelBillDialogOpen.value = true;
+};
+
+const onConfirmCancelBill = async (reason: string | null) => {
+  if (!canVoid.value) return;
+  try {
+    await voidMutation.mutateAsync({ reason });
+    cancelBillDialogOpen.value = false;
+  } catch {
+    /* toast from mutation */
+  }
 };
 
 const paymentHistoryMethodLabel = (entry: InvoicePaymentHistoryEntry) =>

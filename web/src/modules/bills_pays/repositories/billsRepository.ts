@@ -312,10 +312,15 @@ const issueBill = async (billId: number, options: IssueBillOptions): Promise<voi
 
 const voidBill = async (
   billId: number,
-  options?: { tenantId?: number; spine?: 'legacy' | 'kernel' },
+  options?: { tenantId?: number; spine?: 'legacy' | 'kernel'; reason?: string | null },
 ): Promise<void> => {
   if (options?.spine === 'kernel' && options.tenantId) {
-    await moneyKernelRepository.voidKernelBill(options.tenantId, billId, null, true);
+    await moneyKernelRepository.voidKernelBill(
+      options.tenantId,
+      billId,
+      options.reason ?? null,
+      true,
+    );
     return;
   }
   const { error } = await supabase.rpc('void_bill', { p_bill_id: billId });
