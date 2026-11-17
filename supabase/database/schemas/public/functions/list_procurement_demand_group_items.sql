@@ -75,10 +75,15 @@ BEGIN
       coalesce(pd.vendor_placements, '[]'::jsonb) AS vendor_placements,
       coalesce(pd.stock_picks, '[]'::jsonb) AS stock_picks,
       o.is_negotiable_snapshot,
-      public.shop_order_item_delivery_sell_price(
+      public.shop_order_item_demand_buy_unit_price(
+        oi.cost_price_amount,
+        oi.unit_list_price_amount,
+        p.reference_cost_amount,
         o.is_negotiable_snapshot,
         oi.staff_offer_amount,
-        oi.final_price_amount
+        oi.final_price_amount,
+        oi.unit_sell_price_amount,
+        oi.customer_sell_price_amount
       ) AS unit_sell_price_amount
     FROM public.shop_order_items oi
     INNER JOIN public.shop_orders o ON o.id = oi.order_id

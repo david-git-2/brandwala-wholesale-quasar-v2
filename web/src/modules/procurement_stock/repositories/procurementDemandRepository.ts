@@ -22,6 +22,7 @@ export type PreorderDemandCloseAction = 'take' | 'condition' | 'return';
 export interface PreorderVendorPlacement {
   vendor_code: string;
   quantity: number;
+  unit_price?: number;
 }
 
 export interface PreorderDemandStockPick {
@@ -229,6 +230,21 @@ export interface UpsertPreorderDemandParams {
   vendorPlacements?: PreorderVendorPlacement[] | null;
   stockPicks?: PreorderDemandStockPick[] | null;
   notes?: string | null;
+}
+
+export interface BulkUpsertPreorderDemandVendorPlacementLine {
+  source_type: ProcurementDemandSourceType;
+  source_id: number;
+  vendor_placements: PreorderVendorPlacement[];
+}
+
+export interface BulkUpsertPreorderDemandVendorPlacementsParams {
+  tenantId: number;
+  lines: BulkUpsertPreorderDemandVendorPlacementLine[];
+}
+
+export interface BulkUpsertPreorderDemandVendorPlacementsResult {
+  updated_count: number;
 }
 
 export interface FillPreorderDemandPlacedQuantitiesParams {
@@ -565,6 +581,22 @@ const upsertPreorderDemand = async (
   return data as PreorderDemandRow;
 };
 
+const bulkUpsertPreorderDemandVendorPlacements = async (
+  params: BulkUpsertPreorderDemandVendorPlacementsParams,
+): Promise<BulkUpsertPreorderDemandVendorPlacementsResult> => {
+  const { data, error } = await supabase.rpc('bulk_upsert_preorder_demand_vendor_placements', {
+    p_tenant_id: params.tenantId,
+    p_lines: params.lines,
+  });
+
+  if (error) throw error;
+
+  const payload = (data ?? { updated_count: 0 }) as BulkUpsertPreorderDemandVendorPlacementsResult;
+  return {
+    updated_count: Number(payload.updated_count ?? 0),
+  };
+};
+
 const fillPreorderDemandPlacedQuantitiesForDocument = async (
   params: FillPreorderDemandPlacedQuantitiesParams,
 ): Promise<FillPreorderDemandPlacedQuantitiesResult> => {
@@ -790,6 +822,7 @@ export const procurementDemandRepository = {
   listDeliveryPapersForFulfillPage,
   listProcurementFulfillGroupItems,
   upsertPreorderDemand,
+  bulkUpsertPreorderDemandVendorPlacements,
   fillPreorderDemandPlacedQuantitiesForDocument,
   fillPreorderDemandOldestStockForDocument,
   setPreorderDemandVendorForDocument,

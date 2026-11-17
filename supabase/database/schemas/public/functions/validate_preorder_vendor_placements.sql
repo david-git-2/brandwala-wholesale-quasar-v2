@@ -9,6 +9,7 @@ DECLARE
   v_elem jsonb;
   v_qty integer;
   v_code text;
+  v_unit_price numeric;
 BEGIN
   IF p_placements IS NULL THEN
     RETURN true;
@@ -22,6 +23,17 @@ BEGIN
     v_qty := coalesce((v_elem->>'quantity')::integer, 0);
     IF v_code IS NULL OR v_qty <= 0 THEN
       RETURN false;
+    END IF;
+    IF v_elem ? 'unit_price' THEN
+      BEGIN
+        v_unit_price := (v_elem->>'unit_price')::numeric;
+      EXCEPTION
+        WHEN others THEN
+          RETURN false;
+      END;
+      IF v_unit_price IS NULL OR v_unit_price < 0 THEN
+        RETURN false;
+      END IF;
     END IF;
   END LOOP;
   RETURN true;

@@ -8,8 +8,7 @@ WTS_JSON ?= data/uk/out/wts_data.json
 WTS_VENDOR ?= WTS
 WTS_MARKET ?= GB
 WTS_EXPORT_FLAGS ?=
-# Books scope --tenant-id 15; child inserted-by --inserted-by-tenant-id 10.
-WTS_SYNC_FLAGS ?= --vendor-id 4 --tenant-id 15 --inserted-by-tenant-id 10
+WTS_SYNC_FLAGS ?= --vendor-id 4 --tenant-id 15
 
 pc:
 	cd .. && pnpm env:prod

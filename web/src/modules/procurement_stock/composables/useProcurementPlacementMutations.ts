@@ -6,6 +6,7 @@ import {
   type FillPreorderDemandPlacedQuantitiesParams,
   type ProcurementDemandSourceType,
   type ProcurementDemandStatus,
+  type BulkUpsertPreorderDemandVendorPlacementsParams,
   type SetPreorderDemandVendorParams,
   type UpsertPreorderDemandParams,
 } from '../repositories/procurementDemandRepository';
@@ -66,6 +67,26 @@ export function useUpsertPreorderDemandMutation(options: {
       const tenantId = unref(options.tenantId);
       if (!tenantId) throw new Error('Tenant is required');
       return procurementDemandRepository.upsertPreorderDemand({
+        tenantId,
+        ...payload,
+      });
+    },
+    onSuccess: () => {
+      invalidateDemandDeskQueries(queryClient);
+    },
+  });
+}
+
+export function useBulkUpsertPreorderDemandVendorPlacementsMutation(options: {
+  tenantId: Ref<number | null | undefined> | ComputedRef<number | null | undefined>;
+}) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: Omit<BulkUpsertPreorderDemandVendorPlacementsParams, 'tenantId'>) => {
+      const tenantId = unref(options.tenantId);
+      if (!tenantId) throw new Error('Tenant is required');
+      return procurementDemandRepository.bulkUpsertPreorderDemandVendorPlacements({
         tenantId,
         ...payload,
       });

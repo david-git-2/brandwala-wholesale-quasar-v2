@@ -1,4 +1,32 @@
 -- Default main location + BDT bundle for tenant/customer/investor cashbook profiles
+
+-- Post-rename cashbooks use profile_id only (legacy trigger rejected profile_id when entity_type was unset).
+CREATE OR REPLACE FUNCTION money_kernel.fn_validate_profile_link()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = money_kernel, pg_temp
+AS $$
+BEGIN
+  IF NEW.profile_id IS NULL THEN
+    RAISE EXCEPTION 'cashbooks.profile_id is required';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF to_regclass('money_kernel.cashbook_accounts') IS NOT NULL THEN
+    EXECUTE 'DROP TRIGGER IF EXISTS trg_validate_profile_link ON money_kernel.cashbook_accounts';
+  END IF;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_validate_profile_link ON money_kernel.cashbooks;
+CREATE TRIGGER trg_validate_profile_link
+  BEFORE INSERT OR UPDATE ON money_kernel.cashbooks
+  FOR EACH ROW
+  EXECUTE FUNCTION money_kernel.fn_validate_profile_link();
+
 CREATE OR REPLACE FUNCTION public.profile_auto_provisions_cashbook(p_profile_id bigint)
 RETURNS boolean
 LANGUAGE sql
@@ -440,10 +468,20 @@ DECLARE
   r record;
 BEGIN
   FOR r IN
-    SELECT pr.id, pr.tenant_id
+    SELECT
+      pr.id,
+      public.resolve_books_tenant_id(pr.tenant_id) AS books_tenant_id
     FROM public.profiles pr
     WHERE public.profile_auto_provisions_cashbook(pr.id)
   LOOP
-    PERFORM public.fn_provision_profile_cashbook_defaults(r.tenant_id, r.id);
+    IF r.books_tenant_id IS NULL THEN
+      CONTINUE;
+    END IF;
+    BEGIN
+      PERFORM public.fn_provision_profile_cashbook_defaults(r.books_tenant_id, r.id);
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE WARNING 'cashbook provision skipped profile %: %', r.id, SQLERRM;
+    END;
   END LOOP;
 END $$;

@@ -21,17 +21,30 @@
               </span>
             </p>
           </div>
-          <q-btn
+          <div
             v-if="documentDirty"
-            unelevated
-            no-caps
-            color="primary"
-            icon="ph ph-floppy-disk"
-            label="Save"
-            class="col-shrink"
-            :loading="saveLoading"
-            @click="saveDocument"
-          />
+            class="row items-center no-wrap q-gutter-x-xs col-shrink"
+          >
+            <q-btn
+              outline
+              no-caps
+              color="grey-8"
+              label="Cancel"
+              class="col-shrink"
+              :disable="saveLoading"
+              @click="cancelDocument"
+            />
+            <q-btn
+              unelevated
+              no-caps
+              color="primary"
+              icon="ph ph-floppy-disk"
+              label="Save"
+              class="col-shrink"
+              :loading="saveLoading"
+              @click="saveDocument"
+            />
+          </div>
         </div>
         <q-input
           v-model="searchText"
@@ -46,6 +59,51 @@
             <q-icon name="ph ph-magnifying-glass" />
           </template>
         </q-input>
+
+        <div
+          v-if="detailItems.length > 0"
+          class="demand-buy-doc-totals q-mt-sm q-pa-sm rounded-borders"
+        >
+          <div class="demand-buy-doc-totals__grand row items-end q-gutter-x-lg wrap">
+            <div class="column">
+              <span class="text-caption text-grey-7">Placed qty</span>
+              <span class="demand-buy-doc-totals__value tf-num font-mono">{{
+                placementTotals.grand.quantity
+              }}</span>
+            </div>
+            <div class="column">
+              <span class="text-caption text-grey-7">Placed £ (entered unit prices)</span>
+              <span class="demand-buy-doc-totals__value tf-num font-mono">{{
+                formatSettlementCurrencyAmount(placementTotals.grand.amount, 'GBP')
+              }}</span>
+            </div>
+          </div>
+          <div
+            v-if="placementTotals.byVendor.length > 0"
+            class="demand-buy-doc-totals__vendors q-mt-sm column q-gutter-y-xs"
+          >
+            <div
+              v-for="bucket in placementTotals.byVendor"
+              :key="bucket.vendorCode"
+              class="row items-baseline q-gutter-x-sm wrap demand-buy-doc-totals__vendor-row"
+              :class="{
+                'demand-buy-doc-totals__vendor-row--active':
+                  bulkVendorCode?.trim() === bucket.vendorCode,
+              }"
+            >
+              <span class="text-caption text-grey-7 text-weight-medium ellipsis">{{
+                vendorLabel(bucket.vendorCode)
+              }}</span>
+              <span class="demand-buy-doc-totals__subvalue tf-num font-mono">{{
+                bucket.quantity
+              }}</span>
+              <span class="text-caption text-grey-6">placed</span>
+              <span class="demand-buy-doc-totals__subvalue tf-num font-mono">{{
+                formatSettlementCurrencyAmount(bucket.amount, 'GBP')
+              }}</span>
+            </div>
+          </div>
+        </div>
 
         <div
           class="row items-center no-wrap q-gutter-x-sm q-mt-sm demand-bulk-bar"
@@ -89,8 +147,29 @@
             :disable="!bulkVendorCode?.trim() || selectedLineCount === 0"
             @click="applyBulkVendor"
           />
+          <q-btn
+            outline
+            no-caps
+            dense
+            color="primary"
+            icon="ph ph-clipboard-text"
+            label="Bulk paste"
+            class="col-shrink"
+            @click="showBulkPasteDialog = true"
+          >
+            <q-tooltip>Barcode or product code, qty and unit price (saves on apply)</q-tooltip>
+          </q-btn>
         </div>
       </q-card>
+
+      <ProcurementDemandBuyBulkPasteDialog
+        v-model="showBulkPasteDialog"
+        :vendor-code="bulkVendorCode"
+        :vendor-options="bulkVendorCodeOptions"
+        :saving="bulkPasteSaving"
+        @update:vendor-code="bulkVendorCode = $event"
+        @apply="onBulkPasteApply"
+      />
 
       <div class="col scroll-y-min">
         <div
@@ -128,11 +207,14 @@ import type { Vendor } from 'src/modules/vendor/types';
 import {
   parseSupabaseError,
   requestConfirmation,
+  requestUnsavedLeaveChoice,
   showErrorNotification,
   showSuccessNotification,
 } from 'src/utils/appFeedback';
+import { formatSettlementCurrencyAmount } from 'src/utils/currency';
 import { useProcurementDemandBuyDocumentInfiniteQuery } from '../composables/useProcurementDemandBuyDocumentInfiniteQuery';
-import { useUpsertPreorderDemandMutation } from '../composables/useProcurementPlacementMutations';
+import { useBulkUpsertPreorderDemandVendorPlacementsMutation } from '../composables/useProcurementPlacementMutations';
+import ProcurementDemandBuyBulkPasteDialog from './ProcurementDemandBuyBulkPasteDialog.vue';
 import ProcurementDemandBuyLines from './ProcurementDemandBuyLines.vue';
 import type {
   ProcurementDemandDocumentType,
@@ -140,14 +222,30 @@ import type {
   ProcurementDemandStatus,
 } from '../repositories/procurementDemandRepository';
 import {
+  aggregateVendorPlacementTotals,
+  clearedLineDraft,
   cloneLineDraft,
   type DemandBuyLineDraft,
   itemDraftKey,
   normalizePlacementsForSave,
+  backfillPlacementUnitPrices,
+  backfillPlacementVendorCodes,
+  orderLineUnitPrice,
+  placementsFromBaseline,
   placementsFromItem,
   serializePlacements,
-  validatePlacementDrafts,
+  upsertVendorPlacementDraft,
+  validatePlacementDraftsForPersist,
 } from '../utils/demandBuyPlacements';
+import {
+  bulkPasteRowHasValues,
+  findDemandItemsByKeys,
+  findUniqueDemandItemByKeys,
+  normalizeProductKey,
+  parsePasteQuantity,
+  parsePasteUnitPrice,
+  type DemandBuyBulkPasteRow,
+} from '../utils/demandBuyBulkPaste';
 
 const route = useRoute();
 const router = useRouter();
@@ -210,6 +308,16 @@ const pageTitle = computed(() => {
 const lineDrafts = reactive<Record<string, DemandBuyLineDraft>>({});
 const baselineByLine = reactive<Record<string, string>>({});
 
+const placementTotals = computed(() =>
+  aggregateVendorPlacementTotals(detailItems.value, (item) => {
+    const key = itemDraftKey(item);
+    return lineDrafts[key]?.placements ?? placementsFromItem(item);
+  }),
+);
+
+const showBulkPasteDialog = ref(false);
+const bulkPasteSaving = ref(false);
+
 const selectedLineKeys = reactive<Record<string, boolean>>({});
 const bulkVendorFilter = ref('');
 const bulkVendorCode = ref<string | null>(null);
@@ -233,6 +341,21 @@ const vendorCodeOptions = computed(() => {
       label: v.code.trim() || v.name,
     }));
 });
+
+const vendorLabelByCode = computed(() => {
+  const map = new Map<string, string>();
+  for (const v of (vendorsData.value ?? []) as Vendor[]) {
+    const code = v.code.trim();
+    if (!code) continue;
+    map.set(code, v.name?.trim() || code);
+  }
+  for (const opt of vendorCodeOptions.value) {
+    if (!map.has(opt.code)) map.set(opt.code, opt.label);
+  }
+  return map;
+});
+
+const vendorLabel = (code: string) => vendorLabelByCode.value.get(code.trim()) ?? code.trim();
 
 const filterVendors = (val: string, update: (fn: () => void) => void) => {
   update(() => {
@@ -306,21 +429,48 @@ const applyBulkVendor = () => {
     const key = itemDraftKey(item);
     if (!keySet.has(key)) continue;
     const need = lineNeedQty(item);
-    if (need <= 0) continue;
+    if (need <= 0) {
+      lineDrafts[key] = cloneLineDraft(clearedLineDraft());
+      continue;
+    }
     lineDrafts[key] = cloneLineDraft({
-      placements: [{ vendorCode: code, quantity: need }],
+      placements: [
+        {
+          vendorCode: code,
+          quantity: need,
+          unitPrice: orderLineUnitPrice(item),
+        },
+      ],
     });
   }
   showSuccessNotification(`Vendor set on ${keys.length} line(s). Save to persist.`);
 };
 
+const applyDraftFromItem = (item: ProcurementDemandItem) => {
+  const key = itemDraftKey(item);
+  const draft: DemandBuyLineDraft = { placements: placementsFromItem(item) };
+  lineDrafts[key] = cloneLineDraft(draft);
+  baselineByLine[key] = serializePlacements(draft.placements);
+};
+
+const reloadDraftsFromItems = (items: ProcurementDemandItem[], keys?: Set<string>) => {
+  for (const item of items) {
+    const key = itemDraftKey(item);
+    if (keys && !keys.has(key)) continue;
+    applyDraftFromItem(item);
+  }
+};
+
 const syncDraftsFromItems = (items: ProcurementDemandItem[]) => {
   for (const item of items) {
     const key = itemDraftKey(item);
-    if (baselineByLine[key] != null) continue;
-    const draft: DemandBuyLineDraft = { placements: placementsFromItem(item) };
-    lineDrafts[key] = cloneLineDraft(draft);
-    baselineByLine[key] = serializePlacements(draft.placements);
+    const existing = lineDrafts[key];
+    if (existing) {
+      backfillPlacementUnitPrices(item, existing.placements);
+      backfillPlacementVendorCodes(item, existing.placements);
+      continue;
+    }
+    applyDraftFromItem(item);
   }
 };
 
@@ -342,34 +492,26 @@ const documentDirty = computed(() =>
   }),
 );
 
-const upsertMutation = useUpsertPreorderDemandMutation({
+const bulkSaveMutation = useBulkUpsertPreorderDemandVendorPlacementsMutation({
   tenantId: parentTenantId,
-  procurementStatus: buyProcurementStatus,
-  search: debouncedSearch,
 });
 
 const saveLoading = ref(false);
 
-const confirmDiscardIfDirty = async (): Promise<boolean> => {
-  if (!documentDirty.value) return true;
-  return requestConfirmation(
-    'You have unsaved vendor orders. Discard changes?',
-    'Unsaved changes',
-    'Discard',
-  );
-};
-
-const onUpdateLineDraft = (item: ProcurementDemandItem, draft: DemandBuyLineDraft) => {
-  lineDrafts[itemDraftKey(item)] = cloneLineDraft(draft);
-};
-
-const onLoadMoreItems = () => {
-  if (detailQuery.hasMoreItems.value && !detailQuery.isFetchingNextPage.value) {
-    void detailQuery.fetchNextPage();
+const revertUnsavedDrafts = () => {
+  for (const item of detailItems.value) {
+    const key = itemDraftKey(item);
+    const draft = lineDrafts[key];
+    if (!draft) continue;
+    if (serializePlacements(draft.placements) === baselineByLine[key]) continue;
+    const fromBaseline = placementsFromBaseline(baselineByLine[key]);
+    lineDrafts[key] = cloneLineDraft({
+      placements: fromBaseline ?? placementsFromItem(item),
+    });
   }
 };
 
-const saveDocument = async () => {
+const saveAllDirtyLines = async () => {
   if (!parentTenantId.value) return;
   const items = detailItems.value;
   const changed = items.filter((item) => {
@@ -383,33 +525,205 @@ const saveDocument = async () => {
   for (const item of changed) {
     const key = itemDraftKey(item);
     const draft = lineDrafts[key];
-    const need = item.need_quantity ?? item.quantity ?? 0;
-    const err = validatePlacementDrafts(need, draft.placements);
+    const err = validatePlacementDraftsForPersist(draft!.placements, item);
     if (err) {
-      showErrorNotification(`${item.name}: ${err}`);
-      return;
+      throw new Error(`${item.name}: ${err}`);
     }
   }
 
+  await persistVendorPlacements(changed);
+  showSuccessNotification('Vendor orders saved.');
+};
+
+const confirmLeaveIfDirty = async (): Promise<boolean> => {
+  if (!documentDirty.value) return true;
+  const choice = await requestUnsavedLeaveChoice(
+    'Save vendor orders before leaving, or discard your edits.',
+    'Unsaved vendor orders',
+  );
+  if (choice === 'stay') return false;
+  if (choice === 'discard') {
+    revertUnsavedDrafts();
+    return true;
+  }
   saveLoading.value = true;
   try {
-    for (const item of changed) {
-      const key = itemDraftKey(item);
-      const draft = lineDrafts[key];
-      await upsertMutation.mutateAsync({
-        sourceType: item.source_type,
-        sourceId: item.source_id,
-        vendorPlacements: normalizePlacementsForSave(draft.placements),
-      });
-      baselineByLine[key] = serializePlacements(draft.placements);
-    }
-    showSuccessNotification('Vendor orders saved.');
-    await detailQuery.refetch();
-    void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandBuyDocuments'] });
+    await saveAllDirtyLines();
+    return !documentDirty.value;
   } catch (err) {
-    showErrorNotification(parseSupabaseError(err, 'Failed to save vendor orders'));
+    showErrorNotification(
+      err instanceof Error ? err.message : parseSupabaseError(err, 'Failed to save vendor orders'),
+    );
+    return false;
   } finally {
     saveLoading.value = false;
+  }
+};
+
+const onUpdateLineDraft = (item: ProcurementDemandItem, draft: DemandBuyLineDraft) => {
+  lineDrafts[itemDraftKey(item)] = cloneLineDraft(draft);
+};
+
+const onLoadMoreItems = () => {
+  if (detailQuery.hasMoreItems.value && !detailQuery.isFetchingNextPage.value) {
+    void detailQuery.fetchNextPage();
+  }
+};
+
+const persistVendorPlacements = async (items: ProcurementDemandItem[]) => {
+  if (!parentTenantId.value || items.length === 0) return;
+  for (const item of items) {
+    const key = itemDraftKey(item);
+    const draft = lineDrafts[key];
+    if (!draft) continue;
+    const err = validatePlacementDraftsForPersist(draft.placements, item);
+    if (err) {
+      throw new Error(`${item.name}: ${err}`);
+    }
+  }
+  const savedKeys = new Set(items.map((item) => itemDraftKey(item)));
+  await bulkSaveMutation.mutateAsync({
+    lines: items.map((item) => {
+      const key = itemDraftKey(item);
+      const draft = lineDrafts[key];
+      return {
+        source_type: item.source_type,
+        source_id: item.source_id,
+        vendor_placements: normalizePlacementsForSave(draft!.placements, item),
+      };
+    }),
+  });
+  await detailQuery.refetch();
+  reloadDraftsFromItems(detailItems.value, savedKeys);
+  void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandBuyDocuments'] });
+};
+
+const cancelDocument = async () => {
+  if (!documentDirty.value) return;
+  const ok = await requestConfirmation(
+    'Revert unsaved vendor order edits on this document?',
+    'Cancel changes',
+    'Revert',
+  );
+  if (!ok) return;
+  revertUnsavedDrafts();
+  showSuccessNotification('Changes reverted.');
+};
+
+const saveDocument = async () => {
+  saveLoading.value = true;
+  try {
+    await saveAllDirtyLines();
+  } catch (err) {
+    showErrorNotification(
+      err instanceof Error ? err.message : parseSupabaseError(err, 'Failed to save vendor orders'),
+    );
+  } finally {
+    saveLoading.value = false;
+  }
+};
+
+const onBulkPasteApply = async (rows: DemandBuyBulkPasteRow[]) => {
+  const vendorCode = bulkVendorCode.value?.trim();
+  if (!vendorCode) {
+    showErrorNotification('Choose a vendor on the bulk bar.');
+    return;
+  }
+
+  bulkPasteSaving.value = true;
+  try {
+    if (detailQuery.hasMoreItems.value) {
+      await detailQuery.fetchAllPages();
+    }
+    const items = detailItems.value;
+    const dataRows = rows.filter(bulkPasteRowHasValues);
+    const pasteHasKeys = dataRows.some(
+      (row) => normalizeProductKey(row.barcode) || normalizeProductKey(row.product_code),
+    );
+    const itemsInPasteScope = new Set<string>();
+    if (pasteHasKeys) {
+      for (const row of dataRows) {
+        const barcode = normalizeProductKey(row.barcode);
+        const productCode = normalizeProductKey(row.product_code);
+        if (!barcode && !productCode) continue;
+        const hits = findDemandItemsByKeys(items, barcode, productCode);
+        if (hits.length === 1) itemsInPasteScope.add(itemDraftKey(hits[0]!));
+      }
+    }
+    const toSave: ProcurementDemandItem[] = [];
+    const savedKeys = new Set<string>();
+    const pushToSave = (item: ProcurementDemandItem) => {
+      const key = itemDraftKey(item);
+      if (savedKeys.has(key)) return;
+      savedKeys.add(key);
+      toSave.push(item);
+    };
+    let skipped = 0;
+    let cleared = 0;
+
+    for (const row of dataRows) {
+      const qty = parsePasteQuantity(row.quantity);
+      const price = parsePasteUnitPrice(row.unit_price);
+      if (qty === null && price === null) {
+        skipped++;
+        continue;
+      }
+      const barcode = normalizeProductKey(row.barcode);
+      const productCode = normalizeProductKey(row.product_code);
+      if (!barcode && !productCode) {
+        skipped++;
+        continue;
+      }
+      const item = findUniqueDemandItemByKeys(items, barcode, productCode);
+      if (!item) {
+        skipped++;
+        continue;
+      }
+      const key = itemDraftKey(item);
+      const existingPlacements =
+        lineDrafts[key]?.placements ?? placementsFromItem(item);
+      const patch: { quantity?: number; unitPrice?: number } = {};
+      if (qty !== null) patch.quantity = qty;
+      if (price !== null) patch.unitPrice = price;
+      const placements = upsertVendorPlacementDraft(item, existingPlacements, vendorCode, patch);
+      const draft = cloneLineDraft({ placements });
+      const err = validatePlacementDraftsForPersist(draft.placements, item);
+      if (err) {
+        showErrorNotification(`${item.name}: ${err}`);
+        return;
+      }
+      lineDrafts[key] = draft;
+      pushToSave(item);
+    }
+
+    if (pasteHasKeys) {
+      for (const item of items) {
+        const key = itemDraftKey(item);
+        if (itemsInPasteScope.has(key)) continue;
+        const draft = cloneLineDraft(clearedLineDraft());
+        if (serializePlacements(draft.placements) === baselineByLine[key]) continue;
+        lineDrafts[key] = draft;
+        pushToSave(item);
+        cleared++;
+      }
+    }
+
+    if (toSave.length === 0) {
+      showErrorNotification(
+        skipped > 0 ? 'No lines matched. Check barcode or product code.' : 'Nothing to apply.',
+      );
+      return;
+    }
+
+    await persistVendorPlacements(toSave);
+    showBulkPasteDialog.value = false;
+    const skipPart = skipped > 0 ? ` ${skipped} row(s) skipped.` : '';
+    const clearPart = cleared > 0 ? ` ${cleared} line(s) cleared (not in paste).` : '';
+    showSuccessNotification(`Pasted and saved ${toSave.length} line(s).${skipPart}${clearPart}`);
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Bulk paste failed'));
+  } finally {
+    bulkPasteSaving.value = false;
   }
 };
 
@@ -422,13 +736,13 @@ const demandListPath = computed(() => {
 });
 
 const goBack = async () => {
-  if (!(await confirmDiscardIfDirty())) return;
+  if (!(await confirmLeaveIfDirty())) return;
   void router.push(demandListPath.value);
 };
 
 onBeforeRouteLeave(async () => {
-  if (!documentDirty.value) return true;
-  return confirmDiscardIfDirty();
+  if (!(await confirmLeaveIfDirty())) return false;
+  return true;
 });
 
 const { setCustomBreadcrumbs, clearCustomBreadcrumbs } = useBreadcrumbs();
@@ -466,5 +780,30 @@ onBeforeUnmount(() => clearCustomBreadcrumbs());
   flex: 1 1 160px;
   min-width: 140px;
   max-width: 220px;
+}
+.demand-buy-doc-totals {
+  border: 1px solid var(--tf-neutral-border);
+  background: var(--tf-neutral-canvas);
+  border-radius: var(--tf-radius-md, 8px);
+}
+.demand-buy-doc-totals__value {
+  font-size: var(--tf-text-kpi, 1.25rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--tf-theme-primary);
+}
+.demand-buy-doc-totals__subvalue {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.demand-buy-doc-totals__vendor-row {
+  padding-left: 2px;
+}
+.demand-buy-doc-totals__vendor-row--active {
+  padding: 4px 6px;
+  margin-left: -6px;
+  border-radius: var(--tf-radius-sm, 4px);
+  background: color-mix(in srgb, var(--tf-theme-primary) 10%, var(--tf-neutral-canvas));
 }
 </style>

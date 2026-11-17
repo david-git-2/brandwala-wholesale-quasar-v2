@@ -321,6 +321,7 @@ DECLARE
   v_account_id bigint;
   v_point_id   bigint;
   v_lot_id     bigint;
+  v_has_entity_cols boolean;
 BEGIN
   IF p_books_tenant_id IS NULL OR p_profile_id IS NULL THEN
     RETURN NULL;
@@ -335,10 +336,23 @@ BEGIN
     AND ca.profile_id = p_profile_id
   LIMIT 1;
 
+  v_has_entity_cols := EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'money_kernel'
+      AND table_name = 'cashbooks'
+      AND column_name = 'entity_type'
+  );
+
   IF v_account_id IS NULL THEN
-    INSERT INTO money_kernel.cashbooks (tenant_id, profile_id)
-    VALUES (p_books_tenant_id, p_profile_id)
-    RETURNING id INTO v_account_id;
+    IF v_has_entity_cols THEN
+      INSERT INTO money_kernel.cashbooks (tenant_id, profile_id, entity_type, entity_id)
+      VALUES (p_books_tenant_id, p_profile_id, 'profile', p_profile_id)
+      RETURNING id INTO v_account_id;
+    ELSE
+      INSERT INTO money_kernel.cashbooks (tenant_id, profile_id)
+      VALUES (p_books_tenant_id, p_profile_id)
+      RETURNING id INTO v_account_id;
+    END IF;
   END IF;
 
   SELECT cp.id INTO v_point_id

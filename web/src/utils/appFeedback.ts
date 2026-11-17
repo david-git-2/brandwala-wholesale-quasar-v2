@@ -64,6 +64,8 @@ export const requestConfirmation = (
 
 export type UnsavedChangesChoice = 'discard' | 'stay';
 
+export type UnsavedLeaveChoice = 'save' | 'discard' | 'stay';
+
 export const requestUnsavedChangesConfirmation = (
   message = 'Your changes are not saved. If you leave now, you will lose them.',
   title = 'Not saved',
@@ -87,6 +89,20 @@ export const requestUnsavedChangesConfirmation = (
       },
     })
       .onOk(() => resolve('discard'))
+      .onCancel(() => resolve('stay'))
+      .onDismiss(() => resolve('stay'));
+  });
+
+export const requestUnsavedLeaveChoice = (
+  message = 'You have unsaved changes. Save before leaving, or discard them.',
+  title = 'Unsaved changes',
+): Promise<UnsavedLeaveChoice> =>
+  new Promise((resolve) => {
+    Dialog.create({
+      component: () => import('src/components/ui/TfUnsavedLeaveDialog.vue'),
+      componentProps: { title, message },
+    })
+      .onOk((choice: UnsavedLeaveChoice) => resolve(choice))
       .onCancel(() => resolve('stay'))
       .onDismiss(() => resolve('stay'));
   });

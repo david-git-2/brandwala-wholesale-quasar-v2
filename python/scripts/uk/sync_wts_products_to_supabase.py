@@ -57,21 +57,13 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("PY_PRODUCTS_MARKET_CODE", "GB"),
         help="Market code scope (default: PY_PRODUCTS_MARKET_CODE or GB).",
     )
-    books_default = (
-        os.getenv("PY_PRODUCTS_TENANT_ID") or os.getenv("PY_PRODUCTS_PARENT_TENANT_ID") or "15"
-    ).strip() or "15"
+    tenant_default = (os.getenv("PY_PRODUCTS_TENANT_ID") or "15").strip() or "15"
     parser.add_argument(
         "--tenant-id",
-        dest="books_tenant_id",
+        dest="tenant_id",
         type=int,
-        default=int(books_default),
-        help=f"Books warehouse tenant id (default: {books_default}).",
-    )
-    parser.add_argument(
-        "--inserted-by-tenant-id",
-        dest="inserted_by_tenant_id",
-        default=os.getenv("PY_PRODUCTS_INSERTED_BY_TENANT_ID", "").strip(),
-        help="Who ran the sync (inserted_by_tenant_id). Defaults to books tenant id.",
+        default=int(tenant_default),
+        help=f"Tenant id (default: {tenant_default}).",
     )
     parser.add_argument(
         "--vendor-id",
@@ -287,11 +279,8 @@ def main() -> int:
     args = parse_args()
     sync_started = time.perf_counter()
 
-    tenant_id = int(args.books_tenant_id)
-    inserted_raw = to_text(args.inserted_by_tenant_id)
-    inserted_by_tenant_id = (
-        int(inserted_raw) if inserted_raw.isdigit() and int(inserted_raw) > 0 else tenant_id
-    )
+    tenant_id = int(args.tenant_id)
+    inserted_by_tenant_id = tenant_id
     print(
         f"Using tenant_id={tenant_id}, "
         f"inserted_by_tenant_id={inserted_by_tenant_id}",

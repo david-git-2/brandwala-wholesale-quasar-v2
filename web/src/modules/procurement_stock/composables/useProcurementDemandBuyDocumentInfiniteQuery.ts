@@ -106,10 +106,38 @@ export function useProcurementDemandBuyDocumentInfiniteQuery(options: {
 
   const hasMoreItems = computed(() => query.hasNextPage.value ?? false);
 
+  const fetchAllPages = async (): Promise<void> => {
+    const maxPages = 200;
+    let iterations = 0;
+    let stagnant = 0;
+
+    while (query.hasNextPage.value && iterations < maxPages) {
+      if (query.isFetchingNextPage.value || query.isFetching.value) {
+        await new Promise<void>((resolve) => {
+          window.setTimeout(resolve, 40);
+        });
+        continue;
+      }
+
+      const pagesBefore = query.data.value?.pages.length ?? 0;
+      await query.fetchNextPage();
+      iterations += 1;
+
+      const pagesAfter = query.data.value?.pages.length ?? 0;
+      if (pagesAfter <= pagesBefore) {
+        stagnant += 1;
+        if (stagnant >= 3) break;
+      } else {
+        stagnant = 0;
+      }
+    }
+  };
+
   return {
     ...query,
     documentHeader,
     demandItems,
     hasMoreItems,
+    fetchAllPages,
   };
 }

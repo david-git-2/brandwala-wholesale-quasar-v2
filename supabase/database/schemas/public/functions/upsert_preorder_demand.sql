@@ -73,9 +73,6 @@ BEGIN
     END IF;
     v_placements := p_vendor_placements;
     v_placed := public.sum_preorder_vendor_placements(v_placements);
-    IF v_placed > coalesce(v_open_qty, 0) THEN
-      RAISE EXCEPTION 'placed quantity cannot exceed need quantity';
-    END IF;
   ELSIF p_placed_quantity IS NOT NULL THEN
     IF coalesce(p_placed_quantity, 0) < 0 THEN
       RAISE EXCEPTION 'placed_quantity cannot be negative';
@@ -91,9 +88,6 @@ BEGIN
       jsonb_build_object('vendor_code', v_vendor_code, 'quantity', p_placed_quantity)
     );
     v_placed := p_placed_quantity;
-    IF v_placed > coalesce(v_open_qty, 0) THEN
-      RAISE EXCEPTION 'placed quantity cannot exceed need quantity';
-    END IF;
   ELSE
     v_placements := NULL;
   END IF;
