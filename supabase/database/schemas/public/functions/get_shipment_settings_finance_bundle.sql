@@ -7,27 +7,30 @@ CREATE FUNCTION public.get_shipment_settings_finance_bundle (
   SET search_path TO 'public'
   AS $function$
 declare
-  v_parent bigint;
+  v_workspace bigint;
+  v_buckets jsonb;
   v_cost_entries jsonb;
   v_ap_bills jsonb;
   v_ap_fx jsonb;
-  v_sid text;
   v_elem jsonb;
   v_slim jsonb := '[]'::jsonb;
 begin
-  select gs.tenant_id into v_parent
+  select coalesce(gs.buckets, '[]'::jsonb)
+    into v_buckets
   from public.global_shipments gs
   where gs.id = p_shipment_id;
 
-  if v_parent is null then
+  if not found then
     raise exception 'shipment not found';
   end if;
 
+  v_workspace := public._shipment_money_workspace_tenant(p_shipment_id);
+
   if not (
-    public.user_can_manage_parent_tenant(v_parent)
+    public.user_can_manage_books_tenant(v_workspace)
     or exists (
       select 1 from public.memberships m
-      where m.tenant_id = v_parent
+      where m.tenant_id = v_workspace
         and lower(trim(m.email)) = public.current_user_email()
         and m.is_active = true
     )
@@ -35,37 +38,12 @@ begin
     raise exception 'not allowed';
   end if;
 
-  perform public.ensure_global_shipment_cost_entries_from_header(p_shipment_id);
-  perform public.sync_shipment_ap_bills(p_shipment_id);
-
-  v_sid := p_shipment_id::text;
-
-  select coalesce(
-    jsonb_agg(
-      jsonb_build_object(
-        'id', ce.id,
-        'shipment_id', ce.shipment_id,
-        'cost_bucket', ce.cost_bucket,
-        'cost_component', ce.cost_component,
-        'is_capitalizable', ce.is_capitalizable,
-        'description', ce.description,
-        'amount', ce.amount,
-        'currency_id', ce.currency_id,
-        'metadata', ce.metadata,
-        'section_id', ce.section_id
-      )
-      order by ce.cost_bucket, ce.cost_component, ce.id
-    ),
-    '[]'::jsonb
-  )
-  into v_cost_entries
-  from public.global_shipment_cost_entries ce
-  where ce.shipment_id = p_shipment_id;
+  v_cost_entries := '[]'::jsonb;
 
   for v_elem in
     select value
     from jsonb_array_elements(
-      public.list_bills_for_source(v_parent, 'shipment_cost', v_sid, null, false, true)
+      public._list_shipment_cost_ap_bills_json(v_workspace, p_shipment_id, false)
     )
   loop
     v_slim := v_slim || jsonb_build_array(
@@ -78,11 +56,21 @@ begin
         'source_key', v_elem->'source_key',
         'invoice_status', v_elem->'invoice_status',
         'payment_status', v_elem->'payment_status',
-        'total_amount', v_elem->'total_amount',
+        'total_amount', coalesce(
+          nullif(v_elem->>'total_amount', '')::numeric,
+          nullif(v_elem->'net_balances'->>'open_txn', '')::numeric,
+          0
+        ),
         'due_amount', coalesce(
-          v_elem->'net_balances'->'open_books',
-          v_elem->'due_amount'
-        )
+          nullif(v_elem->'net_balances'->>'open_books', '')::numeric,
+          nullif(v_elem->'net_balances'->>'open_txn', '')::numeric,
+          nullif(v_elem->>'due_amount', '')::numeric,
+          0
+        ),
+        'net_balances', v_elem->'net_balances',
+        'section_id', v_elem->'section_id',
+        'section_title', v_elem->'section_title',
+        'cost_lines', coalesce(v_elem->'cost_lines', '[]'::jsonb)
       )
     );
   end loop;
@@ -92,9 +80,11 @@ begin
   v_ap_fx := v_ap_fx - 'blended_rate';
 
   return jsonb_build_object(
+    'buckets', v_buckets,
     'cost_entries', v_cost_entries,
     'ap_bills', v_ap_bills,
-    'ap_fx', v_ap_fx
+    'ap_fx', v_ap_fx,
+    'ap_issue_parties', public._resolve_shipment_cost_ap_kernel_parties(p_shipment_id)
   );
 end;
 $function$;

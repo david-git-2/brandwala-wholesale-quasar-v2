@@ -1,5 +1,10 @@
 import { shipmentApKindLabel, SHIPMENT_AP_COST_BUCKETS } from '../constants/shipmentApBuckets';
-import type { ShipmentApBillRow, ShipmentApKind } from '../repositories/shipmentApBillsRepository';
+import type {
+  ShipmentApBillRow,
+  ShipmentApBucketPaidTotals,
+  ShipmentApFxSnapshot,
+  ShipmentApKind,
+} from '../repositories/shipmentApBillsRepository';
 import {
   shipmentApBillBucket,
   shipmentApBillPlugCurrency,
@@ -45,10 +50,44 @@ export const displayBillOriginAmount = (bill: ShipmentApBillRow): number => {
 export const displayBillOriginCurrencyCode = (bill: ShipmentApBillRow): string =>
   (shipmentApBillPlugCurrency(bill) ?? 'BDT').toUpperCase();
 
+/** Books (BDT) face for Summary — not kernel `total_amount` on foreign AP. */
+export function displayBillBooksBdtAmount(
+  bill: ShipmentApBillRow,
+  bucketPaid?: ShipmentApBucketPaidTotals | null,
+): number {
+  const originCode = displayBillOriginCurrencyCode(bill);
+  const originAmount = displayBillOriginAmount(bill);
+  if (originCode === 'BDT') return round2(originAmount);
+
+  const foreignPaid = Number(bucketPaid?.foreign_paid) || 0;
+  const bdtPaid = Number(bucketPaid?.bdt_paid) || 0;
+  if (originAmount > 0 && foreignPaid > 0 && bdtPaid > 0) {
+    return round2((originAmount / foreignPaid) * bdtPaid);
+  }
+
+  const rate = Number(bucketPaid?.conversion_rate);
+  if (originAmount > 0 && Number.isFinite(rate) && rate > 0) {
+    return round2(originAmount * rate);
+  }
+
+  return round2(originAmount);
+}
+
+function bucketPaidFromApFx(
+  apFx: ShipmentApFxSnapshot | null | undefined,
+  bucket: ShipmentApKind,
+): ShipmentApBucketPaidTotals | null {
+  if (!apFx) return null;
+  return apFx[bucket] ?? null;
+}
+
 const isVoidedBill = (bill: ShipmentApBillRow): boolean =>
   bill.invoice_status?.toLowerCase() === 'voided';
 
-export function buildSummaryApBillsByBucket(bills: ShipmentApBillRow[]): SummaryApBillBucketGroup[] {
+export function buildSummaryApBillsByBucket(
+  bills: ShipmentApBillRow[],
+  apFx?: ShipmentApFxSnapshot | null,
+): SummaryApBillBucketGroup[] {
   const active = bills.filter((b) => !isVoidedBill(b));
   const groups: SummaryApBillBucketGroup[] = [];
 
@@ -59,10 +98,12 @@ export function buildSummaryApBillsByBucket(bills: ShipmentApBillRow[]): Summary
     const originByCode = new Map<string, number>();
     let bdtSubtotal = 0;
 
+    const bucketPaid = bucketPaidFromApFx(apFx, bucket);
+
     const rows: SummaryApBillTableRow[] = inBucket.map((bill) => {
       const originCode = displayBillOriginCurrencyCode(bill);
       const originAmount = displayBillOriginAmount(bill);
-      const bdtAmount = displayBillTotal(bill);
+      const bdtAmount = displayBillBooksBdtAmount(bill, bucketPaid);
       bdtSubtotal += bdtAmount;
       if (originAmount > 0) {
         originByCode.set(

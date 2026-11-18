@@ -2,15 +2,14 @@ import { computed, ref, type ComputedRef, type Ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { PROFILE_CASH_DEFAULT_METHOD } from 'src/modules/people/constants/profileCashMovementMethods';
-import {
-  applyDepositCacheUpdate,
-  invalidateProfileCashbookStaffQueries,
-} from './applyDepositCacheUpdate';
+import { applyDepositCacheUpdate } from './applyDepositCacheUpdate';
+import { billsQueryKeys } from '../services/billsQueryKeys';
+import type { BillDetailBundle } from 'src/modules/sales_invoice/repositories/invoiceRepository';
 import { useBillPayCashbookLegsStore } from '../stores/billPayCashbookLegsStore';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useCashbookLegPots } from './useCashbookLegPots';
+import { useCashbookLegPots, type CashbookLegPotChipOption } from './useCashbookLegPots';
 import { useBooksCurrencyCode } from './useBooksCurrencyCode';
 import {
   useRecordBillPaymentMutation,
@@ -26,6 +25,14 @@ import type {
 import { moneyKernelRepository } from '../repositories/moneyKernelRepository';
 import { createPayIdempotencyKey } from '../repositories/paysRepository';
 import { buildKernelPayMovementMeta } from '../utils/kernelPayMovementMeta';
+
+function findPotChipOption(
+  options: CashbookLegPotChipOption[],
+  potId: number | null,
+): CashbookLegPotChipOption | null {
+  if (potId == null || potId <= 0) return null;
+  return options.find((o) => o.value === potId) ?? null;
+}
 
 export function useBillDetailMoneyPayDialog(options: {
   billId: ComputedRef<number | null>;
@@ -517,7 +524,7 @@ export function useBillDetailMoneyPayDialog(options: {
         legBooksRate: payload.legBooksRate ?? null,
       };
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       showSuccessNotification('Deposit posted.');
       payDepositDialogOpen.value = false;
       applyDepositCacheUpdate(queryClient, {
@@ -529,29 +536,13 @@ export function useBillDetailMoneyPayDialog(options: {
         legBooksRate: result.legBooksRate,
         deposit: result.deposit,
       });
-      const staffOperatingId = options.staffOperatingTenantId.value;
-      const booksId = result.booksTenantId;
-      let entityType = 'tenant';
-      let entityId = booksId;
-      if (payDepositPurpose.value === 'to_new_bundle') {
-        entityType = 'tenant';
-        entityId = booksId;
-      } else if (options.isApBill.value) {
-        entityType = 'tenant';
-        entityId = booksId;
-      } else if (arDualCashbook.value) {
-        entityType = 'customer';
-        const subjectId = options.bill.value?.from_profile?.subject_id;
-        entityId = subjectId != null ? Number(subjectId) : 0;
-      }
-      if (staffOperatingId > 0 && entityId > 0) {
-        invalidateProfileCashbookStaffQueries(queryClient, {
-          operatingTenantId: staffOperatingId,
-          booksTenantId: booksId,
-          entityType,
-          entityId,
-          profileId: result.profileId,
-        });
+      const billId = result.billId;
+      if (billId != null && billId > 0) {
+        await queryClient.refetchQueries({ queryKey: billsQueryKeys.detailBundle(billId) });
+        const fresh = queryClient.getQueryData<BillDetailBundle>(
+          billsQueryKeys.detailBundle(billId),
+        );
+        payCashbookLegsStore.replaceFromBundleQuery(billId, fresh?.payCashbookLegs);
       }
       const newPotId = result.deposit.pot_id;
       if (Number.isFinite(newPotId) && newPotId > 0) {
@@ -615,6 +606,11 @@ export function useBillDetailMoneyPayDialog(options: {
     const settlement =
       options.paymentDueCurrencyCode.value.trim() || booksCurrencyCode.value;
 
+    const selectedFromPot =
+      isAp || dual
+        ? findPotChipOption(fromPotOptions.value, fromPotId)
+        : null;
+
     return {
       tenantId: options.operatingTenantId.value,
       billId,
@@ -626,16 +622,9 @@ export function useBillDetailMoneyPayDialog(options: {
       billDueAmount: options.paymentDueAmount.value,
       settlementCurrencyCode: settlement,
       fromPotId,
-      fromPotCurrencyCode: isAp
-        ? apFromPotCurrency.value
-        : dual
-          ? arFromPotCurrency.value
-          : undefined,
-      fromPotAvailableBalance: isAp
-        ? apFromPotBalance.value
-        : dual
-          ? arFromPotBalance.value
-          : undefined,
+      fromPotCurrencyCode: selectedFromPot?.currencyCode ?? undefined,
+      fromPotAvailableBalance:
+        selectedFromPot != null ? Number(selectedFromPot.amount) : undefined,
       toPotId: payload.toPotId,
       skipCustomerAutoDeposit: !isAp && dual,
       methodCode: payload.methodCode,

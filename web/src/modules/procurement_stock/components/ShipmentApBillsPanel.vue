@@ -162,28 +162,42 @@
         <div
           v-for="(line, idx) in formLines"
           :key="idx"
-          class="row q-col-gutter-sm items-start q-pa-sm rounded-borders border-grey"
+          class="row q-col-gutter-sm items-end no-wrap q-pa-sm rounded-borders border-grey shipment-ap-bill-line"
         >
-          <div class="col-7">
+          <div class="col shipment-ap-bill-line__component">
             <q-select
               v-model="line.cost_component"
               :options="componentOptions"
               label="Component"
               outlined
               dense
+              hide-bottom-space
               emit-value
               map-options
             />
           </div>
-          <div class="col-5">
+          <div class="col-5 col-sm-4">
             <q-input
               v-model.number="line.amount"
               type="number"
               label="Amount"
               outlined
               dense
+              hide-bottom-space
               min="0"
               step="0.01"
+            />
+          </div>
+          <div class="col-auto shipment-ap-bill-line__remove">
+            <q-btn
+              flat
+              round
+              dense
+              icon="ph ph-trash"
+              color="negative"
+              :disable="formLines.length <= 1"
+              aria-label="Remove line"
+              @click="removeFormLine(idx)"
             />
           </div>
         </div>
@@ -590,6 +604,11 @@ const addFormLine = () => {
   formLines.value.push({ cost_component: 'misc', amount: 0 });
 };
 
+const removeFormLine = (idx: number) => {
+  if (formLines.value.length <= 1) return;
+  formLines.value.splice(idx, 1);
+};
+
 const submitDialog = async () => {
   const lines = formLines.value
     .filter((l) => Number(l.amount) > 0)
@@ -672,5 +691,14 @@ watch(
 .shipment-ap-bill-dialog__body {
   max-height: min(72vh, 560px);
   overflow-y: auto;
+}
+
+.shipment-ap-bill-line__component {
+  min-width: 0;
+}
+
+.shipment-ap-bill-line__remove {
+  flex-shrink: 0;
+  padding-bottom: 2px;
 }
 </style>

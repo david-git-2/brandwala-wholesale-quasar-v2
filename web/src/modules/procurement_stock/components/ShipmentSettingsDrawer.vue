@@ -1348,7 +1348,9 @@ const summaryFreightBdtPerKg = computed((): number | null => {
   return null;
 });
 
-const summaryBillsByBucket = computed(() => buildSummaryApBillsByBucket(shipmentApBills.value));
+const summaryBillsByBucket = computed(() =>
+  buildSummaryApBillsByBucket(shipmentApBills.value, effectiveApFx.value),
+);
 
 const summaryBillsGrandBdt = computed(() => summaryApBillsGrandBdt(summaryBillsByBucket.value));
 

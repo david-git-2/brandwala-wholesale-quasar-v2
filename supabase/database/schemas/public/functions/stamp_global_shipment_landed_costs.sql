@@ -48,8 +48,6 @@ BEGIN
     RAISE EXCEPTION 'shipment not found';
   END IF;
 
-  PERFORM public.ensure_global_shipment_cost_entries_from_header(p_shipment_id);
-
   v_fx := public._global_shipment_landed_fx_inputs(p_shipment_id);
   v_prod_rate := coalesce((v_fx ->> 'product_conversion_rate')::numeric, 1);
   v_freight_per_kg := coalesce((v_fx ->> 'freight_bdt_per_kg')::numeric, 0);

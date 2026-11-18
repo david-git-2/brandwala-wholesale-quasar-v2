@@ -162,6 +162,16 @@ export function useMoneyPayDialogForm(options: {
     },
   );
 
+  watch(
+    () => options.prefill.value?.toPotId,
+    (potId) => {
+      if (!options.dialogOpen.value || options.kind.value !== 'payment') return;
+      if (potId != null && potId > 0) {
+        toPotId.value = potId;
+      }
+    },
+  );
+
   const instrumentFields = (): MoneyPayInstrumentFields => ({
     bdBankId: bdBankId.value,
     chequeNumber: chequeNumber.value,
