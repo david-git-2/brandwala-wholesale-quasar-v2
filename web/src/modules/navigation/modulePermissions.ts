@@ -62,22 +62,34 @@ const resolveTenantForModuleAccess = (
   );
 };
 
-const isAfterSalesDevModule = (moduleKey: ModuleKey): boolean =>
-  import.meta.env.DEV && moduleKey === 'after_sales';
-
-const isPeopleDevModule = (moduleKey: ModuleKey): boolean =>
-  import.meta.env.DEV && moduleKey === 'people';
+const PEOPLE_SOURCE_MODULE_KEYS = [
+  'people',
+  'cashbook',
+  'customer',
+  'vendor',
+  'investor_capital',
+  'investor_profiles',
+  'recipient_profile',
+  'global_invoice',
+] as const;
 
 const isTenantModuleActive = (
   moduleKey: ModuleKey,
   activeModuleKeys: readonly string[],
 ): boolean => {
-  if (isAfterSalesDevModule(moduleKey) || isPeopleDevModule(moduleKey)) {
+  if (activeModuleKeys.includes(moduleKey)) {
     return true;
   }
 
-  if (activeModuleKeys.includes(moduleKey)) {
-    return true;
+  if (moduleKey === 'after_sales') {
+    return (
+      activeModuleKeys.includes('sales_invoice') ||
+      activeModuleKeys.includes('global_invoice')
+    );
+  }
+
+  if (moduleKey === 'people') {
+    return PEOPLE_SOURCE_MODULE_KEYS.some((key) => activeModuleKeys.includes(key));
   }
 
   if (moduleKey === 'procurement_demand') {
@@ -151,12 +163,26 @@ const hasModuleRoleGrant = ({
     return true;
   }
 
-  if (isAfterSalesDevModule(moduleKey)) {
-    return true;
-  }
-
   if (!effectiveGrants) {
     return false;
+  }
+
+  if (moduleKey === 'after_sales') {
+    return effectiveGrants.some(
+      (grant) =>
+        (grant.module_key === 'after_sales' ||
+          grant.module_key === 'global_invoice' ||
+          grant.module_key === 'sales_invoice') &&
+        grant.action === action,
+    );
+  }
+
+  if (moduleKey === 'people') {
+    return effectiveGrants.some(
+      (grant) =>
+        (PEOPLE_SOURCE_MODULE_KEYS as readonly string[]).includes(grant.module_key) &&
+        grant.action === action,
+    );
   }
 
   if (
@@ -443,6 +469,36 @@ export const resolveModuleAccess = ({
           (grant) =>
             grant.module_key === 'global_invoice' || grant.module_key === 'sales_invoice',
         )
+        .map((grant) => grant.action as ModuleAction);
+    }
+    if (
+      moduleKey === 'after_sales' &&
+      allowedActions.length === 0 &&
+      effectiveGrants.some(
+        (grant) =>
+          grant.module_key === 'global_invoice' ||
+          grant.module_key === 'sales_invoice' ||
+          grant.module_key === 'after_sales',
+      )
+    ) {
+      allowedActions = effectiveGrants
+        .filter(
+          (grant) =>
+            grant.module_key === 'global_invoice' ||
+            grant.module_key === 'sales_invoice' ||
+            grant.module_key === 'after_sales',
+        )
+        .map((grant) => grant.action as ModuleAction);
+    }
+    if (
+      moduleKey === 'people' &&
+      allowedActions.length === 0 &&
+      effectiveGrants.some((grant) =>
+        (PEOPLE_SOURCE_MODULE_KEYS as readonly string[]).includes(grant.module_key),
+      )
+    ) {
+      allowedActions = effectiveGrants
+        .filter((grant) => (PEOPLE_SOURCE_MODULE_KEYS as readonly string[]).includes(grant.module_key))
         .map((grant) => grant.action as ModuleAction);
     }
     if (

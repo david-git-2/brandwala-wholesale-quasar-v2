@@ -17,7 +17,7 @@ begin
     from public.tenant_roles tr
     where tr.id = new.tenant_role_id;
 
-    select coalesce(cg.parent_tenant_id, public.resolve_parent_tenant_id(cg.tenant_id))
+    select public.resolve_parent_tenant_id(cg.tenant_id)
     into v_cg_books
     from public.customer_groups cg
     where cg.id = new.customer_group_id;
@@ -29,7 +29,7 @@ begin
   end if;
 
   if new.tenant_role_id is null or (tg_op = 'UPDATE' and old.role is distinct from new.role) then
-    select coalesce(cg.parent_tenant_id, cg.tenant_id)
+    select cg.tenant_id
     into v_tenant_id
     from public.customer_groups cg
     where cg.id = new.customer_group_id;
@@ -42,7 +42,8 @@ begin
         else 'customer-staff'
       end;
 
-      select tr.id into v_role_id
+      select tr.id
+      into v_role_id
       from public.tenant_roles tr
       where tr.tenant_id = v_tenant_id
         and tr.scope = 'shop'

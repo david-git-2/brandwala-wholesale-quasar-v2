@@ -15,7 +15,7 @@ begin
     from public.tenant_roles tr
     where tr.id = new.tenant_role_id;
 
-    select coalesce(cg.parent_tenant_id, public.resolve_parent_tenant_id(cg.tenant_id))
+    select public.resolve_parent_tenant_id(cg.tenant_id)
     into v_cg_books
     from public.customer_groups cg
     where cg.id = new.customer_group_id;

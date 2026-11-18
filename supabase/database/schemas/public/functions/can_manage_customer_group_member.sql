@@ -11,7 +11,7 @@ CREATE FUNCTION public.can_manage_customer_group_member (
     select 1
     from public.customer_groups cg
     where cg.id = p_customer_group_id
-      and public.can_manage_customer_group(coalesce(cg.parent_tenant_id, cg.tenant_id))
+      and public.can_manage_customer_group(cg.tenant_id)
   );
 $function$;
 
