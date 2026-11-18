@@ -46,6 +46,7 @@
     "backend:reset": "bash scripts/supabase-local.sh reset",
     "backend:local": "bash scripts/supabase-local.sh migrate",
     "backend:test": "supabase test db",
+    "verify:money": "node scripts/verify-money.mjs",
     "backend:configure-dispatch": "bash scripts/supabase-local.sh configure-dispatch",
     "backend:env:print": "bash scripts/supabase-local.sh env:print",
     "backend:pull-prod-data": "bash scripts/supabase-local.sh pull-prod-data",

@@ -84,19 +84,21 @@ BEGIN
   );
 
   INSERT INTO public.cashbook_accounts (
-    tenant_id, parent_tenant_id, entity_type, entity_id, currency_code,
-    available_balance, pending_balance, locked_balance, account_class
+    tenant_id, entity_type, entity_id, currency_code,
+    available_balance, pending_balance, locked_balance,
+    account_class
   )
   VALUES (
-    v_tenant_id, v_tenant_id, 'tenant', v_tenant_id, 'BDT',
-    0, 0, 0, 'tenant_asset'::public.cashbook_account_class
+    v_tenant_id, 'tenant', v_tenant_id, 'BDT',
+    0, 0, 0,
+    'tenant_asset'::public.cashbook_account_class
   )
-  ON CONFLICT (parent_tenant_id, entity_type, entity_id, currency_code)
+  ON CONFLICT (tenant_id, entity_type, entity_id, currency_code)
   DO UPDATE SET updated_at = now()
   RETURNING id INTO v_account_id;
 
   INSERT INTO public.cashbook_points (
-    parent_tenant_id, cashbook_account_id, code, name, is_active
+    tenant_id, cashbook_account_id, code, name, is_active
   )
   VALUES (
     v_tenant_id, v_account_id, 'TILL1', 'pgTAP Till', true
@@ -113,6 +115,32 @@ BEGIN
     'cashbook_account_id', v_account_id,
     'cashbook_point_id', v_point_id,
     'cashbook_point_pot_id', v_pot_id
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public._test_kernel_service_role()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claim.role', 'service_role', true);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public._test_set_workspace_tenant(p_tenant_id bigint)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+BEGIN
+  PERFORM set_config(
+    'request.headers',
+    json_build_object('x-selected-tenant-id', p_tenant_id::text)::text,
+    true
   );
 END;
 $$;
@@ -147,7 +175,7 @@ BEGIN
   );
 
   INSERT INTO public.bill_lines (
-    parent_tenant_id,
+    tenant_id,
     invoice_id,
     line_kind,
     name_snapshot,
@@ -157,7 +185,7 @@ BEGIN
     line_total_amount
   )
   VALUES (
-    v_bill.parent_tenant_id,
+    v_bill.tenant_id,
     v_bill.id,
     'description',
     'pgTAP line',
@@ -225,12 +253,40 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public._test_bootstrap_shipment_ap_fx(bigint);
+
+REVOKE ALL ON FUNCTION public._test_pgtap_auth() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._test_pgtap_auth() FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public._test_pgtap_auth() TO postgres, service_role;
+
+REVOKE ALL ON FUNCTION public._test_money_kernel_bootstrap() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._test_money_kernel_bootstrap() FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public._test_money_kernel_bootstrap() TO postgres, service_role;
+
+REVOKE ALL ON FUNCTION public._test_kernel_service_role() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._test_kernel_service_role() FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public._test_kernel_service_role() TO postgres, service_role;
+
+REVOKE ALL ON FUNCTION public._test_set_workspace_tenant(bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._test_set_workspace_tenant(bigint) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public._test_set_workspace_tenant(bigint) TO postgres, service_role;
+
+REVOKE ALL ON FUNCTION public._test_issue_ar_bill(bigint, bigint, numeric, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._test_issue_ar_bill(bigint, bigint, numeric, text) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public._test_issue_ar_bill(bigint, bigint, numeric, text) TO postgres, service_role;
+
+REVOKE ALL ON FUNCTION public._test_fund_cashbook_pot(bigint, bigint, numeric, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._test_fund_cashbook_pot(bigint, bigint, numeric, text) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public._test_fund_cashbook_pot(bigint, bigint, numeric, text) TO postgres, service_role;
+
 BEGIN;
-SELECT plan(3);
+SELECT plan(5);
 
 SELECT has_function('public', '_test_money_kernel_bootstrap', ARRAY[]::text[]);
 SELECT has_function('public', '_test_issue_ar_bill', ARRAY['bigint', 'bigint', 'numeric', 'text']);
 SELECT has_function('public', '_test_fund_cashbook_pot', ARRAY['bigint', 'bigint', 'numeric', 'text']);
+SELECT has_function('public', '_test_kernel_service_role', ARRAY[]::text[]);
+SELECT has_function('public', '_test_set_workspace_tenant', ARRAY['bigint']);
 
 SELECT finish();
 ROLLBACK;

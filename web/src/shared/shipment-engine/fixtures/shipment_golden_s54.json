@@ -1,0 +1,93 @@
+{
+  "shipment": {
+    "type": "international",
+    "received_weight": 304,
+    "total_weight_kg": 304,
+    "product_conversion_rate": 168,
+    "cargo_conversion_rate": 166,
+    "cargo_rate": 6.745996,
+    "transaction_rate": 167.391981,
+    "freight_bdt_per_kg": 1119.835289
+  },
+  "items": [
+    {
+      "name": "Astral Cream 50ML",
+      "purchase_price": 1.25,
+      "product_weight": 50,
+      "package_weight": 24.98,
+      "ordered_quantity": 300
+    },
+    {
+      "name": "Astral Cream 200ML",
+      "purchase_price": 3.6,
+      "product_weight": 200,
+      "package_weight": 34.588,
+      "ordered_quantity": 1200
+    }
+  ],
+  "pools": {
+    "materialBdt": 788760,
+    "freightBdt": 340429.48,
+    "customsBdt": 0,
+    "handlingBdt": 0,
+    "financeBdt": 0,
+    "otherBdt": 0
+  },
+  "materialForeign": 4695,
+  "apFx": {
+    "product_conversion_rate": 168,
+    "cargo_conversion_rate": 166,
+    "cargo_rate": 6.745996,
+    "transaction_rate": 167.391981,
+    "goods_bdt": 788760,
+    "freight_bdt": 340429.48,
+    "freight_bdt_per_kg": 1119.835289,
+    "kg_basis": 303.9996,
+    "product_foreign": 4695,
+    "cargo_foreign": 2050.78,
+    "material": {
+      "bdt_paid": 788760,
+      "foreign_paid": 4695,
+      "conversion_rate": 168,
+      "payment_count": 1
+    },
+    "freight": {
+      "bdt_paid": 340429.48,
+      "foreign_paid": 2050.78,
+      "conversion_rate": 166,
+      "payment_count": 1
+    }
+  },
+  "bills": [
+    {
+      "id": 36,
+      "invoice_no": "AP-SC-GOLDEN-MAT",
+      "ap_kind": "material",
+      "source_key": "material:GBP",
+      "source_type": "shipment_cost",
+      "source_id": "54",
+      "invoice_status": "issued",
+      "payment_status": "paid",
+      "total_amount": 4695,
+      "due_amount": 0
+    },
+    {
+      "id": 37,
+      "invoice_no": "AP-SC-GOLDEN-FRE",
+      "ap_kind": "freight",
+      "source_key": "freight:GBP",
+      "source_type": "shipment_cost",
+      "source_id": "54",
+      "invoice_status": "issued",
+      "payment_status": "paid",
+      "total_amount": 2050.78,
+      "due_amount": 0
+    }
+  ],
+  "expected": {
+    "landedPerUnit": [293.9652, 867.4999],
+    "lineLandedSum": 1129189.44,
+    "apBooksGrandTotal": 1129189.48,
+    "toleranceLineSum": 0.05
+  }
+}

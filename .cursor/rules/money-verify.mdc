@@ -1,0 +1,21 @@
+---
+description: Run money/shipment verification after bills_pays, money kernel, procurement, or shipment-engine changes
+globs:
+  - supabase/schemas/bills_pays/**
+  - supabase/schemas/money_kernel_v2/**
+  - supabase/schemas/procurement/**
+  - web/src/shared/shipment-engine/**
+  - web/src/modules/procurement_stock/utils/**
+alwaysApply: false
+---
+
+# Money verify gate
+
+When you change shipment AP, money kernel RPCs, landed cost stamp, or Summary AP display code covered by the globs above:
+
+1. Run `pnpm run verify:money` before replying Done.
+2. Report the exact line `VERIFY MONEY: PASS` or `VERIFY MONEY: FAIL <section>` from the command output.
+3. Do **not** edit golden SQL, `shipment_golden_s54.json`, or expected numbers to make a red test green — stop and ask the user (like DOC_GAP).
+4. Never run `backend:reset`, `backend:restore-dumps`, or `backend:pull-prod-data` as part of verify.
+
+Drift check uses **local** DB rows; failures may be legacy shipments. List shipment ids from drift output and note data cleanup separately from code fixes.

@@ -1,4 +1,4 @@
--- Cross-module pgTAP helpers for golden scenarios A (dropship) and B (shipment AP).
+-- Cross-module pgTAP helpers for golden scenario A (dropship) and shipment 54 money golden.
 
 CREATE OR REPLACE FUNCTION public._test_ensure_global_currency(
   p_code text,
@@ -349,145 +349,299 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public._test_bootstrap_shipment_ap_fx(p_tenant_id bigint)
+DROP FUNCTION IF EXISTS public._test_bootstrap_shipment_ap_fx(bigint);
+
+CREATE OR REPLACE FUNCTION public._test_bootstrap_shipment_s54(p_tenant_id bigint)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO public
+SET search_path = money_kernel, public, pg_temp
 AS $$
 DECLARE
-  v_parent bigint := public.resolve_parent_tenant_id(p_tenant_id);
-  v_usd bigint;
-  v_gbp bigint;
+  v_workspace bigint := public.resolve_parent_tenant_id(p_tenant_id);
   v_vendor_id bigint;
   v_cargo_id bigint;
   v_shipment_id bigint;
-  v_sync jsonb;
-  v_material_bill bigint;
-  v_freight_bill bigint;
-  v_cargo_profile bigint;
+  v_material jsonb;
+  v_freight jsonb;
+  v_material_bill_id bigint;
+  v_freight_bill_id bigint;
 BEGIN
   PERFORM public._test_pgtap_auth();
+  PERFORM public._test_set_workspace_tenant(v_workspace);
 
-  v_usd := public._test_ensure_global_currency('USD', 'US Dollar', '$');
-  v_gbp := public._test_ensure_global_currency('GBP', 'British Pound', '£');
+  PERFORM public._test_ensure_global_currency('GBP', 'British Pound Sterling', '£');
 
-  IF NOT EXISTS (SELECT 1 FROM public.markets mk WHERE mk.code = 'US') THEN
+  IF NOT EXISTS (SELECT 1 FROM public.markets mk WHERE mk.code = 'GB') THEN
     INSERT INTO public.markets (name, code, region, is_active, is_system)
-    VALUES ('United States', 'US', 'Americas', true, true);
+    VALUES ('United Kingdom', 'GB', 'Europe', true, true);
   END IF;
 
-  INSERT INTO public.vendors (name, code, market_code, parent_tenant_id)
-  VALUES ('pgTAP Vendor', 'PGV-' || substr(md5(random()::text), 1, 6), 'US', v_parent)
+  ALTER TABLE public.vendors DISABLE TRIGGER USER;
+  INSERT INTO public.vendors (name, code, market_code, tenant_id)
+  VALUES ('pgTAP S54 Vendor', 'PGS54V-' || substr(md5(random()::text), 1, 6), 'GB', v_workspace)
   RETURNING id INTO v_vendor_id;
+  ALTER TABLE public.vendors ENABLE TRIGGER USER;
 
-  INSERT INTO public.cargo_companies (parent_tenant_id, name, code, is_active)
-  VALUES (v_parent, 'pgTAP Cargo', 'PGC-' || substr(md5(random()::text), 1, 6), true)
+  PERFORM public.upsert_profile_for_party(
+    v_workspace,
+    'vendor'::public.profile_party_type,
+    v_vendor_id,
+    'pgTAP S54 Vendor',
+    NULL, NULL, '+880', NULL, false, NULL, true, NULL
+  );
+
+  ALTER TABLE public.cargo_companies DISABLE TRIGGER USER;
+  INSERT INTO public.cargo_companies (tenant_id, name, code, is_active)
+  VALUES (v_workspace, 'pgTAP S54 Cargo', 'PGS54C-' || substr(md5(random()::text), 1, 6), true)
   RETURNING id INTO v_cargo_id;
+  ALTER TABLE public.cargo_companies ENABLE TRIGGER USER;
+
+  PERFORM public.upsert_profile_for_party(
+    v_workspace,
+    'cargo'::public.profile_party_type,
+    v_cargo_id,
+    'pgTAP S54 Cargo',
+    NULL, NULL, '+880', NULL, false, NULL, true, NULL
+  );
 
   INSERT INTO public.global_shipments (
-    parent_tenant_id,
+    tenant_id,
     name,
+    type,
     status,
     vendor_id,
     cargo_company_id,
     stock_ready,
-    costs_locked
+    costs_locked,
+    total_weight_kg,
+    received_weight
   )
   VALUES (
-    v_parent,
-    'S-42 pgTAP',
+    v_workspace,
+    'Golden Shipment S54',
+    'international'::public.global_shipment_type,
     'received',
     v_vendor_id,
     v_cargo_id,
     true,
-    false
+    false,
+    304,
+    304
   )
   RETURNING id INTO v_shipment_id;
 
-  INSERT INTO public.global_shipment_cost_entries (
-    parent_tenant_id,
-    shipment_id,
-    amount,
-    currency_id,
-    cost_bucket,
-    cost_component,
-    description
+  INSERT INTO public.global_shipment_items (
+    shipment_id, name, ordered_quantity, purchase_price,
+    product_weight, package_weight, add_method
   )
   VALUES
-    (v_parent, v_shipment_id, 100.00, v_usd, 'material', 'subtotal', 'Material USD'),
-    (v_parent, v_shipment_id, 50.00, v_gbp, 'freight', 'subtotal', 'Freight GBP');
+    (
+      v_shipment_id, 'Astral Cream 50ML', 300, 1.25,
+      50, 24.98, 'manual'::public.global_shipment_item_add_method
+    ),
+    (
+      v_shipment_id, 'Astral Cream 200ML', 1200, 3.6,
+      200, 34.588, 'manual'::public.global_shipment_item_add_method
+    );
 
-  PERFORM set_config('app.allow_costs_lock', '1', true);
-  UPDATE public.global_shipments
-  SET
-    costs_locked = true,
-    costs_locked_at = now(),
-    updated_at = now()
-  WHERE id = v_shipment_id;
+  v_material := public.create_shipment_ap_bill_v2(
+    v_shipment_id,
+    'material',
+    jsonb_build_object(
+      'currency_code', 'GBP',
+      'source_key_suffix', 'golden',
+      'lines', jsonb_build_array(
+        jsonb_build_object(
+          'amount', 4695,
+          'cost_component', 'subtotal',
+          'description', 'Material GBP'
+        )
+      )
+    )
+  );
+  v_material_bill_id := NULLIF(v_material ->> 'bill_id', '')::bigint;
 
-  v_sync := public.sync_shipment_ap_bills(v_shipment_id);
-  IF coalesce(v_sync ->> 'success', 'false') <> 'true' THEN
-    RAISE EXCEPTION 'golden B sync_shipment_ap_bills failed: %', v_sync;
+  v_freight := public.create_shipment_ap_bill_v2(
+    v_shipment_id,
+    'freight',
+    jsonb_build_object(
+      'currency_code', 'GBP',
+      'source_key_suffix', 'golden',
+      'lines', jsonb_build_array(
+        jsonb_build_object(
+          'amount', 2050.78,
+          'cost_component', 'subtotal',
+          'description', 'Freight GBP'
+        )
+      )
+    )
+  );
+  v_freight_bill_id := NULLIF(v_freight ->> 'bill_id', '')::bigint;
+
+  IF v_material_bill_id IS NULL OR v_freight_bill_id IS NULL THEN
+    RAISE EXCEPTION 's54 bootstrap: AP bill create failed';
   END IF;
 
-  PERFORM set_config('app.shipment_ap_issue', '1', true);
-  PERFORM public.issue_shipment_ap_bills(v_shipment_id);
-  PERFORM set_config('app.shipment_ap_issue', '0', true);
-
-  v_sync := jsonb_build_object('success', true);
-
-  SELECT b.id INTO v_material_bill
-  FROM public.bills b
-  WHERE b.parent_tenant_id = v_parent
-    AND b.source_type = 'shipment_cost'
-    AND b.source_id = v_shipment_id::text
-    AND b.invoice_type = 'ap'::public.global_invoice_type
-    AND b.source_key = 'material'
-  ORDER BY b.id DESC
-  LIMIT 1;
-
-  SELECT b.id INTO v_freight_bill
-  FROM public.bills b
-  WHERE b.parent_tenant_id = v_parent
-    AND b.source_type = 'shipment_cost'
-    AND b.source_id = v_shipment_id::text
-    AND b.invoice_type = 'ap'::public.global_invoice_type
-    AND b.source_key = 'freight'
-  ORDER BY b.id DESC
-  LIMIT 1;
-
-  IF v_material_bill IS NULL OR v_freight_bill IS NULL THEN
-    RAISE EXCEPTION 'golden B: expected material and freight AP bills';
-  END IF;
-
-  SELECT p.id INTO v_cargo_profile
-  FROM public.profiles p
-  WHERE p.parent_tenant_id = v_parent
-    AND p.profile_type = 'cargo'::public.profile_party_type
-    AND p.subject_id = v_cargo_id
-  LIMIT 1;
-
-  IF v_cargo_profile IS NULL THEN
-    RAISE EXCEPTION 'golden B: cargo profile missing after sync';
-  END IF;
+  PERFORM public.issue_shipment_ap_bill_v2(v_shipment_id, v_material_bill_id);
+  PERFORM public.issue_shipment_ap_bill_v2(v_shipment_id, v_freight_bill_id);
 
   RETURN jsonb_build_object(
-    'tenant_id', p_tenant_id,
-    'parent_tenant_id', v_parent,
+    'tenant_id', v_workspace,
     'shipment_id', v_shipment_id,
-    'material_bill_id', v_material_bill,
-    'freight_bill_id', v_freight_bill,
-    'cargo_profile_id', v_cargo_profile
+    'material_bill_id', v_material_bill_id,
+    'freight_bill_id', v_freight_bill_id,
+    'vendor_id', v_vendor_id,
+    'cargo_company_id', v_cargo_id
   );
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public._test_flush_kernel_pays()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
+AS $$
+BEGIN
+  SET CONSTRAINTS money_kernel.trg_pays_apply IMMEDIATE;
+  SET CONSTRAINTS money_kernel.trg_pays_apply DEFERRED;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public._test_shipment_s54_fund_and_pay(p_ctx jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
+AS $$
+DECLARE
+  v_tenant bigint := (p_ctx ->> 'tenant_id')::bigint;
+  v_shipment bigint := (p_ctx ->> 'shipment_id')::bigint;
+  v_material_bill bigint := (p_ctx ->> 'material_bill_id')::bigint;
+  v_freight_bill bigint := (p_ctx ->> 'freight_bill_id')::bigint;
+  v_payer bigint;
+  v_mat_pot bigint;
+  v_fre_pot bigint;
+  v_dep jsonb;
+  v_mat_bal numeric;
+BEGIN
+  PERFORM public._test_pgtap_auth();
+  PERFORM public._test_set_workspace_tenant(v_tenant);
+  PERFORM public._test_enable_tenant_module(v_tenant, 'payments');
+  PERFORM public._test_enable_tenant_module(v_tenant, 'global_invoice');
+
+  v_payer := NULLIF(p_ctx ->> 'tenant_profile_id', '')::bigint;
+  IF v_payer IS NULL THEN
+    SELECT p.id INTO v_payer
+    FROM public.profiles p
+    WHERE p.tenant_id = v_tenant
+      AND p.profile_type = 'tenant'::public.profile_party_type
+      AND p.subject_id = v_tenant
+    LIMIT 1;
+  END IF;
+  IF v_payer IS NULL THEN
+    RAISE EXCEPTION 's54 fund: tenant payer profile missing';
+  END IF;
+
+  v_dep := public.rpc_deposit(
+    v_tenant, v_payer, 5000, 'GBP', NULL, '{}'::jsonb,
+    'pgtap-s54-mat-' || v_shipment::text, 168::numeric, 'main'
+  );
+  v_mat_pot := NULLIF(v_dep ->> 'cash_bundle_id', '')::bigint;
+
+  v_dep := public.rpc_deposit(
+    v_tenant, v_payer, 3000, 'GBP', NULL, '{}'::jsonb,
+    'pgtap-s54-fre-' || v_shipment::text, 166::numeric, 'main'
+  );
+  v_fre_pot := NULLIF(v_dep ->> 'cash_bundle_id', '')::bigint;
+
+  PERFORM public._test_flush_kernel_pays();
+
+  IF v_mat_pot IS NULL OR v_fre_pot IS NULL THEN
+    RAISE EXCEPTION 's54 fund: deposit failed';
+  END IF;
+
+  SELECT cb.amount INTO v_mat_bal
+    FROM money_kernel.cash_bundles cb
+   WHERE cb.id = v_mat_pot;
+  IF coalesce(v_mat_bal, 0) < 4695 THEN
+    RAISE EXCEPTION 's54 fund: material bundle balance % (deposit %)', v_mat_bal, v_dep;
+  END IF;
+
+  PERFORM public.rpc_pay_bills(
+    v_tenant,
+    v_payer,
+    v_mat_pot,
+    4695,
+    jsonb_build_array(jsonb_build_object('bill_id', v_material_bill, 'amount', 4695)),
+    NULL,
+    NULL,
+    '{}'::jsonb,
+    'pgtap-s54-pay-mat-' || v_shipment::text
+  );
+
+  PERFORM public.rpc_pay_bills(
+    v_tenant,
+    v_payer,
+    v_fre_pot,
+    2050.78,
+    jsonb_build_array(jsonb_build_object('bill_id', v_freight_bill, 'amount', 2050.78)),
+    NULL,
+    NULL,
+    '{}'::jsonb,
+    'pgtap-s54-pay-fre-' || v_shipment::text
+  );
+
+  PERFORM public._test_flush_kernel_pays();
+
+  -- Avoid kernel + legacy double-count in shipment_ap_bucket_paid_totals (mirror on public.bills ids).
+  DELETE FROM public.pay_allocations pa
+  USING public.bills b
+  WHERE pa.global_invoice_id = b.id
+    AND b.source_type = 'shipment_cost'
+    AND b.source_id = v_shipment::text;
+
+  PERFORM public.refresh_global_shipment_fx_from_ap_payments(v_shipment);
+  PERFORM public.stamp_global_shipment_landed_costs(v_shipment);
+
+  RETURN p_ctx || jsonb_build_object(
+    'material_pot_id', v_mat_pot,
+    'freight_pot_id', v_fre_pot
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public._test_ensure_global_currency(text, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._test_ensure_global_currency(text, text, text) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public._test_ensure_global_currency(text, text, text) TO postgres, service_role;
+
+REVOKE ALL ON FUNCTION public._test_enable_tenant_module(bigint, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._test_enable_tenant_module(bigint, text) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public._test_enable_tenant_module(bigint, text) TO postgres, service_role;
+
+REVOKE ALL ON FUNCTION public._test_bootstrap_dropship_golden_a(jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._test_bootstrap_dropship_golden_a(jsonb) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public._test_bootstrap_dropship_golden_a(jsonb) TO postgres, service_role;
+
+REVOKE ALL ON FUNCTION public._test_bootstrap_shipment_s54(bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._test_bootstrap_shipment_s54(bigint) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public._test_bootstrap_shipment_s54(bigint) TO postgres, service_role;
+
+REVOKE ALL ON FUNCTION public._test_flush_kernel_pays() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._test_flush_kernel_pays() FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public._test_flush_kernel_pays() TO postgres, service_role;
+
+REVOKE ALL ON FUNCTION public._test_shipment_s54_fund_and_pay(jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._test_shipment_s54_fund_and_pay(jsonb) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public._test_shipment_s54_fund_and_pay(jsonb) TO postgres, service_role;
+
 BEGIN;
-SELECT plan(2);
+SELECT plan(3);
 
 SELECT has_function('public', '_test_bootstrap_dropship_golden_a', ARRAY['jsonb']);
-SELECT has_function('public', '_test_bootstrap_shipment_ap_fx', ARRAY['bigint']);
+SELECT has_function('public', '_test_bootstrap_shipment_s54', ARRAY['bigint']);
+SELECT has_function('public', '_test_shipment_s54_fund_and_pay', ARRAY['jsonb']);
 
 SELECT finish();
 ROLLBACK;
