@@ -1,0 +1,21 @@
+{
+  "prefixes": [
+    ["LA ROCHE POSAY", "la-roche-posay"],
+    ["L'OREAL", "loreal"],
+    ["L’OREAL", "loreal"],
+    ["OLD SPICE", "old-spice"],
+    ["HUGO BOSS", "hugo-boss"],
+    ["CALVIN KLEIN", "calvin-klein"],
+    ["CK ", "calvin-klein"],
+    ["CLINIQUE", "clinique"],
+    ["CERAVE", "cerave"],
+    ["HERBAL ESSENCES", "herbal-essences"],
+    ["H.ESSENCES", "herbal-essences"],
+    ["GIL.VENUS", "gillette"]
+  ],
+  "slug_overrides": {
+    "l oreal": "loreal",
+    "lor al": "loreal",
+    "la roche posay": "la-roche-posay"
+  }
+}

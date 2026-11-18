@@ -15,6 +15,7 @@
     "python:pc": "bash scripts/run-python-pc.sh",
     "pc:uploader": "bash scripts/run-python-pc-uploader.sh",
     "wts:uploader": "bash scripts/run-python-wts-uploader.sh",
+    "check-fresh": "bash scripts/run-python-check-fresh.sh",
     "python:wts": "bash scripts/run-python-wts.sh",
     "python:elf": "bash scripts/run-python-elf.sh",
     "python:scrape:pc": "bash scripts/run-python-pc-scraper.sh",
