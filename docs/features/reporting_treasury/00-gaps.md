@@ -1,6 +1,6 @@
 # Reporting & treasury — gaps
 
-Fixture tenant **15** for regression after RT18. SQL: grep schemas (reports not split), then `backend:schema:diff`.
+Fixture tenant **15**, **shipment id 54** (`Test Shipment 26`) — canonical report P&amp;L golden: `web/src/modules/reporting_treasury/fixtures/shipment_report_golden_s54.json` (vitest) + `supabase/tests/shipment_s54_report_golden.sql` (landed/paid bootstrap). Do not change expected numbers without sign-off (same rule as `shipment_golden_s54.json`). SQL: grep schemas (reports not split), then `backend:schema:diff`.
 
 | ID | Type | Plan / doc | Code today | Fix |
 | :--- | :--- | :--- | :--- | :--- |

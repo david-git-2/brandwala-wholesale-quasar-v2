@@ -31,7 +31,7 @@ Docs: [money spec](../money/spec.md). **`money_kernel.cashbook_lots`** + **`pay_
 
 ### Payment dialog — FX, deposit, partial pays
 
-Full plan: [bridge/spec.md § Payment dialog](../money_bill_bridge/spec.md#payment-dialog). **As-built:** FX from books rates (Phase 1); **Add money** top-up / new bundle (Phase 2); editable payment amount ≤ bill due, in words, partial **Paying now** summary (Phase 3). **Still open:** kernel I7b vs desk AP FX edge cases.
+Full plan: [bridge/spec.md § Payment dialog](../money_bill_bridge/spec.md#payment-dialog). **As-built:** FX from books rates (Phase 1); **Add money** top-up / new bundle (Phase 2); editable payment amount ≤ bill due, in words, partial **Paying now** summary (Phase 3). **Profile deposit (People):** multi-line amounts/methods on **Cashbook deposit page** → sequential `rpc_deposit` per line (`ProfileCashDepositPage`, `returnTo` from People / customer drawer / party ledger). **Still open:** kernel I7b vs desk AP FX edge cases; bill **Add money** deposit remains single-line dialog.
 
 ### AP `from_profile_id` / `to_profile_id` (kernel)
 

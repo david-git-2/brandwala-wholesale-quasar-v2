@@ -1,0 +1,187 @@
+{
+  "meta": {
+    "tenant_id": 15,
+    "shipment_id": 54,
+    "shipment_name": "Test Shipment 26",
+    "description": "Canonical local/regression batch — international Astral Cream 50ML + 200ML, kernel AP, wholesale take, 3 pieces lost at receive. Do not change expected numbers without product sign-off."
+  },
+  "tolerance_bdt": 0.5,
+  "profit_matrix": {
+    "total_cost_bdt": 1129189.48,
+    "total_sell_bdt": 1237300,
+    "receive_loss_bdt": 1455.43,
+    "unpaid_total_bdt": 0,
+    "profit_loss_bdt": 108110.52,
+    "profit_loss_pct": 8.74
+  },
+  "qty_summary": {
+    "should_arrive": 1500,
+    "arrived": 1500,
+    "loss_at_shipment": 3,
+    "warehouse_stalled": 0,
+    "warehouse_remaining": 0,
+    "sold": 1497,
+    "warehouse_value_bdt": 0
+  },
+  "pnl": {
+    "inbound_quantity": 1500,
+    "total_landed_cost": 1129189.44,
+    "net_sold_quantity": 1497,
+    "gross_sold_revenue": 1237300,
+    "cogs_amount": 1127734.01,
+    "realized_gross_profit": 109565.99,
+    "realized_gp_margin_pct": 8.86,
+    "batch_sold_pct": 99.8,
+    "damage_loss_value": 0,
+    "unsold_stock_value": 0
+  },
+  "cost_buckets_bdt": {
+    "material": 788760,
+    "freight": 340429.48
+  },
+  "ap_bills_bdt_amount": [
+    { "ap_kind": "material", "bdt_amount": 788760, "txn_foreign": 4695 },
+    { "ap_kind": "freight", "bdt_amount": 340429.48, "txn_foreign": 2050.78 }
+  ],
+  "items": [
+    {
+      "product_name": "Astral Cream 50ML",
+      "inbound_qty": 300,
+      "sold_qty": 298,
+      "lost_qty": 2,
+      "unit_cost_bdt": 293.9652,
+      "sold_revenue": 98332.85,
+      "gross_profit": 10731.22
+    },
+    {
+      "product_name": "Astral Cream 200ML",
+      "inbound_qty": 1200,
+      "sold_qty": 1199,
+      "lost_qty": 1,
+      "unit_cost_bdt": 867.4999,
+      "sold_revenue": 1138967.15,
+      "gross_profit": 98834.77
+    }
+  ],
+  "customer_bills": [
+    {
+      "customer_name": "Marcel Group",
+      "attributed_qty": 1497,
+      "attributed_revenue_bdt": 1237300
+    }
+  ],
+  "payload": {
+    "header": {
+      "shipment_id": 54,
+      "shipment_name": "Test Shipment 26",
+      "shipment_status": "received",
+      "shipment_type": "international",
+      "vendor_name": "Wholesale Trading Supplies"
+    },
+    "profit_matrix": {
+      "total_cost_bdt": 1129189.48,
+      "total_cost_by_currency": [{ "currency_code": "GBP", "amount": 6745.78 }],
+      "total_sell_bdt": 1237300,
+      "receive_loss_bdt": 1455.43,
+      "unpaid_total_bdt": 0,
+      "profit_loss_bdt": 108110.52,
+      "profit_loss_pct": 8.74
+    },
+    "qty_summary": {
+      "should_arrive": 1500,
+      "arrived": 1500,
+      "loss_at_shipment": 3,
+      "warehouse_stalled": 0,
+      "warehouse_remaining": 0,
+      "sold": 1497,
+      "warehouse_value_bdt": 0
+    },
+    "cost_buckets": [
+      {
+        "ap_kind": "material",
+        "label": "Goods",
+        "bdt_amount": 788760,
+        "foreign_amount": 4695,
+        "foreign_currency": "GBP"
+      },
+      {
+        "ap_kind": "freight",
+        "label": "Flight",
+        "bdt_amount": 340429.48,
+        "foreign_amount": 2050.78,
+        "foreign_currency": "GBP"
+      }
+    ],
+    "ap_bills": [
+      {
+        "id": 36,
+        "invoice_no": "AP-SC-20261118-00029",
+        "ap_kind": "material",
+        "total_amount": 4695,
+        "bdt_amount": 788760
+      },
+      {
+        "id": 37,
+        "invoice_no": "AP-SC-20261118-00030",
+        "ap_kind": "freight",
+        "total_amount": 2050.78,
+        "bdt_amount": 340429.48
+      }
+    ],
+    "pnl": {
+      "shipment_id": 54,
+      "inbound_quantity": 1500,
+      "total_landed_cost": 1129189.44,
+      "net_sold_quantity": 1497,
+      "gross_sold_revenue": 1237300,
+      "cogs_amount": 1127734.01,
+      "realized_gross_profit": 109565.99,
+      "realized_gp_margin_pct": 8.86,
+      "unsold_stock_value": 0,
+      "items": [
+        {
+          "item_id": 1081,
+          "product_name": "Astral Cream 50ML",
+          "inbound_qty": 300,
+          "unit_cost_bdt": 293.9652,
+          "sold_qty": 298,
+          "sold_revenue": 98332.85,
+          "cogs": 87601.63,
+          "gross_profit": 10731.22,
+          "sellable_qty": 0,
+          "damaged_qty": 0
+        },
+        {
+          "item_id": 1082,
+          "product_name": "Astral Cream 200ML",
+          "inbound_qty": 1200,
+          "unit_cost_bdt": 867.4999,
+          "sold_qty": 1199,
+          "sold_revenue": 1138967.15,
+          "cogs": 1040132.38,
+          "gross_profit": 98834.77,
+          "sellable_qty": 0,
+          "damaged_qty": 0
+        }
+      ]
+    },
+    "customer_bills": [
+      {
+        "customer_name": "Marcel Group",
+        "attributed_qty": 1497,
+        "attributed_revenue_bdt": 1237300
+      }
+    ],
+    "sell_lines": [],
+    "unpaid_customers": [],
+    "customer_attributed_revenue_bdt": 1237300,
+    "exchange_rates": {
+      "product_rate": 168,
+      "freight_rate": 166,
+      "blended_rate": 167.392,
+      "material_payment_count": 1,
+      "freight_payment_count": 1
+    },
+    "ap_totals_by_currency": []
+  }
+}

@@ -31,8 +31,8 @@
           <ProfileCashbookActionBar
             v-if="showCashbookActions"
             :show-locations="false"
-            @deposit="openCashDeposit"
-            @withdraw="openCashWithdraw"
+            @deposit="onCashDeposit"
+            @withdraw="onCashWithdraw"
           />
           <q-btn flat round dense icon="ph ph-x" @click="$emit('update:modelValue', false)" />
         </div>
@@ -474,23 +474,6 @@
       </q-card>
     </q-dialog>
 
-    <MoneyPayDialog
-      v-if="showCashbookActions"
-      v-model="cashDialogOpen"
-      leg-layout="profile_cash"
-      :kind="cashDialogKind"
-      :title="cashDialogKind === 'deposit' ? 'Deposit' : 'Withdraw'"
-      :from-party-name="profileName"
-      :to-party-name="profileName"
-      :loading="cashMovementMutation.isPending.value"
-      :field-flags="cashMovementFieldFlags"
-      :books-tenant-id="booksTenantId"
-      :operating-tenant-id="tenantId"
-      :profile-id="resolvedCashProfileId"
-      books-currency-code="BDT"
-      :default-method-code="PROFILE_CASH_DEFAULT_METHOD"
-      @submit="onCashMovementSubmit"
-    />
   </q-drawer>
 </template>
 
@@ -500,11 +483,9 @@ import type { QSelectProps } from 'quasar';
 import type { CustomerAccount, CustomerGroupMember } from '../types/customer';
 import { useCustomerMembersQuery, useCustomerMutations } from '../composables/useCustomerQuery';
 import ProfileOperatingAccountPanel from 'src/modules/bills_pays/components/ProfileOperatingAccountPanel.vue';
-import MoneyPayDialog from 'src/modules/bills_pays/components/MoneyPayDialog.vue';
 import ProfileCashLocationsPanel from 'src/modules/people/components/ProfileCashLocationsPanel.vue';
 import ProfileCashbookActionBar from 'src/modules/people/components/ProfileCashbookActionBar.vue';
-import { useProfileCashMovementDialog } from 'src/modules/people/composables/useProfileCashMovementDialog';
-import { PROFILE_CASH_DEFAULT_METHOD } from 'src/modules/people/constants/profileCashMovementMethods';
+import { useProfileCashMovementNav } from 'src/modules/people/composables/useProfileCashMovementNav';
 import { isProfileCashbookEnabled } from 'src/modules/people/utils/profileCashbookEnabled';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 import { useCanAdministerCustomerGroup } from '../composables/useCanAdministerCustomerGroup';
@@ -605,46 +586,36 @@ const tenantSlug = computed(() =>
 );
 const accountTabActive = computed(() => activeTab.value === 'account' && props.modelValue);
 const locationsTabActive = computed(() => activeTab.value === 'locations' && props.modelValue);
-const drawerActive = computed(() => props.modelValue);
+const { goToCashMovement } = useProfileCashMovementNav();
 
-const movementEntityId = computed(() => profileId.value);
-const movementPartyName = computed(() => profileName.value);
+const onCashDeposit = () => {
+  if (profileId.value <= 0) return;
+  goToCashMovement({
+    kind: 'deposit',
+    entityType: 'customer',
+    entityId: profileId.value,
+    partyName: profileName.value,
+    returnTo: route.fullPath,
+  });
+};
 
-const {
-  cashbookEnabled,
-  dialogOpen: cashDialogOpen,
-  dialogKind: cashDialogKind,
-  openDeposit: openCashDeposit,
-  openWithdraw: openCashWithdraw,
-  resolvedProfileId: resolvedCashProfileId,
-  onMoneyPaySubmit: onCashMovementSubmit,
-  movementMutation: cashMovementMutation,
-} = useProfileCashMovementDialog({
-  tenantId: computed(() => props.tenantId),
-  booksTenantId,
-  entityType: computed(() => 'customer' as const),
-  entityId: movementEntityId,
-  partyName: movementPartyName,
-  tenantSlug,
-  active: drawerActive,
-});
+const onCashWithdraw = () => {
+  if (profileId.value <= 0) return;
+  goToCashMovement({
+    kind: 'withdrawal',
+    entityType: 'customer',
+    entityId: profileId.value,
+    partyName: profileName.value,
+    returnTo: route.fullPath,
+  });
+};
 
 const showCashbookActions = computed(
   () =>
     props.modelValue
     && profileId.value > 0
-    && isProfileCashbookEnabled('customer')
-    && cashbookEnabled.value,
+    && isProfileCashbookEnabled('customer'),
 );
-
-const cashMovementFieldFlags = {
-  showAllocations: false,
-  showFromLeg: false,
-  showToLeg: false,
-  showInstrument: true,
-  showDate: true,
-  showReferenceNote: true,
-} as const;
 const membersQuery = useCustomerMembersQuery(customerGroupId);
 const members = computed(() => membersQuery.data.value ?? []);
 

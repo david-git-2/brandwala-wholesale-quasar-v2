@@ -60,8 +60,8 @@
           v-if="showMovementBar"
           class="q-mt-sm"
           :show-locations="showLocationsAction"
-          @deposit="openDeposit"
-          @withdraw="openWithdraw"
+          @deposit="onDeposit"
+          @withdraw="onWithdraw"
           @locations="openLocations"
         />
       </div>
@@ -136,40 +136,23 @@
       :amount-mode="amountViewMode"
     />
 
-    <MoneyPayDialog
-      v-if="showMovementBar"
-      v-model="dialogOpen"
-      leg-layout="profile_cash"
-      :kind="dialogKind"
-      :title="dialogKind === 'deposit' ? 'Deposit' : 'Withdraw'"
-      :from-party-name="partyName"
-      :to-party-name="partyName"
-      :loading="movementMutation.isPending.value"
-      :field-flags="movementFieldFlags"
-      :books-tenant-id="booksTenantId"
-      :operating-tenant-id="tenantId"
-      :profile-id="resolvedProfileId"
-      books-currency-code="BDT"
-      :default-method-code="PROFILE_CASH_DEFAULT_METHOD"
-      @submit="onMoneyPaySubmit"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { formatAmountBdt } from 'src/utils/currency';
 import ProfilePayTransactionRow from './ProfilePayTransactionRow.vue';
 import ProfilePayRevertDialog from './ProfilePayRevertDialog.vue';
 import ProfilePayDetailDialog from './ProfilePayDetailDialog.vue';
-import MoneyPayDialog from './MoneyPayDialog.vue';
 import { usePaymentsVoidAccess } from '../composables/usePaymentsVoidAccess';
 import { useProfilePayRevertMutation } from '../composables/useProfilePayRevertMutation';
 import { payProfileKernelCanRevert } from '../utils/payListDisplay';
 import ProfileCashbookActionBar from 'src/modules/people/components/ProfileCashbookActionBar.vue';
 import ProfileCashLocationsPanel from 'src/modules/people/components/ProfileCashLocationsPanel.vue';
 import { useProfileCashMovementDialog } from 'src/modules/people/composables/useProfileCashMovementDialog';
-import { PROFILE_CASH_DEFAULT_METHOD } from 'src/modules/people/constants/profileCashMovementMethods';
+import { useProfileCashMovementNav } from 'src/modules/people/composables/useProfileCashMovementNav';
 import { usePaymentProfileQuery } from '../composables/usePaymentProfileQuery';
 import { useProfileActivityQuery } from '../composables/useProfileActivityQuery';
 import { useProfileCashbookBundlesQuery } from 'src/modules/people/composables/useProfileCashbookBundlesQuery';
@@ -210,6 +193,8 @@ const paymentsVoidAccess = usePaymentsVoidAccess();
 const revertMutation = useProfilePayRevertMutation();
 const payDetailDialogOpen = ref(false);
 const payDetailRow = ref<PayRow | null>(null);
+const route = useRoute();
+const { goToCashMovement } = useProfileCashMovementNav();
 const revertDialogOpen = ref(false);
 const revertTargetId = ref<number | null>(null);
 const revertPendingId = ref<number | null>(null);
@@ -221,16 +206,10 @@ const movementActive = computed(() => props.active);
 
 const {
   cashbookEnabled,
-  dialogOpen,
-  dialogKind,
-  openDeposit,
-  openWithdraw,
   openLocations,
   locationsPanelOpen,
   resolvedProfileId,
   ensureProfileId,
-  onMoneyPaySubmit,
-  movementMutation,
 } = useProfileCashMovementDialog({
   tenantId: computed(() => props.tenantId),
   booksTenantId: computed(() => props.booksTenantId),
@@ -241,18 +220,32 @@ const {
   active: movementActive,
 });
 
+const movementReturnTo = () => route.fullPath;
+
+const onDeposit = () => {
+  goToCashMovement({
+    kind: 'deposit',
+    entityType: props.entityType,
+    entityId: props.entityId,
+    partyName: props.partyName,
+    returnTo: movementReturnTo(),
+  });
+};
+
+const onWithdraw = () => {
+  goToCashMovement({
+    kind: 'withdrawal',
+    entityType: props.entityType,
+    entityId: props.entityId,
+    partyName: props.partyName,
+    returnTo: movementReturnTo(),
+  });
+};
+
 const showMovementBar = computed(
   () => props.showActions && props.showMovementActions && cashbookEnabled.value,
 );
 
-const movementFieldFlags = computed(() => ({
-  showAllocations: false,
-  showFromLeg: false,
-  showToLeg: false,
-  showInstrument: true,
-  showDate: true,
-  showReferenceNote: true,
-}));
 
 const profileParams = computed(() => ({
   tenantId: props.tenantId,

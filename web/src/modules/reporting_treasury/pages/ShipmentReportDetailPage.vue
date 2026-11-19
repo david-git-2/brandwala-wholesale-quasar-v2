@@ -14,46 +14,41 @@
         label="Back"
         :to="listRoute"
       />
-      <span v-if="detail?.header?.shipment_name" class="text-subtitle2 text-weight-bold q-ml-sm ellipsis">
-        {{ detail.header.shipment_name }}
-      </span>
-    </template>
-
-    <template #toolbar-actions>
-      <q-btn
-        v-if="canOpenProcurement"
-        flat
-        dense
-        no-caps
-        size="sm"
-        color="grey-8"
-        icon="ph ph-package"
-        label="Open shipment"
-        :to="procurementShipmentRoute"
-      />
     </template>
 
     <div v-if="!isLoading && detail" class="detail-scroll">
       <div class="detail-inner column q-gutter-y-md">
-        <ShipmentReportProfitSection
-          variant="hero"
-          :matrix="matrix"
-          :warehouse-value-bdt="qty.warehouse_value_bdt"
+        <ShipmentReportHeaderStrip
+          v-if="detail.header?.shipment_id"
+          :header="detail.header"
+          :procurement-route="canOpenProcurement ? procurementShipmentRoute : null"
         />
-        <ShipmentReportSnapshot v-if="detail.header?.shipment_id" :header="detail.header" />
-        <ShipmentReportQtySection :qty="qty" :items="pnlItems" />
-        <ShipmentReportCostInSection
-          :ap-bills="detail.ap_bills"
-          :cost-buckets="detail.cost_buckets"
-          :exchange-rates="detail.exchange_rates"
-          :can-view-bills="canViewBills"
-          :bill-route="billRoute"
+        <ShipmentReportVerdict :verdict="verdict" />
+        <ShipmentReportKpiRow
+          :primary-kpis="primaryKpis"
+          :secondary-kpis="secondaryKpis"
         />
-        <ShipmentReportSalesOutSection
-          :customer-bills="detail.customer_bills"
-          :sell-lines="detail.sell_lines"
-          :unpaid-customers="detail.unpaid_customers"
-          :unpaid-total-bdt="matrix.unpaid_total_bdt"
+        <ShipmentReportProfitBridge
+          :steps="bridgeSteps"
+          :total-sell="matrix.total_sell_bdt"
+          :total-cost="matrix.total_cost_bdt"
+          :profit="matrix.profit_loss_bdt"
+        />
+        <div class="row q-col-gutter-md">
+          <div class="col-12 col-md-6">
+            <ShipmentReportCostDonut :slices="donutSlices" :total-cost-bdt="matrix.total_cost_bdt" />
+          </div>
+          <div class="col-12 col-md-6">
+            <ShipmentReportPiecesBar
+              :segments="pieceSegments"
+              :ordered="qty.should_arrive"
+              :arrived="qty.arrived"
+            />
+          </div>
+        </div>
+
+        <ShipmentReportDetailTabs
+          :detail="detail"
           :can-view-bills="canViewBills"
           :bill-route="billRoute"
         />
@@ -67,13 +62,16 @@ import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import FinanceReportFrame from '../components/FinanceReportFrame.vue';
-import ShipmentReportSnapshot from '../components/shipmentReport/ShipmentReportSnapshot.vue';
-import ShipmentReportQtySection from '../components/shipmentReport/ShipmentReportQtySection.vue';
-import ShipmentReportCostInSection from '../components/shipmentReport/ShipmentReportCostInSection.vue';
-import ShipmentReportSalesOutSection from '../components/shipmentReport/ShipmentReportSalesOutSection.vue';
-import ShipmentReportProfitSection from '../components/shipmentReport/ShipmentReportProfitSection.vue';
+import ShipmentReportHeaderStrip from '../components/shipmentReport/ShipmentReportHeaderStrip.vue';
+import ShipmentReportVerdict from '../components/shipmentReport/ShipmentReportVerdict.vue';
+import ShipmentReportKpiRow from '../components/shipmentReport/ShipmentReportKpiRow.vue';
+import ShipmentReportProfitBridge from '../components/shipmentReport/ShipmentReportProfitBridge.vue';
+import ShipmentReportCostDonut from '../components/shipmentReport/ShipmentReportCostDonut.vue';
+import ShipmentReportPiecesBar from '../components/shipmentReport/ShipmentReportPiecesBar.vue';
+import ShipmentReportDetailTabs from '../components/shipmentReport/ShipmentReportDetailTabs.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useShipmentReportDetail } from '../composables/useShipmentReportDetail';
+import { useShipmentReportView } from '../composables/useShipmentReportView';
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -86,28 +84,16 @@ const shipmentId = computed(() => {
 });
 
 const { detail, isLoading, error, refetch } = useShipmentReportDetail(shipmentId);
-
-const qty = computed(() => detail.value?.qty_summary ?? {
-  should_arrive: 0,
-  arrived: 0,
-  loss_at_shipment: 0,
-  warehouse_stalled: 0,
-  warehouse_remaining: 0,
-  sold: 0,
-  warehouse_value_bdt: 0,
-});
-
-const matrix = computed(() => detail.value?.profit_matrix ?? {
-  total_cost_bdt: 0,
-  total_cost_by_currency: [],
-  total_sell_bdt: 0,
-  receive_loss_bdt: 0,
-  unpaid_total_bdt: 0,
-  profit_loss_bdt: 0,
-  profit_loss_pct: 0,
-});
-
-const pnlItems = computed(() => detail.value?.pnl?.items ?? null);
+const {
+  verdict,
+  primaryKpis,
+  secondaryKpis,
+  bridgeSteps,
+  matrix,
+  donutSlices,
+  pieceSegments,
+  qty,
+} = useShipmentReportView(detail);
 
 const listRoute = computed(
   () => `/${tenantSlug.value || 'tenant'}/app/finance/reports/shipment-report`,

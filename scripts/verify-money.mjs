@@ -12,6 +12,7 @@ const PGTEST_FILES = [
   'supabase/tests/002_shipment_ap_bill_v2_create_multiline.sql',
   'supabase/tests/shipment_ap_lifecycle_enforce.sql',
   'supabase/tests/shipment_s54_money_golden.sql',
+  'supabase/tests/shipment_s54_report_golden.sql',
   'supabase/tests/shipment_money_scenarios.sql',
 ];
 
@@ -40,7 +41,16 @@ if (pg.status !== 0) {
 
 const vitest = spawnSync(
   'pnpm',
-  ['--filter', 'web', 'exec', 'vitest', 'run', 'src/shared/shipment-engine', 'src/modules/procurement_stock/utils'],
+  [
+    '--filter',
+    'web',
+    'exec',
+    'vitest',
+    'run',
+    'src/shared/shipment-engine',
+    'src/modules/procurement_stock/utils',
+    'src/modules/reporting_treasury/composables/__tests__/useShipmentReportView.goldenS54.test.ts',
+  ],
   { cwd: root, stdio: 'inherit' },
 );
 if (vitest.status !== 0) {

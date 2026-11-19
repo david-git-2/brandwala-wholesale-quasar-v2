@@ -159,6 +159,20 @@ const billsPaysRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('cashbook'),
       },
       {
+        path: ':entityType/:entityId/deposit',
+        name: 'app-cashbook-deposit-page',
+        component: () => import('../pages/ProfileCashDepositPage.vue'),
+        meta: { hasPageToolbar: true, title: 'Deposit', headerTitle: 'Deposit' },
+        beforeEnter: guard('cashbook'),
+      },
+      {
+        path: ':entityType/:entityId/withdraw',
+        name: 'app-cashbook-withdraw-page',
+        component: () => import('../pages/ProfileCashWithdrawPage.vue'),
+        meta: { hasPageToolbar: true, title: 'Withdraw', headerTitle: 'Withdraw' },
+        beforeEnter: guard('cashbook'),
+      },
+      {
         path: ':entityType/:entityId',
         name: 'app-cashbook-party-page',
         component: () => import('../pages/CashbookPartyPage.vue'),

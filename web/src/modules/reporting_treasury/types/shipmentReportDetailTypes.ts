@@ -80,6 +80,7 @@ export interface ShipmentReportApBillRow {
   txn_total_amount: number | null;
   books_exchange_rate: number | null;
   total_amount: number;
+  bdt_amount?: number | null;
   due_amount: number | null;
   open_books: number | null;
 }

@@ -24,15 +24,12 @@
               : 'Profile custody'
           }}
         </div>
-        <div v-if="showCashPoints" class="q-mt-sm">
-          <q-btn
-            outline
-            dense
-            no-caps
-            color="primary"
-            icon="ph ph-map-pin"
-            label="Manage locations"
-            @click="goManageLocations"
+        <div class="row q-gutter-sm q-mt-sm items-center wrap">
+          <ProfileCashbookActionBar
+            :show-locations="showCashPoints"
+            @deposit="onDeposit"
+            @withdraw="onWithdraw"
+            @locations="goManageLocations"
           />
         </div>
       </div>
@@ -98,6 +95,8 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 import { useCashbookPartyQuery } from '../composables/useCashbookPartyQuery';
 import CashbookLedgerSourceCell from '../components/CashbookLedgerSourceCell.vue';
+import ProfileCashbookActionBar from 'src/modules/people/components/ProfileCashbookActionBar.vue';
+import { useProfileCashMovementNav } from 'src/modules/people/composables/useProfileCashMovementNav';
 import { type CashbookLedgerRow } from '../repositories/cashbookRepository';
 import {
   formatCashbookLedgerDate,
@@ -111,6 +110,7 @@ const ALLOWED_TYPES = new Set(['tenant', 'customer', 'courier', 'vendor']);
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
+const { goToCashMovement } = useProfileCashMovementNav();
 
 const searchText = ref('');
 const debouncedSearch = ref('');
@@ -183,6 +183,32 @@ const onSearch = (value: string | number | null) => {
 const routeParams = () => {
   const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
   return tenantSlug ? { tenantSlug } : {};
+};
+
+const partyLedgerPath = computed(() => {
+  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : '';
+  const prefix = tenantSlug ? `/${tenantSlug}` : '';
+  return `${prefix}/app/cashbook/${entityType.value}/${entityId.value}`;
+});
+
+const onDeposit = () => {
+  goToCashMovement({
+    kind: 'deposit',
+    entityType: entityType.value,
+    entityId: entityId.value,
+    partyName: detail.value?.name,
+    returnTo: partyLedgerPath.value,
+  });
+};
+
+const onWithdraw = () => {
+  goToCashMovement({
+    kind: 'withdrawal',
+    entityType: entityType.value,
+    entityId: entityId.value,
+    partyName: detail.value?.name,
+    returnTo: partyLedgerPath.value,
+  });
 };
 
 const goManageLocations = () => {

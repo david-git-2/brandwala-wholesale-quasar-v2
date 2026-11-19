@@ -1,43 +1,91 @@
 <template>
-  <div class="profile-cash-leg-picker column q-gutter-y-md">
-    <BillDialogField label="Currency">
-      <q-select
-        v-model="currencyModel"
-        outlined
-        dense
-        emit-value
-        map-options
-        :options="legData.currencyOptions.value"
-        :loading="legData.loading.value"
-        :disable="lockCurrency"
-        hide-bottom-space
-        data-test="profile-cash-currency"
-      />
-    </BillDialogField>
+  <div
+    class="profile-cash-leg-picker"
+    :class="compactToolbar ? 'profile-cash-leg-picker--toolbar' : 'column q-gutter-y-md'"
+  >
+    <div
+      v-if="compactToolbar"
+      class="profile-cash-leg-picker__toolbar"
+    >
+      <div class="profile-cash-leg-picker__toolbar-col profile-cash-leg-picker__toolbar-col--location">
+        <BillDialogField :label="locationLabel">
+          <q-select
+            v-model="locationPointIdModel"
+            outlined
+            dense
+            emit-value
+            map-options
+            clearable
+            :options="locationSelectOptions"
+            :display-value="locationPointDisplayValue"
+            :loading="legData.loading.value"
+            hide-bottom-space
+            data-test="profile-cash-location"
+          />
+        </BillDialogField>
+      </div>
+      <div class="profile-cash-leg-picker__toolbar-col profile-cash-leg-picker__toolbar-col--currency">
+        <BillDialogField label="Currency">
+          <q-select
+            v-model="currencyModel"
+            outlined
+            dense
+            emit-value
+            map-options
+            :options="legData.currencyOptions.value"
+            :loading="legData.loading.value"
+            :disable="lockCurrency"
+            hide-bottom-space
+            data-test="profile-cash-currency"
+          />
+        </BillDialogField>
+      </div>
+      <div class="profile-cash-leg-picker__toolbar-col profile-cash-leg-picker__toolbar-col--date">
+        <slot name="toolbar-trailing" />
+      </div>
+    </div>
 
-    <MoneyPayDialogAmountBlock
-      :amount="amountModel"
-      :currency-code="currencyModel"
-      :show-error="amountShowError"
-      @update:amount="(v) => (amountModel = v)"
-      @blur="amountTouched = true"
-    />
+    <template v-else>
+      <BillDialogField label="Currency">
+        <q-select
+          v-model="currencyModel"
+          outlined
+          dense
+          emit-value
+          map-options
+          :options="legData.currencyOptions.value"
+          :loading="legData.loading.value"
+          :disable="lockCurrency"
+          hide-bottom-space
+          data-test="profile-cash-currency"
+        />
+      </BillDialogField>
 
-    <BillDialogField :label="locationLabel">
-      <q-select
-        v-model="locationPointIdModel"
-        outlined
-        dense
-        emit-value
-        map-options
-        clearable
-        :options="locationSelectOptions"
-        :display-value="locationPointDisplayValue"
-        :loading="legData.loading.value"
-        hide-bottom-space
-        data-test="profile-cash-location"
+      <MoneyPayDialogAmountBlock
+        v-if="!hideAmount"
+        :amount="amountModel"
+        :currency-code="currencyModel"
+        :show-error="amountShowError"
+        @update:amount="(v) => (amountModel = v)"
+        @blur="amountTouched = true"
       />
-    </BillDialogField>
+
+      <BillDialogField :label="locationLabel">
+        <q-select
+          v-model="locationPointIdModel"
+          outlined
+          dense
+          emit-value
+          map-options
+          clearable
+          :options="locationSelectOptions"
+          :display-value="locationPointDisplayValue"
+          :loading="legData.loading.value"
+          hide-bottom-space
+          data-test="profile-cash-location"
+        />
+      </BillDialogField>
+    </template>
 
     <BillDialogField
       v-if="showFxBooksRateField"
@@ -77,7 +125,11 @@
       No {{ currencyModel }} bundle at this location.
     </div>
 
-    <div v-if="showBundleSection && locationPointIdModel != null" class="profile-cash-leg-picker__bundles">
+    <div
+      v-if="showBundleSection && locationPointIdModel != null"
+      class="profile-cash-leg-picker__bundles"
+      :class="{ 'q-mt-sm': compactToolbar }"
+    >
       <div
         v-if="showBundlePickerHeader"
         class="row items-center justify-between q-mb-sm"
@@ -167,6 +219,10 @@ const props = defineProps<{
   lockCurrency?: boolean;
   /** Label for pre-selected location before profile points load. */
   prefillLocationLabel?: string | null;
+  /** Multi-line profile deposit: amount lives on each line, not the leg picker. */
+  hideAmount?: boolean;
+  /** Location, currency, and trailing slot on one row (multi-line deposit). */
+  compactToolbar?: boolean;
 }>();
 
 const currencyModel = defineModel<string>('currencyCode', { default: 'BDT' });
@@ -397,6 +453,32 @@ defineExpose({ refetch: legData.refetch });
 </script>
 
 <style scoped lang="scss">
+.profile-cash-leg-picker--toolbar {
+  width: 100%;
+}
+
+.profile-cash-leg-picker__toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(6.5rem, 7.5rem) minmax(10.5rem, 12.5rem);
+  gap: 10px;
+  align-items: end;
+  width: 100%;
+}
+
+@media (max-width: 599px) {
+  .profile-cash-leg-picker__toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profile-cash-leg-picker__toolbar-col--date :deep(.q-field) {
+  min-width: 0;
+}
+
+.profile-cash-leg-picker__toolbar-col--date :deep(.q-field__native) {
+  min-width: 6.5rem;
+}
+
 .profile-cash-leg-picker__bundle {
   min-width: 6.5rem;
   padding: 8px 10px;

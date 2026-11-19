@@ -18,6 +18,17 @@ export type MoneyPayInstrumentFields = {
   instrumentReference: string;
 };
 
+/** One deposit row when posting several `rpc_deposit` calls from a single profile dialog. */
+export type MoneyPayDepositLine = {
+  amount: number;
+  methodCode: string;
+  reference?: string | null;
+  note?: string | null;
+  instrumentFields: MoneyPayInstrumentFields;
+  /** Overrides dialog payment date when set. */
+  paymentDate?: string | null;
+};
+
 export type MoneyPaySubmitPayload = {
   kind: MoneyPayKind;
   amount: number;
@@ -44,6 +55,11 @@ export type MoneyPaySubmitPayload = {
   legLocationCode?: string | null;
   /** Books rate (BDT per 1 unit) when opening a new FX tranche on deposit. */
   legBooksRate?: number | null;
+  /**
+   * Profile multi-line deposit: one `rpc_deposit` per line; shared leg fields on the payload root.
+   * When length ≥ 1, root `amount` / `methodCode` are not used for posting.
+   */
+  depositLines?: MoneyPayDepositLine[];
 };
 
 /** Read-only header block for payment / pay modes */

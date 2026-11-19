@@ -1,5 +1,5 @@
 <template>
-  <ShipmentReportSectionShell title="Sales out">
+  <ShipmentReportSectionShell :title="embedded ? undefined : 'Sales'" :bare="embedded">
     <div v-if="customerBills.length" class="q-mb-md">
       <div class="text-caption text-weight-bold text-grey-8 q-mb-xs">By customer</div>
       <q-table
@@ -123,14 +123,18 @@ import type {
 } from '../../types/shipmentReportDetailTypes';
 import ShipmentReportSectionShell from './ShipmentReportSectionShell.vue';
 
-const props = defineProps<{
-  customerBills: ShipmentReportCustomerBillRow[];
-  sellLines: ShipmentReportSellLine[];
-  unpaidCustomers: ShipmentReportUnpaidCustomer[];
-  unpaidTotalBdt: number;
-  canViewBills: boolean;
-  billRoute: (billId: number) => string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    customerBills: ShipmentReportCustomerBillRow[];
+    sellLines: ShipmentReportSellLine[];
+    unpaidCustomers: ShipmentReportUnpaidCustomer[];
+    unpaidTotalBdt: number;
+    canViewBills: boolean;
+    billRoute: (billId: number) => string;
+    embedded?: boolean;
+  }>(),
+  { embedded: false },
+);
 
 const showUnpaid = computed(() => props.unpaidTotalBdt > 0.009);
 

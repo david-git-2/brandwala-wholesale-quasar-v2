@@ -1,5 +1,5 @@
 <template>
-  <ShipmentReportSectionShell title="Cost in">
+  <ShipmentReportSectionShell :title="embedded ? undefined : 'Costs'" :bare="embedded">
     <div v-if="showExchangeRates" class="row items-center q-gutter-sm q-mb-md">
       <span class="text-caption text-weight-bold" style="color: var(--tf-neutral-chrome-text)">
         Exchange rates
@@ -45,9 +45,9 @@
           {{ formatMoney(props.row.txn_total_amount, txnCode(props.row)) }}
         </q-td>
       </template>
-      <template #body-cell-total_amount="props">
+      <template #body-cell-bdt_amount="props">
         <q-td :props="props" class="tf-num text-right">
-          {{ formatMoney(props.row.total_amount, 'BDT') }}
+          {{ formatMoney(billBdtAmount(props.row), 'BDT') }}
         </q-td>
       </template>
       <template #body-cell-payment_status="props">
@@ -59,11 +59,18 @@
     </q-table>
     <div v-else class="text-caption text-grey-6 q-mb-md">No supplier bills linked yet.</div>
 
-    <div class="text-caption text-weight-bold text-grey-8 q-mb-xs q-mt-sm">Cost by type</div>
+    <div class="text-caption text-weight-bold q-mb-xs q-mt-sm" style="color: var(--tf-neutral-chrome-text)">
+      Cost by type
+    </div>
     <q-list v-if="costBuckets.length" dense separator>
       <q-item v-for="bucket in costBuckets" :key="bucket.ap_kind" class="q-px-none">
         <q-item-section>
-          <q-item-label class="text-weight-medium">{{ bucket.label }}</q-item-label>
+          <q-item-label class="text-weight-medium">
+            {{ bucket.label }}
+            <span v-if="bucketSharePct(bucket) > 0" class="tf-num text-caption" style="color: var(--tf-neutral-muted)">
+              · {{ bucketSharePct(bucket).toFixed(1) }}%
+            </span>
+          </q-item-label>
           <q-item-label caption class="row q-gutter-x-sm">
             <span
               v-for="(leg, idx) in foreignLegsFor(bucket)"
@@ -96,13 +103,31 @@ import type {
 } from '../../types/shipmentReportDetailTypes';
 import ShipmentReportSectionShell from './ShipmentReportSectionShell.vue';
 
-const props = defineProps<{
-  apBills: ShipmentReportApBillRow[];
-  costBuckets: ShipmentReportCostBucket[];
-  exchangeRates: ShipmentReportExchangeRates | null;
-  canViewBills: boolean;
-  billRoute: (billId: number) => string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    apBills: ShipmentReportApBillRow[];
+    costBuckets: ShipmentReportCostBucket[];
+    exchangeRates: ShipmentReportExchangeRates | null;
+    totalCostBdt?: number;
+    canViewBills: boolean;
+    billRoute: (billId: number) => string;
+    embedded?: boolean;
+  }>(),
+  {
+    totalCostBdt: 0,
+    embedded: false,
+  },
+);
+
+function billBdtAmount(row: ShipmentReportApBillRow) {
+  return row.bdt_amount ?? row.total_amount;
+}
+
+function bucketSharePct(bucket: ShipmentReportCostBucket) {
+  const total = props.totalCostBdt > 0 ? props.totalCostBdt : props.costBuckets.reduce((a, b) => a + b.bdt_amount, 0);
+  if (total <= 0) return 0;
+  return (bucket.bdt_amount / total) * 100;
+}
 
 function formatMoney(amount: number | null | undefined, currencyCode: string) {
   return formatSettlementCurrencyAmount(amount, currencyCode);
@@ -161,7 +186,7 @@ const apColumns: QTableColumn<ShipmentReportApBillRow>[] = [
   { name: 'invoice_no', label: 'Bill no.', field: 'invoice_no', align: 'left' },
   { name: 'ap_kind', label: 'Type', field: 'ap_kind', align: 'left', format: (v) => String(v || '—') },
   { name: 'txn', label: 'Foreign', field: 'txn_total_amount', align: 'right' },
-  { name: 'total_amount', label: 'In taka', field: 'total_amount', align: 'right' },
+  { name: 'bdt_amount', label: 'In taka', field: 'bdt_amount', align: 'right' },
   { name: 'payment_status', label: 'Payment', field: 'payment_status', align: 'left' },
 ];
 </script>

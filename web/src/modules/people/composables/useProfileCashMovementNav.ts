@@ -1,0 +1,32 @@
+import { useRoute, useRouter } from 'vue-router';
+import {
+  navigateToProfileCashMovement,
+  type ProfileCashMovementNavKind,
+} from '../utils/profileCashMovementNavigation';
+
+export function useProfileCashMovementNav() {
+  const router = useRouter();
+  const route = useRoute();
+
+  const tenantSlug = () =>
+    typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+
+  const goToCashMovement = (input: {
+    kind: ProfileCashMovementNavKind;
+    entityType: string;
+    entityId: number;
+    partyName?: string;
+    returnTo?: string;
+  }) => {
+    navigateToProfileCashMovement(router, {
+      kind: input.kind,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      tenantSlug: tenantSlug(),
+      returnTo: input.returnTo?.trim() || route.fullPath,
+      partyName: input.partyName,
+    });
+  };
+
+  return { goToCashMovement };
+}

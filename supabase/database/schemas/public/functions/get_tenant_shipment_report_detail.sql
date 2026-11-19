@@ -102,38 +102,82 @@ BEGIN
     'freight_payment_count', coalesce((v_fx -> 'freight' ->> 'payment_count')::integer, 0)
   );
 
+  WITH ap_src AS (
+    SELECT
+      b.id,
+      b.invoice_no,
+      b.status,
+      b.due_amount,
+      b.currency_code,
+      b.meta,
+      b.source_key,
+      b.total_amount,
+      coalesce(
+        nullif(btrim(b.meta->>'ap_kind'), ''),
+        nullif(split_part(coalesce(b.source_key, ''), ':', 1), '')
+      ) AS ap_kind
+    FROM money_kernel.bills b
+    WHERE b.tenant_id = v_books_id
+      AND b.status <> 'voided'
+      AND b.kind = 'shipment_cost_ap'
+      AND (
+        (b.source_type = 'shipment_cost' AND b.source_id = p_shipment_id::text)
+        OR (b.meta->>'shipment_id')::bigint = p_shipment_id
+      )
+  ),
+  ap_kind_totals AS (
+    SELECT
+      ap_kind,
+      coalesce(sum(total_amount), 0)::numeric(18, 4) AS kind_txn_total
+    FROM ap_src
+    GROUP BY ap_kind
+  ),
+  ap_enriched AS (
+    SELECT
+      s.*,
+      CASE
+        WHEN s.ap_kind = 'material'
+          AND coalesce((v_fx -> 'material' ->> 'payment_count')::int, 0) > 0
+          THEN round(
+            coalesce((v_fx -> 'material' ->> 'bdt_paid')::numeric(18, 4), s.total_amount)
+            * (s.total_amount / nullif(kt.kind_txn_total, 0)),
+            4
+          )
+        WHEN s.ap_kind = 'freight'
+          AND coalesce((v_fx -> 'freight' ->> 'payment_count')::int, 0) > 0
+          THEN round(
+            coalesce((v_fx -> 'freight' ->> 'bdt_paid')::numeric(18, 4), s.total_amount)
+            * (s.total_amount / nullif(kt.kind_txn_total, 0)),
+            4
+          )
+        ELSE s.total_amount
+      END AS bdt_amount
+    FROM ap_src s
+    LEFT JOIN ap_kind_totals kt ON kt.ap_kind = s.ap_kind
+  )
   SELECT coalesce(
     jsonb_agg(
       jsonb_build_object(
-        'id', b.id,
-        'invoice_no', b.invoice_no,
-        'ap_kind', coalesce(
-          nullif(btrim(b.meta->>'ap_kind'), ''),
-          nullif(split_part(coalesce(b.source_key, ''), ':', 1), '')
-        ),
-        'invoice_status', b.status,
-        'payment_status', public._desk_kernel_status_payment(b.status, b.due_amount),
-        'currency_code', b.currency_code,
-        'txn_currency_code', coalesce(nullif(btrim(b.meta->>'txn_currency_code'), ''), b.currency_code),
-        'txn_total_amount', coalesce((b.meta->>'txn_total_amount')::numeric(18, 4), b.total_amount),
-        'books_exchange_rate', (b.meta->>'books_exchange_rate')::numeric(18, 4),
-        'total_amount', b.total_amount,
-        'due_amount', b.due_amount,
-        'open_books', coalesce((public._desk_kernel_net_balances_json(b.id)->>'open_books')::numeric, b.due_amount)
+        'id', e.id,
+        'invoice_no', e.invoice_no,
+        'ap_kind', e.ap_kind,
+        'invoice_status', e.status,
+        'payment_status', public._desk_kernel_status_payment(e.status, e.due_amount),
+        'currency_code', e.currency_code,
+        'txn_currency_code', coalesce(nullif(btrim(e.meta->>'txn_currency_code'), ''), e.currency_code),
+        'txn_total_amount', coalesce((e.meta->>'txn_total_amount')::numeric(18, 4), e.total_amount),
+        'books_exchange_rate', (e.meta->>'books_exchange_rate')::numeric(18, 4),
+        'total_amount', e.total_amount,
+        'bdt_amount', e.bdt_amount,
+        'due_amount', e.due_amount,
+        'open_books', coalesce((public._desk_kernel_net_balances_json(e.id)->>'open_books')::numeric, e.due_amount)
       )
-      ORDER BY b.id
+      ORDER BY e.id
     ),
     '[]'::jsonb
   )
   INTO v_ap_bills
-  FROM money_kernel.bills b
-  WHERE b.tenant_id = v_books_id
-    AND b.status <> 'voided'
-    AND b.kind = 'shipment_cost_ap'
-    AND (
-      (b.source_type = 'shipment_cost' AND b.source_id = p_shipment_id::text)
-      OR (b.meta->>'shipment_id')::bigint = p_shipment_id
-    );
+  FROM ap_enriched e;
 
   SELECT coalesce(
     jsonb_agg(
@@ -273,7 +317,13 @@ BEGIN
     'warehouse_stalled', coalesce((v_pnl ->> 'held_stock_qty')::int, 0),
     'warehouse_remaining', coalesce((v_pnl ->> 'sellable_stock_qty')::int, 0),
     'sold', coalesce((v_pnl ->> 'net_sold_quantity')::int, 0),
-    'warehouse_value_bdt', coalesce((v_pnl ->> 'unsold_stock_value')::numeric(18,4), 0)
+    'warehouse_value_bdt', coalesce((
+      SELECT sum(gs.quantity * coalesce(gsi.landed_cost_bdt, 0))::numeric(18, 4)
+      FROM public.global_shipment_items gsi
+      JOIN public.global_stocks gs ON gs.shipment_item_id = gsi.id
+      WHERE gsi.shipment_id = p_shipment_id
+        AND gs.availability IN ('sellable', 'held')
+    ), 0)
   )
   INTO v_qty_summary
   FROM public.global_shipment_items gsi

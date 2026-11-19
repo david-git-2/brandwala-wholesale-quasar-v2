@@ -603,6 +603,7 @@
       v-model="payDepositDialogOpen"
       kind="deposit"
       leg-layout="profile_cash"
+      single-line-profile-deposit
       title="Deposit"
       :subtitle="payDepositDialogSubtitle"
       :from-party-name="payDepositPartyName"

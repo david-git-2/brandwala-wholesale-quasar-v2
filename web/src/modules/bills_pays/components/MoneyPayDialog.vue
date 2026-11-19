@@ -4,7 +4,12 @@
     persistent
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <q-card flat bordered class="money-pay-dialog-card">
+    <q-card
+      flat
+      bordered
+      class="money-pay-dialog-card"
+      :class="{ 'money-pay-dialog-card--multi-deposit': isMultiLineProfileDeposit }"
+    >
       <q-card-section class="money-pay-dialog__header row items-start no-wrap">
         <div class="col">
           <div class="money-pay-dialog__title">{{ dialogTitle }}</div>
@@ -29,10 +34,14 @@
           class="money-pay-dialog__summary"
         />
 
-        <div class="money-pay-dialog__grid">
+        <div
+          class="money-pay-dialog__grid"
+          :class="{ 'money-pay-dialog__grid--multi-deposit': isMultiLineProfileDeposit }"
+        >
           <div class="money-pay-dialog__col money-pay-dialog__col--left">
             <div class="money-pay-dialog__section">
               <div
+                v-if="!isMultiLineProfileDeposit"
                 class="money-pay-dialog__section-title money-pay-dialog__section-title--spacer"
                 aria-hidden="true"
               >
@@ -46,7 +55,10 @@
                 >
                   <div class="money-pay-dialog__deposit-target-label">Deposit to profile</div>
                   <div class="money-pay-dialog__deposit-target-name">{{ fromPartyName }}</div>
-                  <div class="money-pay-dialog__deposit-target-hint">
+                  <div
+                    v-if="!isMultiLineProfileDeposit"
+                    class="money-pay-dialog__deposit-target-hint"
+                  >
                     Money is credited to this party&apos;s cashbook at the location you choose below.
                   </div>
                 </div>
@@ -85,7 +97,32 @@
                   :amount-show-error="amountShowError"
                   :lock-currency="lockProfileCurrency"
                   :prefill-location-label="props.prefill?.legLocationPointLabel ?? null"
-                />
+                  :hide-amount="isMultiLineProfileDeposit"
+                  :compact-toolbar="isMultiLineProfileDeposit"
+                >
+                  <template v-if="isMultiLineProfileDeposit" #toolbar-trailing>
+                    <BillDialogField label="Payment date">
+                      <q-input
+                        v-model="paymentDate"
+                        outlined
+                        dense
+                        mask="####-##-##"
+                        placeholder="YYYY-MM-DD"
+                        hide-bottom-space
+                        class="money-pay-dialog__toolbar-date"
+                        data-test="money-pay-date"
+                      >
+                        <template #append>
+                          <q-icon name="ph ph-calendar" class="cursor-pointer money-pay-dialog__field-icon">
+                            <q-popup-proxy transition-show="scale" transition-hide="scale">
+                              <q-date v-model="paymentDate" mask="YYYY-MM-DD" />
+                            </q-popup-proxy>
+                          </q-icon>
+                        </template>
+                      </q-input>
+                    </BillDialogField>
+                  </template>
+                </ProfileCashMovementLegPicker>
 
                 <div
                   v-if="showFromLeg && !isProfileCashLeg"
@@ -171,7 +208,10 @@
             </div>
           </div>
 
-          <div class="money-pay-dialog__col money-pay-dialog__col--right">
+          <div
+            v-if="!isMultiLineProfileDeposit"
+            class="money-pay-dialog__col money-pay-dialog__col--right"
+          >
             <div class="money-pay-dialog__section">
               <div class="money-pay-dialog__section-title money-pay-dialog__section-title--right">
                 Payment details
@@ -197,7 +237,7 @@
                   </q-input>
                 </BillDialogField>
 
-                <BillDialogField v-if="showInstrument" :label="methodLabel">
+                <BillDialogField v-if="showInstrument && !isMultiLineProfileDeposit" :label="methodLabel">
                   <q-select
                     v-model="methodCode"
                     :options="resolvedMethodOptions"
@@ -213,7 +253,7 @@
                 </BillDialogField>
 
                 <BillDialogField
-                  v-if="showInstrument && methodFieldFlags.showBank"
+                  v-if="showInstrument && !isMultiLineProfileDeposit && methodFieldFlags.showBank"
                   :label="methodFieldFlags.bankLabel"
                 >
                   <BdBankSelect
@@ -226,7 +266,7 @@
                 </BillDialogField>
 
                 <PaymentInstrumentExtrasFields
-                  v-if="showInstrument && showRequiredInstrumentExtras"
+                  v-if="showInstrument && !isMultiLineProfileDeposit && showRequiredInstrumentExtras"
                   external-labels
                   omit-bank
                   omit-instrument-reference
@@ -247,7 +287,7 @@
                 />
 
                 <q-expansion-item
-                  v-if="showOptionalDetails"
+                  v-if="showOptionalDetails && !isMultiLineProfileDeposit"
                   v-model="optionalDetailsOpen"
                   dense
                   expand-icon-class="money-pay-dialog__optional-chevron"
@@ -302,9 +342,35 @@
             </div>
           </div>
         </div>
+
+        <ProfileDepositLinesEditor
+          v-if="isMultiLineProfileDeposit"
+          v-model:lines="depositLines"
+          class="money-pay-dialog__deposit-table q-mt-md"
+          :currency-code="profileLegCurrency"
+          :method-options="resolvedMethodOptions"
+          :bd-bank-options="bdBankOptions"
+          :loading-payment-meta="loadingPaymentMeta"
+          :show-errors="amountShowError"
+          :total-amount="depositLinesTotal"
+          :can-add-line="canAddDepositLine"
+          @add-line="(methodCode) => addDepositLine(methodCode)"
+          @remove-line="removeDepositLine"
+        />
       </q-card-section>
 
       <q-card-actions class="money-pay-dialog__footer column items-stretch q-pa-md">
+        <div
+          v-if="isMultiLineProfileDeposit"
+          class="money-pay-dialog__footer-total row items-center justify-between q-mb-sm"
+        >
+          <span class="text-caption text-weight-bold text-uppercase text-grey-7">
+            Total deposit
+          </span>
+          <span class="text-body2 text-weight-medium">
+            {{ formatAmountBdt(depositLinesTotal) }} {{ profileLegCurrency }}
+          </span>
+        </div>
         <div
           v-if="footerHint"
           class="money-pay-dialog__footer-hint q-mb-sm"
@@ -340,6 +406,8 @@ import PayOpenBillsAllocSection from './PayOpenBillsAllocSection.vue';
 import MoneyPayDialogSummary from './MoneyPayDialogSummary.vue';
 import MoneyPayDialogAmountBlock from './MoneyPayDialogAmountBlock.vue';
 import ProfileCashMovementLegPicker from 'src/modules/people/components/ProfileCashMovementLegPicker.vue';
+import ProfileDepositLinesEditor from './ProfileDepositLinesEditor.vue';
+import { useProfileDepositLines } from '../composables/useProfileDepositLines';
 import { useProfileCashMovementLegData } from 'src/modules/people/composables/useProfileCashMovementLegData';
 import {
   isProfileCashMovementMethod,
@@ -348,6 +416,7 @@ import {
 import { useWholesalePaymentMethodMeta } from '../composables/useWholesalePaymentMethodMeta';
 import { useMoneyPayDialogForm } from '../composables/useMoneyPayDialogForm';
 import { useMoneyPayDialogFx } from '../composables/useMoneyPayDialogFx';
+import { formatAmountBdt } from 'src/utils/currency';
 import type { OpenBillAllocRow } from '../composables/useOpenBillAllocations';
 import type { CashbookLegPotChipOption } from '../composables/useCashbookLegPots';
 import type {
@@ -389,6 +458,10 @@ const props = withDefaults(
     legLayout?: 'default' | 'profile_cash';
     profileId?: number | null;
     operatingTenantId?: number | null;
+    /** Bill “Add money” deposit: keep single amount + method. */
+    singleLineProfileDeposit?: boolean;
+    /** Explicit off switch for multi-line profile deposit. */
+    enableMultiLineProfileDeposit?: boolean;
   }>(),
   {
     kind: 'payment',
@@ -418,6 +491,8 @@ const props = withDefaults(
     legLayout: 'default',
     profileId: null,
     operatingTenantId: null,
+    singleLineProfileDeposit: false,
+    enableMultiLineProfileDeposit: undefined,
   },
 );
 
@@ -441,6 +516,13 @@ const isProfileCashLeg = computed(
     props.legLayout === 'profile_cash'
     && (props.kind === 'deposit' || props.kind === 'withdrawal'),
 );
+
+const isMultiLineProfileDeposit = computed(() => {
+  if (!isProfileCashLeg.value || props.kind !== 'deposit') return false;
+  if (props.singleLineProfileDeposit) return false;
+  if (props.enableMultiLineProfileDeposit === false) return false;
+  return true;
+});
 
 const resolvedMethodOptions = computed(() => {
   if (!isProfileCashLeg.value) return methodOptions.value;
@@ -497,6 +579,21 @@ const {
   methodOptions,
   defaultMethodCode: props.defaultMethodCode,
   lockBillId: lockBillIdRef,
+});
+
+const {
+  lines: depositLines,
+  addLine: addDepositLine,
+  removeLine: removeDepositLine,
+  trimPostedLines: trimDepositLines,
+  totalAmount: depositLinesTotal,
+  buildDepositLines,
+  submitDisabledReason: depositLinesSubmitDisabledReason,
+  canAddLine: canAddDepositLine,
+} = useProfileDepositLines({
+  dialogOpen,
+  methodOptions: resolvedMethodOptions,
+  defaultMethodCode: props.defaultMethodCode?.trim() || 'cash',
 });
 
 const showBillPaymentAmount = computed(
@@ -625,6 +722,13 @@ const profileLegDisabledReason = computed((): string | null => {
 });
 
 const submitDisabledReasonResolved = computed(() => {
+  if (isMultiLineProfileDeposit.value) {
+    const lineReason = depositLinesSubmitDisabledReason.value;
+    if (lineReason) return lineReason;
+    const profileLeg = profileLegDisabledReason.value;
+    if (profileLeg) return profileLeg;
+    return null;
+  }
   const base = submitDisabledReason.value;
   if (base) return base;
   const profileLeg = profileLegDisabledReason.value;
@@ -711,6 +815,9 @@ const footerHint = computed(() => {
   if (reason === 'Next: enter an amount greater than zero.' && isProfileCashLeg.value) {
     return null;
   }
+  if (isMultiLineProfileDeposit.value && reason?.startsWith('Line ')) {
+    return null;
+  }
   return reason;
 });
 
@@ -759,8 +866,14 @@ const onSubmit = () => {
     && profileLegDepositRequiresBundlePick.value
       ? profilePotId
       : null;
+  const depositLinePayload = isMultiLineProfileDeposit.value
+    ? buildDepositLines()
+    : undefined;
+  const multiTotal = depositLinesTotal.value;
   emit('submit', {
     ...base,
+    amount: isMultiLineProfileDeposit.value ? multiTotal : base.amount,
+    depositLines: depositLinePayload,
     exchangeRate,
     transactionRate: txnRate,
     sourceCurrencyCode: isProfileCashLeg.value ? legCurrency : sourceCurrencyCode,
@@ -786,6 +899,15 @@ const onSubmit = () => {
         : base.toPotId,
   });
 };
+
+const trimPostedDepositLines = (postedCount: number) => {
+  trimDepositLines(postedCount);
+  submitAttempted.value = false;
+};
+
+defineExpose({
+  trimPostedDepositLines,
+});
 </script>
 
 <style scoped lang="scss">
@@ -796,6 +918,47 @@ const onSubmit = () => {
   flex-direction: column;
   background: var(--tf-neutral-surface, #fff);
   border-radius: var(--tf-radius-md, 12px);
+}
+
+.money-pay-dialog-card--multi-deposit {
+  width: min(1240px, 98vw);
+}
+
+.money-pay-dialog__grid--multi-deposit {
+  grid-template-columns: 1fr;
+  gap: var(--tf-space-sm, 8px);
+}
+
+.money-pay-dialog__grid--multi-deposit .money-pay-dialog__col {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: none;
+}
+
+.money-pay-dialog__grid--multi-deposit .money-pay-dialog__deposit-target {
+  width: 100%;
+}
+
+.money-pay-dialog__grid--multi-deposit .money-pay-dialog__stack {
+  gap: var(--tf-space-sm, 8px);
+}
+
+.money-pay-dialog__toolbar-date :deep(.q-field__native) {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.money-pay-dialog__deposit-table {
+  margin-top: var(--tf-space-sm, 8px);
+  padding-top: var(--tf-space-sm, 8px);
+  border-top: 1px solid var(--tf-neutral-border, #e2e8f0);
+}
+
+.money-pay-dialog__footer-total {
+  padding: 8px 10px;
+  border-radius: var(--tf-radius-sm, 8px);
+  border: 1px solid var(--tf-neutral-border, #e2e8f0);
+  background: var(--tf-neutral-canvas, #f8fafc);
 }
 
 .money-pay-dialog__header {
@@ -971,7 +1134,7 @@ const onSubmit = () => {
 }
 
 @media (min-width: 600px) {
-  .money-pay-dialog__grid {
+  .money-pay-dialog__grid:not(.money-pay-dialog__grid--multi-deposit) {
     grid-template-columns: 1fr 1fr;
     align-items: start;
   }
