@@ -42916,16 +42916,6 @@ begin
     limit 1;
   end if;
 
-  if v_pot_id is null and coalesce(v_source_currency, '') <> '' then
-    select cpp.id
-    into v_pot_id
-    from public.cashbook_point_pots cpp
-    where cpp.cashbook_point_id = p_cashbook_point_id
-      and cpp.tenant_id = v_cn.tenant_id
-      and upper(cpp.currency_code) = v_source_currency
-    limit 1;
-  end if;
-
   if v_pot_id is not null and not exists (
     select 1
     from public.cashbook_point_pots cpp
@@ -42933,8 +42923,18 @@ begin
       and cpp.cashbook_point_id = p_cashbook_point_id
       and cpp.tenant_id = v_cn.tenant_id
   ) then
-    raise exception 'Invalid cash pot for this point';
+    v_pot_id := null;
   end if;
+
+  if v_pot_id is null and coalesce(v_source_currency, '') <> '' then
+    v_pot_id := public._kernel_ensure_cashbook_point_pot(
+      v_cn.tenant_id,
+      p_cashbook_point_id,
+      v_source_currency
+    );
+  end if;
+
+  perform public._kernel_lock_cashbook_point_pots(p_cashbook_point_id);
 
   if upper(v_settle_currency) = v_source_currency then
     v_transaction_rate := 1.000000;

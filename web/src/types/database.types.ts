@@ -4708,6 +4708,9 @@ isOneToOne: false
 "_kernel_resolve_bill_id_from_alloc":
 { Args: { "p_bill_id": number,"p_global_invoice_id": number,"p_invoice_id": number }; Returns: number
                            },
+"_kernel_resolve_cash_location_id":
+{ Args: { "p_books_tenant_id": number,"p_profile_id": number,"p_ref": number }; Returns: number
+                           },
 "_kernel_resolve_pay_profile_endpoints":
 { Args: { "p_books_id": number,"p_counterparty_profile_id": number,"p_description"?: string,"p_from_profile_id"?: number,"p_note"?: string,"p_source": string,"p_to_profile_id"?: number }; Returns: {
               "description": string,"from_profile_id": number,"legacy_profile_id": number,"to_profile_id": number
@@ -8125,46 +8128,8 @@ isOneToOne: false
 { Args: { "p_movement_id": number }; Returns: Json
                            },
 "post_vendor_credit_refund":
-{ Args: { "p_amount": number,"p_cashbook_point_id": number,"p_cashbook_point_pot_id"?: number,"p_credit_note_id": number,"p_exchange_rate"?: number,"p_foreign_amount"?: number,"p_note"?: string,"p_received_on"?: string,"p_settlement_currency_code"?: string,"p_source_currency_code"?: string,"p_transaction_rate"?: number }; Returns: {
-              "amount": number,
-"cashbook_point_id": number | null,
-"cashbook_point_pot_id": number | null,
-"collection_source": Database["public"]['Enums']["collection_source_type"],
-"counterparty_name": string | null,
-"created_at": string,
-"customer_group_id": number | null,
-"description": string | null,
-"exchange_rate": number,
-"foreign_amount": number | null,
-"from_profile_id": number | null,
-"id": number,
-"idempotency_key": string | null,
-"method": string | null,
-"note": string | null,
-"payment_date": string,
-"profile_id": number | null,
-"purpose_code": string | null,
-"quote_currency_code": string,
-"reference": string | null,
-"settlement_currency_code": string,
-"shop_order_id": number | null,
-"source": string,
-"source_amount": number | null,
-"source_currency_code": string | null,
-"source_id": string | null,
-"source_type": string | null,
-"tenant_id": number,
-"to_profile_id": number | null,
-"transaction_rate": number | null,
-"unallocated_amount": number,
-"voided_at": string | null
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "pays"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
+{ Args: { "p_amount": number,"p_cash_location_id"?: number,"p_cashbook_point_id"?: number,"p_cashbook_point_pot_id"?: number,"p_credit_note_id": number,"p_exchange_rate"?: number,"p_foreign_amount"?: number,"p_note"?: string,"p_received_on"?: string,"p_settlement_currency_code"?: string,"p_source_currency_code"?: string,"p_transaction_rate"?: number }; Returns: Json
+                           },
 "preorder_demand_invoice_items_stale":
 { Args: { "p_document_id": number,"p_document_type": string,"p_invoice_id": number }; Returns: boolean
                            },

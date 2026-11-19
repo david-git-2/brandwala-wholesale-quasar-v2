@@ -117,6 +117,22 @@ export function useBillVendorRefundPage(params: {
     return billDocumentKind.value === 'standard' && openCreditNoteOptions.value.length > 0;
   });
 
+  const tenantReceiveProfileId = computed((): number | null => {
+    const id = selectedCreditNoteId.value;
+    if (id == null) return null;
+    if (isCreditNotePage.value && params.bill.value?.id === id) {
+      const b = params.bill.value;
+      return (
+        b.to_profile_id
+        ?? (b.to_profile as { id?: number } | null | undefined)?.id
+        ?? b.from_profile_id
+        ?? null
+      );
+    }
+    const adj = adjustmentRows.value.find((r) => r.id === id);
+    return adj?.to_profile_id ?? adj?.from_profile_id ?? null;
+  });
+
   return {
     billDocumentKind,
     isApBill,
@@ -129,5 +145,6 @@ export function useBillVendorRefundPage(params: {
     channelMeta,
     fromProfileName,
     canRecordVendorRefund,
+    tenantReceiveProfileId,
   };
 }

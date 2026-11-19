@@ -658,6 +658,7 @@ SET search_path = money_kernel, pg_temp
 AS $$
 DECLARE
   v_pay    money_kernel.pays;
+  v_bill   money_kernel.bills;
   v_source money_kernel.bills;
   v_target money_kernel.bills;
 BEGIN
@@ -672,6 +673,15 @@ BEGIN
 
     IF NOT FOUND THEN
       RAISE EXCEPTION 'not_found: pays %', NEW.pays_id;
+    END IF;
+
+    SELECT * INTO v_bill FROM money_kernel.bills WHERE id = NEW.bill_id;
+
+    IF v_pay.status = 'posted'
+       AND v_pay.kind = 'deposit'
+       AND v_pay.tenant_id = NEW.tenant_id
+       AND v_bill.kind = 'credit_note' THEN
+      RETURN NEW;
     END IF;
 
     IF v_pay.status <> 'posted'

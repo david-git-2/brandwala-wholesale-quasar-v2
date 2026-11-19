@@ -370,3 +370,70 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public._desk_sync_point_currencies_from_kernel(bigint, text) TO authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public._kernel_resolve_cash_location_id(
+  p_books_tenant_id bigint,
+  p_profile_id bigint,
+  p_ref bigint
+) RETURNS bigint
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
+AS $$
+DECLARE
+  v_location_id bigint;
+  v_legacy_code text;
+BEGIN
+  IF p_ref IS NULL THEN
+    RAISE EXCEPTION 'Choose a receive location';
+  END IF;
+  IF p_books_tenant_id IS NULL OR p_profile_id IS NULL THEN
+    RAISE EXCEPTION 'Invalid receive location for this profile';
+  END IF;
+
+  SELECT cl.id INTO v_location_id
+  FROM money_kernel.cash_locations cl
+  JOIN money_kernel.cashbooks ca ON ca.id = cl.cashbook_id
+  WHERE cl.id = p_ref
+    AND cl.is_active = true
+    AND ca.tenant_id = p_books_tenant_id
+    AND ca.profile_id = p_profile_id
+  LIMIT 1;
+
+  IF v_location_id IS NOT NULL THEN
+    RETURN v_location_id;
+  END IF;
+
+  SELECT cp.code INTO v_legacy_code
+  FROM public.cashbook_points cp
+  JOIN public.cashbook_accounts ca ON ca.id = cp.cashbook_account_id
+  WHERE cp.id = p_ref
+    AND cp.is_active = true
+    AND ca.tenant_id = p_books_tenant_id
+    AND ca.profile_id = p_profile_id
+  LIMIT 1;
+
+  IF v_legacy_code IS NULL THEN
+    RAISE EXCEPTION 'Invalid receive location for this profile';
+  END IF;
+
+  SELECT cl.id INTO v_location_id
+  FROM money_kernel.cash_locations cl
+  JOIN money_kernel.cashbooks ca ON ca.id = cl.cashbook_id
+  WHERE ca.tenant_id = p_books_tenant_id
+    AND ca.profile_id = p_profile_id
+    AND cl.is_active = true
+    AND cl.location_code = v_legacy_code
+  LIMIT 1;
+
+  IF v_location_id IS NULL THEN
+    RAISE EXCEPTION 'Invalid receive location for this profile';
+  END IF;
+
+  RETURN v_location_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public._kernel_resolve_cash_location_id(bigint, bigint, bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public._kernel_resolve_cash_location_id(bigint, bigint, bigint) TO service_role;

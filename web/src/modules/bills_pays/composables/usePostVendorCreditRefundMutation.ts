@@ -8,8 +8,7 @@ export type PostVendorCreditRefundInput = {
   creditNoteId: number;
   parentBillId: number | null;
   amount: number;
-  cashbookPointId: number;
-  cashbookPointPotId?: number | null;
+  cashLocationId: number;
   receivedOn: string;
   note: string | null;
   settlementCurrencyCode?: string;
@@ -27,7 +26,7 @@ export function usePostVendorCreditRefundMutation(billId: () => number | null) {
       const { data, error } = await supabase.rpc('post_vendor_credit_refund', {
         p_credit_note_id: payload.creditNoteId,
         p_amount: payload.amount,
-        p_cashbook_point_id: payload.cashbookPointId,
+        p_cash_location_id: payload.cashLocationId,
         p_received_on: payload.receivedOn,
         p_note: payload.note,
         p_settlement_currency_code: payload.settlementCurrencyCode ?? 'BDT',
@@ -35,7 +34,6 @@ export function usePostVendorCreditRefundMutation(billId: () => number | null) {
         p_exchange_rate: payload.exchangeRate ?? null,
         p_source_currency_code: payload.sourceCurrencyCode ?? null,
         p_transaction_rate: payload.transactionRate ?? null,
-        p_cashbook_point_pot_id: payload.cashbookPointPotId ?? null,
       });
       if (error) throw error;
       return data;

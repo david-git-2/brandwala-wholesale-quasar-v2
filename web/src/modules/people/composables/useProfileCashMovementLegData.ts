@@ -1,14 +1,47 @@
 import { computed, type Ref } from 'vue';
+import { useQuery } from '@tanstack/vue-query';
+import { supabase } from 'src/boot/supabase';
 import type { CashbookPointRow } from 'src/modules/bills_pays/repositories/cashbookRepository';
 import { useMoneyKernelCurrenciesQuery } from 'src/modules/bills_pays/composables/useMoneyKernelCurrenciesQuery';
-import { useCashbookPointsForProfileQuery } from './useCashbookPointsForProfileQuery';
 import { useProfileCashbookBundlesQuery } from './useProfileCashbookBundlesQuery';
+import { cashbookQueryKeys } from 'src/modules/bills_pays/services/cashbookQueryKeys';
 import type { ProfileCashbookBundleRow } from '../types/profileCashbookBundle';
 
-function bundleMatchesPoint(bundle: ProfileCashbookBundleRow, point: CashbookPointRow): boolean {
-  if (bundle.deskPointId != null && bundle.deskPointId === point.id) return true;
-  const code = point.code?.trim().toLowerCase() ?? '';
-  return code.length > 0 && bundle.locationCode.toLowerCase() === code;
+function bundleMatchesLocation(
+  bundle: ProfileCashbookBundleRow,
+  locationId: number,
+  legacyPoint?: CashbookPointRow | null,
+): boolean {
+  if (bundle.cashLocationId === locationId) return true;
+  if (legacyPoint && bundle.deskPointId != null && bundle.deskPointId === legacyPoint.id) {
+    return true;
+  }
+  if (legacyPoint) {
+    const code = legacyPoint.code?.trim().toLowerCase() ?? '';
+    return code.length > 0 && bundle.locationCode.toLowerCase() === code;
+  }
+  return false;
+}
+
+type KernelLocationRow = { id: number; code: string; name: string; is_active: boolean };
+
+function parseKernelLocations(payload: unknown): KernelLocationRow[] {
+  if (!payload || typeof payload !== 'object') return [];
+  const points = (payload as { points?: unknown }).points;
+  if (!Array.isArray(points)) return [];
+  const rows: KernelLocationRow[] = [];
+  for (const raw of points) {
+    if (!raw || typeof raw !== 'object') continue;
+    const id = Number((raw as { id?: unknown }).id);
+    if (!Number.isFinite(id) || id <= 0) continue;
+    rows.push({
+      id,
+      code: String((raw as { code?: unknown }).code ?? '').trim(),
+      name: String((raw as { name?: unknown }).name ?? '').trim(),
+      is_active: (raw as { is_active?: unknown }).is_active !== false,
+    });
+  }
+  return rows.filter((r) => r.is_active).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function useProfileCashMovementLegData(
@@ -16,35 +49,61 @@ export function useProfileCashMovementLegData(
   profileId: Ref<number | null>,
   enabled: Ref<boolean>,
 ) {
-  const { pointsQuery, cashbookAccountId } = useCashbookPointsForProfileQuery(
-    booksTenantId,
-    profileId,
-    enabled,
-  );
-
   const bundlesQuery = useProfileCashbookBundlesQuery(booksTenantId, profileId, enabled);
+
+  const kernelLocationsQuery = useQuery({
+    queryKey: computed(() =>
+      [
+        ...cashbookQueryKeys.root,
+        'kernel_cash_locations',
+        booksTenantId.value,
+        profileId.value,
+      ] as const,
+    ),
+    queryFn: async () => {
+      const pid = profileId.value;
+      if (pid == null) throw new Error('Profile not set.');
+      const { data, error } = await supabase.rpc('_desk_profile_cashbook_leg_json', {
+        p_books_tenant_id: booksTenantId.value,
+        p_bill_profile_id: pid,
+        p_currency_code: 'BDT',
+      });
+      if (error) throw error;
+      return parseKernelLocations(data);
+    },
+    enabled: computed(
+      () => enabled.value && booksTenantId.value > 0 && profileId.value != null,
+    ),
+    staleTime: 30_000,
+  });
 
   const { data: moneyCurrencies } = useMoneyKernelCurrenciesQuery();
 
-  const points = computed((): CashbookPointRow[] => {
-    const list = pointsQuery.data.value ?? [];
-    return [...list]
-      .filter((p) => p.is_active !== false)
-      .sort((a, b) => a.name.localeCompare(b.name));
-  });
+  const kernelLocations = computed(() => kernelLocationsQuery.data.value ?? []);
+
+  const points = computed((): CashbookPointRow[] =>
+    kernelLocations.value.map((loc) => ({
+      id: loc.id,
+      cashbook_account_id: 0,
+      tenant_id: booksTenantId.value,
+      code: loc.code,
+      name: loc.name || loc.code || 'Location',
+      is_active: true,
+    })),
+  );
 
   const bundles = computed(() => bundlesQuery.data.value ?? []);
 
   const loading = computed(
     () =>
-      pointsQuery.isPending.value
-      || pointsQuery.isFetching.value
+      kernelLocationsQuery.isPending.value
+      || kernelLocationsQuery.isFetching.value
       || bundlesQuery.isPending.value
       || bundlesQuery.isFetching.value,
   );
 
   const loadError = computed(() => {
-    const err = pointsQuery.error.value ?? bundlesQuery.error.value;
+    const err = kernelLocationsQuery.error.value ?? bundlesQuery.error.value;
     return err instanceof Error ? err.message : null;
   });
 
@@ -74,32 +133,31 @@ export function useProfileCashMovementLegData(
   });
 
   const locationOptions = computed(() =>
-    points.value.map((p) => ({
-      label: p.name?.trim() || p.code || 'Location',
-      value: p.id,
+    kernelLocations.value.map((loc) => ({
+      label: loc.name?.trim() || loc.code || 'Location',
+      value: loc.id,
     })),
   );
 
   function bundlesForPointAndCurrency(
-    pointId: number | null,
+    locationId: number | null,
     currencyCode: string,
   ): ProfileCashbookBundleRow[] {
-    if (pointId == null || !currencyCode.trim()) return [];
-    const point = points.value.find((p) => p.id === pointId);
-    if (!point) return [];
+    if (locationId == null || !currencyCode.trim()) return [];
+    const legacyPoint = points.value.find((p) => p.id === locationId) ?? null;
     const ccy = currencyCode.trim().toUpperCase();
     return bundles.value.filter(
-      (b) => b.currencyCode === ccy && bundleMatchesPoint(b, point),
+      (b) => b.currencyCode === ccy && bundleMatchesLocation(b, locationId, legacyPoint),
     );
   }
 
-  function pointById(pointId: number | null): CashbookPointRow | null {
-    if (pointId == null) return null;
-    return points.value.find((p) => p.id === pointId) ?? null;
+  function pointById(locationId: number | null): CashbookPointRow | null {
+    if (locationId == null) return null;
+    return points.value.find((p) => p.id === locationId) ?? null;
   }
 
   const refetch = async () => {
-    await Promise.all([pointsQuery.refetch(), bundlesQuery.refetch()]);
+    await Promise.all([kernelLocationsQuery.refetch(), bundlesQuery.refetch()]);
   };
 
   return {
@@ -112,6 +170,6 @@ export function useProfileCashMovementLegData(
     bundlesForPointAndCurrency,
     pointById,
     refetch,
-    cashbookAccountId,
+    cashbookAccountId: computed(() => null),
   };
 }

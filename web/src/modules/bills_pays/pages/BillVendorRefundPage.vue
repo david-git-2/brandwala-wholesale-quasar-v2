@@ -135,6 +135,7 @@ const {
   channelMeta,
   fromProfileName,
   canRecordVendorRefund,
+  tenantReceiveProfileId,
 } = useBillVendorRefundPage({
   routeBillId: billId,
   creditNoteIdFromQuery,
@@ -147,6 +148,8 @@ const vendorRefundMutation = usePostVendorCreditRefundMutation(() => billId.valu
 const tenantLabel = computed(() => authStore.selectedTenant?.name ?? 'Our books');
 
 const tenantMoneyProfileId = computed(() => {
+  const fromCn = tenantReceiveProfileId.value;
+  if (fromCn != null && fromCn > 0) return fromCn;
   const b = bill.value;
   if (!b) return operatingTenantId.value;
   return (

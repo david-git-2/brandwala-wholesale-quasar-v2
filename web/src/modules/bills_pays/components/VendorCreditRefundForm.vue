@@ -53,9 +53,7 @@
       <ProfileCashMovementLegPicker
         v-model:currency-code="profileLegCurrency"
         v-model:location-point-id="receiveLocationPointId"
-        v-model:bundle-id="receiveBundleId"
         v-model:books-rate="receiveBooksRate"
-        v-model:deposit-requires-bundle-pick="depositRequiresBundlePick"
         :books-tenant-id="booksTenantId"
         :operating-tenant-id="operatingTenantId"
         :profile-id="receiveProfileIdForPicker"
@@ -95,8 +93,6 @@ import ProfileCashMovementLegPicker from 'src/modules/people/components/ProfileC
 import { useProfileCashMovementLegData } from 'src/modules/people/composables/useProfileCashMovementLegData';
 import { useBooksCurrencyCode } from '../composables/useBooksCurrencyCode';
 import { useApPayoutFxFields } from '../composables/useApPayoutFxFields';
-import { moneyKernelRepository } from '../repositories/moneyKernelRepository';
-import { showErrorNotification } from 'src/utils/appFeedback';
 import type { PostVendorCreditRefundInput } from '../composables/usePostVendorCreditRefundMutation';
 import {
   vendorRefundBillCurrency,
@@ -159,9 +155,7 @@ const receiveLegEnabled = computed(
 
 const profileLegCurrency = ref('BDT');
 const receiveLocationPointId = ref<number | null>(null);
-const receiveBundleId = ref<number | null>(null);
 const receiveBooksRate = ref<number | null>(null);
-const depositRequiresBundlePick = ref(false);
 
 const profileLegData = useProfileCashMovementLegData(
   booksTenantIdRef,
@@ -252,12 +246,6 @@ const receiveLegDisabledReason = computed((): string | null => {
   if (receiveLocationPointId.value == null) {
     return 'Choose where to receive the refund.';
   }
-  if (depositRequiresBundlePick.value) {
-    if (receiveBundleId.value == null || receiveBundleId.value <= 0) {
-      return 'Choose a bundle.';
-    }
-    return null;
-  }
   const legCurrency = billRefundCurrency.value;
   if (legCurrency !== booksCurrencyCode.value) {
     const rate = Number(receiveBooksRate.value);
@@ -272,7 +260,6 @@ function resetRefundForm() {
   receivedOn.value = localToday();
   note.value = '';
   receiveLocationPointId.value = null;
-  receiveBundleId.value = null;
   const base = booksCurrencyCode.value;
   const face = vendorRefundOpenCreditFace(
     props.openCredit,
@@ -345,59 +332,20 @@ const submitDisabledReason = computed(() => {
   return null;
 });
 
-async function buildPayload(): Promise<PostVendorCreditRefundInput | null> {
+function buildPayload(): PostVendorCreditRefundInput | null {
   if (submitDisabledReason.value || receiveLocationPointId.value == null) {
     return null;
   }
-  const pointId = receiveLocationPointId.value;
-  const point = profileLegData.pointById(pointId);
-  const pointCode = point?.code?.trim() || 'main';
-  const pid = receiveProfileId.value;
-  if (pid <= 0) return null;
-
-  let potId = receiveBundleId.value;
-  let cashbookPointId = pointId;
-  const legCurrency = billRefundCurrency.value;
-
-  if (depositRequiresBundlePick.value && potId != null && potId > 0) {
-    /* use selected BDT bundle */
-  } else {
-    const booksRate =
-      legCurrency !== booksCurrencyCode.value
-        ? Number(receiveBooksRate.value) || null
-        : null;
-    try {
-      const prov = await moneyKernelRepository.provisionCashbookCurrency(
-        props.booksTenantId,
-        pid,
-        legCurrency,
-        pointCode,
-        booksRate,
-      );
-      potId = prov.pot_id ?? potId;
-      if (prov.cashbook_point_id != null) {
-        cashbookPointId = prov.cashbook_point_id;
-      }
-    } catch (err) {
-      showErrorNotification(
-        err instanceof Error ? err.message : 'Could not open a cash bundle at this location.',
-      );
-      return null;
-    }
-  }
-
-  if (potId == null || potId <= 0) return null;
-
+  const cashLocationId = receiveLocationPointId.value;
   const fx = {
     ...refundSettlementFxPayload(),
-    ...refundSourceFxPayload(potId),
+    ...refundSourceFxPayload(null),
   };
   return {
     creditNoteId: props.creditNoteId,
     parentBillId: props.parentBillId,
     amount: Number(amountBdt.value),
-    cashbookPointId,
-    cashbookPointPotId: fx.cashbook_point_pot_id ?? potId,
+    cashLocationId,
     receivedOn: receivedOn.value,
     note: note.value.trim() || null,
     settlementCurrencyCode: fx.settlement_currency_code,
@@ -408,8 +356,8 @@ async function buildPayload(): Promise<PostVendorCreditRefundInput | null> {
   };
 }
 
-async function trySubmit() {
-  const payload = await buildPayload();
+function trySubmit() {
+  const payload = buildPayload();
   if (payload) emit('submit', payload);
 }
 

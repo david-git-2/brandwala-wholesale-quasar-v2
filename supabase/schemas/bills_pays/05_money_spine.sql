@@ -478,118 +478,131 @@ CREATE OR REPLACE FUNCTION public.recompute_global_invoice_payment_status(p_glob
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO public
+SET search_path = money_kernel, public, pg_temp
 AS $$
-declare
-  v_bill public.bills;
+DECLARE
+  v_bill money_kernel.bills;
   v_root_id bigint;
-  v_total numeric(12, 2);
-  v_paid numeric(12, 2);
-  v_written_off numeric(12, 2);
-  v_credits numeric(12, 2);
-  v_debits numeric(12, 2);
-  v_due numeric(12, 2);
+  v_total numeric(18, 4);
+  v_paid numeric(18, 4);
+  v_written_off numeric(18, 4);
+  v_credits numeric(18, 4);
+  v_debits numeric(18, 4);
+  v_due numeric(18, 4);
   v_child record;
-  v_child_paid numeric(12, 2);
-  v_child_written_off numeric(12, 2);
-  v_child_cross numeric(12, 2);
-  v_child_due numeric(12, 2);
-  v_child_total numeric(12, 2);
-begin
-  select * into v_bill from public.bills where id = p_global_invoice_id;
-  if not found then return; end if;
+  v_child_paid numeric(18, 4);
+  v_child_written_off numeric(18, 4);
+  v_child_cross numeric(18, 4);
+  v_child_due numeric(18, 4);
+  v_child_total numeric(18, 4);
+  v_child_status text;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM money_kernel.bills kb WHERE kb.id = p_global_invoice_id
+  ) THEN
+    RETURN;
+  END IF;
+
+  SELECT * INTO v_bill FROM money_kernel.bills WHERE id = p_global_invoice_id;
+  IF NOT FOUND THEN
+    RETURN;
+  END IF;
 
   v_root_id := coalesce(v_bill.parent_bill_id, v_bill.id);
 
-  select * into v_bill from public.bills where id = v_root_id for update;
-  if not found then return; end if;
+  SELECT * INTO v_bill FROM money_kernel.bills WHERE id = v_root_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN;
+  END IF;
 
-  select coalesce(sum(bs.allocated_books_amount), 0.00) into v_paid
-  from public.bill_settlements bs
-  where bs.bill_id = v_root_id;
+  SELECT coalesce(sum(bs.allocated_amount), 0) INTO v_paid
+  FROM money_kernel.bill_settlements bs
+  WHERE bs.bill_id = v_root_id
+    AND bs.settlement_kind = 'pay';
 
-  select coalesce(sum(amount), 0.00) into v_written_off
-  from public.invoice_write_offs where invoice_id = v_root_id;
+  v_written_off := coalesce(v_bill.written_off_amount, 0);
 
-  select coalesce(sum(total_amount), 0.00) into v_credits
-  from public.bills
-  where parent_bill_id = v_root_id
-    and document_kind = 'credit_note'::public.bill_document_kind
-    and invoice_status = 'issued'::public.global_invoice_status;
+  SELECT coalesce(sum(total_amount), 0) INTO v_credits
+  FROM money_kernel.bills
+  WHERE parent_bill_id = v_root_id
+    AND kind = 'credit_note'
+    AND status NOT IN ('draft', 'voided');
 
-  select coalesce(sum(total_amount), 0.00) into v_debits
-  from public.bills
-  where parent_bill_id = v_root_id
-    and document_kind = 'debit_note'::public.bill_document_kind
-    and invoice_status = 'issued'::public.global_invoice_status;
+  SELECT coalesce(sum(total_amount), 0) INTO v_debits
+  FROM money_kernel.bills
+  WHERE parent_bill_id = v_root_id
+    AND kind = 'debit_note'
+    AND status NOT IN ('draft', 'voided');
 
-  v_total := coalesce(v_bill.total_amount, 0.00);
-  v_due := greatest(v_total - v_paid - v_written_off - v_credits + v_debits, 0.00);
+  v_total := coalesce(v_bill.total_amount, 0);
+  v_due := greatest(v_total - v_paid - v_written_off - v_credits + v_debits, 0);
 
-  update public.bills
-  set
+  UPDATE money_kernel.bills
+  SET
     paid_amount = v_paid,
-    written_off_amount = v_written_off,
     due_amount = v_due,
-    payment_status = case
-      when v_due = 0.00 and v_written_off > 0.00 then 'settled_with_write_off'
-      when v_due = 0.00 and v_paid > 0.00 then 'paid'
-      when v_paid > 0.00 or v_written_off > 0.00 then 'partially_paid'
-      else 'due'
-    end,
+    status = CASE
+      WHEN status = 'voided' THEN status
+      ELSE money_kernel.derive_bill_status(v_total, v_paid, v_due, v_written_off)
+    END,
     updated_at = now()
-  where id = v_root_id;
+  WHERE id = v_root_id;
 
-  for v_child in
-    select id, document_kind, total_amount, invoice_status
-    from public.bills
-    where parent_bill_id = v_root_id
-    order by id
-  loop
-    select coalesce(sum(bs.allocated_books_amount), 0.00) into v_child_paid
-    from public.bill_settlements bs where bs.bill_id = v_child.id;
+  FOR v_child IN
+    SELECT id, kind, total_amount, status
+    FROM money_kernel.bills
+    WHERE parent_bill_id = v_root_id
+    ORDER BY id
+  LOOP
+    SELECT coalesce(sum(bs.allocated_amount), 0) INTO v_child_paid
+    FROM money_kernel.bill_settlements bs
+    WHERE bs.bill_id = v_child.id
+      AND bs.settlement_kind = 'pay';
 
-    select coalesce(sum(amount), 0.00) into v_child_written_off
-    from public.invoice_write_offs where invoice_id = v_child.id;
+    SELECT coalesce(b.written_off_amount, 0) INTO v_child_written_off
+    FROM money_kernel.bills b
+    WHERE b.id = v_child.id;
 
-    v_child_total := coalesce(v_child.total_amount, 0.00);
-    v_child_cross := 0.00;
-    if v_child.document_kind = 'credit_note'::public.bill_document_kind then
-      select coalesce(sum(bs.allocated_books_amount), 0.00) into v_child_cross
-      from public.bill_settlements bs
-      where bs.allocator_kind = 'credit_note'
-        and bs.allocator_id = v_child.id;
-    end if;
+    v_child_total := coalesce(v_child.total_amount, 0);
+    v_child_cross := 0;
+    IF v_child.kind = 'credit_note' THEN
+      SELECT coalesce(sum(bs.allocated_amount), 0) INTO v_child_cross
+      FROM money_kernel.bill_settlements bs
+      WHERE bs.settlement_kind = 'document'
+        AND bs.source_bill_id = v_child.id;
+    END IF;
 
-    if v_child.invoice_status <> 'issued'::public.global_invoice_status then
-      v_child_due := 0.00;
-    elsif v_due = 0.00 and (v_written_off > 0.00 or v_paid > 0.00) then
-      v_child_due := 0.00;
-    else
+    v_child_status := v_child.status;
+    IF v_child_status IN ('draft', 'voided') THEN
+      v_child_due := 0;
+    ELSIF v_due = 0 AND (v_written_off > 0 OR v_paid > 0) THEN
+      v_child_due := 0;
+    ELSE
       v_child_due := greatest(
         v_child_total - v_child_paid - v_child_written_off - v_child_cross,
-        0.00
+        0
       );
-    end if;
+    END IF;
 
-    update public.bills
-    set
+    UPDATE money_kernel.bills
+    SET
       paid_amount = v_child_paid,
       written_off_amount = v_child_written_off,
       due_amount = v_child_due,
-      payment_status = case
-        when v_child.invoice_status = 'voided'::public.global_invoice_status then 'due'
-        when v_child_total <= 0.00 then 'paid'
-        when v_child_due <= 0.00 and v_child_written_off > 0.00 then 'settled_with_write_off'
-        when v_child_due <= 0.00 and v_due = 0.00 and v_written_off > 0.00 then 'settled_with_write_off'
-        when v_child_due <= 0.00 and v_child_paid > 0.00 then 'paid'
-        when v_child_paid > 0.00 then 'partially_paid'
-        else 'due'
-      end,
+      status = CASE
+        WHEN v_child_status = 'voided' THEN status
+        WHEN v_child_total <= 0 THEN 'paid'
+        ELSE money_kernel.derive_bill_status(
+          v_child_total,
+          v_child_paid,
+          v_child_due,
+          v_child_written_off
+        )
+      END,
       updated_at = now()
-    where id = v_child.id;
-  end loop;
-end;
+    WHERE id = v_child.id;
+  END LOOP;
+END;
 $$;
 
 -- ---------------------------------------------------------------------------
