@@ -20,8 +20,6 @@
           step="0.01"
           class="bg-white soft-input"
           label="Conversion Rate (FX)"
-          :readonly="isRateInputsLocked"
-          :class="{ 'bg-grey-2': isRateInputsLocked }"
           @update:model-value="onRateChange"
         />
       </div>
@@ -35,8 +33,6 @@
           step="0.01"
           class="bg-white soft-input"
           label="Cargo Rate (kg/GBP)"
-          :readonly="isRateInputsLocked"
-          :class="{ 'bg-grey-2': isRateInputsLocked }"
           @update:model-value="onRateChange"
         />
       </div>
@@ -50,8 +46,6 @@
           step="0.01"
           class="bg-white soft-input"
           label="1st Offer Profit Rate (%)"
-          :readonly="isRateInputsLocked"
-          :class="{ 'bg-grey-2': isRateInputsLocked }"
           @update:model-value="onRateChange"
         />
       </div>
@@ -65,8 +59,6 @@
           step="0.01"
           class="bg-white soft-input"
           label="Final Offer Profit Rate (%)"
-          :readonly="isRateInputsLocked || isStaffReadOnly"
-          :class="{ 'bg-grey-2': isRateInputsLocked || isStaffReadOnly }"
           @update:model-value="onRateChange"
         />
       </div>
@@ -81,8 +73,6 @@
           :options="basisOptions"
           class="bg-white soft-input"
           label="Profit Basis"
-          :readonly="isRateInputsLocked"
-          :disable="isRateInputsLocked"
           @update:model-value="onRateChange"
         />
       </div>
@@ -96,12 +86,8 @@
           class="full-width q-py-xs"
           label="Apply Rates"
           :loading="saving"
-          :disable="isRateSaveDisabled"
           @click="onSave"
-        >
-          <q-tooltip v-if="isRatesLocked">Rates are locked after procurement has started</q-tooltip>
-          <q-tooltip v-else-if="isStaffReadOnly">Rates are locked while the customer reviews the offer</q-tooltip>
-        </q-btn>
+        />
       </div>
     </div>
   </q-card>
@@ -138,7 +124,6 @@
           <span class="rates-pill__lbl">Basis:</span>
           <span class="rates-pill__val">{{ profitBasisLabel }}</span>
           <q-btn
-            v-if="!isRatesLocked"
             flat
             round
             dense
@@ -173,7 +158,6 @@
             prefix="৳"
             label="FX Rate"
             hide-bottom-space
-            :readonly="isRateInputsLocked"
             @update:model-value="onRateChange"
           />
         </div>
@@ -188,7 +172,6 @@
             suffix="/kg"
             label="Cargo Rate"
             hide-bottom-space
-            :readonly="isRateInputsLocked"
             @update:model-value="onRateChange"
           />
         </div>
@@ -202,7 +185,6 @@
             suffix="%"
             label="1st Offer Profit %"
             hide-bottom-space
-            :readonly="isRateInputsLocked"
             @update:model-value="onRateChange"
           />
         </div>
@@ -216,7 +198,6 @@
             suffix="%"
             label="Final Offer Profit %"
             hide-bottom-space
-            :readonly="isRateInputsLocked || isStaffReadOnly"
             @update:model-value="onRateChange"
           />
         </div>
@@ -230,8 +211,6 @@
             :options="basisOptions"
             label="Profit Basis"
             hide-bottom-space
-            :readonly="isRateInputsLocked"
-            :disable="isRateInputsLocked"
             @update:model-value="onRateChange"
           />
         </div>
@@ -245,7 +224,6 @@
             label="Save Rates"
             class="rounded-sq-btn q-px-sm"
             :loading="saving"
-            :disable="isRateSaveDisabled"
             @click="onSave"
           />
         </div>
@@ -258,12 +236,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import type { ShopOrder } from '../types';
-import {
-  normalizeCatalogOrderStatus,
-  isCatalogFirstOfferLocked,
-  isCatalogRatesLocked,
-  isCatalogStaffReadOnly,
-} from '../utils/catalogOrderStatus';
+import { normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
 
 const props = withDefaults(
   defineProps<{
@@ -315,16 +288,6 @@ const showFinalOfferRate = computed(
   () => normalizeCatalogOrderStatus(props.order?.status) !== 'submitted',
 );
 
-const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(props.order?.status));
-const isRatesLocked = computed(() => isCatalogRatesLocked(props.order?.status));
-const isStaffReadOnly = computed(() => isCatalogStaffReadOnly(props.order?.status));
-const isRateInputsLocked = computed(
-  () => isFirstOfferLocked.value || isRatesLocked.value,
-);
-const isRateSaveDisabled = computed(
-  () => isStaffReadOnly.value || isRatesLocked.value,
-);
-
 const basisOptions = [
   { label: 'Total Cost', value: 'total_cost' },
   { label: 'Purchase Only', value: 'purchase' },
@@ -344,9 +307,6 @@ watch(
       first_offer_rate.value = newOrder.first_offer_rate ?? null;
       final_offer_rate.value = newOrder.final_offer_rate ?? null;
       profit_basis.value = (newOrder.profit_basis as 'purchase' | 'total_cost') || 'total_cost';
-      if (isCatalogRatesLocked(newOrder.status)) {
-        ratesExpanded.value = false;
-      }
     }
   },
   { immediate: true },
@@ -359,58 +319,23 @@ const formulaExplanation = computed(() => {
   return 'Round5(ceil((Cost × FX + Weight × Cargo × FX) × (1 + Profit%)))';
 });
 
-function onRateChange() {
-  if (isRatesLocked.value || isStaffReadOnly.value) {
-    return;
-  }
-
-  if (isFirstOfferLocked.value) {
-    emit('change-rates', {
-      conversion_rate: props.order?.conversion_rate ?? conversion_rate.value,
-      cargo_rate: props.order?.cargo_rate ?? cargo_rate.value,
-      profit_rate: props.order?.profit_rate ?? profit_rate.value,
-      first_offer_rate: props.order?.first_offer_rate ?? first_offer_rate.value,
-      final_offer_rate: final_offer_rate.value,
-      profit_basis: (props.order?.profit_basis as 'purchase' | 'total_cost') || profit_basis.value,
-    });
-    return;
-  }
-
-  emit('change-rates', {
+function ratePayload() {
+  return {
     conversion_rate: conversion_rate.value,
     cargo_rate: cargo_rate.value,
     profit_rate: profit_rate.value,
     first_offer_rate: first_offer_rate.value,
     final_offer_rate: final_offer_rate.value,
     profit_basis: profit_basis.value,
-  });
+  };
+}
+
+function onRateChange() {
+  emit('change-rates', ratePayload());
 }
 
 function onSave() {
-  if (isRatesLocked.value || isStaffReadOnly.value) {
-    return;
-  }
-
-  if (isFirstOfferLocked.value) {
-    emit('save-rates', {
-      conversion_rate: props.order?.conversion_rate ?? conversion_rate.value,
-      cargo_rate: props.order?.cargo_rate ?? cargo_rate.value,
-      profit_rate: props.order?.profit_rate ?? profit_rate.value,
-      first_offer_rate: props.order?.first_offer_rate ?? first_offer_rate.value,
-      final_offer_rate: final_offer_rate.value,
-      profit_basis: (props.order?.profit_basis as 'purchase' | 'total_cost') || profit_basis.value,
-    });
-  } else {
-    emit('save-rates', {
-      conversion_rate: conversion_rate.value,
-      cargo_rate: cargo_rate.value,
-      profit_rate: profit_rate.value,
-      first_offer_rate: first_offer_rate.value,
-      final_offer_rate: final_offer_rate.value,
-      profit_basis: profit_basis.value,
-    });
-  }
-
+  emit('save-rates', ratePayload());
   ratesExpanded.value = false;
 }
 

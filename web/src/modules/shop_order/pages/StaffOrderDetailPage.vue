@@ -244,7 +244,6 @@ import {
 import {
   isCatalogFirstOfferLocked,
   isCatalogOfferPriceLocked,
-  isCatalogRatesLocked,
   getStaffCatalogPrimaryAction,
   getStaffCatalogPrimaryActionTargetStatus,
   getCatalogWorkflowStatusConfirmation,
@@ -1050,10 +1049,9 @@ const recalculateOffers = (rates: {
   profit_basis: 'purchase' | 'total_cost';
 }) => {
   const offerPriceLocked = isCatalogOfferPriceLocked(currentOrder.value?.status);
-  const firstOfferLocked = isCatalogFirstOfferLocked(currentOrder.value?.status);
   if (offerPriceLocked) return;
   orderItems.value.forEach((item) => {
-    if (!firstOfferLocked && !item.is_first_offer_manual) {
+    if (!item.is_first_offer_manual) {
       item.staff_offer_amount = calculateItemFirstOfferPrice(
         item,
         {
@@ -1093,7 +1091,6 @@ const handleChangeRates = (payload: {
   final_offer_rate: number | null;
   profit_basis: 'purchase' | 'total_cost';
 }) => {
-  if (isCatalogRatesLocked(currentOrder.value?.status)) return;
   recalculateOffers(payload);
 };
 
@@ -1106,7 +1103,6 @@ const handleSaveRates = (payload: {
   profit_basis: 'purchase' | 'total_cost';
 }) => {
   if (!orderId.value) return;
-  if (isCatalogRatesLocked(currentOrder.value?.status)) return;
   recalculateOffers(payload);
   saveCatalogRates({ orderId: orderId.value, payload });
 };

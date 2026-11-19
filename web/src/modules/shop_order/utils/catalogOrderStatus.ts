@@ -406,9 +406,9 @@ export function isCatalogOfferPriceLocked(status: string | null | undefined): bo
   return isCatalogCustomerFulfillmentPhase(status);
 }
 
-/** FX / cargo / profit rates cannot change after procurement has started. */
-export function isCatalogRatesLocked(status: string | null | undefined): boolean {
-  return isCatalogOfferPriceLocked(status);
+/** FX / cargo / profit rates are editable in any order status (staff detail). */
+export function isCatalogRatesLocked(_status: string | null | undefined): boolean {
+  return false;
 }
 
 /** Procured qty is managed on the procurement demand desk, not on the order page. */
