@@ -52,15 +52,16 @@
           <VendorCreditRefundForm
             v-if="selectedCreditNoteId"
             ref="formRef"
-            page-layout
             :credit-note-id="selectedCreditNoteId"
             :parent-bill-id="parentBillId"
             :open-credit="openCreditBooks"
             :books-tenant-id="operatingTenantId"
+            :operating-tenant-id="staffTenantId"
             :receive-profile-id="tenantMoneyProfileId"
             :from-profile-name="fromProfileName"
             :tenant-label="tenantLabel"
             :channel-meta="channelMeta"
+            :invoice-currency-code="invoiceCurrencyCode"
             :credit-note-options="openCreditNoteOptions"
             :active="pageActive"
             @update:credit-note-id="onCreditNotePicked"
@@ -155,11 +156,19 @@ const tenantMoneyProfileId = computed(() => {
   );
 });
 
+const staffTenantId = computed(() => authStore.selectedTenant?.id ?? 0);
+
+const invoiceCurrencyCode = computed(() => {
+  const code = String(bill.value?.currency_code ?? '').trim().toUpperCase();
+  return code || booksCurrencyCode.value;
+});
+
 const openCreditFace = computed(() =>
   vendorRefundOpenCreditFace(
     openCreditBooks.value,
     channelMeta.value,
     booksCurrencyCode.value,
+    invoiceCurrencyCode.value,
   ),
 );
 
@@ -218,8 +227,8 @@ function onCreditNotePicked(id: number) {
   );
 }
 
-function onSubmit() {
-  formRef.value?.trySubmit();
+async function onSubmit() {
+  await formRef.value?.trySubmit();
 }
 
 async function onVendorRefund(payload: PostVendorCreditRefundInput) {
@@ -251,13 +260,18 @@ onMounted(() => {
 onUnmounted(clearCustomBreadcrumbs);
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .page-fixed-layout {
   height: calc(100vh - 55px);
   max-height: calc(100vh - 55px);
 }
 
+.bill-pay-page__body {
+  min-height: 0;
+}
+
 .bill-pay-page__stack {
-  max-width: 560px;
+  width: 100%;
+  max-width: none;
 }
 </style>

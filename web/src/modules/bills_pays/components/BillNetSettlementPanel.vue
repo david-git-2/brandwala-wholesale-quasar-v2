@@ -289,7 +289,7 @@ const openCreditLabel = computed(() =>
 
 const openCreditHint = computed(() =>
   props.isAp
-    ? 'Record vendor refund when cash hits your till or bank, or apply open credit to another bill.'
+    ? 'Record vendor refund when cash hits your till or bank.'
     : 'Refund the customer or apply open credit to another invoice.',
 );
 </script>

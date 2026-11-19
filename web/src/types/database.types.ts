@@ -4194,14 +4194,14 @@ isOneToOne: false
                   ]
                 },"bills": {
                   Row: {
-                    "ap_kind": string | null,"ap_shipment_id": number | null,"books_exchange_rate": number | null,"channel_meta": Json | null,"charges_amount": number | null,"collection_source": Database["public"]['Enums']["collection_source_type"] | null,"created_at": string | null,"created_by": string | null,"currency_code": string | null,"discount_amount": number | null,"document_kind": Database["public"]['Enums']["bill_document_kind"] | null,"due_amount": number | null,"due_date": string | null,"from_profile_id": number | null,"id": number | null,"invoice_date": string | null,"invoice_no": string | null,"invoice_status": Database["public"]['Enums']["global_invoice_status"] | null,"invoice_type": Database["public"]['Enums']["global_invoice_type"] | null,"issued_by_tenant_id": number | null,"note": string | null,"paid_amount": number | null,"parent_bill_id": number | null,"payment_status": string | null,"print_charge": number | null,"profile_id": number | null,"recipient_address": string | null,"recipient_name": string | null,"recipient_phone": string | null,"recipient_profile_id": number | null,"retail_billing_mode": Database["public"]['Enums']["retail_billing_mode"] | null,"settlement_kind": Database["public"]['Enums']["bill_settlement_kind"] | null,"shipping_charge": number | null,"shop_order_id": number | null,"source_id": string | null,"source_key": string | null,"source_type": string | null,"subtotal_amount": number | null,"tenant_id": number | null,"to_profile_id": number | null,"total_amount": number | null,"txn_currency_code": string | null,"txn_total_amount": number | null,"updated_at": string | null,"wrapping_charge": number | null,"written_off_amount": number | null
+                    "ap_kind": string | null,"ap_shipment_id": number | null,"books_exchange_rate": number | null,"channel_meta": Json | null,"charges_amount": number | null,"collection_source": Database["public"]['Enums']["collection_source_type"] | null,"created_at": string | null,"created_by": string | null,"currency_code": string | null,"discount_amount": number | null,"document_kind": Database["public"]['Enums']["bill_document_kind"] | null,"due_amount": number | null,"due_date": string | null,"from_profile_id": number | null,"id": number | null,"invoice_date": string | null,"invoice_no": string | null,"invoice_status": Database["public"]['Enums']["global_invoice_status"] | null,"invoice_type": Database["public"]['Enums']["global_invoice_type"] | null,"issued_by_tenant_id": number | null,"note": string | null,"paid_amount": number | null,"parent_bill_id": number | null,"parent_tenant_id": number | null,"payment_status": string | null,"print_charge": number | null,"profile_id": number | null,"recipient_address": string | null,"recipient_name": string | null,"recipient_phone": string | null,"recipient_profile_id": number | null,"retail_billing_mode": Database["public"]['Enums']["retail_billing_mode"] | null,"settlement_kind": Database["public"]['Enums']["bill_settlement_kind"] | null,"shipping_charge": number | null,"shop_order_id": number | null,"source_id": string | null,"source_key": string | null,"source_type": string | null,"subtotal_amount": number | null,"tenant_id": number | null,"to_profile_id": number | null,"total_amount": number | null,"txn_currency_code": string | null,"txn_total_amount": number | null,"updated_at": string | null,"wrapping_charge": number | null,"written_off_amount": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                           "ap_kind"?: never,"ap_shipment_id"?: never,"books_exchange_rate"?: never,"channel_meta"?: never,"charges_amount"?: never,"collection_source"?: never,"created_at"?: string | null,"created_by"?: string | null,"currency_code"?: never,"discount_amount"?: never,"document_kind"?: never,"due_amount"?: number | null,"due_date"?: string | null,"from_profile_id"?: number | null,"id"?: number | null,"invoice_date"?: never,"invoice_no"?: never,"invoice_status"?: never,"invoice_type"?: never,"issued_by_tenant_id"?: number | null,"note"?: string | null,"paid_amount"?: never,"parent_bill_id"?: number | null,"payment_status"?: never,"print_charge"?: never,"profile_id"?: number | null,"recipient_address"?: never,"recipient_name"?: never,"recipient_phone"?: never,"recipient_profile_id"?: never,"retail_billing_mode"?: never,"settlement_kind"?: never,"shipping_charge"?: never,"shop_order_id"?: never,"source_id"?: string | null,"source_key"?: string | null,"source_type"?: string | null,"subtotal_amount"?: never,"tenant_id"?: number | null,"to_profile_id"?: number | null,"total_amount"?: number | null,"txn_currency_code"?: never,"txn_total_amount"?: never,"updated_at"?: string | null,"wrapping_charge"?: never,"written_off_amount"?: never
+                           "ap_kind"?: never,"ap_shipment_id"?: never,"books_exchange_rate"?: never,"channel_meta"?: never,"charges_amount"?: never,"collection_source"?: never,"created_at"?: string | null,"created_by"?: string | null,"currency_code"?: never,"discount_amount"?: never,"document_kind"?: never,"due_amount"?: number | null,"due_date"?: string | null,"from_profile_id"?: number | null,"id"?: number | null,"invoice_date"?: never,"invoice_no"?: never,"invoice_status"?: never,"invoice_type"?: never,"issued_by_tenant_id"?: number | null,"note"?: string | null,"paid_amount"?: never,"parent_bill_id"?: number | null,"parent_tenant_id"?: number | null,"payment_status"?: never,"print_charge"?: never,"profile_id"?: never,"recipient_address"?: never,"recipient_name"?: never,"recipient_phone"?: never,"recipient_profile_id"?: never,"retail_billing_mode"?: never,"settlement_kind"?: never,"shipping_charge"?: never,"shop_order_id"?: never,"source_id"?: string | null,"source_key"?: string | null,"source_type"?: string | null,"subtotal_amount"?: never,"tenant_id"?: number | null,"to_profile_id"?: number | null,"total_amount"?: number | null,"txn_currency_code"?: never,"txn_total_amount"?: never,"updated_at"?: string | null,"wrapping_charge"?: never,"written_off_amount"?: never
                          }
                         Update: {
-                           "ap_kind"?: never,"ap_shipment_id"?: never,"books_exchange_rate"?: never,"channel_meta"?: never,"charges_amount"?: never,"collection_source"?: never,"created_at"?: string | null,"created_by"?: string | null,"currency_code"?: never,"discount_amount"?: never,"document_kind"?: never,"due_amount"?: number | null,"due_date"?: string | null,"from_profile_id"?: number | null,"id"?: number | null,"invoice_date"?: never,"invoice_no"?: never,"invoice_status"?: never,"invoice_type"?: never,"issued_by_tenant_id"?: number | null,"note"?: string | null,"paid_amount"?: never,"parent_bill_id"?: number | null,"payment_status"?: never,"print_charge"?: never,"profile_id"?: number | null,"recipient_address"?: never,"recipient_name"?: never,"recipient_phone"?: never,"recipient_profile_id"?: never,"retail_billing_mode"?: never,"settlement_kind"?: never,"shipping_charge"?: never,"shop_order_id"?: never,"source_id"?: string | null,"source_key"?: string | null,"source_type"?: string | null,"subtotal_amount"?: never,"tenant_id"?: number | null,"to_profile_id"?: number | null,"total_amount"?: number | null,"txn_currency_code"?: never,"txn_total_amount"?: never,"updated_at"?: string | null,"wrapping_charge"?: never,"written_off_amount"?: never
+                           "ap_kind"?: never,"ap_shipment_id"?: never,"books_exchange_rate"?: never,"channel_meta"?: never,"charges_amount"?: never,"collection_source"?: never,"created_at"?: string | null,"created_by"?: string | null,"currency_code"?: never,"discount_amount"?: never,"document_kind"?: never,"due_amount"?: number | null,"due_date"?: string | null,"from_profile_id"?: number | null,"id"?: number | null,"invoice_date"?: never,"invoice_no"?: never,"invoice_status"?: never,"invoice_type"?: never,"issued_by_tenant_id"?: number | null,"note"?: string | null,"paid_amount"?: never,"parent_bill_id"?: number | null,"parent_tenant_id"?: number | null,"payment_status"?: never,"print_charge"?: never,"profile_id"?: never,"recipient_address"?: never,"recipient_name"?: never,"recipient_phone"?: never,"recipient_profile_id"?: never,"retail_billing_mode"?: never,"settlement_kind"?: never,"shipping_charge"?: never,"shop_order_id"?: never,"source_id"?: string | null,"source_key"?: string | null,"source_type"?: string | null,"subtotal_amount"?: never,"tenant_id"?: number | null,"to_profile_id"?: number | null,"total_amount"?: number | null,"txn_currency_code"?: never,"txn_total_amount"?: never,"updated_at"?: string | null,"wrapping_charge"?: never,"written_off_amount"?: never
                          }
                         Relationships: [
                     
@@ -6716,6 +6716,7 @@ isOneToOne: false
 "note": string | null,
 "paid_amount": number | null,
 "parent_bill_id": number | null,
+"parent_tenant_id": number | null,
 "payment_status": string | null,
 "print_charge": number | null,
 "profile_id": number | null,
@@ -6789,6 +6790,7 @@ isOneToOne: false
 "note": string | null,
 "paid_amount": number | null,
 "parent_bill_id": number | null,
+"parent_tenant_id": number | null,
 "payment_status": string | null,
 "print_charge": number | null,
 "profile_id": number | null,
@@ -6844,6 +6846,7 @@ isOneToOne: false
 "note": string | null,
 "paid_amount": number | null,
 "parent_bill_id": number | null,
+"parent_tenant_id": number | null,
 "payment_status": string | null,
 "print_charge": number | null,
 "profile_id": number | null,
@@ -7591,6 +7594,7 @@ isOneToOne: false
 "note": string | null,
 "paid_amount": number | null,
 "parent_bill_id": number | null,
+"parent_tenant_id": number | null,
 "payment_status": string | null,
 "print_charge": number | null,
 "profile_id": number | null,

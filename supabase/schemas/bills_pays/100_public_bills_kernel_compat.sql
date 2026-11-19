@@ -45,7 +45,13 @@ SELECT
   kb.id,
   kb.tenant_id,
   COALESCE(kb.invoice_no, 'DRAFT-' || kb.id::text) AS invoice_no,
-  public._kernel_bill_invoice_type_enum(kb.kind) AS invoice_type,
+  CASE
+    WHEN kb.kind IN ('credit_note', 'debit_note') AND kb.parent_bill_id IS NOT NULL
+    THEN public._kernel_bill_invoice_type_enum(
+      (SELECT pk.kind FROM money_kernel.bills pk WHERE pk.id = kb.parent_bill_id)
+    )
+    ELSE public._kernel_bill_invoice_type_enum(kb.kind)
+  END AS invoice_type,
   COALESCE(kb.invoice_date, CURRENT_DATE) AS invoice_date,
   NULLIF(kb.meta->>'retail_billing_mode', '')::public.retail_billing_mode AS retail_billing_mode,
   public._kernel_bill_invoice_status_enum(kb.status) AS invoice_status,
@@ -73,7 +79,20 @@ SELECT
   NULLIF(kb.meta->>'shop_order_id', '')::bigint AS shop_order_id,
   COALESCE((kb.meta->>'charges_amount')::numeric(12, 2), 0) AS charges_amount,
   COALESCE(kb.meta, '{}'::jsonb) AS channel_meta,
-  kb.counterparty_profile_id AS profile_id,
+  COALESCE(
+    kb.counterparty_profile_id,
+    (
+      SELECT pk.counterparty_profile_id
+      FROM money_kernel.bills pk
+      WHERE pk.id = kb.parent_bill_id
+    ),
+    (
+      SELECT pk.to_profile_id
+      FROM money_kernel.bills pk
+      WHERE pk.id = kb.parent_bill_id
+    ),
+    kb.to_profile_id
+  ) AS profile_id,
   CASE
     WHEN kb.source_type = 'shipment_cost' THEN NULLIF(BTRIM(kb.source_id), '')::bigint
     ELSE NULLIF(kb.meta->>'shipment_id', '')::bigint
@@ -90,7 +109,8 @@ SELECT
   upper(COALESCE(kb.currency_code, 'BDT')) AS currency_code,
   NULLIF(kb.meta->>'txn_currency_code', '') AS txn_currency_code,
   COALESCE((kb.meta->>'txn_total_amount')::numeric(12, 2), kb.total_amount) AS txn_total_amount,
-  COALESCE((kb.meta->>'books_exchange_rate')::numeric(15, 6), 1::numeric(15, 6)) AS books_exchange_rate
+  COALESCE((kb.meta->>'books_exchange_rate')::numeric(15, 6), 1::numeric(15, 6)) AS books_exchange_rate,
+  kb.tenant_id AS parent_tenant_id
 FROM money_kernel.bills kb;
 
 CREATE OR REPLACE VIEW public.bill_lines

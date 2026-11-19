@@ -835,6 +835,7 @@ const paymentDueAmount = computed(() => {
 });
 
 const canApplyCreditToBill = computed(() => {
+  if (isApBill.value) return false;
   const b = bill.value;
   if (!b || !isStandardBill.value) return false;
   if (b.invoice_status !== 'issued') return false;

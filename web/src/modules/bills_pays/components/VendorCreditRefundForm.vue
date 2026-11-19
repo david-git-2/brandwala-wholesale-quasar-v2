@@ -1,33 +1,7 @@
 <template>
-  <div :class="pageLayout ? 'column q-gutter-y-md' : 'column q-gutter-y-md'">
-    <div
-      v-if="!pageLayout"
-      class="q-pa-sm rounded-borders"
-      style="border: 1px solid var(--tf-neutral-border)"
-    >
-      <div class="text-caption text-grey-7">From vendor</div>
-      <div class="text-body2 text-weight-medium">{{ fromProfileName }}</div>
-      <div class="text-caption text-grey-7 q-mt-sm">Into our cash</div>
-      <div class="text-body2">{{ tenantLabel }}</div>
-    </div>
-
-    <div>
-      <q-card v-if="pageLayout && creditNoteOptions.length > 1" flat bordered class="q-pa-md q-mb-md">
-        <BillDialogField label="Credit note">
-          <q-select
-            :model-value="creditNoteId"
-            :options="creditNoteOptions"
-            emit-value
-            map-options
-            outlined
-            dense
-            @update:model-value="emit('update:creditNoteId', $event)"
-          />
-        </BillDialogField>
-      </q-card>
-
-      <div v-else-if="!pageLayout && creditNoteOptions.length > 1" class="column q-gutter-y-xs">
-        <div class="text-caption text-weight-bold text-uppercase text-grey-7">Credit note</div>
+  <div class="column q-gutter-y-md">
+    <q-card v-if="creditNoteOptions.length > 1" flat bordered class="q-pa-md">
+      <BillDialogField label="Credit note">
         <q-select
           :model-value="creditNoteId"
           :options="creditNoteOptions"
@@ -37,185 +11,116 @@
           dense
           @update:model-value="emit('update:creditNoteId', $event)"
         />
-      </div>
+      </BillDialogField>
+    </q-card>
 
-      <q-card v-if="pageLayout" flat bordered class="q-pa-md q-mb-md">
-        <div class="text-caption text-weight-bold text-uppercase text-grey-7 q-mb-md">Amount</div>
-        <BillDialogField label="Refund currency" hint="Currency the vendor sends">
-          <q-select
-            v-model="refundPaymentCurrency"
-            :options="settlementCurrencyOptions"
-            emit-value
-            map-options
-            outlined
-            dense
-          />
-        </BillDialogField>
-        <MoneyPayDialogAmountBlock
-          class="q-mt-md"
-          :amount="primaryPayAmount"
-          :currency-code="refundPaymentCurrency"
-          :max-amount="maxSettlementAmount"
-          :books-preview-label="booksAmountPreviewLabel"
-          data-test="vendor-refund-amount"
-          @update:amount="onPrimaryAmountInput"
-        />
-        <template v-if="refundNeedsSeparateBooksFx">
-          <BillDialogField class="q-mt-md" :label="refundBooksCashRateLabel">
-            <q-input
-              v-model.number="refundBooksExchangeRate"
-              outlined
-              dense
-              type="number"
-              step="0.0001"
-            />
-          </BillDialogField>
-        </template>
-        <p v-if="refundNeedsCurrencyShift" class="text-caption text-grey-7 q-mb-none q-mt-sm">
-          {{ refundCurrencyShiftHint }}
-        </p>
-        <BillDialogField
-          v-if="refundNeedsCurrencyShift"
-          class="q-mt-sm"
-          :label="refundPotCashRateLabel"
-        >
-          <q-input
-            v-model.number="refundTransactionRate"
-            outlined
-            dense
-            type="number"
-            step="0.0001"
-          />
-        </BillDialogField>
-      </q-card>
-
-      <template v-else>
-        <div class="text-caption text-grey-7">
-          Open credit:
-          <strong>{{ openCreditDisplay }}</strong>
-        </div>
-        <q-select
-          v-model="refundPaymentCurrency"
-          :options="settlementCurrencyOptions"
-          emit-value
-          map-options
-          outlined
-          dense
-          label="Refund currency"
-        />
-        <MoneyPayDialogAmountBlock
-          :amount="primaryPayAmount"
-          :currency-code="refundPaymentCurrency"
-          :max-amount="maxSettlementAmount"
-          :books-preview-label="booksAmountPreviewLabel"
-          @update:amount="onPrimaryAmountInput"
-        />
-        <template v-if="refundNeedsSeparateBooksFx">
-          <q-input
-            v-model.number="refundBooksExchangeRate"
-            outlined
-            dense
-            :label="refundBooksCashRateLabel"
-            type="number"
-            step="0.0001"
-          />
-        </template>
+    <q-card flat bordered class="q-pa-md">
+      <div class="text-caption text-weight-bold text-uppercase text-grey-7 q-mb-md">Amount</div>
+      <div class="text-caption text-grey-7">Refund currency</div>
+      <div class="text-body2 text-weight-medium q-mb-md">{{ billRefundCurrency }}</div>
+      <MoneyPayDialogAmountBlock
+        class="q-mt-md"
+        :amount="primaryPayAmount"
+        :currency-code="billRefundCurrency"
+        :max-amount="maxSettlementAmount"
+        :books-preview-label="booksAmountPreviewLabel"
+        data-test="vendor-refund-amount"
+        @update:amount="onPrimaryAmountInput"
+      />
+      <p v-if="refundNeedsCurrencyShift" class="text-caption text-grey-7 q-mb-none q-mt-sm">
+        {{ refundCurrencyShiftHint }}
+      </p>
+      <BillDialogField
+        v-if="refundNeedsCurrencyShift"
+        class="q-mt-sm"
+        :label="refundPotCashRateLabel"
+      >
         <q-input
-          v-if="refundNeedsCurrencyShift"
           v-model.number="refundTransactionRate"
           outlined
           dense
-          :label="refundPotCashRateLabel"
           type="number"
           step="0.0001"
         />
-      </template>
+      </BillDialogField>
+    </q-card>
 
-      <q-card v-if="pageLayout" flat bordered class="q-pa-md q-mb-md">
-        <PaymentLegPotChips
-          v-model="receiveIntoPotId"
-          leg-label="Receive at"
-          :party-name="tenantLabel"
-          :options="receiveIntoOptions"
-          :sections="receiveIntoSections"
-          :loading="receiveIntoLoading"
-        />
-      </q-card>
-
-      <PaymentLegPotChips
-        v-else
-        v-model="receiveIntoPotId"
-        leg-label="Receive at"
-        :party-name="tenantLabel"
-        :options="receiveIntoOptions"
-        :sections="receiveIntoSections"
-        :loading="receiveIntoLoading"
+    <q-card flat bordered class="q-pa-md">
+      <div class="row items-baseline justify-between q-mb-md">
+        <div class="text-caption text-weight-bold text-uppercase text-grey-7">Receive at</div>
+        <div class="text-caption text-grey-7">{{ tenantLabel }}</div>
+      </div>
+      <ProfileCashMovementLegPicker
+        v-model:currency-code="profileLegCurrency"
+        v-model:location-point-id="receiveLocationPointId"
+        v-model:bundle-id="receiveBundleId"
+        v-model:books-rate="receiveBooksRate"
+        v-model:deposit-requires-bundle-pick="depositRequiresBundlePick"
+        :books-tenant-id="booksTenantId"
+        :operating-tenant-id="operatingTenantId"
+        :profile-id="receiveProfileIdForPicker"
+        kind="deposit"
+        :enabled="receiveLegEnabled"
+        hide-amount
+        lock-currency
       />
+    </q-card>
 
-      <q-card v-if="pageLayout" flat bordered class="q-pa-md">
-        <div class="text-caption text-weight-bold text-uppercase text-grey-7 q-mb-md">
-          Payment details
-        </div>
-        <BillDialogField label="Date received">
-          <q-input v-model="receivedOn" outlined dense mask="####-##-##">
-            <template #append>
-              <q-icon name="ph ph-calendar" class="cursor-pointer">
-                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                  <q-date v-model="receivedOn" mask="YYYY-MM-DD" />
-                </q-popup-proxy>
-              </q-icon>
-            </template>
-          </q-input>
-        </BillDialogField>
-        <BillDialogField label="Note" hint="Optional" class="q-mt-md">
-          <q-input v-model="note" outlined dense type="textarea" autogrow />
-        </BillDialogField>
-      </q-card>
-
-      <template v-else>
-        <q-input v-model="receivedOn" outlined dense label="Date received" mask="####-##-##" />
-        <q-input v-model="note" outlined dense label="Note (optional)" type="textarea" autogrow />
-      </template>
-    </div>
+    <q-card flat bordered class="q-pa-md">
+      <div class="text-caption text-weight-bold text-uppercase text-grey-7 q-mb-md">
+        Payment details
+      </div>
+      <BillDialogField label="Date received">
+        <q-input v-model="receivedOn" outlined dense mask="####-##-##">
+          <template #append>
+            <q-icon name="ph ph-calendar" class="cursor-pointer">
+              <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                <q-date v-model="receivedOn" mask="YYYY-MM-DD" />
+              </q-popup-proxy>
+            </q-icon>
+          </template>
+        </q-input>
+      </BillDialogField>
+      <BillDialogField label="Note" hint="Optional" class="q-mt-md">
+        <q-input v-model="note" outlined dense type="textarea" autogrow />
+      </BillDialogField>
+    </q-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { formatAmountBdt } from 'src/utils/currency';
-import { storeToRefs } from 'pinia';
-import { useGlobalReferenceStore } from 'src/modules/global_reference/stores/globalReferenceStore';
-import { useCashbookLegPots } from '../composables/useCashbookLegPots';
+import ProfileCashMovementLegPicker from 'src/modules/people/components/ProfileCashMovementLegPicker.vue';
+import { useProfileCashMovementLegData } from 'src/modules/people/composables/useProfileCashMovementLegData';
 import { useBooksCurrencyCode } from '../composables/useBooksCurrencyCode';
 import { useApPayoutFxFields } from '../composables/useApPayoutFxFields';
+import { moneyKernelRepository } from '../repositories/moneyKernelRepository';
+import { showErrorNotification } from 'src/utils/appFeedback';
 import type { PostVendorCreditRefundInput } from '../composables/usePostVendorCreditRefundMutation';
 import {
-  vendorRefundDefaultSettlementCurrency,
+  vendorRefundBillCurrency,
   vendorRefundInvoiceConversionRate,
   vendorRefundOpenCreditFace,
 } from '../utils/vendorRefundDisplay';
 import BillDialogField from './BillDialogField.vue';
 import MoneyPayDialogAmountBlock from './MoneyPayDialogAmountBlock.vue';
-import PaymentLegPotChips from './PaymentLegPotChips.vue';
 
-const props = withDefaults(
-  defineProps<{
-    creditNoteId: number;
-    parentBillId: number | null;
-    openCredit: number;
-    booksTenantId: number;
-    /** Tenant money profile (receive leg), usually bill `from_profile_id` on AP. */
-    receiveProfileId?: number | null;
-    fromProfileName: string;
-    tenantLabel: string;
-    channelMeta?: Record<string, unknown> | null;
-    creditNoteOptions?: Array<{ label: string; value: number }>;
-    active?: boolean;
-    /** Full-page payment flow (bill pay layout). */
-    pageLayout?: boolean;
-  }>(),
-  { pageLayout: true },
-);
+const props = defineProps<{
+  creditNoteId: number;
+  parentBillId: number | null;
+  openCredit: number;
+  booksTenantId: number;
+  operatingTenantId: number;
+  /** Tenant money profile (receive leg), usually bill `from_profile_id` on AP. */
+  receiveProfileId?: number | null;
+  fromProfileName: string;
+  tenantLabel: string;
+  channelMeta?: Record<string, unknown> | null;
+  invoiceCurrencyCode?: string | null;
+  creditNoteOptions?: Array<{ label: string; value: number }>;
+  active?: boolean;
+}>();
 
 const emit = defineEmits<{
   'update:creditNoteId': [value: number];
@@ -223,7 +128,6 @@ const emit = defineEmits<{
   'pay-amount-change': [amount: number | null, currencyCode: string];
 }>();
 
-const pageLayout = computed(() => props.pageLayout !== false);
 const formActive = computed(() => props.active !== false);
 
 const localToday = () => {
@@ -242,26 +146,34 @@ const receiveProfileId = computed(() => {
   return props.booksTenantId;
 });
 const booksTenantIdRef = computed(() => props.booksTenantId);
+const operatingTenantId = computed(() =>
+  props.operatingTenantId > 0 ? props.operatingTenantId : props.booksTenantId,
+);
+const receiveProfileIdForPicker = computed(() => {
+  const id = receiveProfileId.value;
+  return id > 0 ? id : null;
+});
 const receiveLegEnabled = computed(
   () => formActive.value && props.booksTenantId > 0 && receiveProfileId.value > 0,
 );
-const kernelFetchWhenEmpty = ref(true);
 
-const {
-  selectedPotId: receiveIntoPotId,
-  chipOptions: receiveIntoOptions,
-  locationSections: receiveIntoSections,
-  cashbookPointId,
-  sourceCurrencyCode,
-  loading: receiveIntoLoading,
-} = useCashbookLegPots(
-  receiveProfileId,
+const profileLegCurrency = ref('BDT');
+const receiveLocationPointId = ref<number | null>(null);
+const receiveBundleId = ref<number | null>(null);
+const receiveBooksRate = ref<number | null>(null);
+const depositRequiresBundlePick = ref(false);
+
+const profileLegData = useProfileCashMovementLegData(
   booksTenantIdRef,
+  receiveProfileIdForPicker,
   receiveLegEnabled,
-  undefined,
-  undefined,
-  kernelFetchWhenEmpty,
 );
+
+const billRefundCurrency = computed(() =>
+  vendorRefundBillCurrency(props.invoiceCurrencyCode, booksCurrencyCode.value),
+);
+
+const receiveSourceCurrency = computed(() => billRefundCurrency.value);
 
 const {
   paymentCurrency: refundPaymentCurrency,
@@ -279,53 +191,37 @@ const {
   validateFxFields: validateRefundFxFields,
   settlementFxPayload: refundSettlementFxPayload,
   sourceFxPayload: refundSourceFxPayload,
-} = useApPayoutFxFields(sourceCurrencyCode, amountBdt, booksCurrencyCode);
-
-const globalRefStore = useGlobalReferenceStore();
-const { currencies: currenciesData } = storeToRefs(globalRefStore);
+} = useApPayoutFxFields(receiveSourceCurrency, amountBdt, booksCurrencyCode);
 
 watch(
-  formActive,
-  (open) => {
-    if (open && currenciesData.value.length === 0) {
-      void globalRefStore.ensureCurrenciesLoaded();
-    }
+  billRefundCurrency,
+  (code) => {
+    profileLegCurrency.value = code;
+    refundPaymentCurrency.value = code;
   },
   { immediate: true },
 );
 
-const settlementCurrencyOptions = computed(() => {
-  const fromRef = (currenciesData.value ?? [])
-    .filter((c) => c.is_active)
-    .map((c) => ({ label: `${c.code} — ${c.name}`, value: c.code }));
-  const codes = new Set(fromRef.map((o) => o.value));
-  const base = booksCurrencyCode.value;
-  if (!codes.has(base)) {
-    fromRef.unshift({ label: base, value: base });
-  }
-  return fromRef.sort((a, b) =>
-    a.value === base ? -1 : b.value === base ? 1 : a.value.localeCompare(b.value),
-  );
-});
+watch(
+  receiveBooksRate,
+  (rate) => {
+    if (refundNeedsBooksFx.value) {
+      refundBooksExchangeRate.value = rate;
+    }
+  },
+  { immediate: true },
+);
 
 const openCreditFace = computed(() =>
   vendorRefundOpenCreditFace(
     props.openCredit,
     props.channelMeta ?? null,
     booksCurrencyCode.value,
+    props.invoiceCurrencyCode,
   ),
 );
 
 const maxSettlementAmount = computed(() => openCreditFace.value.amount);
-
-const openCreditDisplay = computed(() => {
-  const face = openCreditFace.value;
-  const books = props.openCredit;
-  if (face.currencyCode !== booksCurrencyCode.value) {
-    return `${face.amount} ${face.currencyCode} (${formatAmountBdt(books)} books)`;
-  }
-  return formatAmountBdt(books);
-});
 
 const primaryPayAmount = computed({
   get: () => (refundNeedsBooksFx.value ? refundForeignAmount.value : amountBdt.value),
@@ -351,21 +247,53 @@ function onPrimaryAmountInput(value: number | null) {
 
 const creditNoteOptions = computed(() => props.creditNoteOptions ?? []);
 
+const receiveLegDisabledReason = computed((): string | null => {
+  if (profileLegData.loading.value) return 'Loading receive locations…';
+  if (receiveLocationPointId.value == null) {
+    return 'Choose where to receive the refund.';
+  }
+  if (depositRequiresBundlePick.value) {
+    if (receiveBundleId.value == null || receiveBundleId.value <= 0) {
+      return 'Choose a bundle.';
+    }
+    return null;
+  }
+  const legCurrency = billRefundCurrency.value;
+  if (legCurrency !== booksCurrencyCode.value) {
+    const rate = Number(receiveBooksRate.value);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      return 'Enter the books rate for the new bundle.';
+    }
+  }
+  return null;
+});
+
 function resetRefundForm() {
   receivedOn.value = localToday();
   note.value = '';
-  receiveIntoPotId.value = null;
+  receiveLocationPointId.value = null;
+  receiveBundleId.value = null;
   const base = booksCurrencyCode.value;
-  const currency = vendorRefundDefaultSettlementCurrency(props.channelMeta ?? null, base);
+  const face = vendorRefundOpenCreditFace(
+    props.openCredit,
+    props.channelMeta ?? null,
+    base,
+    props.invoiceCurrencyCode,
+  );
+  const currency = face.currencyCode;
   const rate = vendorRefundInvoiceConversionRate(props.channelMeta ?? null);
   refundPaymentCurrency.value = currency;
+  profileLegCurrency.value = currency;
+  receiveBooksRate.value = rate;
   resetRefundFxAmounts();
-  const face = vendorRefundOpenCreditFace(props.openCredit, props.channelMeta ?? null, base);
   if (currency !== base && rate && rate > 0 && props.openCredit > 0) {
     refundForeignAmount.value = face.amount;
     refundBooksExchangeRate.value = rate;
     refundTransactionRate.value = rate;
     amountBdt.value = props.openCredit;
+  } else if (currency !== base && props.openCredit > 0) {
+    refundForeignAmount.value = face.amount;
+    amountBdt.value = null;
   } else {
     amountBdt.value = props.openCredit > 0 ? props.openCredit : null;
     refundForeignAmount.value = null;
@@ -373,16 +301,18 @@ function resetRefundForm() {
 }
 
 watch(
-  () => [formActive.value, props.channelMeta, props.openCredit, props.creditNoteId] as const,
+  () =>
+    [
+      formActive.value,
+      props.channelMeta,
+      props.openCredit,
+      props.creditNoteId,
+      props.invoiceCurrencyCode,
+    ] as const,
   ([open]) => {
     if (open) resetRefundForm();
   },
 );
-
-watch(receiveIntoPotId, () => {
-  if (!receiveIntoPotId.value) return;
-  resetRefundFxAmounts();
-});
 
 watch(
   [primaryPayAmount, refundPaymentCurrency, openCreditFace],
@@ -394,32 +324,80 @@ watch(
 
 const submitDisabledReason = computed(() => {
   const books = Number(amountBdt.value ?? 0);
-  if (books <= 0) return 'Enter a refund amount.';
-  if (books > props.openCredit + 0.01) {
-    return `Cannot exceed ${formatAmountBdt(props.openCredit)} books.`;
+  const settlementAmt = Number(primaryPayAmount.value ?? 0);
+  if (refundNeedsBooksFx.value) {
+    if (settlementAmt <= 0) return 'Enter a refund amount.';
+    if (settlementAmt > maxSettlementAmount.value + 0.01) {
+      return `Cannot exceed ${maxSettlementAmount.value.toFixed(2)} ${refundPaymentCurrency.value}.`;
+    }
+    if (books <= 0) return 'Enter the books exchange rate and amount.';
+  } else {
+    if (books <= 0) return 'Enter a refund amount.';
+    if (books > props.openCredit + 0.01) {
+      return `Cannot exceed ${openCreditFace.value.amount.toFixed(2)} ${openCreditFace.value.currencyCode}.`;
+    }
   }
-  if (receiveIntoLoading.value) return 'Loading receive locations…';
-  if (!receiveIntoPotId.value) return 'Choose where to receive the refund';
+  const legReason = receiveLegDisabledReason.value;
+  if (legReason) return legReason;
   const fxReason = validateRefundFxFields();
   if (fxReason) return fxReason;
   if (!receivedOn.value) return 'Date is required.';
   return null;
 });
 
-function buildPayload(): PostVendorCreditRefundInput | null {
-  if (submitDisabledReason.value || !receiveIntoPotId.value || cashbookPointId.value == null) {
+async function buildPayload(): Promise<PostVendorCreditRefundInput | null> {
+  if (submitDisabledReason.value || receiveLocationPointId.value == null) {
     return null;
   }
+  const pointId = receiveLocationPointId.value;
+  const point = profileLegData.pointById(pointId);
+  const pointCode = point?.code?.trim() || 'main';
+  const pid = receiveProfileId.value;
+  if (pid <= 0) return null;
+
+  let potId = receiveBundleId.value;
+  let cashbookPointId = pointId;
+  const legCurrency = billRefundCurrency.value;
+
+  if (depositRequiresBundlePick.value && potId != null && potId > 0) {
+    /* use selected BDT bundle */
+  } else {
+    const booksRate =
+      legCurrency !== booksCurrencyCode.value
+        ? Number(receiveBooksRate.value) || null
+        : null;
+    try {
+      const prov = await moneyKernelRepository.provisionCashbookCurrency(
+        props.booksTenantId,
+        pid,
+        legCurrency,
+        pointCode,
+        booksRate,
+      );
+      potId = prov.pot_id ?? potId;
+      if (prov.cashbook_point_id != null) {
+        cashbookPointId = prov.cashbook_point_id;
+      }
+    } catch (err) {
+      showErrorNotification(
+        err instanceof Error ? err.message : 'Could not open a cash bundle at this location.',
+      );
+      return null;
+    }
+  }
+
+  if (potId == null || potId <= 0) return null;
+
   const fx = {
     ...refundSettlementFxPayload(),
-    ...refundSourceFxPayload(receiveIntoPotId.value),
+    ...refundSourceFxPayload(potId),
   };
   return {
     creditNoteId: props.creditNoteId,
     parentBillId: props.parentBillId,
     amount: Number(amountBdt.value),
-    cashbookPointId: cashbookPointId.value,
-    cashbookPointPotId: fx.cashbook_point_pot_id,
+    cashbookPointId,
+    cashbookPointPotId: fx.cashbook_point_pot_id ?? potId,
     receivedOn: receivedOn.value,
     note: note.value.trim() || null,
     settlementCurrencyCode: fx.settlement_currency_code,
@@ -430,8 +408,8 @@ function buildPayload(): PostVendorCreditRefundInput | null {
   };
 }
 
-function trySubmit() {
-  const payload = buildPayload();
+async function trySubmit() {
+  const payload = await buildPayload();
   if (payload) emit('submit', payload);
 }
 

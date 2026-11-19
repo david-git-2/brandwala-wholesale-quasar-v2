@@ -1,17 +1,20 @@
-import { apBillPaperCurrencyCode as apInvoiceCurrencyFromMeta } from './apBillBooks';
-import { apBillCurrencyGroups, apBillPaperConversionRate } from './parseApBillPaper';
+import { apBillPaperConversionRate } from './parseApBillPaper';
 
-export function vendorRefundDefaultSettlementCurrency(
-  channelMeta: Record<string, unknown> | null | undefined,
+/** Vendor refund is always recorded in the bill / credit note header currency. */
+export function vendorRefundBillCurrency(
+  invoiceCurrencyCode: string | null | undefined,
   booksCurrency: string,
 ): string {
-  const groups = apBillCurrencyGroups(channelMeta ?? null);
-  if (groups.length === 1) {
-    const c = (groups[0]?.currency_code ?? '').trim().toUpperCase();
-    if (c && c !== booksCurrency) return c;
-  }
-  const code = apInvoiceCurrencyFromMeta(channelMeta ?? null);
-  return code || booksCurrency;
+  const header = (invoiceCurrencyCode ?? '').trim().toUpperCase();
+  return header || booksCurrency;
+}
+
+export function vendorRefundDefaultSettlementCurrency(
+  _channelMeta: Record<string, unknown> | null | undefined,
+  booksCurrency: string,
+  invoiceCurrencyCode?: string | null,
+): string {
+  return vendorRefundBillCurrency(invoiceCurrencyCode, booksCurrency);
 }
 
 export function vendorRefundInvoiceConversionRate(
@@ -27,17 +30,12 @@ export function vendorRefundInvoiceConversionRate(
 }
 
 export function vendorRefundOpenCreditFace(
-  openCreditBooks: number,
+  openCreditAmount: number,
   channelMeta: Record<string, unknown> | null | undefined,
   booksCurrency: string,
+  invoiceCurrencyCode?: string | null,
 ): { amount: number; currencyCode: string } {
-  const currency = vendorRefundDefaultSettlementCurrency(channelMeta, booksCurrency);
-  const rate = vendorRefundInvoiceConversionRate(channelMeta);
-  if (currency !== booksCurrency && rate != null && rate > 0) {
-    return {
-      amount: Math.round((openCreditBooks / rate) * 100) / 100,
-      currencyCode: currency,
-    };
-  }
-  return { amount: openCreditBooks, currencyCode: booksCurrency };
+  const amount = Math.max(0, Number(openCreditAmount) || 0);
+  const currency = vendorRefundBillCurrency(invoiceCurrencyCode, booksCurrency);
+  return { amount, currencyCode: currency };
 }
