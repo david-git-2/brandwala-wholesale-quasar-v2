@@ -402,6 +402,20 @@ export interface SaveDeliveryPaperDetailItem {
   note?: string | null;
 }
 
+export interface SuggestDeliveryPaperLastLotLineInput {
+  preorder_demand_id: number;
+  packed_on_this_paper: number;
+}
+
+export interface SuggestDeliveryPaperLastLotPick {
+  preorder_demand_id: number;
+  global_stock_id: number;
+  quantity: number;
+  shipment_name: string | null;
+  location_name: string | null;
+  available_atp?: number;
+}
+
 const listProcurementDemandBuyDocuments = async (
   params: ListProcurementDemandBuyDocumentsParams,
 ): Promise<ProcurementDemandBuyDocumentsResponse> => {
@@ -745,6 +759,23 @@ const getDeliveryPaperDetail = async (params: {
   };
 };
 
+const suggestDeliveryPaperLastLotPicks = async (params: {
+  tenantId: number;
+  deliveryPaperId: number;
+  stockContextTenantId: number;
+  lines?: SuggestDeliveryPaperLastLotLineInput[] | null;
+}): Promise<{ picks: SuggestDeliveryPaperLastLotPick[] }> => {
+  const { data, error } = await supabase.rpc('suggest_delivery_paper_last_lot_picks', {
+    p_tenant_id: params.tenantId,
+    p_delivery_paper_id: params.deliveryPaperId,
+    p_stock_context_tenant_id: params.stockContextTenantId,
+    p_lines: params.lines?.length ? params.lines : null,
+  });
+  if (error) throw error;
+  const payload = (data ?? { picks: [] }) as { picks?: SuggestDeliveryPaperLastLotPick[] };
+  return { picks: payload.picks ?? [] };
+};
+
 const saveDeliveryPaperDetail = async (params: {
   tenantId: number;
   deliveryPaperId: number;
@@ -833,6 +864,7 @@ export const procurementDemandRepository = {
   createDeliveryPaperForDocument,
   listDeliveryPapersForDocument,
   getDeliveryPaperDetail,
+  suggestDeliveryPaperLastLotPicks,
   saveDeliveryPaperDetail,
   deleteDeliveryPaper,
   updateDeliveryPaperStatus,

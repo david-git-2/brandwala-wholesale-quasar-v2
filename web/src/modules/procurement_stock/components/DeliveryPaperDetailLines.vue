@@ -43,23 +43,42 @@
         <td class="text-center font-mono">{{ needQty(item) }}</td>
         <td class="text-center font-mono">{{ remainingQty(item) }}</td>
         <td class="text-center tf-ops-col-tint--qty delivery-paper-lines__packed-cell q-pa-xs">
-          <q-btn
-            unelevated
-            no-caps
-            dense
-            class="delivery-paper-lines__packed-btn"
-            :class="
-              canPickStock && isPickComplete(item)
-                ? 'delivery-paper-lines__packed-btn--complete'
-                : 'delivery-paper-lines__packed-btn--pending'
-            "
-            :color="canPickStock ? (isPickComplete(item) ? 'positive' : 'primary') : 'grey-7'"
-            :outline="!canPickStock"
-            :disable="!canPickStock"
-            icon="ph ph-package"
-            :label="packedCellLabel(item)"
-            @click.stop="onPackedClick(item)"
-          />
+          <div class="column items-center q-gutter-y-xs">
+            <div class="row items-center no-wrap q-gutter-x-xs justify-center full-width">
+              <q-btn
+                unelevated
+                no-caps
+                dense
+                class="delivery-paper-lines__packed-btn col"
+                :class="
+                  canPickStock && isPickComplete(item)
+                    ? 'delivery-paper-lines__packed-btn--complete'
+                    : 'delivery-paper-lines__packed-btn--pending'
+                "
+                :color="canPickStock ? (isPickComplete(item) ? 'positive' : 'primary') : 'grey-7'"
+                :outline="!canPickStock"
+                :disable="!canPickStock"
+                icon="ph ph-package"
+                :label="packedCellLabel(item)"
+                @click.stop="onPackedClick(item)"
+              />
+              <q-btn
+                v-if="canPickStock && !isPickComplete(item)"
+                flat
+                round
+                dense
+                size="sm"
+                icon="ph ph-arrow-fat-line-down"
+                color="grey-8"
+                aria-label="Pick newest available lot"
+                :disable="pickLastLoadingKey === itemDraftKey(item)"
+                :loading="pickLastLoadingKey === itemDraftKey(item)"
+                @click.stop="emit('pick-last-stock', item)"
+              >
+                <q-tooltip>Newest lot · fill remaining from its available qty</q-tooltip>
+              </q-btn>
+            </div>
+          </div>
           <div
             v-if="paperStockLots(item).length"
             class="delivery-paper-pick-list text-caption text-grey-7 text-left q-mt-xs"
@@ -130,11 +149,13 @@ const props = defineProps<{
   canEditOutcomeQty: boolean;
   paperStatus: DeliveryPaperStatus | null;
   itemDraftKey: (item: DeliveryPaperDetailItem) => string;
+  pickLastLoadingKey?: string | null;
 }>();
 
 const emit = defineEmits<{
   (e: 'status-qty', item: DeliveryPaperDetailItem, field: keyof DeliveryPaperStatusQty, value: string | number | null): void;
   (e: 'pick-stock', item: DeliveryPaperDetailItem): void;
+  (e: 'pick-last-stock', item: DeliveryPaperDetailItem): void;
 }>();
 
 const OUTCOME_COLUMN_DEFS: Array<{

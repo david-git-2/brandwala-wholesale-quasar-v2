@@ -4740,6 +4740,11 @@ isOneToOne: false
 "_list_shipment_cost_ap_bills_json":
 { Args: { "p_books_tenant_id": number,"p_include_voided"?: boolean,"p_shipment_id": number }; Returns: Json
                            },
+"_newest_pickable_stock_for_network_search":
+{ Args: { "p_context_tenant_id": number,"p_product_id"?: number,"p_search"?: string,"p_search_field"?: string }; Returns: {
+              "available_atp": number,"global_stock_id": number,"location_name": string,"shipment_name": string
+            }[]
+                           },
 "_recompute_shop_order_item_fulfillment":
 { Args: { "p_order_item_id": number }; Returns: undefined
                            },
@@ -7301,7 +7306,7 @@ isOneToOne: false
             }[]
                            },
 "list_shop_orders_staff_page":
-{ Args: { "p_cursor_created_at"?: string,"p_cursor_id"?: number,"p_limit"?: number,"p_search"?: string,"p_shop_id"?: number,"p_shop_type"?: string,"p_status"?: string,"p_tenant_id": number }; Returns: Json
+{ Args: { "p_cursor_created_at"?: string,"p_cursor_id"?: number,"p_limit"?: number,"p_profile_id"?: number,"p_search"?: string,"p_shop_id"?: number,"p_shop_type"?: string,"p_status"?: string,"p_tenant_id": number }; Returns: Json
                            },
 "list_shop_product_listings":
 { Args: { "p_shop_id": number }; Returns: {
@@ -8668,6 +8673,9 @@ isOneToOne: false
                            },
 "submit_stock_physical_count":
 { Args: { "p_count_id": number }; Returns: Json
+                           },
+"suggest_delivery_paper_last_lot_picks":
+{ Args: { "p_delivery_paper_id": number,"p_lines"?: Json,"p_stock_context_tenant_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "sum_preorder_stock_picks":
 { Args: { "p_stock_picks": Json }; Returns: number

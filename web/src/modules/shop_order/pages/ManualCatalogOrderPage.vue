@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-sm">
-    <div class="column q-gutter-y-sm manual-catalog-page-layout" style="max-width: 960px; margin: 0 auto">
+    <div class="column q-gutter-y-sm" style="max-width: 960px; margin: 0 auto">
       <div class="row items-center no-wrap q-gutter-x-sm manual-catalog-header">
         <q-btn flat round dense icon="ph ph-arrow-left" @click="goBack" />
         <div class="col text-subtitle1 text-weight-bold ellipsis min-width-0">
@@ -23,12 +23,13 @@
         </span>
       </div>
 
-      <TfFolderTabs
+      <TfDrawerSectionTabs
         v-model="createTabModel"
         :tabs="manualCatalogCreateTabs"
         aria-label="Catalog order mode"
-        class="col"
-      >
+      />
+
+      <q-card flat bordered class="q-pa-sm column q-gutter-y-sm">
         <div class="row q-col-gutter-sm">
           <div v-if="!isOldOrderTab" class="col-12 col-md-6">
             <q-select
@@ -197,7 +198,7 @@
           @remove="removeLine"
           @bulk-update="openBulkUpdate"
         />
-      </TfFolderTabs>
+      </q-card>
     </div>
 
     <ManualCatalogAddItemsDrawer
@@ -218,7 +219,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import TfBtn from 'src/components/ui/TfBtn.vue';
-import TfFolderTabs from 'src/components/ui/TfFolderTabs.vue';
+import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import {
   requestUnsavedChangesConfirmation,
   showErrorNotification,
@@ -498,13 +499,8 @@ export default {
 </script>
 
 <style scoped>
-.manual-catalog-page-layout {
-  min-height: calc(100dvh - 16px);
-}
-
 .manual-catalog-body-split {
-  padding-top: 16px;
-  border-top: 1px solid var(--tf-neutral-border);
+  padding-top: 4px;
 }
 
 .manual-catalog-header {

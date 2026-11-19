@@ -9,14 +9,12 @@
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
     <div class="column full-height no-wrap overflow-hidden catalog-settings-drawer">
-      <TfFolderTabs
+      <TfDrawerSectionTabsHeader
         v-model="activeTab"
-        :tabs="folderSettingsTabs"
+        :tabs="visibleSettingsTabs"
         aria-label="Catalog order settings sections"
-        inset
-        class="col catalog-settings-folder-tabs"
       >
-        <template #header-trailing>
+        <template #trailing>
           <q-btn
             flat
             round
@@ -28,8 +26,10 @@
             @click="emit('update:modelValue', false)"
           />
         </template>
+      </TfDrawerSectionTabsHeader>
 
-        <div v-show="activeTab === 'summary'" class="catalog-settings-tab-pane q-pa-none">
+      <q-tab-panels v-model="activeTab" animated class="col bg-white catalog-settings-drawer-panels">
+        <q-tab-panel name="summary" class="catalog-settings-tab-pane catalog-settings-tab-pane--summary">
           <CatalogOrderItemsSummaryCards
             :item-count="itemCount"
             :buy-currency-symbol="buyCurrencySymbol"
@@ -38,9 +38,9 @@
             :cargo-rate="cargoRate"
             :totals="totals"
           />
-        </div>
+        </q-tab-panel>
 
-        <div v-show="activeTab === 'status'" class="catalog-settings-tab-pane">
+        <q-tab-panel name="status" class="catalog-settings-tab-pane q-pa-md">
           <div class="column q-gutter-y-md">
             <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
               <q-icon name="ph ph-traffic-signal" size="18px" color="primary" />
@@ -94,9 +94,9 @@
               @click="emit('override-status')"
             />
           </div>
-        </div>
+        </q-tab-panel>
 
-        <div v-show="activeTab === 'bills'" class="catalog-settings-tab-pane">
+        <q-tab-panel name="bills" class="catalog-settings-tab-pane q-pa-md">
           <CatalogOrderBillsPanel
             v-if="order"
             :parent-tenant-id="billsParentTenantId ?? null"
@@ -104,9 +104,9 @@
             :enabled="billsListEnabled"
             @open-bill="(bill) => emit('open-bill', bill)"
           />
-        </div>
+        </q-tab-panel>
 
-        <div v-show="activeTab === 'delivery'" class="catalog-settings-tab-pane">
+        <q-tab-panel name="delivery" class="catalog-settings-tab-pane q-pa-md">
           <div v-if="!showDeliveryPapers" class="text-body2 text-grey-7">
             Delivery papers are available once the order is procuring or in fulfillment (dispatch,
             delivered, or closed).
@@ -122,9 +122,9 @@
             @open-paper="(id) => emit('open-delivery-paper', id)"
             @created="(id) => emit('open-delivery-paper', id)"
           />
-        </div>
+        </q-tab-panel>
 
-        <div v-show="activeTab === 'actions'" class="catalog-settings-tab-pane">
+        <q-tab-panel name="actions" class="catalog-settings-tab-pane q-pa-md">
           <div class="column q-gutter-y-sm">
             <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs q-mb-sm">
               <q-icon name="ph ph-dots-three-outline" size="18px" color="primary" />
@@ -196,8 +196,8 @@
               @click="emit('cancel-order')"
             />
           </div>
-        </div>
-      </TfFolderTabs>
+        </q-tab-panel>
+      </q-tab-panels>
     </div>
   </AppResizableOverlayPanel>
 </template>
@@ -205,7 +205,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
-import TfFolderTabs from 'src/components/ui/TfFolderTabs.vue';
+import TfDrawerSectionTabsHeader from 'src/components/ui/TfDrawerSectionTabsHeader.vue';
 import CatalogOrderItemsSummaryCards from './CatalogOrderItemsSummaryCards.vue';
 import CatalogOrderProgressBar from './CatalogOrderProgressBar.vue';
 import CatalogOrderStatusWorkflowBar from './CatalogOrderStatusWorkflowBar.vue';
@@ -300,10 +300,6 @@ const visibleSettingsTabs = computed(() =>
   settingsTabs.filter((tab) => tab.name !== 'bills' || showBillsTab.value),
 );
 
-const folderSettingsTabs = computed(() =>
-  visibleSettingsTabs.value.map((tab) => ({ name: tab.name, label: tab.label })),
-);
-
 const activeTab = ref<(typeof settingsTabs)[number]['name']>('summary');
 
 watch(showBillsTab, (visible) => {
@@ -330,12 +326,17 @@ const statusBadge = computed(() => {
 </script>
 
 <style scoped>
-.catalog-settings-folder-tabs {
+.catalog-settings-drawer-panels {
   min-height: 0;
+  overflow: auto;
 }
 
 .catalog-settings-tab-pane {
   min-width: 0;
+}
+
+.catalog-settings-tab-pane--summary {
+  padding: 0;
 }
 
 .rounded-sq-btn {

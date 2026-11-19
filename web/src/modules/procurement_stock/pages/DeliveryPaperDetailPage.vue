@@ -99,6 +99,16 @@
                 @click="onDeletePaper"
               />
               <TfBtn
+                v-if="canPickStock"
+                variant="secondary"
+                size="md"
+                icon="ph ph-arrow-fat-line-down"
+                label="Pick last lot"
+                :loading="isPickLastBusy"
+                :disable="isPickLastBusy"
+                @click="onPickLastAllLines"
+              />
+              <TfBtn
                 v-if="canSaveLines && documentDirty"
                 variant="primary"
                 size="md"
@@ -139,8 +149,10 @@
             :can-edit-outcome-qty="canEditOutcomeQty"
             :paper-status="paper?.status ?? null"
             :item-draft-key="itemDraftKey"
+            :pick-last-loading-key="pickLastLoadingKey"
             @status-qty="onStatusQtyInput"
             @pick-stock="openPickDialog"
+            @pick-last-stock="onPickLastStockLine"
           />
         </div>
       </div>
@@ -212,7 +224,13 @@ import {
   type DeliveryPaperStatus,
   type ProcurementDemandDocumentType,
 } from '../repositories/procurementDemandRepository';
-import { getDeliveryPaperLinePickCap } from '../utils/deliveryPaperRemainingQty';
+import {
+  getDeliveryPaperLinePickCap,
+  getDeliveryPaperLineRemainingToPack,
+} from '../utils/deliveryPaperRemainingQty';
+import { mergeLastLotIntoPicks } from '../utils/pickableStockForDemandLine';
+import { createDemandPickClientKey } from '../utils/demandStockPickClientKey';
+import { deliveryPaperLinePackedDisplayQty } from '../utils/deliveryPaperStatusQty';
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
 
 const props = defineProps<{
@@ -434,6 +452,97 @@ const onPickApply = (payload: { picks: DemandStockPickSelection[] }) => {
   if (!pickTarget.value) return;
   applyStockPicks(pickTarget.value, payload.picks);
   pickDialogOpen.value = false;
+};
+
+const pickLastLoadingKey = ref<string | null>(null);
+const isPickLastBusy = ref(false);
+
+const packedQtyForItem = (item: DeliveryPaperDetailItem) =>
+  deliveryPaperLinePackedDisplayQty(item, getDraft(item));
+
+const buildLastLotLineInputs = (targetItems: DeliveryPaperDetailItem[]) =>
+  targetItems
+    .filter((line) => line.preorder_demand_id != null)
+    .map((line) => ({
+      preorder_demand_id: line.preorder_demand_id!,
+      packed_on_this_paper: packedQtyForItem(line),
+    }));
+
+const applyLastLotPicks = async (targetItems: DeliveryPaperDetailItem[]): Promise<number> => {
+  if (!canPickStock.value) return 0;
+  const tenantId = parentTenantId.value;
+  const paper = paperId.value;
+  if (tenantId == null || paper == null) {
+    showErrorNotification('Could not load warehouse context. Try refreshing the page.');
+    return 0;
+  }
+
+  const eligible = targetItems.filter((item) => {
+    const cap = getDeliveryPaperLinePickCap(item);
+    const remaining = getDeliveryPaperLineRemainingToPack(item, packedQtyForItem(item));
+    return cap > 0 && remaining > 0;
+  });
+  if (!eligible.length) return 0;
+
+  const { picks } = await procurementDemandRepository.suggestDeliveryPaperLastLotPicks({
+    tenantId,
+    deliveryPaperId: paper,
+    stockContextTenantId: tenantId,
+    lines: buildLastLotLineInputs(eligible),
+  });
+
+  const byDemandId = new Map(eligible.map((item) => [item.preorder_demand_id!, item]));
+  let applied = 0;
+  for (const row of picks) {
+    const item = byDemandId.get(row.preorder_demand_id);
+    if (!item) continue;
+    const cap = getDeliveryPaperLinePickCap(item);
+    const pick = {
+      clientKey: createDemandPickClientKey(),
+      globalStockId: row.global_stock_id,
+      shipmentName: row.shipment_name?.trim() || '—',
+      locationName: row.location_name?.trim() || '—',
+      quantity: row.quantity,
+    };
+    const merged = mergeLastLotIntoPicks(getDraft(item).stockPicks, pick, cap);
+    applyStockPicks(item, merged);
+    applied += 1;
+  }
+  return applied;
+};
+
+const onPickLastStockLine = async (item: DeliveryPaperDetailItem) => {
+  const key = itemDraftKey(item);
+  pickLastLoadingKey.value = key;
+  try {
+    const applied = await applyLastLotPicks([item]);
+    if (applied === 0) {
+      showErrorNotification(`No pickable stock for ${item.name?.trim() || 'this line'}.`);
+    }
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to pick stock'));
+  } finally {
+    pickLastLoadingKey.value = null;
+  }
+};
+
+const onPickLastAllLines = async () => {
+  if (!canPickStock.value || isPickLastBusy.value) return;
+  isPickLastBusy.value = true;
+  try {
+    const applied = await applyLastLotPicks(items.value);
+    if (applied === 0) {
+      showErrorNotification('No lines could use a newest lot pick. Check stock or remaining qty.');
+    } else {
+      showSuccessNotification(
+        applied === 1 ? 'Picked newest lot on 1 line.' : `Picked newest lot on ${applied} lines.`,
+      );
+    }
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to pick stock'));
+  } finally {
+    isPickLastBusy.value = false;
+  }
 };
 
 const onSave = async () => {

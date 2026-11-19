@@ -8640,8 +8640,8 @@ begin
     end if;
   end if;
 
-  if v_doc_status <> 'packed' then
-    raise exception 'document must be packed to close picks';
+  if v_doc_status <> 'dispatch' then
+    raise exception 'document must be dispatch to close picks';
   end if;
 
   if v_profile_id is null and v_close_action in ('take', 'condition') then
@@ -16119,8 +16119,11 @@ BEGIN
       source_type,
       source_id,
       profile_id,
+      confirmed_quantity,
+      open_quantity,
       placed_quantity,
       delivered_quantity,
+      vendor_placements,
       stock_picks
     )
     SELECT
@@ -16129,7 +16132,10 @@ BEGIN
       oi.id,
       o.profile_id,
       greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer,
+      greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer,
       0,
+      0,
+      '[]'::jsonb,
       '[]'::jsonb
     FROM public.shop_order_items oi
     INNER JOIN public.shop_orders o ON o.id = oi.order_id
@@ -16137,6 +16143,11 @@ BEGIN
       AND o.shop_type_snapshot = 'vendor_catalog'
     ON CONFLICT (source_type, source_id) DO UPDATE SET
       profile_id = coalesce(public.preorder_demand.profile_id, excluded.profile_id),
+      confirmed_quantity = excluded.confirmed_quantity,
+      open_quantity = greatest(
+        excluded.confirmed_quantity - coalesce(public.preorder_demand.delivered_quantity, 0),
+        0
+      ),
       updated_at = now();
   ELSIF v_doc_type = 'pbc_costing_file' THEN
     INSERT INTO public.preorder_demand (
@@ -16144,8 +16155,11 @@ BEGIN
       source_type,
       source_id,
       profile_id,
+      confirmed_quantity,
+      open_quantity,
       placed_quantity,
       delivered_quantity,
+      vendor_placements,
       stock_picks
     )
     SELECT
@@ -16160,13 +16174,27 @@ BEGIN
         END,
         0
       )::integer,
+      greatest(
+        CASE
+          WHEN pci.assigned_shipment_id IS NOT NULL THEN 0
+          ELSE coalesce(pci.confirmed_quantity, pci.quantity::integer, 0)
+        END,
+        0
+      )::integer,
       0,
+      0,
+      '[]'::jsonb,
       '[]'::jsonb
     FROM public.product_based_costing_items pci
     INNER JOIN public.product_based_costing_files f ON f.id = pci.product_based_costing_file_id
     WHERE f.id = p_document_id
     ON CONFLICT (source_type, source_id) DO UPDATE SET
       profile_id = coalesce(public.preorder_demand.profile_id, excluded.profile_id),
+      confirmed_quantity = excluded.confirmed_quantity,
+      open_quantity = greatest(
+        excluded.confirmed_quantity - coalesce(public.preorder_demand.delivered_quantity, 0),
+        0
+      ),
       updated_at = now();
   END IF;
 END;
@@ -36875,13 +36903,14 @@ $$;
 ALTER FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_shop_orders_staff_page"("p_tenant_id" bigint, "p_limit" integer DEFAULT 30, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_shop_id" bigint DEFAULT NULL::bigint, "p_shop_type" "text" DEFAULT NULL::"text", "p_cursor_created_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_cursor_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."list_shop_orders_staff_page"("p_tenant_id" bigint, "p_limit" integer DEFAULT 30, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_shop_id" bigint DEFAULT NULL::bigint, "p_shop_type" "text" DEFAULT NULL::"text", "p_profile_id" bigint DEFAULT NULL::bigint, "p_cursor_created_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_cursor_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_limit integer := greatest(1, least(coalesce(p_limit, 30), 100));
   v_fetch integer := v_limit + 1;
+  v_is_parent_query boolean;
   v_shops jsonb := '[]'::jsonb;
   v_orders jsonb := '[]'::jsonb;
   v_has_more boolean := false;
@@ -36890,6 +36919,11 @@ BEGIN
   IF NOT public.is_tenant_staff(p_tenant_id) THEN
     RAISE EXCEPTION 'access denied';
   END IF;
+
+  SELECT (t.parent_id IS NULL) INTO v_is_parent_query
+  FROM public.tenants t
+  WHERE t.id = p_tenant_id;
+  v_is_parent_query := coalesce(v_is_parent_query, false);
 
   IF p_cursor_created_at IS NULL AND p_cursor_id IS NULL THEN
     IF NOT EXISTS (
@@ -36902,23 +36936,46 @@ BEGIN
       RAISE EXCEPTION 'not allowed';
     END IF;
 
-    SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.name), '[]'::jsonb)
-    INTO v_shops
-    FROM (
-      SELECT
-        s.id,
-        s.tenant_id,
-        s.name,
-        s.slug,
-        s.shop_type,
-        coalesce(t.name, '')::text AS tenant_name
-      FROM public.shops s
-      LEFT JOIN public.tenants t ON t.id = s.tenant_id
-      WHERE s.tenant_id = p_tenant_id
-        AND s.deleted_at IS NULL
-      ORDER BY s.name
-      LIMIT 500
-    ) x;
+    IF v_is_parent_query THEN
+      SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.name), '[]'::jsonb)
+      INTO v_shops
+      FROM (
+        SELECT
+          s.id,
+          s.tenant_id,
+          s.name,
+          s.slug,
+          s.shop_type,
+          coalesce(t.name, '')::text AS tenant_name
+        FROM public.shops s
+        LEFT JOIN public.tenants t ON t.id = s.tenant_id
+        WHERE (
+          s.tenant_id = p_tenant_id
+          OR s.tenant_id IN (SELECT public.list_child_tenant_ids(p_tenant_id))
+        )
+          AND s.deleted_at IS NULL
+        ORDER BY s.name
+        LIMIT 500
+      ) x;
+    ELSE
+      SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.name), '[]'::jsonb)
+      INTO v_shops
+      FROM (
+        SELECT
+          s.id,
+          s.tenant_id,
+          s.name,
+          s.slug,
+          s.shop_type,
+          coalesce(t.name, '')::text AS tenant_name
+        FROM public.shops s
+        LEFT JOIN public.tenants t ON t.id = s.tenant_id
+        WHERE s.tenant_id = p_tenant_id
+          AND s.deleted_at IS NULL
+        ORDER BY s.name
+        LIMIT 500
+      ) x;
+    END IF;
   END IF;
 
   WITH base AS (
@@ -36936,16 +36993,30 @@ BEGIN
       o.status,
       o.created_at,
       o.updated_at,
+      o.hidden_from_customer,
+      o.catalog_manual_price_entry,
+      o.placement_scope,
+      o.created_by_email,
       (SELECT count(*)::bigint FROM public.shop_order_items WHERE order_id = o.id) AS item_count,
       coalesce(t.name, '')::text AS tenant_name
     FROM public.shop_orders o
     JOIN public.shops s ON s.id = o.shop_id
     JOIN public.customer_groups cg ON cg.id = o.customer_group_id
     LEFT JOIN public.tenants t ON t.id = o.tenant_id
-    WHERE o.tenant_id = p_tenant_id
+    WHERE (
+      (
+        v_is_parent_query
+        AND (
+          o.tenant_id = p_tenant_id
+          OR o.tenant_id IN (SELECT public.list_child_tenant_ids(p_tenant_id))
+        )
+      )
+      OR (NOT v_is_parent_query AND o.tenant_id = p_tenant_id)
+    )
       AND (p_status IS NULL OR o.status::text = p_status)
       AND (p_shop_id IS NULL OR o.shop_id = p_shop_id)
       AND (p_shop_type IS NULL OR s.shop_type::text = p_shop_type)
+      AND (p_profile_id IS NULL OR o.profile_id = p_profile_id)
       AND (
         p_search IS NULL
         OR o.order_no ILIKE ('%' || p_search || '%')
@@ -36993,7 +37064,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."list_shop_orders_staff_page"("p_tenant_id" bigint, "p_limit" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint, "p_shop_type" "text", "p_cursor_created_at" timestamp with time zone, "p_cursor_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_shop_orders_staff_page"("p_tenant_id" bigint, "p_limit" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint, "p_shop_type" "text", "p_profile_id" bigint, "p_cursor_created_at" timestamp with time zone, "p_cursor_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_shop_product_listings"("p_shop_id" bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "shop_id" bigint, "global_stock_allocation_id" bigint, "global_stock_id" bigint, "product_id" bigint, "sell_price_amount" numeric, "sell_price_currency_id" bigint, "minimum_sell_price_amount" numeric, "minimum_sell_price_currency_id" bigint, "show_quantity" boolean, "display_quantity_override" integer, "is_active" boolean, "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "product_name" "text", "product_image_url" "text", "product_barcode" "text", "product_code" "text", "product_brand" "text", "product_category" "text", "allocated_quantity" integer, "available_to_sell" integer, "unit_cost_amount" numeric, "shipment_item_id" bigint, "shipment_id" bigint)
@@ -57388,6 +57459,17 @@ begin
     raise exception 'order not found';
   end if;
 
+  if v_order.status in (
+    'procuring'::public.shop_order_status,
+    'dispatch'::public.shop_order_status,
+    'delivered'::public.shop_order_status,
+    'closed'::public.shop_order_status,
+    'ordered'::public.shop_order_status,
+    'packed'::public.shop_order_status
+  ) then
+    raise exception 'order rates cannot be changed after procurement has started';
+  end if;
+
   update public.shop_orders o
   set
     conversion_rate = case when p_payload ? 'conversion_rate' then (p_payload->>'conversion_rate')::numeric else o.conversion_rate end,
@@ -77207,9 +77289,9 @@ GRANT ALL ON FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint
 
 
 
-GRANT ALL ON FUNCTION "public"."list_shop_orders_staff_page"("p_tenant_id" bigint, "p_limit" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint, "p_shop_type" "text", "p_cursor_created_at" timestamp with time zone, "p_cursor_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."list_shop_orders_staff_page"("p_tenant_id" bigint, "p_limit" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint, "p_shop_type" "text", "p_cursor_created_at" timestamp with time zone, "p_cursor_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."list_shop_orders_staff_page"("p_tenant_id" bigint, "p_limit" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint, "p_shop_type" "text", "p_cursor_created_at" timestamp with time zone, "p_cursor_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."list_shop_orders_staff_page"("p_tenant_id" bigint, "p_limit" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint, "p_shop_type" "text", "p_profile_id" bigint, "p_cursor_created_at" timestamp with time zone, "p_cursor_id" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."list_shop_orders_staff_page"("p_tenant_id" bigint, "p_limit" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint, "p_shop_type" "text", "p_profile_id" bigint, "p_cursor_created_at" timestamp with time zone, "p_cursor_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_shop_orders_staff_page"("p_tenant_id" bigint, "p_limit" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint, "p_shop_type" "text", "p_profile_id" bigint, "p_cursor_created_at" timestamp with time zone, "p_cursor_id" bigint) TO "service_role";
 
 
 
