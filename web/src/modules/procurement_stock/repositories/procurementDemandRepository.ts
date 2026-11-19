@@ -83,6 +83,8 @@ export interface ProcurementDemandItem {
   stock_picks?: PreorderDemandStockPick[];
   /** Per-unit customer sell price (first offer or final offer on negotiable shop orders). */
   unit_sell_price_amount?: number | null;
+  /** Vendor buy reference (cost chain); demand buy desk only. */
+  unit_demand_buy_price_amount?: number | null;
   is_negotiable_snapshot?: boolean | null;
 }
 

@@ -200,7 +200,10 @@ BEGIN
       SELECT public.shop_order_item_delivery_sell_price(
         o.is_negotiable_snapshot,
         oi.staff_offer_amount,
-        oi.final_price_amount
+        oi.final_price_amount,
+        oi.unit_sell_price_amount,
+        oi.customer_sell_price_amount,
+        oi.unit_list_price_amount
       )
       INTO v_sell_price
       FROM public.preorder_demand pd
@@ -218,7 +221,7 @@ BEGIN
     IF v_close_action IN ('take', 'condition') THEN
       v_bill_stock_id := public.delivery_paper_line_resolvable_bill_stock_id(v_line);
       IF v_bill_stock_id IS NOT NULL THEN
-        SELECT gs.shipment_item_id, gsi.shipment_id, gs.product_id
+        SELECT gs.shipment_item_id, gsi.shipment_id, gsi.product_id
         INTO v_shipment_item_id, v_shipment_id, v_product_id
         FROM public.global_stocks gs
         LEFT JOIN public.global_shipment_items gsi ON gsi.id = gs.shipment_item_id
@@ -235,7 +238,8 @@ BEGIN
             SELECT gsi.id, gsi.shipment_id
             INTO v_shipment_item_id, v_shipment_id
             FROM public.global_shipment_items gsi
-            WHERE gsi.tenant_id = v_parent_tenant_id
+            INNER JOIN public.global_shipments gship ON gship.id = gsi.shipment_id
+            WHERE gship.tenant_id = v_parent_tenant_id
               AND gsi.product_id = v_product_id
               AND gsi.landed_cost_bdt = v_line.unit_cost_landed_snapshot
             ORDER BY gsi.shipment_id DESC, gsi.id DESC
@@ -253,10 +257,36 @@ BEGIN
           END IF;
         END IF;
 
+        v_name_snapshot := NULL;
+        IF v_doc_type = 'shop_order' THEN
+          SELECT coalesce(nullif(trim(oi.name), ''), nullif(trim(p.name), ''), 'Item')
+          INTO v_name_snapshot
+          FROM public.preorder_demand pd
+          INNER JOIN public.shop_order_items oi ON oi.id = pd.source_id
+          LEFT JOIN public.products p ON p.id = oi.product_id
+          WHERE pd.id = v_demand_id;
+        ELSIF v_doc_type = 'pbc_costing_file' THEN
+          SELECT coalesce(nullif(trim(p.name), ''), 'Item')
+          INTO v_name_snapshot
+          FROM public.preorder_demand pd
+          INNER JOIN public.product_based_costing_items pci ON pci.id = pd.source_id
+          LEFT JOIN public.products p ON p.id = pci.product_id
+          WHERE pd.id = v_demand_id;
+        END IF;
+        IF v_name_snapshot IS NULL AND v_shipment_item_id IS NOT NULL THEN
+          SELECT coalesce(nullif(trim(gsi.name), ''), nullif(trim(p.name), ''), 'Item')
+          INTO v_name_snapshot
+          FROM public.global_shipment_items gsi
+          LEFT JOIN public.products p ON p.id = gsi.product_id
+          WHERE gsi.id = v_shipment_item_id;
+        END IF;
+
         v_items := v_items || jsonb_build_array(jsonb_build_object(
           'global_stock_id', v_bill_stock_id,
           'quantity', v_qty,
           'sell_price_amount', v_sell_price,
+          'product_id', v_product_id,
+          'name_snapshot', coalesce(v_name_snapshot, 'Item'),
           'shipment_item_id', v_shipment_item_id,
           'line_meta', CASE
             WHEN v_shipment_item_id IS NOT NULL THEN jsonb_build_object(
@@ -353,15 +383,6 @@ BEGIN
 
     FOR v_line_item IN SELECT value FROM jsonb_array_elements(v_items) LOOP
       v_line_desc := nullif(trim(v_line_item->>'name_snapshot'), '');
-      IF v_line_desc IS NULL
-         AND nullif(v_line_item->>'global_stock_id', '') IS NOT NULL THEN
-        SELECT coalesce(nullif(trim(gsi.name), ''), 'Item')
-        INTO v_line_desc
-        FROM public.global_stocks gs
-        LEFT JOIN public.global_shipment_items gsi ON gsi.id = gs.shipment_item_id
-        WHERE gs.id = nullif(v_line_item->>'global_stock_id', '')::bigint;
-      END IF;
-      v_line_desc := coalesce(v_line_desc, 'Item');
 
       v_kernel_stock_id := nullif(v_line_item->>'global_stock_id', '')::bigint;
       v_shipment_item_id := nullif(v_line_item->>'shipment_item_id', '')::bigint;
@@ -379,7 +400,7 @@ BEGIN
         SELECT
           coalesce(v_shipment_item_id, gs.shipment_item_id),
           coalesce(v_shipment_id, gsi.shipment_id),
-          coalesce(v_product_id, gs.product_id)
+          coalesce(v_product_id, gsi.product_id)
         INTO v_shipment_item_id, v_shipment_id, v_product_id
         FROM public.global_stocks gs
         LEFT JOIN public.global_shipment_items gsi ON gsi.id = gs.shipment_item_id
@@ -398,6 +419,24 @@ BEGIN
           nullif(v_shipment_ref ->> 'shipment_id', '')::bigint
         );
       END IF;
+
+      IF v_line_desc IS NULL
+         AND nullif(v_line_item->>'global_stock_id', '') IS NOT NULL THEN
+        SELECT coalesce(nullif(trim(gsi.name), ''), nullif(trim(p.name), ''), 'Item')
+        INTO v_line_desc
+        FROM public.global_stocks gs
+        LEFT JOIN public.global_shipment_items gsi ON gsi.id = gs.shipment_item_id
+        LEFT JOIN public.products p ON p.id = gsi.product_id
+        WHERE gs.id = nullif(v_line_item->>'global_stock_id', '')::bigint;
+      END IF;
+      IF v_line_desc IS NULL AND v_shipment_item_id IS NOT NULL THEN
+        SELECT coalesce(nullif(trim(gsi.name), ''), nullif(trim(p.name), ''), 'Item')
+        INTO v_line_desc
+        FROM public.global_shipment_items gsi
+        LEFT JOIN public.products p ON p.id = gsi.product_id
+        WHERE gsi.id = v_shipment_item_id;
+      END IF;
+      v_line_desc := coalesce(v_line_desc, 'Item');
 
       v_kernel_item_kind := CASE
         WHEN v_kernel_stock_id IS NOT NULL AND v_shipment_item_id IS NOT NULL THEN 'stock'
@@ -489,7 +528,7 @@ BEGIN
       SELECT * INTO v_stock
       FROM public.global_stocks
       WHERE id = v_stock_id
-        AND parent_tenant_id = v_parent_tenant_id
+        AND tenant_id = v_parent_tenant_id
       FOR UPDATE;
 
       IF v_stock.id IS NULL THEN

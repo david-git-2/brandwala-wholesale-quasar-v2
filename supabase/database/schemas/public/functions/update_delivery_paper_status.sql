@@ -1,4 +1,4 @@
-CREATE FUNCTION public.update_delivery_paper_status (
+CREATE OR REPLACE FUNCTION public.update_delivery_paper_status (
   p_tenant_id         bigint,
   p_delivery_paper_id bigint,
   p_status            text
@@ -55,6 +55,10 @@ BEGIN
   UPDATE public.delivery_paper dp
   SET status = v_new, updated_at = now()
   WHERE dp.id = p_delivery_paper_id;
+
+  IF v_new = 'delivered'::public.delivery_paper_status THEN
+    PERFORM public.sync_shop_order_from_delivery_paper(p_delivery_paper_id, v_new);
+  END IF;
 
   RETURN jsonb_build_object('success', true, 'status', v_new);
 END;

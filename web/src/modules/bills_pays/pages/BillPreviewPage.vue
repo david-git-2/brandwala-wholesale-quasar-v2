@@ -78,6 +78,15 @@
         </template>
       </div>
 
+      <BillKernelSourceChips
+        v-if="showArKernelSource && bill"
+        class="q-mb-md"
+        :source-type="bill.source_type"
+        :source-id="bill.source_id != null ? String(bill.source_id) : null"
+        :source-key="bill.source_key"
+        :shop-order-id="deliveryPaperShopOrderId"
+      />
+
       <div v-if="isAdjustmentBill && adjustmentReason" class="q-mb-md">
         <div class="text-overline text-grey-7">Reason</div>
         <div class="text-body2">{{ adjustmentReason }}</div>
@@ -177,12 +186,17 @@
           <tbody>
             <tr v-for="line in lines" :key="line.id">
               <td class="preview-line-item-cell">
-                <BillLineItemDisplay :name="line.name_snapshot" />
+                <BillLineItemDisplay
+                  :name="line.name_snapshot"
+                  :global-stock-id="line.global_stock_id > 0 ? line.global_stock_id : null"
+                  :shipment-item-id="line.shipment_item_id ?? null"
+                  :shipment-id="line.shipment_id ?? null"
+                />
               </td>
               <td class="text-right">{{ line.quantity }}</td>
-              <td class="text-right">{{ formatAmountBdt(line.sell_price_amount) }}</td>
-              <td class="text-right">{{ formatAmountBdt(line.line_discount_amount) }}</td>
-              <td class="text-right">{{ formatAmountBdt(line.line_total_amount) }}</td>
+              <td class="text-right">{{ formatDeskAmount(line.sell_price_amount) }}</td>
+              <td class="text-right">{{ formatDeskAmount(line.line_discount_amount) }}</td>
+              <td class="text-right">{{ formatDeskAmount(line.line_total_amount) }}</td>
             </tr>
           </tbody>
         </q-markup-table>
@@ -190,19 +204,19 @@
         <div class="row justify-end q-mt-md">
           <div class="totals-panel">
             <div v-if="bill.discount_amount" class="total-row">
-              <span>Discount</span><span>{{ formatAmountBdt(bill.discount_amount) }}</span>
+              <span>Discount</span><span>{{ formatDeskAmount(bill.discount_amount) }}</span>
             </div>
             <div v-if="bill.shipping_charge" class="total-row">
-              <span>Shipping</span><span>{{ formatAmountBdt(bill.shipping_charge) }}</span>
+              <span>Shipping</span><span>{{ formatDeskAmount(bill.shipping_charge) }}</span>
             </div>
             <div v-if="bill.wrapping_charge" class="total-row">
-              <span>Wrapping</span><span>{{ formatAmountBdt(bill.wrapping_charge) }}</span>
+              <span>Wrapping</span><span>{{ formatDeskAmount(bill.wrapping_charge) }}</span>
             </div>
             <div v-if="bill.print_charge" class="total-row">
-              <span>Print</span><span>{{ formatAmountBdt(bill.print_charge) }}</span>
+              <span>Print</span><span>{{ formatDeskAmount(bill.print_charge) }}</span>
             </div>
             <div class="total-row text-weight-bold">
-              <span>Total</span><span>{{ formatAmountBdt(bill.total_amount) }}</span>
+              <span>Total</span><span>{{ formatDeskAmount(bill.total_amount) }}</span>
             </div>
           </div>
         </div>
@@ -225,7 +239,10 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuery } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { formatAmountBdt, settlementCurrencyDisplayLabel } from 'src/utils/currency';
+import { formatAmountBdt, formatSettlementCurrencyAmount, settlementCurrencyDisplayLabel } from 'src/utils/currency';
+import { useBillDetailBundleQuery } from '../composables/useBillDetailBundleQuery';
+import { kernelBillLinesToStockRows } from '../utils/kernelBillLinesToStockRows';
+import { isDeliveryPaperOutcomeBillSource } from '../utils/billRoutes';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/sales_invoice/types';
 import { billsRepository, type InvoiceBrand } from '../repositories/billsRepository';
 import BarcodeRenderer from 'src/modules/thrift/barcode/components/BarcodeRenderer.vue';
@@ -263,6 +280,8 @@ const parentTenantId = computed(() => {
   if (!t) return null;
   return t.parent_id ?? t.id;
 });
+
+const bundleQuery = useBillDetailBundleQuery(billId, parentTenantId);
 
 const brandsQuery = useQuery({
   queryKey: computed(() => billsQueryKeys.brands(parentTenantId.value)),
@@ -341,7 +360,45 @@ const billSettlementCurrencyLabel = computed(() => {
   if (!code) return null;
   return settlementCurrencyDisplayLabel(code);
 });
-const lines = computed(() => (itemsQuery.data.value ?? []) as GlobalInvoiceItemRow[]);
+const lines = computed((): GlobalInvoiceItemRow[] => {
+  const bundle = bundleQuery.data.value;
+  const stockItems = bundle?.stockItems;
+  if (stockItems?.length) return stockItems;
+  const fromQuery = itemsQuery.data.value;
+  if (fromQuery?.length) return fromQuery;
+  const id = billId.value;
+  if (bundle?.billLines?.length && id != null && !isApBill.value && !isAdjustmentBill.value) {
+    return kernelBillLinesToStockRows(bundle.billLines, id);
+  }
+  return fromQuery ?? [];
+});
+
+const showArKernelSource = computed(() => {
+  if (isApBill.value || !bill.value) return false;
+  return isDeliveryPaperOutcomeBillSource(bill.value.source_type, bill.value.source_key ?? null);
+});
+
+const deliveryPaperShopOrderId = computed(() => {
+  const b = bill.value;
+  if (!b) return null;
+  const meta = b.channel_meta as Record<string, unknown> | null;
+  const fromMeta = meta?.shop_order_id;
+  if (fromMeta != null && Number(fromMeta) > 0) return Number(fromMeta);
+  if (b.source_type === 'shop_order' && b.source_id != null) {
+    const id = Number(b.source_id);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+  return null;
+});
+
+const billCurrencyCode = computed(() =>
+  String(bill.value?.currency_code ?? 'BDT').trim().toUpperCase(),
+);
+
+function formatDeskAmount(value: number | string | null | undefined): string {
+  if (isApBill.value) return formatAmountBdt(value);
+  return formatSettlementCurrencyAmount(value, billCurrencyCode.value);
+}
 
 const adjustmentLineRows = computed((): BillLineDisplayRow[] => {
   if (!isAdjustmentBill.value) return [];

@@ -222,7 +222,10 @@ function dualAmount(books: number, hint?: 'original' | 'due'): DualAmountDisplay
     return { primary: formatSettlementCurrencyAmount(b, code), secondary: null };
   }
   if (!isDualCurrency.value) {
-    return { primary: formatAmountBdt(b), secondary: null };
+    return {
+      primary: formatSettlementCurrencyAmount(b, code || 'BDT'),
+      secondary: null,
+    };
   }
   const fx = booksToForeignFace(b, hint);
   return {

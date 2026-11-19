@@ -75,6 +75,14 @@ BEGIN
       coalesce(pd.vendor_placements, '[]'::jsonb) AS vendor_placements,
       coalesce(pd.stock_picks, '[]'::jsonb) AS stock_picks,
       o.is_negotiable_snapshot,
+      public.shop_order_item_delivery_sell_price(
+        o.is_negotiable_snapshot,
+        oi.staff_offer_amount,
+        oi.final_price_amount,
+        oi.unit_sell_price_amount,
+        oi.customer_sell_price_amount,
+        oi.unit_list_price_amount
+      ) AS unit_sell_price_amount,
       public.shop_order_item_demand_buy_unit_price(
         oi.cost_price_amount,
         oi.unit_list_price_amount,
@@ -84,7 +92,7 @@ BEGIN
         oi.final_price_amount,
         oi.unit_sell_price_amount,
         oi.customer_sell_price_amount
-      ) AS unit_sell_price_amount
+      ) AS unit_demand_buy_price_amount
     FROM public.shop_order_items oi
     INNER JOIN public.shop_orders o ON o.id = oi.order_id
     INNER JOIN tenant_scope ts ON ts.tenant_id = o.tenant_id
@@ -137,7 +145,8 @@ BEGIN
       coalesce(pd.vendor_placements, '[]'::jsonb) AS vendor_placements,
       coalesce(pd.stock_picks, '[]'::jsonb) AS stock_picks,
       NULL::boolean AS is_negotiable_snapshot,
-      coalesce(pci.offer_price, 0)::numeric(12, 2) AS unit_sell_price_amount
+      coalesce(pci.offer_price, 0)::numeric(12, 2) AS unit_sell_price_amount,
+      coalesce(pci.offer_price, 0)::numeric(12, 2) AS unit_demand_buy_price_amount
     FROM public.product_based_costing_items pci
     INNER JOIN public.product_based_costing_files f ON f.id = pci.product_based_costing_file_id
     INNER JOIN tenant_scope ts ON ts.tenant_id = f.tenant_id
@@ -218,7 +227,8 @@ BEGIN
           'remaining_to_deliver', greatest(row.quantity - row.delivered_quantity, 0),
           'stock_picks', row.stock_picks,
           'is_negotiable_snapshot', row.is_negotiable_snapshot,
-          'unit_sell_price_amount', row.unit_sell_price_amount
+          'unit_sell_price_amount', row.unit_sell_price_amount,
+          'unit_demand_buy_price_amount', row.unit_demand_buy_price_amount
         )
         ORDER BY row.source_id
       ),

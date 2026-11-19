@@ -38,6 +38,7 @@ import {
   isGlobalShipmentStatus,
   shipmentStatusChangeConfirmCopy,
 } from '../constants/shipmentStatus';
+import { shouldRefetchOverviewAfterWorkflowStatusChange } from '../utils/shipmentUpdateApSync';
 
 const safeNamePart = (value: string) =>
   value.replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '');
@@ -398,9 +399,11 @@ export function useInboundShipmentActions(options: {
         updatingStatus.value = true;
         targetUpdatingStatus.value = newStatus;
         try {
-          await shipmentStore.updateShipment(shipmentId, { status: newStatus });
+            await shipmentStore.updateShipment(shipmentId, { status: newStatus });
           showSuccessNotification(`Shipment status updated to: ${newStatus}`);
-          await loadShipmentDetails();
+          if (shouldRefetchOverviewAfterWorkflowStatusChange(newStatus)) {
+            await loadShipmentDetails();
+          }
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           showErrorNotification(message || 'Failed to update status');

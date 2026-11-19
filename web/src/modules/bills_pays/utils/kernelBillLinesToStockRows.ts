@@ -27,6 +27,8 @@ export function kernelBillLinesToStockRows(
       line_total_amount: lineTotal,
       return_quantity: 0,
       costing: null,
+      shipment_item_id: line.shipment_item_id ?? null,
+      shipment_id: line.shipment_id ?? null,
     };
   });
 }

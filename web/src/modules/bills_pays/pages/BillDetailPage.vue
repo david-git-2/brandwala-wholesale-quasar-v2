@@ -162,6 +162,14 @@
           <ApBillPartiesBlock v-if="isApBill" :bill="bill" />
           <ArBillPartiesBlock v-else :bill="bill" />
         </div>
+        <BillKernelSourceChips
+          v-if="showArKernelSource && bill"
+          class="q-mb-sm"
+          :source-type="bill.source_type"
+          :source-id="bill.source_id != null ? String(bill.source_id) : null"
+          :source-key="bill.source_key"
+          :shop-order-id="deliveryPaperShopOrderId"
+        />
 
         <template v-if="isApBill && !isStandardBill">
           <q-banner
@@ -287,12 +295,17 @@
             <tbody>
               <tr v-for="line in lines" :key="line.id">
                 <td class="bill-line-item-cell">
-                  <BillLineItemDisplay :name="line.name_snapshot" />
+                  <BillLineItemDisplay
+                    :name="line.name_snapshot"
+                    :global-stock-id="line.global_stock_id > 0 ? line.global_stock_id : null"
+                    :shipment-item-id="line.shipment_item_id ?? null"
+                    :shipment-id="line.shipment_id ?? null"
+                  />
                 </td>
                 <td class="text-right">{{ line.quantity }}</td>
-                <td class="text-right">{{ formatAmountBdt(line.sell_price_amount) }}</td>
-                <td class="text-right">{{ formatAmountBdt(line.line_discount_amount) }}</td>
-                <td class="text-right text-weight-medium">{{ formatAmountBdt(line.line_total_amount) }}</td>
+                <td class="text-right">{{ formatDeskAmount(line.sell_price_amount) }}</td>
+                <td class="text-right">{{ formatDeskAmount(line.line_discount_amount) }}</td>
+                <td class="text-right text-weight-medium">{{ formatDeskAmount(line.line_total_amount) }}</td>
                 <td v-if="adjustmentComposerOpen && !isWriteOffKind" class="text-right">
                   <q-input
                     v-if="draftByKey(`stock-${line.id}`)"
@@ -409,19 +422,19 @@
             <div class="bill-totals-panel">
               <div v-if="bill.discount_amount" class="bill-total-row">
                 <span>Discount</span>
-                <span>{{ formatAmountBdt(bill.discount_amount) }}</span>
+                <span>{{ formatDeskAmount(bill.discount_amount) }}</span>
               </div>
               <div v-if="bill.shipping_charge" class="bill-total-row">
                 <span>Shipping</span>
-                <span>{{ formatAmountBdt(bill.shipping_charge) }}</span>
+                <span>{{ formatDeskAmount(bill.shipping_charge) }}</span>
               </div>
               <div v-if="bill.wrapping_charge" class="bill-total-row">
                 <span>Wrapping</span>
-                <span>{{ formatAmountBdt(bill.wrapping_charge) }}</span>
+                <span>{{ formatDeskAmount(bill.wrapping_charge) }}</span>
               </div>
               <div v-if="bill.print_charge" class="bill-total-row">
                 <span>Print</span>
-                <span>{{ formatAmountBdt(bill.print_charge) }}</span>
+                <span>{{ formatDeskAmount(bill.print_charge) }}</span>
               </div>
               <BillNetSettlementPanel
                 v-if="isStandardBill"
@@ -662,7 +675,12 @@ import {
 } from '../utils/billRoutes';
 import { billsRepository } from '../repositories/billsRepository';
 import { billsQueryKeys } from '../services/billsQueryKeys';
-import { formatAmountBdt, formatBdtTaka, settlementCurrencyDisplayLabel } from 'src/utils/currency';
+import {
+  formatAmountBdt,
+  formatBdtTaka,
+  formatSettlementCurrencyAmount,
+  settlementCurrencyDisplayLabel,
+} from 'src/utils/currency';
 import { showErrorNotification, showSuccessNotification, requestConfirmation } from 'src/utils/appFeedback';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow, GlobalInvoiceRow } from 'src/modules/sales_invoice/types';
 import {
@@ -1177,6 +1195,33 @@ const canOpenBillAdjustmentComposer = computed(() => {
 const isDeliveryCloseBill = computed(() =>
   isDeliveryPaperOutcomeBillSource(bill.value?.source_type, bill.value?.source_key ?? null),
 );
+
+const showArKernelSource = computed(() => {
+  if (isApBill.value || !bill.value) return false;
+  return isDeliveryPaperOutcomeBillSource(bill.value.source_type, bill.value.source_key ?? null);
+});
+
+const deliveryPaperShopOrderId = computed(() => {
+  const b = bill.value;
+  if (!b) return null;
+  const meta = b.channel_meta as Record<string, unknown> | null;
+  const fromMeta = meta?.shop_order_id;
+  if (fromMeta != null && Number(fromMeta) > 0) return Number(fromMeta);
+  if (b.source_type === 'shop_order' && b.source_id != null) {
+    const id = Number(b.source_id);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+  return null;
+});
+
+const billCurrencyCode = computed(() =>
+  String(bill.value?.currency_code ?? 'BDT').trim().toUpperCase(),
+);
+
+function formatDeskAmount(value: number | string | null | undefined): string {
+  if (isApBill.value) return formatAmountBdt(value);
+  return formatSettlementCurrencyAmount(value, billCurrencyCode.value);
+}
 
 const canIssueDeliveryCloseDraft = computed(() => {
   const b = bill.value;

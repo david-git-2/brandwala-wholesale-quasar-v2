@@ -1,4 +1,4 @@
-CREATE FUNCTION public.dispatch_delivery_paper (
+CREATE OR REPLACE FUNCTION public.dispatch_delivery_paper (
   p_tenant_id         bigint,
   p_delivery_paper_id bigint
 )
@@ -38,6 +38,10 @@ BEGIN
         updated_at = now()
       WHERE dp.id = p_delivery_paper_id;
     END IF;
+    PERFORM public.sync_shop_order_from_delivery_paper(
+      p_delivery_paper_id,
+      'dispatched'::public.delivery_paper_status
+    );
     RETURN jsonb_build_object(
       'success', true,
       'status', 'dispatched',
@@ -114,6 +118,11 @@ BEGIN
     dispatched_at = now(),
     updated_at = now()
   WHERE dp.id = p_delivery_paper_id;
+
+  PERFORM public.sync_shop_order_from_delivery_paper(
+    p_delivery_paper_id,
+    'dispatched'::public.delivery_paper_status
+  );
 
   RETURN jsonb_build_object(
     'success', true,

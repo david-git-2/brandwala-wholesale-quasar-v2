@@ -260,6 +260,12 @@ export function useDeliveryPaperDetail(options: {
         await queryClient.invalidateQueries({
           queryKey: shopOrderQueryKeys.deliveryPaperQtyByOrderItemRoot(),
         });
+        await queryClient.invalidateQueries({
+          queryKey: shopOrderQueryKeys.staffOrdersPageRoot(),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ['shopOrder', 'staffOrders'],
+        });
       }
     }
   };

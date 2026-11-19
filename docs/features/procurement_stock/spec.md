@@ -42,6 +42,7 @@ Procurement never DMLs kernel tables. Wrappers: `supabase/schemas/bills_pays/07_
 | Pay vendor on shipment | `post_shipment_ap_money_out` (via `apPayoutService`) |
 | Bill shape / `source_*` | [bills § Shipment cost AP](../bills/spec.md#shipment-cost-ap) |
 | Web entry | `shipmentMoneyKernelRepository`, `globalShipmentStore.loadSettingsFinanceBundle` |
+| Header save → AP sync | `sync_shipment_ap_bills` only when header touches payee/cost fields or `status = cancelled`; workflow-only `draft` / `in_transit` status PATCH does not sync |
 | Costs AP tenant | `money_kernel.bills.tenant_id` = workspace header (`current_tenant_id` / `x-selected-tenant-id`); shipment must match that tenant; `rpc_get_bill(p_tenant_id, …)` is SECURITY DEFINER + membership check (kernel RLS still keys on JWT `tenant_id`) |
 | Cutover gaps | [bills_pays/00-gaps](../bills_pays/00-gaps.md) WA15, BP8, BP9 |
 

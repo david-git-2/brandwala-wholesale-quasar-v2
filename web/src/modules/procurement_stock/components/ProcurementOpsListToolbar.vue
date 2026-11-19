@@ -214,6 +214,11 @@ const onSearchBlur = () => {
   flex-wrap: nowrap;
 }
 
+.procurement-ops-toolbar__primary:not(.procurement-ops-toolbar__primary--inline-pills)
+  .procurement-ops-toolbar__actions {
+  justify-content: flex-end;
+}
+
 .procurement-ops-toolbar__pills--inline + .procurement-ops-toolbar__actions .procurement-ops-toolbar__search {
   flex: 0 1 220px;
   max-width: 280px;

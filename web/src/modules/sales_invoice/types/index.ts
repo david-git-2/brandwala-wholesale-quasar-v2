@@ -161,6 +161,8 @@ export type GlobalInvoiceItemRow = {
   return_quantity: number;
   available_atp?: number | null;
   image_url?: string | null | undefined;
+  shipment_item_id?: number | null;
+  shipment_id?: number | null;
 };
 
 

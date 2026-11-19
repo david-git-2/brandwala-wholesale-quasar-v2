@@ -438,20 +438,34 @@ BEGIN
   SELECT COALESCE(jsonb_agg(
     jsonb_build_object(
       'id', bl.id,
-      'name_snapshot', COALESCE(bl.description, 'Line'),
+      'name_snapshot', COALESCE(
+        NULLIF(
+          CASE
+            WHEN trim(lower(bl.description)) IN ('item', 'line') THEN NULL
+            ELSE nullif(trim(bl.description), '')
+          END,
+          ''
+        ),
+        nullif(trim(gsi.name), ''),
+        nullif(trim(p.name), ''),
+        'Line'
+      ),
       'currency_code', upper(v_b.currency_code),
       'line_total_amount', bl.line_total,
       'books_amount', bl.line_total,
       'quantity', bl.quantity,
       'sell_price_amount', bl.unit_price,
       'global_stock_id', bl.global_stock_id,
-      'product_id', bl.product_id,
-      'shipment_item_id', bl.shipment_item_id
+      'product_id', coalesce(bl.product_id, gsi.product_id),
+      'shipment_item_id', bl.shipment_item_id,
+      'shipment_id', bl.shipment_id
     )
     ORDER BY bl.line_no
   ), '[]'::jsonb)
   INTO v_bill_lines
   FROM money_kernel.bill_lines bl
+  LEFT JOIN public.global_shipment_items gsi ON gsi.id = bl.shipment_item_id
+  LEFT JOIN public.products p ON p.id = coalesce(bl.product_id, gsi.product_id)
   WHERE bl.bill_id = p_bill_id AND bl.tenant_id = v_parent_id;
 
   SELECT COALESCE(jsonb_agg(
@@ -478,12 +492,26 @@ BEGIN
           'id', bl.id,
           'invoice_id', p_bill_id,
           'global_stock_id', COALESCE(bl.global_stock_id, 0),
-          'name_snapshot', COALESCE(bl.description, 'Line'),
+          'name_snapshot', COALESCE(
+            NULLIF(
+              CASE
+                WHEN trim(lower(bl.description)) IN ('item', 'line') THEN NULL
+                ELSE nullif(trim(bl.description), '')
+              END,
+              ''
+            ),
+            nullif(trim(gsi.name), ''),
+            nullif(trim(p.name), ''),
+            'Line'
+          ),
           'quantity', bl.quantity,
           'sell_price_amount', COALESCE(bl.unit_price, 0),
           'line_discount_amount', 0,
           'line_total_amount', bl.line_total,
-          'return_quantity', 0
+          'return_quantity', 0,
+          'shipment_item_id', bl.shipment_item_id,
+          'shipment_id', bl.shipment_id,
+          'product_id', coalesce(bl.product_id, gsi.product_id)
         )
         ORDER BY bl.line_no
       ),
@@ -491,6 +519,8 @@ BEGIN
     )
     INTO v_stock_items
     FROM money_kernel.bill_lines bl
+    LEFT JOIN public.global_shipment_items gsi ON gsi.id = bl.shipment_item_id
+    LEFT JOIN public.products p ON p.id = coalesce(bl.product_id, gsi.product_id)
     WHERE bl.bill_id = p_bill_id
       AND bl.tenant_id = v_parent_id;
   ELSE

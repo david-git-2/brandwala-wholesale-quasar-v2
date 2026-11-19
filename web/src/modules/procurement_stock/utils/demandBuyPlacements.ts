@@ -17,7 +17,8 @@ export const itemDraftKey = (item: ProcurementDemandItem): string =>
   `${item.source_type}-${item.source_id}`;
 
 export const orderLineUnitPrice = (item: ProcurementDemandItem): number | null => {
-  const amount = Number(item.unit_sell_price_amount ?? NaN);
+  const raw = item.unit_demand_buy_price_amount ?? item.unit_sell_price_amount;
+  const amount = Number(raw ?? NaN);
   return Number.isFinite(amount) ? amount : null;
 };
 

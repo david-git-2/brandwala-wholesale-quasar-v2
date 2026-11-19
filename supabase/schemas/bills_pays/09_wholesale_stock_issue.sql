@@ -5,7 +5,10 @@ RETURNS bigint
 LANGUAGE sql
 STABLE
 AS $$
-  SELECT nullif(p_line.line_meta->'stock_ref'->>'global_stock_id', '')::bigint;
+  SELECT coalesce(
+    NULLIF(p_line.global_stock_id, 0),
+    nullif(p_line.line_meta->'stock_ref'->>'global_stock_id', '')::bigint
+  );
 $$;
 
 CREATE OR REPLACE FUNCTION public.commit_sales_bill_stock(p_bill_id bigint)
@@ -30,22 +33,12 @@ declare
   v_skip_deduct boolean;
   v_line_label text;
   v_is_dropship boolean := false;
+  v_use_kernel boolean := false;
 begin
-  select * into v_invoice from public.bills where id = p_bill_id for update;
+  select * into v_kernel from money_kernel.bills where id = p_bill_id for update;
 
-  if v_invoice.id is not null then
-    if v_invoice.invoice_status not in ('draft'::public.global_invoice_status, 'proforma_generated'::public.global_invoice_status) then
-      raise exception 'Only draft or proforma invoices can commit stock';
-    end if;
-
-    v_parent_id := coalesce(v_invoice.tenant_id, v_invoice.issued_by_tenant_id);
-    v_delivery_paper_id := nullif(trim(coalesce(v_invoice.channel_meta->>'delivery_paper_id', '')), '')::bigint;
-    v_is_dropship := v_invoice.invoice_type = 'dropship'::public.global_invoice_type;
-  else
-    select * into v_kernel from money_kernel.bills where id = p_bill_id for update;
-    if not found then
-      raise exception 'Invoice not found';
-    end if;
+  if found then
+    v_use_kernel := true;
     if v_kernel.status not in ('draft') then
       raise exception 'Only draft bills can commit stock';
     end if;
@@ -53,6 +46,19 @@ begin
     v_parent_id := v_kernel.tenant_id;
     v_delivery_paper_id := nullif(trim(coalesce(v_kernel.meta->>'delivery_paper_id', '')), '')::bigint;
     v_is_dropship := v_kernel.kind = 'sales_invoice_dropship';
+  else
+    select * into v_invoice from public.bills where id = p_bill_id for update;
+    if not found then
+      raise exception 'Invoice not found';
+    end if;
+
+    if v_invoice.invoice_status not in ('draft'::public.global_invoice_status, 'proforma_generated'::public.global_invoice_status) then
+      raise exception 'Only draft or proforma invoices can commit stock';
+    end if;
+
+    v_parent_id := coalesce(v_invoice.tenant_id, v_invoice.issued_by_tenant_id);
+    v_delivery_paper_id := nullif(trim(coalesce(v_invoice.channel_meta->>'delivery_paper_id', '')), '')::bigint;
+    v_is_dropship := v_invoice.invoice_type = 'dropship'::public.global_invoice_type;
   end if;
 
   select sm.id
@@ -68,7 +74,7 @@ begin
     return v_mov_id;
   end if;
 
-  if v_invoice.id is not null then
+  if not v_use_kernel then
     select exists (
       select 1
       from public.bill_lines bl
@@ -107,7 +113,7 @@ begin
     'sales_invoice',
     p_bill_id::text,
     'Issued sales invoice #' || coalesce(
-      case when v_invoice.id is not null then v_invoice.invoice_no else v_kernel.invoice_no end,
+      case when v_use_kernel then v_kernel.invoice_no else v_invoice.invoice_no end,
       p_bill_id::text
     ),
     public.current_user_email(),
@@ -115,7 +121,7 @@ begin
     now()
   ) returning id into v_mov_id;
 
-  if v_invoice.id is not null then
+  if not v_use_kernel then
     for v_db_item in select * from public.bill_lines where invoice_id = p_bill_id loop
       v_stock_id := public._bill_line_global_stock_id(v_db_item);
       if v_stock_id is null then
@@ -124,6 +130,11 @@ begin
 
       v_qty := ceil(v_db_item.quantity)::integer;
       v_line_label := v_db_item.name_snapshot;
+
+      if v_delivery_paper_id is not null
+         and not exists (select 1 from public.global_stocks gs where gs.id = v_stock_id) then
+        continue;
+      end if;
 
       select * into v_stock from public.global_stocks where id = v_stock_id for update;
       if v_stock.id is null then
@@ -176,6 +187,11 @@ begin
       v_stock_id := v_kline.global_stock_id;
       v_qty := ceil(v_kline.quantity)::integer;
       v_line_label := coalesce(v_kline.description, 'Line');
+
+      if v_delivery_paper_id is not null
+         and not exists (select 1 from public.global_stocks gs where gs.id = v_stock_id) then
+        continue;
+      end if;
 
       select * into v_stock from public.global_stocks where id = v_stock_id for update;
       if v_stock.id is null then

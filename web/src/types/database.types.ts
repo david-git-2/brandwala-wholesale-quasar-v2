@@ -4186,9 +4186,9 @@ isOneToOne: false
           Views: {
             "bill_lines": {
                   Row: {
-                    "assigned_child_tenant_id": number | null,"barcode_snapshot": string | null,"books_amount": number | null,"created_at": string | null,"currency_code": string | null,"global_stock_id": number | null,"id": number | null,"invoice_id": number | null,"line_discount_amount": number | null,"line_kind": string | null,"line_meta": Json | null,"line_total_amount": number | null,"name_snapshot": string | null,"product_code_snapshot": string | null,"product_id": number | null,"quantity": number | null,"return_quantity": number | null,"sell_price_amount": number | null,"shipment_item_id": number | null,"tenant_id": number | null,"updated_at": string | null
+                    "assigned_child_tenant_id": number | null,"barcode_snapshot": string | null,"books_amount": number | null,"created_at": string | null,"currency_code": string | null,"global_stock_id": number | null,"id": number | null,"invoice_id": number | null,"line_discount_amount": number | null,"line_kind": string | null,"line_meta": Json | null,"line_total_amount": number | null,"name_snapshot": string | null,"product_code_snapshot": string | null,"product_id": number | null,"quantity": number | null,"return_quantity": number | null,"sell_price_amount": number | null,"shipment_item_id": number | null,"tenant_id": number | null,"updated_at": string | null,"_bill_line_global_stock_id": number | null
                   }
-                  ComputedFields: never
+                  ComputedFields: "_bill_line_global_stock_id"
                   Relationships: [
                     
                   ]
@@ -4298,6 +4298,9 @@ isOneToOne: false
                            },
 "_assert_shipment_cost_entry_mutable":
 { Args: { "p_entry_id": number }; Returns: undefined
+                           },
+"_bill_line_global_stock_id":
+{ Args: { "p_line": Omit<Database["public"]['Views']["bill_lines"]['Row'], Database["public"]['Views']["bill_lines"]['ComputedFields']> }; Returns: number
                            },
 "_build_dropship_courier_ap_paper":
 { Args: { "p_cod": number,"p_courier": Omit<Database["public"]['Tables']["courier_services"]['Row'], Database["public"]['Tables']["courier_services"]['ComputedFields']>,"p_delivery": number,"p_order": Omit<Database["public"]['Tables']["shop_orders"]['Row'], Database["public"]['Tables']["shop_orders"]['ComputedFields']>,"p_total": number }; Returns: Json
@@ -4827,7 +4830,7 @@ isOneToOne: false
 "_test_bootstrap_dropship_golden_a":
 { Args: { "p_ctx": Json }; Returns: Json
                            },
-"_test_bootstrap_shipment_ap_fx":
+"_test_bootstrap_shipment_s54":
 { Args: { "p_tenant_id": number }; Returns: Json
                            },
 "_test_enable_tenant_module":
@@ -4836,17 +4839,32 @@ isOneToOne: false
 "_test_ensure_global_currency":
 { Args: { "p_code": string,"p_name"?: string,"p_symbol"?: string }; Returns: number
                            },
+"_test_flush_kernel_pay":
+{ Args: { "p_pay_id": number,"p_tenant_id": number }; Returns: undefined
+                           },
+"_test_flush_kernel_pays":
+{ Args: Record<PropertyKey, never>; Returns: undefined
+                           },
 "_test_fund_cashbook_pot":
 { Args: { "p_amount": number,"p_currency_code"?: string,"p_point_id": number,"p_tenant_id": number }; Returns: undefined
                            },
 "_test_issue_ar_bill":
 { Args: { "p_amount": number,"p_customer_profile_id": number,"p_invoice_no"?: string,"p_tenant_id": number }; Returns: number
                            },
+"_test_kernel_service_role":
+{ Args: Record<PropertyKey, never>; Returns: undefined
+                           },
 "_test_money_kernel_bootstrap":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
 "_test_pgtap_auth":
 { Args: Record<PropertyKey, never>; Returns: undefined
+                           },
+"_test_set_workspace_tenant":
+{ Args: { "p_tenant_id": number }; Returns: undefined
+                           },
+"_test_shipment_s54_fund_and_pay":
+{ Args: { "p_ctx": Json }; Returns: Json
                            },
 "_undo_wallet_ledger_row_before_delete":
 { Args: { "p_row": Omit<Database["public"]['Tables']["cashbook_entries"]['Row'], Database["public"]['Tables']["cashbook_entries"]['ComputedFields']> }; Returns: undefined
@@ -6673,6 +6691,61 @@ isOneToOne: false
 "is_vendor_code_available":
 { Args: { "p_code": string,"p_exclude_id"?: number }; Returns: boolean
                            },
+"issue_ap_bill_from_desk":
+{ Args: { "p_bill_id": number }; Returns: {
+              "ap_kind": string | null,
+"ap_shipment_id": number | null,
+"books_exchange_rate": number | null,
+"channel_meta": Json | null,
+"charges_amount": number | null,
+"collection_source": Database["public"]['Enums']["collection_source_type"] | null,
+"created_at": string | null,
+"created_by": string | null,
+"currency_code": string | null,
+"discount_amount": number | null,
+"document_kind": Database["public"]['Enums']["bill_document_kind"] | null,
+"due_amount": number | null,
+"due_date": string | null,
+"from_profile_id": number | null,
+"id": number | null,
+"invoice_date": string | null,
+"invoice_no": string | null,
+"invoice_status": Database["public"]['Enums']["global_invoice_status"] | null,
+"invoice_type": Database["public"]['Enums']["global_invoice_type"] | null,
+"issued_by_tenant_id": number | null,
+"note": string | null,
+"paid_amount": number | null,
+"parent_bill_id": number | null,
+"payment_status": string | null,
+"print_charge": number | null,
+"profile_id": number | null,
+"recipient_address": string | null,
+"recipient_name": string | null,
+"recipient_phone": string | null,
+"recipient_profile_id": number | null,
+"retail_billing_mode": Database["public"]['Enums']["retail_billing_mode"] | null,
+"settlement_kind": Database["public"]['Enums']["bill_settlement_kind"] | null,
+"shipping_charge": number | null,
+"shop_order_id": number | null,
+"source_id": string | null,
+"source_key": string | null,
+"source_type": string | null,
+"subtotal_amount": number | null,
+"tenant_id": number | null,
+"to_profile_id": number | null,
+"total_amount": number | null,
+"txn_currency_code": string | null,
+"txn_total_amount": number | null,
+"updated_at": string | null,
+"wrapping_charge": number | null,
+"written_off_amount": number | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "bills"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "issue_dropship_tenant_b2b_invoice":
 { Args: { "p_order_id": number,"p_tenant_id": number }; Returns: Json
                            },
@@ -6691,6 +6764,116 @@ isOneToOne: false
 "issue_shipment_ap_drafts_v2":
 { Args: { "p_shipment_id": number }; Returns: Json
                            },
+"issue_wholesale_bill":
+{ Args: { "p_bill_id": number,"p_items"?: Json }; Returns: {
+              "ap_kind": string | null,
+"ap_shipment_id": number | null,
+"books_exchange_rate": number | null,
+"channel_meta": Json | null,
+"charges_amount": number | null,
+"collection_source": Database["public"]['Enums']["collection_source_type"] | null,
+"created_at": string | null,
+"created_by": string | null,
+"currency_code": string | null,
+"discount_amount": number | null,
+"document_kind": Database["public"]['Enums']["bill_document_kind"] | null,
+"due_amount": number | null,
+"due_date": string | null,
+"from_profile_id": number | null,
+"id": number | null,
+"invoice_date": string | null,
+"invoice_no": string | null,
+"invoice_status": Database["public"]['Enums']["global_invoice_status"] | null,
+"invoice_type": Database["public"]['Enums']["global_invoice_type"] | null,
+"issued_by_tenant_id": number | null,
+"note": string | null,
+"paid_amount": number | null,
+"parent_bill_id": number | null,
+"payment_status": string | null,
+"print_charge": number | null,
+"profile_id": number | null,
+"recipient_address": string | null,
+"recipient_name": string | null,
+"recipient_phone": string | null,
+"recipient_profile_id": number | null,
+"retail_billing_mode": Database["public"]['Enums']["retail_billing_mode"] | null,
+"settlement_kind": Database["public"]['Enums']["bill_settlement_kind"] | null,
+"shipping_charge": number | null,
+"shop_order_id": number | null,
+"source_id": string | null,
+"source_key": string | null,
+"source_type": string | null,
+"subtotal_amount": number | null,
+"tenant_id": number | null,
+"to_profile_id": number | null,
+"total_amount": number | null,
+"txn_currency_code": string | null,
+"txn_total_amount": number | null,
+"updated_at": string | null,
+"wrapping_charge": number | null,
+"written_off_amount": number | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "bills"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"issue_wholesale_invoice":
+{ Args: { "p_invoice_id": number,"p_items"?: Json }; Returns: {
+              "ap_kind": string | null,
+"ap_shipment_id": number | null,
+"books_exchange_rate": number | null,
+"channel_meta": Json | null,
+"charges_amount": number | null,
+"collection_source": Database["public"]['Enums']["collection_source_type"] | null,
+"created_at": string | null,
+"created_by": string | null,
+"currency_code": string | null,
+"discount_amount": number | null,
+"document_kind": Database["public"]['Enums']["bill_document_kind"] | null,
+"due_amount": number | null,
+"due_date": string | null,
+"from_profile_id": number | null,
+"id": number | null,
+"invoice_date": string | null,
+"invoice_no": string | null,
+"invoice_status": Database["public"]['Enums']["global_invoice_status"] | null,
+"invoice_type": Database["public"]['Enums']["global_invoice_type"] | null,
+"issued_by_tenant_id": number | null,
+"note": string | null,
+"paid_amount": number | null,
+"parent_bill_id": number | null,
+"payment_status": string | null,
+"print_charge": number | null,
+"profile_id": number | null,
+"recipient_address": string | null,
+"recipient_name": string | null,
+"recipient_phone": string | null,
+"recipient_profile_id": number | null,
+"retail_billing_mode": Database["public"]['Enums']["retail_billing_mode"] | null,
+"settlement_kind": Database["public"]['Enums']["bill_settlement_kind"] | null,
+"shipping_charge": number | null,
+"shop_order_id": number | null,
+"source_id": string | null,
+"source_key": string | null,
+"source_type": string | null,
+"subtotal_amount": number | null,
+"tenant_id": number | null,
+"to_profile_id": number | null,
+"total_amount": number | null,
+"txn_currency_code": string | null,
+"txn_total_amount": number | null,
+"updated_at": string | null,
+"wrapping_charge": number | null,
+"written_off_amount": number | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "bills"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "koba_cart_allowed":
 { Args: { "p_cart_id": number }; Returns: boolean
                            },
@@ -7383,6 +7566,61 @@ isOneToOne: false
 "paste_batch_code_items":
 { Args: { "p_list_id": number,"p_rows": Json,"p_start_row_index": number }; Returns: Json
                            },
+"patch_bill_dates_from_desk":
+{ Args: { "p_bill_id": number,"p_due_date"?: string,"p_invoice_date": string,"p_tenant_id": number,"p_touch_due_date"?: boolean }; Returns: {
+              "ap_kind": string | null,
+"ap_shipment_id": number | null,
+"books_exchange_rate": number | null,
+"channel_meta": Json | null,
+"charges_amount": number | null,
+"collection_source": Database["public"]['Enums']["collection_source_type"] | null,
+"created_at": string | null,
+"created_by": string | null,
+"currency_code": string | null,
+"discount_amount": number | null,
+"document_kind": Database["public"]['Enums']["bill_document_kind"] | null,
+"due_amount": number | null,
+"due_date": string | null,
+"from_profile_id": number | null,
+"id": number | null,
+"invoice_date": string | null,
+"invoice_no": string | null,
+"invoice_status": Database["public"]['Enums']["global_invoice_status"] | null,
+"invoice_type": Database["public"]['Enums']["global_invoice_type"] | null,
+"issued_by_tenant_id": number | null,
+"note": string | null,
+"paid_amount": number | null,
+"parent_bill_id": number | null,
+"payment_status": string | null,
+"print_charge": number | null,
+"profile_id": number | null,
+"recipient_address": string | null,
+"recipient_name": string | null,
+"recipient_phone": string | null,
+"recipient_profile_id": number | null,
+"retail_billing_mode": Database["public"]['Enums']["retail_billing_mode"] | null,
+"settlement_kind": Database["public"]['Enums']["bill_settlement_kind"] | null,
+"shipping_charge": number | null,
+"shop_order_id": number | null,
+"source_id": string | null,
+"source_key": string | null,
+"source_type": string | null,
+"subtotal_amount": number | null,
+"tenant_id": number | null,
+"to_profile_id": number | null,
+"total_amount": number | null,
+"txn_currency_code": string | null,
+"txn_total_amount": number | null,
+"updated_at": string | null,
+"wrapping_charge": number | null,
+"written_off_amount": number | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "bills"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "patch_dropship_courier_fees_for_remittance":
 { Args: { "p_cod": number,"p_delivery": number,"p_order_id": number }; Returns: undefined
                            },
@@ -8497,6 +8735,9 @@ isOneToOne: false
                            },
 "sync_shipment_ap_bills":
 { Args: { "p_shipment_id": number }; Returns: Json
+                           },
+"sync_shop_order_from_delivery_paper":
+{ Args: { "p_delivery_paper_id": number,"p_paper_status": Database["public"]['Enums']["delivery_paper_status"] }; Returns: undefined
                            },
 "thrift_barcode_sequence_sort_key":
 { Args: { "p_barcode_id": string }; Returns: {

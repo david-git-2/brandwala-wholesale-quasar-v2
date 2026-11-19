@@ -14,7 +14,6 @@ export type DemandStockPickRow = {
   location_name: string;
   grade_label: string;
   available_atp: number;
-  unit_cost_amount: number;
 };
 
 export type DemandCloseAction = 'take' | 'condition' | 'return';
@@ -71,7 +70,6 @@ const mapNetworkRow = (row: StockNetworkRow): DemandStockPickRow => ({
   location_name: row.location_name ?? row.holding_tenant_name ?? '—',
   grade_label: row.is_pickable ? 'Sellable' : 'Not pickable',
   available_atp: Math.max(0, Math.trunc(Number(row.available_atp ?? row.excellent_qty ?? 0))),
-  unit_cost_amount: Number(row.purchase_price ?? 0),
 });
 
 const filterPickableRows = (data: StockNetworkRow[]) =>
@@ -199,6 +197,34 @@ const applyDisabledReason = computed(() => {
 
 const remainingToPick = computed(() => Math.max(0, props.needQuantity - selectedTotal.value));
 
+const needFilled = computed(() => props.needQuantity > 0 && remainingToPick.value === 0);
+
+const maxPickableForRow = (row: DemandStockPickRow) => {
+  const current = Math.trunc(qtyByStockId.value[row.global_stock_id] ?? 0);
+  const otherPicked = selectedTotal.value - current;
+  const left = Math.max(0, props.needQuantity - otherPicked);
+  return Math.min(row.available_atp, left);
+};
+
+const fillRowMax = (row: DemandStockPickRow) => {
+  const max = maxPickableForRow(row);
+  if (max <= 0) {
+    showErrorNotification('Nothing left to pick on this line.');
+    return;
+  }
+  setQty(row.global_stock_id, max, row.available_atp);
+};
+
+const maybeAutoFillSingleLot = () => {
+  if (!props.hidePerLotAddButton || stockRows.value.length !== 1) return;
+  const row = stockRows.value[0];
+  if (committedPicks.value.length > 0) return;
+  const max = maxPickableForRow(row);
+  if (max > 0 && selectedTotal.value === 0) {
+    qtyByStockId.value[row.global_stock_id] = max;
+  }
+};
+
 const committedQty = (stockId: number) => {
   if (props.hidePerLotAddButton) {
     const q = Math.trunc(qtyByStockId.value[stockId] ?? 0);
@@ -236,7 +262,10 @@ watch(
       ...pick,
       clientKey: pick.clientKey || createDemandPickClientKey(),
     }));
-    void loadRows().then(resetQtyDefaults);
+    void loadRows().then(() => {
+      resetQtyDefaults();
+      maybeAutoFillSingleLot();
+    });
   },
 );
 
@@ -344,8 +373,6 @@ const apply = () => {
   close();
 };
 
-const formatCost = (n: number) =>
-  Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 </script>
 
 <template>
@@ -369,10 +396,16 @@ const formatCost = (n: number) =>
             <span class="pick-stat__label">Picked</span>
             <span class="pick-stat__value font-mono">{{ selectedTotal }}</span>
           </div>
-          <div class="pick-stat">
+          <div class="pick-stat" :class="{ 'pick-stat--done': needFilled }">
             <span class="pick-stat__label">Left</span>
             <span class="pick-stat__value font-mono">{{ remainingToPick }}</span>
           </div>
+        </div>
+        <div
+          v-if="hidePerLotAddButton && needFilled"
+          class="text-caption text-positive q-mt-sm"
+        >
+          Need is covered. Tap Apply to save picks.
         </div>
       </q-card-section>
 
@@ -440,11 +473,10 @@ const formatCost = (n: number) =>
                     {{ row.location_name }}
                   </span>
                   <q-badge outline color="grey-7" :label="`${row.available_atp} avail`" />
-                  <span class="pick-meta font-mono">৳{{ formatCost(row.unit_cost_amount) }}</span>
                 </div>
               </div>
               <q-btn
-                v-if="committedQty(row.global_stock_id) > 0"
+                v-if="!hidePerLotAddButton && committedQty(row.global_stock_id) > 0"
                 flat
                 round
                 dense
@@ -458,7 +490,7 @@ const formatCost = (n: number) =>
               </q-btn>
             </div>
 
-            <div class="row items-center q-gutter-sm q-mt-md">
+            <div class="row items-center q-gutter-sm q-mt-sm">
               <q-input
                 :model-value="qtyByStockId[row.global_stock_id] ?? null"
                 type="number"
@@ -470,8 +502,40 @@ const formatCost = (n: number) =>
                 placeholder="Qty"
                 class="pick-lot-card__qty"
                 input-class="text-center font-mono"
+                aria-label="Quantity to pick from this lot"
                 @update:model-value="(v) => setQty(row.global_stock_id, v, row.available_atp)"
               />
+              <q-btn
+                flat
+                dense
+                no-caps
+                color="primary"
+                class="pick-lot-card__max"
+                :disable="maxPickableForRow(row) <= 0"
+                :label="hidePerLotAddButton ? 'Fill' : 'Max'"
+                @click="fillRowMax(row)"
+              >
+                <q-tooltip>
+                  {{
+                    hidePerLotAddButton
+                      ? 'Fill remaining need from this lot'
+                      : 'Pick the most you can from this lot'
+                  }}
+                </q-tooltip>
+              </q-btn>
+              <q-btn
+                v-if="hidePerLotAddButton && committedQty(row.global_stock_id) > 0"
+                flat
+                round
+                dense
+                size="sm"
+                color="grey-7"
+                icon="ph ph-trash"
+                aria-label="Clear quantity"
+                @click="setQty(row.global_stock_id, null, row.available_atp)"
+              >
+                <q-tooltip>Clear</q-tooltip>
+              </q-btn>
               <q-btn
                 v-if="!hidePerLotAddButton"
                 unelevated
@@ -545,6 +609,11 @@ const formatCost = (n: number) =>
   background: color-mix(in srgb, var(--q-primary) 8%, var(--tf-neutral-surface, #fff));
 }
 
+.pick-stat--done {
+  border-color: color-mix(in srgb, var(--q-positive, #21ba45) 40%, var(--tf-neutral-border, #e7e1d8));
+  background: color-mix(in srgb, var(--q-positive, #21ba45) 10%, var(--tf-neutral-surface, #fff));
+}
+
 .pick-stat__label {
   display: block;
   font-size: 10px;
@@ -573,7 +642,6 @@ const formatCost = (n: number) =>
 
 .pick-lot-card--picked {
   border-color: color-mix(in srgb, var(--q-primary) 40%, var(--tf-neutral-border, #e7e1d8));
-  box-shadow: inset 3px 0 0 var(--q-primary);
 }
 
 .pick-meta {
@@ -585,8 +653,13 @@ const formatCost = (n: number) =>
 }
 
 .pick-lot-card__qty {
-  width: 88px;
+  width: 96px;
   flex-shrink: 0;
+}
+
+.pick-lot-card__max {
+  min-width: 52px;
+  font-weight: 600;
 }
 
 .pick-lot-card__add {

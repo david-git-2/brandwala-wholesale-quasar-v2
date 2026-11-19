@@ -18,6 +18,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useBillSourceShipmentName } from '../composables/useBillSourceShipmentName';
+import { useBillSourceShopOrderNo } from '../composables/useBillSourceShopOrderNo';
 import {
   formatBillKernelSourceEntityFallback,
   formatBillKernelSourceKey,
@@ -31,6 +32,8 @@ const props = defineProps<{
   apKind?: string | null;
   /** Resolved inbound shipment id (preferred over parsing `source_id`). */
   shipmentId?: number | null;
+  /** Shop order id for `source_type = shop_order` (shows order_no when loaded). */
+  shopOrderId?: number | null;
 }>();
 
 const show = computed(
@@ -46,6 +49,20 @@ const shipmentId = computed(() => {
 
 const { shipmentName } = useBillSourceShipmentName(shipmentId);
 
+const shopOrderId = computed(() => {
+  if (props.sourceType !== 'shop_order') return null;
+  if (props.shopOrderId != null && Number(props.shopOrderId) > 0) {
+    return Number(props.shopOrderId);
+  }
+  const id = Number(props.sourceId);
+  return Number.isFinite(id) && id > 0 ? id : null;
+});
+
+const { shopOrderNo } = useBillSourceShopOrderNo(
+  shopOrderId,
+  () => props.sourceType === 'shop_order',
+);
+
 const displayChips = computed(() => {
   const chips: string[] = [];
   const typeLabel = formatBillKernelSourceType(props.sourceType);
@@ -59,8 +76,17 @@ const displayChips = computed(() => {
     return chips;
   }
 
-  const entity = formatBillKernelSourceEntityFallback(props.sourceType, props.sourceId);
-  if (entity) chips.push(entity);
+  if (props.sourceType === 'shop_order') {
+    const no = shopOrderNo.value?.trim();
+    if (no) chips.push(no);
+    else {
+      const entity = formatBillKernelSourceEntityFallback(props.sourceType, props.sourceId);
+      if (entity) chips.push(entity);
+    }
+  } else {
+    const entity = formatBillKernelSourceEntityFallback(props.sourceType, props.sourceId);
+    if (entity) chips.push(entity);
+  }
 
   const keyLabel = formatBillKernelSourceKey(props.sourceType, props.sourceKey, props.apKind);
   if (keyLabel) chips.push(keyLabel);

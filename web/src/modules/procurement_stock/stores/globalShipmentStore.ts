@@ -60,6 +60,7 @@ import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance'
 import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBalance';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useCargoCompanyStore } from './cargoCompanyStore';
+import { shouldSyncShipmentApBills } from '../utils/shipmentUpdateApSync';
 
 const COST_AFFECTING_ITEM_FIELDS = new Set([
   'product_weight',
@@ -69,14 +70,6 @@ const COST_AFFECTING_ITEM_FIELDS = new Set([
 ]);
 
 const COST_AFFECTING_SHIPMENT_FIELDS = new Set(['received_weight', 'total_weight_kg']);
-
-/** Weight-only header edits must not run sync_shipment_ap_bills (can mint legacy AP drafts from header totals). */
-const SHIPMENT_WEIGHT_ONLY_UPDATE_FIELDS = new Set(['received_weight', 'total_weight_kg']);
-
-const isShipmentWeightOnlyUpdate = (payload: Record<string, unknown>): boolean => {
-  const keys = Object.keys(payload).filter((key) => payload[key] !== undefined);
-  return keys.length > 0 && keys.every((key) => SHIPMENT_WEIGHT_ONLY_UPDATE_FIELDS.has(key));
-};
 
 const localCostsFromCostEntries = (
   entries: GlobalShipmentCostEntry[],
@@ -1051,7 +1044,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         if (index !== -1) {
           this.rows[index] = updated;
         }
-        if (!isShipmentWeightOnlyUpdate(payload as Record<string, unknown>)) {
+        if (shouldSyncShipmentApBills(payload as Record<string, unknown>)) {
           await this.syncShipmentApBillsQuiet(id);
         }
         return updated;
@@ -1568,7 +1561,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         }
 
         // 3. Update shipment status to Draft and stock_ready to false
-        await globalShipmentRepository.updateShipment(shipmentId, {
+        await this.updateShipment(shipmentId, {
           status: 'draft',
           stock_ready: false,
         });

@@ -249,6 +249,7 @@ export type BillDetailBundleLine = {
   global_stock_id?: number | null;
   product_id?: number | null;
   shipment_item_id?: number | null;
+  shipment_id?: number | null;
 };
 
 export type BillDetailBundle = {
@@ -297,6 +298,7 @@ export function parseBillDetailBundleFromRpc(data: unknown): BillDetailBundle {
           product_id: r.product_id == null ? null : Number(r.product_id),
           shipment_item_id:
             r.shipment_item_id == null ? null : Number(r.shipment_item_id),
+          shipment_id: r.shipment_id == null ? null : Number(r.shipment_id),
         };
       })
     : [];
@@ -365,6 +367,8 @@ const mapListGlobalInvoiceItemRow = (row: any): GlobalInvoiceItemRow => {
     unit_cost_price: row.unit_cost_price == null ? null : Number(row.unit_cost_price),
     costing,
     image_url: row.image_url || null,
+    shipment_item_id: shipmentItemId,
+    shipment_id: shipmentId,
   };
 };
 
