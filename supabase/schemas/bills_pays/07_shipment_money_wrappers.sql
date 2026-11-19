@@ -565,7 +565,6 @@ begin
           jsonb_build_object(
             'tenant_id', v_parent,
             'adapter', 'shipment_cost',
-            'parent_tenant_id', v_parent,
             'issued_by_tenant_id', v_parent,
             'shipment_id', p_shipment_id,
             'shipment_name', v_ship.name,

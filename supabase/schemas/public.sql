@@ -42808,6 +42808,10 @@ declare
   v_source_amount numeric(12, 2);
   v_pot_id bigint := p_cashbook_point_pot_id;
   v_payment_face numeric(12, 2);
+  v_bill_currency text;
+  v_due_face numeric(12, 2);
+  v_refund_face numeric(12, 2);
+  v_books_rate numeric(15, 6);
 begin
   if p_credit_note_id is null then
     raise exception 'credit_note_id is required';
@@ -42878,8 +42882,27 @@ begin
     raise exception 'Refund amount must be greater than zero';
   end if;
 
-  if v_refund > coalesce(v_cn.due_amount, 0.00) then
-    raise exception 'Refund % exceeds open credit % on the note', v_refund, coalesce(v_cn.due_amount, 0);
+  v_bill_currency := upper(coalesce(nullif(trim(v_cn.currency_code), ''), v_base_currency));
+  v_due_face := coalesce(v_cn.due_amount, 0);
+
+  if coalesce(v_foreign_amt, 0) > 0 then
+    v_refund_face := round(v_foreign_amt, 2);
+    if v_refund_face > v_due_face then
+      raise exception 'Refund % exceeds open credit % on the note', v_refund_face, v_due_face;
+    end if;
+  elsif v_bill_currency = v_base_currency then
+    if v_refund > v_due_face then
+      raise exception 'Refund % exceeds open credit % on the note', v_refund, v_due_face;
+    end if;
+  else
+    v_books_rate := coalesce(nullif(v_cn.books_exchange_rate, 0), nullif(p_exchange_rate, 0), 0);
+    if v_books_rate <= 0 then
+      raise exception 'exchange_rate required for % credit note refund', v_bill_currency;
+    end if;
+    v_refund_face := round(v_refund / v_books_rate, 2);
+    if v_refund_face > v_due_face then
+      raise exception 'Refund % exceeds open credit % on the note', v_refund_face, v_due_face;
+    end if;
   end if;
 
   v_source_currency := upper(trim(coalesce(p_source_currency_code, '')));

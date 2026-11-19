@@ -16,7 +16,7 @@ Parent-level finance only (wholesale, procurement, dropship). Thrift `/app/thrif
 | :--- | :--- |
 | Spec | `docs/features/reporting_treasury/spec.md` + [00-gaps](00-gaps.md) |
 | UI | `reporting_treasury/`; pays in `cashbook/` / `payments/` |
-| SQL | Report RPCs in `public.sql` / `supabase/database/schemas/public/functions/` |
+| SQL | Report RPCs in `supabase/schemas/` (e.g. `public.sql`, domain splits) |
 | Access | `app`; parent books |
 | Role | **Read** sales, cash, cashbook — do not post pays |
 

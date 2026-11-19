@@ -109,7 +109,6 @@ BEGIN
 
   RETURN jsonb_build_object(
     'tenant_id', v_tenant_id,
-    'parent_tenant_id', v_tenant_id,
     'customer_profile_id', v_customer_profile_id,
     'tenant_profile_id', v_tenant_profile_id,
     'cashbook_account_id', v_account_id,

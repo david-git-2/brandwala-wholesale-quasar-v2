@@ -44,7 +44,7 @@ const listShops = async (
 ): Promise<Shop[]> => {
   const { data, error } = await supabase.rpc('list_shops', {
     p_tenant_id: tenantId,
-    p_parent_tenant_id: opts.parentTenantId ?? null,
+    p_tenant_id: opts.parentTenantId ?? null,
     p_limit: opts.limit ?? 200,
     p_offset: opts.offset ?? 0,
     p_search: opts.search ?? null,
@@ -567,7 +567,7 @@ const listShopOrdersStaffPage = async (
 ): Promise<StaffOrdersStaffPageResult> => {
   const { data, error } = await supabase.rpc('list_shop_orders_staff_page', {
     p_tenant_id: tenantId,
-    p_parent_tenant_id: opts.parentTenantId ?? null,
+    p_tenant_id: opts.parentTenantId ?? null,
     p_limit: opts.limit ?? 30,
     p_search: opts.search ?? null,
     p_status: opts.status ?? null,

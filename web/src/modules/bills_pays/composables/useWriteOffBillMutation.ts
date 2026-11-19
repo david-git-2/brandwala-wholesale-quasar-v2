@@ -20,7 +20,7 @@ export function useWriteOffBillMutation(parentBillId: () => number | null) {
     mutationFn: async (payload: WriteOffBillInput) => {
       const tenantId =
         payload.tenantId
-        ?? authStore.selectedTenant?.parent_tenant_id
+        ?? authStore.selectedTenant?.parent_id
         ?? authStore.selectedTenant?.id
         ?? 0;
       if (!tenantId) throw new Error('Tenant not ready.');

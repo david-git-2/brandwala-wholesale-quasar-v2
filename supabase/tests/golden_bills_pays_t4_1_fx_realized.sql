@@ -23,7 +23,7 @@ BEGIN
   VALUES ('BD', 'Bangladesh', true, false, 'Asia')
   ON CONFLICT (code) DO NOTHING;
 
-  INSERT INTO public.vendors (parent_tenant_id, name, code, market_code, is_default)
+  INSERT INTO public.vendors (tenant_id, name, code, market_code, is_default)
   VALUES (v_tenant, 'pgTAP Vendor', 'PGTAPV', 'BD', true)
   RETURNING id INTO v_vendor_id;
 
@@ -53,11 +53,11 @@ BEGIN
   v_bill_id := v_bill.id;
 
   INSERT INTO public.bill_lines (
-    parent_tenant_id, invoice_id, line_kind, name_snapshot,
+    tenant_id, invoice_id, line_kind, name_snapshot,
     quantity, sell_price_amount, line_discount_amount, line_total_amount
   )
   VALUES (
-    v_bill.parent_tenant_id, v_bill_id, 'description', 'Freight',
+    v_bill.tenant_id, v_bill_id, 'description', 'Freight',
     1, 12000.00, 0, 12000.00
   );
 

@@ -27,7 +27,7 @@ export function useCreateBillAdjustmentMutation(parentBillId: () => number | nul
     mutationFn: async (payload: CreateBillAdjustmentInput) => {
       const tenantId =
         payload.tenantId
-        ?? authStore.selectedTenant?.parent_tenant_id
+        ?? authStore.selectedTenant?.parent_id
         ?? authStore.selectedTenant?.id
         ?? 0;
       if (!tenantId) throw new Error('Tenant not ready.');

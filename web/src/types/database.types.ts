@@ -653,27 +653,27 @@ isOneToOne: false
                   ]
                 },"delivery_paper": {
                   Row: {
-                    "created_at": string,"delivery_date": string | null,"dispatched_at": string | null,"id": number,"note": string | null,"parent_tenant_id": number,"profile_id": number | null,"source_id": number,"source_type": Database["public"]['Enums']["delivery_paper_source_type"],"status": Database["public"]['Enums']["delivery_paper_status"],"updated_at": string
+                    "created_at": string,"delivery_date": string | null,"dispatched_at": string | null,"id": number,"note": string | null,"profile_id": number | null,"source_id": number,"source_type": Database["public"]['Enums']["delivery_paper_source_type"],"status": Database["public"]['Enums']["delivery_paper_status"],"tenant_id": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"delivery_date"?: string | null,"dispatched_at"?: string | null,"id"?: number,"note"?: string | null,"parent_tenant_id": number,"profile_id"?: number | null,"source_id": number,"source_type": Database["public"]['Enums']["delivery_paper_source_type"],"status"?: Database["public"]['Enums']["delivery_paper_status"],"updated_at"?: string
+                    "created_at"?: string,"delivery_date"?: string | null,"dispatched_at"?: string | null,"id"?: number,"note"?: string | null,"profile_id"?: number | null,"source_id": number,"source_type": Database["public"]['Enums']["delivery_paper_source_type"],"status"?: Database["public"]['Enums']["delivery_paper_status"],"tenant_id": number,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"delivery_date"?: string | null,"dispatched_at"?: string | null,"id"?: number,"note"?: string | null,"parent_tenant_id"?: number,"profile_id"?: number | null,"source_id"?: number,"source_type"?: Database["public"]['Enums']["delivery_paper_source_type"],"status"?: Database["public"]['Enums']["delivery_paper_status"],"updated_at"?: string
+                    "created_at"?: string,"delivery_date"?: string | null,"dispatched_at"?: string | null,"id"?: number,"note"?: string | null,"profile_id"?: number | null,"source_id"?: number,"source_type"?: Database["public"]['Enums']["delivery_paper_source_type"],"status"?: Database["public"]['Enums']["delivery_paper_status"],"tenant_id"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     {
-      foreignKeyName: "delivery_paper_parent_tenant_id_fkey"
-      columns: ["parent_tenant_id"]
-isOneToOne: false
-      referencedRelation: "tenants"
-      referencedColumns: ["id"]
-    },{
       foreignKeyName: "delivery_paper_profile_id_fkey"
       columns: ["profile_id"]
 isOneToOne: false
       referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "delivery_paper_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
       referencedColumns: ["id"]
     }
                   ]
@@ -1895,23 +1895,17 @@ isOneToOne: false
                   ]
                 },"preorder_demand": {
                   Row: {
-                    "confirmed_quantity": number,"created_at": string,"delivered_quantity": number,"id": number,"notes": string | null,"open_quantity": number,"parent_tenant_id": number | null,"placed_quantity": number,"profile_id": number | null,"source_id": number,"source_type": Database["public"]['Enums']["preorder_demand_source_type"],"stock_picks": NonNullable<Json>,"tenant_id": number,"updated_at": string,"updated_by_user_id": string | null,"vendor_id": number | null,"vendor_placements": NonNullable<Json>
+                    "confirmed_quantity": number,"created_at": string,"delivered_quantity": number,"id": number,"notes": string | null,"open_quantity": number,"placed_quantity": number,"profile_id": number | null,"source_id": number,"source_type": Database["public"]['Enums']["preorder_demand_source_type"],"stock_picks": NonNullable<Json>,"tenant_id": number,"updated_at": string,"updated_by_user_id": string | null,"vendor_id": number | null,"vendor_placements": NonNullable<Json>
                   }
                   ComputedFields: never
                   Insert: {
-                    "confirmed_quantity"?: number,"created_at"?: string,"delivered_quantity"?: number,"id"?: never,"notes"?: string | null,"open_quantity"?: number,"parent_tenant_id"?: number | null,"placed_quantity"?: number,"profile_id"?: number | null,"source_id": number,"source_type": Database["public"]['Enums']["preorder_demand_source_type"],"stock_picks"?: NonNullable<Json>,"tenant_id": number,"updated_at"?: string,"updated_by_user_id"?: string | null,"vendor_id"?: number | null,"vendor_placements"?: NonNullable<Json>
+                    "confirmed_quantity"?: number,"created_at"?: string,"delivered_quantity"?: number,"id"?: never,"notes"?: string | null,"open_quantity"?: number,"placed_quantity"?: number,"profile_id"?: number | null,"source_id": number,"source_type": Database["public"]['Enums']["preorder_demand_source_type"],"stock_picks"?: NonNullable<Json>,"tenant_id": number,"updated_at"?: string,"updated_by_user_id"?: string | null,"vendor_id"?: number | null,"vendor_placements"?: NonNullable<Json>
                   }
                   Update: {
-                    "confirmed_quantity"?: number,"created_at"?: string,"delivered_quantity"?: number,"id"?: never,"notes"?: string | null,"open_quantity"?: number,"parent_tenant_id"?: number | null,"placed_quantity"?: number,"profile_id"?: number | null,"source_id"?: number,"source_type"?: Database["public"]['Enums']["preorder_demand_source_type"],"stock_picks"?: NonNullable<Json>,"tenant_id"?: number,"updated_at"?: string,"updated_by_user_id"?: string | null,"vendor_id"?: number | null,"vendor_placements"?: NonNullable<Json>
+                    "confirmed_quantity"?: number,"created_at"?: string,"delivered_quantity"?: number,"id"?: never,"notes"?: string | null,"open_quantity"?: number,"placed_quantity"?: number,"profile_id"?: number | null,"source_id"?: number,"source_type"?: Database["public"]['Enums']["preorder_demand_source_type"],"stock_picks"?: NonNullable<Json>,"tenant_id"?: number,"updated_at"?: string,"updated_by_user_id"?: string | null,"vendor_id"?: number | null,"vendor_placements"?: NonNullable<Json>
                   }
                   Relationships: [
                     {
-      foreignKeyName: "preorder_demand_parent_tenant_id_fkey"
-      columns: ["parent_tenant_id"]
-isOneToOne: false
-      referencedRelation: "tenants"
-      referencedColumns: ["id"]
-    },{
       foreignKeyName: "preorder_demand_profile_id_fkey"
       columns: ["profile_id"]
 isOneToOne: false
@@ -3177,14 +3171,14 @@ isOneToOne: false
                   ]
                 },"stock_physical_counts": {
                   Row: {
-                    "approved_at": string | null,"created_at": string,"created_by_email": string | null,"id": number,"location_id": number | null,"movement_id": number | null,"notes": string | null,"parent_tenant_id": number,"status": Database["public"]['Enums']["stock_physical_count_status"],"submitted_at": string | null,"updated_at": string
+                    "approved_at": string | null,"created_at": string,"created_by_email": string | null,"id": number,"location_id": number | null,"movement_id": number | null,"notes": string | null,"status": Database["public"]['Enums']["stock_physical_count_status"],"submitted_at": string | null,"tenant_id": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "approved_at"?: string | null,"created_at"?: string,"created_by_email"?: string | null,"id"?: number,"location_id"?: number | null,"movement_id"?: number | null,"notes"?: string | null,"parent_tenant_id": number,"status"?: Database["public"]['Enums']["stock_physical_count_status"],"submitted_at"?: string | null,"updated_at"?: string
+                    "approved_at"?: string | null,"created_at"?: string,"created_by_email"?: string | null,"id"?: number,"location_id"?: number | null,"movement_id"?: number | null,"notes"?: string | null,"status"?: Database["public"]['Enums']["stock_physical_count_status"],"submitted_at"?: string | null,"tenant_id": number,"updated_at"?: string
                   }
                   Update: {
-                    "approved_at"?: string | null,"created_at"?: string,"created_by_email"?: string | null,"id"?: number,"location_id"?: number | null,"movement_id"?: number | null,"notes"?: string | null,"parent_tenant_id"?: number,"status"?: Database["public"]['Enums']["stock_physical_count_status"],"submitted_at"?: string | null,"updated_at"?: string
+                    "approved_at"?: string | null,"created_at"?: string,"created_by_email"?: string | null,"id"?: number,"location_id"?: number | null,"movement_id"?: number | null,"notes"?: string | null,"status"?: Database["public"]['Enums']["stock_physical_count_status"],"submitted_at"?: string | null,"tenant_id"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -3200,8 +3194,8 @@ isOneToOne: false
       referencedRelation: "stock_movements"
       referencedColumns: ["id"]
     },{
-      foreignKeyName: "stock_physical_counts_parent_tenant_id_fkey"
-      columns: ["parent_tenant_id"]
+      foreignKeyName: "stock_physical_counts_tenant_id_fkey"
+      columns: ["tenant_id"]
 isOneToOne: false
       referencedRelation: "tenants"
       referencedColumns: ["id"]
@@ -4194,14 +4188,14 @@ isOneToOne: false
                   ]
                 },"bills": {
                   Row: {
-                    "ap_kind": string | null,"ap_shipment_id": number | null,"books_exchange_rate": number | null,"channel_meta": Json | null,"charges_amount": number | null,"collection_source": Database["public"]['Enums']["collection_source_type"] | null,"created_at": string | null,"created_by": string | null,"currency_code": string | null,"discount_amount": number | null,"document_kind": Database["public"]['Enums']["bill_document_kind"] | null,"due_amount": number | null,"due_date": string | null,"from_profile_id": number | null,"id": number | null,"invoice_date": string | null,"invoice_no": string | null,"invoice_status": Database["public"]['Enums']["global_invoice_status"] | null,"invoice_type": Database["public"]['Enums']["global_invoice_type"] | null,"issued_by_tenant_id": number | null,"note": string | null,"paid_amount": number | null,"parent_bill_id": number | null,"parent_tenant_id": number | null,"payment_status": string | null,"print_charge": number | null,"profile_id": number | null,"recipient_address": string | null,"recipient_name": string | null,"recipient_phone": string | null,"recipient_profile_id": number | null,"retail_billing_mode": Database["public"]['Enums']["retail_billing_mode"] | null,"settlement_kind": Database["public"]['Enums']["bill_settlement_kind"] | null,"shipping_charge": number | null,"shop_order_id": number | null,"source_id": string | null,"source_key": string | null,"source_type": string | null,"subtotal_amount": number | null,"tenant_id": number | null,"to_profile_id": number | null,"total_amount": number | null,"txn_currency_code": string | null,"txn_total_amount": number | null,"updated_at": string | null,"wrapping_charge": number | null,"written_off_amount": number | null
+                    "ap_kind": string | null,"ap_shipment_id": number | null,"books_exchange_rate": number | null,"channel_meta": Json | null,"charges_amount": number | null,"collection_source": Database["public"]['Enums']["collection_source_type"] | null,"created_at": string | null,"created_by": string | null,"currency_code": string | null,"discount_amount": number | null,"document_kind": Database["public"]['Enums']["bill_document_kind"] | null,"due_amount": number | null,"due_date": string | null,"from_profile_id": number | null,"id": number | null,"invoice_date": string | null,"invoice_no": string | null,"invoice_status": Database["public"]['Enums']["global_invoice_status"] | null,"invoice_type": Database["public"]['Enums']["global_invoice_type"] | null,"issued_by_tenant_id": number | null,"note": string | null,"paid_amount": number | null,"parent_bill_id": number | null,"payment_status": string | null,"print_charge": number | null,"profile_id": number | null,"recipient_address": string | null,"recipient_name": string | null,"recipient_phone": string | null,"recipient_profile_id": number | null,"retail_billing_mode": Database["public"]['Enums']["retail_billing_mode"] | null,"settlement_kind": Database["public"]['Enums']["bill_settlement_kind"] | null,"shipping_charge": number | null,"shop_order_id": number | null,"source_id": string | null,"source_key": string | null,"source_type": string | null,"subtotal_amount": number | null,"tenant_id": number | null,"to_profile_id": number | null,"total_amount": number | null,"txn_currency_code": string | null,"txn_total_amount": number | null,"updated_at": string | null,"wrapping_charge": number | null,"written_off_amount": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                           "ap_kind"?: never,"ap_shipment_id"?: never,"books_exchange_rate"?: never,"channel_meta"?: never,"charges_amount"?: never,"collection_source"?: never,"created_at"?: string | null,"created_by"?: string | null,"currency_code"?: never,"discount_amount"?: never,"document_kind"?: never,"due_amount"?: number | null,"due_date"?: string | null,"from_profile_id"?: number | null,"id"?: number | null,"invoice_date"?: never,"invoice_no"?: never,"invoice_status"?: never,"invoice_type"?: never,"issued_by_tenant_id"?: number | null,"note"?: string | null,"paid_amount"?: never,"parent_bill_id"?: number | null,"parent_tenant_id"?: number | null,"payment_status"?: never,"print_charge"?: never,"profile_id"?: never,"recipient_address"?: never,"recipient_name"?: never,"recipient_phone"?: never,"recipient_profile_id"?: never,"retail_billing_mode"?: never,"settlement_kind"?: never,"shipping_charge"?: never,"shop_order_id"?: never,"source_id"?: string | null,"source_key"?: string | null,"source_type"?: string | null,"subtotal_amount"?: never,"tenant_id"?: number | null,"to_profile_id"?: number | null,"total_amount"?: number | null,"txn_currency_code"?: never,"txn_total_amount"?: never,"updated_at"?: string | null,"wrapping_charge"?: never,"written_off_amount"?: never
+                           "ap_kind"?: never,"ap_shipment_id"?: never,"books_exchange_rate"?: never,"channel_meta"?: never,"charges_amount"?: never,"collection_source"?: never,"created_at"?: string | null,"created_by"?: string | null,"currency_code"?: never,"discount_amount"?: never,"document_kind"?: never,"due_amount"?: number | null,"due_date"?: string | null,"from_profile_id"?: number | null,"id"?: number | null,"invoice_date"?: never,"invoice_no"?: never,"invoice_status"?: never,"invoice_type"?: never,"issued_by_tenant_id"?: number | null,"note"?: string | null,"paid_amount"?: never,"parent_bill_id"?: number | null,"payment_status"?: never,"print_charge"?: never,"profile_id"?: never,"recipient_address"?: never,"recipient_name"?: never,"recipient_phone"?: never,"recipient_profile_id"?: never,"retail_billing_mode"?: never,"settlement_kind"?: never,"shipping_charge"?: never,"shop_order_id"?: never,"source_id"?: string | null,"source_key"?: string | null,"source_type"?: string | null,"subtotal_amount"?: never,"tenant_id"?: number | null,"to_profile_id"?: number | null,"total_amount"?: number | null,"txn_currency_code"?: never,"txn_total_amount"?: never,"updated_at"?: string | null,"wrapping_charge"?: never,"written_off_amount"?: never
                          }
                         Update: {
-                           "ap_kind"?: never,"ap_shipment_id"?: never,"books_exchange_rate"?: never,"channel_meta"?: never,"charges_amount"?: never,"collection_source"?: never,"created_at"?: string | null,"created_by"?: string | null,"currency_code"?: never,"discount_amount"?: never,"document_kind"?: never,"due_amount"?: number | null,"due_date"?: string | null,"from_profile_id"?: number | null,"id"?: number | null,"invoice_date"?: never,"invoice_no"?: never,"invoice_status"?: never,"invoice_type"?: never,"issued_by_tenant_id"?: number | null,"note"?: string | null,"paid_amount"?: never,"parent_bill_id"?: number | null,"parent_tenant_id"?: number | null,"payment_status"?: never,"print_charge"?: never,"profile_id"?: never,"recipient_address"?: never,"recipient_name"?: never,"recipient_phone"?: never,"recipient_profile_id"?: never,"retail_billing_mode"?: never,"settlement_kind"?: never,"shipping_charge"?: never,"shop_order_id"?: never,"source_id"?: string | null,"source_key"?: string | null,"source_type"?: string | null,"subtotal_amount"?: never,"tenant_id"?: number | null,"to_profile_id"?: number | null,"total_amount"?: number | null,"txn_currency_code"?: never,"txn_total_amount"?: never,"updated_at"?: string | null,"wrapping_charge"?: never,"written_off_amount"?: never
+                           "ap_kind"?: never,"ap_shipment_id"?: never,"books_exchange_rate"?: never,"channel_meta"?: never,"charges_amount"?: never,"collection_source"?: never,"created_at"?: string | null,"created_by"?: string | null,"currency_code"?: never,"discount_amount"?: never,"document_kind"?: never,"due_amount"?: number | null,"due_date"?: string | null,"from_profile_id"?: number | null,"id"?: number | null,"invoice_date"?: never,"invoice_no"?: never,"invoice_status"?: never,"invoice_type"?: never,"issued_by_tenant_id"?: number | null,"note"?: string | null,"paid_amount"?: never,"parent_bill_id"?: number | null,"payment_status"?: never,"print_charge"?: never,"profile_id"?: never,"recipient_address"?: never,"recipient_name"?: never,"recipient_phone"?: never,"recipient_profile_id"?: never,"retail_billing_mode"?: never,"settlement_kind"?: never,"shipping_charge"?: never,"shop_order_id"?: never,"source_id"?: string | null,"source_key"?: string | null,"source_type"?: string | null,"subtotal_amount"?: never,"tenant_id"?: number | null,"to_profile_id"?: number | null,"total_amount"?: number | null,"txn_currency_code"?: never,"txn_total_amount"?: never,"updated_at"?: string | null,"wrapping_charge"?: never,"written_off_amount"?: never
                          }
                         Relationships: [
                     
@@ -4870,8 +4864,6 @@ isOneToOne: false
 { Args: { "p_row": Omit<Database["public"]['Tables']["cashbook_entries"]['Row'], Database["public"]['Tables']["cashbook_entries"]['ComputedFields']> }; Returns: undefined
                            },
 "_upsert_shipment_ap_bill":
-{ Args: { "p_amount": number,"p_ap_kind": string,"p_ap_paper"?: Json,"p_issued_by_tenant_id": number,"p_keep_as_draft"?: boolean,"p_parent_tenant_id": number,"p_profile_id": number,"p_shipment_id": number,"p_shipment_name": string }; Returns: number
-                           } |
 { Args: { "p_amount": number,"p_ap_kind": string,"p_issued_by_tenant_id": number,"p_profile_id": number,"p_shipment_id": number,"p_shipment_name": string,"p_tenant_id": number }; Returns: number
                            } |
 { Args: { "p_amount": number,"p_ap_kind": string,"p_ap_paper"?: Json,"p_issued_by_tenant_id": number,"p_keep_as_draft"?: boolean,"p_profile_id": number,"p_shipment_id": number,"p_shipment_name": string,"p_source_key"?: string,"p_tenant_id": number }; Returns: number
@@ -6716,7 +6708,6 @@ isOneToOne: false
 "note": string | null,
 "paid_amount": number | null,
 "parent_bill_id": number | null,
-"parent_tenant_id": number | null,
 "payment_status": string | null,
 "print_charge": number | null,
 "profile_id": number | null,
@@ -6790,7 +6781,6 @@ isOneToOne: false
 "note": string | null,
 "paid_amount": number | null,
 "parent_bill_id": number | null,
-"parent_tenant_id": number | null,
 "payment_status": string | null,
 "print_charge": number | null,
 "profile_id": number | null,
@@ -6846,7 +6836,6 @@ isOneToOne: false
 "note": string | null,
 "paid_amount": number | null,
 "parent_bill_id": number | null,
-"parent_tenant_id": number | null,
 "payment_status": string | null,
 "print_charge": number | null,
 "profile_id": number | null,
@@ -7309,7 +7298,7 @@ isOneToOne: false
             }[]
                            },
 "list_shop_orders_staff_page":
-{ Args: { "p_cursor_created_at"?: string,"p_cursor_id"?: number,"p_limit"?: number,"p_parent_tenant_id"?: number,"p_profile_id"?: number,"p_search"?: string,"p_shop_id"?: number,"p_shop_type"?: string,"p_status"?: string,"p_tenant_id": number }; Returns: Json
+{ Args: { "p_cursor_created_at"?: string,"p_cursor_id"?: number,"p_limit"?: number,"p_search"?: string,"p_shop_id"?: number,"p_shop_type"?: string,"p_status"?: string,"p_tenant_id": number }; Returns: Json
                            },
 "list_shop_product_listings":
 { Args: { "p_shop_id": number }; Returns: {
@@ -7594,7 +7583,6 @@ isOneToOne: false
 "note": string | null,
 "paid_amount": number | null,
 "parent_bill_id": number | null,
-"parent_tenant_id": number | null,
 "payment_status": string | null,
 "print_charge": number | null,
 "profile_id": number | null,
@@ -7758,7 +7746,7 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } } |
-{ Args: { "p_allocations"?: Json,"p_credit_dropship_profit"?: boolean,"p_exchange_rate"?: number,"p_foreign_amount"?: number,"p_instruments"?: Json,"p_note"?: string,"p_profile_id": number,"p_received_on": string,"p_reference"?: string,"p_settlement_currency_code"?: string,"p_shop_order_id"?: number,"p_source"?: string,"p_tenant_id": number }; Returns: {
+{ Args: { "p_allocations"?: Json,"p_credit_dropship_profit"?: boolean,"p_exchange_rate"?: number,"p_foreign_amount"?: number,"p_idempotency_key"?: string,"p_instruments"?: Json,"p_note"?: string,"p_profile_id": number,"p_received_on": string,"p_reference"?: string,"p_settlement_currency_code"?: string,"p_shop_order_id"?: number,"p_source"?: string,"p_tenant_id": number }; Returns: {
               "amount": number,
 "cashbook_point_id": number | null,
 "cashbook_point_pot_id": number | null,
@@ -9190,7 +9178,6 @@ isOneToOne: false
 "id": number,
 "notes": string | null,
 "open_quantity": number,
-"parent_tenant_id": number | null,
 "placed_quantity": number,
 "profile_id": number | null,
 "source_id": number,
@@ -9215,7 +9202,6 @@ isOneToOne: false
 "id": number,
 "notes": string | null,
 "open_quantity": number,
-"parent_tenant_id": number | null,
 "placed_quantity": number,
 "profile_id": number | null,
 "source_id": number,

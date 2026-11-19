@@ -109,8 +109,7 @@ SELECT
   upper(COALESCE(kb.currency_code, 'BDT')) AS currency_code,
   NULLIF(kb.meta->>'txn_currency_code', '') AS txn_currency_code,
   COALESCE((kb.meta->>'txn_total_amount')::numeric(12, 2), kb.total_amount) AS txn_total_amount,
-  COALESCE((kb.meta->>'books_exchange_rate')::numeric(15, 6), 1::numeric(15, 6)) AS books_exchange_rate,
-  kb.tenant_id AS parent_tenant_id
+  COALESCE((kb.meta->>'books_exchange_rate')::numeric(15, 6), 1::numeric(15, 6)) AS books_exchange_rate
 FROM money_kernel.bills kb;
 
 CREATE OR REPLACE VIEW public.bill_lines

@@ -130,7 +130,6 @@ BEGIN
 
   INSERT INTO public.shops (
     tenant_id,
-    parent_tenant_id,
     name,
     slug,
     shop_type,
@@ -144,7 +143,6 @@ BEGIN
     is_active
   )
   VALUES (
-    v_tenant,
     v_tenant,
     'pgTAP Dropship',
     'pgtap-ds-' || substr(md5(random()::text), 1, 8),
@@ -182,7 +180,7 @@ BEGIN
 
   INSERT INTO public.products (
     name,
-    parent_tenant_id,
+    tenant_id,
     inserted_by_tenant_id,
     source,
     is_available
@@ -198,7 +196,6 @@ BEGIN
 
   INSERT INTO public.shop_orders (
     tenant_id,
-    parent_tenant_id,
     shop_id,
     order_no,
     name,
@@ -222,7 +219,6 @@ BEGIN
     courier_name
   )
   VALUES (
-    v_tenant,
     v_tenant,
     v_shop_id,
     v_order_no,
@@ -283,7 +279,7 @@ BEGIN
   );
 
   INSERT INTO public.bill_lines (
-    parent_tenant_id,
+    tenant_id,
     invoice_id,
     line_kind,
     name_snapshot,
@@ -293,7 +289,7 @@ BEGIN
     line_total_amount
   )
   VALUES (
-    v_bill.parent_tenant_id,
+    v_bill.tenant_id,
     v_bill.id,
     'description',
     'pgTAP dropship sales',

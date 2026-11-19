@@ -51,7 +51,7 @@ BEGIN
     SELECT 1
     FROM public.cashbook_entries ce
     JOIN public.cashbook_accounts ca
-      ON ca.parent_tenant_id = ce.parent_tenant_id
+      ON ca.tenant_id = ce.tenant_id
      AND ca.entity_type = ce.entity_type
      AND ca.entity_id = ce.entity_id
      AND ca.currency_code = ce.currency_code
@@ -108,7 +108,7 @@ BEGIN
 
   SELECT coalesce(ca.available_balance, 0) INTO v_custody
   FROM public.cashbook_accounts ca
-  WHERE ca.parent_tenant_id = v_tenant
+  WHERE ca.tenant_id = v_tenant
     AND ca.entity_type = 'customer'
     AND ca.entity_id = v_merchant
     AND ca.currency_code = 'BDT'

@@ -47,6 +47,7 @@
     "backend:reset": "bash scripts/supabase-local.sh reset",
     "backend:local": "bash scripts/supabase-local.sh migrate",
     "backend:test": "supabase test db",
+    "check:tenant-naming": "bash scripts/check-no-parent-tenant-id.sh",
     "verify:money": "node scripts/verify-money.mjs",
     "backend:configure-dispatch": "bash scripts/supabase-local.sh configure-dispatch",
     "backend:env:print": "bash scripts/supabase-local.sh env:print",
