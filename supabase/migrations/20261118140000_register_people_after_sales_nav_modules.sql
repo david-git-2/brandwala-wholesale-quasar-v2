@@ -3,6 +3,21 @@
 
 BEGIN;
 
+-- Parent must exist before after_sales FK (prod may have module rows only from legacy seeds).
+INSERT INTO public.modules (key, name, description, is_active, parent_module_key)
+VALUES (
+  'sales_invoice',
+  'Sales & Invoice',
+  'Parent module for sales invoices, billing profiles, recipient profiles, and invoice brands.',
+  true,
+  NULL
+)
+ON CONFLICT (key) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  is_active = EXCLUDED.is_active,
+  parent_module_key = EXCLUDED.parent_module_key;
+
 INSERT INTO public.modules (key, name, description, is_active, parent_module_key)
 VALUES
   (

@@ -38,6 +38,8 @@ const props = defineProps<{
   totalSell: number;
   totalCost: number;
   profit: number;
+  hasVendorCredits?: boolean;
+  grossCost?: number;
 }>();
 
 const hasData = computed(() => props.totalSell > 0.009 || props.totalCost > 0.009);
@@ -46,18 +48,22 @@ function money(n: number) {
   return formatSettlementCurrencyAmount(n, 'BDT');
 }
 
-const formulaLine = computed(
-  () => `${money(props.totalSell)} earned − ${money(props.totalCost)} spent = ${money(props.profit)} profit`,
-);
+const formulaLine = computed(() => {
+  const base = `${money(props.totalSell)} earned − ${money(props.totalCost)} spent = ${money(props.profit)} ${props.hasVendorCredits ? 'net profit' : 'profit'}`;
+  if (props.hasVendorCredits && props.grossCost != null && props.grossCost > props.totalCost + 0.009) {
+    return `${base} (gross cost ${money(props.grossCost)})`;
+  }
+  return base;
+});
 
 const chartHeight = computed(() => {
-  const costCount = props.steps.filter((s) => s.kind === 'cost').length;
+  const costCount = props.steps.filter((s) => s.kind === 'cost' || s.kind === 'credit').length;
   return Math.min(320, Math.max(200, 44 * (2 + costCount)));
 });
 
 const chartData = computed((): ChartData<'bar'> => {
   const sell = props.totalSell;
-  const costSteps = props.steps.filter((s) => s.kind === 'cost');
+  const midSteps = props.steps.filter((s) => s.kind === 'cost' || s.kind === 'credit');
   const labels: string[] = [];
   const floating: [number, number][] = [];
   const bg: string[] = [];
@@ -69,12 +75,19 @@ const chartData = computed((): ChartData<'bar'> => {
   borders.push(colorFromToken('--tf-info', 1));
 
   let cursor = sell;
-  for (const c of costSteps) {
+  for (const c of midSteps) {
     labels.push(c.label);
-    floating.push([cursor - c.amount, cursor]);
-    cursor -= c.amount;
-    bg.push(colorForCostKind(c.key, 0.82));
-    borders.push(colorForCostKind(c.key, 1));
+    if (c.kind === 'credit') {
+      floating.push([cursor, cursor + c.amount]);
+      cursor += c.amount;
+      bg.push(colorFromToken('--tf-positive-soft', 0.95, '#dcfce7'));
+      borders.push(colorFromToken('--tf-positive', 1, '#16a34a'));
+    } else {
+      floating.push([cursor - c.amount, cursor]);
+      cursor -= c.amount;
+      bg.push(colorForCostKind(c.key, 0.82));
+      borders.push(colorForCostKind(c.key, 1));
+    }
   }
 
   const profit = props.profit;

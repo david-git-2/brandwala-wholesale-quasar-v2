@@ -109,6 +109,15 @@
                 @click="onPickLastAllLines"
               />
               <TfBtn
+                v-if="paper?.status === 'dispatched' && canEditOutcomeQty"
+                variant="secondary"
+                size="md"
+                icon="ph ph-arrow-right"
+                label="Prefill accepted"
+                :disable="visibleItems.length === 0"
+                @click="onPrefillAccepted"
+              />
+              <TfBtn
                 v-if="canSaveLines && documentDirty"
                 variant="primary"
                 size="md"
@@ -298,6 +307,7 @@ const {
   isUpdatingStatus,
   onStatusQtyInput,
   applyStockPicks,
+  prefillAcceptedFromPacked,
   save,
   updatePaperStatus,
   buildOutcomeAllocationRows,
@@ -460,13 +470,25 @@ const isPickLastBusy = ref(false);
 const packedQtyForItem = (item: DeliveryPaperDetailItem) =>
   deliveryPaperLinePackedDisplayQty(item, getDraft(item));
 
+const deliveryPaperPickLineKey = (row: {
+  preorder_demand_id?: number | null;
+  source_type?: string | null;
+  source_id?: number | null;
+}) =>
+  row.preorder_demand_id != null
+    ? `demand:${row.preorder_demand_id}`
+    : `src:${row.source_type ?? ''}:${row.source_id ?? ''}`;
+
+const deliveryPaperItemPickKey = (item: DeliveryPaperDetailItem) =>
+  deliveryPaperPickLineKey(item);
+
 const buildLastLotLineInputs = (targetItems: DeliveryPaperDetailItem[]) =>
-  targetItems
-    .filter((line) => line.preorder_demand_id != null)
-    .map((line) => ({
-      preorder_demand_id: line.preorder_demand_id!,
-      packed_on_this_paper: packedQtyForItem(line),
-    }));
+  targetItems.map((line) => ({
+    ...(line.preorder_demand_id != null ? { preorder_demand_id: line.preorder_demand_id } : {}),
+    source_type: line.source_type,
+    source_id: line.source_id,
+    packed_on_this_paper: packedQtyForItem(line),
+  }));
 
 const applyLastLotPicks = async (targetItems: DeliveryPaperDetailItem[]): Promise<number> => {
   if (!canPickStock.value) return 0;
@@ -491,10 +513,14 @@ const applyLastLotPicks = async (targetItems: DeliveryPaperDetailItem[]): Promis
     lines: buildLastLotLineInputs(eligible),
   });
 
-  const byDemandId = new Map(eligible.map((item) => [item.preorder_demand_id!, item]));
+  const byPickKey = new Map(eligible.map((item) => [deliveryPaperItemPickKey(item), item]));
   let applied = 0;
   for (const row of picks) {
-    const item = byDemandId.get(row.preorder_demand_id);
+    const item =
+      byPickKey.get(deliveryPaperPickLineKey(row)) ??
+      (row.preorder_demand_id != null
+        ? eligible.find((line) => line.preorder_demand_id === row.preorder_demand_id)
+        : undefined);
     if (!item) continue;
     const cap = getDeliveryPaperLinePickCap(item);
     const pick = {
@@ -543,6 +569,19 @@ const onPickLastAllLines = async () => {
   } finally {
     isPickLastBusy.value = false;
   }
+};
+
+const onPrefillAccepted = () => {
+  const updated = prefillAcceptedFromPacked(visibleItems.value);
+  if (updated === 0) {
+    showErrorNotification('No lines with packed quantity to accept.');
+    return;
+  }
+  showSuccessNotification(
+    updated === 1
+      ? 'Accepted prefilled from packed on 1 line.'
+      : `Accepted prefilled from packed on ${updated} lines.`,
+  );
 };
 
 const onSave = async () => {

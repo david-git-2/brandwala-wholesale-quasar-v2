@@ -1,5 +1,6 @@
 <template>
   <FinanceReportFrame
+    layout="document"
     :loading="isLoading"
     :error="error ? (error as Error).message : null"
     @refresh="() => refetch()"
@@ -16,43 +17,43 @@
       />
     </template>
 
-    <div v-if="!isLoading && detail" class="detail-scroll">
-      <div class="detail-inner column q-gutter-y-md">
-        <ShipmentReportHeaderStrip
-          v-if="detail.header?.shipment_id"
-          :header="detail.header"
-          :procurement-route="canOpenProcurement ? procurementShipmentRoute : null"
-        />
-        <ShipmentReportVerdict :verdict="verdict" />
-        <ShipmentReportKpiRow
-          :primary-kpis="primaryKpis"
-          :secondary-kpis="secondaryKpis"
-        />
-        <ShipmentReportProfitBridge
-          :steps="bridgeSteps"
-          :total-sell="matrix.total_sell_bdt"
-          :total-cost="matrix.total_cost_bdt"
-          :profit="matrix.profit_loss_bdt"
-        />
-        <div class="row q-col-gutter-md">
-          <div class="col-12 col-md-6">
-            <ShipmentReportCostDonut :slices="donutSlices" :total-cost-bdt="matrix.total_cost_bdt" />
-          </div>
-          <div class="col-12 col-md-6">
-            <ShipmentReportPiecesBar
-              :segments="pieceSegments"
-              :ordered="qty.should_arrive"
-              :arrived="qty.arrived"
-            />
-          </div>
+    <div v-if="!isLoading && detail" class="column q-gutter-y-md shipment-detail-root">
+      <ShipmentReportHeaderStrip
+        v-if="detail.header?.shipment_id"
+        :header="detail.header"
+        :procurement-route="canOpenProcurement ? procurementShipmentRoute : null"
+      />
+      <ShipmentReportVerdict :verdict="verdict" />
+      <ShipmentReportKpiRow
+        :primary-kpis="primaryKpis"
+        :secondary-kpis="secondaryKpis"
+      />
+      <ShipmentReportProfitBridge
+        :steps="bridgeSteps"
+        :total-sell="matrix.total_sell_bdt"
+        :total-cost="bridgeTotalCost"
+        :gross-cost="matrix.total_cost_bdt"
+        :profit="displayProfitBdt"
+        :has-vendor-credits="hasVendorCredits"
+      />
+      <div class="row q-col-gutter-md">
+        <div class="col-12 col-md-6">
+          <ShipmentReportCostDonut :slices="donutSlices" :total-cost-bdt="matrix.total_cost_bdt" />
         </div>
-
-        <ShipmentReportDetailTabs
-          :detail="detail"
-          :can-view-bills="canViewBills"
-          :bill-route="billRoute"
-        />
+        <div class="col-12 col-md-6">
+          <ShipmentReportPiecesBar
+            :segments="pieceSegments"
+            :ordered="qty.should_arrive"
+            :arrived="qty.arrived"
+          />
+        </div>
       </div>
+
+      <ShipmentReportDetailTabs
+        :detail="detail"
+        :can-view-bills="canViewBills"
+        :bill-route="billRoute"
+      />
     </div>
   </FinanceReportFrame>
 </template>
@@ -93,6 +94,9 @@ const {
   donutSlices,
   pieceSegments,
   qty,
+  bridgeTotalCost,
+  displayProfitBdt,
+  hasVendorCredits,
 } = useShipmentReportView(detail);
 
 const listRoute = computed(
@@ -121,15 +125,7 @@ function billRoute(billId: number) {
 </script>
 
 <style scoped>
-.detail-scroll {
-  overflow-y: auto;
-  max-height: 100%;
-}
-
-.detail-inner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 8px;
+.shipment-detail-root {
   width: 100%;
 }
 </style>

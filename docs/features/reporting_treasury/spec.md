@@ -107,6 +107,7 @@ Build order was shipment → cash in → customers → invoice book → month sn
 - Detail route: `/app/finance/reports/shipment-report/:shipmentId` — same data as RPC; plain English sections; links to procurement / bills when grants allow.
 - Sell attribution: `bill_lines.shipment_item_id` when set; else coalesce stock / shipment line by `product_id`. **Issued only**.
 - RPC: `get_tenant_shipment_report_detail` + `get_tenant_shipment_profit_report`.
+- Detail payload includes **vendor credit notes** (child `credit_note` on batch AP), **gross and net** profit matrix fields, and `ap_books_total_bdt`.
 - [ ] Local non-capitalizable costs in P&amp;L ([RT18](00-gaps.md)).
 - [ ] **Draft:** investor capital + share-of-GP block on detail ([RT20](00-gaps.md)).
 

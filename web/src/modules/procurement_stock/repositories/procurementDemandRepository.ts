@@ -396,19 +396,25 @@ export interface DeliveryPaperDetailResponse {
 }
 
 export interface SaveDeliveryPaperDetailItem {
-  preorder_demand_id: number;
+  preorder_demand_id?: number | null;
+  source_type?: string;
+  source_id?: number;
   splits: Array<{ quantity: number; status: string }>;
   picks?: Array<{ global_stock_id: number; quantity: number }>;
   note?: string | null;
 }
 
 export interface SuggestDeliveryPaperLastLotLineInput {
-  preorder_demand_id: number;
+  preorder_demand_id?: number | null;
+  source_type?: string;
+  source_id?: number;
   packed_on_this_paper: number;
 }
 
 export interface SuggestDeliveryPaperLastLotPick {
   preorder_demand_id: number;
+  source_type?: string | null;
+  source_id?: number | null;
   global_stock_id: number;
   quantity: number;
   shipment_name: string | null;

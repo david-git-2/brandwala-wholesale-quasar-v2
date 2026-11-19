@@ -42,6 +42,13 @@ const valueClass = computed(() => {
 </script>
 
 <style scoped>
+.shipment-stat-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 72px;
+}
+
 .shipment-stat-tile__label {
   font-size: 12px;
   font-weight: 600;

@@ -19,6 +19,11 @@ const emptyProfitMatrix: ShipmentReportDetailPayload['profit_matrix'] = {
   unpaid_total_bdt: 0,
   profit_loss_bdt: 0,
   profit_loss_pct: 0,
+  vendor_credit_bdt: 0,
+  vendor_credit_count: 0,
+  net_cost_bdt: 0,
+  net_profit_loss_bdt: 0,
+  net_profit_loss_pct: 0,
 };
 
 export const shipmentReportDetailRepository = {
@@ -51,6 +56,8 @@ export const shipmentReportDetailRepository = {
       customer_bills: payload?.customer_bills ?? [],
       customer_attributed_revenue_bdt: payload?.customer_attributed_revenue_bdt ?? 0,
       exchange_rates: payload?.exchange_rates ?? null,
+      vendor_credit_notes: payload?.vendor_credit_notes ?? [],
+      ap_books_total_bdt: payload?.ap_books_total_bdt ?? 0,
     };
   },
 };

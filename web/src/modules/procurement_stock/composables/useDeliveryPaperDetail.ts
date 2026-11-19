@@ -29,6 +29,7 @@ import {
   outcomeQtyValidationMessage,
   plannedOutcomeQtyFromDraft,
   parseStatusQtyInput,
+  prefillAcceptedFromPackedDraft,
   statusQtyToSaveSplits,
   sumPackedStockPickQty,
   type DeliveryPaperLineDraftState,
@@ -174,26 +175,71 @@ export function useDeliveryPaperDetail(options: {
     markDirty();
   };
 
+  const prefillAcceptedFromPacked = (targetItems: DeliveryPaperDetailItem[]): number => {
+    if (!canEditOutcomeQty.value) return 0;
+    let updated = 0;
+    for (const item of targetItems) {
+      const draft = getDraft(item);
+      if (Math.max(0, Math.trunc(draft.packed)) <= 0) continue;
+      const next = prefillAcceptedFromPackedDraft(item, draft);
+      const changed =
+        next.accepted !== draft.accepted ||
+        next.conditioned !== draft.conditioned ||
+        next.rejected !== draft.rejected;
+      if (!changed) continue;
+      const key = itemDraftKey(item);
+      lineDrafts[key] = { ...draft, ...next };
+      updated += 1;
+    }
+    if (updated > 0) markDirty();
+    return updated;
+  };
+
+  const saveLineIdentity = (item: DeliveryPaperDetailItem): SaveDeliveryPaperDetailItem => {
+    const line: SaveDeliveryPaperDetailItem = {
+      source_type: item.source_type,
+      source_id: item.source_id,
+      splits: [],
+    };
+    if (item.preorder_demand_id != null) {
+      line.preorder_demand_id = item.preorder_demand_id;
+    }
+    return line;
+  };
+
+  const lineHasSaveableDraft = (
+    item: DeliveryPaperDetailItem,
+    draft: DeliveryPaperLineDraft,
+    outcomeOnly: boolean,
+  ): boolean => {
+    if (item.source_id == null) return false;
+    if (outcomeOnly) return true;
+    const picks = mapPackedStockPicksToSave(draft.stockPicks);
+    if (picks.length > 0) return true;
+    return statusQtyToSaveSplits(draft, true).some((split) => split.quantity > 0);
+  };
+
   const buildSavePayload = (): SaveDeliveryPaperDetailItem[] => {
     const status = paperStatus.value;
     const outcomeOnly = deliveryPaperCanEditOutcomeQty(status);
 
     return items.value
-      .filter((item) => item.preorder_demand_id != null)
+      .filter((item) => lineHasSaveableDraft(item, getDraft(item), outcomeOnly))
       .map((item) => {
         const draft = getDraft(item);
+        const base = saveLineIdentity(item);
         if (outcomeOnly) {
           const locked = lockedOutcomeQtyFromPaperPicks(item);
           const planned = plannedOutcomeQtyFromDraft(draft, locked);
           return {
-            preorder_demand_id: item.preorder_demand_id!,
+            ...base,
             splits: statusQtyToSaveSplits(planned, false),
           };
         }
         const picks = mapPackedStockPicksToSave(draft.stockPicks);
         const useStockPicks = picks.length > 0;
         return {
-          preorder_demand_id: item.preorder_demand_id!,
+          ...base,
           splits: statusQtyToSaveSplits(draft, !useStockPicks),
           ...(useStockPicks ? { picks } : {}),
         };
@@ -363,6 +409,7 @@ export function useDeliveryPaperDetail(options: {
     getDraft,
     onStatusQtyInput,
     applyStockPicks,
+    prefillAcceptedFromPacked,
     save: () => saveMutation.mutateAsync(),
     updatePaperStatus,
     buildOutcomeAllocationRows,

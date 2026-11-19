@@ -132,6 +132,7 @@ import { showErrorNotification } from 'src/utils/appFeedback';
 import type { GlobalInvoiceItemRow } from 'src/modules/sales_invoice/types';
 import type { BillAdjustmentRow } from '../types/billAdjustments';
 import { kernelBillLinesToStockRows } from '../utils/kernelBillLinesToStockRows';
+import { isInvWsWholesaleBill as isInvWsWholesaleBillCheck } from '../utils/wholesaleKernelBill';
 
 const route = useRoute();
 const router = useRouter();
@@ -175,6 +176,15 @@ const isStandardBill = computed(
 const isArStockInvoiceType = (invoiceType: string | null | undefined) =>
   invoiceType === 'wholesale' || invoiceType === 'retail' || invoiceType === 'dropship';
 const isApBill = computed(() => bill.value?.invoice_type === 'ap');
+const billSpine = computed((): 'legacy' | 'kernel' => {
+  const raw = bill.value as { spine?: string } | undefined;
+  return raw?.spine === 'kernel' ? 'kernel' : 'legacy';
+});
+const isWholesaleKernelBill = computed(() =>
+  isInvWsWholesaleBillCheck(
+    bill.value ? { ...bill.value, spine: billSpine.value } : null,
+  ),
+);
 const parentDueAmount = computed(() => Number(bill.value?.due_amount ?? 0));
 
 const adjustmentRows = computed(
@@ -269,6 +279,7 @@ const composerAllowedKinds = computed((): BillAdjustmentUiKind[] | undefined => 
   const fromRoute = routeAdjustmentKind.value;
   if (fromRoute) return [fromRoute];
   if (isApBill.value) return ['credit_note', 'write_off'];
+  if (isWholesaleKernelBill.value) return ['write_off'];
   return undefined;
 });
 
@@ -276,6 +287,7 @@ const composerPageTitle = computed(() => {
   if (routeAdjustmentKind.value === 'write_off') return 'Write off';
   if (routeAdjustmentKind.value === 'credit_note') return 'Credit note';
   if (isApBill.value) return 'Credit note or write-off';
+  if (isWholesaleKernelBill.value) return 'Write off';
   return 'Credit or debit note';
 });
 

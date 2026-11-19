@@ -59,6 +59,31 @@ export interface ShipmentReportProfitMatrix {
   unpaid_total_bdt: number;
   profit_loss_bdt: number;
   profit_loss_pct: number;
+  vendor_credit_bdt?: number;
+  vendor_credit_count?: number;
+  net_cost_bdt?: number;
+  net_profit_loss_bdt?: number;
+  net_profit_loss_pct?: number;
+}
+
+export interface ShipmentReportVendorCreditLine {
+  description: string | null;
+  quantity: number;
+  line_total: number;
+}
+
+export interface ShipmentReportVendorCreditNote {
+  id: number;
+  invoice_no: string;
+  parent_bill_id: number | null;
+  parent_invoice_no: string | null;
+  txn_amount: number;
+  txn_currency_code: string;
+  bdt_credit: number;
+  invoice_status: string;
+  payment_status: string | null;
+  reason: string | null;
+  lines: ShipmentReportVendorCreditLine[];
 }
 
 export interface ShipmentReportUnpaidCustomer {
@@ -126,4 +151,6 @@ export interface ShipmentReportDetailPayload {
   customer_bills: ShipmentReportCustomerBillRow[];
   customer_attributed_revenue_bdt: number;
   exchange_rates: ShipmentReportExchangeRates | null;
+  vendor_credit_notes: ShipmentReportVendorCreditNote[];
+  ap_books_total_bdt: number;
 }

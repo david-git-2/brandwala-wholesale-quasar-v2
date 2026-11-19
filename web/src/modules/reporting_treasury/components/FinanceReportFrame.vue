@@ -1,9 +1,10 @@
 <template>
   <q-page
-    class="finance-report-page bg-grey-1 column no-wrap"
-    style="height: calc(100vh - 55px); overflow: hidden"
+    class="finance-report-page column no-wrap"
+    :class="layout === 'document' ? 'finance-report-page--document' : 'bg-grey-1'"
+    :style="pageStyle"
   >
-    <div class="bg-white border-bottom q-px-md q-py-xs shrink-0 shadow-xs">
+    <div class="finance-report-chrome border-bottom q-px-md q-py-xs shrink-0">
       <div class="row items-center justify-between q-col-gutter-xs">
         <div class="col-auto row items-center q-gutter-xs">
           <slot name="filters" />
@@ -43,28 +44,49 @@
       {{ error }}
     </q-banner>
 
-    <div v-if="$slots.kpi" class="bg-white border-bottom q-px-md q-py-xs shrink-0">
+    <div v-if="$slots.kpi" class="finance-report-chrome border-bottom q-px-md q-py-xs shrink-0">
       <slot name="kpi" />
     </div>
 
-    <div class="table-scroll-container col-grow overflow-hidden q-pa-xs">
+    <div
+      class="col-grow"
+      :class="
+        layout === 'document'
+          ? 'finance-report-document-body q-pa-md'
+          : 'table-scroll-container overflow-hidden q-pa-xs'
+      "
+    >
       <slot />
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  loading?: boolean;
-  error?: string | null;
-  showExport?: boolean;
-  exportDisabled?: boolean;
-}>();
+import { computed } from 'vue';
+
+const props = withDefaults(
+  defineProps<{
+    loading?: boolean;
+    error?: string | null;
+    showExport?: boolean;
+    exportDisabled?: boolean;
+    layout?: 'table' | 'document';
+  }>(),
+  {
+    layout: 'table',
+  },
+);
 
 defineEmits<{
   export: [];
   refresh: [];
 }>();
+
+const pageStyle = computed(() =>
+  props.layout === 'document'
+    ? { minHeight: 'calc(100vh - 55px)' }
+    : { height: 'calc(100vh - 55px)', overflow: 'hidden' },
+);
 </script>
 
 <style scoped>
@@ -77,7 +99,21 @@ defineEmits<{
 }
 
 .border-bottom {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--tf-neutral-border, #e2e8f0);
+}
+
+.finance-report-chrome {
+  background: transparent;
+}
+
+.finance-report-page--document {
+  max-width: 100%;
+  background: var(--tf-theme-base, var(--tf-neutral-canvas));
+}
+
+.finance-report-document-body {
+  overflow-y: visible;
+  width: 100%;
 }
 
 .table-scroll-container {
