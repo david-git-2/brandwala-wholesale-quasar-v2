@@ -50,6 +50,7 @@
               :profile-id="profileId"
               kind="deposit"
               :enabled="pageReady"
+              :lock-currency="lockProfileCurrency"
               hide-amount
               compact-toolbar
             >
@@ -157,6 +158,7 @@ const {
   bundleLabel,
   buildSubmitPayload,
   submitAttempted,
+  lockProfileCurrency,
 } = useProfileCashDepositPageForm({
   pageReady,
   profileId: profileIdRef,

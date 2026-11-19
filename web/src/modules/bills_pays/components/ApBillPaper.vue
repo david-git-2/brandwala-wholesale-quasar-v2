@@ -28,9 +28,12 @@
             <tr>
               <th class="text-left">Description</th>
               <th class="text-right">Amount</th>
+              <th v-if="noteEditMode" class="text-right note-qty-col">Qty</th>
+              <th v-if="noteEditMode" class="text-right note-unit-col">Unit</th>
               <th v-if="noteEditMode" class="text-right note-amount-col">
-                Revised ({{ currencyGroupLabel(group) }})
+                Note ({{ currencyGroupLabel(group) }})
               </th>
+              <th v-if="noteEditMode" class="text-left note-reason-col">Line reason</th>
             </tr>
           </thead>
           <tbody>
@@ -39,48 +42,98 @@
               <td class="text-right font-mono">
                 {{ formatDraftOrLineAmount(gIdx, lineIdx, line, group) }}
               </td>
-              <td v-if="noteEditMode" class="text-right note-amount-col">
-                <q-input
-                  v-if="draftForApLine(gIdx, lineIdx)"
-                  :model-value="draftForApLine(gIdx, lineIdx)!.revisedAmount"
-                  dense
-                  outlined
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  class="note-amount-input"
-                  :placeholder="formatForeign(draftForApLine(gIdx, lineIdx)?.maxAmount ?? line.amount)"
-                  @update:model-value="
-                    (v) => onNoteAmount(draftForApLine(gIdx, lineIdx)!, v as number | null)
-                  "
-                />
-              </td>
+              <template v-if="noteEditMode && draftForApLine(gIdx, lineIdx)">
+                <td class="text-right text-grey-7">—</td>
+                <td class="text-right text-grey-7">—</td>
+                <td class="text-right note-amount-col">
+                  <q-input
+                    :model-value="draftForApLine(gIdx, lineIdx)!.revisedAmount"
+                    dense
+                    outlined
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    class="note-amount-input"
+                    :placeholder="formatForeign(draftForApLine(gIdx, lineIdx)?.maxAmount ?? line.amount)"
+                    @update:model-value="
+                      (v) => onNoteAmount(draftForApLine(gIdx, lineIdx)!, v as number | null)
+                    "
+                  />
+                </td>
+                <td class="note-reason-col">
+                  <q-input
+                    v-if="draftForApLine(gIdx, lineIdx)!.selected"
+                    v-model="draftForApLine(gIdx, lineIdx)!.reason"
+                    dense
+                    outlined
+                    placeholder="Why"
+                  />
+                </td>
+              </template>
             </tr>
             <tr v-for="row in extraRowsForGroup(group.currency_code)" :key="row.key">
               <td>
                 <q-input v-model="row.name" dense outlined placeholder="Description" />
               </td>
               <td />
-              <td v-if="noteEditMode" class="text-right note-amount-col">
-                <q-input
-                  :model-value="row.amount"
-                  dense
-                  outlined
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  class="note-amount-input"
-                  placeholder="0"
-                  @update:model-value="(v) => onNoteAmount(row, v as number | null)"
-                />
-              </td>
+              <template v-if="noteEditMode">
+                <td class="text-right note-qty-col">
+                  <q-input
+                    :model-value="row.quantity"
+                    dense
+                    outlined
+                    type="number"
+                    step="1"
+                    min="0.001"
+                    class="note-amount-input"
+                    @update:model-value="(v) => onExtraQuantity(row, v as number | null)"
+                  />
+                </td>
+                <td class="text-right note-unit-col">
+                  <q-input
+                    :model-value="row.unitPrice"
+                    dense
+                    outlined
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    class="note-amount-input"
+                    placeholder="0"
+                    @update:model-value="(v) => onExtraUnitPrice(row, v as number | null)"
+                  />
+                </td>
+                <td class="text-right note-amount-col">
+                  <span
+                    v-if="extraAmountDisplay(row) != null"
+                    class="font-mono text-body2"
+                  >{{ formatForeign(extraAmountDisplay(row)!) }}</span>
+                  <q-input
+                    v-else
+                    :model-value="row.amount"
+                    dense
+                    outlined
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    class="note-amount-input"
+                    placeholder="0"
+                    @update:model-value="(v) => onNoteAmount(row, v as number | null)"
+                  />
+                </td>
+                <td class="note-reason-col">
+                  <q-input v-model="row.reason" dense outlined placeholder="Why" />
+                </td>
+              </template>
             </tr>
           </tbody>
           <tfoot v-if="noteEditMode">
             <tr class="text-weight-bold">
               <td>Total</td>
               <td class="text-right font-mono">{{ formatGroupTotal(group) }}</td>
+              <td />
+              <td />
               <td class="text-right font-mono">{{ formatNoteGroupTotal(group, gIdx) }}</td>
+              <td />
             </tr>
           </tfoot>
         </q-markup-table>
@@ -109,7 +162,7 @@
 
       <div
         v-if="noteEditMode && apTotalDraft"
-        class="row items-center q-gutter-sm q-mt-sm"
+        class="row items-center q-gutter-sm q-mt-sm flex-wrap"
       >
         <span class="text-body2">{{ apTotalDraft.name }}</span>
         <q-input
@@ -124,6 +177,14 @@
           "
           class="note-amount-input"
           @update:model-value="(v) => onNoteAmount(apTotalDraft!, v as number | null)"
+        />
+        <q-input
+          v-if="apTotalDraft.selected"
+          v-model="apTotalDraft.reason"
+          dense
+          outlined
+          label="Line reason"
+          class="note-reason-col"
         />
       </div>
 
@@ -194,7 +255,7 @@ import type {
 } from '../types/apBillPaper';
 import { apBillCurrencyGroups, parseApBillPaper } from '../utils/parseApBillPaper';
 import type { BillAdjustmentDraftRow } from '../utils/billAdjustmentParentLines';
-import { apLineDraftKey, parseNoteInputAmount } from '../utils/billAdjustmentParentLines';
+import { apLineDraftKey, extraLineTotalFromDraftRow } from '../utils/billAdjustmentParentLines';
 
 export type ApBillDeskLineRow = {
   name_snapshot: string;
@@ -215,6 +276,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   'add-extra-line': [currencyCode: string];
   'note-amount': [row: BillAdjustmentDraftRow, value: number | null];
+  'extra-quantity': [row: BillAdjustmentDraftRow, value: number | null];
+  'extra-unit-price': [row: BillAdjustmentDraftRow, value: number | null];
 }>();
 
 const paper = computed((): ApBillPaperSnapshot | null =>
@@ -302,6 +365,21 @@ function onNoteAmount(row: BillAdjustmentDraftRow, value: number | null) {
   emit('note-amount', row, value);
 }
 
+function onExtraQuantity(row: BillAdjustmentDraftRow, value: number | null) {
+  emit('extra-quantity', row, value);
+}
+
+function onExtraUnitPrice(row: BillAdjustmentDraftRow, value: number | null) {
+  emit('extra-unit-price', row, value);
+}
+
+function extraAmountDisplay(row: BillAdjustmentDraftRow): number | null {
+  if (row.unitPrice != null && row.unitPrice > 0 && row.quantity > 0) {
+    return extraLineTotalFromDraftRow(row);
+  }
+  return null;
+}
+
 const formatForeign = (n: number) =>
   Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -363,7 +441,7 @@ function noteSumForGroup(gIdx: number, group: ApBillPaperCurrencyGroup): number 
     else sum += Number(d?.maxAmount ?? line.amount) || 0;
   }
   for (const row of extraRowsForGroup(group.currency_code)) {
-    const amt = parseNoteInputAmount(row.amount);
+    const amt = extraLineTotalFromDraftRow(row);
     if (amt != null) sum += amt;
   }
   return sum;
@@ -406,8 +484,14 @@ const showLegacyBdtDue = (p: ApBillPaperBucketLines | null) => showLegacyConvers
   font-weight: 600;
 }
 
-.note-amount-col {
-  min-width: 120px;
+.note-amount-col,
+.note-qty-col,
+.note-unit-col {
+  min-width: 88px;
+}
+
+.note-reason-col {
+  min-width: 140px;
 }
 
 .note-amount-input {

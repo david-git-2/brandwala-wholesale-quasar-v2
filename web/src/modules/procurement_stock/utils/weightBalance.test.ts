@@ -4,6 +4,7 @@ import {
   sumBoxShippingWeightKg,
   computePackageWeightAdjustments,
 } from './weightBalance';
+import { isWeightBalanceBlockedError } from './weightBalanceBlocked';
 
 describe('Weight Balance Utility', () => {
   const sampleItems = [
@@ -35,13 +36,33 @@ describe('Weight Balance Utility', () => {
     expect(result[1]?.newPackageWeight).toBe(120);
   });
 
-  test('computePackageWeightAdjustments throws error if adjustment makes package weight negative', () => {
-    // Est: 2.2 kg, Act: 1.0 kg. Delta: -1.2 kg (-1200g)
-    // Line 1 gets -600g / 10 qty = -60g per unit change.
-    // New package weight for Line 1: 10 - 60 = -50g (negative!)
-    expect(() => computePackageWeightAdjustments(sampleItems, 1.0)).toThrow(
-      /would go below 0 after adjustment/,
-    );
+  test('computePackageWeightAdjustments blocks when cargo weight is below packaging capacity', () => {
+    // Est: 2.2 kg, Act: 1.0 kg. Delta: -1.2 kg (-1200g) but packaging can only shed 200g total.
+    try {
+      computePackageWeightAdjustments(sampleItems, 1.0);
+      expect.fail('Expected weight balance to be blocked');
+    } catch (error) {
+      expect(isWeightBalanceBlockedError(error)).toBe(true);
+      if (isWeightBalanceBlockedError(error)) {
+        expect(error.details.reason).toBe('cargo_below_packaging_capacity');
+        expect(error.details.affectedLines.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  test('computePackageWeightAdjustments redistributes when one line would floor at 0g', () => {
+    const skewedItems = [
+      { id: 1, name: 'Tiny pack', product_weight: 250, package_weight: 0.5, ordered_quantity: 10 }, // 2505g
+      { id: 2, name: 'Big pack', product_weight: 100, package_weight: 50, ordered_quantity: 10 }, // 1500g
+    ];
+    // Est: 4.005 kg, Act: 3.5 kg -> delta -505g. Tiny pack would go negative in a single pass; floors to 0 and Big pack absorbs rest.
+    const result = computePackageWeightAdjustments(skewedItems, 3.5);
+    expect(result.find((r) => r.itemId === 1)?.newPackageWeight).toBe(0);
+    const estimatedAfter = result.reduce((sum, row, idx) => {
+      const item = skewedItems[idx]!;
+      return sum + (item.product_weight + row.newPackageWeight) * item.ordered_quantity;
+    }, 0);
+    expect(estimatedAfter / 1000).toBeCloseTo(3.5, 3);
   });
 
   test('computePackageWeightAdjustments guards against zero estimated weight basis', () => {

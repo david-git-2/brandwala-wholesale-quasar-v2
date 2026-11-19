@@ -7,6 +7,7 @@ import { useShipmentApFinanceInvalidation } from 'src/modules/procurement_stock/
 import { createPayIdempotencyKey } from '../repositories/paysRepository';
 import { moneyKernelRepository } from '../repositories/moneyKernelRepository';
 import type { MoneyPayInstrumentFields } from '../types/moneyPayDialog';
+import type { BundleDebitPayload } from './useBillPayBundleLines';
 import { buildKernelPayMovementMeta } from '../utils/kernelPayMovementMeta';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
@@ -33,6 +34,8 @@ export type RecordBillPaymentInput = {
   reference: string | null;
   note: string | null;
   instrumentFields?: MoneyPayInstrumentFields;
+  /** Multi-bundle pay: debits per `cash_bundle_id` (sum must equal payment amount). */
+  bundleDebits?: BundleDebitPayload[];
 };
 
 async function resolveFromPotForPay(
@@ -92,6 +95,17 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
         throw new Error('Payment amount must be greater than zero.');
       }
 
+      const bundleDebits = payload.bundleDebits?.filter(
+        (d) => d.cash_bundle_id > 0 && Number(d.amount) > 0,
+      );
+      const useMultiBundle = bundleDebits != null && bundleDebits.length > 0;
+      if (useMultiBundle) {
+        const debitSum = bundleDebits.reduce((s, d) => s + Number(d.amount), 0);
+        if (Math.abs(debitSum - allocAmount) > 0.009) {
+          throw new Error('Bundle amounts must equal the payment total.');
+        }
+      }
+
       const settle = payload.settlementCurrencyCode.trim().toUpperCase() || 'BDT';
       const allocations = [{ bill_id: payload.billId, amount: allocAmount }];
 
@@ -134,14 +148,16 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
         idempotencyKey,
       );
 
-      const available =
-        payload.fromPotAvailableBalance != null
-          ? Number(payload.fromPotAvailableBalance)
-          : null;
-      if (available != null && available < allocAmount) {
-        throw new Error(
-          `Not enough balance in this cash bundle (${available} ${settle}, need ${allocAmount}). Add money first.`,
-        );
+      if (!useMultiBundle) {
+        const available =
+          payload.fromPotAvailableBalance != null
+            ? Number(payload.fromPotAvailableBalance)
+            : null;
+        if (available != null && available < allocAmount) {
+          throw new Error(
+            `Not enough balance in this cash bundle (${available} ${settle}, need ${allocAmount}). Add money first.`,
+          );
+        }
       }
 
       await moneyKernelRepository.payBills({
@@ -150,6 +166,7 @@ export function useRecordBillPaymentMutation(billId: () => number | null) {
         fromPotId,
         amount: allocAmount,
         allocations,
+        bundleDebits: useMultiBundle ? bundleDebits : null,
         toPotId: payload.toPotId ?? undefined,
         meta: buildKernelPayMovementMeta(
           {

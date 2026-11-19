@@ -44,6 +44,31 @@ const billsPaysRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('global_invoice'),
       },
       {
+        path: ':billId/pay',
+        name: 'app-bill-pay-page',
+        component: () => import('../pages/BillPayPage.vue'),
+        meta: { hasPageToolbar: true, title: 'Pay bill', headerTitle: 'Pay bill' },
+        beforeEnter: guard('global_invoice'),
+      },
+      {
+        path: ':billId/vendor-refund',
+        name: 'app-bill-vendor-refund-page',
+        component: () => import('../pages/BillVendorRefundPage.vue'),
+        meta: {
+          hasPageToolbar: true,
+          title: 'Vendor refund',
+          headerTitle: 'Vendor refund',
+        },
+        beforeEnter: guard('global_invoice'),
+      },
+      {
+        path: ':billId/adjustment',
+        name: 'app-bill-adjustment-page',
+        component: () => import('../pages/BillAdjustmentComposePage.vue'),
+        meta: { hasPageToolbar: true, title: 'Credit or debit note', headerTitle: 'Credit or debit note' },
+        beforeEnter: guard('global_invoice'),
+      },
+      {
         path: ':billId',
         name: 'app-bill-detail-page',
         component: () => import('../pages/BillDetailPage.vue'),

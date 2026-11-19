@@ -1,4 +1,5 @@
-import { computed, ref, toRef, type Ref } from 'vue';
+import { computed, ref, toRef, watch, type Ref } from 'vue';
+import { useRoute } from 'vue-router';
 import {
   isProfileCashMovementMethod,
   sortProfileCashMovementMethods,
@@ -10,11 +11,30 @@ import { useWholesalePaymentMethodMeta } from './useWholesalePaymentMethodMeta';
 import { PROFILE_CASH_DEFAULT_METHOD } from 'src/modules/people/constants/profileCashMovementMethods';
 import type { MoneyPaySubmitPayload } from '../types/moneyPayDialog';
 
+function queryPrefillCurrency(route: ReturnType<typeof useRoute>): string | null {
+  const raw = route.query.prefillCurrency;
+  if (typeof raw !== 'string') return null;
+  const c = raw.trim().toUpperCase();
+  return c || null;
+}
+
+function queryPrefillAmount(route: ReturnType<typeof useRoute>): number | null {
+  const raw = route.query.prefillAmount;
+  if (typeof raw !== 'string') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export function useProfileCashDepositPageForm(options: {
   pageReady: Ref<boolean>;
   profileId: Ref<number | null>;
   booksTenantId: Ref<number>;
 }) {
+  const route = useRoute();
+  const prefillCurrencyFromQuery = computed(() => queryPrefillCurrency(route));
+  const prefillAmountFromQuery = computed(() => queryPrefillAmount(route));
+  const lockProfileCurrency = computed(() => prefillCurrencyFromQuery.value != null);
+
   const kindRef = ref<'deposit'>('deposit');
   const fieldFlagsRef = ref({
     showAllocations: false,
@@ -70,7 +90,17 @@ export function useProfileCashDepositPageForm(options: {
     dialogOpen: pageOpen,
     methodOptions: resolvedMethodOptions,
     defaultMethodCode: PROFILE_CASH_DEFAULT_METHOD,
+    initialAmount: prefillAmountFromQuery,
   });
+
+  watch(
+    [() => options.pageReady.value, prefillCurrencyFromQuery],
+    ([ready, ccy]) => {
+      if (!ready || !ccy) return;
+      profileLegCurrency.value = ccy;
+    },
+    { immediate: true },
+  );
 
   const booksTenantIdRef = computed(() => options.booksTenantId.value);
   const profileIdRef = computed(() => options.profileId.value);
@@ -162,5 +192,6 @@ export function useProfileCashDepositPageForm(options: {
     bundleLabel,
     buildSubmitPayload,
     submitAttempted,
+    lockProfileCurrency,
   };
 }

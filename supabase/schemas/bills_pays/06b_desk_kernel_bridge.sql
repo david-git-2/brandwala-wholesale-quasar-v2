@@ -473,8 +473,15 @@ BEGIN
       'id', c.id,
       'invoice_no', c.invoice_no,
       'document_kind', c.kind,
-      'invoice_status', c.status,
-      'total_amount', c.total_amount
+      'invoice_status', CASE c.status
+        WHEN 'draft' THEN 'draft'
+        WHEN 'voided' THEN 'voided'
+        WHEN 'proforma_generated' THEN 'draft'
+        ELSE 'issued'
+      END,
+      'total_amount', c.total_amount,
+      'due_amount', c.due_amount,
+      'paid_amount', c.paid_amount
     )
     ORDER BY c.id
   ), '[]'::jsonb)

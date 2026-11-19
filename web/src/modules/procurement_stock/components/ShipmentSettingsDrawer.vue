@@ -861,6 +861,11 @@ import {
 } from '../utils/shipmentCostEntryInvoice';
 import { isCostBucketApIssueReady } from '../types/shipmentApIssueParties';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import { computePackageWeightAdjustments } from '../utils/weightBalance';
+import {
+  isWeightBalanceBlockedError,
+  showWeightBalanceBlockedDialog,
+} from '../utils/weightBalanceBlocked';
 import ShipmentApBillsPanel from './ShipmentApBillsPanel.vue';
 import type { CreateShipmentApBillPayload } from '../repositories/shipmentApBillV2Repository';
 import { shipmentShortageCreditHintBdt } from '../utils/shipmentShortageCreditHint';
@@ -2031,6 +2036,25 @@ const hasWeightDifference = computed(() => {
 
 const adjustingWeight = ref(false);
 
+const mapItemsForWeightBalance = (
+  lines: NonNullable<typeof shipmentStore.currentShipmentItems>,
+) =>
+  lines.map((item) => ({
+    id: item.id,
+    name: item.name,
+    product_weight: item.product_weight || 0,
+    package_weight: item.package_weight || 0,
+    ordered_quantity: item.ordered_quantity || 0,
+  }));
+
+const handleWeightBalanceBlocked = (err: unknown): boolean => {
+  if (isWeightBalanceBlockedError(err)) {
+    showWeightBalanceBlockedDialog(err);
+    return true;
+  }
+  return false;
+};
+
 const adjustWeightDifference = async () => {
   if (!props.shipmentId || totalWeightInput.value == null || totalWeightInput.value <= 0) return;
   const items = shipmentStore.currentShipmentItems || [];
@@ -2042,9 +2066,17 @@ const adjustWeightDifference = async () => {
     return;
   }
 
+  const targetWeight = Number(totalWeightInput.value);
+  try {
+    computePackageWeightAdjustments(mapItemsForWeightBalance(items), targetWeight);
+  } catch (err: unknown) {
+    if (handleWeightBalanceBlocked(err)) return;
+    showErrorNotification((err as Error).message || 'Cannot balance weight with current line data.');
+    return;
+  }
+
   adjustingWeight.value = true;
   try {
-    const targetWeight = Number(totalWeightInput.value);
     // 1. Update shipment received_weight and total_weight_kg
     await shipmentStore.updateShipment(props.shipmentId, {
       total_weight_kg: targetWeight,
@@ -2065,10 +2097,9 @@ const adjustWeightDifference = async () => {
     });
   } catch (err: unknown) {
     console.error('Failed to balance weight:', err);
-    $q.notify({
-      type: 'negative',
-      message: (err as Error).message || 'Failed to adjust packaging weights.',
-    });
+    if (!handleWeightBalanceBlocked(err)) {
+      showErrorNotification((err as Error).message || 'Failed to adjust packaging weights.');
+    }
   } finally {
     adjustingWeight.value = false;
   }

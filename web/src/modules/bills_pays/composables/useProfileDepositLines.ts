@@ -64,11 +64,17 @@ export function useProfileDepositLines(options: {
   dialogOpen: Ref<boolean>;
   methodOptions: Ref<WholesaleMethodOption[]>;
   defaultMethodCode: string;
+  initialAmount?: Ref<number | null | undefined>;
 }) {
   const lines = ref<ProfileDepositLineDraft[]>([newLine(options.defaultMethodCode)]);
 
   const resetLines = () => {
-    lines.value = [newLine(options.defaultMethodCode)];
+    const line = newLine(options.defaultMethodCode);
+    const seed = options.initialAmount?.value;
+    if (seed != null && Number.isFinite(seed) && seed > 0) {
+      line.amount = seed;
+    }
+    lines.value = [line];
   };
 
   watch(

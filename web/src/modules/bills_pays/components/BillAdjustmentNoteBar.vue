@@ -1,7 +1,7 @@
 <template>
   <div class="bill-adjustment-note-bar q-mt-md q-pa-md rounded-borders bg-grey-1 no-print">
     <div class="row items-center q-col-gutter-md q-mb-sm">
-      <div class="col-12 col-sm-auto">
+      <div v-if="kindOptions.length > 1" class="col-12 col-sm-auto">
         <q-btn-toggle
           v-model="kind"
           spread
@@ -11,6 +11,9 @@
           toggle-color="primary"
           :options="kindOptions"
         />
+      </div>
+      <div v-else class="col-12 col-sm-auto text-body2 text-weight-medium">
+        {{ kindOptions[0]?.label ?? 'Adjustment' }}
       </div>
       <div v-if="kind !== 'write_off'" class="col-12 col-sm-auto text-body2">
         <template v-if="noteTotalLabels.length">
@@ -140,6 +143,10 @@ const props = defineProps<{
   arRefundEligible?: boolean;
   excessCreditBdt?: number;
   parentDueAmount?: number;
+  /** AP bills: no debit note — credit note and write-off only. */
+  isApParent?: boolean;
+  /** When set, only these kinds are offered (e.g. opened from AP detail buttons). */
+  allowedKinds?: BillAdjustmentUiKind[];
 }>();
 
 const refundCashNow = defineModel<boolean>('refundCashNow', { default: false });
@@ -184,14 +191,23 @@ const writeOffAmount = defineModel<number | null>('writeOffAmount', { default: n
 const parentDueAmount = computed(() => Math.max(0, Number(props.parentDueAmount ?? 0)));
 
 const kindOptions = computed(() => {
-  const options: Array<{ label: string; value: BillAdjustmentUiKind }> = [
+  const all: Array<{ label: string; value: BillAdjustmentUiKind }> = [
     { label: 'Credit note', value: 'credit_note' },
     { label: 'Debit note', value: 'debit_note' },
+    { label: 'Write-off', value: 'write_off' },
   ];
-  if (parentDueAmount.value > 0) {
-    options.push({ label: 'Write-off', value: 'write_off' });
+  let filtered = all;
+  if (props.isApParent) {
+    filtered = all.filter((o) => o.value !== 'debit_note');
   }
-  return options;
+  if (props.allowedKinds?.length) {
+    const allowed = new Set(props.allowedKinds);
+    filtered = filtered.filter((o) => allowed.has(o.value));
+  }
+  if (parentDueAmount.value <= 0) {
+    filtered = filtered.filter((o) => o.value !== 'write_off');
+  }
+  return filtered;
 });
 
 const submitLabel = computed(() => (kind.value === 'write_off' ? 'Write off' : 'Issue note'));

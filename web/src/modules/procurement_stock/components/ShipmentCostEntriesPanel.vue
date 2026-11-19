@@ -585,6 +585,7 @@ import type { ShipmentSection } from '../types/shipmentSection';
 import { showErrorNotification, showSuccessNotification, showWarningNotification } from 'src/utils/appFeedback';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { computePackageWeightAdjustments } from '../utils/weightBalance';
+import { isWeightBalanceBlockedError, showWeightBalanceBlockedDialog } from '../utils/weightBalanceBlocked';
 import { computePurchasePriceAdjustments } from '../utils/purchaseBalance';
 import { globalShipmentRepository } from '../repositories/globalShipmentRepository';
 
@@ -850,7 +851,11 @@ const confirmDistributeWeight = async () => {
     showDistributeDialog.value = false;
     emit('weight-distributed');
   } catch (err: unknown) {
-    showErrorNotification((err as Error).message || 'Failed to distribute weight.');
+    if (isWeightBalanceBlockedError(err)) {
+      showWeightBalanceBlockedDialog(err);
+    } else {
+      showErrorNotification((err as Error).message || 'Failed to distribute weight.');
+    }
   } finally {
     applyingDistribution.value = false;
   }

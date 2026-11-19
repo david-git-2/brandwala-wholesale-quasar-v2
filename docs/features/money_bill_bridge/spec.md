@@ -118,19 +118,20 @@ Paper invariants: [bills/spec.md](../bills/spec.md). Cash invariants: [money/spe
 
 ## Payment dialog (desk) {#payment-dialog}
 
-**Where:** `BillDetailPage` → `MoneyPayDialog` (AP; AR can follow).
+**Where:** `BillDetailPage` → **Add payment** → dedicated **`BillPayPage`** (`app-bill-pay-page`). AP and AR collect.
 
 | Phase | Goal | Status |
 | :---: | :--- | :--- |
 | 1 — FX | Rate from `books_exchange_rates` (auto); no manual **Exchange rate** input on pay dialog | Shipped |
-| 2 — Top up | Block pay if insufficient; **Add money** → deposit; refresh balance | **Shipped** — selected bundle or **new bundle** via `rpc_deposit` with null `p_pot_id` (opens on Main at books rate) |
-| 3 — Chunks | Editable **Payment amount** (≤ bill due); amount in words; **Paying now** in summary when partial | Shipped |
+| 2 — Top up | **Add money** / **New bundle** → `ProfileCashDepositPage` with `returnTo` pay page; refetch `pay_cashbook_legs` on return | Shipped |
+| 3 — Chunks | Editable payment total (≤ bill due); **Paying now** in summary when partial | Shipped |
+| 4 — Multi-bundle | Several payer bundles with amount per line; one `rpc_pay_bills` + `p_bundle_debits` | Shipped |
 
-**AR collect:** When `pay_cashbook_legs` has **both** `from_leg` and `to_leg` (customer + tenant cashbooks), the dialog shows **From** (customer bundle, balance + Add money) and **To** (tenant receive bundle + New bundle deposit). Legacy AR (no customer cashbook) keeps **To-only** receive and synthetic customer deposit on submit.
+**AR collect:** When `pay_cashbook_legs` has **both** `from_leg` and `to_leg`, the pay page shows multi-line **pay from** (customer bundles) and **receive at** (tenant bundle). Legacy AR (no customer cashbook) keeps **receive-only** bundle and synthetic customer deposit on submit.
 
-**Rules:** One payment = **one** from-pot/bundle; two pots = two payments. Reports use BDT via `books_amount` / `exchange_rate` on pays.
+**Rules:** One payment row can debit **multiple** payer bundles via `p_bundle_debits` (same currency as bill, I7b). Reports use BDT via `books_amount` / `exchange_rate` on pays.
 
-**Files:** `MoneyPayDialog.vue`, `useBillDetailMoneyPayDialog.ts`, `CollectPayPage.vue`.
+**Files:** `BillPayPage.vue`, `useBillPayPage.ts`, `BillPayBundleLinesEditor.vue`, `CollectPayPage.vue`.
 
 ---
 
@@ -145,7 +146,7 @@ Canonical ids: [bills_pays/tests.md](../bills_pays/tests.md) · golden SQL `supa
 | ID | Type | Plan | Code today | Fix |
 | :--- | :--- | :--- | :--- | :--- |
 | BR1 | shipped | Pay dialog Phase 2 (top-up deposit) | `MoneyPayDialog` Add money panel | [§ Payment dialog](#payment-dialog) |
-| BR2 | not_built | `p_lot_debits` / `p_bundle_debits` in pay UI | Kernel live | [bills_pays/00-gaps](../bills_pays/00-gaps.md) |
+| BR2 | shipped | `p_bundle_debits` on bill pay page | `BillPayPage` | [§ Payment dialog](#payment-dialog) |
 | BR3 | doc_wrong | Settlement recon vs legacy `pay_allocations` | Cutover | [§ Test matrix](#test-matrix) · `supabase/tests/` |
 
 ---

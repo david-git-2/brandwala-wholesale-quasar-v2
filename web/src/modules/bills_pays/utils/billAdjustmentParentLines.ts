@@ -16,6 +16,12 @@ export type BillAdjustmentDraftRow = {
   isExtra: boolean;
   originalAmount?: number;
   maxAmount?: number;
+  /** Own lines and display for revised lines (default 1). */
+  quantity: number;
+  /** Own lines: unit price in line currency. */
+  unitPrice: number | null;
+  /** Per-line reason stored on note line meta. */
+  reason: string;
 };
 
 export function apLineDraftKey(groupIdx: number, lineIdx: number) {
@@ -105,6 +111,9 @@ export function buildAdjustmentDraftRowsFromBill(params: {
             isExtra: false,
             originalAmount: amt,
             maxAmount: amt,
+            quantity: 1,
+            unitPrice: null,
+            reason: '',
           });
         }
       }
@@ -124,6 +133,9 @@ export function buildAdjustmentDraftRowsFromBill(params: {
           isExtra: false,
           originalAmount: bdt,
           maxAmount: bdt,
+          quantity: 1,
+          unitPrice: null,
+          reason: '',
         });
       }
     }
@@ -145,6 +157,9 @@ export function buildAdjustmentDraftRowsFromBill(params: {
       isExtra: false,
       originalAmount: lineTotal > 0 ? lineTotal : undefined,
       maxAmount: lineTotal > 0 ? lineTotal : undefined,
+      quantity: 1,
+      unitPrice: null,
+      reason: '',
     });
   }
 
@@ -162,6 +177,9 @@ export function buildAdjustmentDraftRowsFromBill(params: {
       isExtra: false,
       originalAmount: amt,
       maxAmount: amt,
+      quantity: 1,
+      unitPrice: null,
+      reason: '',
     });
   };
 
@@ -180,12 +198,24 @@ export type BillAdjustmentRpcLine = {
   line_kind: 'stock' | 'description' | 'charge';
   name_snapshot: string;
   quantity: number;
+  unit_price: number;
   currency_code: string;
   line_total_amount: number;
   books_amount: number;
+  reason: string;
   parent_line_id?: number;
   global_stock_id?: number;
 };
+
+/** Own line amount from qty × unit price when both set; else typed amount. */
+export function extraLineTotalFromDraftRow(row: BillAdjustmentDraftRow): number | null {
+  const qty = Number(row.quantity);
+  const unit = row.unitPrice;
+  if (row.isExtra && Number.isFinite(qty) && qty > 0 && unit != null && Number.isFinite(unit) && unit > 0) {
+    return Math.round(qty * unit * 100) / 100;
+  }
+  return parseNoteInputAmount(row.amount);
+}
 
 export function draftRowsToRpcLines(
   rows: BillAdjustmentDraftRow[],
@@ -193,15 +223,23 @@ export function draftRowsToRpcLines(
 ): BillAdjustmentRpcLine[] {
   return rows
     .map((r) => {
-      const lineTotal = parseNoteInputAmount(r.amount);
+      const lineTotal = r.isExtra ? extraLineTotalFromDraftRow(r) : parseNoteInputAmount(r.amount);
       if (!r.selected || lineTotal == null) return null;
+      const qty = Math.max(Number(r.quantity) || 1, 0.001);
+      const unitPrice =
+        r.isExtra && r.unitPrice != null && r.unitPrice > 0
+          ? Math.round(r.unitPrice * 10000) / 10000
+          : Math.round((lineTotal / qty) * 10000) / 10000;
+      const reason = r.reason.trim();
       return {
         line_kind: r.lineKind,
         name_snapshot: r.name,
-        quantity: 1,
+        quantity: qty,
+        unit_price: unitPrice,
         currency_code: r.currencyCode,
         line_total_amount: lineTotal,
         books_amount: booksAmountForAdjustmentLine(r.currencyCode, lineTotal, fxRateBdtPerUnit),
+        reason,
         ...(r.parentLineId != null ? { parent_line_id: r.parentLineId } : {}),
         ...(r.globalStockId != null ? { global_stock_id: r.globalStockId } : {}),
       };

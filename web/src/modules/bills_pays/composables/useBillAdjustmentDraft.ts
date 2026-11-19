@@ -10,6 +10,7 @@ import {
   buildAdjustmentDraftRowsFromBill,
   defaultFxRateForBill,
   draftRowsToRpcLines,
+  extraLineTotalFromDraftRow,
   noteAmountFromRevised,
   noteLineMatchKey,
   parseNoteInputAmount,
@@ -38,12 +39,16 @@ export function useBillAdjustmentDraft(params: {
   parentDueAmount: Ref<number>;
   siblingNotes: Ref<BillAdjustmentRow[]>;
   active: Ref<boolean>;
+  /** full = revise parent lines on bill detail; addLinesOnly = new tab, user-added lines only */
+  lineEntryMode?: Ref<'full' | 'addLinesOnly'>;
 }) {
   const kind = ref<BillAdjustmentUiKind>('credit_note');
   const reason = ref('');
   const writeOffAmount = ref<number | null>(null);
   const draftRows = ref<BillAdjustmentDraftRow[]>([]);
   const remainingByKey = ref<Map<string, number>>(new Map());
+  const parentLineCaps = ref<Map<string, number>>(new Map());
+  const lineEntryMode = computed(() => params.lineEntryMode?.value ?? 'full');
 
   const fxRate = computed(() =>
     defaultFxRateForBill(
@@ -92,13 +97,39 @@ export function useBillAdjustmentDraft(params: {
       return;
     }
     await loadRemainingByKey();
-    draftRows.value = applyRemainingToRows(
+    const built = applyRemainingToRows(
       buildAdjustmentDraftRowsFromBill({
         isAp: params.isAp.value,
         bill: b,
         stockLines: params.stockLines.value,
       }).map((r) => ({ ...r })),
     );
+    const caps = new Map<string, number>();
+    for (const r of built) {
+      if (r.isExtra || r.maxAmount == null) continue;
+      caps.set(noteLineMatchKey(r.name, r.currencyCode), r.maxAmount);
+    }
+    parentLineCaps.value = caps;
+    if (lineEntryMode.value === 'addLinesOnly') {
+      const code = String(b.currency_code ?? 'BDT').trim().toUpperCase();
+      draftRows.value = [
+        {
+          key: `extra-${Date.now()}`,
+          selected: true,
+          lineKind: 'description',
+          name: '',
+          currencyCode: code,
+          amount: null,
+          revisedAmount: null,
+          isExtra: true,
+          quantity: 1,
+          unitPrice: null,
+          reason: '',
+        },
+      ];
+      return;
+    }
+    draftRows.value = built;
   }
 
   watch(
@@ -127,8 +158,22 @@ export function useBillAdjustmentDraft(params: {
     row.selected = noteAmt != null;
   }
 
+  function syncExtraLineAmount(row: BillAdjustmentDraftRow) {
+    const total = extraLineTotalFromDraftRow(row);
+    row.amount = total;
+    row.revisedAmount = total;
+    row.selected = total != null;
+  }
+
   function onNoteAmountInput(row: BillAdjustmentDraftRow, value: number | null) {
-    if (row.isExtra || row.maxAmount == null) {
+    if (row.isExtra) {
+      row.unitPrice = null;
+      row.amount = parseNoteInputAmount(value);
+      row.revisedAmount = row.amount;
+      row.selected = row.amount != null;
+      return;
+    }
+    if (row.maxAmount == null) {
       row.amount = parseNoteInputAmount(value);
       row.revisedAmount = row.amount;
       row.selected = row.amount != null;
@@ -136,6 +181,10 @@ export function useBillAdjustmentDraft(params: {
     }
     row.revisedAmount = parseRevisedInputAmount(value);
     applyRevisedToRow(row);
+  }
+
+  function onExtraLineSync(row: BillAdjustmentDraftRow) {
+    syncExtraLineAmount(row);
   }
 
   watch(kind, (k) => {
@@ -154,16 +203,31 @@ export function useBillAdjustmentDraft(params: {
   });
 
   function addExtraRow(currencyCode = 'BDT') {
+    const code = (
+      currencyCode ||
+      String(params.bill.value?.currency_code ?? 'BDT')
+    )
+      .trim()
+      .toUpperCase();
     draftRows.value.push({
       key: `extra-${Date.now()}`,
       selected: true,
       lineKind: 'description',
-      name: 'Extra adjustment',
-      currencyCode: currencyCode.toUpperCase(),
+      name: '',
+      currencyCode: code,
       amount: null,
       revisedAmount: null,
       isExtra: true,
+      quantity: 1,
+      unitPrice: null,
+      reason: '',
     });
+  }
+
+  function lineFaceAmount(row: BillAdjustmentDraftRow): number | null {
+    if (!row.selected) return null;
+    if (row.isExtra) return extraLineTotalFromDraftRow(row);
+    return parseNoteInputAmount(row.amount);
   }
 
   const extraDraftRows = computed(() => draftRows.value.filter((r) => r.isExtra));
@@ -174,8 +238,8 @@ export function useBillAdjustmentDraft(params: {
 
   const noteTotalBdt = computed(() =>
     draftRows.value.reduce((sum, r) => {
-      const amt = parseNoteInputAmount(r.amount);
-      if (!r.selected || amt == null) return sum;
+      const amt = lineFaceAmount(r);
+      if (amt == null) return sum;
       return sum + booksAmountForAdjustmentLine(r.currencyCode, amt, fxRate.value);
     }, 0),
   );
@@ -183,8 +247,8 @@ export function useBillAdjustmentDraft(params: {
   const noteTotalsByCurrency = computed(() => {
     const map = new Map<string, number>();
     for (const r of draftRows.value) {
-      const amt = parseNoteInputAmount(r.amount);
-      if (!r.selected || amt == null) continue;
+      const amt = lineFaceAmount(r);
+      if (amt == null) continue;
       const code = r.currencyCode.trim().toUpperCase() || 'BDT';
       map.set(code, (map.get(code) ?? 0) + amt);
     }
@@ -307,8 +371,42 @@ export function useBillAdjustmentDraft(params: {
       if (!reason.value.trim()) return 'Reason is required.';
       return null;
     }
-    if (noteTotalBdt.value <= 0) return 'Enter a note amount on at least one line.';
+    if (noteTotalBdt.value <= 0) {
+      return 'Add at least one line with description, quantity, and unit price.';
+    }
     if (!reason.value.trim()) return 'Reason is required.';
+    for (const row of draftRows.value) {
+      const amt = lineFaceAmount(row);
+      if (amt == null) continue;
+      if (!row.name.trim()) return 'Each line needs a description.';
+      if (!row.reason.trim()) return 'Each line needs a reason.';
+      if (row.isExtra && row.quantity <= 0) return 'Line quantity must be greater than zero.';
+      if (row.isExtra && (row.unitPrice == null || row.unitPrice <= 0)) {
+        return 'Each line needs a unit price.';
+      }
+    }
+    if (kind.value === 'credit_note') {
+      const draftByKey = new Map<string, number>();
+      for (const row of draftRows.value) {
+        const amt = lineFaceAmount(row);
+        if (amt == null) continue;
+        const matchKey = noteLineMatchKey(row.name, row.currencyCode);
+        draftByKey.set(matchKey, (draftByKey.get(matchKey) ?? 0) + amt);
+      }
+      for (const [matchKey, draftSum] of draftByKey) {
+        const cap = parentLineCaps.value.get(matchKey);
+        if (cap == null) continue;
+        if (draftSum > cap + 0.001) {
+          const row = draftRows.value.find(
+            (r) => noteLineMatchKey(r.name, r.currencyCode) === matchKey,
+          );
+          const code = row?.currencyCode ?? 'BDT';
+          const label = code === 'BDT' ? formatAmountBdt(cap) : formatForeignAmount(cap);
+          const labelName = row?.name?.trim() || 'line';
+          return `Credit for "${labelName}" cannot exceed ${label} remaining.`;
+        }
+      }
+    }
     if (refundCashNow.value) {
       const amt = Number(refundAmount.value) || 0;
       if (amt <= 0) return 'Enter a refund amount.';
@@ -359,7 +457,9 @@ export function useBillAdjustmentDraft(params: {
   }
 
   const defaultExtraCurrency = computed(() => {
-    const first = draftRows.value.find((r) => !r.isExtra);
+    const fromBill = params.bill.value?.currency_code;
+    if (fromBill) return String(fromBill).trim().toUpperCase();
+    const first = draftRows.value.find((r) => r.currencyCode);
     return first?.currencyCode ?? 'BDT';
   });
 
@@ -380,6 +480,7 @@ export function useBillAdjustmentDraft(params: {
     draftRows,
     draftByKey,
     onNoteAmountInput,
+    onExtraLineSync,
     addExtraRow,
     extraDraftRows,
     arChargeDraftRows,

@@ -11,6 +11,8 @@ export interface WeightBalanceBoxInput {
   shipping_weight: number;
 }
 
+import { throwWeightBalanceBlocked } from './weightBalanceBlocked';
+
 export interface WeightAdjustmentResult {
   itemId: number;
   newPackageWeight: number; // in grams, rounded to 3 decimal places
@@ -73,7 +75,12 @@ export function computePackageWeightAdjustments(
   // Guard: If estimated is 0 and delta is not 0
   if (estimatedTotalGm === 0) {
     if (deltaGm !== 0) {
-      throw new Error('no weight basis to distribute');
+      throwWeightBalanceBlocked(
+        'no_weight_basis',
+        items,
+        actualTotalKg,
+        'Line items have no weight basis to distribute cargo weight against.',
+      );
     }
     // If both are 0, no adjustments needed
     return items.map((item) => ({
@@ -81,6 +88,10 @@ export function computePackageWeightAdjustments(
       newPackageWeight: item.package_weight,
       perUnitDelta: 0,
     }));
+  }
+
+  if (deltaGm < 0) {
+    return computeNegativePackageWeightAdjustments(items, deltaGm, actualTotalKg);
   }
 
   // Prepare tracking variables
@@ -127,8 +138,12 @@ export function computePackageWeightAdjustments(
 
     // Validate that line would not go below 0
     if (newWeightRaw < 0) {
-      throw new Error(
+      throwWeightBalanceBlocked(
+        'line_package_below_zero',
+        items,
+        actualTotalKg,
         `Package weight for line "${item.name}" would go below 0 after adjustment (${newWeightRaw.toFixed(3)}g). Adjustments blocked.`,
+        { lineName: item.name },
       );
     }
 
@@ -153,8 +168,13 @@ export function computePackageWeightAdjustments(
       const adjustedWeightRaw = target.newWeightRounded + additionalPerUnit;
 
       if (adjustedWeightRaw < 0) {
-        throw new Error(
-          `Package weight for line "${items.find((i) => i.id === maxGrossWeightItemId)?.name}" would go below 0 after remainder distribution (${adjustedWeightRaw.toFixed(3)}g). Adjustments blocked.`,
+        const remainderLine = items.find((i) => i.id === maxGrossWeightItemId);
+        throwWeightBalanceBlocked(
+          'line_package_below_zero',
+          items,
+          actualTotalKg,
+          `Package weight for line "${remainderLine?.name}" would go below 0 after remainder distribution (${adjustedWeightRaw.toFixed(3)}g). Adjustments blocked.`,
+          { lineName: remainderLine?.name },
         );
       }
 
@@ -172,4 +192,138 @@ export function computePackageWeightAdjustments(
       perUnitDelta: data.newWeightRounded - data.originalPackageWeight,
     };
   });
+}
+
+type LineWeightState = {
+  id: number;
+  name: string;
+  productWeight: number;
+  packageWeight: number;
+  qty: number;
+  originalPackage: number;
+};
+
+function totalPackageReductionCapacityGm(state: LineWeightState[]): number {
+  return state.reduce((sum, line) => {
+    if (line.qty <= 0) return sum;
+    return sum + line.packageWeight * line.qty;
+  }, 0);
+}
+
+/**
+ * When cargo weight is below estimated, only package_weight is reduced (not product_weight).
+ * Lines clamp at 0 g; remaining delta is redistributed across lines that still have headroom.
+ */
+function computeNegativePackageWeightAdjustments(
+  items: WeightBalanceItemInput[],
+  deltaGm: number,
+  actualTotalKg: number,
+): WeightAdjustmentResult[] {
+  const state: LineWeightState[] = items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    productWeight: item.product_weight || 0,
+    packageWeight: item.package_weight || 0,
+    qty: item.ordered_quantity || 0,
+    originalPackage: item.package_weight || 0,
+  }));
+
+  const requiredReductionGm = -deltaGm;
+  const capacityGm = totalPackageReductionCapacityGm(state);
+  if (capacityGm + 1e-9 < requiredReductionGm) {
+    const shortfallKg = (requiredReductionGm - capacityGm) / 1000;
+    throwWeightBalanceBlocked(
+      'cargo_below_packaging_capacity',
+      items,
+      actualTotalKg,
+      `Cargo weight is ${shortfallKg.toFixed(3)} kg lower than packaging weights can absorb (product weights are not reduced). Lower product weights on lines or correct cargo invoice weight.`,
+      { shortfallKg },
+    );
+  }
+
+  let remainingDeltaGm = deltaGm;
+  const maxIterations = Math.max(items.length, 1) * 8;
+
+  for (let iter = 0; iter < maxIterations && remainingDeltaGm < -1e-9; iter++) {
+    const active = state.filter((line) => line.qty > 0 && line.packageWeight > 1e-12);
+    if (active.length === 0) break;
+
+    const basisGm = active.reduce(
+      (sum, line) => sum + (line.productWeight + line.packageWeight) * line.qty,
+      0,
+    );
+    if (basisGm <= 0) break;
+
+    let appliedThisRoundGm = 0;
+    for (const line of active) {
+      const grossGm = (line.productWeight + line.packageWeight) * line.qty;
+      const share = grossGm / basisGm;
+      const lineDeltaGm = remainingDeltaGm * share;
+      const perUnitDelta = lineDeltaGm / line.qty;
+      const newPackageWeight = line.packageWeight + perUnitDelta;
+
+      if (newPackageWeight < 0) {
+        const lineAppliedGm = -line.packageWeight * line.qty;
+        line.packageWeight = 0;
+        appliedThisRoundGm += lineAppliedGm;
+      } else {
+        line.packageWeight = newPackageWeight;
+        appliedThisRoundGm += lineDeltaGm;
+      }
+    }
+
+    if (Math.abs(appliedThisRoundGm) < 1e-12) break;
+    remainingDeltaGm -= appliedThisRoundGm;
+  }
+
+  if (remainingDeltaGm < -0.05) {
+    throwWeightBalanceBlocked(
+      'cannot_distribute',
+      items,
+      actualTotalKg,
+      'Could not fully distribute weight reduction across packaging weights. Check line weights and cargo invoice weight.',
+    );
+  }
+
+  let maxGrossWeight = -1;
+  let maxGrossWeightItemId = -1;
+  let sumAdjustedGm = 0;
+
+  for (const line of state) {
+    const grossGm = (line.productWeight + line.originalPackage) * line.qty;
+    if (grossGm > maxGrossWeight) {
+      maxGrossWeight = grossGm;
+      maxGrossWeightItemId = line.id;
+    }
+
+    const rounded =
+      line.qty > 0 ? Math.round(line.packageWeight * 1000) / 1000 : line.originalPackage;
+    sumAdjustedGm += (rounded - line.originalPackage) * line.qty;
+    line.packageWeight = rounded;
+  }
+
+  const remainderGm = deltaGm - sumAdjustedGm;
+  if (Math.abs(remainderGm) > 0.00001 && maxGrossWeightItemId !== -1) {
+    const target = state.find((line) => line.id === maxGrossWeightItemId);
+    if (target && target.qty > 0) {
+      const additionalPerUnit = remainderGm / target.qty;
+      const adjustedWeight = target.packageWeight + additionalPerUnit;
+      if (adjustedWeight < 0) {
+        throwWeightBalanceBlocked(
+          'line_package_below_zero',
+          items,
+          actualTotalKg,
+          `Package weight for line "${target.name}" would go below 0 after remainder distribution (${adjustedWeight.toFixed(3)}g). Adjustments blocked.`,
+          { lineName: target.name },
+        );
+      }
+      target.packageWeight = Math.round(adjustedWeight * 1000) / 1000;
+    }
+  }
+
+  return state.map((line) => ({
+    itemId: line.id,
+    newPackageWeight: line.qty > 0 ? line.packageWeight : line.originalPackage,
+    perUnitDelta: (line.qty > 0 ? line.packageWeight : line.originalPackage) - line.originalPackage,
+  }));
 }

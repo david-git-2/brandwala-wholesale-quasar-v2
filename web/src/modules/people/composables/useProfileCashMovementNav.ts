@@ -17,6 +17,8 @@ export function useProfileCashMovementNav() {
     entityId: number;
     partyName?: string;
     returnTo?: string;
+    prefillCurrency?: string;
+    prefillAmount?: number;
   }) => {
     navigateToProfileCashMovement(router, {
       kind: input.kind,
@@ -25,6 +27,8 @@ export function useProfileCashMovementNav() {
       tenantSlug: tenantSlug(),
       returnTo: input.returnTo?.trim() || route.fullPath,
       partyName: input.partyName,
+      prefillCurrency: input.prefillCurrency,
+      prefillAmount: input.prefillAmount,
     });
   };
 

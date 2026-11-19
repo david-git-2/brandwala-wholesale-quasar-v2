@@ -22,13 +22,31 @@
             @click="onIssueDraftBill"
           />
           <q-btn
-            v-if="canOpenBillAdjustmentComposer && !adjustmentComposerOpen"
+            v-if="!isApBill && canOpenBillAdjustmentComposer"
             outline
             no-caps
             color="primary"
             icon="ph ph-file-minus"
             label="Add credit/debit note"
-            @click="adjustmentComposerOpen = true"
+            @click="openAdjustmentInNewTab()"
+          />
+          <q-btn
+            v-if="canOpenApCreditNote"
+            outline
+            no-caps
+            color="primary"
+            icon="ph ph-file-minus"
+            label="Credit note"
+            @click="openAdjustmentInNewTab('credit_note')"
+          />
+          <q-btn
+            v-if="canWriteOffApBill"
+            outline
+            no-caps
+            color="primary"
+            icon="ph ph-eraser"
+            label="Write off"
+            @click="openAdjustmentInNewTab('write_off')"
           />
           <q-btn
             v-if="canApplyCreditToBill"
@@ -46,7 +64,7 @@
             color="primary"
             icon="ph ph-wallet"
             label="Add payment"
-            @click="openMoneyPayDialog()"
+            @click="goToBillPay()"
           />
           <q-btn
             v-if="canRecordVendorRefund"
@@ -208,33 +226,7 @@
             :ap-kind="bill.source_key ?? bill.ap_kind"
             :total-amount="bill.total_amount"
             :desk-bill-lines="bundleQuery.data.value?.billLines"
-            :note-edit-mode="adjustmentComposerOpen && !isWriteOffKind"
-            :draft-rows="draftRows"
-            @add-extra-line="(code) => addExtraRow(code)"
-            @note-amount="onNoteAmountInput"
           />
-          <BillAdjustmentNoteBar
-            v-if="adjustmentComposerOpen"
-            v-model:kind="kind"
-            v-model:reason="reason"
-            v-model:write-off-amount="writeOffAmount"
-            :note-total-labels="noteTotalLabels"
-            :balance-effect="balanceEffect"
-            :submit-disabled-reason="submitDisabledReason"
-            :loading="adjustmentActionLoading"
-            :parent-due-amount="parentDueAmount"
-            @cancel="adjustmentComposerOpen = false"
-            @submit="submitAdjustment"
-          />
-          <q-banner
-            v-if="adjustmentComposerOpen && commercialCreditHintBdt != null"
-            dense
-            rounded
-            class="bg-grey-2 q-mt-sm no-print"
-          >
-            Suggested commercial credit (missing/damaged qty hint):
-            {{ formatAmountBdt(commercialCreditHintBdt) }} — enter lines manually above.
-          </q-banner>
           <div class="row justify-end q-mt-md">
             <div class="bill-totals-panel">
               <BillNetSettlementPanel
@@ -259,7 +251,7 @@
           >
             Open customer credit on this note. Refund the customer or apply to another invoice.
           </q-banner>
-          <template v-if="!isStandardBill && !adjustmentComposerOpen">
+          <template v-if="!isStandardBill">
             <BillAdjustmentLinesTable
               :lines="adjustmentLineRows"
               :header-total-bdt="bill.total_amount"
@@ -289,7 +281,6 @@
                 <th class="text-right">Sell</th>
                 <th class="text-right">Disc.</th>
                 <th class="text-right">Line total</th>
-                <th v-if="adjustmentComposerOpen && !isWriteOffKind" class="text-right">Revised (BDT)</th>
               </tr>
             </thead>
             <tbody>
@@ -306,117 +297,9 @@
                 <td class="text-right">{{ formatDeskAmount(line.sell_price_amount) }}</td>
                 <td class="text-right">{{ formatDeskAmount(line.line_discount_amount) }}</td>
                 <td class="text-right text-weight-medium">{{ formatDeskAmount(line.line_total_amount) }}</td>
-                <td v-if="adjustmentComposerOpen && !isWriteOffKind" class="text-right">
-                  <q-input
-                    v-if="draftByKey(`stock-${line.id}`)"
-                    :model-value="draftByKey(`stock-${line.id}`)!.revisedAmount"
-                    dense
-                    outlined
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    class="note-amount-input"
-                    :placeholder="formatAmountBdt(line.line_total_amount)"
-                    @update:model-value="
-                      (v) =>
-                        onNoteAmountInput(draftByKey(`stock-${line.id}`)!, v as number | null)
-                    "
-                  />
-                </td>
-              </tr>
-              <tr
-                v-for="chargeRow in arChargeDraftRows"
-                :key="chargeRow.key"
-              >
-                <td>{{ chargeRow.name }}</td>
-                <td />
-                <td />
-                <td />
-                <td class="text-right font-mono">
-                  {{ formatAmountBdt(chargeRow.maxAmount ?? 0) }}
-                </td>
-                <td v-if="adjustmentComposerOpen && !isWriteOffKind" class="text-right">
-                  <q-input
-                    :model-value="chargeRow.revisedAmount"
-                    dense
-                    outlined
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    class="note-amount-input"
-                    :placeholder="formatAmountBdt(chargeRow.maxAmount ?? 0)"
-                    @update:model-value="
-                      (v) => onNoteAmountInput(chargeRow, v as number | null)
-                    "
-                  />
-                </td>
-              </tr>
-              <tr
-                v-for="extra in extraDraftRows"
-                :key="extra.key"
-              >
-                <td>
-                  <q-input v-model="extra.name" dense outlined placeholder="Description" />
-                </td>
-                <td colspan="3" />
-                <td />
-                <td v-if="adjustmentComposerOpen && !isWriteOffKind" class="text-right">
-                  <q-input
-                    :model-value="extra.amount"
-                    dense
-                    outlined
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    class="note-amount-input"
-                    placeholder="0"
-                    @update:model-value="
-                      (v) => onNoteAmountInput(extra, v as number | null)
-                    "
-                  />
-                </td>
               </tr>
             </tbody>
           </q-markup-table>
-          <div v-if="adjustmentComposerOpen && !isWriteOffKind" class="q-mt-xs no-print">
-            <q-btn
-              flat
-              dense
-              no-caps
-              color="primary"
-              icon="ph ph-plus"
-              label="Add line"
-              @click="addExtraRow('BDT')"
-            />
-          </div>
-          <BillAdjustmentNoteBar
-            v-if="adjustmentComposerOpen"
-            ref="arAdjustmentNoteBarRef"
-            v-model:kind="kind"
-            v-model:reason="reason"
-            v-model:write-off-amount="writeOffAmount"
-            v-model:refund-cash-now="refundCashNow"
-            v-model:refund-amount="refundAmount"
-            :note-total-labels="noteTotalLabels"
-            :balance-effect="balanceEffect"
-            :submit-disabled-reason="submitDisabledReason"
-            :loading="adjustmentActionLoading"
-            :parent-tenant-id="parentTenantId"
-            :parent-due-amount="parentDueAmount"
-            :ar-refund-eligible="arRefundEligible"
-            :excess-credit-bdt="excessCreditBdt"
-            @cancel="adjustmentComposerOpen = false"
-            @submit="submitAdjustment"
-          />
-          <q-banner
-            v-if="adjustmentComposerOpen && commercialCreditHintBdt != null"
-            dense
-            rounded
-            class="bg-grey-2 q-mt-sm no-print"
-          >
-            Suggested commercial credit (missing/damaged qty hint):
-            {{ formatAmountBdt(commercialCreditHintBdt) }} — enter lines manually above.
-          </q-banner>
 
           <div class="row justify-end q-mt-md">
             <div class="bill-totals-panel">
@@ -570,67 +453,6 @@
       </div>
     </div>
 
-    <MoneyPayDialog
-      v-if="bill && billProfileId && moneyPayDialogOpen"
-      v-model="moneyPayDialogOpen"
-      kind="payment"
-      :summary="moneyPaySummary"
-      :amount-currency-code="paymentDueCurrencyCode"
-      :from-party-name="payFromPartyName"
-      :to-party-name="payToPartyName"
-      :from-pot-options="fromPotOptions"
-      :to-pot-options="toPotOptions"
-      :from-pot-sections="fromPotSections"
-      :to-pot-sections="toPotSections"
-      :from-pot-loading="fromPotLoading"
-      :to-pot-loading="toPotLoading"
-      :allocation-rows="moneyPayAllocationRows"
-      :lock-bill-id="bill.id"
-      :prefill="moneyPayPrefill"
-      :field-flags="moneyPayFieldFlags"
-      :books-currency-code="moneyPayBooksCurrencyCode"
-      :books-tenant-id="moneyPayBooksTenantId"
-      :loading="recordPaymentMutation.isPending.value"
-      :pay-pot-balance="payPotBalance"
-      :pay-balance-shortfall="payBalanceShortfall"
-      @submit="onMoneyPaySubmit"
-      @amount-change="onPayAmountPreview"
-      @open-deposit="openPayDepositDialog"
-      @open-receive-bundle-deposit="openPayReceiveBundleDeposit"
-    />
-    <MoneyPayDialog
-      v-if="bill && payDepositProfileId"
-      v-model="payDepositDialogOpen"
-      kind="deposit"
-      leg-layout="profile_cash"
-      single-line-profile-deposit
-      title="Deposit"
-      :subtitle="payDepositDialogSubtitle"
-      :from-party-name="payDepositPartyName"
-      :to-party-name="payDepositPartyName"
-      :profile-id="payDepositProfileId"
-      :operating-tenant-id="operatingTenantId"
-      :books-tenant-id="moneyPayBooksTenantId"
-      :books-currency-code="moneyPayBooksCurrencyCode"
-      :prefill="payDepositPrefill"
-      :field-flags="payDepositFieldFlags"
-      :default-method-code="PROFILE_CASH_DEFAULT_METHOD"
-      :loading="payDepositMutation.isPending.value"
-      @submit="onPayDepositSubmit"
-    />
-    <RecordVendorCreditRefundDialog
-      v-if="vendorRefundTargetId"
-      v-model="vendorRefundDialogOpen"
-      :credit-note-id="vendorRefundTargetId"
-      :parent-bill-id="vendorRefundParentId"
-      :open-credit="vendorRefundOpenAmount"
-      :books-tenant-id="operatingTenantId"
-      :from-profile-name="profileName"
-      :tenant-label="authStore.selectedTenant?.name ?? 'Our books'"
-      :channel-meta="(bill?.channel_meta as Record<string, unknown> | null) ?? null"
-      :loading="vendorRefundMutation.isPending.value"
-      @submit="onVendorRefund"
-    />
     <ApplyCreditToBillDialog
       v-if="bill && billProfileId && applyCreditTenantId"
       v-model="applyCreditDialogOpen"
@@ -708,14 +530,13 @@ import ApBillPartiesBlock from '../components/ApBillPartiesBlock.vue';
 import ArBillPartiesBlock from '../components/ArBillPartiesBlock.vue';
 import BillKernelSourceChips from '../components/BillKernelSourceChips.vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
-import MoneyPayDialog from '../components/MoneyPayDialog.vue';
-import { useBillDetailMoneyPayDialog } from '../composables/useBillDetailMoneyPayDialog';
 import { useBillPayCashbookLegsStore } from '../stores/billPayCashbookLegsStore';
-import { PROFILE_CASH_DEFAULT_METHOD } from 'src/modules/people/constants/profileCashMovementMethods';
-import RecordVendorCreditRefundDialog from '../components/RecordVendorCreditRefundDialog.vue';
-import { usePostVendorCreditRefundMutation } from '../composables/usePostVendorCreditRefundMutation';
-import type { PostVendorCreditRefundInput } from '../composables/usePostVendorCreditRefundMutation';
-import BillAdjustmentNoteBar from '../components/BillAdjustmentNoteBar.vue';
+import {
+  billAdjustmentRoute,
+  billPayRoute,
+  billVendorRefundRoute,
+  type BillDetailAdjustmentKind,
+} from '../utils/billRoutes';
 import BillAdjustmentLinesTable from '../components/BillAdjustmentLinesTable.vue';
 import BillNetSettlementPanel from '../components/BillNetSettlementPanel.vue';
 import ApplyCreditToBillDialog from '../components/ApplyCreditToBillDialog.vue';
@@ -723,9 +544,6 @@ import BillCancelConfirmDialog from '../components/BillCancelConfirmDialog.vue';
 import type { BillCancelConfirmSnapshot } from '../components/BillCancelConfirmDialog.vue';
 import { usePaymentsVoidAccess } from '../composables/usePaymentsVoidAccess';
 import type { BillLineDisplayRow } from '../repositories/billLinesRepository';
-import { useBillAdjustmentDraft } from '../composables/useBillAdjustmentDraft';
-import { useCreateBillAdjustmentMutation } from '../composables/useCreateBillAdjustmentMutation';
-import { useWriteOffBillMutation } from '../composables/useWriteOffBillMutation';
 import { usePatchBillDatesMutation } from '../composables/usePatchBillDatesMutation';
 import { syncShipmentApBills } from 'src/modules/procurement_stock/repositories/shipmentMoneyKernelRepository';
 import { apBillDueStoresForeignFace } from '../utils/apBillBooks';
@@ -801,29 +619,13 @@ const voidMutation = useVoidBillMutation(
   }),
 );
 const patchBillDatesMutation = usePatchBillDatesMutation(() => billId.value);
-const vendorRefundMutation = usePostVendorCreditRefundMutation(() => billId.value);
-const createAdjustmentMutation = useCreateBillAdjustmentMutation(() => billId.value);
-const writeOffMutation = useWriteOffBillMutation(() => billId.value);
-
-const adjustmentActionLoading = computed(
-  () =>
-    createAdjustmentMutation.isPending.value || writeOffMutation.isPending.value,
-);
-
 const paymentHistoryEntries = computed(
   () => (bundleQuery.data.value?.paymentHistory ?? []) as InvoicePaymentHistoryEntry[],
 );
 
 const applyCreditDialogOpen = ref(false);
-const vendorRefundDialogOpen = ref(false);
 const cancelBillDialogOpen = ref(false);
 const paymentsVoidAccess = usePaymentsVoidAccess();
-const vendorRefundNoteId = ref<number | null>(null);
-const adjustmentComposerOpen = ref(false);
-const arAdjustmentNoteBarRef = ref<InstanceType<typeof BillAdjustmentNoteBar> | null>(null);
-
-const parentTenantId = computed(() => Number(bill.value?.tenant_id ?? 0) || null);
-
 const bill = computed(() => billFromBundle.value as GlobalInvoiceDetail | undefined);
 
 const billCommentHtml = computed(() => billNoteHtml(bill.value?.note));
@@ -1045,42 +847,6 @@ const onCreditAppliedToBill = () => {
   void bundleQuery.refetch();
 };
 
-const {
-  kind,
-  reason,
-  draftRows,
-  draftByKey,
-  onNoteAmountInput,
-  addExtraRow,
-  extraDraftRows,
-  arChargeDraftRows,
-  noteTotalLabels,
-  balanceEffect,
-  submitDisabledReason,
-  buildSubmitPayload,
-  buildWriteOffPayload,
-  writeOffAmount,
-  isWriteOffKind,
-  arRefundEligible,
-  excessCreditBdt,
-  refundCashNow,
-  refundAmount,
-} = useBillAdjustmentDraft({
-  bill,
-  booksTenantId: operatingTenantId,
-  stockLines: lines,
-  isAp: isApBill,
-  parentDueAmount,
-  siblingNotes: adjustmentRows,
-  active: adjustmentComposerOpen,
-});
-
-const commercialCreditHintBdt = computed(() => {
-  const raw = route.query.suggestedAmount;
-  const n = Number(typeof raw === 'string' ? raw : '');
-  return Number.isFinite(n) && n > 0 ? n : null;
-});
-
 const apCurrencyBalances = computed(() => {
   if (!isApBill.value || !bill.value) return null;
   return apBillCurrencyBalances(
@@ -1190,6 +956,17 @@ const canOpenBillAdjustmentComposer = computed(() => {
   const b = bill.value;
   if (!b || !isStandardBill.value || b.invoice_status !== 'issued') return false;
   if (canAddAdjustment.value) return true;
+  return Number(b.due_amount ?? 0) > 0;
+});
+
+const canOpenApCreditNote = computed(
+  () => isApBill.value && isStandardBill.value && canOpenBillAdjustmentComposer.value,
+);
+
+const canWriteOffApBill = computed(() => {
+  const b = bill.value;
+  if (!b || !isApBill.value || !isStandardBill.value) return false;
+  if (b.invoice_status !== 'issued') return false;
   return Number(b.due_amount ?? 0) > 0;
 });
 
@@ -1340,50 +1117,6 @@ const onIssueDeliveryCloseDraft = async () => {
   await issueDeliveryCloseMutation.mutateAsync();
 };
 
-watch(
-  () =>
-    [
-      billId.value,
-      route.query.startAdjustment,
-      bundleQuery.isSuccess.value,
-      canAddAdjustment.value,
-    ] as const,
-  () => {
-    if (route.query.startAdjustment !== '1') return;
-    if (!canAddAdjustment.value) return;
-    const r = route.query.reason;
-    if (typeof r === 'string' && r.trim()) {
-      reason.value = r.trim();
-    }
-    adjustmentComposerOpen.value = true;
-  },
-  { immediate: true },
-);
-
-const vendorRefundTargetId = computed(() => {
-  if (vendorRefundNoteId.value) return vendorRefundNoteId.value;
-  if (isApBill.value && billDocumentKind.value === 'credit_note') return billId.value;
-  return null;
-});
-
-const vendorRefundParentId = computed(() => {
-  const b = bill.value;
-  if (billDocumentKind.value === 'credit_note') {
-    return (b as { parent_bill_id?: number | null } | undefined)?.parent_bill_id ?? null;
-  }
-  return billId.value;
-});
-
-const vendorRefundOpenAmount = computed(() => {
-  const id = vendorRefundTargetId.value;
-  if (!id) return 0;
-  if (isApBill.value && billDocumentKind.value === 'credit_note' && id === billId.value) {
-    return Math.max(0, Number(bill.value?.due_amount ?? 0));
-  }
-  const row = adjustmentRows.value.find((r) => r.id === id);
-  return Math.max(0, Number(row?.due_amount ?? 0));
-});
-
 const paymentDueCurrencyCode = computed(() => {
   const b = bill.value;
   if (!b) return 'BDT';
@@ -1398,58 +1131,13 @@ const paymentDueCurrencyCode = computed(() => {
   return 'BDT';
 });
 
-const {
-  dialogOpen: moneyPayDialogOpen,
-  openMoneyPayDialog,
-  onMoneyPaySubmit,
-  recordPaymentMutation,
-  moneyPayFieldFlags,
-  moneyPaySummary,
-  moneyPayAllocationRows,
-  moneyPayPrefill,
-  fromPotOptions,
-  toPotOptions,
-  fromPotSections,
-  toPotSections,
-  fromPotLoading,
-  toPotLoading,
-  payFromPartyName,
-  payToPartyName,
-  booksCurrencyCode: moneyPayBooksCurrencyCode,
-  operatingTenantId: moneyPayBooksTenantId,
-  payPotBalance,
-  payBalanceShortfall,
-  onPayAmountPreview,
-  payDepositDialogOpen,
-  payDepositDialogSubtitle,
-  payDepositPartyName,
-  payDepositPrefill,
-  payDepositFieldFlags,
-  payDepositProfileId,
-  openPayDepositDialog,
-  openPayReceiveBundleDeposit,
-  onPayDepositSubmit,
-  payDepositMutation,
-} = useBillDetailMoneyPayDialog({
-  billId,
-  bill,
-  operatingTenantId,
-  isApBill,
-  billProfileId,
-  paymentDueAmount,
-  paymentDueCurrencyCode,
-  billShipmentId,
-  booksTenantId,
-  staffOperatingTenantId,
-});
-
-watch(
-  () => bundleQuery.data.value?.payCashbookLegs,
-  (legs) => {
-    if (moneyPayDialogOpen.value || payDepositDialogOpen.value) return;
-    payCashbookLegsStore.replaceFromBundleQuery(billId.value, legs);
-  },
-);
+function goToBillPay() {
+  const id = billId.value;
+  if (id == null) return;
+  const slug =
+    typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  void router.push(billPayRoute(id, slug));
+}
 
 const canRecordPayment = computed(() => {
   const b = bill.value;
@@ -1473,17 +1161,26 @@ const canRecordVendorRefund = computed(() => {
 });
 
 function openVendorRefund(noteId?: number) {
+  const id = billId.value;
+  if (id == null) return;
+  const slug =
+    typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  let creditNoteId: number | undefined;
   if (noteId) {
-    vendorRefundNoteId.value = noteId;
-  } else if (billDocumentKind.value === 'credit_note') {
-    vendorRefundNoteId.value = billId.value;
-  } else {
+    creditNoteId = noteId;
+  } else if (billDocumentKind.value !== 'credit_note') {
     const firstOpen = adjustmentRows.value.find(
       (r) => r.document_kind === 'credit_note' && Number(r.due_amount ?? 0) > 0,
     );
-    vendorRefundNoteId.value = firstOpen?.id ?? null;
+    if (firstOpen?.id) creditNoteId = firstOpen.id;
   }
-  vendorRefundDialogOpen.value = true;
+  void router.push(
+    billVendorRefundRoute(
+      id,
+      slug,
+      creditNoteId ? { creditNoteId: String(creditNoteId) } : undefined,
+    ),
+  );
 }
 
 const detailErrorMessage = computed(() => {
@@ -1640,34 +1337,18 @@ const adjustmentKindLabel = (kind: string) => {
   return kind;
 };
 
-const onVendorRefund = async (payload: PostVendorCreditRefundInput) => {
-  await vendorRefundMutation.mutateAsync(payload);
-  vendorRefundDialogOpen.value = false;
-  vendorRefundNoteId.value = null;
-};
-
-const submitAdjustment = async () => {
-  if (isWriteOffKind.value) {
-    const writeOffPayload = buildWriteOffPayload();
-    if (!writeOffPayload) return;
-    await writeOffMutation.mutateAsync(writeOffPayload);
-    adjustmentComposerOpen.value = false;
-    return;
-  }
-  const pointRef = arAdjustmentNoteBarRef.value?.cashbookPointId;
-  const pointId =
-    pointRef != null && typeof pointRef === 'object' && 'value' in pointRef
-      ? (pointRef as { value: number | null }).value
-      : (pointRef as number | null | undefined) ?? null;
-  const payload = buildSubmitPayload(pointId);
-  if (!payload) return;
-  if (refundCashNow.value && !payload.cashbookPointId) {
-    showErrorNotification('Choose a till or safe to pay the refund from.');
-    return;
-  }
-  await createAdjustmentMutation.mutateAsync(payload);
-  adjustmentComposerOpen.value = false;
-};
+function openAdjustmentInNewTab(adjustmentKind?: BillDetailAdjustmentKind) {
+  const id = billId.value;
+  if (id == null) return;
+  const tenantSlug =
+    (typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null) ||
+    authStore.tenantSlug ||
+    undefined;
+  const loc = router.resolve(
+    billAdjustmentRoute(id, tenantSlug, adjustmentKind ? { adjustmentKind } : undefined),
+  );
+  window.open(loc.href, '_blank', 'noopener,noreferrer');
+}
 </script>
 
 <style scoped lang="scss">

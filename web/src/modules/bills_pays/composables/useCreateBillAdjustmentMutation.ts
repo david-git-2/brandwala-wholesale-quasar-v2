@@ -39,13 +39,14 @@ export function useCreateBillAdjustmentMutation(parentBillId: () => number | nul
               item_kind: line.line_kind ?? 'charge',
               description: line.name_snapshot,
               quantity: line.quantity,
-              unit_price: line.line_total_amount / Math.max(line.quantity, 1),
+              unit_price: line.unit_price,
               line_total: line.line_total_amount,
               meta: {
                 currency_code: line.currency_code,
                 books_amount: line.books_amount,
                 parent_line_id: line.parent_line_id,
                 global_stock_id: line.global_stock_id,
+                reason: line.reason || null,
               },
             }))
           : [

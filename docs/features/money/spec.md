@@ -137,7 +137,7 @@ All writes via `public.rpc_*` only. Signatures: grep `24_money_kernel_rpcs_write
 
 **`kind=payment`** pays come from [bridge `rpc_pay_bills`](../money_bill_bridge/spec.md) only — not deposit/withdraw.
 
-**Profile multi-line deposit (desk):** People / profile cashbook **Deposit** is a **full Cashbook page** (`ProfileCashDepositPage`, route `…/cashbook/:entityType/:entityId/deposit`) with **N sequential `rpc_deposit` calls** from one form (`depositLines` payload). Shared currency and location; each line has its own amount, method, and instrument meta → one `money_kernel.pays` row per line. Stop on first failure; earlier lines stay posted; no `rpc_deposit_batch`. **Withdraw** is single-line on `ProfileCashWithdrawPage`. Entry points pass `returnTo` (back + success). Bill **Add money** stays single-line `MoneyPayDialog`.
+**Profile multi-line deposit (desk):** People / profile cashbook **Deposit** is a **full Cashbook page** (`ProfileCashDepositPage`, route `…/cashbook/:entityType/:entityId/deposit`) with **N sequential `rpc_deposit` calls** from one form (`depositLines` payload). Shared currency and location; each line has its own amount, method, and instrument meta → one `money_kernel.pays` row per line. Stop on first failure; earlier lines stay posted; no `rpc_deposit_batch`. **Withdraw** is single-line on `ProfileCashWithdrawPage`. Entry points pass `returnTo` (back + success). Bill **Add money** opens the same deposit page (`returnTo` = bill pay page).
 
 ---
 

@@ -17,6 +17,8 @@ export function navigateToProfileCashMovement(
     tenantSlug?: string;
     returnTo: string;
     partyName?: string;
+    prefillCurrency?: string;
+    prefillAmount?: number;
   },
 ) {
   const navType = cashbookNavEntityType(input.entityType);
@@ -32,6 +34,13 @@ export function navigateToProfileCashMovement(
   };
   if (input.partyName?.trim()) {
     query.partyName = input.partyName.trim();
+  }
+  const ccy = input.prefillCurrency?.trim().toUpperCase();
+  if (ccy) {
+    query.prefillCurrency = ccy;
+  }
+  if (input.prefillAmount != null && Number.isFinite(input.prefillAmount) && input.prefillAmount > 0) {
+    query.prefillAmount = String(Math.round(input.prefillAmount * 100) / 100);
   }
   void router.push({
     name: cashbookMovementRouteName(input.kind),

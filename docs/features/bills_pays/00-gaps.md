@@ -27,11 +27,11 @@
 
 Docs: [money spec](../money/spec.md). **`money_kernel.cashbook_lots`** + **`pay_lot_lines`** replaced **`cashbook_point_pots`**. **`rpc_pay_bills.p_lot_debits`** supports manual multi-lot pay.
 
-**Pay dialog (as-built 2026-11):** `get_bill_detail_bundle.pay_cashbook_legs` lists **locations + bundles** (`books_rate`, `drawer_group`) for picker; UI = location dropdown then bundle chips; balances from bundle, not standalone pot-RPC reads. **Still open:** `public.pays` / `post_ap_payout_*` legacy paths; multi-bundle `p_bundle_debits` in pay UI.
+**Pay page (as-built):** `BillPayPage` — multi-bundle lines + `p_bundle_debits`; **Add money** → `ProfileCashDepositPage` (`returnTo` pay URL). **Still open:** `public.pays` / `post_ap_payout_*` legacy paths.
 
 ### Payment dialog — FX, deposit, partial pays
 
-Full plan: [bridge/spec.md § Payment dialog](../money_bill_bridge/spec.md#payment-dialog). **As-built:** FX from books rates (Phase 1); **Add money** top-up / new bundle (Phase 2); editable payment amount ≤ bill due, in words, partial **Paying now** summary (Phase 3). **Profile deposit (People):** multi-line amounts/methods on **Cashbook deposit page** → sequential `rpc_deposit` per line (`ProfileCashDepositPage`, `returnTo` from People / customer drawer / party ledger). **Still open:** kernel I7b vs desk AP FX edge cases; bill **Add money** deposit remains single-line dialog.
+Full plan: [bridge/spec.md § Payment dialog](../money_bill_bridge/spec.md#payment-dialog). **As-built:** dedicated pay page; multi-bundle debits; deposit top-up via cashbook deposit page + `returnTo`. **Profile deposit (People):** multi-line on `ProfileCashDepositPage`. **Still open:** kernel I7b vs desk AP FX edge cases.
 
 ### AP `from_profile_id` / `to_profile_id` (kernel)
 

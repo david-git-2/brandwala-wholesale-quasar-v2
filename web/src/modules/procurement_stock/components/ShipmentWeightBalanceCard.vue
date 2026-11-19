@@ -317,6 +317,16 @@
       >
         <q-icon name="ph ph-warning" class="q-mr-xs" />
         {{ validationError }}
+        <template v-if="weightBalanceBlockError" #action>
+          <q-btn
+            flat
+            dense
+            no-caps
+            label="Details"
+            color="dark"
+            @click="showWeightBalanceBlockedDialog(weightBalanceBlockError)"
+          />
+        </template>
       </q-banner>
     </div>
 
@@ -441,6 +451,11 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository';
 import { computePackageWeightAdjustments } from '../utils/weightBalance';
+import {
+  WeightBalanceBlockedError,
+  isWeightBalanceBlockedError,
+  showWeightBalanceBlockedDialog,
+} from '../utils/weightBalanceBlocked';
 import {
   showSuccessNotification,
   showErrorNotification,
@@ -588,8 +603,13 @@ const adjustments = computed(() => {
     }));
     return computePackageWeightAdjustments(inputItems, actualKg.value);
   } catch (error) {
-    return error as Error;
+    return error;
   }
+});
+
+const weightBalanceBlockError = computed(() => {
+  const adjs = adjustments.value;
+  return adjs instanceof WeightBalanceBlockedError ? adjs : null;
 });
 
 const validationError = computed(() => {
@@ -818,6 +838,10 @@ const deleteBox = async (boxId: number) => {
 
 // Confirmation Dialog before running Apply
 const confirmApply = () => {
+  if (weightBalanceBlockError.value) {
+    showWeightBalanceBlockedDialog(weightBalanceBlockError.value);
+    return;
+  }
   if (applyDisabled.value) return;
 
   $q.dialog({
@@ -835,7 +859,11 @@ const confirmApply = () => {
         );
         emit('applied');
       } catch (error: unknown) {
-        showErrorNotification((error as Error).message || 'Failed to apply weight balance.');
+        if (isWeightBalanceBlockedError(error)) {
+          showWeightBalanceBlockedDialog(error);
+        } else {
+          showErrorNotification((error as Error).message || 'Failed to apply weight balance.');
+        }
       } finally {
         applying.value = false;
       }

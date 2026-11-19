@@ -37,6 +37,49 @@ export function billDetailRoute(billId: number, tenantSlug?: string | null): Rou
   };
 }
 
+export function billPayRoute(billId: number, tenantSlug?: string | null): RouteLocationRaw {
+  return {
+    name: 'app-bill-pay-page',
+    params: { ...(tenantSlug ? { tenantSlug } : {}), billId: String(billId) },
+  };
+}
+
+export type BillVendorRefundQuery = {
+  creditNoteId?: string;
+};
+
+export function billVendorRefundRoute(
+  billId: number,
+  tenantSlug?: string | null,
+  query?: BillVendorRefundQuery,
+): RouteLocationRaw {
+  return {
+    name: 'app-bill-vendor-refund-page',
+    params: { ...(tenantSlug ? { tenantSlug } : {}), billId: String(billId) },
+    query: query?.creditNoteId ? { creditNoteId: query.creditNoteId } : undefined,
+  };
+}
+
+/** Credit / debit note composer (opens in a new tab from bill detail). */
+export function billAdjustmentRoute(
+  billId: number,
+  tenantSlug?: string | null,
+  query?: BillDetailAdjustmentQuery,
+): RouteLocationRaw {
+  return {
+    name: 'app-bill-adjustment-page',
+    params: { ...(tenantSlug ? { tenantSlug } : {}), billId: String(billId) },
+    query: query
+      ? {
+          ...(query.startAdjustment ? { startAdjustment: query.startAdjustment } : {}),
+          ...(query.reason ? { reason: query.reason } : {}),
+          ...(query.suggestedAmount ? { suggestedAmount: query.suggestedAmount } : {}),
+          ...(query.adjustmentKind ? { adjustmentKind: query.adjustmentKind } : {}),
+        }
+      : undefined,
+  };
+}
+
 /** Compose desk for drafts; detail for issued bills (matches bills list). */
 export function billRouteForInvoiceStatus(
   billId: number,
@@ -49,10 +92,14 @@ export function billRouteForInvoiceStatus(
   return billDetailRoute(billId, tenantSlug);
 }
 
+export type BillDetailAdjustmentKind = 'credit_note' | 'debit_note' | 'write_off';
+
 export type BillDetailAdjustmentQuery = {
   startAdjustment?: '1';
   reason?: string;
   suggestedAmount?: string;
+  /** Pre-select composer mode (AP detail opens credit note or write-off in separate tabs). */
+  adjustmentKind?: BillDetailAdjustmentKind;
 };
 
 export function billDetailCommercialCreditRoute(
@@ -60,11 +107,7 @@ export function billDetailCommercialCreditRoute(
   tenantSlug?: string | null,
   query?: BillDetailAdjustmentQuery,
 ): RouteLocationRaw {
-  return {
-    name: 'app-bill-detail-page',
-    params: { ...(tenantSlug ? { tenantSlug } : {}), billId: String(billId) },
-    query: query ?? {},
-  };
+  return billAdjustmentRoute(billId, tenantSlug, query);
 }
 
 export function billPreviewRoute(billId: number, tenantSlug?: string | null): RouteLocationRaw {
