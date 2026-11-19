@@ -203,6 +203,10 @@
 
         <div class="row justify-end q-mt-md">
           <div class="totals-panel">
+            <div v-if="billLinesQuantityTotal > 0" class="total-row">
+              <span>Total qty</span>
+              <span class="font-mono">{{ formatBillQuantityTotal(billLinesQuantityTotal) }}</span>
+            </div>
             <div v-if="bill.discount_amount" class="total-row">
               <span>Discount</span><span>{{ formatDeskAmount(bill.discount_amount) }}</span>
             </div>
@@ -242,6 +246,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt, formatSettlementCurrencyAmount, settlementCurrencyDisplayLabel } from 'src/utils/currency';
 import { useBillDetailBundleQuery } from '../composables/useBillDetailBundleQuery';
 import { kernelBillLinesToStockRows } from '../utils/kernelBillLinesToStockRows';
+import { formatBillQuantityTotal, sumBillLineQuantities } from '../utils/billLineQuantityTotal';
 import { isDeliveryPaperOutcomeBillSource } from '../utils/billRoutes';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/sales_invoice/types';
 import { billsRepository, type InvoiceBrand } from '../repositories/billsRepository';
@@ -372,6 +377,8 @@ const lines = computed((): GlobalInvoiceItemRow[] => {
   }
   return fromQuery ?? [];
 });
+
+const billLinesQuantityTotal = computed(() => sumBillLineQuantities(lines.value));
 
 const showArKernelSource = computed(() => {
   if (isApBill.value || !bill.value) return false;

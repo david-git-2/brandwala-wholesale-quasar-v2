@@ -260,6 +260,30 @@ const pendingOnOtherOutcomeFields = (
     .reduce((sum, f) => sum + pendingOutcomeFieldQty(draft, locked, f), 0);
 };
 
+/** Set Accepted to full Packed (respect locks and other outcome columns). */
+export const prefillAcceptedFromPackedDraft = (
+  item: Pick<DeliveryPaperDetailItem, 'paper_picks'>,
+  draft: DeliveryPaperStatusQty,
+): DeliveryPaperStatusQty => {
+  const locked = lockedOutcomeQtyFromPaperPicks(item);
+  const packed = Math.max(0, Math.trunc(draft.packed));
+  const conditioned = Math.max(Math.trunc(draft.conditioned), locked.conditioned);
+  const rejected = Math.max(Math.trunc(draft.rejected), locked.rejected);
+  const base: DeliveryPaperStatusQty = {
+    packed: draft.packed,
+    accepted: draft.accepted,
+    conditioned,
+    rejected,
+  };
+  const accepted = capOutcomeFieldQty(base, 'accepted', packed, locked);
+  return {
+    ...draft,
+    accepted,
+    conditioned,
+    rejected,
+  };
+};
+
 export const capOutcomeFieldQty = (
   draft: DeliveryPaperStatusQty,
   field: 'accepted' | 'conditioned' | 'rejected',

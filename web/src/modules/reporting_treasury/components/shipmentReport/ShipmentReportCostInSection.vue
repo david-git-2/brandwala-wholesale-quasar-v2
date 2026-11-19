@@ -59,6 +59,87 @@
     </q-table>
     <div v-else class="text-caption text-grey-6 q-mb-md">No supplier bills linked yet.</div>
 
+    <div
+      v-if="apBooksTotalBdt > 0.009"
+      class="row q-col-gutter-md q-mb-md text-caption tf-num cost-summary-strip"
+    >
+      <div class="col-auto">
+        <span class="text-weight-bold">Gross in taka</span>
+        {{ formatMoney(apBooksTotalBdt, 'BDT') }}
+      </div>
+      <div v-if="vendorCreditBdt > 0.009" class="col-auto">
+        <span class="text-weight-bold">Vendor credits</span>
+        −{{ formatMoney(vendorCreditBdt, 'BDT') }}
+      </div>
+      <div v-if="vendorCreditBdt > 0.009" class="col-auto">
+        <span class="text-weight-bold">Net in taka</span>
+        {{ formatMoney(netCostBdt, 'BDT') }}
+      </div>
+    </div>
+
+    <div
+      v-if="vendorCreditNotes.length"
+      class="text-caption text-weight-bold q-mb-xs"
+      style="color: var(--tf-neutral-chrome-text)"
+    >
+      Vendor credit notes
+    </div>
+    <q-table
+      v-if="vendorCreditNotes.length"
+      flat
+      bordered
+      dense
+      :rows="vendorCreditNotes"
+      :columns="cnColumns"
+      row-key="id"
+      hide-pagination
+      :pagination="{ rowsPerPage: 0 }"
+      class="detail-table q-mb-md"
+    >
+      <template #body-cell-invoice_no="props">
+        <q-td :props="props">
+          <router-link
+            v-if="canViewBills"
+            :to="billRoute(props.row.id)"
+            class="text-primary text-weight-medium"
+            @click.stop
+          >
+            {{ props.row.invoice_no }}
+          </router-link>
+          <span v-else>{{ props.row.invoice_no }}</span>
+        </q-td>
+      </template>
+      <template #body-cell-parent="props">
+        <q-td :props="props">
+          <router-link
+            v-if="canViewBills && props.row.parent_bill_id"
+            :to="billRoute(props.row.parent_bill_id)"
+            class="text-primary"
+            @click.stop
+          >
+            {{ props.row.parent_invoice_no || '—' }}
+          </router-link>
+          <span v-else>{{ props.row.parent_invoice_no || '—' }}</span>
+        </q-td>
+      </template>
+      <template #body-cell-txn="props">
+        <q-td :props="props" class="tf-num text-right">
+          {{ formatMoney(props.row.txn_amount, props.row.txn_currency_code || 'BDT') }}
+        </q-td>
+      </template>
+      <template #body-cell-bdt="props">
+        <q-td :props="props" class="tf-num text-right">
+          {{ formatMoney(props.row.bdt_credit, 'BDT') }}
+        </q-td>
+      </template>
+      <template #body-cell-payment_status="props">
+        <q-td :props="props">
+          <TfStatusBadge v-if="props.row.payment_status" :status="String(props.row.payment_status)" />
+          <span v-else>—</span>
+        </q-td>
+      </template>
+    </q-table>
+
     <div class="text-caption text-weight-bold q-mb-xs q-mt-sm" style="color: var(--tf-neutral-chrome-text)">
       Cost by type
     </div>
@@ -100,6 +181,7 @@ import type {
   ShipmentReportApBillRow,
   ShipmentReportCostBucket,
   ShipmentReportExchangeRates,
+  ShipmentReportVendorCreditNote,
 } from '../../types/shipmentReportDetailTypes';
 import ShipmentReportSectionShell from './ShipmentReportSectionShell.vue';
 
@@ -109,12 +191,20 @@ const props = withDefaults(
     costBuckets: ShipmentReportCostBucket[];
     exchangeRates: ShipmentReportExchangeRates | null;
     totalCostBdt?: number;
+    apBooksTotalBdt?: number;
+    vendorCreditNotes?: ShipmentReportVendorCreditNote[];
+    vendorCreditBdt?: number;
+    netCostBdt?: number;
     canViewBills: boolean;
     billRoute: (billId: number) => string;
     embedded?: boolean;
   }>(),
   {
     totalCostBdt: 0,
+    apBooksTotalBdt: 0,
+    vendorCreditNotes: () => [],
+    vendorCreditBdt: 0,
+    netCostBdt: 0,
     embedded: false,
   },
 );
@@ -182,6 +272,21 @@ function formatRate(rate: number | null | undefined) {
   return rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 }
 
+const cnColumns: QTableColumn<ShipmentReportVendorCreditNote>[] = [
+  { name: 'invoice_no', label: 'Credit no.', field: 'invoice_no', align: 'left' },
+  { name: 'parent', label: 'Against AP', field: 'parent_invoice_no', align: 'left' },
+  { name: 'txn', label: 'Foreign', field: 'txn_amount', align: 'right' },
+  { name: 'bdt', label: 'In taka', field: 'bdt_credit', align: 'right' },
+  {
+    name: 'reason',
+    label: 'Reason',
+    field: 'reason',
+    align: 'left',
+    format: (v) => String(v || '—'),
+  },
+  { name: 'payment_status', label: 'Payment', field: 'payment_status', align: 'left' },
+];
+
 const apColumns: QTableColumn<ShipmentReportApBillRow>[] = [
   { name: 'invoice_no', label: 'Bill no.', field: 'invoice_no', align: 'left' },
   { name: 'ap_kind', label: 'Type', field: 'ap_kind', align: 'left', format: (v) => String(v || '—') },
@@ -196,5 +301,9 @@ const apColumns: QTableColumn<ShipmentReportApBillRow>[] = [
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
+}
+
+.cost-summary-strip {
+  color: var(--tf-neutral-chrome-text);
 }
 </style>

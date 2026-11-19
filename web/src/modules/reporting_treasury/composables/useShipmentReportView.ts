@@ -28,7 +28,7 @@ export interface ShipmentReportBridgeStep {
   key: string;
   label: string;
   amount: number;
-  kind: 'total' | 'cost' | 'profit';
+  kind: 'total' | 'cost' | 'credit' | 'profit';
 }
 
 export interface ShipmentReportDonutSlice {
@@ -53,6 +53,11 @@ const EMPTY_MATRIX = {
   unpaid_total_bdt: 0,
   profit_loss_bdt: 0,
   profit_loss_pct: 0,
+  vendor_credit_bdt: 0,
+  vendor_credit_count: 0,
+  net_cost_bdt: 0,
+  net_profit_loss_bdt: 0,
+  net_profit_loss_pct: 0,
 };
 
 const EMPTY_QTY = {
@@ -82,20 +87,46 @@ export function useShipmentReportView(detail: Ref<ShipmentReportDetailPayload | 
   const pnl = computed(() => unref(detail)?.pnl ?? null);
   const costBuckets = computed(() => unref(detail)?.cost_buckets ?? []);
 
+  const vendorCreditBdt = computed(() => matrix.value.vendor_credit_bdt ?? 0);
+  const hasVendorCredits = computed(() => vendorCreditBdt.value > 0.009);
+
+  const netCostBdt = computed(() =>
+    hasVendorCredits.value
+      ? (matrix.value.net_cost_bdt ?? matrix.value.total_cost_bdt - vendorCreditBdt.value)
+      : matrix.value.total_cost_bdt,
+  );
+
+  const displayProfitBdt = computed(() =>
+    hasVendorCredits.value
+      ? (matrix.value.net_profit_loss_bdt ?? matrix.value.total_sell_bdt - netCostBdt.value)
+      : matrix.value.profit_loss_bdt,
+  );
+
+  const displayProfitPct = computed(() =>
+    hasVendorCredits.value
+      ? (matrix.value.net_profit_loss_pct ?? matrix.value.profit_loss_pct)
+      : matrix.value.profit_loss_pct,
+  );
+
+  const warehouseLeft = computed(
+    () => qty.value.warehouse_remaining + qty.value.warehouse_stalled,
+  );
+
   const warehouseValueBdt = computed(() => {
+    if (warehouseLeft.value <= 0) {
+      return qty.value.warehouse_value_bdt;
+    }
+    const onHand = qty.value.warehouse_value_bdt;
+    if (onHand > 0.009) return onHand;
     const fromPnl = pnl.value?.unsold_stock_value;
     if (fromPnl != null && fromPnl >= 0) return fromPnl;
-    return qty.value.warehouse_value_bdt;
+    return 0;
   });
 
   const soldPct = computed(() => {
     if (qty.value.should_arrive <= 0) return 0;
     return (qty.value.sold / qty.value.should_arrive) * 100;
   });
-
-  const warehouseLeft = computed(
-    () => qty.value.warehouse_remaining + qty.value.warehouse_stalled,
-  );
 
   const foreignSubline = computed(() => {
     const legs = matrix.value.total_cost_by_currency?.filter(
@@ -107,16 +138,22 @@ export function useShipmentReportView(detail: Ref<ShipmentReportDetailPayload | 
   const verdict = computed((): ShipmentReportVerdictModel => {
     const m = matrix.value;
     const q = qty.value;
-    const profit = m.profit_loss_bdt;
+    const profit = displayProfitBdt.value;
     const isProfit = profit >= -0.009;
     const profitWord = isProfit ? 'made a profit' : 'lost money';
     const profitAmt = moneyBdt(Math.abs(profit));
-    const margin = m.profit_loss_pct.toFixed(2);
+    const margin = displayProfitPct.value.toFixed(2);
 
     const parts: string[] = [
       `This batch ${profitWord} of ${profitAmt} (${margin}% margin on sales).`,
       `${soldPct.value.toFixed(1)}% of pieces sold.`,
     ];
+
+    if (hasVendorCredits.value) {
+      parts.push(
+        `Vendor credits of ${moneyBdt(vendorCreditBdt.value)} reduced true batch cost.`,
+      );
+    }
 
     if (m.unpaid_total_bdt > 0.009) {
       parts.push(`Customers still owe ${moneyBdt(m.unpaid_total_bdt)}.`);
@@ -153,21 +190,37 @@ export function useShipmentReportView(detail: Ref<ShipmentReportDetailPayload | 
       },
     ];
 
+    if (hasVendorCredits.value) {
+      chips.push({ key: 'vcredit', label: 'Vendor credit', tone: 'default' });
+    }
+
     return { sentence: parts.join(' '), chips };
   });
 
   const primaryKpis = computed((): ShipmentReportKpiTile[] => {
     const m = matrix.value;
     const profitTone: ShipmentReportKpiTile['tone'] =
-      m.profit_loss_bdt >= 0 ? 'positive' : 'negative';
+      displayProfitBdt.value >= 0 ? 'positive' : 'negative';
 
-    return [
+    const tiles: ShipmentReportKpiTile[] = [
       {
         key: 'spent',
-        label: 'Money spent',
+        label: 'Money spent (gross)',
         value: moneyBdt(m.total_cost_bdt),
         hint: foreignSubline.value,
       },
+    ];
+
+    if (hasVendorCredits.value) {
+      tiles.push({
+        key: 'vcredit',
+        label: 'Vendor credits',
+        value: moneyBdt(vendorCreditBdt.value),
+        tone: 'positive',
+      });
+    }
+
+    tiles.push(
       {
         key: 'earned',
         label: 'Money earned',
@@ -175,9 +228,11 @@ export function useShipmentReportView(detail: Ref<ShipmentReportDetailPayload | 
       },
       {
         key: 'profit',
-        label: 'Profit',
-        value: moneyBdt(m.profit_loss_bdt),
-        hint: `${m.profit_loss_pct.toFixed(2)}% margin`,
+        label: hasVendorCredits.value ? 'Net profit' : 'Profit',
+        value: moneyBdt(displayProfitBdt.value),
+        hint: hasVendorCredits.value
+          ? `${displayProfitPct.value.toFixed(2)}% margin · Before credits: ${moneyBdt(m.profit_loss_bdt)}`
+          : `${displayProfitPct.value.toFixed(2)}% margin`,
         emphasis: 'hero',
         tone: profitTone,
       },
@@ -185,10 +240,11 @@ export function useShipmentReportView(detail: Ref<ShipmentReportDetailPayload | 
         key: 'collect',
         label: 'Still to collect',
         value: moneyBdt(m.unpaid_total_bdt),
-        emphasis: 'default',
         tone: m.unpaid_total_bdt > 0.009 ? 'negative' : undefined,
       },
-    ];
+    );
+
+    return tiles;
   });
 
   const secondaryKpis = computed((): ShipmentReportKpiTile[] => {
@@ -232,14 +288,26 @@ export function useShipmentReportView(detail: Ref<ShipmentReportDetailPayload | 
         kind: 'cost',
       });
     }
+    if (hasVendorCredits.value) {
+      steps.push({
+        key: 'vendor_credit',
+        label: 'Vendor credit',
+        amount: vendorCreditBdt.value,
+        kind: 'credit',
+      });
+    }
     steps.push({
       key: 'profit',
-      label: 'Profit',
-      amount: matrix.value.profit_loss_bdt,
+      label: hasVendorCredits.value ? 'Net profit' : 'Profit',
+      amount: displayProfitBdt.value,
       kind: 'profit',
     });
     return steps;
   });
+
+  const bridgeTotalCost = computed(() =>
+    hasVendorCredits.value ? netCostBdt.value : matrix.value.total_cost_bdt,
+  );
 
   const donutSlices = computed((): ShipmentReportDonutSlice[] => {
     const total = matrix.value.total_cost_bdt;
@@ -273,6 +341,12 @@ export function useShipmentReportView(detail: Ref<ShipmentReportDetailPayload | 
     matrix,
     qty,
     pnl,
+    vendorCreditBdt,
+    hasVendorCredits,
+    netCostBdt,
+    displayProfitBdt,
+    displayProfitPct,
+    bridgeTotalCost,
     warehouseValueBdt,
     soldPct,
     verdict,
@@ -298,4 +372,10 @@ export type UseShipmentReportViewReturn = {
   warehouseValueBdt: ComputedRef<number>;
   soldPct: ComputedRef<number>;
   pnl: ComputedRef<import('../types/shipmentProfitTypes').ShipmentProfitReportRow | null>;
+  vendorCreditBdt: ComputedRef<number>;
+  hasVendorCredits: ComputedRef<boolean>;
+  netCostBdt: ComputedRef<number>;
+  displayProfitBdt: ComputedRef<number>;
+  displayProfitPct: ComputedRef<number>;
+  bridgeTotalCost: ComputedRef<number>;
 };

@@ -56,4 +56,17 @@ describe('shipment report golden S54 (tenant 15 / shipment 54)', () => {
       golden.profit_matrix.receive_loss_bdt as number,
     );
   });
+
+  test('no vendor credits: hero profit equals gross batch profit', () => {
+    const { hasVendorCredits, displayProfitBdt, matrix } = useShipmentReportView(ref(payload));
+    expect(hasVendorCredits.value).toBe(false);
+    near(displayProfitBdt.value, matrix.value.profit_loss_bdt);
+    expect(matrix.value.vendor_credit_bdt ?? 0).toBe(0);
+  });
+
+  test('warehouse KPI uses on-hand value not unsold manifest when stock is zero', () => {
+    const { warehouseValueBdt, qty } = useShipmentReportView(ref(payload));
+    expect(qty.value.warehouse_remaining + qty.value.warehouse_stalled).toBe(0);
+    expect(warehouseValueBdt.value).toBe(qty.value.warehouse_value_bdt);
+  });
 });

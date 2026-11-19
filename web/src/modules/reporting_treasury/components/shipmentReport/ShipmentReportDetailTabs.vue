@@ -9,6 +9,10 @@
       :cost-buckets="detail.cost_buckets"
       :exchange-rates="detail.exchange_rates"
       :total-cost-bdt="detail.profit_matrix?.total_cost_bdt ?? 0"
+      :ap-books-total-bdt="detail.ap_books_total_bdt ?? 0"
+      :vendor-credit-notes="detail.vendor_credit_notes ?? []"
+      :vendor-credit-bdt="detail.profit_matrix?.vendor_credit_bdt ?? 0"
+      :net-cost-bdt="detail.profit_matrix?.net_cost_bdt ?? detail.profit_matrix?.total_cost_bdt ?? 0"
       :can-view-bills="canViewBills"
       :bill-route="billRoute"
     />
@@ -52,7 +56,9 @@ const tabs = computed(() => [
     name: 'costs' as const,
     label: 'Costs',
     icon: 'ph ph-coins',
-    count: props.detail.cost_buckets?.length ?? 0,
+    count:
+      (props.detail.cost_buckets?.length ?? 0) +
+      (props.detail.vendor_credit_notes?.length ?? 0),
   },
   {
     name: 'sales' as const,

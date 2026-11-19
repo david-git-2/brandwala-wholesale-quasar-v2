@@ -22,13 +22,22 @@
             @click="onIssueDraftBill"
           />
           <q-btn
-            v-if="!isApBill && canOpenBillAdjustmentComposer"
+            v-if="!isApBill && canOpenBillAdjustmentComposer && !isWholesaleKernelBill"
             outline
             no-caps
             color="primary"
             icon="ph ph-file-minus"
             label="Add credit/debit note"
             @click="openAdjustmentInNewTab()"
+          />
+          <q-btn
+            v-if="canWriteOffArBill"
+            outline
+            no-caps
+            color="primary"
+            icon="ph ph-eraser"
+            label="Write off"
+            @click="openAdjustmentInNewTab('write_off')"
           />
           <q-btn
             v-if="canOpenApCreditNote"
@@ -303,6 +312,10 @@
 
           <div class="row justify-end q-mt-md">
             <div class="bill-totals-panel">
+              <div v-if="billLinesQuantityTotal > 0" class="bill-total-row">
+                <span>Total qty</span>
+                <span class="font-mono">{{ formatBillQuantityTotal(billLinesQuantityTotal) }}</span>
+              </div>
               <div v-if="bill.discount_amount" class="bill-total-row">
                 <span>Discount</span>
                 <span>{{ formatDeskAmount(bill.discount_amount) }}</span>
@@ -562,6 +575,8 @@ import {
   billNoteHasVisibleContent,
   billNoteHtml,
 } from '../utils/billNoteDisplay';
+import { formatBillQuantityTotal, sumBillLineQuantities } from '../utils/billLineQuantityTotal';
+import { isInvWsWholesaleBill as isInvWsWholesaleBillCheck } from '../utils/wholesaleKernelBill';
 
 const route = useRoute();
 const router = useRouter();
@@ -753,6 +768,8 @@ const lines = computed((): GlobalInvoiceItemRow[] => {
   }
   return stockItems ?? fromQuery ?? [];
 });
+
+const billLinesQuantityTotal = computed(() => sumBillLineQuantities(lines.value));
 
 const parentInvoiceNoFromMeta = computed(() => {
   const meta = bill.value?.channel_meta as Record<string, unknown> | null;
@@ -967,6 +984,22 @@ const canOpenApCreditNote = computed(
 const canWriteOffApBill = computed(() => {
   const b = bill.value;
   if (!b || !isApBill.value || !isStandardBill.value) return false;
+  if (b.invoice_status !== 'issued') return false;
+  return Number(b.due_amount ?? 0) > 0;
+});
+
+const isWholesaleKernelBill = computed(() =>
+  isInvWsWholesaleBillCheck(
+    bill.value
+      ? { ...bill.value, spine: billSpine.value }
+      : null,
+  ),
+);
+
+const canWriteOffArBill = computed(() => {
+  const b = bill.value;
+  if (!b || isApBill.value || !isStandardBill.value) return false;
+  if (!isWholesaleKernelBill.value) return false;
   if (b.invoice_status !== 'issued') return false;
   return Number(b.due_amount ?? 0) > 0;
 });

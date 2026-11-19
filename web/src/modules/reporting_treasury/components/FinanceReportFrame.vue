@@ -1,7 +1,8 @@
 <template>
   <q-page
-    class="finance-report-page bg-grey-1 column no-wrap"
-    style="height: calc(100vh - 55px); overflow: hidden"
+    class="finance-report-page column no-wrap"
+    :class="layout === 'document' ? 'finance-report-page--document' : 'bg-grey-1'"
+    :style="pageStyle"
   >
     <div class="bg-white border-bottom q-px-md q-py-xs shrink-0 shadow-xs">
       <div class="row items-center justify-between q-col-gutter-xs">
@@ -47,24 +48,45 @@
       <slot name="kpi" />
     </div>
 
-    <div class="table-scroll-container col-grow overflow-hidden q-pa-xs">
+    <div
+      class="col-grow"
+      :class="
+        layout === 'document'
+          ? 'finance-report-document-body q-pa-md'
+          : 'table-scroll-container overflow-hidden q-pa-xs'
+      "
+    >
       <slot />
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  loading?: boolean;
-  error?: string | null;
-  showExport?: boolean;
-  exportDisabled?: boolean;
-}>();
+import { computed } from 'vue';
+
+const props = withDefaults(
+  defineProps<{
+    loading?: boolean;
+    error?: string | null;
+    showExport?: boolean;
+    exportDisabled?: boolean;
+    layout?: 'table' | 'document';
+  }>(),
+  {
+    layout: 'table',
+  },
+);
 
 defineEmits<{
   export: [];
   refresh: [];
 }>();
+
+const pageStyle = computed(() =>
+  props.layout === 'document'
+    ? { minHeight: 'calc(100vh - 55px)' }
+    : { height: 'calc(100vh - 55px)', overflow: 'hidden' },
+);
 </script>
 
 <style scoped>
@@ -78,6 +100,15 @@ defineEmits<{
 
 .border-bottom {
   border-bottom: 1px solid #e2e8f0;
+}
+
+.finance-report-page--document {
+  background: var(--tf-neutral-surface);
+}
+
+.finance-report-document-body {
+  overflow-y: visible;
+  width: 100%;
 }
 
 .table-scroll-container {

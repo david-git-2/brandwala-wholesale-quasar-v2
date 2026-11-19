@@ -10,6 +10,7 @@ Fixture tenant **15**, **shipment id 54** (`Test Shipment 26`) — canonical rep
 | RT21 | doc_done | Root `REPORTS_PLAN.md` duplicate | Deleted; product truth in this spec only | — |
 | RT22 | shipped | Shipment P&amp;L sales/AP on kernel bills | RPCs still read `public.bills` / `global_invoice_items` | `get_tenant_shipment_*` + `get_shipment_pnl` → `money_kernel.bills` / `bill_lines` |
 | RT23 | shipped | Customers report ([US-5](spec.md)) | Hub + `list_customers_report` / header / section RPCs | Customer dues page removed; `/customer-dues` → customers |
+| RT24 | shipped | Vendor credit notes on shipment report detail | `vendor_credit_notes` + net P&amp;L in RPC/UI | — |
 
 **Retired (2026-11):** RT19 invoice-line COGS report — dropped with `get_tenant_invoice_profit_report`; GP stays shipment P&L only.
 
