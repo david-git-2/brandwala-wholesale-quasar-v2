@@ -10,6 +10,18 @@ deploy_log() { printf '%s\n' "$*" >&2; }
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+PAGES_DEPLOY_BRANCH="${CF_PAGES_DEPLOY_BRANCH:-main}"
+
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+  if [[ "${CURRENT_BRANCH}" != "${PAGES_DEPLOY_BRANCH}" ]]; then
+    deploy_log "Error: production frontend deploy must run on git branch '${PAGES_DEPLOY_BRANCH}' (current: ${CURRENT_BRANCH})."
+    deploy_log "  git checkout ${PAGES_DEPLOY_BRANCH} && git pull"
+    deploy_log "  pnpm run frontend:prod"
+    exit 1
+  fi
+fi
+
 # Frontend builds must use production Supabase keys, not local Docker.
 bash "${ROOT_DIR}/scripts/env-switch.sh" prod
 
@@ -251,9 +263,9 @@ fi
 
 pages_deploy_cmd() {
   if ((${#WRANGLER_DEPLOY_SKIP_CACHING[@]} > 0)); then
-    wrangler_cmd pages deploy web/dist/spa --project-name "${PROJECT_NAME}" --commit-dirty=true "${WRANGLER_DEPLOY_SKIP_CACHING[@]}" 2>&1 | tee "${WRANGLER_DEPLOY_LOG}"
+    wrangler_cmd pages deploy web/dist/spa --project-name "${PROJECT_NAME}" --branch "${PAGES_DEPLOY_BRANCH}" --commit-dirty=true "${WRANGLER_DEPLOY_SKIP_CACHING[@]}" 2>&1 | tee "${WRANGLER_DEPLOY_LOG}"
   else
-    wrangler_cmd pages deploy web/dist/spa --project-name "${PROJECT_NAME}" --commit-dirty=true 2>&1 | tee "${WRANGLER_DEPLOY_LOG}"
+    wrangler_cmd pages deploy web/dist/spa --project-name "${PROJECT_NAME}" --branch "${PAGES_DEPLOY_BRANCH}" --commit-dirty=true 2>&1 | tee "${WRANGLER_DEPLOY_LOG}"
   fi
   return "${PIPESTATUS[0]}"
 }
