@@ -4,7 +4,7 @@
     :class="layout === 'document' ? 'finance-report-page--document' : 'bg-grey-1'"
     :style="pageStyle"
   >
-    <div class="bg-white border-bottom q-px-md q-py-xs shrink-0 shadow-xs">
+    <div class="finance-report-chrome border-bottom q-px-md q-py-xs shrink-0">
       <div class="row items-center justify-between q-col-gutter-xs">
         <div class="col-auto row items-center q-gutter-xs">
           <slot name="filters" />
@@ -44,7 +44,7 @@
       {{ error }}
     </q-banner>
 
-    <div v-if="$slots.kpi" class="bg-white border-bottom q-px-md q-py-xs shrink-0">
+    <div v-if="$slots.kpi" class="finance-report-chrome border-bottom q-px-md q-py-xs shrink-0">
       <slot name="kpi" />
     </div>
 
@@ -99,11 +99,16 @@ const pageStyle = computed(() =>
 }
 
 .border-bottom {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--tf-neutral-border, #e2e8f0);
+}
+
+.finance-report-chrome {
+  background: transparent;
 }
 
 .finance-report-page--document {
-  background: var(--tf-neutral-surface);
+  max-width: 100%;
+  background: var(--tf-theme-base, var(--tf-neutral-canvas));
 }
 
 .finance-report-document-body {
