@@ -187,6 +187,9 @@ export default {
     cart_save_edits_first: 'আগে পরিমাণ বা দাম সংরক্ষণ করুন',
     cart_update_before_checkout: 'চালিয়ে যেতে আগে কার্ট আপডেট করুন',
     cart_unsaved_changes_hint: 'কার্টে সংরক্ষণ হয়নি এমন পরিবর্তন আছে।',
+    unsaved_leave_title: 'সংরক্ষণ হয়নি',
+    unsaved_leave_message:
+      'আপনার পরিবর্তনগুলো এখনও সংরক্ষণ হয়নি। বের হওয়ার আগে সংরক্ষণ করুন, নতুবা বাতিল করুন।',
     save_cart_changes: 'পরিবর্তন সংরক্ষণ',
     update_cart: 'কার্ট আপডেট',
     cart_price_below_floor: 'একটি বিক্রয়মূল্য ন্যূনতমের নিচে',

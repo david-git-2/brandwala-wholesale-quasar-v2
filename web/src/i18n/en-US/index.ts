@@ -185,6 +185,9 @@ export default {
     cart_save_edits_first: 'Save quantity or price first',
     cart_update_before_checkout: 'Update your cart before continuing',
     cart_unsaved_changes_hint: 'You have unsaved cart changes.',
+    unsaved_leave_title: 'Unsaved changes',
+    unsaved_leave_message:
+      'You have unsaved changes. Save before leaving, or discard them.',
     save_cart_changes: 'Save changes',
     cart_price_below_floor: 'A selling price is below the minimum',
     cart_place_order_banner: 'This places your order directly. There is no delivery form.',

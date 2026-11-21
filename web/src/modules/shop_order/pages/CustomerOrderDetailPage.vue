@@ -172,7 +172,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
+import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import {
   useCustomerShopOrderDetailQuery,
@@ -204,6 +206,7 @@ import { customerCanSeeCatalogPrice, customerCanSeeCartLinePrices } from '../uti
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const authStore = useAuthStore();
 
 const orderId = computed(() => Number(route.params.id || 0));
@@ -520,6 +523,26 @@ const saveAllQuantityEdits = async () => {
     savedItemQuantities.value[targetItem.id] = targetItem.quantity;
   }
 };
+
+const discardQuantityEdits = () => {
+  for (const item of orderItems.value) {
+    const savedQty = savedItemQuantities.value[item.id];
+    if (savedQty !== undefined && canEditItemQuantity(item)) {
+      item.quantity = savedQty;
+    }
+  }
+};
+
+useUnsavedLeaveGuard({
+  isDirty: hasUnsavedQtyEdits,
+  onSave: async () => {
+    await saveAllQuantityEdits();
+    return !hasUnsavedQtyEdits.value;
+  },
+  onDiscard: discardQuantityEdits,
+  title: t('shop.unsaved_leave_title'),
+  message: t('shop.unsaved_leave_message'),
+});
 
 const handleCustomerOfferUpdate = ({ itemId, amount }: { itemId: number; amount: number }) => {
   const item = orderItems.value.find((i) => i.id === itemId);

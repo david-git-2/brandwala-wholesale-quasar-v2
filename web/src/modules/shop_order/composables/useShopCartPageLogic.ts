@@ -2,6 +2,7 @@ import { computed, ref, watch, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { requestConfirmation } from 'src/utils/appFeedback';
+import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';
 import { useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { ActiveCartItem, ShopCartItem } from '../repositories/shopCartRepository';
@@ -361,6 +362,25 @@ export function useShopCartPageLogic(
       }
     },
   );
+
+  const discardCartEdits = () => {
+    editedQuantities.value = {};
+    editedPrices.value = {};
+  };
+
+  const saveCartEditsForLeave = async (): Promise<boolean> => {
+    if (hasFloorViolation.value) return false;
+    await saveAllCartEdits();
+    return !hasUnsavedEdits.value;
+  };
+
+  useUnsavedLeaveGuard({
+    isDirty: hasUnsavedEdits,
+    onSave: saveCartEditsForLeave,
+    onDiscard: discardCartEdits,
+    title: t('shop.unsaved_leave_title'),
+    message: t('shop.unsaved_leave_message'),
+  });
 
   return {
     selectedShopId,

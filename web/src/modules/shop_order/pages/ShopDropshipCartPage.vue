@@ -118,6 +118,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';
 import type { DropshipCartItem } from '../repositories/dropshipCartRepository';
 import { useActiveShopCartsQuery } from '../composables/useActiveShopCartsQuery';
 import { useShopCartSelection } from '../composables/useShopCartSelection';
@@ -130,6 +132,7 @@ import ShopDropshipCartItemCard from '../components/ShopDropshipCartItemCard.vue
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 
 const {
   data: activeCartsData,
@@ -212,6 +215,29 @@ const removeItem = async (item: DropshipCartItem) => {
     removingItemId.value = null;
   }
 };
+
+const saveAllQtyEdits = async (): Promise<boolean> => {
+  if (!selectedShopId.value || !hasUnsavedEdits.value) return true;
+  const shopId = selectedShopId.value;
+  const ids = Object.keys(editedQuantities.value).map(Number);
+  for (const cartItemId of ids) {
+    const quantity = editedQuantities.value[cartItemId];
+    if (quantity === undefined) continue;
+    await updateQtyMutation.mutateAsync({ cartItemId, quantity, shopId });
+    delete editedQuantities.value[cartItemId];
+  }
+  return !hasUnsavedEdits.value;
+};
+
+useUnsavedLeaveGuard({
+  isDirty: hasUnsavedEdits,
+  onSave: saveAllQtyEdits,
+  onDiscard: () => {
+    editedQuantities.value = {};
+  },
+  title: t('shop.unsaved_leave_title'),
+  message: t('shop.unsaved_leave_message'),
+});
 
 const goToReview = () => {
   if (!selectedShopId.value || hasUnsavedEdits.value) return;

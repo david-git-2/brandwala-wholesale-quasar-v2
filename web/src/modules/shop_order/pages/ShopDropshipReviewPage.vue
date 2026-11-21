@@ -76,6 +76,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useDropshipReviewCartQuery } from '../composables/useDropshipReviewCartQuery';
 import { useShopCartMutations } from '../composables/useShopCartMutations';
@@ -92,6 +94,7 @@ import ShopDropshipReviewSummaryCard from '../components/ShopDropshipReviewSumma
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const authStore = useAuthStore();
 
 const shopId = computed(() =>
@@ -206,6 +209,27 @@ const saveResellPrice = async (itemId: number) => {
 
 const tenantSlugParam = () =>
   route.params.tenantSlug ? String(route.params.tenantSlug) : null;
+
+const saveAllResellEdits = async (): Promise<boolean> => {
+  if (summary.value.hasFloorViolation) return false;
+  for (const item of items.value) {
+    const savedPrice = getResellUnitAmount(item);
+    if (!hasUnsavedResell(item.id, savedPrice)) continue;
+    await saveResellPrice(item.id);
+    if (hasUnsavedResell(item.id, getResellUnitAmount(item))) return false;
+  }
+  return !hasUnsavedEdits.value;
+};
+
+useUnsavedLeaveGuard({
+  isDirty: hasUnsavedEdits,
+  onSave: saveAllResellEdits,
+  onDiscard: () => {
+    editedResellPrices.value = {};
+  },
+  title: t('shop.unsaved_leave_title'),
+  message: t('shop.unsaved_leave_message'),
+});
 
 const goBackToCart = () => {
   void router.push(shopCartPath(tenantSlugParam(), shopId.value));
