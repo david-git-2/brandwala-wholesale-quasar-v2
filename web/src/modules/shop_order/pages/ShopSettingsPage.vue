@@ -19,7 +19,7 @@
                   class="shop-settings-tabs__item"
                   :class="{ 'shop-settings-tabs__item--active': activeTab === tab.name }"
                   :data-test="`shop-tab-${tab.name}`"
-                  @click="activeTab = tab.name"
+                  @click="void switchShopTab(tab.name)"
                 >
                   <q-icon :name="tab.icon" size="14px" />
                   <span>{{ tab.label }}</span>
@@ -28,6 +28,37 @@
             </div>
           </div>
           <div class="col-auto row items-center q-gutter-sm no-wrap">
+            <template v-if="activeTab === 'setup'">
+              <span
+                v-if="setupIsDirty"
+                class="text-caption text-grey-7 q-mr-xs"
+                data-test="shop-setup-unsaved-hint"
+              >
+                {{ $t('shop_admin.shop_setup_unsaved_hint') }}
+              </span>
+              <q-btn
+                flat
+                dense
+                no-caps
+                color="grey-8"
+                :label="$t('shop_admin.cancel')"
+                :disable="!setupIsDirty || setupIsSaving"
+                data-test="shop-setup-cancel"
+                @click="onSetupCancel"
+              />
+              <q-btn
+                unelevated
+                dense
+                no-caps
+                color="primary"
+                icon="ph ph-floppy-disk"
+                :label="$t('shop_admin.save')"
+                :loading="setupIsSaving"
+                :disable="!setupIsDirty || setupIsSaving"
+                data-test="shop-setup-save"
+                @click="void onSetupSave()"
+              />
+            </template>
             <q-btn
               flat
               round
@@ -69,7 +100,11 @@
               :shop-id="shop.id"
               :tenant-slug="tenantSlug"
             />
-            <ShopSettingsForm :shop="shop" :setup-lookups="setupLookups" />
+            <ShopSettingsForm
+              ref="setupFormRef"
+              :shop="shop"
+              :setup-lookups="setupLookups"
+            />
 
             <q-card flat class="shop-danger-zone q-mt-md">
               <q-card-section>
@@ -299,7 +334,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, ref, unref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useQueryClient } from '@tanstack/vue-query';
@@ -327,6 +362,7 @@ import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopCatalogPath } from '../utils/catalogShop';
 import { useShopsListUiStore } from '../stores/shopsListUiStore';
 import { showSuccessNotification, showErrorNotification, requestConfirmation } from 'src/utils/appFeedback';
+import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';
 import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
 import type {
   ShopStorefrontAdminListing,
@@ -372,6 +408,43 @@ const {
   isRefreshing: isRefreshingSetup,
 } = useShopSetupBundleQuery(tenantId, shopId);
 const { mutate: deleteShopMutation, isPending: isDeleting } = useDeleteShopMutation();
+type ShopSettingsFormExpose = {
+  isDirty: boolean;
+  isSaving: boolean;
+  save: () => Promise<boolean>;
+  discard: () => void;
+};
+
+const setupFormRef = ref<ShopSettingsFormExpose | null>(null);
+
+const setupIsDirty = computed(() => Boolean(unref(setupFormRef.value?.isDirty)));
+const setupIsSaving = computed(() => Boolean(unref(setupFormRef.value?.isSaving)));
+
+const { confirmLeave } = useUnsavedLeaveGuard({
+  isDirty: setupIsDirty,
+  onSave: async () => (await setupFormRef.value?.save()) ?? false,
+  onDiscard: () => setupFormRef.value?.discard(),
+  title: t('shop_admin.setup_unsaved_title'),
+  message: t('shop_admin.setup_unsaved_message'),
+});
+
+async function switchShopTab(tab: ShopDetailTab): Promise<void> {
+  if (activeTab.value === tab) return;
+  if (setupIsDirty.value) {
+    const ok = await confirmLeave();
+    if (!ok) return;
+  }
+  activeTab.value = tab;
+}
+
+async function onSetupSave(): Promise<void> {
+  await setupFormRef.value?.save();
+}
+
+function onSetupCancel(): void {
+  setupFormRef.value?.discard();
+}
+
 const deleteKeyword = ref('');
 const deleteShopName = ref('');
 const storefrontSearch = ref('');

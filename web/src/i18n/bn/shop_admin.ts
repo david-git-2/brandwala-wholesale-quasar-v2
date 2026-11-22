@@ -172,6 +172,10 @@ export default {
   shop_setup_saved: 'শপ সেটআপ সেভ হয়েছে।',
   shop_setup_saving: 'সেভ হচ্ছে…',
   shop_setup_autosaved: 'সেভ হয়েছে',
+  shop_setup_unsaved_hint: 'সংরক্ষণ হয়নি',
+  setup_unsaved_title: 'সংরক্ষণ হয়নি',
+  setup_unsaved_message:
+    'শপ সেটআপে অসংরক্ষিত পরিবর্তন আছে। যাওয়ার আগে সেভ করুন, অথবা বাতিল করুন।',
   shop_setup_save_failed: 'শপ সেটআপ সেভ হয়নি।',
   shop_setup_load_failed: 'এই শপ লোড হয়নি।',
   shop_catalog_url_copy: 'শপ URL কপি করুন',

@@ -55941,21 +55941,15 @@ CREATE OR REPLACE FUNCTION "public"."trg_customer_groups_soft_delete_phone_uniqu
     AS $$
 begin
   if new.deleted_at is not null and old.deleted_at is null then
-    alter table public.billing_profiles disable trigger trg_billing_profiles_admin_email_unique_per_tenant;
-
-    update public.billing_profiles
+    update public.profiles
     set is_phone_unique = false
-    where customer_group_id = new.id;
-
-    alter table public.billing_profiles enable trigger trg_billing_profiles_admin_email_unique_per_tenant;
+    where customer_group_id = new.id
+      and profile_type = 'customer'::public.profile_party_type;
   elsif new.deleted_at is null and old.deleted_at is not null then
-    alter table public.billing_profiles disable trigger trg_billing_profiles_admin_email_unique_per_tenant;
-
-    update public.billing_profiles
+    update public.profiles
     set is_phone_unique = true
-    where customer_group_id = new.id;
-
-    alter table public.billing_profiles enable trigger trg_billing_profiles_admin_email_unique_per_tenant;
+    where customer_group_id = new.id
+      and profile_type = 'customer'::public.profile_party_type;
   end if;
   return new;
 end;
@@ -57164,9 +57158,8 @@ begin
     is_active = new.is_active,
     deleted_at = new.deleted_at,
     updated_at = now()
-  from public.billing_profiles bp
-  where bp.customer_group_id = new.id
-    and p.id = bp.id;
+  where p.customer_group_id = new.id
+    and p.profile_type = 'customer'::public.profile_party_type;
 
   return new;
 end;
@@ -62730,14 +62723,23 @@ CREATE OR REPLACE FUNCTION "public"."user_can_manage_shop_tenant"("p_tenant_id" 
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-  select exists (
-    select 1
-    from public.memberships m
-    where m.tenant_id = p_tenant_id
-      and lower(trim(m.email)) = public.current_user_email()
-      and m.is_active = true
-      and m.role in ('admin', 'staff')
-  );
+  select
+    p_tenant_id is not null
+    and (
+      public.is_superadmin()
+      or public.membership_has_module_action(p_tenant_id, 'shop_config', 'edit')
+      or public.membership_has_module_action(p_tenant_id, 'shop_config', 'create')
+      or public.membership_has_module_action(
+        public.resolve_books_tenant_id(p_tenant_id),
+        'shop_config',
+        'edit'
+      )
+      or public.membership_has_module_action(
+        public.resolve_books_tenant_id(p_tenant_id),
+        'shop_config',
+        'create'
+      )
+    );
 $$;
 
 

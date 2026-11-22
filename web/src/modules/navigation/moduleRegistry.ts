@@ -673,18 +673,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'customer',
     name: 'Customers',
     description:
-      'Customer groups, billing profiles, delivery recipients, member access, and wallets.',
-    navIcon: 'ph ph-users',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Customers',
-        caption: 'Accounts, billing profiles, and delivery recipients hub',
-        icon: 'ph ph-users',
-        routeSegment: 'customers',
-        requiredAction: 'view',
-      },
-    ],
+      'Customer groups, billing profiles, delivery recipients, member access, and wallets. No sidebar link — open via Settings or deep links.',
+    routes: [],
   },
   {
     key: 'billing_profile',

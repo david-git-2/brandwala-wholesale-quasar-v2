@@ -173,6 +173,10 @@ export default {
   shop_setup_saved: 'Shop setup saved.',
   shop_setup_saving: 'Saving…',
   shop_setup_autosaved: 'Saved',
+  shop_setup_unsaved_hint: 'Unsaved changes',
+  setup_unsaved_title: 'Unsaved changes',
+  setup_unsaved_message:
+    'Shop setup has unsaved changes. Save before leaving, or discard them.',
   shop_setup_save_failed: 'Could not save shop setup.',
   shop_setup_load_failed: 'Could not load this shop.',
   shop_catalog_url_copy: 'Copy shop URL',
