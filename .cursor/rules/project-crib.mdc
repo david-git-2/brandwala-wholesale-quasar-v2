@@ -1,0 +1,16 @@
+---
+description: Minimal always-on project map. Detail in .development-flow and supabase-local-backend.
+globs:
+alwaysApply: true
+---
+
+# Project crib
+
+- **Stack:** Quasar 2 + Vue 3 + TS in `web/`; Supabase (Postgres, RPCs) in `supabase/`.
+- **Surfaces:** `platform` | `app` | `shop` | `investor` (scoped login).
+- **Modules:** `web/src/modules/<name>/` — page → store/service → repository or composable + repository.
+- **Writes:** prefer RPCs when RLS is computed; types via migrations + `backend:types` (grep `database.types.ts`, never full-read).
+- **Schema:** `supabase/schemas/`; grep symbols; never full-read `public.sql` or bulk-read migrations.
+- **Local DB default:** `pnpm run backend:local` after migrations. Never auto `backend:reset` / `restore-dumps` / `pull-prod-data` — see `.cursor/rules/supabase-local-backend.mdc`.
+- **Product facts:** `docs-first.mdc` + DOC_GAP; don't invent statuses/RPCs.
+- **Scope:** >3 files or >150 lines → pause. Full stack/conventions: `.cursor/rules/.development-flow.mdc`.

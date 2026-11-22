@@ -1,7 +1,7 @@
 ---
-description: Project stack, domain rules, architecture constraints, and development conventions. Always active.
-globs:
-alwaysApply: true
+description: Project stack, domain rules, architecture constraints, and development conventions.
+globs: ["web/**", "supabase/**", "docs/**", "python/**"]
+alwaysApply: false
 ---
 
 # Development Flow — TradeFlow BD
