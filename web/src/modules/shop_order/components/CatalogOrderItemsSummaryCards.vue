@@ -47,15 +47,19 @@
       </div>
       <dl class="summary-dl">
         <div class="summary-dl__row">
-          <dt>Purchase total</dt>
+          <dt>Purchase total ({{ buyCurrencySymbol }})</dt>
           <dd>{{ buyCurrencySymbol }}{{ formatMoney(totals.grandTotalPurchasePrice) }}</dd>
         </div>
         <div class="summary-dl__row">
-          <dt>Landed total (purchase currency)</dt>
+          <dt>Cargo total ({{ buyCurrencySymbol }})</dt>
+          <dd>{{ buyCurrencySymbol }}{{ formatMoney(totals.grandTotalCargoPurchase) }}</dd>
+        </div>
+        <div class="summary-dl__row">
+          <dt>Landed total ({{ buyCurrencySymbol }})</dt>
           <dd>{{ buyCurrencySymbol }}{{ formatMoney(totals.grandTotalLandedPurchase) }}</dd>
         </div>
         <div class="summary-dl__row">
-          <dt>Landed total (sell currency)</dt>
+          <dt>Landed total after FX ({{ sellCurrencySymbol }})</dt>
           <dd>{{ sellCurrencySymbol }}{{ formatMoney(totals.grandTotalLandedSell) }}</dd>
         </div>
         <div class="summary-dl__row summary-dl__row--muted">
@@ -113,6 +117,7 @@ const props = defineProps<{
     totalQuantity: number;
     totalWeightGm: number;
     grandTotalPurchasePrice: number;
+    grandTotalCargoPurchase: number;
     grandTotalLandedPurchase: number;
     grandTotalLandedSell: number;
     grandTotalFirstOffer: number;

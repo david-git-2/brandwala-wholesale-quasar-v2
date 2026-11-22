@@ -235,12 +235,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import type { ShopOrder } from '../types';
+import type { ShopOrder, ShopOrderItem } from '../types';
 import { normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
+import { resolveCatalogPurchaseCurrencySymbol } from '../utils/resolveCatalogOrderCurrency';
 
 const props = withDefaults(
   defineProps<{
     order: ShopOrder | null;
+    items?: ShopOrderItem[];
     saving?: boolean;
     variant?: 'card' | 'compact';
     /** `header`: pill sits in order header row; editor spans full width below. */
@@ -282,7 +284,9 @@ const final_offer_rate = ref<number | null>(null);
 const profit_basis = ref<'purchase' | 'total_cost'>('total_cost');
 const ratesExpanded = ref(false);
 
-const buyCurrency = computed(() => props.order?.shop_buy_currency_symbol || '£');
+const buyCurrency = computed(() =>
+  resolveCatalogPurchaseCurrencySymbol(props.order, props.items ?? []),
+);
 
 const showFinalOfferRate = computed(
   () => normalizeCatalogOrderStatus(props.order?.status) !== 'submitted',

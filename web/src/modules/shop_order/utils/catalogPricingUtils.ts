@@ -44,6 +44,14 @@ export function getTotalWeightGm(
   return getProductWeightGm(item) + getPackageWeightGm(item, orderPackageWeightKg);
 }
 
+export function getPurchaseUnitPrice(item: Partial<ShopOrderItem>): number {
+  return Number(item.cost_price_amount ?? item.unit_list_price_amount ?? 0);
+}
+
+export function getPurchaseRowTotal(item: Partial<ShopOrderItem>): number {
+  return getPurchaseUnitPrice(item) * Number(item.quantity || 0);
+}
+
 export function getCargoCostUnitPurchase(
   item: Partial<ShopOrderItem>,
   cargoRate: number,
@@ -53,13 +61,20 @@ export function getCargoCostUnitPurchase(
   return weightKg * cargoRate;
 }
 
+export function getCargoCostRowPurchase(
+  item: Partial<ShopOrderItem>,
+  cargoRate: number,
+  orderPackageWeightKg?: number | null,
+): number {
+  return getCargoCostUnitPurchase(item, cargoRate, orderPackageWeightKg) * Number(item.quantity || 0);
+}
+
 export function getLandedCostUnitPurchase(
   item: Partial<ShopOrderItem>,
   cargoRate: number,
   orderPackageWeightKg?: number | null,
 ): number {
-  const purchasePrice = Number(item.cost_price_amount ?? item.unit_list_price_amount ?? 0);
-  return purchasePrice + getCargoCostUnitPurchase(item, cargoRate, orderPackageWeightKg);
+  return getPurchaseUnitPrice(item) + getCargoCostUnitPurchase(item, cargoRate, orderPackageWeightKg);
 }
 
 export function getLandedCostRowPurchase(

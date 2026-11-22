@@ -185,6 +185,8 @@ function mapStaffShopOrderDetailItemToFlat(item: StaffShopOrderDetailItem): Shop
     weight_kg: negotiation.weight_kg,
     cost_price_amount: moneyAmount(pricing.cost),
     cost_price_currency_id: moneyCurrencyId(pricing.cost),
+    cost_price_currency_symbol: pricing.cost?.currency?.symbol ?? null,
+    unit_list_price_currency_symbol: pricing.list?.currency?.symbol ?? null,
     customer_decision_status: negotiation.customer_decision,
     customer_decision_at: negotiation.customer_offer?.at ?? null,
     negotiation_status: negotiation.status,

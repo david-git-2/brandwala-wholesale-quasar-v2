@@ -708,6 +708,8 @@ export interface ShopOrderItem {
   weight_kg?: number | null;
   cost_price_amount?: number | null;
   cost_price_currency_id?: number | null;
+  cost_price_currency_symbol?: string | null;
+  unit_list_price_currency_symbol?: string | null;
   customer_decision_status?: string | null;
   customer_decision_at?: string | null;
   negotiation_status?: string | null;

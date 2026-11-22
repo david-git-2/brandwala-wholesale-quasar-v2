@@ -224,6 +224,7 @@ export type CatalogOrderSummaryTotals = {
   totalQuantity: number;
   totalWeightGm: number;
   grandTotalPurchasePrice: number;
+  grandTotalCargoPurchase: number;
   grandTotalLandedPurchase: number;
   grandTotalLandedSell: number;
   grandTotalFirstOffer: number;

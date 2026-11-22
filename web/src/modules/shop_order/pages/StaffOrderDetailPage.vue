@@ -21,6 +21,7 @@
         <div class="staff-order-catalog-top shrink-0 bg-white border-bottom shadow-xs q-px-md q-py-xs">
           <CatalogOrderWorkflowBar
             :order="currentOrder"
+            :items="orderItems"
             :is-loading="isLoading"
             :visible-columns="catalogVisibleColumns"
             :can-download-excel="canDownloadCatalogExcel"
@@ -241,6 +242,10 @@ import {
   getFirstOfferUnitAmount,
   getFinalOfferUnitAmount,
 } from '../utils/catalogPricingUtils';
+import {
+  resolveCatalogPurchaseCurrencySymbol,
+  resolveCatalogSellCurrencySymbol,
+} from '../utils/resolveCatalogOrderCurrency';
 import {
   isCatalogFirstOfferLocked,
   isCatalogOfferPriceLocked,
@@ -941,12 +946,10 @@ const workflowStatuses = computed(() => {
   ];
 });
 
-const currencySymbol = computed(
-  () => currentOrder.value?.shop_sell_currency_symbol || '৳',
-);
+const currencySymbol = computed(() => resolveCatalogSellCurrencySymbol(currentOrder.value));
 
-const buyCurrencySymbol = computed(
-  () => currentOrder.value?.shop_buy_currency_symbol || '£',
+const buyCurrencySymbol = computed(() =>
+  resolveCatalogPurchaseCurrencySymbol(currentOrder.value, orderItems.value),
 );
 
 const canAction = computed(() => {
@@ -1199,6 +1202,7 @@ const EMPTY_CATALOG_TOTALS = {
   totalQuantity: 0,
   totalWeightGm: 0,
   grandTotalPurchasePrice: 0,
+  grandTotalCargoPurchase: 0,
   grandTotalLandedPurchase: 0,
   grandTotalLandedSell: 0,
   grandTotalFirstOffer: 0,
@@ -1216,6 +1220,12 @@ const readCatalogTableField = <T,>(v: T | { value: T } | undefined, fallback: T)
 };
 
 const catalogSummarySnapshot = computed(() => {
+  // Re-run when line items or order rates change (table expose alone does not always invalidate parent).
+  void orderItems.value;
+  void currentOrder.value?.conversion_rate;
+  void currentOrder.value?.cargo_rate;
+  void currentOrder.value?.package_weight_kg;
+
   const table = catalogItemsTableRef.value as {
     itemCount?: number | { value: number };
     buyCurrency?: string | { value: string };
@@ -1227,8 +1237,8 @@ const catalogSummarySnapshot = computed(() => {
 
   return {
     itemCount: Number(readCatalogTableField(table?.itemCount, 0)),
-    buyCurrencySymbol: String(readCatalogTableField(table?.buyCurrency, buyCurrencySymbol.value)),
-    sellCurrencySymbol: String(readCatalogTableField(table?.sellCurrency, currencySymbol.value)),
+    buyCurrencySymbol: buyCurrencySymbol.value,
+    sellCurrencySymbol: currencySymbol.value,
     conversionRate: Number(readCatalogTableField(table?.FX, 0)),
     cargoRate: Number(readCatalogTableField(table?.cargoRate, 0)),
     totals: readCatalogTableField(table?.summaryTotals, EMPTY_CATALOG_TOTALS),

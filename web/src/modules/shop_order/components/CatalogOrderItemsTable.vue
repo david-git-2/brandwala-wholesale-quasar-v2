@@ -385,7 +385,7 @@
 
             <!-- 11. Total Purchase Price -->
             <td v-if="isColVisible('purchase_price_total')" class="text-center font-mono text-weight-bold text-grey-9 tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
-              {{ formatAmount((row.cost_price_amount || 0) * row.quantity) }}
+              {{ formatAmount(catalogGetPurchaseRowTotal(row)) }}
             </td>
 
             <!-- 12. Product Weight (gm) -->
@@ -639,6 +639,8 @@ import {
   getPackageWeightGm as catalogGetPackageWeightGm,
   getTotalWeightGm as catalogGetTotalWeightGm,
   getCargoCostUnitPurchase as catalogGetCargoCostUnitPurchase,
+  getCargoCostRowPurchase as catalogGetCargoCostRowPurchase,
+  getPurchaseRowTotal as catalogGetPurchaseRowTotal,
   getLandedCostUnitPurchase as catalogGetLandedCostUnitPurchase,
   getLandedCostRowPurchase as catalogGetLandedCostRowPurchase,
   getLandedCostUnitSell as catalogGetLandedCostUnitSell,
@@ -1265,7 +1267,15 @@ const totalQuantity = computed(() => props.items.reduce((sum, i) => sum + (i.qua
 
 const totalWeightGm = computed(() => props.items.reduce((sum, i) => sum + (getTotalWeightGm(i) * i.quantity), 0));
 
-const grandTotalPurchasePrice = computed(() => props.items.reduce((sum, i) => sum + ((i.cost_price_amount || 0) * i.quantity), 0));
+const grandTotalPurchasePrice = computed(() =>
+  props.items.reduce((sum, i) => sum + catalogGetPurchaseRowTotal(i), 0),
+);
+const grandTotalCargoPurchase = computed(() =>
+  props.items.reduce(
+    (sum, i) => sum + catalogGetCargoCostRowPurchase(i, cargoRate.value, props.order?.package_weight_kg),
+    0,
+  ),
+);
 const grandTotalLandedPurchase = computed(() => props.items.reduce((sum, i) => sum + getLandedCostRowPurchase(i), 0));
 const grandTotalLandedSell = computed(() => props.items.reduce((sum, i) => sum + getLandedCostRowSell(i), 0));
 
@@ -1291,6 +1301,7 @@ const summaryTotals = computed(() => ({
   totalQuantity: totalQuantity.value,
   totalWeightGm: totalWeightGm.value,
   grandTotalPurchasePrice: grandTotalPurchasePrice.value,
+  grandTotalCargoPurchase: grandTotalCargoPurchase.value,
   grandTotalLandedPurchase: grandTotalLandedPurchase.value,
   grandTotalLandedSell: grandTotalLandedSell.value,
   grandTotalFirstOffer: grandTotalFirstOffer.value,

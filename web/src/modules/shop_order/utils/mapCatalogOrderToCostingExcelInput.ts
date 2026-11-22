@@ -11,6 +11,7 @@ import {
   getProductWeightGm,
   type CatalogRatesParams,
 } from './catalogPricingUtils';
+import { resolveCatalogPurchaseCurrencySymbol, resolveCatalogSellCurrencySymbol } from './resolveCatalogOrderCurrency';
 
 const SYMBOL_TO_CODE: Record<string, string> = {
   '£': 'GBP',
@@ -81,11 +82,11 @@ export function mapCatalogOrderToCostingExcelInput(
 ): BuildCostingExcelInput {
   const now = new Date().toISOString();
   const buyCode = currencyCodeFromSymbol(
-    order.shop_buy_currency_symbol,
+    resolveCatalogPurchaseCurrencySymbol(order, items),
     PBC_FALLBACK_BUY_CURRENCY_CODE,
   );
   const sellCode = currencyCodeFromSymbol(
-    order.shop_sell_currency_symbol,
+    resolveCatalogSellCurrencySymbol(order),
     PBC_FALLBACK_SELL_CURRENCY_CODE,
   );
 
