@@ -181,6 +181,7 @@ export default {
   summary_toggle: 'সম্পূর্ণ কস্টিং সারাংশ দেখান বা লুকান',
   summary_file_context: 'ফাইল তথ্য',
   summary_rates_applied: 'প্রয়োগকৃত রেট',
+  file_totals: 'ফাইল মোট',
   summary_line_count: 'লাইন আইটেম',
   summary_incomplete_lines: 'অসম্পূর্ণ',
   summary_incomplete_hint: '{count}টি লাইনে {buy} দাম বা ওজন নেই — অফার মোট ভুল হতে পারে।',

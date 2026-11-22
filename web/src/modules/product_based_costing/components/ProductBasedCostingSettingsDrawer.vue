@@ -151,18 +151,19 @@
         </q-tab-panel>
 
         <!-- 2. Summary Tab Panel -->
-        <q-tab-panel name="summary" class="q-pa-sm bg-white">
-          <ProductBasedCostingFileSummaryPanel
-            :summary-metrics="summaryMetrics"
+        <q-tab-panel name="summary" class="q-pa-none bg-white">
+          <CostingTotalsSummaryCards
+            :summary-title="t('product_based_costing.file_totals')"
+            :item-count="summaryMetrics.lineCount"
+            :buy-currency-symbol="buyMark"
+            :sell-currency-symbol="sellMark"
             :conversion-rate="conversionRate"
             :cargo-rate="cargoRate"
-            :profit-rate="profitRate"
-            :vat-rate="vatRate"
-            :offer-pricing-mode="offerPricingMode"
-            :buy-currency-code="drawerBuyCurrencyCode"
-            :sell-currency-code="drawerSellCurrencyCode"
-            :file-meta="summaryFileMeta"
-            show-file-meta
+            :totals="pbcCostingTotals"
+            :incomplete-line-count="summaryMetrics.incompleteLineCount"
+            :incomplete-hint="pbcIncompleteHint"
+            :show-first-offer="false"
+            :show-counter-offer="false"
           />
         </q-tab-panel>
 
@@ -401,9 +402,17 @@ import {
   pbcFileSellCurrencyCode,
 } from '../utils/pbcFileCurrencies';
 import type { PbcFileSummaryMetrics } from '../composables/usePbcFileSummaryMetrics';
-import ProductBasedCostingFileSummaryPanel, {
-  type PbcSummaryFileMeta,
-} from './ProductBasedCostingFileSummaryPanel.vue';
+import { mapPbcSummaryToCostingTotals } from '../utils/mapPbcSummaryToCostingTotals';
+import CostingTotalsSummaryCards from 'src/components/ui/CostingTotalsSummaryCards.vue';
+
+export type PbcSummaryFileMeta = {
+  name?: string | null;
+  orderFor?: string | null;
+  customerLabel?: string | null;
+  status?: string | null;
+  vendorCode?: string | null;
+  marketCode?: string | null;
+};
 import type { StaffPbcPrimaryAction } from '../utils/pbcFileStatus';
 import ProductBasedCostingProgressBar from './ProductBasedCostingProgressBar.vue';
 import ProductBasedCostingStaffActions from './ProductBasedCostingStaffActions.vue';
@@ -503,6 +512,16 @@ const drawerSellCurrencyCode = computed(() =>
 
 const buyMark = computed(() => pbcCurrencyMark(drawerBuyCurrencyCode.value));
 const sellMark = computed(() => pbcCurrencyMark(drawerSellCurrencyCode.value));
+
+const pbcCostingTotals = computed(() => mapPbcSummaryToCostingTotals(props.summaryMetrics));
+
+const pbcIncompleteHint = computed(() => {
+  if (props.summaryMetrics.incompleteLineCount <= 0) return '';
+  return t('product_based_costing.summary_incomplete_hint', {
+    count: props.summaryMetrics.incompleteLineCount,
+    buy: drawerBuyCurrencyCode.value,
+  });
+});
 
 const offerPricingModeOptions = [
   { label: 'Cost + profit', value: 'landed_cost_plus' },

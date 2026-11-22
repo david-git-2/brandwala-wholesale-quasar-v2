@@ -155,21 +155,9 @@ import DocumentDeliveryPaperChips from 'src/modules/procurement_stock/components
 import CatalogOrderBillsPanel from './CatalogOrderBillsPanel.vue';
 import type { ShopOrder } from '../types';
 import type { ShopOrderBillListItem } from '../types/shopOrderBillList';
+import type { CostingTotalsSummary } from 'src/types/costingTotalsSummary';
 
-export type CatalogOrderSummaryTotals = {
-  totalQuantity: number;
-  totalWeightGm: number;
-  grandTotalPurchasePrice: number;
-  grandTotalCargoPurchase: number;
-  grandTotalLandedPurchase: number;
-  grandTotalLandedSell: number;
-  grandTotalFirstOffer: number;
-  overallFirstOfferMargin: number;
-  grandTotalCounterOffer: number;
-  overallCounterOfferMargin: number;
-  grandTotalFinalOffer: number;
-  overallFinalOfferMargin: number;
-};
+export type CatalogOrderSummaryTotals = CostingTotalsSummary;
 
 const props = defineProps<{
   modelValue: boolean;
@@ -179,7 +167,7 @@ const props = defineProps<{
   sellCurrencySymbol: string;
   conversionRate: number;
   cargoRate: number;
-  totals: CatalogOrderSummaryTotals;
+  totals: CostingTotalsSummary;
   showCancel?: boolean;
   isDeleting?: boolean;
   canDownloadExcel?: boolean;

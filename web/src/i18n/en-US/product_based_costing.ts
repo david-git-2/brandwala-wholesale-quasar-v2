@@ -182,6 +182,7 @@ export default {
   summary_toggle: 'Show or hide full costing summary',
   summary_file_context: 'File context',
   summary_rates_applied: 'Rates applied',
+  file_totals: 'File totals',
   summary_line_count: 'Line items',
   summary_incomplete_lines: 'Incomplete',
   summary_incomplete_hint: '{count} line(s) missing {buy} price or weight — offer totals may be off.',
