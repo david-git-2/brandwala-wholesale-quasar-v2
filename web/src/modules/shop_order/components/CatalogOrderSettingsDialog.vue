@@ -40,62 +40,6 @@
           />
         </q-tab-panel>
 
-        <q-tab-panel name="status" class="catalog-settings-tab-pane q-pa-md">
-          <div class="column q-gutter-y-md">
-            <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
-              <q-icon name="ph ph-traffic-signal" size="18px" color="primary" />
-              <span>Status</span>
-            </div>
-
-            <CatalogOrderProgressBar v-if="order" :order="order" variant="staff" />
-
-            <div class="q-pa-sm bg-grey-1 rounded-borders row items-center justify-between">
-              <div>
-                <div class="text-caption text-grey-6">Current status</div>
-                <div class="text-weight-bold text-subtitle2">{{ currentStatusLabel }}</div>
-              </div>
-              <q-badge
-                rounded
-                dense
-                class="text-weight-bold q-px-sm q-py-2xs text-caption"
-                :color="statusBadge.color"
-                :text-color="statusBadge.textColor"
-              >
-                {{ currentStatusLabel }}
-              </q-badge>
-            </div>
-
-            <CatalogOrderStatusWorkflowBar
-              v-if="order"
-              :status="order.status"
-              :is-negotiable="!!order.is_negotiable_snapshot"
-              :updating="statusUpdating"
-              :target-status="targetStatus"
-              @update-status="emit('update-status', $event)"
-            />
-
-            <CatalogOrderStaffActions
-              v-if="order"
-              variant="card"
-              :status="order.status"
-              :is-primary-loading="isPrimaryLoading"
-              :primary-disabled="primaryDisabled"
-              :primary-disabled-reason="primaryDisabledReason"
-              @primary-action="emit('primary-action', $event)"
-            />
-
-            <q-btn
-              flat
-              no-caps
-              color="grey-8"
-              icon="ph ph-arrows-clockwise"
-              label="Override status…"
-              class="rounded-sq-btn text-weight-medium"
-              @click="emit('override-status')"
-            />
-          </div>
-        </q-tab-panel>
-
         <q-tab-panel name="bills" class="catalog-settings-tab-pane q-pa-md">
           <CatalogOrderBillsPanel
             v-if="order"
@@ -207,16 +151,8 @@ import { computed, ref, watch } from 'vue';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import TfDrawerSectionTabsHeader from 'src/components/ui/TfDrawerSectionTabsHeader.vue';
 import CatalogOrderItemsSummaryCards from './CatalogOrderItemsSummaryCards.vue';
-import CatalogOrderProgressBar from './CatalogOrderProgressBar.vue';
-import CatalogOrderStatusWorkflowBar from './CatalogOrderStatusWorkflowBar.vue';
-import CatalogOrderStaffActions from './CatalogOrderStaffActions.vue';
 import DocumentDeliveryPaperChips from 'src/modules/procurement_stock/components/DocumentDeliveryPaperChips.vue';
 import CatalogOrderBillsPanel from './CatalogOrderBillsPanel.vue';
-import {
-  getStaffCatalogStatusLabel,
-  normalizeCatalogOrderStatus,
-  type StaffCatalogPrimaryAction,
-} from '../utils/catalogOrderStatus';
 import type { ShopOrder } from '../types';
 import type { ShopOrderBillListItem } from '../types/shopOrderBillList';
 
@@ -247,11 +183,6 @@ const props = defineProps<{
   showCancel?: boolean;
   isDeleting?: boolean;
   canDownloadExcel?: boolean;
-  statusUpdating?: boolean;
-  targetStatus?: string | null;
-  isPrimaryLoading?: boolean;
-  primaryDisabled?: boolean;
-  primaryDisabledReason?: string;
   deliveryPaperTenantId?: number | null;
   billsParentTenantId?: number | null;
   showDeliveryPapers?: boolean;
@@ -278,10 +209,7 @@ const billsListEnabled = computed(
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
   (e: 'download-excel', payload: { includeImages: boolean }): void;
-  (e: 'override-status'): void;
   (e: 'cancel-order'): void;
-  (e: 'update-status', status: string): void;
-  (e: 'primary-action', action: StaffCatalogPrimaryAction): void;
   (e: 'open-delivery-paper', paperId: number): void;
   (e: 'open-bill', bill: ShopOrderBillListItem): void;
   (e: 'update-hidden-from-customer', hidden: boolean): void;
@@ -289,7 +217,6 @@ const emit = defineEmits<{
 
 const settingsTabs = [
   { name: 'summary', label: 'Summary', icon: 'ph ph-chart-pie-slice' },
-  { name: 'status', label: 'Status', icon: 'ph ph-traffic-signal' },
   { name: 'bills', label: 'Bills', icon: 'ph ph-receipt' },
   { name: 'delivery', label: 'Delivery', icon: 'ph ph-truck' },
   { name: 'actions', label: 'Actions', icon: 'ph ph-dots-three-outline' },
@@ -307,22 +234,6 @@ watch(showBillsTab, (visible) => {
   if (!visible && activeTab.value === 'bills') {
     activeTab.value = 'summary';
   }
-});
-
-const currentStatusLabel = computed(() => getStaffCatalogStatusLabel(props.order?.status));
-
-const statusBadge = computed(() => {
-  const st = normalizeCatalogOrderStatus(props.order?.status);
-  if (st === 'confirmed' || st === 'dispatch' || st === 'delivered' || st === 'closed') {
-    return { color: 'green-1', textColor: 'green-9' };
-  }
-  if (st === 'priced' || st === 'final_offered' || st === 'procuring') {
-    return { color: 'blue-1', textColor: 'blue-9' };
-  }
-  if (st === 'cancelled') {
-    return { color: 'red-1', textColor: 'red-9' };
-  }
-  return { color: 'orange-1', textColor: 'orange-9' };
 });
 </script>
 

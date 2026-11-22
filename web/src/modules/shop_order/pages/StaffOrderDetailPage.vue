@@ -175,11 +175,6 @@
       :show-cancel="currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled'"
       :is-deleting="isDeletingOrder"
       :can-download-excel="canDownloadCatalogExcel"
-      :status-updating="isCatalogWorkflowUpdating"
-      :target-status="catalogTargetUpdatingStatus"
-      :is-primary-loading="isCatalogPrimaryLoading"
-      :primary-disabled="catalogPrimaryDisabled"
-      :primary-disabled-reason="catalogPrimaryDisabledReason"
       :delivery-paper-tenant-id="deliveryPaperParentTenantId"
       :bills-parent-tenant-id="deliveryPaperParentTenantId"
       :show-delivery-papers="canShowDeliveryPapers"
@@ -187,10 +182,7 @@
       :hidden-from-customer-saving="isUpdatingHiddenFromCustomer"
       @download-excel="handleCatalogDownloadExcel"
       @update-hidden-from-customer="onCatalogHiddenFromCustomerChange"
-      @override-status="onCatalogSettingsOverrideStatus"
       @cancel-order="onCatalogSettingsCancelOrder"
-      @update-status="onCatalogWorkflowStatusClick"
-      @primary-action="handleCatalogPrimaryAction"
       @open-delivery-paper="onOpenDeliveryPaperFromDrawer"
       @open-bill="onOpenBillFromDrawer"
     />
@@ -1244,11 +1236,6 @@ const catalogSummarySnapshot = computed(() => {
     totals: readCatalogTableField(table?.summaryTotals, EMPTY_CATALOG_TOTALS),
   };
 });
-
-function onCatalogSettingsOverrideStatus() {
-  showCatalogSettingsDialog.value = false;
-  showStatusOverrideDialog.value = true;
-}
 
 function onCatalogSettingsCancelOrder() {
   showCatalogSettingsDialog.value = false;
