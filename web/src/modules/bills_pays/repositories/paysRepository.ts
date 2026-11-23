@@ -1,5 +1,5 @@
 import { supabase } from 'src/boot/supabase';
-import type { WholesalePaymentInstrumentInput } from 'src/modules/sales_invoice/types';
+import type { WholesalePaymentInstrumentInput } from 'src/modules/bills_pays/types/invoice';
 import {
   postApPayout,
   postApPayoutSnapshot,

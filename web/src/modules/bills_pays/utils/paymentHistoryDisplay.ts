@@ -1,4 +1,4 @@
-import type { InvoicePaymentHistoryEntry } from 'src/modules/sales_invoice/types';
+import type { InvoicePaymentHistoryEntry } from 'src/modules/bills_pays/types/invoice';
 import type { PayListRow } from '../repositories/paysRepository';
 import { formatBdtTaka, formatSettlementCurrencyAmount } from 'src/utils/currency';
 

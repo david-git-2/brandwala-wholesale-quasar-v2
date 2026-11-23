@@ -117,7 +117,7 @@ import type { QTableColumn } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useInvoiceWorkspace } from 'src/modules/sales_invoice/composables/useInvoiceWorkspace';
+import { useInvoiceWorkspace } from 'src/modules/bills_pays/composables/useInvoiceWorkspace';
 import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import { useAfterSalesPoliciesQuery } from '../composables/useAfterSalesCaseMutations';
 import type { AfterSalesPolicyProgram, AfterSalesProgram } from '../types/afterSales.types';

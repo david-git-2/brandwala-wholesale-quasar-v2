@@ -3,7 +3,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
+import { useRecipientProfileStore } from 'src/modules/customer/stores/recipientProfileStore';
 import { showErrorNotification } from 'src/utils/appFeedback';
 import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';
 import { useDropshipOrderFlowLeaveGuard } from './useDropshipOrderFlowLeaveGuard';

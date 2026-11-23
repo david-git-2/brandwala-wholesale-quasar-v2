@@ -227,9 +227,9 @@ import RecipientListPanel from '../components/RecipientListPanel.vue';
 import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
 import TfEntityListShell from 'src/components/ui/TfEntityListShell.vue';
 import { useCanAdministerCustomerGroup } from '../composables/useCanAdministerCustomerGroup';
-import { useInvoiceWorkspace } from 'src/modules/sales_invoice/composables/useInvoiceWorkspace';
-import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
-import { getInitials } from 'src/modules/sales_invoice/utils/invoiceListDisplay';
+import { useInvoiceWorkspace } from 'src/modules/bills_pays/composables/useInvoiceWorkspace';
+import { useRecipientProfileStore } from 'src/modules/customer/stores/recipientProfileStore';
+import { getInitials } from 'src/modules/bills_pays/utils/invoiceListDisplay';
 import {
   showErrorNotification,
   showSuccessNotification,

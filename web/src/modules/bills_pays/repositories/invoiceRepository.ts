@@ -10,7 +10,7 @@ import type {
   GlobalInvoiceType,
   InvoicePaymentHistoryEntry,
   WholesalePaymentInstrumentInput,
-} from '../types';
+} from '../types/invoice';
 import type { BillPayCashbookLegs } from 'src/modules/bills_pays/types/billPayCashbookLegs';
 import { parseBillPayCashbookLegsFromRpc } from 'src/modules/bills_pays/types/billPayCashbookLegs';
 

@@ -18,7 +18,7 @@
 
 <script setup lang="ts">
 import { toRef, type Ref } from 'vue';
-import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
+import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
 import { useApBillParties } from '../composables/useApBillParties';
 
 const props = defineProps<{

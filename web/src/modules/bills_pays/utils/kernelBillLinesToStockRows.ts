@@ -1,5 +1,5 @@
-import type { GlobalInvoiceItemRow } from 'src/modules/sales_invoice/types';
-import type { BillDetailBundleLine } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import type { GlobalInvoiceItemRow } from 'src/modules/bills_pays/types/invoice';
+import type { BillDetailBundleLine } from 'src/modules/bills_pays/repositories/invoiceRepository';
 
 export function kernelBillLinesToStockRows(
   billLines: BillDetailBundleLine[],

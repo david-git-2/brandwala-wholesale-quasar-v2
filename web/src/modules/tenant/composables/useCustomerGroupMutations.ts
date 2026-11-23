@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { customerGroupRepository } from '../repositories/customerGroupRepository';
 import { tenantQueryKeys } from '../shared/queryKeys/tenantQueryKeys';
-import { salesInvoiceQueryKeys } from 'src/modules/sales_invoice/services/salesInvoiceQueryKeys';
+import { salesInvoiceQueryKeys } from 'src/modules/bills_pays/services/salesInvoiceQueryKeys';
 import { resolveBooksTenantId } from '../utils/resolveBooksTenantId';
 import {
   appendCustomerGroupToAccessPageCaches,

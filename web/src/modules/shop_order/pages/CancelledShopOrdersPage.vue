@@ -91,7 +91,7 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useCustomerProfiles } from 'src/modules/sales_invoice/composables/useCustomerProfiles';
+import { useCustomerProfiles } from 'src/modules/customer/composables/useCustomerProfiles';
 import { useShopOrdersStaffPageQuery } from '../composables/useShopOrdersStaffPageQuery';
 import { useDeleteShopOrdersForStaffMutation } from '../composables/useShopOrderMutations';
 import { requestConfirmation } from 'src/utils/appFeedback';

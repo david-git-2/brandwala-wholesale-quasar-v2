@@ -6365,6 +6365,9 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"ensure_tenant_courier_bdt_bundle":
+{ Args: { "p_books_tenant_id": number,"p_tenant_profile_id": number }; Returns: number
+                           },
 "ensure_tenant_default_money_profiles":
 { Args: { "p_books_tenant_id": number }; Returns: Json
                            },

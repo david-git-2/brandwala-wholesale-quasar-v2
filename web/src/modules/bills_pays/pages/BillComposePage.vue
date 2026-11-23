@@ -496,8 +496,8 @@ import {
   showErrorNotification,
   showSuccessNotification,
 } from 'src/utils/appFeedback';
-import type { CustomerProfile } from 'src/modules/sales_invoice/repositories/customerProfileRepository';
-import { useCustomerProfiles } from 'src/modules/sales_invoice/composables/useCustomerProfiles';
+import type { CustomerProfile } from 'src/modules/customer/repositories/customerProfileRepository';
+import { useCustomerProfiles } from 'src/modules/customer/composables/useCustomerProfiles';
 import {
   billsRepository,
   type SalesInvoiceStockItem,
@@ -508,7 +508,7 @@ type ComposeLineKind = 'stock' | 'description' | 'charge';
 import { useBillComposeMutation } from '../composables/useBillComposeMutation';
 import { billDetailRoute } from '../utils/billRoutes';
 import { isShipmentCostApBill } from '../utils/shipmentApBillSource';
-import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
+import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
 import type { Database } from 'src/types/supabase';
 
 type BillDocumentKind = Database['public']['Enums']['bill_document_kind'];

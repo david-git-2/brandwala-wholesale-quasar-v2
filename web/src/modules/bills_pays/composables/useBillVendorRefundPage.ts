@@ -1,6 +1,6 @@
 import { computed, ref, watch, type ComputedRef } from 'vue';
-import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
-import type { BillDetailBundle } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
+import type { BillDetailBundle } from 'src/modules/bills_pays/repositories/invoiceRepository';
 import type { BillAdjustmentRow } from '../types/billAdjustments';
 
 export function useBillVendorRefundPage(params: {

@@ -1,9 +1,7 @@
--- Golden — courier AR cleared on remittance (settle + write-off note with order_no)
--- COD face is recomputed from lines (1500) + passthrough delivery (80) = 1580;
--- courier AR net = 1580 - 80 = 1500 (manual cod_collect_amount is overwritten).
+-- Golden — courier AR cleared on remittance via courier→tenant pay into courier_bdt
 BEGIN;
 
-SELECT plan(4);
+SELECT plan(5);
 
 DO $$
 DECLARE
@@ -17,10 +15,12 @@ DECLARE
   v_order_id bigint;
   v_order_no text := 'PGTAP-PR-' || substr(md5(random()::text), 1, 8);
   v_courier_ar bigint;
+  v_tenant_profile_id bigint;
+  v_courier_profile_id bigint;
   v_settled numeric;
   v_due numeric;
   v_courier jsonb;
-  v_wo_reason text;
+  v_settle_count int;
 BEGIN
   v_ctx := public._test_money_kernel_bootstrap();
   PERFORM public._test_pgtap_auth();
@@ -93,7 +93,6 @@ BEGIN
   )
   VALUES (v_order_id, v_product_id, 'Line', 1, 1, 1500, v_bdt, 1500, v_bdt, 900, v_bdt);
 
-  -- Draft upsert (sync lines), then issue — auto_issue upsert fails on immutable lines
   v_courier := public.upsert_dropship_courier_ar_bill(v_order_id, true);
   IF coalesce(v_courier ->> 'success', 'false') <> 'true' THEN
     RAISE EXCEPTION 'courier AR upsert failed: %', v_courier;
@@ -105,6 +104,27 @@ BEGIN
   END IF;
 
   SELECT public.resolve_dropship_courier_ap_bill_id(v_order_id, v_tenant) INTO v_courier_ar;
+
+  SELECT p.id INTO v_tenant_profile_id
+  FROM public.profiles p
+  WHERE p.tenant_id = v_tenant
+    AND p.profile_type = 'tenant'::public.profile_party_type
+    AND p.subject_id = v_tenant
+  LIMIT 1;
+
+  IF v_tenant_profile_id IS NULL THEN
+    RAISE EXCEPTION 'tenant profile missing for golden';
+  END IF;
+
+  PERFORM public.ensure_tenant_courier_bdt_bundle(v_tenant, v_tenant_profile_id);
+
+  SELECT kb.from_profile_id INTO v_courier_profile_id
+  FROM money_kernel.bills kb
+  WHERE kb.id = v_courier_ar;
+
+  IF v_courier_profile_id IS NULL THEN
+    RAISE EXCEPTION 'courier AR missing from_profile';
+  END IF;
 
   IF NOT EXISTS (
     SELECT 1 FROM public.bills b
@@ -134,28 +154,32 @@ BEGIN
     RAISE EXCEPTION 'courier AR due expected 0, got %', v_due;
   END IF;
 
-  SELECT kb.meta ->> 'last_write_off_reason' INTO v_wo_reason
-  FROM money_kernel.bills kb
-  WHERE kb.id = v_courier_ar;
+  SELECT count(*) INTO v_settle_count
+  FROM money_kernel.bill_settlements bs
+  WHERE bs.bill_id = v_courier_ar
+    AND bs.settlement_kind = 'pay';
 
-  IF coalesce(v_wo_reason, '') NOT LIKE '%' || v_order_no || '%' THEN
-    RAISE EXCEPTION 'write-off note missing order_no %; got %', v_order_no, v_wo_reason;
+  IF v_settle_count < 1 THEN
+    RAISE EXCEPTION 'expected kernel pay settlement on courier AR';
   END IF;
 
   IF NOT EXISTS (
     SELECT 1
-    FROM money_kernel.bills kb
-    WHERE kb.id = v_courier_ar
-      AND coalesce(kb.written_off_amount, 0) >= v_settled - 0.01
+    FROM money_kernel.cash_locations cl
+    JOIN money_kernel.cashbooks ca ON ca.id = cl.cashbook_id
+    WHERE ca.tenant_id = v_tenant
+      AND ca.profile_id = v_tenant_profile_id
+      AND cl.location_code = 'courier_bdt'
   ) THEN
-    RAISE EXCEPTION 'kernel bill missing write-off amount';
+    RAISE EXCEPTION 'tenant missing courier_bdt location';
   END IF;
 END;
 $$;
 
 SELECT ok(true, 'courier AR settled from remittance');
 SELECT ok(true, 'courier AR due cleared');
-SELECT ok(true, 'write-off note has order_no');
+SELECT ok(true, 'kernel pay settlement on courier AR');
+SELECT ok(true, 'tenant courier_bdt location');
 SELECT ok(true, 'dropship courier AR bill detected');
 
 SELECT finish();

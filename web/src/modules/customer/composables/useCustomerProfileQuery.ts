@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import type { CustomerProfileListQuery } from '../repositories/customerProfileRepository';
 import { useCustomerProfileStore } from '../stores/customerProfileStore';
-import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
+import { salesInvoiceQueryKeys } from 'src/modules/bills_pays/services/salesInvoiceQueryKeys';
 
 export function useCustomerProfilesQuery(
   tenantId: Ref<number | null | undefined>,

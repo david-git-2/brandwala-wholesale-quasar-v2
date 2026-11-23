@@ -11,8 +11,8 @@ import {
   type SalesInvoicePayloadItem,
   type SalesInvoiceStockItem,
   type SalesInvoiceUpdatePayloadInput,
-} from 'src/modules/sales_invoice/repositories/invoiceRepository';
-import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
+} from 'src/modules/bills_pays/repositories/invoiceRepository';
+import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
 import type {
   BillListRow,
   BillsListPageCursor,

@@ -225,7 +225,7 @@ import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore';
 import type { Membership, TenantMembershipRole } from 'src/modules/membership/types';
 import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
-import { useCustomerProfileStore } from 'src/modules/sales_invoice/stores/customerProfileStore';
+import { useCustomerProfileStore } from 'src/modules/customer/stores/customerProfileStore';
 import { useTenantModuleStore } from 'src/modules/tenant/stores/tenantModuleStore';
 import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
@@ -254,7 +254,7 @@ import {
   useCustomerGroupMembersQuery,
   useInvestorsQuery,
 } from '../composables/useAccessControlQueries';
-import { useCustomerProfiles } from 'src/modules/sales_invoice/composables/useCustomerProfiles';
+import { useCustomerProfiles } from 'src/modules/customer/composables/useCustomerProfiles';
 
 // Dialog components
 import RoleFormDialog from '../components/dialogs/RoleFormDialog.vue';

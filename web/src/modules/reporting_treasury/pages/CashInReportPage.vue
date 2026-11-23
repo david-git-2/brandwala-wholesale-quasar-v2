@@ -267,8 +267,8 @@ import { storeToRefs } from 'pinia';
 import type { QTableColumn } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
-import { useCashInReport } from 'src/modules/wallet/composables/useWalletReports';
-import type { CashInReportEntry } from 'src/modules/wallet/types';
+import { useCashInReport } from '../composables/useCashInReport';
+import type { CashInReportEntry } from '../types/cashInReport';
 
 const router = useRouter();
 const { tenantSlug } = storeToRefs(useAuthStore());

@@ -90,7 +90,7 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useInvoiceWorkspace } from 'src/modules/sales_invoice/composables/useInvoiceWorkspace';
+import { useInvoiceWorkspace } from 'src/modules/bills_pays/composables/useInvoiceWorkspace';
 import AfterSalesHubSummaryChart from '../components/AfterSalesHubSummaryChart.vue';
 import AfterSalesOverviewSkeleton from '../components/AfterSalesOverviewSkeleton.vue';
 import OpenWholesaleReturnCaseDialog from '../components/OpenWholesaleReturnCaseDialog.vue';

@@ -126,7 +126,7 @@ import { useProfileCashMovementDialog } from '../composables/useProfileCashMovem
 import { useProfileCashMovementNav } from '../composables/useProfileCashMovementNav';
 import { isProfileCashbookEnabled } from '../utils/profileCashbookEnabled';
 import { formatAmountBdt } from 'src/utils/currency';
-import { getInitials } from 'src/modules/sales_invoice/utils/invoiceListDisplay';
+import { getInitials } from 'src/modules/bills_pays/utils/invoiceListDisplay';
 import type { PayTransferEntityType } from 'src/modules/bills_pays/types/payTransferParty';
 
 type PartyRow = {

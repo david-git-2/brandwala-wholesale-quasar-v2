@@ -307,7 +307,7 @@ const openBill = (row: BillListRowData) => {
 </script>
 
 <style scoped lang="scss">
-@import 'src/modules/sales_invoice/styles/invoice-list.scss';
+@import 'src/modules/bills_pays/styles/invoice-list.scss';
 
 .bills-content-col {
   display: flex;

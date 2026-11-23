@@ -4,7 +4,7 @@ import { createPayIdempotencyKey, paysRepository } from '../repositories/paysRep
 import { paysQueryKeys } from '../services/paysQueryKeys';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
-import type { WholesalePaymentInstrumentInput } from 'src/modules/sales_invoice/types';
+import type { WholesalePaymentInstrumentInput } from 'src/modules/bills_pays/types/invoice';
 
 export type CollectPayPayload = {
   tenantId: number;

@@ -23,7 +23,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
+import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
 
 const props = defineProps<{
   bill: GlobalInvoiceDetail;

@@ -35,7 +35,7 @@ import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import type { InventoryItemWithStock } from '../types';
 
 import GlobalStockDetailsDialog from './GlobalStockDetailsDialog.vue';
-import NetworkStockSearchPanel from 'src/modules/sales_invoice/components/NetworkStockSearchPanel.vue';
+import NetworkStockSearchPanel from 'src/modules/bills_pays/components/NetworkStockSearchPanel.vue';
 import type { StockNetworkRow } from '../types';
 import { mapStockNetworkToInventoryView } from '../utils/mapStockNetworkRow';
 

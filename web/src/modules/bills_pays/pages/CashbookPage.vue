@@ -180,7 +180,7 @@ const openParty = (row: EntityRow) => {
 </script>
 
 <style scoped lang="scss">
-@import 'src/modules/sales_invoice/styles/invoice-list.scss';
+@import 'src/modules/bills_pays/styles/invoice-list.scss';
 .page-fixed-layout {
   height: calc(100vh - 55px);
 }

@@ -136,34 +136,6 @@ const billsPaysRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/app/wallet/:pathMatch(.*)*',
-    redirect: (to) => {
-      const tail =
-        typeof to.params.pathMatch === 'string'
-          ? `/${to.params.pathMatch}`
-          : Array.isArray(to.params.pathMatch)
-            ? `/${to.params.pathMatch.join('/')}`
-            : '';
-      const base = '/app/cashbook';
-      const query =
-        to.query && Object.keys(to.query).length
-          ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
-          : '';
-      return `${base}${tail}${query}${to.hash ?? ''}`;
-    },
-  },
-  {
-    path: '/app/wallet',
-    redirect: (to) => {
-      const base = '/app/cashbook';
-      const query =
-        to.query && Object.keys(to.query).length
-          ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
-          : '';
-      return `${base}${query}${to.hash ?? ''}`;
-    },
-  },
-  {
     path: '/app/cashbook',
     component: () => import('layouts/AppLayout.vue'),
     children: [

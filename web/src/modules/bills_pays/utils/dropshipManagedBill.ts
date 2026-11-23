@@ -1,4 +1,4 @@
-import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
+import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
 
 /** Courier AP issued at dropship ship (`upsert_dropship_courier_ap_bill`). */
 export function isDropshipCourierApBill(bill: GlobalInvoiceDetail | undefined): boolean {

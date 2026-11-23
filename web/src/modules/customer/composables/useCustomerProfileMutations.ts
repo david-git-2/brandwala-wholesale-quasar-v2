@@ -6,7 +6,7 @@ import {
   type UpdateCustomerProfileInput,
 } from '../repositories/customerProfileRepository';
 import { useCustomerProfileStore } from '../stores/customerProfileStore';
-import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
+import { salesInvoiceQueryKeys } from 'src/modules/bills_pays/services/salesInvoiceQueryKeys';
 import { tenantQueryKeys } from 'src/modules/tenant/shared/queryKeys/tenantQueryKeys';
 
 export function useCustomerProfileMutations() {

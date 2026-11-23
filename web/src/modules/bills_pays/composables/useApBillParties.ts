@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
+import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
 import { shipmentApKindFromBill } from '../utils/shipmentApBillSource';
 
 /** AP bills (money spine): from_profile = payer (tenant), to_profile = payee (vendor/cargo). profile_id = counterparty. */

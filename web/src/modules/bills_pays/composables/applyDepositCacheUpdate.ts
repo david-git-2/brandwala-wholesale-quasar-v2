@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/vue-query';
-import type { BillDetailBundle } from 'src/modules/sales_invoice/repositories/invoiceRepository';
+import type { BillDetailBundle } from 'src/modules/bills_pays/repositories/invoiceRepository';
 import { type DepositRpcResult, parseDepositRpcResult } from '../repositories/moneyKernelRepository';
 import { useBillPayCashbookLegsStore } from '../stores/billPayCashbookLegsStore';
 import { billsQueryKeys } from '../services/billsQueryKeys';

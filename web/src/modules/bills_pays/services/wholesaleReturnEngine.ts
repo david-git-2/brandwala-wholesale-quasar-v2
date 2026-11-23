@@ -3,7 +3,7 @@ import type {
   GlobalInvoiceItemRow,
   WholesaleReturnItemInput,
   WholesaleReturnPreviewSummary,
-} from '../types';
+} from '../types/invoice';
 
 /**
  * Pure in-memory calculation engine for wholesale invoice returns.

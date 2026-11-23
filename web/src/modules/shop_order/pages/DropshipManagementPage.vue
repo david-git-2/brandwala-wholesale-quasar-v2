@@ -642,6 +642,25 @@ function canConfirmPaymentReceived(order: ShopOrder): boolean {
   return true;
 }
 
+function applyPaymentReceivedToList(
+  orderId: number,
+  remittanceRef: string,
+  result: unknown,
+): void {
+  const idx = orders.value.findIndex((o) => o.id === orderId);
+  if (idx === -1) return;
+  const row = orders.value[idx];
+  const remainder = Number(
+    (result as { merchant_remainder?: number } | null)?.merchant_remainder ?? 0,
+  );
+  orders.value[idx] = {
+    ...row,
+    status: 'payment_received',
+    courier_remittance_ref: remittanceRef,
+    payout_settlement_status: remainder > 0 ? 'unpaid' : 'paid',
+  };
+}
+
 function openPaymentReceivedDialog(money: DropshipMgmtPaymentReceivedMoney): Promise<boolean> {
   return new Promise((resolve) => {
     Dialog.create({
@@ -693,38 +712,30 @@ async function onPaymentReceived(order: ShopOrder) {
     }
   }
 
-  const customerIssue = await shopOrderService.issueDropshipTenantB2bInvoice(
-    authStore.tenantId,
-    order.id,
-  );
-  if (!customerIssue.success) {
-    showErrorNotification(customerIssue.error ?? 'Failed to issue customer bill.');
-    return;
-  }
-
-  const courierIssue = await shopOrderService.issueDropshipCourierArForOrder(
-    authStore.tenantId,
-    order.id,
-  );
-  if (!courierIssue.success) {
-    showErrorNotification(courierIssue.error ?? 'Failed to issue courier bill.');
-    return;
-  }
-
   const cashbookPointId = await resolveMainCashbookPointId(booksTenantId.value);
 
-  await dropshipFinanceRepository.confirmCourierRemittance({
+  const remittanceRef = money.remittanceRef ?? `REMIT-${order.id}`;
+  const result = await dropshipFinanceRepository.confirmCourierRemittance({
     orderId: order.id,
     netAmount: money.courierPaysTenant,
     deliveryCharge: money.delivery,
     codCharge: money.codRate,
     courierCharge: money.delivery + money.codRate,
-    remittanceRef: money.remittanceRef,
+    remittanceRef,
     cashbookPointId,
     note: money.remittanceNote,
   });
 
-  showSuccessNotification(`Payment received for ${money.orderNo}.`);
+  const alreadyRecorded =
+    Boolean((result as { already_recorded?: boolean } | null)?.already_recorded);
+  if (!alreadyRecorded) {
+    applyPaymentReceivedToList(order.id, remittanceRef, result);
+  }
+  showSuccessNotification(
+    alreadyRecorded
+      ? `Remittance already recorded for ${money.orderNo}.`
+      : `Payment received for ${money.orderNo}.`,
+  );
   await loadOrders();
   } catch (e) {
     showErrorNotification(e instanceof Error ? e.message : 'Payment received failed.');

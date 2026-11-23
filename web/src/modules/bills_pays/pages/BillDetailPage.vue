@@ -518,16 +518,16 @@ import {
   settlementCurrencyDisplayLabel,
 } from 'src/utils/currency';
 import { showErrorNotification, showSuccessNotification, requestConfirmation } from 'src/utils/appFeedback';
-import type { GlobalInvoiceDetail, GlobalInvoiceItemRow, GlobalInvoiceRow } from 'src/modules/sales_invoice/types';
+import type { GlobalInvoiceDetail, GlobalInvoiceItemRow, GlobalInvoiceRow } from 'src/modules/bills_pays/types/invoice';
 import {
   invoiceChannelLabel,
   invoiceChannelTone,
   invoiceListStatusLabel,
-} from 'src/modules/sales_invoice/utils/invoiceListDisplay';
+} from 'src/modules/bills_pays/utils/invoiceListDisplay';
 import { useBillDetailBundleQuery } from '../composables/useBillDetailBundleQuery';
 import { useBillDetailQuery } from '../composables/useBillDetailQuery';
 import { useVoidBillMutation } from '../composables/useVoidBillMutation';
-import type { InvoicePaymentHistoryEntry } from 'src/modules/sales_invoice/types';
+import type { InvoicePaymentHistoryEntry } from 'src/modules/bills_pays/types/invoice';
 import {
   aggregateVendorRefundReceipts,
   formatPaymentHistoryBooksCaption,

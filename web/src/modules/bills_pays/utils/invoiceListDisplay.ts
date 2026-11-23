@@ -1,5 +1,5 @@
 import { shipmentApKindLabel } from 'src/modules/procurement_stock/constants/shipmentApBuckets';
-import type { GlobalInvoiceRow } from '../types';
+import type { GlobalInvoiceRow } from '../types/invoice';
 
 export const billDocumentKindLabel = (kind?: string | null) => {
   if (kind === 'credit_note') return 'Credit note';

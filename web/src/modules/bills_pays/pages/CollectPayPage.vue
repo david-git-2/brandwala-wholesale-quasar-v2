@@ -493,7 +493,7 @@ import {
   type FinanceHubOrderQueueItem,
 } from 'src/modules/shop_order/repositories/dropshipFinanceRepository';
 import { isAwaitingCourierRemittance } from 'src/modules/shop_order/utils/isAwaitingCourierRemittance';
-import { getInitials } from 'src/modules/sales_invoice/utils/invoiceListDisplay';
+import { getInitials } from 'src/modules/bills_pays/utils/invoiceListDisplay';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
 import { useQueryClient } from '@tanstack/vue-query';
 import { cashbookRepository, type CashbookEntityRow } from '../repositories/cashbookRepository';

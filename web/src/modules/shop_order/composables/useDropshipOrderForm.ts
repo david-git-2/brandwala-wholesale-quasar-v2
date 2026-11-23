@@ -5,7 +5,7 @@ import type { CourierServiceRow } from '../repositories/dropshipCourierRepositor
 import type { PickupLocationRow } from '../repositories/pickupLocationRepository';
 import type { ShopOrder, ShopOrderItem } from '../types';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
-import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
+import { useRecipientProfileStore } from 'src/modules/customer/stores/recipientProfileStore';
 import { resolveDeliveryZone, suggestDeliveryFee, type DeliveryZone } from '../services/courierChargeEstimate';
 
 export function useDropshipOrderForm(

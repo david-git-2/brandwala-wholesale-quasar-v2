@@ -1,4 +1,4 @@
-import type { WholesalePaymentInstrumentInput } from 'src/modules/sales_invoice/types';
+import type { WholesalePaymentInstrumentInput } from 'src/modules/bills_pays/types/invoice';
 
 export type PaymentMethodFieldMeta = {
   code: string;

@@ -129,7 +129,7 @@ import { billDetailRoute, type BillDetailAdjustmentKind } from '../utils/billRou
 import type { BillAdjustmentUiKind } from '../composables/useBillAdjustmentDraft';
 import { formatAmountBdt } from 'src/utils/currency';
 import { showErrorNotification } from 'src/utils/appFeedback';
-import type { GlobalInvoiceItemRow } from 'src/modules/sales_invoice/types';
+import type { GlobalInvoiceItemRow } from 'src/modules/bills_pays/types/invoice';
 import type { BillAdjustmentRow } from '../types/billAdjustments';
 import { kernelBillLinesToStockRows } from '../utils/kernelBillLinesToStockRows';
 import { isInvWsWholesaleBill as isInvWsWholesaleBillCheck } from '../utils/wholesaleKernelBill';

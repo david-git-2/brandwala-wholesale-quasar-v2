@@ -15,16 +15,18 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path TO public
+SET search_path = money_kernel, public, pg_temp
 AS $$
 declare
   v_root public.bills;
+  v_kernel money_kernel.bills;
   v_credits numeric(12, 2);
   v_debits numeric(12, 2);
   v_credit_due numeric(12, 2);
   v_settled numeric(12, 2);
   v_due numeric(12, 2);
   v_open_txn numeric(12, 2);
+  v_doc_settled numeric(12, 2);
 begin
   select * into v_root from public.bills where id = p_root_bill_id;
   if v_root.id is null then
@@ -37,6 +39,8 @@ begin
     return next;
     return;
   end if;
+
+  select * into v_kernel from money_kernel.bills where id = p_root_bill_id;
 
   select coalesce(sum(total_amount), 0.00), coalesce(sum(due_amount), 0.00)
   into v_credits, v_credit_due
@@ -51,11 +55,26 @@ begin
     and document_kind = 'debit_note'::public.bill_document_kind
     and invoice_status = 'issued'::public.global_invoice_status;
 
-  select coalesce(sum(bs.allocated_books_amount), 0.00) into v_settled
-  from public.bill_settlements bs
-  where bs.bill_id = v_root.id;
+  if v_kernel.id is not null and v_kernel.status not in ('voided', 'draft') then
+    select coalesce(sum(bs.allocated_books_amount), 0.00) into v_settled
+    from money_kernel.bill_settlements bs
+    where bs.bill_id = p_root_bill_id
+      and bs.settlement_kind = 'pay';
 
-  v_due := greatest(coalesce(v_root.total_amount, 0) - v_settled - v_credits + v_debits, 0);
+    select coalesce(sum(bs.allocated_books_amount), 0.00) into v_doc_settled
+    from money_kernel.bill_settlements bs
+    where bs.bill_id = p_root_bill_id
+      and bs.settlement_kind = 'document';
+
+    v_settled := v_settled + v_doc_settled + coalesce(v_kernel.written_off_amount, 0);
+    v_due := greatest(coalesce(v_kernel.due_amount, 0), 0);
+  else
+    select coalesce(sum(bs.allocated_books_amount), 0.00) into v_settled
+    from public.bill_settlements bs
+    where bs.bill_id = v_root.id;
+
+    v_due := greatest(coalesce(v_root.total_amount, 0) - v_settled - v_credits + v_debits, 0);
+  end if;
 
   v_open_txn := case
     when coalesce(v_root.txn_total_amount, v_root.total_amount) is not null

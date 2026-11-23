@@ -61,7 +61,6 @@ export type ModuleKey =
   | 'sales_invoice'
   | 'customer'
   | 'billing_profile'
-  | 'billing_profile_wallet'
   | 'recipient_profile'
   | 'cashbook'
   | 'after_sales'
@@ -681,13 +680,6 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Billing Profiles',
     description: 'Financial identity for invoices. Opened from Customers, not a sidebar item.',
     parentModuleKey: 'customer',
-    routes: [],
-  },
-  {
-    key: 'billing_profile_wallet',
-    name: 'Billing Wallets',
-    description: 'Unified wallet balances, debits, credits, and bulk payouts for billing profiles.',
-    parentModuleKey: 'sales_invoice',
     routes: [],
   },
   {

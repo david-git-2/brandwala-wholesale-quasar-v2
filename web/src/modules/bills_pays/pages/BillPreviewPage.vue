@@ -248,7 +248,7 @@ import { useBillDetailBundleQuery } from '../composables/useBillDetailBundleQuer
 import { kernelBillLinesToStockRows } from '../utils/kernelBillLinesToStockRows';
 import { formatBillQuantityTotal, sumBillLineQuantities } from '../utils/billLineQuantityTotal';
 import { isDeliveryPaperOutcomeBillSource } from '../utils/billRoutes';
-import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/sales_invoice/types';
+import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/bills_pays/types/invoice';
 import { billsRepository, type InvoiceBrand } from '../repositories/billsRepository';
 import BarcodeRenderer from 'src/modules/thrift/barcode/components/BarcodeRenderer.vue';
 import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
