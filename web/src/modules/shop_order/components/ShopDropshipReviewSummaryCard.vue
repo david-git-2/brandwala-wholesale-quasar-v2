@@ -15,16 +15,32 @@
         </div>
       </div>
 
-      <q-btn
-        color="primary"
-        unelevated
-        no-caps
-        class="full-width pill-btn q-py-sm"
-        icon-right="ph ph-arrow-right"
-        :label="$t('shop.dropship_continue_delivery')"
-        :disable="summary.hasFloorViolation || disableContinue"
-        @click="$emit('continue')"
-      />
+      <div class="row q-col-gutter-sm items-stretch dropship-review-summary__actions">
+        <div class="col-auto">
+          <q-btn
+            outline
+            color="primary"
+            unelevated
+            no-caps
+            class="full-height pill-btn q-py-sm dropship-review-summary__back"
+            icon="ph ph-arrow-left"
+            :label="$t('shop.go_back')"
+            @click="$emit('back')"
+          />
+        </div>
+        <div class="col min-width-0">
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            class="full-width full-height pill-btn q-py-sm"
+            icon-right="ph ph-arrow-right"
+            :label="$t('shop.dropship_continue_delivery')"
+            :disable="summary.hasFloorViolation || disableContinue"
+            @click="$emit('continue')"
+          />
+        </div>
+      </div>
 
       <div v-if="summary.hasFloorViolation" class="text-caption text-negative text-center q-mt-sm">
         {{ $t('shop.cart_price_below_floor') }}
@@ -57,6 +73,7 @@ const props = withDefaults(
 
 defineEmits<{
   (e: 'continue'): void;
+  (e: 'back'): void;
 }>();
 
 const formatMoney = (amount: number) => {
@@ -74,5 +91,13 @@ const formatMoney = (amount: number) => {
   border-radius: 14px;
   background: #ffffff;
   box-shadow: 0 4px 12px rgba(34, 56, 101, 0.02);
+}
+
+.dropship-review-summary__actions .q-btn {
+  min-height: 44px;
+}
+
+.dropship-review-summary__back {
+  white-space: nowrap;
 }
 </style>

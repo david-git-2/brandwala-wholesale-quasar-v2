@@ -92,6 +92,7 @@ import { useBDAddressOptions } from '../composables/useBDAddressOptions';
 import { useDropshipReviewCartQuery } from '../composables/useDropshipReviewCartQuery';
 import { useSubmitDropshipOrderMutation } from '../composables/useSubmitDropshipOrderMutation';
 import { resolveCartShopId, shopCartPath } from '../utils/catalogShop';
+import { useDropshipOrderFlowLeaveGuard } from '../composables/useDropshipOrderFlowLeaveGuard';
 import ShopCartSkeleton from '../components/ShopCartSkeleton.vue';
 import ShopDropshipCustomerDetailsForm from '../components/ShopDropshipCustomerDetailsForm.vue';
 import ShopDropshipChargeOptionsCard from '../components/ShopDropshipChargeOptionsCard.vue';
@@ -134,6 +135,14 @@ const {
 
 const submitOrderMutation = useSubmitDropshipOrderMutation();
 const isSubmitting = computed(() => submitOrderMutation.isPending.value);
+const skipFlowLeaveGuard = ref(false);
+
+const hasActiveDropshipOrder = computed(() => items.value.length > 0);
+
+useDropshipOrderFlowLeaveGuard({
+  hasActiveOrder: hasActiveDropshipOrder,
+  skip: skipFlowLeaveGuard,
+});
 
 const recipientPaysDelivery = ref(true);
 const recipientPaysCod = ref(true);
@@ -279,7 +288,7 @@ const tenantSlugParam = () =>
   route.params.tenantSlug ? String(route.params.tenantSlug) : null;
 
 const goBackToCart = () => {
-  void router.push(shopCartPath(tenantSlugParam(), shopId.value));
+  void router.push(shopCartPath(tenantSlugParam(), shopId.value, 'dropship'));
 };
 
 const onPlaceOrder = async () => {
@@ -305,6 +314,7 @@ const onPlaceOrder = async () => {
     recipientPaysCod: recipientPaysCod.value,
   });
 
+  skipFlowLeaveGuard.value = true;
   const slug = tenantSlugParam();
   void router.push(`${slug ? `/${slug}` : ''}/shop/orders/${result.data.order_id}`);
 };

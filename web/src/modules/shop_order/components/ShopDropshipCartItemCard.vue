@@ -115,8 +115,98 @@
         </div>
       </div>
 
-      <!-- Default dropship cart -->
-      <div v-else class="row items-center no-wrap q-col-gutter-sm">
+      <template v-else>
+      <!-- Default dropship cart (desktop) -->
+      <div class="dropship-cart-item__standard dropship-cart-item__standard--desktop gt-xs">
+        <div class="dropship-cart-item__image dropship-cart-item__image--standard shop-product-thumb bg-grey-2">
+          <q-img
+            v-if="imageUrl"
+            :src="imageUrl"
+            :alt="name"
+            fit="contain"
+            class="dropship-cart-item__image-img"
+          />
+          <q-icon
+            v-else
+            name="ph ph-image"
+            color="grey-4"
+            class="dropship-cart-item__image-fallback"
+          />
+        </div>
+
+        <div class="dropship-cart-item__name-col min-width-0">
+          <div class="text-body2 text-weight-bold text-grey-9 dropship-cart-item__name">
+            {{ name }}
+          </div>
+        </div>
+
+        <div class="dropship-cart-item__qty-col">
+          <div class="column q-gutter-y-xs items-start">
+            <div class="row items-center no-wrap quantity-controls quantity-controls--spaced">
+              <q-btn
+                flat
+                round
+                dense
+                size="sm"
+                icon="ph ph-minus"
+                color="grey-7"
+                :disable="disableQty || quantity <= minQty"
+                aria-label="Decrease quantity"
+                @click="$emit('update:quantity', adjustQty(-minQty))"
+              />
+              <div class="quantity-value text-weight-bold text-center text-grey-9">
+                {{ quantity }}
+              </div>
+              <q-btn
+                flat
+                round
+                dense
+                size="sm"
+                icon="ph ph-plus"
+                color="grey-7"
+                :disable="disableQty"
+                aria-label="Increase quantity"
+                @click="$emit('update:quantity', adjustQty(minQty))"
+              />
+            </div>
+            <q-btn
+              v-if="showSaveQty"
+              color="primary"
+              size="xs"
+              unelevated
+              no-caps
+              class="pill-btn q-px-sm"
+              :label="$t('shop.save_qty')"
+              :loading="isSaving"
+              @click="$emit('save-quantity')"
+            />
+          </div>
+        </div>
+
+        <div class="dropship-cart-item__price-col text-body2 text-weight-bold text-grey-9 text-right">
+          {{ currencySymbol }}{{ lineTotal.toFixed(2) }}
+        </div>
+
+        <div class="dropship-cart-item__remove-col">
+          <q-btn
+            flat
+            round
+            dense
+            size="sm"
+            icon="ph ph-trash"
+            color="negative"
+            :disable="disableRemove"
+            :loading="isRemoving"
+            aria-label="Remove item"
+            @click="$emit('remove')"
+          >
+            <q-tooltip>{{ $t('shop.remove_item') }}</q-tooltip>
+          </q-btn>
+        </div>
+      </div>
+
+      <!-- Default dropship cart (mobile) -->
+      <div class="dropship-cart-item__standard dropship-cart-item__standard--mobile lt-sm row no-wrap q-col-gutter-sm">
         <div class="col-auto">
           <div class="dropship-cart-item__image shop-product-thumb bg-grey-2">
             <q-img
@@ -155,7 +245,7 @@
               <q-tooltip>{{ $t('shop.remove_item') }}</q-tooltip>
             </q-btn>
           </div>
-          <div class="row items-center justify-between q-mt-xs">
+          <div class="row items-center q-gutter-md q-mt-xs">
             <div class="column q-gutter-y-xs">
               <div class="row items-center no-wrap quantity-controls">
                 <q-btn
@@ -200,6 +290,7 @@
           </div>
         </div>
       </div>
+      </template>
     </q-card-section>
   </q-card>
 </template>
@@ -286,10 +377,36 @@ const adjustQty = (delta: number) => adjustQtyByMoq(props.quantity, delta, props
   overflow: hidden;
 }
 
-.dropship-cart-item__image--compact {
-  width: 56px;
-  height: 56px;
-  min-width: 56px;
+.dropship-cart-item__image--compact,
+.dropship-cart-item__image--standard {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+}
+
+.dropship-cart-item__image--standard .dropship-cart-item__image-fallback,
+.dropship-cart-item__image--compact .dropship-cart-item__image-fallback {
+  font-size: 22px;
+}
+
+.dropship-cart-item__standard--desktop {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto auto auto;
+  gap: 12px 16px;
+  align-items: center;
+}
+
+.dropship-cart-item__qty-col {
+  justify-self: start;
+}
+
+.dropship-cart-item__price-col {
+  min-width: 5.5rem;
+  white-space: nowrap;
+}
+
+.dropship-cart-item__remove-col {
+  justify-self: end;
 }
 
 .dropship-cart-item__image-img {

@@ -92,7 +92,11 @@ export default {
     dropship_resell_below_min: 'ন্যূনতমের নিচে ({price})',
     dropship_total_units: 'মোট ইউনিট',
     dropship_margin_percent: 'আনুমানিক মার্জিন',
-    dropship_continue_delivery: 'ডেলিভারিতে এগিয়ে যান',
+    dropship_continue_delivery: 'গ্রাহক ও ডেলিভারিতে এগিয়ে যান',
+    dropship_leave_flow_title: 'অর্ডার ছেড়ে যাবেন?',
+    dropship_leave_flow_message:
+      'আপনার একটি ড্রপশিপ অর্ডার চলছে। অন্য পেজে গেলে পরে কার্ট থেকে আবার চালিয়ে যেতে পারবেন।',
+    dropship_leave_flow_confirm: 'ছেড়ে যান',
     dropship_delivery_title: 'চূড়ান্ত গ্রাহক ও ডেলিভারি',
     dropship_delivery_subtitle:
       'চূড়ান্ত গ্রাহকের তথ্য দিন এবং ডেলিভারি ও COD কে দেবে তা বেছে নিন (পরে স্টাফ নিশ্চিত করবে)',

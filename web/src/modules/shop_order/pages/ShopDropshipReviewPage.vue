@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md shop-commerce-page">
-    <div class="q-gutter-y-md">
+    <div class="q-gutter-y-md dropship-review-layout">
       <section class="dropship-review-header">
         <div class="text-subtitle1 text-weight-bold text-grey-9 q-my-none">
           {{ $t('shop.dropship_review_title') }}
@@ -50,7 +50,7 @@
         </q-card-section>
       </q-card>
 
-      <div v-else class="column q-gutter-y-md dropship-review-layout">
+      <div v-else class="column q-gutter-y-md">
         <ShopDropshipReviewItemsList
           :items="uiItems"
           :item-count="totalUnits"
@@ -67,6 +67,7 @@
           :currency-symbol="currencySymbol"
           :disable-continue="isUpdatingPrice || hasUnsavedEdits"
           @continue="goToDelivery"
+          @back="goBackToCart"
         />
       </div>
     </div>
@@ -78,6 +79,7 @@ import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';
+import { useDropshipOrderFlowLeaveGuard } from '../composables/useDropshipOrderFlowLeaveGuard';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useDropshipReviewCartQuery } from '../composables/useDropshipReviewCartQuery';
 import { useShopCartMutations } from '../composables/useShopCartMutations';
@@ -231,8 +233,14 @@ useUnsavedLeaveGuard({
   message: t('shop.unsaved_leave_message'),
 });
 
+const hasActiveDropshipOrder = computed(() => items.value.length > 0);
+
+useDropshipOrderFlowLeaveGuard({
+  hasActiveOrder: hasActiveDropshipOrder,
+});
+
 const goBackToCart = () => {
-  void router.push(shopCartPath(tenantSlugParam(), shopId.value));
+  void router.push(shopCartPath(tenantSlugParam(), shopId.value, 'dropship'));
 };
 
 const goToDelivery = () => {
@@ -250,7 +258,15 @@ export default {
 </script>
 
 <style scoped>
-.dropship-review-header {
-  min-height: 40px;
+.dropship-review-layout {
+  width: 100%;
+  max-width: 42rem;
+  margin-inline: auto;
+}
+
+@media (min-width: 1024px) {
+  .dropship-review-layout {
+    max-width: 48rem;
+  }
 }
 </style>

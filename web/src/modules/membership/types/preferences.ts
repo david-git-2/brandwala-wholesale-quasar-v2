@@ -22,6 +22,12 @@ export interface MembershipPreferenceSchema {
       density?: 'comfortable' | 'compact';
       navPinned?: boolean;
     };
+    admin?: {
+      workspaceTenant?: {
+        id: number;
+        slug: string;
+      };
+    };
   };
 }
 
@@ -36,6 +42,7 @@ export const MEMBERSHIP_UI_PATHS = {
   uiAppearanceDarkMode: ['ui', 'appearance', 'darkMode'],
   uiAppearanceDensity: ['ui', 'appearance', 'density'],
   uiAppearanceNavPinned: ['ui', 'appearance', 'navPinned'],
+  adminWorkspaceTenant: ['ui', 'admin', 'workspaceTenant'],
 } as const;
 
 export type MembershipUiPathKey = keyof typeof MEMBERSHIP_UI_PATHS;

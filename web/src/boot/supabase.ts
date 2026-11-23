@@ -78,6 +78,29 @@ const readAuthAccessTenantId = (): {
   }
 };
 
+const readMembershipPreferenceWorkspaceTenantId = (): string | null => {
+  const raw = window.localStorage.getItem('brandwala.membership.preference.v1');
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      preference?: {
+        ui?: { admin?: { workspaceTenant?: { id?: number | string | null } } };
+      };
+    };
+    const id = parsed?.preference?.ui?.admin?.workspaceTenant?.id;
+    if (id != null && id !== '') {
+      return String(id);
+    }
+  } catch {
+    // Ignore parse errors
+  }
+
+  return null;
+};
+
 const readWorkspaceSelectedTenantId = (): string | null => {
   const workspaceRaw = window.localStorage.getItem('brandwala.tenant.workspace.v1');
   if (!workspaceRaw) {
@@ -107,10 +130,18 @@ const readSelectedTenantIdFromStorage = (): string | null => {
   }
 
   if (authAccess.scope === 'app' || authAccess.scope === 'platform') {
-    return readWorkspaceSelectedTenantId() ?? authAccess.tenantId;
+    return (
+      readMembershipPreferenceWorkspaceTenantId() ??
+      authAccess.tenantId ??
+      readWorkspaceSelectedTenantId()
+    );
   }
 
-  return readWorkspaceSelectedTenantId() ?? authAccess.tenantId;
+  return (
+    readMembershipPreferenceWorkspaceTenantId() ??
+    authAccess.tenantId ??
+    readWorkspaceSelectedTenantId()
+  );
 };
 
 const withSelectedTenantHeader = (init?: RequestInit): RequestInit | undefined => {

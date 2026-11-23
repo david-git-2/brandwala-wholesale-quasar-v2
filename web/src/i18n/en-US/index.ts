@@ -91,7 +91,11 @@ export default {
     dropship_resell_below_min: 'Below minimum ({price})',
     dropship_total_units: 'Total units',
     dropship_margin_percent: 'Estimated margin',
-    dropship_continue_delivery: 'Continue to delivery',
+    dropship_continue_delivery: 'Continue to customer & delivery',
+    dropship_leave_flow_title: 'Leave this order?',
+    dropship_leave_flow_message:
+      'You have a dropship order in progress. If you leave this page, you can continue later from your cart.',
+    dropship_leave_flow_confirm: 'Leave',
     dropship_delivery_title: 'End customer & delivery',
     dropship_delivery_subtitle:
       'Add end customer details and choose who pays delivery and COD (confirmed by staff later)',

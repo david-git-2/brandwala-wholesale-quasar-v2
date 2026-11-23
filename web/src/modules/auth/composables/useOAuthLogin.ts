@@ -425,6 +425,17 @@ export function useOAuthLogin(
 
     useMembershipPreferenceStore().setPreference(bootstrap.member_id, bootstrap.member_preference);
 
+    if (
+      !tenantStore.applyWorkspaceFromPreference(bootstrap.member_preference) &&
+      bootstrap.tenant_id &&
+      bootstrap.tenant_slug
+    ) {
+      tenantStore.setSelectedTenant({
+        id: bootstrap.tenant_id,
+        slug: bootstrap.tenant_slug,
+      });
+    }
+
     await saveAndRedirect({
       scope: 'app',
       matchedRole: bootstrap.member_role,

@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md shop-commerce-page">
-    <div class="q-gutter-y-md">
+    <div class="q-gutter-y-md dropship-cart-layout">
       <ShopCartHeader
         :show-cart-picker="showCartPicker"
         :item-count="displayItemCount"
@@ -120,6 +120,7 @@ import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';
+import { useDropshipOrderFlowLeaveGuard } from '../composables/useDropshipOrderFlowLeaveGuard';
 import type { DropshipCartItem } from '../repositories/dropshipCartRepository';
 import { useActiveShopCartsQuery } from '../composables/useActiveShopCartsQuery';
 import { useShopCartSelection } from '../composables/useShopCartSelection';
@@ -239,6 +240,14 @@ useUnsavedLeaveGuard({
   message: t('shop.unsaved_leave_message'),
 });
 
+const hasActiveDropshipOrder = computed(
+  () => Boolean(selectedShopId.value) && items.value.length > 0,
+);
+
+useDropshipOrderFlowLeaveGuard({
+  hasActiveOrder: hasActiveDropshipOrder,
+});
+
 const goToReview = () => {
   if (!selectedShopId.value || hasUnsavedEdits.value) return;
   void router.push(
@@ -255,3 +264,17 @@ export default {
   name: 'ShopDropshipCartPage',
 };
 </script>
+
+<style scoped>
+.dropship-cart-layout {
+  width: 100%;
+  max-width: 42rem;
+  margin-inline: auto;
+}
+
+@media (min-width: 1024px) {
+  .dropship-cart-layout {
+    max-width: 48rem;
+  }
+}
+</style>

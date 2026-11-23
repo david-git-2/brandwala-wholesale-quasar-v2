@@ -109,8 +109,9 @@ import UserProfileMenu from 'src/components/navigation/UserProfileMenu.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation';
 import { useAdminTenantSelection } from 'src/modules/tenant/composables/useAdminTenantSelection';
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { readLegacyWorkspaceSelection, useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
+import { MEMBERSHIP_UI_PATHS } from 'src/modules/membership/types/preferences';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
 import { useAppearance } from 'src/composables/useAppearance';
 import TaskSearchDialog from 'src/modules/tasks/components/TaskSearchDialog.vue';
@@ -174,6 +175,39 @@ onMounted(() => {
       await tenantStore.hydrateHierarchyChildRefs();
     }
 
+    if (authStore.membershipId) {
+      await membershipPreferenceStore.ensureLoaded(
+        authStore.membershipId,
+        authStore.user?.email ?? null,
+        authStore.tenantId,
+      );
+    }
+
+    const appliedFromPreference = tenantStore.applyWorkspaceFromPreference(
+      membershipPreferenceStore.preference,
+    );
+
+    if (!appliedFromPreference) {
+      const legacy = readLegacyWorkspaceSelection();
+      const legacyTenant =
+        legacy == null
+          ? null
+          : (tenantStore.availableAdminTenants.find((tenant) => tenant.id === legacy.id) ?? null);
+
+      if (legacyTenant) {
+        tenantStore.setSelectedTenant({ id: legacyTenant.id, slug: legacyTenant.slug });
+
+        if (authStore.membershipId) {
+          membershipPreferenceStore.patchPreferencePath(
+            authStore.membershipId,
+            MEMBERSHIP_UI_PATHS.adminWorkspaceTenant,
+            { id: legacyTenant.id, slug: legacyTenant.slug },
+          );
+          await membershipPreferenceStore.savePreference(authStore.membershipId);
+        }
+      }
+    }
+
     await ensureSelectedTenantWorkspace();
 
     if (authStore.tenantId) {
@@ -188,11 +222,6 @@ onMounted(() => {
     }
 
     if (authStore.membershipId) {
-      await membershipPreferenceStore.ensureLoaded(
-        authStore.membershipId,
-        authStore.user?.email ?? null,
-        authStore.tenantId,
-      );
       await reconcilePreferences(authStore.membershipId, membershipPreferenceStore.preference);
     }
   })();
