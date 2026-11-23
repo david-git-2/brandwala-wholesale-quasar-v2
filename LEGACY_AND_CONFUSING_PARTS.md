@@ -19,30 +19,6 @@ This guide explains **what is confusing, why it looks like that, and what you sh
 
 ---
 
-## 2. Frontend Module Structure & Similar-Looking Features
-
-### Module Layout
-- **`web/src/modules/` is organized into 9 domain parents** (+ `thrift`, which is being separated):
-  - `shop_order/` (`submodules/product_based_costing`, `submodules/products`)
-  - `procurement_stock/` (`submodules/global_stock`, `submodules/tag`)
-  - `finance/` (`submodules/bills_pays`, `submodules/reporting_treasury`, `submodules/invoice_shared`)
-  - `people/` (`submodules/customer`, `submodules/vendor`, `submodules/investor_capital`, `submodules/investor_portal`)
-  - `tenant/` (`submodules/access_control`, `submodules/membership`, `submodules/feature_catalog`, `submodules/global_reference`, `submodules/settings`)
-  - `docs/` (`submodules/operating_manual`, `submodules/help`)
-  - `workspace/` (`submodules/auth`, `submodules/navigation`, `submodules/dashboard`, `submodules/notifications`, `submodules/landing`)
-  - `preorder_costing_file/` (standalone) and `koba/` (standalone)
-
-### Why it's confusing
-- **`preorder_costing_file` vs. `product_based_costing`:** Despite similar names, these are **not** V1/V2 replacements of each other:
-  - `web/src/modules/preorder_costing_file/` handles **pre-order costing** (`/app/costing`, `/shop/...`; tables `costing_files`, `costing_file_items`).
-  - `web/src/modules/shop_order/submodules/product_based_costing/` handles **shop-order product-based costing** (`/app/product-based-costing`; tables `product_based_costing_files`, `product_based_costing_items`).
-
-### Rule of thumb
-- Check `moduleRegistry.ts` and each module's `README.md` before assuming a folder is legacy.
-- Follow `.cursor/rules/core.mdc`: inspect code and `supabase/schemas/` first; do not open `docs/` unless explicitly needed or named.
-
----
-
 ## Quick Checklist Before Starting a New Flow
 
 1. **Check the route first:** Look in `moduleRegistry.ts` to make sure you're working in the active module.
