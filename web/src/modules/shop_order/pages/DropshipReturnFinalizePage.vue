@@ -401,8 +401,9 @@ const returnReasonRules = [
 
 function goBack() {
   router.push({
-    name: 'app-shop-dropship-management-detail-page',
-    params: { tenantSlug: route.params.tenantSlug, id: orderId.value },
+    name: 'app-shop-dropship-management-page',
+    params: { tenantSlug: route.params.tenantSlug },
+    query: { highlightOrderId: String(orderId.value) },
   });
 }
 

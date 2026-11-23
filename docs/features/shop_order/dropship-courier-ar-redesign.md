@@ -19,7 +19,9 @@ Cash reality: courier collects COD from the end customer, keeps fees, remits **n
 
 ## Target at ship (two bills only — **draft**)
 
-**Mark as shipped** creates (or upserts) both papers in **`draft`** — not `issued`. Status advances to `shipped`. Issuing is a **later** step (before remittance; exact trigger TBD with SO-CA1 — e.g. deliver or remittance prep).
+**Mark as shipped** creates (or upserts) both papers in **`draft`** — not `issued`. Status advances to `shipped`. Issuing is a **later** step (before remittance; exact trigger TBD with SO-CA1 — e.g. remittance prep).
+
+**Mark as delivered** (settlement desk) **only** sets order status `shipped` → `delivered` — courier POD / parcel outcome. It does **not** save settlement, issue or finalize AR papers, or run remittance. Settlement **Save** and finance steps stay on their own actions ([spec.md](spec.md) US-5, gap **SO-DL5**).
 
 ```text
 Ship (draft bills)
@@ -103,7 +105,8 @@ Ship RPC name may stay `ship_dropship_order_and_issue_merchant_bill` until renam
 | Step | Result |
 | :--- | :--- |
 | Ship | **Draft** customer AR 1,500 + note “get 620 after payment”; **draft** courier AR lines COD 2,200 − rate 50 − delivery 30 = **2,120** |
-| Deliver / before remit | Issue drafts when product requires (remittance needs issued) |
+| Deliver | Status → `delivered` only (no bill/settlement side effects) |
+| Before remit | Issue drafts when product requires (remittance needs issued) |
 | Remit 2,120 | Courier AR paid; auto alloc 1,500 → customer AR paid; **+620** cashbook (matches note) |
 | Later | Payout 620 — cashbook only |
 

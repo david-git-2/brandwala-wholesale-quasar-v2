@@ -224,11 +224,9 @@ const billDetailRoute = (billId: number | null | undefined) => {
 const openSettlementDesk = () => {
   if (!order.value) return;
   void router.push({
-    name: 'app-shop-dropship-management-detail-page',
-    params: {
-      id: order.value.id,
-      tenantSlug: route.params.tenantSlug,
-    },
+    name: 'app-shop-dropship-management-page',
+    params: { tenantSlug: route.params.tenantSlug },
+    query: { highlightOrderId: String(order.value.id) },
   });
 };
 </script>

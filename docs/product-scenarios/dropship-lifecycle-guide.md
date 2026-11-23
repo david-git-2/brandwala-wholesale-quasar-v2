@@ -112,7 +112,7 @@ Money detail → [money-flow-guide.md](money-flow-guide.md). Consignment detail 
 - **Watch out:** Send to courier ≠ internal ship. → **CD6**, **CD10**, **DS5**, **T1**
 
 ### DL5 — Delivered and COD collected
-- **What’s happening:** Curia marks delivered; COD collected (or prepaid delivered). Finance settlement sheet may adjust actual vs planned COD/delivery before remittance.
+- **What’s happening:** Curia marks delivered (`shipped` → `delivered`) when the parcel is delivered — **status only**, not remittance. COD collected (or prepaid delivered) is a separate fact. Finance settlement sheet **Save** may adjust actual vs planned COD/delivery **before** courier pay in / remittance.
 - **Example:** ORD-8842: planned COD **25,000**; Curia collected **24,000** → debit note **1,000** on clearing; supply invoice **18,000** unchanged.
 - **Who:** Dropship desk · Curia · Treasury / Cashier / Finance · Dropshipper
 - **Need in product:** Delivered path → remittance-ready; debit/credit notes if issued wrong.

@@ -623,6 +623,12 @@ export interface ShopOrder {
   catalog_manual_price_entry?: boolean;
   placement_scope?: ShopOrderPlacementScope;
   total_amount?: number;
+  /** List RPC: settlement collected COD or order COD face */
+  collected_cod_amount?: number | null;
+  /** Customer AR total (B2B bill or reseller purchase fallback) */
+  dropshipper_bill_amount?: number | null;
+  customer_invoice_no?: string | null;
+  courier_ar_bill_id?: number | null;
   cod_collect_amount?: number | null;
   courier_name?: string | null;
   courier_awb_number?: string | null;

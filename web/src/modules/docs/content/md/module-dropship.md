@@ -33,7 +33,7 @@ Code may still say `merchant`, `middleman`, `recipient_*` — UI uses the names 
 | Shop checkout | `/:slug/shop/dropship/place-order` (`review`/`delivery` redirect into wizard) | Cart → 6-step wizard → submit order |
 | Dropship desk | `/:slug/app/shop/dropship` | Orders list (dropship shops) |
 | Order detail | `/:slug/app/shop/orders/:id` | Call confirm, pick, ship, deliver |
-| Management | `/:slug/app/shop/dropship-management` | Settlement table, mark delivered |
+| Management | `/:slug/app/shop/dropship-management` | Post-ship table (COD, fees, bills, delivered/return actions) |
 | Finance hub | `/:slug/app/shop/dropship/.../finance` | Courier remittance, merchant ledger |
 | Remittance (money) | `/:slug/app/finance/payments/collect?mode=courier` | Net bank in — same writer as settlement desk |
 

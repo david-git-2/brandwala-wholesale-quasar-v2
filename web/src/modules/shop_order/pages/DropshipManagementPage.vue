@@ -1,7 +1,14 @@
 <template>
-  <q-page class="tf-page">
-    <section class="tf-page__stack">
-      <q-card flat bordered class="form-card q-pa-sm">
+  <q-page class="tf-page dropship-mgmt-page page-fixed-layout column no-wrap overflow-hidden">
+    <section class="column col no-wrap overflow-hidden q-gutter-y-sm dropship-mgmt-page__body">
+      <app-page-header
+        class="shrink-0"
+        title="Dropship management"
+        subtitle="Post-ship list — COD, fees, bills, delivered and returned actions"
+        eyebrow="SHOP & ORDER"
+      />
+
+      <q-card flat bordered class="form-card q-pa-sm shrink-0">
         <div class="row items-center q-col-gutter-md">
           <div class="col-12 col-sm-6 col-md-4">
             <q-input
@@ -49,13 +56,18 @@
         </div>
       </q-card>
 
-      <q-card flat bordered class="form-card">
+      <q-card flat bordered class="form-card column col no-wrap overflow-hidden dropship-mgmt-table-card">
         <div v-if="loading" class="row justify-center q-py-xl">
           <q-spinner color="primary" size="3em" />
         </div>
 
-        <div v-else class="dropship-mgmt-list-scroll">
-          <q-markup-table flat class="full-width">
+        <template v-else>
+          <div
+            ref="tableScrollRef"
+            class="col dropship-mgmt-list-scroll hide-native-scrollbar"
+            @scroll="onTableScroll"
+          >
+            <q-markup-table flat :responsive="false" class="dropship-mgmt-list-table">
             <thead>
               <tr>
                 <th class="text-left">Order</th>
@@ -63,46 +75,135 @@
                 <th class="text-left">Dropshipper</th>
                 <th class="text-left">End customer</th>
                 <th class="text-left">Courier</th>
+                <th class="text-right">COD</th>
+                <th class="text-right">Collected COD</th>
+                <th class="text-right">Delivery</th>
+                <th class="text-right">COD rate</th>
+                <th class="text-right">Dropshipper cost</th>
+                <th class="text-left">Bills</th>
                 <th class="text-right">Status</th>
+                <th class="text-right dropship-mgmt-list-table__actions-col">Action</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="displayOrders.length === 0">
-                <td :colspan="isParentTenant ? 6 : 5" class="text-center text-grey-6 q-py-lg">
+                <td :colspan="actionColspan" class="text-center text-grey-6 q-py-lg">
                   No orders match your search or filter.
                 </td>
               </tr>
               <tr
                 v-for="order in displayOrders"
                 :key="order.id"
-                class="dropship-mgmt-list-row cursor-pointer"
+                class="dropship-mgmt-list-row"
+                :class="{ 'dropship-mgmt-list-row--highlight': order.id === highlightOrderId }"
                 :style="rowAccentStyle(order.status)"
-                @click="goToDetail(order.id)"
               >
                 <td class="text-weight-medium">{{ order.order_no }}</td>
                 <td v-if="isParentTenant">{{ order.tenant_name || '—' }}</td>
                 <td>{{ order.customer_group_name || '—' }}</td>
                 <td>{{ order.recipient_name || '—' }}</td>
-                <td>{{ order.courier_name || '—' }}</td>
+                <td>
+                  <div>{{ order.courier_name || '—' }}</div>
+                  <div v-if="order.courier_awb_number" class="text-caption text-grey-7">
+                    {{ order.courier_awb_number }}
+                  </div>
+                </td>
+                <td class="text-right text-weight-medium">{{ formatMoney(order.cod_collect_amount) }}</td>
+                <td class="text-right">{{ formatMoney(order.collected_cod_amount ?? order.cod_collect_amount) }}</td>
+                <td class="text-right">{{ formatMoney(order.delivery_charge_amount) }}</td>
+                <td class="text-right">{{ formatMoney(order.cod_charge_amount) }}</td>
+                <td class="text-right text-weight-medium">{{ formatMoney(order.dropshipper_bill_amount) }}</td>
+                <td class="dropship-mgmt-list-table__bills-cell">
+                  <div
+                    v-if="!order.global_invoice_id && !order.courier_ar_bill_id"
+                    class="text-grey-6"
+                  >
+                    —
+                  </div>
+                  <div v-else class="column q-gutter-y-xs items-start">
+                    <q-btn
+                      v-if="order.global_invoice_id"
+                      flat
+                      dense
+                      no-caps
+                      color="primary"
+                      size="sm"
+                      class="q-px-xs"
+                      @click.stop="openBill(order.global_invoice_id)"
+                    >
+                      <q-icon name="ph ph-receipt" size="14px" class="q-mr-xs" />
+                      {{ customerBillLabel(order) }}
+                    </q-btn>
+                    <q-btn
+                      v-if="order.courier_ar_bill_id"
+                      flat
+                      dense
+                      no-caps
+                      color="primary"
+                      size="sm"
+                      class="q-px-xs"
+                      @click.stop="openBill(order.courier_ar_bill_id)"
+                    >
+                      <q-icon name="ph ph-truck" size="14px" class="q-mr-xs" />
+                      Courier #{{ order.courier_ar_bill_id }}
+                    </q-btn>
+                  </div>
+                </td>
                 <td class="text-right">
                   <q-badge :color="statusColor(order.status)" :label="statusLabel(order.status)" />
                 </td>
+                <td class="text-right dropship-mgmt-list-table__actions-col">
+                  <div v-if="order.status === 'shipped'" class="row no-wrap justify-end q-gutter-xs">
+                    <q-btn
+                      dense
+                      color="primary"
+                      unelevated
+                      no-caps
+                      size="sm"
+                      label="Delivered"
+                      :loading="deliveringOrderId === order.id"
+                      @click.stop="onMarkDelivered(order)"
+                    />
+                    <q-btn
+                      dense
+                      outline
+                      color="negative"
+                      no-caps
+                      size="sm"
+                      label="Returned"
+                      @click.stop="onMarkReturned(order.id)"
+                    />
+                  </div>
+                  <span v-else class="text-grey-6">—</span>
+                </td>
               </tr>
             </tbody>
-          </q-markup-table>
-        </div>
+            </q-markup-table>
+          </div>
+          <ExcelTableScrollFooter
+            ref="scrollFooterRef"
+            class="dropship-mgmt-scroll-footer shrink-0"
+            :get-scroll-container="getTableScrollContainer"
+          />
+        </template>
       </q-card>
     </section>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import ExcelTableScrollFooter from 'src/components/ui/ExcelTableScrollFooter.vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useChildTenantsQuery } from 'src/modules/procurement_stock/composables/useProcurementStockQuery';
-import { showErrorNotification } from 'src/utils/appFeedback';
+import {
+  requestConfirmation,
+  showErrorNotification,
+  showSuccessNotification,
+} from 'src/utils/appFeedback';
 import { shopOrderService } from '../services/shopOrderService';
+import type { DropshipSettlementDraftPayload } from '../types/dropshipManagementOrder';
 import type { ShopOrder, ShopOrderStatus } from '../types';
 
 const DROPSHIP_MANAGEMENT_STATUSES = [
@@ -115,6 +216,14 @@ const DROPSHIP_MANAGEMENT_STATUSES = [
 
 type DropshipManagementStatusFilter = 'all' | (typeof DROPSHIP_MANAGEMENT_STATUSES)[number];
 
+const EMPTY_SETTLEMENT_PAYLOAD: DropshipSettlementDraftPayload = {
+  collected_cod_amount: 0,
+  discount_company_pay: 0,
+  return_reason_note: '',
+  charge_lines: [],
+};
+
+const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 
@@ -123,6 +232,24 @@ const orders = ref<ShopOrder[]>([]);
 const searchQuery = ref('');
 const statusFilter = ref<DropshipManagementStatusFilter>('all');
 const selectedChildTenantId = ref<number | null>(null);
+const deliveringOrderId = ref<number | null>(null);
+const tableScrollRef = ref<HTMLElement | null>(null);
+const scrollFooterRef = ref<InstanceType<typeof ExcelTableScrollFooter> | null>(null);
+
+const getTableScrollContainer = () => tableScrollRef.value;
+
+const tenantSlug = computed(() =>
+  typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : '',
+);
+
+const highlightOrderId = computed(() => {
+  const raw = route.query.highlightOrderId;
+  if (raw == null || raw === '') return null;
+  const id = Number(raw);
+  return Number.isFinite(id) && id > 0 ? id : null;
+});
+
+const actionColspan = computed(() => (isParentTenant.value ? 13 : 12));
 
 const tenantId = computed(() => authStore.tenantId as number | undefined);
 const parentTenantId = computed(
@@ -187,6 +314,8 @@ const loadOrders = async () => {
     if (!res.success && res.error) {
       showErrorNotification(res.error);
     }
+    await nextTick();
+    requestAnimationFrame(() => scrollFooterRef.value?.updateThumb?.());
   } catch (err) {
     console.error('Failed to load dropship management orders:', err);
     showErrorNotification('Failed to load dropship management orders.');
@@ -213,6 +342,33 @@ const onSearchChange = () => {
 const onStatusChange = () => {
   void loadOrders();
 };
+
+function onTableScroll() {
+  scrollFooterRef.value?.updateThumb?.();
+}
+
+function formatMoney(amount: number | null | undefined): string {
+  if (amount == null || !Number.isFinite(Number(amount))) return '—';
+  return `৳${Number(amount).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function customerBillLabel(order: ShopOrder): string {
+  const no = order.customer_invoice_no?.trim();
+  return no ? no : `#${order.global_invoice_id}`;
+}
+
+function openBill(billId: number) {
+  void router.push({
+    name: 'app-bill-detail-page',
+    params: {
+      ...(tenantSlug.value ? { tenantSlug: tenantSlug.value } : {}),
+      billId: String(billId),
+    },
+  });
+}
 
 function statusLabel(status: ShopOrderStatus): string {
   if (status === 'payment_received') return 'Payment received';
@@ -250,8 +406,45 @@ function rowAccentStyle(status: ShopOrderStatus) {
   };
 }
 
-function goToDetail(id: number) {
-  router.push({ name: 'app-shop-dropship-management-detail-page', params: { id } });
+async function onMarkDelivered(order: ShopOrder) {
+  if (!authStore.tenantId || deliveringOrderId.value != null) return;
+  const confirmed = await requestConfirmation(
+    `Mark order ${order.order_no} as delivered?`,
+    'Mark as delivered',
+    'Mark delivered',
+  );
+  if (!confirmed) return;
+
+  deliveringOrderId.value = order.id;
+  try {
+    const res = await shopOrderService.markDropshipOrderDelivered(
+      authStore.tenantId,
+      order.id,
+      EMPTY_SETTLEMENT_PAYLOAD,
+    );
+    if (!res.success) {
+      showErrorNotification(res.error ?? 'Failed to mark as delivered.');
+      return;
+    }
+    showSuccessNotification('Order marked as delivered.');
+    await loadOrders();
+  } finally {
+    deliveringOrderId.value = null;
+  }
+}
+
+async function onMarkReturned(orderId: number) {
+  const confirmed = await requestConfirmation(
+    'Mark this order as returned? You will choose return lines on the next screen.',
+    'Mark as returned',
+    'Continue',
+  );
+  if (!confirmed) return;
+
+  void router.push({
+    name: 'app-shop-dropship-return-page',
+    params: { tenantSlug: route.params.tenantSlug, id: orderId },
+  });
 }
 </script>
 
@@ -262,12 +455,77 @@ export default {
 </script>
 
 <style scoped>
+.page-fixed-layout {
+  height: calc(100vh - 55px);
+  max-height: calc(100vh - 55px);
+  overflow: hidden;
+}
+
+.dropship-mgmt-page__body {
+  flex: 1 1 0%;
+  min-height: 0;
+}
+
+.dropship-mgmt-table-card {
+  flex: 1 1 0%;
+  overflow: hidden;
+  min-height: 0;
+}
+
 .dropship-mgmt-list-scroll {
+  flex: 1 1 0%;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
   overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hide-native-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hide-native-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.dropship-mgmt-scroll-footer {
+  box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.06);
+}
+
+.dropship-mgmt-list-scroll :deep(.q-markup-table) {
+  overflow: visible;
+  max-width: none;
+}
+
+.dropship-mgmt-list-scroll :deep(table) {
+  width: max-content;
+  min-width: 88rem;
+  table-layout: auto;
+}
+
+.dropship-mgmt-list-scroll :deep(th),
+.dropship-mgmt-list-scroll :deep(td) {
+  white-space: nowrap;
+}
+
+.dropship-mgmt-list-scroll :deep(.dropship-mgmt-list-table__bills-cell),
+.dropship-mgmt-list-scroll :deep(.dropship-mgmt-list-table__bills-cell *) {
+  white-space: normal;
 }
 
 .dropship-mgmt-list-row:hover {
   filter: brightness(0.98);
+}
+
+.dropship-mgmt-list-row--highlight {
+  outline: 2px solid rgba(var(--q-primary-rgb, 13, 107, 92), 0.35);
+  outline-offset: -2px;
 }
 
 .dropship-mgmt-list-scroll thead tr th {
@@ -276,5 +534,15 @@ export default {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--tf-neutral-chrome, #64748b);
+}
+
+.dropship-mgmt-list-table__bills-cell {
+  min-width: 9rem;
+  vertical-align: middle;
+}
+
+.dropship-mgmt-list-table__actions-col {
+  min-width: 11rem;
+  white-space: nowrap;
 }
 </style>

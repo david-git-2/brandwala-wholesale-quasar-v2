@@ -71,7 +71,11 @@ const ENTITY_MAP: Record<
   shipping: { label: 'Shipping', singular: 'Shipping' },
   orders: { label: 'Orders', singular: 'Order' },
   'dropship-orders': { label: 'Dropship Orders', singular: 'Dropship Order' },
-  'dropship-management': { label: 'Dropship Orders', singular: 'Dropship Order' },
+  'dropship-management': {
+    label: 'Dropship management',
+    singular: 'Dropship order',
+    skipIdCrumb: true,
+  },
   'customer-groups': { label: 'Customer Groups', singular: 'Customer Group' },
   merchants: { label: 'Dropshippers', singular: 'Dropshipper' },
   categories: { label: 'Categories', singular: 'Category' },
