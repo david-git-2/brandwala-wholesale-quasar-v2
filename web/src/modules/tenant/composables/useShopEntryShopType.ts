@@ -10,6 +10,12 @@ const SHOP_TYPE_LOADING_LABEL: Record<ShopTypePathSegment, string> = {
   dropship: 'dropship',
 };
 
+export const SHOP_TYPE_AUTH_GHOST_LABEL: Record<ShopTypePathSegment, string> = {
+  catalog: 'Catalog shop',
+  stock: 'Stock shop',
+  dropship: 'Dropship shop',
+};
+
 export const SHOP_ENTRY_TYPE_ERROR =
   'This sign-in link is missing the shop type (catalog, stock, or dropship). Use the full link from your supplier.';
 

@@ -9,8 +9,7 @@
     />
   </Teleport>
 
-  <section class="auth-card">
-    <div class="auth-card__accent-bar" aria-hidden="true" />
+  <section class="auth-card auth-card--immersive">
 
     <div class="auth-card__header">
       <h2 class="auth-card__title">{{ title }}</h2>
@@ -20,10 +19,6 @@
     <div v-if="loginErrorMessage" class="auth-card__error" role="alert">
       <q-icon name="ph ph-warning-circle" size="1.1rem" class="auth-card__error-icon" />
       <span>{{ loginErrorMessage }}</span>
-    </div>
-
-    <div class="auth-card__divider" aria-hidden="true">
-      <span>Continue with</span>
     </div>
 
     <button
@@ -299,5 +294,54 @@ const loginErrorMessage = computed(() => {
     width: 24px;
     height: 24px;
   }
+}
+
+.auth-card.auth-card--immersive {
+  --card-pad-x: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+  gap: 1.25rem;
+  padding: 0;
+  width: 100%;
+  max-width: 22rem;
+  margin-inline: 0;
+}
+
+.auth-card.auth-card--immersive .auth-card__header {
+  padding: 0;
+  gap: 0.35rem;
+}
+
+.auth-card.auth-card--immersive .auth-card__title {
+  font-size: clamp(1.65rem, 3.4vw, 2rem);
+  text-shadow: 0 1px 20px color-mix(in srgb, var(--tf-theme-base) 92%, transparent);
+}
+
+.auth-card.auth-card--immersive .auth-card__subtitle {
+  font-size: 0.92rem;
+}
+
+.auth-card.auth-card--immersive .auth-card__cta {
+  margin: 0;
+  width: 100%;
+  padding: 0.82rem 1rem;
+}
+
+.auth-card.auth-card--immersive .auth-card__cta:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+}
+
+.auth-card.auth-card--immersive .auth-card__secure-note {
+  margin: 0;
+  text-align: left;
+  font-size: 0.74rem;
+}
+
+.auth-card.auth-card--immersive .auth-card__error {
+  margin: 0;
 }
 </style>

@@ -1,14 +1,12 @@
 <template>
-  <section class="auth-card auth-card--skeleton" aria-busy="true" aria-label="Loading sign-in">
-    <div class="auth-card__accent-bar" aria-hidden="true" />
-
+  <section
+    class="auth-card auth-card--skeleton auth-card--immersive"
+    aria-busy="true"
+    aria-label="Loading sign-in"
+  >
     <div class="auth-card__header">
       <q-skeleton type="text" width="72%" height="1.75rem" class="auth-card__skel-title" />
       <q-skeleton type="text" width="48%" height="0.875rem" class="q-mt-xs" />
-    </div>
-
-    <div class="auth-card__divider" aria-hidden="true">
-      <q-skeleton type="text" width="6.5rem" height="0.75rem" />
     </div>
 
     <q-skeleton type="rect" height="48px" class="auth-card__skel-cta" />
@@ -73,5 +71,25 @@
 
 .auth-card__skel-note {
   margin: 0 var(--card-pad-x);
+}
+
+.auth-card.auth-card--immersive {
+  --card-pad-x: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+  padding: 0;
+  max-width: 21rem;
+}
+
+.auth-card.auth-card--immersive .auth-card__header {
+  padding: 0;
+}
+
+.auth-card.auth-card--immersive .auth-card__skel-cta,
+.auth-card.auth-card--immersive .auth-card__skel-note {
+  margin: 0;
 }
 </style>
