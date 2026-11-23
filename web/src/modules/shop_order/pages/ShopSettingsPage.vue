@@ -73,16 +73,16 @@
               <q-tooltip :delay="400">{{ $t('common.refresh', 'Refresh') }}</q-tooltip>
             </q-btn>
             <q-btn
-              v-if="shop.slug"
+              v-if="tenantSlug"
               flat
               dense
               no-caps
               outline
               color="primary"
               icon="ph ph-copy"
-              :label="$t('shop_admin.shop_catalog_url_copy')"
-              data-test="shop-catalog-url-copy"
-              @click="copyShopUrl"
+              :label="$t('shop_admin.access_login_url_copy')"
+              data-test="shop-login-url-copy"
+              @click="copyShopLoginUrl"
             />
           </div>
         </div>
@@ -359,7 +359,7 @@ import {
 } from '../composables/useShopStorefrontAdminMutations';
 import { useRecalcShopDisplayQuantitiesMutation } from '../composables/useRecalcShopDisplayQuantitiesMutation';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
-import { shopCatalogPath } from '../utils/catalogShop';
+import { shopTypeToPathSegment } from '../utils/shopRouteTypes';
 import { useShopsListUiStore } from '../stores/shopsListUiStore';
 import { showSuccessNotification, showErrorNotification, requestConfirmation } from 'src/utils/appFeedback';
 import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';
@@ -769,16 +769,17 @@ watch(
   { immediate: true },
 );
 
-const copyShopUrl = async () => {
-  if (!shop.value?.slug) return;
-  const catalogTenantSlug = shop.value.tenant_slug ?? tenantSlug.value;
+const copyShopLoginUrl = async () => {
+  const loginTenantSlug = shop.value?.tenant_slug ?? tenantSlug.value;
+  if (!loginTenantSlug || !shop.value) return;
+  const shopTypePath = shopTypeToPathSegment(shop.value.shop_type) ?? 'catalog';
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
-  const url = `${origin}${shopCatalogPath(catalogTenantSlug, shop.value.slug).path}`;
+  const url = `${origin}/shop/${loginTenantSlug}/${shopTypePath}/login`;
   try {
     await copyToClipboard(url);
-    showSuccessNotification(t('shop_admin.shop_catalog_url_copied'));
+    showSuccessNotification(t('shop_admin.access_login_url_copied'));
   } catch {
-    showErrorNotification(t('shop_admin.shop_catalog_url_copy_failed'));
+    showErrorNotification(t('shop_admin.access_login_url_copy_failed'));
   }
 };
 

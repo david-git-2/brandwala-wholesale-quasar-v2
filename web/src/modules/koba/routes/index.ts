@@ -71,6 +71,10 @@ const kobaRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/shop/:tenantSlug/koba',
+    redirect: (to) => `/shop/${String(to.params.tenantSlug ?? '')}/catalog/koba`,
+  },
+  {
+    path: '/shop/:tenantSlug/:shopType(catalog|stock|dropship)/koba',
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {

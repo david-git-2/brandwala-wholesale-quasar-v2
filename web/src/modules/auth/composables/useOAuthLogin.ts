@@ -4,8 +4,13 @@ import { useRoute, useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
 import { mapShopRoleToAccessRole } from '../guards/accessGuard';
 import {
+  rememberShopTypePath,
+} from 'src/modules/shop_order/utils/catalogShop';
+import { isShopTypePathSegment } from 'src/modules/shop_order/utils/shopRouteTypes';
+import {
   getAppRouteLocation,
   getShopDashboardRouteLocation,
+  getShopTypePathFromRoute,
   getTenantHostnameForEntry,
   getInvestorDashboardRouteLocation,
   getInvestorLoginRouteLocation,
@@ -86,6 +91,7 @@ export function useOAuthLogin(
   scope?: AuthScope,
   options?: {
     tenantSlug?: string | null;
+    shopTypePath?: string | null;
   },
 ) {
   const route = useRoute();
@@ -120,7 +126,14 @@ export function useOAuthLogin(
     };
 
     if (resolvedScope === 'shop') {
-      await router.replace(getShopLoginRouteLocation(route, extraQuery));
+      await router.replace(
+        getShopLoginRouteLocation(
+          route,
+          extraQuery,
+          options?.tenantSlug,
+          options?.shopTypePath ?? getShopTypePathFromRoute(route),
+        ),
+      );
       return;
     }
 
@@ -206,6 +219,11 @@ export function useOAuthLogin(
 
     if (payload.scope === 'shop') {
       clearShopOrderQueryCache();
+      const shopTypePath =
+        normalizeTenantSlug(options?.shopTypePath) ?? getShopTypePathFromRoute(route);
+      if (payload.tenant?.id && shopTypePath && isShopTypePathSegment(shopTypePath)) {
+        rememberShopTypePath(payload.tenant.id, shopTypePath);
+      }
     }
 
     if (payload.scope === 'app' || payload.scope === 'shop') {
@@ -249,7 +267,13 @@ export function useOAuthLogin(
     }
 
     if (resolvedScope === 'shop') {
-      await router.replace(getShopDashboardRouteLocation(route, payload.tenant?.slug));
+      await router.replace(
+        getShopDashboardRouteLocation(
+          route,
+          payload.tenant?.slug,
+          options?.shopTypePath ?? getShopTypePathFromRoute(route),
+        ),
+      );
       return;
     }
 
@@ -507,6 +531,8 @@ export function useOAuthLogin(
         getShopSelectCompanyRouteLocation(
           route,
           redirectPath ? { redirect: redirectPath } : undefined,
+          undefined,
+          options?.shopTypePath ?? getShopTypePathFromRoute(route),
         ),
       );
       return true;
@@ -689,6 +715,14 @@ export function useOAuthLogin(
       tenantSlug
     ) {
       callbackSearchParams.set('tenant_slug', tenantSlug);
+    }
+
+    if (resolvedScope === 'shop') {
+      const shopType =
+        normalizeTenantSlug(options?.shopTypePath) ?? getShopTypePathFromRoute(route);
+      if (shopType) {
+        callbackSearchParams.set('shop_type', shopType);
+      }
     }
 
     const { data, error } = await supabase.auth.signInWithOAuth({

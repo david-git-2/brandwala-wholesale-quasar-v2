@@ -254,7 +254,7 @@ const adminLoginUrl = computed(() =>
 
 const customerLoginUrl = computed(() =>
   tenant.value?.slug
-    ? `${baseUrl.value}/${tenant.value.slug}/shop/login`
+    ? `${baseUrl.value}/shop/${tenant.value.slug}/catalog/login`
     : `${baseUrl.value}/shop/login`,
 );
 

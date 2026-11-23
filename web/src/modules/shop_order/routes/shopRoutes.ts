@@ -130,7 +130,7 @@ const shopRoutes: RouteRecordRaw[] = [
       const subPath = to.params.catchAll
         ? `/${Array.isArray(to.params.catchAll) ? to.params.catchAll.join('/') : to.params.catchAll}`
         : '';
-      return `/shop/${tenantSlug}${subPath}`;
+      return `/shop/${tenantSlug}/catalog${subPath}`;
     },
   },
   {
@@ -140,7 +140,7 @@ const shopRoutes: RouteRecordRaw[] = [
       const subPath = to.params.catchAll
         ? `/${Array.isArray(to.params.catchAll) ? to.params.catchAll.join('/') : to.params.catchAll}`
         : '';
-      return `/shop/${tenantSlug}${subPath}`;
+      return `/shop/${tenantSlug}/catalog${subPath}`;
     },
   },
   {

@@ -36,17 +36,19 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { CustomerAccessibleShop } from 'src/modules/shop_order/repositories/shopOrderRepository';
 import {
+  filterShopsByRouteType,
   getLastVisitedShopId,
   rememberCatalogShop,
   resolveCatalogShop,
   shopCatalogEntryPath,
   shopCatalogPath,
 } from 'src/modules/shop_order/utils/catalogShop';
+import { shopTypeFromPathSegment } from 'src/modules/shop_order/utils/shopRouteTypes';
 import { useCustomerDashboardQuery } from '../composables/useCustomerDashboardQuery';
 import { useCustomerShopPortalStatsQuery } from '../composables/useCustomerShopPortalStatsQuery';
 import { buildShopPortalStats } from '../utils/shopPortalStats';
@@ -58,9 +60,14 @@ import CustomerDashboardOrdersPanel from '../components/CustomerDashboardOrdersP
 import CustomerDashboardSkeleton from '../components/CustomerDashboardSkeleton.vue';
 
 const authStore = useAuthStore();
+const route = useRoute();
 const router = useRouter();
 
-const tenantBase = computed(() => (authStore.tenantSlug ? `/${authStore.tenantSlug}/shop` : '/shop'));
+const routeShopTypePath = computed(() =>
+  typeof route.params.shopType === 'string' ? route.params.shopType : null,
+);
+const routeShopType = computed(() => shopTypeFromPathSegment(routeShopTypePath.value));
+
 const tenantId = computed(() => authStore.tenantId ?? null);
 
 const lastVisitedShopId = ref<string | null>(null);
@@ -79,19 +86,28 @@ const portalStatsQuery = useCustomerShopPortalStatsQuery(tenantId);
 const dashboard = computed(() => dashboardQuery.data.value);
 const dashboardError = computed(() => (dashboardQuery.error.value as Error | null)?.message || null);
 
-const shops = computed(() => dashboard.value?.shops ?? []);
+const shops = computed(() =>
+  filterShopsByRouteType(dashboard.value?.shops ?? [], routeShopTypePath.value),
+);
+const scopedShopIds = computed(() => new Set(shops.value.map((shop) => shop.id)));
 const categories = computed(() => dashboard.value?.categories ?? []);
 const orderSegments = computed(() => dashboard.value?.order_glance.segments ?? null);
 const orderGlanceTotal = computed(() => orderSegments.value?.total ?? 0);
-const recentOrders = computed(() => dashboard.value?.recent_orders ?? []);
+const recentOrders = computed(() =>
+  (dashboard.value?.recent_orders ?? []).filter((order) => scopedShopIds.value.has(order.shop_id)),
+);
 const totalProducts = computed(() => dashboard.value?.catalog_glance.total_products ?? 0);
 const totalBrands = computed(() => dashboard.value?.catalog_glance.total_brands ?? 0);
 
 const shopStats = computed(() =>
   buildShopPortalStats(
     shops.value,
-    dashboard.value?.active_carts ?? [],
-    portalStatsQuery.data.value ?? [],
+    (dashboard.value?.active_carts ?? []).filter((cart) =>
+      scopedShopIds.value.has(cart.shop_id),
+    ),
+    (portalStatsQuery.data.value ?? []).filter((order) =>
+      scopedShopIds.value.has(order.shop_id),
+    ),
   ),
 );
 
@@ -104,9 +120,12 @@ const rememberShop = (shop: CustomerAccessibleShop) => {
 
 const browsePath = (shop?: CustomerAccessibleShop | null, query?: string) => {
   if (shop?.slug) {
-    return shopCatalogPath(authStore.tenantSlug, shop.slug, query);
+    return shopCatalogPath(authStore.tenantSlug, shop.slug, query, shop.shop_type);
   }
-  return { path: `${tenantBase.value}/browse` };
+  return shopCatalogEntryPath(
+    authStore.tenantSlug,
+    routeShopTypePath.value ?? 'catalog',
+  );
 };
 
 const openShop = (shop: CustomerAccessibleShop) => {
@@ -116,13 +135,15 @@ const openShop = (shop: CustomerAccessibleShop) => {
 };
 
 const startNewOrder = () => {
-  const shop = resolveCatalogShop(tenantId.value, shops.value);
+  const shop = resolveCatalogShop(tenantId.value, shops.value, routeShopType.value);
   if (shop?.slug) {
     rememberShop(shop);
-    void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug));
+    void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug, null, shop.shop_type));
     return;
   }
-  void router.push(shopCatalogEntryPath(authStore.tenantSlug));
+  void router.push(
+    shopCatalogEntryPath(authStore.tenantSlug, routeShopTypePath.value ?? 'catalog'),
+  );
 };
 
 </script>

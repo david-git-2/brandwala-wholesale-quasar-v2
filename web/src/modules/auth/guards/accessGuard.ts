@@ -1,3 +1,4 @@
+import { getLastShopTypePath } from 'src/modules/shop_order/utils/catalogShop';
 import { useAuthStore } from '../stores/authStore';
 import type { AuthScope } from '../composables/useOAuthLogin';
 import {
@@ -82,7 +83,9 @@ const resolveAuthenticatedDenyTarget = ({
   const currentScope = authStore.scope;
 
   if (currentScope === 'shop') {
-    return tenantSlug ? `/shop/${tenantSlug}/dashboard` : '/shop/login';
+    return tenantSlug
+      ? `/shop/${tenantSlug}/${getLastShopTypePath(authStore.tenantId)}/dashboard`
+      : '/shop/login';
   }
 
   if (

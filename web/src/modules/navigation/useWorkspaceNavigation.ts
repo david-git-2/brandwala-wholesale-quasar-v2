@@ -135,7 +135,8 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     scopes: ['shop'],
     allowedRoles: ['customer_admin', 'customer_manager', 'customer_staff'],
     requiresTenantContext: true,
-    route: ({ tenantSlug }) => (tenantSlug ? `/shop/${tenantSlug}/dashboard` : '/shop/login'),
+    route: ({ tenantSlug }) =>
+      tenantSlug ? `/shop/${tenantSlug}/catalog/dashboard` : '/shop/login',
   },
 ] as const;
 

@@ -6,7 +6,7 @@
       </h2>
       <router-link
         class="shop-home-orders-panel__link"
-        :to="{ name: 'shop-orders-page' }"
+        :to="ordersListRoute"
       >
         {{ $t('customer_dashboard.view_all_link') }}
       </router-link>
@@ -28,8 +28,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { getLastShopTypePath } from 'src/modules/shop_order/utils/catalogShop';
 import CustomerOrdersList, {
   type CustomerOrderListRow,
 } from 'src/modules/shop_order/components/CustomerOrdersList.vue';
@@ -42,7 +43,23 @@ const props = defineProps<{
 }>();
 
 const authStore = useAuthStore();
+const route = useRoute();
 const router = useRouter();
+
+const shopTypeParam = computed(() => {
+  if (typeof route.params.shopType === 'string') {
+    return route.params.shopType;
+  }
+  return getLastShopTypePath(authStore.tenantId);
+});
+
+const ordersListRoute = computed(() => ({
+  name: 'shop-orders-page',
+  params: {
+    tenantSlug: authStore.tenantSlug ?? '',
+    shopType: shopTypeParam.value,
+  },
+}));
 
 const displayOrders = computed(() =>
   props.recentOrders.slice(0, 5).map((order) => ({
@@ -57,7 +74,13 @@ const displayOrders = computed(() =>
 );
 
 const goToOrderDetails = (order: CustomerOrderListRow) => {
-  const tenantSlug = authStore.tenantSlug ? `/${authStore.tenantSlug}` : '';
-  void router.push(`${tenantSlug}/shop/orders/${order.id}`);
+  void router.push({
+    name: 'shop-order-detail-page',
+    params: {
+      tenantSlug: authStore.tenantSlug ?? '',
+      shopType: shopTypeParam.value,
+      id: String(order.id),
+    },
+  });
 };
 </script>

@@ -86,11 +86,13 @@ const props = defineProps<{
   ctaLabel: string;
   disabled?: boolean;
   tenantSlug?: string | null;
+  shopTypePath?: string | null;
 }>();
 
 const route = useRoute();
 const { handleGoogleLogin, isLoading } = useOAuthLogin(props.scope, {
   tenantSlug: props.tenantSlug ?? null,
+  shopTypePath: props.shopTypePath ?? null,
 });
 
 const panelTitle = inject<Ref<string>>('authPanelTitle');

@@ -26,7 +26,7 @@ const authRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: '/shop/:tenantSlug/login',
+        path: '/shop/:tenantSlug/:shopType(catalog|stock|dropship)/login',
         name: 'customer-login-page',
         component: () => import('../pages/CustomerLogin.vue'),
         meta: {
@@ -35,8 +35,25 @@ const authRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: '/shop/:tenantSlug/select-company',
+        path: '/shop/:tenantSlug/login',
+        component: () => import('../pages/CustomerLogin.vue'),
+        meta: {
+          authScope: 'shop',
+          requiredScope: 'shop',
+        },
+      },
+      {
+        path: '/shop/:tenantSlug/:shopType(catalog|stock|dropship)/select-company',
         name: 'shop-select-company-page',
+        component: () => import('../pages/ShopCustomerGroupSelectPage.vue'),
+        beforeEnter: createShopSelectCompanyGuard(),
+        meta: {
+          authScope: 'shop',
+          requiredScope: 'shop',
+        },
+      },
+      {
+        path: '/shop/:tenantSlug/select-company',
         component: () => import('../pages/ShopCustomerGroupSelectPage.vue'),
         beforeEnter: createShopSelectCompanyGuard(),
         meta: {

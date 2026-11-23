@@ -1,9 +1,14 @@
 import type { CustomerAccessibleShop } from '../repositories/shopOrderRepository';
 import type { ShopType } from '../types';
-import { shopTypeToPathSegment, type ShopTypePathSegment } from './shopRouteTypes';
+import {
+  isShopTypePathSegment,
+  shopTypeToPathSegment,
+  type ShopTypePathSegment,
+} from './shopRouteTypes';
 
 const lastShopIdKey = (tenantId: number) => `shop:${tenantId}:lastShopId`;
 const lastShopSlugKey = (tenantId: number) => `shop:${tenantId}:lastShopSlug`;
+const lastShopTypePathKey = (tenantId: number) => `shop:${tenantId}:lastShopTypePath`;
 
 export function shopScopeBase(
   tenantSlug: string | null | undefined,
@@ -16,8 +21,28 @@ export function shopScopeBase(
   return shopTypePath ? `/shop/${tenant}/${shopTypePath}` : `/shop/${tenant}`;
 }
 
-export function shopHomePath(tenantSlug?: string | null) {
-  return `/shop/${tenantSlug ?? ''}/dashboard`;
+export function getLastShopTypePath(tenantId: number | null | undefined): ShopTypePathSegment {
+  if (!tenantId) return 'catalog';
+  const stored = localStorage.getItem(lastShopTypePathKey(tenantId));
+  if (stored && isShopTypePathSegment(stored)) {
+    return stored;
+  }
+  return 'catalog';
+}
+
+export function rememberShopTypePath(
+  tenantId: number,
+  shopTypePath: ShopTypePathSegment,
+) {
+  localStorage.setItem(lastShopTypePathKey(tenantId), shopTypePath);
+}
+
+export function shopHomePath(
+  tenantSlug?: string | null,
+  shopTypePath?: ShopTypePathSegment | null,
+) {
+  const type = shopTypePath ?? 'catalog';
+  return `${shopScopeBase(tenantSlug, type)}/dashboard`;
 }
 
 export function shopCatalogEntryPath(
@@ -142,9 +167,14 @@ export function resolveCartShopId(
   return sorted[0]?.shop_id ?? null;
 }
 
-export function rememberCatalogShop(tenantId: number, shop: { id: number; slug: string }) {
+export function rememberCatalogShop(
+  tenantId: number,
+  shop: { id: number; slug: string; shop_type?: ShopType | null },
+) {
   localStorage.setItem(lastShopIdKey(tenantId), String(shop.id));
   localStorage.setItem(lastShopSlugKey(tenantId), shop.slug);
+  const typePath = shopTypeToPathSegment(shop.shop_type) ?? 'catalog';
+  localStorage.setItem(lastShopTypePathKey(tenantId), typePath);
 }
 
 export function getLastVisitedShopId(tenantId: number | null | undefined): string | null {

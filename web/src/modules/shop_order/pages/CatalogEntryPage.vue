@@ -57,7 +57,12 @@ watch(
 
     const shop = resolveCatalogShop(tenantId.value, shops.value, routeShopType.value);
     if (!shop) {
-      void router.replace(shopHomePath(tenantSlug.value));
+      void router.replace(
+        shopHomePath(
+          tenantSlug.value,
+          typeof route.params.shopType === 'string' ? route.params.shopType : 'catalog',
+        ),
+      );
       return;
     }
 

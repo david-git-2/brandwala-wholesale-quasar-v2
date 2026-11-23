@@ -10,7 +10,10 @@ const notificationsDisabledRedirect: RouteRecordRaw['beforeEnter'] = (to) => {
   }
   const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : undefined;
   if (to.path.includes('/shop/')) {
-    return { name: 'customer-dashboard', params: { tenantSlug } };
+    return {
+      name: 'customer-dashboard',
+      params: { tenantSlug, shopType: 'catalog' },
+    };
   }
   return { name: 'admin-dashboard', params: { tenantSlug } };
 };
@@ -42,6 +45,11 @@ const notificationRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/shop/:tenantSlug/notifications',
+    redirect: (to) =>
+      `/shop/${String(to.params.tenantSlug ?? '')}/catalog/notifications`,
+  },
+  {
+    path: '/shop/:tenantSlug/:shopType(catalog|stock|dropship)/notifications',
     component: () => import('layouts/ShopLayout.vue'),
     beforeEnter: [notificationsDisabledRedirect, createShopAccessGuard({ requiredModule: 'shop_order_mgmt' })],
     children: [

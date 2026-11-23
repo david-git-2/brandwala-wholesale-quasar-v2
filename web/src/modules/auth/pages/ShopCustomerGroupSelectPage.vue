@@ -7,14 +7,19 @@
       <p class="auth-card__subtitle">{{ $t('shop.select_company_desc') }}</p>
     </div>
 
-    <div v-if="errorMessage" class="auth-card__error" role="alert">
+    <div v-if="shopTypeError" class="auth-card__error" role="alert">
+      <q-icon name="ph ph-warning-circle" size="1.1rem" />
+      <span>{{ shopTypeError }}</span>
+    </div>
+
+    <div v-else-if="errorMessage" class="auth-card__error" role="alert">
       <q-icon name="ph ph-warning-circle" size="1.1rem" />
       <span>{{ errorMessage }}</span>
     </div>
 
-    <PageInitialLoader v-if="loading" embedded />
+    <PageInitialLoader v-if="!shopTypeError && loading" embedded />
 
-    <div v-else class="company-list" role="list">
+    <div v-else-if="!shopTypeError" class="company-list" role="list">
       <button
         v-for="group in groups"
         :key="group.member_id"
@@ -54,6 +59,7 @@ import {
   listShopLoginGroups,
   type ShopLoginGroupRow,
 } from '../utils/shopCustomerGroupSession';
+import { useShopEntryShopType } from 'src/modules/tenant/composables/useShopEntryShopType';
 import { getShopDashboardRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 import { showErrorNotification } from 'src/utils/appFeedback';
 
@@ -62,6 +68,7 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
+const { shopTypeError } = useShopEntryShopType();
 
 const panelTitle = inject<Ref<string>>('authPanelTitle');
 if (panelTitle) {
@@ -149,7 +156,13 @@ const selectGroup = async (group: ShopLoginGroupRow) => {
       return;
     }
 
-    await router.replace(getShopDashboardRouteLocation(route, snapshot.tenant?.slug));
+    await router.replace(
+      getShopDashboardRouteLocation(
+        route,
+        snapshot.tenant?.slug,
+        typeof route.params.shopType === 'string' ? route.params.shopType : null,
+      ),
+    );
   } catch (error) {
     console.error('[shop] Failed to select company', error);
     showErrorNotification(t('shop.select_company_error'));
@@ -159,6 +172,10 @@ const selectGroup = async (group: ShopLoginGroupRow) => {
 };
 
 onMounted(() => {
+  if (shopTypeError.value) {
+    loading.value = false;
+    return;
+  }
   void loadGroups();
 });
 </script>

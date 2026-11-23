@@ -32,7 +32,9 @@ const route = useRoute();
 const scope = (route.query.scope as AuthScope | undefined) ?? 'app';
 const tenantSlug =
   typeof route.query.tenant_slug === 'string' ? route.query.tenant_slug.trim() : null;
-const { processLoginResult } = useOAuthLogin(scope, { tenantSlug });
+const shopTypePath =
+  typeof route.query.shop_type === 'string' ? route.query.shop_type.trim() : null;
+const { processLoginResult } = useOAuthLogin(scope, { tenantSlug, shopTypePath });
 
 const isRedirectingToApp = ref(false);
 const appRedirectUrl = ref('');

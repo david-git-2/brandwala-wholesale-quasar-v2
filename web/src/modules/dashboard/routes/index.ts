@@ -1,13 +1,10 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import { validateShopTenantSlug } from 'src/modules/auth/guards/validateShopTenantSlug';
-import {
-  getShopDashboardRouteLocation,
-  getShopLoginRouteLocation,
-  getShopSelectCompanyRouteLocation,
-  validateAppRouteTenantSlug,
-} from 'src/modules/tenant/utils/tenantRouteContext';
+import { validateAppRouteTenantSlug } from 'src/modules/tenant/utils/tenantRouteContext';
+import { shopCustomerDashboardGuard } from './shopCustomerDashboardGuard';
+
+const SHOP_TYPE = ':shopType(catalog|stock|dropship)';
 
 const dashboardRoutes: RouteRecordRaw[] = [
   {
@@ -52,47 +49,24 @@ const dashboardRoutes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/shop/:tenantSlug/dashboard',
+    redirect: (to) =>
+      `/shop/${String(to.params.tenantSlug ?? '')}/catalog/dashboard`,
+  },
+  {
     path: '/shop/:tenantSlug',
+    redirect: (to) =>
+      `/shop/${String(to.params.tenantSlug ?? '')}/catalog/dashboard`,
+  },
+  {
+    path: `/shop/:tenantSlug/${SHOP_TYPE}/dashboard`,
     component: () => import('layouts/ShopLayout.vue'),
-    redirect: (to) => `/shop/${String(to.params.tenantSlug ?? '')}/dashboard`,
     children: [
       {
-        path: 'dashboard',
+        path: '',
         name: 'customer-dashboard',
         component: () => import('../pages/CustomerDashboard.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          requireCustomerGroup: true,
-          missingCustomerGroupRoute: (to) =>
-            getShopSelectCompanyRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          allowedRoles: ['customer_admin', 'customer_manager', 'customer_staff'],
-          validateAccess: ({ authStore, to }) => {
-            if (authStore.actorType !== 'customer_group_member') {
-              return getShopLoginRouteLocation(to, {
-                login_error: 'no_membership',
-              });
-            }
-
-            const slugCheck = validateShopTenantSlug({ authStore, to });
-            if (slugCheck !== true) {
-              return slugCheck;
-            }
-
-            const routeTenantSlug = typeof to.params?.tenantSlug === 'string' ? to.params.tenantSlug : null;
-            if (!routeTenantSlug && authStore.tenantSlug) {
-              return getShopDashboardRouteLocation(to, authStore.tenantSlug);
-            }
-
-            return true;
-          },
-        }),
+        beforeEnter: shopCustomerDashboardGuard,
       },
     ],
   },

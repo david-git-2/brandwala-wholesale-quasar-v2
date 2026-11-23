@@ -128,6 +128,10 @@ const costingFileRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/shop/:tenantSlug/costing',
+    redirect: (to) => `/shop/${String(to.params.tenantSlug ?? '')}/catalog/costing`,
+  },
+  {
+    path: '/shop/:tenantSlug/:shopType(catalog|stock|dropship)/costing',
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
@@ -146,6 +150,11 @@ const costingFileRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/shop/:tenantSlug/costing/:id/preview',
+    redirect: (to) =>
+      `/shop/${String(to.params.tenantSlug ?? '')}/catalog/costing/${String(to.params.id ?? '')}/preview`,
+  },
+  {
+    path: '/shop/:tenantSlug/:shopType(catalog|stock|dropship)/costing/:id/preview',
     component: () => import('layouts/ExternalLayout.vue'),
     children: [
       {

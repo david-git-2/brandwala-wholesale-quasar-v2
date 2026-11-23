@@ -73,7 +73,8 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { getLastShopTypePath } from 'src/modules/shop_order/utils/catalogShop';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { getAppRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
@@ -94,6 +95,7 @@ const props = withDefaults(
 
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
+const route = useRoute();
 const router = useRouter();
 
 const badgeLabel = computed(() => {
@@ -161,10 +163,22 @@ const onSelect = async (item: NotificationItem) => {
 };
 
 const onSeeAll = () => {
-  const routeName = props.scope === 'shop' ? 'shop-notifications-inbox' : 'notifications-inbox';
+  if (props.scope === 'shop') {
+    const shopType =
+      (typeof route.params.shopType === 'string' ? route.params.shopType : null) ??
+      getLastShopTypePath(authStore.tenantId);
+    void router.push({
+      name: 'shop-notifications-inbox',
+      params: {
+        tenantSlug: authStore.tenantSlug ?? '',
+        shopType,
+      },
+    });
+    return;
+  }
   void router.push(
     getAppRouteLocation(
-      { name: routeName, params: {}, query: {} },
+      { name: 'notifications-inbox', params: {}, query: {} },
       authStore.tenantSlug,
     ),
   );

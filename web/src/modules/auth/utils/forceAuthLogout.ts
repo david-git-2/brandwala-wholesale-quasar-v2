@@ -2,11 +2,13 @@ import type { Router } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from '../stores/authStore';
 import { clearShopOrderQueryCache } from 'src/query/queryClient';
+import { getLastShopTypePath } from 'src/modules/shop_order/utils/catalogShop';
 import {
   getAppRouteLocation,
   getInvestorLoginRouteLocation,
   getScopeFromPath,
   getShopLoginRouteLocation,
+  getShopTypePathFromRoute,
   getTenantSlugFromPath,
   getTenantSlugFromRoute,
 } from 'src/modules/tenant/utils/tenantRouteContext';
@@ -86,6 +88,7 @@ export async function handleUnauthorizedResponse() {
     }
 
     const authStore = useAuthStore();
+    const savedTenantId = authStore.tenantId;
     let scope = authStore.scope;
     const locationPathname =
       typeof window !== 'undefined' ? window.location.pathname : currentRoute.path;
@@ -130,7 +133,14 @@ export async function handleUnauthorizedResponse() {
         query: extraQuery,
       });
     } else if (scope === 'shop') {
-      const loginRouteLocation = getShopLoginRouteLocation(currentRoute, extraQuery, tenantSlug);
+      const shopType =
+        getShopTypePathFromRoute(currentRoute) ?? getLastShopTypePath(savedTenantId);
+      const loginRouteLocation = getShopLoginRouteLocation(
+        currentRoute,
+        extraQuery,
+        tenantSlug,
+        shopType,
+      );
       await router.replace(loginRouteLocation);
     } else if (scope === 'investor') {
       await router.replace(getInvestorLoginRouteLocation(currentRoute, extraQuery, tenantSlug));

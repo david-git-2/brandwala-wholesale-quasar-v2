@@ -16,15 +16,20 @@
           >
             <span class="shop-shell__tenant-text shop-banner-font">{{ tenantName }}</span>
           </button>
-          <ShopCustomerGroupHeaderSwitcher
-            :current-name="companyName"
-            :current-id="authStore.customerGroupId"
-            :groups="loginGroups"
-            @switch-company="onSwitchCompany"
-          />
         </div>
 
         <nav v-if="!$q.screen.xs" class="shop-shell__nav" aria-label="Shop">
+          <q-btn
+            flat
+            no-caps
+            dense
+            class="shop-shell__labeled-btn"
+            :class="{ 'shop-shell__labeled-btn--segment-active': isHomeNavActive }"
+            icon="ph ph-house"
+            :label="$t('navigation.dashboard')"
+            data-test="shop-header-dashboard-btn"
+            @click="goHome"
+          />
           <q-btn
             flat
             no-caps
@@ -67,7 +72,7 @@
             <CatalogShopHeaderSwitcher
               :shop-name="headerShopName"
               :current-slug="headerShopSlug"
-              :shops="customerShops"
+              :shops="headerCustomerShops"
               @switch-shop="onSwitchHeaderShop"
             />
           </div>
@@ -114,7 +119,7 @@
           <span class="shop-shell__bottom-nav-icon">
             <q-icon name="ph ph-house" />
           </span>
-          <span class="shop-shell__bottom-nav-label">{{ $t('navigation.home') }}</span>
+          <span class="shop-shell__bottom-nav-label">{{ $t('navigation.dashboard') }}</span>
         </button>
         <button
           type="button"
@@ -214,20 +219,15 @@ import NotificationBell from 'src/modules/notifications/components/NotificationB
 import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/notifications/notificationsFeature';
 import ShopHeaderProductSearch from 'src/modules/shop_order/components/ShopHeaderProductSearch.vue';
 import CatalogShopHeaderSwitcher from 'src/modules/shop_order/components/CatalogShopHeaderSwitcher.vue';
-import ShopCustomerGroupHeaderSwitcher from 'src/modules/shop_order/components/ShopCustomerGroupHeaderSwitcher.vue';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useActiveShopCartsQuery } from 'src/modules/shop_order/composables/useActiveShopCartsQuery';
 import { useShopCustomerShellQuery } from 'src/modules/shop_order/composables/useShopCustomerShellQuery';
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
 import { clearShopOrderQueryCache } from 'src/query/queryClient';
-import { getShopDashboardRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 import {
-  bootstrapShopCustomerGroup,
-  type ShopLoginGroupRow,
-} from 'src/modules/auth/utils/shopCustomerGroupSession';
-import {
+  filterShopsByRouteType,
+  getLastShopTypePath,
   getLastVisitedShopId,
   rememberCatalogShop,
   resolveCartShopId,
@@ -237,6 +237,7 @@ import {
   shopCatalogPath,
   shopHomePath,
 } from 'src/modules/shop_order/utils/catalogShop';
+import { shopTypeFromPathSegment, shopTypeToPathSegment } from 'src/modules/shop_order/utils/shopRouteTypes';
 
 const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor'];
 
@@ -248,7 +249,6 @@ const $q = useQuasar();
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
-const tenantStore = useTenantStore();
 const kobaCartStore = useKobaCartStore();
 const shellQuery = useShopCustomerShellQuery(
   computed(() => authStore.tenantId ?? null),
@@ -257,7 +257,6 @@ const shellQuery = useShopCustomerShellQuery(
 const { data: activeCartsData } = useActiveShopCartsQuery();
 const activeCarts = computed(() => activeCartsData.value ?? []);
 const loginGroups = computed(() => shellQuery.data.value?.login_groups ?? []);
-const companyName = computed(() => authStore.customerGroup?.name ?? '');
 
 const showLogoutDialog = ref(false);
 const searchOpen = ref(false);
@@ -313,6 +312,17 @@ const tenantName = computed(
 
 const customerShops = computed(() => shellQuery.data.value?.customer_shops ?? []);
 
+const routeShopTypePath = computed(() => {
+  const raw = route.params.shopType;
+  return typeof raw === 'string' ? raw : null;
+});
+
+const routeShopType = computed(() => shopTypeFromPathSegment(routeShopTypePath.value));
+
+const headerCustomerShops = computed(() =>
+  filterShopsByRouteType(customerShops.value, routeShopTypePath.value),
+);
+
 const catalogShopSlug = computed(() => {
   const slug = route.params.shopSlug;
   return typeof slug === 'string' && slug.length > 0 ? slug : '';
@@ -324,7 +334,7 @@ const cartShopSlug = computed(() => {
   }
   const shopId = activeCartShopId.value;
   if (!shopId) return '';
-  return customerShops.value.find((shop) => shop.id === shopId)?.slug ?? '';
+  return headerCustomerShops.value.find((shop) => shop.id === shopId)?.slug ?? '';
 });
 
 const cartShopName = computed(() => {
@@ -333,11 +343,11 @@ const cartShopName = computed(() => {
   }
   const shopId = activeCartShopId.value;
   if (!shopId) return cartShopSlug.value;
-  return customerShops.value.find((shop) => shop.id === shopId)?.name ?? cartShopSlug.value;
+  return headerCustomerShops.value.find((shop) => shop.id === shopId)?.name ?? cartShopSlug.value;
 });
 
 const rememberedShop = computed(() =>
-  resolveCatalogShop(authStore.tenantId, customerShops.value),
+  resolveCatalogShop(authStore.tenantId, headerCustomerShops.value, routeShopType.value),
 );
 
 const headerShopSlug = computed(() => {
@@ -354,14 +364,15 @@ const headerShopName = computed(() => {
   if (isCartRoute.value && cartShopName.value) {
     return cartShopName.value;
   }
-  const match = customerShops.value.find((shop) => shop.slug === headerShopSlug.value);
+  const match = headerCustomerShops.value.find((shop) => shop.slug === headerShopSlug.value);
   return match?.name || headerShopSlug.value;
 });
 
 const showCatalogShopHeader = computed(() => {
   if (showHeaderSearch.value) return false;
   if (routeName.value === 'shop-order-detail-page') return false;
-  return headerShopSlug.value.length > 0;
+  if (headerCustomerShops.value.length === 0) return false;
+  return Boolean(headerShopSlug.value || rememberedShop.value?.slug);
 });
 
 watch(showHeaderSearch, (visible) => {
@@ -463,40 +474,12 @@ const kobaCartRouteName = computed(() => {
 });
 
 const goHome = () => {
-  void router.push(shopHomePath(authStore.tenantSlug));
-};
-
-const onSwitchCompany = async (group: ShopLoginGroupRow) => {
-  const user = authStore.user;
-  const email = user?.email;
-  const tenantId = authStore.tenantId;
-  if (!user || !email || tenantId == null || group.customer_group_id === authStore.customerGroupId) {
-    return;
-  }
-
-  try {
-    const snapshot = await bootstrapShopCustomerGroup({
-      user,
-      email,
-      tenantId,
-      memberId: group.member_id,
-      createdAt: group.member_created_at,
-      updatedAt: group.member_updated_at,
-    });
-    if (!snapshot) {
-      return;
-    }
-    authStore.saveAccess({
-      ...snapshot,
-      savedAt: new Date().toISOString(),
-    });
-    tenantStore.hydrateSelectedTenantFromAuth(snapshot.tenant);
-    clearShopOrderQueryCache();
-    await router.replace(getShopDashboardRouteLocation(route, snapshot.tenant?.slug));
-    void shellQuery.refetch();
-  } catch (error) {
-    console.error('[shop] Failed to switch company', error);
-  }
+  void router.push(
+    shopHomePath(
+      authStore.tenantSlug,
+      routeShopTypePath.value ?? getLastShopTypePath(authStore.tenantId),
+    ),
+  );
 };
 
 onMounted(() => {
@@ -519,39 +502,55 @@ const goToCatalog = () => {
     if (tenantId) {
       rememberCatalogShop(tenantId, { id: cartShopId, slug: cartSlug });
     }
-    void router.push(shopCatalogPath(authStore.tenantSlug, cartSlug));
+    const cartShop = headerCustomerShops.value.find((row) => row.slug === cartSlug);
+    void router.push(
+      shopCatalogPath(authStore.tenantSlug, cartSlug, null, cartShop?.shop_type),
+    );
     return;
   }
 
-  const shop = resolveCatalogShop(tenantId, customerShops.value);
+  const shop = resolveCatalogShop(tenantId, headerCustomerShops.value, routeShopType.value);
   if (shop?.slug) {
     if (tenantId) {
       rememberCatalogShop(tenantId, shop);
     }
-    void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug));
+    void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug, null, shop.shop_type));
     return;
   }
-  void router.push(shopCatalogEntryPath(authStore.tenantSlug));
+  const entryTypePath = routeShopTypePath.value ?? 'catalog';
+  void router.push(shopCatalogEntryPath(authStore.tenantSlug, entryTypePath));
 };
 
 const onSwitchHeaderShop = (shop: { id: number; slug: string; name: string }) => {
   if (!shop.slug) return;
+  const shopRow = headerCustomerShops.value.find((row) => row.id === shop.id);
   if (authStore.tenantId) {
     rememberCatalogShop(authStore.tenantId, shop);
   }
   if (isCartRoute.value) {
     if (shop.id === activeCartShopId.value) return;
-    void router.push(shopCartPath(authStore.tenantSlug, shop.id));
+    void router.push(shopCartPath(authStore.tenantSlug, shop.id, shopRow?.shop_type));
     return;
   }
   if (isOrdersNavActive.value) return;
   if (shop.slug === headerShopSlug.value) return;
-  void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug));
+  void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug, null, shopRow?.shop_type));
 };
 
 const goToOrders = () => {
   const tenantSlug = authStore.tenantSlug;
-  void router.push(tenantSlug ? `/${tenantSlug}/shop/orders` : '/shop/orders');
+  if (!tenantSlug) {
+    void router.push('/shop/orders');
+    return;
+  }
+  const shopTypePath =
+    routeShopTypePath.value ??
+    shopTypeToPathSegment(rememberedShop.value?.shop_type) ??
+    'catalog';
+  void router.push({
+    name: 'shop-orders-page',
+    params: { tenantSlug, shopType: shopTypePath },
+  });
 };
 
 const goToCart = async () => {
@@ -574,7 +573,9 @@ const goToCart = async () => {
   const shopId =
     resolveCartShopId(authStore.tenantId, activeCarts.value ?? []) ??
     (Number.isNaN(parsedLastId) ? null : parsedLastId);
-  await router.push(shopCartPath(authStore.tenantSlug, shopId));
+  await router.push(
+    shopCartPath(authStore.tenantSlug, shopId, rememberedShop.value?.shop_type),
+  );
 };
 
 watch(
@@ -815,15 +816,6 @@ defineExpose({
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.2;
-  }
-
-  .shop-shell__left :deep(.shop-company-switch__trigger),
-  .shop-shell__left :deep(.shop-company-switch__static) {
-    min-height: 0;
-    padding: 0;
-    font-size: 0.6875rem;
-    font-weight: 500;
-    color: var(--shop-shell-muted);
   }
 
   .shop-shell__actions {
