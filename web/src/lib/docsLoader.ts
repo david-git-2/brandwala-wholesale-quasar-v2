@@ -76,9 +76,7 @@ function parseMarkdownMetadata(rawPath: string, content: string): DocItem {
   const lowerPath = cleanPath.toLowerCase();
   const lowerTitle = title.toLowerCase();
 
-  if (lowerPath.includes('gaps') || lowerTitle.includes('gaps')) {
-    badge = 'Gaps';
-  } else if (
+  if (
     fileName === 'spec' ||
     lowerPath.endsWith('/spec.md') ||
     lowerPath.includes('prd') ||

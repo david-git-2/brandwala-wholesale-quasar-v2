@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/tenant_auth/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/tenant_auth/spec.md` |
 | UI | `auth/`, `tenant/`, `membership/`, `access_control/` |
 | SQL | Stubs `tenants/`, `permissions/`; live mostly `public.sql` |
 | Access | Scopes `platform` \| `app` \| `shop` \| `investor`; `effectiveGrants` |

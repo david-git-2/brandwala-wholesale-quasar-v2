@@ -1,7 +1,8 @@
 # Workspace Agent Rules
 
-- **Docs / product:** `.cursor/rules/docs-first.mdc` — conditional spec load; `DOC_GAP` when blocked.
-- **Discipline / tools:** `.cursor/rules/core.mdc`.
-- **Project map:** `.cursor/rules/project-crib.mdc`; full conventions when editing `web/`, `supabase/`, `docs/`: `.cursor/rules/.development-flow.mdc`.
-- **Local Supabase:** default `pnpm run backend:local` + types; `.cursor/rules/supabase-local-backend.mdc`.
-- **Skills:** read the matching `.agents/skills/<name>/SKILL.md` only when the user invokes that skill or the task clearly needs it.
+- **Discipline:** `.cursor/rules/core.mdc` (always-on crib).
+- **Docs (product paths):** `.cursor/rules/docs-first.mdc` — `spec.md` only; ask one question if unclear.
+- **UI:** `.cursor/rules/quasar-ui.mdc` + `docs/guides/OpsListPage.skeleton.vue`.
+- **Conventions:** `.cursor/rules/.development-flow.mdc` when editing `web/` / `supabase/` / `docs/`.
+- **Local Supabase:** `.cursor/rules/supabase-local-backend.mdc` — default `backend:local`.
+- **Skills:** read `.agents/skills/<name>/SKILL.md` only when invoked or clearly needed.

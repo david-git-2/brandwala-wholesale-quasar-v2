@@ -1,0 +1,51 @@
+---
+description: Single Quasar/Vue UI canon. Tokens, layout, Tf*, decisions. Replaces ui-consistency, frictionless-ui, quasar-erp.
+globs: ["**/*.vue", "**/*.scss", "**/app.scss"]
+alwaysApply: false
+---
+
+# Quasar UI (one canon)
+
+Do not open superseded UI rules or `InboundShipmentListPage.vue`. Dense column widths only: grep `docs/guides/ui-standards.md` — never full-read for chrome.
+
+## Tokens (always `--tf-*`, never `--bw-*`)
+
+- Theme: `var(--tf-theme-*)`, Quasar `color="primary"`.
+- Surfaces/text: `--tf-neutral-*`. State hues: `--tf-success|warning|error|info` (+ `-soft`).
+- Status colors: `<TfStatusBadge :status>` + `statusMap.ts` only — no page hex / `blue-1` / per-page status fns.
+- Dark: only via `app.scss` `body.body--dark`. Pages never define dark hex palettes.
+- Icons: `ph ph-*`. Fonts: `--tf-font-ui` / `--tf-font-mono`.
+
+## Layout
+
+| Screen | Shell | Title |
+|--------|-------|-------|
+| Ops list/grid (default) | `q-page.page-fixed-layout` (`calc(100vh - 55px)`, `overflow: hidden`), compact toolbar, sticky table scroll | Breadcrumbs only — no in-page H1 / `AppPageHeader` |
+| Hub / overview / investor / treasury | `q-page.tf-page` + `.tf-page__stack` + `AppPageHeader` | Allowed |
+| Browse entity rows | `TfEntityListShell` + `TfEntityListRow` | — |
+
+**New ops list:** copy `docs/guides/OpsListPage.skeleton.vue` (<80 lines). Do not open the live shipment list page for chrome.
+
+## Decisions (stop re-litigating)
+
+| Topic | Rule |
+|-------|------|
+| Inputs | `outlined dense hide-bottom-space`. Search in toolbars may add `rounded`. No `filled` / `standout`. |
+| Buttons | Prefer `TfBtn`. Max one filled primary (header **or** empty-state, never both). `:ripple="false"`. Radius `--tf-radius-sm` (8px). No pill except shop CTAs. |
+| Shadows | Flat tables/toolbars. No page `box-shadow` / hover lift. Raised only: dialogs, drawers, empty-state CTAs. |
+| Row tints / left accent | Allowed on **existing** high-density ops tables that already use them. **New** lists: status via `TfStatusBadge` only — do not invent new row-tint systems. |
+| Tabs/filters | `TfDrawerSectionTabs` (or Header). Side panels: `TfSideSheet`. Empty: `TfEmptyState`. Confirm/toast: `TfConfirmDialog` / `useNotify` or `appFeedback.ts`. |
+| Spacing | `q-pa-sm\|md`, `q-gutter-sm`. Avoid `q-pa-lg\|xl`. |
+
+## UX (frictionless)
+
+One obvious next step. Disabled primary explains why (`q-tooltip` / banner). No Help essays, tours, or links to `doc/*.md` on the page. Loading: `PageInitialLoader` / `TfSkeletonRows`; background: `GlobalAjaxBar`.
+
+## Size & chrome scope
+
+- Target page ≤180 lines (max 250); split parts, don’t paste mega pages.
+- **UI chrome only** (Tf swaps, spacing, shell, tokens; no product invent): up to **8 files / 400 lines** without the core pause.
+
+## Checklist (grep your diff)
+
+`#[0-9a-f]{3,6}`, `--bw-`, `shadow`, `filled`, `push`, `rounded` (non-search), `q-pa-xl`, `blue-|teal-|amber|grey-[0-9]`, `AppPageHeader` on ops lists.

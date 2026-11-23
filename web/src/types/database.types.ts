@@ -7131,7 +7131,7 @@ isOneToOne: false
                            },
 "list_dropship_shop_orders_for_staff":
 { Args: { "p_limit"?: number,"p_offset"?: number,"p_search"?: string,"p_status"?: string,"p_statuses"?: (string)[],"p_tenant_id": number }; Returns: {
-              "cod_charge_amount": number,"cod_collect_amount": number,"collected_cod_amount": number,"collection_source": Database["public"]['Enums']["collection_source_type"],"courier_ar_bill_id": number,"courier_awb_number": string,"courier_name": string,"courier_remittance_ref": string,"created_at": string,"created_by_email": string,"customer_group_name": string,"customer_invoice_no": string,"delivery_charge_amount": number,"dropshipper_bill_amount": number,"global_invoice_id": number,"id": number,"order_no": string,"payout_settlement_status": string,"recipient_name": string,"recipient_phone": string,"status": Database["public"]['Enums']["shop_order_status"],"tenant_id": number,"tenant_name": string,"total_amount": number
+              "cod_charge_amount": number,"cod_collect_amount": number,"collected_cod_amount": number,"collection_source": Database["public"]['Enums']["collection_source_type"],"courier_ar_bill_id": number,"courier_ar_invoice_status": string,"courier_awb_number": string,"courier_name": string,"courier_remittance_ref": string,"created_at": string,"created_by_email": string,"customer_group_name": string,"customer_invoice_no": string,"customer_invoice_status": string,"delivery_charge_amount": number,"dropshipper_bill_amount": number,"global_invoice_id": number,"id": number,"order_no": string,"payout_settlement_status": string,"recipient_name": string,"recipient_phone": string,"status": Database["public"]['Enums']["shop_order_status"],"tenant_id": number,"tenant_name": string,"total_amount": number
             }[]
                            },
 "list_global_currencies":
@@ -8566,6 +8566,9 @@ isOneToOne: false
 "save_delivery_paper_detail":
 { Args: { "p_delivery_paper_id": number,"p_items": Json,"p_tenant_id": number }; Returns: Json
                            },
+"save_dropship_management_list_settlement":
+{ Args: { "p_order_id": number,"p_payload": Json,"p_tenant_id": number }; Returns: Json
+                           },
 "save_dropship_settlement_draft":
 { Args: { "p_order_id": number,"p_payload": Json,"p_tenant_id": number }; Returns: Json
                            },
@@ -8790,6 +8793,9 @@ isOneToOne: false
                            },
 "sync_delivery_paper_lines_for_demand":
 { Args: { "p_preorder_demand_id": number }; Returns: undefined
+                           },
+"sync_dropship_draft_bills_after_settlement":
+{ Args: { "p_order_id": number }; Returns: Json
                            },
 "sync_dropship_tenant_b2b_invoice_from_order":
 { Args: { "p_order_id": number }; Returns: Json

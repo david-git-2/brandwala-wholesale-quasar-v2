@@ -628,7 +628,9 @@ export interface ShopOrder {
   /** Customer AR total (B2B bill or reseller purchase fallback) */
   dropshipper_bill_amount?: number | null;
   customer_invoice_no?: string | null;
+  customer_invoice_status?: string | null;
   courier_ar_bill_id?: number | null;
+  courier_ar_invoice_status?: string | null;
   cod_collect_amount?: number | null;
   courier_name?: string | null;
   courier_awb_number?: string | null;

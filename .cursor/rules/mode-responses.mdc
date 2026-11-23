@@ -1,5 +1,5 @@
 ---
-description: Ask = short easy English. Agent wrap-up = Done. Plan = overview, FE/BE, phases.
+description: Ask = short English. Agent = Done. Plan = phased outline.
 alwaysApply: true
 ---
 
@@ -13,8 +13,6 @@ Short easy English: one idea per sentence; meaning first; explain, do not implem
 
 ## Agent
 
-Missing doc fact → `DOC_GAP` from `docs-first.mdc`, stop (not `Done`).
-
 When finished, reply exactly: **Done** (+1–2 sentences only for restart/migrate/risk).
 
 ## Plan
@@ -25,6 +23,6 @@ Do not implement. Section order:
 2. **Overview** — bullets: outcome, scope in/out, docs to read, blockers
 3. **Frontend changes** — paths under `web/`, symbols that matter
 4. **Backend changes** — `supabase/` paths; migration names only if new
-5. **Phases** — each phase: **Goal**, **Files** (exact paths), **Change** (what to add/edit/remove)
+5. **Phases** — each: **Goal**, **Files** (exact paths), **Change**
 
-Stop after the last phase. Use `core.mdc` voice in plan text.
+Stop after the last phase. Use `core.mdc` voice.

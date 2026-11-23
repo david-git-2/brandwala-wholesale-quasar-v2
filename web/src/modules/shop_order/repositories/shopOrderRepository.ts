@@ -28,6 +28,7 @@ import { mapDropshipManagementOrderResponse } from '../utils/dropshipManagementO
 import type {
   DropshipCourierBankTransferPayload,
   DropshipManagementOrderView,
+  DropshipManagementListSettlementPayload,
   DropshipReturnFinalizePayload,
   DropshipSettlementDraftPayload,
 } from '../types/dropshipManagementOrder';
@@ -695,6 +696,20 @@ const saveDropshipSettlementDraft = async (
   payload: DropshipSettlementDraftPayload,
 ) => {
   const { data, error } = await supabase.rpc('save_dropship_settlement_draft', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_payload: payload,
+  });
+  if (error) throw error;
+  return data;
+};
+
+const saveDropshipManagementListSettlement = async (
+  tenantId: number,
+  orderId: number,
+  payload: DropshipManagementListSettlementPayload,
+) => {
+  const { data, error } = await supabase.rpc('save_dropship_management_list_settlement', {
     p_tenant_id: tenantId,
     p_order_id: orderId,
     p_payload: payload,
@@ -1762,6 +1777,7 @@ export const shopOrderRepository = {
   getDropshipOrderDetailV2,
   getDropshipManagementOrder,
   saveDropshipSettlementDraft,
+  saveDropshipManagementListSettlement,
   previewDropshipDeliverBillNotes,
   markDropshipOrderDelivered,
   markDropshipOrderReturnedFromSettlement,

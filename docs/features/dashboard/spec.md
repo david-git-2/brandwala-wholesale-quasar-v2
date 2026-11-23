@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/dashboard/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/dashboard/spec.md` |
 | UI | `web/src/modules/dashboard/` |
 | App staff home | `pages/AdminDashboard.vue` → shift board layout |
 | Data | `get_app_dashboard_bundle` → shop + procurement metrics |

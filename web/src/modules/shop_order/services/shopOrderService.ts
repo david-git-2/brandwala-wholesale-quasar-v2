@@ -1,5 +1,6 @@
 import type {
   DropshipCourierBankTransferPayload,
+  DropshipManagementListSettlementPayload,
   DropshipManagementOrderView,
   DropshipReturnFinalizePayload,
   DropshipSettlementDraftPayload,
@@ -258,6 +259,30 @@ const saveDropshipSettlementDraft = async (
     return {
       success: false,
       error: getErrorMessage(error, 'Failed to save settlement draft.'),
+    };
+  }
+};
+
+const saveDropshipManagementListSettlement = async (
+  tenantId: number,
+  orderId: number,
+  payload: DropshipManagementListSettlementPayload,
+): Promise<ShopServiceResult<unknown>> => {
+  try {
+    const data = await shopOrderRepository.saveDropshipManagementListSettlement(
+      tenantId,
+      orderId,
+      payload,
+    );
+    const row = (data ?? {}) as { success?: boolean; error?: string };
+    if (row.success === false) {
+      return { success: false, error: row.error ?? 'Failed to save settlement.' };
+    }
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to save settlement.'),
     };
   }
 };
@@ -646,6 +671,7 @@ export const shopOrderService = {
   fetchDropshipStaffOrders,
   fetchDropshipManagementOrder,
   saveDropshipSettlementDraft,
+  saveDropshipManagementListSettlement,
   previewDropshipDeliverBillNotes,
   markDropshipOrderDelivered,
   markDropshipOrderReturnedFromSettlement,

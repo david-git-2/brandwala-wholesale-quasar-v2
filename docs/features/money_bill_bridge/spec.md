@@ -8,7 +8,7 @@
 | **SQL** | `supabase/schemas/money_kernel_v2/` — grep `rpc_pay_bills`, `bill_settlements` |
 | **UI** | Collect pay, AP pay — `web/src/modules/bills_pays/` (`MoneyPayDialog`, `CollectPayPage`) |
 | **Not here** | Pure deposit/transfer; CN **document** apply (no cash) — [bills](../bills/spec.md) |
-| **Related** | [Money](../money/spec.md) · [Bills](../bills/spec.md) · Desk gaps [bills_pays/00-gaps](../bills_pays/00-gaps.md) |
+| **Related** | [Money](../money/spec.md) · [Bills](../bills/spec.md) · Desk see bills_pays desks + money bridge spec |
 
 Golden SQL (when present): `supabase/tests/golden_money_spine_v2_*.sql` · desk catalog [bills_pays/tests.md](../bills_pays/tests.md).
 

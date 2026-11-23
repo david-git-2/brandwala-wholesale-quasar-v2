@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/global_reference/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/global_reference/spec.md` |
 | UI | `global_reference/`, `global/`, `tag/`, `koba/` |
 | SQL | Mostly `public.sql`; stubs `global_reference/`, `tag/` |
 | K-beauty | **Koba** — `koba_*` tables. Not `global_stocks`. |

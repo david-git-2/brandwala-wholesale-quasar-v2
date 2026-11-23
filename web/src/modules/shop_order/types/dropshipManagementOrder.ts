@@ -140,6 +140,13 @@ export interface DropshipSettlementDraftPayload {
   charge_lines: DropshipSettlementChargeLine[];
 }
 
+/** Management list Save (delivered rows only). */
+export interface DropshipManagementListSettlementPayload {
+  collected_cod_amount: number;
+  delivery_charge_amount: number;
+  cod_charge_amount: number;
+}
+
 export interface DropshipCourierBankTransferPayload {
   net_amount: number;
   remittance_ref: string;

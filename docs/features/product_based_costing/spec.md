@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/product_based_costing/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/product_based_costing/spec.md` |
 | UI | `product_based_costing/`, `costingFile/` |
 | SQL | `public.sql` |
 | State | Vue Query — `shared/queryKeys/` in module |

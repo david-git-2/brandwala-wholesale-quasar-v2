@@ -1,6 +1,6 @@
 # Dropship courier paper — AR (net remittance) redesign
 
-**Status:** option **B** — **ship slice built** (`20261123250000_*`): mark-shipped creates **draft** customer AR (+ payout note) and **draft** courier AR (COD − rate − delivery via lines + header discount). **Remittance** (issue drafts, auto customer AR, retire AP retention) still open — [00-gaps.md](00-gaps.md) **SO-CA1**. Parent: [spec.md](spec.md) US-5.
+**Status:** option **B** — **ship slice built** (`20261123250000_*`): mark-shipped creates **draft** customer AR (+ payout note) and **draft** courier AR (COD − rate − delivery via lines + header discount). **Remittance** (issue drafts, auto customer AR, retire AP retention) still open — spec.md **SO-CA1**. Parent: [spec.md](spec.md) US-5.
 
 ## Decision
 

@@ -6,13 +6,13 @@ The [roadmap](ROADMAP.md) stays thematic. This file is the **feature-level** ind
 
 | Module | Gaps file | Spec |
 |--------|-----------|------|
-| Bills & pays | [00-gaps.md](features/bills_pays/00-gaps.md) | [atlas](features/money_bill_bridge/spec.md#atlas) · [money](features/money/spec.md) · [bills](features/bills/spec.md) |
-| Procurement & stock | [00-gaps.md](features/procurement_stock/00-gaps.md) | [spec.md](features/procurement_stock/spec.md) |
-| Shop / dropship | [00-gaps.md](features/shop_order/00-gaps.md) | [spec.md](features/shop_order/spec.md) |
-| Reporting & treasury | [00-gaps.md](features/reporting_treasury/00-gaps.md) | [spec.md](features/reporting_treasury/spec.md) |
+| Bills & pays | spec.md | [atlas](features/money_bill_bridge/spec.md#atlas) · [money](features/money/spec.md) · [bills](features/bills/spec.md) |
+| Procurement & stock | spec.md | [spec.md](features/procurement_stock/spec.md) |
+| Shop / dropship | spec.md | [spec.md](features/shop_order/spec.md) |
+| Reporting & treasury | spec.md | [spec.md](features/reporting_treasury/spec.md) |
 | Products (catalog refresh UI) | [upload-and-release-visibility.md](features/products/upload-and-release-visibility.md) | [spec.md](features/products/spec.md) |
-| Thrift | [00-gaps.md](features/thrift/00-gaps.md) | [spec.md](features/thrift/spec.md) |
-| Other modules | `docs/features/<name>/00-gaps.md` | `docs/features/<name>/spec.md` |
+| Thrift | spec.md | [spec.md](features/thrift/spec.md) |
+| Other modules | module spec | `docs/features/<name>/spec.md` |
 
 ## Active engineering plans
 
@@ -24,5 +24,5 @@ The [roadmap](ROADMAP.md) stays thematic. This file is the **feature-level** ind
 
 ## Conventions
 
-- Shipped rows: delete or strike through in the module `00-gaps.md` (see shop_order example).
+- Shipped rows: delete or strike through in the module `spec.md` (see shop_order example).
 - New work: add a row to the module gaps file first, then reflect the theme in [ROADMAP.md](ROADMAP.md) at quarterly review.

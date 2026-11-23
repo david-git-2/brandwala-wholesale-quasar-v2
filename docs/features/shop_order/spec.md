@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/shop_order/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/shop_order/spec.md` |
 | UI | `web/src/modules/shop_order/` |
 | SQL | **Split** `supabase/schemas/shop_order/` |
 | State | Vue Query + `shopOrderQueryKeys` |
@@ -64,7 +64,7 @@ Dropship: pick → ship+issue both bills → deliver → remittance pay in. Late
 
 ### US-1b: Dropship resell discount review (pre-confirm)
 
-**Built (SO-DR4 totals nuance optional)** — [dropship-resell-discount-approval.md](dropship-resell-discount-approval.md). Open gap: [00-gaps.md](00-gaps.md) SO-DR4.
+**Built (SO-DR4 totals nuance optional)** — [dropship-resell-discount-approval.md](dropship-resell-discount-approval.md). Open gap: spec.md SO-DR4.
 
 - [x] Place with any line resell discount request → order `resell_discount_requested` (not `confirmed`).
 - [x] Staff **approve** (per line accept / adjust) → apply resell → `confirmed` → US-4+ pipeline.
@@ -86,9 +86,11 @@ Dropship: pick → ship+issue both bills → deliver → remittance pay in. Late
 - [x] `ship_dropship_order_and_issue_merchant_bill` at ship — **as-built:** customer AR + **courier AP** (issued). **Target:** **draft** customer AR + **draft** courier AR (net) — [redesign](dropship-courier-ar-redesign.md) / SO-CA1.
 - [x] Deliver: parcel + COD face; remittance remainder → merchant wallet. Amount changes after issue = notes.
 
-Post-ship: **Dropship management** list (`/:slug/app/shop/dropship-management`) — money columns, bill links, status actions; **no** per-order settlement detail route. Remittance: `record_dropship_courier_remittance` / finance hub.
+Post-ship: **Dropship management** list (`/:slug/app/shop/dropship-management`) — money columns, **Bills** links (**Dropshipper** / **Courier** → bill detail), status actions; **no** per-order settlement detail route. Remittance: `record_dropship_courier_remittance` / finance hub.
 
-**Mark as delivered:** From the management list (`shipped` row) **only** advances `shop_orders.status` → `delivered` (set `delivered_at` if still null). No settlement save or bill side effects on deliver ([SO-DL5](00-gaps.md)).
+**Mark as delivered:** From the management list (`shipped` row) **only** advances `shop_orders.status` → `delivered` (set `delivered_at` if still null). No settlement save or bill side effects on deliver (SO-DL5).
+
+**Delivered-row settlement:** On the management list, `delivered` rows edit **Collected COD**, **Delivery**, and **COD rate**; **Save** calls `save_dropship_management_list_settlement` → `save_dropship_settlement_draft` + `sync_dropship_draft_bills_after_settlement` (draft customer + courier AR only). **Block save** when linked papers are issued (use pay-in / bill adjustments).
 
 ### US-4: Recipient confirmation call
 - [x] While dropship `status = confirmed`, staff call `recipient_name` / `recipient_phone` (app log only; no auto-dial).
@@ -109,7 +111,7 @@ Post-ship: **Dropship management** list (`/:slug/app/shop/dropship-management`) 
 - [x] **Alloc / remittance** — pay in (`record_dropship_courier_remittance`); remainder → dropshipper **cashbook**. Remittance requires papers **issued** (drafts from ship must be issued first). Desk: settlement → Courier pay in or Payments → Pay in → Courier.
 - [ ] **Auto customer AR on remittance** — **target:** remittance closes courier AR and **auto allocates** to customer AR. **As-built:** alloc to customer AR + AP retention close.
 - [x] **Fee / settlement deltas** — adjusted fees at pay in; issued papers stay; deltas → **credit/debit notes** (`create_bill_adjustment`), not silent rewrite. Preview: `preview_dropship_courier_payin_settlement`.
-- [x] **Management list** — post-ship orders: COD/fees/B2B bill columns; customer + courier AR links; **`shipped` → Delivered** (status only) or **Returned** (return flow).
+- [x] **Management list** — post-ship orders: COD/fees/B2B bill columns; **Dropshipper** / **Courier** bill links; **`shipped` → Delivered** (status only) or **Returned** (return flow); **`delivered` → Save** settlement (draft bills resync).
 - [x] **Mark as delivered** — status → `delivered` only via `mark_dropship_order_delivered` (**SO-DL5** built). Legacy settlement detail page retired.
 
 ### US-6: Dropship gifts

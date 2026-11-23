@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/investor_capital/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/investor_capital/spec.md` |
 | UI | `investor_capital/`, `investor_portal/` |
 | SQL | Stub `investor/`; live `investors`, `shipment_investments` in `public.sql` / procurement tables |
 | Cash | [money spec](../money/spec.md) — `entity_type = investor` via `record_ledger_transaction` |
@@ -25,7 +25,7 @@
 | :--- | :--- |
 | Surfaces | `app` investor management; `investor` portal |
 | In | Partner identity; staff list/detail; capital in/out; per-partner shipment table; portal summary + shipment profit |
-| Out | Receipts desk; merchant payable; portal self-withdraw ([IC6](00-gaps.md)) |
+| Out | Receipts desk; merchant payable; portal self-withdraw (IC6) |
 
 Login: [tenant_auth spec](../tenant_auth/spec.md) — `role = investor` + `investor_id`.
 

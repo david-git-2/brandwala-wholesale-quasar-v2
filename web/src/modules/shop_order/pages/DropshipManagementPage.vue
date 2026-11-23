@@ -109,9 +109,58 @@
                   </div>
                 </td>
                 <td class="text-right text-weight-medium">{{ formatMoney(order.cod_collect_amount) }}</td>
-                <td class="text-right">{{ formatMoney(order.collected_cod_amount ?? order.cod_collect_amount) }}</td>
-                <td class="text-right">{{ formatMoney(order.delivery_charge_amount) }}</td>
-                <td class="text-right">{{ formatMoney(order.cod_charge_amount) }}</td>
+                <td class="text-right dropship-mgmt-money-cell">
+                  <q-input
+                    v-if="order.status === 'delivered' && getRowEdit(order.id)"
+                    v-model.number="rowEdits[order.id]!.collectedCod"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    dense
+                    outlined
+                    hide-bottom-space
+                    class="dropship-mgmt-money-input"
+                    input-class="text-right"
+                    :disable="!canEditSettlement(order)"
+                  >
+                    <q-tooltip v-if="!canEditSettlement(order)">
+                      Bills must be draft to edit settlement
+                    </q-tooltip>
+                  </q-input>
+                  <span v-else>{{ formatMoney(order.collected_cod_amount ?? order.cod_collect_amount) }}</span>
+                </td>
+                <td class="text-right dropship-mgmt-money-cell">
+                  <q-input
+                    v-if="order.status === 'delivered' && getRowEdit(order.id)"
+                    v-model.number="rowEdits[order.id]!.delivery"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    dense
+                    outlined
+                    hide-bottom-space
+                    class="dropship-mgmt-money-input"
+                    input-class="text-right"
+                    :disable="!canEditSettlement(order)"
+                  />
+                  <span v-else>{{ formatMoney(order.delivery_charge_amount) }}</span>
+                </td>
+                <td class="text-right dropship-mgmt-money-cell">
+                  <q-input
+                    v-if="order.status === 'delivered' && getRowEdit(order.id)"
+                    v-model.number="rowEdits[order.id]!.codRate"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    dense
+                    outlined
+                    hide-bottom-space
+                    class="dropship-mgmt-money-input"
+                    input-class="text-right"
+                    :disable="!canEditSettlement(order)"
+                  />
+                  <span v-else>{{ formatMoney(order.cod_charge_amount) }}</span>
+                </td>
                 <td class="text-right text-weight-medium">{{ formatMoney(order.dropshipper_bill_amount) }}</td>
                 <td class="dropship-mgmt-list-table__bills-cell">
                   <div
@@ -132,7 +181,10 @@
                       @click.stop="openBill(order.global_invoice_id)"
                     >
                       <q-icon name="ph ph-receipt" size="14px" class="q-mr-xs" />
-                      {{ customerBillLabel(order) }}
+                      Dropshipper
+                      <q-tooltip v-if="order.customer_invoice_no">
+                        {{ order.customer_invoice_no }}
+                      </q-tooltip>
                     </q-btn>
                     <q-btn
                       v-if="order.courier_ar_bill_id"
@@ -145,7 +197,8 @@
                       @click.stop="openBill(order.courier_ar_bill_id)"
                     >
                       <q-icon name="ph ph-truck" size="14px" class="q-mr-xs" />
-                      Courier #{{ order.courier_ar_bill_id }}
+                      Courier
+                      <q-tooltip>Bill #{{ order.courier_ar_bill_id }}</q-tooltip>
                     </q-btn>
                   </div>
                 </td>
@@ -174,6 +227,18 @@
                       @click.stop="onMarkReturned(order.id)"
                     />
                   </div>
+                  <q-btn
+                    v-else-if="order.status === 'delivered' && isRowDirty(order.id)"
+                    dense
+                    color="primary"
+                    unelevated
+                    no-caps
+                    size="sm"
+                    label="Save"
+                    :loading="savingOrderId === order.id"
+                    :disable="!canEditSettlement(order)"
+                    @click.stop="onSaveSettlement(order)"
+                  />
                   <span v-else class="text-grey-6">—</span>
                 </td>
               </tr>
@@ -206,6 +271,12 @@ import { shopOrderService } from '../services/shopOrderService';
 import type { DropshipSettlementDraftPayload } from '../types/dropshipManagementOrder';
 import type { ShopOrder, ShopOrderStatus } from '../types';
 
+interface RowMoneyEdit {
+  collectedCod: number;
+  delivery: number;
+  codRate: number;
+}
+
 const DROPSHIP_MANAGEMENT_STATUSES = [
   'shipped',
   'delivered',
@@ -233,6 +304,9 @@ const searchQuery = ref('');
 const statusFilter = ref<DropshipManagementStatusFilter>('all');
 const selectedChildTenantId = ref<number | null>(null);
 const deliveringOrderId = ref<number | null>(null);
+const savingOrderId = ref<number | null>(null);
+const rowEdits = ref<Record<number, RowMoneyEdit>>({});
+const rowBaselines = ref<Record<number, RowMoneyEdit>>({});
 const tableScrollRef = ref<HTMLElement | null>(null);
 const scrollFooterRef = ref<InstanceType<typeof ExcelTableScrollFooter> | null>(null);
 
@@ -311,6 +385,7 @@ const loadOrders = async () => {
       search: searchQuery.value.trim() || null,
     });
     orders.value = res.success && res.data ? res.data : [];
+    seedRowEdits(orders.value);
     if (!res.success && res.error) {
       showErrorNotification(res.error);
     }
@@ -355,9 +430,59 @@ function formatMoney(amount: number | null | undefined): string {
   })}`;
 }
 
-function customerBillLabel(order: ShopOrder): string {
-  const no = order.customer_invoice_no?.trim();
-  return no ? no : `#${order.global_invoice_id}`;
+function rowMoneyFromOrder(order: ShopOrder): RowMoneyEdit {
+  return {
+    collectedCod: Number(order.collected_cod_amount ?? order.cod_collect_amount ?? 0),
+    delivery: Number(order.delivery_charge_amount ?? 0),
+    codRate: Number(order.cod_charge_amount ?? 0),
+  };
+}
+
+function seedRowEdits(list: ShopOrder[]) {
+  const edits: Record<number, RowMoneyEdit> = {};
+  const baselines: Record<number, RowMoneyEdit> = {};
+  for (const order of list) {
+    if (order.status !== 'delivered') continue;
+    const snap = rowMoneyFromOrder(order);
+    edits[order.id] = { ...snap };
+    baselines[order.id] = { ...snap };
+  }
+  rowEdits.value = edits;
+  rowBaselines.value = baselines;
+}
+
+function getRowEdit(orderId: number): RowMoneyEdit | undefined {
+  return rowEdits.value[orderId];
+}
+
+function isRowDirty(orderId: number): boolean {
+  const current = rowEdits.value[orderId];
+  const base = rowBaselines.value[orderId];
+  if (!current || !base) return false;
+  return (
+    current.collectedCod !== base.collectedCod
+    || current.delivery !== base.delivery
+    || current.codRate !== base.codRate
+  );
+}
+
+function canEditSettlement(order: ShopOrder): boolean {
+  if (order.status !== 'delivered') return false;
+  if (
+    order.global_invoice_id
+    && order.customer_invoice_status
+    && order.customer_invoice_status !== 'draft'
+  ) {
+    return false;
+  }
+  if (
+    order.courier_ar_bill_id
+    && order.courier_ar_invoice_status
+    && order.courier_ar_invoice_status !== 'draft'
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function openBill(billId: number) {
@@ -430,6 +555,37 @@ async function onMarkDelivered(order: ShopOrder) {
     await loadOrders();
   } finally {
     deliveringOrderId.value = null;
+  }
+}
+
+async function onSaveSettlement(order: ShopOrder) {
+  if (!authStore.tenantId || savingOrderId.value != null) return;
+  const edit = rowEdits.value[order.id];
+  if (!edit || !isRowDirty(order.id)) return;
+  if (!canEditSettlement(order)) {
+    showErrorNotification('Settlement can only be saved while linked bills are draft.');
+    return;
+  }
+
+  savingOrderId.value = order.id;
+  try {
+    const res = await shopOrderService.saveDropshipManagementListSettlement(
+      authStore.tenantId,
+      order.id,
+      {
+        collected_cod_amount: edit.collectedCod,
+        delivery_charge_amount: edit.delivery,
+        cod_charge_amount: edit.codRate,
+      },
+    );
+    if (!res.success) {
+      showErrorNotification(res.error ?? 'Failed to save settlement.');
+      return;
+    }
+    showSuccessNotification('Settlement saved.');
+    await loadOrders();
+  } finally {
+    savingOrderId.value = null;
   }
 }
 
@@ -544,5 +700,20 @@ export default {
 .dropship-mgmt-list-table__actions-col {
   min-width: 11rem;
   white-space: nowrap;
+}
+
+.dropship-mgmt-money-cell {
+  min-width: 6.5rem;
+  vertical-align: middle;
+}
+
+.dropship-mgmt-money-input {
+  width: 6.25rem;
+  max-width: 100%;
+  margin-left: auto;
+}
+
+.dropship-mgmt-money-input :deep(.q-field__control) {
+  min-height: 28px;
 }
 </style>

@@ -49,7 +49,7 @@ Place order
             → No recipient-call workflow until confirmed
 ```
 
-**Totals UX (decide before build):** Show **listed resell** and **requested resell** on shop detail; COD face at place should follow **listed** until approve (recommended) — see SO-DR4 in [00-gaps.md](00-gaps.md).
+**Totals UX (decide before build):** Show **listed resell** and **requested resell** on shop detail; COD face at place should follow **listed** until approve (recommended) — see SO-DR4 in spec.md.
 
 ## Staff review (`app`)
 

@@ -1,6 +1,8 @@
 # UI — tokens and ops list layout
 
-Canonical UI file. New UI notes go here or in a module `spec.md`, not a second guide. Law: [STRUCTURE](../STRUCTURE.md).
+**Agents:** for page chrome use `.cursor/rules/quasar-ui.mdc` + `OpsListPage.skeleton.vue`. Grep this file for dense column widths / button tables only — do not full-read.
+
+Canonical detail for humans. New UI notes go here or in a module `spec.md`, not a second guide. Law: [STRUCTURE](../STRUCTURE.md).
 
 ---
 
@@ -98,7 +100,7 @@ All operational dashboard and list pages must adhere to the **Non-Scrolling Page
 </template>
 ```
 
-Copy **`InboundShipmentListPage.vue`**, not overview pages with `AppPageHeader`.
+Copy **`docs/guides/OpsListPage.skeleton.vue`** (agent chrome). Do not open `InboundShipmentListPage.vue` for layout. Not overview pages with `AppPageHeader`. Law: `.cursor/rules/quasar-ui.mdc`.
 
 ### Browse row lists (customers, shops, similar)
 

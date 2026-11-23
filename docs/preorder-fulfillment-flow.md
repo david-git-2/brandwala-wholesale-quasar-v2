@@ -3,8 +3,8 @@
 | | |
 | :--- | :--- |
 | **Purpose** | Single **product + ops truth** for pre-order / BW: what staff and customers experience from confirm → pay, trip by trip. |
-| **Not in this doc** | SQL migrations, sprint status, or “already built in prod.” Those live in code, [00-gaps](features/procurement_stock/00-gaps.md), and the as-built story. |
-| **As-built vs target** | Gap IDs **PS15–PS28** in [procurement_stock/00-gaps.md](features/procurement_stock/00-gaps.md) — live code vs this story. |
+| **Not in this doc** | SQL migrations, sprint status, or “already built in prod.” Those live in code, spec, and the as-built story. |
+| **As-built vs target** | Gap IDs **PS15–PS28** in procurement_stock/spec.md — live code vs this story. |
 | **Story doc status** | **Ch 1–10 narrative locked** in this file. Do not load unless the task is pre-order / delivery paper flow. |
 
 Read top to bottom: demand → buy → **inbound shipment(s)** → **delivery paper per trip** → **door truth** → **one bill per trip** → **partial pays** → header closes when nothing left to deliver.
@@ -641,7 +641,7 @@ Shapes below are **target contract** (bigint IDs like live `shop_orders`, `preor
 
 ## Appendix C — Target capabilities (RPC / kernel names)
 
-Names the **real story** expects at each step. Live equivalents: grep procurement RPCs + [procurement 00-gaps](features/procurement_stock/00-gaps.md) PS15–PS28.
+Names the **real story** expects at each step. Live equivalents: grep procurement RPCs + procurement spec PS15–PS28.
 
 | Capability | Chapter | Role in the story |
 | :--- | :--- | :--- |
@@ -735,4 +735,4 @@ Each gap is a **story defect in production today**. The **real story** column is
 | **G13** | Order-level notify only | Optional notify on **dispatch / close** per trip | Ch 6–7 | PS27 |
 | **G14** | Investor only on inbound UI | Shipment P&L + portal; optional trip rollup | Ch 3.5 | PS28 |
 
-Track build progress in [procurement_stock/00-gaps.md](features/procurement_stock/00-gaps.md) (**PS15–PS28** = design rows pointing here).
+Track build progress in procurement_stock/spec.md (**PS15–PS28** = design rows pointing here).

@@ -115,7 +115,7 @@ Living document — reviewed each quarter. Feature-level IDs and fix steps live 
 
 | Need | Document |
 |------|----------|
-| Module unfinished rows | Each `docs/features/<module>/00-gaps.md` |
+| Module unfinished rows | Each module spec |
 | Money build order (engineers) | [doc/fix/2026-10-12-bills-pays-kernel-plan.md](../doc/fix/2026-10-12-bills-pays-kernel-plan.md) |
 | Bills desk execution plan | [.cursor/plans/bills_desk_nav_apis_619be984.plan.md](../.cursor/plans/bills_desk_nav_apis_619be984.plan.md) |
 | Money target map | [atlas](features/money_bill_bridge/spec.md#atlas) |

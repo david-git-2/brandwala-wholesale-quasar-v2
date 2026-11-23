@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/notifications/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/notifications/spec.md` |
 | UI | `web/src/modules/notifications/`, `tasks/` |
 | SQL | **Split** `supabase/schemas/notifications/` (`03_rls.sql`, `04_rpcs.sql`) |
 | State | Mix — copy neighbors |

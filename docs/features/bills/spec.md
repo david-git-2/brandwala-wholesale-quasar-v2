@@ -108,7 +108,7 @@ Cash RPCs (`rpc_deposit`, `rpc_pay_bills`, …): [money](../money/spec.md) · [b
 
 ## Shipment cost AP (Option A) {#shipment-cost-ap}
 
-One kernel bill per **bucket × currency** (`source_key` e.g. `material:GBP`). Costs tab → draft/issue on kernel; retire `global_shipment_cost_entries` after cutover. Wiring: [procurement spec](../procurement_stock/spec.md) · [PS35](../procurement_stock/00-gaps.md).
+One kernel bill per **bucket × currency** (`source_key` e.g. `material:GBP`). Costs tab → draft/issue on kernel; retire `global_shipment_cost_entries` after cutover. Wiring: [procurement spec](../procurement_stock/spec.md) · PS35.
 
 ---
 
@@ -146,7 +146,7 @@ Cash invariants (I5, I7, …): [money/spec.md](../money/spec.md).
 | ID | Type | Plan / doc | Code today | Fix |
 | :--- | :--- | :--- | :--- | :--- |
 | B1 | not_built | Shipment AP on kernel bills | Adjunct Option A in this spec | Costs tab + drop `global_shipment_cost_entries` |
-| B2 | shipped | Desk list kernel-only | `list_bills_desk_page` → `money_kernel.bills` only | [bills_pays/00-gaps.md](../bills_pays/00-gaps.md) |
+| B2 | shipped | Desk list kernel-only | `list_bills_desk_page` → `money_kernel.bills` only | bills_pays/spec.md |
 | B3 | sql_split | Logical bills owner | DDL in `money_kernel_v2` | Future schema split |
 | B4 | cutover | Drop `bill_events` | Table + T5/T6 triggers + `v_bill_events` | Migration; remove event includes from `rpc_get_bill` |
 
@@ -154,7 +154,7 @@ Cash invariants (I5, I7, …): [money/spec.md](../money/spec.md).
 
 ## Legacy cutover {#legacy-cutover}
 
-**Do not drop** until [bills_pays/00-gaps.md](../bills_pays/00-gaps.md) blockers clear.
+**Do not drop** until bills_pays/spec.md blockers clear.
 
 | Legacy | v2 |
 | :--- | :--- |

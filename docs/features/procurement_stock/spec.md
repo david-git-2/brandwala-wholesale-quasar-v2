@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/procurement_stock/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/procurement_stock/spec.md` |
 | UI | `web/src/modules/procurement_stock/`, `vendor/` |
 | SQL | **Split** `supabase/schemas/procurement/` |
 | State | Mix of Pinia and Vue Query — copy neighbors |
@@ -16,7 +16,7 @@
 | Need | Path |
 | :--- | :--- |
 | **Stock spine** (Tier 1/2 warehouse actions, RPC index, dispatch vs issue) | [stock-spine.md](stock-spine.md) |
-| Inbound ↔ money kernel | Below **Inbound ↔ money**; AP shape [bills § Shipment cost AP](../bills/spec.md#shipment-cost-ap); gaps [bills_pays/00-gaps](../bills_pays/00-gaps.md) |
+| Inbound ↔ money kernel | Below **Inbound ↔ money**; AP shape [bills § Shipment cost AP](../bills/spec.md#shipment-cost-ap); see bills_pays desks + money bridge spec |
 | ERD / columns | `/dev/document` → **Schema** → Procurement |
 | Tables, types, RLS, RPCs | `supabase/schemas/procurement/` — grep `03_rpcs.sql` for bodies |
 | Pages / wiring | `web/src/modules/procurement_stock/pages/` + grep `procurementStockQueryKeys` |
@@ -28,7 +28,7 @@
 | :--- | :--- |
 | Surfaces | `app` only |
 | In | Shipments, sections, landed + **local costs**, bins, `global_stocks`, movements, vendors, outcomes, close, Demand / **Delivery paper** |
-| Out | Shop/Koba/thrift/PBC formulas; invoice issue; cost entries ≠ wallet pay. Retire allocations ([PS9](00-gaps.md)). Shelf damage = **movement**, not new inbound general row. |
+| Out | Shop/Koba/thrift/PBC formulas; invoice issue; cost entries ≠ wallet pay. Retire allocations (PS9). Shelf damage = **movement**, not new inbound general row. |
 
 ## Inbound ↔ money
 
@@ -44,7 +44,7 @@ Procurement never DMLs kernel tables. Wrappers: `supabase/schemas/bills_pays/07_
 | Web entry | `shipmentMoneyKernelRepository`, `globalShipmentStore.loadSettingsFinanceBundle` |
 | Header save → AP sync | `sync_shipment_ap_bills` only when header touches payee/cost fields or `status = cancelled`; workflow-only `draft` / `in_transit` status PATCH does not sync |
 | Costs AP tenant | `money_kernel.bills.tenant_id` = workspace header (`current_tenant_id` / `x-selected-tenant-id`); shipment must match that tenant; `rpc_get_bill(p_tenant_id, …)` is SECURITY DEFINER + membership check (kernel RLS still keys on JWT `tenant_id`) |
-| Cutover gaps | [bills_pays/00-gaps](../bills_pays/00-gaps.md) WA15, BP8, BP9 |
+| Cutover gaps | bills_pays desks (see money bridge atlas) WA15, BP8, BP9 |
 
 ## Status, flags, receive
 
@@ -64,7 +64,7 @@ Procurement never DMLs kernel tables. Wrappers: `supabase/schemas/bills_pays/07_
 | `costs_locked` | Stamp frozen |
 | `is_closed` | Read-only ([US-9](#us-9-close)) |
 
-**Staff path:** ordered paste → optional `in_transit` → land splits (Case A) → `post_shipment_outcome_stock` → vendor credit when `received` (C–E) → warehouse movement (B) → close. Live partial: [PS7](00-gaps.md).
+**Staff path:** ordered paste → optional `in_transit` → land splits (Case A) → `post_shipment_outcome_stock` → vendor credit when `received` (C–E) → warehouse movement (B) → close. Live partial: PS7.
 
 ## Kind and reason
 
@@ -79,9 +79,9 @@ Lots mirror kind/reason; warehouse grades via tags — do not write splits back 
 
 | Case | Where | Rule |
 | :--- | :--- | :--- |
-| **A Land** | Shipment extras | Split at receive; sum land qty = ordered ([PS11](00-gaps.md)); post sellable → lots |
+| **A Land** | Shipment extras | Split at receive; sum land qty = ordered (PS11); post sellable → lots |
 | **B Warehouse** | Stock movement | Shelf life after receive; shipment paper unchanged |
-| **C–E Vendor credit** | When `received` | `global_shipment_outcome_vendor_credits`; profit timing [PS8](00-gaps.md); AP [WA15](../bills_pays/00-gaps.md) |
+| **C–E Vendor credit** | When `received` | `global_shipment_outcome_vendor_credits`; profit timing PS8; AP WA15 |
 
 **Do not:** clone ordered on mark received; auto-fill missing; warehouse damage as new shipment extra; lower extra qty below on-hand without write-off.
 
@@ -105,7 +105,7 @@ Lots mirror kind/reason; warehouse grades via tags — do not write splits back 
 | `finance` | **Goods Taka**. |
 | `other` | **Qty** when capitalized. |
 
-Stamp and FE preview follow [shipment-rate-calculations.md](shipment-rate-calculations.md) (see [PS13](00-gaps.md)).
+Stamp and FE preview follow [shipment-rate-calculations.md](shipment-rate-calculations.md) (see PS13).
 
 ### US-7 Outcomes + stock
 - `global_shipment_item_outcomes`; lots FK `outcome_id`. Restamp on-hand only when vendor price drops.
@@ -117,7 +117,7 @@ Stamp and FE preview follow [shipment-rate-calculations.md](shipment-rate-calcul
 - Rows with `is_capitalizable = false` subtract from shipment profit; they do not affect unit stamp. (Often `other` bucket or customs VAT; not limited to a single legacy `local` type.)
 
 ### US-9 Close
-- `is_closed` → read-only shipment UI ([PS10](00-gaps.md)).
+- `is_closed` → read-only shipment UI (PS10).
 
 ### US-3 Warehouse
 - Bins leaf; tree warehouse → zone → shelf → level → bin (+ returns root). `list_global_stocks_groups` for grouped list.
@@ -138,4 +138,4 @@ Stamp and FE preview follow [shipment-rate-calculations.md](shipment-rate-calcul
 
 ## Allocations (retire)
 
-Drop `global_stock_allocations` after shop/invoice use `global_stock_id` only ([PS9](00-gaps.md)).
+Drop `global_stock_allocations` after shop/invoice use `global_stock_id` only (PS9).

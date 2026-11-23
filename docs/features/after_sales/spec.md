@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/after_sales/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/after_sales/spec.md` |
 | UI | `web/src/modules/after_sales/` |
 | SQL | `process_wholesale_invoice_return`, `finalize_dropship_return` in schemas |
 | State | Copy module pattern |

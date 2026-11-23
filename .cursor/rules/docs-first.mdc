@@ -1,24 +1,15 @@
 ---
-description: Docs-first. Thin load. DOC_GAP. Always active.
-alwaysApply: true
+description: When to load product docs. Not always-on.
+globs: ["docs/**", "supabase/**", "web/src/modules/**"]
+alwaysApply: false
 ---
 
 # Docs first
 
-1. **When to load docs:** If the task touches product rules, statuses, RPCs, permissions, stock models, or a new feature area — read `docs/README.md`, then that module's `spec.md` and `00-gaps.md`, then files you will edit.
-   **Skip** those reads when the user gave an exact file path and the task is a one-file fix (typo, CSS, copy, local bug) with no product/status/RPC change — edit the file directly.
+1. Product rules / statuses / RPCs / permissions / stock / new feature area → read `docs/README.md`, then that module’s `spec.md`, then files you edit.
+   **Skip** for one-file chrome/typo/CSS/copy with no product change.
 2. Do not read other modules or `doc/brand-theme.md`.
-3. **Token skips:** No `operating_manual` or `docs/product-scenarios/` unless the user explicitly asks.
-4. **SQL today** = `supabase/schemas/` (prefer `<domain>/`). Grep one symbol; never full-read `database.types.ts` or `public.sql`. Never glob/bulk-read `supabase/migrations/` except the one file you're writing or a reset error names. Copy RPC bodies from schemas. `parent_tenant_id` retired — scope column is `tenant_id`.
-5. **Data** pattern in module; **page chrome** — ops list layout (`InboundShipmentListPage.vue` / `docs/guides/ui-standards.md`).
-6. Missing or conflicting fact → stop:
-
-```text
-DOC_GAP
-Need: <one sentence>
-Looked: <files>
-Please add it to: <one docs path>
-Say continue when updated.
-```
-
-7. New docs: `docs/STRUCTURE.md`.
+3. No `operating_manual` or `docs/product-scenarios/` unless the user asks.
+4. SQL = `supabase/schemas/` (prefer `<domain>/`). Grep one symbol; never full-read `database.types.ts` or `public.sql`. Never bulk-read migrations except the file you write. Copy RPC bodies from schemas.
+5. Page chrome → `docs/guides/OpsListPage.skeleton.vue` + `quasar-ui.mdc`.
+6. New docs → `docs/STRUCTURE.md`. Unclear fact → ask one question (do not invent).

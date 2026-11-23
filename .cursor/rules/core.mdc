@@ -1,50 +1,47 @@
 ---
-description: Response, tools, context, and diff discipline. Single always-on agent rule.
-globs:
+description: Always-on crib + tools + scope. Single discipline rule.
 alwaysApply: true
 ---
 
-# Core — Always Active
+# Core
 
-Dominant token cost: **tool results** and **repeated exploration**, not reply length.
+Dominant cost: **tool results** / repeated exploration, not reply length.
+
+## Project
+
+- **Stack:** Quasar 2 + Vue 3 + TS in `web/`; Supabase in `supabase/`.
+- **Surfaces:** `platform` | `app` | `shop` | `investor`.
+- **Modules:** `web/src/modules/<name>/` — page → store/service → repository (or composable + repository).
+- **Writes:** prefer RPCs when RLS is computed; types via migrations + `backend:types` (grep `database.types.ts`, never full-read).
+- **Schema:** `supabase/schemas/`; never full-read `public.sql` or bulk-read migrations. Scope column is `tenant_id` (`parent_tenant_id` retired).
+- **Local DB:** `pnpm run backend:local` after migrations. Never auto `backend:reset` / `restore-dumps` / `pull-prod-data` — `supabase-local-backend.mdc`.
+- **Product:** prefer module `spec.md` + code; if unclear ask **one** question. Do not invent statuses/RPCs.
+- **UI:** `quasar-ui.mdc` + `docs/guides/OpsListPage.skeleton.vue`. Never open mega list pages for chrome.
+- **Conventions detail:** `.development-flow.mdc` when needed.
 
 ## Response
 
-- Start with answer or code. No preamble, affirmations, sign-offs, or recap after `Done` (see `mode-responses.mdc`).
-- Patches with 3–5 lines context; elide with `// ... existing code`. Full file only if new, <40 lines, or user asked.
-- One ambiguous fact → one question. Missing product fact → `DOC_GAP` in `docs-first.mdc`, stop.
-- Scope: >3 files or >150 lines → pause and narrow. Max 2 alternatives; pick one.
-- User text: short sentences, lead with meaning; no filler ("simply", "basically"). Code/SQL stay precise.
+- Start with answer or code. No preamble/sign-off. Agent wrap-up: **Done** (`mode-responses.mdc`).
+- Patches: 3–5 lines context; elide with `// ... existing code`.
+- Scope: >3 files or >150 lines → pause. **UI chrome only** (Tf/spacing/shell/tokens; no product invent): up to **8 files / 400 lines**. Max 2 alternatives; pick one.
+- User text: short; meaning first. Uncertain value → `// ⚠️ verify:` inline.
 
 ## Tools
 
 | Need | Use | Avoid |
 |------|-----|-------|
-| Exact symbol | Grep | Semantic search, full reads |
-| File by name | Glob | Recursive find, list all |
+| Exact symbol | Grep | Speculative tour |
+| File by name | Glob | Recursive list-all |
 | How X works | Search, then targeted read | 10 speculative files |
-| Symbol in known file | Read offset/limit | Full 1k+ line file |
-| RPC/table column | Grep `database.types.ts` or `schemas/<domain>/` | Full `database.types.ts` / `public.sql` |
-| Command output | Run once | Re-run with --help |
+| Known file | Read offset/limit | Full 1k+ line file |
+| RPC/column | Grep types or `schemas/<domain>/` | Full `database.types.ts` / `public.sql` |
 
-- Batch independent reads/searches in one message. Never re-read unchanged files; list dirs once.
-- User gave a path → start there. Error string → grep it first. No speculative repo tour.
-- No full test/lint suite for trivial edits; one targeted lint on changed file if needed.
-- No dev server or IDE browser unless user asks. Generous timeouts; don't poll background jobs.
-- Stop when done; no extra verification or follow-ups unless asked.
+- Batch independent tool calls. Never re-read unchanged files.
+- Path given → start there. Error string → grep it first.
+- No full test/lint suite for trivial edits; no dev server unless asked.
+- Stop when done.
 
-## Context
+## Context / diff
 
-- Files >500 lines: grep then read ±20 lines. No operating_manual or `docs/product-scenarios/` unless user asks (see `docs-first.mdc`).
-- No while-you're-here refactors. Touch only code required for the task.
-- **Diff hygiene:** in-scope dead imports only; no drive-by rename/move/extract/new files unless task requires; behavior unchanged.
-
-## Output shape
-
-| Type | Shape |
-|------|-------|
-| Yes/no | 1 sentence |
-| Simple code | Diff, no prose |
-| Bug fix | Cause + diff |
-
-Uncertain value → `// ⚠️ verify:` inline, don't ask casually.
+- Files >500 lines: grep ±20. No `operating_manual` / `docs/product-scenarios/` unless user asks.
+- Touch only what the task needs. In-scope dead imports only.
