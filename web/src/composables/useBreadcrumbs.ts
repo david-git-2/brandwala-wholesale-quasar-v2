@@ -37,7 +37,6 @@ const DOMAIN_GROUPS: Record<string, string> = {
   access_control: 'Access Control',
   'access-control': 'Access Control',
   membership: 'Memberships',
-  'after-sales': 'After Sales',
   customers: 'Customers',
   capital: 'Capital',
   accounting: 'Accounting',

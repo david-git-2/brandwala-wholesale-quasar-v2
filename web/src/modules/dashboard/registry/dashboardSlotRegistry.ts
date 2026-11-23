@@ -2,7 +2,6 @@ import { PROCUREMENT_DASHBOARD_SLOTS } from 'src/modules/procurement_stock/dashb
 import { SHOP_ORDER_DASHBOARD_SLOTS } from 'src/modules/shop_order/dashboard/shopOrderDashboardSlots';
 import { THRIFT_DASHBOARD_SLOTS } from 'src/modules/thrift/dashboard/thriftDashboardSlots';
 import { INVESTOR_CAPITAL_DASHBOARD_SLOTS } from 'src/modules/investor_capital/dashboard/investorCapitalDashboardSlots';
-import { AFTER_SALES_DASHBOARD_SLOTS } from 'src/modules/after_sales/dashboard/afterSalesDashboardSlots';
 import {
   getModuleDefinition,
   type ModuleAction,
@@ -22,7 +21,6 @@ const GROUP_WEIGHT: Partial<Record<ModuleKey, number>> = {
   global_stock: 1,
   shop_order: 1,
   sales_invoice: 10,
-  after_sales: 15,
   cashbook: 20,
   investor_capital: 30,
   thrift: 50,
@@ -31,7 +29,6 @@ const GROUP_WEIGHT: Partial<Record<ModuleKey, number>> = {
 export const DASHBOARD_SLOT_REGISTRY: readonly DashboardSlot[] = [
   ...PROCUREMENT_DASHBOARD_SLOTS,
   ...SHOP_ORDER_DASHBOARD_SLOTS,
-  ...AFTER_SALES_DASHBOARD_SLOTS,
   ...INVESTOR_CAPITAL_DASHBOARD_SLOTS,
   ...THRIFT_DASHBOARD_SLOTS,
 ];

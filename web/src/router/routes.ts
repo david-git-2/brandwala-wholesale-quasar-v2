@@ -22,7 +22,6 @@ import investorCapitalAdminRoutes from 'src/modules/investor_capital/routes/admi
 import shopOrderRoutes from 'src/modules/shop_order/routes';
 import accessControlRoutes from 'src/modules/access_control/routes';
 import customerRoutes from 'src/modules/customer/routes';
-import afterSalesRoutes from 'src/modules/after_sales/routes';
 import peopleRoutes from 'src/modules/people/routes';
 import landingRoutes from 'src/modules/landing/routes';
 import helpRoutes from 'src/modules/help/routes';
@@ -171,7 +170,6 @@ const routes: RouteRecordRaw[] = [
   ...investorCapitalAdminRoutes,
   ...accessControlRoutes,
   ...customerRoutes,
-  ...afterSalesRoutes,
   ...peopleRoutes,
 
   ...(import.meta.env.DEV ? devRoutes : []),

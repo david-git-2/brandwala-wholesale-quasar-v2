@@ -46,7 +46,6 @@ export const useAppDashboardRoutes = (tenantSlugOverride?: string) => {
     tasks: () => withSlug('tasks-page'),
     capitalLedger: () => withSlug('app-capital-ledger-page'),
     capitalShipments: () => withSlug('app-capital-shipments-page'),
-    afterSalesOverview: () => withSlug('app-after-sales-overview'),
     thriftCodReport: () => withSlug('thrift-cod-report'),
     thriftSales: () => withSlug('thrift-sales-page'),
   };

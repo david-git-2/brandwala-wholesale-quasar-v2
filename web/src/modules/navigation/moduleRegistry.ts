@@ -63,7 +63,6 @@ export type ModuleKey =
   | 'billing_profile'
   | 'recipient_profile'
   | 'cashbook'
-  | 'after_sales'
   | 'people';
 
 export type ModuleAction =
@@ -632,22 +631,6 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Issue, void, and print bills',
         icon: 'ph ph-receipt',
         routeSegment: 'bills',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'after_sales',
-    name: 'After Sales Service',
-    description: 'Returns, replacement, warranty, and dropship complaint cases.',
-    navIcon: 'ph ph-headset',
-    routes: [
-      {
-        scope: 'app',
-        title: 'After Sales Service',
-        caption: 'Returns, replacement, and warranty cases',
-        icon: 'ph ph-headset',
-        routeSegment: 'after-sales',
         requiredAction: 'view',
       },
     ],

@@ -27,7 +27,7 @@ There are still **two** billing/payment layers coexisting in `bills_pays` and th
 
 ---
 
-## 3. Currency & Multi-Currency / FX Confusion
+## 2. Currency & Multi-Currency / FX Confusion
 
 ### Why it's confusing
 Different modules represent, store, and format money in completely different ways:
@@ -43,7 +43,7 @@ Different modules represent, store, and format money in completely different way
     1. **Payment currency** (bill face currency)
     2. **Source currency** (the cashbook pot currency)
     3. **Books currency** (company ledger currency, usually `BDT`)
-  - That's why `public.bills` has `currency_code`, `txn_currency_code`, `txn_total_amount`, and `books_exchange_rate`, and why `useBooksExchangeRateQuery.ts` fetches FX rates per `parentTenantId` + `quoteCurrencyCode`.
+  - That's why `public.bills` has `currency_code`, `txn_currency_code`, `txn_total_amount`, and `books_exchange_rate`, and why `useBooksExchangeRateQuery.ts` fetches FX rates per `tenantId` + `quoteCurrencyCode`.
 - **Thrift has its own formatter:** `web/src/modules/thrift/currency/utils/formatMoney.ts`.
 
 ### Rule of thumb
@@ -52,7 +52,7 @@ Different modules represent, store, and format money in completely different way
 
 ---
 
-## 4. Database Schema & Migrations Maze
+## 3. Database Schema & Migrations Maze
 
 ### Why it's confusing
 - **`supabase/schemas/public.sql` is ~3 MB** (a giant monolithic dump) and sits next to backup files (`public.sql.bak`, `public.sql.pre-so3`).
@@ -65,7 +65,7 @@ Different modules represent, store, and format money in completely different way
 
 ---
 
-## 5. Overlapping Frontend Modules (V1 vs. V2 & Duplicate Concepts)
+## 4. Overlapping Frontend Modules (V1 vs. V2 & Duplicate Concepts)
 
 ### Why it's confusing
 It's often unclear which folder owns a feature because old and new versions sit side by side:

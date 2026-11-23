@@ -103,11 +103,6 @@ export const SCHEMA_MODULES: { id: string; label: string; match: (name: string) 
       name.startsWith('courier_remittance_'),
   },
   {
-    id: 'after_sales',
-    label: 'After-sales',
-    match: (name) => name.startsWith('sales_return'),
-  },
-  {
     id: 'shop_order',
     label: 'Shop order',
     match: (name) =>

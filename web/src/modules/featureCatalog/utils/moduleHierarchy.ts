@@ -126,8 +126,6 @@ const getSubmoduleSectionAndWeight = (
     switch (moduleKey) {
       case 'global_invoice':
         return { section: '', weight: 10 };
-      case 'after_sales':
-        return { section: '', weight: 20 };
       case 'invoice_brand':
         return { section: '', weight: 30 };
       default:
