@@ -9,6 +9,10 @@
       dense
       outline
       class="bill-kernel-source-chip"
+      :class="{ 'bill-kernel-source-chip--link': Boolean(sourceRoute) }"
+      :clickable="Boolean(sourceRoute)"
+      :ripple="false"
+      @click="goToSource"
     >
       <span class="text-weight-medium">{{ chip }}</span>
     </q-chip>
@@ -17,13 +21,23 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useBillSourceShipmentName } from '../composables/useBillSourceShipmentName';
 import { useBillSourceShopOrderNo } from '../composables/useBillSourceShopOrderNo';
+import { billKernelSourceRoute } from '../utils/billRoutes';
 import {
   formatBillKernelSourceEntityFallback,
   formatBillKernelSourceKey,
   formatBillKernelSourceType,
 } from '../utils/formatBillKernelSource';
+
+const route = useRoute();
+const router = useRouter();
+
+const tenantSlug = computed(() => {
+  const raw = route.params.tenantSlug;
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+});
 
 const props = defineProps<{
   sourceType?: string | null;
@@ -50,10 +64,10 @@ const shipmentId = computed(() => {
 const { shipmentName } = useBillSourceShipmentName(shipmentId);
 
 const shopOrderId = computed(() => {
-  if (props.sourceType !== 'shop_order') return null;
   if (props.shopOrderId != null && Number(props.shopOrderId) > 0) {
     return Number(props.shopOrderId);
   }
+  if (props.sourceType !== 'shop_order') return null;
   const id = Number(props.sourceId);
   return Number.isFinite(id) && id > 0 ? id : null;
 });
@@ -62,6 +76,24 @@ const { shopOrderNo } = useBillSourceShopOrderNo(
   shopOrderId,
   () => props.sourceType === 'shop_order',
 );
+
+const sourceRoute = computed(() =>
+  billKernelSourceRoute(
+    {
+      sourceType: props.sourceType,
+      sourceId: props.sourceId,
+      sourceKey: props.sourceKey,
+      shipmentId: shipmentId.value,
+      shopOrderId: shopOrderId.value,
+    },
+    tenantSlug.value,
+  ),
+);
+
+function goToSource() {
+  const to = sourceRoute.value;
+  if (to) void router.push(to);
+}
 
 const displayChips = computed(() => {
   const chips: string[] = [];
@@ -109,5 +141,14 @@ body.body--dark .bill-kernel-source-chip {
   background: var(--tf-neutral-surface, #1c1917) !important;
   color: var(--tf-neutral-ink, #f5f5f4) !important;
   border-color: var(--tf-neutral-border, #2a2622);
+}
+
+.bill-kernel-source-chip--link {
+  cursor: pointer;
+}
+
+.bill-kernel-source-chip--link:hover {
+  border-color: var(--tf-theme-primary, var(--q-primary)) !important;
+  color: var(--tf-theme-primary, var(--q-primary)) !important;
 }
 </style>

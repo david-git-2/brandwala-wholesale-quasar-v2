@@ -140,3 +140,80 @@ export function billOpensOnDetailNotComposeDesk(bill: {
   if (bill.ap_shipment_id != null) return true;
   return isDeliveryPaperOutcomeBillSource(bill.source_type, bill.source_key);
 }
+
+function positiveInt(value: string | number | null | undefined): number | null {
+  if (value == null) return null;
+  const id = typeof value === 'number' ? value : Number(String(value).trim());
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+/** Delivery paper id from `delivery_close` source_id or `delivery_paper:{id}:…` source_key. */
+export function deliveryPaperIdFromBillSource(
+  sourceType: string | null | undefined,
+  sourceId: string | null | undefined,
+  sourceKey: string | null | undefined,
+): number | null {
+  if (sourceType === 'delivery_close') {
+    return positiveInt(sourceId);
+  }
+  const key = sourceKey?.trim() ?? '';
+  if (!key.startsWith('delivery_paper:')) return null;
+  const parts = key.split(':');
+  return positiveInt(parts[1]);
+}
+
+export type BillKernelSourceRouteInput = {
+  sourceType?: string | null;
+  sourceId?: string | null;
+  sourceKey?: string | null;
+  shipmentId?: number | null;
+  shopOrderId?: number | null;
+};
+
+/** Staff app route for the bill’s kernel source, or null when there is no navigable source. */
+export function billKernelSourceRoute(
+  input: BillKernelSourceRouteInput,
+  tenantSlug?: string | null,
+): RouteLocationRaw | null {
+  const slugParams = tenantSlug ? { tenantSlug } : {};
+
+  const paperId = deliveryPaperIdFromBillSource(input.sourceType, input.sourceId, input.sourceKey);
+  if (paperId != null) {
+    const orderFromProp = positiveInt(input.shopOrderId);
+    const orderFromSource =
+      input.sourceType === 'shop_order' ? positiveInt(input.sourceId) : null;
+    const orderId = orderFromProp ?? orderFromSource;
+    if (orderId != null) {
+      return {
+        name: 'app-shop-order-delivery-paper-page',
+        params: { ...slugParams, id: String(orderId), paperId: String(paperId) },
+      };
+    }
+    return {
+      name: 'app-procurement-fulfill-delivery-paper-page',
+      params: { ...slugParams, paperId: String(paperId) },
+    };
+  }
+
+  if (input.sourceType === 'shipment_cost') {
+    const sid = positiveInt(input.shipmentId) ?? positiveInt(input.sourceId);
+    if (sid != null) {
+      return {
+        name: 'app-procurement-shipment-details',
+        params: { ...slugParams, id: String(sid) },
+      };
+    }
+  }
+
+  if (input.sourceType === 'shop_order') {
+    const oid = positiveInt(input.shopOrderId) ?? positiveInt(input.sourceId);
+    if (oid != null) {
+      return {
+        name: 'app-shop-order-detail-page',
+        params: { ...slugParams, id: String(oid) },
+      };
+    }
+  }
+
+  return null;
+}
