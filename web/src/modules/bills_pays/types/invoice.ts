@@ -25,15 +25,20 @@ export type InvoicePaymentHistoryEntry = {
   method: string | null;
   note: string | null;
   write_off_reason: string | null;
+  /** Bill face / settlement currency code (e.g. GBP, USD) when different from books currency. */
   settlement_currency_code?: string | null;
+  /** Settlement amount in `settlement_currency_code` (bill face currency). */
   foreign_amount?: number | null;
+  /** Books FX rate: units of books currency (usually BDT) per 1 unit of `settlement_currency_code`. */
   exchange_rate?: number | null;
   instruments: InvoicePaymentHistoryInstrument[];
   /** pays.source — e.g. ap_payout, customer_cash */
   payment_source?: string | null;
   payment_reference?: string | null;
   cashbook_point_pot_id?: number | null;
+  /** Pot-to-payment FX rate: units of `source_currency_code` per 1 unit of `settlement_currency_code`. */
   transaction_rate?: number | null;
+  /** Cashbook pot / movement source currency code (e.g. USD pot paying a GBP bill). */
   source_currency_code?: string | null;
   /** Child note when this row is rolled up onto the parent bill. */
   related_invoice_no?: string | null;

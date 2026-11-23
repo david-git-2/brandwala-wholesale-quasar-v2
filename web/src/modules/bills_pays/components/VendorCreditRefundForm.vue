@@ -27,22 +27,43 @@
         data-test="vendor-refund-amount"
         @update:amount="onPrimaryAmountInput"
       />
-      <p v-if="refundNeedsCurrencyShift" class="text-caption text-grey-7 q-mb-none q-mt-sm">
-        {{ refundCurrencyShiftHint }}
-      </p>
-      <BillDialogField
-        v-if="refundNeedsCurrencyShift"
-        class="q-mt-sm"
-        :label="refundPotCashRateLabel"
-      >
-        <q-input
-          v-model.number="refundTransactionRate"
-          outlined
-          dense
-          type="number"
-          step="0.0001"
-        />
-      </BillDialogField>
+      <div v-if="refundNeedsPaymentToSourceRate" class="q-mt-sm">
+        <div
+          v-if="!rateOverrideOpen && (refundPaymentToSourceRate ?? 0) > 0"
+          class="row items-center justify-between text-caption text-grey-7"
+        >
+          <span>
+            Rate: 1 {{ refundPaymentCurrency }} = {{ refundPaymentToSourceRate }}
+            {{ receiveSourceCurrency }}
+          </span>
+          <q-btn
+            flat
+            dense
+            no-caps
+            size="sm"
+            color="primary"
+            label="Edit rate"
+            @click="rateOverrideOpen = true"
+          />
+        </div>
+        <template v-else>
+          <p class="text-caption text-grey-7 q-mb-none">
+            {{ refundSourceToPaymentHint }}
+          </p>
+          <BillDialogField
+            class="q-mt-sm"
+            :label="refundSourceToPaymentRateLabel"
+          >
+            <q-input
+              v-model.number="refundPaymentToSourceRate"
+              outlined
+              dense
+              type="number"
+              step="0.0001"
+            />
+          </BillDialogField>
+        </template>
+      </div>
     </q-card>
 
     <q-card flat bordered class="q-pa-md">
@@ -132,8 +153,9 @@ const localToday = () => {
 };
 
 const receivedOn = ref(localToday());
-const amountBdt = ref<number | null>(null);
+const booksAmount = ref<number | null>(null);
 const note = ref('');
+const rateOverrideOpen = ref(false);
 
 const booksCurrencyCode = useBooksCurrencyCode();
 const receiveProfileId = computed(() => {
@@ -171,21 +193,22 @@ const receiveSourceCurrency = computed(() => billRefundCurrency.value);
 
 const {
   paymentCurrency: refundPaymentCurrency,
-  foreignAmount: refundForeignAmount,
-  booksExchangeRate: refundBooksExchangeRate,
-  transactionRate: refundTransactionRate,
-  needsCurrencyShift: refundNeedsCurrencyShift,
-  currencyShiftHint: refundCurrencyShiftHint,
-  potCashRateLabel: refundPotCashRateLabel,
-  booksCashRateLabel: refundBooksCashRateLabel,
-  needsBooksFx: refundNeedsBooksFx,
-  needsSeparateBooksFx: refundNeedsSeparateBooksFx,
-  computedBooksBdt: refundComputedBooksBdt,
+  paymentAmount: refundPaymentAmount,
+  paymentToBooksRate: refundPaymentToBooksRate,
+  paymentToSourceRate: refundPaymentToSourceRate,
+  needsPaymentToSourceRate: refundNeedsPaymentToSourceRate,
+  sourceToPaymentHint: refundSourceToPaymentHint,
+  sourceToPaymentRateLabel: refundSourceToPaymentRateLabel,
+  needsPaymentToBooksFx: refundNeedsPaymentToBooksFx,
+  computedBooksAmount: refundComputedBooksAmount,
   resetFxAmounts: resetRefundFxAmounts,
   validateFxFields: validateRefundFxFields,
   settlementFxPayload: refundSettlementFxPayload,
   sourceFxPayload: refundSourceFxPayload,
-} = useApPayoutFxFields(receiveSourceCurrency, amountBdt, booksCurrencyCode);
+} = useApPayoutFxFields(receiveSourceCurrency, booksAmount, booksCurrencyCode, {
+  booksTenantId: booksTenantIdRef,
+  active: formActive,
+});
 
 watch(
   billRefundCurrency,
@@ -199,8 +222,8 @@ watch(
 watch(
   receiveBooksRate,
   (rate) => {
-    if (refundNeedsBooksFx.value) {
-      refundBooksExchangeRate.value = rate;
+    if (refundNeedsPaymentToBooksFx.value) {
+      refundPaymentToBooksRate.value = rate;
     }
   },
   { immediate: true },
@@ -218,19 +241,19 @@ const openCreditFace = computed(() =>
 const maxSettlementAmount = computed(() => openCreditFace.value.amount);
 
 const primaryPayAmount = computed({
-  get: () => (refundNeedsBooksFx.value ? refundForeignAmount.value : amountBdt.value),
+  get: () => (refundNeedsPaymentToBooksFx.value ? refundPaymentAmount.value : booksAmount.value),
   set: (v: number | null) => {
-    if (refundNeedsBooksFx.value) {
-      refundForeignAmount.value = v;
+    if (refundNeedsPaymentToBooksFx.value) {
+      refundPaymentAmount.value = v;
     } else {
-      amountBdt.value = v;
+      booksAmount.value = v;
     }
   },
 });
 
 const booksAmountPreviewLabel = computed(() => {
-  if (!refundNeedsBooksFx.value) return null;
-  const books = refundComputedBooksBdt.value;
+  if (!refundNeedsPaymentToBooksFx.value) return null;
+  const books = refundComputedBooksAmount.value;
   if (books == null) return null;
   return `Books (${booksCurrencyCode.value}): ${formatAmountBdt(books)}`;
 });
@@ -257,6 +280,7 @@ const receiveLegDisabledReason = computed((): string | null => {
 });
 
 function resetRefundForm() {
+  rateOverrideOpen.value = false;
   receivedOn.value = localToday();
   note.value = '';
   receiveLocationPointId.value = null;
@@ -274,16 +298,16 @@ function resetRefundForm() {
   receiveBooksRate.value = rate;
   resetRefundFxAmounts();
   if (currency !== base && rate && rate > 0 && props.openCredit > 0) {
-    refundForeignAmount.value = face.amount;
-    refundBooksExchangeRate.value = rate;
-    refundTransactionRate.value = rate;
-    amountBdt.value = props.openCredit;
+    refundPaymentAmount.value = face.amount;
+    refundPaymentToBooksRate.value = rate;
+    refundPaymentToSourceRate.value = rate;
+    booksAmount.value = props.openCredit;
   } else if (currency !== base && props.openCredit > 0) {
-    refundForeignAmount.value = face.amount;
-    amountBdt.value = null;
+    refundPaymentAmount.value = face.amount;
+    booksAmount.value = null;
   } else {
-    amountBdt.value = props.openCredit > 0 ? props.openCredit : null;
-    refundForeignAmount.value = null;
+    booksAmount.value = props.openCredit > 0 ? props.openCredit : null;
+    refundPaymentAmount.value = null;
   }
 }
 
@@ -310,9 +334,9 @@ watch(
 );
 
 const submitDisabledReason = computed(() => {
-  const books = Number(amountBdt.value ?? 0);
+  const books = Number(booksAmount.value ?? 0);
   const settlementAmt = Number(primaryPayAmount.value ?? 0);
-  if (refundNeedsBooksFx.value) {
+  if (refundNeedsPaymentToBooksFx.value) {
     if (settlementAmt <= 0) return 'Enter a refund amount.';
     if (settlementAmt > maxSettlementAmount.value + 0.01) {
       return `Cannot exceed ${maxSettlementAmount.value.toFixed(2)} ${refundPaymentCurrency.value}.`;
@@ -344,7 +368,7 @@ function buildPayload(): PostVendorCreditRefundInput | null {
   return {
     creditNoteId: props.creditNoteId,
     parentBillId: props.parentBillId,
-    amount: Number(amountBdt.value),
+    amount: Number(booksAmount.value),
     cashLocationId,
     receivedOn: receivedOn.value,
     note: note.value.trim() || null,

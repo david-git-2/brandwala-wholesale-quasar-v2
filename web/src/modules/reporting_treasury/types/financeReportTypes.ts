@@ -87,7 +87,7 @@ export type MonthSnapshotKpis = {
   gross_profit: number;
   cash_collected: number;
   ar_outstanding: number;
-  merchant_payable?: number;
+  dropshipper_payable?: number;
 };
 
 export type MonthSnapshotPosition = {
@@ -96,7 +96,7 @@ export type MonthSnapshotPosition = {
   ar_outstanding: number;
   cod_unremitted: number;
   ap_payable: number;
-  merchant_payable: number;
+  dropshipper_payable: number;
   customer_store_credit: number;
   net_buffer: number;
 };

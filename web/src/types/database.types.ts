@@ -6525,7 +6525,7 @@ isOneToOne: false
 "get_dropship_management_order":
 { Args: { "p_order_id": number,"p_tenant_id": number }; Returns: Json
                            },
-"get_dropship_merchant_billable_charges":
+"get_dropship_dropshipper_billable_charges":
 { Args: { "p_order_id": number }; Returns: {
               "cod": number,"delivery": number,"packing": number,"print": number
             }[]

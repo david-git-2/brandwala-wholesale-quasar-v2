@@ -6,24 +6,7 @@ This guide explains **what is confusing, why it looks like that, and what you sh
 
 ---
 
-## 1. Multi-Currency / 3-Way FX
-
-### Why it's confusing
-- **Bills & Cashbook have 3-way FX:**
-  - In `web/src/modules/bills_pays/composables/useApPayoutFxFields.ts`, paying a bill can involve three currencies at once:
-    1. **Payment currency** (bill face currency)
-    2. **Source currency** (the cashbook pot currency)
-    3. **Books currency** (company ledger currency, usually `BDT`)
-  - That's why `money_kernel.bills` has `currency_code`, `txn_currency_code`, `txn_total_amount`, and `books_exchange_rate`, and why `useBooksExchangeRateQuery.ts` fetches FX rates per `tenantId` + `quoteCurrencyCode`.
-- **Do not touch `web/src/modules/thrift/`:** It is self-contained with its own currency/formatting (`web/src/modules/thrift/currency/utils/formatMoney.ts`)—leave it as-is and avoid modifying it.
-
-### Rule of thumb
-- Always ask: *"Is this amount in **purchase currency** (e.g. GBP/CNY), **settlement/transaction currency**, or **books currency** (BDT)?"*
-- Don't use `formatBdtTaka` / `formatAmountBdt` on foreign-currency amounts—use `formatCurrencyAmount` or `formatSettlementCurrencyAmount` from `web/src/utils/currency.ts` with the resolved currency code/symbol.
-
----
-
-## 2. Database Schema & Migrations Maze
+## 1. Database Schema & Migrations Maze
 
 ### Why it's confusing
 - **`supabase/schemas/public.sql` is ~2.6 MB** (a monolithic dump of the `public` schema, currently being split into domain folders).
@@ -36,15 +19,15 @@ This guide explains **what is confusing, why it looks like that, and what you sh
 
 ---
 
-## 3. Legacy Naming & Dense Frontend Modules
+## 2. Legacy Naming & Dense Frontend Modules
 
 ### Why it's confusing
-- **Dropship Role & Terminology Mapping (UI vs. Legacy DB/Routes):**
+- **Dropship Role & Terminology Mapping (UI vs. Legacy DB/Internal Keys):**
   - **Supplier** = `tenant`
-  - **Dropshipper** = `customer` (legacy DB/RPCs and some route paths still use `merchant` or `reseller`, e.g., `get_dropship_merchant_billable_charges`, `merchant_payable`, route `/merchants`; frontend pages/composables use `Dropshipper` such as `DropshippersPage.vue`, `useDropshipperPayoutQuery.ts`, `dropshipperWalletRepository.ts`)
+  - **Dropshipper** = `customer` (route `/app/shop/dropship/dropshippers`, RPC `get_dropship_dropshipper_billable_charges`, and report key `dropshipper_payable` now use `dropshipper`; internal settlement/order payload keys still use `merchant` or `reseller` in places, e.g., `reseller_purchase_cost`, `gift_cost_charged_to = 'reseller'`)
   - **Recipient** = `end_customer`
 - **Shop Orders & Dropship (`web/src/modules/shop_order/pages/`):**
-  - Contains 35 active pages mixing storefront, cart, checkout, manual orders, and dropship pages (`DropshipManagementPage.vue`, `DropshipOrderDetailV2Page.vue`, etc.; 6 unreferenced V1 pages were removed).
+  - Contains 35 active pages organized into `storefront/`, `orders/`, `dropship/`, and `admin/` subfolders (6 unreferenced V1 pages were removed; `DropshipOrderDetailV2*Page.vue` are the active dropship detail views).
 
 ### Rule of thumb
 - Before building a new page or composable, check `web/src/modules/navigation/moduleRegistry.ts` to see which route and module are currently active (note: `shop_fulfillment` and `shop_dropship` are retired from nav; active order management lives under `shop_order_mgmt`).

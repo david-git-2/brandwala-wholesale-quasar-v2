@@ -40,10 +40,11 @@ export type MoneyPaySubmitPayload = {
   reference: string | null;
   note: string | null;
   instrumentFields: MoneyPayInstrumentFields;
-  /** Books / settlement FX (BDT per 1 bill currency when applicable). */
+  /** Books / settlement FX: units of books currency (usually BDT) per 1 unit of bill/payment currency. */
   exchangeRate?: number | null;
-  /** Pot debit FX when pot currency ≠ bill currency. */
+  /** Pot debit FX: units of `sourceCurrencyCode` per 1 unit of bill/payment currency (1 when currencies match). */
   transactionRate?: number | null;
+  /** Cashbook pot / movement source currency code. */
   sourceCurrencyCode?: string | null;
   /** Selected leg currency (profile cash deposit / withdraw). */
   legCurrencyCode?: string | null;

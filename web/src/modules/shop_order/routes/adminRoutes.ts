@@ -55,7 +55,7 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-shop-overview-page',
-        component: () => import('src/modules/shop_order/pages/ShopOrderOverviewPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopOrderOverviewPage.vue'),
         beforeEnter: shopOverviewGuard,
       },
       {
@@ -91,19 +91,19 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: 'list',
         name: 'app-shop-shops-list-page',
-        component: () => import('src/modules/shop_order/pages/ShopsPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopsPage.vue'),
         beforeEnter: guard('shop_config'),
       },
       {
         path: ':shopId/setup',
         name: 'app-shop-settings-page',
-        component: () => import('src/modules/shop_order/pages/ShopSettingsPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopSettingsPage.vue'),
         beforeEnter: guard('shop_config'),
       },
       {
         path: ':shopId/access',
         name: 'app-shop-access-matrix-page',
-        component: () => import('src/modules/shop_order/pages/ShopAccessMatrixPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopAccessMatrixPage.vue'),
         beforeEnter: guard('shop_permissions'),
       },
     ],
@@ -115,7 +115,7 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-shop-preview-page',
-        component: () => import('src/modules/shop_order/pages/ShopPreviewPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopPreviewPage.vue'),
         beforeEnter: guard('shop_config'),
       },
     ],
@@ -128,7 +128,7 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-shop-categories-page',
-        component: () => import('src/modules/shop_order/pages/ShopCategoriesPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopCategoriesPage.vue'),
         beforeEnter: guard('shop_category'),
       },
     ],
@@ -157,7 +157,7 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-shop-pricing-list-page',
-        component: () => import('src/modules/shop_order/pages/ShopPricingListPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopPricingListPage.vue'),
         beforeEnter: guard('shop_pricing'),
       },
     ],
@@ -169,13 +169,13 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-shop-pricing-page',
-        component: () => import('src/modules/shop_order/pages/ShopPricingPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopPricingPage.vue'),
         beforeEnter: guard('shop_pricing'),
       },
       {
         path: 'add-listings',
         name: 'app-shop-add-listings-page',
-        component: () => import('src/modules/shop_order/pages/AddShopListingsPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/AddShopListingsPage.vue'),
         beforeEnter: guard('shop_pricing'),
       },
     ],
@@ -189,25 +189,25 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-shop-orders-page',
-        component: () => import('src/modules/shop_order/pages/ShopOrdersPage.vue'),
+        component: () => import('src/modules/shop_order/pages/orders/ShopOrdersPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
         path: 'cancelled',
         name: 'app-shop-orders-cancelled-page',
-        component: () => import('src/modules/shop_order/pages/CancelledShopOrdersPage.vue'),
+        component: () => import('src/modules/shop_order/pages/orders/CancelledShopOrdersPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
         path: 'create',
         name: 'app-shop-order-create-page',
-        component: () => import('src/modules/shop_order/pages/ManualDropshipOrderPage.vue'),
+        component: () => import('src/modules/shop_order/pages/orders/ManualDropshipOrderPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
         path: 'create-catalog',
         name: 'app-shop-order-create-catalog-page',
-        component: () => import('src/modules/shop_order/pages/ManualCatalogOrderPage.vue'),
+        component: () => import('src/modules/shop_order/pages/orders/ManualCatalogOrderPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
@@ -224,7 +224,7 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: ':id',
         name: 'app-shop-order-detail-page',
-        component: () => import('src/modules/shop_order/pages/ShopOrderDetailHostPage.vue'),
+        component: () => import('src/modules/shop_order/pages/orders/ShopOrderDetailHostPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
     ],
@@ -252,13 +252,13 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-shop-dropship-management-page',
-        component: () => import('src/modules/shop_order/pages/DropshipManagementPage.vue'),
+        component: () => import('src/modules/shop_order/pages/dropship/DropshipManagementPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
         path: ':id/return',
         name: 'app-shop-dropship-return-page',
-        component: () => import('src/modules/shop_order/pages/DropshipReturnFinalizePage.vue'),
+        component: () => import('src/modules/shop_order/pages/dropship/DropshipReturnFinalizePage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
@@ -309,7 +309,7 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: 'pickup-locations',
         name: 'app-shop-dropship-pickup-locations-page',
-        component: () => import('src/modules/shop_order/pages/DropshipPickupLocationsPage.vue'),
+        component: () => import('src/modules/shop_order/pages/dropship/DropshipPickupLocationsPage.vue'),
         beforeEnter: guard('shop_shipping'),
       },
       {
@@ -321,15 +321,23 @@ const adminRoutes: RouteRecordRaw[] = [
         }),
       },
       {
-        path: 'merchants',
-        name: 'app-shop-dropship-merchants-page',
+        path: 'dropshippers',
+        name: 'app-shop-dropship-dropshippers-page',
         component: () => import('src/modules/people/pages/DropshippersPage.vue'),
         beforeEnter: guard('shop_config'),
       },
       {
+        path: 'merchants',
+        name: 'app-shop-dropship-merchants-page',
+        redirect: (to) => ({
+          name: 'app-shop-dropship-dropshippers-page',
+          params: { tenantSlug: to.params.tenantSlug },
+        }),
+      },
+      {
         path: 'finance-hub',
         name: 'app-shop-dropship-finance-hub-page',
-        component: () => import('src/modules/shop_order/pages/DropshipFinanceHubPage.vue'),
+        component: () => import('src/modules/shop_order/pages/dropship/DropshipFinanceHubPage.vue'),
         beforeEnter: guard('shop_shipping'),
       },
       {
@@ -424,7 +432,7 @@ const adminRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'app-shop-order-packing-slip-page',
         component: () =>
-          import('src/modules/shop_order/pages/DropshipOrderDetailV2CustomerInvoicePreviewPage.vue'),
+          import('src/modules/shop_order/pages/dropship/DropshipOrderDetailV2CustomerInvoicePreviewPage.vue'),
       },
     ],
   },
@@ -437,7 +445,7 @@ const adminRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'app-shop-order-recipient-slip-page',
         component: () =>
-          import('src/modules/shop_order/pages/DropshipOrderRecipientInvoicePreviewPage.vue'),
+          import('src/modules/shop_order/pages/dropship/DropshipOrderRecipientInvoicePreviewPage.vue'),
       },
     ],
   },

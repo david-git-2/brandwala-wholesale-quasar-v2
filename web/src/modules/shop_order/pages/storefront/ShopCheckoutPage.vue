@@ -1,0 +1,898 @@
+<template>
+  <q-page class="q-pa-md shop-commerce-page">
+    <div class="q-gutter-y-md">
+      <!-- Header -->
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="row items-center q-gutter-x-sm">
+            <q-btn flat round icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
+            <div>
+              <div class="text-overline">Checkout</div>
+              <h1 class="text-h5 text-weight-bold q-my-none">Complete Wholesale Order</h1>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="row q-col-gutter-lg">
+        <!-- Delivery and Billing details (8 cols) -->
+        <div class="col-xs-12 col-md-8">
+          <div class="column q-gutter-md">
+            <!-- Shipping Information -->
+            <q-card
+              v-if="shopType === 'dropship' || (shopType === 'fixed_price' && allowDelivery)"
+              flat
+              bordered
+              class="form-card"
+            >
+              <q-card-section
+                class="q-px-md q-py-sm border-bottom row items-center justify-between"
+              >
+                <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
+                  <q-icon name="ph ph-truck" size="18px" class="q-mr-xs text-primary" />
+                  {{ $t('shop.shipping_info') }}
+                </div>
+                <!-- Toggle checkbox only for fixed_price -->
+                <q-checkbox
+                  v-if="shopType === 'fixed_price'"
+                  v-model="requestDelivery"
+                  :label="$t('shop.request_delivery')"
+                  dense
+                />
+              </q-card-section>
+
+              <q-card-section v-if="requestDelivery" class="relative-position">
+                <q-inner-loading :showing="isPhoneProfileLoading" color="primary" />
+                <!-- Free Delivery Option for Dropship -->
+                <div v-if="shopType === 'dropship'" class="q-mb-md bg-blue-1 q-pa-sm rounded-borders" style="border: 1px solid rgba(25, 118, 210, 0.15); border-radius: 8px;">
+                  <q-toggle
+                    v-model="isFreeDelivery"
+                    label="Free delivery for end customer"
+                    color="primary"
+                    dense
+                    :disable="isPhoneProfileLoading"
+                  />
+                  <div class="text-caption text-grey-7 q-ml-md q-mt-xs">
+                    {{ isFreeDelivery ? 'Delivery and COD charges will be deducted from your profit margin. End customer will not pay delivery/COD charges.' : 'End customer will pay delivery and COD charges.' }}
+                  </div>
+                </div>
+
+                <q-form ref="checkoutFormRef" @submit.prevent="submitOrder">
+                  <div class="row q-col-gutter-md">
+                    <!-- Recipient Name -->
+                    <div class="col-12 col-sm-6">
+                      <q-input
+                        v-model="recipientName"
+                        outlined
+                        dense
+                        :disable="isPhoneProfileLoading"
+                        :label="$t('shop.recipient_name') + ' *'"
+                        :rules="[val => !!val?.trim() || 'End customer name is required']"
+                      />
+                    </div>
+
+                    <!-- Recipient Phone -->
+                    <div class="col-12 col-sm-6">
+                      <q-input
+                        v-model="recipientPhone"
+                        outlined
+                        dense
+                        :loading="isPhoneProfileLoading"
+                        :disable="isPhoneProfileLoading"
+                        :label="$t('shop.recipient_phone') + ' *'"
+                        hint="Must be an 11-digit BD number (e.g. 01712345678)"
+                        :rules="[
+                          val => !!val?.trim() || 'End customer phone is required',
+                          val => /^01[3-9]\d{8}$/.test(val?.trim() || '') || 'Must be a valid 11-digit Bangladeshi mobile number (e.g. 01XXXXXXXXX)'
+                        ]"
+                        @blur="onRecipientPhoneBlur"
+                      />
+                    </div>
+
+                    <!-- Secondary Phone (Dropship) -->
+                    <div v-if="shopType === 'dropship'" class="col-12 col-sm-6">
+                      <q-input
+                        v-model="secondaryPhone"
+                        outlined
+                        dense
+                        label="Secondary Phone (Optional)"
+                        :disable="isPhoneProfileLoading"
+                        :rules="[
+                          val => !val?.trim() || /^01[3-9]\d{8}$/.test(val.trim()) || 'Must be a valid 11-digit Bangladeshi mobile number (e.g. 01XXXXXXXXX)'
+                        ]"
+                      />
+                    </div>
+
+                    <!-- District (Searchable Dropdown) -->
+                    <div class="col-12 col-sm-6">
+                      <q-select
+                        v-model="district"
+                        outlined
+                        dense
+                        :disable="isPhoneProfileLoading"
+                        use-input
+                        fill-input
+                        hide-selected
+                        input-debounce="0"
+                        label="District *"
+                        :options="districtOptions"
+                        option-label="name"
+                        option-value="name"
+                        emit-value
+                        map-options
+                        :rules="[val => !!val || 'District is required']"
+                        @filter="filterDistrict"
+                        @update:model-value="onDistrictChange"
+                      >
+                        <template #no-option>
+                          <q-item>
+                            <q-item-section class="text-grey">No matching district</q-item-section>
+                          </q-item>
+                        </template>
+                        <template #option="scope">
+                          <q-item v-bind="scope.itemProps">
+                            <q-item-section>
+                              <q-item-label>{{ scope.opt.name }}</q-item-label>
+                              <q-item-label v-if="scope.opt.bnName" caption>{{ scope.opt.bnName }}</q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </template>
+                      </q-select>
+                    </div>
+
+                    <!-- Thana / Upazila (Searchable Dropdown) -->
+                    <div class="col-12 col-sm-6">
+                      <q-select
+                        v-model="thana"
+                        outlined
+                        dense
+                        :disable="isPhoneProfileLoading"
+                        use-input
+                        fill-input
+                        hide-selected
+                        input-debounce="0"
+                        label="Thana / Upazila *"
+                        :options="thanaOptions"
+                        option-label="name"
+                        option-value="name"
+                        emit-value
+                        map-options
+                        :rules="[val => !!val || 'Thana / Upazila is required']"
+                        @filter="filterThana"
+                        @update:model-value="onThanaChange"
+                      >
+                        <template #no-option>
+                          <q-item>
+                            <q-item-section class="text-grey">No matching thana/upazila</q-item-section>
+                          </q-item>
+                        </template>
+                        <template #option="scope">
+                          <q-item v-bind="scope.itemProps">
+                            <q-item-section>
+                              <q-item-label>{{ scope.opt.name }}</q-item-label>
+                              <q-item-label v-if="scope.opt.bnName" caption>{{ scope.opt.bnName }}</q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </template>
+                      </q-select>
+                    </div>
+
+                    <!-- Post Code / Post Office (Searchable Select or Manual Input) -->
+                    <div class="col-12 col-sm-6">
+                      <q-select
+                        v-model="postCode"
+                        outlined
+                        dense
+                        :disable="isPhoneProfileLoading"
+                        use-input
+                        fill-input
+                        hide-selected
+                        input-debounce="0"
+                        label="Post Code / Post Office"
+                        :options="postcodeOptions"
+                        option-label="displayLabel"
+                        option-value="postCode"
+                        emit-value
+                        map-options
+                        @filter="filterPostcode"
+                        @new-value="createPostcode"
+                      >
+                        <template #no-option>
+                          <q-item>
+                            <q-item-section class="text-grey">Type custom post code or office</q-item-section>
+                          </q-item>
+                        </template>
+                        <template #option="scope">
+                          <q-item v-bind="scope.itemProps">
+                            <q-item-section>
+                              <q-item-label>{{ scope.opt.postOffice }} - {{ scope.opt.postCode }}</q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </template>
+                      </q-select>
+                    </div>
+
+                    <!-- Detailed Address -->
+                    <div class="col-12">
+                      <q-input
+                        v-model="shippingAddress"
+                        outlined
+                        dense
+                        type="textarea"
+                        :disable="isPhoneProfileLoading"
+                        :label="$t('shop.shipping_address') + ' *'"
+                        rows="3"
+                        :rules="[val => !!val?.trim() || 'Shipping address is required']"
+                      />
+                    </div>
+                  </div>
+                </q-form>
+
+                <div v-if="shopType === 'dropship'" class="text-caption text-grey-7 q-mt-sm">
+                  <q-icon name="ph ph-info" size="14px" class="q-mr-xs text-primary" />
+                  Inside Dhaka standard delivery: 60-70 BDT | Outside Dhaka: 120-130 BDT
+                </div>
+
+                <!-- Payment Mode and Delivery Instructions for Dropship -->
+                <template v-if="shopType === 'dropship'">
+                  <q-input
+                    v-model="deliveryInstructions"
+                    outlined
+                    dense
+                    type="textarea"
+                    :disable="isPhoneProfileLoading"
+                    :label="$t('shop.delivery_instructions')"
+                    rows="2"
+                    class="q-mt-md"
+                  />
+                </template>
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
+
+        <!-- Checkout Summary (4 cols) -->
+        <div class="col-xs-12 col-md-4">
+          <q-card flat bordered class="summary-card sticky-card">
+            <q-card-section class="q-px-md q-py-sm border-bottom">
+              <div class="text-subtitle2 text-weight-bold text-grey-9">
+                {{ $t('shop.items_summary') }}
+              </div>
+            </q-card-section>
+
+            <q-list class="item-list-compact" separator>
+              <q-item v-for="item in items" :key="item.id" class="q-py-sm">
+                <q-item-section avatar>
+                  <q-avatar size="36px" rounded class="bg-grey-2">
+                    <q-img v-if="item.image_url" :src="item.image_url" fit="contain" />
+                    <q-icon v-else name="ph ph-image" size="18px" color="grey-4" />
+                  </q-avatar>
+                </q-item-section>
+                <q-item-section>
+                  <div class="text-caption text-weight-bold text-grey-9 item-name">
+                    {{ item.name }}
+                  </div>
+                  <div class="text-caption text-grey-6">
+                    {{ $t('shop.qty') }}: {{ item.quantity }}
+                  </div>
+                </q-item-section>
+                <q-item-section
+                  side
+                  v-if="cart?.shop_type === 'dropship' ? (canSeeBuyPrice || canSeeSellPrice) : canSeeLinePrices"
+                >
+                  <template v-if="cart?.shop_type === 'dropship'">
+                    <div v-if="canSeeBuyPrice" class="text-caption text-grey-6 text-right" style="font-size: 10px;">
+                      {{ $t('shop.cost_label') }} {{ formatBuyerItemTotal(item) }}
+                    </div>
+                    <div v-if="canSeeSellPrice" class="text-caption text-weight-bold text-primary text-right">
+                      {{ $t('shop.pay_label') }} {{ formatItemTotal(item) }}
+                    </div>
+                  </template>
+                  <template v-else-if="canSeeLinePrices">
+                    <div class="text-caption text-weight-bold text-grey-9">
+                      {{ formatItemTotal(item) }}
+                    </div>
+                  </template>
+                </q-item-section>
+              </q-item>
+            </q-list>
+
+            <q-separator />
+
+            <q-card-section class="q-py-md">
+              <template v-if="cart?.shop_type === 'dropship'">
+                <!-- Recipient Subtotal -->
+                <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+                  <span>{{ $t('shop.items_subtotal') }}</span>
+                  <span class="text-weight-medium text-grey-9">
+                    {{ formatCartTotal() }}
+                  </span>
+                </div>
+                
+                <!-- Charges Section -->
+                <div class="column q-mt-sm q-mb-sm bg-grey-1 q-pa-sm rounded-borders" style="border: 1px solid rgba(0,0,0,0.05); border-radius: 8px;">
+                  <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">
+                    {{ $t('shop.dropship_charges') }}
+                  </div>
+                  
+                  <div class="row justify-between text-caption text-grey-7 q-mb-xs">
+                    <span>
+                      {{ $t('shop.delivery_charge') }}
+                      <span class="text-grey-5">({{ isFreeDelivery ? 'deducted from profit' : 'customer pays' }})</span>
+                    </span>
+                    <span>{{ formatAmount(deliveryCharge) }}</span>
+                  </div>
+                  
+                  <div class="row justify-between text-caption text-grey-7 q-mb-xs">
+                    <span>
+                      {{ $t('shop.cod_fee') }}
+                      <span class="text-grey-5">({{ isFreeDelivery ? 'deducted from profit' : 'customer pays' }})</span>
+                    </span>
+                    <span>{{ formatAmount(codCharge) }}</span>
+                  </div>
+                  
+                  <div class="row justify-between text-caption text-grey-7 q-mb-xs">
+                    <span>
+                      {{ $t('shop.print_charge') }}
+                      <span class="text-grey-5">(deducted from profit)</span>
+                    </span>
+                    <span>{{ formatAmount(printCharge) }}</span>
+                  </div>
+                  
+                  <div class="row justify-between text-caption text-grey-7">
+                    <span>
+                      {{ $t('shop.packing_charge') }}
+                      <span v-if="defaultPackingCharge > 0 && itemCount > 0" class="text-grey-6">
+                        ({{ formatAmount(defaultPackingCharge) }} &times; {{ itemCount }})
+                      </span>
+                      <span class="text-grey-5">(deducted from profit)</span>
+                    </span>
+                    <span>{{ formatAmount(packingCharge) }}</span>
+                  </div>
+
+                  <div class="text-caption text-grey-6 q-mt-sm">
+                    {{ $t('shop.courier_charges_may_vary') }}
+                    <div>{{ $t('shop.courier_delivery_estimate', { min: formatAmount(courierEstimate.deliveryMin), max: formatAmount(courierEstimate.deliveryMax) }) }}</div>
+                    <div v-if="codEstimateSummary">{{ $t('shop.courier_cod_estimate', { summary: codEstimateSummary }) }}</div>
+                  </div>
+                </div>
+
+                <!-- Buyer Cost -->
+                <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+                  <span>{{ $t('shop.your_cost_buyer') }}</span>
+                  <span class="text-weight-medium text-grey-9">
+                    {{ formatAmount(buyerCartTotal + printCharge + packingCharge + (isFreeDelivery ? deliveryCharge + codCharge : 0)) }}
+                  </span>
+                </div>
+
+                <!-- Profit -->
+                <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+                  <span>{{ $t('shop.estimated_profit') }}</span>
+                  <span class="text-weight-bold text-positive">
+                    {{ formatAmount(calculatedProfit) }}
+                  </span>
+                </div>
+                
+                <q-separator class="q-my-sm" />
+              </template>
+
+              <div class="row justify-between items-baseline q-mb-lg">
+                <span class="text-subtitle1 text-weight-bold text-grey-9">{{
+                  cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
+                }}</span>
+                <span
+                  v-if="cart?.shop_type === 'dropship' ? (canSeeBuyPrice || canSeeSellPrice) : canSeeLinePrices"
+                  class="text-h6 text-weight-bold text-primary"
+                >
+                  {{ cart?.shop_type === 'dropship' ? formatAmount(calculatedRecipientGrandTotal) : formatCartTotal() }}
+                </span>
+                <span v-else class="text-subtitle1 text-grey-5 italic">
+                  {{ $t('shop.prices_hidden') }}
+                </span>
+              </div>
+
+              <!-- PLACE ORDER -->
+              <q-btn
+                color="primary"
+                unelevated
+                no-caps
+                :label="$t('shop.place_order')"
+                class="full-width pill-btn text-weight-bold q-py-sm"
+                :loading="orderStore.saving"
+                :disabled="
+                  isPhoneProfileLoading ||
+                  (requestDelivery &&
+                    (!recipientName.trim() || !/^01[3-9]\d{8}$/.test(recipientPhone.trim()) || !shippingAddress.trim()))
+                "
+                @click="submitOrder"
+              />
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+    </div>
+  </q-page>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+import { useQueryClient } from '@tanstack/vue-query';
+import { useShopCartQuery } from '../../composables/useShopCartQuery';
+import { shopOrderQueryKeys } from '../../shared/queryKeys/shopOrderQueryKeys';
+import { useShopOrderStore } from '../../stores/shopOrderStore';
+import {
+  getCartItemMinSellAmount,
+  getCartItemSellAmount,
+  getCartLineBuyerSubtotalAmount,
+  getCartLineSubtotalAmount,
+  resolveCartCurrencySymbol,
+  formatCartPriceAmount,
+  pickCartItemPriceForDisplay,
+} from '../../utils/cartPriceUtils';
+
+import { showErrorNotification } from 'src/utils/appFeedback';
+import { fetchCourierChargeEstimate } from '../../services/courierChargeEstimate';
+import { useRecipientProfileStore } from 'src/modules/people/submodules/customer/stores/recipientProfileStore';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { getLastVisitedShopSlug, shopCustomerOrderDetailRoute } from '../../utils/catalogShop';
+import { customerCanSeeCartLinePrices } from '../../utils/catalogPriceUtils';
+import { resolveShopCartItemMoq } from '../../utils/cartQuantityUtils';
+import {
+  getBDDistricts,
+  getBDUpazilas,
+  getBDPostcodes,
+  type BDLocationOption,
+  type BDPostcodeOption,
+} from 'src/utils/bdAddressService';
+
+const route = useRoute();
+const router = useRouter();
+const { t } = useI18n();
+const queryClient = useQueryClient();
+const authStore = useAuthStore();
+
+const shopId = computed(() => {
+  return route.query.shopId ? Number(route.query.shopId) : null;
+});
+
+const {
+  cart,
+  items,
+  itemCount,
+  cartTotal,
+  buyerCartTotal,
+  recipientGrandTotal,
+  permissions,
+} = useShopCartQuery(shopId);
+
+const orderStore = useShopOrderStore();
+const recipientProfileStore = useRecipientProfileStore();
+const lastLookupPhone = ref('');
+const isPhoneProfileLoading = ref(false);
+
+const recipientName = ref('');
+const recipientPhone = ref('');
+const secondaryPhone = ref('');
+const district = ref('Dhaka');
+const thana = ref('Uttara');
+const postCode = ref('');
+const shippingAddress = ref('');
+const requestDelivery = ref(false);
+const isFreeDelivery = ref(false);
+
+const isPrepaid = ref(false);
+const deliveryInstructions = ref('');
+
+// District & Thana/Upazila Options for Dropdown
+const rawDistricts = ref<BDLocationOption[]>([]);
+const rawThanas = ref<BDLocationOption[]>([]);
+const rawPostcodes = ref<(BDPostcodeOption & { displayLabel: string })[]>([]);
+const districtOptions = ref<BDLocationOption[]>([]);
+const thanaOptions = ref<BDLocationOption[]>([]);
+const postcodeOptions = ref<(BDPostcodeOption & { displayLabel: string })[]>([]);
+
+const shopType = computed(() => cart.value?.shop_type);
+const allowDelivery = computed(() => cart.value?.allow_delivery);
+
+const canSeeBuyPrice = computed(() => !!permissions.value?.can_see_buy_price);
+const canSeeSellPrice = computed(() => !!permissions.value?.can_see_sell_price);
+const canSeeLinePrices = computed(() =>
+  customerCanSeeCartLinePrices(cart.value?.shop_type, permissions.value),
+);
+
+// Load BD Districts and Upazilas
+const loadLocationData = async () => {
+  rawDistricts.value = await getBDDistricts();
+  districtOptions.value = rawDistricts.value;
+  await updateThanaList(district.value);
+};
+
+const updateThanaList = async (distName: string) => {
+  if (!distName) {
+    rawThanas.value = await getBDUpazilas();
+  } else {
+    rawThanas.value = await getBDUpazilas(distName);
+  }
+  thanaOptions.value = rawThanas.value;
+  await updatePostcodeList(distName, thana.value);
+};
+
+const updatePostcodeList = async (distName: string, thanaName: string) => {
+  if (!distName) {
+    rawPostcodes.value = [];
+    postcodeOptions.value = [];
+    return;
+  }
+  const fetched = await getBDPostcodes(distName, thanaName);
+  const mapped = fetched.map((p) => ({
+    ...p,
+    displayLabel: `${p.postOffice} - ${p.postCode}`,
+  }));
+  rawPostcodes.value = mapped;
+  postcodeOptions.value = mapped;
+};
+
+const filterDistrict = (val: string, update: (fn: () => void) => void) => {
+  update(() => {
+    const needle = val.toLowerCase().trim();
+    if (!needle) {
+      districtOptions.value = rawDistricts.value;
+    } else {
+      districtOptions.value = rawDistricts.value.filter(
+        (d) =>
+          d.name.toLowerCase().includes(needle) ||
+          d.bnName.toLowerCase().includes(needle)
+      );
+    }
+  });
+};
+
+const filterThana = (val: string, update: (fn: () => void) => void) => {
+  update(() => {
+    const needle = val.toLowerCase().trim();
+    if (!needle) {
+      thanaOptions.value = rawThanas.value;
+    } else {
+      thanaOptions.value = rawThanas.value.filter(
+        (t) =>
+          t.name.toLowerCase().includes(needle) ||
+          t.bnName.toLowerCase().includes(needle)
+      );
+    }
+  });
+};
+
+const filterPostcode = (val: string, update: (fn: () => void) => void) => {
+  update(() => {
+    const needle = val.toLowerCase().trim();
+    if (!needle) {
+      postcodeOptions.value = rawPostcodes.value;
+    } else {
+      postcodeOptions.value = rawPostcodes.value.filter(
+        (p) =>
+          p.postCode.toLowerCase().includes(needle) ||
+          p.postOffice.toLowerCase().includes(needle)
+      );
+    }
+  });
+};
+
+const currencySymbol = computed(() => resolveCartCurrencySymbol(items.value));
+
+const createPostcode = (val: string, done: (item: any) => void) => {
+  const custom = {
+    id: 0,
+    districtId: 0,
+    postOffice: val,
+    postCode: val,
+    displayLabel: val,
+  };
+  done(custom);
+};
+
+const onDistrictChange = async (newDistName: string) => {
+  thana.value = '';
+  postCode.value = '';
+  await updateThanaList(newDistName);
+};
+
+const onThanaChange = async (newThanaName: string) => {
+  postCode.value = '';
+  await updatePostcodeList(district.value, newThanaName);
+};
+
+// Print/packing from shop; COD/delivery confirmed later by courier
+const defaultPrintCharge = computed(() => Number(cart.value?.default_print_charge_amount || 0));
+const defaultPackingCharge = computed(() => Number(cart.value?.default_packing_charge_amount || 0));
+
+const deliveryCharge = computed(() => 0);
+const printCharge = computed(() => (shopType.value === 'dropship' ? defaultPrintCharge.value : 0));
+const packingCharge = computed(() => (shopType.value === 'dropship' ? defaultPackingCharge.value * itemCount.value : 0));
+const codCharge = computed(() => 0);
+
+const calculatedRecipientGrandTotal = computed(() => {
+  const subtotal = cartTotal.value;
+  if (shopType.value !== 'dropship') return recipientGrandTotal.value;
+  if (isFreeDelivery.value) {
+    return subtotal;
+  }
+  return subtotal + deliveryCharge.value + codCharge.value;
+});
+
+const calculatedProfit = computed(() => {
+  const subtotal = cartTotal.value;
+  const buyerTotal = buyerCartTotal.value;
+  const margin = subtotal - buyerTotal;
+  const printAndPacking = printCharge.value + packingCharge.value;
+  if (isFreeDelivery.value) {
+    return margin - printAndPacking - deliveryCharge.value - codCharge.value;
+  }
+  return margin - printAndPacking;
+});
+
+const courierEstimate = ref({
+  deliveryMin: 60,
+  deliveryMax: 130,
+  codPercentMin: 1 as number | null,
+  codPercentMax: 1 as number | null,
+  codFlatMin: null as number | null,
+  codFlatMax: null as number | null,
+});
+
+const codEstimateSummary = computed(() => {
+  const e = courierEstimate.value;
+  const parts: string[] = [];
+  if (e.codPercentMin != null && e.codPercentMax != null) {
+    parts.push(
+      e.codPercentMin === e.codPercentMax
+        ? `~${e.codPercentMin}%`
+        : `~${e.codPercentMin}–${e.codPercentMax}%`
+    );
+  }
+  if (e.codFlatMin != null && e.codFlatMax != null) {
+    parts.push(
+      e.codFlatMin === e.codFlatMax
+        ? formatAmount(e.codFlatMin)
+        : `${formatAmount(e.codFlatMin)}–${formatAmount(e.codFlatMax)}`
+    );
+  }
+  return parts.join(' / ') || '~1%';
+});
+
+// Watch for cart changes to initialize requestDelivery & fetch courier estimates
+watch(
+  () => cart.value,
+  async (c) => {
+    if (c) {
+      if (c.shop_type === 'dropship') {
+        requestDelivery.value = true;
+        courierEstimate.value = await fetchCourierChargeEstimate();
+      } else {
+        requestDelivery.value = false;
+      }
+    }
+  },
+  { immediate: true },
+);
+
+onMounted(async () => {
+  await loadLocationData();
+});
+
+const clearEndCustomerDetailsFromPhone = () => {
+  recipientName.value = '';
+  secondaryPhone.value = '';
+  district.value = '';
+  thana.value = '';
+  postCode.value = '';
+  shippingAddress.value = '';
+  deliveryInstructions.value = '';
+};
+
+watch(
+  () => recipientPhone.value.replace(/\D/g, ''),
+  (phone) => {
+    if (isPhoneProfileLoading.value) return;
+    if (!lastLookupPhone.value) return;
+    if (phone !== lastLookupPhone.value) {
+      clearEndCustomerDetailsFromPhone();
+      lastLookupPhone.value = '';
+    }
+  },
+);
+
+const goBack = () => {
+  const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
+  void router.push(`${tenantSlug}/shop/cart`);
+};
+
+const onRecipientPhoneBlur = async () => {
+  const phone = recipientPhone.value.replace(/\D/g, '');
+  const tenantId = cart.value?.tenant_id;
+  if (!tenantId || !/^01\d{9}$/.test(phone)) return;
+  if (phone === lastLookupPhone.value) return;
+
+  isPhoneProfileLoading.value = true;
+  lastLookupPhone.value = phone;
+  try {
+    const profile = await recipientProfileStore.getByPhone(tenantId, phone);
+    if (!profile) {
+      lastLookupPhone.value = '';
+      return;
+    }
+
+    recipientName.value = profile.name || '';
+    secondaryPhone.value = profile.secondary_phone || '';
+    shippingAddress.value = profile.address || '';
+    district.value = profile.district || '';
+    thana.value = profile.thana || '';
+    if (profile.district) {
+      await updateThanaList(profile.district);
+    }
+    if (profile.district && profile.thana) {
+      await updatePostcodeList(district.value, profile.thana);
+    }
+  } catch {
+    lastLookupPhone.value = '';
+  } finally {
+    isPhoneProfileLoading.value = false;
+  }
+};
+
+const checkoutFormRef = ref<any>(null);
+
+const submitOrder = async () => {
+  if (!cart.value?.id) return;
+
+  if (requestDelivery.value && checkoutFormRef.value) {
+    const valid = await checkoutFormRef.value.validate();
+    if (!valid) {
+      showErrorNotification('Please fix the errors in the form before submitting.');
+      return;
+    }
+  }
+
+  if (shopType.value === 'dropship') {
+    for (const item of items.value) {
+      const minPrice = getCartItemMinSellAmount(item);
+      const sellPrice = getCartItemSellAmount(item);
+      if (minPrice > 0 && sellPrice < minPrice) {
+        showErrorNotification(
+          t('shop.price_below_min', {
+            name: item.name,
+            amount: formatCartPriceAmount(minPrice, item.resell_minimum_price, currencySymbol.value),
+          }),
+        );
+        return;
+      }
+    }
+  } else {
+    for (const item of items.value) {
+      const minQty = resolveShopCartItemMoq(item, shopType.value);
+      if (item.quantity < minQty) {
+        showErrorNotification(
+          `Minimum order quantity for ${item.name} is ${minQty}. Current quantity: ${item.quantity}.`,
+        );
+        return;
+      }
+    }
+  }
+
+  const name = requestDelivery.value ? recipientName.value.trim() : '';
+  const phone = requestDelivery.value ? recipientPhone.value.trim() : '';
+  
+  let formattedAddress = requestDelivery.value ? shippingAddress.value.trim() : '';
+  if (requestDelivery.value && (district.value || thana.value || postCode.value)) {
+    const parts = [
+      thana.value ? `Thana: ${thana.value}` : '',
+      district.value ? `District: ${district.value}` : '',
+      postCode.value ? `Post Code: ${postCode.value}` : '',
+    ].filter(Boolean);
+    const locationPart = parts.join(', ');
+
+    if (formattedAddress && !formattedAddress.toLowerCase().includes(district.value.toLowerCase())) {
+      formattedAddress = `${formattedAddress}\n${locationPart}`;
+    } else if (!formattedAddress) {
+      formattedAddress = locationPart;
+    }
+  }
+
+  const res = await orderStore.submitOrder(
+    cart.value.id,
+    name,
+    phone,
+    formattedAddress,
+    null,
+    isPrepaid.value,
+    deliveryInstructions.value,
+    codCharge.value,
+    deliveryCharge.value,
+    printCharge.value,
+    packingCharge.value,
+    0,
+    requestDelivery.value ? secondaryPhone.value.trim() || null : null,
+    requestDelivery.value ? district.value || null : null,
+    requestDelivery.value ? thana.value || null : null,
+  );
+  if (res.success && res.data) {
+    if (shopId.value) {
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.cart(authStore.tenantId ?? 0, shopId.value),
+      });
+    }
+    void queryClient.invalidateQueries({
+      queryKey: shopOrderQueryKeys.activeCarts(authStore.tenantId ?? 0),
+    });
+    const tenantSlug = route.params.tenantSlug ? String(route.params.tenantSlug) : '';
+    void router.push(
+      shopCustomerOrderDetailRoute(tenantSlug, res.data.order_id, shopType.value ?? 'dropship'),
+    );
+  }
+};
+
+const formatAmount = (val: any) => {
+  const num = typeof val === 'number' ? val : (val?.value ?? 0);
+  return `${currencySymbol.value}${num.toFixed(2)}`;
+};
+
+const formatItemTotal = (item: (typeof items.value)[number]) => {
+  const total = getCartLineSubtotalAmount(shopType.value, item, item.quantity);
+  const price = pickCartItemPriceForDisplay(shopType.value, item);
+  return formatCartPriceAmount(total, price, currencySymbol.value);
+};
+
+const formatBuyerItemTotal = (item: (typeof items.value)[number]) => {
+  const total = getCartLineBuyerSubtotalAmount(shopType.value, item, item.quantity);
+  return formatCartPriceAmount(total, item.unit_price, currencySymbol.value);
+};
+
+const formatCartTotal = () => {
+  return `${currencySymbol.value}${cartTotal.value.toFixed(2)}`;
+};
+</script>
+
+<script lang="ts">
+export default {
+  name: 'ShopCheckoutPage',
+};
+</script>
+
+<style scoped>
+.form-card,
+.summary-card {
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(34, 56, 101, 0.02);
+}
+
+.border-bottom {
+  border-bottom: 1px solid rgba(34, 56, 101, 0.08);
+}
+
+.item-list-compact {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.item-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sticky-card {
+  position: sticky;
+  top: 24px;
+}
+
+.font-semibold {
+  font-weight: 500;
+}
+
+.italic {
+  font-style: italic;
+}
+</style>

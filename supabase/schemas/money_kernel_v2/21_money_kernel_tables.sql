@@ -183,6 +183,14 @@ CREATE INDEX IF NOT EXISTS ix_bills_source
 CREATE INDEX IF NOT EXISTS ix_bills_meta_gin
   ON money_kernel.bills USING gin (meta jsonb_path_ops);
 
+COMMENT ON COLUMN money_kernel.bills.currency_id IS 'FK to global_currencies for the books (ledger) currency of this bill.';
+COMMENT ON COLUMN money_kernel.bills.currency_code IS 'Books (ledger) currency code (usually BDT) in which total_amount, paid_amount, due_amount, and written_off_amount are stored.';
+COMMENT ON COLUMN money_kernel.bills.total_amount IS 'Bill total in books currency (currency_code).';
+COMMENT ON COLUMN money_kernel.bills.paid_amount IS 'Settled amount in books currency (currency_code).';
+COMMENT ON COLUMN money_kernel.bills.due_amount IS 'Remaining open balance in books currency (currency_code).';
+COMMENT ON COLUMN money_kernel.bills.written_off_amount IS 'Written-off amount in books currency (currency_code).';
+COMMENT ON COLUMN money_kernel.bills.meta IS 'Extensible metadata; multi-currency bills store txn_currency_code (bill face currency) and books_exchange_rate (books per 1 txn currency) here.';
+
 ALTER TABLE money_kernel.bills
   DROP CONSTRAINT IF EXISTS fk_bills_parent;
 ALTER TABLE money_kernel.bills

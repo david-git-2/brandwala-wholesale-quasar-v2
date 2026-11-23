@@ -856,8 +856,8 @@ const onSubmit = () => {
   submitAttempted.value = true;
   if (submitDisabledReasonResolved.value) return;
   const base = buildPayload();
-  const { exchangeRate } = settlementFxFields();
-  const { sourceCurrencyCode, transactionRate: txnRate } = sourceFxFields();
+  const { paymentToBooksRate: exchangeRate } = settlementFxFields();
+  const { sourceCurrencyCode, paymentToSourceRate: txnRate } = sourceFxFields();
   const legCurrency = profileLegCurrency.value?.trim().toUpperCase() || null;
   const profilePotId = profileLegBundleId.value;
   const depositPotId =

@@ -1,0 +1,912 @@
+<template>
+  <q-page class="tf-page q-pa-md">
+    <section class="tf-page__stack">
+      <q-banner v-if="isError" class="text-white bg-negative" rounded>
+        {{ error?.message || $t('shop_admin.shop_setup_load_failed') }}
+      </q-banner>
+
+      <ShopSettingsSkeleton v-if="isLoading" is-loading />
+
+      <template v-else-if="shop">
+        <div class="shop-settings-header row items-center no-wrap q-col-gutter-md">
+          <div class="col min-width-0">
+            <div class="shop-settings-tabs">
+              <div class="shop-settings-tabs__track">
+                <button
+                  v-for="tab in shopTabs"
+                  :key="tab.name"
+                  type="button"
+                  class="shop-settings-tabs__item"
+                  :class="{ 'shop-settings-tabs__item--active': activeTab === tab.name }"
+                  :data-test="`shop-tab-${tab.name}`"
+                  @click="void switchShopTab(tab.name)"
+                >
+                  <q-icon :name="tab.icon" size="14px" />
+                  <span>{{ tab.label }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="col-auto row items-center q-gutter-sm no-wrap">
+            <template v-if="activeTab === 'setup'">
+              <span
+                v-if="setupIsDirty"
+                class="text-caption text-grey-7 q-mr-xs"
+                data-test="shop-setup-unsaved-hint"
+              >
+                {{ $t('shop_admin.shop_setup_unsaved_hint') }}
+              </span>
+              <q-btn
+                flat
+                dense
+                no-caps
+                color="grey-8"
+                :label="$t('shop_admin.cancel')"
+                :disable="!setupIsDirty || setupIsSaving"
+                data-test="shop-setup-cancel"
+                @click="onSetupCancel"
+              />
+              <q-btn
+                unelevated
+                dense
+                no-caps
+                color="primary"
+                icon="ph ph-floppy-disk"
+                :label="$t('shop_admin.save')"
+                :loading="setupIsSaving"
+                :disable="!setupIsDirty || setupIsSaving"
+                data-test="shop-setup-save"
+                @click="void onSetupSave()"
+              />
+            </template>
+            <q-btn
+              flat
+              round
+              dense
+              icon="ph ph-arrows-clockwise"
+              class="text-grey-7"
+              :loading="isRefreshingSetup"
+              :aria-label="$t('common.refresh', 'Refresh')"
+              data-test="shop-setup-refresh"
+              @click="refreshSetup()"
+            >
+              <q-tooltip :delay="400">{{ $t('common.refresh', 'Refresh') }}</q-tooltip>
+            </q-btn>
+            <q-btn
+              v-if="tenantSlug"
+              flat
+              dense
+              no-caps
+              outline
+              color="primary"
+              icon="ph ph-copy"
+              :label="$t('shop_admin.access_login_url_copy')"
+              data-test="shop-login-url-copy"
+              @click="copyShopLoginUrl"
+            />
+          </div>
+        </div>
+
+        <q-tab-panels
+          v-model="activeTab"
+          animated
+          class="bg-transparent shop-settings-panels"
+          :class="{ 'shop-settings-panels--fit-content': activeTab === 'storefront' }"
+        >
+          <q-tab-panel name="setup" class="q-pa-none q-pt-md">
+            <DropshipShopReadinessCard
+              v-if="shop.shop_type === 'dropship'"
+              class="q-mb-md"
+              :shop-id="shop.id"
+              :tenant-slug="tenantSlug"
+            />
+            <ShopSettingsForm
+              ref="setupFormRef"
+              :shop="shop"
+              :setup-lookups="setupLookups"
+            />
+
+            <q-card flat class="shop-danger-zone q-mt-md">
+              <q-card-section>
+                <div class="text-subtitle2 text-weight-bold text-negative">
+                  {{ $t('shop_admin.danger_zone_title') }}
+                </div>
+                <p class="text-body2 text-grey-8 q-mt-xs q-mb-none">
+                  {{ $t('shop_admin.danger_zone_delete_caption') }}
+                </p>
+                <p class="text-caption text-grey-7 q-mt-sm q-mb-md">
+                  {{ $t('shop_admin.delete_shop_confirm_msg', { name: shop.name }) }}
+                </p>
+
+                <div class="row q-col-gutter-md">
+                  <div class="col-12 col-md-6">
+                    <q-input
+                      v-model="deleteKeyword"
+                      outlined
+                      dense
+                      autocomplete="off"
+                      :label="$t('shop_admin.danger_zone_type_delete')"
+                      data-test="shop-delete-keyword"
+                    />
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-input
+                      v-model="deleteShopName"
+                      outlined
+                      dense
+                      autocomplete="off"
+                      :label="$t('shop_admin.danger_zone_type_shop_name', { name: shop.name })"
+                      data-test="shop-delete-name"
+                    />
+                  </div>
+                </div>
+
+                <div class="row justify-end q-mt-md">
+                  <q-btn
+                    color="negative"
+                    unelevated
+                    no-caps
+                    icon="ph ph-trash"
+                    :label="$t('shop_admin.danger_zone_delete_btn')"
+                    :loading="isDeleting"
+                    :disable="!canDeleteShop || isDeleting"
+                    data-test="shop-delete-submit"
+                    @click="deleteShop"
+                  />
+                </div>
+              </q-card-section>
+            </q-card>
+          </q-tab-panel>
+
+          <q-tab-panel v-if="showAccessTab" name="access" class="q-pa-none q-pt-md shop-access-panel">
+            <ShopAccessMatrixPage
+              v-if="activeTab === 'access'"
+              :key="shopId"
+              embedded
+              :shop="shop"
+            />
+          </q-tab-panel>
+
+          <q-tab-panel
+            v-if="showStorefrontTab"
+            name="storefront"
+            class="q-pa-none q-pt-md shop-storefront-panel"
+          >
+            <ShopCatalogStorefrontPage
+              v-if="shop.shop_type === 'vendor_catalog'"
+              embedded
+              :shop="shop"
+              :tenant-id="tenantId"
+              :active="activeTab === 'storefront'"
+            />
+
+            <template v-else>
+            <section class="row items-center q-col-gutter-sm no-wrap">
+              <div class="col min-width-0">
+                <q-input
+                  v-model="storefrontSearch"
+                  clearable
+                  dense
+                  outlined
+                  :placeholder="$t('shop_admin.storefront_search_placeholder')"
+                >
+                  <template #prepend>
+                    <q-icon name="ph ph-magnifying-glass" />
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-auto row items-center q-gutter-sm no-wrap">
+                <q-btn
+                  outline
+                  color="primary"
+                  icon="ph ph-arrows-clockwise"
+                  :label="$t('shop_admin.storefront_recalc_display_qty')"
+                  no-caps
+                  :loading="isRecalcingDisplayQty"
+                  data-test="storefront-recalc-display-qty"
+                  @click="onRecalcStorefrontDisplayQty"
+                />
+                <q-btn
+                  color="primary"
+                  icon="ph ph-plus"
+                  :label="$t('shop_admin.storefront_add_product')"
+                  unelevated
+                  no-caps
+                  @click="storefrontAddProductDrawerOpen = true"
+                />
+              </div>
+            </section>
+
+            <q-infinite-scroll
+              class="storefront-infinite-scroll"
+              :offset="250"
+              @load="onStorefrontLoadMore"
+            >
+              <div class="theme-shop storefront-preview relative-position">
+                <q-inner-loading
+                  :showing="storefrontLoading && storefrontProducts.length === 0"
+                  color="primary"
+                />
+                <div
+                  v-if="storefrontProductGroups.length > 0"
+                  class="row q-col-gutter-md storefront-product-grid"
+                >
+                  <div
+                    v-for="group in storefrontProductGroups"
+                    :key="group.product_id"
+                    class="col-12 col-md-6 storefront-product-grid-item"
+                  >
+                    <StorefrontProductGroupCard
+                      :group="group"
+                      :permissions="storefrontPreviewPermissions"
+                      :shop-type="shop.shop_type"
+                      :display-quantity-add="shop.display_quantity_add ?? 6"
+                      :quantity-display-mode="shop.quantity_display_mode"
+                      :format-money="formatStorefrontMoney"
+                      :show-quantity-breakdown="true"
+                      :show-calculate-sell-price="true"
+                      :show-avg-cost="true"
+                      :show-listing-status-toggle="true"
+                      :show-remove-product="true"
+                      :is-setting-up-grade="isEnsuringGradeForProductId === group.product_id"
+                      @setup-grade="setupStorefrontGrade"
+                      @calculate-sell-price="openCalculateSellPriceDrawer"
+                      @toggle-listing-status="toggleStorefrontListingStatus"
+                      @remove-grade="removeStorefrontGrade"
+                    />
+                  </div>
+                </div>
+
+                <div
+                  v-else-if="storefrontIsError"
+                  class="column items-center justify-center storefront-preview-empty q-pa-xl text-center"
+                >
+                  <q-icon name="ph ph-warning-circle" size="64px" color="negative" class="q-mb-md" />
+                  <div class="text-body1 text-grey-8">
+                    {{ storefrontError?.message || $t('shop_admin.storefront_load_failed') }}
+                  </div>
+                </div>
+
+                <div
+                  v-else-if="!storefrontLoading"
+                  class="column items-center justify-center storefront-preview-empty q-pa-xl text-center"
+                >
+                  <q-icon name="ph ph-tote" size="64px" color="grey-5" class="q-mb-md" />
+                  <div class="text-h6 text-weight-bold text-grey-8">
+                    {{ $t('shop_admin.storefront_no_products') }}
+                  </div>
+                </div>
+              </div>
+
+              <template #loading>
+                <div
+                  v-if="isFetchingNextStorefrontPage"
+                  class="row justify-center q-py-md"
+                >
+                  <q-spinner color="primary" size="28px" />
+                </div>
+              </template>
+            </q-infinite-scroll>
+            </template>
+          </q-tab-panel>
+
+          <q-tab-panel v-if="showGiftsTab" name="gifts" class="q-pa-none q-pt-md">
+            <ShopDropshipGiftsSettingsCard v-if="shop" :shop="shop" />
+          </q-tab-panel>
+
+          <q-tab-panel v-if="showStockTab" name="stock" class="q-pa-none q-pt-md">
+            <ShopWarehouseStockPage
+              v-if="activeTab === 'stock' && shop"
+              embedded
+              :shop="shop"
+              :tenant-id="tenantId"
+            />
+          </q-tab-panel>
+        </q-tab-panels>
+
+        <template v-if="shop.shop_type !== 'vendor_catalog'">
+          <ShopStorefrontAddProductDrawer
+            v-model="storefrontAddProductDrawerOpen"
+            :shop-id="shopId"
+            :tenant-id="tenantId"
+            :shop-type="shop?.shop_type"
+            :sell-currency-id="shop?.sell_currency_id ?? null"
+            :markup-percentage="shop?.markup_percentage ?? null"
+            :listed-grade-keys="storefrontListedGradeKeys"
+            :listed-product-ids="storefrontListedProductIds"
+            @saved="onStorefrontListingAdded"
+          />
+          <ShopStorefrontCalculateSellPriceDrawer
+            v-model="calculateSellPriceDrawerOpen"
+            :shop-id="shopId"
+            :tenant-id="tenantId"
+            :listing-id="calculateSellPriceListingId"
+            :product-group="calculateSellPriceProductGroup"
+            :sell-currency-id="shop?.sell_currency_id ?? null"
+            :shop-type="shop.shop_type"
+            @saved="onStorefrontPricingSaved"
+            @grade-setup="onStorefrontListingAdded"
+          />
+        </template>
+      </template>
+    </section>
+  </q-page>
+</template>
+
+<script setup lang="ts">
+import { computed, defineAsyncComponent, ref, unref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+import { useQueryClient } from '@tanstack/vue-query';
+import { copyToClipboard } from 'quasar';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import ShopSettingsForm from 'src/modules/shop_order/components/ShopSettingsForm.vue';
+import ShopSettingsSkeleton from 'src/modules/shop_order/components/ShopSettingsSkeleton.vue';
+import DropshipShopReadinessCard from 'src/modules/shop_order/components/DropshipShopReadinessCard.vue';
+import ShopDropshipGiftsSettingsCard from 'src/modules/shop_order/components/ShopDropshipGiftsSettingsCard.vue';
+import StorefrontProductGroupCard from 'src/modules/shop_order/components/StorefrontProductGroupCard.vue';
+import ShopStorefrontAddProductDrawer from 'src/modules/shop_order/components/ShopStorefrontAddProductDrawer.vue';
+import ShopStorefrontCalculateSellPriceDrawer from 'src/modules/shop_order/components/ShopStorefrontCalculateSellPriceDrawer.vue';
+import { useShopSetupBundleQuery } from '../../composables/useShopSetupBundleQuery';
+import { useDeleteShopMutation } from '../../composables/useShopMutations';
+import { useShopStorefrontAdminListingsInfiniteQuery } from '../../composables/useShopStorefrontAdminQuery';
+import {
+  patchStorefrontListingActive,
+  useEnsureShopStorefrontGradeListingMutation,
+  useDeleteShopStorefrontListingMutation,
+  useToggleShopStorefrontListingMutation,
+} from '../../composables/useShopStorefrontAdminMutations';
+import { useRecalcShopDisplayQuantitiesMutation } from '../../composables/useRecalcShopDisplayQuantitiesMutation';
+import { shopOrderQueryKeys } from '../../shared/queryKeys/shopOrderQueryKeys';
+import { shopTypeToPathSegment } from '../../utils/shopRouteTypes';
+import { useShopsListUiStore } from '../../stores/shopsListUiStore';
+import { showSuccessNotification, showErrorNotification, requestConfirmation } from 'src/utils/appFeedback';
+import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';
+import type { CustomerShopPermissions } from '../../composables/useCustomerShopPermissionsQuery';
+import type {
+  ShopStorefrontAdminListing,
+} from 'src/modules/shop_order/types';
+import {
+  findSiblingListingForPricing,
+  groupStorefrontListingsByProduct,
+  type StorefrontProductGroup,
+} from '../../utils/storefrontProductGroups';
+
+const ShopAccessMatrixPage = defineAsyncComponent(
+  () => import('src/modules/shop_order/pages/admin/ShopAccessMatrixPage.vue'),
+);
+const ShopWarehouseStockPage = defineAsyncComponent(
+  () => import('src/modules/shop_order/pages/admin/ShopWarehouseStockPage.vue'),
+);
+const ShopCatalogStorefrontPage = defineAsyncComponent(
+  () => import('src/modules/shop_order/pages/admin/ShopCatalogStorefrontPage.vue'),
+);
+
+type ShopDetailTab = 'setup' | 'access' | 'storefront' | 'stock' | 'gifts';
+
+const route = useRoute();
+const router = useRouter();
+const { t } = useI18n();
+const queryClient = useQueryClient();
+const authStore = useAuthStore();
+const { hasModuleAccess } = useModulePermissions();
+
+const tenantId = computed(() => authStore.tenantId as number);
+const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
+const shopId = computed(() => Number(route.params.shopId));
+const shopsListUi = useShopsListUiStore();
+
+const {
+  shop,
+  setupLookups,
+  isLoading,
+  isError,
+  error,
+  refresh: refreshSetup,
+  isRefreshing: isRefreshingSetup,
+} = useShopSetupBundleQuery(tenantId, shopId);
+const { mutate: deleteShopMutation, isPending: isDeleting } = useDeleteShopMutation();
+type ShopSettingsFormExpose = {
+  isDirty: boolean;
+  isSaving: boolean;
+  save: () => Promise<boolean>;
+  discard: () => void;
+};
+
+const setupFormRef = ref<ShopSettingsFormExpose | null>(null);
+
+const setupIsDirty = computed(() => Boolean(unref(setupFormRef.value?.isDirty)));
+const setupIsSaving = computed(() => Boolean(unref(setupFormRef.value?.isSaving)));
+
+const { confirmLeave } = useUnsavedLeaveGuard({
+  isDirty: setupIsDirty,
+  onSave: async () => (await setupFormRef.value?.save()) ?? false,
+  onDiscard: () => setupFormRef.value?.discard(),
+  title: t('shop_admin.setup_unsaved_title'),
+  message: t('shop_admin.setup_unsaved_message'),
+});
+
+async function switchShopTab(tab: ShopDetailTab): Promise<void> {
+  if (activeTab.value === tab) return;
+  if (setupIsDirty.value) {
+    const ok = await confirmLeave();
+    if (!ok) return;
+  }
+  activeTab.value = tab;
+}
+
+async function onSetupSave(): Promise<void> {
+  await setupFormRef.value?.save();
+}
+
+function onSetupCancel(): void {
+  setupFormRef.value?.discard();
+}
+
+const deleteKeyword = ref('');
+const deleteShopName = ref('');
+const storefrontSearch = ref('');
+const storefrontAddProductDrawerOpen = ref(false);
+const calculateSellPriceDrawerOpen = ref(false);
+const calculateSellPriceListingId = ref<number | null>(null);
+const calculateSellPriceProductId = ref<number | null>(null);
+const isEnsuringGradeForProductId = ref<number | null>(null);
+
+const isStorefrontTabActive = computed(() => {
+  const tab = typeof route.query.tab === 'string' ? route.query.tab : 'setup';
+  const shopType = shop.value?.shop_type;
+  return (
+    tab === 'storefront' &&
+    (shopType === 'fixed_price' || shopType === 'dropship')
+  );
+});
+const {
+  data: storefrontListingsData,
+  isLoading: storefrontLoading,
+  isError: storefrontIsError,
+  error: storefrontError,
+  isFetchingNextPage: isFetchingNextStorefrontPage,
+  hasNextPage: hasNextStorefrontPage,
+  fetchNextPage: fetchNextStorefrontPage,
+} = useShopStorefrontAdminListingsInfiniteQuery(shopId, storefrontSearch, isStorefrontTabActive);
+
+const { mutate: toggleStorefrontListingMutation } = useToggleShopStorefrontListingMutation();
+const { mutate: deleteStorefrontListingMutation, isPending: isDeletingStorefrontListing } =
+  useDeleteShopStorefrontListingMutation();
+const { mutate: ensureStorefrontGradeMutation } = useEnsureShopStorefrontGradeListingMutation();
+const { mutate: recalcDisplayQtyMutation, isPending: isRecalcingDisplayQty } =
+  useRecalcShopDisplayQuantitiesMutation();
+
+const onRecalcStorefrontDisplayQty = async () => {
+  if (!shopId.value) return;
+  const confirmed = await requestConfirmation(
+    t('shop_admin.storefront_recalc_display_qty_confirm'),
+    t('shop_admin.storefront_recalc_display_qty_confirm_title'),
+    t('shop_admin.storefront_recalc_display_qty_confirm_ok'),
+  );
+  if (confirmed) {
+    recalcDisplayQtyMutation(shopId.value);
+  }
+};
+
+const storefrontProducts = computed(() => {
+  const pages = storefrontListingsData.value?.pages ?? [];
+  return pages.flatMap((page) => page.listings);
+});
+
+const onStorefrontLoadMore = async (_index: number, done: (stop?: boolean) => void) => {
+  if (!hasNextStorefrontPage.value || isFetchingNextStorefrontPage.value) {
+    done(!hasNextStorefrontPage.value);
+    return;
+  }
+  await fetchNextStorefrontPage();
+  done(!hasNextStorefrontPage.value);
+};
+
+const storefrontProductGroups = computed(() =>
+  groupStorefrontListingsByProduct(storefrontProducts.value),
+);
+
+const calculateSellPriceProductGroup = computed(() => {
+  if (!calculateSellPriceProductId.value) return null;
+  return (
+    storefrontProductGroups.value.find(
+      (group) => group.product_id === calculateSellPriceProductId.value,
+    ) ?? null
+  );
+});
+
+const storefrontPreviewPermissions: CustomerShopPermissions = {
+  can_browse: true,
+  can_see_buy_price: true,
+  can_see_sell_price: true,
+  can_see_resell_minimum_price: true,
+  can_add_to_cart: true,
+  can_place_order: true,
+  can_view_quantity: true,
+};
+
+const formatStorefrontMoney = (amount: unknown, symbol?: string | null) => {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return '—';
+  const sym = symbol?.trim() || '৳';
+  const formatted = n.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${sym} ${formatted}`;
+};
+
+const storefrontSearchParam = computed(() => storefrontSearch.value.trim() || null);
+
+const buildStorefrontListingUpsertPayload = (
+  item: ShopStorefrontAdminListing,
+  isActive: boolean,
+) => ({
+  id: item.listing_id,
+  tenant_id: tenantId.value,
+  shop_id: shopId.value,
+  global_stock_id: item.global_stock_id ?? undefined,
+  product_id: item.global_stock_id == null ? item.product_id : undefined,
+  sell_price_amount: Number(item.sell_price_amount ?? item.sell_price?.amount ?? 0),
+  sell_price_currency_id: Number(
+    item.sell_price_currency_id ?? item.sell_price?.currency_id ?? 0,
+  ),
+  minimum_sell_price_amount: item.minimum_sell_price_amount ?? null,
+  minimum_sell_price_currency_id: item.minimum_sell_price_currency_id ?? null,
+  show_quantity: item.show_quantity ?? true,
+  display_quantity_override: item.display_quantity_override ?? null,
+  is_active: isActive,
+});
+
+const setupStorefrontGrade = (group: StorefrontProductGroup, gradeSlug: string) => {
+  if (!shop.value?.sell_currency_id) return;
+  isEnsuringGradeForProductId.value = group.product_id;
+  ensureStorefrontGradeMutation(
+    {
+      shopId: shopId.value,
+      tenantId: tenantId.value,
+      productId: group.product_id,
+      gradeSlug,
+      sourceListing: findSiblingListingForPricing(group),
+      sellCurrencyId: shop.value.sell_currency_id,
+    },
+    {
+      onSettled: () => {
+        isEnsuringGradeForProductId.value = null;
+      },
+      onSuccess: (listing) => {
+        showSuccessNotification(t('shop_admin.storefront_grade_setup_success'));
+        void queryClient.invalidateQueries({
+          queryKey: shopOrderQueryKeys.storefrontAdminListings(shopId.value, storefrontSearchParam.value),
+        });
+        if (listing?.id) {
+          calculateSellPriceProductId.value = group.product_id;
+          calculateSellPriceListingId.value = listing.id;
+          calculateSellPriceDrawerOpen.value = true;
+        }
+      },
+    },
+  );
+};
+
+const openCalculateSellPriceDrawer = (item: ShopStorefrontAdminListing) => {
+  calculateSellPriceProductId.value = item.product_id;
+  calculateSellPriceListingId.value = item.listing_id;
+  calculateSellPriceDrawerOpen.value = true;
+};
+
+const storefrontListedGradeKeys = computed(() =>
+  storefrontProducts.value.map(
+    (row) => `${row.product_id}:${row.stock_grade?.slug ?? 'standard'}`,
+  ),
+);
+
+const storefrontListedProductIds = computed(() =>
+  storefrontProducts.value.map((row) => row.product_id),
+);
+
+const onStorefrontListingAdded = () => {
+  void queryClient.invalidateQueries({
+    queryKey: ['shopOrder', 'storefrontAdminListings', { shopId: shopId.value }],
+  });
+};
+
+const onStorefrontPricingSaved = () => {
+  void queryClient.invalidateQueries({
+    queryKey: ['shopOrder', 'storefrontAdminListings', { shopId: shopId.value }],
+  });
+};
+
+const toggleStorefrontListingStatus = (item: ShopStorefrontAdminListing, isActive: boolean) => {
+  const search = storefrontSearchParam.value;
+  patchStorefrontListingActive(queryClient, shopId.value, search, item.listing_id, isActive);
+  toggleStorefrontListingMutation(buildStorefrontListingUpsertPayload(item, isActive), {
+    onError: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.storefrontAdminListings(shopId.value, search),
+      });
+    },
+  });
+};
+
+const storefrontProductLabel = (item: ShopStorefrontAdminListing) =>
+  [item.product_name, item.stock_grade?.label].filter(Boolean).join(' · ');
+
+const removeStorefrontGrade = async (item: ShopStorefrontAdminListing) => {
+  const confirmed = await requestConfirmation(
+    t('shop_admin.storefront_remove_grade_confirm', {
+      name: storefrontProductLabel(item),
+    }),
+    t('shop_admin.storefront_remove_product_title'),
+    t('shop_admin.storefront_remove_grade'),
+  );
+  if (!confirmed || isDeletingStorefrontListing.value) return;
+
+  deleteStorefrontListingMutation(
+    {
+      listingId: item.listing_id,
+      tenantId: tenantId.value,
+      shopId: shopId.value,
+      search: storefrontSearchParam.value,
+    },
+    {
+      onSuccess: () => {
+        if (calculateSellPriceListingId.value === item.listing_id) {
+          calculateSellPriceDrawerOpen.value = false;
+          calculateSellPriceListingId.value = null;
+          calculateSellPriceProductId.value = null;
+        }
+        showSuccessNotification(t('shop_admin.storefront_remove_product_success'));
+      },
+    },
+  );
+};
+
+watch(shopId, () => {
+  deleteKeyword.value = '';
+  deleteShopName.value = '';
+  storefrontSearch.value = '';
+  storefrontAddProductDrawerOpen.value = false;
+  calculateSellPriceDrawerOpen.value = false;
+  calculateSellPriceListingId.value = null;
+  calculateSellPriceProductId.value = null;
+});
+
+const canDeleteShop = computed(() => {
+  const name = shop.value?.name?.trim() ?? '';
+  return deleteKeyword.value.trim() === 'DELETE' && deleteShopName.value.trim() === name && name.length > 0;
+});
+
+const showAccessTab = computed(() => hasModuleAccess('shop_permissions'));
+const showStorefrontTab = computed(
+  () =>
+    shop.value?.shop_type === 'fixed_price' ||
+    shop.value?.shop_type === 'dropship' ||
+    shop.value?.shop_type === 'vendor_catalog',
+);
+const showStockTab = computed(
+  () => shop.value?.shop_type === 'fixed_price' || shop.value?.shop_type === 'dropship',
+);
+const showGiftsTab = computed(() => shop.value?.shop_type === 'dropship');
+
+const shopTabs = computed(() => {
+  const tabs: Array<{ name: ShopDetailTab; label: string; icon: string }> = [
+    { name: 'setup', label: t('shop_admin.shop_tab_setup'), icon: 'ph ph-gear' },
+  ];
+  if (showAccessTab.value) {
+    tabs.push({ name: 'access', label: t('shop_admin.shop_tab_access'), icon: 'ph ph-shield' });
+  }
+  if (showStorefrontTab.value) {
+    tabs.push({
+      name: 'storefront',
+      label: t('shop_admin.shop_tab_storefront'),
+      icon: 'ph ph-storefront',
+    });
+  }
+  if (showStockTab.value) {
+    tabs.push({ name: 'stock', label: t('shop_admin.shop_tab_stock'), icon: 'ph ph-warehouse' });
+  }
+  if (showGiftsTab.value) {
+    tabs.push({ name: 'gifts', label: 'Gifts', icon: 'ph ph-gift' });
+  }
+  return tabs;
+});
+
+const isValidTab = (tab: string): tab is ShopDetailTab => {
+  if (tab === 'setup') return true;
+  if (tab === 'access') return showAccessTab.value;
+  if (tab === 'storefront') return showStorefrontTab.value;
+  if (tab === 'stock') return showStockTab.value;
+  if (tab === 'gifts') return showGiftsTab.value;
+  return false;
+};
+
+const activeTab = computed({
+  get(): ShopDetailTab {
+    const raw = typeof route.query.tab === 'string' ? route.query.tab : 'setup';
+    const tab = raw === 'listings' ? 'stock' : raw;
+    return isValidTab(tab) ? tab : 'setup';
+  },
+  set(tab: ShopDetailTab) {
+    void router.replace({
+      params: route.params,
+      query: { ...route.query, tab },
+    });
+  },
+});
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    if (tab === 'listings') {
+      void router.replace({
+        params: route.params,
+        query: { ...route.query, tab: 'stock' },
+      });
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => shop.value?.tenant_id,
+  (shopTenantId) => {
+    if (!shopTenantId || !tenantId.value) return;
+    if (shopTenantId === tenantId.value) return;
+    shopsListUi.setSelectedBusinessTenantId(shopTenantId);
+    const next = String(shopTenantId);
+    const current = route.query.businessTenantId;
+    if (current !== next) {
+      void router.replace({
+        params: route.params,
+        query: { ...route.query, businessTenantId: next },
+      });
+    }
+  },
+  { immediate: true },
+);
+
+const copyShopLoginUrl = async () => {
+  const loginTenantSlug = shop.value?.tenant_slug ?? tenantSlug.value;
+  if (!loginTenantSlug || !shop.value) return;
+  const shopTypePath = shopTypeToPathSegment(shop.value.shop_type) ?? 'catalog';
+  const origin = typeof window === 'undefined' ? '' : window.location.origin;
+  const url = `${origin}/shop/${loginTenantSlug}/${shopTypePath}/login`;
+  try {
+    await copyToClipboard(url);
+    showSuccessNotification(t('shop_admin.access_login_url_copied'));
+  } catch {
+    showErrorNotification(t('shop_admin.access_login_url_copy_failed'));
+  }
+};
+
+const deleteShop = () => {
+  if (!canDeleteShop.value || !shop.value) return;
+
+  deleteShopMutation(
+    { shopId: shopId.value, tenantId: tenantId.value },
+    {
+      onSuccess: () => {
+        showSuccessNotification(t('shop_admin.delete_shop_success'));
+        void router.push({
+          name: 'app-shop-shops-list-page',
+          params: { tenantSlug: tenantSlug.value },
+        });
+      },
+      onError: (err: Error) => {
+        showErrorNotification(err.message || t('shop_admin.delete_shop_failed'));
+      },
+    },
+  );
+};
+</script>
+
+<style scoped>
+.shop-settings-panels--fit-content :deep(.q-panel-parent) {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.shop-storefront-panel {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.shop-access-panel {
+  height: calc(100vh - 220px);
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.shop-settings-header {
+  min-height: 38px;
+}
+
+.shop-settings-tabs__track {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #f1f5f9;
+}
+
+.shop-settings-tabs__item {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.shop-settings-tabs__item--active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.shop-danger-zone {
+  background: #fff5f5;
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  box-shadow: none;
+}
+
+body.body--dark .shop-settings-tabs__track {
+  background: #262626;
+}
+
+body.body--dark .shop-settings-tabs__item {
+  color: #94a3b8;
+}
+
+body.body--dark .shop-settings-tabs__item--active {
+  background: #1c1c1c;
+  color: #f8fafc;
+}
+
+body.body--dark .shop-danger-zone {
+  background: rgba(127, 29, 29, 0.12);
+  border-color: rgba(248, 113, 113, 0.28);
+}
+
+.storefront-infinite-scroll {
+  margin-top: 16px;
+}
+
+@media (min-width: 600px) {
+  .storefront-product-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 16px;
+    margin: 0 !important;
+  }
+
+  .storefront-product-grid-item {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+}
+
+.storefront-preview-empty {
+  min-height: 280px;
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 60%, transparent);
+  border-radius: 16px;
+  border: 1px dashed var(--tf-theme-border, rgba(34, 56, 101, 0.12));
+}
+</style>

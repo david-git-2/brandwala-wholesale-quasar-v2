@@ -1,129 +1,97 @@
 import { computed, ref, watch, type Ref } from 'vue';
-import {
-  computePayoutBooksAmount,
-  currenciesMatch,
-  needsPayoutBooksFx,
-  needsPayoutSeparateBooksFx,
-  needsPayoutTransactionRate,
-} from '../utils/apPayoutFx';
+import { amountsMatchToCent, computePayoutBooksTotal } from '../utils/apPayoutFx';
+import { usePayoutFxCore } from './usePayoutFxCore';
 
-/** Pay-out FX: payment currency (bill face) vs source currency (pot cash). */
+/**
+ * Pay-out / refund FX fields with explicit amount tracking in `paymentCurrency` and `booksCurrency`.
+ */
 export function useApPayoutFxFields(
   sourceCurrency: Ref<string>,
-  amountBdt: Ref<number | null>,
-  booksCurrencyCode: Ref<string>,
+  booksAmount: Ref<number | null>,
+  booksCurrency: Ref<string>,
+  options?: {
+    booksTenantId?: Ref<number>;
+    active?: Ref<boolean>;
+  },
 ) {
   const paymentCurrency = ref('BDT');
-  const foreignAmount = ref<number | null>(null);
-  const booksExchangeRate = ref<number | null>(null);
-  const transactionRate = ref<number | null>(1);
+  const paymentAmount = ref<number | null>(null);
 
-  const needsTransactionRate = computed(() =>
-    needsPayoutTransactionRate(paymentCurrency.value, sourceCurrency.value),
-  );
-
-  const needsBooksFx = computed(() =>
-    needsPayoutBooksFx(paymentCurrency.value, booksCurrencyCode.value),
-  );
-
-  const needsSeparateBooksFx = computed(() =>
-    needsPayoutSeparateBooksFx(
-      paymentCurrency.value,
-      sourceCurrency.value,
-      booksCurrencyCode.value,
-    ),
-  );
-
-  /** Pot cash currency ≠ payment currency (e.g. BDT pot, GBP pay-out). */
-  const needsCurrencyShift = needsTransactionRate;
-
-  const currencyShiftHint = computed(() => {
-    if (!needsTransactionRate.value) return '';
-    const src = sourceCurrency.value;
-    const pay = paymentCurrency.value;
-    const books = booksCurrencyCode.value;
-    if (currenciesMatch(src, books) && !currenciesMatch(pay, books)) {
-      return `Cash leaves the pot in ${src}. You record this pay-out in ${pay}. Enter the rate between them.`;
-    }
-    return `Cash is in ${src}. Payment is in ${pay}. Enter how much ${src} per 1 ${pay}.`;
+  const {
+    paymentToBooksRate,
+    paymentToSourceRate,
+    needsPaymentToSourceRate,
+    needsPaymentToBooksFx,
+    needsSeparateBooksRate,
+    sourceToPaymentHint,
+    sourceToPaymentRateLabel,
+    paymentToBooksRateLabel,
+    syncDefaultPaymentToSourceRate,
+    effectivePaymentToBooksRate,
+    applyPrefilledRates,
+  } = usePayoutFxCore({
+    paymentCurrency,
+    sourceCurrency,
+    booksCurrency,
+    initialPaymentToSourceRate: 1,
+    ...(options?.booksTenantId ? { booksTenantId: options.booksTenantId } : {}),
+    ...(options?.active ? { autoFetchActive: options.active } : {}),
   });
 
-  const potCashRateLabel = computed(
-    () => `Rate (${sourceCurrency.value} per 1 ${paymentCurrency.value})`,
+  const computedBooksAmount = computed(() =>
+    computePayoutBooksTotal({
+      paymentCurrency: paymentCurrency.value,
+      sourceCurrency: sourceCurrency.value,
+      booksCurrency: booksCurrency.value,
+      paymentAmount: paymentAmount.value,
+      paymentToSourceRate: paymentToSourceRate.value,
+      paymentToBooksRate: paymentToBooksRate.value,
+    }),
   );
 
-  const booksCashRateLabel = computed(
-    () => `${booksCurrencyCode.value} rate (per 1 ${paymentCurrency.value})`,
-  );
-
-  const computedBooksBdt = computed(() => {
-    if (!needsBooksFx.value) return null;
-    if (!needsSeparateBooksFx.value) {
-      const foreign = foreignAmount.value;
-      const rate = transactionRate.value;
-      if (foreign == null || rate == null || foreign <= 0 || rate <= 0) return null;
-      return Math.round(foreign * rate * 100) / 100;
-    }
-    return computePayoutBooksAmount(
-      paymentCurrency.value,
-      foreignAmount.value,
-      booksExchangeRate.value,
-      booksCurrencyCode.value,
-    );
-  });
-
-  const syncTransactionRateDefault = () => {
-    if (!needsTransactionRate.value) {
-      transactionRate.value = 1;
-    } else if (transactionRate.value === 1) {
-      transactionRate.value = null;
-    }
-  };
-
-  watch([paymentCurrency, sourceCurrency], syncTransactionRateDefault);
+  watch([paymentCurrency, sourceCurrency], syncDefaultPaymentToSourceRate);
 
   watch(
-    [paymentCurrency, foreignAmount, booksExchangeRate, transactionRate, sourceCurrency],
+    [paymentCurrency, paymentAmount, paymentToBooksRate, paymentToSourceRate, sourceCurrency],
     () => {
-      if (!needsBooksFx.value) {
-        foreignAmount.value = null;
-        booksExchangeRate.value = null;
+      if (!needsPaymentToBooksFx.value) {
+        paymentAmount.value = null;
+        paymentToBooksRate.value = null;
         return;
       }
-      if (!needsSeparateBooksFx.value) {
-        booksExchangeRate.value = null;
+      if (!needsSeparateBooksRate.value) {
+        paymentToBooksRate.value = null;
       }
-      if (computedBooksBdt.value != null) {
-        amountBdt.value = computedBooksBdt.value;
+      if (computedBooksAmount.value != null) {
+        booksAmount.value = computedBooksAmount.value;
       }
     },
   );
 
   const resetFxAmounts = () => {
-    foreignAmount.value = null;
-    booksExchangeRate.value = null;
-    transactionRate.value = 1;
+    paymentAmount.value = null;
+    paymentToBooksRate.value = null;
+    paymentToSourceRate.value = needsPaymentToSourceRate.value ? null : 1;
+    applyPrefilledRates();
   };
 
   const validateFxFields = (): string | null => {
-    if (needsTransactionRate.value) {
-      if ((transactionRate.value ?? 0) <= 0) {
-        return `Enter transaction rate (${sourceCurrency.value} per 1 ${paymentCurrency.value})`;
-      }
+    if (needsPaymentToSourceRate.value && (paymentToSourceRate.value ?? 0) <= 0) {
+      return `Enter transaction rate (${sourceCurrency.value} per 1 ${paymentCurrency.value})`;
     }
-    if (needsBooksFx.value) {
-      if ((foreignAmount.value ?? 0) <= 0) return 'Enter amount in payment currency';
-      if (needsSeparateBooksFx.value && (booksExchangeRate.value ?? 0) <= 0) {
-        return `Enter exchange rate to ${booksCurrencyCode.value}`;
+    if (needsPaymentToBooksFx.value) {
+      if ((paymentAmount.value ?? 0) <= 0) return 'Enter amount in payment currency';
+      if (needsSeparateBooksRate.value && (paymentToBooksRate.value ?? 0) <= 0) {
+        return `Enter exchange rate to ${booksCurrency.value}`;
       }
-      const books = computedBooksBdt.value;
+      const books = computedBooksAmount.value;
       if (books == null) {
-        return needsSeparateBooksFx.value
+        return needsSeparateBooksRate.value
           ? 'Enter payment currency amount and books rate'
           : 'Enter payment currency amount and transaction rate';
       }
-      if (Math.round((amountBdt.value ?? 0) * 100) !== Math.round(books * 100)) {
-        return `Books amount (${booksCurrencyCode.value}) must match payment currency × rate`;
+      if (!amountsMatchToCent(booksAmount.value, books)) {
+        return `Books amount (${booksCurrency.value}) must match payment currency × rate`;
       }
     }
     return null;
@@ -131,36 +99,31 @@ export function useApPayoutFxFields(
 
   const settlementFxPayload = () => ({
     settlement_currency_code: paymentCurrency.value,
-    foreign_amount: needsBooksFx.value ? Number(foreignAmount.value) : null,
-    exchange_rate: needsBooksFx.value
-      ? needsSeparateBooksFx.value
-        ? Number(booksExchangeRate.value)
-        : Number(transactionRate.value)
-      : null,
+    foreign_amount: needsPaymentToBooksFx.value ? Number(paymentAmount.value) : null,
+    exchange_rate: effectivePaymentToBooksRate(),
   });
 
   const sourceFxPayload = (cashbookPointPotId: number | null) => ({
     source_currency_code: sourceCurrency.value,
-    transaction_rate: needsTransactionRate.value ? Number(transactionRate.value) : 1,
+    transaction_rate: needsPaymentToSourceRate.value ? Number(paymentToSourceRate.value) : 1,
     cashbook_point_pot_id: cashbookPointPotId,
   });
 
   return {
     paymentCurrency,
-    foreignAmount,
-    booksExchangeRate,
-    transactionRate,
-    needsTransactionRate,
-    needsCurrencyShift,
-    currencyShiftHint,
-    potCashRateLabel,
-    booksCashRateLabel,
-    needsBooksFx,
-    needsSeparateBooksFx,
-    computedBooksBdt,
+    paymentAmount,
+    paymentToBooksRate,
+    paymentToSourceRate,
+    needsPaymentToSourceRate,
+    sourceToPaymentHint,
+    sourceToPaymentRateLabel,
+    paymentToBooksRateLabel,
+    needsPaymentToBooksFx,
+    needsSeparateBooksRate,
+    computedBooksAmount,
     resetFxAmounts,
     validateFxFields,
     settlementFxPayload,
     sourceFxPayload,
   };
-};
+}

@@ -1,13 +1,9 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, watch, type Ref } from 'vue';
 import type { CashbookLegPotChipOption } from './useCashbookLegPots';
 import { useBooksExchangeRateQuery } from './useBooksExchangeRateQuery';
+import { usePayoutFxCore } from './usePayoutFxCore';
 import type { MoneyPayKind } from '../types/moneyPayDialog';
-import {
-  currenciesMatch,
-  needsPayoutBooksFx,
-  needsPayoutSeparateBooksFx,
-  needsPayoutTransactionRate,
-} from '../utils/apPayoutFx';
+import { currenciesMatch } from '../utils/apPayoutFx';
 
 function potCurrency(
   potId: number | null,
@@ -40,9 +36,6 @@ export function useMoneyPayDialogFx(options: {
   booksCurrencyCode: Ref<string>;
   booksTenantId: Ref<number>;
 }) {
-  const transactionRate = ref<number | null>(null);
-  const booksExchangeRate = ref<number | null>(null);
-
   const paymentCurrency = computed(
     () => options.paymentCurrencyCode.value.trim().toUpperCase() || 'BDT',
   );
@@ -62,25 +55,21 @@ export function useMoneyPayDialogFx(options: {
     () => options.dialogOpen.value && options.kind.value === 'payment' && sourceCurrency.value.length >= 3,
   );
 
-  const needsTransactionRate = computed(() =>
-    needsPayoutTransactionRate(paymentCurrency.value, sourceCurrency.value),
-  );
-
-  const needsBooksFx = computed(() =>
-    needsPayoutBooksFx(paymentCurrency.value, booksCurrency.value),
-  );
-
-  const needsSeparateBooksFx = computed(() =>
-    needsPayoutSeparateBooksFx(
-      paymentCurrency.value,
-      sourceCurrency.value,
-      booksCurrency.value,
-    ),
-  );
-
-  const needsAnyFx = computed(
-    () => needsTransactionRate.value || needsSeparateBooksFx.value,
-  );
+  const {
+    paymentToBooksRate,
+    paymentToSourceRate,
+    needsPaymentToSourceRate,
+    needsPaymentToBooksFx,
+    needsSeparateBooksRate,
+    needsAnyFx,
+    syncDefaultPaymentToSourceRate,
+    effectivePaymentToBooksRate,
+  } = usePayoutFxCore({
+    paymentCurrency,
+    sourceCurrency,
+    booksCurrency,
+    initialPaymentToSourceRate: null,
+  });
 
   const paymentBooksRateQuery = useBooksExchangeRateQuery(
     options.booksTenantId,
@@ -88,7 +77,7 @@ export function useMoneyPayDialogFx(options: {
     computed(
       () =>
         fxActive.value
-        && needsBooksFx.value
+        && needsPaymentToBooksFx.value
         && !currenciesMatch(paymentCurrency.value, booksCurrency.value),
     ),
   );
@@ -99,26 +88,26 @@ export function useMoneyPayDialogFx(options: {
     computed(
       () =>
         fxActive.value
-        && needsTransactionRate.value
+        && needsPaymentToSourceRate.value
         && !currenciesMatch(sourceCurrency.value, booksCurrency.value),
     ),
   );
 
   const resetFx = () => {
-    transactionRate.value = needsTransactionRate.value ? null : 1;
-    booksExchangeRate.value = null;
+    paymentToSourceRate.value = needsPaymentToSourceRate.value ? null : 1;
+    paymentToBooksRate.value = null;
   };
 
   const applyPotBooksRates = () => {
     if (!options.dialogOpen.value || options.kind.value !== 'payment') return;
     const potRate = potBooksRate(options.fromPotId.value, options.fromPotOptions.value);
     if (potRate == null) return;
-    if (needsSeparateBooksFx.value) {
-      booksExchangeRate.value = potRate;
-    } else if (needsTransactionRate.value) {
-      transactionRate.value = potRate;
-    } else if (needsBooksFx.value) {
-      booksExchangeRate.value = potRate;
+    if (needsSeparateBooksRate.value) {
+      paymentToBooksRate.value = potRate;
+    } else if (needsPaymentToSourceRate.value) {
+      paymentToSourceRate.value = potRate;
+    } else if (needsPaymentToBooksFx.value) {
+      paymentToBooksRate.value = potRate;
     }
   };
 
@@ -126,14 +115,14 @@ export function useMoneyPayDialogFx(options: {
     potBooksRate(options.fromPotId.value, options.fromPotOptions.value),
   );
 
-  const resolvedBooksExchangeRate = (): number => {
-    const fromRef = Number(booksExchangeRate.value);
+  const resolvedPaymentToBooksRate = (): number => {
+    const fromRef = Number(paymentToBooksRate.value);
     if (Number.isFinite(fromRef) && fromRef > 0) return fromRef;
     return resolvedFromPotBooksRate.value ?? 0;
   };
 
-  const resolvedTransactionRate = (): number => {
-    const fromRef = Number(transactionRate.value);
+  const resolvedPaymentToSourceRate = (): number => {
+    const fromRef = Number(paymentToSourceRate.value);
     if (Number.isFinite(fromRef) && fromRef > 0) return fromRef;
     return resolvedFromPotBooksRate.value ?? 0;
   };
@@ -152,10 +141,10 @@ export function useMoneyPayDialogFx(options: {
     () => paymentBooksRateQuery.data.value,
     (rate) => {
       if (rate == null || rate <= 0) return;
-      if (needsSeparateBooksFx.value) {
-        if (booksExchangeRate.value == null) booksExchangeRate.value = rate;
-      } else if (needsTransactionRate.value && currenciesMatch(sourceCurrency.value, booksCurrency.value)) {
-        if (transactionRate.value == null) transactionRate.value = rate;
+      if (needsSeparateBooksRate.value) {
+        if (paymentToBooksRate.value == null) paymentToBooksRate.value = rate;
+      } else if (needsPaymentToSourceRate.value && currenciesMatch(sourceCurrency.value, booksCurrency.value)) {
+        if (paymentToSourceRate.value == null) paymentToSourceRate.value = rate;
       }
     },
   );
@@ -164,17 +153,16 @@ export function useMoneyPayDialogFx(options: {
     () => sourceBooksRateQuery.data.value,
     (rate) => {
       if (rate == null || rate <= 0) return;
-      if (needsTransactionRate.value && !currenciesMatch(sourceCurrency.value, booksCurrency.value)) {
-        if (transactionRate.value == null) transactionRate.value = rate;
+      if (needsPaymentToSourceRate.value && !currenciesMatch(sourceCurrency.value, booksCurrency.value)) {
+        if (paymentToSourceRate.value == null) paymentToSourceRate.value = rate;
       }
     },
   );
 
   watch([sourceCurrency, paymentCurrency, () => options.fromPotId.value, () => options.toPotId.value], () => {
     if (!options.dialogOpen.value) return;
-    if (!needsTransactionRate.value) transactionRate.value = 1;
-    else if (transactionRate.value === 1) transactionRate.value = null;
-    if (!needsSeparateBooksFx.value) booksExchangeRate.value = null;
+    syncDefaultPaymentToSourceRate();
+    if (!needsSeparateBooksRate.value) paymentToBooksRate.value = null;
   });
 
   watch(
@@ -187,41 +175,42 @@ export function useMoneyPayDialogFx(options: {
 
   const validateFx = (): string | null => {
     if (!fxActive.value || !needsAnyFx.value) return null;
-    if (needsTransactionRate.value && resolvedTransactionRate() <= 0) {
-      return needsSeparateBooksFx.value
+    if (needsPaymentToSourceRate.value && resolvedPaymentToSourceRate() <= 0) {
+      return needsSeparateBooksRate.value
         ? `No pot rate on file (${sourceCurrency.value} per 1 ${paymentCurrency.value})`
         : `No exchange rate on file (${booksCurrency.value} per 1 ${paymentCurrency.value})`;
     }
-    if (needsSeparateBooksFx.value && resolvedBooksExchangeRate() <= 0) {
+    if (needsSeparateBooksRate.value && resolvedPaymentToBooksRate() <= 0) {
       return `No exchange rate on file (${booksCurrency.value} per 1 ${paymentCurrency.value})`;
     }
     return null;
   };
 
   const settlementFxFields = () => {
-    if (!needsBooksFx.value) {
-      return { exchangeRate: null as number | null, booksExchangeRate: null as number | null };
+    if (!needsPaymentToBooksFx.value) {
+      return { paymentToBooksRate: null as number | null, separateBooksRate: null as number | null };
     }
-    const booksRate = needsSeparateBooksFx.value
-      ? resolvedBooksExchangeRate()
-      : resolvedTransactionRate();
+    const effectiveRate = effectivePaymentToBooksRate(
+      resolvedPaymentToSourceRate(),
+      resolvedPaymentToBooksRate(),
+    );
     return {
-      exchangeRate: Number.isFinite(booksRate) && booksRate > 0 ? booksRate : null,
-      booksExchangeRate: needsSeparateBooksFx.value ? booksRate : null,
+      paymentToBooksRate: effectiveRate,
+      separateBooksRate: needsSeparateBooksRate.value ? effectiveRate : null,
     };
   };
 
   const sourceFxFields = () => ({
     sourceCurrencyCode: sourceCurrency.value,
-    transactionRate: needsTransactionRate.value ? resolvedTransactionRate() : 1,
+    paymentToSourceRate: needsPaymentToSourceRate.value ? resolvedPaymentToSourceRate() : 1,
   });
 
   return {
-    transactionRate,
-    booksExchangeRate,
+    paymentToSourceRate,
+    paymentToBooksRate,
     validateFx,
     settlementFxFields,
     sourceFxFields,
-    needsBooksFx,
+    needsPaymentToBooksFx,
   };
 }

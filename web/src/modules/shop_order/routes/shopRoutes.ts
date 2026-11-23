@@ -7,19 +7,19 @@ const browseChildren: RouteRecordRaw[] = [
   {
     path: '',
     name: 'shop-catalog-entry-page',
-    component: () => import('src/modules/shop_order/pages/CatalogEntryPage.vue'),
+    component: () => import('src/modules/shop_order/pages/storefront/CatalogEntryPage.vue'),
     beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
   },
   {
     path: ':shopSlug/product/:productId',
     name: 'shop-storefront-product-detail-page',
-    component: () => import('src/modules/shop_order/pages/StorefrontProductDetailPage.vue'),
+    component: () => import('src/modules/shop_order/pages/storefront/StorefrontProductDetailPage.vue'),
     beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
   },
   {
     path: ':shopSlug',
     name: 'shop-storefront-browse-page',
-    component: () => import('src/modules/shop_order/pages/StorefrontPage.vue'),
+    component: () => import('src/modules/shop_order/pages/storefront/StorefrontPage.vue'),
     beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
   },
 ];
@@ -32,7 +32,7 @@ const shopRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'shop-orders-page',
-        component: () => import('src/modules/shop_order/pages/CustomerOrdersPage.vue'),
+        component: () => import('src/modules/shop_order/pages/storefront/CustomerOrdersPage.vue'),
         beforeEnter: createShopAccessGuard({ requiredModule: 'shop_order_mgmt' }),
       },
       {
@@ -42,7 +42,7 @@ const shopRoutes: RouteRecordRaw[] = [
       {
         path: ':id',
         name: 'shop-order-detail-page',
-        component: () => import('src/modules/shop_order/pages/CustomerOrderDetailPage.vue'),
+        component: () => import('src/modules/shop_order/pages/storefront/CustomerOrderDetailPage.vue'),
         beforeEnter: createShopAccessGuard({ requiredModule: 'shop_order_mgmt' }),
       },
     ],
@@ -61,7 +61,7 @@ const shopRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'shop-cart-page',
-        component: () => import('src/modules/shop_order/pages/ShopCartEntryPage.vue'),
+        component: () => import('src/modules/shop_order/pages/storefront/ShopCartEntryPage.vue'),
         beforeEnter: createShopAccessGuard({ requiredModule: 'shop_cart' }),
       },
     ],
@@ -90,7 +90,7 @@ const shopRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'shop-dropship-place-order-page',
-        component: () => import('src/modules/shop_order/pages/ShopDropshipPlaceOrderPage.vue'),
+        component: () => import('src/modules/shop_order/pages/storefront/ShopDropshipPlaceOrderPage.vue'),
         beforeEnter: createShopAccessGuard({ requiredModule: 'shop_cart' }),
       },
     ],
@@ -103,7 +103,7 @@ const shopRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'shop-checkout-page',
-        component: () => import('src/modules/shop_order/pages/ShopCheckoutPage.vue'),
+        component: () => import('src/modules/shop_order/pages/storefront/ShopCheckoutPage.vue'),
         beforeEnter: createShopAccessGuard({ requiredModule: 'shop_cart' }),
       },
     ],
