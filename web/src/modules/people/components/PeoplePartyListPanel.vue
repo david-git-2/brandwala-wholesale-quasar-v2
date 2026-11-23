@@ -152,11 +152,7 @@ const selected = ref<{ id: number; name: string } | null>(null);
 const movementPartyId = ref(0);
 
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
-const booksTenantId = computed(() => {
-  const t = authStore.selectedTenant;
-  if (!t) return 0;
-  return t.parent_id ?? t.id;
-});
+const booksTenantId = computed(() => authStore.selectedTenant?.id ?? 0);
 const tenantName = computed(() => authStore.selectedTenant?.name ?? 'Company');
 const tenantSlug = computed(() =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined,

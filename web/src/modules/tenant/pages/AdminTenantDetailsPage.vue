@@ -120,13 +120,6 @@
                   </button>
                 </div>
               </div>
-
-              <CompanyBusinessSection
-                v-if="companyContext"
-                :company-id="companyContext.id"
-                :company-slug="companyContext.slug"
-                :selected-brand-id="selectedBrandId"
-              />
             </q-card-section>
           </q-card>
         </div>
@@ -200,9 +193,7 @@ import { storeToRefs } from 'pinia';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
-import CompanyBusinessSection from '../components/CompanyBusinessSection.vue';
 import { useTenantStore } from '../stores/tenantStore';
-import { resolveCompanyTenant } from '../utils/tenantHierarchy';
 import type { Tenant } from '../types';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
@@ -264,23 +255,7 @@ const investorLoginUrl = computed(() =>
     : `${baseUrl.value}/investor/login`,
 );
 
-const isCapitalHostTenant = computed(() => tenant.value?.parent_id === null);
-
-const companyContext = computed(() => {
-  if (!tenant.value) {
-    return null;
-  }
-
-  if (tenant.value.parent_id === null) {
-    return tenant.value;
-  }
-
-  return items.value.find((item) => item.id === tenant.value?.parent_id) ?? null;
-});
-
-const selectedBrandId = computed(() =>
-  tenant.value?.parent_id != null ? tenant.value.id : null,
-);
+const isCapitalHostTenant = computed(() => Boolean(tenant.value));
 
 const loadPageData = async () => {
   pageLoading.value = true;
@@ -346,11 +321,9 @@ watch(
       return;
     }
 
-    const workspaceTenant = resolveCompanyTenant(value, items.value) ?? value;
-
     tenantStore.setSelectedTenant({
-      id: workspaceTenant.id,
-      slug: workspaceTenant.slug,
+      id: value.id,
+      slug: value.slug,
     });
   },
   { immediate: true },

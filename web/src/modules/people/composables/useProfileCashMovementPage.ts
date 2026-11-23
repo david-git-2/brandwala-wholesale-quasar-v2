@@ -20,11 +20,7 @@ export function useProfileCashMovementPage(pageKind: Extract<MoneyPayKind, 'depo
   const profileLoadError = ref<string | null>(null);
 
   const operatingTenantId = computed(() => authStore.selectedTenant?.id ?? 0);
-  const booksTenantId = computed(() => {
-    const t = authStore.selectedTenant;
-    if (!t) return 0;
-    return t.parent_id ?? t.id;
-  });
+  const booksTenantId = computed(() => authStore.selectedTenant?.id ?? 0);
 
   const routeEntityType = computed(() => {
     const raw = route.params.entityType;

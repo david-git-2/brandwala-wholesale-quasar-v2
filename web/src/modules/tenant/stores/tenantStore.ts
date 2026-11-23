@@ -6,10 +6,6 @@ import {
   tenantRepository,
 } from '../repositories/tenantRepository';
 import { tenantService } from '../services/tenantService';
-import {
-  filterCompanyTenants,
-  resolveCompanyTenant,
-} from '../utils/tenantHierarchy';
 import { readAdminWorkspaceTenant } from '../utils/adminWorkspacePreference';
 import type {
   Tenant,
@@ -95,7 +91,7 @@ const storedWorkspace = readStorage();
 export const useTenantStore = defineStore('tenant', {
   state: (): TenantStoreState => ({
     items: [],
-    availableAdminTenants: filterCompanyTenants(storedWorkspace?.availableAdminTenants ?? []),
+    availableAdminTenants: storedWorkspace?.availableAdminTenants ?? [],
     hierarchyChildRefs: storedWorkspace?.hierarchyChildRefs ?? [],
     hierarchyChildRefsCacheKey: storedWorkspace?.hierarchyChildRefsCacheKey ?? null,
     selectedTenantId: null,
@@ -180,14 +176,12 @@ export const useTenantStore = defineStore('tenant', {
         return false;
       }
 
-      const company = resolveCompanyTenant(matched, pool) ?? matched;
-      this.selectedTenantId = company.id;
-      this.selectedTenantSlug = company.slug;
+      this.selectedTenantId = matched.id;
+      this.selectedTenantSlug = matched.slug;
       return true;
     },
 
     syncSelectedTenant() {
-      this.promoteSelectedTenantToCompany();
 
       if (this.selectedTenantId === null) {
         this.selectedTenantSlug = null;
@@ -219,30 +213,8 @@ export const useTenantStore = defineStore('tenant', {
       this.persistWorkspaceState();
     },
 
-    promoteSelectedTenantToCompany(membershipPool?: readonly Tenant[]) {
-      const pool = membershipPool ?? this.items;
-      if (this.selectedTenantId === null) {
-        return;
-      }
-
-      const selected =
-        pool.find((tenant) => tenant.id === this.selectedTenantId) ??
-        this.availableAdminTenants.find((tenant) => tenant.id === this.selectedTenantId) ??
-        null;
-
-      const company = resolveCompanyTenant(selected, pool);
-
-      if (!company || company.id === this.selectedTenantId) {
-        return;
-      }
-
-      this.selectedTenantId = company.id;
-      this.selectedTenantSlug = company.slug;
-    },
-
     setAvailableAdminTenants(tenants: Tenant[]) {
-      this.availableAdminTenants = filterCompanyTenants(tenants);
-      this.promoteSelectedTenantToCompany(tenants);
+      this.availableAdminTenants = tenants;
       this.syncSelectedTenant();
     },
 
