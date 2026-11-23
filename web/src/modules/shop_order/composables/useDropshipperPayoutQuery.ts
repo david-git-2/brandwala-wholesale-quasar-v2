@@ -4,7 +4,7 @@ import { courierRemittanceRepository } from '../repositories/courierRemittanceRe
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import type { MerchantPayoutSummary } from '../types';
 
-export function useMerchantPayoutQuery(tenantId: Ref<number | null | undefined>) {
+export function useDropshipperPayoutQuery(tenantId: Ref<number | null | undefined>) {
   const enabled = computed(() => !!tenantId.value);
 
   const query = useQuery({

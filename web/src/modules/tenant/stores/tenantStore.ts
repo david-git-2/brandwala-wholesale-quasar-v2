@@ -7,6 +7,7 @@ import {
 } from '../repositories/tenantRepository';
 import { tenantService } from '../services/tenantService';
 import { readAdminWorkspaceTenant } from '../utils/adminWorkspacePreference';
+import { filterCompanyTenants } from '../utils/tenantHierarchy';
 import type {
   Tenant,
   TenantCreateInput,
@@ -214,7 +215,7 @@ export const useTenantStore = defineStore('tenant', {
     },
 
     setAvailableAdminTenants(tenants: Tenant[]) {
-      this.availableAdminTenants = tenants;
+      this.availableAdminTenants = filterCompanyTenants(tenants);
       this.syncSelectedTenant();
     },
 

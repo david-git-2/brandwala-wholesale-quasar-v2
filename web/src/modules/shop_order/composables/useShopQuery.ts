@@ -2,7 +2,7 @@ import { useQuery, useInfiniteQuery, keepPreviousData, useQueryClient } from '@t
 import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
-import { vendorRepository } from 'src/modules/vendor/repositories/vendorRepository';
+import { vendorRepository } from 'src/modules/people/submodules/vendor/repositories/vendorRepository';
 import type { CatalogRefreshLogRow } from '../utils/catalogRefreshByVendor';
 import type { Shop } from '../types';
 

@@ -414,7 +414,7 @@ import {
 } from 'src/modules/shop_order/constants/shopConfigurationPresets';
 import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { productService } from 'src/modules/products/services/productService';
-import type { Vendor } from 'src/modules/vendor/types';
+import type { Vendor } from 'src/modules/people/submodules/vendor/types';
 import { useShopCategoryListQuery } from '../composables/useShopCategoryQuery';
 
 type ShopForm = {
@@ -765,7 +765,7 @@ const loadVendors = async () => {
     return;
   }
   loadingVendors.value = true;
-  const { vendorService } = await import('src/modules/vendor/services/vendorService');
+  const { vendorService } = await import('src/modules/people/submodules/vendor/services/vendorService');
   const result = await vendorService.listVendors(form.tenant_id);
   vendors.value = result.success && result.data ? result.data : [];
   loadingVendors.value = false;

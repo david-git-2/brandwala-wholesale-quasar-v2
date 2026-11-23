@@ -45,11 +45,14 @@ export type PaginatedBills = {
 export type BillPayloadItem = {
   id?: number;
   global_stock_id?: number | null;
-  line_kind?: 'stock' | 'service' | 'charge' | 'adjustment';
+  product_id?: number | null;
+  shipment_item_id?: number | null;
+  line_kind?: 'stock' | 'description' | 'service' | 'charge' | 'adjustment';
   name_snapshot?: string;
   quantity: number;
   sell_price_amount: number;
   line_discount_amount?: number;
+  line_total_amount?: number;
   line_meta?: Record<string, unknown>;
 };
 
@@ -60,8 +63,8 @@ export type BillFromPayloadInput = {
     profile_id: number | null;
     from_profile_id?: number | null;
     to_profile_id?: number | null;
-    settlement_kind?: 'cash' | 'credit' | 'custody' | null;
-    document_kind?: 'standard' | 'credit_note' | 'debit_note';
+    settlement_kind?: string | null;
+    document_kind?: string;
     parent_bill_id?: number | null;
     source_type?: string | null;
     source_id?: string | null;
@@ -176,7 +179,7 @@ export type {
 };
 
 export type IssueBillOptions = {
-  invoiceType: 'wholesale' | 'retail' | 'ap' | string;
+  invoiceType: string;
   tenantId?: number;
   stockItems?: Array<{
     id?: number;
@@ -279,8 +282,8 @@ export function parseBillDetailBundleFromRpc(data: unknown): BillDetailBundle {
         const r = row as Record<string, unknown>;
         return {
           id: Number(r.id),
-          name_snapshot: String(r.name_snapshot ?? 'Line'),
-          currency_code: String(r.currency_code ?? 'BDT').toUpperCase(),
+          name_snapshot: typeof r.name_snapshot === 'string' ? r.name_snapshot : 'Line',
+          currency_code: (typeof r.currency_code === 'string' ? r.currency_code : 'BDT').toUpperCase(),
           line_total_amount: Number(r.line_total_amount ?? 0),
           books_amount: Number(r.books_amount ?? r.line_total_amount ?? 0),
           quantity: Number(r.quantity ?? 1),
@@ -374,7 +377,7 @@ const listBills = async (params: ListBillsParams): Promise<PaginatedBills> => {
     const meta = (r.meta ?? {}) as Record<string, unknown>;
     const due = Number(r.due_amount ?? 0);
     const paid = Number(r.paid_amount ?? 0);
-    const status = String(r.status ?? 'draft');
+    const status = typeof r.status === 'string' ? r.status : 'draft';
     const paymentStatus =
       status === 'voided'
         ? 'voided'
@@ -386,15 +389,16 @@ const listBills = async (params: ListBillsParams): Promise<PaginatedBills> => {
               ? 'partially_paid'
               : 'due';
     const orderNo = typeof meta.order_no === 'string' ? meta.order_no.trim() : '';
+    const billIdNum = Number(r.bill_id);
     return {
-      id: Number(r.bill_id),
+      id: billIdNum,
       tenant_id: Number(r.tenant_id),
       issued_by_tenant_id: Number(r.tenant_id),
-      invoice_no: String(r.invoice_no ?? `DRAFT-${r.bill_id}`),
+      invoice_no: typeof r.invoice_no === 'string' ? r.invoice_no : `DRAFT-${billIdNum}`,
       invoice_type: kindToInvoiceType(r.kind as string | null),
       invoice_status: status === 'partially_paid' ? 'issued' : status,
       payment_status: paymentStatus,
-      invoice_date: String(r.invoice_date ?? ''),
+      invoice_date: typeof r.invoice_date === 'string' ? r.invoice_date : '',
       due_date: (r.due_date as string | null) ?? null,
       total_amount: Number(r.total_amount ?? 0),
       due_amount: due,
@@ -405,7 +409,7 @@ const listBills = async (params: ListBillsParams): Promise<PaginatedBills> => {
       channel_meta: meta,
       recipient_name: typeof meta.recipient_name === 'string' ? meta.recipient_name : null,
       created_by: null,
-      created_at: String(r.created_at ?? ''),
+      created_at: typeof r.created_at === 'string' ? r.created_at : '',
       source_context_label: orderNo ? `Order ${orderNo}` : null,
     } as GlobalInvoiceRow;
   });

@@ -160,6 +160,33 @@ const getSubmoduleSectionAndWeight = (
     }
   }
 
+  if (parentKey === 'people') {
+    switch (moduleKey) {
+      case 'people':
+        return { section: '', weight: 5 };
+      case 'customer':
+        return { section: '', weight: 10 };
+      case 'recipient_profile':
+        return { section: '', weight: 15 };
+      case 'billing_profile':
+        return { section: '', weight: 20 };
+      case 'vendor':
+        return { section: '', weight: 30 };
+      case 'investor_profiles':
+        return { section: '', weight: 40 };
+      case 'investor_capital':
+        return { section: '', weight: 45 };
+      case 'investor_capital_ledger':
+        return { section: '', weight: 50 };
+      case 'investor_shipment_share':
+        return { section: '', weight: 55 };
+      case 'investor_portal':
+        return { section: '', weight: 60 };
+      default:
+        return { section: '', weight: 99 };
+    }
+  }
+
   return { section: '', weight: 99 };
 };
 

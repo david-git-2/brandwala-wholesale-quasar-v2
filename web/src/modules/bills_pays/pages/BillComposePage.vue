@@ -496,8 +496,8 @@ import {
   showErrorNotification,
   showSuccessNotification,
 } from 'src/utils/appFeedback';
-import type { CustomerProfile } from 'src/modules/customer/repositories/customerProfileRepository';
-import { useCustomerProfiles } from 'src/modules/customer/composables/useCustomerProfiles';
+import type { CustomerProfile } from 'src/modules/people/submodules/customer/repositories/customerProfileRepository';
+import { useCustomerProfiles } from 'src/modules/people/submodules/customer/composables/useCustomerProfiles';
 import {
   billsRepository,
   type SalesInvoiceStockItem,

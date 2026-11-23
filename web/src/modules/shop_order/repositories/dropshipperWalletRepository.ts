@@ -19,7 +19,7 @@ export interface MerchantWalletLedgerRow {
   note: string;
 }
 
-export const merchantWalletRepository = {
+export const dropshipperWalletRepository = {
   async getMySummary(): Promise<MerchantWalletSummary> {
     const { data, error } = await supabase.rpc('get_my_dropship_wallet_summary');
     if (error) throw error;

@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-// Presentational skeleton loader matching DropshipMerchantsPage layout
+// Presentational skeleton loader matching DropshippersPage layout
 </script>
 
 <style scoped>

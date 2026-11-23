@@ -317,7 +317,7 @@ export interface ShopCategory {
 /** Shared setup lookups (vendors, categories, brands) for a tenant. */
 export type ShopSetupTenantLookups = {
   categories: ShopCategory[];
-  vendors: import('src/modules/vendor/types').Vendor[];
+  vendors: import('src/modules/people/submodules/vendor/types').Vendor[];
   brandsByVendor: Record<string, string[]>;
 };
 

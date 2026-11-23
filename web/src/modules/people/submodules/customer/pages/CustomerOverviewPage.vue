@@ -228,7 +228,7 @@ import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
 import TfEntityListShell from 'src/components/ui/TfEntityListShell.vue';
 import { useCanAdministerCustomerGroup } from '../composables/useCanAdministerCustomerGroup';
 import { useInvoiceWorkspace } from 'src/modules/bills_pays/composables/useInvoiceWorkspace';
-import { useRecipientProfileStore } from 'src/modules/customer/stores/recipientProfileStore';
+import { useRecipientProfileStore } from 'src/modules/people/submodules/customer/stores/recipientProfileStore';
 import { getInitials } from 'src/modules/bills_pays/utils/invoiceListDisplay';
 import {
   showErrorNotification,

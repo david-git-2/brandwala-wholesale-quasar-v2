@@ -1411,7 +1411,7 @@ import ProductBasedCostingSettingsDrawer, {
   type PbcSettingsDrawerAction,
 } from '../components/ProductBasedCostingSettingsDrawer.vue';
 import { useProductBasedCostingFileDetailsPageQuery } from '../composables/useProductBasedCostingFileDetailsPageQuery';
-import { useCustomerAccounts } from 'src/modules/customer/composables/useCustomerAccounts';
+import { useCustomerAccounts } from 'src/modules/people/submodules/customer/composables/useCustomerAccounts';
 import ProductBasedCostingStatusOverrideDialog from '../components/ProductBasedCostingStatusOverrideDialog.vue';
 import ProductBasedCostingStatusWorkflowBar from '../components/ProductBasedCostingStatusWorkflowBar.vue';
 import DocumentDeliveryPaperChips from 'src/modules/procurement_stock/components/DocumentDeliveryPaperChips.vue';

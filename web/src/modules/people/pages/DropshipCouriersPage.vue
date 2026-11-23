@@ -71,8 +71,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { useQuasar } from 'quasar';
-import { dropshipCourierService } from '../services/dropshipCourierService';
-import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
+import { dropshipCourierService } from 'src/modules/shop_order/services/dropshipCourierService';
+import type { CourierServiceRow } from 'src/modules/shop_order/repositories/dropshipCourierRepository';
 
 const $q = useQuasar();
 const loading = ref(false);

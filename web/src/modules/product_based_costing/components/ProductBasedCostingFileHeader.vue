@@ -242,10 +242,10 @@ import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import type { ProductBasedCostingFile } from '../types';
-import type { CustomerProfile } from 'src/modules/customer/repositories/customerProfileRepository';
+import type { CustomerProfile } from 'src/modules/people/submodules/customer/repositories/customerProfileRepository';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useCustomerProfileMutations } from 'src/modules/customer/composables/useCustomerProfileMutations';
-import { useCustomerProfiles } from 'src/modules/customer/composables/useCustomerProfiles';
+import { useCustomerProfileMutations } from 'src/modules/people/submodules/customer/composables/useCustomerProfileMutations';
+import { useCustomerProfiles } from 'src/modules/people/submodules/customer/composables/useCustomerProfiles';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 import {
   alwaysVisibleColumns,

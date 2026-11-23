@@ -17,7 +17,7 @@ import type {
   ShopCategory,
 } from '../types';
 import type { ShopCustomerAccessPageBundle } from '../types/shopCustomerAccessPage';
-import type { Vendor } from 'src/modules/vendor/types';
+import type { Vendor } from 'src/modules/people/submodules/vendor/types';
 import type { StaffShopOrderDetailResponse, StaffShopOrderItemsPageCursor } from '../types/staffShopOrderDetail';
 import {
   mapStaffShopOrderDetailToFlat,

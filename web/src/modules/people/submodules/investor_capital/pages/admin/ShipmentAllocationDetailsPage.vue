@@ -161,11 +161,11 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useInvestorCapitalStore } from 'src/modules/investor_capital/stores/investorCapitalStore';
+import { useInvestorCapitalStore } from 'src/modules/people/submodules/investor_capital/stores/investorCapitalStore';
 import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore';
 import { calculateLineLandedCostBdt, costingShipmentForPreview } from 'src/shared/shipment-engine';
 import { isShipmentCostsLocked } from 'src/modules/procurement_stock/utils/costEntriesCosting';
-import type { ShipmentInvestment } from 'src/modules/investor_capital/types';
+import type { ShipmentInvestment } from 'src/modules/people/submodules/investor_capital/types';
 import { formatAmountBdt } from 'src/utils/currency';
 import ShipmentShareEditor from '../../components/ShipmentShareEditor.vue';
 import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';

@@ -158,8 +158,8 @@ import type { QTableColumn } from 'quasar';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import InvestorTransactionDialog from '../../components/InvestorTransactionDialog.vue';
-import { useInvestorCapitalStore } from 'src/modules/investor_capital/stores/investorCapitalStore';
-import type { InvestorTransactionCreateInput } from 'src/modules/investor_capital/types';
+import { useInvestorCapitalStore } from 'src/modules/people/submodules/investor_capital/stores/investorCapitalStore';
+import type { InvestorTransactionCreateInput } from 'src/modules/people/submodules/investor_capital/types';
 import { formatAmountBdt } from 'src/utils/currency';
 
 const authStore = useAuthStore();

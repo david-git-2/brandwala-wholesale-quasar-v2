@@ -149,7 +149,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import AddProductCartCard from './AddProductCartCard.vue';
 import AddProductCartSkeleton from './AddProductCartSkeleton.vue';

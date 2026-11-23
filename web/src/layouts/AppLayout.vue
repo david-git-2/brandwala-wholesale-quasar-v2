@@ -110,6 +110,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation';
 import { useAdminTenantSelection } from 'src/modules/tenant/composables/useAdminTenantSelection';
 import { readLegacyWorkspaceSelection, useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { filterCompanyTenants } from 'src/modules/tenant/utils/tenantHierarchy';
 import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
 import { MEMBERSHIP_UI_PATHS } from 'src/modules/membership/types/preferences';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
@@ -140,7 +141,7 @@ const logoutTo = computed(() => '/app/login');
 const selectedTenantId = computed(() => tenantStore.selectedTenantId);
 
 const tenantOptions = computed(() =>
-  tenantStore.availableAdminTenants.map((tenant) => ({
+  filterCompanyTenants(tenantStore.availableAdminTenants).map((tenant) => ({
     label: tenant.name,
     value: tenant.id,
   })),
@@ -150,7 +151,7 @@ const selectedTenantLabel = computed(() => {
   const selectedOption =
     tenantOptions.value.find((option) => option.value === selectedTenantId.value) ?? null;
 
-  return selectedOption?.label ?? 'Select company';
+  return selectedOption?.label ?? tenantStore.selectedTenant?.name ?? 'Select company';
 });
 const { ensureSelectedTenantWorkspace, selectTenantWorkspace, selectingTenantId } =
   useAdminTenantSelection();

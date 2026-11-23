@@ -470,7 +470,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { productRepository } from 'src/modules/products/repositories/productRepository';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';

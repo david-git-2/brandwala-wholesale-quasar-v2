@@ -685,7 +685,7 @@ import {
   showSuccessNotification,
   showWarningNotification,
 } from 'src/utils/appFeedback';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { useCargoCompanyStore } from '../stores/cargoCompanyStore';
 import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';

@@ -58,7 +58,7 @@ import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
 import { invalidateSharedShipmentItemsCostingCache, seedSharedShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance';
 import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBalance';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import { useCargoCompanyStore } from './cargoCompanyStore';
 import { shouldSyncShipmentApBills } from '../utils/shipmentUpdateApSync';
 

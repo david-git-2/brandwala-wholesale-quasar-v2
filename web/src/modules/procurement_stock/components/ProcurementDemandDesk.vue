@@ -523,8 +523,8 @@ import ProcurementDemandFulfillCards from './ProcurementDemandFulfillCards.vue';
 import ProcurementDemandGroupItemRows from './ProcurementDemandGroupItemRows.vue';
 import ProcurementDemandGroupLinesTable from './ProcurementDemandGroupLinesTable.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { vendorRepository } from 'src/modules/vendor/repositories/vendorRepository';
-import type { Vendor } from 'src/modules/vendor/types';
+import { vendorRepository } from 'src/modules/people/submodules/vendor/repositories/vendorRepository';
+import type { Vendor } from 'src/modules/people/submodules/vendor/types';
 import { getStaffCatalogStatusLabel } from 'src/modules/shop_order/utils/catalogOrderStatus';
 import { getCustomerOrderStatusColor } from 'src/modules/shop_order/utils/customerOrderStatusUi';
 import {

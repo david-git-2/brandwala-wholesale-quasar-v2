@@ -1,10 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import {
-  getAppRouteLocation,
-  getTenantSlugFromRoute,
-} from 'src/modules/tenant/utils/tenantRouteContext';
+import { validateAppRouteTenantSlug } from 'src/modules/tenant/utils/tenantRouteContext';
 
 const productBasedCostingRoutes: RouteRecordRaw[] = [
   {

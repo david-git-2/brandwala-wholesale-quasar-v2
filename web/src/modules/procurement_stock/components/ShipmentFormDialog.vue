@@ -246,7 +246,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useDialogPluginComponent, useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { useCargoCompanyStore } from '../stores/cargoCompanyStore';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';

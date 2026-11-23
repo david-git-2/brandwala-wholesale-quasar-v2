@@ -303,7 +303,7 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: 'couriers',
         name: 'app-shop-dropship-couriers-page',
-        component: () => import('src/modules/shop_order/pages/DropshipCouriersPage.vue'),
+        component: () => import('src/modules/people/pages/DropshipCouriersPage.vue'),
         beforeEnter: guard('shop_shipping'),
       },
       {
@@ -323,7 +323,7 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: 'merchants',
         name: 'app-shop-dropship-merchants-page',
-        component: () => import('src/modules/shop_order/pages/DropshipMerchantsPage.vue'),
+        component: () => import('src/modules/people/pages/DropshippersPage.vue'),
         beforeEnter: guard('shop_config'),
       },
       {

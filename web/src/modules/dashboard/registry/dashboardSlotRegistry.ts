@@ -1,7 +1,7 @@
 import { PROCUREMENT_DASHBOARD_SLOTS } from 'src/modules/procurement_stock/dashboard/procurementDashboardSlots';
 import { SHOP_ORDER_DASHBOARD_SLOTS } from 'src/modules/shop_order/dashboard/shopOrderDashboardSlots';
 import { THRIFT_DASHBOARD_SLOTS } from 'src/modules/thrift/dashboard/thriftDashboardSlots';
-import { INVESTOR_CAPITAL_DASHBOARD_SLOTS } from 'src/modules/investor_capital/dashboard/investorCapitalDashboardSlots';
+import { INVESTOR_CAPITAL_DASHBOARD_SLOTS } from 'src/modules/people/submodules/investor_capital/dashboard/investorCapitalDashboardSlots';
 import {
   getModuleDefinition,
   type ModuleAction,

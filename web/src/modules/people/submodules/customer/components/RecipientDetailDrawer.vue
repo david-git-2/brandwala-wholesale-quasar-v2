@@ -210,7 +210,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { RecipientProfile } from 'src/types/recipientProfile';
-import { useRecipientProfileStore } from 'src/modules/customer/stores/recipientProfileStore';
+import { useRecipientProfileStore } from 'src/modules/people/submodules/customer/stores/recipientProfileStore';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 
 const props = defineProps<{

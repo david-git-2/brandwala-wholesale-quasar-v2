@@ -123,13 +123,13 @@ import type { QTableColumn } from 'quasar';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import InvestorProfileDialog from '../../components/InvestorProfileDialog.vue';
-import { useInvestorCapitalStore } from 'src/modules/investor_capital/stores/investorCapitalStore';
+import { useInvestorCapitalStore } from 'src/modules/people/submodules/investor_capital/stores/investorCapitalStore';
 import type {
   Investor,
   InvestorCreateInput,
   InvestorDeleteInput,
   InvestorUpdateInput,
-} from 'src/modules/investor_capital/types';
+} from 'src/modules/people/submodules/investor_capital/types';
 import { formatAmountBdt } from 'src/utils/currency';
 
 const authStore = useAuthStore();

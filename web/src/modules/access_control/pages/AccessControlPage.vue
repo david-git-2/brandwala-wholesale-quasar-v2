@@ -225,7 +225,7 @@ import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore';
 import type { Membership, TenantMembershipRole } from 'src/modules/membership/types';
 import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
-import { useCustomerProfileStore } from 'src/modules/customer/stores/customerProfileStore';
+import { useCustomerProfileStore } from 'src/modules/people/submodules/customer/stores/customerProfileStore';
 import { useTenantModuleStore } from 'src/modules/tenant/stores/tenantModuleStore';
 import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
@@ -254,7 +254,7 @@ import {
   useCustomerGroupMembersQuery,
   useInvestorsQuery,
 } from '../composables/useAccessControlQueries';
-import { useCustomerProfiles } from 'src/modules/customer/composables/useCustomerProfiles';
+import { useCustomerProfiles } from 'src/modules/people/submodules/customer/composables/useCustomerProfiles';
 
 // Dialog components
 import RoleFormDialog from '../components/dialogs/RoleFormDialog.vue';
@@ -271,7 +271,7 @@ import CustomerGroupMemberFormDialog, {
 } from '../components/dialogs/CustomerGroupMemberFormDialog.vue';
 import DeleteCustomerGroupMemberDialog from '../components/dialogs/DeleteCustomerGroupMemberDialog.vue';
 import LinkCustomerProfileDialog from '../components/dialogs/LinkCustomerProfileDialog.vue';
-import { useCanAdministerCustomerGroup } from 'src/modules/customer/composables/useCanAdministerCustomerGroup';
+import { useCanAdministerCustomerGroup } from 'src/modules/people/submodules/customer/composables/useCanAdministerCustomerGroup';
 
 // Styling helpers
 const activeStatusStyle = {

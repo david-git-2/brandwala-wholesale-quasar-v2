@@ -238,7 +238,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useInvoiceWorkspace } from 'src/modules/bills_pays/composables/useInvoiceWorkspace';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useRecipientProfileStore } from 'src/modules/customer/stores/recipientProfileStore';
+import { useRecipientProfileStore } from 'src/modules/people/submodules/customer/stores/recipientProfileStore';
 import type { RecipientProfile } from 'src/types/recipientProfile';
 import RecipientDetailDrawer from './RecipientDetailDrawer.vue';
 import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';

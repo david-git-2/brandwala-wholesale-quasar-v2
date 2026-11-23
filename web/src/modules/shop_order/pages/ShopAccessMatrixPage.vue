@@ -670,7 +670,7 @@ import {
   showSuccessNotification,
 } from 'src/utils/appFeedback';
 import CustomerGroupDetailsDrawer from '../components/CustomerGroupDetailsDrawer.vue';
-import { useCanAdministerCustomerGroup } from 'src/modules/customer/composables/useCanAdministerCustomerGroup';
+import { useCanAdministerCustomerGroup } from 'src/modules/people/submodules/customer/composables/useCanAdministerCustomerGroup';
 
 const props = withDefaults(defineProps<{ embedded?: boolean; shop?: Shop | null }>(), {
   embedded: false,

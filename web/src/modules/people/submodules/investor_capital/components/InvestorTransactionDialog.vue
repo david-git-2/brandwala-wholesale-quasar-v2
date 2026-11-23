@@ -85,7 +85,7 @@ import type {
   Investor,
   InvestorTransactionCreateInput,
   InvestorTransactionMethod,
-} from 'src/modules/investor_capital/types';
+} from 'src/modules/people/submodules/investor_capital/types';
 
 const props = defineProps<{
   modelValue: boolean;

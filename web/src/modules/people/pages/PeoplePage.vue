@@ -60,10 +60,10 @@ import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import TfDrawerSectionTabs, {
   type TfDrawerSectionTab,
 } from 'src/components/ui/TfDrawerSectionTabs.vue';
-import CustomerGroupListPanel from 'src/modules/customer/components/CustomerGroupListPanel.vue';
+import CustomerGroupListPanel from 'src/modules/people/submodules/customer/components/CustomerGroupListPanel.vue';
 import ProfileOperatingAccountPanel from 'src/modules/bills_pays/components/ProfileOperatingAccountPanel.vue';
 import PeoplePartyListPanel from '../components/PeoplePartyListPanel.vue';
-import RecipientListPanel from 'src/modules/customer/components/RecipientListPanel.vue';
+import RecipientListPanel from 'src/modules/people/submodules/customer/components/RecipientListPanel.vue';
 
 const PEOPLE_TABS = ['tenant', 'customer', 'curia', 'cargo', 'vendor', 'investor', 'end_customer'] as const;
 type PeopleTab = (typeof PEOPLE_TABS)[number];

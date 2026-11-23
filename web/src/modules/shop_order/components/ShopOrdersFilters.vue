@@ -253,7 +253,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
-import type { CustomerProfile } from 'src/modules/customer/repositories/customerProfileRepository';
+import type { CustomerProfile } from 'src/modules/people/submodules/customer/repositories/customerProfileRepository';
 import type { StaffOrdersPageShop } from '../types';
 
 const props = withDefaults(

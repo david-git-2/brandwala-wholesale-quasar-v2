@@ -3,10 +3,7 @@ import type { RouteRecordRaw } from 'vue-router';
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 import { createShopAccessGuard } from 'src/modules/auth/guards/createShopAccessGuard';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import {
-  getAppRouteLocation,
-  getTenantSlugFromRoute,
-} from 'src/modules/tenant/utils/tenantRouteContext';
+import { validateAppRouteTenantSlug } from 'src/modules/tenant/utils/tenantRouteContext';
 
 const resolveAppCostingLanding = () => {
   const authStore = useAuthStore();

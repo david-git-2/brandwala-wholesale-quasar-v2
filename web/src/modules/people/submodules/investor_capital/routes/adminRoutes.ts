@@ -38,13 +38,13 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'app-capital-investors-page',
         component: () =>
-          import('src/modules/investor_capital/pages/admin/InvestorsListPage.vue'),
+          import('src/modules/people/submodules/investor_capital/pages/admin/InvestorsListPage.vue'),
         beforeEnter: guard('investor_profiles'),
       },
       {
         path: ':id',
         component: () =>
-          import('src/modules/investor_capital/pages/admin/InvestorDetailPage.vue'),
+          import('src/modules/people/submodules/investor_capital/pages/admin/InvestorDetailPage.vue'),
         beforeEnter: guard('investor_profiles'),
         redirect: (to) => ({
           name: 'app-capital-investor-general',
@@ -55,19 +55,19 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
             path: 'general',
             name: 'app-capital-investor-general',
             component: () =>
-              import('src/modules/investor_capital/pages/admin/InvestorDetailGeneralPage.vue'),
+              import('src/modules/people/submodules/investor_capital/pages/admin/InvestorDetailGeneralPage.vue'),
           },
           {
             path: 'investment',
             name: 'app-capital-investor-investment',
             component: () =>
-              import('src/modules/investor_capital/pages/admin/InvestorDetailInvestmentPage.vue'),
+              import('src/modules/people/submodules/investor_capital/pages/admin/InvestorDetailInvestmentPage.vue'),
           },
           {
             path: 'shipments',
             name: 'app-capital-investor-shipments',
             component: () =>
-              import('src/modules/investor_capital/pages/admin/InvestorDetailShipmentsPage.vue'),
+              import('src/modules/people/submodules/investor_capital/pages/admin/InvestorDetailShipmentsPage.vue'),
           },
         ],
       },
@@ -88,7 +88,7 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-capital-ledger-page',
-        component: () => import('src/modules/investor_capital/pages/admin/CapitalLedgerPage.vue'),
+        component: () => import('src/modules/people/submodules/investor_capital/pages/admin/CapitalLedgerPage.vue'),
         beforeEnter: guard('investor_capital_ledger'),
       },
     ],
@@ -101,14 +101,14 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'app-capital-shipments-page',
         component: () =>
-          import('src/modules/investor_capital/pages/admin/ShipmentAllocationsPage.vue'),
+          import('src/modules/people/submodules/investor_capital/pages/admin/ShipmentAllocationsPage.vue'),
         beforeEnter: guard('investor_shipment_share'),
       },
       {
         path: ':id',
         name: 'app-capital-shipment-details-page',
         component: () =>
-          import('src/modules/investor_capital/pages/admin/ShipmentAllocationDetailsPage.vue'),
+          import('src/modules/people/submodules/investor_capital/pages/admin/ShipmentAllocationDetailsPage.vue'),
         beforeEnter: guard('investor_shipment_share'),
       },
     ],

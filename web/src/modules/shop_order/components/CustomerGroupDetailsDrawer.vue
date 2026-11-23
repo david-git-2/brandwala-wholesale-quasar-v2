@@ -77,7 +77,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
-import { useCustomerMembersQuery } from 'src/modules/customer/composables/useCustomerQuery';
+import { useCustomerMembersQuery } from 'src/modules/people/submodules/customer/composables/useCustomerQuery';
 
 const props = defineProps<{
   modelValue: boolean;

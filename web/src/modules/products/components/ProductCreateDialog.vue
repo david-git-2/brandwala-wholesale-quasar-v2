@@ -343,7 +343,7 @@ import type { QForm } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalMarketsQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import {
   useProductBrandsQuery,
   useProductCategoriesQuery,

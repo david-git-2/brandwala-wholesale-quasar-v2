@@ -44,7 +44,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue';
-import type { Investor } from 'src/modules/investor_capital/types';
+import type { Investor } from 'src/modules/people/submodules/investor_capital/types';
 
 type InvestorForm = {
   id?: number;

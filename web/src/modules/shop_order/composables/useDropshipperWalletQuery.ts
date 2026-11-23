@@ -1,10 +1,10 @@
 import { computed, type Ref } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
-import { merchantWalletRepository } from '../repositories/merchantWalletRepository';
+import { dropshipperWalletRepository } from '../repositories/dropshipperWalletRepository';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
-export function useMerchantWalletQuery(enabled: Ref<boolean> | boolean = true) {
+export function useDropshipperWalletQuery(enabled: Ref<boolean> | boolean = true) {
   const authStore = useAuthStore();
   const tenantId = computed(() => authStore.tenantId ?? 0);
   const enabledRef = computed(() => {
@@ -14,13 +14,13 @@ export function useMerchantWalletQuery(enabled: Ref<boolean> | boolean = true) {
 
   const summaryQuery = useQuery({
     queryKey: computed(() => shopOrderQueryKeys.merchantWalletSummary(tenantId.value)),
-    queryFn: () => merchantWalletRepository.getMySummary(),
+    queryFn: () => dropshipperWalletRepository.getMySummary(),
     enabled: enabledRef,
   });
 
   const ledgerQuery = useQuery({
     queryKey: computed(() => shopOrderQueryKeys.merchantWalletLedger(tenantId.value)),
-    queryFn: () => merchantWalletRepository.listMyLedger({ limit: 50, offset: 0 }),
+    queryFn: () => dropshipperWalletRepository.listMyLedger({ limit: 50, offset: 0 }),
     enabled: enabledRef,
   });
 

@@ -87,7 +87,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useRecipientProfileStore } from 'src/modules/customer/stores/recipientProfileStore';
+import { useRecipientProfileStore } from 'src/modules/people/submodules/customer/stores/recipientProfileStore';
 import { useBDAddressOptions } from '../composables/useBDAddressOptions';
 import { useDropshipReviewCartQuery } from '../composables/useDropshipReviewCartQuery';
 import { useSubmitDropshipOrderMutation } from '../composables/useSubmitDropshipOrderMutation';

@@ -202,8 +202,8 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
-import { vendorRepository } from 'src/modules/vendor/repositories/vendorRepository';
-import type { Vendor } from 'src/modules/vendor/types';
+import { vendorRepository } from 'src/modules/people/submodules/vendor/repositories/vendorRepository';
+import type { Vendor } from 'src/modules/people/submodules/vendor/types';
 import {
   parseSupabaseError,
   requestConfirmation,

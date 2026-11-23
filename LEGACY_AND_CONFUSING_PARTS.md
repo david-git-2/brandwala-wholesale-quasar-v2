@@ -24,9 +24,9 @@ This guide explains **what is confusing, why it looks like that, and what you sh
 ### Why it's confusing
 Different modules represent, store, and format money in completely different ways:
 
-- **BDT-first global helpers:**
-  - `web/src/boot/currency.ts` registers `$formatBdt` globally.
-  - `web/src/utils/currency.ts` has `formatAmountBdt` / `formatBdtTaka` (hardcodes `৳` and Indian digit grouping) alongside `formatSettlementCurrencyAmount` (handles `BDT`, `GBP`, `USD`, `EUR` and explicitly avoids `৳` for non-BDT).
+- **Shared currency helpers (`web/src/utils/currency.ts`):**
+  - `web/src/boot/currency.ts` registers `$formatBdt` globally (for BDT-only displays).
+  - `web/src/utils/currency.ts` has `formatAmountBdt` / `formatBdtTaka` (hardcodes `৳` and Indian digit grouping) alongside `formatCurrencyAmount` (and its alias `formatSettlementCurrencyAmount`), which handles `BDT`, `GBP`, `USD`, `EUR`, `CNY`, symbol-only foreign inputs, and uses Indian grouping for `BDT` vs. standard grouping for foreign currencies.
 - **Shop orders have TWO currencies on the same order (Purchase vs. Sell):**
   - `web/src/modules/shop_order/utils/resolveCatalogOrderCurrency.ts` resolves a **purchase/cargo currency** (defaults to `£`, preferring item `cost_price_currency_symbol` over `order.shop_buy_currency_symbol`) separately from a **customer sell currency** (defaults to `৳`, from `order.shop_sell_currency_symbol`).
   - `coerceCatalogPrice` in `web/src/modules/shop_order/utils/catalogPriceUtils.ts` has to accept raw numbers, JSON strings, or objects with `amount`, `unit_price_amount`, or `sell_price_amount`.
@@ -40,7 +40,7 @@ Different modules represent, store, and format money in completely different way
 
 ### Rule of thumb
 - Always ask: *"Is this amount in **purchase currency** (e.g. GBP/CNY), **settlement/transaction currency**, or **books currency** (BDT)?"*
-- Don't use `formatBdtTaka` / `$formatBdt` on foreign-currency amounts—use `formatSettlementCurrencyAmount` in `bills_pays` or the module's currency resolver.
+- Don't use `formatBdtTaka` / `$formatBdt` on foreign-currency amounts—use `formatCurrencyAmount` (or `formatSettlementCurrencyAmount` in `bills_pays`) with the resolved currency code/symbol.
 
 ---
 

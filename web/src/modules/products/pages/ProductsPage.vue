@@ -114,7 +114,7 @@ import ProductFilterDrawer from '../components/ProductFilterDrawer.vue';
 import ProductCreateDialog from '../components/ProductCreateDialog.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalMarketsQuery, useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import {
   useProductsInfiniteListQuery,
   useProductBrandsQuery,

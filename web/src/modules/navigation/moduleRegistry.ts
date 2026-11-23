@@ -132,6 +132,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'vendor',
     name: 'Vendor',
     description: 'Manage vendor records, sourcing, and supplier collaboration.',
+    parentModuleKey: 'people',
     routes: [
       {
         scope: 'app',
@@ -638,7 +639,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'people',
     name: 'People',
-    description: 'Team members and people directory.',
+    description: 'Parent module for people, customers, vendors, investors, and party profiles.',
     navIcon: 'ph ph-identification-badge',
     routes: [
       {
@@ -656,13 +657,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Customers',
     description:
       'Customer groups, billing profiles, delivery recipients, member access, and wallets. No sidebar link — open via Settings or deep links.',
+    parentModuleKey: 'people',
     routes: [],
   },
   {
     key: 'billing_profile',
     name: 'Billing Profiles',
     description: 'Financial identity for invoices. Opened from Customers, not a sidebar item.',
-    parentModuleKey: 'customer',
+    parentModuleKey: 'people',
     routes: [],
   },
   {
@@ -685,7 +687,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'recipient_profile',
     name: 'Recipient Profiles',
     description: 'Manage end-customer delivery and drop-ship target profiles.',
-    parentModuleKey: 'customer',
+    parentModuleKey: 'people',
     routes: [],
   },
   {
@@ -732,7 +734,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'investor_portal',
     name: 'Investor Portal',
     description: 'External investor login and portfolio.',
-    parentModuleKey: 'investor_capital',
+    parentModuleKey: 'people',
     routes: [],
   },
   {
@@ -754,14 +756,16 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'investor_capital',
     name: 'Investor Capital',
     description:
-      'Parent module for investor profiles, capital ledger, shipment share allocations, and investor portal.',
+      'Submodule for investor profiles, capital ledger, shipment share allocations, and investor portal.',
     navIcon: 'ph ph-piggy-bank',
+    parentModuleKey: 'people',
     routes: [],
   },
   {
     key: 'investor_profiles',
     name: 'Investors',
     description: 'Manage capital partners.',
+    parentModuleKey: 'people',
     routes: [
       {
         scope: 'app',
@@ -777,14 +781,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'investor_capital_ledger',
     name: 'Capital Ledger',
     description: 'Manage capital deposits, adjustments, and withdrawal transactions.',
-    parentModuleKey: 'investor_capital',
+    parentModuleKey: 'people',
     routes: [],
   },
   {
     key: 'investor_shipment_share',
     name: 'Shipment Share Allocations',
     description: 'Assign investor cost-share percentage and track shipment profit allocations.',
-    parentModuleKey: 'investor_capital',
+    parentModuleKey: 'people',
     routes: [],
   },
   // -----------------------------------------------------------

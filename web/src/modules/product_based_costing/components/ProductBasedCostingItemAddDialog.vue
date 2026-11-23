@@ -327,7 +327,7 @@ import { useI18n } from 'vue-i18n';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import { useProductBasedCostingFileDetailQuery } from '../composables/useProductBasedCostingFileDetailQuery';
 import { useUpdateProductBasedCostingFileMutation } from '../composables/useProductBasedCostingFileMutations';
 import { useGlobalCurrencies } from 'src/modules/global_reference/composables/useGlobalCurrencies';

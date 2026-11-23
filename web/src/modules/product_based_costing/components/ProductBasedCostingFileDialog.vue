@@ -142,10 +142,10 @@
 import { computed, reactive, watch, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { customerRepository } from 'src/modules/customer/repositories/customerRepository';
-import { useCustomerMutations } from 'src/modules/customer/composables/useCustomerQuery';
-import CreateCustomerDialog from 'src/modules/customer/components/CreateCustomerDialog.vue';
-import type { CustomerAccount } from 'src/modules/customer/types/customer';
+import { customerRepository } from 'src/modules/people/submodules/customer/repositories/customerRepository';
+import { useCustomerMutations } from 'src/modules/people/submodules/customer/composables/useCustomerQuery';
+import CreateCustomerDialog from 'src/modules/people/submodules/customer/components/CreateCustomerDialog.vue';
+import type { CustomerAccount } from 'src/modules/people/submodules/customer/types/customer';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 import { useGlobalCurrencies } from 'src/modules/global_reference/composables/useGlobalCurrencies';
 

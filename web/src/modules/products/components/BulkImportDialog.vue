@@ -324,7 +324,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, reactive } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import { useGlobalMarketsQuery, useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { useProductStore } from '../stores/productStore';
 import { showSuccessNotification } from 'src/utils/appFeedback';

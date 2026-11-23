@@ -370,9 +370,6 @@ const highlightOrderId = computed(() => {
 const actionColspan = computed(() => (isParentTenant.value ? 13 : 12));
 
 const tenantId = computed(() => authStore.tenantId as number | undefined);
-const booksTenantId = computed(
-  () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
-);
 
 const booksTenantId = computed(() => {
   const t = authStore.selectedTenant;

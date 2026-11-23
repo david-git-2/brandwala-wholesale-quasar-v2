@@ -54,7 +54,8 @@ export function buildKernelCreateBillPayload(
 
   const tenantCreditorId =
     typeof letterheadProfileId === 'number' ? letterheadProfileId : undefined;
-  const counterpartyId = inv.profile_id > 0 ? inv.profile_id : undefined;
+  const counterpartyId =
+    inv.profile_id != null && inv.profile_id > 0 ? inv.profile_id : undefined;
 
   let fromProfileId: number | undefined;
   let toProfileId: number | undefined;
@@ -85,7 +86,7 @@ export function buildKernelCreateBillPayload(
     due_date: inv.due_date ?? null,
     from_profile_id: fromProfileId,
     to_profile_id: toProfileId,
-    counterparty_profile_id: inv.profile_id > 0 ? inv.profile_id : null,
+    counterparty_profile_id: counterpartyId ?? null,
     currency_code: currencyCode,
     note: inv.note ?? null,
     source_type: 'compose',

@@ -24,7 +24,7 @@
       </section>
 
       <!-- Loading State: Dedicated Skeleton Loader -->
-      <DropshipMerchantsSkeleton v-if="isLoading" />
+      <DropshippersSkeleton v-if="isLoading" />
 
       <!-- Loaded State -->
       <template v-else>
@@ -182,14 +182,14 @@
 import { ref, computed } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { getInitials, getAvatarColor } from 'src/shared/utils/avatarUtils';
-import { useMerchantPayoutQuery } from '../composables/useMerchantPayoutQuery';
-import DropshipMerchantsSkeleton from '../components/DropshipMerchantsSkeleton.vue';
+import { useDropshipperPayoutQuery } from 'src/modules/shop_order/composables/useDropshipperPayoutQuery';
+import DropshippersSkeleton from '../components/DropshippersSkeleton.vue';
 
 const authStore = useAuthStore();
 const currentTenantId = computed(() => (authStore.selectedTenant?.id ? Number(authStore.selectedTenant.id) : null));
 
 // Queries & Mutations
-const { merchants, isLoading } = useMerchantPayoutQuery(currentTenantId);
+const { merchants, isLoading } = useDropshipperPayoutQuery(currentTenantId);
 
 // Filters
 const searchQuery = ref('');
