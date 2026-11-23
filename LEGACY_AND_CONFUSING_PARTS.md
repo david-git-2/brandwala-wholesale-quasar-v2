@@ -19,21 +19,6 @@ This guide explains **what is confusing, why it looks like that, and what you sh
 
 ---
 
-## 2. Legacy Naming & Dense Frontend Modules
-
-### Why it's confusing
-- **Dropship Role & Terminology Mapping (UI vs. Legacy DB/Internal Keys):**
-  - **Supplier** = `tenant`
-  - **Dropshipper** = `customer` (route `/app/shop/dropship/dropshippers`, RPC `get_dropship_dropshipper_billable_charges`, and report key `dropshipper_payable` now use `dropshipper`; internal settlement/order payload keys still use `merchant` or `reseller` in places, e.g., `reseller_purchase_cost`, `gift_cost_charged_to = 'reseller'`)
-  - **Recipient** = `end_customer`
-- **Shop Orders & Dropship (`web/src/modules/shop_order/pages/`):**
-  - Contains 35 active pages organized into `storefront/`, `orders/`, `dropship/`, and `admin/` subfolders (6 unreferenced V1 pages were removed; `DropshipOrderDetailV2*Page.vue` are the active dropship detail views).
-
-### Rule of thumb
-- Before building a new page or composable, check `web/src/modules/navigation/moduleRegistry.ts` to see which route and module are currently active (note: `shop_fulfillment` and `shop_dropship` are retired from nav; active order management lives under `shop_order_mgmt`).
-
----
-
 ## Quick Checklist Before Starting a New Flow
 
 1. **Check the route first:** Look in `moduleRegistry.ts` to make sure you're working in the active module.
