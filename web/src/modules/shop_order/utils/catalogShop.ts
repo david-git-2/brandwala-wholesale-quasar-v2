@@ -1,10 +1,32 @@
 import type { CustomerAccessibleShop } from '../repositories/shopOrderRepository';
 import type { ShopType } from '../types';
+import { getShopTypePathFromRoute } from 'src/modules/tenant/utils/tenantRouteContext';
 import {
   isShopTypePathSegment,
+  shopTypeFromPathSegment,
   shopTypeToPathSegment,
   type ShopTypePathSegment,
 } from './shopRouteTypes';
+
+type CustomerShopRouteLike = {
+  params?: Record<string, unknown>;
+  query?: Record<string, unknown>;
+  fullPath?: string;
+};
+
+export function resolveCustomerShopTypePath(
+  route: CustomerShopRouteLike,
+  tenantId?: number | null,
+): ShopTypePathSegment {
+  return getShopTypePathFromRoute(route) ?? getLastShopTypePath(tenantId);
+}
+
+export function shopTypeEnumFromCustomerRoute(
+  route: CustomerShopRouteLike,
+  tenantId?: number | null,
+): ShopType | null {
+  return shopTypeFromPathSegment(resolveCustomerShopTypePath(route, tenantId));
+}
 
 const lastShopIdKey = (tenantId: number) => `shop:${tenantId}:lastShopId`;
 const lastShopSlugKey = (tenantId: number) => `shop:${tenantId}:lastShopSlug`;
@@ -215,8 +237,7 @@ export function filterShopsByRouteType(
   shops: CustomerAccessibleShop[],
   shopTypePath: string | null | undefined,
 ): CustomerAccessibleShop[] {
-  if (!shopTypePath) return shops;
-  const path = shopTypePath.trim().toLowerCase();
+  const path = (shopTypePath ?? 'catalog').trim().toLowerCase();
   const map: Record<string, ShopType> = {
     catalog: 'vendor_catalog',
     stock: 'fixed_price',

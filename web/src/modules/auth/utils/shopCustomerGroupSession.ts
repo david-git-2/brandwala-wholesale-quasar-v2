@@ -1,4 +1,5 @@
 import { supabase } from 'src/boot/supabase';
+import type { ShopType } from 'src/modules/shop_order/types';
 import { mapShopRoleToAccessRole } from '../guards/accessGuard';
 import type {
   AuthAccessSnapshot,
@@ -38,10 +39,12 @@ const normalizeRows = (data: unknown): ShopLoginGroupRow[] => {
 export const listShopLoginGroups = async (
   email: string,
   tenantId: number,
+  shopType: ShopType,
 ): Promise<ShopLoginGroupRow[]> => {
   const { data, error } = await supabase.rpc('check_shop_login_access', {
     p_email: email,
     p_tenant_id: tenantId,
+    p_shop_type: shopType,
   });
 
   if (error) {
@@ -122,6 +125,7 @@ export const bootstrapShopCustomerGroup = async (params: {
   email: string;
   tenantId: number;
   memberId: number;
+  shopType: ShopType;
   createdAt?: string | null;
   updatedAt?: string | null;
 }): Promise<Omit<AuthAccessSnapshot, 'savedAt'> | null> => {
@@ -129,6 +133,7 @@ export const bootstrapShopCustomerGroup = async (params: {
     p_email: params.email,
     p_tenant_id: params.tenantId,
     p_customer_group_member_id: params.memberId,
+    p_shop_type: params.shopType,
   });
 
   if (error) {

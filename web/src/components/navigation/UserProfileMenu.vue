@@ -223,7 +223,12 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
 import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
 import { useShopLoginGroupsQuery } from 'src/modules/auth/composables/useShopLoginGroupsQuery';
-import { getShopSelectCompanyRouteLocation, getAppRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
+import {
+  getAppRouteLocation,
+  getShopSelectCompanyRouteLocation,
+  getShopTypePathFromRoute,
+} from 'src/modules/tenant/utils/tenantRouteContext';
+import { shopTypeFromPathSegment } from 'src/modules/shop_order/utils/shopRouteTypes';
 import {
   formatReleaseDeployedDate,
   formatReleaseVersionLabel,
@@ -256,6 +261,14 @@ const { locale } = useI18n();
 const { darkMode, setDarkMode, density, setDensity } = useAppearance();
 
 const isShopScope = computed(() => authStore.scope === 'shop');
+const shopLoginShopType = computed(() => {
+  if (!isShopScope.value) {
+    return null;
+  }
+  return shopTypeFromPathSegment(
+    getShopTypePathFromRoute(router.currentRoute.value) ?? undefined,
+  );
+});
 const { data: shopLoginGroups } = useShopLoginGroupsQuery(
   computed(() =>
     isShopScope.value && props.shopLoginGroupCount == null ? authStore.tenantId : null,
@@ -263,6 +276,7 @@ const { data: shopLoginGroups } = useShopLoginGroupsQuery(
   computed(() =>
     isShopScope.value && props.shopLoginGroupCount == null ? authStore.user?.email : null,
   ),
+  shopLoginShopType,
 );
 const canSwitchCompany = computed(() => {
   if (!isShopScope.value) {

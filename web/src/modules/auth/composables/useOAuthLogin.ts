@@ -6,7 +6,8 @@ import { mapShopRoleToAccessRole } from '../guards/accessGuard';
 import {
   rememberShopTypePath,
 } from 'src/modules/shop_order/utils/catalogShop';
-import { isShopTypePathSegment } from 'src/modules/shop_order/utils/shopRouteTypes';
+import { isShopTypePathSegment, shopTypeFromPathSegment } from 'src/modules/shop_order/utils/shopRouteTypes';
+import type { ShopType } from 'src/modules/shop_order/types';
 import {
   getAppRouteLocation,
   getShopDashboardRouteLocation,
@@ -452,6 +453,12 @@ export function useOAuthLogin(
     return true;
   };
 
+  const resolveShopLoginType = (): ShopType | null => {
+    const shopTypePath =
+      normalizeTenantSlug(options?.shopTypePath) ?? getShopTypePathFromRoute(route);
+    return shopTypeFromPathSegment(shopTypePath);
+  };
+
   const processShopLogin = async (userEmail: string, user: AuthUserSnapshot) => {
     const entryTenant = await resolveShopTenantEntry();
 
@@ -459,9 +466,18 @@ export function useOAuthLogin(
       return false;
     }
 
+    const shopType = resolveShopLoginType();
+    if (!shopType) {
+      await sendBackToLogin('Shop login requires a shop type in the URL', {
+        tenantId: entryTenant.id,
+        tenantSlug: entryTenant.slug,
+      });
+      return false;
+    }
+
     let matches;
     try {
-      matches = await listShopLoginGroups(userEmail, entryTenant.id);
+      matches = await listShopLoginGroups(userEmail, entryTenant.id, shopType);
     } catch (error) {
       console.error('[auth:shop] Login access check failed', error);
       await sendBackToLogin('Shop login access check failed', error);
@@ -544,6 +560,7 @@ export function useOAuthLogin(
         email: userEmail,
         tenantId: entryTenant.id,
         memberId: chosen.member_id,
+        shopType,
         createdAt: chosen.member_created_at,
         updatedAt: chosen.member_updated_at,
       });

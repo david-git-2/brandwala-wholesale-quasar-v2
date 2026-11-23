@@ -5,11 +5,17 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useActiveShopCartsQuery } from '../composables/useActiveShopCartsQuery';
+import { resolveCustomerShopTypePath } from '../utils/catalogShop';
 import { useShopCartQuery } from '../composables/useShopCartQuery';
 import { useShopCartSelection } from '../composables/useShopCartSelection';
 import ShopCartPage from './ShopCartPage.vue';
 import ShopDropshipCartPage from './ShopDropshipCartPage.vue';
+
+const route = useRoute();
+const authStore = useAuthStore();
 
 const {
   data: activeCartsData,
@@ -17,10 +23,13 @@ const {
 } = useActiveShopCartsQuery();
 const activeCarts = computed(() => activeCartsData.value ?? []);
 
-const { selectedShopId, currentShopCartInfo } = useShopCartSelection(
-  activeCarts,
-  isCartsLoading,
+const routeShopTypePath = computed(() =>
+  resolveCustomerShopTypePath(route, authStore.tenantId),
 );
+
+const { selectedShopId } = useShopCartSelection(activeCarts, isCartsLoading, {
+  cartKind: resolveCustomerShopTypePath(route, authStore.tenantId),
+});
 
 const selectedShopIdRef = ref<number | null>(null);
 
@@ -34,26 +43,9 @@ watch(
 
 const { cart } = useShopCartQuery(selectedShopIdRef);
 
-const resolvedCartKind = computed<'dropship' | 'catalog'>(() => {
-  const selectedCart =
-    activeCarts.value.find((cartItem) => cartItem.shop_id === selectedShopId.value) ?? null;
-  const shopType =
-    cart.value?.shop_type ??
-    selectedCart?.shop_type ??
-    currentShopCartInfo.value?.shop_type ??
-    (activeCarts.value.length === 1 ? activeCarts.value[0]?.shop_type : null);
-
-  if (shopType === 'dropship') return 'dropship';
-
-  if (
-    activeCarts.value.length > 0 &&
-    activeCarts.value.every((cartItem) => cartItem.shop_type === 'dropship')
-  ) {
-    return 'dropship';
-  }
-
-  return 'catalog';
-});
+const resolvedCartKind = computed<'dropship' | 'catalog'>(() =>
+  routeShopTypePath.value === 'dropship' ? 'dropship' : 'catalog',
+);
 </script>
 
 <script lang="ts">

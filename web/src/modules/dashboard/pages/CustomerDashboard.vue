@@ -45,6 +45,7 @@ import {
   getLastVisitedShopId,
   rememberCatalogShop,
   resolveCatalogShop,
+  resolveCustomerShopTypePath,
   shopCatalogEntryPath,
   shopCatalogPath,
 } from 'src/modules/shop_order/utils/catalogShop';
@@ -64,7 +65,7 @@ const route = useRoute();
 const router = useRouter();
 
 const routeShopTypePath = computed(() =>
-  typeof route.params.shopType === 'string' ? route.params.shopType : null,
+  resolveCustomerShopTypePath(route, authStore.tenantId),
 );
 const routeShopType = computed(() => shopTypeFromPathSegment(routeShopTypePath.value));
 
@@ -80,8 +81,8 @@ watch(
   { immediate: true },
 );
 
-const dashboardQuery = useCustomerDashboardQuery(tenantId);
-const portalStatsQuery = useCustomerShopPortalStatsQuery(tenantId);
+const dashboardQuery = useCustomerDashboardQuery(tenantId, routeShopType);
+const portalStatsQuery = useCustomerShopPortalStatsQuery(tenantId, routeShopType);
 
 const dashboard = computed(() => dashboardQuery.data.value);
 const dashboardError = computed(() => (dashboardQuery.error.value as Error | null)?.message || null);

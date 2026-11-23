@@ -60,7 +60,8 @@ import {
   type ShopLoginGroupRow,
 } from '../utils/shopCustomerGroupSession';
 import { useShopEntryShopType } from 'src/modules/tenant/composables/useShopEntryShopType';
-import { getShopDashboardRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
+import { getShopDashboardRouteLocation, getShopTypePathFromRoute } from 'src/modules/tenant/utils/tenantRouteContext';
+import { shopTypeFromPathSegment } from 'src/modules/shop_order/utils/shopRouteTypes';
 import { showErrorNotification } from 'src/utils/appFeedback';
 
 const { t } = useI18n();
@@ -68,7 +69,9 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
-const { shopTypeError } = useShopEntryShopType();
+const { shopTypeError, shopTypePath } = useShopEntryShopType();
+
+const entryShopType = () => shopTypeFromPathSegment(getShopTypePathFromRoute(route) ?? shopTypePath.value);
 
 const panelTitle = inject<Ref<string>>('authPanelTitle');
 if (panelTitle) {
@@ -101,8 +104,15 @@ const loadGroups = async () => {
     return;
   }
 
+  const shopType = entryShopType();
+  if (!shopType) {
+    errorMessage.value = t('shop.select_company_error');
+    loading.value = false;
+    return;
+  }
+
   try {
-    groups.value = await listShopLoginGroups(email, tenantId);
+    groups.value = await listShopLoginGroups(email, tenantId, shopType);
     if (groups.value.length === 0) {
       errorMessage.value = t('shop.select_company_empty');
     }
@@ -122,6 +132,12 @@ const selectGroup = async (group: ShopLoginGroupRow) => {
     return;
   }
 
+  const shopType = entryShopType();
+  if (!shopType) {
+    showErrorNotification(t('shop.select_company_error'));
+    return;
+  }
+
   savingMemberId.value = group.member_id;
   try {
     const snapshot = await bootstrapShopCustomerGroup({
@@ -129,6 +145,7 @@ const selectGroup = async (group: ShopLoginGroupRow) => {
       email,
       tenantId,
       memberId: group.member_id,
+      shopType,
       createdAt: group.member_created_at,
       updatedAt: group.member_updated_at,
     });

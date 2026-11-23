@@ -92,7 +92,8 @@ import {
   type OrderGlanceBucket,
 } from 'src/modules/dashboard/utils/customerDashboardStatus';
 import { useCustomerOrdersQuery } from '../composables/useCustomerOrdersQuery';
-import { shopCatalogEntryPath } from '../utils/catalogShop';
+import { resolveCustomerShopTypePath, shopCatalogEntryPath } from '../utils/catalogShop';
+import { shopTypeToPathSegment } from '../utils/shopRouteTypes';
 import type { CustomerOrderListItem } from '../types';
 import type { CustomerOrderListRow } from '../components/CustomerOrdersList.vue';
 import CustomerOrdersList from '../components/CustomerOrdersList.vue';
@@ -150,14 +151,19 @@ const setBucket = (value: OrderGlanceBucket | 'all' | null) => {
 
 const goCatalog = () => {
   const tenantSlugParam = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null;
-  void router.push(shopCatalogEntryPath(tenantSlugParam));
+  void router.push(
+    shopCatalogEntryPath(tenantSlugParam, resolveCustomerShopTypePath(route, null)),
+  );
 };
 
 const goToOrderDetails = (order: CustomerOrderListItem | CustomerOrderListRow) => {
   const row = order as CustomerOrderListItem;
-  const slug = typeof route.params.tenantSlug === 'string' ? `/${route.params.tenantSlug}` : '';
+  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : '';
+  const shopType =
+    shopTypeToPathSegment(row.shop_type_snapshot) ?? resolveCustomerShopTypePath(route, null);
   void router.push({
-    path: `${slug}/shop/orders/${row.id}`,
+    name: 'shop-order-detail-page',
+    params: { tenantSlug, shopType, id: String(row.id) },
     state: { shopTypeSnapshot: row.shop_type_snapshot },
   });
 };

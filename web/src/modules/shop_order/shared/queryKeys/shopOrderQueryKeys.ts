@@ -108,8 +108,12 @@ export const shopOrderQueryKeys = {
     ['shopOrder', 'pricingCandidates', { tenantId, shopId }] as const,
   currencies: () => ['shopOrder', 'currencies'] as const,
   pricingRule: (shopId: number) => ['shopOrder', 'pricingRule', { shopId }] as const,
-  customerOrders: (tenantId: number, statusBucket?: string | null) =>
-    ['shopOrder', 'customerOrders', { tenantId, statusBucket: statusBucket ?? null }] as const,
+  customerOrders: (
+    tenantId: number,
+    statusBucket?: string | null,
+    shopType?: string | null,
+  ) =>
+    ['shopOrder', 'customerOrders', { tenantId, statusBucket: statusBucket ?? null, shopType }] as const,
   customerDashboardOrders: (tenantId: number) =>
     ['shopOrder', 'customerDashboardOrders', { tenantId }] as const,
   orderDetailRoot: () => ['shopOrder', 'orderDetail'] as const,

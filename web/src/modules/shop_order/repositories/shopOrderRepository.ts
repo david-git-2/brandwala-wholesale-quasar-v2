@@ -516,13 +516,19 @@ const customerConfirmShopOrder = async (orderId: number): Promise<void> => {
 
 const listCustomerShopOrders = async (
   tenantId: number,
-  opts: { limit?: number; offset?: number; statusBucket?: string | null } = {},
+  opts: {
+    limit?: number;
+    offset?: number;
+    statusBucket?: string | null;
+    shopType?: import('../types').ShopType | null;
+  } = {},
 ): Promise<CustomerOrderListItem[]> => {
   const { data, error } = await supabase.rpc('list_customer_shop_orders', {
     p_tenant_id: tenantId,
     p_limit: opts.limit ?? 20,
     p_offset: opts.offset ?? 0,
     p_status_bucket: opts.statusBucket ?? null,
+    ...(opts.shopType ? { p_shop_type: opts.shopType } : {}),
   });
   if (error) throw error;
   return (data as CustomerOrderListItem[] | null) ?? [];

@@ -6,10 +6,12 @@ import {
   getLastVisitedShopSlug,
   getLastVisitedShopId,
   resolveCartShopId,
+  resolveCustomerShopTypePath,
   shopCartPath,
   shopCatalogEntryPath,
   shopCatalogPath,
 } from '../utils/catalogShop';
+import { shopTypeFromPathSegment } from '../utils/shopRouteTypes';
 import { filterActiveCartsByKind, type ShopCartKindFilter } from '../utils/shopCartScope';
 
 export function useShopCartSelection(
@@ -20,7 +22,8 @@ export function useShopCartSelection(
   const route = useRoute();
   const router = useRouter();
   const authStore = useAuthStore();
-  const cartKind = options?.cartKind ?? 'all';
+  const cartKind =
+    options?.cartKind ?? resolveCustomerShopTypePath(route, authStore.tenantId);
 
   const selectedShopId = ref<number | null>(null);
 
@@ -59,8 +62,13 @@ export function useShopCartSelection(
       }
       if (selectedShopId.value !== resolved) {
         selectedShopId.value = resolved;
+        const row = scopedCarts.find((cart) => cart.shop_id === resolved);
         void router.replace(
-          shopCartPath(route.params.tenantSlug ? String(route.params.tenantSlug) : null, resolved),
+          shopCartPath(
+            route.params.tenantSlug ? String(route.params.tenantSlug) : null,
+            resolved,
+            row?.shop_type ?? shopTypeFromPathSegment(cartKind) ?? undefined,
+          ),
         );
       }
     },

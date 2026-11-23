@@ -8409,7 +8409,7 @@ $$;
 ALTER FUNCTION "public"."check_login_membership"("p_email" "text", "p_scope" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint DEFAULT NULL::bigint) RETURNS TABLE("has_match" boolean, "matched_role" "public"."customer_group_role", "member_id" bigint, "member_name" "text", "member_email" "text", "member_tenant_id" bigint, "customer_group_id" bigint, "customer_group_name" "text", "member_is_active" boolean, "customer_group_is_active" boolean, "member_created_at" timestamp with time zone, "member_updated_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint DEFAULT NULL::bigint, "p_shop_type" "public"."shop_type_enum" DEFAULT NULL::"public"."shop_type_enum") RETURNS TABLE("has_match" boolean, "matched_role" "public"."customer_group_role", "member_id" bigint, "member_name" "text", "member_email" "text", "member_tenant_id" bigint, "customer_group_id" bigint, "customer_group_name" "text", "member_is_active" boolean, "customer_group_is_active" boolean, "member_created_at" timestamp with time zone, "member_updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -8448,6 +8448,8 @@ begin
         select 1
         from public.shop_customer_group_access scga
         inner join public.shops s on s.id = scga.shop_id
+        left join public.customer_group_shop_profiles profile
+          on profile.customer_group_id = cg.id and profile.tenant_id = s.tenant_id
         where scga.customer_group_id = cg.id
           and scga.status = true
           and s.tenant_id = p_tenant_id
@@ -8455,6 +8457,9 @@ begin
           and s.deleted_at is null
           and cg.tenant_id
             = public.resolve_books_tenant_id(p_tenant_id)
+          and (p_shop_type is null or s.shop_type = p_shop_type)
+          and coalesce(profile.is_active, true) = true
+          and coalesce(scga.can_browse, profile.default_can_browse, false) = true
       )
     )
   order by
@@ -8471,7 +8476,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint, "p_shop_type" "public"."shop_type_enum") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."check_store_access"("p_store_id" bigint) RETURNS boolean
@@ -13586,7 +13591,7 @@ $$;
 ALTER FUNCTION "public"."current_tenant_id"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_shop_type" "public"."shop_type_enum" DEFAULT NULL::"public"."shop_type_enum") RETURNS "jsonb"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -13609,6 +13614,7 @@ CREATE OR REPLACE FUNCTION "public"."customer_accessible_catalog_glance"("p_tena
       AND access.status = true
       AND coalesce(profile.is_active, true) = true
       AND coalesce(access.can_browse, profile.default_can_browse, false) = true
+      AND (p_shop_type IS NULL OR s.shop_type = p_shop_type)
   ),
   parent_tenant AS (
     SELECT public.resolve_books_tenant_id(p_tenant_id) AS tenant_id
@@ -13667,7 +13673,7 @@ CREATE OR REPLACE FUNCTION "public"."customer_accessible_catalog_glance"("p_tena
 $$;
 
 
-ALTER FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_shop_type" "public"."shop_type_enum") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."customer_can_select_shop"("p_shop_id" bigint, "p_tenant_id" bigint) RETURNS boolean
@@ -19247,7 +19253,7 @@ $$;
 ALTER FUNCTION "public"."get_customer_account_summary_for_staff"("p_tenant_id" bigint, "p_customer_group_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint, "p_shop_type" "public"."shop_type_enum" DEFAULT NULL::"public"."shop_type_enum") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -19307,7 +19313,7 @@ begin
     );
   end if;
 
-  v_catalog_glance := public.customer_accessible_catalog_glance(p_tenant_id, v_group_id);
+  v_catalog_glance := public.customer_accessible_catalog_glance(p_tenant_id, v_group_id, p_shop_type);
 
   select coalesce(jsonb_agg(row_to_json(shop_row) order by shop_row.name), '[]'::jsonb)
   into v_shops
@@ -19375,6 +19381,7 @@ begin
       and access.status = true
       and coalesce(profile.is_active, true) = true
       and coalesce(access.can_browse, profile.default_can_browse, false) = true
+      and (p_shop_type is null or s.shop_type = p_shop_type)
     group by
       s.id,
       s.tenant_id,
@@ -19439,7 +19446,8 @@ begin
   from public.shop_orders o
   where o.tenant_id = p_tenant_id
     and o.customer_group_id = v_group_id
-    and o.status is distinct from 'draft';
+    and o.status is distinct from 'draft'
+    and (p_shop_type is null or o.shop_type_snapshot = p_shop_type);
 
   select coalesce(jsonb_agg(row_to_json(order_row) order by order_row.created_at desc), '[]'::jsonb)
   into v_recent_orders
@@ -19459,6 +19467,7 @@ begin
     where o.tenant_id = p_tenant_id
       and o.customer_group_id = v_group_id
       and o.status is distinct from 'draft'
+      and (p_shop_type is null or o.shop_type_snapshot = p_shop_type)
     order by o.created_at desc
     limit 5
   ) order_row;
@@ -19499,6 +19508,7 @@ begin
     where c.status = 'active'
       and c.tenant_id = p_tenant_id
       and c.customer_group_id = v_group_id
+      and (p_shop_type is null or s.shop_type = p_shop_type)
     group by c.id, s.id, gc.code, gc.symbol
   ) cart_row;
 
@@ -19516,7 +19526,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint, "p_shop_type" "public"."shop_type_enum") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_customer_dues_report"("p_tenant_id" bigint, "p_issued_by_tenant_id" bigint DEFAULT NULL::bigint, "p_search" "text" DEFAULT NULL::"text", "p_aging_bucket" "text" DEFAULT NULL::"text", "p_min_due" numeric DEFAULT 0, "p_over_limit_only" boolean DEFAULT false, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 50, "p_skip_count" boolean DEFAULT true) RETURNS "jsonb"
@@ -23915,7 +23925,7 @@ $$;
 ALTER FUNCTION "public"."get_shipment_settings_finance_bundle"("p_shipment_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text" DEFAULT NULL::"text", "p_tenant_id" bigint DEFAULT NULL::bigint, "p_customer_group_member_id" bigint DEFAULT NULL::bigint) RETURNS TABLE("member_id" bigint, "member_name" "text", "member_email" "text", "member_role" "public"."customer_group_role", "member_is_active" boolean, "customer_group_id" bigint, "customer_group_name" "text", "customer_group_is_active" boolean, "customer_group_accent_color" "text", "tenant_id" bigint, "tenant_name" "text", "tenant_slug" "text", "tenant_is_active" boolean, "active_module_keys" "text"[], "tenant_role_id" bigint, "is_admin" boolean, "effective_grants" "jsonb", "permission_version" bigint)
+CREATE OR REPLACE FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text" DEFAULT NULL::"text", "p_tenant_id" bigint DEFAULT NULL::bigint, "p_customer_group_member_id" bigint DEFAULT NULL::bigint, "p_shop_type" "public"."shop_type_enum" DEFAULT NULL::"public"."shop_type_enum") RETURNS TABLE("member_id" bigint, "member_name" "text", "member_email" "text", "member_role" "public"."customer_group_role", "member_is_active" boolean, "customer_group_id" bigint, "customer_group_name" "text", "customer_group_is_active" boolean, "customer_group_accent_color" "text", "tenant_id" bigint, "tenant_name" "text", "tenant_slug" "text", "tenant_is_active" boolean, "active_module_keys" "text"[], "tenant_role_id" bigint, "is_admin" boolean, "effective_grants" "jsonb", "permission_version" bigint)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -23967,11 +23977,16 @@ begin
       select 1
       from public.shop_customer_group_access scga
       inner join public.shops s on s.id = scga.shop_id
+      left join public.customer_group_shop_profiles profile
+        on profile.customer_group_id = cg.id and profile.tenant_id = s.tenant_id
       where scga.customer_group_id = cg.id
         and scga.status = true
         and s.tenant_id = p_tenant_id
         and s.is_active = true
         and s.deleted_at is null
+        and (p_shop_type is null or s.shop_type = p_shop_type)
+        and coalesce(profile.is_active, true) = true
+        and coalesce(scga.can_browse, profile.default_can_browse, false) = true
     )
   order by
     case cgm.role
@@ -24027,7 +24042,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint, "p_shop_type" "public"."shop_type_enum") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_shop_catalog_product_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_product_id" bigint) RETURNS "jsonb"
@@ -31452,7 +31467,7 @@ $$;
 ALTER FUNCTION "public"."list_customer_groups_payout_summary"("p_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_customer_group_id" bigint, "p_only_with_payable" boolean) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_status_bucket" "text" DEFAULT NULL::"text") RETURNS TABLE("id" bigint, "shop_id" bigint, "shop_name" "text", "shop_slug" "text", "shop_type_snapshot" "public"."shop_type_enum", "is_negotiable_snapshot" boolean, "order_no" "text", "status" "public"."shop_order_status", "item_count" bigint, "can_see_buy_price" boolean, "can_see_sell_price" boolean, "sell_currency_id" bigint, "currency_symbol" "text", "total_amount" numeric, "created_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_status_bucket" "text" DEFAULT NULL::"text", "p_shop_type" "public"."shop_type_enum" DEFAULT NULL::"public"."shop_type_enum") RETURNS TABLE("id" bigint, "shop_id" bigint, "shop_name" "text", "shop_slug" "text", "shop_type_snapshot" "public"."shop_type_enum", "is_negotiable_snapshot" boolean, "order_no" "text", "status" "public"."shop_order_status", "item_count" bigint, "can_see_buy_price" boolean, "can_see_sell_price" boolean, "sell_currency_id" bigint, "currency_symbol" "text", "total_amount" numeric, "created_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -31543,6 +31558,7 @@ BEGIN
   WHERE o.tenant_id = p_tenant_id
     AND o.customer_group_id = v_group_id
     AND o.status IS DISTINCT FROM 'draft'
+    AND (p_shop_type IS NULL OR o.shop_type_snapshot = p_shop_type)
     AND (
       p_status_bucket IS NULL
       OR public.customer_shop_order_glance_bucket(o.status) = p_status_bucket
@@ -31554,7 +31570,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text", "p_shop_type" "public"."shop_type_enum") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "name" "text", "slug" "text", "shop_type" "public"."shop_type_enum", "order_mode" "public"."shop_order_mode_enum", "is_negotiable" boolean, "can_see_buy_price" boolean, "can_see_sell_price" boolean, "description" "text", "category_ids" bigint[], "categories" "jsonb", "sell_currency_id" bigint, "sell_currency_code" "text", "sell_currency_symbol" "text")
@@ -75218,9 +75234,9 @@ GRANT ALL ON FUNCTION "public"."check_login_membership"("p_email" "text", "p_sco
 
 
 
-GRANT ALL ON FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint, "p_shop_type" "public"."shop_type_enum") TO "anon";
+GRANT ALL ON FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint, "p_shop_type" "public"."shop_type_enum") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint, "p_shop_type" "public"."shop_type_enum") TO "service_role";
 
 
 
@@ -75538,10 +75554,10 @@ GRANT ALL ON FUNCTION "public"."current_tenant_id"() TO "service_role";
 
 
 
-REVOKE ALL ON FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_shop_type" "public"."shop_type_enum") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_shop_type" "public"."shop_type_enum") TO "anon";
+GRANT ALL ON FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_shop_type" "public"."shop_type_enum") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_shop_type" "public"."shop_type_enum") TO "service_role";
 
 
 
@@ -76034,10 +76050,10 @@ GRANT ALL ON FUNCTION "public"."get_customer_account_summary_for_staff"("p_tenan
 
 
 
-REVOKE ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint, "p_shop_type" "public"."shop_type_enum") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint, "p_shop_type" "public"."shop_type_enum") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint, "p_shop_type" "public"."shop_type_enum") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint, "p_shop_type" "public"."shop_type_enum") TO "service_role";
 
 
 
@@ -76289,9 +76305,9 @@ GRANT ALL ON FUNCTION "public"."get_shipment_settings_finance_bundle"("p_shipmen
 
 
 
-GRANT ALL ON FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint, "p_shop_type" "public"."shop_type_enum") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint, "p_shop_type" "public"."shop_type_enum") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint, "p_shop_type" "public"."shop_type_enum") TO "service_role";
 
 
 
@@ -76919,9 +76935,9 @@ GRANT ALL ON FUNCTION "public"."list_customer_groups_payout_summary"("p_tenant_i
 
 
 
-GRANT ALL ON FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text", "p_shop_type" "public"."shop_type_enum") TO "anon";
+GRANT ALL ON FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text", "p_shop_type" "public"."shop_type_enum") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text", "p_shop_type" "public"."shop_type_enum") TO "service_role";
 
 
 

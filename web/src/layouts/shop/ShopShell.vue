@@ -232,11 +232,13 @@ import {
   rememberCatalogShop,
   resolveCartShopId,
   resolveCatalogShop,
+  resolveCustomerShopTypePath,
   shopCartPath,
   shopCatalogEntryPath,
   shopCatalogPath,
   shopHomePath,
 } from 'src/modules/shop_order/utils/catalogShop';
+import { filterActiveCartsByShopTypePath } from 'src/modules/shop_order/utils/shopCartScope';
 import { shopTypeFromPathSegment, shopTypeToPathSegment } from 'src/modules/shop_order/utils/shopRouteTypes';
 
 const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor'];
@@ -297,13 +299,13 @@ const isCartNavActive = computed(() => {
 const isCartRoute = computed(() => CART_ROUTE_NAMES.has(routeName.value));
 
 const activeCartShopId = computed(() =>
-  resolveCartShopId(authStore.tenantId, activeCarts.value ?? [], route.query.shopId),
+  resolveCartShopId(authStore.tenantId, scopedActiveCarts.value ?? [], route.query.shopId),
 );
 
 const activeCartInfo = computed(() => {
   const shopId = activeCartShopId.value;
   if (!shopId) return null;
-  return (activeCarts.value ?? []).find((cart) => cart.shop_id === shopId) ?? null;
+  return (scopedActiveCarts.value ?? []).find((cart) => cart.shop_id === shopId) ?? null;
 });
 
 const tenantName = computed(
@@ -312,10 +314,13 @@ const tenantName = computed(
 
 const customerShops = computed(() => shellQuery.data.value?.customer_shops ?? []);
 
-const routeShopTypePath = computed(() => {
-  const raw = route.params.shopType;
-  return typeof raw === 'string' ? raw : null;
-});
+const routeShopTypePath = computed(() =>
+  resolveCustomerShopTypePath(route, authStore.tenantId),
+);
+
+const scopedActiveCarts = computed(() =>
+  filterActiveCartsByShopTypePath(activeCarts.value, routeShopTypePath.value),
+);
 
 const routeShopType = computed(() => shopTypeFromPathSegment(routeShopTypePath.value));
 
@@ -457,7 +462,7 @@ const cartItemCount = computed(() => {
   if (isKobaActive.value) {
     return kobaCartStore.itemCount;
   }
-  return (activeCarts.value ?? []).reduce((sum, c) => sum + Number(c.item_count), 0);
+  return (scopedActiveCarts.value ?? []).reduce((sum, c) => sum + Number(c.item_count), 0);
 });
 
 const canShowCartIcon = computed(() => true);
@@ -571,7 +576,7 @@ const goToCart = async () => {
 
   const parsedLastId = parseInt(getLastVisitedShopId(authStore.tenantId) ?? '', 10);
   const shopId =
-    resolveCartShopId(authStore.tenantId, activeCarts.value ?? []) ??
+    resolveCartShopId(authStore.tenantId, scopedActiveCarts.value ?? []) ??
     (Number.isNaN(parsedLastId) ? null : parsedLastId);
   await router.push(
     shopCartPath(authStore.tenantSlug, shopId, rememberedShop.value?.shop_type),

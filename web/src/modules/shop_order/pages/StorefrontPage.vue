@@ -159,7 +159,15 @@ import type { CustomerShopPermissions } from '../composables/useCustomerShopPerm
 import { useShopCartMutations } from '../composables/useShopCartMutations';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useStorefrontState } from '../composables/useStorefrontState';
-import { rememberCatalogShop, shopCatalogProductPath, isFixedPriceCatalog } from '../utils/catalogShop';
+import {
+  isFixedPriceCatalog,
+  rememberCatalogShop,
+  resolveCustomerShopTypePath,
+  shopCatalogPath,
+  shopCatalogProductPath,
+  shopHomePath,
+} from '../utils/catalogShop';
+import { shopTypeFromPathSegment } from '../utils/shopRouteTypes';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import StorefrontSearchToolbar from '../components/StorefrontSearchToolbar.vue';
 import StorefrontFilterDrawer from '../components/StorefrontFilterDrawer.vue';
@@ -358,7 +366,13 @@ const incrementQty = (item: ShopCatalogItem) => {
 
 const goToProductDetail = (item: ShopCatalogItem) => {
   void router.push(
-    shopCatalogProductPath(authStore.tenantSlug, shopSlug.value, item.product_id, item.listing_id),
+    shopCatalogProductPath(
+      authStore.tenantSlug,
+      shopSlug.value,
+      item.product_id,
+      item.listing_id,
+      activeShopType.value,
+    ),
   );
 };
 
@@ -435,7 +449,33 @@ watch([search, category, brand], () => {
 watch(shopDetails, (newDetails) => {
   const slug = newDetails?.slug || shopSlug.value;
   if (newDetails?.id && slug && sessionTenantId.value) {
-    rememberCatalogShop(sessionTenantId.value, { id: newDetails.id, slug });
+    rememberCatalogShop(sessionTenantId.value, {
+      id: newDetails.id,
+      slug,
+      shop_type: newDetails.shop_type as import('../types').ShopType | null,
+    });
+  }
+
+  const expectedType = shopTypeFromPathSegment(
+    resolveCustomerShopTypePath(route, sessionTenantId.value),
+  );
+  if (
+    newDetails?.shop_type &&
+    expectedType &&
+    newDetails.shop_type !== expectedType
+  ) {
+    if (newDetails.slug) {
+      void router.replace(
+        shopCatalogPath(authStore.tenantSlug, newDetails.slug, null, newDetails.shop_type),
+      );
+    } else {
+      void router.replace(
+        shopHomePath(
+          authStore.tenantSlug,
+          resolveCustomerShopTypePath(route, sessionTenantId.value),
+        ),
+      );
+    }
   }
 });
 </script>

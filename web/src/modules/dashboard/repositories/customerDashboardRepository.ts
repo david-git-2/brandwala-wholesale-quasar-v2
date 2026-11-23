@@ -1,4 +1,5 @@
 import { supabase } from 'src/boot/supabase';
+import type { ShopType } from 'src/modules/shop_order/types';
 import type { ActiveCartItem } from 'src/modules/shop_order/repositories/shopCartRepository';
 import type { CustomerAccessibleShop } from 'src/modules/shop_order/repositories/shopOrderRepository';
 import type {
@@ -61,9 +62,13 @@ const parseSummary = (raw: unknown, tenantId: number): CustomerDashboardSummary 
   };
 };
 
-const getCustomerDashboardSummary = async (tenantId: number): Promise<CustomerDashboardSummary> => {
+const getCustomerDashboardSummary = async (
+  tenantId: number,
+  shopType: ShopType,
+): Promise<CustomerDashboardSummary> => {
   const { data, error } = await supabase.rpc('get_customer_dashboard_summary', {
     p_tenant_id: tenantId,
+    p_shop_type: shopType,
   });
 
   if (error) throw error;

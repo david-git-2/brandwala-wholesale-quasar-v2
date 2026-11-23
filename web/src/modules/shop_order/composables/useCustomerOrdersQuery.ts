@@ -1,24 +1,37 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { OrderGlanceBucket } from 'src/modules/dashboard/utils/customerDashboardStatus';
+import { resolveCustomerShopTypePath, shopTypeEnumFromCustomerRoute } from '../utils/catalogShop';
 
 export function useCustomerOrdersQuery(
   statusBucket?: Ref<OrderGlanceBucket | null | undefined>,
 ) {
   const authStore = useAuthStore();
+  const route = useRoute();
   const tenantId = computed(() => authStore.tenantId ?? 0);
   const bucket = computed(() => statusBucket?.value ?? null);
+  const shopTypePath = computed(() => resolveCustomerShopTypePath(route, authStore.tenantId));
+  const shopType = computed(() => shopTypeEnumFromCustomerRoute(route, authStore.tenantId));
   return useQuery({
-    queryKey: computed(() => shopOrderQueryKeys.customerOrders(tenantId.value, bucket.value)),
-    queryFn: () =>
-      shopOrderRepository.listCustomerShopOrders(tenantId.value, {
+    queryKey: computed(() =>
+      shopOrderQueryKeys.customerOrders(tenantId.value, bucket.value, shopTypePath.value),
+    ),
+    queryFn: () => {
+      const type = shopType.value;
+      if (!type) {
+        return Promise.resolve([]);
+      }
+      return shopOrderRepository.listCustomerShopOrders(tenantId.value, {
         limit: 20,
         statusBucket: bucket.value,
-      }),
-    enabled: computed(() => tenantId.value > 0),
+        shopType: type,
+      });
+    },
+    enabled: computed(() => tenantId.value > 0 && shopType.value != null),
     staleTime: 60 * 1000,
   });
 }

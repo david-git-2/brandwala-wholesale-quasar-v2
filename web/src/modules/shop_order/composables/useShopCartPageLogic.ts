@@ -23,6 +23,7 @@ import {
   formatCartPriceAmount,
 } from '../utils/cartPriceUtils';
 import { adjustQtyByMoq, resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
+import { resolveCustomerShopTypePath } from '../utils/catalogShop';
 
 export function useShopCartPageLogic(
   activeCarts: Ref<ActiveCartItem[]>,
@@ -49,7 +50,9 @@ export function useShopCartPageLogic(
     selectShopCart,
     formatActiveCartTotal,
     goBack,
-  } = useShopCartSelection(activeCarts, isCartsLoading, { cartKind: 'catalog' });
+  } = useShopCartSelection(activeCarts, isCartsLoading, {
+    cartKind: resolveCustomerShopTypePath(route, authStore.tenantId),
+  });
 
   const tenantSlugParam = () =>
     route.params.tenantSlug ? String(route.params.tenantSlug) : null;
