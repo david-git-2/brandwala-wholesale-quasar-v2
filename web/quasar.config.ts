@@ -50,7 +50,6 @@ export default defineConfig((ctx) => {
       'supabase',
       'vue-query',
       'appearance',
-      'currency',
       'global-components',
       'i18n',
       'phosphor',

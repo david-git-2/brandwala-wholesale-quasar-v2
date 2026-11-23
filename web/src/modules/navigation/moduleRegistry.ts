@@ -131,18 +131,9 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'vendor',
     name: 'Vendor',
-    description: 'Manage vendor records, sourcing, and supplier collaboration.',
+    description: 'Manage vendor records, sourcing, and supplier collaboration. Opened from People or deep links.',
     parentModuleKey: 'people',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Vendors',
-        caption: 'Manage suppliers and vendor operations',
-        icon: 'ph ph-storefront',
-        routeSegment: 'vendors',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'products',
@@ -163,14 +154,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'product_based_costing',
     name: 'Product Based Costing',
-    description: 'Support product-based costing files for internal workflows.',
+    description: 'Manage shop-order product-based costing files and item pricing for internal staff workflows.',
     parentModuleKey: 'shop_order',
     navIcon: 'ph ph-receipt',
     routes: [
       {
         scope: 'app',
         title: 'Product Based Costing',
-        caption: 'Manage product based costing files',
+        caption: 'Shop-order product-based costing files',
         icon: 'ph ph-receipt',
         routeSegment: 'product-based-costing',
         requiredAction: 'view',
@@ -180,12 +171,12 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'costing_file',
     name: 'Costing File',
-    description: 'Manage internal costing references and pricing preparation.',
+    description: 'Manage pre-order costing files, pricing preparation, and viewer/customer sharing.',
     routes: [
       {
         scope: 'app',
         title: 'Pre order',
-        caption: 'Prepare internal costing files and price support',
+        caption: 'Prepare pre-order costing files and price support',
         icon: 'ph ph-tag',
         routeSegment: 'costing',
         requiredAction: 'view',
@@ -193,7 +184,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       {
         scope: 'shop',
         title: 'Pre order',
-        caption: 'Open customer-facing costing references',
+        caption: 'Open customer-facing pre-order costing files',
         icon: 'ph ph-receipt',
         routeSegment: 'costing',
         requiredAction: 'view',
@@ -764,18 +755,9 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'investor_profiles',
     name: 'Investors',
-    description: 'Manage capital partners.',
+    description: 'Manage capital partners. Opened from People or deep links.',
     parentModuleKey: 'people',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Investors',
-        caption: 'Manage capital partners',
-        icon: 'ph ph-users-three',
-        routeSegment: 'capital/investors',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'investor_capital_ledger',

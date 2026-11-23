@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/vue-query';
 import type { CashbookPointRow } from '../repositories/cashbookRepository';
 import { cashbookQueryKeys } from '../services/cashbookQueryKeys';
 import { moneyKernelRepository } from '../repositories/moneyKernelRepository';
-import { formatAmountBdt } from 'src/utils/currency';
+import { formatCurrencyAmount } from 'src/utils/currency';
 import type { BillPayCashbookLeg } from '../types/billPayCashbookLegs';
 
 export type CashbookLegPotChipOption = {
@@ -232,7 +232,7 @@ export function useCashbookLegPots(
           ?? bundledPointNames.value?.get(pot.cashbook_point_id)
           ?? 'Location';
         const cur = pot.currency_code.trim().toUpperCase();
-        const balanceDisplay = `${cur} ${formatAmountBdt(pot.amount)}`;
+        const balanceDisplay = formatCurrencyAmount(pot.amount, cur);
         return {
           label: `${pointLabel} · ${balanceDisplay}`,
           value: pot.id,

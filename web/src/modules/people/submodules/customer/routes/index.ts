@@ -56,7 +56,11 @@ const customerRoutes: RouteRecordRaw[] = [
       {
         path: 'list',
         name: 'app-customers-list',
-        component: () => import('../pages/CustomerHubPage.vue'),
+        redirect: (to) => ({
+          name: 'app-people',
+          params: { tenantSlug: to.params.tenantSlug },
+          query: { tab: 'customer' },
+        }),
         beforeEnter: createAccessGuard({
           requiredScope: 'app',
           requiredModule: 'customer',
@@ -87,8 +91,11 @@ const customerRoutes: RouteRecordRaw[] = [
       {
         path: 'recipient-profiles',
         name: 'app-global-recipient-profiles',
-        component: () =>
-          import('../pages/RecipientProfilesPage.vue'),
+        redirect: (to) => ({
+          name: 'app-people',
+          params: { tenantSlug: to.params.tenantSlug },
+          query: { tab: 'end_customer' },
+        }),
         beforeEnter: createAccessGuard({
           requiredScope: 'app',
           requiredModule: 'recipient_profile',

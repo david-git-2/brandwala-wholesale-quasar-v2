@@ -1,7 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import type { Database } from 'src/types/database.types';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/bills_pays/types/invoice';
-import { formatAmountBdt } from 'src/utils/currency';
+import { formatAmountBdt, formatCurrencyAmount } from 'src/utils/currency';
 import type { CreateBillAdjustmentInput } from './useCreateBillAdjustmentMutation';
 import type { WriteOffBillInput } from './useWriteOffBillMutation';
 import {
@@ -23,13 +23,6 @@ import { listBillLinesForInvoices } from '../repositories/billLinesRepository';
 type BillDocumentKind = Database['public']['Enums']['bill_document_kind'];
 
 export type BillAdjustmentUiKind = BillDocumentKind | 'write_off';
-
-function formatForeignAmount(amount: number): string {
-  return Number(amount).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 export function useBillAdjustmentDraft(params: {
   bill: Ref<GlobalInvoiceDetail | undefined>;
@@ -260,7 +253,7 @@ export function useBillAdjustmentDraft(params: {
   const noteTotalLabels = computed(() =>
     noteTotalsByCurrency.value.map(({ code, amount }) => ({
       code,
-      label: code === 'BDT' ? formatAmountBdt(amount) : formatForeignAmount(amount),
+      label: formatCurrencyAmount(amount, code),
     })),
   );
 
@@ -401,7 +394,7 @@ export function useBillAdjustmentDraft(params: {
             (r) => noteLineMatchKey(r.name, r.currencyCode) === matchKey,
           );
           const code = row?.currencyCode ?? 'BDT';
-          const label = code === 'BDT' ? formatAmountBdt(cap) : formatForeignAmount(cap);
+          const label = formatCurrencyAmount(cap, code);
           const labelName = row?.name?.trim() || 'line';
           return `Credit for "${labelName}" cannot exceed ${label} remaining.`;
         }
