@@ -369,6 +369,25 @@ const issueDropshipTenantB2bInvoice = async (
   }
 };
 
+const issueDropshipCourierArForOrder = async (
+  tenantId: number,
+  orderId: number,
+): Promise<ShopServiceResult<unknown>> => {
+  try {
+    const data = await shopOrderRepository.issueDropshipCourierArForOrder(tenantId, orderId);
+    const row = (data ?? {}) as { success?: boolean; error?: string };
+    if (row.success === false) {
+      return { success: false, error: row.error ?? 'Failed to issue courier AR.' };
+    }
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to issue courier AR.'),
+    };
+  }
+};
+
 const shipDropshipOrderAndIssueMerchantBill = async (
   tenantId: number,
   orderId: number,
@@ -676,6 +695,7 @@ export const shopOrderService = {
   markDropshipOrderDelivered,
   markDropshipOrderReturnedFromSettlement,
   issueDropshipTenantB2bInvoice,
+  issueDropshipCourierArForOrder,
   shipDropshipOrderAndIssueMerchantBill,
   recordDropshipCourierBankTransfer,
   transferDropshipResellerProfit,

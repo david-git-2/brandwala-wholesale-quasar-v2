@@ -90,7 +90,9 @@ Post-ship: **Dropship management** list (`/:slug/app/shop/dropship-management`) 
 
 **Mark as delivered:** From the management list (`shipped` row) **only** advances `shop_orders.status` → `delivered` (set `delivered_at` if still null). No settlement save or bill side effects on deliver (SO-DL5).
 
-**Delivered-row settlement:** On the management list, `delivered` rows edit **Collected COD**, **Delivery**, and **COD rate** until status becomes **`payment_received`**; **Save** calls `save_dropship_management_list_settlement` → `save_dropship_settlement_draft` + `sync_dropship_draft_bills_after_settlement` (draft customer + courier AR only). **Block save** once status is **`payment_received`** or later; if bills are issued while still `delivered`, RPC sync may fail (use pay-in / bill adjustments).
+**Delivered-row settlement:** On the management list, `delivered` rows edit **Collected COD**, **Delivery**, and **COD rate** until status becomes **`payment_received`**; **Save** calls `save_dropship_management_list_settlement` → `save_dropship_settlement_draft` + `sync_dropship_draft_bills_after_settlement` (draft customer + courier AR only). **Block save** once status is **`payment_received`** or later; if bills are issued while still `delivered`, RPC sync may fail (use pay-in / bill adjustments). Rows with **`payment_received`** (and later) show **read-only** money cells (no table inputs).
+
+**Payment received (list):** On `delivered` rows, **Payment received** opens a confirm dialog (BDT: COD, fees, courier net, customer AR, dropshipper profit; shows `order_no`). Confirm → optional dirty **Save** → `issue_dropship_tenant_b2b_invoice` + `issue_dropship_courier_ar_for_order` → `record_dropship_courier_remittance` (**main** cashbook, BDT, note includes `order_no`) → status **`payment_received`**. Block if row dirty (save first) or `courier_remittance_ref` already set.
 
 ### US-4: Recipient confirmation call
 - [x] While dropship `status = confirmed`, staff call `recipient_name` / `recipient_phone` (app log only; no auto-dial).
@@ -111,7 +113,7 @@ Post-ship: **Dropship management** list (`/:slug/app/shop/dropship-management`) 
 - [x] **Alloc / remittance** — pay in (`record_dropship_courier_remittance`); remainder → dropshipper **cashbook**. Remittance requires papers **issued** (drafts from ship must be issued first). Desk: settlement → Courier pay in or Payments → Pay in → Courier.
 - [ ] **Auto customer AR on remittance** — **target:** remittance closes courier AR and **auto allocates** to customer AR. **As-built:** alloc to customer AR + AP retention close.
 - [x] **Fee / settlement deltas** — adjusted fees at pay in; issued papers stay; deltas → **credit/debit notes** (`create_bill_adjustment`), not silent rewrite. Preview: `preview_dropship_courier_payin_settlement`.
-- [x] **Management list** — post-ship orders: COD/fees/B2B bill columns; **Dropshipper** / **Courier** bill links; **`shipped` → Delivered** (status only) or **Returned** (return flow); **`delivered` → Save** settlement (draft bills resync).
+- [x] **Management list** — post-ship orders: COD/fees/B2B bill columns; **Dropshipper** / **Courier** bill links; **`shipped` → Delivered** (status only) or **Returned** (return flow); **`delivered` → Save** settlement (draft bills resync); **`delivered` → Payment received** (confirm remittance, status lock); **`payment_received`** rows: read-only money columns.
 - [x] **Mark as delivered** — status → `delivered` only via `mark_dropship_order_delivered` (**SO-DL5** built). Legacy settlement detail page retired.
 
 ### US-6: Dropship gifts

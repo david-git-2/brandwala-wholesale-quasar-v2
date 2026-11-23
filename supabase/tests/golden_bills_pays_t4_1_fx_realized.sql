@@ -43,34 +43,45 @@ BEGIN
   );
 
   PERFORM public._test_pgtap_auth();
+  PERFORM public._test_set_workspace_tenant(v_tenant);
 
-  v_bill := public.create_sales_invoice(
-    v_tenant,
-    'AP-BDT-PGTAP',
-    'ap'::public.global_invoice_type,
-    v_vendor_profile
-  );
-  v_bill_id := v_bill.id;
+  DECLARE
+    v_books bigint;
+    v_self bigint;
+    v_rpc jsonb;
+  BEGIN
+    v_books := public.resolve_books_tenant_id(v_tenant);
+    v_self := public._kernel_tenant_mirror_profile_id(v_books);
 
-  INSERT INTO public.bill_lines (
-    tenant_id, invoice_id, line_kind, name_snapshot,
-    quantity, sell_price_amount, line_discount_amount, line_total_amount
-  )
-  VALUES (
-    v_bill.tenant_id, v_bill_id, 'description', 'Freight',
-    1, 12000.00, 0, 12000.00
-  );
+    v_rpc := public.rpc_create_bill(jsonb_build_object(
+      'tenant_id', v_books,
+      'kind', 'dropship_courier_ap',
+      'currency_code', 'BDT',
+      'from_profile_id', v_vendor_profile,
+      'to_profile_id', v_self,
+      'counterparty_profile_id', v_vendor_profile,
+      'note', 'AP-BDT-PGTAP',
+      'auto_issue', true,
+      'meta', jsonb_build_object(
+        'delivery_kind', 'take',
+        'subtotal_amount', 12000.00
+      ),
+      'lines', jsonb_build_array(jsonb_build_object(
+        'item_kind', 'charge',
+        'description', 'Freight',
+        'quantity', 1,
+        'unit_price', 12000.00,
+        'line_total', 12000.00
+      ))
+    ));
 
-  UPDATE public.bills
-  SET
-    subtotal_amount = 12000.00,
-    total_amount = 12000.00,
-    due_amount = 12000.00,
-    updated_at = now()
-  WHERE id = v_bill_id;
+    v_bill_id := nullif(v_rpc->>'bill_id', '')::bigint;
+    IF v_bill_id IS NULL THEN
+      RAISE EXCEPTION 'T4-1 AP create failed: %', v_rpc;
+    END IF;
 
-  PERFORM public.stamp_bill_kernel_fields(v_bill_id);
-  PERFORM public.issue_bill(v_bill_id);
+    SELECT * INTO v_bill FROM public.bills WHERE id = v_bill_id;
+  END;
 
   PERFORM public._test_fund_cashbook_pot(v_tenant, v_point, 500000.00, 'BDT');
 

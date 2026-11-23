@@ -63,9 +63,9 @@ BEGIN
     SELECT 1 FROM public.bills b
     WHERE b.id = v_bill_id
       AND b.invoice_status = 'issued'::public.global_invoice_status
-      AND b.payment_status = 'paid'
+      AND coalesce(b.due_amount, 0) = 0
   ) THEN
-    RAISE EXCEPTION 'golden D: bill not issued/paid';
+    RAISE EXCEPTION 'golden D: bill not cleared after take (status/due)';
   END IF;
 END;
 $$;

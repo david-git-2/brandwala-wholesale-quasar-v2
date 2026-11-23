@@ -261,7 +261,17 @@
                       no-caps
                       size="sm"
                       label="Payment received"
-                    />
+                      :disable="!canConfirmPaymentReceived(order)"
+                      :loading="paymentReceivedOrderId === order.id"
+                      @click.stop="onPaymentReceived(order)"
+                    >
+                      <q-tooltip v-if="isRowDirty(order.id)">
+                        Save settlement changes first
+                      </q-tooltip>
+                      <q-tooltip v-else-if="order.courier_remittance_ref">
+                        Remittance already recorded
+                      </q-tooltip>
+                    </q-btn>
                   </div>
                   <span v-else class="text-grey-6">—</span>
                 </td>
@@ -282,9 +292,17 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { Dialog } from 'quasar';
 import ExcelTableScrollFooter from 'src/components/ui/ExcelTableScrollFooter.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import DropshipPaymentReceivedConfirmDialog from '../components/DropshipPaymentReceivedConfirmDialog.vue';
+import { dropshipFinanceRepository } from '../repositories/dropshipFinanceRepository';
+import {
+  buildDropshipMgmtPaymentReceivedMoney,
+  type DropshipMgmtPaymentReceivedMoney,
+} from '../utils/dropshipManagementPaymentReceived';
+import { resolveMainCashbookPointId } from '../utils/resolveMainCashbookPointId';
 import { useChildTenantsQuery } from 'src/modules/procurement_stock/composables/useProcurementStockQuery';
 import {
   requestConfirmation,
@@ -330,6 +348,7 @@ const statusFilter = ref<DropshipManagementStatusFilter>('all');
 const selectedChildTenantId = ref<number | null>(null);
 const deliveringOrderId = ref<number | null>(null);
 const savingOrderId = ref<number | null>(null);
+const paymentReceivedOrderId = ref<number | null>(null);
 const rowEdits = ref<Record<number, RowMoneyEdit>>({});
 const rowBaselines = ref<Record<number, RowMoneyEdit>>({});
 const tableScrollRef = ref<HTMLElement | null>(null);
@@ -354,6 +373,12 @@ const tenantId = computed(() => authStore.tenantId as number | undefined);
 const parentTenantId = computed(
   () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
 );
+
+const booksTenantId = computed(() => {
+  const t = authStore.selectedTenant;
+  if (!t) return 0;
+  return Number(t.parent_id ?? t.id);
+});
 
 const isParentTenant = computed(() => {
   if (!tenantId.value) return false;
@@ -595,6 +620,116 @@ async function onSaveSettlement(order: ShopOrder) {
     await loadOrders();
   } finally {
     savingOrderId.value = null;
+  }
+}
+
+function settlementOverridesForOrder(order: ShopOrder): {
+  collectedCod: number;
+  delivery: number;
+  codRate: number;
+} {
+  const edit = rowEdits.value[order.id];
+  if (edit) {
+    return { collectedCod: edit.collectedCod, delivery: edit.delivery, codRate: edit.codRate };
+  }
+  return rowMoneyFromOrder(order);
+}
+
+function canConfirmPaymentReceived(order: ShopOrder): boolean {
+  if (order.status !== 'delivered') return false;
+  if (isRowDirty(order.id)) return false;
+  if (order.courier_remittance_ref) return false;
+  return true;
+}
+
+function openPaymentReceivedDialog(money: DropshipMgmtPaymentReceivedMoney): Promise<boolean> {
+  return new Promise((resolve) => {
+    Dialog.create({
+      component: DropshipPaymentReceivedConfirmDialog,
+      componentProps: { money },
+    })
+      .onOk(() => resolve(true))
+      .onCancel(() => resolve(false))
+      .onDismiss(() => resolve(false));
+  });
+}
+
+async function onPaymentReceived(order: ShopOrder) {
+  if (!authStore.tenantId || paymentReceivedOrderId.value != null) return;
+  if (!canConfirmPaymentReceived(order)) {
+    if (isRowDirty(order.id)) {
+      showErrorNotification('Save settlement changes before recording payment.');
+    } else if (order.courier_remittance_ref) {
+      showErrorNotification('Courier remittance already recorded for this order.');
+    }
+    return;
+  }
+
+  const overrides = settlementOverridesForOrder(order);
+  const money = buildDropshipMgmtPaymentReceivedMoney(order, overrides);
+  if (!(money.courierPaysTenant > 0)) {
+    showErrorNotification('Courier net remittance must be positive.');
+    return;
+  }
+
+  const confirmed = await openPaymentReceivedDialog(money);
+  if (!confirmed) return;
+
+  paymentReceivedOrderId.value = order.id;
+  try {
+  if (isRowDirty(order.id)) {
+    const saveRes = await shopOrderService.saveDropshipManagementListSettlement(
+      authStore.tenantId,
+      order.id,
+      {
+        collected_cod_amount: overrides.collectedCod,
+        delivery_charge_amount: overrides.delivery,
+        cod_charge_amount: overrides.codRate,
+      },
+    );
+    if (!saveRes.success) {
+      showErrorNotification(saveRes.error ?? 'Failed to save settlement.');
+      return;
+    }
+  }
+
+  const customerIssue = await shopOrderService.issueDropshipTenantB2bInvoice(
+    authStore.tenantId,
+    order.id,
+  );
+  if (!customerIssue.success) {
+    showErrorNotification(customerIssue.error ?? 'Failed to issue customer bill.');
+    return;
+  }
+
+  const courierIssue = await shopOrderService.issueDropshipCourierArForOrder(
+    authStore.tenantId,
+    order.id,
+  );
+  if (!courierIssue.success) {
+    showErrorNotification(courierIssue.error ?? 'Failed to issue courier bill.');
+    return;
+  }
+
+  const cashbookPointId = await resolveMainCashbookPointId(booksTenantId.value);
+
+  await dropshipFinanceRepository.confirmCourierRemittance({
+    orderId: order.id,
+    netAmount: money.courierPaysTenant,
+    deliveryCharge: money.delivery,
+    codCharge: money.codRate,
+    courierCharge: money.delivery + money.codRate,
+    remittanceRef: money.remittanceRef,
+    cashbookPointId,
+    note: money.remittanceNote,
+  });
+
+  showSuccessNotification(`Payment received for ${money.orderNo}.`);
+  await loadOrders();
+  } catch (e) {
+    showErrorNotification(e instanceof Error ? e.message : 'Payment received failed.');
+  } finally {
+    paymentReceivedOrderId.value = null;
   }
 }
 

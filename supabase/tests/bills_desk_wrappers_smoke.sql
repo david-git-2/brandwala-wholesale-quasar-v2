@@ -17,7 +17,7 @@ SELECT ok(
 SELECT ok(
   pg_catalog.has_function_privilege(
     'authenticated',
-    'public.list_bills_desk_page(bigint, bigint, text, text, text, text, text, integer, bigint)',
+    'public.list_bills_desk_page(bigint, text, bigint, text, text, text, integer, bigint)',
     'EXECUTE'
   ),
   'list_bills_desk_page executable'
