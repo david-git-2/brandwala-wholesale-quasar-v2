@@ -15,3 +15,4 @@ Open with [spec.md](spec.md). Types: `not_built` | `doc_wrong` | `sql_split`. Wh
 | SO-DR2 | ~~not_built~~ | Staff review RPC + app UI | ~~No approve/deny~~ | **Done:** `finalize_dropship_resell_discount_review` + `DropshipResellDiscountReviewPanel` on staff order detail (`20261123230000_*`) |
 | SO-DR3 | ~~not_built~~ | Shop messaging + status strip | ~~Request on detail only~~ | **Done:** toast, strip, labels (`customerOrderStatusUi`, `CustomerOrderDetailPage`) |
 | SO-DR4 | design | COD/totals at place vs after approve | TBD | Document + implement: listed resell until approve (recommended) |
+| SO-CA1 | partial | [dropship-courier-ar-redesign.md](dropship-courier-ar-redesign.md) — option **B** | **Ship (done):** draft customer AR + payout note + draft courier AR (`upsert_dropship_courier_ar_bill`). **Open:** issue before remit; remittance closes courier AR + auto customer AR; retire AP retention; golden remittance tests |

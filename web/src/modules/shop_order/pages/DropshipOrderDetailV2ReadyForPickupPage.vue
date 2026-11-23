@@ -158,7 +158,7 @@ const advanceToShipped = async () => {
   if (!order.value || !canMarkShipped.value) return;
 
   const confirmed = await requestConfirmation(
-    'Mark this order as shipped and issue the customer and courier bills?',
+    'Mark this order as shipped and create draft customer and courier receivable bills?',
     'Mark as shipped',
     'Mark as shipped',
   );
@@ -176,12 +176,14 @@ const advanceToShipped = async () => {
       order.value.id,
     );
     if (!shipRes.success) {
-      throw new Error(shipRes.error ?? 'Failed to ship order and issue bills.');
+      throw new Error(shipRes.error ?? 'Failed to ship order and create bills.');
     }
 
     const billCreated = (shipRes.data as { created?: boolean })?.created === true;
     showSuccessNotification(
-      billCreated ? 'Shipped. Customer and courier bills issued.' : 'Shipped. Bills were already on file.',
+      billCreated
+        ? 'Shipped. Draft customer and courier receivable bills created.'
+        : 'Shipped. Draft bills were already on file.',
     );
     await queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.orderDetail(authStore.tenantId ?? null, orderId.value),
@@ -278,7 +280,7 @@ const openSettlementDesk = () => {
             color="primary"
             no-caps
             icon="ph ph-truck"
-            label="Courier bill"
+            label="Courier receivable"
             class="text-weight-bold"
             style="border-radius: 8px"
             :to="billDetailRoute(order.courier_ap_bill_id)"

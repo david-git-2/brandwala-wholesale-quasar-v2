@@ -4380,6 +4380,9 @@ isOneToOne: false
 "_can_view_stock_locations":
 { Args: { "p_tenant_id": number }; Returns: boolean
                            },
+"_compose_legacy_items_to_kernel_lines":
+{ Args: { "p_items": Json }; Returns: Json
+                           },
 "_desk_bill_pay_cashbook_legs_json":
 { Args: { "p_currency_code": string,"p_from_profile_id": number,"p_invoice_type": string,"p_tenant_id": number,"p_to_profile_id": number }; Returns: Json
                            },
@@ -4609,6 +4612,9 @@ isOneToOne: false
 "_kernel_freeze_bill_txn_face":
 { Args: { "p_bill_id": number }; Returns: undefined
                            },
+"_kernel_invoice_type_to_bill_kind":
+{ Args: { "p_type": Database["public"]['Enums']["global_invoice_type"] }; Returns: string
+                           },
 "_kernel_lock_bills":
 { Args: { "p_bill_ids": (number)[] }; Returns: undefined
                            },
@@ -4620,6 +4626,9 @@ isOneToOne: false
                            },
 "_kernel_map_money_profile_id_to_public":
 { Args: { "p_books_tenant_id": number,"p_money_profile_id": number }; Returns: number
+                           },
+"_kernel_patch_bill_header":
+{ Args: { "p_bill_id": number,"p_counterparty_profile_id"?: number,"p_meta_patch"?: Json,"p_note"?: string }; Returns: undefined
                            },
 "_kernel_pay_direction_party":
 { Args: { "p_entity_type": string,"p_source": string }; Returns: string
@@ -4809,6 +4818,9 @@ isOneToOne: false
 "_kernel_upsert_dropship_courier_ap":
 { Args: { "p_keep_as_draft"?: boolean,"p_order_id": number }; Returns: Json
                            },
+"_kernel_upsert_dropship_courier_ar":
+{ Args: { "p_keep_as_draft"?: boolean,"p_order_id": number }; Returns: Json
+                           },
 "_list_shipment_cost_ap_bills_json":
 { Args: { "p_books_tenant_id": number,"p_include_voided"?: boolean,"p_shipment_id": number }; Returns: Json
                            },
@@ -4899,6 +4911,9 @@ isOneToOne: false
 { Args: { "p_availability": Database["public"]['Enums']["stock_availability"],"p_delta": number,"p_grade_tag_id": number,"p_location_id": number,"p_outcome_id": number,"p_shipment_item_id": number,"p_stock_type_id": number,"p_tenant_id": number }; Returns: number
                            },
 "_sync_dropship_courier_ap_bill_details":
+{ Args: { "p_allow_line_sync"?: boolean,"p_bill_id": number,"p_order_id": number }; Returns: undefined
+                           },
+"_sync_dropship_courier_ar_bill_details":
 { Args: { "p_allow_line_sync"?: boolean,"p_bill_id": number,"p_order_id": number }; Returns: undefined
                            },
 "_test_bootstrap_dropship_golden_a":
@@ -6834,7 +6849,7 @@ isOneToOne: false
         isSetofReturn: false
       } },
 "issue_dropship_tenant_b2b_invoice":
-{ Args: { "p_order_id": number,"p_tenant_id": number }; Returns: Json
+{ Args: { "p_as_draft"?: boolean,"p_order_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "issue_retail_bill":
 { Args: { "p_bill_id": number }; Returns: undefined
@@ -9165,6 +9180,9 @@ isOneToOne: false
         isSetofReturn: true
       } },
 "upsert_dropship_courier_ap_bill":
+{ Args: { "p_keep_as_draft"?: boolean,"p_order_id": number }; Returns: Json
+                           },
+"upsert_dropship_courier_ar_bill":
 { Args: { "p_keep_as_draft"?: boolean,"p_order_id": number }; Returns: Json
                            },
 "upsert_global_stock_allocation":

@@ -118,6 +118,7 @@ export interface DropshipManagementOrderView {
     return_charge_amount: number;
     deduct_return_charge_from_middle_man: boolean;
     return_override_reason: string | null;
+    global_invoice_id: number | null;
     courier_ap_bill_id: number | null;
   };
   items: DropshipManagementReturnLine[];

@@ -42,29 +42,6 @@
             :loading="saveDraftLoading"
             @click="onSaveSettlement"
           />
-          <q-btn
-            v-if="orderData.invoice?.id"
-            dense
-            outline
-            color="primary"
-            no-caps
-            icon="ph ph-receipt"
-            label="Customer bill"
-            class="dropship-order-detail-v2__desk-btn"
-            @click="openMerchantInvoice"
-          />
-          <q-btn
-            v-if="orderData.order.courier_ap_bill_id"
-            dense
-            outline
-            color="primary"
-            no-caps
-            icon="ph ph-truck"
-            label="Courier bill"
-            class="dropship-order-detail-v2__desk-btn"
-            @click="openCourierBill"
-          />
-
           <template v-if="deskStep === 'outcome'">
             <q-btn
               dense
@@ -125,6 +102,36 @@
             <span class="text-caption">{{ deskBannerText }}</span>
           </div>
         </q-banner>
+
+        <div
+          v-if="customerArBillId || courierArBillId"
+          class="row items-center q-gutter-sm no-print"
+        >
+          <q-chip
+            v-if="customerArBillId"
+            clickable
+            dense
+            outline
+            color="primary"
+            icon="ph ph-receipt"
+            class="text-weight-medium"
+            @click="openBill(customerArBillId)"
+          >
+            {{ customerArChipLabel }}
+          </q-chip>
+          <q-chip
+            v-if="courierArBillId"
+            clickable
+            dense
+            outline
+            color="primary"
+            icon="ph ph-truck"
+            class="text-weight-medium"
+            @click="openBill(courierArBillId)"
+          >
+            {{ courierArChipLabel }}
+          </q-chip>
+        </div>
 
         <DropshipManagementSettlementPaper
           ref="paperRef"
@@ -259,9 +266,43 @@ const paperReadonly = computed(() => {
 
 const showFooterActions = computed(() => {
   const status = orderData.value?.order.status;
-  if (!status || status === 'returned') return deskStep.value === 'done' && !!orderData.value?.invoice?.id;
-  return deskStep.value !== 'done' || !!orderData.value?.invoice?.id;
+  if (!status || status === 'returned') {
+    return deskStep.value === 'done' && !!customerArBillId.value;
+  }
+  return deskStep.value !== 'done' || !!customerArBillId.value;
 });
+
+const customerArBillId = computed(() => {
+  const data = orderData.value;
+  if (!data) return null;
+  return data.invoice?.id ?? data.order.global_invoice_id ?? null;
+});
+
+const courierArBillId = computed(() => orderData.value?.order.courier_ap_bill_id ?? null);
+
+const customerArChipLabel = computed(() => {
+  const inv = orderData.value?.invoice;
+  const id = customerArBillId.value;
+  const no = inv?.invoice_no?.trim();
+  const base = no ? `Customer AR ${no}` : id ? `Customer AR #${id}` : 'Customer AR';
+  if (inv?.invoice_status === 'draft') return `${base} (draft)`;
+  return base;
+});
+
+const courierArChipLabel = computed(() => {
+  const id = courierArBillId.value;
+  return id ? `Courier AR #${id}` : 'Courier AR';
+});
+
+function openBill(billId: number) {
+  void router.push({
+    name: 'app-bill-detail-page',
+    params: {
+      ...(tenantSlug.value ? { tenantSlug: tenantSlug.value } : {}),
+      billId: String(billId),
+    },
+  });
+}
 
 function getPayload() {
   return paperRef.value?.getDraftPayload();
@@ -319,28 +360,6 @@ onBeforeUnmount(() => {
     window.removeEventListener('beforeunload', onBeforeUnload);
   }
 });
-
-function openBill(billId: number) {
-  void router.push({
-    name: 'app-bill-detail-page',
-    params: {
-      ...(tenantSlug.value ? { tenantSlug: tenantSlug.value } : {}),
-      billId: String(billId),
-    },
-  });
-}
-
-function openMerchantInvoice() {
-  const invoiceId = orderData.value?.invoice?.id;
-  if (!invoiceId) return;
-  openBill(invoiceId);
-}
-
-function openCourierBill() {
-  const billId = orderData.value?.order.courier_ap_bill_id;
-  if (!billId) return;
-  openBill(billId);
-}
 
 async function onCourierPayIn() {
   if (!orderData.value || courierPayInSubmitting.value) return;

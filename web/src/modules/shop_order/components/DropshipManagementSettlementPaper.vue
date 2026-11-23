@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import type { DropshipManagementOrderView, DropshipSettlementDraftPayload } from '../types/dropshipManagementOrder';
 import {
   buildSettlementDraftPayload,
@@ -25,6 +26,29 @@ const props = withDefaults(
 const emit = defineEmits<{
   'dirty-change': [dirty: boolean];
 }>();
+
+const route = useRoute();
+const router = useRouter();
+
+const tenantSlug = computed(() =>
+  typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : '',
+);
+
+const customerArBillId = computed(
+  () => props.data.invoice?.id ?? props.data.order.global_invoice_id ?? null,
+);
+
+const courierArBillId = computed(() => props.data.order.courier_ap_bill_id ?? null);
+
+function openArBill(billId: number) {
+  void router.push({
+    name: 'app-bill-detail-page',
+    params: {
+      ...(tenantSlug.value ? { tenantSlug: tenantSlug.value } : {}),
+      billId: String(billId),
+    },
+  });
+}
 
 type SettlementFormState = DropshipSettlementFormState;
 
@@ -238,16 +262,45 @@ defineExpose({ getDraftPayload, isDirty });
             {{ data.order.status.replace(/_/g, ' ') }}
           </q-badge>
         </div>
-        <div v-if="data.invoice" class="dropship-invoice-paper__meta-row">
-          <span class="dropship-invoice-paper__meta-label">{{ DROPSHIP_TERM.customerInvoice }}</span>
-          <span class="text-weight-medium">
-            {{ data.invoice.invoice_no }} ·
-            {{
-              data.invoice.payment_status === 'paid' && Number(data.invoice.due_amount) <= 0
-                ? 'Paid'
-                : `Due ${formatMoney(data.invoice.due_amount)}`
-            }}
-          </span>
+        <div v-if="customerArBillId" class="dropship-invoice-paper__meta-row">
+          <span class="dropship-invoice-paper__meta-label">Customer AR</span>
+          <q-chip
+            clickable
+            dense
+            outline
+            color="primary"
+            icon="ph ph-receipt"
+            class="text-weight-medium"
+            @click="openArBill(customerArBillId)"
+          >
+            <template v-if="data.invoice?.invoice_no">
+              {{ data.invoice.invoice_no }}
+              <span v-if="data.invoice.invoice_status === 'draft'" class="q-ml-xs text-grey-7">(draft)</span>
+              ·
+              {{
+                data.invoice.payment_status === 'paid' && Number(data.invoice.due_amount) <= 0
+                  ? 'Paid'
+                  : `Due ${formatMoney(data.invoice.due_amount)}`
+              }}
+            </template>
+            <template v-else>
+              Bill #{{ customerArBillId }}
+            </template>
+          </q-chip>
+        </div>
+        <div v-if="courierArBillId" class="dropship-invoice-paper__meta-row">
+          <span class="dropship-invoice-paper__meta-label">Courier AR</span>
+          <q-chip
+            clickable
+            dense
+            outline
+            color="primary"
+            icon="ph ph-truck"
+            class="text-weight-medium"
+            @click="openArBill(courierArBillId)"
+          >
+            Bill #{{ courierArBillId }}
+          </q-chip>
         </div>
       </div>
     </header>

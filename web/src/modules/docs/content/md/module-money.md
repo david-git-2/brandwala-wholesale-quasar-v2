@@ -69,7 +69,7 @@ Bills use **from_profile** and **to_profile** (live data may still use `profile_
 | Paper type | Examples |
 | --- | --- |
 | **AR** | [Wholesale](/docs/modules/wholesale) compose, [dropship](/docs/modules/dropship) merchant bill at ship |
-| **AP** | [Inbound](/docs/modules/inbound) shipment buckets, dropship courier AP |
+| **AP** | [Inbound](/docs/modules/inbound) shipment buckets; dropship courier AP **as-built** (target = courier AR net, SO-CA1) |
 
 AP shipment bills: **no** stock `bill_lines`; sync from cost rows. One bill per **bucket × currency** (`source_key = {bucket}:{currency_code}`).
 
@@ -104,7 +104,7 @@ flowchart TB
 | `shop_order` | [Dropship](/docs/modules/dropship) merchant bill |
 | `shipment_cost` | [Inbound](/docs/modules/inbound) AP sync |
 | `delivery_close` | Pre-order delivery paper |
-| `dropship_courier` | Courier AP at dropship ship |
+| `dropship_courier` | Courier AP at dropship ship (**as-built**; target courier AR net — SO-CA1) |
 
 Features call: issue/void bill, pay in/out + alloc, `create_bill_adjustment`, `get_bill_net_balances` — they do not re-sum allocations in app code.
 

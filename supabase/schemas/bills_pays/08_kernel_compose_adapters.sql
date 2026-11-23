@@ -1593,6 +1593,343 @@ begin
 end;
 $$;
 
+CREATE OR REPLACE FUNCTION public._sync_dropship_courier_ar_bill_details(
+  p_bill_id bigint,
+  p_order_id bigint,
+  p_allow_line_sync boolean DEFAULT true
+) RETURNS void
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path TO public
+AS $$
+declare
+  v_bill public.bills;
+  v_order public.shop_orders;
+  v_courier public.courier_services;
+  v_cod_face numeric(12, 2);
+  v_rate numeric(12, 2);
+  v_delivery numeric(12, 2);
+  v_discount numeric(12, 2);
+  v_net numeric(12, 2);
+  v_note text;
+  v_meta jsonb;
+begin
+  select * into v_bill from public.bills where id = p_bill_id;
+  if v_bill.id is null then
+    return;
+  end if;
+
+  select * into v_order from public.shop_orders where id = p_order_id;
+  if v_order.id is null then
+    return;
+  end if;
+
+  select * into v_courier from public.courier_services where id = v_order.courier_service_id;
+
+  perform public.recompute_dropship_cod_collect_amount(p_order_id);
+  select * into v_order from public.shop_orders where id = p_order_id;
+
+  v_cod_face := round(greatest(coalesce(v_order.cod_collect_amount, 0), 0), 2);
+  v_rate := round(coalesce(v_order.cod_charge_amount, 0), 2);
+  v_delivery := round(coalesce(v_order.delivery_charge_amount, 0), 2);
+  v_discount := round(v_rate + v_delivery, 2);
+  v_net := greatest(v_cod_face - v_discount, 0);
+
+  v_note := format(
+    'Courier receivable — %s — order %s%s',
+    coalesce(v_courier.name, 'Courier'),
+    v_order.order_no,
+    case
+      when nullif(trim(coalesce(v_order.courier_awb_number, '')), '') is not null
+      then format(' (AWB %s)', trim(v_order.courier_awb_number))
+      else ''
+    end
+  );
+
+  v_meta := coalesce(v_bill.channel_meta, '{}'::jsonb) || jsonb_build_object(
+    'shop_order_id', p_order_id,
+    'order_no', v_order.order_no,
+    'courier_service_id', v_order.courier_service_id,
+    'courier_name', v_courier.name,
+    'courier_awb_number', v_order.courier_awb_number,
+    'tracking_url', v_order.tracking_url,
+    'cod_collect_amount', v_cod_face,
+    'cod_charge_amount', v_rate,
+    'delivery_charge_amount', v_delivery,
+    'courier_ar_net', v_net,
+    'dropship_courier_ar', true
+  );
+
+  update public.bills
+  set
+    note = v_note,
+    subtotal_amount = v_cod_face,
+    discount_amount = v_discount,
+    total_amount = v_net,
+    due_amount = greatest(v_net - coalesce(paid_amount, 0), 0),
+    recipient_name = v_order.recipient_name,
+    recipient_phone = v_order.recipient_phone,
+    recipient_address = v_order.shipping_address,
+    channel_meta = v_meta,
+    updated_at = now()
+  where id = p_bill_id;
+
+  if not p_allow_line_sync then
+    return;
+  end if;
+
+  delete from public.bill_lines
+  where invoice_id = p_bill_id
+    and line_kind in ('charge', 'description');
+
+  if v_cod_face > 0 then
+    insert into public.bill_lines (
+      invoice_id, tenant_id, line_kind, name_snapshot, quantity,
+      sell_price_amount, line_discount_amount, line_total_amount, books_amount,
+      currency_code, line_meta
+    ) values (
+      p_bill_id, v_bill.tenant_id, 'charge', 'COD collect', 1,
+      v_cod_face, 0, v_cod_face, v_cod_face,
+      coalesce(v_bill.currency_code, 'BDT'), jsonb_build_object('courier_ar_line', 'cod')
+    );
+  end if;
+
+  if v_rate > 0 then
+    insert into public.bill_lines (
+      invoice_id, tenant_id, line_kind, name_snapshot, quantity,
+      sell_price_amount, line_discount_amount, line_total_amount, books_amount,
+      currency_code, line_meta
+    ) values (
+      p_bill_id, v_bill.tenant_id, 'charge', 'COD rate (deduction)', 1,
+      v_rate, 0, v_rate, v_rate,
+      coalesce(v_bill.currency_code, 'BDT'), jsonb_build_object('courier_ar_line', 'rate')
+    );
+  end if;
+
+  if v_delivery > 0 then
+    insert into public.bill_lines (
+      invoice_id, tenant_id, line_kind, name_snapshot, quantity,
+      sell_price_amount, line_discount_amount, line_total_amount, books_amount,
+      currency_code, line_meta
+    ) values (
+      p_bill_id, v_bill.tenant_id, 'charge', 'Delivery (deduction)', 1,
+      v_delivery, 0, v_delivery, v_delivery,
+      coalesce(v_bill.currency_code, 'BDT'), jsonb_build_object('courier_ar_line', 'delivery')
+    );
+  end if;
+
+  perform public.recompute_global_invoice_totals(p_bill_id);
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION public._kernel_upsert_dropship_courier_ar(
+  p_order_id bigint,
+  p_keep_as_draft boolean DEFAULT true
+) RETURNS jsonb
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path TO public
+AS $$
+declare
+  v_order public.shop_orders;
+  v_books_tenant_id bigint;
+  v_profile_id bigint;
+  v_bill public.bills;
+  v_cod_face numeric(12, 2);
+  v_rate numeric(12, 2);
+  v_delivery numeric(12, 2);
+  v_discount numeric(12, 2);
+  v_net numeric(12, 2);
+  v_invoice_no text;
+  v_paper_status public.global_invoice_status;
+  v_courier public.courier_services;
+  v_tenant_name text;
+begin
+  select * into v_order from public.shop_orders where id = p_order_id for update;
+  if v_order.id is null then
+    return jsonb_build_object('success', false, 'error', 'order not found');
+  end if;
+
+  if v_order.shop_type_snapshot <> 'dropship' then
+    return jsonb_build_object('success', false, 'error', 'order is not a dropship order');
+  end if;
+
+  if coalesce(v_order.is_prepaid_snapshot, false)
+     or coalesce(v_order.cod_collect_amount, 0) <= 0 then
+    perform public.recompute_dropship_cod_collect_amount(p_order_id);
+    select * into v_order from public.shop_orders where id = p_order_id;
+    if coalesce(v_order.is_prepaid_snapshot, false)
+       or coalesce(v_order.cod_collect_amount, 0) <= 0 then
+      return jsonb_build_object('success', true, 'skipped', true, 'reason', 'prepaid_or_no_cod');
+    end if;
+  end if;
+
+  if v_order.courier_service_id is null then
+    return jsonb_build_object('success', false, 'error', 'courier is required');
+  end if;
+
+  v_books_tenant_id := public.resolve_books_tenant_id(v_order.tenant_id);
+
+  select * into v_courier
+  from public.courier_services cs
+  where cs.id = v_order.courier_service_id;
+
+  if v_courier.id is null then
+    return jsonb_build_object('success', false, 'error', 'courier is required');
+  end if;
+
+  select t.name into v_tenant_name
+  from public.tenants t
+  where t.id = v_order.tenant_id;
+
+  perform public.upsert_profile_for_party(
+    v_books_tenant_id,
+    'tenant'::public.profile_party_type,
+    v_order.tenant_id,
+    coalesce(v_tenant_name, 'Tenant'),
+    null, null, '+880', null, false, null, true, null
+  );
+
+  select p.id into v_profile_id
+  from public.profiles p
+  where p.tenant_id = v_books_tenant_id
+    and p.profile_type = 'courier'::public.profile_party_type
+    and p.subject_id = v_courier.wallet_entity_id
+  limit 1;
+
+  if v_profile_id is null then
+    v_profile_id := public.upsert_profile_for_party(
+      v_books_tenant_id,
+      'courier'::public.profile_party_type,
+      v_courier.wallet_entity_id,
+      v_courier.name,
+      null, null, '+880', null, false, null,
+      coalesce(v_courier.is_active, true),
+      null
+    );
+  end if;
+
+  if v_profile_id is null then
+    return jsonb_build_object('success', false, 'error', 'courier profile is required');
+  end if;
+
+  perform public.recompute_dropship_cod_collect_amount(p_order_id);
+  select * into v_order from public.shop_orders where id = p_order_id;
+
+  v_cod_face := round(greatest(coalesce(v_order.cod_collect_amount, 0), 0), 2);
+  v_rate := round(coalesce(v_order.cod_charge_amount, 0), 2);
+  v_delivery := round(coalesce(v_order.delivery_charge_amount, 0), 2);
+  v_discount := round(v_rate + v_delivery, 2);
+  v_net := greatest(v_cod_face - v_discount, 0);
+
+  if v_net <= 0 then
+    return jsonb_build_object('success', true, 'skipped', true, 'reason', 'zero_courier_receivable');
+  end if;
+
+  select * into v_bill
+  from public.bills b
+  where b.tenant_id = v_books_tenant_id
+    and b.invoice_type = 'dropship'::public.global_invoice_type
+    and b.document_kind = 'standard'::public.bill_document_kind
+    and b.source_type = 'dropship_courier_ar'
+    and b.source_id = p_order_id::text
+  for update;
+
+  v_paper_status := case
+    when p_keep_as_draft then 'draft'::public.global_invoice_status
+    else 'issued'::public.global_invoice_status
+  end;
+
+  if v_bill.id is null then
+    v_invoice_no := 'AR-CR-' || v_order.order_no;
+    insert into public.bills (
+      tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_date,
+      invoice_status, profile_id, collection_source, payment_status,
+      subtotal_amount, discount_amount, total_amount, due_amount, paid_amount,
+      source_type, source_id, source_key, currency_code,
+      note, channel_meta, document_kind, shop_order_id,
+      recipient_name, recipient_phone, recipient_address
+    ) values (
+      v_books_tenant_id, v_order.tenant_id, v_invoice_no, 'dropship'::public.global_invoice_type, current_date,
+      v_paper_status, v_profile_id, 'profile'::public.collection_source_type, 'due',
+      v_cod_face, v_discount, v_net, v_net, 0,
+      'dropship_courier_ar', p_order_id::text, 'courier_ar', 'BDT',
+      format('Courier receivable — %s — order %s', v_courier.name, v_order.order_no),
+      '{}'::jsonb, 'standard'::public.bill_document_kind, p_order_id,
+      v_order.recipient_name, v_order.recipient_phone, v_order.shipping_address
+    )
+    returning * into v_bill;
+    perform public._sync_dropship_courier_ar_bill_details(v_bill.id, p_order_id, true);
+    perform public.stamp_bill_kernel_fields(v_bill.id);
+    return jsonb_build_object(
+      'success', true,
+      'bill_id', v_bill.id,
+      'created', true,
+      'amount', v_net,
+      'invoice_status', v_bill.invoice_status
+    );
+  end if;
+
+  if v_bill.invoice_status = 'voided'::public.global_invoice_status then
+    if coalesce(v_bill.paid_amount, 0) > 0 then
+      return jsonb_build_object('success', true, 'bill_id', v_bill.id, 'skipped', true);
+    end if;
+    update public.bills
+    set
+      invoice_status = v_paper_status,
+      profile_id = v_profile_id,
+      updated_at = now()
+    where id = v_bill.id;
+    perform public._sync_dropship_courier_ar_bill_details(v_bill.id, p_order_id, true);
+    perform public.stamp_bill_kernel_fields(v_bill.id);
+    return jsonb_build_object('success', true, 'bill_id', v_bill.id, 'revived', true, 'amount', v_net);
+  end if;
+
+  if v_bill.invoice_status = 'issued'::public.global_invoice_status
+     and coalesce(v_bill.paid_amount, 0) > 0 then
+    return jsonb_build_object('success', true, 'bill_id', v_bill.id, 'skipped', true, 'amount', v_bill.total_amount);
+  end if;
+
+  update public.bills
+  set
+    profile_id = v_profile_id,
+    invoice_status = case
+      when invoice_status = 'issued'::public.global_invoice_status then invoice_status
+      else v_paper_status
+    end,
+    updated_at = now()
+  where id = v_bill.id;
+
+  perform public._sync_dropship_courier_ar_bill_details(v_bill.id, p_order_id, coalesce(v_bill.paid_amount, 0) = 0);
+  perform public.stamp_bill_kernel_fields(v_bill.id);
+
+  select * into v_bill from public.bills where id = v_bill.id;
+
+  return jsonb_build_object(
+    'success', true,
+    'bill_id', v_bill.id,
+    'amount', v_bill.total_amount,
+    'invoice_status', v_bill.invoice_status
+  );
+exception
+  when others then
+    return jsonb_build_object('success', false, 'error', sqlerrm);
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION public.upsert_dropship_courier_ar_bill(
+  p_order_id bigint,
+  p_keep_as_draft boolean DEFAULT true
+) RETURNS jsonb
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path TO public
+AS $$
+begin
+  return public._kernel_upsert_dropship_courier_ar(p_order_id, p_keep_as_draft);
+end;
+$$;
+
 CREATE OR REPLACE FUNCTION public.upsert_dropship_courier_ap_bill(p_order_id bigint, p_keep_as_draft boolean DEFAULT false)
 RETURNS jsonb
 LANGUAGE plpgsql

@@ -468,7 +468,14 @@ GRANT ALL ON FUNCTION "public"."insert_global_payment_instruments"("p_payment_id
 
 GRANT ALL ON FUNCTION "public"."insert_global_payment_instruments"("p_payment_id" bigint, "p_instruments" "jsonb") TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."issue_dropship_tenant_b2b_invoice"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."issue_dropship_tenant_b2b_invoice"("p_tenant_id" bigint, "p_order_id" bigint, "p_as_draft" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."issue_dropship_tenant_b2b_invoice"("p_tenant_id" bigint, "p_order_id" bigint, "p_as_draft" boolean) TO "service_role";
+GRANT ALL ON FUNCTION "public"."_sync_dropship_courier_ar_bill_details"("p_bill_id" bigint, "p_order_id" bigint, "p_allow_line_sync" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."_sync_dropship_courier_ar_bill_details"("p_bill_id" bigint, "p_order_id" bigint, "p_allow_line_sync" boolean) TO "service_role";
+GRANT ALL ON FUNCTION "public"."_kernel_upsert_dropship_courier_ar"("p_order_id" bigint, "p_keep_as_draft" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."_kernel_upsert_dropship_courier_ar"("p_order_id" bigint, "p_keep_as_draft" boolean) TO "service_role";
+GRANT ALL ON FUNCTION "public"."upsert_dropship_courier_ar_bill"("p_order_id" bigint, "p_keep_as_draft" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."upsert_dropship_courier_ar_bill"("p_order_id" bigint, "p_keep_as_draft" boolean) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."issue_wholesale_invoice"("p_invoice_id" bigint, "p_items" "jsonb") TO "authenticated";
 

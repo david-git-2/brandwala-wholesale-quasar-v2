@@ -10,6 +10,7 @@ AS $$
     WHEN p_kind = 'sales_invoice_wholesale' THEN 'wholesale'
     WHEN p_kind = 'sales_invoice_retail' THEN 'retail'
     WHEN p_kind = 'sales_invoice_dropship' THEN 'dropship'
+    WHEN p_kind = 'dropship_courier_ar' THEN 'dropship'
     WHEN p_kind LIKE 'sales_invoice_%' THEN 'wholesale'
     WHEN p_kind IN ('credit_note', 'debit_note') THEN 'ar'
     ELSE 'ap'
