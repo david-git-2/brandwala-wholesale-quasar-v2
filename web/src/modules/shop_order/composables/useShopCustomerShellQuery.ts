@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
-import { shopLoginGroupsQueryKey } from 'src/modules/auth/composables/useShopLoginGroupsQuery';
+import { shopLoginGroupsQueryKey } from 'src/modules/workspace/submodules/auth/composables/useShopLoginGroupsQuery';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import {
   shopCustomerShellRepository,

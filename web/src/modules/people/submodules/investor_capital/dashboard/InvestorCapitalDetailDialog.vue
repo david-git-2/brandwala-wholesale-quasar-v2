@@ -65,12 +65,12 @@
 import { computed, ref } from 'vue';
 import { Bar } from 'vue-chartjs';
 import type { ChartData, ChartOptions } from 'chart.js';
-import DashboardPaperDrawer from 'src/modules/dashboard/components/DashboardPaperDrawer.vue';
-import { ensureDashboardChartsRegistered } from 'src/modules/dashboard/utils/dashboardChartSetup';
+import DashboardPaperDrawer from 'src/modules/workspace/submodules/dashboard/components/DashboardPaperDrawer.vue';
+import { ensureDashboardChartsRegistered } from 'src/modules/workspace/submodules/dashboard/utils/dashboardChartSetup';
 import {
   formatDashboardCount,
   formatDashboardMoney,
-} from 'src/modules/dashboard/utils/formatDashboardMetric';
+} from 'src/modules/workspace/submodules/dashboard/utils/formatDashboardMetric';
 import type { InvestorCapitalDashboardMetrics } from '../repositories/investorCapitalDashboardRepository';
 
 ensureDashboardChartsRegistered();

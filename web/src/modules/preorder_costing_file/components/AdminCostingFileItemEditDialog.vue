@@ -167,7 +167,7 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue';
 
-import type { CostingFileItem } from 'src/modules/costingFile/types';
+import type { CostingFileItem } from 'src/modules/preorder_costing_file/types';
 
 const props = defineProps<{
   modelValue: boolean;

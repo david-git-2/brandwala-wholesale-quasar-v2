@@ -20,7 +20,7 @@ import { useDropshipOrderDetailV2Query } from '../../composables/useDropshipOrde
 import { useDropshipCourierOptions } from '../../composables/useDropshipCourierOptions';
 import { useDropshipOrderStatusRedirect } from '../../composables/useDropshipOrderStatusRedirect';
 import { saveDropshipV2CustomerInvoiceSnapshot } from '../../utils/dropshipV2CustomerInvoiceStorage';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { usePickupLocationsStore } from '../../stores/pickupLocationsStore';
 import { shopOrderQueryKeys } from '../../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderService } from '../../services/shopOrderService';

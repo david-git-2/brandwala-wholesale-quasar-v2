@@ -22,7 +22,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import ProfileOperatingAccountPanel from '../components/ProfileOperatingAccountPanel.vue';
 import { paymentsPageRoute } from '../utils/paymentsNavigation';
 import { usePaymentProfileQuery } from '../composables/usePaymentProfileQuery';

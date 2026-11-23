@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { shopOrderQueryKeys } from '../../shared/queryKeys/shopOrderQueryKeys';
 import { useDropshipOrderDetailV2Query } from '../../composables/useDropshipOrderDetailV2Query';
 import { useDropshipOrderStatusRedirect } from '../../composables/useDropshipOrderStatusRedirect';

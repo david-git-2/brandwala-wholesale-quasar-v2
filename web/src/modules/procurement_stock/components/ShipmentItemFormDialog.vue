@@ -273,10 +273,10 @@
 import { ref, onMounted, computed } from 'vue';
 import { useDialogPluginComponent, useQuasar } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
-import { productRepository } from 'src/modules/products/repositories/productRepository';
+import { productRepository } from 'src/modules/shop_order/submodules/products/repositories/productRepository';
 
 const props = withDefaults(
   defineProps<{

@@ -297,11 +297,11 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useVendorStore } from '../stores/vendorStore';
-import { productService } from 'src/modules/products/services/productService';
+import { productService } from 'src/modules/shop_order/submodules/products/services/productService';
 import type { Vendor, VendorUpdateInput, VendorDeleteInput } from '../types';
-import type { ProductBrand, ProductCategory } from 'src/modules/products/types';
+import type { ProductBrand, ProductCategory } from 'src/modules/shop_order/submodules/products/types';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 
 const authStore = useAuthStore();

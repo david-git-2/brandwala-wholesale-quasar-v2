@@ -118,7 +118,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { pickupLocationService } from '../../services/pickupLocationService';
 import type { PickupLocationRow } from '../../repositories/pickupLocationRepository';
 

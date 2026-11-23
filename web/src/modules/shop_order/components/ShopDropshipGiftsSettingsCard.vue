@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import {

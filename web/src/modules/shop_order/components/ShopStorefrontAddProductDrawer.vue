@@ -245,7 +245,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { Product } from 'src/modules/products/types';
+import type { Product } from 'src/modules/shop_order/submodules/products/types';
 import type { ShopType } from '../types';
 import type { CandidateAllocation } from '../types/pricing';
 import ShopStorefrontCreateProductForm from './ShopStorefrontCreateProductForm.vue';

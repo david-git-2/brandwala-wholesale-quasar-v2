@@ -1,9 +1,9 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
-import type { MoneyPayKind } from 'src/modules/bills_pays/types/moneyPayDialog';
-import { useCashbookPartyQuery } from 'src/modules/bills_pays/composables/useCashbookPartyQuery';
+import type { MoneyPayKind } from 'src/modules/finance/submodules/bills_pays/types/moneyPayDialog';
+import { useCashbookPartyQuery } from 'src/modules/finance/submodules/bills_pays/composables/useCashbookPartyQuery';
 import { resolveCashbookRouteProfileId } from '../utils/profileMoneyProfileId';
 import { useProfileCashMovementReturn } from './useProfileCashMovementReturn';
 import { useProfileCashMovementSubmit } from './useProfileCashMovementSubmit';

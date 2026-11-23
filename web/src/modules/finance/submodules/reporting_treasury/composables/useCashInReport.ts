@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { cashInReportRepository } from '../repositories/cashInReportRepository';
 
 export function useCashInReport() {

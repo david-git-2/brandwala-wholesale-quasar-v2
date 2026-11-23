@@ -673,7 +673,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { date, useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useKobaOrderStore } from 'src/modules/koba/retail/stores/kobaOrderStore';
 import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore';
 import type {

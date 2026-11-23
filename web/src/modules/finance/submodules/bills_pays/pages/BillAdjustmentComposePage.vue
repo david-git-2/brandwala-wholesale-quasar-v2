@@ -114,7 +114,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import ApBillPaper from '../components/ApBillPaper.vue';
@@ -129,7 +129,7 @@ import { billDetailRoute, type BillDetailAdjustmentKind } from '../utils/billRou
 import type { BillAdjustmentUiKind } from '../composables/useBillAdjustmentDraft';
 import { formatAmountBdt } from 'src/utils/currency';
 import { showErrorNotification } from 'src/utils/appFeedback';
-import type { GlobalInvoiceItemRow } from 'src/modules/bills_pays/types/invoice';
+import type { GlobalInvoiceItemRow } from 'src/modules/finance/submodules/bills_pays/types/invoice';
 import type { BillAdjustmentRow } from '../types/billAdjustments';
 import { kernelBillLinesToStockRows } from '../utils/kernelBillLinesToStockRows';
 import { isInvWsWholesaleBill as isInvWsWholesaleBillCheck } from '../utils/wholesaleKernelBill';

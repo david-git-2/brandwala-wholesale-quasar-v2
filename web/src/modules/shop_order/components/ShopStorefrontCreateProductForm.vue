@@ -243,15 +243,15 @@
 import { computed, reactive, ref, watch } from 'vue';
 import type { QForm } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
-import { useGlobalMarketsQuery, useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
+import { useGlobalMarketsQuery, useGlobalCurrenciesQuery } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalReferenceQuery';
 import {
   useProductBrandsQuery,
   useProductCategoriesQuery,
-} from 'src/modules/products/composables/useProductQuery';
-import { useCreateProductMutation } from 'src/modules/products/composables/useProductMutations';
-import type { Product } from 'src/modules/products/types';
+} from 'src/modules/shop_order/submodules/products/composables/useProductQuery';
+import { useCreateProductMutation } from 'src/modules/shop_order/submodules/products/composables/useProductMutations';
+import type { Product } from 'src/modules/shop_order/submodules/products/types';
 import { showErrorNotification } from 'src/utils/appFeedback';
 
 const props = defineProps<{

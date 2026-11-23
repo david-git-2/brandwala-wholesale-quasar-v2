@@ -74,8 +74,8 @@ import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useCostingFileStore } from 'src/modules/preorder_costing_file/stores/costingFileStore';
 
 const router = useRouter();
 const authStore = useAuthStore();

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/vue-query';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import { resolveProductBasedCostingStorageTenantId } from '../utils/pbcStorageTenantId';

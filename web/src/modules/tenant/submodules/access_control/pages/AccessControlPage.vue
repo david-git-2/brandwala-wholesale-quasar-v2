@@ -222,14 +222,14 @@ import { showSuccessNotification } from 'src/utils/appFeedback';
 import { useRouter, useRoute } from 'vue-router';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
-import { useMembershipStore } from 'src/modules/membership/stores/membershipStore';
-import type { Membership, TenantMembershipRole } from 'src/modules/membership/types';
+import { useMembershipStore } from 'src/modules/tenant/submodules/membership/stores/membershipStore';
+import type { Membership, TenantMembershipRole } from 'src/modules/tenant/submodules/membership/types';
 import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
 import { useCustomerProfileStore } from 'src/modules/people/submodules/customer/stores/customerProfileStore';
 import { useTenantModuleStore } from 'src/modules/tenant/stores/tenantModuleStore';
-import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore';
+import { useModuleStore } from 'src/modules/tenant/submodules/feature_catalog/stores/moduleStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import type {
   CustomerGroup,
   CustomerGroupMember,

@@ -2,7 +2,7 @@
 import { computed, defineAsyncComponent } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useShopOrderDetailQuery } from '../../composables/useShopOrderDetailQuery';
 import { useDropshipOrderDetailV2Query } from '../../composables/useDropshipOrderDetailV2Query';
 import {

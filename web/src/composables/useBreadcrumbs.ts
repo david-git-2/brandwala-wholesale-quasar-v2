@@ -1,6 +1,6 @@
 import { computed, ref, onMounted, onBeforeUnmount, watchEffect } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw, type Router } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 
 export interface BreadcrumbBadge {
   label: string;

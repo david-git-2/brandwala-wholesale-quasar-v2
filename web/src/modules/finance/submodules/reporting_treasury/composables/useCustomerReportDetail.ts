@@ -1,6 +1,6 @@
 import { computed, reactive, type MaybeRefOrGetter, toValue } from 'vue';
 import { useInfiniteQuery, useQuery, keepPreviousData } from '@tanstack/vue-query';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { customersReportRepository } from '../repositories/customersReportRepository';
 import { customersReportQueryKeys } from './useCustomersReportList';
 import type {

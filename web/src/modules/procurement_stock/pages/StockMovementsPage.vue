@@ -139,7 +139,7 @@ import { computed, onMounted, ref } from 'vue';
 import { date, type QTableColumn } from 'quasar';
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { stockMovementRepository, type StockMovement } from '../repositories/stockMovementRepository';
 import StockMovementFormDialog from '../components/StockMovementFormDialog.vue';
 import StockMovementDetailDialog from '../components/StockMovementDetailDialog.vue';

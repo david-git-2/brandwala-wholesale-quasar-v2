@@ -484,7 +484,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { paymentsPageRoute } from '../utils/paymentsNavigation';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import FinanceHubStepRemittance from 'src/modules/shop_order/components/finance_hub/FinanceHubStepRemittance.vue';
@@ -493,8 +493,8 @@ import {
   type FinanceHubOrderQueueItem,
 } from 'src/modules/shop_order/repositories/dropshipFinanceRepository';
 import { isAwaitingCourierRemittance } from 'src/modules/shop_order/utils/isAwaitingCourierRemittance';
-import { getInitials } from 'src/modules/bills_pays/utils/invoiceListDisplay';
-import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
+import { getInitials } from 'src/modules/finance/submodules/bills_pays/utils/invoiceListDisplay';
+import { globalReferenceRepository } from 'src/modules/tenant/submodules/global_reference/repositories/globalReferenceRepository';
 import { useQueryClient } from '@tanstack/vue-query';
 import { cashbookRepository, type CashbookEntityRow } from '../repositories/cashbookRepository';
 import { billsRepository } from '../repositories/billsRepository';

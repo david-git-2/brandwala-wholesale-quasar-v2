@@ -538,8 +538,8 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { supabase } from 'src/boot/supabase';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useMembershipColumnPreference } from 'src/modules/tenant/submodules/membership/composables/useMembershipColumnPreference';
 import {
   useShopPricingListingsQuery,
   useShopPricingCandidatesQuery,

@@ -9,7 +9,7 @@ import type {
 } from '../repositories/shopCartRepository';
 import { dropshipCartService } from '../services/dropshipCartService';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 import { sumCartSubtotal } from '../utils/cartPriceUtils';
 import {

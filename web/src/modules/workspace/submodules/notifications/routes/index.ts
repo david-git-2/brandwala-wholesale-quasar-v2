@@ -1,7 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import { createShopAccessGuard } from 'src/modules/auth/guards/createShopAccessGuard';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import { createShopAccessGuard } from 'src/modules/workspace/submodules/auth/guards/createShopAccessGuard';
 import { NOTIFICATIONS_ENABLED } from '../notificationsFeature';
 
 const notificationsDisabledRedirect: RouteRecordRaw['beforeEnter'] = (to) => {

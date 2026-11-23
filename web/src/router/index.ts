@@ -6,7 +6,7 @@ import {
   createWebHistory,
 } from 'vue-router';
 import routes from './routes';
-import { setAuthSessionRouter } from 'src/modules/auth/utils/forceAuthLogout';
+import { setAuthSessionRouter } from 'src/modules/workspace/submodules/auth/utils/forceAuthLogout';
 
 /*
  * If not building with SSR mode, you can

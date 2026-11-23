@@ -1,5 +1,5 @@
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import { validateShopTenantSlug } from 'src/modules/auth/guards/validateShopTenantSlug';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import { validateShopTenantSlug } from 'src/modules/workspace/submodules/auth/guards/validateShopTenantSlug';
 import { getLastShopTypePath } from 'src/modules/shop_order/utils/catalogShop';
 import {
   getShopDashboardRouteLocation,

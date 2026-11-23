@@ -88,11 +88,11 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { shopOrderRepository } from '../../repositories/shopOrderRepository';
-import InvoicePrintSheet from 'src/modules/invoice_shared/components/InvoicePrintSheet.vue';
+import InvoicePrintSheet from 'src/modules/finance/submodules/invoice_shared/components/InvoicePrintSheet.vue';
 import DropshipOrderRecipientInvoicePreviewSkeleton from '../../components/DropshipOrderRecipientInvoicePreviewSkeleton.vue';
-import type { InvoicePrintModel } from 'src/modules/invoice_shared/types/invoicePrintModel';
+import type { InvoicePrintModel } from 'src/modules/finance/submodules/invoice_shared/types/invoicePrintModel';
 import type { ShopOrder, ShopOrderItem } from '../../types';
 import {
   buildSummaryChargeRows,

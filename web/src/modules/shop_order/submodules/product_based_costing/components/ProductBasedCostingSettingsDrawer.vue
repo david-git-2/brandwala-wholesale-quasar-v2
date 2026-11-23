@@ -394,7 +394,7 @@ import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import TfDrawerSectionTabsHeader from 'src/components/ui/TfDrawerSectionTabsHeader.vue';
-import { useGlobalCurrencies } from 'src/modules/global_reference/composables/useGlobalCurrencies';
+import { useGlobalCurrencies } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalCurrencies';
 import { normalizePbcFileStatus } from '../composables/useProductBasedCostingFileDetailsState';
 import {
   pbcCurrencyMark,

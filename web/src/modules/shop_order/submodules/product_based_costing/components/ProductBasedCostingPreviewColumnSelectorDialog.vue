@@ -78,7 +78,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useDialogPluginComponent } from 'quasar';
-import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
+import { useMembershipColumnPreference } from 'src/modules/tenant/submodules/membership/composables/useMembershipColumnPreference';
 import { useI18n } from 'vue-i18n';
 import { DEFAULT_PBC_PREVIEW_SCREENSHOT_COLUMNS } from '../utils/pbcPreviewScreenshot';
 

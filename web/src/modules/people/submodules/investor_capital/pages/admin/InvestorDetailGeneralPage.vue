@@ -142,7 +142,7 @@ import { computed, reactive, watch } from 'vue';
 import { copyToClipboard } from 'quasar';
 import { storeToRefs } from 'pinia';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { useInvestorDetailContext } from '../../composables/useInvestorDetailContext';
 import { useInvestorCapitalStore } from '../../stores/investorCapitalStore';

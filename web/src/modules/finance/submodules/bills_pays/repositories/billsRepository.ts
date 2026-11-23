@@ -1,13 +1,13 @@
 import { supabase } from 'src/boot/supabase';
-import type { GlobalStockCostingInput } from 'src/modules/global/types';
+import type { GlobalStockCostingInput } from 'src/modules/procurement_stock/submodules/global_stock/types';
 import type {
   GlobalInvoiceDetail,
   GlobalInvoiceItemRow,
   GlobalInvoiceRow,
   InvoicePaymentHistoryEntry,
-} from 'src/modules/bills_pays/types/invoice';
-import type { BillPayCashbookLegs } from 'src/modules/bills_pays/types/billPayCashbookLegs';
-import { parseBillPayCashbookLegsFromRpc } from 'src/modules/bills_pays/types/billPayCashbookLegs';
+} from 'src/modules/finance/submodules/bills_pays/types/invoice';
+import type { BillPayCashbookLegs } from 'src/modules/finance/submodules/bills_pays/types/billPayCashbookLegs';
+import { parseBillPayCashbookLegsFromRpc } from 'src/modules/finance/submodules/bills_pays/types/billPayCashbookLegs';
 import type {
   BillListRow,
   BillsListPageCursor,

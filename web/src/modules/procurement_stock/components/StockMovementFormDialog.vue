@@ -197,8 +197,8 @@ import {
   formatStockAvailability,
   type StockAvailability,
 } from '../constants/stockAvailability';
-import { useTagStore } from 'src/modules/tag/stores/tagStore';
-import type { Tag } from 'src/modules/tag/types';
+import { useTagStore } from 'src/modules/procurement_stock/submodules/tag/stores/tagStore';
+import type { Tag } from 'src/modules/procurement_stock/submodules/tag/types';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
 type StockMovementType = Database['public']['Enums']['stock_movement_type'];

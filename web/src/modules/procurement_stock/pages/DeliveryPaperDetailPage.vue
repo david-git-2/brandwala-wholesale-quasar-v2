@@ -191,7 +191,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import {
@@ -204,7 +204,7 @@ import DeliveryPaperDetailLines from '../components/DeliveryPaperDetailLines.vue
 import DeliveryPaperOutcomeRejectDialog from '../components/DeliveryPaperOutcomeRejectDialog.vue';
 import ProcurementDemandStockPickDialog from '../components/ProcurementDemandStockPickDialog.vue';
 import type { DemandStockPickSelection } from '../components/ProcurementDemandStockPickDialog.vue';
-import { billDetailRoute } from 'src/modules/bills_pays/utils/billRoutes';
+import { billDetailRoute } from 'src/modules/finance/submodules/bills_pays/utils/billRoutes';
 import {
   deliveryPaperCloseBillChipCaption,
   deliveryPaperCloseBillChipLabel,

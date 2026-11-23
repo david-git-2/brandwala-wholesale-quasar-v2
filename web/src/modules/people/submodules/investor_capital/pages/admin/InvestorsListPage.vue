@@ -105,7 +105,7 @@ import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import InvestorProfileDialog from '../../components/InvestorProfileDialog.vue';
 import { useInvestorCapitalStore } from 'src/modules/people/submodules/investor_capital/stores/investorCapitalStore';
 import type {

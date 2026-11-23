@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
-import { cashbookRepository } from 'src/modules/bills_pays/repositories/cashbookRepository';
-import { cashbookQueryKeys } from 'src/modules/bills_pays/services/cashbookQueryKeys';
+import { cashbookRepository } from 'src/modules/finance/submodules/bills_pays/repositories/cashbookRepository';
+import { cashbookQueryKeys } from 'src/modules/finance/submodules/bills_pays/services/cashbookQueryKeys';
 
 export function useCashbookPointsForProfileQuery(
   booksTenantId: Ref<number>,

@@ -151,7 +151,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { QTableColumn } from 'quasar';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { formatAppDateTime } from 'src/utils/dateTime';
 import { useMembershipStore } from '../stores/membershipStore';
 import type { Membership } from '../types';

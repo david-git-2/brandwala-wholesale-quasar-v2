@@ -154,9 +154,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useMembershipPreference } from 'src/modules/membership/composables/useMembershipPreference';
-import { MEMBERSHIP_UI_PATHS } from 'src/modules/membership/types/preferences';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useMembershipPreference } from 'src/modules/tenant/submodules/membership/composables/useMembershipPreference';
+import { MEMBERSHIP_UI_PATHS } from 'src/modules/tenant/submodules/membership/types/preferences';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import BillListCard from '../components/BillListCard.vue';
 import BillListRow from '../components/BillListRow.vue';
@@ -307,7 +307,7 @@ const openBill = (row: BillListRowData) => {
 </script>
 
 <style scoped lang="scss">
-@import 'src/modules/bills_pays/styles/invoice-list.scss';
+@import 'src/modules/finance/submodules/bills_pays/styles/invoice-list.scss';
 
 .bills-content-col {
   display: flex;

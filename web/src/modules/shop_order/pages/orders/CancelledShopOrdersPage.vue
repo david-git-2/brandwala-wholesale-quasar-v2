@@ -90,7 +90,7 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useCustomerProfiles } from 'src/modules/people/submodules/customer/composables/useCustomerProfiles';
 import { useShopOrdersStaffPageQuery } from '../../composables/useShopOrdersStaffPageQuery';
 import { useDeleteShopOrdersForStaffMutation } from '../../composables/useShopOrderMutations';

@@ -544,7 +544,7 @@ import type { QInput } from 'quasar';
 import { useI18n } from 'vue-i18n';
 
 import { supabase } from 'src/boot/supabase';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
 import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
 import AppLogoMark from 'src/components/brand/AppLogoMark.vue';

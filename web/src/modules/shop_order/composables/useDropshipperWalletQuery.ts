@@ -2,7 +2,7 @@ import { computed, type Ref } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { dropshipperWalletRepository } from '../repositories/dropshipperWalletRepository';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 
 export function useDropshipperWalletQuery(enabled: Ref<boolean> | boolean = true) {
   const authStore = useAuthStore();

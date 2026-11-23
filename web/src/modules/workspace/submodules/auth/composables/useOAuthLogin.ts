@@ -23,7 +23,7 @@ import { tenantService } from 'src/modules/tenant/services/tenantService';
 import { appLoginBundleRepository } from '../repositories/appLoginBundleRepository';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
-import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
+import { useMembershipPreferenceStore } from 'src/modules/tenant/submodules/membership/stores/membershipPreferenceStore';
 import { clearShopOrderQueryCache } from 'src/query/queryClient';
 import {
   useAuthStore,

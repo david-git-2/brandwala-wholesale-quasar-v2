@@ -1,5 +1,5 @@
 import { supabase } from 'src/boot/supabase';
-import { asDashboardNumber } from 'src/modules/dashboard/utils/formatDashboardMetric';
+import { asDashboardNumber } from 'src/modules/workspace/submodules/dashboard/utils/formatDashboardMetric';
 
 export type InvestorCapitalOpenContainer = {
   name: string;

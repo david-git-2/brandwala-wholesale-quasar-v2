@@ -268,7 +268,7 @@ import {
 import {
   billNoteHasVisibleContent,
   billNoteHtml,
-} from 'src/modules/bills_pays/utils/billNoteDisplay';
+} from 'src/modules/finance/submodules/bills_pays/utils/billNoteDisplay';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 
 const shipmentStore = useGlobalShipmentStore();

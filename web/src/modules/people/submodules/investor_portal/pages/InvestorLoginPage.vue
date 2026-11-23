@@ -24,7 +24,7 @@
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 
-import AuthLoginPanel from 'src/modules/auth/components/AuthLoginPanel.vue';
+import AuthLoginPanel from 'src/modules/workspace/submodules/auth/components/AuthLoginPanel.vue';
 import AppTradeFlowLoadingScreen from 'src/components/brand/AppTradeFlowLoadingScreen.vue';
 import { useTenantEntryContext } from 'src/modules/tenant/composables/useTenantEntryContext';
 

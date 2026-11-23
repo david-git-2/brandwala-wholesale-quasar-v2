@@ -104,7 +104,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import AddVendorDialog from '../components/AddVendorDialog.vue';
 import VendorCardView from '../components/VendorCardView.vue';
 import VendorSkeleton from '../components/VendorSkeleton.vue';

@@ -1,6 +1,6 @@
-import { getPreferencePath } from 'src/modules/membership/utils/preferenceUtils';
-import { MEMBERSHIP_UI_PATHS } from 'src/modules/membership/types/preferences';
-import type { MembershipPreferenceSchema } from 'src/modules/membership/types/preferences';
+import { getPreferencePath } from 'src/modules/tenant/submodules/membership/utils/preferenceUtils';
+import { MEMBERSHIP_UI_PATHS } from 'src/modules/tenant/submodules/membership/types/preferences';
+import type { MembershipPreferenceSchema } from 'src/modules/tenant/submodules/membership/types/preferences';
 
 export type AdminWorkspaceTenantRef = {
   id: number;

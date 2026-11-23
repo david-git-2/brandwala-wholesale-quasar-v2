@@ -194,8 +194,8 @@ import { useRouter } from 'vue-router';
 import { type QTableColumn } from 'quasar';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useCostingFileStore } from 'src/modules/preorder_costing_file/stores/costingFileStore';
 import { handleApiFailure } from 'src/utils/appFeedback';
 import { formatCurrentDateTimeForName } from 'src/utils/dateTime';
 

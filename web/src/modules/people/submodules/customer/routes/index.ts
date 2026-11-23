@@ -1,8 +1,8 @@
 import type { NavigationGuard, RouteRecordRaw } from 'vue-router';
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { canAccessModule } from 'src/modules/navigation/modulePermissions';
-import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { canAccessModule } from 'src/modules/workspace/submodules/navigation/modulePermissions';
+import type { ModuleKey } from 'src/modules/workspace/submodules/navigation/moduleRegistry';
 
 const CUSTOMER_OVERVIEW_MODULE_KEYS = ['customer', 'recipient_profile'] as const satisfies readonly ModuleKey[];
 

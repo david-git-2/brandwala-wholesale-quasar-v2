@@ -219,7 +219,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { marked } from 'src/utils/marked';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
 import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore';
 

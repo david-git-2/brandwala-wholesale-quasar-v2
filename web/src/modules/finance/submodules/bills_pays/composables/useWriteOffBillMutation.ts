@@ -3,7 +3,7 @@ import { billsQueryKeys } from '../services/billsQueryKeys';
 import { paysQueryKeys } from '../services/paysQueryKeys';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { moneyKernelRepository } from '../repositories/moneyKernelRepository';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 
 export type WriteOffBillInput = {
   billId: number;

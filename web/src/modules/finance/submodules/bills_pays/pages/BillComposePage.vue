@@ -487,7 +487,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import { supabase } from 'src/boot/supabase';
 import { formatAmountBdt } from 'src/utils/currency';
@@ -509,7 +509,7 @@ type ComposeLineKind = 'stock' | 'description' | 'charge';
 import { useBillComposeMutation } from '../composables/useBillComposeMutation';
 import { billDetailRoute } from '../utils/billRoutes';
 import { isShipmentCostApBill } from '../utils/shipmentApBillSource';
-import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
+import type { GlobalInvoiceDetail } from 'src/modules/finance/submodules/bills_pays/types/invoice';
 import type { Database } from 'src/types/supabase';
 
 type BillDocumentKind = Database['public']['Enums']['bill_document_kind'];

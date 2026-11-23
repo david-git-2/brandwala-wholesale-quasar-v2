@@ -1,4 +1,4 @@
-import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin';
+import type { AuthScope } from 'src/modules/workspace/submodules/auth/composables/useOAuthLogin';
 
 export type ModuleKey =
   | 'order_management'
@@ -8,7 +8,6 @@ export type ModuleKey =
   | 'costing_file'
   | 'koba_retail'
   | 'koba_wholesale'
-  | 'tasks'
   | 'thrift'
   | 'thrift_sales'
   | 'thrift_customers'
@@ -275,21 +274,6 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Browse Koba Wholesale products',
         icon: 'ph ph-shopping-cart',
         routeSegment: 'koba/wholesale',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'tasks',
-    name: 'Tasks',
-    description: 'Manage projects, modules, submodules, tasks, notes, discussions, bugs, features.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Tasks',
-        caption: 'Manage tasks and project hierarchy',
-        icon: 'ph ph-clipboard-text',
-        routeSegment: 'tasks',
         requiredAction: 'view',
       },
     ],

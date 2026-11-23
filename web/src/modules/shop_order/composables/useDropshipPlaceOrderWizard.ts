@@ -2,7 +2,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useRecipientProfileStore } from 'src/modules/people/submodules/customer/stores/recipientProfileStore';
 import { showErrorNotification } from 'src/utils/appFeedback';
 import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';

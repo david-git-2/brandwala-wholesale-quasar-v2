@@ -158,7 +158,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import type { QTableColumn } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import { productService } from '../services/productService';
 import type { ProductBrand } from '../types';

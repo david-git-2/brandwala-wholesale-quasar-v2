@@ -48,7 +48,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import PayListRow from './PayListRow.vue';
@@ -136,7 +136,7 @@ const onOpenPay = (row: PayRow) => {
 </script>
 
 <style scoped lang="scss">
-@import 'src/modules/bills_pays/styles/invoice-list.scss';
+@import 'src/modules/finance/submodules/bills_pays/styles/invoice-list.scss';
 .payments-list-card {
   min-height: 0;
 }

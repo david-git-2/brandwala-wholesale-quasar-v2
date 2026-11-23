@@ -342,7 +342,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
 import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore';
 import type { KobaCartItem } from '../repositories/kobaCartRepository';

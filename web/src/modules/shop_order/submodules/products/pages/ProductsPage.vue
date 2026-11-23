@@ -112,8 +112,8 @@ import ProductGrid from '../components/ProductGrid.vue';
 import ProductSkeleton from '../components/ProductSkeleton.vue';
 import ProductFilterDrawer from '../components/ProductFilterDrawer.vue';
 import ProductCreateDialog from '../components/ProductCreateDialog.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useGlobalMarketsQuery, useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useGlobalMarketsQuery, useGlobalCurrenciesQuery } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalReferenceQuery';
 import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import {
   useProductsInfiniteListQuery,

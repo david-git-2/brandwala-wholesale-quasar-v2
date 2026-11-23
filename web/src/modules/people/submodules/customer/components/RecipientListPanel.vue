@@ -235,15 +235,15 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useInvoiceWorkspace } from 'src/modules/bills_pays/composables/useInvoiceWorkspace';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useInvoiceWorkspace } from 'src/modules/finance/submodules/bills_pays/composables/useInvoiceWorkspace';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useRecipientProfileStore } from 'src/modules/people/submodules/customer/stores/recipientProfileStore';
 import type { RecipientProfile } from 'src/types/recipientProfile';
 import RecipientDetailDrawer from './RecipientDetailDrawer.vue';
 import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
 import TfEntityListShell from 'src/components/ui/TfEntityListShell.vue';
-import { getInitials } from 'src/modules/bills_pays/utils/invoiceListDisplay';
+import { getInitials } from 'src/modules/finance/submodules/bills_pays/utils/invoiceListDisplay';
 
 withDefaults(
   defineProps<{

@@ -156,7 +156,7 @@ import { computed, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { QTableColumn } from 'quasar';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import InvestorTransactionDialog from '../../components/InvestorTransactionDialog.vue';
 import { useInvestorCapitalStore } from 'src/modules/people/submodules/investor_capital/stores/investorCapitalStore';
 import type { InvestorTransactionCreateInput } from 'src/modules/people/submodules/investor_capital/types';

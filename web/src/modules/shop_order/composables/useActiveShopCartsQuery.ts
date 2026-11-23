@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopCartService } from '../services/shopCartService';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 
 export function useActiveShopCartsQuery(enabled?: Ref<boolean>) {
   const authStore = useAuthStore();

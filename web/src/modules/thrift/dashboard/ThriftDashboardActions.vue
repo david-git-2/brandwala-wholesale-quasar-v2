@@ -43,7 +43,7 @@
 import { computed } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 
 const props = defineProps<{
   tenantSlug?: string;

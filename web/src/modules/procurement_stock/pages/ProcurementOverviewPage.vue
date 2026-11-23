@@ -27,7 +27,7 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import HubLinkList, { type HubLinkItem } from 'src/components/ui/HubLinkList.vue';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import {
   PROCUREMENT_MORE_LINKS,
   filterProcurementMoreLinks,

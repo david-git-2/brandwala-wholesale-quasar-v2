@@ -151,8 +151,8 @@ import { computed, onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
-import type { TenantViewer } from 'src/modules/costingFile/types';
+import { useCostingFileStore } from 'src/modules/preorder_costing_file/stores/costingFileStore';
+import type { TenantViewer } from 'src/modules/preorder_costing_file/types';
 
 type ViewerRow = TenantViewer & {
   isAssigned: boolean;

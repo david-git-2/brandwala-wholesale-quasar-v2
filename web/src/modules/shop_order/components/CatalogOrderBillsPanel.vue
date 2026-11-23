@@ -51,12 +51,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { GlobalInvoiceRow } from 'src/modules/bills_pays/types/invoice';
+import type { GlobalInvoiceRow } from 'src/modules/finance/submodules/bills_pays/types/invoice';
 import {
   invoiceChannelLabel,
   invoiceChannelTone,
   invoiceListStatusLabel,
-} from 'src/modules/bills_pays/utils/invoiceListDisplay';
+} from 'src/modules/finance/submodules/bills_pays/utils/invoiceListDisplay';
 import { formatAmountBdt } from 'src/utils/currency';
 import { useShopOrderBills } from '../composables/useShopOrderBills';
 import type { ShopOrderBillListItem } from '../types/shopOrderBillList';

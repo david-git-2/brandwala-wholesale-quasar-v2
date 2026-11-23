@@ -95,7 +95,7 @@
 import { computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import { useAppDashboardRoutes } from '../composables/useAppDashboardRoutes';
 
 const $q = useQuasar();

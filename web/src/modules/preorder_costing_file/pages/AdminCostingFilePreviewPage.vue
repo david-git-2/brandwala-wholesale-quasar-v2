@@ -107,8 +107,8 @@ import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import {
   buildCustomerProductRows,
   summarizeCustomerProductRows,
-} from 'src/modules/costingFile/composables/useCostingFileDetailRows';
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
+} from 'src/modules/preorder_costing_file/composables/useCostingFileDetailRows';
+import { useCostingFileStore } from 'src/modules/preorder_costing_file/stores/costingFileStore';
 
 const route = useRoute();
 const router = useRouter();

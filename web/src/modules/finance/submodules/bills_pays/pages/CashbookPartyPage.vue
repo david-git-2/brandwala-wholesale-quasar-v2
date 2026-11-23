@@ -91,7 +91,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 import { useCashbookPartyQuery } from '../composables/useCashbookPartyQuery';
 import CashbookLedgerSourceCell from '../components/CashbookLedgerSourceCell.vue';

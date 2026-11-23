@@ -110,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Membership, TenantMembershipRole } from 'src/modules/membership/types';
+import type { Membership, TenantMembershipRole } from 'src/modules/tenant/submodules/membership/types';
 
 interface Props {
   isLoading: boolean;

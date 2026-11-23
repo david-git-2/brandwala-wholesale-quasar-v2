@@ -91,7 +91,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import TfConfirmDialog from 'src/components/ui/TfConfirmDialog.vue';
-import type { InvoicePaymentHistoryEntry } from 'src/modules/bills_pays/types/invoice';
+import type { InvoicePaymentHistoryEntry } from 'src/modules/finance/submodules/bills_pays/types/invoice';
 import {
   formatPaymentHistoryBooksCaption,
   formatPaymentHistoryPrimary,

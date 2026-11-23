@@ -96,7 +96,7 @@ import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
 import { formatGlobalShipmentStatus } from 'src/modules/procurement_stock/constants/shipmentStatus';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import {
   formatShipmentDisplayNo,
   useShipmentReportList,

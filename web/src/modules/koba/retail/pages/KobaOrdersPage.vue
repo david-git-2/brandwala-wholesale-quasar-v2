@@ -130,7 +130,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { QTableColumn } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useKobaOrderStore } from 'src/modules/koba/retail/stores/kobaOrderStore';
 import type { KobaOrderStatus } from 'src/modules/koba/retail/repositories/kobaOrderRepository';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';

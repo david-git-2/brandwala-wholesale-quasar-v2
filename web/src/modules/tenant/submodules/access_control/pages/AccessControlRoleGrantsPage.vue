@@ -118,13 +118,13 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
 import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { showSuccessNotification } from 'src/utils/appFeedback';
 import {
   formatModuleKey,
   groupActionsForGrantMatrix,
   type GrantDisplayGroup,
-} from 'src/modules/access_control/utils/grantDisplayGroups';
+} from 'src/modules/tenant/submodules/access_control/utils/grantDisplayGroups';
 
 const props = defineProps<{
   id: number;

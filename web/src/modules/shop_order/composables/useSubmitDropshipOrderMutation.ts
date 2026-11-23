@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { dropshipCartService } from '../services/dropshipCartService';

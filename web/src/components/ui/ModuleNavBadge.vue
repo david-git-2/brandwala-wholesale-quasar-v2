@@ -16,7 +16,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import type { ModuleNavFamily } from 'src/modules/navigation/moduleRegistry';
+import type { ModuleNavFamily } from 'src/modules/workspace/submodules/navigation/moduleRegistry';
 
 const props = defineProps<{
   family: ModuleNavFamily;

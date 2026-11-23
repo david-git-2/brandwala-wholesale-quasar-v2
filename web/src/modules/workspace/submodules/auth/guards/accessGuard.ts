@@ -5,7 +5,7 @@ import {
   canAccessModule,
   type ModuleAction,
   type ModuleKey,
-} from 'src/modules/navigation/modulePermissions';
+} from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import type { LocationQueryRaw, RouteLocationRaw } from 'vue-router';
 import { showWarningDialog } from 'src/utils/appFeedback';
 

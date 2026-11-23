@@ -30,8 +30,8 @@ import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import HubLinkList, { type HubLinkItem } from 'src/components/ui/HubLinkList.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import {
   SHOP_ORDER_MORE_LINKS,
   filterMoreHubLinks,

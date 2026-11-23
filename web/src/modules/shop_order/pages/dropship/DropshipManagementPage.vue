@@ -295,7 +295,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { Dialog } from 'quasar';
 import ExcelTableScrollFooter from 'src/components/ui/ExcelTableScrollFooter.vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import DropshipPaymentReceivedConfirmDialog from '../../components/DropshipPaymentReceivedConfirmDialog.vue';
 import { dropshipFinanceRepository } from '../../repositories/dropshipFinanceRepository';
 import {
@@ -309,7 +309,7 @@ import {
   showErrorNotification,
   showSuccessNotification,
 } from 'src/utils/appFeedback';
-import { billDetailRoute } from 'src/modules/bills_pays/utils/billRoutes';
+import { billDetailRoute } from 'src/modules/finance/submodules/bills_pays/utils/billRoutes';
 import { shopOrderService } from '../../services/shopOrderService';
 import type { DropshipSettlementDraftPayload } from '../../types/dropshipManagementOrder';
 import type { ShopOrder, ShopOrderStatus } from '../../types';

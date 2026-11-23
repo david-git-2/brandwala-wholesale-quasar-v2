@@ -195,7 +195,7 @@ import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { useTenantStore } from '../stores/tenantStore';
 import type { Tenant } from '../types';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 
 const route = useRoute();
 const router = useRouter();

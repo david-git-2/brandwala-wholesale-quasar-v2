@@ -5,7 +5,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import ProcurementDemandDesk, {

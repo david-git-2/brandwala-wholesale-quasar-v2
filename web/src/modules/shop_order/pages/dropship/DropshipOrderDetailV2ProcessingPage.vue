@@ -10,7 +10,7 @@ import { useDropshipCourierOptions } from '../../composables/useDropshipCourierO
 import { useDropshipOrderProcessingDesk } from '../../composables/useDropshipOrderProcessingDesk';
 import { useDropshipOrderStatusRedirect } from '../../composables/useDropshipOrderStatusRedirect';
 import { shopOrderRepository } from '../../repositories/shopOrderRepository';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useDropshipProcessingFulfillmentDraft } from '../../composables/useDropshipProcessingFulfillmentDraft';
 import { applyDropshipOrderDetailV2ToCache } from '../../utils/dropshipOrderDetailV2CacheUtils';
 import { isDropshipLineResolved } from '../../utils/dropshipInvoiceFulfillment';

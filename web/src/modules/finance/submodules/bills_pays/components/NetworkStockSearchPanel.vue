@@ -152,20 +152,20 @@
 import { computed, ref, watch } from 'vue';
 import { supabase } from 'src/boot/supabase';
 
-import { createShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
-import { globalRepository } from 'src/modules/global/repositories/globalRepository';
+import { createShipmentItemsCostingCache } from 'src/modules/procurement_stock/submodules/global_stock/composables/useShipmentItemsCostingCache';
+import { globalRepository } from 'src/modules/procurement_stock/submodules/global_stock/repositories/globalRepository';
 import type {
   GlobalStockSearchField,
   StockNetworkMode,
   StockNetworkRow,
-} from 'src/modules/global/types';
+} from 'src/modules/procurement_stock/submodules/global_stock/types';
 import {
   groupStockNetworkRows,
   pickableContext,
   stockNetworkAvailableQty,
   type StockNetworkProductGroup,
-} from 'src/modules/global/utils/mapStockNetworkRow';
-import { resolveGlobalStockUnitCost } from 'src/modules/global/utils/resolveGlobalStockUnitCost';
+} from 'src/modules/procurement_stock/submodules/global_stock/utils/mapStockNetworkRow';
+import { resolveGlobalStockUnitCost } from 'src/modules/procurement_stock/submodules/global_stock/utils/resolveGlobalStockUnitCost';
 import { formatAmountBdt } from 'src/utils/currency';
 
 const formatCost = (val: number) => formatAmountBdt(val);

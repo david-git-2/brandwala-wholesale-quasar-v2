@@ -1,15 +1,15 @@
 import type { QueryClient } from '@tanstack/vue-query';
-import { moneyKernelRepository } from 'src/modules/bills_pays/repositories/moneyKernelRepository';
-import { createPayIdempotencyKey } from 'src/modules/bills_pays/repositories/paysRepository';
-import type { MoneyPayKind, MoneyPaySubmitPayload } from 'src/modules/bills_pays/types/moneyPayDialog';
-import { buildKernelPayMovementMeta } from 'src/modules/bills_pays/utils/kernelPayMovementMeta';
+import { moneyKernelRepository } from 'src/modules/finance/submodules/bills_pays/repositories/moneyKernelRepository';
+import { createPayIdempotencyKey } from 'src/modules/finance/submodules/bills_pays/repositories/paysRepository';
+import type { MoneyPayKind, MoneyPaySubmitPayload } from 'src/modules/finance/submodules/bills_pays/types/moneyPayDialog';
+import { buildKernelPayMovementMeta } from 'src/modules/finance/submodules/bills_pays/utils/kernelPayMovementMeta';
 import {
   applyDepositCacheUpdate,
   invalidateProfileCashbookStaffQueries,
-} from 'src/modules/bills_pays/composables/applyDepositCacheUpdate';
+} from 'src/modules/finance/submodules/bills_pays/composables/applyDepositCacheUpdate';
 import { ProfileDepositPartialError } from './profileDepositPartialError';
-import type { DepositRpcResult } from 'src/modules/bills_pays/repositories/moneyKernelRepository';
-import { cashbookQueryKeys } from 'src/modules/bills_pays/services/cashbookQueryKeys';
+import type { DepositRpcResult } from 'src/modules/finance/submodules/bills_pays/repositories/moneyKernelRepository';
+import { cashbookQueryKeys } from 'src/modules/finance/submodules/bills_pays/services/cashbookQueryKeys';
 
 export type ProfileCashDepositSuccess =
   | {

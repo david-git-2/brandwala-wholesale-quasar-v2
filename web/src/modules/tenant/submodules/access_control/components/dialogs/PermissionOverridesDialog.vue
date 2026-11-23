@@ -98,7 +98,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { groupActionsForGrantMatrix } from 'src/modules/access_control/utils/grantDisplayGroups';
+import { groupActionsForGrantMatrix } from 'src/modules/tenant/submodules/access_control/utils/grantDisplayGroups';
 
 interface SystemActionItem {
   id?: string | number;

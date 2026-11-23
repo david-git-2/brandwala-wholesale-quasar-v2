@@ -77,7 +77,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import MoneyPayDialogSummary from '../components/MoneyPayDialogSummary.vue';

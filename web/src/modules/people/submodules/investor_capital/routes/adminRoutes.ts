@@ -1,6 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import type { ModuleKey } from 'src/modules/workspace/submodules/navigation/moduleRegistry';
 import {
   getAppRouteLocation,
   getTenantSlugFromRoute,

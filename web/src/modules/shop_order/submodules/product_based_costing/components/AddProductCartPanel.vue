@@ -148,7 +148,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import AddProductCartCard from './AddProductCartCard.vue';
@@ -159,9 +159,9 @@ import {
   useCreateProductBasedCostingItemMutation,
   useDeleteProductBasedCostingItemMutation,
 } from '../composables/useProductBasedCostingItemMutations';
-import { useProductsInfiniteListQuery } from 'src/modules/products/composables/useProductQuery';
-import { productService } from 'src/modules/products/services/productService';
-import type { Product } from 'src/modules/products/types';
+import { useProductsInfiniteListQuery } from 'src/modules/shop_order/submodules/products/composables/useProductQuery';
+import { productService } from 'src/modules/shop_order/submodules/products/services/productService';
+import type { Product } from 'src/modules/shop_order/submodules/products/types';
 import type { ProductBasedCostingItem } from '../types';
 
 const props = withDefaults(

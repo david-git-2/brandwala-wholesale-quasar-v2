@@ -281,7 +281,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useStockLocationStore } from '../stores/stockLocationStore';
 import { useWarehouseStockInfiniteQuery } from '../composables/useWarehouseStockInfiniteQuery';
 import { useWarehouseStockGroupsQuery } from '../composables/useWarehouseStockGroupsQuery';
@@ -297,8 +297,8 @@ import {
   WAREHOUSE_STOCK_GROUP_BY_OPTIONS,
   type WarehouseStockGroupBy,
 } from '../constants/warehouseStockList';
-import { useTagStore } from 'src/modules/tag/stores/tagStore';
-import type { Tag } from 'src/modules/tag/types';
+import { useTagStore } from 'src/modules/procurement_stock/submodules/tag/stores/tagStore';
+import type { Tag } from 'src/modules/procurement_stock/submodules/tag/types';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ProcurementOpsListToolbar from '../components/ProcurementOpsListToolbar.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
@@ -310,11 +310,11 @@ import WarehouseStockGroupLotsPanel from '../components/WarehouseStockGroupLotsP
 import StockMoveGradeDialog from '../components/StockMoveGradeDialog.vue';
 import StockMoveLocationDialog from '../components/StockMoveLocationDialog.vue';
 import WarehouseStockCostDetailDrawer from '../components/WarehouseStockCostDetailDrawer.vue';
-import { getSharedShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
+import { getSharedShipmentItemsCostingCache } from 'src/modules/procurement_stock/submodules/global_stock/composables/useShipmentItemsCostingCache';
 import {
   isGlobalStockCostingInput,
   resolveGlobalStockUnitCostSync,
-} from 'src/modules/global/utils/resolveGlobalStockUnitCost';
+} from 'src/modules/procurement_stock/submodules/global_stock/utils/resolveGlobalStockUnitCost';
 import type { GlobalStock } from '../repositories/globalStockRepository';
 import { formatLocationOption } from '../utils/stockLocationOptions';
 

@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { shipmentProfitRepository } from '../repositories/shipmentProfitRepository';
 import type { ShipmentProfitReportQueryParams } from '../types/shipmentProfitTypes';
 

@@ -29,7 +29,7 @@ Modules: `product_based_costing`, `costing_file` (legacy/alternate entry). Grant
 | Demand desk | `/:slug/app/procurement/demand` |
 | Delivery fulfill | `/:slug/app/procurement/fulfill` |
 
-UI: `web/src/modules/product_based_costing/`, `web/src/modules/costingFile/`.
+UI: `web/src/modules/shop_order/submodules/product_based_costing/`, `web/src/modules/preorder_costing_file/`.
 
 ## Position in the BW lifecycle
 

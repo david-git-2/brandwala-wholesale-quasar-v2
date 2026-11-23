@@ -90,7 +90,7 @@ import { useRoute, useRouter } from 'vue-router';
 import {
   parseOrderGlanceBucket,
   type OrderGlanceBucket,
-} from 'src/modules/dashboard/utils/customerDashboardStatus';
+} from 'src/modules/workspace/submodules/dashboard/utils/customerDashboardStatus';
 import { useCustomerOrdersQuery } from '../../composables/useCustomerOrdersQuery';
 import { resolveCustomerShopTypePath, shopCatalogEntryPath } from '../../utils/catalogShop';
 import { shopTypeToPathSegment } from '../../utils/shopRouteTypes';

@@ -115,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore';
+import { useModuleStore } from 'src/modules/tenant/submodules/feature_catalog/stores/moduleStore';
 import SubmoduleAccessPanel from 'src/modules/tenant/components/SubmoduleAccessPanel.vue';
 
 interface FeatureModule {

@@ -799,8 +799,8 @@ import { buildLinePreviewRateBreakdown } from '../utils/linePreviewRateBreakdown
 import { ref, computed, watch, unref, onBeforeUnmount } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { describeBoxTotalsNetDiff, describeBoxVsInvoiceCargo } from '../utils/boxWeightVariance';
 import type {
@@ -837,8 +837,8 @@ import {
   SHIPMENT_COST_BUCKET_SELECT_OPTIONS,
   SHIPMENT_COST_COMPONENT_SELECT_OPTIONS,
 } from '../constants/shipmentCostAxisOptions';
-import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
-import { useMoneyKernelCurrenciesQuery } from 'src/modules/bills_pays/composables/useMoneyKernelCurrenciesQuery';
+import { useGlobalCurrenciesQuery } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalReferenceQuery';
+import { useMoneyKernelCurrenciesQuery } from 'src/modules/finance/submodules/bills_pays/composables/useMoneyKernelCurrenciesQuery';
 import { SHIPMENT_AP_COST_BUCKETS } from '../constants/shipmentApBuckets';
 import {
   apBillInvoiceLabel,
@@ -854,7 +854,7 @@ import {
   buildSummaryApBillsByBucket,
   summaryApBillsGrandBdt,
 } from '../utils/shipmentSummaryApBills';
-import { billDetailCommercialCreditRoute, billDetailRoute as apBillDetailRoute } from 'src/modules/bills_pays/utils/billRoutes';
+import { billDetailCommercialCreditRoute, billDetailRoute as apBillDetailRoute } from 'src/modules/finance/submodules/bills_pays/utils/billRoutes';
 import {
   costEntryApBillId,
   costEntryHasIssuedInvoice,

@@ -30,12 +30,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import type { InventoryItemWithStock } from '../types';
 
 import GlobalStockDetailsDialog from './GlobalStockDetailsDialog.vue';
-import NetworkStockSearchPanel from 'src/modules/bills_pays/components/NetworkStockSearchPanel.vue';
+import NetworkStockSearchPanel from 'src/modules/finance/submodules/bills_pays/components/NetworkStockSearchPanel.vue';
 import type { StockNetworkRow } from '../types';
 import { mapStockNetworkToInventoryView } from '../utils/mapStockNetworkRow';
 

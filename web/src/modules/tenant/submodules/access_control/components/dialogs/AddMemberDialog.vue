@@ -77,7 +77,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import type { TenantMembershipRole } from 'src/modules/membership/types';
+import type { TenantMembershipRole } from 'src/modules/tenant/submodules/membership/types';
 
 const props = defineProps<{
   modelValue: boolean;

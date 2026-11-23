@@ -80,7 +80,7 @@ import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import FinanceReportFrame from '../components/FinanceReportFrame.vue';
 import { useMonthSnapshotReport } from '../composables/useMonthSnapshotReport';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 
 const router = useRouter();

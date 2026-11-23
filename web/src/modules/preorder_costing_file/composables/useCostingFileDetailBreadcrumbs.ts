@@ -1,7 +1,7 @@
 import { useRoute } from 'vue-router';
 import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import type { CostingFileDetails } from 'src/modules/costingFile/types';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import type { CostingFileDetails } from 'src/modules/preorder_costing_file/types';
 
 type CostingDetailScope = 'admin' | 'staff' | 'viewer' | 'shop';
 

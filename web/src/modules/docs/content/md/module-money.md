@@ -30,7 +30,7 @@ Grants: `global_invoice` (bills), `payments`, `cashbook`. [Access kernel](/docs/
 | Pay out | `.../payments/payout` |
 | Profile ledger | `.../payments/party/:type/:id` |
 
-UI: `web/src/modules/bills_pays/` (legacy names `sales_invoice/`, `wallet/` in older docs).
+UI: `web/src/modules/finance/submodules/bills_pays/` (legacy names `sales_invoice/`, `wallet/` in older docs).
 
 ## Five layers
 

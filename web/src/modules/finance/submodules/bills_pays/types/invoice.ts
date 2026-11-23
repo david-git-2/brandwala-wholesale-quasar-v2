@@ -1,4 +1,4 @@
-import type { GlobalStockCostingInput } from 'src/modules/global/types';
+import type { GlobalStockCostingInput } from 'src/modules/procurement_stock/submodules/global_stock/types';
 
 export type InvoicePaymentHistoryInstrument = {
   id: number;

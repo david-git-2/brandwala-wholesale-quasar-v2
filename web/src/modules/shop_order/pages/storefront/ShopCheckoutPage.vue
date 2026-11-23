@@ -435,7 +435,7 @@ import {
 import { showErrorNotification } from 'src/utils/appFeedback';
 import { fetchCourierChargeEstimate } from '../../services/courierChargeEstimate';
 import { useRecipientProfileStore } from 'src/modules/people/submodules/customer/stores/recipientProfileStore';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { getLastVisitedShopSlug, shopCustomerOrderDetailRoute } from '../../utils/catalogShop';
 import { customerCanSeeCartLinePrices } from '../../utils/catalogPriceUtils';
 import { resolveShopCartItemMoq } from '../../utils/cartQuantityUtils';

@@ -18,9 +18,9 @@ The [roadmap](ROADMAP.md) stays thematic. This file is the **feature-level** ind
 
 | Topic | Path |
 |-------|------|
-| Bills/pays kernel plug order (BP13+, desks) | [doc/fix/2026-10-12-bills-pays-kernel-plan.md](../doc/fix/2026-10-12-bills-pays-kernel-plan.md) |
+| Bills/pays kernel plug order (BP13+, desks) | [atlas](features/money_bill_bridge/spec.md#atlas) |
 | Bills desk URLs + kernel wrappers | [.cursor/plans/bills_desk_nav_apis_619be984.plan.md](../.cursor/plans/bills_desk_nav_apis_619be984.plan.md) |
-| Supabase domain split tracker | [doc/supabase-schema.md](../doc/supabase-schema.md) |
+| Supabase domain split tracker | [database.md](architecture/database.md) (`supabase/config.toml` `schema_paths`) |
 
 ## Conventions
 

@@ -1,32 +1,31 @@
 import type { RouteRecordRaw } from 'vue-router';
-import authRoutes from 'src/modules/auth/routes';
-import dashboardRoutes from 'src/modules/dashboard/routes';
+import authRoutes from 'src/modules/workspace/submodules/auth/routes';
+import dashboardRoutes from 'src/modules/workspace/submodules/dashboard/routes';
 import tenantRoutes from 'src/modules/tenant/routes';
-import featureCatalogRoutes from 'src/modules/featureCatalog/routes';
-import costingFileRoutes from 'src/modules/costingFile/routes';
-import membershipRoutes from 'src/modules/membership/routes';
-import globalReferenceRoutes from 'src/modules/global_reference/routes';
-import productBasedCostingRoutes from 'src/modules/product_based_costing/routes';
-import productRoutes from 'src/modules/products/routes';
+import featureCatalogRoutes from 'src/modules/tenant/submodules/feature_catalog/routes';
+import costingFileRoutes from 'src/modules/preorder_costing_file/routes';
+import membershipRoutes from 'src/modules/tenant/submodules/membership/routes';
+import globalReferenceRoutes from 'src/modules/tenant/submodules/global_reference/routes';
+import productBasedCostingRoutes from 'src/modules/shop_order/submodules/product_based_costing/routes';
+import productRoutes from 'src/modules/shop_order/submodules/products/routes';
 import vendorRoutes from 'src/modules/people/submodules/vendor/routes';
 import kobaRoutes from 'src/modules/koba/routes';
-import tasksRoutes from 'src/modules/tasks/routes';
-import notificationRoutes from 'src/modules/notifications/routes';
+import notificationRoutes from 'src/modules/workspace/submodules/notifications/routes';
 import thriftRoutes from 'src/modules/thrift/routes';
 import investorPortalRoutes from 'src/modules/people/submodules/investor_portal/routes';
-import globalRoutes from 'src/modules/global/routes';
+import globalRoutes from 'src/modules/procurement_stock/submodules/global_stock/routes';
 import procurementStockRoutes from 'src/modules/procurement_stock/routes';
-import reportingTreasuryRoutes from 'src/modules/reporting_treasury/routes';
-import billsPaysRoutes from 'src/modules/bills_pays/routes';
+import reportingTreasuryRoutes from 'src/modules/finance/submodules/reporting_treasury/routes';
+import billsPaysRoutes from 'src/modules/finance/submodules/bills_pays/routes';
 import investorCapitalAdminRoutes from 'src/modules/people/submodules/investor_capital/routes/adminRoutes';
 import shopOrderRoutes from 'src/modules/shop_order/routes';
-import accessControlRoutes from 'src/modules/access_control/routes';
+import accessControlRoutes from 'src/modules/tenant/submodules/access_control/routes';
 import customerRoutes from 'src/modules/people/submodules/customer/routes';
 import peopleRoutes from 'src/modules/people/routes';
-import landingRoutes from 'src/modules/landing/routes';
-import helpRoutes from 'src/modules/help/routes';
+import landingRoutes from 'src/modules/workspace/submodules/landing/routes';
+import helpRoutes from 'src/modules/docs/submodules/help/routes';
 import docsRoutes from 'src/modules/docs/routes';
-import operatingManualRoutes from 'src/modules/operating_manual/routes';
+import operatingManualRoutes from 'src/modules/docs/submodules/operating_manual/routes';
 const devRoutes: RouteRecordRaw[] = [
   {
     path: '/dev/designsystem',
@@ -158,7 +157,6 @@ const routes: RouteRecordRaw[] = [
   ...costingFileRoutes,
   ...membershipRoutes,
   ...kobaRoutes,
-  ...tasksRoutes,
   ...notificationRoutes,
   ...thriftRoutes,
   ...investorPortalRoutes,

@@ -1,5 +1,5 @@
 import { supabase } from 'src/boot/supabase';
-import { asDashboardNumber } from 'src/modules/dashboard/utils/formatDashboardMetric';
+import { asDashboardNumber } from 'src/modules/workspace/submodules/dashboard/utils/formatDashboardMetric';
 import type { ProcurementDashboardMetrics } from 'src/modules/procurement_stock/repositories/procurementDashboardRepository';
 import { procurementDashboardRepository } from 'src/modules/procurement_stock/repositories/procurementDashboardRepository';
 import type { ShopOrderDashboardMetrics } from 'src/modules/shop_order/repositories/shopOrderDashboardRepository';

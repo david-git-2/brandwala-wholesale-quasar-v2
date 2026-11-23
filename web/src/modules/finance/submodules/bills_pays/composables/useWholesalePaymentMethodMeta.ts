@@ -2,7 +2,7 @@ import { computed, watch, type MaybeRefOrGetter, toValue } from 'vue';
 import {
   useGlobalPaymentMethodsQuery,
   useBdBanksQuery,
-} from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
+} from 'src/modules/tenant/submodules/global_reference/composables/useGlobalReferenceQuery';
 
 export type WholesaleMethodOption = {
   label: string;

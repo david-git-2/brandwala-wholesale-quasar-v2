@@ -33,7 +33,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useModulePermissions, type ModuleKey } from 'src/modules/navigation/modulePermissions';
+import { useModulePermissions, type ModuleKey } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 
 type HubCard = {
   key: string;

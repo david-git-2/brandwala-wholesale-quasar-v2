@@ -147,7 +147,7 @@ import { useCustomerMutations } from 'src/modules/people/submodules/customer/com
 import CreateCustomerDialog from 'src/modules/people/submodules/customer/components/CreateCustomerDialog.vue';
 import type { CustomerAccount } from 'src/modules/people/submodules/customer/types/customer';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
-import { useGlobalCurrencies } from 'src/modules/global_reference/composables/useGlobalCurrencies';
+import { useGlobalCurrencies } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalCurrencies';
 
 interface CostingFileForm {
   id: number | null;

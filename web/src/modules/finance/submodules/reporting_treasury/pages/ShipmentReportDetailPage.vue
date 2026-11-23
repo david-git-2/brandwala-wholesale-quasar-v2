@@ -70,7 +70,7 @@ import ShipmentReportProfitBridge from '../components/shipmentReport/ShipmentRep
 import ShipmentReportCostDonut from '../components/shipmentReport/ShipmentReportCostDonut.vue';
 import ShipmentReportPiecesBar from '../components/shipmentReport/ShipmentReportPiecesBar.vue';
 import ShipmentReportDetailTabs from '../components/shipmentReport/ShipmentReportDetailTabs.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useShipmentReportDetail } from '../composables/useShipmentReportDetail';
 import { useShipmentReportView } from '../composables/useShipmentReportView';
 

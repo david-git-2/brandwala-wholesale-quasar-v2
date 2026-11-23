@@ -265,7 +265,7 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import type { QTableColumn } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 import { useCashInReport } from '../composables/useCashInReport';
 import type { CashInReportEntry } from '../types/cashInReport';

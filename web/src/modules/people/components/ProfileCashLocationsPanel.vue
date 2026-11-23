@@ -127,11 +127,11 @@ import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfEmptyState from 'src/components/ui/TfEmptyState.vue';
 import ProfileCashLocationsPanelBody from './ProfileCashLocationsPanelBody.vue';
 import ProfileCashbookBundleCreateDialog from './ProfileCashbookBundleCreateDialog.vue';
-import type { CashbookPointRow } from 'src/modules/bills_pays/repositories/cashbookRepository';
-import { cashbookRepository } from 'src/modules/bills_pays/repositories/cashbookRepository';
-import { moneyKernelRepository } from 'src/modules/bills_pays/repositories/moneyKernelRepository';
-import { createPayIdempotencyKey } from 'src/modules/bills_pays/repositories/paysRepository';
-import { cashbookQueryKeys } from 'src/modules/bills_pays/services/cashbookQueryKeys';
+import type { CashbookPointRow } from 'src/modules/finance/submodules/bills_pays/repositories/cashbookRepository';
+import { cashbookRepository } from 'src/modules/finance/submodules/bills_pays/repositories/cashbookRepository';
+import { moneyKernelRepository } from 'src/modules/finance/submodules/bills_pays/repositories/moneyKernelRepository';
+import { createPayIdempotencyKey } from 'src/modules/finance/submodules/bills_pays/repositories/paysRepository';
+import { cashbookQueryKeys } from 'src/modules/finance/submodules/bills_pays/services/cashbookQueryKeys';
 import {
   requestConfirmation,
   showErrorNotification,

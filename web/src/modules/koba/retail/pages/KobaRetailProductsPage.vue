@@ -143,7 +143,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useKobaRetailStore } from 'src/modules/koba/retail/stores/kobaRetailStore';
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
 import { useKobaSettingsStore } from 'src/modules/koba/retail/stores/kobaSettingsStore';

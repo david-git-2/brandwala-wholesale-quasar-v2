@@ -217,7 +217,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import type { QPopupProxy } from 'quasar';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import {

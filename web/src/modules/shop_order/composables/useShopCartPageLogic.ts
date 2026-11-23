@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { requestConfirmation } from 'src/utils/appFeedback';
 import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';
 import { useQueryClient } from '@tanstack/vue-query';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import type { ActiveCartItem, ShopCartItem } from '../repositories/shopCartRepository';
 import { useShopCartMutations } from './useShopCartMutations';
 import { useShopCartSelection } from './useShopCartSelection';

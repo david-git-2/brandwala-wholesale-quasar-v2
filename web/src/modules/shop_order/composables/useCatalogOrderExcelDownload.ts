@@ -1,6 +1,6 @@
 import type { QVueGlobals } from 'quasar';
-import { buildCostingExcelWorkbook } from 'src/modules/product_based_costing/utils/buildCostingExcelWorkbook';
-import { safeNamePart } from 'src/modules/product_based_costing/composables/useProductBasedCostingFileDetailsState';
+import { buildCostingExcelWorkbook } from 'src/modules/shop_order/submodules/product_based_costing/utils/buildCostingExcelWorkbook';
+import { safeNamePart } from 'src/modules/shop_order/submodules/product_based_costing/composables/useProductBasedCostingFileDetailsState';
 import type { ShopOrder, ShopOrderItem } from '../types';
 import { mapCatalogOrderToCostingExcelInput } from '../utils/mapCatalogOrderToCostingExcelInput';
 

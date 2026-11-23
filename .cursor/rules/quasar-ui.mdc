@@ -39,7 +39,7 @@ Do not open mega live list pages for chrome. Tokens/layout below + `OpsListPage.
 
 ## UX (frictionless)
 
-One obvious next step. Disabled primary explains why (`q-tooltip` / banner). No Help essays, tours, or links to `doc/*.md` on the page. Loading: `PageInitialLoader` / `TfSkeletonRows`; background: `GlobalAjaxBar`.
+One obvious next step. Disabled primary explains why (`q-tooltip` / banner). No Help essays, tours, or links to `docs/*.md` on the page. Loading: `PageInitialLoader` / `TfSkeletonRows`; background: `GlobalAjaxBar`.
 
 ## Size & chrome scope
 

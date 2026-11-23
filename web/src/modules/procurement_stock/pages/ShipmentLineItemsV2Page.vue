@@ -677,7 +677,7 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from
 import { useQueryClient } from '@tanstack/vue-query';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar, copyToClipboard } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import {
   requestConfirmation,

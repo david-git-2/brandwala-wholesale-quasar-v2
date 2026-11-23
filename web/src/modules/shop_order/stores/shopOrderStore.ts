@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { shopOrderService } from '../services/shopOrderService';
 import type { Shop, ShopOrder, ShopOrderItem } from '../types';
 

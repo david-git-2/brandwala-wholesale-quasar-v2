@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { applyStaffOrderDetailToCache } from '../utils/staffOrderDetailCacheUtils';
 import { invalidateDropshipOrderDetailV2 } from '../utils/dropshipOrderDetailV2CacheUtils';
 

@@ -1,13 +1,13 @@
 import { computed } from 'vue';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import {
   resolveTenantHierarchyKind,
   type TenantHierarchyKind,
 } from 'src/modules/tenant/utils/tenantHierarchy';
-import type { AccessRole } from 'src/modules/auth/guards/accessGuard';
-import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin';
+import type { AccessRole } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import type { AuthScope } from 'src/modules/workspace/submodules/auth/composables/useOAuthLogin';
 import {
   PROCUREMENT_HUB_MODULE_KEYS,
   SHOP_ORDER_HUB_MODULE_KEYS,

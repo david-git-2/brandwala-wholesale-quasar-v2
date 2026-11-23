@@ -1,6 +1,6 @@
 import { computed } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { canAccessModule } from 'src/modules/navigation/modulePermissions';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { canAccessModule } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 
 export function usePaymentsVoidAccess() {
   const authStore = useAuthStore();

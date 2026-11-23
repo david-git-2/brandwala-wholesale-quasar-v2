@@ -190,7 +190,7 @@ import { useQuasar } from 'quasar';
 
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useInvestorPortalStore } from '../stores/investorPortalStore';
 
 const authStore = useAuthStore();

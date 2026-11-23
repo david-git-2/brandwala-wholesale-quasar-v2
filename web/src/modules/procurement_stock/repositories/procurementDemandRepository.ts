@@ -1,5 +1,5 @@
 import { supabase } from 'src/boot/supabase';
-import { productBasedCostingRepository } from 'src/modules/product_based_costing/repositories/productBasedCostingRepository';
+import { productBasedCostingRepository } from 'src/modules/shop_order/submodules/product_based_costing/repositories/productBasedCostingRepository';
 import { shopOrderRepository } from 'src/modules/shop_order/repositories/shopOrderRepository';
 
 export type ProcurementDemandStatus = 'procuring' | 'dispatch' | 'delivered' | 'closed';

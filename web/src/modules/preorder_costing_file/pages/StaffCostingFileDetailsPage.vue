@@ -242,19 +242,19 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
-import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue';
-import StaffCostingFileItemEditDialog from 'src/modules/costingFile/components/StaffCostingFileItemEditDialog.vue';
+import AddCostingFileItemDialog from 'src/modules/preorder_costing_file/components/AddCostingFileItemDialog.vue';
+import StaffCostingFileItemEditDialog from 'src/modules/preorder_costing_file/components/StaffCostingFileItemEditDialog.vue';
 import {
   buildAdminProductRows,
   summarizeAdminProductRows,
-} from 'src/modules/costingFile/composables/useCostingFileDetailRows';
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
-import { useCostingFileDetailBreadcrumbs } from 'src/modules/costingFile/composables/useCostingFileDetailBreadcrumbs';
+} from 'src/modules/preorder_costing_file/composables/useCostingFileDetailRows';
+import { useCostingFileStore } from 'src/modules/preorder_costing_file/stores/costingFileStore';
+import { useCostingFileDetailBreadcrumbs } from 'src/modules/preorder_costing_file/composables/useCostingFileDetailBreadcrumbs';
 import type {
   CostingFileDetails,
   CostingFileItem,
   CostingFileStatus,
-} from 'src/modules/costingFile/types';
+} from 'src/modules/preorder_costing_file/types';
 
 const route = useRoute();
 const router = useRouter();

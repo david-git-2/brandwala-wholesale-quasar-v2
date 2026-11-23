@@ -1144,8 +1144,8 @@
 import { ref, computed, watch, onBeforeUnmount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import { requestConfirmation } from 'src/utils/appFeedback';
 import { useBDAddressOptions } from 'src/modules/shop_order/composables/useBDAddressOptions';
 import {

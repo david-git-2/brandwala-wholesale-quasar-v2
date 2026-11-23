@@ -169,7 +169,7 @@ import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import type { QTableColumn, QTableProps } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMoney';
 import { showErrorNotification } from 'src/utils/appFeedback';
 import { useThriftSalesReturnsQuery } from '../composables/useThriftSalesQuery';

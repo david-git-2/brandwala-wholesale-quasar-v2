@@ -92,7 +92,6 @@
         <UserProfileMenu @sign-out="onMobileSignOut" />
       </div>
 
-      <TaskSearchDialog v-if="searchDialogOpen" v-model="searchDialogOpen" />
       <GlobalStockSearchDialog v-if="stockSearchDialogOpen" v-model="stockSearchDialogOpen" />
     </template>
 
@@ -106,19 +105,18 @@ import { computed, onMounted, ref } from 'vue';
 import WorkspaceShell from 'src/components/WorkspaceShell.vue';
 import AppBreadcrumbs from 'src/components/navigation/AppBreadcrumbs.vue';
 import UserProfileMenu from 'src/components/navigation/UserProfileMenu.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useAppWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useAppWorkspaceLinks } from 'src/modules/workspace/submodules/navigation/useWorkspaceNavigation';
 import { useAdminTenantSelection } from 'src/modules/tenant/composables/useAdminTenantSelection';
 import { readLegacyWorkspaceSelection, useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { filterCompanyTenants } from 'src/modules/tenant/utils/tenantHierarchy';
-import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
-import { MEMBERSHIP_UI_PATHS } from 'src/modules/membership/types/preferences';
+import { useMembershipPreferenceStore } from 'src/modules/tenant/submodules/membership/stores/membershipPreferenceStore';
+import { MEMBERSHIP_UI_PATHS } from 'src/modules/tenant/submodules/membership/types/preferences';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
 import { useAppearance } from 'src/composables/useAppearance';
-import TaskSearchDialog from 'src/modules/tasks/components/TaskSearchDialog.vue';
-import GlobalStockSearchDialog from 'src/modules/global/components/GlobalStockSearchDialog.vue';
-import NotificationBell from 'src/modules/notifications/components/NotificationBell.vue';
-import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/notifications/notificationsFeature';
+import GlobalStockSearchDialog from 'src/modules/procurement_stock/submodules/global_stock/components/GlobalStockSearchDialog.vue';
+import NotificationBell from 'src/modules/workspace/submodules/notifications/components/NotificationBell.vue';
+import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/workspace/submodules/notifications/notificationsFeature';
 
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
@@ -130,7 +128,6 @@ const { reconcilePreferences } = useAppearance();
 const { links } = useAppWorkspaceLinks();
 
 const workspaceShellRef = ref<InstanceType<typeof WorkspaceShell> | null>(null);
-const searchDialogOpen = ref(false);
 const stockSearchDialogOpen = ref(false);
 
 const onMobileSignOut = () => {

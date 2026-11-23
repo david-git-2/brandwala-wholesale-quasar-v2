@@ -1,8 +1,8 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import { createShopAccessGuard } from 'src/modules/auth/guards/createShopAccessGuard';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import { createShopAccessGuard } from 'src/modules/workspace/submodules/auth/guards/createShopAccessGuard';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { validateAppRouteTenantSlug } from 'src/modules/tenant/utils/tenantRouteContext';
 
 const resolveAppCostingLanding = () => {

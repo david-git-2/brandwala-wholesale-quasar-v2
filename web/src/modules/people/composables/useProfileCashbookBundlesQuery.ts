@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
-import { moneyKernelRepository } from 'src/modules/bills_pays/repositories/moneyKernelRepository';
-import { cashbookQueryKeys } from 'src/modules/bills_pays/services/cashbookQueryKeys';
+import { moneyKernelRepository } from 'src/modules/finance/submodules/bills_pays/repositories/moneyKernelRepository';
+import { cashbookQueryKeys } from 'src/modules/finance/submodules/bills_pays/services/cashbookQueryKeys';
 import type { ProfileCashbookBundleRow } from '../types/profileCashbookBundle';
 
 export function profileCashbookBundlesQueryKey(

@@ -76,7 +76,7 @@ import { computed, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getLastShopTypePath } from 'src/modules/shop_order/utils/catalogShop';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { getAppRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 
 import NotificationList from './NotificationList.vue';

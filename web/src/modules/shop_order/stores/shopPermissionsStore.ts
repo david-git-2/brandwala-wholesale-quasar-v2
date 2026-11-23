@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useGlobalReferenceStore } from 'src/modules/global_reference/stores/globalReferenceStore';
+import { useGlobalReferenceStore } from 'src/modules/tenant/submodules/global_reference/stores/globalReferenceStore';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { shopPermissionsService } from '../services/shopPermissionsService';
 import type {

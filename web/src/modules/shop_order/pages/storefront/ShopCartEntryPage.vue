@@ -6,7 +6,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useActiveShopCartsQuery } from '../../composables/useActiveShopCartsQuery';
 import { resolveCustomerShopTypePath } from '../../utils/catalogShop';
 import { useShopCartQuery } from '../../composables/useShopCartQuery';

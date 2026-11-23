@@ -981,14 +981,14 @@ import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import {
   buildCustomerProductRows,
   summarizeCustomerProductRows,
-} from 'src/modules/costingFile/composables/useCostingFileDetailRows';
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
-import { useCostingFileDetailBreadcrumbs } from 'src/modules/costingFile/composables/useCostingFileDetailBreadcrumbs';
-import type { CostingFileItemStatus } from 'src/modules/costingFile/types';
+} from 'src/modules/preorder_costing_file/composables/useCostingFileDetailRows';
+import { useCostingFileStore } from 'src/modules/preorder_costing_file/stores/costingFileStore';
+import { useCostingFileDetailBreadcrumbs } from 'src/modules/preorder_costing_file/composables/useCostingFileDetailBreadcrumbs';
+import type { CostingFileItemStatus } from 'src/modules/preorder_costing_file/types';
 import { showSuccessNotification } from 'src/utils/appFeedback';
 
 const route = useRoute();

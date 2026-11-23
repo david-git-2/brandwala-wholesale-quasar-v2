@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { billsRepository, type BillDetailBundle } from '../repositories/billsRepository';
-import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
+import type { GlobalInvoiceDetail } from 'src/modules/finance/submodules/bills_pays/types/invoice';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import { listBillLinesForInvoice } from '../repositories/billLinesRepository';
 

@@ -213,8 +213,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import { useInfiniteCustomerListQuery, useCustomerMutations } from '../composables/useCustomerQuery';
 import type { CustomerAccount } from '../types/customer';
 import CustomerDetailDrawer from '../components/CustomerDetailDrawer.vue';
@@ -227,9 +227,9 @@ import RecipientListPanel from '../components/RecipientListPanel.vue';
 import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
 import TfEntityListShell from 'src/components/ui/TfEntityListShell.vue';
 import { useCanAdministerCustomerGroup } from '../composables/useCanAdministerCustomerGroup';
-import { useInvoiceWorkspace } from 'src/modules/bills_pays/composables/useInvoiceWorkspace';
+import { useInvoiceWorkspace } from 'src/modules/finance/submodules/bills_pays/composables/useInvoiceWorkspace';
 import { useRecipientProfileStore } from 'src/modules/people/submodules/customer/stores/recipientProfileStore';
-import { getInitials } from 'src/modules/bills_pays/utils/invoiceListDisplay';
+import { getInitials } from 'src/modules/finance/submodules/bills_pays/utils/invoiceListDisplay';
 import {
   showErrorNotification,
   showSuccessNotification,

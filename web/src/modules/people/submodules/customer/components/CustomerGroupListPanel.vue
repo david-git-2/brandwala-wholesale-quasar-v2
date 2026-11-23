@@ -140,7 +140,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useCustomerListQuery, useCustomerMutations } from '../composables/useCustomerQuery';
 import type { CustomerAccount } from '../types/customer';
 import CustomerDetailDrawer from './CustomerDetailDrawer.vue';

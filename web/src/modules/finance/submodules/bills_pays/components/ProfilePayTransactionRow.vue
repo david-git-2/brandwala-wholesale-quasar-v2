@@ -102,7 +102,7 @@ const reverted = computed(() => !!props.row.reverted_at);
 </script>
 
 <style scoped lang="scss">
-@import 'src/modules/bills_pays/styles/invoice-list.scss';
+@import 'src/modules/finance/submodules/bills_pays/styles/invoice-list.scss';
 
 .profile-pay-row {
   padding: 10px 12px;

@@ -1,12 +1,12 @@
 import { computed } from 'vue';
 
 import type { WorkspaceLink } from 'src/components/WorkspaceShell.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { roleMatchesAllowed, type AccessRole } from 'src/modules/auth/guards/accessGuard';
-import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { roleMatchesAllowed, type AccessRole } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import type { AuthScope } from 'src/modules/workspace/submodules/auth/composables/useOAuthLogin';
 import { hasTenantContextForScope, useModulePermissions } from './modulePermissions';
 import { MODULE_REGISTRY, type ModuleKey } from './moduleRegistry';
-import { buildNavLinksFromModuleHierarchy } from 'src/modules/featureCatalog/utils/moduleHierarchy';
+import { buildNavLinksFromModuleHierarchy } from 'src/modules/tenant/submodules/feature_catalog/utils/moduleHierarchy';
 import {
   buildBillsPaysHubNavLinks,
   buildSettingsNavLink,

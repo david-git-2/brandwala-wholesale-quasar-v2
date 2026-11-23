@@ -180,7 +180,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { getInitials, getAvatarColor } from 'src/shared/utils/avatarUtils';
 import { useDropshipperPayoutQuery } from 'src/modules/shop_order/composables/useDropshipperPayoutQuery';
 import DropshippersSkeleton from '../components/DropshippersSkeleton.vue';

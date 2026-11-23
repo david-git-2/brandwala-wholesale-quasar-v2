@@ -2,12 +2,12 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { supabase } from 'src/boot/supabase';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { showWarningDialog } from 'src/utils/appFeedback';
 import { useTenantStore } from '../stores/tenantStore';
 import { useTenantPreferenceStore } from '../stores/tenantPreferenceStore';
-import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
-import { MEMBERSHIP_UI_PATHS } from 'src/modules/membership/types/preferences';
+import { useMembershipPreferenceStore } from 'src/modules/tenant/submodules/membership/stores/membershipPreferenceStore';
+import { MEMBERSHIP_UI_PATHS } from 'src/modules/tenant/submodules/membership/types/preferences';
 import type { Tenant } from '../types';
 
 export function useAdminTenantSelection() {

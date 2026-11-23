@@ -1,8 +1,8 @@
-import type { CostingFileItem } from 'src/modules/costingFile/types';
+import type { CostingFileItem } from 'src/modules/preorder_costing_file/types';
 import {
   calculateBuyerSellPrice,
   calculateCostingItem,
-} from 'src/modules/costingFile/utils/costingCalculations';
+} from 'src/modules/preorder_costing_file/utils/costingCalculations';
 
 type AdminPricingInput = {
   cargoRate1Kg: number | null;

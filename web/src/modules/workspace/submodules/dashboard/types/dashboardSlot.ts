@@ -1,7 +1,7 @@
 import type { Component } from 'vue';
 
-import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin';
-import type { ModuleAction, ModuleKey } from 'src/modules/navigation/moduleRegistry';
+import type { AuthScope } from 'src/modules/workspace/submodules/auth/composables/useOAuthLogin';
+import type { ModuleAction, ModuleKey } from 'src/modules/workspace/submodules/navigation/moduleRegistry';
 
 /** shortcut/action = link tiles; section/attention/stat = lazy Vue components. */
 export type DashboardSlotKind = 'shortcut' | 'action' | 'stat' | 'attention' | 'section';

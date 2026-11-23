@@ -196,7 +196,7 @@ const trackedFetch: typeof fetch = async (input, init) => {
       const headers = new Headers(modifiedInit?.headers);
       const alreadyRetried = headers.get(AUTH_RETRY_HEADER) === '1';
       const { tryRefreshSession, handleUnauthorizedResponse } =
-        await import('src/modules/auth/utils/forceAuthLogout');
+        await import('src/modules/workspace/submodules/auth/utils/forceAuthLogout');
 
       if (alreadyRetried) {
         void handleUnauthorizedResponse();
@@ -223,7 +223,7 @@ const trackedFetch: typeof fetch = async (input, init) => {
         }
       }
     } else if (response.status === 403 && isMonitoredSupabase401(urlStr)) {
-      void import('src/modules/auth/utils/handleForbiddenResponse').then(
+      void import('src/modules/workspace/submodules/auth/utils/handleForbiddenResponse').then(
         ({ handleForbiddenResponse }) => {
           void handleForbiddenResponse(response);
         },
@@ -262,7 +262,7 @@ export default defineBoot(({ app, router }) => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const { useAuthStore } = await import('src/modules/auth/stores/authStore');
+      const { useAuthStore } = await import('src/modules/workspace/submodules/auth/stores/authStore');
       const authStore = useAuthStore();
 
       if (!authStore.hasAccess || session) {
@@ -271,7 +271,7 @@ export default defineBoot(({ app, router }) => {
 
       await withTimeout(router.isReady(), SESSION_REFRESH_BOOT_TIMEOUT_MS, undefined);
       const { tryRefreshSession, handleUnauthorizedResponse } =
-        await import('src/modules/auth/utils/forceAuthLogout');
+        await import('src/modules/workspace/submodules/auth/utils/forceAuthLogout');
       const refreshed = await withTimeout(
         tryRefreshSession(),
         SESSION_REFRESH_BOOT_TIMEOUT_MS,
@@ -289,10 +289,10 @@ export default defineBoot(({ app, router }) => {
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
-      void import('src/modules/auth/stores/authStore').then(({ useAuthStore }) => {
+      void import('src/modules/workspace/submodules/auth/stores/authStore').then(({ useAuthStore }) => {
         const authStore = useAuthStore();
         if (authStore.isAuthenticated) {
-          void import('src/modules/auth/utils/forceAuthLogout').then(
+          void import('src/modules/workspace/submodules/auth/utils/forceAuthLogout').then(
             ({ handleUnauthorizedResponse }) => {
               void handleUnauthorizedResponse();
             },

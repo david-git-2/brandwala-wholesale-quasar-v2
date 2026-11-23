@@ -101,7 +101,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useInvestorCapitalStore } from 'src/modules/people/submodules/investor_capital/stores/investorCapitalStore';
 import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore';
 import { useInboundShipmentCalculations } from 'src/modules/procurement_stock/composables/useInboundShipmentCalculations';

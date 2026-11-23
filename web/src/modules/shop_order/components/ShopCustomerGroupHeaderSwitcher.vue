@@ -41,7 +41,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import type { ShopLoginGroupRow } from 'src/modules/auth/utils/shopCustomerGroupSession';
+import type { ShopLoginGroupRow } from 'src/modules/workspace/submodules/auth/utils/shopCustomerGroupSession';
 
 defineProps<{
   currentName: string;

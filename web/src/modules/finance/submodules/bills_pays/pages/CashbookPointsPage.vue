@@ -112,7 +112,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import CashbookPointFormDialog from '../components/CashbookPointFormDialog.vue';
 import CashbookPointTransferDialog from '../components/CashbookPointTransferDialog.vue';
 import { useCashbookPointPotsBatchQuery } from '../composables/useCashbookPointPotsQuery';

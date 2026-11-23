@@ -265,7 +265,7 @@ import { useI18n } from 'vue-i18n';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { showSuccessNotification } from 'src/utils/appFeedback';
 import { isExcelFormulaText } from 'src/utils/excelCellText';
 import { useShopProductDetailQuery } from '../../composables/useShopProductDetailQuery';

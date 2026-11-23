@@ -447,7 +447,7 @@
 import { ref, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository';
 import { computePackageWeightAdjustments } from '../utils/weightBalance';

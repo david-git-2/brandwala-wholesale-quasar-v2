@@ -648,7 +648,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { supabase } from 'src/boot/supabase';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useCustomerGroupMutations } from 'src/modules/tenant/composables/useCustomerGroupMutations';
 import type { CustomerGroupCreateInput } from 'src/modules/tenant/types';
 import { useShopPermissionsStore } from '../../stores/shopPermissionsStore';

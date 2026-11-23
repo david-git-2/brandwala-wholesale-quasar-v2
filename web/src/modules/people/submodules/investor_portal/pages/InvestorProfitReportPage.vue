@@ -101,7 +101,7 @@ import { computed, ref } from 'vue';
 import type { QPopupProxy } from 'quasar';
 
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { investorPortalService } from '../services/investorPortalService';
 
 const authStore = useAuthStore();

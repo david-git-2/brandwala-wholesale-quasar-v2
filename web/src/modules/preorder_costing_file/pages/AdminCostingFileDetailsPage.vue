@@ -1055,8 +1055,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
-import AddCostingFileItemDialog from 'src/modules/costingFile/components/AddCostingFileItemDialog.vue';
-import AdminCostingFileItemEditDialog from 'src/modules/costingFile/components/AdminCostingFileItemEditDialog.vue';
+import AddCostingFileItemDialog from 'src/modules/preorder_costing_file/components/AddCostingFileItemDialog.vue';
+import AdminCostingFileItemEditDialog from 'src/modules/preorder_costing_file/components/AdminCostingFileItemEditDialog.vue';
 import { useQuasar } from 'quasar';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore';
@@ -1068,18 +1068,18 @@ import {
   summarizeAdminProductRows,
   summarizeAdminReviewRows,
   type AdminProductRow,
-} from 'src/modules/costingFile/composables/useCostingFileDetailRows';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
+} from 'src/modules/preorder_costing_file/composables/useCostingFileDetailRows';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useCostingFileStore } from 'src/modules/preorder_costing_file/stores/costingFileStore';
 import type {
   CostingFileDetails,
   CostingFileItem,
   CostingFileItemStatus,
   CostingFileStatus,
-} from 'src/modules/costingFile/types';
+} from 'src/modules/preorder_costing_file/types';
 import { showSuccessNotification } from 'src/utils/appFeedback';
-import { calculateCostingItem } from 'src/modules/costingFile/utils/costingCalculations';
-import { useCostingFileDetailBreadcrumbs } from 'src/modules/costingFile/composables/useCostingFileDetailBreadcrumbs';
+import { calculateCostingItem } from 'src/modules/preorder_costing_file/utils/costingCalculations';
+import { useCostingFileDetailBreadcrumbs } from 'src/modules/preorder_costing_file/composables/useCostingFileDetailBreadcrumbs';
 
 const route = useRoute();
 const router = useRouter();

@@ -1,5 +1,5 @@
 import { computed, onMounted, reactive, ref } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { showErrorNotification } from 'src/utils/appFeedback';
 import {

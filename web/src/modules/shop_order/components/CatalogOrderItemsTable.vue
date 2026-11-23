@@ -630,7 +630,7 @@ import { useI18n } from 'vue-i18n';
 import { useQuasar, copyToClipboard } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useCatalogOrderDeliveryPaperQtyByItem } from '../composables/useCatalogOrderDeliveryPaperQtyByItem';
 import { catalogOrderDeliveryPaperPackedDisplay } from '../types/catalogOrderDeliveryPaperQty';
 import type { ShopOrder, ShopOrderItem } from '../types';

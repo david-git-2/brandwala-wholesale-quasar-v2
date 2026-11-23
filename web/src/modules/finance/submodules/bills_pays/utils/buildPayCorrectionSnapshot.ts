@@ -1,6 +1,6 @@
 import type { PayDetail } from '../repositories/paysRepository';
 import type { PayCorrectionSnapshot } from '../types/payCorrectionSnapshot';
-import type { InvoicePaymentHistoryEntry } from 'src/modules/bills_pays/types/invoice';
+import type { InvoicePaymentHistoryEntry } from 'src/modules/finance/submodules/bills_pays/types/invoice';
 import { formatBdtTaka, formatSettlementCurrencyAmount } from 'src/utils/currency';
 import { paymentHistoryReceiptBdt } from './paymentHistoryDisplay';
 

@@ -147,7 +147,7 @@ import { showSuccessNotification } from 'src/utils/appFeedback';
 import {
   isWaitingStatus,
   waitingActionI18nKey,
-} from 'src/modules/dashboard/utils/customerDashboardStatus';
+} from 'src/modules/workspace/submodules/dashboard/utils/customerDashboardStatus';
 import type { ShopOrderStatus, ShopType } from '../types';
 import OrderPricingModeBadge from './OrderPricingModeBadge.vue';
 import { orderPlacementCaption } from '../utils/orderPlacementCaption';

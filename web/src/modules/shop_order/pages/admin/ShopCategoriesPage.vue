@@ -296,7 +296,7 @@
 import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import type { ShopCategory } from '../../types';
 import { useShopCategoryListQuery } from '../../composables/useShopCategoryQuery';
 import {

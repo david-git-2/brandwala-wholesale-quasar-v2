@@ -405,7 +405,7 @@ import { ref, computed, nextTick, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import type { QInput } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue';
 import { useChildTenantsQuery } from 'src/modules/procurement_stock/composables/useProcurementStockQuery';

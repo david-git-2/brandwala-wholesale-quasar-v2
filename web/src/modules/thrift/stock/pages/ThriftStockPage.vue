@@ -213,8 +213,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import { useThriftStockStore } from '../stores/thriftStockStore';
 import { useThriftStocksQuery, type ThriftStockQueryParams } from '../composables/useThriftStocksQuery';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';

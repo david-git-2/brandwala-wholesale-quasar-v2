@@ -64,7 +64,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 
 import NotificationList from '../components/NotificationList.vue';
 import { useNotificationStore } from '../stores/notificationStore';

@@ -18,7 +18,7 @@ import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import HubLinkList, { type HubLinkGroup, type HubLinkItem } from 'src/components/ui/HubLinkList.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 
 const router = useRouter();
 const { tenantSlug } = storeToRefs(useAuthStore());

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, unref, type MaybeRef } from 'vue';
-import { billsRepository } from 'src/modules/bills_pays/repositories/billsRepository';
+import { billsRepository } from 'src/modules/finance/submodules/bills_pays/repositories/billsRepository';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import type { ShopOrderBillListItem } from '../types/shopOrderBillList';
 

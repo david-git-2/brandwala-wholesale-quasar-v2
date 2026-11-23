@@ -45,14 +45,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { BillListRow } from '../types/billList';
-import type { GlobalInvoiceRow } from 'src/modules/bills_pays/types/invoice';
+import type { GlobalInvoiceRow } from 'src/modules/finance/submodules/bills_pays/types/invoice';
 import {
   invoiceChannelLabel,
   invoiceChannelTone,
   invoiceListStatusIcon,
   invoiceListStatusLabel,
   invoiceListStatusSlug,
-} from 'src/modules/bills_pays/utils/invoiceListDisplay';
+} from 'src/modules/finance/submodules/bills_pays/utils/invoiceListDisplay';
 import { formatAmountBdt } from 'src/utils/currency';
 
 const props = withDefaults(
@@ -119,5 +119,5 @@ const profileName = computed(() => {
 </script>
 
 <style scoped lang="scss">
-@import 'src/modules/bills_pays/styles/invoice-list.scss';
+@import 'src/modules/finance/submodules/bills_pays/styles/invoice-list.scss';
 </style>

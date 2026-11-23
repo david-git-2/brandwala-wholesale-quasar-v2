@@ -242,13 +242,13 @@
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuery } from '@tanstack/vue-query';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { formatAmountBdt, formatSettlementCurrencyAmount, settlementCurrencyDisplayLabel } from 'src/utils/currency';
 import { useBillDetailBundleQuery } from '../composables/useBillDetailBundleQuery';
 import { kernelBillLinesToStockRows } from '../utils/kernelBillLinesToStockRows';
 import { formatBillQuantityTotal, sumBillLineQuantities } from '../utils/billLineQuantityTotal';
 import { isDeliveryPaperOutcomeBillSource } from '../utils/billRoutes';
-import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/bills_pays/types/invoice';
+import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/finance/submodules/bills_pays/types/invoice';
 import { billsRepository, type InvoiceBrand } from '../repositories/billsRepository';
 import BarcodeRenderer from 'src/modules/thrift/barcode/components/BarcodeRenderer.vue';
 import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';

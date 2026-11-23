@@ -1,4 +1,4 @@
-import { cashbookRepository } from 'src/modules/bills_pays/repositories/cashbookRepository';
+import { cashbookRepository } from 'src/modules/finance/submodules/bills_pays/repositories/cashbookRepository';
 
 /** Books-tenant **main** cash point for tenant treasury deposits. */
 export async function resolveMainCashbookPointId(booksTenantId: number): Promise<number> {

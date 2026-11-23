@@ -2,7 +2,7 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { RouteLocationRaw } from 'vue-router';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import { useDashboardBundleStore } from '../stores/dashboardBundleStore';
 import { formatDashboardCount } from '../utils/formatDashboardMetric';
 import { useAppDashboardRoutes } from './useAppDashboardRoutes';

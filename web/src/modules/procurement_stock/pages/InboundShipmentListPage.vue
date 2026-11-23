@@ -199,7 +199,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { useCargoCompanyStore } from '../stores/cargoCompanyStore';

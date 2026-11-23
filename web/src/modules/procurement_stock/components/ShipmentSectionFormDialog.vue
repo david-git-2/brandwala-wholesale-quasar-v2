@@ -108,7 +108,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useDialogPluginComponent } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { ShipmentSection } from '../types/shipmentSection';
 

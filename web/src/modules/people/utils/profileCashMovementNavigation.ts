@@ -1,5 +1,5 @@
 import type { Router, RouteLocationRaw } from 'vue-router';
-import type { MoneyPayKind } from 'src/modules/bills_pays/types/moneyPayDialog';
+import type { MoneyPayKind } from 'src/modules/finance/submodules/bills_pays/types/moneyPayDialog';
 import { cashbookNavEntityType } from './profileCashbookEnabled';
 
 export type ProfileCashMovementNavKind = Extract<MoneyPayKind, 'deposit' | 'withdrawal'>;

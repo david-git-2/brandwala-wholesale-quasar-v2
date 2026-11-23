@@ -310,7 +310,7 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { paySourceToListSide, paymentsPageRoute } from '../utils/paymentsNavigation';
 import { useQuery } from '@tanstack/vue-query';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { formatAmountBdt, formatBdtTaka, formatSettlementCurrencyAmount } from 'src/utils/currency';
 import { billsRepository } from '../repositories/billsRepository';
 import { paysRepository } from '../repositories/paysRepository';

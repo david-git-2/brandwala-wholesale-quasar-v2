@@ -9,7 +9,7 @@ import { computed, type MaybeRefOrGetter, toValue, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import type { ShopOrderItem } from '../types';
 import type { StaffShopOrderItemsPageCursor } from '../types/staffShopOrderDetail';
 

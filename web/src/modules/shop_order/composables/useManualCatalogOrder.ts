@@ -9,8 +9,8 @@ import {
   type StaffCatalogOrderRatesInput,
 } from '../repositories/staffManualCatalogOrderRepository';
 import { useBooksCustomerGroupsQuery } from './useBooksCustomerGroupsQuery';
-import { productRepository } from 'src/modules/products/repositories/productRepository';
-import type { Product } from 'src/modules/products/types';
+import { productRepository } from 'src/modules/shop_order/submodules/products/repositories/productRepository';
+import type { Product } from 'src/modules/shop_order/submodules/products/types';
 import type { ShopCatalogItem } from '../types';
 
 export type ManualCatalogCreateTab = 'standard' | 'old_order';

@@ -241,9 +241,9 @@
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useTagStore } from 'src/modules/tag/stores/tagStore';
-import type { Tag } from 'src/modules/tag/types';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useTagStore } from 'src/modules/procurement_stock/submodules/tag/stores/tagStore';
+import type { Tag } from 'src/modules/procurement_stock/submodules/tag/types';
 import type { StockAvailability } from 'src/modules/procurement_stock/constants/stockAvailability';
 import { STOCK_AVAILABILITY_OPTIONS } from 'src/modules/procurement_stock/constants/stockAvailability';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';

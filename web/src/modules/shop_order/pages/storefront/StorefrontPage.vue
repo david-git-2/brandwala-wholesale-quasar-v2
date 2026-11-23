@@ -157,7 +157,7 @@ import {
 import { useShopCartQuery } from '../../composables/useShopCartQuery';
 import type { CustomerShopPermissions } from '../../composables/useCustomerShopPermissionsQuery';
 import { useShopCartMutations } from '../../composables/useShopCartMutations';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useStorefrontState } from '../../composables/useStorefrontState';
 import {
   isFixedPriceCatalog,

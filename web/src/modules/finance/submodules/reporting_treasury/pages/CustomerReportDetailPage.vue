@@ -122,7 +122,7 @@ import CustomerReportSection from '../components/customerReport/CustomerReportSe
 import ShipmentReportSectionShell from '../components/shipmentReport/ShipmentReportSectionShell.vue';
 import ReportKpiStrip from '../components/ReportKpiStrip.vue';
 import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 import {
   useCustomerReportHeader,

@@ -12,8 +12,8 @@ export const operatingManualDocsSite: DocsSiteDefinition = {
   nav: operatingManualNav,
   overviewRouteName: 'operating-manual-overview',
   searchPlaceholder: 'Search the manual',
-  contentEditPathPrefix: 'web/src/modules/operating_manual/content/md/',
-  overviewEditPath: 'web/src/modules/operating_manual/content/md/index.md',
+  contentEditPathPrefix: 'web/src/modules/docs/submodules/operating_manual/content/md/',
+  overviewEditPath: 'web/src/modules/docs/submodules/operating_manual/content/md/index.md',
   getMarkdown: getOperatingManualMarkdown,
 };
 

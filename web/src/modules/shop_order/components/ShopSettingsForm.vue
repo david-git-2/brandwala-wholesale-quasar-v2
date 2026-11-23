@@ -398,7 +398,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { useSaveShopMutation } from '../composables/useShopMutations';
 import type {
@@ -412,8 +412,8 @@ import {
   derivedShopIsNegotiable,
   getAllowedOrderModes,
 } from 'src/modules/shop_order/constants/shopConfigurationPresets';
-import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
-import { productService } from 'src/modules/products/services/productService';
+import { useGlobalCurrenciesQuery } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalReferenceQuery';
+import { productService } from 'src/modules/shop_order/submodules/products/services/productService';
 import type { Vendor } from 'src/modules/people/submodules/vendor/types';
 import { useShopCategoryListQuery } from '../composables/useShopCategoryQuery';
 

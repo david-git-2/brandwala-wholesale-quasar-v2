@@ -1,8 +1,8 @@
 import { ref } from 'vue';
 import { Dark } from 'quasar';
 import { syncFaviconWithAppearance } from 'src/composables/useDynamicFavicon';
-import { useMembershipPreferenceStore } from '../modules/membership/stores/membershipPreferenceStore';
-import type { MembershipPreferenceSchema } from '../modules/membership/types/preferences';
+import { useMembershipPreferenceStore } from 'src/modules/tenant/submodules/membership/stores/membershipPreferenceStore';
+import type { MembershipPreferenceSchema } from 'src/modules/tenant/submodules/membership/types/preferences';
 
 const darkMode = ref(false);
 const density = ref<'comfortable' | 'compact'>('comfortable');

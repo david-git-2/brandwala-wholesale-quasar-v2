@@ -206,8 +206,8 @@ import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { ShipmentLocalCostDraft } from '../types/shipmentLocalCost';
-import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useGlobalCurrenciesQuery } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalReferenceQuery';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import type { ShipmentApBillRow } from '../repositories/shipmentApBillsRepository';
 import { billDetailRoute } from '../utils/shipmentApBillDisplay';
 import {

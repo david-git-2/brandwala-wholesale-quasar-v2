@@ -148,7 +148,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useQuasar, copyToClipboard } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
-import type { Product } from 'src/modules/products/types';
+import type { Product } from 'src/modules/shop_order/submodules/products/types';
 
 const $q = useQuasar();
 const { t } = useI18n();

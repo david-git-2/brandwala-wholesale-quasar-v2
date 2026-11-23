@@ -396,12 +396,12 @@ import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import type { Product } from '../types';
 import { productService } from '../services/productService';
 import { useProductStore } from '../stores/productStore';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import type { Vendor } from 'src/modules/people/submodules/vendor/types';
 import type { QForm } from 'quasar';
 import { showSuccessNotification } from 'src/utils/appFeedback';
-import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
+import { globalReferenceRepository } from 'src/modules/tenant/submodules/global_reference/repositories/globalReferenceRepository';
 import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
 
 const route = useRoute();

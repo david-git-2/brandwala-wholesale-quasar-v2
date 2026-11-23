@@ -1,7 +1,7 @@
 import { type ComputedRef, type Ref } from 'vue';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
-import type { MoneyPayKind, MoneyPaySubmitPayload } from 'src/modules/bills_pays/types/moneyPayDialog';
+import type { MoneyPayKind, MoneyPaySubmitPayload } from 'src/modules/finance/submodules/bills_pays/types/moneyPayDialog';
 import { ProfileDepositPartialError } from '../utils/profileDepositPartialError';
 import {
   afterProfileCashMovementSuccess,

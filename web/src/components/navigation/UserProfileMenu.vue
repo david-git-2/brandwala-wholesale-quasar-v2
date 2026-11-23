@@ -219,10 +219,10 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
 import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
-import { useShopLoginGroupsQuery } from 'src/modules/auth/composables/useShopLoginGroupsQuery';
+import { useShopLoginGroupsQuery } from 'src/modules/workspace/submodules/auth/composables/useShopLoginGroupsQuery';
 import {
   getAppRouteLocation,
   getShopSelectCompanyRouteLocation,
@@ -233,7 +233,7 @@ import {
   formatReleaseDeployedDate,
   formatReleaseVersionLabel,
 } from 'src/utils/appReleaseVersion';
-import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/notifications/notificationsFeature';
+import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/workspace/submodules/notifications/notificationsFeature';
 
 type ReleaseVersions = {
   backend_version: string;

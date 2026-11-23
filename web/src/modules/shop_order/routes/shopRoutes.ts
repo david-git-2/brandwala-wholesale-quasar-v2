@@ -1,5 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router';
-import { createShopAccessGuard } from 'src/modules/auth/guards/createShopAccessGuard';
+import { createShopAccessGuard } from 'src/modules/workspace/submodules/auth/guards/createShopAccessGuard';
 
 const SHOP_TYPE = ':shopType(catalog|stock|dropship)';
 

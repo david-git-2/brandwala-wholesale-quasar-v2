@@ -6,7 +6,7 @@ import type { AuthScope } from '../composables/useOAuthLogin';
 import { mapShopRoleToAccessRole, type AccessRole } from '../guards/accessGuard';
 import { clearTenantWorkspaceStorage, useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
-import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
+import { useMembershipPreferenceStore } from 'src/modules/tenant/submodules/membership/stores/membershipPreferenceStore';
 
 export interface AuthUserSnapshot {
   id: string;

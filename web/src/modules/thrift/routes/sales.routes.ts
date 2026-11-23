@@ -1,6 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import { canAccessModule } from 'src/modules/navigation/modulePermissions';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import { canAccessModule } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import { showWarningDialog } from 'src/utils/appFeedback';
 
 const thriftGuard = {

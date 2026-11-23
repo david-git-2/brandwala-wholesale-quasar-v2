@@ -157,9 +157,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
-import { productService } from 'src/modules/products/services/productService';
+import { productService } from 'src/modules/shop_order/submodules/products/services/productService';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShipmentCartItem } from './AddShipmentCatalogTab.vue';

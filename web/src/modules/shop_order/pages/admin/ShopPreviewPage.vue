@@ -22,7 +22,7 @@
 import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useShopOrderStore } from 'src/modules/shop_order/stores/shopOrderStore';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import ShopPreviewContainer from 'src/modules/shop_order/components/ShopPreviewContainer.vue';
 
 const route = useRoute();

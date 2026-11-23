@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { computed } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { handleApiFailure, parseSupabaseError, showSuccessNotification } from 'src/utils/appFeedback';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import {

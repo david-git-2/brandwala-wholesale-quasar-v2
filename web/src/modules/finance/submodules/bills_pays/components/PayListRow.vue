@@ -70,5 +70,5 @@ const fxSubline = computed(() => payListFxSubline(props.row));
 </script>
 
 <style scoped lang="scss">
-@import 'src/modules/bills_pays/styles/invoice-list.scss';
+@import 'src/modules/finance/submodules/bills_pays/styles/invoice-list.scss';
 </style>

@@ -6,8 +6,8 @@ import {
   getModuleDefinition,
   type ModuleAction,
   type ModuleKey,
-} from 'src/modules/navigation/moduleRegistry';
-import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin';
+} from 'src/modules/workspace/submodules/navigation/moduleRegistry';
+import type { AuthScope } from 'src/modules/workspace/submodules/auth/composables/useOAuthLogin';
 import type {
   DashboardSlot,
   DashboardSlotGroup,

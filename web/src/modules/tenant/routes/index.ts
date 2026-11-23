@@ -1,5 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router';
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
 import {
   getAppRouteLocation,
   getTenantSlugFromRoute,
@@ -183,7 +183,7 @@ const tenantRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-settings-overview',
-        component: () => import('src/modules/settings/pages/AppSettingsOverviewPage.vue'),
+        component: () => import('src/modules/tenant/submodules/settings/pages/AppSettingsOverviewPage.vue'),
         beforeEnter: createAccessGuard({
           loginRoute: 'admin-login-page',
           requiredScope: 'app',

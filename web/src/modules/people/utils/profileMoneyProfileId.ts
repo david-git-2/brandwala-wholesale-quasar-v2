@@ -1,5 +1,5 @@
 import { supabase } from 'src/boot/supabase';
-import { cashbookRepository } from 'src/modules/bills_pays/repositories/cashbookRepository';
+import { cashbookRepository } from 'src/modules/finance/submodules/bills_pays/repositories/cashbookRepository';
 
 export async function resolveMoneyProfileId(
   booksTenantId: number,

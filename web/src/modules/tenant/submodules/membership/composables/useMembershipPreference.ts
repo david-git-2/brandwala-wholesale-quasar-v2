@@ -1,5 +1,5 @@
 import { ref, watch, onMounted, computed, type Ref } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useMembershipPreferenceStore } from '../stores/membershipPreferenceStore';
 import { clonePreferenceValue, getPreferencePath, valuesEqual } from '../utils/preferenceUtils';
 

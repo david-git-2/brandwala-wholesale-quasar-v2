@@ -1,9 +1,9 @@
-import type { BuildCostingExcelInput } from 'src/modules/product_based_costing/utils/buildCostingExcelWorkbook';
-import type { ProductBasedCostingFile, ProductBasedCostingItem } from 'src/modules/product_based_costing/types';
+import type { BuildCostingExcelInput } from 'src/modules/shop_order/submodules/product_based_costing/utils/buildCostingExcelWorkbook';
+import type { ProductBasedCostingFile, ProductBasedCostingItem } from 'src/modules/shop_order/submodules/product_based_costing/types';
 import {
   PBC_FALLBACK_BUY_CURRENCY_CODE,
   PBC_FALLBACK_SELL_CURRENCY_CODE,
-} from 'src/modules/product_based_costing/utils/pbcFileCurrencies';
+} from 'src/modules/shop_order/submodules/product_based_costing/utils/pbcFileCurrencies';
 import type { ShopOrder, ShopOrderItem } from '../types';
 import {
   getFinalOfferUnitAmount,

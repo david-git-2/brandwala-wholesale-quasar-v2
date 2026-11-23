@@ -1,10 +1,10 @@
 import { computed, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { RouteLocationRaw } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { childTenantRefsCacheKey } from 'src/modules/tenant/repositories/tenantRepository';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import { useDashboardBundleStore } from '../stores/dashboardBundleStore';
 import { formatDashboardCount } from '../utils/formatDashboardMetric';
 import { useAppDashboardRoutes } from './useAppDashboardRoutes';

@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import type { DashboardSlot, DashboardWorkspaceKind } from '../types/dashboardSlot';
 import { isDashboardBlockKind } from '../types/dashboardSlot';

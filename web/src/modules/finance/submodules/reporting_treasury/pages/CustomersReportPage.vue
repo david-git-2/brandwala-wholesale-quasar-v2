@@ -91,7 +91,7 @@ import { storeToRefs } from 'pinia';
 import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 import { useCustomersReportList } from '../composables/useCustomersReportList';
 

@@ -1,7 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import { createShopAccessGuard } from 'src/modules/auth/guards/createShopAccessGuard';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import { createShopAccessGuard } from 'src/modules/workspace/submodules/auth/guards/createShopAccessGuard';
 import { validateAppRouteTenantSlug } from 'src/modules/tenant/utils/tenantRouteContext';
 
 const kobaRoutes: RouteRecordRaw[] = [

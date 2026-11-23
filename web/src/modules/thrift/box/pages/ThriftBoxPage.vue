@@ -172,11 +172,11 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 import { useQueryClient } from '@tanstack/vue-query';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import ThriftBoxSkeleton from '../components/ThriftBoxSkeleton.vue';
 import { useThriftBoxesQuery } from '../../shared/composables/useThriftMasterDataQuery';
 import { useThriftShipmentsQuery } from '../../shipment/composables/useThriftShipmentQuery';

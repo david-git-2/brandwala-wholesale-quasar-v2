@@ -3,8 +3,8 @@ import { computed, type Ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import type { OrderGlanceBucket } from 'src/modules/dashboard/utils/customerDashboardStatus';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import type { OrderGlanceBucket } from 'src/modules/workspace/submodules/dashboard/utils/customerDashboardStatus';
 import { resolveCustomerShopTypePath, shopTypeEnumFromCustomerRoute } from '../utils/catalogShop';
 
 export function useCustomerOrdersQuery(

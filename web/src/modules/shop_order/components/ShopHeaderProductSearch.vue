@@ -104,7 +104,7 @@
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useShopCatalogSearchQuery } from '../composables/useShopCatalogSearchQuery';
 import { shopCatalogProductPath } from '../utils/catalogShop';
 import type { ShopCatalogSearchItem } from '../types';

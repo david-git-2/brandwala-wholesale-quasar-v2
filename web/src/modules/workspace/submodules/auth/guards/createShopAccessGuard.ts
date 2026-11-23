@@ -4,7 +4,7 @@ import {
   getShopLoginRouteLocation,
   getShopSelectCompanyRouteLocation,
 } from 'src/modules/tenant/utils/tenantRouteContext';
-import type { ModuleKey } from 'src/modules/navigation/modulePermissions';
+import type { ModuleKey } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import { useAuthStore } from '../stores/authStore';
 import type { LocationQueryRaw } from 'vue-router';
 

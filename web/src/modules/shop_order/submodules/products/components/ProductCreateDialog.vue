@@ -341,8 +341,8 @@
 import { computed, ref, reactive, watch } from 'vue';
 import type { QForm } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useGlobalMarketsQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useGlobalMarketsQuery } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalReferenceQuery';
 import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import {
   useProductBrandsQuery,

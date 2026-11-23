@@ -3,7 +3,7 @@ import {
   MODULE_REGISTRY_KEYS,
   type ModuleDefinition,
   type ModuleKey,
-} from 'src/modules/navigation/moduleRegistry';
+} from 'src/modules/workspace/submodules/navigation/moduleRegistry';
 
 export const SEEDED_MODULE_DEFINITIONS: readonly ModuleDefinition[] = MODULE_REGISTRY;
 

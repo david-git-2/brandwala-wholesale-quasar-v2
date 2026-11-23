@@ -176,7 +176,7 @@ import { useRoute } from 'vue-router';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { getTenantSlugFromRoute } from 'src/modules/tenant/utils/tenantRouteContext';
 import { useAdminTenantSelection } from '../composables/useAdminTenantSelection';
 import { useTenantStore } from '../stores/tenantStore';

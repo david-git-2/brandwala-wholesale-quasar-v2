@@ -12,7 +12,7 @@ import { computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useCustomerShopsQuery } from '../../composables/useShopQuery';
 import {
   filterShopsByRouteType,

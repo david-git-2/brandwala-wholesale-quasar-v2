@@ -140,7 +140,7 @@ export const dropshipFinanceRepository = {
     cashbookPointPotId?: number | null;
   }) {
     const { paysRepository } = await import(
-      'src/modules/bills_pays/repositories/paysRepository'
+      'src/modules/finance/submodules/bills_pays/repositories/paysRepository'
     );
     if (!params.cashbookPointId) {
       throw new Error('Choose a cash point for this pay out');

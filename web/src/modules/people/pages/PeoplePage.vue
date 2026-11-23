@@ -55,13 +55,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import TfDrawerSectionTabs, {
   type TfDrawerSectionTab,
 } from 'src/components/ui/TfDrawerSectionTabs.vue';
 import CustomerGroupListPanel from 'src/modules/people/submodules/customer/components/CustomerGroupListPanel.vue';
-import ProfileOperatingAccountPanel from 'src/modules/bills_pays/components/ProfileOperatingAccountPanel.vue';
+import ProfileOperatingAccountPanel from 'src/modules/finance/submodules/bills_pays/components/ProfileOperatingAccountPanel.vue';
 import PeoplePartyListPanel from '../components/PeoplePartyListPanel.vue';
 import RecipientListPanel from 'src/modules/people/submodules/customer/components/RecipientListPanel.vue';
 

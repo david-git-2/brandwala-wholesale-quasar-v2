@@ -68,7 +68,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useTagStore } from 'src/modules/tag/stores/tagStore';
+import { useTagStore } from 'src/modules/procurement_stock/submodules/tag/stores/tagStore';
 import { showErrorNotification } from 'src/utils/appFeedback';
 import type { DeliveryPaperOutcomeAllocationRow } from '../utils/deliveryPaperOutcomeAllocations';
 import { formatDeliveryPaperUnitSellPrice } from '../utils/deliveryPaperUnitSellPrice';

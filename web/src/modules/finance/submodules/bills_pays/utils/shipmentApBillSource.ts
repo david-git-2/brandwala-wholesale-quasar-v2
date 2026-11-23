@@ -1,5 +1,5 @@
 import { supabase } from 'src/boot/supabase';
-import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
+import type { GlobalInvoiceDetail } from 'src/modules/finance/submodules/bills_pays/types/invoice';
 import {
   resolveShipmentApBillKind,
   type ShipmentApKind,

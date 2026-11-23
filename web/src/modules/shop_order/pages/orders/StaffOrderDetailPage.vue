@@ -237,7 +237,7 @@ import { ref, computed, watch, onMounted, onUnmounted, unref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useShopOrderDetailQuery } from '../../composables/useShopOrderDetailQuery';
 import { shopOrderQueryKeys } from '../../shared/queryKeys/shopOrderQueryKeys';
 import { useQueryClient } from '@tanstack/vue-query';
@@ -304,9 +304,9 @@ import {
   canCreateDocumentDeliveryPaper,
   canShowDocumentDeliveryPapers,
 } from 'src/modules/procurement_stock/utils/documentDeliveryPapers';
-import { billDetailRoute } from 'src/modules/bills_pays/utils/billRoutes';
+import { billDetailRoute } from 'src/modules/finance/submodules/bills_pays/utils/billRoutes';
 import type { ShopOrderBillListItem } from '../../types/shopOrderBillList';
-import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
+import { useMembershipColumnPreference } from 'src/modules/tenant/submodules/membership/composables/useMembershipColumnPreference';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 
 const route = useRoute();

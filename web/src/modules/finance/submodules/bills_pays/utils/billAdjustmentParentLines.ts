@@ -1,4 +1,4 @@
-import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/bills_pays/types/invoice';
+import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/finance/submodules/bills_pays/types/invoice';
 import { apBillCurrencyGroups, apBillPaperConversionRate, parseApBillPaper } from './parseApBillPaper';
 
 export type BillAdjustmentDraftRow = {

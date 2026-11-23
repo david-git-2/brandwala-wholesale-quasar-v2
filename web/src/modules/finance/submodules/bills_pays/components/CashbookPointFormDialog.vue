@@ -93,7 +93,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
+import { useGlobalCurrenciesQuery } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalReferenceQuery';
 import { requestConfirmation, showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { cashbookRepository, type CashbookPointRow } from '../repositories/cashbookRepository';
 

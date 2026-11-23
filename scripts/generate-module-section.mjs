@@ -336,7 +336,5 @@ updated = updated.replace(
   '**Quick navigation:** §1–§13 architecture | **§14** feature matrix | **§15** global permissions | **§16** redesign schemas | **§17** modules (should/current/improve) | **§18** flows',
 );
 
-for (const path of ['MASTER_PLAN.md', 'doc/MASTER_PLAN.md', 'web/public/doc/MASTER_PLAN.md']) {
-  fs.writeFileSync(path, updated);
-}
+fs.writeFileSync('MASTER_PLAN.md', updated);
 console.log('Done:', n - 1, 'modules');

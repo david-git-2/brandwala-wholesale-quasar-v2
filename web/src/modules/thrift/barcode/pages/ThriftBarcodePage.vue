@@ -379,8 +379,8 @@
 import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import { useThriftBarcodesQuery, type BarcodeQueryParams } from '../composables/useThriftBarcodesQuery';
 import { useGenerateBarcodesMutation } from '../composables/useThriftBarcodeMutations';
 import { thriftBarcodeRepository } from '../repositories/thriftBarcodeRepository';

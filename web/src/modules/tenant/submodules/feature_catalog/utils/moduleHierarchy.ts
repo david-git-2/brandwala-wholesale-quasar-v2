@@ -1,5 +1,5 @@
 import type { WorkspaceLink } from 'src/components/WorkspaceShell.vue';
-import type { ModuleDefinition, ModuleKey } from 'src/modules/navigation/moduleRegistry';
+import type { ModuleDefinition, ModuleKey } from 'src/modules/workspace/submodules/navigation/moduleRegistry';
 
 export interface ModuleHierarchyRow {
   key: string;

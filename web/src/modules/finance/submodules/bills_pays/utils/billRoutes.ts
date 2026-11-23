@@ -1,6 +1,6 @@
 import type { RouteLocationRaw } from 'vue-router';
-import { buildModuleRoutePath } from 'src/modules/navigation/moduleRegistry';
-import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
+import { buildModuleRoutePath } from 'src/modules/workspace/submodules/navigation/moduleRegistry';
+import type { GlobalInvoiceDetail } from 'src/modules/finance/submodules/bills_pays/types/invoice';
 import { isDropshipManagerBill } from './dropshipManagedBill';
 
 export const BILLS_ROUTE_SEGMENT = 'bills';

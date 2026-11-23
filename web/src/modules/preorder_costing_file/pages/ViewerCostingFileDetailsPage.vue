@@ -185,12 +185,12 @@ import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
-import { useCostingFileStore } from 'src/modules/costingFile/stores/costingFileStore';
+import { useCostingFileStore } from 'src/modules/preorder_costing_file/stores/costingFileStore';
 import {
   buildAdminReviewRows,
   summarizeAdminReviewRows,
-} from 'src/modules/costingFile/composables/useCostingFileDetailRows';
-import { useCostingFileDetailBreadcrumbs } from 'src/modules/costingFile/composables/useCostingFileDetailBreadcrumbs';
+} from 'src/modules/preorder_costing_file/composables/useCostingFileDetailRows';
+import { useCostingFileDetailBreadcrumbs } from 'src/modules/preorder_costing_file/composables/useCostingFileDetailBreadcrumbs';
 
 const route = useRoute();
 const router = useRouter();

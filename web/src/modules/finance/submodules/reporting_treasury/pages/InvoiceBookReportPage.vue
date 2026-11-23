@@ -62,7 +62,7 @@ import DatePresetPills from '../components/DatePresetPills.vue';
 import ReportKpiStrip from '../components/ReportKpiStrip.vue';
 import { useInvoiceBookReport } from '../composables/useInvoiceBookReport';
 import type { InvoiceBookRow } from '../types/financeReportTypes';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { formatAmountBdt } from 'src/utils/currency';
 
 const Kpi = ReportKpiStrip;

@@ -175,7 +175,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import {
   useCustomerShopOrderDetailQuery,
   useSendCustomerCounterMutation,

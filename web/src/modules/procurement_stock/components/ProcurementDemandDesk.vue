@@ -522,7 +522,7 @@ import ProcurementDemandBuyCards from './ProcurementDemandBuyCards.vue';
 import ProcurementDemandFulfillCards from './ProcurementDemandFulfillCards.vue';
 import ProcurementDemandGroupItemRows from './ProcurementDemandGroupItemRows.vue';
 import ProcurementDemandGroupLinesTable from './ProcurementDemandGroupLinesTable.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { vendorRepository } from 'src/modules/people/submodules/vendor/repositories/vendorRepository';
 import type { Vendor } from 'src/modules/people/submodules/vendor/types';
 import { getStaffCatalogStatusLabel } from 'src/modules/shop_order/utils/catalogOrderStatus';

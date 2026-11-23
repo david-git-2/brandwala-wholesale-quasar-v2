@@ -1238,7 +1238,7 @@ import {
   ensureDashboardChartsRegistered,
   readThemeRgb,
   rgba,
-} from 'src/modules/dashboard/utils/dashboardChartSetup';
+} from 'src/modules/workspace/submodules/dashboard/utils/dashboardChartSetup';
 
 ensureDashboardChartsRegistered();
 

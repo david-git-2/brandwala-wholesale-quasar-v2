@@ -1433,7 +1433,7 @@ import {
 } from '../composables/useProductBasedCostingItemMutations';
 import type { ProductBasedCostingItem } from '../types';
 import { usePbcBacklog, type BacklogItem } from '../composables/usePbcBacklog';
-import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
+import { useMembershipColumnPreference } from 'src/modules/tenant/submodules/membership/composables/useMembershipColumnPreference';
 import {
   allColumnNames,
   alwaysVisibleColumns,
@@ -1464,7 +1464,7 @@ import {
   pbcFileSellCurrencyCode,
 } from '../utils/pbcFileCurrencies';
 import { DEFAULT_PBC_PREVIEW_SCREENSHOT_COLUMNS } from '../utils/pbcPreviewScreenshot';
-import { useGlobalCurrencies } from 'src/modules/global_reference/composables/useGlobalCurrencies';
+import { useGlobalCurrencies } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalCurrencies';
 
 const props = defineProps<{
   id?: string | number;

@@ -184,7 +184,7 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { useShopOrdersStaffPageQuery } from '../../composables/useShopOrdersStaffPageQuery';

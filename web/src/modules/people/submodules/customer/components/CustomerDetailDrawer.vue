@@ -482,7 +482,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import type { QSelectProps } from 'quasar';
 import type { CustomerAccount, CustomerGroupMember } from '../types/customer';
 import { useCustomerMembersQuery, useCustomerMutations } from '../composables/useCustomerQuery';
-import ProfileOperatingAccountPanel from 'src/modules/bills_pays/components/ProfileOperatingAccountPanel.vue';
+import ProfileOperatingAccountPanel from 'src/modules/finance/submodules/bills_pays/components/ProfileOperatingAccountPanel.vue';
 import ProfileCashLocationsPanel from 'src/modules/people/components/ProfileCashLocationsPanel.vue';
 import ProfileCashbookActionBar from 'src/modules/people/components/ProfileCashbookActionBar.vue';
 import { useProfileCashMovementNav } from 'src/modules/people/composables/useProfileCashMovementNav';
@@ -495,7 +495,7 @@ import {
   nationalPhoneDigits,
   phoneCountrySelectOptions,
 } from 'src/utils/phoneCountryCodes';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useRoute } from 'vue-router';
 import {
   type CustomerDrawerPanel,

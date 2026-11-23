@@ -5,7 +5,7 @@ import {
   EXCEL_IMAGE_HEIGHT_PX,
   fetchImageForExcel,
   getExcelImageWidthPx,
-} from 'src/modules/product_based_costing/utils/excelImageExport';
+} from 'src/modules/shop_order/submodules/product_based_costing/utils/excelImageExport';
 
 export type ShipmentExcelBuildProgress = {
   phase: 'images' | 'rows' | 'summary';

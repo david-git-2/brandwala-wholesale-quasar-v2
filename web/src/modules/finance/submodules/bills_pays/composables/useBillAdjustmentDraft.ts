@@ -1,6 +1,6 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import type { Database } from 'src/types/database.types';
-import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/bills_pays/types/invoice';
+import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/finance/submodules/bills_pays/types/invoice';
 import { formatAmountBdt, formatCurrencyAmount } from 'src/utils/currency';
 import type { CreateBillAdjustmentInput } from './useCreateBillAdjustmentMutation';
 import type { WriteOffBillInput } from './useWriteOffBillMutation';

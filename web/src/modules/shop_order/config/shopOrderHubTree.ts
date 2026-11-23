@@ -1,4 +1,4 @@
-import type { ModuleKey } from 'src/modules/navigation/modulePermissions';
+import type { ModuleKey } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 
 export type ShopHubTreeNodeDef = {
   key: string;
