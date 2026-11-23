@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Quasar UI (one canon)
 
-Do not open superseded UI rules or `InboundShipmentListPage.vue`. Dense column widths only: grep `docs/guides/ui-standards.md` — never full-read for chrome.
+Do not open mega live list pages for chrome. Tokens/layout below + `OpsListPage.skeleton.vue` are enough.
 
 ## Tokens (always `--tf-*`, never `--bw-*`)
 

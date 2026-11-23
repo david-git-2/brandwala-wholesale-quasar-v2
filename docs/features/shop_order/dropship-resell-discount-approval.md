@@ -22,7 +22,7 @@
 
 **Surfaces:** `shop` (place order, order detail) · `app` (review queue + actions).
 
-**Full design:** this file. **Checkout today:** [spec.md](spec.md) US-1a. **Lifecycle context:** [dropship-lifecycle-guide.md](../../product-scenarios/dropship-lifecycle-guide.md).
+**Full design:** this file. **Checkout today:** [spec.md](spec.md) US-1a.
 
 ## Proposed status
 
@@ -119,4 +119,4 @@ Optional order columns: `resell_discount_reviewed_at`, `resell_discount_reviewed
 
 ## Product scenario (optional)
 
-In [dropship-lifecycle-guide.md](../../product-scenarios/dropship-lifecycle-guide.md) Path A: **DL1a** — discount request at place → desk approval → then DL2 recipient call at `confirmed`.
+Path A: **DL1a** — discount request at place → desk approval → then DL2 recipient call at `confirmed`.

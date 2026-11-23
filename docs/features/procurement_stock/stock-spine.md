@@ -183,6 +183,5 @@ FE wiring for dispatch / cycle count / short-pick RPCs: follow-up after backend 
 | [Money kernel README](README.md) | Bills/pays — orthogonal |
 | [procurement_stock spec](../features/procurement_stock/spec.md) US-2–US-4 | Shipment, demand, delivery paper |
 | spec PS30–PS35 | Residual WMS / trip design |
-| [preorder-fulfillment-flow.md](../../preorder-fulfillment-flow.md) | Target trip narrative vs delivery paper (load only for that task) |
 
 **Future:** declarative `supabase/schemas/procurement/05_stock_spine.sql`; unify `commit_sales_bill_stock` post path with `create_and_post_stock_movement` (BP17‑r).

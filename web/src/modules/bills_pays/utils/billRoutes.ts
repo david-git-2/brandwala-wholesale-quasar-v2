@@ -1,5 +1,7 @@
 import type { RouteLocationRaw } from 'vue-router';
 import { buildModuleRoutePath } from 'src/modules/navigation/moduleRegistry';
+import type { GlobalInvoiceDetail } from 'src/modules/sales_invoice/types';
+import { isDropshipManagerBill } from './dropshipManagedBill';
 
 export const BILLS_ROUTE_SEGMENT = 'bills';
 
@@ -129,9 +131,13 @@ export function billOpensOnDetailNotComposeDesk(bill: {
   source_type?: string | null;
   source_key?: string | null;
   ap_shipment_id?: number | null;
+  shop_order_id?: number | null;
+  invoice_no?: string | null;
 }): boolean {
   const st = bill.invoice_status;
   if (st !== 'draft' && st !== 'proforma_generated') return false;
+  if (bill.source_type === 'dropship_courier_ar') return true;
+  if (isDropshipManagerBill(bill as GlobalInvoiceDetail)) return true;
   if (bill.invoice_type === 'ap') return true;
   if (bill.source_type === 'shipment_cost') return true;
   if (bill.ap_shipment_id != null) return true;

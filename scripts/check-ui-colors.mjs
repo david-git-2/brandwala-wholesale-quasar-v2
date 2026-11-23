@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Flags disallowed color patterns in Vue SFCs (see docs/guides/ui-standards.md).
+ * Flags disallowed color patterns in Vue SFCs (see .cursor/rules/quasar-ui.mdc).
  */
 
 import fs from 'node:fs';

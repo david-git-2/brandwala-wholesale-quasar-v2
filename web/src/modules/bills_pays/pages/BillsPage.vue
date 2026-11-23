@@ -283,6 +283,7 @@ const openBill = (row: BillListRowData) => {
     billOpensOnDetailNotComposeDesk({
       invoice_status: row.invoice_status,
       invoice_type: row.invoice_type,
+      invoice_no: row.invoice_no,
       source_type: row.kind === 'shipment_cost_ap' ? 'shipment_cost' : null,
       ap_kind: row.ap_kind,
     })

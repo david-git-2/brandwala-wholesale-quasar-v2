@@ -20,5 +20,7 @@ export function isDropshipMerchantCustomerBill(bill: GlobalInvoiceDetail | undef
 
 /** Collect/remit from dropship settlement desk or Payments → Courier — not generic bill pay-in. */
 export function isDropshipManagerBill(bill: GlobalInvoiceDetail | undefined): boolean {
+  if (!bill) return false;
+  if (bill.source_type === 'dropship_courier_ar') return true;
   return isDropshipCourierApBill(bill) || isDropshipMerchantCustomerBill(bill);
 }

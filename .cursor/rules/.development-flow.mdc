@@ -23,7 +23,7 @@ alwaysApply: false
 
 - Multi-tenant; stock owned by parent; child via allocations.
 - Stock-backed shops sell from `global_stock_allocations` only.
-- Sales models BW / pre-order / K-beauty (`koba`) / thrift — do not mix `global_stocks` with `koba_*` or `thrift_*` (`docs/architecture/business-models.md`).
+- Sales models BW / pre-order / K-beauty (`koba`) / thrift — do not mix `global_stocks` with `koba_*` or `thrift_*`.
 - Investor portal v1 read-only. Commerce legacy → `shop_order`.
 
 ## Patterns (pointers only)

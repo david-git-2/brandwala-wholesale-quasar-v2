@@ -30,7 +30,7 @@
 | In | Shops, carts, catalog/dropship orders, pricing, stock pick, pickup locations, reseller payout, dropship gifts, shop customer stock, auto gifts |
 | Out | Warehouse receive; Koba/thrift; wholesale invoice desk; catalog pack-out on **Delivery paper**; parent invoice engine for dropship |
 
-Dropship: pick → ship+issue both bills → deliver → remittance pay in. Later amount changes = credit/debit notes. Packing slip ≠ `sales_invoices` row. Catalog delivery: Delivery paper + optional proforma; close take/condition/return; then bills. Numbers: [atlas](../money_bill_bridge/spec.md#atlas). End-to-end map: [preorder-fulfillment-flow](../../preorder-fulfillment-flow.md).
+Dropship: pick → ship+issue both bills → deliver → remittance pay in. Later amount changes = credit/debit notes. Packing slip ≠ `sales_invoices` row. Catalog delivery: Delivery paper + optional proforma; close take/condition/return; then bills. Numbers: [atlas](../money_bill_bridge/spec.md#atlas). 
 
 **Money target (locked, not built):** at ship create **draft** **customer AR + courier AR (net remittance)** — not issued, not courier AP. See [dropship-courier-ar-redesign.md](dropship-courier-ar-redesign.md). **As-built code** still issues courier AP until SO-CA1 ships.
 
@@ -90,7 +90,7 @@ Post-ship: **Dropship management** list (`/:slug/app/shop/dropship-management`) 
 
 **Mark as delivered:** From the management list (`shipped` row) **only** advances `shop_orders.status` → `delivered` (set `delivered_at` if still null). No settlement save or bill side effects on deliver (SO-DL5).
 
-**Delivered-row settlement:** On the management list, `delivered` rows edit **Collected COD**, **Delivery**, and **COD rate**; **Save** calls `save_dropship_management_list_settlement` → `save_dropship_settlement_draft` + `sync_dropship_draft_bills_after_settlement` (draft customer + courier AR only). **Block save** when linked papers are issued (use pay-in / bill adjustments).
+**Delivered-row settlement:** On the management list, `delivered` rows edit **Collected COD**, **Delivery**, and **COD rate** until status becomes **`payment_received`**; **Save** calls `save_dropship_management_list_settlement` → `save_dropship_settlement_draft` + `sync_dropship_draft_bills_after_settlement` (draft customer + courier AR only). **Block save** once status is **`payment_received`** or later; if bills are issued while still `delivered`, RPC sync may fail (use pay-in / bill adjustments).
 
 ### US-4: Recipient confirmation call
 - [x] While dropship `status = confirmed`, staff call `recipient_name` / `recipient_phone` (app log only; no auto-dial).

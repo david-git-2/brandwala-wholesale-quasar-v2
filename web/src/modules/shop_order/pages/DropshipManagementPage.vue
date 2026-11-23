@@ -111,7 +111,7 @@
                 <td class="text-right text-weight-medium">{{ formatMoney(order.cod_collect_amount) }}</td>
                 <td class="text-right dropship-mgmt-money-cell">
                   <q-input
-                    v-if="order.status === 'delivered' && getRowEdit(order.id)"
+                    v-if="showSettlementEditors(order) && getRowEdit(order.id)"
                     v-model.number="rowEdits[order.id]!.collectedCod"
                     type="number"
                     min="0"
@@ -124,14 +124,14 @@
                     :disable="!canEditSettlement(order)"
                   >
                     <q-tooltip v-if="!canEditSettlement(order)">
-                      Bills must be draft to edit settlement
+                      Locked after payment received
                     </q-tooltip>
                   </q-input>
                   <span v-else>{{ formatMoney(order.collected_cod_amount ?? order.cod_collect_amount) }}</span>
                 </td>
                 <td class="text-right dropship-mgmt-money-cell">
                   <q-input
-                    v-if="order.status === 'delivered' && getRowEdit(order.id)"
+                    v-if="showSettlementEditors(order) && getRowEdit(order.id)"
                     v-model.number="rowEdits[order.id]!.delivery"
                     type="number"
                     min="0"
@@ -147,7 +147,7 @@
                 </td>
                 <td class="text-right dropship-mgmt-money-cell">
                   <q-input
-                    v-if="order.status === 'delivered' && getRowEdit(order.id)"
+                    v-if="showSettlementEditors(order) && getRowEdit(order.id)"
                     v-model.number="rowEdits[order.id]!.codRate"
                     type="number"
                     min="0"
@@ -170,36 +170,46 @@
                     —
                   </div>
                   <div v-else class="column q-gutter-y-xs items-start">
-                    <q-btn
+                    <span
                       v-if="order.global_invoice_id"
-                      flat
-                      dense
-                      no-caps
-                      color="primary"
-                      size="sm"
-                      class="q-px-xs"
-                      @click.stop="openBill(order.global_invoice_id)"
+                      class="dropship-mgmt-bill-link"
                     >
-                      <q-icon name="ph ph-receipt" size="14px" class="q-mr-xs" />
-                      Dropshipper
+                      <q-btn
+                        flat
+                        dense
+                        no-caps
+                        color="primary"
+                        size="sm"
+                        class="q-px-xs"
+                        :to="billLinkRoute(order.global_invoice_id)"
+                        @click.stop
+                      >
+                        <q-icon name="ph ph-receipt" size="14px" class="q-mr-xs" />
+                        Dropshipper
+                      </q-btn>
                       <q-tooltip v-if="order.customer_invoice_no">
                         {{ order.customer_invoice_no }}
                       </q-tooltip>
-                    </q-btn>
-                    <q-btn
+                    </span>
+                    <span
                       v-if="order.courier_ar_bill_id"
-                      flat
-                      dense
-                      no-caps
-                      color="primary"
-                      size="sm"
-                      class="q-px-xs"
-                      @click.stop="openBill(order.courier_ar_bill_id)"
+                      class="dropship-mgmt-bill-link"
                     >
-                      <q-icon name="ph ph-truck" size="14px" class="q-mr-xs" />
-                      Courier
+                      <q-btn
+                        flat
+                        dense
+                        no-caps
+                        color="primary"
+                        size="sm"
+                        class="q-px-xs"
+                        :to="billLinkRoute(order.courier_ar_bill_id)"
+                        @click.stop
+                      >
+                        <q-icon name="ph ph-truck" size="14px" class="q-mr-xs" />
+                        Courier
+                      </q-btn>
                       <q-tooltip>Bill #{{ order.courier_ar_bill_id }}</q-tooltip>
-                    </q-btn>
+                    </span>
                   </div>
                 </td>
                 <td class="text-right">
@@ -227,18 +237,32 @@
                       @click.stop="onMarkReturned(order.id)"
                     />
                   </div>
-                  <q-btn
-                    v-else-if="order.status === 'delivered' && isRowDirty(order.id)"
-                    dense
-                    color="primary"
-                    unelevated
-                    no-caps
-                    size="sm"
-                    label="Save"
-                    :loading="savingOrderId === order.id"
-                    :disable="!canEditSettlement(order)"
-                    @click.stop="onSaveSettlement(order)"
-                  />
+                  <div
+                    v-else-if="order.status === 'delivered'"
+                    class="row no-wrap justify-end q-gutter-xs"
+                  >
+                    <q-btn
+                      v-if="isRowDirty(order.id)"
+                      dense
+                      color="primary"
+                      unelevated
+                      no-caps
+                      size="sm"
+                      label="Save"
+                      :loading="savingOrderId === order.id"
+                      :disable="!canEditSettlement(order)"
+                      @click.stop="onSaveSettlement(order)"
+                    />
+                    <q-btn
+                      dense
+                      outline
+                      color="info"
+                      unelevated
+                      no-caps
+                      size="sm"
+                      label="Payment received"
+                    />
+                  </div>
                   <span v-else class="text-grey-6">—</span>
                 </td>
               </tr>
@@ -267,6 +291,7 @@ import {
   showErrorNotification,
   showSuccessNotification,
 } from 'src/utils/appFeedback';
+import { billDetailRoute } from 'src/modules/bills_pays/utils/billRoutes';
 import { shopOrderService } from '../services/shopOrderService';
 import type { DropshipSettlementDraftPayload } from '../types/dropshipManagementOrder';
 import type { ShopOrder, ShopOrderStatus } from '../types';
@@ -466,33 +491,17 @@ function isRowDirty(orderId: number): boolean {
   );
 }
 
-function canEditSettlement(order: ShopOrder): boolean {
-  if (order.status !== 'delivered') return false;
-  if (
-    order.global_invoice_id
-    && order.customer_invoice_status
-    && order.customer_invoice_status !== 'draft'
-  ) {
-    return false;
-  }
-  if (
-    order.courier_ar_bill_id
-    && order.courier_ar_invoice_status
-    && order.courier_ar_invoice_status !== 'draft'
-  ) {
-    return false;
-  }
-  return true;
+/** Editable on list until order advances past delivered (e.g. payment_received). */
+function showSettlementEditors(order: ShopOrder): boolean {
+  return order.status === 'delivered';
 }
 
-function openBill(billId: number) {
-  void router.push({
-    name: 'app-bill-detail-page',
-    params: {
-      ...(tenantSlug.value ? { tenantSlug: tenantSlug.value } : {}),
-      billId: String(billId),
-    },
-  });
+function canEditSettlement(order: ShopOrder): boolean {
+  return showSettlementEditors(order);
+}
+
+function billLinkRoute(billId: number) {
+  return billDetailRoute(billId, tenantSlug.value || undefined);
 }
 
 function statusLabel(status: ShopOrderStatus): string {
@@ -563,7 +572,7 @@ async function onSaveSettlement(order: ShopOrder) {
   const edit = rowEdits.value[order.id];
   if (!edit || !isRowDirty(order.id)) return;
   if (!canEditSettlement(order)) {
-    showErrorNotification('Settlement can only be saved while linked bills are draft.');
+    showErrorNotification('Settlement is locked after payment received.');
     return;
   }
 
@@ -695,6 +704,11 @@ export default {
 .dropship-mgmt-list-table__bills-cell {
   min-width: 9rem;
   vertical-align: middle;
+}
+
+.dropship-mgmt-bill-link {
+  display: inline-block;
+  position: relative;
 }
 
 .dropship-mgmt-list-table__actions-col {

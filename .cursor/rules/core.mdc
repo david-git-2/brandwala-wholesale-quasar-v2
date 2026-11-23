@@ -1,5 +1,5 @@
 ---
-description: Always-on crib + tools + scope. Single discipline rule.
+description: Always-on crib + tools + scope. Code first — docs optional.
 alwaysApply: true
 ---
 
@@ -15,7 +15,7 @@ Dominant cost: **tool results** / repeated exploration, not reply length.
 - **Writes:** prefer RPCs when RLS is computed; types via migrations + `backend:types` (grep `database.types.ts`, never full-read).
 - **Schema:** `supabase/schemas/`; never full-read `public.sql` or bulk-read migrations. Scope column is `tenant_id` (`parent_tenant_id` retired).
 - **Local DB:** `pnpm run backend:local` after migrations. Never auto `backend:reset` / `restore-dumps` / `pull-prod-data` — `supabase-local-backend.mdc`.
-- **Product:** prefer module `spec.md` + code; if unclear ask **one** question. Do not invent statuses/RPCs.
+- **Truth:** code + `supabase/schemas/` first. **Do not open `docs/` unless the user names a doc** or a fact stays unclear after grepping code. Unclear → ask one question. Do not invent statuses/RPCs.
 - **UI:** `quasar-ui.mdc` + `docs/guides/OpsListPage.skeleton.vue`. Never open mega list pages for chrome.
 - **Conventions detail:** `.development-flow.mdc` when needed.
 
@@ -43,5 +43,5 @@ Dominant cost: **tool results** / repeated exploration, not reply length.
 
 ## Context / diff
 
-- Files >500 lines: grep ±20. No `operating_manual` / `docs/product-scenarios/` unless user asks.
+- Files >500 lines: grep ±20. No `operating_manual` unless user asks.
 - Touch only what the task needs. In-scope dead imports only.

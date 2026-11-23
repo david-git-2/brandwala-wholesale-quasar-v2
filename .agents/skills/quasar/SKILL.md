@@ -5,27 +5,25 @@ description: Guide for creating premium, high-performance, responsive, accessibl
 
 # Quasar UI skill (thin)
 
-**Canon:** `.cursor/rules/quasar-ui.mdc` — read that first. Do not re-open superseded UI rule files.
+**Canon:** `.cursor/rules/quasar-ui.mdc` — read that first.
 
-**New ops list:** copy `docs/guides/OpsListPage.skeleton.vue`. Never open `InboundShipmentListPage.vue` for chrome.
-
-**Token tables / dense columns:** `docs/guides/ui-standards.md` — grep the section you need; do not full-read.
+**New ops list:** copy `docs/guides/OpsListPage.skeleton.vue`. Never open mega live list pages for chrome.
 
 ## Must use
 
-- Tokens: `--tf-*` only (never `--bw-*`).
+- Tokens: `--tf-*` only.
 - Shared: `TfBtn`, `TfStatusBadge`, `TfSideSheet`, `TfDrawerSectionTabs*`, `TfEmptyState`, `TfSkeletonRows`, `TfEntityListShell` / `TfEntityListRow`.
-- Feedback: `appFeedback.ts` / `useNotify()` — never raw `Notify.create` / `Dialog.create`.
+- Feedback: `appFeedback.ts` / `useNotify()`.
 - Icons: `ph ph-*`.
 
 ## Performance
 
 - Lists >50 rows: pagination or virtual scroll.
-- Search inputs: `debounce="300"`.
-- Prefer skeletons over spinners for first paint.
+- Search: `debounce="300"`.
+- Skeletons over spinners for first paint.
 
 ## Mobile / a11y
 
-- Icon-only actions: `aria-label` + `q-tooltip`.
-- Touch CTAs (shop): `TfBtn` `size="lg"` / `shopCta` when needed.
-- `data-test` on primary actions and key rows.
+- Icon-only: `aria-label` + `q-tooltip`.
+- Shop CTAs: `TfBtn` `size="lg"` / `shopCta` when needed.
+- `data-test` on primary actions.
