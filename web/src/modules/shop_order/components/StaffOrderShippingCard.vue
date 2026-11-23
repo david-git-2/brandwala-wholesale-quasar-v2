@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { useQuasar, copyToClipboard as quasarCopyToClipboard } from 'quasar';
 
-const props = defineProps<{
-  order: any;
-}>();
+const props = withDefaults(
+  defineProps<{
+    order: any;
+    readOnly?: boolean;
+  }>(),
+  { readOnly: false },
+);
 
 const $q = useQuasar();
 
@@ -50,6 +54,7 @@ const copyAllShippingDetails = () => {
         <div class="text-weight-bold text-grey-9 row items-center justify-between">
           <span>{{ order.recipient_name }}</span>
           <q-btn
+            v-if="!readOnly"
             flat
             dense
             round
@@ -65,6 +70,7 @@ const copyAllShippingDetails = () => {
         <div class="row items-center justify-between q-mt-xs">
           <span>{{ order.recipient_phone }}</span>
           <q-btn
+            v-if="!readOnly"
             flat
             dense
             round
@@ -81,6 +87,7 @@ const copyAllShippingDetails = () => {
           <div class="row items-start justify-between">
             <div class="col" style="white-space: pre-wrap">{{ order.shipping_address }}</div>
             <q-btn
+              v-if="!readOnly"
               flat
               dense
               round
@@ -95,7 +102,7 @@ const copyAllShippingDetails = () => {
           </div>
         </div>
 
-        <div class="q-mt-md">
+        <div v-if="!readOnly" class="q-mt-md">
           <q-btn
             outline
             dense

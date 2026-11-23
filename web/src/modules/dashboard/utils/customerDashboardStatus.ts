@@ -3,6 +3,7 @@ export const WAITING_STATUSES = new Set([
   'negotiating',
   'countered',
   'final_offered',
+  'resell_discount_requested',
 ]);
 
 export const DONE_STATUSES = new Set([

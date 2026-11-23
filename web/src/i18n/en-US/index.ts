@@ -73,6 +73,10 @@ export default {
     recipient_pay_total: 'End customer pay total',
     prices_hidden: 'Prices Hidden',
     place_order: 'Place Order',
+    dropship_place_order_with_discount_requests: 'Submit order for discount review',
+    dropship_order_placed_success: 'Order placed successfully.',
+    dropship_order_submitted_discount_review:
+      'Order submitted for discount review. We will notify you when it is reviewed.',
     place_order_confirm_title: 'Place order?',
     place_order_confirm_message:
       'Your order will be sent to the shop for review. Check quantities and prices before continuing.',

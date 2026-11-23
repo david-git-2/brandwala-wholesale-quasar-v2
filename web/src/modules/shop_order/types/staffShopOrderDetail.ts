@@ -120,7 +120,14 @@ export interface StaffShopOrderDetailItem {
     list: StaffOrderMoney;
     sell: StaffOrderMoney;
     minimum_sell: StaffOrderMoney;
+    customer_sell?: StaffOrderMoney | null;
   };
+  resell_discount?: {
+    requested_amount: number | null;
+    requested_currency: StaffOrderCurrency | null;
+    reason: string | null;
+    requested_at: string | null;
+  } | null;
   negotiation: {
     status: string | null;
     customer_decision: string | null;

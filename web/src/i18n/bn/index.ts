@@ -74,6 +74,10 @@ export default {
     recipient_pay_total: 'চূড়ান্ত গ্রাহকের মোট পরিশোধ',
     prices_hidden: 'মূল্য গোপন করা হয়েছে',
     place_order: 'অর্ডার করুন',
+    dropship_place_order_with_discount_requests: 'ছাড়ের জন্য অর্ডার জমা দিন',
+    dropship_order_placed_success: 'অর্ডার সফলভাবে জমা হয়েছে।',
+    dropship_order_submitted_discount_review:
+      'ছাড় পর্যালোচনার জন্য অর্ডার জমা হয়েছে। পর্যালোচনা শেষে জানানো হবে।',
     place_order_confirm_title: 'অর্ডার পাঠাবেন?',
     place_order_confirm_message:
       'আপনার অর্ডার পর্যালোচনার জন্য দোকানে পাঠানো হবে। এগিয়ে যাওয়ার আগে পরিমাণ ও মূল্য যাচাই করুন।',

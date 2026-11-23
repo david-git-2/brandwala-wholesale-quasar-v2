@@ -117,6 +117,7 @@
               :cost-summary="costSummary"
               :currency-symbol="currencySymbol"
               :terms-accepted="termsAccepted"
+              :has-pending-discount-requests="hasPendingDiscountRequests"
               :can-place-order="canPlaceOrder"
               :is-submitting="isSubmitting"
               @place-order="submitOrder"
@@ -131,6 +132,7 @@
           :show-next="currentStep < stepCount"
           :show-place-order="currentStep === stepCount"
           :can-next="canGoNext"
+          :has-pending-discount-requests="hasPendingDiscountRequests"
           :can-place-order="canPlaceOrder"
           :is-submitting="isSubmitting"
           @back="goBack"
@@ -200,6 +202,7 @@ const {
   recipientPaysCod,
   chargePreview,
   costSummary,
+  hasPendingDiscountRequests,
   canGoNext,
   canPlaceOrder,
   isSubmitting,

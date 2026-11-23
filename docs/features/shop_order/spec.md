@@ -16,6 +16,7 @@
 | Need | Path |
 | :--- | :--- |
 | Tables, RPCs | `supabase/schemas/shop_order/` |
+| Resell discount review (planned) | [dropship-resell-discount-approval.md](dropship-resell-discount-approval.md) |
 | Dropship ship/issue | `ship_dropship_order_and_issue_merchant_bill`, remittance RPCs |
 | Picking | `add_shop_order_item_stock_pick` |
 | Pages | `web/src/modules/shop_order/pages/` |
@@ -56,6 +57,14 @@ Dropship: pick → ship+issue both bills → deliver → remittance pay in. Late
 ### US-1a: Shop dropship checkout (recipient)
 - [x] **Required (UI: end customer):** `recipient_name`, `recipient_phone`, `shipping_address` (`submit_dropship_order_from_cart` + shop delivery page).
 - [x] **Optional:** `shipping_district`, `shipping_thana`, `shipping_post_code`.
+
+### US-1b: Dropship resell discount review (pre-confirm)
+
+**Built (SO-DR4 totals nuance optional)** — [dropship-resell-discount-approval.md](dropship-resell-discount-approval.md). Open gap: [00-gaps.md](00-gaps.md) SO-DR4.
+
+- [x] Place with any line resell discount request → order `resell_discount_requested` (not `confirmed`).
+- [x] Staff **approve** (per line accept / adjust) → apply resell → `confirmed` → US-4+ pipeline.
+- [x] Staff **deny** (per line keep listed) **or** cancel order with reason.
 
 ### US-1: Storefront types & tiers
 - [x] `vendor_catalog` / `fixed_price` / `dropship` with group price flags.

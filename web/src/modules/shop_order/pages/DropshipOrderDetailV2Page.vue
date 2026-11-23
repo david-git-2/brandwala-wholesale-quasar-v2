@@ -7,6 +7,7 @@ import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { useDropshipOrderDetailV2Query } from '../composables/useDropshipOrderDetailV2Query';
 import { useDropshipOrderStatusRedirect } from '../composables/useDropshipOrderStatusRedirect';
 import DropshipOrderConfirmedInvoicePaper from '../components/DropshipOrderConfirmedInvoicePaper.vue';
+import DropshipResellDiscountReviewPanel from '../components/DropshipResellDiscountReviewPanel.vue';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import {
   applyDropshipOrderDetailV2ToCache,
@@ -36,6 +37,14 @@ const orderDetailQuery = useDropshipOrderDetailV2Query({ tenantSlug, orderId });
 const order = computed(() => orderDetailQuery.data.value?.order ?? null);
 const orderItems = computed(() => orderDetailQuery.data.value?.items ?? []);
 const isConfirmed = computed(() => order.value?.status === 'confirmed');
+const isResellDiscountReview = computed(
+  () => order.value?.status === 'resell_discount_requested',
+);
+const currencySymbol = computed(() => order.value?.shop_sell_currency_symbol?.trim() || '৳');
+
+const onResellDiscountReviewComplete = async () => {
+  await invalidateOrderQueries();
+};
 const isLoading = computed(() => orderDetailQuery.isLoading.value);
 const loadError = computed(() => orderDetailQuery.error.value);
 
@@ -215,6 +224,21 @@ const submitRecipientCancel = async () => {
           </q-card-actions>
         </q-card>
 
+        <template v-else-if="isResellDiscountReview">
+          <DropshipResellDiscountReviewPanel
+            :order="order"
+            :items="orderItems"
+            :currency-symbol="currencySymbol"
+            @confirmed="onResellDiscountReviewComplete"
+            @cancelled="onResellDiscountReviewComplete"
+          />
+          <DropshipOrderConfirmedInvoicePaper
+            :order="order"
+            :order-items="orderItems"
+            readonly
+          />
+        </template>
+
         <q-card v-else flat bordered class="form-card">
           <q-card-section class="q-pa-lg text-center">
             <q-icon name="ph ph-file-text" size="40px" color="grey-5" class="q-mb-sm" />
@@ -230,6 +254,14 @@ const submitRecipientCancel = async () => {
           </q-card-section>
         </q-card>
       </template>
+
+      <section
+        v-else
+        class="column items-center justify-center q-pa-xl text-center"
+      >
+        <q-icon name="ph ph-package" size="48px" color="grey-5" class="q-mb-sm" />
+        <div class="text-h6 text-grey-7">Order not found</div>
+      </section>
     </div>
 
     <q-dialog v-model="cancelDialogOpen" persistent>

@@ -1228,6 +1228,28 @@ const clearShopOrderItemUnavailable = async (orderItemId: number) => {
   return data as { success?: boolean };
 };
 
+export type DropshipResellDiscountLineResolution = 'use_requested' | 'use_listed' | 'custom';
+
+export type FinalizeDropshipResellDiscountLineInput = {
+  order_item_id: number;
+  resolution: DropshipResellDiscountLineResolution;
+  approved_resell_amount?: number | null;
+};
+
+const finalizeDropshipResellDiscountReview = async (
+  tenantId: number,
+  orderId: number,
+  lines: FinalizeDropshipResellDiscountLineInput[],
+) => {
+  const { data, error } = await supabase.rpc('finalize_dropship_resell_discount_review', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_lines: lines,
+  });
+  if (error) throw error;
+  return data;
+};
+
 const cancelShopOrderDropship = async (orderId: number, reason: string | null) => {
   const { data, error } = await supabase.rpc('cancel_shop_order_dropship', {
     p_order_id: orderId,
@@ -1755,6 +1777,7 @@ export const shopOrderRepository = {
   removeShopOrderItemStockPick,
   markShopOrderItemUnavailable,
   clearShopOrderItemUnavailable,
+  finalizeDropshipResellDiscountReview,
   cancelShopOrderDropship,
   recordDropshipRecipientCallNoAnswer,
   confirmDropshipRecipientCall,

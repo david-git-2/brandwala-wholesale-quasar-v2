@@ -17,8 +17,12 @@
       unelevated
       no-caps
       class="full-width lt-sm"
-      icon-right="ph ph-check"
-      :label="$t('shop.place_order')"
+      :icon-right="hasPendingDiscountRequests ? 'ph ph-paper-plane-tilt' : 'ph ph-check'"
+      :label="
+        hasPendingDiscountRequests
+          ? $t('shop.dropship_place_order_with_discount_requests')
+          : $t('shop.place_order')
+      "
       :disable="!canPlaceOrder"
       :loading="isSubmitting"
       @click="$emit('place-order')"
@@ -52,6 +56,7 @@ defineProps<{
   };
   currencySymbol: string;
   termsAccepted: boolean;
+  hasPendingDiscountRequests: boolean;
   canPlaceOrder: boolean;
   isSubmitting: boolean;
 }>();

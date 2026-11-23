@@ -19,6 +19,8 @@ export function formatCustomerOrderStatusLabel(
       return 'Countered';
     case 'final_offered':
       return 'Final Offered';
+    case 'resell_discount_requested':
+      return 'Discount review';
     case 'confirmed':
       return 'Confirmed';
     case 'procuring':
@@ -61,6 +63,7 @@ export function getCustomerOrderStatusColor(status: string): string {
       return 'deep-orange-7';
     case 'negotiating':
     case 'countered':
+    case 'resell_discount_requested':
       return 'amber-9';
     case 'priced':
       return 'cyan-8';

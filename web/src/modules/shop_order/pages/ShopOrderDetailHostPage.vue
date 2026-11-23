@@ -5,7 +5,10 @@ import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useShopOrderDetailQuery } from '../composables/useShopOrderDetailQuery';
 import { useDropshipOrderDetailV2Query } from '../composables/useDropshipOrderDetailV2Query';
-import { resolveDropshipOrderDetailView } from '../composables/useDropshipOrderStatusRedirect';
+import {
+  isDropshipResellDiscountReviewStatus,
+  resolveDropshipOrderDetailView,
+} from '../composables/useDropshipOrderStatusRedirect';
 import StaffOrderDetailSkeleton from '../components/StaffOrderDetailSkeleton.vue';
 
 const StaffOrderDetailPage = defineAsyncComponent(
@@ -97,6 +100,7 @@ const skeletonVariant = computed<'catalog' | 'dropship'>(() => {
 
 const activePage = computed(() => {
   if (!isDropship.value) return StaffOrderDetailPage;
+  if (isDropshipResellDiscountReviewStatus(status.value)) return StaffOrderDetailPage;
   const view = resolveDropshipOrderDetailView(status.value);
   if (view === 'processing') return DropshipOrderDetailV2ProcessingPage;
   if (view === 'ready') return DropshipOrderDetailV2ReadyForPickupPage;

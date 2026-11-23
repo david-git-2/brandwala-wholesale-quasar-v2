@@ -367,6 +367,7 @@ const statusOptions = computed(() => [
   { label: t('shop_admin.status_priced'), value: 'priced' },
   { label: t('shop_admin.status_countered'), value: 'countered' },
   { label: t('shop_admin.status_final_offered'), value: 'final_offered' },
+  { label: t('shop_admin.status_resell_discount_requested'), value: 'resell_discount_requested' },
   { label: t('shop_admin.status_confirmed'), value: 'confirmed' },
   { label: t('shop_admin.status_procuring'), value: 'procuring' },
   { label: t('shop_admin.status_packed'), value: 'packed' },

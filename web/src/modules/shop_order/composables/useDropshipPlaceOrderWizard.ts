@@ -408,7 +408,8 @@ export function useDropshipPlaceOrderWizard() {
   ) => {
     const hasDetails = hasStoredDeliveryDetails(details);
     const mapped = deliveryDetailsToForm(details);
-    if (!hasDetails && !chargesInstructions) {
+    const hasStoredTerms = details?.terms_accepted === true;
+    if (!hasDetails && !chargesInstructions && !hasStoredTerms) {
       return;
     }
 
@@ -431,6 +432,9 @@ export function useDropshipPlaceOrderWizard() {
       }
       if (mapped.recipientPaysCod !== undefined) {
         recipientPaysCod.value = mapped.recipientPaysCod;
+      }
+      if (mapped.termsAccepted !== undefined) {
+        termsAccepted.value = mapped.termsAccepted;
       }
 
       if (customerForm.district) {
@@ -463,6 +467,7 @@ export function useDropshipPlaceOrderWizard() {
         customerForm,
         recipientPaysDelivery.value,
         recipientPaysCod.value,
+        termsAccepted.value,
       ),
     });
   };
@@ -601,7 +606,7 @@ export function useDropshipPlaceOrderWizard() {
   const goNext = async () => {
     const step = currentStep.value;
     if (!(await validateStep(step))) return;
-    if (step === 3 || step === 4) {
+    if (step === 3 || step === 4 || step === 5) {
       persistDeliveryDetails();
     }
     if (step >= DROPSHIP_PLACE_ORDER_STEP_COUNT) return;
@@ -744,6 +749,7 @@ export function useDropshipPlaceOrderWizard() {
     recipientPaysCod,
     chargePreview,
     costSummary,
+    hasPendingDiscountRequests,
     canPlaceOrder,
     canGoNext,
     isSubmitting,

@@ -593,7 +593,14 @@ const isBeforePickup = computed(() => {
 const statusSequence = computed(() => {
   const shopType = order.value.shop_type_snapshot;
   if (shopType === 'dropship') {
-    return ['confirmed', 'processing', 'ready_for_pickup', 'shipped', 'delivered'];
+    return [
+      'resell_discount_requested',
+      'confirmed',
+      'processing',
+      'ready_for_pickup',
+      'shipped',
+      'delivered',
+    ];
   }
   if (shopType === 'vendor_catalog') {
     return getCustomerCatalogStatusSequence(!!order.value.is_negotiable_snapshot);

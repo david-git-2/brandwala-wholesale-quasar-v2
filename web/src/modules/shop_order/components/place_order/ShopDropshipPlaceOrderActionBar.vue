@@ -30,8 +30,12 @@
         v-if="showPlaceOrder"
         size="md"
         class="dropship-wizard-actions__btn dropship-wizard-actions__btn--primary"
-        icon-right="ph ph-check"
-        :label="$t('shop.place_order')"
+        :icon-right="hasPendingDiscountRequests ? 'ph ph-paper-plane-tilt' : 'ph ph-check'"
+        :label="
+          hasPendingDiscountRequests
+            ? $t('shop.dropship_place_order_with_discount_requests')
+            : $t('shop.place_order')
+        "
         :disable="!canPlaceOrder"
         :loading="isSubmitting"
         @click="$emit('place-order')"
@@ -49,6 +53,7 @@ withDefaults(
     showNext?: boolean;
     showPlaceOrder?: boolean;
     canNext?: boolean;
+    hasPendingDiscountRequests?: boolean;
     canPlaceOrder?: boolean;
     isSubmitting?: boolean;
     sticky?: boolean;
@@ -58,6 +63,7 @@ withDefaults(
     showNext: true,
     showPlaceOrder: false,
     canNext: true,
+    hasPendingDiscountRequests: false,
     canPlaceOrder: false,
     isSubmitting: false,
     sticky: false,

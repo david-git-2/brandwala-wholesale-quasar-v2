@@ -9,6 +9,8 @@ export interface DropshipCartDeliveryDetails {
   delivery_instructions?: string;
   recipient_pays_delivery?: boolean;
   recipient_pays_cod?: boolean;
+  terms_accepted?: boolean;
+  terms_accepted_at?: string;
 }
 
 export type DropshipCustomerDeliveryForm = {
@@ -29,6 +31,7 @@ export function deliveryDetailsToForm(
 ): Partial<DropshipCustomerDeliveryForm> & {
   recipientPaysDelivery?: boolean;
   recipientPaysCod?: boolean;
+  termsAccepted?: boolean;
 } {
   if (!details || typeof details !== 'object') {
     return {};
@@ -48,6 +51,8 @@ export function deliveryDetailsToForm(
         : Boolean(details.recipient_pays_delivery),
     recipientPaysCod:
       details.recipient_pays_cod === undefined ? undefined : Boolean(details.recipient_pays_cod),
+    termsAccepted:
+      details.terms_accepted === undefined ? undefined : Boolean(details.terms_accepted),
   };
 }
 
@@ -55,6 +60,7 @@ export function formToDeliveryDetails(
   form: DropshipCustomerDeliveryForm,
   recipientPaysDelivery: boolean,
   recipientPaysCod: boolean,
+  termsAccepted: boolean,
 ): DropshipCartDeliveryDetails {
   return {
     recipient_name: form.recipientName.trim(),
@@ -67,6 +73,8 @@ export function formToDeliveryDetails(
     delivery_instructions: form.deliveryInstructions.trim(),
     recipient_pays_delivery: recipientPaysDelivery,
     recipient_pays_cod: recipientPaysCod,
+    terms_accepted: termsAccepted,
+    terms_accepted_at: termsAccepted ? new Date().toISOString() : undefined,
   };
 }
 

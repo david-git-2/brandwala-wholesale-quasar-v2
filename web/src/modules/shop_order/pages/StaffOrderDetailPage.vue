@@ -87,72 +87,107 @@
             </div>
           </CatalogOrderStaffActions>
         </div>
-      </template>
 
-      <CatalogOrderBulkPastePanel
-        v-if="currentOrder"
-        ref="catalogBulkPasteRef"
-        :order="currentOrder"
-        :items="orderItems"
-        :load-all-items-for-paste="loadAllOrderItemsForBulkPaste"
-        :save-updates="saveCatalogBulkPasteUpdates"
-      />
+        <CatalogOrderBulkPastePanel
+          ref="catalogBulkPasteRef"
+          :order="currentOrder"
+          :items="orderItems"
+          :load-all-items-for-paste="loadAllOrderItemsForBulkPaste"
+          :save-updates="saveCatalogBulkPasteUpdates"
+        />
+      </template>
 
       <!-- OTHER SHOP TYPES (Dropship/Fixed) -->
       <div v-else class="q-gutter-y-md">
-        <StaffOrderHeader
-          :order="currentOrder"
-          :can-fulfill="canFulfill"
-          :is-processing-dropship="isProcessingDropship"
-          @add-to-dropship="addToDropshipDesk"
-        />
+        <template v-if="isResellDiscountReview">
+          <DropshipResellDiscountReviewPanel
+            :order="currentOrder"
+            :items="orderItems"
+            :currency-symbol="currencySymbol"
+            @confirmed="onResellDiscountReviewComplete"
+            @cancelled="onResellDiscountReviewComplete"
+          />
 
-        <StaffOrderStatusWorkflow
-          :order="currentOrder"
-          :workflow-statuses="workflowStatuses"
-          :changing-status="isUpdatingStatus"
-          :target-updating-status="targetUpdatingStatus"
-          @change-status="changeOrderStatus"
-        />
-
-        <div class="row q-col-gutter-lg">
-          <div class="col-xs-12 col-md-8" style="min-width: 0">
-            <StaffOrderItemsList
-              :order="currentOrder"
-              :order-items="orderItems"
-              :currency-symbol="currencySymbol"
-              :can-action="canAction"
-              :can-fulfill="canFulfill"
-              :can-delete-lines="canDeleteOrderLines"
-              v-model:selected-line-ids="selectedOrderLineIds"
-              :is-removing-lines="isRemovingOrderLines"
-              :is-deleting-order="isDeletingOrder"
-              :is-submitting-pricing="isSubmittingPricing"
-              :is-confirming-order="isConfirmingOrder"
-              :is-placing-procurement="isPlacingProcurement"
-              @delete-order="confirmDeleteOrder"
-              @submit-pricing="handleSubmitStaffPricing"
-              @confirm-order="handleConfirmOrder"
-              @place-procurement="handlePlaceForProcurement"
-              @remove-selected-lines="confirmRemoveSelectedOrderLines"
-            />
-          </div>
-
-          <div class="col-xs-12 col-md-4">
-            <div class="column q-gutter-md">
+          <div class="row q-col-gutter-lg">
+            <div class="col-xs-12 col-md-6">
               <StaffOrderSummaryCard
                 :order="currentOrder"
                 :order-items="orderItems"
                 :currency-symbol="currencySymbol"
-                :is-updating-charges="isUpdatingCharges"
-                @update-charges="handleUpdateCharges"
+                :is-updating-charges="false"
+                read-only
               />
-              <StaffOrderShippingCard :order="currentOrder" />
+            </div>
+            <div class="col-xs-12 col-md-6">
+              <StaffOrderShippingCard :order="currentOrder" read-only />
             </div>
           </div>
-        </div>
+        </template>
+
+        <template v-else>
+          <StaffOrderHeader
+            :order="currentOrder"
+            :can-fulfill="canFulfill"
+            :is-processing-dropship="isProcessingDropship"
+            @add-to-dropship="addToDropshipDesk"
+          />
+
+          <StaffOrderStatusWorkflow
+            :order="currentOrder"
+            :workflow-statuses="workflowStatuses"
+            :changing-status="isUpdatingStatus"
+            :target-updating-status="targetUpdatingStatus"
+            @change-status="changeOrderStatus"
+          />
+
+          <div class="row q-col-gutter-lg">
+            <div class="col-xs-12 col-md-8" style="min-width: 0">
+              <StaffOrderItemsList
+                :order="currentOrder"
+                :order-items="orderItems"
+                :currency-symbol="currencySymbol"
+                :can-action="canAction"
+                :can-fulfill="canFulfill"
+                :can-delete-lines="canDeleteOrderLines"
+                v-model:selected-line-ids="selectedOrderLineIds"
+                :is-removing-lines="isRemovingOrderLines"
+                :is-deleting-order="isDeletingOrder"
+                :is-submitting-pricing="isSubmittingPricing"
+                :is-confirming-order="isConfirmingOrder"
+                :is-placing-procurement="isPlacingProcurement"
+                @delete-order="confirmDeleteOrder"
+                @submit-pricing="handleSubmitStaffPricing"
+                @confirm-order="handleConfirmOrder"
+                @place-procurement="handlePlaceForProcurement"
+                @remove-selected-lines="confirmRemoveSelectedOrderLines"
+              />
+            </div>
+
+            <div class="col-xs-12 col-md-4">
+              <div class="column q-gutter-md">
+                <StaffOrderSummaryCard
+                  :order="currentOrder"
+                  :order-items="orderItems"
+                  :currency-symbol="currencySymbol"
+                  :is-updating-charges="isUpdatingCharges"
+                  @update-charges="handleUpdateCharges"
+                />
+                <StaffOrderShippingCard :order="currentOrder" />
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </template>
+
+    <div
+      v-else
+      class="column items-center justify-center q-pa-xl text-center"
+    >
+      <q-icon name="ph ph-package" size="48px" color="grey-5" class="q-mb-sm" />
+      <div class="text-h6 text-grey-7">Order not found</div>
+      <q-btn flat color="primary" label="Go Back to Orders" class="q-mt-md" @click="goBack" />
+    </div>
 
     <!-- Catalog Customer Backlog Drawer -->
     <CatalogBacklogDrawer
@@ -256,6 +291,7 @@ import StaffOrderItemsList from '../components/StaffOrderItemsList.vue';
 import StaffOrderSummaryCard from '../components/StaffOrderSummaryCard.vue';
 import StaffOrderShippingCard from '../components/StaffOrderShippingCard.vue';
 import StaffOrderDetailSkeleton from '../components/StaffOrderDetailSkeleton.vue';
+import DropshipResellDiscountReviewPanel from '../components/DropshipResellDiscountReviewPanel.vue';
 
 import CatalogOrderWorkflowBar from '../components/CatalogOrderWorkflowBar.vue';
 import CatalogOrderBulkPastePanel from '../components/CatalogOrderBulkPastePanel.vue';
@@ -300,6 +336,16 @@ const currentOrder = computed(() => orderDetailsData.value?.order || null);
 const isCatalogShop = computed(
   () => currentOrder.value?.shop_type_snapshot === 'vendor_catalog',
 );
+
+const isResellDiscountReview = computed(
+  () =>
+    currentOrder.value?.shop_type_snapshot === 'dropship' &&
+    currentOrder.value?.status === 'resell_discount_requested',
+);
+
+const onResellDiscountReviewComplete = () => {
+  void refetch();
+};
 
 const deliveryPaperParentTenantId = computed(
   () => authStore.selectedTenant?.parent_id ?? authStore.tenantId ?? null,
@@ -918,6 +964,7 @@ const workflowStatuses = computed(() => {
   if (currentOrder.value?.shop_type_snapshot === 'dropship') {
     return [
       'submitted',
+      'resell_discount_requested',
       'confirmed',
       'processing',
       'ready_for_pickup',

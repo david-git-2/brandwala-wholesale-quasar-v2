@@ -11,3 +11,7 @@ Open with [spec.md](spec.md). Types: `not_built` | `doc_wrong` | `sql_split`. Wh
 | SO5 | ~~not_built~~ | Remittance closes settlement | ~~Skipped settlement~~ | **Done (2026-09)** |
 | SO6 | ~~design~~ | Catalog pack → Delivery paper close | ~~`fulfill_shop_order_to_invoice` for fixed_price~~ | **Done (2026-10):** RPC blocks `fixed_price`; use Delivery paper close |
 | SO7 | ~~not_built~~ | US-4 recipient call | ~~No call gate~~ | **Done (2026-10)** |
+| SO-DR1 | ~~not_built~~ | Pre-confirm status at place | ~~Place always → `confirmed` when requests exist~~ | **Done:** enum + `submit_dropship_order_from_cart` / `staff_submit_*` branch (`20261123210000_*`) |
+| SO-DR2 | ~~not_built~~ | Staff review RPC + app UI | ~~No approve/deny~~ | **Done:** `finalize_dropship_resell_discount_review` + `DropshipResellDiscountReviewPanel` on staff order detail (`20261123230000_*`) |
+| SO-DR3 | ~~not_built~~ | Shop messaging + status strip | ~~Request on detail only~~ | **Done:** toast, strip, labels (`customerOrderStatusUi`, `CustomerOrderDetailPage`) |
+| SO-DR4 | design | COD/totals at place vs after approve | TBD | Document + implement: listed resell until approve (recommended) |
