@@ -107,8 +107,7 @@ const profileName = computed(() => {
   const from = props.row.from_profile_name?.trim();
   const to =
     props.row.to_profile_name?.trim() ||
-    props.row.profile_name?.trim() ||
-    props.row.recipient_name?.trim();
+    props.row.profile_name?.trim();
   const isAp = props.row.invoice_type === 'ap';
   if (from || to) {
     return isAp

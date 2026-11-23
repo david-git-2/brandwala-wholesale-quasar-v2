@@ -182,7 +182,7 @@ const partyMeta = (caption: string | null, code: string | null) => {
 };
 
 const load = async () => {
-  if (!tenantId.value) return;
+  if (!tenantId.value || props.entityType === 'tenant') return;
   loading.value = true;
   try {
     const list = await cashbookRepository.listEntities({

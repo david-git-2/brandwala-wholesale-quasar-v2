@@ -16,7 +16,7 @@ export const getDeliveryPaperLinePickCap = (item: DeliveryPaperRemainingContext)
   if (item.remaining_to_pack != null && Number.isFinite(item.remaining_to_pack)) {
     return Math.max(0, Math.trunc(item.remaining_to_pack));
   }
-  const orderRemaining = getItemRemainingToDeliver(item);
+  const orderRemaining = getItemRemainingToDeliver(item as ProcurementDemandItem);
   const onOther = Math.max(0, Math.trunc(item.packed_on_other_delivery_papers ?? 0));
   return Math.max(0, orderRemaining - onOther);
 };

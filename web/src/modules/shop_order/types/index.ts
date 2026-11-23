@@ -437,6 +437,7 @@ export type ShopOrderStatus =
   | 'expired'
   | 'placed'
   | 'fulfilled'
+  | 'resell_discount_requested'
   | 'processing'
   | 'ready_for_pickup'
   | 'shipped'

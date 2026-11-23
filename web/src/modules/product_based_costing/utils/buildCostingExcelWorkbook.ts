@@ -336,9 +336,7 @@ export async function buildCostingExcelWorkbook(input: BuildCostingExcelInput) {
     });
     applyCellStyle(row.getCell('T'), { numFmt: NUM_FMT_PERCENT });
     applyColoredColumnStyle(row, coloredCols);
-    applyCellStyle(row.getCell('B'), {
-      alignment: { vertical: 'middle', horizontal: 'center', wrapText: false },
-    });
+    row.getCell('B').alignment = { vertical: 'middle', horizontal: 'center', wrapText: false };
 
     row.height = dataRowHeight;
 

@@ -79,7 +79,7 @@
           icon="ph ph-x"
           aria-label="Close"
           :disable="formSaving"
-          @click="closeFormDialog"
+          @click="() => closeFormDialog()"
         />
       </q-card-section>
       <q-card-section>

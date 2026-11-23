@@ -141,7 +141,7 @@ const onConfirm = () => {
     'confirm',
     localRows.value.map((row) => ({
       preorder_demand_id: row.preorder_demand_id,
-      global_stock_id: row.global_stock_id,
+      global_stock_id: row.global_stock_id ?? 0,
       quantity: row.quantity,
       grade_tag_id: row.grade_tag_id!,
     })),

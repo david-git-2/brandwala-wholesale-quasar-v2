@@ -57,7 +57,7 @@ export const packedLotsFromItem = (item: DeliveryPaperDetailItem): PackedLotRow[
       shipment_name: pick.shipment_name ?? null,
     });
   }
-  rows.sort((a, b) => a.line_id - b.line_id || a.global_stock_id - b.global_stock_id);
+  rows.sort((a, b) => a.line_id - b.line_id || (a.global_stock_id ?? 0) - (b.global_stock_id ?? 0));
   return rows;
 };
 

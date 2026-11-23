@@ -108,13 +108,20 @@ export const requestUnsavedLeaveChoice = (
   });
 
 export const handleApiFailure = (
-  result: ApiResultLike,
+  result: ApiResultLike | unknown,
   fallbackMessage = DEFAULT_ERROR_MESSAGE,
   title = 'Request failed',
 ) => {
-  if (result.success) return;
+  if (result && typeof result === 'object' && 'success' in result) {
+    const apiResult = result as ApiResultLike;
+    if (apiResult.success) return;
+    showWarningDialog(apiResult.error ?? fallbackMessage, title);
+    return;
+  }
 
-  showWarningDialog(result.error ?? fallbackMessage, title);
+  const message =
+    result instanceof Error && result.message ? result.message : fallbackMessage;
+  showWarningDialog(message, title);
 };
 
 /**

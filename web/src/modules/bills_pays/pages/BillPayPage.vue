@@ -161,7 +161,7 @@
               <BillDialogField v-if="showInstrument" label="Method">
                 <q-select
                   v-model="methodCode"
-                  :options="resolvedMethodOptions"
+                  :options="methodOptions"
                   emit-value
                   map-options
                   outlined
@@ -329,7 +329,7 @@ const fieldFlagsRef = computed(() => moneyPayFieldFlags.value);
 const prefillRef = computed(() => moneyPayPrefill.value);
 const dialogOpenRef = ref(true);
 
-const { methodOptions, resolvedMethodOptions, bdBankOptions, loading: loadingPaymentMeta } =
+const { methodOptions, bdBankOptions, loadingPaymentMeta } =
   useWholesalePaymentMethodMeta();
 
 const {
@@ -365,7 +365,7 @@ const showRequiredInstrumentExtras = computed(() => {
   return (
     f.chequeNumberRequired
     || f.instrumentDateRequired
-    || f.instrumentReferenceRequired
+    || f.bankOrReferenceRequired
     || f.bankRequired
   );
 });

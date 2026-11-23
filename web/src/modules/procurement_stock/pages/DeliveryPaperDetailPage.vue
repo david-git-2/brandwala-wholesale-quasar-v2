@@ -509,7 +509,7 @@ const applyLastLotPicks = async (targetItems: DeliveryPaperDetailItem[]): Promis
   const { picks } = await procurementDemandRepository.suggestDeliveryPaperLastLotPicks({
     tenantId: activeTenantId,
     deliveryPaperId: paper,
-    stockContextTenantId: tenantId,
+    stockContextTenantId: tenantId.value ?? activeTenantId,
     lines: buildLastLotLineInputs(eligible),
   });
 

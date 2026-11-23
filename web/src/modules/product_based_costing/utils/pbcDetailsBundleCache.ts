@@ -179,7 +179,7 @@ export function readPbcFileFromListCache(
     for (const page of pages) {
       const found = page.data.find((file) => file.id === fileId);
       if (found) {
-        return found;
+        return found as unknown as ProductBasedCostingFile;
       }
     }
   }
@@ -216,9 +216,9 @@ export function isPbcDetailsBundleQueryPending(
   queryClient: QueryClient,
   fileId: number,
 ): boolean {
-  const state = queryClient.getQueryState({
-    queryKey: productBasedCostingQueryKeys.fileDetailsPage(fileId, PBC_ITEMS_PAGE_SIZE),
-  });
+  const state = queryClient.getQueryState(
+    productBasedCostingQueryKeys.fileDetailsPage(fileId, PBC_ITEMS_PAGE_SIZE),
+  );
   if (!state) {
     return false;
   }

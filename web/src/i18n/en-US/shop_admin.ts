@@ -513,7 +513,6 @@ export default {
   bulk_delete_cancelled_orders_title: 'Delete cancelled orders',
   bulk_delete_cancelled_orders_confirm:
     'Permanently delete {count} cancelled order(s)? Related lines, demand, and finance links will be removed. This cannot be undone.',
-  clear_selection: 'Clear selection',
   cancelled_orders_delete_title: 'Delete cancelled orders',
   cancelled_orders_delete_desc: 'Select orders to remove permanently.',
   back_to_orders: 'Back to orders',

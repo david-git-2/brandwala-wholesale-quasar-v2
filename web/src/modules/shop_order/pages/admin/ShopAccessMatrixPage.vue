@@ -1012,7 +1012,7 @@ const removeAccess = async (group: { id: number; name: string }) => {
       }
       showSuccessNotification(t('shop_admin.access_remove_success'));
     } else {
-      showErrorNotification(res.error || t('shop_admin.access_remove_failed'));
+      showErrorNotification((!res.success && res.error) || t('shop_admin.access_remove_failed'));
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : t('shop_admin.access_remove_failed');

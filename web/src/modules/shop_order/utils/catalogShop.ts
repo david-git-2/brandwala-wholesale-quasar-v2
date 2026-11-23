@@ -1,3 +1,4 @@
+import type { LocationQueryRaw } from 'vue-router';
 import type { CustomerAccessibleShop } from '../repositories/shopOrderRepository';
 import type { ShopType } from '../types';
 import { getShopTypePathFromRoute } from 'src/modules/tenant/utils/tenantRouteContext';
@@ -10,7 +11,7 @@ import {
 
 type CustomerShopRouteLike = {
   params?: Record<string, unknown>;
-  query?: Record<string, unknown>;
+  query?: LocationQueryRaw;
   fullPath?: string;
 };
 

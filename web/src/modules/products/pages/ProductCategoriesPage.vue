@@ -240,7 +240,6 @@ const save = async () => {
   const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code);
   const payload = {
     name: form.name.trim(),
-    value: (form.value.trim() || form.name.trim()).toLowerCase(),
     vendor_code: form.vendor_code,
     vendor_id: selectedVendor ? selectedVendor.id : null,
   };

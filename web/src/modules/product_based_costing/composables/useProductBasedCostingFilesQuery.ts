@@ -3,7 +3,7 @@ import { computed, type Ref } from 'vue';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import type {
-  ProductBasedCostingFile,
+  ProductBasedCostingFileListRow,
   ProductBasedCostingFileListInput,
   ProductBasedCostingFilesListCursor,
 } from '../types';
@@ -30,10 +30,10 @@ export function useProductBasedCostingFilesQuery(
     placeholderData: keepPreviousData,
   });
 
-  const files = computed<ProductBasedCostingFile[]>(() => {
+  const files = computed<ProductBasedCostingFileListRow[]>(() => {
     const pages = query.data.value?.pages ?? [];
     const seen = new Set<number>();
-    const rows: ProductBasedCostingFile[] = [];
+    const rows: ProductBasedCostingFileListRow[] = [];
     for (const page of pages) {
       for (const file of page.data) {
         if (!seen.has(file.id)) {

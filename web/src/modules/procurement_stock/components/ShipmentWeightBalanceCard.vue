@@ -622,7 +622,7 @@ const validationError = computed(() => {
 // Preview line items
 const previewItems = computed(() => {
   const adjs = adjustments.value;
-  if (adjs instanceof Error || !adjs.length) return [];
+  if (adjs instanceof Error || !Array.isArray(adjs) || !adjs.length) return [];
   return items.value
     .map((item) => {
       const adj = adjs.find((a) => a.itemId === item.id);

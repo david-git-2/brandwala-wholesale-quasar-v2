@@ -717,7 +717,6 @@ const addBrandOption = async () => {
   const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code);
   const result = await productService.createProductBrand({
     name,
-    value: name.toLowerCase(),
     vendor_code: form.vendor_code,
     vendor_id: selectedVendor ? selectedVendor.id : null,
     tenant_id: authStore.tenantId ?? null,
@@ -742,7 +741,6 @@ const addCategoryOption = async () => {
   const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code);
   const result = await productService.createProductCategory({
     name,
-    value: name.toLowerCase(),
     vendor_code: form.vendor_code,
     vendor_id: selectedVendor ? selectedVendor.id : null,
     tenant_id: authStore.tenantId ?? null,

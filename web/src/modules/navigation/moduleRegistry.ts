@@ -70,6 +70,7 @@ export type ModuleAction =
   | 'create'
   | 'edit'
   | 'delete'
+  | 'void'
   | 'download'
   | 'edit_quantity'
   | 'edit_price'

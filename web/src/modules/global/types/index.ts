@@ -120,7 +120,6 @@ export type GlobalStockListPage = {
 export type GlobalStockRow = GlobalStockCostingInput & {
   id: number;
   tenant_id: number;
-  tenant_id: number;
   name: string;
   product_id: number | null;
   barcode: string | null;
@@ -137,7 +136,6 @@ export type GlobalStockRow = GlobalStockCostingInput & {
 
 export type GlobalLedgerRow = {
   id: number;
-  tenant_id: number;
   tenant_id: number;
   entry_date: string;
   quantity: number;

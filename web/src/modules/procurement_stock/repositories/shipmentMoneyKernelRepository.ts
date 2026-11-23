@@ -69,7 +69,7 @@ export const parseShipmentApBillRow = (raw: unknown): ShipmentApBillRow => {
 const parseShipmentApBillCostLines = (raw: unknown): ShipmentApBillCostLine[] | undefined => {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
   const lines = raw
-    .map((item) => {
+    .map((item): ShipmentApBillCostLine | null => {
       if (!item || typeof item !== 'object') return null;
       const row = item as Record<string, unknown>;
       const amount = Number(row.amount);

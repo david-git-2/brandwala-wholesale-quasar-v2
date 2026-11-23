@@ -36,12 +36,13 @@ export interface TfDrawerSectionTab {
 const props = withDefaults(
   defineProps<{
     tabs: readonly TfDrawerSectionTab[];
-    ariaLabel: string;
+    ariaLabel?: string;
     /** When `positive`, count badge shows only if count &gt; 0. */
     countVisibility?: 'always' | 'positive';
     scrollClass?: string;
   }>(),
   {
+    ariaLabel: 'Section tabs',
     countVisibility: 'always',
     scrollClass: '',
   },

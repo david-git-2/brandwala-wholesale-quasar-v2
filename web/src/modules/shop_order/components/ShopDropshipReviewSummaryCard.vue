@@ -16,7 +16,7 @@
         <div v-if="summary.hasPendingDiscount" class="dropship-review-summary__pending q-mt-sm">
           <div class="row justify-between text-body2">
             <span>{{ $t('shop.dropship_current_resell_total') }}</span>
-            <span class="tf-num text-grey-7">{{ formatMoney(summary.currentItemsTotal) }}</span>
+            <span class="tf-num text-grey-7">{{ formatMoney(summary.currentItemsTotal ?? 0) }}</span>
           </div>
           <div class="row justify-between text-body2 q-mt-xs">
             <span>{{ $t('shop.dropship_pending_discount_resell_total') }}</span>

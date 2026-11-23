@@ -133,6 +133,7 @@ export function billOpensOnDetailNotComposeDesk(bill: {
   ap_shipment_id?: number | null;
   shop_order_id?: number | null;
   invoice_no?: string | null;
+  ap_kind?: string | null;
 }): boolean {
   const st = bill.invoice_status;
   if (st !== 'draft' && st !== 'proforma_generated') return false;

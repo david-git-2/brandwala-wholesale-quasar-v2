@@ -306,7 +306,7 @@ export const getAppRouteLocation = (
 
   return {
     name: typeof route.name === 'string' ? route.name : undefined,
-    params,
+    params: params as Record<string, string | number | (string | number)[]>,
     query: route.query ?? {},
   };
 };

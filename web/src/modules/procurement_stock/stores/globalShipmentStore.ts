@@ -8,7 +8,6 @@ import {
   type GlobalShipment,
   type GlobalShipmentItem,
   type ShipmentItemOutcome,
-  type SettleShipmentPayeeParams,
   type ShipmentProgressFlow,
   type ShipmentProgressFlowStage,
   type ShipmentProgressTag,
@@ -249,7 +248,12 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
               cargoCompanyId,
             );
 
-        if (useWorkspace && 'vendors' in result && result.vendors.length > 0) {
+        if (
+          useWorkspace &&
+          'vendors' in result &&
+          Array.isArray(result.vendors) &&
+          result.vendors.length > 0
+        ) {
           const vendorStore = useVendorStore();
           vendorStore.items = result.vendors.map((v) => ({
             id: v.id,
@@ -264,7 +268,12 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
             website: null,
           }));
         }
-        if (useWorkspace && 'cargoCompanies' in result && result.cargoCompanies.length > 0) {
+        if (
+          useWorkspace &&
+          'cargoCompanies' in result &&
+          Array.isArray(result.cargoCompanies) &&
+          result.cargoCompanies.length > 0
+        ) {
           const cargoCompanyStore = useCargoCompanyStore();
           cargoCompanyStore.seedFromListReference(tenantId, result.cargoCompanies);
         }
@@ -316,7 +325,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         }
         this.archivedRows = allArchived;
         this.archivedTotal = archivedBadgeTotal;
-        return result.data;
+        return allArchived;
       } catch (err: unknown) {
         console.error('Failed to load archived shipments', err);
         return [];

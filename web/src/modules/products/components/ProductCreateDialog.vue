@@ -558,7 +558,6 @@ const addBrandOption = () => {
   createBrandMutation.mutate(
     {
       name,
-      value: name.toLowerCase(),
       vendor_code: createForm.vendor_code,
       vendor_id: selectedVendor ? selectedVendor.id : null,
       tenant_id: authStore.tenantId ?? null,
@@ -587,7 +586,6 @@ const addCategoryOption = () => {
   createCategoryMutation.mutate(
     {
       name,
-      value: name.toLowerCase(),
       vendor_code: createForm.vendor_code,
       vendor_id: selectedVendor ? selectedVendor.id : null,
       tenant_id: authStore.tenantId ?? null,

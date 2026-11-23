@@ -56,6 +56,7 @@ export function productRowToCatalogItem(p: Product): ShopCatalogItem {
     sell_price: null,
     resell_minimum_price: null,
     available_units: p.available_units,
+    minimum_order_quantity: null,
     unit_price_amount: p.list_price_amount,
     global_stock_allocation_id: null,
     global_stock_id: null,

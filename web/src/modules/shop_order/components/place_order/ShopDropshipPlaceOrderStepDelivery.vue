@@ -16,6 +16,7 @@
 </template>
 
 <script setup lang="ts">
+import type { BDLocationOption, BDPostcodeOption } from 'src/utils/bdAddressService';
 import ShopDropshipCustomerDetailsForm from '../ShopDropshipCustomerDetailsForm.vue';
 
 defineProps<{
@@ -29,9 +30,9 @@ defineProps<{
     shippingAddress: string;
     deliveryInstructions: string;
   };
-  districtOptions: { name: string }[];
-  thanaOptions: { name: string }[];
-  postcodeOptions: { name: string }[];
+  districtOptions: BDLocationOption[];
+  thanaOptions: BDLocationOption[];
+  postcodeOptions: (BDPostcodeOption & { displayLabel: string })[];
   isPhoneProfileLoading: boolean;
   onRecipientPhoneBlur: () => Promise<void>;
   onDistrictChange: (district: string) => Promise<void>;
@@ -39,6 +40,6 @@ defineProps<{
   filterDistrict: (val: string, update: (fn: () => void) => void) => void;
   filterThana: (val: string, update: (fn: () => void) => void) => void;
   filterPostcode: (val: string, update: (fn: () => void) => void) => void;
-  createPostcode: (val: string) => void;
+  createPostcode: (val: string, done: (item: unknown) => void) => void;
 }>();
 </script>

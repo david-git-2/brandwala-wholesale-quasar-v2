@@ -1660,7 +1660,6 @@ async function captureScreenshotBlob(): Promise<Blob> {
     cacheBust: false,
     pixelRatio: 2,
     backgroundColor: '#ffffff',
-    useCORS: true,
   });
   if (!blob) {
     throw new Error('capture-failed');

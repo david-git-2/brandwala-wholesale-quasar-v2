@@ -24,7 +24,7 @@ export function useShopCustomerShellQuery(
 
       const em = email.value?.trim().toLowerCase() ?? '';
       if (em) {
-        queryClient.setQueryData(shopLoginGroupsQueryKey(id, em), bundle.login_groups);
+        queryClient.setQueryData(shopLoginGroupsQueryKey(id, em, null), bundle.login_groups);
       }
 
       return bundle;

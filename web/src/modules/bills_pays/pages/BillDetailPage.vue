@@ -374,7 +374,7 @@
               <q-item-section>
                 <q-item-label>
                   {{ row.invoice_no }}
-                  · {{ adjustmentKindLabel(row.document_kind) }}
+                  · {{ adjustmentKindLabel(row.document_kind ?? '') }}
                 </q-item-label>
                 <q-item-label caption>
                   {{ row.invoice_date }}
@@ -786,7 +786,7 @@ const adjustmentLineRows = computed((): BillLineDisplayRow[] => {
     const fromBundle = bundleQuery.data.value?.billLines;
     const fromQuery = billLinesQuery.data.value;
     if (fromBundle?.length || fromQuery?.length) {
-      return fromBundle ?? fromQuery ?? [];
+      return (fromBundle ?? fromQuery ?? []) as BillLineDisplayRow[];
     }
     if (isApBill.value) {
       return [];

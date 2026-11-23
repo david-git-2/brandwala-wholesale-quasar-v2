@@ -77,7 +77,7 @@ async function fetchKernelProfilePots(
   const rows = balances.rows ?? [];
   const mainPointId = 1;
   const pots: LegPotRow[] = rows
-    .map((row) => {
+    .map((row): LegPotRow | null => {
       const potId = Number(row.pot_id);
       if (!Number.isFinite(potId) || potId <= 0) return null;
       return {

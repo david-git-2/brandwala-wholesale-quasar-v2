@@ -503,7 +503,6 @@ export default {
   bulk_delete_cancelled_orders_title: 'বাতিল অর্ডার মুছুন',
   bulk_delete_cancelled_orders_confirm:
     '{count}টি বাতিল অর্ডার স্থায়ীভাবে মুছবেন? সম্পর্কিত লাইন, ডিমান্ড ও ফাইন্যান্স লিংক সরবে। এটি আর ফেরানো যাবে না।',
-  clear_selection: 'নির্বাচন সাফ করুন',
   cancelled_orders_delete_title: 'বাতিল অর্ডার মুছুন',
   cancelled_orders_delete_desc: 'স্থায়ীভাবে সরাতে অর্ডার বেছে নিন।',
   back_to_orders: 'অর্ডার তালিকায় ফিরুন',

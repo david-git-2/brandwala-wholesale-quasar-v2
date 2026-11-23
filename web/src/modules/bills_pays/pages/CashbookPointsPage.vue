@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
-    <div v-if="!isTenantContext" class="col flex flex-center text-grey-7 q-pa-lg">
+    <div v-if="!isCashbookContext" class="col flex flex-center text-grey-7 q-pa-lg">
       Cash points are only for company cash.
     </div>
 

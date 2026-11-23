@@ -51,7 +51,6 @@ export const recipientProfileRepository = {
 
   async upsertByPhone(payload: {
     tenant_id?: number | null;
-    tenant_id?: number | null;
     name: string;
     phone: string;
     secondary_phone?: string | null;
@@ -59,7 +58,7 @@ export const recipientProfileRepository = {
     district?: string | null;
     thana?: string | null;
   }): Promise<RecipientProfile> {
-    const targetTenantId = payload.tenant_id ?? payload.tenant_id;
+    const targetTenantId = payload.tenant_id;
     if (!targetTenantId) throw new Error('Tenant ID is required');
     const { data, error } = await supabase.rpc('upsert_recipient_profile_by_phone', {
       p_tenant_id: targetTenantId,

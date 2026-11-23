@@ -1,6 +1,7 @@
 import { supabase } from 'src/boot/supabase';
 import type {
   Shop,
+  ShopType,
   CreateShopPayload,
   UpdateShopPayload,
   ShopOrder,
@@ -99,7 +100,7 @@ const mapShopSetupBundleShop = (raw: Record<string, unknown>): Shop => {
     typeof raw.tenant_slug === 'string' ? raw.tenant_slug : (raw.tenant_slug as string | null);
   const { tenant_slug: _drop, tenant: _tenant, ...rest } = raw;
   return {
-    ...(rest as Shop),
+    ...(rest as unknown as Shop),
     tenant_slug: tenantSlug ?? null,
   };
 };
@@ -366,7 +367,7 @@ export type CustomerAccessibleShop = {
   tenant_id: number;
   name: string;
   slug: string;
-  shop_type: string;
+  shop_type: ShopType;
   order_mode: string;
   is_negotiable: boolean;
   can_see_buy_price: boolean;
@@ -979,10 +980,10 @@ const buildDropshipReadyForPickupDeskPayload = (
     courier_order_ref: input.order.order_no,
     recipient_name: input.order.recipient_name,
     recipient_phone: input.order.recipient_phone,
-    recipient_phone_secondary: input.order.recipient_phone_secondary,
+    recipient_phone_secondary: input.order.recipient_phone_secondary ?? null,
     shipping_address: input.order.shipping_address,
-    shipping_district: input.order.shipping_district,
-    shipping_thana: input.order.shipping_thana,
+    shipping_district: input.order.shipping_district ?? null,
+    shipping_thana: input.order.shipping_thana ?? null,
   },
 });
 

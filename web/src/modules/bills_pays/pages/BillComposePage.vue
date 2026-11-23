@@ -819,6 +819,7 @@ const profileTypeChipStyles: Record<
   courier: { label: 'Courier', color: 'teal-1', textColor: 'teal-9' },
   company: { label: 'Company', color: 'indigo-1', textColor: 'indigo-9' },
   investor: { label: 'Investor', color: 'cyan-1', textColor: 'cyan-9' },
+  staff: { label: 'Staff', color: 'grey-2', textColor: 'grey-8' },
 };
 
 const profileTypeChip = (profile: CustomerProfile) => {

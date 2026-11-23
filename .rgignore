@@ -20,9 +20,7 @@ package-lock.json
 **/*.lock
 **/*.log
 
-# AI plans, legacy workflows/commands, and docs (open explicitly when needed)
+# AI plans and docs (open explicitly when needed)
 .cursor/plans/
-.agent/
-.claude/
 .agents/skills/*/CHANGELOG.md
 docs/

@@ -1,5 +1,5 @@
 import { supabase } from 'src/boot/supabase';
-import type { WholesalePaymentInstrumentInput } from '../utils/paymentInstrumentFields';
+import type { WholesalePaymentInstrumentInput } from '../types/invoice';
 import { resolveShipmentIdsForApPayout } from '../utils/shipmentApBillSource';
 
 const localToday = () => new Date().toISOString().slice(0, 10);

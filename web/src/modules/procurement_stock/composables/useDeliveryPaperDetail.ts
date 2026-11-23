@@ -158,7 +158,6 @@ export function useDeliveryPaperDetail(options: {
     lineDrafts[key] = {
       ...draft,
       [field]: nextQty,
-      ...(field === 'packed' ? { stockPicks: [] } : {}),
     };
     markDirty();
   };

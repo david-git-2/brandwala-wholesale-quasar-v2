@@ -15,7 +15,22 @@ This guide explains **what is confusing, why it looks like that, and what you sh
 
 ### Rule of thumb
 - Check `supabase/config.toml` (`schema_paths`) to know which declarative schema files are actually active.
-- For `bills_pays` SQL, read `supabase/schemas/bills_pays/README.md` before editing—some files are archive references while `05_money_spine.sql` and `money_kernel_v2/` are active sources.
+- For `bills_pays` SQL, read `supabase/schemas/bills_pays/README.md` before editing—`01_types.sql`, `02_tables.sql`, and `04_rls.sql` are archive references, while `05_money_spine.sql` and `money_kernel_v2/` are active sources.
+
+---
+
+## 2. Frontend Module Scale & Similar-Looking Features
+
+### Why it's confusing
+- **`web/src/modules/` has 30 modules**, with most code concentrated in `shop_order`, `procurement_stock`, `bills_pays`, and `thrift`.
+- **`costingFile` vs. `product_based_costing`:** Despite similar names, these are **not** V1/V2 replacements of each other:
+  - `web/src/modules/costingFile/` handles **pre-order costing** (`/app/costing`, `/shop/...`; tables `costing_files`, `costing_file_items`).
+  - `web/src/modules/product_based_costing/` handles **shop-order product-based costing** (`/app/product-based-costing`; tables `product_based_costing_files`, `product_based_costing_items`).
+- **Duplicate documentation folders:** Both `doc/` and `docs/` exist at the repo root (alongside `web/public/doc/`).
+
+### Rule of thumb
+- Check `moduleRegistry.ts` and each module's `README.md` before assuming a folder is legacy.
+- Follow `.cursor/rules/core.mdc`: inspect code and `supabase/schemas/` first; do not open `docs/` unless explicitly needed or named.
 
 ---
 

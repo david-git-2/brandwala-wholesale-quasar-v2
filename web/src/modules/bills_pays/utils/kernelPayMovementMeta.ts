@@ -9,8 +9,10 @@ const emptyInstrumentFields = (): MoneyPayInstrumentFields => ({
 
 type KernelPayMetaInput = Pick<
   MoneyPaySubmitPayload,
-  'methodCode' | 'reference' | 'note' | 'paymentDate' | 'instrumentFields'
->;
+  'methodCode' | 'reference' | 'note' | 'paymentDate'
+> & {
+  instrumentFields?: MoneyPayInstrumentFields | undefined;
+};
 
 export function buildKernelPayMovementMeta(
   payload: KernelPayMetaInput,

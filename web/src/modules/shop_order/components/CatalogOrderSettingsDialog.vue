@@ -43,7 +43,7 @@
         <q-tab-panel name="bills" class="catalog-settings-tab-pane q-pa-md">
           <CatalogOrderBillsPanel
             v-if="order"
-            :parent-tenant-id="billsParentTenantId ?? null"
+            :tenant-id="billsParentTenantId ?? null"
             :order-id="order.id"
             :enabled="billsListEnabled"
             @open-bill="(bill) => emit('open-bill', bill)"
@@ -59,7 +59,7 @@
             v-else-if="order"
             layout="section"
             document-type="shop_order"
-            :tenant-id="deliveryPaperTenantId"
+            :tenant-id="deliveryPaperTenantId ?? null"
             :document-id="order.id"
             :enabled="deliveryPapersEnabled"
             :allow-create="allowCreateDeliveryPaper"

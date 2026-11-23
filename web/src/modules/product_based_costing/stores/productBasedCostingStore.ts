@@ -65,7 +65,7 @@ export const useProductBasedCostingStore = defineStore('productBasedCosting', {
           return result;
         }
 
-        this.items = result.data?.data ?? [];
+        this.items = (result.data?.data ?? []) as ProductBasedCostingFile[];
         this.total = result.data?.data?.length ?? 0;
         this.page = 1;
         this.page_size = result.data?.meta.limit ?? payload.limit ?? 20;

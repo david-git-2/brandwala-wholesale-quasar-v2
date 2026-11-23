@@ -32,7 +32,7 @@ export function useApplySettlementMutation(options?: { successMessage?: string }
       void queryClient.invalidateQueries({ queryKey: billsQueryKeys.root });
       void queryClient.invalidateQueries({ queryKey: paysQueryKeys.root });
       const payLine = vars.lines.find((l) => l.allocator_kind === 'pay');
-      if (payLine) {
+      if (payLine?.allocator_id) {
         void queryClient.invalidateQueries({ queryKey: paysQueryKeys.detail(payLine.allocator_id) });
       }
     },
