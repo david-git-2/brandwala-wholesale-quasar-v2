@@ -594,22 +594,16 @@ const submitCourierPayIn = async (payload: {
     courierSubmitting.value = false;
   }
 };
-const parentTenantId = computed(() => {
-  const t = authStore.selectedTenant;
-  if (!t) return null;
-  return t.parent_id ?? t.id;
-});
-
 const cashOutPointsContext = computed(() => ({
-  booksTenantId: parentTenantId.value ?? 0,
+  booksTenantId: tenantId.value,
   entityType: 'tenant',
-  entityId: parentTenantId.value ?? 0,
-  enabled: payDirection.value === 'out' && (parentTenantId.value ?? 0) > 0,
+  entityId: tenantId.value,
+  enabled: payDirection.value === 'out' && tenantId.value > 0,
 }));
 const { pointsQuery: cashOutPointsQuery } = useCashbookPointsQuery(cashOutPointsContext);
 const cashOutPoints = computed(() => cashOutPointsQuery.data.value);
 const cashOutPayFromEnabled = computed(
-  () => payDirection.value === 'out' && (parentTenantId.value ?? 0) > 0,
+  () => payDirection.value === 'out' && tenantId.value > 0,
 );
 const {
   selectedPotId: cashOutPotId,
@@ -623,14 +617,14 @@ const cashOutSubmitting = ref(false);
 const booksCurrencyCode = useBooksCurrencyCode();
 
 const cashInPointsContext = computed(() => ({
-  booksTenantId: parentTenantId.value ?? 0,
+  booksTenantId: tenantId.value ?? 0,
   entityType: 'tenant',
-  entityId: parentTenantId.value ?? 0,
+  entityId: tenantId.value ?? 0,
   enabled:
     payInKind.value === 'customer' &&
     payDirection.value === 'in' &&
     !!profileId.value &&
-    (parentTenantId.value ?? 0) > 0,
+    (tenantId.value ?? 0) > 0,
 }));
 const { pointsQuery: cashInPointsQuery } = useCashbookPointsQuery(cashInPointsContext);
 const cashInPoints = computed(() => cashInPointsQuery.data.value);
@@ -648,7 +642,7 @@ const collectPotNeedsFx = computed(
 );
 const transactionRate = ref<number | null>(null);
 const fxRateQuery = useBooksExchangeRateQuery(
-  computed(() => parentTenantId.value ?? 0),
+  computed(() => tenantId.value ?? 0),
   receiveSourceCurrency,
   collectPotNeedsFx,
 );
@@ -698,9 +692,9 @@ const showPreApplySection = computed(
 );
 
 const reloadOpenBills = async (profileId: number) => {
-  if (!parentTenantId.value) return;
+  if (!tenantId.value) return;
   const { data } = await billsRepository.listBills({
-    parentTenantId: parentTenantId.value,
+    tenantId: tenantId.value,
     profileId,
     invoiceStatus: 'issued',
     quickFilter: 'unpaid',
@@ -834,12 +828,12 @@ watch(profileId, async (pid) => {
   openBills.value = [];
   openCreditNotes.value = [];
   payLeftovers.value = [];
-  if (!pid || !parentTenantId.value) return;
+  if (!pid || !tenantId.value) return;
   loadingBills.value = true;
   try {
     await reloadOpenBills(pid);
     const open = await billsRepository.listOpenOnProfile({
-      parentTenantId: parentTenantId.value,
+      tenantId: tenantId.value,
       profileId: pid,
     });
     openCreditNotes.value = (

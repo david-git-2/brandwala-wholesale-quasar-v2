@@ -52,7 +52,7 @@ export type BillsListPageResult = {
 };
 
 export type ListBillsDeskPageParams = {
-  parentTenantId: number | null;
+  tenantId: number | null;
   toProfileType?: BillToProfileTypeTab | null;
   fromProfileId?: number | null;
   invoiceStatus?: string | null;

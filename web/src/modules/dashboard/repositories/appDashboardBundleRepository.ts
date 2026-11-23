@@ -148,11 +148,11 @@ export const appDashboardBundleRepository = {
 
   async fetchBundle(
     tenantId: number,
-    parentTenantIds: number[],
+    tenantIds: number[],
   ): Promise<AppDashboardBundle> {
     const { data, error } = await supabase.rpc('get_app_dashboard_bundle', {
       p_tenant_id: tenantId,
-      p_tenant_ids: parentTenantIds.length ? parentTenantIds : null,
+      p_tenant_ids: tenantIds.length ? tenantIds : null,
     });
 
     if (error) {

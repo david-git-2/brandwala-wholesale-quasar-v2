@@ -108,7 +108,7 @@ const props = defineProps<{
   mode: 'add' | 'edit';
   point: CashbookPointRow | null;
   cashbookAccountId: number | null;
-  parentTenantId: number;
+  tenantId: number;
   operatingTenantId: number;
 }>();
 
@@ -245,7 +245,7 @@ const onSubmit = async () => {
     const currencyCodes = selectedCurrencyCodes.value;
     if (props.mode === 'add') {
       await cashbookRepository.createCashbookPoint({
-        parentTenantId: props.parentTenantId,
+        tenantId: props.tenantId,
         cashbookAccountId: props.cashbookAccountId,
         name,
         currencyCodes,
@@ -256,7 +256,7 @@ const onSubmit = async () => {
         name,
         is_active: form.isActive,
       });
-      await cashbookRepository.syncCashbookPointPots(props.parentTenantId, props.point.id, currencyCodes);
+      await cashbookRepository.syncCashbookPointPots(props.tenantId, props.point.id, currencyCodes);
       showSuccessNotification('Cash point updated.');
     }
     emit('saved');

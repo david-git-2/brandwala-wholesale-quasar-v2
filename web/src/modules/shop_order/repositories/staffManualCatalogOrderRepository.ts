@@ -28,7 +28,6 @@ export interface StaffCatalogOrderSubmitResult {
 
 const resolveVendorCatalogShopForCreate = async (opts: {
   tenantId: number;
-  parentTenantId?: number | null;
   customerGroupId: number;
   selectedShopId?: number | null;
   knownVendorCatalogShopIds?: number[];
@@ -73,7 +72,6 @@ const resolveVendorCatalogShopForCreate = async (opts: {
   }
 
   const shops = await shopOrderRepository.listShops(opts.tenantId, {
-    parentTenantId: opts.parentTenantId ?? null,
     active: true,
   });
   const tenantCatalogIds = shops

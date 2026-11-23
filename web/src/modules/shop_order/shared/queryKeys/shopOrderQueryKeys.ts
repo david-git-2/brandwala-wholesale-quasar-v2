@@ -5,7 +5,6 @@ export const shopOrderQueryKeys = {
     ['shopOrder', 'staffOrders', params] as const,
   staffOrdersPage: (params: {
     tenantId: number;
-    parentTenantId?: number | null;
     search?: string | null;
     status?: string | null;
     shopId?: number | null;
@@ -18,7 +17,6 @@ export const shopOrderQueryKeys = {
   shopsAppPage: (
     params: {
       tenantId: number;
-      parentTenantId?: number | null;
       search?: string | null;
       active?: boolean | null;
       catalogParentTenantId?: number | null;
@@ -79,8 +77,8 @@ export const shopOrderQueryKeys = {
     ['shopOrder', 'storefrontProductRelated', { tenantId, shopSlug, productId }] as const,
   catalogSearch: (tenantId: number, search: string, limit?: number) =>
     ['shopOrder', 'catalogSearch', { tenantId, search, limit: limit ?? 15 }] as const,
-  catalogRefreshLog: (parentTenantId: number) =>
-    ['shopOrder', 'catalogRefreshLog', { parentTenantId }] as const,
+  catalogRefreshLog: (tenantId: number) =>
+    ['shopOrder', 'catalogRefreshLog', { tenantId }] as const,
   staffProductSearch: (params: {
     tenantId: number;
     shopId: number;
@@ -119,8 +117,8 @@ export const shopOrderQueryKeys = {
   orderDetailRoot: () => ['shopOrder', 'orderDetail'] as const,
   orderDetail: (tenantId: number | null, orderId: number) =>
     ['shopOrder', 'orderDetail', { tenantId, orderId }] as const,
-  billsForShopOrder: (parentTenantId: number, orderId: number) =>
-    ['shopOrder', 'billsForShopOrder', { parentTenantId, orderId }] as const,
+  billsForShopOrder: (tenantId: number, orderId: number) =>
+    ['shopOrder', 'billsForShopOrder', { tenantId, orderId }] as const,
   deliveryPaperQtyByOrderItem: (tenantId: number, orderId: number) =>
     ['shopOrder', 'deliveryPaperQtyByOrderItem', { tenantId, orderId }] as const,
   deliveryPaperQtyByOrderItemRoot: () => ['shopOrder', 'deliveryPaperQtyByOrderItem'] as const,

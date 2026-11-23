@@ -96,7 +96,7 @@
             :balance-effect="balanceEffect"
             :submit-disabled-reason="submitDisabledReason"
             :loading="adjustmentActionLoading"
-            :parent-tenant-id="operatingTenantId"
+            :tenant-id="operatingTenantId"
             :parent-due-amount="parentDueAmount"
             :ar-refund-eligible="arRefundEligible"
             :excess-credit-bdt="excessCreditBdt"

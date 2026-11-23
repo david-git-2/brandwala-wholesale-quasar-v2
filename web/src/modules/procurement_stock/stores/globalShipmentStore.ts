@@ -73,7 +73,7 @@ const COST_AFFECTING_SHIPMENT_FIELDS = new Set(['received_weight', 'total_weight
 
 const localCostsFromCostEntries = (
   entries: GlobalShipmentCostEntry[],
-  parentTenantId: number,
+  tenantId: number,
 ): GlobalShipmentLocalCost[] =>
   entries
     .filter((e) => e.cost_bucket === LOCAL_COST_BUCKET && !e.is_capitalizable)
@@ -81,7 +81,7 @@ const localCostsFromCostEntries = (
       const meta = (entry.metadata ?? {}) as { description?: string };
       return {
         id: entry.id,
-        tenant_id: entry.tenant_id ?? parentTenantId,
+        tenant_id: entry.tenant_id ?? tenantId,
         shipment_id: entry.shipment_id,
         section_id: entry.section_id ?? null,
         description: entry.description?.trim() || meta.description?.trim() || '',
@@ -1818,12 +1818,12 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       this.error = null;
       try {
         const shipment = this.currentShipment?.id === payload.shipment_id ? this.currentShipment : null;
-        const parentTenantId =
+        const tenantId =
           payload.tenant_id ??
           shipment?.tenant_id ??
           (this.currentShipmentSections[0]?.tenant_id as number | undefined);
 
-        if (!parentTenantId) {
+        if (!tenantId) {
           throw new Error('Tenant ID is required to create a section');
         }
 
@@ -1843,7 +1843,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
 
         const newSection = await shipmentSectionRepository.create({
           ...payload,
-          tenant_id: parentTenantId,
+          tenant_id: tenantId,
           vendor_id: vendorId,
           sort_order: payload.sort_order ?? maxSortOrder + 1,
         });

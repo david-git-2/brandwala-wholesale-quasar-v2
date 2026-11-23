@@ -8,7 +8,6 @@ import type { Shop } from '../types';
 
 export interface ShopListQueryParams {
   tenantId: number;
-  parentTenantId?: number | null;
   search?: string | null;
   active?: boolean | null;
 }
@@ -32,7 +31,6 @@ export function useShopListQuery(params: Ref<ShopListQueryParams>, enabled?: Ref
     queryKey: computed(() => shopOrderQueryKeys.shopsList(params.value)),
     queryFn: () =>
       shopOrderRepository.listShops(params.value.tenantId, {
-        parentTenantId: params.value.parentTenantId ?? null,
         search: params.value.search ?? null,
         active: params.value.active ?? null,
       }),
@@ -54,7 +52,6 @@ export function useInfiniteShopListQuery(
       ...shopOrderQueryKeys.root,
       'shops-infinite',
       params.value.tenantId,
-      params.value.parentTenantId ?? null,
       params.value.search ?? null,
       params.value.active ?? null,
       pageSize,
@@ -64,7 +61,6 @@ export function useInfiniteShopListQuery(
         return { data: [], total: 0, nextOffset: undefined };
       }
       const data = await shopOrderRepository.listShops(params.value.tenantId, {
-        parentTenantId: params.value.parentTenantId ?? null,
         search: params.value.search ?? null,
         active: params.value.active ?? null,
         limit: pageSize,
@@ -128,7 +124,6 @@ export function useInfiniteShopsAppPageQuery(
         return { data: [], total: 0, catalog_refresh_log: [], nextOffset: undefined };
       }
       const page = await shopOrderRepository.listShopsAppPage(params.value.tenantId, {
-        parentTenantId: params.value.parentTenantId ?? null,
         search: params.value.search ?? null,
         active: params.value.active ?? null,
         catalogParentTenantId: params.value.catalogParentTenantId ?? null,

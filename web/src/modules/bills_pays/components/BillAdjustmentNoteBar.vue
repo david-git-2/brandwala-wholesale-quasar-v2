@@ -139,7 +139,7 @@ const props = defineProps<{
   balanceEffect: BalanceEffect;
   submitDisabledReason: string | null;
   loading?: boolean;
-  parentTenantId?: number | null;
+  tenantId?: number | null;
   arRefundEligible?: boolean;
   excessCreditBdt?: number;
   parentDueAmount?: number;
@@ -155,7 +155,7 @@ const refundAmount = defineModel<number | null>('refundAmount', { default: null 
 const arRefundEligible = computed(() => props.arRefundEligible === true);
 const excessCreditBdt = computed(() => Number(props.excessCreditBdt) || 0);
 
-const parentId = computed(() => Number(props.parentTenantId ?? 0) || 0);
+const parentId = computed(() => Number(props.tenantId ?? 0) || 0);
 
 const cashbookPointsContext = computed(() => {
   const enabled =

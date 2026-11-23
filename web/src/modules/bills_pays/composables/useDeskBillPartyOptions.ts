@@ -8,11 +8,11 @@ export type DeskBillPartyOption = {
   profile_type: string;
 };
 
-export function useDeskBillPartyOptions(parentTenantId: Ref<number | null>) {
+export function useDeskBillPartyOptions(tenantId: Ref<number | null>) {
   return useQuery({
-    queryKey: computed(() => ['bills_pays', 'deskPartyOptions', parentTenantId.value ?? 0]),
+    queryKey: computed(() => ['bills_pays', 'deskPartyOptions', tenantId.value ?? 0]),
     queryFn: async (): Promise<DeskBillPartyOption[]> => {
-      const tid = parentTenantId.value;
+      const tid = tenantId.value;
       if (!tid) return [];
       const { data, error } = await supabase
         .from('profiles')
@@ -28,7 +28,7 @@ export function useDeskBillPartyOptions(parentTenantId: Ref<number | null>) {
         profile_type: String(row.profile_type ?? ''),
       }));
     },
-    enabled: computed(() => (parentTenantId.value ?? 0) > 0),
+    enabled: computed(() => (tenantId.value ?? 0) > 0),
     staleTime: 5 * 60_000,
   });
 }

@@ -170,7 +170,7 @@ const loadTargets = async () => {
   loadingBills.value = true;
   try {
     const { data } = await billsRepository.listBills({
-      parentTenantId: props.booksTenantId,
+      tenantId: props.booksTenantId,
       profileId: props.profileId,
       invoiceStatus: 'issued',
       quickFilter: 'unpaid',

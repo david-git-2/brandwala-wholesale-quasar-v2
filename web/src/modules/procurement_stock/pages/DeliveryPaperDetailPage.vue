@@ -169,7 +169,7 @@
       <ProcurementDemandStockPickDialog
         v-model="pickDialogOpen"
         hide-per-lot-add-button
-        :tenant-id="parentTenantId"
+        :tenant-id="tenantId"
         :product-id="pickTarget?.product_id ?? null"
         :product-name="pickTarget?.name ?? 'Item'"
         :need-quantity="pickNeedQuantity"
@@ -258,23 +258,23 @@ const paperId = computed(() => {
   return Number.isFinite(id) ? id : null;
 });
 
-const parentTenantId = computed(
+const tenantId = computed(
   () => authStore.selectedTenant?.parent_id ?? authStore.tenantId ?? null,
 );
 
 const deleteMutation = useMutation({
   mutationFn: () =>
     procurementDemandRepository.deleteDeliveryPaper({
-      tenantId: parentTenantId.value!,
+      tenantId: tenantId.value!,
       deliveryPaperId: paperId.value!,
     }),
   onSuccess: async () => {
     showSuccessNotification('Delivery paper deleted');
     const p = paper.value;
-    if (p && parentTenantId.value) {
+    if (p && tenantId.value) {
       await queryClient.invalidateQueries({
         queryKey: procurementStockQueryKeys.deliveryPapersForDocument({
-          tenantId: parentTenantId.value,
+          tenantId: tenantId.value,
           documentType: p.source_type,
           documentId: p.source_id,
         }),
@@ -316,7 +316,7 @@ const {
   itemDraftKey,
   getDraft,
 } = useDeliveryPaperDetail({
-  tenantId: parentTenantId,
+  tenantId: tenantId,
   deliveryPaperId: paperId,
   expectedDocumentType: computed(() => props.documentType ?? null),
   expectedDocumentId: computed(() => props.documentId ?? null),
@@ -448,7 +448,7 @@ const pickInitialPicks = computed(() =>
 
 const openPickDialog = (item: DeliveryPaperDetailItem) => {
   if (!canPickStock.value) return;
-  if (parentTenantId.value == null) {
+  if (tenantId.value == null) {
     showErrorNotification('Could not load warehouse context. Try refreshing the page.');
     return;
   }
@@ -492,9 +492,9 @@ const buildLastLotLineInputs = (targetItems: DeliveryPaperDetailItem[]) =>
 
 const applyLastLotPicks = async (targetItems: DeliveryPaperDetailItem[]): Promise<number> => {
   if (!canPickStock.value) return 0;
-  const tenantId = parentTenantId.value;
+  const activeTenantId = tenantId.value;
   const paper = paperId.value;
-  if (tenantId == null || paper == null) {
+  if (activeTenantId == null || paper == null) {
     showErrorNotification('Could not load warehouse context. Try refreshing the page.');
     return 0;
   }
@@ -507,7 +507,7 @@ const applyLastLotPicks = async (targetItems: DeliveryPaperDetailItem[]): Promis
   if (!eligible.length) return 0;
 
   const { picks } = await procurementDemandRepository.suggestDeliveryPaperLastLotPicks({
-    tenantId,
+    tenantId: activeTenantId,
     deliveryPaperId: paper,
     stockContextTenantId: tenantId,
     lines: buildLastLotLineInputs(eligible),

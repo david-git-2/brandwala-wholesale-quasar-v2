@@ -42,7 +42,6 @@ function nextLocalId(): string {
 
 export function useManualDropshipOrder(options: {
   tenantId: Ref<number>;
-  parentTenantId: Ref<number | null | undefined>;
 }) {
   const selectedShopId = ref<number | null>(null);
   const selectedCustomerGroupId = ref<number | null>(null);
@@ -69,7 +68,7 @@ export function useManualDropshipOrder(options: {
 
   const booksCustomerGroupsQuery = useBooksCustomerGroupsQuery(
     options.tenantId,
-    options.parentTenantId,
+    undefined,
   );
 
   const customerGroupOptions = computed(() => {

@@ -394,7 +394,6 @@ const { hasModuleAccess } = useModulePermissions();
 
 const tenantId = computed(() => authStore.tenantId as number);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
-const parentTenantId = computed(() => authStore.selectedTenant?.parent_id ?? tenantId.value);
 const shopId = computed(() => Number(route.params.shopId));
 const shopsListUi = useShopsListUiStore();
 
@@ -754,8 +753,8 @@ watch(
 watch(
   () => shop.value?.tenant_id,
   (shopTenantId) => {
-    if (!shopTenantId || !parentTenantId.value) return;
-    if (shopTenantId === parentTenantId.value) return;
+    if (!shopTenantId || !tenantId.value) return;
+    if (shopTenantId === tenantId.value) return;
     shopsListUi.setSelectedBusinessTenantId(shopTenantId);
     const next = String(shopTenantId);
     const current = route.query.businessTenantId;

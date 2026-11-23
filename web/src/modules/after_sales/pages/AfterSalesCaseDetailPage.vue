@@ -129,14 +129,14 @@ const caseId = computed(() => {
   return typeof raw === 'string' ? raw : null;
 });
 
-const parentTenantId = computed(() => {
+const tenantId = computed(() => {
   const tenant = tenantStore.selectedTenant;
   if (!tenant) return null;
   return tenant.parent_id ?? tenant.id;
 });
 
 const caseQuery = useAfterSalesCaseQuery(caseId);
-const mutations = useAfterSalesCaseMutations(parentTenantId);
+const mutations = useAfterSalesCaseMutations(tenantId);
 
 const caseRow = computed(() => caseQuery.data.value ?? null);
 const editableLines = ref<AfterSalesCaseLine[]>([]);

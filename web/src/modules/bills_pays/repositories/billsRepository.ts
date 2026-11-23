@@ -84,8 +84,8 @@ const listBillsPage = async (
   params: ListBillsDeskPageParams,
   cursor: BillsListPageCursor,
 ): Promise<BillsListPageResult> => {
-  const parentTenantId = params.parentTenantId;
-  if (!parentTenantId) {
+  const tenantId = params.tenantId;
+  if (!tenantId) {
     return { data: [], meta: { has_more: false, next_cursor: null } };
   }
 
@@ -93,7 +93,7 @@ const listBillsPage = async (
     params.toProfileType && params.toProfileType !== 'all' ? params.toProfileType : undefined;
 
   const { data, error } = await supabase.rpc('list_bills_desk_page', {
-    p_tenant_id: parentTenantId,
+    p_tenant_id: tenantId,
     p_to_profile_type: toType,
     p_from_profile_id: params.fromProfileId ?? undefined,
     p_invoice_status: params.invoiceStatus ?? undefined,
@@ -361,7 +361,7 @@ const updateBillBrand = invoiceRepository.updateInvoiceBrand;
 const deleteBillBrand = invoiceRepository.deleteInvoiceBrand;
 
 const listBillsForSource = async (params: {
-  parentTenantId: number;
+  tenantId: number;
   sourceType: string;
   sourceId: string;
   sourceKey?: string | null;
@@ -369,7 +369,7 @@ const listBillsForSource = async (params: {
   apShipmentBucketsOnly?: boolean;
 }) => {
   const { data, error } = await supabase.rpc('list_bills_for_source', {
-    p_tenant_id: params.parentTenantId,
+    p_tenant_id: params.tenantId,
     p_source_type: params.sourceType,
     p_source_id: params.sourceId,
     p_source_key: params.sourceKey ?? undefined,
@@ -381,12 +381,12 @@ const listBillsForSource = async (params: {
 };
 
 const listPaysForSource = async (params: {
-  parentTenantId: number;
+  tenantId: number;
   sourceType: string;
   sourceId: string;
 }) => {
   const { data, error } = await supabase.rpc('list_pays_for_source', {
-    p_tenant_id: params.parentTenantId,
+    p_tenant_id: params.tenantId,
     p_source_type: params.sourceType,
     p_source_id: params.sourceId,
   });
@@ -394,9 +394,9 @@ const listPaysForSource = async (params: {
   return (data ?? []) as unknown[];
 };
 
-const listOpenOnProfile = async (params: { parentTenantId: number; profileId: number }) => {
+const listOpenOnProfile = async (params: { tenantId: number; profileId: number }) => {
   const { data, error } = await supabase.rpc('list_open_on_profile', {
-    p_tenant_id: params.parentTenantId,
+    p_tenant_id: params.tenantId,
     p_profile_id: params.profileId,
   });
   if (error) throw error;

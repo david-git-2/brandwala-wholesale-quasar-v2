@@ -6,47 +6,23 @@ This guide explains **what is confusing, why it looks like that, and what you sh
 
 ---
 
-## 1. Tenant IDs: `tenant_id` vs `parent_tenant_id` vs `parent_id` vs `booksTenantId`
+## 1. `bills_pays` (Bridge / Legacy) vs. `money_kernel_v2`
 
 ### Why it's confusing
-You will see `tenantId`, `parentTenantId`, `issuedByTenantId`, `booksTenantId`, and `parent_id` passed around in the same file.
+There are still **two** billing/payment layers coexisting in `bills_pays` and the database:
 
-### What's actually going on
-- **Company vs. Brand hierarchy:** A tenant in the `tenants` table can be a **company (parent)** (`parent_id === null`) or a **brand (child)** (`parent_id !== null`). See `web/src/modules/tenant/utils/tenantHierarchy.ts` (`isCompanyTenant`, `resolveCompanyTenant`).
-- **Retired `parent_tenant_id` DB columns:** Historically, many database tables and RPCs had a separate `parent_tenant_id` column. Recent migrations (`supabase/migrations/20261119233000_retire_parent_tenant_id_columns.sql`, `20261119233200_parent_tenant_id_overloads.sql`, `20261119233300_parent_tenant_id_stragglers.sql`) **renamed or dropped** `parent_tenant_id` (e.g., on `delivery_paper`, `stock_physical_counts`, `preorder_demand`) and consolidated on `tenant_id`.
-- **Frontend & compatibility aliases still use the old name:**
-  - `public.bills` (a compatibility view) temporarily aliased `kb.tenant_id AS parent_tenant_id` (`supabase/migrations/20261119232000_public_bills_parent_tenant_id_compat.sql`) before retiring it.
-  - Frontend code still names parameters `parentTenantId` in many places (e.g. `web/src/modules/sales_invoice/repositories/invoiceRepository.ts`, `web/src/modules/bills_pays/repositories/billsRepository.ts`, `useBooksExchangeRateQuery.ts`, `shop_order`, `procurement_stock`).
-  - `web/src/modules/tenant/utils/resolveBooksTenantId.ts` has `resolveBooksTenantId(tenantId, parentTenantId)` — which returns `parentTenantId ?? tenantId` (and `PeoplePage.vue` computes `booksTenantId` as `t.parent_id ?? t.id`).
-
-### Rule of thumb
-- **Accounting / "Books" flows** (bills, payments, cashbook, exchange rates) belong to the **company (parent) tenant**: `tenant.parent_id ?? tenant.id`.
-- **Operational / child flows** use the active workspace `tenant_id`.
-- **Do not assume a `parent_tenant_id` column exists in Postgres**—check the current schema/migrations first, because most were renamed to `tenant_id`.
-
----
-
-## 2. Old Invoices (`sales_invoice`) vs. `bills_pays` vs. `money_kernel_v2`
-
-### Why it's confusing
-There are **three generations** of invoicing/billing/payment code in the repo at the same time:
-
-1. **Generation 1 — `sales_invoice` & `wallet` (Deprecated / Partially Removed):**
-   - `web/src/modules/sales_invoice/` has **no `pages/` folder anymore**, and old URLs (`/app/sales/invoices/*`, `/app/invoices/*`, `/app/wallet/entity/*`, `/app/finance/payments/*`) are redirected to `/app/bills`, `/app/cashbook`, and `/app/payments` in `web/src/modules/navigation/moneyUiRedirects.ts`.
-   - **The trap:** `web/src/modules/sales_invoice/repositories/invoiceRepository.ts` is **still used**! `billsRepository.ts` imports and wraps it. Inside `invoiceRepository.ts`, it queries `supabase.from('bills')` using legacy column names (`invoice_no`, `invoice_type`, `invoice_status`, `invoice_date`) and legacy foreign-key names (`tenants!global_invoices_issued_by_tenant_id_fkey`).
-   - `web/src/modules/wallet/` also still exists on disk even though wallet UI routes redirect to `/app/cashbook`.
-
-2. **Generation 2 — `bills_pays` (Bridge / Desk layer with `spine: 'legacy' | 'kernel'`):**
+1. **Legacy / Bridge layer (`bills_pays` + `public.bills` view with `spine: 'legacy' | 'kernel'`):**
+   - `web/src/modules/bills_pays/repositories/invoiceRepository.ts` (moved from the old `sales_invoice` module) is still wrapped by `billsRepository.ts` and queries `supabase.from('bills')` using legacy column names (`invoice_no`, `invoice_type`, `invoice_status`, `invoice_date`) and legacy foreign-key names (`tenants!global_invoices_issued_by_tenant_id_fkey`).
    - `public.bills` and `public.bill_lines` are **no longer physical tables**—they were dropped and replaced by SQL compatibility `VIEW`s over `money_kernel.bills` (see `supabase/schemas/bills_pays/99_legacy_kernel_cutover.sql` and `20261119233000_retire_parent_tenant_id_columns.sql`).
    - Frontend files like `billsRepository.ts`, `paysRepository.ts`, `BillDetailPage.vue`, `BillAdjustmentComposePage.vue`, and `ProfilePayDetailDialog.vue` still branch on `spine === 'kernel'` vs `'legacy'` (or `'desk'`).
    - Legacy tables (`cashbook_entries`, `pay_allocations`, `pay_instruments`, `money_purposes`, `invoice_write_offs`, `sales_invoice_counters`) are marked `DEPRECATED` in `99_legacy_kernel_cutover.sql` with client `INSERT/UPDATE/DELETE` revoked.
 
-3. **Generation 3 — `money_kernel_v2` (`money_kernel.*` schema):**
+2. **`money_kernel_v2` (`money_kernel.*` schema):**
    - The new source of truth for money lives in `supabase/schemas/money_kernel_v2/` and is called from `web/src/modules/bills_pays/repositories/moneyKernelRepository.ts` via RPCs listed in `moneyKernelTargets.ts` (`rpc_create_bill`, `rpc_issue_bill`, `rpc_pay_bill`, `rpc_pay_bills`, `rpc_deposit`, `rpc_withdraw`, etc.).
    - Notice `moneyKernelRepository.ts` uses `const db = supabase as any;` because some RPCs/types aren't in generated `database.types.ts`.
 
 ### Rule of thumb
-- For **new** money/billing features, use `bills_pays` + `money_kernel_v2` (`rpc_*` RPCs), **not** `sales_invoice` or `wallet` or legacy tables like `cashbook_entries` / `pay_allocations`.
+- For **new** money/billing features, use `bills_pays` + `money_kernel_v2` (`rpc_*` RPCs), **not** legacy tables like `cashbook_entries` / `pay_allocations`.
 - When reading `invoiceRepository.ts`, remember that `invoice_*` names are legacy terminology for **bills**.
 
 ---
@@ -109,13 +85,13 @@ It's often unclear which folder owns a feature because old and new versions sit 
 - **Global data:** Split across `web/src/modules/global/`, `web/src/modules/global_reference/` (currencies, markets, payment methods, UoMs), and `web/src/modules/products/`.
 
 ### Rule of thumb
-- Before building a new page or composable, check `web/src/modules/navigation/moduleRegistry.ts` and `moneyUiRedirects.ts` to see which route and module are currently active vs. redirected.
+- Before building a new page or composable, check `web/src/modules/navigation/moduleRegistry.ts` to see which route and module are currently active.
 
 ---
 
 ## Quick Checklist Before Starting a New Flow
 
-1. **Check the route first:** Look in `moduleRegistry.ts` and `moneyUiRedirects.ts` to make sure you're not editing a dead/redirected flow.
-2. **Check the tenant scope:** Decide if the flow is **company-level** (`parent_id ?? tenant_id`) or **brand/workspace-level** (`tenant_id`). Don't add new `parent_tenant_id` references.
-3. **Use the new money kernel:** For anything touching bills, payments, or cashbook, target `bills_pays` + `money_kernel_v2` (`rpc_*`), not `sales_invoice` or `wallet`.
+1. **Check the route first:** Look in `moduleRegistry.ts` to make sure you're working in the active module.
+2. **Use `tenant_id`:** Don't add new `parent_tenant_id` or company-hierarchy references.
+3. **Use the new money kernel:** For anything touching bills, payments, or cashbook, target `bills_pays` + `money_kernel_v2` (`rpc_*`), not legacy `cashbook_entries` / `pay_allocations`.
 4. **Verify currency context:** Explicitly track whether a field is in **books currency (BDT)**, **purchase currency**, or **settlement currency**.

@@ -217,7 +217,7 @@ const addMutation = useMutation({
     const accountId = cashbookAccountId.value;
     if (accountId == null) throw new Error('Cashbook not ready.');
     await cashbookRepository.createCashbookPoint({
-      parentTenantId: props.booksTenantId,
+      tenantId: props.booksTenantId,
       cashbookAccountId: accountId,
       name: name.trim(),
       currencyCodes: ['BDT'],

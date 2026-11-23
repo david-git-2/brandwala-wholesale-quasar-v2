@@ -198,12 +198,10 @@ const { t } = useI18n();
 const authStore = useAuthStore();
 
 const tenantId = computed(() => authStore.tenantId as number);
-const parentTenantId = computed(() => authStore.selectedTenant?.parent_id ?? authStore.tenantId);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 const pageParams = computed(() => ({
   tenantId: tenantId.value,
-  parentTenantId: parentTenantId.value,
   shopType: 'dropship' as const,
 }));
 
@@ -244,7 +242,6 @@ const {
   canSubmit,
 } = useManualDropshipOrder({
   tenantId,
-  parentTenantId,
 });
 
 const contextReady = computed(

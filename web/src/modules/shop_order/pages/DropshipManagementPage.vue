@@ -370,7 +370,7 @@ const highlightOrderId = computed(() => {
 const actionColspan = computed(() => (isParentTenant.value ? 13 : 12));
 
 const tenantId = computed(() => authStore.tenantId as number | undefined);
-const parentTenantId = computed(
+const booksTenantId = computed(
   () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
 );
 
@@ -382,20 +382,20 @@ const booksTenantId = computed(() => {
 
 const isParentTenant = computed(() => {
   if (!tenantId.value) return false;
-  return Number(parentTenantId.value) === Number(tenantId.value);
+  return Number(booksTenantId.value) === Number(tenantId.value);
 });
 
-const { data: childTenants, isLoading: childTenantsLoading } = useChildTenantsQuery(parentTenantId);
+const { data: childTenants, isLoading: childTenantsLoading } = useChildTenantsQuery(booksTenantId);
 
 const childTenantOptions = computed(() => {
   const map = new Map<number, string>();
   for (const t of childTenants.value ?? []) {
-    if (t.parent_id === parentTenantId.value) {
+    if (t.parent_id === booksTenantId.value) {
       map.set(t.id, t.name);
     }
   }
   for (const o of orders.value) {
-    if (o.tenant_id && o.tenant_name && o.tenant_id !== parentTenantId.value) {
+    if (o.tenant_id && o.tenant_name && o.tenant_id !== booksTenantId.value) {
       map.set(o.tenant_id, o.tenant_name);
     }
   }
@@ -429,7 +429,6 @@ const loadOrders = async () => {
   loading.value = true;
   try {
     const res = await shopOrderService.fetchDropshipStaffOrders(authStore.tenantId, {
-      parentTenantId: parentTenantId.value ?? null,
       limit: 200,
       statuses: resolveStatusPayload(statusFilter.value),
       search: searchQuery.value.trim() || null,

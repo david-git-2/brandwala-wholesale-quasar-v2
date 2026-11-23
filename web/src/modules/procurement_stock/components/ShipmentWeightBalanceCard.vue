@@ -769,11 +769,11 @@ const addBox = async () => {
     const tenantStore = useTenantStore();
     const currentTenant =
       tenantStore.selectedTenant ?? tenantStore.items.find((t) => t.id === authStore.tenantId);
-    const parentTenantId = currentTenant?.parent_id ?? authStore.tenantId;
-    if (!parentTenantId) throw new Error('No tenant found');
+    const tenantId = currentTenant?.parent_id ?? authStore.tenantId;
+    if (!tenantId) throw new Error('No tenant found');
 
     await globalShipmentBoxRepository.create({
-      tenant_id: parentTenantId,
+      tenant_id: tenantId,
       shipment_id: props.shipmentId,
       box_number: num,
       received_weight: recv ?? 0,

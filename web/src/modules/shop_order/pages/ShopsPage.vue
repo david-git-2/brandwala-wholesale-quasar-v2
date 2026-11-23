@@ -424,7 +424,7 @@ const shopsListUi = useShopsListUiStore();
 const { t } = useI18n();
 
 const tenantId = computed(() => authStore.tenantId as number);
-const parentTenantId = computed(() => authStore.selectedTenant?.parent_id ?? authStore.tenantId);
+const booksTenantId = computed(() => authStore.selectedTenant?.parent_id ?? authStore.tenantId);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 const isParentTenant = computed(() => {
@@ -433,7 +433,7 @@ const isParentTenant = computed(() => {
   return Number(pId) === Number(tenantId.value);
 });
 
-const { data: childTenants, isLoading: childTenantsLoading } = useChildTenantsQuery(parentTenantId);
+const { data: childTenants, isLoading: childTenantsLoading } = useChildTenantsQuery(booksTenantId);
 
 const search = ref<string>('');
 const activeFilter = ref<boolean | null>(null);
@@ -500,8 +500,7 @@ const queryParams = computed<ShopsAppPageQueryParams>(() => {
   const isChildSelected = selectedChildTenantId.value !== null;
   return {
     tenantId: isChildSelected ? (selectedChildTenantId.value as number) : tenantId.value,
-    parentTenantId: isChildSelected ? null : parentTenantId.value,
-    catalogParentTenantId: parentTenantId.value ?? null,
+    catalogParentTenantId: booksTenantId.value ?? null,
     search: search.value || null,
     active: activeFilter.value,
   };
@@ -524,12 +523,12 @@ const {
 const childTenantOptions = computed(() => {
   const map = new Map<number, string>();
   for (const t of childTenants.value ?? []) {
-    if (t.parent_id === parentTenantId.value) {
+    if (t.parent_id === booksTenantId.value) {
       map.set(t.id, t.name);
     }
   }
   for (const s of shops.value) {
-    if (s.tenant_id && s.tenant_name && s.tenant_id !== parentTenantId.value) {
+    if (s.tenant_id && s.tenant_name && s.tenant_id !== booksTenantId.value) {
       map.set(s.tenant_id, s.tenant_name);
     }
   }

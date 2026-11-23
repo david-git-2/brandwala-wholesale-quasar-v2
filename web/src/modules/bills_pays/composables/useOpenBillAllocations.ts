@@ -28,7 +28,7 @@ export function useOpenBillAllocations(
     loading.value = true;
     try {
       const { data } = await billsRepository.listBills({
-        parentTenantId: parentId,
+        tenantId: parentId,
         profileId: pid,
         invoiceStatus: 'issued',
         quickFilter: 'unpaid',

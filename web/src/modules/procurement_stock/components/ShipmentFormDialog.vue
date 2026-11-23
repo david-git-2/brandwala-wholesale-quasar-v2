@@ -266,7 +266,7 @@ const vendorStore = useVendorStore();
 const shipmentStore = useGlobalShipmentStore();
 const cargoCompanyStore = useCargoCompanyStore();
 
-const parentTenantId = computed(
+const tenantId = computed(
   () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
 );
 
@@ -348,9 +348,9 @@ onMounted(async () => {
     } finally {
       loadingCurrencies.value = false;
     }
-  } else if (parentTenantId.value) {
+  } else if (tenantId.value) {
     try {
-      await cargoCompanyStore.ensureCompaniesLoaded(parentTenantId.value);
+      await cargoCompanyStore.ensureCompaniesLoaded(tenantId.value);
       const defaultCargo = cargoCompanyStore.defaultCompany;
       if (defaultCargo) {
         form.value.cargo_company_id = defaultCargo.id;

@@ -191,7 +191,6 @@ const fetchCustomerOrders = async (
 const fetchStaffOrders = async (
   tenantId: number,
   opts?: {
-    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;
@@ -213,7 +212,6 @@ const fetchStaffOrders = async (
 const fetchDropshipStaffOrders = async (
   tenantId: number,
   opts?: {
-    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;

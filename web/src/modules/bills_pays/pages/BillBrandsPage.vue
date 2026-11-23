@@ -77,17 +77,17 @@ const route = useRoute();
 const router = useRouter();
 const queryClient = useQueryClient();
 
-const parentTenantId = computed(() => {
+const tenantId = computed(() => {
   const t = authStore.selectedTenant;
   if (!t) return null;
   return t.parent_id ?? t.id;
 });
 
 const brandsQuery = useQuery({
-  queryKey: computed(() => billsQueryKeys.brands(parentTenantId.value)),
+  queryKey: computed(() => billsQueryKeys.brands(tenantId.value)),
   queryFn: () =>
-    billsRepository.listBillBrands({ tenant_id: parentTenantId.value! }),
-  enabled: computed(() => parentTenantId.value != null),
+    billsRepository.listBillBrands({ tenant_id: tenantId.value! }),
+  enabled: computed(() => tenantId.value != null),
   staleTime: 60_000,
 });
 
@@ -118,7 +118,7 @@ const invalidate = () => {
 };
 
 const saveBrand = async () => {
-  if (!parentTenantId.value || !formName.value.trim()) return;
+  if (!tenantId.value || !formName.value.trim()) return;
   saving.value = true;
   try {
     if (editingId.value) {
@@ -129,7 +129,7 @@ const saveBrand = async () => {
       showSuccessNotification('Brand updated.');
     } else {
       await billsRepository.createBillBrand({
-        tenant_id: parentTenantId.value,
+        tenant_id: tenantId.value,
         name: formName.value.trim(),
         address: formAddress.value.trim(),
       });

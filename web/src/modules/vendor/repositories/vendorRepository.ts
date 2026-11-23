@@ -101,7 +101,7 @@ const listVendorMarkets = async (): Promise<VendorMarket[]> => {
 
 const isVendorCodeAvailable = async (
   code: string,
-  parentTenantId?: number | null,
+  tenantId?: number | null,
   excludeId?: number | null,
 ): Promise<boolean> => {
   const candidateCode = normalizeVendorCode(code);
@@ -110,9 +110,9 @@ const isVendorCodeAvailable = async (
     .select('id', { count: 'exact', head: true })
     .eq('code', candidateCode);
 
-  if (typeof parentTenantId === 'number') {
-    query = query.eq('tenant_id', parentTenantId);
-  } else if (parentTenantId === null) {
+  if (typeof tenantId === 'number') {
+    query = query.eq('tenant_id', tenantId);
+  } else if (tenantId === null) {
     query = query.is('tenant_id', null);
   }
 

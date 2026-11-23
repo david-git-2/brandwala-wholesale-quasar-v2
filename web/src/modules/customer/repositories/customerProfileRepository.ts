@@ -41,12 +41,12 @@ export interface CustomerProfileListPage {
 }
 
 /** All active billing parties for bills desk compose (one list: tenant, customer, vendor, …). */
-const listDeskBillingProfiles = async (parentTenantId: number): Promise<CustomerProfile[]> => {
+const listDeskBillingProfiles = async (tenantId: number): Promise<CustomerProfile[]> => {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .or(
-      `operating_tenant_id.eq.${parentTenantId},tenant_id.eq.${parentTenantId}`,
+      `operating_tenant_id.eq.${tenantId},tenant_id.eq.${tenantId}`,
     )
     .eq('is_active', true)
     .is('deleted_at', null)

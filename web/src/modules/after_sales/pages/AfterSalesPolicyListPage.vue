@@ -153,13 +153,13 @@ const search = ref('');
 const programFilter = ref<AfterSalesProgram | null>(null);
 const activeOnly = ref(false);
 
-const parentTenantId = computed(() => {
+const tenantId = computed(() => {
   const tenant = tenantStore.selectedTenant;
   if (!tenant) return null;
   return tenant.parent_id ?? tenant.id;
 });
 
-const policiesQuery = useAfterSalesPoliciesQuery(parentTenantId);
+const policiesQuery = useAfterSalesPoliciesQuery(tenantId);
 
 const programOptions = [
   { label: 'Return credit', value: 'return_credit' as const },

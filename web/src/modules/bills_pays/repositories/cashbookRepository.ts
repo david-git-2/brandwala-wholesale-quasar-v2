@@ -485,14 +485,14 @@ const listCashbookPointPotsForPoints = async (pointIds: number[]): Promise<Cashb
 };
 
 const insertCashbookPointPots = async (
-  parentTenantId: number,
+  tenantId: number,
   pointId: number,
   currencyCodes: string[],
 ): Promise<void> => {
   const codes = normalizePotCurrencyCodes(currencyCodes);
   const { error } = await supabase.from('cashbook_point_pots').insert(
     codes.map((currency_code) => ({
-      tenant_id: parentTenantId,
+      tenant_id: tenantId,
       cashbook_point_id: pointId,
       currency_code,
       amount: 0,
@@ -502,7 +502,7 @@ const insertCashbookPointPots = async (
 };
 
 const syncCashbookPointPots = async (
-  parentTenantId: number,
+  tenantId: number,
   pointId: number,
   currencyCodes: string[],
 ): Promise<void> => {
@@ -523,12 +523,12 @@ const syncCashbookPointPots = async (
 
   const toAdd = desired.filter((code) => !existingByCode.has(code));
   if (toAdd.length) {
-    await insertCashbookPointPots(parentTenantId, pointId, toAdd);
+    await insertCashbookPointPots(tenantId, pointId, toAdd);
   }
 };
 
 const createCashbookPoint = async (input: {
-  parentTenantId: number;
+  tenantId: number;
   cashbookAccountId: number;
   name: string;
   currencyCodes: string[];
@@ -537,7 +537,7 @@ const createCashbookPoint = async (input: {
   const { data, error } = await supabase
     .from('cashbook_points')
     .insert({
-      tenant_id: input.parentTenantId,
+      tenant_id: input.tenantId,
       cashbook_account_id: input.cashbookAccountId,
       code,
       name: input.name.trim(),
@@ -548,7 +548,7 @@ const createCashbookPoint = async (input: {
   if (error) throw error;
   const pointId = data?.id;
   if (!pointId) throw new Error('Could not create cash point.');
-  await insertCashbookPointPots(input.parentTenantId, pointId, input.currencyCodes);
+  await insertCashbookPointPots(input.tenantId, pointId, input.currencyCodes);
   return pointId;
 };
 
@@ -602,12 +602,12 @@ const transferCashbookPoint = async (params: {
 };
 
 const listBooksExchangeRates = async (params: {
-  parentTenantId: number;
+  tenantId: number;
   quoteCurrencyCode?: string | null;
   limit?: number;
 }) => {
   const { data, error } = await supabase.rpc('list_books_exchange_rates', {
-    p_tenant_id: params.parentTenantId,
+    p_tenant_id: params.tenantId,
     p_quote_currency_code: params.quoteCurrencyCode ?? null,
     p_limit: params.limit ?? 20,
   });

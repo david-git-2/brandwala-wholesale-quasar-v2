@@ -62,7 +62,7 @@ import { useShopOrderBills } from '../composables/useShopOrderBills';
 import type { ShopOrderBillListItem } from '../types/shopOrderBillList';
 
 const props = defineProps<{
-  parentTenantId: number | null;
+  tenantId: number | null;
   orderId: number;
   enabled: boolean;
 }>();
@@ -72,11 +72,11 @@ const emit = defineEmits<{
 }>();
 
 const enabled = computed(
-  () => props.enabled && props.parentTenantId != null && props.orderId > 0,
+  () => props.enabled && props.tenantId != null && props.orderId > 0,
 );
 
 const { bills, isLoading } = useShopOrderBills({
-  parentTenantId: computed(() => props.parentTenantId),
+  tenantId: computed(() => props.tenantId),
   orderId: computed(() => props.orderId),
   enabled,
 });

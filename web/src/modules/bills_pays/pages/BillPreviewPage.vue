@@ -280,19 +280,19 @@ const billId = computed(() => {
 
 const { detailQuery, itemsQuery, billLinesQuery } = useBillDetailQuery(billId);
 
-const parentTenantId = computed(() => {
+const tenantId = computed(() => {
   const t = authStore.selectedTenant;
   if (!t) return null;
   return t.parent_id ?? t.id;
 });
 
-const bundleQuery = useBillDetailBundleQuery(billId, parentTenantId);
+const bundleQuery = useBillDetailBundleQuery(billId, tenantId);
 
 const brandsQuery = useQuery({
-  queryKey: computed(() => billsQueryKeys.brands(parentTenantId.value)),
+  queryKey: computed(() => billsQueryKeys.brands(tenantId.value)),
   queryFn: () =>
-    billsRepository.listBillBrands({ tenant_id: parentTenantId.value! }),
-  enabled: computed(() => parentTenantId.value != null),
+    billsRepository.listBillBrands({ tenant_id: tenantId.value! }),
+  enabled: computed(() => tenantId.value != null),
   staleTime: 60_000,
 });
 
@@ -307,7 +307,7 @@ watch(
   brandOptions,
   (brands) => {
     if (!brands.length) return;
-    const storageKey = `${BRAND_STORAGE_KEY}_${parentTenantId.value ?? 0}`;
+    const storageKey = `${BRAND_STORAGE_KEY}_${tenantId.value ?? 0}`;
     const stored = localStorage.getItem(storageKey);
     const storedId = stored ? Number(stored) : NaN;
     if (Number.isFinite(storedId) && brands.some((b) => b.id === storedId)) {
@@ -320,8 +320,8 @@ watch(
 );
 
 watch(selectedBrandId, (id) => {
-  if (id == null || parentTenantId.value == null) return;
-  localStorage.setItem(`${BRAND_STORAGE_KEY}_${parentTenantId.value}`, String(id));
+  if (id == null || tenantId.value == null) return;
+  localStorage.setItem(`${BRAND_STORAGE_KEY}_${tenantId.value}`, String(id));
 });
 
 const bill = computed(() => detailQuery.data.value as GlobalInvoiceDetail | undefined);

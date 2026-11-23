@@ -104,7 +104,6 @@ function mergeCatalogItems(pages: ShopCatalogItem[]): ShopCatalogItem[] {
 
 export function useManualCatalogOrder(options: {
   tenantId: Ref<number>;
-  parentTenantId: Ref<number | null | undefined>;
   vendorCatalogShopIds: Ref<number[]>;
 }) {
   const createTab = ref<ManualCatalogCreateTab>('standard');
@@ -162,7 +161,7 @@ export function useManualCatalogOrder(options: {
 
   const booksCustomerGroupsQuery = useBooksCustomerGroupsQuery(
     options.tenantId,
-    options.parentTenantId,
+    undefined,
   );
 
   const customerGroupOptions = computed(() => {
@@ -364,7 +363,6 @@ export function useManualCatalogOrder(options: {
       }
       const shopId = await staffManualCatalogOrderRepository.resolveVendorCatalogShopForCreate({
         tenantId: options.tenantId.value,
-        parentTenantId: options.parentTenantId?.value ?? null,
         customerGroupId: selectedCustomerGroupId.value,
         selectedShopId: selectedShopId.value,
         knownVendorCatalogShopIds: options.vendorCatalogShopIds.value,

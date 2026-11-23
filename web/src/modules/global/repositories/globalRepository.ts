@@ -95,7 +95,7 @@ const deleteGlobalStock = async (id: number): Promise<void> => {
 };
 
 const listChildStockAllocations = async (
-  parentTenantId: number,
+  tenantId: number,
   status: StockNetworkQuery['status'] = 'excellent',
 ): Promise<ChildStockAllocationRow[]> => {
   const { data, error } = await supabase
@@ -103,7 +103,7 @@ const listChildStockAllocations = async (
     .select(
       'id, tenant_id, child_tenant_id, stock_id, status, quantity, is_display_only, created_at, updated_at',
     )
-    .eq('tenant_id', parentTenantId)
+    .eq('tenant_id', tenantId)
     .eq('status', status ?? 'excellent');
 
   if (error) throw error;

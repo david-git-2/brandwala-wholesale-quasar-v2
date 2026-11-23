@@ -15,7 +15,7 @@ export type BillsListInfiniteQueryParams = ListBillsDeskPageParams;
 export function useBillsListInfiniteQuery(params: Ref<BillsListInfiniteQueryParams>) {
   const query = useInfiniteQuery({
     queryKey: computed(() =>
-      billsQueryKeys.list(params.value.parentTenantId, {
+      billsQueryKeys.list(params.value.tenantId, {
         toProfileType: params.value.toProfileType,
         fromProfileId: params.value.fromProfileId,
         invoiceStatus: params.value.invoiceStatus,
@@ -37,7 +37,7 @@ export function useBillsListInfiniteQuery(params: Ref<BillsListInfiniteQueryPara
     initialPageParam: null as BillsListPageCursor,
     staleTime: 30_000,
     placeholderData: keepPreviousData,
-    enabled: computed(() => !!params.value.parentTenantId),
+    enabled: computed(() => !!params.value.tenantId),
     refetchOnWindowFocus: false,
   });
 

@@ -278,12 +278,12 @@ watch(searchText, (v) => {
 
 const buyProcurementStatus = ref<ProcurementDemandStatus>('procuring');
 
-const parentTenantId = computed(
+const tenantId = computed(
   () => authStore.selectedTenant?.parent_id ?? authStore.tenantId ?? null,
 );
 
 const detailQuery = useProcurementDemandBuyDocumentInfiniteQuery({
-  tenantId: parentTenantId,
+  tenantId: tenantId,
   documentType,
   documentId,
   search: debouncedSearch,
@@ -324,9 +324,9 @@ const bulkVendorCode = ref<string | null>(null);
 
 const vendorFilter = ref('');
 const { data: vendorsData } = useQuery({
-  queryKey: computed(() => ['vendors', 'demandBuyDoc', parentTenantId.value]),
-  queryFn: () => vendorRepository.listVendors(parentTenantId.value!),
-  enabled: computed(() => parentTenantId.value != null),
+  queryKey: computed(() => ['vendors', 'demandBuyDoc', tenantId.value]),
+  queryFn: () => vendorRepository.listVendors(tenantId.value!),
+  enabled: computed(() => tenantId.value != null),
 });
 
 const vendorCodeOptions = computed(() => {
@@ -493,7 +493,7 @@ const documentDirty = computed(() =>
 );
 
 const bulkSaveMutation = useBulkUpsertPreorderDemandVendorPlacementsMutation({
-  tenantId: parentTenantId,
+  tenantId: tenantId,
 });
 
 const saveLoading = ref(false);
@@ -512,7 +512,7 @@ const revertUnsavedDrafts = () => {
 };
 
 const saveAllDirtyLines = async () => {
-  if (!parentTenantId.value) return;
+  if (!tenantId.value) return;
   const items = detailItems.value;
   const changed = items.filter((item) => {
     const key = itemDraftKey(item);
@@ -571,7 +571,7 @@ const onLoadMoreItems = () => {
 };
 
 const persistVendorPlacements = async (items: ProcurementDemandItem[]) => {
-  if (!parentTenantId.value || items.length === 0) return;
+  if (!tenantId.value || items.length === 0) return;
   for (const item of items) {
     const key = itemDraftKey(item);
     const draft = lineDrafts[key];

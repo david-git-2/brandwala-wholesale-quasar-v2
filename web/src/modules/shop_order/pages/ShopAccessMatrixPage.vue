@@ -688,9 +688,8 @@ const { createGroupMutation } = useCustomerGroupMutations();
 
 const tenantId = computed(() => authStore.tenantId as number);
 const shopId = computed(() => Number(route.params.shopId));
-const parentTenantId = computed(() => authStore.selectedTenant?.parent_id ?? null);
 
-const accessPageQuery = useShopCustomerAccessPageQuery(tenantId, shopId, parentTenantId);
+const accessPageQuery = useShopCustomerAccessPageQuery(tenantId, shopId);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 const shopName = ref('');

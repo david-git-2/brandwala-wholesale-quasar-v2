@@ -4,11 +4,11 @@ import { afterSalesRepositoryStub } from '../repositories/afterSalesRepository.s
 import { afterSalesQueryKeys } from '../services/afterSalesQueryKeys';
 import type { AfterSalesCaseStatus, AfterSalesPolicyProgram } from '../types/afterSales.types';
 
-export function useAfterSalesPoliciesQuery(parentTenantId: Ref<number | null | undefined>) {
+export function useAfterSalesPoliciesQuery(tenantId: Ref<number | null | undefined>) {
   return useQuery({
-    queryKey: computed(() => afterSalesQueryKeys.policies(parentTenantId.value ?? 0)),
-    queryFn: () => afterSalesRepositoryStub.listPolicies(parentTenantId.value!),
-    enabled: computed(() => Boolean(parentTenantId.value)),
+    queryKey: computed(() => afterSalesQueryKeys.policies(tenantId.value ?? 0)),
+    queryFn: () => afterSalesRepositoryStub.listPolicies(tenantId.value!),
+    enabled: computed(() => Boolean(tenantId.value)),
     staleTime: 60_000,
   });
 }
@@ -22,16 +22,16 @@ export function useAfterSalesPolicyQuery(policyId: Ref<string | null | undefined
   });
 }
 
-export function useSaveAfterSalesPolicyMutation(parentTenantId: Ref<number | null | undefined>) {
+export function useSaveAfterSalesPolicyMutation(tenantId: Ref<number | null | undefined>) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (policy: AfterSalesPolicyProgram) =>
-      afterSalesRepositoryStub.savePolicy(parentTenantId.value!, policy),
+      afterSalesRepositoryStub.savePolicy(tenantId.value!, policy),
     onSuccess: (data) => {
-      if (parentTenantId.value) {
+      if (tenantId.value) {
         void queryClient.invalidateQueries({
-          queryKey: afterSalesQueryKeys.policies(parentTenantId.value),
+          queryKey: afterSalesQueryKeys.policies(tenantId.value),
         });
       }
       void queryClient.invalidateQueries({ queryKey: afterSalesQueryKeys.policy(data.id) });
@@ -39,15 +39,15 @@ export function useSaveAfterSalesPolicyMutation(parentTenantId: Ref<number | nul
   });
 }
 
-export function useUpsertAfterSalesPoliciesMutation(parentTenantId: Ref<number | null | undefined>) {
+export function useUpsertAfterSalesPoliciesMutation(tenantId: Ref<number | null | undefined>) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (programs: AfterSalesPolicyProgram[]) =>
-      afterSalesRepositoryStub.upsertPolicies(parentTenantId.value!, programs),
+      afterSalesRepositoryStub.upsertPolicies(tenantId.value!, programs),
     onSuccess: (data) => {
-      if (parentTenantId.value) {
-        queryClient.setQueryData(afterSalesQueryKeys.policies(parentTenantId.value), data);
+      if (tenantId.value) {
+        queryClient.setQueryData(afterSalesQueryKeys.policies(tenantId.value), data);
       }
     },
   });
@@ -71,12 +71,12 @@ export function useAfterSalesCaseByInvoiceQuery(invoiceId: Ref<number | null | u
   });
 }
 
-export function useAfterSalesCaseMutations(parentTenantId: Ref<number | null | undefined>) {
+export function useAfterSalesCaseMutations(tenantId: Ref<number | null | undefined>) {
   const queryClient = useQueryClient();
 
   const invalidateAll = async (caseId?: string) => {
-    if (parentTenantId.value) {
-      await queryClient.invalidateQueries({ queryKey: ['after_sales', 'hub', parentTenantId.value] });
+    if (tenantId.value) {
+      await queryClient.invalidateQueries({ queryKey: ['after_sales', 'hub', tenantId.value] });
       await queryClient.invalidateQueries({ queryKey: ['after_sales', 'cases'] });
     }
     if (caseId) {

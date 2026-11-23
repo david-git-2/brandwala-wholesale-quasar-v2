@@ -11,7 +11,7 @@ import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQ
 
 const itemsKey = (listId: number) => procurementStockQueryKeys.batchCodeItems(listId);
 const listKey = (listId: number) => procurementStockQueryKeys.batchCodeList(listId);
-const listsKey = (parentTenantId: number) => procurementStockQueryKeys.batchCodeLists(parentTenantId);
+const listsKey = (tenantId: number) => procurementStockQueryKeys.batchCodeLists(tenantId);
 const listByShipmentKey = (shipmentId: number) =>
   procurementStockQueryKeys.batchCodeListByShipment(shipmentId);
 
@@ -33,24 +33,24 @@ const patchListDetail = (
 
 const patchLists = (
   queryClient: ReturnType<typeof useQueryClient>,
-  parentTenantId: number,
+  tenantId: number,
   updater: (rows: BatchCodeListRow[]) => BatchCodeListRow[],
 ) => {
-  queryClient.setQueryData<BatchCodeListRow[]>(listsKey(parentTenantId), (old) =>
+  queryClient.setQueryData<BatchCodeListRow[]>(listsKey(tenantId), (old) =>
     updater(old ?? []),
   );
 };
 
 const syncLineCount = (
   queryClient: ReturnType<typeof useQueryClient>,
-  parentTenantId: number,
+  tenantId: number,
   listId: number,
   count: number,
 ) => {
   const applyCount = (row: BatchCodeListRow): BatchCodeListRow =>
     row.id === listId ? { ...row, batch_code_items: [{ count }] } : row;
 
-  patchLists(queryClient, parentTenantId, (rows) => rows.map(applyCount));
+  patchLists(queryClient, tenantId, (rows) => rows.map(applyCount));
   patchListDetail(queryClient, listId, applyCount);
 };
 
@@ -74,10 +74,10 @@ export function useBatchCodeItemMutations(listId: MaybeRefOrGetter<number>) {
     onSuccess: (created) => {
       const id = resolvedListId.value;
       patchItems(queryClient, id, (items) => [...items, created]);
-      const parentTenantId = resolveParentTenantId(queryClient, id);
-      if (parentTenantId !== null) {
+      const tenantId = resolveParentTenantId(queryClient, id);
+      if (tenantId !== null) {
         const count = (queryClient.getQueryData<BatchCodeItem[]>(itemsKey(id)) ?? []).length;
-        syncLineCount(queryClient, parentTenantId, id, count);
+        syncLineCount(queryClient, tenantId, id, count);
       }
     },
   });
@@ -113,11 +113,11 @@ export function useBatchCodeItemMutations(listId: MaybeRefOrGetter<number>) {
     onSuccess: (_void, id) => {
       const listIdValue = resolvedListId.value;
       patchItems(queryClient, listIdValue, (items) => items.filter((row) => row.id !== id));
-      const parentTenantId = resolveParentTenantId(queryClient, listIdValue);
-      if (parentTenantId !== null) {
+      const tenantId = resolveParentTenantId(queryClient, listIdValue);
+      if (tenantId !== null) {
         const count =
           (queryClient.getQueryData<BatchCodeItem[]>(itemsKey(listIdValue)) ?? []).length;
-        syncLineCount(queryClient, parentTenantId, listIdValue, count);
+        syncLineCount(queryClient, tenantId, listIdValue, count);
       }
     },
   });
@@ -129,11 +129,11 @@ export function useBatchCodeItemMutations(listId: MaybeRefOrGetter<number>) {
       const listIdValue = resolvedListId.value;
       const idSet = new Set(ids);
       patchItems(queryClient, listIdValue, (items) => items.filter((row) => !idSet.has(row.id)));
-      const parentTenantId = resolveParentTenantId(queryClient, listIdValue);
-      if (parentTenantId !== null) {
+      const tenantId = resolveParentTenantId(queryClient, listIdValue);
+      if (tenantId !== null) {
         const count =
           (queryClient.getQueryData<BatchCodeItem[]>(itemsKey(listIdValue)) ?? []).length;
-        syncLineCount(queryClient, parentTenantId, listIdValue, count);
+        syncLineCount(queryClient, tenantId, listIdValue, count);
       }
     },
   });
@@ -150,9 +150,9 @@ export function useBatchCodeItemMutations(listId: MaybeRefOrGetter<number>) {
       const listIdValue = resolvedListId.value;
       const items = await batchCodeRepository.listItemsByListId(listIdValue);
       queryClient.setQueryData(itemsKey(listIdValue), items);
-      const parentTenantId = resolveParentTenantId(queryClient, listIdValue);
-      if (parentTenantId !== null) {
-        syncLineCount(queryClient, parentTenantId, listIdValue, items.length);
+      const tenantId = resolveParentTenantId(queryClient, listIdValue);
+      if (tenantId !== null) {
+        syncLineCount(queryClient, tenantId, listIdValue, items.length);
       }
     },
   });
@@ -174,12 +174,12 @@ export function useDeleteBatchCodeListMutation() {
       listId,
     }: {
       listId: number;
-      parentTenantId: number;
+      tenantId: number;
       shipmentId: number;
     }) => batchCodeRepository.deleteList(listId),
     onSuccess: (_void, variables) => {
-      const { listId, parentTenantId, shipmentId } = variables;
-      patchLists(queryClient, parentTenantId, (rows) => rows.filter((row) => row.id !== listId));
+      const { listId, tenantId, shipmentId } = variables;
+      patchLists(queryClient, tenantId, (rows) => rows.filter((row) => row.id !== listId));
       queryClient.removeQueries({ queryKey: listKey(listId) });
       queryClient.removeQueries({ queryKey: itemsKey(listId) });
       queryClient.removeQueries({ queryKey: listByShipmentKey(shipmentId) });
@@ -188,7 +188,7 @@ export function useDeleteBatchCodeListMutation() {
 }
 
 export type CreateBatchCodeListInput = {
-  parentTenantId: number;
+  tenantId: number;
   payload: Omit<BatchCodeList, 'id' | 'created_at' | 'updated_at'>;
   relations?: {
     shipment?: BatchCodeListRow['shipment'];
@@ -201,14 +201,14 @@ export function useCreateBatchCodeListMutation() {
   return useMutation({
     mutationFn: ({ payload }: CreateBatchCodeListInput) => batchCodeRepository.createList(payload),
     onSuccess: (created, variables) => {
-      const { parentTenantId, relations } = variables;
+      const { tenantId, relations } = variables;
       const row: BatchCodeListRow = {
         ...created,
         shipment: relations?.shipment ?? null,
         batch_code_items: [{ count: 0 }],
       };
 
-      patchLists(queryClient, parentTenantId, (rows) => [row, ...rows]);
+      patchLists(queryClient, tenantId, (rows) => [row, ...rows]);
       queryClient.setQueryData(listKey(created.id), row);
       queryClient.setQueryData(itemsKey(created.id), []);
       queryClient.setQueryData(listByShipmentKey(created.shipment_id), created);

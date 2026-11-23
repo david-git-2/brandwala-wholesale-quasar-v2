@@ -438,11 +438,11 @@ export type ApPayProfileSummary = {
 };
 
 const listOpenApBillsForProfile = async (
-  parentTenantId: number,
+  tenantId: number,
   profileId: number,
 ): Promise<OpenApBillRow[]> => {
   const { data, error } = await supabase.rpc('list_open_ap_bills_for_profile', {
-    p_tenant_id: parentTenantId,
+    p_tenant_id: tenantId,
     p_profile_id: profileId,
   });
   if (error) throw error;
@@ -450,11 +450,11 @@ const listOpenApBillsForProfile = async (
 };
 
 const listApPayProfileSummaries = async (
-  parentTenantId: number,
+  tenantId: number,
   search?: string,
 ): Promise<ApPayProfileSummary[]> => {
   const { data, error } = await supabase.rpc('list_ap_pay_profile_summaries', {
-    p_tenant_id: parentTenantId,
+    p_tenant_id: tenantId,
     p_search: search?.trim() || undefined,
   });
   if (error) throw error;

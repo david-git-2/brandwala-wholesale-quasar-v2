@@ -103,7 +103,7 @@ const { isParentTenant: isParentWorkspace } = useInvoiceWorkspace();
 
 const isCreateMode = computed(() => props.createMode === true || route.name === 'app-after-sales-policy-new');
 
-const parentTenantId = computed(() => {
+const tenantId = computed(() => {
   const tenant = tenantStore.selectedTenant;
   if (!tenant) return null;
   return tenant.parent_id ?? tenant.id;
@@ -115,7 +115,7 @@ const resolvedPolicyId = computed(() => {
 });
 
 const policyQuery = useAfterSalesPolicyQuery(resolvedPolicyId);
-const saveMutation = useSaveAfterSalesPolicyMutation(parentTenantId);
+const saveMutation = useSaveAfterSalesPolicyMutation(tenantId);
 
 const localPolicy = ref<AfterSalesPolicyProgram | null>(null);
 
@@ -153,11 +153,11 @@ const programOptions: { label: string; value: AfterSalesProgram }[] = [
 ];
 
 watch(
-  [isCreateMode, parentTenantId, () => policyQuery.data.value],
+  [isCreateMode, tenantId, () => policyQuery.data.value],
   () => {
     if (isCreateMode.value) {
-      if (!parentTenantId.value) return;
-      localPolicy.value = createBlankAfterSalesPolicy(parentTenantId.value);
+      if (!tenantId.value) return;
+      localPolicy.value = createBlankAfterSalesPolicy(tenantId.value);
       return;
     }
 

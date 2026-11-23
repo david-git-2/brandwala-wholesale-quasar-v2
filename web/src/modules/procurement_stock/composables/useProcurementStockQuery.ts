@@ -50,10 +50,10 @@ export function useShipmentProgressFlowStagesQuery(
  * Child Tenants query cached for 20 minutes
  */
 export function useChildTenantsQuery(
-  parentTenantId: Ref<number | null | undefined> | ComputedRef<number | null | undefined> | number | null | undefined,
+  tenantId: Ref<number | null | undefined> | ComputedRef<number | null | undefined> | number | null | undefined,
 ) {
   const resolvedTenantId = computed(() => {
-    const raw = unref(parentTenantId);
+    const raw = unref(tenantId);
     return raw && !isNaN(Number(raw)) ? Number(raw) : null;
   });
 

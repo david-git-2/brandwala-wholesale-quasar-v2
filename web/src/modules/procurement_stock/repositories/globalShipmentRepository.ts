@@ -1449,7 +1449,7 @@ const createShipmentItemOutcome = async (payload: {
 };
 
 const ensureReceivedGeneralOutcomes = async (
-  parentTenantId: number,
+  tenantId: number,
   items: Array<{
     id: number;
     ordered_quantity: number;
@@ -1465,7 +1465,7 @@ const ensureReceivedGeneralOutcomes = async (
   const toInsert = items
     .filter((item) => !hasGeneral.has(item.id))
     .map((item) => ({
-      tenant_id: parentTenantId,
+      tenant_id: tenantId,
       shipment_item_id: item.id,
       quantity: item.ordered_quantity,
       kind: 'sellable' as const,

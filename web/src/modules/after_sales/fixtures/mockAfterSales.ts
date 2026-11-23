@@ -118,11 +118,11 @@ const defaultPolicies: AfterSalesPolicyProgram[] = [
 ];
 
 export const createBlankAfterSalesPolicy = (
-  parentTenantId: number,
+  tenantId: number,
   program: AfterSalesPolicyProgram['program'] = 'return_credit',
 ): AfterSalesPolicyProgram => ({
   id: '',
-  tenant_id: parentTenantId,
+  tenant_id: tenantId,
   name: '',
   program,
   is_active: true,

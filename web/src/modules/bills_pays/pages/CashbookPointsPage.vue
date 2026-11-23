@@ -93,7 +93,7 @@
       :mode="pointFormMode"
       :point="editingPoint"
       :cashbook-account-id="cashbookAccountId"
-      :parent-tenant-id="booksTenantId"
+      :tenant-id="booksTenantId"
       :operating-tenant-id="operatingTenantId"
       @saved="onPointSaved"
     />

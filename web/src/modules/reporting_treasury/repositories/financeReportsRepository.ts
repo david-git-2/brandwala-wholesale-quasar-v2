@@ -26,7 +26,6 @@ function downloadCsv(filename: string, headers: string[], rows: (string | number
 export const financeReportsRepository = {
   async fetchCustomerDuesReport(params: {
     tenantId: number;
-    issuedByTenantId?: number | null;
     search?: string | null;
     agingBucket?: string | null;
     minDue?: number;
@@ -37,7 +36,6 @@ export const financeReportsRepository = {
   }): Promise<CustomerDuesReportPayload> {
     const { data, error } = await supabase.rpc('get_customer_dues_report', {
       p_tenant_id: params.tenantId,
-      p_issued_by_tenant_id: params.issuedByTenantId ?? undefined,
       p_search: params.search?.trim() || undefined,
       p_aging_bucket: params.agingBucket ?? undefined,
       p_min_due: params.minDue ?? 0,
@@ -57,7 +55,6 @@ export const financeReportsRepository = {
     search?: string | null;
     invoiceType?: string | null;
     paymentStatus?: string | null;
-    issuedByTenantId?: number | null;
     page?: number;
     pageSize?: number;
     skipCount?: boolean;
@@ -69,7 +66,6 @@ export const financeReportsRepository = {
       p_search: params.search?.trim() || undefined,
       p_invoice_type: params.invoiceType ?? undefined,
       p_payment_status: params.paymentStatus ?? undefined,
-      p_issued_by_tenant_id: params.issuedByTenantId ?? undefined,
       p_page: params.page ?? 1,
       p_page_size: params.pageSize ?? 50,
       p_skip_count: params.skipCount ?? true,

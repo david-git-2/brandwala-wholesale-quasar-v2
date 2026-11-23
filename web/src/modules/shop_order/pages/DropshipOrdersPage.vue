@@ -238,9 +238,9 @@ const loadOrders = async () => {
   if (!authStore.tenantId) return;
   loading.value = true;
   try {
-    const parentTenantId = authStore.selectedTenant?.parent_id ?? authStore.tenantId;
+    const tenantId = authStore.selectedTenant?.parent_id ?? authStore.tenantId;
     const res = await shopOrderService.fetchDropshipStaffOrders(authStore.tenantId, {
-      parentTenantId,
+      tenantId,
       limit: 200,
       status: null,
       search: searchQuery.value.trim() || null,

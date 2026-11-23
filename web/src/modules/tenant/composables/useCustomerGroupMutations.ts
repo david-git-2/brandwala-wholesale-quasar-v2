@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { customerGroupRepository } from '../repositories/customerGroupRepository';
 import { tenantQueryKeys } from '../shared/queryKeys/tenantQueryKeys';
 import { salesInvoiceQueryKeys } from 'src/modules/bills_pays/services/salesInvoiceQueryKeys';
-import { resolveBooksTenantId } from '../utils/resolveBooksTenantId';
 import {
   appendCustomerGroupToAccessPageCaches,
   toBooksCustomerGroupRow,
@@ -24,7 +23,7 @@ export function useCustomerGroupMutations() {
       void queryClient.invalidateQueries({
         queryKey: tenantQueryKeys.customerGroups(data.tenant_id),
       });
-      const booksTenantId = resolveBooksTenantId(data.tenant_id);
+      const booksTenantId = data.tenant_id;
       const groupRow = toBooksCustomerGroupRow(data);
       appendBooksCustomerGroup(queryClient, booksTenantId, groupRow);
       appendCustomerGroupToAccessPageCaches(queryClient, groupRow);

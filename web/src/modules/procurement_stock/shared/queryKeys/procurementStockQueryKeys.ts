@@ -40,8 +40,8 @@ export const procurementStockQueryKeys = {
   stockAllocations: (stockId: number) =>
     ['procurementStock', 'stockAllocations', { stockId }] as const,
 
-  childTenants: (parentTenantId: number) =>
-    ['procurementStock', 'childTenants', { parentTenantId }] as const,
+  childTenants: (tenantId: number) =>
+    ['procurementStock', 'childTenants', { tenantId }] as const,
 
   shipments: (tenantId: number, params?: { isArchived?: boolean; search?: string | null; status?: string | null }) =>
     ['procurementStock', 'shipments', { tenantId, ...params }] as const,
@@ -144,8 +144,8 @@ export const procurementStockQueryKeys = {
 
   dashboard: (tenantId: number) => ['procurementStock', 'dashboard', tenantId] as const,
 
-  batchCodeLists: (parentTenantId: number) =>
-    ['procurementStock', 'batchCodeLists', { parentTenantId }] as const,
+  batchCodeLists: (tenantId: number) =>
+    ['procurementStock', 'batchCodeLists', { tenantId }] as const,
 
   batchCodeList: (listId: number) =>
     ['procurementStock', 'batchCodeList', { listId }] as const,

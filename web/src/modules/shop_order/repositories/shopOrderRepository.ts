@@ -36,7 +36,6 @@ import type {
 const listShops = async (
   tenantId: number,
   opts: {
-    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;
@@ -61,7 +60,6 @@ const listShops = async (
 const listShopsAppPage = async (
   tenantId: number,
   opts: {
-    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;
@@ -538,7 +536,6 @@ const listCustomerShopOrders = async (
 const listShopOrdersForStaff = async (
   tenantId: number,
   opts: {
-    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;
@@ -561,7 +558,6 @@ const listShopOrdersForStaff = async (
 const listShopOrdersStaffPage = async (
   tenantId: number,
   opts: {
-    parentTenantId?: number | null;
     limit?: number;
     search?: string | null;
     status?: string | null;
@@ -599,7 +595,6 @@ const listShopOrdersStaffPage = async (
 const listDropshipShopOrdersForStaff = async (
   tenantId: number,
   opts: {
-    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;

@@ -8,7 +8,6 @@ const STAFF_ORDERS_PAGE_SIZE = 30;
 
 export interface ShopOrdersStaffPageQueryParams {
   tenantId: number;
-  parentTenantId?: number | null;
   search?: string | null;
   status?: string | null;
   shopId?: number | null;
@@ -24,7 +23,6 @@ export function useShopOrdersStaffPageQuery(params: Ref<ShopOrdersStaffPageQuery
     queryFn: async ({ pageParam }) => {
       const cursor = (pageParam as StaffOrdersPageCursor | null) ?? null;
       return shopOrderRepository.listShopOrdersStaffPage(params.value.tenantId, {
-        parentTenantId: params.value.parentTenantId ?? null,
         search: params.value.search ?? null,
         status: params.value.status ?? null,
         shopId: params.value.shopId ?? null,

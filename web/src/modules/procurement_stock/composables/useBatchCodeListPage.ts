@@ -18,7 +18,7 @@ export function useBatchCodeListPage() {
     return tenantId;
   };
 
-  const parentTenantId = computed(() => {
+  const tenantId = computed(() => {
     try {
       return resolveParentTenantId();
     } catch {
@@ -26,7 +26,7 @@ export function useBatchCodeListPage() {
     }
   });
 
-  const listsQuery = useBatchCodeListsQuery(parentTenantId);
+  const listsQuery = useBatchCodeListsQuery(tenantId);
 
   const rows = computed(() => listsQuery.data.value ?? []);
   const loading = computed(
@@ -59,6 +59,6 @@ export function useBatchCodeListPage() {
     filteredRows,
     load: refetch,
     itemCountFor,
-    parentTenantId,
+    tenantId,
   };
 }

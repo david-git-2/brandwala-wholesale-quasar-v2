@@ -224,11 +224,11 @@ const isMissingListProductsRpcError = (error: any): boolean => {
   );
 };
 
-const parentTenantIdCache = new Map<number, number>();
+const scopeTenantIdCache = new Map<number, number>();
 
 const resolveProductScopeTenantId = async (tenantId: number): Promise<number> => {
-  if (parentTenantIdCache.has(tenantId)) {
-    return parentTenantIdCache.get(tenantId)!;
+  if (scopeTenantIdCache.has(tenantId)) {
+    return scopeTenantIdCache.get(tenantId)!;
   }
 
   const { data, error } = await supabase.rpc('resolve_books_tenant_id', {
@@ -240,7 +240,7 @@ const resolveProductScopeTenantId = async (tenantId: number): Promise<number> =>
   }
 
   const resolved = data as number;
-  parentTenantIdCache.set(tenantId, resolved);
+  scopeTenantIdCache.set(tenantId, resolved);
   return resolved;
 };
 

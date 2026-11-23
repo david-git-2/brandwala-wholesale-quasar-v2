@@ -107,12 +107,12 @@ watch(searchText, (v) => {
   }, 300);
 });
 
-const parentTenantId = computed(
+const tenantId = computed(
   () => authStore.selectedTenant?.parent_id ?? authStore.tenantId ?? null,
 );
 
 const listQuery = useProcurementDemandBuyDocumentsQuery({
-  tenantId: parentTenantId,
+  tenantId: tenantId,
   search: debouncedSearch,
 });
 

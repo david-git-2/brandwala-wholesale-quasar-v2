@@ -56,7 +56,6 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 const tenantId = computed(() => authStore.tenantId as number);
-const parentTenantId = computed(() => authStore.selectedTenant?.parent_id ?? authStore.tenantId);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 const isParentTenant = computed(() => {
@@ -68,7 +67,7 @@ const isParentTenant = computed(() => {
 const selectedShopId = ref<number | null>(null);
 const selectedProfileId = ref<number | null>(null);
 
-const { profiles: customerProfiles, isLoading: isLoadingProfiles } = useCustomerProfiles(parentTenantId);
+const { profiles: customerProfiles, isLoading: isLoadingProfiles } = useCustomerProfiles(tenantId);
 
 const searchInput = ref('');
 const appliedSearch = ref('');
@@ -97,7 +96,6 @@ const clearAllFilters = () => {
 
 const pageParams = computed(() => ({
   tenantId: tenantId.value,
-  parentTenantId: parentTenantId.value,
   search: appliedSearch.value || null,
   status: statusFilter.value || null,
   shopId: selectedShopId.value || null,

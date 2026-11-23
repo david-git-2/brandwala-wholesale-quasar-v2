@@ -367,11 +367,6 @@ const payId = computed(() => {
 });
 
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
-const parentTenantId = computed(() => {
-  const t = authStore.selectedTenant;
-  if (!t?.id) return 0;
-  return t.parent_id ?? t.id;
-});
 const detailQuery = useQuery({
   queryKey: computed(() => paysQueryKeys.detail(payId.value)),
   queryFn: () => paysRepository.getPayById(payId.value!),
@@ -475,14 +470,14 @@ const canDispenseShopPayout = computed(
 );
 
 const shopPayoutPointsContext = computed(() => ({
-  booksTenantId: parentTenantId.value,
+  booksTenantId: tenantId.value,
   entityType: 'tenant',
-  entityId: parentTenantId.value,
-  enabled: parentTenantId.value > 0 && canDispenseShopPayout.value,
+  entityId: tenantId.value,
+  enabled: tenantId.value > 0 && canDispenseShopPayout.value,
 }));
 const { pointsQuery: shopPayoutPointsQuery } = useCashbookPointsQuery(shopPayoutPointsContext);
 const shopPayoutPoints = computed(() => shopPayoutPointsQuery.data.value);
-const shopPayFromEnabled = computed(() => canDispenseShopPayout.value && parentTenantId.value > 0);
+const shopPayFromEnabled = computed(() => canDispenseShopPayout.value && tenantId.value > 0);
 const {
   selectedPotId: shopPayFromPotId,
   payFromOptions: shopPayFromOptions,
@@ -575,7 +570,7 @@ watch(
     try {
       const isApPayout = pay.value.source === 'ap_payout';
       const { data } = await billsRepository.listBills({
-        parentTenantId: pay.value.tenant_id,
+        tenantId: pay.value.tenant_id,
         profileId: pay.value.profile_id,
         invoiceStatus: 'issued',
         quickFilter: 'unpaid',

@@ -157,9 +157,9 @@ export const afterSalesRepositoryStub = {
     );
   },
 
-  async listPolicies(parentTenantId: number): Promise<AfterSalesPolicyProgram[]> {
+  async listPolicies(tenantId: number): Promise<AfterSalesPolicyProgram[]> {
     await delay();
-    void parentTenantId;
+    void tenantId;
     return structuredClone(mockAfterSalesState.policies);
   },
 
@@ -170,15 +170,15 @@ export const afterSalesRepositoryStub = {
   },
 
   async savePolicy(
-    parentTenantId: number,
+    tenantId: number,
     policy: AfterSalesPolicyProgram,
   ): Promise<AfterSalesPolicyProgram> {
     await delay();
-    void parentTenantId;
+    void tenantId;
 
     const normalized: AfterSalesPolicyProgram = {
       ...policy,
-      tenant_id: parentTenantId,
+      tenant_id: tenantId,
       allowed_outcomes: [...policy.allowed_outcomes],
     };
 
@@ -200,11 +200,11 @@ export const afterSalesRepositoryStub = {
   },
 
   async upsertPolicies(
-    parentTenantId: number,
+    tenantId: number,
     programs: AfterSalesPolicyProgram[],
   ): Promise<AfterSalesPolicyProgram[]> {
     await delay();
-    void parentTenantId;
+    void tenantId;
     mockAfterSalesState.policies = structuredClone(programs);
     return structuredClone(mockAfterSalesState.policies);
   },

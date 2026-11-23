@@ -6,17 +6,14 @@ import {
   BOOKS_CUSTOMER_GROUPS_STALE_MS,
   seedBooksCustomerGroups,
 } from '../utils/booksCustomerGroupsCache';
-import { resolveBooksTenantId } from 'src/modules/tenant/utils/resolveBooksTenantId';
 
 export function useShopCustomerAccessPageQuery(
   tenantId: Ref<number>,
   shopId: Ref<number>,
-  parentTenantId: Ref<number | null | undefined>,
+  _unusedParentTenantId?: Ref<number | null | undefined>,
 ) {
   const queryClient = useQueryClient();
-  const booksTenantId = computed(() =>
-    resolveBooksTenantId(tenantId.value, parentTenantId.value),
-  );
+  const booksTenantId = computed(() => tenantId.value);
 
   const query = useQuery({
     queryKey: computed(() =>

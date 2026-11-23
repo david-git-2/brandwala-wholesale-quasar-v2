@@ -2,11 +2,11 @@ import { supabase } from 'src/boot/supabase';
 import type { CatalogRefreshLogRow } from '../utils/catalogRefreshByVendor';
 
 export async function listCatalogRefreshLog(
-  parentTenantId: number,
+  tenantId: number,
   limit = 200,
 ): Promise<CatalogRefreshLogRow[]> {
   const { data, error } = await supabase.rpc('list_catalog_refresh_log', {
-    p_tenant_id: parentTenantId,
+    p_tenant_id: tenantId,
     p_limit: limit,
   });
   if (error) {

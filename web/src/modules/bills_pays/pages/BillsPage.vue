@@ -209,13 +209,13 @@ const toProfileTabs = [
   { name: 'investor', label: 'Investor' },
 ] as const;
 
-const parentTenantId = computed(() => {
+const tenantId = computed(() => {
   const tenant = authStore.selectedTenant;
   if (!tenant?.id) return null;
   return tenant.parent_id ?? tenant.id;
 });
 
-const partyQuery = useDeskBillPartyOptions(parentTenantId);
+const partyQuery = useDeskBillPartyOptions(tenantId);
 const partyOptions = computed(() => partyQuery.data.value ?? []);
 
 const filterCount = computed(() => {
@@ -227,7 +227,7 @@ const filterCount = computed(() => {
 
 const listParams = computed(() => {
   const base = {
-    parentTenantId: parentTenantId.value,
+    tenantId: tenantId.value,
     toProfileType: toProfileTab.value,
     fromProfileId: fromProfileId.value,
   };

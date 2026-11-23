@@ -605,14 +605,9 @@ const composeBreadcrumbTitle = ref('New bill');
 const TENANT_PROFILE_STORAGE_KEY = 'bills_pays_last_tenant_side_profile_id';
 
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
-const parentTenantId = computed(() => {
-  const t = authStore.selectedTenant;
-  if (!t) return null;
-  return t.parent_id ?? t.id;
-});
 
 const { profiles: deskProfiles, profileById, ensureLoaded: ensureProfilesLoaded } =
-  useCustomerProfiles(parentTenantId, { scope: 'desk' });
+  useCustomerProfiles(tenantId, { scope: 'desk' });
 
 const documentKind = ref<BillDocumentKind>('standard');
 const parentBillId = ref<number | null>(null);
@@ -832,7 +827,7 @@ const composeProfileOptions = (): CustomerProfile[] =>
   );
 
 const fetchProfileOptions = async (needle: string): Promise<CustomerProfile[]> => {
-  if (!parentTenantId.value) return [];
+  if (!tenantId.value) return [];
   await ensureProfilesLoaded();
   const trimmed = needle.trim().toLowerCase();
   let rows = composeProfileOptions();
@@ -882,7 +877,7 @@ const filterToProfiles = async (val: string, update: (cb: () => void) => void) =
 };
 
 const resolveTenantSideProfile = async () => {
-  const booksId = parentTenantId.value;
+  const booksId = tenantId.value;
   const issuedId = tenantId.value;
   if (!booksId || !issuedId) return;
 
@@ -912,7 +907,7 @@ const resolveTenantSideProfile = async () => {
 };
 
 const filterParentBills = async (val: string, update: (cb: () => void) => void) => {
-  if (!parentTenantId.value) {
+  if (!tenantId.value) {
     update(() => {
       parentBillOptions.value = [];
     });
@@ -922,7 +917,7 @@ const filterParentBills = async (val: string, update: (cb: () => void) => void) 
   let query = supabase
     .from('bills')
     .select('id, invoice_no, invoice_date')
-    .eq('tenant_id', parentTenantId.value)
+    .eq('tenant_id', tenantId.value)
     .eq('document_kind', 'standard')
     .eq('invoice_status', 'issued')
     .order('invoice_date', { ascending: false })
@@ -1018,7 +1013,7 @@ const persistBillMeta = async (billId: number) => {
     patch.invoice_type = 'retail';
   }
 
-  const booksId = parentTenantId.value ?? tenantId.value;
+  const booksId = tenantId.value;
   if (!booksId) throw new Error('Tenant is required');
 
   await billsRepository.updateDraftBill(booksId, billId, {
@@ -1471,7 +1466,7 @@ watch(breadcrumbItems, (items) => setCustomBreadcrumbs(items), { immediate: true
 onBeforeUnmount(() => clearCustomBreadcrumbs());
 
 const refreshComposeProfilePickers = async () => {
-  if (!parentTenantId.value) return;
+  if (!tenantId.value) return;
   await ensureProfilesLoaded();
   await resolveTenantSideProfile();
   const rows = composeProfileOptions();
@@ -1479,7 +1474,7 @@ const refreshComposeProfilePickers = async () => {
   toProfileOptions.value = rows;
 };
 
-watch(parentTenantId, () => {
+watch(tenantId, () => {
   void refreshComposeProfilePickers();
 }, { immediate: true });
 </script>

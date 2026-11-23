@@ -114,37 +114,37 @@ export const useCustomerProfileStore = defineStore('customerProfile', {
     },
 
     async ensureDeskProfilesLoaded(
-      parentTenantId: number,
+      tenantId: number,
       force = false,
     ): Promise<CustomerProfile[]> {
-      if (!force && this.loadedDeskProfileParentIds[parentTenantId]) {
-        return this.deskProfilesByParentId[parentTenantId] ?? [];
+      if (!force && this.loadedDeskProfileParentIds[tenantId]) {
+        return this.deskProfilesByParentId[tenantId] ?? [];
       }
 
-      const inFlight = deskLoadPromises.get(parentTenantId);
+      const inFlight = deskLoadPromises.get(tenantId);
       if (inFlight && !force) {
         return inFlight;
       }
 
-      this.loadingDeskParentId = parentTenantId;
+      this.loadingDeskParentId = tenantId;
       this.error = null;
 
       const promise = (async () => {
         try {
-          const rows = await customerProfileRepository.listDeskBillingProfiles(parentTenantId);
-          this.deskProfilesByParentId[parentTenantId] = rows;
-          this.loadedDeskProfileParentIds[parentTenantId] = true;
+          const rows = await customerProfileRepository.listDeskBillingProfiles(tenantId);
+          this.deskProfilesByParentId[tenantId] = rows;
+          this.loadedDeskProfileParentIds[tenantId] = true;
           return rows;
         } catch (err) {
           this.error = err instanceof Error ? err.message : 'Failed to load billing profiles.';
           throw err;
         } finally {
           this.loadingDeskParentId = null;
-          deskLoadPromises.delete(parentTenantId);
+          deskLoadPromises.delete(tenantId);
         }
       })();
 
-      deskLoadPromises.set(parentTenantId, promise);
+      deskLoadPromises.set(tenantId, promise);
       return promise;
     },
 

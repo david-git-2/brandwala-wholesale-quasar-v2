@@ -11,13 +11,13 @@ export type BatchCodeListRow = BatchCodeList & {
 
 const db = supabase as any;
 
-const listByParentTenantId = async (parentTenantId: number): Promise<BatchCodeListRow[]> => {
+const listByParentTenantId = async (tenantId: number): Promise<BatchCodeListRow[]> => {
   const { data, error } = await db
     .from('batch_code_lists')
     .select(
       '*, shipment:global_shipments(id, name, tenant_shipment_id), batch_code_items(count)',
     )
-    .eq('tenant_id', parentTenantId)
+    .eq('tenant_id', tenantId)
     .order('updated_at', { ascending: false });
 
   if (error) throw error;

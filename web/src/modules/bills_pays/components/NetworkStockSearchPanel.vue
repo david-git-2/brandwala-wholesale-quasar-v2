@@ -208,13 +208,13 @@ const loadShipments = async () => {
   if (!props.contextTenantId) return;
   loadingShipments.value = true;
   try {
-    const { data: parentTenantId, error: resolveError } = await supabase.rpc(
+    const { data: tenantId, error: resolveError } = await supabase.rpc(
       'resolve_books_tenant_id',
       { p_tenant_id: props.contextTenantId },
     );
     if (resolveError) throw resolveError;
 
-    const targetTenantId = parentTenantId || props.contextTenantId;
+    const targetTenantId = tenantId || props.contextTenantId;
 
     const { data, error } = await supabase
       .from('global_shipments')

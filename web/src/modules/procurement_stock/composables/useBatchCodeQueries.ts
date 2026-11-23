@@ -11,9 +11,9 @@ const resolveId = (source: MaybeRefOrGetter<number | null | undefined>) => {
 };
 
 export function useBatchCodeListsQuery(
-  parentTenantId: MaybeRefOrGetter<number | null | undefined>,
+  tenantId: MaybeRefOrGetter<number | null | undefined>,
 ) {
-  const resolvedParentTenantId = computed(() => resolveId(parentTenantId));
+  const resolvedParentTenantId = computed(() => resolveId(tenantId));
 
   return useQuery({
     queryKey: computed(() =>

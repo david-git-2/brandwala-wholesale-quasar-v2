@@ -1,7 +1,5 @@
 import { defineStore } from 'pinia';
 import { useGlobalReferenceStore } from 'src/modules/global_reference/stores/globalReferenceStore';
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { resolveBooksTenantId } from 'src/modules/tenant/utils/resolveBooksTenantId';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { shopPermissionsService } from '../services/shopPermissionsService';
 import type {
@@ -55,12 +53,7 @@ export const useShopPermissionsStore = defineStore('shopPermissions', {
       this.loadingGroups = true;
       this.error = null;
       try {
-        const tenantStore = useTenantStore();
-        const booksTenantId = resolveBooksTenantId(
-          tenantId,
-          tenantStore.selectedTenant?.parent_id,
-        );
-        const res = await shopPermissionsService.listCustomerGroups(booksTenantId);
+        const res = await shopPermissionsService.listCustomerGroups(tenantId);
         if (!res.success) {
           this.error = res.error;
           handleApiFailure(res, res.error);

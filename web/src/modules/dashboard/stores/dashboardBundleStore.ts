@@ -77,10 +77,10 @@ export const useDashboardBundleStore = defineStore('dashboardBundle', {
       this.loading = false;
     },
 
-    async refresh(tenantId: number, parentTenantIds: number[]) {
+    async refresh(tenantId: number, tenantIds: number[]) {
       this.loading = true;
       try {
-        const bundle = await appDashboardBundleRepository.fetchBundle(tenantId, parentTenantIds);
+        const bundle = await appDashboardBundleRepository.fetchBundle(tenantId, tenantIds);
         this.bundle = bundle;
         this.loadedTenantId = tenantId;
         writeStorage({

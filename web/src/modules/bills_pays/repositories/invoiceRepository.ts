@@ -23,8 +23,6 @@ const localToday = (): string => {
 
 export type ListGlobalInvoicesParams = {
   tenantId?: number | null;
-  parentTenantId?: number | null;
-  issuedByTenantId?: number | null;
   createdBy?: string | null;
   page?: number;
   pageSize?: number;
@@ -50,8 +48,6 @@ const listGlobalInvoices = async (
 ): Promise<PaginatedGlobalInvoices> => {
   const {
     tenantId,
-    parentTenantId,
-    issuedByTenantId,
     createdBy,
     page = 1,
     pageSize = 10,
@@ -76,17 +72,11 @@ const listGlobalInvoices = async (
       { count: 'exact' },
     );
 
-  const scopeParentId = parentTenantId ?? tenantId ?? null;
-
-  // AP (we owe) is booked on the parent; issued_by may be parent or assigned child.
+  // AP (we owe) is booked on the tenant.
   if (arSide === 'we_owe') {
-    if (scopeParentId != null) {
-      query = query.eq('tenant_id', scopeParentId);
+    if (tenantId != null) {
+      query = query.eq('tenant_id', tenantId);
     }
-  } else if (issuedByTenantId) {
-    query = query.eq('issued_by_tenant_id', issuedByTenantId);
-  } else if (parentTenantId) {
-    query = query.eq('tenant_id', parentTenantId);
   } else if (tenantId) {
     query = query.eq('tenant_id', tenantId);
   }
@@ -193,8 +183,8 @@ const listGlobalInvoices = async (
     };
   });
 
-  if (parentTenantId && rows.some((row) => !row.issued_by_tenant_name && row.issued_by_tenant_id)) {
-    const childRefs = await tenantRepository.listChildTenantRefs([parentTenantId]);
+  if (tenantId && rows.some((row) => !row.issued_by_tenant_name && row.issued_by_tenant_id)) {
+    const childRefs = await tenantRepository.listChildTenantRefs([tenantId]);
     const tenantNameById = new Map(
       childRefs
         .filter((ref) => ref.name)
