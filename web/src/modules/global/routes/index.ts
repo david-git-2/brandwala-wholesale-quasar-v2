@@ -12,48 +12,48 @@ const appDashboard = (to: { params: Record<string, string | string[]> }) => {
 
 const globalRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/global/invoices',
+    path: '/app/global/invoices',
     redirect: appDashboard,
   },
   {
-    path: '/:tenantSlug?/app/global/invoices/billing-profiles',
+    path: '/app/global/invoices/billing-profiles',
     redirect: (to) => {
       const prefix = getTenantSlugPrefix(to.params);
       return `${prefix}/app/customers`;
     },
   },
   {
-    path: '/:tenantSlug?/app/global/invoices/recipient-profiles',
+    path: '/app/global/invoices/recipient-profiles',
     redirect: (to) => {
       const prefix = getTenantSlugPrefix(to.params);
       return `${prefix}/app/customers/recipient-profiles`;
     },
   },
   {
-    path: '/:tenantSlug?/app/global/invoices/brands',
+    path: '/app/global/invoices/brands',
     redirect: appDashboard,
   },
   {
-    path: '/:tenantSlug?/app/global/invoices/:id',
+    path: '/app/global/invoices/:id',
     redirect: appDashboard,
   },
   {
-    path: '/:tenantSlug?/app/global/invoices/:id/preview',
+    path: '/app/global/invoices/:id/preview',
     redirect: appDashboard,
   },
   {
-    path: '/:tenantSlug?/app/global/accounting/ledger',
+    path: '/app/global/accounting/ledger',
     redirect: appDashboard,
   },
   {
-    path: '/:tenantSlug?/app/global/accounting/shipments',
+    path: '/app/global/accounting/shipments',
     redirect: (to) => {
       const prefix = getTenantSlugPrefix(to.params);
       return `${prefix}/app/procurement`;
     },
   },
   {
-    path: '/:tenantSlug?/app/global/accounting/shipments/:id',
+    path: '/app/global/accounting/shipments/:id',
     redirect: (to) => {
       const prefix = getTenantSlugPrefix(to.params);
       const id = typeof to.params.id === 'string' ? to.params.id : '';
@@ -61,18 +61,18 @@ const globalRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/:tenantSlug?/app/global/accounting/invoices',
+    path: '/app/global/accounting/invoices',
     redirect: appDashboard,
   },
   {
-    path: '/:tenantSlug?/app/global/investors',
+    path: '/app/global/investors',
     redirect: (to) => {
       const prefix = getTenantSlugPrefix(to.params);
       return `${prefix}/app/capital/investors`;
     },
   },
   {
-    path: '/:tenantSlug?/app/global/investor-shipments',
+    path: '/app/global/investor-shipments',
     redirect: (to) => {
       const prefix = getTenantSlugPrefix(to.params);
       return `${prefix}/app/capital/shipments`;

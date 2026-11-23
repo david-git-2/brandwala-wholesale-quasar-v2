@@ -8,7 +8,7 @@ import {
 
 const productBasedCostingRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/product-based-costing',
+    path: '/app/product-based-costing',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',
@@ -16,21 +16,7 @@ const productBasedCostingRoutes: RouteRecordRaw[] = [
       allowedRoles: ['admin', 'staff'],
       requireTenantContext: true,
       requiredModule: 'product_based_costing',
-      validateAccess: ({ authStore, to }) => {
-        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
-
-        if (!selectedTenantSlug) {
-          return true;
-        }
-
-        const routeTenantSlug = getTenantSlugFromRoute(to);
-
-        if (routeTenantSlug === selectedTenantSlug) {
-          return true;
-        }
-
-        return getAppRouteLocation(to, selectedTenantSlug);
-      },
+      validateAccess: ({ authStore, to }) => validateAppRouteTenantSlug({ authStore, to }),
     }),
     children: [
       {
@@ -77,7 +63,7 @@ const productBasedCostingRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/product-based-costing/:id/preview',
+    path: '/app/product-based-costing/:id/preview',
     component: () => import('layouts/ExternalLayout.vue'),
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',
@@ -85,21 +71,7 @@ const productBasedCostingRoutes: RouteRecordRaw[] = [
       allowedRoles: ['admin', 'staff'],
       requireTenantContext: true,
       requiredModule: 'product_based_costing',
-      validateAccess: ({ authStore, to }) => {
-        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
-
-        if (!selectedTenantSlug) {
-          return true;
-        }
-
-        const routeTenantSlug = getTenantSlugFromRoute(to);
-
-        if (routeTenantSlug === selectedTenantSlug) {
-          return true;
-        }
-
-        return getAppRouteLocation(to, selectedTenantSlug);
-      },
+      validateAccess: ({ authStore, to }) => validateAppRouteTenantSlug({ authStore, to }),
     }),
     children: [
       {

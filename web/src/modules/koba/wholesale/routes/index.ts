@@ -8,7 +8,7 @@ import {
 
 const kobaWholesaleRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/koba',
+    path: '/app/koba',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',

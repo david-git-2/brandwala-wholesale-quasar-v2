@@ -20,26 +20,26 @@ const accountingRedirect = (to: { params: Record<string, string | string[]> }, s
 
 const reportingTreasuryRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/accounting/invoice',
+    path: '/app/accounting/invoice',
     redirect: (to) => {
       const prefix = getTenantSlugPrefix(to.params);
       return `${prefix}/app/dashboard`;
     },
   },
   {
-    path: '/:tenantSlug?/app/accounting/customer-payments',
+    path: '/app/accounting/customer-payments',
     redirect: (to) => accountingRedirect(to, '/finance/reports'),
   },
   {
-    path: '/:tenantSlug?/app/accounting/customer-payments/:profileId',
+    path: '/app/accounting/customer-payments/:profileId',
     redirect: (to) => accountingRedirect(to, '/finance/reports'),
   },
   {
-    path: '/:tenantSlug?/app/accounting/shipment',
+    path: '/app/accounting/shipment',
     redirect: (to) => accountingRedirect(to, '/procurement'),
   },
   {
-    path: '/:tenantSlug?/app/accounting/shipment/:id',
+    path: '/app/accounting/shipment/:id',
     redirect: (to) => {
       const prefix = getTenantSlugPrefix(to.params);
       const id = typeof to.params.id === 'string' ? to.params.id : '';
@@ -47,11 +47,11 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/:tenantSlug?/app/accounting/inventory-shipment',
+    path: '/app/accounting/inventory-shipment',
     redirect: (to) => accountingRedirect(to, '/procurement'),
   },
   {
-    path: '/:tenantSlug?/app/finance',
+    path: '/app/finance',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {

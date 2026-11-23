@@ -113,11 +113,11 @@ export function useAdminTenantSelection() {
 
       if (options?.navigate !== false) {
         if (bootstrap.member_role === 'viewer') {
-          await router.push(`/${bootstrap.tenant_slug}/app/costing/viewer`);
+          await router.push('/app/costing/viewer');
         } else if (options?.destination === 'tenant-details') {
-          await router.push(`/${bootstrap.tenant_slug}/app/tenants/${bootstrap.tenant_id}`);
+          await router.push(`/app/tenants/${bootstrap.tenant_id}`);
         } else {
-          await router.push(`/${bootstrap.tenant_slug}/app/dashboard`);
+          await router.push('/app/dashboard');
         }
       }
 

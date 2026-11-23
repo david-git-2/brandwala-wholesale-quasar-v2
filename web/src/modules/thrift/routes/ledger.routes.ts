@@ -14,7 +14,7 @@ const thriftLedgerGuard = createAccessGuard({
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/thrift/ledger',
+    path: '/app/thrift/ledger',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: thriftLedgerGuard,
     children: [

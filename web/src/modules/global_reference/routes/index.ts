@@ -102,14 +102,14 @@ const globalReferenceRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/thrift/currencies',
+    path: '/app/thrift/currencies',
     redirect: (to) => {
       const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
       return tenantSlug ? `/${tenantSlug}/app/reference/currencies` : '/app/reference/currencies';
     },
   },
   {
-    path: '/:tenantSlug?/app/reference',
+    path: '/app/reference',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -122,7 +122,7 @@ const globalReferenceRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/reference/currencies',
+    path: '/app/reference/currencies',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: appGuard('global_reference_currency'),
     children: [
@@ -135,7 +135,7 @@ const globalReferenceRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/reference/markets',
+    path: '/app/reference/markets',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: appGuard('global_reference_market'),
     children: [
@@ -148,7 +148,7 @@ const globalReferenceRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/reference/payment-methods',
+    path: '/app/reference/payment-methods',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: appGuard('global_reference_payment_method'),
     children: [
@@ -161,7 +161,7 @@ const globalReferenceRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/reference/units',
+    path: '/app/reference/units',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: appGuard('global_reference_unit_of_measure'),
     children: [

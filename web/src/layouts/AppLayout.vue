@@ -135,9 +135,7 @@ const onMobileSignOut = () => {
   workspaceShellRef.value?.openSignOutDialog();
 };
 
-const logoutTo = computed(() =>
-  authStore.tenantSlug ? `/${authStore.tenantSlug}/app/login` : '/app/login',
-);
+const logoutTo = computed(() => '/app/login');
 const selectedTenantId = computed(() => tenantStore.selectedTenantId);
 
 const tenantOptions = computed(() =>

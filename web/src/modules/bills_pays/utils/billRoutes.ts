@@ -7,17 +7,15 @@ export function billListPath(tenantSlug: string | null | undefined): string {
   return buildModuleRoutePath({ scope: 'app', routeSegment: BILLS_ROUTE_SEGMENT, tenantSlug });
 }
 
-export function billListRoute(tenantSlug?: string | null): RouteLocationRaw {
+export function billListRoute(_tenantSlug?: string | null): RouteLocationRaw {
   return {
     name: 'app-bills-page',
-    params: tenantSlug ? { tenantSlug } : {},
   };
 }
 
 export function billComposeRoute(tenantSlug?: string | null): RouteLocationRaw {
   return {
     name: 'app-bill-compose-page',
-    params: tenantSlug ? { tenantSlug } : {},
   };
 }
 
@@ -25,7 +23,6 @@ export function billComposeRoute(tenantSlug?: string | null): RouteLocationRaw {
 export function billDraftComposeRoute(billId: number, tenantSlug?: string | null): RouteLocationRaw {
   return {
     name: 'app-bill-compose-page',
-    params: tenantSlug ? { tenantSlug } : {},
     query: { id: String(billId) },
   };
 }
@@ -33,14 +30,14 @@ export function billDraftComposeRoute(billId: number, tenantSlug?: string | null
 export function billDetailRoute(billId: number, tenantSlug?: string | null): RouteLocationRaw {
   return {
     name: 'app-bill-detail-page',
-    params: { ...(tenantSlug ? { tenantSlug } : {}), billId: String(billId) },
+    params: { billId: String(billId) },
   };
 }
 
 export function billPayRoute(billId: number, tenantSlug?: string | null): RouteLocationRaw {
   return {
     name: 'app-bill-pay-page',
-    params: { ...(tenantSlug ? { tenantSlug } : {}), billId: String(billId) },
+    params: { billId: String(billId) },
   };
 }
 
@@ -55,7 +52,7 @@ export function billVendorRefundRoute(
 ): RouteLocationRaw {
   return {
     name: 'app-bill-vendor-refund-page',
-    params: { ...(tenantSlug ? { tenantSlug } : {}), billId: String(billId) },
+    params: { billId: String(billId) },
     query: query?.creditNoteId ? { creditNoteId: query.creditNoteId } : undefined,
   };
 }
@@ -68,7 +65,7 @@ export function billAdjustmentRoute(
 ): RouteLocationRaw {
   return {
     name: 'app-bill-adjustment-page',
-    params: { ...(tenantSlug ? { tenantSlug } : {}), billId: String(billId) },
+    params: { billId: String(billId) },
     query: query
       ? {
           ...(query.startAdjustment ? { startAdjustment: query.startAdjustment } : {}),
@@ -113,7 +110,7 @@ export function billDetailCommercialCreditRoute(
 export function billPreviewRoute(billId: number, tenantSlug?: string | null): RouteLocationRaw {
   return {
     name: 'app-bill-preview-page',
-    params: { ...(tenantSlug ? { tenantSlug } : {}), billId: String(billId) },
+    params: { billId: String(billId) },
   };
 }
 

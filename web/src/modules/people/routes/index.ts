@@ -12,7 +12,7 @@ const guard = (requiredModule: ModuleKey) =>
 
 const peopleRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/people',
+    path: '/app/people',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: guard('people'),
     children: [

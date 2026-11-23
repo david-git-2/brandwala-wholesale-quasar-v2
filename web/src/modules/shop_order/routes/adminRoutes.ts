@@ -3,10 +3,7 @@ import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { canAccessModule } from 'src/modules/navigation/modulePermissions';
 import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
-import {
-  getAppRouteLocation,
-  getTenantSlugFromRoute,
-} from 'src/modules/tenant/utils/tenantRouteContext';
+import { validateAppRouteTenantSlug } from 'src/modules/tenant/utils/tenantRouteContext';
 
 const SHOP_OVERVIEW_MODULE_KEYS = [
   'shop_config',
@@ -24,21 +21,7 @@ const guard = (requiredModule: ModuleKey) =>
     requiredScope: 'app',
     requireTenantContext: true,
     requiredModule,
-    validateAccess: ({ authStore, to }) => {
-      const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
-
-      if (!selectedTenantSlug) {
-        return true;
-      }
-
-      const routeTenantSlug = getTenantSlugFromRoute(to);
-
-      if (routeTenantSlug === selectedTenantSlug) {
-        return true;
-      }
-
-      return getAppRouteLocation(to, selectedTenantSlug);
-    },
+    validateAccess: ({ authStore, to }) => validateAppRouteTenantSlug({ authStore, to }),
   });
 
 const shopOverviewGuard: NavigationGuard = async (to, from) => {
@@ -65,7 +48,7 @@ const shopOverviewGuard: NavigationGuard = async (to, from) => {
 
 const adminRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/shop',
+    path: '/app/shop',
     component: () => import('layouts/AppLayout.vue'),
     name: 'admin-shop-settings',
     children: [
@@ -77,38 +60,24 @@ const adminRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'overview',
-        redirect: (to) => {
-          const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
-          return `${tenantSlug}/app/shop`;
-        },
+        redirect: '/app/shop',
       },
       {
         path: 'roles',
         name: 'admin-shop-roles',
-        redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to);
-          return tenantSlug
-            ? `/${tenantSlug}/app/access-control/roles`
-            : '/app/access-control/roles';
-        },
+        redirect: '/app/access-control/roles',
       },
       {
         path: 'roles/:id/grants',
         name: 'admin-shop-role-grants',
-        redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to);
-          const id = String(to.params.id);
-          return tenantSlug
-            ? `/${tenantSlug}/app/access-control/roles/${id}/grants`
-            : `/app/access-control/roles/${id}/grants`;
-        },
+        redirect: (to) => `/app/access-control/roles/${String(to.params.id)}/grants`,
       },
     ],
   },
 
   // shop_config — Shops
   {
-    path: '/:tenantSlug?/app/shop/shops',
+    path: '/app/shop/shops',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -140,7 +109,7 @@ const adminRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/shop/shops/:shopId/preview',
+    path: '/app/shop/shops/:shopId/preview',
     component: () => import('layouts/ExternalLayout.vue'),
     children: [
       {
@@ -153,7 +122,7 @@ const adminRoutes: RouteRecordRaw[] = [
   },
 
   {
-    path: '/:tenantSlug?/app/shop/categories',
+    path: '/app/shop/categories',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -166,14 +135,14 @@ const adminRoutes: RouteRecordRaw[] = [
   },
 
   {
-    path: '/:tenantSlug?/app/shop/customer-groups',
+    path: '/app/shop/customer-groups',
     redirect: (to) => ({
       name: 'app-customers-list',
       params: { tenantSlug: to.params.tenantSlug },
     }),
   },
   {
-    path: '/:tenantSlug?/app/shop/customer-groups/:pathMatch(.*)*',
+    path: '/app/shop/customer-groups/:pathMatch(.*)*',
     redirect: (to) => ({
       name: 'app-customers-list',
       params: { tenantSlug: to.params.tenantSlug },
@@ -182,7 +151,7 @@ const adminRoutes: RouteRecordRaw[] = [
 
   // shop_pricing — Shop Pricing
   {
-    path: '/:tenantSlug?/app/shop/pricing',
+    path: '/app/shop/pricing',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -194,7 +163,7 @@ const adminRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/shop/shops/:shopId/pricing',
+    path: '/app/shop/shops/:shopId/pricing',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -214,7 +183,7 @@ const adminRoutes: RouteRecordRaw[] = [
 
   // shop_order_mgmt — Orders (app scope)
   {
-    path: '/:tenantSlug?/app/shop/orders',
+    path: '/app/shop/orders',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -262,7 +231,7 @@ const adminRoutes: RouteRecordRaw[] = [
   },
 
   {
-    path: '/:tenantSlug?/app/shop/shipping',
+    path: '/app/shop/shipping',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -277,7 +246,7 @@ const adminRoutes: RouteRecordRaw[] = [
   },
 
   {
-    path: '/:tenantSlug?/app/shop/dropship-management',
+    path: '/app/shop/dropship-management',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -303,7 +272,7 @@ const adminRoutes: RouteRecordRaw[] = [
 
   // shop_fulfillment — retired from nav
   {
-    path: '/:tenantSlug?/app/shop/fulfillment',
+    path: '/app/shop/fulfillment',
     redirect: (to) => ({
       name: 'app-shop-orders-page',
       params: { tenantSlug: to.params.tenantSlug },
@@ -313,7 +282,7 @@ const adminRoutes: RouteRecordRaw[] = [
   // Dropship list/tools stay under /dropship; order detail is /orders/:id.
 
   {
-    path: '/:tenantSlug?/app/shop/dropship',
+    path: '/app/shop/dropship',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -441,7 +410,7 @@ const adminRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/shop/orders/:id/packing-slip',
+    path: '/app/shop/orders/:id/packing-slip',
     component: () => import('layouts/ExternalLayout.vue'),
     beforeEnter: guard('shop_order_mgmt'),
     children: [
@@ -454,7 +423,7 @@ const adminRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/shop/orders/:id/recipient-slip',
+    path: '/app/shop/orders/:id/recipient-slip',
     component: () => import('layouts/ExternalLayout.vue'),
     beforeEnter: guard('shop_order_mgmt'),
     children: [
@@ -467,14 +436,14 @@ const adminRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/shop/dropship/:id/v2/customer-invoice-preview',
+    path: '/app/shop/dropship/:id/v2/customer-invoice-preview',
     redirect: (to) => ({
       name: 'app-shop-order-packing-slip-page',
       params: { tenantSlug: to.params.tenantSlug, id: to.params.id },
     }),
   },
   {
-    path: '/:tenantSlug?/app/shop/dropship/:id/customer-invoice-preview',
+    path: '/app/shop/dropship/:id/customer-invoice-preview',
     name: 'app-shop-dropship-order-customer-invoice-preview',
     redirect: (to) => ({
       name: 'app-shop-order-packing-slip-page',
@@ -482,7 +451,7 @@ const adminRoutes: RouteRecordRaw[] = [
     }),
   },
   {
-    path: '/:tenantSlug?/app/shop/dropship/:id/recipient-invoice-preview',
+    path: '/app/shop/dropship/:id/recipient-invoice-preview',
     name: 'app-shop-dropship-recipient-invoice-preview',
     redirect: (to) => ({
       name: 'app-shop-order-recipient-slip-page',
@@ -492,28 +461,28 @@ const adminRoutes: RouteRecordRaw[] = [
 
   // Legacy redirects (Phase 9)
   {
-    path: '/:tenantSlug?/app/commerce/shop',
+    path: '/app/commerce/shop',
     redirect: (to) => {
       const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
       return `${tenantSlug}/app/shop`;
     },
   },
   {
-    path: '/:tenantSlug?/app/commerce/orders',
+    path: '/app/commerce/orders',
     redirect: (to) => {
       const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
       return `${tenantSlug}/app/shop/orders`;
     },
   },
   {
-    path: '/:tenantSlug?/app/commerce-shop/:catchAll(.*)*',
+    path: '/app/commerce-shop/:catchAll(.*)*',
     redirect: (to) => {
       const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
       return `${tenantSlug}/app/shop`;
     },
   },
   {
-    path: '/:tenantSlug?/app/stores/:catchAll(.*)*',
+    path: '/app/stores/:catchAll(.*)*',
     redirect: (to) => {
       const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
       return `${tenantSlug}/app/shop`;

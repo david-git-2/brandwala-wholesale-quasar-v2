@@ -33,10 +33,23 @@ const isLocalHostname = (hostname: string | null) =>
 
 export const getTenantSlugFromPath = (path: string): string | null => {
   const normalizedPath = path.split('?')[0]?.split('#')[0] ?? path;
-  const scopedMatch = normalizedPath.match(/^\/([^/]+)\/(shop|app|investor)(\/|$)/);
 
+  const shopReserved = new Set(['login', 'select-company']);
+  const shopTenantMatch = normalizedPath.match(/^\/shop\/([^/]+)(\/|$)/);
+  if (shopTenantMatch?.[1]) {
+    const shopCandidate = normalizeRouteToken(shopTenantMatch[1]);
+    if (shopCandidate && !shopReserved.has(shopCandidate)) {
+      return shopCandidate;
+    }
+  }
+
+  const scopedMatch = normalizedPath.match(/^\/([^/]+)\/(shop|app|investor)(\/|$)/);
   if (scopedMatch?.[1]) {
-    return normalizeRouteToken(scopedMatch[1]);
+    const first = normalizeRouteToken(scopedMatch[1]);
+    if (first === 'app' || first === 'shop' || first === 'investor' || first === 'platform') {
+      return null;
+    }
+    return first;
   }
 
   return null;
@@ -144,9 +157,16 @@ export const getShopLoginRouteLocation = (
 ): RouteLocationRaw => {
   const tenantSlug = getTenantSlugFromRoute(route, tenantSlugOverride) ?? undefined;
 
+  if (!tenantSlug) {
+    return {
+      path: '/shop/login',
+      query: { ...extraQuery },
+    };
+  }
+
   return {
     name: 'customer-login-page',
-    params: tenantSlug ? { tenantSlug } : {},
+    params: { tenantSlug },
     query: {
       ...extraQuery,
     },
@@ -162,7 +182,7 @@ export const getShopSelectCompanyRouteLocation = (
 
   return {
     name: 'shop-select-company-page',
-    params: tenantSlug ? { tenantSlug } : {},
+    params: { tenantSlug: tenantSlug ?? '' },
     query: {
       ...extraQuery,
     },
@@ -178,20 +198,17 @@ export const getShopDashboardRouteLocation = (
 
   return {
     name: 'customer-dashboard',
-    params: tenantSlug ? { tenantSlug } : {},
+    params: { tenantSlug: tenantSlug ?? '' },
   };
 };
 
 export const getInvestorLoginRouteLocation = (
-  route: RouteLike,
+  _route: RouteLike,
   extraQuery?: Record<string, string>,
-  tenantSlugOverride?: string | null,
+  _tenantSlugOverride?: string | null,
 ): RouteLocationRaw => {
-  const tenantSlug = getTenantSlugFromRoute(route, tenantSlugOverride) ?? undefined;
-
   return {
     name: 'investor-login-page',
-    params: tenantSlug ? { tenantSlug } : {},
     query: {
       ...extraQuery,
     },
@@ -199,30 +216,37 @@ export const getInvestorLoginRouteLocation = (
 };
 
 export const getInvestorDashboardRouteLocation = (
-  route: RouteLike,
-  tenantSlugOverride?: string | null,
+  _route: RouteLike,
+  _tenantSlugOverride?: string | null,
 ): RouteLocationRaw => {
-  const tenantSlug =
-    normalizeRouteToken(tenantSlugOverride) ?? getTenantSlugFromRoute(route) ?? undefined;
-
   return {
     name: 'investor-dashboard-page',
-    params: tenantSlug ? { tenantSlug } : {},
   };
 };
 
 export const getAppRouteLocation = (
   route: RouteLike,
-  selectedTenantSlug: string | null | undefined,
+  _selectedTenantSlug?: string | null | undefined,
 ): RouteLocationRaw => {
-  const tenantSlug = selectedTenantSlug ?? undefined;
+  const params = { ...(route.params ?? {}) };
+  delete params.tenantSlug;
 
   return {
     name: typeof route.name === 'string' ? route.name : undefined,
-    params: {
-      ...(route.params ?? {}),
-      ...(tenantSlug ? { tenantSlug } : {}),
-    },
+    params,
     query: route.query ?? {},
   };
+};
+
+/** App desk: session/header is tenant truth; missing URL slug is OK. */
+export const validateAppRouteTenantSlug = ({
+  authStore,
+  to,
+}: {
+  authStore: { selectedTenant?: { slug: string } | null };
+  to: RouteLike;
+}): true => {
+  void authStore;
+  void to;
+  return true;
 };

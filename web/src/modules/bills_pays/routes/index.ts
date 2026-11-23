@@ -12,7 +12,7 @@ const guard = (requiredModule: ModuleKey) =>
 
 const billsPaysRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/bills',
+    path: '/app/bills',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -78,7 +78,7 @@ const billsPaysRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/payments',
+    path: '/app/payments',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -136,16 +136,15 @@ const billsPaysRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/wallet/:pathMatch(.*)*',
+    path: '/app/wallet/:pathMatch(.*)*',
     redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
       const tail =
         typeof to.params.pathMatch === 'string'
           ? `/${to.params.pathMatch}`
           : Array.isArray(to.params.pathMatch)
             ? `/${to.params.pathMatch.join('/')}`
             : '';
-      const base = tenantSlug ? `/${tenantSlug}/app/cashbook` : '/app/cashbook';
+      const base = '/app/cashbook';
       const query =
         to.query && Object.keys(to.query).length
           ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
@@ -154,10 +153,9 @@ const billsPaysRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/:tenantSlug?/app/wallet',
+    path: '/app/wallet',
     redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
-      const base = tenantSlug ? `/${tenantSlug}/app/cashbook` : '/app/cashbook';
+      const base = '/app/cashbook';
       const query =
         to.query && Object.keys(to.query).length
           ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
@@ -166,7 +164,7 @@ const billsPaysRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/:tenantSlug?/app/cashbook',
+    path: '/app/cashbook',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {

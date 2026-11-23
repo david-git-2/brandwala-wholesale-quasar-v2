@@ -9,7 +9,7 @@ const thriftGuard = {
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/thrift/customers',
+    path: '/app/thrift/customers',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: createAccessGuard({
       ...thriftGuard,

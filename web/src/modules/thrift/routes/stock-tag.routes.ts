@@ -3,7 +3,7 @@ import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 
 const thriftStockTagRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/thrift/stock-tags',
+    path: '/app/thrift/stock-tags',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',
@@ -24,7 +24,7 @@ const thriftStockTagRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/thrift/stock-tags/:shipmentId/preview',
+    path: '/app/thrift/stock-tags/:shipmentId/preview',
     component: () => import('layouts/ExternalLayout.vue'),
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',

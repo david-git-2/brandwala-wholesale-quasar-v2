@@ -45,7 +45,7 @@ const thriftSalesCreateGuard = createAccessGuard({
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/thrift/sales',
+    path: '/app/thrift/sales',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: thriftSalesGuard,
     children: [
@@ -98,7 +98,7 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/thrift/sales/:invoiceId/preview',
+    path: '/app/thrift/sales/:invoiceId/preview',
     component: () => import('layouts/ExternalLayout.vue'),
     beforeEnter: thriftSalesGuard,
     children: [

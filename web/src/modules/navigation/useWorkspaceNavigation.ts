@@ -106,7 +106,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     navWeight: NAV_WEIGHT.dashboard,
     scopes: ['app'],
     allowedRoles: ['admin', 'staff'],
-    route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard'),
+    route: () => '/app/dashboard',
   },
   {
     title: 'Company',
@@ -115,7 +115,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     navWeight: NAV_WEIGHT.tenants,
     scopes: ['app'],
     allowedRoles: ['admin', 'staff'],
-    route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/app/tenants` : '/app/tenants'),
+    route: () => '/app/tenants',
   },
   {
     title: 'Operating manual',
@@ -135,7 +135,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     scopes: ['shop'],
     allowedRoles: ['customer_admin', 'customer_manager', 'customer_staff'],
     requiresTenantContext: true,
-    route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard'),
+    route: ({ tenantSlug }) => (tenantSlug ? `/shop/${tenantSlug}/dashboard` : '/shop/login'),
   },
 ] as const;
 
@@ -351,8 +351,8 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         : [];
 
     const hubLinks = [
-      ...buildShopProcurementHubNavLinks(canView, authStore.tenantSlug),
-      ...buildBillsPaysHubNavLinks(canView, authStore.tenantSlug),
+      ...buildShopProcurementHubNavLinks(canView, null),
+      ...buildBillsPaysHubNavLinks(canView, null),
     ];
 
     const settingsLink = buildSettingsNavLink(
@@ -361,7 +361,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         isAdmin: authStore.access?.isAdmin,
         canView,
       },
-      authStore.tenantSlug,
+      null,
     );
 
     const settingsLinks = settingsLink ? [settingsLink] : [];

@@ -3,7 +3,7 @@ import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 
 const accessControlRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/access-control',
+    path: '/app/access-control',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {

@@ -12,7 +12,12 @@
           <span v-else class="user-profile-btn__initials">{{ userInitials }}</span>
         </q-avatar>
 
-        <q-icon name="ph ph-caret-down" size="12px" class="user-profile-btn__caret" />
+        <q-icon
+          v-if="!isShopScope"
+          name="ph ph-caret-down"
+          size="12px"
+          class="user-profile-btn__caret"
+        />
       </div>
 
       <!-- Profile Dropdown Menu -->

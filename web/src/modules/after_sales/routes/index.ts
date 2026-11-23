@@ -12,7 +12,7 @@ const guard = (requiredModule: ModuleKey) =>
 
 const afterSalesRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/after-sales',
+    path: '/app/after-sales',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: guard('after_sales'),
     children: [

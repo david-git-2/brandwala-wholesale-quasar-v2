@@ -1,15 +1,11 @@
 import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
 
-const appDashboardPath = (to: { params: Record<string, string | string[]> }) => {
-  const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
-  return tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard';
-};
+const appDashboardPath = () => '/app/dashboard';
 
 const legacyBillsRedirect =
   (suffix: string) =>
   (to: RouteLocationNormalized): string => {
-    const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
-    const base = tenantSlug ? `/${tenantSlug}/app/bills` : '/app/bills';
+    const base = '/app/bills';
     const path = suffix ? `${base}/${suffix}` : base;
     const query =
       to.query && Object.keys(to.query).length
@@ -22,8 +18,7 @@ const legacyBillsRedirect =
 const legacyPaymentsRedirect =
   (suffix: string) =>
   (to: RouteLocationNormalized): string => {
-    const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
-    const base = tenantSlug ? `/${tenantSlug}/app/payments` : '/app/payments';
+    const base = '/app/payments';
     const path = suffix ? `${base}/${suffix}` : base;
     const query =
       to.query && Object.keys(to.query).length
@@ -36,52 +31,49 @@ const legacyPaymentsRedirect =
 /** Legacy money URLs → current desks. */
 export const moneyUiRedirectRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/sales/invoices/:billId/preview',
+    path: '/app/sales/invoices/:billId/preview',
     redirect: (to) => legacyBillsRedirect(`${to.params.billId}/preview`)(to),
   },
   {
-    path: '/:tenantSlug?/app/sales/invoices/:billId/returns',
+    path: '/app/sales/invoices/:billId/returns',
     redirect: (to) => legacyBillsRedirect(String(to.params.billId))(to),
   },
   {
-    path: '/:tenantSlug?/app/sales/invoices/create',
+    path: '/app/sales/invoices/create',
     redirect: legacyBillsRedirect('create'),
   },
   {
-    path: '/:tenantSlug?/app/sales/invoices/brands',
+    path: '/app/sales/invoices/brands',
     redirect: legacyBillsRedirect('brands'),
   },
   {
-    path: '/:tenantSlug?/app/sales/invoices/:billId',
+    path: '/app/sales/invoices/:billId',
     redirect: (to) => legacyBillsRedirect(String(to.params.billId))(to),
   },
   {
-    path: '/:tenantSlug?/app/sales/invoices',
+    path: '/app/sales/invoices',
     redirect: legacyBillsRedirect(''),
   },
   {
-    path: '/:tenantSlug?/app/invoices/:pathMatch(.*)*',
+    path: '/app/invoices/:pathMatch(.*)*',
     redirect: legacyBillsRedirect(''),
   },
   {
-    path: '/:tenantSlug?/app/wallet/entity/:pathMatch(.*)*',
+    path: '/app/wallet/entity/:pathMatch(.*)*',
     redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
       const tail =
         typeof to.params.pathMatch === 'string'
           ? `/entity/${to.params.pathMatch}`
           : Array.isArray(to.params.pathMatch)
             ? `/entity/${to.params.pathMatch.join('/')}`
             : '/entity';
-      const base = tenantSlug ? `/${tenantSlug}/app/cashbook` : '/app/cashbook';
-      return `${base}${tail}`;
+      return `/app/cashbook${tail}`;
     },
   },
   {
-    path: '/:tenantSlug?/app/finance/payments/collect/:pathMatch(.*)*',
+    path: '/app/finance/payments/collect/:pathMatch(.*)*',
     redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
-      const base = tenantSlug ? `/${tenantSlug}/app/payments/courier-remit` : '/app/payments/courier-remit';
+      const base = '/app/payments/courier-remit';
       const query =
         to.query && Object.keys(to.query).length
           ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
@@ -90,10 +82,9 @@ export const moneyUiRedirectRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/:tenantSlug?/app/finance/payments/collect',
+    path: '/app/finance/payments/collect',
     redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
-      const base = tenantSlug ? `/${tenantSlug}/app/payments/courier-remit` : '/app/payments/courier-remit';
+      const base = '/app/payments/courier-remit';
       const query =
         to.query && Object.keys(to.query).length
           ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
@@ -102,7 +93,7 @@ export const moneyUiRedirectRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/:tenantSlug?/app/finance/payments/:pathMatch(.*)*',
+    path: '/app/finance/payments/:pathMatch(.*)*',
     redirect: (to) => {
       const tail =
         typeof to.params.pathMatch === 'string'
@@ -114,19 +105,16 @@ export const moneyUiRedirectRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/:tenantSlug?/app/finance/payments',
+    path: '/app/finance/payments',
     redirect: legacyPaymentsRedirect(''),
   },
   {
-    path: '/:tenantSlug?/app/finance/reports/payments',
+    path: '/app/finance/reports/payments',
     redirect: appDashboardPath,
   },
   {
-    path: '/:tenantSlug?/app/finance/reports/wallet',
-    redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
-      return tenantSlug ? `/${tenantSlug}/app/finance/reports` : '/app/finance/reports';
-    },
+    path: '/app/finance/reports/wallet',
+    redirect: '/app/finance/reports',
   },
 ];
 

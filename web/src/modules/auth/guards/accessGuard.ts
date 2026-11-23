@@ -82,7 +82,7 @@ const resolveAuthenticatedDenyTarget = ({
   const currentScope = authStore.scope;
 
   if (currentScope === 'shop') {
-    return tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard';
+    return tenantSlug ? `/shop/${tenantSlug}/dashboard` : '/shop/login';
   }
 
   if (
@@ -96,10 +96,10 @@ const resolveAuthenticatedDenyTarget = ({
     requiredModule === 'shipment_progress_settings' ||
     requiredModule === 'inventory'
   ) {
-    return tenantSlug ? `/${tenantSlug}/app/procurement` : '/app/procurement';
+    return '/app/procurement';
   }
 
-  return tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard';
+  return '/app/dashboard';
 };
 
 const notifyAccessDenied = () => {

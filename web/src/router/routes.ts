@@ -29,7 +29,6 @@ import landingRoutes from 'src/modules/landing/routes';
 import helpRoutes from 'src/modules/help/routes';
 import docsRoutes from 'src/modules/docs/routes';
 import operatingManualRoutes from 'src/modules/operating_manual/routes';
-
 const devRoutes: RouteRecordRaw[] = [
   {
     path: '/dev/designsystem',
@@ -64,56 +63,91 @@ const devRoutes: RouteRecordRaw[] = [
   },
 ];
 
-const routes: RouteRecordRaw[] = [
-  ...landingRoutes,
-  ...helpRoutes,
-  ...docsRoutes,
-  ...operatingManualRoutes,
+const legacySlugRedirects: RouteRecordRaw[] = [
   {
-    path: '/app/home',
-    redirect: '/app/dashboard',
+    path: '/:tenantSlug/app/:rest(.*)*',
+    redirect: (to) => {
+      const rest = Array.isArray(to.params.rest)
+        ? to.params.rest.join('/')
+        : typeof to.params.rest === 'string'
+          ? to.params.rest
+          : '';
+      const suffix = rest ? `/${rest}` : '';
+      const query =
+        to.query && Object.keys(to.query).length
+          ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
+          : '';
+      return `/app${suffix}${query}`;
+    },
+  },
+  {
+    path: '/:tenantSlug/investor/:rest(.*)*',
+    redirect: (to) => {
+      const rest = Array.isArray(to.params.rest)
+        ? to.params.rest.join('/')
+        : typeof to.params.rest === 'string'
+          ? to.params.rest
+          : '';
+      const suffix = rest ? `/${rest}` : '';
+      const query =
+        to.query && Object.keys(to.query).length
+          ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
+          : '';
+      return `/investor${suffix}${query}`;
+    },
+  },
+  {
+    path: '/:tenantSlug/investor',
+    redirect: '/investor',
+  },
+  {
+    path: '/:tenantSlug/shop/:rest(.*)*',
+    redirect: (to) => {
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
+      const rest = Array.isArray(to.params.rest)
+        ? to.params.rest.join('/')
+        : typeof to.params.rest === 'string'
+          ? to.params.rest
+          : '';
+      const suffix = rest ? `/${rest}` : '';
+      const query =
+        to.query && Object.keys(to.query).length
+          ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
+          : '';
+      return tenantSlug ? `/shop/${tenantSlug}${suffix}${query}` : `/shop${suffix}${query}`;
+    },
   },
   {
     path: '/app/:tenantSlug/:after(app|tenants|costing|products|product-based-costing)/:rest(.*)*',
     redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
       const after = typeof to.params.after === 'string' ? to.params.after : null;
       const rest = Array.isArray(to.params.rest)
         ? to.params.rest.join('/')
         : typeof to.params.rest === 'string'
           ? to.params.rest
           : '';
-
-      return tenantSlug && after
-        ? `/${tenantSlug}/app/${after}${rest ? `/${rest}` : ''}`
-        : '/app/dashboard';
+      return after ? `/app/${after}${rest ? `/${rest}` : ''}` : '/app/dashboard';
     },
+  },
+];
+
+const routes: RouteRecordRaw[] = [
+  ...landingRoutes,
+  ...helpRoutes,
+  ...docsRoutes,
+  ...operatingManualRoutes,
+  ...legacySlugRedirects,
+  {
+    path: '/app/home',
+    redirect: '/app/dashboard',
   },
   {
     path: '/platform/home',
     redirect: '/platform/dashboard',
   },
   {
-    path: '/shop/:tenantSlug?/home',
-    redirect: (to) => ({
-      name: 'customer-dashboard',
-      params: {
-        tenantSlug: typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : undefined,
-      },
-    }),
-  },
-  {
-    path: '/shop/:tenantSlug/:rest(.*)*',
-    redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
-      const rest = Array.isArray(to.params.rest)
-        ? to.params.rest.join('/')
-        : typeof to.params.rest === 'string'
-          ? to.params.rest
-          : '';
-
-      return tenantSlug ? `/${tenantSlug}/shop/${rest}` : '/shop/dashboard';
-    },
+    path: '/shop/home',
+    redirect: '/shop/dashboard',
   },
   ...dashboardRoutes,
   ...tenantRoutes,
@@ -142,10 +176,8 @@ const routes: RouteRecordRaw[] = [
   ...afterSalesRoutes,
   ...peopleRoutes,
 
-  // Dev-only pages (local). Not registered in production, so Vite drops their code from the build.
   ...(import.meta.env.DEV ? devRoutes : []),
 
-  // Always leave this as last one
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),

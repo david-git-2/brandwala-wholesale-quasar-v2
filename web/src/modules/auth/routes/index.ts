@@ -1,5 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 import { createShopSelectCompanyGuard } from '../guards/createShopAccessGuard';
+import { rewriteLegacyShopPath } from 'src/modules/tenant/utils/legacyUrlRedirects';
 
 const authRoutes: RouteRecordRaw[] = [
   {
@@ -16,8 +17,7 @@ const authRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: '/:tenantSlug?/app/login',
-        alias: '/app/login',
+        path: '/app/login',
         name: 'admin-login-page',
         component: () => import('../pages/AdminLogin.vue'),
         meta: {
@@ -26,8 +26,7 @@ const authRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: '/:tenantSlug?/shop/login',
-        alias: '/shop/login',
+        path: '/shop/:tenantSlug/login',
         name: 'customer-login-page',
         component: () => import('../pages/CustomerLogin.vue'),
         meta: {
@@ -36,7 +35,7 @@ const authRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: '/:tenantSlug?/shop/select-company',
+        path: '/shop/:tenantSlug/select-company',
         name: 'shop-select-company-page',
         component: () => import('../pages/ShopCustomerGroupSelectPage.vue'),
         beforeEnter: createShopSelectCompanyGuard(),
@@ -66,10 +65,7 @@ const authRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/auth/:tenantSlug/app/login',
-    redirect: (to) =>
-      typeof to.params.tenantSlug === 'string'
-        ? `/${to.params.tenantSlug}/app/login`
-        : '/app/login',
+    redirect: '/app/login',
   },
   {
     path: '/auth/shop/login',
@@ -79,7 +75,23 @@ const authRoutes: RouteRecordRaw[] = [
     path: '/auth/:tenantSlug/shop/login',
     redirect: (to) =>
       typeof to.params.tenantSlug === 'string'
-        ? `/${to.params.tenantSlug}/shop/login`
+        ? `/shop/${to.params.tenantSlug}/login`
+        : '/shop/login',
+  },
+  {
+    path: '/:tenantSlug/shop/login',
+    redirect: (to) =>
+      typeof to.params.tenantSlug === 'string'
+        ? {
+            path: `/shop/${to.params.tenantSlug}/login`,
+            query: {
+              ...to.query,
+              redirect:
+                typeof to.query.redirect === 'string'
+                  ? rewriteLegacyShopPath(to.query.redirect)
+                  : to.query.redirect,
+            },
+          }
         : '/shop/login',
   },
 ];

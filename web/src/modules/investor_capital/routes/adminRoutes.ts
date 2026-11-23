@@ -31,7 +31,7 @@ const guard = (requiredModule: ModuleKey) =>
 
 const investorCapitalAdminRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/capital/investors',
+    path: '/app/capital/investors',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -74,7 +74,7 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/capital/profiles',
+    path: '/app/capital/profiles',
     redirect: (to) => ({
       name: 'app-capital-investors-page',
       params: { tenantSlug: to.params.tenantSlug },
@@ -82,7 +82,7 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
     beforeEnter: guard('investor_profiles'),
   },
   {
-    path: '/:tenantSlug?/app/capital/ledger',
+    path: '/app/capital/ledger',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -94,7 +94,7 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/capital/shipments',
+    path: '/app/capital/shipments',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -114,7 +114,7 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/investors/profile',
+    path: '/app/investors/profile',
     redirect: (to) => ({
       name: 'app-capital-investors-page',
       params: { tenantSlug: to.params.tenantSlug },
@@ -122,7 +122,7 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
     beforeEnter: guard('investor_profiles'),
   },
   {
-    path: '/:tenantSlug?/app/investors/transactions',
+    path: '/app/investors/transactions',
     redirect: (to) => ({
       name: 'app-capital-ledger-page',
       params: { tenantSlug: to.params.tenantSlug },
@@ -130,7 +130,7 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
     beforeEnter: guard('investor_capital_ledger'),
   },
   {
-    path: '/:tenantSlug?/app/investors/shipments',
+    path: '/app/investors/shipments',
     redirect: (to) => ({
       name: 'app-capital-shipments-page',
       params: { tenantSlug: to.params.tenantSlug },
@@ -138,7 +138,7 @@ const investorCapitalAdminRoutes: RouteRecordRaw[] = [
     beforeEnter: guard('investor_shipment_share'),
   },
   {
-    path: '/:tenantSlug?/app/investors/shipments/:id',
+    path: '/app/investors/shipments/:id',
     redirect: (to) => ({
       name: 'app-capital-shipment-details-page',
       params: { tenantSlug: to.params.tenantSlug, id: to.params.id },

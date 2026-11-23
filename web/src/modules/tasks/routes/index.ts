@@ -3,7 +3,7 @@ import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 
 const tasksRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/tasks',
+    path: '/app/tasks',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',

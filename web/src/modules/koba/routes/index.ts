@@ -9,7 +9,7 @@ import {
 
 const kobaRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/koba',
+    path: '/app/koba',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',
@@ -17,21 +17,7 @@ const kobaRoutes: RouteRecordRaw[] = [
       allowedRoles: ['admin', 'staff'],
       requireTenantContext: true,
       requiredModule: 'koba_retail',
-      validateAccess: ({ authStore, to }) => {
-        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
-
-        if (!selectedTenantSlug) {
-          return true;
-        }
-
-        const routeTenantSlug = getTenantSlugFromRoute(to);
-
-        if (routeTenantSlug === selectedTenantSlug) {
-          return true;
-        }
-
-        return getAppRouteLocation(to, selectedTenantSlug);
-      },
+      validateAccess: ({ authStore, to }) => validateAppRouteTenantSlug({ authStore, to }),
     }),
     children: [
       {
@@ -84,7 +70,7 @@ const kobaRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/shop/koba',
+    path: '/shop/:tenantSlug/koba',
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {

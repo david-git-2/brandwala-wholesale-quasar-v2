@@ -44,7 +44,7 @@ const customerOverviewGuard: NavigationGuard = async (to, _from, next) => {
 
 const customerRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/customers',
+    path: '/app/customers',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {

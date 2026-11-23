@@ -19,7 +19,7 @@ Grants: `global_invoice` (bills), `payments`, `cashbook`. [Access kernel](/docs/
 
 | Desk | Route | Job |
 | --- | --- | --- |
-| **Bills** | `/:slug/app/bills` | List, compose, issue, void, print, notes |
+| **Bills** | `/app/bills` | List, compose, issue, void, print, notes |
 | **Payments** | `/:slug/app/finance/payments` | Pay **in** (collect), pay **out**, courier remittance |
 | **Cashbook** | `/:slug/app/cashbook` | Tenant cash, **points** (till/safe/bank), profile leftover |
 

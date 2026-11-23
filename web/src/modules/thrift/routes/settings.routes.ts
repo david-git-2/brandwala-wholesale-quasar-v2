@@ -3,7 +3,7 @@ import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 
 const thriftSettingsRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/thrift/settings',
+    path: '/app/thrift/settings',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',

@@ -1,14 +1,11 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import {
-  getAppRouteLocation,
-  getTenantSlugFromRoute,
-} from 'src/modules/tenant/utils/tenantRouteContext';
+import { validateAppRouteTenantSlug } from 'src/modules/tenant/utils/tenantRouteContext';
 
 const vendorRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/vendors',
+    path: '/app/vendors',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',
@@ -16,21 +13,7 @@ const vendorRoutes: RouteRecordRaw[] = [
       allowedRoles: ['admin', 'staff'],
       requireTenantContext: true,
       requiredModule: 'vendor',
-      validateAccess: ({ authStore, to }) => {
-        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
-
-        if (!selectedTenantSlug) {
-          return true;
-        }
-
-        const routeTenantSlug = getTenantSlugFromRoute(to);
-
-        if (routeTenantSlug === selectedTenantSlug) {
-          return true;
-        }
-
-        return getAppRouteLocation(to, selectedTenantSlug);
-      },
+      validateAccess: ({ authStore, to }) => validateAppRouteTenantSlug({ authStore, to }),
     }),
     children: [
       {

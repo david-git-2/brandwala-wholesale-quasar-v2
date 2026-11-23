@@ -24,7 +24,7 @@ const resolveAppCostingLanding = () => {
 
 const costingFileRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/costing',
+    path: '/app/costing',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',
@@ -32,21 +32,7 @@ const costingFileRoutes: RouteRecordRaw[] = [
       allowedRoles: ['admin', 'staff', 'viewer'],
       requireTenantContext: true,
       requiredModule: 'costing_file',
-      validateAccess: ({ authStore, to }) => {
-        const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
-
-        if (!selectedTenantSlug) {
-          return true;
-        }
-
-        const routeTenantSlug = getTenantSlugFromRoute(to);
-
-        if (routeTenantSlug === selectedTenantSlug) {
-          return true;
-        }
-
-        return getAppRouteLocation(to, selectedTenantSlug);
-      },
+      validateAccess: ({ authStore, to }) => validateAppRouteTenantSlug({ authStore, to }),
     }),
     children: [
       {
@@ -141,7 +127,7 @@ const costingFileRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/shop/costing',
+    path: '/shop/:tenantSlug/costing',
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
@@ -159,7 +145,7 @@ const costingFileRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/shop/costing/:id/preview',
+    path: '/shop/:tenantSlug/costing/:id/preview',
     component: () => import('layouts/ExternalLayout.vue'),
     children: [
       {
@@ -171,7 +157,7 @@ const costingFileRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/costing/admin/:id/preview',
+    path: '/app/costing/admin/:id/preview',
     component: () => import('layouts/ExternalLayout.vue'),
     children: [
       {

@@ -19,7 +19,7 @@ const helpRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/help',
+    path: '/app/help',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {

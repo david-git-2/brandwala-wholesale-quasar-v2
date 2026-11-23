@@ -856,10 +856,6 @@ defineExpose({
     min-height: 36px;
   }
 
-  .shop-shell__actions :deep(.user-profile-btn .ph-caret-down) {
-    display: none;
-  }
-
   .shop-shell__header,
   .shop-shell__bottom-nav {
     transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);

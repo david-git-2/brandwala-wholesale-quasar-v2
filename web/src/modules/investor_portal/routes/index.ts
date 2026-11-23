@@ -4,8 +4,7 @@ import { createInvestorAccessGuard } from 'src/modules/investor_portal/guards/in
 
 const investorPortalRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/investor/login',
-    alias: '/investor/login',
+    path: '/investor/login',
     component: () => import('src/layouts/AuthLayout.vue'),
     children: [
       {
@@ -20,7 +19,7 @@ const investorPortalRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/investor',
+    path: '/investor',
     component: () => import('src/layouts/InvestorLayout.vue'),
     beforeEnter: createInvestorAccessGuard({
       loginRoute: 'investor-login-page',

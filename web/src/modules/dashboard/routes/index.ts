@@ -3,11 +3,10 @@ import type { RouteRecordRaw } from 'vue-router';
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 import { validateShopTenantSlug } from 'src/modules/auth/guards/validateShopTenantSlug';
 import {
-  getAppRouteLocation,
   getShopDashboardRouteLocation,
   getShopLoginRouteLocation,
   getShopSelectCompanyRouteLocation,
-  getTenantSlugFromRoute,
+  validateAppRouteTenantSlug,
 } from 'src/modules/tenant/utils/tenantRouteContext';
 
 const dashboardRoutes: RouteRecordRaw[] = [
@@ -29,12 +28,9 @@ const dashboardRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app',
+    path: '/app',
     component: () => import('layouts/AppLayout.vue'),
-    redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
-      return tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard';
-    },
+    redirect: '/app/dashboard',
     children: [
       {
         path: 'dashboard',
@@ -49,27 +45,16 @@ const dashboardRoutes: RouteRecordRaw[] = [
             if (!authStore.selectedTenant) {
               return { name: 'admin-tenant-list' };
             }
-
-            const routeTenantSlug = getTenantSlugFromRoute(to);
-            const selectedTenantSlug = authStore.selectedTenant.slug;
-
-            if (routeTenantSlug === selectedTenantSlug) {
-              return true;
-            }
-
-            return getAppRouteLocation(to, selectedTenantSlug);
+            return validateAppRouteTenantSlug({ authStore, to });
           },
         }),
       },
     ],
   },
   {
-    path: '/:tenantSlug?/shop',
+    path: '/shop/:tenantSlug',
     component: () => import('layouts/ShopLayout.vue'),
-    redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
-      return tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard';
-    },
+    redirect: (to) => `/shop/${String(to.params.tenantSlug ?? '')}/dashboard`,
     children: [
       {
         path: 'dashboard',
@@ -100,15 +85,9 @@ const dashboardRoutes: RouteRecordRaw[] = [
               return slugCheck;
             }
 
-            const routeTenantSlug = getTenantSlugFromRoute(to);
+            const routeTenantSlug = typeof to.params?.tenantSlug === 'string' ? to.params.tenantSlug : null;
             if (!routeTenantSlug && authStore.tenantSlug) {
-              return getShopDashboardRouteLocation({
-                ...to,
-                params: {
-                  ...(to.params ?? {}),
-                  tenantSlug: authStore.tenantSlug,
-                },
-              });
+              return getShopDashboardRouteLocation(to, authStore.tenantSlug);
             }
 
             return true;

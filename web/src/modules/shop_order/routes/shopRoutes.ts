@@ -1,9 +1,32 @@
 import type { RouteRecordRaw } from 'vue-router';
 import { createShopAccessGuard } from 'src/modules/auth/guards/createShopAccessGuard';
 
+const SHOP_TYPE = ':shopType(catalog|stock|dropship)';
+
+const browseChildren: RouteRecordRaw[] = [
+  {
+    path: '',
+    name: 'shop-catalog-entry-page',
+    component: () => import('src/modules/shop_order/pages/CatalogEntryPage.vue'),
+    beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
+  },
+  {
+    path: ':shopSlug/product/:productId',
+    name: 'shop-storefront-product-detail-page',
+    component: () => import('src/modules/shop_order/pages/StorefrontProductDetailPage.vue'),
+    beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
+  },
+  {
+    path: ':shopSlug',
+    name: 'shop-storefront-browse-page',
+    component: () => import('src/modules/shop_order/pages/StorefrontPage.vue'),
+    beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
+  },
+];
+
 const shopRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/shop/orders',
+    path: `/shop/:tenantSlug/${SHOP_TYPE}/orders`,
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
@@ -26,32 +49,13 @@ const shopRoutes: RouteRecordRaw[] = [
   },
 
   {
-    path: '/:tenantSlug?/shop/browse',
+    path: `/shop/:tenantSlug/${SHOP_TYPE}/browse`,
     component: () => import('layouts/ShopLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'shop-catalog-entry-page',
-        component: () => import('src/modules/shop_order/pages/CatalogEntryPage.vue'),
-        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
-      },
-      {
-        path: ':shopSlug/product/:productId',
-        name: 'shop-storefront-product-detail-page',
-        component: () => import('src/modules/shop_order/pages/StorefrontProductDetailPage.vue'),
-        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
-      },
-      {
-        path: ':shopSlug',
-        name: 'shop-storefront-browse-page',
-        component: () => import('src/modules/shop_order/pages/StorefrontPage.vue'),
-        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
-      },
-    ],
+    children: browseChildren,
   },
 
   {
-    path: '/:tenantSlug?/shop/cart',
+    path: `/shop/:tenantSlug/${SHOP_TYPE}/cart`,
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
@@ -64,7 +68,7 @@ const shopRoutes: RouteRecordRaw[] = [
   },
 
   {
-    path: '/:tenantSlug?/shop/dropship/review',
+    path: `/shop/:tenantSlug/dropship/review`,
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
@@ -77,7 +81,7 @@ const shopRoutes: RouteRecordRaw[] = [
   },
 
   {
-    path: '/:tenantSlug?/shop/dropship/delivery',
+    path: `/shop/:tenantSlug/dropship/delivery`,
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
@@ -90,7 +94,7 @@ const shopRoutes: RouteRecordRaw[] = [
   },
 
   {
-    path: '/:tenantSlug?/shop/checkout',
+    path: `/shop/:tenantSlug/dropship/checkout`,
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
@@ -103,31 +107,45 @@ const shopRoutes: RouteRecordRaw[] = [
   },
 
   {
-    path: '/:tenantSlug?/shop/commerce/:catchAll(.*)*',
+    path: '/shop/:tenantSlug/browse/:shopSlug',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
+      const tenantSlug = String(to.params.tenantSlug ?? '');
+      const shopSlug = String(to.params.shopSlug ?? '');
+      return `/shop/${tenantSlug}/catalog/browse/${shopSlug}`;
+    },
+  },
+
+  {
+    path: '/shop/:tenantSlug/browse',
+    redirect: (to) => {
+      const tenantSlug = String(to.params.tenantSlug ?? '');
+      return `/shop/${tenantSlug}/catalog/browse`;
+    },
+  },
+
+  {
+    path: '/shop/:tenantSlug/commerce/:catchAll(.*)*',
+    redirect: (to) => {
+      const tenantSlug = String(to.params.tenantSlug ?? '');
       const subPath = to.params.catchAll
         ? `/${Array.isArray(to.params.catchAll) ? to.params.catchAll.join('/') : to.params.catchAll}`
         : '';
-      return `${tenantSlug}/shop${subPath}`;
+      return `/shop/${tenantSlug}${subPath}`;
     },
   },
   {
-    path: '/:tenantSlug?/shop/commerce-shop/:catchAll(.*)*',
+    path: '/shop/:tenantSlug/commerce-shop/:catchAll(.*)*',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
+      const tenantSlug = String(to.params.tenantSlug ?? '');
       const subPath = to.params.catchAll
         ? `/${Array.isArray(to.params.catchAll) ? to.params.catchAll.join('/') : to.params.catchAll}`
         : '';
-      return `${tenantSlug}/shop${subPath}`;
+      return `/shop/${tenantSlug}${subPath}`;
     },
   },
   {
-    path: '/:tenantSlug?/shop/stores/:catchAll(.*)*',
-    redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
-      return `${tenantSlug}/app/shop`;
-    },
+    path: '/shop/:tenantSlug/stores/:catchAll(.*)*',
+    redirect: () => '/app/shop',
   },
 ];
 

@@ -14,7 +14,7 @@ const thriftReportsGuard = createAccessGuard({
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/thrift/reports',
+    path: '/app/thrift/reports',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: thriftReportsGuard,
     children: [

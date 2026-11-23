@@ -17,7 +17,7 @@ const notificationsDisabledRedirect: RouteRecordRaw['beforeEnter'] = (to) => {
 
 const notificationRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/notifications',
+    path: '/app/notifications',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: [
       notificationsDisabledRedirect,
@@ -41,7 +41,7 @@ const notificationRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/shop/notifications',
+    path: '/shop/:tenantSlug/notifications',
     component: () => import('layouts/ShopLayout.vue'),
     beforeEnter: [notificationsDisabledRedirect, createShopAccessGuard({ requiredModule: 'shop_order_mgmt' })],
     children: [
@@ -57,7 +57,7 @@ const notificationRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/settings/notifications',
+    path: '/app/settings/notifications',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: [
       notificationsDisabledRedirect,
