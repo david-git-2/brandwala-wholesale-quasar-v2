@@ -1,0 +1,28 @@
+# Ripgrep ignore for AI/CLI searches (keep tool outputs small)
+
+# SQL dumps, archives, backups, and historical migrations
+supabase/.dumps/
+supabase/_domain_splits_archive/
+supabase/migrations/
+supabase/schemas/*.bak
+supabase/schemas/*.pre-so3
+supabase/.temp/
+
+# Large data & catalog dumps
+python/data/
+python/images/
+web/public/uk/
+web/src/data/bd_address/*.json
+
+# Lockfiles & logs
+pnpm-lock.yaml
+package-lock.json
+**/*.lock
+**/*.log
+
+# AI plans, legacy workflows/commands, and docs (open explicitly when needed)
+.cursor/plans/
+.agent/
+.claude/
+.agents/skills/*/CHANGELOG.md
+docs/
