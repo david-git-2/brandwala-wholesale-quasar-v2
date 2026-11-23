@@ -53,6 +53,7 @@
       <div v-else class="column q-gutter-y-md">
         <ShopDropshipReviewItemsList
           :items="uiItems"
+          :shop-id="shopId"
           :item-count="totalUnits"
           :totals="columnTotals"
           :currency-symbol="currencySymbol"
@@ -93,6 +94,10 @@ import ShopDropshipReviewItemsList, {
   type DropshipReviewListItem,
 } from '../components/ShopDropshipReviewItemsList.vue';
 import ShopDropshipReviewSummaryCard from '../components/ShopDropshipReviewSummaryCard.vue';
+import {
+  effectiveResellUnitPrice,
+  hasPendingResellDiscount,
+} from '../utils/dropshipReviewPricingUtils';
 
 const route = useRoute();
 const router = useRouter();
@@ -112,6 +117,7 @@ const {
   getPurchaseUnitAmount,
   getResellUnitAmount,
   getMinResellAmount,
+  getRequestedResellDiscountAmount,
   isLoading,
   isError,
   refetch,
@@ -148,33 +154,50 @@ const uiItems = computed<DropshipReviewListItem[]>(() =>
       quantity: item.quantity,
       purchasePrice: getPurchaseUnitAmount(item),
       resellPrice,
-      minResellPrice: getMinResellAmount(item),
-      isSaving: savingItemId.value === item.id && isUpdatingPrice.value,
-    };
+        minResellPrice: getMinResellAmount(item),
+        isSaving: savingItemId.value === item.id && isUpdatingPrice.value,
+        requestedResellDiscountPrice: getRequestedResellDiscountAmount(item),
+        resellDiscountRequestReason: item.resell_discount_request_reason ?? null,
+      };
   }),
 );
+
+const effectiveResellUnitForItem = (item: (typeof items.value)[number]) =>
+  effectiveResellUnitPrice(
+    getItemResellPrice(item.id, getResellUnitAmount(item)),
+    getRequestedResellDiscountAmount(item),
+  );
 
 const columnTotals = computed(() => {
   const purchaseTotal = items.value.reduce(
     (sum, item) => sum + getPurchaseUnitAmount(item) * item.quantity,
     0,
   );
-  const resellTotal = items.value.reduce((sum, item) => {
-    const resell = getItemResellPrice(item.id, getResellUnitAmount(item));
-    return sum + resell * item.quantity;
-  }, 0);
+  const resellTotal = items.value.reduce(
+    (sum, item) => sum + effectiveResellUnitForItem(item) * item.quantity,
+    0,
+  );
   return { purchaseTotal, resellTotal };
 });
 
-const summary = computed(() => ({
-  itemsTotal: hasUnsavedEdits.value
-    ? columnTotals.value.resellTotal
-    : resellSubtotal.value,
-  totalUnits: totalUnits.value,
-  hasFloorViolation: hasUnsavedEdits.value
-    ? uiItems.value.some((item) => item.resellPrice < item.minResellPrice)
-    : hasFloorViolation.value,
-}));
+const summary = computed(() => {
+  const hasPendingDiscount = items.value.some((item) =>
+    hasPendingResellDiscount(getRequestedResellDiscountAmount(item)),
+  );
+  const currentItemsTotal = items.value.reduce((sum, item) => {
+    const resell = getItemResellPrice(item.id, getResellUnitAmount(item));
+    return sum + resell * item.quantity;
+  }, 0);
+  return {
+    itemsTotal: columnTotals.value.resellTotal,
+    currentItemsTotal,
+    hasPendingDiscount,
+    totalUnits: totalUnits.value,
+    hasFloorViolation: hasUnsavedEdits.value
+      ? uiItems.value.some((item) => item.resellPrice < item.minResellPrice)
+      : hasFloorViolation.value,
+  };
+});
 
 const updateResellPriceLocal = (itemId: number, value: number) => {
   const item = items.value.find((row) => row.id === itemId);

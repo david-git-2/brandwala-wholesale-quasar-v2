@@ -134,21 +134,29 @@ export function shopCartPath(
   };
 }
 
-export function shopDropshipReviewPath(tenantSlug: string | null | undefined, shopId?: number | null) {
+export function shopDropshipPlaceOrderPath(
+  tenantSlug: string | null | undefined,
+  shopId?: number | null,
+  step?: number,
+) {
+  const query: Record<string, string> = {};
+  if (shopId) query.shopId = String(shopId);
+  if (step != null && step > 0) query.step = String(step);
   return {
-    path: `/shop/${tenantSlug ?? ''}/dropship/review`,
-    query: shopId ? { shopId: String(shopId) } : {},
+    path: `/shop/${tenantSlug ?? ''}/dropship/place-order`,
+    query,
   };
+}
+
+export function shopDropshipReviewPath(tenantSlug: string | null | undefined, shopId?: number | null) {
+  return shopDropshipPlaceOrderPath(tenantSlug, shopId, 2);
 }
 
 export function shopDropshipDeliveryPath(
   tenantSlug: string | null | undefined,
   shopId?: number | null,
 ) {
-  return {
-    path: `/shop/${tenantSlug ?? ''}/dropship/delivery`,
-    query: shopId ? { shopId: String(shopId) } : {},
-  };
+  return shopDropshipPlaceOrderPath(tenantSlug, shopId, 3);
 }
 
 export function shopDropshipCheckoutPath(
@@ -158,6 +166,31 @@ export function shopDropshipCheckoutPath(
   return {
     path: `/shop/${tenantSlug ?? ''}/dropship/checkout`,
     query: shopId ? { shopId: String(shopId) } : {},
+  };
+}
+
+export function shopCustomerOrdersPath(
+  tenantSlug: string | null | undefined,
+  shopType?: ShopType | null,
+) {
+  const shopTypePath = shopTypeToPathSegment(shopType) ?? 'catalog';
+  return `${shopScopeBase(tenantSlug, shopTypePath)}/orders`;
+}
+
+export function shopCustomerOrderDetailRoute(
+  tenantSlug: string | null | undefined,
+  orderId: number | string,
+  shopType?: ShopType | null,
+) {
+  const shopTypePath = shopTypeToPathSegment(shopType) ?? 'catalog';
+  return {
+    name: 'shop-order-detail-page' as const,
+    params: {
+      tenantSlug: String(tenantSlug ?? ''),
+      shopType: shopTypePath,
+      id: String(orderId),
+    },
+    ...(shopType ? { state: { shopTypeSnapshot: shopType } } : {}),
   };
 }
 

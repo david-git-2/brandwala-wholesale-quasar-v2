@@ -7,11 +7,12 @@
     </q-card-section>
 
     <!-- xs: stacked item cards -->
-    <div class="dropship-review-list__mobile lt-sm q-pa-sm column q-gutter-y-sm">
+    <div class="dropship-review-list__mobile lt-md q-pa-sm column q-gutter-y-sm">
       <ShopDropshipReviewItemRow
         v-for="item in items"
         :key="item.id"
         :item="item"
+        :shop-id="shopId"
         :currency-symbol="currencySymbol"
         :disable-resell="disableResell"
         @update:resell-price="(id, val) => onResellInput(id, val)"
@@ -20,7 +21,7 @@
     </div>
 
     <!-- sm+: aligned grid -->
-    <div class="dropship-review-list__desktop gt-xs">
+    <div class="dropship-review-list__desktop gt-sm">
       <div
         class="dropship-review-list__head dropship-review-list__row-grid text-caption text-grey-6 text-weight-medium"
       >
@@ -37,6 +38,7 @@
           v-for="item in items"
           :key="item.id"
           :item="item"
+          :shop-id="shopId"
           :currency-symbol="currencySymbol"
           :disable-resell="disableResell"
           @update:resell-price="(id, val) => onResellInput(id, val)"
@@ -46,7 +48,7 @@
     </div>
 
     <!-- xs footer -->
-    <div class="dropship-review-list__footer dropship-review-list__footer--mobile lt-sm q-px-md q-py-md">
+    <div class="dropship-review-list__footer dropship-review-list__footer--mobile lt-md q-px-md q-py-md">
       <div class="dropship-review-list__footer-grid">
         <div>
           <div class="dropship-review-list__footer-label">{{ $t('shop.dropship_col_purchase_total') }}</div>
@@ -54,14 +56,22 @@
         </div>
         <div class="text-right">
           <div class="dropship-review-list__footer-label">{{ $t('shop.dropship_col_resell_total') }}</div>
-          <div class="text-body2 text-weight-bold text-primary">{{ formatMoney(totals.resellTotal) }}</div>
+          <div
+            class="text-body2 text-weight-bold"
+            :class="hasPendingDiscountInList ? 'dropship-review-list__resell-total--pending' : 'text-primary'"
+          >
+            {{ formatMoney(totals.resellTotal) }}
+          </div>
+          <div v-if="hasPendingDiscountInList" class="dropship-review-list__footer-hint">
+            {{ $t('shop.dropship_totals_pending_discount_note') }}
+          </div>
         </div>
       </div>
     </div>
 
     <!-- sm+ footer -->
     <div
-      class="dropship-review-list__footer dropship-review-list__footer--desktop gt-xs dropship-review-list__row-grid"
+      class="dropship-review-list__footer dropship-review-list__footer--desktop gt-sm dropship-review-list__row-grid"
     >
       <div class="text-body2 text-weight-bold text-grey-9 min-width-0">
         {{ $t('shop.dropship_column_totals') }}
@@ -75,14 +85,24 @@
       </div>
       <div class="text-right">
         <div class="dropship-review-list__footer-label">{{ $t('shop.dropship_col_resell_total') }}</div>
-        <div class="text-body2 text-weight-bold text-primary">{{ formatMoney(totals.resellTotal) }}</div>
+        <div
+          class="text-body2 text-weight-bold"
+          :class="hasPendingDiscountInList ? 'dropship-review-list__resell-total--pending' : 'text-primary'"
+        >
+          {{ formatMoney(totals.resellTotal) }}
+        </div>
+        <div v-if="hasPendingDiscountInList" class="dropship-review-list__footer-hint">
+          {{ $t('shop.dropship_totals_pending_discount_note') }}
+        </div>
       </div>
     </div>
   </q-card>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { formatCartMoney } from '../utils/cartPriceUtils';
+import { hasPendingResellDiscount } from '../utils/dropshipReviewPricingUtils';
 import ShopDropshipReviewItemRow from './ShopDropshipReviewItemRow.vue';
 
 export interface DropshipReviewListItem {
@@ -94,6 +114,8 @@ export interface DropshipReviewListItem {
   resellPrice: number;
   minResellPrice: number;
   isSaving?: boolean;
+  requestedResellDiscountPrice?: number | null;
+  resellDiscountRequestReason?: string | null;
 }
 
 const props = withDefaults(
@@ -107,11 +129,13 @@ const props = withDefaults(
     currencySymbol?: string;
     disableResell?: boolean;
     savingItemId?: number | null;
+    shopId?: number | null;
   }>(),
   {
     currencySymbol: '৳',
     disableResell: false,
     savingItemId: null,
+    shopId: null,
   },
 );
 
@@ -122,6 +146,10 @@ const emit = defineEmits<{
 
 const formatMoney = (amount: number) =>
   formatCartMoney(amount, props.currencySymbol ?? '৳');
+
+const hasPendingDiscountInList = computed(() =>
+  props.items.some((item) => hasPendingResellDiscount(item.requestedResellDiscountPrice)),
+);
 
 const onResellInput = (itemId: number, val: number) => {
   emit('update:resellPrice', itemId, val);
@@ -141,10 +169,17 @@ const onResellInput = (itemId: number, val: number) => {
 .dropship-review-list__row-grid,
 :deep(.dropship-review-list__row-grid) {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) 48px 88px minmax(120px, 1fr) 96px 96px;
+  grid-template-columns: minmax(0, 1.5fr) 44px 84px minmax(120px, 1.05fr) 92px 92px;
   gap: 8px 12px;
   padding: 12px 16px;
   align-items: start;
+}
+
+@media (min-width: 1280px) {
+  .dropship-review-list__row-grid,
+  :deep(.dropship-review-list__row-grid) {
+    grid-template-columns: minmax(0, 1.6fr) 48px 88px minmax(128px, 1.1fr) 96px 96px;
+  }
 }
 
 .dropship-review-list__head {
@@ -179,5 +214,20 @@ const onResellInput = (itemId: number, val: number) => {
 
 :deep(.dropship-review-item__cell) {
   min-width: 0;
+}
+
+.dropship-review-list__resell-total--pending {
+  color: color-mix(in srgb, var(--tf-warning) 75%, var(--tf-neutral-ink));
+}
+
+.dropship-review-list__footer-hint {
+  margin-top: 6px;
+  max-width: 220px;
+  margin-left: auto;
+  font-size: 10px;
+  line-height: 1.35;
+  font-weight: 500;
+  color: rgba(34, 56, 101, 0.58);
+  text-align: right;
 }
 </style>

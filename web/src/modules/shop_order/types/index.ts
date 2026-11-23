@@ -689,6 +689,10 @@ export interface ShopOrderItem {
   unit_minimum_sell_price_currency_id: number | null;
   customer_sell_price_amount: number | null;
   customer_sell_price_currency_id: number | null;
+  requested_resell_discount_price_amount?: number | null;
+  requested_resell_discount_price_currency_id?: number | null;
+  resell_discount_request_reason?: string | null;
+  resell_discount_requested_at?: string | null;
   customer_offer_amount: number | null;
   customer_offer_currency_id: number | null;
   staff_offer_amount: number | null;

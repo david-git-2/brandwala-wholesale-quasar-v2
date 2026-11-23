@@ -85,6 +85,12 @@ export function useDropshipReviewCartQuery(shopId: Ref<number | null>) {
   const getMinResellAmount = (item: (typeof items.value)[number]) =>
     cartPriceAmount(item.min_resell_price);
 
+  const getRequestedResellDiscountAmount = (item: (typeof items.value)[number]) => {
+    const price = item.requested_resell_discount_price;
+    if (!price || price.amount == null) return null;
+    return cartPriceAmount(price);
+  };
+
   return {
     ...query,
     cart,
@@ -103,5 +109,6 @@ export function useDropshipReviewCartQuery(shopId: Ref<number | null>) {
     getPurchaseUnitAmount,
     getResellUnitAmount,
     getMinResellAmount,
+    getRequestedResellDiscountAmount,
   };
 }

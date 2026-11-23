@@ -1,5 +1,5 @@
 <template>
-  <ShopDropshipCartPage v-if="resolvedCartKind === 'dropship'" />
+  <ShopDropshipPlaceOrderPage v-if="resolvedCartKind === 'dropship'" />
   <ShopCartPage v-else />
 </template>
 
@@ -12,7 +12,7 @@ import { resolveCustomerShopTypePath } from '../utils/catalogShop';
 import { useShopCartQuery } from '../composables/useShopCartQuery';
 import { useShopCartSelection } from '../composables/useShopCartSelection';
 import ShopCartPage from './ShopCartPage.vue';
-import ShopDropshipCartPage from './ShopDropshipCartPage.vue';
+import ShopDropshipPlaceOrderPage from './ShopDropshipPlaceOrderPage.vue';
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -43,9 +43,11 @@ watch(
 
 const { cart } = useShopCartQuery(selectedShopIdRef);
 
-const resolvedCartKind = computed<'dropship' | 'catalog'>(() =>
-  routeShopTypePath.value === 'dropship' ? 'dropship' : 'catalog',
-);
+const resolvedCartKind = computed<'dropship' | 'catalog'>(() => {
+  if (routeShopTypePath.value === 'dropship') return 'dropship';
+  if (cart.value?.shop_type === 'dropship') return 'dropship';
+  return 'catalog';
+});
 </script>
 
 <script lang="ts">

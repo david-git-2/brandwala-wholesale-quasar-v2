@@ -1,7 +1,7 @@
 <template>
   <div class="dropship-review-item-wrap">
-    <!-- xs: per-item card -->
-    <div class="dropship-review-item dropship-review-item--card lt-sm">
+    <!-- xs–sm: per-item card -->
+    <div class="dropship-review-item dropship-review-item--card lt-md">
       <div class="dropship-review-item__card-grid">
         <div class="dropship-review-item__image shop-product-thumb bg-grey-2">
           <q-img
@@ -59,6 +59,46 @@
             >
               {{ $t('shop.dropship_min_resell', { price: formatMoney(item.minResellPrice) }) }}
             </div>
+            <button
+              v-if="!hasDiscountRequest"
+              type="button"
+              class="dropship-review-item__discount-btn q-mt-xs"
+              @click="discountDialogOpen = true"
+            >
+              <q-icon name="ph ph-seal-percent" size="15px" />
+              <span>{{ $t('shop.dropship_request_discount') }}</span>
+            </button>
+            <div
+              v-else
+              class="dropship-review-item__discount-pending q-mt-xs"
+              role="status"
+            >
+              <div class="dropship-review-item__discount-status">
+                <q-icon name="ph ph-hourglass-medium" size="14px" />
+                <span>{{
+                  $t('shop.dropship_discount_requested', {
+                    price: formatMoney(requestedDiscountAmount!),
+                  })
+                }}</span>
+              </div>
+              <div class="dropship-review-item__discount-pending-actions">
+                <TfBtn
+                  variant="link"
+                  size="sm"
+                  :label="$t('shop.dropship_edit_discount_request')"
+                  :disable="discountActionsBusy"
+                  @click="discountDialogOpen = true"
+                />
+                <TfBtn
+                  variant="link"
+                  size="sm"
+                  :label="$t('shop.dropship_remove_discount_request')"
+                  :disable="discountActionsBusy"
+                  :loading="isClearingDiscount"
+                  @click="onDiscountRemove"
+                />
+              </div>
+            </div>
           </div>
 
           <div class="dropship-review-item__totals row q-mt-sm q-col-gutter-md">
@@ -74,8 +114,14 @@
               <div class="dropship-review-item__field-label">
                 {{ $t('shop.dropship_col_resell_total') }}
               </div>
-              <div class="text-body2 text-weight-bold text-primary">
-                {{ formatMoney(item.resellPrice * item.quantity) }}
+              <div
+                class="text-body2 text-weight-bold"
+                :class="hasDiscountRequest ? 'dropship-review-item__resell-total--pending' : 'text-primary'"
+              >
+                {{ formatMoney(effectiveResellLineTotal) }}
+              </div>
+              <div v-if="hasDiscountRequest" class="dropship-review-item__resell-total-hint">
+                {{ $t('shop.dropship_resell_total_if_discount_accepted') }}
               </div>
             </div>
           </div>
@@ -83,8 +129,8 @@
       </div>
     </div>
 
-    <!-- sm+: grid row -->
-    <div class="dropship-review-item dropship-review-item--grid gt-xs dropship-review-list__row-grid">
+    <!-- md+: grid row -->
+    <div class="dropship-review-item dropship-review-item--grid gt-sm dropship-review-list__row-grid">
       <div class="dropship-review-item__cell dropship-review-item__cell--product min-width-0">
         <div class="dropship-review-item__product row items-start no-wrap q-col-gutter-sm">
           <div class="dropship-review-item__image dropship-review-item__image--sm shop-product-thumb bg-grey-2">
@@ -148,6 +194,46 @@
         >
           {{ $t('shop.dropship_min_resell', { price: formatMoney(item.minResellPrice) }) }}
         </div>
+        <button
+          v-if="!hasDiscountRequest"
+          type="button"
+          class="dropship-review-item__discount-btn dropship-review-item__discount-btn--grid"
+          @click="discountDialogOpen = true"
+        >
+          <q-icon name="ph ph-seal-percent" size="14px" />
+          <span>{{ $t('shop.dropship_request_discount') }}</span>
+        </button>
+        <div
+          v-else
+          class="dropship-review-item__discount-pending dropship-review-item__discount-pending--grid"
+          role="status"
+        >
+          <div class="dropship-review-item__discount-status">
+            <q-icon name="ph ph-hourglass-medium" size="14px" />
+            <span>{{
+              $t('shop.dropship_discount_requested', {
+                price: formatMoney(requestedDiscountAmount!),
+              })
+            }}</span>
+          </div>
+          <div class="dropship-review-item__discount-pending-actions">
+            <TfBtn
+              variant="link"
+              size="sm"
+              :label="$t('shop.dropship_edit_discount_request')"
+              :disable="discountActionsBusy"
+              @click="discountDialogOpen = true"
+            />
+            <TfBtn
+              variant="link"
+              size="sm"
+              :label="$t('shop.dropship_remove_discount_request')"
+              :disable="discountActionsBusy"
+              :loading="isClearingDiscount"
+              @click="onDiscountRemove"
+            />
+          </div>
+        </div>
       </div>
 
       <div class="dropship-review-item__cell dropship-review-item__cell--input-line text-right">
@@ -156,27 +242,53 @@
         </span>
       </div>
 
-      <div class="dropship-review-item__cell dropship-review-item__cell--input-line text-right">
-        <span class="text-body2 text-weight-bold text-primary">
-          {{ formatMoney(item.resellPrice * item.quantity) }}
-        </span>
+      <div class="dropship-review-item__cell dropship-review-item__cell--resell-total text-right">
+        <div
+          class="text-body2 text-weight-bold"
+          :class="hasDiscountRequest ? 'dropship-review-item__resell-total--pending' : 'text-primary'"
+        >
+          {{ formatMoney(effectiveResellLineTotal) }}
+        </div>
+        <div v-if="hasDiscountRequest" class="dropship-review-item__resell-total-hint text-right">
+          {{ $t('shop.dropship_resell_total_if_discount_accepted') }}
+        </div>
       </div>
+
     </div>
+
+    <ShopDropshipRequestDiscountDialog
+      v-model="discountDialogOpen"
+      :product-name="item.name"
+      :currency-symbol="currencySymbol"
+      :initial-requested-price="item.requestedResellDiscountPrice"
+      :initial-reason="item.resellDiscountRequestReason"
+      :loading="isSubmittingDiscount"
+      @submit="onDiscountSubmit"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import TfBtn from 'src/components/ui/TfBtn.vue';
+import ShopDropshipRequestDiscountDialog from './ShopDropshipRequestDiscountDialog.vue';
+import { useShopCartMutations } from '../composables/useShopCartMutations';
 import { formatCartMoney } from '../utils/cartPriceUtils';
+import {
+  effectiveResellUnitPrice,
+  hasPendingResellDiscount,
+} from '../utils/dropshipReviewPricingUtils';
 import type { DropshipReviewListItem } from './ShopDropshipReviewItemsList.vue';
 
 const props = withDefaults(
   defineProps<{
     item: DropshipReviewListItem;
+    shopId?: number | null;
     currencySymbol?: string;
     disableResell?: boolean;
   }>(),
   {
+    shopId: null,
     currencySymbol: '৳',
     disableResell: false,
   },
@@ -187,9 +299,45 @@ const emit = defineEmits<{
   (e: 'resell-price-blur', itemId: number): void;
 }>();
 
+const discountDialogOpen = ref(false);
+const { submitResellDiscountRequestMutation, clearResellDiscountRequestMutation } =
+  useShopCartMutations();
+
+const isSubmittingDiscount = computed(
+  () =>
+    submitResellDiscountRequestMutation.isPending.value &&
+    submitResellDiscountRequestMutation.variables.value?.cartItemId === props.item.id,
+);
+
+const isClearingDiscount = computed(
+  () =>
+    clearResellDiscountRequestMutation.isPending.value &&
+    clearResellDiscountRequestMutation.variables.value?.cartItemId === props.item.id,
+);
+
+const discountActionsBusy = computed(
+  () => isSubmittingDiscount.value || isClearingDiscount.value,
+);
+
 const resellBelowMin = computed(
   () => props.item.resellPrice < props.item.minResellPrice,
 );
+
+const requestedDiscountAmount = computed(
+  () => props.item.requestedResellDiscountPrice ?? null,
+);
+
+const hasDiscountRequest = computed(() =>
+  hasPendingResellDiscount(requestedDiscountAmount.value),
+);
+
+const effectiveResellLineTotal = computed(() => {
+  const unit = effectiveResellUnitPrice(
+    props.item.resellPrice,
+    requestedDiscountAmount.value,
+  );
+  return unit * props.item.quantity;
+});
 
 const formatMoney = (amount: number) =>
   formatCartMoney(amount, props.currencySymbol ?? '৳');
@@ -199,6 +347,33 @@ const onResellInput = (val: string | number | null) => {
   const numVal = Number(val);
   if (!Number.isNaN(numVal) && numVal >= 0) {
     emit('update:resellPrice', props.item.id, numVal);
+  }
+};
+
+const onDiscountSubmit = async (payload: { requestedPrice: number; reason: string }) => {
+  if (!props.shopId) return;
+  try {
+    await submitResellDiscountRequestMutation.mutateAsync({
+      cartItemId: props.item.id,
+      requestedPrice: payload.requestedPrice,
+      reason: payload.reason,
+      shopId: props.shopId,
+    });
+    discountDialogOpen.value = false;
+  } catch {
+    // Toast handled in mutation.
+  }
+};
+
+const onDiscountRemove = async () => {
+  if (!props.shopId) return;
+  try {
+    await clearResellDiscountRequestMutation.mutateAsync({
+      cartItemId: props.item.id,
+      shopId: props.shopId,
+    });
+  } catch {
+    // Toast handled in mutation.
   }
 };
 </script>
@@ -302,4 +477,97 @@ export default {
   line-height: 1.25;
 }
 
+.dropship-review-item__discount-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 5px 10px;
+  max-width: 100%;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  color: color-mix(in srgb, var(--tf-warning) 78%, var(--tf-neutral-ink));
+  background: var(--tf-warning-soft);
+  border: 1px solid color-mix(in srgb, var(--tf-warning) 30%, var(--tf-neutral-border));
+  border-radius: var(--tf-radius-sm, 6px);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--tf-dur-fast, 120ms) var(--tf-ease, ease),
+    border-color var(--tf-dur-fast, 120ms) var(--tf-ease, ease);
+}
+
+.dropship-review-item__discount-btn:hover {
+  background: color-mix(in srgb, var(--tf-warning-soft) 70%, var(--tf-warning) 30%);
+  border-color: color-mix(in srgb, var(--tf-warning) 45%, var(--tf-neutral-border));
+}
+
+.dropship-review-item__discount-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tf-warning) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.dropship-review-item__discount-btn--grid {
+  margin-top: 6px;
+}
+
+.dropship-review-item__discount-pending {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.dropship-review-item__discount-pending--grid {
+  margin-top: 6px;
+}
+
+.dropship-review-item__discount-status {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 100%;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--tf-warning) 72%, var(--tf-neutral-ink));
+  background: var(--tf-warning-soft);
+  border: 1px solid color-mix(in srgb, var(--tf-warning) 28%, var(--tf-neutral-border));
+  border-radius: var(--tf-radius-sm, 6px);
+}
+
+.dropship-review-item__discount-pending-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding-left: 2px;
+}
+
+.dropship-review-item__cell--resell-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  min-height: 40px;
+  gap: 2px;
+}
+
+.dropship-review-item__resell-total--pending {
+  color: color-mix(in srgb, var(--tf-warning) 75%, var(--tf-neutral-ink));
+}
+
+.dropship-review-item__resell-total-hint {
+  font-size: 10px;
+  line-height: 1.25;
+  font-weight: 600;
+  color: rgba(34, 56, 101, 0.55);
+  max-width: 120px;
+}
 </style>

@@ -91,7 +91,7 @@ import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recip
 import { useBDAddressOptions } from '../composables/useBDAddressOptions';
 import { useDropshipReviewCartQuery } from '../composables/useDropshipReviewCartQuery';
 import { useSubmitDropshipOrderMutation } from '../composables/useSubmitDropshipOrderMutation';
-import { resolveCartShopId, shopCartPath } from '../utils/catalogShop';
+import { resolveCartShopId, shopCartPath, shopCustomerOrderDetailRoute } from '../utils/catalogShop';
 import { useDropshipOrderFlowLeaveGuard } from '../composables/useDropshipOrderFlowLeaveGuard';
 import ShopCartSkeleton from '../components/ShopCartSkeleton.vue';
 import ShopDropshipCustomerDetailsForm from '../components/ShopDropshipCustomerDetailsForm.vue';
@@ -315,8 +315,9 @@ const onPlaceOrder = async () => {
   });
 
   skipFlowLeaveGuard.value = true;
-  const slug = tenantSlugParam();
-  void router.push(`${slug ? `/${slug}` : ''}/shop/orders/${result.data.order_id}`);
+  void router.push(
+    shopCustomerOrderDetailRoute(tenantSlugParam(), result.data.order_id, 'dropship'),
+  );
 };
 </script>
 

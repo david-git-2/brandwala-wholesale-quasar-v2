@@ -23,7 +23,11 @@ import {
   formatCartPriceAmount,
 } from '../utils/cartPriceUtils';
 import { adjustQtyByMoq, resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
-import { resolveCustomerShopTypePath } from '../utils/catalogShop';
+import {
+  resolveCustomerShopTypePath,
+  shopCustomerOrdersPath,
+  shopDropshipPlaceOrderPath,
+} from '../utils/catalogShop';
 
 export function useShopCartPageLogic(
   activeCarts: Ref<ActiveCartItem[]>,
@@ -62,6 +66,12 @@ export function useShopCartPageLogic(
   );
 
   const goToCheckout = () => {
+    if (cart.value?.shop_type === 'dropship') {
+      void router.push(
+        shopDropshipPlaceOrderPath(tenantSlugParam(), selectedShopId.value, 1),
+      );
+      return;
+    }
     void router.push({
       path: `${shopScopeBaseFromRoute()}/checkout`,
       query: { shopId: selectedShopId.value },
@@ -251,8 +261,9 @@ export function useShopCartPageLogic(
           void queryClient.invalidateQueries({
             queryKey: shopOrderQueryKeys.activeCarts(authStore.tenantId ?? 0),
           });
-          const slug = tenantSlugParam();
-          void router.push(`${slug ? `/${slug}` : ''}/shop/orders`);
+          void router.push(
+            shopCustomerOrdersPath(tenantSlugParam(), cart.value?.shop_type),
+          );
         }
       } finally {
         placingOrder.value = false;

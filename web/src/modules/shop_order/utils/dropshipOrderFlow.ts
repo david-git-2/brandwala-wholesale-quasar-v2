@@ -1,6 +1,7 @@
 import type { RouteLocationNormalized } from 'vue-router';
 
-const DROPSHIP_FLOW_PATH_RE = /\/dropship\/(?:cart|review|delivery|checkout)\/?$/;
+const DROPSHIP_FLOW_PATH_RE =
+  /\/(?:dropship\/(?:place-order|review|delivery|checkout)|[^/]+\/dropship\/cart)\/?$/;
 
 export function isDropshipOrderFlowRoute(
   route: Pick<RouteLocationNormalized, 'path'>,

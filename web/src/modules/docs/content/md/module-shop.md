@@ -48,8 +48,9 @@ Dropship fulfillment and money: [Dropship](/docs/modules/dropship) — not repea
 | --- | --- |
 | Home / catalog | `/:slug/shop/...` (per shop setup) |
 | Cart & checkout | Shop-specific cart routes |
-| Dropship review | `/:slug/shop/dropship/review` |
-| Dropship delivery | `/:slug/shop/dropship/delivery` |
+| Dropship place order (wizard) | `/:slug/shop/dropship/place-order` |
+| Dropship review (redirect → wizard step 2) | `/:slug/shop/dropship/review` |
+| Dropship delivery (redirect → wizard step 3) | `/:slug/shop/dropship/delivery` |
 | Account / orders | Customer shop account pages |
 
 Exact paths vary by shop theme and module registry.

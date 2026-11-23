@@ -29,7 +29,7 @@ Code may still say `merchant`, `middleman`, `recipient_*` — UI uses the names 
 
 | Area | Route | Job |
 | --- | --- | --- |
-| Shop checkout | `/:slug/shop/dropship/review`, `.../delivery` | Cart → recipient details → submit order |
+| Shop checkout | `/:slug/shop/dropship/place-order` (`review`/`delivery` redirect into wizard) | Cart → 6-step wizard → submit order |
 | Dropship desk | `/:slug/app/shop/dropship` | Orders list (dropship shops) |
 | Order detail | `/:slug/app/shop/orders/:id` | Call confirm, pick, ship, deliver |
 | Management | `/:slug/app/shop/dropship-management` | Settlement table, mark delivered |

@@ -203,6 +203,8 @@ import CustomerOrderStickyActions from '../components/CustomerOrderStickyActions
 import CustomerOrderDropshipActionBar from '../components/CustomerOrderDropshipActionBar.vue';
 import CustomerDropshipOrderPaper from '../components/CustomerDropshipOrderPaper.vue';
 import { customerCanSeeCatalogPrice, customerCanSeeCartLinePrices } from '../utils/catalogPriceUtils';
+import { shopCustomerOrdersPath } from '../utils/catalogShop';
+import { shopTypeFromPathSegment } from '../utils/shopRouteTypes';
 
 const route = useRoute();
 const router = useRouter();
@@ -607,8 +609,13 @@ const terminalStatuses = computed(() => {
 });
 
 const goOrders = () => {
-  const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
-  void router.push(`${tenantSlug}/shop/orders`);
+  const tenantSlug = String(route.params.tenantSlug ?? '');
+  const shopType =
+    order.value?.shop_type_snapshot ??
+    shopTypeFromPathSegment(
+      typeof route.params.shopType === 'string' ? route.params.shopType : null,
+    );
+  void router.push(shopCustomerOrdersPath(tenantSlug, shopType));
 };
 </script>
 

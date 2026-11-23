@@ -126,7 +126,7 @@ import { useActiveShopCartsQuery } from '../composables/useActiveShopCartsQuery'
 import { useShopCartSelection } from '../composables/useShopCartSelection';
 import { useDropshipShopCartQuery } from '../composables/useDropshipShopCartQuery';
 import { useShopCartMutations } from '../composables/useShopCartMutations';
-import { shopDropshipReviewPath } from '../utils/catalogShop';
+import { shopDropshipPlaceOrderPath } from '../utils/catalogShop';
 import ShopCartHeader from '../components/ShopCartHeader.vue';
 import ShopCartSkeleton from '../components/ShopCartSkeleton.vue';
 import ShopDropshipCartItemCard from '../components/ShopDropshipCartItemCard.vue';
@@ -251,9 +251,10 @@ useDropshipOrderFlowLeaveGuard({
 const goToReview = () => {
   if (!selectedShopId.value || hasUnsavedEdits.value) return;
   void router.push(
-    shopDropshipReviewPath(
+    shopDropshipPlaceOrderPath(
       route.params.tenantSlug ? String(route.params.tenantSlug) : null,
       selectedShopId.value,
+      1,
     ),
   );
 };

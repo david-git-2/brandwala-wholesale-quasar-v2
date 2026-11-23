@@ -69,25 +69,28 @@ const shopRoutes: RouteRecordRaw[] = [
 
   {
     path: `/shop/:tenantSlug/dropship/review`,
-    component: () => import('layouts/ShopLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'shop-dropship-review-page',
-        component: () => import('src/modules/shop_order/pages/ShopDropshipReviewPage.vue'),
-        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_cart' }),
-      },
-    ],
+    redirect: (to) => ({
+      path: `/shop/${String(to.params.tenantSlug ?? '')}/dropship/place-order`,
+      query: { ...to.query, step: '2' },
+    }),
   },
 
   {
     path: `/shop/:tenantSlug/dropship/delivery`,
+    redirect: (to) => ({
+      path: `/shop/${String(to.params.tenantSlug ?? '')}/dropship/place-order`,
+      query: { ...to.query, step: '3' },
+    }),
+  },
+
+  {
+    path: `/shop/:tenantSlug/dropship/place-order`,
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
         path: '',
-        name: 'shop-dropship-delivery-page',
-        component: () => import('src/modules/shop_order/pages/ShopDropshipDeliveryPage.vue'),
+        name: 'shop-dropship-place-order-page',
+        component: () => import('src/modules/shop_order/pages/ShopDropshipPlaceOrderPage.vue'),
         beforeEnter: createShopAccessGuard({ requiredModule: 'shop_cart' }),
       },
     ],

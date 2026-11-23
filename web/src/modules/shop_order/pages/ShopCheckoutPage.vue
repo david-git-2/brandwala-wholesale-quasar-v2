@@ -436,7 +436,7 @@ import { showErrorNotification } from 'src/utils/appFeedback';
 import { fetchCourierChargeEstimate } from '../services/courierChargeEstimate';
 import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { getLastVisitedShopSlug } from '../utils/catalogShop';
+import { getLastVisitedShopSlug, shopCustomerOrderDetailRoute } from '../utils/catalogShop';
 import { customerCanSeeCartLinePrices } from '../utils/catalogPriceUtils';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 import {
@@ -825,8 +825,10 @@ const submitOrder = async () => {
     void queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.activeCarts(authStore.tenantId ?? 0),
     });
-    const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
-    void router.push(`${tenantSlug}/shop/orders/${res.data.order_id}`);
+    const tenantSlug = route.params.tenantSlug ? String(route.params.tenantSlug) : '';
+    void router.push(
+      shopCustomerOrderDetailRoute(tenantSlug, res.data.order_id, shopType.value ?? 'dropship'),
+    );
   }
 };
 

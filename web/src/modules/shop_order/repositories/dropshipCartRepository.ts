@@ -1,6 +1,7 @@
 import { supabase } from 'src/boot/supabase';
 import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
 import type { ShopCatalogPrice } from '../types';
+import type { DropshipCartDeliveryDetails } from '../utils/dropshipCartDeliveryDetails';
 
 export interface DropshipCartLineTotals {
   purchase_subtotal: number;
@@ -22,6 +23,9 @@ export interface DropshipCartItem {
   min_resell_price: ShopCatalogPrice;
   line_totals: DropshipCartLineTotals;
   is_resell_below_floor: boolean;
+  requested_resell_discount_price?: ShopCatalogPrice | null;
+  resell_discount_request_reason?: string | null;
+  resell_discount_requested_at?: string | null;
 }
 
 export interface DropshipCartTotals {
@@ -63,6 +67,7 @@ export interface DropshipCartData {
     };
     created_at: string;
     updated_at: string;
+    delivery_details?: DropshipCartDeliveryDetails;
   };
   permissions: CustomerShopPermissions | null;
   items: DropshipCartItem[];
@@ -174,8 +179,57 @@ const submitDropshipOrderFromCart = async (
   return data as SubmitDropshipOrderResult;
 };
 
+const submitResellDiscountRequest = async (
+  cartItemId: number,
+  requestedPrice: number,
+  reason: string,
+): Promise<DropshipReviewCartData> => {
+  const { data, error } = await supabase.rpc('submit_shop_cart_item_resell_discount_request', {
+    p_cart_item_id: cartItemId,
+    p_requested_price: requestedPrice,
+    p_reason: reason,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data as DropshipReviewCartData;
+};
+
+const updateDeliveryDetails = async (
+  shopId: number,
+  deliveryDetails: DropshipCartDeliveryDetails,
+): Promise<DropshipReviewCartData> => {
+  const { data, error } = await supabase.rpc('update_shop_cart_delivery_details', {
+    p_shop_id: shopId,
+    p_delivery_details: deliveryDetails,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data as DropshipReviewCartData;
+};
+
+const clearResellDiscountRequest = async (cartItemId: number): Promise<DropshipReviewCartData> => {
+  const { data, error } = await supabase.rpc('clear_shop_cart_item_resell_discount_request', {
+    p_cart_item_id: cartItemId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data as DropshipReviewCartData;
+};
+
 export const dropshipCartRepository = {
   getDropshipShopCart,
   getDropshipReviewCart,
   submitDropshipOrderFromCart,
+  submitResellDiscountRequest,
+  clearResellDiscountRequest,
+  updateDeliveryDetails,
 };

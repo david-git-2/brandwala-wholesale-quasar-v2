@@ -13,6 +13,21 @@
         <div class="text-caption text-grey-6 q-mt-xs">
           {{ $t('shop.dropship_courier_added_later') }}
         </div>
+        <div v-if="summary.hasPendingDiscount" class="dropship-review-summary__pending q-mt-sm">
+          <div class="row justify-between text-body2">
+            <span>{{ $t('shop.dropship_current_resell_total') }}</span>
+            <span class="tf-num text-grey-7">{{ formatMoney(summary.currentItemsTotal) }}</span>
+          </div>
+          <div class="row justify-between text-body2 q-mt-xs">
+            <span>{{ $t('shop.dropship_pending_discount_resell_total') }}</span>
+            <span class="text-weight-bold dropship-review-summary__pending-amount tf-num">
+              {{ formatMoney(summary.itemsTotal) }}
+            </span>
+          </div>
+          <div class="text-caption dropship-review-summary__pending-note q-mt-xs">
+            {{ $t('shop.dropship_resell_total_if_discount_accepted') }}
+          </div>
+        </div>
       </div>
 
       <div class="row q-col-gutter-sm items-stretch dropship-review-summary__actions">
@@ -55,6 +70,8 @@
 <script setup lang="ts">
 export interface DropshipReviewSummary {
   itemsTotal: number;
+  currentItemsTotal?: number;
+  hasPendingDiscount?: boolean;
   totalUnits: number;
   hasFloorViolation: boolean;
 }
@@ -91,6 +108,20 @@ const formatMoney = (amount: number) => {
   border-radius: 14px;
   background: #ffffff;
   box-shadow: 0 4px 12px rgba(34, 56, 101, 0.02);
+}
+
+.dropship-review-summary__pending {
+  padding-top: 8px;
+  border-top: 1px solid var(--tf-neutral-border, rgba(34, 56, 101, 0.08));
+}
+
+.dropship-review-summary__pending-amount {
+  color: color-mix(in srgb, var(--tf-warning) 75%, var(--tf-neutral-ink));
+}
+
+.dropship-review-summary__pending-note {
+  line-height: 1.35;
+  color: rgba(34, 56, 101, 0.58);
 }
 
 .dropship-review-summary__actions .q-btn {
