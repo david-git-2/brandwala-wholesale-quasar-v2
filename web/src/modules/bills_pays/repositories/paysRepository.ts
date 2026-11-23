@@ -45,7 +45,6 @@ export type PayListRow = {
   from_profile_name?: string | null;
   to_profile_name?: string | null;
   description?: string | null;
-  spine?: 'kernel' | 'desk';
   kernel_kind?: string | null;
   reverted_at?: string | null;
   revert_reason?: string | null;

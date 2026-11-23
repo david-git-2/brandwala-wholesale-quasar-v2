@@ -30,7 +30,6 @@
             <span class="profile-pay-detail-dialog__kind-chip">{{ kindLabel }}</span>
             <TfStatusBadge v-if="row.reverted_at" status="cancelled" label="Reverted" />
             <TfStatusBadge v-else-if="row.is_reversal" status="cancelled" label="Reversal" />
-            <TfStatusBadge v-else-if="deskPay?.voided_at" status="cancelled" label="Voided" />
           </div>
           <div class="text-body2 text-weight-medium">{{ fromToLine }}</div>
           <div class="text-caption text-grey-7 q-mt-xs">{{ summarySubtitle }}</div>
@@ -77,24 +76,6 @@
           </q-list>
         </section>
 
-        <section v-if="deskInstrumentRows.length">
-          <ProfilePayDetailSectionTitle
-            title="Payment lines"
-            caption="Split across methods (desk ledger)"
-          />
-          <q-list dense bordered separator class="rounded-borders profile-pay-detail-dialog__card">
-            <q-item v-for="(inst, i) in deskInstrumentRows" :key="`inst-${i}`" dense>
-              <q-item-section>
-                <q-item-label class="text-weight-medium">{{ inst.method }}</q-item-label>
-                <q-item-label v-if="inst.detail" caption>{{ inst.detail }}</q-item-label>
-              </q-item-section>
-              <q-item-section v-if="inst.amount" side class="tf-num text-weight-medium">
-                {{ inst.amount }}
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </section>
-
         <section v-if="allocationRows.length">
           <ProfilePayDetailSectionTitle title="Applied to bills" />
           <q-list dense bordered separator class="rounded-borders profile-pay-detail-dialog__card">
@@ -136,11 +117,10 @@ import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
 import ProfilePayDetailSection from './ProfilePayDetailSection.vue';
 import ProfilePayDetailSectionTitle from './ProfilePayDetailSectionTitle.vue';
-import { formatAmountBdt, formatBdtTaka, formatSettlementCurrencyAmount } from 'src/utils/currency';
+import { formatBdtTaka, formatSettlementCurrencyAmount } from 'src/utils/currency';
 import { cashbookRepository, type ProfileKernelPayDetail } from '../repositories/cashbookRepository';
-import { paysRepository, type PayDetail, type PayListRow } from '../repositories/paysRepository';
+import type { PayListRow } from '../repositories/paysRepository';
 import { cashbookQueryKeys } from '../services/cashbookQueryKeys';
-import { paysQueryKeys } from '../services/paysQueryKeys';
 import {
   payFromToLine,
   payIsInflowForProfile,
@@ -162,32 +142,21 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>();
 
 const row = computed(() => props.row);
-const isKernel = computed(() => props.row?.spine === 'kernel');
 const amountMode = computed(() => props.amountMode ?? 'original');
 
 const detailQuery = useQuery({
   queryKey: computed(() =>
-    isKernel.value
-      ? cashbookQueryKeys.profilePayDetail(props.operatingTenantId, props.row?.id ?? null, 'kernel')
-      : paysQueryKeys.detail(props.row?.id ?? null),
+    cashbookQueryKeys.profilePayDetail(props.operatingTenantId, props.row?.id ?? null),
   ),
   queryFn: async () => {
     const id = props.row?.id;
     if (id == null) throw new Error('Missing pay id.');
-    if (isKernel.value) {
-      return cashbookRepository.getProfileKernelPayDetail(props.operatingTenantId, id);
-    }
-    return paysRepository.getPayById(id);
+    return cashbookRepository.getProfileKernelPayDetail(props.operatingTenantId, id);
   },
   enabled: computed(() => props.modelValue && props.row != null),
 });
 
-const kernelPay = computed(() =>
-  isKernel.value ? (detailQuery.data.value as ProfileKernelPayDetail | undefined) : undefined,
-);
-const deskPay = computed(() =>
-  !isKernel.value ? (detailQuery.data.value as PayDetail | undefined) : undefined,
-);
+const kernelPay = computed(() => detailQuery.data.value as ProfileKernelPayDetail | undefined);
 
 const meta = computed(() => (kernelPay.value?.meta ?? {}) as Record<string, unknown>);
 
@@ -233,12 +202,7 @@ const amountToneClass = computed(() => {
 
 const booksAmountLine = computed(() => {
   const k = kernelPay.value;
-  if (!k) {
-    if (deskPay.value?.unallocated_amount && deskPay.value.unallocated_amount > 0) {
-      return `Unallocated ${formatAmountBdt(deskPay.value.unallocated_amount)}`;
-    }
-    return null;
-  }
+  if (!k) return null;
   if (k.currency_code.toUpperCase() === 'BDT') return null;
   return `Books total ${formatBdtTaka(k.books_amount)} @ ${k.books_rate} BDT/${k.currency_code}`;
 });
@@ -261,9 +225,6 @@ const howTheyPaidRows = computed((): DetailRow[] => {
   const instrumentRef = String(meta.value.instrument_reference ?? '').trim();
   if (instrumentRef) rows.push({ label: 'Cheque memo or trx ID', value: instrumentRef });
 
-  if (!isKernel.value && !rows.length && deskPay.value?.instruments.length) {
-    return [];
-  }
   return rows;
 });
 
@@ -335,36 +296,13 @@ const bundleRows = computed(() => {
   return out;
 });
 
-const deskInstrumentRows = computed(() => {
-  if (isKernel.value) return [];
-  return (deskPay.value?.instruments ?? []).map((inst) => {
-    const parts: string[] = [];
-    if (inst.bd_bank_name) parts.push(inst.bd_bank_name);
-    if (inst.cheque_number) parts.push(`Cheque ${inst.cheque_number}`);
-    if (inst.cheque_date) parts.push(inst.cheque_date);
-    if (inst.reference) parts.push(inst.reference);
-    return {
-      method: titleCase(inst.payment_method_code),
-      detail: parts.join(' · ') || undefined,
-      amount: formatAmountBdt(inst.amount),
-    };
-  });
-});
-
-const allocationRows = computed(() => {
-  if (kernelPay.value?.allocations?.length) {
-    return kernelPay.value.allocations.map((a) => ({
-      id: `k-${a.bill_id}`,
-      label: a.invoice_no || `Bill #${a.bill_id}`,
-      amount: formatAmountBdt(a.amount),
-    }));
-  }
-  return (deskPay.value?.allocations ?? []).map((a) => ({
-    id: `d-${a.id}`,
-    label: a.invoice_no || `Bill #${a.global_invoice_id}`,
-    amount: formatAmountBdt(a.amount),
-  }));
-});
+const allocationRows = computed(() =>
+  (kernelPay.value?.allocations ?? []).map((a) => ({
+    id: `k-${a.bill_id}`,
+    label: a.invoice_no || `Bill #${a.bill_id}`,
+    amount: formatBdtTaka(a.amount),
+  })),
+);
 
 const META_SHOW_KEYS = new Set([
   'source',

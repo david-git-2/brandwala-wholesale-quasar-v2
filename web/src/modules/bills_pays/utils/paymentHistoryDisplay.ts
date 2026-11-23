@@ -197,7 +197,6 @@ export function paymentHistoryEntryToPayListRow(
     settlement_currency_code: code,
     foreign_amount: entry.foreign_amount ?? null,
     exchange_rate: Number(entry.exchange_rate) || 1,
-    spine: entry.payment_source === 'kernel' ? 'kernel' : 'desk',
   };
 }
 

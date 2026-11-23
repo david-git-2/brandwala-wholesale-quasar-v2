@@ -502,6 +502,7 @@ import {
   billsRepository,
   type SalesInvoiceStockItem,
 } from '../repositories/billsRepository';
+import { listBillLinesForInvoice } from '../repositories/billLinesRepository';
 import BillStockSearch from '../components/BillStockSearch.vue';
 import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
 type ComposeLineKind = 'stock' | 'description' | 'charge';
@@ -636,13 +637,16 @@ const applySourcePlugFromBill = (bill: {
 };
 
 const refreshBillSourcePlug = async (billId: number) => {
-  const { data, error } = await supabase
-    .from('bills')
-    .select('source_type, source_id, source_key')
-    .eq('id', billId)
-    .maybeSingle();
-  if (error) throw error;
-  if (data) applySourcePlugFromBill(data);
+  try {
+    const data = (await billsRepository.getBillById(billId)) as {
+      source_type?: string | null;
+      source_id?: string | null;
+      source_key?: string | null;
+    } | null;
+    if (data) applySourcePlugFromBill(data);
+  } catch {
+    // ignore if bill cannot be refreshed
+  }
 };
 
 const onDocumentKindClick = (kind: BillDocumentKind) => {
@@ -655,14 +659,17 @@ const onDocumentKindClick = (kind: BillDocumentKind) => {
 
 watch(parentBillId, async (id) => {
   if (!id || documentKind.value === 'standard') return;
-  const { data, error } = await supabase
-    .from('bills')
-    .select('from_profile_id, to_profile_id, invoice_type')
-    .eq('id', id)
-    .maybeSingle();
-  if (error || !data) return;
-  if (data.from_profile_id) fromProfileId.value = data.from_profile_id;
-  if (data.to_profile_id) toProfileId.value = data.to_profile_id;
+  try {
+    const data = (await billsRepository.getBillById(id)) as {
+      from_profile_id?: number | null;
+      to_profile_id?: number | null;
+    } | null;
+    if (!data) return;
+    if (data.from_profile_id) fromProfileId.value = data.from_profile_id;
+    if (data.to_profile_id) toProfileId.value = data.to_profile_id;
+  } catch {
+    // ignore
+  }
 });
 
 const tenantSideProfileId = ref<number | null>(null);
@@ -914,24 +921,20 @@ const filterParentBills = async (val: string, update: (cb: () => void) => void) 
     return;
   }
   const needle = val.trim();
-  let query = supabase
-    .from('bills')
-    .select('id, invoice_no, invoice_date')
-    .eq('tenant_id', tenantId.value)
-    .eq('document_kind', 'standard')
-    .eq('invoice_status', 'issued')
-    .order('invoice_date', { ascending: false })
-    .limit(25);
-  if (needle) {
-    query = query.ilike('invoice_no', `%${needle}%`);
-  }
-  const { data } = await query;
+  const { data } = await supabase.rpc('rpc_query_bills', {
+    p_tenant_id: tenantId.value,
+    p_statuses: ['issued', 'partially_paid', 'paid'],
+    p_invoice_no: needle || undefined,
+    p_limit: 25,
+  });
+  const rows = ((data as { rows?: Array<Record<string, unknown>> } | null)?.rows ?? []).filter(
+    (r) => r.parent_bill_id == null,
+  );
   update(() => {
-    parentBillOptions.value =
-      (data ?? []).map((row) => ({
-        id: row.id,
-        label: `${row.invoice_no ?? `#${row.id}`} · ${row.invoice_date ?? ''}`,
-      })) ?? [];
+    parentBillOptions.value = rows.map((row) => ({
+      id: Number(row.bill_id),
+      label: `${row.invoice_no ?? `#${row.bill_id}`} · ${row.invoice_date ?? ''}`,
+    }));
   });
 };
 
@@ -1299,19 +1302,11 @@ const issueBill = async () => {
 const loadExisting = async (id: number) => {
   loadingExisting.value = true;
   try {
-    const [bill, items, rawLinesRes] = await Promise.all([
+    const [bill, items, rawLines] = await Promise.all([
       billsRepository.getBillById(id),
       billsRepository.listBillItems(id),
-      supabase
-        .from('bill_lines')
-        .select(
-          'id, line_kind, name_snapshot, quantity, sell_price_amount, line_discount_amount, line_meta',
-        )
-        .eq('invoice_id', id)
-        .order('id'),
+      listBillLinesForInvoice(id),
     ]);
-    if (rawLinesRes.error) throw rawLinesRes.error;
-    const rawLines = rawLinesRes.data ?? [];
     const stockItemById = new Map(items.map((item) => [item.id, item]));
     if (!['draft', 'proforma_generated'].includes(bill.invoice_status)) {
       const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
@@ -1348,15 +1343,17 @@ const loadExisting = async (id: number) => {
     documentKind.value = billRow.document_kind ?? 'standard';
     parentBillId.value = billRow.parent_bill_id ?? null;
     if (parentBillId.value) {
-      const { data: parentRow } = await supabase
-        .from('bills')
-        .select('invoice_no')
-        .eq('id', parentBillId.value)
-        .maybeSingle();
+      let parentInvoiceNo: string | null = null;
+      try {
+        const parentRow = await billsRepository.getBillById(parentBillId.value);
+        parentInvoiceNo = parentRow?.invoice_no?.trim() || null;
+      } catch {
+        parentInvoiceNo = null;
+      }
       parentBillOptions.value = [
         {
           id: parentBillId.value,
-          label: parentRow?.invoice_no?.trim() || `Bill #${parentBillId.value}`,
+          label: parentInvoiceNo || `Bill #${parentBillId.value}`,
         },
       ];
     }

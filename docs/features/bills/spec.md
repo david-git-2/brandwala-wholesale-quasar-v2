@@ -167,7 +167,7 @@ Cash invariants (I5, I7, …): [money/spec.md](../money/spec.md).
 | `sales_invoice_counters` | `invoice_no_counters` |
 | `bill_events` | **Drop** — use settlements + bill header |
 
-**Backfill:** [07-backfill-cutover.sql](07-backfill-cutover.sql). **SQL cutover notes:** `supabase/schemas/bills_pays/99_legacy_kernel_cutover.sql`.
+**Backfill:** [07-backfill-cutover.sql](07-backfill-cutover.sql).
 
 ---
 

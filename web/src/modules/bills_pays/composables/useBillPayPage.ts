@@ -2,7 +2,7 @@ import { computed, ref, type ComputedRef, type Ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useQueryClient } from '@tanstack/vue-query';
 import { billsQueryKeys } from '../services/billsQueryKeys';
-import type { BillDetailBundle } from 'src/modules/bills_pays/repositories/invoiceRepository';
+import type { BillDetailBundle } from 'src/modules/bills_pays/repositories/billsRepository';
 import { useBillPayCashbookLegsStore } from '../stores/billPayCashbookLegsStore';
 import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';

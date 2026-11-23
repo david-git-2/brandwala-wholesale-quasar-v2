@@ -646,7 +646,6 @@ export type ProfileKernelPayAllocation = {
 export type ProfileKernelPayDetail = {
   success: boolean;
   error?: string;
-  spine: 'kernel';
   id: number;
   kind: string;
   status: string;

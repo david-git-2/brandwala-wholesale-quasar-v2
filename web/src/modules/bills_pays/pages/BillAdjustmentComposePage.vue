@@ -176,15 +176,7 @@ const isStandardBill = computed(
 const isArStockInvoiceType = (invoiceType: string | null | undefined) =>
   invoiceType === 'wholesale' || invoiceType === 'retail' || invoiceType === 'dropship';
 const isApBill = computed(() => bill.value?.invoice_type === 'ap');
-const billSpine = computed((): 'legacy' | 'kernel' => {
-  const raw = bill.value as { spine?: string } | undefined;
-  return raw?.spine === 'kernel' ? 'kernel' : 'legacy';
-});
-const isWholesaleKernelBill = computed(() =>
-  isInvWsWholesaleBillCheck(
-    bill.value ? { ...bill.value, spine: billSpine.value } : null,
-  ),
-);
+const isWholesaleKernelBill = computed(() => isInvWsWholesaleBillCheck(bill.value ?? null));
 const parentDueAmount = computed(() => Number(bill.value?.due_amount ?? 0));
 
 const adjustmentRows = computed(

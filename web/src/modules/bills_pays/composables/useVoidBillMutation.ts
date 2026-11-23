@@ -8,7 +8,7 @@ export type VoidBillMutationInput = { reason?: string | null };
 
 export function useVoidBillMutation(
   billId: () => number | null,
-  options?: () => { tenantId?: number; spine?: 'legacy' | 'kernel' },
+  options?: () => { tenantId?: number },
 ) {
   const queryClient = useQueryClient();
 

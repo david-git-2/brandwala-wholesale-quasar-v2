@@ -22,7 +22,7 @@ check_paths() {
   fi
 }
 
-check_paths "supabase/schemas" supabase/schemas --glob '!public.sql.bak' --glob '!*.pre-so3'
+check_paths "supabase/schemas" supabase/schemas
 check_paths "supabase/tests" supabase/tests --glob '!no_parent_tenant_id.sql'
 check_paths "web/src" web/src --glob '!database.types.ts'
 

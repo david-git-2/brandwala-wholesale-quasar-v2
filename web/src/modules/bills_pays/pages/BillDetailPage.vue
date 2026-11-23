@@ -617,10 +617,6 @@ watch(billId, (id) => {
   if (id == null) payCashbookLegsStore.clear();
 });
 
-const billSpine = computed((): 'legacy' | 'kernel' => {
-  const raw = billFromBundle.value as { spine?: string } | undefined;
-  return raw?.spine === 'kernel' ? 'kernel' : 'legacy';
-});
 const { itemsQuery, billLinesQuery } = useBillDetailQuery(
   billId,
   billFromBundle,
@@ -630,7 +626,6 @@ const voidMutation = useVoidBillMutation(
   () => billId.value,
   () => ({
     tenantId: operatingTenantId.value,
-    spine: billSpine.value,
   }),
 );
 const patchBillDatesMutation = usePatchBillDatesMutation(() => billId.value);
@@ -953,10 +948,6 @@ const canVoid = computed(() => {
   const b = bill.value;
   if (!b || b.invoice_status === 'voided') return false;
   if (!isStandardBill.value) return false;
-  if (b.invoice_status === 'draft' || b.invoice_status === 'proforma_generated') return false;
-  if (billSpine.value === 'legacy') {
-    return b.invoice_status === 'issued' && Number(b.paid_amount ?? 0) === 0;
-  }
   if (b.invoice_status !== 'issued') return false;
   if (livePaymentHistoryEntries.value.length > 0 && !paymentsVoidAccess.value) {
     return false;
@@ -988,13 +979,7 @@ const canWriteOffApBill = computed(() => {
   return Number(b.due_amount ?? 0) > 0;
 });
 
-const isWholesaleKernelBill = computed(() =>
-  isInvWsWholesaleBillCheck(
-    bill.value
-      ? { ...bill.value, spine: billSpine.value }
-      : null,
-  ),
-);
+const isWholesaleKernelBill = computed(() => isInvWsWholesaleBillCheck(bill.value ?? null));
 
 const canWriteOffArBill = computed(() => {
   const b = bill.value;
@@ -1073,7 +1058,6 @@ const issueDeliveryCloseMutation = useMutation({
       }));
     await billsRepository.issueBill(id, {
       invoiceType: (b.invoice_type ?? 'wholesale') as 'wholesale' | 'retail' | 'ap',
-      spine: billSpine.value,
       tenantId: operatingTenantId.value,
       stockItems,
     });
@@ -1099,7 +1083,6 @@ const issueApDraftMutation = useMutation({
     if (id == null) throw new Error('Bill not loaded');
     await billsRepository.issueApBillFromDesk(id, {
       tenantId: operatingTenantId.value,
-      spine: billSpine.value,
     });
   },
   onSuccess: async () => {

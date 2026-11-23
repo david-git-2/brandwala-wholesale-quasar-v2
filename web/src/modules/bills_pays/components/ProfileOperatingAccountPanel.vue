@@ -402,7 +402,6 @@ function mapPayActivityRow(row: Record<string, unknown>): PayRow {
     to_profile_name: (row.to_profile_name as string | null) ?? null,
     description: (row.description as string | null) ?? null,
     perspective: (row.perspective as 'tenant' | 'party' | undefined) ?? payListPerspective.value,
-    spine: row.spine === 'kernel' ? 'kernel' : undefined,
     kernel_kind: (row.kernel_kind as string | null) ?? null,
     reverted_at: (row.reverted_at as string | null) ?? null,
     revert_reason: (row.revert_reason as string | null) ?? null,

@@ -6,24 +6,16 @@ This guide explains **what is confusing, why it looks like that, and what you sh
 
 ---
 
-## 1. `bills_pays` (Bridge / Legacy) vs. `money_kernel_v2`
+## 1. `bills_pays` & `money_kernel_v2`
 
-### Why it's confusing
-There are still **two** billing/payment layers coexisting in `bills_pays` and the database:
-
-1. **Legacy / Bridge layer (`bills_pays` + `public.bills` view with `spine: 'legacy' | 'kernel'`):**
-   - `web/src/modules/bills_pays/repositories/invoiceRepository.ts` (moved from the old `sales_invoice` module) is still wrapped by `billsRepository.ts` and queries `supabase.from('bills')` using legacy column names (`invoice_no`, `invoice_type`, `invoice_status`, `invoice_date`) and legacy foreign-key names (`tenants!global_invoices_issued_by_tenant_id_fkey`).
-   - `public.bills` and `public.bill_lines` are **no longer physical tables**—they were dropped and replaced by SQL compatibility `VIEW`s over `money_kernel.bills` (see `supabase/schemas/bills_pays/99_legacy_kernel_cutover.sql` and `20261119233000_retire_parent_tenant_id_columns.sql`).
-   - Frontend files like `billsRepository.ts`, `paysRepository.ts`, `BillDetailPage.vue`, `BillAdjustmentComposePage.vue`, and `ProfilePayDetailDialog.vue` still branch on `spine === 'kernel'` vs `'legacy'` (or `'desk'`).
-   - Legacy tables (`cashbook_entries`, `pay_allocations`, `pay_instruments`, `money_purposes`, `invoice_write_offs`, `sales_invoice_counters`) are marked `DEPRECATED` in `99_legacy_kernel_cutover.sql` with client `INSERT/UPDATE/DELETE` revoked.
-
-2. **`money_kernel_v2` (`money_kernel.*` schema):**
-   - The new source of truth for money lives in `supabase/schemas/money_kernel_v2/` and is called from `web/src/modules/bills_pays/repositories/moneyKernelRepository.ts` via RPCs listed in `moneyKernelTargets.ts` (`rpc_create_bill`, `rpc_issue_bill`, `rpc_pay_bill`, `rpc_pay_bills`, `rpc_deposit`, `rpc_withdraw`, etc.).
-   - Notice `moneyKernelRepository.ts` uses `const db = supabase as any;` because some RPCs/types aren't in generated `database.types.ts`.
+### How it works
+- **Single billing/payment layer (`money_kernel.*` schema):**
+  - The source of truth for money and bills lives in `supabase/schemas/money_kernel_v2/` (`money_kernel.bills`, `money_kernel.bill_lines`, `money_kernel.bill_settlements`, `money_kernel.pays`, `money_kernel.cash_bundles`, etc.).
+  - Frontend calls `billsRepository.ts` and `moneyKernelRepository.ts` via RPCs (`rpc_create_bill`, `rpc_issue_bill`, `rpc_pay_bill`, `rpc_pay_bills`, `rpc_query_bills`, `get_bill_detail_bundle`, `rpc_deposit`, `rpc_withdraw`, etc.).
+  - Notice `moneyKernelRepository.ts` uses `const db = supabase as any;` because some RPCs/types aren't in generated `database.types.ts`.
 
 ### Rule of thumb
-- For **new** money/billing features, use `bills_pays` + `money_kernel_v2` (`rpc_*` RPCs), **not** legacy tables like `cashbook_entries` / `pay_allocations`.
-- When reading `invoiceRepository.ts`, remember that `invoice_*` names are legacy terminology for **bills**.
+- For money/billing features, use `bills_pays` + `money_kernel_v2` (`rpc_*` RPCs).
 
 ---
 
@@ -44,7 +36,7 @@ Different modules represent, store, and format money in completely different way
     2. **Source currency** (the cashbook pot currency)
     3. **Books currency** (company ledger currency, usually `BDT`)
   - That's why `public.bills` has `currency_code`, `txn_currency_code`, `txn_total_amount`, and `books_exchange_rate`, and why `useBooksExchangeRateQuery.ts` fetches FX rates per `tenantId` + `quoteCurrencyCode`.
-- **Thrift has its own formatter:** `web/src/modules/thrift/currency/utils/formatMoney.ts`.
+- **Do not touch `web/src/modules/thrift/`:** It is self-contained with its own currency/formatting (`web/src/modules/thrift/currency/utils/formatMoney.ts`)—leave it as-is and avoid modifying it.
 
 ### Rule of thumb
 - Always ask: *"Is this amount in **purchase currency** (e.g. GBP/CNY), **settlement/transaction currency**, or **books currency** (BDT)?"*
@@ -55,8 +47,8 @@ Different modules represent, store, and format money in completely different way
 ## 3. Database Schema & Migrations Maze
 
 ### Why it's confusing
-- **`supabase/schemas/public.sql` is ~3 MB** (a giant monolithic dump) and sits next to backup files (`public.sql.bak`, `public.sql.pre-so3`).
-- **Partially split schemas:** `supabase/schemas/bills_pays/` contains 20+ organized `.sql` files, **but it is NOT listed in `schema_paths` in `supabase/config.toml`**. Right now `config.toml` only loads `_extensions.sql`, `public.sql`, `money_kernel_v2/*`, and `reporting/01_customer_report_rpcs.sql`.
+- **`supabase/schemas/public.sql` is ~3 MB** (a giant monolithic dump of the `public` schema).
+- **Partially split schemas:** `supabase/schemas/bills_pays/` contains ~30 `.sql` files, **but it is NOT listed in `schema_paths` in `supabase/config.toml`**. Right now `config.toml` only loads `_extensions.sql`, `public.sql`, `money_kernel_v2/*`, and `reporting/01_customer_report_rpcs.sql`.
 - **340+ migrations:** `supabase/migrations/` has over 340 files (including future-dated timestamps like `20261124...` and `20270918...` used as ordered sequence numbers), with many small hotfix/compat migrations layered on top of each other.
 
 ### Rule of thumb
@@ -93,5 +85,5 @@ It's often unclear which folder owns a feature because old and new versions sit 
 
 1. **Check the route first:** Look in `moduleRegistry.ts` to make sure you're working in the active module.
 2. **Use `tenant_id`:** Don't add new `parent_tenant_id` or company-hierarchy references.
-3. **Use the new money kernel:** For anything touching bills, payments, or cashbook, target `bills_pays` + `money_kernel_v2` (`rpc_*`), not legacy `cashbook_entries` / `pay_allocations`.
+3. **Use the money kernel:** For anything touching bills, payments, or cashbook, target `bills_pays` + `money_kernel_v2` (`rpc_*`).
 4. **Verify currency context:** Explicitly track whether a field is in **books currency (BDT)**, **purchase currency**, or **settlement currency**.

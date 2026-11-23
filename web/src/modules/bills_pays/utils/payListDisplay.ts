@@ -205,7 +205,6 @@ export function payTransactionSourceLabel(source: string): string {
 const KERNEL_REVERT_KINDS = new Set(['deposit', 'withdrawal', 'transfer']);
 
 export function payProfileKernelCanRevert(row: PayListRow): boolean {
-  if (row.spine !== 'kernel') return false;
   if (row.reverted_at) return false;
   if (row.is_reversal) return false;
   const kind = row.kernel_kind ?? row.source.replace(/^kernel_/, '');

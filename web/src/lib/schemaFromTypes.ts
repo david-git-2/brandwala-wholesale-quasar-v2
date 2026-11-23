@@ -98,8 +98,6 @@ export const SCHEMA_MODULES: { id: string; label: string; match: (name: string) 
       name === 'profiles' ||
       name.startsWith('billing_profile') ||
       name.startsWith('invoice_brands') ||
-      name.startsWith('invoice_write_offs') ||
-      name.startsWith('sales_invoice_counters') ||
       name.startsWith('courier_remittance_'),
   },
   {

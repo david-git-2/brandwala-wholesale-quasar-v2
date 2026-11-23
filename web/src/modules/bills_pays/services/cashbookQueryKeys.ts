@@ -28,6 +28,6 @@ export const cashbookQueryKeys = {
     kind: string,
   ) =>
     [...cashbookQueryKeys.root, 'profile_activity', tenantId ?? 0, entityType, entityId ?? 0, kind] as const,
-  profilePayDetail: (tenantId: number | null, paysId: number | null, spine: string) =>
-    [...cashbookQueryKeys.root, 'profile_pay_detail', tenantId ?? 0, paysId ?? 0, spine] as const,
+  profilePayDetail: (tenantId: number | null, paysId: number | null) =>
+    [...cashbookQueryKeys.root, 'profile_pay_detail', tenantId ?? 0, paysId ?? 0] as const,
 };

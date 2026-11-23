@@ -1,5 +1,3 @@
-export type BillListSpine = 'legacy' | 'kernel';
-
 export type BillListStatusSlug = 'draft' | 'due' | 'partial' | 'paid' | 'voided';
 
 export type BillToProfileTypeTab =
@@ -34,7 +32,6 @@ export type BillListRow = {
   ap_kind?: string | null;
   document_kind?: string | null;
   parent_bill_id?: number | null;
-  spine?: BillListSpine;
   kind?: string | null;
   list_status?: BillListStatusSlug;
 };

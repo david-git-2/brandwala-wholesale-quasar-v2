@@ -875,28 +875,11 @@ const deleteShipmentItemsBulk = async (
 };
 
 const checkShipmentInvoiceReferences = async (shipmentId: number): Promise<string[]> => {
-  // First get all items of this shipment
-  const items = await listShipmentItems(shipmentId);
-  if (!items.length) return [];
-
-  const itemIds = items.map((i) => i.id);
-  const { data, error } = await db
-    .from('bill_lines')
-    .select('invoice_id, sales_invoices:bills(invoice_no)')
-    .in('shipment_item_id', itemIds);
-
+  const { data, error } = await db.rpc('check_shipment_bill_references', {
+    p_shipment_id: shipmentId,
+  });
   if (error) throw error;
-
-  const invoiceNos = new Set<string>();
-  if (data) {
-    for (const row of data) {
-      const inv = row.sales_invoices as any;
-      if (inv && inv.invoice_no) {
-        invoiceNos.add(inv.invoice_no);
-      }
-    }
-  }
-  return Array.from(invoiceNos);
+  return Array.isArray(data) ? (data as string[]) : [];
 };
 
 const checkShipmentStockReferences = async (shipmentId: number): Promise<boolean> => {

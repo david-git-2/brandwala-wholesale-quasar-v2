@@ -1,6 +1,6 @@
 import { supabase } from 'src/boot/supabase';
 import type { BillDetailBundle } from 'src/modules/bills_pays/repositories/billsRepository';
-import { parseBillDetailBundleFromRpc } from 'src/modules/bills_pays/repositories/invoiceRepository';
+import { parseBillDetailBundleFromRpc } from 'src/modules/bills_pays/repositories/billsRepository';
 import type { BillNetBalances } from 'src/modules/bills_pays/types/billBalances';
 import {
   LEGACY_SHIPMENT_AP_KINDS,

@@ -54,15 +54,14 @@ export async function resolveShipmentIdsFromBillIds(billIds: number[]): Promise<
   const ids = [...new Set(billIds.filter((id) => Number.isFinite(id) && id > 0))];
   if (ids.length === 0) return [];
 
-  const { data, error } = await supabase
-    .from('bills')
-    .select('id, ap_shipment_id, source_type, source_id')
-    .in('id', ids);
+  const { data, error } = await (supabase as any).rpc('get_bills_source_plugs', {
+    p_bill_ids: ids,
+  });
 
   if (error) throw error;
 
   const shipmentIds = new Set<number>();
-  for (const row of data ?? []) {
+  for (const row of (data as unknown[]) ?? []) {
     const sid = shipmentIdFromBillPlug(row as BillShipmentPlug);
     if (sid != null) shipmentIds.add(sid);
   }

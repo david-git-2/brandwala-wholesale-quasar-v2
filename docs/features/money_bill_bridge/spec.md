@@ -147,7 +147,6 @@ Canonical ids: [bills_pays/tests.md](../bills_pays/tests.md) · golden SQL `supa
 | :--- | :--- | :--- | :--- | :--- |
 | BR1 | shipped | Pay dialog Phase 2 (top-up deposit) | `MoneyPayDialog` Add money panel | [§ Payment dialog](#payment-dialog) |
 | BR2 | shipped | `p_bundle_debits` on bill pay page | `BillPayPage` | [§ Payment dialog](#payment-dialog) |
-| BR3 | doc_wrong | Settlement recon vs legacy `pay_allocations` | Cutover | [§ Test matrix](#test-matrix) · `supabase/tests/` |
 
 ---
 

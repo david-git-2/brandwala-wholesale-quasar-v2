@@ -1,6 +1,6 @@
 import { computed, type ComputedRef, type Ref } from 'vue';
 import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
-import type { BillDetailBundle } from 'src/modules/bills_pays/repositories/invoiceRepository';
+import type { BillDetailBundle } from 'src/modules/bills_pays/repositories/billsRepository';
 import type { BillNetBalances } from '../types/billBalances';
 import { apBillDueStoresForeignFace } from '../utils/apBillBooks';
 import { apBillCurrencyBalances, apBillPaperCurrencyCode } from '../utils/parseApBillPaper';

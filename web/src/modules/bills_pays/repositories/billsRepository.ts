@@ -1,18 +1,13 @@
 import { supabase } from 'src/boot/supabase';
-import {
-  invoiceRepository,
-  type BillDetailBundle,
-  type CreateInvoiceBrandInput,
-  type InvoiceBrand,
-  type ListGlobalInvoicesParams,
-  type PaginatedGlobalInvoices,
-  type SalesInvoiceFromPayloadInput,
-  type SalesInvoiceFromPayloadResult,
-  type SalesInvoicePayloadItem,
-  type SalesInvoiceStockItem,
-  type SalesInvoiceUpdatePayloadInput,
-} from 'src/modules/bills_pays/repositories/invoiceRepository';
-import type { GlobalInvoiceDetail } from 'src/modules/bills_pays/types/invoice';
+import type { GlobalStockCostingInput } from 'src/modules/global/types';
+import type {
+  GlobalInvoiceDetail,
+  GlobalInvoiceItemRow,
+  GlobalInvoiceRow,
+  InvoicePaymentHistoryEntry,
+} from 'src/modules/bills_pays/types/invoice';
+import type { BillPayCashbookLegs } from 'src/modules/bills_pays/types/billPayCashbookLegs';
+import { parseBillPayCashbookLegsFromRpc } from 'src/modules/bills_pays/types/billPayCashbookLegs';
 import type {
   BillListRow,
   BillsListPageCursor,
@@ -25,22 +20,163 @@ import {
   buildKernelUpdateDraftPayload,
 } from '../utils/kernelComposeBillPayload';
 
+export type ListBillsParams = {
+  tenantId?: number | null;
+  createdBy?: string | null;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  paymentStatus?: string | null;
+  invoiceStatus?: string | null;
+  invoiceType?: string | null;
+  retailBillingMode?: 'account' | 'direct' | null;
+  fromDate?: string | null;
+  toDate?: string | null;
+  quickFilter?: 'all' | 'paid' | 'unpaid';
+  profileId?: number | null;
+  arSide?: 'they_owe' | 'we_owe';
+};
+
+export type PaginatedBills = {
+  data: GlobalInvoiceRow[];
+  total: number;
+};
+
+export type BillPayloadItem = {
+  id?: number;
+  global_stock_id?: number | null;
+  line_kind?: 'stock' | 'service' | 'charge' | 'adjustment';
+  name_snapshot?: string;
+  quantity: number;
+  sell_price_amount: number;
+  line_discount_amount?: number;
+  line_meta?: Record<string, unknown>;
+};
+
+export type BillFromPayloadInput = {
+  invoice: {
+    invoice_no?: string;
+    invoice_type: string;
+    profile_id: number | null;
+    from_profile_id?: number | null;
+    to_profile_id?: number | null;
+    settlement_kind?: 'cash' | 'credit' | 'custody' | null;
+    document_kind?: 'standard' | 'credit_note' | 'debit_note';
+    parent_bill_id?: number | null;
+    source_type?: string | null;
+    source_id?: string | null;
+    source_key?: string | null;
+    recipient_profile_id?: number | null;
+    recipient_name?: string | null;
+    recipient_phone?: string | null;
+    recipient_address?: string | null;
+    retail_billing_mode?: 'account' | 'direct' | null;
+    due_date?: string | null;
+    invoice_date?: string | null;
+    note?: string | null;
+    discount_amount?: number | null;
+    shipping_charge?: number | null;
+    cod_charge_amount?: number | null;
+    wrapping_charge?: number | null;
+    print_charge?: number | null;
+    channel_meta?: Record<string, unknown> | null;
+  };
+  items: BillPayloadItem[];
+  issue?: boolean;
+};
+
+export type BillFromPayloadResult = {
+  success: boolean;
+  invoice_id?: number;
+  invoice_no?: string;
+  invoice_status?: string;
+  payment_status?: string;
+  total_amount?: number;
+  due_amount?: number;
+  paid_amount?: number;
+  error?: string;
+};
+
+export type BillUpdatePayloadInput = {
+  invoice?: Partial<BillFromPayloadInput['invoice']>;
+  items?: BillPayloadItem[];
+  remove_item_ids?: number[];
+  options?: { recompute_totals?: boolean };
+};
+
+export type BillStockItem = {
+  global_stock_id: number;
+  shipment_item_id: number;
+  product_id: number | null;
+  name: string;
+  barcode: string | null;
+  product_code: string | null;
+  image_url: string | null;
+  quantity: number;
+  available_atp: number;
+  unit_cost_price: number;
+  suggested_sell_price: number;
+  shipment_id: number;
+  shipment_name: string;
+  holding_tenant_id: number;
+  holding_tenant_name: string;
+  is_allocated_to_tenant: boolean;
+  allocation_rank: number;
+  location_id: number | null;
+  location_name: string | null;
+  stock_created_at: string;
+};
+
+export type BillBrand = {
+  id: number;
+  tenant_id: number;
+  name: string;
+  address: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type CreateBillBrandInput = Omit<BillBrand, 'id' | 'created_at' | 'updated_at'>;
+
+export type BillDetailBundleLine = {
+  id: number;
+  name_snapshot: string;
+  currency_code: string;
+  line_total_amount: number;
+  books_amount: number;
+  quantity: number;
+  sell_price_amount?: number | null;
+  global_stock_id?: number | null;
+  product_id?: number | null;
+  shipment_item_id?: number | null;
+  shipment_id?: number | null;
+};
+
+export type BillDetailBundle = {
+  bill: GlobalInvoiceDetail;
+  paymentHistory: InvoicePaymentHistoryEntry[];
+  netBalances: Record<string, unknown>;
+  adjustments: Record<string, unknown>[];
+  stockItems: GlobalInvoiceItemRow[];
+  billLines: BillDetailBundleLine[];
+  payCashbookLegs: BillPayCashbookLegs | null;
+};
+
+// Re-export legacy type aliases for callers migrating gradually
 export type {
-  BillDetailBundle,
-  CreateInvoiceBrandInput,
-  InvoiceBrand,
-  ListGlobalInvoicesParams,
-  PaginatedGlobalInvoices,
-  SalesInvoiceFromPayloadInput,
-  SalesInvoiceFromPayloadResult,
-  SalesInvoicePayloadItem,
-  SalesInvoiceStockItem,
-  SalesInvoiceUpdatePayloadInput,
+  ListBillsParams as ListGlobalInvoicesParams,
+  PaginatedBills as PaginatedGlobalInvoices,
+  BillFromPayloadInput as SalesInvoiceFromPayloadInput,
+  BillFromPayloadResult as SalesInvoiceFromPayloadResult,
+  BillPayloadItem as SalesInvoicePayloadItem,
+  BillStockItem as SalesInvoiceStockItem,
+  BillUpdatePayloadInput as SalesInvoiceUpdatePayloadInput,
+  BillBrand as InvoiceBrand,
+  CreateBillBrandInput as CreateInvoiceBrandInput,
 };
 
 export type IssueBillOptions = {
   invoiceType: 'wholesale' | 'retail' | 'ap' | string;
-  spine?: 'legacy' | 'kernel';
   tenantId?: number;
   stockItems?: Array<{
     id?: number;
@@ -50,8 +186,128 @@ export type IssueBillOptions = {
   }>;
 };
 
-const parsePayloadRpcResult = (data: unknown): SalesInvoiceFromPayloadResult => {
-  const result = (data ?? {}) as SalesInvoiceFromPayloadResult;
+const AP_KINDS = ['shipment_cost_ap', 'dropship_courier_ap'];
+const AR_KINDS = [
+  'sales_invoice_wholesale',
+  'sales_invoice_retail',
+  'sales_invoice_dropship',
+  'dropship_courier_ar',
+];
+
+function kindToInvoiceType(kind: string | null | undefined): string {
+  switch (kind) {
+    case 'shipment_cost_ap':
+    case 'dropship_courier_ap':
+      return 'ap';
+    case 'sales_invoice_retail':
+      return 'retail';
+    case 'sales_invoice_dropship':
+    case 'dropship_courier_ar':
+      return 'dropship';
+    case 'sales_invoice_wholesale':
+    default:
+      return 'wholesale';
+  }
+}
+
+function resolveQueryKinds(params: ListBillsParams): string[] | undefined {
+  if (params.arSide === 'we_owe' || params.invoiceType === 'ap') return AP_KINDS;
+  if (params.invoiceType === 'wholesale') return ['sales_invoice_wholesale'];
+  if (params.invoiceType === 'retail' || params.retailBillingMode) return ['sales_invoice_retail'];
+  if (params.invoiceType === 'dropship') return ['sales_invoice_dropship', 'dropship_courier_ar'];
+  if (params.arSide === 'they_owe') return AR_KINDS;
+  return undefined;
+}
+
+const mapListBillItemRow = (row: any): GlobalInvoiceItemRow => {
+  const shipmentItemId = row.shipment_item_id ? Number(row.shipment_item_id) : null;
+  const shipmentId = row.shipment_id ? Number(row.shipment_id) : null;
+  const shipmentType = row.shipment_type;
+
+  const hasCosting =
+    shipmentItemId !== null &&
+    shipmentId !== null &&
+    (shipmentType === 'local' ||
+      shipmentType === 'international' ||
+      shipmentType === 'transfer');
+
+  const costing: GlobalStockCostingInput | null = hasCosting
+    ? {
+        shipment_id: shipmentId,
+        shipment_item_id: shipmentItemId,
+        purchase_price: Number(row.purchase_price ?? 0),
+        product_weight: Number(row.product_weight ?? 0),
+        package_weight: Number(row.package_weight ?? 0),
+        ordered_quantity: Number(row.ordered_quantity ?? 0),
+        shipment_type: shipmentType as 'international' | 'local' | 'transfer',
+        received_weight: row.received_weight == null ? null : Number(row.received_weight),
+        landed_cost_bdt:
+          row.landed_cost_bdt == null || row.landed_cost_bdt === undefined
+            ? null
+            : Number(row.landed_cost_bdt),
+      }
+    : null;
+
+  return {
+    id: Number(row.id),
+    invoice_id: Number(row.invoice_id),
+    global_stock_id: row.global_stock_id == null ? 0 : Number(row.global_stock_id),
+    name_snapshot: row.name_snapshot,
+    quantity: Number(row.quantity),
+    sell_price_amount: Number(row.sell_price_amount),
+    line_discount_amount: Number(row.line_discount_amount),
+    line_total_amount: Number(row.line_total_amount),
+    return_quantity: Number(row.return_quantity),
+    available_atp: row.available_atp == null ? null : Number(row.available_atp),
+    unit_cost_price: row.unit_cost_price == null ? null : Number(row.unit_cost_price),
+    costing,
+    image_url: row.image_url || null,
+    shipment_item_id: shipmentItemId,
+    shipment_id: shipmentId,
+  };
+};
+
+export function parseBillDetailBundleFromRpc(data: unknown): BillDetailBundle {
+  const raw = (data ?? {}) as Record<string, unknown>;
+  const stockRaw = raw.stock_items;
+  const stockItems = Array.isArray(stockRaw)
+    ? stockRaw.map((row) => mapListBillItemRow(row))
+    : [];
+  const linesRaw = raw.bill_lines;
+  const billLines = Array.isArray(linesRaw)
+    ? linesRaw.map((row) => {
+        const r = row as Record<string, unknown>;
+        return {
+          id: Number(r.id),
+          name_snapshot: String(r.name_snapshot ?? 'Line'),
+          currency_code: String(r.currency_code ?? 'BDT').toUpperCase(),
+          line_total_amount: Number(r.line_total_amount ?? 0),
+          books_amount: Number(r.books_amount ?? r.line_total_amount ?? 0),
+          quantity: Number(r.quantity ?? 1),
+          sell_price_amount:
+            r.sell_price_amount == null ? null : Number(r.sell_price_amount),
+          global_stock_id:
+            r.global_stock_id == null ? null : Number(r.global_stock_id),
+          product_id: r.product_id == null ? null : Number(r.product_id),
+          shipment_item_id:
+            r.shipment_item_id == null ? null : Number(r.shipment_item_id),
+          shipment_id: r.shipment_id == null ? null : Number(r.shipment_id),
+        };
+      })
+    : [];
+  return {
+    bill: raw.bill as GlobalInvoiceDetail,
+    paymentHistory: (raw.payment_history as InvoicePaymentHistoryEntry[] | null) ?? [],
+    netBalances: (raw.net_balances as Record<string, unknown>) ?? {},
+    adjustments: (raw.adjustments as Record<string, unknown>[] | null) ?? [],
+    stockItems,
+    billLines,
+    payCashbookLegs: parseBillPayCashbookLegsFromRpc(raw.pay_cashbook_legs),
+  };
+}
+
+const parsePayloadRpcResult = (data: unknown): BillFromPayloadResult => {
+  const result = (data ?? {}) as BillFromPayloadResult;
   if (!result.success) {
     throw new Error(result.error || 'Bill payload RPC failed');
   }
@@ -66,7 +322,7 @@ const billRowToPayloadResult = (row: {
   total_amount: number;
   due_amount: number;
   paid_amount: number;
-}): SalesInvoiceFromPayloadResult => ({
+}): BillFromPayloadResult => ({
   success: true,
   invoice_id: row.id,
   invoice_no: row.invoice_no,
@@ -77,8 +333,85 @@ const billRowToPayloadResult = (row: {
   paid_amount: row.paid_amount,
 });
 
-const listBills = (params: ListGlobalInvoicesParams) =>
-  invoiceRepository.listGlobalInvoices(params);
+const listBills = async (params: ListBillsParams): Promise<PaginatedBills> => {
+  if (!params.tenantId) {
+    return { data: [], total: 0 };
+  }
+
+  const statuses =
+    params.invoiceStatus === 'issued'
+      ? ['issued', 'partially_paid']
+      : params.invoiceStatus === 'draft'
+        ? ['draft']
+        : params.invoiceStatus
+          ? [params.invoiceStatus]
+          : undefined;
+
+  const hasDue =
+    params.quickFilter === 'unpaid'
+      ? true
+      : params.quickFilter === 'paid'
+        ? false
+        : undefined;
+
+  const { data, error } = await supabase.rpc('rpc_query_bills', {
+    p_tenant_id: params.tenantId,
+    p_kinds: resolveQueryKinds(params),
+    p_statuses: statuses,
+    p_counterparty_profile_id: params.profileId ?? undefined,
+    p_from_date: params.fromDate ?? undefined,
+    p_to_date: params.toDate ?? undefined,
+    p_has_due: hasDue,
+    p_include_voided: params.invoiceStatus === 'voided',
+    p_limit: params.pageSize ?? 50,
+  });
+  if (error) throw error;
+
+  const payload = (data ?? {}) as { rows?: Array<Record<string, unknown>> };
+  const rawRows = Array.isArray(payload.rows) ? payload.rows : [];
+
+  const rows: GlobalInvoiceRow[] = rawRows.map((r) => {
+    const meta = (r.meta ?? {}) as Record<string, unknown>;
+    const due = Number(r.due_amount ?? 0);
+    const paid = Number(r.paid_amount ?? 0);
+    const status = String(r.status ?? 'draft');
+    const paymentStatus =
+      status === 'voided'
+        ? 'voided'
+        : status === 'draft'
+          ? 'draft'
+          : due <= 0
+            ? 'paid'
+            : paid > 0
+              ? 'partially_paid'
+              : 'due';
+    const orderNo = typeof meta.order_no === 'string' ? meta.order_no.trim() : '';
+    return {
+      id: Number(r.bill_id),
+      tenant_id: Number(r.tenant_id),
+      issued_by_tenant_id: Number(r.tenant_id),
+      invoice_no: String(r.invoice_no ?? `DRAFT-${r.bill_id}`),
+      invoice_type: kindToInvoiceType(r.kind as string | null),
+      invoice_status: status === 'partially_paid' ? 'issued' : status,
+      payment_status: paymentStatus,
+      invoice_date: String(r.invoice_date ?? ''),
+      due_date: (r.due_date as string | null) ?? null,
+      total_amount: Number(r.total_amount ?? 0),
+      due_amount: due,
+      paid_amount: paid,
+      profile_id: r.counterparty_profile_id == null ? null : Number(r.counterparty_profile_id),
+      shop_order_id: meta.shop_order_id == null ? null : Number(meta.shop_order_id),
+      retail_billing_mode: (meta.retail_billing_mode as 'account' | 'direct' | null) ?? null,
+      channel_meta: meta,
+      recipient_name: typeof meta.recipient_name === 'string' ? meta.recipient_name : null,
+      created_by: null,
+      created_at: String(r.created_at ?? ''),
+      source_context_label: orderNo ? `Order ${orderNo}` : null,
+    } as GlobalInvoiceRow;
+  });
+
+  return { data: rows, total: rows.length };
+};
 
 const listBillsPage = async (
   params: ListBillsDeskPageParams,
@@ -118,15 +451,52 @@ const listBillsPage = async (
   };
 };
 
-const getBillById = (billId: number) => invoiceRepository.getGlobalInvoiceById(billId);
+const getBillById = async (billId: number): Promise<GlobalInvoiceDetail> => {
+  const { data, error } = await supabase.rpc('get_bill_desk_row', {
+    p_bill_id: billId,
+  });
+  if (error) throw error;
+  if (!data || typeof data !== 'object') {
+    throw new Error('Bill not found');
+  }
+  return data as GlobalInvoiceDetail;
+};
 
-const getBillDetailBundle = (params: { tenantId: number; billId: number }) =>
-  invoiceRepository.getBillDetailBundle(params);
+const getBillDetailBundle = async (params: {
+  tenantId: number;
+  billId: number;
+}): Promise<BillDetailBundle> => {
+  const { data, error } = await supabase.rpc('get_bill_detail_bundle', {
+    p_tenant_id: params.tenantId,
+    p_bill_id: params.billId,
+  });
+  if (error) throw error;
+  return parseBillDetailBundleFromRpc(data);
+};
 
-const listBillItems = (billId: number) => invoiceRepository.listGlobalInvoiceItems(billId);
+const listBillItems = async (billId: number): Promise<GlobalInvoiceItemRow[]> => {
+  const { data, error } = await supabase.rpc('list_global_invoice_items', {
+    p_invoice_id: billId,
+  });
+  if (error) throw error;
+  return ((data as any[]) ?? []).map(mapListBillItemRow);
+};
 
-const searchBillStock = (params: Parameters<typeof invoiceRepository.searchSalesInvoiceStock>[0]) =>
-  invoiceRepository.searchSalesInvoiceStock(params);
+const searchBillStock = async (params: {
+  tenantId: number;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<BillStockItem[]> => {
+  const { data, error } = await supabase.rpc('search_sales_invoice_stock', {
+    p_tenant_id: params.tenantId,
+    p_search: params.search?.trim() ? params.search.trim() : undefined,
+    p_limit: params.limit ?? 50,
+    p_offset: params.offset ?? 0,
+  });
+  if (error) throw error;
+  return (data || []) as BillStockItem[];
+};
 
 const kernelCreateResultToPayload = (data: {
   bill_id?: number;
@@ -134,7 +504,7 @@ const kernelCreateResultToPayload = (data: {
   status?: string;
   total_amount?: number;
   due_amount?: number;
-}): SalesInvoiceFromPayloadResult => ({
+}): BillFromPayloadResult => ({
   success: true,
   invoice_id: data.bill_id,
   invoice_no: data.invoice_no,
@@ -147,9 +517,9 @@ const kernelCreateResultToPayload = (data: {
 
 const upsertKernelComposeDraft = async (
   tenantId: number,
-  payload: SalesInvoiceFromPayloadInput,
+  payload: BillFromPayloadInput,
   autoIssue: boolean,
-): Promise<SalesInvoiceFromPayloadResult> => {
+): Promise<BillFromPayloadResult> => {
   const body = buildKernelCreateBillPayload(tenantId, payload, { autoIssue });
   const created = await moneyKernelRepository.createBill(body);
   if (!created.bill_id) throw new Error(created.error ?? 'rpc_create_bill failed');
@@ -163,8 +533,8 @@ const upsertKernelComposeDraft = async (
 const updateKernelComposeDraft = async (
   tenantId: number,
   billId: number,
-  payload: SalesInvoiceUpdatePayloadInput,
-): Promise<SalesInvoiceFromPayloadResult> => {
+  payload: BillUpdatePayloadInput,
+): Promise<BillFromPayloadResult> => {
   const body = buildKernelUpdateDraftPayload({
     invoice: {
       invoice_type: 'wholesale',
@@ -190,9 +560,9 @@ const issueKernelComposeBill = async (tenantId: number, billId: number) => {
 
 const upsertDraftBill = async (
   tenantId: number,
-  payload: SalesInvoiceFromPayloadInput,
-): Promise<SalesInvoiceFromPayloadResult> => {
-const body = {
+  payload: BillFromPayloadInput,
+): Promise<BillFromPayloadResult> => {
+  const body = {
     tenant_id: tenantId,
     adapter: 'compose' as const,
     ...payload,
@@ -209,8 +579,8 @@ const body = {
 const updateDraftBill = async (
   tenantId: number,
   billId: number,
-  payload: SalesInvoiceUpdatePayloadInput,
-): Promise<SalesInvoiceFromPayloadResult> => {
+  payload: BillUpdatePayloadInput,
+): Promise<BillFromPayloadResult> => {
   const { data, error } = await supabase.rpc('update_draft_bill', {
     p_tenant_id: tenantId,
     p_bill_id: billId,
@@ -222,17 +592,12 @@ const updateDraftBill = async (
 
 const issueApBillFromDesk = async (
   billId: number,
-  options?: { tenantId?: number; spine?: 'legacy' | 'kernel' },
+  options: { tenantId: number },
 ): Promise<void> => {
-  if (options?.spine === 'kernel' && options.tenantId) {
-    const { error } = await supabase.rpc('rpc_issue_bill', {
-      p_tenant_id: options.tenantId,
-      p_bill_id: billId,
-    });
-    if (error) throw error;
-    return;
-  }
-  const { error } = await supabase.rpc('issue_ap_bill_from_desk', { p_bill_id: billId });
+  const { error } = await supabase.rpc('rpc_issue_bill', {
+    p_tenant_id: options.tenantId,
+    p_bill_id: billId,
+  });
   if (error) throw error;
 };
 
@@ -272,7 +637,7 @@ const issueBill = async (billId: number, options: IssueBillOptions): Promise<voi
     (options.stockItems?.length ?? 0) > 0 &&
     options.stockItems!.some((i) => i.global_stock_id > 0 && i.quantity > 0);
 
-  if (options.spine === 'kernel' && (type === 'wholesale' || type === 'dropship')) {
+  if (type === 'wholesale' || type === 'dropship') {
     const { error } = await supabase.rpc('issue_wholesale_bill', {
       p_bill_id: billId,
       p_items: hasStock
@@ -283,11 +648,8 @@ const issueBill = async (billId: number, options: IssueBillOptions): Promise<voi
     return;
   }
 
-  if (options.spine === 'kernel' && type === 'ap' && options.tenantId) {
-    await issueApBillFromDesk(billId, {
-      spine: 'kernel',
-      tenantId: options.tenantId,
-    });
+  if (type === 'ap' && options.tenantId) {
+    await issueApBillFromDesk(billId, { tenantId: options.tenantId });
     return;
   }
 
@@ -297,12 +659,8 @@ const issueBill = async (billId: number, options: IssueBillOptions): Promise<voi
     return;
   }
 
-  if (type === 'wholesale' && hasStock) {
-    const { error } = await supabase.rpc('issue_wholesale_bill', {
-      p_bill_id: billId,
-      p_items: (options.stockItems ?? null) as unknown as Record<string, unknown>,
-    });
-    if (error) throw error;
+  if (options.tenantId) {
+    await moneyKernelRepository.issueBill(options.tenantId, billId);
     return;
   }
 
@@ -312,19 +670,17 @@ const issueBill = async (billId: number, options: IssueBillOptions): Promise<voi
 
 const voidBill = async (
   billId: number,
-  options?: { tenantId?: number; spine?: 'legacy' | 'kernel'; reason?: string | null },
+  options?: { tenantId?: number; reason?: string | null },
 ): Promise<void> => {
-  if (options?.spine === 'kernel' && options.tenantId) {
-    await moneyKernelRepository.voidKernelBill(
-      options.tenantId,
-      billId,
-      options.reason ?? null,
-      true,
-    );
-    return;
+  if (!options?.tenantId) {
+    throw new Error('Tenant is required to void a bill.');
   }
-  const { error } = await supabase.rpc('void_bill', { p_bill_id: billId });
-  if (error) throw error;
+  await moneyKernelRepository.voidKernelBill(
+    options.tenantId,
+    billId,
+    options.reason ?? null,
+    true,
+  );
 };
 
 const applySettlementToBill = async (payload: {
@@ -353,12 +709,53 @@ const applySettlementToBill = async (payload: {
   return data;
 };
 
-const deleteDraftBill = (billId: number) => invoiceRepository.deleteGlobalInvoice(billId);
+const deleteDraftBill = async (billId: number): Promise<void> => {
+  const { error } = await supabase.rpc('delete_draft_bill_from_desk', {
+    p_bill_id: billId,
+  });
+  if (error) throw error;
+};
 
-const listBillBrands = invoiceRepository.listInvoiceBrands;
-const createBillBrand = invoiceRepository.createInvoiceBrand;
-const updateBillBrand = invoiceRepository.updateInvoiceBrand;
-const deleteBillBrand = invoiceRepository.deleteInvoiceBrand;
+const listBillBrands = async (
+  payload: { tenant_id?: number } = {},
+): Promise<(BillBrand & { tenants?: { name: string } })[]> => {
+  let query = supabase.from('invoice_brands').select('*, tenants(name)');
+  if (typeof payload.tenant_id === 'number') {
+    query = query.eq('tenant_id', payload.tenant_id);
+  }
+  const { data, error } = await query.order('name', { ascending: true });
+  if (error) throw error;
+  return (data || []) as (BillBrand & { tenants?: { name: string } })[];
+};
+
+const createBillBrand = async (payload: CreateBillBrandInput): Promise<BillBrand> => {
+  const { data, error } = await supabase
+    .from('invoice_brands')
+    .insert([payload])
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as BillBrand;
+};
+
+const updateBillBrand = async (payload: {
+  id: number;
+  patch: Partial<Omit<BillBrand, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>>;
+}): Promise<BillBrand> => {
+  const { data, error } = await supabase
+    .from('invoice_brands')
+    .update(payload.patch)
+    .eq('id', payload.id)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as BillBrand;
+};
+
+const deleteBillBrand = async (payload: { id: number }): Promise<void> => {
+  const { error } = await supabase.from('invoice_brands').delete().eq('id', payload.id);
+  if (error) throw error;
+};
 
 const listBillsForSource = async (params: {
   tenantId: number;
