@@ -101,8 +101,11 @@
                       {{ $t(customerShopTypeI18nKey(shop.shop_type)) }}
                     </span>
                   </div>
-                  <div class="shop-home-shop-card__context">
-                    {{ shopSummaryText(shop.id) }}
+                  <div
+                    v-if="cartItemsForShop(shop.id) === 0 && pendingOrdersForShop(shop.id) === 0"
+                    class="shop-home-shop-card__context"
+                  >
+                    {{ $t('customer_dashboard.shop_idle_context') }}
                   </div>
                 </div>
               </div>
@@ -127,23 +130,10 @@
             </div>
 
             <div
-              v-if="cartItemsForShop(shop.id) > 0 || pendingOrdersForShop(shop.id) > 0"
+              v-if="pendingOrdersForShop(shop.id) > 0"
               class="shop-home-shop-card__chips q-mt-sm"
             >
               <button
-                v-if="cartItemsForShop(shop.id) > 0"
-                type="button"
-                class="shop-home-status-chip shop-home-status-chip--cart"
-                data-test="shop-chip-cart"
-                @click.stop="$emit('resume-cart', shop)"
-                @keydown.enter.stop
-                @keydown.space.stop
-              >
-                <q-icon name="ph ph-shopping-cart-simple" size="13px" />
-                <span>{{ cartItemsLabel(shop.id) }}</span>
-              </button>
-              <button
-                v-if="pendingOrdersForShop(shop.id) > 0"
                 type="button"
                 class="shop-home-status-chip"
                 data-test="shop-chip-orders"
@@ -215,22 +205,6 @@ const formatCount = (value?: number | null) => {
 
 const cartItemsForShop = (shopId: number) => props.shopStats?.[shopId]?.cartItems ?? 0;
 const pendingOrdersForShop = (shopId: number) => props.shopStats?.[shopId]?.pendingOrders ?? 0;
-
-const shopSummaryText = (shopId: number) => {
-  const pending = pendingOrdersForShop(shopId);
-  const cart = cartItemsForShop(shopId);
-  if (pending === 0 && cart === 0) {
-    return t('customer_dashboard.shop_idle_context');
-  }
-  return t('customer_dashboard.shop_context_line', { pending, cart });
-};
-
-const cartItemsLabel = (shopId: number) => {
-  const count = cartItemsForShop(shopId);
-  return count === 1
-    ? t('customer_dashboard.cart_item_one')
-    : t('customer_dashboard.cart_items', { count });
-};
 
 const pendingOrdersLabel = (shopId: number) =>
   t('customer_dashboard.pending_orders_chip', { count: pendingOrdersForShop(shopId) });

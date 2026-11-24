@@ -21,11 +21,6 @@
           @review-attention="reviewAttentionOrders"
         />
 
-        <CustomerDashboardActiveCarts
-          :carts="activeCarts"
-          @resume-cart="resumeActiveCart"
-        />
-
         <CustomerDashboardTopSection
           :total-products="totalProducts"
           :total-brands="totalBrands"
@@ -87,7 +82,6 @@ import type { CustomerDashboardCategory } from '../types/customerDashboard';
 import { buildShopPortalStats } from '../utils/shopPortalStats';
 
 import CustomerDashboardQuickAction from '../components/CustomerDashboardQuickAction.vue';
-import CustomerDashboardActiveCarts from '../components/CustomerDashboardActiveCarts.vue';
 import CustomerDashboardTopSection from '../components/CustomerDashboardTopSection.vue';
 import CustomerDashboardCategories from '../components/CustomerDashboardCategories.vue';
 import CustomerDashboardOrdersPanel from '../components/CustomerDashboardOrdersPanel.vue';

@@ -322,6 +322,8 @@ export default {
     view_all_link: 'View all →',
     orders_col_id: 'Order ID',
     orders_col_shop: 'Shop',
+    orders_col_items: 'Items',
+    orders_col_total: 'Total',
     orders_col_date: 'Date',
     orders_col_status: 'Status',
     orders_col_actions: 'Actions',

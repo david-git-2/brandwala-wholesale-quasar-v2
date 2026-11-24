@@ -320,6 +320,8 @@ export default {
     view_all_link: 'সব দেখুন →',
     orders_col_id: 'অর্ডার আইডি',
     orders_col_shop: 'শপ',
+    orders_col_items: 'আইটেম',
+    orders_col_total: 'মোট',
     orders_col_date: 'তারিখ',
     orders_col_status: 'স্ট্যাটাস',
     orders_col_actions: 'অ্যাকশন',
