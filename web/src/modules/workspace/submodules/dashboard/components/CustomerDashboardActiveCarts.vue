@@ -43,12 +43,6 @@
 
           <div class="shop-home-cart-card__meta q-mt-sm">
             <span>{{ itemCountLabel(cart.item_count) }}</span>
-            <span
-              v-if="cart.can_see_sell_price && cart.cart_total != null"
-              class="shop-home-cart-card__total"
-            >
-              {{ formatCartTotal(cart) }}
-            </span>
           </div>
 
           <div class="shop-home-shop-card__actions">
@@ -86,9 +80,4 @@ const itemCountLabel = (count: number) =>
   count === 1
     ? t('customer_dashboard.cart_item_one')
     : t('customer_dashboard.cart_items', { count });
-
-const formatCartTotal = (cart: ActiveCartItem) => {
-  const symbol = cart.currency_symbol ? `${cart.currency_symbol} ` : '';
-  return `${symbol}${Number(cart.cart_total ?? 0).toLocaleString()}`;
-};
 </script>

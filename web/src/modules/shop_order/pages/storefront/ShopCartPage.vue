@@ -4,6 +4,10 @@
       <ShopCartHeader
         :show-cart-picker="showCartPicker"
         :item-count="itemCount"
+        :shop-name="currentShopCartInfo?.shop_name ?? null"
+        :active-carts="scopedActiveCarts"
+        :selected-shop-id="selectedShopId"
+        @select-shop="selectCartShop"
       />
 
       <q-banner
@@ -90,6 +94,7 @@
 
         <div class="col-xs-12 col-md-4">
           <ShopCartSummaryCard
+            :shop-name="currentShopCartInfo?.shop_name ?? null"
             :cart="cart"
             :can-see-buy-price="canSeeBuyPrice"
             :can-see-sell-price="canSeeSellPrice"
@@ -123,6 +128,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useActiveShopCartsQuery } from '../../composables/useActiveShopCartsQuery';
 import { useShopCartQuery } from '../../composables/useShopCartQuery';
 import { useShopCartPageLogic } from '../../composables/useShopCartPageLogic';
@@ -212,6 +218,19 @@ const {
   formatAmount,
   formatCartTotal,
 } = logic;
+
+const route = useRoute();
+const router = useRouter();
+
+const selectCartShop = (shopId: number) => {
+  if (shopId === selectedShopId.value) return;
+  void router.replace({
+    query: {
+      ...route.query,
+      shopId: String(shopId),
+    },
+  });
+};
 </script>
 
 <script lang="ts">

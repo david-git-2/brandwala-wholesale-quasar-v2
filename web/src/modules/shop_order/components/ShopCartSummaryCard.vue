@@ -2,7 +2,7 @@
   <q-card flat bordered class="floating-surface sticky-card">
     <q-card-section class="q-px-md q-py-sm">
       <div class="text-subtitle2 text-weight-bold">
-        {{ $t('shop.order_summary') }}
+        {{ shopName ? `${$t('shop.order_summary')} · ${shopName}` : $t('shop.order_summary') }}
       </div>
     </q-card-section>
 
@@ -144,6 +144,7 @@
 
 <script setup lang="ts">
 defineProps<{
+  shopName?: string | null;
   cart: any;
   canSeeBuyPrice: boolean;
   canSeeSellPrice: boolean;

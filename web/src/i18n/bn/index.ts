@@ -59,6 +59,7 @@ export default {
     cart_items: 'কার্টের আইটেমসমূহ',
     logout: 'লগআউট',
     cart_title: 'শপিং কার্ট',
+    cart_across_shops: '{shops}টি শপে মোট {total}টি আইটেম',
     cart_subtitle: 'আপনার আইটেমগুলো পর্যালোচনা করুন এবং চেকআউটে যান',
     loading_cart: 'কার্টের বিবরণ লোড হচ্ছে...',
     cart_empty: 'আপনার কার্ট খালি',

@@ -58,6 +58,7 @@ export default {
     cart_items: 'Cart items',
     logout: 'Sign out',
     cart_title: 'Shopping Cart',
+    cart_across_shops: '{total} items across {shops} shops',
     cart_subtitle: 'Review your items and proceed to checkout',
     loading_cart: 'Loading cart details...',
     cart_empty: 'Your cart is empty',

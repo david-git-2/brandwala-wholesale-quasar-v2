@@ -244,6 +244,7 @@ const viewShopOrders = (shop: CustomerAccessibleShop) => {
       tenantSlug: authStore.tenantSlug ?? '',
       shopType,
     },
+    query: { shopId: String(shop.id) },
   });
 };
 

@@ -97,6 +97,7 @@
               class="shop-shell__cart-badge"
               :label="cartItemCount"
             />
+            <q-tooltip v-if="cartTooltipText">{{ cartTooltipText }}</q-tooltip>
           </q-btn>
 
           <UserProfileMenu
@@ -467,11 +468,32 @@ const userInitials = computed(() => {
   return source.slice(0, 2).toUpperCase();
 });
 
+const scopedShopCart = computed(() => {
+  const carts = scopedActiveCarts.value ?? [];
+  if (isCartRoute.value && activeCartShopId.value) {
+    return carts.find((c) => c.shop_id === activeCartShopId.value) ?? null;
+  }
+  if (isCatalogNavActive.value && headerShopSlug.value) {
+    return carts.find((c) => c.shop_slug === headerShopSlug.value) ?? null;
+  }
+  return null;
+});
+
 const cartItemCount = computed(() => {
   if (isKobaActive.value) {
     return kobaCartStore.itemCount;
   }
+  if (isCartRoute.value || (isCatalogNavActive.value && headerShopSlug.value)) {
+    return Number(scopedShopCart.value?.item_count ?? 0);
+  }
   return (scopedActiveCarts.value ?? []).reduce((sum, c) => sum + Number(c.item_count), 0);
+});
+
+const cartTooltipText = computed(() => {
+  if (isKobaActive.value) return '';
+  const nonEmpty = (scopedActiveCarts.value ?? []).filter((c) => Number(c.item_count) > 0);
+  if (nonEmpty.length <= 1) return '';
+  return nonEmpty.map((c) => `${c.shop_name}: ${c.item_count}`).join(' · ');
 });
 
 const canShowCartIcon = computed(() => true);

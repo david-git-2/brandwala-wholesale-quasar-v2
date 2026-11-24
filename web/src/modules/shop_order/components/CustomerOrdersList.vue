@@ -288,8 +288,8 @@ const statusPillClass = (status: string) => {
 
 .order-table-dashboard__row {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.85fr) minmax(5.5rem, auto);
-  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.9fr) minmax(5.5rem, auto) minmax(5.25rem, auto);
+  gap: 0.65rem;
   align-items: center;
   width: 100%;
   text-align: left;
@@ -431,7 +431,8 @@ body.body--dark .order-table-dashboard--page .order-table-dashboard__shop {
 }
 
 .order-table-dashboard__date {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
   color: var(--tf-neutral-muted);
 }
 

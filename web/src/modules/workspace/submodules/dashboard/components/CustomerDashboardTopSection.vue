@@ -92,7 +92,7 @@
             <div class="shop-home-shop-card__top">
               <div class="row items-center no-wrap q-gutter-sm min-w-0">
                 <q-avatar size="42px" rounded class="shop-home-shop-avatar">
-                  <q-icon name="ph ph-storefront" size="20px" />
+                  <span class="shop-home-shop-avatar__initials">{{ shopInitials(shop.name) }}</span>
                 </q-avatar>
                 <div class="min-w-0">
                   <div class="row items-center no-wrap q-gutter-xs">
@@ -199,6 +199,14 @@ defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const shopInitials = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase();
+  }
+  return name.trim().slice(0, 2).toUpperCase() || 'S';
+};
 
 const formatCount = (value?: number | null) => {
   if (value == null) return '—';

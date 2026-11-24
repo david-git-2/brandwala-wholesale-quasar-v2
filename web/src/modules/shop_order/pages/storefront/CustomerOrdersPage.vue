@@ -1,7 +1,20 @@
 <template>
   <q-page class="tf-page theme-shop customer-orders-page">
     <div class="customer-orders-page__inner">
-      <div class="customer-orders-toolbar row items-end justify-end q-mb-md">
+      <div class="customer-orders-toolbar row items-center justify-between q-gutter-sm q-mb-md">
+        <div class="col-auto">
+          <q-chip
+            v-if="shopIdFilter"
+            removable
+            color="primary"
+            text-color="white"
+            icon="ph ph-storefront"
+            data-test="orders-shop-filter-chip"
+            @remove="clearShopFilter"
+          >
+            {{ shopFilterLabel }}
+          </q-chip>
+        </div>
         <div class="col-12 col-sm-auto customer-orders-toolbar__filter">
           <q-select
             :model-value="selectedBucket"
@@ -103,8 +116,20 @@ const router = useRouter();
 const { t } = useI18n();
 
 const statusBucket = computed(() => parseOrderGlanceBucket(route.query.bucket));
+const shopIdFilter = computed(() => {
+  const parsed = Number(route.query.shopId);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+});
 const { data: rawOrders, isLoading, isError, error } = useCustomerOrdersQuery(statusBucket);
-const orders = computed(() => rawOrders.value ?? []);
+const orders = computed(() => {
+  const all = rawOrders.value ?? [];
+  if (!shopIdFilter.value) return all;
+  return all.filter((order) => order.shop_id === shopIdFilter.value);
+});
+const shopFilterLabel = computed(() => {
+  const matched = (rawOrders.value ?? []).find((o) => o.shop_id === shopIdFilter.value);
+  return matched?.shop_name ?? `Shop #${shopIdFilter.value}`;
+});
 
 const bucketOptions = computed(() => [
   { label: t('shop_admin.bucket_all'), value: 'all' },
@@ -120,7 +145,7 @@ const bucketSelectedLabel = computed(() => {
   return match?.label ?? t('shop_admin.bucket_all');
 });
 
-const hasListFilter = computed(() => Boolean(statusBucket.value));
+const hasListFilter = computed(() => Boolean(statusBucket.value || shopIdFilter.value));
 
 const listRows = computed(() =>
   orders.value.map((order) => ({
@@ -137,6 +162,12 @@ const listRows = computed(() =>
     created_by_email: order.created_by_email,
   })),
 );
+
+const clearShopFilter = () => {
+  const nextQuery = { ...route.query };
+  delete nextQuery.shopId;
+  void router.replace({ query: nextQuery });
+};
 
 const setBucket = (value: OrderGlanceBucket | 'all' | null) => {
   const nextQuery = { ...route.query };
