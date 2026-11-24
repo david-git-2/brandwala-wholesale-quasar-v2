@@ -265,6 +265,7 @@ BEGIN
       CURRENT_DATE, 'posted', p_idempotency_key, '{}'::jsonb, p_meta, auth.uid()
     ) RETURNING * INTO v_pays;
   PERFORM money_kernel.fn_ensure_header_pay_bundle_lines(p_tenant_id, v_pays.id);
+  PERFORM money_kernel.flush_deferred_pays();
   EXCEPTION WHEN unique_violation THEN
     SELECT * INTO v_pays FROM money_kernel.pays
      WHERE tenant_id = p_tenant_id AND idempotency_key = p_idempotency_key
@@ -423,6 +424,7 @@ BEGIN
       CURRENT_DATE, 'posted', p_idempotency_key, '{}'::jsonb, p_meta, auth.uid()
     ) RETURNING * INTO v_pays;
   PERFORM money_kernel.fn_ensure_header_pay_bundle_lines(p_tenant_id, v_pays.id);
+  PERFORM money_kernel.flush_deferred_pays();
   EXCEPTION WHEN unique_violation THEN
     SELECT * INTO v_pays FROM money_kernel.pays
      WHERE tenant_id = p_tenant_id AND idempotency_key = p_idempotency_key
@@ -561,6 +563,7 @@ BEGIN
       CURRENT_DATE, 'posted', p_idempotency_key, '{}'::jsonb, p_meta, auth.uid()
     ) RETURNING * INTO v_pays;
   PERFORM money_kernel.fn_ensure_header_pay_bundle_lines(p_tenant_id, v_pays.id);
+  PERFORM money_kernel.flush_deferred_pays();
   EXCEPTION WHEN unique_violation THEN
     SELECT * INTO v_pays FROM money_kernel.pays
      WHERE tenant_id = p_tenant_id AND idempotency_key = p_idempotency_key
@@ -961,10 +964,10 @@ BEGIN
     p_tenant_id,
     p_payer_profile_id,
     p_from_pot_id,
-    p_to_pot_id,
     p_amount,
-    v_books_rate,
     jsonb_build_array(jsonb_build_object('bill_id', p_bill_id, 'amount', p_amount)),
+    p_to_pot_id,
+    NULL,
     p_meta,
     p_idempotency_key
   );

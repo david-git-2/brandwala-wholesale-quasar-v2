@@ -5,27 +5,7 @@ export type Database = {
   
   "public": {
           Tables: {
-            "activity_logs": {
-                  Row: {
-                    "action": string,"created_at": string,"id": number,"item_id": number,"new_value": string | null,"old_value": string | null,"user_email": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "action": string,"created_at"?: string,"id"?: number,"item_id": number,"new_value"?: string | null,"old_value"?: string | null,"user_email"?: string
-                  }
-                  Update: {
-                    "action"?: string,"created_at"?: string,"id"?: number,"item_id"?: number,"new_value"?: string | null,"old_value"?: string | null,"user_email"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "activity_logs_item_id_fkey"
-      columns: ["item_id"]
-isOneToOne: false
-      referencedRelation: "items"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"app_release_versions": {
+            "app_release_versions": {
                   Row: {
                     "backend_updated_at": string,"backend_version": string,"frontend_updated_at": string,"frontend_version": string,"id": number
                   }
@@ -288,32 +268,6 @@ isOneToOne: false
                   }
                   Relationships: [
                     
-                  ]
-                },"comments": {
-                  Row: {
-                    "body": string,"created_at": string,"deleted_at": string | null,"id": number,"item_id": number,"parent_comment_id": number | null,"updated_at": string,"user_email": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "body": string,"created_at"?: string,"deleted_at"?: string | null,"id"?: number,"item_id": number,"parent_comment_id"?: number | null,"updated_at"?: string,"user_email"?: string
-                  }
-                  Update: {
-                    "body"?: string,"created_at"?: string,"deleted_at"?: string | null,"id"?: number,"item_id"?: number,"parent_comment_id"?: number | null,"updated_at"?: string,"user_email"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "comments_item_id_fkey"
-      columns: ["item_id"]
-isOneToOne: false
-      referencedRelation: "items"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "comments_parent_comment_id_fkey"
-      columns: ["parent_comment_id"]
-isOneToOne: false
-      referencedRelation: "comments"
-      referencedColumns: ["id"]
-    }
                   ]
                 },"costing_file_items": {
                   Row: {
@@ -1317,98 +1271,6 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "invoice_write_offs_tenant_id_fkey"
-      columns: ["tenant_id"]
-isOneToOne: false
-      referencedRelation: "tenants"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"item_assignees": {
-                  Row: {
-                    "assigned_by_email": string,"created_at": string,"id": number,"item_id": number,"user_email": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "assigned_by_email"?: string,"created_at"?: string,"id"?: number,"item_id": number,"user_email": string
-                  }
-                  Update: {
-                    "assigned_by_email"?: string,"created_at"?: string,"id"?: number,"item_id"?: number,"user_email"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "item_assignees_item_id_fkey"
-      columns: ["item_id"]
-isOneToOne: false
-      referencedRelation: "items"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"item_permissions": {
-                  Row: {
-                    "created_at": string,"id": number,"item_id": number,"role": string,"user_email": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"id"?: number,"item_id": number,"role": string,"user_email": string
-                  }
-                  Update: {
-                    "created_at"?: string,"id"?: number,"item_id"?: number,"role"?: string,"user_email"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "item_permissions_item_id_fkey"
-      columns: ["item_id"]
-isOneToOne: false
-      referencedRelation: "items"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"item_tags": {
-                  Row: {
-                    "created_at": string,"id": number,"item_id": number,"tag_id": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"id"?: number,"item_id": number,"tag_id": number
-                  }
-                  Update: {
-                    "created_at"?: string,"id"?: number,"item_id"?: number,"tag_id"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "item_tags_item_id_fkey"
-      columns: ["item_id"]
-isOneToOne: false
-      referencedRelation: "items"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "item_tags_tag_id_fkey"
-      columns: ["tag_id"]
-isOneToOne: false
-      referencedRelation: "tags"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"items": {
-                  Row: {
-                    "accessibility": string,"archived_at": string | null,"content": string | null,"created_at": string,"created_by_email": string,"due_date": string | null,"id": number,"is_markdown": boolean,"parent_id": number | null,"priority": string,"start_date": string | null,"status": string,"tenant_id": number | null,"title": string,"type": string,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "accessibility"?: string,"archived_at"?: string | null,"content"?: string | null,"created_at"?: string,"created_by_email"?: string,"due_date"?: string | null,"id"?: number,"is_markdown"?: boolean,"parent_id"?: number | null,"priority"?: string,"start_date"?: string | null,"status"?: string,"tenant_id"?: number | null,"title": string,"type": string,"updated_at"?: string
-                  }
-                  Update: {
-                    "accessibility"?: string,"archived_at"?: string | null,"content"?: string | null,"created_at"?: string,"created_by_email"?: string,"due_date"?: string | null,"id"?: number,"is_markdown"?: boolean,"parent_id"?: number | null,"priority"?: string,"start_date"?: string | null,"status"?: string,"tenant_id"?: number | null,"title"?: string,"type"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "items_parent_id_fkey"
-      columns: ["parent_id"]
-isOneToOne: false
-      referencedRelation: "items"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "items_tenant_id_fkey"
       columns: ["tenant_id"]
 isOneToOne: false
       referencedRelation: "tenants"
@@ -5734,6 +5596,9 @@ isOneToOne: false
               "has_match": boolean,"matched_role": Database["public"]['Enums']["app_role"],"member_created_at": string,"member_email": string,"member_id": number,"member_is_active": boolean,"member_tenant_id": number,"member_updated_at": string
             }[]
                            },
+"check_shipment_bill_references":
+{ Args: { "p_shipment_id": number }; Returns: (string)[]
+                           },
 "check_shop_login_access":
 { Args: { "p_email": string,"p_shop_type"?: Database["public"]['Enums']["shop_type_enum"],"p_tenant_id"?: number }; Returns: {
               "customer_group_id": number,"customer_group_is_active": boolean,"customer_group_name": string,"has_match": boolean,"matched_role": Database["public"]['Enums']["customer_group_role"],"member_created_at": string,"member_email": string,"member_id": number,"member_is_active": boolean,"member_name": string,"member_tenant_id": number,"member_updated_at": string
@@ -6476,8 +6341,18 @@ isOneToOne: false
 "get_bill_detail_bundle":
 { Args: { "p_bill_id": number,"p_tenant_id": number }; Returns: Json
                            },
+"get_bill_lines_for_bills":
+{ Args: { "p_bill_ids": (number)[] }; Returns: {
+              "bill_id": number,"books_amount": number,"currency_code": string,"id": number,"line_discount_amount": number,"line_kind": string,"line_meta": Json,"line_total_amount": number,"name_snapshot": string,"quantity": number,"sell_price_amount": number
+            }[]
+                           },
 "get_bill_net_balances":
 { Args: { "p_bill_id": number }; Returns: Json
+                           },
+"get_bills_source_plugs":
+{ Args: { "p_bill_ids": (number)[] }; Returns: {
+              "ap_shipment_id": number,"id": number,"source_id": string,"source_type": string
+            }[]
                            },
 "get_cashbook_account_balances":
 { Args: { "p_currency_code"?: string,"p_entity_id": number,"p_entity_type": string,"p_tenant_id": number }; Returns: Json
@@ -6519,16 +6394,16 @@ isOneToOne: false
 "get_delivery_paper_detail":
 { Args: { "p_delivery_paper_id": number,"p_tenant_id": number }; Returns: Json
                            },
+"get_dropship_dropshipper_billable_charges":
+{ Args: { "p_order_id": number }; Returns: {
+              "cod": number,"delivery": number,"packing": number,"print": number
+            }[]
+                           },
 "get_dropship_finance_hub_data":
 { Args: { "p_tenant_id": number }; Returns: Json
                            },
 "get_dropship_management_order":
 { Args: { "p_order_id": number,"p_tenant_id": number }; Returns: Json
-                           },
-"get_dropship_dropshipper_billable_charges":
-{ Args: { "p_order_id": number }; Returns: {
-              "cod": number,"delivery": number,"packing": number,"print": number
-            }[]
                            },
 "get_dropship_order_detail_v2":
 { Args: { "p_order_id": number,"p_tenant_id": number }; Returns: Json
@@ -6738,9 +6613,6 @@ isOneToOne: false
 "get_tag_by_slug":
 { Args: { "p_category_id"?: number,"p_code"?: string,"p_module_key"?: string,"p_slug"?: string }; Returns: Json
                            },
-"get_tasks_dashboard_metrics":
-{ Args: { "p_tenant_id": number }; Returns: Json
-                           },
 "get_tenant_cash_in_report":
 { Args: { "p_end_date"?: string,"p_start_date"?: string,"p_tenant_id": number }; Returns: Json
                            },
@@ -6817,11 +6689,6 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
-"global_search_tasks":
-{ Args: { "p_query": string }; Returns: {
-              "content": string,"created_at": string,"created_by_email": string,"due_date": string,"id": number,"parent_id": number,"priority": string,"start_date": string,"status": string,"tenant_id": number,"tenant_name": string,"title": string,"type": string,"updated_at": string
-            }[]
-                           },
 "global_shipment_costs_are_locked":
 { Args: { "p_ship": Omit<Database["public"]['Tables']["global_shipments"]['Row'], Database["public"]['Tables']["global_shipments"]['ComputedFields']> }; Returns: boolean
                            },
@@ -7368,9 +7235,6 @@ isOneToOne: false
                            },
 "list_invoice_payment_history":
 { Args: { "p_invoice_id": number,"p_tenant_id": number }; Returns: Json
-                           },
-"list_items_paginated":
-{ Args: { "p_assignee"?: string,"p_date_field"?: string,"p_date_from"?: string,"p_date_to"?: string,"p_include_parents"?: boolean,"p_my_tasks_email"?: string,"p_page"?: number,"p_page_size"?: number,"p_priority"?: string,"p_search"?: string,"p_status"?: string,"p_tag_id"?: number,"p_tenant_id"?: number,"p_type"?: string }; Returns: Json
                            },
 "list_koba_brands_for_tenant":
 { Args: { "p_tenant_id": number }; Returns: Json
@@ -8387,12 +8251,6 @@ isOneToOne: false
 { Args: { "p_order_id": number,"p_payload": Json,"p_tenant_id": number }; Returns: Json
                            },
 "record_dropship_courier_remittance":
-{ Args: { "p_bank_trx_id"?: string,"p_method"?: string,"p_net_amount": number,"p_note"?: string,"p_order_id": number,"p_payment_date"?: string,"p_remittance_ref": string }; Returns: Json
-                           } |
-{ Args: { "p_bank_trx_id"?: string,"p_courier_charge"?: number,"p_method"?: string,"p_net_amount": number,"p_note"?: string,"p_order_id": number,"p_payment_date"?: string,"p_remittance_ref": string }; Returns: Json
-                           } |
-{ Args: { "p_bank_trx_id"?: string,"p_cashbook_point_id"?: number,"p_courier_charge"?: number,"p_method"?: string,"p_net_amount": number,"p_note"?: string,"p_order_id": number,"p_payment_date"?: string,"p_remittance_ref": string }; Returns: Json
-                           } |
 { Args: { "p_bank_trx_id"?: string,"p_cashbook_point_id"?: number,"p_cod_charge"?: number,"p_courier_charge"?: number,"p_delivery_charge"?: number,"p_method"?: string,"p_net_amount": number,"p_note"?: string,"p_order_id": number,"p_payment_date"?: string,"p_remittance_ref": string }; Returns: Json
                            },
 "record_dropship_recipient_call_no_answer":
