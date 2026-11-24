@@ -6183,6 +6183,9 @@ isOneToOne: false
 "ensure_cashbook_account_for_profile":
 { Args: { "p_currency_code"?: string,"p_profile_id": number }; Returns: number
                            },
+"ensure_courier_bdt_bundle":
+{ Args: { "p_books_tenant_id": number,"p_profile_id": number }; Returns: number
+                           },
 "ensure_default_cargo_company":
 { Args: { "p_tenant_id": number }; Returns: number
                            },

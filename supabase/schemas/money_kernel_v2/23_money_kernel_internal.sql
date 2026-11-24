@@ -393,7 +393,10 @@ BEGIN
     SELECT 1
     FROM public.profiles pr
     WHERE pr.id = p_profile_id
-      AND pr.profile_type = 'tenant'::public.profile_party_type
+      AND pr.profile_type IN (
+        'tenant'::public.profile_party_type,
+        'customer'::public.profile_party_type
+      )
   ) THEN
     SELECT cp.id INTO v_courier_point_id
     FROM money_kernel.cash_locations cp
@@ -427,9 +430,9 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.ensure_tenant_courier_bdt_bundle(
+CREATE OR REPLACE FUNCTION public.ensure_courier_bdt_bundle(
   p_books_tenant_id bigint,
-  p_tenant_profile_id bigint
+  p_profile_id bigint
 ) RETURNS bigint
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -438,18 +441,18 @@ AS $$
 DECLARE
   v_bundle_id bigint;
 BEGIN
-  IF p_books_tenant_id IS NULL OR p_tenant_profile_id IS NULL THEN
+  IF p_books_tenant_id IS NULL OR p_profile_id IS NULL THEN
     RETURN NULL;
   END IF;
 
-  PERFORM public.fn_provision_kernel_cashbook_for_profile_row(p_books_tenant_id, p_tenant_profile_id);
+  PERFORM public.fn_provision_kernel_cashbook_for_profile_row(p_books_tenant_id, p_profile_id);
 
   SELECT pp.id INTO v_bundle_id
   FROM money_kernel.cashbooks ca
   JOIN money_kernel.cash_locations cp ON cp.cashbook_id = ca.id AND cp.location_code = 'courier_bdt'
   JOIN money_kernel.cash_bundles pp ON pp.cash_location_id = cp.id
   WHERE ca.tenant_id = p_books_tenant_id
-    AND ca.profile_id = p_tenant_profile_id
+    AND ca.profile_id = p_profile_id
     AND pp.currency_code = 'BDT'
     AND pp.closed_at IS NULL
   ORDER BY pp.id
@@ -457,6 +460,17 @@ BEGIN
 
   RETURN v_bundle_id;
 END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.ensure_tenant_courier_bdt_bundle(
+  p_books_tenant_id bigint,
+  p_tenant_profile_id bigint
+) RETURNS bigint
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = money_kernel, public, pg_temp
+AS $$
+  SELECT public.ensure_courier_bdt_bundle(p_books_tenant_id, p_tenant_profile_id);
 $$;
 
 DROP FUNCTION IF EXISTS public.fn_provision_kernel_cashbook_currency(bigint, bigint, text);
