@@ -236,6 +236,7 @@ import {
   shopCartPath,
   shopCatalogEntryPath,
   shopCatalogPath,
+  shopDropshipPlaceOrderPath,
   shopHomePath,
 } from 'src/modules/shop_order/utils/catalogShop';
 import { filterActiveCartsByShopTypePath } from 'src/modules/shop_order/utils/shopCartScope';
@@ -274,9 +275,16 @@ const ORDER_ROUTE_NAMES = new Set(['shop-orders-page', 'shop-order-detail-page']
 
 const CART_ROUTE_NAMES = new Set(['shop-cart-page', 'shop-checkout-page']);
 
-const showHeaderSearch = computed(() => route.name === 'customer-dashboard');
+const HEADER_SEARCH_ROUTE_NAMES = new Set([
+  'customer-dashboard',
+  ...CATALOG_ROUTE_NAMES,
+  ...ORDER_ROUTE_NAMES,
+  ...CART_ROUTE_NAMES,
+]);
 
 const routeName = computed(() => String(route.name ?? ''));
+
+const showHeaderSearch = computed(() => HEADER_SEARCH_ROUTE_NAMES.has(routeName.value));
 
 const isKobaActive = computed(() => !!(route.name && String(route.name).includes('koba')));
 
@@ -374,7 +382,7 @@ const headerShopName = computed(() => {
 });
 
 const showCatalogShopHeader = computed(() => {
-  if (showHeaderSearch.value) return false;
+  if (routeName.value === 'customer-dashboard') return false;
   if (routeName.value === 'shop-order-detail-page') return false;
   if (headerCustomerShops.value.length === 0) return false;
   return Boolean(headerShopSlug.value || rememberedShop.value?.slug);
@@ -418,6 +426,7 @@ watch(
   () => route.fullPath,
   () => {
     chromeHidden.value = false;
+    searchOpen.value = false;
   },
 );
 
@@ -526,20 +535,31 @@ const goToCatalog = () => {
   void router.push(shopCatalogEntryPath(authStore.tenantSlug, entryTypePath));
 };
 
+const routeToShopCart = (
+  shopId: number | null | undefined,
+  shopType: ReturnType<typeof shopTypeFromPathSegment> | undefined,
+) => {
+  if (shopType === 'dropship') {
+    return shopDropshipPlaceOrderPath(authStore.tenantSlug, shopId);
+  }
+  return shopCartPath(authStore.tenantSlug, shopId, shopType);
+};
+
 const onSwitchHeaderShop = (shop: { id: number; slug: string; name: string }) => {
   if (!shop.slug) return;
   const shopRow = headerCustomerShops.value.find((row) => row.id === shop.id);
+  const targetShopType = shopRow?.shop_type ?? routeShopType.value;
   if (authStore.tenantId) {
     rememberCatalogShop(authStore.tenantId, shop);
   }
   if (isCartRoute.value) {
     if (shop.id === activeCartShopId.value) return;
-    void router.push(shopCartPath(authStore.tenantSlug, shop.id, shopRow?.shop_type));
+    void router.push(routeToShopCart(shop.id, targetShopType));
     return;
   }
   if (isOrdersNavActive.value) return;
   if (shop.slug === headerShopSlug.value) return;
-  void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug, null, shopRow?.shop_type));
+  void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug, null, targetShopType));
 };
 
 const goToOrders = () => {
@@ -578,9 +598,14 @@ const goToCart = async () => {
   const shopId =
     resolveCartShopId(authStore.tenantId, scopedActiveCarts.value ?? []) ??
     (Number.isNaN(parsedLastId) ? null : parsedLastId);
-  await router.push(
-    shopCartPath(authStore.tenantSlug, shopId, rememberedShop.value?.shop_type),
-  );
+  const matchedCart = (scopedActiveCarts.value ?? []).find((c) => c.shop_id === shopId);
+  const matchedShop = headerCustomerShops.value.find((s) => s.id === shopId);
+  const targetShopType =
+    matchedCart?.shop_type ??
+    matchedShop?.shop_type ??
+    rememberedShop.value?.shop_type ??
+    routeShopType.value;
+  await router.push(routeToShopCart(shopId, targetShopType));
 };
 
 watch(

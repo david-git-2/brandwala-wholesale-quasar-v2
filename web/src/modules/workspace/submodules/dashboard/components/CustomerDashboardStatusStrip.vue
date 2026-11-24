@@ -5,17 +5,23 @@
     </div>
 
     <div v-else class="glance-pills">
-      <div
+      <component
+        :is="ordersRoute ? 'router-link' : 'div'"
         v-for="seg in segmentRows"
         :key="seg.id"
+        :to="segmentRoute(seg.bucket)"
         class="glance-pill"
-        :class="{ 'glance-pill--hot': seg.hot && seg.count > 0 }"
+        :class="{
+          'glance-pill--hot': seg.hot && seg.count > 0,
+          'glance-pill--muted': seg.count === 0,
+          'glance-pill--interactive': Boolean(ordersRoute),
+        }"
         :data-test="`glance-${seg.id}`"
       >
         <span class="glance-pill__dot" :style="{ background: seg.color }" />
         <span class="glance-pill__label">{{ $t(seg.labelKey) }}</span>
         <span class="glance-pill__count">{{ seg.count }}</span>
-      </div>
+      </component>
     </div>
   </div>
 </template>
@@ -23,6 +29,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useQuasar } from 'quasar';
+import type { RouteLocationRaw } from 'vue-router';
 
 import type { OrderGlanceSegments } from '../types/customerDashboard';
 import type { OrderGlanceBucket } from '../utils/customerDashboardStatus';
@@ -31,15 +38,16 @@ type ChartBucket = OrderGlanceBucket | 'delivered' | 'paid' | 'payment_needed';
 
 const SEGMENT_META: ReadonlyArray<{
   id: ChartBucket;
+  bucket?: OrderGlanceBucket;
   token: string;
   fallback: string;
   labelKey: string;
   hot?: boolean;
 }> = [
-  { id: 'needs_you', token: '--tf-warning', fallback: '#b45309', labelKey: 'customer_dashboard.glance_needs_you', hot: true },
-  { id: 'in_progress', token: '--tf-theme-primary', fallback: '#3368a0', labelKey: 'customer_dashboard.glance_in_progress' },
-  { id: 'delivered', token: '--tf-shop-sky', fallback: '#66a3bf', labelKey: 'customer_dashboard.glance_delivered' },
-  { id: 'paid', token: '--tf-success', fallback: '#1a7f4b', labelKey: 'customer_dashboard.glance_paid' },
+  { id: 'needs_you', bucket: 'needs_you', token: '--tf-warning', fallback: '#b45309', labelKey: 'customer_dashboard.glance_needs_you', hot: true },
+  { id: 'in_progress', bucket: 'in_progress', token: '--tf-theme-primary', fallback: '#3368a0', labelKey: 'customer_dashboard.glance_in_progress' },
+  { id: 'delivered', bucket: 'done', token: '--tf-shop-sky', fallback: '#66a3bf', labelKey: 'customer_dashboard.glance_delivered' },
+  { id: 'paid', bucket: 'done', token: '--tf-success', fallback: '#1a7f4b', labelKey: 'customer_dashboard.glance_paid' },
   { id: 'payment_needed', token: '--tf-error', fallback: '#b83a3a', labelKey: 'customer_dashboard.glance_payment_needed', hot: true },
 ];
 
@@ -50,6 +58,10 @@ function themeColor(token: string, fallback: string) {
 
 const props = defineProps<{
   segments: OrderGlanceSegments | null;
+  ordersRoute?: {
+    name: string;
+    params: Record<string, string>;
+  } | null;
 }>();
 
 const $q = useQuasar();
@@ -62,6 +74,13 @@ const segmentRows = computed(() => {
     count: props.segments?.[meta.id] ?? 0,
   }));
 });
+
+const segmentRoute = (bucket?: OrderGlanceBucket): RouteLocationRaw | undefined => {
+  if (!props.ordersRoute) return undefined;
+  return bucket
+    ? { ...props.ordersRoute, query: { bucket } }
+    : props.ordersRoute;
+};
 
 const total = computed(() => props.segments?.total ?? 0);
 </script>
@@ -85,10 +104,28 @@ const total = computed(() => props.segments?.total ?? 0);
   border-radius: 999px;
   background: var(--shop-home-pill-bg, #f0f2f5);
   border: 0;
+  text-decoration: none;
+}
+
+.glance-pill--interactive {
+  cursor: pointer;
+  transition:
+    transform var(--tf-dur-fast, 120ms) var(--tf-ease, ease),
+    filter var(--tf-dur-fast, 120ms) var(--tf-ease, ease);
+}
+
+.glance-pill--interactive:hover,
+.glance-pill--interactive:focus-visible {
+  transform: translateY(-1px);
+  filter: brightness(0.96);
 }
 
 .glance-pill--hot .glance-pill__count {
   color: var(--q-warning);
+}
+
+.glance-pill--muted {
+  opacity: 0.55;
 }
 
 .glance-pill__dot {

@@ -12,7 +12,11 @@
       </router-link>
     </header>
 
-    <CustomerDashboardStatusStrip :segments="segments" class="q-mt-md" />
+    <CustomerDashboardStatusStrip
+      :segments="segments"
+      :orders-route="ordersListRoute"
+      class="q-mt-md"
+    />
 
     <CustomerOrdersList
       class="q-mt-md"
