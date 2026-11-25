@@ -34,6 +34,7 @@ export interface GlobalStock {
   id: number;
   tenant_id: number;
   shipment_item_id: number;
+  product_id?: number | null;
   shipment_id: number;
   stock_type_id?: number | null;
   quantity: number;

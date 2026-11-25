@@ -28,9 +28,9 @@
 | :--- | :--- |
 | Surfaces | `shop` storefront; `app` config + dropship desk |
 | In | Shops, carts, catalog/dropship orders, pricing, stock pick, pickup locations, reseller payout, dropship gifts, shop customer stock, auto gifts |
-| Out | Warehouse receive; Koba/thrift; wholesale invoice desk; catalog pack-out on **Delivery paper**; parent invoice engine for dropship |
+| Out | Warehouse receive; Koba/thrift; wholesale invoice desk; parent invoice engine for dropship |
 
-Dropship: pick → ship+issue both bills → deliver → remittance pay in. Later amount changes = credit/debit notes. Packing slip ≠ `sales_invoices` row. Catalog delivery: Delivery paper + optional proforma; close take/condition/return; then bills. Numbers: [atlas](../money_bill_bridge/spec.md#atlas). 
+Dropship: pick → ship+issue both bills → deliver → remittance pay in. Later amount changes = credit/debit notes. Packing slip ≠ `sales_invoices` row. **Catalog customer delivery:** bills and stock on money desk / warehouse flows (no delivery paper). Numbers: [atlas](../money_bill_bridge/spec.md#atlas). 
 
 **Money target (locked, not built):** at ship create **draft** **customer AR + courier AR (net remittance)** — not issued, not courier AP. See [dropship-courier-ar-redesign.md](dropship-courier-ar-redesign.md). **As-built code** still issues courier AP until SO-CA1 ships.
 
@@ -53,7 +53,7 @@ Dropship: pick → ship+issue both bills → deliver → remittance pay in. Late
 | :--- | :--- |
 | Storefront customer | Cart, negotiate quotes, confirm qty |
 | Dropshipper | Orders for recipients, track delivery, profit balance / payout |
-| Fulfillment | Pick, packing slip, courier; catalog via Delivery paper |
+| Fulfillment | Pick, packing slip, courier; catalog bills on money desk |
 | Shop admin | Shop types, price visibility, categories |
 
 ## Stories
@@ -80,6 +80,7 @@ Dropship: pick → ship+issue both bills → deliver → remittance pay in. Late
 - [x] `submitted` → `priced` → `countered` → `final_offered` → `confirmed`.
 - [x] Confirmed qty locks for demand desk.
 - [x] Staff catalog order detail (`app/shop/orders/:id`, vendor catalog): **Download Excel** exports the same PBC-format costing workbook client-side (mapped from order lines + rates). Menu: **With images** / **Without images**. Workbook includes a **Product ID** column (all PBC-format Excel exports).
+- [x] **Multi-bill catalog AR:** Gear **Bills → Create bill** (`app/shop/orders/:id/create-bill`) — per-line **on bills / remaining**, stock pick, Take/Condition, submit creates **draft** wholesale bill from picks (`create_catalog_shop_order_wholesale_draft_bill`).
 
 ### US-3: Dropship fulfillment
 - [x] Pick at `processing` → `shop_order_item_stock_picks`.

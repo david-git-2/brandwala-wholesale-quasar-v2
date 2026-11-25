@@ -45,26 +45,11 @@
             v-if="order"
             :tenant-id="billsParentTenantId ?? null"
             :order-id="order.id"
-            :enabled="billsListEnabled"
+            :enabled="billsTabActive"
+            :can-create-bill="order?.shop_type_snapshot === 'vendor_catalog'"
+            :creating-bill="creatingBill"
             @open-bill="(bill) => emit('open-bill', bill)"
-          />
-        </q-tab-panel>
-
-        <q-tab-panel name="delivery" class="catalog-settings-tab-pane q-pa-md">
-          <div v-if="!showDeliveryPapers" class="text-body2 text-grey-7">
-            Delivery papers are available once the order is procuring or in fulfillment (dispatch,
-            delivered, or closed).
-          </div>
-          <DocumentDeliveryPaperChips
-            v-else-if="order"
-            layout="section"
-            document-type="shop_order"
-            :tenant-id="deliveryPaperTenantId ?? null"
-            :document-id="order.id"
-            :enabled="deliveryPapersEnabled"
-            :allow-create="allowCreateDeliveryPaper"
-            @open-paper="(id) => emit('open-delivery-paper', id)"
-            @created="(id) => emit('open-delivery-paper', id)"
+            @create-bill="emit('create-bill')"
           />
         </q-tab-panel>
 
@@ -151,11 +136,11 @@ import { computed, ref, watch } from 'vue';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import TfDrawerSectionTabsHeader from 'src/components/ui/TfDrawerSectionTabsHeader.vue';
 import CatalogOrderItemsSummaryCards from './CatalogOrderItemsSummaryCards.vue';
-import DocumentDeliveryPaperChips from 'src/modules/procurement_stock/components/DocumentDeliveryPaperChips.vue';
 import CatalogOrderBillsPanel from './CatalogOrderBillsPanel.vue';
 import type { ShopOrder } from '../types';
 import type { ShopOrderBillListItem } from '../types/shopOrderBillList';
 import type { CostingTotalsSummary } from 'src/types/costingTotalsSummary';
+import { canShowCatalogOrderBillsTab } from '../utils/catalogOrderStatus';
 
 export type CatalogOrderSummaryTotals = CostingTotalsSummary;
 
@@ -171,52 +156,41 @@ const props = defineProps<{
   showCancel?: boolean;
   isDeleting?: boolean;
   canDownloadExcel?: boolean;
-  deliveryPaperTenantId?: number | null;
   billsParentTenantId?: number | null;
-  showDeliveryPapers?: boolean;
-  allowCreateDeliveryPaper?: boolean;
   hiddenFromCustomerSaving?: boolean;
+  creatingBill?: boolean;
 }>();
-
-const deliveryPapersEnabled = computed(
-  () =>
-    !!props.modelValue &&
-    !!props.showDeliveryPapers &&
-    props.deliveryPaperTenantId != null &&
-    !!props.order?.id,
-);
-
-const billsListEnabled = computed(
-  () =>
-    showBillsTab.value &&
-    !!props.modelValue &&
-    props.billsParentTenantId != null &&
-    !!props.order?.id,
-);
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
   (e: 'download-excel', payload: { includeImages: boolean }): void;
   (e: 'cancel-order'): void;
-  (e: 'open-delivery-paper', paperId: number): void;
   (e: 'open-bill', bill: ShopOrderBillListItem): void;
+  (e: 'create-bill'): void;
   (e: 'update-hidden-from-customer', hidden: boolean): void;
 }>();
 
 const settingsTabs = [
   { name: 'summary', label: 'Summary', icon: 'ph ph-chart-pie-slice' },
   { name: 'bills', label: 'Bills', icon: 'ph ph-receipt' },
-  { name: 'delivery', label: 'Delivery', icon: 'ph ph-truck' },
   { name: 'actions', label: 'Actions', icon: 'ph ph-dots-three-outline' },
 ] as const;
 
-const showBillsTab = computed(() => !!props.showDeliveryPapers);
+const showBillsTab = computed(() => canShowCatalogOrderBillsTab(props.order?.status));
 
 const visibleSettingsTabs = computed(() =>
   settingsTabs.filter((tab) => tab.name !== 'bills' || showBillsTab.value),
 );
 
 const activeTab = ref<(typeof settingsTabs)[number]['name']>('summary');
+
+const billsTabActive = computed(
+  () =>
+    !!props.modelValue &&
+    activeTab.value === 'bills' &&
+    props.billsParentTenantId != null &&
+    !!props.order?.id,
+);
 
 watch(showBillsTab, (visible) => {
   if (!visible && activeTab.value === 'bills') {

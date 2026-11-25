@@ -12,7 +12,7 @@
       <div class="bill-detail-card q-pa-md">
         <div class="bill-page-actions row items-center justify-end q-gutter-sm no-print q-mb-md">
           <q-btn
-            v-if="canIssueDeliveryCloseDraft || canIssueApDraft"
+            v-if="canIssueArStockDraft || canIssueApDraft"
             unelevated
             no-caps
             color="primary"
@@ -504,11 +504,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
-import {
-  billDraftComposeRoute,
-  billOpensOnDetailNotComposeDesk,
-  isDeliveryPaperOutcomeBillSource,
-} from '../utils/billRoutes';
+import { isDeliveryPaperOutcomeBillSource } from '../utils/billRoutes';
 import { billsRepository } from '../repositories/billsRepository';
 import { billsQueryKeys } from '../services/billsQueryKeys';
 import {
@@ -1020,9 +1016,10 @@ function formatDeskAmount(value: number | string | null | undefined): string {
   return formatSettlementCurrencyAmount(value, billCurrencyCode.value);
 }
 
-const canIssueDeliveryCloseDraft = computed(() => {
+const canIssueArStockDraft = computed(() => {
   const b = bill.value;
-  if (!b || !isDeliveryCloseBill.value || isApBill.value) return false;
+  if (!b || isApBill.value || !isStandardBill.value) return false;
+  if (!isDeliveryCloseBill.value && !isWholesaleKernelBill.value) return false;
   if (b.invoice_status !== 'draft' && b.invoice_status !== 'proforma_generated') return false;
   return lines.value.some((l) => Number(l.quantity) > 0);
 });
@@ -1110,7 +1107,7 @@ const onIssueApDraft = async () => {
 };
 
 const onIssueDraftBill = async () => {
-  if (canIssueDeliveryCloseDraft.value) {
+  if (canIssueArStockDraft.value) {
     await onIssueDeliveryCloseDraft();
     return;
   }
@@ -1233,18 +1230,6 @@ const breadcrumbItems = computed(() => {
 });
 
 watch(breadcrumbItems, (items) => setCustomBreadcrumbs(items), { immediate: true });
-
-watch(
-  () => bill.value,
-  (b) => {
-    if (!b || bundleQuery.isPending.value) return;
-    if (b.invoice_status !== 'draft' && b.invoice_status !== 'proforma_generated') return;
-    const id = billId.value;
-    if (id == null || id <= 0) return;
-    if (billOpensOnDetailNotComposeDesk(b)) return;
-    void router.replace(billDraftComposeRoute(id, authStore.tenantSlug));
-  },
-);
 
 onBeforeUnmount(() => {
   payCashbookLegsStore.clear();

@@ -635,6 +635,7 @@ export default {
   all_profiles: 'All profiles',
   no_profiles_found: 'No profiles found',
   create_catalog_order: 'Create catalog order',
+  manual_order_lines: 'Order lines',
   manual_catalog_order_title: 'Create catalog order',
   manual_catalog_shop_optional: 'Shop (optional)',
   manual_catalog_shop_optional_hint:
@@ -871,5 +872,21 @@ export default {
   category_save_failed: 'Failed to save shop category.',
   category_delete_failed: 'Failed to delete category.',
   name_slug_required: 'Name and slug are required.',
+
+  catalog_create_bill: 'Create bill',
+  catalog_create_bill_submit: 'Create bill',
+  catalog_create_bill_draft_hint: 'Saves as draft — issue from bill detail when ready.',
+  catalog_create_bill_no_profile: 'Billing profile is required on this order.',
+  catalog_create_bill_pick_first: 'Pick stock on at least one line.',
+  catalog_create_bill_partial_banner: 'Partial billing — remaining qty per line below.',
+  catalog_create_bill_success: 'Draft bill {no} created.',
+  catalog_bill_settlement: 'Settlement',
+  catalog_bill_take: 'Take',
+  catalog_bill_condition: 'Condition',
+  catalog_bill_target_qty: 'Target',
+  catalog_bill_on_bills: 'On bills',
+  catalog_bill_remaining: 'Remaining',
+  catalog_bill_picked: 'Picked',
+  catalog_pick_stock: 'Pick stock',
 };
 

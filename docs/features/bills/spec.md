@@ -104,7 +104,7 @@ Cash RPCs (`rpc_deposit`, `rpc_pay_bills`, …): [money](../money/spec.md) · [b
 
 `rpc_create_bill`: `source_entity`, `source_type`, `source_id`, `source_key` (parent + discriminator). List: `rpc_query_bills` `p_source_*`. No DML; no `rpc_allocate_invoice_no` from features.
 
-**Delivery paper AR:** `apply_delivery_paper_outcome` (take / condition) calls **`rpc_create_bill`** with `kind = sales_invoice_wholesale`, stock lines, `source_key` `delivery_paper:{id}:take|condition` (shop order: `source_entity = public.shop_orders`; PBC: `public.delivery_paper`). Draft only; issue via **`rpc_issue_bill`** / desk after stock commit.
+**Catalog customer delivery:** No auto AR from a delivery record. Staff create/issue wholesale AR from the compose desk or existing order workflows. Legacy bills with `source_key` `delivery_paper:…` or `source_type = delivery_close` remain readable only.
 
 ## Shipment cost AP (Option A) {#shipment-cost-ap}
 

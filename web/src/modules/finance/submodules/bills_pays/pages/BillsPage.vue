@@ -168,8 +168,6 @@ import type {
   BillToProfileTypeTab,
   StatusPill,
 } from '../types/billList';
-import { billOpensOnDetailNotComposeDesk } from '../utils/billRoutes';
-
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
@@ -279,29 +277,6 @@ const openBill = (row: BillListRowData) => {
     },
   };
 
-  if (
-    billOpensOnDetailNotComposeDesk({
-      invoice_status: row.invoice_status,
-      invoice_type: row.invoice_type,
-      invoice_no: row.invoice_no,
-      source_type: row.kind === 'shipment_cost_ap' ? 'shipment_cost' : null,
-      ap_kind: row.ap_kind,
-    })
-  ) {
-    void router.push(detailRoute);
-    return;
-  }
-
-  const isDraft =
-    row.invoice_status === 'draft' || row.invoice_status === 'proforma_generated';
-  if (isDraft && row.invoice_type !== 'ap') {
-    void router.push({
-      name: 'app-bill-compose-page',
-      params: tenantSlug ? { tenantSlug } : {},
-      query: { id: String(row.id) },
-    });
-    return;
-  }
   void router.push(detailRoute);
 };
 </script>

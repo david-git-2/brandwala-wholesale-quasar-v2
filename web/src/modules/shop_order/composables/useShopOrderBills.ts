@@ -4,7 +4,7 @@ import { billsRepository } from 'src/modules/finance/submodules/bills_pays/repos
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import type { ShopOrderBillListItem } from '../types/shopOrderBillList';
 
-function parseShopOrderBills(raw: unknown): ShopOrderBillListItem[] {
+export function parseShopOrderBills(raw: unknown): ShopOrderBillListItem[] {
   if (!Array.isArray(raw)) return [];
   return raw as ShopOrderBillListItem[];
 }

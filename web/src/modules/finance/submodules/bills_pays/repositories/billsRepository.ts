@@ -165,6 +165,12 @@ export type BillDetailBundle = {
   payCashbookLegs: BillPayCashbookLegs | null;
 };
 
+export type BillDetailBundlesResult = {
+  success: boolean;
+  bundles: BillDetailBundle[];
+  missingIds: number[];
+};
+
 // Re-export legacy type aliases for callers migrating gradually
 export type {
   ListBillsParams as ListGlobalInvoicesParams,
@@ -476,6 +482,38 @@ const getBillDetailBundle = async (params: {
   });
   if (error) throw error;
   return parseBillDetailBundleFromRpc(data);
+};
+
+const getBillDetailBundles = async (params: {
+  tenantId: number;
+  billIds: number[];
+}): Promise<BillDetailBundlesResult> => {
+  const ids = [...new Set(params.billIds.filter((id) => id > 0))];
+  if (!ids.length) {
+    return { success: true, bundles: [], missingIds: [] };
+  }
+
+  const { data, error } = await supabase.rpc('get_bill_detail_bundles', {
+    p_tenant_id: params.tenantId,
+    p_bill_ids: ids,
+  });
+  if (error) throw error;
+
+  const raw = (data ?? {}) as Record<string, unknown>;
+  const bundlesRaw = raw.bundles;
+  const bundles = Array.isArray(bundlesRaw)
+    ? bundlesRaw.map((entry) => parseBillDetailBundleFromRpc(entry))
+    : [];
+  const missingRaw = raw.missing_ids;
+  const missingIds = Array.isArray(missingRaw)
+    ? missingRaw.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0)
+    : [];
+
+  return {
+    success: raw.success !== false,
+    bundles,
+    missingIds,
+  };
 };
 
 const listBillItems = async (billId: number): Promise<GlobalInvoiceItemRow[]> => {
@@ -815,6 +853,7 @@ export const billsRepository = {
   listBillsPage,
   getBillById,
   getBillDetailBundle,
+  getBillDetailBundles,
   listBillItems,
   searchBillStock,
   upsertDraftBill,

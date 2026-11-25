@@ -76,7 +76,7 @@ Hidden products: `shop_listing_group_hides` — configured in app, enforced on b
 
 ## Negotiation → pre-order path
 
-Catalog shops can lock **confirmed** qty into **demand** (`/app/procurement/demand`) → inbound or **delivery paper** close → bills via money kernel.
+Catalog shops can lock **confirmed** qty into **demand** (`/app/procurement/demand`) → inbound receive → bills on money desk.
 
 That is **not** the wholesale compose desk and **not** the dropship ship RPC path.
 

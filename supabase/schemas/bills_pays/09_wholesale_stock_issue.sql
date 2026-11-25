@@ -29,8 +29,6 @@ declare
   v_mov_no text;
   v_parent_id bigint;
   v_has_stock boolean := false;
-  v_delivery_paper_id bigint;
-  v_skip_deduct boolean;
   v_line_label text;
   v_is_dropship boolean := false;
   v_use_kernel boolean := false;
@@ -44,7 +42,6 @@ begin
     end if;
 
     v_parent_id := v_kernel.tenant_id;
-    v_delivery_paper_id := nullif(trim(coalesce(v_kernel.meta->>'delivery_paper_id', '')), '')::bigint;
     v_is_dropship := v_kernel.kind = 'sales_invoice_dropship';
   else
     select * into v_invoice from public.bills where id = p_bill_id for update;
@@ -57,7 +54,6 @@ begin
     end if;
 
     v_parent_id := coalesce(v_invoice.tenant_id, v_invoice.issued_by_tenant_id);
-    v_delivery_paper_id := nullif(trim(coalesce(v_invoice.channel_meta->>'delivery_paper_id', '')), '')::bigint;
     v_is_dropship := v_invoice.invoice_type = 'dropship'::public.global_invoice_type;
   end if;
 
@@ -131,11 +127,6 @@ begin
       v_qty := ceil(v_db_item.quantity)::integer;
       v_line_label := v_db_item.name_snapshot;
 
-      if v_delivery_paper_id is not null
-         and not exists (select 1 from public.global_stocks gs where gs.id = v_stock_id) then
-        continue;
-      end if;
-
       select * into v_stock from public.global_stocks where id = v_stock_id for update;
       if v_stock.id is null then
         raise exception 'Stock % not found for line %', v_stock_id, v_line_label;
@@ -143,23 +134,6 @@ begin
 
       if v_is_dropship and v_stock.availability <> 'held'::public.stock_availability then
         raise exception 'dropship invoice stock % must be held before issue', v_stock_id;
-      end if;
-
-      v_skip_deduct := (
-        v_delivery_paper_id is not null
-        and public.stock_dispatch_deduct_covers(v_delivery_paper_id, v_stock_id, v_qty)
-      );
-
-      if v_skip_deduct then
-        insert into public.stock_movement_lines (
-          movement_id, stock_id, quantity,
-          from_location_id, to_location_id, from_availability, to_availability
-        ) values (
-          v_mov_id, v_stock_id, v_qty,
-          v_stock.location_id, v_stock.location_id,
-          v_stock.availability, v_stock.availability
-        );
-        continue;
       end if;
 
       if v_stock.quantity < v_qty then
@@ -188,11 +162,6 @@ begin
       v_qty := ceil(v_kline.quantity)::integer;
       v_line_label := coalesce(v_kline.description, 'Line');
 
-      if v_delivery_paper_id is not null
-         and not exists (select 1 from public.global_stocks gs where gs.id = v_stock_id) then
-        continue;
-      end if;
-
       select * into v_stock from public.global_stocks where id = v_stock_id for update;
       if v_stock.id is null then
         raise exception 'Stock % not found for line %', v_stock_id, v_line_label;
@@ -200,23 +169,6 @@ begin
 
       if v_is_dropship and v_stock.availability <> 'held'::public.stock_availability then
         raise exception 'dropship invoice stock % must be held before issue', v_stock_id;
-      end if;
-
-      v_skip_deduct := (
-        v_delivery_paper_id is not null
-        and public.stock_dispatch_deduct_covers(v_delivery_paper_id, v_stock_id, v_qty)
-      );
-
-      if v_skip_deduct then
-        insert into public.stock_movement_lines (
-          movement_id, stock_id, quantity,
-          from_location_id, to_location_id, from_availability, to_availability
-        ) values (
-          v_mov_id, v_stock_id, v_qty,
-          v_stock.location_id, v_stock.location_id,
-          v_stock.availability, v_stock.availability
-        );
-        continue;
       end if;
 
       if v_stock.quantity < v_qty then
@@ -265,13 +217,7 @@ BEGIN
     SELECT bl.*
     FROM money_kernel.bill_lines bl
     WHERE bl.bill_id = p_bill_id
-      AND (
-        bl.item_kind = 'stock'
-        OR (
-          bl.item_kind = 'charge'
-          AND nullif(v_bill.meta->>'delivery_paper_id', '') IS NOT NULL
-        )
-      )
+      AND bl.item_kind = 'stock'
     FOR UPDATE OF bl
   LOOP
     v_shipment_item_id := v_line.shipment_item_id;
@@ -320,12 +266,6 @@ BEGIN
       INTO v_shipment_id
       FROM public.global_shipment_items gsi
       WHERE gsi.id = v_shipment_item_id;
-    END IF;
-
-    IF v_shipment_item_id IS NULL
-       AND nullif(v_bill.meta->>'delivery_paper_id', '') IS NOT NULL
-       AND v_line.global_stock_id IS NULL THEN
-      CONTINUE;
     END IF;
 
     UPDATE money_kernel.bill_lines

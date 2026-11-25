@@ -1,7 +1,12 @@
 import { defineStore } from 'pinia';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import {
+  billsRepository,
+  type BillDetailBundle,
+} from 'src/modules/finance/submodules/bills_pays/repositories/billsRepository';
 import { shopOrderService } from '../services/shopOrderService';
+import { parseShopOrderBills } from '../composables/useShopOrderBills';
 import type { Shop, ShopOrder, ShopOrderItem } from '../types';
 
 export interface ShopOrderState {
@@ -13,6 +18,10 @@ export interface ShopOrderState {
   error: string | null;
   shops: Shop[];
   loadingShops: boolean;
+  orderBillBundlesOrderId: number | null;
+  orderBillBundles: BillDetailBundle[];
+  orderBillBundlesMissingIds: number[];
+  loadingOrderBillBundles: boolean;
 }
 
 export const useShopOrderStore = defineStore('shopOrder', {
@@ -25,13 +34,68 @@ export const useShopOrderStore = defineStore('shopOrder', {
     error: null,
     shops: [],
     loadingShops: false,
+    orderBillBundlesOrderId: null,
+    orderBillBundles: [],
+    orderBillBundlesMissingIds: [],
+    loadingOrderBillBundles: false,
   }),
 
+  getters: {
+    orderBillBundleById:
+      (state) =>
+      (billId: number): BillDetailBundle | undefined =>
+        state.orderBillBundles.find((b) => Number(b.bill?.id) === billId),
+  },
+
   actions: {
+    clearOrderBillDetailBundles() {
+      this.orderBillBundlesOrderId = null;
+      this.orderBillBundles = [];
+      this.orderBillBundlesMissingIds = [];
+      this.loadingOrderBillBundles = false;
+    },
+
+    async fetchOrderBillDetailBundles(tenantId: number, orderId: number) {
+      if (orderId <= 0 || tenantId <= 0) {
+        this.clearOrderBillDetailBundles();
+        return;
+      }
+      this.loadingOrderBillBundles = true;
+      try {
+        const raw = await billsRepository.listBillsForSource({
+          tenantId,
+          sourceType: 'shop_order',
+          sourceId: String(orderId),
+        });
+        const list = parseShopOrderBills(raw);
+        const billIds = [...new Set(list.map((row) => row.id).filter((id) => id > 0))];
+        if (billIds.length === 0) {
+          this.orderBillBundlesOrderId = orderId;
+          this.orderBillBundles = [];
+          this.orderBillBundlesMissingIds = [];
+          return;
+        }
+        const { bundles, missingIds } = await billsRepository.getBillDetailBundles({
+          tenantId,
+          billIds,
+        });
+        this.orderBillBundlesOrderId = orderId;
+        this.orderBillBundles = bundles;
+        this.orderBillBundlesMissingIds = missingIds;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to load bill details';
+        this.error = message;
+        handleApiFailure({ success: false, error: message }, message);
+      } finally {
+        this.loadingOrderBillBundles = false;
+      }
+    },
+
     clearCurrentOrder() {
       this.currentOrder = null;
       this.currentOrderItems = [];
       this.error = null;
+      this.clearOrderBillDetailBundles();
     },
 
     async submitOrder(

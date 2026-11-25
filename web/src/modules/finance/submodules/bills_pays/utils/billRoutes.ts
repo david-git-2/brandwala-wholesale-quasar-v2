@@ -1,8 +1,5 @@
 import type { RouteLocationRaw } from 'vue-router';
 import { buildModuleRoutePath } from 'src/modules/workspace/submodules/navigation/moduleRegistry';
-import type { GlobalInvoiceDetail } from 'src/modules/finance/submodules/bills_pays/types/invoice';
-import { isDropshipManagerBill } from './dropshipManagedBill';
-
 export const BILLS_ROUTE_SEGMENT = 'bills';
 
 export function billListPath(tenantSlug: string | null | undefined): string {
@@ -12,20 +9,6 @@ export function billListPath(tenantSlug: string | null | undefined): string {
 export function billListRoute(_tenantSlug?: string | null): RouteLocationRaw {
   return {
     name: 'app-bills-page',
-  };
-}
-
-export function billComposeRoute(tenantSlug?: string | null): RouteLocationRaw {
-  return {
-    name: 'app-bill-compose-page',
-  };
-}
-
-/** Open an existing draft / proforma on the AR compose desk (Issue, Save, Note). */
-export function billDraftComposeRoute(billId: number, tenantSlug?: string | null): RouteLocationRaw {
-  return {
-    name: 'app-bill-compose-page',
-    query: { id: String(billId) },
   };
 }
 
@@ -79,15 +62,12 @@ export function billAdjustmentRoute(
   };
 }
 
-/** Compose desk for drafts; detail for issued bills (matches bills list). */
+/** Bill detail (list and deep links). */
 export function billRouteForInvoiceStatus(
   billId: number,
-  invoiceStatus: string | null | undefined,
+  _invoiceStatus?: string | null | undefined,
   tenantSlug?: string | null,
 ): RouteLocationRaw {
-  if (invoiceStatus === 'draft' || invoiceStatus === 'proforma_generated') {
-    return billDraftComposeRoute(billId, tenantSlug);
-  }
   return billDetailRoute(billId, tenantSlug);
 }
 
@@ -116,33 +96,12 @@ export function billPreviewRoute(billId: number, tenantSlug?: string | null): Ro
   };
 }
 
-/** Draft bills from delivery paper Accept/Condition — detail + Issue, not compose desk. */
 export function isDeliveryPaperOutcomeBillSource(
   sourceType: string | null | undefined,
   sourceKey: string | null | undefined,
 ): boolean {
   if (sourceType === 'delivery_close') return true;
   return sourceType === 'shop_order' && String(sourceKey ?? '').startsWith('delivery_paper:');
-}
-
-export function billOpensOnDetailNotComposeDesk(bill: {
-  invoice_status?: string | null;
-  invoice_type?: string | null;
-  source_type?: string | null;
-  source_key?: string | null;
-  ap_shipment_id?: number | null;
-  shop_order_id?: number | null;
-  invoice_no?: string | null;
-  ap_kind?: string | null;
-}): boolean {
-  const st = bill.invoice_status;
-  if (st !== 'draft' && st !== 'proforma_generated') return false;
-  if (bill.source_type === 'dropship_courier_ar') return true;
-  if (isDropshipManagerBill(bill as GlobalInvoiceDetail)) return true;
-  if (bill.invoice_type === 'ap') return true;
-  if (bill.source_type === 'shipment_cost') return true;
-  if (bill.ap_shipment_id != null) return true;
-  return isDeliveryPaperOutcomeBillSource(bill.source_type, bill.source_key);
 }
 
 function positiveInt(value: string | number | null | undefined): number | null {
@@ -181,22 +140,23 @@ export function billKernelSourceRoute(
 ): RouteLocationRaw | null {
   const slugParams = tenantSlug ? { tenantSlug } : {};
 
-  const paperId = deliveryPaperIdFromBillSource(input.sourceType, input.sourceId, input.sourceKey);
-  if (paperId != null) {
+  const legacyPaperId = deliveryPaperIdFromBillSource(
+    input.sourceType,
+    input.sourceId,
+    input.sourceKey,
+  );
+  if (legacyPaperId != null) {
     const orderFromProp = positiveInt(input.shopOrderId);
     const orderFromSource =
       input.sourceType === 'shop_order' ? positiveInt(input.sourceId) : null;
     const orderId = orderFromProp ?? orderFromSource;
     if (orderId != null) {
       return {
-        name: 'app-shop-order-delivery-paper-page',
-        params: { ...slugParams, id: String(orderId), paperId: String(paperId) },
+        name: 'app-shop-order-detail-page',
+        params: { ...slugParams, id: String(orderId) },
       };
     }
-    return {
-      name: 'app-procurement-fulfill-delivery-paper-page',
-      params: { ...slugParams, paperId: String(paperId) },
-    };
+    return null;
   }
 
   if (input.sourceType === 'shipment_cost') {

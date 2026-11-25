@@ -270,7 +270,7 @@ export function getCatalogWorkflowStatusConfirmation(
   if (isBackwardCatalogWorkflowStep(cur, nxt, isNegotiable)) {
     return {
       title: 'Change order status?',
-      message: `${orderRef} will move back to “${targetLabel}”. Use only to fix a mistake. This does not undo stock moves, delivery papers, or bills.`,
+      message: `${orderRef} will move back to “${targetLabel}”. Use only to fix a mistake. This does not undo stock moves, delivery records, or bills.`,
       okLabel: `Set to ${targetLabel}`,
       okColor: 'warning',
     };
@@ -306,7 +306,7 @@ export function getCatalogWorkflowStatusConfirmation(
     case 'dispatch':
       return {
         title: 'Mark dispatch?',
-        message: `${orderRef} will move to dispatch. Create delivery papers from the gear menu when picks are ready.`,
+        message: `${orderRef} will move to dispatch. Record customer delivery and bills when fulfillment is ready.`,
         okLabel: 'Mark dispatch',
       };
     case 'delivered':
@@ -359,9 +359,16 @@ export function isCatalogCustomerFulfillmentPhase(status: string | null | undefi
   return st === 'procuring' || st === 'dispatch' || st === 'delivered' || st === 'closed';
 }
 
-/** Gear drawer Bills tab — same fulfillment window as delivery papers (outcome bills exist before “delivered”). */
+/** Gear drawer Bills tab — visible during procuring through closed (legacy outcome bills may exist before “delivered”). */
 export function canShowCatalogOrderBillsTab(status: string | null | undefined): boolean {
   return isCatalogCustomerFulfillmentPhase(status);
+}
+
+/** Original qty the customer submitted on the line. */
+export function catalogOrderCustomerQuantity(item: {
+  quantity?: number | null;
+}): number {
+  return Math.max(0, Number(item.quantity ?? 0) || 0);
 }
 
 /** Effective qty shown to the customer after confirm (0 = line rejected). */

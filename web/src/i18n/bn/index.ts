@@ -339,6 +339,16 @@ export default {
     total_brands: 'মোট ব্র্যান্ড',
     browse_catalog: 'ক্যাটালগ ব্রাউজ করুন',
   },
+  common: {
+    add: 'যোগ করুন',
+    search: 'অনুসন্ধান',
+    close: 'বন্ধ',
+    done: 'সম্পন্ন',
+    refresh: 'রিফ্রেশ',
+    loading: 'লোড হচ্ছে…',
+    reset: 'রিসেট',
+    error_generic: 'কিছু ভুল হয়েছে',
+  },
   help: {
     title: 'হেল্প সেন্টার',
     subtitle: 'আপনার রোলের জন্য ফিল্টার করা নির্দেশিকা, ওয়ার্কফ্লো এবং মূল শব্দাবলী।',

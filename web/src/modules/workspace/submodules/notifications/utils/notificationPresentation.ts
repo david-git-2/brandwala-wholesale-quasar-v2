@@ -18,7 +18,7 @@ const EVENT_PRESENTATION: Record<string, NotificationPresentation> = {
   'catalog.order.packed': {
     icon: 'ph ph-package',
     kindLabel: 'Packed',
-    fallbackAction: 'Confirm take, condition, or return on the delivery paper',
+    fallbackAction: 'Record customer delivery and issue bills from the money desk',
   },
   'catalog.order.delivered': {
     icon: 'ph ph-truck',

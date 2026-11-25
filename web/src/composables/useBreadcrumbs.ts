@@ -56,8 +56,8 @@ const ENTITY_MAP: Record<
   { label: string; singular: string; defaultSubPath?: string | undefined; skipIdCrumb?: boolean }
 > = {
   demand: { label: 'Demand', singular: 'Demand' },
-  fulfill: { label: 'Delivery paper', singular: 'Delivery paper' },
-  'delivery-paper': { label: 'Delivery paper', singular: 'Delivery paper' },
+  fulfill: { label: 'Demand', singular: 'Demand' },
+  'delivery-paper': { label: 'Demand', singular: 'Demand' },
   shipment: { label: 'Shipments', singular: 'Shipment' },
   'inbound-shipments': { label: 'Inbound Shipments', singular: 'Shipment' },
   inbound: { label: 'Inbound Shipments', singular: 'Shipment' },

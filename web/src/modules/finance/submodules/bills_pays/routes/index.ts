@@ -23,13 +23,6 @@ const billsPaysRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('global_invoice'),
       },
       {
-        path: 'create',
-        name: 'app-bill-compose-page',
-        component: () => import('../pages/BillComposePage.vue'),
-        meta: { hasPageToolbar: true, title: 'New bill', headerTitle: 'New bill' },
-        beforeEnter: guard('global_invoice'),
-      },
-      {
         path: 'brands',
         name: 'app-bill-brands-page',
         component: () => import('../pages/BillBrandsPage.vue'),

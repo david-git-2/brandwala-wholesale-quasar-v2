@@ -163,7 +163,7 @@ export default {
   status_hint_procuring_when: 'You are buying the goods',
   status_hint_procuring_does: 'Type how many you got for each item.',
   status_hint_packed_when: 'You know how many you got',
-  status_hint_packed_does: 'Close on the delivery paper (take, condition, or return).',
+  status_hint_packed_does: 'Record customer delivery; issue bills from the money desk when ready.',
   status_hint_delivered_when: 'All goods have arrived',
   status_hint_delivered_does: 'This job is finished.',
   status_hint_cancelled_when: 'This job is stopped',

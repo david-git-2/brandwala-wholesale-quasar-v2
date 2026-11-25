@@ -119,9 +119,8 @@ export const shopOrderQueryKeys = {
     ['shopOrder', 'orderDetail', { tenantId, orderId }] as const,
   billsForShopOrder: (tenantId: number, orderId: number) =>
     ['shopOrder', 'billsForShopOrder', { tenantId, orderId }] as const,
-  deliveryPaperQtyByOrderItem: (tenantId: number, orderId: number) =>
-    ['shopOrder', 'deliveryPaperQtyByOrderItem', { tenantId, orderId }] as const,
-  deliveryPaperQtyByOrderItemRoot: () => ['shopOrder', 'deliveryPaperQtyByOrderItem'] as const,
+  billItemCoverage: (tenantId: number, orderId: number) =>
+    ['shopOrder', 'billItemCoverage', { tenantId, orderId }] as const,
   courierRemittances: (params: { tenantId: number; courierServiceId?: string | null; status?: string | null }) =>
     ['courier-remittances', params.tenantId, { courierServiceId: params.courierServiceId ?? null, status: params.status ?? null }] as const,
   courierRemittanceDetail: (tenantId: number, batchId: number) =>

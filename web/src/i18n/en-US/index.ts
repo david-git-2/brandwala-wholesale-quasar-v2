@@ -341,6 +341,16 @@ export default {
     total_brands: 'Total brands',
     browse_catalog: 'Browse catalog',
   },
+  common: {
+    add: 'Add',
+    search: 'Search',
+    close: 'Close',
+    done: 'Done',
+    refresh: 'Refresh',
+    loading: 'Loading…',
+    reset: 'Reset',
+    error_generic: 'Something went wrong',
+  },
   help: {
     title: 'Help Center',
     subtitle: 'Role-filtered guides, step-by-step workflows, and terms.',

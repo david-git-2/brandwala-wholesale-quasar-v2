@@ -537,6 +537,12 @@ GRANT ALL ON FUNCTION "public"."get_bill_detail_bundle"("p_tenant_id" bigint, "p
 
 GRANT ALL ON FUNCTION "public"."get_bill_detail_bundle"("p_tenant_id" bigint, "p_bill_id" bigint) TO "service_role";
 
+REVOKE ALL ON FUNCTION "public"."get_bill_detail_bundles"("p_tenant_id" bigint, "p_bill_ids" bigint[]) FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "public"."get_bill_detail_bundles"("p_tenant_id" bigint, "p_bill_ids" bigint[]) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."get_bill_detail_bundles"("p_tenant_id" bigint, "p_bill_ids" bigint[]) TO "service_role";
+
 GRANT ALL ON FUNCTION "public"."list_bill_adjustments"("p_parent_bill_id" bigint) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."list_bill_adjustments"("p_parent_bill_id" bigint) TO "service_role";

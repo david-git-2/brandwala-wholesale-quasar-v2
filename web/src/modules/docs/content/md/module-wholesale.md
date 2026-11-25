@@ -127,10 +127,10 @@ Full walkthrough: [Money kernel → Three worked patterns](/docs/kernels#money-k
 | Not wholesale desk | Where it lives |
 | --- | --- |
 | Dropship to recipient | [Dropship module](/docs/modules/dropship) — merchant bill at ship, remittance |
-| Pre-order / quote before stock | [Product-based costing](/docs/modules/product-based-costing), delivery paper close |
+| Pre-order / quote before stock | [Product-based costing](/docs/modules/product-based-costing), then money desk |
 | Inbound AP and receive | [Inbound shipment](/docs/modules/inbound) |
 | Koba / thrift POS | Separate sales models — not `global_stocks` FIFO desk |
-| Delivery **proforma** | Delivery paper — not an issued bill until close |
+| Catalog delivery | Bills from money desk when staff issue |
 
 ## Paper and corrections
 

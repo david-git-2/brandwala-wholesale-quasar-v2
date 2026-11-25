@@ -17,8 +17,6 @@ function invalidateDemandDeskQueries(queryClient: ReturnType<typeof useQueryClie
   void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandBuyDocument'] });
   void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroups'] });
   void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroupItems'] });
-  void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'fulfillGroups'] });
-  void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'fulfillGroupItems'] });
 }
 
 function useDemandGroupsQueryKey(options: {

@@ -38,7 +38,7 @@ const props = defineProps<{
   productName: string;
   needQuantity: number;
   initialPicks?: DemandStockPickSelection[];
-  /** Delivery paper: qty fields only; Apply commits picks (no per-lot Add). */
+  /** Qty fields only; Apply commits picks (no per-lot Add). */
   hidePerLotAddButton?: boolean;
 }>();
 

@@ -103,7 +103,7 @@ flowchart TB
 | `compose` | [Wholesale](/docs/modules/wholesale) desk |
 | `shop_order` | [Dropship](/docs/modules/dropship) merchant bill |
 | `shipment_cost` | [Inbound](/docs/modules/inbound) AP sync |
-| `delivery_close` | Pre-order delivery paper |
+| `delivery_close` | **Legacy** — pre-order delivery paper bills (retired product; readable only) |
 | `dropship_courier` | Courier AP at dropship ship (**as-built**; target courier AR net — SO-CA1) |
 
 Features call: issue/void bill, pay in/out + alloc, `create_bill_adjustment`, `get_bill_net_balances` — they do not re-sum allocations in app code.

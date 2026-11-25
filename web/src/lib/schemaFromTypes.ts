@@ -447,7 +447,7 @@ export function tablesToErdSlices(tables: SchemaTable[], moduleId: string): ErdS
         tables.filter((t) => tableGroup(t.name) === 'warehouse'),
       ),
       pack(
-        'Demand / delivery paper',
+        'Demand buy',
         tables.filter((t) => tableGroup(t.name) === 'demand'),
       ),
       pack(

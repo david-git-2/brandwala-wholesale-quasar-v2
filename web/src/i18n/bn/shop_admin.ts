@@ -623,6 +623,7 @@ export default {
   all_profiles: 'সব প্রোফাইল',
   no_profiles_found: 'কোনো প্রোফাইল পাওয়া যায়নি',
   create_catalog_order: 'ক্যাটালগ অর্ডার তৈরি',
+  manual_order_lines: 'অর্ডার লাইন',
   manual_catalog_order_title: 'ক্যাটালগ অর্ডার তৈরি',
   manual_catalog_shop_optional: 'শপ (ঐচ্ছিক)',
   manual_catalog_shop_optional_hint:
@@ -859,5 +860,21 @@ export default {
   category_save_failed: 'শপ ক্যাটাগরি সেভ করতে ব্যর্থ হয়েছে।',
   category_delete_failed: 'ক্যাটাগরি মুছতে ব্যর্থ হয়েছে।',
   name_slug_required: 'নাম এবং স্লাগ আবশ্যক।',
+
+  catalog_create_bill: 'বিল তৈরি',
+  catalog_create_bill_submit: 'বিল তৈরি',
+  catalog_create_bill_draft_hint: 'ড্রাফট হিসেবে সংরক্ষিত — প্রস্তুত হলে বিল বিস্তারিত থেকে ইস্যু করুন।',
+  catalog_create_bill_no_profile: 'এই অর্ডারে বিলিং প্রোফাইল প্রয়োজন।',
+  catalog_create_bill_pick_first: 'অন্তত একটি লাইনে স্টক পিক করুন।',
+  catalog_create_bill_partial_banner: 'আংশিক বিলিং — প্রতি লাইনে বাকি পরিমাণ নিচে দেখানো হয়েছে।',
+  catalog_create_bill_success: 'ড্রাফট বিল {no} তৈরি হয়েছে।',
+  catalog_bill_settlement: 'সেটলমেন্ট',
+  catalog_bill_take: 'টেক',
+  catalog_bill_condition: 'কন্ডিশন',
+  catalog_bill_target_qty: 'লক্ষ্য',
+  catalog_bill_on_bills: 'বিলে',
+  catalog_bill_remaining: 'বাকি',
+  catalog_bill_picked: 'পিক',
+  catalog_pick_stock: 'স্টক পিক',
 };
 

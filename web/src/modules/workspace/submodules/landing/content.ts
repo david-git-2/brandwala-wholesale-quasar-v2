@@ -38,7 +38,7 @@ export const landingCopy = {
       {
         id: 'warehouse',
         title: 'Warehouse',
-        body: 'Global stock, bins, stock movements, delivery paper.',
+        body: 'Global stock, bins, stock movements, demand buy.',
       },
       {
         id: 'sell',

@@ -52,7 +52,7 @@ See [scopes](../../architecture/scopes.md).
 ### US-2: Shared procurement lifecycle
 - Confirmed files → Demand desk with catalog preorders (`procuring` … `delivered`). Entering `procuring` writes `preorder_demand` rows with the file `profile_id`.
   - [ ] Stays `procuring` through PO and inbound.
-  - [ ] Packed qty on **Delivery paper**; close take/condition/return — no customer bill at `packed`.
+  - [ ] Customer delivery billed via money desk when staff are ready (not auto at procure time).
 
 ### US-3: Demand backlog
 - Shortfalls after `delivered` → `product_based_costing_backlog_items`.

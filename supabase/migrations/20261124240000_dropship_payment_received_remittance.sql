@@ -133,7 +133,7 @@ BEGIN
       b.id,
       b.due_amount,
       b.issued_by_tenant_id,
-      b.parent_tenant_id
+      b.tenant_id
     FROM public.bills b
     WHERE (
         b.id = p_ar_bill_id
@@ -151,7 +151,7 @@ BEGIN
       CONTINUE;
     END IF;
 
-    v_operating_tenant_id := coalesce(v_bill.issued_by_tenant_id, v_bill.parent_tenant_id);
+    v_operating_tenant_id := coalesce(v_bill.issued_by_tenant_id, v_bill.tenant_id);
 
     INSERT INTO public.invoice_write_offs (
       tenant_id,
@@ -163,7 +163,7 @@ BEGIN
       approved_by
     )
     VALUES (
-      v_bill.parent_tenant_id,
+      v_bill.tenant_id,
       v_bill.id,
       p_receipt_payment_id,
       v_chunk,

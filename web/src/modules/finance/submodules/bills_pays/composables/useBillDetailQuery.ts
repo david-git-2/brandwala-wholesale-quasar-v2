@@ -47,7 +47,8 @@ export function useBillDetailQuery(
     enabled: computed(
       () => !usesBundle.value && billId.value != null && billId.value > 0,
     ),
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const invoiceData = computed(() => invoice?.value ?? detailQuery.data.value);
@@ -63,7 +64,8 @@ export function useBillDetailQuery(
       if (!inv) return false;
       return shouldLoadStockLines(inv);
     }),
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const billLinesQuery = useQuery({
@@ -77,7 +79,8 @@ export function useBillDetailQuery(
       if (!inv) return false;
       return shouldLoadBillLines(inv);
     }),
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   return { detailQuery, itemsQuery, billLinesQuery, invoiceData };

@@ -14,6 +14,8 @@ const props = defineProps<{
   modelValue: boolean;
   orderItem: ShopOrderItem | null;
   draftPicks: ActiveStockPick[];
+  /** Cap line qty for pick remaining (e.g. catalog remaining-to-bill). */
+  orderedQuantityCap?: number | null;
 }>();
 
 const emit = defineEmits<{
@@ -28,7 +30,9 @@ const serverRows = ref<OrderItemPickStockRow[]>([]);
 const serverMeta = ref<ListStockForOrderItemPickMeta>({});
 const qtyByStockId = ref<Record<number, number>>({});
 
-const orderedQty = computed(() => props.orderItem?.quantity ?? 0);
+const orderedQty = computed(
+  () => props.orderedQuantityCap ?? props.orderItem?.confirmed_quantity ?? props.orderItem?.quantity ?? 0,
+);
 
 const overlaid = computed(() =>
   overlayPickListWithDraft(
@@ -60,6 +64,7 @@ const loadRows = async () => {
   loading.value = true;
   try {
     const result = await shopOrderRepository.listStockForOrderItemPick(props.orderItem.id, {
+      productId: props.orderItem.product_id,
       limit: 50,
     });
     serverRows.value = result.data;

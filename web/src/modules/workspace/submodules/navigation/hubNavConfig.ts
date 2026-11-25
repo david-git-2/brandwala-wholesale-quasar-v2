@@ -3,7 +3,7 @@ import { buildModuleRoutePath, MODULE_REGISTRY, type ModuleKey } from './moduleR
 
 export const SHOP_ORDER_PRIMARY_KEYS = ['orders', 'dropship_management', 'shops', 'product_based_costing'] as const;
 
-export const PROCUREMENT_PRIMARY_KEYS = ['demand', 'fulfill', 'shipment', 'warehouse'] as const;
+export const PROCUREMENT_PRIMARY_KEYS = ['demand', 'shipment', 'warehouse'] as const;
 
 export const SHOP_ORDER_HUB_MODULE_KEYS: readonly ModuleKey[] = [
   'shop_config',
@@ -17,7 +17,6 @@ export const SHOP_ORDER_HUB_MODULE_KEYS: readonly ModuleKey[] = [
 
 export const PROCUREMENT_HUB_MODULE_KEYS: readonly ModuleKey[] = [
   'procurement_demand',
-  'procurement_fulfill',
   'global_shipment',
   'global_stock',
   'global_stock_movement',
@@ -134,14 +133,6 @@ const PROCUREMENT_STOCK_HUB = {
       routeSegment: 'procurement/demand',
     },
     {
-      navWeight: 30.5,
-      moduleKey: 'procurement_fulfill' as ModuleKey,
-      title: 'Delivery paper',
-      caption: 'Pick stock; close as take, condition, or return',
-      icon: 'ph ph-package',
-      routeSegment: 'procurement/delivery-paper',
-    },
-    {
       navWeight: 31,
       moduleKey: 'global_shipment' as ModuleKey,
       title: 'Shipments',
@@ -165,9 +156,8 @@ const PROCUREMENT_STOCK_HUB = {
     icon: 'ph ph-dots-three-outline',
     routeSegment: 'procurement',
     hubModuleKeys: PROCUREMENT_HUB_MODULE_KEYS,
-    primaryRouteSegments: [
+      primaryRouteSegments: [
       'procurement/demand',
-      'procurement/delivery-paper',
       'procurement/shipment/list',
       'procurement/stock',
     ],

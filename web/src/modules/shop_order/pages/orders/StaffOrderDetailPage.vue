@@ -210,16 +210,14 @@
       :show-cancel="currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled'"
       :is-deleting="isDeletingOrder"
       :can-download-excel="canDownloadCatalogExcel"
-      :delivery-paper-tenant-id="deliveryPaperParentTenantId"
-      :bills-parent-tenant-id="deliveryPaperParentTenantId"
-      :show-delivery-papers="canShowDeliveryPapers"
-      :allow-create-delivery-paper="canCreateDeliveryPaper"
+      :bills-parent-tenant-id="billsParentTenantId"
       :hidden-from-customer-saving="isUpdatingHiddenFromCustomer"
+      :creating-bill="createKernelDraftBillMutation.isPending.value"
       @download-excel="handleCatalogDownloadExcel"
       @update-hidden-from-customer="onCatalogHiddenFromCustomerChange"
       @cancel-order="onCatalogSettingsCancelOrder"
-      @open-delivery-paper="onOpenDeliveryPaperFromDrawer"
       @open-bill="onOpenBillFromDrawer"
+      @create-bill="onCreateBillFromDrawer"
     />
 
     <CatalogOrderStatusOverrideDialog
@@ -240,7 +238,7 @@ import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useShopOrderDetailQuery } from '../../composables/useShopOrderDetailQuery';
 import { shopOrderQueryKeys } from '../../shared/queryKeys/shopOrderQueryKeys';
-import { useQueryClient } from '@tanstack/vue-query';
+import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import {
   useUpdateOrderStatusMutation,
   useSubmitStaffPricingMutation,
@@ -284,6 +282,7 @@ import {
 } from '../../utils/catalogOrderStatus';
 import type { CatalogBulkPasteUpdate } from '../../composables/useCatalogOrderBulkPaste';
 import { shopOrderRepository } from '../../repositories/shopOrderRepository';
+import { useShopOrderStore } from '../../stores/shopOrderStore';
 
 import StaffOrderHeader from '../../components/StaffOrderHeader.vue';
 import StaffOrderStatusWorkflow from '../../components/StaffOrderStatusWorkflow.vue';
@@ -300,18 +299,19 @@ import CatalogOrderStaffActions from '../../components/CatalogOrderStaffActions.
 import CatalogOrderStatusOverrideDialog from '../../components/CatalogOrderStatusOverrideDialog.vue';
 import CatalogOrderSettingsDialog from '../../components/CatalogOrderSettingsDialog.vue';
 import CatalogBacklogDrawer from '../../components/CatalogBacklogDrawer.vue';
-import {
-  canCreateDocumentDeliveryPaper,
-  canShowDocumentDeliveryPapers,
-} from 'src/modules/procurement_stock/utils/documentDeliveryPapers';
-import { billDetailRoute } from 'src/modules/finance/submodules/bills_pays/utils/billRoutes';
 import type { ShopOrderBillListItem } from '../../types/shopOrderBillList';
 import { useMembershipColumnPreference } from 'src/modules/tenant/submodules/membership/composables/useMembershipColumnPreference';
-import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
+import {
+  handleApiFailure,
+  parseSupabaseError,
+  showErrorNotification,
+  showSuccessNotification,
+} from 'src/utils/appFeedback';
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+const shopOrderStore = useShopOrderStore();
 const { t } = useI18n();
 const $q = useQuasar();
 const { downloadCatalogOrderExcel } = useCatalogOrderExcelDownload();
@@ -347,20 +347,20 @@ const onResellDiscountReviewComplete = () => {
   void refetch();
 };
 
-const deliveryPaperParentTenantId = computed(
+const billsParentTenantId = computed(
   () => authStore.selectedTenant?.parent_id ?? authStore.tenantId ?? null,
 );
 
 const reloadOrderDetails = async () => {
   await refetch();
-  await queryClient.invalidateQueries({
-    queryKey: shopOrderQueryKeys.deliveryPaperQtyByOrderItemRoot(),
-  });
-  const parentId = deliveryPaperParentTenantId.value;
+  const parentId = billsParentTenantId.value;
   if (parentId != null && orderId.value > 0) {
     await queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.billsForShopOrder(parentId, orderId.value),
     });
+    if (shopOrderStore.orderBillBundlesOrderId === orderId.value) {
+      await shopOrderStore.fetchOrderBillDetailBundles(parentId, orderId.value);
+    }
   }
 };
 
@@ -369,41 +369,55 @@ const loadMoreOrderItems = async () => {
   await fetchNextItemsPage();
 };
 
-const canShowDeliveryPapers = computed(() => {
-  if (!isCatalogShop.value || !currentOrder.value) return false;
-  const st = normalizeCatalogOrderStatus(currentOrder.value.status);
-  const demandLines = orderItems.value.map((item) => ({
-    quantity: item.confirmed_quantity ?? item.quantity ?? 0,
-    delivered_quantity: item.delivered_quantity ?? 0,
-    remaining_to_deliver: item.remaining_to_deliver,
-  }));
-  return canShowDocumentDeliveryPapers(st, demandLines);
-});
-
-const canCreateDeliveryPaper = computed(() => {
-  if (!currentOrder.value) return false;
-  return canCreateDocumentDeliveryPaper(normalizeCatalogOrderStatus(currentOrder.value.status));
-});
-
-const openDeliveryPaper = (paperId: number) => {
+const onOpenBillFromDrawer = (_bill: ShopOrderBillListItem) => {
+  if (!orderId.value) return;
+  showCatalogSettingsDialog.value = false;
   void router.push({
-    name: 'app-shop-order-delivery-paper-page',
-    params: {
-      tenantSlug: authStore.tenantSlug || '',
-      id: String(orderId.value),
-      paperId: String(paperId),
-    },
+    name: 'app-shop-order-create-bill-page',
+    params: { id: String(orderId.value) },
+    query: { bill: String(_bill.id) },
   });
 };
 
-const onOpenDeliveryPaperFromDrawer = (paperId: number) => {
-  showCatalogSettingsDialog.value = false;
-  openDeliveryPaper(paperId);
-};
+const createKernelDraftBillMutation = useMutation({
+  mutationFn: async () => {
+    const order = currentOrder.value;
+    const deskTenantId = authStore.tenantId;
+    if (!order || deskTenantId == null) {
+      throw new Error('Order or tenant context is missing');
+    }
+    return shopOrderRepository.createShopOrderKernelDraftBill(deskTenantId, order);
+  },
+  onSuccess: async (res) => {
+    if (!res.success || res.bill_id == null) {
+      const msg =
+        res.error === 'order billing profile is required'
+          ? t('shop_admin.catalog_create_bill_no_profile', 'Billing profile is required on this order.')
+          : (res.error ?? 'Failed to create bill');
+      showErrorNotification(msg);
+      return;
+    }
+    showSuccessNotification(
+      t('shop_admin.catalog_create_bill_success', 'Draft bill {no} created.', {
+        no: res.invoice_no ?? res.bill_id,
+      }),
+    );
+    await reloadOrderDetails();
+  },
+  onError: (err) => {
+    showErrorNotification(parseSupabaseError(err, 'Failed to create bill'));
+  },
+});
 
-const onOpenBillFromDrawer = (bill: ShopOrderBillListItem) => {
-  showCatalogSettingsDialog.value = false;
-  void router.push(billDetailRoute(bill.id, authStore.tenantSlug || undefined));
+const onCreateBillFromDrawer = () => {
+  if (!orderId.value || createKernelDraftBillMutation.isPending.value) return;
+  if (!currentOrder.value?.profile_id) {
+    showErrorNotification(
+      t('shop_admin.catalog_create_bill_no_profile', 'Billing profile is required on this order.'),
+    );
+    return;
+  }
+  createKernelDraftBillMutation.mutate();
 };
 
 const { mutate: updateOrderStatus, isPending: isUpdatingStatus } = useUpdateOrderStatusMutation();
@@ -937,24 +951,35 @@ watch(
 watch(
   () => orderDetailsData.value,
   (newData) => {
-    if (newData) {
-      const fetchedItems = newData.items || [];
-      const currentItemsMap = new Map(orderItems.value.map((i) => [i.id, i]));
+    if (!newData) return;
+    const fetchedItems = newData.items || [];
+    const currentItemsMap = new Map(orderItems.value.map((i) => [i.id, i]));
 
-      orderItems.value = fetchedItems.map((item: any) => {
-        const local = currentItemsMap.get(item.id);
-        const res = { ...item };
-        if (local && local.is_first_offer_manual) {
-          res.staff_offer_amount = local.staff_offer_amount;
-          res.is_first_offer_manual = true;
-        }
-        if (local && local.is_final_offer_manual) {
-          res.final_price_amount = local.final_price_amount;
-          res.is_final_offer_manual = true;
-        }
-        return res;
+    const next = fetchedItems.map((item: any) => {
+      const local = currentItemsMap.get(item.id);
+      const res = { ...item };
+      if (local?.is_first_offer_manual) {
+        res.staff_offer_amount = local.staff_offer_amount;
+        res.is_first_offer_manual = true;
+      }
+      if (local?.is_final_offer_manual) {
+        res.final_price_amount = local.final_price_amount;
+        res.is_final_offer_manual = true;
+      }
+      return res;
+    });
+
+    const unchanged =
+      next.length === orderItems.value.length &&
+      next.every((item, idx) => {
+        const prev = orderItems.value[idx];
+        if (!prev || prev.id !== item.id) return false;
+        if (prev.updated_at !== item.updated_at) return false;
+        if (prev.is_first_offer_manual || prev.is_final_offer_manual) return false;
+        return true;
       });
-
+    if (!unchanged) {
+      orderItems.value = next;
     }
   },
   { immediate: true },

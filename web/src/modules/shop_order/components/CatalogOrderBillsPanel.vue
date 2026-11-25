@@ -4,9 +4,24 @@
       <q-icon name="ph ph-receipt" size="18px" color="primary" />
       <span>Bills</span>
     </div>
-    <p class="text-caption text-grey-7 q-ma-none">
-      Invoices and notes linked to this order (accept, condition, close, and related).
-    </p>
+    <div class="row items-center justify-between q-mb-xs gap-sm wrap">
+      <p class="text-caption text-grey-7 q-ma-none col">
+        Invoices and notes linked to this order (accept, condition, close, and related).
+      </p>
+      <q-btn
+        v-if="canCreateBill"
+        dense
+        no-caps
+        unelevated
+        color="primary"
+        icon="ph ph-plus"
+        :label="$t('shop_admin.catalog_create_bill', 'Create bill')"
+        class="shrink-0"
+        :loading="creatingBill"
+        :disable="creatingBill"
+        @click="emit('create-bill')"
+      />
+    </div>
 
     <q-spinner-dots v-if="isLoading && bills.length === 0" size="18px" color="primary" class="self-center q-py-sm" />
 
@@ -59,23 +74,37 @@ import {
 } from 'src/modules/finance/submodules/bills_pays/utils/invoiceListDisplay';
 import { formatAmountBdt } from 'src/utils/currency';
 import { useShopOrderBills } from '../composables/useShopOrderBills';
+import { useShopOrderBillBundlesStore } from '../composables/useShopOrderBillBundlesStore';
 import type { ShopOrderBillListItem } from '../types/shopOrderBillList';
 
 const props = defineProps<{
   tenantId: number | null;
   orderId: number;
   enabled: boolean;
+  canCreateBill?: boolean;
+  creatingBill?: boolean;
 }>();
+
+const creatingBill = computed(() => props.creatingBill === true);
 
 const emit = defineEmits<{
   (e: 'open-bill', bill: ShopOrderBillListItem): void;
+  (e: 'create-bill'): void;
 }>();
+
+const canCreateBill = computed(() => props.canCreateBill !== false);
 
 const enabled = computed(
   () => props.enabled && props.tenantId != null && props.orderId > 0,
 );
 
 const { bills, isLoading } = useShopOrderBills({
+  tenantId: computed(() => props.tenantId),
+  orderId: computed(() => props.orderId),
+  enabled,
+});
+
+useShopOrderBillBundlesStore({
   tenantId: computed(() => props.tenantId),
   orderId: computed(() => props.orderId),
   enabled,

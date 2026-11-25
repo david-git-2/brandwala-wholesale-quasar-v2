@@ -191,8 +191,21 @@ cmd_migrate() {
   require_local_running
   echo "Applying pending migrations to local DB (include-all for out-of-order files)…"
   supabase_cli migration up --local --include-all
+  cmd_reload_postgrest_schema
   cmd_configure_notification_dispatch
   cmd_types_local
+}
+
+cmd_reload_postgrest_schema() {
+  # shellcheck disable=SC1090
+  eval "$(supabase_cli status -o env)"
+  local db_url="${DB_URL:-}"
+  if [[ -z "$db_url" ]]; then
+    echo "Warning: could not read DB_URL — skip PostgREST schema reload." >&2
+    return 0
+  fi
+  run_local_psql "$db_url" --command "NOTIFY pgrst, 'reload schema';" >/dev/null 2>&1 || true
+  echo "Notified PostgREST to reload schema."
 }
 
 cmd_configure_notification_dispatch() {

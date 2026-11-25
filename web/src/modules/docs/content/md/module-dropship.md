@@ -157,7 +157,7 @@ Auto-gifts apply once when order enters `processing` from shop settings.
 - Listing visibility per customer group; display qty padding on storefront.
 - Pickup locations, couriers, merchant profiles — app dropship admin routes.
 
-Catalog **negotiation** shops share `shop_order` but close through **delivery paper** — not this ship/issue path. See [Sales models](/docs/models).
+Catalog **negotiation** shops share `shop_order` but bill on the money desk — not this ship/issue path. See [Sales models](/docs/models).
 
 ## What dropship is not
 

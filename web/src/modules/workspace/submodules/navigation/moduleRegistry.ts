@@ -535,8 +535,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'procurement_fulfill',
-    name: 'Delivery paper',
-    description: 'Pick parent warehouse stock. Close packed qty as take, condition, or return. Optional proforma is not an issued bill.',
+    name: 'Fulfillment (retired)',
+    description: 'Retired. Catalog fulfillment uses demand buy (preorder_demand) and money desk billing.',
     parentModuleKey: 'procurement_stock',
     routes: [],
   },

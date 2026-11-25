@@ -226,17 +226,6 @@
         </span>
       </div>
 
-      <DocumentDeliveryPaperChips
-        class="q-px-md q-pb-xs"
-        :tenant-id="deliveryPaperParentTenantId"
-        document-type="pbc_costing_file"
-        :document-id="fileId"
-        :enabled="canShowDeliveryPapers"
-        :allow-create="canCreateDeliveryPaper"
-        @open-paper="openDeliveryPaper"
-        @created="openDeliveryPaper"
-      />
-
       <!-- Expandable Inline Rates Editor Bar -->
       <div v-if="ratesExpanded" class="pbc-rates-editor">
         <div class="pbc-rates-editor__grid">
@@ -1414,11 +1403,6 @@ import { useProductBasedCostingFileDetailsPageQuery } from '../composables/usePr
 import { useCustomerAccounts } from 'src/modules/people/submodules/customer/composables/useCustomerAccounts';
 import ProductBasedCostingStatusOverrideDialog from '../components/ProductBasedCostingStatusOverrideDialog.vue';
 import ProductBasedCostingStatusWorkflowBar from '../components/ProductBasedCostingStatusWorkflowBar.vue';
-import DocumentDeliveryPaperChips from 'src/modules/procurement_stock/components/DocumentDeliveryPaperChips.vue';
-import {
-  canCreateDocumentDeliveryPaper,
-  canShowDocumentDeliveryPapers,
-} from 'src/modules/procurement_stock/utils/documentDeliveryPapers';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
@@ -2544,32 +2528,6 @@ function openPreviewAndPrint() {
 
 // Status & Workflow Actions
 const status = computed(() => normalizePbcFileStatus(file.value?.status || 'pending'));
-
-const deliveryPaperParentTenantId = computed(
-  () => tenantStore.selectedTenant?.parent_id ?? tenantStore.selectedTenant?.id ?? null,
-);
-
-const canShowDeliveryPapers = computed(() => {
-  if (!fileId.value) return false;
-  const demandLines = costingItems.value.map((item) => ({
-    quantity: item.confirmed_quantity ?? item.quantity ?? 0,
-    delivered_quantity: 0,
-  }));
-  return canShowDocumentDeliveryPapers(status.value, demandLines);
-});
-
-const canCreateDeliveryPaper = computed(() => canCreateDocumentDeliveryPaper(status.value));
-
-const openDeliveryPaper = (paperId: number) => {
-  void router.push({
-    name: 'product-based-costing-delivery-paper-page',
-    params: {
-      tenantSlug: tenantStore.selectedTenant?.slug ?? route.params.tenantSlug,
-      id: String(fileId.value),
-      paperId: String(paperId),
-    },
-  });
-};
 
 const incompleteOfferItemCount = computed(
   () =>

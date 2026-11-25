@@ -98,7 +98,7 @@ export function resolveInvoiceIdForCloseAction(
   return [...invoiceIds][0] ?? null;
 }
 
-/** Open (not invoiced / returned) unit counts per close action for one delivery paper. */
+/** Open (not invoiced / returned) unit counts per close action for demand document close. */
 export function sumOpenClosePickQuantitiesByAction(
   drafts: Record<string, DraftStockPicks>,
   groupKeyPrefix: string,
