@@ -50,10 +50,30 @@ const settlementSaving = ref(false);
 const deleteBillLoading = ref(false);
 
 const billSettlementQuery = useQuery({
-  queryKey: computed(() => ['shopOrder', 'catalogBillSettlement', billId.value]),
-  queryFn: () => shopOrderRepository.getCatalogDraftBillSettlement(billId.value),
-  enabled: computed(() => billId.value > 0),
+  queryKey: computed(() => ['shopOrder', 'catalogBillSettlement', deskTenantId.value, billId.value]),
+  queryFn: () =>
+    shopOrderRepository.getCatalogDraftBillSettlement(deskTenantId.value!, billId.value),
+  enabled: computed(() => billId.value > 0 && deskTenantId.value != null),
+  staleTime: 0,
+  refetchOnMount: 'always',
 });
+
+const billInvoiceStatus = computed(
+  () => billSettlementQuery.data.value?.invoice_status ?? null,
+);
+
+const isBillIssued = computed(() => billInvoiceStatus.value === 'issued');
+
+const isDraftBill = computed(() => {
+  const status = billInvoiceStatus.value;
+  return status === 'draft' || status === 'proforma_generated';
+});
+
+const settlementKindLabel = computed(() =>
+  settlementKind.value === 'condition'
+    ? t('shop_admin.catalog_bill_condition', 'Condition')
+    : t('shop_admin.catalog_bill_take', 'Take'),
+);
 
 watch(
   () => billSettlementQuery.data.value?.settlement_kind,
@@ -133,7 +153,7 @@ const pickHint = computed(() => {
   );
 });
 
-const columns = [
+const baseColumns = [
   { name: 'sl', label: 'SL', field: 'sl', align: 'center' as const },
   { name: 'image', label: '', field: 'image', align: 'center' as const },
   { name: 'name', label: 'Product', field: 'name', align: 'left' as const },
@@ -153,6 +173,10 @@ const columns = [
   },
   { name: 'actions', label: '', field: 'actions', align: 'right' as const },
 ];
+
+const columns = computed(() =>
+  isDraftBill.value ? baseColumns : baseColumns.filter((col) => col.name !== 'actions'),
+);
 
 const pageTitle = computed(() =>
   billId.value > 0
@@ -195,7 +219,7 @@ const refreshPickMeta = async () => {
 };
 
 const openPick = (row: (typeof tableRows.value)[number]) => {
-  if (row.remaining <= 0) return;
+  if (!isDraftBill.value || row.remaining <= 0) return;
   pickTargetItem.value = row.item;
   pickDialogOpen.value = true;
 };
@@ -308,6 +332,13 @@ watch(order, (o) => {
       />
     </template>
 
+    <div
+      v-else-if="order && billId > 0 && billSettlementQuery.isPending.value"
+      class="row justify-center q-pa-xl"
+    >
+      <q-spinner color="primary" size="32px" />
+    </div>
+
     <template v-else-if="order">
       <div class="row items-center justify-between wrap q-gutter-sm">
         <div>
@@ -348,7 +379,21 @@ watch(order, (o) => {
       </div>
 
       <q-banner
-        v-if="(coverageQuery.data.value?.bills_count ?? 0) > 0"
+        v-if="isBillIssued"
+        dense
+        rounded
+        class="bg-grey-2 text-grey-9"
+      >
+        {{
+          $t(
+            'shop_admin.catalog_bill_issued_read_only',
+            'This bill is issued. Line quantities and settlement cannot be changed here.',
+          )
+        }}
+      </q-banner>
+
+      <q-banner
+        v-else-if="isDraftBill && (coverageQuery.data.value?.bills_count ?? 0) > 0"
         dense
         rounded
         class="bg-blue-1 text-blue-10"
@@ -356,7 +401,17 @@ watch(order, (o) => {
         {{ $t('shop_admin.catalog_create_bill_partial_banner', 'Partial billing — remaining qty per line below.') }}
       </q-banner>
 
-      <div class="compose-kind-group row items-center no-wrap q-gutter-x-sm">
+      <div v-if="isBillIssued" class="column q-gutter-y-xs">
+        <div class="text-caption text-weight-bold text-grey-8">
+          {{ $t('shop_admin.catalog_bill_settlement', 'Settlement') }}
+        </div>
+        <div class="text-body1 text-weight-medium">{{ settlementKindLabel }}</div>
+      </div>
+
+      <div
+        v-else-if="isDraftBill"
+        class="compose-kind-group row items-center no-wrap q-gutter-x-sm"
+      >
         <div class="column">
           <div class="text-caption text-weight-bold text-grey-8 q-mb-xs">
             {{ $t('shop_admin.catalog_bill_settlement', 'Settlement') }}
@@ -414,7 +469,7 @@ watch(order, (o) => {
           </q-td>
         </template>
         <template #body-cell-actions="props">
-          <q-td :props="props">
+          <q-td v-if="isDraftBill" :props="props">
             <q-btn
               dense
               no-caps
@@ -428,10 +483,11 @@ watch(order, (o) => {
         </template>
       </q-table>
 
-      <div class="text-caption text-grey-7 q-pt-sm">{{ pickHint }}</div>
+      <div v-if="isDraftBill" class="text-caption text-grey-7 q-pt-sm">{{ pickHint }}</div>
     </template>
 
     <CatalogOrderBillStockDialog
+      v-if="isDraftBill"
       v-model="pickDialogOpen"
       :order-item="pickTargetItem"
       :order-id="orderId"

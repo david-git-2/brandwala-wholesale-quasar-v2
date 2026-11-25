@@ -6242,6 +6242,9 @@ isOneToOne: false
 "get_cashbook_entity_statement":
 { Args: { "p_end_date"?: string,"p_entity_id": number,"p_entity_type": string,"p_start_date"?: string,"p_tenant_id": number }; Returns: Json
                            },
+"get_catalog_shop_order_bill_summary":
+{ Args: { "p_bill_id": number,"p_tenant_id": number }; Returns: Json
+                           },
 "get_costing_file_by_id":
 { Args: { "p_id": number }; Returns: {
               "admin_profit_rate": number,"cargo_rate_1kg": number,"cargo_rate_2kg": number,"conversion_rate": number,"created_at": string,"created_by_email": string,"customer_group_id": number,"default_shipment_id": number,"id": number,"market": string,"name": string,"status": Database["public"]['Enums']["costing_file_status"],"tenant_id": number,"updated_at": string

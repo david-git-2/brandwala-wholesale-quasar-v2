@@ -32,6 +32,8 @@ declare
   v_line_label text;
   v_is_dropship boolean := false;
   v_use_kernel boolean := false;
+  v_pick_id bigint;
+  v_held_stock_id bigint;
 begin
   select * into v_kernel from money_kernel.bills where id = p_bill_id for update;
 
@@ -158,9 +160,28 @@ begin
       select * from money_kernel.bill_lines
       where bill_id = p_bill_id and global_stock_id is not null
     loop
-      v_stock_id := v_kline.global_stock_id;
       v_qty := ceil(v_kline.quantity)::integer;
       v_line_label := coalesce(v_kline.description, 'Line');
+      v_stock_id := v_kline.global_stock_id;
+      v_pick_id := nullif(coalesce(v_kline.meta->>'shop_order_item_stock_pick_id', ''), '')::bigint;
+      v_held_stock_id := null;
+
+      if v_pick_id is not null then
+        select sp.held_stock_id
+        into v_held_stock_id
+        from public.shop_order_item_stock_picks sp
+        where sp.id = v_pick_id;
+
+        if v_held_stock_id is not null then
+          v_stock_id := v_held_stock_id;
+        else
+          raise exception 'Catalog pick % has no held stock for line %', v_pick_id, v_line_label;
+        end if;
+      end if;
+
+      if v_stock_id is null then
+        continue;
+      end if;
 
       select * into v_stock from public.global_stocks where id = v_stock_id for update;
       if v_stock.id is null then

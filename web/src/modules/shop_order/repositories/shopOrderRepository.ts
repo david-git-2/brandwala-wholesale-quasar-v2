@@ -2005,20 +2005,26 @@ const parseCatalogBillSettlementKind = (
 ): 'take' | 'condition' => (raw === 'condition' ? 'condition' : 'take');
 
 const getCatalogDraftBillSettlement = async (
+  deskTenantId: number,
   billId: number,
 ): Promise<CatalogDraftBillSettlement> => {
-  const { data, error } = await supabase
-    .from('bills')
-    .select('settlement_kind, invoice_status')
-    .eq('id', billId)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('get_catalog_shop_order_bill_summary', {
+    p_tenant_id: deskTenantId,
+    p_bill_id: billId,
+  });
   if (error) throw error;
-  if (!data) {
-    return { settlement_kind: 'take', invoice_status: null };
+  const payload = (data ?? {}) as {
+    success?: boolean;
+    error?: string;
+    settlement_kind?: string | null;
+    invoice_status?: string | null;
+  };
+  if (!payload.success) {
+    throw new Error(payload.error ?? 'get_catalog_shop_order_bill_summary failed');
   }
   return {
-    settlement_kind: parseCatalogBillSettlementKind(data.settlement_kind),
-    invoice_status: data.invoice_status ?? null,
+    settlement_kind: parseCatalogBillSettlementKind(payload.settlement_kind),
+    invoice_status: payload.invoice_status ?? null,
   };
 };
 
