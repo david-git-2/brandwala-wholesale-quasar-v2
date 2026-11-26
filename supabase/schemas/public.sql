@@ -19722,91 +19722,6 @@ $$;
 ALTER FUNCTION "public"."get_investor_portfolio_summary"("p_investor_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_item_details"("p_item_id" bigint) RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_email text;
-  v_item jsonb;
-  v_assignees jsonb;
-  v_tags jsonb;
-  v_comments jsonb;
-  v_permissions jsonb;
-  v_activity_logs jsonb;
-begin
-  v_email := public.current_user_email();
-
-  -- Check item exists and permissions allow reading it
-  if public.get_effective_item_role(p_item_id, v_email) is null then
-    return null;
-  end if;
-
-  -- 1. Fetch item details
-  select row_to_json(i)
-  into v_item
-  from public.items i
-  where i.id = p_item_id;
-
-  -- 2. Fetch assignees
-  select coalesce(json_agg(row_to_json(ia)), '[]'::json)
-  into v_assignees
-  from (
-    select * from public.item_assignees
-    where item_id = p_item_id
-  ) ia;
-
-  -- 3. Fetch tags
-  select coalesce(json_agg(row_to_json(t)), '[]'::json)
-  into v_tags
-  from (
-    select t.* from public.item_tags it
-    join public.tags t on t.id = it.tag_id
-    where it.item_id = p_item_id
-  ) t;
-
-  -- 4. Fetch comments (ordered by created_at asc)
-  select coalesce(json_agg(row_to_json(c)), '[]'::json)
-  into v_comments
-  from (
-    select * from public.comments
-    where item_id = p_item_id
-    order by created_at asc
-  ) c;
-
-  -- 5. Fetch permissions
-  select coalesce(json_agg(row_to_json(ip)), '[]'::json)
-  into v_permissions
-  from (
-    select * from public.item_permissions
-    where item_id = p_item_id
-  ) ip;
-
-  -- 6. Fetch activity logs (ordered by created_at desc)
-  select coalesce(json_agg(row_to_json(al)), '[]'::json)
-  into v_activity_logs
-  from (
-    select * from public.activity_logs
-    where item_id = p_item_id
-    order by created_at desc
-  ) al;
-
-  -- Return combined result
-  return jsonb_build_object(
-    'item', v_item,
-    'assignees', v_assignees,
-    'tags', v_tags,
-    'comments', v_comments,
-    'permissions', v_permissions,
-    'activity_logs', v_activity_logs
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."get_item_details"("p_item_id" bigint) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."get_koba_cart"("p_tenant_id" bigint, "p_customer_group_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -25584,53 +25499,6 @@ $$;
 
 
 ALTER FUNCTION "public"."global_invoices_default_issued_by_tenant_id"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."global_search_tasks"("p_query" "text") RETURNS TABLE("id" bigint, "tenant_id" bigint, "tenant_name" "text", "parent_id" bigint, "type" "text", "title" "text", "content" "text", "status" "text", "priority" "text", "created_by_email" "text", "due_date" timestamp with time zone, "start_date" timestamp with time zone, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_email text;
-begin
-  v_email := public.current_user_email();
-
-  return query
-  select distinct
-    i.id,
-    i.tenant_id,
-    t.name as tenant_name,
-    i.parent_id,
-    i.type,
-    i.title,
-    i.content,
-    i.status,
-    i.priority,
-    i.created_by_email,
-    i.due_date,
-    i.start_date,
-    i.created_at,
-    i.updated_at
-  from public.items i
-  left join public.tenants t on t.id = i.tenant_id
-  left join public.item_tags it on it.item_id = i.id
-  left join public.tags tag on tag.id = it.tag_id
-  left join public.comments c on c.item_id = i.id
-  where
-    public.get_effective_item_role(i.id, v_email) is not null
-    and (
-      i.title ilike '%' || p_query || '%'
-      or i.content ilike '%' || p_query || '%'
-      or tag.name ilike '%' || p_query || '%'
-      or c.body ilike '%' || p_query || '%'
-    )
-  order by i.updated_at desc
-  limit 50;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."global_search_tasks"("p_query" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."global_shipment_costs_are_locked"("p_ship" "public"."global_shipments") RETURNS boolean
@@ -57243,35 +57111,6 @@ ALTER SEQUENCE "public"."catalog_refresh_log_id_seq" OWNED BY "public"."catalog_
 
 
 
-CREATE TABLE IF NOT EXISTS "public"."comments" (
-    "id" bigint NOT NULL,
-    "item_id" bigint NOT NULL,
-    "parent_comment_id" bigint,
-    "user_email" "text" DEFAULT "public"."current_user_email"() NOT NULL,
-    "body" "text" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "deleted_at" timestamp with time zone
-);
-
-
-ALTER TABLE "public"."comments" OWNER TO "postgres";
-
-
-CREATE SEQUENCE IF NOT EXISTS "public"."comments_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "public"."comments_id_seq" OWNER TO "postgres";
-
-
-ALTER SEQUENCE "public"."comments_id_seq" OWNED BY "public"."comments"."id";
-
-
 
 CREATE TABLE IF NOT EXISTS "public"."courier_remittance_batches" (
     "id" bigint NOT NULL,
@@ -59880,9 +59719,6 @@ ALTER TABLE ONLY "public"."catalog_refresh_log" ALTER COLUMN "id" SET DEFAULT "n
 
 
 
-ALTER TABLE ONLY "public"."comments" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."comments_id_seq"'::"regclass");
-
-
 
 ALTER TABLE ONLY "public"."document_number_configs" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."document_number_configs_id_seq"'::"regclass");
 
@@ -60175,10 +60011,6 @@ ALTER TABLE ONLY "public"."cashbook_points"
 ALTER TABLE ONLY "public"."catalog_refresh_log"
     ADD CONSTRAINT "catalog_refresh_log_pkey" PRIMARY KEY ("id");
 
-
-
-ALTER TABLE ONLY "public"."comments"
-    ADD CONSTRAINT "comments_pkey" PRIMARY KEY ("id");
 
 
 
@@ -61068,12 +60900,6 @@ CREATE INDEX "cashbook_points_tenant_id_idx" ON "public"."cashbook_points" USING
 CREATE INDEX "catalog_refresh_log_list_idx" ON "public"."catalog_refresh_log" USING "btree" ("tenant_id", "source", "event_kind", "ran_at" DESC);
 
 
-
-CREATE INDEX "comments_item_id_idx" ON "public"."comments" USING "btree" ("item_id");
-
-
-
-CREATE INDEX "comments_parent_comment_id_idx" ON "public"."comments" USING "btree" ("parent_comment_id");
 
 
 
@@ -62216,9 +62042,6 @@ CREATE OR REPLACE TRIGGER "trg_cgm_sync_tenant_role" BEFORE INSERT OR UPDATE ON 
 
 
 
-CREATE OR REPLACE TRIGGER "trg_comments_updated_at" BEFORE UPDATE ON "public"."comments" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
-
 
 CREATE OR REPLACE TRIGGER "trg_courier_services_sync_profile" AFTER INSERT OR UPDATE ON "public"."courier_services" FOR EACH ROW EXECUTE FUNCTION "public"."trg_sync_profile_from_courier_service"();
 
@@ -62827,14 +62650,6 @@ ALTER TABLE ONLY "public"."cashbook_points"
     ADD CONSTRAINT "cashbook_points_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
-ALTER TABLE ONLY "public"."comments"
-    ADD CONSTRAINT "comments_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "public"."items"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."comments"
-    ADD CONSTRAINT "comments_parent_comment_id_fkey" FOREIGN KEY ("parent_comment_id") REFERENCES "public"."comments"("id") ON DELETE CASCADE;
 
 
 
@@ -64009,10 +63824,6 @@ ALTER TABLE ONLY "public"."shop_orders"
 
 
 ALTER TABLE ONLY "public"."shop_orders"
-
-
-
-ALTER TABLE ONLY "public"."shop_orders"
     ADD CONSTRAINT "shop_orders_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
@@ -64478,24 +64289,7 @@ CREATE POLICY "cg_profiles_write_tenant_admin_staff" ON "public"."customer_group
 
 
 
-ALTER TABLE "public"."comments" ENABLE ROW LEVEL SECURITY;
 
-
-CREATE POLICY "comments_delete" ON "public"."comments" FOR DELETE TO "authenticated" USING ((("user_email" = "public"."current_user_email"()) OR ("public"."get_effective_item_role"("item_id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text"]))));
-
-
-
-CREATE POLICY "comments_insert" ON "public"."comments" FOR INSERT TO "authenticated" WITH CHECK (("public"."get_effective_item_role"("item_id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text", 'editor'::"text", 'commenter'::"text"])));
-
-
-
-CREATE POLICY "comments_select" ON "public"."comments" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."items"
-  WHERE ("items"."id" = "comments"."item_id"))));
-
-
-
-CREATE POLICY "comments_update" ON "public"."comments" FOR UPDATE TO "authenticated" USING ((("user_email" = "public"."current_user_email"()) OR ("public"."get_effective_item_role"("item_id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text"]))));
 
 
 
@@ -67448,11 +67242,6 @@ GRANT ALL ON FUNCTION "public"."get_investor_portfolio_summary"("p_investor_id" 
 
 
 
-GRANT ALL ON FUNCTION "public"."get_item_details"("p_item_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."get_item_details"("p_item_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_item_details"("p_item_id" bigint) TO "service_role";
-
-
 
 GRANT ALL ON FUNCTION "public"."get_koba_cart"("p_tenant_id" bigint, "p_customer_group_id" bigint) TO "anon";
 GRANT ALL ON FUNCTION "public"."get_koba_cart"("p_tenant_id" bigint, "p_customer_group_id" bigint) TO "authenticated";
@@ -67793,11 +67582,6 @@ GRANT ALL ON FUNCTION "public"."global_invoices_default_issued_by_tenant_id"() T
 GRANT ALL ON FUNCTION "public"."global_invoices_default_issued_by_tenant_id"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."global_invoices_default_issued_by_tenant_id"() TO "service_role";
 
-
-
-GRANT ALL ON FUNCTION "public"."global_search_tasks"("p_query" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."global_search_tasks"("p_query" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."global_search_tasks"("p_query" "text") TO "service_role";
 
 
 
@@ -70684,16 +70468,6 @@ GRANT ALL ON SEQUENCE "public"."catalog_refresh_log_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."catalog_refresh_log_id_seq" TO "service_role";
 
 
-
-GRANT ALL ON TABLE "public"."comments" TO "anon";
-GRANT ALL ON TABLE "public"."comments" TO "authenticated";
-GRANT ALL ON TABLE "public"."comments" TO "service_role";
-
-
-
-GRANT ALL ON SEQUENCE "public"."comments_id_seq" TO "anon";
-GRANT ALL ON SEQUENCE "public"."comments_id_seq" TO "authenticated";
-GRANT ALL ON SEQUENCE "public"."comments_id_seq" TO "service_role";
 
 
 

@@ -269,6 +269,26 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"comments": {
+                  Row: {
+                    "body": string,"created_at": string,"created_by": string,"deleted_at": string | null,"entity_id": string,"entity_type": string,"id": number,"tenant_id": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"created_at"?: string,"created_by"?: string,"deleted_at"?: string | null,"entity_id": string,"entity_type": string,"id"?: number,"tenant_id": number,"updated_at"?: string
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"created_by"?: string,"deleted_at"?: string | null,"entity_id"?: string,"entity_type"?: string,"id"?: number,"tenant_id"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "comments_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"costing_file_items": {
                   Row: {
                     "assigned_shipment_id": number | null,"auxiliary_price_gbp": number | null,"cargo_rate": number | null,"cargo_rate_is_manual": boolean,"color": string | null,"costing_file_id": number,"costing_price_bdt": number | null,"costing_price_gbp": number | null,"created_at": string,"created_by_email": string,"customer_profit_rate": number | null,"delivery_price_gbp": number | null,"extra_information_1": string | null,"extra_information_2": string | null,"id": number,"image_url": string | null,"item_price_gbp": number | null,"item_type": string | null,"name": string | null,"offer_price_bdt": number | null,"offer_price_override_bdt": number | null,"package_weight": number | null,"price_in_web_gbp": number | null,"product_weight": number | null,"quantity": number,"size": string | null,"status": Database["public"]['Enums']["costing_file_item_status"],"updated_at": string,"website_url": string
@@ -4801,6 +4821,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"add_comment":
+{ Args: { "p_body": string,"p_entity_id": string,"p_entity_type": string,"p_tenant_id": number }; Returns: Json
+                           },
 "add_demand_bucket_item_internal":
 { Args: { "p_product_id": number,"p_profile_id": number,"p_quantity"?: number,"p_snapshot"?: Json,"p_source_id"?: number,"p_source_type": Database["public"]['Enums']["demand_bucket_source_type"],"p_tenant_id": number }; Returns: {
               "barcode": string | null,
@@ -6321,9 +6344,6 @@ isOneToOne: false
 "get_investor_portfolio_summary":
 { Args: { "p_investor_id": number }; Returns: Json
                            },
-"get_item_details":
-{ Args: { "p_item_id": number }; Returns: Json
-                           },
 "get_koba_cart":
 { Args: { "p_customer_group_id"?: number,"p_tenant_id": number }; Returns: Json
                            },
@@ -6985,6 +7005,9 @@ isOneToOne: false
 { Args: { "p_tenant_ids": (number)[] }; Returns: {
               "id": number,"name": string,"parent_id": number
             }[]
+                           },
+"list_comments":
+{ Args: { "p_entity_id": string,"p_entity_type": string,"p_tenant_id": number }; Returns: Json
                            },
 "list_configurable_module_actions":
 { Args: { "p_scope": string,"p_tenant_id": number }; Returns: {
@@ -8477,6 +8500,9 @@ isOneToOne: false
                            },
 "show_trgm":
 { Args: { "": string }; Returns: (string)[]
+                           },
+"soft_delete_comment":
+{ Args: { "p_comment_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "staff_add_to_shop_cart":
 { Args: { "p_customer_group_id": number,"p_customer_sell_price_amount"?: number,"p_customer_sell_price_currency_id"?: number,"p_global_stock_allocation_id"?: number,"p_global_stock_id"?: number,"p_product_id": number,"p_quantity"?: number,"p_shop_id": number }; Returns: Json
