@@ -59,6 +59,7 @@
     "backend:schema:sync": "bash scripts/supabase-local.sh schema:sync",
     "backend:schema:diff": "bash scripts/supabase-local.sh schema:sync",
     "db:schema": "pnpm run backend:types",
+    "datamodel": "node scripts/generate-datamodel.mjs",
     "backend:prod": "bash scripts/deploy-backend.sh",
     "backend:all": "pnpm run backend:push:all && pnpm run db:schema"
   },
